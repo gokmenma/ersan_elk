@@ -82,7 +82,7 @@ foreach ($all_mobile_menus as $pKey => $mData) {
 $allowed_pages = array_keys($user_mobile_menus);
 
 // Menüde görünmeyen gizli mobil alt sayfalar
-$sub_pages = ['hesap-hareketleri', 'personel-duzenle'];
+$sub_pages = ['hesap-hareketleri', 'personel-duzenle', 'profil'];
 $allowed_pages = array_merge($allowed_pages, $sub_pages);
 
 if (!in_array($page, $allowed_pages)) {
@@ -504,6 +504,19 @@ try {
                 <div>
                     <span class="font-medium text-slate-900 dark:text-white text-sm block">Masaüstü Görünümü</span>
                     <span class="text-xs text-slate-400">Tam sürüme geç</span>
+                </div>
+                <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
+            </a>
+
+            <!-- Profil Sayfası -->
+            <a href="?p=profil"
+                class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?= $page === 'profil' ? 'bg-primary/10' : '' ?> mb-1">
+                <div class="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-indigo-600 text-lg">person</span>
+                </div>
+                <div>
+                    <span class="font-medium text-slate-900 dark:text-white text-sm block">Profilim</span>
+                    <span class="text-xs text-slate-400">Hesap ve ayarlar</span>
                 </div>
                 <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
             </a>

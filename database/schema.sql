@@ -1,6 +1,6 @@
 -- MariaDB dump 10.19  Distrib 10.4.32-MariaDB, for Win64 (AMD64)
 --
--- Host: localhost    Database: ersan_personel
+-- Host: localhost    Database: mbeyazil_ersanelektrik
 -- ------------------------------------------------------
 -- Server version	10.4.32-MariaDB
 

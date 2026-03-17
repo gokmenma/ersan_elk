@@ -102,4 +102,32 @@ class PushSubscriptionModel extends Model
         $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE endpoint = ?");
         return $stmt->execute([$endpoint]);
     }
+
+    /**
+     * Kullanıcının tüm aboneliklerini siler
+     */
+    public function deleteByUser($userId)
+    {
+        $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE user_id = ?");
+        return $stmt->execute([$userId]);
+    }
+
+    /**
+     * Personelin tüm aboneliklerini siler
+     */
+    public function deleteByPersonel($personelId)
+    {
+        $stmt = $this->db->prepare("DELETE FROM {$this->table} WHERE personel_id = ?");
+        return $stmt->execute([$personelId]);
+    }
+
+    /**
+     * Kullanıcının aboneliği var mı kontrol eder
+     */
+    public function checkUserSubscription($userId)
+    {
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} WHERE user_id = ?");
+        $stmt->execute([$userId]);
+        return (int) $stmt->fetchColumn() > 0;
+    }
 }

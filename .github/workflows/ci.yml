@@ -17,7 +17,7 @@ jobs:
         image: mysql:8.0
         env:
           MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: ersan_personel
+          MYSQL_DATABASE: mbeyazil_ersanelektrik
         ports:
           - 3306:3306
         options: >-
@@ -71,7 +71,7 @@ jobs:
         touch .env
         echo "APP_ENV=testing" >> .env
         echo "DB_HOST=127.0.0.1" >> .env
-        echo "DB_NAME=ersan_personel" >> .env
+        echo "DB_NAME=mbeyazil_ersanelektrik" >> .env
         echo "DB_USER=root" >> .env
         echo "DB_PASS=root" >> .env
  
@@ -80,7 +80,7 @@ jobs:
         # Ana şemayı yükle (Localdan yeni aldığımız export)
         if [ -f "database/schema.sql" ]; then
           echo "Ana şema yükleniyor..."
-          (echo "SET FOREIGN_KEY_CHECKS=0;"; cat "database/schema.sql") | mysql -h 127.0.0.1 -u root -proot --binary-mode=1 ersan_personel
+          (echo "SET FOREIGN_KEY_CHECKS=0;"; cat "database/schema.sql") | mysql -h 127.0.0.1 -u root -proot --binary-mode=1 mbeyazil_ersanelektrik
         fi
         
         # Ek olarak yeni migrationları veya SQL dosyalarını yükle (Üzerine yazma veya eksikleri tamamlama)
@@ -89,7 +89,7 @@ jobs:
             if [ -f "$f" ] && [ "$f" != "database/schema.sql" ]; then
               echo "Yükleniyor: $f"
               # -f (force) kullanarak "kolon zaten var" gibi hataları görmezden geliyoruz
-              (echo "SET FOREIGN_KEY_CHECKS=0;"; cat "$f") | mysql -h 127.0.0.1 -u root -proot --binary-mode=1 -f ersan_personel
+              (echo "SET FOREIGN_KEY_CHECKS=0;"; cat "$f") | mysql -h 127.0.0.1 -u root -proot --binary-mode=1 -f mbeyazil_ersanelektrik
             fi
           done
         }

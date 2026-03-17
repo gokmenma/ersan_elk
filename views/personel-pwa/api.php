@@ -225,6 +225,21 @@ try {
             $stmt->execute([$personel_id, $firmaId, $startOfMonth, $endOfMonth]);
             $monthlyIsler = (int) ($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
 
+            // Günlük Sayaç Değişim
+            $sqlSayacDaily = "SELECT SUM(is_sayisi) as toplam FROM sayac_degisim WHERE personel_id = ? AND firma_id = ? AND silinme_tarihi IS NULL AND tarih = ?";
+            $stmt = $db->prepare($sqlSayacDaily);
+            $stmt->execute([$personel_id, $firmaId, $today]);
+            $dailySayac = (int) ($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
+            
+            // Aylık Sayaç Değişim
+            $sqlSayacMonthly = "SELECT SUM(is_sayisi) as toplam FROM sayac_degisim WHERE personel_id = ? AND firma_id = ? AND silinme_tarihi IS NULL AND tarih BETWEEN ? AND ?";
+            $stmt = $db->prepare($sqlSayacMonthly);
+            $stmt->execute([$personel_id, $firmaId, $startOfMonth, $endOfMonth]);
+            $monthlySayac = (int) ($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
+
+            $dailyIsler += $dailySayac;
+            $monthlyIsler += $monthlySayac;
+
             // Rapor Sekmesi Bazlı Dağılım (Günlük)
             $sqlSekmeDaily = "SELECT tn.rapor_sekmesi, SUM(t.sonuclanmis) as toplam 
                              FROM yapilan_isler t
@@ -333,10 +348,14 @@ try {
                 LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
                 WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih BETWEEN ? AND ?
                 AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?[0-9]+'
+                UNION ALL
+                SELECT t.personel_id, t.is_sayisi as toplam
+                FROM sayac_degisim t
+                WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih BETWEEN ? AND ?
             ) AS birlesik GROUP BY personel_id";
 
             $stmt = $db->prepare($skorSorgusu);
-            $stmt->execute([$firmaId, $startOfMonth, $endOfMonth, $firmaId, $startOfMonth, $endOfMonth]);
+            $stmt->execute([$firmaId, $startOfMonth, $endOfMonth, $firmaId, $startOfMonth, $endOfMonth, $firmaId, $startOfMonth, $endOfMonth]);
             $skorlarArray = $stmt->fetchAll(PDO::FETCH_OBJ);
 
             $skorMap = [];
@@ -1472,7 +1491,7 @@ try {
                 throw new Exception('Lütfen tüm zorunlu alanları doldurun.');
             }
 
-            $stmt = $TalepModel->getDb()->prepare("SELECT id, ref_no, foto, durum FROM personel_talepleri WHERE id = ? AND personel_id = ? AND deleted_at IS NULL LIMIT 1");
+            $stmt = $TalepModel->getDb()->prepare("SELECT id, ref_no, foto, durum FROM personel_talepleri WHERE id = ? AND personel_id = ? AND silinme_tarihi IS NULL LIMIT 1");
             $stmt->execute([$id, $personel_id]);
             $existing = $stmt->fetch(PDO::FETCH_OBJ);
 
@@ -1522,7 +1541,7 @@ try {
             $update = $TalepModel->getDb()->prepare("
                 UPDATE personel_talepleri 
                 SET konum = ?, latitude = ?, longitude = ?, kategori = ?, oncelik = ?, baslik = ?, aciklama = ?, foto = ?
-                WHERE id = ? AND personel_id = ? AND durum = 'beklemede' AND deleted_at IS NULL
+                WHERE id = ? AND personel_id = ? AND durum = 'beklemede' AND silinme_tarihi IS NULL
             ");
             $update->execute([$konum, $latitude, $longitude, $kategori, $oncelik, $baslik, $aciklama, $foto_path, $id, $personel_id]);
 
@@ -1538,7 +1557,7 @@ try {
             }
 
             // Önce talebi bulup fotoğraf yolunu alalım
-            $stmt = $TalepModel->getDb()->prepare("SELECT foto FROM personel_talepleri WHERE id = ? AND personel_id = ? AND deleted_at IS NULL LIMIT 1");
+            $stmt = $TalepModel->getDb()->prepare("SELECT foto FROM personel_talepleri WHERE id = ? AND personel_id = ? AND silinme_tarihi IS NULL LIMIT 1");
             $stmt->execute([$id, $personel_id]);
             $talep = $stmt->fetch(PDO::FETCH_OBJ);
 
@@ -1556,8 +1575,8 @@ try {
 
             $delete = $TalepModel->getDb()->prepare("
                 UPDATE personel_talepleri 
-                SET deleted_at = NOW()
-                WHERE id = ? AND personel_id = ? AND durum = 'beklemede' AND deleted_at IS NULL
+                SET silinme_tarihi = NOW()
+                WHERE id = ? AND personel_id = ? AND durum = 'beklemede' AND silinme_tarihi IS NULL
             ");
             $delete->execute([$id, $personel_id]);
 
@@ -2009,6 +2028,58 @@ try {
                 }
             }
 
+            if ($raporSekmesi === 'sokme_takma') {
+                $firmaId = $_SESSION['firma_id'] ?? 0;
+                $db = (new \App\Model\Model('sayac_degisim'))->getDb();
+                
+                $sql = "SELECT MIN(id) as id, tarih, isemri_sebep as is_emri_tipi, isemri_sonucu as is_emri_sonucu, 
+                            SUM(is_sayisi) as sonuclanmis, 0 as acik_olanlar, ekip as ekip_kodu, 
+                            'sokme_takma' as rapor_sekmesi, 1 as is_turu_ucret, '' as firma
+                        FROM sayac_degisim 
+                        WHERE personel_id = ? AND firma_id = ? AND silinme_tarihi IS NULL";
+                        
+                $params = [$personel_id, $firmaId];
+                
+                if ($startDate) {
+                    $sql .= " AND tarih >= ?";
+                    $params[] = $startDate;
+                }
+                if ($endDate) {
+                    $sql .= " AND tarih <= ?";
+                    $params[] = $endDate;
+                }
+                if ($workType) {
+                    $sql .= " AND isemri_sebep = ?";
+                    $params[] = $workType;
+                }
+                if ($workResult) {
+                    $sql .= " AND (isemri_sonucu = ? OR is_sayisi > 0)";
+                    // actually if filtering by result, just filter.
+                    // Wait, let's keep it exact:
+                    $params[] = $workResult;
+                }
+                
+                $sql .= " GROUP BY tarih, isemri_sebep, isemri_sonucu, ekip ORDER BY tarih DESC";
+                
+                $stmt = $db->prepare($sql);
+                $stmt->execute($params);
+                $items = $stmt->fetchAll(PDO::FETCH_OBJ);
+                
+                $totalSonuclanan = 0;
+                foreach ($items as $item) {
+                    $totalSonuclanan += (int)$item->sonuclanmis;
+                }
+                
+                response(true, [
+                    'items' => $items,
+                    'stats' => [
+                        'toplam' => $totalSonuclanan,
+                        'sonuclanan' => $totalSonuclanan,
+                        'acik' => 0
+                    ]
+                ]);
+            }
+
             $PuantajModel = new \App\Model\PuantajModel();
             $items = $PuantajModel->getFiltered($startDate, $endDate, $personel_id, $workType, $workResult, $raporSekmesi);
 
@@ -2103,14 +2174,37 @@ try {
         case 'getPuantajWorkTypes':
             $PuantajModel = new \App\Model\PuantajModel();
             $types = $PuantajModel->getWorkTypes($personel_id);
-            response(true, $types);
+            
+            $db = (new \App\Model\Model('sayac_degisim'))->getDb();
+            $firmaId = $_SESSION['firma_id'] ?? 0;
+            $stmt = $db->prepare("SELECT DISTINCT isemri_sebep FROM sayac_degisim WHERE personel_id = ? AND firma_id = ? AND silinme_tarihi IS NULL AND isemri_sebep IS NOT NULL AND isemri_sebep != ''");
+            $stmt->execute([$personel_id, $firmaId]);
+            $sayacTypes = $stmt->fetchAll(PDO::FETCH_COLUMN);
+            
+            $types = array_unique(array_merge($types, $sayacTypes));
+            response(true, array_values($types));
             break;
 
         case 'getPuantajWorkResults':
             $workType = $_POST['work_type'] ?? null;
             $PuantajModel = new \App\Model\PuantajModel();
             $results = $PuantajModel->getWorkResults($personel_id, $workType);
-            response(true, $results);
+
+            $db = (new \App\Model\Model('sayac_degisim'))->getDb();
+            $firmaId = $_SESSION['firma_id'] ?? 0;
+            
+            $sql = "SELECT DISTINCT isemri_sonucu FROM sayac_degisim WHERE personel_id = ? AND firma_id = ? AND silinme_tarihi IS NULL AND isemri_sonucu IS NOT NULL AND isemri_sonucu != ''";
+            $params = [$personel_id, $firmaId];
+            if ($workType) {
+                $sql .= " AND isemri_sebep = ?";
+                $params[] = $workType;
+            }
+            $stmt = $db->prepare($sql);
+            $stmt->execute($params);
+            $sayacResults = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+            $results = array_unique(array_merge($results, $sayacResults));
+            response(true, array_values($results));
             break;
 
         case 'getDefterList':
@@ -2334,7 +2428,7 @@ try {
                             durum as status,
                             COALESCE(cozum_tarihi, olusturma_tarihi) as activity_date
                         FROM personel_talepleri
-                        WHERE personel_id = ? AND deleted_at IS NULL
+                        WHERE personel_id = ? AND silinme_tarihi IS NULL
                         ORDER BY activity_date DESC
                         LIMIT $limit";
 

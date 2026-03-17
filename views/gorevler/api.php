@@ -500,10 +500,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $subscription['keys']['p256dh'] ?? null,
                     $subscription['keys']['auth'] ?? null
                 );
+
                 if ($result) {
                     echo json_encode(['success' => true, 'message' => 'Bildirim aboneliği başarıyla kaydedildi']);
                 } else {
                     throw new Exception('Abonelik kaydedilirken bir hata oluştu');
+                }
+                break;
+
+            case 'check-subscription-status':
+                $PushSubscriptionModel = new \App\Model\PushSubscriptionModel();
+                $isSubscribed = $PushSubscriptionModel->checkUserSubscription($userId);
+                echo json_encode(['success' => true, 'subscribed' => $isSubscribed]);
+                break;
+
+            case 'remove-subscription':
+                $PushSubscriptionModel = new \App\Model\PushSubscriptionModel();
+                $result = $PushSubscriptionModel->deleteByUser($userId);
+                if ($result) {
+                    echo json_encode(['success' => true, 'message' => 'Bildirim aboneliği kaldırıldı']);
+                } else {
+                    throw new Exception('Abonelik kaldırılırken bir hata oluştu');
                 }
                 break;
 

@@ -343,7 +343,7 @@ class NobetModel extends Model
                 WHERE n.firma_id = :firma_id 
                 AND n.silinme_tarihi IS NULL
                 AND n.nobet_tarihi = :tarih
-                AND (n.durum IS NULL OR n.durum NOT IN ('talep_edildi', 'reddedildi'))
+                AND (n.durum IS NULL OR n.durum NOT IN ('talep_edildi', 'reddedildi', 'iptal'))
                 AND n.yonetici_onayi = 1
                 ORDER BY n.baslangic_saati ASC";
 

@@ -100,6 +100,7 @@ $isEndeksOkuma = (stripos($personel->departman ?? '', 'Endeks Okuma') !== false)
 $isSayacSokmeTakma = (stripos($personel->departman ?? '', 'Sayaç Sökme Takma') !== false);
 $isBuro = (stripos($personel->departman ?? '', 'BÜRO') !== false || stripos($personel->departman ?? '', 'Büro') !== false);
 $isSef = (stripos($personel->gorev ?? '', 'Şef') !== false);
+$isKesmeAcma = (stripos($personel->departman ?? '', 'Kesme-Açma') !== false || stripos($personel->departman ?? '', 'Kesme Açma') !== false);
 $isEkipSefi = false;
 
 if ($isEndeksOkuma && $isSef) {
@@ -123,7 +124,9 @@ $allowed_pages = ['ana-sayfa', 'bordro', 'izin', 'talep', 'profil', 'puantaj', '
 
 if ($isEndeksOkuma && $isEkipSefi) {
     $allowed_pages[] = 'ekip-takibi';
-} elseif (!$isEndeksOkuma && !$isBuro && !$isSayacSokmeTakma) {
+}
+
+if ($isKesmeAcma) {
     $allowed_pages[] = 'nobet';
 }
 
@@ -306,18 +309,18 @@ if (!in_array($page, $allowed_pages)) {
                 <span class="material-symbols-outlined <?php echo $page === 'ekip-takibi' ? 'filled' : ''; ?>">groups</span>
                 <span class="text-[10px] font-semibold">Ekip Takibi</span>
             </a>
-        <?php elseif ($isEndeksOkuma || $isBuro): ?>
+        <?php elseif ($isKesmeAcma): ?>
+            <a href="?page=nobet"
+                class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'nobet' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
+                <span class="material-symbols-outlined <?php echo $page === 'nobet' ? 'filled' : ''; ?>">nights_stay</span>
+                <span class="text-[10px] font-semibold">Nöbet Takibi</span>
+            </a>
+        <?php else: ?>
             <a href="?page=zimmetler"
                 class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'zimmetler' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
                 <span
                     class="material-symbols-outlined <?php echo $page === 'zimmetler' ? 'filled' : ''; ?>">inventory_2</span>
                 <span class="text-[10px] font-semibold">Zimmetler</span>
-            </a>
-        <?php else: ?>
-            <a href="?page=nobet"
-                class="nav-item flex flex-col items-center gap-1 py-2 px-4 rounded-xl transition-all <?php echo $page === 'nobet' ? 'text-primary bg-primary/10' : 'text-slate-500'; ?>">
-                <span class="material-symbols-outlined <?php echo $page === 'nobet' ? 'filled' : ''; ?>">nights_stay</span>
-                <span class="text-[10px] font-semibold">Nöbet Takibi</span>
             </a>
         <?php endif; ?>
         <a href="?page=talep"
@@ -327,7 +330,7 @@ if (!in_array($page, $allowed_pages)) {
         </a>
         <?php
         $moreActivePages = ['profil', 'etkinlikler', 'bordro', 'izin'];
-        $isZimmetInBottomNav = ($isEndeksOkuma && !$isEkipSefi) || $isBuro;
+        $isZimmetInBottomNav = !(($isEndeksOkuma && $isEkipSefi) || $isKesmeAcma);
         // Zimmetler zaten bottom nav'da gösteriliyorsa diğer menüde highlight etme
         if (!$isZimmetInBottomNav) {
             $moreActivePages[] = 'zimmetler';

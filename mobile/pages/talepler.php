@@ -267,6 +267,10 @@ function formatDateOnlyMobile($dateStr) {
                     </div>
                     <div class="mb-4 space-y-1.5">
                         <div class="flex items-center gap-2 text-slate-500 text-xs font-medium">
+                            <span class="material-symbols-outlined text-[14px]">calendar_clock</span>
+                            Talep Tarihi: <span class="text-slate-700 dark:text-slate-300"><?= formatDateMobile($izin->talep_tarihi) ?></span>
+                        </div>
+                        <div class="flex items-center gap-2 text-slate-500 text-xs font-medium">
                             <span class="material-symbols-outlined text-[14px]">flight_takeoff</span>
                             Başlangıç: <span class="text-slate-700 dark:text-slate-300"><?= formatDateOnlyMobile($izin->baslangic_tarihi) ?></span>
                         </div>

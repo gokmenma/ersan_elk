@@ -417,6 +417,9 @@ try {
             <p class="text-white/60 text-xs mt-0.5"><?= date('d.m.Y') ?> – Yönetim Paneli</p>
         </div>
         <div class="flex items-center gap-2">
+            <a href="?p=profil" class="relative w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white active:scale-95 transition-transform border border-white/10">
+                <span class="material-symbols-outlined text-[22px]">person</span>
+            </a>
             <a href="?p=talepler" class="relative w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white active:scale-95 transition-transform border border-white/10">
                 <span class="material-symbols-outlined text-[22px]">notifications</span>
                 <?php if ($unreadNotificationCount > 0): ?>
