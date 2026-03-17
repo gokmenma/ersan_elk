@@ -23,6 +23,7 @@ use App\Model\BildirimModel;
 use App\Model\UserModel;
 use App\Model\PersonelHareketleriModel;
 use App\Model\PersonelIcralariModel;
+use App\Service\PushNotificationService;
 
 // Oturum kontrolü (logout hariç)
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
@@ -719,6 +720,18 @@ try {
                             'success'
                         );
                         file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Bildirim oluşturuldu. Kullanıcı: {$kullanici->id}, Sonuç: $res\n", FILE_APPEND);
+
+                        // Push Bildirim
+                        try {
+                            $pushService = new PushNotificationService();
+                            $pushService->sendToUser($kullanici->id, [
+                                'title' => '💰 Yeni Avans Talebi',
+                                'body' => ($talep_eden->adi_soyadi ?? 'Personel') . ' ' . number_format($tutar, 2, ',', '.') . ' TL avans talep etti.',
+                                'url' => 'mobile/index.php?p=talepler'
+                            ]);
+                        } catch (Exception $e) {
+                            file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Push bildirim hatası: " . $e->getMessage() . "\n", FILE_APPEND);
+                        }
                     } catch (Exception $e) {
                         file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Bildirim oluşturma hatası: " . $e->getMessage() . "\n", FILE_APPEND);
                     }
@@ -1096,6 +1109,18 @@ try {
                             'warning'
                         );
                         file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "İzin bildirimi oluşturuldu. Kullanıcı: {$kullanici->id}, Sonuç: $res\n", FILE_APPEND);
+
+                        // Push Bildirim
+                        try {
+                            $pushService = new PushNotificationService();
+                            $pushService->sendToUser($kullanici->id, [
+                                'title' => '📅 Yeni İzin Talebi',
+                                'body' => ($talep_eden->adi_soyadi ?? 'Personel') . ' ' . $izin_tipi_text . ' talep etti.',
+                                'url' => 'mobile/index.php?p=talepler'
+                            ]);
+                        } catch (Exception $e) {
+                            file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Push bildirim hatası: " . $e->getMessage() . "\n", FILE_APPEND);
+                        }
                     } catch (Exception $e) {
                         file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "İzin bildirim hatası: " . $e->getMessage() . "\n", FILE_APPEND);
                     }
@@ -1324,6 +1349,18 @@ try {
                             'info'
                         );
                         file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Talep bildirimi oluşturuldu. Kullanıcı: {$kullanici->id}, Sonuç: $res\n", FILE_APPEND);
+
+                        // Push Bildirim
+                        try {
+                            $pushService = new PushNotificationService();
+                            $pushService->sendToUser($kullanici->id, [
+                                'title' => "📣 Yeni {$baslik}",
+                                'body' => ($talep_eden->adi_soyadi ?? 'Personel') . " yeni bir talep oluşturdu.",
+                                'url' => 'mobile/index.php?p=talepler'
+                            ]);
+                        } catch (Exception $e) {
+                            file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Push bildirim hatası: " . $e->getMessage() . "\n", FILE_APPEND);
+                        }
                     } catch (Exception $e) {
                         file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Talep bildirim hatası: " . $e->getMessage() . "\n", FILE_APPEND);
                     }

@@ -20,7 +20,7 @@ ini_set('log_errors', 1);
 error_reporting(E_ALL);
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
-    $action = $_POST['action'] ?? '';
+    $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
     $pushService = new PushNotificationService();
     $subscriptionModel = new PushSubscriptionModel();
@@ -343,8 +343,40 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception('Oturum bulunamadı.');
                 }
 
-                $BildirimModel = new BildirimModel();
                 $BildirimModel->markAllAsRead($userId);
+
+                echo json_encode(['status' => 'success']);
+                break;
+            
+            case 'save-subscription':
+                $input = json_decode(file_get_contents('php://input'), true);
+                if (!$input) {
+                    throw new Exception('Geçersiz veri.');
+                }
+
+                $endpoint = $input['endpoint'] ?? '';
+                $publicKey = $input['keys']['p256dh'] ?? '';
+                $authToken = $input['keys']['auth'] ?? '';
+                $contentEncoding = $input['contentEncoding'] ?? 'aes128gcm';
+
+                if (empty($endpoint) || empty($publicKey) || empty($authToken)) {
+                    throw new Exception('Eksik abonelik bilgileri.');
+                }
+
+                $personel_id = $_SESSION['id'] ?? $_SESSION['personel_id'] ?? 0;
+                $user_id = $_SESSION['user_id'] ?? 0;
+
+                if ($personel_id > 0) {
+                    $subscriptionModel->saveSubscription($personel_id, $endpoint, $publicKey, $authToken, $contentEncoding);
+                }
+                
+                if ($user_id > 0) {
+                    $subscriptionModel->saveUserSubscription($user_id, $endpoint, $publicKey, $authToken, $contentEncoding);
+                }
+
+                if ($personel_id <= 0 && $user_id <= 0) {
+                    throw new Exception('Oturum bulunamadı.');
+                }
 
                 echo json_encode(['status' => 'success']);
                 break;

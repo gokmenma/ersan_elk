@@ -43,9 +43,8 @@ class GelirGiderModel extends Model
             $params['kategori'] = $kategori;
         }
 
-        $sql = $this->db->prepare("SELECT g.*, t.tur_adi as kategori_adi 
+        $sql = $this->db->prepare("SELECT g.*, g.kategori as kategori_adi 
                                     FROM $this->table g
-                                    LEFT JOIN tanimlamalar t ON g.kategori = t.id
                                     WHERE $where
                                     ORDER BY g.tarih DESC, g.id DESC");
         $sql->execute($params);
@@ -54,9 +53,8 @@ class GelirGiderModel extends Model
 
     public function find($id)
     {
-        $sql = $this->db->prepare("SELECT g.*, t.tur_adi as kategori_adi 
+        $sql = $this->db->prepare("SELECT g.*, g.kategori as kategori_adi 
                                     FROM $this->table g
-                                    LEFT JOIN tanimlamalar t ON g.kategori = t.id
                                     WHERE g.id = :id");
         $sql->execute(['id' => $id]);
         return $sql->fetch(PDO::FETCH_OBJ);
@@ -369,13 +367,10 @@ class GelirGiderModel extends Model
     public function getUniqueValues($column, $params = [])
     {
         // View alanlarını eşle
-        if ($column == "kategori_adi" || $column == "kategori") {
-            // Kategoriler için sql_gelir_gider view'ındaki 'kategori' alanını (Isim) getirelim
-            $sql = "SELECT DISTINCT kategori FROM sql_gelir_gider WHERE kategori IS NOT NULL AND kategori != '' ORDER BY kategori ASC";
-        } else {
-            $sql = "SELECT DISTINCT {$column} FROM sql_gelir_gider WHERE {$column} IS NOT NULL AND {$column} != '' ORDER BY {$column} ASC";
-        }
+        $field = ($column == "kategori_adi" || $column == "kategori") ? 'kategori' : $column;
+        
+        $sql = "SELECT DISTINCT {$field} FROM {$this->table} WHERE {$field} IS NOT NULL AND {$field} != '' ORDER BY {$field} ASC";
 
         return $this->db->query($sql)->fetchAll(PDO::FETCH_COLUMN);
     }
-}
+}

@@ -22,10 +22,11 @@ use App\Model\GorevModel;
 use App\Model\BildirimModel;
 use App\Service\PushNotificationService;
 
-// CLI modunda mı çalışıyor?
-if (php_sapi_name() !== 'cli') {
+// CLI veya browser üzerinden debug parametresiyle çalışabilir
+$is_debug = isset($_GET['debug']) && $_GET['debug'] == '1';
+if (php_sapi_name() !== 'cli' && !$is_debug) {
     header('HTTP/1.0 403 Forbidden');
-    echo "Bu dosya sadece komut satırı (CLI) üzerinden çalıştırılabilir.";
+    echo "Bu dosya sadece komut satırı (CLI) üzerinden veya debug parametresiyle çalıştırılabilir.";
     exit;
 }
 
@@ -126,8 +127,8 @@ try {
                         'title' => $title,
                         'body' => $body,
                         'url' => $link,
-                        'icon' => '/assets/images/logo-sm.png',
-                        'badge' => '/assets/images/logo-sm.png'
+                        'icon' => 'assets/images/logo-sm.png',
+                        'badge' => 'assets/images/logo-sm.png'
                     ];
 
                     $pushService->sendToUser($userId, $payload);

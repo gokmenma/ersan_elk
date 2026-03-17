@@ -132,6 +132,19 @@ foreach ($user_mobile_menus as $pKey => $mData) {
 }
 
 $isMoreActive = in_array($page, $more_pages);
+
+// Bildirim Sayısı
+$unreadNotificationCount = 0;
+try {
+    $db = (new \App\Model\Model())->getDb();
+    $st1 = $db->prepare("SELECT COUNT(*) FROM personel_talepleri WHERE durum != 'cozuldu' AND silinme_tarihi IS NULL AND firma_id = ?");
+    $st1->execute([$_SESSION['firma_id']]);
+    $st2 = $db->prepare("SELECT COUNT(*) FROM personel_avanslari WHERE durum = 'beklemede' AND silinme_tarihi IS NULL");
+    $st2->execute();
+    $st3 = $db->prepare("SELECT COUNT(*) FROM personel_izinleri WHERE durum = 'beklemede' AND silinme_tarihi IS NULL");
+    $st3->execute();
+    $unreadNotificationCount = (int)$st1->fetchColumn() + (int)$st2->fetchColumn() + (int)$st3->fetchColumn();
+} catch (\Exception $e) {}
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -390,6 +403,14 @@ $isMoreActive = in_array($page, $more_pages);
                     <span class="material-symbols-outlined text-[18px] dark:hidden">dark_mode</span>
                     <span class="material-symbols-outlined text-[18px] hidden dark:block">light_mode</span>
                 </button>
+                <a href="?p=talepler" class="relative w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-95 transition-transform bg-white/10 hover:bg-white/20">
+                    <span class="material-symbols-outlined text-[18px]">notifications</span>
+                    <?php if ($unreadNotificationCount > 0): ?>
+                        <span class="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center border border-[#135bec]">
+                            <?= $unreadNotificationCount ?>
+                        </span>
+                    <?php endif; ?>
+                </a>
                 <a href="../logout.php"
                     class="w-8 h-8 rounded-full flex items-center justify-center text-white active:scale-95 transition-transform bg-white/10 hover:bg-white/20">
                     <span class="material-symbols-outlined text-[18px]">logout</span>

@@ -85,11 +85,23 @@ $renkler = [
         <div class="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -mr-32 -mt-32"></div>
         <div class="absolute bottom-0 left-0 w-40 h-40 bg-white rounded-full -ml-20 -mb-20"></div>
     </div>
-    <div class="relative z-10 flex justify-between items-center mb-2">
+    <div class="relative z-10 flex items-center justify-between">
         <div>
             <h2 class="text-2xl font-extrabold leading-tight tracking-tight">Görevleriniz</h2>
         </div>
-        <div class="flex gap-2">
+        <div class="flex items-center gap-2">
+            <a href="?p=talepler" class="relative w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white active:scale-95 transition-transform border border-white/10">
+                <span class="material-symbols-outlined text-[22px]">notifications</span>
+                <?php if ($unreadNotificationCount > 0): ?>
+                    <span class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#135bec] animate-pulse">
+                        <?= $unreadNotificationCount ?>
+                    </span>
+                <?php endif; ?>
+            </a>
+        </div>
+    </div>
+    <div class="relative z-10 flex gap-2 mt-4">
+        <div class="flex gap-2 flex-1">
             <div class="text-center">
                 <div class="bg-white/20 rounded-xl px-2 py-1 backdrop-blur-sm min-w-[50px]">
                     <span class="block text-lg font-bold leading-none"><?= $aktifToplam ?></span>

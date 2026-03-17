@@ -66,6 +66,16 @@ function formatDateOnlyMobile($dateStr) {
             </h2>
             <p class="text-white/80 text-sm mt-1 font-medium">Onay bekleyen tüm işlemler</p>
         </div>
+        <div class="flex items-center gap-2">
+            <a href="?p=talepler" class="relative w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white active:scale-95 transition-transform border border-white/10">
+                <span class="material-symbols-outlined text-[22px]">notifications</span>
+                <?php if ($unreadNotificationCount > 0): ?>
+                    <span class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#135bec] animate-pulse">
+                        <?= $unreadNotificationCount ?>
+                    </span>
+                <?php endif; ?>
+            </a>
+        </div>
         <div class="flex gap-3">
             <div class="text-center">
                 <div class="bg-white/20 rounded-xl px-4 py-2 backdrop-blur-sm border border-white/20 shadow-sm">
@@ -319,6 +329,7 @@ function formatDateOnlyMobile($dateStr) {
                     'aciklama' => $talep->aciklama ?? 'Açıklama bulunmuyor.',
                     'durum' => $talep->durum ?? 'beklemede',
                     'cozum' => $talep->cozum_aciklama ?? '',
+                    'foto' => !empty($talep->foto) ? '../' . $talep->foto : '',
                     'islem_yapan' => $talep->solver_name ?? '',
                     'islem_tarihi' => !empty($talep->cozum_tarihi) ? formatDateMobile($talep->cozum_tarihi) : ''
                 ];
@@ -757,6 +768,13 @@ function formatDateOnlyMobile($dateStr) {
             <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 mb-4 mt-3">
                 <h5 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">AÇIKLAMA</h5>
                 <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">${talep.aciklama}</p>
+                
+                ${talep.foto ? `
+                <div class="mt-4">
+                    <img src="${talep.foto}" class="w-full h-auto rounded-lg border border-slate-200 dark:border-slate-700 mb-2" onclick="window.open('${talep.foto}', '_blank')">
+                    <p class="text-[10px] text-slate-400 text-center italic">Resmi büyütmek için tıklayın</p>
+                </div>
+                ` : ''}
             </div>
             
             ${talep.cozum ? `

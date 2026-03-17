@@ -397,23 +397,35 @@ try {
         <div class="absolute top-0 right-0 w-52 h-52 bg-white rounded-full -mr-24 -mt-24"></div>
         <div class="absolute bottom-0 left-0 w-36 h-36 bg-white rounded-full -ml-16 -mb-16"></div>
     </div>
-    <div class="relative z-10">
-        <p class="text-white/70 text-sm">
-            <?php
-            $h = (int) date('H');
-            echo $h < 12 ? 'Günaydın!' : ($h < 18 ? 'İyi günler!' : 'İyi akşamlar!');
-            ?>
-        </p>
-        <h2 class="text-lg font-bold leading-tight">
-            <?php 
-            $displayName = $_SESSION['user_full_name'] ?? '';
-            if (empty($displayName) && isset($_SESSION['user'])) {
-                $displayName = $_SESSION['user']->adi_soyadi ?? 'Yönetici';
-            }
-            echo htmlspecialchars($displayName ?: 'Yönetici');
-            ?>
-        </h2>
-        <p class="text-white/60 text-xs mt-0.5"><?= date('d.m.Y') ?> – Yönetim Paneli</p>
+    <div class="relative z-10 flex justify-between items-start">
+        <div>
+            <p class="text-white/70 text-sm">
+                <?php
+                $h = (int) date('H');
+                echo $h < 12 ? 'Günaydın!' : ($h < 18 ? 'İyi günler!' : 'İyi akşamlar!');
+                ?>
+            </p>
+            <h2 class="text-lg font-bold leading-tight">
+                <?php 
+                $displayName = $_SESSION['user_full_name'] ?? '';
+                if (empty($displayName) && isset($_SESSION['user'])) {
+                    $displayName = $_SESSION['user']->adi_soyadi ?? 'Yönetici';
+                }
+                echo htmlspecialchars($displayName ?: 'Yönetici');
+                ?>
+            </h2>
+            <p class="text-white/60 text-xs mt-0.5"><?= date('d.m.Y') ?> – Yönetim Paneli</p>
+        </div>
+        <div class="flex items-center gap-2">
+            <a href="?p=talepler" class="relative w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white active:scale-95 transition-transform border border-white/10">
+                <span class="material-symbols-outlined text-[22px]">notifications</span>
+                <?php if ($unreadNotificationCount > 0): ?>
+                    <span class="absolute -top-1 -right-1 w-5 h-5 bg-red-500 text-white text-[10px] font-bold rounded-full flex items-center justify-center border-2 border-[#135bec] animate-pulse">
+                        <?= $unreadNotificationCount ?>
+                    </span>
+                <?php endif; ?>
+            </a>
+        </div>
     </div>
 </header>
 

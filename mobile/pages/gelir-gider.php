@@ -114,7 +114,8 @@ if (!function_exists('formatMoneyGG')) {
                 </div>
             </div>
 
-            <div class="bg-white dark:bg-card-dark p-3 border border-slate-100 dark:border-slate-700/50 flex items-center transition-transform duration-200 swipe-content gg-item" 
+            <div class="bg-white dark:bg-card-dark p-3 border border-slate-100 dark:border-slate-700/50 flex items-center transition-transform duration-200 swipe-content gg-item cursor-pointer" 
+                 onclick="window.viewGGDetails('<?= $encId ?>')"
                  data-search="<?= htmlspecialchars($searchString) ?>">
                 <!-- Icon -->
                 <div class="w-10 h-10 rounded-[10px] <?= $typeBg ?> <?= $typeColor ?> flex items-center justify-center shrink-0 border border-current/10">
@@ -322,7 +323,73 @@ if (!function_exists('formatMoneyGG')) {
     </div>
 </div>
 
+<!-- Makbuz/Detay Modalı -->
+<div id="detailModal" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-3xl z-[61] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom max-h-[90vh] overflow-y-auto w-full max-w-lg mx-auto flex flex-col">
+    <div class="p-6">
+        <div class="flex justify-between items-start mb-6">
+            <div class="flex items-center gap-3">
+                <div id="detailIconBg" class="w-12 h-12 rounded-2xl flex items-center justify-center">
+                    <span id="detailIcon" class="material-symbols-outlined text-2xl"></span>
+                </div>
+                <div>
+                    <h3 id="detailKategori" class="font-bold text-slate-900 dark:text-white text-lg leading-tight"></h3>
+                    <p id="detailTarih" class="text-xs text-slate-500 font-medium"></p>
+                </div>
+            </div>
+            <button onclick="window.closeModals()" class="w-10 h-10 flex items-center justify-center text-slate-400 rounded-2xl bg-slate-50 dark:bg-slate-800 active:scale-95 transition-transform">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+
+        <div class="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-6 border-2 border-dashed border-slate-200 dark:border-slate-700 relative overflow-hidden">
+            <!-- Receipt Teeth Effect (Top) -->
+            <div class="absolute top-0 left-0 right-0 h-1 flex justify-between px-2">
+                <?php for($i=0; $i<15; $i++): ?><div class="w-2 h-2 bg-white dark:bg-card-dark rounded-full -mt-1"></div><?php endfor; ?>
+            </div>
+
+            <div class="text-center mb-6">
+                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-[2px] mb-1">İşlem Tutarı</p>
+                <h2 id="detailTutar" class="text-3xl font-black tracking-tight"></h2>
+            </div>
+
+            <div class="space-y-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-slate-400 font-medium">Hesap/Kişi</span>
+                    <span id="detailHesap" class="text-slate-900 dark:text-white font-bold"></span>
+                </div>
+                <div class="flex justify-between items-center text-sm">
+                    <span class="text-slate-400 font-medium">İşlem Tipi</span>
+                    <span id="detailTip" class="font-bold"></span>
+                </div>
+                <div class="flex justify-between items-start text-sm">
+                    <span class="text-slate-400 font-medium">Açıklama</span>
+                    <span id="detailAciklama" class="text-slate-900 dark:text-white font-bold text-right max-w-[180px]"></span>
+                </div>
+            </div>
+
+            <!-- Receipt Teeth Effect (Bottom) -->
+            <div class="absolute bottom-0 left-0 right-0 h-1 flex justify-between px-2">
+                <?php for($i=0; $i<15; $i++): ?><div class="w-2 h-2 bg-white dark:bg-card-dark rounded-full -mb-1"></div><?php endfor; ?>
+            </div>
+        </div>
+
+        <div class="mt-8 flex gap-3">
+            <button id="btnEditDetail" class="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-all">
+                <span class="material-symbols-outlined text-lg">edit</span> Düzenle
+            </button>
+            <button id="btnCloseDetail" onclick="window.closeModals()" class="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-2xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-all">
+                <span class="material-symbols-outlined text-lg">close</span> Kapat
+            </button>
+        </div>
+    </div>
+</div>
+
 <script>
+// JavaScript format helper
+window.formatMoneyGG = function(amount) {
+    return new Intl.NumberFormat('tr-TR', { style: 'currency', currency: 'TRY' }).format(amount);
+};
+
 $(document).ready(function() {
     // Select2 integration (Optional but good for tags)
     $('#hesap_adi_select, #islem_turu_select').select2({
@@ -501,6 +568,47 @@ window.deleteGG = async function(id, desc) {
 window.closeModals = function() {
     document.getElementById('modalOverlay').classList.add('pointer-events-none', 'opacity-0');
     document.getElementById('ggModal').classList.add('translate-y-full');
+    document.getElementById('detailModal').classList.add('translate-y-full');
+};
+
+window.viewGGDetails = function(id) {
+    const formData = new FormData();
+    formData.append('action', 'gelir-gider-getir');
+    formData.append('gelir_gider_id', id);
+
+    fetch('../views/gelir-gider/api.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data) {
+            const isGelir = data.type == 1;
+            const colorClass = isGelir ? 'text-emerald-600' : 'text-rose-600';
+            const bgClass = isGelir ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-rose-50 dark:bg-rose-900/20';
+            const icon = isGelir ? 'add_circle' : 'do_not_disturb_on';
+            
+            document.getElementById('detailIcon').innerText = icon;
+            document.getElementById('detailIcon').className = `material-symbols-outlined text-2xl ${colorClass}`;
+            document.getElementById('detailIconBg').className = `w-12 h-12 rounded-2xl flex items-center justify-center ${bgClass}`;
+            
+            document.getElementById('detailKategori').innerText = data.kategori_adi || 'Kategorisiz';
+            document.getElementById('detailTarih').innerText = data.tarih ? new Date(data.tarih).toLocaleString('tr-TR') : '-';
+            document.getElementById('detailTutar').innerText = (isGelir ? '+' : '-') + formatMoneyGG(data.tutar);
+            document.getElementById('detailTutar').className = `text-3xl font-black tracking-tight ${colorClass}`;
+            
+            document.getElementById('detailHesap').innerText = data.hesap_adi || '-';
+            document.getElementById('detailTip').innerText = isGelir ? 'GELİR' : 'GİDER';
+            document.getElementById('detailTip').className = `font-bold ${colorClass}`;
+            document.getElementById('detailAciklama').innerText = data.aciklama || '-';
+            
+            // Buttons
+            document.getElementById('btnEditDetail').onclick = () => { window.closeModals(); window.editGG(id); };
+
+            document.getElementById('modalOverlay').classList.remove('pointer-events-none', 'opacity-0');
+            document.getElementById('detailModal').classList.remove('translate-y-full');
+        }
+    });
 };
 
 window.submitGGForm = function(e) {
