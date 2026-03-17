@@ -109,26 +109,45 @@ $nav_items = [];
 $more_pages_data = [];
 $more_pages = [];
 
-$i = 0;
 $hasCariPermission = isset($user_mobile_menus['cari-takip']);
 $hasGelirGiderPermission = isset($user_mobile_menus['gelir-gider']);
 
 // Navigasyon elemanlarını belirle
-foreach ($user_mobile_menus as $pKey => $mData) {
-    // Eğer ikisi de varsa, Gelir Gider'i zorla 'More' kısmına at (Cari top 4'te kalsın)
-    if ($hasCariPermission && $hasGelirGiderPermission && $pKey === 'gelir-gider') {
-        $more_pages_data[$pKey] = $mData;
-        $more_pages[] = $pKey;
-        continue;
+if ($hasCariPermission && $hasGelirGiderPermission) {
+    if (isset($user_mobile_menus['gelir-gider'])) {
+        $user_mobile_menus['gelir-gider']['label'] = 'Kasa';
     }
 
-    if ($i < 4) {
-        $nav_items[] = ['page' => $pKey, 'label' => $mData['label'], 'icon' => $mData['icon']];
-    } else {
-        $more_pages_data[$pKey] = $mData;
-        $more_pages[] = $pKey;
+    $desired_order = ['home', 'cari-takip', 'raporlar', 'gelir-gider'];
+    foreach ($desired_order as $pageKey) {
+        if (isset($user_mobile_menus[$pageKey])) {
+            $mData = $user_mobile_menus[$pageKey];
+            if (count($nav_items) < 4) {
+                $nav_items[] = ['page' => $pageKey, 'label' => $mData['label'], 'icon' => $mData['icon']];
+                unset($user_mobile_menus[$pageKey]);
+            }
+        }
     }
-    $i++;
+
+    foreach ($user_mobile_menus as $pKey => $mData) {
+        if (count($nav_items) < 4) {
+            $nav_items[] = ['page' => $pKey, 'label' => $mData['label'], 'icon' => $mData['icon']];
+        } else {
+            $more_pages_data[$pKey] = $mData;
+            $more_pages[] = $pKey;
+        }
+    }
+} else {
+    $i = 0;
+    foreach ($user_mobile_menus as $pKey => $mData) {
+        if ($i < 4) {
+            $nav_items[] = ['page' => $pKey, 'label' => $mData['label'], 'icon' => $mData['icon']];
+        } else {
+            $more_pages_data[$pKey] = $mData;
+            $more_pages[] = $pKey;
+        }
+        $i++;
+    }
 }
 
 $isMoreActive = in_array($page, $more_pages);

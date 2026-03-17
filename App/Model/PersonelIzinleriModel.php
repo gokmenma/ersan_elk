@@ -109,7 +109,7 @@ class PersonelIzinleriModel extends Model
         $limit = (int) $limit;
         $today = date('Y-m-d');
         $sql = $this->db->prepare("
-            SELECT pi.*, p.adi_soyadi, p.resim_yolu, p.departman, t.tur_adi as izin_tipi_adi
+            SELECT pi.*, p.adi_soyadi, p.resim_yolu, p.personel_resim_yolu, p.departman, t.tur_adi as izin_tipi_adi
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
@@ -127,7 +127,7 @@ class PersonelIzinleriModel extends Model
     public function getButunBekleyenIzinler()
     {
         $sql = $this->db->prepare("
-            SELECT pi.*, p.adi_soyadi as requester_name, p.resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi
+            SELECT pi.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
@@ -145,13 +145,13 @@ class PersonelIzinleriModel extends Model
     {
         $limit = (int) $limit;
         $sql = $this->db->prepare("
-            SELECT pi.*, p.adi_soyadi as requester_name, p.resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi,
-                   u.adi_soyadi as solver_name, io.onay_tarihi as islem_tarihi
+            SELECT pi.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi,
+                   u.adi_soyadi as solver_name, io.onay_tarihi as islem_tarihi, io.aciklama as onay_aciklama
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             LEFT JOIN (
-                SELECT io1.izin_id, io1.onaylayan_id, io1.onay_tarihi
+                SELECT io1.izin_id, io1.onaylayan_id, io1.onay_tarihi, io1.aciklama
                 FROM izin_onaylari io1
                 INNER JOIN (
                     SELECT MAX(id) as max_id FROM izin_onaylari GROUP BY izin_id
@@ -179,7 +179,7 @@ class PersonelIzinleriModel extends Model
     {
         $limit = (int) $limit;
         $sql = $this->db->prepare("
-            SELECT pi.*, p.adi_soyadi as requester_name, p.resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi
+            SELECT pi.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
@@ -235,7 +235,7 @@ class PersonelIzinleriModel extends Model
     public function getIzinDetay($id)
     {
         $sql = $this->db->prepare("
-            SELECT pi.*, p.adi_soyadi as requester_name, p.resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi
+            SELECT pi.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id

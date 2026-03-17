@@ -383,10 +383,20 @@ foreach ($cards as $c) {
         $idx++;
     }
 ?>
-    <!-- CHART CONTAINER -->
     <?php if ($hasData): ?>
-    <div class="mb-4 bg-white dark:bg-card-dark rounded-xl p-3 border border-slate-100 dark:border-slate-800 shadow-sm relative">
-        <h3 class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2 px-1">Bölge Performansı</h3>
+    <div class="mb-4 bg-white dark:bg-card-dark rounded-2xl p-4 border border-slate-100 dark:border-slate-800 shadow-sm relative">
+        <div class="flex items-center justify-between mb-4">
+            <div>
+                <h3 class="text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-0.5">Bölge Performansı</h3>
+                <p class="text-[10px] text-slate-400 font-medium">Genel Toplam</p>
+            </div>
+            <div class="text-right">
+                <p class="text-xl font-bold text-slate-900 dark:text-white leading-none">
+                    <?= number_format(array_sum($regionTotals), 0, ',', '.') ?>
+                    <span class="text-xs font-medium text-slate-400 ml-0.5"><?= mb_strtolower($activeTab === 'okuma' ? 'İş' : 'İşlem', 'UTF-8') ?></span>
+                </p>
+            </div>
+        </div>
         <div class="w-full relative" style="height: 160px;">
             <canvas id="regionChartCanvas"></canvas>
         </div>

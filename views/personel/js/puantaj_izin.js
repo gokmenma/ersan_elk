@@ -8,7 +8,6 @@ $(document).ready(function () {
   let excelReplacedPersonnel = new Set(); // Excel'den yüklenen personellerin ID'leri
   let ucretliDefinitions = [];
   let ucretsizDefinitions = [];
-  let filterTimer = null;
 
   // Initial Load from LocalStorage or default
   const savedAy = localStorage.getItem("puantaj_ay");
@@ -48,18 +47,15 @@ $(document).ready(function () {
   function applyFilter() {
     const value = turkceKucukHarf($("#personel-filter").val());
     $("#table-body tr").each(function () {
-      const rowText = $(this).attr("data-search") || turkceKucukHarf($(this).text());
+      const rowText = turkceKucukHarf($(this).text());
       $(this).toggle(rowText.indexOf(value) > -1);
     });
   }
 
   $("#personel-filter").on("keyup", function () {
     localStorage.setItem("puantaj_filter", $(this).val());
-    if (filterTimer) clearTimeout(filterTimer);
-    filterTimer = setTimeout(() => {
-      applyFilter();
-      calculateTotals();
-    }, 180);
+    applyFilter();
+    calculateTotals();
   });
 
   // Tam Ekran Modu
@@ -220,8 +216,7 @@ $(document).ready(function () {
          </div>
       </th>`;
     }
-    headerHtml += '<th class="sticky-col-right-1">Toplam Ç.G.</th>';
-    headerHtml += '<th class="sticky-col-right-2">Fiili Ç.G.</th>';
+    headerHtml += '<th class="sticky-col-right-1">Toplam Gün</th>';
     $("#table-header").html(headerHtml);
 
     // Body with data
@@ -245,11 +240,7 @@ $(document).ready(function () {
                     personnelMap[turkceKucukHarf(p.adi_soyadi)] = p;
                   if (p.tc_kimlik_no) personnelMap[p.tc_kimlik_no] = p;
 
-                  const rowSearch = turkceKucukHarf(
-                    `${p.adi_soyadi || ""} ${p.tc_kimlik_no || ""}`,
-                  ).replace(/"/g, "&quot;");
-
-                  bodyHtml += `<tr data-search="${rowSearch}">
+                  bodyHtml += `<tr>
                         <td class="personel-info sticky-col" title="${p.adi_soyadi}">
                             <div class="d-flex align-items-center">
                                 <a href="?p=personel/manage&id=${p.encrypt_id}" class="text-truncate-name text-primary fw-bold" style="text-decoration: none;">${p.adi_soyadi}</a>
@@ -257,7 +248,6 @@ $(document).ready(function () {
                         </td>`;
 
                   let unpaidCount = 0;
-                  let allCount = 0;
                   let disabledDaysCount = 0;
 
                   for (let d = 1; d <= daysCount; d++) {
@@ -334,7 +324,6 @@ $(document).ready(function () {
                       const typeId = (
                         unsaved.type_id || unsaved.typeId
                       )?.toString();
-                      allCount++;
                       if (ucretsizIzinIds.has(typeId)) unpaidCount++;
 
                       cellStyle = ``;
@@ -355,9 +344,6 @@ $(document).ready(function () {
                       const entry = entries[0];
                       const styleObj = getStyleFromTailwind(entry.color);
                       const typeId = entry.tip_id?.toString();
-                      if (entry.type !== "default") {
-                        allCount++;
-                      }
                       if (ucretsizIzinIds.has(typeId)) unpaidCount++;
 
                       cellStyle = ``;
@@ -397,12 +383,7 @@ $(document).ready(function () {
                     calisilmasiGerekenGun > 0
                       ? calisilmasiGerekenGun - unpaidCount
                       : 0;
-                  const fiiliCalisma =
-                    calisilmasiGerekenGun > 0
-                      ? calisilmasiGerekenGun - allCount
-                      : 0;
                   bodyHtml += `<td class="sticky-col-right-1 toplam-calisma-gunu">${toplamCalisma}</td>`;
-                  bodyHtml += `<td class="sticky-col-right-2 fiili-calisma-gunu">${fiiliCalisma}</td>`;
                   bodyHtml += "</tr>";
                 });
                 $("#table-body").html(bodyHtml);
@@ -435,9 +416,13 @@ $(document).ready(function () {
     const ay = $("#select-ay").val();
     const yil = $("#select-yil").val();
     const daysCount = getDaysInMonth(ay, yil);
-    const visibleRows = $("#table-body tr:visible").toArray();
 
-    let secilenPersonelSayisi = visibleRows.length;
+    let secilenPersonelSayisi = 0;
+    $("#table-body tr").each(function () {
+      if ($(this).css("display") !== "none") {
+        secilenPersonelSayisi++;
+      }
+    });
 
     let footerHtml = `<tr>
             <td class="sticky-col px-3" style="display: table-cell; vertical-align: middle;">
@@ -448,46 +433,31 @@ $(document).ready(function () {
             </td>`;
 
     let totalGenelCalisma = 0;
-    let totalFiiliCalisma = 0;
-
-    const dayStats = Array.from({ length: daysCount }, () => ({
-      typeCounts: {},
-      totalEntries: 0,
-    }));
-
-    visibleRows.forEach((row) => {
-      totalGenelCalisma +=
-        parseInt(row.querySelector(".toplam-calisma-gunu")?.textContent, 10) || 0;
-      totalFiiliCalisma +=
-        parseInt(row.querySelector(".fiili-calisma-gunu")?.textContent, 10) || 0;
-
-      const rowCells = row.querySelectorAll(".day-cell");
-      const limit = Math.min(daysCount, rowCells.length);
-
-      for (let i = 0; i < limit; i++) {
-        const cell = rowCells[i];
-        if (!cell.classList.contains("has-entry")) continue;
-
-        const content = cell.querySelector(".cell-content");
-        if (!content) continue;
-
-        const shortcode = content.dataset.shortcode || "??";
-        const name = content.dataset.name || "Bilinmeyen";
-        const idStr = content.dataset.id ? content.dataset.id.toString() : "";
-
-        const stat = dayStats[i];
-        if (!stat.typeCounts[shortcode]) {
-          stat.typeCounts[shortcode] = { count: 0, name: name, typeId: idStr };
-        }
-        stat.typeCounts[shortcode].count++;
-        stat.totalEntries++;
-      }
-    });
-
     for (let d = 1; d <= daysCount; d++) {
-      const dayStat = dayStats[d - 1];
-      const typeCounts = dayStat.typeCounts;
-      const totalEntries = dayStat.totalEntries;
+      let typeCounts = {};
+      let totalEntries = 0;
+
+      const dateStr = `${yil}-${ay}-${d.toString().padStart(2, "0")}`;
+
+      $("#table-body tr").each(function () {
+        if ($(this).css("display") === "none") return;
+
+        let cell = $(this).find(`.day-cell[data-date="${dateStr}"]`);
+        if (cell.length && cell.hasClass("has-entry")) {
+          const content = cell.find(".cell-content");
+          if (content.length) {
+            const shortcode = content.data("shortcode");
+            const name = content.data("name");
+            const idStr = content.data("id")?.toString();
+
+            if (!typeCounts[shortcode]) {
+              typeCounts[shortcode] = { count: 0, name: name, typeId: idStr };
+            }
+            typeCounts[shortcode].count++;
+            totalEntries++;
+          }
+        }
+      });
 
       let tooltipText = "";
       Object.keys(typeCounts).forEach(function (code) {
@@ -507,8 +477,13 @@ $(document).ready(function () {
       }
     }
 
+    $("#table-body tr").each(function () {
+      if ($(this).css("display") === "none") return;
+      totalGenelCalisma +=
+        parseInt($(this).find(".toplam-calisma-gunu").text()) || 0;
+    });
+
     footerHtml += `<td class="sticky-col-right-1 text-center">${totalGenelCalisma}</td>`;
-    footerHtml += `<td class="sticky-col-right-2 text-center">${totalFiiliCalisma}</td>`;
     footerHtml += `</tr>`;
 
     $("#table-footer").html(footerHtml);
@@ -517,7 +492,7 @@ $(document).ready(function () {
 
   function initPopovers() {
     var popoverTriggerList = [].slice.call(
-      document.querySelectorAll('#table-footer [data-bs-toggle="popover"]'),
+      document.querySelectorAll('[data-bs-toggle="popover"]'),
     );
     popoverTriggerList.map(function (popoverTriggerEl) {
       if (bootstrap.Popover.getInstance(popoverTriggerEl)) {
@@ -800,24 +775,17 @@ $(document).ready(function () {
           <span class="btn-delete-cell" onclick="removeUnsaved('${key}', event)">×</span>
       </div>`);
 
-    initTooltips(cell);
-    updateRowTotals(pId, $(cell).closest("tr"));
+    initTooltips();
+    updateRowTotals(pId);
   }
 
   let calculateTotalsTimer = null;
-  function updateRowTotals(pId, rowRef = null) {
-    const $row = rowRef && $(rowRef).length
-      ? $(rowRef)
-      : $(`td[data-personel-id="${pId}"]`).first().closest("tr");
+  function updateRowTotals(pId) {
+    const $row = $(`td[data-personel-id="${pId}"]`).first().closest("tr");
     if (!$row.length) return;
 
-    const ay = $("#select-ay").val();
-    const yil = $("#select-yil").val();
-    const daysCount = getDaysInMonth(ay, yil);
-
-    let unpaidCount = 0;
-    let allCount = 0;
     let disabledCount = 0;
+    let unpaidCount = 0;
 
     $row.find(".day-cell").each(function () {
       const $cell = $(this);
@@ -826,10 +794,6 @@ $(document).ready(function () {
       }
       const $content = $cell.find(".cell-content");
       if ($content.length) {
-        const isDefault = $content.attr("data-is-default") === "true";
-        if (!isDefault) {
-          allCount++;
-        }
         const typeId = $content.data("id")?.toString();
         if (typeId && ucretsizIzinIds.has(typeId)) {
           unpaidCount++;
@@ -837,13 +801,11 @@ $(document).ready(function () {
       }
     });
 
-    const activeDays = daysCount - disabledCount;
-    $row
-      .find(".toplam-calisma-gunu")
-      .text(activeDays > 0 ? activeDays - unpaidCount : 0);
-    $row
-      .find(".fiili-calisma-gunu")
-      .text(activeDays > 0 ? activeDays - allCount : 0);
+    const totalCells = $row.find(".day-cell").length;
+    const activeDays = Math.max(0, totalCells - disabledCount);
+    const toplamCalisma = activeDays > 0 ? activeDays - unpaidCount : 0;
+
+    $row.find(".toplam-calisma-gunu").text(toplamCalisma);
 
     // Satır toplamı değiştiyse genel toplamı da güncelle
     if (calculateTotalsTimer) clearTimeout(calculateTotalsTimer);
@@ -865,7 +827,7 @@ $(document).ready(function () {
     // Tooltip varsa temizle
     $(".tooltip").remove();
 
-    updateRowTotals(pId, $cell.closest("tr"));
+    updateRowTotals(pId);
   };
 
   function clearSelection() {
@@ -1037,22 +999,10 @@ $(document).ready(function () {
     }
   }
 
-  function initTooltips(root = document) {
-    let tooltipTriggerList = [];
-
-    if (root instanceof Element) {
-      if (root.matches('[data-bs-toggle="tooltip"]')) {
-        tooltipTriggerList.push(root);
-      }
-      tooltipTriggerList = tooltipTriggerList.concat(
-        [].slice.call(root.querySelectorAll('[data-bs-toggle="tooltip"]')),
-      );
-    } else {
-      tooltipTriggerList = [].slice.call(
-        document.querySelectorAll('[data-bs-toggle="tooltip"]'),
-      );
-    }
-
+  function initTooltips() {
+    var tooltipTriggerList = [].slice.call(
+      document.querySelectorAll('[data-bs-toggle="tooltip"]'),
+    );
     tooltipTriggerList.map(function (tooltipTriggerEl) {
       if (bootstrap.Tooltip.getInstance(tooltipTriggerEl)) {
         bootstrap.Tooltip.getInstance(tooltipTriggerEl).dispose();
@@ -1086,7 +1036,7 @@ $(document).ready(function () {
         const pId = $cell.data("personel-id");
         $cell.empty().removeClass("has-entry unsaved").attr("style", "");
         $(".tooltip").remove();
-        updateRowTotals(pId, $cell.closest("tr"));
+        updateRowTotals(pId);
 
         // Pace başlasın ama loader'ı tüm sayfaya koyma
         if (typeof Pace !== "undefined") Pace.restart();

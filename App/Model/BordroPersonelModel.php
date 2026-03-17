@@ -39,6 +39,57 @@ class BordroPersonelModel extends Model
         parent::__construct($this->table);
     }
 
+    private function isValidDateValue($date): bool
+    {
+        return !empty($date) && $date !== '0000-00-00';
+    }
+
+    private function getAktifTakvimGunSayisi($donemBaslangic, $donemBitis, $iseGirisTarihi = null, $istenCikisTarihi = null): int
+    {
+        $donemBasTs = strtotime($donemBaslangic);
+        $donemBitTs = strtotime($donemBitis);
+
+        if ($donemBasTs === false || $donemBitTs === false || $donemBitTs < $donemBasTs) {
+            return 0;
+        }
+
+        $aktifBasTs = $donemBasTs;
+        $aktifBitTs = $donemBitTs;
+
+        if ($this->isValidDateValue($iseGirisTarihi)) {
+            $iseGirisTs = strtotime($iseGirisTarihi);
+            if ($iseGirisTs !== false && $iseGirisTs > $aktifBasTs) {
+                $aktifBasTs = $iseGirisTs;
+            }
+        }
+
+        if ($this->isValidDateValue($istenCikisTarihi)) {
+            $istenCikisTs = strtotime($istenCikisTarihi);
+            if ($istenCikisTs !== false && $istenCikisTs < $aktifBitTs) {
+                $aktifBitTs = $istenCikisTs;
+            }
+        }
+
+        if ($aktifBitTs < $aktifBasTs) {
+            return 0;
+        }
+
+        return (int) round(($aktifBitTs - $aktifBasTs) / 86400) + 1;
+    }
+
+    private function getMaasHesapGunu(int $aktifTakvimGun, int $donemTakvimGun, int $eksikGunToplami): int
+    {
+        if ($aktifTakvimGun <= 0) {
+            return 0;
+        }
+
+        if ($eksikGunToplami <= 0 && $aktifTakvimGun >= $donemTakvimGun) {
+            return 30;
+        }
+
+        return max(0, $aktifTakvimGun - $eksikGunToplami);
+    }
+
     /**
      * Belirli bir dönemdeki tüm personelleri getirir
      */
@@ -85,7 +136,8 @@ class BordroPersonelModel extends Model
                    JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.ucretsiz_izin_gunu')) as hd_ucretsiz_izin_gunu,
                    JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.ucretsiz_izin_dusumu')) as hd_ucretsiz_izin_dusumu,
                    JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.nominal_maas')) as hd_nominal_maas,
-                   JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.ucretli_izin_gunu')) as hd_ucretli_izin_gunu
+                     JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.ucretli_izin_gunu')) as hd_ucretli_izin_gunu,
+                     JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.maas_hesap_gunu')) as hd_maas_hesap_gunu
             FROM {$this->table} bp
             INNER JOIN personel p ON bp.personel_id = p.id
             LEFT JOIN (
@@ -1938,54 +1990,26 @@ class BordroPersonelModel extends Model
 
         // ========== ÇALIŞMA GÜNÜ HESAPLAMASI ==========
         // Mantık:
-        // 1) İşe giriş tarihi dönem içindeyse: ayın_gün_sayısı - giriş_günü + 1 (takvim günü)
-        // 2) Tam çalıştı + ücretsiz izin yok: 30 gün (ticari ay)
-        // 3) Tam çalıştı + ücretsiz izin var: ayın_gün_sayısı - ücretsiz_izin_günü
+        // 1) Önce personelin dönem içindeki aktif takvim gününü bul
+        // 2) Eksik gün yoksa ve dönemin tamamını kapsıyorsa 30 gün kabul et
+        // 3) Eksik gün varsa aktif takvim gününden düş
         $donemBasTs = strtotime($kayit->baslangic_tarihi);
         $donemBitTs = strtotime($kayit->bitis_tarihi);
-        $aydakiGunSayisi = date('t', $donemBasTs);
-
-        $iseGirisDoneмIcinde = false;
-        $istenCikisDoneмIcinde = false;
-
-        if (!empty($kayit->ise_giris_tarihi)) {
-            $iseGirisTs = strtotime($kayit->ise_giris_tarihi);
-            if ($iseGirisTs > $donemBasTs) {
-                $iseGirisDoneмIcinde = true;
-            }
-        }
-
-        if (!empty($kayit->isten_cikis_tarihi)) {
-            $istenCikisTs = strtotime($kayit->isten_cikis_tarihi);
-            if ($istenCikisTs >= $donemBasTs && $istenCikisTs < $donemBitTs) {
-                $istenCikisDoneмIcinde = true;
-            }
-        }
-
-        if ($iseGirisDoneмIcinde && $istenCikisDoneмIcinde) {
-            // Hem giriş hem çıkış ay içinde
-            $gunlukBase = date('j', $istenCikisTs) - date('j', $iseGirisTs) + 1;
-        } elseif ($iseGirisDoneмIcinde) {
-            // Sadece giriş ay içinde: ayın kalan günleri
-            $gunlukBase = $aydakiGunSayisi - date('j', $iseGirisTs) + 1;
-        } elseif ($istenCikisDoneмIcinde) {
-            // Sadece çıkış ay içinde: ayın başından çıkış gününe kadar
-            $gunlukBase = date('j', $istenCikisTs);
-        } elseif ($ucretsizIzinGunu > 0 || $ucretliIzinGunu > 0) {
-            // Tam ay çalıştı ama izin var: takvim günü kullan
-            $gunlukBase = $aydakiGunSayisi;
-        } else {
-            // Tam ay, izin yok: ticari 30 gün
-            $gunlukBase = 30;
-        }
-        if ($gunlukBase < 0)
-            $gunlukBase = 0;
+        $aydakiGunSayisi = (int) round(($donemBitTs - $donemBasTs) / 86400) + 1;
+        $aktifTakvimGun = $this->getAktifTakvimGunSayisi(
+            $kayit->baslangic_tarihi,
+            $kayit->bitis_tarihi,
+            $kayit->ise_giris_tarihi ?? null,
+            $kayit->isten_cikis_tarihi ?? null
+        );
 
         // USER REQ: Maaş hesaplaması görev geçmişi kapsamına göre olmalı (Örn: Geçmiş 1 günlük ise 1 gün ödenmeli)
         if (count($gecmisKayitlar) > 0) {
             $workingHistoryCoverage = $toplamGecerliGun;
-            $gunlukBase = min($gunlukBase, $workingHistoryCoverage);
+            $aktifTakvimGun = min($aktifTakvimGun, $workingHistoryCoverage);
         }
+
+        $gunlukBase = $aktifTakvimGun;
 
         // Puantajdan (yapılan işler) fiili çalışma gününü al
         $puantajGunSayisiRaw = $this->getCalismaGunuSayisi($kayit->personel_id, $donemTarihi, $donemBitis);
@@ -2008,20 +2032,16 @@ class BordroPersonelModel extends Model
             }
         }
 
-        // USER REQ: Puantaj kaydı varsa gunlukBase'i oradan al (Örn: Gökhan Bey 22 gün)
-        if ($puantajGunSayisi > 0) {
-            $gunlukBase = min($gunlukBase, $puantajGunSayisi);
-        }
+        // Maaş günü: sadece ücretsiz izin düşülür.
+        // Eksik gün yoksa tam dönem için 30, eksik varsa aktif takvim gününden düş.
+        // Fiili gün: aktif takvim günü - eksik günler, gerekirse puantaj gününe limitlenir.
+        $maasEksikGunToplami = $ucretsizIzinGunu;
+        $maasHesapGunu = $this->getMaasHesapGunu($aktifTakvimGun, $aydakiGunSayisi, $maasEksikGunToplami);
 
         // Ücretsiz izin günü varsa brüt maaşı düşür (Günlük ücret × izin günü kadar)
         if ($isNetMaas || $maasDurumu === 'brüt') {
             // Net veya Brüt maaş tipi: toplam alacağı = (maaş / 30) * gün
-            $fiiliCalismaGunuTemp = $gunlukBase - $ucretsizIzinGunu - $ucretliIzinGunu;
-            
-            // USER REQ: Puantaj kaydı varsa fiili günü oradan al (Örn: Gökhan Bey 22 gün)
-            if ($puantajGunSayisi > 0) {
-                $fiiliCalismaGunuTemp = min($fiiliCalismaGunuTemp, $puantajGunSayisi);
-            }
+            $fiiliCalismaGunuTemp = $maasHesapGunu;
 
             if ($fiiliCalismaGunuTemp < 0)
                 $fiiliCalismaGunuTemp = 0;
@@ -2030,12 +2050,7 @@ class BordroPersonelModel extends Model
             if ($ucretsizIzinDusumu < 0)
                 $ucretsizIzinDusumu = 0;
         } else {
-            $fiiliCalismaGunuTemp = $gunlukBase - $ucretsizIzinGunu - $ucretliIzinGunu;
-            
-            // USER REQ: Puantaj kaydı varsa fiili günü oradan al (Örn: Gökhan Bey 22 gün)
-            if ($puantajGunSayisi > 0) {
-                $fiiliCalismaGunuTemp = min($fiiliCalismaGunuTemp, $puantajGunSayisi);
-            }
+            $fiiliCalismaGunuTemp = $maasHesapGunu;
 
             if ($fiiliCalismaGunuTemp < 0)
                 $fiiliCalismaGunuTemp = 0;
@@ -2411,7 +2426,8 @@ class BordroPersonelModel extends Model
         }
 
         // ========== ÖDEME DAĞILIMI ÖN HAZIRLIK ==========
-        // Fiili çalışma günü (30 günden ücretsiz ve ücretli izinler düşülmüş)
+        // Fiili çalışma günü, gerçek çalışma bazlı kullanım içindir.
+        // Ücretli izin ve ücretsiz izin düşülür; varsa puantaj gününe de limitlenir.
         // NOT: Gün tüm maaş tipleri için düşer (banka/sodexo oranlaması için gerekli)
         // Prim Usülü'de fark: toplam alacağı gün bazlı düşmez, ama banka/sodexo düşer
         $fiiliCalismaGunu = $gunlukBase - $ucretsizIzinGunu - $ucretliIzinGunu;
@@ -2787,6 +2803,7 @@ class BordroPersonelModel extends Model
                 'ucretsiz_izin_gunu' => $ucretsizIzinGunu,
                 'ucretsiz_izin_dusumu' => round($ucretsizIzinDusumu, 2),
                 'ucretli_izin_gunu' => $ucretliIzinGunu,
+                'maas_hesap_gunu' => $maasHesapGunu,
                 'fiili_calisma_gunu' => $fiiliCalismaGunu,
                 'calisan_brut_maas' => round($calisanBrutMaas, 2),
                 'sgk_matrahi' => round($sgkMatrahi, 2),
@@ -2826,7 +2843,7 @@ class BordroPersonelModel extends Model
             'toplam_kesinti' => round($toplamKesinti, 2),
             'toplam_ek_odeme' => round($toplamEkOdeme, 2),
             'fazla_mesai_tutar' => round($toplamMesaiTutar, 2),
-            'calisan_gun' => $gunlukBase - $ucretsizIzinGunu,
+            'calisan_gun' => $maasHesapGunu,
             'sodexo_odemesi' => round($sodexoOdemesi, 2),
             'banka_odemesi' => round($bankaOdemesi, 2),
             'elden_odeme' => round($eldenOdeme, 2),

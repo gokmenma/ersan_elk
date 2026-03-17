@@ -18,7 +18,7 @@ $endeksModel   = new EndeksOkumaModel();
 $hareketModel  = new PersonelHareketleriModel();
 
 // Personel istatistikleri (Pasif hariç, Total = Aktif + İzinli)
-$istatistik      = $personelModel->personelSayilari();
+$istatistik      = $personelModel->personelSayilari('personel');
 $aktif_p         = (int) ($istatistik->aktif_personel  ?? 0); // Toplam Employed
 $advStats        = $personelModel->getAdvancedDashboardStats();
 $izinli_p        = (int) ($advStats->izinli_personel ?? 0); // İzinli
@@ -99,7 +99,7 @@ if (\App\Service\Gate::allows("personel_listesi")) {
                 <p class="text-[11px] text-slate-400">Toplam Personel</p>
                 <p class="text-2xl font-bold text-slate-900 dark:text-white leading-tight">
                     <?= $toplam_p ?>
-                    <span class="text-sm font-normal text-slate-400">adet</span>
+                    <span class="text-sm font-normal text-slate-400">adet Aktif</span>
                 </p>
             </div>
             <a href="../index.php?p=personel/list"
@@ -375,7 +375,7 @@ $toplam_bekleyen = $bekleyen_talep + $bekleyen_avans + $bekleyen_izin;
 // Bugünün nöbetçileri
 try {
     $db_nobet = $personelModel->getDb();
-    $stmt_nobet = $db_nobet->prepare("SELECT n.*, p.adi_soyadi, p.cep_telefonu, p.resim_yolu
+    $stmt_nobet = $db_nobet->prepare("SELECT n.*, p.adi_soyadi, p.cep_telefonu, p.resim_yolu, p.personel_resim_yolu
                                 FROM nobetler n 
                                 JOIN personel p ON n.personel_id = p.id 
                                 WHERE n.nobet_tarihi = CURDATE() 
@@ -456,8 +456,10 @@ try {
             <div class="flex items-center justify-between p-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-700/50">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold overflow-hidden">
-                        <?php if (!empty($nobet['resim_yolu']) && file_exists($nobet['resim_yolu'])): ?>
-                            <img src="../<?= $nobet['resim_yolu'] ?>" class="w-full h-full object-cover">
+                        <?php 
+                        $pResim = !empty($nobet['personel_resim_yolu']) ? $nobet['personel_resim_yolu'] : ($nobet['resim_yolu'] ?? '');
+                        if (!empty($pResim) && file_exists($pResim)): ?>
+                            <img src="../<?= $pResim ?>" class="w-full h-full object-cover">
                         <?php else: ?>
                             <?= mb_substr($nobet['adi_soyadi'], 0, 1) ?>
                         <?php endif; ?>

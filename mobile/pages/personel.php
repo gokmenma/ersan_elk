@@ -3,12 +3,15 @@ use App\Model\PersonelModel;
 
 $PersonelModel = new PersonelModel();
 
-$istatistik = $PersonelModel->personelSayilari();
+$istatistik = $PersonelModel->personelSayilari('personel');
 $toplam_p   = (int) ($istatistik->toplam_personel ?? 0);
 $aktif_p    = (int) ($istatistik->aktif_personel  ?? 0);
 $pasif_p    = (int) ($istatistik->pasif_personel  ?? 0);
 
-$personeller = $PersonelModel->all() ?? [];
+$db = $PersonelModel->getDb();
+$stmt = $db->prepare("SELECT * FROM personel WHERE firma_id = ? AND silinme_tarihi IS NULL AND (disardan_sigortali = 0 OR FIND_IN_SET('personel', gorunum_modulleri)) ORDER BY adi_soyadi ASC");
+$stmt->execute([$_SESSION['firma_id'] ?? 0]);
+$personeller = $stmt->fetchAll(PDO::FETCH_OBJ);
 
 // Helper function for user initials
 if (!function_exists('getInitials')) {
@@ -83,14 +86,18 @@ if (!function_exists('getInitials')) {
                 $tel = $kisi->cep_telefonu ?? '';
                 $gorev = $kisi->gorev_gosterim ?? $kisi->gorev ?? '';
                 $departman = $kisi->departman_gosterim ?? $kisi->departman ?? '-';
-                $isAktif = (int)($kisi->aktif_mi ?? 0);
+                
+                $dtAyrilis = $kisi->isten_cikis_tarihi ?? '';
+                $isAktif = (empty($dtAyrilis) || $dtAyrilis == '0000-00-00') ? 1 : 0;
             ?>
                 <!-- Sadece aktif personeli varsayılan gösterelim, pasifler filtreyle açılsın diye class ekliyoruz -->
                 <div class="personel-card bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 transition-transform active:scale-[0.98] <?= $isAktif ? 'is-aktif' : 'is-pasif hidden' ?>" onclick="openMenu('<?= urlencode(\App\Helper\Security::encrypt($kisi->id)) ?>')">
                     <div class="flex items-center gap-3">
                         <div class="relative">
-                            <?php if (!empty($kisi->resim_yolu) && file_exists($kisi->resim_yolu)): ?>
-                                <img src="../<?= htmlspecialchars($kisi->resim_yolu) ?>" class="w-12 h-12 rounded-full object-cover border-2 border-slate-100 dark:border-slate-700">
+                            <?php 
+                            $paResim = !empty($kisi->personel_resim_yolu) ? $kisi->personel_resim_yolu : ($kisi->resim_yolu ?? '');
+                            if (!empty($paResim) && file_exists($paResim)): ?>
+                                <img src="../<?= htmlspecialchars($paResim) ?>" class="w-12 h-12 rounded-full object-cover border-2 border-slate-100 dark:border-slate-700">
                             <?php else: ?>
                                 <div class="w-12 h-12 rounded-full bg-gradient-to-br from-indigo-100 to-indigo-50 dark:from-indigo-900/40 dark:to-indigo-800/20 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold text-lg border-2 border-indigo-50 dark:border-slate-700">
                                     <?= getInitials($kisi->adi_soyadi) ?>

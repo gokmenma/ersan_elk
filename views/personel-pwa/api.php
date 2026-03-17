@@ -1676,7 +1676,7 @@ try {
 
                 // Eski resmi silmek istersek burada yapabiliriz ama şimdilik kalsın
 
-                $stmt = $db->prepare("UPDATE personel SET resim_yolu = ? WHERE id = ?");
+                $stmt = $db->prepare("UPDATE personel SET personel_resim_yolu = ? WHERE id = ?");
                 $result = $stmt->execute([$dbPath, $personel_id]);
                 $rowCount = $stmt->rowCount();
 

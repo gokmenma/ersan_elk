@@ -154,7 +154,7 @@ if (Gate::allows("ana_sayfa")) {
     $recent_logs = $systemLogModel->getRecentLogs(10);
 
 
-    $istatistik = $personelModel->personelSayilari();
+    $istatistik = $personelModel->personelSayilari('personel');
 
     //Helper::dd($istatistik);
 
@@ -1217,7 +1217,7 @@ if (Gate::allows("ana_sayfa")) {
                                 </ul>
                             </div>
                             <div class="d-flex align-items-center gap-2 ms-auto">
-                                <a href="index.php?p=gorev-bildirimler" class="btn btn-sm btn-soft-primary rounded-pill">
+                                <a href="index.php?p=logs/list" class="btn btn-sm btn-soft-primary rounded-pill">
                                     <i class="bx bx-list-ul me-1"></i> Tümünü Gör
                                 </a>
                                 <?php echo getWidthControl(); ?>

@@ -159,4 +159,38 @@ class SystemLogModel extends Model
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
+
+    /**
+     * Get recent personnel login logs
+     */
+    public function getPersonelLoginLogs($limit = 1000)
+    {
+        $sql = "SELECT p.adi_soyadi, pg.giris_tarihi as tarih, pg.ip_adresi, pg.tarayici
+                FROM personel_giris_loglari pg JOIN personel p ON p.id = pg.personel_id
+                WHERE p.firma_id = :firma_id
+                ORDER BY pg.giris_tarihi DESC LIMIT :limit";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':firma_id', $_SESSION['firma_id'], PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Get user login logs
+     */
+    public function getUserLoginLogs($limit = 1000)
+    {
+        $sql = "SELECT u.adi_soyadi, sl.created_at as tarih, SUBSTR(sl.description, LOCATE('IP:', sl.description) + 4) as ip_adresi, 'Sistem' as tarayici
+                FROM system_logs sl JOIN users u ON u.id = sl.user_id
+                WHERE sl.action_type = 'Başarılı Giriş' AND FIND_IN_SET(:firma_id, u.firma_ids) 
+                ORDER BY sl.created_at DESC LIMIT :limit";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':firma_id', $_SESSION['firma_id'], PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
 }

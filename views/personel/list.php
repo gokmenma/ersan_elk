@@ -60,31 +60,82 @@ if (Gate::canWithMessage("personel_listesi")) {
                             cursor: pointer;
                         }
 
-                        /* Personel Image Hover Styles */
-                        .personel-name-container {
-                            position: relative;
-                            display: inline-block;
-                        }
-
-                        .personel-hover-image {
-                            display: none;
-                            position: absolute;
-                            top: -60px;
-                            /* Adjust based on image size */
-                            left: 100%;
-                            z-index: 1000;
-                            width: 100px;
-                            height: 100px;
+                         /* Personel Image Hover Styles */
+                        .personel-img-thumb {
+                            width: 38px;
+                            height: 38px;
                             object-fit: cover;
                             border-radius: 50%;
-                            border: 3px solid #fff;
-                            box-shadow: 0 0 10px rgba(0, 0, 0, 0.2);
-                            margin-left: 10px;
-                            background-color: #fff;
+                            border: 2px solid #fff;
+                            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                            transition: all 0.2s ease-in-out;
+                            cursor: pointer;
                         }
 
-                        .personel-name-container:hover .personel-hover-image {
-                            display: block;
+                        .personel-info-box {
+                            display: flex;
+                            align-items: center;
+                            gap: 12px;
+                        }
+
+                        .personel-details {
+                            display: flex;
+                            flex-direction: column;
+                        }
+
+                        .personel-tc {
+                            font-size: 11px;
+                            color: #74788d;
+                            margin-top: -2px;
+                        }
+
+                        .personel-hover-preview {
+                            position: absolute; /* Changed from fixed to absolute */
+                            display: none;
+                            z-index: 99999;
+                            width: 150px;
+                            height: 150px;
+                            border-radius: 12px;
+                            border: 4px solid #fff;
+                            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+                            object-fit: cover;
+                            pointer-events: none;
+                            background: #fff;
+                            animation: zoomIn 0.2s ease-out;
+                        }
+
+                        @keyframes zoomIn {
+                            from { transform: scale(0.8); opacity: 0; }
+                            to { transform: scale(1); opacity: 1; }
+                        }
+
+                        .status-filter-badge {
+                            cursor: pointer;
+                            transition: all 0.2s ease;
+                            padding: 8px 16px;
+                            border-radius: 10px;
+                            font-weight: 600;
+                            display: flex;
+                            align-items: center;
+                            gap: 8px;
+                            border: 1px solid transparent;
+                        }
+
+                        .status-filter-badge:hover {
+                            transform: translateY(-2px);
+                            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                        }
+
+                        .status-filter-badge.active {
+                            border-color: currentColor;
+                            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+                        }
+
+                        .status-filter-badge .count-tag {
+                            background: rgba(255,255,255,0.2);
+                            padding: 2px 8px;
+                            border-radius: 10px;
+                            font-size: 11px;
                         }
 
                         .fw-bold {
@@ -211,17 +262,38 @@ if (Gate::canWithMessage("personel_listesi")) {
                     </style>
 
                     <div class="card-body overflow-auto">
-                        <div class="d-flex justify-content-between align-items-center mb-3">
-                            <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
-                                <button type="button" id="exportExcel"
-                                    class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">
-                                    <i class='mdi mdi-file-excel fs-5 me-1'></i> Excele Aktar
-                                </button>
-                                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                                <button type="button" id="btnImportExcel"
-                                    class="btn btn-link btn-sm text-warning text-decoration-none px-2 d-flex align-items-center">
-                                    <i class='mdi mdi-file-import fs-5 me-1'></i> Excelden Yükle
-                                </button>
+                        <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
+                            <div class="d-flex gap-3 align-items-center flex-wrap">
+                              
+                                <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+                                    <button type="button" id="exportExcel"
+                                        class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">
+                                        <i class='mdi mdi-file-excel fs-5 me-1'></i> Excele Aktar
+                                    </button>
+                                    <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                                    <button type="button" id="btnImportExcel"
+                                        class="btn btn-link btn-sm text-warning text-decoration-none px-2 d-flex align-items-center">
+                                        <i class='mdi mdi-file-import fs-5 me-1'></i> Excelden Yükle
+                                    </button>
+                                </div>
+                                  <div class="d-flex gap-2">
+                                     <div id="filter-all" class="status-filter-badge bg-secondary bg-opacity-10 text-secondary border-secondary" data-status="">
+                                        <i class="mdi mdi-accounts"></i>
+                                        <span>Tümü</span>
+                                        <span class="count-tag" id="count-all">0</span>
+                                    </div>
+                                    <div id="filter-aktif" class="status-filter-badge bg-success bg-opacity-10 text-success border-success active" data-status="Aktif">
+                                        <i class="mdi mdi-account-check"></i>
+                                        <span>Aktif</span>
+                                        <span class="count-tag" id="count-aktif">0</span>
+                                    </div>
+                                    <div id="filter-pasif" class="status-filter-badge bg-danger bg-opacity-10 text-danger border-danger" data-status="Pasif">
+                                        <i class="mdi mdi-account-remove"></i>
+                                        <span>Pasif</span>
+                                        <span class="count-tag" id="count-pasif">0</span>
+                                    </div>
+                                   
+                                </div>
                             </div>
                             <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
                                 <div class="dropdown d-inline-block">
@@ -401,9 +473,20 @@ if (Gate::canWithMessage("personel_listesi")) {
                         <!-- Sol Taraf: Profil Özeti -->
                         <div class="col-md-3 bg-light border-end text-center p-4">
                             <div class="position-relative d-inline-block mb-3">
-                                <img id="detailResim" src="assets/images/users/user-dummy-img.jpg" alt="Personel Resmi"
-                                    class="rounded-circle img-thumbnail avatar-xl shadow-sm"
-                                    style="width: 120px; height: 120px; object-fit: cover;">
+                                <div class="d-flex flex-column align-items-center gap-2">
+                                    <div class="text-center">
+                                        <small class="text-muted d-block mb-1">Resmi Kayıt</small>
+                                        <img id="detailResim" src="assets/images/users/user-dummy-img.jpg" alt="Personel Resmi"
+                                            class="rounded-circle img-thumbnail shadow-sm"
+                                            style="width: 100px; height: 100px; object-fit: cover;">
+                                    </div>
+                                    <div class="text-center">
+                                        <small class="text-muted d-block mb-1">Uygulama Foto</small>
+                                        <img id="detailAppResim" src="assets/images/users/user-dummy-img.jpg" alt="Uygulama Resmi"
+                                            class="rounded-circle img-thumbnail shadow-sm"
+                                            style="width: 100px; height: 100px; object-fit: cover;">
+                                    </div>
+                                </div>
                             </div>
                             <h5 id="detailAdSoyad" class="mb-1 fw-bold text-primary text-truncate"></h5>
                             <p id="detailGorev" class="text-muted mb-2 badge bg-white text-dark border fs-6 text-truncate"

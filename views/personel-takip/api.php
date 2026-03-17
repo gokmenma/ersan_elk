@@ -59,11 +59,20 @@ try {
                 $limit_time = new DateTime($gun . ' 08:30');
             }
 
+            $izinliler = [];
+            $stmt_izin = $db->prepare("SELECT personel_id FROM personel_izinleri WHERE baslangic_tarihi <= :gun AND bitis_tarihi >= :gun AND onay_durumu = 'Onaylandı' AND silinme_tarihi IS NULL");
+            $stmt_izin->execute([':gun' => $gun]);
+            while ($row = $stmt_izin->fetch(PDO::FETCH_ASSOC)) {
+                $izinliler[] = $row['personel_id'];
+            }
+
             foreach ($personeller as $p) {
+                $is_izinli = in_array($p->personel_id, $izinliler);
+
                 if ($p->durum === 'aktif') {
                     $gorevde++;
                     // Geç başlama kontrolü
-                    if (!empty($p->son_baslama) && $p->son_baslama !== '0000-00-00 00:00:00') {
+                    if (!$is_izinli && !empty($p->son_baslama) && $p->son_baslama !== '0000-00-00 00:00:00') {
                         try {
                             $baslama_dt = new DateTime($p->son_baslama);
                             if ($baslama_dt->format('Y-m-d') === $gun && $baslama_dt->format('H:i') > $limit_saat) {
@@ -78,7 +87,7 @@ try {
                 } else {
                     $baslamadi++;
                     // Başlamamış ve saat geçmiş (bugün için)
-                    if ($now > $limit_time) {
+                    if (!$is_izinli && $now > $limit_time) {
                         $gec_kalan++;
                     }
                 }
@@ -447,7 +456,18 @@ try {
                 $limit_saat = '08:30';
             }
 
+            $izinliler = [];
+            $stmt_izin = $db->prepare("SELECT personel_id FROM personel_izinleri WHERE baslangic_tarihi <= :gun AND bitis_tarihi >= :gun AND onay_durumu = 'Onaylandı' AND silinme_tarihi IS NULL");
+            $stmt_izin->execute([':gun' => $gun]);
+            while ($row = $stmt_izin->fetch(PDO::FETCH_ASSOC)) {
+                $izinliler[] = $row['personel_id'];
+            }
+
             foreach ($personeller as $p) {
+                if (in_array($p->personel_id, $izinliler)) {
+                    continue;
+                }
+
                 $gec_kaldi = false;
                 $baslama_saati = '-';
                 $gecikme_dk = 0;
@@ -552,7 +572,18 @@ try {
                 }
                 $now = new DateTime();
 
+                $izinliler = [];
+                $stmt_izin = $db->prepare("SELECT personel_id FROM personel_izinleri WHERE baslangic_tarihi <= :gun AND bitis_tarihi >= :gun AND onay_durumu = 'Onaylandı' AND silinme_tarihi IS NULL");
+                $stmt_izin->execute([':gun' => $bugun]);
+                while ($row = $stmt_izin->fetch(PDO::FETCH_ASSOC)) {
+                    $izinliler[] = $row['personel_id'];
+                }
+
                 foreach ($personeller as $p) {
+                    if (in_array($p->personel_id, $izinliler)) {
+                        continue;
+                    }
+
                     $gec_kaldi = false;
                     $has_valid_start = !empty($p->son_baslama) && $p->son_baslama !== '0000-00-00 00:00:00';
                     if ($has_valid_start) {

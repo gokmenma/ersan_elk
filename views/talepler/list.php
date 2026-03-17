@@ -212,6 +212,10 @@ $izinTurleri = [
                                     <th data-filter="date">Talep Tarihi</th>
                                     <th data-filter="select">Durum</th>
                                     <th>Açıklama</th>
+                                    <?php if ($showApproved): ?>
+                                        <th>İşlem Yapan</th>
+                                        <th>Sonuç Açıklaması</th>
+                                    <?php endif; ?>
                                     <?php if (true): ?>
                                         <th class="text-center" style="width:200px">İşlemler</th>
                                     <?php endif; ?>
@@ -268,6 +272,14 @@ $izinTurleri = [
                                         <td>
                                             <?= htmlspecialchars($avans->aciklama ?? '-') ?>
                                         </td>
+                                        <?php if ($showApproved): ?>
+                                            <td>
+                                                <?= htmlspecialchars($avans->solver_name ?? '-') ?>
+                                            </td>
+                                            <td>
+                                                <?= htmlspecialchars($avans->onay_aciklama ?? '-') ?>
+                                            </td>
+                                        <?php endif; ?>
                                         <td class="text-center">
                                             <div class="d-flex align-items-center justify-content-center gap-1">
                                                 <?php if ($avans->durum != 'onaylandi'): ?>
@@ -335,6 +347,19 @@ $izinTurleri = [
                                                 <span class="badge bg-<?= $durumType ?>"><i class="bx bx-<?= $durumType == 'success' ? 'check-circle' : ($durumType == 'danger' ? 'x-circle' : 'time-five') ?>"></i> <?= $durumText ?></span>
                                             </div>
                                             
+                                            <?php if ($showApproved): ?>
+                                            <div class="mb-3 bg-light p-2 rounded small">
+                                                <div class="d-flex justify-content-between mb-1">
+                                                    <span class="text-muted"><i class="bx bx-user me-1"></i>İşlem Yapan:</span>
+                                                    <span class="fw-medium"><?= htmlspecialchars($avans->solver_name ?? '-') ?></span>
+                                                </div>
+                                                <div class="d-flex flex-column">
+                                                    <span class="text-muted"><i class="bx bx-comment-detail me-1"></i>Açıklama:</span>
+                                                    <span class="text-break mt-1"><?= htmlspecialchars($avans->onay_aciklama ?? '-') ?></span>
+                                                </div>
+                                            </div>
+                                            <?php endif; ?>
+                                            
                                             <div class="d-flex gap-2 mt-2 pt-2 border-top">
                                                 <?php if ($avans->durum != 'onaylandi'): ?>
                                                     <button class="btn btn-sm btn-soft-success flex-fill btn-avans-onayla" type="button" data-id="<?= $avans->id ?>" data-personel="<?= htmlspecialchars($avans->requester_name ?? '') ?>" data-tutar="<?= $avans->tutar ?>"><i class="bx bx-check"></i> Onayla</button>
@@ -369,6 +394,10 @@ $izinTurleri = [
                                     <th>Gün Sayısı</th>
                                     <th>Durum</th>
                                     <th>Açıklama</th>
+                                    <?php if ($showApproved): ?>
+                                        <th>İşlem Yapan</th>
+                                        <th>Sonuç Açıklaması</th>
+                                    <?php endif; ?>
                                     <?php if (true): ?>
                                         <th class="text-center" style="width:200px">İşlemler</th>
                                     <?php endif; ?>
@@ -431,6 +460,14 @@ $izinTurleri = [
                                         <td>
                                             <?= htmlspecialchars($izin->aciklama ?? '-') ?>
                                         </td>
+                                        <?php if ($showApproved): ?>
+                                            <td>
+                                                <?= htmlspecialchars($izin->solver_name ?? '-') ?>
+                                            </td>
+                                            <td>
+                                                <?= htmlspecialchars($izin->onay_aciklama ?? '-') ?>
+                                            </td>
+                                        <?php endif; ?>
                                         <td class="text-center">
                                             <div class="d-flex align-items-center justify-content-center gap-1">
                                                 <?php if ($izin->onay_durumu != 'Onaylandı'): ?>
@@ -500,6 +537,19 @@ $izinTurleri = [
                                                 <span class="text-muted small">Durum:</span>
                                                 <span class="badge bg-<?= $durumType ?>"><i class="bx bx-<?= $durumType == 'success' ? 'check-circle' : ($durumType == 'danger' ? 'x-circle' : 'time-five') ?>"></i> <?= $durumText ?></span>
                                             </div>
+                                            
+                                            <?php if ($showApproved): ?>
+                                            <div class="mb-3 bg-light p-2 rounded small">
+                                                <div class="d-flex justify-content-between mb-1">
+                                                    <span class="text-muted"><i class="bx bx-user me-1"></i>İşlem Yapan:</span>
+                                                    <span class="fw-medium"><?= htmlspecialchars($izin->solver_name ?? '-') ?></span>
+                                                </div>
+                                                <div class="d-flex flex-column">
+                                                    <span class="text-muted"><i class="bx bx-comment-detail me-1"></i>Açıklama:</span>
+                                                    <span class="text-break mt-1"><?= htmlspecialchars($izin->onay_aciklama ?? '-') ?></span>
+                                                </div>
+                                            </div>
+                                            <?php endif; ?>
                                             
                                             <div class="d-flex gap-2 mt-2 pt-2 border-top">
                                                 <?php if ($izin->onay_durumu != 'Onaylandı'): ?>

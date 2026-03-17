@@ -444,18 +444,27 @@ const AracTakip = {
   aracSil: function (id, plaka) {
     Swal.fire({
       title: "Emin misiniz?",
-      html: `<b>${plaka}</b> plakalı aracı silmek istediğinize emin misiniz?`,
+      html: `<b>${plaka}</b> plakalı aracı silmek istediğinize emin misiniz?<br><br>
+             <textarea id="swal-input-aciklama" class="form-control" placeholder="Lütfen silme nedeni giriniz..." rows="3"></textarea>`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#d33",
       cancelButtonColor: "#6c757d",
       confirmButtonText: "Evet, Sil",
       cancelButtonText: "İptal",
+      preConfirm: () => {
+        const aciklama = document.getElementById('swal-input-aciklama').value.trim();
+        if (!aciklama) {
+          Swal.showValidationMessage('Silme işlemi için açıklama girmek zorunludur!');
+          return false;
+        }
+        return aciklama;
+      }
     }).then((result) => {
       if (result.isConfirmed) {
         $.post(
           this.apiUrl,
-          { action: "arac-sil", id: id },
+          { action: "arac-sil", id: id, aciklama: result.value },
           function (response) {
             if (response.status === "success") {
               Swal.fire({
@@ -664,18 +673,27 @@ const AracTakip = {
   yakitSil: function (id) {
     Swal.fire({
       title: "Emin misiniz?",
-      text: "Bu yakıt kaydını silmek istediğinize emin misiniz?",
+      html: `Bu yakıt kaydını silmek istediğinize emin misiniz?<br><br>
+             <textarea id="swal-input-aciklama" class="form-control" placeholder="Lütfen silme nedeni giriniz..." rows="3"></textarea>`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#d33",
       cancelButtonColor: "#6c757d",
       confirmButtonText: "Evet, Sil",
       cancelButtonText: "İptal",
+      preConfirm: () => {
+        const aciklama = document.getElementById('swal-input-aciklama').value.trim();
+        if (!aciklama) {
+          Swal.showValidationMessage('Silme işlemi için açıklama girmek zorunludur!');
+          return false;
+        }
+        return aciklama;
+      }
     }).then((result) => {
       if (result.isConfirmed) {
         $.post(
           this.apiUrl,
-          { action: "yakit-sil", id: id },
+          { action: "yakit-sil", id: id, aciklama: result.value },
           function (response) {
             if (response.status === "success") {
               Swal.fire({
@@ -819,16 +837,25 @@ const AracTakip = {
   kmSil: function (id) {
     Swal.fire({
       title: "Emin misiniz?",
-      text: "Bu KM kaydını silmek istediğinize emin misiniz?",
+      html: `Bu KM kaydını silmek istediğinize emin misiniz?<br><br>
+             <textarea id="swal-input-aciklama" class="form-control" placeholder="Lütfen silme nedeni giriniz..." rows="3"></textarea>`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#d33",
       cancelButtonColor: "#6c757d",
       confirmButtonText: "Evet, Sil",
       cancelButtonText: "İptal",
+      preConfirm: () => {
+        const aciklama = document.getElementById('swal-input-aciklama').value.trim();
+        if (!aciklama) {
+          Swal.showValidationMessage('Silme işlemi için açıklama girmek zorunludur!');
+          return false;
+        }
+        return aciklama;
+      }
     }).then((result) => {
       if (result.isConfirmed) {
-        $.post(this.apiUrl, { action: "km-sil", id: id }, function (response) {
+        $.post(this.apiUrl, { action: "km-sil", id: id, aciklama: result.value }, function (response) {
           if (response.status === "success") {
             Swal.fire({
               icon: "success",
@@ -1373,18 +1400,27 @@ const AracTakip = {
   servisSil: function (id) {
     Swal.fire({
       title: "Emin misiniz?",
-      text: "Bu servis kaydını silmek istediğinize emin misiniz?",
+      html: `Bu servis kaydını silmek istediğinize emin misiniz?<br><br>
+             <textarea id="swal-input-aciklama" class="form-control" placeholder="Lütfen silme nedeni giriniz..." rows="3"></textarea>`,
       icon: "warning",
       showCancelButton: true,
       confirmButtonColor: "#d33",
       cancelButtonColor: "#6c757d",
       confirmButtonText: "Evet, Sil",
       cancelButtonText: "İptal",
+      preConfirm: () => {
+        const aciklama = document.getElementById('swal-input-aciklama').value.trim();
+        if (!aciklama) {
+          Swal.showValidationMessage('Silme işlemi için açıklama girmek zorunludur!');
+          return false;
+        }
+        return aciklama;
+      }
     }).then((result) => {
       if (result.isConfirmed) {
         $.post(
           this.apiUrl,
-          { action: "servis-sil", id: id },
+          { action: "servis-sil", id: id, aciklama: result.value },
           function (response) {
             if (response.status === "success") {
               Swal.fire({

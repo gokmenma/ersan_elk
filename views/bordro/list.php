@@ -421,14 +421,13 @@ if (!empty($dbGelirler)) {
                             $pKesintiHaricIcra = $pToplamKesinti - $pIcra;
 
                             // Çalışma günü hesaplama
-                            // 1) İşe giriş dönem içindeyse: ayın_gün_sayısı - giriş_günü + 1
-                            // 2) Tam ay + izin yok: 30 (ticari)
-                            // 3) Tam ay + izin var: ayın_gün_sayısı - izin_günü
-                            $pGunlukBase = 30;
+                            // 1) Personelin dönem içindeki aktif takvim gününü bul
+                            // 2) Eksik gün yoksa ve dönem tamamı kapsanıyorsa 30 gün kabul et
+                            // 3) Eksik gün varsa aktif takvim gününden düş
+                            $pGunlukBase = 0;
                             $pUcretsizIzinGunu = 0;
                             $pUcretliIzinGunu = 0;
-                            $pIseGirisDI = false;
-                            $pIstenCikisDI = false;
+                            $pCalismaGunu = null;
 
                             // JSON_EXTRACT ile çekilen izin değerlerini önce al
                             if ($p->hd_ucretsiz_izin_gunu !== null) {
@@ -440,53 +439,44 @@ if (!empty($dbGelirler)) {
                                 $pUcretliIzinGunu = intval($p->hd_ucretli_izin_gunu);
                             }
 
-                            if ($selectedDonem) {
-                                if (!empty($p->ise_giris_tarihi)) {
+                            if ($pCalismaGunu === null) {
+                                $pDonemTakvimGunu = $selectedDonem
+                                    ? ((int) round(($donemBitTs - $donemBasTs) / 86400) + 1)
+                                    : 30;
+                                $aktifBasTs = $donemBasTs;
+                                $aktifBitTs = $donemBitTs;
+
+                                if (!empty($p->ise_giris_tarihi) && $p->ise_giris_tarihi !== '0000-00-00') {
                                     $iseGirisTs = strtotime($p->ise_giris_tarihi);
-                                    if ($iseGirisTs > $donemBasTs) {
-                                        $pIseGirisDI = true;
+                                    if ($iseGirisTs !== false && $iseGirisTs > $aktifBasTs) {
+                                        $aktifBasTs = $iseGirisTs;
                                     }
                                 }
-                                if (!empty($p->isten_cikis_tarihi)) {
+
+                                if (!empty($p->isten_cikis_tarihi) && $p->isten_cikis_tarihi !== '0000-00-00') {
                                     $istenCikisTs = strtotime($p->isten_cikis_tarihi);
-                                    if ($istenCikisTs >= $donemBasTs && $istenCikisTs < $donemBitTs) {
-                                        $pIstenCikisDI = true;
+                                    if ($istenCikisTs !== false && $istenCikisTs < $aktifBitTs) {
+                                        $aktifBitTs = $istenCikisTs;
                                     }
                                 }
-                            }
 
-                            if ($pIseGirisDI && $pIstenCikisDI) {
-                                $pGunlukBase = date('j', $istenCikisTs) - date('j', $iseGirisTs) + 1;
-                            } elseif ($pIseGirisDI) {
-                                $pGunlukBase = $aydakiGunSayisi - date('j', $iseGirisTs) + 1;
-                            } elseif ($pIstenCikisDI) {
-                                $pGunlukBase = date('j', $istenCikisTs);
-                            } elseif ($pUcretsizIzinGunu > 0 || $pUcretliIzinGunu > 0) {
-                                $pGunlukBase = $aydakiGunSayisi;
-                            } else {
-                                $pGunlukBase = 30;
-                            }
-                            if ($pGunlukBase < 0)
-                                $pGunlukBase = 0;
-
-                            // USER REQ: Maaş hesaplaması görev geçmişi kapsamına göre olmalı (Örn: Geçmiş 1 günlük ise 1 gün ödenmeli)
-                            if (!empty($p->gorev_gecmisi_var) && isset($p->gg_toplam_gun)) {
-                                $ggToplamGun = intval($p->gg_toplam_gun);
-                                // NEW: Eğer ayı 30 gün olarak kabul ediyorsak (bordro mantığı), görev geçmişi gününü de bu orana çekmeliyiz
-                                if ($ggToplamGun > 0 && $aydakiGunSayisi != 30) {
-                                    if ($ggToplamGun >= $aydakiGunSayisi) {
-                                        $ggToplamGun = 30;
-                                    }
-                                    // Eksik gün çalışmışsa oranlama yapılmaz, gerçek gün hesaba katılır
+                                if ($aktifBitTs >= $aktifBasTs) {
+                                    $pGunlukBase = (int) round(($aktifBitTs - $aktifBasTs) / 86400) + 1;
                                 }
-                                $pGunlukBase = min($pGunlukBase, $ggToplamGun);
-                            }
 
-                            $pCalismaGunu = $pGunlukBase;
-                            if ($p->hd_fiili_calisma_gunu !== null) {
-                                $pCalismaGunu = intval($p->hd_fiili_calisma_gunu);
-                            } elseif ($p->hd_fiili_calisma_gunu === null) {
-                                $pCalismaGunu = $pGunlukBase - $pUcretsizIzinGunu - $pUcretliIzinGunu;
+                                if (!empty($p->gorev_gecmisi_var) && isset($p->gg_toplam_gun)) {
+                                    $ggToplamGun = intval($p->gg_toplam_gun);
+                                    if ($ggToplamGun > 0) {
+                                        $pGunlukBase = min($pGunlukBase, $ggToplamGun);
+                                    }
+                                }
+
+                                $pMaasEksikGunToplami = $pUcretsizIzinGunu;
+                                if ($pGunlukBase > 0 && $pMaasEksikGunToplami === 0 && $pGunlukBase >= $pDonemTakvimGunu) {
+                                    $pCalismaGunu = 30;
+                                } else {
+                                    $pCalismaGunu = max(0, $pGunlukBase - $pMaasEksikGunToplami);
+                                }
                             }
 
                             // Toplam Alacağı

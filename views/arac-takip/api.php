@@ -83,8 +83,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
             case 'arac-sil':
                 $id = intval($_POST['id'] ?? 0);
+                $aciklama = trim($_POST['aciklama'] ?? '');
                 if ($id <= 0) {
                     throw new Exception("Geçersiz araç ID.");
+                }
+
+                if (empty($aciklama)) {
+                    throw new Exception("Silme işlemi için açıklama girmek zorunludur.");
                 }
 
                 // Silmeden önce araç bilgisini al
@@ -133,7 +138,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $SystemLog = new SystemLogModel();
                     $userId = $_SESSION['user_id'] ?? 0;
                     $plaka = $silinecekArac->plaka ?? 'Bilinmiyor';
-                    $SystemLog->logAction($userId, 'Araç Silme', "{$plaka} plakalı araç tüm verileriyle beraber silindi.", SystemLogModel::LEVEL_IMPORTANT);
+                    $SystemLog->logAction($userId, 'Araç Silme', "{$plaka} plakalı araç tüm verileriyle beraber silindi.\nAçıklama: {$aciklama}", SystemLogModel::LEVEL_IMPORTANT);
 
                     echo json_encode(['status' => 'success', 'message' => 'Araç başarıyla silindi.']);
 
@@ -402,8 +407,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
             case 'yakit-sil':
                 $id = intval($_POST['id'] ?? 0);
+                $aciklama = trim($_POST['aciklama'] ?? '');
                 if ($id <= 0) {
                     throw new Exception("Geçersiz yakıt kaydı ID.");
+                }
+
+                if (empty($aciklama)) {
+                    throw new Exception("Silme işlemi için açıklama girmek zorunludur.");
                 }
 
                 // Silmeden önce yakıt kaydı bilgisini al
@@ -414,7 +424,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $SystemLog = new SystemLogModel();
                 $userId = $_SESSION['user_id'] ?? 0;
                 $yakitTarih = $silinecekYakit->tarih ?? '';
-                $SystemLog->logAction($userId, 'Yakıt Kaydı Silme', "ID: {$id}, Tarih: {$yakitTarih} yakıt kaydı silindi.", SystemLogModel::LEVEL_IMPORTANT);
+                $SystemLog->logAction($userId, 'Yakıt Kaydı Silme', "ID: {$id}, Tarih: {$yakitTarih} yakıt kaydı silindi.\nAçıklama: {$aciklama}", SystemLogModel::LEVEL_IMPORTANT);
 
                 echo json_encode(['status' => 'success', 'message' => 'Yakıt kaydı silindi.']);
                 break;
@@ -529,8 +539,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
             case 'km-sil':
                 $id = intval($_POST['id'] ?? 0);
+                $aciklama = trim($_POST['aciklama'] ?? '');
                 if ($id <= 0) {
                     throw new Exception("Geçersiz KM kaydı ID.");
+                }
+
+                if (empty($aciklama)) {
+                    throw new Exception("Silme işlemi için açıklama girmek zorunludur.");
                 }
 
                 // Silmeden önce kaydın bilgilerini al
@@ -577,7 +592,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 // Logla
                 $SystemLog = new SystemLogModel();
                 $userId = $_SESSION['user_id'] ?? 0;
-                $SystemLog->logAction($userId, 'KM Kaydı Silme', "Araç ID: {$silinecekAracId}, Tarih: {$silinecekTarih}, Bitiş KM: {$silinecekBitisKm} KM kaydı silindi.", SystemLogModel::LEVEL_IMPORTANT);
+                $SystemLog->logAction($userId, 'KM Kaydı Silme', "Araç ID: {$silinecekAracId}, Tarih: {$silinecekTarih}, Bitiş KM: {$silinecekBitisKm} KM kaydı silindi.\nAçıklama: {$aciklama}", SystemLogModel::LEVEL_IMPORTANT);
 
                 break;
 
@@ -1551,8 +1566,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
             case 'servis-sil':
                 $id = intval($_POST['id'] ?? 0);
+                $aciklama = trim($_POST['aciklama'] ?? '');
                 if ($id <= 0) {
                     throw new Exception("Geçersiz servis kaydı ID.");
+                }
+
+                if (empty($aciklama)) {
+                    throw new Exception("Silme işlemi için açıklama girmek zorunludur.");
                 }
 
                 // Silmeden önce servis bilgisini al
@@ -1563,7 +1583,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $SystemLog = new SystemLogModel();
                 $userId = $_SESSION['user_id'] ?? 0;
                 $servisTarih = $silinecekServis->tarih ?? '';
-                $SystemLog->logAction($userId, 'Servis Kaydı Silme', "ID: {$id}, Tarih: {$servisTarih} servis kaydı silindi.", SystemLogModel::LEVEL_IMPORTANT);
+                $SystemLog->logAction($userId, 'Servis Kaydı Silme', "ID: {$id}, Tarih: {$servisTarih} servis kaydı silindi.\nAçıklama: {$aciklama}", SystemLogModel::LEVEL_IMPORTANT);
 
                 echo json_encode(['status' => 'success', 'message' => 'Servis kaydı silindi.']);
                 break;

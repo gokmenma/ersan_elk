@@ -117,7 +117,7 @@ class TalepModel extends Model
     public function getButunBekleyenTalepler()
     {
         $sql = $this->db->prepare("
-            SELECT pt.*, p.adi_soyadi as requester_name, p.resim_yolu, p.departman, p.gorev
+            SELECT pt.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
             WHERE pt.durum NOT IN ('cozuldu', 'reddedildi', 'iptal_edildi') AND pt.silinme_tarihi IS NULL AND p.firma_id = ?
@@ -150,7 +150,7 @@ class TalepModel extends Model
     public function getTalepDetay($id)
     {
         $sql = $this->db->prepare("
-            SELECT pt.*, p.adi_soyadi as requester_name, p.resim_yolu, p.departman, p.gorev
+            SELECT pt.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
             WHERE pt.id = ?
@@ -166,7 +166,7 @@ class TalepModel extends Model
     {
         $limit = (int) $limit;
         $sql = $this->db->prepare("
-            SELECT pt.*, p.adi_soyadi as requester_name, p.resim_yolu, p.departman, p.gorev, u.adi_soyadi as solver_name
+            SELECT pt.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, u.adi_soyadi as solver_name
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
             LEFT JOIN users u ON pt.islem_yapan_id = u.id

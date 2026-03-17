@@ -36,8 +36,10 @@ $activeTab = $_GET['tab'] ?? 'genel';
         </div>
         <?php if($isEdit): ?>
         <div class="w-9 h-9 rounded-full bg-primary/10 text-primary flex items-center justify-center border border-primary/20 shrink-0 font-bold text-sm overflow-hidden">
-            <?php if (!empty($personel->resim_yolu) && file_exists($personel->resim_yolu)): ?>
-                <img src="../<?= htmlspecialchars($personel->resim_yolu) ?>" class="w-full h-full object-cover">
+            <?php 
+            $peResim = !empty($personel->personel_resim_yolu) ? $personel->personel_resim_yolu : ($personel->resim_yolu ?? '');
+            if (!empty($peResim) && file_exists($peResim)): ?>
+                <img src="../<?= htmlspecialchars($peResim) ?>" class="w-full h-full object-cover">
             <?php else: ?>
                 <?= mb_strtoupper(mb_substr($personel->adi_soyadi ?? 'P', 0, 1, 'UTF-8')) ?>
             <?php endif; ?>

@@ -110,12 +110,12 @@ function formatDateOnlyMobile($dateStr) {
 
     <!-- Filter Buttons -->
     <div class="flex items-center bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-lg p-1 shadow-sm mt-3">
-        <a href="?p=talepler" class="toggle-link <?= !$showApproved ? 'bg-[#ffca58] text-slate-800 shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400' ?> flex-1 py-1.5 flex items-center justify-center gap-1.5 text-xs font-bold rounded-md transition-colors">
+        <a href="?p=talepler" class="toggle-link <?= !$showApproved ? 'bg-[#ffca58] text-slate-800 shadow-sm pointer-events-none' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400' ?> flex-1 py-1.5 flex items-center justify-center gap-1.5 text-xs font-bold rounded-md transition-colors">
             <span class="material-symbols-outlined text-[16px]">schedule</span>
             Bekleyenler
         </a>
         <div class="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div>
-        <a href="?p=talepler&show=approved" class="toggle-link <?= $showApproved ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400' ?> flex-1 py-1.5 flex items-center justify-center gap-1.5 text-xs font-bold rounded-md transition-colors">
+        <a href="?p=talepler&show=approved" class="toggle-link <?= $showApproved ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm pointer-events-none' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400' ?> flex-1 py-1.5 flex items-center justify-center gap-1.5 text-xs font-bold rounded-md transition-colors">
             <span class="material-symbols-outlined text-[16px]">task_alt</span>
             İşlem Yapılanlar
         </a>
@@ -136,10 +136,12 @@ function formatDateOnlyMobile($dateStr) {
                 <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4">
                     <div class="flex items-start justify-between mb-3 border-b border-slate-100 dark:border-slate-800/60 pb-3">
                         <div class="flex items-center gap-3">
-                            <?php if (!empty($avans->resim_yolu) && file_exists($avans->resim_yolu)): ?>
-                                <img src="../<?= htmlspecialchars($avans->resim_yolu) ?>" class="w-10 h-10 rounded-full object-cover border-2 border-slate-100 dark:border-slate-700">
+                            <?php 
+                            $paResim = !empty($avans->personel_resim_yolu) ? $avans->personel_resim_yolu : ($avans->resim_yolu ?? '');
+                            if (!empty($paResim) && file_exists($paResim)): ?>
+                                <img src="../<?= htmlspecialchars($paResim) ?>" class="w-10 h-10 rounded-full object-cover border-2 border-slate-100 dark:border-slate-700">
                             <?php else: ?>
-                                    <img src="../assets/images/users/user-dummy-img.jpg" class="w-10 h-10 rounded-full object-cover border-2 border-slate-100 dark:border-slate-700" alt="Avatar">
+                                <img src="../assets/images/users/user-dummy-img.jpg" class="w-10 h-10 rounded-full object-cover border-2 border-slate-100 dark:border-slate-700" alt="Avatar">
                             <?php endif; ?>
                             <div>
                                 <h3 class="font-bold text-slate-800 dark:text-white text-sm"><?= htmlspecialchars($avans->requester_name ?? 'Bilinmeyen') ?></h3>
@@ -226,8 +228,10 @@ function formatDateOnlyMobile($dateStr) {
                 <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4">
                     <div class="flex items-start justify-between mb-3 border-b border-slate-100 dark:border-slate-800/60 pb-3">
                         <div class="flex items-center gap-3">
-                            <?php if (!empty($izin->resim_yolu) && file_exists($izin->resim_yolu)): ?>
-                                <img src="../<?= htmlspecialchars($izin->resim_yolu) ?>" class="w-10 h-10 rounded-full object-cover border-2 border-slate-100 dark:border-slate-700">
+                            <?php 
+                            $piResim = !empty($izin->personel_resim_yolu) ? $izin->personel_resim_yolu : ($izin->resim_yolu ?? '');
+                            if (!empty($piResim) && file_exists($piResim)): ?>
+                                <img src="../<?= htmlspecialchars($piResim) ?>" class="w-10 h-10 rounded-full object-cover border-2 border-slate-100 dark:border-slate-700">
                             <?php else: ?>
                                 <img src="../assets/images/users/user-dummy-img.jpg" class="w-10 h-10 rounded-full object-cover border-2 border-slate-100 dark:border-slate-700" alt="Avatar">
                             <?php endif; ?>
@@ -318,8 +322,9 @@ function formatDateOnlyMobile($dateStr) {
             </div>
         <?php else: ?>
             <?php foreach ($talepler as $talep): 
+                $gtResim = !empty($talep->personel_resim_yolu) ? $talep->personel_resim_yolu : ($talep->resim_yolu ?? '');
                 $talepData = [
-                    'avatar' => !empty($talep->resim_yolu) ? '../' . $talep->resim_yolu : '../assets/images/users/user-dummy-img.jpg',
+                    'avatar' => (!empty($gtResim) && file_exists($gtResim)) ? '../' . $gtResim : '../assets/images/users/user-dummy-img.jpg',
                     'adi_soyadi' => $talep->requester_name ?? 'Bilinmeyen',
                     'departman' => $talep->departman ?? '',
                     'tarih' => formatDateMobile($talep->olusturma_tarihi),
@@ -338,8 +343,10 @@ function formatDateOnlyMobile($dateStr) {
                 <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 cursor-pointer active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors" onclick="openTalepDetail(this.dataset.talep)" data-talep="<?= $talepJson ?>">
                     <div class="flex items-start justify-between mb-2">
                         <div class="flex items-center gap-3">
-                            <?php if (!empty($talep->resim_yolu) && file_exists($talep->resim_yolu)): ?>
-                                <img src="../<?= htmlspecialchars($talep->resim_yolu) ?>" class="w-8 h-8 rounded-full object-cover border border-slate-200" alt="Avatar">
+                            <?php 
+                            $gtRowResim = !empty($talep->personel_resim_yolu) ? $talep->personel_resim_yolu : ($talep->resim_yolu ?? '');
+                            if (!empty($gtRowResim) && file_exists($gtRowResim)): ?>
+                                <img src="../<?= htmlspecialchars($gtRowResim) ?>" class="w-8 h-8 rounded-full object-cover border border-slate-200" alt="Avatar">
                             <?php else: ?>
                                 <img src="../assets/images/users/user-dummy-img.jpg" class="w-8 h-8 rounded-full object-cover border border-slate-200" alt="Avatar">
                             <?php endif; ?>
@@ -841,6 +848,12 @@ function formatDateOnlyMobile($dateStr) {
     document.querySelectorAll('.toggle-link').forEach(link => {
         link.addEventListener('click', function(e) {
             e.preventDefault();
+            
+            // If already active, prevent navigation
+            if (this.classList.contains('pointer-events-none') || this.classList.contains('bg-[#ffca58]') || this.classList.contains('bg-slate-100') && this.classList.contains('text-slate-800')) {
+                return;
+            }
+            
             document.getElementById('loader').classList.remove('opacity-0', 'pointer-events-none');
             const href = this.getAttribute('href');
             let activeTab = 'avans';
@@ -849,7 +862,7 @@ function formatDateOnlyMobile($dateStr) {
                     activeTab = el.id.replace('tab-content-', '');
                 }
             });
-            window.location.assign(href + '#' + activeTab);
+            window.location.href = href + '#' + activeTab;
         });
     });
 </script>

@@ -63,10 +63,11 @@ class Gate
             return self::$requestAllowsCache[$userId][$permissionName];
         }
 
-        if (self::isSuperAdmin()) {
-            self::$requestAllowsCache[$userId][$permissionName] = true;
-            return true;
-        }
+        /**Süper Admin daha sonra açılacak */
+        // if (self::isSuperAdmin()) {
+        //     self::$requestAllowsCache[$userId][$permissionName] = true;
+        //     return true;
+        // }
 
         if (!isset(self::$requestPermissionSetCache[$userId])) {
             $sessionCache = $_SESSION['permission_cache'][$userId] ?? null;

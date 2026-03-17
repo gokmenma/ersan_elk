@@ -172,7 +172,15 @@ $renkler = [
                                     </label>
                                     
                                     <div class="flex-1 min-w-0 flex justify-between items-start gap-2">
-                                        <div class="flex-1 min-w-0" onclick="openGorevModal('<?= $encTaskId ?>', '<?= $liste['id'] ?>', '<?= htmlspecialchars(addslashes($g->baslik)) ?>', '<?= htmlspecialchars(addslashes($g->aciklama)) ?>', '<?= $g->tarih ?>', '<?= !empty($g->saat) ? substr($g->saat, 0, 5) : '' ?>')">
+                                        <?php 
+                                        $yinelemeData = htmlspecialchars(json_encode([
+                                            'sikligi' => $g->yineleme_sikligi, 'birimi' => $g->yineleme_birimi, 
+                                            'gunleri' => $g->yineleme_gunleri, 'baslangic' => $g->yineleme_baslangic, 
+                                            'bitis_tipi' => $g->yineleme_bitis_tipi, 'bitis_tarihi' => $g->yineleme_bitis_tarihi, 
+                                            'bitis_adet' => $g->yineleme_bitis_adet
+                                        ]), ENT_QUOTES, 'UTF-8');
+                                        ?>
+                                        <div class="flex-1 min-w-0" onclick="openGorevModal('<?= $encTaskId ?>', '<?= $liste['id'] ?>', '<?= htmlspecialchars(addslashes($g->baslik)) ?>', '<?= htmlspecialchars(addslashes($g->aciklama)) ?>', '<?= $g->tarih ?>', '<?= !empty($g->saat) ? substr($g->saat, 0, 5) : '' ?>', '<?= $yinelemeData ?>')">
                                             <p class="text-[13px] font-semibold text-slate-800 dark:text-white leading-snug group-hover:text-primary transition-colors cursor-pointer"><?= htmlspecialchars($g->baslik) ?></p>
                                             <?php if (!empty($g->aciklama)): ?>
                                                 <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1"><?= htmlspecialchars($g->aciklama) ?></p>
@@ -339,6 +347,15 @@ $renkler = [
         </div>
 
         <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Tekrarlama</label>
+            <button type="button" onclick="openYinelemeSheet()" class="w-full flex items-center justify-between bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-3 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary active:opacity-70 transition-opacity">
+                <span id="btnYinelemeText">Tekrarlama Yok</span>
+                <span class="material-symbols-outlined text-slate-400">edit_calendar</span>
+            </button>
+            <input type="hidden" id="gorevYinelemeData" value="{}">
+        </div>
+
+        <div>
             <label class="block text-xs font-semibold text-slate-500 mb-1">Liste Seçimi *</label>
             <div class="relative">
                 <select id="gorevListeSecim" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-3 text-sm text-slate-800 dark:text-white appearance-none focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary">
@@ -360,7 +377,91 @@ $renkler = [
     </div>
 </div>
 
-<!-- Loader Overlay for AJAX -->
+<!-- YİNELEME BOTTOM SHEET -->
+<div id="gorevYinelemeSheet" class="fixed bottom-0 left-0 right-0 z-[70] bg-white dark:bg-card-dark rounded-t-2xl bottom-sheet shadow-2xl safe-area-bottom pb-4 max-h-[90vh] flex flex-col">
+    <!-- Header Pull Bar -->
+    <div class="flex justify-center pt-3 pb-2 flex-shrink-0">
+        <div class="w-10 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+    </div>
+    
+    <!-- Modal Header -->
+    <div class="flex items-center justify-between px-4 pb-3 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
+        <h3 class="text-base font-bold text-slate-800 dark:text-white">Yinelenme Sıklığı</h3>
+        <button type="button" onclick="closeYinelemeSheet()" class="w-8 h-8 flex items-center justify-center text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-full transition-colors">
+            <span class="material-symbols-outlined text-xl">close</span>
+        </button>
+    </div>
+    
+    <!-- Modal Body -->
+    <div class="flex-1 overflow-y-auto p-4 space-y-4">
+        <div class="flex gap-2">
+            <input type="number" id="ySikligi" value="1" min="1" max="99" class="w-20 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-3 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary text-center">
+            <div class="relative flex-1">
+                <select id="yBirimi" class="w-full h-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-3 text-sm text-slate-800 dark:text-white appearance-none focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary" onchange="toggleHaftaGunleri()">
+                    <option value="gun">gün</option>
+                    <option value="hafta">hafta</option>
+                    <option value="ay">ay</option>
+                    <option value="yil">yıl</option>
+                </select>
+                <span class="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none">expand_more</span>
+            </div>
+        </div>
+
+        <!-- Haftanın Günleri -->
+        <div id="yHaftaGunleri" class="hidden">
+            <label class="block text-xs font-semibold text-slate-500 mb-2">Hangi Günler?</label>
+            <div class="flex justify-between gap-1">
+                <button type="button" class="gun-btn w-10 h-10 rounded-full font-bold text-sm bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors" data-gun="1">P</button>
+                <button type="button" class="gun-btn w-10 h-10 rounded-full font-bold text-sm bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors" data-gun="2">S</button>
+                <button type="button" class="gun-btn w-10 h-10 rounded-full font-bold text-sm bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors" data-gun="3">Ç</button>
+                <button type="button" class="gun-btn w-10 h-10 rounded-full font-bold text-sm bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors" data-gun="4">P</button>
+                <button type="button" class="gun-btn w-10 h-10 rounded-full font-bold text-sm bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors" data-gun="5">C</button>
+                <button type="button" class="gun-btn w-10 h-10 rounded-full font-bold text-sm bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors" data-gun="6">C</button>
+                <button type="button" class="gun-btn w-10 h-10 rounded-full font-bold text-sm bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 transition-colors" data-gun="0">P</button>
+            </div>
+        </div>
+
+        <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-1">Başlangıç</label>
+            <input type="date" id="yBaslangic" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-3 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary">
+        </div>
+
+        <div>
+            <label class="block text-xs font-semibold text-slate-500 mb-2">Bitiş</label>
+            <div class="space-y-3">
+                <label class="flex items-center gap-3">
+                    <input type="radio" name="yBitisTipi" value="asla" checked class="w-4 h-4 text-primary bg-slate-100 border-slate-300 dark:border-slate-600 focus:ring-primary dark:bg-slate-700">
+                    <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Asla</span>
+                </label>
+                <div class="flex items-center gap-3">
+                    <label class="flex items-center gap-3 flex-shrink-0">
+                        <input type="radio" name="yBitisTipi" value="tarih" class="w-4 h-4 text-primary bg-slate-100 border-slate-300 dark:border-slate-600 focus:ring-primary dark:bg-slate-700">
+                        <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Şu tarihte:</span>
+                    </label>
+                    <input type="date" id="yBitisTarihi" class="flex-1 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-2 text-sm text-slate-800 dark:text-white focus:outline-none focus:border-primary" onclick="document.querySelector('input[name=yBitisTipi][value=tarih]').checked=true">
+                </div>
+                <div class="flex items-center gap-3">
+                    <label class="flex items-center gap-3 flex-shrink-0">
+                        <input type="radio" name="yBitisTipi" value="adet" class="w-4 h-4 text-primary bg-slate-100 border-slate-300 dark:border-slate-600 focus:ring-primary dark:bg-slate-700">
+                        <span class="text-sm font-medium text-slate-700 dark:text-slate-300">Yinele:</span>
+                    </label>
+                    <input type="number" id="yBitisAdet" value="30" min="1" max="999" class="w-16 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl px-2 py-2 text-sm text-slate-800 dark:text-white text-center focus:outline-none focus:border-primary" onclick="document.querySelector('input[name=yBitisTipi][value=adet]').checked=true">
+                    <span class="text-sm font-medium text-slate-700 dark:text-slate-300">kez</span>
+                </div>
+            </div>
+        </div>
+        
+        <div class="pt-2 flex justify-between gap-2">
+            <button type="button" onclick="clearYineleme()" class="py-2.5 px-4 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 font-semibold text-sm transition-colors hover:bg-red-100 dark:hover:bg-red-900/40">
+                Tekrarlamayı Kaldır
+            </button>
+            <button type="button" onclick="saveYinelemeSheet()" class="flex-1 py-2.5 rounded-xl bg-primary text-white font-semibold text-sm transition-colors hover:bg-primary-dark">
+                Uygula
+            </button>
+        </div>
+    </div>
+</div>
+
 <div id="loader" class="fixed inset-0 bg-white/50 dark:bg-black/50 backdrop-blur-sm z-[100] flex items-center justify-center opacity-0 pointer-events-none transition-opacity duration-300">
     <div class="bg-white dark:bg-card-dark p-4 rounded-2xl shadow-xl flex items-center gap-3">
         <div class="w-5 h-5 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
@@ -487,7 +588,7 @@ function openGorevActionsOverlay(id) {
     document.getElementById('gorevActionsSheet').classList.add('open');
 }
 
-function openGorevModal(id = '', listeId = '', baslik = '', aciklama = '', tarih = '', saat = '') {
+function openGorevModal(id = '', listeId = '', baslik = '', aciklama = '', tarih = '', saat = '', yinelemeDataStr = '{}') {
     closeAllModals();
     activeTaskId = id;
     document.getElementById('gorevModalId').value = id;
@@ -495,6 +596,8 @@ function openGorevModal(id = '', listeId = '', baslik = '', aciklama = '', tarih
     document.getElementById('gorevAciklamaInput').value = aciklama;
     document.getElementById('gorevTarihInput').value = tarih;
     document.getElementById('gorevSaatInput').value = saat;
+    document.getElementById('gorevYinelemeData').value = yinelemeDataStr || '{}';
+    updateYinelemeSummaryText(yinelemeDataStr || '{}');
     if(listeId) document.getElementById('gorevListeSecim').value = listeId;
     
     document.getElementById('gorevModalTitle').textContent = id ? "Görevi Düzenle" : "Görev Ekle";
@@ -519,6 +622,22 @@ async function saveGorev() {
     fd.append('aciklama', document.getElementById('gorevAciklamaInput').value.trim());
     fd.append('tarih', document.getElementById('gorevTarihInput').value);
     fd.append('saat', document.getElementById('gorevSaatInput').value);
+    
+    let yineleme = {};
+    try {
+        const yStr = document.getElementById('gorevYinelemeData').value;
+        if (yStr && yStr !== '{}') {
+            yineleme = JSON.parse(yStr);
+        }
+    } catch(e){}
+    
+    fd.append('yineleme_sikligi', yineleme.sikligi || '');
+    fd.append('yineleme_birimi', yineleme.birimi || '');
+    fd.append('yineleme_gunleri', yineleme.gunleri || '');
+    fd.append('yineleme_baslangic', yineleme.baslangic || '');
+    fd.append('yineleme_bitis_tipi', yineleme.bitis_tipi || '');
+    fd.append('yineleme_bitis_tarihi', yineleme.bitis_tarihi || '');
+    fd.append('yineleme_bitis_adet', yineleme.bitis_adet || '');
     
     if(isEdit) {
         fd.append('gorev_id', activeTaskId);
@@ -600,5 +719,117 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     });
+
+    // Haftanın günleri seçimi
+    document.querySelectorAll('.gun-btn').forEach(btn => {
+        btn.addEventListener('click', function() {
+            this.classList.toggle('bg-primary');
+            this.classList.toggle('text-white');
+            this.classList.toggle('bg-slate-100');
+            this.classList.toggle('text-slate-500');
+            this.classList.toggle('dark:bg-slate-800');
+            this.classList.toggle('dark:text-slate-400');
+            this.classList.toggle('selected');
+        });
+    });
 });
+
+function toggleHaftaGunleri() {
+    if (document.getElementById('yBirimi').value === 'hafta') {
+        document.getElementById('yHaftaGunleri').classList.remove('hidden');
+    } else {
+        document.getElementById('yHaftaGunleri').classList.add('hidden');
+    }
+}
+
+function openYinelemeSheet() {
+    const raw = document.getElementById('gorevYinelemeData').value;
+    let data = {};
+    try { data = JSON.parse(raw); } catch(e){}
+    
+    document.getElementById('ySikligi').value = data.sikligi || 1;
+    document.getElementById('yBirimi').value = data.birimi || 'hafta';
+    toggleHaftaGunleri();
+    
+    document.querySelectorAll('.gun-btn').forEach(btn => {
+        btn.classList.remove('bg-primary', 'text-white', 'selected');
+        btn.classList.add('bg-slate-100', 'text-slate-500', 'dark:bg-slate-800', 'dark:text-slate-400');
+    });
+    if (data.birimi === 'hafta' && data.gunleri) {
+        let selectedGunler = String(data.gunleri).split(',');
+        document.querySelectorAll('.gun-btn').forEach(btn => {
+            if (selectedGunler.includes(btn.dataset.gun)) {
+                btn.classList.remove('bg-slate-100', 'text-slate-500', 'dark:bg-slate-800', 'dark:text-slate-400');
+                btn.classList.add('bg-primary', 'text-white', 'selected');
+            }
+        });
+    }
+    
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('yBaslangic').value = data.baslangic || today;
+    
+    const bitisTipi = data.bitis_tipi || 'asla';
+    const radioEl = document.querySelector(`input[name="yBitisTipi"][value="${bitisTipi}"]`);
+    if(radioEl) radioEl.checked = true;
+    
+    document.getElementById('yBitisTarihi').value = data.bitis_tarihi || '';
+    document.getElementById('yBitisAdet').value = data.bitis_adet || 30;
+
+    document.getElementById('gorevYinelemeSheet').classList.add('open');
+}
+
+function closeYinelemeSheet() {
+    document.getElementById('gorevYinelemeSheet').classList.remove('open');
+}
+
+function clearYineleme() {
+    document.getElementById('gorevYinelemeData').value = '{}';
+    document.getElementById('btnYinelemeText').textContent = 'Tekrarlama Yok';
+    closeYinelemeSheet();
+}
+
+function saveYinelemeSheet() {
+    const sikligi = document.getElementById('ySikligi').value || 1;
+    const birimi = document.getElementById('yBirimi').value;
+    const bitisTipi = document.querySelector('input[name="yBitisTipi"]:checked').val();
+    
+    const selectedGunler = Array.from(document.querySelectorAll('.gun-btn.selected')).map(btn => btn.dataset.gun).join(',');
+    
+    const data = {
+        sikligi: sikligi,
+        birimi: birimi,
+        gunleri: birimi === 'hafta' ? selectedGunler : '',
+        baslangic: document.getElementById('yBaslangic').value,
+        bitis_tipi: bitisTipi,
+        bitis_tarihi: bitisTipi === 'tarih' ? document.getElementById('yBitisTarihi').value : '',
+        bitis_adet: bitisTipi === 'adet' ? document.getElementById('yBitisAdet').value : ''
+    };
+    
+    document.getElementById('gorevYinelemeData').value = JSON.stringify(data);
+    updateYinelemeSummaryText(data);
+    closeYinelemeSheet();
+}
+
+function updateYinelemeSummaryText(dataRaw) {
+    if (!dataRaw || dataRaw === '' || dataRaw === '{}') {
+        document.getElementById('btnYinelemeText').textContent = 'Tekrarlama Yok';
+        return;
+    }
+    try {
+        const data = typeof dataRaw === 'string' ? JSON.parse(dataRaw) : dataRaw;
+        if (!data.sikligi) {
+            document.getElementById('btnYinelemeText').textContent = 'Tekrarlama Yok';
+            return;
+        }
+        let summary = '';
+        if (data.sikligi > 1) {
+            summary = `Her ${data.sikligi} ${data.birimi === 'gun' ? 'Günde' : data.birimi === 'hafta' ? 'Haftada' : data.birimi === 'ay' ? 'Ayda' : 'Yılda'}`;
+        } else {
+            summary = `${data.birimi === 'gun' ? 'Her Gün' : data.birimi === 'hafta' ? 'Her Hafta' : data.birimi === 'ay' ? 'Her Ay' : 'Her Yıl'}`;
+        }
+        document.getElementById('btnYinelemeText').textContent = summary;
+    } catch(e) {
+        document.getElementById('btnYinelemeText').textContent = 'Tekrarlama Yok';
+    }
+}
 </script>

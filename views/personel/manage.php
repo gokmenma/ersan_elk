@@ -96,20 +96,32 @@ if ($id > 0) {
                         <div class="col-md-7">
                             <div class="d-flex align-items-center gap-3">
 
-                                <div class="avatar-lg position-relative">
-                                    <?php
-                                    $resimYolu = $personel->resim_yolu ?? '';
-                                    ?>
-                                    <img id="personelImage"
-                                        src="<?php echo !empty($resimYolu) ? $resimYolu : 'assets/images/users/user-dummy-img.jpg'; ?>"
-                                        alt="" class="img-thumbnail"
-                                        style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px !important;">
-                                    <button type="button" class="btn btn-sm btn-light position-absolute bottom-0 end-0"
-                                        id="changePhotoButton" style="padding: 2px 6px;">
-                                        <i class="bx bx-camera"></i>
-                                    </button>
-                                    <input type="file" id="avatarInput" name="resim_yolu" accept="image/*"
-                                        style="display: none;">
+                                <div class="d-flex align-items-center gap-3">
+                                    <div class="avatar-lg position-relative" title="Resmi Kayıtlı Fotoğraf">
+                                        <?php
+                                        $resimYolu = $personel->resim_yolu ?? '';
+                                        ?>
+                                        <img id="personelImage"
+                                            src="<?php echo !empty($resimYolu) ? $resimYolu : 'assets/images/users/user-dummy-img.jpg'; ?>"
+                                            alt="" class="img-thumbnail"
+                                            style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px !important;">
+                                        <button type="button" class="btn btn-sm btn-light position-absolute bottom-0 end-0"
+                                            id="changePhotoButton" style="padding: 2px 6px;">
+                                            <i class="bx bx-camera"></i>
+                                        </button>
+                                        <input type="file" id="avatarInput" name="resim_yolu" accept="image/*"
+                                            style="display: none;">
+                                        <div class="text-center mt-1"><small class="text-primary fw-bold" style="font-size: 10px;">Resmi Kayıt</small></div>
+                                    </div>
+
+                                    <?php if (!empty($personel->personel_resim_yolu)): ?>
+                                    <div class="avatar-lg position-relative" title="Personelin Kendi Yüklediği Fotoğraf">
+                                        <img src="<?php echo $personel->personel_resim_yolu; ?>"
+                                            alt="" class="img-thumbnail"
+                                            style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px !important; border-color: #556ee6;">
+                                        <div class="text-center mt-1"><small class="text-success fw-bold" style="font-size: 10px;">Uygulama Foto</small></div>
+                                    </div>
+                                    <?php endif; ?>
                                 </div>
                                 <div>
                                     <h5 class="font-size-16 mb-1 text-truncate">

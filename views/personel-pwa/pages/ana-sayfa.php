@@ -22,8 +22,10 @@ use App\Helper\Helper;
                 <a href="?page=profil" class="flex items-center gap-3">
                     <div
                         class="w-12 h-12 rounded-full bg-white/20 flex items-center justify-center overflow-hidden active:scale-90 transition-transform">
-                        <?php if (!empty($personel->foto)): ?>
-                            <img src="<?php echo Helper::base_url('uploads/personel/' . $personel->foto); ?>" alt="Profil"
+                        <?php 
+                        $pResim = !empty($personel->personel_resim_yolu) ? $personel->personel_resim_yolu : ($personel->resim_yolu ?? '');
+                        if (!empty($pResim)): ?>
+                            <img src="<?php echo Helper::base_url($pResim); ?>" alt="Profil"
                                 class="w-full h-full object-cover">
                         <?php else: ?>
                             <span class="material-symbols-outlined text-2xl">person</span>

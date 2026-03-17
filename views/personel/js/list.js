@@ -21,25 +21,6 @@ $(document).ready(function () {
           d.action = "personel-list";
         },
       },
-      initComplete: function (settings, json) {
-        // Mevcut global initComplete varsa onu da çağır
-        let options = getDatatableOptions();
-        if (options.initComplete) {
-          options.initComplete.call(this, settings, json);
-        }
-
-        // Tabloyu göster (sütunlar reorder edildikten sonra)
-        $("#membersTable").addClass("ready");
-
-        // Preloader'ı kapat
-        $("#personel-loader").fadeOut(300);
-
-        // Sütunları bir kez daha hizala
-        this.api().columns.adjust();
-
-        // Sütun listesini başlat (Tablo hazır olduğunda)
-        initColumnToggle();
-      },
       drawCallback: function () {
         if (typeof feather !== "undefined") {
           feather.replace();
@@ -69,11 +50,14 @@ $(document).ready(function () {
         {
           data: "adi_soyadi",
           render: function (data, type, row) {
+            let resim = row.resim_yolu ? row.resim_yolu : (row.personel_resim_yolu ? row.personel_resim_yolu : "assets/images/users/user-dummy-img.jpg");
             return `
-            <div class="personel-name-container">
-                <a class="fw-bold" target="_blank" href="index?p=personel/manage&id=${row.id}">${data}</a>
-                <img src="${row.resim_yolu ? row.resim_yolu : "assets/images/users/user-dummy-img.jpg"}"
-                    alt="${data}" class="personel-hover-image">
+            <div class="personel-info-box">
+                <img src="${resim}" class="personel-img-thumb" data-hover-resim="${resim}">
+                <div class="personel-details">
+                    <a class="fw-bold" target="_blank" href="index?p=personel/manage&id=${row.id}">${data}</a>
+                    <span class="personel-tc">${row.tc_kimlik_no}</span>
+                </div>
             </div>`;
           },
         },
@@ -204,8 +188,35 @@ $(document).ready(function () {
           $(row).addClass("row-pasif");
         }
       },
-    }),
-  );
+    })
+  ).on('xhr.dt', function (e, settings, json, xhr) {
+      if (json && json.counts) {
+          $("#count-aktif").text(json.counts.aktif);
+          $("#count-pasif").text(json.counts.pasif);
+          $("#count-all").text(json.counts.toplam);
+      }
+  });
+
+  table.on('init.dt', function (e, settings, json) {
+      // İlk açılışta eğer state'de filtre yoksa Aktif personelleri göster
+      let state = table.state();
+      if (state && (!state.columns || !state.columns[12] || !state.columns[12].search || !state.columns[12].search.search)) {
+          table.column(12).search("multi:Aktif").draw();
+          updateActiveBadge("Aktif");
+      } else if (state && state.columns && state.columns[12] && state.columns[12].search && state.columns[12].search.search) {
+          let s = state.columns[12].search.search;
+          if (s.includes("Aktif")) updateActiveBadge("Aktif");
+          else if (s.includes("Pasif")) updateActiveBadge("Pasif");
+          else updateActiveBadge("");
+      }
+      
+      initColumnToggle();
+      initImageHover();
+      
+      // Preloader'ı kapat
+      $("#personel-loader").fadeOut(300);
+      $("#membersTable").addClass("ready");
+  });
 
   // Factory default: First 13 columns (0 to 12) are visible, others are hidden
   const factoryDefaults = Array.from({ length: 13 }, (_, i) => i);
@@ -216,6 +227,7 @@ $(document).ready(function () {
 
   function initColumnToggle() {
     let columnList = $("#columnList");
+    if(!columnList.length) return;
     columnList.empty();
 
     // Mevcut görsel sırayı al
@@ -508,6 +520,12 @@ $(document).ready(function () {
                 ? data.resim_yolu
                 : "assets/images/users/user-dummy-img.jpg",
             );
+            $("#detailAppResim").attr(
+              "src",
+              data.personel_resim_yolu
+                ? data.personel_resim_yolu
+                : "assets/images/users/user-dummy-img.jpg",
+            );
             $("#detailAdSoyad").text(data.adi_soyadi);
             $("#detailGorev").text(data.gorev);
             $("#detailDepartman").text(data.departman);
@@ -715,4 +733,48 @@ $(document).ready(function () {
         btn.prop("disabled", false);
       });
   });
+});
+
+/** Statü badge güncelleme */
+function updateActiveBadge(status) {
+    $(".status-filter-badge").removeClass("active");
+    if (status === "Aktif") $("#filter-aktif").addClass("active");
+    else if (status === "Pasif") $("#filter-pasif").addClass("active");
+    else $("#filter-all").addClass("active");
+}
+
+/** Resim hover mantığı */
+function initImageHover() {
+    let $preview = $('.personel-hover-preview');
+    if(!$preview.length) {
+        $preview = $('<img class="personel-hover-preview">').appendTo('body');
+    }
+    
+    $(document).off('mouseenter mousemove mouseleave', '.personel-img-thumb');
+    
+    $(document).on('mouseenter', '.personel-img-thumb', function(e) {
+        let src = $(this).data('hover-resim');
+        $preview.attr('src', src).fadeIn(100);
+    }).on('mousemove', '.personel-img-thumb', function(e) {
+        $preview.css({
+            top: e.pageY - 75 + 'px',
+            left: e.pageX + 20 + 'px'
+        });
+    }).on('mouseleave', '.personel-img-thumb', function() {
+        $preview.stop().fadeOut(100);
+    });
+}
+
+/** Statü filtreleme tıklama olayları */
+$(document).on('click', '.status-filter-badge', function() {
+    let status = $(this).data('status');
+    let table = $("#membersTable").DataTable();
+    
+    updateActiveBadge(status);
+    
+    if (status === "") {
+        table.column(12).search("").draw();
+    } else {
+        table.column(12).search("multi:" + status).draw();
+    }
 });

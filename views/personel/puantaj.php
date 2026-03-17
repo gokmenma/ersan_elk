@@ -54,11 +54,11 @@ use App\Service\Gate;
 
         .table-puantaj {
             border-collapse: separate !important;
-            border-spacing: 8px !important;
+            border-spacing: 4px !important;
         }
 
-        .table-puantaj th:not(.sticky-col):not(.sticky-col-right-1):not(.sticky-col-right-2) {
-            width: 38px;
+        .table-puantaj th:not(.sticky-col):not(.sticky-col-right-1) {
+            width: 32px;
             height: 50px;
             padding: 4px 2px !important;
             border: none !important;
@@ -72,8 +72,8 @@ use App\Service\Gate;
         }
 
         .table-puantaj .day-cell {
-            width: 40px;
-            height: 40px;
+            width: 32px;
+            height: 32px;
             cursor: cell;
             user-select: none;
             position: relative;
@@ -110,7 +110,7 @@ use App\Service\Gate;
         }
 
         .day-header-pill .day-number {
-            font-size: 15px;
+            font-size: 13px;
             font-weight: 700;
         }
 
@@ -315,21 +315,6 @@ use App\Service\Gate;
 
         .sticky-col-right-1 {
             position: sticky;
-            right: 72px;
-            background-color: #f8f9fa !important;
-            z-index: 20;
-            border: 1px solid #ced4da !important;
-            width: 70px !important;
-            min-width: 70px !important;
-            max-width: 70px !important;
-            text-align: center;
-            vertical-align: middle;
-            font-size: 11px;
-            font-weight: 600;
-        }
-
-        .sticky-col-right-2 {
-            position: sticky;
             right: 0;
             background-color: #f8f9fa !important;
             z-index: 20;
@@ -396,8 +381,7 @@ use App\Service\Gate;
         }
 
         [data-bs-theme="dark"] .sticky-col,
-        [data-bs-theme="dark"] .sticky-col-right-1,
-        [data-bs-theme="dark"] .sticky-col-right-2 {
+        [data-bs-theme="dark"] .sticky-col-right-1 {
             background-color: #282f36 !important;
             border-color: #32394e !important;
             color: #eff2f7 !important;
@@ -543,8 +527,7 @@ use App\Service\Gate;
         }
 
         .table-puantaj thead th.sticky-col,
-        .table-puantaj thead th.sticky-col-right-1,
-        .table-puantaj thead th.sticky-col-right-2 {
+        .table-puantaj thead th.sticky-col-right-1 {
             background-color: #f8f9fa !important;
             border: 1px solid #ced4da !important;
             height: 50px;
@@ -588,30 +571,40 @@ use App\Service\Gate;
             background-color: #f8f9fa !important;
         }
 
-        .table-puantaj tfoot td.sticky-col-right-2 {
-            z-index: 60;
-            background-color: #f8f9fa !important;
-            border-bottom-right-radius: 8px;
-        }
-
         [data-bs-theme="dark"] .table-puantaj tfoot td.sticky-col,
-        [data-bs-theme="dark"] .table-puantaj tfoot td.sticky-col-right-1,
-        [data-bs-theme="dark"] .table-puantaj tfoot td.sticky-col-right-2 {
+        [data-bs-theme="dark"] .table-puantaj tfoot td.sticky-col-right-1 {
             background-color: #282f36 !important;
         }
 
         /* Header'daki sol ve sağ kolonun z-index'i en yüksek olmalı */
         .table-puantaj thead th.sticky-col,
-        .table-puantaj thead th.sticky-col-right-1,
-        .table-puantaj thead th.sticky-col-right-2 {
+        .table-puantaj thead th.sticky-col-right-1 {
             z-index: 60;
             background-color: #f8f9fa !important;
         }
 
         [data-bs-theme="dark"] .table-puantaj thead th.sticky-col,
-        [data-bs-theme="dark"] .table-puantaj thead th.sticky-col-right-1,
-        [data-bs-theme="dark"] .table-puantaj thead th.sticky-col-right-2 {
+        [data-bs-theme="dark"] .table-puantaj thead th.sticky-col-right-1 {
             background-color: #282f36 !important;
+        }
+
+        @media (max-width: 1600px) {
+            .table-puantaj {
+                border-spacing: 3px !important;
+            }
+
+            .table-puantaj th:not(.sticky-col):not(.sticky-col-right-1),
+            .table-puantaj .day-cell {
+                width: 30px;
+            }
+
+            .table-puantaj .day-cell {
+                height: 30px;
+            }
+
+            .day-header-pill .day-number {
+                font-size: 12px;
+            }
         }
 
         /* Puantaj Preloader */

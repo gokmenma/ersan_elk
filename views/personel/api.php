@@ -219,6 +219,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // İşten çıkış tarihi doluysa aktif_mi = 0 (Pasif), değilse 1 (Aktif)
             if (!empty($data['isten_cikis_tarihi']) && $data['isten_cikis_tarihi'] != '0000-00-00') {
                 $data['aktif_mi'] = 0;
+                $data['ekip_no'] = null;
+                $data['ekip_bolge'] = null;
             } else {
                 $data['aktif_mi'] = 1;
             }
@@ -989,6 +991,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
 
             $result['data'] = $formattedData;
+            
+            // Sayıları da ekle
+            $sayilar = $Personel->personelSayilari('personel');
+            $result['counts'] = [
+                'aktif' => intval($sayilar->aktif_personel ?? 0),
+                'pasif' => intval($sayilar->pasif_personel ?? 0),
+                'toplam' => intval($sayilar->toplam_personel ?? 0)
+            ];
+            
             echo json_encode($result);
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

@@ -198,11 +198,9 @@ try {
             $pGunlukBase = min($pGunlukBase, intval($personel->gg_toplam_gun));
         }
 
-        $pCalismaGunu = $pGunlukBase;
-        if ($personel->hd_fiili_calisma_gunu !== null) {
-            $pCalismaGunu = intval($personel->hd_fiili_calisma_gunu);
-        } elseif ($personel->hd_fiili_calisma_gunu === null) {
-            $pCalismaGunu = $pGunlukBase - $pUcretsizIzinGunu - $pUcretliIzinGunu;
+        $pCalismaGunu = $pGunlukBase - $pUcretsizIzinGunu - $pUcretliIzinGunu;
+        if ($pCalismaGunu < 0) {
+            $pCalismaGunu = 0;
         }
 
         // Toplam Alacağı
