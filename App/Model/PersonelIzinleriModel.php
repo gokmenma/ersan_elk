@@ -179,7 +179,7 @@ class PersonelIzinleriModel extends Model
     {
         $limit = (int) $limit;
         $sql = $this->db->prepare("
-            SELECT pi.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi
+            SELECT pi.*, p.adi_soyadi as requester_name, p.resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
@@ -235,7 +235,7 @@ class PersonelIzinleriModel extends Model
     public function getIzinDetay($id)
     {
         $sql = $this->db->prepare("
-            SELECT pi.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi
+            SELECT pi.*, p.adi_soyadi as requester_name, p.resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id

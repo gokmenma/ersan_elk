@@ -226,7 +226,7 @@ $izinTurleri = [
                                                     alt="" class="rounded-circle avatar-sm me-2">
                                                 <div>
                                                     <h6 class="mb-0">
-                                                        <?= htmlspecialchars($avans->adi_soyadi) ?>
+                                                        <?= htmlspecialchars($avans->requester_name ?? '') ?>
                                                     </h6>
                                                     <small class="text-muted">
                                                         <?= htmlspecialchars($avans->departman ?? '') ?>
@@ -273,7 +273,7 @@ $izinTurleri = [
                                                 <?php if ($avans->durum != 'onaylandi'): ?>
                                                     <button class="btn btn-sm btn-soft-success btn-avans-onayla" type="button"
                                                         data-id="<?= $avans->id ?>"
-                                                        data-personel="<?= htmlspecialchars($avans->adi_soyadi) ?>"
+                                                        data-personel="<?= htmlspecialchars($avans->requester_name ?? '') ?>"
                                                         data-tutar="<?= $avans->tutar ?>" title="Onayla">
                                                         <i class="bx bx-check"></i>
                                                     </button>
@@ -281,7 +281,7 @@ $izinTurleri = [
                                                 <?php if ($avans->durum != 'reddedildi'): ?>
                                                     <button class="btn btn-sm btn-soft-danger btn-avans-reddet" type="button"
                                                         data-id="<?= $avans->id ?>"
-                                                        data-personel="<?= htmlspecialchars($avans->adi_soyadi) ?>"
+                                                        data-personel="<?= htmlspecialchars($avans->requester_name ?? '') ?>"
                                                         title="Reddet">
                                                         <i class="bx bx-x"></i>
                                                     </button>
@@ -314,7 +314,7 @@ $izinTurleri = [
                                                 <div class="d-flex align-items-center gap-2">
                                                     <img src="<?= !empty($avans->resim_yolu) ? $avans->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>" class="rounded-circle avatar-sm" alt="">
                                                     <div>
-                                                        <h6 class="mb-0 fs-14"><?= htmlspecialchars($avans->adi_soyadi) ?></h6>
+                                                        <h6 class="mb-0 fs-14"><?= htmlspecialchars($avans->requester_name ?? '') ?></h6>
                                                         <small class="text-muted"><?= date('d.m.Y H:i', strtotime($avans->talep_tarihi)) ?></small>
                                                     </div>
                                                 </div>
@@ -337,10 +337,10 @@ $izinTurleri = [
                                             
                                             <div class="d-flex gap-2 mt-2 pt-2 border-top">
                                                 <?php if ($avans->durum != 'onaylandi'): ?>
-                                                    <button class="btn btn-sm btn-soft-success flex-fill btn-avans-onayla" type="button" data-id="<?= $avans->id ?>" data-personel="<?= htmlspecialchars($avans->adi_soyadi) ?>" data-tutar="<?= $avans->tutar ?>"><i class="bx bx-check"></i> Onayla</button>
+                                                    <button class="btn btn-sm btn-soft-success flex-fill btn-avans-onayla" type="button" data-id="<?= $avans->id ?>" data-personel="<?= htmlspecialchars($avans->requester_name ?? '') ?>" data-tutar="<?= $avans->tutar ?>"><i class="bx bx-check"></i> Onayla</button>
                                                 <?php endif; ?>
                                                 <?php if ($avans->durum != 'reddedildi'): ?>
-                                                    <button class="btn btn-sm btn-soft-danger flex-fill btn-avans-reddet" type="button" data-id="<?= $avans->id ?>" data-personel="<?= htmlspecialchars($avans->adi_soyadi) ?>"><i class="bx bx-x"></i> Red</button>
+                                                    <button class="btn btn-sm btn-soft-danger flex-fill btn-avans-reddet" type="button" data-id="<?= $avans->id ?>" data-personel="<?= htmlspecialchars($avans->requester_name ?? '') ?>"><i class="bx bx-x"></i> Red</button>
                                                 <?php endif; ?>
                                                 <button class="btn btn-sm btn-soft-info flex-fill btn-avans-detay" type="button" data-id="<?= $avans->id ?>"><i class="bx bx-show"></i> Detay</button>
                                             </div>
@@ -386,7 +386,7 @@ $izinTurleri = [
                                                     alt="" class="rounded-circle avatar-sm me-2">
                                                 <div>
                                                     <h6 class="mb-0">
-                                                        <?= htmlspecialchars($izin->adi_soyadi) ?>
+                                                        <?= htmlspecialchars($izin->requester_name ?? '') ?>
                                                     </h6>
                                                     <small class="text-muted">
                                                         <?= htmlspecialchars($izin->departman ?? '') ?>
@@ -436,7 +436,7 @@ $izinTurleri = [
                                                 <?php if ($izin->onay_durumu != 'Onaylandı'): ?>
                                                     <button class="btn btn-sm btn-soft-success btn-izin-onayla" type="button"
                                                         data-id="<?= $izin->id ?>"
-                                                        data-personel="<?= htmlspecialchars($izin->adi_soyadi) ?>"
+                                                        data-personel="<?= htmlspecialchars($izin->requester_name ?? '') ?>"
                                                         data-tur="<?= $izinTuruLabel ?>" data-gun="<?= $gunSayisi ?>"
                                                         title="Onayla">
                                                         <i class="bx bx-check"></i>
@@ -445,7 +445,7 @@ $izinTurleri = [
                                                 <?php if ($izin->onay_durumu != 'Reddedildi'): ?>
                                                     <button class="btn btn-sm btn-soft-danger btn-izin-reddet" type="button"
                                                         data-id="<?= $izin->id ?>"
-                                                        data-personel="<?= htmlspecialchars($izin->adi_soyadi) ?>"
+                                                        data-personel="<?= htmlspecialchars($izin->requester_name ?? '') ?>"
                                                         title="Reddet">
                                                         <i class="bx bx-x"></i>
                                                     </button>
@@ -481,7 +481,7 @@ $izinTurleri = [
                                                 <div class="d-flex align-items-center gap-2">
                                                     <img src="<?= !empty($izin->resim_yolu) ? $izin->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>" class="rounded-circle avatar-sm" alt="">
                                                     <div>
-                                                        <h6 class="mb-0 fs-14"><?= htmlspecialchars($izin->adi_soyadi) ?></h6>
+                                                        <h6 class="mb-0 fs-14"><?= htmlspecialchars($izin->requester_name ?? '') ?></h6>
                                                         <small class="text-muted"><span class="badge bg-info"><?= $izinTuruLabel ?></span></small>
                                                     </div>
                                                 </div>
@@ -503,10 +503,10 @@ $izinTurleri = [
                                             
                                             <div class="d-flex gap-2 mt-2 pt-2 border-top">
                                                 <?php if ($izin->onay_durumu != 'Onaylandı'): ?>
-                                                    <button class="btn btn-sm btn-soft-success flex-fill btn-izin-onayla" type="button" data-id="<?= $izin->id ?>" data-personel="<?= htmlspecialchars($izin->adi_soyadi) ?>" data-tur="<?= $izinTuruLabel ?>" data-gun="<?= $gunSayisi ?>"><i class="bx bx-check"></i> Onayla</button>
+                                                    <button class="btn btn-sm btn-soft-success flex-fill btn-izin-onayla" type="button" data-id="<?= $izin->id ?>" data-personel="<?= htmlspecialchars($izin->requester_name ?? '') ?>" data-tur="<?= $izinTuruLabel ?>" data-gun="<?= $gunSayisi ?>"><i class="bx bx-check"></i> Onayla</button>
                                                 <?php endif; ?>
                                                 <?php if ($izin->onay_durumu != 'Reddedildi'): ?>
-                                                    <button class="btn btn-sm btn-soft-danger flex-fill btn-izin-reddet" type="button" data-id="<?= $izin->id ?>" data-personel="<?= htmlspecialchars($izin->adi_soyadi) ?>"><i class="bx bx-x"></i> Red</button>
+                                                    <button class="btn btn-sm btn-soft-danger flex-fill btn-izin-reddet" type="button" data-id="<?= $izin->id ?>" data-personel="<?= htmlspecialchars($izin->requester_name ?? '') ?>"><i class="bx bx-x"></i> Red</button>
                                                 <?php endif; ?>
                                                 <button class="btn btn-sm btn-soft-info flex-fill btn-izin-detay" type="button" data-id="<?= $izin->id ?>"><i class="bx bx-show"></i> Detay</button>
                                             </div>
@@ -566,7 +566,7 @@ $izinTurleri = [
                                                     alt="" class="rounded-circle avatar-sm me-2">
                                                 <div>
                                                     <h6 class="mb-0">
-                                                        <?= htmlspecialchars($talep->adi_soyadi) ?>
+                                                        <?= htmlspecialchars($talep->requester_name ?? '') ?>
                                                     </h6>
                                                     <small class="text-muted">
                                                         <?= htmlspecialchars($talep->departman ?? '') ?>
@@ -630,7 +630,7 @@ $izinTurleri = [
                                                 <?php if ($talep->durum != 'cozuldu' && $talep->durum != 'onaylandi'): ?>
                                                     <button class="btn btn-sm btn-soft-success btn-talep-cozuldu" type="button"
                                                         data-id="<?= $talep->id ?>"
-                                                        data-personel="<?= htmlspecialchars($talep->adi_soyadi) ?>"
+                                                        data-personel="<?= htmlspecialchars($talep->requester_name ?? '') ?>"
                                                         data-baslik="<?= htmlspecialchars($talep->baslik ?? '') ?>"
                                                         title="Çözüldü">
                                                         <i class="bx bx-check"></i>
@@ -676,7 +676,7 @@ $izinTurleri = [
                                                 <div class="d-flex align-items-center gap-2">
                                                     <img src="<?= !empty($talep->resim_yolu) ? $talep->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>" class="rounded-circle avatar-sm" alt="">
                                                     <div>
-                                                        <h6 class="mb-0 fs-14"><?= htmlspecialchars($talep->adi_soyadi) ?></h6>
+                                                        <h6 class="mb-0 fs-14"><?= htmlspecialchars($talep->requester_name ?? '') ?></h6>
                                                         <small class="text-muted"><span class="badge bg-<?= $oncelikType ?>"><?= ucfirst($talep->oncelik ?? 'Normal') ?></span></small>
                                                     </div>
                                                 </div>
@@ -705,7 +705,7 @@ $izinTurleri = [
                                                     <button class="btn btn-sm btn-soft-warning flex-fill btn-talep-isleme" type="button" data-id="<?= $talep->id ?>"><i class="bx bx-play"></i> İşleme Al</button>
                                                 <?php endif; ?>
                                                 <?php if ($talep->durum != 'cozuldu' && $talep->durum != 'onaylandi'): ?>
-                                                    <button class="btn btn-sm btn-soft-success flex-fill btn-talep-cozuldu" type="button" data-id="<?= $talep->id ?>" data-personel="<?= htmlspecialchars($talep->adi_soyadi) ?>" data-baslik="<?= htmlspecialchars($talep->baslik ?? '') ?>"><i class="bx bx-check"></i> Çözüldü</button>
+                                                    <button class="btn btn-sm btn-soft-success flex-fill btn-talep-cozuldu" type="button" data-id="<?= $talep->id ?>" data-personel="<?= htmlspecialchars($talep->requester_name ?? '') ?>" data-baslik="<?= htmlspecialchars($talep->baslik ?? '') ?>"><i class="bx bx-check"></i> Çözüldü</button>
                                                 <?php endif; ?>
                                                 <button class="btn btn-sm btn-soft-info flex-fill btn-talep-detay" type="button" data-id="<?= $talep->id ?>"><i class="bx bx-show"></i> Detay</button>
                                             </div>
@@ -1329,7 +1329,7 @@ $izinTurleri = [
             // Personel Bilgileri
             html += '<div class="col-md-4 text-center mb-4">';
             html += '<img src="' + (data.resim_yolu || 'assets/images/users/user-dummy-img.jpg') + '" class="rounded-circle mb-3" style="width:100px;height:100px;object-fit:cover;" onerror="this.src=\'assets/images/users/user-dummy-img.jpg\'">';
-            html += '<h5>' + data.adi_soyadi + '</h5>';
+            html += '<h5>' + (data.requester_name || 'Bilinmeyen') + '</h5>';
             html += '<p class="text-muted mb-1">' + (data.departman || '') + '</p>';
             html += '<p class="text-muted mb-0"><small>' + (data.gorev || '') + '</small></p>';
             html += '</div>';

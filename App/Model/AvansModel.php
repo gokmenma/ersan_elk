@@ -146,7 +146,7 @@ class AvansModel extends Model
     {
         $limit = (int) $limit;
         $sql = $this->db->prepare("
-            SELECT pa.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev, p.maas_tutari
+            SELECT pa.*, p.adi_soyadi as requester_name, p.resim_yolu, p.departman, p.gorev, p.maas_tutari
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
             WHERE pa.durum = 'reddedildi' AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
@@ -180,7 +180,7 @@ class AvansModel extends Model
     public function getAvansDetay($id)
     {
         $sql = $this->db->prepare("
-            SELECT pa.*, p.adi_soyadi, p.resim_yolu, p.departman, p.gorev, p.maas_tutari
+            SELECT pa.*, p.adi_soyadi as requester_name, p.resim_yolu, p.departman, p.gorev, p.maas_tutari
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
             WHERE pa.id = ?
