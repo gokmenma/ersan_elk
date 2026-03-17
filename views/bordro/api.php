@@ -1211,7 +1211,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // Güncelle
                 $sql = $BordroPersonel->getDb()->prepare("
                     UPDATE bordro_personel 
-                    SET banka_odemesi = ?, sodexo_odemesi = ?, diger_odeme = ?, elden_odeme = ?, sodexo_manuel = 1
+                    SET banka_odemesi = ?, sodexo_odemesi = ?, diger_odeme = ?, elden_odeme = ?, sodexo_manuel = 1, dagitim_manuel = 1
                     WHERE id = ?
                 ");
                 $sql->execute([$banka, $sodexo, $diger, $elden, $id]);
@@ -1999,11 +1999,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $sodexo = Helper::formattedMoneyToNumber($row[$sodexoIndex] ?? 0);
                         $diger = Helper::formattedMoneyToNumber($row[$digerIndex] ?? 0);
 
+                        $elden = Helper::formattedMoneyToNumber($row[7] ?? 0);
+
                         // Güncelle
                         $updateData = [
                             'banka_odemesi' => $banka,
                             'sodexo_odemesi' => $sodexo,
-                            'diger_odeme' => $diger
+                            'diger_odeme' => $diger,
+                            'elden_odeme' => $elden,
+                            'sodexo_manuel' => 1,
+                            'dagitim_manuel' => 1
                         ];
 
                         if ($BordroPersonel->updateBordro($bp_id, $updateData)) {

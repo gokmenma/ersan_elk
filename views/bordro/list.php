@@ -510,30 +510,35 @@ if (!empty($dbGelirler)) {
                             if ($pNetMaasGercek < 0)
                                 $pNetMaasGercek = 0;
 
-                            // Banka = (Asgari / 30 * Gün) - İcra
-                            // Formül: geçerli dönemdeki asgari ücret / 30 * çalışma günü - icra kesintisi
-                    
-                            $sodexoP = floatval($p->sodexo_odemesi ?? 0);
-
-                            if ($pCalismaGunu >= 30) {
-                                $bankaBaz = $asgariUcretNet;
+                            if (isset($p->dagitim_manuel) && $p->dagitim_manuel == 1) {
+                                $bankaP = floatval($p->banka_odemesi ?? 0);
+                                $sodexoP = floatval($p->sodexo_odemesi ?? 0);
+                                $digerP = floatval($p->diger_odeme ?? 0);
                             } else {
-                                $bankaBaz = ($asgariUcretNet / 30) * $pCalismaGunu;
+                                // Banka = (Asgari / 30 * Gün) - İcra
+                                // Formül: geçerli dönemdeki asgari ücret / 30 * çalışma günü - icra kesintisi
+                                $sodexoP = floatval($p->sodexo_odemesi ?? 0);
+
+                                if ($pCalismaGunu >= 30) {
+                                    $bankaBaz = $asgariUcretNet;
+                                } else {
+                                    $bankaBaz = ($asgariUcretNet / 30) * $pCalismaGunu;
+                                }
+
+                                // Maksimum kontrolü (Net - Sodexo) - Banka ödemesi toplam alacağı geçemez
+                                $bankaMax = max(0, $pNetAlacagi - $sodexoP);
+                                $bankaBaz = min($bankaBaz, $bankaMax);
+
+                                $bankaP = max(0, $bankaBaz - $pIcra);
+                                if ($bankaP < 0)
+                                    $bankaP = 0;
+
+                                if (($p->sgk_yapilan_firma ?? '') === 'İŞKUR') {
+                                    $bankaP = 0;
+                                }
+
+                                $digerP = floatval($p->diger_odeme ?? 0);
                             }
-
-                            // Maksimum kontrolü (Net - Sodexo) - Banka ödemesi toplam alacağı geçemez
-                            $bankaMax = max(0, $pNetAlacagi - $sodexoP);
-                            $bankaBaz = min($bankaBaz, $bankaMax);
-
-                            $bankaP = max(0, $bankaBaz - $pIcra);
-                            if ($bankaP < 0)
-                                $bankaP = 0;
-
-                            if (($p->sgk_yapilan_firma ?? '') === 'İŞKUR') {
-                                $bankaP = 0;
-                            }
-
-                            $digerP = floatval($p->diger_odeme ?? 0);
 
                             // Elden = Net - Banka - Sodexo - Diğer
                             // $pNetMaasGercek (İcra düşülmüş net maaş)

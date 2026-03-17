@@ -65,7 +65,7 @@ class BordroPersonelModel extends Model
         $sql = $this->db->prepare("
             SELECT bp.id, bp.donem_id, bp.personel_id, bp.brut_maas, bp.net_maas,
                    bp.kesinti_tutar, bp.prim_tutar, bp.hesaplama_tarihi,
-                   bp.banka_odemesi, bp.sodexo_odemesi, bp.diger_odeme, bp.elden_odeme,
+                   bp.banka_odemesi, bp.sodexo_odemesi, bp.diger_odeme, bp.elden_odeme, bp.dagitim_manuel,
                    bp.calisan_gun, bp.aciklama, bp.hesaplama_detay,
                    bp.sgk_isci, bp.issizlik_isci, bp.gelir_vergisi, bp.damga_vergisi,
                    bp.sgk_isveren, bp.issizlik_isveren, bp.toplam_maliyet,
@@ -2621,137 +2621,142 @@ class BordroPersonelModel extends Model
         $toplamMaliyet = $calisanBrutMaas + $sgkIsveren + $issizlikIsveren + $brutEkOdemeler + $netEkOdemeler;
 
         // ========== ÖDEME DAĞILIMI HESAPLAMA ==========
-
-        // Sodexo tutarını fiili çalışma gününe göre oranla (30 gün üzerinden)
-        // Eğer manuel olarak güncellenmişse veriyi olduğu gibi al
-        if (isset($kayit->sodexo_manuel) && $kayit->sodexo_manuel == 1) {
+        if (isset($kayit->dagitim_manuel) && $kayit->dagitim_manuel == 1) {
             $sodexoOdemesi = floatval($kayit->sodexo_odemesi ?? 0);
+            $bankaOdemesi = floatval($kayit->banka_odemesi ?? 0);
+            $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - floatval($kayit->diger_odeme ?? 0));
         } else {
-            $aylikSodexo = floatval($kayit->sodexo ?? 0);
-            $sodexoOdemesi = ($aylikSodexo / 30) * $fiiliCalismaGunu;
-        }
-
-        if ($isPrimUsulu) {
-            // Prim Usülü hesaplama
-            // Ödeme sıralaması:
-            // 1. Önce Sodexo (çalışma gününe göre oranlanır - zaten yukarıda hesaplandı)
-            // 2. Sonra Banka = Minimum asgari ücret neti (çalışma gününe oranlı)
-            // 3. Sonra İcra kesintisi (elden ödemeden düşülür)
-            // 4. En son Elden ödeme = Net maaş - Banka - Sodexo - İcra
-
-            $toplamPrim = $netMaas; // Net maaş zaten prim toplamını içeriyor
-
-
-            // Bankaya yatacak minimum tutar (asgari ücretin çalışma gününe oranı)
-            if ($fiiliCalismaGunu >= 30) {
-                $bankaYatacakMinimum = $asgariUcretNet;
+            // Sodexo tutarını fiili çalışma gününe göre oranla (30 gün üzerinden)
+            // Eğer manuel olarak güncellenmişse veriyi olduğu gibi al
+            if (isset($kayit->sodexo_manuel) && $kayit->sodexo_manuel == 1) {
+                $sodexoOdemesi = floatval($kayit->sodexo_odemesi ?? 0);
             } else {
-                $gunlukAsgariUcret = $asgariUcretNet / 30;
-                $bankaYatacakMinimum = $gunlukAsgariUcret * $fiiliCalismaGunu;
+                $aylikSodexo = floatval($kayit->sodexo ?? 0);
+                $sodexoOdemesi = ($aylikSodexo / 30) * $fiiliCalismaGunu;
             }
 
-            // 1. Önce Sodexo düşülür (zaten hesaplandı)
-            // 2. Bankaya yatacak tutar = Minimum asgari ücret tutarı
-            // Ancak net maaş - sodexo'dan büyük olamaz
-            $bankaIcinMaksimum = max(0, $toplamPrim - $sodexoOdemesi);
-            $bankaBaz = min($bankaYatacakMinimum, $bankaIcinMaksimum);
+            if ($isPrimUsulu) {
+                // Prim Usülü hesaplama
+                // Ödeme sıralaması:
+                // 1. Önce Sodexo (çalışma gününe göre oranlanır - zaten yukarıda hesaplandı)
+                // 2. Sonra Banka = Minimum asgari ücret neti (çalışma gününe oranlı)
+                // 3. Sonra İcra kesintisi (elden ödemeden düşülür)
+                // 4. En son Elden ödeme = Net maaş - Banka - Sodexo - İcra
 
-            // Banka tutarı minimum asgari ücretin altına düşmemeli (yeterli bakiye varsa)
-            if ($bankaBaz < $bankaYatacakMinimum && $bankaIcinMaksimum >= $bankaYatacakMinimum) {
-                $bankaBaz = $bankaYatacakMinimum;
-            }
-
-            // USER REQ: İcra tutarını bankadan düş
-            $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
-
-            if (($kayit->sgk_yapilan_firma ?? '') === 'İŞKUR') {
-                $bankaOdemesi = 0;
-            }
-
-            // 3. Elden ödeme = Net maaş - Banka - Sodexo - İcra - Diğer Ödeme
-            $eldenOdeme = max(0, $toplamPrim - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
-        } elseif ($isNetMaas) {
-            // ========== NET MAAŞ HESAPLAMA ==========
-            // Ödeme sıralaması:
-            // 1. Önce Sodexo hesaplanır (çalışma gününe göre oranlanır)
-            // 2. Sonra Bankaya yatacak tutar = Asgari ücret neti (günlük oranlı) - Bu tutar minimum garantidir
-            // 3. Sonra İcra kesintisi (elden ödemeden düşülür, bankadan değil)
-            // 4. En son Elden ödeme = Net maaş - Banka - Sodexo - İcra
+                $toplamPrim = $netMaas; // Net maaş zaten prim toplamını içeriyor
 
 
+                // Bankaya yatacak minimum tutar (asgari ücretin çalışma gününe oranı)
+                if ($fiiliCalismaGunu >= 30) {
+                    $bankaYatacakMinimum = $asgariUcretNet;
+                } else {
+                    $gunlukAsgariUcret = $asgariUcretNet / 30;
+                    $bankaYatacakMinimum = $gunlukAsgariUcret * $fiiliCalismaGunu;
+                }
 
-            // NOT: Net maaş günlük oranlama artık gerekli değil.
-            // $brutMaas zaten görev geçmişi kıst hesabını ve ücretsiz izin düşümünü içeriyor.
-            // Net maaş yukarıda doğru şekilde hesaplandı.
+                // 1. Önce Sodexo düşülür (zaten hesaplandı)
+                // 2. Bankaya yatacak tutar = Minimum asgari ücret tutarı
+                // Ancak net maaş - sodexo'dan büyük olamaz
+                $bankaIcinMaksimum = max(0, $toplamPrim - $sodexoOdemesi);
+                $bankaBaz = min($bankaYatacakMinimum, $bankaIcinMaksimum);
 
-            // Bankaya yatacak minimum tutar (asgari ücret netinden günlük oranlı)
-            // Bu tutar asla asgari ücretin çalışma gününe oranının altına düşmemeli
-            if ($fiiliCalismaGunu >= 30) {
-                // Tam maaş - Asgari ücret neti bankaya
-                $bankaYatacakMinimum = $asgariUcretNet;
+                // Banka tutarı minimum asgari ücretin altına düşmemeli (yeterli bakiye varsa)
+                if ($bankaBaz < $bankaYatacakMinimum && $bankaIcinMaksimum >= $bankaYatacakMinimum) {
+                    $bankaBaz = $bankaYatacakMinimum;
+                }
+
+                // USER REQ: İcra tutarını bankadan düş
+                $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
+
+                if (($kayit->sgk_yapilan_firma ?? '') === 'İŞKUR') {
+                    $bankaOdemesi = 0;
+                }
+
+                // 3. Elden ödeme = Net maaş - Banka - Sodexo - İcra - Diğer Ödeme
+                $eldenOdeme = max(0, $toplamPrim - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
+            } elseif ($isNetMaas) {
+                // ========== NET MAAŞ HESAPLAMA ==========
+                // Ödeme sıralaması:
+                // 1. Önce Sodexo hesaplanır (çalışma gününe göre oranlanır)
+                // 2. Sonra Bankaya yatacak tutar = Asgari ücret neti (günlük oranlı) - Bu tutar minimum garantidir
+                // 3. Sonra İcra kesintisi (elden ödemeden düşülür, bankadan değil)
+                // 4. En son Elden ödeme = Net maaş - Banka - Sodexo - İcra
+
+
+
+                // NOT: Net maaş günlük oranlama artık gerekli değil.
+                // $brutMaas zaten görev geçmişi kıst hesabını ve ücretsiz izin düşümünü içeriyor.
+                // Net maaş yukarıda doğru şekilde hesaplandı.
+
+                // Bankaya yatacak minimum tutar (asgari ücret netinden günlük oranlı)
+                // Bu tutar asla asgari ücretin çalışma gününe oranının altına düşmemeli
+                if ($fiiliCalismaGunu >= 30) {
+                    // Tam maaş - Asgari ücret neti bankaya
+                    $bankaYatacakMinimum = $asgariUcretNet;
+                } else {
+                    // Eksik gün - Asgari ücretin günlüğü × çalışma günü
+                    $gunlukAsgariUcret = $asgariUcretNet / 30;
+                    $bankaYatacakMinimum = $gunlukAsgariUcret * $fiiliCalismaGunu;
+                }
+
+                // 1. Önce Sodexo düşülür (zaten yukarıda hesaplandı)
+                // 2. Bankaya yatacak tutar = Minimum banka tutarı (icra kesintisi bankadan düşülmez!)
+                // Ancak net maaş - sodexo'dan büyük olamaz
+                $bankaIcinMaksimum = max(0, $netMaas - $sodexoOdemesi);
+                $bankaBaz = min($bankaYatacakMinimum, $bankaIcinMaksimum);
+
+                // Banka tutarı minimum asgari ücretın altına düşmemeli (yeterli bakiye varsa)
+                if ($bankaBaz < $bankaYatacakMinimum && $bankaIcinMaksimum >= $bankaYatacakMinimum) {
+                    $bankaBaz = $bankaYatacakMinimum;
+                }
+
+                // USER REQ: İcra tutarını bankadan düş
+                $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
+
+                if (($kayit->sgk_yapilan_firma ?? '') === 'İŞKUR') {
+                    $bankaOdemesi = 0;
+                }
+
+                // 3. Elden ödeme = Net maaş - Banka - Sodexo - İcra - Diğer Ödeme
+                $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
             } else {
-                // Eksik gün - Asgari ücretin günlüğü × çalışma günü
-                $gunlukAsgariUcret = $asgariUcretNet / 30;
-                $bankaYatacakMinimum = $gunlukAsgariUcret * $fiiliCalismaGunu;
+                // Normal hesaplama (Brüt)
+                // Ödeme sıralaması:
+                // 1. Önce Sodexo (çalışma gününe göre oranlanır - zaten yukarıda hesaplandı)
+                // 2. Sonra Banka = Minimum asgari ücret neti (çalışma gününe oranlı) - Bu tutar minimum garantidir
+                // 3. Sonra İcra kesintisi (elden ödemeden düşülür, bankadan değil)
+                // 4. En son Elden ödeme = Net maaş - Banka - Sodexo - İcra
+
+
+                // Bankaya yatacak minimum tutar (asgari ücretin çalışma gününe oranı)
+                if ($fiiliCalismaGunu >= 30) {
+                    $bankaYatacakMinimum = $asgariUcretNet;
+                } else {
+                    $gunlukAsgariUcret = $asgariUcretNet / 30;
+                    $bankaYatacakMinimum = $gunlukAsgariUcret * $fiiliCalismaGunu;
+                }
+
+                // 1. Önce Sodexo düşülür (zaten hesaplandı)
+                // 2. Bankaya yatacak tutar = Minimum asgari ücret tutarı
+                // Ancak net maaş - sodexo'dan büyük olamaz
+                $bankaIcinMaksimum = max(0, $netMaas - $sodexoOdemesi);
+                $bankaBaz = min($bankaYatacakMinimum, $bankaIcinMaksimum);
+
+                // Banka tutarı minimum asgari ücretin altına düşmemeli (yeterli bakiye varsa)
+                if ($bankaBaz < $bankaYatacakMinimum && $bankaIcinMaksimum >= $bankaYatacakMinimum) {
+                    $bankaBaz = $bankaYatacakMinimum;
+                }
+
+                // USER REQ: İcra tutarını bankadan düş
+                $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
+
+                if (($kayit->sgk_yapilan_firma ?? '') === 'İŞKUR') {
+                    $bankaOdemesi = 0;
+                }
+
+                // 3. Elden ödeme = Net maaş - Banka - Sodexo - İcra - Diğer Ödeme
+                $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
             }
-
-            // 1. Önce Sodexo düşülür (zaten yukarıda hesaplandı)
-            // 2. Bankaya yatacak tutar = Minimum banka tutarı (icra kesintisi bankadan düşülmez!)
-            // Ancak net maaş - sodexo'dan büyük olamaz
-            $bankaIcinMaksimum = max(0, $netMaas - $sodexoOdemesi);
-            $bankaBaz = min($bankaYatacakMinimum, $bankaIcinMaksimum);
-
-            // Banka tutarı minimum asgari ücretın altına düşmemeli (yeterli bakiye varsa)
-            if ($bankaBaz < $bankaYatacakMinimum && $bankaIcinMaksimum >= $bankaYatacakMinimum) {
-                $bankaBaz = $bankaYatacakMinimum;
-            }
-
-            // USER REQ: İcra tutarını bankadan düş
-            $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
-
-            if (($kayit->sgk_yapilan_firma ?? '') === 'İŞKUR') {
-                $bankaOdemesi = 0;
-            }
-
-            // 3. Elden ödeme = Net maaş - Banka - Sodexo - İcra - Diğer Ödeme
-            $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
-        } else {
-            // Normal hesaplama (Brüt)
-            // Ödeme sıralaması:
-            // 1. Önce Sodexo (çalışma gününe göre oranlanır - zaten yukarıda hesaplandı)
-            // 2. Sonra Banka = Minimum asgari ücret neti (çalışma gününe oranlı) - Bu tutar minimum garantidir
-            // 3. Sonra İcra kesintisi (elden ödemeden düşülür, bankadan değil)
-            // 4. En son Elden ödeme = Net maaş - Banka - Sodexo - İcra
-
-
-            // Bankaya yatacak minimum tutar (asgari ücretin çalışma gününe oranı)
-            if ($fiiliCalismaGunu >= 30) {
-                $bankaYatacakMinimum = $asgariUcretNet;
-            } else {
-                $gunlukAsgariUcret = $asgariUcretNet / 30;
-                $bankaYatacakMinimum = $gunlukAsgariUcret * $fiiliCalismaGunu;
-            }
-
-            // 1. Önce Sodexo düşülür (zaten hesaplandı)
-            // 2. Bankaya yatacak tutar = Minimum asgari ücret tutarı
-            // Ancak net maaş - sodexo'dan büyük olamaz
-            $bankaIcinMaksimum = max(0, $netMaas - $sodexoOdemesi);
-            $bankaBaz = min($bankaYatacakMinimum, $bankaIcinMaksimum);
-
-            // Banka tutarı minimum asgari ücretin altına düşmemeli (yeterli bakiye varsa)
-            if ($bankaBaz < $bankaYatacakMinimum && $bankaIcinMaksimum >= $bankaYatacakMinimum) {
-                $bankaBaz = $bankaYatacakMinimum;
-            }
-
-            // USER REQ: İcra tutarını bankadan düş
-            $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
-
-            if (($kayit->sgk_yapilan_firma ?? '') === 'İŞKUR') {
-                $bankaOdemesi = 0;
-            }
-
-            // 3. Elden ödeme = Net maaş - Banka - Sodexo - İcra - Diğer Ödeme
-            $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
         }
 
         // Hesaplama Snapshot (JSON)
