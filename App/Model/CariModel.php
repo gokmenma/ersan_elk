@@ -28,7 +28,7 @@ class CariModel extends Model
         $bindParams = [];
 
         if (!empty($search)) {
-            $where .= " AND (c.CariAdi LIKE :search OR c.Telefon LIKE :search OR c.Email LIKE :search)";
+            $where .= " AND (c.CariAdi LIKE :search OR c.firma LIKE :search OR c.Telefon LIKE :search OR c.Email LIKE :search)";
             $bindParams['search'] = "%$search%";
         }
 

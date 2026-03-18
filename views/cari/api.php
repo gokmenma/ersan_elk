@@ -50,6 +50,7 @@ if ($action == "cari-ajax-list") {
             $formattedData[] = [
                 "id" => $row->id,
                 "CariAdi" => $row->CariAdi,
+                "firma" => $row->firma ?: '-',
                 "Telefon" => $row->Telefon ?: '-',
                 "Email" => $row->Email ?: '-',
                 "Adres" => $row->Adres ?: '-',
@@ -76,6 +77,7 @@ if ($action == "cari-kaydet") {
         $data = [
             "id" => $id ?: 0,
             "CariAdi" => $_POST["CariAdi"],
+            "firma" => $_POST["firma"] ?? null,
             "Telefon" => $_POST["Telefon"],
             "Email" => $_POST["Email"],
             "Adres" => $_POST["Adres"],

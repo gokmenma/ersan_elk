@@ -36,6 +36,7 @@ $(document).ready(function () {
         columns: [
             { data: "id", className: "text-center" },
             { data: "CariAdi" },
+            { data: "firma" },
             { data: "Telefon", className: "text-center" },
             { data: "Email" },
             { data: "Adres" },
@@ -101,6 +102,7 @@ $(document).ready(function () {
                     <div class="mobile-card-icon">${initial}</div>
                     <div class="mobile-card-content">
                         <div class="mobile-card-title">${item.CariAdi}</div>
+                        ${item.firma && item.firma !== '-' ? `<div class="text-muted small mb-1" style="font-size: 10px;">${item.firma}</div>` : ''}
                         <div class="mobile-card-subtitle"><i class="bx bx-phone me-1"></i>${item.Telefon || '-'}</div>
                     </div>
                     <div class="mobile-card-right">
@@ -155,6 +157,7 @@ $(document).ready(function () {
                 $('#cariForm')[0].reset();
                 $('#cari_id').val(id);
                 $('#CariAdi').val(res.CariAdi);
+                $('#firma').val(res.firma);
                 $('#Telefon').val(res.Telefon);
                 $('#Email').val(res.Email);
                 $('#Adres').val(res.Adres);

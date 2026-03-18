@@ -44,8 +44,19 @@ class PersonelKesintileriModel extends Model
             }
         } elseif ($mode === 'donem') {
             if (!empty($filters['filter_kesinti_donem'])) {
-                $where .= " AND (pk.tekrar_tipi = 'surekli' OR pk.donem_id = ?)";
-                $params[] = $filters['filter_kesinti_donem'];
+                $donem_id = $filters['filter_kesinti_donem'];
+                $where .= " AND (
+                    (pk.tekrar_tipi = 'tek_sefer' AND pk.donem_id = ?) 
+                    OR 
+                    (pk.tekrar_tipi = 'surekli' AND EXISTS (
+                        SELECT 1 FROM bordro_donemi bd2 
+                        WHERE bd2.id = ? 
+                        AND pk.baslangic_donemi <= bd2.bitis_tarihi 
+                        AND (pk.bitis_donemi IS NULL OR pk.bitis_donemi >= bd2.baslangic_tarihi)
+                    ))
+                )";
+                $params[] = $donem_id;
+                $params[] = $donem_id;
             }
         } elseif ($mode === 'ay_yil') {
             if (!empty($filters['filter_kesinti_ay_yil'])) {

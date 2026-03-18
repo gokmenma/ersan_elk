@@ -260,6 +260,7 @@ $title = 'Cari Yönetimi';
                             <tr>
                                 <th style="width: 40px;">#</th>
                                 <th>Cari Adı</th>
+                                <th>Firma</th>
                                 <th>Telefon</th>
                                 <th>Email</th>
                                 <th>Adres</th>
@@ -322,6 +323,9 @@ $title = 'Cari Yönetimi';
                 <div class="modal-body px-4 pt-4 pb-2">
                     <div class="mb-3">
                         <?php echo Form::FormFloatInput("text", "CariAdi", "", "Cari Adı", "Cari Adı", "bx bx-user", "form-control", true); ?>
+                    </div>
+                    <div class="mb-3">
+                        <?php echo Form::FormFloatInput("text", "firma", "", "Firma", "Firma / Ünvan", "bx bx-building", "form-control", false); ?>
                     </div>
                     <div class="mb-3">
                         <?php echo Form::FormFloatInput("text", "Telefon", "", "Telefon", "Telefon", "bx bx-phone", "form-control"); ?>

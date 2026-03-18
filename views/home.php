@@ -734,11 +734,11 @@ if (Gate::allows("ana_sayfa")) {
                 <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK
                     MÜHÜRLEME</p>
                 <h4 class="mb-0 fw-bold bordro-text-heading stat-value"
-                    data-daily="<?php echo $dailyWorkStats->muhurleme ?? 0; ?>"
-                    data-monthly="<?php echo $monthlyWorkStats->muhurleme ?? 0; ?>" data-label-daily="GÜNLÜK MÜHÜRLEME"
+                    data-daily="<?php echo (int)($dailyWorkStats->muhurleme ?? 0); ?>"
+                    data-monthly="<?php echo (int)($monthlyWorkStats->muhurleme ?? 0); ?>" data-label-daily="GÜNLÜK MÜHÜRLEME"
                     data-label-monthly="AYLIK MÜHÜRLEME" data-sub-daily="Bugün yapılan mühürleme"
                     data-sub-monthly="Bu ay yapılan mühürleme">
-                    <?php echo $dailyWorkStats->muhurleme ?? 0; ?>
+                    <?php echo (int)($dailyWorkStats->muhurleme ?? 0); ?>
                 </h4>
                 <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Bugün yapılan mühürleme
                 </div>
@@ -785,11 +785,11 @@ if (Gate::allows("ana_sayfa")) {
                 <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK
                     KESME AÇMA</p>
                 <h4 class="mb-0 fw-bold bordro-text-heading stat-value"
-                    data-daily="<?php echo $dailyWorkStats->kesme_acma ?? 0; ?>"
-                    data-monthly="<?php echo $monthlyWorkStats->kesme_acma ?? 0; ?>" data-label-daily="GÜNLÜK KESME AÇMA"
+                    data-daily="<?php echo (int)($dailyWorkStats->kesme_acma ?? 0); ?>"
+                    data-monthly="<?php echo (int)($monthlyWorkStats->kesme_acma ?? 0); ?>" data-label-daily="GÜNLÜK KESME AÇMA"
                     data-label-monthly="AYLIK KESME AÇMA" data-sub-daily="Bugün yapılan kesme/açma"
                     data-sub-monthly="Bu ay yapılan kesme/açma">
-                    <?php echo $dailyWorkStats->kesme_acma ?? 0; ?>
+                    <?php echo (int)($dailyWorkStats->kesme_acma ?? 0); ?>
                 </h4>
                 <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Bugün yapılan kesme/açma
                 </div>
@@ -833,11 +833,11 @@ if (Gate::allows("ana_sayfa")) {
                 </div>
                 <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK
                     ENDEKS OKUMA</p>
-                <h4 class="mb-0 fw-bold bordro-text-heading stat-value" data-daily="<?php echo $dailyReadingTotal ?? 0; ?>"
-                    data-monthly="<?php echo $monthlyReadingTotal ?? 0; ?>" data-label-daily="GÜNLÜK ENDEKS OKUMA"
+                <h4 class="mb-0 fw-bold bordro-text-heading stat-value" data-daily="<?php echo (int)($dailyReadingTotal ?? 0); ?>"
+                    data-monthly="<?php echo (int)($monthlyReadingTotal ?? 0); ?>" data-label-daily="GÜNLÜK ENDEKS OKUMA"
                     data-label-monthly="AYLIK ENDEKS OKUMA" data-sub-daily="Bugün okunan endeksler"
                     data-sub-monthly="Bu ay okunan endeksler">
-                    <?php echo $dailyReadingTotal ?? 0; ?>
+                    <?php echo (int)($dailyReadingTotal ?? 0); ?>
                 </h4>
                 <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Bugün okunan endeksler
                 </div>
@@ -882,11 +882,11 @@ if (Gate::allows("ana_sayfa")) {
                     <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK
                         SAYAÇ DEĞİŞİMİ</p>
                     <h4 class="mb-0 fw-bold bordro-text-heading stat-value"
-                        data-daily="<?php echo $dailyWorkStats->sayac_degisimi ?? 0; ?>"
-                        data-monthly="<?php echo $monthlyWorkStats->sayac_degisimi ?? 0; ?>"
+                        data-daily="<?php echo (int)($dailyWorkStats->sayac_degisimi ?? 0); ?>"
+                        data-monthly="<?php echo (int)($monthlyWorkStats->sayac_degisimi ?? 0); ?>"
                         data-label-daily="GÜNLÜK SAYAÇ DEĞİŞİMİ" data-label-monthly="AYLIK SAYAÇ DEĞİŞİMİ"
                         data-sub-daily="Bugün yapılan sayaç değişimi" data-sub-monthly="Bu ay yapılan sayaç değişimi">
-                        <?php echo $dailyWorkStats->sayac_degisimi ?? 0; ?>
+                        <?php echo (int)($dailyWorkStats->sayac_degisimi ?? 0); ?>
                     </h4>
                     <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Bugün yapılan sayaç
                         değişimi</div>
@@ -928,11 +928,11 @@ if (Gate::allows("ana_sayfa")) {
                         KAÇAK
                     </p>
                     <h4 class="mb-0 fw-bold bordro-text-heading stat-value"
-                        data-daily="<?php echo $kacakDailyTotal->toplam ?? 0; ?>"
-                        data-monthly="<?php echo $kacakMonthlyTotal->toplam ?? 0; ?>" data-label-daily="GÜNLÜK KAÇAK"
+                        data-daily="<?php echo (int)($kacakDailyTotal->toplam ?? 0); ?>"
+                        data-monthly="<?php echo (int)($kacakMonthlyTotal->toplam ?? 0); ?>" data-label-daily="GÜNLÜK KAÇAK"
                         data-label-monthly="AYLIK KAÇAK" data-sub-daily="Bugün tespit edilen/girilen"
                         data-sub-monthly="Bu ay tespit edilen/girilen">
-                        <?php echo $kacakDailyTotal->toplam ?? 0; ?>
+                        <?php echo (int)($kacakDailyTotal->toplam ?? 0); ?>
                     </h4>
                     <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Bugün tespit edilen/girilen
                     </div>

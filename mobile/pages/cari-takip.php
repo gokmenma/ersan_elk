@@ -72,7 +72,7 @@ if (!function_exists('formatMoneyCariTakip')) {
             $bakiyeLabel = $bakiye < 0 ? 'BORÇLU' : ($bakiye > 0 ? 'ALACAKLI' : 'BAKİYE YOK');
             $initial = mb_strtoupper(mb_substr($cari->CariAdi, 0, 1, 'UTF-8'), 'UTF-8');
             $encId = Security::encrypt($cari->id);
-            $searchString = mb_strtolower($cari->CariAdi . ' ' . $cari->Telefon . ' ' . $cari->Email, 'UTF-8');
+            $searchString = mb_strtolower($cari->CariAdi . ' ' . $cari->firma . ' ' . $cari->Telefon . ' ' . $cari->Email, 'UTF-8');
         ?>
         <div class="relative cari-item-container overflow-hidden rounded-xl shadow-sm">
             <!-- Delete Action (revealed on swipe right) -->
@@ -104,6 +104,9 @@ if (!function_exists('formatMoneyCariTakip')) {
                 <!-- Info -->
                 <div class="ml-3 flex-1 min-w-0">
                     <h4 class="font-semibold text-[13px] text-slate-900 dark:text-white truncate pb-0.5"><?= htmlspecialchars($cari->CariAdi) ?></h4>
+                    <?php if(!empty($cari->firma)): ?>
+                        <div class="text-[10px] text-slate-400 dark:text-slate-500 truncate mb-1"><?= htmlspecialchars($cari->firma) ?></div>
+                    <?php endif; ?>
                     <div class="flex items-center text-[10px] text-slate-500 dark:text-slate-400 gap-1 truncate font-medium">
                         <span class="material-symbols-outlined text-[12px]">call</span>
                         <?= htmlspecialchars($cari->Telefon ?: '-') ?>
@@ -181,6 +184,14 @@ if (!function_exists('formatMoneyCariTakip')) {
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-lg">person</span>
                         <input type="text" name="CariAdi" required class="w-full pl-10 pr-3 py-2.5 bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm placeholder-slate-300">
+                    </div>
+                </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Firma / Ünvan</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-lg">corporate_fare</span>
+                        <input type="text" name="firma" class="w-full pl-10 pr-3 py-2.5 bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm placeholder-slate-300">
                     </div>
                 </div>
                 
@@ -373,6 +384,7 @@ window.editCari = function(id) {
             const form = document.getElementById('cariForm');
             form.querySelector('input[name="cari_id"]').value = id;
             form.querySelector('input[name="CariAdi"]').value = data.CariAdi || '';
+            form.querySelector('input[name="firma"]').value = data.firma || '';
             form.querySelector('input[name="Telefon"]').value = data.Telefon || '';
             form.querySelector('input[name="Email"]').value = data.Email || '';
             form.querySelector('textarea[name="Adres"]').value = data.Adres || '';

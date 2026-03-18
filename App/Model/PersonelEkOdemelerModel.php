@@ -48,8 +48,19 @@ class PersonelEkOdemelerModel extends Model
         } elseif ($mode === 'donem') {
             // Dönem Filtresi
             if (!empty($filters['filter_ek_donem'])) {
-                $where .= " AND (peo.tekrar_tipi = 'surekli' OR peo.donem_id = ?)";
-                $params[] = $filters['filter_ek_donem'];
+                $donem_id = $filters['filter_ek_donem'];
+                $where .= " AND (
+                    (peo.tekrar_tipi = 'tek_sefer' AND peo.donem_id = ?) 
+                    OR 
+                    (peo.tekrar_tipi = 'surekli' AND EXISTS (
+                        SELECT 1 FROM bordro_donemi bd2 
+                        WHERE bd2.id = ? 
+                        AND peo.baslangic_donemi <= bd2.bitis_tarihi 
+                        AND (peo.bitis_donemi IS NULL OR peo.bitis_donemi >= bd2.baslangic_tarihi)
+                    ))
+                )";
+                $params[] = $donem_id;
+                $params[] = $donem_id;
             }
         } elseif ($mode === 'ay_yil') {
             // Ay-Yıl Filtresi
