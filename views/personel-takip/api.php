@@ -444,6 +444,18 @@ try {
 
             $personeller = $HareketModel->getTumPersonelDurumu($firma_id, $tarih_req, $departman);
 
+            // Gecikme açıklamalarını getir
+            $stmt_aciklama = $db->prepare("SELECT a.*, u1.adi_soyadi as ekleyen_ad, u2.adi_soyadi as guncelleyen_ad 
+                                         FROM personel_takip_aciklamalar a 
+                                         LEFT JOIN users u1 ON a.ekleyen_kullanici_id = u1.id 
+                                         LEFT JOIN users u2 ON a.guncelleyen_kullanici_id = u2.id 
+                                         WHERE a.tarih = :tarih");
+            $stmt_aciklama->execute([':tarih' => $tarih_req]);
+            $aciklamalar = [];
+            while ($row = $stmt_aciklama->fetch(PDO::FETCH_ASSOC)) {
+                $aciklamalar[$row['personel_id']] = $row;
+            }
+
             $gec_kalanlar = [];
             $gun = $tarih_req;
 
@@ -525,13 +537,18 @@ try {
                 }
 
                 if ($gec_kaldi) {
+                    $aciklama_bilgi = $aciklamalar[$p->personel_id] ?? null;
                     $gec_kalanlar[] = [
                         'personel_id' => $p->personel_id,
                         'adi_soyadi' => $p->adi_soyadi,
                         'baslama_saati' => $baslama_saati,
                         'gecikme' => $gecikme_text,
                         'gecikme_dk' => $gecikme_dk,
-                        'durum' => $durum_text
+                        'durum' => $durum_text,
+                        'aciklama' => $aciklama_bilgi ? $aciklama_bilgi['aciklama'] : '',
+                        'ekleyen_ad' => $aciklama_bilgi ? $aciklama_bilgi['ekleyen_ad'] : '',
+                        'guncelleyen_ad' => $aciklama_bilgi ? $aciklama_bilgi['guncelleyen_ad'] : '',
+                        'guncellenme_tarihi' => $aciklama_bilgi ? date('d.m.Y H:i', strtotime($aciklama_bilgi['guncellenme_tarihi'])) : ''
                     ];
                 }
             }
@@ -542,6 +559,61 @@ try {
             });
 
             response(true, $gec_kalanlar);
+            break;
+
+        case 'saveGecikmeAciklama':
+            $personel_id = $_POST['personel_id'] ?? null;
+            $tarih = $_POST['tarih'] ?? null;
+            $aciklama = $_POST['aciklama'] ?? '';
+            $user_id = $_SESSION['user_id'] ?? $_SESSION['id'] ?? null;
+
+            if (!$personel_id || !$tarih) {
+                response(false, null, 'Parametreler eksik');
+            }
+
+            // Mevcut kayıt var mı kontrol et
+            $stmt = $db->prepare("SELECT id FROM personel_takip_aciklamalar WHERE personel_id = :pid AND tarih = :tarih");
+            $stmt->execute([':pid' => $personel_id, ':tarih' => $tarih]);
+            $existing = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($existing) {
+                $sql = "UPDATE personel_takip_aciklamalar SET aciklama = :aciklama, guncelleyen_kullanici_id = :uid, guncellenme_tarihi = NOW() WHERE id = :id";
+                $stmt = $db->prepare($sql);
+                $res = $stmt->execute([':aciklama' => $aciklama, ':uid' => $user_id, ':id' => $existing['id']]);
+            } else {
+                $sql = "INSERT INTO personel_takip_aciklamalar (personel_id, tarih, aciklama, ekleyen_kullanici_id, guncelleyen_kullanici_id) VALUES (:pid, :tarih, :aciklama, :uid, :uid)";
+                $stmt = $db->prepare($sql);
+                $res = $stmt->execute([':pid' => $personel_id, ':tarih' => $tarih, ':aciklama' => $aciklama, ':uid' => $user_id]);
+            }
+
+            if ($res) {
+                response(true, null, 'Açıklama başarıyla kaydedildi');
+            } else {
+                response(false, null, 'Kayıt sırasında hata oluştu');
+            }
+            break;
+
+        case 'getGecikmeGecmisi':
+            $personel_id = $_POST['personel_id'] ?? null;
+            if (!$personel_id) {
+                response(false, null, 'Parametre eksik');
+            }
+
+            $sql = "SELECT a.*, u1.adi_soyadi as ekleyen_ad 
+                    FROM personel_takip_aciklamalar a 
+                    LEFT JOIN users u1 ON a.guncelleyen_kullanici_id = u1.id 
+                    WHERE a.personel_id = :pid 
+                    ORDER BY a.tarih DESC LIMIT 10";
+            $stmt = $db->prepare($sql);
+            $stmt->execute([':pid' => $personel_id]);
+            $history = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            foreach($history as &$h) {
+                $h['tarih_format'] = date('d.m.Y', strtotime($h['tarih']));
+                $h['guncellenme_format'] = date('d.m.Y H:i', strtotime($h['guncellenme_tarihi']));
+            }
+
+            response(true, $history);
             break;
 
         case 'getHomeStatsDetail':

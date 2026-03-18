@@ -319,6 +319,8 @@ foreach ($departmanlar as $dept) {
                                             <th class="text-center">Başlama Saati</th>
                                             <th class="text-center">Gecikme Süresi</th>
                                             <th class="text-center">Durum</th>
+                                            <th>Açıklama / Bilgi</th>
+                                            <th class="text-center">İşlem</th>
                                         </tr>
                                     </thead>
                                     <tbody id="gecKalanlarBody">
@@ -397,6 +399,46 @@ foreach ($departmanlar as $dept) {
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Gecikme Açıklama Modalı -->
+<div class="modal fade" id="aciklamaModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bx bx-comment-detail me-2"></i> Bilgim Var / Açıklama Ekle</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="aciklamaForm">
+                    <input type="hidden" id="aciklamaPersonelId">
+                    <input type="hidden" id="aciklamaTarih">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Personel</label>
+                        <div id="aciklamaPersonelAd" class="form-control-plaintext bg-light px-2 rounded"></div>
+                    </div>
+                    <div class="mb-3">
+                        <label for="gecikmeAciklamaText" class="form-label fw-bold">Açıklama</label>
+                        <textarea class="form-control" id="gecikmeAciklamaText" rows="4" placeholder="Gecikme sebebini yazınız..."></textarea>
+                    </div>
+                </form>
+
+                <hr>
+                <div class="mt-3">
+                    <label class="form-label fw-bold text-muted small"><i class="bx bx-history me-1"></i> Son 10 Açıklama Geçmişi</label>
+                    <div id="gecikmeHistoryList" class="overflow-auto" style="max-height: 200px;">
+                        <div class="text-center p-3 text-muted">Geçmiş yükleniyor...</div>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-success" onclick="saveAciklama()">
+                    <i class="bx bx-save me-1"></i> Kaydet
+                </button>
             </div>
         </div>
     </div>
@@ -975,11 +1017,26 @@ foreach ($departmanlar as $dept) {
             if (result.success && result.data && result.data.length > 0) {
                 let html = '';
                 result.data.forEach(function (p) {
+                    let aciklamaHtml = '-';
+                    if (p.aciklama) {
+                        aciklamaHtml = '<div class="small">' +
+                            '<strong>' + p.aciklama + '</strong><br>' +
+                            '<span class="text-muted" style="font-size: 0.75rem;">' +
+                            '<i class="bx bx-user me-1"></i>' + p.guncelleyen_ad + ' (' + p.guncellenme_tarihi + ')' +
+                            '</span></div>';
+                    }
+
                     html += '<tr>';
                     html += '<td><strong>' + p.adi_soyadi + '</strong></td>';
                     html += '<td class="text-center">' + p.baslama_saati + '</td>';
                     html += '<td class="text-center"><span class="badge bg-soft-danger text-danger">' + p.gecikme + '</span></td>';
                     html += '<td class="text-center">' + p.durum + '</td>';
+                    html += '<td>' + aciklamaHtml + '</td>';
+                    html += '<td class="text-center">' +
+                        '<button class="btn btn-sm btn-soft-success" onclick="openAciklamaModal(' + p.personel_id + ', \'' + p.adi_soyadi + '\', \'' + (p.aciklama || '') + '\')">' +
+                        '<i class="bx bx-check-double me-1"></i> Bilgim Var' +
+                        '</button>' +
+                        '</td>';
                     html += '</tr>';
                 });
                 tbody.innerHTML = html;
@@ -1096,8 +1153,98 @@ foreach ($departmanlar as $dept) {
             btn.disabled = false;
         }, 1000);
     }
+    function openAciklamaModal(personelId, adSoyad, mevcutAciklama) {
+        document.getElementById('aciklamaPersonelId').value = personelId;
+        document.getElementById('aciklamaPersonelAd').textContent = adSoyad;
+        document.getElementById('gecikmeAciklamaText').value = mevcutAciklama;
+        
+        const tarihRaw = document.getElementById('gecKalmaTarih').value;
+        const normalizeToISO = (str) => {
+            if (str && str.includes('.')) {
+                const p = str.split('.');
+                return `${p[2]}-${p[1]}-${p[0]}`;
+            }
+            return str;
+        };
+        document.getElementById('aciklamaTarih').value = normalizeToISO(tarihRaw);
 
+        loadGecikmeHistory(personelId);
 
+        new bootstrap.Modal(document.getElementById('aciklamaModal')).show();
+    }
+
+    async function loadGecikmeHistory(personelId) {
+        const historyList = document.getElementById('gecikmeHistoryList');
+        historyList.innerHTML = '<div class="text-center p-3 text-muted"><i class="bx bx-loader-alt bx-spin me-1"></i> Yükleniyor...</div>';
+
+        try {
+            const response = await fetch('views/personel-takip/api.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'action=getGecikmeGecmisi&personel_id=' + personelId
+            });
+            const result = await response.json();
+
+            if (result.success && result.data.length > 0) {
+                let html = '<ul class="list-group list-group-flush">';
+                result.data.forEach(function(h) {
+                    html += `<li class="list-group-item p-2 border-bottom">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="badge bg-soft-info text-info small">${h.tarih_format}</span>
+                                    <span class="text-muted" style="font-size: 0.7rem;">${h.ekleyen_ad} | ${h.guncellenme_format}</span>
+                                </div>
+                                <div class="fw-bold small">${h.aciklama}</div>
+                             </li>`;
+                });
+                html += '</ul>';
+                historyList.innerHTML = html;
+            } else {
+                historyList.innerHTML = '<div class="text-center p-3 text-muted">Geçmiş açıklama bulunamadı.</div>';
+            }
+        } catch (error) {
+            console.error('Geçmiş yükleme hatası:', error);
+            historyList.innerHTML = '<div class="text-center p-3 text-danger">Yüklenirken hata oluştu.</div>';
+        }
+    }
+
+    async function saveAciklama() {
+        const personelId = document.getElementById('aciklamaPersonelId').value;
+        const tarih = document.getElementById('aciklamaTarih').value;
+        const aciklama = document.getElementById('gecikmeAciklamaText').value;
+
+        if (!aciklama.trim()) {
+            Swal.fire('Uyarı', 'Lütfen bir açıklama yazınız.', 'warning');
+            return;
+        }
+
+        try {
+            const response = await fetch('views/personel-takip/api.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'action=saveGecikmeAciklama&personel_id=' + personelId + 
+                      '&tarih=' + tarih + 
+                      '&aciklama=' + encodeURIComponent(aciklama)
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                bootstrap.Modal.getInstance(document.getElementById('aciklamaModal')).hide();
+                Swal.fire({
+                    title: 'Başarılı',
+                    text: result.message,
+                    icon: 'success',
+                    timer: 1500,
+                    showConfirmButton: false
+                });
+                loadGecKalanlar(); // Tabloyu yenile
+            } else {
+                Swal.fire('Hata', result.message || 'Bir hata oluştu', 'error');
+            }
+        } catch (error) {
+            console.error('Açıklama kaydedilirken hata:', error);
+            Swal.fire('Hata', 'Sunucu ile iletişim kurulurken bir hata oluştu.', 'error');
+        }
+    }
 
 </script>
 
