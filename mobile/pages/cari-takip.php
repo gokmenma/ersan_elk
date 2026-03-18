@@ -172,7 +172,12 @@ if (!function_exists('formatMoneyCariTakip')) {
             
             <div class="space-y-3">
                 <div>
-                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Cari Adı*</label>
+                    <div class="flex items-center justify-between mb-1">
+                        <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400">Cari Adı*</label>
+                        <button type="button" onclick="window.selectContact()" id="contactPickerBtn" class="hidden flex items-center gap-1 text-primary text-[10px] bg-primary/5 px-2 py-1 rounded-full active:bg-primary/10 transition-colors">
+                            <span class="material-symbols-outlined text-[14px]">contact_page</span> Rehberden Seç
+                        </button>
+                    </div>
                     <div class="relative">
                         <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-lg">person</span>
                         <input type="text" name="CariAdi" required class="w-full pl-10 pr-3 py-2.5 bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm placeholder-slate-300">
@@ -511,4 +516,48 @@ window.submitCariForm = function(e) {
 window.submitHizliIslemForm = function(e) {
     handleApiSubmit(e, '../views/cari/api.php', 'islemSubmitBtn', '<span class=\"material-symbols-outlined text-lg\">save</span> Kaydet');
 };
+
+/**
+ * Contact Picker API integration
+ */
+window.selectContact = async function() {
+    const isSupported = 'contacts' in navigator && 'select' in navigator.contacts;
+    if (!isSupported) {
+        return;
+    }
+
+    const props = ['name', 'tel'];
+    const opts = { multiple: false };
+
+    try {
+        const contacts = await navigator.contacts.select(props, opts);
+        if (contacts.length > 0) {
+            const contact = contacts[0];
+            const name = contact.name && contact.name[0] ? contact.name[0] : '';
+            const tel = contact.tel && contact.tel[0] ? contact.tel[0] : '';
+            
+            const form = document.getElementById('cariForm');
+            if (name) {
+                // Remove any leading/trailing whitespace
+                form.querySelector('input[name="CariAdi"]').value = name.trim();
+            }
+            if (tel) {
+                // Clean phone number (keep only digits and +)
+                const cleanTel = tel.replace(/[^\d+]/g, '');
+                form.querySelector('input[name="Telefon"]').value = cleanTel;
+            }
+        }
+    } catch (ex) {
+        console.warn('Contact selection cancelled or failed:', ex);
+    }
+};
+
+// Initial support check for Contact Picker
+document.addEventListener('DOMContentLoaded', () => {
+    const isSupported = 'contacts' in navigator && 'select' in navigator.contacts;
+    if (isSupported) {
+        const btn = document.getElementById('contactPickerBtn');
+        if (btn) btn.classList.remove('hidden');
+    }
+});
 </script>
