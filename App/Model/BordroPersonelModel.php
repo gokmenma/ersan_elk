@@ -946,18 +946,33 @@ class BordroPersonelModel extends Model
 
         if (empty($isEmriSonucuMap)) return;
 
-        // 4. Sayaç değişimlerini is_emri_sonucu bazında grupla
+        // 4. Sayaç değişimlerini is_emri_sonucu bazında paylaştırmalı grupla
+        // Not: is_sayisi kolonu int olduğu için, aynı islem_id kökünü paylaşan personel sayısına göre 1/n ağırlık hesaplanır.
+        $firmaId = intval($personel->firma_id ?? ($_SESSION['firma_id'] ?? 0));
         $sql = $this->db->prepare("
             SELECT 
-                isemri_sonucu,
-                SUM(is_sayisi) as adet
-            FROM sayac_degisim
-            WHERE personel_id = ? 
-            AND tarih BETWEEN ? AND ?
-            AND silinme_tarihi IS NULL
-            GROUP BY isemri_sonucu
+                t.isemri_sonucu,
+                ROUND(SUM(CASE WHEN pay.personel_sayisi > 0 THEN 1.0 / pay.personel_sayisi ELSE 0 END), 4) as adet
+            FROM sayac_degisim t
+            JOIN (
+                SELECT 
+                    tarih,
+                    SUBSTRING_INDEX(islem_id, '_', 1) as ortak_islem_id,
+                    COUNT(*) as personel_sayisi
+                FROM sayac_degisim
+                WHERE firma_id = ?
+                AND tarih BETWEEN ? AND ?
+                AND silinme_tarihi IS NULL
+                GROUP BY tarih, SUBSTRING_INDEX(islem_id, '_', 1)
+            ) pay ON pay.tarih = t.tarih
+                AND pay.ortak_islem_id = SUBSTRING_INDEX(t.islem_id, '_', 1)
+            WHERE t.firma_id = ?
+            AND t.personel_id = ? 
+            AND t.tarih BETWEEN ? AND ?
+            AND t.silinme_tarihi IS NULL
+            GROUP BY t.isemri_sonucu
         ");
-        $sql->execute([$personel_id, $baslangic_tarihi, $bitis_tarihi]);
+        $sql->execute([$firmaId, $baslangic_tarihi, $bitis_tarihi, $firmaId, $personel_id, $baslangic_tarihi, $bitis_tarihi]);
         $veriler = $sql->fetchAll(PDO::FETCH_OBJ);
 
         // 5. Kaydet
@@ -969,7 +984,10 @@ class BordroPersonelModel extends Model
 
             $birimUcret = $isEmriSonucuMap[$isemriSonucu]['birim_ucret'];
             $toplamTutar = round($adet * $birimUcret, 2);
-            $aciklama = "[Sayaç] $isemriSonucu (" . round($adet) . " Adet x " . number_format($birimUcret, 2, ',', '.') . " ₺)";
+            $adetText = (abs($adet - round($adet)) < 0.0001)
+                ? number_format($adet, 0, ',', '.')
+                : number_format($adet, 2, ',', '.');
+            $aciklama = "[Sayaç] $isemriSonucu (" . $adetText . " Adet x " . number_format($birimUcret, 2, ',', '.') . " ₺)";
 
             $this->db->prepare("
                 INSERT INTO personel_ek_odemeler 
