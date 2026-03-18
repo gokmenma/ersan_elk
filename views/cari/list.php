@@ -52,8 +52,8 @@ $title = 'Cari Yönetimi';
                             <i class="bx bx-trending-up fs-4 text-danger"></i>
                         </div>
                     </div>
-                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM BORÇ</p>
-                    <p class="text-danger mb-0 small fw-bold d-md-none" style="font-size: 10px;">TOPLAM BORÇ</p>
+                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">TOP. ALDIM</p>
+                    <p class="text-danger mb-0 small fw-bold d-md-none" style="font-size: 10px;">TOP. ALDIM</p>
                     <h5 class="mb-0 fw-bold bordro-text-heading mt-md-0 mt-1">
                         <span id="toplam_borc" style="font-size: 0.9rem;">0,00</span> <span style="font-size: 0.7rem; font-weight: 600;">₺</span>
                     </h5>
@@ -70,8 +70,8 @@ $title = 'Cari Yönetimi';
                             <i class="bx bx-trending-down fs-4" style="color: #2a9d8f;"></i>
                         </div>
                     </div>
-                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM ALACAK</p>
-                    <p class="text-success mb-0 small fw-bold d-md-none" style="font-size: 10px;">TOPLAM ALACAK</p>
+                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">TOP. VERDİM</p>
+                    <p class="text-success mb-0 small fw-bold d-md-none" style="font-size: 10px;">TOP. VERDİM</p>
                     <h5 class="mb-0 fw-bold bordro-text-heading mt-md-0 mt-1">
                         <span id="toplam_alacak" style="font-size: 0.9rem;">0,00</span> <span style="font-size: 0.7rem; font-weight: 600;">₺</span>
                     </h5>
@@ -88,8 +88,8 @@ $title = 'Cari Yönetimi';
                             <i class="bx bx-briefcase fs-4 text-primary"></i>
                         </div>
                     </div>
-                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">BAKİYE</p>
-                    <p class="text-primary mb-0 small fw-bold d-md-none" id="mobile_bakiye_title" style="font-size: 10px;">GÜNCEL BAKİYE</p>
+                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">DURUM</p>
+                    <p class="text-primary mb-0 small fw-bold d-md-none" id="mobile_bakiye_title" style="font-size: 10px;">BENİM DURUMUM</p>
                     <h5 class="mb-0 fw-bold bordro-text-heading mt-md-0 mt-1" id="bakiye_label_container">
                         <span id="genel_bakiye" style="font-size: 0.9rem;">0,00</span> <span style="font-size: 0.7rem; font-weight: 600;">₺</span>
                         <small id="bakiye_bilgi" style="font-size: 0.6rem; display: block;"></small>
@@ -369,10 +369,10 @@ $title = 'Cari Yönetimi';
                 <div class="modal-body px-4 pt-4 pb-2">
                     <div class="mb-4 d-flex justify-content-center gap-2">
                         <input type="radio" class="btn-check" name="type" id="type_aldim" value="aldim" autocomplete="off" checked>
-                        <label class="btn btn-outline-success flex-grow-1 fw-bold" for="type_aldim"><i class="bx bx-minus-circle me-1"></i>Aldım</label>
+                        <label class="btn btn-outline-danger flex-grow-1 fw-bold" for="type_aldim"><i class="bx bx-minus-circle me-1"></i>Aldım</label>
 
                         <input type="radio" class="btn-check" name="type" id="type_verdim" value="verdim" autocomplete="off">
-                        <label class="btn btn-outline-danger flex-grow-1 fw-bold" for="type_verdim"><i class="bx bx-plus-circle me-1"></i>Verdim</label>
+                        <label class="btn btn-outline-success flex-grow-1 fw-bold" for="type_verdim"><i class="bx bx-plus-circle me-1"></i>Verdim</label>
                     </div>
 
                     <div class="mb-3">

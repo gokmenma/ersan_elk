@@ -199,8 +199,8 @@ if ($action == "hizli-hareket-kaydet") {
             "islem_tarihi" => $tarih,
             "belge_no" => $belge_no,
             "aciklama" => $aciklama,
-            "borc" => ($type == 'verdim' ? $tutar : 0),
-            "alacak" => ($type == 'aldim' ? $tutar : 0)
+            "borc" => ($type == 'aldim' ? $tutar : 0),
+            "alacak" => ($type == 'verdim' ? $tutar : 0)
         ];
 
         $CariHareket->saveWithAttr($data);
@@ -233,7 +233,7 @@ if ($action == "hareket-getir") {
     if ($data) {
         $data->islem_tarihi = date('d.m.Y H:i', strtotime($data->islem_tarihi));
         $data->tutar = Helper::formattedMoney($data->borc > 0 ? $data->borc : $data->alacak);
-        $data->type = $data->borc > 0 ? 'verdim' : 'aldim';
+        $data->type = $data->borc > 0 ? 'aldim' : 'verdim';
     }
     
     echo json_encode($data);

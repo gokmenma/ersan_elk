@@ -12,7 +12,7 @@ $endDate = $_GET['end_date'] ?? Date::today();
 $dateRangeValue = $startDate . ' - ' . $endDate;
 
 $personeller = $Personel->all(false, 'puantaj');
-$personelOptions = ['' => 'Seçiniz'];
+$personelOptions = ['' => 'Tüm Personeller'];
 foreach ($personeller as $p) {
     $personelOptions[$p->id] = $p->adi_soyadi;
 }
@@ -53,31 +53,30 @@ $Puantaj = new PuantajModel('yapilan_isler_sorgu');
                 </div>
                 <div class="card-body">
                     <!-- Global Filters & Actions -->
-                    <div class="row g-3 align-items-end border-bottom pb-4 mb-4">
-                        <div class="col-lg-3">
+                    <div class="row g-2 align-items-end border-bottom pb-4 mb-4">
+                        <div class="col-lg-2">
                             <form method="GET" action="" id="filterForm">
                                 <input type="hidden" name="p" value="puantaj/sorgulama">
                                 <?php echo Form::FormDateRange('date_range', $dateRangeValue, 'Tarih Aralığı'); ?>
                             </form>
                         </div>
                         <div class="col-lg-3">
-                            <label class="form-label text-muted fw-bold small uppercase">Personel</label>
-                            <?php echo Form::FormSelect2('ekip_kodu', $personelOptions, '', '', 'users', 'key', '', 'form-select select2'); ?>
+                            <?php echo Form::FormSelect2('ekip_kodu', $personelOptions, '', 'Personel Seçiniz', 'users', 'key', '', 'form-select select2'); ?>
                         </div>
-                        <div class="col-lg-2">
-                            <button type="submit" form="filterForm" class="btn btn-primary w-100 fw-bold shadow-sm">
+                        <div class="col-lg-1">
+                            <button type="submit" form="filterForm" class="btn btn-primary w-100 fw-bold shadow-sm" style="padding: 11px 0;">
                                 <i class="mdi mdi-filter-variant me-1"></i> Filtrele
                             </button>
                         </div>
-                        <div class="col-lg-4 text-end">
-                            <div class="d-flex justify-content-end gap-2">
-                                <button type="button" class="btn btn-info fw-bold shadow-sm" id="btnTriggerOnlineSorgu">
+                        <div class="col-lg-6 text-end">
+                            <div class="d-inline-flex gap-1">
+                                <button type="button" class="btn btn-info btn-sm fw-bold shadow-sm" id="btnTriggerOnlineSorgu">
                                     <i class="mdi mdi-cloud-search-outline me-1"></i> Online Sorgula
                                 </button>
-                                <button type="button" class="btn btn-success fw-bold shadow-sm" id="btnTriggerExcel">
+                                <button type="button" class="btn btn-success btn-sm fw-bold shadow-sm" id="btnTriggerExcel">
                                     <i class="mdi mdi-file-excel me-1"></i> Excel
                                 </button>
-                                <button type="button" class="btn btn-danger fw-bold bulk-delete-main shadow-sm" style="display: none;">
+                                <button type="button" class="btn btn-danger btn-sm fw-bold bulk-delete-main shadow-sm" style="display: none;">
                                     <i class="mdi mdi-trash-can me-1"></i> Sil
                                 </button>
                             </div>
@@ -149,7 +148,7 @@ $Puantaj = new PuantajModel('yapilan_isler_sorgu');
 <!-- Modals for Online Query -->
 <div class="modal fade" id="modalOnlinePuantaj" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content border-0 shadow-lg">
+        <div class="modal-content border-0 shadow-lg text-start">
             <div class="modal-header bg-primary text-white">
                 <h5 class="modal-title text-white">Online Kesme / Açma Sorgula</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -171,7 +170,7 @@ $Puantaj = new PuantajModel('yapilan_isler_sorgu');
 
 <div class="modal fade" id="modalOnlineEndeks" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content border-0 shadow-lg">
+        <div class="modal-content border-0 shadow-lg text-start">
             <div class="modal-header bg-info text-white">
                 <h5 class="modal-title text-white">Online Endeks Okuma Sorgula</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -193,7 +192,7 @@ $Puantaj = new PuantajModel('yapilan_isler_sorgu');
 
 <div class="modal fade" id="modalOnlineSayac" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
-        <div class="modal-content border-0 shadow-lg">
+        <div class="modal-content border-0 shadow-lg text-start">
             <div class="modal-header bg-warning text-white">
                 <h5 class="modal-title text-white">Online Sayaç Değişimi Sorgula</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -217,7 +216,6 @@ $Puantaj = new PuantajModel('yapilan_isler_sorgu');
 $(document).ready(function() {
     var tables = {};
 
-    // Initializer for Range Flatpickr
     $(".flatpickr-range").flatpickr({
         mode: "range",
         locale: "tr",

@@ -73,13 +73,13 @@ $bakiye = $ozet->bakiye ?? 0;
                 </button>
                
                 <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
-                 <button type="button" class="btn  btn-outline-success btn-sm fw-semibold px-3 d-flex align-items-center" id="btnAldimDesktop">
-                    <i data-feather="plus-circle" class="me-1" style="width: 16px; height: 16px;"></i> Tahsilat
+                 <button type="button" class="btn  btn-outline-danger btn-sm fw-semibold px-3 d-flex align-items-center" id="btnAldimDesktop">
+                    <i data-feather="minus-circle" class="me-1" style="width: 16px; height: 16px;"></i> Aldım
                 </button>
                 <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
 
-                <button type="button" class="btn btn-outline-danger btn-sm fw-semibold px-3 d-flex align-items-center" id="btnVerdimDesktop">
-                    <i data-feather="minus-circle" class="me-1" style="width: 16px; height: 16px;"></i> Ödeme
+                <button type="button" class="btn btn-outline-success btn-sm fw-semibold px-3 d-flex align-items-center" id="btnVerdimDesktop">
+                    <i data-feather="plus-circle" class="me-1" style="width: 16px; height: 16px;"></i> Verdim
                 </button>
             </div>
             
@@ -107,8 +107,8 @@ $bakiye = $ozet->bakiye ?? 0;
                             <i data-feather="trending-up" class="text-danger"></i>
                         </div>
                     </div>
-                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM BORÇ</p>
-                    <p class="text-danger mb-0 small fw-bold d-md-none" style="font-size: 10px;">TOPLAM BORÇ</p>
+                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">TOP. ALDIM</p>
+                    <p class="text-danger mb-0 small fw-bold d-md-none" style="font-size: 10px;">TOP. ALDIM</p>
                     <h5 class="mb-0 fw-bold bordro-text-heading mt-md-0 mt-1">
                         <span id="toplam_borc_kart" style="font-size: 0.9rem;"><?php echo number_format($toplam_borc, 2, ',', '.'); ?></span> <span style="font-size: 0.7rem; font-weight: 600;">₺</span>
                     </h5>
@@ -125,8 +125,8 @@ $bakiye = $ozet->bakiye ?? 0;
                             <i data-feather="trending-down" style="color: #2a9d8f;"></i>
                         </div>
                     </div>
-                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM ALACAK</p>
-                    <p class="text-success mb-0 small fw-bold d-md-none" style="font-size: 10px;">TOPLAM ALACAK</p>
+                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">TOP. VERDİM</p>
+                    <p class="text-success mb-0 small fw-bold d-md-none" style="font-size: 10px;">TOP. VERDİM</p>
                     <h5 class="mb-0 fw-bold bordro-text-heading mt-md-0 mt-1">
                         <span id="toplam_alacak_kart" style="font-size: 0.9rem;"><?php echo number_format($toplam_alacak, 2, ',', '.'); ?></span> <span style="font-size: 0.7rem; font-weight: 600;">₺</span>
                     </h5>
@@ -143,11 +143,11 @@ $bakiye = $ozet->bakiye ?? 0;
                             <i data-feather="briefcase" id="bakiye_icon_color" class="<?php echo $bakiye < 0 ? 'text-danger' : 'text-success'; ?>"></i>
                         </div>
                     </div>
-                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">BAKİYE</p>
-                    <p class="text-primary mb-0 small fw-bold d-md-none" id="mobile_bakiye_title" style="font-size: 10px; color: <?php echo $bakiye < 0 ? '#f43f5e' : '#2a9d8f'; ?> !important;"><?php echo $bakiye < 0 ? 'GÜNCEL BORÇ' : 'GÜNCEL ALACAK'; ?></p>
+                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">BENİM DURUMUM</p>
+                    <p class="text-primary mb-0 small fw-bold d-md-none" id="mobile_bakiye_title" style="font-size: 10px; color: <?php echo $bakiye < 0 ? '#f43f5e' : '#2a9d8f'; ?> !important;"><?php echo $bakiye < 0 ? 'BENİM BORCUM' : 'BENİM ALACAĞIM'; ?></p>
                     <h5 class="mb-0 fw-bold bordro-text-heading mt-md-0 mt-1 <?php echo $bakiye < 0 ? 'text-danger' : 'text-success'; ?>" id="bakiye_label_container">
                         <span id="genel_bakiye_kart" style="font-size: 0.9rem;"><?php echo number_format(abs($bakiye), 2, ',', '.'); ?></span> <span style="font-size: 0.7rem; font-weight: 600;">₺</span>
-                        <small id="bakiye_status_text" style="font-size: 0.6rem; display: block;"><?php echo $bakiye < 0 ? '(Borç)' : ($bakiye > 0 ? '(Alacak)' : ''); ?></small>
+                        <small id="bakiye_status_text" style="font-size: 0.6rem; display: block;"><?php echo $bakiye < 0 ? '(B. Borçlu)' : ($bakiye > 0 ? '(B. Alacaklı)' : ''); ?></small>
                     </h5>
                 </div>
             </div>
@@ -285,11 +285,11 @@ $bakiye = $ozet->bakiye ?? 0;
                 z-index: 1000;
                 border-top: 1px solid #e9ecef;
             }
-            .btn-aldim { background: transparent; color: #198754; flex: 1; border: 1px solid #198754; font-weight: 600; height: 40px; border-radius: 6px; font-size: 12px; display: flex; align-items: center; justify-content: center; }
-            .btn-aldim:active { background: #198754; color: #fff; }
+            .btn-aldim { background: transparent; color: #dc3545; flex: 1; border: 1px solid #dc3545; font-weight: 600; height: 40px; border-radius: 6px; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+            .btn-aldim:active { background: #dc3545; color: #fff; }
             
-            .btn-verdim { background: transparent; color: #dc3545; flex: 1; border: 1px solid #dc3545; font-weight: 600; height: 40px; border-radius: 6px; font-size: 12px; display: flex; align-items: center; justify-content: center; }
-            .btn-verdim:active { background: #dc3545; color: #fff; }
+            .btn-verdim { background: transparent; color: #198754; flex: 1; border: 1px solid #198754; font-weight: 600; height: 40px; border-radius: 6px; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+            .btn-verdim:active { background: #198754; color: #fff; }
 
             /* Flatpickr Time input fix */
             .flatpickr-time input {
@@ -321,8 +321,8 @@ $bakiye = $ozet->bakiye ?? 0;
                                 <th class="text-center" style="width: 100px;">Tarih</th>
                                 <th style="width: 120px;">Belge No</th>
                                 <th>Açıklama</th>
-                                <th class="text-end" style="width: 150px;">Borç</th>
-                                <th class="text-end" style="width: 150px;">Alacak</th>
+                                <th class="text-end" style="width: 150px;">Aldım (-)</th>
+                                <th class="text-end" style="width: 150px;">Verdim (+)</th>
                                 <th class="text-end" style="width: 150px;">Yürüyen Bakiye</th>
                                 <th class="text-center" style="width: 80px;">İşlem</th>
                             </tr>
@@ -359,8 +359,8 @@ $bakiye = $ozet->bakiye ?? 0;
 
     <!-- Sabit Alt Butonlar -->
     <div class="bottom-actions">
-        <button class="btn-aldim" id="btnAldimMobile"><i data-feather="plus-circle" class="me-2" style="width: 16px;"></i>Tahsilat</button>
-        <button class="btn-verdim" id="btnVerdimMobile"><i data-feather="minus-circle" class="me-2" style="width: 16px;"></i>Ödeme</button>
+        <button class="btn-aldim" id="btnAldimMobile"><i data-feather="minus-circle" class="me-2" style="width: 16px;"></i>Aldım</button>
+        <button class="btn-verdim" id="btnVerdimMobile"><i data-feather="plus-circle" class="me-2" style="width: 16px;"></i>Verdim</button>
     </div>
 </div>
 

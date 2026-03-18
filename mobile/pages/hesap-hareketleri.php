@@ -69,16 +69,16 @@ if (!function_exists('formatMoneyCariTakip')) {
         <!-- Summary Mini Cards -->
         <div class="grid grid-cols-3 gap-2 mt-2 pt-3 border-t border-slate-100 dark:border-slate-800">
             <div class="text-center bg-rose-50/50 dark:bg-rose-900/10 rounded-lg py-2 flex flex-col items-center justify-center">
-                <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Top. Borç</p>
+                <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Top. Aldım</p>
                 <p class="font-bold text-rose-600 text-xs sm:text-sm truncate px-1 w-full"><?= formatMoneyCariTakip($toplam_borc) ?></p>
             </div>
             <div class="text-center bg-emerald-50/50 dark:bg-emerald-900/10 rounded-lg py-2 flex flex-col items-center justify-center">
-                <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Top. Alacak</p>
+                <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-0.5">Top. Verdim</p>
                 <p class="font-bold text-emerald-600 text-xs sm:text-sm truncate px-1 w-full"><?= formatMoneyCariTakip($toplam_alacak) ?></p>
             </div>
             <div class="text-center <?= $bakiye < 0 ? 'bg-rose-50/50 dark:bg-rose-900/10' : ($bakiye > 0 ? 'bg-emerald-50/50 dark:bg-emerald-900/10' : 'bg-slate-50/50 dark:bg-slate-800') ?> rounded-lg py-2 flex flex-col items-center justify-center">
-                <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-0.5"><?= $bakiye < 0 ? 'Güncel Borç' : ($bakiye > 0 ? 'Güncel Alacak' : 'Bakiye') ?></p>
-                <p class="font-bold <?= $bakiye < 0 ? 'text-rose-600' : ($bakiye > 0 ? 'text-emerald-600' : 'text-slate-600') ?> text-xs sm:text-sm truncate px-1 w-full"><?= absMoneyCariTakip($bakiye) ?></p>
+                <p class="text-[9px] font-bold text-slate-500 uppercase tracking-widest mb-0.5"><?= $bakiye < 0 ? 'BENİM BORCUM' : ($bakiye > 0 ? 'BENİM ALACAĞIM' : 'DURUM') ?></p>
+                <p class="font-bold <?= $bakiye < 0 ? 'text-rose-600' : ($bakiye > 0 ? 'text-emerald-600' : 'text-slate-600') ?> text-xs sm:text-sm truncate px-1 w-full"><?= ($bakiye < 0 ? '-' : '+') . absMoneyCariTakip($bakiye) ?></p>
             </div>
         </div>
 
@@ -132,7 +132,7 @@ if (!function_exists('formatMoneyCariTakip')) {
         <?php foreach ($hareketler as $h): 
             $isBorc = $h->borc > 0;
             $amt = $isBorc ? $h->borc : $h->alacak;
-            $icon = $isBorc ? 'do_not_disturb_on' : 'add_circle'; 
+            $icon = $isBorc ? 'remove_circle_outline' : 'add_circle_outline'; 
             $iconColor = $isBorc ? 'text-rose-500 bg-rose-50 dark:bg-rose-900/30' : 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/30';
             $dateFormatted = date('d.m.Y', strtotime($h->islem_tarihi));
             $timeFormatted = date('H:i', strtotime($h->islem_tarihi));
@@ -166,7 +166,7 @@ if (!function_exists('formatMoneyCariTakip')) {
                         <span class="material-symbols-outlined text-[22px]"><?= $icon ?></span>
                     </div>
                     <div>
-                        <p class="font-bold text-[12px] text-slate-800 dark:text-slate-300 leading-tight mb-0.5"><?= $isBorc ? 'Verdim' : 'Aldım' ?></p>
+                        <p class="font-bold text-[12px] text-slate-800 dark:text-slate-300 leading-tight mb-0.5"><?= $isBorc ? 'Aldım' : 'Verdim' ?></p>
                         <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 font-medium">
                             <span class="flex items-center gap-0.5"><span class="material-symbols-outlined text-[11px]">event</span> <?= $dateFormatted ?> <?= $timeFormatted ?></span>
                         </div>
@@ -174,12 +174,12 @@ if (!function_exists('formatMoneyCariTakip')) {
                 </div>
                 
                 <div class="flex flex-col items-end pl-2">
-                    <p class="font-bold text-sm <?= $isBorc ? 'text-slate-900 dark:text-white' : 'text-emerald-600 dark:text-emerald-400' ?>">
+                    <p class="font-bold text-sm <?= $isBorc ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400' ?>">
                         <?= $isBorc ? '-' : '+' ?><?= absMoneyCariTakip($amt) ?>
                     </p>
                     <div class="mt-0.5 flex items-center text-[9px] uppercase tracking-wide">
                         <span class="text-slate-400 mr-1">Bakiye:</span>
-                        <span class="font-bold <?= $cbColor ?>"><?= absMoneyCariTakip($currentBakiye) ?> <?= $currentBakiye < 0 ? '(B)' : ($currentBakiye > 0 ? '(A)' : '') ?></span>
+                        <span class="font-bold <?= $cbColor ?>"><?= ($currentBakiye < 0 ? '-' : '+') . absMoneyCariTakip($currentBakiye) ?></span>
                     </div>
                 </div>
             </div>
@@ -195,13 +195,13 @@ if (!function_exists('formatMoneyCariTakip')) {
     </div>
 
     <!-- Fixed Actions Bar inside page to override bottom nav -->
-    <div class="fixed bottom-[60px] left-0 right-0 px-4 py-3 bg-white/90 dark:bg-card-dark/90 backdrop-blur-md border-t border-slate-100 dark:border-slate-800 flex items-center gap-3 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] z-40 safe-area-bottom pb-nav">
-        <button onclick="window.openHizliIslem('<?= $cari_id_enc ?>', 'aldim')" class="flex-1 py-3 px-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform shadow-sm">
-            <span class="material-symbols-outlined text-[20px]">add_circle</span>
+    <div class="fixed bottom-[70px] left-0 right-0 px-4 py-3 bg-white/90 dark:bg-card-dark/90 backdrop-blur-md border-t border-slate-100 dark:border-slate-800 flex items-center gap-3 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] z-40 safe-area-bottom pb-nav">
+        <button onclick="window.openHizliIslem('<?= $cari_id_enc ?>', 'aldim')" class="flex-1 py-3 px-2 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/50 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform shadow-sm">
+            <span class="material-symbols-outlined text-[20px]">remove_circle_outline</span>
             <span class="text-sm">Aldım</span>
         </button>
-        <button onclick="window.openHizliIslem('<?= $cari_id_enc ?>', 'verdim')" class="flex-1 py-3 px-2 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/50 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform shadow-sm">
-            <span class="material-symbols-outlined text-[20px]">do_not_disturb_on</span>
+        <button onclick="window.openHizliIslem('<?= $cari_id_enc ?>', 'verdim')" class="flex-1 py-3 px-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform shadow-sm">
+            <span class="material-symbols-outlined text-[20px]">add_circle_outline</span>
             <span class="text-sm">Verdim</span>
         </button>
     </div>
@@ -517,17 +517,17 @@ window.openHizliIslem = function(cariId, type) {
     
     if (type === 'verdim') {
         mTitle.innerText = "Verdim";
-        mTitle.className = "font-black text-rose-600 dark:text-rose-400 text-sm uppercase tracking-wide";
-        mIcon.innerText = "do_not_disturb_on";
-        mIcon.parentElement.className = "w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/30 text-rose-600 flex items-center justify-center";
-        mBtn.className += "bg-rose-600 hover:bg-rose-700 shadow-rose-600/30";
+        mTitle.className = "font-black text-emerald-600 dark:text-emerald-400 text-sm uppercase tracking-wide";
+        mIcon.innerText = "add_circle_outline";
+        mIcon.parentElement.className = "w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center";
+        mBtn.className += "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30";
         mBtn.innerHTML = '<span class="material-symbols-outlined text-[20px]">task_alt</span> Ödemeyi Kaydet';
     } else {
         mTitle.innerText = "Aldım";
-        mTitle.className = "font-black text-emerald-600 dark:text-emerald-400 text-sm uppercase tracking-wide";
-        mIcon.innerText = "add_circle";
-        mIcon.parentElement.className = "w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center";
-        mBtn.className += "bg-emerald-600 hover:bg-emerald-700 shadow-emerald-600/30";
+        mTitle.className = "font-black text-rose-600 dark:text-rose-400 text-sm uppercase tracking-wide";
+        mIcon.innerText = "remove_circle_outline";
+        mIcon.parentElement.className = "w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/30 text-rose-600 flex items-center justify-center";
+        mBtn.className += "bg-rose-600 hover:bg-rose-700 shadow-rose-600/30";
         mBtn.innerHTML = '<span class="material-symbols-outlined text-[20px]">task_alt</span> Tahsili Kaydet';
     }
     

@@ -37,21 +37,20 @@ if (!function_exists('formatMoneyCariTakip')) {
     <div class="grid grid-cols-3 gap-2">
         <div class="bg-white dark:bg-card-dark rounded-xl shadow-sm p-3 border-b-2 border-rose-500 text-center flex flex-col justify-center items-center">
             <span class="material-symbols-outlined text-rose-500 text-[22px] bg-rose-50 dark:bg-rose-900/20 w-8 h-8 rounded-full flex items-center justify-center mb-1">trending_up</span>
-            <p class="text-[9px] font-bold text-slate-500 uppercase tracking-wide">Toplam Borç</p>
+            <p class="text-[9px] font-bold text-slate-500 uppercase tracking-wide">Top. Aldım</p>
             <p class="font-bold text-rose-600 text-xs sm:text-sm mt-0.5 truncate w-full"><?= formatMoneyCariTakip($toplam_borc) ?></p>
         </div>
         
         <div class="bg-white dark:bg-card-dark rounded-xl shadow-sm p-3 border-b-2 border-emerald-500 text-center flex flex-col justify-center items-center">
             <span class="material-symbols-outlined text-emerald-500 text-[22px] bg-emerald-50 dark:bg-emerald-900/20 w-8 h-8 rounded-full flex items-center justify-center mb-1">trending_down</span>
-            <p class="text-[9px] font-bold text-slate-500 uppercase tracking-wide">Toplam Alacak</p>
+            <p class="text-[9px] font-bold text-slate-500 uppercase tracking-wide">Top. Verdim</p>
             <p class="font-bold text-emerald-600 text-xs sm:text-sm mt-0.5 truncate w-full"><?= formatMoneyCariTakip($toplam_alacak) ?></p>
         </div>
         
         <div class="bg-white dark:bg-card-dark rounded-xl shadow-sm p-3 border-b-2 border-primary text-center flex flex-col justify-center items-center">
             <span class="material-symbols-outlined text-primary text-[22px] bg-blue-50 dark:bg-blue-900/20 w-8 h-8 rounded-full flex items-center justify-center mb-1">account_balance_wallet</span>
-            <p class="text-[9px] font-bold text-slate-500 uppercase tracking-wide">Bakiye</p>
-            <p class="font-bold <?= $genel_bakiye < 0 ? 'text-rose-600' : ($genel_bakiye > 0 ? 'text-emerald-600' : 'text-slate-700 dark:text-slate-300') ?> text-xs sm:text-sm mt-0.5 truncate w-full"><?= absMoneyCariTakip($genel_bakiye) ?></p>
-            <span class="text-[8px] opacity-70"><?= $genel_bakiye < 0 ? '(Borçlu)' : ($genel_bakiye > 0 ? '(Alacaklı)' : '') ?></span>
+            <p class="text-[9px] font-bold text-slate-500 uppercase tracking-wide"><?= $genel_bakiye < 0 ? 'BENİM BORCUM' : ($genel_bakiye > 0 ? 'BENİM ALACAĞIM' : 'DURUM') ?></p>
+            <p class="font-bold <?= $genel_bakiye < 0 ? 'text-rose-600' : ($genel_bakiye > 0 ? 'text-emerald-600' : 'text-slate-700 dark:text-slate-300') ?> text-xs sm:text-sm mt-0.5 truncate w-full"><?= ($genel_bakiye < 0 ? '-' : '+') . absMoneyCariTakip($genel_bakiye) ?></p>
         </div>
     </div>
 
@@ -115,8 +114,7 @@ if (!function_exists('formatMoneyCariTakip')) {
                 
                 <!-- Right Actions -->
                 <div class="flex flex-col items-end shrink-0 pl-2">
-                    <span class="font-bold text-xs <?= $bakiyeColor ?>"><?= absMoneyCariTakip($bakiye) ?></span>
-                    <span class="text-[8px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mt-0.5"><?= $bakiyeLabel ?></span>
+                    <span class="font-bold text-xs <?= $bakiyeColor ?>"><?= ($bakiye < 0 ? '-' : '+') . absMoneyCariTakip($bakiye) ?></span>
                     <div class="mt-1 flex items-center gap-1">
                         <button type="button" class="w-7 h-7 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-lg flex items-center justify-center active:bg-emerald-100" data-id="<?= $encId ?>" onclick="event.stopPropagation(); window.openHizliIslem('<?= $encId ?>');">
                             <span class="material-symbols-outlined text-[18px]">add_circle</span>
@@ -251,13 +249,13 @@ if (!function_exists('formatMoneyCariTakip')) {
             
             <!-- Type Toggle -->
             <div class="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-4 gap-1">
-                <label class="flex-1 text-center py-2.5 rounded-lg text-sm font-semibold cursor-pointer has-[:checked]:bg-white dark:has-[:checked]:bg-slate-700 has-[:checked]:text-emerald-600 has-[:checked]:shadow-sm transition-all focus-within:ring-2 focus-within:ring-emerald-500/20">
-                    <input type="radio" name="type" value="aldim" class="hidden peer" checked>
-                    <span class="flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[16px]">remove</span> Aldım</span>
-                </label>
                 <label class="flex-1 text-center py-2.5 rounded-lg text-sm font-semibold cursor-pointer has-[:checked]:bg-white dark:has-[:checked]:bg-slate-700 has-[:checked]:text-rose-600 has-[:checked]:shadow-sm transition-all focus-within:ring-2 focus-within:ring-rose-500/20">
+                    <input type="radio" name="type" value="aldim" class="hidden peer" checked>
+                    <span class="flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[16px]">remove_circle_outline</span> Aldım</span>
+                </label>
+                <label class="flex-1 text-center py-2.5 rounded-lg text-sm font-semibold cursor-pointer has-[:checked]:bg-white dark:has-[:checked]:bg-slate-700 has-[:checked]:text-emerald-600 has-[:checked]:shadow-sm transition-all focus-within:ring-2 focus-within:ring-emerald-500/20">
                     <input type="radio" name="type" value="verdim" class="hidden peer">
-                    <span class="flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[16px]">add</span> Verdim</span>
+                    <span class="flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[16px]">add_circle_outline</span> Verdim</span>
                 </label>
             </div>
             
