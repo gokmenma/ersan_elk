@@ -13,12 +13,16 @@ if (!isset($Personel)) $Personel = new PersonelModel();
 
 $pId = $_GET['pId'] ?? 0;
 $activeTab = $_GET['tab'] ?? 'okuma';
-$year = $_GET['year'] ?? date('Y');
-$month = $_GET['month'] ?? date('m');
+$startDateStr = $_GET['start_date'] ?? null;
+$endDateStr = $_GET['end_date'] ?? null;
 
-$month = str_pad($month, 2, '0', STR_PAD_LEFT);
-$startDateStr = "$year-$month-01";
-$endDateStr = date('Y-m-t', strtotime($startDateStr));
+if (!$startDateStr) {
+    $year = $_GET['year'] ?? date('Y');
+    $month = $_GET['month'] ?? date('m');
+    $month = str_pad($month, 2, '0', STR_PAD_LEFT);
+    $startDateStr = "$year-$month-01";
+    $endDateStr = date('Y-m-t', strtotime($startDateStr));
+}
 
 // Get work types definitions
 $workTypes = [];
@@ -80,8 +84,11 @@ if (isset($summary[$pId])) {
 
 krsort($personelData); // order descending date
 
-$monthName = \App\Helper\Date::MONTHS[(int)$month] ?? '';
-$titleStr = $monthName . ' ' . $year . ' İşlem Dökümü';
+if ($startDateStr === $endDateStr) {
+    $titleStr = Date::dmY($startDateStr) . ' İşlem Dökümü';
+} else {
+    $titleStr = Date::dmY($startDateStr) . ' - ' . Date::dmY($endDateStr) . ' İşlem Dökümü';
+}
 ?>
 
 <div>

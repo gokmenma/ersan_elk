@@ -483,6 +483,20 @@ try {
             <?php endforeach; ?>
         </div>
     </div>
+    <?php else: ?>
+    <!-- Nöbetçi Yoksa -->
+    <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm p-4">
+        <div class="flex items-center gap-1 mb-3">
+            <h3 class="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1">
+                <span class="material-symbols-outlined text-[20px] text-primary">event_busy</span>
+                Bugünün Nöbetçileri
+            </h3>
+        </div>
+        <div class="flex flex-col items-center justify-center py-4 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+            <span class="material-symbols-outlined text-slate-300 dark:text-slate-600 text-3xl mb-1">event_busy</span>
+            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Bugün için onaylı nöbet kaydı bulunamadı.</p>
+        </div>
+    </div>
     <?php endif; ?>
 
     <?php if ($toplam_bekleyen > 0 && \App\Service\Gate::allows("talepler")): ?>

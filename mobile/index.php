@@ -179,9 +179,11 @@ try {
     <!-- Google Fonts & Material Symbols -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
+    <link rel="stylesheet" href="../assets/libs/flatpickr/flatpickr.min.css">
 
     <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link rel="stylesheet" href="../assets/libs/flatpickr/plugins/monthSelect/style.css">
 
     <!-- jQuery -->
     <script src="../assets/libs/jquery/jquery.min.js"></script>
@@ -192,6 +194,11 @@ try {
 
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- Flatpickr -->
+    <script src="../assets/libs/flatpickr/flatpickr.min.js"></script>
+    <script src="../assets/libs/flatpickr/l10n/tr.js"></script>
+    <script src="../assets/libs/flatpickr/plugins/monthSelect/index.js"></script>
 
     <!-- Tema & Dark Mode ön yüklemesi (personel-pwa ile aynı) -->
     <script>
@@ -369,6 +376,112 @@ try {
         }
         /* Dolu ikonlar için Material Symbols */
         .filled { font-variation-settings: 'FILL' 1; }
+
+        /* ===== Flatpickr Premium Mobile Theme ===== */
+        .flatpickr-calendar {
+            background: #fff;
+            box-shadow: 0 20px 50px -15px rgba(0, 0, 0, 0.2), 0 0 1px 1px rgba(0,0,0,0.05);
+            border-radius: 1.5rem;
+            border: none;
+            font-family: var(--font-family);
+            padding: 8px;
+            width: 320px !important;
+        }
+
+        .dark .flatpickr-calendar {
+            background: #1e1e1e;
+            box-shadow: 0 25px 60px -15px rgba(0, 0, 0, 0.6), 0 0 1px 1px rgba(255,255,255,0.05);
+            color: #fff;
+        }
+
+        .flatpickr-months {
+            padding: 10px 0;
+        }
+
+        .flatpickr-current-month {
+            font-size: 1.1rem;
+            font-weight: 700;
+        }
+
+        .flatpickr-current-month .flatpickr-monthDropdown-months {
+            font-weight: 700;
+        }
+
+        .flatpickr-weekday {
+            font-weight: 800;
+            color: #94a3b8;
+            font-size: 0.75rem;
+            text-transform: uppercase;
+        }
+
+        .flatpickr-day {
+            border-radius: 0.75rem;
+            font-weight: 600;
+            margin: 2px;
+            height: 38px;
+            line-height: 38px;
+            transition: all 0.2s ease;
+        }
+
+        .flatpickr-day.today {
+            border-color: var(--primary);
+            color: var(--primary);
+            background: rgba(var(--primary-rgb), 0.05);
+        }
+
+        .flatpickr-day.selected, 
+        .flatpickr-day.startRange, 
+        .flatpickr-day.endRange {
+            background: var(--primary) !important;
+            border-color: var(--primary) !important;
+            color: #fff !important;
+            box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.4);
+        }
+
+        .flatpickr-day.inRange {
+            background: rgba(var(--primary-rgb), 0.1) !important;
+            border-color: transparent !important;
+            box-shadow: none !important;
+            color: var(--primary) !important;
+        }
+
+        .flatpickr-day.flatpickr-disabled,
+        .flatpickr-day.flatpickr-disabled:hover {
+            color: #e2e8f0;
+        }
+
+        .dark .flatpickr-day {
+            color: #cbd5e1;
+        }
+
+        .dark .flatpickr-day.flatpickr-disabled {
+            color: #475569;
+        }
+
+        .dark .flatpickr-current-month,
+        .dark .flatpickr-monthDropdown-months,
+        .dark .cur-year {
+            color: #fff;
+        }
+
+        .flatpickr-months .flatpickr-prev-month, 
+        .flatpickr-months .flatpickr-next-month {
+            padding: 12px;
+            color: var(--primary);
+            fill: var(--primary);
+        }
+
+        /* Month Select Plugin Styling */
+        .flatpickr-monthSelect-month {
+            border-radius: 1rem;
+            padding: 10px 0;
+            font-weight: 700;
+        }
+
+        .flatpickr-monthSelect-month.selected {
+            background: var(--primary) !important;
+            color: #fff;
+        }
     </style>
 </head>
 

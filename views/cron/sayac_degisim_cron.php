@@ -224,12 +224,15 @@ function sorgulamaSayacDegisim($tarih, $firmaId, $db)
             return ['yeni_kayit' => 0, 'toplam_api' => 0, 'mesaj' => 'API\'den veri gelmedi.'];
 
         // Personel ve Ekip Eşleşmeleri
-        $stmtAllEkip = $db->prepare("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
+        $stmtAllEkip = $db->prepare("SELECT id, tur_adi, birden_fazla_personel_kullanabilir FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
         $stmtAllEkip->execute();
         $ekipKodlari = [];
         while ($ek = $stmtAllEkip->fetch(PDO::FETCH_ASSOC)) {
             if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $ek['tur_adi'], $m)) {
-                $ekipKodlari[$m[1]] = $ek['id'];
+                $ekipKodlari[$m[1]] = [
+                    'id'    => $ek['id'],
+                    'multi' => (int)($ek['birden_fazla_personel_kullanabilir'] ?? 0)
+                ];
             }
         }
 
@@ -251,6 +254,97 @@ function sorgulamaSayacDegisim($tarih, $firmaId, $db)
 
         $insertBatch = [];
         $atlanAnListesi = [];
+        $sharedTeamGroups = [];
+
+        $appendInsertBatchRow = function (array $record, int $personelId, float $isSayisi, bool $applyZimmet) use (&$insertBatch, &$yeniKayit, $db, $firmaId) {
+            $perPersonIslemId = $record['islem_id'] . '_' . $personelId;
+            $zimmetDusuldu = 0;
+
+            if ($applyZimmet && $record['takilan_sayacno'] !== '') {
+                $stmtCheck = $db->prepare("SELECT id FROM demirbas_hareketler WHERE islem_id = ? AND hareket_tipi = 'sarf' LIMIT 1");
+                $stmtCheck->execute([$perPersonIslemId]);
+                if ($stmtCheck->fetchColumn()) {
+                    $zimmetDusuldu = 1;
+                } else {
+                    $stmtZimmet = $db->prepare("
+                        SELECT dz.id, d.kategori_id, d.demirbas_adi
+                        FROM demirbas_zimmet dz
+                        JOIN demirbas d ON d.id = dz.demirbas_id
+                        WHERE dz.personel_id = ? 
+                        AND d.seri_no = ? 
+                        AND dz.silinme_tarihi IS NULL 
+                        AND (dz.durum = 'teslim' OR dz.teslim_miktar > (SELECT COALESCE(SUM(miktar), 0) FROM demirbas_hareketler WHERE zimmet_id = dz.id AND hareket_tipi IN ('iade', 'sarf', 'kayip') AND silinme_tarihi IS NULL))
+                        LIMIT 1
+                    ");
+                    $stmtZimmet->execute([$personelId, $record['takilan_sayacno']]);
+                    $zimmetRow = $stmtZimmet->fetch(PDO::FETCH_ASSOC);
+                    if ($zimmetRow && $zimmetRow['id']) {
+                        try {
+                            $zimmetId = $zimmetRow['id'];
+                            $kategoriId = $zimmetRow['kategori_id'];
+                            $ZimmetModel = new \App\Model\DemirbasZimmetModel();
+
+                            $ZimmetModel->tuketimYap($zimmetId, ($record['kayit_tarihi'] ?: $record['tarih']), 1, "Sayaç değişimi otomatik tüketimi.\nİş Emri No: {$record['isemri_no']}\nAbone No: {$record['abone_no']}", $perPersonIslemId, $record['isemri_sonucu'], 'otomatik');
+
+                            $yeniHurdaAdi = "Sökülen Hurda / Abone: " . $record['abone_no'];
+                            $sqlHurdaInsert = $db->prepare("
+                                INSERT INTO demirbas 
+                                (firma_id, kategori_id, demirbas_adi, seri_no, miktar, kalan_miktar, durum, log_kaydi, aciklama)
+                                VALUES (?, ?, ?, ?, ?, ?, 'hurda', '', ?)
+                            ");
+                            $sqlHurdaInsert->execute([
+                                $firmaId,
+                                $kategoriId,
+                                $yeniHurdaAdi,
+                                '-',
+                                1,
+                                1,
+                                "Sayaç değişimi sonrası sökülen hurda (İş Emri: {$record['isemri_no']})"
+                            ]);
+                            $yeniHurdaId = $db->lastInsertId();
+
+                            $ZimmetModel->zimmetVer([
+                                'demirbas_id' => $yeniHurdaId,
+                                'personel_id' => $personelId,
+                                'teslim_tarihi' => ($record['kayit_tarihi'] ?: $record['tarih']),
+                                'teslim_miktar' => 1,
+                                'aciklama' => "Otomatik Hurda Sayaç Zimmeti.\nİş Emri No: {$record['isemri_no']}",
+                                'islem_id' => $perPersonIslemId . "_hurda",
+                                'is_emri_sonucu' => $record['isemri_sonucu'],
+                                'kaynak' => 'otomatik'
+                            ]);
+
+                            $zimmetDusuldu = 1;
+                        } catch (Exception $e) {
+                            cronLog("Zimmet Hatası (Personel: $personelId): " . $e->getMessage());
+                        }
+                    }
+                }
+            }
+
+            $insertBatch[] = [
+                $perPersonIslemId,
+                $firmaId,
+                $personelId,
+                $record['ekip_kodu_id'],
+                $record['isemri_no'],
+                $record['abone_no'],
+                $record['isemri_sebep'],
+                $record['ekip'],
+                $record['memur'],
+                $record['sonuclandiran_kullanici'],
+                $record['bolge'],
+                $record['isemri_sonucu'],
+                $record['sonuc_aciklama'],
+                $record['takilan_sayacno'],
+                $record['kayit_tarihi'],
+                $record['tarih'],
+                $zimmetDusuldu,
+                $isSayisi
+            ];
+            $yeniKayit++;
+        };
+
         foreach ($apiData as $veri) {
             $ekipKoduStr = trim($veri['EKIP'] ?? '');
             $normDate = $tarih;
@@ -261,20 +355,23 @@ function sorgulamaSayacDegisim($tarih, $firmaId, $db)
             // islem_id generation must match views/puantaj/api.php
             $islemId = md5($isemriNo . '|' . $aboneNo . '|' . $takilanSayacNo . '|' . $ekipKoduStr);
 
-            // Personel eşleştirme (TÜM personel listesini bul)
+            // Personel eşleştirme
             $personelMatches = [];
             $ekipKoduId = 0;
+            $isMultiUser = 0;
 
             if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $ekipKoduStr, $m)) {
                 $ekipNo = $m[1];
-                $ekipKoduId = $ekipKodlari[$ekipNo] ?? 0;
+                $ekipKoduId = $ekipKodlari[$ekipNo]['id'] ?? 0;
+                $isMultiUser = $ekipKodlari[$ekipNo]['multi'] ?? 0;
 
                 if ($ekipKoduId) {
-                    // O tarihte o ekipte olan TÜM personelleri bul
+                    // O tarihte o ekipte olan personelleri bul
                     if (isset($ekipGecmisi[$ekipKoduId])) {
                         foreach ($ekipGecmisi[$ekipKoduId] as $hist) {
                             if ($hist['baslangic_tarihi'] <= $normDate && ($hist['bitis_tarihi'] === null || $hist['bitis_tarihi'] >= $normDate)) {
-                                $personelMatches[] = ['id' => $hist['personel_id']];
+                                $personelMatches[] = $hist['personel_id'];
+                                if (!$isMultiUser) break;
                             }
                         }
                     }
@@ -282,11 +379,15 @@ function sorgulamaSayacDegisim($tarih, $firmaId, $db)
                     // Eğer geçmişte yoksa ama personelin şu anki ekip no'su buysa (fallback)
                     if (empty($personelMatches) && isset($personelByEkip[$ekipKoduId])) {
                         foreach ($personelByEkip[$ekipKoduId] as $pId) {
-                            $personelMatches[] = ['id' => $pId];
+                            $personelMatches[] = $pId;
+                            if (!$isMultiUser) break;
                         }
                     }
                 }
             }
+
+            $personelMatches = array_values(array_unique(array_map('intval', (array) $personelMatches)));
+            sort($personelMatches);
 
             if (empty($personelMatches)) {
                 $atlanAnListesi[] = $ekipKoduStr;
@@ -303,104 +404,58 @@ function sorgulamaSayacDegisim($tarih, $firmaId, $db)
                 }
             }
 
-            // Bölüştürme Katsayısı
-            $personelSayisi = count($personelMatches);
-            $isSayisi = 1 / $personelSayisi;
-            $ekAciklama = $personelSayisi > 1 ? " (İş $personelSayisi kişiye bölündü)" : "";
+            $record = [
+                'islem_id' => $islemId,
+                'ekip_kodu_id' => $ekipKoduId,
+                'isemri_no' => $isemriNo,
+                'abone_no' => $aboneNo,
+                'isemri_sebep' => trim($veri['ISEMRI_SEBEP'] ?? ''),
+                'ekip' => $ekipKoduStr,
+                'memur' => trim($veri['MEMUR'] ?? ''),
+                'sonuclandiran_kullanici' => trim($veri['SONUCLANDIRAN_KULLANICI'] ?? ''),
+                'bolge' => trim($veri['BOLGE'] ?? ''),
+                'isemri_sonucu' => trim($veri['ISEMRI_SONUCU'] ?? ''),
+                'sonuc_aciklama' => trim($veri['SONUC_ACIKLAMA'] ?? ''),
+                'takilan_sayacno' => $takilanSayacNo,
+                'kayit_tarihi' => $kayitTarihi,
+                'tarih' => $normDate
+            ];
 
-            foreach ($personelMatches as $match) {
-                $pId = $match['id'];
-                $perPersonIslemId = $islemId . '_' . $pId;
-
-                $zimmetDusuldu = 0;
-                // Zimmet işlemi (Sadece bu personel üzerinde bu sayaç varsa zimmetten düşer)
-                if (!empty($takilanSayacNo)) {
-                    $stmtCheck = $db->prepare("SELECT id FROM demirbas_hareketler WHERE islem_id = ? AND hareket_tipi = 'sarf' LIMIT 1");
-                    $stmtCheck->execute([$perPersonIslemId]);
-                    if ($stmtCheck->fetchColumn()) {
-                        $zimmetDusuldu = 1;
-                    } else {
-                        $stmtZimmet = $db->prepare("
-                            SELECT dz.id, d.kategori_id, d.demirbas_adi
-                            FROM demirbas_zimmet dz
-                            JOIN demirbas d ON d.id = dz.demirbas_id
-                            WHERE dz.personel_id = ? 
-                            AND d.seri_no = ? 
-                            AND dz.silinme_tarihi IS NULL 
-                            AND (dz.durum = 'teslim' OR dz.teslim_miktar > (SELECT COALESCE(SUM(miktar), 0) FROM demirbas_hareketler WHERE zimmet_id = dz.id AND hareket_tipi IN ('iade', 'sarf', 'kayip') AND silinme_tarihi IS NULL))
-                            LIMIT 1
-                        ");
-                        $stmtZimmet->execute([$pId, $takilanSayacNo]);
-                        $zimmetRow = $stmtZimmet->fetch(PDO::FETCH_ASSOC);
-                        if ($zimmetRow && $zimmetRow['id']) {
-                            try {
-                                $zimmetId = $zimmetRow['id'];
-                                $kategoriId = $zimmetRow['kategori_id'];
-                                $ZimmetModel = new \App\Model\DemirbasZimmetModel();
-                                $isemriSonucu = trim($veri['ISEMRI_SONUCU'] ?? '');
-                                
-                                // Takılan sayacı Tüketim yap
-                                $ZimmetModel->tuketimYap($zimmetId, ($kayitTarihi ?: $normDate), 1, "Sayaç değişimi otomatik tüketimi.\nİş Emri No: {$isemriNo}\nAbone No: {$aboneNo}" . $ekAciklama, $perPersonIslemId, $isemriSonucu, 'otomatik');
-
-                                // Sökülen sayacı Hurda olarak ekle ve zimmetle
-                                $yeniHurdaAdi = "Sökülen Hurda / Abone: " . $aboneNo;
-                                $sqlHurdaInsert = $db->prepare("
-                                    INSERT INTO demirbas 
-                                    (firma_id, kategori_id, demirbas_adi, seri_no, miktar, kalan_miktar, durum, log_kaydi, aciklama)
-                                    VALUES (?, ?, ?, ?, ?, ?, 'hurda', '', ?)
-                                ");
-                                $sqlHurdaInsert->execute([
-                                    $firmaId,
-                                    $kategoriId,
-                                    $yeniHurdaAdi,
-                                    '-',
-                                    1,
-                                    1,
-                                    "Sayaç değişimi sonrası sökülen hurda (İş Emri: {$isemriNo})"
-                                ]);
-                                $yeniHurdaId = $db->lastInsertId();
-
-                                // Personele zimmetle
-                                $ZimmetModel->zimmetVer([
-                                    'demirbas_id' => $yeniHurdaId,
-                                    'personel_id' => $pId,
-                                    'teslim_tarihi' => ($kayitTarihi ?: $normDate),
-                                    'teslim_miktar' => 1,
-                                    'aciklama' => "Otomatik Hurda Sayaç Zimmeti.\nİş Emri No: {$isemriNo}" . $ekAciklama,
-                                    'islem_id' => $perPersonIslemId . "_hurda",
-                                    'is_emri_sonucu' => $isemriSonucu,
-                                    'kaynak' => 'otomatik'
-                                ]);
-
-                                $zimmetDusuldu = 1;
-                            } catch (Exception $e) {
-                                cronLog("Zimmet Hatası (Personel: $pId): " . $e->getMessage());
-                            }
-                        }
-                    }
+            if ($isMultiUser && count($personelMatches) > 1) {
+                $sharedKey = $ekipKoduId . '|' . $normDate . '|' . implode(',', $personelMatches);
+                if (!isset($sharedTeamGroups[$sharedKey])) {
+                    $sharedTeamGroups[$sharedKey] = [
+                        'personel_ids' => $personelMatches,
+                        'records' => []
+                    ];
                 }
+                $sharedTeamGroups[$sharedKey]['records'][] = $record;
+                continue;
+            }
 
-                $insertBatch[] = [
-                    $perPersonIslemId,
-                    $firmaId,
-                    $pId,
-                    $ekipKoduId,
-                    $isemriNo,
-                    $aboneNo,
-                    trim($veri['ISEMRI_SEBEP'] ?? ''),
-                    $ekipKoduStr,
-                    trim($veri['MEMUR'] ?? ''),
-                    trim($veri['SONUCLANDIRAN_KULLANICI'] ?? ''),
-                    trim($veri['BOLGE'] ?? ''),
-                    trim($veri['ISEMRI_SONUCU'] ?? ''),
-                    trim($veri['SONUC_ACIKLAMA'] ?? '') . $ekAciklama,
-                    $takilanSayacNo,
-                    $kayitTarihi,
-                    $normDate,
-                    $zimmetDusuldu,
-                    $isSayisi
-                ];
-                $yeniKayit++;
+            foreach ($personelMatches as $pId) {
+                $appendInsertBatchRow($record, $pId, 1.0, true);
+            }
+        }
+
+        foreach ($sharedTeamGroups as $sharedGroup) {
+            $personelIds = $sharedGroup['personel_ids'];
+            $personelSayisi = count($personelIds);
+
+            if ($personelSayisi === 0) {
+                continue;
+            }
+
+            $paylastirilmisIsSayisi = 1 / $personelSayisi;
+            $roundRobinIndex = 0;
+
+            foreach ($sharedGroup['records'] as $record) {
+                $zimmetPersonelId = $personelIds[$roundRobinIndex % $personelSayisi];
+                $roundRobinIndex++;
+
+                foreach ($personelIds as $pId) {
+                    $appendInsertBatchRow($record, $pId, $paylastirilmisIsSayisi, $pId === $zimmetPersonelId);
+                }
             }
         }
 

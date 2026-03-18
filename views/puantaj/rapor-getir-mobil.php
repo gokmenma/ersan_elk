@@ -19,13 +19,17 @@ $activeTab = $_GET['tab'] ?? 'okuma';
 $filterType = $_GET['filter_type'] ?? 'bugun'; // 'bugun' or 'buay'
 $year = $_GET['year'] ?? date('Y');
 $month = $_GET['month'] ?? date('m');
+$startDateStr = $_GET['start_date'] ?? null;
+$endDateStr = $_GET['end_date'] ?? null;
 
-if ($filterType === 'buay') {
-    $startDateStr = "$year-$month-01";
-    $endDateStr = date('Y-m-t', strtotime($startDateStr));
-} else {
-    $startDateStr = date('Y-m-d');
-    $endDateStr = date('Y-m-d');
+if (!$startDateStr) {
+    if ($filterType === 'buay') {
+        $startDateStr = "$year-$month-01";
+        $endDateStr = date('Y-m-t', strtotime($startDateStr));
+    } else {
+        $startDateStr = date('Y-m-d');
+        $endDateStr = date('Y-m-d');
+    }
 }
 
 $workTypes = [];

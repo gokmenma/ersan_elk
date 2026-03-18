@@ -1512,7 +1512,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
 
                     if (typeof rowActTotals[code] === 'undefined') rowActTotals[code] = 0;
 
-                    const val = parseInt(cell.textContent) || 0;
+                    const val = parseFloat(cell.textContent) || 0;
 
                     rowActTotals[code] += val;
                     rowDayTotals[date] = (rowDayTotals[date] || 0) + val;
@@ -1537,7 +1537,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                 const dayCells = row.querySelectorAll('[data-date]');
                 for (let c = 0; c < dayCells.length; c++) {
                     const cell = dayCells[c];
-                    const val = parseInt(cell.textContent) || 0;
+                    const val = parseFloat(cell.textContent) || 0;
                     if (!cell.classList.contains('legend-hidden') && cell.style.display !== 'none') {
                         dailyGrandTotals[cell.dataset.date] += val;
                         rowTotal += val;
@@ -1629,7 +1629,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
             table.querySelectorAll(`tbody tr[data-region-id="${rid}"]`).forEach(tr => {
                 if (tr.style.display !== 'none') {
                     const rtc = tr.querySelector('.row-total-cell');
-                    rSum += parseInt(rtc ? rtc.textContent : 0) || 0;
+                    rSum += parseFloat(rtc ? rtc.textContent : 0) || 0;
                 }
             });
             cell.textContent = rSum || '';

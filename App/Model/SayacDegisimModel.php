@@ -286,19 +286,34 @@ class SayacDegisimModel extends Model
     public function getSummaryByRange($startDate, $endDate)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $sql = "SELECT personel_id, ekip_kodu_id, ekip, tarih, COUNT(*) as toplam 
-                FROM {$this->table} 
-                WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL
-                GROUP BY personel_id, ekip_kodu_id, ekip, tarih";
+        $sql = "SELECT 
+                    t.personel_id,
+                    t.ekip_kodu_id,
+                    t.ekip,
+                    t.tarih,
+                    ROUND(SUM(CASE WHEN pay.personel_sayisi > 0 THEN 1.0 / pay.personel_sayisi ELSE 0 END), 4) as toplam
+                FROM {$this->table} t
+                JOIN (
+                    SELECT 
+                        tarih,
+                        SUBSTRING_INDEX(islem_id, '_', 1) as ortak_islem_id,
+                        COUNT(*) as personel_sayisi
+                    FROM {$this->table}
+                    WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL
+                    GROUP BY tarih, SUBSTRING_INDEX(islem_id, '_', 1)
+                ) pay ON pay.tarih = t.tarih
+                    AND pay.ortak_islem_id = SUBSTRING_INDEX(t.islem_id, '_', 1)
+                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
+                GROUP BY t.personel_id, t.ekip_kodu_id, t.ekip, t.tarih";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$firmaId, $startDate, $endDate]);
+        $stmt->execute([$firmaId, $startDate, $endDate, $firmaId, $startDate, $endDate]);
         $results = $stmt->fetchAll(PDO::FETCH_OBJ);
 
         $summary = [];
         foreach ($results as $row) {
             $key = $row->ekip_kodu_id . '|' . ($row->ekip ?: '-');
-            $summary[$row->personel_id][$key][$row->tarih] = $row->toplam;
+            $summary[$row->personel_id][$key][$row->tarih] = (float) $row->toplam;
         }
         return $summary;
     }
@@ -311,8 +326,18 @@ class SayacDegisimModel extends Model
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $bugun = date('Y-m-d');
 
-        $sql = "SELECT COUNT(*) as sayac_degisimi
+        $sql = "SELECT ROUND(SUM(CASE WHEN pay.personel_sayisi > 0 THEN 1.0 / pay.personel_sayisi ELSE 0 END), 4) as sayac_degisimi
                 FROM {$this->table} t
+                JOIN (
+                    SELECT 
+                        tarih,
+                        SUBSTRING_INDEX(islem_id, '_', 1) as ortak_islem_id,
+                        COUNT(*) as personel_sayisi
+                    FROM {$this->table}
+                    WHERE firma_id = ? AND tarih = ? AND silinme_tarihi IS NULL
+                    GROUP BY tarih, SUBSTRING_INDEX(islem_id, '_', 1)
+                ) pay ON pay.tarih = t.tarih
+                    AND pay.ortak_islem_id = SUBSTRING_INDEX(t.islem_id, '_', 1)
                 WHERE t.firma_id = ? 
                 AND t.tarih = ? 
                 AND t.silinme_tarihi IS NULL
@@ -325,7 +350,7 @@ class SayacDegisimModel extends Model
                 )";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$firmaId, $bugun]);
+        $stmt->execute([$firmaId, $bugun, $firmaId, $bugun]);
         return $stmt->fetch(PDO::FETCH_OBJ);
     }
 
@@ -338,8 +363,18 @@ class SayacDegisimModel extends Model
         $buAy = date('Y-m-01');
         $sonGun = date('Y-m-t');
 
-        $sql = "SELECT COUNT(*) as sayac_degisimi
+        $sql = "SELECT ROUND(SUM(CASE WHEN pay.personel_sayisi > 0 THEN 1.0 / pay.personel_sayisi ELSE 0 END), 4) as sayac_degisimi
                 FROM {$this->table} t
+                JOIN (
+                    SELECT 
+                        tarih,
+                        SUBSTRING_INDEX(islem_id, '_', 1) as ortak_islem_id,
+                        COUNT(*) as personel_sayisi
+                    FROM {$this->table}
+                    WHERE firma_id = ? AND tarih >= ? AND tarih <= ? AND silinme_tarihi IS NULL
+                    GROUP BY tarih, SUBSTRING_INDEX(islem_id, '_', 1)
+                ) pay ON pay.tarih = t.tarih
+                    AND pay.ortak_islem_id = SUBSTRING_INDEX(t.islem_id, '_', 1)
                 WHERE t.firma_id = ? 
                 AND t.tarih >= ? AND t.tarih <= ?
                 AND t.silinme_tarihi IS NULL
@@ -352,7 +387,7 @@ class SayacDegisimModel extends Model
                 )";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$firmaId, $buAy, $sonGun]);
+        $stmt->execute([$firmaId, $buAy, $sonGun, $firmaId, $buAy, $sonGun]);
         return $stmt->fetch(PDO::FETCH_OBJ);
     }
 
@@ -362,19 +397,35 @@ class SayacDegisimModel extends Model
     public function getSummaryDetailedByRange($startDate, $endDate)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $sql = "SELECT personel_id, ekip_kodu_id, ekip, tarih, isemri_sonucu as is_emri_sonucu, COUNT(*) as toplam 
-                FROM {$this->table} 
-                WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL
-                GROUP BY personel_id, ekip_kodu_id, ekip, tarih, isemri_sonucu";
+        $sql = "SELECT 
+                    t.personel_id,
+                    t.ekip_kodu_id,
+                    t.ekip,
+                    t.tarih,
+                    t.isemri_sonucu as is_emri_sonucu,
+                    ROUND(SUM(CASE WHEN pay.personel_sayisi > 0 THEN 1.0 / pay.personel_sayisi ELSE 0 END), 4) as toplam
+                FROM {$this->table} t
+                JOIN (
+                    SELECT 
+                        tarih,
+                        SUBSTRING_INDEX(islem_id, '_', 1) as ortak_islem_id,
+                        COUNT(*) as personel_sayisi
+                    FROM {$this->table}
+                    WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL
+                    GROUP BY tarih, SUBSTRING_INDEX(islem_id, '_', 1)
+                ) pay ON pay.tarih = t.tarih
+                    AND pay.ortak_islem_id = SUBSTRING_INDEX(t.islem_id, '_', 1)
+                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
+                GROUP BY t.personel_id, t.ekip_kodu_id, t.ekip, t.tarih, t.isemri_sonucu";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$firmaId, $startDate, $endDate]);
+        $stmt->execute([$firmaId, $startDate, $endDate, $firmaId, $startDate, $endDate]);
         $results = $stmt->fetchAll(PDO::FETCH_OBJ);
 
         $summary = [];
         foreach ($results as $row) {
             $key = $row->ekip_kodu_id . '|' . ($row->ekip ?: '-');
-            $summary[$row->personel_id][$key][$row->tarih][$row->is_emri_sonucu] = $row->toplam;
+            $summary[$row->personel_id][$key][$row->tarih][$row->is_emri_sonucu] = (float) $row->toplam;
         }
         return $summary;
     }
@@ -427,16 +478,26 @@ class SayacDegisimModel extends Model
                         p.adi_soyadi as personel_adi,
                         def.tur_adi as ekip_adi,
                         def.ekip_bolge as bolge,
-                        COUNT(*) as toplam,
+                        ROUND(SUM(CASE WHEN pay.personel_sayisi > 0 THEN 1.0 / pay.personel_sayisi ELSE 0 END), 4) as toplam,
                         COUNT(DISTINCT t.tarih) as gun_sayisi
                     FROM {$this->table} t
+                    JOIN (
+                        SELECT 
+                            tarih,
+                            SUBSTRING_INDEX(islem_id, '_', 1) as ortak_islem_id,
+                            COUNT(*) as personel_sayisi
+                        FROM {$this->table}
+                        WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL
+                        GROUP BY tarih, SUBSTRING_INDEX(islem_id, '_', 1)
+                    ) pay ON pay.tarih = t.tarih
+                        AND pay.ortak_islem_id = SUBSTRING_INDEX(t.islem_id, '_', 1)
                     LEFT JOIN personel p ON t.personel_id = p.id
                     LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
                     WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
                     GROUP BY t.personel_id, t.ekip_kodu_id, p.adi_soyadi, def.tur_adi, def.ekip_bolge";
 
             $stmt = $this->db->prepare($sql);
-            $stmt->execute([$firmaId, $period['start'], $period['end']]);
+            $stmt->execute([$firmaId, $period['start'], $period['end'], $firmaId, $period['start'], $period['end']]);
             $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
 
             $periodTotal = 0;
@@ -455,7 +516,7 @@ class SayacDegisimModel extends Model
                     ];
                 }
                 $result['personel'][$pKey]['periods'][$periodLabel] = [
-                    'toplam' => (int) $row->toplam,
+                    'toplam' => (float) $row->toplam,
                     'gun_sayisi' => (int) $row->gun_sayisi
                 ];
 
@@ -467,10 +528,10 @@ class SayacDegisimModel extends Model
                 if (!isset($result['bolge'][$bolgeName]['periods'][$periodLabel])) {
                     $result['bolge'][$bolgeName]['periods'][$periodLabel] = ['toplam' => 0, 'personel_sayisi' => 0];
                 }
-                $result['bolge'][$bolgeName]['periods'][$periodLabel]['toplam'] += (int) $row->toplam;
+                $result['bolge'][$bolgeName]['periods'][$periodLabel]['toplam'] += (float) $row->toplam;
                 $result['bolge'][$bolgeName]['periods'][$periodLabel]['personel_sayisi']++;
 
-                $periodTotal += (int) $row->toplam;
+                $periodTotal += (float) $row->toplam;
                 $periodPersonelSayisi++;
             }
 

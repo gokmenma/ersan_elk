@@ -2030,6 +2030,7 @@ CREATE TABLE `sayac_degisim` (
   `islem_id` varchar(255) NOT NULL COMMENT 'Unique hash for idempotency',
   `firma_id` int(11) DEFAULT NULL,
   `personel_id` int(11) DEFAULT NULL,
+  `is_sayisi` decimal(10,4) NOT NULL DEFAULT 1.0000,
   `ekip_kodu_id` int(11) DEFAULT NULL,
   `isemri_no` varchar(50) DEFAULT NULL,
   `abone_no` varchar(50) DEFAULT NULL,

@@ -12,28 +12,35 @@ $Personel = new PersonelModel();
     <!-- STICKY HEADER WRAPPER -->
     <div class="sticky top-0 z-30 bg-slate-50 dark:bg-slate-950 -mx-3 px-3 pt-2 pb-3 space-y-3 shadow-md shadow-slate-200/50 dark:shadow-none">
         
-        <!-- Top Nav / Header Card -->
-        <div class="bg-white dark:bg-card-dark rounded-xl shadow-sm p-3 flex flex-col gap-3">
-            <div class="flex items-center justify-between">
-                <div class="flex items-center gap-3">
-                    <div class="w-10 h-10 rounded-xl bg-purple-50 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400 flex items-center justify-center shrink-0">
-                        <span class="material-symbols-outlined">analytics</span>
-                    </div>
-                    <div>
-                        <h2 class="font-bold text-slate-900 dark:text-white leading-tight mb-0.5 text-sm">İşlem Özetleri</h2>
-                        <p class="text-[11px] text-slate-500 font-medium tracking-wide">Personel Bazlı Performans</p>
-                    </div>
+        <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm p-3 flex flex-col gap-3">
+            <!-- Title Section -->
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary dark:bg-primary/20 flex items-center justify-center shrink-0 shadow-inner">
+                    <span class="material-symbols-outlined text-[22px]">analytics</span>
+                </div>
+                <div>
+                    <h2 class="font-bold text-slate-900 dark:text-white leading-tight mb-0.5 text-[14px]">İşlem Özetleri</h2>
+                    <p class="text-[10px] text-slate-500 font-semibold uppercase tracking-wider opacity-70">Performans Raporu</p>
                 </div>
             </div>
             
-            <!-- Filter Toggle Buttons -->
-            <div class="flex gap-2 mt-1">
-                <button id="btnFilterBugun" class="flex-[0.35] py-2 text-xs font-bold rounded-lg shadow-sm active:scale-95 transition-all bg-primary text-white shadow-primary/20" onclick="window.applyDateFilter('bugun')">Bugün</button>
-                <div class="flex-[0.65] relative">
-                    <input type="month" id="monthPickerInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10" onchange="window.applyDateFilter('custom', this.value)" title="Geçmiş ayları seçmek için dokunun" onclick="if(currentFilterType !== 'buay') { window.applyDateFilter('custom', this.value); }" max="<?= date('Y-m') ?>" value="<?= date('Y-m') ?>">
-                    <button id="btnFilterCustom" class="w-full h-full pointer-events-none flex flex-row items-center justify-between px-3 gap-1 py-1.5 text-xs font-bold rounded-lg shadow-sm transition-all bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-700">
-                        <span id="customFilterLabel" class="truncate overflow-hidden w-full text-left">Bu Ay</span>
-                        <span class="material-symbols-outlined text-[16px] text-slate-400 border-l border-slate-200 dark:border-slate-700 pl-2">calendar_month</span>
+            <!-- Full Width Filter Row -->
+            <div class="flex items-center gap-2">
+                <!-- Bugün / Takvim Butonu -->
+                <div class="relative flex-1">
+                    <input type="text" id="rangePickerInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                    <button id="btnFilterTodayGroup" class="w-full flex items-center justify-between px-3 py-2.5 text-[10px] font-black rounded-lg transition-all bg-primary text-white shadow-sm shadow-primary/20 active:scale-95 pointer-events-none">
+                        <span id="todayLabel">BUGÜN</span>
+                        <span class="material-symbols-outlined text-[16px] opacity-80">calendar_today</span>
+                    </button>
+                </div>
+                
+                <!-- Bu Ay / Ay Seçimi Butonu -->
+                <div class="relative flex-1">
+                    <input type="text" id="monthPickerInput" class="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10">
+                    <button id="btnFilterMonthGroup" class="w-full flex items-center justify-between px-3 py-2.5 text-[10px] font-black rounded-lg transition-all bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-100 dark:border-slate-700 shadow-sm active:scale-95 pointer-events-none">
+                        <span id="monthLabel">BU AY</span>
+                        <span class="material-symbols-outlined text-[16px] opacity-60">calendar_month</span>
                     </button>
                 </div>
             </div>
@@ -95,9 +102,9 @@ $Personel = new PersonelModel();
 
 <script>
 let currentTab = 'okuma';
-let currentFilterType = 'bugun'; // bugun, buay
-let currentYear = '<?= date("Y") ?>';
-let currentMonth = '<?= date("m") ?>';
+let currentFilterType = 'bugun'; // bugun, custom
+let currentStartDate = '<?= date("Y-m-d") ?>';
+let currentEndDate = '<?= date("Y-m-d") ?>';
 
 // Formatting month name
 const monthNames = {
@@ -106,38 +113,45 @@ const monthNames = {
     '09': 'Eylül', '10': 'Ekim', '11': 'Kasım', '12': 'Aralık'
 };
 
-window.applyDateFilter = function(opt, val = null) {
-    const btnBugun = document.getElementById('btnFilterBugun');
-    const btnCustom = document.getElementById('btnFilterCustom');
-    const customLabel = document.getElementById('customFilterLabel');
+window.applyDateFilter = function(opt, start = null, end = null) {
+    const btnToday = document.getElementById('btnFilterTodayGroup');
+    const btnMonthGroup = document.getElementById('btnFilterMonthGroup');
+    const todayLabel = document.getElementById('todayLabel');
+    const monthLabel = document.getElementById('monthLabel');
 
-    if (opt === 'bugun') {
-        currentFilterType = 'bugun';
+    const activeBtnClass = 'w-full flex items-center justify-between px-3 py-2.5 text-[10px] font-black rounded-lg transition-all bg-primary text-white shadow-sm shadow-primary/20 active:scale-95 pointer-events-none';
+    const defaultBtnClass = 'w-full flex items-center justify-between px-3 py-2.5 text-[10px] font-black rounded-lg transition-all bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 border border-slate-100 dark:border-slate-700 shadow-sm active:scale-95 pointer-events-none';
+
+    // Reset all buttons 
+    if(btnToday) btnToday.className = defaultBtnClass;
+    if(btnMonthGroup) btnMonthGroup.className = defaultBtnClass;
+
+    if (opt === 'range') {
+        currentFilterType = 'custom';
+        currentStartDate = start;
+        currentEndDate = end;
+        if(btnToday) btnToday.className = activeBtnClass;
         
-        btnBugun.className = 'flex-[0.35] py-2 text-xs font-bold rounded-lg shadow-sm active:scale-95 transition-all bg-primary text-white shadow-primary/20';
-        btnCustom.className = 'w-full h-full pointer-events-none flex flex-row items-center justify-between px-3 gap-1 py-1.5 text-xs font-bold rounded-lg shadow-sm transition-all bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-700';
-        customLabel.textContent = 'Ay Seç'; // Reset label
-        
-    } else if (opt === 'custom') {
-        currentFilterType = 'buay'; // We send buay mode to the backend
-        
-        if (val) {
-            const parts = val.split('-');
-            currentYear = parts[0];
-            currentMonth = parts[1];
+        const todayStr = '<?= date("Y-m-d") ?>';
+        if (start === todayStr && end === todayStr) {
+            todayLabel.textContent = 'BUGÜN';
+        } else if (start === end) {
+            todayLabel.textContent = new Date(start).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' });
         } else {
-            const now = new Date();
-            currentYear = String(now.getFullYear());
-            currentMonth = String(now.getMonth() + 1).padStart(2, '0');
+            const sStr = new Date(start).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' });
+            const eStr = new Date(end).toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit' });
+            todayLabel.textContent = sStr + ' - ' + eStr;
         }
+        monthLabel.textContent = 'BU AY';
+    } else if (opt === 'month') {
+        currentFilterType = 'custom';
+        currentStartDate = start;
+        currentEndDate = end;
+        if(btnMonthGroup) btnMonthGroup.className = activeBtnClass;
         
-        btnBugun.className = 'flex-[0.35] py-2 text-xs font-bold rounded-lg shadow-sm active:scale-95 transition-all bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-700';
-        btnCustom.className = 'w-full h-full pointer-events-none flex flex-row items-center justify-between px-3 gap-1 py-1.5 text-xs font-bold rounded-lg shadow-sm transition-all bg-primary text-white shadow-primary/20';
-        
-        const now = new Date();
-        const isCurrentBlock = currentYear == now.getFullYear() && parseInt(currentMonth) === (now.getMonth() + 1);
-        let mName = monthNames[currentMonth] || currentMonth;
-        customLabel.textContent = (isCurrentBlock ? 'Bu Ay' : mName + ' ' + currentYear);
+        const monthPart = start.split('-')[1];
+        monthLabel.textContent = (monthNames[monthPart] || 'BU AY').toUpperCase();
+        todayLabel.textContent = 'BUGÜN';
     }
     
     loadMobileReport();
@@ -182,8 +196,8 @@ function loadMobileReport() {
     urlParams.append('action', 'get-mobile-report-cards');
     urlParams.append('tab', currentTab);
     urlParams.append('filter_type', currentFilterType);
-    urlParams.append('year', currentYear);
-    urlParams.append('month', currentMonth);
+    urlParams.append('start_date', currentStartDate);
+    urlParams.append('end_date', currentEndDate);
     
     fetch('../views/puantaj/api.php?' + urlParams.toString())
         .then(response => response.text())
@@ -247,8 +261,8 @@ window.openPersonelMonthlyDetails = function(pId, pName, activeTabParam) {
         action: 'get-mobile-personel-details',
         pId: pId,
         tab: activeTabParam,
-        year: currentYear,
-        month: currentMonth
+        start_date: currentStartDate,
+        end_date: currentEndDate
     });
     
     fetch('../views/puantaj/api.php?' + uParams.toString())
@@ -263,6 +277,56 @@ window.closePersonelDetailsModal = function() {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize range picker
+    flatpickr("#rangePickerInput", {
+        mode: "range",
+        dateFormat: "Y-m-d",
+        locale: "tr",
+        maxDate: "today",
+        onClose: function(selectedDates, dateStr, instance) {
+            if (selectedDates.length > 0) {
+                const start = instance.formatDate(selectedDates[0], "Y-m-d");
+                const end = selectedDates[1] ? instance.formatDate(selectedDates[1], "Y-m-d") : start;
+                window.applyDateFilter('range', start, end);
+            }
+        }
+    });
+
+    // Initialize month picker
+    flatpickr("#monthPickerInput", {
+        plugins: [
+            new monthSelectPlugin({
+                shorthand: true, //defaults to false
+                dateFormat: "Y-m-d", //defaults to "F Y"
+                altFormat: "F Y", //defaults to "F Y"
+                theme: "light" // defaults to "light"
+            })
+        ],
+        locale: "tr",
+        maxDate: "today",
+        onClose: function(selectedDates, dateStr, instance) {
+            if (selectedDates.length > 0) {
+                const date = selectedDates[0];
+                const y = date.getFullYear();
+                const m = date.getMonth();
+                
+                // Manually construct Y-m-d to stay in LOCAL time
+                const start = y + '-' + (m + 1).toString().padStart(2, '0') + '-01';
+                
+                // Last day of chosen month
+                const lastDayObj = new Date(y, m + 1, 0);
+                const end = y + '-' + (m + 1).toString().padStart(2, '0') + '-' + lastDayObj.getDate().toString().padStart(2, '0');
+                
+                // Compare with today in local time
+                const now = new Date();
+                const todayStr = now.getFullYear() + '-' + (now.getMonth() + 1).toString().padStart(2, '0') + '-' + now.getDate().toString().padStart(2, '0');
+                
+                const realEnd = (end > todayStr) ? todayStr : end;
+                window.applyDateFilter('month', start, realEnd);
+            }
+        }
+    });
+
     setupLiveSearch();
     setTimeout(() => { loadMobileReport(); }, 100);
 });
