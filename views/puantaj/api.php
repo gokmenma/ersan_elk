@@ -2911,7 +2911,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'online-sorgu-sorgula') {
+// ===================================================================================================
+// ONLINE QUERY ACTIONS (SEPARATED BY TYPE)
+// ===================================================================================================
+
+function handleOnlineSorgu($sorguTuru) {
     ob_start();
     header('Content-Type: application/json; charset=utf-8');
 
@@ -2919,8 +2923,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         echo json_encode(['status' => 'error', 'message' => 'API sorgulaması şu an sadece Firma Kodu 17 için desteklenmektedir.']);
         exit;
     }
-
-    $response = ['status' => 'error', 'message' => 'Bilinmeyen hata'];
 
     try {
         ini_set('memory_limit', '512M');
@@ -2936,7 +2938,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $Settings = new \App\Model\SettingsModel();
 
         // CONCURRENCY LOCK
-        $lockKey = 'lock_online_sorgu_sorgula_' . $firmaId;
+        $lockKey = 'lock_online_sorgu_' . $sorguTuru . '_' . $firmaId;
         $activeLock = $Settings->getSettings($lockKey);
         $currentUserId = $_SESSION['user_id'] ?? 0;
 
@@ -2949,126 +2951,83 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
         $Settings->upsertSetting($lockKey, date('Y-m-d H:i:s') . '|' . $currentUserId);
 
-        $resultsFilter = $_POST['results_filter'] ?? '';
         $yeniKayit = 0;
-        $guncellenenKayit = 0;
-        $bosSonucSayisi = 0;
-        $atlanAnKayitlar = [];
-        $atlanAnListesi = [];
-        $mevcutHatalar = [];
-
-        $KesmeAcmaSvc = new KesmeAcmaService();
         $apiData = [];
-
         $begin = new DateTime($baslangicTarihi);
         $end = new DateTime($bitisTarihi);
         $end->modify('+1 day');
-        $interval = new DateInterval('P1D');
-        $daterange = new DatePeriod($begin, $interval, $end);
+        $daterange = new DatePeriod($begin, new DateInterval('P1D'), $end);
 
-        set_time_limit(1800); // 30 mins
+        set_time_limit(1800);
         ini_set('max_execution_time', 1800);
 
-        $gunlukHatalar = [];
+        $service = null;
+        if ($sorguTuru === 'KESME_ACMA') $service = new KesmeAcmaService();
+        elseif ($sorguTuru === 'ENDEKS_OKUMA') $service = new EndeskOkumaService();
+        elseif ($sorguTuru === 'SAYAC_DEGISIM') $service = new SayacDegisimService();
+
+        if (!$service) throw new Exception("Geçersiz servis.");
+
         foreach ($daterange as $date) {
             $currentDateAPI = $date->format('d/m/Y');
-            try {
-                $offset = 0;
-                $limit = 500;
-                $hasMore = true;
+            $offset = 0; $limit = 500; $hasMore = true;
+            while ($hasMore) {
+                if ($sorguTuru === 'SAYAC_DEGISIM') $apiResponse = $service->getData($currentDateAPI, $currentDateAPI, $limit, $offset);
+                else $apiResponse = $service->getData($currentDateAPI, $currentDateAPI, $ilkFirma, $sonFirma, $limit, $offset);
+                
+                if (!($apiResponse['success'] ?? false)) break;
 
-                while ($hasMore) {
-                    $apiResponse = $KesmeAcmaSvc->getData($currentDateAPI, $currentDateAPI, $ilkFirma, $sonFirma, $limit, $offset);
-                    if (!($apiResponse['success'] ?? false)) break;
-
-                    $batchData = $apiResponse['data']['data'] ?? [];
-                    if (empty($batchData)) {
-                        $hasMore = false;
-                    } else {
-                        foreach ($batchData as $item) {
-                            $item['TARIH'] = $date->format('Y-m-d');
-                            $apiData[] = $item;
-                        }
-                        if (count($batchData) < $limit) $hasMore = false;
-                        else $offset += $limit;
+                $batchData = $apiResponse['data']['data'] ?? [];
+                if (empty($batchData)) { $hasMore = false; }
+                else {
+                    foreach ($batchData as $item) {
+                        $item['TARIH_NORM'] = $date->format('Y-m-d');
+                        $apiData[] = $item;
                     }
-                    if ($offset >= 5000) break;
+                    if (count($batchData) < $limit) $hasMore = false;
+                    else $offset += $limit;
                 }
-            } catch (Exception $e) {
-                $gunlukHatalar[] = $currentDateAPI . ": " . $e->getMessage();
+                if ($offset >= 5000) break;
             }
         }
 
         $Tanimlamalar = new \App\Model\TanimlamalarModel();
-        $Puantaj = new \App\Model\PuantajModel('yapilan_isler_sorgu');
+        $Puantaj = new \App\Model\PuantajModel(); 
 
-        // Filter parameters from request
-        $filterPersonelId = (int)($_POST['filter_personel_id'] ?? 0);
-        $filterEkipKoduId = (int)($_POST['filter_ekip_kodu'] ?? 0);
-        $filterWorkType = trim($_POST['filter_work_type'] ?? '');
-        $filterWorkResult = trim($_POST['filter_work_result'] ?? '');
-
-        // Lookup data for efficient processing
-        $stmtAllEkip = $Puantaj->db->prepare("SELECT id, tur_adi, grup FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
+        // Cache Mapping Data
+        $stmtAllEkip = $Puantaj->db->prepare("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL");
         $stmtAllEkip->execute();
         $ekipKodlariByNo = [];
-        $ekipKodlariByName = [];
         while ($ek = $stmtAllEkip->fetch(PDO::FETCH_ASSOC)) {
-            $name = trim($ek['tur_adi']);
-            $ekipKodlariByName[mb_strtolower($name, 'UTF-8')] = $ek['id'];
-            $gp = trim((string) ($ek['grup'] ?? ''));
-            if ($gp !== '') $ekipKodlariByName[mb_strtolower($gp, 'UTF-8')] = $ek['id'];
-            $teamNo = \App\Helper\EkipHelper::extractTeamNo(trim($gp . ' ' . $name));
+            $teamNo = \App\Helper\EkipHelper::extractTeamNo(trim($ek['tur_adi']));
             if ($teamNo > 0) $ekipKodlariByNo[$teamNo] = $ek['id'];
         }
 
-        $stmtAllPersonel = $Puantaj->db->prepare("SELECT id, adi_soyadi, ekip_no FROM personel WHERE silinme_tarihi IS NULL");
+        $stmtAllPersonel = $Puantaj->db->prepare("SELECT id, ekip_no FROM personel WHERE silinme_tarihi IS NULL");
         $stmtAllPersonel->execute();
-        $personelByName = [];
         $personelByEkip = [];
         while ($p = $stmtAllPersonel->fetch(PDO::FETCH_ASSOC)) {
-            $name = trim($p['adi_soyadi']);
-            $personelByName[mb_strtolower($name, 'UTF-8')] = $p;
             if (($p['ekip_no'] ?? 0) > 0) $personelByEkip[$p['ekip_no']] = $p['id'];
         }
 
         $stmtAllHist = $Puantaj->db->prepare("SELECT ekip_kodu_id, personel_id, baslangic_tarihi, bitis_tarihi FROM personel_ekip_gecmisi WHERE firma_id = ?");
         $stmtAllHist->execute([$firmaId]);
         $ekipGecmisi = [];
-        while ($h = $stmtAllHist->fetch(PDO::FETCH_ASSOC)) {
-            $ekipGecmisi[$h['ekip_kodu_id']][] = $h;
-        }
-
-        $deleteSql = "UPDATE yapilan_isler_sorgu SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL";
-        $deleteParams = [$firmaId, $baslangicTarihi, $bitisTarihi];
+        while ($h = $stmtAllHist->fetch(PDO::FETCH_ASSOC)) { $ekipGecmisi[$h['ekip_kodu_id']][] = $h; }
 
         $insertBatch = [];
+        $targetTable = 'yapilan_isler_sorgu';
+        if ($sorguTuru === 'ENDEKS_OKUMA') $targetTable = 'endeks_okuma_sorgu';
+        elseif ($sorguTuru === 'SAYAC_DEGISIM') $targetTable = 'sayac_degisim_sorgu';
+
         foreach ($apiData as $veri) {
-            $isEmriTipi = trim($veri['ISEMRITIPI'] ?? '');
-            $ekipKoduStr = trim($veri['EKIP'] ?? '');
-            $isEmriSonucu = trim($veri['SONUC'] ?? '');
-            $sonuclanmis = $veri['SONUCLANMIS'] ?? 0;
-            $acikOlanlar = $veri['ACIK'] ?? 0;
-            $tarihRaw = $veri['TARIH'];
+            $normDate = $veri['TARIH_NORM'];
+            $ekipKoduStr = ($sorguTuru === 'ENDEKS_OKUMA') ? trim($veri['OKUYUCUADI'] ?? '') : trim($veri['EKIP'] ?? '');
 
-            if (empty(trim($isEmriTipi))) continue;
-            if ((int) $sonuclanmis === 0) {
-                $bosSonucSayisi++;
-                continue;
-            }
-
-            $normDate = $tarihRaw;
-
-            // 1. Identify Ekip/Team ID
             $defId = 0;
-            $ekipKoduStrClean = trim($ekipKoduStr);
-            $ekipKoduStrLower = mb_strtolower($ekipKoduStrClean, 'UTF-8');
-            
-            $ekipNo = \App\Helper\EkipHelper::extractTeamNo($ekipKoduStrClean);
+            $ekipNo = \App\Helper\EkipHelper::extractTeamNo($ekipKoduStr);
             if ($ekipNo > 0) $defId = $ekipKodlariByNo[$ekipNo] ?? 0;
-            if (!$defId && isset($ekipKodlariByName[$ekipKoduStrLower])) $defId = $ekipKodlariByName[$ekipKoduStrLower];
 
-            // 2. Identify Personel via History matching the date
             $personelId = 0;
             if ($defId > 0) {
                 if (isset($ekipGecmisi[$defId])) {
@@ -3082,83 +3041,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 if (!$personelId) $personelId = $personelByEkip[$defId] ?? 0;
             }
 
-            // Fallback for personel if EKIP string matches name
-            if (!$personelId && isset($personelByName[$ekipKoduStrLower])) {
-                $personelId = $personelByName[$ekipKoduStrLower]['id'];
-            }
-
-            // APPLY FILTERS
-            if ($filterPersonelId > 0 && $personelId != $filterPersonelId) continue;
-            if ($filterEkipKoduId > 0 && $defId != $filterEkipKoduId) continue;
-            if ($filterWorkType !== '' && $isEmriTipi != $filterWorkType) continue;
-            if ($filterWorkResult !== '' && $isEmriSonucu != $filterWorkResult) continue;
-
-            $islemId = md5($normDate . '|' . trim($ekipKoduStr) . '|' . trim($isEmriTipi) . '|' . trim($isEmriSonucu));
-
-            if ($defId === 0 && !empty($ekipKoduStrClean)) {
-                $uniqKey = "EKIP|" . $ekipKoduStrClean;
-                if (!isset($mevcutHatalar[$uniqKey])) {
-                    $atlanAnKayitlar[] = ['ekip_kodu' => "Sistemde Ekip Yok: " . $ekipKoduStrClean, 'tarih' => date('d.m.Y', strtotime($normDate))];
-                    $mevcutHatalar[$uniqKey] = true;
+            if ($sorguTuru === 'KESME_ACMA') {
+                $isEmriTipi = trim($veri['ISEMRITIPI'] ?? '');
+                $isEmriSonucu = trim($veri['SONUC'] ?? '');
+                if (empty($isEmriTipi)) continue;
+                $existingTur = $Tanimlamalar->isEmriSonucu($isEmriTipi, $isEmriSonucu);
+                $isEmriSonucuId = $existingTur ? $existingTur->id : 0;
+                if (!$isEmriSonucuId && (!empty($isEmriTipi) || !empty($isEmriSonucu))) {
+                    $encryptedId = $Tanimlamalar->saveWithAttr(['firma_id'=>$firmaId, 'grup'=>'is_turu', 'tur_adi'=>$isEmriTipi, 'is_emri_sonucu'=>$isEmriSonucu, 'aciklama'=>"Online sorgu"]);
+                    $isEmriSonucuId = \App\Helper\Security::decrypt($encryptedId);
                 }
+                $islemId = md5($normDate .'|'. $ekipKoduStr .'|'. $isEmriTipi .'|'. $isEmriSonucu .'|'. ($veri['ISEMRI_NO'] ?? ''));
+                $insertBatch[] = [$islemId, $personelId, $defId, $firmaId, $isEmriSonucuId, $isEmriTipi, $ekipKoduStr, $isEmriSonucu, $veri['SONUCLANMIS'] ?? 0, $veri['ACIK'] ?? 0, $normDate];
+            } elseif ($sorguTuru === 'ENDEKS_OKUMA') {
+                $islemId = md5($normDate .'|'. $ekipKoduStr .'|'. ($veri['DEFTER'] ?? '') .'|'. ($veri['BOLGE'] ?? ''));
+                $okunan = (int)($veri['ABONE_SAYISI'] ?? 0);
+                if ($okunan === 0) continue;
+                $insertBatch[] = [$islemId, $firmaId, $personelId, $defId, $normDate, $veri['BOLGE'] ?? '', $veri['DEFTER'] ?? '', $okunan, $veri['SAYACDURUM'] ?? '', $veri['OKUYUCUADI'] ?? '', date('Y-m-d H:i:s')];
+            } elseif ($sorguTuru === 'SAYAC_DEGISIM') {
+                $islemId = md5($normDate .'|'. $ekipKoduStr .'|'. ($veri['ISEMRI_NO'] ?? ''));
+                $insertBatch[] = [$islemId, $firmaId, $personelId, 1, $defId, $veri['ISEMRI_NO'] ?? '', $veri['ABONE_NO'] ?? '', $veri['ISEMRI_SEBEP'] ?? '', $ekipKoduStr, $veri['MEMUR'] ?? '', '', $veri['BOLGE'] ?? '', $veri['ISEMRI_SONUCU'] ?? '', '', $veri['TAKILAN_SAYACNO'] ?? '', 0, date('Y-m-d H:i:s'), $normDate];
             }
-
-            $existingTur = $Tanimlamalar->isEmriSonucu(trim($isEmriTipi), trim($isEmriSonucu));
-            $isEmriSonucuId = $existingTur ? $existingTur->id : 0;
-            if (!$isEmriSonucuId && (!empty($isEmriTipi) || !empty($isEmriSonucu))) {
-                $encryptedId = $Tanimlamalar->saveWithAttr([
-                    'firma_id' => $firmaId,
-                    'grup' => 'is_turu',
-                    'tur_adi' => $isEmriTipi,
-                    'is_emri_sonucu' => $isEmriSonucu,
-                    'aciklama' => "Online sorgulama"
-                ]);
-                $isEmriSonucuId = \App\Helper\Security::decrypt($encryptedId);
-            }
-
-            $insertBatch[] = [$islemId, $personelId, $defId, $firmaId, $isEmriSonucuId, $isEmriTipi, $ekipKoduStr, $isEmriSonucu, $sonuclanmis, $acikOlanlar, $normDate];
             $yeniKayit++;
         }
 
         $Puantaj->db->beginTransaction();
-        $deleteStmt = $Puantaj->db->prepare($deleteSql);
-        $deleteStmt->execute($deleteParams);
-        $silinenKayit = $deleteStmt->rowCount();
+        $Puantaj->db->prepare("DELETE FROM $targetTable WHERE firma_id = ? AND tarih BETWEEN ? AND ?")->execute([$firmaId, $baslangicTarihi, $bitisTarihi]);
 
         if (!empty($insertBatch)) {
             $chunks = array_chunk($insertBatch, 500);
             foreach ($chunks as $chunk) {
-                $placeholders = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?)'));
-                $sql = "INSERT INTO yapilan_isler_sorgu (islem_id, personel_id, ekip_kodu_id, firma_id, is_emri_sonucu_id, is_emri_tipi, ekip_kodu, is_emri_sonucu, sonuclanmis, acik_olanlar, tarih) VALUES $placeholders";
-                $stmt = $Puantaj->db->prepare($sql);
-                $flatParams = [];
-                foreach ($chunk as $row) $flatParams = array_merge($flatParams, $row);
-                $stmt->execute($flatParams);
+                if ($sorguTuru === 'KESME_ACMA') {
+                    $cols = "islem_id, personel_id, ekip_kodu_id, firma_id, is_emri_sonucu_id, is_emri_tipi, ekip_kodu, is_emri_sonucu, sonuclanmis, acik_olanlar, tarih";
+                    $placeholders = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?)'));
+                } elseif ($sorguTuru === 'ENDEKS_OKUMA') {
+                    $cols = "islem_id, firma_id, personel_id, ekip_kodu_id, tarih, bolge, defter, okunan_abone_sayisi, sayac_durum, kullanici_adi, kayit_tarihi";
+                    $placeholders = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?)'));
+                } elseif ($sorguTuru === 'SAYAC_DEGISIM') {
+                    $cols = "islem_id, firma_id, personel_id, is_sayisi, ekip_kodu_id, isemri_no, abone_no, isemri_sebep, ekip, memur, sonuclandiran_kullanici, bolge, isemri_sonucu, sonuc_aciklama, takilan_sayacno, zimmet_dusuldu, kayit_tarihi, tarih";
+                    $placeholders = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'));
+                }
+                $sql = "INSERT INTO $targetTable ($cols) VALUES $placeholders";
+                $Puantaj->db->prepare($sql)->execute(array_merge(...$chunk));
             }
         }
         $Puantaj->db->commit();
-
-        $response = [
-            'status' => 'success',
-            'yeni_kayit' => $yeniKayit,
-            'silinen_kayit' => $silinenKayit,
-            'atlan_kayit_bos' => $bosSonucSayisi,
-            'atlanAn_kayitlar' => $atlanAnKayitlar,
-            'gunluk_hatalar' => $gunlukHatalar,
-            'toplam_api_kayit' => count($apiData),
-            'message' => "$yeniKayit yeni kayıt eklendi." . (count($gunlukHatalar) > 0 ? " (Bazı günlerde hata oluştu: " . count($gunlukHatalar) . " gün)" : "")
-        ];
-
-    } catch (Exception $e) {
-        $response['message'] = $e->getMessage();
-    } finally {
-        if (isset($Settings) && isset($lockKey)) $Settings->upsertSetting($lockKey, '');
+        $response = ['status' => 'success', 'message' => "$yeniKayit kayıt başarıyla güncellendi."];
+    } catch (Exception $e) { 
+        $response = ['status' => 'error', 'message' => $e->getMessage()]; 
     }
-
+    finally { if (isset($Settings) && isset($lockKey)) $Settings->upsertSetting($lockKey, ''); }
+    
     ob_end_clean();
-    echo json_encode($response, JSON_UNESCAPED_UNICODE);
+    echo json_encode($response);
     exit;
 }
+
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
+    if ($_POST['action'] === 'online-puantaj-sorgula') handleOnlineSorgu('KESME_ACMA');
+    if ($_POST['action'] === 'online-endeks-sorgula') handleOnlineSorgu('ENDEKS_OKUMA');
+    if ($_POST['action'] === 'online-sayac-sorgula') handleOnlineSorgu('SAYAC_DEGISIM');
+}
+
+// ---------------------------------------------------------------------------------------------------
+// DATATABLES FOR SORGULAMA TABS
+// ---------------------------------------------------------------------------------------------------
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get-puantaj-sorgu-datatable') {
     $Puantaj = new PuantajModel('yapilan_isler_sorgu');
@@ -3167,17 +3114,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $ekipKodu = $_GET['ekip_kodu'] ?? '';
     $workType = $_GET['work_type'] ?? '';
     $workResult = $_GET['work_result'] ?? '';
-
-    // Correctly call getDataTable which handles advanced filters
-    $response = $Puantaj->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $workType, $workResult);
-    
-    // Map data for display
+    $sorguTuru = $_GET['sorgu_turu'] ?? '';
+    $response = $Puantaj->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $workType, $workResult, $sorguTuru);
     $response['data'] = array_map(function($row) {
         return [
             'id' => $row->id,
             'checkbox' => '<div class="form-check"><input class="form-check-input row-check" type="checkbox" value="'.$row->id.'"></div>',
             'tarih' => \App\Helper\Date::dmY($row->tarih),
-            'ekip_kodu' => $row->ekip_kodu_adi ?: ($row->ekip_kodu ?: ($row->ekip_kodu_tanim ?? '-')),
+            'ekip_kodu' => $row->ekip_kodu_adi ?: ($row->ekip_kodu ?: '-'),
             'personel_adi' => $row->personel_adi ?: 'Eşleşmedi',
             'is_emri_tipi' => $row->is_emri_tipi,
             'is_emri_sonucu' => $row->is_emri_sonucu,
@@ -3185,100 +3129,156 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'acik_olanlar' => $row->acik_olanlar
         ];
     }, $response['data']);
-
     echo json_encode($response);
     exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'puantaj-sil-toplu') {
-    $ids = $_POST['ids'] ?? [];
-    if (empty($ids)) {
-        echo json_encode(['status' => 'error', 'message' => 'Silinecek kayıt bulunamadı.']);
-        exit;
-    }
-    
-    $Puantaj = new PuantajModel();
-    $placeholders = implode(',', array_fill(0, count($ids), '?'));
-    $stmt = $Puantaj->db->prepare("UPDATE yapilan_isler SET silinme_tarihi = NOW() WHERE id IN ($placeholders)");
-    $result = $stmt->execute($ids);
-    
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get-endeks-sorgu-datatable') {
+    $Model = new \App\Model\EndeksOkumaModel('endeks_okuma_sorgu');
+    $startDate = $_GET['start_date'] ?? date('Y-m-d');
+    $endDate = $_GET['end_date'] ?? date('Y-m-d');
+    $personelId = $_GET['ekip_kodu'] ?? ''; 
+    $response = $Model->getDataTable($_GET, $startDate, $endDate, $personelId);
+    $response['data'] = array_map(function($row) {
+        return [
+            'id' => $row->id,
+            'checkbox' => '<div class="form-check"><input class="form-check-input row-check" type="checkbox" value="'.$row->id.'"></div>',
+            'tarih' => \App\Helper\Date::dmY($row->tarih),
+            'defter' => $row->defter,
+            'bolge' => $row->bolge,
+            'ekip_kodu_adi' => $row->ekip_kodu_adi,
+            'personel_adi' => $row->personel_adi ?: 'Eşleşmedi',
+            'okunan_abone_sayisi' => $row->okunan_abone_sayisi,
+            'sayac_durum' => $row->sayac_durum
+        ];
+    }, $response['data']);
+    echo json_encode($response);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get-sayac-sorgu-datatable') {
+    $Model = new \App\Model\SayacDegisimModel('sayac_degisim_sorgu');
+    $startDate = $_GET['start_date'] ?? date('Y-m-d');
+    $endDate = $_GET['end_date'] ?? date('Y-m-d');
+    $ekipKodu = $_GET['ekip_kodu'] ?? ''; 
+    $response = $Model->getDataTable($_GET, $startDate, $endDate, $ekipKodu);
+    $response['data'] = array_map(function($row) {
+        return [
+            'id' => $row->id,
+            'checkbox' => '<div class="form-check"><input class="form-check-input row-check" type="checkbox" value="'.$row->id.'"></div>',
+            'kayit_tarihi' => \App\Helper\Date::dmYHis($row->kayit_tarihi, 'd.m.Y H:i'),
+            'ekip_kodu_adi' => $row->ekip_kodu_adi,
+            'personel_adi' => $row->personel_adi ?: 'Eşleşmedi',
+            'bolge' => $row->bolge,
+            'isemri_sebep' => $row->isemri_sebep,
+            'isemri_sonucu' => $row->isemri_sonucu,
+            'abone_no' => $row->abone_no,
+            'takilan_sayacno' => $row->takilan_sayacno
+        ];
+    }, $response['data']);
+    echo json_encode($response);
+    exit;
+}
+
+// Generic Management Actions for Sorgu Tabs
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'sorgu-sil-generic') {
+    $id = $_POST['id'] ?? 0;
+    $type = $_POST['type'] ?? 'puantaj';
+    $table = ($type === 'endeks') ? 'endeks_okuma_sorgu' : (($type === 'sayac') ? 'sayac_degisim_sorgu' : 'yapilan_isler_sorgu');
+    $db = (new \App\Core\Db())->getConnection();
+    $stmt = $db->prepare("UPDATE $table SET silinme_tarihi = NOW() WHERE id = ?");
+    $result = $stmt->execute([$id]);
     echo json_encode(['status' => $result ? 'success' : 'error']);
     exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'sorgu-sil-toplu') {
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'sorgu-sil-toplu-generic') {
     $ids = $_POST['ids'] ?? [];
-    if (empty($ids)) {
-        echo json_encode(['status' => 'error', 'message' => 'Silinecek kayıt bulunamadı.']);
-        exit;
-    }
-    
-    $Puantaj = new PuantajModel('yapilan_isler_sorgu');
+    $type = $_POST['type'] ?? 'puantaj';
+    $table = ($type === 'endeks') ? 'endeks_okuma_sorgu' : (($type === 'sayac') ? 'sayac_degisim_sorgu' : 'yapilan_isler_sorgu');
+    if (empty($ids)) { echo json_encode(['status' => 'error', 'message' => 'Seçim yapmadınız.']); exit; }
+    $db = (new \App\Core\Db())->getConnection();
     $placeholders = implode(',', array_fill(0, count($ids), '?'));
-    $stmt = $Puantaj->db->prepare("UPDATE yapilan_isler_sorgu SET silinme_tarihi = NOW() WHERE id IN ($placeholders)");
+    $stmt = $db->prepare("UPDATE $table SET silinme_tarihi = NOW() WHERE id IN ($placeholders)");
     $result = $stmt->execute($ids);
-    
     echo json_encode(['status' => $result ? 'success' : 'error']);
     exit;
 }
 
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'export-excel-sorgu') {
-    $Puantaj = new PuantajModel('yapilan_isler_sorgu');
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'export-excel-sorgu-generic') {
+    $category = $_GET['category'] ?? 'KESME_ACMA';
     $startDate = $_GET['start_date'] ?? date('Y-m-d');
     $endDate = $_GET['end_date'] ?? date('Y-m-d');
     $ekipKodu = $_GET['ekip_kodu'] ?? '';
-    $workType = $_GET['work_type'] ?? '';
-    $workResult = $_GET['work_result'] ?? '';
-
-    // Fetch all filtered records (length = -1)
-    $data = $Puantaj->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $workType, $workResult);
-    $records = $data['data'] ?? [];
 
     $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
     $sheet = $spreadsheet->getActiveSheet();
-    $sheet->setTitle('Puantaj Sorgu');
+    $filename = 'Sorgu_' . $category . '_' . date('Ymd_His') . '.xlsx';
 
-    // Headers
-    $headers = ['Tarih', 'Ekip Kodu', 'Personel', 'İş Emri Tipi', 'İş Emri Sonucu', 'Sonuçlanmış', 'Açık Olanlar'];
-    $cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
-    foreach ($headers as $idx => $header) {
-        $sheet->setCellValue($cols[$idx] . '1', $header);
+    if ($category === 'KESME_ACMA') {
+        $Model = new PuantajModel('yapilan_isler_sorgu');
+        $res = $Model->getDataTable($_GET, $startDate, $endDate, $ekipKodu);
+        $records = $res['data'] ?? [];
+        $headers = ['Tarih', 'Ekip Kodu', 'Personel', 'İş Emri Tipi', 'İş Emri Sonucu', 'Sonuçlanmış', 'Açık Olanlar'];
+        $cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+        foreach($headers as $idx => $h) $sheet->setCellValue($cols[$idx].'1', $h);
+        $rowIdx = 2;
+        foreach ($records as $row) {
+            $sheet->setCellValue('A'.$rowIdx, \App\Helper\Date::dmY($row->tarih));
+            $sheet->setCellValue('B'.$rowIdx, $row->ekip_kodu_adi ?: $row->ekip_kodu);
+            $sheet->setCellValue('C'.$rowIdx, $row->personel_adi);
+            $sheet->setCellValue('D'.$rowIdx, $row->is_emri_tipi);
+            $sheet->setCellValue('E'.$rowIdx, $row->is_emri_sonucu);
+            $sheet->setCellValue('F'.$rowIdx, $row->sonuclanmis);
+            $sheet->setCellValue('G'.$rowIdx, $row->acik_olanlar);
+            $rowIdx++;
+        }
+    } elseif ($category === 'ENDEKS_OKUMA') {
+        $Model = new \App\Model\EndeksOkumaModel('endeks_okuma_sorgu');
+        $res = $Model->getDataTable($_GET, $startDate, $endDate, $ekipKodu);
+        $records = $res['data'] ?? [];
+        $headers = ['Tarih', 'Defter', 'Bölge', 'Ekip No', 'Personel', 'Okunan Abone', 'Sayaç Durum'];
+        $cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
+        foreach($headers as $idx => $h) $sheet->setCellValue($cols[$idx].'1', $h);
+        $rowIdx = 2;
+        foreach ($records as $row) {
+            $sheet->setCellValue('A'.$rowIdx, \App\Helper\Date::dmY($row->tarih));
+            $sheet->setCellValue('B'.$rowIdx, $row->defter);
+            $sheet->setCellValue('C'.$rowIdx, $row->bolge);
+            $sheet->setCellValue('D'.$rowIdx, $row->ekip_kodu_adi);
+            $sheet->setCellValue('E'.$rowIdx, $row->personel_adi);
+            $sheet->setCellValue('F'.$rowIdx, $row->okunan_abone_sayisi);
+            $sheet->setCellValue('G'.$rowIdx, $row->sayac_durum);
+            $rowIdx++;
+        }
+    } elseif ($category === 'SAYAC_DEGISIM') {
+        $Model = new \App\Model\SayacDegisimModel('sayac_degisim_sorgu');
+        $res = $Model->getDataTable($_GET, $startDate, $endDate, $ekipKodu);
+        $records = $res['data'] ?? [];
+        $headers = ['Tarih', 'Ekip No', 'Personel', 'Bölge', 'Sebep', 'Sonuç', 'Abone No', 'Takılan Sayaç No'];
+        $cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+        foreach($headers as $idx => $h) $sheet->setCellValue($cols[$idx].'1', $h);
+        $rowIdx = 2;
+        foreach ($records as $row) {
+            $sheet->setCellValue('A'.$rowIdx, \App\Helper\Date::dmYHis($row->kayit_tarihi, 'd.m.Y H:i'));
+            $sheet->setCellValue('B'.$rowIdx, $row->ekip_kodu_adi);
+            $sheet->setCellValue('C'.$rowIdx, $row->personel_adi);
+            $sheet->setCellValue('D'.$rowIdx, $row->bolge);
+            $sheet->setCellValue('E'.$rowIdx, $row->isemri_sebep);
+            $sheet->setCellValue('F'.$rowIdx, $row->isemri_sonucu);
+            $sheet->setCellValue('G'.$rowIdx, $row->abone_no);
+            $sheet->setCellValue('H'.$rowIdx, $row->takilan_sayacno);
+            $rowIdx++;
+        }
     }
-    $sheet->getStyle('A1:G1')->getFont()->setBold(true);
 
-    // Data
-    $rowIdx = 2;
-    foreach ($records as $row) {
-        $sheet->setCellValue('A' . $rowIdx, \App\Helper\Date::dmY($row->tarih));
-        $sheet->setCellValue('B' . $rowIdx, $row->ekip_kodu_adi ?: ($row->ekip_kodu ?: '-'));
-        $sheet->setCellValue('C' . $rowIdx, $row->personel_adi ?: 'Eşleşmedi');
-        $sheet->setCellValue('D' . $rowIdx, $row->is_emri_tipi);
-        $sheet->setCellValue('E' . $rowIdx, $row->is_emri_sonucu);
-        $sheet->setCellValue('F' . $rowIdx, $row->sonuclanmis);
-        $sheet->setCellValue('G' . $rowIdx, $row->acik_olanlar);
-        $rowIdx++;
-    }
+    $sheet->getStyle('A1:'.$sheet->getHighestColumn().'1')->getFont()->setBold(true);
+    foreach (range('A', $sheet->getHighestColumn()) as $colId) $sheet->getColumnDimension($colId)->setAutoSize(true);
 
-    // Auto size columns
-    foreach (range('A', 'G') as $colId) {
-        $sheet->getColumnDimension($colId)->setAutoSize(true);
-    }
-
-    $filename = 'Puantaj_Sorgu_Export_' . date('Ymd_His') . '.xlsx';
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     header('Content-Disposition: attachment;filename="' . $filename . '"');
     header('Cache-Control: max-age=0');
-
     $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
     $writer->save('php://output');
-    exit;
-}
-
-if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'sorgu-sil') {
-    $id = $_POST['id'] ?? 0;
-    $Puantaj = new PuantajModel('yapilan_isler_sorgu');
-    $stmt = $Puantaj->db->prepare("UPDATE yapilan_isler_sorgu SET silinme_tarihi = NOW() WHERE id = ?");
-    $result = $stmt->execute([$id]);
-    echo json_encode(['status' => $result ? 'success' : 'error']);
     exit;
 }

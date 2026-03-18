@@ -369,10 +369,10 @@ $title = 'Cari Yönetimi';
                 <div class="modal-body px-4 pt-4 pb-2">
                     <div class="mb-4 d-flex justify-content-center gap-2">
                         <input type="radio" class="btn-check" name="type" id="type_aldim" value="aldim" autocomplete="off" checked>
-                        <label class="btn btn-outline-success flex-grow-1 fw-bold" for="type_aldim"><i class="bx bx-plus-circle me-1"></i>Tahsilat (Aldım)</label>
+                        <label class="btn btn-outline-success flex-grow-1 fw-bold" for="type_aldim"><i class="bx bx-minus-circle me-1"></i>Aldım</label>
 
                         <input type="radio" class="btn-check" name="type" id="type_verdim" value="verdim" autocomplete="off">
-                        <label class="btn btn-outline-danger flex-grow-1 fw-bold" for="type_verdim"><i class="bx bx-minus-circle me-1"></i>Ödeme (Verdim)</label>
+                        <label class="btn btn-outline-danger flex-grow-1 fw-bold" for="type_verdim"><i class="bx bx-plus-circle me-1"></i>Verdim</label>
                     </div>
 
                     <div class="mb-3">

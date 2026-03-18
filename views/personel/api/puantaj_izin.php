@@ -51,8 +51,23 @@ try {
 
         // Aktif personelleri ve o ay veya sonrasında işten çıkanları getir
         $personeller = $Personel->db->prepare("
-            SELECT p.id, p.adi_soyadi, p.resim_yolu, p.ekip_no, p.tc_kimlik_no, p.isten_cikis_tarihi, p.ise_giris_tarihi 
+            SELECT p.id, p.adi_soyadi, p.resim_yolu, p.ekip_no, p.tc_kimlik_no, p.isten_cikis_tarihi, p.ise_giris_tarihi,
+                   CASE WHEN gg.personel_id IS NOT NULL THEN 1 ELSE 0 END as gorev_gecmisi_var,
+                   COALESCE(gg_days.toplam_gun, 0) as gg_toplam_gun
             FROM personel p
+            LEFT JOIN (
+                SELECT pgg.personel_id
+                FROM personel_gorev_gecmisi pgg
+                WHERE pgg.baslangic_tarihi <= ?
+                  AND (pgg.bitis_tarihi IS NULL OR pgg.bitis_tarihi >= ?)
+            ) gg ON p.id = gg.personel_id
+            LEFT JOIN (
+                SELECT pgg.personel_id, 
+                       SUM(DATEDIFF(LEAST(COALESCE(pgg.bitis_tarihi, ?), ?), GREATEST(pgg.baslangic_tarihi, ?)) + 1) as toplam_gun
+                FROM personel_gorev_gecmisi pgg
+                WHERE pgg.baslangic_tarihi <= ? AND (pgg.bitis_tarihi IS NULL OR pgg.bitis_tarihi >= ?)
+                GROUP BY pgg.personel_id
+            ) gg_days ON p.id = gg_days.personel_id
             WHERE p.firma_id = ? 
             AND p.silinme_tarihi IS NULL 
             AND (p.aktif_mi = 1 OR (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi >= ?))
@@ -68,7 +83,7 @@ try {
             )
             ORDER BY p.adi_soyadi ASC
         ");
-        $personeller->execute([$firma_id, $startDate, $startDate, $endDate, $endDate, $startDate]);
+        $personeller->execute([$endDate, $startDate, $endDate, $endDate, $startDate, $endDate, $startDate, $firma_id, $startDate, $startDate, $endDate, $endDate, $startDate]);
         $personel_list = $personeller->fetchAll(PDO::FETCH_OBJ);
 
         // Varsayılan tanımlamaları al

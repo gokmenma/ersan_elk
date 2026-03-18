@@ -166,7 +166,7 @@ if (!function_exists('formatMoneyCariTakip')) {
                         <span class="material-symbols-outlined text-[22px]"><?= $icon ?></span>
                     </div>
                     <div>
-                        <p class="font-bold text-[12px] text-slate-800 dark:text-slate-300 leading-tight mb-0.5"><?= $isBorc ? 'Ödeme (Verdim)' : 'Tahsilat (Aldım)' ?></p>
+                        <p class="font-bold text-[12px] text-slate-800 dark:text-slate-300 leading-tight mb-0.5"><?= $isBorc ? 'Verdim' : 'Aldım' ?></p>
                         <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 font-medium">
                             <span class="flex items-center gap-0.5"><span class="material-symbols-outlined text-[11px]">event</span> <?= $dateFormatted ?> <?= $timeFormatted ?></span>
                         </div>
@@ -198,11 +198,11 @@ if (!function_exists('formatMoneyCariTakip')) {
     <div class="fixed bottom-[60px] left-0 right-0 px-4 py-3 bg-white/90 dark:bg-card-dark/90 backdrop-blur-md border-t border-slate-100 dark:border-slate-800 flex items-center gap-3 shadow-[0_-4px_20px_-10px_rgba(0,0,0,0.1)] z-40 safe-area-bottom pb-nav">
         <button onclick="window.openHizliIslem('<?= $cari_id_enc ?>', 'aldim')" class="flex-1 py-3 px-2 bg-emerald-50 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 border border-emerald-200 dark:border-emerald-800/50 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform shadow-sm">
             <span class="material-symbols-outlined text-[20px]">add_circle</span>
-            <span class="text-sm">Tahsilat (+ Para)</span>
+            <span class="text-sm">Aldım</span>
         </button>
         <button onclick="window.openHizliIslem('<?= $cari_id_enc ?>', 'verdim')" class="flex-1 py-3 px-2 bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/50 rounded-xl font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform shadow-sm">
             <span class="material-symbols-outlined text-[20px]">do_not_disturb_on</span>
-            <span class="text-sm">Ödeme (- Para)</span>
+            <span class="text-sm">Verdim</span>
         </button>
     </div>
 </div>
@@ -516,14 +516,14 @@ window.openHizliIslem = function(cariId, type) {
     mBtn.className = "w-full py-4 mt-8 text-white rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform shadow-lg text-base ";
     
     if (type === 'verdim') {
-        mTitle.innerText = "Ödeme (Verdim)";
+        mTitle.innerText = "Verdim";
         mTitle.className = "font-black text-rose-600 dark:text-rose-400 text-sm uppercase tracking-wide";
         mIcon.innerText = "do_not_disturb_on";
         mIcon.parentElement.className = "w-10 h-10 rounded-full bg-rose-100 dark:bg-rose-900/30 text-rose-600 flex items-center justify-center";
         mBtn.className += "bg-rose-600 hover:bg-rose-700 shadow-rose-600/30";
         mBtn.innerHTML = '<span class="material-symbols-outlined text-[20px]">task_alt</span> Ödemeyi Kaydet';
     } else {
-        mTitle.innerText = "Tahsilat (Aldım)";
+        mTitle.innerText = "Aldım";
         mTitle.className = "font-black text-emerald-600 dark:text-emerald-400 text-sm uppercase tracking-wide";
         mIcon.innerText = "add_circle";
         mIcon.parentElement.className = "w-10 h-10 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 flex items-center justify-center";

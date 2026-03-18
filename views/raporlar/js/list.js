@@ -94,6 +94,7 @@ $(document).ready(function() {
                     return '<span class="badge bg-' + color + '">' + data + '</span>';
                 }},
                 { data: 'tur', defaultContent: '-' },
+                { data: 'detay', defaultContent: '-' },
                 { data: 'tutar', defaultContent: '-' },
                 { data: 'tarih', defaultContent: '-' },
                 { data: 'durum', defaultContent: '-' },
@@ -124,8 +125,29 @@ $(document).ready(function() {
                 { data: 'toplam_borc', defaultContent: '-' },
                 { data: 'kesilen_tutar', defaultContent: '-' },
                 { data: 'kalan_tutar', defaultContent: '-' },
-                { data: 'durum', defaultContent: '-' },
+                { data: 'durum', render: function(data) {
+                    var badges = {
+                        'bekliyor': 'warning',
+                        'devam_ediyor': 'primary',
+                        'fekki_geldi': 'info',
+                        'kesinti_bitti': 'success',
+                        'bitti': 'success',
+                        'durduruldu': 'danger'
+                    };
+                    var labels = {
+                        'bekliyor': 'Bekliyor',
+                        'devam_ediyor': 'Devam Ediyor',
+                        'fekki_geldi': 'Fekki Geldi',
+                        'kesinti_bitti': 'Kesinti Bitti',
+                        'bitti': 'Tamamlandı',
+                        'durduruldu': 'Durduruldu'
+                    };
+                    var badgeClass = badges[data] || 'secondary';
+                    var label = labels[data] || data;
+                    return '<span class="badge bg-' + badgeClass + '">' + label + '</span>';
+                }},
                 { data: 'tarih', defaultContent: '-' },
+                { data: 'aciklama', defaultContent: '-' },
                 { data: null, orderable: false, className: 'text-center', render: islemColumnRender }
             ];
         }

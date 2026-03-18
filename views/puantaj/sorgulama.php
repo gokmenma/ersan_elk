@@ -5,13 +5,11 @@ use App\Helper\Helper;
 use App\Model\PuantajModel;
 use App\Model\PersonelModel;
 
-$Puantaj = new PuantajModel('yapilan_isler_sorgu');
 $Personel = new PersonelModel();
 
 $startDate = $_GET['start_date'] ?? Date::firstDayOfThisMonth();
 $endDate = $_GET['end_date'] ?? Date::today();
-$ekipKodu = $_GET['ekip_kodu'] ?? '';
-$workType = $_GET['work_type'] ?? '';
+$dateRangeValue = $startDate . ' - ' . $endDate;
 
 $personeller = $Personel->all(false, 'puantaj');
 $personelOptions = ['' => 'Seçiniz'];
@@ -19,182 +17,196 @@ foreach ($personeller as $p) {
     $personelOptions[$p->id] = $p->adi_soyadi;
 }
 
-$workTypes = $Puantaj->getWorkTypes();
-$workTypeOptions = ['' => 'Tüm İşler'];
-foreach ($workTypes as $wt) {
-    if (!empty($wt)) $workTypeOptions[$wt] = $wt;
-}
-
-$workResults = $Puantaj->getWorkResults();
-$workResultOptions = ['' => 'Tüm Sonuçlar'];
-foreach ($workResults as $wr) {
-    if (!empty($wr)) $workResultOptions[$wr] = $wr;
-}
+$Puantaj = new PuantajModel('yapilan_isler_sorgu');
 ?>
 <div class="container-fluid">
     <?php
     $maintitle = "Puantaj";
-    $title = "Kesme Açma Sorgulama";
+    $title = "İşlemler Sorgulama";
     ?>
     <?php include 'layouts/breadcrumb.php'; ?>
 
     <div class="row">
         <div class="col-12">
-            <div class="card">
-                <div class="card-body p-2">
-                    <form method="GET" action="" id="filterForm">
-                        <input type="hidden" name="p" value="puantaj/sorgulama">
-                        <div class="row g-3">
-                            <div class="col-md-2">
-                                <?php echo Form::FormFloatInput(
-                                    type: 'text',
-                                    name: 'start_date',
-                                    value: $startDate,
-                                    placeholder: '',
-                                    label: "Başlangıç Tarihi",
-                                    icon: "calendar",
-                                    class: "form-control flatpickr",
-                                ); ?>
-                            </div>
-                            <div class="col-md-2">
-                                <?php echo Form::FormFloatInput(
-                                    type: 'text',
-                                    name: 'end_date',
-                                    value: $endDate,
-                                    placeholder: '',
-                                    label: "Bitiş Tarihi",
-                                    icon: "calendar",
-                                    class: "form-control flatpickr",
-                                ); ?>
-                            </div>
-                            <div class="col-md-3">
-                                <?php echo Form::FormSelect2('ekip_kodu', $personelOptions, $ekipKodu, 'Personel Adı Soyadı', 'grid', 'key', '', 'form-select select2'); ?>
-                            </div>
-                            <div class="col-md-2">
-                                <?php echo Form::FormSelect2(
-                                    name: 'work_type',
-                                    options: $workTypeOptions,
-                                    selectedValue: $workType,
-                                    textField: "",
-                                    label: "Yapılan İş",
-                                    icon: "users",
-                                    valueField: "key"
-                                ); ?>
-                            </div>
-                            <div class="col-md-2">
-                                <?php echo Form::FormSelect2(
-                                    name: 'work_result',
-                                    options: $workResultOptions,
-                                    selectedValue: $_GET['work_result'] ?? '',
-                                    textField: "",
-                                    label: "İş Sonucu",
-                                    icon: "check-circle",
-                                    valueField: "key"
-                                ); ?>
-                            </div>
-                            <div class="col-md-1 d-flex align-items-end">
-                                <button type="submit" class="btn btn-primary w-100">
-                                    <i class="mdi mdi-filter-variant"></i>
+            <div class="card overflow-hidden">
+                <div class="card-header p-0 border-bottom-0">
+                    <ul class="nav nav-tabs nav-tabs-custom nav-justified" role="tablist">
+                        <li class="nav-item">
+                            <a class="nav-link active" data-bs-toggle="tab" href="#tab-puantaj" role="tab">
+                                <span class="d-block d-sm-none"><i class="mdi mdi-electric-switch-closed"></i></span>
+                                <span class="d-none d-sm-block"><i class="mdi mdi-electric-switch-closed me-1"></i> Kesme / Açma / Mühürleme</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#tab-endeks" role="tab">
+                                <span class="d-block d-sm-none"><i class="mdi mdi-counter"></i></span>
+                                <span class="d-none d-sm-block"><i class="mdi mdi-counter me-1"></i> Endeks Okuma</span>
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#tab-sayac" role="tab">
+                                <span class="d-block d-sm-none"><i class="mdi mdi-water-pump-off"></i></span>
+                                <span class="d-none d-sm-block"><i class="mdi mdi-water-pump-off me-1"></i> Sayaç Değişimi</span>
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+                <div class="card-body">
+                    <!-- Global Filters & Actions -->
+                    <div class="row g-3 align-items-end border-bottom pb-4 mb-4">
+                        <div class="col-lg-3">
+                            <form method="GET" action="" id="filterForm">
+                                <input type="hidden" name="p" value="puantaj/sorgulama">
+                                <?php echo Form::FormDateRange('date_range', $dateRangeValue, 'Tarih Aralığı'); ?>
+                            </form>
+                        </div>
+                        <div class="col-lg-3">
+                            <label class="form-label text-muted fw-bold small uppercase">Personel</label>
+                            <?php echo Form::FormSelect2('ekip_kodu', $personelOptions, '', '', 'users', 'key', '', 'form-select select2'); ?>
+                        </div>
+                        <div class="col-lg-2">
+                            <button type="submit" form="filterForm" class="btn btn-primary w-100 fw-bold shadow-sm">
+                                <i class="mdi mdi-filter-variant me-1"></i> Filtrele
+                            </button>
+                        </div>
+                        <div class="col-lg-4 text-end">
+                            <div class="d-flex justify-content-end gap-2">
+                                <button type="button" class="btn btn-info fw-bold shadow-sm" id="btnTriggerOnlineSorgu">
+                                    <i class="mdi mdi-cloud-search-outline me-1"></i> Online Sorgula
+                                </button>
+                                <button type="button" class="btn btn-success fw-bold shadow-sm" id="btnTriggerExcel">
+                                    <i class="mdi mdi-file-excel me-1"></i> Excel
+                                </button>
+                                <button type="button" class="btn btn-danger fw-bold bulk-delete-main shadow-sm" style="display: none;">
+                                    <i class="mdi mdi-trash-can me-1"></i> Sil
                                 </button>
                             </div>
                         </div>
-                    </form>
-                </div>
-            </div>
-        </div>
-    </div>
-
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h4 class="card-title">Sorgu Sonuçları (yapilan_isler_sorgu)</h4>
-                    <div class="d-flex gap-2">
-                        <button type="button" class="btn btn-danger btn-sm" id="btnBulkDelete" style="display: none;">
-                            <i class="mdi mdi-trash-can me-1"></i> Toplu Sil
-                        </button>
-                        <button type="button" class="btn btn-success btn-sm" id="btnExportSorguExcel">
-                            <i class="mdi mdi-file-excel me-1"></i> Excel'e Aktar
-                        </button>
-                        <button type="button" class="btn btn-info btn-sm" data-bs-toggle="modal" data-bs-target="#importOnlineSorguModal">
-                            <i class="mdi mdi-cloud-search-outline me-1"></i> Online Sorgula
-                        </button>
                     </div>
-                </div>
-                <div class="card-body">
-                    <table id="sorguTable" class="table table-bordered dt-responsive nowrap w-100">
-                        <thead>
-                            <tr class="table-light">
-                                <th style="width: 20px;">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="checkbox" id="checkAll">
-                                    </div>
-                                </th>
-                                <th data-filter="date">Tarih</th>
-                                <th data-filter="string">Ekip Kodu</th>
-                                <th data-filter="string">Personel</th>
-                                <th data-filter="select">İş Emri Tipi</th>
-                                <th data-filter="select">İş Emri Sonucu</th>
-                                <th data-filter="number">Sonuçlanmış</th>
-                                <th data-filter="number">Açık Olanlar</th>
-                                <th>İşlem</th>
-                            </tr>
-                        </thead>
-                        <tbody></tbody>
-                    </table>
+
+                    <div class="tab-content">
+                        <div class="tab-pane active" id="tab-puantaj" role="tabpanel">
+                            <table id="tblPuantajSorgu" class="table table-hover table-bordered dt-responsive nowrap w-100 align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 20px;"><input class="form-check-input check-all" type="checkbox"></th>
+                                        <th>Tarih</th>
+                                        <th>Ekip Kodu</th>
+                                        <th>Personel</th>
+                                        <th>İş Emri Tipi</th>
+                                        <th>İş Emri Sonucu</th>
+                                        <th>Sonuçlanmış</th>
+                                        <th>Açık Olanlar</th>
+                                        <th style="width: 50px;">İşlem</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+
+                        <div class="tab-pane" id="tab-endeks" role="tabpanel">
+                            <table id="tblEndeksSorgu" class="table table-hover table-bordered dt-responsive nowrap w-100 align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 20px;"><input class="form-check-input check-all" type="checkbox"></th>
+                                        <th>Tarih</th>
+                                        <th>Defter</th>
+                                        <th>Bölge</th>
+                                        <th>Ekip Adı</th>
+                                        <th>Personel</th>
+                                        <th>Abone Sayısı</th>
+                                        <th>Sayaç Durum</th>
+                                        <th style="width: 50px;">İşlem</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+
+                        <div class="tab-pane" id="tab-sayac" role="tabpanel">
+                            <table id="tblSayacSorgu" class="table table-hover table-bordered dt-responsive nowrap w-100 align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th style="width: 20px;"><input class="form-check-input check-all" type="checkbox"></th>
+                                        <th>Tarih</th>
+                                        <th>Ekip No</th>
+                                        <th>Personel</th>
+                                        <th>Bölge</th>
+                                        <th>Sebep</th>
+                                        <th>Sonuç</th>
+                                        <th>Abone No</th>
+                                        <th>Takılan Sayaç No</th>
+                                        <th style="width: 50px;">İşlem</th>
+                                    </tr>
+                                </thead>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Online Sorgu Modal -->
-<div class="modal fade" id="importOnlineSorguModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Online Kesme/Açma İşlemleri Sorgula</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<!-- Modals for Online Query -->
+<div class="modal fade" id="modalOnlinePuantaj" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title text-white">Online Kesme / Açma Sorgula</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="onlineSorguForm">
-                <div class="modal-body">
-                    <div class="alert alert-warning">
-                        <i data-feather="alert-triangle" class="me-2"></i>
-                        Bu işlem sadece verileri incelemek içindir. <strong>Asıl puantaj ve zimmet kayıtlarını etkilemez.</strong>
+            <form class="online-sorgu-form" data-type="KESME_ACMA">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <?php echo Form::FormDateRange('modal_date_range', $dateRangeValue, 'Sorgulama Tarih Aralığı'); ?>
                     </div>
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <?php echo Form::FormFloatInput('text','baslangic_tarihi', Date::today(), 'Başlangıç Tarihi','Başlangıç Tarihi', 'calendar', 'form-control flatpickr'); ?>
-                        </div>
-                        <div class="col-md-6">
-                            <?php echo Form::FormFloatInput('text','bitis_tarihi', Date::today(), 'Bitiş Tarihi','Bitiş Tarihi', 'calendar', 'form-control flatpickr'); ?>
-                        </div>
-                        <div class="col-md-6">
-                            <?php echo Form::FormSelect2('filter_personel_id', $personelOptions, '', 'Personel Filtresi', 'users', 'key', '', 'form-select select2'); ?>
-                        </div>
-                        <div class="col-md-6">
-                            <?php 
-                            $ekipKodlari = $Puantaj->db->query("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'ekip_kodu' AND silinme_tarihi IS NULL")->fetchAll(PDO::FETCH_KEY_PAIR);
-                            $ekipOptions = ['' => 'Tüm Ekipler'] + $ekipKodlari;
-                            echo Form::FormSelect2('filter_ekip_kodu', $ekipOptions, '', 'Ekip Kodu Filtresi', 'grid', 'key', '', 'form-select select2'); 
-                            ?>
-                        </div>
-                        <div class="col-md-6">
-                            <?php echo Form::FormSelect2('filter_work_type', $workTypeOptions, '', 'İş Türü Filtresi', 'activity', 'key', '', 'form-select select2'); ?>
-                        </div>
-                        <div class="col-md-6">
-                            <?php echo Form::FormSelect2('filter_work_result', $workResultOptions, '', 'İş Sonucu Filtresi', 'check-circle', 'key', '', 'form-select select2'); ?>
-                        </div>
-                    </div>
-                    <div id="onlineSorguSpinner" class="text-center p-3" style="display: none;">
-                        <div class="spinner-border text-primary" role="status"></div>
-                        <p class="mt-2">Sorgulanıyor...</p>
-                    </div>
-                    <div id="onlineSorguResult" class="mt-3"></div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
-                    <button type="submit" class="btn btn-primary" id="btnOnlineSorguSorgula">Sorgula ve Kaydet</button>
+                <div class="modal-footer bg-light border-top-0">
+                    <button type="button" class="btn btn-light fw-bold px-4" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-primary px-4 fw-bold btn-sorgula">Sorgula</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalOnlineEndeks" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title text-white">Online Endeks Okuma Sorgula</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form class="online-sorgu-form" data-type="ENDEKS_OKUMA">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <?php echo Form::FormDateRange('modal_date_range', $dateRangeValue, 'Sorgulama Tarih Aralığı'); ?>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top-0">
+                    <button type="button" class="btn btn-light fw-bold px-4" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-info text-white px-4 fw-bold btn-sorgula">Sorgula</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalOnlineSayac" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-warning text-white">
+                <h5 class="modal-title text-white">Online Sayaç Değişimi Sorgula</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form class="online-sorgu-form" data-type="SAYAC_DEGISIM">
+                <div class="modal-body p-4">
+                    <div class="mb-3">
+                        <?php echo Form::FormDateRange('modal_date_range', $dateRangeValue, 'Sorgulama Tarih Aralığı'); ?>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light border-top-0">
+                    <button type="button" class="btn btn-light fw-bold px-4" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-warning text-white px-4 fw-bold btn-sorgula">Sorgula</button>
                 </div>
             </form>
         </div>
@@ -203,26 +215,34 @@ foreach ($workResults as $wr) {
 
 <script>
 $(document).ready(function() {
-    var table = $('#sorguTable').DataTable($.extend(true, {}, getDatatableOptions(), {
-        processing: true,
-        serverSide: true,
+    var tables = {};
+
+    // Initializer for Range Flatpickr
+    $(".flatpickr-range").flatpickr({
+        mode: "range",
+        locale: "tr",
+        dateFormat: "d.m.Y",
+        allowInput: true
+    });
+
+    function getDatesFromRange(rangeStr) {
+        if (!rangeStr) return { start: '', end: '' };
+        var parts = rangeStr.split(' - ');
+        return {
+            start: parts[0] || '',
+            end: parts[1] || parts[0] || ''
+        };
+    }
+
+    tables.puantaj = $('#tblPuantajSorgu').DataTable($.extend(true, {}, getDatatableOptions(), {
         ajax: {
             url: 'views/puantaj/api.php',
             data: function(d) {
+                var range = getDatesFromRange($('input[name="date_range"]').val());
                 d.action = 'get-puantaj-sorgu-datatable';
-                d.start_date = $('input[name="start_date"]').val();
-                d.end_date = $('input[name="end_date"]').val();
+                d.start_date = range.start;
+                d.end_date = range.end;
                 d.ekip_kodu = $('select[name="ekip_kodu"]').val();
-                d.work_type = $('select[name="work_type"]').val();
-                d.work_result = $('select[name="work_result"]').val();
-                
-                // Add advanced filter data from DataTables
-                $('#sorguTable thead tr.dt-filter-row input, #sorguTable thead tr.dt-filter-row select').each(function() {
-                    let colIdx = $(this).closest('th').index();
-                    if (this.value) {
-                        d.columns[colIdx].search.value = this.value;
-                    }
-                });
             }
         },
         columns: [
@@ -237,69 +257,141 @@ $(document).ready(function() {
             {
                 data: 'id',
                 render: function(data) {
-                    return '<button class="btn btn-danger btn-sm delete-sorgu" data-id="' + data + '"><i class="bx bx-trash"></i></button>';
+                    return '<button class="btn btn-outline-danger btn-sm delete-sorgu" data-table="puantaj" data-id="' + data + '"><i class="bx bx-trash"></i></button>';
                 },
                 orderable: false
             }
         ],
-        order: [[1, 'desc']] // History is column 1 now
+        order: [[1, 'desc']]
     }));
 
-    // Select all logic
-    $('#checkAll').on('click', function() {
-        $('.row-check').prop('checked', this.checked);
-        toggleBulkDeleteButton();
+    tables.endeks = $('#tblEndeksSorgu').DataTable($.extend(true, {}, getDatatableOptions(), {
+        ajax: {
+            url: 'views/puantaj/api.php',
+            data: function(d) {
+                var range = getDatesFromRange($('input[name="date_range"]').val());
+                d.action = 'get-endeks-sorgu-datatable';
+                d.start_date = range.start;
+                d.end_date = range.end;
+                d.ekip_kodu = $('select[name="ekip_kodu"]').val();
+            }
+        },
+        columns: [
+            { data: 'checkbox', orderable: false, searchable: false },
+            { data: 'tarih' },
+            { data: 'defter' },
+            { data: 'bolge' },
+            { data: 'ekip_kodu_adi' },
+            { data: 'personel_adi' },
+            { data: 'okunan_abone_sayisi' },
+            { data: 'sayac_durum' },
+            {
+                data: 'id',
+                render: function(data) {
+                    return '<button class="btn btn-outline-danger btn-sm delete-sorgu" data-table="endeks" data-id="' + data + '"><i class="bx bx-trash"></i></button>';
+                },
+                orderable: false
+            }
+        ],
+        order: [[1, 'desc']]
+    }));
+
+    tables.sayac = $('#tblSayacSorgu').DataTable($.extend(true, {}, getDatatableOptions(), {
+        ajax: {
+            url: 'views/puantaj/api.php',
+            data: function(d) {
+                var range = getDatesFromRange($('input[name="date_range"]').val());
+                d.action = 'get-sayac-sorgu-datatable';
+                d.start_date = range.start;
+                d.end_date = range.end;
+                d.ekip_kodu = $('select[name="ekip_kodu"]').val();
+            }
+        },
+        columns: [
+            { data: 'checkbox', orderable: false, searchable: false },
+            { data: 'kayit_tarihi' },
+            { data: 'ekip_kodu_adi' },
+            { data: 'personel_adi' },
+            { data: 'bolge' },
+            { data: 'isemri_sebep' },
+            { data: 'isemri_sonucu' },
+            { data: 'abone_no' },
+            { data: 'takilan_sayacno' },
+            {
+                data: 'id',
+                render: function(data) {
+                    return '<button class="btn btn-outline-danger btn-sm delete-sorgu" data-table="sayac" data-id="' + data + '"><i class="bx bx-trash"></i></button>';
+                },
+                orderable: false
+            }
+        ],
+        order: [[1, 'desc']]
+    }));
+
+    $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+        $($.fn.dataTable.tables(true)).DataTable().columns.adjust();
+        toggleBulkDeleteButton(getActiveTabType());
     });
-
-    $(document).on('change', '.row-check', function() {
-        if (!this.checked) $('#checkAll').prop('checked', false);
-        toggleBulkDeleteButton();
-    });
-
-    function toggleBulkDeleteButton() {
-        if ($('.row-check:checked').length > 0) {
-            $('#btnBulkDelete').fadeIn();
-        } else {
-            $('#btnBulkDelete').fadeOut();
-        }
-    }
-
-    // Trigger advanced filter initialization
-    if (typeof initAdvancedFilters === 'function') {
-        initAdvancedFilters(table, table.settings()[0]);
-    }
 
     $('#filterForm').on('submit', function(e) {
         e.preventDefault();
-        table.ajax.reload();
+        Object.values(tables).forEach(t => t.ajax.reload());
     });
 
-    $('#onlineSorguForm').on('submit', function(e) {
-        e.preventDefault();
-        var formData = $(this).serialize() + '&action=online-sorgu-sorgula';
-        $('#onlineSorguSpinner').show();
-        $('#btnOnlineSorguSorgula').prop('disabled', true);
-        $('#onlineSorguResult').hide();
+    $('#btnTriggerOnlineSorgu').on('click', function() {
+        var type = getActiveTabType();
+        if (type === 'puantaj') $('#modalOnlinePuantaj').modal('show');
+        else if (type === 'endeks') $('#modalOnlineEndeks').modal('show');
+        else if (type === 'sayac') $('#modalOnlineSayac').modal('show');
+    });
 
-        $.post('views/puantaj/api.php', formData, function(res) {
-            $('#onlineSorguSpinner').hide();
-            $('#btnOnlineSorguSorgula').prop('disabled', false);
-            var html = '';
+    $('#btnTriggerExcel').on('click', function() {
+        var type = getActiveTabType();
+        var range = getDatesFromRange($('input[name="date_range"]').val());
+        var catMap = { 'puantaj':'KESME_ACMA', 'endeks':'ENDEKS_OKUMA', 'sayac':'SAYAC_DEGISIM' };
+        var params = $.param({
+            action: 'export-excel-sorgu-generic',
+            category: catMap[type],
+            start_date: range.start,
+            end_date: range.end,
+            ekip_kodu: $('select[name="ekip_kodu"]').val()
+        });
+        window.location.href = 'views/puantaj/api.php?' + params;
+    });
+
+    $('.online-sorgu-form').on('submit', function(e) {
+        e.preventDefault();
+        var form = $(this);
+        var type = form.data('type');
+        var range = getDatesFromRange(form.find('input[name="modal_date_range"]').val());
+        var btn = form.find('.btn-sorgula');
+        var originalText = btn.text();
+        
+        btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Sorgulanıyor...');
+
+        var actionMap = { 'KESME_ACMA': 'online-puantaj-sorgula', 'ENDEKS_OKUMA': 'online-endeks-sorgula', 'SAYAC_DEGISIM': 'online-sayac-sorgula' };
+
+        var data = {
+            action: actionMap[type],
+            baslangic_tarihi: range.start,
+            bitis_tarihi: range.end
+        };
+
+        $.post('views/puantaj/api.php', data, function(res) {
+            btn.prop('disabled', false).text(originalText);
             if (res.status === 'success') {
-                html = '<div class="alert alert-success">' + res.message + '</div>';
-                table.ajax.reload();
-            } else {
-                html = '<div class="alert alert-danger">' + res.message + '</div>';
-            }
-            $('#onlineSorguResult').html(html).show();
+                Swal.fire({ icon:'success', title:'Başarılı', text:res.message, timer:2000, showConfirmButton:false });
+                form.closest('.modal').modal('hide');
+                tables[getActiveTabType()].ajax.reload();
+            } else { Swal.fire('Hata', res.message, 'error'); }
         }, 'json');
     });
 
-    $('#btnBulkDelete').on('click', function() {
+    $('.bulk-delete-main').on('click', function() {
+        var tableType = getActiveTabType();
+        var tableObj = tables[tableType];
         var ids = [];
-        $('.row-check:checked').each(function() {
-            ids.push($(this).val());
-        });
+        $(tableObj.table().container()).find('.row-check:checked').each(function() { ids.push($(this).val()); });
 
         if (ids.length === 0) return;
 
@@ -311,59 +403,58 @@ $(document).ready(function() {
             cancelButtonText: 'İptal'
         }).then((result) => {
             if (result.isConfirmed) {
-                $.post('views/puantaj/api.php', { action: 'sorgu-sil-toplu', ids: ids }, function(res) {
+                $.post('views/puantaj/api.php', { action: 'sorgu-sil-toplu-generic', ids: ids, type: tableType }, function(res) {
                     if (res.status === 'success') {
-                        table.ajax.reload(null, false);
-                        $('#checkAll').prop('checked', false);
-                        toggleBulkDeleteButton();
+                        tableObj.ajax.reload(null, false);
+                        $(tableObj.table().header()).find('.check-all').prop('checked', false);
+                        toggleBulkDeleteButton(tableType);
                         Swal.fire('Silindi!', '', 'success');
-                    } else {
-                        Swal.fire('Hata!', res.message || 'Silme işlemi başarısız.', 'error');
                     }
                 }, 'json');
             }
         });
-    });
-
-    $('#btnExportSorguExcel').on('click', function() {
-        var params = $.param({
-            action: 'export-excel-sorgu',
-            start_date: $('input[name="start_date"]').val(),
-            end_date: $('input[name="end_date"]').val(),
-            ekip_kodu: $('select[name="ekip_kodu"]').val(),
-            work_type: $('select[name="work_type"]').val(),
-            work_result: $('select[name="work_result"]').val()
-        });
-        
-        // Add advanced filter data
-        $('#sorguTable thead tr.dt-filter-row input, #sorguTable thead tr.dt-filter-row select').each(function() {
-            let colIdx = $(this).closest('th').index();
-            if (this.value) {
-                params += '&columns[' + colIdx + '][search][value]=' + encodeURIComponent(this.value);
-            }
-        });
-
-        window.location.href = 'views/puantaj/api.php?' + params;
     });
 
     $(document).on('click', '.delete-sorgu', function() {
         var id = $(this).data('id');
-        Swal.fire({
-            title: 'Silmek istediğinize emin misiniz?',
-            icon: 'warning',
-            showCancelButton: true,
-            confirmButtonText: 'Evet, sil',
-            cancelButtonText: 'İptal'
-        }).then((result) => {
+        var tableType = $(this).data('table');
+        Swal.fire({ title: 'Silmek istediğinize emin misiniz?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Evet, sil', cancelButtonText: 'İptal' }).then((result) => {
             if (result.isConfirmed) {
-                $.post('views/puantaj/api.php', { action: 'sorgu-sil', id: id }, function(res) {
-                    if (res.status === 'success') {
-                        table.ajax.reload(null, false);
-                        Swal.fire('Silindi!', '', 'success');
-                    }
+                $.post('views/puantaj/api.php', { action: 'sorgu-sil-generic', id: id, type: tableType }, function(res) {
+                    if (res.status === 'success') { tables[tableType].ajax.reload(null, false); Swal.fire('Silindi!', '', 'success'); }
                 }, 'json');
             }
         });
     });
+
+    $(document).on('click', '.check-all', function() {
+        $(this).closest('table').find('.row-check').prop('checked', this.checked);
+        toggleBulkDeleteButton(getActiveTabType());
+    });
+
+    $(document).on('change', '.row-check', function() {
+        var table = $(this).closest('table');
+        if (!this.checked) table.find('.check-all').prop('checked', false);
+        toggleBulkDeleteButton(getActiveTabType());
+    });
+
+    function getActiveTabType() {
+        var activeTab = $('.nav-link.active').attr('href');
+        return activeTab.replace('#tab-', '');
+    }
+
+    function toggleBulkDeleteButton(type) {
+        var tableId = '#tbl' + type.charAt(0).toUpperCase() + type.slice(1) + 'Sorgu';
+        var count = $(tableId + ' .row-check:checked').length;
+        if (count > 0) $('.bulk-delete-main').fadeIn();
+        else $('.bulk-delete-main').fadeOut();
+    }
 });
 </script>
+<style>
+.nav-tabs-custom .nav-link { border: none; border-bottom: 2px solid transparent; font-weight: 600; color: #6c757d; padding: 1rem 1.5rem; transition: all 0.3s; }
+.nav-tabs-custom .nav-link.active { color: var(--bs-primary); border-bottom-color: var(--bs-primary); background-color: transparent; }
+.nav-tabs-custom .nav-link:hover { color: var(--bs-primary); }
+.uppercase { text-transform: uppercase; letter-spacing: 0.5px; }
+.flatpickr-input { background-color: #fff !important; }
+</style>

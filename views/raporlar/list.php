@@ -142,6 +142,7 @@
                                 <th>Departman</th>
                                 <th>İşlem Tipi</th>
                                 <th>Tür/Parametre</th>
+                                <th>Detay</th>
                                 <th>Tutar</th>
                                 <th>Tarih</th>
                                 <th>Durum</th>
@@ -190,6 +191,7 @@
                                 <th>Kalan Tutar</th>
                                 <th>Durum</th>
                                 <th>Tarih</th>
+                                <th>Açıklama</th>
                                 <th>İşlem</th>
                             </tr>
                         </thead>

@@ -733,7 +733,9 @@ if ($id > 0) {
 <script>
     window.personelData = {
         maas_tutari: <?= floatval($personel->maas_tutari ?? 0) ?>,
-        maas_durumu: "<?= $personel->maas_durumu ?? '' ?>"
+        maas_durumu: "<?= $personel->maas_durumu ?? '' ?>",
+        tc_kimlik_no: "<?= $personel->tc_kimlik_no ?? '' ?>",
+        adi_soyadi: "<?= $personel->adi_soyadi ?? '' ?>"
     };
 </script>
 

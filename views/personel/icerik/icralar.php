@@ -253,13 +253,25 @@ if (!empty($icralar)) {
                             <?php foreach ($icralar as $i): ?>
                                 <tr>
                                     <td class="text-center fw-bold text-secondary"><?= $i->sira ?></td>
-                                    <td>
+                                    <td class="btn-icra-duzenle" style="cursor: pointer;" data-id="<?= $i->id ?>">
                                         <div class="fw-bold text-dark"><?= htmlspecialchars($i->icra_dairesi) ?></div>
                                         <div class="text-muted small d-flex align-items-center mt-1">
                                             <i data-feather="file-text" class="me-1 text-muted"
                                                 style="width: 12px; height: 12px;"></i>
                                             <?= htmlspecialchars($i->dosya_no) ?>
                                         </div>
+                                        <?php if(!empty($i->iban)): ?>
+                                            <div class="text-primary small mt-1">
+                                                <i data-feather="credit-card" class="me-1" style="width: 12px; height: 12px;"></i>
+                                                <b>IBAN:</b> <?= htmlspecialchars($i->iban) ?>
+                                            </div>
+                                        <?php endif; ?>
+                                        <?php if(!empty($i->hesap_bilgileri)): ?>
+                                            <div class="text-info small mt-1">
+                                                <i data-feather="info" class="me-1" style="width: 12px; height: 12px;"></i>
+                                                <b>Hesap:</b> <?= htmlspecialchars($i->hesap_bilgileri) ?>
+                                            </div>
+                                        <?php endif; ?>
                                     </td>
                                     <td class="fw-bold text-dark"><?= number_format($i->toplam_borc, 2, ',', '.') ?> <small
                                              class="text-muted">TL</small></td>
@@ -395,7 +407,7 @@ if (!empty($icralar)) {
 
 <!-- İcra Dosyası Ekle/Düzenle Modal -->
 <div class="modal fade" id="modalPersonelIcraEkle" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-warning text-dark border-bottom-0">
                 <h5 class="modal-title" id="icraModalTitle"><i data-feather="plus-circle" class="me-2"
@@ -406,50 +418,76 @@ if (!empty($icralar)) {
                 <input type="hidden" name="personel_id" value="<?= $id ?>">
                 <input type="hidden" name="id" id="icra_id_hidden" value="">
                 <div class="modal-body p-4">
-                    <div class="row">
-                        <div class="col-md-4 mb-3">
-                            <?= Form::FormFloatInput("number", "icra_sira", "1", "Sıra", "Sıra No", "list", "form-control shadow-none", true, null, "off", false) ?>
+                    <div class="row g-3">
+                        <!-- Temel Dosya Bilgileri -->
+                        <div class="col-12">
+                            <h6 class="fw-bold mb-3 text-primary border-bottom pb-2"><i data-feather="file-text" class="icon-sm me-1"></i> Dosya Bilgileri</h6>
+                            <div class="row">
+                                <div class="col-md-3 mb-3">
+                                    <?= Form::FormFloatInput("number", "icra_sira", "1", "Sıra", "Sıra No", "list", "form-control shadow-none", true, null, "off", false) ?>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <?= Form::FormSelect2("icra_durum", [
+                                        "bekliyor" => "Bekliyor",
+                                        "devam_ediyor" => "Devam Ediyor",
+                                        "fekki_geldi" => "Fekki Geldi",
+                                        "kesinti_bitti" => "Kesinti Bitti",
+                                        "bitti" => "Tamamlandı",
+                                        "durduruldu" => "Durduruldu"
+                                    ], "bekliyor", "Dosya Durumu", "info", "key", "", "form-select select2 shadow-none", true, 'width:100%') ?>
+                                </div>
+                                <div class="col-md-3 mb-3">
+                                    <?= Form::FormFloatInput("number", "icra_toplam_borc", "", "Toplam Borç", "Borç (TL)", "dollar-sign", "form-control shadow-none", true, null, "off", false, 'step="0.01"') ?>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <?= Form::FormFloatInput("text", "icra_dairesi", "", "İcra Dairesi", "İcra Dairesi Adı", "home", "form-control shadow-none", true, null, "off", false) ?>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <?= Form::FormFloatInput("text", "icra_dosya_no", "", "Dosya No", "Esas No", "file-text", "form-control shadow-none", true, null, "off", false) ?>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-8 mb-3">
-                            <?= Form::FormSelect2("icra_durum", [
-                                "bekliyor" => "Bekliyor",
-                                "devam_ediyor" => "Devam Ediyor",
-                                "fekki_geldi" => "Fekki Geldi",
-                                "kesinti_bitti" => "Kesinti Bitti",
-                                "bitti" => "Tamamlandı",
-                                "durduruldu" => "Durduruldu"
-                            ], "bekliyor", "Dosya Durumu", "info", "key", "", "form-select select2 shadow-none", true, 'width:100%') ?>
+
+                        <!-- Banka Bilgileri -->
+                        <div class="col-md-12">
+                            <h6 class="fw-bold mb-3 text-info border-bottom pb-2"><i data-feather="credit-card" class="icon-sm me-1"></i> Banka Bilgileri</h6>
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <?= Form::FormFloatInput("text", "icra_iban", "", "İcra Dairesi IBAN", "TR00...", "credit-card", "form-control shadow-none", false, null, "off", false) ?>
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <?= Form::FormFloatTextarea("icra_hesap_bilgileri", "", "Hesap Bilgileri", "Banka ve Şube", "info", "form-control shadow-none", false, "38px", 1) ?>
+                                </div>
+                            </div>
                         </div>
-                        <div class="col-md-12 mb-3">
-                            <?= Form::FormFloatInput("text", "icra_dairesi", "", "İcra Dairesi", "İcra Dairesi", "home", "form-control shadow-none", true, null, "off", false) ?>
-                        </div>
-                        <div class="col-md-12 mb-3">
-                            <?= Form::FormFloatInput("text", "icra_dosya_no", "", "Dosya No", "Dosya Numarası", "file-text", "form-control shadow-none", true, null, "off", false) ?>
-                        </div>
-                        <div class="col-md-12 mb-3">
-                            <?= Form::FormFloatInput("number", "icra_toplam_borc", "", "Toplam Borç", "Toplam Borç (TL)", "dollar-sign", "form-control shadow-none", true, null, "off", false, 'step="0.01"') ?>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <?= Form::FormSelect2("icra_kesinti_tipi", [
-                                "tutar" => "Sabit Tutar",
-                                "net_yuzde" => "Net Ücretin Yüzdesi",
-                                "asgari_yuzde" => "Net Asgari Ücretin Yüzdesi"
-                            ], "tutar", "Kesinti Türü", "list", "key", "", "form-select select2 shadow-none", true, 'width:100%') ?>
-                        </div>
-                        <div class="col-md-6 mb-3" id="div_icra_aylik_kesinti">
-                            <?= Form::FormFloatInput("number", "icra_aylik_kesinti", "", "Aylık Kesinti", "Aylık Kesinti (TL)", "minus-circle", "form-control shadow-none", true, null, "off", false, 'step="0.01"') ?>
-                        </div>
-                        <div class="col-md-6 mb-3" id="div_icra_kesinti_orani" style="display:none;">
-                            <?= Form::FormFloatInput("number", "icra_kesinti_orani", "25", "Kesinti Oranı (%)", "Kesinti Oranı (%)", "percent", "form-control shadow-none", false, null, "off", false, 'step="0.01" min="0" max="100"') ?>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <?= Form::FormFloatInput("text", "icra_baslangic", "", "Başlangıç Tarihi", "Başlangıç Tarihi", "calendar", "form-control flatpickr", false, null, "off", false) ?>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <?= Form::FormFloatInput("text", "icra_bitis", "", "Bitiş Tarihi", "Bitiş Tarihi", "calendar", "form-control flatpickr", false, null, "off", false) ?>
-                        </div>
-                        <div class="col-md-12 mb-3">
-                            <?= Form::FormFloatTextarea("icra_aciklama", "", "Açıklama", "Dosya Açıklaması", "edit-3", "form-control shadow-none", false, "80px", 2) ?>
+
+                        <!-- Kesinti Ayarları -->
+                        <div class="col-12">
+                            <h6 class="fw-bold mb-3 text-success border-bottom pb-2"><i data-feather="settings" class="icon-sm me-1"></i> Kesinti Detayları</h6>
+                            <div class="row">
+                                <div class="col-md-4 mb-3">
+                                    <?= Form::FormSelect2("icra_kesinti_tipi", [
+                                        "tutar" => "Sabit Tutar",
+                                        "net_yuzde" => "Net Ücretin Yüzdesi",
+                                        "asgari_yuzde" => "Net Asgari Ücretin Yüzdesi"
+                                    ], "tutar", "Kesinti Türü", "list", "key", "", "form-select select2 shadow-none", true, 'width:100%') ?>
+                                </div>
+                                <div class="col-md-4 mb-3" id="div_icra_aylik_kesinti">
+                                    <?= Form::FormFloatInput("number", "icra_aylik_kesinti", "", "Aylık Kesinti", "Tutar (TL)", "minus-circle", "form-control shadow-none", true, null, "off", false, 'step="0.01"') ?>
+                                </div>
+                                <div class="col-md-4 mb-3" id="div_icra_kesinti_orani" style="display:none;">
+                                    <?= Form::FormFloatInput("number", "icra_kesinti_orani", "25", "Kesinti Oranı (%)", "Oran (%)", "percent", "form-control shadow-none", false, null, "off", false, 'step="0.01" min="0" max="100"') ?>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <?= Form::FormFloatInput("text", "icra_baslangic", "", "Başlangıç", "Tarih", "calendar", "form-control flatpickr", false, null, "off", false) ?>
+                                </div>
+                                <div class="col-md-4 mb-3">
+                                    <?= Form::FormFloatInput("text", "icra_bitis", "", "Bitiş (Varsa)", "Tarih", "calendar", "form-control flatpickr", false, null, "off", false) ?>
+                                </div>
+                                <div class="col-md-8 mb-3">
+                                    <?= Form::FormFloatTextarea("icra_aciklama", "", "Açıklama", "Dosya Notu", "edit-3", "form-control shadow-none", false, "38px", 1) ?>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -525,6 +563,7 @@ if (!empty($icralar)) {
                             <tr>
                                 <th class="text-center" style="width: 50px;">#</th>
                                 <th>Dönem</th>
+                                <th>Detay</th>
                                 <th>Açıklama</th>
                                 <th class="text-end">Tutar</th>
                                 <th class="text-center">Durum</th>
@@ -626,7 +665,15 @@ if (!empty($icralar)) {
                                 <?php foreach ($icralar as $idx => $i): ?>
                                     <tr>
                                         <td class="text-center"><?= $i->sira ?></td>
-                                        <td><?= htmlspecialchars($i->icra_dairesi) ?></td>
+                                        <td>
+                                            <?= htmlspecialchars($i->icra_dairesi) ?>
+                                            <?php if(!empty($i->iban)): ?>
+                                                <br><small class="text-muted"><b>IBAN:</b> <?= htmlspecialchars($i->iban) ?></small>
+                                            <?php endif; ?>
+                                            <?php if(!empty($i->hesap_bilgileri)): ?>
+                                                <br><small class="text-muted"><b>Hesap:</b> <?= htmlspecialchars($i->hesap_bilgileri) ?></small>
+                                            <?php endif; ?>
+                                        </td>
                                         <td><?= htmlspecialchars($i->dosya_no) ?></td>
                                         <td class="text-end fw-bold"><?= number_format($i->toplam_borc, 2, ',', '.') ?> TL</td>
                                         <td class="text-end"><?php if (($i->kesinti_tipi ?? 'tutar') === 'tutar'): ?>

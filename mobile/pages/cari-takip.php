@@ -253,11 +253,11 @@ if (!function_exists('formatMoneyCariTakip')) {
             <div class="flex p-1 bg-slate-100 dark:bg-slate-800 rounded-xl mb-4 gap-1">
                 <label class="flex-1 text-center py-2.5 rounded-lg text-sm font-semibold cursor-pointer has-[:checked]:bg-white dark:has-[:checked]:bg-slate-700 has-[:checked]:text-emerald-600 has-[:checked]:shadow-sm transition-all focus-within:ring-2 focus-within:ring-emerald-500/20">
                     <input type="radio" name="type" value="aldim" class="hidden peer" checked>
-                    <span class="flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[16px]">add_circle</span> Tahsilat (Aldım)</span>
+                    <span class="flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[16px]">remove</span> Aldım</span>
                 </label>
                 <label class="flex-1 text-center py-2.5 rounded-lg text-sm font-semibold cursor-pointer has-[:checked]:bg-white dark:has-[:checked]:bg-slate-700 has-[:checked]:text-rose-600 has-[:checked]:shadow-sm transition-all focus-within:ring-2 focus-within:ring-rose-500/20">
                     <input type="radio" name="type" value="verdim" class="hidden peer">
-                    <span class="flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[16px]">do_not_disturb_on</span> Ödeme (Verdim)</span>
+                    <span class="flex items-center justify-center gap-1.5"><span class="material-symbols-outlined text-[16px]">add</span> Verdim</span>
                 </label>
             </div>
             

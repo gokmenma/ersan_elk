@@ -391,149 +391,20 @@ if (!empty($dbGelirler)) {
                         $gorevGecmisiEksikPersoneller = []; // Görev geçmişi eksik personeller
                     
                         foreach ($personeller as $p) {
-                            $rawEkOdeme = floatval($p->guncel_toplam_ek_odeme);
-
-                            // Maaş tutarı ve durumunu belirle
-                            if (!empty($p->gorev_gecmisi_var)) {
-                                $pMaasDurumu = $p->gg_maas_durumu ?? '';
-                                $fallbackMaasTutari = floatval($p->gg_maas_tutari ?? 0);
-                            } else {
-                                $pMaasDurumu = $p->maas_durumu ?? '';
-                                $fallbackMaasTutari = floatval($p->maas_tutari ?? 0);
-                                // Görev geçmişi eksik personeli kaydet
+                            if (empty($p->gorev_gecmisi_var)) {
                                 $gorevGecmisiEksikPersoneller[] = $p->adi_soyadi;
                             }
 
-                            // Eğer daha önce hesaplama yapılmışsa ve ağırlıklı nominal maaş varsa onu kullan (Pro-rata gösterimi için)
-                            if ($p->hd_nominal_maas !== null && floatval($p->hd_nominal_maas) > 0) {
-                                $pMaasTutari = floatval($p->hd_nominal_maas);
-                            } else {
-                                $pMaasTutari = $fallbackMaasTutari;
-                            }
+                            $hesap = $BordroPersonel->hesaplaOrtakGosterimDegerleri($p, $selectedDonem, floatval($asgariUcretNet));
 
-                            $pNetMaas = floatval($p->net_maas ?? 0);
-                            $pToplamKesinti = floatval($p->kesinti_tutar ?? 0);
-                            $pIsNet = $pMaasDurumu == 'Net';
-                            $pIsPrimUsulu = (stripos($pMaasDurumu, 'Prim') !== false);
-
-                            // SQL'den JSON_EXTRACT ile çekilen değerleri direkt kullan (json_decode yok)
-                            $pIcra = floatval($p->hd_icra_kesintisi ?? 0);
-                            $pKesintiHaricIcra = $pToplamKesinti - $pIcra;
-
-                            // Çalışma günü hesaplama
-                            // 1) Personelin dönem içindeki aktif takvim gününü bul
-                            // 2) Eksik gün yoksa ve dönem tamamı kapsanıyorsa 30 gün kabul et
-                            // 3) Eksik gün varsa aktif takvim gününden düş
-                            $pGunlukBase = 0;
-                            $pUcretsizIzinGunu = 0;
-                            $pUcretliIzinGunu = 0;
-                            $pCalismaGunu = null;
-
-                            // JSON_EXTRACT ile çekilen izin değerlerini önce al
-                            if ($p->hd_ucretsiz_izin_gunu !== null) {
-                                $pUcretsizIzinGunu = intval($p->hd_ucretsiz_izin_gunu);
-                            } elseif ($p->hd_ucretsiz_izin_dusumu !== null && $p->hd_nominal_maas !== null && floatval($p->hd_nominal_maas) > 0) {
-                                $pUcretsizIzinGunu = round(floatval($p->hd_ucretsiz_izin_dusumu) / (floatval($p->hd_nominal_maas) / 30));
-                            }
-                            if ($p->hd_ucretli_izin_gunu !== null) {
-                                $pUcretliIzinGunu = intval($p->hd_ucretli_izin_gunu);
-                            }
-
-                            if ($pCalismaGunu === null) {
-                                $pDonemTakvimGunu = $selectedDonem
-                                    ? ((int) round(($donemBitTs - $donemBasTs) / 86400) + 1)
-                                    : 30;
-                                $aktifBasTs = $donemBasTs;
-                                $aktifBitTs = $donemBitTs;
-
-                                if (!empty($p->ise_giris_tarihi) && $p->ise_giris_tarihi !== '0000-00-00') {
-                                    $iseGirisTs = strtotime($p->ise_giris_tarihi);
-                                    if ($iseGirisTs !== false && $iseGirisTs > $aktifBasTs) {
-                                        $aktifBasTs = $iseGirisTs;
-                                    }
-                                }
-
-                                if (!empty($p->isten_cikis_tarihi) && $p->isten_cikis_tarihi !== '0000-00-00') {
-                                    $istenCikisTs = strtotime($p->isten_cikis_tarihi);
-                                    if ($istenCikisTs !== false && $istenCikisTs < $aktifBitTs) {
-                                        $aktifBitTs = $istenCikisTs;
-                                    }
-                                }
-
-                                if ($aktifBitTs >= $aktifBasTs) {
-                                    $pGunlukBase = (int) round(($aktifBitTs - $aktifBasTs) / 86400) + 1;
-                                }
-
-                                if (!empty($p->gorev_gecmisi_var) && isset($p->gg_toplam_gun)) {
-                                    $ggToplamGun = intval($p->gg_toplam_gun);
-                                    if ($ggToplamGun > 0) {
-                                        $pGunlukBase = min($pGunlukBase, $ggToplamGun);
-                                    }
-                                }
-
-                                $pMaasEksikGunToplami = $pUcretsizIzinGunu;
-                                if ($pGunlukBase > 0 && $pMaasEksikGunToplami === 0 && $pGunlukBase >= $pDonemTakvimGunu) {
-                                    $pCalismaGunu = 30;
-                                } else {
-                                    $pCalismaGunu = max(0, $pGunlukBase - $pMaasEksikGunToplami);
-                                }
-                            }
-
-                            // Toplam Alacağı
-                            if ($pIsPrimUsulu) {
-                                $pToplamAlacagi = floatval($p->brut_maas ?? 0) + $rawEkOdeme;
-                            } elseif ($pIsNet || $pMaasDurumu == 'Brüt') {
-                                $pToplamAlacagi = (($pMaasTutari / 30) * $pCalismaGunu) + $rawEkOdeme;
-                            } else {
-                                $pToplamAlacagi = $pMaasTutari + $rawEkOdeme;
-                            }
-
-                            // Net alacağı = Toplam Alacağı - Kesinti (hariç icra)
-                            // NOT: $pNetMaas (DB net_maas) icra düşülmüş hali, bu yüzden doğrudan kullanılmamalı
-                            $pNetAlacagi = $pToplamAlacagi - $pKesintiHaricIcra;
-
-                            // Elden ödeme (DB'den varsa al, yoksa hesapla)
-                            $eldenP = floatval($p->elden_odeme ?? 0);
-
-                            // Net Maaş (icra düştükten sonra dağıtılacak tutar)
-                            $pNetMaasGercek = $pNetAlacagi - $pIcra;
-                            if ($pNetMaasGercek < 0)
-                                $pNetMaasGercek = 0;
-
-                            if (isset($p->dagitim_manuel) && $p->dagitim_manuel == 1) {
-                                $bankaP = floatval($p->banka_odemesi ?? 0);
-                                $sodexoP = floatval($p->sodexo_odemesi ?? 0);
-                                $digerP = floatval($p->diger_odeme ?? 0);
-                            } else {
-                                // Banka = (Asgari / 30 * Gün) - İcra
-                                // Formül: geçerli dönemdeki asgari ücret / 30 * çalışma günü - icra kesintisi
-                                $sodexoP = floatval($p->sodexo_odemesi ?? 0);
-
-                                if ($pCalismaGunu >= 30) {
-                                    $bankaBaz = $asgariUcretNet;
-                                } else {
-                                    $bankaBaz = ($asgariUcretNet / 30) * $pCalismaGunu;
-                                }
-
-                                // Maksimum kontrolü (Net - Sodexo) - Banka ödemesi toplam alacağı geçemez
-                                $bankaMax = max(0, $pNetAlacagi - $sodexoP);
-                                $bankaBaz = min($bankaBaz, $bankaMax);
-
-                                $bankaP = max(0, $bankaBaz - $pIcra);
-                                if ($bankaP < 0)
-                                    $bankaP = 0;
-
-                                if (($p->sgk_yapilan_firma ?? '') === 'İŞKUR') {
-                                    $bankaP = 0;
-                                }
-
-                                $digerP = floatval($p->diger_odeme ?? 0);
-                            }
-
-                            // Elden = Net - Banka - Sodexo - Diğer
-                            // $pNetMaasGercek (İcra düşülmüş net maaş)
-                            // $eldenP = floatval($p->elden_odeme ?? 0); // DB'den gelen değeri eziyoruz
-                            $eldenP = max(0, $pNetMaasGercek - $bankaP - $sodexoP - $digerP);
+                            $pToplamAlacagi = $hesap['toplamAlacagi'];
+                            $pKesintiHaricIcra = $hesap['kesintiHaricIcra'];
+                            $pNetAlacagi = $hesap['netAlacagi'];
+                            $pIcra = $hesap['icraKesintisi'];
+                            $pCalismaGunu = $hesap['calismaGunu'];
+                            $bankaP = $hesap['bankaOdemesi'];
+                            $sodexoP = $hesap['sodexoOdemesi'];
+                            $eldenP = $hesap['eldenOdeme'];
 
                             // Toplamları güncelle
                             $toplamAlacagi += $pToplamAlacagi;
@@ -1274,6 +1145,9 @@ if (!empty($dbGelirler)) {
                         </div>
                     </div>
                     <div class="modal-footer">
+                        <button type="button" class="btn btn-warning" id="btnOdemeReset">
+                            <i class="bx bx-reset me-1"></i>Varsayılana Dön
+                        </button>
                         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                         <button type="submit" class="btn btn-primary"><i class="bx bx-save me-1"></i>Kaydet</button>
                     </div>

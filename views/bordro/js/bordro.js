@@ -908,6 +908,54 @@ $(document).ready(function () {
       },
     });
   });
+
+  // Ödeme Dağıtımı Varsayılana Dön
+  $("#btnOdemeReset").on("click", function () {
+    const id = $("#odeme_bordro_id").val();
+    if (!id) return;
+
+    Swal.fire({
+      title: "Emin misiniz?",
+      text: "Manuel yaptığınız tüm ödeme dağılımları silinecek ve varsayılan sistem hesaplamasına dönülecektir.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#f1b44c",
+      confirmButtonText: "Evet, Varsayılana Dön",
+      cancelButtonText: "İptal",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        $.ajax({
+          url: "views/bordro/api.php",
+          type: "POST",
+          data: {
+            action: "odeme-reset",
+            id: id,
+          },
+          dataType: "json",
+          success: function (response) {
+            if (response.status === "success") {
+              hideModal("odemeDagitModal");
+              Swal.fire({
+                icon: "success",
+                title: "Başarılı!",
+                text: response.message,
+                timer: 1500,
+                showConfirmButton: false,
+              }).then(() => {
+                location.reload();
+              });
+            } else {
+              Swal.fire("Hata", response.message, "error");
+            }
+          },
+          error: function () {
+            Swal.fire("Hata", "Bir hata oluştu.", "error");
+          },
+        });
+      }
+    });
+  });
+
   // Satırda Sodexo Düzenleme İkonu
   $(document).on("click", ".btn-edit-sodexo-inline", function () {
     const parent = $(this).closest(".sodexo-wrapper");

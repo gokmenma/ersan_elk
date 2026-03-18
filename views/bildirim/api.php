@@ -266,7 +266,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             // ===== In-App Notifications =====
             case 'get-unread':
-                $userId = $_SESSION['user_id'] ?? 0;
+                $userId = (int) ($_SESSION['user_id'] ?? ($_SESSION['user']->id ?? 0));
                 if ($userId <= 0) {
                     throw new Exception('Oturum bulunamadı.');
                 }
@@ -323,7 +323,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
 
             case 'mark-read':
-                $userId = $_SESSION['user_id'] ?? 0;
+                $userId = (int) ($_SESSION['user_id'] ?? ($_SESSION['user']->id ?? 0));
                 $id = $_POST['id'] ?? 0;
 
                 if ($userId <= 0 || $id <= 0) {
@@ -337,12 +337,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
 
             case 'mark-all-read':
-                $userId = $_SESSION['user_id'] ?? 0;
+                $userId = (int) ($_SESSION['user_id'] ?? ($_SESSION['user']->id ?? 0));
 
                 if ($userId <= 0) {
                     throw new Exception('Oturum bulunamadı.');
                 }
 
+                $BildirimModel = new BildirimModel();
                 $BildirimModel->markAllAsRead($userId);
 
                 echo json_encode(['status' => 'success']);

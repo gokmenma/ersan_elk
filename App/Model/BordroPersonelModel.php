@@ -91,6 +91,126 @@ class BordroPersonelModel extends Model
     }
 
     /**
+     * Liste ve Detay ekranında ortak kullanılacak gösterim hesapları.
+     * Böylece iki ekranın çalışma günü ve ödeme dağılımı mantığı tek kaynaktan yürür.
+     */
+    public function hesaplaOrtakGosterimDegerleri(object $p, ?object $donemBilgi, float $asgariUcretNet): array
+    {
+        $donemBaslangic = $donemBilgi->baslangic_tarihi ?? date('Y-m-01');
+        $donemBitis = $donemBilgi->bitis_tarihi ?? date('Y-m-t');
+
+        $donemBasTs = strtotime($donemBaslangic);
+        $donemBitTs = strtotime($donemBitis);
+        $donemTakvimGunu = ($donemBasTs !== false && $donemBitTs !== false)
+            ? ((int) round(($donemBitTs - $donemBasTs) / 86400) + 1)
+            : 30;
+
+        $rawEkOdeme = floatval($p->guncel_toplam_ek_odeme ?? 0);
+
+        if (!empty($p->gorev_gecmisi_var)) {
+            $maasDurumu = $p->gg_maas_durumu ?? '';
+            $fallbackMaasTutari = floatval($p->gg_maas_tutari ?? 0);
+        } else {
+            $maasDurumu = $p->maas_durumu ?? '';
+            $fallbackMaasTutari = floatval($p->maas_tutari ?? 0);
+        }
+
+        if (isset($p->hd_nominal_maas) && $p->hd_nominal_maas !== null && floatval($p->hd_nominal_maas) > 0) {
+            $maasTutari = floatval($p->hd_nominal_maas);
+        } else {
+            $maasTutari = $fallbackMaasTutari;
+        }
+
+        $toplamKesinti = floatval($p->kesinti_tutar ?? 0);
+        $icraKesintisi = floatval($p->hd_icra_kesintisi ?? 0);
+        $kesintiHaricIcra = $toplamKesinti - $icraKesintisi;
+
+        $ucretsizIzinGunu = 0;
+        if (isset($p->hd_ucretsiz_izin_gunu) && $p->hd_ucretsiz_izin_gunu !== null) {
+            $ucretsizIzinGunu = intval($p->hd_ucretsiz_izin_gunu);
+        } elseif (
+            isset($p->hd_ucretsiz_izin_dusumu, $p->hd_nominal_maas)
+            && $p->hd_ucretsiz_izin_dusumu !== null
+            && $p->hd_nominal_maas !== null
+            && floatval($p->hd_nominal_maas) > 0
+        ) {
+            $ucretsizIzinGunu = (int) round(floatval($p->hd_ucretsiz_izin_dusumu) / (floatval($p->hd_nominal_maas) / 30));
+        }
+
+        $aktifTakvimGun = $this->getAktifTakvimGunSayisi(
+            $donemBaslangic,
+            $donemBitis,
+            $p->ise_giris_tarihi ?? null,
+            $p->isten_cikis_tarihi ?? null
+        );
+
+        if (!empty($p->gorev_gecmisi_var) && isset($p->gg_toplam_gun)) {
+            $ggToplamGun = intval($p->gg_toplam_gun);
+            if ($ggToplamGun > 0) {
+                $aktifTakvimGun = min($aktifTakvimGun, $ggToplamGun);
+            }
+        }
+
+        $calismaGunu = $this->getMaasHesapGunu($aktifTakvimGun, $donemTakvimGunu, $ucretsizIzinGunu);
+
+        $isNet = ($maasDurumu === 'Net');
+        $isPrimUsulu = (stripos($maasDurumu, 'Prim') !== false);
+
+        if ($isPrimUsulu) {
+            $toplamAlacagi = floatval($p->brut_maas ?? 0) + $rawEkOdeme;
+        } elseif ($isNet || $maasDurumu === 'Brüt') {
+            $toplamAlacagi = (($maasTutari / 30) * $calismaGunu) + $rawEkOdeme;
+        } else {
+            $toplamAlacagi = $maasTutari + $rawEkOdeme;
+        }
+
+        $netAlacagi = $toplamAlacagi - $kesintiHaricIcra;
+        $netMaasGercek = max(0, $netAlacagi - $icraKesintisi);
+
+        if (isset($p->dagitim_manuel) && intval($p->dagitim_manuel) === 1) {
+            $bankaOdemesi = floatval($p->banka_odemesi ?? 0);
+            $sodexoOdemesi = floatval($p->sodexo_odemesi ?? 0);
+            $digerOdeme = floatval($p->diger_odeme ?? 0);
+        } else {
+            $sodexoOdemesi = floatval($p->sodexo_odemesi ?? 0);
+            $digerOdeme = floatval($p->diger_odeme ?? 0);
+
+            if ($calismaGunu >= 30) {
+                $bankaBaz = $asgariUcretNet;
+            } else {
+                $bankaBaz = ($asgariUcretNet / 30) * $calismaGunu;
+            }
+
+            $bankaMax = max(0, $netAlacagi - $sodexoOdemesi);
+            $bankaBaz = min($bankaBaz, $bankaMax);
+            $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
+
+            if (($p->sgk_yapilan_firma ?? '') === 'İŞKUR') {
+                $bankaOdemesi = 0;
+            }
+        }
+
+        $eldenOdeme = max(0, $netMaasGercek - $bankaOdemesi - $sodexoOdemesi - $digerOdeme);
+
+        return [
+            'maasDurumu' => $maasDurumu,
+            'maasTutari' => $maasTutari,
+            'rawEkOdeme' => $rawEkOdeme,
+            'ucretsizIzinGunu' => $ucretsizIzinGunu,
+            'calismaGunu' => $calismaGunu,
+            'kesintiHaricIcra' => $kesintiHaricIcra,
+            'icraKesintisi' => $icraKesintisi,
+            'toplamAlacagi' => $toplamAlacagi,
+            'netAlacagi' => $netAlacagi,
+            'netMaasGercek' => $netMaasGercek,
+            'bankaOdemesi' => $bankaOdemesi,
+            'sodexoOdemesi' => $sodexoOdemesi,
+            'digerOdeme' => $digerOdeme,
+            'eldenOdeme' => $eldenOdeme,
+        ];
+    }
+
+    /**
      * Belirli bir dönemdeki tüm personelleri getirir
      */
     public function getPersonellerByDonem($donem_id, $ids = [])

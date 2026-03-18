@@ -23,6 +23,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     $BordroDonem = new BordroDonemModel();
     $BordroPersonel = new BordroPersonelModel();
+    $BordroParametre = new BordroParametreModel();
     $SystemLog = new SystemLogModel();
     $userId = $_SESSION['user_id'] ?? 0;
 
@@ -532,11 +533,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception('Kayıt bulunamadı.');
                 }
 
-                $Personel = new PersonelModel();
-                $personel = $Personel->find($bp->personel_id);
-
                 // Dönem bilgilerini al (çalışma günü hesabı için)
                 $donemBilgi = $BordroDonem->getDonemById($bp->donem_id);
+
+                // Liste ile birebir aynı veri setini kullan (görev geçmişi + JSON_EXTRACT alanları dahil)
+                $detayRows = $BordroPersonel->getPersonellerByDonem($bp->donem_id, [$bp->id]);
+                if (!empty($detayRows)) {
+                    $bp = $detayRows[0];
+                }
+
+                $Personel = new PersonelModel();
+                $personel = $Personel->find($bp->personel_id);
 
                 // Kesinti ve ek ödeme türü etiketleri
                 $kesintiTurEtiketleri = [
@@ -569,53 +576,27 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $guncelKesinti = $BordroPersonel->getDonemKesintileri($bp->personel_id, $bp->donem_id);
                 $guncelEkOdeme = $BordroPersonel->getDonemEkOdemeleri($bp->personel_id, $bp->donem_id);
 
-                // Günlük ücret ve çalışma günü hesapla
-                $detayJSON = json_decode($bp->hesaplama_detay ?? '{}');
-                $brutMaas = floatval($bp->brut_maas ?? 0);
-                $nominalMaas = isset($detayJSON->matrahlar->nominal_maas) ? floatval($detayJSON->matrahlar->nominal_maas) : $brutMaas;
+                // Liste ve detayda aynı hesap fonksiyonunu kullan
+                $donemBaslangicTarihi = $donemBilgi?->baslangic_tarihi ?? date('Y-m-01');
+                $asgariUcretNet = $BordroParametre->getGenelAyar('asgari_ucret_net', $donemBaslangicTarihi) ?? 17002.12;
+                $hesap = $BordroPersonel->hesaplaOrtakGosterimDegerleri($bp, $donemBilgi, floatval($asgariUcretNet));
+                $guncelEkOdeme = floatval($hesap['rawEkOdeme']);
 
-                $gunlukUcret = $nominalMaas / 30; // Sabit 30 güne böl (Nominal maaş üzerinden)
+                $maasDurumuGosterim = $hesap['maasDurumu'] ?: ($personel->maas_durumu ?? '-');
+                $nominalMaas = floatval($hesap['maasTutari']);
+                $gunlukUcret = $nominalMaas / 30;
+                $ucretsizIzinGunu = intval($hesap['ucretsizIzinGunu']);
+                $calismaGunu = intval($hesap['calismaGunu']);
 
-                // Ücretsiz izin gün sayısını hesaplama_detay JSON'dan al
-                $ucretsizIzinGunu = isset($detayJSON->matrahlar->ucretsiz_izin_gunu) ? intval($detayJSON->matrahlar->ucretsiz_izin_gunu) : 0;
-                $ucretsizIzinDusumu = isset($detayJSON->matrahlar->ucretsiz_izin_dusumu) ? floatval($detayJSON->matrahlar->ucretsiz_izin_dusumu) : 0;
-                $ucretliIzinGunu = isset($detayJSON->matrahlar->ucretli_izin_gunu) ? intval($detayJSON->matrahlar->ucretli_izin_gunu) : 0;
-
-                // Çalışma günü: fiili_calisma_gunu JSON'dan varsa onu kullan
-                if (isset($detayJSON->matrahlar->fiili_calisma_gunu)) {
-                    $calismaGunu = intval($detayJSON->matrahlar->fiili_calisma_gunu);
-                } else {
-                    // JSON'da yoksa dinamik hesapla
-                    $donemBasTsApi = strtotime($donemBilgi->baslangic_tarihi ?? date('Y-m-01'));
-                    $donemBitTsApi = strtotime($donemBilgi->bitis_tarihi ?? date('Y-m-t'));
-                    $aydakiGunApi = date('t', $donemBasTsApi);
-                    $iseGirisDI = false;
-                    $istenCikisDI = false;
-
-                    if (!empty($personel->ise_giris_tarihi)) {
-                        $iseGTs = strtotime($personel->ise_giris_tarihi);
-                        if ($iseGTs > $donemBasTsApi)
-                            $iseGirisDI = true;
-                    }
-                    if (!empty($personel->isten_cikis_tarihi)) {
-                        $isCTs = strtotime($personel->isten_cikis_tarihi);
-                        if ($isCTs >= $donemBasTsApi && $isCTs < $donemBitTsApi)
-                            $istenCikisDI = true;
-                    }
-
-                    if ($iseGirisDI && $istenCikisDI) {
-                        $gunBase = date('j', $isCTs) - date('j', $iseGTs) + 1;
-                    } elseif ($iseGirisDI) {
-                        $gunBase = $aydakiGunApi - date('j', $iseGTs) + 1;
-                    } elseif ($istenCikisDI) {
-                        $gunBase = date('j', $isCTs);
-                    } elseif ($ucretsizIzinGunu > 0 || $ucretliIzinGunu > 0) {
-                        $gunBase = $aydakiGunApi;
-                    } else {
-                        $gunBase = 30;
-                    }
-                    $calismaGunu = max(0, $gunBase - $ucretsizIzinGunu - $ucretliIzinGunu);
-                }
+                // Tutarları ortak hesap sonucundan al
+                $toplamAlacak = floatval($hesap['toplamAlacagi']);
+                $netAlacak = floatval($hesap['netAlacagi']);
+                $icraKesinti = floatval($hesap['icraKesintisi']);
+                $netMaasHesap = floatval($hesap['netMaasGercek']);
+                $bankaOdemeModal = floatval($hesap['bankaOdemesi']);
+                $sodexoOdemeModal = floatval($hesap['sodexoOdemesi']);
+                $digerOdemeModal = floatval($hesap['digerOdeme']);
+                $eldenOdemeModal = floatval($hesap['eldenOdeme']);
 
                 // HTML oluştur
                 $html = '<div class="row">';
@@ -637,14 +618,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="col-md-6">';
                 $html .= '<h6 class="border-bottom pb-2 mb-3"><i class="bx bx-money me-1"></i>Maaş Özeti</h6>';
                 $html .= '<table class="table table-sm">';
-                $html .= '<tr><td class="text-muted">' . $personel->maas_durumu . ' Maaş:</td><td class="fw-bold text-primary">' . ($nominalMaas ? number_format($nominalMaas, 2, ',', '.') . ' ₺' : '-') . '</td></tr>';
-                $html .= '<tr><td class="text-muted">Günlük Ücret:</td><td class="text-secondary">' . number_format($gunlukUcret, 2, ',', '.') . ' ₺ <small class="text-muted">(' . $personel->maas_durumu . ' / 30)</small></td></tr>';
+                $html .= '<tr><td class="text-muted">' . $maasDurumuGosterim . ' Maaş:</td><td class="fw-bold text-primary">' . ($nominalMaas ? number_format($nominalMaas, 2, ',', '.') . ' ₺' : '-') . '</td></tr>';
+                $html .= '<tr><td class="text-muted">Günlük Ücret:</td><td class="text-secondary">' . number_format($gunlukUcret, 2, ',', '.') . ' ₺ <small class="text-muted">(' . $maasDurumuGosterim . ' / 30)</small></td></tr>';
                 $html .= '<tr><td class="text-muted">Çalışma Günü:</td><td class="' . ($ucretsizIzinGunu > 0 ? 'text-warning' : 'text-secondary') . '">' . $calismaGunu . ' gün' . ($ucretsizIzinGunu > 0 ? ' <small class="text-muted">(-' . $ucretsizIzinGunu . ' izin)</small>' : '') . '</td></tr>';
 
                 // Ücretsiz izin veya net/brüt maaş ise, çalışılan brüt/net maaşı göster
-                $calisanBrutMaas = $gunlukUcret * $calismaGunu; // Gün bazlı matrah hesaplama
-                if ($ucretsizIzinGunu > 0 || in_array($personel->maas_durumu, ['Net', 'Brüt'])) {
-                    $descText = ($personel->maas_durumu == 'Net' || $personel->maas_durumu == 'Brüt') ? ' (Gün x Ücret)' : ' (SGK matrahı)';
+                $calisanBrutMaas = $toplamAlacak - floatval($hesap['rawEkOdeme']);
+                if ($ucretsizIzinGunu > 0 || in_array($maasDurumuGosterim, ['Net', 'Brüt'])) {
+                    $descText = ($maasDurumuGosterim == 'Net' || $maasDurumuGosterim == 'Brüt') ? ' (Gün x Ücret)' : ' (SGK matrahı)';
                     $html .= '<tr class="table-warning"><td class="text-muted">Hakediş (Maaş):</td><td class="fw-bold text-warning">' . number_format($calisanBrutMaas, 2, ',', '.') . ' ₺ <small class="text-muted">' . $descText . '</small></td></tr>';
                 } else {
                     $calisanBrutMaas = $nominalMaas; // Tam ay çalıştıysa hakediş = nominal maaş
@@ -653,16 +634,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // ============================================================
                 // TUTAR HESAPLAMALARI
                 // ============================================================
-                // 1) Toplam Alacağı = Hakediş (Maaş) + Ek Ödeme
-                $toplamAlacak = $calisanBrutMaas + $guncelEkOdeme;
-
-                // 2) Yasal Kesintiler (SGK, İşsizlik, Gelir Vergisi, Damga Vergisi)
-                $yasalKesintiler = floatval($bp->sgk_isci ?? 0)
-                    + floatval($bp->issizlik_isci ?? 0)
-                    + floatval($bp->gelir_vergisi ?? 0)
-                    + floatval($bp->damga_vergisi ?? 0);
-
-                // 3) Diğer Kesintiler (İcra, Avans, Nafaka vb.) - DB'den çek
+                // Ortak hesap fonksiyonundan gelen değerleri kullan
                 $kesintiKayitlariOnce = $BordroPersonel->getDonemKesintileriListe($bp->personel_id, $bp->donem_id);
                 $digerKesintilerToplam = 0;
                 foreach ($kesintiKayitlariOnce as $kk) {
@@ -671,16 +643,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
 
-                // 4) Kesinti Tutarı (özet satır) = Yasal Kesintiler
-                $kesintiTutarOzet = $yasalKesintiler;
-
-                // 5) Net Alacağı = Toplam Alacağı - Yasal Kesintiler
-                $netAlacak = $toplamAlacak - $yasalKesintiler;
-
-                // 6) Net Maaş = Net Alacağı - Diğer Kesintiler (İcra vs.)
-                $netMaasHesap = $netAlacak - $digerKesintilerToplam;
-                if ($netMaasHesap < 0)
-                    $netMaasHesap = 0;
+                $kesintiTutarOzet = max(0, $toplamAlacak - $netAlacak);
 
                 // ============================================================
                 // HTML ÇIKTISI
@@ -1013,18 +976,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $html .= '</div>';
                 }
 
-                // Ödeme Dağılımı - Dinamik Hesapla
-                // Not: Veritabanındaki tutarlar eski/hatalı hesaplamadan kalmış olabilir.
-                // Gerçek Net Hakediş (Net Alacağı - icra/avans/kesinti) = $netMaasHesap (yukarıda hesaplandı)
-
-                $sodexoOdemeModal = floatval($bp->sodexo_odemesi ?? 0);
-                $digerOdemeModal = floatval($bp->diger_odeme ?? 0);
-                $eldenOdemeModal = floatval($bp->elden_odeme ?? 0);
-
-                // Banka = (Net Alacağı - İcra) - Sodexo - Elden - Diğer
-                $bankaOdemeModal = $netMaasHesap - $sodexoOdemeModal - $eldenOdemeModal - $digerOdemeModal;
-                if ($bankaOdemeModal < 0)
-                    $bankaOdemeModal = 0;
+                // Ödeme dağılımı: ortak hesap fonksiyonundan gelen değerleri kullan
 
                 if ($bankaOdemeModal > 0 || $sodexoOdemeModal > 0 || $digerOdemeModal > 0 || $eldenOdemeModal > 0) {
                     $html .= '<div class="row mt-4">';
@@ -1219,6 +1171,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 echo json_encode([
                     'status' => 'success',
                     'message' => 'Ödeme dağılımı kaydedildi.'
+                ]);
+                break;
+
+            // Ödeme Dağıtımı Sıfırla (Varsayılana Dön)
+            case 'odeme-reset':
+                $id = intval($_POST['id'] ?? 0);
+                if ($id <= 0) {
+                    throw new Exception('Geçersiz personel.');
+                }
+
+                // Manuel dağıtım bayraklarını kaldır
+                $sql = $BordroPersonel->getDb()->prepare("
+                    UPDATE bordro_personel 
+                    SET dagitim_manuel = 0, sodexo_manuel = 0
+                    WHERE id = ?
+                ");
+                $sql->execute([$id]);
+
+                // Maaşı tekrar hesapla (Varsayılan dağılım mantığı çalışacak)
+                $BordroPersonel->hesaplaMaas($id);
+
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Ödeme dağılımı varsayılana döndürüldü.'
                 ]);
                 break;
 

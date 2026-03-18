@@ -9,8 +9,9 @@ class EndeksOkumaModel extends Model
 {
     protected $table = 'endeks_okuma';
 
-    public function __construct()
+    public function __construct($table = null)
     {
+        if ($table) $this->table = $table;
         parent::__construct($this->table);
     }
 

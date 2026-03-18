@@ -26,6 +26,8 @@ $(document).ready(function () {
     $("#icra_durum").val("devam_ediyor");
     $("#icra_kesinti_tipi").val("tutar");
     $("#icra_kesinti_orani").val("25");
+    $("#icra_iban").val("");
+    $("#icra_hesap_bilgileri").val("");
     if ($("#icra_baslangic")[0] && $("#icra_baslangic")[0]._flatpickr) {
         $("#icra_baslangic")[0]._flatpickr.clear();
     } else {
@@ -107,6 +109,8 @@ $(document).ready(function () {
             .trigger("change");
           $("#icra_aylik_kesinti").val(response.aylik_kesinti_tutari);
           $("#icra_kesinti_orani").val(response.kesinti_orani || "25");
+          $("#icra_iban").val(response.iban || "");
+          $("#icra_hesap_bilgileri").val(response.hesap_bilgileri || "");
           $("#icra_durum").val(response.durum).trigger("change");
           
           // Flatpickr değerlerini set et (altInput kullanıldığı için setDate gereklidir)
@@ -281,6 +285,7 @@ $(document).ready(function () {
             html += "<tr>";
             html += '<td class="text-center">' + (idx + 1) + "</td>";
             html += "<td>" + (k.donem_adi || "-") + "</td>";
+            html += "<td>" + (k.icra_detay || "-") + "</td>";
             html += "<td>" + (k.aciklama || "-") + "</td>";
             html +=
               '<td class="text-end fw-bold text-dark">' +

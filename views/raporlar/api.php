@@ -189,7 +189,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         6 => 'tarih',
                         7 => 'durum',
                         8 => 'aciklama',
-                        9 => 'tarih' // Islem
+                        9 => 'tarih', // Islem
+                        10 => 'detay' 
                     ];
                     
                     if ($orderColumnIdx == 0) $orderColumn = 'adi_soyadi';
@@ -205,9 +206,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                pk.tutar, 
                                pk.olusturma_tarihi as tarih, 
                                CONVERT(pk.durum USING utf8mb4) as durum, 
-                               CONVERT(pk.aciklama USING utf8mb4) as aciklama
+                               CONVERT(pk.aciklama USING utf8mb4) as aciklama,
+                               CONVERT(COALESCE(CONCAT(pi.icra_dairesi, ' - ', pi.dosya_no), '') USING utf8mb4) as detay
                         FROM personel_kesintileri pk
                         JOIN personel p ON pk.personel_id = p.id
+                        LEFT JOIN personel_icralari pi ON pk.icra_id = pi.id
                         WHERE pk.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = :firmaId AND pk.olusturma_tarihi BETWEEN :startDate AND :endDate
                         UNION ALL
                         SELECT pe.id, 
@@ -219,7 +222,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                pe.tutar, 
                                pe.created_at as tarih, 
                                CONVERT(pe.durum USING utf8mb4) as durum, 
-                               CONVERT(pe.aciklama USING utf8mb4) as aciklama
+                               CONVERT(pe.aciklama USING utf8mb4) as aciklama,
+                               CONVERT('' USING utf8mb4) as detay
                         FROM personel_ek_odemeler pe
                         JOIN personel p ON pe.personel_id = p.id
                         WHERE pe.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = :firmaId AND pe.created_at BETWEEN :startDate AND :endDate
@@ -281,6 +285,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             'departman' => $row->departman,
                             'islem_tipi' => $row->islem_tipi,
                             'tur' => $row->detay_turu,
+                            'detay' => $row->detay ?? '-',
                             'tutar' => number_format((float)$row->tutar, 2, ',', '.') . ' TL',
                             'tarih' => date('d.m.Y H:i', strtotime($row->tarih)),
                             'durum' => $row->durum ?? 'Bekliyor',
@@ -379,7 +384,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         7 => 'kalan_tutar',
                         8 => 'pi.durum',
                         9 => 'pi.created_at',
-                        10 => 'pi.created_at' // Islem
+                        10 => 'pi.aciklama',
+                        11 => 'pi.created_at' // Islem
                     ];
                     
                     if ($orderColumnIdx == 0) $orderColumn = 'p.adi_soyadi';
@@ -443,7 +449,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             'kesilen_tutar' => number_format((float)$kesilen_tutar, 2, ',', '.') . ' TL',
                             'kalan_tutar' => number_format((float)$kalan_tutar, 2, ',', '.') . ' TL',
                             'durum' => $row->durum ?? '-',
-                            'tarih' => date('d.m.Y', strtotime($row->created_at))
+                            'tarih' => date('d.m.Y', strtotime($row->created_at)),
+                            'aciklama' => $row->aciklama ?? '-'
                         ];
                     }
                     break;
@@ -462,9 +469,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $excelData[] = [$r['personel'], $r['tc_no'], $r['departman'], $r['izin_turu'], $r['baslangic_tarihi'], $r['bitis_tarihi'], $r['gun_sayisi'], $r['durum'], $r['onaylayan'], $r['aciklama']];
                     }
                 } else if ($rapor_turu == 2) {
-                    $headers = ['Personel', 'TC No', 'Departman', 'İşlem Tipi', 'Tür', 'Tutar', 'Tarih', 'Durum', 'Açıklama'];
+                    $headers = ['Personel', 'TC No', 'Departman', 'İşlem Tipi', 'Tür', 'Detay', 'Tutar', 'Tarih', 'Durum', 'Açıklama'];
                     foreach ($data as $r) {
-                        $excelData[] = [$r['personel'], $r['tc_no'], $r['departman'], $r['islem_tipi'], $r['tur'], $r['tutar'], $r['tarih'], $r['durum'], $r['aciklama']];
+                        $excelData[] = [$r['personel'], $r['tc_no'], $r['departman'], $r['islem_tipi'], $r['tur'], $r['detay'], $r['tutar'], $r['tarih'], $r['durum'], $r['aciklama']];
                     }
                 } else if ($rapor_turu == 3) {
                     $headers = ['Personel', 'TC No', 'Departman', 'Kategori', 'Başlık', 'Tarih', 'Durum', 'Çözüm Tarihi', 'Çözüm Açıklama', 'Açıklama'];
@@ -472,9 +479,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $excelData[] = [$r['personel'], $r['tc_no'], $r['departman'], $r['kategori'], $r['baslik'], $r['tarih'], $r['durum'], $r['cozum_tarihi'], $r['cozum_aciklama'], $r['aciklama']];
                     }
                 } else if ($rapor_turu == 4) {
-                    $headers = ['Personel', 'TC No', 'Departman', 'İcra Dairesi', 'Dosya No', 'Toplam Borç', 'Kesilen', 'Kalan', 'Durum', 'Tarih'];
+                    $headers = ['Personel', 'TC No', 'Departman', 'İcra Dairesi', 'Dosya No', 'Toplam Borç', 'Kesilen', 'Kalan', 'Durum', 'Tarih', 'Açıklama'];
                     foreach ($data as $r) {
-                        $excelData[] = [$r['personel'], $r['tc_no'], $r['departman'], $r['icra_dairesi'], $r['dosya_no'], $r['toplam_borc'], $r['kesilen_tutar'], $r['kalan_tutar'], $r['durum'], $r['tarih']];
+                        $excelData[] = [$r['personel'], $r['tc_no'], $r['departman'], $r['icra_dairesi'], $r['dosya_no'], $r['toplam_borc'], $r['kesilen_tutar'], $r['kalan_tutar'], $r['durum'], $r['tarih'], $r['aciklama']];
                     }
                 }
                 

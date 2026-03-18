@@ -255,7 +255,7 @@ class PuantajModel extends Model
     /**
      * Server-side DataTable için veri çekme
      */
-    public function getDataTable($request, $startDate, $endDate, $ekipKodu = '', $workType = '', $workResult = '')
+    public function getDataTable($request, $startDate, $endDate, $ekipKodu = '', $workType = '', $workResult = '', $sorguTuru = '')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $params = ['firma_id' => $firmaId];
@@ -289,6 +289,14 @@ class PuantajModel extends Model
             // Hem yeni normalized hem de eski string alanından filtrele
             $baseWhere .= " AND (tn.is_emri_sonucu = :work_result OR t.is_emri_sonucu = :work_result)";
             $params['work_result'] = $workResult;
+        }
+
+        if ($sorguTuru === 'ENDEKS_OKUMA') {
+            $baseWhere .= " AND t.is_emri_tipi = 'Endeks Okuma'";
+        } elseif ($sorguTuru === 'SAYAC_DEGISIM') {
+            $baseWhere .= " AND t.is_emri_tipi = 'Sayaç Değişimi'";
+        } elseif ($sorguTuru === 'KESME_ACMA') {
+            $baseWhere .= " AND t.is_emri_tipi NOT IN ('Endeks Okuma', 'Sayaç Değişimi')";
         }
 
         // Toplam kayıt sayısı (filtresiz)

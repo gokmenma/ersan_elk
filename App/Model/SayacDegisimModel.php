@@ -10,8 +10,9 @@ class SayacDegisimModel extends Model
 {
     protected $table = 'sayac_degisim';
 
-    public function __construct()
+    public function __construct($table = null)
     {
+        if ($table) $this->table = $table;
         parent::__construct($this->table);
     }
 

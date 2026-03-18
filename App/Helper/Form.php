@@ -229,6 +229,23 @@ class Form
         return $html;
     }
 
+    public static function FormDateRange(
+        $name,
+        $value,
+        $label,
+        $icon = 'calendar',
+        $class = "form-control flatpickr-range"
+    ) {
+        return '
+        <div class="form-floating form-floating-custom">
+            <input type="text" name="' . htmlspecialchars($name) . '" id="' . htmlspecialchars($name) . '" class="' . htmlspecialchars($class) . '" value="' . htmlspecialchars($value ?? '') . '" placeholder="' . htmlspecialchars($label) . '">
+            <label for="' . htmlspecialchars($name) . '">' . htmlspecialchars($label) . '</label>
+            <div class="form-floating-icon">
+                ' . (!empty($icon) ? ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') : '') . '
+            </div>
+        </div>';
+    }
+
     //Type File
     public static function FormFileInput($name, $label = null, $icon = 'file', $class = "form-control", $required = false)
     {

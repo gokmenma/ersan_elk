@@ -157,8 +157,10 @@ try {
             $data = [
                 'personel_id' => $personel_id,
                 'sira' => intval($_POST['icra_sira'] ?? 1),
-                'dosya_no' => $_POST['icra_dosya_no'],
                 'icra_dairesi' => $_POST['icra_dairesi'],
+                'dosya_no' => $_POST['icra_dosya_no'],
+                'iban' => $_POST['icra_iban'] ?? null,
+                'hesap_bilgileri' => $_POST['icra_hesap_bilgileri'] ?? null,
                 'toplam_borc' => $_POST['icra_toplam_borc'],
                 'aylik_kesinti_tutari' => $_POST['icra_aylik_kesinti'] ?? 0,
                 'kesinti_tipi' => $_POST['icra_kesinti_tipi'] ?? 'tutar',
@@ -183,8 +185,10 @@ try {
             $data = [
                 'id' => $id,
                 'sira' => intval($_POST['icra_sira'] ?? 1),
-                'dosya_no' => $_POST['icra_dosya_no'],
                 'icra_dairesi' => $_POST['icra_dairesi'],
+                'dosya_no' => $_POST['icra_dosya_no'],
+                'iban' => $_POST['icra_iban'] ?? null,
+                'hesap_bilgileri' => $_POST['icra_hesap_bilgileri'] ?? null,
                 'toplam_borc' => $_POST['icra_toplam_borc'],
                 'aylik_kesinti_tutari' => $_POST['icra_aylik_kesinti'] ?? 0,
                 'kesinti_tipi' => $_POST['icra_kesinti_tipi'] ?? 'tutar',
@@ -249,6 +253,12 @@ try {
             }
             $icra = $icraModel->find($icra_id);
             $kesintiler = $icraModel->getIcraKesintileri($icra_id);
+
+            // Her kesinti için icra detayını ekleyelim
+            foreach ($kesintiler as $k) {
+                $k->icra_detay = ($icra->icra_dairesi ?? '') . ' - ' . ($icra->dosya_no ?? '');
+            }
+
             echo json_encode([
                 'icra' => $icra,
                 'kesintiler' => $kesintiler

@@ -352,6 +352,8 @@ $(document).ready(function () {
               item.id +
               '" data-tutar="' +
               item.aylik_kesinti_tutari +
+              '" data-dosya-no="' +
+              item.dosya_no +
               '">' +
               item.icra_dairesi +
               " - " +
@@ -368,14 +370,24 @@ $(document).ready(function () {
     });
   }
 
-  $(document).on("change", "#kesinti_icra_id", function () {
+  $(document).on("change select2:select", "#kesinti_icra_id", function () {
     var selected = $(this).find("option:selected");
     var tutar = selected.data("tutar");
+    var dosyaNo = selected.data("dosya-no");
+    var form = $("#formPersonelKesintiEkle");
+    
     if (tutar) {
-      $("#formPersonelKesintiEkle input[name='kesinti_tutar']").val(tutar);
+      form.find("input[name='kesinti_tutar']").val(tutar);
       // İcra her zaman sabit tutar
       $("#hesaplama_sabit").prop("checked", true);
       updateHesaplamaTipiUI();
+    }
+
+    if (dosyaNo && window.personelData) {
+        var tc = window.personelData.tc_kimlik_no || "";
+        var ad = window.personelData.adi_soyadi || "";
+        var defaultAciklama = dosyaNo + " ESAS Numaralı " + tc + " T.C Kimlik numaralı " + ad + " İcra ödemesi";
+        form.find("input[name='aciklama']").val(defaultAciklama);
     }
   });
 

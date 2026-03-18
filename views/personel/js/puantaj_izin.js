@@ -241,7 +241,7 @@ $(document).ready(function () {
                   if (p.tc_kimlik_no) personnelMap[p.tc_kimlik_no] = p;
 
                   bodyHtml += `<tr>
-                        <td class="personel-info sticky-col" title="${p.adi_soyadi}">
+                        <td class="personel-info sticky-col" title="${p.adi_soyadi}" data-personel-id="${p.id}" data-gg-toplam-gun="${p.gg_toplam_gun || 0}" data-gorev-gecmisi="${p.gorev_gecmisi_var || 0}">
                             <div class="d-flex align-items-center">
                                 <a href="?p=personel/manage&id=${p.encrypt_id}" class="text-truncate-name text-primary fw-bold" style="text-decoration: none;">${p.adi_soyadi}</a>
                             </div>
@@ -249,6 +249,7 @@ $(document).ready(function () {
 
                   let unpaidCount = 0;
                   let disabledDaysCount = 0;
+                  let defaultDaysCount = 0; // HT gibi otomatik gün sayısı
 
                   for (let d = 1; d <= daysCount; d++) {
                     const dateObj = new Date(yil, ay - 1, d);
@@ -324,6 +325,7 @@ $(document).ready(function () {
                       const typeId = (
                         unsaved.type_id || unsaved.typeId
                       )?.toString();
+                      // Sadece manuel giriş yapılan ücretsiz izinleri say (default HT/X değil)
                       if (ucretsizIzinIds.has(typeId)) unpaidCount++;
 
                       cellStyle = ``;
@@ -336,6 +338,7 @@ $(document).ready(function () {
                                      data-shortcode="${unsaved.shortCode}"
                                      data-name="${unsaved.name}"
                                      data-color="${unsaved.color}"
+                                     data-is-default="false"
                                      style="background-color: ${unsavedStyle.bg} !important; color: ${unsavedStyle.color} !important; border: 1px solid ${unsavedStyle.color}33 !important; font-weight: 700;">
                                     ${unsaved.shortCode}
                                     <span class="btn-delete-cell" onclick="removeUnsaved('${key}', event)">×</span>
@@ -344,7 +347,13 @@ $(document).ready(function () {
                       const entry = entries[0];
                       const styleObj = getStyleFromTailwind(entry.color);
                       const typeId = entry.tip_id?.toString();
-                      if (ucretsizIzinIds.has(typeId)) unpaidCount++;
+                      // Sadece manuel giriş yapılan ücretsiz izinleri say (default HT/X değil)
+                      if (entry.type !== "default" && ucretsizIzinIds.has(typeId)) unpaidCount++;
+                      
+                      // Default gün sayısını artır (HT vb)
+                      if (entry.type === "default") {
+                        defaultDaysCount++;
+                      }
 
                       cellStyle = ``;
                       hasEntryClass = "has-entry";
@@ -378,12 +387,19 @@ $(document).ready(function () {
                                     </td>`;
                   }
 
-                  const calisilmasiGerekenGun = daysCount - disabledDaysCount;
+                  const calisilmasiGerekenGun = daysCount - disabledDaysCount - defaultDaysCount;
+                  let activeDaysLimit = calisilmasiGerekenGun;
+                  
+                  // Eğer görev geçmişi varsa, toplam gün limitine göre adjust et
+                  if (p.gorev_gecmisi_var && p.gg_toplam_gun > 0) {
+                    activeDaysLimit = Math.min(calisilmasiGerekenGun, parseInt(p.gg_toplam_gun));
+                  }
+                  
                   const toplamCalisma =
-                    calisilmasiGerekenGun > 0
-                      ? calisilmasiGerekenGun - unpaidCount
+                    activeDaysLimit > 0
+                      ? activeDaysLimit - unpaidCount
                       : 0;
-                  bodyHtml += `<td class="sticky-col-right-1 toplam-calisma-gunu">${toplamCalisma}</td>`;
+                  bodyHtml += `<td class="sticky-col-right-1 toplam-calisma-gunu">${Math.max(0, toplamCalisma)}</td>`;
                   bodyHtml += "</tr>";
                 });
                 $("#table-body").html(bodyHtml);
@@ -795,7 +811,9 @@ $(document).ready(function () {
       const $content = $cell.find(".cell-content");
       if ($content.length) {
         const typeId = $content.data("id")?.toString();
-        if (typeId && ucretsizIzinIds.has(typeId)) {
+        // Sadece manuel giriş yapılan ücretsiz izinleri say (default HT/X değil)
+        const isDefault = $content.data("is-default");
+        if (!isDefault && typeId && ucretsizIzinIds.has(typeId)) {
           unpaidCount++;
         }
       }
@@ -803,9 +821,20 @@ $(document).ready(function () {
 
     const totalCells = $row.find(".day-cell").length;
     const activeDays = Math.max(0, totalCells - disabledCount);
-    const toplamCalisma = activeDays > 0 ? activeDays - unpaidCount : 0;
+    
+    // Görev geçmişi limitini uygula
+    const $personelCell = $row.find(".personel-info");
+    const gorevGecmisiVar = parseInt($personelCell.data("gorev-gecmisi")) || 0;
+    const ggToplamGun = parseInt($personelCell.data("gg-toplam-gun")) || 0;
+    
+    let activeDaysLimit = activeDays;
+    if (gorevGecmisiVar && ggToplamGun > 0) {
+      activeDaysLimit = Math.min(activeDays, ggToplamGun);
+    }
+    
+    const toplamCalisma = activeDaysLimit > 0 ? activeDaysLimit - unpaidCount : 0;
 
-    $row.find(".toplam-calisma-gunu").text(toplamCalisma);
+    $row.find(".toplam-calisma-gunu").text(Math.max(0, toplamCalisma));
 
     // Satır toplamı değiştiyse genel toplamı da güncelle
     if (calculateTotalsTimer) clearTimeout(calculateTotalsTimer);
