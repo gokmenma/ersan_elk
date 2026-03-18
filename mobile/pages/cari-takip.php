@@ -75,7 +75,7 @@ if (!function_exists('formatMoneyCariTakip')) {
         ?>
         <div class="relative cari-item-container overflow-hidden rounded-xl shadow-sm">
             <!-- Delete Action (revealed on swipe right) -->
-            <div class="absolute left-0 top-0 bottom-0 w-[70px] bg-rose-500 flex items-center justify-center text-white cursor-pointer swipe-action-right opacity-0" 
+            <div class="absolute left-0 top-0 bottom-0 w-[70px] bg-rose-500 flex items-center justify-center text-white cursor-pointer swipe-action-right opacity-0 pointer-events-none transition-opacity duration-200" 
                  onclick="event.stopPropagation(); window.deleteCari('<?= $encId ?>', '<?= addslashes($cari->CariAdi) ?>')">
                 <div class="flex flex-col items-center gap-1">
                     <span class="material-symbols-outlined text-[20px]">delete</span>
@@ -84,7 +84,7 @@ if (!function_exists('formatMoneyCariTakip')) {
             </div>
 
             <!-- Edit Action (revealed on swipe left) -->
-            <div class="absolute right-0 top-0 bottom-0 w-[70px] bg-amber-500 flex items-center justify-center text-white cursor-pointer swipe-action-left opacity-0" 
+            <div class="absolute right-0 top-0 bottom-0 w-[70px] bg-amber-500 flex items-center justify-center text-white cursor-pointer swipe-action-left opacity-0 pointer-events-none transition-opacity duration-200" 
                  onclick="event.stopPropagation(); window.editCari('<?= $encId ?>')">
                 <div class="flex flex-col items-center gap-1">
                     <span class="material-symbols-outlined text-[20px]">edit</span>
@@ -311,6 +311,8 @@ if (!function_exists('formatMoneyCariTakip')) {
         });
         document.querySelectorAll('.swipe-action-right, .swipe-action-left').forEach(el => {
             el.style.opacity = '0';
+            el.classList.add('pointer-events-none');
+            el.classList.remove('pointer-events-auto');
         });
     };
 
@@ -352,17 +354,33 @@ if (!function_exists('formatMoneyCariTakip')) {
             // Swipe Right (Reveal Delete on Left)
             window.closeAllSwipes();
             swipeContent.style.transform = 'translateX(70px)';
-            if (actionRight) actionRight.style.opacity = '1';
+            if (actionRight) {
+                actionRight.style.opacity = '1';
+                actionRight.classList.remove('pointer-events-none');
+                actionRight.classList.add('pointer-events-auto');
+            }
         } else if (isMoving && diffX < -50) {
             // Swipe Left (Reveal Edit on Right)
             window.closeAllSwipes();
             swipeContent.style.transform = 'translateX(-70px)';
-            if (actionLeft) actionLeft.style.opacity = '1';
+            if (actionLeft) {
+                actionLeft.style.opacity = '1';
+                actionLeft.classList.remove('pointer-events-none');
+                actionLeft.classList.add('pointer-events-auto');
+            }
         } else if (isMoving && Math.abs(diffX) < 20) {
             // Cancel swipe if movement is small
             swipeContent.style.transform = 'translateX(0)';
-            if (actionRight) actionRight.style.opacity = '0';
-            if (actionLeft) actionLeft.style.opacity = '0';
+            if (actionRight) {
+                actionRight.style.opacity = '0';
+                actionRight.classList.add('pointer-events-none');
+                actionRight.classList.remove('pointer-events-auto');
+            }
+            if (actionLeft) {
+                actionLeft.style.opacity = '0';
+                actionLeft.classList.add('pointer-events-none');
+                actionLeft.classList.remove('pointer-events-auto');
+            }
         }
     }, { passive: true });
 })();

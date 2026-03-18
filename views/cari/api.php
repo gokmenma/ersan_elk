@@ -232,7 +232,7 @@ if ($action == "hareket-getir") {
     // Form için formatla
     if ($data) {
         $data->islem_tarihi = date('d.m.Y H:i', strtotime($data->islem_tarihi));
-        $data->tutar = Helper::formattedMoney($data->borc > 0 ? $data->borc : $data->alacak);
+        $data->tutar_raw = $data->borc > 0 ? (float)$data->borc : (float)$data->alacak;
         $data->type = $data->borc > 0 ? 'aldim' : 'verdim';
     }
     

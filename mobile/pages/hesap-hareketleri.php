@@ -142,7 +142,7 @@ if (!function_exists('formatMoneyCariTakip')) {
         ?>
         <div class="relative movement-item-container overflow-hidden rounded-xl shadow-sm">
             <!-- Delete Action (Reveal on swipe right) -->
-            <div class="absolute left-0 top-0 bottom-0 w-[70px] bg-rose-500 flex items-center justify-center text-white cursor-pointer swipe-action-right opacity-0" 
+            <div class="absolute left-0 top-0 bottom-0 w-[70px] bg-rose-500 flex items-center justify-center text-white cursor-pointer swipe-action-right opacity-0 pointer-events-none transition-opacity duration-200" 
                  onclick="event.stopPropagation(); window.deleteHareket('<?= Security::encrypt($h->id) ?>')">
                 <div class="flex flex-col items-center gap-1">
                     <span class="material-symbols-outlined text-[20px]">delete</span>
@@ -151,7 +151,7 @@ if (!function_exists('formatMoneyCariTakip')) {
             </div>
 
             <!-- Edit Action (Reveal on swipe left) -->
-            <div class="absolute right-0 top-0 bottom-0 w-[70px] bg-amber-500 flex items-center justify-center text-white cursor-pointer swipe-action-left opacity-0" 
+            <div class="absolute right-0 top-0 bottom-0 w-[70px] bg-amber-500 flex items-center justify-center text-white cursor-pointer swipe-action-left opacity-0 pointer-events-none transition-opacity duration-200" 
                  onclick="event.stopPropagation(); window.editHareket('<?= Security::encrypt($h->id) ?>')">
                 <div class="flex flex-col items-center gap-1">
                     <span class="material-symbols-outlined text-[20px]">edit</span>
@@ -160,7 +160,16 @@ if (!function_exists('formatMoneyCariTakip')) {
             </div>
 
             <div class="bg-white dark:bg-card-dark border border-slate-100 dark:border-slate-800 p-3 flex items-center justify-between transition-transform duration-200 swipe-content" 
-                 onclick="if(Math.abs(parseInt(this.style.transform.replace(/[^\d-]/g, '') || 0)) > 10) { window.closeAllSwipes(); return; } alert('Belge No: <?= htmlspecialchars($h->belge_no ?: "-") ?>\nNot: <?= htmlspecialchars($h->aciklama ?: "-") ?>')">
+                 onclick="if(Math.abs(parseInt(this.style.transform.replace(/[^\d-]/g, '') || 0)) > 10) { window.closeAllSwipes(); return; } window.showMovementReceipt({
+                     type: '<?= $isBorc ? 'Aldım' : 'Verdim' ?>',
+                     amount: '<?= ($isBorc ? '-' : '+') . absMoneyCariTakip($amt) ?>',
+                     date: '<?= $dateFormatted ?>',
+                     time: '<?= $timeFormatted ?>',
+                     belge_no: '<?= htmlspecialchars($h->belge_no ?: "-") ?>',
+                     aciklama: '<?= htmlspecialchars(addslashes($h->aciklama ?: "-")) ?>',
+                     cari_adi: '<?= htmlspecialchars(addslashes($cariData->CariAdi)) ?>',
+                     is_borc: <?= $isBorc ? 'true' : 'false' ?>
+                 })">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0 <?= $iconColor ?>">
                         <span class="material-symbols-outlined text-[22px]"><?= $icon ?></span>
@@ -318,6 +327,57 @@ if (!function_exists('formatMoneyCariTakip')) {
 </div>
 
 <script>
+// Receipt Modal
+window.showMovementReceipt = function(data) {
+    Swal.fire({
+        html: `
+            <div class="text-center py-4 px-2">
+                <!-- Header Icon -->
+                <div class="w-12 h-12 rounded-full ${data.is_borc ? 'bg-rose-50 text-rose-500' : 'bg-emerald-50 text-emerald-500'} mx-auto mb-6 flex items-center justify-center border ${data.is_borc ? 'border-rose-100' : 'border-emerald-100'}">
+                    <span class="material-symbols-outlined text-2xl">${data.is_borc ? 'remove_circle_outline' : 'add_circle_outline'}</span>
+                </div>
+
+                <div class="mb-8">
+                    <p class="text-[10px] font-black uppercase text-slate-400 tracking-[0.3em] mb-2">Cari İşlem</p>
+                    <h2 class="text-lg font-bold text-slate-800 leading-tight">${data.cari_adi}</h2>
+                </div>
+                
+                <div class="py-8 border-y border-slate-50/80 mb-8">
+                    <h4 class="text-[9px] font-black uppercase text-slate-300 tracking-[0.2em] mb-3">İşlem Tutarı</h4>
+                    <p class="text-4xl font-black ${data.is_borc ? 'text-rose-600' : 'text-emerald-600'} tracking-tight">${data.amount}</p>
+                    <p class="text-[10px] font-bold text-slate-400 mt-3 uppercase tracking-[0.2em]">${data.type}</p>
+                </div>
+                
+                <div class="space-y-4 px-2 max-w-[280px] mx-auto text-[11px]">
+                    <div class="flex justify-between items-center text-slate-400">
+                        <span class="font-bold uppercase tracking-wider">Tarih</span>
+                        <span class="font-bold text-slate-600">${data.date} <span class="text-slate-200 mx-1">|</span> ${data.time}</span>
+                    </div>
+
+                    ${data.belge_no && data.belge_no !== '-' ? `
+                    <div class="flex justify-between items-center text-slate-400">
+                        <span class="font-bold uppercase tracking-wider">Belge No</span>
+                        <span class="font-bold text-slate-600">#${data.belge_no}</span>
+                    </div>` : ''}
+                    
+                    ${data.aciklama && data.aciklama !== '-' && data.aciklama !== '""' && data.aciklama !== '-' ? `
+                    <div class="pt-6 border-t border-slate-50/80">
+                         <p class="text-[12px] font-medium text-slate-500 italic leading-relaxed">"${data.aciklama}"</p>
+                    </div>` : ''}
+                </div>
+            </div>
+        `,
+        showConfirmButton: true,
+        confirmButtonText: 'Kapat',
+        confirmButtonColor: '#1e293b',
+        customClass: {
+            popup: 'rounded-[40px] border-0 shadow-2xl',
+            confirmButton: 'rounded-2xl px-12 py-3.5 font-bold text-xs uppercase tracking-[0.1em] transition-all active:scale-95'
+        },
+        buttonsStyling: true
+    });
+};
+
 // Action Button Functions
 window.editCariNote = function() {
     document.getElementById('modalOverlay').classList.remove('pointer-events-none', 'opacity-0');
@@ -396,6 +456,8 @@ window.exportEkstre = function() {
         });
         document.querySelectorAll('.swipe-action-right, .swipe-action-left').forEach(el => {
             el.style.opacity = '0';
+            el.classList.add('pointer-events-none');
+            el.classList.remove('pointer-events-auto');
         });
     };
 
@@ -437,12 +499,20 @@ window.exportEkstre = function() {
             // Swipe Right
             window.closeAllSwipes();
             swipeContent.style.transform = 'translateX(70px)';
-            if (actionRight) actionRight.style.opacity = '1';
+            if (actionRight) {
+                actionRight.style.opacity = '1';
+                actionRight.classList.remove('pointer-events-none');
+                actionRight.classList.add('pointer-events-auto');
+            }
         } else if (isMoving && diffX < -50) {
             // Swipe Left
             window.closeAllSwipes();
             swipeContent.style.transform = 'translateX(-70px)';
-            if (actionLeft) actionLeft.style.opacity = '1';
+            if (actionLeft) {
+                actionLeft.style.opacity = '1';
+                actionLeft.classList.remove('pointer-events-none');
+                actionLeft.classList.add('pointer-events-auto');
+            }
         }
     }, { passive: true });
 })();
@@ -463,7 +533,7 @@ window.editHareket = function(hareketId) {
             document.getElementById('hizli_islem_hareket_id').value = hareketId;
             
             // Fill fields
-            document.getElementById('field_tutar').value = data.tutar.replace(/[^\d.]/g, '');
+            document.getElementById('field_tutar').value = data.tutar_raw;
             document.getElementById('field_belge_no').value = data.belge_no || '';
             document.getElementById('field_aciklama').value = data.aciklama || '';
             

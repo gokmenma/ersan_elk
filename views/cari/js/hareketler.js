@@ -201,7 +201,7 @@ $(document).ready(function () {
                         $('#islem_tarihi').val(res.islem_tarihi);
                     }
                     
-                    $('#tutar').val(res.tutar);
+                    $('#tutar').val(res.tutar_raw);
                     $('#belge_no').val(res.belge_no);
                     $('#aciklama').val(res.aciklama);
                     
