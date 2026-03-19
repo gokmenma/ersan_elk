@@ -64,3 +64,44 @@ if ($_POST["action"] == "profil-guncelle") {
         ]);
     }
 }
+
+if ($_POST["action"] == "save-mobile-menu-order") {
+    $userId = $_SESSION["user_id"] ?? $_SESSION["id"] ?? 0;
+    $order = $_POST['order'] ?? '';
+
+    if ($userId == 0) {
+        echo json_encode(['status' => 'error', 'message' => 'Oturum bulunamadı.']);
+        exit;
+    }
+
+    try {
+        $User->saveWithAttr([
+            'id' => (int)$userId,
+            'mobile_menu_order' => $order
+        ]);
+
+        echo json_encode(['status' => 'success', 'message' => 'Menü sıralaması güncellendi.']);
+    } catch (\Exception $e) {
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    }
+}
+
+if ($_POST["action"] == "reset-mobile-menu-order") {
+    $userId = $_SESSION["user_id"] ?? $_SESSION["id"] ?? 0;
+
+    if ($userId == 0) {
+        echo json_encode(['status' => 'error', 'message' => 'Oturum bulunamadı.']);
+        exit;
+    }
+
+    try {
+        $User->saveWithAttr([
+            'id' => (int)$userId,
+            'mobile_menu_order' => null
+        ]);
+
+        echo json_encode(['status' => 'success', 'message' => 'Menü sıralaması varsayılana sıfırlandı.']);
+    } catch (\Exception $e) {
+        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+    }
+}

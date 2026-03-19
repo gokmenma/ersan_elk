@@ -39,6 +39,7 @@ class PersonelIzinleriModel extends Model
                 LEFT JOIN users as u ON u.id = io.onaylayan_id
                 LEFT JOIN tanimlamalar as t ON t.id = pi.izin_tipi_id
                 WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL
+                AND t.kisa_kod NOT IN ('X', 'x')
                 ORDER BY pi.id DESC, io.id ASC";
 
         $query = $this->db->prepare($sql);
@@ -49,6 +50,7 @@ class PersonelIzinleriModel extends Model
         foreach ($rows as $row) {
             if (!isset($result[$row->id])) {
                 $row->onaylar = [];
+                $row->son_durum = $row->onay_durumu; // Ana tablodaki durumu varsayılan yap
                 $result[$row->id] = $row;
             }
 

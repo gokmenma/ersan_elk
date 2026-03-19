@@ -129,6 +129,57 @@ $gorevi = $user->gorevi ?? 'Yönetici';
         </div>
     </section>
 
+    <!-- Mobile Menu Ordering -->
+    <section class="px-4 mt-6">
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="text-sm font-bold text-slate-500 uppercase tracking-wider">Menü Sıralaması</h3>
+            <button onclick="saveMenuOrder()" class="text-xs font-bold text-primary flex items-center gap-1 bg-primary/10 px-3 py-1.5 rounded-lg active:scale-95 transition-all">
+                <span class="material-symbols-outlined text-sm">save</span>
+                Kaydet
+            </button>
+        </div>
+        <div class="card overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800">
+            <!-- Sabit Ana Sayfa -->
+            <?php if (isset($final_sorted_menus['home'])): 
+                $homeData = $final_sorted_menus['home']; ?>
+            <div class="flex items-center gap-4 p-4 bg-slate-50/50 dark:bg-slate-800/20 border-b border-slate-100 dark:border-slate-800 opacity-80">
+                <div class="w-10 h-10 rounded-xl <?= $homeData['color_bg'] ?> flex items-center justify-center">
+                    <span class="material-symbols-outlined <?= $homeData['color_icon'] ?>"><?= $homeData['icon'] ?></span>
+                </div>
+                <div class="flex-1">
+                    <p class="text-sm font-semibold text-slate-900 dark:text-white"><?= $homeData['label'] ?></p>
+                    <p class="text-[10px] text-slate-400">Sabitlenmiş</p>
+                </div>
+                <span class="material-symbols-outlined text-slate-300 dark:text-slate-600">lock</span>
+            </div>
+            <?php endif; ?>
+
+            <div id="sortable-menu" class="divide-y divide-slate-100 dark:divide-slate-800">
+                <?php 
+                // Index.php'de hazırlanan sıralı menü listesini kullanıyoruz (Ana sayfa hariç)
+                foreach ($final_sorted_menus as $mKey => $mData): 
+                    if ($mKey === 'home') continue; ?>
+                    <div class="flex items-center gap-4 p-4 bg-white dark:bg-card-dark cursor-move" data-id="<?= $mKey ?>">
+                        <div class="w-10 h-10 rounded-xl <?= $mData['color_bg'] ?> flex items-center justify-center">
+                            <span class="material-symbols-outlined <?= $mData['color_icon'] ?>"><?= $mData['icon'] ?></span>
+                        </div>
+                        <div class="flex-1">
+                            <p class="text-sm font-semibold text-slate-900 dark:text-white"><?= $mData['label'] ?></p>
+                        </div>
+                        <span class="material-symbols-outlined text-slate-400">drag_indicator</span>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+            <div class="p-3 bg-slate-50 dark:bg-slate-900/50 flex flex-col gap-2">
+                <p class="text-[10px] text-slate-400 text-center italic">Sürükleyip bırakarak diğer menülerin yerlerini değiştirebilirsiniz.</p>
+                <button onclick="resetMenuOrder()" class="text-xs font-bold text-slate-500 flex items-center justify-center gap-1.5 py-2 border border-slate-200 dark:border-slate-700 rounded-lg active:scale-95 transition-all w-full bg-white dark:bg-card-dark">
+                    <span class="material-symbols-outlined text-sm">settings_backup_restore</span>
+                    Varsayılan Sıralamaya Dön
+                </button>
+            </div>
+        </div>
+    </section>
+
     <!-- Logout Button -->
     <section class="px-4 mt-6">
         <a href="../logout.php" class="w-full card p-4 flex items-center justify-center gap-3 text-red-500 shadow-sm border border-red-100 dark:border-red-900/30 bg-red-50 dark:bg-red-900/10">
@@ -285,4 +336,95 @@ function changeThemeColorGen(themeName) {
     
     renderThemeSwatchesGen();
 }
+
+/** Menu Sorting */
+function initMenuSortable() {
+    const el = document.getElementById('sortable-menu');
+    if (!el) return;
+    
+    // Load SortableJS dynamically if not present
+    if (typeof Sortable === 'undefined') {
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js';
+        script.onload = () => {
+            new Sortable(el, {
+                animation: 150,
+                ghostClass: 'bg-primary/5',
+                handle: '.cursor-move'
+            });
+        };
+        document.head.appendChild(script);
+    } else {
+        new Sortable(el, {
+            animation: 150,
+            ghostClass: 'bg-primary/5',
+            handle: '.cursor-move'
+        });
+    }
+}
+
+async function saveMenuOrder() {
+    const el = document.getElementById('sortable-menu');
+    if (!el) return;
+
+    const items = el.querySelectorAll('[data-id]');
+    const order = Array.from(items).map(item => item.dataset.id).join(',');
+
+    Loading.show();
+    try {
+        const response = await $.ajax({
+            url: '../views/profil/api.php',
+            type: 'POST',
+            data: { 
+                action: 'save-mobile-menu-order', 
+                order: order 
+            },
+            dataType: 'json'
+        });
+
+        if (response.status === 'success') {
+            Alert.success('Başarılı', 'Menü sıralaması kaydedildi. Uygulama yenileniyor...');
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            Alert.error('Hata', response.message || 'Bir hata oluştu.');
+        }
+    } catch (e) {
+        console.error('Save menu order error:', e);
+        Alert.error('Hata', 'Sunucu ile iletişim kurulamadı.');
+    } finally {
+        Loading.hide();
+    }
+}
+
+async function resetMenuOrder() {
+    const isConfirmed = await Alert.confirm('Emin misiniz?', 'Menü sıralaması varsayılana döndürülecektir.', 'Evet, Sıfırla');
+    if (!isConfirmed) return;
+
+    Loading.show();
+    try {
+        const response = await $.ajax({
+            url: '../views/profil/api.php',
+            type: 'POST',
+            data: { 
+                action: 'reset-mobile-menu-order' 
+            },
+            dataType: 'json'
+        });
+
+        if (response.status === 'success') {
+            Alert.success('Başarılı', response.message);
+            setTimeout(() => location.reload(), 1500);
+        } else {
+            Alert.error('Hata', response.message || 'Bir hata oluştu.');
+        }
+    } catch (e) {
+        console.error('Reset menu order error:', e);
+        Alert.error('Hata', 'Sunucu ile iletişim kurulamadı.');
+    } finally {
+        Loading.hide();
+    }
+}
+
+// Call init on load
+document.addEventListener('DOMContentLoaded', initMenuSortable);
 </script>

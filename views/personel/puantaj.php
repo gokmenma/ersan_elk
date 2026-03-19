@@ -89,7 +89,7 @@ use App\Service\Gate;
             color: #ef4444 !important;
         }
 
-        .table-puantaj th.is-sunday {
+        .table-puantaj thead th.is-sunday:not(.sticky-col) {
             background-color: #ef4444 !important;
             color: #ffffff !important;
             border: none !important;
@@ -415,7 +415,7 @@ use App\Service\Gate;
             color: #f46a6a !important;
         }
 
-        [data-bs-theme="dark"] .table-puantaj th.is-sunday {
+        [data-bs-theme="dark"] .table-puantaj thead th.is-sunday:not(.sticky-col) {
             background-color: rgba(244, 106, 106, 0.1) !important;
             color: #f46a6a !important;
         }

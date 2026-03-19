@@ -112,42 +112,63 @@ $more_pages = [];
 $hasCariPermission = isset($user_mobile_menus['cari-takip']);
 $hasGelirGiderPermission = isset($user_mobile_menus['gelir-gider']);
 
-// Navigasyon elemanlarını belirle
+// Kullanıcının özel sıralamasını al
+use App\Model\UserModel;
+$UserModel = new UserModel();
+$userObj = $UserModel->find($currentUserId);
+$customOrder = (!empty($userObj->mobile_menu_order)) ? explode(',', $userObj->mobile_menu_order) : [];
+
+// Özel başlık düzeltmeleri
 if ($hasCariPermission && $hasGelirGiderPermission) {
     if (isset($user_mobile_menus['gelir-gider'])) {
         $user_mobile_menus['gelir-gider']['label'] = 'Kasa';
     }
+}
 
-    $desired_order = ['home', 'cari-takip', 'raporlar', 'gelir-gider'];
-    foreach ($desired_order as $pageKey) {
-        if (isset($user_mobile_menus[$pageKey])) {
-            $mData = $user_mobile_menus[$pageKey];
-            if (count($nav_items) < 4) {
-                $nav_items[] = ['page' => $pageKey, 'label' => $mData['label'], 'icon' => $mData['icon']];
-                unset($user_mobile_menus[$pageKey]);
-            }
-        }
-    }
+// Menüleri sırala
+$final_sorted_menus = [];
 
-    foreach ($user_mobile_menus as $pKey => $mData) {
-        if (count($nav_items) < 4) {
-            $nav_items[] = ['page' => $pKey, 'label' => $mData['label'], 'icon' => $mData['icon']];
-        } else {
-            $more_pages_data[$pKey] = $mData;
-            $more_pages[] = $pKey;
+// Ana sayfa her zaman ilk sırada olmalı
+if (isset($user_mobile_menus['home'])) {
+    $final_sorted_menus['home'] = $user_mobile_menus['home'];
+    unset($user_mobile_menus['home']);
+}
+
+// Önce özel sıralamadaki mevcut menüleri ekle
+foreach ($customOrder as $pKey) {
+    if ($pKey === 'home') continue; // Zaten ekledik
+    if (isset($user_mobile_menus[$pKey])) {
+        $final_sorted_menus[$pKey] = $user_mobile_menus[$pKey];
+        unset($user_mobile_menus[$pKey]);
+    }
+}
+
+// Eğer özel sıralama yoksa varsayılan sıralama (cari ve gelir gider varsa özel bir varsayılan vardı)
+if (empty($customOrder) && $hasCariPermission && $hasGelirGiderPermission) {
+    $default_order = ['cari-takip', 'raporlar', 'gelir-gider'];
+    foreach ($default_order as $pKey) {
+        if (isset($user_mobile_menus[$pKey])) {
+            $final_sorted_menus[$pKey] = $user_mobile_menus[$pKey];
+            unset($user_mobile_menus[$pKey]);
         }
     }
-} else {
-    $i = 0;
-    foreach ($user_mobile_menus as $pKey => $mData) {
-        if ($i < 4) {
-            $nav_items[] = ['page' => $pKey, 'label' => $mData['label'], 'icon' => $mData['icon']];
-        } else {
-            $more_pages_data[$pKey] = $mData;
-            $more_pages[] = $pKey;
-        }
-        $i++;
+}
+
+// Kalan menüleri sonuna ekle
+foreach ($user_mobile_menus as $pKey => $mData) {
+    $final_sorted_menus[$pKey] = $mData;
+}
+
+// Navigasyon ve "Daha Fazla"yı ayır
+$i = 0;
+foreach ($final_sorted_menus as $pKey => $mData) {
+    if ($i < 4) {
+        $nav_items[] = ['page' => $pKey, 'label' => $mData['label'], 'icon' => $mData['icon']];
+    } else {
+        $more_pages_data[$pKey] = $mData;
+        $more_pages[] = $pKey;
     }
+    $i++;
 }
 
 $isMoreActive = in_array($page, $more_pages);
@@ -349,6 +370,31 @@ try {
                         cancelButton: "swal-custom-cancel",
                     },
                 });
+            }
+        };
+
+        const Toast = {
+            container: null,
+            init() {
+                this.container = document.getElementById("toast-container");
+            },
+            show(message, type = "success", duration = 3000) {
+                if (!this.container) this.init();
+                const toast = document.createElement("div");
+                toast.className = `toast toast-${type}`;
+                toast.innerHTML = `
+                    <div class="flex items-center gap-3">
+                        <span class="material-symbols-outlined text-xl">
+                            ${type === "success" ? "check_circle" : type === "error" ? "error" : type === "warning" ? "warning" : "info"}
+                        </span>
+                        <span>${message}</span>
+                    </div>
+                `;
+                this.container.appendChild(toast);
+                setTimeout(() => {
+                    toast.style.animation = "slideOutUp 0.3s ease-out forwards";
+                    setTimeout(() => toast.remove(), 300);
+                }, duration);
             }
         };
     </script>
@@ -594,6 +640,9 @@ try {
             <?php endif; ?>
         </div>
     </nav>
+
+    <!-- Toast Container -->
+    <div id="toast-container" class="fixed top-4 left-4 right-4 z-[110] flex flex-col gap-2 pointer-events-none"></div>
 
     <!-- Daha Fazla Overlay -->
     <div id="more-menu-overlay"

@@ -523,15 +523,16 @@ function handleApiSubmit(e, apiPath, btnId, defaultBtnHtml) {
     .then(res => res.json())
     .then(data => {
         if(data.status === 'success' || data.status === 'success_alert') {
-            window.location.reload();
+            Toast.show(data.message || "İşlem başarılı", "success");
+            setTimeout(() => window.location.reload(), 1000);
         } else {
-            alert("Hata: " + (data.message || "Bir hata oluştu."));
+            Toast.show(data.message || "Bir hata oluştu.", "error");
             btn.disabled = false;
             btn.innerHTML = defaultBtnHtml;
         }
     })
     .catch(err => {
-        alert("Sunucu ile bağlantı kurulamadı.");
+        Toast.show("Sunucu ile bağlantı kurulamadı.", "error");
         btn.disabled = false;
         btn.innerHTML = defaultBtnHtml;
     });

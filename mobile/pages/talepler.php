@@ -132,13 +132,27 @@ function formatDateOnlyMobile($dateStr) {
                 <p class="text-xs text-slate-500 mt-1"><?= !$showApproved ? 'Bekleyen tüm avans talepleri yanıtlandı.' : 'Henüz işlem görmüş avans kaydı bulunmuyor.' ?></p>
             </div>
         <?php else: ?>
-            <?php foreach ($avanslar as $avans): ?>
-                <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4">
+            <?php foreach ($avanslar as $avans): 
+                $paResim = !empty($avans->personel_resim_yolu) ? $avans->personel_resim_yolu : ($avans->resim_yolu ?? '');
+                $avansData = [
+                    'id' => $avans->id,
+                    'avatar' => (!empty($paResim) && file_exists($paResim)) ? '../' . $paResim : '../assets/images/users/user-dummy-img.jpg',
+                    'adi_soyadi' => $avans->requester_name ?? 'Bilinmeyen',
+                    'departman' => $avans->departman ?? '',
+                    'tutar' => formatMoneyMobile($avans->tutar),
+                    'tarih' => formatDateMobile($avans->talep_tarihi),
+                    'aciklama' => $avans->aciklama ?? '',
+                    'durum' => $avans->durum ?? 'beklemede',
+                    'onay_tarihi' => !empty($avans->onay_tarihi) ? formatDateMobile($avans->onay_tarihi) : '',
+                    'islem_yapan' => $avans->solver_name ?? '',
+                    'showApproved' => $showApproved
+                ];
+                $avansJson = htmlspecialchars(json_encode($avansData), ENT_QUOTES, 'UTF-8');
+            ?>
+                <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 cursor-pointer active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors" onclick="openAvansDetail(this.dataset.avans)" data-avans="<?= $avansJson ?>">
                     <div class="flex items-start justify-between mb-3 border-b border-slate-100 dark:border-slate-800/60 pb-3">
                         <div class="flex items-center gap-3">
-                            <?php 
-                            $paResim = !empty($avans->personel_resim_yolu) ? $avans->personel_resim_yolu : ($avans->resim_yolu ?? '');
-                            if (!empty($paResim) && file_exists($paResim)): ?>
+                            <?php if (!empty($paResim) && file_exists($paResim)): ?>
                                 <img src="../<?= htmlspecialchars($paResim) ?>" class="w-10 h-10 rounded-full object-cover border-2 border-slate-100 dark:border-slate-700">
                             <?php else: ?>
                                 <img src="../assets/images/users/user-dummy-img.jpg" class="w-10 h-10 rounded-full object-cover border-2 border-slate-100 dark:border-slate-700" alt="Avatar">
@@ -169,7 +183,7 @@ function formatDateOnlyMobile($dateStr) {
                         <?php endif; ?>
                     </div>
                     <?php if (!$showApproved): ?>
-                    <div class="flex gap-2">
+                    <div class="flex gap-2" onclick="event.stopPropagation();">
                         <button onclick="openModal('avansRed', <?= $avans->id ?>, '<?= htmlspecialchars(addslashes($avans->requester_name)) ?>')" class="flex-1 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5">
                             <span class="material-symbols-outlined text-[16px]">close</span> Reddet
                         </button>
@@ -224,13 +238,30 @@ function formatDateOnlyMobile($dateStr) {
             <?php foreach ($izinler as $izin): 
                 $gunSayisi = $izinModel->hesaplaIzinGunu($izin->baslangic_tarihi, $izin->bitis_tarihi);
                 $izinTuruLabel = $izin->izin_tipi_adi ?? $izin->izin_tipi ?? 'Belirtilmemiş';
+                $piResim = !empty($izin->personel_resim_yolu) ? $izin->personel_resim_yolu : ($izin->resim_yolu ?? '');
+                
+                $izinData = [
+                    'id' => $izin->id,
+                    'avatar' => (!empty($piResim) && file_exists($piResim)) ? '../' . $piResim : '../assets/images/users/user-dummy-img.jpg',
+                    'adi_soyadi' => $izin->requester_name ?? 'Bilinmeyen',
+                    'departman' => $izin->departman ?? '',
+                    'izin_turu' => $izinTuruLabel,
+                    'gun' => $gunSayisi,
+                    'tarih' => formatDateMobile($izin->talep_tarihi),
+                    'baslangic' => formatDateOnlyMobile($izin->baslangic_tarihi),
+                    'bitis' => formatDateOnlyMobile($izin->bitis_tarihi),
+                    'aciklama' => $izin->aciklama ?? '',
+                    'durum' => $izin->onay_durumu ?? 'beklemede',
+                    'islem_tarihi' => !empty($izin->islem_tarihi) ? formatDateMobile($izin->islem_tarihi) : '',
+                    'islem_yapan' => $izin->solver_name ?? '',
+                    'showApproved' => $showApproved
+                ];
+                $izinJson = htmlspecialchars(json_encode($izinData), ENT_QUOTES, 'UTF-8');
             ?>
-                <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4">
+                <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 cursor-pointer active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors" onclick="openIzinDetail(this.dataset.izin)" data-izin="<?= $izinJson ?>">
                     <div class="flex items-start justify-between mb-3 border-b border-slate-100 dark:border-slate-800/60 pb-3">
                         <div class="flex items-center gap-3">
-                            <?php 
-                            $piResim = !empty($izin->personel_resim_yolu) ? $izin->personel_resim_yolu : ($izin->resim_yolu ?? '');
-                            if (!empty($piResim) && file_exists($piResim)): ?>
+                            <?php if (!empty($piResim) && file_exists($piResim)): ?>
                                 <img src="../<?= htmlspecialchars($piResim) ?>" class="w-10 h-10 rounded-full object-cover border-2 border-slate-100 dark:border-slate-700">
                             <?php else: ?>
                                 <img src="../assets/images/users/user-dummy-img.jpg" class="w-10 h-10 rounded-full object-cover border-2 border-slate-100 dark:border-slate-700" alt="Avatar">
@@ -300,7 +331,7 @@ function formatDateOnlyMobile($dateStr) {
                         <?php endif; ?>
                     </div>
                     <?php if (!$showApproved): ?>
-                    <div class="flex gap-2">
+                    <div class="flex gap-2" onclick="event.stopPropagation();">
                         <button onclick="openModal('izinRed', <?= $izin->id ?>, '<?= htmlspecialchars(addslashes($izin->requester_name)) ?>')" class="flex-1 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5">
                             <span class="material-symbols-outlined text-[16px]">close</span> Reddet
                         </button>
@@ -340,7 +371,8 @@ function formatDateOnlyMobile($dateStr) {
                     'cozum' => $talep->cozum_aciklama ?? '',
                     'foto' => !empty($talep->foto) ? '../' . $talep->foto : '',
                     'islem_yapan' => $talep->solver_name ?? '',
-                    'islem_tarihi' => !empty($talep->cozum_tarihi) ? formatDateMobile($talep->cozum_tarihi) : ''
+                    'islem_tarihi' => !empty($talep->cozum_tarihi) ? formatDateMobile($talep->cozum_tarihi) : '',
+                    'showApproved' => $showApproved
                 ];
                 $talepJson = htmlspecialchars(json_encode($talepData), ENT_QUOTES, 'UTF-8');
             ?>
@@ -807,8 +839,168 @@ function formatDateOnlyMobile($dateStr) {
                 </div>
             </div>
             ` : ''}
+
+            ${(!talep.showApproved && talep.durum !== 'cozuldu' && talep.durum !== 'iptal_edildi') ? `
+            <div class="flex gap-2 mt-6">
+                <button onclick="talepIslemeAl(${talep.id})" class="flex-1 py-3 bg-slate-100 text-slate-700 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined">play_arrow</span> İşleme Al
+                </button>
+                <button onclick="openModal('talepCoz', ${talep.id}, '${talep.baslik.replace(/'/g, "\\'")}')" class="flex-1 py-3 bg-indigo-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-indigo-500/25">
+                    <span class="material-symbols-outlined">task_alt</span> Çözüldü
+                </button>
+            </div>
+            ` : ''}
+
+            <button onclick="closeTalepDetail()" class="w-full py-3 mt-4 bg-slate-100 text-slate-500 rounded-xl font-bold text-sm flex items-center justify-center gap-2 border border-slate-200">
+                <span class="material-symbols-outlined text-[18px]">expand_more</span> Kapat
+            </button>
         `;
         
+        showBS(html);
+    }
+
+    function openAvansDetail(jsonStr) {
+        const avans = JSON.parse(jsonStr);
+        let durumText = 'Beklemede';
+        let durumBadge = 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+        
+        if (avans.durum === 'onaylandi') {
+            durumText = 'Onaylandı';
+            durumBadge = 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+        } else if (avans.durum === 'reddedildi') {
+            durumText = 'Reddedildi';
+            durumBadge = 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+        }
+
+        const html = `
+            <div class="flex items-center gap-4 mb-5 pb-5 border-b border-slate-100 dark:border-slate-800 mt-2">
+                <img src="${avans.avatar}" class="w-14 h-14 rounded-full object-cover border-2 border-slate-100 dark:border-slate-700">
+                <div>
+                    <h3 class="font-bold text-slate-800 dark:text-white text-base leading-tight">${avans.adi_soyadi}</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">${avans.departman || 'Departman Belirtilmedi'}</p>
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap gap-2 mb-6">
+                <span class="text-[11px] font-bold px-2 py-1 rounded inline-flex items-center gap-1 bg-green-50 text-green-700 dark:bg-green-900/30 dark:text-green-400 border border-green-100 dark:border-green-800/30"><span class="material-symbols-outlined text-[14px]">payments</span>${avans.tutar}</span>
+                <span class="text-[11px] font-bold px-2 py-1 rounded inline-flex items-center gap-1 border border-transparent ${durumBadge}"><span class="material-symbols-outlined text-[14px]">info</span>${durumText}</span>
+                <span class="text-[11px] font-bold px-2 py-1 rounded bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border border-slate-100 dark:border-slate-700 inline-flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">calendar_today</span>${avans.tarih}</span>
+            </div>
+            
+            <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 mb-4">
+                <h5 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">TALEP AÇIKLAMASI</h5>
+                <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">${avans.aciklama || 'Açıklama belirtilmemiş.'}</p>
+            </div>
+            
+            ${avans.islem_yapan ? `
+            <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs text-slate-400">İşlem Yapan:</span>
+                    <span class="text-xs font-bold text-slate-700 dark:text-slate-300">${avans.islem_yapan}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs text-slate-400">İşlem Tarihi:</span>
+                    <span class="text-xs font-bold text-slate-700 dark:text-slate-300">${avans.onay_tarihi}</span>
+                </div>
+            </div>
+            ` : ''}
+
+            ${(!avans.showApproved && avans.durum !== 'onaylandi' && avans.durum !== 'reddedildi') ? `
+            <div class="flex gap-2 mt-6">
+                <button onclick="openModal('avansRed', ${avans.id}, '${avans.adi_soyadi.replace(/'/g, "\\'")}')" class="flex-1 py-3 bg-red-50 text-red-600 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined">close</span> Reddet
+                </button>
+                <button onclick="openModal('avansOnay', ${avans.id}, '${avans.adi_soyadi.replace(/'/g, "\\'")}', '${avans.tutar}')" class="flex-1 py-3 bg-green-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-green-500/25">
+                    <span class="material-symbols-outlined">check</span> Onayla
+                </button>
+            </div>
+            ` : ''}
+
+            <button onclick="closeTalepDetail()" class="w-full py-3 mt-4 bg-slate-100 text-slate-500 rounded-xl font-bold text-sm flex items-center justify-center gap-2 border border-slate-200">
+                <span class="material-symbols-outlined text-[18px]">expand_more</span> Kapat
+            </button>
+        `;
+        
+        showBS(html);
+    }
+
+    function openIzinDetail(jsonStr) {
+        const izin = JSON.parse(jsonStr);
+        let durumText = 'Beklemede';
+        let durumBadge = 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300';
+        
+        if (izin.durum.toLowerCase() === 'onaylandı' || izin.durum.toLowerCase() === 'onaylandi') {
+            durumText = 'Onaylandı';
+            durumBadge = 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400';
+        } else if (izin.durum.toLowerCase() === 'reddedildi') {
+            durumText = 'Reddedildi';
+            durumBadge = 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400';
+        }
+
+        const html = `
+            <div class="flex items-center gap-4 mb-5 pb-5 border-b border-slate-100 dark:border-slate-800 mt-2">
+                <img src="${izin.avatar}" class="w-14 h-14 rounded-full object-cover border-2 border-slate-100 dark:border-slate-700">
+                <div>
+                    <h3 class="font-bold text-slate-800 dark:text-white text-base leading-tight">${izin.adi_soyadi}</h3>
+                    <p class="text-xs text-slate-500 mt-0.5">${izin.departman || 'Departman Belirtilmedi'}</p>
+                </div>
+            </div>
+            
+            <div class="flex flex-wrap gap-2 mb-6">
+                <span class="text-[11px] font-bold px-2 py-1 rounded inline-flex items-center gap-1 bg-blue-50 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400 border border-blue-100 dark:border-blue-900/30"><span class="material-symbols-outlined text-[14px]">event_note</span>${izin.gun} Gün</span>
+                <span class="text-[11px] font-bold px-2 py-1 rounded inline-flex items-center gap-1 bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-900/30">${izin.izin_turu}</span>
+                <span class="text-[11px] font-bold px-2 py-1 rounded inline-flex items-center gap-1 border border-transparent ${durumBadge}">${durumText}</span>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3 mb-6">
+                <div class="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50">
+                    <span class="text-[10px] text-slate-400 uppercase font-bold block mb-1">Başlangıç</span>
+                    <span class="text-sm font-bold text-slate-700 dark:text-slate-200">${izin.baslangic}</span>
+                </div>
+                <div class="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50">
+                    <span class="text-[10px] text-slate-400 uppercase font-bold block mb-1">Bitiş</span>
+                    <span class="text-sm font-bold text-slate-700 dark:text-slate-200">${izin.bitis}</span>
+                </div>
+            </div>
+            
+            <div class="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 mb-4">
+                <h5 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">TALEP AÇIKLAMASI</h5>
+                <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">${izin.aciklama || 'Açıklama belirtilmemiş.'}</p>
+            </div>
+            
+            ${izin.islem_yapan ? `
+            <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-3">
+                <div class="flex items-center justify-between">
+                    <span class="text-xs text-slate-400">İşlem Yapan:</span>
+                    <span class="text-xs font-bold text-slate-700 dark:text-slate-300">${izin.islem_yapan}</span>
+                </div>
+                <div class="flex items-center justify-between">
+                    <span class="text-xs text-slate-400">İşlem Tarihi:</span>
+                    <span class="text-xs font-bold text-slate-700 dark:text-slate-300">${izin.islem_tarihi}</span>
+                </div>
+            </div>
+            ` : ''}
+
+            ${(!izin.showApproved && izin.durum.toLowerCase() !== 'onaylandı' && izin.durum.toLowerCase() !== 'onaylandi' && izin.durum.toLowerCase() !== 'reddedildi') ? `
+            <div class="flex gap-2 mt-6">
+                <button onclick="openModal('izinRed', ${izin.id}, '${izin.adi_soyadi.replace(/'/g, "\\'")}')" class="flex-1 py-3 bg-red-50 text-red-600 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined">close</span> Reddet
+                </button>
+                <button onclick="openModal('izinOnay', ${izin.id}, '${izin.adi_soyadi.replace(/'/g, "\\'")}', '${izin.izin_turu}', ${izin.gun})" class="flex-1 py-3 bg-blue-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 shadow-lg shadow-blue-500/30">
+                    <span class="material-symbols-outlined">check</span> Onayla
+                </button>
+            </div>
+            ` : ''}
+
+            <button onclick="closeTalepDetail()" class="w-full py-3 mt-4 bg-slate-100 text-slate-500 rounded-xl font-bold text-sm flex items-center justify-center gap-2 border border-slate-200">
+                <span class="material-symbols-outlined text-[18px]">expand_more</span> Kapat
+            </button>
+        `;
+        
+        showBS(html);
+    }
+
+    function showBS(html) {
         document.getElementById('bs-talep-content').innerHTML = html;
         
         const overlay = document.getElementById('bs-talep-overlay');
@@ -820,7 +1012,7 @@ function formatDateOnlyMobile($dateStr) {
             sheet.classList.remove('translate-y-full');
         }, 10);
     }
-    
+
     function closeTalepDetail() {
         const overlay = document.getElementById('bs-talep-overlay');
         const sheet = document.getElementById('bs-talep-detail');

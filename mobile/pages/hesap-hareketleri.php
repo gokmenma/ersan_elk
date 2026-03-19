@@ -402,15 +402,16 @@ window.submitCariNotu = function(e) {
     .then(res => res.json())
     .then(data => {
         if(data.status === 'success') {
-            window.location.reload();
+            Toast.show(data.message || "Cari notu güncellendi", "success");
+            setTimeout(() => window.location.reload(), 1000);
         } else {
-            alert("Hata: " + (data.message || "Bir hata oluştu."));
+            Toast.show(data.message || "Bir hata oluştu.", "error");
             btn.disabled = false;
             btn.innerHTML = defaultBtnHtml;
         }
     })
     .catch(err => {
-        alert("Sunucu ile bağlantı kurulamadı.");
+        Toast.show("Sunucu ile bağlantı kurulamadı.", "error");
         btn.disabled = false;
         btn.innerHTML = defaultBtnHtml;
     });
@@ -434,8 +435,8 @@ window.shareCari = function() {
         el.select();
         document.execCommand('copy');
         document.body.removeChild(el);
-        if(window.Alert) Alert.success("Kopyalandı", "Cari bilgileri panoya kopyalandı.");
-        else alert("Cari bilgileri panoya kopyalandı.");
+        if(window.Toast) Toast.show("Cari bilgileri panoya kopyalandı.", "success");
+        else if(window.Alert) Alert.success("Kopyalandı", "Cari bilgileri panoya kopyalandı.");
     }
 };
 
@@ -637,15 +638,16 @@ window.submitHizliIslemForm = function(e) {
     .then(res => res.json())
     .then(data => {
         if(data.status === 'success' || data.status === 'success_alert') {
-            window.location.reload();
+            Toast.show(data.message || "İşlem başarılı", "success");
+            setTimeout(() => window.location.reload(), 1000);
         } else {
-            alert("Hata: " + (data.message || "Bir hata oluştu."));
+            Toast.show(data.message || "Bir hata oluştu.", "error");
             btn.disabled = false;
             btn.innerHTML = defaultBtnHtml;
         }
     })
     .catch(err => {
-        alert("Sunucu ile bağlantı kurulamadı.");
+        Toast.show("Sunucu ile bağlantı kurulamadı.", "error");
         btn.disabled = false;
         btn.innerHTML = defaultBtnHtml;
     });

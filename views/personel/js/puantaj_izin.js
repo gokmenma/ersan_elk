@@ -247,9 +247,8 @@ $(document).ready(function () {
                             </div>
                         </td>`;
 
-                  let unpaidCount = 0;
                   let disabledDaysCount = 0;
-                  let defaultDaysCount = 0; // HT gibi otomatik gün sayısı
+                  let unpaidCount = 0;
 
                   for (let d = 1; d <= daysCount; d++) {
                     const dateObj = new Date(yil, ay - 1, d);
@@ -351,9 +350,9 @@ $(document).ready(function () {
                       if (entry.type !== "default" && ucretsizIzinIds.has(typeId)) unpaidCount++;
                       
                       // Default gün sayısını artır (HT vb)
-                      if (entry.type === "default") {
-                        defaultDaysCount++;
-                      }
+                      // if (entry.type === "default") {
+                      //   defaultDaysCount++;
+                      // }
 
                       cellStyle = ``;
                       hasEntryClass = "has-entry";
@@ -387,7 +386,7 @@ $(document).ready(function () {
                                     </td>`;
                   }
 
-                  const calisilmasiGerekenGun = daysCount - disabledDaysCount - defaultDaysCount;
+                  const calisilmasiGerekenGun = daysCount - disabledDaysCount;
                   let activeDaysLimit = calisilmasiGerekenGun;
                   
                   // Eğer görev geçmişi varsa, toplam gün limitine göre adjust et

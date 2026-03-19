@@ -536,7 +536,7 @@ async function saveListe() {
     const isEdit = !!activeListId;
     
     if(!baslik) {
-        alert('Liste adı boş olamaz.');
+        Toast.show('Liste adı boş olamaz.', 'warning');
         return;
     }
     
@@ -553,17 +553,18 @@ async function saveListe() {
         if(data.success) {
             window.location.reload();
         } else {
-            alert(data.message || 'Hata oluştu.');
+            Toast.show(data.message || 'Hata oluştu.', 'error');
             hideLoader();
         }
     } catch(err) {
-        alert('Bağlantı hatası.');
+        Toast.show('Bağlantı hatası.', 'error');
         hideLoader();
     }
 }
 
 async function deleteListe(id) {
-    if(!confirm('Bu listeyi ve içindeki tüm görevleri silmek istediğinize emin misiniz?')) return;
+    const isConfirmed = await Alert.confirmDelete('Sil', 'Bu listeyi ve içindeki tüm görevleri silmek istediğinize emin misiniz?');
+    if(!isConfirmed) return;
     
     showLoader();
     const fd = new URLSearchParams();
@@ -572,9 +573,10 @@ async function deleteListe(id) {
     try {
         const res = await fetch('../views/gorevler/api.php', { method: 'POST', body: fd });
         const data = await res.json();
-        window.location.reload();
+        Toast.show('Liste silindi.', 'success');
+        setTimeout(() => window.location.reload(), 1000);
     } catch {
-        alert('Silme sırasında hata oluştu.');
+        Toast.show('Silme sırasında hata oluştu.', 'error');
         hideLoader();
     }
 }
@@ -610,7 +612,7 @@ function openGorevModal(id = '', listeId = '', baslik = '', aciklama = '', tarih
 async function saveGorev() {
     const baslik = document.getElementById('gorevAdInput').value.trim();
     if(!baslik) {
-        alert('Görev başlığı zorunludur.');
+        Toast.show('Görev başlığı zorunludur.', 'warning');
         return;
     }
     
@@ -652,17 +654,18 @@ async function saveGorev() {
         if(data.success) {
             window.location.reload();
         } else {
-            alert(data.message || 'Hata oluştu.');
+            Toast.show(data.message || 'Hata oluştu.', 'error');
             hideLoader();
         }
     } catch(err) {
-        alert('Bağlantı hatası.');
+        Toast.show('Bağlantı hatası.', 'error');
         hideLoader();
     }
 }
 
 async function deleteGorevDirect(id) {
-    if(!confirm('Bu görevi silmek istediğinize emin misiniz?')) return;
+    const isConfirmed = await Alert.confirmDelete('Sil', 'Bu görevi silmek istediğinize emin misiniz?');
+    if(!isConfirmed) return;
     
     showLoader();
     const fd = new URLSearchParams();
@@ -671,9 +674,10 @@ async function deleteGorevDirect(id) {
     try {
         const res = await fetch('../views/gorevler/api.php', { method: 'POST', body: fd });
         const data = await res.json();
-        window.location.reload();
+        Toast.show('Görev silindi.', 'success');
+        setTimeout(() => window.location.reload(), 1000);
     } catch {
-        alert('Silme sırasında hata oluştu.');
+        Toast.show('Silme sırasında hata oluştu.', 'error');
         hideLoader();
     }
 }
@@ -696,10 +700,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 fd.append('gorev_id', gorevId);
                 const res = await fetch('../views/gorevler/api.php', { method: 'POST', body: fd });
                 const data = await res.json();
-                if (data.success) window.location.reload(); 
-                else { alert(data.message); e.target.checked = !isChecked; hideLoader(); }
+                if (data.success) {
+                    Toast.show('İşlem başarılı', 'success');
+                    setTimeout(() => window.location.reload(), 1000); 
+                }
+                else { Toast.show(data.message, 'error'); e.target.checked = !isChecked; hideLoader(); }
             } catch (err) {
-                alert('Sunucu hatası.'); e.target.checked = !isChecked; hideLoader();
+                Toast.show('Sunucu hatası.', 'error'); e.target.checked = !isChecked; hideLoader();
             }
         });
     });

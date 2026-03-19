@@ -91,7 +91,7 @@ if (!function_exists('getInitials')) {
                 $isAktif = (empty($dtAyrilis) || $dtAyrilis == '0000-00-00') ? 1 : 0;
             ?>
                 <!-- Sadece aktif personeli varsayılan gösterelim, pasifler filtreyle açılsın diye class ekliyoruz -->
-                <div class="personel-card bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 transition-transform active:scale-[0.98] <?= $isAktif ? 'is-aktif' : 'is-pasif hidden' ?>" onclick="openMenu('<?= urlencode(\App\Helper\Security::encrypt($kisi->id)) ?>')">
+                <div class="personel-card rounded-2xl shadow-sm p-4 transition-transform active:scale-[0.98] <?= $isAktif ? 'bg-white dark:bg-card-dark border border-slate-100 dark:border-slate-800 is-aktif' : 'bg-rose-50/50 dark:bg-rose-900/10 border border-rose-100/60 dark:border-rose-900/30 is-pasif hidden' ?>" onclick="openMenu('<?= urlencode(\App\Helper\Security::encrypt($kisi->id)) ?>')">
                     <div class="flex items-center gap-3">
                         <div class="relative">
                             <?php 

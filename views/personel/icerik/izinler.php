@@ -5,7 +5,7 @@ use App\Helper\Helper;
 
 
 $db = (new \App\Core\Db())->getConnection();
-$izin_turleri_query = $db->query("SELECT id, tur_adi, ucretli_mi FROM tanimlamalar WHERE grup = 'izin_turu' AND silinme_tarihi IS NULL ORDER BY tur_adi ASC");
+$izin_turleri_query = $db->query("SELECT id, tur_adi, ucretli_mi FROM tanimlamalar WHERE grup = 'izin_turu' AND silinme_tarihi IS NULL AND kisa_kod NOT IN ('X', 'x') ORDER BY tur_adi ASC");
 $izin_turleri = [];
 $izin_turleri_all = [];
 while ($row = $izin_turleri_query->fetch(PDO::FETCH_OBJ)) {
@@ -616,11 +616,25 @@ $onay_durumlari = [
         justify-content: space-between;
         align-items: center;
     }
+    /* Pasif Gün Stili */
+    .year-calendar-table td.passive-date {
+        background-color: rgba(0, 0, 0, 0.05) !important;
+        color: #d1d3d8 !important;
+        cursor: not-allowed;
+        pointer-events: none;
+    }
+    
+    html[data-bs-theme="dark"] .year-calendar-table td.passive-date {
+        background-color: rgba(255, 255, 255, 0.05) !important;
+        color: #495057 !important;
+    }
 </style>
 
 <script>
     var allIzinTurleri = <?= json_encode($izin_turleri_all) ?>;
     var currentUserId = <?= json_encode($_SESSION['user_id'] ?? 0) ?>;
+    var iseGirisTarihi = <?= json_encode($personel->ise_giris_tarihi ?? '') ?>;
+    var istenCikisTarihi = <?= json_encode($personel->isten_cikis_tarihi ?? '') ?>;
 
     $(document).ready(function () {
         // Onay durumu değişikliği
@@ -732,7 +746,6 @@ $onay_durumlari = [
         }
 
 
-
         // Modal açıldığında form sıfırla ve ilk durumu ayarla
         $('#modalIzinEkle').on('show.bs.modal', function () {
             // Alanları göster (varsayılan durum)
@@ -742,8 +755,22 @@ $onay_durumlari = [
             // İzin türü değişikliğini kontrol et
             setTimeout(function () {
                 handleIzinTuruChange();
+                updateFlatpickrLimits();
             }, 100);
         });
+
+        // Flatpickr sınırlarını güncelle
+        function updateFlatpickrLimits() {
+            const minDate = (iseGirisTarihi && iseGirisTarihi !== '0000-00-00') ? parseTarih(iseGirisTarihi) : null;
+            const maxDate = (istenCikisTarihi && istenCikisTarihi !== '0000-00-00') ? parseTarih(istenCikisTarihi) : null;
+
+            $('#formIzinEkle .flatpickr').each(function() {
+                if (this._flatpickr) {
+                    if (minDate) this._flatpickr.set('minDate', minDate);
+                    if (maxDate) this._flatpickr.set('maxDate', maxDate);
+                }
+            });
+        }
 
         // Yıllık Takvim İşlemleri
         const ayIsimleri = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
@@ -855,10 +882,21 @@ $onay_durumlari = [
                         cells += '<td></td>';
                     } else {
                         const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+                        
+                        // İşe giriş ve çıkış tarihine göre pasiflik kontrolü
+                        let isPassive = false;
+                        if (iseGirisTarihi && iseGirisTarihi !== '0000-00-00' && dateStr < iseGirisTarihi) {
+                            isPassive = true;
+                        }
+                        if (istenCikisTarihi && istenCikisTarihi !== '0000-00-00' && dateStr > istenCikisTarihi) {
+                            isPassive = true;
+                        }
+
                         const dayEvents = (events && events[dateStr]) ? events[dateStr] : [];
                         let cellContent = day;
                         let style = '';
                         let titleAttr = '';
+                        let passiveClass = isPassive ? 'passive-date' : '';
 
                         if (dayEvents.length > 0) {
                             const event = dayEvents[0];
@@ -871,7 +909,7 @@ $onay_durumlari = [
                         const isToday = new Date().toISOString().split('T')[0] === dateStr;
                         const todayClass = isToday ? 'today' : '';
 
-                        cells += `<td class="${todayClass}" style="${style}" ${titleAttr}>${cellContent}</td>`;
+                        cells += `<td class="${todayClass} ${passiveClass}" style="${style}" ${titleAttr}>${cellContent}</td>`;
                         day++;
                     }
                 }
