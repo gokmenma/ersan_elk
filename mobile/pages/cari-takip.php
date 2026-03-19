@@ -116,7 +116,7 @@ if (!function_exists('formatMoneyCariTakip')) {
                 <div class="flex flex-col items-end shrink-0 pl-2">
                     <span class="font-bold text-xs <?= $bakiyeColor ?>"><?= ($bakiye < 0 ? '-' : '+') . absMoneyCariTakip($bakiye) ?></span>
                     <div class="mt-1 flex items-center gap-1">
-                        <button type="button" class="w-7 h-7 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-lg flex items-center justify-center active:bg-emerald-100" data-id="<?= $encId ?>" onclick="event.stopPropagation(); window.openHizliIslem('<?= $encId ?>');">
+                        <button type="button" class="w-7 h-7 bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 dark:text-emerald-400 rounded-lg flex items-center justify-center active:bg-emerald-100 shadow-sm border border-emerald-100/50 dark:border-emerald-500/10" data-id="<?= $encId ?>" onclick="event.stopPropagation(); window.openHizliIslem('<?= $encId ?>');">
                             <span class="material-symbols-outlined text-[18px]">add_circle</span>
                         </button>
                         <span class="w-6 h-6 flex items-center justify-center text-slate-300">
@@ -140,10 +140,15 @@ if (!function_exists('formatMoneyCariTakip')) {
         </div>
     </div>
 
-    <!-- FAB -->
-    <button onclick="window.openCariModal()" class="fixed bottom-[80px] right-4 w-14 h-14 bg-primary text-white rounded-full shadow-lg shadow-primary/30 flex items-center justify-center z-40 active:scale-95 transition-transform border-0 focus:outline-none">
-        <span class="material-symbols-outlined text-3xl">person_add</span>
-    </button>
+    <!-- FABs -->
+    <div class="fixed bottom-[80px] right-4 flex flex-col gap-3 z-40">
+        <button onclick="window.openTumHareketlerModal()" class="w-12 h-12 bg-white dark:bg-card-dark text-primary rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform border border-slate-100 dark:border-slate-800">
+            <span class="material-symbols-outlined text-2xl">history</span>
+        </button>
+        <button onclick="window.openCariModal()" class="w-14 h-14 bg-primary text-white rounded-full shadow-lg shadow-primary/30 flex items-center justify-center active:scale-95 transition-transform border-0 focus:outline-none">
+            <span class="material-symbols-outlined text-3xl">person_add</span>
+        </button>
+    </div>
 </div>
 
 <!-- Modal Overlay -->
@@ -295,6 +300,58 @@ if (!function_exists('formatMoneyCariTakip')) {
                 <span class="material-symbols-outlined text-lg">save</span> Kaydet
             </button>
         </form>
+    </div>
+</div>
+
+<!-- Tüm Hareketler Modal (Bottom Sheet) -->
+<div id="tumHareketlerModal" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-3xl z-[61] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom max-h-[90vh] overflow-hidden w-full max-w-lg mx-auto flex flex-col">
+    <div class="px-4 pt-5 pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-primary flex items-center justify-center">
+                    <span class="material-symbols-outlined text-lg">history</span>
+                </div>
+                <h3 class="font-bold text-slate-800 dark:text-white text-sm">İşlem Geçmişi</h3>
+            </div>
+            <div class="flex items-center gap-2">
+                <a href="../views/cari/export-tum-hareketler-pdf.php" class="w-8 h-8 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center active:scale-90 transition-transform shadow-sm">
+                   <span class="material-symbols-outlined text-lg">description</span>
+                </a>
+                <button onclick="window.closeModals()" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center active:scale-90 transition-transform">
+                    <span class="material-symbols-outlined text-lg">close</span>
+                </button>
+            </div>
+        </div>
+        
+        <div class="space-y-2">
+             <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-lg">search</span>
+                <input type="text" id="modalSearch" placeholder="Cari veya açıklama ara..." class="w-full pl-10 pr-4 py-2.5 bg-slate-50 dark:bg-slate-800 border-0 rounded-xl text-xs placeholder-slate-400 focus:ring-1 focus:ring-primary/20">
+             </div>
+             
+             <div class="grid grid-cols-2 gap-2">
+                <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[14px]">calendar_today</span>
+                    <input type="date" id="modalDateStart" class="w-full pl-8 pr-2 py-2 bg-slate-50 dark:bg-slate-800 border-0 rounded-xl text-[10px] font-bold text-slate-600 dark:text-slate-300 focus:ring-1 focus:ring-primary/20">
+                </div>
+                <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[14px]">calendar_today</span>
+                    <input type="date" id="modalDateEnd" class="w-full pl-8 pr-2 py-2 bg-slate-50 dark:bg-slate-800 border-0 rounded-xl text-[10px] font-bold text-slate-600 dark:text-slate-300 focus:ring-1 focus:ring-primary/20">
+                </div>
+             </div>
+
+             <div class="flex gap-2 p-1 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                 <button onclick="window.filterModal('all')" class="modal-tab flex-1 py-2 rounded-lg text-[10px] font-bold transition-all bg-white dark:bg-slate-700 shadow-sm text-primary" data-type="all">Tümü</button>
+                 <button onclick="window.filterModal('aldim')" class="modal-tab flex-1 py-2 rounded-lg text-[10px] font-bold transition-all text-slate-500" data-type="aldim">Aldım</button>
+                 <button onclick="window.filterModal('verdim')" class="modal-tab flex-1 py-2 rounded-lg text-[10px] font-bold transition-all text-slate-500" data-type="verdim">Verdim</button>
+             </div>
+        </div>
+    </div>
+    
+    <div class="flex-1 overflow-y-auto p-4 space-y-2.5 bg-slate-50/50 dark:bg-slate-900/50 pb-20" id="modalHareketList">
+        <div class="flex justify-center p-8">
+            <div class="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+        </div>
     </div>
 </div>
 
@@ -504,7 +561,110 @@ window.closeModals = function() {
     document.getElementById('modalOverlay').classList.add('pointer-events-none', 'opacity-0');
     document.getElementById('cariModal').classList.add('translate-y-full');
     document.getElementById('hizliIslemModal').classList.add('translate-y-full');
+    document.getElementById('tumHareketlerModal').classList.add('translate-y-full');
 };
+
+// Para Formatlama JS
+window.formatMoneyCariTakip = function(amount) {
+    if (amount === undefined || amount === null) return '0,00 ₺';
+    return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount) + ' ₺';
+};
+
+// Tum Hareketler Modal Logic
+let modalFilter = { search: '', type: 'all', baslangic: '', bitis: '' };
+let modalSearchTimeout;
+
+window.openTumHareketlerModal = function() {
+    document.getElementById('modalOverlay').classList.remove('pointer-events-none', 'opacity-0');
+    document.getElementById('tumHareketlerModal').classList.remove('translate-y-full');
+    window.loadModalHareketler();
+};
+
+window.loadModalHareketler = function() {
+    const list = document.getElementById('modalHareketList');
+    const formData = new FormData();
+    formData.append('action', 'tum-hareketler-getir');
+    formData.append('search', modalFilter.search);
+    formData.append('type', modalFilter.type);
+    formData.append('baslangic', modalFilter.baslangic);
+    formData.append('bitis', modalFilter.bitis);
+
+    fetch('../views/cari/api.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (!Array.isArray(data)) {
+            list.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs">Bir hata oluştu.</div>`;
+            return;
+        }
+        if (data.length === 0) {
+            list.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs">Kayıt bulunamadı.</div>`;
+            return;
+        }
+        
+        list.innerHTML = data.map(h => {
+            const yBakiye = h.yuruyen;
+            const yColor = yBakiye < 0 ? 'text-rose-500' : (yBakiye > 0 ? 'text-emerald-500' : 'text-slate-400');
+            const ySign = yBakiye < 0 ? '(B)' : (yBakiye > 0 ? '(A)' : '');
+
+            return `
+            <div class="bg-white dark:bg-slate-800 p-3 rounded-xl border border-slate-100 dark:border-slate-700/50 flex items-center justify-between shadow-sm">
+                <div class="flex items-center gap-3 min-w-0">
+                    <div class="w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${h.is_borc ? 'bg-rose-50 text-rose-500 dark:bg-rose-900/20' : 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20'}">
+                        <span class="material-symbols-outlined text-lg">${h.is_borc ? 'trending_up' : 'trending_down'}</span>
+                    </div>
+                    <div class="min-w-0">
+                        <h4 class="font-bold text-[12px] text-slate-800 dark:text-white truncate leading-tight">${h.CariAdi}</h4>
+                        <p class="text-[10px] text-slate-400 truncate mt-0.5">${h.aciklama || (h.is_borc ? 'Aldım' : 'Verdim')}</p>
+                        <div class="flex items-center gap-1 mt-1 text-[10px] text-primary dark:text-blue-400 font-bold">
+                            <span class="material-symbols-outlined text-[13px]">schedule</span> ${h.tarih}
+                        </div>
+                    </div>
+                </div>
+                <div class="text-right shrink-0 ml-2 flex flex-col items-end">
+                    <p class="font-bold text-xs ${h.is_borc ? 'text-rose-600' : 'text-emerald-600'}">
+                        ${h.is_borc ? '-' : '+'}${window.formatMoneyCariTakip(h.amt)}
+                    </p>
+                    <p class="text-[9px] font-bold ${yColor} mt-0.5 opacity-80">
+                        ${window.formatMoneyCariTakip(Math.abs(yBakiye))} ${ySign}
+                    </p>
+                    ${h.belge_no ? `<span class="bg-slate-50 dark:bg-slate-700 px-1 rounded text-[8px] text-slate-400 font-bold uppercase tracking-tighter mt-1">#${h.belge_no}</span>` : ''}
+                </div>
+            </div>`;
+        }).join('');
+    });
+};
+
+window.filterModal = function(type) {
+    modalFilter.type = type;
+    document.querySelectorAll('.modal-tab').forEach(btn => {
+        if (btn.getAttribute('data-type') === type) {
+            btn.classList.add('bg-white', 'dark:bg-slate-700', 'shadow-sm', 'text-primary');
+            btn.classList.remove('text-slate-500');
+        } else {
+            btn.classList.remove('bg-white', 'dark:bg-slate-700', 'shadow-sm', 'text-primary');
+            btn.classList.add('text-slate-500');
+        }
+    });
+    window.loadModalHareketler();
+};
+
+document.getElementById('modalSearch').addEventListener('input', function() {
+    clearTimeout(modalSearchTimeout);
+    modalSearchTimeout = setTimeout(() => {
+        modalFilter.search = this.value;
+        window.loadModalHareketler();
+    }, 400);
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    const dStart = document.getElementById('modalDateStart');
+    const dEnd = document.getElementById('modalDateEnd');
+    if(dStart) dStart.addEventListener('change', (e) => { modalFilter.baslangic = e.target.value; window.loadModalHareketler(); });
+    if(dEnd) dEnd.addEventListener('change', (e) => { modalFilter.bitis = e.target.value; window.loadModalHareketler(); });
+});
 
 // Form submit helper generic
 function handleApiSubmit(e, apiPath, btnId, defaultBtnHtml) {

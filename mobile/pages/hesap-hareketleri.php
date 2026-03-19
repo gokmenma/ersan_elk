@@ -47,7 +47,7 @@ if (!function_exists('formatMoneyCariTakip')) {
 }
 ?>
 
-<div class="px-3 py-4 space-y-4 pb-28">
+<div class="px-3 py-4 space-y-4 pb-44">
     
     <!-- Top Nav / Header Card -->
     <div class="bg-white dark:bg-card-dark rounded-xl shadow-sm p-3 flex flex-col gap-3 relative">

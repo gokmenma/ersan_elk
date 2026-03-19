@@ -265,3 +265,70 @@ if ($action == "hareket-sil") {
     }
     exit;
 }
+
+// Tüm Hareketleri Getir (Global Mobil Bottom Sheet için)
+if ($action == "tum-hareketler-getir") {
+    $search = $_POST["search"] ?? "";
+    $type = $_POST["type"] ?? "all"; // all | aldim | verdim
+    $baslangic = $_POST["baslangic"] ?? "";
+    $bitis = $_POST["bitis"] ?? "";
+
+    $where = "h.silinme_tarihi IS NULL AND c.silinme_tarihi IS NULL";
+    $params = [];
+
+    if (!empty($search)) {
+        $where .= " AND (c.CariAdi LIKE :search OR c.firma LIKE :search OR h.aciklama LIKE :search OR h.belge_no LIKE :search)";
+        $params['search'] = "%$search%";
+    }
+
+    if ($type == 'aldim') {
+        $where .= " AND h.borc > 0";
+    } elseif ($type == 'verdim') {
+        $where .= " AND h.alacak > 0";
+    }
+
+    if (!empty($baslangic)) {
+        $where .= " AND DATE(h.islem_tarihi) >= :baslangic";
+        $params['baslangic'] = $baslangic;
+    }
+    if (!empty($bitis)) {
+        $where .= " AND DATE(h.islem_tarihi) <= :bitis";
+        $params['bitis'] = $bitis;
+    }
+
+    $sql = "SELECT h.*, c.CariAdi, c.firma,
+            (SELECT SUM(alacak - borc) FROM cari_hareketleri WHERE silinme_tarihi IS NULL AND (islem_tarihi < h.islem_tarihi OR (islem_tarihi = h.islem_tarihi AND id <= h.id))) as global_yuruyen_bakiye
+            FROM cari_hareketleri h
+            LEFT JOIN cari c ON h.cari_id = c.id
+            WHERE $where
+            ORDER BY h.islem_tarihi DESC, h.id DESC LIMIT 50";
+
+    try {
+        $db = $Cari->getDb();
+        $stmt = $db->prepare($sql);
+        foreach($params as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+        $stmt->execute();
+        $res = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $formatted = [];
+        foreach ($res as $row) {
+            $formatted[] = [
+                "CariAdi" => $row->CariAdi,
+                "firma" => $row->firma,
+                "aciklama" => $row->aciklama,
+                "tarih" => date('d.m.Y H:i', strtotime($row->islem_tarihi)),
+                "amt" => $row->borc > 0 ? (float)$row->borc : (float)$row->alacak,
+                "is_borc" => $row->borc > 0,
+                "belge_no" => $row->belge_no,
+                "yuruyen" => (float)($row->global_yuruyen_bakiye ?? 0)
+            ];
+        }
+        echo json_encode($formatted);
+    } catch (Exception $e) {
+        echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+    }
+    exit;
+}
+

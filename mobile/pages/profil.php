@@ -159,14 +159,16 @@ $gorevi = $user->gorevi ?? 'Yönetici';
                 // Index.php'de hazırlanan sıralı menü listesini kullanıyoruz (Ana sayfa hariç)
                 foreach ($final_sorted_menus as $mKey => $mData): 
                     if ($mKey === 'home') continue; ?>
-                    <div class="flex items-center gap-4 p-4 bg-white dark:bg-card-dark cursor-move" data-id="<?= $mKey ?>">
+                    <div class="flex items-center gap-4 p-4 bg-white dark:bg-card-dark select-none" data-id="<?= $mKey ?>">
                         <div class="w-10 h-10 rounded-xl <?= $mData['color_bg'] ?> flex items-center justify-center">
                             <span class="material-symbols-outlined <?= $mData['color_icon'] ?>"><?= $mData['icon'] ?></span>
                         </div>
                         <div class="flex-1">
                             <p class="text-sm font-semibold text-slate-900 dark:text-white"><?= $mData['label'] ?></p>
                         </div>
-                        <span class="material-symbols-outlined text-slate-400">drag_indicator</span>
+                        <div class="w-10 h-10 flex items-center justify-center cursor-move text-slate-400 active:text-primary drag-handle">
+                            <span class="material-symbols-outlined pointer-events-none">drag_indicator</span>
+                        </div>
                     </div>
                 <?php endforeach; ?>
             </div>
@@ -350,7 +352,7 @@ function initMenuSortable() {
             new Sortable(el, {
                 animation: 150,
                 ghostClass: 'bg-primary/5',
-                handle: '.cursor-move'
+                handle: '.drag-handle'
             });
         };
         document.head.appendChild(script);
@@ -358,7 +360,7 @@ function initMenuSortable() {
         new Sortable(el, {
             animation: 150,
             ghostClass: 'bg-primary/5',
-            handle: '.cursor-move'
+            handle: '.drag-handle'
         });
     }
 }
