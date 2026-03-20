@@ -47,20 +47,5 @@
     }
   ],
   "categories": ["business", "management"],
-  "screenshots": [
-    {
-      "src": "./assets/images/screenshot-desktop.jpg",
-      "sizes": "1200x800",
-      "type": "image/jpeg",
-      "form_factor": "wide",
-      "label": "Yönetici Paneli Masaüstü Görünümü"
-    },
-    {
-      "src": "./assets/images/screenshot-mobile.jpg",
-      "sizes": "600x1200",
-      "type": "image/jpeg",
-      "label": "Yönetici Paneli Mobil Görünümü"
-    }
-  ],
   "shortcuts": []
 }

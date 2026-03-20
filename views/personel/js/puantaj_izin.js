@@ -278,16 +278,16 @@ $(document).ready(function () {
                   let disabledDaysCount = 0;
                   let unpaidCount = 0;
 
-                  const pGiris = p.ise_giris_tarihi && p.ise_giris_tarihi !== "0000-00-00" ? new Date(p.ise_giris_tarihi) : 0;
-                  const pCikis = p.isten_cikis_tarihi && p.isten_cikis_tarihi !== "0000-00-00" ? new Date(p.isten_cikis_tarihi) : new Date(yil + 10, 1, 1); // Far future date
-
                   for (let d = 1; d <= daysCount; d++) {
-                    const dateStr = `${yil}-${ay}-${d.toString().padStart(2, "0")}`;
+                    const dateStr = `${yil}-${ay.toString().padStart(2, "0")}-${d.toString().padStart(2, "0")}`;
                     const dateObj = new Date(yil, ay - 1, d);
                     const isSunday = dateObj.getDay() === 0;
                     const sundayClass = isSunday ? "is-sunday" : "";
 
-                    const isDisabled = (pGiris && dateObj < pGiris) || (pCikis && dateObj > pCikis);
+                    const pGirisStr = p.ise_giris_tarihi && p.ise_giris_tarihi !== "0000-00-00" ? p.ise_giris_tarihi : "";
+                    const pCikisStr = p.isten_cikis_tarihi && p.isten_cikis_tarihi !== "0000-00-00" ? p.isten_cikis_tarihi : "";
+
+                    const isDisabled = (pGirisStr && dateStr < pGirisStr) || (pCikisStr && dateStr > pCikisStr);
                     const disabledClass = isDisabled ? "disabled" : "";
                     if (isDisabled) disabledDaysCount++;
 

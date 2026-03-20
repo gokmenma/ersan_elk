@@ -1,6 +1,7 @@
 <?php
 use App\Model\PersonelModel;
 use App\Helper\Security;
+use App\Helper\Helper;
 
 // ID çöz veya 0 yap
 $enc_id = $_GET['id'] ?? '';
@@ -36,6 +37,25 @@ $izin_turleri = $izin_turleri_query->fetchAll(PDO::FETCH_OBJ);
 $stmt = $PersonelModel->getDb()->prepare("SELECT z.*, d.demirbas_adi, k.tur_adi as kategori_adi FROM demirbas_zimmet z LEFT JOIN demirbas d ON z.demirbas_id = d.id LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi' WHERE z.personel_id = ? AND z.durum = 'teslim' AND z.silinme_tarihi IS NULL ORDER BY z.teslim_tarihi DESC LIMIT 10");
 $stmt->execute([$personel_id]);
 $zimmetler = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+// Evraklar
+$EvrakModel = new \App\Model\PersonelEvrakModel();
+$evraklar = $EvrakModel->getByPersonel($personel_id);
+
+function getMobileFileIcon($mimeType) {
+    if (strpos($mimeType, 'pdf') !== false) return 'description';
+    if (strpos($mimeType, 'image') !== false) return 'image';
+    if (strpos($mimeType, 'word') !== false || strpos($mimeType, 'document') !== false) return 'article';
+    if (strpos($mimeType, 'excel') !== false || strpos($mimeType, 'sheet') !== false) return 'table_chart';
+    return 'insert_drive_file';
+}
+
+function formatMobileFileSize($bytes) {
+    if ($bytes >= 1048576) return number_format($bytes / 1048576, 1) . ' MB';
+    if ($bytes >= 1024) return number_format($bytes / 1024, 0) . ' KB';
+    return $bytes . ' B';
+}
+
 ?>
 
 <div class="bg-white dark:bg-card-dark min-h-screen flex flex-col relative pb-28">
@@ -721,15 +741,56 @@ $zimmetler = $stmt->fetchAll(PDO::FETCH_OBJ);
             </form>
         </div>
 
-        <!-- TAB Content: Evraklar (Placeholder) -->
+        <!-- TAB Content: Evraklar -->
         <div id="content-evraklar" class="tab-content <?= $activeTab === 'evraklar' ? '' : 'hidden' ?> px-4 pt-4 pb-28">
-            <div class="flex flex-col items-center justify-center p-8 text-center bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 mt-4">
-                <div class="w-16 h-16 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-400 mb-3">
-                    <span class="material-symbols-outlined text-3xl">folder</span>
-                </div>
-                <h4 class="font-bold text-slate-800 dark:text-white text-sm mb-1">Evraklar</h4>
-                <p class="text-[11px] text-slate-500 font-medium">Bu bölüm çalışma aşamasındadır. Masaüstü sürümden yönetebilirsiniz.</p>
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-800 pb-2 flex-1">
+                    <span class="material-symbols-outlined text-[16px]">folder_open</span> Personel Evrakları
+                </h4>
             </div>
+
+            <!-- FAB: Yeni Evrak Yükle -->
+            <button type="button" onclick="openEvrakForm()" class="fixed bottom-[140px] right-6 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg shadow-indigo-600/40 flex items-center justify-center z-40 active:scale-95 transition-transform border-0 focus:outline-none">
+                <span class="material-symbols-outlined text-3xl">upload_file</span>
+            </button>
+            
+            <?php if(empty($evraklar)): ?>
+                <div class="flex flex-col items-center justify-center p-8 text-center bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 mt-4">
+                    <div class="w-16 h-16 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-400 mb-3">
+                        <span class="material-symbols-outlined text-3xl">folder</span>
+                    </div>
+                    <h4 class="font-bold text-slate-800 dark:text-white text-sm mb-1">Evrak Bulunamadı</h4>
+                    <p class="text-[11px] text-slate-500 font-medium">Henüz bu personele ait bir evrak yüklenmemiş.</p>
+                </div>
+            <?php else: ?>
+                <div class="grid grid-cols-1 gap-3">
+                    <?php foreach($evraklar as $evrak): 
+                        $icon = getMobileFileIcon($evrak->dosya_tipi);
+                        $size = formatMobileFileSize($evrak->dosya_boyutu);
+                        $path = '../uploads/personel_evraklar/' . $personel_id . '/' . $evrak->dosya_adi;
+                        $encId = Security::encrypt($evrak->id);
+                    ?>
+                    <div class="bg-white dark:bg-card-dark border border-slate-100 dark:border-slate-800 rounded-2xl p-3 shadow-sm flex items-center gap-3 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors" onclick="viewEvrak('<?= $path ?>', '<?= htmlspecialchars($evrak->evrak_adi) ?>', '<?= $evrak->dosya_tipi ?>')">
+                        <div class="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
+                            <span class="material-symbols-outlined text-2xl"><?= $icon ?></span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <h5 class="font-bold text-sm text-slate-800 dark:text-white truncate"><?= htmlspecialchars($evrak->evrak_adi) ?></h5>
+                            <div class="flex items-center gap-2 mt-0.5">
+                                <span class="text-[10px] text-slate-400 font-bold uppercase tracking-tight"><?= \App\Helper\Helper::EVRAK_TURLERI[$evrak->evrak_turu] ?? $evrak->evrak_turu ?></span>
+                                <span class="w-1 h-1 rounded-full bg-slate-300"></span>
+                                <span class="text-[10px] text-slate-400 font-medium"><?= $size ?></span>
+                            </div>
+                        </div>
+                        <div class="flex gap-1" onclick="event.stopPropagation()">
+                            <button type="button" onclick="deleteEvrak('<?= $encId ?>')" class="w-9 h-9 flex items-center justify-center rounded-full text-rose-500 bg-rose-50 dark:bg-rose-900/20 active:scale-90 transition-transform">
+                                <span class="material-symbols-outlined text-[20px]">delete</span>
+                            </button>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
         </div>
 
         <!-- TAB Content: Puantaj (Placeholder) -->
@@ -954,6 +1015,67 @@ $zimmetler = $stmt->fetchAll(PDO::FETCH_OBJ);
                         </button>
                         <button type="button" onclick="saveIzin()" class="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl text-[15px] font-bold shadow-lg shadow-indigo-600/30 active:scale-95 transition-transform flex items-center justify-center gap-2">
                             <span class="material-symbols-outlined text-[20px]">check_circle</span> Kaydet
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+    <!-- Evrak Yükle Bottom Sheet Backdrop -->
+    <div id="evrakBottomSheetBackdrop" class="fixed inset-0 bg-black/50 z-[100] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeEvrakForm()"></div>
+
+    <!-- Evrak Yükle Bottom Sheet -->
+    <div id="evrakFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[101] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
+        <div class="flex justify-center pt-3 pb-2">
+            <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+        </div>
+        
+        <div class="px-6 pb-2 border-b border-slate-50 dark:border-slate-800/50 mb-4">
+            <h5 class="text-[17px] font-bold text-slate-800 dark:text-white">Yeni Evrak Yükle</h5>
+        </div>
+
+        <div class="px-6 space-y-4 max-h-[70vh] overflow-y-auto no-scrollbar">
+            <form id="evrakMobileForm" enctype="multipart/form-data">
+                <input type="hidden" name="action" value="evrak_yukle">
+                <input type="hidden" name="personel_id" value="<?= $personel_id ?>">
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Evrak Adı*</label>
+                        <input type="text" name="evrak_adi" required placeholder="Örn: İş Sözleşmesi" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Evrak Türü*</label>
+                        <select name="evrak_turu" required class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white">
+                            <?php foreach(\App\Helper\Helper::EVRAK_TURLERI as $key => $val): ?>
+                                <option value="<?= $key ?>" <?= $key === 'diger' ? 'selected' : '' ?>><?= htmlspecialchars($val) ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Dosya Seç*</label>
+                        <div class="relative">
+                            <input type="file" name="evrak_dosyasi" id="evrak_dosyasi" required class="hidden" onchange="updateFileName(this)">
+                            <label for="evrak_dosyasi" class="flex items-center justify-between w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-dashed border-slate-300 dark:border-slate-600 rounded-2xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                                <span id="fileName" class="text-[13px] text-slate-500 font-medium">Dosya seçilmedi...</span>
+                                <span class="material-symbols-outlined text-indigo-500">attach_file</span>
+                            </label>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Açıklama</label>
+                        <textarea name="aciklama" rows="2" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white" placeholder="Evrak hakkında notlar..."></textarea>
+                    </div>
+
+                    <div class="flex gap-3 pt-2 mb-6">
+                        <button type="button" onclick="closeEvrakForm()" class="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl text-[15px] font-bold active:scale-95 transition-transform">
+                            İptal
+                        </button>
+                        <button type="button" onclick="saveEvrak()" id="btnEvrakKaydet" class="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl text-[15px] font-bold shadow-lg shadow-indigo-600/30 active:scale-95 transition-transform flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-[20px]">cloud_upload</span> Yükle
                         </button>
                     </div>
                 </div>
@@ -1595,5 +1717,101 @@ function handleIzinClick(el) {
         console.error("JSON Parse Hatası:", e, el.getAttribute('data-izin'));
         Toast.show("Bağlantı verisi okunamadı. Lütfen sayfayı yenileyip tekrar deneyiniz.", "error");
     }
+}
+
+// Evrak Yönetimi Fonksiyonları
+function openEvrakForm() {
+    document.getElementById('evrakMobileForm').reset();
+    document.getElementById('fileName').innerText = 'Dosya seçilmedi...';
+    
+    const backdrop = document.getElementById('evrakBottomSheetBackdrop');
+    const sheet = document.getElementById('evrakFormArea');
+    backdrop.classList.remove('hidden');
+    setTimeout(() => {
+        backdrop.classList.remove('opacity-0', 'pointer-events-none');
+        backdrop.classList.add('opacity-100');
+        sheet.classList.remove('translate-y-full');
+    }, 10);
+}
+
+function closeEvrakForm() {
+    const backdrop = document.getElementById('evrakBottomSheetBackdrop');
+    const sheet = document.getElementById('evrakFormArea');
+    backdrop.classList.add('opacity-0', 'pointer-events-none');
+    backdrop.classList.remove('opacity-100');
+    sheet.classList.add('translate-y-full');
+    setTimeout(() => backdrop.classList.add('hidden'), 300);
+}
+
+function updateFileName(input) {
+    const fileName = input.files[0] ? input.files[0].name : 'Dosya seçilmedi...';
+    document.getElementById('fileName').innerText = fileName;
+}
+
+function saveEvrak() {
+    const form = document.getElementById('evrakMobileForm');
+    const btn = document.getElementById('btnEvrakKaydet');
+    const originalContent = btn.innerHTML;
+    
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+    
+    btn.disabled = true;
+    btn.innerHTML = '<div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin mx-auto"></div>';
+    
+    const formData = new FormData(form);
+    
+    fetch('../views/personel/api/APIevraklar.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.status === 'success') {
+            Toast.show(data.message, "success");
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            Toast.show(data.message || "Hata oluştu.", "error");
+            btn.disabled = false;
+            btn.innerHTML = originalContent;
+        }
+    })
+    .catch(err => {
+        Toast.show("Sunucu hatası.", "error");
+        btn.disabled = false;
+        btn.innerHTML = originalContent;
+    });
+}
+
+async function deleteEvrak(id) {
+    const isConfirmed = await Alert.confirmDelete("Sil", "Bu evrakı silmek istediğinize emin misiniz?");
+    if(!isConfirmed) return;
+    
+    const formData = new FormData();
+    formData.append('action', 'evrak_sil');
+    formData.append('id', id);
+    
+    fetch('../views/personel/api/APIevraklar.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.status === 'success') {
+            Toast.show(data.message, "success");
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            Toast.show(data.message || "Hata oluştu.", "error");
+        }
+    })
+    .catch(err => Toast.show("Sunucu hatası.", "error"));
+}
+
+function viewEvrak(path, title, type) {
+    // Mobil için en iyi yöntem dosyayı yeni sekmede açmak veya indirmektir
+    // Eğer resimse bir modalda gösterilebilir ama şimdilik yeni sekme/doğrudan link daha güvenli
+    window.open(path, '_blank');
 }
 </script>
