@@ -234,6 +234,7 @@ if ($action == "hareket-getir") {
         $data->islem_tarihi = date('d.m.Y H:i', strtotime($data->islem_tarihi));
         $data->tutar_raw = $data->borc > 0 ? (float)$data->borc : (float)$data->alacak;
         $data->type = $data->borc > 0 ? 'aldim' : 'verdim';
+        $data->cari_id_enc = Security::encrypt($data->cari_id);
     }
     
     echo json_encode($data);
@@ -272,9 +273,15 @@ if ($action == "tum-hareketler-getir") {
     $type = $_POST["type"] ?? "all"; // all | aldim | verdim
     $baslangic = $_POST["baslangic"] ?? "";
     $bitis = $_POST["bitis"] ?? "";
+    $cari_id = Security::decrypt($_POST["cari_id"] ?? "");
 
     $where = "h.silinme_tarihi IS NULL AND c.silinme_tarihi IS NULL";
     $params = [];
+
+    if (!empty($cari_id)) {
+        $where .= " AND h.cari_id = :cari_id";
+        $params['cari_id'] = $cari_id;
+    }
 
     if (!empty($search)) {
         $where .= " AND (c.CariAdi LIKE :search OR c.firma LIKE :search OR h.aciklama LIKE :search OR h.belge_no LIKE :search)";
@@ -297,7 +304,12 @@ if ($action == "tum-hareketler-getir") {
     }
 
     $sql = "SELECT h.*, c.CariAdi, c.firma,
-            (SELECT SUM(alacak - borc) FROM cari_hareketleri WHERE silinme_tarihi IS NULL AND (islem_tarihi < h.islem_tarihi OR (islem_tarihi = h.islem_tarihi AND id <= h.id))) as global_yuruyen_bakiye
+            (SELECT SUM(h2.alacak - h2.borc) 
+             FROM cari_hareketleri h2 
+             JOIN cari c2 ON h2.cari_id = c2.id 
+             WHERE h2.silinme_tarihi IS NULL 
+               AND c2.silinme_tarihi IS NULL
+               AND (h2.islem_tarihi < h.islem_tarihi OR (h2.islem_tarihi = h.islem_tarihi AND h2.id <= h.id))) as global_yuruyen_bakiye
             FROM cari_hareketleri h
             LEFT JOIN cari c ON h.cari_id = c.id
             WHERE $where
@@ -315,6 +327,7 @@ if ($action == "tum-hareketler-getir") {
         $formatted = [];
         foreach ($res as $row) {
             $formatted[] = [
+                "id" => Security::encrypt($row->id),
                 "CariAdi" => $row->CariAdi,
                 "firma" => $row->firma,
                 "aciklama" => $row->aciklama,
