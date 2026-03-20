@@ -256,23 +256,23 @@ class BordroPersonelModel extends Model
                    JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.ucretsiz_izin_gunu')) as hd_ucretsiz_izin_gunu,
                    JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.ucretsiz_izin_dusumu')) as hd_ucretsiz_izin_dusumu,
                    JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.nominal_maas')) as hd_nominal_maas,
-                     JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.ucretli_izin_gunu')) as hd_ucretli_izin_gunu,
-                     JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.maas_hesap_gunu')) as hd_maas_hesap_gunu
+                   JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.ucretli_izin_gunu')) as hd_ucretli_izin_gunu,
+                   JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.maas_hesap_gunu')) as hd_maas_hesap_gunu
             FROM {$this->table} bp
-            INNER JOIN personel p ON bp.personel_id = p.id
+            STRAIGHT_JOIN personel p ON bp.personel_id = p.id
             LEFT JOIN (
                 SELECT pg.personel_id, 
                        GROUP_CONCAT(DISTINCT t.tur_adi SEPARATOR ', ') as ekip_adi,
                        GROUP_CONCAT(DISTINCT t.ekip_bolge SEPARATOR ', ') as ekip_bolge
                 FROM personel_ekip_gecmisi pg
                 JOIN tanimlamalar t ON pg.ekip_kodu_id = t.id
-                WHERE pg.baslangic_tarihi <= CURDATE() 
-                AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
-                AND pg.firma_id = ?
+                WHERE pg.firma_id = ? 
+                  AND pg.baslangic_tarihi <= CURDATE() 
+                  AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
                 GROUP BY pg.personel_id
             ) t_all ON p.id = t_all.personel_id
             LEFT JOIN (
-                SELECT pgg.id, pgg.personel_id, pgg.maas_tutari, pgg.maas_durumu, pgg.gorev
+                SELECT pgg.personel_id, pgg.maas_tutari, pgg.maas_durumu, pgg.gorev
                 FROM personel_gorev_gecmisi pgg
                 INNER JOIN (
                     SELECT personel_id, MAX(baslangic_tarihi) AS latest_start
@@ -282,9 +282,6 @@ class BordroPersonelModel extends Model
                     GROUP BY personel_id
                 ) gg_latest ON pgg.personel_id = gg_latest.personel_id
                           AND pgg.baslangic_tarihi = gg_latest.latest_start
-                WHERE pgg.baslangic_tarihi <= ?
-                  AND (pgg.bitis_tarihi IS NULL OR pgg.bitis_tarihi >= ?)
-                GROUP BY pgg.personel_id
             ) gg ON p.id = gg.personel_id
             LEFT JOIN (
                 SELECT pgg.personel_id, 
@@ -294,17 +291,17 @@ class BordroPersonelModel extends Model
                 GROUP BY pgg.personel_id
             ) gg_days ON p.id = gg_days.personel_id
             LEFT JOIN (
-                SELECT personel_id, donem_id, SUM(tutar) as toplam_kesinti
+                SELECT personel_id, SUM(tutar) as toplam_kesinti
                 FROM personel_kesintileri 
                 WHERE donem_id = ? AND silinme_tarihi IS NULL AND (durum = 'onaylandi' OR tur = 'icra')
-                GROUP BY personel_id, donem_id
-            ) pk_agg ON bp.personel_id = pk_agg.personel_id AND bp.donem_id = pk_agg.donem_id
+                GROUP BY personel_id
+            ) pk_agg ON bp.personel_id = pk_agg.personel_id
             LEFT JOIN (
-                SELECT personel_id, donem_id, SUM(tutar) as toplam_ek_odeme
+                SELECT personel_id, SUM(tutar) as toplam_ek_odeme
                 FROM personel_ek_odemeler 
                 WHERE donem_id = ? AND silinme_tarihi IS NULL AND durum = 'onaylandi'
-                GROUP BY personel_id, donem_id
-            ) eo_agg ON bp.personel_id = eo_agg.personel_id AND bp.donem_id = eo_agg.donem_id
+                GROUP BY personel_id
+            ) eo_agg ON bp.personel_id = eo_agg.personel_id
             WHERE bp.donem_id = ? AND bp.silinme_tarihi IS NULL $idFilter
             ORDER BY p.adi_soyadi ASC
         ");
@@ -312,13 +309,11 @@ class BordroPersonelModel extends Model
         // Parametreleri yeniden düzenle
         $sqlParams = [
             $firma_id,
-            $donemBitis,       // gg_latest inner: baslangic_tarihi <= ?
-            $donemBaslangic,   // gg_latest inner: bitis_tarihi >= ?
-            $donemBitis,       // gg outer WHERE: baslangic_tarihi <= ?
-            $donemBaslangic,   // gg outer WHERE: bitis_tarihi >= ?
+            $donemBitis,       // gg inner: baslangic_tarihi <= ?
+            $donemBaslangic,   // gg inner: bitis_tarihi >= ?
             $donemBitis,       // gg_days: LEAST(COALESCE(pgg.bitis_tarihi, ?), ?)
-            $donemBitis,       // gg_days: LEAST(..., ?)
-            $donemBaslangic,   // gg_days: GREATEST(pgg.baslangic_tarihi, ?)
+            $donemBitis,       // gg_days: ... , ?)
+            $donemBaslangic,   // gg_days: GREATEST(..., ?)
             $donemBitis,       // gg_days WHERE: baslangic_tarihi <= ?
             $donemBaslangic,   // gg_days WHERE: bitis_tarihi >= ?
             $donem_id,

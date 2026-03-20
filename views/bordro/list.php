@@ -802,9 +802,9 @@ if (!empty($dbGelirler)) {
                                                         <div class="d-flex align-items-center">
                                                         <div class="personel-img-zoom-container">
                                                             <img src="<?= !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>"
-                                                                alt="" class="rounded-circle avatar-sm me-2 personel-img-zoom cursor-pointer">
+                                                                alt="" class="rounded-circle avatar-sm me-2 personel-img-zoom cursor-pointer" loading="lazy">
                                                             <div class="img-preview-tooltip">
-                                                                <img src="<?= !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>" alt="">
+                                                                <img src="<?= !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>" alt="" loading="lazy">
                                                             </div>
                                                         </div>
                                                             <div>

@@ -96,7 +96,20 @@ try {
         $ht_tanim = $varsayilan_HT->fetch(PDO::FETCH_OBJ);
 
         // Puantaj ve İzin verilerini getir
-        // yapilan_isler (puantaj) ve personel_izinleri tablolarından
+        // 1. Tüm personellerin izinlerini tek seferde çek
+        $izin_stmt = $PersonelIzinleri->db->prepare("
+            SELECT pi.personel_id, pi.id, pi.baslangic_tarihi, pi.bitis_tarihi, pi.izin_tipi_id, t.tur_adi, t.kisa_kod, t.renk 
+            FROM personel_izinleri pi
+            JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
+            WHERE pi.silinme_tarihi IS NULL AND pi.onay_durumu != 'Reddedildi'
+            AND pi.personel_id IN (SELECT id FROM personel WHERE firma_id = ? AND silinme_tarihi IS NULL)
+            AND (
+                (pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ?)
+            )
+        ");
+        $izin_stmt->execute([$firma_id, $endDate, $startDate]);
+        $all_izinler = $izin_stmt->fetchAll(PDO::FETCH_GROUP | PDO::FETCH_OBJ);
+
         $data = [];
 
         foreach ($personel_list as $p) {
@@ -108,21 +121,14 @@ try {
                 'resim' => $p->resim_yolu ?: 'assets/images/users/user-dummy-img.jpg',
                 'isten_cikis_tarihi' => $p->isten_cikis_tarihi,
                 'ise_giris_tarihi' => $p->ise_giris_tarihi,
+                'gorev_gecmisi_var' => $p->gorev_gecmisi_var,
+                'gg_toplam_gun' => $p->gg_toplam_gun,
                 'entries' => []
             ];
 
-            // İzinler
-            $izin_stmt = $PersonelIzinleri->db->prepare("
-                SELECT pi.id, pi.baslangic_tarihi, pi.bitis_tarihi, pi.izin_tipi_id, t.tur_adi, t.kisa_kod, t.renk 
-                FROM personel_izinleri pi
-                JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-                WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL AND pi.onay_durumu != 'Reddedildi'
-                AND ((pi.baslangic_tarihi BETWEEN ? AND ?) OR (pi.bitis_tarihi BETWEEN ? AND ?))
-            ");
-            $izin_stmt->execute([$p->id, $startDate, $endDate, $startDate, $endDate]);
-            $izinler = $izin_stmt->fetchAll(PDO::FETCH_OBJ);
-
+            $izinler = $all_izinler[$p->id] ?? [];
             $mevcut_gunler = [];
+
             foreach ($izinler as $izin) {
                 $cur = strtotime($izin->baslangic_tarihi);
                 $end = strtotime($izin->bitis_tarihi);

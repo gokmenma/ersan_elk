@@ -18,13 +18,24 @@ $(document).ready(function () {
   if (savedYil) $("#select-yil").val(savedYil);
   if (savedFilter) $("#personel-filter").val(savedFilter);
 
-  // Initialize Select2 if not already initialized
-  if ($.fn.select2) {
-    $(".select2").select2();
-  }
+  // Initialize Bootstrap Tooltips and Popovers ONCE using delegation on the container
+  // This is MUCH faster for large tables (delegation vs thousands of instances)
+  const tooltipInstance = new bootstrap.Tooltip(document.getElementById('puantaj-full-container'), {
+    selector: '[data-bs-toggle="tooltip"]',
+    trigger: 'hover',
+    container: 'body'
+  });
 
-  loadDefinitions();
-  renderTable();
+  const popoverInstance = new bootstrap.Popover(document.getElementById('puantaj-full-container'), {
+    selector: '[data-bs-toggle="popover"]',
+    trigger: 'hover focus',
+    html: true,
+    container: 'body'
+  });
+
+  loadDefinitions(function() {
+    renderTable();
+  });
 
   // Events
   $("#select-ay").on("change", function () {
@@ -45,11 +56,21 @@ $(document).ready(function () {
 
   // Personel Filtreleme
   function applyFilter() {
-    const value = turkceKucukHarf($("#personel-filter").val());
-    $("#table-body tr").each(function () {
-      const rowText = turkceKucukHarf($(this).text());
-      $(this).toggle(rowText.indexOf(value) > -1);
-    });
+    const filterValue = turkceKucukHarf($("#personel-filter").val());
+    localStorage.setItem("puantaj_filter", filterValue);
+
+    const rows = document.querySelectorAll("#table-body tr");
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      const name = turkceKucukHarf(row.getAttribute("data-personel-adi") || "");
+      if (name.indexOf(filterValue) > -1) {
+        row.style.display = "";
+      } else {
+        row.style.display = "none";
+      }
+    }
+
+    calculateTotals();
   }
 
   $("#personel-filter").on("keyup", function () {
@@ -104,41 +125,44 @@ $(document).ready(function () {
     return new Date(year, month, 0).getDate();
   }
 
-  // Helper: Get style from tailwind class
+  // Helper: Get style from tailwind class (WITH CACHE)
+  const styleCache = {};
   function getStyleFromTailwind(tailwindClass) {
-    if (!tailwindClass)
-      return { bg: "rgba(85, 110, 230, 0.15)", color: "#556ee6" };
+    if (!tailwindClass) return { bg: "rgba(85, 110, 230, 0.15)", color: "#556ee6" };
+    if (styleCache[tailwindClass]) return styleCache[tailwindClass];
 
+    let result;
     // Check if it's already a hex
     if (tailwindClass.startsWith("#")) {
-      // Return light version of hex for background, original for text
-      return {
+      result = {
         bg: tailwindClass + "26", // 15% opacity hex
         color: tailwindClass,
       };
+    } else if (tailwindClass.includes("blue")) {
+      result = { bg: "#dbeafe", color: "#2563eb" };
+    } else if (tailwindClass.includes("amber")) {
+      result = { bg: "#fef3c7", color: "#d97706" };
+    } else if (tailwindClass.includes("red")) {
+      result = { bg: "#fee2e2", color: "#dc2626" };
+    } else if (tailwindClass.includes("pink")) {
+      result = { bg: "#fce7f3", color: "#db2777" };
+    } else if (tailwindClass.includes("gray")) {
+      result = { bg: "#f3f4f6", color: "#4b5563" };
+    } else if (tailwindClass.includes("green")) {
+      result = { bg: "#dcfce7", color: "#16a34a" };
+    } else if (tailwindClass.includes("purple")) {
+      result = { bg: "#f3e8ff", color: "#9333ea" };
+    } else {
+      // Default to primary theme color (light style)
+      result = { bg: "rgba(85, 110, 230, 0.15)", color: "#556ee6" };
     }
 
-    if (tailwindClass.includes("blue"))
-      return { bg: "#dbeafe", color: "#2563eb" };
-    if (tailwindClass.includes("amber"))
-      return { bg: "#fef3c7", color: "#d97706" };
-    if (tailwindClass.includes("red"))
-      return { bg: "#fee2e2", color: "#dc2626" };
-    if (tailwindClass.includes("pink"))
-      return { bg: "#fce7f3", color: "#db2777" };
-    if (tailwindClass.includes("gray"))
-      return { bg: "#f3f4f6", color: "#4b5563" };
-    if (tailwindClass.includes("green"))
-      return { bg: "#dcfce7", color: "#16a34a" };
-    if (tailwindClass.includes("purple"))
-      return { bg: "#f3e8ff", color: "#9333ea" };
-
-    // Default to primary theme color (light style)
-    return { bg: "rgba(85, 110, 230, 0.15)", color: "#556ee6" };
+    styleCache[tailwindClass] = result;
+    return result;
   }
 
   // Load Definitions
-  function loadDefinitions() {
+  function loadDefinitions(callback) {
     $.post(API_URL, { action: "get-definitions" }, function (res) {
       if (res.status === "success") {
         ucretsizIzinIds.clear();
@@ -173,7 +197,6 @@ $(document).ready(function () {
             }
           });
           $(`#${containerId}`).html(html);
-          initTooltips();
         };
         if (res.data.ucretli) {
           ucretliDefinitions = res.data.ucretli;
@@ -186,6 +209,7 @@ $(document).ready(function () {
 
         // İzin türleri yüklendikten sonra sticky yüksekliği güncelle
         setTimeout(updateStickyHeights, 100);
+        if (callback) callback();
       }
     });
   }
@@ -239,8 +263,7 @@ $(document).ready(function () {
                   if (p.adi_soyadi)
                     personnelMap[turkceKucukHarf(p.adi_soyadi)] = p;
                   if (p.tc_kimlik_no) personnelMap[p.tc_kimlik_no] = p;
-
-                  bodyHtml += `<tr>
+                  bodyHtml += `<tr data-personel-adi="${turkceKucukHarf(p.adi_soyadi)}">
                         <td class="personel-info sticky-col" title="${p.adi_soyadi}" data-personel-id="${p.id}" data-gg-toplam-gun="${p.gg_toplam_gun || 0}" data-gorev-gecmisi="${p.gorev_gecmisi_var || 0}">
                             <div class="d-flex align-items-center">
                                 <a href="?p=personel/manage&id=${p.encrypt_id}" class="text-truncate-name text-primary fw-bold" style="text-decoration: none;">${p.adi_soyadi}</a>
@@ -250,58 +273,21 @@ $(document).ready(function () {
                   let disabledDaysCount = 0;
                   let unpaidCount = 0;
 
+                  const pGiris = p.ise_giris_tarihi && p.ise_giris_tarihi !== "0000-00-00" ? new Date(p.ise_giris_tarihi) : 0;
+                  const pCikis = p.isten_cikis_tarihi && p.isten_cikis_tarihi !== "0000-00-00" ? new Date(p.isten_cikis_tarihi) : new Date(yil + 10, 1, 1); // Far future date
+
                   for (let d = 1; d <= daysCount; d++) {
+                    const dateStr = `${yil}-${ay}-${d.toString().padStart(2, "0")}`;
                     const dateObj = new Date(yil, ay - 1, d);
                     const isSunday = dateObj.getDay() === 0;
                     const sundayClass = isSunday ? "is-sunday" : "";
 
-                    const dateStr = `${yil}-${ay}-${d.toString().padStart(2, "0")}`;
+                    const isDisabled = (pGiris && dateObj < pGiris) || (pCikis && dateObj > pCikis);
+                    const disabledClass = isDisabled ? "disabled" : "";
+                    if (isDisabled) disabledDaysCount++;
 
-                    let disabledStyle = "";
-                    let disabledClass = "";
-                    let isDisabledDay = false;
-
-                    if (
-                      p.isten_cikis_tarihi &&
-                      p.isten_cikis_tarihi !== "0000-00-00" &&
-                      p.isten_cikis_tarihi !== null
-                    ) {
-                      const cikisParts = p.isten_cikis_tarihi.split("-");
-                      const cikisDate = new Date(
-                        parseInt(cikisParts[0]),
-                        parseInt(cikisParts[1]) - 1,
-                        parseInt(cikisParts[2]),
-                      );
-                      if (dateObj > cikisDate) {
-                        disabledClass = "disabled bg-light cursor-not-allowed";
-                        disabledStyle =
-                          "pointer-events: none; opacity: 0.5; background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.05) 5px, rgba(0,0,0,0.05) 10px) !important;";
-                        isDisabledDay = true;
-                      }
-                    }
-
-                    if (
-                      p.ise_giris_tarihi &&
-                      p.ise_giris_tarihi !== "0000-00-00" &&
-                      p.ise_giris_tarihi !== null
-                    ) {
-                      const baslamaParts = p.ise_giris_tarihi.split("-");
-                      const baslamaDate = new Date(
-                        parseInt(baslamaParts[0]),
-                        parseInt(baslamaParts[1]) - 1,
-                        parseInt(baslamaParts[2]),
-                      );
-                      if (dateObj < baslamaDate) {
-                        disabledClass = "disabled bg-light cursor-not-allowed";
-                        disabledStyle =
-                          "pointer-events: none; opacity: 0.5; background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.05) 5px, rgba(0,0,0,0.05) 10px) !important;";
-                        isDisabledDay = true;
-                      }
-                    }
-
-                    if (isDisabledDay) {
-                      disabledDaysCount++;
-                    }
+                    let cellContent = "";
+                    let hasEntryClass = "";
 
                     const key = `${p.id}-${dateStr}`;
                     const unsaved = unsavedChanges[key];
@@ -314,10 +300,6 @@ $(document).ready(function () {
                       ? []
                       : p.entries[dateStr] || [];
 
-                    let cellContent = "";
-                    let cellStyle = "";
-                    let hasEntryClass = "";
-
                     // Önce unsavedChanges kontrol et (Excel'den yüklenen dahil)
                     if (unsaved) {
                       const unsavedStyle = getStyleFromTailwind(unsaved.color);
@@ -327,7 +309,6 @@ $(document).ready(function () {
                       // Sadece manuel giriş yapılan ücretsiz izinleri say (default HT/X değil)
                       if (ucretsizIzinIds.has(typeId)) unpaidCount++;
 
-                      cellStyle = ``;
                       hasEntryClass = "has-entry unsaved";
                       cellContent = `
                                 <div class="cell-content draggable-izin" draggable="true"
@@ -338,7 +319,7 @@ $(document).ready(function () {
                                      data-name="${unsaved.name}"
                                      data-color="${unsaved.color}"
                                      data-is-default="false"
-                                     style="background-color: ${unsavedStyle.bg} !important; color: ${unsavedStyle.color} !important; border: 1px solid ${unsavedStyle.color}33 !important; font-weight: 700;">
+                                     style="background-color: ${unsavedStyle.bg} !important; color: ${unsavedStyle.color} !important; border: 1px solid ${unsavedStyle.color}33;">
                                     ${unsaved.shortCode}
                                     <span class="btn-delete-cell" onclick="removeUnsaved('${key}', event)">×</span>
                                 </div>`;
@@ -349,12 +330,6 @@ $(document).ready(function () {
                       // Sadece manuel giriş yapılan ücretsiz izinleri say (default HT/X değil)
                       if (entry.type !== "default" && ucretsizIzinIds.has(typeId)) unpaidCount++;
                       
-                      // Default gün sayısını artır (HT vb)
-                      // if (entry.type === "default") {
-                      //   defaultDaysCount++;
-                      // }
-
-                      cellStyle = ``;
                       hasEntryClass = "has-entry";
                       const shortCode = getShortCode(entry);
 
@@ -372,21 +347,20 @@ $(document).ready(function () {
                                      data-name="${entry.name}"
                                      data-color="${entry.color}"
                                      data-is-default="${entry.type === "default"}"
-                                     style="background-color: ${styleObj.bg} !important; color: ${styleObj.color} !important; border: 1px solid ${styleObj.color}33 !important; font-weight: 700;">
+                                     style="background-color: ${styleObj.bg} !important; color: ${styleObj.color} !important; border: 1px solid ${styleObj.color}33;">
                                     ${shortCode}
                                     ${deleteBtn}
                                 </div>`;
                     }
 
                     bodyHtml += `<td class="day-cell ${hasEntryClass} ${sundayClass} ${disabledClass}" 
-                                         style="${cellStyle} ${disabledStyle}"
                                          data-personel-id="${p.id}" 
                                          data-date="${dateStr}">
                                         ${cellContent}
                                     </td>`;
                   }
 
-                  const calisilmasiGerekenGun = daysCount - disabledDaysCount;
+                   const calisilmasiGerekenGun = daysCount - disabledDaysCount;
                   let activeDaysLimit = calisilmasiGerekenGun;
                   
                   // Eğer görev geçmişi varsa, toplam gün limitine göre adjust et
@@ -403,7 +377,6 @@ $(document).ready(function () {
                 });
                 $("#table-body").html(bodyHtml);
                 initTableEvents();
-                initTooltips();
                 applyFilter();
               }
             }
@@ -430,14 +403,59 @@ $(document).ready(function () {
   function calculateTotals() {
     const ay = $("#select-ay").val();
     const yil = $("#select-yil").val();
-    const daysCount = getDaysInMonth(ay, yil);
+    const daysCount = parseInt(getDaysInMonth(ay, yil));
 
     let secilenPersonelSayisi = 0;
-    $("#table-body tr").each(function () {
-      if ($(this).css("display") !== "none") {
-        secilenPersonelSayisi++;
+    let totalGenelCalisma = 0;
+    
+    // Day-based data storage for footer
+    let dayStats = Array.from({ length: daysCount + 1 }, () => ({
+      totalEntries: 0,
+      typeCounts: {}
+    }));
+
+    // Single pass over visible rows (Vanilla JS for speed)
+    const rows = document.querySelectorAll("#table-body tr");
+    for (let i = 0; i < rows.length; i++) {
+      const row = rows[i];
+      if (row.style.display === "none") continue;
+
+      secilenPersonelSayisi++;
+
+      // Toplam çalışma gününü al (satır sonundaki hücre)
+      const totalCell = row.querySelector(".toplam-calisma-gunu");
+      if (totalCell) {
+        totalGenelCalisma += parseInt(totalCell.textContent) || 0;
       }
-    });
+
+      // Sadece has-entry olan hücreleri tara
+      const cells = row.querySelectorAll(".day-cell.has-entry");
+      for (let j = 0; j < cells.length; j++) {
+        const cell = cells[j];
+        const dateStr = cell.getAttribute("data-date");
+        if (!dateStr) continue;
+
+        const d = parseInt(dateStr.split("-")[2]);
+        if (d < 1 || d > daysCount) continue;
+
+        const content = cell.querySelector(".cell-content");
+        if (content) {
+          const shortcode = content.getAttribute("data-shortcode");
+          const name = content.getAttribute("data-name");
+          const idStr = content.getAttribute("data-id");
+
+          if (!dayStats[d].typeCounts[shortcode]) {
+            dayStats[d].typeCounts[shortcode] = {
+              count: 0,
+              name: name,
+              typeId: idStr,
+            };
+          }
+          dayStats[d].typeCounts[shortcode].count++;
+          dayStats[d].totalEntries++;
+        }
+      }
+    }
 
     let footerHtml = `<tr>
             <td class="sticky-col px-3" style="display: table-cell; vertical-align: middle;">
@@ -447,74 +465,34 @@ $(document).ready(function () {
                 </div>
             </td>`;
 
-    let totalGenelCalisma = 0;
     for (let d = 1; d <= daysCount; d++) {
-      let typeCounts = {};
-      let totalEntries = 0;
-
-      const dateStr = `${yil}-${ay}-${d.toString().padStart(2, "0")}`;
-
-      $("#table-body tr").each(function () {
-        if ($(this).css("display") === "none") return;
-
-        let cell = $(this).find(`.day-cell[data-date="${dateStr}"]`);
-        if (cell.length && cell.hasClass("has-entry")) {
-          const content = cell.find(".cell-content");
-          if (content.length) {
-            const shortcode = content.data("shortcode");
-            const name = content.data("name");
-            const idStr = content.data("id")?.toString();
-
-            if (!typeCounts[shortcode]) {
-              typeCounts[shortcode] = { count: 0, name: name, typeId: idStr };
-            }
-            typeCounts[shortcode].count++;
-            totalEntries++;
-          }
-        }
-      });
-
+      const stats = dayStats[d];
       let tooltipText = "";
-      Object.keys(typeCounts).forEach(function (code) {
-        tooltipText += `${typeCounts[code].name}(${code}) : ${typeCounts[code].count}<br>`;
+      Object.keys(stats.typeCounts).forEach(function (code) {
+        tooltipText += `${stats.typeCounts[code].name}(${code}) : ${stats.typeCounts[code].count}<br>`;
       });
 
       const dateObj = new Date(yil, ay - 1, d);
       const isSunday = dateObj.getDay() === 0;
       const sundayClass = isSunday ? "is-sunday" : "";
 
-      if (totalEntries > 0) {
+      if (stats.totalEntries > 0) {
         footerHtml += `<td class="text-center ${sundayClass} position-relative">
-                <span tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="top" data-bs-container="body" title="İzin Dağılımı" data-bs-content="${tooltipText}" style="cursor:help;">${totalEntries}</span>
+                <span tabindex="0" data-bs-toggle="popover" data-bs-trigger="hover focus" data-bs-html="true" data-bs-placement="top" data-bs-container="body" title="İzin Dağılımı" data-bs-content="${tooltipText}" style="cursor:help;">${stats.totalEntries}</span>
            </td>`;
       } else {
         footerHtml += `<td class="text-center ${sundayClass}">0</td>`;
       }
     }
 
-    $("#table-body tr").each(function () {
-      if ($(this).css("display") === "none") return;
-      totalGenelCalisma +=
-        parseInt($(this).find(".toplam-calisma-gunu").text()) || 0;
-    });
-
     footerHtml += `<td class="sticky-col-right-1 text-center">${totalGenelCalisma}</td>`;
     footerHtml += `</tr>`;
 
     $("#table-footer").html(footerHtml);
-    initPopovers();
   }
 
   function initPopovers() {
-    var popoverTriggerList = [].slice.call(
-      document.querySelectorAll('[data-bs-toggle="popover"]'),
-    );
-    popoverTriggerList.map(function (popoverTriggerEl) {
-      if (bootstrap.Popover.getInstance(popoverTriggerEl)) {
-        bootstrap.Popover.getInstance(popoverTriggerEl).dispose();
-      }
-      return new bootstrap.Popover(popoverTriggerEl);
-    });
+    // Already handled by delegated global initializer
   }
 
   // Table Interaction Events
@@ -772,59 +750,59 @@ $(document).ready(function () {
       color: type.color,
       shortCode: type.shortCode,
     };
-
-    // Render locally
-    const style = getStyleFromTailwind(type.color);
-    $(cell).attr("style", "").addClass("has-entry unsaved");
-
-    $(cell).html(`
+    // Update UI instantly using Vanilla JS (Much faster than jQuery)
+    const styleObj = getStyleFromTailwind(type.color);
+    cell.style.cssText = "";
+    cell.className = `day-cell has-entry unsaved ${cell.classList.contains("is-sunday") ? "is-sunday" : ""}`;
+    cell.innerHTML = `
       <div class="cell-content draggable-izin" draggable="true"
            data-bs-toggle="tooltip" 
            title="${type.name}" 
            data-id="${type.id}" 
+           data-name="${type.name}" 
+           data-color="${type.color}" 
            data-shortcode="${type.shortCode}"
-           data-name="${type.name}"
-           data-color="${type.color}"
-           style="background-color: ${style.bg} !important; color: ${style.color} !important; border: 1px solid ${style.color}33 !important; font-weight: 700;">
+           style="background-color: ${styleObj.bg}; color: ${styleObj.color}; border: 1px solid ${styleObj.color}4D;">
           ${type.shortCode}
           <span class="btn-delete-cell" onclick="removeUnsaved('${key}', event)">×</span>
-      </div>`);
+      </div>`;
 
-    initTooltips();
     updateRowTotals(pId);
   }
 
   let calculateTotalsTimer = null;
   function updateRowTotals(pId) {
-    const $row = $(`td[data-personel-id="${pId}"]`).first().closest("tr");
-    if (!$row.length) return;
+    const row = document.querySelector(`.personel-info[data-personel-id="${pId}"]`)?.closest("tr");
+    if (!row) return;
 
-    let disabledCount = 0;
     let unpaidCount = 0;
+    const dayCells = row.querySelectorAll(".day-cell");
+    let disabledCount = 0;
 
-    $row.find(".day-cell").each(function () {
-      const $cell = $(this);
-      if ($cell.hasClass("disabled")) {
+    for (let i = 0; i < dayCells.length; i++) {
+      const cell = dayCells[i];
+      if (cell.classList.contains("disabled")) {
         disabledCount++;
+        continue;
       }
-      const $content = $cell.find(".cell-content");
-      if ($content.length) {
-        const typeId = $content.data("id")?.toString();
-        // Sadece manuel giriş yapılan ücretsiz izinleri say (default HT/X değil)
-        const isDefault = $content.data("is-default");
+
+      const content = cell.querySelector(".cell-content");
+      if (content) {
+        const typeId = content.getAttribute("data-id");
+        const isDefault = content.getAttribute("data-is-default") === "true";
         if (!isDefault && typeId && ucretsizIzinIds.has(typeId)) {
           unpaidCount++;
         }
       }
-    });
+    }
 
-    const totalCells = $row.find(".day-cell").length;
+    const totalCells = dayCells.length;
     const activeDays = Math.max(0, totalCells - disabledCount);
     
     // Görev geçmişi limitini uygula
-    const $personelCell = $row.find(".personel-info");
-    const gorevGecmisiVar = parseInt($personelCell.data("gorev-gecmisi")) || 0;
-    const ggToplamGun = parseInt($personelCell.data("gg-toplam-gun")) || 0;
+    const personelCell = row.querySelector(".personel-info");
+    const gorevGecmisiVar = parseInt(personelCell.getAttribute("data-gorev-gecmisi")) || 0;
+    const ggToplamGun = parseInt(personelCell.getAttribute("data-gg-toplam-gun")) || 0;
     
     let activeDaysLimit = activeDays;
     if (gorevGecmisiVar && ggToplamGun > 0) {
@@ -832,8 +810,10 @@ $(document).ready(function () {
     }
     
     const toplamCalisma = activeDaysLimit > 0 ? activeDaysLimit - unpaidCount : 0;
-
-    $row.find(".toplam-calisma-gunu").text(Math.max(0, toplamCalisma));
+    const totalDisplayCell = row.querySelector(".toplam-calisma-gunu");
+    if (totalDisplayCell) {
+        totalDisplayCell.textContent = Math.max(0, toplamCalisma);
+    }
 
     // Satır toplamı değiştiyse genel toplamı da güncelle
     if (calculateTotalsTimer) clearTimeout(calculateTotalsTimer);
@@ -1028,15 +1008,7 @@ $(document).ready(function () {
   }
 
   function initTooltips() {
-    var tooltipTriggerList = [].slice.call(
-      document.querySelectorAll('[data-bs-toggle="tooltip"]'),
-    );
-    tooltipTriggerList.map(function (tooltipTriggerEl) {
-      if (bootstrap.Tooltip.getInstance(tooltipTriggerEl)) {
-        bootstrap.Tooltip.getInstance(tooltipTriggerEl).dispose();
-      }
-      return new bootstrap.Tooltip(tooltipTriggerEl);
-    });
+    // Already handled by delegated global initializer
   }
 
   // Global delete

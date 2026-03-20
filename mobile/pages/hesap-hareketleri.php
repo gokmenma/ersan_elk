@@ -159,17 +159,8 @@ if (!function_exists('formatMoneyCariTakip')) {
                 </div>
             </div>
 
-            <div class="bg-white dark:bg-card-dark border border-slate-100 dark:border-slate-800 p-3 flex items-center justify-between transition-transform duration-200 swipe-content" 
-                 onclick="if(Math.abs(parseInt(this.style.transform.replace(/[^\d-]/g, '') || 0)) > 10) { window.closeAllSwipes(); return; } window.showMovementReceipt({
-                     type: '<?= $isBorc ? 'Aldım' : 'Verdim' ?>',
-                     amount: '<?= ($isBorc ? '-' : '+') . absMoneyCariTakip($amt) ?>',
-                     date: '<?= $dateFormatted ?>',
-                     time: '<?= $timeFormatted ?>',
-                     belge_no: '<?= htmlspecialchars($h->belge_no ?: "-") ?>',
-                     aciklama: '<?= htmlspecialchars(addslashes($h->aciklama ?: "-")) ?>',
-                     cari_adi: '<?= htmlspecialchars(addslashes($cariData->CariAdi)) ?>',
-                     is_borc: <?= $isBorc ? 'true' : 'false' ?>
-                 })">
+            <div class="bg-white dark:bg-card-dark border border-slate-100 dark:border-slate-800 p-3 flex items-center justify-between transition-transform duration-200 swipe-content cursor-pointer" 
+                 onclick="if(Math.abs(parseInt(this.style.transform.replace(/[^\d-]/g, '') || 0)) > 10) { window.closeAllSwipes(); return; } window.viewHareketDetay('<?= Security::encrypt($h->id) ?>')">
                 <div class="flex items-center gap-3">
                     <div class="w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0 <?= $iconColor ?>">
                         <span class="material-symbols-outlined text-[22px]"><?= $icon ?></span>
@@ -222,7 +213,8 @@ if (!function_exists('formatMoneyCariTakip')) {
 </style>
 
 <!-- Modal Overlay -->
-<div id="modalOverlay" class="fixed inset-0 bg-slate-900/50 dark:bg-black/60 z-[60] opacity-0 pointer-events-none transition-opacity duration-300" onclick="window.closeModals()"></div>
+<div id="modalOverlay" class="fixed inset-0 bg-slate-900/50 dark:bg-black/60 z-[60] opacity-0 pointer-events-none transition-opacity duration-300 backdrop-blur-sm" onclick="window.closeModals()"></div>
+<div id="modalOverlay2" class="fixed inset-0 bg-slate-900/40 dark:bg-black/40 z-[65] opacity-0 pointer-events-none transition-opacity duration-300 backdrop-blur-[2px]" onclick="window.closeHareketDetayModal()"></div>
 
 <!-- Hızlı İşlem Modal -->
 <div id="hizliIslemModal" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-3xl z-[61] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom max-h-[90vh] overflow-y-auto w-full max-w-lg mx-auto flex flex-col">
@@ -236,7 +228,7 @@ if (!function_exists('formatMoneyCariTakip')) {
                 <p class="text-[10px] text-slate-500 font-medium tracking-wide" id="modalDesc">İşlem tutarını ve detayları girin</p>
             </div>
         </div>
-        <button onclick="window.closeModals()" class="w-8 h-8 flex items-center justify-center text-slate-400 rounded-full bg-slate-100 dark:bg-slate-800 active:scale-95 transition-transform shrink-0">
+        <button onclick="window.closeHizliIslemModal()" class="w-8 h-8 flex items-center justify-center text-slate-400 rounded-full bg-slate-100 dark:bg-slate-800 active:scale-95 transition-transform shrink-0">
             <span class="material-symbols-outlined text-lg">close</span>
         </button>
     </div>
@@ -284,6 +276,63 @@ if (!function_exists('formatMoneyCariTakip')) {
                 <span class="material-symbols-outlined text-[20px]">task_alt</span> İşlemi Onayla
             </button>
         </form>
+    </div>
+</div>
+
+<!-- Hareket Detay Modal (Readonly View) -->
+<div id="hareketDetayModal" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-3xl z-[75] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom max-h-[90vh] overflow-hidden w-full max-w-lg mx-auto flex flex-col">
+    <div class="px-5 py-6">
+        <div class="flex items-center justify-between mb-8">
+            <div class="flex items-center gap-3">
+                <div id="detailIconBg" class="w-12 h-12 rounded-2xl flex items-center justify-center">
+                    <span id="detailIcon" class="material-symbols-outlined text-2xl font-bold"></span>
+                </div>
+                <div>
+                    <h3 id="detailTitle" class="font-bold text-slate-900 dark:text-white text-lg">İşlem Detayı</h3>
+                    <p id="detailDateTime" class="text-xs text-slate-400 font-medium"></p>
+                </div>
+            </div>
+            <button onclick="window.closeHareketDetayModal()" class="w-10 h-10 flex items-center justify-center text-slate-400 rounded-full bg-slate-50 dark:bg-slate-800 active:scale-95 transition-transform">
+                <span class="material-symbols-outlined">close</span>
+            </button>
+        </div>
+
+        <div class="p-6 bg-slate-50/50 dark:bg-slate-900/30 rounded-3xl border border-dashed border-slate-200 dark:border-slate-800 mb-8">
+            <div class="text-center mb-6">
+                <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1">İşlem Tutarı</p>
+                <h2 id="detailAmount" class="text-3xl font-black"></h2>
+            </div>
+            
+            <div class="w-full h-px bg-slate-100 dark:bg-slate-800 mb-6"></div>
+
+            <div class="space-y-4">
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-medium text-slate-400">Hesap/Kişi</span>
+                    <span id="detailAccount" class="font-bold text-slate-800 dark:text-white"></span>
+                </div>
+                <div class="flex items-center justify-between text-xs">
+                    <span class="font-medium text-slate-400">İşlem Tipi</span>
+                    <span id="detailType" class="font-bold uppercase tracking-wider"></span>
+                </div>
+                <div id="detailBelgeRow" class="flex items-center justify-between text-xs">
+                    <span class="font-medium text-slate-400">Belge No</span>
+                    <span id="detailBelgeNo" class="font-bold text-slate-800 dark:text-white"></span>
+                </div>
+                <div id="detailDescRow" class="flex flex-col gap-1 text-xs">
+                    <span class="font-medium text-slate-400">Açıklama</span>
+                    <span id="detailDesc" class="font-bold text-slate-800 dark:text-white leading-relaxed">-</span>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-3 mb-4">
+            <button onclick="window.editHareketFromDetail()" class="flex-1 py-4 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform border border-slate-200 dark:border-slate-700">
+                <span class="material-symbols-outlined text-lg">edit</span> Düzenle
+            </button>
+            <button onclick="window.closeHareketDetayModal()" class="flex-1 py-4 bg-slate-50 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform border border-slate-200 dark:border-slate-700">
+                <span class="material-symbols-outlined text-lg">close</span> Kapat
+            </button>
+        </div>
     </div>
 </div>
 
@@ -615,10 +664,90 @@ window.openHizliIslem = function(cariId, type) {
     setTimeout(() => { document.querySelector('input[name="tutar"]').focus(); }, 300);
 };
 
+// Para Formatlama JS
+window.formatMoneyCariTakip = function(amount) {
+    if (amount === undefined || amount === null) return '0,00 ₺';
+    return new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(amount) + ' ₺';
+};
+
 window.closeModals = function() {
     document.getElementById('modalOverlay').classList.add('pointer-events-none', 'opacity-0');
     document.getElementById('hizliIslemModal').classList.add('translate-y-full');
     document.getElementById('cariNotuModal').classList.add('translate-y-full');
+};
+
+window.closeHizliIslemModal = function() {
+    document.getElementById('modalOverlay').classList.add('pointer-events-none', 'opacity-0');
+    document.getElementById('hizliIslemModal').classList.add('translate-y-full');
+};
+
+window.closeHareketDetayModal = function() {
+    document.getElementById('modalOverlay2').classList.add('pointer-events-none', 'opacity-0');
+    document.getElementById('hareketDetayModal').classList.add('translate-y-full');
+};
+
+window.viewHareketDetay = function(id) {
+    window.currentViewingHareketId = id;
+    const formData = new FormData();
+    formData.append('action', 'hareket-getir');
+    formData.append('hareket_id', id);
+
+    fetch('../views/cari/api.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data) {
+            const isBorc = data.type === 'aldim';
+            const amountEl = document.getElementById('detailAmount');
+            const typeEl = document.getElementById('detailType');
+            const iconBg = document.getElementById('detailIconBg');
+            const icon = document.getElementById('detailIcon');
+            
+            amountEl.innerText = (isBorc ? '-₺' : '+₺') + window.formatMoneyCariTakip(data.tutar_raw).replace(' ₺', '');
+            amountEl.className = `text-3xl font-black ${isBorc ? 'text-rose-600' : 'text-emerald-600'}`;
+            
+            typeEl.innerText = isBorc ? 'GİDER' : 'GELİR';
+            typeEl.className = `font-bold uppercase tracking-wider ${isBorc ? 'text-rose-600' : 'text-emerald-600'}`;
+            
+            iconBg.className = `w-12 h-12 rounded-2xl flex items-center justify-center ${isBorc ? 'bg-rose-50 text-rose-600' : 'bg-emerald-50 text-emerald-600'}`;
+            icon.innerText = isBorc ? 'remove_circle' : 'add_circle';
+            
+            document.getElementById('detailTitle').innerText = data.belge_no ? 'İşlem #' + data.belge_no : 'İşlem Detayı';
+            document.getElementById('detailDateTime').innerText = data.islem_tarihi;
+            document.getElementById('detailAccount').innerText = data.CariAdi || '-';
+
+            const bno = document.getElementById('detailBelgeNo');
+            if (data.belge_no) {
+                bno.innerText = '#' + data.belge_no;
+                document.getElementById('detailBelgeRow').classList.remove('hidden');
+            } else {
+                document.getElementById('detailBelgeRow').classList.add('hidden');
+            }
+            
+            const desc = document.getElementById('detailDesc');
+            if (data.aciklama) {
+                desc.innerText = `"${data.aciklama}"`;
+                document.getElementById('detailDescRow').classList.remove('hidden', 'flex-col');
+                document.getElementById('detailDescRow').classList.add('flex-col');
+            } else {
+                document.getElementById('detailDescRow').classList.add('hidden');
+            }
+
+            window.closeAllSwipes();
+            document.getElementById('modalOverlay2').classList.remove('pointer-events-none', 'opacity-0');
+            document.getElementById('hareketDetayModal').classList.remove('translate-y-full');
+        }
+    });
+};
+
+window.editHareketFromDetail = function() {
+    const id = window.currentViewingHareketId;
+    window.closeHareketDetayModal();
+    setTimeout(() => {
+        window.editHareket(id);
+    }, 300);
 };
 
 window.submitHizliIslemForm = function(e) {

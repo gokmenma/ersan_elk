@@ -78,7 +78,7 @@ use App\Service\Gate;
             user-select: none;
             position: relative;
             padding: 0 !important;
-            border: none !important;
+            border: 1px solid #cbd5e0 !important;
             border-radius: 6px;
             background-color: #edf2f7;
             box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
@@ -87,6 +87,7 @@ use App\Service\Gate;
         .table-puantaj .is-sunday {
             background-color: #fee2e2 !important;
             color: #ef4444 !important;
+            border: 1px solid #fca5a5 !important;
         }
 
         .table-puantaj thead th.is-sunday:not(.sticky-col) {
@@ -605,6 +606,12 @@ use App\Service\Gate;
             .day-header-pill .day-number {
                 font-size: 12px;
             }
+        }
+
+        .table-puantaj .day-cell.disabled {
+            pointer-events: none;
+            opacity: 0.5;
+            background-image: repeating-linear-gradient(45deg, transparent, transparent 5px, rgba(0,0,0,0.05) 5px, rgba(0,0,0,0.05) 10px) !important;
         }
 
         /* Puantaj Preloader */
