@@ -1,5 +1,6 @@
 $(document).ready(function () {
   const API_URL = "views/personel/api/puantaj_izin.php";
+  let tableRows = []; // Row cache for performance
   let selectedType = null;
   let unsavedChanges = {}; // { 'personelId-date': { typeId, name, color, shortCode } }
   let definitionsMap = {}; // { shortCode: { id, name, color, shortCode } }
@@ -59,7 +60,7 @@ $(document).ready(function () {
     const filterValue = turkceKucukHarf($("#personel-filter").val());
     localStorage.setItem("puantaj_filter", filterValue);
 
-    const rows = document.querySelectorAll("#table-body tr");
+    const rows = tableRows;
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       const name = turkceKucukHarf(row.getAttribute("data-personel-adi") || "");
@@ -73,10 +74,14 @@ $(document).ready(function () {
     calculateTotals();
   }
 
-  $("#personel-filter").on("keyup", function () {
+  let filterTimer = null;
+  $("#personel-filter").on("input", function () {
     localStorage.setItem("puantaj_filter", $(this).val());
-    applyFilter();
-    calculateTotals();
+    if (filterTimer) clearTimeout(filterTimer);
+    filterTimer = setTimeout(() => {
+      applyFilter();
+      calculateTotals();
+    }, 200);
   });
 
   // Tam Ekran Modu
@@ -376,6 +381,7 @@ $(document).ready(function () {
                   bodyHtml += "</tr>";
                 });
                 $("#table-body").html(bodyHtml);
+                tableRows = document.querySelectorAll("#table-body tr");
                 initTableEvents();
                 applyFilter();
               }
@@ -415,7 +421,7 @@ $(document).ready(function () {
     }));
 
     // Single pass over visible rows (Vanilla JS for speed)
-    const rows = document.querySelectorAll("#table-body tr");
+    const rows = tableRows;
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
       if (row.style.display === "none") continue;
@@ -737,6 +743,7 @@ $(document).ready(function () {
   }
 
   function applyLeaveToCell(cell, type) {
+    const row = cell.closest("tr");
     const pId = cell.dataset.personelId;
     const date = cell.dataset.date;
     const key = `${pId}-${date}`;
@@ -767,12 +774,12 @@ $(document).ready(function () {
           <span class="btn-delete-cell" onclick="removeUnsaved('${key}', event)">×</span>
       </div>`;
 
-    updateRowTotals(pId);
+    updateRowTotals(row);
   }
 
   let calculateTotalsTimer = null;
-  function updateRowTotals(pId) {
-    const row = document.querySelector(`.personel-info[data-personel-id="${pId}"]`)?.closest("tr");
+  function updateRowTotals(rowOrId) {
+    const row = typeof rowOrId === "object" ? rowOrId : document.querySelector(`.personel-info[data-personel-id="${rowOrId}"]`)?.closest("tr");
     if (!row) return;
 
     let unpaidCount = 0;
