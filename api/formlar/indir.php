@@ -16,22 +16,16 @@ if (!isset($_SESSION['user_id']) && !isset($_SESSION['id'])) {
 
 $firma_id = $_SESSION['firma_id'] ?? 1;
 $formIdEnc = $_GET['id'] ?? '';
-$personelIdEnc = $_GET['personel_id'] ?? '';
-
-if (empty($formIdEnc) || empty($personelIdEnc)) {
-    die('Eksik parametre.');
-}
 
 $formId = Security::decrypt($formIdEnc);
-$personelId = Security::decrypt($personelIdEnc);
-
-if (!$formId || !$personelId) {
-    die('Geçersiz parametre.');
+if (!$formId) {
+    die('Geçersiz form ID.');
 }
 
-// Form bilgisini al
 $Formlar = new FormlarModel();
-$form = $Formlar->getById($formId, $firma_id);
+$stmt = $Formlar->db->prepare("SELECT * FROM formlar WHERE id = :id AND firma_id = :firma_id");
+$stmt->execute(['id' => $formId, 'firma_id' => $firma_id]);
+$form = $stmt->fetch(PDO::FETCH_OBJ);
 
 if (!$form) {
     die('Form bulunamadı.');
@@ -39,34 +33,123 @@ if (!$form) {
 
 $filePath = dirname(__DIR__, 2) . '/' . $form->dosya_yolu;
 if (!file_exists($filePath)) {
-    die('Şablon dosyası bulunamadı.');
+    die('Şablon dosyası sunucuda bulunamadı.');
 }
 
-// Personel verisini al
-$stmt = $Formlar->db->prepare("SELECT * FROM personel WHERE id = :id AND firma_id = :firma_id");
-$stmt->execute(['id' => $personelId, 'firma_id' => $firma_id]);
-$personel = $stmt->fetch(PDO::FETCH_ASSOC);
+$replacements = [];
+$replacements['{TARIH}'] = date('d.m.Y');
+$replacements['${TARIH}'] = date('d.m.Y');
 
-if (!$personel) {
-    die('Personel bulunamadı.');
+$personelIdEnc = $_GET['personel_id'] ?? '';
+if (!empty($personelIdEnc)) {
+    $personelId = Security::decrypt($personelIdEnc);
+    if ($personelId) {
+        // Personel verisini al
+        $stmt = $Formlar->db->prepare("SELECT * FROM personel WHERE id = :id AND firma_id = :firma_id");
+        $stmt->execute(['id' => $personelId, 'firma_id' => $firma_id]);
+        $personel = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        if ($personel) {
+            $personelAdiSoyadi = trim($personel['adi_soyadi'] ?? '');
+            $tcNo = $personel['tc_kimlik_no'] ?? '';
+            $telefon = $personel['cep_telefonu'] ?? '';
+            $unvan = $personel['gorev'] ?? '';
+            $iseGiris = !empty($personel['ise_giris_tarihi']) ? date('d.m.Y', strtotime($personel['ise_giris_tarihi'])) : '';
+            $adres = $personel['ev_adresi'] ?? ($personel['adres'] ?? '');
+
+            $replacements += [
+                '{PERSONEL_ADI}' => $personelAdiSoyadi,
+                '${PERSONEL_ADI}' => $personelAdiSoyadi,
+                '{AD_SOYAD}' => $personelAdiSoyadi,
+                '${AD_SOYAD}' => $personelAdiSoyadi,
+                '{TC_KIMLIK}' => $tcNo,
+                '${TC_KIMLIK}' => $tcNo,
+                '{TC_NO}' => $tcNo,
+                '${TC_NO}' => $tcNo,
+                '{TELEFON}' => $telefon,
+                '${TELEFON}' => $telefon,
+                '{UNVAN}' => $unvan,
+                '${UNVAN}' => $unvan,
+                '{ISE_GIRIS}' => $iseGiris,
+                '${ISE_GIRIS}' => $iseGiris,
+                '{ADRES}' => $adres,
+                '${ADRES}' => $adres
+            ];
+        }
+    }
 }
 
-$personelAdiSoyadi = trim($personel['adi_soyadi'] ?? '');
-$tcNo = $personel['tc_kimlik_no'] ?? '';
-$telefon = $personel['cep_telefonu'] ?? '';
-$unvan = $personel['gorev'] ?? '';
-$iseGiris = !empty($personel['ise_giris_tarihi']) ? date('d.m.Y', strtotime($personel['ise_giris_tarihi'])) : '';
+$aracIdEnc = $_GET['arac_id'] ?? '';
+if (!empty($aracIdEnc)) {
+    $aracId = Security::decrypt($aracIdEnc);
+    if ($aracId) {
+        $stmt = $Formlar->db->prepare("SELECT * FROM araclar WHERE id = :id AND firma_id = :firma_id");
+        $stmt->execute(['id' => $aracId, 'firma_id' => $firma_id]);
+        $arac = $stmt->fetch(PDO::FETCH_ASSOC);
 
-$replacements = [
-    '{PERSONEL_ADI}' => $personelAdiSoyadi,
-    '{AD_SOYAD}' => $personelAdiSoyadi,
-    '{TC_KIMLIK}' => $tcNo,
-    '{TC_NO}' => $tcNo,
-    '{TELEFON}' => $telefon,
-    '{UNVAN}' => $unvan,
-    '{ISE_GIRIS}' => $iseGiris,
-    '{TARIH}' => date('d.m.Y')
-];
+        if ($arac) {
+            $plaka = $arac['plaka'] ?? '';
+            $marka = $arac['marka'] ?? '';
+            $model = $arac['model'] ?? '';
+            $basKm = $_GET['bas_km'] ?? '';
+            $bitKm = $_GET['bit_km'] ?? '';
+            $aciklama = $_GET['aciklama'] ?? '';
+
+            $replacements += [
+                '{PLAKA}' => $plaka,
+                '${PLAKA}' => $plaka,
+                '{MARKA}' => $marka,
+                '${MARKA}' => $marka,
+                '{MODEL}' => $model,
+                '${MODEL}' => $model,
+                '{BASLANGIC_KM}' => $basKm,
+                '${BASLANGIC_KM}' => $basKm,
+                '{BITIS_KM}' => $bitKm,
+                '${BITIS_KM}' => $bitKm,
+                '{ACIKLAMA}' => $aciklama,
+                '${ACIKLAMA}' => $aciklama,
+                '{ARAC_BAKIM_KM}' => $arac['guncel_km'] ?? '',
+                '${ARAC_BAKIM_KM}' => $arac['guncel_km'] ?? ''
+            ];
+        }
+    }
+}
+
+$imei = $_GET['imei'] ?? '';
+$seriNo = $_GET['seri_no'] ?? '';
+if (!empty($imei) || !empty($seriNo)) {
+    $replacements += [
+        '{IMEI}' => $imei,
+        '${IMEI}' => $imei,
+        '{SERI_NO}' => $seriNo,
+        '${SERI_NO}' => $seriNo
+    ];
+}
+
+$izinBaslangic = $_GET['izin_baslangic'] ?? '';
+$izinBitis = $_GET['izin_bitis'] ?? '';
+$izinIseBaslama = $_GET['izin_ise_baslama'] ?? '';
+$izinGun = $_GET['izin_gun'] ?? '';
+$izinNedeni = $_GET['izin_nedeni'] ?? '';
+
+if (!empty($izinBaslangic) || !empty($izinBitis) || !empty($izinGun) || !empty($izinNedeni) || !empty($izinIseBaslama)) {
+    $baslangicFmt = !empty($izinBaslangic) ? date('d.m.Y', strtotime($izinBaslangic)) : '';
+    $bitisFmt = !empty($izinBitis) ? date('d.m.Y', strtotime($izinBitis)) : '';
+    $iseBaslamaFmt = !empty($izinIseBaslama) ? date('d.m.Y', strtotime($izinIseBaslama)) : '';
+
+    $replacements += [
+        '{IZIN_BASLANGIC}' => $baslangicFmt,
+        '${IZIN_BASLANGIC}' => $baslangicFmt,
+        '{IZIN_BITIS}' => $bitisFmt,
+        '${IZIN_BITIS}' => $bitisFmt,
+        '{IZIN_ISE_BASLAMA}' => $iseBaslamaFmt,
+        '${IZIN_ISE_BASLAMA}' => $iseBaslamaFmt,
+        '{IZIN_GUN}' => $izinGun,
+        '${IZIN_GUN}' => $izinGun,
+        '{IZIN_NEDENI}' => $izinNedeni,
+        '${IZIN_NEDENI}' => $izinNedeni
+    ];
+}
 
 $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
 $outputName = 'Doldurulmus_' . $form->dosya_adi;
