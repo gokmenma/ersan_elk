@@ -148,7 +148,8 @@ if ($page == "hakedisler/hakedis-detay") {
     $page == "duyuru/list" ||
     $page == "raporlar/list" || $page == "maliyet-raporu/list" || strpos($page, "bordro/raporlar/") === 0 ||
     $page == "personel/performans-raporu" || $page == "arac-takip/arac-performans" ||
-    $page == "cari/list" || $page == "cari/hesap-hareketleri"
+    $page == "cari/list" || $page == "cari/hesap-hareketleri" ||
+    $page == "formlar/list" || $page == "formlar/manage"
 
 
 ) { ?>
