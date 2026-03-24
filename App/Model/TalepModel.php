@@ -172,7 +172,7 @@ class TalepModel extends Model
             LEFT JOIN users u ON pt.islem_yapan_id = u.id
             WHERE pt.durum IN ('cozuldu', 'reddedildi', 'iptal_edildi') AND pt.silinme_tarihi IS NULL AND p.firma_id = ?
             AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
-            ORDER BY COALESCE(pt.cozum_tarihi, pt.olusturma_tarihi) DESC
+            ORDER BY pt.olusturma_tarihi DESC
             LIMIT {$limit}
         ");
         $sql->execute([$_SESSION['firma_id']]);

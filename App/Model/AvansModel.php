@@ -132,7 +132,7 @@ class AvansModel extends Model
             JOIN personel p ON pa.personel_id = p.id 
             LEFT JOIN users u ON pa.onaylayan_id = u.id
             WHERE pa.durum IN ('onaylandi', 'reddedildi') AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
-            ORDER BY COALESCE(pa.onay_tarihi, pa.talep_tarihi) DESC
+            ORDER BY pa.talep_tarihi DESC
             LIMIT {$limit}
         ");
         $sql->execute([$_SESSION['firma_id']]);

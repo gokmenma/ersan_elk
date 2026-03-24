@@ -203,7 +203,7 @@ $izinTurleri = [
                 <div class="tab-pane fade show active" id="tabAvans" role="tabpanel">
                     <div class="table-responsive d-none d-lg-block">
                         <table class="table datatables table-hover table-bordered nowrap align-middle w-100 datatable"
-                            id="avansTable">
+                            id="avansTable" data-order="[]">
                             <thead class="table-light">
                                 <tr>
                                     <th data-filter="string">Personel</th>
@@ -384,7 +384,7 @@ $izinTurleri = [
                 <div class="tab-pane fade" id="tabIzin" role="tabpanel">
                     <div class="table-responsive d-none d-lg-block">
                         <table class="table datatables table-hover table-bordered nowrap align-middle w-100 datatable"
-                            id="izinTable">
+                            id="izinTable" data-order="[]">
                             <thead class="table-light">
                                 <tr>
                                     <th>Personel</th>
@@ -575,7 +575,7 @@ $izinTurleri = [
                 <div class="tab-pane fade" id="tabTalepler" role="tabpanel">
                     <div class="table-responsive d-none d-lg-block">
                         <table class="table datatables table-hover table-bordered nowrap align-middle w-100 datatable"
-                            id="taleplerTable">
+                            id="taleplerTable" data-order="[]">
                             <thead class="table-light">
                                 <tr>
                                     <th>Personel</th>

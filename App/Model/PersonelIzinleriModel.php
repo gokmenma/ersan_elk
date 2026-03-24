@@ -173,7 +173,7 @@ class PersonelIzinleriModel extends Model
                 OR aciklama LIKE 'Otomatik onaylandı%'
             )
             AND (t.kisa_kod IS NULL OR t.kisa_kod NOT IN ('X', 'x'))
-            ORDER BY COALESCE(io.onay_tarihi, pi.talep_tarihi) DESC
+            ORDER BY pi.talep_tarihi DESC
             LIMIT {$limit}
         ");
         $sql->execute([$_SESSION['firma_id']]);
