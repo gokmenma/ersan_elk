@@ -317,21 +317,23 @@ class PuantajModel extends Model
                 t.ekip_kodu LIKE :search OR
                 ek.tur_adi LIKE :search OR
                 COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) LIKE :search OR
+                (CASE WHEN tn.is_turu_ucret > 0 THEN 'Ücretli' ELSE 'Ücretsiz' END) LIKE :search OR
                 p.adi_soyadi LIKE :search OR
                 DATE_FORMAT(t.tarih, '%d.%m.%Y') LIKE :search
             )";
             $params['search'] = $searchValue;
         }
 
-        // Sütun bazlı arama (yeni sıralama: [0:Checkbox], 1:Tarih, 2:Ekip Kodu, 3:Personel, 4:İş Emri Tipi, 5:İş Emri Sonucu, 6:Sonuçlanmış, 7:Açık Olanlar)
+        // Sütun bazlı arama (yeni sıralama: [0:Checkbox], 1:Tarih, 2:Ekip Kodu, 3:Personel, 4:İş Emri Tipi, 5:İş Emri Sonucu, 6:Ücret Durumu, 7:Sonuçlanmış, 8:Açık Olanlar)
         $colSearchMap = [
             1 => 'DATE_FORMAT(t.tarih, "%d.%m.%Y")',
             2 => 'ek.tur_adi',
             3 => 'p.adi_soyadi',
             4 => 'COALESCE(tn.tur_adi, t.is_emri_tipi)',
             5 => 'COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)',
-            6 => 't.sonuclanmis',
-            7 => 't.acik_olanlar'
+            6 => 'CASE WHEN tn.is_turu_ucret > 0 THEN \'Ücretli\' ELSE \'Ücretsiz\' END',
+            7 => 't.sonuclanmis',
+            8 => 't.acik_olanlar'
         ];
 
 
@@ -477,7 +479,7 @@ class PuantajModel extends Model
         $filteredQuery->execute();
         $recordsFiltered = $filteredQuery->fetchColumn();
 
-        // Sıralama (yeni sıralama: Tarih, Ekip Kodu, Personel, İş Emri Tipi, İş Emri Sonucu, Sonuçlanmış, Açık Olanlar)
+        // Sıralama
         $orderColumn = 't.tarih';
         $orderDir = 'DESC';
         $colMap = [
@@ -486,8 +488,9 @@ class PuantajModel extends Model
             3 => 'p.adi_soyadi',
             4 => 'COALESCE(tn.tur_adi, t.is_emri_tipi)',
             5 => 'COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)',
-            6 => 't.sonuclanmis',
-            7 => 't.acik_olanlar'
+            6 => 'tn.is_turu_ucret',
+            7 => 't.sonuclanmis',
+            8 => 't.acik_olanlar'
         ];
         if (isset($request['order'][0])) {
             $orderColIdx = $request['order'][0]['column'];
@@ -504,7 +507,8 @@ class PuantajModel extends Model
                     f.firma_adi,
                     COALESCE(tn.tur_adi, t.is_emri_tipi) as is_emri_tipi,
                     COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu,
-                    ek.tur_adi as ekip_kodu_adi
+                    ek.tur_adi as ekip_kodu_adi,
+                    tn.is_turu_ucret as ucret
                 FROM {$this->table} t 
                 LEFT JOIN personel p ON t.personel_id = p.id 
                 LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id

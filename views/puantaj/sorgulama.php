@@ -25,6 +25,16 @@ $Puantaj = new PuantajModel('yapilan_isler_sorgu');
     $title = "İşlemler Sorgulama";
     ?>
     <?php include 'layouts/breadcrumb.php'; ?>
+    <div class="row mb-3">
+        <div class="col-12">
+            <div class="alert alert-warning border-0 shadow-sm d-flex align-items-center mb-0" role="alert">
+                <i class="bx bx-info-circle fs-4 me-2"></i>
+                <div class="ms-2">
+                    <strong>Bilgilendirme:</strong> Bu sayfadaki veriler sadece sorgulama ve önizleme amaçlıdır. Buradaki işlemler doğrudan puantaj hesabını, hakedişleri veya hiçbir resmi işlemi <strong>etkilemez!</strong>
+                </div>
+            </div>
+        </div>
+    </div>
 
     <div class="row">
         <div class="col-12">
@@ -94,6 +104,7 @@ $Puantaj = new PuantajModel('yapilan_isler_sorgu');
                                         <th>Personel</th>
                                         <th>İş Emri Tipi</th>
                                         <th>İş Emri Sonucu</th>
+                                        <th>Ücret Durumu</th>
                                         <th>Sonuçlanmış</th>
                                         <th>Açık Olanlar</th>
                                         <th style="width: 50px;">İşlem</th>
@@ -250,6 +261,7 @@ $(document).ready(function() {
             { data: 'personel_adi' },
             { data: 'is_emri_tipi' },
             { data: 'is_emri_sonucu' },
+            { data: 'ucret_durumu' },
             { data: 'sonuclanmis' },
             { data: 'acik_olanlar' },
             {
@@ -367,7 +379,7 @@ $(document).ready(function() {
         
         btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Sorgulanıyor...');
 
-        var actionMap = { 'KESME_ACMA': 'online-puantaj-sorgula', 'ENDEKS_OKUMA': 'online-endeks-sorgula', 'SAYAC_DEGISIM': 'online-sayac-sorgula' };
+        var actionMap = { 'KESME_ACMA': 'online-sorgu-kesme-acma', 'ENDEKS_OKUMA': 'online-endeks-sorgula', 'SAYAC_DEGISIM': 'online-sayac-sorgula' };
 
         var data = {
             action: actionMap[type],

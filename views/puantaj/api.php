@@ -3110,7 +3110,7 @@ function handleOnlineSorgu($sorguTuru) {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action'])) {
-    if ($_POST['action'] === 'online-puantaj-sorgula') handleOnlineSorgu('KESME_ACMA');
+    if ($_POST['action'] === 'online-sorgu-kesme-acma') handleOnlineSorgu('KESME_ACMA');
     if ($_POST['action'] === 'online-endeks-sorgula') handleOnlineSorgu('ENDEKS_OKUMA');
     if ($_POST['action'] === 'online-sayac-sorgula') handleOnlineSorgu('SAYAC_DEGISIM');
 }
@@ -3137,6 +3137,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'personel_adi' => $row->personel_adi ?: 'Eşleşmedi',
             'is_emri_tipi' => $row->is_emri_tipi,
             'is_emri_sonucu' => $row->is_emri_sonucu,
+            'ucret_durumu' => ($row->ucret > 0) ? '<span class="badge bg-success">Ücretli</span>' : '<span class="badge bg-danger">Ücretsiz</span>',
             'sonuclanmis' => $row->sonuclanmis,
             'acik_olanlar' => $row->acik_olanlar
         ];
