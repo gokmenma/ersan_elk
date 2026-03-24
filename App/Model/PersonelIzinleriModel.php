@@ -78,7 +78,9 @@ class PersonelIzinleriModel extends Model
             SELECT COUNT(*) as count 
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
-            WHERE pi.onay_durumu = 'beklemede' AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
+            LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
+            WHERE pi.onay_durumu = 'beklemede' AND pi.silinme_tarihi IS NULL AND p.firma_id = ? 
+            AND (t.kisa_kod IS NULL OR t.kisa_kod NOT IN ('X', 'x'))
         ");
         $sql->execute([$_SESSION['firma_id']]);
         return $sql->fetch(PDO::FETCH_OBJ)->count ?? 0;
@@ -97,6 +99,7 @@ class PersonelIzinleriModel extends Model
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.onay_durumu = 'beklemede' AND pi.silinme_tarihi IS NULL AND p.firma_id = ? 
+            AND (t.kisa_kod IS NULL OR t.kisa_kod NOT IN ('X', 'x'))
             LIMIT {$limit}
         ");
         $sql->execute([$_SESSION['firma_id']]);
@@ -116,6 +119,7 @@ class PersonelIzinleriModel extends Model
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ? AND pi.onay_durumu = 'Onaylandı' AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
+            AND (t.kisa_kod IS NULL OR t.kisa_kod NOT IN ('X', 'x'))
             ORDER BY pi.bitis_tarihi ASC
             LIMIT {$limit}
         ");
@@ -134,6 +138,7 @@ class PersonelIzinleriModel extends Model
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.onay_durumu = 'beklemede' AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
+            AND (t.kisa_kod IS NULL OR t.kisa_kod NOT IN ('X', 'x'))
             ORDER BY pi.talep_tarihi DESC
         ");
         $sql->execute([$_SESSION['firma_id']]);
@@ -167,7 +172,8 @@ class PersonelIzinleriModel extends Model
                 OR aciklama LIKE 'SGK Vizite%'
                 OR aciklama LIKE 'Otomatik onaylandı%'
             )
-            ORDER BY pi.talep_tarihi DESC
+            AND (t.kisa_kod IS NULL OR t.kisa_kod NOT IN ('X', 'x'))
+            ORDER BY COALESCE(io.onay_tarihi, pi.talep_tarihi) DESC
             LIMIT {$limit}
         ");
         $sql->execute([$_SESSION['firma_id']]);
@@ -186,6 +192,7 @@ class PersonelIzinleriModel extends Model
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.onay_durumu = 'Reddedildi' AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
+            AND (t.kisa_kod IS NULL OR t.kisa_kod NOT IN ('X', 'x'))
             ORDER BY pi.talep_tarihi DESC
             LIMIT {$limit}
         ");

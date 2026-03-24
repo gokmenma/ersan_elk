@@ -22,6 +22,8 @@ use Random\Engine\Secure;
 $GelirGider = new GelirGiderModel();
 $Tanimlamalar = new TanimlamalarModel();
 
+$action = $_POST["action"] ?? "";
+
 //Gelir gider kaydet
 if ($_POST["action"] == "gelir-gider-kaydet") {
     $id = Security::decrypt($_POST["gelir_gider_id"]);
@@ -252,5 +254,72 @@ if ($_POST["action"] == "gelir-gider-ajax-list") {
         echo json_encode(['error' => $e->getMessage(), 'data' => []]);
         exit;
     }
+}
+
+// Tüm Hareketleri Getir (Global Mobil Bottom Sheet için)
+if ($action == "tum-hareketler-getir") {
+    $search = $_POST["search"] ?? "";
+    $type = $_POST["type"] ?? "all"; // all | 1 (Gelir) | 2 (Gider)
+    $baslangic = $_POST["baslangic"] ?? "";
+    $bitis = $_POST["bitis"] ?? "";
+
+    $where = "1=1";
+    $params = [];
+
+    if (!empty($search)) {
+        $where .= " AND (g.hesap_adi LIKE :search OR g.kategori LIKE :search OR g.aciklama LIKE :search)";
+        $params['search'] = "%$search%";
+    }
+
+    if ($type == '1') {
+        $where .= " AND g.type = 1";
+    } elseif ($type == '2') {
+        $where .= " AND g.type = 2";
+    }
+
+    if (!empty($baslangic)) {
+        $where .= " AND DATE(g.tarih) >= :baslangic";
+        $params['baslangic'] = $baslangic;
+    }
+    if (!empty($bitis)) {
+        $where .= " AND DATE(g.tarih) <= :bitis";
+        $params['bitis'] = $bitis;
+    }
+
+    $sql = "SELECT g.*, 
+            (SELECT SUM(CASE WHEN g2.type = 1 THEN CAST(g2.tutar AS DECIMAL(15,2)) ELSE -CAST(g2.tutar AS DECIMAL(15,2)) END) 
+             FROM gelir_gider g2 
+             WHERE (g2.tarih < g.tarih OR (g2.tarih = g.tarih AND g2.id <= g.id))) as global_yuruyen_bakiye
+            FROM gelir_gider g
+            WHERE $where
+            ORDER BY g.tarih DESC, g.id DESC LIMIT 50";
+
+    try {
+        $db = $GelirGider->getDb();
+        $stmt = $db->prepare($sql);
+        foreach($params as $k => $v) {
+            $stmt->bindValue($k, $v);
+        }
+        $stmt->execute();
+        $res = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $formatted = [];
+        foreach ($res as $row) {
+            $formatted[] = [
+                "id" => Security::encrypt($row->id),
+                "kategori_adi" => $row->kategori,
+                "hesap_adi" => $row->hesap_adi,
+                "aciklama" => $row->aciklama,
+                "tarih" => date('d.m.Y H:i', strtotime($row->tarih)),
+                "amt" => (float)$row->tutar,
+                "type" => (int)$row->type,
+                "yuruyen" => (float)($row->global_yuruyen_bakiye ?? 0)
+            ];
+        }
+        echo json_encode($formatted);
+    } catch (Exception $e) {
+        echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+    }
+    exit;
 }
    

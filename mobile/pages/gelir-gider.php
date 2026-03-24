@@ -152,10 +152,15 @@ if (!function_exists('formatMoneyGG')) {
         </div>
     </div>
 
-    <!-- FAB -->
-    <button onclick="window.openGGModal()" class="fixed bottom-[80px] right-4 w-14 h-14 bg-primary text-white rounded-full shadow-lg shadow-primary/30 flex items-center justify-center z-40 active:scale-95 transition-transform border-0 focus:outline-none">
-        <span class="material-symbols-outlined text-3xl">add</span>
-    </button>
+    <!-- FABs -->
+    <div class="fixed bottom-[80px] right-4 flex flex-col items-center gap-3 z-40">
+        <button onclick="window.openTumHareketlerModal()" class="w-12 h-12 bg-slate-600 text-white rounded-full shadow-lg flex items-center justify-center active:scale-95 transition-transform border-0">
+            <span class="material-symbols-outlined text-2xl">history</span>
+        </button>
+        <button onclick="window.openGGModal()" class="w-14 h-14 bg-primary text-white rounded-full shadow-lg shadow-primary/30 flex items-center justify-center active:scale-95 transition-transform border-0 focus:outline-none">
+            <span class="material-symbols-outlined text-3xl">add</span>
+        </button>
+    </div>
 </div>
 <!-- Modal Overlay -->
 <div id="modalOverlay" class="fixed inset-0 bg-slate-900/50 dark:bg-black/60 z-[60] opacity-0 pointer-events-none transition-opacity duration-300" onclick="window.closeModals()"></div>
@@ -384,6 +389,58 @@ if (!function_exists('formatMoneyGG')) {
     </div>
 </div>
 
+<!-- Tüm Hareketler Modal (Bottom Sheet) -->
+<div id="tumHareketlerModal" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-3xl z-[61] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom max-h-[90vh] overflow-hidden w-full max-w-lg mx-auto flex flex-col">
+    <div class="px-4 pt-5 pb-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
+        <div class="flex items-center justify-between mb-4">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-primary flex items-center justify-center">
+                    <span class="material-symbols-outlined text-lg">history</span>
+                </div>
+                <h3 class="font-bold text-slate-800 dark:text-white text-xs">İşlem Geçmişi</h3>
+            </div>
+            <div class="flex items-center gap-2">
+                <button onclick="window.toggleModalFilter()" class="w-8 h-8 rounded-lg bg-blue-50 dark:bg-blue-900/20 text-primary flex items-center justify-center active:scale-90 transition-transform shadow-sm">
+                   <span class="material-symbols-outlined text-lg">filter_list</span>
+                </button>
+                <button onclick="window.closeModals()" class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-400 flex items-center justify-center active:scale-90 transition-transform shrink-0">
+                    <span class="material-symbols-outlined text-lg">close</span>
+                </button>
+            </div>
+        </div>
+        
+        <div id="modalFilterArea" class="hidden space-y-2 pt-2 border-t border-slate-100 dark:border-slate-800 mt-2">
+             <div class="relative">
+                <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-lg">search</span>
+                <input type="text" id="modalSearch" placeholder="Arama yapın..." class="w-full pl-10 pr-4 py-2 bg-slate-50 dark:bg-slate-800 border-0 rounded-xl text-xs placeholder-slate-400 focus:ring-1 focus:ring-primary/20">
+             </div>
+             
+             <div class="grid grid-cols-2 gap-2">
+                <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[14px]">calendar_today</span>
+                    <input type="date" id="modalDateStart" class="w-full pl-8 pr-2 py-2 bg-slate-50 dark:bg-slate-800 border-0 rounded-xl text-[10px] font-bold text-slate-600 dark:text-slate-300 focus:ring-1 focus:ring-primary/20">
+                </div>
+                <div class="relative">
+                    <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[14px]">calendar_today</span>
+                    <input type="date" id="modalDateEnd" class="w-full pl-8 pr-2 py-2 bg-slate-50 dark:bg-slate-800 border-0 rounded-xl text-[10px] font-bold text-slate-600 dark:text-slate-300 focus:ring-1 focus:ring-primary/20">
+                </div>
+             </div>
+
+             <div class="flex gap-2 p-1 bg-slate-50 dark:bg-slate-800 rounded-xl">
+                 <button onclick="window.filterModal('all')" class="modal-tab flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all bg-white dark:bg-slate-700 shadow-sm text-primary" data-type="all">Tümü</button>
+                 <button onclick="window.filterModal('1')" class="modal-tab flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all text-slate-500" data-type="1">Gelir</button>
+                 <button onclick="window.filterModal('2')" class="modal-tab flex-1 py-1.5 rounded-lg text-[10px] font-bold transition-all text-slate-500" data-type="2">Gider</button>
+             </div>
+        </div>
+    </div>
+    
+    <div class="flex-1 overflow-y-auto p-4 space-y-2.5 bg-slate-50/50 dark:bg-slate-900/50 pb-20" id="modalHareketList">
+        <div class="flex justify-center p-8">
+            <div class="w-6 h-6 border-2 border-primary/30 border-t-primary rounded-full animate-spin"></div>
+        </div>
+    </div>
+</div>
+
 <script>
 // JavaScript format helper
 window.formatMoneyGG = function(amount) {
@@ -422,7 +479,7 @@ $(document).ready(function() {
         };
 
         document.addEventListener('touchstart', e => {
-            const container = e.target.closest('.gg-item-container');
+            const container = e.target.closest('.gg-item-container, .swipe-container');
             if (!container) {
                 window.closeAllSwipes();
                 return;
@@ -433,7 +490,7 @@ $(document).ready(function() {
         }, { passive: true });
 
         document.addEventListener('touchmove', e => {
-            const container = e.target.closest('.gg-item-container');
+            const container = e.target.closest('.gg-item-container, .swipe-container');
             if (!container) return;
             const currentX = e.touches[0].clientX;
             const currentY = e.touches[0].clientY;
@@ -446,7 +503,7 @@ $(document).ready(function() {
         }, { passive: true });
 
         document.addEventListener('touchend', e => {
-            const container = e.target.closest('.gg-item-container');
+            const container = e.target.closest('.gg-item-container, .swipe-container');
             if (!container) return;
             const touchEndX = e.changedTouches[0].clientX;
             const diffX = touchEndX - touchStartX;
@@ -485,6 +542,134 @@ $(document).ready(function() {
         
         document.getElementById('noResult').style.display = hasVisible || items.length === 0 ? 'none' : 'block';
     });
+});
+
+// Tum Hareketler Modal Logic
+let modalFilter = { search: '', type: 'all', baslangic: '', bitis: '' };
+let modalSearchTimeout;
+
+window.openTumHareketlerModal = function() {
+    document.getElementById('modalOverlay').classList.remove('pointer-events-none', 'opacity-0');
+    document.getElementById('tumHareketlerModal').classList.remove('translate-y-full');
+    document.getElementById('modalFilterArea').classList.add('hidden');
+    window.loadModalHareketler();
+};
+
+window.toggleModalFilter = function() {
+    const area = document.getElementById('modalFilterArea');
+    area.classList.toggle('hidden');
+};
+
+window.loadModalHareketler = function() {
+    const list = document.getElementById('modalHareketList');
+    const formData = new FormData();
+    formData.append('action', 'tum-hareketler-getir');
+    formData.append('search', modalFilter.search);
+    formData.append('type', modalFilter.type);
+    formData.append('baslangic', modalFilter.baslangic);
+    formData.append('bitis', modalFilter.bitis);
+
+    fetch('../views/gelir-gider/api.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (!Array.isArray(data)) {
+            list.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs">Bir hata oluştu.</div>`;
+            return;
+        }
+        if (data.length === 0) {
+            list.innerHTML = `<div class="text-center py-10 text-slate-400 text-xs">Kayıt bulunamadı.</div>`;
+            return;
+        }
+        
+        list.innerHTML = data.map(h => {
+            const isGelir = h.type == 1;
+            const colorClass = isGelir ? 'text-emerald-600' : 'text-rose-600';
+            const bgClass = isGelir ? 'bg-emerald-50 dark:bg-emerald-900/20' : 'bg-rose-50 dark:bg-rose-900/20';
+            const icon = isGelir ? 'add_circle' : 'do_not_disturb_on';
+            
+            const dateParts = h.tarih.split(' ');
+            const fullDate = dateParts[0]; 
+            const timePart = dateParts[1];
+
+            return `
+            <div class="relative swipe-container overflow-hidden rounded-xl shadow-sm">
+                <!-- Delete Action -->
+                <div class="absolute left-0 top-0 bottom-0 w-[70px] bg-rose-500 flex items-center justify-center text-white cursor-pointer swipe-action-right opacity-0 pointer-events-none transition-opacity duration-200" 
+                     onclick="event.stopPropagation(); window.deleteGG('${h.id}', '${h.aciklama}')">
+                    <div class="flex flex-col items-center gap-1">
+                        <span class="material-symbols-outlined text-[20px]">delete</span>
+                        <span class="text-[9px] font-bold uppercase">Sil</span>
+                    </div>
+                </div>
+
+                <!-- Edit Action -->
+                <div class="absolute right-0 top-0 bottom-0 w-[70px] bg-amber-500 flex items-center justify-center text-white cursor-pointer swipe-action-left opacity-0 pointer-events-none transition-opacity duration-200" 
+                     onclick="event.stopPropagation(); window.editGG('${h.id}')">
+                    <div class="flex flex-col items-center gap-1">
+                        <span class="material-symbols-outlined text-[20px]">edit</span>
+                        <span class="text-[9px] font-bold uppercase">Düzelt</span>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-slate-800 p-3 border border-slate-100 dark:border-slate-700/50 flex items-center justify-between shadow-sm swipe-content transition-transform duration-200 cursor-pointer active:bg-slate-50 dark:active:bg-slate-700"
+                     onclick="if(Math.abs(parseInt(this.style.transform.replace(/[^\d-]/g, '') || 0)) > 10) { window.closeAllSwipes(); return; } window.viewGGDetails('${h.id}')">
+                    <div class="flex items-center gap-3 min-w-0">
+                        <div class="w-11 h-11 rounded-xl flex flex-col items-center justify-center shrink-0 bg-slate-50 dark:bg-slate-900/50 border border-slate-100 dark:border-slate-800 leading-none gap-1">
+                            <span class="text-[9px] font-black text-primary dark:text-blue-400">${fullDate}</span>
+                            <span class="text-[8px] font-bold text-slate-400 uppercase">${timePart}</span>
+                        </div>
+                        <div class="min-w-0">
+                            <h4 class="font-bold text-[12px] text-slate-800 dark:text-white truncate leading-tight">${h.kategori_adi || 'Kategorisiz'}</h4>
+                            <div class="flex items-center gap-1 mt-1 text-[10px] text-slate-500 dark:text-slate-400 font-medium">
+                                <span class="material-symbols-outlined text-[13px] shrink-0">account_circle</span>
+                                <span class="truncate">${h.hesap_adi || '-'}</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="text-right shrink-0 ml-2 flex flex-col items-end">
+                        <p class="font-bold text-xs ${colorClass}">
+                            ${isGelir ? '+' : '-'}${window.formatMoneyGG(h.amt)}
+                        </p>
+                        <p class="text-[9px] font-bold ${h.yuruyen < 0 ? 'text-rose-500' : 'text-emerald-500'} mt-0.5 opacity-80">
+                            ${window.formatMoneyGG(Math.abs(h.yuruyen))} ${h.yuruyen < 0 ? '(B)' : '(A)'}
+                        </p>
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+    });
+};
+
+window.filterModal = function(type) {
+    modalFilter.type = type;
+    document.querySelectorAll('.modal-tab').forEach(btn => {
+        if (btn.getAttribute('data-type') === type) {
+            btn.classList.add('bg-white', 'dark:bg-slate-700', 'shadow-sm', 'text-primary');
+            btn.classList.remove('text-slate-500');
+        } else {
+            btn.classList.remove('bg-white', 'dark:bg-slate-700', 'shadow-sm', 'text-primary');
+            btn.classList.add('text-slate-500');
+        }
+    });
+    window.loadModalHareketler();
+};
+
+document.getElementById('modalSearch').addEventListener('input', function() {
+    clearTimeout(modalSearchTimeout);
+    modalSearchTimeout = setTimeout(() => {
+        modalFilter.search = this.value;
+        window.loadModalHareketler();
+    }, 400);
+});
+
+document.addEventListener('DOMContentLoaded', () => {
+    const dStart = document.getElementById('modalDateStart');
+    const dEnd = document.getElementById('modalDateEnd');
+    if(dStart) dStart.addEventListener('change', (e) => { modalFilter.baslangic = e.target.value; window.loadModalHareketler(); });
+    if(dEnd) dEnd.addEventListener('change', (e) => { modalFilter.bitis = e.target.value; window.loadModalHareketler(); });
 });
 
 window.openGGModal = function() {
@@ -569,6 +754,7 @@ window.closeModals = function() {
     document.getElementById('modalOverlay').classList.add('pointer-events-none', 'opacity-0');
     document.getElementById('ggModal').classList.add('translate-y-full');
     document.getElementById('detailModal').classList.add('translate-y-full');
+    document.getElementById('tumHareketlerModal').classList.add('translate-y-full');
 };
 
 window.viewGGDetails = function(id) {
@@ -594,7 +780,7 @@ window.viewGGDetails = function(id) {
             
             document.getElementById('detailKategori').innerText = data.kategori_adi || 'Kategorisiz';
             document.getElementById('detailTarih').innerText = data.tarih ? new Date(data.tarih).toLocaleString('tr-TR') : '-';
-            document.getElementById('detailTutar').innerText = (isGelir ? '+' : '-') + formatMoneyGG(data.tutar);
+            document.getElementById('detailTutar').innerText = (isGelir ? '+' : '-') + window.formatMoneyGG(data.tutar);
             document.getElementById('detailTutar').className = `text-3xl font-black tracking-tight ${colorClass}`;
             
             document.getElementById('detailHesap').innerText = data.hesap_adi || '-';

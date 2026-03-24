@@ -42,6 +42,30 @@ $zimmetler = $stmt->fetchAll(PDO::FETCH_OBJ);
 $EvrakModel = new \App\Model\PersonelEvrakModel();
 $evraklar = $EvrakModel->getByPersonel($personel_id);
 
+// İcralar
+$IcraModel = new \App\Model\PersonelIcralariModel();
+$icralar = $IcraModel->getPersonelIcralariWithKesintiler($personel_id);
+
+$aktifIcra = 0;
+$toplamBorc = 0;
+$toplamKesilen = 0;
+$toplamKalan = 0;
+$nextIcraSira = 1;
+
+if (!empty($icralar)) {
+    foreach ($icralar as $i) {
+        if (($i->durum ?? '') === 'devam_ediyor') {
+            $aktifIcra++;
+        }
+        $toplamBorc += floatval($i->toplam_borc ?? 0);
+        $toplamKesilen += floatval($i->toplam_kesilen ?? 0);
+        $toplamKalan += floatval($i->kalan_tutar ?? 0);
+        if (intval($i->sira ?? 0) >= $nextIcraSira) {
+            $nextIcraSira = intval($i->sira) + 1;
+        }
+    }
+}
+
 function getMobileFileIcon($mimeType) {
     if (strpos($mimeType, 'pdf') !== false) return 'description';
     if (strpos($mimeType, 'image') !== false) return 'image';
@@ -58,7 +82,7 @@ function formatMobileFileSize($bytes) {
 
 ?>
 
-<div class="bg-white dark:bg-card-dark min-h-screen flex flex-col relative pb-28">
+<div class="bg-white dark:bg-card-dark min-h-screen flex flex-col relative">
     
     <!-- Özel Üst Bilgi Başlığı -->
     <header class="px-4 py-3 border-b border-slate-100 dark:border-slate-700/50 flex items-center justify-between sticky top-0 bg-white/95 dark:bg-card-dark/95 backdrop-blur-md z-40 shrink-0 shadow-sm">
@@ -99,6 +123,7 @@ function formatMobileFileSize($bytes) {
                 'zimmetler' => ['icon' => 'inventory_2', 'label' => 'Zimmet'],
                 'finansal' => ['icon' => 'payments', 'label' => 'Maaş'],
                 'evraklar' => ['icon' => 'folder_open', 'label' => 'Evrak'],
+                'icralar' => ['icon' => 'gavel', 'label' => 'İcralar'],
                 'puantaj' => ['icon' => 'more_time', 'label' => 'İş Takip'],
             ];
             
@@ -119,13 +144,56 @@ function formatMobileFileSize($bytes) {
     <style>
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+    
+    /* Select2 Mobile Small Style */
+    .select2-container--default .select2-selection--single {
+        background-color: rgba(248, 250, 252, 0.8) !important;
+        border: 1px solid #e2e8f0 !important;
+        height: 30px !important;
+        font-size: 11px !important;
+        font-weight: 800 !important;
+        border-radius: 10px !important;
+        display: flex !important;
+        align-items: center !important;
+        transition: all 0.2s;
+    }
+    .dark .select2-container--default .select2-selection--single {
+        background-color: rgba(15, 23, 42, 0.5) !important;
+        border-color: #334155 !important;
+        color: #f1f5f9 !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        color: inherit !important;
+        padding-left: 10px !important;
+        padding-right: 25px !important;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 28px !important;
+        right: 4px !important;
+    }
+    .select2-small-dropdown.select2-dropdown {
+        border-radius: 14px !important;
+        border: 1px solid #e2e8f0 !important;
+        box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1) !important;
+        margin-top: 4px;
+        overflow: hidden;
+    }
+    .dark .select2-small-dropdown.select2-dropdown {
+        background-color: #1e293b !important;
+        border-color: #334155 !important;
+    }
+    .select2-results__option {
+        font-size: 12px !important;
+        padding: 8px 12px !important;
+        font-weight: 600 !important;
+    }
     </style>
     <?php endif; ?>
 
     <div class="flex-1 overflow-y-auto">
         <!-- TAB Content: Genel Bilgiler -->
         <div id="content-genel" class="tab-content <?= $activeTab === 'genel' ? '' : 'hidden' ?> px-4 pt-4 pb-28">
-        <form id="personelMobileForm" onsubmit="submitPersonelForm(event)">
+        <form id="personelMobileForm" onsubmit="submitPersonelForm(event)" autocomplete="off">
             <input type="hidden" name="action" value="personel-kaydet">
             <input type="hidden" name="personel_id" value="<?= $personel_id ?>">
 
@@ -159,7 +227,7 @@ function formatMobileFileSize($bytes) {
                                 }
                                 ?>
                                 <input type="text" name="dogum_tarihi" value="<?= $dt ?>" placeholder="GG.AA.YYYY"
-                                       class="w-full px-3 py-2.5 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 text-[13px] font-semibold text-slate-800 dark:text-white">
+                                       class="w-full px-3 py-2.5 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 text-[13px] font-semibold text-slate-800 dark:text-white flatpickr-date">
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-3">
@@ -272,7 +340,7 @@ function formatMobileFileSize($bytes) {
 
         <!-- TAB Content: Çalışma Bilgileri -->
         <div id="content-calisma" class="tab-content <?= $activeTab === 'calisma' ? '' : 'hidden' ?> px-4 pt-4 pb-28">
-        <form id="personelCalismaForm" onsubmit="submitPersonelForm(event)">
+        <form id="personelCalismaForm" onsubmit="submitPersonelForm(event)" autocomplete="off">
             <input type="hidden" name="action" value="personel-kaydet">
             <input type="hidden" name="personel_id" value="<?= $personel_id ?>">
 
@@ -284,13 +352,7 @@ function formatMobileFileSize($bytes) {
                     </h4>
                     <div class="space-y-3">
                         <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">Durum</label>
-                                <select name="aktif_mi" class="w-full px-3 py-2.5 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 text-[13px] font-semibold text-slate-800 dark:text-white">
-                                    <option value="1" <?= ($personel->aktif_mi ?? 1) == 1 ? 'selected' : '' ?>>Aktif Çalışan</option>
-                                    <option value="0" <?= ($personel->aktif_mi ?? 1) == 0 ? 'selected' : '' ?>>Ayrıldı (Pasif)</option>
-                                </select>
-                            </div>
+                           
                             <div>
                                 <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">İşe Giriş</label>
                                 <?php 
@@ -302,7 +364,20 @@ function formatMobileFileSize($bytes) {
                                 }
                                 ?>
                                 <input type="text" name="ise_giris_tarihi" value="<?= $igt ?>" placeholder="GG.AA.YYYY"
-                                       class="w-full px-3 py-2.5 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 text-[13px] font-semibold text-slate-800 dark:text-white">
+                                       class="w-full px-3 py-2.5 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 text-[13px] font-semibold text-slate-800 dark:text-white flatpickr-date">
+                            </div>
+                             <div>
+                                <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase mb-1">İşten Çıkış</label>
+                                <?php 
+                                $ict = $personel->isten_cikis_tarihi ?? '';
+                                if ($ict && $ict !== '0000-00-00') {
+                                    $ict = date('d.m.Y', strtotime($ict));
+                                } else {
+                                    $ict = '';
+                                }
+                                ?>
+                                <input type="text" name="isten_cikis_tarihi" value="<?= $ict ?>" placeholder="GG.AA.YYYY"
+                                       class="w-full px-3 py-2.5 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500/20 text-[13px] font-semibold text-slate-800 dark:text-white flatpickr-date">
                             </div>
                         </div>
 
@@ -393,11 +468,11 @@ function formatMobileFileSize($bytes) {
                             <div class="grid grid-cols-2 gap-4">
                                 <div>
                                     <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Başlangıç</label>
-                                    <input type="text" id="modal_ekip_baslangic" placeholder="GG.AA.YYYY" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
+                                    <input type="text" id="modal_ekip_baslangic" placeholder="GG.AA.YYYY" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all flatpickr-date">
                                 </div>
                                 <div>
                                     <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Bitiş</label>
-                                    <input type="text" id="modal_ekip_bitis" placeholder="GG.AA.YYYY" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
+                                    <input type="text" id="modal_ekip_bitis" placeholder="GG.AA.YYYY" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all flatpickr-date">
                                 </div>
                             </div>
 
@@ -480,27 +555,54 @@ function formatMobileFileSize($bytes) {
         </div>
 
         <!-- TAB Content: İzinler -->
-        <div id="content-izinler" class="tab-content <?= $activeTab === 'izinler' ? '' : 'hidden' ?> px-4 pt-4 pb-28">
+        <div id="content-izinler" class="tab-content <?= $activeTab === 'izinler' ? '' : 'hidden' ?> px-4 pt-4 pb-14">
 
 
-            <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center justify-between mb-3 border-b border-slate-100 dark:border-slate-800 pb-2">
                 <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5">
                     <span class="material-symbols-outlined text-[16px]">event</span> İzin Geçmişi
                 </h4>
+                <div class="flex items-center gap-2">
+                    <select id="izinYearFilter" onchange="filterIzinlerByYear()" class="select2 text-[11px] font-bold">
+                        <option value="all">Tüm Yıllar</option>
+                        <?php 
+                        if (!empty($izinler)) {
+                            $currentYear = date('Y');
+                            $years = [];
+                            foreach($izinler as $iz) {
+                                if(!empty($iz->baslangic_tarihi)) {
+                                    $year = date('Y', strtotime($iz->baslangic_tarihi));
+                                    if(!in_array($year, $years)) $years[] = $year;
+                                }
+                            }
+                            rsort($years);
+                            $hasCurrentYear = in_array($currentYear, $years);
+
+                            foreach($years as $y):
+                                $selected = ($hasCurrentYear && $y == $currentYear) ? 'selected' : '';
+                            ?>
+                            <option value="<?= $y ?>" <?= $selected ?>><?= $y ?></option>
+                            <?php endforeach; 
+                        } ?>
+                    </select>
+                </div>
             </div>
 
-            <!-- FAB: Yeni İzin Ekle -->
-            <button type="button" onclick="openIzinForm()" class="fixed bottom-[140px] right-6 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg shadow-indigo-600/40 flex items-center justify-center z-40 active:scale-95 transition-transform border-0 focus:outline-none">
+            <button type="button" onclick="openIzinForm()" class="fixed bottom-28 right-6 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg shadow-indigo-600/40 flex items-center justify-center z-40 active:scale-95 transition-transform border-0 focus:outline-none">
                 <span class="material-symbols-outlined text-3xl">add</span>
             </button>
             
             <?php if(empty($izinler)): ?>
-                <div class="text-center py-8 text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <div id="izinEmptyMsg" class="text-center py-8 text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
                     <span class="material-symbols-outlined text-4xl mb-2 opacity-30">event_busy</span>
                     <p class="text-xs font-semibold">Henüz izin/rapor kaydı bulunmuyor.</p>
                 </div>
             <?php else: ?>
-                <div class="space-y-3 pb-24" id="izinList">
+                <div id="izinEmptyMsg" class="hidden text-center py-8 text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
+                    <span class="material-symbols-outlined text-4xl mb-2 opacity-30">event_busy</span>
+                    <p class="text-xs font-semibold">Seçilen yıla ait kayıt bulunmuyor.</p>
+                </div>
+                <div class="space-y-3 pb-20" id="izinList">
                     <?php foreach($izinler as $izin): 
                         $statusColor = 'bg-slate-100 text-slate-600 border-slate-200';
                         $statusIcon = 'schedule';
@@ -609,7 +711,7 @@ function formatMobileFileSize($bytes) {
 
         <!-- TAB Content: Finansal (Maaş & Görev) -->
         <div id="content-finansal" class="tab-content <?= $activeTab === 'finansal' ? '' : 'hidden' ?> px-4 pt-4 pb-28">
-            <form id="personelFinansalForm" onsubmit="submitPersonelForm(event)">
+            <form id="personelFinansalForm" onsubmit="submitPersonelForm(event)" autocomplete="off">
                 <input type="hidden" name="action" value="personel-kaydet">
                 <input type="hidden" name="personel_id" value="<?= $personel_id ?>">
 
@@ -750,7 +852,7 @@ function formatMobileFileSize($bytes) {
             </div>
 
             <!-- FAB: Yeni Evrak Yükle -->
-            <button type="button" onclick="openEvrakForm()" class="fixed bottom-[140px] right-6 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg shadow-indigo-600/40 flex items-center justify-center z-40 active:scale-95 transition-transform border-0 focus:outline-none">
+            <button type="button" onclick="openEvrakForm()" class="fixed bottom-28 right-6 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg shadow-indigo-600/40 flex items-center justify-center z-40 active:scale-95 transition-transform border-0 focus:outline-none">
                 <span class="material-symbols-outlined text-3xl">upload_file</span>
             </button>
             
@@ -793,21 +895,209 @@ function formatMobileFileSize($bytes) {
             <?php endif; ?>
         </div>
 
-        <!-- TAB Content: Puantaj (Placeholder) -->
-        <div id="content-puantaj" class="tab-content <?= $activeTab === 'puantaj' ? '' : 'hidden' ?> px-4 pt-4 pb-28">
-            <div class="flex flex-col items-center justify-center p-8 text-center bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 mt-4">
-                <div class="w-16 h-16 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-400 mb-3">
-                    <span class="material-symbols-outlined text-3xl">assignment</span>
+        <!-- TAB Content: İcralar -->
+        <div id="content-icralar" class="tab-content <?= $activeTab === 'icralar' ? '' : 'hidden' ?> px-4 pt-4 pb-28">
+            <!-- Stats Section -->
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <div class="bg-white dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1 opacity-70">Aktif Dosya</p>
+                    <div class="flex items-end justify-between">
+                        <h4 class="text-xl font-black text-slate-800 dark:text-white leading-none"><?= $aktifIcra ?></h4>
+                        <span class="material-symbols-outlined text-indigo-500 text-[20px]">gavel</span>
+                    </div>
                 </div>
-                <h4 class="font-bold text-slate-800 dark:text-white text-sm mb-1">İş Takip</h4>
-                <p class="text-[11px] text-slate-500 font-medium">Bu bölüm çalışma aşamasındadır. Masaüstü sürümden yönetebilirsiniz.</p>
+                <div class="bg-white dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1 opacity-70">Toplam Borç</p>
+                    <div class="flex items-end justify-between">
+                        <h4 class="text-lg font-black text-rose-600 dark:text-rose-400 leading-none"><?= \App\Helper\Helper::formattedMoney($toplamBorc) ?></h4>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1 opacity-70">Toplam Kesilen</p>
+                    <div class="flex items-end justify-between">
+                        <h4 class="text-lg font-black text-emerald-600 dark:text-emerald-400 leading-none"><?= \App\Helper\Helper::formattedMoney($toplamKesilen) ?></h4>
+                    </div>
+                </div>
+                <div class="bg-white dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800">
+                    <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest mb-1 opacity-70">Kalan Tutarlar</p>
+                    <div class="flex items-end justify-between">
+                        <h4 class="text-lg font-black text-indigo-600 dark:text-indigo-400 leading-none"><?= \App\Helper\Helper::formattedMoney($toplamKalan) ?></h4>
+                    </div>
+                </div>
             </div>
+
+            <div class="flex items-center justify-between mb-4">
+                <h4 class="text-xs font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 border-b border-slate-100 dark:border-slate-800 pb-2 flex-1">
+                    <span class="material-symbols-outlined text-[16px]">list_alt</span> İcra Dosyaları
+                </h4>
+            </div>
+
+            <!-- FAB: Yeni İcra Ekle -->
+            <button type="button" onclick="openIcraForm()" class="fixed bottom-28 right-6 w-14 h-14 bg-indigo-600 text-white rounded-full shadow-lg shadow-indigo-600/40 flex items-center justify-center z-40 active:scale-95 transition-transform border-0 focus:outline-none">
+                <span class="material-symbols-outlined text-3xl">gavel</span>
+            </button>
+            
+            <?php if(empty($icralar)): ?>
+                <div class="flex flex-col items-center justify-center p-8 text-center bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800 mt-4">
+                    <div class="w-16 h-16 rounded-full bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-400 mb-3">
+                        <span class="material-symbols-outlined text-3xl">gavel</span>
+                    </div>
+                    <h4 class="font-bold text-slate-800 dark:text-white text-sm mb-1">Dosya Bulunamadı</h4>
+                    <p class="text-[11px] text-slate-500 font-medium">Bu personele ait bir icra dosyası bulunmuyor.</p>
+                </div>
+            <?php else: ?>
+                <div class="grid grid-cols-1 gap-3">
+                    <?php foreach($icralar as $i): 
+                        $statusColors = [
+                            'bekliyor' => 'bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 border-amber-100 dark:border-amber-800/50',
+                            'devam_ediyor' => 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20 dark:text-emerald-400 border-emerald-100 dark:border-emerald-800/50',
+                            'fekki_geldi' => 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400 border-indigo-100 dark:border-indigo-800/50',
+                            'kesinti_bitti' => 'bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-100 dark:border-slate-700',
+                            'bitti' => 'bg-slate-50 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-100 dark:border-slate-700',
+                            'durduruldu' => 'bg-rose-50 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400 border-rose-100 dark:border-rose-800/50'
+                        ];
+                        $statusLabels = [
+                            'bekliyor' => 'BEKLEMEDE',
+                            'devam_ediyor' => 'KESİNTİ YAPILIYOR',
+                            'fekki_geldi' => 'FEKKİ GELDİ',
+                            'kesinti_bitti' => 'KESİNTİ BİTTİ',
+                            'bitti' => 'KAPATILDI',
+                            'durduruldu' => 'DURDURULDU'
+                        ];
+                        $statusColor = $statusColors[$i->durum] ?? 'bg-slate-50 text-slate-600 dark:bg-slate-800';
+                        $statusLabel = $statusLabels[$i->durum] ?? 'BİLİNMİYOR';
+                        
+                        $kesintiDetay = '';
+                        if ($i->kesinti_tipi == 'oran') {
+                            $kesintiDetay = '%' . $i->kesinti_orani;
+                        } else {
+                            $kesintiDetay = \App\Helper\Helper::formattedMoney($i->aylik_kesinti_tutari);
+                        }
+                    ?>
+                    <div class="bg-white dark:bg-card-dark border border-slate-100 dark:border-slate-800 rounded-3xl p-4 shadow-sm active:scale-[0.98] transition-all" onclick="editIcra(<?= $i->id ?>)">
+                        <div class="flex justify-between items-start mb-3">
+                            <div class="flex items-center gap-2.5">
+                                <div class="w-10 h-10 rounded-2xl bg-slate-50 dark:bg-slate-800 border border-slate-100 dark:border-slate-700 flex flex-col items-center justify-center shrink-0">
+                                    <span class="text-[10px] font-black text-slate-400 leading-none">NO</span>
+                                    <span class="text-[14px] font-black text-indigo-600 leading-none mt-0.5"><?= $i->sira ?></span>
+                                </div>
+                                <div>
+                                    <h5 class="font-black text-[14px] text-slate-800 dark:text-white leading-tight"><?= htmlspecialchars($i->icra_dairesi) ?></h5>
+                                    <p class="text-[11px] text-slate-500 font-bold uppercase tracking-wider mt-0.5"><?= htmlspecialchars($i->dosya_no) ?></p>
+                                </div>
+                            </div>
+                            <span class="px-2.5 py-1 rounded-full text-[9px] font-black border tracking-wider <?= $statusColor ?>"><?= $statusLabel ?></span>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4 py-3 border-y border-slate-50 dark:border-slate-800/50">
+                            <div>
+                                <p class="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-0.5">TOPLAM BORÇ</p>
+                                <p class="text-[13px] font-black text-slate-800 dark:text-white leading-none"><?= \App\Helper\Helper::formattedMoney($i->toplam_borc) ?></p>
+                                <div class="flex items-center gap-1.5 mt-1">
+                                    <span class="text-[10px] text-emerald-600 font-bold tracking-tight">K: <?= \App\Helper\Helper::formattedMoney($i->toplam_kesilen) ?></span>
+                                </div>
+                            </div>
+                            <div class="text-right">
+                                <p class="text-[9px] text-slate-400 font-black uppercase tracking-widest mb-0.5">KALAN TUTAR</p>
+                                <p class="text-[13px] font-black text-rose-600 dark:text-rose-400 leading-none"><?= \App\Helper\Helper::formattedMoney($i->kalan_tutar) ?></p>
+                                <div class="flex items-center justify-end gap-1.5 mt-1">
+                                    <span class="text-[10px] text-indigo-600 font-bold tracking-tight">Aylık: <?= $kesintiDetay ?></span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="flex items-center justify-between pt-3">
+                            <div class="flex items-center gap-3">
+                                <div class="flex flex-col">
+                                    <span class="text-[8px] text-slate-400 font-black uppercase tracking-widest leading-none mb-1">BAŞLANGIÇ</span>
+                                    <span class="text-[10px] text-slate-600 dark:text-slate-300 font-bold leading-none"><?= $i->baslangic_tarihi ? date('d.m.Y', strtotime($i->baslangic_tarihi)) : '-' ?></span>
+                                </div>
+                                <div class="w-1.5 h-1.5 rounded-full bg-slate-200 dark:bg-slate-700"></div>
+                                <div class="flex flex-col">
+                                    <span class="text-[8px] text-slate-400 font-black uppercase tracking-widest leading-none mb-1">BİTİŞ</span>
+                                    <span class="text-[10px] text-slate-600 dark:text-slate-300 font-bold leading-none"><?= ($i->bitis_tarihi && $i->bitis_tarihi != '0000-00-00') ? date('d.m.Y', strtotime($i->bitis_tarihi)) : '-' ?></span>
+                                </div>
+                            </div>
+                            <div class="flex gap-2" onclick="event.stopPropagation()">
+                                <button type="button" onclick="viewIcraKesintileri(<?= $i->id ?>, '<?= htmlspecialchars($i->icra_dairesi) ?>', '<?= htmlspecialchars($i->dosya_no) ?>', <?= $i->toplam_borc ?>)" class="w-9 h-9 flex items-center justify-center rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 active:scale-90 transition-all">
+                                    <span class="material-symbols-outlined text-[18px]">history</span>
+                                </button>
+                                <button type="button" onclick="deleteIcra(<?= $i->id ?>)" class="w-9 h-9 flex items-center justify-center rounded-2xl bg-rose-50 dark:bg-rose-900/30 text-rose-600 dark:text-rose-400 active:scale-90 transition-all">
+                                    <span class="material-symbols-outlined text-[18px]">delete</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <?php endforeach; ?>
+                </div>
+            <?php endif; ?>
         </div>
-        <!-- Maaş Tipi Ekle/Düzenle Bottom Sheet Backdrop -->
-    <div id="gorevBottomSheetBackdrop" class="fixed inset-0 bg-black/50 z-[100] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeGorevForm()"></div>
+
+        <!-- TAB Content: İş Takip -->
+        <div id="content-puantaj" class="tab-content <?= $activeTab === 'puantaj' ? '' : 'hidden' ?> px-4 pt-4 pb-28">
+            <!-- Filter Section -->
+            <div class="bg-white dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 mb-4">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary dark:bg-primary/20 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-[22px]">find_in_page</span>
+                    </div>
+                    <div>
+                        <h4 class="text-sm font-bold text-slate-800 dark:text-white leading-tight">İş Takip Filtre</h4>
+                        <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest opacity-70">Dökümleri İncele</p>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Yıl Seçimi</label>
+                        <select id="isTakipYear" class="select2-small-dropdown w-full" onchange="loadPersonelIsTakip()">
+                            <?php 
+                            $currYear = (int)date('Y');
+                            for($y = $currYear; $y >= 2020; $y--): ?>
+                                <option value="<?= $y ?>" <?= $y === $currYear ? 'selected' : '' ?>><?= $y ?></option>
+                            <?php endfor; ?>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-1.5 ml-1">Ay Seçimi</label>
+                        <select id="isTakipMonth" class="select2-small-dropdown w-full" onchange="loadPersonelIsTakip()">
+                            <option value="all">TÜM YIL</option>
+                            <?php 
+                            $currMonth = (int)date('m');
+                            foreach(\App\Helper\Date::MONTHS as $mIdx => $mName): ?>
+                                <option value="<?= $mIdx ?>" <?= $mIdx === $currMonth ? 'selected' : '' ?>><?= mb_strtoupper($mName, 'UTF-8') ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Sub Tabs (Hidden by default to prevent flicker) -->
+            <div class="overflow-x-auto no-scrollbar -mx-4 px-4 mb-4 hidden" id="isTakipSubTabsContainer">
+                <div class="flex gap-2 min-w-max pb-1">
+                    <button class="is-takip-subtab bg-indigo-600 text-white px-4 py-2 rounded-xl text-[11px] font-black shadow-sm shadow-indigo-600/20 active:scale-95 transition-all" onclick="switchIsTakipSubTab('okuma', this)">ENDEKS OKUMA</button>
+                    <button class="is-takip-subtab bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800 px-4 py-2 rounded-xl text-[11px] font-black shadow-sm active:scale-95 transition-all" onclick="switchIsTakipSubTab('kesme', this)">KESME / AÇMA</button>
+                    <button class="is-takip-subtab bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800 px-4 py-2 rounded-xl text-[11px] font-black shadow-sm active:scale-95 transition-all" onclick="switchIsTakipSubTab('sokme_takma', this)">SAYAÇ SÖ/TA</button>
+                    <button class="is-takip-subtab bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800 px-4 py-2 rounded-xl text-[11px] font-black shadow-sm active:scale-95 transition-all" onclick="switchIsTakipSubTab('muhurleme', this)">MÜHÜRLEME</button>
+                    <button class="is-takip-subtab bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800 px-4 py-2 rounded-xl text-[11px] font-black shadow-sm active:scale-95 transition-all" onclick="switchIsTakipSubTab('kacakkontrol', this)">KAÇAK KONTROL</button>
+                </div>
+            </div>
+
+            <!-- List Container -->
+            <div id="isTakipContent" class="space-y-4">
+                <div class="flex flex-col items-center justify-center py-12 text-slate-400">
+                    <div class="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-3"></div>
+                    <p class="text-[11px] font-bold tracking-widest uppercase">Veriler Yükleniyor...</p>
+                </div>
+            </div>
+    </div> <!-- flex-1 closure -->
+</div> <!-- Main div closure for line 85 -->
+
+<!-- Bottom Sheets Area (Root Level) -->
+    <div id="gorevBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[1000] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeGorevForm()"></div>
 
     <!-- Maaş Tipi Ekle/Düzenle Bottom Sheet -->
-    <div id="gorevFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[101] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
+    <div id="gorevFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[1001] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
         <div class="flex justify-center pt-3 pb-2">
             <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
         </div>
@@ -855,11 +1145,11 @@ function formatMobileFileSize($bytes) {
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Başlangıç</label>
-                        <input type="text" id="modal_gorev_baslangic" placeholder="GG.AA.YYYY" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white">
+                        <input type="text" id="modal_gorev_baslangic" placeholder="GG.AA.YYYY" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white flatpickr-date">
                     </div>
                     <div>
                         <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Bitiş</label>
-                        <input type="text" id="modal_gorev_bitis" placeholder="GG.AA.YYYY" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white">
+                        <input type="text" id="modal_gorev_bitis" placeholder="GG.AA.YYYY" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white flatpickr-date">
                     </div>
                 </div>
 
@@ -878,14 +1168,13 @@ function formatMobileFileSize($bytes) {
                 </div>
             </div>
         </div>
-        </div>
     </div>
 
     <!-- Ekip Atama Bottom Sheet Backdrop -->
-    <div id="ekipBottomSheetBackdrop" class="fixed inset-0 bg-black/50 z-[100] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeEkipForm()"></div>
+    <div id="ekipBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[1000] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeEkipForm()"></div>
 
     <!-- Ekip Atama Bottom Sheet -->
-    <div id="ekipFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[101] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
+    <div id="ekipFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[1001] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
         <div class="flex justify-center pt-3 pb-2">
             <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
         </div>
@@ -922,11 +1211,11 @@ function formatMobileFileSize($bytes) {
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Başlangıç</label>
-                        <input type="text" id="modal_ekip_baslangic" placeholder="GG.AA.YYYY" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white">
+                        <input type="text" id="modal_ekip_baslangic" placeholder="GG.AA.YYYY" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white flatpickr-date">
                     </div>
                     <div>
                         <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Bitiş</label>
-                        <input type="text" id="modal_ekip_bitis" placeholder="GG.AA.YYYY" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white">
+                        <input type="text" id="modal_ekip_bitis" placeholder="GG.AA.YYYY" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white flatpickr-date">
                     </div>
                 </div>
 
@@ -948,13 +1237,12 @@ function formatMobileFileSize($bytes) {
                 </div>
             </div>
         </div>
-    </div>
 
     <!-- İzin Ekle/Düzenle Bottom Sheet Backdrop -->
-    <div id="izinBottomSheetBackdrop" class="fixed inset-0 bg-black/50 z-[100] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeIzinForm()"></div>
+    <div id="izinBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[1000] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeIzinForm()"></div>
 
     <!-- İzin Ekle/Düzenle Bottom Sheet -->
-    <div id="izinFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[101] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
+    <div id="izinFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[1001] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
         <div class="flex justify-center pt-3 pb-2">
             <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
         </div>
@@ -964,7 +1252,7 @@ function formatMobileFileSize($bytes) {
         </div>
 
         <div class="px-6 space-y-4 max-h-[70vh] overflow-y-auto no-scrollbar">
-            <form id="izinMobileForm">
+            <form id="izinMobileForm" autocomplete="off">
                 <input type="hidden" name="id" id="modal_izin_id" value="0">
                 <input type="hidden" name="personel_id" value="<?= $personel_id ?>">
                 
@@ -982,11 +1270,11 @@ function formatMobileFileSize($bytes) {
                     <div class="grid grid-cols-2 gap-4">
                         <div>
                             <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Başlangıç</label>
-                            <input type="text" name="baslangic_tarihi" id="modal_izin_baslangic" placeholder="GG.AA.YYYY" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white transition-all">
+                            <input type="text" name="baslangic_tarihi" id="modal_izin_baslangic" placeholder="GG.AA.YYYY" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white transition-all flatpickr-date">
                         </div>
                         <div>
                             <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Bitiş</label>
-                            <input type="text" name="bitis_tarihi" id="modal_izin_bitis" placeholder="GG.AA.YYYY" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white transition-all">
+                            <input type="text" name="bitis_tarihi" id="modal_izin_bitis" placeholder="GG.AA.YYYY" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white transition-all flatpickr-date">
                         </div>
                     </div>
 
@@ -1022,10 +1310,10 @@ function formatMobileFileSize($bytes) {
         </div>
     </div>
     <!-- Evrak Yükle Bottom Sheet Backdrop -->
-    <div id="evrakBottomSheetBackdrop" class="fixed inset-0 bg-black/50 z-[100] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeEvrakForm()"></div>
+    <div id="evrakBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[1000] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeEvrakForm()"></div>
 
     <!-- Evrak Yükle Bottom Sheet -->
-    <div id="evrakFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[101] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
+    <div id="evrakFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[1001] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
         <div class="flex justify-center pt-3 pb-2">
             <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
         </div>
@@ -1035,7 +1323,7 @@ function formatMobileFileSize($bytes) {
         </div>
 
         <div class="px-6 space-y-4 max-h-[70vh] overflow-y-auto no-scrollbar">
-            <form id="evrakMobileForm" enctype="multipart/form-data">
+            <form id="evrakMobileForm" enctype="multipart/form-data" autocomplete="off">
                 <input type="hidden" name="action" value="evrak_yukle">
                 <input type="hidden" name="personel_id" value="<?= $personel_id ?>">
                 
@@ -1082,8 +1370,153 @@ function formatMobileFileSize($bytes) {
             </form>
         </div>
     </div>
-</div>
-</div>
+    <!-- İcra Ekle/Düzenle Bottom Sheet Backdrop -->
+    <div id="icraBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[1000] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeIcraForm()"></div>
+
+    <!-- İcra Ekle/Düzenle Bottom Sheet -->
+    <div id="icraFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[1001] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
+        <div class="flex justify-center pt-3 pb-2">
+            <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+        </div>
+        
+        <div class="px-6 pb-2 border-b border-slate-50 dark:border-slate-800/50 mb-4">
+            <h5 id="icraFormTitle" class="text-[17px] font-bold text-slate-800 dark:text-white">Yeni İcra Dosyası</h5>
+        </div>
+
+        <div class="px-6 space-y-4 max-h-[80vh] overflow-y-auto no-scrollbar pb-8">
+            <form id="icraMobileForm" autocomplete="off">
+                <input type="hidden" name="id" id="modal_icra_id" value="">
+                <input type="hidden" name="personel_id" value="<?= $personel_id ?>">
+                
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Sıra No</label>
+                            <input type="number" name="icra_sira" id="modal_icra_sira" value="<?= $nextIcraSira ?>" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Durum</label>
+                            <select name="icra_durum" id="modal_icra_durum" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white">
+                                <option value="bekliyor">Beklemede</option>
+                                <option value="devam_ediyor" selected>Kesinti Yapılıyor</option>
+                                <option value="fekki_geldi">Fekki Geldi</option>
+                                <option value="kesinti_bitti">Kesinti Bitti</option>
+                                <option value="bitti">Kapatıldı</option>
+                                <option value="durduruldu">Durduruldu</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">İcra Dairesi</label>
+                        <input type="text" name="icra_dairesi" id="modal_icra_dairesi" placeholder="Örn: Ankara 1. İcra Dairesi" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white">
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Dosya No</label>
+                            <input type="text" name="icra_dosya_no" id="modal_icra_dosya_no" placeholder="2024/..." class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Toplam Borç</label>
+                            <input type="text" name="icra_toplam_borc" id="modal_icra_toplam_borc" placeholder="0,00 ₺" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-black text-rose-600 money">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">İcra IBAN</label>
+                        <input type="text" name="icra_iban" id="modal_icra_iban" placeholder="TR..." class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white">
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Hesap Bilgileri</label>
+                        <textarea name="icra_hesap_bilgileri" id="modal_icra_hesap_bilgileri" rows="1" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white" placeholder="Banka, Şube vb."></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Kesinti Tipi</label>
+                            <select name="icra_kesinti_tipi" id="modal_icra_kesinti_tipi" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white" onchange="toggleIcraKesintiFields()">
+                                <option value="tutar">Sabit Tutar</option>
+                                <option value="oran">Maaş Oranı (%)</option>
+                                <option value="net_yuzde">Net Maaş %</option>
+                                <option value="asgari_yuzde">Asgari Ücret %</option>
+                            </select>
+                        </div>
+                        <div id="div_modal_icra_aylik_kesinti">
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Aylık Tutar</label>
+                            <input type="text" name="icra_aylik_kesinti" id="modal_icra_aylik_kesinti" placeholder="0,00 ₺" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-black text-indigo-600 money">
+                        </div>
+                        <div id="div_modal_icra_kesinti_orani" style="display:none;">
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Kesinti Oranı (%)</label>
+                            <input type="number" name="icra_kesinti_orani" id="modal_icra_kesinti_orani" value="25" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-black text-indigo-600">
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Başlangıç</label>
+                            <input type="text" name="icra_baslangic" id="modal_icra_baslangic" placeholder="GG.AA.YYYY" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white flatpickr-date">
+                        </div>
+                        <div>
+                            <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Bitiş</label>
+                            <input type="text" name="icra_bitis" id="modal_icra_bitis" placeholder="GG.AA.YYYY" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white flatpickr-date">
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Açıklama</label>
+                        <textarea name="icra_aciklama" id="modal_icra_aciklama" rows="2" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white" placeholder="Dosya hakkında notlar..."></textarea>
+                    </div>
+
+                    <div class="flex gap-3 pt-2 mb-6">
+                        <button type="button" onclick="closeIcraForm()" class="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl text-[15px] font-bold active:scale-95 transition-transform">
+                            İptal
+                        </button>
+                        <button type="button" onclick="saveIcra()" class="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl text-[15px] font-bold shadow-lg shadow-indigo-600/30 active:scale-95 transition-transform flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-[20px]">check_circle</span> Kaydet
+                        </button>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <!-- İcra Kesinti Geçmişi Bottom Sheet Backdrop -->
+    <div id="icraHistoryBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[1000] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeIcraHistory()"></div>
+
+    <!-- İcra Kesinti Geçmişi Bottom Sheet -->
+    <div id="icraHistoryArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[1001] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
+        <div class="flex justify-center pt-3 pb-2">
+            <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+        </div>
+        
+        <div class="px-6 pb-2 border-b border-slate-50 dark:border-slate-800/50 mb-4">
+            <h5 id="icraHistoryTitle" class="text-[17px] font-bold text-slate-800 dark:text-white leading-tight">Kesinti Geçmişi</h5>
+            <p id="icraHistorySubtitle" class="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-1">DOSYA DETAYLARI</p>
+        </div>
+
+        <div class="px-6 space-y-4 max-h-[70vh] overflow-y-auto no-scrollbar pb-8">
+            <div id="icraHistoryStats" class="grid grid-cols-2 gap-3 mb-2">
+                <div class="bg-emerald-50 dark:bg-emerald-900/10 p-3 rounded-2xl border border-emerald-100 dark:border-emerald-800/30">
+                    <p class="text-[8px] text-emerald-600 dark:text-emerald-400 font-black tracking-widest uppercase mb-1">KESİLEN</p>
+                    <p id="stat_icra_kesilen" class="text-[14px] font-black text-emerald-700 dark:text-emerald-300">0,00 ₺</p>
+                </div>
+                <div class="bg-rose-50 dark:bg-rose-900/10 p-3 rounded-2xl border border-rose-100 dark:border-rose-800/30">
+                    <p class="text-[8px] text-rose-600 dark:text-rose-400 font-black tracking-widest uppercase mb-1">KALAN</p>
+                    <p id="stat_icra_kalan" class="text-[14px] font-black text-rose-700 dark:text-rose-300">0,00 ₺</p>
+                </div>
+            </div>
+
+            <div id="icraHistoryList" class="space-y-3">
+                <!-- AJAX ile dolacak -->
+            </div>
+            
+            <button type="button" onclick="closeIcraHistory()" class="w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl text-[15px] font-bold active:scale-95 transition-transform mt-4">
+                Kapat
+            </button>
+        </div>
+    </div>
 
 <script>
 function submitPersonelForm(e) {
@@ -1135,6 +1568,11 @@ function switchTab(tab) {
         target.classList.remove('hidden');
         // Yukarı kaydır
         window.scrollTo({ top: 0, behavior: 'smooth' });
+        
+        // İş Takip sekmesi seçildiyse verileri yükle
+        if (tab === 'puantaj') {
+            loadPersonelIsTakip();
+        }
     }
     
     // URL'yi güncelle (sayfa yenilenmeden)
@@ -1151,6 +1589,142 @@ function switchTab(tab) {
     if (activeBtn) {
         activeBtn.className = 'tab-btn flex items-center gap-2 px-4 py-2.5 rounded-xl whitespace-nowrap text-[12px] font-bold transition-all bg-indigo-600 text-white shadow-lg shadow-indigo-600/20 active:scale-95';
     }
+}
+
+let currentIsTakipSubTab = 'okuma';
+
+function switchIsTakipSubTab(tab, btn) {
+    currentIsTakipSubTab = tab;
+    
+    // Update button styles
+    document.querySelectorAll('.is-takip-subtab').forEach(b => {
+        b.className = 'is-takip-subtab bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800 px-4 py-2 rounded-xl text-[11px] font-black shadow-sm active:scale-95 transition-all';
+    });
+    
+    btn.className = 'is-takip-subtab bg-indigo-600 text-white px-4 py-2 rounded-xl text-[11px] font-black shadow-sm shadow-indigo-600/20 active:scale-95 transition-all';
+    
+    // Scroll to active tab
+    const container = document.getElementById('isTakipSubTabsContainer');
+    const scrollLeft = btn.offsetLeft - (container.offsetWidth / 2) + (btn.offsetWidth / 2);
+    container.scrollTo({ left: scrollLeft, behavior: 'smooth' });
+    
+    loadPersonelIsTakip();
+}
+
+function loadPersonelIsTakip() {
+    const container = document.getElementById('isTakipContent');
+    const year = document.getElementById('isTakipYear').value;
+    const month = document.getElementById('isTakipMonth').value;
+    const personelId = '<?= $personel_id ?>';
+    const subTabsContainer = document.getElementById('isTakipSubTabsContainer');
+    
+    subTabsContainer.classList.add('hidden');
+    container.innerHTML = `
+        <div class="flex flex-col items-center justify-center py-12 text-slate-400">
+            <div class="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-3"></div>
+            <p class="text-[11px] font-bold tracking-widest uppercase">Kategoriler Kontrol Ediliyor...</p>
+        </div>
+    `;
+    
+    // First, check which tabs have data
+    const summaryParams = new URLSearchParams({
+        action: 'get-mobile-personel-is-takip-summary',
+        pId: personelId,
+        year: year
+    });
+    
+    if (month !== 'all') {
+        summaryParams.append('month', month);
+    } else {
+        summaryParams.append('start_date', year + '-01-01');
+        summaryParams.append('end_date', year + '-12-31');
+    }
+    
+    fetch('../views/puantaj/api.php?' + summaryParams.toString())
+    .then(res => res.json())
+    .then(summary => {
+        let firstAvailableTab = null;
+        let anyData = false;
+        
+        // Loop through all subtabs
+        document.querySelectorAll('.is-takip-subtab').forEach(btn => {
+            const tabKey = btn.getAttribute('onclick').match(/'([^']+)'/)[1];
+            if (summary[tabKey] > 0) {
+                btn.style.display = 'block';
+                anyData = true;
+                if (!firstAvailableTab) firstAvailableTab = tabKey;
+            } else {
+                btn.style.display = 'none';
+            }
+        });
+        
+        const subTabsContainer = document.getElementById('isTakipSubTabsContainer');
+        
+        if (anyData) {
+            subTabsContainer.classList.remove('hidden');
+            // Find the current active tab. If it's hidden now, switch to the first available one.
+            const currentActiveBtn = document.querySelector('.is-takip-subtab.bg-indigo-600');
+            const currentActiveTab = currentActiveBtn ? currentActiveBtn.getAttribute('onclick').match(/'([^']+)'/)[1] : null;
+            
+            if (!currentActiveTab || summary[currentActiveTab] === 0) {
+                // Switch to first available
+                const targetBtn = Array.from(document.querySelectorAll('.is-takip-subtab')).find(b => b.style.display === 'block');
+                if (targetBtn) {
+                    currentIsTakipSubTab = firstAvailableTab;
+                    // Reset all button styles
+                    document.querySelectorAll('.is-takip-subtab').forEach(b => {
+                        b.className = 'is-takip-subtab bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 border border-slate-100 dark:border-slate-800 px-4 py-2 rounded-xl text-[11px] font-black shadow-sm active:scale-95 transition-all';
+                    });
+                    targetBtn.className = 'is-takip-subtab bg-indigo-600 text-white px-4 py-2 rounded-xl text-[11px] font-black shadow-sm shadow-indigo-600/20 active:scale-95 transition-all';
+                }
+            }
+            
+            // Re-fetch content for the active tab (or first available)
+            fetchIsTakipContent(year, month, personelId);
+        } else {
+            subTabsContainer.classList.add('hidden');
+            container.innerHTML = `
+                <div class="flex flex-col items-center justify-center py-12 px-6 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-dashed border-slate-200 dark:border-slate-700">
+                    <span class="material-symbols-outlined text-4xl text-slate-300 mb-2">history</span>
+                    <p class="text-xs font-bold text-slate-500 uppercase tracking-widest">Kayıt Bulunamadı</p>
+                    <p class="text-[10px] text-slate-400 mt-1">Seçilen dönemde yapılan herhangi bir iş kaydı bulunmuyor.</p>
+                </div>
+            `;
+        }
+    });
+}
+
+function fetchIsTakipContent(year, month, personelId) {
+    const container = document.getElementById('isTakipContent');
+    container.innerHTML = `
+        <div class="flex flex-col items-center justify-center py-12 text-slate-400">
+            <div class="w-8 h-8 border-2 border-primary/30 border-t-primary rounded-full animate-spin mb-3"></div>
+            <p class="text-[11px] font-bold tracking-widest uppercase">Veriler Yükleniyor...</p>
+        </div>
+    `;
+
+    const params = new URLSearchParams({
+        action: 'get-mobile-personel-is-takip',
+        pId: personelId,
+        year: year,
+        tab: currentIsTakipSubTab
+    });
+    
+    if (month !== 'all') {
+        params.append('month', month);
+    } else {
+        params.append('start_date', year + '-01-01');
+        params.append('end_date', year + '-12-31');
+    }
+    
+    fetch('../views/puantaj/api.php?' + params.toString())
+    .then(res => res.text())
+    .then(html => {
+        container.innerHTML = html;
+    })
+    .catch(err => {
+        container.innerHTML = `<div class="p-5 text-center text-rose-500 font-bold bg-rose-50 dark:bg-rose-900/20 rounded-2xl border border-rose-100 dark:border-rose-800/50">Veriler yüklenirken bir hata oluştu.</div>`;
+    });
 }
 
 function openEkipForm() {
@@ -1616,6 +2190,216 @@ function calculateIzinDuration() {
     }
 }
 
+// İcra Yönetimi
+function openIcraForm() {
+    document.getElementById('modal_icra_id').value = '';
+    document.getElementById('icraFormTitle').innerText = 'Yeni İcra Dosyası';
+    document.getElementById('icraMobileForm').reset();
+    document.getElementById('modal_icra_sira').value = '<?= $nextIcraSira ?>';
+    document.getElementById('modal_icra_durum').value = 'devam_ediyor';
+    document.getElementById('modal_icra_kesinti_tipi').value = 'tutar';
+    toggleIcraKesintiFields();
+    
+    const backdrop = document.getElementById('icraBottomSheetBackdrop');
+    const sheet = document.getElementById('icraFormArea');
+    backdrop.classList.remove('hidden');
+    setTimeout(() => {
+        backdrop.classList.remove('opacity-0', 'pointer-events-none');
+        backdrop.classList.add('opacity-100');
+        sheet.classList.remove('translate-y-full');
+    }, 10);
+}
+
+function closeIcraForm() {
+    const backdrop = document.getElementById('icraBottomSheetBackdrop');
+    const sheet = document.getElementById('icraFormArea');
+    backdrop.classList.add('opacity-0', 'pointer-events-none');
+    backdrop.classList.remove('opacity-100');
+    sheet.classList.add('translate-y-full');
+    setTimeout(() => backdrop.classList.add('hidden'), 300);
+}
+
+function toggleIcraKesintiFields() {
+    const tip = document.getElementById('modal_icra_kesinti_tipi').value;
+    const divTutar = document.getElementById('div_modal_icra_aylik_kesinti');
+    const divOran = document.getElementById('div_modal_icra_kesinti_orani');
+    
+    if (tip === 'tutar') {
+        divTutar.style.display = 'block';
+        divOran.style.display = 'none';
+    } else {
+        divTutar.style.display = 'none';
+        divOran.style.display = 'block';
+    }
+}
+
+function saveIcra() {
+    const form = document.getElementById('icraMobileForm');
+    const icraId = document.getElementById('modal_icra_id').value;
+    const action = icraId ? 'update_icra' : 'save_icra';
+    
+    const formData = new FormData(form);
+    formData.append('action', action);
+    
+    const btn = event.currentTarget;
+    const originalContent = btn.innerHTML;
+    btn.disabled = true;
+    btn.innerHTML = '<div class="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin"></div>';
+    
+    fetch('../views/personel/ajax/kesinti-islemleri.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.success) {
+            Toast.show(icraId ? "Güncellendi" : "Kaydedildi", "success");
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            Toast.show(data.error || "Hata oluştu", "error");
+            btn.disabled = false;
+            btn.innerHTML = originalContent;
+        }
+    })
+    .catch(err => {
+        Toast.show("Bağlantı hatası", "error");
+        btn.disabled = false;
+        btn.innerHTML = originalContent;
+    });
+}
+
+function editIcra(id) {
+    fetch('../views/personel/ajax/kesinti-islemleri.php?action=get_icra&id=' + id + '&personel_id=<?= $personel_id ?>')
+    .then(res => res.json())
+    .then(data => {
+        if(data && !data.error) {
+            const idField = document.getElementById('modal_icra_id');
+            if(!idField) {
+                console.error("modal_icra_id bulunamadı!");
+                Toast.show("Form yüklenemedi. Lütfen sayfayı yenileyiniz.", "error");
+                return;
+            }
+            
+            idField.value = data.id;
+            document.getElementById('icraFormTitle').innerText = 'İcra Dosyası Düzenle';
+            document.getElementById('modal_icra_sira').value = data.sira || '';
+            document.getElementById('modal_icra_durum').value = data.durum || 'devam_ediyor';
+            document.getElementById('modal_icra_dairesi').value = data.icra_dairesi || '';
+            document.getElementById('modal_icra_dosya_no').value = data.dosya_no || '';
+            document.getElementById('modal_icra_toplam_borc').value = data.toplam_borc || '0,00';
+            document.getElementById('modal_icra_iban').value = data.iban || '';
+            document.getElementById('modal_icra_hesap_bilgileri').value = data.hesap_bilgileri || '';
+            document.getElementById('modal_icra_kesinti_tipi').value = data.kesinti_tipi || 'tutar';
+            document.getElementById('modal_icra_aylik_kesinti').value = data.aylik_kesinti_tutari || '0,00';
+            document.getElementById('modal_icra_kesinti_orani').value = data.kesinti_orani || 25;
+            document.getElementById('modal_icra_baslangic').value = data.baslangic_tarihi || '';
+            document.getElementById('modal_icra_bitis').value = (data.bitis_tarihi && data.bitis_tarihi != '00.00.0000' && data.bitis_tarihi != '0000-00-00') ? data.bitis_tarihi : '';
+            document.getElementById('modal_icra_aciklama').value = data.aciklama || '';
+            
+            toggleIcraKesintiFields();
+            
+            const backdrop = document.getElementById('icraBottomSheetBackdrop');
+            const sheet = document.getElementById('icraFormArea');
+            if (backdrop && sheet) {
+                backdrop.classList.remove('hidden');
+                setTimeout(() => {
+                    backdrop.classList.remove('opacity-0', 'pointer-events-none');
+                    backdrop.classList.add('opacity-100');
+                    sheet.classList.remove('translate-y-full');
+                }, 10);
+            }
+        }
+    });
+}
+
+async function deleteIcra(id) {
+    const isConfirmed = await Alert.confirmDelete("Sil", "Bu icra dosyası ve tüm geçmişi silinecektir!");
+    if(!isConfirmed) return;
+    
+    const formData = new FormData();
+    formData.append('action', 'delete_icra');
+    formData.append('id', id);
+    formData.append('personel_id', '<?= $personel_id ?>');
+    
+    fetch('../views/personel/ajax/kesinti-islemleri.php', {
+        method: 'POST',
+        body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.success) {
+            Toast.show("Dosya silindi", "success");
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            Toast.show(data.error || "Silme başarısız", "error");
+        }
+    });
+}
+
+function viewIcraKesintileri(id, dairesi, dosyaNo, toplamBorc) {
+    document.getElementById('icraHistoryTitle').innerText = dairesi;
+    document.getElementById('icraHistorySubtitle').innerText = dosyaNo;
+    const listContainer = document.getElementById('icraHistoryList');
+    listContainer.innerHTML = '<div class="flex justify-center p-8"><div class="w-8 h-8 border-2 border-indigo-600/30 border-t-indigo-600 rounded-full animate-spin"></div></div>';
+    
+    const backdrop = document.getElementById('icraHistoryBottomSheetBackdrop');
+    const sheet = document.getElementById('icraHistoryArea');
+    backdrop.classList.remove('hidden');
+    setTimeout(() => {
+        backdrop.classList.remove('opacity-0', 'pointer-events-none');
+        backdrop.classList.add('opacity-100');
+        sheet.classList.remove('translate-y-full');
+    }, 10);
+
+    fetch('../views/personel/ajax/kesinti-islemleri.php?action=get_icra_kesintileri&icra_id=' + id + '&personel_id=<?= $personel_id ?>')
+    .then(res => res.json())
+    .then(data => {
+        const kesintiler = data.kesintiler || [];
+        let html = '';
+        let totalKesilen = 0;
+        
+        if (kesintiler.length === 0) {
+            html = '<div class="text-center p-8 text-slate-400 font-bold">Henüz kesinti kaydı bulunamadı.</div>';
+        } else {
+            kesintiler.forEach(k => {
+                const tutar = parseFloat(k.tutar);
+                totalKesilen += tutar;
+                const date = new Date(k.olusturma_tarihi).toLocaleDateString('tr-TR');
+                const badgeClass = k.durum === 'onaylandi' ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20' : 'bg-amber-50 text-amber-600 dark:bg-amber-900/20';
+                
+                html += `
+                    <div class="bg-slate-50 dark:bg-slate-800/50 rounded-2xl p-3 border border-slate-100 dark:border-slate-800">
+                        <div class="flex justify-between items-start mb-1">
+                            <span class="text-[11px] font-black text-slate-800 dark:text-white uppercase leading-tight">${k.donem_adi || '-'}</span>
+                            <span class="text-[12px] font-black text-indigo-600">${new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2 }).format(tutar)} ₺</span>
+                        </div>
+                        <div class="flex justify-between items-center">
+                            <span class="text-[10px] text-slate-500 font-medium">${k.aciklama || 'Kesinti'}</span>
+                            <span class="px-2 py-0.5 rounded-full text-[8px] font-black uppercase tracking-wider ${badgeClass}">${k.durum === 'onaylandi' ? 'ONAYLI' : 'BEKLEMEDE'}</span>
+                        </div>
+                        <div class="mt-1 pt-1 border-t border-slate-200/50 dark:border-slate-700/50">
+                            <span class="text-[8px] text-slate-400 font-bold uppercase tracking-widest italic">${date}</span>
+                        </div>
+                    </div>
+                `;
+            });
+        }
+        
+        listContainer.innerHTML = html;
+        document.getElementById('stat_icra_kesilen').innerText = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2 }).format(totalKesilen) + ' ₺';
+        document.getElementById('stat_icra_kalan').innerText = new Intl.NumberFormat('tr-TR', { minimumFractionDigits: 2 }).format(toplamBorc - totalKesilen) + ' ₺';
+    });
+}
+
+function closeIcraHistory() {
+    const backdrop = document.getElementById('icraHistoryBottomSheetBackdrop');
+    const sheet = document.getElementById('icraHistoryArea');
+    backdrop.classList.add('opacity-0', 'pointer-events-none');
+    backdrop.classList.remove('opacity-100');
+    sheet.classList.add('translate-y-full');
+    setTimeout(() => backdrop.classList.add('hidden'), 300);
+}
+
 // Swipe Mantığı (İzin Kartları İçin)
 (function() {
     let touchStartX = 0;
@@ -1808,6 +2592,90 @@ async function deleteEvrak(id) {
     })
     .catch(err => Toast.show("Sunucu hatası.", "error"));
 }
+
+function filterIzinlerByYear() {
+    const selectedYear = document.getElementById('izinYearFilter').value;
+    const containers = document.querySelectorAll('.izin-item-container');
+    let visibleCount = 0;
+
+    containers.forEach(container => {
+        const content = container.querySelector('.swipe-content');
+        const jsonStr = content.getAttribute('data-izin');
+        if (jsonStr) {
+            try {
+                // Decode HTML entities (en güvenli yol)
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = jsonStr;
+                const decodedJson = tempDiv.textContent || tempDiv.innerText;
+                const data = JSON.parse(decodedJson);
+                
+                // Başlangıç tarihine göre yıl kontrolü
+                const startYear = data.baslangic_tarihi.split('-')[0]; // YYYY-MM-DD varsayımı
+                
+                if (selectedYear === 'all' || startYear === selectedYear) {
+                    container.classList.remove('hidden');
+                    visibleCount++;
+                } else {
+                    container.classList.add('hidden');
+                }
+            } catch (e) {
+                console.error("Year filter error:", e);
+            }
+        }
+    });
+
+    const emptyMsg = document.getElementById('izinEmptyMsg');
+    if (emptyMsg) {
+        if (visibleCount === 0) {
+            emptyMsg.classList.remove('hidden');
+        } else {
+            emptyMsg.classList.add('hidden');
+        }
+    }
+}
+
+// Select2 Initialization and Filter Trigger
+$(document).ready(function() {
+    // Flatpickr Initialization
+    if($('.flatpickr-date').length > 0) {
+        $('.flatpickr-date').flatpickr({
+            locale: 'tr',
+            dateFormat: "d.m.Y",
+            allowInput: true,
+            disableMobile: true // Native picker yerine flatpickr kullanılsın
+        });
+    }
+
+    if($('#izinYearFilter').length > 0) {
+        $('#izinYearFilter').select2({
+            minimumResultsForSearch: Infinity,
+            width: '100px',
+            dropdownCssClass: 'select2-small-dropdown'
+        });
+        
+        // İlk açılışta filtrelemeyi çalıştır (seçili gelen yıla göre)
+        setTimeout(() => {
+            filterIzinlerByYear();
+        }, 300);
+    }
+
+    // İş Takip Filtreleri
+    if ($('#isTakipYear').length > 0) {
+        $('#isTakipYear, #isTakipMonth').select2({
+            minimumResultsForSearch: Infinity,
+            width: '100%',
+            dropdownCssClass: 'select2-small-dropdown'
+        }).on('change', function() {
+            loadPersonelIsTakip();
+        });
+    }
+
+    // Eğer sayfa yüklendiğinde Puantaj sekmesi aktifse verileri çek
+    const activeTab = '<?= $activeTab ?>';
+    if (activeTab === 'puantaj') {
+        setTimeout(loadPersonelIsTakip, 500);
+    }
+});
 
 function viewEvrak(path, title, type) {
     // Mobil için en iyi yöntem dosyayı yeni sekmede açmak veya indirmektir

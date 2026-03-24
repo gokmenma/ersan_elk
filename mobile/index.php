@@ -172,6 +172,8 @@ foreach ($final_sorted_menus as $pKey => $mData) {
 }
 
 $isMoreActive = in_array($page, $more_pages);
+if ($page === 'personel-duzenle' && in_array('personel', $more_pages)) $isMoreActive = true;
+if ($page === 'hesap-hareketleri' && in_array('cari-takip', $more_pages)) $isMoreActive = true;
 
 // Bildirim Sayısı
 $unreadNotificationCount = 0;
@@ -624,10 +626,14 @@ try {
     <!-- Alt Navigasyon -->
     <nav class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark border-t border-slate-200 dark:border-slate-700 safe-area-bottom z-50 shadow-lg">
         <div class="flex items-center justify-around px-2 py-1">
-            <?php foreach ($nav_items as $item): ?>
+            <?php foreach ($nav_items as $item): 
+                $isActive = ($page === $item['page']);
+                if ($page === 'personel-duzenle' && $item['page'] === 'personel') $isActive = true;
+                if ($page === 'hesap-hareketleri' && $item['page'] === 'cari-takip') $isActive = true;
+            ?>
                 <a href="?p=<?= $item['page'] ?>"
-                    class="nav-item flex flex-col items-center gap-0.5 py-2 px-3 rounded-xl transition-all <?= $page === $item['page'] ? 'text-primary' : 'text-slate-400 dark:text-slate-500' ?>">
-                    <span class="material-symbols-outlined text-[26px] <?= $page === $item['page'] ? 'filled' : '' ?>"><?= $item['icon'] ?></span>
+                    class="nav-item flex flex-col items-center gap-0.5 py-2 px-3 rounded-xl transition-all <?= $isActive ? 'text-primary' : 'text-slate-400 dark:text-slate-500' ?>">
+                    <span class="material-symbols-outlined text-[26px] <?= $isActive ? 'filled' : '' ?>"><?= $item['icon'] ?></span>
                     <span class="text-[10px] font-semibold"><?= $item['label'] ?></span>
                 </a>
             <?php endforeach; ?>

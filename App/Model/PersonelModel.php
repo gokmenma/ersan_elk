@@ -1065,8 +1065,10 @@ class PersonelModel extends Model
         // İzinli Personel Sayısı
         $sqlIzinli = "SELECT COUNT(*) as izinli FROM personel_izinleri pi
                       JOIN personel p ON pi.personel_id = p.id
+                      LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
                       WHERE pi.baslangic_tarihi <= :bugun AND pi.bitis_tarihi >= :bugun 
-                      AND pi.onay_durumu = 'Onaylandı' AND p.firma_id = :firma_id AND pi.silinme_tarihi IS NULL";
+                      AND pi.onay_durumu = 'Onaylandı' AND p.firma_id = :firma_id AND pi.silinme_tarihi IS NULL
+                      AND (t.kisa_kod IS NULL OR t.kisa_kod NOT IN ('X', 'x'))";
         $stmtI = $this->db->prepare($sqlIzinli);
         $stmtI->execute(['bugun' => $bugun, 'firma_id' => $firmaId]);
         $izinliRecord = $stmtI->fetch(PDO::FETCH_OBJ);
@@ -1115,8 +1117,10 @@ class PersonelModel extends Model
         // İzinli Personel Sayısı (Bu ay içinde en az bir gün izin kullanan benzersiz personeller)
         $sqlIzinli = "SELECT COUNT(DISTINCT personel_id) as izinli FROM personel_izinleri pi
                       JOIN personel p ON pi.personel_id = p.id
+                      LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
                       WHERE ((pi.baslangic_tarihi <= :sonGun AND pi.bitis_tarihi >= :buAy))
-                      AND pi.onay_durumu = 'Onaylandı' AND p.firma_id = :firma_id AND pi.silinme_tarihi IS NULL";
+                      AND pi.onay_durumu = 'Onaylandı' AND p.firma_id = :firma_id AND pi.silinme_tarihi IS NULL
+                      AND (t.kisa_kod IS NULL OR t.kisa_kod NOT IN ('X', 'x'))";
         $stmtI = $this->db->prepare($sqlIzinli);
         $stmtI->execute(['buAy' => $buAy, 'sonGun' => $sonGun, 'firma_id' => $firmaId]);
         $izinliCount = $stmtI->fetch(PDO::FETCH_OBJ)->izinli ?? 0;

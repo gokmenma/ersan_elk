@@ -104,13 +104,13 @@ $renkler = [
         <div class="flex gap-2 flex-1">
             <div class="text-center">
                 <div class="bg-white/20 rounded-xl px-2 py-1 backdrop-blur-sm min-w-[50px]">
-                    <span class="block text-lg font-bold leading-none"><?= $aktifToplam ?></span>
+                    <span id="total-aktif-count" class="block text-lg font-bold leading-none"><?= $aktifToplam ?></span>
                     <span class="text-[9px] uppercase tracking-wider text-white/90">Bekliyor</span>
                 </div>
             </div>
             <div class="text-center">
                 <div class="bg-white/10 rounded-xl px-2 py-1 backdrop-blur-sm border border-white/20 min-w-[50px]">
-                    <span class="block text-lg font-bold leading-none"><?= $tamamlananToplam ?></span>
+                    <span id="total-completed-count" class="block text-lg font-bold leading-none"><?= $tamamlananToplam ?></span>
                     <span class="text-[9px] uppercase tracking-wider text-white/90">Biten</span>
                 </div>
             </div>
@@ -147,7 +147,7 @@ $renkler = [
                     <div class="flex items-center gap-2">
                         <div class="w-3 h-3 rounded-full" style="background-color: <?= $liste['renk'] ?>"></div>
                         <h3 class="font-bold text-slate-800 dark:text-white text-sm tracking-wide"><?= htmlspecialchars($liste['liste_adi']) ?></h3>
-                        <span class="text-slate-500 dark:text-slate-400 text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/50 dark:bg-black/20">
+                        <span id="list-count-<?= $liste['id'] ?>" class="text-slate-500 dark:text-slate-400 text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/50 dark:bg-black/20">
                             <?= count($liste['aktif']) ?>
                         </span>
                     </div>
@@ -163,7 +163,7 @@ $renkler = [
                         <div class="space-y-1 mb-2">
                             <?php foreach ($liste['aktif'] as $g): ?>
                                 <?php $encTaskId = Security::encrypt($g->id); ?>
-                                <div class="flex items-start gap-2 p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
+                                <div id="gorev-<?= $encTaskId ?>" data-list-id="<?= $liste['id'] ?>" class="flex items-start gap-2 p-2 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors group">
                                     <label class="relative flex items-center justify-center pt-0.5 cursor-pointer flex-shrink-0">
                                         <input type="checkbox" class="task-check peer appearance-none w-5 h-5 border-2 border-slate-300 dark:border-slate-600 rounded-full checked:bg-green-500 checked:border-green-500 transition-all"
                                                data-id="<?= $encTaskId ?>" 
@@ -185,12 +185,17 @@ $renkler = [
                                             <?php if (!empty($g->aciklama)): ?>
                                                 <p class="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-1"><?= htmlspecialchars($g->aciklama) ?></p>
                                             <?php endif; ?>
-                                            <?php if (!empty($g->tarih)): ?>
-                                                <div class="flex items-center gap-1 mt-1 text-[10px] font-medium text-slate-400">
-                                                    <span class="material-symbols-outlined text-[12px]">calendar_today</span>
-                                                    <span><?= date('d.m.Y', strtotime($g->tarih)) ?> <?= !empty($g->saat) ? substr($g->saat, 0, 5) : '' ?></span>
-                                                </div>
-                                            <?php endif; ?>
+                                            <div class="flex items-center gap-2 mt-1">
+                                                <?php if (!empty($g->tarih)): ?>
+                                                    <div class="flex items-center gap-1 text-[10px] font-medium text-slate-400">
+                                                        <span class="material-symbols-outlined text-[12px]">calendar_today</span>
+                                                        <span><?= date('d.m.Y', strtotime($g->tarih)) ?> <?= !empty($g->saat) ? substr($g->saat, 0, 5) : '' ?></span>
+                                                    </div>
+                                                <?php endif; ?>
+                                                <?php if (!empty($g->yineleme_sikligi)): ?>
+                                                    <span class="material-symbols-outlined text-[13px] text-blue-500" title="Tekrarlanan Görev">sync</span>
+                                                <?php endif; ?>
+                                            </div>
                                         </div>
                                         <button type="button" onclick="openGorevActionsOverlay('<?= $encTaskId ?>')" class="text-slate-300 hover:text-slate-500 flex-shrink-0 p-1">
                                             <span class="material-symbols-outlined text-lg">more_horiz</span>
@@ -209,13 +214,13 @@ $renkler = [
                     <?php if (count($liste['tamamlanan']) > 0): ?>
                         <div class="pt-2">
                             <button type="button" class="w-full flex items-center justify-between px-3 py-2 bg-slate-50 dark:bg-slate-800 rounded-lg text-slate-600 dark:text-slate-300 text-xs font-semibold active:opacity-70 transition-opacity completed-toggle-btn">
-                                <span>Tamamlananlar (<?= count($liste['tamamlanan']) ?>)</span>
+                                <span class="completed-count-text" data-list-id="<?= $liste['id'] ?>" data-count="<?= count($liste['tamamlanan']) ?>">Tamamlananlar (<?= count($liste['tamamlanan']) ?>)</span>
                                 <span class="material-symbols-outlined text-[18px] transition-transform duration-300 completed-chevron">expand_more</span>
                             </button>
                             
                             <div class="completed-tasks hidden space-y-1 mt-2">
                                 <?php foreach ($liste['tamamlanan'] as $g): ?>
-                                    <div class="flex items-start gap-2 p-2 rounded-xl bg-slate-50/50 dark:bg-slate-800/20">
+                                    <div id="gorev-<?= Security::encrypt($g->id) ?>" data-list-id="<?= $liste['id'] ?>" class="flex items-start gap-2 p-2 rounded-xl bg-slate-50/50 dark:bg-slate-800/20">
                                         <label class="relative flex items-center justify-center pt-0.5 opacity-70 cursor-pointer flex-shrink-0">
                                             <input type="checkbox" checked class="task-check peer appearance-none w-5 h-5 border-2 border-green-500 bg-green-500 rounded-full transition-all"
                                                    data-id="<?= Security::encrypt($g->id) ?>" 
@@ -223,7 +228,12 @@ $renkler = [
                                             <span class="material-symbols-outlined absolute text-white text-[14px] pointer-events-none">check</span>
                                         </label>
                                         <div class="flex-1 min-w-0 opacity-70 flex justify-between gap-2">
-                                            <p class="text-[13px] font-medium text-slate-500 dark:text-slate-400 line-through leading-snug mt-0.5"><?= htmlspecialchars($g->baslik) ?></p>
+                                            <div>
+                                                <p class="text-[13px] font-medium text-slate-500 dark:text-slate-400 line-through leading-snug mt-0.5"><?= htmlspecialchars($g->baslik) ?></p>
+                                                <?php if (!empty($g->yineleme_sikligi)): ?>
+                                                    <span class="material-symbols-outlined text-[13px] text-slate-400" title="Tekrarlanan Görev">sync</span>
+                                                <?php endif; ?>
+                                            </div>
                                             <button type="button" onclick="deleteGorevDirect('<?= Security::encrypt($g->id) ?>')" class="text-slate-300 hover:text-red-500 flex-shrink-0">
                                                 <span class="material-symbols-outlined text-sm">delete</span>
                                             </button>
@@ -675,7 +685,37 @@ async function deleteGorevDirect(id) {
         const res = await fetch('../views/gorevler/api.php', { method: 'POST', body: fd });
         const data = await res.json();
         Toast.show('Görev silindi.', 'success');
-        setTimeout(() => window.location.reload(), 1000);
+        const taskEl = document.getElementById('gorev-' + id);
+        if (taskEl) {
+            const listId = taskEl.dataset.listId;
+            const isCompleted = taskEl.querySelector('.task-check').checked;
+            
+            const totalAktif = document.getElementById('total-aktif-count');
+            const totalCompleted = document.getElementById('total-completed-count');
+            const listCountCounter = document.getElementById('list-count-' + listId);
+
+            if (isCompleted) {
+                if (totalCompleted) totalCompleted.textContent = Math.max(0, parseInt(totalCompleted.textContent) - 1);
+                
+                // Update list's completed count text
+                const completedBtnText = document.querySelector(`.completed-count-text[data-list-id="${listId}"]`);
+                if (completedBtnText) {
+                    let cCount = parseInt(completedBtnText.dataset.count) || 0;
+                    cCount = Math.max(0, cCount - 1);
+                    completedBtnText.dataset.count = cCount;
+                    completedBtnText.textContent = `Tamamlananlar (${cCount})`;
+                }
+            } else {
+                if (totalAktif) totalAktif.textContent = Math.max(0, parseInt(totalAktif.textContent) - 1);
+                if (listCountCounter) listCountCounter.textContent = Math.max(0, parseInt(listCountCounter.textContent) - 1);
+            }
+
+            taskEl.style.transition = 'all 0.3s ease';
+            taskEl.style.opacity = '0';
+            taskEl.style.transform = 'scale(0.9)';
+            setTimeout(() => taskEl.remove(), 300);
+        }
+        hideLoader();
     } catch {
         Toast.show('Silme sırasında hata oluştu.', 'error');
         hideLoader();
@@ -702,7 +742,39 @@ document.addEventListener('DOMContentLoaded', () => {
                 const data = await res.json();
                 if (data.success) {
                     Toast.show('İşlem başarılı', 'success');
-                    setTimeout(() => window.location.reload(), 1000); 
+                    
+                    const taskEl = document.getElementById('gorev-' + gorevId);
+                    if (taskEl) {
+                        const listId = taskEl.dataset.listId;
+                        const totalAktif = document.getElementById('total-aktif-count');
+                        const totalCompleted = document.getElementById('total-completed-count');
+                        const listCountCounter = document.getElementById('list-count-' + listId);
+
+                        if (action === 'tamamla') {
+                            if (totalAktif) totalAktif.textContent = Math.max(0, parseInt(totalAktif.textContent) - 1);
+                            if (totalCompleted) totalCompleted.textContent = parseInt(totalCompleted.textContent) + 1;
+                            if (listCountCounter) listCountCounter.textContent = Math.max(0, parseInt(listCountCounter.textContent) - 1);
+                        } else {
+                            if (totalAktif) totalAktif.textContent = parseInt(totalAktif.textContent) + 1;
+                            if (totalCompleted) totalCompleted.textContent = Math.max(0, parseInt(totalCompleted.textContent) - 1);
+                            if (listCountCounter) listCountCounter.textContent = parseInt(listCountCounter.textContent) + 1;
+                        }
+
+                        // Update list's completed count text
+                        const completedBtnText = document.querySelector(`.completed-count-text[data-list-id="${listId}"]`);
+                        if (completedBtnText) {
+                            let cCount = parseInt(completedBtnText.dataset.count) || 0;
+                            if (action === 'tamamla') cCount++; else cCount--;
+                            completedBtnText.dataset.count = cCount;
+                            completedBtnText.textContent = `Tamamlananlar (${cCount})`;
+                        }
+
+                        taskEl.style.transition = 'all 0.4s cubic-bezier(0.4, 0, 0.2, 1)';
+                        taskEl.style.opacity = '0';
+                        taskEl.style.transform = 'translateX(30px)';
+                        setTimeout(() => taskEl.remove(), 400);
+                    }
+                    hideLoader();
                 }
                 else { Toast.show(data.message, 'error'); e.target.checked = !isChecked; hideLoader(); }
             } catch (err) {
@@ -798,7 +870,7 @@ function clearYineleme() {
 function saveYinelemeSheet() {
     const sikligi = document.getElementById('ySikligi').value || 1;
     const birimi = document.getElementById('yBirimi').value;
-    const bitisTipi = document.querySelector('input[name="yBitisTipi"]:checked').val();
+    const bitisTipi = document.querySelector('input[name="yBitisTipi"]:checked').value;
     
     const selectedGunler = Array.from(document.querySelectorAll('.gun-btn.selected')).map(btn => btn.dataset.gun).join(',');
     

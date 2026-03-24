@@ -215,6 +215,31 @@ if (!empty($dbGelirler)) {
         .dropdown-menu .show {
             z-index: 1060;
         }
+
+        .floating-action-container {
+            transition: all 0.3s ease;
+        }
+        .floating-action-container.scrolled {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            z-index: 1080;
+            padding: 8px 12px;
+            background: #fff;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.2) !important;
+            border: 1px solid rgba(0,0,0,0.1) !important;
+            border-radius: 50px;
+            animation: slideUpFade 0.3s ease forwards;
+        }
+        [data-bs-theme="dark"] .floating-action-container.scrolled {
+            background: #2a3042;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5) !important;
+            border-color: rgba(255,255,255,0.1) !important;
+        }
+        @keyframes slideUpFade {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
     </style>
 
     <div class="row">
@@ -298,64 +323,66 @@ if (!empty($dbGelirler)) {
                                         Güncelle</span>
                                 </button>
                                 <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                                <div class="dropdown">
-                                    <button class="btn btn-link btn-sm px-3 fw-bold dropdown-toggle" type="button"
-                                        data-bs-toggle="dropdown" aria-expanded="false">
-                                        <i class="mdi mdi-menu me-1"></i> İşlemler
-                                        <i class="mdi mdi-chevron-down"></i>
+                                <div id="floatingActionContainer" class="d-flex align-items-center gap-1 floating-action-container">
+                                    <div class="dropdown" id="islemlerDropdown">
+                                        <button class="btn btn-link btn-sm px-3 fw-bold dropdown-toggle" type="button"
+                                            data-bs-toggle="dropdown" aria-expanded="false">
+                                            <i class="mdi mdi-menu me-1"></i> İşlemler
+                                            <i class="mdi mdi-chevron-down"></i>
+                                        </button>
+                                        <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
+                                            <li>
+                                                <a class="dropdown-item py-2" href="javascript:void(0);" id="btnExportExcel">
+                                                    <i class="mdi mdi-file-excel me-2 text-success fs-5"></i> Excel'e İndir
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item py-2" href="javascript:void(0);"
+                                                    id="btnExportExcelBanka">
+                                                    <i class="mdi mdi-bank me-2 text-primary fs-5"></i> Excel'e İndir (Banka)
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item py-2" href="javascript:void(0);"
+                                                    id="btnExportExcelSodexo">
+                                                    <i class="mdi mdi-food me-2 text-info fs-5"></i> Excel'e İndir (Sodexo)
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <hr class="dropdown-divider">
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item py-2 <?= $donemKapali ? 'disabled' : '' ?>"
+                                                    href="javascript:void(0);" data-bs-toggle="modal"
+                                                    data-bs-target="#gelirEkleModal">
+                                                    <i class="mdi mdi-plus-box me-2 text-primary fs-5"></i> Gelir Ekle (Excel)
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item py-2 <?= $donemKapali ? 'disabled' : '' ?>"
+                                                    href="javascript:void(0);" data-bs-toggle="modal"
+                                                    data-bs-target="#kesintiEkleModal">
+                                                    <i class="mdi mdi-minus-box me-2 text-danger fs-5"></i> Kesinti Ekle (Excel)
+                                                </a>
+                                            </li>
+                                            <li>
+                                                <a class="dropdown-item py-2 <?= $donemKapali ? 'disabled' : '' ?>"
+                                                    href="javascript:void(0);" data-bs-toggle="modal"
+                                                    data-bs-target="#odemeEkleModal">
+                                                    <i class="mdi mdi-wallet me-2 text-info fs-5"></i> Ödeme Dağıt (Excel)
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+                                    <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+    
+                                    <button type="button"
+                                        class="btn btn-primary btn-sm text-white shadow-primary text-decoration-none px-2 d-flex align-items-center"
+                                        id="btnHesapla" <?= $donemKapali ? 'disabled' : '' ?>>
+                                        <i class="mdi mdi-calculator fs-5 me-1"></i> <span class="d-none d-xl-inline">Maaş
+                                            Hesapla</span>
                                     </button>
-                                    <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
-                                        <li>
-                                            <a class="dropdown-item py-2" href="javascript:void(0);" id="btnExportExcel">
-                                                <i class="mdi mdi-file-excel me-2 text-success fs-5"></i> Excel'e İndir
-                                            </a>
-                                        </li>
-                                        <li>
-                                            <a class="dropdown-item py-2" href="javascript:void(0);"
-                                                id="btnExportExcelBanka">
-                                                <i class="mdi mdi-bank me-2 text-primary fs-5"></i> Excel'e İndir (Banka)
-                                            </a>
-                                        </li>
-                                        <li>
-                                            <a class="dropdown-item py-2" href="javascript:void(0);"
-                                                id="btnExportExcelSodexo">
-                                                <i class="mdi mdi-food me-2 text-info fs-5"></i> Excel'e İndir (Sodexo)
-                                            </a>
-                                        </li>
-                                        <li>
-                                            <hr class="dropdown-divider">
-                                        </li>
-                                        <li>
-                                            <a class="dropdown-item py-2 <?= $donemKapali ? 'disabled' : '' ?>"
-                                                href="javascript:void(0);" data-bs-toggle="modal"
-                                                data-bs-target="#gelirEkleModal">
-                                                <i class="mdi mdi-plus-box me-2 text-primary fs-5"></i> Gelir Ekle (Excel)
-                                            </a>
-                                        </li>
-                                        <li>
-                                            <a class="dropdown-item py-2 <?= $donemKapali ? 'disabled' : '' ?>"
-                                                href="javascript:void(0);" data-bs-toggle="modal"
-                                                data-bs-target="#kesintiEkleModal">
-                                                <i class="mdi mdi-minus-box me-2 text-danger fs-5"></i> Kesinti Ekle (Excel)
-                                            </a>
-                                        </li>
-                                        <li>
-                                            <a class="dropdown-item py-2 <?= $donemKapali ? 'disabled' : '' ?>"
-                                                href="javascript:void(0);" data-bs-toggle="modal"
-                                                data-bs-target="#odemeEkleModal">
-                                                <i class="mdi mdi-wallet me-2 text-info fs-5"></i> Ödeme Dağıt (Excel)
-                                            </a>
-                                        </li>
-                                    </ul>
                                 </div>
-                                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-
-                                <button type="button"
-                                    class="btn btn-primary btn-sm text-white shadow-primary text-decoration-none px-2 d-flex align-items-center"
-                                    id="btnHesapla" <?= $donemKapali ? 'disabled' : '' ?>>
-                                    <i class="mdi mdi-calculator fs-5 me-1"></i> <span class="d-none d-xl-inline">Maaş
-                                        Hesapla</span>
-                                </button>
 
                             <?php endif; ?>
                         </div>
@@ -1568,5 +1595,28 @@ if (!empty($dbGelirler)) {
     </div>
 
 </div>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var floatContainer = document.getElementById('floatingActionContainer');
+        var islemlerDropdown = document.getElementById('islemlerDropdown');
+        
+        if (floatContainer) {
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 250) {
+                    floatContainer.classList.add('scrolled');
+                    if (islemlerDropdown) {
+                        islemlerDropdown.classList.add('dropup');
+                    }
+                } else {
+                    floatContainer.classList.remove('scrolled');
+                    if (islemlerDropdown) {
+                        islemlerDropdown.classList.remove('dropup');
+                    }
+                }
+            });
+        }
+    });
+</script>
 
 <script src="views/bordro/js/bordro.js?v=<?= time() ?>"></script>

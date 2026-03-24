@@ -2654,14 +2654,22 @@ class BordroPersonelModel extends Model
             }
 
             $toplamIcraBudget = 0;
-            // USER REQ: (Asgari Ücret / 30) * Çalışılan Gün
+            // USER REQ: (Asgari Ücret / 30) * Çalışılan Gün (Maaş alınan gün üzerinden hesaplanmalı)
             $asgariDaily = $asgariUcretNet / 30;
-            $asgariCalculatedBase = $asgariDaily * $fiiliCalismaGunu;
+            $asgariCalculatedBase = $asgariDaily * $maasHesapGunu;
 
             if ($firstHTip === 'asgari_oran_net' || $firstHTip === 'oran_net') {
                 // Her iki tip de artık aynı formülü takip ediyor (Image 1: 28.075,50 / 30 * 22 * 0.25)
                 $oranKullan = ($firstOran > 0) ? $firstOran : 25;
-                $toplamIcraBudget = round($asgariCalculatedBase * ($oranKullan / 100), 2);
+
+                // USER REQ: Eğer personelin hakedişi (net alacağı) asgari ücretten küçükse, 
+                // az olan tutar üzerinden (yani personelin kendi hakedişi) icra hesaplanmalı.
+                $icraHesabaEsasTutar = $asgariCalculatedBase;
+                if ($hakedisNet < $asgariCalculatedBase) {
+                    $icraHesabaEsasTutar = max(0, $hakedisNet);
+                }
+                
+                $toplamIcraBudget = round($icraHesabaEsasTutar * ($oranKullan / 100), 2);
             } else {
                 // Sabit tutar
                 $sabitToplam = 0;

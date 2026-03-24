@@ -1713,6 +1713,18 @@ if (isset($_GET["action"]) && $_GET["action"] == "get-mobile-personel-details") 
     exit;
 }
 
+// Mobil Personel Is Takibi Getir (Hepsi Bir Arada)
+if (isset($_GET["action"]) && $_GET["action"] == "get-mobile-personel-is-takip") {
+    require_once 'rapor-personel-is-takip.php';
+    exit;
+}
+
+// Mobil Personel Is Takibi Ozet (Sekme Kontrolu Icin)
+if (isset($_GET["action"]) && $_GET["action"] == "get-mobile-personel-is-takip-summary") {
+    require_once 'rapor-personel-is-takip-summary.php';
+    exit;
+}
+
 // Karşılaştırma Raporu Getir
 if (isset($_GET["action"]) && $_GET["action"] == "get-comparison-report") {
     require_once 'karsilastirma-getir.php';
