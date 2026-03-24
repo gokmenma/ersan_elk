@@ -39,7 +39,7 @@ class PersonelIzinleriModel extends Model
                 LEFT JOIN users as u ON u.id = io.onaylayan_id
                 LEFT JOIN tanimlamalar as t ON t.id = pi.izin_tipi_id
                 WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL
-                AND t.kisa_kod NOT IN ('X', 'x')
+                AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
                 ORDER BY pi.id DESC, io.id ASC";
 
         $query = $this->db->prepare($sql);
@@ -80,7 +80,7 @@ class PersonelIzinleriModel extends Model
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.onay_durumu = 'beklemede' AND pi.silinme_tarihi IS NULL AND p.firma_id = ? 
-            AND (t.kisa_kod IS NULL OR t.kisa_kod NOT IN ('X', 'x'))
+            AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
         ");
         $sql->execute([$_SESSION['firma_id']]);
         return $sql->fetch(PDO::FETCH_OBJ)->count ?? 0;
@@ -99,7 +99,7 @@ class PersonelIzinleriModel extends Model
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.onay_durumu = 'beklemede' AND pi.silinme_tarihi IS NULL AND p.firma_id = ? 
-            AND (t.kisa_kod IS NULL OR t.kisa_kod NOT IN ('X', 'x'))
+            AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
             LIMIT {$limit}
         ");
         $sql->execute([$_SESSION['firma_id']]);
@@ -119,7 +119,7 @@ class PersonelIzinleriModel extends Model
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ? AND pi.onay_durumu = 'Onaylandı' AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
-            AND (t.kisa_kod IS NULL OR t.kisa_kod NOT IN ('X', 'x'))
+            AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
             ORDER BY pi.bitis_tarihi ASC
             LIMIT {$limit}
         ");
@@ -138,7 +138,7 @@ class PersonelIzinleriModel extends Model
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.onay_durumu = 'beklemede' AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
-            AND (t.kisa_kod IS NULL OR t.kisa_kod NOT IN ('X', 'x'))
+            AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
             ORDER BY pi.talep_tarihi DESC
         ");
         $sql->execute([$_SESSION['firma_id']]);
@@ -172,7 +172,7 @@ class PersonelIzinleriModel extends Model
                 OR aciklama LIKE 'SGK Vizite%'
                 OR aciklama LIKE 'Otomatik onaylandı%'
             )
-            AND (t.kisa_kod IS NULL OR t.kisa_kod NOT IN ('X', 'x'))
+            AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
             ORDER BY pi.talep_tarihi DESC
             LIMIT {$limit}
         ");
@@ -192,7 +192,7 @@ class PersonelIzinleriModel extends Model
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.onay_durumu = 'Reddedildi' AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
-            AND (t.kisa_kod IS NULL OR t.kisa_kod NOT IN ('X', 'x'))
+            AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
             ORDER BY pi.talep_tarihi DESC
             LIMIT {$limit}
         ");

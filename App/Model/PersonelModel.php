@@ -1068,7 +1068,7 @@ class PersonelModel extends Model
                       LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
                       WHERE pi.baslangic_tarihi <= :bugun AND pi.bitis_tarihi >= :bugun 
                       AND pi.onay_durumu = 'Onaylandı' AND p.firma_id = :firma_id AND pi.silinme_tarihi IS NULL
-                      AND (t.kisa_kod IS NULL OR t.kisa_kod NOT IN ('X', 'x'))";
+                      AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))";
         $stmtI = $this->db->prepare($sqlIzinli);
         $stmtI->execute(['bugun' => $bugun, 'firma_id' => $firmaId]);
         $izinliRecord = $stmtI->fetch(PDO::FETCH_OBJ);
@@ -1120,7 +1120,7 @@ class PersonelModel extends Model
                       LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
                       WHERE ((pi.baslangic_tarihi <= :sonGun AND pi.bitis_tarihi >= :buAy))
                       AND pi.onay_durumu = 'Onaylandı' AND p.firma_id = :firma_id AND pi.silinme_tarihi IS NULL
-                      AND (t.kisa_kod IS NULL OR t.kisa_kod NOT IN ('X', 'x'))";
+                      AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))";
         $stmtI = $this->db->prepare($sqlIzinli);
         $stmtI->execute(['buAy' => $buAy, 'sonGun' => $sonGun, 'firma_id' => $firmaId]);
         $izinliCount = $stmtI->fetch(PDO::FETCH_OBJ)->izinli ?? 0;

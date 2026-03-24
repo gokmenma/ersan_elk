@@ -748,7 +748,9 @@ if ($action == "koli-kontrol") {
         $placeholders = implode(',', array_fill(0, count($seriler), '?'));
 
         $sql = $Demirbas->getDb()->prepare("
-            SELECT id, seri_no, kalan_miktar, durum 
+            SELECT id, seri_no, 
+            (COALESCE(miktar, 1) - COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = demirbas.id AND hareket_tipi = 'zimmet' AND silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = demirbas.id AND hareket_tipi = 'iade' AND silinme_tarihi IS NULL), 0)) as kalan_miktar, 
+            durum 
             FROM demirbas 
             WHERE firma_id = ? AND seri_no IN ($placeholders)
         ");
@@ -790,32 +792,51 @@ if ($action == "koli-kontrol") {
 // Zimmet Koli Kaydet (Çoklu Koli)
 if ($action == "zimmet-koli-kaydet-coklu") {
     try {
+        $koli_detaylari = json_decode($_POST["koli_detaylari"] ?? "[]", true);
         $koli_baslangiclar = json_decode($_POST["koli_baslangiclar"] ?? "[]", true);
         $personel_id = intval($_POST["personel_id"]);
         $teslim_tarihi = Date::Ymd($_POST["teslim_tarihi"], 'Y-m-d');
         $aciklama = $_POST["aciklama"] ?? null;
 
-        if (empty($koli_baslangiclar) || $personel_id <= 0) {
+        if ((empty($koli_baslangiclar) && empty($koli_detaylari)) || $personel_id <= 0) {
             jsonResponse("error", "Eksik bilgi.");
         }
 
         $tumSeriler = [];
         $koliMap = []; // Hangi seri hangi koliye ait
+        $koliTarihMap = []; // Hangi koli hangi tarihe ait
 
-        foreach ($koli_baslangiclar as $baslangic) {
-            if (!preg_match('/^(.*?)(\d+)$/', $baslangic, $matches)) {
-                continue; // Hatalı formatı atla
+        if (!empty($koli_detaylari)) {
+            foreach ($koli_detaylari as $detay) {
+                $baslangic = $detay['baslangic'] ?? '';
+                $tarih = $detay['tarih'] ?? '';
+                if (!preg_match('/^(.*?)(\d+)$/', $baslangic, $matches)) continue;
+
+                $prefix = $matches[1];
+                $number = intval($matches[2]);
+                $digits = strlen($matches[2]);
+
+                for ($i = 0; $i < 10; $i++) {
+                    $nextNum = str_pad($number + $i, $digits, "0", STR_PAD_LEFT);
+                    $seri = $prefix . $nextNum;
+                    $tumSeriler[] = $seri;
+                    $koliMap[$seri] = $baslangic;
+                }
+                $koliTarihMap[$baslangic] = $tarih ? Date::Ymd($tarih, 'Y-m-d') : $teslim_tarihi;
             }
-
-            $prefix = $matches[1];
-            $number = intval($matches[2]);
-            $digits = strlen($matches[2]);
-
-            for ($i = 0; $i < 10; $i++) {
-                $nextNum = str_pad($number + $i, $digits, "0", STR_PAD_LEFT);
-                $seri = $prefix . $nextNum;
-                $tumSeriler[] = $seri;
-                $koliMap[$seri] = $baslangic;
+        } else {
+            foreach ($koli_baslangiclar as $baslangic) {
+                if (!preg_match('/^(.*?)(\d+)$/', $baslangic, $matches)) continue;
+                $prefix = $matches[1];
+                $number = intval($matches[2]);
+                $digits = strlen($matches[2]);
+                for ($i = 0; $i < 10; $i++) {
+                    $nextNum = str_pad($number + $i, $digits, "0", STR_PAD_LEFT);
+                    $seri = $prefix . $nextNum;
+                    $tumSeriler[] = $seri;
+                    $koliMap[$seri] = $baslangic;
+                }
+                $koliTarihMap[$baslangic] = $teslim_tarihi;
             }
         }
 
@@ -826,7 +847,8 @@ if ($action == "zimmet-koli-kaydet-coklu") {
         // Veritabanından ID'leri bul
         $placeholders = implode(',', array_fill(0, count($tumSeriler), '?'));
         $sql = $Demirbas->getDb()->prepare("
-            SELECT id, seri_no, kalan_miktar 
+            SELECT id, seri_no, 
+            (COALESCE(miktar, 1) - COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = demirbas.id AND hareket_tipi = 'zimmet' AND silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = demirbas.id AND hareket_tipi = 'iade' AND silinme_tarihi IS NULL), 0)) as kalan_miktar 
             FROM demirbas 
             WHERE firma_id = ? AND seri_no IN ($placeholders)
         ");
@@ -858,11 +880,12 @@ if ($action == "zimmet-koli-kaydet-coklu") {
         foreach ($records as $rec) {
             $seri = $rec['seri_no'];
             $koliBaslangic = $koliMap[$seri] ?? '?';
+            $ozelTarih = $koliTarihMap[$koliBaslangic] ?? $teslim_tarihi;
 
             $data = [
                 "demirbas_id" => $rec['id'],
                 "personel_id" => $personel_id,
-                "teslim_tarihi" => $teslim_tarihi,
+                "teslim_tarihi" => $ozelTarih,
                 "teslim_miktar" => 1,
                 "aciklama" => $aciklama ? "$aciklama (Koli: $koliBaslangic)" : "Koli: $koliBaslangic",
                 "teslim_eden_id" => $_SESSION["id"] ?? null

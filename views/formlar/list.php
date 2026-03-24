@@ -284,16 +284,12 @@ $araclar = $Araclar->getAktifAraclar();
 
                     <!-- İzin Sekmesi -->
                     <div class="tab-pane" id="tab-izin">
-                        <p class="text-muted small mb-2"><i class="bx bx-bulb text-warning"></i> Word etiketleri: <b>${IZIN_BASLANGIC}</b>, <b>${IZIN_BITIS}</b>, <b>${IZIN_ISE_BASLAMA}</b>, <b>${IZIN_GUN}</b>, <b>${IZIN_NEDENI}</b></p>
                         <div class="row">
-                            <div class="col-4 mb-4 mt-2">
-                                <?php echo \App\Helper\Form::FormFloatInput('date', 'indirmeIzinBaslangic', '', '', 'Başlangıç Tarihi', 'bx bx-calendar'); ?>
+                            <div class="col-6 mb-4 mt-3">
+                                <?php echo \App\Helper\Form::FormFloatInput('text', 'indirmeIzinBaslangic', '', '', 'Başlangıç Tarihi', 'bx bx-calendar', 'form-control flatpickr-date'); ?>
                             </div>
-                            <div class="col-4 mb-4 mt-2">
-                                <?php echo \App\Helper\Form::FormFloatInput('date', 'indirmeIzinBitis', '', '', 'Bitiş Tarihi', 'bx bx-calendar'); ?>
-                            </div>
-                            <div class="col-4 mb-4 mt-2">
-                                <?php echo \App\Helper\Form::FormFloatInput('date', 'indirmeIzinIseBaslama', '', '', 'İşe Başlama Tarihi', 'bx bx-briefcase'); ?>
+                            <div class="col-6 mb-4 mt-3">
+                                <?php echo \App\Helper\Form::FormFloatInput('text', 'indirmeIzinBitis', '', '', 'Bitiş Tarihi', 'bx bx-calendar', 'form-control flatpickr-date'); ?>
                             </div>
                             <div class="col-12 mb-4">
                                 <?php echo \App\Helper\Form::FormFloatInput('number', 'indirmeIzinGun', '', 'Örn: 5', 'İzin Gün Sayısı', 'bx bx-time'); ?>
@@ -407,6 +403,56 @@ document.addEventListener('DOMContentLoaded', function () {
         $(target).closest('.tab-content').find('.tab-pane').removeClass('active');
         $(target).addClass('active');
     });    
+
+    if ($.fn.flatpickr) {
+        $('.flatpickr-date').flatpickr({
+            dateFormat: "Y-m-d",
+            altInput: true,
+            altFormat: "d.m.Y"
+        });
+    }
+
+    // Şablon değişkenlerini kopyalama özelliği
+    $('#degiskenlerModal table tbody tr td:first-child code').each(function() {
+        var tag = $(this).text();
+        $(this).css('cursor', 'copy').attr('title', 'Kopyalamak için tıklayın').addClass('copy-tag-text');
+        $(this).after(' <i class="bx bx-copy text-primary ms-1 cursor-pointer copy-tag-icon" title="Kopyalamak için tıklayın" data-tag="'+tag+'" style="font-size: 1.1em; vertical-align: middle;"></i>');
+    });
+
+    $(document).on('click', '.copy-tag-text, .copy-tag-icon', function() {
+        var tag = $(this).hasClass('copy-tag-icon') ? $(this).data('tag') : $(this).text();
+        
+        var temp = $("<input>");
+        $("body").append(temp);
+        temp.val(tag).select();
+        document.execCommand("copy");
+        temp.remove();
+        
+        if (typeof Toastify !== 'undefined') {
+            Toastify({
+                text: "Kopyalandı: " + tag,
+                duration: 2500,
+                close: true,
+                gravity: "top",
+                position: "center",
+                style: {
+                    background: "#000",
+                    color: "#fff",
+                    borderRadius: "6px"
+                }
+            }).showToast();
+        } else {
+            Swal.fire({
+                toast: true,
+                position: 'top-end',
+                icon: 'success',
+                title: '<b style="font-family:monospace; color:#556ee6;">'+tag+'</b><br>panoya kopyalandı!',
+                showConfirmButton: false,
+                timer: 2000
+            });
+        }
+    });
+
     $('#btnKaydet').click(function() {
         var formData = new FormData($('#formEkleForm')[0]);
         formData.append('action', 'ekle');
@@ -485,10 +531,15 @@ document.addEventListener('DOMContentLoaded', function () {
         var izinBitis = $('#indirmeIzinBitis').val();
         var izinGun = $('#indirmeIzinGun').val();
         var izinNedeni = $('#indirmeIzinNedeni').val();
-        var izinIseBaslama = $('#indirmeIzinIseBaslama').val();
         
-        if (!personelId && !aracId && !imei && !seriNo && !izinBaslangic && !izinBitis && !izinGun && !izinNedeni && !izinIseBaslama) {
+        if (!personelId && !aracId && !imei && !seriNo && !izinBaslangic && !izinBitis && !izinGun && !izinNedeni) {
             Swal.fire({ icon: 'warning', title: 'Uyarı', text: 'Lütfen indirme için en az bir bilgi doldurunuz.' });
+            return;
+        }
+
+        // İzin bilgileri dolu ancak personel seçilmemişse engelle
+        if ((izinBaslangic || izinBitis || izinGun || izinNedeni) && !personelId) {
+            Swal.fire({ icon: 'warning', title: 'Personel Seçimi', text: 'İzin bilgisi girebilmek için lütfen Personel sekmesinden formu dolduran personeli seçiniz.' });
             return;
         }
         
@@ -515,7 +566,6 @@ document.addEventListener('DOMContentLoaded', function () {
         if (izinBitis) url += '&izin_bitis=' + encodeURIComponent(izinBitis);
         if (izinGun) url += '&izin_gun=' + encodeURIComponent(izinGun);
         if (izinNedeni) url += '&izin_nedeni=' + encodeURIComponent(izinNedeni);
-        if (izinIseBaslama) url += '&izin_ise_baslama=' + encodeURIComponent(izinIseBaslama);
         
         // Modal kapatılsın, indirme başlatılsın
         $('#personelSecModal').modal('hide');

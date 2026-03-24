@@ -227,7 +227,11 @@ class DemirbasZimmetModel extends Model
 
         try {
             // Demirbaş stok kontrolü
-            $demirbas = $this->db->prepare("SELECT * FROM demirbas WHERE id = ?");
+            $demirbas = $this->db->prepare("
+                SELECT *, 
+                (COALESCE(miktar, 1) - COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = demirbas.id AND hareket_tipi = 'zimmet' AND silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = demirbas.id AND hareket_tipi = 'iade' AND silinme_tarihi IS NULL), 0)) as kalan_miktar
+                FROM demirbas WHERE id = ?
+            ");
             $demirbas->execute([$data['demirbas_id']]);
             $demirbasData = $demirbas->fetch(PDO::FETCH_OBJ);
 

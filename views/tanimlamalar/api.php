@@ -449,6 +449,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "izin-turu-kaydet") {
             "kisa_kod" => $_POST["kisa_kod"],
             "aciklama" => $_POST["aciklama"],
             "ucretli_mi" => (int) ($_POST["ucretli_mi"] ?? 0),
+            "normal_mesai_sayilir" => (int) ($_POST["normal_mesai_sayilir"] ?? 0),
             "personel_gorebilir" => (int) ($_POST["personel_gorebilir"] ?? 0),
             "renk" => $_POST["renk"],
             "ikon" => $_POST["ikon"],

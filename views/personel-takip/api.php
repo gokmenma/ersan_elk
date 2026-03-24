@@ -60,7 +60,7 @@ try {
             }
 
             $izinliler = [];
-            $stmt_izin = $db->prepare("SELECT pi.personel_id FROM personel_izinleri pi LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id WHERE pi.baslangic_tarihi <= :gun AND pi.bitis_tarihi >= :gun AND pi.onay_durumu = 'Onaylandı' AND pi.silinme_tarihi IS NULL AND (t.kisa_kod IS NULL OR t.kisa_kod NOT IN ('X', 'x'))");
+            $stmt_izin = $db->prepare("SELECT pi.personel_id FROM personel_izinleri pi LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id WHERE pi.baslangic_tarihi <= :gun AND pi.bitis_tarihi >= :gun AND pi.onay_durumu = 'Onaylandı' AND pi.silinme_tarihi IS NULL AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))");
             $stmt_izin->execute([':gun' => $gun]);
             while ($row = $stmt_izin->fetch(PDO::FETCH_ASSOC)) {
                 $izinliler[] = $row['personel_id'];
@@ -469,7 +469,7 @@ try {
             }
 
             $izinliler = [];
-            $stmt_izin = $db->prepare("SELECT pi.personel_id FROM personel_izinleri pi LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id WHERE pi.baslangic_tarihi <= :gun AND pi.bitis_tarihi >= :gun AND pi.onay_durumu = 'Onaylandı' AND pi.silinme_tarihi IS NULL AND (t.kisa_kod IS NULL OR t.kisa_kod NOT IN ('X', 'x'))");
+            $stmt_izin = $db->prepare("SELECT pi.personel_id FROM personel_izinleri pi LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id WHERE pi.baslangic_tarihi <= :gun AND pi.bitis_tarihi >= :gun AND pi.onay_durumu = 'Onaylandı' AND pi.silinme_tarihi IS NULL AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))");
             $stmt_izin->execute([':gun' => $gun]);
             while ($row = $stmt_izin->fetch(PDO::FETCH_ASSOC)) {
                 $izinliler[] = $row['personel_id'];
@@ -645,7 +645,7 @@ try {
                 $now = new DateTime();
 
                 $izinliler = [];
-                $stmt_izin = $db->prepare("SELECT pi.personel_id FROM personel_izinleri pi LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id WHERE pi.baslangic_tarihi <= :gun AND pi.bitis_tarihi >= :gun AND pi.onay_durumu = 'Onaylandı' AND pi.silinme_tarihi IS NULL AND (t.kisa_kod IS NULL OR t.kisa_kod NOT IN ('X', 'x'))");
+                $stmt_izin = $db->prepare("SELECT pi.personel_id FROM personel_izinleri pi LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id WHERE pi.baslangic_tarihi <= :gun AND pi.bitis_tarihi >= :gun AND pi.onay_durumu = 'Onaylandı' AND pi.silinme_tarihi IS NULL AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))");
                 $stmt_izin->execute([':gun' => $bugun]);
                 while ($row = $stmt_izin->fetch(PDO::FETCH_ASSOC)) {
                     $izinliler[] = $row['personel_id'];
@@ -685,7 +685,7 @@ try {
                             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
                             WHERE pi.baslangic_tarihi <= :bugun AND pi.bitis_tarihi >= :bugun 
                             AND pi.onay_durumu = 'Onaylandı' AND pi.silinme_tarihi IS NULL
-                            AND (t.kisa_kod IS NULL OR t.kisa_kod NOT IN ('X', 'x'))
+                            AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
                         )
                         ORDER BY p.adi_soyadi ASC";
                 $stmt = $db->prepare($sql);

@@ -57,6 +57,7 @@ $izinTurleri = $Tanimlamalar->getIzinTurleri();
                                 <th class="text-center" style="width:5%">Kısa Kod</th>
                                 <th class="text-center">Görünüm (PWA)</th>
                                 <th class="text-center" style="width:12%">Ücret Durumu</th>
+                                <th class="text-center" style="width:12%">Puantajda "X" (Çalışıyor) Say</th>
                                 <th class="text-center" style="width:12%">Personel Görebilir</th>
                                 <th class="text-center" style="width:12%">Yetkili Onayı</th>
                                 <th class="text-center">Açıklama</th>
@@ -108,6 +109,12 @@ $izinTurleri = $Tanimlamalar->getIzinTurleri();
                                     ? '<span class="badge bg-warning"><i class="bx bx-lock-alt me-1"></i>Evet</span>'
                                     : '<span class="badge bg-light text-dark"><i class="bx bx-lock-open-alt me-1"></i>Hayır</span>';
 
+                                // Normal Mesai (Çalışıyor) Say
+                                $mesaiBadge = isset($izinTuru->normal_mesai_sayilir) && $izinTuru->normal_mesai_sayilir == 1
+                                    ? '<span class="badge bg-success"><i class="bx bx-check-double me-1"></i>Evet</span>'
+                                    : '<span class="badge bg-secondary"><i class="bx bx-minus me-1"></i>Hayır</span>';
+
+
                                 // Renk ve İkon önizleme
                                 $renkClass = $izinTuru->renk ?? 'bg-primary/10 text-primary';
                                 $ikonName = $izinTuru->ikon ?? 'event';
@@ -139,6 +146,9 @@ $izinTurleri = $Tanimlamalar->getIzinTurleri();
                                     </td>
                                     <td class="text-center">
                                         <?php echo $ucretBadge ?>
+                                    </td>
+                                    <td class="text-center">
+                                        <?php echo $mesaiBadge ?>
                                     </td>
                                     <td class="text-center">
                                         <?php echo $gorebilirBadge ?>
@@ -282,46 +292,60 @@ $izinTurleri = $Tanimlamalar->getIzinTurleri();
 
                     </div>
 
-                    <div class="row mb-3">
-                        <div class="col-md-4">
-                            <div class="card border mb-0">
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <div class="card border mb-0 h-100 shadow-none">
                                 <div class="card-body p-3">
-                                    <div class="form-check form-switch">
+                                    <div class="form-check form-switch form-switch-md mb-2">
                                         <input class="form-check-input" type="checkbox" id="ucretli_mi"
                                             name="ucretli_mi" checked>
-                                        <label class="form-check-label fw-medium" for="ucretli_mi">
-                                            <i class="bx bx-money text-success me-1"></i>Ücretli İzin
+                                        <label class="form-check-label fw-medium d-flex align-items-center" for="ucretli_mi">
+                                            <i class="bx bx-money text-success fs-5 me-2"></i>Ücretli İzin
                                         </label>
                                     </div>
-                                    <small class="text-muted d-block mt-1">İzin maaştan kesilmeyecek</small>
+                                    <small class="text-muted d-block ps-5">Maaştan kesilmez</small>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="card border mb-0">
+                        <div class="col-md-6">
+                            <div class="card border mb-0 h-100 shadow-none">
                                 <div class="card-body p-3">
-                                    <div class="form-check form-switch">
+                                    <div class="form-check form-switch form-switch-md mb-2">
+                                        <input class="form-check-input" type="checkbox" id="normal_mesai_sayilir"
+                                            name="normal_mesai_sayilir">
+                                        <label class="form-check-label fw-medium d-flex align-items-center" for="normal_mesai_sayilir">
+                                            <i class="bx bx-briefcase text-primary fs-5 me-2"></i>Çalışıyor Görünsün
+                                        </label>
+                                    </div>
+                                    <small class="text-muted d-block ps-5">İzinli listesinde çıkmaz</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border mb-0 h-100 shadow-none">
+                                <div class="card-body p-3">
+                                    <div class="form-check form-switch form-switch-md mb-2">
                                         <input class="form-check-input" type="checkbox" id="personel_gorebilir"
                                             name="personel_gorebilir" checked>
-                                        <label class="form-check-label fw-medium" for="personel_gorebilir">
-                                            <i class="bx bx-show text-info me-1"></i>Personel Görebilir
+                                        <label class="form-check-label fw-medium d-flex align-items-center" for="personel_gorebilir">
+                                            <i class="bx bx-show text-info fs-5 me-2"></i>Personel Görebilir
                                         </label>
                                     </div>
-                                    <small class="text-muted d-block mt-1">İzin talebinde görünür</small>
+                                    <small class="text-muted d-block ps-5">Talepte görünür</small>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-md-4">
-                            <div class="card border mb-0">
+                        <div class="col-md-6">
+                            <div class="card border mb-0 h-100 shadow-none">
                                 <div class="card-body p-3">
-                                    <div class="form-check form-switch">
+                                    <div class="form-check form-switch form-switch-md mb-2">
                                         <input class="form-check-input" type="checkbox" id="yetkili_onayina_tabi"
                                             name="yetkili_onayina_tabi">
-                                        <label class="form-check-label fw-medium" for="yetkili_onayina_tabi">
-                                            <i class="bx bx-lock-alt text-warning me-1"></i>Yetkili Onayı
+                                        <label class="form-check-label fw-medium d-flex align-items-center" for="yetkili_onayina_tabi">
+                                            <i class="bx bx-lock-alt text-warning fs-5 me-2"></i>Yetkili Onayı
                                         </label>
                                     </div>
-                                    <small class="text-muted d-block mt-1">Onay sonrası kilitleme</small>
+                                    <small class="text-muted d-block ps-5">Onay sonrası kilitlenir</small>
                                 </div>
                             </div>
                         </div>

@@ -15,6 +15,8 @@ $personelOptions = [];
 //     $personelOptions[$p->id] = $p->adi_soyadi . ' - ' . ($p->cep_telefonu ?? '');
 // }
 ?>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
 
 <style>
     /* Modern Segmented Control */
@@ -133,6 +135,10 @@ $personelOptions = [];
                                         </div>
                                     </div>
                                     <button class="btn btn-primary" type="button" id="btnKoliEkle"><i class="bx bx-plus"></i> Ekle</button>
+                                    <label class="btn btn-success mb-0 d-flex align-items-center" for="koliExcelFile" title="Excel'den Yükle" style="cursor: pointer;">
+                                        <i class="bx bx-upload me-1"></i> Excel Yükle
+                                        <input type="file" id="koliExcelFile" class="d-none" accept=".xlsx, .xls">
+                                    </label>
                                 </div>
                                 <div class="form-text mb-2">Birden fazla eklemek için virgülle ayırabilirsiniz.</div>
 

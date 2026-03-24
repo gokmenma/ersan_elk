@@ -25,7 +25,7 @@ class DemirbasModel extends Model
                 d.*,
                 k.tur_adi as kategori_adi,
                 COALESCE(d.miktar, 1) as miktar,
-                COALESCE(d.kalan_miktar, 1) as kalan_miktar,
+                (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = d.id AND hareket_tipi = 'zimmet' AND silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = d.id AND hareket_tipi = 'iade' AND silinme_tarihi IS NULL), 0)) as kalan_miktar,
                 (SELECT id FROM demirbas_servis_kayitlari WHERE demirbas_id = d.id AND iade_tarihi IS NULL AND silinme_tarihi IS NULL LIMIT 1) as active_servis_id
             FROM {$this->table} d
             LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
@@ -44,10 +44,11 @@ class DemirbasModel extends Model
         $sql = $this->db->prepare("
             SELECT 
                 d.*,
-                k.tur_adi as kategori_adi
+                k.tur_adi as kategori_adi,
+                (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = d.id AND hareket_tipi = 'zimmet' AND silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = d.id AND hareket_tipi = 'iade' AND silinme_tarihi IS NULL), 0)) as kalan_miktar
             FROM {$this->table} d
             LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
-            WHERE d.kalan_miktar > 0 AND d.firma_id = ?
+            WHERE (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = d.id AND hareket_tipi = 'zimmet' AND silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = d.id AND hareket_tipi = 'iade' AND silinme_tarihi IS NULL), 0)) > 0 AND d.firma_id = ?
             ORDER BY k.tur_adi, d.demirbas_adi
         ");
         $sql->execute([$_SESSION['firma_id']]);
@@ -79,8 +80,8 @@ class DemirbasModel extends Model
             SELECT 
                 COUNT(*) as toplam_cesit,
                 COALESCE(SUM(miktar), 0) as toplam_adet,
-                COALESCE(SUM(kalan_miktar), 0) as stokta_kalan,
-                (COALESCE(SUM(miktar), 0) - COALESCE(SUM(kalan_miktar), 0)) as zimmetli_adet
+                SUM((COALESCE(miktar, 1) - COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = demirbas.id AND hareket_tipi = 'zimmet' AND silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = demirbas.id AND hareket_tipi = 'iade' AND silinme_tarihi IS NULL), 0))) as stokta_kalan,
+                (COALESCE(SUM(miktar), 0) - SUM((COALESCE(miktar, 1) - COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = demirbas.id AND hareket_tipi = 'zimmet' AND silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = demirbas.id AND hareket_tipi = 'iade' AND silinme_tarihi IS NULL), 0)))) as zimmetli_adet
             FROM {$this->table}
             WHERE firma_id = ?
         ");
@@ -128,11 +129,11 @@ class DemirbasModel extends Model
             SELECT 
                 d.id,
                 $textSelect as text,
-                d.kalan_miktar,
+                (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = d.id AND hareket_tipi = 'zimmet' AND silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = d.id AND hareket_tipi = 'iade' AND silinme_tarihi IS NULL), 0)) as kalan_miktar,
                 d.seri_no
             FROM {$this->table} d
             LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
-            WHERE d.kalan_miktar > 0 AND d.firma_id = ?
+            WHERE (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = d.id AND hareket_tipi = 'zimmet' AND silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = d.id AND hareket_tipi = 'iade' AND silinme_tarihi IS NULL), 0)) > 0 AND d.firma_id = ?
                 AND (d.demirbas_no LIKE ? OR d.demirbas_adi LIKE ? OR d.marka LIKE ? OR d.seri_no LIKE ?)
                 $whereType
             ORDER BY d.demirbas_adi
@@ -149,7 +150,8 @@ class DemirbasModel extends Model
     public function getTableRow($id)
     {
         $sql = $this->db->prepare("
-            SELECT d.*, k.tur_adi as kategori_adi
+            SELECT d.*, k.tur_adi as kategori_adi,
+            (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = d.id AND hareket_tipi = 'zimmet' AND silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = d.id AND hareket_tipi = 'iade' AND silinme_tarihi IS NULL), 0)) as dynamic_kalan
             FROM {$this->table} d
             LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
             WHERE d.id = ?
@@ -163,7 +165,7 @@ class DemirbasModel extends Model
 
         $enc_id = Security::encrypt($data->id);
         $miktar = $data->miktar ?? 1;
-        $kalan = $data->kalan_miktar ?? 1;
+        $kalan = $data->dynamic_kalan ?? 1;
         $minStok = $data->minimun_stok_uyari_miktari ?? 0;
 
         // Stok durumu badge
@@ -276,7 +278,7 @@ class DemirbasModel extends Model
                         d.*,
                         k.tur_adi as kategori_adi,
                         COALESCE(d.miktar, 1) as miktar_val,
-                        COALESCE(d.kalan_miktar, 1) as kalan_miktar_val,
+                        (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = d.id AND hareket_tipi = 'zimmet' AND silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = d.id AND hareket_tipi = 'iade' AND silinme_tarihi IS NULL), 0)) as kalan_miktar,
                         (SELECT id FROM demirbas_servis_kayitlari WHERE demirbas_id = d.id AND iade_tarihi IS NULL AND silinme_tarihi IS NULL LIMIT 1) as active_servis_id";
 
         $fromSql = " FROM {$this->table} d
@@ -470,9 +472,9 @@ class DemirbasModel extends Model
             $params['inv_kat'] = $inventoryKatAdi;
 
             if ($inventoryType === 'bosta') {
-                $searchWhere .= " AND d.kalan_miktar > 0";
+                $searchWhere .= " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = d.id AND hareket_tipi = 'zimmet' AND silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = d.id AND hareket_tipi = 'iade' AND silinme_tarihi IS NULL), 0)) > 0";
             } elseif ($inventoryType === 'zimmetli') {
-                $searchWhere .= " AND d.kalan_miktar < COALESCE(d.miktar, 1) AND d.durum NOT IN ('arizali', 'hurda')";
+                $searchWhere .= " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = d.id AND hareket_tipi = 'zimmet' AND silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = d.id AND hareket_tipi = 'iade' AND silinme_tarihi IS NULL), 0)) < COALESCE(d.miktar, 1) AND d.durum NOT IN ('arizali', 'hurda')";
             } elseif ($inventoryType === 'arizali') {
                 $searchWhere .= " AND LOWER(d.durum) = 'arizali'";
             } elseif ($inventoryType === 'hurda') {
@@ -506,7 +508,7 @@ class DemirbasModel extends Model
                 3 => 'k.tur_adi',
                 4 => 'd.demirbas_adi',
                 5 => 'd.marka',
-                6 => 'd.kalan_miktar',
+                6 => 'kalan_miktar',
                 7 => 'd.durum',
                 8 => 'd.edinme_tutari',
                 9 => 'd.edinme_tarihi'
@@ -519,7 +521,7 @@ class DemirbasModel extends Model
                 3 => 'd.demirbas_adi',
                 4 => 'd.marka',
                 5 => 'd.seri_no',
-                6 => 'd.kalan_miktar',
+                6 => 'kalan_miktar',
                 7 => 'd.durum',
                 8 => 'd.edinme_tarihi'
             ];
@@ -532,7 +534,7 @@ class DemirbasModel extends Model
                 3 => 'd.demirbas_adi',
                 4 => 'd.marka',
                 5 => 'd.seri_no',
-                6 => 'd.kalan_miktar',
+                6 => 'kalan_miktar',
                 7 => 'd.durum',
                 8 => 'd.edinme_tarihi'
             ];

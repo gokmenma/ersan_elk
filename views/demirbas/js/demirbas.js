@@ -1328,7 +1328,7 @@ $(document).on("change", "#koliModuToggle", function () {
 });
 
 // Koli Ekleme Fonksiyonu
-function koliEkle(inputVal) {
+function koliEkle(inputVal, ozelTarih = null) {
   if (!inputVal) return;
 
   // Virgülle ayrılmış girişleri destekle
@@ -1344,10 +1344,12 @@ function koliEkle(inputVal) {
       return;
     }
 
+    let basTarih = ozelTarih ? ozelTarih : $("#teslim_tarihi").val();
+
     let koliObj = {
-      id:
-        "koli_" + new Date().getTime() + "_" + Math.floor(Math.random() * 1000),
+      id: "koli_" + new Date().getTime() + "_" + Math.floor(Math.random() * 1000),
       baslangic: seri,
+      tarih: basTarih,
       durum: "bekliyor",
       mesaj: "Kontrol ediliyor...",
       uygunSayisi: 0,
@@ -1427,7 +1429,10 @@ function renderKoliListesi() {
     let html = `
             <div class="list-group-item d-flex justify-content-between align-items-center">
                 <div>
-                    <h6 class="mb-0"><i class="bx bx-package me-1"></i>${koli.baslangic} <small class="text-muted">(10 Adet)</small></h6>
+                    <h6 class="mb-0">
+                        <i class="bx bx-package me-1"></i>${koli.baslangic} <small class="text-muted">(10 Adet)</small>
+                        <span class="badge bg-soft-info text-info ms-2"><i class="bx bx-calendar me-1"></i>${koli.tarih}</span>
+                    </h6>
                     <small class="${koli.durum === "uygun" ? "text-success" : koli.durum === "hatali" ? "text-danger" : "text-muted"}">
                         <i class='bx ${icon}'></i> ${koli.mesaj}
                     </small>
@@ -1441,11 +1446,93 @@ function renderKoliListesi() {
   $("#lblToplamKoli").text(toplamKoli);
   $("#lblToplamSayac").text(toplamSayac);
 
-  // Eğer koli modundaysak ve hepsi uygunsa butonu aç
+  // Eğer koli modundaysak ve listede en az bir "uygun" varsa butonu aç. Hatalılar atlanarak devam edecek.
   if ($("#koliModuToggle").is(":checked")) {
-    $("#zimmetKaydet").prop("disabled", !hepsiUygun);
+    let varUygun = koliListesi.some((k) => k.durum === "uygun");
+    $("#zimmetKaydet").prop("disabled", !varUygun);
   }
 }
+
+// Koli Excel Yükleme
+$(document).on("change", "#koliExcelFile", function (e) {
+  let file = e.target.files[0];
+  if (!file) return;
+
+  if (typeof XLSX === "undefined") {
+    Swal.fire("Hata", "Excel okuma kütüphanesi yüklenemedi. Sayfayı yenileyin.", "error");
+    return;
+  }
+
+  let reader = new FileReader();
+  reader.onload = function (e) {
+    let data = new Uint8Array(e.target.result);
+    try {
+      let workbook = XLSX.read(data, { type: "array" });
+      let firstSheetName = workbook.SheetNames[0];
+      let worksheet = workbook.Sheets[firstSheetName];
+      let jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
+
+      let addedCount = 0;
+      // İlk satır başlık kabul edilerek i=1 'den başlıyoruz.
+      for (let i = 1; i < jsonData.length; i++) {
+        let row = jsonData[i];
+        if (!row || row.length === 0) continue;
+        let rawDate = row[1]; // B sütunu
+        let seri = row[2];    // C sütunu
+        
+        let formattedTarih = $("#teslim_tarihi").val(); // fallback
+        if (rawDate) {
+            if (typeof rawDate === "number") {
+                // Excel dâhili formatı: Sayıları (Serial Dates) direkt parse_date_code ile çevir.
+                let dateObj = XLSX.SSF.parse_date_code(rawDate);
+                let d = String(dateObj.d).padStart(2, '0');
+                let m = String(dateObj.m).padStart(2, '0');
+                let y = dateObj.y;
+                formattedTarih = `${d}.${m}.${y}`;
+            } else {
+                let sDate = String(rawDate).trim();
+                // Eğer metin hücresi olarak "3.02.2026" girildiyse:
+                if (sDate.includes(".")) {
+                    let parts = sDate.split(".");
+                    if (parts.length === 3) {
+                       let d = parts[0].padStart(2, '0');
+                       let m = parts[1].padStart(2, '0');
+                       formattedTarih = `${d}.${m}.${parts[2]}`;
+                    } else {
+                       formattedTarih = sDate;
+                    }
+                } else if (sDate.includes("-")) {
+                    let parts = sDate.split("-");
+                    if (parts.length === 3 && parts[0].length === 4) {
+                        // YYYY-MM-DD formatını DD.MM.YYYY'ye geri çevirir
+                        formattedTarih = `${parts[2]}.${parts[1]}.${parts[0]}`;
+                    } else {
+                        formattedTarih = sDate;
+                    }
+                } else {
+                    formattedTarih = sDate;
+                }
+            }
+        }
+
+        if (seri && String(seri).trim().length >= 3) {
+          koliEkle(String(seri).trim(), formattedTarih);
+          addedCount++;
+        }
+      }
+
+      if (addedCount > 0) {
+        Swal.fire("Başarılı", addedCount + " adet seri numarası eklendi. Kontrol ediliyor...", "success");
+      } else {
+        Swal.fire("Uyarı", "Excel dosyasının 3. sütununda (C) geçerli seri numarası bulunamadı.", "warning");
+      }
+    } catch (err) {
+      Swal.fire("Hata", "Excel okunamadı: " + err.message, "error");
+    }
+  };
+  reader.readAsArrayBuffer(file);
+  $(this).val(""); // Aynı dosyayı tekrar seçebilmek için sıfırla
+});
 
 // Backend Kontrolü
 function koliKontrolEt(koli) {
@@ -1570,13 +1657,11 @@ $(document).on("click", "#zimmetKaydet", function () {
       return;
     }
 
-    // Hepsinin uygun olduğundan emin ol
-    if (koliListesi.some((k) => k.durum !== "uygun")) {
-      Swal.fire(
-        "Hata",
-        "Listede uygun olmayan koliler var. Lütfen kontrol ediniz.",
-        "warning",
-      );
+    let uygunKoliler = koliListesi.filter((k) => k.durum === "uygun");
+    let hataliKoliler = koliListesi.filter((k) => k.durum !== "uygun");
+
+    if (uygunKoliler.length === 0) {
+      Swal.fire("Hata", "Eklenebilecek geçerli/uygun koli bulunamadı.", "warning");
       return;
     }
 
@@ -1589,57 +1674,83 @@ $(document).on("click", "#zimmetKaydet", function () {
       return;
     }
 
-    // Backend'e gönderilecek veri: Sadece başlangıç serileri listesi
-    let baslangicSerileri = koliListesi.map((k) => k.baslangic);
+    // Backend'e gönderilecek veri: Sadece UYGUN koli detayları
+    let koliDetaylari = uygunKoliler.map((k) => { return { baslangic: k.baslangic, tarih: k.tarih }; });
 
     var formData = new FormData();
     formData.append("action", "zimmet-koli-kaydet-coklu"); // Yeni action
-    formData.append("koli_baslangiclar", JSON.stringify(baslangicSerileri));
+    formData.append("koli_detaylari", JSON.stringify(koliDetaylari));
     formData.append("personel_id", personel_id);
+    // Artık herkes kendi tarihini kullanıyor. Eğer fallback istenirse global tarih de gönderilebilir:
     formData.append("teslim_tarihi", teslim_tarihi);
     formData.append("aciklama", $("#aciklama").val());
 
-    // Disable button
-    let $btn = $(this);
-    $btn
-      .prop("disabled", true)
-      .html('<i class="bx bx-loader-alt bx-spin"></i> Kaydediliyor...');
+    let executeSave = function() {
+      // Disable button
+      let $btn = $("#zimmetKaydet");
+      $btn
+        .prop("disabled", true)
+        .html('<i class="bx bx-loader-alt bx-spin"></i> Kaydediliyor...');
 
-    fetch(zimmetUrl, {
-      method: "POST",
-      body: formData,
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        $btn
-          .prop("disabled", false)
-          .html('<i data-feather="check-square" class="me-1"></i>Zimmet Ver');
-        if (typeof feather !== "undefined") feather.replace();
-
-        if (data.status === "success") {
-          $("#zimmetModal").modal("hide");
-          resetZimmetForm();
-          loadZimmetList();
-          Swal.fire({
-            icon: "success",
-            title: "Başarılı!",
-            text: data.message,
-            confirmButtonText: "Tamam",
-          }).then((result) => {
-            if (result.isConfirmed) location.reload();
-          });
-        } else {
-          Swal.fire("Hata!", data.message, "error");
-        }
+      fetch(zimmetUrl, {
+        method: "POST",
+        body: formData,
       })
-      .catch((err) => {
-        console.error(err);
-        $btn
-          .prop("disabled", false)
-          .html('<i data-feather="check-square" class="me-1"></i>Zimmet Ver');
-        if (typeof feather !== "undefined") feather.replace();
-        Swal.fire("Hata!", "Bir hata oluştu.", "error");
-      });
+        .then((response) => response.json())
+        .then((data) => {
+          $btn
+            .prop("disabled", false)
+            .html('<i data-feather="check-square" class="me-1"></i>Zimmet Ver');
+          if (typeof feather !== "undefined") feather.replace();
+
+          if (data.status === "success") {
+            $("#zimmetModal").modal("hide");
+            resetZimmetForm();
+            loadZimmetList();
+            
+            let basariMesaji = data.message;
+            if (hataliKoliler.length > 0) {
+                basariMesaji += `<br><br><small>Not: Geçersiz olan ${hataliKoliler.length} adet koli atlanmıştır.</small>`;
+            }
+
+            Swal.fire({
+              icon: "success",
+              title: "Başarılı!",
+              html: basariMesaji,
+              confirmButtonText: "Tamam",
+            }).then((result) => {
+              if (result.isConfirmed) location.reload();
+            });
+          } else {
+            Swal.fire("Hata!", data.message, "error");
+          }
+        })
+        .catch((err) => {
+          console.error(err);
+          $btn
+            .prop("disabled", false)
+            .html('<i data-feather="check-square" class="me-1"></i>Zimmet Ver');
+          if (typeof feather !== "undefined") feather.replace();
+          Swal.fire("Hata!", "Bir hata oluştu.", "error");
+        });
+    };
+
+    if (hataliKoliler.length > 0) {
+        Swal.fire({
+            title: "Uyarı",
+            text: `Listede hatalı olan veya stokta yeterli olmayan ${hataliKoliler.length} adet koli kayıtlı zimmet bulunamadığı için atlanacaktır. Sadece uygun olan ${uygunKoliler.length} adet koli kaydedilecek. Devam etmek istiyor musunuz?`,
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Evet, Devam Et",
+            cancelButtonText: "İptal"
+        }).then((result) => {
+            if (result.isConfirmed) {
+                executeSave();
+            }
+        });
+    } else {
+        executeSave();
+    }
 
     return;
   }
