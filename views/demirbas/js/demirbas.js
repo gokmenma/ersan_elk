@@ -1288,7 +1288,8 @@ function filterZimmetOptions(type) {
   $("#demirbas_id_zimmet").val(null).trigger("change");
 
   // Koli Modu Göster/Gizle
-  if (type === "sayac") {
+  // Koli Modu Göster/Gizle (Sayaç ve Aparat destekli)
+  if (type === "sayac" || type === "aparat") {
     $("#koliModuWrapper").removeClass("d-none");
     $("#personelTuruWrapper").removeClass("d-none");
   } else {
@@ -1312,8 +1313,10 @@ $(document).on("change", "#koliModuToggle", function () {
   if ($(this).is(":checked")) {
     $("#tekliSecimAlani").addClass("d-none");
     $("#koliSecimAlani").removeClass("d-none");
-    // Miktarı 10'a sabitle ve gizle (veya disable et)
-    $("#teslim_miktar").val(10).prop("readonly", true);
+    $("#koliTipiSecimi").removeClass("d-none");
+    // Miktarı seçime göre ayarla
+    let adet = $('input[name="koli_tipi"]:checked').val() || 10;
+    $("#teslim_miktar").val(adet).prop("readonly", true);
     $("#kalanMiktarText").text("-"); // Koli modunda kalan anlamsız
     $("#demirbas_id_zimmet").removeAttr("required"); // HTML5 validation'ı engellemek için
     koliListesi = [];
@@ -1322,13 +1325,21 @@ $(document).on("change", "#koliModuToggle", function () {
   } else {
     $("#tekliSecimAlani").removeClass("d-none");
     $("#koliSecimAlani").addClass("d-none");
+    $("#koliTipiSecimi").addClass("d-none");
     $("#teslim_miktar").val(1).prop("readonly", false);
     $("#demirbas_id_zimmet").attr("required", true);
   }
 });
 
+// Koli Tipi Değiştiğinde Miktarı Güncelle
+$(document).on("change", 'input[name="koli_tipi"]', function () {
+    if ($("#koliModuToggle").is(":checked")) {
+        $("#teslim_miktar").val($(this).val());
+    }
+});
+
 // Koli Ekleme Fonksiyonu
-function koliEkle(inputVal, ozelTarih = null) {
+function koliEkle(inputVal, ozelTarih = null, adet = 10) {
   if (!inputVal) return;
 
   // Virgülle ayrılmış girişleri destekle
@@ -1350,6 +1361,7 @@ function koliEkle(inputVal, ozelTarih = null) {
       id: "koli_" + new Date().getTime() + "_" + Math.floor(Math.random() * 1000),
       baslangic: seri,
       tarih: basTarih,
+      adet: parseInt(adet) || 10,
       durum: "bekliyor",
       mesaj: "Kontrol ediliyor...",
       uygunSayisi: 0,
@@ -1369,14 +1381,16 @@ function koliEkle(inputVal, ozelTarih = null) {
 
 // Koli Ekle Butonu
 $(document).on("click", "#btnKoliEkle", function () {
-  koliEkle($("#koli_baslangic_seri").val());
+  let defaultAdet = $('input[name="koli_tipi"]:checked').val() || 10;
+  koliEkle($("#koli_baslangic_seri").val(), null, defaultAdet);
 });
 
 // Enter tuşu ile ekleme
 $(document).on("keypress", "#koli_baslangic_seri", function (e) {
   if (e.which === 13) {
     e.preventDefault();
-    koliEkle($(this).val());
+    let defaultAdet = $('input[name="koli_tipi"]:checked').val() || 10;
+    koliEkle($(this).val(), null, defaultAdet);
   }
 });
 
@@ -1408,7 +1422,7 @@ function renderKoliListesi() {
   $info.removeClass("d-none");
 
   let toplamKoli = koliListesi.length;
-  let toplamSayac = toplamKoli * 10;
+  let toplamSayac = koliListesi.reduce((sum, k) => sum + k.adet, 0);
   let hepsiUygun = true;
 
   koliListesi.forEach((koli) => {
@@ -1430,7 +1444,7 @@ function renderKoliListesi() {
             <div class="list-group-item d-flex justify-content-between align-items-center">
                 <div>
                     <h6 class="mb-0">
-                        <i class="bx bx-package me-1"></i>${koli.baslangic} <small class="text-muted">(10 Adet)</small>
+                        <i class="bx ${koli.adet > 1 ? 'bx-package' : 'bx-devices'} me-1"></i>${koli.baslangic} <small class="text-muted">(${koli.adet} Adet)</small>
                         <span class="badge bg-soft-info text-info ms-2"><i class="bx bx-calendar me-1"></i>${koli.tarih}</span>
                     </h6>
                     <small class="${koli.durum === "uygun" ? "text-success" : koli.durum === "hatali" ? "text-danger" : "text-muted"}">
@@ -1473,12 +1487,14 @@ $(document).on("change", "#koliExcelFile", function (e) {
       let jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1, raw: true });
 
       let addedCount = 0;
+      let skippedCount = 0;
       // İlk satır başlık kabul edilerek i=1 'den başlıyoruz.
       for (let i = 1; i < jsonData.length; i++) {
         let row = jsonData[i];
         if (!row || row.length === 0) continue;
         let rawDate = row[1]; // B sütunu
         let seri = row[2];    // C sütunu
+        let adet = row[3];    // D sütunu (Optional)
         
         let formattedTarih = $("#teslim_tarihi").val(); // fallback
         if (rawDate) {
@@ -1516,13 +1532,32 @@ $(document).on("change", "#koliExcelFile", function (e) {
         }
 
         if (seri && String(seri).trim().length >= 3) {
-          koliEkle(String(seri).trim(), formattedTarih);
+          let sSeri = String(seri).trim();
+          let defaultAdet = $('input[name="koli_tipi"]:checked').val() || 10;
+          let koliAdedi = adet || defaultAdet;
+
+          // 10'lu Koli Filtresi: Sadece sonu 1 ile bitenleri kabul et
+          // Ara numaralar (2,3...9) veya bitiş numaraları (0) atlanmalı
+          if (koliAdedi == 10 && !sSeri.endsWith('1')) {
+            skippedCount++;
+            continue; 
+          }
+
+          koliEkle(sSeri, formattedTarih, koliAdedi);
           addedCount++;
         }
       }
 
       if (addedCount > 0) {
-        Swal.fire("Başarılı", addedCount + " adet seri numarası eklendi. Kontrol ediliyor...", "success");
+        let msg = addedCount + " adet seri numarası eklendi.";
+        if (skippedCount > 0) {
+            msg += `<br><small class="text-warning">${skippedCount} adet sonu 1 ile bitmeyen ara seri numarası atlandı.</small>`;
+        }
+        Swal.fire({
+            icon: "success",
+            title: "Başarılı",
+            html: msg
+        });
       } else {
         Swal.fire("Uyarı", "Excel dosyasının 3. sütununda (C) geçerli seri numarası bulunamadı.", "warning");
       }
@@ -1545,7 +1580,7 @@ function koliKontrolEt(koli) {
   }
 
   let seriler = [];
-  for (let i = 0; i < 10; i++) {
+  for (let i = 0; i < koli.adet; i++) {
     seriler.push(buildSeriNo(parsed.prefix, parsed.number + i, parsed.digits));
   }
   koli.seriler = seriler;
@@ -1572,12 +1607,12 @@ function koliKontrolEt(koli) {
 
         koli.uygunSayisi = uygunSayisi;
 
-        if (uygunSayisi === 10) {
+        if (uygunSayisi === koli.adet) {
           koli.durum = "uygun";
-          koli.mesaj = "10/10 Uygun";
+          koli.mesaj = `${koli.adet}/${koli.adet} Uygun`;
         } else {
           koli.durum = "hatali";
-          koli.mesaj = `${uygunSayisi}/10 Uygun - Stok kontrol ediniz`;
+          koli.mesaj = `${uygunSayisi}/${koli.adet} Uygun - Stok kontrol ediniz`;
         }
       } else {
         koli.durum = "hatali";
@@ -1675,7 +1710,9 @@ $(document).on("click", "#zimmetKaydet", function () {
     }
 
     // Backend'e gönderilecek veri: Sadece UYGUN koli detayları
-    let koliDetaylari = uygunKoliler.map((k) => { return { baslangic: k.baslangic, tarih: k.tarih }; });
+    let koliDetaylari = uygunKoliler.map((k) => {
+      return { baslangic: k.baslangic, tarih: k.tarih, adet: k.adet };
+    });
 
     var formData = new FormData();
     formData.append("action", "zimmet-koli-kaydet-coklu"); // Yeni action

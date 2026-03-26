@@ -104,12 +104,26 @@ $personelOptions = [];
                         </div>
 
                         <div class="col-md-12 mb-3">
-                            <!-- Koli Modu Checkbox (Sadece Sayaç için) -->
-                            <div id="koliModuWrapper" class="form-check form-switch mb-2 d-none">
-                                <input class="form-check-input" type="checkbox" id="koliModuToggle">
-                                <label class="form-check-label fw-medium" for="koliModuToggle">
-                                    <i class="bx bx-package me-1"></i>10'lu Koli Zimmeti
-                                </label>
+                            <!-- Çoklu Zimmet Modu (Sadece Sayaç ve Aparat için) -->
+                            <div id="koliModuWrapper" class="mb-2 d-none">
+                                <div class="d-flex align-items-center gap-4">
+                                    <div class="form-check form-switch">
+                                        <input class="form-check-input" type="checkbox" id="koliModuToggle">
+                                        <label class="form-check-label fw-bold" for="koliModuToggle">
+                                            <i class="bx bx-list-ol me-1"></i>Çoklu / Seri Zimmet
+                                        </label>
+                                    </div>
+                                    <div id="koliTipiSecimi" class="d-none">
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="koli_tipi" id="koliTipTen" value="10" checked>
+                                            <label class="form-check-label small fw-bold text-muted" for="koliTipTen">10'lu Koli</label>
+                                        </div>
+                                        <div class="form-check form-check-inline">
+                                            <input class="form-check-input" type="radio" name="koli_tipi" id="koliTipOne" value="1">
+                                            <label class="form-check-label small fw-bold text-muted" for="koliTipOne">Tekil Seri</label>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Standart Seçim -->

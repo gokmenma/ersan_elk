@@ -4,6 +4,34 @@ use App\Model\TalepModel;
 use App\Model\AvansModel;
 use App\Model\PersonelIzinleriModel;
 use App\Helper\Form;
+use App\Service\Gate;
+
+// Yetki değişikliği yapıldıysa önbelleği temizle (Opsiyonel ama hata olasılığını azaltır)
+if (isset($_SESSION['user_id'])) {
+    unset($_SESSION['permission_cache'][$_SESSION['user_id']]);
+}
+
+$canAvans = Gate::allows('avans_talepleri');
+$canIzin = Gate::allows('izin_talepleri');
+$canAriza = Gate::allows('ariza_talepleri');
+$canTalepler = Gate::allows('talepler');
+
+// Eğer hiçbir yetki yoksa (güvenlik için)
+if (!$canAvans && !$canIzin && !$canAriza && !$canTalepler) {
+    Gate::authorizeOrDie('talepler'); 
+}
+
+// Hangi tabın aktif olacağını yetkilere göre zorunlu belirle
+$currentTab = $_GET['tab'] ?? '';
+if (empty($currentTab) || 
+    ($currentTab == 'avans' && !$canAvans) || 
+    ($currentTab == 'izin' && !$canIzin) || 
+    ($currentTab == 'talepler' && !$canAriza)) {
+    
+    if ($canAvans) $currentTab = 'avans';
+    elseif ($canIzin) $currentTab = 'izin';
+    elseif ($canAriza) $currentTab = 'talepler';
+}
 
 $talepModel = new TalepModel();
 $avansModel = new AvansModel();
@@ -22,7 +50,10 @@ try {
 }
 
 $talepCount = $talepModel->getBekleyenTalepSayisi();
-$toplamCount = $avansCount + $izinCount + $talepCount;
+$toplamCount = 0;
+if ($canAvans) $toplamCount += $avansCount;
+if ($canIzin) $toplamCount += $izinCount;
+if ($canAriza) $toplamCount += $talepCount;
 
 // Talepleri getir - bekleyen veya işlem yapılmış
 if ($showApproved) {
@@ -65,6 +96,7 @@ $izinTurleri = [
 
     <!-- Özet Kartları -->
     <div class="row mb-4 g-3">
+        <?php if ($canAvans): ?>
         <div class="col-xl-3 col-md-6">
             <div class="stat-card"
                 style="--card-color: #10b981; --card-rgb: 16, 185, 129; border-bottom: 3px solid var(--card-color) !important;">
@@ -83,6 +115,8 @@ $izinTurleri = [
                 </div>
             </div>
         </div>
+        <?php endif; ?>
+        <?php if ($canIzin): ?>
         <div class="col-xl-3 col-md-6">
             <div class="stat-card"
                 style="--card-color: #3b82f6; --card-rgb: 59, 130, 246; border-bottom: 3px solid var(--card-color) !important;">
@@ -101,6 +135,8 @@ $izinTurleri = [
                 </div>
             </div>
         </div>
+        <?php endif; ?>
+        <?php if ($canAriza): ?>
         <div class="col-xl-3 col-md-6">
             <div class="stat-card"
                 style="--card-color: #06b6d4; --card-rgb: 6, 182, 212; border-bottom: 3px solid var(--card-color) !important;">
@@ -119,6 +155,7 @@ $izinTurleri = [
                 </div>
             </div>
         </div>
+        <?php endif; ?>
         <div class="col-xl-3 col-md-6">
             <div class="stat-card"
                 style="--card-color: #f59e0b; --card-rgb: 245, 158, 11; border-bottom: 3px solid var(--card-color) !important;">
@@ -143,35 +180,41 @@ $izinTurleri = [
         <div
             class="card-header bg-transparent border-bottom-0 pb-0 d-flex justify-content-between align-items-center flex-wrap gap-2">
             <ul class="nav nav-tabs nav-tabs-custom" id="talepTabs" role="tablist">
+                <?php if ($canAvans): ?>
                 <li class="nav-item">
-                    <a class="nav-link active" data-bs-toggle="tab" href="#tabAvans" role="tab">
+                    <a class="nav-link <?= $currentTab == 'avans' ? 'active' : '' ?>" data-bs-toggle="tab" href="#tabAvans" role="tab">
                         <i class="bx bx-money"></i> Avans
                         <?php if (!$showApproved && $avansCount > 0): ?>
                             <span class="badge bg-success"><?= $avansCount ?></span>
                         <?php endif; ?>
                     </a>
                 </li>
+                <?php endif; ?>
+                <?php if ($canIzin): ?>
                 <li class="nav-item">
-                    <a class="nav-link" data-bs-toggle="tab" href="#tabIzin" role="tab">
+                    <a class="nav-link <?= $currentTab == 'izin' ? 'active' : '' ?>" data-bs-toggle="tab" href="#tabIzin" role="tab">
                         <i class="bx bx-calendar-check"></i> İzin
                         <?php if (!$showApproved && $izinCount > 0): ?>
                             <span class="badge bg-primary"><?= $izinCount ?></span>
                         <?php endif; ?>
                     </a>
                 </li>
+                <?php endif; ?>
+                <?php if ($canAriza): ?>
                 <li class="nav-item">
-                    <a class="nav-link" data-bs-toggle="tab" href="#tabTalepler" role="tab">
+                    <a class="nav-link <?= $currentTab == 'talepler' ? 'active' : '' ?>" data-bs-toggle="tab" href="#tabTalepler" role="tab">
                         <i class="bx bx-message-square-detail"></i> Talepler
                         <?php if (!$showApproved && $talepCount > 0): ?>
                             <span class="badge bg-info"><?= $talepCount ?></span>
                         <?php endif; ?>
                     </a>
                 </li>
+                <?php endif; ?>
             </ul>
             <?php
-            $currentTab = $_GET['tab'] ?? 'avans';
-            $pendingUrl = "index?p=talepler/list&tab=" . $currentTab;
-            $approvedUrl = "index?p=talepler/list&show=approved&tab=" . $currentTab;
+            $currentTabForUrl = $currentTab;
+            $pendingUrl = "index?p=talepler/list&tab=" . $currentTabForUrl;
+            $approvedUrl = "index?p=talepler/list&show=approved&tab=" . $currentTabForUrl;
             ?>
             <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 mb-2">
                 <a href="<?= $pendingUrl ?>" id="btnShowPending"
@@ -200,7 +243,8 @@ $izinTurleri = [
 
             <div class="tab-content">
                 <!-- Avans Talepleri Tab -->
-                <div class="tab-pane fade show active" id="tabAvans" role="tabpanel">
+                <?php if ($canAvans): ?>
+                <div class="tab-pane fade <?= $currentTab == 'avans' ? 'show active' : '' ?>" id="tabAvans" role="tabpanel">
                     <div class="table-responsive d-none d-lg-block">
                         <table class="table datatables table-hover table-bordered nowrap align-middle w-100 datatable"
                             id="avansTable" data-order="[]">
@@ -378,10 +422,11 @@ $izinTurleri = [
                             <?php endif; ?>
                         </div>
                     </div>
-                </div>
+                <?php endif; ?>
 
                 <!-- İzin Talepleri Tab -->
-                <div class="tab-pane fade" id="tabIzin" role="tabpanel">
+                <?php if ($canIzin): ?>
+                <div class="tab-pane fade <?= $currentTab == 'izin' ? 'show active' : '' ?>" id="tabIzin" role="tabpanel">
                     <div class="table-responsive d-none d-lg-block">
                         <table class="table datatables table-hover table-bordered nowrap align-middle w-100 datatable"
                             id="izinTable" data-order="[]">
@@ -569,10 +614,11 @@ $izinTurleri = [
                             <?php endif; ?>
                         </div>
                     </div>
-                </div>
+                <?php endif; ?>
 
                 <!-- Genel Talepler Tab -->
-                <div class="tab-pane fade" id="tabTalepler" role="tabpanel">
+                <?php if ($canAriza): ?>
+                <div class="tab-pane fade <?= $currentTab == 'talepler' ? 'show active' : '' ?>" id="tabTalepler" role="tabpanel">
                     <div class="table-responsive d-none d-lg-block">
                         <table class="table datatables table-hover table-bordered nowrap align-middle w-100 datatable"
                             id="taleplerTable" data-order="[]">
@@ -768,7 +814,7 @@ $izinTurleri = [
                             <?php endif; ?>
                         </div>
                     </div>
-                </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>

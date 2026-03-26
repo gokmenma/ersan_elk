@@ -414,44 +414,84 @@ document.addEventListener('DOMContentLoaded', function () {
 
     // Şablon değişkenlerini kopyalama özelliği
     $('#degiskenlerModal table tbody tr td:first-child code').each(function() {
-        var tag = $(this).text();
-        $(this).css('cursor', 'copy').attr('title', 'Kopyalamak için tıklayın').addClass('copy-tag-text');
-        $(this).after(' <i class="bx bx-copy text-primary ms-1 cursor-pointer copy-tag-icon" title="Kopyalamak için tıklayın" data-tag="'+tag+'" style="font-size: 1.1em; vertical-align: middle;"></i>');
+        var tag = $(this).text().trim();
+        $(this).css('cursor', 'pointer')
+               .attr('title', 'Kopyalamak için tıklayın')
+               .attr('data-tag', tag) // Koda da özniteliği koyalım
+               .addClass('copy-tag-text');
+        
+        // İkonu ekle
+        var $icon = $('<i class="bx bx-copy text-primary ms-1 cursor-pointer copy-tag-icon" title="Kopyalamak için tıklayın" style="font-size: 1.1em; vertical-align: middle;"></i>');
+        $icon.attr('data-tag', tag);
+        $(this).after($icon);
     });
 
-    $(document).on('click', '.copy-tag-text, .copy-tag-icon', function() {
-        var tag = $(this).hasClass('copy-tag-icon') ? $(this).data('tag') : $(this).text();
+    $(document).on('click', '.copy-tag-text, .copy-tag-icon', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
         
-        var temp = $("<input>");
-        $("body").append(temp);
-        temp.val(tag).select();
-        document.execCommand("copy");
-        temp.remove();
-        
-        if (typeof Toastify !== 'undefined') {
-            Toastify({
-                text: "Kopyalandı: " + tag,
-                duration: 2500,
-                close: true,
-                gravity: "top",
-                position: "center",
-                style: {
-                    background: "#000",
-                    color: "#fff",
-                    borderRadius: "6px"
-                }
-            }).showToast();
-        } else {
-            Swal.fire({
-                toast: true,
-                position: 'top-end',
-                icon: 'success',
-                title: '<b style="font-family:monospace; color:#556ee6;">'+tag+'</b><br>panoya kopyalandı!',
-                showConfirmButton: false,
-                timer: 2000
+        var tag = $(this).attr('data-tag') || $(this).text().trim();
+        if (!tag) return;
+
+        var self = this;
+        function showSuccess(copiedTag) {
+            if (typeof Toastify !== 'undefined') {
+                Toastify({
+                    text: "Panoya Kopyalandı: " + copiedTag,
+                    duration: 2500,
+                    close: true,
+                    gravity: "top",
+                    position: "center",
+                    style: { background: "#000", color: "#fff", borderRadius: "6px", boxShadow: "0 4px 12px rgba(0,0,0,0.4)" }
+                }).showToast();
+            } else {
+                Swal.fire({ toast: true, position: 'top-end', icon: 'success', title: copiedTag + ' kopyalandı!', showConfirmButton: false, timer: 1500 });
+            }
+        }
+
+        // 1. Yol: Modern Clipboard API
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(tag).then(function() {
+                showSuccess(tag);
+            }).catch(function() {
+                // Hata durumunda fallback'e düş
+                fallbackCopy(tag, showSuccess);
             });
+        } else {
+            // 2. Yol: Klasik Textarea Yöntemi
+            fallbackCopy(tag, showSuccess);
         }
     });
+
+    function fallbackCopy(text, callback) {
+        var textArea = document.createElement("textarea");
+        textArea.value = text;
+        
+        // Gizli ama odaklanabilir yap
+        textArea.style.position = "fixed";
+        textArea.style.left = "-9999px";
+        textArea.style.top = "0";
+        textArea.style.width = '2em';
+        textArea.style.height = '2em';
+        textArea.style.padding = '0';
+        textArea.style.border = 'none';
+        textArea.style.outline = 'none';
+        textArea.style.boxShadow = 'none';
+        textArea.style.background = 'transparent';
+
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+
+        try {
+            var successful = document.execCommand('copy');
+            if (successful && callback) callback(text);
+        } catch (err) {
+            console.error('Fallback copy fail:', err);
+        }
+
+        document.body.removeChild(textArea);
+    }
 
     $('#btnKaydet').click(function() {
         var formData = new FormData($('#formEkleForm')[0]);

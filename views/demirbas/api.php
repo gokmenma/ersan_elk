@@ -816,7 +816,8 @@ if ($action == "zimmet-koli-kaydet-coklu") {
                 $number = intval($matches[2]);
                 $digits = strlen($matches[2]);
 
-                for ($i = 0; $i < 10; $i++) {
+                $adet = intval($detay['adet'] ?? 10);
+                for ($i = 0; $i < $adet; $i++) {
                     $nextNum = str_pad($number + $i, $digits, "0", STR_PAD_LEFT);
                     $seri = $prefix . $nextNum;
                     $tumSeriler[] = $seri;
