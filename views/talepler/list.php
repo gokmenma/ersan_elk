@@ -422,6 +422,7 @@ $izinTurleri = [
                             <?php endif; ?>
                         </div>
                     </div>
+                </div>
                 <?php endif; ?>
 
                 <!-- İzin Talepleri Tab -->
@@ -614,6 +615,7 @@ $izinTurleri = [
                             <?php endif; ?>
                         </div>
                     </div>
+                </div>
                 <?php endif; ?>
 
                 <!-- Genel Talepler Tab -->
@@ -814,6 +816,7 @@ $izinTurleri = [
                             <?php endif; ?>
                         </div>
                     </div>
+                </div>
                 <?php endif; ?>
             </div>
         </div>
