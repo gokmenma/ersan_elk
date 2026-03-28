@@ -53,7 +53,8 @@ if ($_POST["action"] == "kullanici-kaydet") {
             'mail_avans_talep' => $mail_avans_talep,
             'mail_izin_talep' => $mail_izin_talep,
             'mail_genel_talep' => $mail_genel_talep,
-            'mail_ariza_talep' => $mail_ariza_talep
+            'mail_ariza_talep' => $mail_ariza_talep,
+            'durum' => $_POST['durum'] ?? 'Aktif'
         ];
         if (!empty($_POST['password'])) {
             $data['password'] = password_hash($_POST['password'], PASSWORD_BCRYPT);

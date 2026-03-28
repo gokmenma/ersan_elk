@@ -161,17 +161,24 @@ class AvansModel extends Model
     /**
      * Avans durumunu günceller (onay/ret)
      */
-    public function updateDurum($id, $durum, $aciklama = null)
+    public function updateDurum($id, $durum, $aciklama = null, $tutar = null)
     {
         $onay_tarihi = in_array($durum, ['onaylandi', 'reddedildi']) ? date('Y-m-d H:i:s') : null;
         $onaylayan_id = $_SESSION['user_id'] ?? null;
 
-        $sql = $this->db->prepare("
-            UPDATE {$this->table} 
-            SET durum = ?, onay_aciklama = ?, onay_tarihi = ?, onaylayan_id = ?
-            WHERE id = ?
-        ");
-        return $sql->execute([$durum, $aciklama, $onay_tarihi, $onaylayan_id, $id]);
+        $sql_parts = ["durum = ?", "onay_aciklama = ?", "onay_tarihi = ?", "onaylayan_id = ?"];
+        $params = [$durum, $aciklama, $onay_tarihi, $onaylayan_id];
+
+        if ($tutar !== null && $durum === 'onaylandi') {
+            $sql_parts[] = "tutar = ?";
+            $params[] = floatval($tutar);
+        }
+
+        $params[] = $id;
+
+        $sql_text = "UPDATE {$this->table} SET " . implode(", ", $sql_parts) . " WHERE id = ?";
+        $sql = $this->db->prepare($sql_text);
+        return $sql->execute($params);
     }
 
     /**

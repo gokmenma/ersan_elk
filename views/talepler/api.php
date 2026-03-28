@@ -165,12 +165,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $id = intval($_POST['id'] ?? 0);
                 $aciklama = trim($_POST['aciklama'] ?? '');
                 $hesaba_isle = isset($_POST['hesaba_isle']) && $_POST['hesaba_isle'] == '1';
+                
+                $onay_tipi = $_POST['onay_tipi'] ?? 'ayni'; // 'ayni' or 'farkli'
+                $onaylanan_tutar = null;
+                if ($onay_tipi === 'farkli' && isset($_POST['farkli_tutar'])) {
+                    $onaylanan_tutar = str_replace(',', '.', str_replace('.', '', $_POST['farkli_tutar']));
+                    $onaylanan_tutar = floatval($onaylanan_tutar);
+                    
+                    // Otomatik açıklama ekle
+                    $tutarFormat = number_format($onaylanan_tutar, 2, ',', '.') . ' TL';
+                    $oto_mesaj = "Avans talebiniz $tutarFormat olarak uygun görülmüştür.";
+                    if (empty($aciklama)) {
+                        $aciklama = $oto_mesaj;
+                    }
+                }
 
                 if ($id <= 0) {
                     throw new Exception('Geçersiz avans ID.');
                 }
 
-                if ($avansModel->updateDurum($id, 'onaylandi', $aciklama)) {
+                if ($avansModel->updateDurum($id, 'onaylandi', $aciklama, $onaylanan_tutar)) {
                     if ($currentUserId > 0) {
                         $bildirimModel->markRequestNotificationAsRead($currentUserId, 'avans', $id);
                     }
@@ -251,12 +265,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             case 'izin-onayla':
                 $id = intval($_POST['id'] ?? 0);
                 $aciklama = trim($_POST['aciklama'] ?? '');
+                
+                $onay_tipi = $_POST['onay_tipi'] ?? 'ayni'; // 'ayni' or 'farkli'
+                $farkli_baslangic = $_POST['farkli_baslangic'] ?? null;
+                $farkli_bitis = $_POST['farkli_bitis'] ?? null;
+
+                if ($onay_tipi === 'farkli' && $farkli_baslangic && $farkli_bitis) {
+                    // Otomatik açıklama ekle
+                    $gun = $izinModel->hesaplaIzinGunu($farkli_baslangic, $farkli_bitis);
+                    $basFormat = date('d.m.Y', strtotime($farkli_baslangic));
+                    $bitFormat = date('d.m.Y', strtotime($farkli_bitis));
+                    
+                    $oto_mesaj = "İzin talebiniz $basFormat - $bitFormat tarihleri arasında $gun gün olarak uygun görülmüştür.";
+                    if (empty($aciklama)) {
+                        $aciklama = $oto_mesaj;
+                    }
+                }
 
                 if ($id <= 0) {
                     throw new Exception('Geçersiz izin ID.');
                 }
 
-                if ($izinModel->updateDurum($id, 'Onaylandı', $aciklama)) {
+                if ($izinModel->updateDurum($id, 'Onaylandı', $aciklama, $farkli_baslangic, $farkli_bitis)) {
                     if ($currentUserId > 0) {
                         $bildirimModel->markRequestNotificationAsRead($currentUserId, 'izin', $id);
                     }
@@ -268,7 +298,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $pushService = new PushNotificationService();
                             $pushService->sendToPersonel($izin->personel_id, [
                                 'title' => '✅ İzin Onaylandı',
-                                'body' => 'İzin talebiniz onaylandı. İyi tatiller!',
+                                'body' => date('d.m.Y', strtotime($izin->baslangic_tarihi)) . ' - ' . date('d.m.Y', strtotime($izin->bitis_tarihi)) . ' tarihleri arasındaki izniniz onaylandı.',
                                 'url' => 'index.php?page=izin'
                             ]);
                         }

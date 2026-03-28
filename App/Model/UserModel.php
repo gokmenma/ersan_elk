@@ -141,6 +141,13 @@ class UserModel extends Model
             <td class="text-center"><?= $phone ?></td>
             <td class="text-center"><?= $izinOnayi ?></td>
             <td class="text-center"><?= $izinOnaySirasi ?></td>
+            <td class="text-center">
+                <?php if ($user->durum == 'Aktif'): ?>
+                    <span class="badge bg-success">Aktif</span>
+                <?php else: ?>
+                    <span class="badge bg-danger">Pasif</span>
+                <?php endif; ?>
+            </td>
             <td><?= $createdAt ?></td>
             <td class="text-center" style="width:5%">
                 <div class="flex-shrink-0">

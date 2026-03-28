@@ -146,14 +146,23 @@ $user_firmler = explode(',', $user ? ($user->firma_ids ?? '') : '');
         <!-- Temel Bilgiler -->
         <div class="section-title"><i class="mdi mdi-account me-1"></i>Temel Bilgiler</div>
         <div class="row mb-2">
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <?php echo Form::FormFloatInput("text", "user_name", $user->user_name ?? '', "", "Kullanıcı Adı", "user"); ?>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <?php echo Form::FormFloatInput("password", "password", '', "", "Şifre", "lock"); ?>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-3">
                 <?php echo Form::FormFloatInput("text", "adi_soyadi", $user->adi_soyadi ?? '', "", "Adı Soyadı", "user"); ?>
+            </div>
+            <div class="col-md-3">
+                <?php echo Form::FormSelect2(
+                    name: "durum",
+                    label: "Durum",
+                    options: ['Aktif' => 'Aktif', 'Pasif' => 'Pasif'],
+                    selectedValue: $user->durum ?? 'Aktif',
+                    icon: "info-circle"
+                ); ?>
             </div>
         </div>
         <div class="row mb-2">

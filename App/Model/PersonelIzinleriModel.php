@@ -203,7 +203,7 @@ class PersonelIzinleriModel extends Model
     /**
      * İzin durumunu günceller (onay/ret)
      */
-    public function updateDurum($id, $durum, $aciklama = null)
+    public function updateDurum($id, $durum, $aciklama = null, $baslangic = null, $bitis = null)
     {
         $onay_tarihi = in_array($durum, ['Onaylandı', 'Reddedildi']) ? date('Y-m-d H:i:s') : null;
         $onaylayan_id = $_SESSION['user_id'] ?? null;
@@ -212,12 +212,23 @@ class PersonelIzinleriModel extends Model
             $this->addOnayKaydi($id, $onaylayan_id, $durum, $aciklama);
         }
 
-        $sql = $this->db->prepare("
-            UPDATE {$this->table} 
-            SET onay_durumu = ?
-            WHERE id = ?
-        ");
-        return $sql->execute([$durum, $id]);
+        $sql_parts = ["onay_durumu = ?"];
+        $params = [$durum];
+
+        if ($baslangic && $bitis && ($durum === 'Onaylandı' || $durum === 'onaylandi')) {
+            $toplam_gun = $this->hesaplaIzinGunu($baslangic, $bitis);
+            $sql_parts[] = "baslangic_tarihi = ?";
+            $sql_parts[] = "bitis_tarihi = ?";
+            $sql_parts[] = "toplam_gun = ?";
+            $params[] = $baslangic;
+            $params[] = $bitis;
+            $params[] = floatval($toplam_gun);
+        }
+
+        $params[] = $id;
+        $sql_text = "UPDATE {$this->table} SET " . implode(", ", $sql_parts) . " WHERE id = ?";
+        $sql = $this->db->prepare($sql_text);
+        return $sql->execute($params);
     }
 
     /**

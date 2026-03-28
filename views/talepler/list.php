@@ -521,6 +521,8 @@ $izinTurleri = [
                                                         data-id="<?= $izin->id ?>"
                                                         data-personel="<?= htmlspecialchars($izin->requester_name ?? '') ?>"
                                                         data-tur="<?= $izinTuruLabel ?>" data-gun="<?= $gunSayisi ?>"
+                                                        data-baslangic="<?= $izin->baslangic_tarihi ?>"
+                                                        data-bitis="<?= $izin->bitis_tarihi ?>"
                                                         title="Onayla">
                                                         <i class="bx bx-check"></i>
                                                     </button>
@@ -599,7 +601,13 @@ $izinTurleri = [
                                             
                                             <div class="d-flex gap-2 mt-2 pt-2 border-top">
                                                 <?php if ($izin->onay_durumu != 'Onaylandı'): ?>
-                                                    <button class="btn btn-sm btn-soft-success flex-fill btn-izin-onayla" type="button" data-id="<?= $izin->id ?>" data-personel="<?= htmlspecialchars($izin->requester_name ?? '') ?>" data-tur="<?= $izinTuruLabel ?>" data-gun="<?= $gunSayisi ?>"><i class="bx bx-check"></i> Onayla</button>
+                                                    <button class="btn btn-sm btn-soft-success flex-fill btn-izin-onayla" type="button" 
+                                                        data-id="<?= $izin->id ?>" 
+                                                        data-personel="<?= htmlspecialchars($izin->requester_name ?? '') ?>" 
+                                                        data-tur="<?= $izinTuruLabel ?>" 
+                                                        data-gun="<?= $gunSayisi ?>"
+                                                        data-baslangic="<?= $izin->baslangic_tarihi ?>"
+                                                        data-bitis="<?= $izin->bitis_tarihi ?>"><i class="bx bx-check"></i> Onayla</button>
                                                 <?php endif; ?>
                                                 <?php if ($izin->onay_durumu != 'Reddedildi'): ?>
                                                     <button class="btn btn-sm btn-soft-danger flex-fill btn-izin-reddet" type="button" data-id="<?= $izin->id ?>" data-personel="<?= htmlspecialchars($izin->requester_name ?? '') ?>"><i class="bx bx-x"></i> Red</button>
@@ -841,6 +849,29 @@ $izinTurleri = [
                     </div>
 
                     <div class="mb-3">
+                        <label class="form-label">Onay Tipi</label>
+                        <div class="d-flex gap-3 bg-light p-2 rounded border">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="onay_tipi" id="onayAyni" value="ayni" checked>
+                                <label class="form-check-label" for="onayAyni">Aynı Tutar</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="onay_tipi" id="onayFarkli" value="farkli">
+                                <label class="form-check-label" for="onayFarkli">Farklı Tutar</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="farkliTutarAlani" class="mb-3 d-none">
+                        <label class="form-label">Onaylanan Tutar (TL) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="text" class="form-control" name="farkli_tutar" id="farkli_tutar" placeholder="0,00">
+                            <span class="input-group-text">₺</span>
+                        </div>
+                        <small class="text-muted">Örn: 5000,00</small>
+                    </div>
+
+                    <div class="mb-3">
                         <label class="form-label">Açıklama (Opsiyonel)</label>
                         <textarea class="form-control" name="aciklama" rows="2"
                             placeholder="Onay açıklaması..."></textarea>
@@ -912,8 +943,38 @@ $izinTurleri = [
                     </div>
 
                     <div class="mb-3">
+                        <label class="form-label">Onay Tipi</label>
+                        <div class="d-flex gap-3 bg-light p-2 rounded border">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="onay_tipi" id="izinOnayAyni" value="ayni" checked>
+                                <label class="form-check-label" for="izinOnayAyni">Aynı Tarihler</label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="onay_tipi" id="izinOnayFarkli" value="farkli">
+                                <label class="form-check-label" for="izinOnayFarkli">Farklı Tarihler</label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="farkliIzinTarihAlani" class="mb-3 d-none">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <label class="form-label small">Başlangıç Tarihi</label>
+                                <input type="date" class="form-control" name="farkli_baslangic" id="farkli_baslangic">
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label small">Bitiş Tarihi</label>
+                                <input type="date" class="form-control" name="farkli_bitis" id="farkli_bitis">
+                            </div>
+                        </div>
+                        <div class="mt-2 text-primary small fw-bold">
+                            <i class="bx bx-info-circle me-1"></i>Yeni Süre: <span id="farkli_izin_gun_metni">0</span> Gün
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
                         <label class="form-label">Açıklama (Opsiyonel)</label>
-                        <textarea class="form-control" name="aciklama" rows="2"
+                        <textarea class="form-control" name="aciklama" id="izin_onay_aciklama" rows="2"
                             placeholder="Onay açıklaması..."></textarea>
                     </div>
                 </div>
@@ -1132,16 +1193,59 @@ $izinTurleri = [
             }
         });
 
+        // Avans Onay Tipi Değişimi
+        document.querySelectorAll('input[name="onay_tipi"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                const farkliTutarAlani = document.getElementById('farkliTutarAlani');
+                const aciklamaField = document.querySelector('#formAvansOnay textarea[name="aciklama"]');
+                const tutarVal = document.getElementById('farkli_tutar').value;
+
+                if (this.value === 'farkli') {
+                    farkliTutarAlani.classList.remove('d-none');
+                    document.getElementById('farkli_tutar').required = true;
+                    document.getElementById('farkli_tutar').focus();
+                    
+                    // Otomatik açıklama ekle
+                    if (tutarVal) {
+                        aciklamaField.value = "Avans talebiniz " + tutarVal + " TL olarak uygun görülmüştür.";
+                    }
+                } else {
+                    farkliTutarAlani.classList.add('d-none');
+                    document.getElementById('farkli_tutar').required = false;
+                    aciklamaField.value = "";
+                }
+            });
+        });
+
+        // Tutar değiştikçe açıklamayı güncelle
+        document.getElementById('farkli_tutar')?.addEventListener('input', function() {
+            const aciklamaField = document.querySelector('#formAvansOnay textarea[name="aciklama"]');
+            if (this.value) {
+                aciklamaField.value = "Avans talebiniz " + this.value + " TL olarak uygun görülmüştür.";
+            } else {
+                aciklamaField.value = "";
+            }
+        });
+
         // Avans Onayla
         document.querySelectorAll('.btn-avans-onayla').forEach(btn => {
             btn.addEventListener('click', function () {
                 const id = this.dataset.id;
                 const personel = this.dataset.personel;
-                const tutar = parseFloat(this.dataset.tutar).toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
+                const pureTutar = parseFloat(this.dataset.tutar);
+                const tutarStr = pureTutar.toLocaleString('tr-TR', { minimumFractionDigits: 2 }) + ' ₺';
 
                 document.getElementById('avans_onay_id').value = id;
                 document.getElementById('avans_onay_personel').textContent = personel;
-                document.getElementById('avans_onay_tutar').textContent = tutar;
+                document.getElementById('avans_onay_tutar').textContent = tutarStr;
+                
+                // Formu sıfırla ve varsayılanları ayarla
+                const form = document.getElementById('formAvansOnay');
+                form.reset();
+                document.getElementById('onayAyni').checked = true;
+                document.getElementById('farkliTutarAlani').classList.add('d-none');
+                document.getElementById('farkli_tutar').value = pureTutar.toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+                document.getElementById('farkli_tutar').required = false;
 
                 new bootstrap.Modal(document.getElementById('modalAvansOnay')).show();
             });
@@ -1174,15 +1278,67 @@ $izinTurleri = [
                 const personel = this.dataset.personel;
                 const tur = this.dataset.tur;
                 const gun = this.dataset.gun;
+                const start = this.dataset.baslangic;
+                const end = this.dataset.bitis;
 
                 document.getElementById('izin_onay_id').value = id;
                 document.getElementById('izin_onay_personel').textContent = personel;
                 document.getElementById('izin_onay_tur').textContent = tur;
                 document.getElementById('izin_onay_gun').textContent = gun;
-
+                
+                // Form reset
+                const form = document.getElementById('formIzinOnay');
+                form.reset();
+                document.getElementById('izinOnayAyni').checked = true;
+                document.getElementById('farkliIzinTarihAlani').classList.add('d-none');
+                
+                document.getElementById('farkli_baslangic').value = start || '';
+                document.getElementById('farkli_bitis').value = end || '';
+                
                 new bootstrap.Modal(document.getElementById('modalIzinOnay')).show();
             });
         });
+
+        // İzin Onay Tipi Değişimi
+        document.querySelectorAll('input[name="onay_tipi"]').forEach(radio => {
+            if(radio.id.startsWith('izinOnay')) {
+                radio.addEventListener('change', function() {
+                    const alan = document.getElementById('farkliIzinTarihAlani');
+                    const aciklamaField = document.getElementById('izin_onay_aciklama');
+                    if (this.value === 'farkli') {
+                        alan.classList.remove('d-none');
+                        updateIzinOtoMesaj();
+                    } else {
+                        alan.classList.add('d-none');
+                        aciklamaField.value = "";
+                    }
+                });
+            }
+        });
+
+        function updateIzinOtoMesaj() {
+            const startStr = document.getElementById('farkli_baslangic').value;
+            const endStr = document.getElementById('farkli_bitis').value;
+            const aciklamaField = document.getElementById('izin_onay_aciklama');
+            const gunMetni = document.getElementById('farkli_izin_gun_metni');
+
+            if (startStr && endStr) {
+                const start = new Date(startStr);
+                const end = new Date(endStr);
+                const diffTime = Math.abs(end - start);
+                const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                
+                gunMetni.textContent = diffDays;
+
+                const startFmt = startStr.split('-').reverse().join('.');
+                const endFmt = endStr.split('-').reverse().join('.');
+                
+                aciklamaField.value = "İzin talebiniz " + startFmt + " - " + endFmt + " tarihleri arasında " + diffDays + " gün olarak uygun görülmüştür.";
+            }
+        }
+
+        document.getElementById('farkli_baslangic')?.addEventListener('change', updateIzinOtoMesaj);
+        document.getElementById('farkli_bitis')?.addEventListener('change', updateIzinOtoMesaj);
 
         // İzin Reddet
         document.querySelectorAll('.btn-izin-reddet').forEach(btn => {

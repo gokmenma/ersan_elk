@@ -24,7 +24,7 @@ if (isset($_COOKIE["remember_me"])) {
     $decrypted_id = Security::decrypt($_COOKIE["remember_me"]);
     if ($decrypted_id) {
         $user = $User->find($decrypted_id);
-        if ($user) {
+        if ($user && ($user->durum ?? 'Aktif') !== 'Pasif') {
             $_SESSION["loggedin"] = true;
             $_SESSION["user"] = $user;
             $_SESSION["user_id"] = $user->id;
@@ -87,69 +87,65 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
     // Validate credentials
     if (empty($username_err) && empty($password_err)) {
-
         //user control
         $user = $User->checkUser($username);
 
-
         // Check if username exists, if yes then verify password
         if ($user) {
-
-            //Helper::dd($user);
-
-            $hashed_password = $user->password;
-
-
-            if (password_verify($password, $hashed_password)) {
-                // Password is correct, so start a new session
-                // session_start();
-
-                // Store data in session variables
-                $_SESSION["loggedin"] = true;
-
-                $_SESSION["user"] = $user;
-                $_SESSION["user_id"] = $user->id;
-                $_SESSION["id"] = $user->id;
-                $_SESSION["owner_id"] = $user->owner_id;
-                $_SESSION["username"] = $username;
-                $_SESSION["user_full_name"] = $user->adi_soyadi;
-                // sube_id
-                $_SESSION["sube_id"] = $user->sube_id;
-                // Remember Me
-                if (isset($_POST["remember"])) {
-                    $encrypted_user_id = Security::encrypt($user->id);
-                    setcookie("remember_me", $encrypted_user_id, time() + (30 * 24 * 60 * 60), "/"); // 30 days
-                }
-
-                // Redirect user to welcome page
-                try {
-                    $SystemLog = new SystemLogModel();
-                    $ip = $_SERVER['REMOTE_ADDR'] ?? 'Bilinmiyor';
-                    $SystemLog->logAction(
-                        $user->id,
-                        'Başarılı Giriş',
-                        "{$user->adi_soyadi} ({$username}) sisteme giriş yaptı. IP: {$ip}",
-                        SystemLogModel::LEVEL_IMPORTANT
-                    );
-                } catch (\Exception $e) { /* Loglama hatası sessiz geçilir */
-                }
-
-                header("location: firma-secim.php");
-                exit;
+            // Durum Kontrolü
+            if (($user->durum ?? 'Aktif') === 'Pasif') {
+                $username_err = "Hesabınız pasif durumdadır. Lütfen yönetici ile iletişime geçiniz.";
             } else {
-                $password_err = "Hatalı şifre girdiniz.";
+                $hashed_password = $user->password;
 
-                // Başarısız giriş denemesini logla
-                try {
-                    $SystemLog = new SystemLogModel();
-                    $ip = $_SERVER['REMOTE_ADDR'] ?? 'Bilinmiyor';
-                    $SystemLog->logAction(
-                        $user->id,
-                        'Başarısız Giriş',
-                        "{$user->adi_soyadi} ({$username}) için hatalı şifre denemesi. IP: {$ip}",
-                        SystemLogModel::LEVEL_IMPORTANT
-                    );
-                } catch (\Exception $e) { /* Loglama hatası sessiz geçilir */
+                if (password_verify($password, $hashed_password)) {
+                    // Password is correct, so start a new session
+                    // Store data in session variables
+                    $_SESSION["loggedin"] = true;
+                    $_SESSION["user"] = $user;
+                    $_SESSION["user_id"] = $user->id;
+                    $_SESSION["id"] = $user->id;
+                    $_SESSION["owner_id"] = $user->owner_id;
+                    $_SESSION["username"] = $username;
+                    $_SESSION["user_full_name"] = $user->adi_soyadi;
+                    $_SESSION["sube_id"] = $user->sube_id;
+
+                    // Remember Me
+                    if (isset($_POST["remember"])) {
+                        $encrypted_user_id = Security::encrypt($user->id);
+                        setcookie("remember_me", $encrypted_user_id, time() + (30 * 24 * 60 * 60), "/"); // 30 days
+                    }
+
+                    // Redirect user to welcome page
+                    try {
+                        $SystemLog = new SystemLogModel();
+                        $ip = $_SERVER['REMOTE_ADDR'] ?? 'Bilinmiyor';
+                        $SystemLog->logAction(
+                            $user->id,
+                            'Başarılı Giriş',
+                            "{$user->adi_soyadi} ({$username}) sisteme giriş yaptı. IP: {$ip}",
+                            SystemLogModel::LEVEL_IMPORTANT
+                        );
+                    } catch (\Exception $e) { /* Loglama hatası sessiz geçilir */
+                    }
+
+                    header("location: firma-secim.php");
+                    exit;
+                } else {
+                    $password_err = "Hatalı şifre girdiniz.";
+
+                    // Başarısız giriş denemesini logla
+                    try {
+                        $SystemLog = new SystemLogModel();
+                        $ip = $_SERVER['REMOTE_ADDR'] ?? 'Bilinmiyor';
+                        $SystemLog->logAction(
+                            $user->id,
+                            'Başarılı Giriş',
+                            "{$user->adi_soyadi} ({$username}) için hatalı şifre denemesi. IP: {$ip}",
+                            SystemLogModel::LEVEL_IMPORTANT
+                        );
+                    } catch (\Exception $e) { /* Loglama hatası sessiz geçilir */
+                    }
                 }
             }
         } else {
@@ -168,10 +164,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             } catch (\Exception $e) { /* Loglama hatası sessiz geçilir */
             }
         }
-
     }
-
-
 }
 ?>
 

@@ -558,6 +558,9 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                                     </label>
                                 </div>
                             </div>
+                        <div id="okumaGunFilterBadges" class="d-flex flex-wrap gap-2 flex-grow-1 ms-3">
+                            <!-- JS ile dolacak -->
+                        </div>
                         <div class="d-flex align-items-center gap-2">
                             <button type="button" class="btn btn-sm btn-outline-info btn-tab-fullscreen"
                                 data-target="okumaGunReportSection">
@@ -1395,6 +1398,59 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
     .fark-normal {
         color: #059669 !important;
         font-weight: 600;
+    }
+
+    /* ======= FILTER BADGES (Tab 2) ======= */
+    .filter-badge {
+        display: inline-flex;
+        align-items: center;
+        background: #f0fdf4;
+        color: #166534;
+        border: 1px solid #bbf7d0;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 11px;
+        font-weight: 500;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        transition: all 0.2s ease;
+    }
+
+    [data-bs-theme="dark"] .filter-badge {
+        background: rgba(52, 195, 143, 0.1);
+        color: #34c38f;
+        border-color: rgba(52, 195, 143, 0.2);
+    }
+
+    .filter-badge .badge-label {
+        font-weight: 700;
+        margin-right: 4px;
+        opacity: 0.8;
+    }
+
+    .filter-badge .badge-value {
+        font-weight: 800;
+    }
+
+    .filter-badge .badge-close {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 16px;
+        height: 16px;
+        margin-left: 8px;
+        padding: 0;
+        background: rgba(22, 101, 52, 0.1);
+        border: none;
+        border-radius: 4px;
+        color: inherit;
+        font-size: 14px;
+        cursor: pointer;
+        transition: all 0.2s;
+    }
+
+    .filter-badge .badge-close:hover {
+        background: #ef4444;
+        color: #fff;
     }
 
     /* Period separator */
@@ -2499,10 +2555,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 });
             }
 
-            if (filteredData.length === 0) {
-                $('#okumaGunTableWrapper').html('<div class="text-center p-5 text-muted"><i class="bx bx-filter fs-1 d-block mb-2"></i>Filtrelere uygun veri bulunamadı.</div>');
-                return;
-            }
+
 
             // Apply sort
             let sortedData = [...filteredData];
@@ -2601,8 +2654,9 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 
                 // Fark (Numeric filter button)
                 const filterKey = donem + '_fark';
-                const activeClass = _numericFilters[filterKey] ? 'active-filter' : '';
-                const dot = _numericFilters[filterKey] ? '<span class="filter-dot"></span>' : '';
+                const isActive = _numericFilters[filterKey] && _numericFilters[filterKey].operator && _numericFilters[filterKey].value !== '';
+                const activeClass = isActive ? 'col-filter-active' : '';
+                const dot = isActive ? '<span class="filter-dot"></span>' : '';
                 html += `<th class="sub-header og-sortable-header ${isLast ? 'ogr-period-end' : ''}" data-sort-col="${filterKey}">
                     <div class="d-flex align-items-center justify-content-center gap-1">
                         <button type="button" class="col-filter-btn ${activeClass}" data-filter-col="${filterKey}" title="Sayısal Filtrele">
@@ -2617,6 +2671,11 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
             // TBODY
             html += '<tbody>';
+
+            if (filteredData.length === 0) {
+                const totalCols = 5 + (donemler.length * 2);
+                html += `<tr><td colspan="${totalCols}" class="text-center p-4 text-muted"><i class="bx bx-info-circle me-1"></i>Filtrelere uygun veri bulunamadı.</td></tr>`;
+            }
 
             let rowNum = 0;
             regionOrder.forEach(function (region, regionIdx) {
@@ -2661,7 +2720,51 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             html += '</table>';
 
             $('#okumaGunTableWrapper').html(html);
+            updateNumericFilterBadges();
         }
+
+        function updateNumericFilterBadges() {
+            const container = $('#okumaGunFilterBadges');
+            if (!container.length) return;
+            container.empty();
+
+            for (const key in _numericFilters) {
+                const f = _numericFilters[key];
+                if (!f) continue;
+
+                // Sadece Tab 2 için olanları (fark) göster
+                if (!key.endsWith('_fark')) continue;
+
+                const parts = key.split('_');
+                const field = parts.pop();
+                const donem = parts.join('_');
+                const formattedDonem = donem.substring(0, 4) + '/' + donem.substring(4);
+                const fieldName = field === 'fark' ? 'FARK' : field.toUpperCase();
+
+                container.append(`
+                    <div class="filter-badge">
+                        <span class="badge-label">${formattedDonem} ${fieldName}:</span>
+                        <span class="badge-value">${f.operator} ${f.value}</span>
+                        <button type="button" class="badge-close" data-filter-key="${key}" title="Filtreyi Kaldır">
+                            <i class="bx bx-x"></i>
+                        </button>
+                    </div>
+                `);
+            }
+        }
+
+        // Badge temizleme
+        $(document).on('click', '.badge-close', function (e) {
+            const key = $(this).data('filter-key');
+            if (key) {
+                delete _numericFilters[key];
+                if ($('#tab-okuma-gun').hasClass('active')) {
+                    renderOkumaGunTable(_okumaGunData, _okumaGunDonemler, true);
+                } else {
+                    renderTable(_tableData, _tableDonemler, true);
+                }
+            }
+        });
 
     });
 </script>

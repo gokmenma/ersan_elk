@@ -144,6 +144,7 @@ function formatDateOnlyMobile($dateStr) {
                     'aciklama' => $avans->aciklama ?? '',
                     'durum' => $avans->durum ?? 'beklemede',
                     'onay_tarihi' => !empty($avans->onay_tarihi) ? formatDateMobile($avans->onay_tarihi) : '',
+                    'onay_aciklama' => $avans->onay_aciklama ?? '',
                     'islem_yapan' => $avans->solver_name ?? '',
                     'showApproved' => $showApproved
                 ];
@@ -254,6 +255,7 @@ function formatDateOnlyMobile($dateStr) {
                     'durum' => $izin->onay_durumu ?? 'beklemede',
                     'islem_tarihi' => !empty($izin->islem_tarihi) ? formatDateMobile($izin->islem_tarihi) : '',
                     'islem_yapan' => $izin->solver_name ?? '',
+                    'onay_aciklama' => $izin->onay_aciklama ?? '',
                     'showApproved' => $showApproved
                 ];
                 $izinJson = htmlspecialchars(json_encode($izinData), ENT_QUOTES, 'UTF-8');
@@ -335,7 +337,7 @@ function formatDateOnlyMobile($dateStr) {
                         <button onclick="openModal('izinRed', <?= $izin->id ?>, '<?= htmlspecialchars(addslashes($izin->requester_name)) ?>')" class="flex-1 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5">
                             <span class="material-symbols-outlined text-[16px]">close</span> Reddet
                         </button>
-                        <button onclick="openModal('izinOnay', <?= $izin->id ?>, '<?= htmlspecialchars(addslashes($izin->requester_name)) ?>', '<?= $izinTuruLabel ?>', <?= $gunSayisi ?>)" class="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-xs font-bold shadow-sm shadow-blue-500/30 transition-colors flex items-center justify-center gap-1.5">
+                        <button onclick="openModal('izinOnay', <?= $izin->id ?>, '<?= htmlspecialchars(addslashes($izin->requester_name)) ?>', '<?= $izinTuruLabel ?>', <?= $gunSayisi ?>, '<?= $izin->baslangic_tarihi ?>', '<?= $izin->bitis_tarihi ?>')" class="flex-1 px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-xl text-xs font-bold shadow-sm shadow-blue-500/30 transition-colors flex items-center justify-center gap-1.5">
                             <span class="material-symbols-outlined text-[16px]">check</span> Onayla
                         </button>
                     </div>
@@ -480,11 +482,37 @@ function formatDateOnlyMobile($dateStr) {
             <form id="formAvansOnay">
                 <input type="hidden" name="id" id="val-avans-onay-id">
                 <input type="hidden" name="action" value="avans-onayla">
-                <textarea name="aciklama" class="w-full border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm p-3 focus:ring-green-500 mb-3" rows="2" placeholder="Açıklama (Opsiyonel)"></textarea>
+
+                <div class="mb-4 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Onay Tipi</label>
+                    <div class="flex gap-3">
+                        <label class="flex-1 flex items-center justify-center gap-2 p-2 rounded-lg bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 has-[:checked]:border-green-500 has-[:checked]:bg-green-50 dark:has-[:checked]:bg-green-900/20 transition-all cursor-pointer">
+                            <input type="radio" name="onay_tipi" value="ayni" checked class="hidden" onchange="toggleFarkliTutar(false)">
+                            <span class="text-xs font-bold text-slate-600 dark:text-slate-300">Aynı Tutar</span>
+                        </label>
+                        <label class="flex-1 flex items-center justify-center gap-2 p-2 rounded-lg bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 has-[:checked]:border-green-500 has-[:checked]:bg-green-50 dark:has-[:checked]:bg-green-900/20 transition-all cursor-pointer">
+                            <input type="radio" name="onay_tipi" value="farkli" class="hidden" onchange="toggleFarkliTutar(true)">
+                            <span class="text-xs font-bold text-slate-600 dark:text-slate-300">Farklı Tutar</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="mo-farkli-tutar-wrap" class="hidden mb-4 animate-in slide-in-from-top-2 duration-200">
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5 ml-1">Onaylanan Tutar (₺)</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400 font-bold">₺</span>
+                        <input type="text" name="farkli_tutar" id="val-avans-farkli-tutar" class="w-full pl-7 pr-4 py-3 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl font-bold text-slate-800 dark:text-white focus:border-green-500 focus:ring-0 outline-none transition-colors" placeholder="0,00">
+                    </div>
+                </div>
+
+                <textarea name="aciklama" class="w-full border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm p-3 focus:ring-green-500 mb-3 h-20" placeholder="Açıklama (Opsiyonel)"></textarea>
                 
-                <label class="flex items-center gap-2 mb-4 p-2.5 rounded-lg bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-900/30 cursor-pointer">
-                    <input type="checkbox" name="hesaba_isle" value="1" class="rounded text-green-500 focus:ring-green-500 w-4 h-4" checked>
-                    <span class="text-xs font-bold text-green-700 dark:text-green-400 mt-0.5">Bordroya kesinti olarak işle</span>
+                <label class="flex items-center gap-3 mb-5 p-3 rounded-xl bg-green-50 dark:bg-green-900/10 border border-green-100 dark:border-green-900/30 cursor-pointer">
+                    <input type="checkbox" name="hesaba_isle" value="1" class="rounded text-green-500 focus:ring-green-500 w-5 h-5" checked>
+                    <div class="flex flex-col">
+                        <span class="text-xs font-bold text-green-700 dark:text-green-400">Bordroya işle</span>
+                        <span class="text-[10px] text-green-600/70 dark:text-green-400/50">Kesinti olarak personelin hesabına yazılır</span>
+                    </div>
                 </label>
                 
                 <div class="flex gap-2">
@@ -536,7 +564,38 @@ function formatDateOnlyMobile($dateStr) {
             <form id="formIzinOnay">
                 <input type="hidden" name="id" id="val-izin-onay-id">
                 <input type="hidden" name="action" value="izin-onayla">
-                <textarea name="aciklama" class="w-full border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm p-3 focus:ring-blue-500 mb-4" rows="2" placeholder="Açıklama (Opsiyonel)"></textarea>
+
+                <div class="mb-4 bg-slate-50 dark:bg-slate-800/50 p-3 rounded-xl border border-slate-100 dark:border-slate-800">
+                    <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-2">Onay Tipi</label>
+                    <div class="flex gap-3">
+                        <label class="flex-1 flex items-center justify-center gap-2 p-2 rounded-lg bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/20 transition-all cursor-pointer">
+                            <input type="radio" name="onay_tipi" value="ayni" checked class="hidden" onchange="toggleFarkliIzinTarih(false)">
+                            <span class="text-xs font-bold text-slate-600 dark:text-slate-300">Aynı Tarih</span>
+                        </label>
+                        <label class="flex-1 flex items-center justify-center gap-2 p-2 rounded-lg bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 has-[:checked]:border-blue-500 has-[:checked]:bg-blue-50 dark:has-[:checked]:bg-blue-900/20 transition-all cursor-pointer">
+                            <input type="radio" name="onay_tipi" value="farkli" class="hidden" onchange="toggleFarkliIzinTarih(true)">
+                            <span class="text-xs font-bold text-slate-600 dark:text-slate-300">Farklı Tarih</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div id="mo-farkli-izin-wrap" class="hidden mb-4 animate-in slide-in-from-top-2 duration-200">
+                    <div class="grid grid-cols-2 gap-3 mb-3">
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1">Başlangıç</label>
+                            <input type="date" name="farkli_baslangic" id="val-izin-farkli-baslangic" class="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-white outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1 ml-1">Bitiş</label>
+                            <input type="date" name="farkli_bitis" id="val-izin-farkli-bitis" class="w-full px-3 py-2.5 bg-white dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-xl text-xs font-bold text-slate-800 dark:text-white outline-none">
+                        </div>
+                    </div>
+                    <div class="px-2 text-[11px] font-bold text-blue-600">
+                        Yeni Süre: <span id="mo-farkli-izin-gun-text">0</span> Gün
+                    </div>
+                </div>
+
+                <textarea name="aciklama" id="val-izin-onay-aciklama" class="w-full border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800 rounded-xl text-sm p-3 focus:ring-blue-500 mb-4 h-20" placeholder="Açıklama (Opsiyonel)"></textarea>
                 
                 <div class="flex gap-2">
                     <button type="button" onclick="closeModal()" class="flex-1 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-sm rounded-xl">İptal</button>
@@ -625,6 +684,71 @@ function formatDateOnlyMobile($dateStr) {
     const API_URL = '../views/talepler/api.php';
     let currentModal = null;
 
+    function toggleFarkliTutar(show) {
+        const wrap = document.getElementById('mo-farkli-tutar-wrap');
+        const input = document.getElementById('val-avans-farkli-tutar');
+        const aciklamaField = document.querySelector('#formAvansOnay textarea[name="aciklama"]');
+        if (show) {
+            wrap.classList.remove('hidden');
+            input.required = true;
+            if (input.value) {
+                aciklamaField.value = "Avans talebiniz " + input.value + " TL olarak uygun görülmüştür.";
+            }
+            setTimeout(() => input.focus(), 100);
+        } else {
+            wrap.classList.add('hidden');
+            input.required = false;
+            aciklamaField.value = "";
+        }
+    }
+
+    function toggleFarkliIzinTarih(show) {
+        const wrap = document.getElementById('mo-farkli-izin-wrap');
+        const aciklamaField = document.getElementById('val-izin-onay-aciklama');
+        if (show) {
+            wrap.classList.remove('hidden');
+            updateIzinMobileOtoMsg();
+        } else {
+            wrap.classList.add('hidden');
+            aciklamaField.value = "";
+        }
+    }
+
+    function updateIzinMobileOtoMsg() {
+        const startStr = document.getElementById('val-izin-farkli-baslangic').value;
+        const endStr = document.getElementById('val-izin-farkli-bitis').value;
+        const aciklamaField = document.getElementById('val-izin-onay-aciklama');
+        const gunText = document.getElementById('mo-farkli-izin-gun-text');
+
+        if (startStr && endStr) {
+            const start = new Date(startStr);
+            const end = new Date(endStr);
+            const diffTime = Math.abs(end - start);
+            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+            
+            gunText.textContent = diffDays;
+
+            const startFmt = startStr.split('-').reverse().join('.');
+            const endFmt = endStr.split('-').reverse().join('.');
+            
+            aciklamaField.value = "İzin talebiniz " + startFmt + " - " + endFmt + " tarihleri arasında " + diffDays + " gün olarak uygun görülmüştür.";
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        document.getElementById('val-avans-farkli-tutar')?.addEventListener('input', function() {
+            const aciklamaField = document.querySelector('#formAvansOnay textarea[name="aciklama"]');
+            if (this.value) {
+                aciklamaField.value = "Avans talebiniz " + this.value + " TL olarak uygun görülmüştür.";
+            } else {
+                aciklamaField.value = "";
+            }
+        });
+
+        document.getElementById('val-izin-farkli-baslangic')?.addEventListener('change', updateIzinMobileOtoMsg);
+        document.getElementById('val-izin-farkli-bitis')?.addEventListener('change', updateIzinMobileOtoMsg);
+    });
+
     function switchTab(tabId) {
         // Hide all tabs
         document.querySelectorAll('.tab-content').forEach(el => {
@@ -653,7 +777,7 @@ function formatDateOnlyMobile($dateStr) {
         }
     }
 
-    function openModal(type, id, param1, param2, param3) {
+    function openModal(type, id, param1, param2, param3, param4, param5) {
         // Reset any forms
         document.querySelectorAll('form').forEach(f => f.reset());
         
@@ -669,6 +793,12 @@ function formatDateOnlyMobile($dateStr) {
             document.getElementById('val-avans-onay-id').value = id;
             document.getElementById('mo-avans-isim').textContent = param1;
             document.getElementById('mo-avans-tutar').textContent = param2;
+            
+            // Reset farklı tutar alanı
+            toggleFarkliTutar(false);
+            const pureTutar = param2.replace(' ₺', '').replace(/\./g, '').replace(',', '.');
+            document.getElementById('val-avans-farkli-tutar').value = parseFloat(pureTutar).toLocaleString('tr-TR', { minimumFractionDigits: 2 });
+            
             currentModal = document.getElementById('modal-avansOnay');
         } else if (type === 'avansRed') {
             document.getElementById('val-avans-red-id').value = id;
@@ -678,6 +808,12 @@ function formatDateOnlyMobile($dateStr) {
             document.getElementById('val-izin-onay-id').value = id;
             document.getElementById('mo-izin-isim').textContent = param1;
             document.getElementById('mo-izin-gun').textContent = param3 + " (" + param2 + ")";
+            
+            // Reset farklı tarih alanı
+            toggleFarkliIzinTarih(false);
+            document.getElementById('val-izin-farkli-baslangic').value = param4 || '';
+            document.getElementById('val-izin-farkli-bitis').value = param5 || '';
+            
             currentModal = document.getElementById('modal-izinOnay');
         } else if (type === 'izinRed') {
             document.getElementById('val-izin-red-id').value = id;
@@ -891,6 +1027,13 @@ function formatDateOnlyMobile($dateStr) {
                 <h5 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">TALEP AÇIKLAMASI</h5>
                 <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">${avans.aciklama || 'Açıklama belirtilmemiş.'}</p>
             </div>
+
+            ${avans.onay_aciklama ? `
+            <div class="bg-green-50 dark:bg-green-900/10 rounded-xl p-4 mb-4 border border-green-100 dark:border-green-900/30">
+                <h5 class="text-xs font-bold text-green-600 dark:text-green-500 uppercase tracking-wider mb-2">ONAY AÇIKLAMASI / SONUÇ</h5>
+                <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">${avans.onay_aciklama}</p>
+            </div>
+            ` : ''}
             
             ${avans.islem_yapan ? `
             <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-3">
@@ -967,6 +1110,13 @@ function formatDateOnlyMobile($dateStr) {
                 <h5 class="text-xs font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-2">TALEP AÇIKLAMASI</h5>
                 <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">${izin.aciklama || 'Açıklama belirtilmemiş.'}</p>
             </div>
+
+            ${izin.onay_aciklama ? `
+            <div class="bg-green-50 dark:bg-green-900/10 rounded-xl p-4 mb-4 border border-green-100 dark:border-green-900/30">
+                <h5 class="text-xs font-bold text-green-600 dark:text-green-500 uppercase tracking-wider mb-2">ONAY AÇIKLAMASI / SONUÇ</h5>
+                <p class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-wrap">${izin.onay_aciklama}</p>
+            </div>
+            ` : ''}
             
             ${izin.islem_yapan ? `
             <div class="mt-4 pt-4 border-t border-slate-100 dark:border-slate-800 flex flex-col gap-3">

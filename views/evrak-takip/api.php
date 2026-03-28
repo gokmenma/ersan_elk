@@ -46,9 +46,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
 
+                // Checkboxlar için varsayılan değerler
+                $data['personel_bildirim_durumu'] = isset($data['personel_bildirim_durumu']) ? 1 : 0;
+                $data['cevap_verildi_mi'] = isset($data['cevap_verildi_mi']) ? 1 : 0;
+
+                if (!empty($data['cevap_tarihi'])) {
+                    $data['cevap_tarihi'] = Date::Ymd($data['cevap_tarihi']);
+                } else {
+                    $data['cevap_tarihi'] = null;
+                }
+
+                // İlişkili evrak ID
+                $data['ilgili_evrak_id'] = !empty($data['ilgili_evrak_id']) ? intval($data['ilgili_evrak_id']) : null;
+
                 // Boş değerleri null yap
                 foreach ($data as $key => $value) {
-                    if ($value === '') {
+                    if ($value === '' && $key != 'id' && $key != 'action') {
                         $data[$key] = null;
                     }
                 }
@@ -58,8 +71,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $message = "Evrak başarıyla güncellendi.";
                 } else {
                     $data['olusturan_kullanici_id'] = $_SESSION['user_id'] ?? null;
-                    $Model->saveWithAttr($data);
+                    $id = $Model->saveWithAttr($data);
                     $message = "Evrak başarıyla kaydedildi.";
+                }
+
+                // Eğer giden evrak ise ve ilgili bir gelen evrak seçildiyse 
+                // o gelen evrakı "cevap verildi" olarak işaretle
+                if ($data['evrak_tipi'] == 'giden' && !empty($data['ilgili_evrak_id'])) {
+                    $Model->markAsReplied($data['ilgili_evrak_id'], $data['tarih']);
                 }
 
                 echo json_encode(['status' => 'success', 'message' => $message]);
@@ -94,6 +113,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             case 'evrak-istatistik':
                 $stats = $Model->getStats();
                 echo json_encode(['status' => 'success', 'data' => $stats]);
+                break;
+
+            case 'get-next-evrak-no':
+                $tip = $_POST['tip'] ?? 'gelen';
+                $next_no = $Model->getMaxEvrakNo($tip);
+                echo json_encode(['status' => 'success', 'next_no' => $next_no]);
+                break;
+
+            case 'get-konular':
+                $konular = $Model->getDistinctKonular();
+                echo json_encode(['status' => 'success', 'data' => $konular]);
                 break;
 
             default:

@@ -907,6 +907,22 @@ try {
                     }
                 }
 
+                // Onay detaylarını bul
+                $onay_detay = [
+                    'aciklama' => null,
+                    'onaylayan' => null,
+                    'tarih' => null
+                ];
+                
+                if (!empty($item->onaylar)) {
+                    $son_onay = end($item->onaylar);
+                    if ($son_onay) {
+                        $onay_detay['aciklama'] = $son_onay->aciklama;
+                        $onay_detay['onaylayan'] = $son_onay->adi;
+                        $onay_detay['tarih'] = !empty($son_onay->tarih) ? date('d.m.Y H:i', strtotime($son_onay->tarih)) : null;
+                    }
+                }
+
                 return [
                     'id' => $item->id,
                     'izin_tipi' => $item->izin_tipi_id,
@@ -918,6 +934,9 @@ try {
                     'durum' => $durum,
                     'durum_text' => $durum_text,
                     'aciklama' => $item->aciklama,
+                    'onay_aciklama' => $onay_detay['aciklama'],
+                    'onaylayan' => $onay_detay['onaylayan'],
+                    'onay_tarihi' => $onay_detay['tarih'],
                     'red_nedeni' => $red_nedeni,
                     'renk' => $renk,
                     'ikon' => $ikon

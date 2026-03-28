@@ -293,6 +293,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             if (!empty($data['isten_cikis_tarihi']) && $data['isten_cikis_tarihi'] != '0000-00-00') {
                 $Personel->closeActiveEkipAssignments($currentPid, $data['isten_cikis_tarihi']);
                 $Personel->closeActiveGorevGecmisi($currentPid, $data['isten_cikis_tarihi']);
+
+                // Personeli işten çıkış yaparken eğer users tablosundaki adı soyadı ile eşleşen personeli otomatik olarak pasif yap
+                $UserModel = new \App\Model\UserModel();
+                $personelInfo = $Personel->find($currentPid);
+                if ($personelInfo && !empty($personelInfo->adi_soyadi)) {
+                    $matchingUsers = $UserModel->where('adi_soyadi', $personelInfo->adi_soyadi);
+                    foreach ($matchingUsers as $mUser) {
+                        $UserModel->saveWithAttr([
+                            'id' => $mUser->id,
+                            'durum' => 'Pasif'
+                        ]);
+                    }
+                }
                 
                 // Araç zimmet kontrolü (Kendi aracı / Personel aracı durumu)
                 $AracZimmetModel = new \App\Model\AracZimmetModel();
