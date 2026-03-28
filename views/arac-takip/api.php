@@ -1172,9 +1172,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                                 $updatedDetails[] = "Satır $rowNum (Plaka: $plaka, Fiş: " . ($newData['external_id'] ?? '-') . ")";
                             }
                         } else {
-                            $Yakit->saveWithAttr($newData);
-                            $addedCount++;
-                            $addedDetails[] = "Satır $rowNum (Plaka: $plaka)";
+                            $mevcutKayit = $Yakit->getDb()->prepare("SELECT id FROM arac_yakit_kayitlari WHERE arac_id = ? AND tarih = ? AND silinme_tarihi IS NULL LIMIT 1");
+                            $mevcutKayit->execute([$aracId, $newData['tarih']]);
+                            $var_mi = $mevcutKayit->fetch(\PDO::FETCH_OBJ);
+
+                            if ($var_mi) {
+                                $newData['id'] = $var_mi->id;
+                                $Yakit->saveWithAttr($newData);
+                                $updatedCount++;
+                                $updatedDetails[] = "Satır $rowNum (Plaka: $plaka)";
+                            } else {
+                                $Yakit->saveWithAttr($newData);
+                                $addedCount++;
+                                $addedDetails[] = "Satır $rowNum (Plaka: $plaka)";
+                            }
                         }
 
                         // Araç KM güncelle

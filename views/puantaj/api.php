@@ -2682,6 +2682,208 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit;
 }
 
+// ======= DEFTER ÖZET RAPORU (Aylık Defter İstatistikleri) =======
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'defter-ozet-rapor') {
+    header('Content-Type: application/json; charset=utf-8');
+    $response = ['status' => 'error', 'message' => 'Bilinmeyen hata'];
+
+    try {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+
+        // Dönemleri belirle (aynı mantık)
+        $donemler = [];
+        $baslangicDonem = $_GET['baslangic_donem'] ?? '';
+        $bitisDonem = $_GET['bitis_donem'] ?? '';
+
+        if (!empty($baslangicDonem) && !empty($bitisDonem)) {
+            $currentDonem = $baslangicDonem;
+            while ($currentDonem <= $bitisDonem) {
+                $donemler[] = $currentDonem;
+                $year = (int) substr($currentDonem, 0, 4);
+                $month = (int) substr($currentDonem, 4, 2);
+                $month++;
+                if ($month > 12) { $month = 1; $year++; }
+                $currentDonem = $year . str_pad($month, 2, '0', STR_PAD_LEFT);
+                if (count($donemler) > 48) break;
+            }
+        }
+
+        if (isset($_GET['donemler']) && is_array($_GET['donemler'])) {
+            foreach ($_GET['donemler'] as $d) {
+                if (!empty($d)) $donemler[] = $d;
+            }
+        }
+
+        $donemler = array_unique($donemler);
+        sort($donemler);
+
+        if (empty($donemler)) {
+            $donemler = [date('Ym')];
+        }
+
+        $bolgeFilter = $_GET['bolge'] ?? '';
+        $defterFilter = $_GET['defter'] ?? '';
+
+        $EndeksOkuma = new \App\Model\EndeksOkumaModel();
+
+        // 1. tanimlamalar tablosundan tüm defterleri çek (toplam defter kaynağı)
+        $defterTanimStmt = $EndeksOkuma->db->prepare(
+            "SELECT tur_adi, defter_bolge, defter_mahalle, defter_abone_sayisi,
+                    baslangic_tarihi, bitis_tarihi
+             FROM tanimlamalar
+             WHERE firma_id = ? AND grup = 'defter_kodu' AND silinme_tarihi IS NULL
+             ORDER BY baslangic_tarihi DESC"
+        );
+        $defterTanimStmt->execute([$firmaId]);
+        $defterTanimRaw = $defterTanimStmt->fetchAll(PDO::FETCH_OBJ);
+
+        // Defter tanımlarını key-based map'e dönüştür
+        $defterTanimMap = []; // key: bolge|defter => latest tanım
+        foreach ($defterTanimRaw as $dt) {
+            $code = trim($dt->tur_adi);
+            $region = trim($dt->defter_bolge ?: '');
+            $key = $region . '|' . $code;
+
+            if (!isset($defterTanimMap[$key])) {
+                $defterTanimMap[$key] = [
+                    'bolge' => $region,
+                    'defter' => $code,
+                    'mahalle' => $dt->defter_mahalle ?: '',
+                    'abone_sayisi' => (int) ($dt->defter_abone_sayisi ?: 0),
+                    'baslangic' => $dt->baslangic_tarihi ?: '1900-01-01',
+                    'bitis' => $dt->bitis_tarihi ?: '2099-12-31'
+                ];
+            }
+        }
+
+        // Filtreleri uygula
+        $allDefters = [];
+        foreach ($defterTanimMap as $key => $info) {
+            if (!empty($bolgeFilter) && $info['bolge'] !== $bolgeFilter) continue;
+            if (!empty($defterFilter) && $info['defter'] !== $defterFilter) continue;
+            $allDefters[$key] = $info;
+        }
+
+        // 2. endeks_okuma'dan dönem bazlı okuma verilerini çek
+        $placeholders = implode(',', array_fill(0, count($donemler), '?'));
+        $sql = "SELECT bolge, defter, DATE_FORMAT(tarih, '%Y%m') as donem,
+                       SUM(CASE WHEN sayac_durum = 'SAYAÇ NORMAL' THEN okunan_abone_sayisi ELSE 0 END) as toplam_okunan
+                FROM endeks_okuma
+                WHERE firma_id = ?
+                  AND silinme_tarihi IS NULL
+                  AND defter IS NOT NULL AND defter != ''
+                  AND DATE_FORMAT(tarih, '%Y%m') IN ($placeholders)";
+
+        $queryParams = [$firmaId];
+        $queryParams = array_merge($queryParams, $donemler);
+
+        if (!empty($bolgeFilter)) {
+            $sql .= " AND bolge = ?";
+            $queryParams[] = $bolgeFilter;
+        }
+        if (!empty($defterFilter)) {
+            $sql .= " AND defter = ?";
+            $queryParams[] = $defterFilter;
+        }
+
+        $sql .= " GROUP BY bolge, defter, DATE_FORMAT(tarih, '%Y%m')";
+
+        $stmt = $EndeksOkuma->db->prepare($sql);
+        $stmt->execute($queryParams);
+        $rawData = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        // Okunan defter setini oluştur: key: donem => [bolge|defter => okunan_sayisi]
+        $okunanMap = [];
+        foreach ($rawData as $row) {
+            $donem = $row->donem;
+            $key = trim($row->bolge) . '|' . trim($row->defter);
+            if (!isset($okunanMap[$donem])) $okunanMap[$donem] = [];
+            $okunanMap[$donem][$key] = (int) $row->toplam_okunan;
+        }
+
+        // 3. Sonuçları hesapla
+        $genel = [];
+        $bolgeData = [];
+        $okunmayanDetay = [];
+
+        foreach ($donemler as $donem) {
+            $toplamDefter = count($allDefters);
+            $okunanDefter = 0;
+            $okunmayanDefter = 0;
+
+            // Bölge bazlı hesaplama
+            $bolgeStats = []; // bolge => [toplam, okunan, okunmayan]
+            $bolgeOkunmayanList = []; // bolge => [defter listesi]
+
+            foreach ($allDefters as $key => $info) {
+                $bolgeName = $info['bolge'];
+                if (!isset($bolgeStats[$bolgeName])) {
+                    $bolgeStats[$bolgeName] = ['toplam_defter' => 0, 'okunan_defter' => 0, 'okunmayan_defter' => 0];
+                    $bolgeOkunmayanList[$bolgeName] = [];
+                }
+
+                $bolgeStats[$bolgeName]['toplam_defter']++;
+
+                $isOkunan = isset($okunanMap[$donem][$key]) && $okunanMap[$donem][$key] > 0;
+                if ($isOkunan) {
+                    $okunanDefter++;
+                    $bolgeStats[$bolgeName]['okunan_defter']++;
+                } else {
+                    $okunmayanDefter++;
+                    $bolgeStats[$bolgeName]['okunmayan_defter']++;
+                    $bolgeOkunmayanList[$bolgeName][] = [
+                        'defter' => $info['defter'],
+                        'mahalle' => $info['mahalle'],
+                        'abone_sayisi' => $info['abone_sayisi'],
+                        'bolge' => $bolgeName
+                    ];
+                }
+            }
+
+            $genel[$donem] = [
+                'toplam_defter' => $toplamDefter,
+                'okunan_defter' => $okunanDefter,
+                'okunmayan_defter' => $okunmayanDefter,
+                'oran' => $toplamDefter > 0 ? round(($okunanDefter / $toplamDefter) * 100, 1) : 0
+            ];
+
+            // Bölge verileri
+            foreach ($bolgeStats as $bName => $bStat) {
+                if (!isset($bolgeData[$bName])) $bolgeData[$bName] = [];
+                $bStat['oran'] = $bStat['toplam_defter'] > 0
+                    ? round(($bStat['okunan_defter'] / $bStat['toplam_defter']) * 100, 1)
+                    : 0;
+                $bolgeData[$bName][$donem] = $bStat;
+            }
+
+            // Okunmayan detay
+            $okunmayanDetay[$donem] = $bolgeOkunmayanList;
+        }
+
+        // Bölgeleri sırala
+        ksort($bolgeData);
+
+        $response = [
+            'status' => 'success',
+            'donemler' => $donemler,
+            'genel' => $genel,
+            'bolge' => $bolgeData,
+            'okunmayan_detay' => $okunmayanDetay,
+            'summary' => [
+                'toplam_bolge' => count($bolgeData),
+                'toplam_defter' => count($allDefters),
+                'donem_sayisi' => count($donemler)
+            ]
+        ];
+
+    } catch (\Exception $e) {
+        $response['message'] = $e->getMessage();
+    }
+
+    echo json_encode($response, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 // ======= OKUMA GÜN SAYILARI RAPORU =======
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'okuma-gun-sayilari') {
     header('Content-Type: application/json; charset=utf-8');

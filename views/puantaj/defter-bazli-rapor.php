@@ -68,6 +68,12 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 <i class="bx bx-calendar-event me-1"></i>Okuma Gün Sayıları
             </button>
         </li>
+        <li class="nav-item" role="presentation">
+            <button class="nav-link" id="tab-defter-ozet" data-bs-toggle="tab" data-bs-target="#pane-defter-ozet"
+                type="button" role="tab" aria-controls="pane-defter-ozet" aria-selected="false">
+                <i class="bx bx-pie-chart-alt-2 me-1"></i>Aylık Defter Özeti
+            </button>
+        </li>
     </ul>
 
     <!-- Flatpickr MonthSelect Plugin Assets -->
@@ -601,6 +607,128 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             </div>
 
         </div><!-- /tab-pane okuma-gun -->
+
+        <!-- ======= TAB 3: Aylık Defter Özeti ======= -->
+        <div class="tab-pane fade" id="pane-defter-ozet" role="tabpanel" aria-labelledby="tab-defter-ozet">
+
+            <!-- Özet Kartları -->
+            <div class="row g-3 mb-4" id="defterOzetSummaryCards" style="display: none;">
+                <div class="col-xl col-md-4 col-sm-6">
+                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                        style="--card-color: var(--bs-primary, #556ee6); border-bottom: 3px solid var(--card-color) !important;">
+                        <div class="card-body p-2 px-3">
+                            <div class="icon-label-container mb-2">
+                                <div class="icon-box"
+                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(var(--bs-primary-rgb, 85, 110, 230), 0.1);">
+                                    <i class="bx bx-book-open fs-5" style="color: var(--bs-primary, #556ee6);"></i>
+                                </div>
+                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">DEFTER</span>
+                            </div>
+                            <p class="text-muted mb-0 small fw-bold"
+                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">TOPLAM DEFTER</p>
+                            <h4 class="mb-0 fw-bold bordro-text-heading" id="defterOzetTotalDefter"
+                                style="font-size: 1.25rem;">0</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl col-md-4 col-sm-6">
+                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                        style="--card-color: #34c38f; border-bottom: 3px solid var(--card-color) !important;">
+                        <div class="card-body p-2 px-3">
+                            <div class="icon-label-container mb-2">
+                                <div class="icon-box"
+                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(52, 195, 143, 0.1);">
+                                    <i class="bx bx-map-alt fs-5 text-success"></i>
+                                </div>
+                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">BÖLGE</span>
+                            </div>
+                            <p class="text-muted mb-0 small fw-bold"
+                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">TOPLAM BÖLGE</p>
+                            <h4 class="mb-0 fw-bold bordro-text-heading" id="defterOzetTotalBolge"
+                                style="font-size: 1.25rem;">0</h4>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl col-md-4 col-sm-6">
+                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                        style="--card-color: #f1b44c; border-bottom: 3px solid var(--card-color) !important;">
+                        <div class="card-body p-2 px-3">
+                            <div class="icon-label-container mb-2">
+                                <div class="icon-box"
+                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(241, 180, 76, 0.1);">
+                                    <i class="bx bx-calendar fs-5 text-warning"></i>
+                                </div>
+                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">DÖNEM</span>
+                            </div>
+                            <p class="text-muted mb-0 small fw-bold"
+                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">DÖNEM SAYISI</p>
+                            <h4 class="mb-0 fw-bold bordro-text-heading" id="defterOzetTotalDonem"
+                                style="font-size: 1.25rem;">0</h4>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Aksiyon Butonları -->
+            <div class="row mb-2" id="defterOzetActions" style="display: none;">
+                <div class="col-12 d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-info btn-tab-fullscreen"
+                        data-target="defterOzetReportSection">
+                        <i class="mdi mdi-fullscreen me-1"></i>Tam Ekran
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-success btn-tab-excel"
+                        data-table="defterOzetTable" data-filename="aylik_defter_ozeti.xls">
+                        <i class="mdi mdi-file-excel me-1"></i>Excel'e Aktar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Rapor Tablosu -->
+            <div class="row" id="defterOzetReportSection" style="display: none;">
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm">
+                        <div class="card-body p-0">
+                            <div class="table-responsive" id="defterOzetTableWrapper"
+                                style="max-height: calc(100vh - 450px); overflow: auto;">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Loading Spinner -->
+            <div class="row" id="defterOzetLoadingSection" style="display: none;">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-body text-center p-5">
+                            <div class="spinner-border text-primary" role="status"></div>
+                            <p class="mt-2 text-muted">Defter özet raporu hazırlanıyor...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Okunmayan Defter Listesi Modal -->
+            <div class="modal fade" id="modalOkunmayanDefterler" tabindex="-1" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+                    <div class="modal-content border-0 shadow-lg" style="border-radius: 14px;">
+                        <div class="modal-header border-bottom-0 pb-2" style="border-radius: 14px 14px 0 0; background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);">
+                            <h5 class="modal-title fw-bold text-white" id="modalOkunmayanTitle">
+                                <i class="bx bx-error-circle me-2"></i>Okunmayan Defterler
+                            </h5>
+                            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                        </div>
+                        <div class="modal-body pt-3" id="modalOkunmayanBody">
+                            <!-- JS ile doldurulacak -->
+                        </div>
+                        <div class="modal-footer border-top-0 pt-0">
+                            <button type="button" class="btn btn-secondary btn-sm px-4" data-bs-dismiss="modal" style="border-radius: 8px;">Kapat</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+        </div><!-- /tab-pane defter-ozet -->
     </div><!-- /tab-content -->
 
 </div>
@@ -1503,6 +1631,216 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         background: #2a3042 !important;
         color: #eff2f7 !important;
     }
+
+    /* ======= DEFTER ÖZET TABLOSU ======= */
+    #defterOzetTable {
+        border-collapse: collapse !important;
+        font-size: 12px;
+        width: 100%;
+        table-layout: auto;
+        border: 1px solid var(--bs-border-color, #eee) !important;
+    }
+
+    #defterOzetTable th,
+    #defterOzetTable td {
+        vertical-align: middle !important;
+        text-align: center !important;
+        border: 1px solid var(--bs-border-color, #eee) !important;
+        padding: 6px 8px !important;
+        white-space: nowrap;
+    }
+
+    #defterOzetTable thead th {
+        background: linear-gradient(rgba(var(--bs-primary-rgb, 85, 110, 230), 0.1), rgba(var(--bs-primary-rgb, 85, 110, 230), 0.1)), #ffffff !important;
+        color: var(--bs-primary, #556ee6) !important;
+        font-weight: 800;
+        font-size: 11px;
+        position: sticky;
+        top: 0;
+        z-index: 20;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    #defterOzetTable thead tr:nth-child(1) th {
+        top: -1px;
+        z-index: 30;
+    }
+
+    #defterOzetTable thead tr:nth-child(2) th {
+        top: 27px;
+        z-index: 29;
+    }
+
+    #defterOzetTable .fix-col-bolge {
+        position: sticky;
+        left: 0;
+        z-index: 10;
+        min-width: 160px;
+        max-width: 200px;
+        text-align: left !important;
+        background-color: var(--bs-card-bg, #fff);
+    }
+
+    #defterOzetTable thead .fix-col-bolge {
+        z-index: 40 !important;
+        background: linear-gradient(rgba(var(--bs-primary-rgb, 85, 110, 230), 0.1), rgba(var(--bs-primary-rgb, 85, 110, 230), 0.1)), #ffffff !important;
+        color: var(--bs-primary, #556ee6) !important;
+    }
+
+    #defterOzetTable tfoot {
+        position: sticky;
+        bottom: -1px;
+        z-index: 25;
+    }
+
+    #defterOzetTable tfoot th {
+        background-color: #f0f2f5 !important;
+        font-weight: 800;
+        border-top: 2px solid var(--bs-primary) !important;
+        color: var(--bs-dark);
+    }
+
+    #defterOzetTable tfoot .fix-col-bolge {
+        z-index: 35 !important;
+        background-color: #f0f2f5 !important;
+    }
+
+    #defterOzetTable tbody tr:hover td {
+        background-color: rgba(85, 110, 230, 0.04) !important;
+    }
+
+    .do-period-end {
+        border-right: 2px solid var(--bs-primary, #556ee6) !important;
+    }
+
+    .do-badge-toplam {
+        background: rgba(var(--bs-primary-rgb), 0.1);
+        color: var(--bs-primary);
+        font-weight: 700;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 12px;
+        display: inline-block;
+        min-width: 40px;
+    }
+
+    .do-badge-okunan {
+        background: rgba(52, 195, 143, 0.12);
+        color: #059669;
+        font-weight: 700;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 12px;
+        display: inline-block;
+        min-width: 40px;
+    }
+
+    .do-badge-okunmayan {
+        background: rgba(244, 63, 94, 0.12);
+        color: #e11d48;
+        font-weight: 700;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 12px;
+        display: inline-block;
+        min-width: 40px;
+        cursor: pointer;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+    }
+
+    .do-badge-okunmayan:hover {
+        background: rgba(244, 63, 94, 0.25);
+        border-color: #f43f5e;
+        transform: scale(1.05);
+        box-shadow: 0 3px 8px rgba(244, 63, 94, 0.2);
+    }
+
+    .do-badge-okunmayan.zero {
+        cursor: default;
+        opacity: 0.5;
+    }
+
+    .do-badge-okunmayan.zero:hover {
+        background: rgba(244, 63, 94, 0.12);
+        border-color: transparent;
+        transform: none;
+        box-shadow: none;
+    }
+
+    .do-badge-oran {
+        font-weight: 700;
+        border-radius: 6px;
+        padding: 4px 10px;
+        font-size: 11px;
+        display: inline-block;
+        min-width: 50px;
+    }
+
+    .do-oran-high {
+        background: rgba(52, 195, 143, 0.15);
+        color: #059669;
+    }
+
+    .do-oran-medium {
+        background: rgba(241, 180, 76, 0.15);
+        color: #d97706;
+    }
+
+    .do-oran-low {
+        background: rgba(244, 63, 94, 0.15);
+        color: #e11d48;
+    }
+
+    .do-bolge-row {
+        background: rgba(var(--bs-primary-rgb), 0.03);
+    }
+
+    .do-genel-row td {
+        background: linear-gradient(135deg, rgba(var(--bs-primary-rgb), 0.06), rgba(var(--bs-primary-rgb), 0.02)) !important;
+        font-weight: 700 !important;
+        font-size: 13px !important;
+        border-top: 2px solid rgba(var(--bs-primary-rgb), 0.2) !important;
+    }
+
+    [data-bs-theme="dark"] #defterOzetTable thead th {
+        background: #2a3042 !important;
+        color: #eff2f7 !important;
+        border-color: #32394e !important;
+    }
+
+    [data-bs-theme="dark"] #defterOzetTable th,
+    [data-bs-theme="dark"] #defterOzetTable td {
+        border-color: #32394e !important;
+    }
+
+    [data-bs-theme="dark"] #defterOzetTable .fix-col-bolge {
+        background-color: var(--bs-card-bg, #282f36) !important;
+    }
+
+    [data-bs-theme="dark"] #defterOzetTable tfoot th {
+        background-color: #32394e !important;
+        color: #eff2f7;
+    }
+
+    /* Modal defter listesi tablosu */
+    #okunmayanDefterTable {
+        font-size: 12px;
+    }
+
+    #okunmayanDefterTable th {
+        font-size: 11px;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+        background: #f8fafc;
+        color: #64748b;
+    }
+
+    #okunmayanDefterTable td {
+        padding: 8px 12px;
+    }
 </style>
 
 <script>
@@ -2200,49 +2538,57 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
         let _activeFilterCol = null;
 
-        // Filtre butonuna tıklama (delegated handler kept for safety, but primary is now direct in renderTable)
-        $(document).on('click', '.col-filter-btn', function (e) {
-            e.stopPropagation();
-            e.preventDefault();
-            openFilterPopup(this);
-        });
-
-        // Uygula
+        // Filtre Uygula (Popup içindeki buton)
         $(document).on('click', '#colFilterApply', function () {
-            if (!_activeFilterCol) return;
-            const op = $('#colFilterOperator').val();
-            const val = $('#colFilterValue').val();
+            const operator = $('#colFilterOperator').val();
+            const value = $('#colFilterValue').val();
 
-            if (op && val !== '') {
-                _numericFilters[_activeFilterCol] = { operator: op, value: val };
+            if (_activeFilterTab === 'defter-ozet') {
+                if (value === '') {
+                    delete _doNumericFilters[_activeFilterCol];
+                } else {
+                    _doNumericFilters[_activeFilterCol] = { operator, value };
+                }
+                renderDefterOzetTable(_defterOzetData);
+            } else if ($('#tab-okuma-gun').hasClass('active')) {
+                if (value === '') {
+                    delete _numericFilters[_activeFilterCol];
+                } else {
+                    _numericFilters[_activeFilterCol] = { operator, value };
+                }
+                renderOkumaGunTable(_okumaGunData, _okumaGunDonemler, true);
             } else {
-                delete _numericFilters[_activeFilterCol];
+                if (value === '') {
+                    delete _numericFilters[_activeFilterCol];
+                } else {
+                    _numericFilters[_activeFilterCol] = { operator, value };
+                }
+                renderTable(_tableData, _tableDonemler, true);
             }
 
             $('#colFilterPopup').removeClass('show');
-            const col = _activeFilterCol;
             _activeFilterCol = null;
-            if ($('#tab-okuma-gun').hasClass('active')) {
-                renderOkumaGunTable(_okumaGunData, _okumaGunDonemler, true);
-            } else {
-                renderTable(_tableData, _tableDonemler, true);
-            }
+            _activeFilterTab = null;
         });
 
         // Temizle
         $(document).on('click', '#colFilterClear', function () {
-            if (_activeFilterCol) {
+            if (_activeFilterTab === 'defter-ozet') {
+                if (_activeFilterCol) delete _doNumericFilters[_activeFilterCol];
+                renderDefterOzetTable(_defterOzetData);
+            } else if (_activeFilterCol) {
                 delete _numericFilters[_activeFilterCol];
+                if ($('#tab-okuma-gun').hasClass('active')) {
+                    renderOkumaGunTable(_okumaGunData, _okumaGunDonemler, true);
+                } else {
+                    renderTable(_tableData, _tableDonemler, true);
+                }
             }
             $('#colFilterOperator').val('');
             $('#colFilterValue').val('');
             $('#colFilterPopup').removeClass('show');
             _activeFilterCol = null;
-            if ($('#tab-okuma-gun').hasClass('active')) {
-                renderOkumaGunTable(_okumaGunData, _okumaGunDonemler, true);
-            } else {
-                renderTable(_tableData, _tableDonemler, true);
-            }
+            _activeFilterTab = null;
         });
 
         // Popup dışına tıklanınca kapat
@@ -2835,6 +3181,401 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 } else {
                     renderTable(_tableData, _tableDonemler, true);
                 }
+            }
+        });
+
+        // ======= TAB 3: AYLIK DEFTER ÖZETİ =======
+        let _defterOzetData = null;
+        let _defterOzetLoaded = false;
+        
+        // Tab 3 State
+        let _doSearchFilters = { bolge: '' };
+        let _doNumericFilters = {}; // key: donem_field -> {operator, value}
+        let _doSortColumn = null;
+        let _doSortDirection = 'asc';
+        let _doSearchTimeout;
+
+        // Sekme değiştiğinde Tab 3 verilerini yükle
+        $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+            if (e.target.id === 'tab-defter-ozet') {
+                loadDefterOzet();
+            }
+        });
+
+        // Rapor Getir butonuna tıklanınca aktif sekmeye göre yükle
+        $(document).on('click', '#btnRaporGetir', function () {
+            if ($('#tab-defter-ozet').hasClass('active')) {
+                _defterOzetLoaded = false;
+                loadDefterOzet();
+            }
+        });
+
+        function loadDefterOzet() {
+            const baslangicDonem = $('#baslangicDonem').val().trim();
+            const bitisDonem = $('#bitisDonem').val().trim();
+            const donemler = $('#filterDonemler').val();
+            const bolge = $('#filterBolge').val();
+            const defterVal = $('#filterDefter').val();
+
+            if ((!baslangicDonem || !bitisDonem) && (!donemler || donemler.length === 0)) {
+                Swal.fire('Uyarı', 'Lütfen en az bir dönem veya aralık seçiniz.', 'warning');
+                return;
+            }
+
+            // Accordion'u kapat
+            var collapseElement = document.getElementById('collapseFilter');
+            var collapse = bootstrap.Collapse.getInstance(collapseElement);
+            if (collapse) collapse.hide();
+            else if (collapseElement.classList.contains('show')) new bootstrap.Collapse(collapseElement, { toggle: false }).hide();
+
+            $('#defterOzetLoadingSection').show();
+            $('#defterOzetReportSection').hide();
+            $('#defterOzetSummaryCards').hide();
+            $('#defterOzetActions').hide();
+
+            $.ajax({
+                url: 'views/puantaj/api.php',
+                type: 'GET',
+                data: {
+                    action: 'defter-ozet-rapor',
+                    baslangic_donem: baslangicDonem,
+                    bitis_donem: bitisDonem,
+                    donemler: donemler,
+                    bolge: bolge,
+                    defter: defterVal
+                },
+                dataType: 'json',
+                success: function (response) {
+                    $('#defterOzetLoadingSection').hide();
+
+                    if (response.status === 'success') {
+                        _defterOzetData = response;
+                        _defterOzetLoaded = true;
+
+                        // Reset filters on new data load (Optional, or keep them)
+                        // _doNumericFilters = {};
+                        // _doSearchFilters = { bolge: '' };
+
+                        // Özet kartlarını güncelle
+                        $('#defterOzetTotalDefter').text((response.summary.toplam_defter || 0).toLocaleString('tr-TR'));
+                        $('#defterOzetTotalBolge').text((response.summary.toplam_bolge || 0).toLocaleString('tr-TR'));
+                        $('#defterOzetTotalDonem').text((response.summary.donem_sayisi || 0).toLocaleString('tr-TR'));
+
+                        renderDefterOzetTable(response, true);
+                        $('#defterOzetSummaryCards').fadeIn(300);
+                        $('#defterOzetActions').fadeIn(300);
+                        $('#defterOzetReportSection').fadeIn(300);
+                    } else {
+                        Swal.fire('Hata', response.message || 'Rapor oluşturulurken bir hata oluştu.', 'error');
+                    }
+                },
+                error: function () {
+                    $('#defterOzetLoadingSection').hide();
+                    Swal.fire('Hata', 'Sunucuyla iletişim kurulamadı.', 'error');
+                }
+            });
+        }
+
+        function renderDefterOzetTable(data, resetScroll) {
+            const donemler = data.donemler;
+            const genel = data.genel;
+            const bolgeData = data.bolge;
+
+            if (!donemler || donemler.length === 0) {
+                $('#defterOzetTableWrapper').html('<div class="text-center p-5 text-muted"><i class="bx bx-search-alt fs-1 d-block mb-2"></i>Veri bulunamadı.</div>');
+                return;
+            }
+
+            // === FILTRELEME MANTIGI ===
+            let filteredBolgeNames = Object.keys(bolgeData).filter(function(bName) {
+                // 1. Bolge Ismi Ara
+                if (_doSearchFilters.bolge && !bName.toLowerCase().includes(_doSearchFilters.bolge.toLowerCase())) {
+                    return false;
+                }
+
+                // 2. Sayisal Filtreler
+                for (let fKey in _doNumericFilters) {
+                    const filter = _doNumericFilters[fKey];
+                    if (!filter || filter.value === '' || filter.value === null) continue;
+
+                    const parts = fKey.split('_');
+                    const field = parts.pop(); // toplam, okunan, okunmayan, oran
+                    const donem = parts.join('_');
+
+                    const bStat = (bolgeData[bName] && bolgeData[bName][donem]) || { toplam_defter: 0, okunan_defter: 0, okunmayan_defter: 0, oran: 0 };
+                    let rowVal = 0;
+                    if (field === 'toplam') rowVal = bStat.toplam_defter;
+                    else if (field === 'okunan') rowVal = bStat.okunan_defter;
+                    else if (field === 'okunmayan') rowVal = bStat.okunmayan_defter;
+                    else if (field === 'oran') rowVal = bStat.oran;
+
+                    const fVal = parseFloat(filter.value);
+                    const rVal = parseFloat(rowVal);
+                    if (isNaN(fVal) || isNaN(rVal)) continue;
+
+                    let match = false;
+                    switch (filter.operator) {
+                        case '>': match = rVal > fVal; break;
+                        case '<': match = rVal < fVal; break;
+                        case '>=': match = rVal >= fVal; break;
+                        case '<=': match = rVal <= fVal; break;
+                        case '=': match = rVal === fVal; break;
+                        default: match = true;
+                    }
+                    if (!match) return false;
+                }
+                return true;
+            });
+
+            // === SIRALAMA MANTIGI (Opsiyonel, simdilik ksort gibi) ===
+            filteredBolgeNames.sort();
+
+            let html = '<table class="table table-bordered table-sm mb-0" id="defterOzetTable">';
+
+            // ======= THEAD =======
+            html += '<thead>';
+
+            // Row 1: Basliklar
+            html += '<tr>';
+            html += '<th class="fix-col-bolge">BÖLGE</th>';
+            donemler.forEach(function (donem, idx) {
+                const isLast = idx === donemler.length - 1;
+                const formatted = String(donem).substring(0, 4) + '/' + String(donem).substring(4);
+                html += '<th colspan="4" class="period-header ' + (isLast ? 'do-period-end' : '') + '">' + formatted + '</th>';
+            });
+            html += '</tr>';
+
+            // Row 2: Arama ve Filtre Butonlari
+            html += '<tr class="search-row">';
+            // Bolge Arama
+            html += '<th class="fix-col-bolge"><input type="text" class="form-control do-column-search" placeholder="Bölge Ara..." value="' + (_doSearchFilters.bolge || '') + '"></th>';
+            
+            donemler.forEach(function (donem, idx) {
+                const isLast = idx === donemler.length - 1;
+                const fields = ['toplam', 'okunan', 'okunmayan', 'oran'];
+                const labels = ['TOPLAM', 'OKUNAN', 'OKUNMAYAN', 'ORAN %'];
+
+                fields.forEach(function(f, fIdx) {
+                    const fKey = donem + '_' + f;
+                    const isActive = _doNumericFilters[fKey] && _doNumericFilters[fKey].value !== '';
+                    const activeClass = isActive ? 'col-filter-active' : '';
+                    const dot = isActive ? '<span class="filter-dot"></span>' : '';
+                    const isLastField = fIdx === 3;
+
+                    html += '<th class="sub-header ' + (isLast && isLastField ? 'do-period-end' : '') + '">';
+                    html += '<div class="d-flex align-items-center justify-content-center gap-1 mb-1">';
+                    html += '<button type="button" class="col-filter-btn ' + activeClass + '" data-do-filter-col="' + fKey + '" title="' + labels[fIdx] + ' Filtrele">';
+                    html += '<i class="bx bx-filter-alt" style="font-size:10px;"></i>';
+                    html += '</button>' + dot;
+                    html += '</div>';
+                    html += '<div style="font-size:9px;">' + labels[fIdx] + '</div>';
+                    html += '</th>';
+                });
+            });
+            html += '</tr>';
+            html += '</thead>';
+
+            // ======= TBODY =======
+            html += '<tbody>';
+
+            if (filteredBolgeNames.length === 0) {
+                const totalCols = 1 + (donemler.length * 4);
+                html += '<tr><td colspan="' + totalCols + '" class="text-center p-4 text-muted">Filtrelere uygun bölge bulunamadı.</td></tr>';
+            } else {
+                // GENEL TOPLAM SATIRI
+                html += '<tr class="do-genel-row">';
+                html += '<td class="fix-col-bolge fw-bold" style="font-size: 13px;"><i class="bx bx-globe me-1 text-primary"></i>GENEL TOPLAM</td>';
+                donemler.forEach(function (donem, idx) {
+                    const isLast = idx === donemler.length - 1;
+                    const d = String(donem);
+                    const g = genel[d] || { toplam_defter: 0, okunan_defter: 0, okunmayan_defter: 0, oran: 0 };
+                    const oranClass = g.oran >= 80 ? 'do-oran-high' : (g.oran >= 50 ? 'do-oran-medium' : 'do-oran-low');
+
+                    html += '<td><span class="do-badge-toplam">' + g.toplam_defter + '</span></td>';
+                    html += '<td><span class="do-badge-okunan">' + g.okunan_defter + '</span></td>';
+
+                    if (g.okunmayan_defter > 0) {
+                        html += '<td><span class="do-badge-okunmayan" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Okunmayan defterleri görün">' + g.okunmayan_defter + '</span></td>';
+                    } else {
+                        html += '<td><span class="do-badge-okunmayan zero">' + g.okunmayan_defter + '</span></td>';
+                    }
+
+                    html += '<td class="' + (isLast ? 'do-period-end' : '') + '"><span class="do-badge-oran ' + oranClass + '">' + g.oran + '%</span></td>';
+                });
+                html += '</tr>';
+
+                // BÖLGE SATIRLARI
+                let regionIdx = 0;
+                filteredBolgeNames.forEach(function (bName) {
+                    const regionColor = _regionColors[regionIdx % _regionColors.length];
+                    regionIdx++;
+
+                    html += '<tr class="do-bolge-row">';
+                    html += '<td class="fix-col-bolge fw-semibold text-start" style="background: ' + regionColor.bg + ';">';
+                    html += '<i class="bx bx-map me-1" style="color: ' + regionColor.text + ';"></i>' + bName;
+                    html += '</td>';
+
+                    donemler.forEach(function (donem, idx) {
+                        const isLast = idx === donemler.length - 1;
+                        const d = String(donem);
+                        const bStat = (bolgeData[bName] && bolgeData[bName][d]) || { toplam_defter: 0, okunan_defter: 0, okunmayan_defter: 0, oran: 0 };
+                        const oranClass = bStat.oran >= 80 ? 'do-oran-high' : (bStat.oran >= 50 ? 'do-oran-medium' : 'do-oran-low');
+
+                        html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-toplam">' + bStat.toplam_defter + '</span></td>';
+                        html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-okunan">' + bStat.okunan_defter + '</span></td>';
+
+                        if (bStat.okunmayan_defter > 0) {
+                            html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-okunmayan" data-donem="' + d + '" data-bolge="' + bName + '" title="Tıklayın: ' + bName + ' okunmayan defterleri">' + bStat.okunmayan_defter + '</span></td>';
+                        } else {
+                            html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-okunmayan zero">' + bStat.okunmayan_defter + '</span></td>';
+                        }
+
+                        html += '<td class="' + (isLast ? 'do-period-end' : '') + '" style="background: ' + regionColor.bg + ';"><span class="do-badge-oran ' + oranClass + '">' + bStat.oran + '%</span></td>';
+                    });
+
+                    html += '</tr>';
+                });
+            }
+
+            html += '</tbody>';
+            html += '</table>';
+
+            $('#defterOzetTableWrapper').html(html);
+            if (resetScroll) $('#defterOzetTableWrapper').scrollTop(0);
+        }
+
+        // ======= TAB 3 OLAYLARI (Arama ve Filtreleme) =======
+        
+        // 1. Bolge Arama (Input Handler)
+        $(document).on('input', '#defterOzetTable .do-column-search', function () {
+            const val = $(this).val();
+            const pos = this.selectionStart;
+            _doSearchFilters.bolge = val;
+            
+            clearTimeout(_doSearchTimeout);
+            const self = this;
+            _doSearchTimeout = setTimeout(function () {
+                if (_defterOzetData) renderDefterOzetTable(_defterOzetData);
+                if (self) {
+                    $(self).focus();
+                    self.setSelectionRange(pos, pos);
+                }
+            }, 300);
+        });
+
+        // 2. Sayisal Filtre Popu'unu Ac
+        $(document).on('click', '#defterOzetTable .col-filter-btn', function (e) {
+            e.stopPropagation();
+            const col = $(this).data('do-filter-col');
+            _activeFilterCol = col;
+            _activeFilterTab = 'defter-ozet';
+
+            const filter = _doNumericFilters[col] || { operator: '', value: '' };
+
+            $('#colFilterOperator').val(filter.operator || '>');
+            $('#colFilterValue').val(filter.value);
+
+            const offset = $(this).offset();
+            $('#colFilterPopup').css({
+                top: offset.top + 30,
+                left: Math.min(offset.left, $(window).width() - 220)
+            }).addClass('show');
+            
+            $('#colFilterValue').focus().select();
+        });
+
+        // ======= OKUNMAYAN BADGE CLICK HANDLER (Dışarıda, tek sefer bağlanır) =======
+        $(document).on('click', '.do-badge-okunmayan:not(.zero)', function (e) {
+            e.stopPropagation();
+            const $el = $(this);
+            const donem = $el.attr('data-donem');
+            const bolge = $el.attr('data-bolge');
+
+            if (!donem || !_defterOzetData) {
+                console.warn('Defter özet click: donem veya data yok', donem, _defterOzetData);
+                return;
+            }
+
+            const formatted = String(donem).substring(0, 4) + '/' + String(donem).substring(4);
+            let defterList = [];
+
+            if (bolge === '__GENEL__') {
+                // Tüm bölgelerdeki okunmayan defterleri birleştir
+                const allBolge = _defterOzetData.okunmayan_detay[donem] || {};
+                for (const bName in allBolge) {
+                    defterList = defterList.concat(allBolge[bName]);
+                }
+                $('#modalOkunmayanTitle').html('<i class="bx bx-error-circle me-2"></i>Okunmayan Defterler — ' + formatted + ' (Tüm Bölgeler)');
+            } else {
+                const allBolge = _defterOzetData.okunmayan_detay[donem] || {};
+                defterList = allBolge[bolge] || [];
+                $('#modalOkunmayanTitle').html('<i class="bx bx-error-circle me-2"></i>Okunmayan Defterler — ' + formatted + ' — <span class="text-warning">' + bolge + '</span>');
+            }
+
+            // Modal içeriğini oluştur
+            let modalHtml = '';
+
+            if (defterList.length === 0) {
+                modalHtml = '<div class="text-center p-4 text-muted"><i class="bx bx-check-circle fs-1 text-success d-block mb-2"></i>Bu dönem için okunmayan defter bulunmuyor.</div>';
+            } else {
+                // Bölge bazlı grupla
+                const grouped = {};
+                defterList.forEach(function (d) {
+                    const b = d.bolge || 'TANIMSIZ';
+                    if (!grouped[b]) grouped[b] = [];
+                    grouped[b].push(d);
+                });
+
+                modalHtml += '<div class="d-flex align-items-center justify-content-between mb-3">';
+                modalHtml += '<span class="badge bg-danger-subtle text-danger" style="font-size: 13px; padding: 8px 16px; border-radius: 8px;"><i class="bx bx-book-content me-1"></i>Toplam ' + defterList.length + ' okunmayan defter</span>';
+                modalHtml += '<span class="badge bg-primary-subtle text-primary" style="font-size: 12px; padding: 6px 12px; border-radius: 8px;">' + Object.keys(grouped).length + ' bölge</span>';
+                modalHtml += '</div>';
+
+                modalHtml += '<div class="table-responsive" style="max-height: 450px; overflow: auto;">';
+                modalHtml += '<table class="table table-sm table-bordered mb-0" id="okunmayanDefterTable">';
+                modalHtml += '<thead><tr>';
+                modalHtml += '<th style="width:40px;">#</th>';
+                modalHtml += '<th>Bölge</th>';
+                modalHtml += '<th>Defter</th>';
+                modalHtml += '<th>Mahalle</th>';
+                modalHtml += '<th>Abone Sayısı</th>';
+                modalHtml += '</tr></thead>';
+                modalHtml += '<tbody>';
+
+                let sira = 0;
+                const groupedKeys = Object.keys(grouped).sort();
+                groupedKeys.forEach(function (bName) {
+                    const items = grouped[bName];
+                    // Bölge başlık satırı
+                    modalHtml += '<tr style="background: rgba(var(--bs-primary-rgb), 0.06);">';
+                    modalHtml += '<td colspan="5" class="fw-bold text-start" style="font-size: 12px;"><i class="bx bx-map me-1 text-primary"></i>' + bName + ' <span class="badge bg-white text-dark border ms-2" style="font-size: 10px;">' + items.length + ' defter</span></td>';
+                    modalHtml += '</tr>';
+
+                    items.forEach(function (d) {
+                        sira++;
+                        modalHtml += '<tr>';
+                        modalHtml += '<td class="text-muted">' + sira + '</td>';
+                        modalHtml += '<td class="fw-medium">' + (d.bolge || '-') + '</td>';
+                        modalHtml += '<td class="fw-bold">' + d.defter + '</td>';
+                        modalHtml += '<td>' + (d.mahalle || '-') + '</td>';
+                        modalHtml += '<td class="fw-semibold">' + (d.abone_sayisi ? d.abone_sayisi.toLocaleString('tr-TR') : '-') + '</td>';
+                        modalHtml += '</tr>';
+                    });
+                });
+
+                modalHtml += '</tbody></table></div>';
+            }
+
+            $('#modalOkunmayanBody').html(modalHtml);
+
+            // Modal'ı aç (mevcut instance varsa onu kullan)
+            var modalEl = document.getElementById('modalOkunmayanDefterler');
+            var existingModal = bootstrap.Modal.getInstance(modalEl);
+            if (existingModal) {
+                existingModal.show();
+            } else {
+                var modal = new bootstrap.Modal(modalEl);
+                modal.show();
             }
         });
 
