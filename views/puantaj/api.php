@@ -2528,6 +2528,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
         // Verileri organize et: key = bolge|defter
         $organized = [];
+
+        // 1. Önce tanımlı olan tüm defterleri ekle (Okuma olmasa bile görünsünler)
+        foreach ($defterTanimListMap as $key => $tanimList) {
+            $parts = explode('|', $key);
+            $tBolge = $parts[0];
+            $tDefter = $parts[1];
+
+            // Filtreleri uygula
+            if (!empty($bolge) && $tBolge !== $bolge) continue;
+            if (!empty($defterFilter) && $tDefter !== $defterFilter) continue;
+
+            $latest = $tanimList[0]; // En güncel tanım
+            $organized[$key] = [
+                'bolge' => $tBolge,
+                'defter' => $tDefter,
+                'mahalle' => $latest['mahalle'],
+                'abone_sayisi' => $latest['abone_sayisi'],
+                'donemler' => []
+            ];
+        }
+
+        // 2. Şimdi okuma verilerini işle
         $allBolgeSet = [];
         foreach ($rawData as $row) {
             $bolgeName = trim($row->bolge);
@@ -2557,9 +2579,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             }
 
             $currentAbone = $activeTanim ? $activeTanim['abone_sayisi'] : 0;
-            if ($activeTanim && empty($organized[$key]['mahalle'])) {
+            if ($activeTanim && (empty($organized[$key]['mahalle']) || $organized[$key]['abone_sayisi'] == 0)) {
                 $organized[$key]['mahalle'] = $activeTanim['mahalle'];
-                $organized[$key]['abone_sayisi'] = $activeTanim['abone_sayisi']; // Genel olarak en sonuncuyu veya ilk eşleşeni gösterir
+                $organized[$key]['abone_sayisi'] = $activeTanim['abone_sayisi'];
             }
 
             $organized[$key]['donemler'][$row->donem] = [

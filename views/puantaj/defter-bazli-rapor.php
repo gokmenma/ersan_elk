@@ -1938,10 +1938,73 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 const regionColor = _regionColors[regionIdx % _regionColors.length];
                 const rows = regionMap[region];
 
+                // Calculate Region Totals
+                let regionTotals = {
+                    master_abone: 0,
+                    donemler: {}
+                };
+                donemler.forEach(d => {
+                    regionTotals.donemler[d] = { abone: 0, okunan: 0, gidilen: 0 };
+                });
+
+                rows.forEach(function (row) {
+                    regionTotals.master_abone += parseInt(row.abone_sayisi) || 0;
+                    donemler.forEach(d => {
+                        const dData = row.donemler[d] || { abone: 0, okunan: 0, gidilen: 0 };
+                        regionTotals.donemler[d].abone += parseInt(dData.abone) || 0;
+                        regionTotals.donemler[d].okunan += parseInt(dData.okunan) || 0;
+                        regionTotals.donemler[d].gidilen += parseInt(dData.gidilen) || 0;
+                    });
+                });
+
+                // Calculate Region Stats (Defter counts)
+                let regionDefterStats = {};
+                donemler.forEach(d => {
+                    let rCount = 0;
+                    rows.forEach(item => {
+                        const dData = item.donemler[d];
+                        if (dData && parseInt(dData.okunan) > 0) rCount++;
+                    });
+                    regionDefterStats[d] = { read: rCount, unread: rows.length - rCount };
+                });
+
+                // Defter Durum Satırı (Bölge başlığı üstüne)
+                html += `<tr class="ogr-region-stats-row"><td colspan="5" class="text-end fw-bold py-1" style="background: rgba(0,0,0,0.02); font-size: 10px; color: #64748b;">OKUMA DURUMU (DEFTER):</td>`;
+                donemler.forEach(donem => {
+                    const stats = regionDefterStats[donem];
+                    const content = `<div class="d-flex justify-content-center gap-1">
+                        <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:10px; padding: 4px 8px;">Okunan Toplam: <b style="font-size:12px; margin-left:2px;">${stats.read}</b></span>
+                        <span class="badge bg-light text-secondary border" style="font-size:10px; padding: 4px 8px;">Okunmayan Toplam: <b style="font-size:12px; margin-left:2px;">${stats.unread}</b></span>
+                    </div>`;
+                    html += `<td colspan="${visibleCountPerPeriod}" class="text-center py-1" style="background: rgba(0,0,0,0.02);">${content}</td>`;
+                });
+                html += '</tr>';
+
                 // Bölge başlık satırı
-                html += `<tr><td colspan="${totalHeaderCols}" class="ogr-region-header text-start" style="background: ${regionColor.header}; color: ${regionColor.text};">`;
+                html += `<tr class="ogr-region-row">`;
+                html += `<td colspan="4" class="ogr-region-header text-start" style="background: ${regionColor.header}; color: ${regionColor.text};">`;
                 html += `<i class="bx bx-map me-1"></i>${region} <span class="badge bg-white text-dark ms-2" style="font-size:10px;">${rows.length} defter</span>`;
-                html += '</td></tr>';
+                html += '</td>';
+                
+                // Master Abone Sayısı Total for Region
+                html += `<td class="ogr-region-header text-end" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${regionTotals.master_abone.toLocaleString('tr-TR')}</td>`;
+
+                // Period Totals for Region
+                donemler.forEach(function (donem, idx) {
+                    const isLast = idx === donemler.length - 1;
+                    const rTotals = regionTotals.donemler[donem];
+                    const rOran = rTotals.abone > 0 ? ((rTotals.okunan / rTotals.abone) * 100).toFixed(1) : 0;
+                    
+                    if (_visibleColumns.abone)
+                        html += `<td class="ogr-region-header text-end" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.abone.toLocaleString('tr-TR')}</td>`;
+                    if (_visibleColumns.okunan)
+                        html += `<td class="ogr-region-header text-end" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.okunan.toLocaleString('tr-TR')}</td>`;
+                    if (_visibleColumns.gidilen)
+                        html += `<td class="ogr-region-header text-end" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.gidilen.toLocaleString('tr-TR')}</td>`;
+                    if (_visibleColumns.oran)
+                        html += `<td class="ogr-region-header text-end ${isLast ? 'period-end' : ''}" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;"></td>`;
+                });
+                html += '</tr>';
 
                 rows.forEach(function (row) {
                     rowNum++;
@@ -1992,13 +2055,6 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             donemler.forEach(function (donem, idx) {
                 const totals = colTotals[donem];
                 const isLast = idx === donemler.length - 1;
-                const grandOran = totals.abone > 0
-                    ? ((totals.okunan / totals.abone) * 100).toFixed(1)
-                    : 0;
-
-                let oranClass = 'oran-low';
-                if (grandOran >= 70) oranClass = 'oran-high';
-                else if (grandOran >= 50) oranClass = 'oran-medium';
 
                 if (_visibleColumns.abone)
                     html += `<th>${totals.abone.toLocaleString('tr-TR')}</th>`;
@@ -2007,7 +2063,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 if (_visibleColumns.gidilen)
                     html += `<th class="gidilen-cell">${totals.gidilen.toLocaleString('tr-TR')}</th>`;
                 if (_visibleColumns.oran)
-                    html += `<th class="${oranClass} ${isLast ? 'period-end' : ''}">${grandOran}%</th>`;
+                    html += `<th class="${isLast ? 'period-end' : ''}"></th>`; // Oranları toplama
             });
             html += '</tr>';
             html += '</tfoot>';
@@ -2682,11 +2738,27 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 const regionColor = _regionColors[regionIdx % _regionColors.length];
                 const rows = regionMap[region];
 
+                // Calculate Region Totals (Tab 2)
+                let regionAboneSum = 0;
+                rows.forEach(function (row) {
+                    regionAboneSum += parseInt(row.abone_sayisi) || 0;
+                });
+
                 // Bölge başlık satırı
-                const totalCols = 5 + (donemler.length * 2);
-                html += `<tr><td colspan="${totalCols}" class="ogr-region-header text-start" style="background: ${regionColor.header}; color: ${regionColor.text};">`;
+                html += `<tr class="ogr-region-row">`;
+                html += `<td colspan="4" class="ogr-region-header text-start" style="background: ${regionColor.header}; color: ${regionColor.text};">`;
                 html += `<i class="bx bx-map me-1"></i>${region} <span class="badge bg-white text-dark ms-2" style="font-size:10px;">${rows.length} defter</span>`;
-                html += '</td></tr>';
+                html += '</td>';
+                
+                // Master Abone Sayısı Total for Region
+                html += `<td class="ogr-region-header text-end" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${regionAboneSum.toLocaleString('tr-TR')}</td>`;
+
+                // Empty cells for periods (Date and Diff don't sum)
+                donemler.forEach(function (donem, idx) {
+                    const isLast = idx === donemler.length - 1;
+                    html += `<td class="ogr-region-header" style="background: ${regionColor.header};" colspan="2"></td>`;
+                });
+                html += '</tr>';
 
                 rows.forEach(function (row) {
                     rowNum++;
