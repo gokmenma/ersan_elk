@@ -60,11 +60,24 @@ foreach ($tumDemirbaslar as $item) {
     } else {
         $demirbaslar[] = $item;
 
+        $rowMiktar = (int)($item->miktar ?? 1);
+        $rowKalan = (int)($item->kalan_miktar ?? 0);
+        $rowKalan = ($rowKalan > $rowMiktar) ? $rowMiktar : $rowKalan; // Cap at miktar to prevent calculation errors
+        $rowZimmetli = $rowMiktar - $rowKalan;
+
+        $durum = strtolower($item->durum ?? 'aktif');
+        $is_serviste = ($durum == 'arizali');
+        $is_hurda = str_contains($durum, 'hurda');
+        $is_active = (!$is_serviste && !$is_hurda);
+
         // Stok özetini genel hesapla
         $stokOzeti->toplam_cesit++;
-        $stokOzeti->toplam_adet += ($item->miktar ?? 0);
-        $stokOzeti->stokta_kalan += ($item->kalan_miktar ?? 0);
-        $stokOzeti->zimmetli_adet += (($item->miktar ?? 0) - ($item->kalan_miktar ?? 0));
+        $stokOzeti->toplam_adet += $rowMiktar;
+        
+        if ($is_active) {
+            $stokOzeti->stokta_kalan += $rowKalan;
+            $stokOzeti->zimmetli_adet += $rowZimmetli;
+        }
 
         // Kategori bazlı envantere ekle
         $katAdi = empty($item->kategori_adi) ? 'Kategorisiz' : $item->kategori_adi;
@@ -79,16 +92,15 @@ foreach ($tumDemirbaslar as $item) {
             ];
         }
         $kategoriEnvanteri[$katAdi]['cesit']++;
-        $kategoriEnvanteri[$katAdi]['toplam'] += ($item->miktar ?? 0);
-        $kategoriEnvanteri[$katAdi]['bosta'] += ($item->kalan_miktar ?? 0);
-
-        $durum = strtolower($item->durum ?? 'aktif');
-        if ($durum == 'aktif' || $durum == 'pasif') {
-            $kategoriEnvanteri[$katAdi]['zimmetli'] += (($item->miktar ?? 0) - ($item->kalan_miktar ?? 0));
-        } elseif ($durum == 'arizali') {
-            $kategoriEnvanteri[$katAdi]['serviste'] += ($item->miktar ?? 0);
-        } elseif (str_contains($durum, 'hurda')) {
-            $kategoriEnvanteri[$katAdi]['hurda'] += ($item->miktar ?? 0);
+        $kategoriEnvanteri[$katAdi]['toplam'] += $rowMiktar;
+        
+        if ($is_active) {
+            $kategoriEnvanteri[$katAdi]['bosta'] += $rowKalan;
+            $kategoriEnvanteri[$katAdi]['zimmetli'] += $rowZimmetli;
+        } elseif ($is_serviste) {
+            $kategoriEnvanteri[$katAdi]['serviste'] += $rowMiktar;
+        } elseif ($is_hurda) {
+            $kategoriEnvanteri[$katAdi]['hurda'] += $rowMiktar;
         }
     }
 }
