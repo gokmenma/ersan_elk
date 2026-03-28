@@ -969,7 +969,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         'draw' => $result['draw'],
         'recordsTotal' => $result['recordsTotal'],
         'recordsFiltered' => $result['recordsFiltered'],
-        'data' => $formattedData
+        'data' => $formattedData,
+        'summary' => $result['summary'] ?? []
     ]);
     exit;
 }
@@ -1006,7 +1007,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         'draw' => $result['draw'],
         'recordsTotal' => $result['recordsTotal'],
         'recordsFiltered' => $result['recordsFiltered'],
-        'data' => $formattedData
+        'data' => $formattedData,
+        'summary' => $result['summary'] ?? []
     ]);
     exit;
 }
@@ -1057,7 +1059,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         'draw' => $result['draw'],
         'recordsTotal' => $result['recordsTotal'],
         'recordsFiltered' => $result['recordsFiltered'],
-        'data' => $formattedData
+        'data' => $formattedData,
+        'summary' => $result['summary'] ?? []
     ]);
     exit;
 }
@@ -1107,7 +1110,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         'draw' => $result['draw'],
         'recordsTotal' => $result['recordsTotal'],
         'recordsFiltered' => $result['recordsFiltered'],
-        'data' => $formattedData
+        'data' => $formattedData,
+        'summary' => $result['summary'] ?? []
     ]);
     exit;
 }
@@ -2465,30 +2469,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
         // Bölge ve Defter bazında group by yaparak verileri çek
         $placeholders = implode(',', array_fill(0, count($donemler), '?'));
-        $groupSql = "SELECT bolge, defter, DATE_FORMAT(tarih, '%Y%m') as donem,
-                            SUM(okunan_abone_sayisi) as toplam_okunan,
-                            COUNT(*) as kayit_sayisi,
-                            MAX(tarih) as son_okuma
-                     FROM endeks_okuma
-                     WHERE firma_id = ?
-                       AND silinme_tarihi IS NULL
-                       AND DATE_FORMAT(tarih, '%Y%m') IN ($placeholders)";
+        $groupSql = "SELECT e.bolge, e.defter, DATE_FORMAT(e.tarih, '%Y%m') as donem,
+                            SUM(CASE WHEN e.sayac_durum = 'SAYAÇ NORMAL' THEN e.okunan_abone_sayisi ELSE 0 END) as toplam_okunan,
+                            SUM(e.okunan_abone_sayisi) as kayit_sayisi,
+                            MAX(e.tarih) as son_okuma
+                     FROM endeks_okuma e
+                     WHERE e.firma_id = ?
+                       AND e.silinme_tarihi IS NULL
+                       AND DATE_FORMAT(e.tarih, '%Y%m') IN ($placeholders)";
 
         $queryParams = [$firmaId];
         $queryParams = array_merge($queryParams, $donemler);
 
         if (!empty($bolge)) {
-            $groupSql .= " AND bolge = ?";
+            $groupSql .= " AND e.bolge = ?";
             $queryParams[] = $bolge;
         }
 
         if (!empty($defterFilter)) {
-            $groupSql .= " AND defter = ?";
+            $groupSql .= " AND e.defter = ?";
             $queryParams[] = $defterFilter;
         }
 
-        $groupSql .= " GROUP BY bolge, defter, DATE_FORMAT(tarih, '%Y%m')
-                        ORDER BY bolge, defter, donem";
+        $groupSql .= " GROUP BY e.bolge, e.defter, DATE_FORMAT(e.tarih, '%Y%m')
+                        ORDER BY e.bolge, e.defter, donem";
 
         $stmt = $EndeksOkuma->db->prepare($groupSql);
         $stmt->execute($queryParams);

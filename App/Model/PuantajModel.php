@@ -537,8 +537,35 @@ class PuantajModel extends Model
             "draw" => isset($request['draw']) ? intval($request['draw']) : 0,
             "recordsTotal" => intval($recordsTotal),
             "recordsFiltered" => intval($recordsFiltered),
-            "data" => $data
+            "data" => $data,
+            "summary" => $this->getSummaryByFilters($baseWhere, $searchWhere, $params)
         ];
+    }
+
+    /**
+     * Filtrelere göre özet toplamları getirir
+     */
+    public function getSummaryByFilters($baseWhere, $searchWhere, $params)
+    {
+        $sql = "SELECT COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as sonuc, 
+                       COUNT(*) as adet, 
+                       SUM(t.sonuclanmis) as toplam_abone
+                FROM {$this->table} t 
+                LEFT JOIN personel p ON t.personel_id = p.id 
+                LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id 
+                LEFT JOIN firmalar f ON t.firma_id = f.id
+                LEFT JOIN tanimlamalar ek ON t.ekip_kodu_id = ek.id
+                WHERE $baseWhere $searchWhere
+                GROUP BY sonuc
+                ORDER BY adet DESC";
+
+        $stmt = $this->db->prepare($sql);
+        foreach ($params as $key => $val) {
+            if ($key === 'start' || $key === 'length') continue;
+            $stmt->bindValue(":$key", $val);
+        }
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
     public function getUnmatchedWorkResults($startDate, $endDate, $raporTuru)

@@ -317,8 +317,32 @@ class EndeksOkumaModel extends Model
             "draw" => isset($request['draw']) ? intval($request['draw']) : 0,
             "recordsTotal" => intval($recordsTotal),
             "recordsFiltered" => intval($recordsFiltered),
-            "data" => $data
+            "data" => $data,
+            "summary" => $this->getSayacDurumSummary($baseWhere, $searchWhere, $params)
         ];
+    }
+
+    /**
+     * Sayaç durumlarına göre özet toplamları getirir (Aktif filtrelere uygun)
+     */
+    public function getSayacDurumSummary($baseWhere, $searchWhere, $params)
+    {
+        $sql = "SELECT t.sayac_durum, COUNT(*) as adet, SUM(t.okunan_abone_sayisi) as toplam_abone
+                FROM {$this->table} t
+                LEFT JOIN personel p ON t.personel_id = p.id
+                LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
+                WHERE $baseWhere $searchWhere
+                GROUP BY t.sayac_durum
+                ORDER BY adet DESC";
+
+        $stmt = $this->db->prepare($sql);
+        foreach ($params as $key => $val) {
+            // :start ve :length parametrelerini skip et (Summary için gerek yok)
+            if ($key === 'start' || $key === 'length') continue;
+            $stmt->bindValue(":$key", $val);
+        }
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
     public function getDailyStats()

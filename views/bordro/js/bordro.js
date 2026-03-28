@@ -1002,13 +1002,13 @@ $(document).ready(function () {
     val = val.replace("₺", "").replace(/\./g, "").replace(",", ".");
     const sodexo = parseFloat(val) || 0;
 
-    // Üst sınır kontrolü (%20)
-    const maxSodexo = toplam_alacak * 0.20;
+    // Üst sınır kontrolü (%25)
+    const maxSodexo = toplam_alacak * 0.25;
     if (sodexo > maxSodexo) {
       Swal.fire({
         icon: "warning",
         title: "Üst Sınır Uyarısı",
-        text: `Sodexo tutarı toplam alacağın %20'ini (${formatMoney(maxSodexo)} ₺) geçemez!`,
+        text: `Sodexo tutarı toplam alacağın %25'ini (${formatMoney(maxSodexo)} ₺) geçemez!`,
       });
       // Değeri geri al
       span.text(formatMoney(oldSodexo) + " ₺");
@@ -1628,19 +1628,19 @@ function hesaplaEldenOdeme() {
   const toplam_alacak =
     parseFloat($("#formOdemeDagit").data("toplam_alacak")) || 0;
 
-  // Sodexo limit kontrolü (%20)
-  const maxSodexo = toplam_alacak * 0.20;
+  // Sodexo limit kontrolü (%25)
+  const maxSodexo = toplam_alacak * 0.25;
   if (sodexo > maxSodexo + 0.01) {
     $("#sodexo_odemesi").addClass("is-invalid");
     if (!$("#sodexo_limit_warning").length) {
       $("#sodexo_odemesi").after(
         `<div id="sodexo_limit_warning" class="text-danger small mt-1">Sodexo limiti: ${formatMoney(
           maxSodexo
-        )} ₺ (%20)</div>`
+        )} ₺ (%25)</div>`
       );
     } else {
       $("#sodexo_limit_warning").text(
-        `Sodexo limiti: ${formatMoney(maxSodexo)} ₺ (%20)`
+        `Sodexo limiti: ${formatMoney(maxSodexo)} ₺ (%25)`
       );
     }
   } else {

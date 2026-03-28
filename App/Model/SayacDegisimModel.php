@@ -277,8 +277,42 @@ class SayacDegisimModel extends Model
             "draw" => isset($request['draw']) ? intval($request['draw']) : 0,
             "recordsTotal" => intval($recordsTotal),
             "recordsFiltered" => intval($recordsFiltered),
-            "data" => $data
+            "data" => $data,
+            "summary" => $this->getSummaryByFilters($baseWhere, $searchWhere, $params)
         ];
+    }
+
+    /**
+     * Filtrelere göre özet toplamları getirir
+     */
+    public function getSummaryByFilters($baseWhere, $searchWhere, $params)
+    {
+        $sql = "SELECT t.isemri_sonucu as sonuc, 
+                       COUNT(*) as adet, 
+                       ROUND(SUM(CASE WHEN pay.personel_sayisi > 0 THEN 1.0 / pay.personel_sayisi ELSE 0 END), 4) as toplam_abone
+                FROM {$this->table} t 
+                LEFT JOIN personel p ON t.personel_id = p.id 
+                JOIN (
+                    SELECT 
+                        tarih,
+                        SUBSTRING_INDEX(islem_id, '_', 1) as ortak_islem_id,
+                        COUNT(*) as personel_sayisi
+                    FROM {$this->table}
+                    WHERE firma_id = :firma_id AND silinme_tarihi IS NULL
+                    GROUP BY tarih, SUBSTRING_INDEX(islem_id, '_', 1)
+                ) pay ON pay.tarih = t.tarih
+                    AND pay.ortak_islem_id = SUBSTRING_INDEX(t.islem_id, '_', 1)
+                WHERE $baseWhere $searchWhere
+                GROUP BY sonuc
+                ORDER BY adet DESC";
+
+        $stmt = $this->db->prepare($sql);
+        foreach ($params as $key => $val) {
+            if ($key === 'start' || $key === 'length') continue;
+            $stmt->bindValue(":$key", $val);
+        }
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
     /**

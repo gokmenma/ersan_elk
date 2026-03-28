@@ -1152,10 +1152,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $icra = floatval($detayJson['odeme_dagilimi']['icra_kesintisi'] ?? 0);
                 }
 
-                // Üst sınır kontrolü (%20)
-                $maxSodexo = $toplam_alacak * 0.20;
+                // Üst sınır kontrolü (%25)
+                $maxSodexo = $toplam_alacak * 0.25;
                 if ($sodexo > $maxSodexo + 0.01) { // Küçük kuruş farklarını tolore etmek için
-                    throw new Exception('Sodexo tutarı toplam alacağın %20\'ini geçemez!');
+                    throw new Exception('Sodexo tutarı toplam alacağın %25\'ini geçemez!');
                 }
 
                 $elden = max(0, $net - $banka - $sodexo - $icra - $diger);

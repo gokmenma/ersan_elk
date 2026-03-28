@@ -230,6 +230,18 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                             </div>
                         </div>
                     </div>
+                    <!-- Sayaç Durum Özetleri -->
+                    <div id="sayacDurumSummary" class="card-body bg-light-subtle border-bottom py-3" style="display: none;">
+                        <div class="d-flex align-items-center justify-content-between mb-3 px-1">
+                            <h6 class="fs-12 text-uppercase fw-semibold text-muted mb-0"><i class="bx bx-stats me-1"></i> Sayaç Durumu İstatistikleri</h6>
+                            <button class="btn btn-sm btn-link text-decoration-none d-none" id="btnToggleOtherStatuses">
+                                <span class="show-text">Tümünü Göster</span>
+                                <span class="hide-text d-none">Daralt</span>
+                            </button>
+                        </div>
+                        <div class="row g-2" id="sayacDurumSummaryContainer"></div>
+                        <div class="row g-2 mt-2 d-none" id="sayacDurumOtherSummaryContainer"></div>
+                    </div>
                     <div class="card-body">
                         <table id="endeksTable" class="table table-bordered dt-responsive nowrap w-100">
                             <thead>
@@ -291,6 +303,18 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 </ul>
                             </div>
                         </div>
+                    </div>
+                    <!-- Kesme/Açma Özetleri -->
+                    <div id="puantajSummary" class="card-body bg-light-subtle border-bottom py-3" style="display: none;">
+                        <div class="d-flex align-items-center justify-content-between mb-3 px-1">
+                            <h6 class="fs-12 text-uppercase fw-semibold text-muted mb-0"><i class="bx bx-stats me-1"></i> Kesme/Açma İstatistikleri</h6>
+                            <button class="btn btn-sm btn-link text-decoration-none d-none" id="btnToggleOtherPuantajStatus">
+                                <span class="show-text">Tümünü Göster</span>
+                                <span class="hide-text d-none">Daralt</span>
+                            </button>
+                        </div>
+                        <div class="row g-2" id="puantajSummaryContainer"></div>
+                        <div class="row g-2 mt-2 d-none" id="puantajOtherSummaryContainer"></div>
                     </div>
                     <div class="card-body">
                         <table id="puantajTable" class="table table-bordered dt-responsive nowrap w-100">
@@ -393,6 +417,18 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                             </div>
                         </div>
                     </div>
+                    <!-- Sayaç Değişim Özetleri -->
+                    <div id="sayacDegisimSummary" class="card-body bg-light-subtle border-bottom py-3" style="display: none;">
+                        <div class="d-flex align-items-center justify-content-between mb-3 px-1">
+                            <h6 class="fs-12 text-uppercase fw-semibold text-muted mb-0"><i class="bx bx-stats me-1"></i> Sayaç Değişim İstatistikleri</h6>
+                            <button class="btn btn-sm btn-link text-decoration-none d-none" id="btnToggleOtherSayacStatus">
+                                <span class="show-text">Tümünü Göster</span>
+                                <span class="hide-text d-none">Daralt</span>
+                            </button>
+                        </div>
+                        <div class="row g-2" id="sayacDegisimSummaryContainer"></div>
+                        <div class="row g-2 mt-2 d-none" id="sayacDegisimOtherSummaryContainer"></div>
+                    </div>
                     <div class="card-body">
                         <table id="sayacDegisimTable" class="table table-bordered dt-responsive nowrap w-100">
                             <thead>
@@ -445,6 +481,18 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 </ul>
                             </div>
                         </div>
+                    </div>
+                    <!-- Mühürleme Özetleri -->
+                    <div id="muhurlemeSummary" class="card-body bg-light-subtle border-bottom py-3" style="display: none;">
+                        <div class="d-flex align-items-center justify-content-between mb-3 px-1">
+                            <h6 class="fs-12 text-uppercase fw-semibold text-muted mb-0"><i class="bx bx-stats me-1"></i> Mühürleme İstatistikleri</h6>
+                            <button class="btn btn-sm btn-link text-decoration-none d-none" id="btnToggleOtherMuhurlemeStatus">
+                                <span class="show-text">Tümünü Göster</span>
+                                <span class="hide-text d-none">Daralt</span>
+                            </button>
+                        </div>
+                        <div class="row g-2" id="muhurlemeSummaryContainer"></div>
+                        <div class="row g-2 mt-2 d-none" id="muhurlemeOtherSummaryContainer"></div>
                     </div>
                     <div class="card-body">
                         <table id="muhurlemeTable" class="table table-bordered dt-responsive nowrap w-100">
@@ -1171,6 +1219,105 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             }, customOptions);
         }
 
+        /**
+         * Sayaç durumu özetlerini ekrana basar
+         */
+        // Genel Özet Render Fonksiyonu
+        function renderGenericSummary(summary, config) {
+            var container = $(config.container);
+            var otherContainer = $(config.otherContainer);
+            var wrapper = $(config.wrapper);
+            var toggleBtn = $(config.toggleBtn);
+
+            if (!summary || summary.length === 0) {
+                wrapper.hide();
+                return;
+            }
+
+            wrapper.show();
+            container.empty();
+            otherContainer.empty();
+            otherContainer.addClass('d-none');
+            toggleBtn.addClass('d-none');
+            toggleBtn.find('.show-text').removeClass('d-none');
+            toggleBtn.find('.hide-text').addClass('d-none');
+
+            summary.forEach(function (item, index) {
+                var variant = 'primary';
+                var status = (item.sonuc || item.sayac_durum || 'BELİRSİZ').toUpperCase();
+
+                // Renk Belirleme
+                if (status.includes('OKUNDU') || status.includes('NORMAL') || status.includes('YAPILDI') || status.includes('AÇILDI')) variant = 'success';
+                else if (status.includes('OKUNAMADI') || status.includes('BOZUK') || status.includes('KIRIK') || status.includes('PATLAK') || status.includes('HATA') || status.includes('KESİLDİ')) variant = 'danger';
+                else if (status.includes('YOK') || status.includes('BULUNAMIYOR') || status.includes('KAPALI') || status.includes('GİRİLEMEDİ')) variant = 'warning';
+                else if (status.includes('HESAP') || status.includes('İPTAL') || status.includes('ÜCRET')) variant = 'info';
+
+                var label = config.label || 'Abone';
+                var subLabel = config.subLabel || 'Kayıt';
+
+                var html = `
+                    <div class="col">
+                        <div class="card shadow-sm border-0 mb-0 h-100 card-animate">
+                            <div class="card-body p-2 px-3">
+                                <div class="d-flex align-items-center mb-2">
+                                    <div class="avatar-xs flex-shrink-0 me-2">
+                                        <span class="avatar-title bg-${variant}-subtle text-${variant} rounded-circle fs-13">
+                                            <i class="bx bx-stats"></i>
+                                        </span>
+                                    </div>
+                                    <h6 class="text-muted text-truncate mb-0 fs-10 fw-semibold text-uppercase flex-grow-1" title="${status}">${status}</h6>
+                                </div>
+                                <div class="d-flex align-items-baseline justify-content-between">
+                                    <h4 class="mb-0 fs-18 fw-bold">${parseInt(item.toplam_abone).toLocaleString('tr-TR')} <small class="fs-11 fw-normal text-muted">${label}</small></h4>
+                                    <div class="text-end">
+                                        <span class="badge bg-${variant}-subtle text-${variant} fs-11 p-1 px-2 rounded-pill">${parseInt(item.adet).toLocaleString('tr-TR')} ${subLabel}</span>
+                                    </div>
+                                </div>
+                                <div class="progress animated-progress progress-sm mt-2" style="height: 3px;">
+                                    <div class="progress-bar bg-${variant}" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                if (index < 6) {
+                    container.append(html);
+                } else {
+                    otherContainer.append(html);
+                    toggleBtn.removeClass('d-none');
+                }
+            });
+        }
+
+        // Önceki fonksiyonu buna yönlendir (Geriye dönük uyumluluk için)
+        function renderSayacDurumSummary(summary) {
+            renderGenericSummary(summary, {
+                container: '#sayacDurumSummaryContainer',
+                otherContainer: '#sayacDurumOtherSummaryContainer',
+                wrapper: '#sayacDurumSummary',
+                toggleBtn: '#btnToggleOtherStatuses',
+                label: 'Abone',
+                subLabel: 'Kayıt'
+            });
+        }
+
+        // Özetleri genişlet/daralt butonu
+        $(document).on('click', '#btnToggleOtherStatuses', function() {
+            var otherContainer = $('#sayacDurumOtherSummaryContainer');
+            var btn = $(this);
+            
+            if (otherContainer.hasClass('d-none')) {
+                otherContainer.removeClass('d-none');
+                btn.find('.show-text').addClass('d-none');
+                btn.find('.hide-text').removeClass('d-none');
+            } else {
+                otherContainer.addClass('d-none');
+                btn.find('.show-text').removeClass('d-none');
+                btn.find('.hide-text').addClass('d-none');
+            }
+        });
+
 
         // Endeks Okuma tablosu için Server-Side DataTable
         function initEndeksDataTable() {
@@ -1189,6 +1336,12 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         d.start_date = $('input[name="start_date"]').val();
                         d.end_date = $('input[name="end_date"]').val();
                         d.ekip_kodu = $('select[name="ekip_kodu"]').val();
+                    },
+                    dataSrc: function (json) {
+                        if (json.summary) {
+                            renderSayacDurumSummary(json.summary);
+                        }
+                        return json.data;
                     }
                 },
                 columns: [
@@ -1230,6 +1383,19 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         d.ekip_kodu = $('select[name="ekip_kodu"]').val();
                         d.work_type = $('select[name="work_type"]').val();
                         d.work_result = $('select[name="work_result"]').val();
+                    },
+                    dataSrc: function (json) {
+                        if (json.summary) {
+                            renderGenericSummary(json.summary, {
+                                container: '#puantajSummaryContainer',
+                                otherContainer: '#puantajOtherSummaryContainer',
+                                wrapper: '#puantajSummary',
+                                toggleBtn: '#btnToggleOtherPuantajStatus',
+                                label: 'İş',
+                                subLabel: 'Kayıt'
+                            });
+                        }
+                        return json.data;
                     }
                 },
                 columns: [
@@ -1303,6 +1469,19 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         d.start_date = $('input[name="start_date"]').val();
                         d.end_date = $('input[name="end_date"]').val();
                         d.ekip_kodu = $('select[name="ekip_kodu"]').val();
+                    },
+                    dataSrc: function (json) {
+                        if (json.summary) {
+                            renderGenericSummary(json.summary, {
+                                container: '#sayacDegisimSummaryContainer',
+                                otherContainer: '#sayacDegisimOtherSummaryContainer',
+                                wrapper: '#sayacDegisimSummary',
+                                toggleBtn: '#btnToggleOtherSayacStatus',
+                                label: 'Adet',
+                                subLabel: 'Kayıt'
+                            });
+                        }
+                        return json.data;
                     }
                 },
                 columns: [
@@ -1342,6 +1521,19 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         d.start_date = $('input[name="start_date"]').val();
                         d.end_date = $('input[name="end_date"]').val();
                         d.ekip_kodu = $('select[name="ekip_kodu"]').val();
+                    },
+                    dataSrc: function (json) {
+                        if (json.summary) {
+                            renderGenericSummary(json.summary, {
+                                container: '#muhurlemeSummaryContainer',
+                                otherContainer: '#muhurlemeOtherSummaryContainer',
+                                wrapper: '#muhurlemeSummary',
+                                toggleBtn: '#btnToggleOtherMuhurlemeStatus',
+                                label: 'İş',
+                                subLabel: 'Kayıt'
+                            });
+                        }
+                        return json.data;
                     }
                 },
                 columns: [
