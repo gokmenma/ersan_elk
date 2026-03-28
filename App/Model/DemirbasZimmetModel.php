@@ -229,7 +229,7 @@ class DemirbasZimmetModel extends Model
             // Demirbaş stok kontrolü
             $demirbas = $this->db->prepare("
                 SELECT *, 
-                (COALESCE(miktar, 1) - COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = demirbas.id AND hareket_tipi = 'zimmet' AND silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(miktar) FROM demirbas_hareketler WHERE demirbas_id = demirbas.id AND hareket_tipi = 'iade' AND silinme_tarihi IS NULL), 0)) as kalan_miktar
+                (COALESCE(miktar, 1) - COALESCE((SELECT SUM(z2.teslim_miktar - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.zimmet_id = z2.id AND h2.hareket_tipi IN ('iade', 'sarf', 'kayip') AND h2.silinme_tarihi IS NULL), 0)) FROM demirbas_zimmet z2 WHERE z2.demirbas_id = demirbas.id AND z2.durum = 'teslim' AND z2.silinme_tarihi IS NULL), 0)) as kalan_miktar
                 FROM demirbas WHERE id = ?
             ");
             $demirbas->execute([$data['demirbas_id']]);
