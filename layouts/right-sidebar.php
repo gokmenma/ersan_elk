@@ -81,7 +81,7 @@
             </div>
 
 
-            <h6 class="mt-4 mb-3 pt-2">Görünüm</h6>
+            <h6 class="mt-4 mb-3 pt-2">Görünüm (Mobil Dönüşüm)</h6>
             <div class="form-check form-check-inline">
                 <input class="form-check-input" type="radio" name="layout" id="layout-vertical" value="vertical">
                 <label class="form-check-label" for="layout-vertical">Dikey</label>

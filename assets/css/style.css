@@ -3541,3 +3541,54 @@ table.dataTable.table-bordered {
 [data-bs-theme="dark"] .select2-floating label {
   background: #2a3042;
 }
+
+/* Orientation Simulation */
+@media (max-width: 991px) {
+  html[data-orientation="landscape"] {
+    overflow: hidden !important;
+    width: 100vw !important;
+    height: 100vh !important;
+  }
+
+  html[data-orientation="landscape"] body {
+    width: 100vh !important;
+    height: 100vw !important;
+    position: fixed !important;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(90deg);
+    transform-origin: center center;
+    overflow: auto !important;
+  }
+
+  html[data-orientation="landscape"] .right-bar {
+    display: none !important; 
+  }
+}
+
+.orientation-toggle-btn {
+  display: none;
+  position: fixed;
+  bottom: 85px;
+  right: 25px;
+  z-index: 99999;
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: #1c84ee;
+  color: #fff;
+  border: none;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  align-items: center;
+  justify-content: center;
+  transition: all 0.3s ease;
+}
+
+.orientation-toggle-btn:hover {
+  transform: scale(1.1);
+  background: #1975d1;
+}
+
+html[data-orientation="landscape"] .orientation-toggle-btn {
+  display: flex !important;
+}

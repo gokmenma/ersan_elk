@@ -187,9 +187,10 @@ class AvansModel extends Model
     public function getAvansDetay($id)
     {
         $sql = $this->db->prepare("
-            SELECT pa.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, p.maas_tutari
+            SELECT pa.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, p.maas_tutari, u.adi_soyadi as solver_name
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
+            LEFT JOIN users u ON pa.onaylayan_id = u.id
             WHERE pa.id = ?
         ");
         $sql->execute([$id]);

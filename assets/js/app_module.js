@@ -367,6 +367,14 @@ File: Main Js File
       }
     });
 
+    // Apply orientation
+    const orientation = localStorage.getItem("data-orientation");
+    if (orientation === "landscape") {
+      document.documentElement.setAttribute("data-orientation", "landscape");
+    } else {
+      document.documentElement.removeAttribute("data-orientation");
+    }
+
     // Apply font-family to html element (CSS selectors target html)
     const savedFont = localStorage.getItem("data-font-family");
     if (savedFont) {
@@ -432,8 +440,9 @@ File: Main Js File
     });
 
     if (
-      body.hasAttribute("data-layout") &&
-      body.getAttribute("data-layout") == "horizontal"
+      (body.hasAttribute("data-layout") &&
+        body.getAttribute("data-layout") == "horizontal") ||
+      localStorage.getItem("data-orientation") === "landscape"
     ) {
       updateRadio("layout-horizontal");
       $(".sidebar-setting").hide();
@@ -601,12 +610,29 @@ File: Main Js File
     // on layou change
     $("input[name='layout']").on("change", function () {
       var val = $(this).val();
-      localStorage.setItem(
-        "data-layout",
-        val === "vertical" ? "vertical" : "horizontal",
-      );
-      window.location.href =
-        val == "vertical" ? "index.php" : "layouts-horizontal.php";
+
+      // Mobile orientation handling
+      if (window.innerWidth < 992) {
+        if (val === "horizontal") {
+          document.documentElement.setAttribute("data-orientation", "landscape");
+          localStorage.setItem("data-orientation", "landscape");
+          // If we are rotating on mobile, we might not want to reload the page
+          // as it can be jarring. However, the template usually expects a reload for layout change.
+          // For a better experience, we'll just toggle the orientation class.
+          return;
+        } else {
+          document.documentElement.removeAttribute("data-orientation");
+          localStorage.setItem("data-orientation", "portrait");
+        }
+      }
+
+      const orientationValue = val === "horizontal" ? "landscape" : "portrait";
+      document.documentElement.setAttribute("data-orientation", orientationValue);
+      localStorage.setItem("data-orientation", orientationValue);
+      
+      // We'll also update the data-layout attribute on body to reflect the menu style choice
+      // without reloading, even if the full menu structure won't change immediately.
+      document.body.setAttribute("data-layout", val === "vertical" ? "vertical" : "horizontal");
     });
 
     // on layout mode change

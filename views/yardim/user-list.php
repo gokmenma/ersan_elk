@@ -70,21 +70,16 @@ $oncelikler = [
                         <i data-feather="list" class="text-primary"></i>
                     </div>
                 </div>
-                <p class="text-muted mb-1 small fw-bold" id="stat-toplam-label">TOPLAM TALEP</p>
-                <h4 class="mb-0 fw-bold"><span id="stat-toplam">0</span></h4>
-            </div>
-        </div>
-    </div>
-    <div class="col-xl-3 col-md-6" id="personnel-total-card" style="display:none;">
-        <div class="card border-0 shadow-sm h-100 bordro-summary-card" style="--card-color: #0ea5e9; border-bottom: 3px solid var(--card-color) !important;">
-            <div class="card-body p-3">
-                <div class="icon-label-container">
-                    <div class="icon-box" style="background: rgba(14, 165, 233, 0.12);">
-                        <i data-feather="users" style="color: #0ea5e9;"></i>
+                <div class="d-flex align-items-center">
+                    <div class="flex-grow-1" id="stat-own-wrapper">
+                        <p class="text-muted mb-1 small fw-bold text-uppercase" id="stat-own-label">Kendi Taleplerim</p>
+                        <h4 class="mb-0 fw-bold"><span id="stat-own-count">0</span></h4>
+                    </div>
+                    <div class="border-start ps-3 ms-3" id="stat-personnel-wrapper" style="display:none; min-width: 90px;">
+                        <p class="text-muted mb-1 small fw-bold text-uppercase">Personel</p>
+                        <h4 class="mb-0 fw-bold text-info"><span id="stat-personnel-count">0</span></h4>
                     </div>
                 </div>
-                <p class="text-muted mb-1 small fw-bold">PERSONEL TALEPLERİ</p>
-                <h4 class="mb-0 fw-bold"><span id="stat-personnel-total">0</span></h4>
             </div>
         </div>
     </div>
@@ -266,7 +261,7 @@ $(document).ready(function() {
 
     function updateStats(stats) {
         if(!stats) return;
-        $('#stat-toplam').text(stats.toplam || 0);
+        $('#stat-own-count').text(stats.toplam || 0);
         $('#stat-bekleyen').text(stats.bekleyen || 0);
         $('#stat-yanitlanan').text(stats.yanitlanan || 0);
     }
@@ -278,16 +273,16 @@ $(document).ready(function() {
         const personnelTicketsCount = (json && typeof json.personnel_tickets_count !== 'undefined') ? json.personnel_tickets_count : 0;
 
         if (isApprover) {
-            $('#stat-toplam-label').text('KENDİ TALEPLERİ');
-            $('#stat-toplam').text(ownTicketsCount || 0);
-            $('#personnel-total-card').show();
-            $('#stat-personnel-total').text(personnelTicketsCount || 0);
+            $('#stat-own-label').text('Kendi Taleplerim');
+            $('#stat-own-count').text(ownTicketsCount || 0);
+            $('#stat-personnel-wrapper').show();
+            $('#stat-personnel-count').text(personnelTicketsCount || 0);
             $('#approval-pending-card').show();
             $('#stat-approval-pending').text(approvalPendingCount || 0);
         } else {
-            $('#stat-toplam-label').text('TOPLAM TALEP');
-            $('#personnel-total-card').hide();
-            $('#stat-personnel-total').text(0);
+            $('#stat-own-label').text('Toplam Talep');
+            $('#stat-own-count').text(ownTicketsCount || 0);
+            $('#stat-personnel-wrapper').hide();
             $('#approval-pending-card').hide();
             $('#stat-approval-pending').text(0);
         }

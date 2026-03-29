@@ -255,10 +255,19 @@ class PersonelIzinleriModel extends Model
     public function getIzinDetay($id)
     {
         $sql = $this->db->prepare("
-            SELECT pi.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi
+            SELECT pi.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi,
+                   u.adi_soyadi as solver_name, io.aciklama as onay_aciklama
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
+            LEFT JOIN (
+                SELECT io1.izin_id, io1.onaylayan_id, io1.aciklama
+                FROM izin_onaylari io1
+                INNER JOIN (
+                    SELECT MAX(id) as max_id FROM izin_onaylari GROUP BY izin_id
+                ) io2 ON io1.id = io2.max_id
+            ) io ON io.izin_id = pi.id
+            LEFT JOIN users u ON io.onaylayan_id = u.id
             WHERE pi.id = ?
         ");
         $sql->execute([$id]);

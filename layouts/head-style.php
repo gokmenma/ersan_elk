@@ -4,6 +4,7 @@
             { name: 'data-theme-mode', target: 'html' },
             { name: 'data-font-family', target: 'html' },
             { name: 'data-bs-theme', target: 'html' },
+            { name: 'data-orientation', target: 'html' },
             { name: 'dir', target: 'html' }
         ];
 

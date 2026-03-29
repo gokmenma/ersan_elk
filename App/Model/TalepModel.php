@@ -150,9 +150,10 @@ class TalepModel extends Model
     public function getTalepDetay($id)
     {
         $sql = $this->db->prepare("
-            SELECT pt.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev
+            SELECT pt.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, u.adi_soyadi as solver_name
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
+            LEFT JOIN users u ON pt.islem_yapan_id = u.id
             WHERE pt.id = ?
         ");
         $sql->execute([$id]);

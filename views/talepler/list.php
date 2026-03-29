@@ -641,7 +641,12 @@ $izinTurleri = [
                                     <th>Öncelik</th>
                                     <th>Tarih</th>
                                     <th>Açıklama</th>
-                                    <th>Sonuç</th>
+                                    <?php if ($showApproved): ?>
+                                        <th>İşlem Yapan</th>
+                                        <th>Sonuç</th>
+                                    <?php else: ?>
+                                        <th>Sonuç</th>
+                                    <?php endif; ?>
                                     <th class="text-center" style="width:200px">İşlemler</th>
                                 </tr>
                             </thead>
@@ -722,6 +727,11 @@ $izinTurleri = [
                                         <td>
                                             <?= htmlspecialchars($talep->aciklama ?? '-') ?>
                                         </td>
+                                        <?php if ($showApproved): ?>
+                                            <td>
+                                                <?= htmlspecialchars($talep->solver_name ?? '-') ?>
+                                            </td>
+                                        <?php endif; ?>
                                         <td>
                                             <?= htmlspecialchars($talep->cozum_aciklama ?? '-') ?>
                                         </td>
@@ -805,6 +815,19 @@ $izinTurleri = [
                                                 <span class="text-muted small">Durum:</span>
                                                 <span class="badge bg-<?= $durumType ?>"><i class="bx bx-<?= $durumType == 'success' ? 'check-circle' : ($durumType == 'info' ? 'play-circle' : ($durumType == 'danger' ? 'x-circle' : 'time-five')) ?>"></i> <?= $durumText ?></span>
                                             </div>
+
+                                            <?php if ($showApproved): ?>
+                                            <div class="mb-3 bg-light p-2 rounded small">
+                                                <div class="d-flex justify-content-between mb-1">
+                                                    <span class="text-muted"><i class="bx bx-user me-1"></i>İşlem Yapan:</span>
+                                                    <span class="fw-medium"><?= htmlspecialchars($talep->solver_name ?? '-') ?></span>
+                                                </div>
+                                                <div class="d-flex flex-column">
+                                                    <span class="text-muted"><i class="bx bx-comment-detail me-1"></i>Sonuç:</span>
+                                                    <span class="text-break mt-1"><?= htmlspecialchars($talep->cozum_aciklama ?? '-') ?></span>
+                                                </div>
+                                            </div>
+                                            <?php endif; ?>
                                             
                                             <div class="d-flex gap-2 mt-2 pt-2 border-top">
                                                 <?php if ($talep->durum != 'islemde' && $talep->durum != 'cozuldu' && $talep->durum != 'onaylandi'): ?>
@@ -1602,6 +1625,12 @@ $izinTurleri = [
                 if (data.aciklama) {
                     html += '<tr><td class="text-muted">Açıklama:</td><td>' + data.aciklama + '</td></tr>';
                 }
+                if (data.solver_name) {
+                    html += '<tr><td class="text-muted">İşlem Yapan:</td><td>' + data.solver_name + '</td></tr>';
+                }
+                if (data.onay_aciklama) {
+                    html += '<tr><td class="text-muted">Sonuç Açıklaması:</td><td>' + data.onay_aciklama + '</td></tr>';
+                }
             } else if (tip === 'izin') {
                 html += '<tr><td class="text-muted" width="40%">Talep Tarihi:</td><td>' + formatDate(data.talep_tarihi) + '</td></tr>';
                 html += '<tr><td class="text-muted">İzin Türü:</td><td><span class="badge bg-info"><i class="bx bx-calendar"></i> ' + ucfirst(data.izin_tipi) + '</span></td></tr>';
@@ -1612,6 +1641,12 @@ $izinTurleri = [
                 html += '<tr><td class="text-muted">Durum:</td><td><span class="badge bg-' + iDurum + '"><i class="bx bx-' + iIcon + '"></i> ' + data.onay_durumu + '</span></td></tr>';
                 if (data.aciklama) {
                     html += '<tr><td class="text-muted">Açıklama:</td><td>' + data.aciklama + '</td></tr>';
+                }
+                if (data.solver_name) {
+                    html += '<tr><td class="text-muted">İşlem Yapan:</td><td>' + data.solver_name + '</td></tr>';
+                }
+                if (data.onay_aciklama) {
+                    html += '<tr><td class="text-muted">Sonuç Açıklaması:</td><td>' + data.onay_aciklama + '</td></tr>';
                 }
             } else if (tip === 'talep') {
                 html += '<tr><td class="text-muted" width="40%">Oluşturma Tarihi:</td><td>' + formatDate(data.olusturma_tarihi) + '</td></tr>';
@@ -1624,6 +1659,9 @@ $izinTurleri = [
                 }
                 if (data.cozum_aciklama) {
                     html += '<tr><td class="text-muted text-success">Sonuç Açıklaması:</td><td><strong class="text-success">' + data.cozum_aciklama + '</strong></td></tr>';
+                }
+                if (data.solver_name) {
+                    html += '<tr><td class="text-muted">İşlem Yapan:</td><td>' + data.solver_name + '</td></tr>';
                 }
                 if (data.foto) {
                     html += '<tr><td class="text-muted">Fotoğraf:</td><td><img src="' + data.foto + '" class="img-fluid rounded mt-2" style="max-height:200px;cursor:pointer;" onclick="window.open(\'' + data.foto + '\', \'_blank\')" onerror="this.style.display=\'none\'"></td></tr>';
