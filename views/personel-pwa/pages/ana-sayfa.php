@@ -287,7 +287,7 @@ use App\Helper\Helper;
     <section class="px-4 mt-6 overflow-hidden">
         <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-3">Hızlı İşlemler</h2>
         <div class="flex overflow-x-auto hide-scrollbar gap-3 pb-6 snap-x snap-mandatory">
-            <!-- <a href="?page=izin"
+            <a href="?page=izin"
                 class="quick-action group border-2 neon-indigo bg-gradient-to-br from-indigo-500 to-indigo-700 p-4 transition-all active:scale-95 w-[140px] flex-shrink-0 snap-start">
                 <div
                     class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-2.5 shadow-inner">
@@ -303,21 +303,21 @@ use App\Helper\Helper;
                 </div>
             </a>
 
-            <a href="?page=talep"
+            <a href="?page=yardim"
                 class="quick-action group border-2 neon-emerald bg-gradient-to-br from-emerald-500 to-emerald-700 p-4 transition-all active:scale-95 w-[140px] flex-shrink-0 snap-start">
                 <div
                     class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-2.5 shadow-inner">
-                    <span class="material-symbols-outlined text-white text-xl filled">assignment</span>
+                    <span class="material-symbols-outlined text-white text-xl filled">support_agent</span>
                 </div>
                 <div>
-                    <h3 class="font-bold text-[13px] text-white">Talep Oluştur</h3>
-                    <p class="text-[9px] text-emerald-100/80 font-medium">Öneri ve Şikayet</p>
+                    <h3 class="font-bold text-[13px] text-white">Destek Talebi</h3>
+                    <p class="text-[9px] text-emerald-100/80 font-medium">Yardım ve Destek</p>
                 </div>
                 <div
                     class="absolute -right-3 -bottom-3 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-                    <span class="material-symbols-outlined text-5xl text-white">assignment</span>
+                    <span class="material-symbols-outlined text-5xl text-white">support_agent</span>
                 </div>
-            </a> -->
+            </a>
 
             <a href="?page=bordro"
                 class="quick-action group border-2 neon-orange bg-gradient-to-br from-orange-500 to-orange-700 p-4 transition-all active:scale-95 w-[140px] flex-shrink-0 snap-start">

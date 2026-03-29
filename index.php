@@ -27,18 +27,23 @@ if (isset($_GET['mobile']) && $_GET['mobile'] === '1') {
     unset($_SESSION['force_desktop']);
 }
 
-if(Gate::isSuperAdmin()){
+// Kullanıcı süper admin ise ve desktop modunu zorlamışsa buna artık karışmıyoruz (eskiden her girişte siliyordu)
+if (Gate::isSuperAdmin() && isset($_GET['mobile']) && $_GET['mobile'] === '1') {
     unset($_SESSION['force_desktop']);
 }
 
-// Mobil cihaz yönlendirmesi: herhangi bir HTML çıktısından önce yap, kullanıcı süper admin ise yönlendirme yapma
+// Mobil cihaz yönlendirmesi
 if (!isset($_SESSION['force_desktop'])) {
     $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
     $chMobile = $_SERVER['HTTP_SEC_CH_UA_MOBILE'] ?? '';
+    
+    // PHP tarafında sadece kesin mobil cihazları yakalayalım (Android/iPhone vb.)
+    // Sec-CH-UA-Mobile Chrome desktop'ta bazen ?1 gönderebilir (emülasyon vb.), bu yüzden preg_match daha güvenli.
     $isMobileUa = preg_match('/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i', $ua);
     $isMobileCh = ($chMobile === '?1');
 
-    if ($isMobileUa || $isMobileCh) {
+    // Eğer masaüstü genişliğindeki bir Chrome yanlışlıkla mobile/?1 bildiriyorsa döngüye girmemek için check
+    if ($isMobileUa || ($isMobileCh && !strpos($ua, 'Windows NT'))) {
         $p = urlencode($_GET['p'] ?? 'home');
         header("Location: mobile/index.php?p=$p");
         exit();
@@ -58,7 +63,7 @@ if (!isset($_SESSION['force_desktop'])) {
         <?php if (!isset($_SESSION['force_desktop'])): ?>
         (function () {
             function checkMobileRedirect() {
-                var isMobileView = window.matchMedia('(max-width: 768px)').matches;
+                var isMobileView = window.matchMedia('(max-width: 1024px)').matches;
                 if (isMobileView) {
                     var qs = new URLSearchParams(window.location.search);
                     var p = qs.get('p') || 'home';
@@ -329,9 +334,14 @@ if ($currentUserId <= 0 || !isset($_SESSION['firma_id'])) {
     })();
 
     //Title'ı page-title-box classına dahip div'in textinden al
-    var title = $(".page-title-box>h4").text();
-    //Document'ın title'ına ata
-    document.title = title + " | Ersan Elektrik" ?? " Ana Sayfa";
+    window.addEventListener('DOMContentLoaded', function() {
+        if (window.jQuery) {
+            var title = $(".page-title-box>h4").first().text();
+            if (title) {
+                document.title = title + " | Ersan Elektrik";
+            }
+        }
+    });
 </script>
 
 </body>

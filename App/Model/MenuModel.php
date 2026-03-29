@@ -62,10 +62,16 @@ class MenuModel extends Model
 
         $Users = new UserModel(); // Bağımlılık enjeksiyonu düşünülebilir
         $roleIds = $Users->getUserRoleID($user_id);
+        $roleIdArray = $this->normalizeRoleIds($roleIds);
+
+        if (empty($roleIdArray)) {
+            return [];
+        }
 
         //Helper::dd("Fetching menu for user_id: {$user_id} with role_ids: {$roleIds}");
 
-        $cacheFile = $this->ownerSpecificCacheDir . "/menu_role_{$roleIds}.cache";
+        $cacheKey = $this->buildMenuCacheKey($roleIdArray);
+        $cacheFile = $this->ownerSpecificCacheDir . "/menu_role_{$cacheKey}.cache";
 
         if (file_exists($cacheFile) && (time() - filemtime($cacheFile) < $this->cacheLifetime)) {
             $cachedData = @file_get_contents($cacheFile); // @ ile hata bastırma yerine try-catch veya is_readable kontrolü daha iyi
@@ -95,6 +101,46 @@ class MenuModel extends Model
         return $menuData;
     }
 
+    private function normalizeRoleIds($roleIds): array
+    {
+        if (is_string($roleIds)) {
+            $parts = explode(',', $roleIds);
+        } else {
+            $parts = [$roleIds];
+        }
+
+        $clean = [];
+        foreach ($parts as $part) {
+            $id = (int) trim((string) $part);
+            if ($id > 0) {
+                $clean[] = $id;
+            }
+        }
+
+        $clean = array_values(array_unique($clean));
+        sort($clean);
+        return $clean;
+    }
+
+    private function buildMenuCacheKey(array $roleIdArray): string
+    {
+        $rolePart = implode('-', $roleIdArray);
+        $permissionHash = 'none';
+
+        if (!empty($roleIdArray)) {
+            $placeholders = implode(',', array_fill(0, count($roleIdArray), '?'));
+            $sql = "SELECT GROUP_CONCAT(DISTINCT permission_id ORDER BY permission_id SEPARATOR ',')
+                    FROM user_role_permissions
+                    WHERE role_id IN ({$placeholders})";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($roleIdArray);
+            $permissionList = (string) ($stmt->fetchColumn() ?: '');
+            $permissionHash = md5($permissionList);
+        }
+
+        return $rolePart . '_' . $permissionHash;
+    }
+
     // Veritabanından menüyü çekip oluşturan yardımcı fonksiyon
     private function fetchAndBuildMenuFromDb(int $user_id, $roleIds = null): array
     {
@@ -115,8 +161,33 @@ class MenuModel extends Model
         }
 
         $rolePlaceholders = implode(',', array_fill(0, count($roleIdArray), '?'));
-        $stmt = $this->db->prepare("SELECT DISTINCT permission_id FROM user_role_permissions WHERE role_id IN ({$rolePlaceholders})");
-        $stmt->execute($roleIdArray);
+        $sql = "SELECT DISTINCT m.id
+                FROM {$this->table} m
+                WHERE (
+                    EXISTS (
+                        SELECT 1
+                        FROM permissions p
+                        INNER JOIN user_role_permissions urp ON urp.permission_id = p.id
+                        WHERE urp.role_id IN ({$rolePlaceholders})
+                          AND (p.id = m.id OR p.name = m.menu_link OR p.auth_name = m.menu_link)
+                    )
+                    OR (
+                        NOT EXISTS (
+                            SELECT 1
+                            FROM permissions p0
+                            WHERE p0.id = m.id OR p0.name = m.menu_link OR p0.auth_name = m.menu_link
+                        )
+                        AND EXISTS (
+                            SELECT 1
+                            FROM user_role_permissions urp
+                            WHERE urp.role_id IN ({$rolePlaceholders})
+                              AND urp.permission_id = m.id
+                        )
+                    )
+                )";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(array_merge($roleIdArray, $roleIdArray));
         $permittedMenuIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
 
         if (empty($permittedMenuIds)) {
@@ -267,10 +338,6 @@ class MenuModel extends Model
     {
         $menu = $this->getMenuByLink($menuLink);
 
-        if (!$menu) {
-            return true;
-        }
-
         $users = new UserModel();
         $roleIds = $users->getUserRoleID($userId);
 
@@ -284,17 +351,64 @@ class MenuModel extends Model
             return false;
         }
 
-        $placeholders = implode(',', array_fill(0, count($roleIdArray), '?'));
+        if (!$menu) {
+            $placeholders = implode(',', array_fill(0, count($roleIdArray), '?'));
 
-        $sql = "SELECT COUNT(*)
-                FROM user_role_permissions
-                WHERE role_id IN ({$placeholders})
-                  AND permission_id = ?";
+            $hasPermissionSql = "SELECT COUNT(*)
+                                 FROM permissions p
+                                 INNER JOIN user_role_permissions urp ON urp.permission_id = p.id
+                                 WHERE urp.role_id IN ({$placeholders})
+                                   AND (p.name = ? OR p.auth_name = ?)";
 
-        $stmt = $this->db->prepare($sql);
-        $params = array_merge(array_values($roleIdArray), [(int) $menu->id]);
-        $stmt->execute($params);
+            $hasPermissionStmt = $this->db->prepare($hasPermissionSql);
+            $hasPermissionParams = array_merge(array_values($roleIdArray), [$menuLink, $menuLink]);
+            $hasPermissionStmt->execute($hasPermissionParams);
 
-        return (int) $stmt->fetchColumn() > 0;
+            if ((int) $hasPermissionStmt->fetchColumn() > 0) {
+                return true;
+            }
+
+            $permissionExistsStmt = $this->db->prepare("SELECT COUNT(*) FROM permissions WHERE name = ? OR auth_name = ?");
+            $permissionExistsStmt->execute([$menuLink, $menuLink]);
+            if ((int) $permissionExistsStmt->fetchColumn() > 0) {
+                return false;
+            }
+
+            return true;
+        }
+
+                $placeholders = implode(',', array_fill(0, count($roleIdArray), '?'));
+
+                $sql = "SELECT COUNT(*)
+                                FROM {$this->table} m
+                                WHERE m.id = ?
+                                    AND (
+                                        EXISTS (
+                                                SELECT 1
+                                                FROM permissions p
+                                                INNER JOIN user_role_permissions urp ON urp.permission_id = p.id
+                                                WHERE urp.role_id IN ({$placeholders})
+                                                    AND (p.id = m.id OR p.name = m.menu_link OR p.auth_name = m.menu_link)
+                                        )
+                                        OR (
+                                                NOT EXISTS (
+                                                        SELECT 1
+                                                        FROM permissions p0
+                                                        WHERE p0.id = m.id OR p0.name = m.menu_link OR p0.auth_name = m.menu_link
+                                                )
+                                                AND EXISTS (
+                                                        SELECT 1
+                                                        FROM user_role_permissions urp
+                                                        WHERE urp.role_id IN ({$placeholders})
+                                                            AND urp.permission_id = m.id
+                                                )
+                                        )
+                                    )";
+
+                $stmt = $this->db->prepare($sql);
+                $params = array_merge([(int) $menu->id], array_values($roleIdArray), array_values($roleIdArray));
+                $stmt->execute($params);
+
+                return (int) $stmt->fetchColumn() > 0;
     }
 }

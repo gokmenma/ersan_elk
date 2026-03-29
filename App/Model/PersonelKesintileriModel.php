@@ -46,7 +46,7 @@ class PersonelKesintileriModel extends Model
             if (!empty($filters['filter_kesinti_donem'])) {
                 $donem_id = $filters['filter_kesinti_donem'];
                 $where .= " AND (
-                    (pk.tekrar_tipi = 'tek_sefer' AND pk.donem_id = ?) 
+                    (pk.tekrar_tipi IN ('tek_sefer','taksitli') AND pk.donem_id = ?) 
                     OR 
                     (pk.tekrar_tipi = 'surekli' AND EXISTS (
                         SELECT 1 FROM bordro_donemi bd2 

@@ -19,6 +19,52 @@ if ($firma_id == 0 || $firma_id == null) {
     exit;
 }
 
+/**
+ * İş türü ücret geçmişini günceller.
+ */
+function upsertIsTuruUcretGecmisi(PDO $db, int $firmaId, int $isTuruId, float $ucret, float $aracliUcret, string $baslangicTarihi): void
+{
+    $baslangicDate = date('Y-m-d', strtotime($baslangicTarihi));
+    $oncekiGun = date('Y-m-d', strtotime($baslangicDate . ' -1 day'));
+
+    // Aynı başlangıç tarihli kayıt varsa güncelle
+    $sameStart = $db->prepare("\n        SELECT id\n        FROM is_turu_ucret_gecmisi\n        WHERE firma_id = ? AND is_turu_id = ? AND gecerlilik_baslangic = ? AND silinme_tarihi IS NULL\n        ORDER BY id DESC\n        LIMIT 1\n    ");
+    $sameStart->execute([$firmaId, $isTuruId, $baslangicDate]);
+    $sameStartId = intval($sameStart->fetchColumn() ?: 0);
+
+    if ($sameStartId > 0) {
+        $db->prepare("\n            UPDATE is_turu_ucret_gecmisi\n            SET ucret = ?, aracli_ucret = ?, guncelleme_tarihi = NOW()\n            WHERE id = ?\n        ")->execute([$ucret, $aracliUcret, $sameStartId]);
+        return;
+    }
+
+    // Başlangıçtan önce başlayan açık kaydın bitişini bir gün önceye çek
+    $db->prepare("\n        UPDATE is_turu_ucret_gecmisi\n        SET gecerlilik_bitis = ?, guncelleme_tarihi = NOW()\n        WHERE firma_id = ?\n        AND is_turu_id = ?\n        AND silinme_tarihi IS NULL\n        AND gecerlilik_baslangic < ?\n        AND (gecerlilik_bitis IS NULL OR gecerlilik_bitis >= ?)\n    ")->execute([$oncekiGun, $firmaId, $isTuruId, $baslangicDate, $baslangicDate]);
+
+    $db->prepare("\n        INSERT INTO is_turu_ucret_gecmisi\n        (firma_id, is_turu_id, ucret, aracli_ucret, gecerlilik_baslangic, gecerlilik_bitis, olusturma_tarihi)\n        VALUES (?, ?, ?, ?, ?, NULL, NOW())\n    ")->execute([$firmaId, $isTuruId, $ucret, $aracliUcret, $baslangicDate]);
+}
+
+/**
+ * İş türünün bugüne denk gelen aktif ücretini tanimlamalar tablosuna yazar.
+ */
+function syncIsTuruCurrentUcret(PDO $db, int $firmaId, int $isTuruId): void
+{
+    $today = date('Y-m-d');
+    $stmt = $db->prepare("\n        SELECT ucret, aracli_ucret\n        FROM is_turu_ucret_gecmisi\n        WHERE firma_id = ? AND is_turu_id = ? AND silinme_tarihi IS NULL\n          AND gecerlilik_baslangic <= ?\n          AND (gecerlilik_bitis IS NULL OR gecerlilik_bitis >= ?)\n        ORDER BY gecerlilik_baslangic DESC, id DESC\n        LIMIT 1\n    ");
+    $stmt->execute([$firmaId, $isTuruId, $today, $today]);
+    $active = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    if (!$active) {
+        return;
+    }
+
+    $db->prepare("\n        UPDATE tanimlamalar\n        SET is_turu_ucret = ?, aracli_personel_is_turu_ucret = ?\n        WHERE id = ? AND firma_id = ? AND grup = 'is_turu' AND silinme_tarihi IS NULL\n    ")->execute([
+        floatval($active['ucret'] ?? 0),
+        floatval($active['aracli_ucret'] ?? 0),
+        $isTuruId,
+        $firmaId
+    ]);
+}
+
 
 //Gelir gider türü kaydet
 if (isset($_POST["action"]) && $_POST["action"] == "gelir-gider-turu-kaydet") {
@@ -207,17 +253,22 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-kaydet") {
     $son_kayit = null;
     $plainId = 0;
     try {
+        $yeniUcret = floatval(Helper::formattedMoneyToNumber($_POST["is_turu_ucret"] ?? "0"));
+        $yeniAracliUcret = floatval(Helper::formattedMoneyToNumber($_POST["aracli_personel_is_turu_ucret"] ?? "0"));
+
         $data = [
             "id" => $id,
             "type" => 0, // İş türü için type 0
             "grup" => "is_turu",
-            "is_turu_ucret" => Helper::formattedMoneyToNumber($_POST["is_turu_ucret"] ?? "0"),
-            "aracli_personel_is_turu_ucret" => Helper::formattedMoneyToNumber($_POST["aracli_personel_is_turu_ucret"] ?? "0"),
+            "is_turu_ucret" => $yeniUcret,
+            "aracli_personel_is_turu_ucret" => $yeniAracliUcret,
             "is_emri_sonucu" => $_POST["is_emri_sonucu"] ?? "",
             "tur_adi" => $_POST["is_turu"] ?? "",
             "rapor_sekmesi" => $_POST["rapor_sekmesi"] ?? "",
             "aciklama" => $_POST["aciklama"] ?? "",
         ];
+
+        $eskiKayit = $id > 0 ? $Tanimlamalar->find($id) : null;
 
         if ($id == 0) {
             $data["kayit_yapan"] = $_SESSION["id"] ?? 0;
@@ -225,6 +276,28 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-kaydet") {
         } else {
             $Tanimlamalar->saveWithAttr($data);
             $plainId = $id;
+        }
+
+        $ucretBaslangic = $_POST["ucret_gecerlilik_baslangic"] ?? date('Y-m-d');
+
+        // Yeni kayıtta her zaman ücret geçmişine açılış kaydı oluştur.
+        // Güncellemede ise ücret değişmişse yeni dönem kaydı aç.
+        $ucretDegisti = true;
+        if ($eskiKayit) {
+            $eskiUcret = floatval(Helper::formattedMoneyToNumber($eskiKayit->is_turu_ucret ?? 0));
+            $eskiAracli = floatval(Helper::formattedMoneyToNumber($eskiKayit->aracli_personel_is_turu_ucret ?? 0));
+            $ucretDegisti = (abs($eskiUcret - $yeniUcret) > 0.0001) || (abs($eskiAracli - $yeniAracliUcret) > 0.0001);
+        }
+
+        if ($plainId > 0 && ($id == 0 || $ucretDegisti)) {
+            upsertIsTuruUcretGecmisi(
+                $Tanimlamalar->getDb(),
+                intval($firma_id),
+                intval($plainId),
+                $yeniUcret,
+                $yeniAracliUcret,
+                $ucretBaslangic
+            );
         }
 
         $status = "success";
@@ -261,6 +334,112 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-getir") {
         $data = null;
     }
     echo json_encode(["status" => $status, "data" => $data]);
+}
+
+// İş Türü Ücret Geçmişini Getir
+if (isset($_POST["action"]) && $_POST["action"] == "is-turu-ucret-gecmisi-getir") {
+    Gate::can('is_turu_ucret_tanimla');
+
+    $isTuruId = Security::decrypt($_POST["id"] ?? 0);
+    try {
+        $db = $Tanimlamalar->getDb();
+        $stmt = $db->prepare("\n            SELECT id, ucret, aracli_ucret, gecerlilik_baslangic, gecerlilik_bitis\n            FROM is_turu_ucret_gecmisi\n            WHERE firma_id = ? AND is_turu_id = ? AND silinme_tarihi IS NULL\n            ORDER BY gecerlilik_baslangic DESC, id DESC\n        ");
+        $stmt->execute([intval($firma_id), intval($isTuruId)]);
+        $rows = $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
+
+        foreach ($rows as $row) {
+            $row->encrypted_id = Security::encrypt($row->id);
+        }
+
+        echo json_encode(["status" => "success", "data" => $rows]);
+    } catch (PDOException $ex) {
+        echo json_encode(["status" => "error", "message" => $ex->getMessage(), "data" => []]);
+    }
+    exit;
+}
+
+// İş Türü Ücret Geçmişi Kaydet
+if (isset($_POST["action"]) && $_POST["action"] == "is-turu-ucret-gecmisi-kaydet") {
+    Gate::can('is_turu_ucret_tanimla');
+
+    $isTuruId = Security::decrypt($_POST["is_turu_id"] ?? 0);
+    $gecmisEncId = $_POST["gecmis_id"] ?? '0';
+    $gecmisId = ($gecmisEncId === '0' || $gecmisEncId === 0) ? 0 : intval(Security::decrypt($gecmisEncId));
+
+    $ucret = floatval(Helper::formattedMoneyToNumber($_POST["ucret"] ?? "0"));
+    $aracliUcret = floatval(Helper::formattedMoneyToNumber($_POST["aracli_ucret"] ?? "0"));
+
+    $normalizeDate = static function ($value) {
+        $raw = trim((string) ($value ?? ''));
+        if ($raw === '') {
+            return '';
+        }
+
+        if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $raw)) {
+            return $raw;
+        }
+
+        if (preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $raw)) {
+            $parts = explode('.', $raw);
+            return $parts[2] . '-' . $parts[1] . '-' . $parts[0];
+        }
+
+        $ts = strtotime($raw);
+        if ($ts === false) {
+            return '';
+        }
+
+        return date('Y-m-d', $ts);
+    };
+
+    $baslangic = $normalizeDate($_POST["gecerlilik_baslangic"] ?? '');
+    $bitisInput = trim($_POST["gecerlilik_bitis"] ?? '');
+    $bitis = $bitisInput !== '' ? $normalizeDate($bitisInput) : null;
+
+    if (intval($isTuruId) <= 0 || $baslangic === '') {
+        echo json_encode(["status" => "error", "message" => "Geçerli iş türü ve başlangıç tarihi zorunludur."]);
+        exit;
+    }
+
+    if ($bitis !== null && $bitis < $baslangic) {
+        echo json_encode(["status" => "error", "message" => "Bitiş tarihi, başlangıç tarihinden küçük olamaz."]);
+        exit;
+    }
+
+    try {
+        $db = $Tanimlamalar->getDb();
+
+        $isTuruKontrol = $db->prepare("\n            SELECT id FROM tanimlamalar\n            WHERE id = ? AND firma_id = ? AND grup = 'is_turu' AND silinme_tarihi IS NULL\n            LIMIT 1\n        ");
+        $isTuruKontrol->execute([intval($isTuruId), intval($firma_id)]);
+        if (!$isTuruKontrol->fetchColumn()) {
+            echo json_encode(["status" => "error", "message" => "İş türü bulunamadı."]);
+            exit;
+        }
+
+        $newEndForOverlap = $bitis ?? '9999-12-31';
+        $overlap = $db->prepare("\n            SELECT id\n            FROM is_turu_ucret_gecmisi\n            WHERE firma_id = ?\n              AND is_turu_id = ?\n              AND silinme_tarihi IS NULL\n              AND id <> ?\n              AND gecerlilik_baslangic <= ?\n              AND COALESCE(gecerlilik_bitis, '9999-12-31') >= ?\n            LIMIT 1\n        ");
+        $overlap->execute([intval($firma_id), intval($isTuruId), intval($gecmisId), $newEndForOverlap, $baslangic]);
+
+        if ($overlap->fetchColumn()) {
+            echo json_encode(["status" => "error", "message" => "Bu tarih aralığı mevcut bir ücret dönemi ile çakışıyor."]);
+            exit;
+        }
+
+        if (intval($gecmisId) > 0) {
+            $stmt = $db->prepare("\n                UPDATE is_turu_ucret_gecmisi\n                SET ucret = ?, aracli_ucret = ?, gecerlilik_baslangic = ?, gecerlilik_bitis = ?, guncelleme_tarihi = NOW()\n                WHERE id = ? AND firma_id = ? AND is_turu_id = ? AND silinme_tarihi IS NULL\n            ");
+            $stmt->execute([$ucret, $aracliUcret, $baslangic, $bitis, intval($gecmisId), intval($firma_id), intval($isTuruId)]);
+        } else {
+            $stmt = $db->prepare("\n                INSERT INTO is_turu_ucret_gecmisi\n                (firma_id, is_turu_id, ucret, aracli_ucret, gecerlilik_baslangic, gecerlilik_bitis, olusturma_tarihi)\n                VALUES (?, ?, ?, ?, ?, ?, NOW())\n            ");
+            $stmt->execute([intval($firma_id), intval($isTuruId), $ucret, $aracliUcret, $baslangic, $bitis]);
+        }
+
+        syncIsTuruCurrentUcret($db, intval($firma_id), intval($isTuruId));
+
+        echo json_encode(["status" => "success", "message" => "Ücret geçmişi kaydedildi."]);
+    } catch (PDOException $ex) {
+        echo json_encode(["status" => "error", "message" => $ex->getMessage()]);
+    }
+    exit;
 }
 
 // İş Türü Sil

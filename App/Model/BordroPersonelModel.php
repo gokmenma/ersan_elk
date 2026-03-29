@@ -841,6 +841,55 @@ class BordroPersonelModel extends Model
     }
 
     /**
+     * İş emri sonucuna göre iş türü id map'i döner (trimlenmiş anahtar kullanır).
+     */
+    private function getIsTuruIdMapBySonuc($firmaId)
+    {
+        $sql = $this->db->prepare("\n            SELECT MAX(id) as id, TRIM(is_emri_sonucu) as is_emri_sonucu\n            FROM tanimlamalar\n            WHERE grup = 'is_turu'\n            AND firma_id = ?\n            AND silinme_tarihi IS NULL\n            AND is_emri_sonucu IS NOT NULL\n            AND is_emri_sonucu != ''\n            GROUP BY TRIM(is_emri_sonucu)\n        ");
+        $sql->execute([$firmaId]);
+        $rows = $sql->fetchAll(PDO::FETCH_OBJ);
+
+        $map = [];
+        foreach ($rows as $row) {
+            $key = trim((string) ($row->is_emri_sonucu ?? ''));
+            if ($key === '') {
+                continue;
+            }
+            $map[$key] = intval($row->id);
+        }
+        return $map;
+    }
+
+    /**
+     * Verilen satır için tarih bazlı birim ücreti çözer.
+     */
+    private function resolveIsTuruBirimUcret($TanimlamalarModel, $isTuruId, $isEmriSonucu, $tarih, $isAracli, $firmaId, &$ucretCache, $isTuruIdMap)
+    {
+        $resolvedIsTuruId = intval($isTuruId);
+        $sonucKey = trim((string) $isEmriSonucu);
+
+        if ($resolvedIsTuruId <= 0 && $sonucKey !== '' && isset($isTuruIdMap[$sonucKey])) {
+            $resolvedIsTuruId = intval($isTuruIdMap[$sonucKey]);
+        }
+
+        if ($resolvedIsTuruId <= 0) {
+            return 0.0;
+        }
+
+        $cacheKey = $resolvedIsTuruId . '|' . $tarih . '|' . ($isAracli ? '1' : '0');
+        if (!array_key_exists($cacheKey, $ucretCache)) {
+            $ucretCache[$cacheKey] = floatval($TanimlamalarModel->getIsTuruUcretiByTarih(
+                $resolvedIsTuruId,
+                $tarih,
+                $isAracli,
+                $firmaId
+            ));
+        }
+
+        return floatval($ucretCache[$cacheKey]);
+    }
+
+    /**
      * Personelin puantaj (yapılan işler) verilerine göre ek ödemelerini oluşturur
      * 
      * Hesaplama mantığı:
@@ -866,41 +915,19 @@ class BordroPersonelModel extends Model
         ");
         $deleteSql->execute([$personel_id, $donem_id]);
 
-        // 3. Tanımlamalar tablosundan ücretli iş türlerini al
+        // 3. Araç kullanım durumunu belirle ve ücret çözümleme hazırlıklarını yap
         $TanimlamalarModel = new \App\Model\TanimlamalarModel();
-        $isTurleri = $TanimlamalarModel->getIsTurleri(); // grup = 'is_turu'
-
-        // Araç kullanımı "Kendi Aracı" ise araçlı personel ücretini kullan
         $isAracli = (isset($personel->arac_kullanim) && $personel->arac_kullanim === 'Kendi Aracı');
-
-        // is_emri_sonucu -> (tur_adi, birim_ucret) map'i oluştur
-        $isEmriSonucuMap = [];
-        foreach ($isTurleri as $tur) {
-            // Araçlı personel için özel ücret alanı kontrolü
-            $ucretAlani = $isAracli ? 'aracli_personel_is_turu_ucret' : 'is_turu_ucret';
-            $birimUcret = floatval(\App\Helper\Helper::formattedMoneyToNumber($tur->$ucretAlani ?? 0));
-
-            // Eğer araçlı personel ücreti 0 ise normal ücreti kullan (opsiyonel, ama genellikle istenir)
-            if ($isAracli && $birimUcret <= 0) {
-                $birimUcret = floatval(\App\Helper\Helper::formattedMoneyToNumber($tur->is_turu_ucret ?? 0));
-            }
-
-            if ($birimUcret > 0 && !empty($tur->is_emri_sonucu)) {
-                $isEmriSonucuMap[$tur->is_emri_sonucu] = [
-                    'tur_adi' => $tur->tur_adi,
-                    'birim_ucret' => $birimUcret
-                ];
-            }
-        }
-
-        if (empty($isEmriSonucuMap)) {
-            return; // Ücretli iş türü tanımlı değil
-        }
+        $firmaId = intval($personel->firma_id ?? ($_SESSION['firma_id'] ?? 0));
+        $isTuruIdMap = $this->getIsTuruIdMapBySonuc($firmaId);
+        $ucretCache = [];
 
         // 4. Yapılan işleri is_emri_sonucu bazında grupla
         // Hem yeni (is_emri_sonucu_id) hem eski (is_emri_sonucu string) alanları destekle
         $sql = $this->db->prepare("
             SELECT 
+                DATE(t.tarih) as is_tarihi,
+                MAX(t.is_emri_sonucu_id) as is_emri_sonucu_id,
                 COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu,
                 COALESCE(tn.tur_adi, t.is_emri_tipi) as is_emri_tipi,
                 SUM(t.sonuclanmis) as adet
@@ -910,13 +937,26 @@ class BordroPersonelModel extends Model
             AND t.tarih BETWEEN ? AND ?
             AND (t.is_emri_sonucu_id > 0 OR (t.is_emri_sonucu IS NOT NULL AND t.is_emri_sonucu != ''))
             AND t.silinme_tarihi IS NULL
-            GROUP BY COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu), COALESCE(tn.tur_adi, t.is_emri_tipi)
+            GROUP BY DATE(t.tarih), COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu), COALESCE(tn.tur_adi, t.is_emri_tipi)
         ");
         $sql->execute([$personel_id, $baslangic_tarihi, $bitis_tarihi]);
         $yapilanIsler = $sql->fetchAll(PDO::FETCH_OBJ);
 
         if (empty($yapilanIsler)) {
             return;
+        }
+
+        foreach ($yapilanIsler as $is) {
+            $is->birim_ucret = $this->resolveIsTuruBirimUcret(
+                $TanimlamalarModel,
+                intval($is->is_emri_sonucu_id ?? 0),
+                $is->is_emri_sonucu ?? '',
+                $is->is_tarihi ?? $baslangic_tarihi,
+                $isAracli,
+                $firmaId,
+                $ucretCache,
+                $isTuruIdMap
+            );
         }
 
         // 5. Manuel Düşüm İşlemi
@@ -971,7 +1011,7 @@ class BordroPersonelModel extends Model
                         break;
 
                     // Sadece ücretlendirilen işlerden düş
-                    if (!isset($isEmriSonucuMap[$is->is_emri_sonucu]))
+                    if (floatval($is->birim_ucret ?? 0) <= 0)
                         continue;
 
                     $mevcutAdet = floatval($is->adet);
@@ -994,12 +1034,10 @@ class BordroPersonelModel extends Model
             $isEmriSonucu = $is->is_emri_sonucu;
             $adet = floatval($is->adet);
 
-            // Bu is_emri_sonucu için ücret tanımlı mı?
-            if (!isset($isEmriSonucuMap[$isEmriSonucu])) {
-                continue; // Ücret tanımlı değil, atla
+            $birimUcret = floatval($is->birim_ucret ?? 0);
+            if ($birimUcret <= 0 || $adet <= 0 || empty($isEmriSonucu)) {
+                continue;
             }
-
-            $birimUcret = $isEmriSonucuMap[$isEmriSonucu]['birim_ucret'];
 
             if ($adet > 0) {
                 $toplamTutar = round($adet * $birimUcret, 2);
@@ -1039,33 +1077,17 @@ class BordroPersonelModel extends Model
 
         // 3. Tanımlamalar tablosundan ücretli iş türlerini al
         $TanimlamalarModel = new \App\Model\TanimlamalarModel();
-        $isTurleri = $TanimlamalarModel->getIsTurleri(); // grup = 'is_turu'
-
         $isAracli = (isset($personel->arac_kullanim) && $personel->arac_kullanim === 'Kendi Aracı');
-
-        $isEmriSonucuMap = [];
-        foreach ($isTurleri as $tur) {
-            $ucretAlani = $isAracli ? 'aracli_personel_is_turu_ucret' : 'is_turu_ucret';
-            $birimUcret = floatval(\App\Helper\Helper::formattedMoneyToNumber($tur->$ucretAlani ?? 0));
-            if ($isAracli && $birimUcret <= 0) {
-                $birimUcret = floatval(\App\Helper\Helper::formattedMoneyToNumber($tur->is_turu_ucret ?? 0));
-            }
-
-            if ($birimUcret > 0 && !empty($tur->is_emri_sonucu)) {
-                $isEmriSonucuMap[$tur->is_emri_sonucu] = [
-                    'tur_adi' => $tur->tur_adi,
-                    'birim_ucret' => $birimUcret
-                ];
-            }
-        }
-
-        if (empty($isEmriSonucuMap)) return;
+        $firmaId = intval($personel->firma_id ?? ($_SESSION['firma_id'] ?? 0));
+        $isTuruIdMap = $this->getIsTuruIdMapBySonuc($firmaId);
+        $ucretCache = [];
 
         // 4. Sayaç değişimlerini is_emri_sonucu bazında paylaştırmalı grupla
         // Not: is_sayisi kolonu int olduğu için, aynı islem_id kökünü paylaşan personel sayısına göre 1/n ağırlık hesaplanır.
         $firmaId = intval($personel->firma_id ?? ($_SESSION['firma_id'] ?? 0));
         $sql = $this->db->prepare("
             SELECT 
+                DATE(t.tarih) as is_tarihi,
                 t.isemri_sonucu,
                 ROUND(SUM(CASE WHEN pay.personel_sayisi > 0 THEN 1.0 / pay.personel_sayisi ELSE 0 END), 4) as adet
             FROM sayac_degisim t
@@ -1085,19 +1107,35 @@ class BordroPersonelModel extends Model
             AND t.personel_id = ? 
             AND t.tarih BETWEEN ? AND ?
             AND t.silinme_tarihi IS NULL
-            GROUP BY t.isemri_sonucu
+            GROUP BY DATE(t.tarih), t.isemri_sonucu
         ");
         $sql->execute([$firmaId, $baslangic_tarihi, $bitis_tarihi, $firmaId, $personel_id, $baslangic_tarihi, $bitis_tarihi]);
         $veriler = $sql->fetchAll(PDO::FETCH_OBJ);
 
         // 5. Kaydet
         foreach ($veriler as $v) {
-            $isemriSonucu = $v->isemri_sonucu;
+            $isemriSonucu = trim((string) ($v->isemri_sonucu ?? ''));
             $adet = floatval($v->adet);
 
-            if (!isset($isEmriSonucuMap[$isemriSonucu])) continue;
+            if ($adet <= 0 || $isemriSonucu === '') {
+                continue;
+            }
 
-            $birimUcret = $isEmriSonucuMap[$isemriSonucu]['birim_ucret'];
+            $birimUcret = $this->resolveIsTuruBirimUcret(
+                $TanimlamalarModel,
+                0,
+                $isemriSonucu,
+                $v->is_tarihi ?? $baslangic_tarihi,
+                $isAracli,
+                $firmaId,
+                $ucretCache,
+                $isTuruIdMap
+            );
+
+            if ($birimUcret <= 0) {
+                continue;
+            }
+
             $toplamTutar = round($adet * $birimUcret, 2);
             $adetText = (abs($adet - round($adet)) < 0.0001)
                 ? number_format($adet, 0, ',', '.')
@@ -2654,22 +2692,14 @@ class BordroPersonelModel extends Model
             }
 
             $toplamIcraBudget = 0;
-            // USER REQ: (Asgari Ücret / 30) * Çalışılan Gün (Maaş alınan gün üzerinden hesaplanmalı)
+            // USER REQ: (Asgari Ücret / 30) * Çalışılan Gün
             $asgariDaily = $asgariUcretNet / 30;
-            $asgariCalculatedBase = $asgariDaily * $maasHesapGunu;
+            $asgariCalculatedBase = $asgariDaily * $fiiliCalismaGunu;
 
             if ($firstHTip === 'asgari_oran_net' || $firstHTip === 'oran_net') {
                 // Her iki tip de artık aynı formülü takip ediyor (Image 1: 28.075,50 / 30 * 22 * 0.25)
                 $oranKullan = ($firstOran > 0) ? $firstOran : 25;
-
-                // USER REQ: Eğer personelin hakedişi (net alacağı) asgari ücretten küçükse, 
-                // az olan tutar üzerinden (yani personelin kendi hakedişi) icra hesaplanmalı.
-                $icraHesabaEsasTutar = $asgariCalculatedBase;
-                if ($hakedisNet < $asgariCalculatedBase) {
-                    $icraHesabaEsasTutar = max(0, $hakedisNet);
-                }
-                
-                $toplamIcraBudget = round($icraHesabaEsasTutar * ($oranKullan / 100), 2);
+                $toplamIcraBudget = round($asgariCalculatedBase * ($oranKullan / 100), 2);
             } else {
                 // Sabit tutar
                 $sabitToplam = 0;

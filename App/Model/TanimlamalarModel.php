@@ -295,9 +295,55 @@ class TanimlamalarModel extends Model
 
     public function getIsTurleri()
     {
-        $sql = $this->db->prepare("SELECT * FROM $this->table WHERE grup = ? AND firma_id = ? and silinme_tarihi IS NULL ORDER BY id DESC");
+        $sql = $this->db->prepare("\n            SELECT\n                t.*,\n                COALESCE((\n                    SELECT g.ucret\n                    FROM is_turu_ucret_gecmisi g\n                    WHERE g.firma_id = t.firma_id\n                      AND g.is_turu_id = t.id\n                      AND g.silinme_tarihi IS NULL\n                      AND g.gecerlilik_baslangic <= CURDATE()\n                      AND (g.gecerlilik_bitis IS NULL OR g.gecerlilik_bitis >= CURDATE())\n                    ORDER BY g.gecerlilik_baslangic DESC, g.id DESC\n                    LIMIT 1\n                ), t.is_turu_ucret) AS is_turu_ucret,\n                COALESCE((\n                    SELECT g.aracli_ucret\n                    FROM is_turu_ucret_gecmisi g\n                    WHERE g.firma_id = t.firma_id\n                      AND g.is_turu_id = t.id\n                      AND g.silinme_tarihi IS NULL\n                      AND g.gecerlilik_baslangic <= CURDATE()\n                      AND (g.gecerlilik_bitis IS NULL OR g.gecerlilik_bitis >= CURDATE())\n                    ORDER BY g.gecerlilik_baslangic DESC, g.id DESC\n                    LIMIT 1\n                ), t.aracli_personel_is_turu_ucret) AS aracli_personel_is_turu_ucret\n            FROM $this->table t\n            WHERE t.grup = ? AND t.firma_id = ? AND t.silinme_tarihi IS NULL\n            ORDER BY t.id DESC\n        ");
         $sql->execute(['is_turu', $_SESSION['firma_id']]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * İş türü ücretini belirtilen tarih için getirir.
+     * Öncelik yeni ücret geçmişi tablosudur, kayıt yoksa tanimlamalar tablosuna fallback yapılır.
+     */
+    public function getIsTuruUcretiByTarih($isTuruId, $tarih, $isAracli = false, $firmaId = null)
+    {
+        $isTuruId = intval($isTuruId);
+        if ($isTuruId <= 0 || empty($tarih)) {
+            return 0.0;
+        }
+
+        $firmaId = intval($firmaId ?: ($_SESSION['firma_id'] ?? 0));
+
+        $sql = $this->db->prepare("\n            SELECT ucret, aracli_ucret\n            FROM is_turu_ucret_gecmisi\n            WHERE is_turu_id = ?\n            AND firma_id = ?\n            AND silinme_tarihi IS NULL\n            AND gecerlilik_baslangic <= ?\n            AND (gecerlilik_bitis IS NULL OR gecerlilik_bitis >= ?)\n            ORDER BY gecerlilik_baslangic DESC, id DESC\n            LIMIT 1\n        ");
+        $sql->execute([$isTuruId, $firmaId, $tarih, $tarih]);
+        $kayit = $sql->fetch(PDO::FETCH_OBJ);
+
+        if ($kayit) {
+            $normalUcret = floatval(Helper::formattedMoneyToNumber($kayit->ucret ?? 0));
+            $aracliUcret = floatval(Helper::formattedMoneyToNumber($kayit->aracli_ucret ?? 0));
+
+            if ($isAracli && $aracliUcret > 0) {
+                return $aracliUcret;
+            }
+            return $normalUcret;
+        }
+
+        // Geriye uyumluluk: yeni tabloda kayıt yoksa eski kolonlardan oku.
+        $legacySql = $this->db->prepare("\n            SELECT is_turu_ucret, aracli_personel_is_turu_ucret\n            FROM {$this->table}\n            WHERE id = ? AND grup = 'is_turu' AND firma_id = ? AND silinme_tarihi IS NULL\n            LIMIT 1\n        ");
+        $legacySql->execute([$isTuruId, $firmaId]);
+        $legacy = $legacySql->fetch(PDO::FETCH_OBJ);
+
+        if (!$legacy) {
+            return 0.0;
+        }
+
+        $legacyNormal = floatval(Helper::formattedMoneyToNumber($legacy->is_turu_ucret ?? 0));
+        $legacyAracli = floatval(Helper::formattedMoneyToNumber($legacy->aracli_personel_is_turu_ucret ?? 0));
+
+        if ($isAracli && $legacyAracli > 0) {
+            return $legacyAracli;
+        }
+
+        return $legacyNormal;
     }
 
     public function getIzinTurleri()

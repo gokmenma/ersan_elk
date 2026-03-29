@@ -282,7 +282,7 @@ try {
     <script>
         (function () {
             function checkDesktopRedirect() {
-                var isMobileView = window.matchMedia('(max-width: 768px)').matches;
+                var isMobileView = window.matchMedia('(max-width: 1024px)').matches;
                 if (!isMobileView) {
                     var qs = new URLSearchParams(window.location.search);
                     var p = qs.get('p') || 'home';

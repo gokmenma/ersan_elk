@@ -120,7 +120,7 @@ $hasIcra = count($devamEdenIcralar) > 0;
 
 // Sayfa yönlendirmesi
 $page = $_GET['page'] ?? 'ana-sayfa';
-$allowed_pages = ['ana-sayfa', 'bordro', 'izin', 'talep', 'profil', 'puantaj', 'etkinlikler', 'zimmetler', 'icralar'];
+$allowed_pages = ['ana-sayfa', 'bordro', 'izin', 'talep', 'profil', 'puantaj', 'etkinlikler', 'zimmetler', 'icralar', 'yardim', 'yardim-detay'];
 
 if ($isEndeksOkuma && $isEkipSefi) {
     $allowed_pages[] = 'ekip-takibi';

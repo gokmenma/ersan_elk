@@ -94,6 +94,26 @@ $activeMenuIds = $Menus->getActiveMenuIds($currentMenu);
                             continue;
 
                         $has_children = !empty($menu->children);
+
+                        // Runtime güvenlik katmanı: cache eski kalsa bile yetkisiz menüleri göstermeyelim.
+                        $visibleChildren = [];
+                        if ($has_children) {
+                            foreach ($menu->children as $sub_menu) {
+                                if (isset($sub_menu->is_menu) && $sub_menu->is_menu == 0) {
+                                    continue;
+                                }
+                                if (!empty($sub_menu->menu_link) && !$Menus->userCanAccessMenuLink($currentUserId, $sub_menu->menu_link)) {
+                                    continue;
+                                }
+                                $visibleChildren[] = $sub_menu;
+                            }
+                            $has_children = !empty($visibleChildren);
+                        }
+
+                        if (!$has_children && !empty($menu->menu_link) && !$Menus->userCanAccessMenuLink($currentUserId, $menu->menu_link)) {
+                            continue;
+                        }
+
                         $is_active = in_array((int) $menu->id, $activeMenuIds);
                         $active_class = $is_active ? 'mm-active' : '';
                         $has_arrow_class = $has_children ? 'has-arrow' : '';
@@ -113,9 +133,7 @@ $activeMenuIds = $Menus->getActiveMenuIds($currentMenu);
                             <?php if ($has_children): ?>
                                 <ul class="sub-menu" aria-expanded="<?php echo $is_active ? 'true' : 'false'; ?>">
                                     <?php
-                                    foreach ($menu->children as $sub_menu):
-                                        if (isset($sub_menu->is_menu) && $sub_menu->is_menu == 0)
-                                            continue;
+                                    foreach ($visibleChildren as $sub_menu):
                                         $is_sub_active = in_array((int) $sub_menu->id, $activeMenuIds);
                                         ?>
                                         <li class="<?php echo $is_sub_active ? 'mm-active' : ''; ?>">

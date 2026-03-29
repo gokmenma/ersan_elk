@@ -30,7 +30,7 @@ foreach ($kesintiler as $k) {
         $aktifSurekliKesinti++;
     }
     // Tek seferlik ve sabit tutarların toplamı
-    if (($k->tekrar_tipi ?? 'tek_sefer') == 'tek_sefer' || (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli' && ($k->hesaplama_tipi ?? 'sabit') == 'sabit')) {
+    if (in_array(($k->tekrar_tipi ?? 'tek_sefer'), ['tek_sefer', 'taksitli']) || (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli' && ($k->hesaplama_tipi ?? 'sabit') == 'sabit')) {
         $toplamKesinti += $k->tutar ?? 0;
     }
 
@@ -47,7 +47,7 @@ foreach ($kesintiler as $k) {
     $grouped_kesintiler[$grup_adi]['count']++;
 
     // Grup toplam tutar
-    if (($k->tekrar_tipi ?? 'tek_sefer') == 'tek_sefer' || (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli' && ($k->hesaplama_tipi ?? 'sabit') == 'sabit')) {
+    if (in_array(($k->tekrar_tipi ?? 'tek_sefer'), ['tek_sefer', 'taksitli']) || (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli' && ($k->hesaplama_tipi ?? 'sabit') == 'sabit')) {
         $grouped_kesintiler[$grup_adi]['toplam_tutar'] += $k->tutar ?? 0;
     }
 }
@@ -306,6 +306,9 @@ foreach ($kesintiler as $k) {
                                                                 <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli'): ?>
                                                                     <span class="badge bg-warning text-dark"><i
                                                                             class="bx bx-refresh me-1"></i>Sürekli</span>
+                                                                <?php elseif (($k->tekrar_tipi ?? 'tek_sefer') == 'taksitli'): ?>
+                                                                    <span class="badge bg-info text-white"><i
+                                                                            class="bx bx-list-ol me-1"></i>Taksitli (<?= intval($k->taksit_sayisi ?? 1) ?> Taksit)</span>
                                                                 <?php else: ?>
                                                                     <span class="badge bg-secondary">Tek Seferlik</span>
                                                                 <?php endif; ?>
@@ -346,6 +349,11 @@ foreach ($kesintiler as $k) {
                                                                         <?= $k->baslangic_donemi ? date('d.m.Y', strtotime($k->baslangic_donemi)) : '-' ?>
                                                                         <i class="bx bx-right-arrow-alt"></i>
                                                                         <?= $k->bitis_donemi ? date('d.m.Y', strtotime($k->bitis_donemi)) : '<span class="text-success">Süresiz</span>' ?>
+                                                                    </small>
+                                                                <?php elseif (($k->tekrar_tipi ?? 'tek_sefer') == 'taksitli'): ?>
+                                                                    <small>
+                                                                        <?= $k->donem_adi ?? '-' ?>
+                                                                        <span class="text-muted">(Başlangıç)</span>
                                                                     </small>
                                                                 <?php else: ?>
                                                                     <?= $k->donem_adi ?? App\Helper\Helper::getDonemAdi($k->donem_id) ?>
@@ -436,6 +444,9 @@ foreach ($kesintiler as $k) {
                                         <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli'): ?>
                                             <span class="badge bg-warning text-dark"><i
                                                     class="bx bx-refresh me-1"></i>Sürekli</span>
+                                        <?php elseif (($k->tekrar_tipi ?? 'tek_sefer') == 'taksitli'): ?>
+                                            <span class="badge bg-info text-white"><i
+                                                    class="bx bx-list-ol me-1"></i>Taksitli (<?= intval($k->taksit_sayisi ?? 1) ?> Taksit)</span>
                                         <?php else: ?>
                                             <span class="badge bg-secondary">Tek Seferlik</span>
                                         <?php endif; ?>
@@ -476,6 +487,11 @@ foreach ($kesintiler as $k) {
                                                 <?= $k->baslangic_donemi ? date('d.m.Y', strtotime($k->baslangic_donemi)) : '-' ?>
                                                 <i class="bx bx-right-arrow-alt"></i>
                                                 <?= $k->bitis_donemi ? date('d.m.Y', strtotime($k->bitis_donemi)) : '<span class="text-success">Süresiz</span>' ?>
+                                            </small>
+                                        <?php elseif (($k->tekrar_tipi ?? 'tek_sefer') == 'taksitli'): ?>
+                                            <small>
+                                                <?= $k->donem_adi ?? '-' ?>
+                                                <span class="text-muted">(Başlangıç)</span>
                                             </small>
                                         <?php else: ?>
                                             <?= $k->donem_adi ?? App\Helper\Helper::getDonemAdi($k->donem_id) ?>
@@ -612,7 +628,20 @@ foreach ($kesintiler as $k) {
                                     <i class="bx bx-refresh me-1"></i> Sürekli (Her Ay)
                                 </label>
                             </div>
+                            <div class="form-check form-check-info">
+                                <input class="form-check-input" type="radio" name="tekrar_tipi" id="tekrar_taksitli"
+                                    value="taksitli">
+                                <label class="form-check-label" for="tekrar_taksitli">
+                                    <i class="bx bx-list-ol me-1"></i> Taksitli
+                                </label>
+                            </div>
                         </div>
+                    </div>
+
+                    <!-- Taksit Sayısı -->
+                    <div class="mb-3 d-none" id="div_taksit_sayisi">
+                        <label class="form-label fw-semibold">Taksit Sayısı</label>
+                        <input type="number" class="form-control" name="taksit_sayisi" id="kesinti_taksit_sayisi" value="1" min="1" max="60">
                     </div>
 
                     <!-- Dönem Seçimi - Tek Seferlik -->

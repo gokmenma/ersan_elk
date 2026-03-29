@@ -24,6 +24,7 @@ use App\Model\UserModel;
 use App\Model\PersonelHareketleriModel;
 use App\Model\PersonelIcralariModel;
 use App\Service\PushNotificationService;
+use App\Helper\Security;
 
 // Oturum kontrolü (logout hariç)
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
@@ -96,6 +97,209 @@ function getPwaImageUrl($path)
     return '../../' . $path;
 }
 
+function handleYardimFileUpload($file)
+{
+    $uploadDir = dirname(dirname(__DIR__)) . '/uploads/yardim/';
+    if (!is_dir($uploadDir)) {
+        mkdir($uploadDir, 0755, true);
+    }
+
+    $allowedTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+    $finfo = finfo_open(FILEINFO_MIME_TYPE);
+    $mimeType = finfo_file($finfo, $file['tmp_name']);
+    finfo_close($finfo);
+
+    if (!in_array($mimeType, $allowedTypes)) {
+        throw new Exception('Sadece resim formatları desteklenmektedir.');
+    }
+
+    if ($file['size'] > 5 * 1024 * 1024) {
+        throw new Exception('Maksimum dosya boyutu 5MB\'dır.');
+    }
+
+    $ext = pathinfo($file['name'], PATHINFO_EXTENSION);
+    $fileName = 'bilet_' . uniqid() . '_' . time() . '.' . $ext;
+
+    if (!move_uploaded_file($file['tmp_name'], $uploadDir . $fileName)) {
+        throw new Exception('Dosya kaydedilemedi.');
+    }
+
+    return 'uploads/yardim/' . $fileName;
+}
+
+function pwaGetUsersByPermissionName(string $permissionName): array
+{
+    $userModel = new UserModel();
+    $db = $userModel->getDb();
+
+    $sql = "SELECT DISTINCT u.id, u.adi_soyadi, u.email_adresi
+            FROM users u
+            INNER JOIN user_role_permissions urp ON FIND_IN_SET(urp.role_id, REPLACE(u.roles, ' ', ''))
+            INNER JOIN permissions p ON p.id = urp.permission_id
+            WHERE (p.auth_name = :permission OR p.name = :permission)";
+
+    $params = [':permission' => $permissionName];
+    if (!empty($_SESSION['owner_id'])) {
+        $sql .= " AND u.owner_id = :owner_id";
+        $params[':owner_id'] = (int) $_SESSION['owner_id'];
+    }
+
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+    return $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
+}
+
+function pwaExtractUserEmail($user): string
+{
+    return trim((string) ($user->email_adresi ?? ''));
+}
+
+function pwaBuildTicketAdminLink(int $ticketId): string
+{
+    $encryptedId = Security::encrypt($ticketId);
+    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
+    $host = $_SERVER['HTTP_HOST'] ?? '';
+    if ($host !== '') {
+        return $scheme . '://' . $host . '/index?p=yardim/view&id=' . urlencode($encryptedId);
+    }
+    return 'index?p=yardim/view&id=' . urlencode($encryptedId);
+}
+
+function pwaBuildTicketRoute(int $ticketId): string
+{
+    return 'index?p=yardim/view&id=' . urlencode(Security::encrypt($ticketId));
+}
+
+function pwaNotifyAdminsForNewSupportTicket($ticket, string $ilkMesaj, int $personelId, MailGonderService $mailService): void
+{
+    $admins = pwaGetUsersByPermissionName('admin_destek_talebi');
+    if (empty($admins)) {
+        return;
+    }
+
+    $bildirimModel = new BildirimModel();
+    $personelModel = new PersonelModel();
+    $personel = $personelModel->find($personelId);
+    $personelAdi = $personel->adi_soyadi ?? ($ticket->personel_adi ?? 'Personel');
+
+    $ticketId = (int) ($ticket->id ?? 0);
+    $ticketRef = (string) ($ticket->ref_no ?? $ticketId);
+    $ticketKonu = (string) ($ticket->konu ?? '-');
+    $snippet = mb_substr(trim($ilkMesaj), 0, 240);
+
+    $emails = [];
+    foreach ($admins as $admin) {
+        $bildirimModel->createNotification(
+            (int) $admin->id,
+            'Yeni Destek Talebi',
+            $personelAdi . ' tarafından yeni destek talebi açıldı. Konu: ' . $ticketKonu,
+            pwaBuildTicketRoute($ticketId),
+            'message-square',
+            'warning'
+        );
+
+        $email = pwaExtractUserEmail($admin);
+        if ($email !== '') {
+            $emails[] = strtolower($email);
+        }
+    }
+
+    $emails = array_values(array_unique($emails));
+    if (empty($emails)) {
+        return;
+    }
+
+    $ticketLink = pwaBuildTicketAdminLink($ticketId);
+    $mailContent = "
+        <h3>Yeni Destek Talebi</h3>
+        <p><strong>Talep No:</strong> #" . htmlspecialchars($ticketRef, ENT_QUOTES, 'UTF-8') . "</p>
+        <p><strong>Talep Eden:</strong> " . htmlspecialchars((string) $personelAdi, ENT_QUOTES, 'UTF-8') . "</p>
+        <p><strong>Konu:</strong> " . htmlspecialchars($ticketKonu, ENT_QUOTES, 'UTF-8') . "</p>
+        <p><strong>Mesaj:</strong><br>" . nl2br(htmlspecialchars($snippet, ENT_QUOTES, 'UTF-8')) . "</p>
+        <p><a href=\"" . htmlspecialchars($ticketLink, ENT_QUOTES, 'UTF-8') . "\">Talebi Görüntüle</a></p>
+    ";
+
+    $mailService->gonder($emails, 'Yeni Destek Talebi - #' . $ticketRef, $mailContent);
+}
+
+function pwaNotifyApproversForSupportTicket($ticket, string $ilkMesaj, int $personelId, MailGonderService $mailService): void
+{
+    $approvers = pwaGetUsersByPermissionName('destek_talebi_onaylama');
+    if (empty($approvers)) {
+        return;
+    }
+
+    $bildirimModel = new BildirimModel();
+    $personelModel = new PersonelModel();
+    $personel = $personelModel->find($personelId);
+    $personelAdi = $personel->adi_soyadi ?? ($ticket->personel_adi ?? 'Personel');
+
+    $ticketId = (int) ($ticket->id ?? 0);
+    $ticketRef = (string) ($ticket->ref_no ?? $ticketId);
+    $ticketKonu = (string) ($ticket->konu ?? '-');
+    $snippet = mb_substr(trim($ilkMesaj), 0, 240);
+
+    $emails = [];
+    foreach ($approvers as $approver) {
+        $bildirimModel->createNotification(
+            (int) $approver->id,
+            'Destek Talebi Onay Bekliyor',
+            $personelAdi . ' tarafından açılan destek talebi onay bekliyor. Konu: ' . $ticketKonu,
+            pwaBuildTicketRoute($ticketId),
+            'check-circle',
+            'warning'
+        );
+
+        $email = pwaExtractUserEmail($approver);
+        if ($email !== '') {
+            $emails[] = strtolower($email);
+        }
+    }
+
+    $emails = array_values(array_unique($emails));
+    if (empty($emails)) {
+        return;
+    }
+
+    $ticketLink = pwaBuildTicketAdminLink($ticketId);
+    $mailContent = "
+        <h3>Onay Bekleyen Destek Talebi</h3>
+        <p><strong>Talep No:</strong> #" . htmlspecialchars($ticketRef, ENT_QUOTES, 'UTF-8') . "</p>
+        <p><strong>Talep Eden:</strong> " . htmlspecialchars((string) $personelAdi, ENT_QUOTES, 'UTF-8') . "</p>
+        <p><strong>Konu:</strong> " . htmlspecialchars($ticketKonu, ENT_QUOTES, 'UTF-8') . "</p>
+        <p><strong>Mesaj:</strong><br>" . nl2br(htmlspecialchars($snippet, ENT_QUOTES, 'UTF-8')) . "</p>
+        <p><a href=\"" . htmlspecialchars($ticketLink, ENT_QUOTES, 'UTF-8') . "\">Talebi İncele</a></p>
+    ";
+
+    $mailService->gonder($emails, 'Destek Talebi Onay Bekliyor - #' . $ticketRef, $mailContent);
+}
+
+function pwaPersonelHasApprovalBypassPermission(int $personelId): bool
+{
+    $userModel = new UserModel();
+    $db = $userModel->getDb();
+
+    $sql = "SELECT COUNT(*) as toplam
+            FROM users u
+            INNER JOIN user_role_permissions urp ON FIND_IN_SET(urp.role_id, REPLACE(u.roles, ' ', ''))
+            INNER JOIN permissions p ON p.id = urp.permission_id
+            WHERE u.personel_id = :personel_id
+              AND (p.auth_name IN ('admin_destek_talebi', 'destek_talebi_onaylama')
+                   OR p.name IN ('admin_destek_talebi', 'destek_talebi_onaylama'))";
+
+    $params = [':personel_id' => $personelId];
+    if (!empty($_SESSION['owner_id'])) {
+        $sql .= " AND u.owner_id = :owner_id";
+        $params[':owner_id'] = (int) $_SESSION['owner_id'];
+    }
+
+    $stmt = $db->prepare($sql);
+    $stmt->execute($params);
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+    return ((int) ($row['toplam'] ?? 0)) > 0;
+}
+
 try {
     switch ($action) {
         case 'debugSession':
@@ -106,6 +310,150 @@ try {
             $PersonelModel = new PersonelModel();
             $p = $PersonelModel->find($personel_id);
             response(true, $p);
+            break;
+
+        // ===== Yardım Bilet İşlemleri =====
+        case 'create-ticket':
+            $destekBiletModel = new \App\Model\DestekBiletModel();
+
+            $konu = trim($_POST['konu'] ?? '');
+            $kategori = trim($_POST['kategori'] ?? 'Genel');
+            $oncelik = trim($_POST['oncelik'] ?? 'orta');
+            $mesaj = trim($_POST['mesaj'] ?? '');
+
+            if (empty($konu) || empty($mesaj)) {
+                response(false, null, 'Konu ve mesaj gereklidir');
+            }
+
+            $dosyaYolu = null;
+            if (isset($_FILES['dosya']) && $_FILES['dosya']['error'] === UPLOAD_ERR_OK) {
+                $dosyaYolu = handleYardimFileUpload($_FILES['dosya']);
+            }
+
+            $canBypassApproval = pwaPersonelHasApprovalBypassPermission((int) $personel_id);
+            $onayDurumu = $canBypassApproval ? 'onaylandi' : 'beklemede';
+
+            $biletId = $destekBiletModel->createTicket($personel_id, $konu, $kategori, $oncelik, $mesaj, $dosyaYolu, $onayDurumu);
+
+            try {
+                $ticket = $destekBiletModel->getTicketDetails($biletId);
+                if ($ticket) {
+                    if ($onayDurumu === 'onaylandi') {
+                        pwaNotifyAdminsForNewSupportTicket($ticket, $mesaj, $personel_id, $MailGonderService);
+                    } else {
+                        pwaNotifyApproversForSupportTicket($ticket, $mesaj, $personel_id, $MailGonderService);
+                    }
+                }
+            } catch (Exception $e) {
+                error_log('PWA destek talebi admin bildirim/mail hatası: ' . $e->getMessage());
+            }
+
+            response(true, [
+                'bilet_id' => $biletId,
+                'requires_approval' => ($onayDurumu === 'beklemede')
+            ], $onayDurumu === 'beklemede'
+                ? 'Destek talebiniz onaya gönderildi. Onay sonrası yöneticiler tarafından görülebilir.'
+                : 'Destek talebiniz başarıyla oluşturuldu.');
+            break;
+
+        case 'get-tickets-pwa':
+            $destekBiletModel = new \App\Model\DestekBiletModel();
+            $tickets = $destekBiletModel->getPersonelTickets($personel_id);
+            $stats = $destekBiletModel->getStats($personel_id);
+
+            echo json_encode([
+                'success' => true,
+                'tickets' => $tickets,
+                'stats' => $stats,
+                'active_ticket_count' => $destekBiletModel->countActiveTickets($personel_id)
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+
+        case 'get-ticket-details':
+            $destekBiletModel = new \App\Model\DestekBiletModel();
+            $biletId = (int) ($_POST['bilet_id'] ?? 0);
+            if (!$biletId) {
+                response(false, null, 'Bilet ID gereklidir');
+            }
+
+            $ticket = $destekBiletModel->getTicketDetails($biletId);
+            if (!$ticket) {
+                response(false, null, 'Bilet bulunamadı');
+            }
+
+            if ((int) $ticket->personel_id !== (int) $personel_id) {
+                response(false, null, 'Yetkisiz erişim');
+            }
+
+            $ticket->viewer_is_admin = false;
+            $ticket->can_reply = $destekBiletModel->canRequesterReply($biletId);
+
+            echo json_encode([
+                'success' => true,
+                'ticket' => $ticket
+            ], JSON_UNESCAPED_UNICODE);
+            exit;
+
+        case 'add-message':
+            $destekBiletModel = new \App\Model\DestekBiletModel();
+            $biletId = (int) ($_POST['bilet_id'] ?? 0);
+            $mesaj = trim($_POST['mesaj'] ?? '');
+
+            if (!$biletId || empty($mesaj)) {
+                response(false, null, 'Bilet ID ve mesaj gereklidir');
+            }
+
+            $ticket = $destekBiletModel->getTicketDetails($biletId);
+            if (!$ticket) {
+                response(false, null, 'Bilet bulunamadı');
+            }
+
+            if ((int) $ticket->personel_id !== (int) $personel_id) {
+                response(false, null, 'Yetkisiz erişim');
+            }
+
+            if (($ticket->durum ?? '') === 'kapali') {
+                response(false, null, 'Bu talep kapatılmıştır. Yeni mesaj gönderemezsiniz.');
+            }
+
+            if (($ticket->onay_durumu ?? 'onaylandi') !== 'onaylandi') {
+                response(false, null, 'Bu destek talebi henüz onaylanmadı. Onay sonrası mesajlaşabilirsiniz.');
+            }
+
+            if (!$destekBiletModel->canRequesterReply($biletId)) {
+                response(false, null, 'Yeni mesaj göndermek için yönetici yanıtını beklemelisiniz.');
+            }
+
+            $dosyaYolu = null;
+            if (isset($_FILES['dosya']) && $_FILES['dosya']['error'] === UPLOAD_ERR_OK) {
+                $dosyaYolu = handleYardimFileUpload($_FILES['dosya']);
+            }
+
+            $destekBiletModel->addMessage($biletId, 'personel', $personel_id, $mesaj, $dosyaYolu);
+
+            response(true, null, 'Mesajınız başarıyla gönderildi.');
+            break;
+
+        case 'update-status':
+            $destekBiletModel = new \App\Model\DestekBiletModel();
+            $biletId = (int) ($_POST['bilet_id'] ?? 0);
+            $durum = trim((string) ($_POST['durum'] ?? ''));
+
+            if (!$biletId || !in_array($durum, ['acik', 'yanitlandi', 'personel_yaniti', 'kapali'], true)) {
+                response(false, null, 'Geçersiz parametreler');
+            }
+
+            $ticket = $destekBiletModel->getTicketDetails($biletId);
+            if (!$ticket) {
+                response(false, null, 'Bilet bulunamadı');
+            }
+
+            if ((int) $ticket->personel_id !== (int) $personel_id) {
+                response(false, null, 'Yetkisiz erişim');
+            }
+
+            $destekBiletModel->updateStatus($biletId, $durum);
+            response(true, null, 'Bilet durumu güncellendi.');
             break;
 
         case 'logout':

@@ -2771,7 +2771,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                 FROM endeks_okuma
                 WHERE firma_id = ?
                   AND silinme_tarihi IS NULL
-                  AND defter IS NOT NULL AND defter != ''
                   AND DATE_FORMAT(tarih, '%Y%m') IN ($placeholders)";
 
         $queryParams = [$firmaId];
@@ -2792,72 +2791,96 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $stmt->execute($queryParams);
         $rawData = $stmt->fetchAll(PDO::FETCH_OBJ);
 
-        // Okunan defter setini oluştur: key: donem => [bolge|defter => okunan_sayisi]
+        // Okunan defter setini oluştur ve eksik defterleri allDefters'a ekle
         $okunanMap = [];
         foreach ($rawData as $row) {
             $donem = $row->donem;
-            $key = trim($row->bolge) . '|' . trim($row->defter);
+            $bolgeName = trim($row->bolge ?: 'TANIMSIZ');
+            $defterCode = trim($row->defter ?: '-');
+            $key = $bolgeName . '|' . $defterCode;
+            
             if (!isset($okunanMap[$donem])) $okunanMap[$donem] = [];
             $okunanMap[$donem][$key] = (int) $row->toplam_okunan;
+
+            // Eğer bu defter tanımlarda yoksa, allDefters listesine ekle ki istatistiklere girsin
+            if (!isset($allDefters[$key])) {
+                $allDefters[$key] = [
+                    'bolge' => $bolgeName,
+                    'defter' => $defterCode,
+                    'mahalle' => '',
+                    'abone_sayisi' => 0,
+                    'baslangic' => '1900-01-01',
+                    'bitis' => '2099-12-31'
+                ];
+            }
         }
 
         // 3. Sonuçları hesapla
         $genel = [];
         $bolgeData = [];
         $okunmayanDetay = [];
+        $okunanDetay = [];
+        $toplamDetay = [];
 
         foreach ($donemler as $donem) {
-            $toplamDefter = count($allDefters);
-            $okunanDefter = 0;
-            $okunmayanDefter = 0;
-
-            // Bölge bazlı hesaplama
-            $bolgeStats = []; // bolge => [toplam, okunan, okunmayan]
-            $bolgeOkunmayanList = []; // bolge => [defter listesi]
+            $genel[$donem] = ['toplam_defter' => 0, 'okunan_defter' => 0, 'okunmayan_defter' => 0, 'oran' => 0];
+            
+            $bolgeStats = [];    // [bolge => [toplam, okunan, okunmayan]]
+            $bOkunmayanList = []; // [bolge => [defter listesi]]
+            $bOkunanList = [];    // [bolge => [defter listesi]]
+            $bToplamList = [];    // [bolge => [defter listesi]]
 
             foreach ($allDefters as $key => $info) {
-                $bolgeName = $info['bolge'];
+                // Bu dönemde defter geçerli mi? (Tarih bazlı)
+                $dStart = substr($donem, 0, 4) . '-' . substr($donem, 4, 2) . '-01';
+                $dEnd = date('Y-m-t', strtotime($dStart));
+                if ($info['baslangic'] > $dEnd || $info['bitis'] < $dStart) continue;
+
+                $bolgeName = $info['bolge'] ?: 'TANIMSIZ';
                 if (!isset($bolgeStats[$bolgeName])) {
                     $bolgeStats[$bolgeName] = ['toplam_defter' => 0, 'okunan_defter' => 0, 'okunmayan_defter' => 0];
-                    $bolgeOkunmayanList[$bolgeName] = [];
+                    $bOkunmayanList[$bolgeName] = [];
+                    $bOkunanList[$bolgeName] = [];
+                    $bToplamList[$bolgeName] = [];
                 }
 
                 $bolgeStats[$bolgeName]['toplam_defter']++;
+                $genel[$donem]['toplam_defter']++;
 
                 $isOkunan = isset($okunanMap[$donem][$key]) && $okunanMap[$donem][$key] > 0;
+                
+                $item = [
+                    'defter' => $info['defter'],
+                    'mahalle' => $info['mahalle'],
+                    'abone_sayisi' => $info['abone_sayisi'],
+                    'bolge' => $bolgeName
+                ];
+
+                $bToplamList[$bolgeName][] = $item;
+
                 if ($isOkunan) {
-                    $okunanDefter++;
+                    $genel[$donem]['okunan_defter']++;
                     $bolgeStats[$bolgeName]['okunan_defter']++;
+                    $bOkunanList[$bolgeName][] = $item;
                 } else {
-                    $okunmayanDefter++;
+                    $genel[$donem]['okunmayan_defter']++;
                     $bolgeStats[$bolgeName]['okunmayan_defter']++;
-                    $bolgeOkunmayanList[$bolgeName][] = [
-                        'defter' => $info['defter'],
-                        'mahalle' => $info['mahalle'],
-                        'abone_sayisi' => $info['abone_sayisi'],
-                        'bolge' => $bolgeName
-                    ];
+                    $bOkunmayanList[$bolgeName][] = $item;
                 }
             }
 
-            $genel[$donem] = [
-                'toplam_defter' => $toplamDefter,
-                'okunan_defter' => $okunanDefter,
-                'okunmayan_defter' => $okunmayanDefter,
-                'oran' => $toplamDefter > 0 ? round(($okunanDefter / $toplamDefter) * 100, 1) : 0
-            ];
+            // Oran hesapla
+            $genel[$donem]['oran'] = $genel[$donem]['toplam_defter'] > 0 ? round(($genel[$donem]['okunan_defter'] / $genel[$donem]['toplam_defter']) * 100, 1) : 0;
 
             // Bölge verileri
-            foreach ($bolgeStats as $bName => $bStat) {
-                if (!isset($bolgeData[$bName])) $bolgeData[$bName] = [];
-                $bStat['oran'] = $bStat['toplam_defter'] > 0
-                    ? round(($bStat['okunan_defter'] / $bStat['toplam_defter']) * 100, 1)
-                    : 0;
+            foreach ($bolgeStats as $bName => &$bStat) {
+                $bStat['oran'] = $bStat['toplam_defter'] > 0 ? round(($bStat['okunan_defter'] / $bStat['toplam_defter']) * 100, 1) : 0;
                 $bolgeData[$bName][$donem] = $bStat;
             }
 
-            // Okunmayan detay
-            $okunmayanDetay[$donem] = $bolgeOkunmayanList;
+            $okunmayanDetay[$donem] = $bOkunmayanList;
+            $okunanDetay[$donem] = $bOkunanList;
+            $toplamDetay[$donem] = $bToplamList;
         }
 
         // Bölgeleri sırala
@@ -2869,6 +2892,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'genel' => $genel,
             'bolge' => $bolgeData,
             'okunmayan_detay' => $okunmayanDetay,
+            'okunan_detay' => $okunanDetay,
+            'toplam_detay' => $toplamDetay,
             'summary' => [
                 'toplam_bolge' => count($bolgeData),
                 'toplam_defter' => count($allDefters),
@@ -2996,11 +3021,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
         // 3. Verileri bolge + defter bazlı organize et
         $organized = []; // key: bolge|defter
-        foreach ($rawData as $row) {
-            $bolgeName = trim($row->bolge);
-            $defter = trim($row->defter);
-            if (empty($defter))
+
+        // 1. Önce tanımlı olan tüm defterleri ekle (Okuma olmasa bile görünsünler)
+        foreach ($defterTanimListMap as $key => $tanimList) {
+            $parts = explode('|', $key);
+            $tBolge = $parts[0];
+            $tDefter = $parts[1];
+
+            // Filtreleri uygula (Bölge ve Defter)
+            if (!empty($bolge) && $tBolge !== $bolge)
                 continue;
+            if (!empty($defterFilter) && $tDefter !== $defterFilter)
+                continue;
+
+            $latest = $tanimList[0]; // En güncel tanım
+            $organized[$key] = [
+                'bolge' => $tBolge,
+                'defter' => $tDefter,
+                'ilce' => $tBolge,
+                'mahalle' => $latest['mahalle'],
+                'abone_sayisi' => $latest['abone_sayisi'],
+                'donemler' => []
+            ];
+        }
+
+        // 2. Şimdi okuma tarihlerini işle
+        foreach ($rawData as $row) {
+            $bolgeName = trim($row->bolge ?: 'TANIMSIZ');
+            $defter = trim($row->defter ?: '-');
 
             $key = $bolgeName . '|' . $defter;
 
@@ -3008,7 +3056,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                 $organized[$key] = [
                     'bolge' => $bolgeName,
                     'defter' => $defter,
-                    'ilce' => $bolgeName, // Varsayılan bölge adı
+                    'ilce' => $bolgeName, 
                     'mahalle' => '',
                     'abone_sayisi' => 0,
                     'donemler' => []
@@ -3024,12 +3072,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                         break;
                     }
                 }
-                // Eğer tam eşleşme yoksa ilkini (en günceli) al
                 if (!$activeTanim) $activeTanim = $defterTanimListMap[$key][0];
             }
 
-            if ($activeTanim) {
-                // $organized[$key]['ilce'] = $activeTanim['ilce']; // Bölge endeks_okuma'dan gelsin
+            if ($activeTanim && (empty($organized[$key]['mahalle']) || $organized[$key]['abone_sayisi'] == 0)) {
                 $organized[$key]['mahalle'] = $activeTanim['mahalle'];
                 $organized[$key]['abone_sayisi'] = $activeTanim['abone_sayisi'];
             }

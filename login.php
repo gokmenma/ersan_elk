@@ -13,6 +13,9 @@ $User = new UserModel();
 // Initialize the session
 session_start();
 
+// Clear any stale permission cache to ensure fresh permissions load
+unset($_SESSION['permission_cache']);
+
 // Check if the user is already logged in, if yes then redirect him to index page
 if (isset($_SESSION["loggedin"]) && $_SESSION["loggedin"] === true) {
     header("location: index?p=home");
@@ -33,6 +36,7 @@ if (isset($_COOKIE["remember_me"])) {
             $_SESSION["username"] = $user->user_name;
             $_SESSION["user_full_name"] = $user->adi_soyadi;
             $_SESSION["sube_id"] = $user->sube_id;
+            $_SESSION["personel_id"] = $user->personel_id ?? 0;
 
             // Mobil cihazdan giriş kontrolü
             $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
@@ -109,6 +113,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     $_SESSION["username"] = $username;
                     $_SESSION["user_full_name"] = $user->adi_soyadi;
                     $_SESSION["sube_id"] = $user->sube_id;
+                    $_SESSION["personel_id"] = $user->personel_id ?? 0;
 
                     // Remember Me
                     if (isset($_POST["remember"])) {

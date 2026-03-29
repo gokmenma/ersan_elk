@@ -47,3 +47,4 @@ Stack trace:
 [12-Mar-2026 23:57:48 Europe/Istanbul] PHP Warning:  Undefined variable $defterInfo in C:\xampp\htdocs\ersan_elk\views\personel-pwa\api.php on line 2163
 [12-Mar-2026 23:57:48 Europe/Istanbul] PHP Warning:  Attempt to read property "tur_adi" on null in C:\xampp\htdocs\ersan_elk\views\personel-pwa\api.php on line 2163
 [18-Mar-2026 12:14:54 Europe/Istanbul] [2026-03-18 12:14:54] Personel ID: 155 için görev otomatik sonlandırıldı. Tarih: 2026-03-17
+[29-Mar-2026 10:10:40 Europe/Istanbul] PWA destek talebi admin bildirim/mail hatası: SQLSTATE[42S22]: Column not found: 1054 Unknown column 'u.email' in 'field list'

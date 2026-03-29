@@ -36,7 +36,10 @@ if (Gate::allows("ana_sayfa")) {
     $bugun = date('Y-m-d');
     $nobetciler = $measureDb('home.nobetciler', fn() => $nobetModel->getNobetlerByTarih($bugun));
     $gec_kalan_sayisi = $measureDb('home.gec_kalan_sayisi', fn() => $hareketModel->getGecKalanlarCount($_SESSION['firma_id'] ?? null));
-    $yaklasan_gorevler = $measureDb('home.yaklasan_gorevler', fn() => $gorevModel->getYaklasanGorevler($_SESSION['firma_id'] ?? 0, $_SESSION['user_id'] ?? 0, 5));
+    $yaklasan_gorevler = [];
+    if (Gate::allows("gorevler")) {
+        $yaklasan_gorevler = $measureDb('home.yaklasan_gorevler', fn() => $gorevModel->getYaklasanGorevler($_SESSION['firma_id'] ?? 0, $_SESSION['user_id'] ?? 0, 5));
+    }
 
     // Dashboard Ayarlarını Çerezden Oku
     $extraStats = $measureDb('home.extra_stats_daily', fn() => $personelModel->getAdvancedDashboardStats());
@@ -172,41 +175,45 @@ if (Gate::allows("ana_sayfa")) {
     $db = $personelModel->getDb();
 
     // Avanslar
-    $stmt = $db->prepare("SELECT count(*) as count FROM personel_avanslari WHERE durum = 'beklemede' AND silinme_tarihi IS NULL");
-    $measureDb('home.avans_count', fn() => $stmt->execute());
-    $avans_count = $stmt->fetch(PDO::FETCH_OBJ)->count;
-
-    // İzinler
-    try {
-        $izin_count = $izinModel->getBekleyenIzinSayisi();
-    } catch (\Exception $e) {
-        $izin_count = 0;
+    $avans_count = 0;
+    $avanslar = [];
+    if (Gate::allows('avans_talepleri')) {
+        $stmt = $db->prepare("SELECT count(*) as count FROM personel_avanslari WHERE durum = 'beklemede' AND silinme_tarihi IS NULL");
+        $measureDb('home.avans_count', fn() => $stmt->execute());
+        $avans_count = $stmt->fetch(PDO::FETCH_OBJ)->count;
+        
+        $stmt = $db->prepare("SELECT 'Avans' as tip, id, personel_id, talep_tarihi as tarih, durum, tutar as detay FROM personel_avanslari WHERE durum = 'beklemede' AND silinme_tarihi IS NULL LIMIT 5");
+        $measureDb('home.avans_list', fn() => $stmt->execute());
+        $avanslar = $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
-    // Talepler
-    $stmt = $db->prepare("SELECT count(*) as count FROM personel_talepleri WHERE durum != 'cozuldu' AND silinme_tarihi IS NULL");
-    $measureDb('home.talep_count', fn() => $stmt->execute());
-    $talep_count = $stmt->fetch(PDO::FETCH_OBJ)->count;
+    // İzinler
+    $izin_count = 0;
+    $izinler = [];
+    if (Gate::allows('izin_talepleri')) {
+        try {
+            $izin_count = $izinModel->getBekleyenIzinSayisi();
+            $izinler = $izinModel->getBekleyenIzinlerForDashboard(5);
+        } catch (\Exception $e) {
+            $izin_count = 0;
+            $izinler = [];
+        }
+    }
+
+    // Talepler (Ariza)
+    $talep_count = 0;
+    $talepler = [];
+    if (Gate::allows('ariza_talepleri')) {
+        $stmt = $db->prepare("SELECT count(*) as count FROM personel_talepleri WHERE durum != 'cozuldu' AND silinme_tarihi IS NULL");
+        $measureDb('home.talep_count', fn() => $stmt->execute());
+        $talep_count = $stmt->fetch(PDO::FETCH_OBJ)->count;
+
+        $stmt = $db->prepare("SELECT 'Talep' as tip, id, personel_id, olusturma_tarihi as tarih, durum, baslik as detay FROM personel_talepleri WHERE durum != 'cozuldu' AND silinme_tarihi IS NULL LIMIT 5");
+        $measureDb('home.talep_list', fn() => $stmt->execute());
+        $talepler = $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
 
     $personel_talep_sayisi = $avans_count + $izin_count + $talep_count;
-
-    // Son Talepleri Listeleme
-// Avanslar
-    $stmt = $db->prepare("SELECT 'Avans' as tip, id, personel_id, talep_tarihi as tarih, durum, tutar as detay FROM personel_avanslari WHERE durum = 'beklemede' AND silinme_tarihi IS NULL LIMIT 5");
-    $measureDb('home.avans_list', fn() => $stmt->execute());
-    $avanslar = $stmt->fetchAll(PDO::FETCH_OBJ);
-
-    // İzinler
-    try {
-        $izinler = $izinModel->getBekleyenIzinlerForDashboard(5);
-    } catch (\Exception $e) {
-        $izinler = [];
-    }
-
-    // Talepler
-    $stmt = $db->prepare("SELECT 'Talep' as tip, id, personel_id, olusturma_tarihi as tarih, durum, baslik as detay FROM personel_talepleri WHERE durum != 'cozuldu' AND silinme_tarihi IS NULL LIMIT 5");
-    $measureDb('home.talep_list', fn() => $stmt->execute());
-    $talepler = $stmt->fetchAll(PDO::FETCH_OBJ);
 
     $all_requests = array_merge($avanslar, $izinler, $talepler);
 
@@ -235,10 +242,13 @@ if (Gate::allows("ana_sayfa")) {
     }
 
     // Şu anda izinde olanlar
-    try {
-        $active_leaves = $izinModel->getAktifIzinler(10);
-    } catch (\Exception $e) {
-        $active_leaves = [];
+    $active_leaves = [];
+    if (Gate::allows("ana_sayfa_izinli_personel_karti")) {
+        try {
+            $active_leaves = $izinModel->getAktifIzinler(10);
+        } catch (\Exception $e) {
+            $active_leaves = [];
+        }
     }
 
     // Chart değişkenleri (Placeholder values for now)
@@ -1009,156 +1019,158 @@ if (Gate::allows("ana_sayfa")) {
         </div>
         <?php $widgets['widget-endeks-karsilastirma'] = ob_get_clean();
 
-        ob_start(); ?>
-        <div class="<?php echo getWidgetWidth('widget-yaklasan-gorevler', 'col-md-6'); ?> widget-item"
-            id="widget-yaklasan-gorevler">
-            <div class="card summary-card"
-                style="background: linear-gradient(145deg, rgba(255,255,255,0.98), rgba(248,250,252,0.99)); border: 1px solid rgba(226,232,240,0.8); border-radius: 12px; box-shadow: 0 4px 15px -3px rgba(0,0,0,0.05), 0 2px 5px -2px rgba(0,0,0,0.02);">
-                <div class="card-header align-items-center d-flex flex-wrap gap-2"
-                    style="border-bottom: 1px solid rgba(226,232,240,0.6); padding-bottom: 12px;">
-                    <h5 class="card-title mb-0 d-flex align-items-center gap-2" style="font-family: 'Outfit', sans-serif;">
-                        <i class='bx bx-grid-vertical drag-handle' style="cursor: move;"></i>
-                        <i class='bx bx-task' style="color: #6366f1;"></i>
-                        Yaklaşan Görevler
-                        <?php if (!empty($yaklasan_gorevler)): ?>
-                                <span class="badge bg-light text-muted ms-1"
-                                    style="font-size: 0.75rem; border: 1px solid var(--bs-border-color);"><?php echo count($yaklasan_gorevler); ?></span>
+        if (\App\Service\Gate::allows("gorevler")) {
+            ob_start(); ?>
+            <div class="<?php echo getWidgetWidth('widget-yaklasan-gorevler', 'col-md-6'); ?> widget-item"
+                id="widget-yaklasan-gorevler">
+                <div class="card summary-card"
+                    style="background: linear-gradient(145deg, rgba(255,255,255,0.98), rgba(248,250,252,0.99)); border: 1px solid rgba(226,232,240,0.8); border-radius: 12px; box-shadow: 0 4px 15px -3px rgba(0,0,0,0.05), 0 2px 5px -2px rgba(0,0,0,0.02);">
+                    <div class="card-header align-items-center d-flex flex-wrap gap-2"
+                        style="border-bottom: 1px solid rgba(226,232,240,0.6); padding-bottom: 12px;">
+                        <h5 class="card-title mb-0 d-flex align-items-center gap-2" style="font-family: 'Outfit', sans-serif;">
+                            <i class='bx bx-grid-vertical drag-handle' style="cursor: move;"></i>
+                            <i class='bx bx-task' style="color: #6366f1;"></i>
+                            Yaklaşan Görevler
+                            <?php if (!empty($yaklasan_gorevler)): ?>
+                                    <span class="badge bg-light text-muted ms-1"
+                                        style="font-size: 0.75rem; border: 1px solid var(--bs-border-color);"><?php echo count($yaklasan_gorevler); ?></span>
+                            <?php endif; ?>
+                        </h5>
+                        <div class="d-flex align-items-center gap-2 ms-auto">
+                            <button type="button"
+                                class="btn btn-sm btn-soft-secondary rounded-circle p-0 d-flex align-items-center justify-content-center"
+                                style="width: 28px; height: 28px;" onclick="location.reload();">
+                                <i class="bx bx-refresh fs-5"></i>
+                            </button>
+                            <a href="index.php?p=gorevler/list"
+                                class="btn btn-sm btn-soft-primary rounded-pill fw-semibold border-0"
+                                style="padding: 0.25rem 0.75rem; font-size: 0.75rem;">
+                                Tümü <i class="bx bx-right-arrow-alt ms-1"></i>
+                            </a>
+                            <?php echo getWidthControl(); ?>
+                        </div>
+                    </div>
+                    <div class="card-body"
+                        style="padding: 1rem; min-height: <?php echo getWidgetHeight('widget-yaklasan-gorevler', 'auto'); ?>;">
+                        <?php if (empty($yaklasan_gorevler)): ?>
+                                <div class="text-center py-4">
+                                    <i class="bx bx-check-circle" style="font-size: 48px; opacity: 0.2; color: #10b981;"></i>
+                                    <p class="text-muted mt-2 mb-0" style="font-weight: 500;">Yaklaşan görev bulunmuyor.</p>
+                                </div>
+                        <?php else: ?>
+                                <style>
+                                    .yaklasan-gorev-list .gorev-card {
+                                        background: var(--bs-card-bg);
+                                        border: 1px solid var(--bs-border-color);
+                                        border-radius: 12px;
+                                        transition: all 0.2s ease-in-out;
+                                        text-decoration: none;
+                                        display: block;
+                                        margin-bottom: 0.75rem;
+                                        box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+                                    }
+
+                                    .yaklasan-gorev-list .gorev-card:hover {
+                                        transform: translateY(-2px);
+                                        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+                                        border-color: var(--bs-primary);
+                                    }
+
+                                    .yaklasan-gorev-list .icon-box {
+                                        width: 36px;
+                                        height: 36px;
+                                        border-radius: 10px;
+                                        display: flex;
+                                        align-items: center;
+                                        justify-content: center;
+                                        flex-shrink: 0;
+                                    }
+
+                                    .yaklasan-gorev-list .status-dot {
+                                        width: 8px;
+                                        height: 8px;
+                                        border-radius: 50%;
+                                        display: inline-block;
+                                    }
+
+                                    [data-bs-theme="dark"] .yaklasan-gorev-list .gorev-card {
+                                        background: rgba(255, 255, 255, 0.05);
+                                    }
+
+                                    [data-bs-theme="dark"] .yaklasan-gorev-list .gorev-card:hover {
+                                        background: rgba(255, 255, 255, 0.08);
+                                    }
+                                </style>
+                                <div class="yaklasan-gorev-list">
+                                    <?php foreach ($yaklasan_gorevler as $gorev): ?>
+                                            <?php
+                                            $renk = $gorev->liste_renk ?: '#6366f1';
+                                            $tarihVar = !empty($gorev->tarih);
+                                            $isGecikti = false;
+                                            $isBugun = false;
+
+                                            if ($tarihVar) {
+                                                $isGecikti = (strtotime($gorev->tarih . ' ' . ($gorev->saat ?? '23:59:59')) < time());
+                                                $isBugun = ($gorev->tarih == date('Y-m-d'));
+                                            }
+
+                                            $status_color = '#10b981';
+                                            $status_text = $tarihVar ? date('d M', strtotime($gorev->tarih)) : 'Tarih Yok';
+                                            if ($isGecikti) {
+                                                $status_color = '#ef4444';
+                                            } elseif ($isBugun) {
+                                                $status_color = '#f59e0b';
+                                            } elseif (!$tarihVar) {
+                                                $status_color = '#64748b';
+                                            }
+
+                                            // Hex to rgba for icon background
+                                            $hex = ltrim($renk, '#');
+                                            $r = hexdec(substr($hex, 0, 2));
+                                            $g = hexdec(substr($hex, 2, 2));
+                                            $b = hexdec(substr($hex, 4, 2));
+                                            $iconBg = "rgba($r, $g, $b, 0.1)";
+                                            ?>
+                                            <a href="index.php?p=gorevler/list&task_id=<?php echo $gorev->id; ?>" class="gorev-card p-3">
+                                                <div class="d-flex align-items-center gap-3">
+                                                    <div class="icon-box" style="background: <?php echo $iconBg; ?>;">
+
+                                                        <i class="bx bx-check-double" style="color: <?php echo $renk; ?>; font-size: 1.1rem;"></i>
+                                                    </div>
+                                                    <div class="flex-grow-1 overflow-hidden">
+                                                        <h6 class="mb-1 text-truncate fw-semibold"
+                                                            style="font-size: 0.9rem; color: var(--bs-heading-color);">
+                                                            <?php echo htmlspecialchars($gorev->baslik); ?>
+                                                        </h6>
+                                                        <div class="d-flex align-items-center gap-2">
+                                                            <i class="bx bx-folder" style="font-size: 0.75rem; color: <?php echo $renk; ?>;"></i>
+                                                            <span class="text-muted text-truncate" style="font-size: 0.75rem;">
+                                                                <?php echo htmlspecialchars($gorev->liste_adi); ?>
+                                                            </span>
+                                                        </div>
+                                                    </div>
+                                                    <div class="text-end flex-shrink-0 ms-2">
+                                                        <div class="d-flex align-items-center justify-content-end gap-2 mb-1">
+                                                            <span class="text-muted" style="font-size: 0.75rem;">
+                                                                <?php echo $status_text; ?>
+                                                            </span>
+                                                            <div class="status-dot" style="background-color: <?php echo $status_color; ?>;"></div>
+                                                            <?php if ($isGecikti): ?>
+                                                                    <i class="bx bxs-error-circle text-danger" style="font-size: 0.9rem;"></i>
+                                                            <?php endif; ?>
+                                                        </div>
+                                                        <i class="bx bx-chevron-right text-muted opacity-50"></i>
+                                                    </div>
+                                                </div>
+                                            </a>
+                                    <?php endforeach; ?>
+                                </div>
                         <?php endif; ?>
-                    </h5>
-                    <div class="d-flex align-items-center gap-2 ms-auto">
-                        <button type="button"
-                            class="btn btn-sm btn-soft-secondary rounded-circle p-0 d-flex align-items-center justify-content-center"
-                            style="width: 28px; height: 28px;" onclick="location.reload();">
-                            <i class="bx bx-refresh fs-5"></i>
-                        </button>
-                        <a href="index.php?p=gorevler/list"
-                            class="btn btn-sm btn-soft-primary rounded-pill fw-semibold border-0"
-                            style="padding: 0.25rem 0.75rem; font-size: 0.75rem;">
-                            Tümü <i class="bx bx-right-arrow-alt ms-1"></i>
-                        </a>
-                        <?php echo getWidthControl(); ?>
                     </div>
                 </div>
-                <div class="card-body"
-                    style="padding: 1rem; min-height: <?php echo getWidgetHeight('widget-yaklasan-gorevler', 'auto'); ?>;">
-                    <?php if (empty($yaklasan_gorevler)): ?>
-                            <div class="text-center py-4">
-                                <i class="bx bx-check-circle" style="font-size: 48px; opacity: 0.2; color: #10b981;"></i>
-                                <p class="text-muted mt-2 mb-0" style="font-weight: 500;">Yaklaşan görev bulunmuyor.</p>
-                            </div>
-                    <?php else: ?>
-                            <style>
-                                .yaklasan-gorev-list .gorev-card {
-                                    background: var(--bs-card-bg);
-                                    border: 1px solid var(--bs-border-color);
-                                    border-radius: 12px;
-                                    transition: all 0.2s ease-in-out;
-                                    text-decoration: none;
-                                    display: block;
-                                    margin-bottom: 0.75rem;
-                                    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
-                                }
-
-                                .yaklasan-gorev-list .gorev-card:hover {
-                                    transform: translateY(-2px);
-                                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-                                    border-color: var(--bs-primary);
-                                }
-
-                                .yaklasan-gorev-list .icon-box {
-                                    width: 36px;
-                                    height: 36px;
-                                    border-radius: 10px;
-                                    display: flex;
-                                    align-items: center;
-                                    justify-content: center;
-                                    flex-shrink: 0;
-                                }
-
-                                .yaklasan-gorev-list .status-dot {
-                                    width: 8px;
-                                    height: 8px;
-                                    border-radius: 50%;
-                                    display: inline-block;
-                                }
-
-                                [data-bs-theme="dark"] .yaklasan-gorev-list .gorev-card {
-                                    background: rgba(255, 255, 255, 0.05);
-                                }
-
-                                [data-bs-theme="dark"] .yaklasan-gorev-list .gorev-card:hover {
-                                    background: rgba(255, 255, 255, 0.08);
-                                }
-                            </style>
-                            <div class="yaklasan-gorev-list">
-                                <?php foreach ($yaklasan_gorevler as $gorev): ?>
-                                        <?php
-                                        $renk = $gorev->liste_renk ?: '#6366f1';
-                                        $tarihVar = !empty($gorev->tarih);
-                                        $isGecikti = false;
-                                        $isBugun = false;
-
-                                        if ($tarihVar) {
-                                            $isGecikti = (strtotime($gorev->tarih . ' ' . ($gorev->saat ?? '23:59:59')) < time());
-                                            $isBugun = ($gorev->tarih == date('Y-m-d'));
-                                        }
-
-                                        $status_color = '#10b981';
-                                        $status_text = $tarihVar ? date('d M', strtotime($gorev->tarih)) : 'Tarih Yok';
-                                        if ($isGecikti) {
-                                            $status_color = '#ef4444';
-                                        } elseif ($isBugun) {
-                                            $status_color = '#f59e0b';
-                                        } elseif (!$tarihVar) {
-                                            $status_color = '#64748b';
-                                        }
-
-                                        // Hex to rgba for icon background
-                                        $hex = ltrim($renk, '#');
-                                        $r = hexdec(substr($hex, 0, 2));
-                                        $g = hexdec(substr($hex, 2, 2));
-                                        $b = hexdec(substr($hex, 4, 2));
-                                        $iconBg = "rgba($r, $g, $b, 0.1)";
-                                        ?>
-                                        <a href="index.php?p=gorevler/list&task_id=<?php echo $gorev->id; ?>" class="gorev-card p-3">
-                                            <div class="d-flex align-items-center gap-3">
-                                                <div class="icon-box" style="background: <?php echo $iconBg; ?>;">
-
-                                                    <i class="bx bx-check-double" style="color: <?php echo $renk; ?>; font-size: 1.1rem;"></i>
-                                                </div>
-                                                <div class="flex-grow-1 overflow-hidden">
-                                                    <h6 class="mb-1 text-truncate fw-semibold"
-                                                        style="font-size: 0.9rem; color: var(--bs-heading-color);">
-                                                        <?php echo htmlspecialchars($gorev->baslik); ?>
-                                                    </h6>
-                                                    <div class="d-flex align-items-center gap-2">
-                                                        <i class="bx bx-folder" style="font-size: 0.75rem; color: <?php echo $renk; ?>;"></i>
-                                                        <span class="text-muted text-truncate" style="font-size: 0.75rem;">
-                                                            <?php echo htmlspecialchars($gorev->liste_adi); ?>
-                                                        </span>
-                                                    </div>
-                                                </div>
-                                                <div class="text-end flex-shrink-0 ms-2">
-                                                    <div class="d-flex align-items-center justify-content-end gap-2 mb-1">
-                                                        <span class="text-muted" style="font-size: 0.75rem;">
-                                                            <?php echo $status_text; ?>
-                                                        </span>
-                                                        <div class="status-dot" style="background-color: <?php echo $status_color; ?>;"></div>
-                                                        <?php if ($isGecikti): ?>
-                                                                <i class="bx bxs-error-circle text-danger" style="font-size: 0.9rem;"></i>
-                                                        <?php endif; ?>
-                                                    </div>
-                                                    <i class="bx bx-chevron-right text-muted opacity-50"></i>
-                                                </div>
-                                            </div>
-                                        </a>
-                                <?php endforeach; ?>
-                            </div>
-                    <?php endif; ?>
-                </div>
             </div>
-        </div>
-        <?php $widgets['widget-yaklasan-gorevler'] = ob_get_clean();
+            <?php $widgets['widget-yaklasan-gorevler'] = ob_get_clean();
+        }
 
         if (\App\Service\Gate::allows("gorev_bildirim_log_kayitlari")) {
             // Giriş kayıtları sorgusu
@@ -1606,76 +1618,78 @@ if (Gate::allows("ana_sayfa")) {
                 <?php $widgets['widget-talepler'] = ob_get_clean();
         }
 
-        ob_start(); ?>
-        <div class="<?php echo getWidgetWidth('widget-izindekiler', 'col-md-6'); ?> widget-item" id="widget-izindekiler">
-            <div class="card">
-                <div class="card-header d-flex justify-content-between align-items-center">
-                    <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Şu Anda İzinde Olan Personeller</h5>
-                    <?php echo getWidthControl(); ?>
-                </div>
-                <div class="card-body"
-                    style="height: <?php echo getWidgetHeight('widget-izindekiler', 'auto'); ?>; overflow-y: auto;">
-                    <div class="table-responsive">
-                        <table class="table table-centered table-nowrap mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>Personel</th>
-                                    <th>İzin Tipi</th>
-                                    <th>Bitiş Tarihi</th>
-                                    <th>Kalan Süre</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <?php if (empty($active_leaves)): ?>
-                                        <tr>
-                                            <td colspan="4" class="text-center">Şu anda izinde olan personel bulunmamaktadır.
-                                            </td>
-                                        </tr>
-                                <?php else: ?>
-                                        <?php foreach ($active_leaves as $leave):
-                                            $bitis = new DateTime($leave->bitis_tarihi);
-                                            $bugun = new DateTime();
-                                            $kalan = $bugun->diff($bitis)->days;
+        if (Gate::allows("ana_sayfa_izinli_personel_karti")) {
+            ob_start(); ?>
+            <div class="<?php echo getWidgetWidth('widget-izindekiler', 'col-md-6'); ?> widget-item" id="widget-izindekiler">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Şu Anda İzinde Olan Personeller</h5>
+                        <?php echo getWidthControl(); ?>
+                    </div>
+                    <div class="card-body"
+                        style="height: <?php echo getWidgetHeight('widget-izindekiler', 'auto'); ?>; overflow-y: auto;">
+                        <div class="table-responsive">
+                            <table class="table table-centered table-nowrap mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Personel</th>
+                                        <th>İzin Tipi</th>
+                                        <th>Bitiş Tarihi</th>
+                                        <th>Kalan Süre</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (empty($active_leaves)): ?>
+                                            <tr>
+                                                <td colspan="4" class="text-center">Şu anda izinde olan personel bulunmamaktadır.
+                                                </td>
+                                            </tr>
+                                    <?php else: ?>
+                                            <?php foreach ($active_leaves as $leave):
+                                                $bitis = new DateTime($leave->bitis_tarihi);
+                                                $bugun = new DateTime();
+                                                $kalan = $bugun->diff($bitis)->days;
 
-                                            $badgeClass = 'badge-primary';
-                                            if ($leave->izin_tipi_adi == 'hastalik')
-                                                $badgeClass = 'badge-danger';
-                                            if ($leave->izin_tipi_adi == 'mazeret')
-                                                $badgeClass = 'badge-warning';
-                                            ?>
-                                                <tr>
-                                                    <td>
-                                                        <div class="d-flex align-items-center">
-                                                            <div class="flex-shrink-0 me-3">
-                                                                <img src="<?php echo !empty($leave->resim_yolu) ? $leave->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>"
-                                                                    alt="" class="avatar-xs rounded-circle">
+                                                $badgeClass = 'badge-primary';
+                                                if ($leave->izin_tipi_adi == 'hastalik')
+                                                    $badgeClass = 'badge-danger';
+                                                if ($leave->izin_tipi_adi == 'mazeret')
+                                                    $badgeClass = 'badge-warning';
+                                                ?>
+                                                    <tr>
+                                                        <td>
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="flex-shrink-0 me-3">
+                                                                    <img src="<?php echo !empty($leave->resim_yolu) ? $leave->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>"
+                                                                        alt="" class="avatar-xs rounded-circle">
+                                                                </div>
+                                                                <div class="flex-grow-1">
+                                                                    <h5 class="font-size-14 mb-1"><?php echo $leave->adi_soyadi; ?></h5>
+                                                                    <p class="text-muted mb-0 font-size-12"><?php echo $leave->departman; ?>
+                                                                    </p>
+                                                                </div>
                                                             </div>
-                                                            <div class="flex-grow-1">
-                                                                <h5 class="font-size-14 mb-1"><?php echo $leave->adi_soyadi; ?></h5>
-                                                                <p class="text-muted mb-0 font-size-12"><?php echo $leave->departman; ?>
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                    </td>
-                                                    <td>
-                                                        <span class="badge <?php echo $badgeClass; ?> font-size-12">
-                                                            <?php echo htmlspecialchars($leave->izin_tipi_adi ?? $leave->izin_tipi ?? 'İzin'); ?>
-                                                        </span>
-                                                    </td>
-                                                    <td><?php echo date('d.m.Y', strtotime($leave->bitis_tarihi)); ?></td>
-                                                    <td>
-                                                        <span class="badge badge-info"><?php echo $kalan; ?> Gün Kaldı</span>
-                                                    </td>
-                                                </tr>
-                                        <?php endforeach; ?>
-                                <?php endif; ?>
-                            </tbody>
-                        </table>
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge <?php echo $badgeClass; ?> font-size-12">
+                                                                <?php echo htmlspecialchars($leave->izin_tipi_adi ?? $leave->izin_tipi ?? 'İzin'); ?>
+                                                            </span>
+                                                        </td>
+                                                        <td><?php echo date('d.m.Y', strtotime($leave->bitis_tarihi)); ?></td>
+                                                        <td>
+                                                            <span class="badge badge-info"><?php echo $kalan; ?> Gün Kaldı</span>
+                                                        </td>
+                                                    </tr>
+                                            <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
-        <?php $widgets['widget-izindekiler'] = ob_get_clean();
+            <?php $widgets['widget-izindekiler'] = ob_get_clean();
+        }
 
         ob_start(); ?>
         <div class="<?php echo getWidgetWidth('widget-is-turu-istatistikleri', 'col-md-6'); ?> widget-item"
@@ -1997,13 +2011,15 @@ if (Gate::allows("ana_sayfa")) {
                                         Arıza/İzin/Avans Talepleri
                                     </label>
                                 </li>
-                                <li>
-                                    <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                        <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                            data-widget="widget-izindekiler" checked>
-                                        İzinde Olan Personeller
-                                    </label>
-                                </li>
+                                <?php if (Gate::allows("ana_sayfa_izinli_personel_karti")): ?>
+                                    <li>
+                                        <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                                data-widget="widget-izindekiler" checked>
+                                            İzinde Olan Personeller
+                                        </label>
+                                    </li>
+                                <?php endif; ?>
                                 <li>
                                     <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
                                         <input type="checkbox" class="form-check-input widget-toggle me-2"
@@ -2056,6 +2072,15 @@ if (Gate::allows("ana_sayfa")) {
                                         Kaçak Kontrol
                                     </label>
                                 </li>
+                                <?php if (Gate::allows("gorevler")): ?>
+                                    <li>
+                                        <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2"
+                                                data-widget="widget-yaklasan-gorevler" checked>
+                                            Yaklaşan Görevler
+                                        </label>
+                                    </li>
+                                <?php endif; ?>
                                 <li>
                                     <hr class="dropdown-divider">
                                 </li>

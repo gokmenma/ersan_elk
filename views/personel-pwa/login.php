@@ -8,6 +8,9 @@ ini_set('display_errors', 1);
 
 session_start();
 
+// Clear any stale permission cache to ensure fresh permissions load
+unset($_SESSION['permission_cache']);
+
 require_once dirname(dirname(__DIR__)) . '/Autoloader.php';
 
 use App\Helper\Helper;

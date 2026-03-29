@@ -79,6 +79,8 @@ $(document).ready(function () {
     $("#div_icra_secimi").addClass("d-none");
     $("#div_ucretsiz_izin_secenek").addClass("d-none");
     $("#div_kesinti_gun").addClass("d-none");
+    $("#div_taksit_sayisi").addClass("d-none");
+    $("#kesinti_taksit_sayisi").val(1);
     $("#div_tutar").removeClass("d-none");
     $("#kesinti_tip_tutar").prop("checked", true);
 
@@ -147,8 +149,12 @@ $(document).ready(function () {
           // Tekrar tipi
           if (response.tekrar_tipi === 'surekli') {
             $("#tekrar_surekli").prop("checked", true);
-            $("#kesinti_baslangic_donemi").val(response.baslangic_donemi);
-            $("#kesinti_bitis_donemi").val(response.bitis_donemi);
+            $("#baslangic_donemi").val(response.baslangic_donemi);
+            $("#bitis_donemi").val(response.bitis_donemi);
+          } else if (response.tekrar_tipi === 'taksitli') {
+            $("#tekrar_taksitli").prop("checked", true);
+            $("select[name='kesinti_donem']").val(response.donem_id).trigger('change');
+            $("#kesinti_taksit_sayisi").val(response.taksit_sayisi || 1);
           } else {
             $("#tekrar_tek_sefer").prop("checked", true);
             $("select[name='kesinti_donem']").val(response.donem_id).trigger('change');
@@ -208,13 +214,21 @@ $(document).ready(function () {
     if (tekrarTipi === "surekli") {
       $("#div_tek_sefer_donem").addClass("d-none").hide();
       $("#div_surekli_donem").removeClass("d-none").show();
+      $("#div_taksit_sayisi").addClass("d-none").hide();
       $("select[name='kesinti_donem']").prop("required", false);
-      $("#kesinti_baslangic_donemi").prop("required", true);
+      $("#baslangic_donemi").prop("required", true);
+    } else if (tekrarTipi === "taksitli") {
+      $("#div_tek_sefer_donem").removeClass("d-none").show();
+      $("#div_surekli_donem").addClass("d-none").hide();
+      $("#div_taksit_sayisi").removeClass("d-none").show();
+      $("select[name='kesinti_donem']").prop("required", true);
+      $("#baslangic_donemi").prop("required", false);
     } else {
       $("#div_tek_sefer_donem").removeClass("d-none").show();
       $("#div_surekli_donem").addClass("d-none").hide();
+      $("#div_taksit_sayisi").addClass("d-none").hide();
       $("select[name='kesinti_donem']").prop("required", true);
-      $("#kesinti_baslangic_donemi").prop("required", false);
+      $("#baslangic_donemi").prop("required", false);
     }
   }
 
@@ -405,18 +419,27 @@ $(document).ready(function () {
     var tekrarTipi = $('input[name="tekrar_tipi"]:checked').val();
     var hesaplamaTipi = $('input[name="hesaplama_tipi"]:checked').val();
 
-    // Tek seferlik ise dönem zorunlu
-    if (tekrarTipi === "tek_sefer") {
+    // Tek seferlik veya Taksitli ise dönem zorunlu
+    if (tekrarTipi === "tek_sefer" || tekrarTipi === "taksitli") {
       var donem = $("select[name='kesinti_donem']").val();
       if (!donem) {
         Swal.fire("Hata", "Lütfen dönem seçiniz.", "error");
         return;
       }
     } else {
-      // Sürekli ise başlangıç dönemi zorunlu
-      var baslangicDonemi = $("#kesinti_baslangic_donemi").val();
+      // Sürekli ise başlangıç dönemi zorunlu (Y-m formatında date inputu)
+      var baslangicDonemi = $("#baslangic_donemi").val();
       if (!baslangicDonemi) {
         Swal.fire("Hata", "Lütfen başlangıç dönemini giriniz.", "error");
+        return;
+      }
+    }
+
+    // Taksitli ise taksit sayısı kontrolü
+    if (tekrarTipi === "taksitli") {
+      var ts = $("#kesinti_taksit_sayisi").val();
+      if (!ts || parseInt(ts) <= 0) {
+        Swal.fire("Hata", "Lütfen geçerli bir taksit sayısı giriniz.", "error");
         return;
       }
     }
@@ -457,6 +480,7 @@ $(document).ready(function () {
       tarih: $("#kesinti_tarih").val(),
       aciklama: form.find("input[name='aciklama']").val(),
       icra_id: $("#kesinti_icra_id").val() || null,
+      taksit_sayisi: tekrarTipi === "taksitli" ? $("#kesinti_taksit_sayisi").val() : null,
     };
 
     // Update ise ID ekle
@@ -471,11 +495,11 @@ $(document).ready(function () {
     }
 
     // Dönem bilgisi
-    if (tekrarTipi === "tek_sefer") {
+    if (tekrarTipi === "tek_sefer" || tekrarTipi === "taksitli") {
       data.donem_id = $("select[name='kesinti_donem']").val();
     } else {
-      data.baslangic_donemi = $("#kesinti_baslangic_donemi").val();
-      data.bitis_donemi = $("#kesinti_bitis_donemi").val() || null;
+      data.baslangic_donemi = $("#baslangic_donemi").val();
+      data.bitis_donemi = $("#bitis_donemi").val() || null;
     }
 
     $.ajax({

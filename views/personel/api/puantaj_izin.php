@@ -208,7 +208,7 @@ try {
             FROM personel_izinleri pi
             JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL AND pi.onay_durumu != 'Reddedildi'
-            AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
+            AND t.kisa_kod NOT IN ('X', 'x')
             AND (
                 (pi.baslangic_tarihi BETWEEN ? AND ?) 
                 OR (pi.bitis_tarihi BETWEEN ? AND ?)

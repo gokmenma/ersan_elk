@@ -68,7 +68,7 @@ if ($currentUser && isset($currentUser->firma_ids)) {
 $defaultFirma = $Firma->resolveDefaultFirmaFromCookies($_COOKIE, $branchs);
 if ($defaultFirma && !isset($_GET['change'])) {
     $_SESSION['firma_id'] = (int) $defaultFirma->id;
-    $redirect = "/set-session.php?firma_id=" . (int) $defaultFirma->id;
+    $redirect = "set-session.php?firma_id=" . (int) $defaultFirma->id;
     if (isset($defaultFirma->firma_kodu) && !empty($defaultFirma->firma_kodu)) {
         $redirect .= "&firma_kodu=" . urlencode($defaultFirma->firma_kodu);
     }
@@ -86,7 +86,7 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
     $only_branch = reset($branchs);
     $_SESSION['sube_id'] = $only_branch->id;
     $_SESSION['firma_id'] = (int) $only_branch->id;
-    $redirect = "/set-session.php?firma_id=" . $only_branch->id;
+    $redirect = "set-session.php?firma_id=" . $only_branch->id;
     if (isset($only_branch->firma_kodu) && !empty($only_branch->firma_kodu)) {
         $redirect .= "&firma_kodu=" . urlencode($only_branch->firma_kodu);
     }

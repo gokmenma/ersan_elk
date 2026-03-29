@@ -3,12 +3,14 @@
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
 use App\Helper\Security;
 use App\Helper\Form;
+use App\Service\Gate;
 
 use App\Model\TanimlamalarModel;
 $Tanimlamalar = new TanimlamalarModel();
 
 $isTurleri = $Tanimlamalar->getIsTurleri();
 $isTuruAdlari = $Tanimlamalar->getIsTurleriAdlari();
+$canManageIsTuruUcret = Gate::allows('is_turu_ucret_tanimla');
 
 
 ?>
@@ -113,6 +115,14 @@ $isTuruAdlari = $Tanimlamalar->getIsTurleriAdlari();
                                                         data-id="<?php echo $enc_id; ?>"><span
                                                             class="mdi mdi-account-edit font-size-18"></span>
                                                         Düzenle</a>
+                                                    <?php if ($canManageIsTuruUcret): ?>
+                                                        <a href="#" class="dropdown-item ucret-gecmisi"
+                                                            data-id="<?php echo $enc_id; ?>"
+                                                            data-name="<?php echo htmlspecialchars($isTuru->tur_adi, ENT_QUOTES, 'UTF-8'); ?>">
+                                                            <span class="mdi mdi-history font-size-18"></span>
+                                                            Ücret Geçmişi
+                                                        </a>
+                                                    <?php endif; ?>
                                                     <a href="#" class="dropdown-item sil" data-id="<?php echo $enc_id; ?>">
                                                         <span class="mdi mdi-delete font-size-18"></span>
                                                         Sil</a>
@@ -208,6 +218,22 @@ $isTuruAdlari = $Tanimlamalar->getIsTurleriAdlari();
 
                     <div class="row mb-3">
                         <div class="col-md-12">
+                            <?php echo
+                                Form::FormFloatInput(
+                                    "text",
+                                    "ucret_gecerlilik_baslangic",
+                                    date('d.m.Y'),
+                                    "Ücret geçerlilik başlangıç tarihi seçiniz!",
+                                    "Ücret Geçerlilik Başlangıç",
+                                    "calendar",
+                                    "form-control flatpickr"
+
+                                ); ?>
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-12">
                             <?php
                             $raporSekmeleri = [
                                 '' => 'Seçiniz',
@@ -253,6 +279,98 @@ $isTuruAdlari = $Tanimlamalar->getIsTurleriAdlari();
                 <button type="button" id="actionKaydet"
                     class="btn btn-primary waves-effect btn-label waves-light float-end"><i
                         class="bx bx-save label-icon"></i>Kaydet</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="ucretGecmisModal" tabindex="-1" aria-labelledby="ucretGecmisModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="ucretGecmisModalLabel">İş Türü Ücret Geçmişi</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <input type="hidden" id="ucretGecmisYetki" value="<?php echo $canManageIsTuruUcret ? 1 : 0; ?>">
+                <input type="hidden" id="gecmis_is_turu_id" value="">
+
+                <?php if ($canManageIsTuruUcret): ?>
+                    <div class="row g-3 mb-3 border rounded p-3 bg-light">
+                        <input type="hidden" id="gecmis_id" value="0">
+                        <div class="col-md-3">
+                            <?php echo Form::FormFloatInput(
+                                "text",
+                                "gecmis_baslangic",
+                                date('d.m.Y'),
+                                "Geçerlilik başlangıç tarihi",
+                                "Geçerlilik Başlangıç",
+                                "calendar",
+                                "form-control flatpickr"
+                            ); ?>
+                        </div>
+                        <div class="col-md-3">
+                            <?php echo Form::FormFloatInput(
+                                "text",
+                                "gecmis_bitis",
+                                "",
+                                "Geçerlilik bitiş tarihi",
+                                "Geçerlilik Bitiş",
+                                "calendar",
+                                "form-control flatpickr"
+                            ); ?>
+                        </div>
+                        <div class="col-md-3">
+                            <?php echo Form::FormFloatInput(
+                                "text",
+                                "gecmis_ucret",
+                                "",
+                                "İş türü ücreti",
+                                "İş Türü Ücreti",
+                                "dollar-sign",
+                                "form-control money"
+                            ); ?>
+                        </div>
+                        <div class="col-md-3">
+                            <?php echo Form::FormFloatInput(
+                                "text",
+                                "gecmis_aracli_ucret",
+                                "",
+                                "Araçlı personel ücreti",
+                                "Araçlı Pers. Ücreti",
+                                "truck",
+                                "form-control money"
+                            ); ?>
+                        </div>
+                        <div class="col-12 d-flex justify-content-end gap-2">
+                            <button type="button" class="btn btn-secondary btn-sm d-inline-flex align-items-center gap-1" id="ucretGecmisTemizle">
+                                <i data-feather="rotate-ccw" style="width:14px;height:14px;"></i>Temizle
+                            </button>
+                            <button type="button" class="btn btn-primary btn-sm d-inline-flex align-items-center gap-1" id="ucretGecmisKaydet">
+                                <i data-feather="save" style="width:14px;height:14px;"></i>Kaydet
+                            </button>
+                        </div>
+                    </div>
+                <?php else: ?>
+                    <div class="alert alert-warning mb-3">Bu alanda işlem yapmak için <strong>is_turu_ucret_tanimla</strong> yetkisi gereklidir.</div>
+                <?php endif; ?>
+
+                <div class="table-responsive">
+                    <table class="table table-bordered table-striped align-middle" id="ucretGecmisTable">
+                        <thead>
+                            <tr>
+                                <th>Geçerlilik Başlangıç</th>
+                                <th>Geçerlilik Bitiş</th>
+                                <th>İş Türü Ücreti</th>
+                                <th>Araçlı Pers. Ücreti</th>
+                                <?php if ($canManageIsTuruUcret): ?>
+                                    <th style="width: 10%">İşlem</th>
+                                <?php endif; ?>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                </div>
             </div>
         </div>
     </div>

@@ -779,6 +779,66 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         border-left: 1px solid rgba(255, 255, 255, 0.1);
     }
 
+    .do-badge-toplam.clickable:hover {
+        background: #3b82f6;
+        color: white;
+        border-color: #1d4ed8;
+        box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.2);
+    }
+
+    .do-badge-okunan {
+        display: inline-block;
+        padding: 4px 10px;
+        background: #ecfdf5;
+        color: #059669;
+        font-weight: 600;
+        border-radius: 6px;
+        font-size: 11px;
+        min-width: 35px;
+        border: 1px solid transparent;
+        transition: all 0.2s;
+    }
+
+    .do-badge-okunan.clickable:hover {
+        background: #10b981;
+        color: white;
+        border-color: #059669;
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.2);
+    }
+
+    .do-badge-okunmayan {
+        display: inline-block;
+        padding: 4px 10px;
+        background: #fff1f2;
+        color: #e11d48;
+        font-weight: 600;
+        border-radius: 6px;
+        font-size: 11px;
+        min-width: 35px;
+        border: 1px solid #fecdd3;
+        transition: all 0.2s;
+    }
+
+    .do-badge-okunmayan.zero {
+        background: transparent;
+        border: 1px solid #eee;
+        color: #ccc;
+        opacity: 0.5;
+    }
+
+    .do-badge-okunmayan:not(.zero):hover {
+        background: #f43f5e;
+        color: white;
+        border-color: #e11d48;
+        box-shadow: 0 0 0 2px rgba(225, 29, 72, 0.2);
+        cursor: pointer;
+    }
+
+    /* Clickable Cursor */
+    .clickable {
+        cursor: pointer !important;
+    }
+
     .btn-clear-filter:hover {
         background: rgba(255, 255, 255, 0.35);
         color: #fff;
@@ -2858,7 +2918,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
             const only35Plus = $('#chk35Plus').is(':checked');
             const only35PlusNoRead = $('#chk35PlusNoRead').is(':checked');
-            const today = new Date('2026-03-07');
+            const today = new Date();
 
             // Apply search filters
             let filteredData = data.filter(function (row) {
@@ -3391,11 +3451,11 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                     const g = genel[d] || { toplam_defter: 0, okunan_defter: 0, okunmayan_defter: 0, oran: 0 };
                     const oranClass = g.oran >= 80 ? 'do-oran-high' : (g.oran >= 50 ? 'do-oran-medium' : 'do-oran-low');
 
-                    html += '<td><span class="do-badge-toplam">' + g.toplam_defter + '</span></td>';
-                    html += '<td><span class="do-badge-okunan">' + g.okunan_defter + '</span></td>';
+                    html += '<td><span class="do-badge-toplam clickable" data-type="toplam_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Toplam defterleri görün">' + g.toplam_defter + '</span></td>';
+                    html += '<td><span class="do-badge-okunan clickable" data-type="okunan_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Okunan defterleri görün">' + g.okunan_defter + '</span></td>';
 
                     if (g.okunmayan_defter > 0) {
-                        html += '<td><span class="do-badge-okunmayan" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Okunmayan defterleri görün">' + g.okunmayan_defter + '</span></td>';
+                        html += '<td><span class="do-badge-okunmayan clickable" data-type="okunmayan_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Okunmayan defterleri görün">' + g.okunmayan_defter + '</span></td>';
                     } else {
                         html += '<td><span class="do-badge-okunmayan zero">' + g.okunmayan_defter + '</span></td>';
                     }
@@ -3421,11 +3481,11 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                         const bStat = (bolgeData[bName] && bolgeData[bName][d]) || { toplam_defter: 0, okunan_defter: 0, okunmayan_defter: 0, oran: 0 };
                         const oranClass = bStat.oran >= 80 ? 'do-oran-high' : (bStat.oran >= 50 ? 'do-oran-medium' : 'do-oran-low');
 
-                        html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-toplam">' + bStat.toplam_defter + '</span></td>';
-                        html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-okunan">' + bStat.okunan_defter + '</span></td>';
+                        html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-toplam clickable" data-type="toplam_detay" data-donem="' + d + '" data-bolge="' + bName + '" title="Tıklayın: ' + bName + ' toplam defterleri">' + bStat.toplam_defter + '</span></td>';
+                        html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-okunan clickable" data-type="okunan_detay" data-donem="' + d + '" data-bolge="' + bName + '" title="Tıklayın: ' + bName + ' okunan defterleri">' + bStat.okunan_defter + '</span></td>';
 
                         if (bStat.okunmayan_defter > 0) {
-                            html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-okunmayan" data-donem="' + d + '" data-bolge="' + bName + '" title="Tıklayın: ' + bName + ' okunmayan defterleri">' + bStat.okunmayan_defter + '</span></td>';
+                            html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-okunmayan clickable" data-type="okunmayan_detay" data-donem="' + d + '" data-bolge="' + bName + '" title="Tıklayın: ' + bName + ' okunmayan defterleri">' + bStat.okunmayan_defter + '</span></td>';
                         } else {
                             html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-okunmayan zero">' + bStat.okunmayan_defter + '</span></td>';
                         }
@@ -3484,39 +3544,63 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             $('#colFilterValue').focus().select();
         });
 
-        // ======= OKUNMAYAN BADGE CLICK HANDLER (Dışarıda, tek sefer bağlanır) =======
-        $(document).on('click', '.do-badge-okunmayan:not(.zero)', function (e) {
+        // ======= BADGE CLICK HANDLER (Dışarıda, tek sefer bağlanır) =======
+        $(document).on('click', '.do-badge-toplam.clickable, .do-badge-okunan.clickable, .do-badge-okunmayan.clickable', function (e) {
             e.stopPropagation();
             const $el = $(this);
             const donem = $el.attr('data-donem');
             const bolge = $el.attr('data-bolge');
+            const type = $el.attr('data-type'); // toplam_detay, okunan_detay, okunmayan_detay
 
             if (!donem || !_defterOzetData) {
                 console.warn('Defter özet click: donem veya data yok', donem, _defterOzetData);
                 return;
             }
 
+            // Başlık belirleme
+            let typeTitle = 'Defterler';
+            let titleIcon = 'bx-book-open';
+            let titleBg = 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)';
+
+            if (type === 'okunan_detay') {
+                typeTitle = 'Okunan Defterler';
+                titleIcon = 'bx-check-circle';
+                titleBg = 'linear-gradient(135deg, #10b981 0%, #047857 100%)';
+            } else if (type === 'okunmayan_detay') {
+                typeTitle = 'Okunmayan Defterler';
+                titleIcon = 'bx-error-circle';
+                titleBg = 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)';
+            } else if (type === 'toplam_detay') {
+                typeTitle = 'Toplam Defterler';
+                titleIcon = 'bx-book-content';
+                titleBg = 'linear-gradient(135deg, #6b7280 0%, #374151 100%)';
+            }
+
             const formatted = String(donem).substring(0, 4) + '/' + String(donem).substring(4);
             let defterList = [];
 
+            const details = _defterOzetData[type] || {};
+            const donemDetails = details[donem] || {};
+
             if (bolge === '__GENEL__') {
-                // Tüm bölgelerdeki okunmayan defterleri birleştir
-                const allBolge = _defterOzetData.okunmayan_detay[donem] || {};
-                for (const bName in allBolge) {
-                    defterList = defterList.concat(allBolge[bName]);
+                // Tüm bölgelerdeki defterleri birleştir
+                for (const bName in donemDetails) {
+                    defterList = defterList.concat(donemDetails[bName]);
                 }
-                $('#modalOkunmayanTitle').html('<i class="bx bx-error-circle me-2"></i>Okunmayan Defterler — ' + formatted + ' (Tüm Bölgeler)');
+                $('#modalOkunmayanTitle').html('<i class="bx ' + titleIcon + ' me-2"></i>' + typeTitle + ' — ' + formatted + ' (Tüm Bölgeler)');
             } else {
-                const allBolge = _defterOzetData.okunmayan_detay[donem] || {};
-                defterList = allBolge[bolge] || [];
-                $('#modalOkunmayanTitle').html('<i class="bx bx-error-circle me-2"></i>Okunmayan Defterler — ' + formatted + ' — <span class="text-warning">' + bolge + '</span>');
+                defterList = donemDetails[bolge] || [];
+                $('#modalOkunmayanTitle').html('<i class="bx ' + titleIcon + ' me-2"></i>' + typeTitle + ' — ' + formatted + ' — <span class="text-warning">' + bolge + '</span>');
             }
+
+            // Modal Header rengini güncelle
+            $('#modalOkunmayanDefterler .modal-header').css('background', titleBg);
 
             // Modal içeriğini oluştur
             let modalHtml = '';
 
             if (defterList.length === 0) {
-                modalHtml = '<div class="text-center p-4 text-muted"><i class="bx bx-check-circle fs-1 text-success d-block mb-2"></i>Bu dönem için okunmayan defter bulunmuyor.</div>';
+                modalHtml = '<div class="text-center p-4 text-muted"><i class="bx bx-info-circle fs-1 text-info d-block mb-2"></i>Bu dönem için veri bulunmuyor.</div>';
             } else {
                 // Bölge bazlı grupla
                 const grouped = {};
@@ -3527,8 +3611,8 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 });
 
                 modalHtml += '<div class="d-flex align-items-center justify-content-between mb-3">';
-                modalHtml += '<span class="badge bg-danger-subtle text-danger" style="font-size: 13px; padding: 8px 16px; border-radius: 8px;"><i class="bx bx-book-content me-1"></i>Toplam ' + defterList.length + ' okunmayan defter</span>';
-                modalHtml += '<span class="badge bg-primary-subtle text-primary" style="font-size: 12px; padding: 6px 12px; border-radius: 8px;">' + Object.keys(grouped).length + ' bölge</span>';
+                modalHtml += '<span class="badge bg-primary-subtle text-primary" style="font-size: 13px; padding: 8px 16px; border-radius: 8px;"><i class="bx bx-list-ul me-1"></i>Toplam ' + defterList.length + ' defter</span>';
+                modalHtml += '<span class="badge bg-secondary-subtle text-secondary" style="font-size: 12px; padding: 6px 12px; border-radius: 8px;">' + Object.keys(grouped).length + ' bölge</span>';
                 modalHtml += '</div>';
 
                 modalHtml += '<div class="table-responsive" style="max-height: 450px; overflow: auto;">';

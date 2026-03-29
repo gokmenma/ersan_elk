@@ -905,7 +905,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         }
                     }
 
-                    // Puantaj ödemelerini ayrı ayrı göster
+                    // Puantaj ödemelerini gruplayarak göster
                     if (!empty($puantajOdemeler)) {
                         // Toplam adet ve tutar hesapla
                         $toplamPuantajAdet = 0;
@@ -919,8 +919,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         }
 
                         $adetSubText = $toplamPuantajAdet > 0 ? '<div class="text-muted fw-normal" style="font-size: 10px;">(Toplam ' . number_format($toplamPuantajAdet, 0, ',', '.') . ' Adet)</div>' : '';
+                        $puantajSectionClass = 'puantaj-section-' . $bp->id;
 
-                        $html .= '<tr class="cursor-pointer bg-light" data-bs-toggle="collapse" data-bs-target=".puantaj-row" aria-expanded="false" style="border-top: 1px solid #e9ecef !important; border-bottom: 1px solid #e9ecef !important;">
+                        $html .= '<tr class="bg-light cursor-pointer" style="border-top: 1px solid #e9ecef !important; border-bottom: 1px solid #e9ecef !important;" data-bs-toggle="collapse" data-bs-target=".' . $puantajSectionClass . '" aria-expanded="true">
                                     <td class="ps-3 pt-2 pb-2">
                                         <div class="d-flex align-items-center">
                                             <i class="bx bx-briefcase me-2 text-primary fs-5"></i>
@@ -933,21 +934,115 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     <td class="text-end pe-3 align-middle">
                                         <div class="d-flex justify-content-end align-items-center gap-2">
                                             <span class="text-success fw-bold">+' . number_format($toplamPuantajTutar, 2, ',', '.') . ' ₺</span>
-                                            <i class="bx bx-chevron-down text-primary fs-5 transition-icon"></i>
+                                            <i class="bx bx-chevron-down text-muted"></i>
                                         </div>
                                     </td>
                                   </tr>';
-                        foreach ($puantajOdemeler as $puantaj) {
-                            // [Puantaj] Sonuç (Adet x Birim ₺) formatından temiz açıklama çıkar
-                            $aciklama = str_replace('[Puantaj] ', '', $puantaj->aciklama ?? '');
 
-                            // Parantez içindeki (Adet x Birim) kısmını ayırıp daha güzel gösterebiliriz
+                        $puantajGruplu = [];
+                        foreach ($puantajOdemeler as $puantaj) {
+                            $aciklama = str_replace('[Puantaj] ', '', $puantaj->aciklama ?? '');
+                            $anaMetin = trim($aciklama);
+                            $detayMetin = '';
+
                             if (preg_match('/^(.*?)\s*\((.*?)\)$/', $aciklama, $matches)) {
-                                $anaMetin = $matches[1];
-                                $detayMetin = $matches[2];
-                                $html .= '<tr class="puantaj-row collapse"><td class="ps-4 py-2"><div class="fw-medium">' . htmlspecialchars($anaMetin) . '</div><small class="text-muted">' . htmlspecialchars($detayMetin) . '</small></td><td class="text-end pe-3 text-success align-middle">+' . number_format($puantaj->tutar, 2, ',', '.') . ' ₺</td></tr>';
+                                $anaMetin = trim($matches[1]);
+                                $detayMetin = trim($matches[2]);
+                            }
+
+                            $adet = 0;
+                            $birimFiyat = '';
+                            if (preg_match('/(\d+)\s*Adet\s*x\s*([0-9\.,]+)\s*₺?/iu', $detayMetin, $detayMatch)) {
+                                $adet = intval($detayMatch[1]);
+                                $birimFiyat = trim($detayMatch[2]);
+                            } elseif (preg_match('/(\d+)\s*Adet/iu', $aciklama, $adetMatch)) {
+                                $adet = intval($adetMatch[1]);
+                            }
+
+                            $groupKey = mb_strtolower($anaMetin, 'UTF-8');
+                            if (!isset($puantajGruplu[$groupKey])) {
+                                $puantajGruplu[$groupKey] = [
+                                    'ana' => $anaMetin,
+                                    'adet' => 0,
+                                    'tutar' => 0,
+                                    'kayit_sayisi' => 0,
+                                    'birim_fiyatlar' => [],
+                                    'fiyat_kirilim' => []
+                                ];
+                            }
+
+                            $puantajGruplu[$groupKey]['adet'] += $adet;
+                            $puantajGruplu[$groupKey]['tutar'] += floatval($puantaj->tutar);
+                            $puantajGruplu[$groupKey]['kayit_sayisi']++;
+                            if ($birimFiyat !== '') {
+                                $puantajGruplu[$groupKey]['birim_fiyatlar'][$birimFiyat] = true;
+                            }
+
+                            $fiyatKey = $birimFiyat !== '' ? $birimFiyat : '__unknown__';
+                            if (!isset($puantajGruplu[$groupKey]['fiyat_kirilim'][$fiyatKey])) {
+                                $puantajGruplu[$groupKey]['fiyat_kirilim'][$fiyatKey] = [
+                                    'birim_fiyat' => $birimFiyat,
+                                    'adet' => 0,
+                                    'tutar' => 0,
+                                    'kayit_sayisi' => 0
+                                ];
+                            }
+                            $puantajGruplu[$groupKey]['fiyat_kirilim'][$fiyatKey]['adet'] += $adet;
+                            $puantajGruplu[$groupKey]['fiyat_kirilim'][$fiyatKey]['tutar'] += floatval($puantaj->tutar);
+                            $puantajGruplu[$groupKey]['fiyat_kirilim'][$fiyatKey]['kayit_sayisi']++;
+                        }
+
+                        uasort($puantajGruplu, function ($a, $b) {
+                            return $b['tutar'] <=> $a['tutar'];
+                        });
+
+                        foreach ($puantajGruplu as $grup) {
+                            $detayParts = [];
+                            if ($grup['adet'] > 0) {
+                                $detayParts[] = number_format($grup['adet'], 0, ',', '.') . ' Adet';
+                            }
+
+                            $birimFiyatlar = array_keys($grup['birim_fiyatlar']);
+                            $hasMultiplePrice = count($birimFiyatlar) > 1;
+
+                            if (count($birimFiyatlar) === 1) {
+                                $detayParts[] = 'x ' . $birimFiyatlar[0] . ' ₺';
+                            } elseif ($grup['kayit_sayisi'] > 1 && empty($detayParts)) {
+                                $detayParts[] = $grup['kayit_sayisi'] . ' kayıt';
+                            }
+
+                            if ($hasMultiplePrice) {
+                                $detayParts[] = '(birden fazla ücret tanımı)';
+                            }
+
+                            $detayText = !empty($detayParts) ? '<small class="text-muted">' . htmlspecialchars(implode(' ', $detayParts)) . '</small>' : '';
+
+                            $detailClass = 'puantaj-detail-' . substr(md5($grup['ana']), 0, 12);
+
+                            if ($hasMultiplePrice) {
+                                $html .= '<tr class="collapse show cursor-pointer ' . $puantajSectionClass . '" data-bs-toggle="collapse" data-bs-target=".' . $detailClass . '" aria-expanded="false"><td class="ps-4 py-2"><div class="fw-medium">' . htmlspecialchars($grup['ana']) . '</div>' . $detayText . '</td><td class="text-end pe-3 text-success align-middle"><div class="d-flex justify-content-end align-items-center gap-2"><span>+' . number_format($grup['tutar'], 2, ',', '.') . ' ₺</span><i class="bx bx-chevron-down text-muted"></i></div></td></tr>';
+
+                                $fiyatKirimlari = array_values($grup['fiyat_kirilim']);
+                                usort($fiyatKirimlari, function ($a, $b) {
+                                    return $b['tutar'] <=> $a['tutar'];
+                                });
+
+                                foreach ($fiyatKirimlari as $kirilim) {
+                                    $detayEtiket = [];
+                                    if ($kirilim['adet'] > 0) {
+                                        $detayEtiket[] = number_format($kirilim['adet'], 0, ',', '.') . ' Adet';
+                                    } elseif ($kirilim['kayit_sayisi'] > 0) {
+                                        $detayEtiket[] = $kirilim['kayit_sayisi'] . ' kayıt';
+                                    }
+
+                                    if (!empty($kirilim['birim_fiyat'])) {
+                                        $detayEtiket[] = 'x ' . $kirilim['birim_fiyat'] . ' ₺';
+                                    }
+
+                                    $html .= '<tr class="collapse ' . $detailClass . '"><td class="ps-5 py-2 small text-muted">' . htmlspecialchars(implode(' ', $detayEtiket)) . '</td><td class="text-end pe-3 small text-success">+' . number_format($kirilim['tutar'], 2, ',', '.') . ' ₺</td></tr>';
+                                }
                             } else {
-                                $html .= '<tr class="puantaj-row collapse"><td class="ps-4 py-2 small">' . htmlspecialchars($aciklama) . '</td><td class="text-end pe-3 text-success align-middle">+' . number_format($puantaj->tutar, 2, ',', '.') . ' ₺</td></tr>';
+                                $html .= '<tr class="collapse show ' . $puantajSectionClass . '"><td class="ps-4 py-2"><div class="fw-medium">' . htmlspecialchars($grup['ana']) . '</div>' . $detayText . '</td><td class="text-end pe-3 text-success align-middle">+' . number_format($grup['tutar'], 2, ',', '.') . ' ₺</td></tr>';
                             }
                         }
                     }
@@ -1152,10 +1247,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $icra = floatval($detayJson['odeme_dagilimi']['icra_kesintisi'] ?? 0);
                 }
 
-                // Üst sınır kontrolü (%25)
-                $maxSodexo = $toplam_alacak * 0.25;
+                // Üst sınır kontrolü (%20)
+                $maxSodexo = $toplam_alacak * 0.20;
                 if ($sodexo > $maxSodexo + 0.01) { // Küçük kuruş farklarını tolore etmek için
-                    throw new Exception('Sodexo tutarı toplam alacağın %25\'ini geçemez!');
+                    throw new Exception('Sodexo tutarı toplam alacağın %20\'ini geçemez!');
                 }
 
                 $elden = max(0, $net - $banka - $sodexo - $icra - $diger);

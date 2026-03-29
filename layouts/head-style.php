@@ -55,10 +55,8 @@ use App\Helper\Helper;
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <link href=" <?php echo Helper::base_url('assets/css/style.css?v=' . filemtime("assets/css/style.css")); ?>"
     id="app-style" rel="stylesheet" type="text/css" />
-<!-- sweet-alert -->
-<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
-<script src="assets/libs/jquery/jquery.3.7.1.min.js"></script>
+<!-- jQuery -->
+<script src="<?php echo Helper::base_url('assets/libs/jquery/jquery.3.7.1.min.js'); ?>"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 
 <!-- Flatpickr -->
