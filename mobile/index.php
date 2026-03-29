@@ -625,7 +625,7 @@ try {
                         class="px-5 py-2.5 bg-primary text-white rounded-full font-semibold text-sm active:scale-95 transition-transform">
                         Ana Sayfaya Dön
                     </a>
-                    <a href="?force_desktop=1&p=<?= urlencode($page) ?>"
+                    <a href="?force_desktop=1&p=home"
                         class="px-5 py-2.5 bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-white rounded-full font-semibold text-sm active:scale-95 transition-transform">
                         Masaüstü Görünümü
                     </a>
@@ -675,7 +675,7 @@ try {
         <div class="px-4 pb-4">
 
             <!-- Masaüstü Görünümü -->
-            <a href="?force_desktop=1&p=<?= urlencode($page) ?>"
+            <a href="?force_desktop=1&p=home"
                 class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors mb-1">
                 <div class="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
                     <span class="material-symbols-outlined text-blue-600 text-lg">desktop_windows</span>

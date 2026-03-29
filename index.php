@@ -36,14 +36,17 @@ if (Gate::isSuperAdmin() && isset($_GET['mobile']) && $_GET['mobile'] === '1') {
 if (!isset($_SESSION['force_desktop'])) {
     $ua = $_SERVER['HTTP_USER_AGENT'] ?? '';
     $chMobile = $_SERVER['HTTP_SEC_CH_UA_MOBILE'] ?? '';
-    
-    // PHP tarafında sadece kesin mobil cihazları yakalayalım (Android/iPhone vb.)
-    // Sec-CH-UA-Mobile Chrome desktop'ta bazen ?1 gönderebilir (emülasyon vb.), bu yüzden preg_match daha güvenli.
-    $isMobileUa = preg_match('/Mobile|Android|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i', $ua);
-    $isMobileCh = ($chMobile === '?1');
 
-    // Eğer masaüstü genişliğindeki bir Chrome yanlışlıkla mobile/?1 bildiriyorsa döngüye girmemek için check
-    if ($isMobileUa || ($isMobileCh && !strpos($ua, 'Windows NT'))) {
+    // Sunucu tarafında sadece telefon benzeri cihazları yakalayalım.
+    // Tablet/desktop cihazlar ilk yükte masaüstünü açar; <=1024 ise JS tarafı mobile yönlendirir.
+    $isPhoneUa = preg_match('/iPhone|iPod|IEMobile|Opera Mini|Windows Phone|BlackBerry/i', $ua)
+        || (stripos($ua, 'Android') !== false && stripos($ua, 'Mobile') !== false);
+    $isMobileCh = ($chMobile === '?1');
+    $isTabletUa = preg_match('/iPad|Tablet/i', $ua)
+        || (stripos($ua, 'Android') !== false && stripos($ua, 'Mobile') === false);
+
+    // Sec-CH-UA-Mobile değeri tek başına yeterli değil; tabletleri hariç tutup sadece telefonlar için kullan.
+    if ($isPhoneUa || ($isMobileCh && !$isTabletUa && stripos($ua, 'Windows NT') === false)) {
         $p = urlencode($_GET['p'] ?? 'home');
         header("Location: mobile/index.php?p=$p");
         exit();
