@@ -82,6 +82,16 @@ foreach ($all_mobile_menus as $pKey => $mData) {
     // Yardım için alternatif link kontrolü
     if ($pKey === 'yardim' && !$hasAccess) {
         $hasAccess = in_array('yardim/user-list', $permitted_links);
+        
+        // Eğer hala yoksa, içinde 'yardim' geçen herhangi bir link var mı bak (daha esnek kontrol)
+        if (!$hasAccess) {
+            foreach ($permitted_links as $link) {
+                if (strpos($link, 'yardim') !== false) {
+                    $hasAccess = true;
+                    break;
+                }
+            }
+        }
     }
 
     if ($hasAccess) {
