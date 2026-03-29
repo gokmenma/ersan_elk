@@ -20,6 +20,13 @@ class BildirimModel extends Model
      */
     public function createNotification($userId, $title, $message, $link = null, $icon = 'bell', $color = 'primary')
     {
+        $userModel = new \App\Model\UserModel();
+        $user = $userModel->find($userId);
+
+        if (!$user || $user->durum != 'Aktif') {
+            return false;
+        }
+
         return $this->saveWithAttr([
             'user_id' => $userId,
             'title' => $title,

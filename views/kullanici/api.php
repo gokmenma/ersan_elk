@@ -107,3 +107,22 @@ if ($_POST["action"] == "kullanici-sil") {
         'message' => $message
     ]);
 }
+
+// Kullanıcı durum değiştirme işlemi
+if ($_POST["action"] == "kullanici-durum-degistir") {
+    $id = Security::decrypt($_POST['id']);
+    $status_new = $_POST['status'];
+
+    try {
+        $User->updateStatus($id, $status_new);
+        $status = "success";
+        $message = "Kullanıcı durumu başarıyla güncellendi.";
+    } catch (PDOException $ex) {
+        $status = "error";
+        $message = $ex->getMessage();
+    }
+    echo json_encode([
+        'status' => $status,
+        'message' => $message
+    ]);
+}

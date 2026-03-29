@@ -100,9 +100,9 @@ $users = $User->getUsers();
                                     <td class="text-center"><?php echo $user->izin_onay_sirasi ?></td>
                                     <td class="text-center">
                                         <?php if ($user->durum == 'Aktif'): ?>
-                                            <span class="badge bg-success">Aktif</span>
+                                            <span class="badge bg-success durum-degistir" data-id="<?php echo $enc_id; ?>" data-status="Pasif" style="cursor: pointer;">Aktif</span>
                                         <?php else: ?>
-                                            <span class="badge bg-danger">Pasif</span>
+                                            <span class="badge bg-danger durum-degistir" data-id="<?php echo $enc_id; ?>" data-status="Aktif" style="cursor: pointer;">Pasif</span>
                                         <?php endif; ?>
                                     </td>
                                     <td><?php echo $user->created_at ?></td>

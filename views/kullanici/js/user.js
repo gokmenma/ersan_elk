@@ -191,3 +191,40 @@ $(document).on("click", ".kullanici-sil", function () {
       }
     });
 });
+
+$(document).on("click", ".durum-degistir", function () {
+  var id = $(this).data("id");
+  var status = $(this).data("status");
+
+  swal
+    .fire({
+      title: "Durum Değiştirilsin mi?",
+      text: "Kullanıcı durumu " + status + " olarak güncellenecektir.",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonText: "Evet, değiştir",
+      cancelButtonText: "Hayır, vazgeç",
+    })
+    .then((result) => {
+      if (result.isConfirmed) {
+        $.post(
+          url,
+          {
+            action: "kullanici-durum-degistir",
+            id: id,
+            status: status,
+          },
+          function (data) {
+            if (data.status == "success") {
+              swal.fire("Başarılı!", data.message, "success").then(() => {
+                location.reload();
+              });
+            } else {
+              swal.fire("Hata!", data.message, "error");
+            }
+          },
+          "json",
+        );
+      }
+    });
+});

@@ -102,6 +102,16 @@
                 <label class="form-check-label" for="layout-mode-dark">Koyu</label>
             </div>
 
+            <h6 class="mt-4 mb-3 pt-2">Masaüstü / Mobil Görünüm</h6>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="device-view" id="device-view-desktop" value="desktop">
+                <label class="form-check-label" for="device-view-desktop">Masaüstü</label>
+            </div>
+            <div class="form-check form-check-inline">
+                <input class="form-check-input" type="radio" name="device-view" id="device-view-mobile" value="mobile">
+                <label class="form-check-label" for="device-view-mobile">Mobil</label>
+            </div>
+
             <h6 class="mt-4 mb-3 pt-2">Sayfa Genişliği</h6>
 
             <div class="form-check form-check-inline">

@@ -439,10 +439,13 @@ File: Main Js File
       return;
     });
 
+    const currentLayout = localStorage.getItem("data-layout");
+    const currentOrientation = localStorage.getItem("data-orientation");
+
     if (
-      (body.hasAttribute("data-layout") &&
-        body.getAttribute("data-layout") == "horizontal") ||
-      localStorage.getItem("data-orientation") === "landscape"
+        currentLayout === "horizontal" || 
+        currentOrientation === "landscape" || 
+        (body.hasAttribute("data-layout") && body.getAttribute("data-layout") == "horizontal")
     ) {
       updateRadio("layout-horizontal");
       $(".sidebar-setting").hide();
@@ -596,6 +599,13 @@ File: Main Js File
       ? updateRadio("layout-direction-rtl")
       : updateRadio("layout-direction-ltr");
 
+    // device view initialization
+    if (window.location.pathname.includes("/mobile/")) {
+      updateRadio("device-view-mobile");
+    } else {
+      updateRadio("device-view-desktop");
+    }
+
     // on theme mode change
     $("input[name='theme-mode']").on("change", function () {
       var val = $(this).val();
@@ -607,32 +617,32 @@ File: Main Js File
       document.documentElement.style.removeProperty("--bs-primary-rgb");
     });
 
-    // on layou change
+    // on layout change
     $("input[name='layout']").on("change", function () {
       var val = $(this).val();
+      const isVertical = (val === "vertical");
+      const layoutValue = isVertical ? "vertical" : "horizontal";
+      const orientationValue = isVertical ? "portrait" : "landscape";
 
       // Mobile orientation handling
       if (window.innerWidth < 992) {
         if (val === "horizontal") {
           document.documentElement.setAttribute("data-orientation", "landscape");
           localStorage.setItem("data-orientation", "landscape");
-          // If we are rotating on mobile, we might not want to reload the page
-          // as it can be jarring. However, the template usually expects a reload for layout change.
-          // For a better experience, we'll just toggle the orientation class.
+          localStorage.setItem("data-layout", "horizontal");
           return;
         } else {
           document.documentElement.removeAttribute("data-orientation");
           localStorage.setItem("data-orientation", "portrait");
+          localStorage.setItem("data-layout", "vertical");
         }
       }
 
-      const orientationValue = val === "horizontal" ? "landscape" : "portrait";
       document.documentElement.setAttribute("data-orientation", orientationValue);
       localStorage.setItem("data-orientation", orientationValue);
       
-      // We'll also update the data-layout attribute on body to reflect the menu style choice
-      // without reloading, even if the full menu structure won't change immediately.
-      document.body.setAttribute("data-layout", val === "vertical" ? "vertical" : "horizontal");
+      localStorage.setItem("data-layout", layoutValue);
+      document.body.setAttribute("data-layout", layoutValue);
     });
 
     // on layout mode change
@@ -678,6 +688,35 @@ File: Main Js File
           updateRadio("sidebar-color-dark");
         }
       }
+    });
+
+    // on layout mode change
+    $("input[name='layout-mode']").on("change", function () {
+      var val = $(this).val();
+      html.setAttribute("data-bs-theme", val);
+      localStorage.setItem("data-bs-theme", val);
+      if (val == "dark") {
+        document.body.setAttribute("data-topbar", "dark");
+        document.body.setAttribute("data-sidebar", "dark");
+        localStorage.setItem("data-topbar", "dark");
+        localStorage.setItem("data-sidebar", "dark");
+      } else {
+        document.body.setAttribute("data-topbar", "light");
+        document.body.setAttribute("data-sidebar", "light");
+        localStorage.setItem("data-topbar", "light");
+        localStorage.setItem("data-sidebar", "light");
+      }
+    });
+
+    // on device view change
+    $("input[name='device-view']").on("change", function () {
+        var val = $(this).val();
+        if (val === "mobile") {
+            window.location.href = window.location.pathname.includes("/mobile/") ? "index.php?p=home" : "mobile/index.php?p=home";
+        } else {
+            // If in mobile subfolder, go back one level, otherwise go to index.php
+            window.location.href = window.location.pathname.includes("/mobile/") ? "../index.php?force_desktop=1&p=home" : "index.php?force_desktop=1&p=home";
+        }
     });
 
     // on layout width change

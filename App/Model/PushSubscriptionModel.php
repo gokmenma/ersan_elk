@@ -79,7 +79,11 @@ class PushSubscriptionModel extends Model
      */
     public function getSubscriptionsByPersonel($personelId)
     {
-        $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE personel_id = ?");
+        $stmt = $this->db->prepare("SELECT ps.* FROM {$this->table} ps 
+                                   JOIN personel p ON ps.personel_id = p.id 
+                                   WHERE ps.personel_id = ? 
+                                   AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '0000-00-00')
+                                   AND p.silinme_tarihi IS NULL");
         $stmt->execute([$personelId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC); // WebPush kütüphanesi array bekler
     }
@@ -89,7 +93,10 @@ class PushSubscriptionModel extends Model
      */
     public function getSubscriptionsByUser($userId)
     {
-        $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE user_id = ?");
+        $stmt = $this->db->prepare("SELECT ps.* FROM {$this->table} ps 
+                                   JOIN users u ON ps.user_id = u.id 
+                                   WHERE ps.user_id = ? 
+                                   AND u.durum = 'Aktif'");
         $stmt->execute([$userId]);
         return $stmt->fetchAll(PDO::FETCH_ASSOC);
     }

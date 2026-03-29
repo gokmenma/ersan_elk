@@ -188,7 +188,7 @@ class UserModel extends Model
     /** İzin onayı yapacak ilk personeli getir */
     public function getIzinOnayPersonel()
     {
-        $query = $this->db->prepare("SELECT * FROM $this->table where izin_onayi_yapacakmi = ?
+        $query = $this->db->prepare("SELECT * FROM $this->table where izin_onayi_yapacakmi = ? AND durum = 'Aktif'
         ORDER BY izin_onay_sirasi LIMIT 1");
         $query->execute(["Evet"]);
         return $query->fetch(PDO::FETCH_OBJ);
@@ -213,7 +213,7 @@ class UserModel extends Model
         }
 
         $column = $column_map[$talepTuru];
-        $query = $this->db->prepare("SELECT * FROM $this->table WHERE $column = ? AND email_adresi IS NOT NULL AND email_adresi != ''");
+        $query = $this->db->prepare("SELECT * FROM $this->table WHERE $column = ? AND durum = 'Aktif' AND email_adresi IS NOT NULL AND email_adresi != ''");
         $query->execute(['Evet']);
         return $query->fetchAll(PDO::FETCH_OBJ);
     }
@@ -238,7 +238,7 @@ class UserModel extends Model
 
         $column = $column_map[$talepTuru];
         // Email adresi zorunluluğu yok
-        $query = $this->db->prepare("SELECT * FROM $this->table WHERE $column = ?");
+        $query = $this->db->prepare("SELECT * FROM $this->table WHERE $column = ? AND durum = 'Aktif'");
         $query->execute(['Evet']);
         return $query->fetchAll(PDO::FETCH_OBJ);
     }
@@ -263,11 +263,11 @@ class UserModel extends Model
         }
 
         $column = $column_map[$talepTuru];
-        $query = $this->db->prepare("SELECT $column FROM $this->table WHERE id = ?");
+        $query = $this->db->prepare("SELECT $column, durum FROM $this->table WHERE id = ?");
         $query->execute([$userId]);
         $result = $query->fetch(PDO::FETCH_OBJ);
 
-        return $result && $result->$column === 1;
+        return $result && $result->$column == 'Evet' && $result->durum == 'Aktif';
     }
 
     /**Giriş Yapan kullanıcı superadmin mi */
@@ -284,6 +284,18 @@ class UserModel extends Model
         $result = $query->fetch(PDO::FETCH_OBJ);
 
         return $result && (int) $result->count > 0;
+    }
+
+    /**
+     * Kullanıcı durumunu günceller.
+     * @param int $id Kullanıcı ID'si
+     * @param string $status Yeni durum ('Aktif' veya 'Pasif')
+     * @return bool
+     */
+    public function updateStatus(int $id, string $status): bool
+    {
+        $sql = $this->db->prepare("UPDATE $this->table SET durum = ? WHERE id = ?");
+        return $sql->execute([$status, $id]);
     }
 
 

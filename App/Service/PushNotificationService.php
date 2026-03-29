@@ -139,7 +139,7 @@ class PushNotificationService
             $userModel = new \App\Model\UserModel();
             $user = $userModel->find($userId);
 
-            if ($user && !empty($user->email_adresi)) {
+            if ($user && $user->durum == 'Aktif' && !empty($user->email_adresi)) {
                 $targetEmail = trim($user->email_adresi);
                 $subject = $payload['title'] ?? 'Yeni Bildirim';
                 $body = $payload['body'] ?? '';
@@ -184,7 +184,7 @@ class PushNotificationService
             $userModel = new \App\Model\UserModel();
             $user = $userModel->find($personelId);
 
-            if ($user && !empty($user->email_adresi)) {
+            if ($user && $user->durum == 'Aktif' && !empty($user->email_adresi)) {
                 $targetEmail = trim($user->email_adresi);
                 $subject = $payload['title'] ?? 'Yeni Bildirim';
                 $body = $payload['body'] ?? '';

@@ -59,6 +59,33 @@ if ($_POST['action'] == 'email_gonder') {
         throw new Exception("Geçerli bir alıcı listesi gönderilmedi.");
     }
 
+    // Pasif kullanıcıları filtrele
+    $UserModel = new \App\Model\UserModel();
+    $activeToEmail = [];
+    foreach ($toEmail as $email) {
+        $email = trim($email);
+        $user = $UserModel->checkUser($email); // checkUser email_adresi'ne de bakar
+        if ($user) {
+            if ($user->durum == 'Aktif') {
+                $activeToEmail[] = $email;
+            }
+        } else {
+            // Sistemde kayıtlı olmayan bir mail ise gönderime izin ver (manuel giriş vs.)
+            $activeToEmail[] = $email;
+        }
+    }
+    
+    // Eğer tüm alıcılar pasif ise ve liste boşaldıysa
+    if (empty($activeToEmail)) {
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Alıcıların tamamı pasif olduğu için gönderim yapılmadı.'
+        ]);
+        exit;
+    }
+    
+    $toEmail = $activeToEmail;
+
     // Attachments (optional)
     // Accept 
     //  - attachments[]  (multiple)
