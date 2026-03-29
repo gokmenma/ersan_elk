@@ -10,6 +10,8 @@ require_once dirname(__DIR__) . '/vendor/autoload.php';
 $dotenv = Dotenv\Dotenv::createImmutable(dirname(__DIR__));
 $dotenv->load();
 
+use App\Model\UserModel;
+
 // Proje kök dizinine geç (view include'larının relative PHP path'leri için)
 chdir(dirname(__DIR__));
 
@@ -19,6 +21,15 @@ session_start();
 $currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
 if ($currentUserId <= 0 || !isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
     header("Location: ../login.php");
+    exit();
+}
+
+// User status check (kicks out passive users)
+$StatusUserModel = new UserModel();
+$currentUserStatus = $StatusUserModel->find($currentUserId);
+if (!$currentUserStatus || ($currentUserStatus->durum ?? 'Aktif') === 'Pasif') {
+    session_destroy();
+    header("Location: ../login.php?status=inactive");
     exit();
 }
 
@@ -134,7 +145,6 @@ $hasCariPermission = isset($user_mobile_menus['cari-takip']);
 $hasGelirGiderPermission = isset($user_mobile_menus['gelir-gider']);
 
 // Kullanıcının özel sıralamasını al
-use App\Model\UserModel;
 $UserModel = new UserModel();
 $userObj = $UserModel->find($currentUserId);
 $customOrder = (!empty($userObj->mobile_menu_order)) ? explode(',', $userObj->mobile_menu_order) : [];

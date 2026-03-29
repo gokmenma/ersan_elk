@@ -113,6 +113,14 @@ if ($currentUserId <= 0 || !isset($_SESSION['firma_id'])) {
     exit();
 }
 
+// Durum kontrolü: Pasif ise çıkış yap
+$StatusCheckUser = new \App\Model\UserModel();
+$currentUserStatusCheck = $StatusCheckUser->find($currentUserId);
+if (!$currentUserStatusCheck || ($currentUserStatusCheck->durum ?? 'Aktif') === 'Pasif') {
+    header("Location: logout.php?status=inactive");
+    exit();
+}
+
 
 //echo "sube id : " . $_SESSION['sube_id'];
 

@@ -132,6 +132,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
+$error = '';
+
+// Check if user was kicked out for being passive
+if (isset($_GET['status']) && $_GET['status'] === 'inactive') {
+    $error = 'Hesabınız pasif duruma getirildiği için oturumunuz sonlandırıldı.';
+}
+
 // Form gönderilmişse
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     $login_input = $_POST['login_input'] ?? '';
@@ -156,39 +163,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
         $personel = $stmt->fetch(PDO::FETCH_OBJ);
 
         if ($personel) {
-            // Şifre kontrolü - hash'lenmiş şifre ile doğrula
-
-
-            $dbPassword = $personel->sifre ?? '';
-
-            // Şifre boşsa veya null ise giriş yapılamaz
-            if (empty($dbPassword)) {
-                $error = 'Bu hesap için henüz şifre belirlenmemiş. Lütfen yöneticinizle iletişime geçin.';
-            } elseif (password_verify($password, $dbPassword)) {
-                $_SESSION['personel_id'] = $personel->id;
-                $_SESSION['personel_tc'] = $personel->tc_kimlik_no;
-                $_SESSION['personel_adi'] = $personel->adi_soyadi;
-
-                // Log the successful login
-                try {
-                    $girisLogModel = new PersonelGirisLogModel();
-                    $ip = $_SERVER['REMOTE_ADDR'] ?? '';
-                    $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
-                    $girisLogModel->logLogin($personel->id, $ip, $userAgent);
-                } catch (\Exception $e) {
-                    error_log("Login log error: " . $e->getMessage());
-                }
-
-                // Beni Hatırla
-                if (isset($_POST['remember'])) {
-                    $token = base64_encode($personel->id . ':' . hash_hmac('sha256', $personel->id . $personel->sifre, 'ErsanElektrikPWASecretKey'));
-                    setcookie('remember_token', $token, time() + (86400 * 30), "/");
-                }
-
-                header("Location: index.php");
-                exit();
+            // Durum Kontrolü (İşten çıkış tarihi varsa pasiftir)
+            $isPassive = (!empty($personel->isten_cikis_tarihi) && $personel->isten_cikis_tarihi !== '0000-00-00');
+            
+            if ($isPassive) {
+                $error = 'Hesabınız pasif durumdadır. Lütfen yönetici ile iletişime geçiniz.';
             } else {
-                $error = 'Şifre hatalı.';
+                // Şifre kontrolü - hash'lenmiş şifre ile doğrula
+                $dbPassword = $personel->sifre ?? '';
+                
+                // Şifre boşsa veya null ise giriş yapılamaz
+                if (empty($dbPassword)) {
+                    $error = 'Bu hesap için henüz şifre belirlenmemiş. Lütfen yöneticinizle iletişime geçin.';
+                } elseif (password_verify($password, $dbPassword)) {
+                    $_SESSION['personel_id'] = $personel->id;
+                    $_SESSION['personel_tc'] = $personel->tc_kimlik_no;
+                    $_SESSION['personel_adi'] = $personel->adi_soyadi;
+
+                    // Log the successful login
+                    try {
+                        $girisLogModel = new PersonelGirisLogModel();
+                        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+                        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+                        $girisLogModel->logLogin($personel->id, $ip, $userAgent);
+                    } catch (\Exception $e) {
+                        error_log("Login log error: " . $e->getMessage());
+                    }
+
+                    // Beni Hatırla
+                    if (isset($_POST['remember'])) {
+                        $token = base64_encode($personel->id . ':' . hash_hmac('sha256', $personel->id . $personel->sifre, 'ErsanElektrikPWASecretKey'));
+                        setcookie('remember_token', $token, time() + (86400 * 30), "/");
+                    }
+
+                    header("Location: index.php");
+                    exit();
+                } else {
+                    $error = 'Şifre hatalı.';
+                }
             }
         } else {
             $error = 'Bu bilgilerle kayıtlı personel bulunamadı.';

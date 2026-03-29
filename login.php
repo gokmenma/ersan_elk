@@ -69,6 +69,11 @@ if (isset($_COOKIE["remember_me"])) {
 $username = $password = "";
 $username_err = $password_err = "";
 
+// Check if user was kicked out for being passive
+if (isset($_GET["status"]) && $_GET["status"] === "inactive") {
+    $username_err = "Hesabınız pasif duruma getirildiği için oturumunuz sonlandırıldı.";
+}
+
 
 
 // Processing form data when form is submitted

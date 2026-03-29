@@ -65,10 +65,12 @@ $personel_id = $_SESSION['personel_id'];
 $PersonelModel = new PersonelModel();
 $personel = $PersonelModel->find($personel_id);
 
-// Personel bulunamazsa oturumu kapat ve login'e yönlendir
-if (!$personel) {
+// Personel bulunamazsa veya pasifse oturumu kapat ve login'e yönlendir
+$isPassive = ($personel && !empty($personel->isten_cikis_tarihi) && $personel->isten_cikis_tarihi !== '0000-00-00');
+if (!$personel || $isPassive) {
     session_destroy();
-    header("Location: login.php");
+    $statusParam = $isPassive ? '?status=inactive' : '';
+    header("Location: login.php" . $statusParam);
     exit();
 }
 

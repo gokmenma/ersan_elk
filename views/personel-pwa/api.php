@@ -41,9 +41,12 @@ $personel_id = $_SESSION['personel_id'] ?? 0;
 if ($personel_id > 0) {
     $PersonelModel = new PersonelModel();
     $personel = $PersonelModel->find($personel_id);
-    if (!$personel) {
+    $isPassive = ($personel && !empty($personel->isten_cikis_tarihi) && $personel->isten_cikis_tarihi !== '0000-00-00');
+
+    if (!$personel || $isPassive) {
         session_destroy();
-        echo json_encode(['success' => false, 'error' => 'Session expired', 'redirect' => 'login.php']);
+        $msg = $isPassive ? 'Hesabınız pasif durumdadır.' : 'Oturum süresi doldu';
+        echo json_encode(['success' => false, 'error' => $msg, 'redirect' => 'login.php']);
         exit;
     }
     // Firma ID'yi oturuma ekleyelim (Model'ler için gerekli)
