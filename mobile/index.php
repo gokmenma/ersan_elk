@@ -65,6 +65,7 @@ $all_mobile_menus = [
     'personel'    => ['label' => 'Personel',    'icon' => 'group', 'color_bg' => 'bg-indigo-100 dark:bg-indigo-900/30', 'color_icon' => 'text-indigo-600', 'link_match' => 'personel/list'],
     'gorevler'    => ['label' => 'Görevler',    'icon' => 'task_alt', 'color_bg' => 'bg-green-100 dark:bg-green-900/30', 'color_icon' => 'text-green-600', 'link_match' => 'gorevler/list'],
     'talepler'    => ['label' => 'Talepler',    'icon' => 'assignment', 'color_bg' => 'bg-orange-100 dark:bg-orange-900/30', 'color_icon' => 'text-orange-600', 'link_match' => 'talepler/list'],
+    'yardim'      => ['label' => 'Destek',      'icon' => 'support_agent', 'color_bg' => 'bg-indigo-100 dark:bg-indigo-900/30', 'color_icon' => 'text-indigo-600', 'link_match' => 'yardim/list'],
 ];
 
 $user_mobile_menus = [];
@@ -74,7 +75,16 @@ $user_mobile_menus['home'] = $all_mobile_menus['home'];
 // Diğer menülerin yetkisi var mı?
 foreach ($all_mobile_menus as $pKey => $mData) {
     if ($pKey === 'home') continue;
-    if (in_array($mData['link_match'], $permitted_links)) {
+    
+    // Normal link kontrolü
+    $hasAccess = in_array($mData['link_match'], $permitted_links);
+    
+    // Yardım için alternatif link kontrolü
+    if ($pKey === 'yardim' && !$hasAccess) {
+        $hasAccess = in_array('yardim/user-list', $permitted_links);
+    }
+
+    if ($hasAccess) {
         $user_mobile_menus[$pKey] = $mData;
     }
 }
@@ -101,6 +111,7 @@ $page_titles = [
     'hesap-hareketleri' => 'Hesap Hareketleri',
     'talepler'    => 'Talepler',
     'raporlar'    => 'Raporlar',
+    'yardim'      => 'Yardım ve Destek',
 ];
 
 $currentTitle = $page_titles[$page] ?? 'Ana Sayfa';
@@ -561,7 +572,7 @@ try {
 
     <?php 
     // Kendi özel (gradient vb.) başlık yapısı olan veya üst bar istenmeyen sayfalar
-    $no_header_pages = ['home', 'hesap-hareketleri', 'arac', 'gorevler', 'talepler', 'personel', 'personel-duzenle'];
+    $no_header_pages = ['home', 'hesap-hareketleri', 'arac', 'gorevler', 'talepler', 'personel', 'personel-duzenle', 'yardim'];
     if (!in_array($page, $no_header_pages)): 
     ?>
     <!-- Sayfa Başlığı (Gradient) -->

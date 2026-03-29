@@ -258,6 +258,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-kaydet") {
 
         $data = [
             "id" => $id,
+            "firma_id" => $firma_id,
             "type" => 0, // İş türü için type 0
             "grup" => "is_turu",
             "is_turu_ucret" => $yeniUcret,
@@ -272,7 +273,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-kaydet") {
 
         if ($id == 0) {
             $data["kayit_yapan"] = $_SESSION["id"] ?? 0;
-            $plainId = $Tanimlamalar->saveWithAttr($data);
+            $plainId = intval(Security::decrypt($Tanimlamalar->saveWithAttr($data)));
         } else {
             $Tanimlamalar->saveWithAttr($data);
             $plainId = $id;
