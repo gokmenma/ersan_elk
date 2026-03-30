@@ -46,6 +46,9 @@ $(document).ready(function () {
             { data: "bakiye", className: "text-end" },
             { data: "actions", orderable: false, searchable: false }
         ],
+        createdRow: function(row, data, dataIndex) {
+            $(row).find('td:not(:last-child)').attr('style', 'cursor: pointer !important');
+        },
         order: [[1, 'asc']],
         buttons: [
             {
@@ -56,6 +59,13 @@ $(document).ready(function () {
                 }
             }
         ]
+    });
+ 
+    // Satır Tıklama (Hareketlere Git) - Komple Satır (İşlem Sütunu Hariç)
+    $('#cariTable tbody').on('click', 'tr td:not(:last-child)', function (e) {
+        if ($(e.target).closest('a, button, .dropdown-menu').length > 0) return;
+        const href = $(this).closest('tr').find('a.hesap-hareketleri').attr('href');
+        if (href) window.location.href = href;
     });
 
     // Excel Aktar Butonu
