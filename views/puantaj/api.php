@@ -3571,8 +3571,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 }
 
 if (isset($_GET['action']) && $_GET['action'] === 'get-okuma-comparison') {
-    $periodsReq = $_GET['periods'] ?? [];
-    if (!is_array($periodsReq)) $periodsReq = array_filter(explode(',', $periodsReq));
+    $periodsInput = $_GET['comparison_periods'] ?? $_GET['periods'] ?? [];
+    if (is_string($periodsInput)) {
+        $periodsReq = array_filter(explode(',', $periodsInput));
+    } else if (is_array($periodsInput)) {
+        $periodsReq = $periodsInput;
+    } else {
+        $periodsReq = [];
+    }
+    // Deep clean and ensure unique month strings
+    $periodsReq = array_values(array_unique(array_filter(array_map('trim', $periodsReq))));
+    
     $personelId = $_GET['personel_id'] ?? '';
     $firmaId = $_SESSION['firma_id'] ?? 0;
 
@@ -3604,21 +3613,17 @@ if (isset($_GET['action']) && $_GET['action'] === 'get-okuma-comparison') {
     $stmt->execute($params);
     $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
     
-    $periods = [];
     $types = [];
     $matrix = [];
     
     foreach ($rows as $row) {
         $type = $row->status;
-        if (!in_array($row->period, $periods)) $periods[] = $row->period;
         if (!in_array($type, $types)) $types[] = $type;
         $matrix[$type][$row->period] = (int)$row->adet;
     }
 
-    // Ensure all requested periods are in the response even if no data
-    foreach ($periodsReq as $p) {
-        if (!in_array($p, $periods)) $periods[] = $p;
-    }
+    // Always return all requested periods in order
+    $periods = $periodsReq;
     sort($periods);
     
     header('Content-Type: application/json');
@@ -3627,8 +3632,16 @@ if (isset($_GET['action']) && $_GET['action'] === 'get-okuma-comparison') {
 }
 
 if (isset($_GET['action']) && $_GET['action'] === 'get-puantaj-comparison') {
-    $periodsReq = $_GET['periods'] ?? [];
-    if (!is_array($periodsReq)) $periodsReq = array_filter(explode(',', $periodsReq));
+    $periodsInput = $_GET['comparison_periods'] ?? $_GET['periods'] ?? [];
+    if (is_string($periodsInput)) {
+        $periodsReq = array_filter(explode(',', $periodsInput));
+    } else if (is_array($periodsInput)) {
+        $periodsReq = $periodsInput;
+    } else {
+        $periodsReq = [];
+    }
+    $periodsReq = array_values(array_unique(array_filter(array_map('trim', $periodsReq))));
+    
     $personelId = $_GET['personel_id'] ?? '';
     $firmaId = $_SESSION['firma_id'] ?? 0;
 
@@ -3662,20 +3675,16 @@ if (isset($_GET['action']) && $_GET['action'] === 'get-puantaj-comparison') {
     $stmt->execute($params);
     $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
     
-    $periods = [];
     $types = [];
     $matrix = [];
     
     foreach ($rows as $row) {
         $type = $row->sonuc ?: 'Belirtilmemiş';
-        if (!in_array($row->period, $periods)) $periods[] = $row->period;
         if (!in_array($type, $types)) $types[] = $type;
         $matrix[$type][$row->period] = (int)$row->adet;
     }
 
-    foreach ($periodsReq as $p) {
-        if (!in_array($p, $periods)) $periods[] = $p;
-    }
+    $periods = $periodsReq;
     sort($periods);
     
     header('Content-Type: application/json');
@@ -3684,8 +3693,16 @@ if (isset($_GET['action']) && $_GET['action'] === 'get-puantaj-comparison') {
 }
 
 if (isset($_GET['action']) && $_GET['action'] === 'get-sayac-comparison') {
-    $periodsReq = $_GET['periods'] ?? [];
-    if (!is_array($periodsReq)) $periodsReq = array_filter(explode(',', $periodsReq));
+    $periodsInput = $_GET['comparison_periods'] ?? $_GET['periods'] ?? [];
+    if (is_string($periodsInput)) {
+        $periodsReq = array_filter(explode(',', $periodsInput));
+    } else if (is_array($periodsInput)) {
+        $periodsReq = $periodsInput;
+    } else {
+        $periodsReq = [];
+    }
+    $periodsReq = array_values(array_unique(array_filter(array_map('trim', $periodsReq))));
+    
     $personelId = $_GET['personel_id'] ?? '';
     $firmaId = $_SESSION['firma_id'] ?? 0;
 
@@ -3717,20 +3734,16 @@ if (isset($_GET['action']) && $_GET['action'] === 'get-sayac-comparison') {
     $stmt->execute($params);
     $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
     
-    $periods = [];
     $types = [];
     $matrix = [];
     
     foreach ($rows as $row) {
         $type = $row->sonuc;
-        if (!in_array($row->period, $periods)) $periods[] = $row->period;
         if (!in_array($type, $types)) $types[] = $type;
         $matrix[$type][$row->period] = (int)$row->adet;
     }
 
-    foreach ($periodsReq as $p) {
-        if (!in_array($p, $periods)) $periods[] = $p;
-    }
+    $periods = $periodsReq;
     sort($periods);
     
     header('Content-Type: application/json');

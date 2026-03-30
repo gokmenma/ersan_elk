@@ -813,7 +813,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
 
 <!-- Endeks İstatistik Modal -->
 <div class="modal fade" id="statsModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Bölge Bazlı Okuma İstatistikleri</h5>

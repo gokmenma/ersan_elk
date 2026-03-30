@@ -52,16 +52,13 @@ for ($i = 0; $i <= 6; $i++) {
                 <label class="form-label fw-bold small mb-1">
                     <i class="bx bx-calendar me-1"></i> Karşılaştırılacak Dönemleri Seçin
                 </label>
-                <div class="input-group input-group-merge">
-                    <span class="input-group-text"><i class="bx bx-calendar"></i></span>
-                    <select id="selectComparisonPeriodsPuantaj" class="form-select select2" multiple data-placeholder="Dönem(ler) seçiniz...">
-                        <?php foreach ($periodsSelection as $p): ?>
-                            <option value="<?= $p['val'] ?>" <?= ($p['val'] == date('Y-m')) ? 'selected' : '' ?>>
-                                <?= $p['label'] ?>
-                            </option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
+                <select id="selectComparisonPeriodsPuantaj" class="form-select select2" multiple data-placeholder="Dönem(ler) seçiniz...">
+                    <?php foreach ($periodsSelection as $p): ?>
+                        <option value="<?= $p['val'] ?>" <?= ($p['val'] == date('Y-m')) ? 'selected' : '' ?>>
+                            <?= $p['label'] ?>
+                        </option>
+                    <?php endforeach; ?>
+                </select>
             </div>
             <div class="col-md-3">
                 <button type="button" class="btn btn-primary w-100" id="btnRefreshPuantajComparison">
@@ -124,20 +121,20 @@ for ($i = 0; $i <= 6; $i++) {
         let puantajComparisonChart = null;
 
         function loadPuantajComparison() {
-            const selectedPeriods = $('#selectComparisonPeriodsPuantaj').val();
-            const personelId = '<?= $personelId ?>';
+            const selectedPeriods = (typeof $ === 'function' && $('#selectComparisonPeriodsPuantaj').length) ? $('#selectComparisonPeriodsPuantaj').val() : null;
             
             if (!selectedPeriods || selectedPeriods.length === 0) {
                 Swal.fire('Uyarı', 'Lütfen en az bir dönem seçiniz.', 'warning');
                 return;
             }
 
+            const staffId = $('#filterStaffId').length ? $('#filterStaffId').val() : '';
             $('#puantajComparisonChart').html('<div class="text-center p-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Veriler yükleniyor...</p></div>');
 
             $.get('views/puantaj/api.php', {
                 action: 'get-puantaj-comparison',
-                periods: selectedPeriods,
-                personel_id: personelId
+                comparison_periods: selectedPeriods.join(','),
+                personel_id: staffId
             }, function(res) {
                 const data = typeof res === 'object' ? res : JSON.parse(res);
                 
@@ -206,8 +203,7 @@ for ($i = 0; $i <= 6; $i++) {
                     xaxis: { categories: data.periods },
                     legend: { position: 'bottom' },
                     fill: { opacity: 1 },
-                    title: { text: 'İş Türü Bazlı Aylık Karşılaştırma', style: { fontSize: '14px', fontWeight: 'bold' } },
-                    colors: ['#556ee6', '#34c38f', '#f1b44c', '#f46a6a', '#50a5f1', '#343a40', '#927fbf', '#e83e8c', '#2ab57d', '#4ba3ff']
+                    colors: ['#34c38f', '#556ee6', '#f1b44c', '#f46a6a', '#50a5f1', '#343a40', '#927fbf', '#e83e8c', '#2ab57d', '#4ba3ff']
                 };
 
                 $('#puantajComparisonChart').html('');
