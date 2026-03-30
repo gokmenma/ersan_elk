@@ -12,17 +12,20 @@ $(document).ready(function () {
             dataSrc: function(json) {
                 renderMobileList(json.data);
                 if (json.summary) {
-                    $('#toplam_borc').text(json.summary.toplam_borc || '0,00');
-                    $('#toplam_alacak').text(json.summary.toplam_alacak || '0,00');
-                    $('#genel_bakiye').text(json.summary.genel_bakiye || '0,00');
+                    const formatMoney = (val) => {
+                        return parseFloat(val || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+                    };
+
+                    $('#toplam_borc').text(formatMoney(json.summary.toplam_borc));
+                    $('#toplam_alacak').text(formatMoney(json.summary.toplam_alacak));
                     
-                    const bakiyeVal = parseFloat((json.summary.genel_bakiye || '0').toString().replace('.', '').replace(',', '.'));
+                    const bakiyeVal = parseFloat(json.summary.genel_bakiye || 0);
                     $('#genel_bakiye').parent().removeClass('text-danger text-success');
                     if (bakiyeVal < 0) $('#genel_bakiye').parent().addClass('text-danger');
                     else if (bakiyeVal > 0) $('#genel_bakiye').parent().addClass('text-success');
                     
                     // Gösterimi de abs yapalım
-                    $('#genel_bakiye').text(json.summary.genel_bakiye ? json.summary.genel_bakiye.replace('-', '') : '0,00');
+                    $('#genel_bakiye').text(formatMoney(Math.abs(bakiyeVal)));
                     const label = bakiyeVal < 0 ? '(Borçlu)' : (bakiyeVal > 0 ? '(Alacaklı)' : '');
                     if ($('#bakiye_bilgi').length === 0) {
                         $('#genel_bakiye').after(`<small id="bakiye_bilgi" style="font-size: 0.6rem; display: block;">${label}</small>`);

@@ -671,7 +671,15 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
             <!-- Aksiyon Butonları -->
             <div class="row mb-2" id="defterOzetActions" style="display: none;">
-                <div class="col-12 d-flex justify-content-end gap-2">
+                <div class="col-12 d-flex justify-content-end align-items-center gap-2">
+                    <div class="btn-group btn-group-sm me-auto" role="group" aria-label="Görünüm Seçimi">
+                        <input type="radio" class="btn-check view-toggle" name="vOzetView" id="vOzetList" checked data-view="list" data-tab="ozet">
+                        <label class="btn btn-outline-primary px-3" for="vOzetList"><i class="bx bx-list-ul me-1"></i> Liste</label>
+
+                        <input type="radio" class="btn-check view-toggle" name="vOzetView" id="vOzetChart" data-view="chart" data-tab="ozet">
+                        <label class="btn btn-outline-primary px-3" for="vOzetChart"><i class="bx bx-bar-chart-alt-2 me-1"></i> Grafik</label>
+                    </div>
+
                     <button type="button" class="btn btn-sm btn-outline-info btn-tab-fullscreen"
                         data-target="defterOzetReportSection">
                         <i class="mdi mdi-fullscreen me-1"></i>Tam Ekran
@@ -680,6 +688,27 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                         data-table="defterOzetTable" data-filename="aylik_defter_ozeti.xls">
                         <i class="mdi mdi-file-excel me-1"></i>Excel'e Aktar
                     </button>
+                </div>
+            </div>
+
+            <!-- Grafik Bölümü -->
+            <div class="row" id="defterOzetChartSection" style="display: none;">
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm mb-3">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center justify-content-between mb-4">
+                                <h5 class="card-title mb-0 fw-bold"><i class="bx bx-bar-chart-alt-2 me-2 text-primary"></i>Dönem Bazlı Bölge Dağılımı</h5>
+                                <div class="btn-group btn-group-sm">
+                                    <button type="button" class="btn btn-outline-secondary active do-chart-type" data-type="percent">Oran (%)</button>
+                                    <button type="button" class="btn btn-outline-secondary do-chart-type" data-type="compare">Karşılaştırmalı (Sayı)</button>
+                                    <button type="button" class="btn btn-outline-secondary do-chart-type" data-type="toplam">Toplam</button>
+                                    <button type="button" class="btn btn-outline-secondary do-chart-type" data-type="okunan">Okunan</button>
+                                    <button type="button" class="btn btn-outline-secondary do-chart-type" data-type="okunmayan">Okunmayan</button>
+                                </div>
+                            </div>
+                            <div id="defterOzetChart" style="min-height: 450px; width: 100%;"></div>
+                        </div>
+                    </div>
                 </div>
             </div>
 
@@ -2473,8 +2502,9 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
             // Bind sort click handlers
             $('#comparisonTable').on('click', '.sortable-header', function (e) {
-                // Filtre butonuna tıklandıysa sıralamayı tetikleme
-                if ($(e.target).closest('.col-filter-btn').length) return;
+                // Filtre butonuna veya arama kutusuna tıklandıysa sıralamayı tetikleme
+                if ($(e.target).closest('.col-filter-btn, .column-search').length) return;
+                
                 const col = $(this).data('sort-col');
                 if (_sortColumn === col) {
                     _sortDirection = _sortDirection === 'asc' ? 'desc' : 'asc';
@@ -2484,26 +2514,11 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 }
                 renderTable(_tableData, _tableDonemler, true);
             });
-
-            // Bind filter button click handlers directly to prevent sort bubbling
-            $('#comparisonTable .col-filter-btn').on('click', function (e) {
-                e.preventDefault();
-                e.stopPropagation();
-                e.stopImmediatePropagation();
-
-                // Trigger the existing handler via document delegation
-                // Or just call the show logic if it was a function.
-                // Since it's document delegated, we just let it bubble to document?
-                // Wait, if I use stopPropagation, it won't reach document!
-                // So I MUST open the popup here.
-
-                openFilterPopup(this);
-            });
         }
 
         // ======= FILTER POPUP OPENER =======
         function openFilterPopup(btn) {
-            const colKey = $(btn).data('filter-col');
+            const colKey = $(btn).data('filter-col') || $(btn).data('do-filter-col');
             const popup = $('#colFilterPopup');
 
             // Aynı butona tekrar tıklanırsa kapat
@@ -2546,6 +2561,22 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             popup.css({ top: top + 'px', left: left + 'px' }).addClass('show');
             setTimeout(() => $('#colFilterOperator').focus(), 50);
         }
+
+        // ======= GLOBAL FILTER BUTTON HANDLER =======
+        $(document).on('click', '.col-filter-btn', function (e) {
+            e.preventDefault();
+            e.stopPropagation();
+            e.stopImmediatePropagation();
+            
+            const tableId = $(this).closest('table').attr('id');
+            if (tableId === 'defterOzetTable') {
+                _activeFilterTab = 'defter-ozet';
+            } else {
+                _activeFilterTab = null;
+            }
+            
+            openFilterPopup(this);
+        });
 
         // ======= ARAMA EVENT HANDLER (TAB 1) =======
         $(document).on('input', '#comparisonTable .column-search', function () {
@@ -2803,7 +2834,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
         // Tab 2 Sort click handler
         $(document).on('click', '#okumaGunTable .og-sortable-header', function (e) {
-            if ($(e.target).hasClass('og-column-search') || $(e.target).closest('.og-column-search').length) return;
+            if ($(e.target).closest('.column-search, .col-filter-btn').length) return;
             const col = $(this).data('sort-col');
             if (!col) return;
             if (_ogSortColumn === col) {
@@ -3523,26 +3554,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             }, 300);
         });
 
-        // 2. Sayisal Filtre Popu'unu Ac
-        $(document).on('click', '#defterOzetTable .col-filter-btn', function (e) {
-            e.stopPropagation();
-            const col = $(this).data('do-filter-col');
-            _activeFilterCol = col;
-            _activeFilterTab = 'defter-ozet';
-
-            const filter = _doNumericFilters[col] || { operator: '', value: '' };
-
-            $('#colFilterOperator').val(filter.operator || '>');
-            $('#colFilterValue').val(filter.value);
-
-            const offset = $(this).offset();
-            $('#colFilterPopup').css({
-                top: offset.top + 30,
-                left: Math.min(offset.left, $(window).width() - 220)
-            }).addClass('show');
-            
-            $('#colFilterValue').focus().select();
-        });
+        // 2. Sayisal Filtre Popu'unu Ac - (Global handler handles this now)
 
         // ======= BADGE CLICK HANDLER (Dışarıda, tek sefer bağlanır) =======
         $(document).on('click', '.do-badge-toplam.clickable, .do-badge-okunan.clickable, .do-badge-okunmayan.clickable', function (e) {
@@ -3662,6 +3674,187 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 modal.show();
             }
         });
+
+        // ======= GRAFİK MANTİĞI =======
+        let _defterOzetChart = null;
+
+        $(document).on('change', '.view-toggle', function() {
+            const view = $(this).data('view');
+            const tab = $(this).data('tab');
+            
+            if (tab === 'ozet') {
+                if (view === 'chart') {
+                    $('#defterOzetReportSection').hide();
+                    $('#defterOzetChartSection').fadeIn(300);
+                    renderDefterOzetChart(_defterOzetData);
+                } else {
+                    $('#defterOzetChartSection').hide();
+                    $('#defterOzetReportSection').fadeIn(300);
+                }
+            }
+        });
+
+        $(document).on('click', '.do-chart-type', function() {
+            $('.do-chart-type').removeClass('active');
+            $(this).addClass('active');
+            const type = $(this).data('type');
+            renderDefterOzetChart(_defterOzetData, type);
+        });
+
+        // ======= GRAFİK MANTİĞI =======
+        let _defterOzetChartInstances = [];
+
+        function renderDefterOzetChart(data, type = 'percent') {
+            if (!data || !data.donemler || !data.bolge) return;
+            
+            const chartWrapper = document.querySelector("#defterOzetChart");
+            if (!chartWrapper) return;
+
+            // Önceki grafikleri temizle
+            _defterOzetChartInstances.forEach(ch => { if (ch && ch.destroy) ch.destroy(); });
+            _defterOzetChartInstances = [];
+            chartWrapper.innerHTML = ''; 
+
+            const donemler = data.donemler;
+            const bolgeData = data.bolge;
+            const regions = Object.keys(bolgeData).sort();
+
+            if (type === 'compare') {
+                const row = document.createElement('div');
+                row.className = 'row g-4';
+                chartWrapper.appendChild(row);
+
+                donemler.forEach((d, dIdx) => {
+                    const formattedDonem = String(d).substring(0, 4) + '/' + String(d).substring(4);
+                    const chartId = 'chart_compare_' + d;
+                    
+                    const col = document.createElement('div');
+                    let colClass = 'col-xl-4 col-lg-6';
+                    if (donemler.length === 1) colClass = 'col-12';
+                    else if (donemler.length === 2) colClass = 'col-lg-6';
+                    col.className = colClass;
+
+                    col.innerHTML = `
+                        <div class="card border shadow-none mb-0">
+                            <div class="card-header bg-light py-2">
+                                <h6 class="text-center fw-bold text-primary mb-0" style="font-size: 0.9rem;">
+                                    <i class="bx bx-calendar-event me-2"></i>Dönem: ${formattedDonem}
+                                </h6>
+                            </div>
+                            <div class="card-body p-2">
+                                <div id="${chartId}" style="min-height: 350px;"></div>
+                            </div>
+                        </div>
+                    `;
+                    row.appendChild(col);
+
+                    // Verileri hazırla
+                    const sToplam = { name: 'Toplam', data: [] };
+                    const sOkunan = { name: 'Okunan', data: [] };
+                    const sOkunmayan = { name: 'Okunmayan', data: [] };
+
+                    regions.forEach(bName => {
+                        const stat = (bolgeData[bName] && bolgeData[bName][d]) || { toplam_defter: 0, okunan_defter: 0, okunmayan_defter: 0 };
+                        sToplam.data.push(stat.toplam_defter || 0);
+                        sOkunan.data.push(stat.okunan_defter || 0);
+                        sOkunmayan.data.push(stat.okunmayan_defter || 0);
+                    });
+
+                    const options = {
+                        series: [sToplam, sOkunan, sOkunmayan],
+                        chart: {
+                            type: 'bar',
+                            height: 350,
+                            toolbar: { show: true },
+                            fontFamily: 'inherit'
+                        },
+                        plotOptions: {
+                            bar: {
+                                horizontal: false,
+                                columnWidth: '75%',
+                                borderRadius: 3,
+                                dataLabels: { position: 'top' }
+                            }
+                        },
+                        dataLabels: {
+                            enabled: true,
+                            offsetY: -18,
+                            style: { fontSize: '8px', colors: ["#304758"] }
+                        },
+                        stroke: { show: true, width: 2, colors: ['transparent'] },
+                        xaxis: {
+                            categories: regions,
+                            labels: { rotate: -45, style: { fontSize: '9px' } }
+                        },
+                        yaxis: {
+                            labels: { 
+                                style: { fontSize: '10px' },
+                                formatter: function(v) { return v.toFixed(0); } 
+                            }
+                        },
+                        colors: ['#556ee6', '#34c38f', '#f1b44c'],
+                        tooltip: { y: { formatter: function(v) { return v + " Defter"; } } },
+                        grid: { padding: { top: 15 } },
+                        legend: { position: 'bottom', horizontalAlign: 'center', fontSize: '10px', offsetY: 5 }
+                    };
+
+                    const chart = new ApexCharts(document.querySelector("#" + chartId), options);
+                    chart.render();
+                    _defterOzetChartInstances.push(chart);
+                });
+            } else {
+                // Standart Tekli Grafik Görünümü (Oran, Toplam, Okunan, Okunmayan)
+                const chartId = 'chart_single_view';
+                const container = document.createElement('div');
+                container.id = chartId;
+                container.style.minHeight = '450px';
+                chartWrapper.appendChild(container);
+
+                const categories = donemler.map(d => String(d).substring(0, 4) + '/' + String(d).substring(4));
+                const series = [];
+                let chartColors = ['#556ee6', '#34c38f', '#f1b44c', '#f46a6a', '#50a5f1', '#2ca01c', '#e83e8c', '#6f42c1', '#fd7e14', '#20c997'];
+
+                regions.forEach(bName => {
+                    const bValues = [];
+                    donemler.forEach(d => {
+                        const stat = (bolgeData[bName] && bolgeData[bName][d]) || { toplam_defter: 0, okunan_defter: 0, okunmayan_defter: 0, oran: 0 };
+                        if (type === 'percent') bValues.push(stat.oran || 0);
+                        else if (type === 'toplam') bValues.push(stat.toplam_defter || 0);
+                        else if (type === 'okunan') bValues.push(stat.okunan_defter || 0);
+                        else if (type === 'okunmayan') bValues.push(stat.okunmayan_defter || 0);
+                    });
+                    series.push({ name: bName, data: bValues });
+                });
+
+                const options = {
+                    series: series,
+                    chart: { type: 'bar', height: 450, toolbar: { show: true }, fontFamily: 'inherit' },
+                    plotOptions: { bar: { horizontal: false, columnWidth: '70%', borderRadius: 4, dataLabels: { position: 'top' } } },
+                    dataLabels: {
+                        enabled: true,
+                        offsetY: -20,
+                        style: { fontSize: '9px', colors: ["#5156be"] },
+                        formatter: function(val) { return type === 'percent' ? val + "%" : val; }
+                    },
+                    stroke: { show: true, width: 2, colors: ['transparent'] },
+                    xaxis: { categories: categories, labels: { rotate: -45, style: { fontSize: '10px' } } },
+                    yaxis: {
+                        title: { text: type === 'percent' ? 'Okuma Oranı (%)' : 'Defter Sayısı' },
+                        max: type === 'percent' ? 110 : undefined,
+                        labels: { formatter: function(v) { return v.toFixed(0); } }
+                    },
+                    grid: { padding: { top: 15 } },
+                    fill: { opacity: 1 },
+                    tooltip: { y: { formatter: function(val) { return type === 'percent' ? val + " %" : val + " Defter"; } } },
+                    colors: chartColors,
+                    legend: { position: 'bottom', horizontalAlign: 'center', offsetY: 8 }
+                };
+
+                const chart = new ApexCharts(document.querySelector("#" + chartId), options);
+                chart.render();
+                _defterOzetChartInstances.push(chart);
+            }
+        }
 
     });
 </script>

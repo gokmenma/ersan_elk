@@ -18,7 +18,7 @@ $page = $_GET['p'] ?? 'home';
 <!-- Sayfalara Özel Scriptler -->
 <!--***************************************-->
 
-<?php if ($page == 'home' || $page == 'demirbas/list' || $page == 'personel/performans-raporu' || $page == 'arac-takip/arac-performans') { ?>
+<?php if ($page == 'home' || $page == 'demirbas/list' || $page == 'personel/performans-raporu' || $page == 'arac-takip/arac-performans' || $page == 'puantaj/defter-bazli-rapor') { ?>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <?php if ($page == 'home') { ?>
         <script src="assets/js/pages/allchart.js"></script>

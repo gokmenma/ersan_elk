@@ -88,7 +88,7 @@ $title = 'Cari Yönetimi';
                             <i class="bx bx-briefcase fs-4 text-primary"></i>
                         </div>
                     </div>
-                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">DURUM</p>
+                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">DURUMUM</p>
                     <p class="text-primary mb-0 small fw-bold d-md-none" id="mobile_bakiye_title" style="font-size: 10px;">BENİM DURUMUM</p>
                     <h5 class="mb-0 fw-bold bordro-text-heading mt-md-0 mt-1" id="bakiye_label_container">
                         <span id="genel_bakiye" style="font-size: 0.9rem;">0,00</span> <span style="font-size: 0.7rem; font-weight: 600;">₺</span>
