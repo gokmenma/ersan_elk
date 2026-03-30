@@ -448,7 +448,6 @@ File: Main Js File
         (body.hasAttribute("data-layout") && body.getAttribute("data-layout") == "horizontal")
     ) {
       updateRadio("layout-horizontal");
-      $(".sidebar-setting").hide();
     } else {
       updateRadio("layout-vertical");
     }

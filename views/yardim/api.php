@@ -148,6 +148,19 @@ try {
             $stats = $destekBiletModel->getStats($personelId) ?: (object) ['toplam' => 0, 'bekleyen' => 0, 'yanitlanan' => 0, 'kapali' => 0];
             $approvalStats = $isApproverOnly ? ($destekBiletModel->getStats(null, 'beklemede') ?: null) : null;
 
+            $currentUserId = (int) ($_SESSION['user_id'] ?? 0);
+            $currentPersonelId = (int) ($_SESSION['personel_id'] ?? 0);
+            if ($currentPersonelId <= 0 && $currentUserId > 0) {
+                $currentPersonelId = $destekBiletModel->getPersonelIdByUserId($currentUserId);
+            }
+
+            // Her bilet için is_mine kontrolü ekle
+            if (!empty($tickets)) {
+                foreach ($tickets as $t) {
+                    $t->is_mine = ($currentPersonelId > 0 && (int)$t->personel_id === $currentPersonelId);
+                }
+            }
+
             echo json_encode([
                 'success' => true,
                 'tickets' => $tickets,
@@ -155,7 +168,8 @@ try {
                 'is_approver' => $isApproverOnly,
                 'approval_pending_count' => (int) ($approvalStats->toplam ?? 0),
                 'own_tickets_count' => $ownTicketCount,
-                'personnel_tickets_count' => $personnelTicketCount
+                'personnel_tickets_count' => $personnelTicketCount,
+                'current_personel_id' => $currentPersonelId
             ]);
             break;
 
@@ -170,13 +184,24 @@ try {
                 $approvalFilter = 'beklemede';
             }
 
+            $currentUserId = (int) ($_SESSION['user_id'] ?? 0);
+            $currentPersonelId = $destekBiletModel->getPersonelIdByUserId($currentUserId);
+
             $tickets = $destekBiletModel->getAllTickets($status, $approvalFilter);
             $stats = $destekBiletModel->getStats(null, $approvalFilter);
+
+            // Her bilet için is_mine kontrolü ekle
+            if ($tickets) {
+                foreach ($tickets as $t) {
+                    $t->is_mine = ($currentPersonelId > 0 && (int)$t->personel_id === $currentPersonelId);
+                }
+            }
 
             echo json_encode([
                 'success' => true,
                 'tickets' => $tickets,
-                'stats' => $stats
+                'stats' => $stats,
+                'current_personel_id' => $currentPersonelId
             ]);
             break;
 

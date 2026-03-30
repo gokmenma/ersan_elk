@@ -3561,8 +3561,8 @@ table.dataTable.table-bordered {
     overflow: auto !important;
   }
 
-  html[data-orientation="landscape"] .right-bar {
-    display: none !important; 
+  html[data-orientation="landscape"] #layout-wrapper {
+    overflow: auto;
   }
 }
 

@@ -7,15 +7,11 @@ use App\Model\PersonelModel;
 use App\Model\PersonelIzinleriModel;
 use App\Model\SystemLogModel;
 use App\Service\Gate;
-use App\Helper\Alert;
 use App\Helper\Helper;
 use App\Model\PermissionsModel;
-use App\Model\PuantajModel;
-use App\Model\EndeksOkumaModel;
 use App\Model\NobetModel;
 use App\Model\PersonelHareketleriModel;
 use App\Model\GorevModel;
-use App\Service\SayacDegisimService;
 use App\Service\RequestPerformanceProfiler;
 
 if (Gate::allows("ana_sayfa")) {
@@ -23,8 +19,6 @@ if (Gate::allows("ana_sayfa")) {
     $personelModel = new PersonelModel();
     $izinModel = new PersonelIzinleriModel();
     $systemLogModel = new SystemLogModel();
-    $puantajModel = new PuantajModel();
-    $endeksOkumaModel = new EndeksOkumaModel();
     $nobetModel = new NobetModel();
     $hareketModel = new PersonelHareketleriModel();
     $gorevModel = new GorevModel();
@@ -44,64 +38,17 @@ if (Gate::allows("ana_sayfa")) {
     // Dashboard Ayarlarını Çerezden Oku
     $extraStats = $measureDb('home.extra_stats_daily', fn() => $personelModel->getAdvancedDashboardStats());
 
-    $dailyWorkStats = null;
-    $dailyReadingTotal = null;
-    $monthlyWorkStats = null;
-    $monthlyReadingTotal = null;
-    $kacakDailyTotal = null;
-    $kacakMonthlyTotal = null;
-
-    $measureDb('home.puantaj_endeks_bundle', function () use ($puantajModel, $endeksOkumaModel, &$dailyWorkStats, &$dailyReadingTotal, &$monthlyWorkStats, &$monthlyReadingTotal, &$kacakDailyTotal, &$kacakMonthlyTotal) {
-        $dailyWorkStats = $puantajModel->getDailyStats();
-        $dailyReadingTotal = $endeksOkumaModel->getDailyStats();
-        $monthlyWorkStats = $puantajModel->getMonthlyStats();
-        $monthlyReadingTotal = $endeksOkumaModel->getMonthlyStats();
-        $kacakDailyTotal = $puantajModel->getKacakDailyStats();
-        $kacakMonthlyTotal = $puantajModel->getKacakMonthlyStats();
-        return true;
-    }, 6);
-
-    $extraStatsMonthly = $measureDb('home.extra_stats_monthly', fn() => $personelModel->getMonthlyAdvancedDashboardStats());
-
-    // Sayaç Değişim stats from unified service
-    $sayacDegisimService = new SayacDegisimService();
-    $sayacDailyStats = $measureDb('home.sayac_daily', fn() => $sayacDegisimService->getDailyStats());
-    $sayacMonthlyStats = $measureDb('home.sayac_monthly', fn() => $sayacDegisimService->getMonthlyStats());
-    if ($dailyWorkStats)
-        $dailyWorkStats->sayac_degisimi = $sayacDailyStats->sayac_degisimi ?? 0;
-    if ($monthlyWorkStats)
-        $monthlyWorkStats->sayac_degisimi = $sayacMonthlyStats->sayac_degisimi ?? 0;
+    // Operasyonel istatistikler mevcut AJAX endpoint'i ile istemci tarafında doldurulur.
+    $dailyWorkStats = (object) ['muhurleme' => 0, 'kesme_acma' => 0, 'sayac_degisimi' => 0];
+    $dailyReadingTotal = 0;
+    $monthlyWorkStats = (object) ['muhurleme' => 0, 'kesme_acma' => 0, 'sayac_degisimi' => 0];
+    $monthlyReadingTotal = 0;
+    $kacakDailyTotal = (object) ['toplam' => 0];
+    $kacakMonthlyTotal = (object) ['toplam' => 0];
 
     $saved_settings = isset($_COOKIE['dashboard_settings']) ? json_decode($_COOKIE['dashboard_settings'], true) : [];
 
     $last_update_endeks = $last_update_isler = $last_update_sayac = null;
-    $db_conn = $personelModel->getDb();
-    try {
-        $stmt_updates = $db_conn->prepare("SELECT
-                (SELECT MAX(created_at)
-                 FROM endeks_okuma
-                 WHERE firma_id = :firma_id
-                   AND created_at >= CURDATE()
-                   AND created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)) AS last_update_endeks,
-                (SELECT MAX(created_at)
-                 FROM yapilan_isler
-                 WHERE firma_id = :firma_id
-                   AND created_at >= CURDATE()
-                   AND created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)) AS last_update_isler,
-                (SELECT MAX(GREATEST(created_at,guncelleme_tarihi))
-                 FROM sayac_degisim
-                 WHERE firma_id = :firma_id
-                   AND created_at >= CURDATE()
-                   AND created_at < DATE_ADD(CURDATE(), INTERVAL 1 DAY)) AS last_update_sayac");
-        $updateQueryStart = microtime(true);
-        $stmt_updates->execute([':firma_id' => $_SESSION['firma_id'] ?? 0]);
-        RequestPerformanceProfiler::addDbMetrics(round((microtime(true) - $updateQueryStart) * 1000, 2), 1);
-        $updates = $stmt_updates->fetch(PDO::FETCH_ASSOC) ?: [];
-        $last_update_endeks = $updates['last_update_endeks'] ?? null;
-        $last_update_isler = $updates['last_update_isler'] ?? null;
-        $last_update_sayac = $updates['last_update_sayac'] ?? null;
-    } catch (\Exception $e) {
-    }
 
     if (!function_exists('getWidgetWidth')) {
         function getWidgetWidth($id, $default)
@@ -260,7 +207,6 @@ if (Gate::allows("ana_sayfa")) {
 
     // Araç Verilerini Çek (Dashboard Hatırlatıcı için)
     $aracModelHome = new \App\Model\AracModel();
-    $aracStats = $aracModelHome->getStats();
     $expiredCounts = $aracModelHome->getAracEvrakStats();
     $aracNotifText = "";
     $hasExpired = false;
@@ -1214,16 +1160,28 @@ if (Gate::allows("ana_sayfa")) {
                                     <li class="nav-item">
                                         <a class="nav-link active" data-bs-toggle="tab" href="#gorev-tab" role="tab">
                                             Görev ve Bildirimler
+                                            <?php if (!empty($recent_logs)): ?>
+                                                    <span class="badge bg-light text-muted ms-1"
+                                                        style="font-size: 0.75rem; border: 1px solid var(--bs-border-color);"><?php echo count($recent_logs); ?></span>
+                                            <?php endif; ?>
                                         </a>
                                     </li>
                                     <li class="nav-item">
                                         <a class="nav-link" data-bs-toggle="tab" href="#personel-giris-tab" role="tab">
                                             Personel Girişleri
+                                            <?php if (!empty($personelLogs)): ?>
+                                                    <span class="badge bg-light text-muted ms-1"
+                                                        style="font-size: 0.75rem; border: 1px solid var(--bs-border-color);"><?php echo count($personelLogs); ?></span>
+                                            <?php endif; ?>
                                         </a>
                                     </li>
                                     <li class="nav-item">
                                         <a class="nav-link" data-bs-toggle="tab" href="#kullanici-giris-tab" role="tab">
                                             Yönetici Girişleri
+                                            <?php if (!empty($kullaniciLogs)): ?>
+                                                    <span class="badge bg-light text-muted ms-1"
+                                                        style="font-size: 0.75rem; border: 1px solid var(--bs-border-color);"><?php echo count($kullaniciLogs); ?></span>
+                                            <?php endif; ?>
                                         </a>
                                     </li>
                                 </ul>
@@ -1240,86 +1198,106 @@ if (Gate::allows("ana_sayfa")) {
                             <div class="tab-content"
                                 style="height: <?php echo getWidgetHeight('widget-bildirimler', 'auto'); ?>; overflow-y: auto;">
                                 <div class="tab-pane active" id="gorev-tab" role="tabpanel">
-                                    <div class="table-responsive">
-                                        <table class="table table-centered table-nowrap table-hover mb-0 align-middle">
-                                            <thead style="background: rgba(248,250,252,0.8); position: sticky; top: 0; z-index: 10;">
-                                                <tr>
-                                                    <th
-                                                        style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">
-                                                        Seviye</th>
-                                                    <th
-                                                        style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">
-                                                        İşlem Tipi</th>
-                                                    <th
-                                                        style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">
-                                                        İçerik</th>
-                                                    <th
-                                                        style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">
-                                                        Tarih</th>
-                                                    <th class="text-center"
-                                                        style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">
-                                                        İşlem</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                <?php if (empty($recent_logs)): ?>
-                                                        <tr>
-                                                            <td colspan="5" class="text-center py-4" style="color: #64748b;">
-                                                                <div class="avatar-sm mx-auto mb-2">
-                                                                    <div class="avatar-title rounded-circle bg-light text-muted"><i
-                                                                            class="bx bx-x"></i></div>
+                                    <style>
+                                        .notification-list .notification-card {
+                                            background: var(--bs-card-bg);
+                                            border: 1px solid var(--bs-border-color);
+                                            border-radius: 12px;
+                                            transition: all 0.2s ease-in-out;
+                                            margin-bottom: 0.75rem;
+                                            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.02);
+                                            position: relative;
+                                            overflow: hidden;
+                                        }
+                                        .notification-list .notification-card:hover {
+                                            transform: translateY(-2px);
+                                            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+                                            border-color: var(--bs-primary);
+                                        }
+                                        .notification-list .icon-box {
+                                            width: 42px;
+                                            height: 42px;
+                                            border-radius: 10px;
+                                            display: flex;
+                                            align-items: center;
+                                            justify-content: center;
+                                            flex-shrink: 0;
+                                        }
+                                        [data-bs-theme="dark"] .notification-list .notification-card {
+                                            background: rgba(255, 255, 255, 0.05);
+                                        }
+                                        [data-bs-theme="dark"] .notification-list .notification-card:hover {
+                                            background: rgba(255, 255, 255, 0.08);
+                                        }
+                                    </style>
+                                    <div class="notification-list p-3">
+                                        <?php if (empty($recent_logs)): ?>
+                                                <div class="text-center py-5" style="color: #64748b;">
+                                                    <div class="avatar-sm mx-auto mb-3">
+                                                        <div class="avatar-title rounded-circle bg-light text-muted" style="font-size: 1.5rem;">
+                                                            <i class="bx bx-bell-off"></i>
+                                                        </div>
+                                                    </div>
+                                                    <p class="mb-0 fw-medium">Kayıt bulunmamaktadır.</p>
+                                                </div>
+                                        <?php else: ?>
+                                                <?php foreach ($recent_logs as $log): ?>
+                                                        <?php
+                                                        $logLevel = $log->level ?? 0;
+                                                        $renk = '#3b82f6'; // Bilgi (default)
+                                                        $icon = 'bx-info-circle';
+                                                        
+                                                        if ($logLevel >= 2) {
+                                                            $renk = '#ef4444'; // Kritik
+                                                            $icon = 'bx-error-circle';
+                                                        } elseif ($logLevel >= 1) {
+                                                            $renk = '#f59e0b'; // Önemli
+                                                            $icon = 'bx-error';
+                                                        }
+                                                        
+                                                        // Hex to rgba for icon background
+                                                        $hex = ltrim($renk, '#');
+                                                        $r = hexdec(substr($hex, 0, 2));
+                                                        $g = hexdec(substr($hex, 2, 2));
+                                                        $b = hexdec(substr($hex, 4, 2));
+                                                        $iconBg = "rgba($r, $g, $b, 0.1)";
+
+                                                        $user_name = $log->adi_soyadi ?? 'Sistem';
+                                                        ?>
+                                                        <div class="notification-card p-3 btn-log-detay" 
+                                                             style="cursor: pointer;"
+                                                             data-title="<?php echo htmlspecialchars($log->action_type); ?>"
+                                                             data-user="<?php echo htmlspecialchars($user_name); ?>"
+                                                             data-date="<?php echo date('d.m.Y H:i', strtotime($log->created_at)); ?>"
+                                                             data-content="<?php echo htmlspecialchars($log->description); ?>">
+                                                            <div class="d-flex align-items-center gap-3">
+                                                                <div class="icon-box" style="background: <?php echo $iconBg; ?>;">
+                                                                    <i class="bx <?php echo $icon; ?>" style="color: <?php echo $renk; ?>; font-size: 1.2rem;"></i>
                                                                 </div>
-                                                                Kayıt bulunmamaktadır.
-                                                            </td>
-                                                        </tr>
-                                                <?php else: ?>
-                                                        <?php foreach ($recent_logs as $log): ?>
-                                                                <?php
-                                                                $logLevel = $log->level ?? 0;
-                                                                if ($logLevel >= 2) {
-                                                                    $levelBadge = '<span class="badge bg-soft-danger text-danger px-2 py-1 border border-danger" style="border-radius: 4px;"><i class="bx bx-error-circle me-1"></i>Kritik</span>';
-                                                                    $levelIcon = 'bx bx-error-circle text-muted';
-                                                                } elseif ($logLevel >= 1) {
-                                                                    $levelBadge = '<span class="badge bg-soft-warning text-warning px-2 py-1 border border-warning" style="border-radius: 4px;"><i class="bx bx-error me-1"></i>Önemli</span>';
-                                                                    $levelIcon = 'bx bx-error text-muted';
-                                                                } else {
-                                                                    $levelBadge = '<span class="badge bg-soft-info text-info px-2 py-1 border border-info" style="border-radius: 4px;"><i class="bx bx-info-circle me-1"></i>Bilgi</span>';
-                                                                    $levelIcon = 'bx bx-info-circle text-muted';
-                                                                }
-                                                                ?>
-                                                                <tr style="border-bottom: 1px solid #f1f5f9; transition: all 0.2s;">
-                                                                    <td style="padding: 0.75rem 1rem;"><?php echo $levelBadge; ?></td>
-                                                                    <td style="padding: 0.75rem 1rem; color:#475569; font-weight:500;">
-                                                                        <i class="<?php echo $levelIcon; ?> me-1"></i>
+                                                                <div class="flex-grow-1 overflow-hidden">
+                                                                    <h6 class="mb-1 text-truncate fw-semibold" style="font-size: 0.9rem; color: var(--bs-heading-color);">
                                                                         <?php echo htmlspecialchars($log->action_type); ?>
-                                                                    </td>
-                                                                    <td style="padding: 0.75rem 1rem; color:#64748b;">
-                                                                        <?php
-                                                                        $user_name = $log->adi_soyadi ?? 'Sistem';
-                                                                        $full_desc = htmlspecialchars($log->description);
-                                                                        $short_desc = mb_strimwidth($full_desc, 0, 80, "...");
-                                                                        echo $short_desc . " <small class='text-muted' style='opacity:0.7'>($user_name tarafından)</small>";
-                                                                        ?>
-                                                                    </td>
-                                                                    <td
-                                                                        style="padding: 0.75rem 1rem; color:#475569; font-weight:500; font-size:0.85rem;">
-                                                                        <?php echo date('d.m.Y H:i', strtotime($log->created_at)); ?>
-                                                                    </td>
-                                                                    <td class="text-center" style="padding: 0.75rem 1rem;">
-                                                                        <button type="button" class="btn btn-sm btn-light btn-log-detay"
-                                                                            style="border-radius: 6px; font-weight:500; color:#475569; border: 1px solid #e2e8f0; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,0.05);"
-                                                                            data-title="<?php echo htmlspecialchars($log->action_type); ?>"
-                                                                            data-user="<?php echo htmlspecialchars($user_name); ?>"
-                                                                            data-date="<?php echo date('d.m.Y H:i', strtotime($log->created_at)); ?>"
-                                                                            data-content="<?php echo htmlspecialchars($log->description); ?>">
-                                                                            <i class="bx bx-show me-1 text-primary"></i> Detay
-                                                                        </button>
-                                                                    </td>
-                                                                </tr>
-                                                        <?php endforeach; ?>
-                                                <?php endif; ?>
-                                            </tbody>
-                                        </table>
+                                                                    </h6>
+                                                                    <p class="text-muted mb-0 text-truncate" style="font-size: 0.8rem; opacity: 0.85;">
+                                                                        <?php echo mb_strimwidth(htmlspecialchars($log->description), 0, 150, "..."); ?>
+                                                                    </p>
+                                                                </div>
+                                                                <div class="flex-shrink-0 text-end d-flex flex-column align-items-end gap-1">
+                                                                    <div class="text-dark fw-semibold" style="font-size: 0.8rem;">
+                                                                        <i class="bx bx-user-circle me-1 text-muted" style="font-size: 0.9rem; vertical-align: middle;"></i><?php echo $user_name; ?>
+                                                                    </div>
+                                                                    <div class="text-muted d-flex align-items-center gap-2" style="font-size: 0.75rem; font-weight: 500;">
+                                                                        <span><i class="bx bx-calendar me-1" style="font-size: 0.85rem; vertical-align: middle;"></i><?php echo date('d.m.Y', strtotime($log->created_at)); ?></span>
+                                                                        <span class="badge bg-light text-muted border px-1" style="font-size: 0.65rem; border-radius: 4px;"><?php echo date('H:i', strtotime($log->created_at)); ?></span>
+                                                                    </div>
+                                                                </div>
+                                                                <div class="flex-shrink-0 ms-1">
+                                                                    <i class="bx bx-chevron-right text-muted opacity-50" style="font-size: 1.25rem;"></i>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                <?php endforeach; ?>
+                                        <?php endif; ?>
                                     </div>
                                 </div><!-- end tab pane -->
 
@@ -3650,15 +3628,19 @@ if (Gate::allows("ana_sayfa")) {
 
                 prepareStagedWidgets();
 
-                window.addEventListener('load', () => {
-                    setTimeout(revealDashboardPage, 120);
-                }, { once: true });
+                const scheduleDashboardReveal = () => {
+                    window.requestAnimationFrame(() => {
+                        setTimeout(revealDashboardPage, 60);
+                    });
+                };
+
+                scheduleDashboardReveal();
 
                 setTimeout(() => {
-                    if (document.readyState === 'complete') {
+                    if (!dashboardRevealed) {
                         revealDashboardPage();
                     }
-                }, 1800);
+                }, 1200);
 
                 const API_URL = 'views/talepler/api.php';
 
@@ -4257,6 +4239,8 @@ if (Gate::allows("ana_sayfa")) {
                         console.error('Dashboard stats refresh error:', err);
                     });
                 }
+
+                refreshOperationalStats();
 
                 // Online API Sync Logic
                 $(document).on('click', '.btn-api-sync', function (e) {

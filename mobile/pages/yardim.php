@@ -246,8 +246,14 @@ function renderTickets(tickets) {
         const refNo = ticket.ref_no || '#' + ticket.id;
         const owner = isAdmin ? `
             <div class="flex items-center gap-2 mt-2 pt-2 border-t border-slate-50 dark:border-slate-800/50">
-                <span class="material-symbols-outlined text-[14px] text-slate-400">person</span>
-                <span class="text-[11px] font-bold text-slate-600 dark:text-slate-300 font-display">${ticket.personel_adi || 'Bilinmeyen'}</span>
+                <div class="flex items-center gap-1.5 px-2 py-0.5 rounded-md ${ticket.is_mine ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-900/20' : 'bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20'}">
+                    <span class="material-symbols-outlined text-[12px] font-bold">${ticket.is_mine ? 'person' : 'badge'}</span>
+                    <span class="text-[9px] font-black tracking-widest uppercase">${ticket.is_mine ? 'Benim' : 'Personel'}</span>
+                </div>
+                <div class="flex flex-col">
+                    <span class="text-[11px] font-bold text-slate-700 dark:text-slate-200 font-display">${ticket.personel_adi || 'Bilinmeyen'}</span>
+                    <span class="text-[10px] text-slate-400 font-medium">${ticket.departman || ''}</span>
+                </div>
                 <span class="text-[10px] text-slate-400 ml-auto">${ticket.kategori || ''}</span>
             </div>
         ` : '';
