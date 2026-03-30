@@ -432,7 +432,45 @@ try {
     </div>
 </header>
 
+<?php
+// Aktif Duyuruları Getir
+$duyuruModel = new \App\Model\DuyuruModel();
+$activeAnnouncements = $duyuruModel->getAll(true);
+?>
+
 <div class="px-4 mt-[-24px] relative z-10 space-y-3 pb-4">
+
+    <?php if (!empty($activeAnnouncements)): ?>
+        <!-- Duyurular -->
+        <div class="space-y-2 mt-8">
+            <?php foreach ($activeAnnouncements as $announcement): ?>
+                <div class="rounded-2xl p-4 relative overflow-hidden text-white shadow-lg" 
+                     style="background: linear-gradient(160deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.2) 100%), var(--primary); 
+                            border: 1.5px solid rgba(255,255,255,0.15);
+                            box-shadow: 0 12px 24px -6px rgba(var(--primary-rgb), 0.4);">
+                    
+                    <div class="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full blur-xl"></div>
+                    <div class="absolute -left-4 -bottom-4 w-16 h-16 bg-white/10 rounded-full blur-lg"></div>
+                    
+                    <div class="relative z-10 flex items-start gap-4">
+                        <div class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-sm flex items-center justify-center flex-shrink-0 shadow-inner">
+                            <span class="material-symbols-outlined text-white text-[22px] filled">campaign</span>
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center justify-between mb-0.5">
+                                <span class="text-[9px] font-bold tracking-widest uppercase opacity-80">KURUMSAL DUYURU</span>
+                                <span class="text-[9px] opacity-70 font-medium"><?= date('d.m.Y', strtotime($announcement->tarih)) ?></span>
+                            </div>
+                            <h4 class="font-bold text-sm leading-snug drop-shadow-sm"><?= htmlspecialchars($announcement->baslik) ?></h4>
+                            <p class="text-[11px] text-white/90 mt-1.5 leading-relaxed line-clamp-3">
+                                <?= !empty($announcement->icerik) ? htmlspecialchars($announcement->icerik) : 'Detaylar için tıklayın.' ?>
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            <?php endforeach; ?>
+        </div>
+    <?php endif; ?>
 
     <?php
     // Widget'ları sırayla bas
