@@ -191,7 +191,8 @@ class Form
         $textField = '',
         $class = "form-select select2",
         $required = false,
-        $id = null
+        $id = null,
+        $attributes = ''
     ) {
         $elementId = $id ?? $name;
         // If valueField is empty, use key
@@ -206,7 +207,7 @@ class Form
                 id="' . htmlspecialchars($elementId) . '" 
                 name="' . htmlspecialchars($name) . '[]" 
                 multiple="multiple" ' .
-            ($required ? 'required' : '') . '>';
+            ($required ? 'required' : '') . ' ' . $attributes . '>';
 
         foreach ($options as $key => $option) {
             if ($valueField === 'key') {

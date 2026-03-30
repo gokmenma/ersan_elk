@@ -146,12 +146,14 @@ class AracZimmetModel extends Model
     /**
      * Zimmet iade et
      */
-    public function iadeEt($id, $iadeKm = null, $notlar = null)
+    public function iadeEt($id, $iadeKm = null, $notlar = null, $iadeTarihi = null)
     {
+        $iadeTarihi = $iadeTarihi ?: date('Y-m-d');
+        
         $sql = $this->db->prepare("
             UPDATE {$this->table}
             SET durum = 'iade_edildi',
-                iade_tarihi = CURDATE(),
+                iade_tarihi = :iade_tarihi,
                 iade_km = :iade_km,
                 notlar = CONCAT(COALESCE(notlar, ''), ' | İade Notu: ', COALESCE(:notlar, '')),
                 guncelleme_tarihi = NOW()
@@ -160,6 +162,7 @@ class AracZimmetModel extends Model
         ");
         return $sql->execute([
             'id' => $id,
+            'iade_tarihi' => $iadeTarihi,
             'iade_km' => $iadeKm,
             'notlar' => $notlar,
             'firma_id' => $_SESSION['firma_id']

@@ -335,19 +335,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
             case 'zimmet-iade':
                 $zimmet_id = intval($_POST['zimmet_id'] ?? 0);
                 $iade_km = intval($_POST['iade_km'] ?? 0);
+                $iade_tarihi = $_POST['iade_tarihi'] ?? date('Y-m-d');
                 $notlar = $_POST['notlar'] ?? null;
 
                 if ($zimmet_id <= 0) {
                     throw new Exception("Geçersiz zimmet ID.");
                 }
 
-                $Zimmet->iadeEt($zimmet_id, $iade_km, $notlar);
+                $iade_tarihi = Date::Ymd($iade_tarihi);
 
-                // Araç KM güncelle
-                if ($iade_km > 0) {
-                    $zimmetBilgi = $Zimmet->find($zimmet_id);
-                    if ($zimmetBilgi) {
+                // Zimmet iade işlemini yap
+                $Zimmet->iadeEt($zimmet_id, $iade_km, $notlar, $iade_tarihi);
+
+                // Araç KM güncelle ve Mülkiyet Kontrolü
+                $zimmetBilgi = $Zimmet->find($zimmet_id);
+                if ($zimmetBilgi) {
+                    if ($iade_km > 0) {
                         $Arac->updateKm($zimmetBilgi->arac_id, $iade_km);
+                    }
+
+                    // Eğer mülkiyet durumu 'Personel Aracı' ise aracı pasif yap
+                    $aracData = $Arac->find($zimmetBilgi->arac_id);
+                    if ($aracData && $aracData->mulkiyet === 'Personel Aracı') {
+                        $Arac->saveWithAttr([
+                            'id' => $aracData->id,
+                            'aktif_mi' => 0
+                        ]);
                     }
                 }
 

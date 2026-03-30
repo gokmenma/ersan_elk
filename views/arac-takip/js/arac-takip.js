@@ -528,53 +528,79 @@ const AracTakip = {
   },
 
   zimmetIade: function (zimmetId, plaka) {
-    Swal.fire({
-      title: "Araç İadesi",
-      html: `<b>${plaka}</b> plakalı aracın iadesini yapmak istiyor musunuz?<br><br>
-                <input type="number" id="iadeKm" class="form-control mb-2" placeholder="İade KM">
-                <textarea id="iadeNot" class="form-control" placeholder="Not (opsiyonel)" rows="2"></textarea>`,
-      icon: "question",
-      showCancelButton: true,
-      confirmButtonColor: "#28a745",
-      cancelButtonColor: "#6c757d",
-      confirmButtonText: "İade Et",
-      cancelButtonText: "İptal",
-      preConfirm: () => {
-        const iadeKm = document.getElementById("iadeKm").value;
-        if (!iadeKm || iadeKm <= 0) {
-          Swal.showValidationMessage(`Lütfen geçerli bir iade KM giriniz.`);
-          return false;
+    $("#iade_zimmet_id").val(zimmetId);
+    $("#iade-arac-plaka").empty().append(`<span class="fw-bold text-dark">${plaka}</span> plakalı aracın iadesi`);
+    $("#zimmetIadeForm")[0].reset();
+
+    const today = new Date().toLocaleDateString("tr-TR");
+    $("#iade_tarihi").val(today);
+
+    // Initialize or re-init flatpickr
+    if ($("#iade_tarihi").length > 0 && !$("#iade_tarihi")[0]._flatpickr) {
+      $("#iade_tarihi").flatpickr({
+        locale: "tr",
+        dateFormat: "d.m.Y",
+        allowInput: true,
+      });
+    }
+
+    if ($("#iade_tarihi")[0] && $("#iade_tarihi")[0]._flatpickr) {
+      $("#iade_tarihi")[0]._flatpickr.setDate(today);
+    }
+
+    $("#zimmetIadeModal").modal("show");
+  },
+
+  zimmetIadeKaydet: function () {
+    const iadeKm = $("#iade_km").val();
+    const iadeTarihi = $("#iade_tarihi").val();
+
+    if (!iadeKm || iadeKm <= 0) {
+      Swal.fire("Uyarı", "Lütfen geçerli bir iade KM giriniz.", "warning");
+      return;
+    }
+    if (!iadeTarihi) {
+      Swal.fire("Uyarı", "Lütfen iade tarihini giriniz.", "warning");
+      return;
+    }
+
+    const formData = new FormData($("#zimmetIadeForm")[0]);
+    formData.append("action", "zimmet-iade");
+
+    const btn = $("#btnZimmetIadeKaydet");
+    const originalText = btn.html();
+    btn
+      .html('<i class="bx bx-loader-alt bx-spin me-1"></i> İşleniyor...')
+      .prop("disabled", true);
+
+    $.ajax({
+      url: this.apiUrl,
+      type: "POST",
+      data: formData,
+      processData: false,
+      contentType: false,
+      success: function (response) {
+        if (response.status === "success") {
+          Swal.fire({
+            icon: "success",
+            title: "Başarılı",
+            text: response.message,
+            timer: 1500,
+            showConfirmButton: false,
+          }).then(() => {
+            $("#zimmetIadeModal").modal("hide");
+            location.reload();
+          });
+        } else {
+          Swal.fire("Hata", response.message, "error");
         }
-        return {
-          iade_km: iadeKm,
-          notlar: document.getElementById("iadeNot").value,
-        };
       },
-    }).then((result) => {
-      if (result.isConfirmed) {
-        $.post(
-          this.apiUrl,
-          {
-            action: "zimmet-iade",
-            zimmet_id: zimmetId,
-            iade_km: result.value.iade_km,
-            notlar: result.value.notlar,
-          },
-          function (response) {
-            if (response.status === "success") {
-              Swal.fire({
-                icon: "success",
-                title: "Başarılı",
-                text: response.message,
-                timer: 1500,
-                showConfirmButton: false,
-              }).then(() => location.reload());
-            } else {
-              Swal.fire("Hata", response.message, "error");
-            }
-          },
-        );
-      }
+      error: function () {
+        Swal.fire("Hata", "Bir hata oluştu.", "error");
+      },
+      complete: function () {
+        btn.html(originalText).prop("disabled", false);
+      },
     });
   },
 
@@ -2343,6 +2369,10 @@ $(document).ready(function () {
   $(document).on("click", ".zimmet-iade", function (e) {
     e.preventDefault();
     AracTakip.zimmetIade($(this).data("id"), $(this).data("plaka"));
+  });
+  $(document).on("click", "#btnZimmetIadeKaydet", (e) => {
+    e.preventDefault();
+    AracTakip.zimmetIadeKaydet();
   });
   $(document).on("click", ".zimmet-hizli", function (e) {
     e.preventDefault();

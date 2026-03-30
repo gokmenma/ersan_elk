@@ -8,6 +8,11 @@ $personelId = $_GET['personel_id'] ?? '';
 $firmaId = $_SESSION['firma_id'] ?? 0;
 
 $Model = new \App\Model\SayacDegisimModel();
+$Personel = new \App\Model\PersonelModel();
+$allPersonnelRaw = $Personel->all(true, 'puantaj');
+$allPersonnel = array_merge([(object)['id' => '', 'adi_soyadi' => 'Tüm Personeller']], $allPersonnelRaw);
+
+use App\Helper\Form;
 
 $periodsSelection = [];
 $currentDate = new DateTime();
@@ -16,7 +21,7 @@ $currentDate->modify('first day of this month');
 for ($i = 0; $i < 24; $i++) {
     $val = $currentDate->format('Y-m');
     $label = \App\Helper\Date::monthName($currentDate->format('m')) . ' ' . $currentDate->format('Y');
-    $periodsSelection[] = ['val' => $val, 'label' => $label];
+    $periodsSelection[$val] = $label;
     $currentDate->modify('-1 month');
 }
 ?>
@@ -24,33 +29,30 @@ for ($i = 0; $i < 24; $i++) {
 <div class="card border-0 shadow-none mb-3">
     <div class="card-body p-0">
         <div class="row align-items-end g-2">
-            <div class="col-md-6">
-                <label class="form-label fw-bold small mb-1">
-                    <i class="bx bx-calendar me-1"></i> Karşılaştırılacak Dönemleri Seçin
-                </label>
-                <select id="selectComparisonPeriodsSayac" class="form-select select2" multiple data-placeholder="Dönem(ler) seçiniz...">
-                    <?php foreach ($periodsSelection as $p): ?>
-                        <option value="<?= $p['val'] ?>" <?= ($p['val'] == date('Y-m')) ? 'selected' : '' ?>>
-                            <?= $p['label'] ?>
-                        </option>
-                    <?php endforeach; ?>
-                </select>
+            <div class="col-md-5">
+                <?= Form::FormMultipleSelect2('selectComparisonPeriodsSayac', $periodsSelection, [date('Y-m')], 'Karşılaştırılacak Dönemleri Seçin', 'calendar', 'key', '', 'form-select select2', false, 'selectComparisonPeriodsSayac', 'data-placeholder="Dönem(ler) seçiniz..."') ?>
+            </div>
+            <div class="col-md-4">
+                <?= Form::FormSelect2('selectComparisonStaffSayac', $allPersonnel, '', 'Personel Filtresi', 'user', 'id', 'adi_soyadi', 'form-select select2', false, 'width:100%', 'data-placeholder="Tüm Personeller"', 'selectComparisonStaffSayac') ?>
             </div>
             <div class="col-md-3">
                 <button type="button" class="btn btn-primary w-100" id="btnRefreshSayacComparison">
-                    <i class="bx bx-refresh me-1"></i> İstatistikleri Getir
+                    <i data-feather="refresh-cw" class="me-1 icon-sm"></i> Getir
                 </button>
             </div>
-            <div class="col-md-3 text-end">
-                <div class="btn-group w-100" role="group">
-                    <button type="button" class="btn btn-outline-primary active btn-sayac-view-toggle" data-view="chart">
-                        <i class="bx bx-bar-chart-alt-2"></i> Grafik
+        </div>
+        <div class="row mt-2">
+            <div class="col-12 text-end">
+                <div class="btn-group" role="group">
+                    <button type="button" class="btn btn-outline-primary active btn-sayac-view-toggle p-2" data-view="chart">
+                        <i data-feather="bar-chart-2"></i>
                     </button>
-                    <button type="button" class="btn btn-outline-primary btn-sayac-view-toggle" data-view="table">
-                        <i class="bx bx-table"></i> Liste
+                    <button type="button" class="btn btn-outline-primary btn-sayac-view-toggle p-2" data-view="table">
+                        <i data-feather="list"></i>
                     </button>
                 </div>
             </div>
+        </div>
         </div>
     </div>
 </div>
@@ -59,7 +61,7 @@ for ($i = 0; $i < 24; $i++) {
 
     <div class="row">
         <div class="col-12">
-            <h6 class="text-primary mb-3"><i class="bx bx-bar-chart-alt-2 me-1"></i> Aylık Karşılaştırma</h6>
+            <h6 class="text-primary mb-3"><i data-feather="bar-chart-2" class="me-1"></i> Aylık Karşılaştırma</h6>
         
         <!-- Chart Container -->
         <div id="view-sayac-chart" class="sayac-view-container">
@@ -85,10 +87,18 @@ for ($i = 0; $i < 24; $i++) {
     (function() {
         if (typeof $ === 'undefined') return;
 
-        $('#selectComparisonPeriodsSayac').select2({
+        $('#selectComparisonPeriodsSayac, #selectComparisonStaffSayac').select2({
             dropdownParent: $('#statsModal'),
-            width: '100%'
+            width: '100%',
+            allowClear: true,
+            placeholder: function() {
+                return $(this).data('placeholder');
+            }
         });
+
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+        }
 
         let sayacComparisonChart = null;
 
@@ -103,7 +113,7 @@ for ($i = 0; $i < 24; $i++) {
 
             $('#sayacComparisonChart').html('<div class="text-center p-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Veriler yükleniyor...</p></div>');
 
-            const staffId = $('#filterStaffId').val() || '';
+            const staffId = $('#selectComparisonStaffSayac').val() || '';
 
             $.get('views/puantaj/api.php', {
                 action: 'get-sayac-comparison',

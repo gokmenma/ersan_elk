@@ -1079,8 +1079,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $Tanimlamalar = new TanimlamalarModel();
     $muhurlemeTypes = $Tanimlamalar->getIsTurleriByRaporTuru('muhurleme');
     $muhurlemeTypeNames = [];
-    foreach ($muhurlemeTypes as $mt) {
-        $muhurlemeTypeNames[] = $mt->tur_adi;
+    if (is_iterable($muhurlemeTypes)) {
+        foreach ($muhurlemeTypes as $mt) {
+            $muhurlemeTypeNames[] = $mt->tur_adi;
+        }
     }
     // Fallback: Eğer tanımlama yoksa MÜHÜRLEME kelimesini ara
     if (empty($muhurlemeTypeNames)) {
@@ -1801,7 +1803,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $workTypes = $Tanimlamalar->getIsTurleriByRaporTuru('sokme');
             }
 
-            if (!empty($workTypes)) {
+            if (!empty($workTypes) && is_iterable($workTypes)) {
                 $filterNames = [];
                 foreach ($workTypes as $wt) {
                     $filterNames[] = $wt->is_emri_sonucu;
@@ -3596,7 +3598,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get-okuma-comparison') {
     
     $sql = "SELECT DATE_FORMAT(tarih, '%Y-%m') as period, 
                    COALESCE(sayac_durum, 'Belirtilmemiş') as status, 
-                   COUNT(*) as adet
+                   SUM(okunan_abone_sayisi) as adet
             FROM endeks_okuma
             WHERE firma_id = ? AND silinme_tarihi IS NULL 
             AND DATE_FORMAT(tarih, '%Y-%m') IN ($placeholders)";
@@ -3660,8 +3662,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get-puantaj-comparison') {
             FROM yapilan_isler t
             LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
             WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL
-            AND DATE_FORMAT(t.tarih, '%Y-%m') IN ($placeholders)
-            AND (tn.is_turu_ucret > 0 OR (tn.is_turu_ucret IS NULL AND (t.is_emri_sonucu LIKE '%Sayaç%' OR t.is_emri_sonucu LIKE '%Kesme%' OR t.is_emri_sonucu LIKE '%Açma%')))";
+            AND DATE_FORMAT(t.tarih, '%Y-%m') IN ($placeholders)";
     
     $params = array_merge([$firmaId], $periodsReq);
     if ($personelId) {

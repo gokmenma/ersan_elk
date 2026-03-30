@@ -1144,6 +1144,7 @@ if ($filter === 'muayene') {
 <!-- Modaller -->
 <?php include_once "modal/arac-modal.php"; ?>
 <?php include_once "modal/zimmet-modal.php"; ?>
+<?php include_once "modal/zimmet-iade-modal.php"; ?>
 <?php include_once "modal/yakit-modal.php"; ?>
 <?php include_once "modal/km-modal.php"; ?>
 <?php include_once "modal/excel-modal.php"; ?>

@@ -234,7 +234,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     <div id="sayacDurumSummary" class="card-body bg-light-subtle border-bottom py-3" style="display: none;">
                         <div class="d-flex align-items-center justify-content-between mb-3 px-1">
                             <h6 class="fs-12 text-uppercase fw-semibold text-muted mb-0"><i class="bx bx-stats me-1"></i> Sayaç Durumu İstatistikleri</h6>
-                            <button class="btn btn-sm btn-link text-decoration-none d-none" id="btnToggleOtherStatuses">
+                            <button class="btn btn-sm btn-link text-decoration-none d-none summary-toggle-btn" id="btnToggleOtherStatuses" data-active-target="#sayacDurumOtherSummaryContainer">
                                 <span class="show-text">Tümünü Göster</span>
                                 <span class="hide-text d-none">Daralt</span>
                             </button>
@@ -308,7 +308,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     <div id="puantajSummary" class="card-body bg-light-subtle border-bottom py-3" style="display: none;">
                         <div class="d-flex align-items-center justify-content-between mb-3 px-1">
                             <h6 class="fs-12 text-uppercase fw-semibold text-muted mb-0"><i class="bx bx-stats me-1"></i> Kesme/Açma İstatistikleri</h6>
-                            <button class="btn btn-sm btn-link text-decoration-none d-none" id="btnToggleOtherPuantajStatus">
+                            <button class="btn btn-sm btn-link text-decoration-none d-none summary-toggle-btn" id="btnToggleOtherPuantajStatus" data-active-target="#puantajOtherSummaryContainer">
                                 <span class="show-text">Tümünü Göster</span>
                                 <span class="hide-text d-none">Daralt</span>
                             </button>
@@ -427,7 +427,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     <div id="sayacDegisimSummary" class="card-body bg-light-subtle border-bottom py-3" style="display: none;">
                         <div class="d-flex align-items-center justify-content-between mb-3 px-1">
                             <h6 class="fs-12 text-uppercase fw-semibold text-muted mb-0"><i class="bx bx-stats me-1"></i> Sayaç Değişim İstatistikleri</h6>
-                            <button class="btn btn-sm btn-link text-decoration-none d-none" id="btnToggleOtherSayacStatus">
+                            <button class="btn btn-sm btn-link text-decoration-none d-none summary-toggle-btn" id="btnToggleOtherSayacStatus" data-active-target="#sayacDegisimOtherSummaryContainer">
                                 <span class="show-text">Tümünü Göster</span>
                                 <span class="hide-text d-none">Daralt</span>
                             </button>
@@ -492,7 +492,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     <div id="muhurlemeSummary" class="card-body bg-light-subtle border-bottom py-3" style="display: none;">
                         <div class="d-flex align-items-center justify-content-between mb-3 px-1">
                             <h6 class="fs-12 text-uppercase fw-semibold text-muted mb-0"><i class="bx bx-stats me-1"></i> Mühürleme İstatistikleri</h6>
-                            <button class="btn btn-sm btn-link text-decoration-none d-none" id="btnToggleOtherMuhurlemeStatus">
+                            <button class="btn btn-sm btn-link text-decoration-none d-none summary-toggle-btn" id="btnToggleOtherMuhurlemeStatus" data-active-target="#muhurlemeOtherSummaryContainer">
                                 <span class="show-text">Tümünü Göster</span>
                                 <span class="hide-text d-none">Daralt</span>
                             </button>
@@ -1308,9 +1308,10 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             });
         }
 
-        // Özetleri genişlet/daralt butonu
-        $(document).on('click', '#btnToggleOtherStatuses', function() {
-            var otherContainer = $('#sayacDurumOtherSummaryContainer');
+        // Özetleri genişlet/daralt butonu (Genelleştirilmiş)
+        $(document).on('click', '.summary-toggle-btn', function() {
+            var target = $(this).data('active-target');
+            var otherContainer = $(target);
             var btn = $(this);
             
             if (otherContainer.hasClass('d-none')) {
