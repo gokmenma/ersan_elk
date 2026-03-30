@@ -238,12 +238,19 @@ function loadTicket() {
                 $('#reply-form').closest('.card').find('.card-body form').hide();
                 $('#reply-form').closest('.card').find('.card-body hr').hide();
                 $('#waiting-admin-alert').hide();
-                if($('#closed-alert').length === 0) {
-                    const alertText = ticket.durum === 'kapali'
-                        ? 'Bu talep kapatılmıştır. Yeni mesaj gönderilemez.'
-                        : 'Bu talep henüz onaylanmadı. Onay sonrası mesajlaşabilirsiniz.';
-                    $('#chat-messages').after('<div id="closed-alert" class="alert alert-soft-danger text-center mt-3"><i class="bx bx-lock-alt me-1"></i> ' + alertText + '</div>');
+                
+                if($('#closed-alert').length > 0) $('#closed-alert').remove();
+                
+                let alertText = '';
+                if (ticket.durum === 'kapali') {
+                    alertText = 'Bu talep kapatılmıştır. Yeni mesaj gönderilemez.';
+                    if (ticket.kapatan_adi && ticket.kapatma_tarihi) {
+                        alertText = `Bu talep <strong>${ticket.kapatan_adi}</strong> tarafından <strong>${ticket.kapatma_tarihi}</strong> tarihinde kapatılmıştır. Yeni mesaj gönderilemez.`;
+                    }
+                } else {
+                    alertText = 'Bu talep henüz onaylanmadı. Onay sonrası mesajlaşabilirsiniz.';
                 }
+                $('#chat-messages').after('<div id="closed-alert" class="alert alert-soft-danger text-center mt-3"><i class="bx bx-lock-alt me-1"></i> ' + alertText + '</div>');
             } else {
                 $('#btn-close-ticket').show();
                 $('#btn-reopen-ticket').hide();

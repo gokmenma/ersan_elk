@@ -401,7 +401,7 @@ try {
                 }
             }
 
-            $destekBiletModel->updateStatus($biletId, $durum);
+            $destekBiletModel->updateStatus($biletId, $durum, (int) ($_SESSION['user_id'] ?? 0));
             echo json_encode(['success' => true]);
             break;
 

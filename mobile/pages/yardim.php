@@ -454,9 +454,16 @@ function renderTicketDetail(ticket) {
              actionButton = `<div class="p-4 text-center text-[11px] text-slate-400 italic">Destek ekibinin yanıtı bekleniyor...</div>`;
         }
     } else {
+        let closureInfo = 'Bu Talep Kapatılmıştır';
+        if (ticket.kapatan_adi && ticket.kapatma_tarihi) {
+            closureInfo = `<div class="flex flex-col items-center gap-1">
+                <span>Bu Talep Kapatılmıştır</span>
+                <span class="text-[9px] font-medium normal-case opacity-70">${ticket.kapatan_adi} tarafından ${formatDate(ticket.kapatma_tarihi)} tarihinde kapatıldı.</span>
+            </div>`;
+        }
         actionButton = `<div class="p-4 text-center text-xs font-bold text-slate-400 bg-slate-50 dark:bg-slate-800 rounded-2xl mx-5 mb-5 uppercase tracking-widest flex items-center justify-center gap-2">
             <span class="material-symbols-outlined text-sm">lock</span>
-            Bu Talep Kapatılmıştır
+            ${closureInfo}
         </div>`;
     }
 

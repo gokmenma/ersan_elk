@@ -144,6 +144,14 @@ if (!is_array($firma_option)) {
                 </button>
             </div>
 
+            <!-- Destek Talepleri -->
+            <div class="dropdown d-inline-block">
+                <?php $supportUrl = \App\Service\Gate::allows('admin_destek_talebi') ? 'index.php?p=yardim/list' : 'index.php?p=yardim/user-list'; ?>
+                <button type="button" class="btn header-item noti-icon" onclick="location.href='<?php echo $supportUrl; ?>'" title="Destek Talepleri">
+                    <i data-feather="help-circle" class="icon-lg"></i>
+                </button>
+            </div>
+
             <!-- <div class="dropdown d-none d-lg-inline-block ms-1">
                 <button type="button" class="btn header-item" data-bs-toggle="dropdown" aria-haspopup="true"
                     aria-expanded="false">

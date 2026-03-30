@@ -56,6 +56,93 @@ if (!(Gate::allows('admin_destek_talebi') || Gate::isSuperAdmin())) {
         align-items: flex-start;
         margin-bottom: 0.5rem;
     }
+
+    /* Timeline Styles */
+    .timeline-container {
+        position: relative;
+        padding-left: 3rem;
+        margin-top: 1rem;
+    }
+    .timeline-container::before {
+        display: none;
+    }
+    .timeline-item:not(:last-child)::after {
+        content: '';
+        position: absolute;
+        left: -1.5rem;
+        top: 1.75rem;
+        bottom: -1rem;
+        width: 2px;
+        background: #e2e8f0;
+    }
+    .timeline-item {
+        position: relative;
+        margin-bottom: 2rem;
+    }
+    .timeline-dot {
+        position: absolute;
+        left: -2.25rem;
+        top: 0.25rem;
+        width: 1.5rem;
+        height: 1.5rem;
+        border-radius: 50%;
+        background: #fff;
+        border: 2px solid #64748b;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        z-index: 1;
+        box-shadow: 0 0 0 4px #fff;
+    }
+    .timeline-dot i { font-size: 0.7rem; color: #fff; }
+    .timeline-content {
+        background: #f8fafc;
+        padding: 1rem;
+        border-radius: 12px;
+        border: 1px solid #f1f5f9;
+        transition: all 0.2s ease;
+    }
+    .timeline-content:hover {
+        background: #fff;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1);
+        border-color: #e2e8f0;
+    }
+    .timeline-time {
+        font-size: 0.7rem;
+        color: #94a3b8;
+        font-weight: 600;
+        margin-bottom: 0.25rem;
+        text-transform: uppercase;
+        letter-spacing: 0.025em;
+    }
+    .timeline-title {
+        font-size: 0.9rem;
+        font-weight: 700;
+        color: #1e293b;
+        margin-bottom: 0.25rem;
+    }
+    .timeline-desc {
+        font-size: 0.8rem;
+        color: #64748b;
+        line-height: 1.4;
+    }
+    .timeline-duration {
+        font-size: 0.7rem;
+        background: #f1f5f9;
+        color: #475569;
+        padding: 2px 8px;
+        border-radius: 100px;
+        display: inline-block;
+        margin-top: 0.5rem;
+        font-weight: 600;
+    }
+    
+    /* Timeline Dots Colors */
+    .dot-create { border-color: #3b82f6; background: #3b82f6; }
+    .dot-approval { border-color: #f59e0b; background: #f59e0b; }
+    .dot-reply { border-color: #10b981; background: #10b981; }
+    .dot-personel { border-color: #6366f1; background: #6366f1; }
+    .dot-close { border-color: #ef4444; background: #ef4444; }
 </style>
 
 <!-- Stats Row -->
@@ -171,6 +258,34 @@ if (!(Gate::allows('admin_destek_talebi') || Gate::isSuperAdmin())) {
     </div>
 </div>
 
+<!-- Timeline Modal -->
+<div class="modal fade" id="timelineModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+            <div class="modal-header bg-light/50 border-0 pt-4 px-4">
+                <h5 class="modal-title fw-black text-slate-800 uppercase tracking-tighter" style="font-size: 1.1rem;">
+                    <i class="bx bx-history me-2 text-primary"></i> İşlem Zaman Çizelgesi
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4 pt-0">
+                <div id="timeline-info" class="mb-4 mt-3 ps-1">
+                    <p class="text-muted small mb-1 fw-bold">Ref No: <span id="timeline-ref" class="text-primary">-</span></p>
+                    <p class="text-dark fw-black mb-0" style="font-size: 0.85rem;"><span id="timeline-konu">-</span></p>
+                </div>
+                
+                <div id="timeline-loading" class="text-center py-5">
+                    <div class="spinner-border text-primary" role="status"></div>
+                </div>
+                
+                <div id="timeline-content" class="timeline-container" style="display: none;">
+                    <!-- Timeline items will be rendered here -->
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 $(document).ready(function() {
     let table = $('#tickets-table').DataTable({
@@ -195,16 +310,18 @@ $(document).ready(function() {
             },
             { data: 'guncelleme_tarihi' },
             { 
-                data: 'durum',
-                render: function(data) {
-                    let badge = 'bg-secondary';
-                    let text = data;
-                    if(data === 'acik') { badge = 'bg-warning'; text = 'AÇIK'; }
-                    if(data === 'yanitlandi') { badge = 'bg-success'; text = 'YANITLANDI'; }
-                    if(data === 'personel_yaniti') { badge = 'bg-primary'; text = 'PERSONEL YANITI'; }
-                    if(data === 'kapali') { badge = 'bg-danger'; text = 'KAPALI'; }
-                    return `<span class="badge ${badge}">${text}</span>`;
+                data: 'durum', render: function(data, type, row) {
+                if ((row.onay_durumu || '') === 'beklemede') {
+                    return '<span class="badge bg-secondary p-2 px-3 rounded-pill">ONAY BEKLİYOR</span>';
                 }
+
+                let badge = 'bg-secondary';
+                if(data === 'acik') badge = 'bg-warning';
+                if(data === 'yanitlandi') badge = 'bg-success';
+                if(data === 'personel_yaniti') badge = 'bg-primary';
+                if(data === 'kapali') badge = 'bg-danger';
+                return `<span class="badge ${badge} p-2 px-3 rounded-pill" onclick="showTimeline(${row.id}, '${row.ref_no}', '${row.konu}')" style="cursor: pointer;" title="İşlem geçmişini gör">${data.toUpperCase()}</span>`;
+            }
             },
             {
                 data: null,
@@ -237,4 +354,113 @@ $(document).ready(function() {
         loadTickets($(this).val());
     });
 });
+
+function showTimeline(id, refNo, konu) {
+    $('#timeline-ref').text(refNo);
+    $('#timeline-konu').text(konu);
+    $('#timeline-loading').show();
+    $('#timeline-content').hide().empty();
+    $('#timelineModal').modal('show');
+
+    $.post('views/yardim/api.php', { action: 'get-ticket-details', bilet_id: id }, function(res) {
+        $('#timeline-loading').hide();
+        if(res.success) {
+            const ticket = res.ticket;
+            let items = [];
+
+            // 1. Oluşturma
+            items.push({
+                time: ticket.olusturma_tarihi,
+                title: 'Talep Oluşturuldu',
+                desc: `Talep <b>${ticket.personel_adi}</b> tarafından başarıyla sisteme kaydedildi.`,
+                icon: 'bx bx-plus',
+                class: 'dot-create',
+                dateObj: new Date(ticket.olusturma_tarihi)
+            });
+
+            // 2. Onay (Eğer onaylanmış/reddedilmişse ve tarihi varsa)
+            if(ticket.onay_durumu !== 'beklemede' && ticket.onay_tarihi) {
+                const statusText = ticket.onay_durumu === 'onaylandi' ? 'Onaylandı' : 'Reddedildi';
+                items.push({
+                    time: ticket.onay_tarihi,
+                    title: `Yönetici Onay ${statusText}`,
+                    desc: `Talep ön onay sürecinden geçti.`,
+                    icon: ticket.onay_durumu === 'onaylandi' ? 'bx bx-check' : 'bx bx-x',
+                    class: 'dot-approval',
+                    dateObj: new Date(ticket.onay_tarihi)
+                });
+            }
+
+            // 3. Mesajlar
+            if(ticket.messages && ticket.messages.length > 0) {
+                ticket.messages.forEach(msg => {
+                    // İlk mesaj biletin kendisi olabilir (bazen biletin mesajı ilk mesaj olarak dönüyor)
+                    // Eğer olusturma_tarihi ile aynıysa talep detayıdır.
+                    // Not: Normalde ilk mesaj biletin ilk metnidir.
+                    if(msg.olusturma_tarihi === ticket.olusturma_tarihi) return;
+
+                    const isYonetici = msg.gonderen_tip === 'yonetici';
+                    items.push({
+                        time: msg.olusturma_tarihi,
+                        title: isYonetici ? 'Destek Yanıtı' : 'Personel Mesajı',
+                        desc: `<b>${msg.gonderen_adi}</b> tarafından yeni bir mesaj eklendi.`,
+                        icon: isYonetici ? 'bx bx-message-rounded-dots' : 'bx bx-reply',
+                        class: isYonetici ? 'dot-reply' : 'dot-personel',
+                        dateObj: new Date(msg.olusturma_tarihi)
+                    });
+                });
+            }
+
+            // 4. Kapatma
+            if(ticket.durum === 'kapali' && ticket.kapatma_tarihi) {
+                items.push({
+                    time: ticket.kapatma_tarihi,
+                    title: 'Talep Kapatıldı',
+                    desc: `Talebiniz <b>${ticket.kapatan_adi || 'Sistem'}</b> tarafından sonlandırıldı.`,
+                    icon: 'bx bx-lock',
+                    class: 'dot-close',
+                    dateObj: new Date(ticket.kapatma_tarihi)
+                });
+            }
+
+            // Tarihe göre sırala
+            items.sort((a, b) => a.dateObj - b.dateObj);
+
+            // Render
+            let html = '';
+            items.forEach((item, index) => {
+                let durationHtml = '';
+                if(index > 0) {
+                    const diffMs = items[index].dateObj - items[index-1].dateObj;
+                    const diffMins = Math.round(diffMs / 60000);
+                    if(diffMins < 60) {
+                        durationHtml = `<span class="timeline-duration"><i class="bx bx-time-five me-1"></i>+${diffMins} dk</span>`;
+                    } else if(diffMins < 1440) {
+                        durationHtml = `<span class="timeline-duration"><i class="bx bx-time-five me-1"></i>+${Math.round(diffMins/60)} saat</span>`;
+                    } else {
+                        durationHtml = `<span class="timeline-duration"><i class="bx bx-time-five me-1"></i>+${Math.round(diffMins/1440)} gün</span>`;
+                    }
+                }
+
+                html += `
+                    <div class="timeline-item">
+                        <div class="timeline-dot ${item.class}">
+                            <i class="${item.icon}"></i>
+                        </div>
+                        <div class="timeline-content">
+                            <div class="timeline-time">${item.time}</div>
+                            <div class="timeline-title">${item.title}</div>
+                            <div class="timeline-desc">${item.desc}</div>
+                            ${durationHtml}
+                        </div>
+                    </div>
+                `;
+            });
+
+            $('#timeline-content').html(html).fadeIn();
+        } else {
+            $('#timeline-loading').html(`<div class="text-danger">${res.message}</div>`);
+        }
+    });
+}
 </script>

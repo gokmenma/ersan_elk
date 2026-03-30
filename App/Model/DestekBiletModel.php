@@ -137,10 +137,12 @@ class DestekBiletModel extends Model
         // Bilet bilgisi
         $sqlTicket = "SELECT db.*, 
                       COALESCE(p.adi_soyadi, u.adi_soyadi) as personel_adi, 
-                      p.departman, p.resim_yolu
+                      p.departman, p.resim_yolu,
+                      uk.adi_soyadi as kapatan_adi
                       FROM {$this->table} db
                       LEFT JOIN personel p ON db.personel_id = p.id
                       LEFT JOIN users u ON db.user_id = u.id
+                      LEFT JOIN users uk ON db.kapatan_user_id = uk.id
                       WHERE db.id = ?";
         $stmtTicket = $this->db->prepare($sqlTicket);
         $stmtTicket->execute([$biletId]);
@@ -172,11 +174,24 @@ class DestekBiletModel extends Model
     /**
      * Bilet durumunu manuel günceller (Kapatma vb.)
      */
-    public function updateStatus($biletId, $durum)
+    public function updateStatus($biletId, $durum, $userId = null)
     {
-        $sql = "UPDATE {$this->table} SET durum = ?, guncelleme_tarihi = CURRENT_TIMESTAMP WHERE id = ?";
+        $params = [$durum];
+        $sql = "UPDATE {$this->table} SET durum = ?, guncelleme_tarihi = CURRENT_TIMESTAMP";
+        
+        if ($durum === 'kapali') {
+            $sql .= ", kapatan_user_id = ?, kapatma_tarihi = CURRENT_TIMESTAMP";
+            $params[] = $userId;
+        } elseif ($durum === 'acik') {
+            // Reopening clears closure info
+            $sql .= ", kapatan_user_id = NULL, kapatma_tarihi = NULL";
+        }
+        
+        $sql .= " WHERE id = ?";
+        $params[] = $biletId;
+        
         $stmt = $this->db->prepare($sql);
-        return $stmt->execute([$durum, $biletId]);
+        return $stmt->execute($params);
     }
 
     /**
