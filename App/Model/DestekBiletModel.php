@@ -24,8 +24,8 @@ class DestekBiletModel extends Model
         try {
             $this->db->beginTransaction();
 
-            if ($this->countActiveTickets((int) $userId) >= 5) {
-                throw new \Exception('Aynı anda en fazla 5 açık destek talebiniz olabilir. Önce mevcut taleplerinizden birini kapatın.');
+            if ($this->countActiveTickets((int) $userId) >= 10) {
+                throw new \Exception('Aynı anda en fazla 10 açık destek talebiniz olabilir. Önce mevcut taleplerinizden birini kapatın.');
             }
 
             $refNo = $this->generateRefNo();
@@ -270,7 +270,7 @@ class DestekBiletModel extends Model
      */
     public function canCreateNewTicket(int $userId): bool
     {
-        return $this->countActiveTickets($userId) < 5;
+        return $this->countActiveTickets($userId) < 10;
     }
 
     protected function appendEncryptedId($ticket)

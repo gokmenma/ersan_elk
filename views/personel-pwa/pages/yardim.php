@@ -160,8 +160,8 @@ function updateFileName(input) {
 }
 
 function openNewTicketModal() {
-    if (activeTicketCount >= 2) {
-        Toast.show('Aynı anda en fazla 2 açık destek talebiniz olabilir.', 'error');
+    if (activeTicketCount >= 10) {
+        Toast.show('Aynı anda en fazla 10 açık destek talebiniz olabilir.', 'error');
         return;
     }
     Modal.open('new-ticket-modal');
@@ -173,7 +173,7 @@ function updateCreateButtonState() {
         return;
     }
 
-    if (activeTicketCount >= 2) {
+    if (activeTicketCount >= 10) {
         button.classList.add('opacity-50');
         button.classList.remove('bg-primary');
         button.classList.add('bg-slate-400');

@@ -636,7 +636,7 @@ class PuantajModel extends Model
         $sql = "SELECT 
                     MONTH(t.tarih) as ay,
                     COALESCE(tn.tur_adi, t.is_emri_tipi) as tur,
-                    COUNT(*) as toplam
+                    SUM(t.sonuclanmis) as toplam
                 FROM $this->table t
                 LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
                 WHERE (tn.grup = 'is_turu' OR t.is_emri_tipi IS NOT NULL)
@@ -664,7 +664,7 @@ class PuantajModel extends Model
         $sql = "SELECT 
                     MONTH(t.tarih) as ay,
                     COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as sonuc,
-                    COUNT(*) as toplam
+                    SUM(t.sonuclanmis) as toplam
                 FROM $this->table t
                 LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
                 WHERE (tn.grup = 'is_turu' OR t.is_emri_sonucu IS NOT NULL)

@@ -2472,7 +2472,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         // Bölge ve Defter bazında group by yaparak verileri çek
         $placeholders = implode(',', array_fill(0, count($donemler), '?'));
         $groupSql = "SELECT e.bolge, e.defter, DATE_FORMAT(e.tarih, '%Y%m') as donem,
-                            SUM(CASE WHEN e.sayac_durum = 'SAYAÇ NORMAL' THEN e.okunan_abone_sayisi ELSE 0 END) as toplam_okunan,
+                            SUM(CASE WHEN e.sayac_durum IN ('SAYAÇ NORMAL', 'SARFIYAT YOK', 'NORMAL DEVİR', 'NORMAL', 'OKUNDU', 'HESAP KESİM(HK)', 'NORMAL  DEVİR', 'GOTURU SARFIYAT', 'SAYAÇ TERS', 'TERS DEVİR', 'EVDE YOK', 'KULLANILMIYOR', 'SAYAÇ PATLAK', 'SAYAÇ BOZUK', 'SAYAÇ OKUNAMIYOR(KİRLİ)', 'SAYAÇ YOK', 'DEPREMDE YIKILMIŞ', 'ABONE BULUNAMIYOR', 'OKUMA KAPALI(OK)', 'SAYACIN CAMI KIRIK', 'İPTAL(IP)') THEN e.okunan_abone_sayisi ELSE 0 END) as toplam_okunan,
                             SUM(e.okunan_abone_sayisi) as kayit_sayisi,
                             MAX(e.tarih) as son_okuma
                      FROM endeks_okuma e
@@ -2768,12 +2768,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
         // 2. endeks_okuma'dan dönem bazlı okuma verilerini çek
         $placeholders = implode(',', array_fill(0, count($donemler), '?'));
-        $sql = "SELECT bolge, defter, DATE_FORMAT(tarih, '%Y%m') as donem,
-                       SUM(CASE WHEN sayac_durum = 'SAYAÇ NORMAL' THEN okunan_abone_sayisi ELSE 0 END) as toplam_okunan
-                FROM endeks_okuma
-                WHERE firma_id = ?
-                  AND silinme_tarihi IS NULL
-                  AND DATE_FORMAT(tarih, '%Y%m') IN ($placeholders)";
+                $sql = "SELECT bolge, defter, DATE_FORMAT(tarih, '%Y%m') as donem,
+                        SUM(CASE WHEN sayac_durum IN ('SAYAÇ NORMAL', 'SARFIYAT YOK', 'NORMAL DEVİR', 'NORMAL', 'OKUNDU', 'HESAP KESİM(HK)', 'NORMAL  DEVİR', 'GOTURU SARFIYAT', 'SAYAÇ TERS', 'TERS DEVİR', 'EVDE YOK', 'KULLANILMIYOR', 'SAYAÇ PATLAK', 'SAYAÇ BOZUK', 'SAYAÇ OKUNAMIYOR(KİRLİ)', 'SAYAÇ YOK', 'DEPREMDE YIKILMIŞ', 'ABONE BULUNAMIYOR', 'OKUMA KAPALI(OK)', 'SAYACIN CAMI KIRIK', 'İPTAL(IP)') THEN okunan_abone_sayisi ELSE 0 END) as toplam_okunan,
+                        SUM(okunan_abone_sayisi) as toplam_gidilen
+                 FROM endeks_okuma
+                 WHERE firma_id = ?
+                   AND silinme_tarihi IS NULL
+                   AND DATE_FORMAT(tarih, '%Y%m') IN ($placeholders)";
 
         $queryParams = [$firmaId];
         $queryParams = array_merge($queryParams, $donemler);
@@ -2802,7 +2803,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             $key = $bolgeName . '|' . $defterCode;
             
             if (!isset($okunanMap[$donem])) $okunanMap[$donem] = [];
-            $okunanMap[$donem][$key] = (int) $row->toplam_okunan;
+            $okunanMap[$donem][$key] = [
+                'okunan' => (int) $row->toplam_okunan,
+                'gidilen' => (int) $row->toplam_gidilen
+            ];
 
             // Eğer bu defter tanımlarda yoksa, allDefters listesine ekle ki istatistiklere girsin
             if (!isset($allDefters[$key])) {
@@ -2825,9 +2829,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $toplamDetay = [];
 
         foreach ($donemler as $donem) {
-            $genel[$donem] = ['toplam_defter' => 0, 'okunan_defter' => 0, 'okunmayan_defter' => 0, 'oran' => 0];
+            $genel[$donem] = [
+                'toplam_defter' => 0, 'okunan_defter' => 0, 'okunmayan_defter' => 0, 'oran' => 0,
+                'sub_okunan' => 0, 'sub_gidilen' => 0, 'sub_oran' => 0
+            ];
             
-            $bolgeStats = [];    // [bolge => [toplam, okunan, okunmayan]]
+            $bolgeStats = [];    // [bolge => [toplam, okunan, okunmayan, sub_okunan, sub_gidilen]]
             $bOkunmayanList = []; // [bolge => [defter listesi]]
             $bOkunanList = [];    // [bolge => [defter listesi]]
             $bToplamList = [];    // [bolge => [defter listesi]]
@@ -2840,7 +2847,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
                 $bolgeName = $info['bolge'] ?: 'TANIMSIZ';
                 if (!isset($bolgeStats[$bolgeName])) {
-                    $bolgeStats[$bolgeName] = ['toplam_defter' => 0, 'okunan_defter' => 0, 'okunmayan_defter' => 0];
+                    $bolgeStats[$bolgeName] = [
+                        'toplam_defter' => 0, 'okunan_defter' => 0, 'okunmayan_defter' => 0,
+                        'sub_okunan' => 0, 'sub_gidilen' => 0
+                    ];
                     $bOkunmayanList[$bolgeName] = [];
                     $bOkunanList[$bolgeName] = [];
                     $bToplamList[$bolgeName] = [];
@@ -2849,7 +2859,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                 $bolgeStats[$bolgeName]['toplam_defter']++;
                 $genel[$donem]['toplam_defter']++;
 
-                $isOkunan = isset($okunanMap[$donem][$key]) && $okunanMap[$donem][$key] > 0;
+                $infoOkunan = $okunanMap[$donem][$key]['okunan'] ?? 0;
+                $infoGidilen = $okunanMap[$donem][$key]['gidilen'] ?? 0;
+                
+                $genel[$donem]['sub_okunan'] += $infoOkunan;
+                $genel[$donem]['sub_gidilen'] += $infoGidilen;
+                $bolgeStats[$bolgeName]['sub_okunan'] += $infoOkunan;
+                $bolgeStats[$bolgeName]['sub_gidilen'] += $infoGidilen;
+
+                // Defter "Okunan" sayılması için en az 1 kayıt (gidilen) olması yeterli
+                $isOkunan = $infoGidilen > 0;
                 
                 $item = [
                     'defter' => $info['defter'],
@@ -2873,10 +2892,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
             // Oran hesapla
             $genel[$donem]['oran'] = $genel[$donem]['toplam_defter'] > 0 ? round(($genel[$donem]['okunan_defter'] / $genel[$donem]['toplam_defter']) * 100, 1) : 0;
+            $genel[$donem]['sub_oran'] = $genel[$donem]['sub_gidilen'] > 0 ? round(($genel[$donem]['sub_okunan'] / $genel[$donem]['sub_gidilen']) * 100, 1) : 0;
 
             // Bölge verileri
             foreach ($bolgeStats as $bName => &$bStat) {
                 $bStat['oran'] = $bStat['toplam_defter'] > 0 ? round(($bStat['okunan_defter'] / $bStat['toplam_defter']) * 100, 1) : 0;
+                $bStat['sub_oran'] = $bStat['sub_gidilen'] > 0 ? round(($bStat['sub_okunan'] / $bStat['sub_gidilen']) * 100, 1) : 0;
                 $bolgeData[$bName][$donem] = $bStat;
             }
 
@@ -3598,7 +3619,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get-okuma-comparison') {
     
     $sql = "SELECT DATE_FORMAT(tarih, '%Y-%m') as period, 
                    COALESCE(sayac_durum, 'Belirtilmemiş') as status, 
-                   SUM(okunan_abone_sayisi) as adet
+                   IFNULL(SUM(okunan_abone_sayisi), 0) as adet
             FROM endeks_okuma
             WHERE firma_id = ? AND silinme_tarihi IS NULL 
             AND DATE_FORMAT(tarih, '%Y-%m') IN ($placeholders)";
@@ -3718,7 +3739,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get-sayac-comparison') {
 
     $sql = "SELECT DATE_FORMAT(tarih, '%Y-%m') as period, 
                    COALESCE(isemri_sonucu, 'Belirtilmemiş') as sonuc, 
-                   COUNT(*) as adet
+                   IFNULL(SUM(is_sayisi), 0) as adet
             FROM sayac_degisim
             WHERE firma_id = ? AND silinme_tarihi IS NULL
             AND DATE_FORMAT(tarih, '%Y-%m') IN ($placeholders)";

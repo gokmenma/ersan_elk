@@ -738,16 +738,16 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             </div>
 
             <!-- Okunmayan Defter Listesi Modal -->
-            <div class="modal fade" id="modalOkunmayanDefterler" tabindex="-1" aria-hidden="true">
+            <div class="modal fade no-upgrade" id="modalOkunmayanDefterler" tabindex="-1" aria-hidden="true">
                 <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
                     <div class="modal-content border-0 shadow-lg" style="border-radius: 14px;">
                         <div class="modal-header border-bottom-0 pb-2" style="border-radius: 14px 14px 0 0; background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);">
-                            <h5 class="modal-title fw-bold text-white" id="modalOkunmayanTitle">
-                                <i class="bx bx-error-circle me-2"></i>Okunmayan Defterler
+                            <h5 class="modal-title fw-bold text-white" id="modalDefterListTitle">
+                                <i class="bx bx-error-circle me-2"></i>Defter Listesi
                             </h5>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
                         </div>
-                        <div class="modal-body pt-3" id="modalOkunmayanBody">
+                        <div class="modal-body pt-3" id="modalDefterListBody">
                             <!-- JS ile doldurulacak -->
                         </div>
                         <div class="modal-footer border-top-0 pt-0">
@@ -1304,8 +1304,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
     /* Sub-header columns */
     .sub-header {
-        font-size: 10px !important;
-        font-weight: 600 !important;
+        position: relative;
     }
 
     .sub-header-abone {
@@ -2399,9 +2398,11 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 html += `<tr class="ogr-region-stats-row"><td colspan="5" class="text-end fw-bold py-1" style="background: rgba(0,0,0,0.02); font-size: 10px; color: #64748b;">OKUMA DURUMU (DEFTER):</td>`;
                 donemler.forEach(donem => {
                     const stats = regionDefterStats[donem];
+                    const rTotals = regionTotals.donemler[donem];
                     const content = `<div class="d-flex justify-content-center gap-1">
-                        <span class="badge bg-success-subtle text-success border border-success-subtle" style="font-size:10px; padding: 4px 8px;">Okunan Toplam: <b style="font-size:12px; margin-left:2px;">${stats.read}</b></span>
-                        <span class="badge bg-light text-secondary border" style="font-size:10px; padding: 4px 8px;">Okunmayan Toplam: <b style="font-size:12px; margin-left:2px;">${stats.unread}</b></span>
+                        <span class="badge bg-soft-success text-success border border-success-subtle px-2" style="font-size:9.5px;" title="Okunan Defter Sayısı">O: <b>${stats.read}</b></span>
+                        <span class="badge bg-soft-danger text-danger border border-danger-subtle px-2" style="font-size:9.5px;" title="Okunmayan Defter Sayısı">X: <b>${stats.unread}</b></span>
+                        <span class="badge bg-light text-dark border px-2 ms-1" style="font-size:9.5px;" title="Toplam Okunan Abone (92173 gibi)">S: <b>${rTotals.okunan.toLocaleString('tr-TR')}</b></span>
                     </div>`;
                     html += `<td colspan="${visibleCountPerPeriod}" class="text-center py-1" style="background: rgba(0,0,0,0.02);">${content}</td>`;
                 });
@@ -2534,12 +2535,12 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             const parts = colKey.split('_');
             const field = parts.pop();
             const donem = parts.join('_');
-            const fieldNames = { abone: 'Abone', okunan: 'Okunan', gidilen: 'Gidilen', oran: 'Oran %', fark: 'Fark', tarih: 'Okuma Tarihi' };
+            const fieldNames = { abone: 'Abone', okunan: 'Okunan', gidilen: 'Gidilen', oran: 'Oran %', fark: 'Fark', tarih: 'Okuma Tarihi', toplam: 'Toplam' };
             const formatted = donem.substring(0, 4) + '/' + donem.substring(4);
             $('#colFilterPopupTitle').text(formatted + ' – ' + (fieldNames[field] || field));
 
             // Mevcut filtreyi doldur
-            const existing = _numericFilters[colKey];
+            const existing = _numericFilters[colKey] || _doNumericFilters[colKey];
             if (existing) {
                 $('#colFilterOperator').val(existing.operator || '');
                 $('#colFilterValue').val(existing.value !== null && existing.value !== undefined ? existing.value : '');
@@ -2628,6 +2629,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         `);
 
         let _activeFilterCol = null;
+        let _activeFilterTab = null;
 
         // Filtre Uygula (Popup içindeki buton)
         $(document).on('click', '#colFilterApply', function () {
@@ -3482,16 +3484,22 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                     const g = genel[d] || { toplam_defter: 0, okunan_defter: 0, okunmayan_defter: 0, oran: 0 };
                     const oranClass = g.oran >= 80 ? 'do-oran-high' : (g.oran >= 50 ? 'do-oran-medium' : 'do-oran-low');
 
-                    html += '<td><span class="do-badge-toplam clickable" data-type="toplam_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Toplam defterleri görün">' + g.toplam_defter + '</span></td>';
-                    html += '<td><span class="do-badge-okunan clickable" data-type="okunan_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Okunan defterleri görün">' + g.okunan_defter + '</span></td>';
+                    html += '<td><span class="do-badge-toplam clickable no-upgrade" data-type="toplam_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Toplam defterleri görün">' + g.toplam_defter + '</span></td>';
+                    html += '<td><span class="do-badge-okunan clickable no-upgrade" data-type="okunan_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Okunan defterleri görün">' + g.okunan_defter + '</span></td>';
 
                     if (g.okunmayan_defter > 0) {
-                        html += '<td><span class="do-badge-okunmayan clickable" data-type="okunmayan_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Okunmayan defterleri görün">' + g.okunmayan_defter + '</span></td>';
+                        html += '<td><span class="do-badge-okunmayan clickable no-upgrade" data-type="okunmayan_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Okunmayan defterleri görün">' + g.okunmayan_defter + '</span></td>';
                     } else {
-                        html += '<td><span class="do-badge-okunmayan zero">' + g.okunmayan_defter + '</span></td>';
+                        html += '<td><span class="do-badge-okunmayan zero no-upgrade">' + g.okunmayan_defter + '</span></td>';
                     }
 
-                    html += '<td class="' + (isLast ? 'do-period-end' : '') + '"><span class="do-badge-oran ' + oranClass + '">' + g.oran + '%</span></td>';
+                    let subOranClassGenel = g.sub_oran >= 80 ? 'text-success' : (g.sub_oran >= 50 ? 'text-warning' : 'text-danger');
+                    let cellHtmlGenel = '<div class="d-flex flex-column align-items-center gap-0">';
+                    cellHtmlGenel += '<span class="do-badge-oran ' + oranClass + '" style="padding: 2px 6px;">' + g.oran + '%</span>';
+                    cellHtmlGenel += '<small class="' + subOranClassGenel + ' fw-bold" style="font-size: 8.5px;" title="Abone Başarı Oranı (Okunan/Gidilen)">A: ' + g.sub_oran + '%</small>';
+                    cellHtmlGenel += '</div>';
+
+                    html += '<td class="' + (isLast ? 'do-period-end' : '') + '">' + cellHtmlGenel + '</td>';
                 });
                 html += '</tr>';
 
@@ -3512,16 +3520,22 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                         const bStat = (bolgeData[bName] && bolgeData[bName][d]) || { toplam_defter: 0, okunan_defter: 0, okunmayan_defter: 0, oran: 0 };
                         const oranClass = bStat.oran >= 80 ? 'do-oran-high' : (bStat.oran >= 50 ? 'do-oran-medium' : 'do-oran-low');
 
-                        html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-toplam clickable" data-type="toplam_detay" data-donem="' + d + '" data-bolge="' + bName + '" title="Tıklayın: ' + bName + ' toplam defterleri">' + bStat.toplam_defter + '</span></td>';
-                        html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-okunan clickable" data-type="okunan_detay" data-donem="' + d + '" data-bolge="' + bName + '" title="Tıklayın: ' + bName + ' okunan defterleri">' + bStat.okunan_defter + '</span></td>';
+                        html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-toplam clickable no-upgrade" data-type="toplam_detay" data-donem="' + d + '" data-bolge="' + bName + '" title="Tıklayın: ' + bName + ' toplam defterleri">' + bStat.toplam_defter + '</span></td>';
+                        html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-okunan clickable no-upgrade" data-type="okunan_detay" data-donem="' + d + '" data-bolge="' + bName + '" title="Tıklayın: ' + bName + ' okunan defterleri">' + bStat.okunan_defter + '</span></td>';
 
                         if (bStat.okunmayan_defter > 0) {
-                            html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-okunmayan clickable" data-type="okunmayan_detay" data-donem="' + d + '" data-bolge="' + bName + '" title="Tıklayın: ' + bName + ' okunmayan defterleri">' + bStat.okunmayan_defter + '</span></td>';
+                            html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-okunmayan clickable no-upgrade" data-type="okunmayan_detay" data-donem="' + d + '" data-bolge="' + bName + '" title="Tıklayın: ' + bName + ' okunmayan defterleri">' + bStat.okunmayan_defter + '</span></td>';
                         } else {
-                            html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-okunmayan zero">' + bStat.okunmayan_defter + '</span></td>';
+                            html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-okunmayan zero no-upgrade">' + bStat.okunmayan_defter + '</span></td>';
                         }
 
-                        html += '<td class="' + (isLast ? 'do-period-end' : '') + '" style="background: ' + regionColor.bg + ';"><span class="do-badge-oran ' + oranClass + '">' + bStat.oran + '%</span></td>';
+                        let subOranClass = bStat.sub_oran >= 80 ? 'text-success' : (bStat.sub_oran >= 50 ? 'text-warning' : 'text-danger');
+                        let cellHtml = '<div class="d-flex flex-column align-items-center gap-0">';
+                        cellHtml += '<span class="do-badge-oran ' + oranClass + '" style="padding: 2px 6px;">' + bStat.oran + '%</span>';
+                        cellHtml += '<small class="' + subOranClass + ' fw-bold" style="font-size: 8.5px;" title="Abone Başarı Oranı (Okunan/Gidilen)">A: ' + bStat.sub_oran + '%</small>';
+                        cellHtml += '</div>';
+
+                        html += '<td class="' + (isLast ? 'do-period-end' : '') + '" style="background: ' + regionColor.bg + ';">' + cellHtml + '</td>';
                     });
 
                     html += '</tr>';
@@ -3571,21 +3585,21 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
             // Başlık belirleme
             let typeTitle = 'Defterler';
-            let titleIcon = 'bx-book-open';
+            let titleIcon = 'bx-book';
             let titleBg = 'linear-gradient(135deg, #3b82f6 0%, #1d4ed8 100%)';
 
             if (type === 'okunan_detay') {
                 typeTitle = 'Okunan Defterler';
-                titleIcon = 'bx-check-circle';
+                titleIcon = 'bx-check-double';
                 titleBg = 'linear-gradient(135deg, #10b981 0%, #047857 100%)';
             } else if (type === 'okunmayan_detay') {
                 typeTitle = 'Okunmayan Defterler';
-                titleIcon = 'bx-error-circle';
+                titleIcon = 'bx-x-circle';
                 titleBg = 'linear-gradient(135deg, #f43f5e 0%, #e11d48 100%)';
             } else if (type === 'toplam_detay') {
                 typeTitle = 'Toplam Defterler';
-                titleIcon = 'bx-book-content';
-                titleBg = 'linear-gradient(135deg, #6b7280 0%, #374151 100%)';
+                titleIcon = 'bx-list-ul';
+                titleBg = 'linear-gradient(135deg, #64748b 0%, #334155 100%)';
             }
 
             const formatted = String(donem).substring(0, 4) + '/' + String(donem).substring(4);
@@ -3599,10 +3613,10 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 for (const bName in donemDetails) {
                     defterList = defterList.concat(donemDetails[bName]);
                 }
-                $('#modalOkunmayanTitle').html('<i class="bx ' + titleIcon + ' me-2"></i>' + typeTitle + ' — ' + formatted + ' (Tüm Bölgeler)');
+                $('#modalDefterListTitle').html('<i class="bx ' + titleIcon + ' me-2"></i>' + typeTitle + ' — ' + formatted + ' (Tüm Bölgeler)');
             } else {
                 defterList = donemDetails[bolge] || [];
-                $('#modalOkunmayanTitle').html('<i class="bx ' + titleIcon + ' me-2"></i>' + typeTitle + ' — ' + formatted + ' — <span class="text-warning">' + bolge + '</span>');
+                $('#modalDefterListTitle').html('<i class="bx ' + titleIcon + ' me-2"></i>' + typeTitle + ' — ' + formatted + ' — <span class="text-warning">' + bolge + '</span>');
             }
 
             // Modal Header rengini güncelle
@@ -3669,7 +3683,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 modalHtml += '</tbody></table></div>';
             }
 
-            $('#modalOkunmayanBody').html(modalHtml);
+            $('#modalDefterListBody').html(modalHtml);
 
             // Modal'ı aç (mevcut instance varsa onu kullan)
             var modalEl = document.getElementById('modalOkunmayanDefterler');
