@@ -3614,16 +3614,19 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             if (defterList.length === 0) {
                 modalHtml = '<div class="text-center p-4 text-muted"><i class="bx bx-info-circle fs-1 text-info d-block mb-2"></i>Bu dönem için veri bulunmuyor.</div>';
             } else {
-                // Bölge bazlı grupla
+                // Bölge bazlı grupla ve toplamları hesapla
                 const grouped = {};
+                let grandTotalAbone = 0;
                 defterList.forEach(function (d) {
                     const b = d.bolge || 'TANIMSIZ';
                     if (!grouped[b]) grouped[b] = [];
                     grouped[b].push(d);
+                    grandTotalAbone += parseInt(d.abone_sayisi) || 0;
                 });
 
-                modalHtml += '<div class="d-flex align-items-center justify-content-between mb-3">';
+                modalHtml += '<div class="d-flex align-items-center flex-wrap gap-2 mb-3">';
                 modalHtml += '<span class="badge bg-primary-subtle text-primary" style="font-size: 13px; padding: 8px 16px; border-radius: 8px;"><i class="bx bx-list-ul me-1"></i>Toplam ' + defterList.length + ' defter</span>';
+                modalHtml += '<span class="badge bg-danger-subtle text-danger" style="font-size: 13px; padding: 8px 16px; border-radius: 8px;"><i class="bx bx-user me-1"></i>' + grandTotalAbone.toLocaleString('tr-TR') + ' Abone</span>';
                 modalHtml += '<span class="badge bg-secondary-subtle text-secondary" style="font-size: 12px; padding: 6px 12px; border-radius: 8px;">' + Object.keys(grouped).length + ' bölge</span>';
                 modalHtml += '</div>';
 
@@ -3642,9 +3645,13 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 const groupedKeys = Object.keys(grouped).sort();
                 groupedKeys.forEach(function (bName) {
                     const items = grouped[bName];
+                    let regionAboneSum = 0;
+                    items.forEach(function (d) { regionAboneSum += parseInt(d.abone_sayisi) || 0; });
+
                     // Bölge başlık satırı
                     modalHtml += '<tr style="background: rgba(var(--bs-primary-rgb), 0.06);">';
-                    modalHtml += '<td colspan="5" class="fw-bold text-start" style="font-size: 12px;"><i class="bx bx-map me-1 text-primary"></i>' + bName + ' <span class="badge bg-white text-dark border ms-2" style="font-size: 10px;">' + items.length + ' defter</span></td>';
+                    modalHtml += '<td colspan="4" class="fw-bold text-start" style="font-size: 12px;"><i class="bx bx-map me-1 text-primary"></i>' + bName + ' <span class="badge bg-white text-dark border ms-2" style="font-size: 10px;">' + items.length + ' defter</span></td>';
+                    modalHtml += '<td class="text-end fw-bold" style="font-size: 12px;">' + regionAboneSum.toLocaleString('tr-TR') + '</td>';
                     modalHtml += '</tr>';
 
                     items.forEach(function (d) {

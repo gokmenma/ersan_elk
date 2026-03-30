@@ -3569,3 +3569,171 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $writer->save('php://output');
     exit;
 }
+
+if (isset($_GET['action']) && $_GET['action'] === 'get-okuma-comparison') {
+    $periodsReq = $_GET['periods'] ?? [];
+    if (!is_array($periodsReq)) $periodsReq = array_filter(explode(',', $periodsReq));
+    $personelId = $_GET['personel_id'] ?? '';
+    $firmaId = $_SESSION['firma_id'] ?? 0;
+
+    if (empty($periodsReq)) {
+        header('Content-Type: application/json');
+        echo json_encode(['periods' => [], 'types' => [], 'matrix' => []]);
+        exit;
+    }
+
+    $Model = new \App\Model\EndeksOkumaModel();
+    $placeholders = implode(',', array_fill(0, count($periodsReq), '?'));
+    
+    $sql = "SELECT DATE_FORMAT(tarih, '%Y-%m') as period, 
+                   COALESCE(sayac_durum, 'Belirtilmemiş') as status, 
+                   COUNT(*) as adet
+            FROM endeks_okuma
+            WHERE firma_id = ? AND silinme_tarihi IS NULL 
+            AND DATE_FORMAT(tarih, '%Y-%m') IN ($placeholders)";
+    
+    $params = array_merge([$firmaId], $periodsReq);
+    if ($personelId) {
+        $sql .= " AND personel_id = ?";
+        $params[] = $personelId;
+    }
+    
+    $sql .= " GROUP BY period, status ORDER BY period ASC";
+    
+    $stmt = $Model->db->prepare($sql);
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+    
+    $periods = [];
+    $types = [];
+    $matrix = [];
+    
+    foreach ($rows as $row) {
+        $type = $row->status;
+        if (!in_array($row->period, $periods)) $periods[] = $row->period;
+        if (!in_array($type, $types)) $types[] = $type;
+        $matrix[$type][$row->period] = (int)$row->adet;
+    }
+
+    // Ensure all requested periods are in the response even if no data
+    foreach ($periodsReq as $p) {
+        if (!in_array($p, $periods)) $periods[] = $p;
+    }
+    sort($periods);
+    
+    header('Content-Type: application/json');
+    echo json_encode(['periods' => $periods, 'types' => $types, 'matrix' => $matrix]);
+    exit;
+}
+
+if (isset($_GET['action']) && $_GET['action'] === 'get-puantaj-comparison') {
+    $periodsReq = $_GET['periods'] ?? [];
+    if (!is_array($periodsReq)) $periodsReq = array_filter(explode(',', $periodsReq));
+    $personelId = $_GET['personel_id'] ?? '';
+    $firmaId = $_SESSION['firma_id'] ?? 0;
+
+    if (empty($periodsReq)) {
+        header('Content-Type: application/json');
+        echo json_encode(['periods' => [], 'types' => [], 'matrix' => []]);
+        exit;
+    }
+
+    $Model = new \App\Model\PuantajModel();
+    $placeholders = implode(',', array_fill(0, count($periodsReq), '?'));
+
+    $sql = "SELECT DATE_FORMAT(t.tarih, '%Y-%m') as period, 
+                   COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as sonuc, 
+                   SUM(t.sonuclanmis) as adet
+            FROM yapilan_isler t
+            LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+            WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL
+            AND DATE_FORMAT(t.tarih, '%Y-%m') IN ($placeholders)
+            AND (tn.is_turu_ucret > 0 OR (tn.is_turu_ucret IS NULL AND (t.is_emri_sonucu LIKE '%Sayaç%' OR t.is_emri_sonucu LIKE '%Kesme%' OR t.is_emri_sonucu LIKE '%Açma%')))";
+    
+    $params = array_merge([$firmaId], $periodsReq);
+    if ($personelId) {
+        $sql .= " AND t.personel_id = ?";
+        $params[] = $personelId;
+    }
+    
+    $sql .= " GROUP BY period, sonuc ORDER BY period ASC";
+    
+    $stmt = $Model->db->prepare($sql);
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+    
+    $periods = [];
+    $types = [];
+    $matrix = [];
+    
+    foreach ($rows as $row) {
+        $type = $row->sonuc ?: 'Belirtilmemiş';
+        if (!in_array($row->period, $periods)) $periods[] = $row->period;
+        if (!in_array($type, $types)) $types[] = $type;
+        $matrix[$type][$row->period] = (int)$row->adet;
+    }
+
+    foreach ($periodsReq as $p) {
+        if (!in_array($p, $periods)) $periods[] = $p;
+    }
+    sort($periods);
+    
+    header('Content-Type: application/json');
+    echo json_encode(['periods' => $periods, 'types' => $types, 'matrix' => $matrix]);
+    exit;
+}
+
+if (isset($_GET['action']) && $_GET['action'] === 'get-sayac-comparison') {
+    $periodsReq = $_GET['periods'] ?? [];
+    if (!is_array($periodsReq)) $periodsReq = array_filter(explode(',', $periodsReq));
+    $personelId = $_GET['personel_id'] ?? '';
+    $firmaId = $_SESSION['firma_id'] ?? 0;
+
+    if (empty($periodsReq)) {
+        header('Content-Type: application/json');
+        echo json_encode(['periods' => [], 'types' => [], 'matrix' => []]);
+        exit;
+    }
+
+    $Model = new \App\Model\SayacDegisimModel();
+    $placeholders = implode(',', array_fill(0, count($periodsReq), '?'));
+
+    $sql = "SELECT DATE_FORMAT(tarih, '%Y-%m') as period, 
+                   COALESCE(isemri_sonucu, 'Belirtilmemiş') as sonuc, 
+                   COUNT(*) as adet
+            FROM sayac_degisim
+            WHERE firma_id = ? AND silinme_tarihi IS NULL
+            AND DATE_FORMAT(tarih, '%Y-%m') IN ($placeholders)";
+    
+    $params = array_merge([$firmaId], $periodsReq);
+    if ($personelId) {
+        $sql .= " AND personel_id = ?";
+        $params[] = $personelId;
+    }
+    
+    $sql .= " GROUP BY period, sonuc ORDER BY period ASC";
+    
+    $stmt = $Model->db->prepare($sql);
+    $stmt->execute($params);
+    $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+    
+    $periods = [];
+    $types = [];
+    $matrix = [];
+    
+    foreach ($rows as $row) {
+        $type = $row->sonuc;
+        if (!in_array($row->period, $periods)) $periods[] = $row->period;
+        if (!in_array($type, $types)) $types[] = $type;
+        $matrix[$type][$row->period] = (int)$row->adet;
+    }
+
+    foreach ($periodsReq as $p) {
+        if (!in_array($p, $periods)) $periods[] = $p;
+    }
+    sort($periods);
+    
+    header('Content-Type: application/json');
+    echo json_encode(['periods' => $periods, 'types' => $types, 'matrix' => $matrix]);
+    exit;
+}

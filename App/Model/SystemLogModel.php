@@ -17,6 +17,7 @@ class SystemLogModel extends Model
     const LEVEL_INFO = 0; // Rutin bilgilendirici (nöbet tipi değişimi, vb.)
     const LEVEL_IMPORTANT = 1; // Önemli (giriş/çıkış, silme, excel yükleme, personel ekleme)
     const LEVEL_CRITICAL = 2; // Kritik (toplu silme, güvenlik olayları)
+    const LEVEL_PAGE_VIEW = 3; // Sayfa görüntüleme logları
 
     public function __construct()
     {
@@ -30,6 +31,23 @@ class SystemLogModel extends Model
      * @param string $description Açıklama
      * @param int $level Log seviyesi (0=Info, 1=Önemli, 2=Kritik)
      */
+    /**
+     * Log a page view action
+     * @param int $userId Kullanıcı ID
+     * @param string $pageName Sayfa adı
+     * @param string $platform Platform (Desktop, Mobile, PWA)
+     */
+    public function logPageView($userId, $pageName, $platform = 'Desktop')
+    {
+        return $this->saveWithAttr([
+            'user_id' => $userId,
+            'firma_id' => $_SESSION['firma_id'] ?? 0,
+            'action_type' => 'Sayfa Görüntüleme',
+            'description' => "[$platform] $pageName sayfası görüntülendi.",
+            'level' => self::LEVEL_PAGE_VIEW
+        ]);
+    }
+
     public function logAction($userId, $actionType, $description, $level = self::LEVEL_INFO)
     {
         return $this->saveWithAttr([
@@ -104,6 +122,11 @@ class SystemLogModel extends Model
         if (isset($filters['min_level']) && $filters['min_level'] !== '') {
             $conditions[] = 'l.level >= ?';
             $params[] = intval($filters['min_level']);
+        }
+
+        if (isset($filters['max_level']) && $filters['max_level'] !== '') {
+            $conditions[] = 'l.level <= ?';
+            $params[] = intval($filters['max_level']);
         }
 
         if (!empty($filters['search'])) {
@@ -189,6 +212,26 @@ class SystemLogModel extends Model
 
         $stmt = $this->db->prepare($sql);
         $stmt->bindValue(':firma_id', $_SESSION['firma_id'], PDO::PARAM_INT);
+        $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Get page view logs
+     */
+    public function getPageViewLogs($limit = 1000)
+    {
+        $sql = "SELECT l.*, u.adi_soyadi 
+                FROM {$this->table} l
+                LEFT JOIN users u ON l.user_id = u.id
+                WHERE l.firma_id = :firma_id AND l.level = :level
+                ORDER BY l.created_at DESC 
+                LIMIT :limit";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->bindValue(':firma_id', $_SESSION['firma_id'], PDO::PARAM_INT);
+        $stmt->bindValue(':level', self::LEVEL_PAGE_VIEW, PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_OBJ);

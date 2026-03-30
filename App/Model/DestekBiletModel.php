@@ -19,27 +19,30 @@ class DestekBiletModel extends Model
     /**
      * Yeni bilet oluşturur
      */
-    public function createTicket($personelId, $konu, $kategori, $oncelik, $ilkMesaj, $dosyaYolu = null, $onayDurumu = 'onaylandi')
+    public function createTicket($userId, $personelId, $konu, $kategori, $oncelik, $ilkMesaj, $dosyaYolu = null, $onayDurumu = 'onaylandi')
     {
         try {
             $this->db->beginTransaction();
 
-            if ($this->countActiveTickets((int) $personelId) >= 2) {
-                throw new \Exception('Aynı anda en fazla 2 açık destek talebiniz olabilir. Önce mevcut taleplerinizden birini kapatın.');
+            if ($this->countActiveTickets((int) $userId) >= 5) {
+                throw new \Exception('Aynı anda en fazla 5 açık destek talebiniz olabilir. Önce mevcut taleplerinizden birini kapatın.');
             }
 
             $refNo = $this->generateRefNo();
 
             // Bileti ekle
-                $sql = "INSERT INTO {$this->table} (personel_id, ref_no, konu, kategori, oncelik, durum, onay_durumu) 
-                    VALUES (?, ?, ?, ?, ?, 'acik', ?)";
+            $sql = "INSERT INTO {$this->table} (user_id, personel_id, ref_no, konu, kategori, oncelik, durum, onay_durumu) 
+                    VALUES (?, ?, ?, ?, ?, ?, 'acik', ?)";
             $stmt = $this->db->prepare($sql);
-                $stmt->execute([$personelId, $refNo, $konu, $kategori, $oncelik, $onayDurumu]);
+            $stmt->execute([(int) $userId, (int) $personelId, $refNo, $konu, $kategori, $oncelik, $onayDurumu]);
             
             $biletId = $this->db->lastInsertId();
 
-            // İlk mesajı ekle
-            $this->addMessage($biletId, 'personel', $personelId, $ilkMesaj, $dosyaYolu);
+            // İlk mesajı ekle (gonderenId her zaman user_id olarak saklayalım ya da personel varsa personel_id?)
+            // Aslında mesajlardaki gonderen_id'yi de user_id'ye çevirsek mi?
+            // Mevcut sistemde gonderen_tip='personel' ise gonderen_id=personel_id kullanılıyor.
+            
+            $this->addMessage($biletId, 'personel', $personelId > 0 ? $personelId : $userId, $ilkMesaj, $dosyaYolu);
 
             $this->db->commit();
             return $biletId;
@@ -86,11 +89,11 @@ class DestekBiletModel extends Model
     /**
      * Personelin biletlerini getirir
      */
-    public function getPersonelTickets($personelId)
+    public function getPersonelTickets($id)
     {
-        $sql = "SELECT * FROM {$this->table} WHERE personel_id = ? ORDER BY guncelleme_tarihi DESC";
+        $sql = "SELECT * FROM {$this->table} WHERE user_id = ? OR (user_id = 0 AND personel_id = ?) ORDER BY guncelleme_tarihi DESC";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$personelId]);
+        $stmt->execute([$id, $id]);
         $tickets = $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
         return array_map([$this, 'appendEncryptedId'], $tickets);
     }
@@ -100,9 +103,12 @@ class DestekBiletModel extends Model
      */
     public function getAllTickets($status = null, $approvalStatus = null)
     {
-        $sql = "SELECT db.*, p.adi_soyadi as personel_adi, p.departman 
+        $sql = "SELECT db.*, 
+                COALESCE(p.adi_soyadi, u.adi_soyadi) as personel_adi, 
+                p.departman 
                 FROM {$this->table} db
-                JOIN personel p ON db.personel_id = p.id
+                LEFT JOIN personel p ON db.personel_id = p.id
+                LEFT JOIN users u ON db.user_id = u.id
                 WHERE 1=1";
         
         $params = [];
@@ -129,9 +135,12 @@ class DestekBiletModel extends Model
     public function getTicketDetails($biletId)
     {
         // Bilet bilgisi
-        $sqlTicket = "SELECT db.*, p.adi_soyadi as personel_adi, p.departman, p.resim_yolu
+        $sqlTicket = "SELECT db.*, 
+                      COALESCE(p.adi_soyadi, u.adi_soyadi) as personel_adi, 
+                      p.departman, p.resim_yolu
                       FROM {$this->table} db
-                      JOIN personel p ON db.personel_id = p.id
+                      LEFT JOIN personel p ON db.personel_id = p.id
+                      LEFT JOIN users u ON db.user_id = u.id
                       WHERE db.id = ?";
         $stmtTicket = $this->db->prepare($sqlTicket);
         $stmtTicket->execute([$biletId]);
@@ -150,7 +159,7 @@ class DestekBiletModel extends Model
                         END as gonderen_adi
                         FROM {$this->messageTable} dm
                         LEFT JOIN personel p ON dm.gonderen_tip = 'personel' AND p.id = dm.gonderen_id
-                        LEFT JOIN users u ON dm.gonderen_tip = 'yonetici' AND u.id = dm.gonderen_id
+                        LEFT JOIN users u ON (dm.gonderen_tip = 'yonetici' AND u.id = dm.gonderen_id) OR (dm.gonderen_tip = 'personel' AND u.id = dm.gonderen_id AND p.id IS NULL)
                         WHERE dm.bilet_id = ?
                         ORDER BY dm.olusturma_tarihi ASC";
         $stmtMessages = $this->db->prepare($sqlMessages);
@@ -214,7 +223,9 @@ class DestekBiletModel extends Model
         
         $params = [];
         if ($personelId) {
-            $sql .= " WHERE personel_id = ?";
+            // Check both user_id and personel_id to be safe
+            $sql .= " WHERE (personel_id = ? OR user_id = ?)";
+            $params[] = $personelId;
             $params[] = $personelId;
         }
 
@@ -231,20 +242,20 @@ class DestekBiletModel extends Model
     /**
      * Kapalı olmayan destek taleplerini sayar.
      */
-    public function countActiveTickets(int $personelId): int
+    public function countActiveTickets(int $userId): int
     {
-        $sql = "SELECT COUNT(*) FROM {$this->table} WHERE personel_id = ? AND durum != 'kapali'";
+        $sql = "SELECT COUNT(*) FROM {$this->table} WHERE (user_id = ? OR (user_id = 0 AND personel_id = ?)) AND durum != 'kapali'";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$personelId]);
+        $stmt->execute([$userId, $userId]);
         return (int) $stmt->fetchColumn();
     }
 
     /**
-     * Personelin yeni destek talebi açıp açamayacağını döndürür.
+     * Kullanıcının yeni destek talebi açıp açamayacağını döndürür.
      */
-    public function canCreateNewTicket(int $personelId): bool
+    public function canCreateNewTicket(int $userId): bool
     {
-        return $this->countActiveTickets($personelId) < 2;
+        return $this->countActiveTickets($userId) < 5;
     }
 
     protected function appendEncryptedId($ticket)

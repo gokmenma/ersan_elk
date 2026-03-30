@@ -143,6 +143,12 @@ if (!$currentUserStatusCheck || ($currentUserStatusCheck->durum ?? 'Aktif') === 
             <?php
             $page = $_GET['p'] ?? 'home';
 
+            // Log page view
+            try {
+                $LogModel = new \App\Model\SystemLogModel();
+                $LogModel->logPageView($currentUserId, $page, 'Desktop');
+            } catch (\Exception $e) {}
+
             $publicPages = [
                 'home'
             ];

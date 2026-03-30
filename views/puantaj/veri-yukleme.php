@@ -399,6 +399,12 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         <h4 class="card-title">Sayaç Sökme Takma Listesi</h4>
                         <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
                             <button type="button"
+                                class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
+                                id="btnShowSayacStats">
+                                <i class="mdi mdi-chart-box-outline fs-5 me-1"></i> İstatistikler
+                            </button>
+                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                            <button type="button"
                                 class="btn btn-link btn-sm text-info text-decoration-none px-2 d-flex align-items-center"
                                 data-bs-toggle="modal" data-bs-target="#importOnlineSayacDegisimModal">
                                 <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Online Sorgula
@@ -1714,6 +1720,24 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 work_type: workType,
                 work_result: $('select[name="work_result"]').val()
             }, columnFilters), function (html) {
+                $('#statsModalBody').html(html);
+            });
+        });
+
+        $('#btnShowSayacStats').on('click', function () {
+            var startDate = $('input[name="start_date"]').val();
+            var endDate = $('input[name="end_date"]').val();
+            var personelId = $('select[name="ekip_kodu"]').val();
+
+            $('#statsModal .modal-title').text('Sayaç Sökme Takma İstatistikleri');
+            $('#statsModal').modal('show');
+            $('#statsModalBody').html('<div class="text-center p-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">İstatistikler hazırlanıyor...</p></div>');
+
+            $.get('views/puantaj/modal_sayac_degisim_istatistik.php', {
+                start_date: startDate,
+                end_date: endDate,
+                personel_id: personelId
+            }, function (html) {
                 $('#statsModalBody').html(html);
             });
         });

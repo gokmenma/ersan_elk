@@ -5,11 +5,12 @@ use App\Service\Gate;
 if (Gate::allows("log_kayitlari")) {
 
     $systemLogModel = new SystemLogModel();
-    $logs = $systemLogModel->getAllLogs();
+    $logs = $systemLogModel->getAllLogs(['max_level' => 2]); // Page view hariç
     
     // Auth Logları Getir
     $personelLogs = $systemLogModel->getPersonelLoginLogs(2000);
     $kullaniciLogs = $systemLogModel->getUserLoginLogs(2000);
+    $pageViewLogs = $systemLogModel->getPageViewLogs(2000);
     ?>
     <div class="container-fluid">
 
@@ -42,6 +43,11 @@ if (Gate::allows("log_kayitlari")) {
                             <li class="nav-item">
                                 <a class="nav-link" data-bs-toggle="tab" href="#kullanici-giris-tab" role="tab">
                                     <i class="bx bx-shield-quarter me-1"></i> Yönetici Girişleri
+                                </a>
+                            </li>
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="tab" href="#sayfa-goruntulemeleri-tab" role="tab">
+                                    <i class="bx bx-search-alt me-1"></i> Sayfa Görüntülemeleri
                                 </a>
                             </li>
                         </ul>
@@ -218,6 +224,63 @@ if (Gate::allows("log_kayitlari")) {
                                     </table>
                                 </div>
                             </div>
+                            
+                            <!-- Sayfa Görüntülemeleri Tab'ı -->
+                            <div class="tab-pane" id="sayfa-goruntulemeleri-tab" role="tabpanel">
+                                <div class="table-responsive">
+                                    <table class="table table-centered table-nowrap table-hover mb-0 align-middle w-100" id="pageViewLogsTable">
+                                        <thead style="background: rgba(248,250,252,0.8);">
+                                            <tr>
+                                                <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Kullanıcı</th>
+                                                <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">İçerik</th>
+                                                <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Tarih</th>
+                                                <th class="text-center" style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">İşlem</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            <?php if (empty($pageViewLogs)): ?>
+                                                <tr>
+                                                    <td colspan="4" class="text-center py-4" style="color: #64748b;">Henüz bir görüntüleme kaydı bulunmamaktadır.</td>
+                                                </tr>
+                                            <?php else: ?>
+                                                <?php foreach ($pageViewLogs as $log): ?>
+                                                    <?php
+                                                    $displayName = $log->adi_soyadi;
+                                                    if (!$displayName && $log->user_id == 0) {
+                                                        if (strpos($log->description, '[Personel PWA]') !== false) {
+                                                            $displayName = 'PWA Personel';
+                                                        } else {
+                                                            $displayName = 'Sistem';
+                                                        }
+                                                    }
+                                                    ?>
+                                                    <tr style="border-bottom: 1px solid #f1f5f9;">
+                                                        <td style="color:#475569; font-weight:600;">
+                                                            <?php echo htmlspecialchars($displayName ?? 'Bilinmeyen'); ?>
+                                                        </td>
+                                                        <td style="color:#64748b; white-space: normal; max-width: 500px;">
+                                                            <?php echo htmlspecialchars($log->description); ?>
+                                                        </td>
+                                                        <td style="color:#475569; font-weight:500; font-size:0.85rem;" data-sort="<?php echo date('YmdHis', strtotime($log->created_at)); ?>">
+                                                            <?php echo date('d.m.Y H:i', strtotime($log->created_at)); ?>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <button type="button" class="btn btn-sm btn-light btn-log-detay"
+                                                                style="border-radius: 6px; font-weight:500; color:#475569; border: 1px solid #e2e8f0; background: #fff;"
+                                                                data-title="Sayfa Görüntüleme"
+                                                                data-user="<?php echo htmlspecialchars($displayName ?? 'Bilinmeyen'); ?>"
+                                                                data-date="<?php echo date('d.m.Y H:i', strtotime($log->created_at)); ?>"
+                                                                data-content="<?php echo htmlspecialchars($log->description); ?>">
+                                                                <i class="bx bx-show me-1 text-primary"></i> Detay
+                                                            </button>
+                                                        </td>
+                                                    </tr>
+                                                <?php endforeach; ?>
+                                            <?php endif; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
                         </div> <!-- end tab-content -->
                     </div>
                 </div>
@@ -357,6 +420,7 @@ if (Gate::allows("log_kayitlari")) {
                 $('#logsTable').DataTable($.extend({}, dtOptions, { order: [[3, 'desc']] }));
                 $('#personelLogsTable').DataTable($.extend({}, dtOptions, { order: [[1, 'desc']] }));
                 $('#kullaniciLogsTable').DataTable($.extend({}, dtOptions, { order: [[1, 'desc']] }));
+                $('#pageViewLogsTable').DataTable($.extend({}, dtOptions, { order: [[2, 'desc']] }));
             }
 
             // Tab change event: redraw DataTable to prevent layout issues on hidden tabs

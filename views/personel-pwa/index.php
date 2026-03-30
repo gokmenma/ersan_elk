@@ -135,6 +135,13 @@ if ($isKesmeAcma) {
 if (!in_array($page, $allowed_pages)) {
     $page = 'ana-sayfa';
 }
+
+// Log page view
+try {
+    $LogModel = new \App\Model\SystemLogModel();
+    // Personel olduğu için name parametresi ile ismini saklayacağız (user_id 0 ancak açıklama içinde geçecek)
+    $LogModel->logAction(0, 'Sayfa Görüntüleme', "[Personel PWA] " . ($personel->adi_soyadi ?? 'Bilinmeyen') . " tarafından $page sayfası görüntülendi.", \App\Model\SystemLogModel::LEVEL_PAGE_VIEW);
+} catch (\Exception $e) {}
 ?>
 <!DOCTYPE html>
 <html lang="tr">
