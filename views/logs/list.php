@@ -5,12 +5,6 @@ use App\Service\Gate;
 if (Gate::allows("log_kayitlari")) {
 
     $systemLogModel = new SystemLogModel();
-    $logs = $systemLogModel->getAllLogs(['max_level' => 2]); // Page view hariç
-    
-    // Auth Logları Getir
-    $personelLogs = $systemLogModel->getPersonelLoginLogs(2000);
-    $kullaniciLogs = $systemLogModel->getUserLoginLogs(2000);
-    $pageViewLogs = $systemLogModel->getPageViewLogs(2000);
     ?>
     <div class="container-fluid">
 
@@ -68,54 +62,6 @@ if (Gate::allows("log_kayitlari")) {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <?php if (empty($logs)): ?>
-                                                <tr>
-                                                    <td colspan="5" class="text-center py-4" style="color: #64748b;">Kayıt bulunmamaktadır.</td>
-                                                </tr>
-                                            <?php else: ?>
-                                                <?php foreach ($logs as $log): ?>
-                                                    <?php
-                                                    $logLevel = $log->level ?? 0;
-                                                    if ($logLevel >= 2) {
-                                                        $levelBadge = '<span class="badge bg-soft-danger text-danger px-2 py-1 border border-danger" style="border-radius: 4px;"><i class="bx bx-error-circle me-1"></i>Kritik</span>';
-                                                        $levelIcon = 'bx bx-error-circle text-muted';
-                                                    } elseif ($logLevel >= 1) {
-                                                        $levelBadge = '<span class="badge bg-soft-warning text-warning px-2 py-1 border border-warning" style="border-radius: 4px;"><i class="bx bx-error me-1"></i>Önemli</span>';
-                                                        $levelIcon = 'bx bx-error text-muted';
-                                                    } else {
-                                                        $levelBadge = '<span class="badge bg-soft-info text-info px-2 py-1 border border-info" style="border-radius: 4px;"><i class="bx bx-info-circle me-1"></i>Bilgi</span>';
-                                                        $levelIcon = 'bx bx-info-circle text-muted';
-                                                    }
-                                                    ?>
-                                                    <tr style="border-bottom: 1px solid #f1f5f9;">
-                                                        <td><?php echo $levelBadge; ?></td>
-                                                        <td style="color:#475569; font-weight:500;">
-                                                            <i class="<?php echo $levelIcon; ?> me-1"></i> <?php echo htmlspecialchars($log->action_type); ?>
-                                                        </td>
-                                                        <td style="color:#64748b; white-space: normal; max-width: 400px;">
-                                                            <?php
-                                                            $user_name = $log->adi_soyadi ?? 'Sistem';
-                                                            $full_desc = htmlspecialchars($log->description);
-                                                            $short_desc = mb_strimwidth($full_desc, 0, 100, "...");
-                                                            echo $short_desc . " <small class='text-muted'>($user_name tarafından)</small>";
-                                                            ?>
-                                                        </td>
-                                                        <td style="color:#475569; font-weight:500; font-size:0.85rem;" data-sort="<?php echo date('YmdHis', strtotime($log->created_at)); ?>">
-                                                            <?php echo date('d.m.Y H:i', strtotime($log->created_at)); ?>
-                                                        </td>
-                                                        <td class="text-center">
-                                                            <button type="button" class="btn btn-sm btn-light btn-log-detay"
-                                                                style="border-radius: 6px; font-weight:500; color:#475569; border: 1px solid #e2e8f0; background: #fff;"
-                                                                data-title="<?php echo htmlspecialchars($log->action_type); ?>"
-                                                                data-user="<?php echo htmlspecialchars($user_name); ?>"
-                                                                data-date="<?php echo date('d.m.Y H:i', strtotime($log->created_at)); ?>"
-                                                                data-content="<?php echo htmlspecialchars($log->description); ?>">
-                                                                <i class="bx bx-show me-1 text-primary"></i> Detay
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                <?php endforeach; ?>
-                                            <?php endif; ?>
                                         </tbody>
                                     </table>
                                 </div>
@@ -134,43 +80,6 @@ if (Gate::allows("log_kayitlari")) {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <?php if (empty($personelLogs)): ?>
-                                                <tr><td colspan="4" class="text-center py-4" style="color: #64748b;">Kayıt bulunamadı.</td></tr>
-                                            <?php else: ?>
-                                                <?php foreach ($personelLogs as $ll): ?>
-                                                    <tr style="border-bottom: 1px solid #f8fafc; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
-                                                        <td style="padding: 0.75rem 1rem;">
-                                                            <div class="d-flex align-items-center">
-                                                                <div class="avatar-sm me-3">
-                                                                    <span class="avatar-title rounded-circle" style="background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); color: #4f46e5; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                                                                        <?php echo mb_substr($ll->adi_soyadi, 0, 1, 'UTF-8'); ?>
-                                                                    </span>
-                                                                </div>
-                                                                <div>
-                                                                    <h5 class="font-size-14 mb-0" style="color: #334155; font-weight: 600;">
-                                                                        <?php echo htmlspecialchars($ll->adi_soyadi ?? ''); ?>
-                                                                    </h5>
-                                                                    <span class="badge bg-soft-info text-info font-size-11" style="border-radius: 4px;">Personel</span>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td style="padding: 0.75rem 1rem;" data-sort="<?php echo date('YmdHis', strtotime($ll->tarih)); ?>">
-                                                            <div class="d-flex flex-column">
-                                                                <span style="color: #475569; font-weight: 500;"><?php echo date('d.m.Y', strtotime($ll->tarih)); ?></span>
-                                                                <span style="color: #94a3b8; font-size: 0.75rem;"><i class="bx bx-time-five me-1"></i><?php echo date('H:i:s', strtotime($ll->tarih)); ?></span>
-                                                            </div>
-                                                        </td>
-                                                        <td style="padding: 0.75rem 1rem;">
-                                                            <div style="background: rgba(241,245,249,0.8); padding: 4px 8px; border-radius: 6px; font-size: 0.8rem; color: #475569; border: 1px solid #e2e8f0; display: inline-block;">
-                                                                <?php echo htmlspecialchars($ll->tarayici ?? '-'); ?>
-                                                            </div>
-                                                        </td>
-                                                        <td style="padding: 0.75rem 1rem;">
-                                                            <span style="font-family: monospace; color: #64748b; font-size: 0.85rem; background: #f8fafc; padding: 2px 6px; border-radius: 4px; border: 1px solid #e2e8f0;"><?php echo htmlspecialchars($ll->ip_adresi ?? '-'); ?></span>
-                                                        </td>
-                                                    </tr>
-                                                <?php endforeach; ?>
-                                            <?php endif; ?>
                                         </tbody>
                                     </table>
                                 </div>
@@ -188,38 +97,6 @@ if (Gate::allows("log_kayitlari")) {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <?php if (empty($kullaniciLogs)): ?>
-                                                <tr><td colspan="3" class="text-center py-4" style="color: #64748b;">Kayıt bulunamadı.</td></tr>
-                                            <?php else: ?>
-                                                <?php foreach ($kullaniciLogs as $ll): ?>
-                                                    <tr style="border-bottom: 1px solid #f8fafc; transition: all 0.2s;" onmouseover="this.style.background='#f8fafc'" onmouseout="this.style.background='transparent'">
-                                                        <td style="padding: 0.75rem 1rem;">
-                                                            <div class="d-flex align-items-center">
-                                                                <div class="avatar-sm me-3">
-                                                                    <span class="avatar-title rounded-circle" style="background: linear-gradient(135deg, #dcfce7 0%, #bbf7d0 100%); color: #16a34a; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
-                                                                        <?php echo mb_substr($ll->adi_soyadi, 0, 1, 'UTF-8'); ?>
-                                                                    </span>
-                                                                </div>
-                                                                <div>
-                                                                    <h5 class="font-size-14 mb-0" style="color: #334155; font-weight: 600;">
-                                                                        <?php echo htmlspecialchars($ll->adi_soyadi ?? ''); ?>
-                                                                    </h5>
-                                                                    <span class="badge bg-soft-success text-success font-size-11" style="border-radius: 4px;">Kullanıcı</span>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td style="padding: 0.75rem 1rem;" data-sort="<?php echo date('YmdHis', strtotime($ll->tarih)); ?>">
-                                                            <div class="d-flex flex-column">
-                                                                <span style="color: #475569; font-weight: 500;"><?php echo date('d.m.Y', strtotime($ll->tarih)); ?></span>
-                                                                <span style="color: #94a3b8; font-size: 0.75rem;"><i class="bx bx-time-five me-1"></i><?php echo date('H:i:s', strtotime($ll->tarih)); ?></span>
-                                                            </div>
-                                                        </td>
-                                                        <td style="padding: 0.75rem 1rem;">
-                                                            <span style="font-family: monospace; color: #64748b; font-size: 0.85rem; background: #f8fafc; padding: 2px 6px; border-radius: 4px; border: 1px solid #e2e8f0;"><?php echo htmlspecialchars($ll->ip_adresi ?? '-'); ?></span>
-                                                        </td>
-                                                    </tr>
-                                                <?php endforeach; ?>
-                                            <?php endif; ?>
                                         </tbody>
                                     </table>
                                 </div>
@@ -238,45 +115,6 @@ if (Gate::allows("log_kayitlari")) {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            <?php if (empty($pageViewLogs)): ?>
-                                                <tr>
-                                                    <td colspan="4" class="text-center py-4" style="color: #64748b;">Henüz bir görüntüleme kaydı bulunmamaktadır.</td>
-                                                </tr>
-                                            <?php else: ?>
-                                                <?php foreach ($pageViewLogs as $log): ?>
-                                                    <?php
-                                                    $displayName = $log->adi_soyadi;
-                                                    if (!$displayName && $log->user_id == 0) {
-                                                        if (strpos($log->description, '[Personel PWA]') !== false) {
-                                                            $displayName = 'PWA Personel';
-                                                        } else {
-                                                            $displayName = 'Sistem';
-                                                        }
-                                                    }
-                                                    ?>
-                                                    <tr style="border-bottom: 1px solid #f1f5f9;">
-                                                        <td style="color:#475569; font-weight:600;">
-                                                            <?php echo htmlspecialchars($displayName ?? 'Bilinmeyen'); ?>
-                                                        </td>
-                                                        <td style="color:#64748b; white-space: normal; max-width: 500px;">
-                                                            <?php echo htmlspecialchars($log->description); ?>
-                                                        </td>
-                                                        <td style="color:#475569; font-weight:500; font-size:0.85rem;" data-sort="<?php echo date('YmdHis', strtotime($log->created_at)); ?>">
-                                                            <?php echo date('d.m.Y H:i', strtotime($log->created_at)); ?>
-                                                        </td>
-                                                        <td class="text-center">
-                                                            <button type="button" class="btn btn-sm btn-light btn-log-detay"
-                                                                style="border-radius: 6px; font-weight:500; color:#475569; border: 1px solid #e2e8f0; background: #fff;"
-                                                                data-title="Sayfa Görüntüleme"
-                                                                data-user="<?php echo htmlspecialchars($displayName ?? 'Bilinmeyen'); ?>"
-                                                                data-date="<?php echo date('d.m.Y H:i', strtotime($log->created_at)); ?>"
-                                                                data-content="<?php echo htmlspecialchars($log->description); ?>">
-                                                                <i class="bx bx-show me-1 text-primary"></i> Detay
-                                                            </button>
-                                                        </td>
-                                                    </tr>
-                                                <?php endforeach; ?>
-                                            <?php endif; ?>
                                         </tbody>
                                     </table>
                                 </div>
@@ -416,11 +254,74 @@ if (Gate::allows("log_kayitlari")) {
             };
 
             if ($.fn.DataTable) {
-                // Initialize tables
-                $('#logsTable').DataTable($.extend({}, dtOptions, { order: [[3, 'desc']] }));
-                $('#personelLogsTable').DataTable($.extend({}, dtOptions, { order: [[1, 'desc']] }));
-                $('#kullaniciLogsTable').DataTable($.extend({}, dtOptions, { order: [[1, 'desc']] }));
-                $('#pageViewLogsTable').DataTable($.extend({}, dtOptions, { order: [[2, 'desc']] }));
+                // Initialize tables with server-side processing
+                $('#logsTable').DataTable($.extend({}, dtOptions, {
+                    processing: true,
+                    serverSide: true,
+                    ajax: {
+                        url: 'views/logs/api.php',
+                        type: 'POST',
+                        data: { action: 'get-system-logs' }
+                    },
+                    columns: [
+                        { data: 'level' },
+                        { data: 'action_type' },
+                        { data: 'description' },
+                        { data: 'date' },
+                        { data: 'actions', orderable: false }
+                    ],
+                    order: [[3, 'desc']]
+                }));
+
+                $('#personelLogsTable').DataTable($.extend({}, dtOptions, {
+                    processing: true,
+                    serverSide: true,
+                    ajax: {
+                        url: 'views/logs/api.php',
+                        type: 'POST',
+                        data: { action: 'get-personel-logs' }
+                    },
+                    columns: [
+                        { data: 'user' },
+                        { data: 'date' },
+                        { data: 'browser' },
+                        { data: 'ip' }
+                    ],
+                    order: [[1, 'desc']]
+                }));
+
+                $('#kullaniciLogsTable').DataTable($.extend({}, dtOptions, {
+                    processing: true,
+                    serverSide: true,
+                    ajax: {
+                        url: 'views/logs/api.php',
+                        type: 'POST',
+                        data: { action: 'get-user-logs' }
+                    },
+                    columns: [
+                        { data: 'user' },
+                        { data: 'date' },
+                        { data: 'ip' }
+                    ],
+                    order: [[1, 'desc']]
+                }));
+
+                $('#pageViewLogsTable').DataTable($.extend({}, dtOptions, {
+                    processing: true,
+                    serverSide: true,
+                    ajax: {
+                        url: 'views/logs/api.php',
+                        type: 'POST',
+                        data: { action: 'get-page-view-logs' }
+                    },
+                    columns: [
+                        { data: 'user' },
+                        { data: 'description' },
+                        { data: 'date' },
+                        { data: 'actions', orderable: false }
+                    ],
+                    order: [[2, 'desc']]
+                }));
             }
 
             // Tab change event: redraw DataTable to prevent layout issues on hidden tabs

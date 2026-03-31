@@ -93,16 +93,7 @@ try {
             $isAdminSupport = isSupportAdminViewer();
             $isApproverOnly = Gate::allows('destek_talebi_onaylama') && !$isAdminSupport;
 
-            $ownTickets = [];
-            if ($personelId > 0) {
-                $ownTickets = $destekBiletModel->getPersonelTickets($personelId) ?: [];
-            } elseif ($userId > 0) {
-                // If not personnel, search by userId (which we recently added to queries)
-                // The getPersonelTickets currently uses personel_id, but the model change I made handles both if we use it right.
-                // Wait, I updated countActiveTickets to use userId/personelId, but not getPersonelTickets.
-                // Let me check getPersonelTickets in model.
-                $ownTickets = $destekBiletModel->getPersonelTickets($userId) ?: []; 
-            }
+            $ownTickets = $destekBiletModel->getPersonelTickets($userId, $personelId) ?: [];
             
             // For approvers: get both pending (beklemede) and approved (onaylandi) tickets
             $approvalTickets = [];
@@ -158,7 +149,7 @@ try {
                 }
             }
 
-            $stats = $destekBiletModel->getStats($personelId) ?: (object) ['toplam' => 0, 'bekleyen' => 0, 'yanitlanan' => 0, 'kapali' => 0];
+            $stats = $destekBiletModel->getStats($userId, $personelId) ?: (object) ['toplam' => 0, 'bekleyen' => 0, 'yanitlanan' => 0, 'kapali' => 0];
             $approvalStats = $isApproverOnly ? ($destekBiletModel->getStats(null, 'beklemede') ?: null) : null;
 
             $currentUserId = (int) ($_SESSION['user_id'] ?? 0);
@@ -413,7 +404,7 @@ try {
                 $personelId = $destekBiletModel->getPersonelIdByUserId($userId);
             }
             // Use userId for stats if available
-            $stats = $destekBiletModel->getStats($personelId > 0 ? $personelId : $userId);
+            $stats = $destekBiletModel->getStats($userId, $personelId);
             echo json_encode(['success' => true, 'stats' => $stats]);
             break;
 

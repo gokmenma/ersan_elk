@@ -87,13 +87,27 @@ class DestekBiletModel extends Model
     }
 
     /**
-     * Personelin biletlerini getirir
+     * Personelin veya kullanıcının biletlerini getirir
      */
-    public function getPersonelTickets($id)
+    public function getPersonelTickets($userId, $personelId = 0)
     {
-        $sql = "SELECT * FROM {$this->table} WHERE user_id = ? OR (user_id = 0 AND personel_id = ?) ORDER BY guncelleme_tarihi DESC";
+        $sql = "SELECT * FROM {$this->table} WHERE 1=0";
+        $params = [];
+        
+        if ($userId > 0 && $personelId > 0) {
+            $sql = "SELECT * FROM {$this->table} WHERE user_id = ? OR personel_id = ?";
+            $params = [(int)$userId, (int)$personelId];
+        } elseif ($userId > 0) {
+            $sql = "SELECT * FROM {$this->table} WHERE user_id = ? OR personel_id = ?";
+            $params = [(int)$userId, (int)$userId];
+        } elseif ($personelId > 0) {
+            $sql = "SELECT * FROM {$this->table} WHERE personel_id = ? OR user_id = ?";
+            $params = [(int)$personelId, (int)$personelId];
+        }
+
+        $sql .= " ORDER BY guncelleme_tarihi DESC";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$id, $id]);
+        $stmt->execute($params);
         $tickets = $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
         return array_map([$this, 'appendEncryptedId'], $tickets);
     }
@@ -227,26 +241,42 @@ class DestekBiletModel extends Model
     /**
      * İstatistikleri getirir
      */
-    public function getStats($personelId = null, $approvalStatus = null)
+    public function getStats($userId = null, $personelId = null, $approvalStatus = null)
     {
+        // Handle old call pattern: getStats($personelId, $approvalStatus)
+        // If the second param is a string, it's likely an approval status (from an old call)
+        if (is_string($personelId) && $approvalStatus === null) {
+            $approvalStatus = $personelId;
+            $pId = $userId;
+            $uId = $userId;
+        } else {
+            $uId = $userId;
+            $pId = $personelId;
+        }
+
         $sql = "SELECT 
                     COUNT(*) as toplam,
-                    SUM(CASE WHEN durum = 'acik' OR durum = 'personel_yaniti' THEN 1 ELSE 0 END) as bekleyen,
-                    SUM(CASE WHEN durum = 'yanitlandi' THEN 1 ELSE 0 END) as yanitlanan,
-                    SUM(CASE WHEN durum = 'kapali' THEN 1 ELSE 0 END) as kapali
+                    SUM(CASE WHEN (durum = 'acik' OR durum = 'personel_yaniti') AND onay_durumu = 'onaylandi' THEN 1 ELSE 0 END) as bekleyen,
+                    SUM(CASE WHEN durum = 'yanitlandi' AND onay_durumu = 'onaylandi' THEN 1 ELSE 0 END) as yanitlanan,
+                    SUM(CASE WHEN durum = 'kapali' AND onay_durumu = 'onaylandi' THEN 1 ELSE 0 END) as kapali
                 FROM {$this->table}";
         
         $params = [];
-        if ($personelId) {
-            // Check both user_id and personel_id to be safe
-            $sql .= " WHERE (personel_id = ? OR user_id = ?)";
-            $params[] = $personelId;
-            $params[] = $personelId;
+        $where = [];
+
+        if ($uId > 0 || $pId > 0) {
+            $where[] = "(user_id = ? OR personel_id = ?)";
+            $params[] = $uId > 0 ? (int)$uId : (int)$pId;
+            $params[] = $pId > 0 ? (int)$pId : (int)$uId;
         }
 
         if ($approvalStatus) {
-            $sql .= empty($params) ? " WHERE onay_durumu = ?" : " AND onay_durumu = ?";
+            $where[] = "onay_durumu = ?";
             $params[] = $approvalStatus;
+        }
+
+        if (!empty($where)) {
+            $sql .= " WHERE " . implode(" AND ", $where);
         }
 
         $stmt = $this->db->prepare($sql);
@@ -257,11 +287,11 @@ class DestekBiletModel extends Model
     /**
      * Kapalı olmayan destek taleplerini sayar.
      */
-    public function countActiveTickets(int $userId): int
+    public function countActiveTickets(int $userId, int $personelId = 0): int
     {
-        $sql = "SELECT COUNT(*) FROM {$this->table} WHERE (user_id = ? OR (user_id = 0 AND personel_id = ?)) AND durum != 'kapali'";
+        $sql = "SELECT COUNT(*) FROM {$this->table} WHERE (user_id = ? OR personel_id = ?) AND durum != 'kapali'";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$userId, $userId]);
+        $stmt->execute([(int)$userId, (int)($personelId ?: $userId)]);
         return (int) $stmt->fetchColumn();
     }
 
