@@ -408,8 +408,10 @@ class EndeksOkumaModel extends Model
 
         // Son 3 ay (2 önceki ay + bu ay)
         for ($i = 2; $i >= 0; $i--) {
-            $d = new \DateTime();
-            $d->modify("-{$i} months");
+            $d = new \DateTime('first day of this month');
+            if ($i > 0) {
+                $d->modify("-{$i} months");
+            }
             $year = $d->format('Y');
             $month = (int) $d->format('n');
             $monthPadded = $d->format('m');
