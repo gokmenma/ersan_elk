@@ -196,11 +196,28 @@ $oncelikler = [
                             <?= Form::FormSelect2('oncelik', $oncelikler, 'orta', 'Öncelik Seviyesi *', 'flag', 'key', '', 'form-select select2', true) ?>
                         </div>
                         <div class="col-12">
-                            <?= Form::FormFloatTextarea('mesaj', '', 'Detaylı açıklama yapmanız size daha hızlı yardımcı olmamızı sağlar...', 'Mesajınız *', 'message-square', 'form-control', true, '120px') ?>
+                            <?= Form::FormFloatTextarea('mesaj', '', 'Detaylı bir mesaj yazın... (Resim yapıştırmak için Ctrl+V kullanabilirsiniz)', 'Mesajınız *', 'message-square', 'form-control', true, '140px') ?>
                         </div>
-                        <div class="col-12">
-                            <?= Form::FormFileInput('dosya', 'Ekran Görüntüsü / Belge (Opsiyonel)', 'upload-cloud', 'form-control') ?>
-                            <div class="form-text mt-1 text-muted small"><i data-feather="info" class="icon-sm me-1"></i> Sadece resim formatları (JPG, PNG, WEBP) desteklenir.</div>
+                        <div class="col-12" id="new-ticket-upload-wrapper">
+                            <label class="form-label">Ekran Görüntüsü / Belge (Opsiyonel)</label>
+                            <div id="new-upload-container" class="upload-area text-center p-4 border border-2 border-dashed rounded-3 bg-light position-relative" style="cursor: pointer; transition: all 0.3s ease;">
+                                <input type="file" name="dosya" id="new-ticket-file" accept="image/*" class="position-absolute w-100 h-100 top-0 start-0 opacity-0" style="cursor: pointer;">
+                                <div class="upload-icon mb-2">
+                                    <i class="bx bx-cloud-upload fs-1 text-muted"></i>
+                                </div>
+                                <p class="mb-0 text-muted small" id="new-upload-text">Dosya seçin veya buraya sürükleyin</p>
+                                <div id="new-image-preview" class="mt-2" style="display: none;">
+                                    <div class="position-relative d-inline-block">
+                                        <img src="" alt="Preview" style="max-height: 100px;" class="rounded border shadow-sm">
+                                        <button type="button" id="btn-remove-new-file" class="btn btn-danger btn-sm rounded-circle position-absolute" style="top: -10px; right: -10px; padding: 0.1rem 0.3rem;">
+                                            <i class="bx bx-x"></i>
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="form-text mt-2 text-primary fw-bold small bg-soft-primary p-2 rounded-2 d-inline-block">
+                                <i class="bx bx-info-circle me-1"></i> Pano üzerinden resim yapıştırmak için <code>Ctrl+V</code> kullanabilirsiniz.
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -254,28 +271,43 @@ $(document).ready(function() {
                 if(data === 'yanitlandi') badge = 'bg-success';
                 if(data === 'personel_yaniti') badge = 'bg-primary';
                 if(data === 'kapali') badge = 'bg-danger';
-                return `<span class="badge ${badge} p-2 px-3 rounded-pill" onclick="showTimeline(${row.id}, '${row.ref_no}', '${row.konu}')" style="cursor: pointer;" title="İşlem geçmişini gör">${data.toUpperCase()}</span>`;
+                return `<span class="badge ${badge} p-2 px-3 rounded-pill show-timeline-btn" data-id="${row.id}" data-ref="${row.ref_no}" data-konu="${row.konu}" style="cursor: pointer;" title="İşlem geçmişini gör">${data.toUpperCase()}</span>`;
             }},
             { 
                 data: null, 
                 className: 'text-center',
                 render: data => {
-                    // For approved tickets (onay_tamamlandi): open in modal
-                    if ((data.list_context || '') === 'onay_tamamlandi') {
-                        return `<button type="button" class="btn btn-sm btn-soft-primary waves-effect waves-light px-3 btn-ticket-detail" data-ticket-id="${data.id}" data-encrypted-id="${data.encrypted_id}"><i data-feather="eye" class="icon-sm me-1"></i> Detay</button>`;
-                    }
-
-                    // For other tickets: open full page
-                    const actionText = (data.list_context || '') === 'onay' ? 'İncele / Onayla' : 'Detay';
-                    return `<a href="?p=yardim/view&id=${data.encrypted_id || data.id}" class="btn btn-sm btn-soft-info waves-effect waves-light px-3"><i data-feather="eye" class="icon-sm me-1"></i> ${actionText}</a>`;
+                    return `<a href="?p=yardim/view&id=${data.encrypted_id || data.id}" class="btn btn-sm btn-soft-info waves-effect waves-light px-3"><i class="bx bx-show-alt me-1"></i> Detay</a>`;
                 }
             }
         ],
         order: [[5, 'desc']],
+        createdRow: function(row, data, dataIndex) {
+            $(row).css('cursor', 'pointer');
+            $(row).addClass('ticket-row');
+            $(row).attr('data-id', data.id);
+            $(row).attr('data-encrypted-id', data.encrypted_id);
+        },
         initComplete: function(settings, json) {
             updateStats(json.stats);
             if (typeof feather !== 'undefined') feather.replace();
         }
+    });
+
+    // Row Click Handler
+    $('#userTicketsTable tbody').on('click', 'tr.ticket-row', function(e) {
+        if ($(e.target).closest('a, button, .badge').length) return;
+        
+        const id = $(this).data('id');
+        const encryptedId = $(this).data('encrypted-id');
+        openTicketDetail(id, encryptedId);
+    });
+
+    // Delegate Timeline click
+    $(document).on('click', '.show-timeline-btn', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        showTimeline($(this).data('id'), $(this).data('ref'), $(this).data('konu'));
     });
 
     function updateStats(stats) {
@@ -341,6 +373,7 @@ $(document).ready(function() {
                         $('#oncelik').val('orta').trigger('change');
                     }
                     userTable.ajax.reload();
+                    $('#btn-remove-new-file').trigger('click');
                 } else {
                     Swal.fire({
                         title: 'Hata!',
@@ -386,72 +419,145 @@ $(document).ready(function() {
         if (typeof feather !== 'undefined') feather.replace();
     });
 
-    // Trigger feather replace on page load for static elements
-    if (typeof feather !== 'undefined') feather.replace();
+    // New Ticket File Handling
+    let newPastedFile = null;
 
-    // Modal ticket details open handler
-    $(document).on('click', '.btn-ticket-detail', function(e) {
-        e.preventDefault();
-        const ticketId = $(this).data('ticket-id');
-        const encryptedId = $(this).data('encrypted-id');
-        
-        if (!ticketId) return;
+    $('#new-ticket-file').on('change', function(e) {
+        const file = e.target.files[0];
+        if (file) showNewPreview(file);
+    });
 
-        // Start loading
-        $('#ticketDetailModal .modal-body').html('<div class="text-center"><div class="spinner-border" role="status"><span class="sr-only">Yükleniyor...</span></div></div>');
-        $('#ticketDetailModal').modal('show');
+    function showNewPreview(file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            $('#new-image-preview img').attr('src', e.target.result);
+            $('#new-image-preview').show();
+            $('#new-upload-container .upload-icon, #new-upload-text').hide();
+        };
+        reader.readAsDataURL(file);
+        newPastedFile = null;
+    }
 
-        // Fetch ticket details
-        $.post('views/yardim/api.php', {
-            action: 'get-ticket-details',
-            bilet_id: ticketId
-        }, function(res) {
-            if (res.success && res.ticket) {
-                const ticket = res.ticket;
-                const onayDurumu = (ticket.onay_durumu || 'onaylandi').toUpperCase();
-                let onayClass = 'bg-success';
-                if ((ticket.onay_durumu || 'onaylandi') === 'beklemede') onayClass = 'bg-warning';
-                if ((ticket.onay_durumu || 'onaylandi') === 'reddedildi') onayClass = 'bg-danger';
+    $('#btn-remove-new-file').on('click', function(e) {
+        e.stopPropagation(); e.preventDefault();
+        $('#new-ticket-file').val('');
+        newPastedFile = null;
+        $('#new-image-preview').hide();
+        $('#new-upload-container .upload-icon, #new-upload-text').show();
+    });
 
-                const durum = (ticket.durum || 'unknown').toUpperCase();
-                let duremClass = 'bg-secondary';
-                if(ticket.durum === 'acik') duremClass = 'bg-warning';
-                if(ticket.durum === 'yanitlandi') duremClass = 'bg-success';
-                if(ticket.durum === 'personel_yaniti') duremClass = 'bg-primary';
-                if(ticket.durum === 'kapali') duremClass = 'bg-danger';
-
-                let detailContent = `
-                    <div class="row">
-                        <div class="col-md-6">
-                            <table class="table table-borderless">
-                                <tbody>
-                                    <tr><th scope="row">Ref No:</th><td><span class="fw-bold">${ticket.ref_no || '-'}</span></td></tr>
-                                    <tr><th scope="row">Talep Sahibi:</th><td>${ticket.personel_adi || '-'}</td></tr>
-                                    <tr><th scope="row">Kategori:</th><td>${ticket.kategori || '-'}</td></tr>
-                                    <tr><th scope="row">Öncelik:</th><td>${ticket.oncelik || '-'}</td></tr>
-                                    <tr><th scope="row">Durum:</th><td><span class="badge ${duremClass} p-2 px-3 rounded-pill">${durum}</span></td></tr>
-                                    <tr><th scope="row">Onay:</th><td><span class="badge ${onayClass} p-2 px-3 rounded-pill">${onayDurumu}</span></td></tr>
-                                    <tr><th scope="row">Oluşturma:</th><td>${ticket.olusturma_tarihi || '-'}</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                        <div class="col-md-6">
-                            <div class="mb-3">
-                                <label class="form-label fw-bold">Konu:</label>
-                                <p>${ticket.konu || '-'}</p>
-                            </div>
-                        </div>
-                    </div>
-                `;
-
-                $('#ticketDetailModal .modal-body').html(detailContent);
-            } else {
-                $('#ticketDetailModal .modal-body').html('<div class="alert alert-danger">Talep yüklenemedi.</div>');
+    // Paste Handle for New Ticket
+    $('#mesaj').on('paste', function(e) {
+        const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+        for (let i = 0; i < items.length; i++) {
+            if (items[i].type.indexOf('image') !== -1) {
+                const blob = items[i].getAsFile();
+                newPastedFile = blob;
+                showNewPreview(blob);
+                $('#new-ticket-file').val('');
+                break;
             }
-        }).fail(function() {
-            $('#ticketDetailModal .modal-body').html('<div class="alert alert-danger">Talep yüklenirken hata oluştu.</div>');
+        }
+    });
+
+    // Update submit logic for new ticket to handle pasted file
+    $('#new-ticket-form').off('submit').on('submit', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        const $btn = $('#btn-save-ticket');
+        const originalText = $btn.text();
+        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span> Gönderiliyor...');
+
+        const formData = new window.FormData(this);
+        if (newPastedFile) {
+            formData.set('dosya', newPastedFile, 'pasted_image.png');
+        }
+
+        $.ajax({
+            url: 'views/yardim/api.php',
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            success: function(res) {
+                if(res.success) {
+                    Swal.fire({ title: 'Başarılı!', text: res.message, icon: 'success' });
+                    $('#newTicketModal').modal('hide');
+                    $('#new-ticket-form')[0].reset();
+                    $('#btn-remove-new-file').trigger('click');
+                    userTable.ajax.reload();
+                } else {
+                    Swal.fire({ title: 'Hata!', text: res.message, icon: 'error' });
+                }
+            },
+            complete: function() { $btn.prop('disabled', false).text(originalText); }
         });
     });
+
+    function openTicketDetail(id, encryptedId) {
+        $('#detail-konu').text('Yükleniyor...');
+        $('#chat-loading').show();
+        $('#chat-messages').empty();
+        $('#btn-close-ticket').data('id', id);
+        $('#btn-full-view').attr('href', `?p=yardim/view&id=${encryptedId || id}`);
+        $('#ticketDetailModal').modal('show');
+
+        $.post('views/yardim/api.php', { action: 'get-ticket-details', bilet_id: id }, function(res) {
+            $('#chat-loading').hide();
+            if(res.success) {
+                const ticket = res.ticket;
+                $('#detail-konu').text(ticket.konu);
+                $('#detail-ref').text(ticket.ref_no);
+                $('#detail-personel').text(ticket.personel_adi);
+                $('#detail-kategori').text(ticket.kategori);
+                $('#detail-tarih').text(ticket.olusturma_tarihi);
+                
+                let oncelikBadge = 'bg-secondary';
+                if(ticket.oncelik === 'yuksek') oncelikBadge = 'bg-danger';
+                if(ticket.oncelik === 'orta') oncelikBadge = 'bg-warning';
+                if(ticket.oncelik === 'dusuk') oncelikBadge = 'bg-info';
+                $('#detail-oncelik').html(`<span class="badge ${oncelikBadge}">${ticket.oncelik.toUpperCase()}</span>`);
+
+                let durumBadge = 'bg-secondary';
+                if(ticket.durum === 'acik') durumBadge = 'bg-warning';
+                if(ticket.durum === 'yanitlandi') durumBadge = 'bg-success';
+                if(ticket.durum === 'personel_yaniti') durumBadge = 'bg-primary';
+                if(ticket.durum === 'kapali') durumBadge = 'bg-danger';
+                $('#detail-durum').html(`<span class="badge ${durumBadge} rounded-pill px-3">${ticket.durum.toUpperCase()}</span>`);
+
+                if(ticket.durum === 'kapali') {
+                    $('#btn-close-ticket').hide();
+                } else {
+                    $('#btn-close-ticket').show();
+                }
+
+                // Render Messages
+                if(ticket.messages && ticket.messages.length > 0) {
+                    let chatHtml = '';
+                    ticket.messages.forEach(msg => {
+                        const isYonetici = msg.gonderen_tip === 'yonetici';
+                        const align = isYonetici ? 'me-auto bg-light text-dark' : 'ms-auto bg-dark text-white';
+                        const name = isYonetici ? 'Destek Ekibi' : 'Siz';
+                        
+                        chatHtml += `
+                            <div class="p-3 rounded-lg ${align}" style="max-width: 85%; border-radius: 12px;">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="fw-bold small">${name}</span>
+                                    <span class="small opacity-75 ms-3" style="font-size: 0.7rem;">${msg.olusturma_tarihi}</span>
+                                </div>
+                                <div class="message-text">${msg.mesaj.replace(/\n/g, '<br>')}</div>
+                                ${msg.dosya_yolu ? `<div class="mt-2 text-primary small"><a href="${msg.dosya_yolu}" target="_blank" class="text-reset"><i class="bx bx-paperclip me-1"></i> Dosya Eki</a></div>` : ''}
+                            </div>
+                        `;
+                    });
+                    $('#chat-messages').html(chatHtml);
+                    
+                    // Scroll to bottom
+                    const chatCont = document.getElementById('chat-container');
+                    chatCont.scrollTop = chatCont.scrollHeight;
+                }
+            }
+        });
+    }
 });
 
 function showTimeline(id, refNo, konu) {
@@ -555,24 +661,72 @@ function showTimeline(id, refNo, konu) {
 </script>
 
 <!-- Ticket Detail Modal -->
-<div class="modal fade" id="ticketDetailModal" tabindex="-1" role="dialog" aria-labelledby="ticketDetailModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg" role="document">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="ticketDetailModalLabel">Talep Detayı</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+<div class="modal fade" id="ticketDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 15px; overflow: hidden;">
+            <div class="modal-header bg-dark text-white p-3 px-4">
+                <div class="d-flex align-items-center">
+                    <div class="p-2 bg-soft-light rounded-circle me-3">
+                        <i class="bx bx-message-square-dots fs-3"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title text-white mb-0" id="detail-konu">-</h5>
+                        <p class="text-white-50 mb-0 small" id="detail-ref">-</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
-                <!-- Content will be loaded here -->
-            </div>
-            <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+            <div class="modal-body p-0">
+                <div class="row g-0">
+                    <div class="col-md-4 border-end bg-light p-4">
+                        <h6 class="text-uppercase fw-bold text-muted small mb-3">TALEP BİLGİLERİ</h6>
+                        <div class="mb-3">
+                            <label class="text-muted small d-block mb-1">Talep Sahibi</label>
+                            <p class="fw-bold mb-0" id="detail-personel">-</p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-muted small d-block mb-1">Kategori</label>
+                            <span class="badge bg-soft-info text-info rounded-pill px-3" id="detail-kategori">-</span>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-muted small d-block mb-1">Öncelik</label>
+                            <span id="detail-oncelik">-</span>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-muted small d-block mb-1">Durum</label>
+                            <div id="detail-durum">-</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-muted small d-block mb-1">Tarih</label>
+                            <p class="small mb-0" id="detail-tarih">-</p>
+                        </div>
+                        
+                        <div class="mt-4 pt-3 border-top" id="user-actions">
+                            <button type="button" class="btn btn-outline-danger btn-sm w-100 rounded-pill mb-2" id="btn-close-ticket">
+                                <i class="bx bx-lock-alt me-1"></i> Talebi Kapat
+                            </button>
+                            <a href="#" class="btn btn-dark btn-sm w-100 rounded-pill" id="btn-full-view">
+                                <i class="bx bx-expand-alt me-1"></i> Tam Detayı Gör
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="p-4" style="height: 450px; overflow-y: auto; background: #fff;" id="chat-container">
+                            <div id="chat-loading" class="text-center py-5">
+                                <div class="spinner-border text-primary" role="status"></div>
+                            </div>
+                            <div id="chat-messages" class="d-flex flex-column gap-3">
+                                <!-- Messages will be rendered here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Timeline Modal -->
+<!-- Timeline Modal (Existing) -->
 <div class="modal fade" id="timelineModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">

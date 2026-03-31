@@ -153,18 +153,37 @@ if (!$canManageSupport) {
                     
                     <div class="mb-3">
                         <label class="form-label" for="reply-message">Yanıtınız</label>
-                        <textarea class="form-control" name="mesaj" id="reply-message" rows="4" placeholder="Buradan yanıt yazabilirsiniz..." required></textarea>
+                        <textarea class="form-control border-light shadow-sm" name="mesaj" id="reply-message" rows="4" placeholder="Buradan yanıt yazabilirsiniz... (Resim yapıştırmak için Ctrl+V kullanabilirsiniz)" style="background: #fdfdfd; resize: none;" required></textarea>
                     </div>
 
-                    <div class="row align-items-center">
-                        <div class="col-sm-6">
-                            <label class="form-label" for="reply-file">Dosya Ekle (Opsiyonel - Resim)</label>
-                            <input type="file" class="form-control" name="dosya" id="reply-file" accept="image/*">
-                        </div>
-                        <div class="col-sm-6 text-sm-end mt-3 mt-sm-0">
-                            <button type="submit" class="btn btn-primary px-5">
-                                <i class="bx bx-send me-1"></i> Gönder
-                            </button>
+                    <div class="mb-3">
+                        <label class="form-label d-block">Dosya Ekle (Opsiyonel - Resim)</label>
+                        <div class="row align-items-center g-3">
+                            <div class="col-md-7">
+                                <div id="upload-container" class="upload-area text-center p-3 border border-2 border-dashed rounded-3 bg-light position-relative" style="cursor: pointer; transition: all 0.3s ease;">
+                                    <input type="file" name="dosya" id="reply-file" accept="image/*" class="position-absolute w-100 h-100 top-0 start-0 opacity-0" style="cursor: pointer;">
+                                    <div class="upload-icon mb-2">
+                                        <i class="bx bx-cloud-upload fs-1 text-muted"></i>
+                                    </div>
+                                    <p class="mb-0 text-muted small" id="upload-text">Dosya seçin veya buraya sürükleyin</p>
+                                    <div id="image-preview" class="mt-2" style="display: none;">
+                                        <div class="position-relative d-inline-block">
+                                            <img src="" alt="Preview icon" style="max-height: 80px;" class="rounded border shadow-sm">
+                                            <button type="button" id="btn-remove-file" class="btn btn-danger btn-sm rounded-circle position-absolute" style="top: -10px; right: -10px; padding: 0.1rem 0.3rem;">
+                                                <i class="bx bx-x"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="form-text mt-2 text-primary fw-bold small bg-soft-primary p-2 rounded-2 d-inline-block">
+                                    <i class="bx bx-info-circle me-1"></i> Pano üzerinden resim yapıştırmak için <code>Ctrl+V</code> kullanabilirsiniz.
+                                </div>
+                            </div>
+                            <div class="col-md-5 text-end">
+                                <button type="submit" class="btn btn-dark px-5 py-2 rounded-pill shadow-sm fw-bold">
+                                    <i class="bx bx-send me-2"></i> Yanıtı Gönder
+                                </button>
+                            </div>
                         </div>
                     </div>
                 </form>
@@ -179,13 +198,17 @@ if (!$canManageSupport) {
 <style>
 .chat-item { margin-bottom: 20px; max-width: 85%; width: fit-content; }
 .chat-item.mine { margin-left: auto; text-align: right; }
-.chat-bubble { padding: 12px 16px; border-radius: 12px; position: relative; display: inline-block; max-width: 100%; text-align: left; word-break: break-word; }
+.chat-bubble { padding: 12px 16px; border-radius: 12px; position: relative; display: inline-block; max-width: 100%; text-align: left; word-break: break-word; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
 .chat-item.mine .chat-bubble { background: #3b82f6; color: #fff; border-bottom-right-radius: 2px; }
-.chat-item.others .chat-bubble { background: #f1f5f9; color: #1e293b; border-bottom-left-radius: 2px; }
-.chat-meta { font-size: 11px; margin-top: 4px; color: #64748b; }
+.chat-item.others .chat-bubble { background: #f8fafc; color: #1e293b; border-bottom-left-radius: 2px; border: 1px solid #eef2f7; }
+.chat-meta { font-size: 11px; margin-top: 4px; color: #64748b; font-weight: 500; }
 .chat-item.mine .chat-meta { color: #94a3b8; }
-.chat-attachment { margin-top: 8px; border-radius: 8px; overflow: hidden; border: 1px solid #e2e8f0; }
-.chat-attachment img { max-width: 200px; cursor: pointer; }
+.chat-attachment { margin-top: 10px; border-radius: 10px; overflow: hidden; border: 1px solid rgba(0,0,0,0.05); }
+.chat-attachment img { max-width: 250px; cursor: pointer; transition: transform 0.2s; }
+.chat-attachment img:hover { transform: scale(1.02); }
+
+.upload-area:hover { border-color: #3b82f6 !important; background-color: #f0f7ff !important; }
+.upload-area.dragging { border-color: #3b82f6 !important; background-color: #e0efff !important; }
 </style>
 
 <script>
@@ -354,10 +377,63 @@ function updateStatus(status) {
     });
 }
 
+let pastedFile = null;
+
+$('#reply-file').on('change', function(e) {
+    const file = e.target.files[0];
+    if (file) {
+        showPreview(file);
+        pastedFile = null;
+    }
+});
+
+function showPreview(file) {
+    const reader = new FileReader();
+    reader.onload = function(e) {
+        $('#image-preview img').attr('src', e.target.result);
+        $('#image-preview').show();
+        $('.upload-icon, #upload-text').hide();
+    };
+    reader.readAsDataURL(file);
+}
+
+$('#btn-remove-file').on('click', function(e) {
+    e.stopPropagation();
+    e.preventDefault();
+    $('#reply-file').val('');
+    pastedFile = null;
+    $('#image-preview').hide();
+    $('.upload-icon, #upload-text').show();
+});
+
+// Paste Handling
+$('#reply-message').on('paste', function(e) {
+    const items = (e.clipboardData || e.originalEvent.clipboardData).items;
+    for (let i = 0; i < items.length; i++) {
+        if (items[i].type.indexOf('image') !== -1) {
+            const blob = items[i].getAsFile();
+            pastedFile = blob;
+            showPreview(blob);
+            // Clear input if any since we are using pasted file
+            $('#reply-file').val('');
+            break;
+        }
+    }
+});
+
 $('#reply-form').on('submit', function(e) {
     e.preventDefault();
     const formData = new window.FormData(this);
     
+    // If there's a pasted file, use it instead (or append if multiple expected, but here it's one)
+    if (pastedFile) {
+        formData.set('dosya', pastedFile, 'pasted_image.png');
+    }
+    
+    const $btn = $(this).find('button[type="submit"]');
+    const originalHtml = $btn.html();
+    $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span> Gönderiliyor...');
+
     $.ajax({
         url: 'views/yardim/api.php',
         type: 'POST',
@@ -367,11 +443,15 @@ $('#reply-form').on('submit', function(e) {
         success: function(res) {
             if(res.success) {
                 $('#reply-form')[0].reset();
+                $('#btn-remove-file').trigger('click');
                 loadTicket();
                 Swal.fire('Başarılı', 'Yanıtınız gönderildi', 'success');
             } else {
                 Swal.fire('Hata', res.message, 'error');
             }
+        },
+        complete: function() {
+            $btn.prop('disabled', false).html(originalHtml);
         }
     });
 });

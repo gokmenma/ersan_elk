@@ -258,7 +258,73 @@ if (!(Gate::allows('admin_destek_talebi') || Gate::isSuperAdmin())) {
     </div>
 </div>
 
-<!-- Timeline Modal -->
+<!-- Ticket Detail Modal -->
+<div class="modal fade" id="ticketDetailModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 15px; overflow: hidden;">
+            <div class="modal-header bg-dark text-white p-3 px-4">
+                <div class="d-flex align-items-center">
+                    <div class="p-2 bg-soft-light rounded-circle me-3">
+                        <i class="bx bx-message-square-dots fs-3"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title text-white mb-0" id="detail-konu">-</h5>
+                        <p class="text-white-50 mb-0 small" id="detail-ref">-</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="row g-0">
+                    <div class="col-md-4 border-end bg-light p-4">
+                        <h6 class="text-uppercase fw-bold text-muted small mb-3">TALEP BİLGİLERİ</h6>
+                        <div class="mb-3">
+                            <label class="text-muted small d-block mb-1">Talep Sahibi</label>
+                            <p class="fw-bold mb-0" id="detail-personel">-</p>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-muted small d-block mb-1">Kategori</label>
+                            <span class="badge bg-soft-info text-info rounded-pill px-3" id="detail-kategori">-</span>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-muted small d-block mb-1">Öncelik</label>
+                            <span id="detail-oncelik">-</span>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-muted small d-block mb-1">Durum</label>
+                            <div id="detail-durum">-</div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="text-muted small d-block mb-1">Tarih</label>
+                            <p class="small mb-0" id="detail-tarih">-</p>
+                        </div>
+                        
+                        <div class="mt-4 pt-3 border-top" id="admin-actions">
+                            <button type="button" class="btn btn-outline-danger btn-sm w-100 rounded-pill mb-2" id="btn-close-ticket">
+                                <i class="bx bx-lock-alt me-1"></i> Talebi Kapat
+                            </button>
+                            <a href="#" class="btn btn-dark btn-sm w-100 rounded-pill" id="btn-full-view">
+                                <i class="bx bx-expand-alt me-1"></i> Tam Detayı Gör
+                            </a>
+                        </div>
+                    </div>
+                    <div class="col-md-8">
+                        <div class="p-4" style="height: 450px; overflow-y: auto; background: #fff;" id="chat-container">
+                            <div id="chat-loading" class="text-center py-5">
+                                <div class="spinner-border text-primary" role="status"></div>
+                            </div>
+                            <div id="chat-messages" class="d-flex flex-column gap-3">
+                                <!-- Messages will be rendered here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Timeline Modal (Existing) -->
 <div class="modal fade" id="timelineModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
@@ -302,7 +368,7 @@ $(document).ready(function() {
                 data: 'oncelik',
                 render: function(data) {
                     let badge = 'bg-secondary';
-                    if(data === ' yuksek') badge = 'bg-danger';
+                    if(data === 'yuksek') badge = 'bg-danger';
                     if(data === 'orta') badge = 'bg-warning';
                     if(data === 'dusuk') badge = 'bg-info';
                     return `<span class="badge ${badge}">${data.toUpperCase()}</span>`;
@@ -320,7 +386,7 @@ $(document).ready(function() {
                 if(data === 'yanitlandi') badge = 'bg-success';
                 if(data === 'personel_yaniti') badge = 'bg-primary';
                 if(data === 'kapali') badge = 'bg-danger';
-                return `<span class="badge ${badge} p-2 px-3 rounded-pill" onclick="showTimeline(${row.id}, '${row.ref_no}', '${row.konu}')" style="cursor: pointer;" title="İşlem geçmişini gör">${data.toUpperCase()}</span>`;
+                return `<span class="badge ${badge} p-2 px-3 rounded-pill show-timeline-btn" data-id="${row.id}" data-ref="${row.ref_no}" data-konu="${row.konu}" style="cursor: pointer;" title="İşlem geçmişini gör">${data.toUpperCase()}</span>`;
             }
             },
             {
@@ -329,7 +395,29 @@ $(document).ready(function() {
                     return `<a href="?p=yardim/view&id=${data.encrypted_id || data.id}" class="btn btn-sm btn-primary">Görüntüle</a>`;
                 }
             }
-        ]
+        ],
+        createdRow: function(row, data, dataIndex) {
+            $(row).css('cursor', 'pointer');
+            $(row).addClass('ticket-row');
+            $(row).attr('data-id', data.id);
+            $(row).attr('data-encrypted-id', data.encrypted_id);
+        }
+    });
+
+    // Row Click Handler
+    $('#tickets-table tbody').on('click', 'tr.ticket-row', function(e) {
+        if ($(e.target).closest('a, button, .badge').length) return;
+        
+        const id = $(this).data('id');
+        const encryptedId = $(this).data('encrypted-id');
+        openTicketDetail(id, encryptedId);
+    });
+
+    // Delegate Timeline click
+    $(document).on('click', '.show-timeline-btn', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        showTimeline($(this).data('id'), $(this).data('ref'), $(this).data('konu'));
     });
 
     function loadTickets(status = '') {
@@ -353,6 +441,99 @@ $(document).ready(function() {
     $('input[name="status-filter"]').on('change', function() {
         loadTickets($(this).val());
     });
+
+    // Close Ticket Action
+    $('#btn-close-ticket').on('click', function() {
+        const id = $(this).data('id');
+        Swal.fire({
+            title: 'Emin misiniz?',
+            text: "Bu destek talebi kapatılacaktır!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#f46a6a',
+            cancelButtonColor: '#74788d',
+            confirmButtonText: 'Evet, Kapat',
+            cancelButtonText: 'Vazgeç'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post('views/yardim/api.php', { action: 'update-status', bilet_id: id, durum: 'kapali' }, function(res) {
+                    if(res.success) {
+                        Swal.fire('Kapatıldı!', 'Talep başarıyla kapatıldı.', 'success');
+                        $('#ticketDetailModal').modal('hide');
+                        loadTickets($('input[name="status-filter"]:checked').val());
+                    } else {
+                        Swal.fire('Hata!', res.message, 'error');
+                    }
+                });
+            }
+        });
+    });
+
+    function openTicketDetail(id, encryptedId) {
+        $('#detail-konu').text('Yükleniyor...');
+        $('#chat-loading').show();
+        $('#chat-messages').empty();
+        $('#btn-close-ticket').data('id', id);
+        $('#btn-full-view').attr('href', `?p=yardim/view&id=${encryptedId || id}`);
+        $('#ticketDetailModal').modal('show');
+
+        $.post('views/yardim/api.php', { action: 'get-ticket-details', bilet_id: id }, function(res) {
+            $('#chat-loading').hide();
+            if(res.success) {
+                const ticket = res.ticket;
+                $('#detail-konu').text(ticket.konu);
+                $('#detail-ref').text(ticket.ref_no);
+                $('#detail-personel').text(ticket.personel_adi);
+                $('#detail-kategori').text(ticket.kategori);
+                $('#detail-tarih').text(ticket.olusturma_tarihi);
+                
+                let oncelikBadge = 'bg-secondary';
+                if(ticket.oncelik === 'yuksek') oncelikBadge = 'bg-danger';
+                if(ticket.oncelik === 'orta') oncelikBadge = 'bg-warning';
+                if(ticket.oncelik === 'dusuk') oncelikBadge = 'bg-info';
+                $('#detail-oncelik').html(`<span class="badge ${oncelikBadge}">${ticket.oncelik.toUpperCase()}</span>`);
+
+                let durumBadge = 'bg-secondary';
+                if(ticket.durum === 'acik') durumBadge = 'bg-warning';
+                if(ticket.durum === 'yanitlandi') durumBadge = 'bg-success';
+                if(ticket.durum === 'personel_yaniti') durumBadge = 'bg-primary';
+                if(ticket.durum === 'kapali') durumBadge = 'bg-danger';
+                $('#detail-durum').html(`<span class="badge ${durumBadge} rounded-pill px-3">${ticket.durum.toUpperCase()}</span>`);
+
+                if(ticket.durum === 'kapali') {
+                    $('#btn-close-ticket').hide();
+                } else {
+                    $('#btn-close-ticket').show();
+                }
+
+                // Render Messages
+                if(ticket.messages && ticket.messages.length > 0) {
+                    let chatHtml = '';
+                    ticket.messages.forEach(msg => {
+                        const isYonetici = msg.gonderen_tip === 'yonetici';
+                        const align = isYonetici ? 'ms-auto bg-dark text-white' : 'me-auto bg-light text-dark';
+                        const name = isYonetici ? 'Destek Ekibi' : msg.gonderen_adi;
+                        
+                        chatHtml += `
+                            <div class="p-3 rounded-lg ${align}" style="max-width: 85%; border-radius: 12px;">
+                                <div class="d-flex justify-content-between align-items-center mb-1">
+                                    <span class="fw-bold small">${name}</span>
+                                    <span class="small opacity-75 ms-3" style="font-size: 0.7rem;">${msg.olusturma_tarihi}</span>
+                                </div>
+                                <div class="message-text">${msg.mesaj.replace(/\n/g, '<br>')}</div>
+                                ${msg.dosya_yolu ? `<div class="mt-2 text-primary small"><a href="${msg.dosya_yolu}" target="_blank" class="text-reset"><i class="bx bx-paperclip me-1"></i> Dosya Eki</a></div>` : ''}
+                            </div>
+                        `;
+                    });
+                    $('#chat-messages').html(chatHtml);
+                    
+                    // Scroll to bottom
+                    const chatCont = document.getElementById('chat-container');
+                    chatCont.scrollTop = chatCont.scrollHeight;
+                }
+            }
+        });
+    }
 });
 
 function showTimeline(id, refNo, konu) {
