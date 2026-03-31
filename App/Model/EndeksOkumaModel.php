@@ -22,7 +22,6 @@ class EndeksOkumaModel extends Model
                 FROM $this->table t
                 LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
                 WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
-                AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?[0-9]+'
                 GROUP BY t.personel_id, t.ekip_kodu_id, def.tur_adi, t.tarih";
 
         $stmt = $this->db->prepare($sql);
@@ -84,7 +83,7 @@ class EndeksOkumaModel extends Model
         $params = ['firma_id' => $firmaId];
 
         // Temel sorgu
-        $baseWhere = "t.firma_id = :firma_id AND t.silinme_tarihi IS NULL AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?[0-9]+'";
+        $baseWhere = "t.firma_id = :firma_id AND t.silinme_tarihi IS NULL";
 
         // Tarih filtreleri
         if ($startDate) {
@@ -101,7 +100,7 @@ class EndeksOkumaModel extends Model
         }
 
         // Toplam kayıt sayısı (filtresiz)
-        $totalQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id WHERE $baseWhere");
+        $totalQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t WHERE $baseWhere");
         foreach ($params as $key => $val) {
             $totalQuery->bindValue(":$key", $val);
         }
@@ -448,7 +447,6 @@ class EndeksOkumaModel extends Model
                     LEFT JOIN personel p ON t.personel_id = p.id
                     LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
                     WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
-                    AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?[0-9]+'
                     GROUP BY t.personel_id, t.ekip_kodu_id, p.adi_soyadi, def.tur_adi, def.ekip_bolge";
 
             $stmt = $this->db->prepare($sql);
@@ -527,7 +525,6 @@ class EndeksOkumaModel extends Model
                     LEFT JOIN personel p ON t.personel_id = p.id
                     LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
                     WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
-                    AND def.tur_adi REGEXP 'EK[İI]P-?[[:space:]]?[0-9]+'
                     GROUP BY t.personel_id, t.ekip_kodu_id, p.adi_soyadi, def.tur_adi, def.ekip_bolge";
 
             $stmt = $this->db->prepare($sql);
