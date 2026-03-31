@@ -2400,9 +2400,9 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                     const stats = regionDefterStats[donem];
                     const rTotals = regionTotals.donemler[donem];
                     const content = `<div class="d-flex justify-content-center gap-1">
-                        <span class="badge bg-soft-success text-success border border-success-subtle px-2" style="font-size:9.5px;" title="Okunan Defter Sayısı">O: <b>${stats.read}</b></span>
-                        <span class="badge bg-soft-danger text-danger border border-danger-subtle px-2" style="font-size:9.5px;" title="Okunmayan Defter Sayısı">X: <b>${stats.unread}</b></span>
-                        <span class="badge bg-light text-dark border px-2 ms-1" style="font-size:9.5px;" title="Toplam Okunan Abone (92173 gibi)">S: <b>${rTotals.okunan.toLocaleString('tr-TR')}</b></span>
+                        <span class="badge bg-soft-success text-success border border-success-subtle px-2" style="font-size:9.5px;" title="Okunan Defter Sayısı">Okunan: <b>${stats.read}</b></span>
+                        <span class="badge bg-soft-danger text-danger border border-danger-subtle px-2" style="font-size:9.5px;" title="Okunmayan Defter Sayısı">Okunmayan: <b>${stats.unread}</b></span>
+                        <span class="badge bg-light text-dark border px-2 ms-1" style="font-size:9.5px;" title="Toplam Okunan Abone (92173 gibi)">Abone: <b>${rTotals.okunan.toLocaleString('tr-TR')}</b></span>
                     </div>`;
                     html += `<td colspan="${visibleCountPerPeriod}" class="text-center py-1" style="background: rgba(0,0,0,0.02);">${content}</td>`;
                 });
@@ -3631,16 +3631,34 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 // Bölge bazlı grupla ve toplamları hesapla
                 const grouped = {};
                 let grandTotalAbone = 0;
+                let badgeLabel = 'Abone';
+                let colTitle = 'Abone Sayısı';
+
+                if (type === 'okunan_detay') {
+                    badgeLabel = 'Okunan';
+                    colTitle = 'Okunan Sayısı';
+                } else if (type === 'okunmayan_detay') {
+                    badgeLabel = 'Okunmayan';
+                    colTitle = 'Okunmayan Sayısı';
+                }
+
                 defterList.forEach(function (d) {
                     const b = d.bolge || 'TANIMSIZ';
                     if (!grouped[b]) grouped[b] = [];
                     grouped[b].push(d);
-                    grandTotalAbone += parseInt(d.abone_sayisi) || 0;
+                    
+                    if (type === 'okunan_detay') {
+                        grandTotalAbone += parseInt(d.okunan) || 0;
+                    } else if (type === 'okunmayan_detay') {
+                        grandTotalAbone += parseInt(d.okunmayan) || 0;
+                    } else {
+                        grandTotalAbone += parseInt(d.abone_sayisi) || 0;
+                    }
                 });
 
                 modalHtml += '<div class="d-flex align-items-center flex-wrap gap-2 mb-3">';
                 modalHtml += '<span class="badge bg-primary-subtle text-primary" style="font-size: 13px; padding: 8px 16px; border-radius: 8px;"><i class="bx bx-list-ul me-1"></i>Toplam ' + defterList.length + ' defter</span>';
-                modalHtml += '<span class="badge bg-danger-subtle text-danger" style="font-size: 13px; padding: 8px 16px; border-radius: 8px;"><i class="bx bx-user me-1"></i>' + grandTotalAbone.toLocaleString('tr-TR') + ' Abone</span>';
+                modalHtml += '<span class="badge bg-danger-subtle text-danger" style="font-size: 13px; padding: 8px 16px; border-radius: 8px;"><i class="bx bx-user me-1"></i>' + grandTotalAbone.toLocaleString('tr-TR') + ' ' + badgeLabel + '</span>';
                 modalHtml += '<span class="badge bg-secondary-subtle text-secondary" style="font-size: 12px; padding: 6px 12px; border-radius: 8px;">' + Object.keys(grouped).length + ' bölge</span>';
                 modalHtml += '</div>';
 
@@ -3651,7 +3669,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 modalHtml += '<th>Bölge</th>';
                 modalHtml += '<th>Defter</th>';
                 modalHtml += '<th>Mahalle</th>';
-                modalHtml += '<th>Abone Sayısı</th>';
+                modalHtml += '<th>' + colTitle + '</th>';
                 modalHtml += '</tr></thead>';
                 modalHtml += '<tbody>';
 
@@ -3660,7 +3678,15 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 groupedKeys.forEach(function (bName) {
                     const items = grouped[bName];
                     let regionAboneSum = 0;
-                    items.forEach(function (d) { regionAboneSum += parseInt(d.abone_sayisi) || 0; });
+                    items.forEach(function (d) { 
+                        if (type === 'okunan_detay') {
+                            regionAboneSum += parseInt(d.okunan) || 0; 
+                        } else if (type === 'okunmayan_detay') {
+                            regionAboneSum += parseInt(d.okunmayan) || 0;
+                        } else {
+                            regionAboneSum += parseInt(d.abone_sayisi) || 0; 
+                        }
+                    });
 
                     // Bölge başlık satırı
                     modalHtml += '<tr style="background: rgba(var(--bs-primary-rgb), 0.06);">';
@@ -3670,12 +3696,14 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
                     items.forEach(function (d) {
                         sira++;
+                        const displayVal = (type === 'okunan_detay') ? (parseInt(d.okunan) || 0) : 
+                                           (type === 'okunmayan_detay' ? (parseInt(d.okunmayan) || 0) : (parseInt(d.abone_sayisi) || 0));
                         modalHtml += '<tr>';
                         modalHtml += '<td class="text-muted">' + sira + '</td>';
                         modalHtml += '<td class="fw-medium">' + (d.bolge || '-') + '</td>';
                         modalHtml += '<td class="fw-bold">' + d.defter + '</td>';
                         modalHtml += '<td>' + (d.mahalle || '-') + '</td>';
-                        modalHtml += '<td class="fw-semibold">' + (d.abone_sayisi ? d.abone_sayisi.toLocaleString('tr-TR') : '-') + '</td>';
+                        modalHtml += '<td class="fw-semibold">' + displayVal.toLocaleString('tr-TR') + '</td>';
                         modalHtml += '</tr>';
                     });
                 });
