@@ -269,7 +269,7 @@ class PuantajModel extends Model
             $params['start_date'] = Date::Ymd($startDate) ?: $startDate;
         }
         if ($endDate) {
-            $baseWhere .= " AND t.tarih <= :end_date";
+            $baseWhere .= " AND t.tarih < DATE_ADD(:end_date, INTERVAL 1 DAY)";
             $params['end_date'] = Date::Ymd($endDate) ?: $endDate;
         }
         if ($ekipKodu) {
@@ -277,18 +277,16 @@ class PuantajModel extends Model
             $params['ekip_kodu'] = $ekipKodu;
         }
         if ($workType) {
-            // Hem yeni normalized hem de eski string alanından filtrele
-            $baseWhere .= " AND (tn.tur_adi = :work_type OR t.is_emri_tipi = :work_type)";
-            $params['work_type'] = $workType;
+            $baseWhere .= " AND (TRIM(tn.tur_adi) = :work_type OR TRIM(t.is_emri_tipi) = :work_type)";
+            $params['work_type'] = trim($workType);
         }
         if ($workResult === 'sonuclanan') {
             $baseWhere .= " AND (t.sonuclanmis > 0)";
         } elseif ($workResult === 'acik') {
             $baseWhere .= " AND (t.acik_olanlar > 0)";
         } elseif ($workResult) {
-            // Hem yeni normalized hem de eski string alanından filtrele
-            $baseWhere .= " AND (tn.is_emri_sonucu = :work_result OR t.is_emri_sonucu = :work_result)";
-            $params['work_result'] = $workResult;
+            $baseWhere .= " AND (TRIM(tn.is_emri_sonucu) = :work_result OR TRIM(t.is_emri_sonucu) = :work_result)";
+            $params['work_result'] = trim($workResult);
         }
 
         if ($sorguTuru === 'ENDEKS_OKUMA') {
@@ -547,7 +545,7 @@ class PuantajModel extends Model
      */
     public function getSummaryByFilters($baseWhere, $searchWhere, $params)
     {
-        $sql = "SELECT COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as sonuc, 
+        $sql = "SELECT TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)) as sonuc, 
                        COUNT(*) as adet, 
                        SUM(t.sonuclanmis) as toplam_abone
                 FROM {$this->table} t 
@@ -663,7 +661,7 @@ class PuantajModel extends Model
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $sql = "SELECT 
                     MONTH(t.tarih) as ay,
-                    COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as sonuc,
+                    TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)) as sonuc,
                     SUM(t.sonuclanmis) as toplam
                 FROM $this->table t
                 LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id

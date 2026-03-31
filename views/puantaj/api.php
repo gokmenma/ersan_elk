@@ -1562,7 +1562,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     } elseif ($tab === 'kacak_kontrol') {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         // personel_ids artık virgülle ayrılmış ID'ler içerdiği için doğrudan ekip_adi gösteriliyor
-        $sql = "SELECT k.* FROM kacak_kontrol k WHERE k.tarih BETWEEN ? AND ? AND k.silinme_tarihi IS NULL AND k.firma_id = ?";
+        $sql = "SELECT k.* FROM kacak_kontrol k WHERE k.tarih >= ? AND k.tarih < DATE_ADD(?, INTERVAL 1 DAY) AND k.silinme_tarihi IS NULL AND k.firma_id = ?";
         $params = [$dbStartDate, $dbEndDate, $firmaId];
 
         // Personel filtresi - personel_ids içinde aranan ID var mı kontrol et
@@ -3720,6 +3720,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'get-puantaj-comparison') {
     $periodsReq = array_values(array_unique(array_filter(array_map('trim', $periodsReq))));
     
     $personelId = $_GET['personel_id'] ?? '';
+    $workType = $_GET['work_type'] ?? '';
+    $workResult = $_GET['work_result'] ?? '';
+    $sorguTuru = strtoupper($_GET['sorgu_turu'] ?? '');
     $firmaId = $_SESSION['firma_id'] ?? 0;
 
     if (empty($periodsReq)) {
@@ -3732,7 +3735,7 @@ if (isset($_GET['action']) && $_GET['action'] === 'get-puantaj-comparison') {
     $placeholders = implode(',', array_fill(0, count($periodsReq), '?'));
 
     $sql = "SELECT DATE_FORMAT(t.tarih, '%Y-%m') as period, 
-                   COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as sonuc, 
+                   TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)) as sonuc, 
                    SUM(t.sonuclanmis) as adet
             FROM yapilan_isler t
             LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
@@ -3743,6 +3746,28 @@ if (isset($_GET['action']) && $_GET['action'] === 'get-puantaj-comparison') {
     if ($personelId) {
         $sql .= " AND t.personel_id = ?";
         $params[] = $personelId;
+    }
+    if ($workType) {
+        $sql .= " AND (TRIM(tn.tur_adi) = ? OR TRIM(t.is_emri_tipi) = ?)";
+        $params[] = trim($workType);
+        $params[] = trim($workType);
+    }
+    if ($workResult === 'sonuclanan') {
+        $sql .= " AND (t.sonuclanmis > 0)";
+    } elseif ($workResult === 'acik') {
+        $sql .= " AND (t.acik_olanlar > 0)";
+    } elseif ($workResult) {
+        $sql .= " AND (TRIM(tn.is_emri_sonucu) = ? OR TRIM(t.is_emri_sonucu) = ?)";
+        $params[] = trim($workResult);
+        $params[] = trim($workResult);
+    }
+
+    if ($sorguTuru === 'KESME_ACMA') {
+        $sql .= " AND t.is_emri_tipi NOT IN ('Endeks Okuma', 'Sayaç Değişimi')";
+    } elseif ($sorguTuru === 'ENDEKS_OKUMA') {
+        $sql .= " AND t.is_emri_tipi = 'Endeks Okuma'";
+    } elseif ($sorguTuru === 'SAYAC_DEGISIM') {
+        $sql .= " AND t.is_emri_tipi = 'Sayaç Değişimi'";
     }
     
     $sql .= " GROUP BY period, sonuc ORDER BY period ASC";
@@ -3757,7 +3782,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'get-puantaj-comparison') {
     foreach ($rows as $row) {
         $type = $row->sonuc ?: 'Belirtilmemiş';
         if (!in_array($type, $types)) $types[] = $type;
-        $matrix[$type][$row->period] = (int)$row->adet;
+        if (!isset($matrix[$type])) $matrix[$type] = [];
+        $matrix[$type][$row->period] = ($matrix[$type][$row->period] ?? 0) + (int)$row->adet;
     }
 
     $periods = $periodsReq;
@@ -3775,7 +3801,9 @@ if (isset($_GET['action']) && $_GET['action'] === 'get-sayac-comparison') {
     } else if (is_array($periodsInput)) {
         $periodsReq = $periodsInput;
     } else {
-        $periodsReq = [];
+        header('Content-Type: application/json');
+        echo json_encode(['periods' => [], 'types' => [], 'matrix' => []]);
+        exit;
     }
     $periodsReq = array_values(array_unique(array_filter(array_map('trim', $periodsReq))));
     
@@ -3791,16 +3819,25 @@ if (isset($_GET['action']) && $_GET['action'] === 'get-sayac-comparison') {
     $Model = new \App\Model\SayacDegisimModel();
     $placeholders = implode(',', array_fill(0, count($periodsReq), '?'));
 
-    $sql = "SELECT DATE_FORMAT(tarih, '%Y-%m') as period, 
-                   COALESCE(isemri_sonucu, 'Belirtilmemiş') as sonuc, 
-                   IFNULL(SUM(is_sayisi), 0) as adet
-            FROM sayac_degisim
-            WHERE firma_id = ? AND silinme_tarihi IS NULL
-            AND DATE_FORMAT(tarih, '%Y-%m') IN ($placeholders)";
+    $sql = "SELECT DATE_FORMAT(t.tarih, '%Y-%m') as period, 
+                   COALESCE(t.isemri_sonucu, 'Belirtilmemiş') as sonuc, 
+                   SUM(CASE WHEN pay.personel_sayisi > 0 THEN 1.0 / pay.personel_sayisi ELSE 0 END) as adet
+            FROM sayac_degisim t
+            JOIN (
+                SELECT 
+                    tarih,
+                    SUBSTRING_INDEX(islem_id, '_', 1) as ortak_islem_id,
+                    COUNT(*) as personel_sayisi
+                FROM sayac_degisim
+                WHERE firma_id = ? AND silinme_tarihi IS NULL
+                GROUP BY tarih, SUBSTRING_INDEX(islem_id, '_', 1)
+            ) pay ON pay.tarih = t.tarih AND pay.ortak_islem_id = SUBSTRING_INDEX(t.islem_id, '_', 1)
+            WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL
+            AND DATE_FORMAT(t.tarih, '%Y-%m') IN ($placeholders)";
     
-    $params = array_merge([$firmaId], $periodsReq);
+    $params = array_merge([$firmaId, $firmaId], $periodsReq);
     if ($personelId) {
-        $sql .= " AND personel_id = ?";
+        $sql .= " AND t.personel_id = ?";
         $params[] = $personelId;
     }
     
@@ -3816,7 +3853,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'get-sayac-comparison') {
     foreach ($rows as $row) {
         $type = $row->sonuc;
         if (!in_array($type, $types)) $types[] = $type;
-        $matrix[$type][$row->period] = (int)$row->adet;
+        if (!isset($matrix[$type])) $matrix[$type] = [];
+        $matrix[$type][$row->period] = ($matrix[$type][$row->period] ?? 0) + (float)$row->adet;
     }
 
     $periods = $periodsReq;

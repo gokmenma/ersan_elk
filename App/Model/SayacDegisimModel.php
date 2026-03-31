@@ -33,7 +33,7 @@ class SayacDegisimModel extends Model
             $params['start_date'] = Date::Ymd($startDate) ?: $startDate;
         }
         if ($endDate) {
-            $baseWhere .= " AND t.tarih <= :end_date";
+            $baseWhere .= " AND t.tarih < DATE_ADD(:end_date, INTERVAL 1 DAY)";
             $params['end_date'] = Date::Ymd($endDate) ?: $endDate;
         }
         if ($ekipKodu) {
@@ -406,12 +406,12 @@ class SayacDegisimModel extends Model
                         SUBSTRING_INDEX(islem_id, '_', 1) as ortak_islem_id,
                         COUNT(*) as personel_sayisi
                     FROM {$this->table}
-                    WHERE firma_id = ? AND tarih >= ? AND tarih <= ? AND silinme_tarihi IS NULL
+                    WHERE firma_id = ? AND tarih >= ? AND tarih < DATE_ADD(?, INTERVAL 1 DAY) AND silinme_tarihi IS NULL
                     GROUP BY tarih, SUBSTRING_INDEX(islem_id, '_', 1)
                 ) pay ON pay.tarih = t.tarih
                     AND pay.ortak_islem_id = SUBSTRING_INDEX(t.islem_id, '_', 1)
                 WHERE t.firma_id = ? 
-                AND t.tarih >= ? AND t.tarih <= ?
+                AND t.tarih >= ? AND t.tarih < DATE_ADD(?, INTERVAL 1 DAY)
                 AND t.silinme_tarihi IS NULL
                 AND TRIM(t.isemri_sonucu) IN (
                     SELECT TRIM(is_emri_sonucu) 

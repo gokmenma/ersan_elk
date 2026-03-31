@@ -763,6 +763,7 @@ const AracTakip = {
                             <td class="text-end"><a href="arac-puantaj?arac_id=${y.arac_id}" class="text-primary fw-bold" title="Puantajda Görüntüle">${self.formatNumber(y.km)} km</a></td>
                             <td class="text-end">${self.formatNumber(y.yakit_miktari)} L</td>
                             <td class="text-end">${self.formatMoney(y.birim_fiyat)}</td>
+                            <td class="text-end">${self.formatMoney(y.iskonto)}</td>
                             <td class="text-end">${self.formatMoney(y.toplam_tutar)}</td>
                             <td>${y.istasyon || "-"}</td>
                             <td class="text-center">

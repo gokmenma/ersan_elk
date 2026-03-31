@@ -60,8 +60,18 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse"
                                     data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
                                     <div class="d-flex align-items-center justify-content-between w-100 me-3">
-                                        <div>
-                                            <i class="bx bx-filter-alt me-2"></i> Filtreleme Seçenekleri
+                                        <div class="d-flex align-items-center gap-3">
+                                            <div class="fw-bold fs-15 text-primary d-flex align-items-center">
+                                                <i class="bx bx-filter-alt me-2 fs-18"></i> Filtreleme Seçenekleri
+                                            </div>
+                                            <!-- Tarih Aralığı / Dönem Toggle -->
+                                            <div class="btn-group bg-light p-1 rounded-pill" role="group" id="dateFilterTypeGroup" style="height: 34px;" onclick="event.stopPropagation();">
+                                                <input type="radio" class="btn-check" name="dateFilterType" id="dateFilterTypeRange" value="range" checked>
+                                                <label class="btn btn-sm btn-outline-primary border-0 rounded-pill px-3 d-flex align-items-center fs-11 fw-bold" for="dateFilterTypeRange">Tarih Aralığı</label>
+                                                
+                                                <input type="radio" class="btn-check" name="dateFilterType" id="dateFilterTypePeriod" value="period">
+                                                <label class="btn btn-sm btn-outline-primary border-0 rounded-pill px-3 d-flex align-items-center fs-11 fw-bold" for="dateFilterTypePeriod">Dönem</label>
+                                            </div>
                                         </div>
                                         <div id="filterSummary" class="d-none d-md-flex gap-2">
                                             <!-- JS ile doldurulacak -->
@@ -80,7 +90,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 <input type="hidden" name="tab" id="activeTabInput"
                                     value="<?= $_GET['tab'] ?? 'okuma' ?>">
                                 <div class="row g-3">
-                                    <div class="col-md-2">
+                                    <div class="col-md-2 date-range-input">
                                         <?php echo Form::FormFloatInput(
                                             type: 'text',
                                             name: 'start_date',
@@ -91,7 +101,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                             class: "form-control flatpickr",
                                         ); ?>
                                     </div>
-                                    <div class="col-md-2">
+                                    <div class="col-md-2 date-range-input">
                                         <?php echo Form::FormFloatInput(
                                             type: 'text',
                                             name: 'end_date',
@@ -101,6 +111,12 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                             icon: "calendar",
                                             class: "form-control flatpickr",
                                         ); ?>
+                                    </div>
+                                    <div class="col-md-4 date-period-input d-none">
+                                        <div class="input-group">
+                                            <span class="input-group-text"><i class="bx bx-calendar"></i></span>
+                                            <input type="text" name="period_month" id="period_month" class="form-control" placeholder="Dönem Seçiniz" readonly>
+                                        </div>
                                     </div>
                                     <div class="col-md-3">
                                         <?php echo Form::FormSelect2('ekip_kodu', $personelOptions, $ekipKodu, 'Personel Adı Soyadı', 'grid', 'key', '', 'form-select select2'); ?>
@@ -1019,7 +1035,75 @@ $activeTab = $_GET['tab'] ?? 'okuma';
 
 <script>
     $(document).ready(function () {
-        // Server-side DataTable instances
+        // Tarih filtresi toggle mantığı
+        $('input[name="dateFilterType"]').on('change', function () {
+            const type = $(this).val();
+            if (type === 'period') {
+                $('.date-range-input').addClass('d-none');
+                $('.date-period-input').removeClass('d-none');
+            } else {
+                $('.date-range-input').removeClass('d-none');
+                $('.date-period-input').addClass('d-none');
+            }
+        });
+
+        $('#dateFilterTypeGroup').on('click', function (e) {
+            e.stopPropagation();
+            const collapseElement = document.getElementById('collapseOne');
+            const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseElement);
+            if ($('#headingOne button').hasClass('collapsed')) {
+                bsCollapse.show();
+            }
+        });
+
+        // Dönem (Ay) picker instance
+        var monthPicker = null;
+        function initMonthPicker() {
+            setTimeout(function() {
+                var $el = $('#period_month');
+                if ($el.length === 0) return;
+                
+                var pluginFunc = window.monthSelectPlugin || (typeof monthSelectPlugin !== 'undefined' ? monthSelectPlugin : null);
+                
+                if (typeof pluginFunc === 'function') {
+                    if (monthPicker) {
+                        monthPicker.destroy();
+                    }
+                    monthPicker = flatpickr($el[0], {
+                        locale: "tr",
+                        plugins: [
+                            pluginFunc({
+                                shorthand: true,
+                                dateFormat: "Y-m",
+                                altFormat: "F Y",
+                                theme: "light"
+                            })
+                        ],
+                        clickOpens: true,
+                        allowInput: false,
+                        onChange: function (selectedDates, dateStr) {
+                            if (selectedDates.length > 0) {
+                                var date = selectedDates[0];
+                                var firstDay = new Date(date.getFullYear(), date.getMonth(), 1);
+                                var lastDay = new Date(date.getFullYear(), date.getMonth() + 1, 0);
+
+                                var formatDate = function (d) {
+                                    var dd = ("0" + d.getDate()).slice(-2);
+                                    var mm = ("0" + (d.getMonth() + 1)).slice(-2);
+                                    var yyyy = d.getFullYear();
+                                    return dd + '.' + mm + '.' + yyyy;
+                                };
+
+                                $('input[name="start_date"]').val(formatDate(firstDay));
+                                $('input[name="end_date"]').val(formatDate(lastDay));
+                            }
+                        }
+                    });
+                }
+            }, 500);
+        }
+        initMonthPicker();
+
         var endeksDataTable = null;
         var puantajDataTable = null;
         var kacakDataTable = null;
@@ -1043,19 +1127,19 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             const activeTab = $('#activeTabInput').val();
 
             if (startDate && endDate) {
-                summary += `<div class="filter-summary-badge"><span class="badge-label">Tarih:</span><span class="badge-value">${startDate} - ${endDate}</span></div>`;
+                summary += '<div class="filter-summary-badge"><span class="badge-label">Tarih:</span><span class="badge-value">' + startDate + ' - ' + endDate + '</span></div>';
             }
 
             if (ekipKodu && ekipKodu !== '') {
-                summary += `<div class="filter-summary-badge"><span class="badge-label">Pers:</span><span class="badge-value">${ekipText}</span><button type="button" class="btn-clear-filter" data-filter="ekip_kodu"><i class="bx bx-x"></i></button></div>`;
+                summary += '<div class="filter-summary-badge"><span class="badge-label">Pers:</span><span class="badge-value">' + ekipText + '</span><button type="button" class="btn-clear-filter" data-filter="ekip_kodu"><i class="bx bx-x"></i></button></div>';
             }
 
             if (activeTab === 'yapilan_isler') {
                 if (workType && workType !== '') {
-                    summary += `<div class="filter-summary-badge"><span class="badge-label">İş:</span><span class="badge-value">${workTypeText}</span><button type="button" class="btn-clear-filter" data-filter="work_type"><i class="bx bx-x"></i></button></div>`;
+                    summary += '<div class="filter-summary-badge"><span class="badge-label">İş:</span><span class="badge-value">' + workTypeText + '</span><button type="button" class="btn-clear-filter" data-filter="work_type"><i class="bx bx-x"></i></button></div>';
                 }
                 if (workResult && workResult !== '') {
-                    summary += `<div class="filter-summary-badge"><span class="badge-label">Sonuç:</span><span class="badge-value">${workResultText}</span><button type="button" class="btn-clear-filter" data-filter="work_result"><i class="bx bx-x"></i></button></div>`;
+                    summary += '<div class="filter-summary-badge"><span class="badge-label">Sonuç:</span><span class="badge-value">' + workResultText + '</span><button type="button" class="btn-clear-filter" data-filter="work_result"><i class="bx bx-x"></i></button></div>';
                 }
             }
 
@@ -1078,6 +1162,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         // Filtre değerlerini localStorage'a kaydet
         function saveFiltersToStorage() {
             var filters = {
+                dateFilterType: $('input[name="dateFilterType"]:checked').val(),
                 start_date: $('input[name="start_date"]').val(),
                 end_date: $('input[name="end_date"]').val(),
                 ekip_kodu: $('select[name="ekip_kodu"]').val(),
@@ -1095,24 +1180,68 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             var hasFilters = urlParams.has('ekip_kodu') || urlParams.has('work_type') || urlParams.has('work_result');
 
             var savedFilters = localStorage.getItem('puantaj_filters');
-            if (savedFilters) {
-                var filters = JSON.parse(savedFilters);
+            var filters = {};
+            try {
+                filters = savedFilters ? JSON.parse(savedFilters) : {};
+            } catch (e) { filters = {}; }
 
-                // Tarihler ve Tab her zaman storage'dan veya URL'den gelmeli
-                if (!urlParams.has('start_date') && filters.start_date) $('input[name="start_date"]').val(filters.start_date);
-                if (!urlParams.has('end_date') && filters.end_date) $('input[name="end_date"]').val(filters.end_date);
+            // Filtre tipi (Aralık veya Dönem) - Varsayılan: range
+            var dateFilterType = filters.dateFilterType || 'range';
+            
+            // Eğer URL'de tarih yoksa ve storage boşsa (veya ilk yüklemeyse) her zaman range gelsin
+            if (!urlParams.has('start_date') && !savedFilters) {
+                dateFilterType = 'range';
+            }
+
+            $(`input[name="dateFilterType"][value="${dateFilterType}"]`).prop('checked', true).trigger('change');
+
+            var now = new Date();
+            var day = ("0" + now.getDate()).slice(-2);
+            var month = ("0" + (now.getMonth() + 1)).slice(-2);
+            var year = now.getFullYear();
+
+            var firstDayStr = "01." + month + "." + year;
+            var todayStr = day + "." + month + "." + year;
+
+            // Tarihler her zaman default veya storage/url'den gelsin
+            var sDate = urlParams.get('start_date') || (filters ? filters.start_date : null) || firstDayStr;
+            var eDate = urlParams.get('end_date') || (filters ? filters.end_date : null) || todayStr;
+
+            $('input[name="start_date"]').val(sDate);
+            $('input[name="end_date"]').val(eDate);
+
+            // Filtre tipi varsayılanı ayarla
+            var dateFilterType = 'range';
+            if (urlParams.has('start_date') || (filters && filters.dateFilterType === 'period')) {
+                 dateFilterType = filters.dateFilterType || 'range';
+            }
+            
+            // UI'ı güncelle
+            $('input[name="dateFilterType"][value="' + dateFilterType + '"]').prop('checked', true).trigger('change');
+
+            // Month picker'ı da güncelle
+            if (dateFilterType === 'period') {
+                var parts = sDate.split('.');
+                if (parts.length === 3) {
+                    var periodStr = parts[2] + "-" + parts[1];
+                    $('input[name="period_month"]').val(periodStr);
+                    if (monthPicker) {
+                        monthPicker.setDate(periodStr);
+                    }
+                }
+            }
+
+            if (savedFilters) {
                 if (!urlParams.has('tab') && filters.tab) {
                     $('#activeTabInput').val(filters.tab);
-                    // Manuel olarak sınıfları değiştiriyoruz ki 'jump' (animasyon) olmasın
                     $(`#puantajTabs a`).removeClass('active');
                     $(`.tab-pane`).removeClass('active show');
 
-                    var $targetTab = $(`#puantajTabs a[data-tab-name="${filters.tab}"]`);
+                    var $targetTab = $('a[data-tab-name="' + filters.tab + '"]');
                     if ($targetTab.length > 0) {
                         $targetTab.addClass('active');
                         $($targetTab.attr('href')).addClass('active show');
                     } else {
-                        // Eğer storage'daki tab artık yoksa varsayılana dön
                         $(`#puantajTabs a[data-tab-name="okuma"]`).addClass('active');
                         $('#okuma').addClass('active show');
                     }
@@ -1130,8 +1259,12 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         $('select[name="work_result"]').val(filters.work_result).trigger('change');
                     }
                 }
-                updateFilterSummary();
+            } else {
+                // Hiçbir şey yoksa varsayılan tarihleri bas
+                if (!$('input[name="start_date"]').val()) $('input[name="start_date"]').val(firstDayStr);
+                if (!$('input[name="end_date"]').val()) $('input[name="end_date"]').val(todayStr);
             }
+            updateFilterSummary();
         }
 
         // Tab değişikliğinde hidden input güncelle, URL'yi güncelle ve içeriği yükle
@@ -1385,6 +1518,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     type: 'GET',
                     data: function (d) {
                         d.action = 'puantaj-datatable';
+                        d.sorgu_turu = 'KESME_ACMA';
                         d.start_date = $('input[name="start_date"]').val();
                         d.end_date = $('input[name="end_date"]').val();
                         d.ekip_kodu = $('select[name="ekip_kodu"]').val();
@@ -1499,7 +1633,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     { data: 'isemri_sebep' },
                     { data: 'isemri_sonucu' },
                     { data: 'abone_no' },
-                    { data: 'takilan_sayacno' },
+                    { data: 'takılan_sayacno' },
                     {
                         data: 'id',
                         render: function (data, type, row) {
@@ -1725,7 +1859,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             });
         });
 
-        $('#btnShowSayacStats').on('click', function () {
+        $('#btnShowSayacStats'). on('click', function () {
             var startDate = $('input[name="start_date"]').val();
             var endDate = $('input[name="end_date"]').val();
             var personelId = $('select[name="ekip_kodu"]').val();

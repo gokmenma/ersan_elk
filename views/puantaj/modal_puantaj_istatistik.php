@@ -144,7 +144,10 @@ for ($i = 0; $i <= 6; $i++) {
             $.get('views/puantaj/api.php', {
                 action: 'get-puantaj-comparison',
                 comparison_periods: selectedPeriods.join(','),
-                personel_id: staffId
+                personel_id: staffId,
+                work_type: $('select[name="work_type"]').val(),
+                work_result: $('select[name="work_result"]').val(),
+                sorgu_turu: 'KESME_ACMA'
             }, function(res) {
                 const data = typeof res === 'object' ? res : JSON.parse(res);
                 

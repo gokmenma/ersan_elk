@@ -395,9 +395,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $data['onceki_km'] = $oncekiKm;
                 }
 
-                // Birim fiyat hesapla
+                // Birim fiyat hesapla (Eğer girilmemişse)
                 if (!empty($data['yakit_miktari']) && !empty($data['toplam_tutar']) && empty($data['birim_fiyat'])) {
-                    $data['birim_fiyat'] = round(floatval($data['toplam_tutar']) / floatval($data['yakit_miktari']), 2);
+                    $iskonto = floatval($data['iskonto'] ?? 0);
+                    $data['birim_fiyat'] = round((floatval($data['toplam_tutar']) + $iskonto) / floatval($data['yakit_miktari']), 2);
                 }
 
                 // Boş değerleri null yap
@@ -999,6 +1000,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     'birim_fiyat' => ['birim fiyat', 'litre fiyatı', 'litre fiyati', 'fiyat', 'birim fiyatı'],
                     'toplam_tutar' => ['tutar', 'toplam tutar', 'toplam', 'ödenen', 'net tutar'],
                     'brut_tutar' => ['brüt tutar', 'brut tutar'],
+                    'iskonto' => ['iskonto', 'indirim'],
+                    'iskonto_tipi' => ['iskonto tipi', 'indirim tipi'],
                     'istasyon' => ['istasyon', 'akaryakıt istasyonu', 'benzin istasyonu'],
                     'fatura_no' => ['fatura no', 'fatura numarası', 'fiş no', 'fatura numarası'],
                     'fatura_tarihi' => ['fatura tarihi'],
@@ -1032,8 +1035,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $cleanNum = function ($val) {
                     if ($val === null || $val === '')
                         return 0.0;
-                    $val = str_replace(['TL', ' ', '%'], '', $val);
-                    $val = str_replace(',', '', $val);
+                    $val = str_replace(['TL', ' ', '%', '₺', 'L'], '', $val);
+                    
+                    // Turkish number format: 1.234,56
+                    // If there's a comma and it's near the end, it's likely a decimal separator
+                    if (strpos($val, ',') !== false) {
+                        // If there are dots before the comma, they are thousands separators
+                        if (strpos($val, '.') !== false && strrpos($val, ',') > strrpos($val, '.')) {
+                            $val = str_replace('.', '', $val);
+                        }
+                        $val = str_replace(',', '.', $val);
+                    }
+                    
                     return (float) $val;
                 };
 
@@ -1094,7 +1107,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         }
 
                         // Sayısal alanlar
-                        foreach (['km', 'yakit_miktari', 'birim_fiyat', 'toplam_tutar', 'brut_tutar'] as $field) {
+                        foreach (['km', 'yakit_miktari', 'birim_fiyat', 'toplam_tutar', 'brut_tutar', 'iskonto'] as $field) {
                             if (isset($colIndices[$field])) {
                                 $newData[$field] = $cleanNum($row[$colIndices[$field]]);
                             }
@@ -1136,12 +1149,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                                         firma_id, arac_id, tarih, km, yakit_miktari, birim_fiyat, 
                                         toplam_tutar, istasyon, fatura_no, external_id, 
                                         cihaz_numarasi, kart_numarasi, brut_tutar, fatura_tarihi,
-                                        yakit_tipi, olusturan_kullanici_id
+                                        iskonto, yakit_tipi, olusturan_kullanici_id
                                     ) VALUES (
                                         :firma_id, :arac_id, :tarih, :km, :yakit_miktari, :birim_fiyat, 
                                         :toplam_tutar, :istasyon, :fatura_no, :external_id, 
                                         :cihaz_numarasi, :kart_numarasi, :brut_tutar, :fatura_tarihi,
-                                        'dizel', :olusturan_kullanici_id
+                                        :iskonto, 'dizel', :olusturan_kullanici_id
                                     ) ON DUPLICATE KEY UPDATE 
                                         arac_id = VALUES(arac_id),
                                         tarih = VALUES(tarih),
@@ -1155,6 +1168,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                                         kart_numarasi = VALUES(kart_numarasi),
                                         brut_tutar = VALUES(brut_tutar),
                                         fatura_tarihi = VALUES(fatura_tarihi),
+                                        iskonto = VALUES(iskonto),
                                         silinme_tarihi = NULL,
                                         guncelleme_tarihi = NOW()";
 
@@ -1174,6 +1188,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                                 ':kart_numarasi' => $newData['kart_numarasi'] ?? null,
                                 ':brut_tutar' => $newData['brut_tutar'] ?? null,
                                 ':fatura_tarihi' => $newData['fatura_tarihi'] ?? null,
+                                ':iskonto' => $newData['iskonto'] ?? 0,
                                 ':olusturan_kullanici_id' => $newData['olusturan_kullanici_id']
                             ]);
 

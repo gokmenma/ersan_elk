@@ -60,7 +60,7 @@
                                     </div>
 
                                     <div class="col-md-6">
-                                        <?php echo \App\Helper\Form::FormFloatInput('number', 'km', '', 'Güncel kilometre', 'Güncel KM *', 'activity', 'form-control', true, null, 'on', false, 'min="0"'); ?>
+                                        <?php echo \App\Helper\Form::FormFloatInput('number', 'km', '', '', 'Güncel KM *', 'activity', 'form-control', true, null, 'on', false, 'min="0"'); ?>
                                     </div>
                                     <div class="col-md-6">
                                         <?php
@@ -73,24 +73,27 @@
                                         <div class="p-3 border rounded bg-light bg-opacity-50">
                                             <div class="text-muted small mb-3 fw-semibold"><i class="bx bx-calculator me-1"></i>Maliyet Hesaplama</div>
                                             <div class="row g-2">
-                                                <div class="col-md-4">
-                                                    <?php echo \App\Helper\Form::FormFloatInput('number', 'yakit_miktari', '', '0.00', 'Miktar (L) *', 'droplet', 'form-control', true, null, 'on', false, 'step="0.01" min="0"'); ?>
+                                                <div class="col-md-3">
+                                                    <?php echo \App\Helper\Form::FormFloatInput('number', 'yakit_miktari', '', '', 'Miktar (L) *', 'droplet', 'form-control', true, null, 'on', false, 'step="0.01" min="0"'); ?>
                                                 </div>
-                                                <div class="col-md-4">
-                                                    <?php echo \App\Helper\Form::FormFloatInput('number', 'birim_fiyat', '', '0.00', 'Birim Fiyat (₺)', 'bx bx-purchase-tag', 'form-control', false, null, 'on', false, 'step="0.01" min="0"'); ?>
+                                                <div class="col-md-3">
+                                                    <?php echo \App\Helper\Form::FormFloatInput('number', 'birim_fiyat', '', '', 'Birim Fiyat (₺)', 'bx bx-purchase-tag', 'form-control', false, null, 'on', false, 'step="0.01" min="0"'); ?>
                                                 </div>
-                                                <div class="col-md-4">
-                                                    <?php echo \App\Helper\Form::FormFloatInput('number', 'toplam_tutar', '', '0.00', 'Toplam Tutar (₺) *', 'bx bx-wallet', 'form-control', true, null, 'on', false, 'step="0.01" min="0"'); ?>
+                                                <div class="col-md-3">
+                                                    <?php echo \App\Helper\Form::FormFloatInput('number', 'iskonto', '', '', 'İskonto (₺)', 'bx bx-minus', 'form-control', false, null, 'on', false, 'step="0.01" min="0"'); ?>
+                                                </div>
+                                                <div class="col-md-3">
+                                                    <?php echo \App\Helper\Form::FormFloatInput('number', 'toplam_tutar', '', '', 'Toplam Tutar (₺) *', 'bx bx-wallet', 'form-control', true, null, 'on', false, 'step="0.01" min="0"'); ?>
                                                 </div>
                                             </div>
                                         </div>
                                     </div>
 
                                     <div class="col-md-6">
-                                        <?php echo \App\Helper\Form::FormFloatInput('text', 'istasyon', '', 'Akaryakıt istasyonu adı', 'İstasyon', 'map-pin'); ?>
+                                        <?php echo \App\Helper\Form::FormFloatInput('text', 'istasyon', '', '', 'İstasyon', 'map-pin'); ?>
                                     </div>
                                     <div class="col-md-6">
-                                        <?php echo \App\Helper\Form::FormFloatInput('text', 'fatura_no', '', 'Fiş numarası', 'Fiş/Fatura No', 'file-text'); ?>
+                                        <?php echo \App\Helper\Form::FormFloatInput('text', 'fatura_no', '', '', 'Fiş/Fatura No', 'file-text'); ?>
                                     </div>
 
                                     <div class="col-12 my-2">
@@ -101,7 +104,7 @@
                                     </div>
 
                                     <div class="col-12">
-                                        <?php echo \App\Helper\Form::FormFloatTextarea('notlar', '', 'Ek notlar...', 'Notlar', 'edit-3', 'form-control', false, '100px'); ?>
+                                        <?php echo \App\Helper\Form::FormFloatTextarea('notlar', '', '', 'Notlar', 'edit-3', 'form-control', false, '100px'); ?>
                                     </div>
                                 </div>
                             </form>
@@ -133,20 +136,26 @@
     });
 
     // Yakıt hesaplama mantığı
-    $(document).off("input", "#yakit_miktari, #birim_fiyat, #toplam_tutar").on("input", "#yakit_miktari, #birim_fiyat, #toplam_tutar", function (e) {
+    $(document).off("input", "#yakit_miktari, #birim_fiyat, #iskonto, #toplam_tutar").on("input", "#yakit_miktari, #birim_fiyat, #iskonto, #toplam_tutar", function (e) {
         const targetId = e.target.id;
         const miktar = parseFloat($("#yakit_miktari").val()) || 0;
         const birimFiyat = parseFloat($("#birim_fiyat").val()) || 0;
+        const iskonto = parseFloat($("#iskonto").val()) || 0;
         const toplamTutar = parseFloat($("#toplam_tutar").val()) || 0;
 
-        if (targetId === "yakit_miktari" || targetId === "birim_fiyat") {
-            // Miktar veya Birim Fiyat değişince Toplam'ı hesapla
+        if (targetId === "yakit_miktari" || targetId === "birim_fiyat" || targetId === "iskonto") {
+            // Miktar, Birim Fiyat veya İskonto değişince Toplam'ı hesapla
             if (miktar > 0 && birimFiyat > 0) {
-                $("#toplam_tutar").val((miktar * birimFiyat).toFixed(2));
+                const calculatedTotal = (miktar * birimFiyat) - iskonto;
+                $("#toplam_tutar").val(calculatedTotal.toFixed(2));
             }
         } else if (targetId === "toplam_tutar") {
-            // Toplam değişince Birim Fiyat'ı hesapla
-            if (miktar > 0 && toplamTutar > 0) {
+            // Toplam değişince İskonto'yu hesapla (eğer miktar ve birim fiyat varsa)
+            if (miktar > 0 && birimFiyat > 0) {
+                const calculatedIskonto = (miktar * birimFiyat) - toplamTutar;
+                $("#iskonto").val(calculatedIskonto.toFixed(2));
+            } else if (miktar > 0 && toplamTutar > 0) {
+                // Eğer birim fiyat yoksa birim fiyatı hesapla
                 $("#birim_fiyat").val((toplamTutar / miktar).toFixed(2));
             }
         }

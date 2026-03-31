@@ -758,6 +758,7 @@ if ($filter === 'muayene') {
                                             <th style="width:10%" class="text-end">KM</th>
                                             <th style="width:10%" class="text-end">Miktar (L)</th>
                                             <th style="width:10%" class="text-end">Birim Fiyat</th>
+                                            <th style="width:8%" class="text-end">İskonto%</th>
                                             <th style="width:12%" class="text-end">Toplam Tutar</th>
                                             <th style="width:15%">İstasyon</th>
                                             <th style="width:8%" class="text-center">İşlemler</th>
