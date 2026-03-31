@@ -991,7 +991,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
                 // Sütun eşleştirme
                 $columnMap = [
-                    'external_id' => ['id', 'ıd'],
+                    'external_id' => ['id', 'ıd', 'satış id', 'satis id', 'satıs ıd', 'islem numarasi', 'işlem numarası', 'fis no', 'fiş no'],
                     'plaka' => ['plaka', 'araç plakası', 'arac plakasi'],
                     'tarih' => ['tarih', 'yakıt tarihi', 'yakit tarihi'],
                     'km' => ['km', 'kilometre', 'güncel km', 'guncel km'],
@@ -1185,19 +1185,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                                 $updatedDetails[] = "Satır $rowNum (Plaka: $plaka, Fiş: " . ($newData['external_id'] ?? '-') . ")";
                             }
                         } else {
-                            $mevcutKayit = $Yakit->getDb()->prepare("SELECT id FROM arac_yakit_kayitlari WHERE arac_id = ? AND tarih = ? AND silinme_tarihi IS NULL LIMIT 1");
-                            $mevcutKayit->execute([$aracId, $newData['tarih']]);
+                            $checkSql = "SELECT id FROM arac_yakit_kayitlari 
+                                          WHERE arac_id = ? AND tarih = ? AND silinme_tarihi IS NULL";
+                            $checkParams = [$aracId, $newData['tarih']];
+
+                            // Eğer istasyon veya tutar varsa, onları da kontrole dahil et ki 
+                            // aynı gün farklı alımlar ezilmesin (eğer Satış ID yoksa)
+                            if (!empty($newData['istasyon'])) {
+                                $checkSql .= " AND istasyon = ?";
+                                $checkParams[] = $newData['istasyon'];
+                            }
+                            if (!empty($newData['toplam_tutar'])) {
+                                $checkSql .= " AND toplam_tutar = ?";
+                                $checkParams[] = $newData['toplam_tutar'];
+                            }
+
+                            $checkSql .= " LIMIT 1";
+                            $mevcutKayit = $Yakit->getDb()->prepare($checkSql);
+                            $mevcutKayit->execute($checkParams);
                             $var_mi = $mevcutKayit->fetch(\PDO::FETCH_OBJ);
 
                             if ($var_mi) {
                                 $newData['id'] = $var_mi->id;
                                 $Yakit->saveWithAttr($newData);
                                 $updatedCount++;
-                                $updatedDetails[] = "Satır $rowNum (Plaka: $plaka)";
+                                $updatedDetails[] = "Güncellendi: Satır $rowNum (Plaka: $plaka, Tarih: " . $newData['tarih'] . ")";
                             } else {
                                 $Yakit->saveWithAttr($newData);
                                 $addedCount++;
-                                $addedDetails[] = "Satır $rowNum (Plaka: $plaka)";
+                                $addedDetails[] = "Eklendi: Satır $rowNum (Plaka: $plaka, Tarih: " . $newData['tarih'] . ")";
                             }
                         }
 

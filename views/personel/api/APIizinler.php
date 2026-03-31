@@ -263,19 +263,37 @@ try {
         // Ama izin_onaylari tablosu user_id mi tutuyor personel_id mi?
 
         // İzin onayları tablosuna bakalım (tahmini).
-        // Genelde onaylayan kişi sisteme login olan kişidir -> User.
+        $current_user_id = $_SESSION['user_id'] ?? 0;
+        $db = (new Db())->getConnection();
 
-        // Strateji: Kullanıcıya durumu açıklayalım ve hem personel hem user tablosundan arama yapıp
-        // hangisi olduğunu parantez içinde belirtelim.
+        // Get restriction from DB instead of hardcoded array
+        $restricted_dept = null;
+        $is_restricted = false;
 
-        $sql = "SELECT id, adi_soyadi, email_adresi, 'Kullanıcı' as kaynak FROM users WHERE adi_soyadi LIKE :term OR email_adresi LIKE :term
+        if ($current_user_id && !\App\Service\Gate::isSuperAdmin()) {
+            $uStmt = $db->prepare("SELECT yonetilen_departman FROM users WHERE id = ?");
+            $uStmt->execute([$current_user_id]);
+            $uRow = $uStmt->fetch(PDO::FETCH_OBJ);
+            if ($uRow && !empty($uRow->yonetilen_departman)) {
+                $is_restricted = true;
+                $restricted_dept = $uRow->yonetilen_departman;
+            }
+        }
+
+        $extra_where = $is_restricted ? " AND departman = :dept" : "";
+
+        $sql = "SELECT id, adi_soyadi, email_adresi, 'Kullanıcı' as kaynak FROM users WHERE (adi_soyadi LIKE :term OR email_adresi LIKE :term) AND silinme_tarihi IS NULL
                 UNION ALL
-                SELECT id, adi_soyadi, email_adresi, 'Personel' as kaynak FROM personel WHERE adi_soyadi LIKE :term OR email_adresi LIKE :term
+                SELECT id, adi_soyadi, email_adresi, 'Personel' as kaynak FROM personel WHERE (adi_soyadi LIKE :term OR email_adresi LIKE :term) $extra_where AND silinme_tarihi IS NULL
                 LIMIT 15";
-
+ 
         $stmt = $db->prepare($sql);
-        $stmt->execute([':term' => "%$term%"]);
-        $data = $stmt->fetchAll(\PDO::FETCH_ASSOC);
+        $params = [':term' => "%$term%"];
+        if ($is_restricted) {
+            $params[':dept'] = $restricted_dept;
+        }
+        $stmt->execute($params);
+        $data = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         // Veriyi formatlayıp gönderelim
         $response = [];

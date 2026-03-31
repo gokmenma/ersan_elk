@@ -94,10 +94,10 @@ class AvansModel extends Model
     {
         $limit = (int) $limit;
         $sql = $this->db->prepare("
-            SELECT 'Avans' as tip, pa.id, pa.personel_id, pa.talep_tarihi as tarih, pa.durum, pa.tutar as detay 
+            SELECT 'Avans' as tip, pa.id, pa.personel_id, pa.talep_tarihi as tarih, pa.durum, pa.tutar as detay
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
-            WHERE pa.durum = 'beklemede' AND pa.silinme_tarihi IS NULL AND p.firma_id = ? 
+            WHERE pa.durum = 'beklemede' AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
             LIMIT {$limit}
         ");
         $sql->execute([$_SESSION['firma_id']]);
@@ -110,7 +110,7 @@ class AvansModel extends Model
     public function getButunBekleyenAvanslar()
     {
         $sql = $this->db->prepare("
-            SELECT pa.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, p.maas_tutari
+            SELECT pa.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
             WHERE pa.durum = 'beklemede' AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
@@ -127,7 +127,8 @@ class AvansModel extends Model
     {
         $limit = (int) $limit;
         $sql = $this->db->prepare("
-            SELECT pa.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, p.maas_tutari, u.adi_soyadi as solver_name
+            SELECT pa.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev,
+                   u.adi_soyadi as solver_name
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
             LEFT JOIN users u ON pa.onaylayan_id = u.id

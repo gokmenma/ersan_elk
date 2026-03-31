@@ -86,8 +86,7 @@ class TalepModel extends Model
             SELECT COUNT(*) as count 
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
-            WHERE pt.durum NOT IN ('cozuldu', 'reddedildi', 'iptal_edildi') AND pt.silinme_tarihi IS NULL AND p.firma_id = ?
-            AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
+            WHERE pt.durum NOT IN ('cozuldu', 'reddedildi', 'iptal_edildi') AND pt.silinme_tarihi IS NULL AND p.firma_id = ? AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
         ");
         $sql->execute([$_SESSION['firma_id']]);
         return $sql->fetch(PDO::FETCH_OBJ)->count ?? 0;
@@ -103,8 +102,7 @@ class TalepModel extends Model
             SELECT 'Talep' as tip, pt.id, pt.personel_id, pt.olusturma_tarihi as tarih, pt.durum, pt.baslik as detay 
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
-            WHERE pt.durum NOT IN ('cozuldu', 'reddedildi', 'iptal_edildi') AND pt.silinme_tarihi IS NULL AND p.firma_id = ?
-            AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
+            WHERE pt.durum NOT IN ('cozuldu', 'reddedildi', 'iptal_edildi') AND pt.silinme_tarihi IS NULL AND p.firma_id = ? AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
             LIMIT {$limit}
         ");
         $sql->execute([$_SESSION['firma_id']]);
@@ -120,8 +118,7 @@ class TalepModel extends Model
             SELECT pt.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
-            WHERE pt.durum NOT IN ('cozuldu', 'reddedildi', 'iptal_edildi') AND pt.silinme_tarihi IS NULL AND p.firma_id = ?
-            AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
+            WHERE pt.durum NOT IN ('cozuldu', 'reddedildi', 'iptal_edildi') AND pt.silinme_tarihi IS NULL AND p.firma_id = ? AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
             ORDER BY pt.olusturma_tarihi DESC
         ");
         $sql->execute([$_SESSION['firma_id']]);
@@ -167,13 +164,13 @@ class TalepModel extends Model
     {
         $limit = (int) $limit;
         $sql = $this->db->prepare("
-            SELECT pt.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, u.adi_soyadi as solver_name
+            SELECT pt.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev,
+                   u.adi_soyadi as solver_name
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
             LEFT JOIN users u ON pt.islem_yapan_id = u.id
             WHERE pt.durum IN ('cozuldu', 'reddedildi', 'iptal_edildi') AND pt.silinme_tarihi IS NULL AND p.firma_id = ?
-            AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
-            ORDER BY pt.olusturma_tarihi DESC
+            ORDER BY pt.islem_tarihi DESC
             LIMIT {$limit}
         ");
         $sql->execute([$_SESSION['firma_id']]);

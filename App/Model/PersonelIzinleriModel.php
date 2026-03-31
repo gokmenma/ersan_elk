@@ -17,6 +17,26 @@ class PersonelIzinleriModel extends Model
     }
 
     /**
+     * Get the department name the current user is allowed to see (Leave module only).
+     * Returns null if no restriction.
+     */
+    private function getRestrictedDept()
+    {
+        $current_user_id = $_SESSION['user_id'] ?? 0;
+        if (!$current_user_id) return null;
+
+        if (\App\Service\Gate::isSuperAdmin()) {
+            return null;
+        }
+
+        $stmt = $this->db->prepare("SELECT yonetilen_departman FROM users WHERE id = ?");
+        $stmt->execute([$current_user_id]);
+        $user = $stmt->fetch(PDO::FETCH_OBJ);
+        
+        return (!empty($user->yonetilen_departman)) ? $user->yonetilen_departman : null;
+    }
+
+    /**
      * Personelin izinlerini, onay durumu ve onaylayan bilgileriyle birlikte getirir.
      *
      * @param int $personel_id
@@ -74,16 +94,36 @@ class PersonelIzinleriModel extends Model
      */
     public function getBekleyenIzinSayisi()
     {
-        $sql = $this->db->prepare("
+        $restricted_dept = $this->getRestrictedDept();
+        $is_restricted = ($restricted_dept !== null);
+        
+        $extra_where = $is_restricted ? " AND p.departman = :restricted_dept" : "";
+        $params = [$_SESSION['firma_id']];
+        if ($is_restricted) {
+            $params['restricted_dept'] = $restricted_dept;
+        }
+
+        $sql = "
             SELECT COUNT(*) as count 
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.onay_durumu = 'beklemede' AND pi.silinme_tarihi IS NULL AND p.firma_id = ? 
+            $extra_where
             AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
-        ");
-        $sql->execute([$_SESSION['firma_id']]);
-        return $sql->fetch(PDO::FETCH_OBJ)->count ?? 0;
+        ";
+        
+        $query = $this->db->prepare($sql);
+        // Parametreleri düzgün bind etmek için dizi yapısını değiştirelim
+        $bindParams = [$_SESSION['firma_id']];
+        if ($is_restricted) {
+            $sql = str_replace(':restricted_dept', '?', $sql);
+            $bindParams[] = $restricted_dept;
+            $query = $this->db->prepare($sql);
+        }
+        
+        $query->execute($bindParams);
+        return $query->fetch(PDO::FETCH_OBJ)->count ?? 0;
     }
 
     /**
@@ -91,19 +131,31 @@ class PersonelIzinleriModel extends Model
      */
     public function getBekleyenIzinlerForDashboard($limit = 5)
     {
+        $restricted_dept = $this->getRestrictedDept();
+        $is_restricted = ($restricted_dept !== null);
+
+        $extra_where = $is_restricted ? " AND p.departman = ?" : "";
+        $bindParams = [$_SESSION['firma_id']];
+        if ($is_restricted) {
+            $bindParams[] = $restricted_dept;
+        }
+
         $limit = (int) $limit;
-        $sql = $this->db->prepare("
+        $sql = "
             SELECT 'İzin' as tip, pi.id, pi.personel_id, pi.talep_tarihi as tarih, pi.onay_durumu as durum, t.tur_adi as detay,
                    pi.baslangic_tarihi, pi.bitis_tarihi, pi.toplam_gun
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.onay_durumu = 'beklemede' AND pi.silinme_tarihi IS NULL AND p.firma_id = ? 
+            $extra_where
             AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
             LIMIT {$limit}
-        ");
-        $sql->execute([$_SESSION['firma_id']]);
-        return $sql->fetchAll(PDO::FETCH_OBJ);
+        ";
+        
+        $query = $this->db->prepare($sql);
+        $query->execute($bindParams);
+        return $query->fetchAll(PDO::FETCH_OBJ);
     }
 
     /**
@@ -111,20 +163,32 @@ class PersonelIzinleriModel extends Model
      */
     public function getAktifIzinler($limit = 10)
     {
-        $limit = (int) $limit;
+        $restricted_dept = $this->getRestrictedDept();
+        $is_restricted = ($restricted_dept !== null);
+
+        $extra_where = $is_restricted ? " AND p.departman = ?" : "";
         $today = date('Y-m-d');
-        $sql = $this->db->prepare("
+        $bindParams = [$today, $today, $_SESSION['firma_id']];
+        if ($is_restricted) {
+            $bindParams[] = $restricted_dept;
+        }
+
+        $limit = (int) $limit;
+        $sql = "
             SELECT pi.*, p.adi_soyadi, p.resim_yolu, p.personel_resim_yolu, p.departman, t.tur_adi as izin_tipi_adi
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ? AND pi.onay_durumu = 'Onaylandı' AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
+            $extra_where
             AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
             ORDER BY pi.bitis_tarihi ASC
             LIMIT {$limit}
-        ");
-        $sql->execute([$today, $today, $_SESSION['firma_id']]);
-        return $sql->fetchAll(PDO::FETCH_OBJ);
+        ";
+        
+        $query = $this->db->prepare($sql);
+        $query->execute($bindParams);
+        return $query->fetchAll(PDO::FETCH_OBJ);
     }
 
     /**
@@ -132,17 +196,29 @@ class PersonelIzinleriModel extends Model
      */
     public function getButunBekleyenIzinler()
     {
-        $sql = $this->db->prepare("
+        $restricted_dept = $this->getRestrictedDept();
+        $is_restricted = ($restricted_dept !== null);
+
+        $extra_where = $is_restricted ? " AND p.departman = ?" : "";
+        $bindParams = [$_SESSION['firma_id']];
+        if ($is_restricted) {
+            $bindParams[] = $restricted_dept;
+        }
+
+        $sql = "
             SELECT pi.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.onay_durumu = 'beklemede' AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
+            $extra_where
             AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
             ORDER BY pi.talep_tarihi DESC
-        ");
-        $sql->execute([$_SESSION['firma_id']]);
-        return $sql->fetchAll(PDO::FETCH_OBJ);
+        ";
+        
+        $query = $this->db->prepare($sql);
+        $query->execute($bindParams);
+        return $query->fetchAll(PDO::FETCH_OBJ);
     }
 
     /**
@@ -150,8 +226,28 @@ class PersonelIzinleriModel extends Model
      */
     public function getIslenmisIzinler($limit = 50)
     {
+        $restricted_users = [
+            69 => 'Endeks Okuma',
+            68 => 'Kesme Açma',
+            67 => 'Sayaç Sökme Takma',
+            70 => 'Kaçak Kontrol'
+        ];
+        $current_user_id = $_SESSION['user_id'] ?? 0;
+        $is_restricted = isset($restricted_users[$current_user_id]);
+        $restricted_dept = $is_restricted ? $restricted_users[$current_user_id] : null;
+
+        if ($is_restricted && \App\Service\Gate::isSuperAdmin()) {
+            $is_restricted = false;
+        }
+
+        $extra_where = $is_restricted ? " AND p.departman = ?" : "";
+        $bindParams = [$_SESSION['firma_id']];
+        if ($is_restricted) {
+            $bindParams[] = $restricted_dept;
+        }
+
         $limit = (int) $limit;
-        $sql = $this->db->prepare("
+        $sql = "
             SELECT pi.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi,
                    u.adi_soyadi as solver_name, io.onay_tarihi as islem_tarihi, io.aciklama as onay_aciklama
             FROM {$this->table} pi 
@@ -166,6 +262,7 @@ class PersonelIzinleriModel extends Model
             ) io ON io.izin_id = pi.id
             LEFT JOIN users u ON io.onaylayan_id = u.id
             WHERE pi.onay_durumu IN ('Onaylandı', 'Reddedildi') AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
+            $extra_where
             AND pi.id NOT IN (
                 SELECT izin_id FROM izin_onaylari 
                 WHERE aciklama LIKE 'Puantaj üzerinden%' 
@@ -175,9 +272,11 @@ class PersonelIzinleriModel extends Model
             AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
             ORDER BY pi.talep_tarihi DESC
             LIMIT {$limit}
-        ");
-        $sql->execute([$_SESSION['firma_id']]);
-        return $sql->fetchAll(PDO::FETCH_OBJ);
+        ";
+        
+        $query = $this->db->prepare($sql);
+        $query->execute($bindParams);
+        return $query->fetchAll(PDO::FETCH_OBJ);
     }
 
     /**
@@ -185,19 +284,42 @@ class PersonelIzinleriModel extends Model
      */
     public function getReddedilmisIzinler($limit = 50)
     {
+        $restricted_users = [
+            69 => 'Endeks Okuma',
+            68 => 'Kesme Açma',
+            67 => 'Sayaç Sökme Takma',
+            70 => 'Kaçak Kontrol'
+        ];
+        $current_user_id = $_SESSION['user_id'] ?? 0;
+        $is_restricted = isset($restricted_users[$current_user_id]);
+        $restricted_dept = $is_restricted ? $restricted_users[$current_user_id] : null;
+
+        if ($is_restricted && \App\Service\Gate::isSuperAdmin()) {
+            $is_restricted = false;
+        }
+
+        $extra_where = $is_restricted ? " AND p.departman = ?" : "";
+        $bindParams = [$_SESSION['firma_id']];
+        if ($is_restricted) {
+            $bindParams[] = $restricted_dept;
+        }
+
         $limit = (int) $limit;
-        $sql = $this->db->prepare("
+        $sql = "
             SELECT pi.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.onay_durumu = 'Reddedildi' AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
+            $extra_where
             AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
             ORDER BY pi.talep_tarihi DESC
             LIMIT {$limit}
-        ");
-        $sql->execute([$_SESSION['firma_id']]);
-        return $sql->fetchAll(PDO::FETCH_OBJ);
+        ";
+        
+        $query = $this->db->prepare($sql);
+        $query->execute($bindParams);
+        return $query->fetchAll(PDO::FETCH_OBJ);
     }
 
     /**

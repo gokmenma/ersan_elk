@@ -225,12 +225,9 @@ class BordroPersonelModel extends Model
         $donemBitis = $donemDates->bitis_tarihi ?? date('Y-m-t');
         $donemBaslangic = $donemDates->baslangic_tarihi ?? date('Y-m-01');
 
-        $params = [$firma_id, $donemBitis, $donemBaslangic, $donem_id, $donem_id, $donem_id];
-
         if (!empty($ids)) {
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
             $idFilter = " AND bp.id IN ($placeholders)";
-            $params = array_merge($params, $ids);
         }
 
         $sql = $this->db->prepare("
@@ -281,7 +278,7 @@ class BordroPersonelModel extends Model
                       AND (bitis_tarihi IS NULL OR bitis_tarihi >= ?)
                     GROUP BY personel_id
                 ) gg_latest ON pgg.personel_id = gg_latest.personel_id
-                          AND pgg.baslangic_tarihi = gg_latest.latest_start
+                           AND pgg.baslangic_tarihi = gg_latest.latest_start
             ) gg ON p.id = gg.personel_id
             LEFT JOIN (
                 SELECT pgg.personel_id, 

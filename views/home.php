@@ -125,13 +125,9 @@ if (Gate::allows("ana_sayfa")) {
     $avans_count = 0;
     $avanslar = [];
     if (Gate::allows('avans_talepleri')) {
-        $stmt = $db->prepare("SELECT count(*) as count FROM personel_avanslari WHERE durum = 'beklemede' AND silinme_tarihi IS NULL");
-        $measureDb('home.avans_count', fn() => $stmt->execute());
-        $avans_count = $stmt->fetch(PDO::FETCH_OBJ)->count;
-        
-        $stmt = $db->prepare("SELECT 'Avans' as tip, id, personel_id, talep_tarihi as tarih, durum, tutar as detay FROM personel_avanslari WHERE durum = 'beklemede' AND silinme_tarihi IS NULL LIMIT 5");
-        $measureDb('home.avans_list', fn() => $stmt->execute());
-        $avanslar = $stmt->fetchAll(PDO::FETCH_OBJ);
+        $avansModel = new \App\Model\AvansModel();
+        $avans_count = $avansModel->getBekleyenAvansSayisi();
+        $avanslar = $avansModel->getBekleyenAvanslarForDashboard(5);
     }
 
     // İzinler
@@ -151,13 +147,9 @@ if (Gate::allows("ana_sayfa")) {
     $talep_count = 0;
     $talepler = [];
     if (Gate::allows('ariza_talepleri')) {
-        $stmt = $db->prepare("SELECT count(*) as count FROM personel_talepleri WHERE durum != 'cozuldu' AND silinme_tarihi IS NULL");
-        $measureDb('home.talep_count', fn() => $stmt->execute());
-        $talep_count = $stmt->fetch(PDO::FETCH_OBJ)->count;
-
-        $stmt = $db->prepare("SELECT 'Talep' as tip, id, personel_id, olusturma_tarihi as tarih, durum, baslik as detay FROM personel_talepleri WHERE durum != 'cozuldu' AND silinme_tarihi IS NULL LIMIT 5");
-        $measureDb('home.talep_list', fn() => $stmt->execute());
-        $talepler = $stmt->fetchAll(PDO::FETCH_OBJ);
+        $talepModelAlt = new \App\Model\TalepModel();
+        $talep_count = $talepModelAlt->getBekleyenTalepSayisi();
+        $talepler = $talepModelAlt->getBekleyenTaleplerForDashboard(5);
     }
 
     $personel_talep_sayisi = $avans_count + $izin_count + $talep_count;

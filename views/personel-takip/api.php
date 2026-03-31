@@ -35,6 +35,8 @@ try {
     $PersonelModel = new PersonelModel();
 
     $db = (new \App\Core\Db())->db;
+    
+    $db = (new \App\Core\Db())->db;
 
     switch ($action) {
 
@@ -42,6 +44,11 @@ try {
         case 'getOzet':
             $firma_id = $_SESSION['firma_id'] ?? null;
             $departman = $_POST['departman'] ?? null;
+            
+            if ($is_restricted) {
+                $departman = $restricted_dept;
+            }
+            
             $personeller = $HareketModel->getTumPersonelDurumu($firma_id, null, $departman);
 
             $gorevde = 0;
@@ -106,6 +113,11 @@ try {
         case 'getPersonelDurumlari':
             $firma_id = $_SESSION['firma_id'] ?? null;
             $departman = $_POST['departman'] ?? null;
+            
+            if ($is_restricted) {
+                $departman = $restricted_dept;
+            }
+            
             $personeller = $HareketModel->getTumPersonelDurumu($firma_id, null, $departman);
 
             $data = [];
@@ -165,6 +177,8 @@ try {
             if (!$personel) {
                 response(false, null, 'Personel bulunamadı');
             }
+            
+            $hareketler = $HareketModel->getRapor($personel_id, $baslangic, $bitis);
 
             $hareketler = $HareketModel->getRapor($personel_id, $baslangic, $bitis);
 
@@ -200,7 +214,14 @@ try {
             $baslangic = $_POST['baslangic'] ?? date('Y-m-d', strtotime('-30 days'));
             $bitis = $_POST['bitis'] ?? date('Y-m-d');
             $firma_id = $_SESSION['firma_id'] ?? null;
-
+            
+            // PersonelHareketleriModel::getRapor departman filtresi almıyor, 
+            // ama dolaylı yoldan firma_id üzerinden veya manuel filtreleme ile yapabiliriz.
+            // En temizi SQL'i burada kısıtlamak veya Model'i güncellemek.
+            // Ancak Model'i PersonelModel::all gibi güncelleyebiliriz veya burada sonuçları filtreleyebiliriz.
+            
+            $hareketler = $HareketModel->getRapor(null, $baslangic, $bitis, $firma_id);
+            
             $hareketler = $HareketModel->getRapor(null, $baslangic, $bitis, $firma_id);
 
             $data = [];
@@ -228,6 +249,10 @@ try {
             $tumPersoneller = $_POST['tumPersoneller'] ?? '0';
             $viewType = $_POST['viewType'] ?? 'gorev'; // gorev veya anlik
             $departman = $_POST['departman'] ?? null;
+            
+            if ($is_restricted) {
+                $departman = $restricted_dept;
+            }
 
             $personeller = $HareketModel->getTumPersonelDurumu($firma_id, null, $departman);
 
@@ -276,15 +301,15 @@ try {
 
             // Saha takibi olan ve silinmemiş tüm personelleri al
             $query = "SELECT id FROM personel WHERE silinme_tarihi IS NULL AND aktif_mi = 1 AND saha_takibi = 1 AND (disardan_sigortali = 0 OR FIND_IN_SET('takip', gorunum_modulleri))";
+            $params = [];
             if ($firma_id) {
                 $query .= " AND firma_id = :firma_id";
+                $params[':firma_id'] = $firma_id;
             }
             $stmt = $db->prepare($query);
-            if ($firma_id) {
-                $stmt->execute([':firma_id' => $firma_id]);
-            } else {
-                $stmt->execute();
-            }
+            
+            $stmt = $db->prepare($query);
+            $stmt->execute($params);
             $personeller = $stmt->fetchAll(PDO::FETCH_OBJ);
 
             $eklenen = 0;
@@ -320,6 +345,8 @@ try {
             if ($stmt->fetch()) {
                 response(false, null, 'Bu personel için zaten bekleyen bir konum isteği var.');
             }
+            
+            $stmt = $db->prepare("INSERT INTO personel_konum_istekleri (personel_id, durum) VALUES (:pid, 'BEKLIYOR')");
 
             $stmt = $db->prepare("INSERT INTO personel_konum_istekleri (personel_id, durum) VALUES (:pid, 'BEKLIYOR')");
             if ($stmt->execute([':pid' => $personel_id])) {
@@ -335,6 +362,10 @@ try {
             $bitis = $_POST['bitis'] ?? date('Y-m-d');
             $firma_id = $_SESSION['firma_id'] ?? null;
             $departman = $_POST['departman'] ?? null;
+            
+            if ($is_restricted) {
+                $departman = $restricted_dept;
+            }
 
             // Tüm sahada takip edilen aktif personelleri al
             $query = "SELECT id, adi_soyadi FROM personel WHERE silinme_tarihi IS NULL AND aktif_mi = 1 AND saha_takibi = 1 AND (disardan_sigortali = 0 OR FIND_IN_SET('takip', gorunum_modulleri))";
@@ -441,6 +472,10 @@ try {
             $tarih_req = $_POST['tarih'] ?? date('Y-m-d');
             $firma_id = $_SESSION['firma_id'] ?? null;
             $departman = $_POST['departman'] ?? null;
+            
+            if ($is_restricted) {
+                $departman = $restricted_dept;
+            }
 
             $personeller = $HareketModel->getTumPersonelDurumu($firma_id, $tarih_req, $departman);
 
@@ -629,14 +664,18 @@ try {
                         FROM personel_izinleri pi
                         JOIN personel p ON pi.personel_id = p.id
                         WHERE pi.baslangic_tarihi <= :bugun AND pi.bitis_tarihi >= :bugun 
-                        AND pi.onay_durumu = 'Onaylandı' AND p.firma_id = :firma_id AND pi.silinme_tarihi IS NULL
-                        ORDER BY p.adi_soyadi ASC";
+                        AND pi.onay_durumu = 'Onaylandı' AND p.firma_id = :firma_id AND pi.silinme_tarihi IS NULL";
+                
+                $homeParams = [':bugun' => $bugun, ':firma_id' => $firma_id];
+                $homeParams = [':bugun' => $bugun, ':firma_id' => $firma_id];
+                
+                $sql .= " ORDER BY p.adi_soyadi ASC";
                 $stmt = $db->prepare($sql);
-                $stmt->execute([':bugun' => $bugun, ':firma_id' => $firma_id]);
+                $stmt->execute($homeParams);
                 $data = $stmt->fetchAll(PDO::FETCH_OBJ);
             } elseif ($type === 'gec_kalan') {
                 // getGecKalanlar logic
-                $personeller = $HareketModel->getTumPersonelDurumu($firma_id, $bugun);
+                $personeller = $HareketModel->getTumPersonelDurumu($firma_id, $bugun, null);
                 try {
                     $limit_time = new DateTime($bugun . ' ' . $limit_saat);
                 } catch (Exception $e) {
@@ -679,8 +718,12 @@ try {
                 // 'saha' - Aktif ama izinli değil
                 $sql = "SELECT p.id, p.adi_soyadi, p.resim_yolu as foto, p.departman, p.gorev, p.cep_telefonu
                         FROM personel p
-                        WHERE p.aktif_mi = 1 AND p.silinme_tarihi IS NULL AND p.firma_id = :firma_id
-                        AND p.id NOT IN (
+                        WHERE p.aktif_mi = 1 AND p.silinme_tarihi IS NULL AND p.firma_id = :firma_id";
+                
+                $homeParams2 = [':bugun' => $bugun, ':firma_id' => $firma_id];
+                $homeParams2 = [':bugun' => $bugun, ':firma_id' => $firma_id];
+                
+                $sql .= " AND p.id NOT IN (
                             SELECT pi.personel_id FROM personel_izinleri pi
                             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
                             WHERE pi.baslangic_tarihi <= :bugun AND pi.bitis_tarihi >= :bugun 
@@ -689,7 +732,7 @@ try {
                         )
                         ORDER BY p.adi_soyadi ASC";
                 $stmt = $db->prepare($sql);
-                $stmt->execute([':bugun' => $bugun, ':firma_id' => $firma_id]);
+                $stmt->execute($homeParams2);
                 $data = $stmt->fetchAll(PDO::FETCH_OBJ);
             }
 

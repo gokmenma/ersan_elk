@@ -54,6 +54,7 @@ if ($_POST["action"] == "kullanici-kaydet") {
             'mail_izin_talep' => $mail_izin_talep,
             'mail_genel_talep' => $mail_genel_talep,
             'mail_ariza_talep' => $mail_ariza_talep,
+            'yonetilen_departman' => $_POST['yonetilen_departman'] ?? null,
             'durum' => $_POST['durum'] ?? 'Aktif'
         ];
         if (!empty($_POST['password'])) {

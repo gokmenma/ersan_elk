@@ -69,6 +69,8 @@ class PersonelModel extends Model
                 LEFT JOIN firmalar f ON p.firma_id = f.id
                 WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL";
 
+        $params = ['firma_id' => $_SESSION['firma_id']];
+
         // Dışarıdan sigortalı filtresi
         if ($modul) {
             $sql .= " AND (p.disardan_sigortali = 0 OR FIND_IN_SET('" . addslashes($modul) . "', p.gorunum_modulleri))";
@@ -83,9 +85,7 @@ class PersonelModel extends Model
         $sql .= " GROUP BY p.id";
 
         $query = $this->db->prepare($sql);
-        $query->execute([
-            'firma_id' => $_SESSION['firma_id']
-        ]);
+        $query->execute($params);
         return $query->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -154,14 +154,17 @@ class PersonelModel extends Model
                     p.email_adresi LIKE :term OR
                     p.gorev LIKE :term OR
                     (CASE WHEN (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00') THEN 'Aktif' ELSE 'Pasif' END) LIKE :term
-                )
-                GROUP BY p.id";
+                )";
 
-        $query = $this->db->prepare($sql);
-        $query->execute([
+        $params = [
             'firma_id' => $_SESSION['firma_id'],
             'term' => $term
-        ]);
+        ];
+
+        $sql .= " GROUP BY p.id";
+
+        $query = $this->db->prepare($sql);
+        $query->execute($params);
         return $query->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -242,31 +245,23 @@ class PersonelModel extends Model
         $query = $this->db->prepare($sql);
         $query->execute($params);
         return $query->fetchAll(PDO::FETCH_OBJ);
-
     }
 
     public function where($column, $value = null, $operant = '=')
     {
-        if ($value === null && in_array($operant, ['IS', 'IS NOT'])) {
-            $sql = $this->db->prepare(
-                "SELECT * FROM $this->table 
-             WHERE $column $operant NULL AND firma_id = ?"
-            );
-            $sql->execute([$_SESSION['firma_id']]);
-        } else {
-            $sql = $this->db->prepare(
-                "SELECT * FROM $this->table 
-             WHERE $column $operant ? AND firma_id = ?"
-            );
-            $sql->execute([$value, $_SESSION['firma_id']]);
-        }
-
-        return $sql->fetchAll(PDO::FETCH_OBJ);
+        $sql = "SELECT * FROM $this->table 
+                WHERE $column $operant ? AND firma_id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$value, $_SESSION['firma_id']]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
 
     public function personelSayilari($modul = 'dashboard')
     {
+        $where = "WHERE firma_id = :firma_id AND silinme_tarihi IS NULL AND (disardan_sigortali = 0 OR FIND_IN_SET(:modul, gorunum_modulleri))";
+        $params = ['firma_id' => $_SESSION['firma_id'], 'modul' => $modul];
+
         $sql = $this->db->prepare("
         SELECT
             COUNT(*) AS toplam_personel,
@@ -285,12 +280,10 @@ class PersonelModel extends Model
                 END
             ) AS pasif_personel
         FROM $this->table
-        WHERE firma_id = ?
-        AND silinme_tarihi IS NULL
-        AND (disardan_sigortali = 0 OR FIND_IN_SET(?, gorunum_modulleri))
+        $where
     ");
 
-        $sql->execute([$_SESSION['firma_id'], $modul]);
+        $sql->execute($params);
         return $sql->fetch(PDO::FETCH_OBJ);
     }
 
@@ -342,6 +335,7 @@ class PersonelModel extends Model
     public function getDataTable($request)
     {
         $params = ['firma_id' => $_SESSION['firma_id']];
+        $extra_where_p = "";
 
         // Temel sorgu - Birden fazla ekip için GROUP_CONCAT kullanıldı
         $sql = "SELECT p.*, 
@@ -358,13 +352,19 @@ class PersonelModel extends Model
                     AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
                     AND pg.firma_id = :firma_id_sub
                 ) t_all ON p.id = t_all.personel_id
-                WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri))";
+                WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL 
+                AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri))
+                $extra_where_p";
 
         $params['firma_id_sub'] = $_SESSION['firma_id'];
 
         // Toplam kayıt sayısı (filtresiz)
-        $totalQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} WHERE firma_id = :firma_id AND silinme_tarihi IS NULL AND (disardan_sigortali = 0 OR FIND_IN_SET('personel', gorunum_modulleri))");
-        $totalQuery->execute(['firma_id' => $_SESSION['firma_id']]);
+        $totalSql = "SELECT COUNT(*) FROM {$this->table} p WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri)) $extra_where_p";
+        $totalQuery = $this->db->prepare($totalSql);
+        
+        $totalParams = ['firma_id' => $_SESSION['firma_id']];
+        
+        $totalQuery->execute($totalParams);
         $recordsTotal = $totalQuery->fetchColumn();
 
         // Filtreleme
@@ -1152,8 +1152,28 @@ class PersonelModel extends Model
      */
     public function getUniqueValues($column, $request = [])
     {
+        $restricted_users = [
+            69 => 'Endeks Okuma',
+            68 => 'Kesme Açma',
+            67 => 'Sayaç Sökme Takma',
+            70 => 'Kaçak Kontrol'
+        ];
+        $current_user_id = $_SESSION['user_id'] ?? 0;
+        $is_restricted = isset($restricted_users[$current_user_id]);
+        $restricted_dept = $is_restricted ? $restricted_users[$current_user_id] : null;
+
+        if ($is_restricted && \App\Service\Gate::isSuperAdmin()) {
+            $is_restricted = false;
+        }
+
         $params = ['firma_id' => $_SESSION['firma_id']];
         $params['firma_id_sub'] = $_SESSION['firma_id'];
+        
+        $extra_where_p = "";
+        if ($is_restricted) {
+            $extra_where_p = " AND p.departman = :restricted_dept";
+            $params['restricted_dept'] = $restricted_dept;
+        }
 
         $colMap = [
             2 => 'p.tc_kimlik_no',
@@ -1202,7 +1222,7 @@ class PersonelModel extends Model
                     AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
                     AND pg.firma_id = :firma_id_sub
                 ) t_all ON p.id = t_all.personel_id
-                WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri))";
+                WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL $extra_where_p AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri))";
 
         // Diğer sütunlardaki aktif filtreleri uygula (Cascading)
         $filterSql = "";

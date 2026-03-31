@@ -31,6 +31,7 @@ try {
             'sayac_sokme_takma' => 'sayac_degisim',
             'sokme_takma' => 'sayac_degisim',
             'sayaç_sökme_takma' => 'sayac_degisim',
+            'sokme' => 'sayac_degisim',
         ];
 
         return $map[$key] ?? 'kesme_acma';
