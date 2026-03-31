@@ -1633,7 +1633,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     { data: 'isemri_sebep' },
                     { data: 'isemri_sonucu' },
                     { data: 'abone_no' },
-                    { data: 'takılan_sayacno' },
+                    { data: 'takilan_sayacno' },
                     {
                         data: 'id',
                         render: function (data, type, row) {
