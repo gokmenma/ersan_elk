@@ -137,4 +137,13 @@ class PushSubscriptionModel extends Model
         $stmt->execute([$userId]);
         return (int) $stmt->fetchColumn() > 0;
     }
+    /**
+     * Personelin aboneliği var mı kontrol eder
+     */
+    public function checkPersonelSubscription($personelId)
+    {
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} WHERE personel_id = ?");
+        $stmt->execute([$personelId]);
+        return (int) $stmt->fetchColumn() > 0;
+    }
 }

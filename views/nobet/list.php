@@ -157,6 +157,33 @@ foreach ($uniqueDepts as $dName) {
         opacity: 0.8 !important;
         border-style: dashed !important;
     }
+
+    .custom-scrollbar::-webkit-scrollbar {
+        width: 6px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 10px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb {
+        background: #cbd5e1;
+        border-radius: 10px;
+    }
+
+    .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+        background: #94a3b8;
+    }
+
+    .hover-bg-white:hover {
+        background-color: #ffffff !important;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+    }
+
+    .transition-all {
+        transition: all 0.2s ease-in-out;
+    }
 </style>
 
 
@@ -647,6 +674,17 @@ $title = 'Nöbet Planlama';
                                 <div class="text-muted small fw-bold">BEKLEYEN</div>
                                 <div class="fs-4 fw-bold text-warning" id="bildirim-stat-pending">0</div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Bekleyen Personeller Listesi -->
+                    <div id="bildirim-pending-list-container" class="mb-4" style="display:none;">
+                        <label class="form-label fw-bold mb-2 d-flex justify-content-between align-items-center" style="font-size: 12px; color: #71717a;">
+                            <span>BİLDİRİM GÖNDERİLECEK PERSONELLER</span>
+                            <span class="badge bg-warning bg-opacity-10 text-warning border-warning border-opacity-25" id="pending-list-count">0 Kişi</span>
+                        </label>
+                        <div id="bildirim-pending-list" class="border rounded-4 p-2 bg-light custom-scrollbar" style="max-height: 160px; overflow-y: auto;">
+                            <!-- Dinamik olarak doldurulacak -->
                         </div>
                     </div>
 
@@ -1630,6 +1668,9 @@ $title = 'Nöbet Planlama';
             const val = $(this).val();
             $('.bildirim-area').hide();
             $('#area-' + val).show();
+
+            // İstatistikleri ve personelleri tekrar yükle (özellikle bekleme/aylım ayrımı için)
+            loadBildirimStats();
         });
 
         // Label tıklamalarını da yakalayalım (bazı durumlarda change geç tetiklenebilir)
@@ -1668,6 +1709,14 @@ $title = 'Nöbet Planlama';
 
         // Bildirim istatistiklerini yükle
         function loadBildirimStats(ay = null) {
+            const turu = $('input[name="bildirim_turu"]:checked').val() || 'bekleyen';
+            
+            // Eğer ay verilmemişse UI'dan o an seçili olanı alalım
+            if (!ay) {
+                if (turu === 'bekleyen') ay = $('select[name="bekleyen_ay"]').val();
+                else if (turu === 'aylik') ay = $('select[name="bildirim_ayi"]').val();
+            }
+
             const currentDate = calendar ? calendar.getDate() : new Date();
             const monthYear = ay || `${currentDate.getFullYear()}-${currentDate.getMonth() + 1}`;
 
@@ -1676,7 +1725,8 @@ $title = 'Nöbet Planlama';
                 type: 'POST',
                 data: {
                     action: 'get-bildirim-stats',
-                    ay: monthYear
+                    ay: monthYear,
+                    type: turu // type'ı da gönderelim ki api listeyi ona göre (bekleyen/tümü) dönsün
                 },
                 dataType: 'json',
                 success: function (data) {
@@ -1685,6 +1735,42 @@ $title = 'Nöbet Planlama';
                         $('#bildirim-stat-sent').text(data.sent || 0);
                         $('#bildirim-stat-pending').text(data.pending || 0);
                         $('#bekleyen-count').text(data.pending || 0);
+                        
+                        // Bekleyen/Aylık Personel Listesini Doldur
+                        const turu = $('input[name="bildirim_turu"]:checked').val();
+                        const isBekleyen = turu === 'bekleyen';
+                        const isAylik = turu === 'aylik';
+                        
+                        const listContainer = $('#bildirim-pending-list-container');
+                        const listBody = $('#bildirim-pending-list');
+                        
+                        if ((isBekleyen || isAylik) && data.pending_list && data.pending_list.length > 0) {
+                            listContainer.show();
+                            $('#pending-list-count').text(data.pending_list.length + ' Kişi');
+                            
+                            let listHtml = '';
+                            data.pending_list.forEach(p => {
+                                const pushBadge = p.has_push 
+                                    ? '<span class="badge bg-success bg-opacity-10 text-success border border-success border-opacity-25" style="font-size:10px;"><i class="bx bxs-check-circle me-1"></i>Push Aktif</span>' 
+                                    : '<span class="badge bg-danger bg-opacity-10 text-danger border border-danger border-opacity-25" style="font-size:10px;"><i class="bx bxs-x-circle me-1"></i>Push Yok</span>';
+                                
+                                listHtml += `
+                                    <div class="d-flex align-items-center justify-content-between p-2 rounded-3 border-bottom border-light hover-bg-white transition-all">
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="avatar-xs bg-white rounded-circle border d-flex align-items-center justify-content-center text-primary" style="width:28px; height:28px;">
+                                                <i class="bx bx-user" style="font-size:14px;"></i>
+                                            </div>
+                                            <span class="fw-medium small">${p.name}</span>
+                                        </div>
+                                        ${pushBadge}
+                                    </div>
+                                `;
+                            });
+                            listBody.html(listHtml);
+                        } else {
+                            listContainer.hide();
+                            listBody.empty();
+                        }
                     }
                 },
                 error: function (err) {
@@ -1714,7 +1800,35 @@ $title = 'Nöbet Planlama';
                 dataType: 'json',
                 success: function (data) {
                     if (data.status === 'success') {
-                        showToast('success', data.message);
+                        // showToast yerine daha detaylı bir sonuç gösterelim
+                        let detailsHtml = '<div class="text-start mt-3" style="max-height: 250px; overflow-y: auto;">';
+                        if (data.details && data.details.length > 0) {
+                            data.details.forEach(res => {
+                                const icon = res.success ? 'bx-check-circle text-success' : 'bx-x-circle text-danger';
+                                detailsHtml += `
+                                    <div class="d-flex align-items-start gap-2 mb-2 p-2 border-bottom border-light">
+                                        <i class="bx ${icon} fs-5 mt-1"></i>
+                                        <div>
+                                            <div class="fw-bold small">${res.name}</div>
+                                            <div class="text-muted" style="font-size: 11px;">${res.reason}</div>
+                                        </div>
+                                    </div>
+                                `;
+                            });
+                        }
+                        detailsHtml += '</div>';
+
+                        Swal.fire({
+                            title: 'Bildirim Sonuçları',
+                            html: `<div class="mb-2">${data.message}</div>${detailsHtml}`,
+                            icon: 'info',
+                            confirmButtonText: 'Kapat',
+                            customClass: {
+                                confirmButton: 'btn btn-primary btn-sm px-4'
+                            },
+                            buttonsStyling: false
+                        });
+
                         $('#nobetBildirimModal').modal('hide');
                         $form[0].reset();
                         // Varsayılan alana geri dön

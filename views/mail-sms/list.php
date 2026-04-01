@@ -8,8 +8,8 @@ use App\Model\MesajLogModel;
 $MesajLogModel = new MesajLogModel();
 
 // Varsayılan filtreler (Son 30 gün)
-$startDate = date('Y-m-d', strtotime('-30 days'));
-$endDate = date('Y-m-d');
+$startDate = date('d.m.Y', strtotime('-30 days'));
+$endDate = date('d.m.Y');
 $type = '';
 
 if (isset($_GET['start_date']))
@@ -52,27 +52,27 @@ $logs = $MesajLogModel->getLogs($filters);
                 <div class="card-body">
 
                     <!-- Filtreleme Alanı -->
-                    <form method="GET" action="index?p=mail-sms/list" class="row g-3 mb-4 align-items-end">
+                    <form method="GET" action="index" class="row g-3 mb-4 align-items-end">
+                        <input type="hidden" name="p" value="mail-sms/list">
                         <div class="col-md-3">
-                            <label class="form-label">Başlangıç Tarihi</label>
-                            <input type="date" name="start_date" class="form-control" value="<?php echo $startDate; ?>">
+                            <?php echo Form::FormDate('start_date', $startDate, 'Başlangıç Tarihi', 'calendar'); ?>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">Bitiş Tarihi</label>
-                            <input type="date" name="end_date" class="form-control" value="<?php echo $endDate; ?>">
+                            <?php echo Form::FormDate('end_date', $endDate, 'Bitiş Tarihi', 'calendar'); ?>
                         </div>
                         <div class="col-md-3">
-                            <label class="form-label">Tip</label>
-                            <select name="type" class="form-select">
-                                <option value="">Tümü</option>
-                                <option value="email" <?php echo $type == 'email' ? 'selected' : ''; ?>>Email</option>
-                                <option value="sms" <?php echo $type == 'sms' ? 'selected' : ''; ?>>SMS</option>
-                                <option value="push" <?php echo $type == 'push' ? 'selected' : ''; ?>>Push Bildirim
-                                </option>
-                            </select>
+                            <?php 
+                            $typeOptions = [
+                                '' => 'Tümü',
+                                'email' => 'Email',
+                                'sms' => 'SMS',
+                                'push' => 'Push Bildirim'
+                            ];
+                            echo Form::FormSelect2('type', $typeOptions, $type, 'Tip', 'smartphone'); 
+                            ?>
                         </div>
                         <div class="col-md-3">
-                            <button type="submit" class="btn btn-primary w-100"><i class="fas fa-filter me-1"></i>
+                            <button type="submit" class="btn btn-primary w-100 h-100 py-3"><i class="fas fa-filter me-1"></i>
                                 Filtrele</button>
                         </div>
                     </form>

@@ -79,22 +79,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 $pushService = new \App\Service\PushNotificationService();
+                $PushModel = new \App\Model\PushSubscriptionModel();
                 $successPersonelIds = [];
+                $resultsReport = [];
 
                 foreach ($nobetler as $nobet) {
                     $pId = is_object($nobet) ? $nobet->personel_id : $nobet['personel_id'];
 
                     if (!in_array($pId, $processedPersonelIds)) {
+                        $personel = $Personel->find($pId);
+                        $hasPush = $PushModel->checkPersonelSubscription($pId);
+                        
                         $payload = [
                             'title' => $bildirimBaslik,
                             'body' => $bildirimMesaj . " " . ($ekMesaj ?: "Uygulama üzerinden kontrol edebilirsiniz."),
                             'url' => '?page=nobet'
                         ];
 
-                        if ($pushService->sendToPersonel($pId, $payload)) {
+                        $sent = $pushService->sendToPersonel($pId, $payload);
+                        
+                        if ($sent) {
                             $sentCount++;
                             $successPersonelIds[] = $pId;
                         }
+
+                        $resultsReport[] = [
+                            'id' => $pId,
+                            'name' => $personel->adi_soyadi ?? 'Bilinmeyen',
+                            'success' => $sent,
+                            'has_push' => $hasPush,
+                            'reason' => $sent ? 'Başarıyla gönderildi' : ($hasPush ? 'Push iletim hatası (Fallback e-posta denendi)' : 'Abonelik bulunamadı (Sadece e-posta denendi)')
+                        ];
+
                         $processedPersonelIds[] = $pId;
                     }
                 }
@@ -119,7 +135,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $responseMsg = "Bildirim gönderilecek yeni nöbet bulunamadı veya gönderimler başarısız oldu.";
                 }
 
-                echo json_encode(['success' => true, 'status' => 'success', 'message' => $responseMsg]);
+                echo json_encode([
+                    'success' => true, 
+                    'status' => 'success', 
+                    'message' => $responseMsg,
+                    'details' => $resultsReport
+                ]);
                 break;
 
             case 'send-today-nobet-reminder':
@@ -152,11 +173,36 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $bitis = date('Y-m-t', strtotime($baslangic));
 
                 $stats = $Nobet->getBildirimStats($baslangic, $bitis);
+                
+                // Bekleyen veya tüm personelleri abonelik durumlarıyla getir
+                $type = $_POST['type'] ?? 'bekleyen';
+                if ($type === 'aylik') {
+                    $potentialList = $Nobet->getCalendarEvents($baslangic, $bitis);
+                } else {
+                    $potentialList = $Nobet->getUnnotifiedNobetler($baslangic, $bitis);
+                }
+
+                $pendingPersonels = [];
+                $processedPIds = [];
+                $PushModel = new \App\Model\PushSubscriptionModel();
+                
+                foreach ($potentialList as $un) {
+                    if (!in_array($un->personel_id, $processedPIds)) {
+                        $pendingPersonels[] = [
+                            'id' => $un->personel_id,
+                            'name' => $un->adi_soyadi,
+                            'has_push' => $PushModel->checkPersonelSubscription($un->personel_id)
+                        ];
+                        $processedPIds[] = $un->personel_id;
+                    }
+                }
+
                 echo json_encode([
                     'success' => true,
                     'total' => $stats['total'] ?? 0,
                     'sent' => $stats['sent'] ?? 0,
-                    'pending' => $stats['pending'] ?? 0
+                    'pending' => $stats['pending'] ?? 0,
+                    'pending_list' => $pendingPersonels
                 ]);
                 break;
 

@@ -75,13 +75,27 @@ class MesajLogModel extends Model
         }
 
         if (!empty($filters['start_date'])) {
+            $startDate = $filters['start_date'];
+            if (strpos($startDate, '.') !== false) {
+                $parts = explode('.', $startDate);
+                if (count($parts) == 3) {
+                    $startDate = $parts[2] . '-' . $parts[1] . '-' . $parts[0];
+                }
+            }
             $sql .= " AND created_at >= :start_date";
-            $params[':start_date'] = $filters['start_date'] . ' 00:00:00';
+            $params[':start_date'] = $startDate . ' 00:00:00';
         }
 
         if (!empty($filters['end_date'])) {
+            $endDate = $filters['end_date'];
+            if (strpos($endDate, '.') !== false) {
+                $parts = explode('.', $endDate);
+                if (count($parts) == 3) {
+                    $endDate = $parts[2] . '-' . $parts[1] . '-' . $parts[0];
+                }
+            }
             $sql .= " AND created_at <= :end_date";
-            $params[':end_date'] = $filters['end_date'] . ' 23:59:59';
+            $params[':end_date'] = $endDate . ' 23:59:59';
         }
 
         $sql .= " ORDER BY created_at DESC";
