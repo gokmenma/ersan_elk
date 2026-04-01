@@ -77,13 +77,16 @@
                                                     <?php echo \App\Helper\Form::FormFloatInput('number', 'yakit_miktari', '', '', 'Miktar (L) *', 'droplet', 'form-control', true, null, 'on', false, 'step="0.01" min="0"'); ?>
                                                 </div>
                                                 <div class="col-md-3">
-                                                    <?php echo \App\Helper\Form::FormFloatInput('number', 'birim_fiyat', '', '', 'Birim Fiyat (₺)', 'bx bx-purchase-tag', 'form-control', false, null, 'on', false, 'step="0.01" min="0"'); ?>
+                                                    <?php echo \App\Helper\Form::FormFloatInput('number', 'birim_fiyat', '', '', 'Birim Fiyat', 'currency', 'form-control', false, null, 'on', false, 'step="0.01" min="0"'); ?>
                                                 </div>
                                                 <div class="col-md-3">
-                                                    <?php echo \App\Helper\Form::FormFloatInput('number', 'iskonto', '', '', 'İskonto (₺)', 'bx bx-minus', 'form-control', false, null, 'on', false, 'step="0.01" min="0"'); ?>
+                                                    <?php echo \App\Helper\Form::FormFloatInput('number', 'brut_tutar', '', '', 'Brüt Tutar', 'money', 'form-control', false, null, 'on', false, 'step="0.01" min="0"'); ?>
                                                 </div>
                                                 <div class="col-md-3">
-                                                    <?php echo \App\Helper\Form::FormFloatInput('number', 'toplam_tutar', '', '', 'Toplam Tutar (₺) *', 'bx bx-wallet', 'form-control', true, null, 'on', false, 'step="0.01" min="0"'); ?>
+                                                    <?php echo \App\Helper\Form::FormFloatInput('number', 'iskonto', '0', '', 'İskonto %', 'percent', 'form-control', false, null, 'on', false, 'step="0.01" min="0" max="100"'); ?>
+                                                </div>
+                                                <div class="col-md-12 mt-2">
+                                                    <?php echo \App\Helper\Form::FormFloatInput('number', 'toplam_tutar', '', '', 'Net Tutar *', 'shopping-cart', 'form-control', true, null, 'on', false, 'step="0.01" min="0"'); ?>
                                                 </div>
                                             </div>
                                         </div>
@@ -136,27 +139,38 @@
     });
 
     // Yakıt hesaplama mantığı
-    $(document).off("input", "#yakit_miktari, #birim_fiyat, #iskonto, #toplam_tutar").on("input", "#yakit_miktari, #birim_fiyat, #iskonto, #toplam_tutar", function (e) {
+    $(document).off("input", "#yakit_miktari, #birim_fiyat, #iskonto, #brut_tutar, #toplam_tutar").on("input", "#yakit_miktari, #birim_fiyat, #iskonto, #brut_tutar, #toplam_tutar", function (e) {
         const targetId = e.target.id;
-        const miktar = parseFloat($("#yakit_miktari").val()) || 0;
-        const birimFiyat = parseFloat($("#birim_fiyat").val()) || 0;
-        const iskonto = parseFloat($("#iskonto").val()) || 0;
-        const toplamTutar = parseFloat($("#toplam_tutar").val()) || 0;
+        const miktar = parseFloat($("#yakitModal #yakit_miktari").val()) || 0;
+        const birimFiyat = parseFloat($("#yakitModal #birim_fiyat").val()) || 0;
+        const iskontoYuzde = parseFloat($("#yakitModal #iskonto").val()) || 0;
+        const brutTutar = parseFloat($("#yakitModal #brut_tutar").val()) || 0;
+        const netTutar = parseFloat($("#yakitModal #toplam_tutar").val()) || 0;
 
-        if (targetId === "yakit_miktari" || targetId === "birim_fiyat" || targetId === "iskonto") {
-            // Miktar, Birim Fiyat veya İskonto değişince Toplam'ı hesapla
+        if (targetId === "yakit_miktari" || targetId === "birim_fiyat") {
             if (miktar > 0 && birimFiyat > 0) {
-                const calculatedTotal = (miktar * birimFiyat) - iskonto;
-                $("#toplam_tutar").val(calculatedTotal.toFixed(2));
+                const brut = miktar * birimFiyat;
+                const net = brut * (1 - (iskontoYuzde / 100));
+                $("#yakitModal #brut_tutar").val(brut.toFixed(2));
+                $("#yakitModal #toplam_tutar").val(net.toFixed(2));
+            }
+        } else if (targetId === "brut_tutar") {
+            if (brutTutar > 0) {
+                if (miktar > 0) $("#yakitModal #birim_fiyat").val((brutTutar / miktar).toFixed(2));
+                const net = brutTutar * (1 - (iskontoYuzde / 100));
+                $("#yakitModal #toplam_tutar").val(net.toFixed(2));
+            }
+        } else if (targetId === "iskonto") {
+            const brut = miktar * birimFiyat || brutTutar;
+            if (brut > 0) {
+                const net = brut * (1 - (iskontoYuzde / 100));
+                $("#yakitModal #toplam_tutar").val(net.toFixed(2));
             }
         } else if (targetId === "toplam_tutar") {
-            // Toplam değişince İskonto'yu hesapla (eğer miktar ve birim fiyat varsa)
-            if (miktar > 0 && birimFiyat > 0) {
-                const calculatedIskonto = (miktar * birimFiyat) - toplamTutar;
-                $("#iskonto").val(calculatedIskonto.toFixed(2));
-            } else if (miktar > 0 && toplamTutar > 0) {
-                // Eğer birim fiyat yoksa birim fiyatı hesapla
-                $("#birim_fiyat").val((toplamTutar / miktar).toFixed(2));
+            const brut = miktar * birimFiyat || brutTutar;
+            if (brut > 0 && netTutar > 0) {
+                const iskonto = ((brut - netTutar) / brut) * 100;
+                $("#yakitModal #iskonto").val(iskonto.toFixed(2));
             }
         }
     });

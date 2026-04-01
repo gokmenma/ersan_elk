@@ -188,7 +188,7 @@ if ($page == "hakedisler/hakedis-detay") {
 <!-- Flatpickr -->
 <script src="assets/libs/flatpickr/flatpickr.min.js"></script>
 <script src="assets/libs/flatpickr/l10n/tr.js"></script>
-<?php if ($page == 'personel/performans-raporu' || $page == 'arac-takip/list' || $page == 'personel/manage' || $page == 'arac-takip/arac-performans') { ?>
+<?php if ($page == 'personel/performans-raporu' || $page == 'arac-takip/list' || $page == 'personel/manage' || $page == 'arac-takip/arac-performans' || $page == 'puantaj/veri-yukleme') { ?>
 <link rel="stylesheet" href="assets/libs/flatpickr/plugins/monthSelect/style.css">
 <script src="assets/libs/flatpickr/plugins/monthSelect/index.js"></script>
 <?php } ?>

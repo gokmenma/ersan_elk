@@ -65,7 +65,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                                 <i class="bx bx-filter-alt me-2 fs-18"></i> Filtreleme Seçenekleri
                                             </div>
                                             <!-- Tarih Aralığı / Dönem Toggle -->
-                                            <div class="btn-group bg-light p-1 rounded-pill" role="group" id="dateFilterTypeGroup" style="height: 34px;" onclick="event.stopPropagation();">
+                                            <div class="btn-group bg-light p-1 rounded-pill" role="group" id="dateFilterTypeGroup" style="height: 34px;">
                                                 <input type="radio" class="btn-check" name="dateFilterType" id="dateFilterTypeRange" value="range" checked>
                                                 <label class="btn btn-sm btn-outline-primary border-0 rounded-pill px-3 d-flex align-items-center fs-11 fw-bold" for="dateFilterTypeRange">Tarih Aralığı</label>
                                                 
@@ -113,10 +113,16 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                         ); ?>
                                     </div>
                                     <div class="col-md-4 date-period-input d-none">
-                                        <div class="input-group">
-                                            <span class="input-group-text"><i class="bx bx-calendar"></i></span>
-                                            <input type="text" name="period_month" id="period_month" class="form-control" placeholder="Dönem Seçiniz" readonly>
-                                        </div>
+                                        <?php echo Form::FormFloatInput(
+                                            type: 'text',
+                                            name: 'period_month',
+                                            value: '',
+                                            placeholder: 'Dönem Seçiniz',
+                                            label: "Dönem (Ay-Yıl)",
+                                            icon: "calendar",
+                                            class: "form-control",
+                                            readonly: true
+                                        ); ?>
                                     </div>
                                     <div class="col-md-3">
                                         <?php echo Form::FormSelect2('ekip_kodu', $personelOptions, $ekipKodu, 'Personel Adı Soyadı', 'grid', 'key', '', 'form-select select2'); ?>
@@ -1049,9 +1055,10 @@ $activeTab = $_GET['tab'] ?? 'okuma';
 
         $('#dateFilterTypeGroup').on('click', function (e) {
             e.stopPropagation();
-            const collapseElement = document.getElementById('collapseOne');
-            const bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseElement);
-            if ($('#headingOne button').hasClass('collapsed')) {
+            var collapseElement = document.getElementById('collapseOne');
+            if (collapseElement) {
+                var bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseElement);
+                // Eğer kapalıysa aç, açıksa hiçbir şey yapma (Bootstrap show() açıksa zaten açık bırakır)
                 bsCollapse.show();
             }
         });
@@ -1072,15 +1079,15 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     monthPicker = flatpickr($el[0], {
                         locale: "tr",
                         plugins: [
-                            pluginFunc({
-                                shorthand: true,
-                                dateFormat: "Y-m",
+                            new pluginFunc({
+                                shorthand: false,
+                                dateFormat: "F Y",
                                 altFormat: "F Y",
                                 theme: "light"
                             })
                         ],
                         clickOpens: true,
-                        allowInput: false,
+                        allowInput: true,
                         onChange: function (selectedDates, dateStr) {
                             if (selectedDates.length > 0) {
                                 var date = selectedDates[0];
@@ -1223,10 +1230,8 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             if (dateFilterType === 'period') {
                 var parts = sDate.split('.');
                 if (parts.length === 3) {
-                    var periodStr = parts[2] + "-" + parts[1];
-                    $('input[name="period_month"]').val(periodStr);
                     if (monthPicker) {
-                        monthPicker.setDate(periodStr);
+                        monthPicker.setDate(new Date(parts[2], parseInt(parts[1]) - 1, 1));
                     }
                 }
             }

@@ -395,10 +395,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $data['onceki_km'] = $oncekiKm;
                 }
 
-                // Birim fiyat hesapla (Eğer girilmemişse)
-                if (!empty($data['yakit_miktari']) && !empty($data['toplam_tutar']) && empty($data['birim_fiyat'])) {
-                    $iskonto = floatval($data['iskonto'] ?? 0);
-                    $data['birim_fiyat'] = round((floatval($data['toplam_tutar']) + $iskonto) / floatval($data['yakit_miktari']), 2);
+                // Hesaplama mantığı
+                $miktar = floatval($data['yakit_miktari'] ?? 0);
+                $birim = floatval($data['birim_fiyat'] ?? 0);
+                $iskontoOran = floatval($data['iskonto'] ?? 0); // Yüzde olarak kabul ediyoruz
+                
+                if ($miktar > 0 && $birim > 0) {
+                    $brut = $miktar * $birim;
+                    $net = $brut * (1 - ($iskontoOran / 100));
+                    
+                    if (empty($data['brut_tutar'])) $data['brut_tutar'] = round($brut, 2);
+                    if (empty($data['toplam_tutar'])) $data['toplam_tutar'] = round($net, 2);
+                } elseif (!empty($data['toplam_tutar']) && $miktar > 0 && empty($data['birim_fiyat'])) {
+                    // Sadece Net ve Miktar varsa Birim Fiyat (Brüt üzerinden) hesapla
+                    $toplam = floatval($data['toplam_tutar']);
+                    $netBirim = $toplam / $miktar;
+                    $data['birim_fiyat'] = round($netBirim / (1 - ($iskontoOran / 100)), 2);
+                    $data['brut_tutar'] = round($data['birim_fiyat'] * $miktar, 2);
                 }
 
                 // Boş değerleri null yap
@@ -1031,20 +1044,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $addedDetails = [];
                 $updatedDetails = [];
 
-                // Numeric parsing function
                 $cleanNum = function ($val) {
                     if ($val === null || $val === '')
                         return 0.0;
+                    $val = (string)$val;
                     $val = str_replace(['TL', ' ', '%', '₺', 'L'], '', $val);
                     
-                    // Turkish number format: 1.234,56
-                    // If there's a comma and it's near the end, it's likely a decimal separator
-                    if (strpos($val, ',') !== false) {
-                        // If there are dots before the comma, they are thousands separators
-                        if (strpos($val, '.') !== false && strrpos($val, ',') > strrpos($val, '.')) {
+                    // Detect thousand separator and decimal separator
+                    if (strpos($val, ',') !== false && strpos($val, '.') !== false) {
+                        if (strrpos($val, ',') > strrpos($val, '.')) {
+                            // Turkish format: 1.234,56
                             $val = str_replace('.', '', $val);
+                            $val = str_replace(',', '.', $val);
+                        } else {
+                            // US format: 1,234.56
+                            $val = str_replace(',', '', $val);
                         }
-                        $val = str_replace(',', '.', $val);
+                    } elseif (strpos($val, ',') !== false) {
+                        // Check if comma is decimal (common in TR: 5,50) or thousand (common in US if no decimals: 1,000)
+                        if (strlen(substr($val, strpos($val, ',') + 1)) == 3) {
+                            // Likely thousand separator: 1,000
+                            $val = str_replace(',', '', $val);
+                        } else {
+                            // Likely decimal separator: 5,50
+                            $val = str_replace(',', '.', $val);
+                        }
                     }
                     
                     return (float) $val;
@@ -1134,9 +1158,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                             }
                         }
 
-                        // Birim fiyat hesapla
-                        if (empty($newData['birim_fiyat']) && !empty($newData['yakit_miktari']) && !empty($newData['toplam_tutar'])) {
-                            $newData['birim_fiyat'] = round(floatval($newData['toplam_tutar']) / floatval($newData['yakit_miktari']), 2);
+                        // Hesaplamaları yap
+                        $quantity = floatval($newData['yakit_miktari'] ?? 0);
+                        $price = floatval($newData['birim_fiyat'] ?? 0);
+                        $discountPct = floatval($newData['iskonto'] ?? 0);
+                        
+                        // Birim fiyat yoksa tutar/miktar üzerinden bul
+                        if ($price <= 0 && $quantity > 0 && !empty($newData['toplam_tutar'])) {
+                            $price = floatval($newData['toplam_tutar']) / $quantity;
+                            $newData['birim_fiyat'] = round($price, 2);
+                        }
+
+                        // Brüt ve Net hesapla
+                        if ($quantity > 0 && $price > 0) {
+                            $brut = $quantity * $price;
+                            if (empty($newData['brut_tutar'])) $newData['brut_tutar'] = round($brut, 2);
+                            
+                            if (empty($newData['toplam_tutar'])) {
+                                $net = $brut * (1 - ($discountPct / 100));
+                                $newData['toplam_tutar'] = round($net, 2);
+                            }
                         }
 
                         // Önceki KM

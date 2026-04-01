@@ -263,6 +263,7 @@ class AracYakitModel extends Model
             SELECT 
                 COUNT(*) as toplam_kayit,
                 COALESCE(SUM(y.yakit_miktari), 0) as toplam_litre,
+                COALESCE(SUM(y.brut_tutar), 0) as toplam_brut,
                 COALESCE(SUM(y.toplam_tutar), 0) as toplam_tutar,
                 COALESCE(AVG(y.birim_fiyat), 0) as ortalama_birim_fiyat
             FROM {$this->table} y

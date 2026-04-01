@@ -637,8 +637,8 @@ if ($filter === 'muayene') {
                                                     style="font-size: 0.65rem;">MALİYET</span>
                                             </div>
                                             <p class="text-muted mb-1 small fw-bold"
-                                                style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM MALİYET</p>
-                                            <h4 class="mb-0 fw-bold bordro-text-heading" id="yakit-toplam-maliyet">
+                                                style="letter-spacing: 0.5px; opacity: 0.7;">TOPLAM NET MALİYET</p>
+                                            <h4 class="mb-0 fw-bold bordro-text-heading text-primary" id="yakit-toplam-maliyet">
                                                 <?php echo number_format($yakitStats->toplam_tutar ?? 0, 2, ',', '.'); ?>
                                                 <span style="font-size: 0.85rem; font-weight: 600;">₺</span>
                                             </h4>
@@ -758,8 +758,9 @@ if ($filter === 'muayene') {
                                             <th style="width:10%" class="text-end">KM</th>
                                             <th style="width:10%" class="text-end">Miktar (L)</th>
                                             <th style="width:10%" class="text-end">Birim Fiyat</th>
+                                            <th style="width:10%" class="text-end">Brüt Tutar</th>
                                             <th style="width:8%" class="text-end">İskonto%</th>
-                                            <th style="width:12%" class="text-end">Toplam Tutar</th>
+                                            <th style="width:12%" class="text-end">Net Tutar</th>
                                             <th style="width:15%">İstasyon</th>
                                             <th style="width:8%" class="text-center">İşlemler</th>
                                         </tr>
