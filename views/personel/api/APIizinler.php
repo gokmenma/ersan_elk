@@ -280,7 +280,7 @@ try {
             }
         }
 
-        $extra_where = $is_restricted ? " AND departman = :dept" : "";
+        $extra_where = $is_restricted ? " AND FIND_IN_SET(departman, :dept)" : "";
 
         $sql = "SELECT id, adi_soyadi, email_adresi, 'Kullanıcı' as kaynak FROM users WHERE (adi_soyadi LIKE :term OR email_adresi LIKE :term) AND silinme_tarihi IS NULL
                 UNION ALL

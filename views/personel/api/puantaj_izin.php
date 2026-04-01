@@ -66,7 +66,7 @@ try {
             }
         }
 
-        $extra_where = $is_restricted ? " AND p.departman = ?" : "";
+        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
 
         // Aktif personelleri ve o ay veya sonrasında işten çıkanları getir
         $personeller_sql = "

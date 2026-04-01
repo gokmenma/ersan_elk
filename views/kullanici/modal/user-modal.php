@@ -65,8 +65,52 @@ $user_firmler = explode(',', $user ? ($user->firma_ids ?? '') : '');
         padding: 0.45rem 0.65rem;
     }
 
-    .user-modal .form-floating-custom > label {
-        padding: 0.5rem 0.75rem;
+    /* Checklist style for Select2 results - scoped only to dropdown */
+    .select2-results__option {
+        padding: 8px 12px !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    .select2-results__option::before {
+        content: "";
+        display: inline-block;
+        width: 16px;
+        height: 16px;
+        margin-right: 10px;
+        border: 2px solid #ced4da;
+        border-radius: 3px;
+        flex-shrink: 0;
+        background-color: #fff;
+    }
+
+    .select2-results__option[aria-selected=true]::before,
+    .select2-results__option.select2-results__option--selected::before {
+        content: "✓";
+        color: #fff;
+        background-color: var(--bs-primary, #5b73e8);
+        border-color: var(--bs-primary, #5b73e8);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        font-weight: bold;
+    }
+
+    .select2-container--default .select2-results__option--highlighted[aria-selected],
+    .select2-container--default .select2-results__option--highlighted.select2-results__option--selectable {
+        background-color: var(--bs-primary, #5b73e8) !important;
+        color: #ffffff !important;
+    }
+
+    /* Selection summary appearance - Logic only, no layout overrides */
+    .select2-selection--multiple.has-summary .select2-selection__choice {
+        display: none !important;
+    }
+
+    .selection-summary-container {
+        color: var(--bs-body-color, #495057);
+        font-weight: 500;
     }
 </style>
 
@@ -126,12 +170,13 @@ $user_firmler = explode(',', $user ? ($user->firma_ids ?? '') : '');
                 while($d = $deptsQuery->fetch(PDO::FETCH_ASSOC)) {
                     $depts[$d['departman']] = $d['departman'];
                 }
-                echo Form::FormSelect2(
+                echo Form::FormMultipleSelect2(
                     name: "yonetilen_departman",
-                    label: "Yönettiği Departman",
-                    options: array_merge(['' => 'Kısıtlama Yok'], $depts),
-                    selectedValue: $user->yonetilen_departman ?? '',
-                    icon: "users"
+                    label: "Yönettiği Departmanlar",
+                    options: $depts,
+                    selectedValues: explode(',', $user->yonetilen_departman ?? ''),
+                    icon: "users",
+                    attributes: 'data-selection-label="departman"'
                 ); ?>
             </div>
         </div>
@@ -147,7 +192,8 @@ $user_firmler = explode(',', $user ? ($user->firma_ids ?? '') : '');
                     label: "Yetki Grubu",
                     icon: "shield",
                     valueField: "id",
-                    textField: "role_name"
+                    textField: "role_name",
+                    attributes: 'data-selection-label="yetki"'
                 ); ?>
             </div>
             <div class="col-md-4">
@@ -158,7 +204,8 @@ $user_firmler = explode(',', $user ? ($user->firma_ids ?? '') : '');
                     label: "Yetkili olduğu Şubeler",
                     icon: "home",
                     valueField: "id",
-                    textField: "firma_adi"
+                    textField: "firma_adi",
+                    attributes: 'data-selection-label="şube"'
                 ); ?>
             </div>
             <div class="col-md-2">

@@ -213,4 +213,26 @@ class Model extends Db
         $sql->execute(array($value));
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
+
+    /**
+     * Get the department name the current user is allowed to see (Leave/Avans/Talep module only).
+     * Returns null if no restriction.
+     */
+    protected function getRestrictedDept()
+    {
+        $current_user_id = $_SESSION['user_id'] ?? 0;
+        if (!$current_user_id) return null;
+
+        // Note: SuperAdmin check is handled by Gate::isSuperAdmin check inside components that use this model
+        // To be safe, we check it here too if class is available
+        if (class_exists('\App\Service\Gate') && \App\Service\Gate::isSuperAdmin()) {
+            return null;
+        }
+
+        $stmt = $this->db->prepare("SELECT yonetilen_departman FROM users WHERE id = ?");
+        $stmt->execute([$current_user_id]);
+        $user = $stmt->fetch(PDO::FETCH_OBJ);
+
+        return (!empty($user->yonetilen_departman)) ? $user->yonetilen_departman : null;
+    }
 }

@@ -13,6 +13,23 @@ $(document).on("click", ".kullanici-duzenle", function () {
   getUserModal(id);
 });
 
+// Satıra tıklayınca düzenleme modali açılsın
+$(document).on("click", "#usersTable tbody tr", function (e) {
+  // Eğer tıklanan yer bir buton, link veya dropdown içindeki bir öğe ise tetikleme
+  if (
+    $(e.target).closest("button, a, .dropdown-menu, .durum-degistir").length
+  ) {
+    return;
+  }
+
+  var id = $(this).data("id");
+  if (id) {
+    table = $("#usersTable").DataTable();
+    row = table.row($(this));
+    getUserModal(id);
+  }
+});
+
 function getUserModal(id = 0) {
   var url = "views/kullanici/modal/user-modal.php";
 
@@ -24,8 +41,33 @@ function getUserModal(id = 0) {
     function (data) {
       $(".user-modal-content").html(data);
       feather.replace();
-      $(".select2").select2({
+      var $selects = $(".select2");
+      $selects.select2({
         dropdownParent: $("#userModal .modal-content"),
+        closeOnSelect: false
+      });
+
+      // Show summary for multiple selects
+      $selects.each(function() {
+          var $this = $(this);
+          if ($this.prop("multiple")) {
+              $this.on("change.select2-summary", function() {
+                  var count = $(this).val() ? $(this).val().length : 0;
+                  var label = $(this).data("selection-label") || "öğe";
+                  var $container = $(this).next(".select2").find(".select2-selection--multiple");
+                  var $rendered = $container.find(".select2-selection__rendered");
+                  
+                  // Remove existing summary
+                  $rendered.find(".selection-summary-container").remove();
+                  
+                  if (count > 0) {
+                      $container.addClass("has-summary");
+                      $rendered.prepend('<span class="selection-summary-container">' + count + " " + label + " seçildi</span>");
+                  } else {
+                      $container.removeClass("has-summary");
+                  }
+              }).trigger("change.select2-summary"); // Initial call
+          }
       });
     },
   ).fail(function () {

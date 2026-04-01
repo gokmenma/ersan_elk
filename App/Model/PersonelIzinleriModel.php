@@ -16,25 +16,6 @@ class PersonelIzinleriModel extends Model
         parent::__construct($this->table);
     }
 
-    /**
-     * Get the department name the current user is allowed to see (Leave module only).
-     * Returns null if no restriction.
-     */
-    private function getRestrictedDept()
-    {
-        $current_user_id = $_SESSION['user_id'] ?? 0;
-        if (!$current_user_id) return null;
-
-        if (\App\Service\Gate::isSuperAdmin()) {
-            return null;
-        }
-
-        $stmt = $this->db->prepare("SELECT yonetilen_departman FROM users WHERE id = ?");
-        $stmt->execute([$current_user_id]);
-        $user = $stmt->fetch(PDO::FETCH_OBJ);
-        
-        return (!empty($user->yonetilen_departman)) ? $user->yonetilen_departman : null;
-    }
 
     /**
      * Personelin izinlerini, onay durumu ve onaylayan bilgileriyle birlikte getirir.
@@ -97,7 +78,7 @@ class PersonelIzinleriModel extends Model
         $restricted_dept = $this->getRestrictedDept();
         $is_restricted = ($restricted_dept !== null);
         
-        $extra_where = $is_restricted ? " AND p.departman = :restricted_dept" : "";
+        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, :restricted_dept)" : "";
         $params = [$_SESSION['firma_id']];
         if ($is_restricted) {
             $params['restricted_dept'] = $restricted_dept;
@@ -134,7 +115,7 @@ class PersonelIzinleriModel extends Model
         $restricted_dept = $this->getRestrictedDept();
         $is_restricted = ($restricted_dept !== null);
 
-        $extra_where = $is_restricted ? " AND p.departman = ?" : "";
+        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
         $bindParams = [$_SESSION['firma_id']];
         if ($is_restricted) {
             $bindParams[] = $restricted_dept;
@@ -166,7 +147,7 @@ class PersonelIzinleriModel extends Model
         $restricted_dept = $this->getRestrictedDept();
         $is_restricted = ($restricted_dept !== null);
 
-        $extra_where = $is_restricted ? " AND p.departman = ?" : "";
+        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
         $today = date('Y-m-d');
         $bindParams = [$today, $today, $_SESSION['firma_id']];
         if ($is_restricted) {
@@ -199,7 +180,7 @@ class PersonelIzinleriModel extends Model
         $restricted_dept = $this->getRestrictedDept();
         $is_restricted = ($restricted_dept !== null);
 
-        $extra_where = $is_restricted ? " AND p.departman = ?" : "";
+        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
         $bindParams = [$_SESSION['firma_id']];
         if ($is_restricted) {
             $bindParams[] = $restricted_dept;
@@ -226,21 +207,10 @@ class PersonelIzinleriModel extends Model
      */
     public function getIslenmisIzinler($limit = 50)
     {
-        $restricted_users = [
-            69 => 'Endeks Okuma',
-            68 => 'Kesme Açma',
-            67 => 'Sayaç Sökme Takma',
-            70 => 'Kaçak Kontrol'
-        ];
-        $current_user_id = $_SESSION['user_id'] ?? 0;
-        $is_restricted = isset($restricted_users[$current_user_id]);
-        $restricted_dept = $is_restricted ? $restricted_users[$current_user_id] : null;
+        $restricted_dept = $this->getRestrictedDept();
+        $is_restricted = ($restricted_dept !== null);
 
-        if ($is_restricted && \App\Service\Gate::isSuperAdmin()) {
-            $is_restricted = false;
-        }
-
-        $extra_where = $is_restricted ? " AND p.departman = ?" : "";
+        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
         $bindParams = [$_SESSION['firma_id']];
         if ($is_restricted) {
             $bindParams[] = $restricted_dept;

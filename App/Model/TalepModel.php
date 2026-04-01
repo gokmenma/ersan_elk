@@ -82,14 +82,25 @@ class TalepModel extends Model
      */
     public function getBekleyenTalepSayisi()
     {
-        $sql = $this->db->prepare("
+        $restricted_dept = $this->getRestrictedDept();
+        $is_restricted = ($restricted_dept !== null);
+        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
+
+        $bindParams = [$_SESSION['firma_id']];
+        if ($is_restricted) {
+            $bindParams[] = $restricted_dept;
+        }
+
+        $sql = "
             SELECT COUNT(*) as count 
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
             WHERE pt.durum NOT IN ('cozuldu', 'reddedildi', 'iptal_edildi') AND pt.silinme_tarihi IS NULL AND p.firma_id = ? AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
-        ");
-        $sql->execute([$_SESSION['firma_id']]);
-        return $sql->fetch(PDO::FETCH_OBJ)->count ?? 0;
+            $extra_where
+        ";
+        $query = $this->db->prepare($sql);
+        $query->execute($bindParams);
+        return $query->fetch(PDO::FETCH_OBJ)->count ?? 0;
     }
 
     /**
@@ -97,16 +108,28 @@ class TalepModel extends Model
      */
     public function getBekleyenTaleplerForDashboard($limit = 5)
     {
+        $restricted_dept = $this->getRestrictedDept();
+        $is_restricted = ($restricted_dept !== null);
+        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
+
+        $bindParams = [$_SESSION['firma_id']];
+        if ($is_restricted) {
+            $bindParams[] = $restricted_dept;
+        }
+
         $limit = (int) $limit;
-        $sql = $this->db->prepare("
+        $sql = "
             SELECT 'Talep' as tip, pt.id, pt.personel_id, pt.olusturma_tarihi as tarih, pt.durum, pt.baslik as detay 
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
             WHERE pt.durum NOT IN ('cozuldu', 'reddedildi', 'iptal_edildi') AND pt.silinme_tarihi IS NULL AND p.firma_id = ? AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
+            $extra_where
+            ORDER BY pt.olusturma_tarihi DESC
             LIMIT {$limit}
-        ");
-        $sql->execute([$_SESSION['firma_id']]);
-        return $sql->fetchAll(PDO::FETCH_OBJ);
+        ";
+        $query = $this->db->prepare($sql);
+        $query->execute($bindParams);
+        return $query->fetchAll(PDO::FETCH_OBJ);
     }
 
     /**
@@ -114,15 +137,26 @@ class TalepModel extends Model
      */
     public function getButunBekleyenTalepler()
     {
-        $sql = $this->db->prepare("
+        $restricted_dept = $this->getRestrictedDept();
+        $is_restricted = ($restricted_dept !== null);
+        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
+
+        $bindParams = [$_SESSION['firma_id']];
+        if ($is_restricted) {
+            $bindParams[] = $restricted_dept;
+        }
+
+        $sql = "
             SELECT pt.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
             WHERE pt.durum NOT IN ('cozuldu', 'reddedildi', 'iptal_edildi') AND pt.silinme_tarihi IS NULL AND p.firma_id = ? AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
+            $extra_where
             ORDER BY pt.olusturma_tarihi DESC
-        ");
-        $sql->execute([$_SESSION['firma_id']]);
-        return $sql->fetchAll(PDO::FETCH_OBJ);
+        ";
+        $query = $this->db->prepare($sql);
+        $query->execute($bindParams);
+        return $query->fetchAll(PDO::FETCH_OBJ);
     }
 
     /**
@@ -162,18 +196,29 @@ class TalepModel extends Model
      */
     public function getCozulmusTalepler($limit = 50)
     {
+        $restricted_dept = $this->getRestrictedDept();
+        $is_restricted = ($restricted_dept !== null);
+        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
+
+        $bindParams = [$_SESSION['firma_id']];
+        if ($is_restricted) {
+            $bindParams[] = $restricted_dept;
+        }
+
         $limit = (int) $limit;
-        $sql = $this->db->prepare("
+        $sql = "
             SELECT pt.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev,
                    u.adi_soyadi as solver_name
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
             LEFT JOIN users u ON pt.islem_yapan_id = u.id
             WHERE pt.durum IN ('cozuldu', 'reddedildi', 'iptal_edildi') AND pt.silinme_tarihi IS NULL AND p.firma_id = ?
+            $extra_where
             ORDER BY pt.islem_tarihi DESC
             LIMIT {$limit}
-        ");
-        $sql->execute([$_SESSION['firma_id']]);
-        return $sql->fetchAll(PDO::FETCH_OBJ);
+        ";
+        $query = $this->db->prepare($sql);
+        $query->execute($bindParams);
+        return $query->fetchAll(PDO::FETCH_OBJ);
     }
 }

@@ -24,6 +24,15 @@ $users = $User->getUsers();
     <?php include 'layouts/breadcrumb.php'; ?>
     <!-- end page title -->
 
+    <style>
+        #usersTable tbody tr {
+            cursor: pointer;
+        }
+
+        #usersTable tbody tr:hover {
+            background-color: rgba(var(--bs-primary-rgb), 0.05);
+        }
+    </style>
 
     <div class="row">
         <div class="col-12">

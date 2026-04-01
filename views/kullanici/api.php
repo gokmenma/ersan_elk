@@ -37,6 +37,13 @@ if ($_POST["action"] == "kullanici-kaydet") {
         $mail_genel_talep = isset($_POST['mail_genel_talep']) && $_POST['mail_genel_talep'] == 'Evet' ? 'Evet' : 'Hayır';
         $mail_ariza_talep = isset($_POST['mail_ariza_talep']) && $_POST['mail_ariza_talep'] == 'Evet' ? 'Evet' : 'Hayır';
 
+        $yonetilen_departman = "";
+        if (isset($_POST['yonetilen_departman']) && is_array($_POST['yonetilen_departman'])) {
+            $yonetilen_departman = implode(',', $_POST['yonetilen_departman']);
+        } else {
+            $yonetilen_departman = $_POST['yonetilen_departman'] ?? "";
+        }
+
         $data = [
             'id' => $id, // Eğer id varsa deşifre et
             'user_name' => $_POST['user_name'],
@@ -54,7 +61,7 @@ if ($_POST["action"] == "kullanici-kaydet") {
             'mail_izin_talep' => $mail_izin_talep,
             'mail_genel_talep' => $mail_genel_talep,
             'mail_ariza_talep' => $mail_ariza_talep,
-            'yonetilen_departman' => $_POST['yonetilen_departman'] ?? null,
+            'yonetilen_departman' => $yonetilen_departman,
             'durum' => $_POST['durum'] ?? 'Aktif'
         ];
         if (!empty($_POST['password'])) {

@@ -66,7 +66,7 @@ $page = $_GET['p'] ?? 'home';
 
 <!-- Kullacı Sayfası -->
 <?php if ($page == 'kullanici/list') { ?>
-    <script src="views/kullanici/js/user.js"></script>
+    <script src="views/kullanici/js/user.js?v=<?php echo time(); ?>"></script>
 <?php } ?>
 
 <!-- Kullanıcı Grupları Sayfası -->

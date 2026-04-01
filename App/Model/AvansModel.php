@@ -77,14 +77,25 @@ class AvansModel extends Model
      */
     public function getBekleyenAvansSayisi()
     {
-        $sql = $this->db->prepare("
+        $restricted_dept = $this->getRestrictedDept();
+        $is_restricted = ($restricted_dept !== null);
+        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
+
+        $bindParams = [$_SESSION['firma_id']];
+        if ($is_restricted) {
+            $bindParams[] = $restricted_dept;
+        }
+
+        $sql = "
             SELECT COUNT(*) as count 
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
             WHERE pa.durum = 'beklemede' AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
-        ");
-        $sql->execute([$_SESSION['firma_id']]);
-        return $sql->fetch(PDO::FETCH_OBJ)->count ?? 0;
+            $extra_where
+        ";
+        $query = $this->db->prepare($sql);
+        $query->execute($bindParams);
+        return $query->fetch(PDO::FETCH_OBJ)->count ?? 0;
     }
 
     /**
@@ -92,16 +103,28 @@ class AvansModel extends Model
      */
     public function getBekleyenAvanslarForDashboard($limit = 5)
     {
+        $restricted_dept = $this->getRestrictedDept();
+        $is_restricted = ($restricted_dept !== null);
+        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
+
+        $bindParams = [$_SESSION['firma_id']];
+        if ($is_restricted) {
+            $bindParams[] = $restricted_dept;
+        }
+
         $limit = (int) $limit;
-        $sql = $this->db->prepare("
+        $sql = "
             SELECT 'Avans' as tip, pa.id, pa.personel_id, pa.talep_tarihi as tarih, pa.durum, pa.tutar as detay
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
             WHERE pa.durum = 'beklemede' AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
+            $extra_where
+            ORDER BY pa.talep_tarihi DESC
             LIMIT {$limit}
-        ");
-        $sql->execute([$_SESSION['firma_id']]);
-        return $sql->fetchAll(PDO::FETCH_OBJ);
+        ";
+        $query = $this->db->prepare($sql);
+        $query->execute($bindParams);
+        return $query->fetchAll(PDO::FETCH_OBJ);
     }
 
     /**
