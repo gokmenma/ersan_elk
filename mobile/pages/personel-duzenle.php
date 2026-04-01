@@ -2344,6 +2344,7 @@ function closeIcraHistory() {
     backdrop.classList.add('opacity-0', 'pointer-events-none');
     backdrop.classList.remove('opacity-100');
     sheet.classList.add('translate-y-full');
+    sheet.classList.remove('translate-y-0');
     setTimeout(() => backdrop.classList.add('hidden'), 300);
 }
 
