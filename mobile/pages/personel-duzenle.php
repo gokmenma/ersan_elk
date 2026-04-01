@@ -145,12 +145,12 @@ function formatMobileFileSize($bytes) {
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     
-    /* Bottom Sheet Z-Index Fix */
+    /* Bottom Sheet Z-Index Fix - Ensuring it's always on top of FAB buttons (z-40) */
     #icraFormArea, #gorevFormArea, #ekipFormArea, #izinFormArea, #evrakFormArea, #icraHistoryArea {
-        z-index: 10000 !important;
+        z-index: 100000 !important;
     }
     #icraBottomSheetBackdrop, #gorevBottomSheetBackdrop, #ekipBottomSheetBackdrop, #izinBottomSheetBackdrop, #evrakBottomSheetBackdrop, #icraHistoryBottomSheetBackdrop {
-        z-index: 9999 !important;
+        z-index: 99999 !important;
     }
     
     /* Select2 Mobile Small Style */
@@ -1033,14 +1033,15 @@ function formatMobileFileSize($bytes) {
                     <p class="text-[11px] font-bold tracking-widest uppercase">Veriler Yükleniyor...</p>
                 </div>
             </div>
-    </div> <!-- flex-1 closure -->
-</div> <!-- Main div closure for line 85 moved here -->
+        </div> <!-- content-puantaj closure -->
+    </div> <!-- flex-1 overflow-y-auto closure -->
+</div> <!-- Main wrapper div (line 85) closure -->
 
 <!-- Bottom Sheets Area (Root Level) -->
-    <div id="gorevBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[9999] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeGorevForm()"></div>
+    <div id="gorevBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[99999] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeGorevForm()"></div>
 
     <!-- Maaş Tipi Ekle/Düzenle Bottom Sheet -->
-    <div id="gorevFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[10000] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
+    <div id="gorevFormArea" class="fixed inset-x-0 bottom-0 bg-white dark:bg-card-dark rounded-t-[32px] transform translate-y-full transition-transform duration-300 shadow-2xl z-[100000] border-t border-slate-100 dark:border-slate-800 safe-area-bottom">
         <div class="flex justify-center pt-3 pb-2">
             <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
         </div>
@@ -1049,7 +1050,7 @@ function formatMobileFileSize($bytes) {
             <h5 id="gorevFormTitle" class="text-[17px] font-bold text-slate-800 dark:text-white">Yeni Maaş Tipi Tanımla</h5>
         </div>
 
-        <div class="px-6 space-y-4 max-h-[75vh] overflow-y-auto no-scrollbar">
+        <div class="px-6 space-y-4 max-h-[85vh] overflow-y-auto pb-12">
             <input type="hidden" id="gorev_gecmisi_id" value="">
             <input type="hidden" id="gorev_gecmisi_action" value="gorev-gecmisi-ekle">
             
@@ -1114,10 +1115,10 @@ function formatMobileFileSize($bytes) {
     </div>
 
     <!-- Ekip Atama Bottom Sheet Backdrop -->
-    <div id="ekipBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[9999] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeEkipForm()"></div>
+    <div id="ekipBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[99999] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeEkipForm()"></div>
 
     <!-- Ekip Atama Bottom Sheet -->
-    <div id="ekipFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[10000] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
+    <div id="ekipFormArea" class="fixed inset-x-0 bottom-0 bg-white dark:bg-card-dark rounded-t-[32px] transform translate-y-full transition-transform duration-300 shadow-2xl z-[100000] border-t border-slate-100 dark:border-slate-800 safe-area-bottom">
         <div class="flex justify-center pt-3 pb-2">
             <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
         </div>
@@ -1126,7 +1127,7 @@ function formatMobileFileSize($bytes) {
             <h5 id="ekipFormTitle" class="text-[17px] font-bold text-slate-800 dark:text-white">Yeni Ekip Ataması</h5>
         </div>
 
-        <div class="px-6 space-y-4 max-h-[75vh] overflow-y-auto no-scrollbar">
+        <div class="px-6 space-y-4 max-h-[85vh] overflow-y-auto pb-12">
             <input type="hidden" id="ekip_gecmisi_id" value="">
             <input type="hidden" id="ekip_gecmisi_action" value="ekip-gecmisi-ekle">
             
@@ -1180,12 +1181,13 @@ function formatMobileFileSize($bytes) {
                 </div>
             </div>
         </div>
+    </div> <!-- ekipFormArea closure -->
 
     <!-- İzin Ekle/Düzenle Bottom Sheet Backdrop -->
-    <div id="izinBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[9999] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeIzinForm()"></div>
+    <div id="izinBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[99999] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeIzinForm()"></div>
 
     <!-- İzin Ekle/Düzenle Bottom Sheet -->
-    <div id="izinFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[10000] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
+    <div id="izinFormArea" class="fixed inset-x-0 bottom-0 bg-white dark:bg-card-dark rounded-t-[32px] transform translate-y-full transition-transform duration-300 shadow-2xl z-[100000] border-t border-slate-100 dark:border-slate-800 safe-area-bottom">
         <div class="flex justify-center pt-3 pb-2">
             <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
         </div>
@@ -1194,7 +1196,7 @@ function formatMobileFileSize($bytes) {
             <h5 id="izinFormTitle" class="text-[17px] font-bold text-slate-800 dark:text-white">Yeni İzin Kaydı</h5>
         </div>
 
-        <div class="px-6 space-y-4 max-h-[70vh] overflow-y-auto no-scrollbar">
+        <div class="px-6 space-y-4 max-h-[85vh] overflow-y-auto pb-12">
             <form id="izinMobileForm" autocomplete="off">
                 <input type="hidden" name="id" id="modal_izin_id" value="0">
                 <input type="hidden" name="personel_id" value="<?= $personel_id ?>">
@@ -1253,10 +1255,10 @@ function formatMobileFileSize($bytes) {
         </div>
     </div>
     <!-- Evrak Yükle Bottom Sheet Backdrop -->
-    <div id="evrakBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[9999] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeEvrakForm()"></div>
+    <div id="evrakBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[99999] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeEvrakForm()"></div>
 
     <!-- Evrak Yükle Bottom Sheet -->
-    <div id="evrakFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[10000] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
+    <div id="evrakFormArea" class="fixed inset-x-0 bottom-0 bg-white dark:bg-card-dark rounded-t-[32px] transform translate-y-full transition-transform duration-300 shadow-2xl z-[100000] border-t border-slate-100 dark:border-slate-800 safe-area-bottom">
         <div class="flex justify-center pt-3 pb-2">
             <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
         </div>
@@ -1265,7 +1267,7 @@ function formatMobileFileSize($bytes) {
             <h5 class="text-[17px] font-bold text-slate-800 dark:text-white">Yeni Evrak Yükle</h5>
         </div>
 
-        <div class="px-6 space-y-4 max-h-[70vh] overflow-y-auto no-scrollbar">
+        <div class="px-6 space-y-4 max-h-[85vh] overflow-y-auto pb-12">
             <form id="evrakMobileForm" enctype="multipart/form-data" autocomplete="off">
                 <input type="hidden" name="action" value="evrak_yukle">
                 <input type="hidden" name="personel_id" value="<?= $personel_id ?>">
@@ -1314,10 +1316,10 @@ function formatMobileFileSize($bytes) {
         </div>
     </div>
     <!-- İcra Ekle/Düzenle Bottom Sheet Backdrop -->
-    <div id="icraBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[9999] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeIcraForm()"></div>
+    <div id="icraBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[99999] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeIcraForm()"></div>
 
     <!-- İcra Ekle/Düzenle Bottom Sheet -->
-    <div id="icraFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[10000] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
+    <div id="icraFormArea" class="fixed inset-x-0 bottom-0 bg-white dark:bg-card-dark rounded-t-[32px] transform translate-y-full transition-transform duration-300 shadow-2xl z-[100000] border-t border-slate-100 dark:border-slate-800 safe-area-bottom">
         <div class="flex justify-center pt-3 pb-2">
             <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
         </div>
@@ -1326,7 +1328,7 @@ function formatMobileFileSize($bytes) {
             <h5 id="icraFormTitle" class="text-[17px] font-bold text-slate-800 dark:text-white">Yeni İcra Dosyası</h5>
         </div>
 
-        <div class="px-6 space-y-4 max-h-[80vh] overflow-y-auto no-scrollbar pb-8">
+        <div class="px-6 space-y-5 max-h-[88vh] overflow-y-auto pb-14">
             <form id="icraMobileForm" autocomplete="off">
                 <input type="hidden" name="id" id="modal_icra_id" value="">
                 <input type="hidden" name="personel_id" value="<?= $personel_id ?>">
@@ -1426,10 +1428,10 @@ function formatMobileFileSize($bytes) {
     </div>
 
     <!-- İcra Kesinti Geçmişi Bottom Sheet Backdrop -->
-    <div id="icraHistoryBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[9999] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeIcraHistory()"></div>
+    <div id="icraHistoryBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[99999] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeIcraHistory()"></div>
 
     <!-- İcra Kesinti Geçmişi Bottom Sheet -->
-    <div id="icraHistoryArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[10000] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
+    <div id="icraHistoryArea" class="fixed inset-x-0 bottom-0 bg-white dark:bg-card-dark rounded-t-[32px] transform translate-y-full transition-transform duration-300 shadow-2xl z-[100000] border-t border-slate-100 dark:border-slate-800 safe-area-bottom">
         <div class="flex justify-center pt-3 pb-2">
             <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
         </div>
@@ -1439,7 +1441,7 @@ function formatMobileFileSize($bytes) {
             <p id="icraHistorySubtitle" class="text-[11px] text-slate-500 font-bold uppercase tracking-widest mt-1">DOSYA DETAYLARI</p>
         </div>
 
-        <div class="px-6 space-y-4 max-h-[70vh] overflow-y-auto no-scrollbar pb-8">
+        <div class="px-6 space-y-4 max-h-[85vh] overflow-y-auto pb-12">
             <div id="icraHistoryStats" class="grid grid-cols-2 gap-3 mb-2">
                 <div class="bg-emerald-50 dark:bg-emerald-900/10 p-3 rounded-2xl border border-emerald-100 dark:border-emerald-800/30">
                     <p class="text-[8px] text-emerald-600 dark:text-emerald-400 font-black tracking-widest uppercase mb-1">KESİLEN</p>
