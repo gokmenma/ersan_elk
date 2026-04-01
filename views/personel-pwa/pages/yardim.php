@@ -99,7 +99,7 @@
             <div class="form-group">
                 <label class="form-label">Dosya Ekle (Resim)</label>
                 <div class="relative">
-                    <input type="file" name="dosya" id="ticket-file" accept="image/*" class="hidden" onchange="updateFileName(this)">
+                    <input type="file" name="dosya[]" id="ticket-file" accept="image/*" multiple class="hidden" onchange="updateFileName(this)">
                     <label for="ticket-file" class="flex items-center gap-3 p-4 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-500 cursor-pointer hover:border-primary transition-all">
                         <span class="material-symbols-outlined">add_a_photo</span>
                         <span id="file-name-label">Resim Seçin</span>
@@ -150,8 +150,15 @@ async function postFormData(url, formData) {
 
 function updateFileName(input) {
     const label = document.getElementById('file-name-label');
-    if (input.files && input.files[0]) {
-        label.textContent = input.files[0].name;
+    if (input.files && input.files.length > 0) {
+        if (input.files.length > 3) {
+            Toast.show('En fazla 3 dosya seçebilirsiniz.', 'warning');
+            input.value = '';
+            label.textContent = 'Resim Seçin';
+            label.classList.remove('text-primary', 'font-bold');
+            return;
+        }
+        label.textContent = input.files.length + ' dosya seçildi';
         label.classList.add('text-primary', 'font-bold');
     } else {
         label.textContent = 'Resim Seçin';

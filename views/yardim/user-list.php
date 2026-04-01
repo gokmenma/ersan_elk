@@ -247,6 +247,8 @@ $oncelikler = [
                             <th>Kayıt Tipi</th>
                             <th>Konu</th>
                             <th>Kategori</th>
+                            <th>Mesaj</th>
+                            <th>Dosya</th>
                             <th>Son Güncelleme</th>
                             <th>Durum</th>
                             <th class="text-center">İşlem</th>
@@ -293,13 +295,13 @@ $oncelikler = [
                         <div class="col-12" id="new-ticket-upload-wrapper">
                             <label class="form-label">Ekran Görüntüsü / Belge (Opsiyonel)</label>
                             <div id="new-upload-container" class="upload-area text-center p-4 border border-2 border-dashed rounded-3 bg-light position-relative" style="cursor: pointer; transition: all 0.3s ease;">
-                                <input type="file" name="dosya" id="new-ticket-file" accept="image/*" class="position-absolute w-100 h-100 top-0 start-0 opacity-0" style="cursor: pointer;">
+                                <input type="file" name="dosya[]" id="new-ticket-file" accept="image/*" multiple class="position-absolute w-100 h-100 top-0 start-0 opacity-0" style="cursor: pointer;">
                                 <div class="upload-icon mb-2">
                                     <i class="bx bx-cloud-upload fs-1 text-muted"></i>
                                 </div>
-                                <p class="mb-0 text-muted small" id="new-upload-text">Dosya seçin veya buraya sürükleyin</p>
-                                <div id="new-image-preview" class="mt-2" style="display: none;">
-                                    <div class="position-relative d-inline-block">
+                                <p class="mb-0 text-muted small" id="new-upload-text">En fazla 3 dosya (Resim) seçin veya buraya sürükleyin</p>
+                                <div id="new-image-preview" class="mt-2 d-flex flex-wrap gap-2 justify-content-center" style="display: none;">
+                                    <div class="position-relative d-inline-block template-preview" style="display:none;">
                                         <img src="" alt="Preview" style="max-height: 100px;" class="rounded border shadow-sm">
                                         <button type="button" id="btn-remove-new-file" class="btn btn-danger btn-sm rounded-circle position-absolute" style="top: -10px; right: -10px; padding: 0.1rem 0.3rem;">
                                             <i class="bx bx-x"></i>
@@ -352,6 +354,19 @@ $(document).ready(function() {
             }},
             { data: 'konu' },
             { data: 'kategori' },
+            { 
+                data: 'mesaj_sayisi', 
+                className: 'text-center',
+                render: data => `<span class="badge bg-primary text-white rounded-pill px-2 py-1 fw-bold" style="font-size: 0.75rem;"><i class="bx bx-chat me-1"></i>${data}</span>`
+            },
+            { 
+                data: 'dosya_sayisi', 
+                className: 'text-center',
+                render: data => {
+                    if(data == 0) return `<span class="text-muted opacity-50 small">-</span>`;
+                    return `<span class="badge bg-soft-info text-info rounded-pill px-2 py-1 fw-bold" style="font-size: 0.75rem;"><i class="bx bx-paperclip me-1"></i>${data}</span>`;
+                }
+            },
             { data: 'guncelleme_tarihi' },
             { data: 'durum', render: function(data, type, row) {
                 if ((row.onay_durumu || '') === 'beklemede') {
@@ -359,11 +374,19 @@ $(document).ready(function() {
                 }
 
                 let badge = 'bg-secondary';
+                let text = (data || 'AÇIK').toUpperCase();
+                
                 if(data === 'acik') badge = 'bg-warning';
                 if(data === 'yanitlandi') badge = 'bg-success';
                 if(data === 'personel_yaniti') badge = 'bg-primary';
+                if(data === 'isleme_alindi') badge = 'bg-info';
+                if(data === 'cozuldu') badge = 'bg-success';
                 if(data === 'kapali') badge = 'bg-danger';
-                return `<span class="badge ${badge} p-2 px-3 rounded-pill show-timeline-btn" data-id="${row.id}" data-ref="${row.ref_no}" data-konu="${row.konu}" style="cursor: pointer;" title="İşlem geçmişini gör">${data.toUpperCase()}</span>`;
+
+                if(data === 'isleme_alindi') text = 'İŞLEME ALINDI';
+                if(data === 'cozuldu') text = 'ÇÖZÜLDÜ';
+
+                return `<span class="badge ${badge} p-2 px-3 rounded-pill show-timeline-btn" data-id="${row.id}" data-ref="${row.ref_no}" data-konu="${row.konu}" style="cursor: pointer;" title="İşlem geçmişini gör">${text}</span>`;
             }},
             { 
                 data: null, 
@@ -373,7 +396,7 @@ $(document).ready(function() {
                 }
             }
         ],
-        order: [[5, 'desc']],
+        order: [[7, 'desc']], // 5 to 7 because we added 2 columns
         createdRow: function(row, data, dataIndex) {
             $(row).css('cursor', 'pointer');
             $(row).addClass('ticket-row');
@@ -439,16 +462,31 @@ $(document).ready(function() {
         if (typeof feather !== 'undefined') feather.replace();
     });
 
-    // Modal submission handling with robustness
+    // Form submission merged into one robust handler
     $('#new-ticket-form').off('submit').on('submit', function(e) {
-        e.preventDefault();
-        e.stopPropagation();
+        e.preventDefault(); e.stopPropagation();
         
+        const konu = $('input[name="konu"]').val().trim();
+        const mesaj = $('#mesaj').val().trim();
+        
+        if(!konu || !mesaj) {
+            Swal.fire('Uyarı', 'Konu ve mesaj alanları zorunludur.', 'warning');
+            return;
+        }
+
         const $btn = $('#btn-save-ticket');
         const originalText = $btn.text();
         $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span> Gönderiliyor...');
 
         const formData = new window.FormData(this);
+        
+        // Append pasted files to 'dosya[]'
+        if (typeof newPastedFiles !== 'undefined') {
+            newPastedFiles.forEach((file, index) => {
+                formData.append('dosya[]', file, `pasted_image_${index}.png`);
+            });
+        }
+
         $.ajax({
             url: 'views/yardim/api.php',
             type: 'POST',
@@ -457,47 +495,27 @@ $(document).ready(function() {
             contentType: false,
             success: function(res) {
                 if(res.success) {
-                    Swal.fire({
-                        title: 'Başarılı!',
-                        text: res.message,
-                        icon: 'success',
-                        confirmButtonColor: '#34c38f',
-                        confirmButtonText: 'Tamam'
-                    });
+                    Swal.fire({ title: 'Başarılı!', text: res.message, icon: 'success' });
                     $('#newTicketModal').modal('hide');
                     $('#new-ticket-form')[0].reset();
-                    if ($.fn.select2) {
-                        $('#kategori').val('Genel').trigger('change');
-                        $('#oncelik').val('orta').trigger('change');
-                    }
-                    userTable.ajax.reload();
                     $('#btn-remove-new-file').trigger('click');
+                    userTable.ajax.reload();
+                    if(typeof newPastedFiles !== 'undefined') newPastedFiles = [];
                 } else {
-                    Swal.fire({
-                        title: 'Hata!',
-                        text: res.message,
-                        icon: 'error',
-                        confirmButtonColor: '#f46a6a'
-                    });
+                    Swal.fire({ title: 'Hata!', text: res.message, icon: 'error' });
                 }
             },
             error: function() {
-                Swal.fire({
-                    title: 'Sistem Hatası!',
-                    text: 'İşlem sırasında bir hata oluştu. Lütfen tekrar deneyin.',
-                    icon: 'error',
-                    confirmButtonColor: '#f46a6a'
-                });
+                Swal.fire('Hata!', 'Sistem hatası oluştu.', 'error');
             },
-            complete: function() {
-                $btn.prop('disabled', false).text(originalText);
-            }
+            complete: function() { $btn.prop('disabled', false).text(originalText); }
         });
     });
 
     // Modal life-cycle events
     $('#newTicketModal').on('hidden.bs.modal', function () {
         $('#new-ticket-form')[0].reset();
+        $('#btn-remove-new-file').trigger('click');
         if ($.fn.select2) {
             $('.select2').val('Genel').trigger('change');
             $('#oncelik').val('orta').trigger('change');
@@ -518,29 +536,102 @@ $(document).ready(function() {
     });
 
     // New Ticket File Handling
-    let newPastedFile = null;
+    let newPastedFiles = [];
 
     $('#new-ticket-file').on('change', function(e) {
-        const file = e.target.files[0];
-        if (file) showNewPreview(file);
+        const files = Array.from(e.target.files);
+        if (files.length > 0) {
+            if (files.length + newPastedFiles.length > 3) {
+                Swal.fire('Uyarı', 'En fazla 3 adet dosya ekleyebilirsiniz.', 'warning');
+                $(this).val('');
+                return;
+            }
+            showNewPreviews(files);
+        }
     });
 
-    function showNewPreview(file) {
-        const reader = new FileReader();
-        reader.onload = function(e) {
-            $('#new-image-preview img').attr('src', e.target.result);
-            $('#new-image-preview').show();
-            $('#new-upload-container .upload-icon, #new-upload-text').hide();
-        };
-        reader.readAsDataURL(file);
-        newPastedFile = null;
+    function showNewPreviews(files) {
+        $('#new-image-preview').empty().show();
+        $('#new-upload-container .upload-icon, #new-upload-text').hide();
+
+        // Add selected files
+        files.forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const previewHtml = `
+                    <div class="position-relative d-inline-block m-1">
+                        <img src="${e.target.result}" alt="Preview" style="max-height: 80px; width: 80px; object-fit: cover;" class="rounded border shadow-sm">
+                        <button type="button" class="btn btn-danger btn-sm rounded-circle position-absolute btn-remove-item" 
+                            data-type="selected" data-index="${index}" style="top: -5px; right: -5px; padding: 2px 6px; line-height: 1;">
+                            <i class="bx bx-x"></i>
+                        </button>
+                    </div>
+                `;
+                $('#new-image-preview').append(previewHtml);
+            };
+            reader.readAsDataURL(file);
+        });
+
+        // Add pasted files
+        newPastedFiles.forEach((file, index) => {
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const previewHtml = `
+                    <div class="position-relative d-inline-block m-1">
+                        <img src="${e.target.result}" alt="Preview" style="max-height: 80px; width: 80px; object-fit: cover;" class="rounded border shadow-sm">
+                        <button type="button" class="btn btn-danger btn-sm rounded-circle position-absolute btn-remove-item" 
+                            data-type="pasted" data-index="${index}" style="top: -5px; right: -5px; padding: 2px 6px; line-height: 1;">
+                            <i class="bx bx-x"></i>
+                        </button>
+                    </div>
+                `;
+                $('#new-image-preview').append(previewHtml);
+            };
+            reader.readAsDataURL(file);
+        });
+        
+        // Add a single remove button at the end
+        if(files.length > 0 || newPastedFiles.length > 0) {
+            $('#new-image-preview').append(`
+                <div class="w-100 mt-2">
+                    <button type="button" id="btn-remove-new-file" class="btn btn-outline-danger btn-sm rounded-pill px-3">
+                        <i class="bx bx-trash me-1"></i> Tümünü Kaldır
+                    </button>
+                </div>
+            `);
+        }
     }
 
-    $('#btn-remove-new-file').on('click', function(e) {
+    $(document).on('click', '.btn-remove-item', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        const type = $(this).data('type');
+        const index = parseInt($(this).data('index'));
+        
+        if (type === 'pasted') {
+            newPastedFiles.splice(index, 1);
+        } else {
+            const dt = new DataTransfer();
+            const input = document.getElementById('new-ticket-file');
+            const { files } = input;
+            for (let i = 0; i < files.length; i++) {
+                if (i !== index) dt.items.add(files[i]);
+            }
+            input.files = dt.files;
+        }
+        
+        const currentFiles = Array.from($('#new-ticket-file')[0].files || []);
+        if (currentFiles.length === 0 && newPastedFiles.length === 0) {
+            $('#btn-remove-new-file').click();
+        } else {
+            showNewPreviews(currentFiles);
+        }
+    });
+
+    $(document).on('click', '#btn-remove-new-file', function(e) {
         e.stopPropagation(); e.preventDefault();
         $('#new-ticket-file').val('');
-        newPastedFile = null;
-        $('#new-image-preview').hide();
+        newPastedFiles = [];
+        $('#new-image-preview').hide().empty();
         $('#new-upload-container .upload-icon, #new-upload-text').show();
     });
 
@@ -550,45 +641,16 @@ $(document).ready(function() {
         for (let i = 0; i < items.length; i++) {
             if (items[i].type.indexOf('image') !== -1) {
                 const blob = items[i].getAsFile();
-                newPastedFile = blob;
-                showNewPreview(blob);
-                $('#new-ticket-file').val('');
+                if (newPastedFiles.length + ($('#new-ticket-file')[0].files ? $('#new-ticket-file')[0].files.length : 0) >= 3) {
+                    Swal.fire('Uyarı', 'En fazla 3 adet dosya ekleyebilirsiniz.', 'warning');
+                    return;
+                }
+                newPastedFiles.push(blob);
+                const currentFiles = Array.from($('#new-ticket-file')[0].files || []);
+                showNewPreviews(currentFiles);
                 break;
             }
         }
-    });
-
-    // Update submit logic for new ticket to handle pasted file
-    $('#new-ticket-form').off('submit').on('submit', function(e) {
-        e.preventDefault(); e.stopPropagation();
-        const $btn = $('#btn-save-ticket');
-        const originalText = $btn.text();
-        $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-2"></span> Gönderiliyor...');
-
-        const formData = new window.FormData(this);
-        if (newPastedFile) {
-            formData.set('dosya', newPastedFile, 'pasted_image.png');
-        }
-
-        $.ajax({
-            url: 'views/yardim/api.php',
-            type: 'POST',
-            data: formData,
-            processData: false,
-            contentType: false,
-            success: function(res) {
-                if(res.success) {
-                    Swal.fire({ title: 'Başarılı!', text: res.message, icon: 'success' });
-                    $('#newTicketModal').modal('hide');
-                    $('#new-ticket-form')[0].reset();
-                    $('#btn-remove-new-file').trigger('click');
-                    userTable.ajax.reload();
-                } else {
-                    Swal.fire({ title: 'Hata!', text: res.message, icon: 'error' });
-                }
-            },
-            complete: function() { $btn.prop('disabled', false).text(originalText); }
-        });
     });
 
     function openTicketDetail(id, encryptedId) {
@@ -643,7 +705,11 @@ $(document).ready(function() {
                                     <span class="small opacity-75 ms-3" style="font-size: 0.7rem;">${msg.olusturma_tarihi}</span>
                                 </div>
                                 <div class="message-text">${msg.mesaj.replace(/\n/g, '<br>')}</div>
-                                ${msg.dosya_yolu ? `<div class="mt-2 text-primary small"><a href="${msg.dosya_yolu}" target="_blank" class="text-reset"><i class="bx bx-paperclip me-1"></i> Dosya Eki</a></div>` : ''}
+                                ${msg.dosyalar && msg.dosyalar.length > 0 ? `
+                                    <div class="mt-2 d-flex flex-wrap gap-1">
+                                        ${msg.dosyalar.map(file => `<a href="${file}" target="_blank" class="badge bg-soft-primary text-primary text-decoration-none p-1 px-2 border"><i class="bx bx-paperclip me-1"></i> Dosya Eki</a>`).join('')}
+                                    </div>
+                                ` : ''}
                             </div>
                         `;
                     });

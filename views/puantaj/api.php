@@ -3082,7 +3082,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         foreach ($defterTanimRaw as $dt) {
             $code = trim($dt->tur_adi);
             $region = trim($dt->defter_bolge ?: '');
-            $key = $region . '|' . $code;
+            $key = mb_strtoupper($region . '|' . $code, 'UTF-8');
             
             if (!isset($defterTanimListMap[$key])) {
                 $defterTanimListMap[$key] = [];
@@ -3105,10 +3105,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             $tBolge = $parts[0];
             $tDefter = $parts[1];
 
-            // Filtreleri uygula (Bölge ve Defter)
-            if (!empty($bolge) && $tBolge !== $bolge)
+            // Filtreleri uygula (Bölge ve Defter) - Case insensitive
+            if (!empty($bolge) && mb_strtoupper($tBolge, 'UTF-8') !== mb_strtoupper($bolge, 'UTF-8'))
                 continue;
-            if (!empty($defterFilter) && $tDefter !== $defterFilter)
+            if (!empty($defterFilter) && mb_strtoupper($tDefter, 'UTF-8') !== mb_strtoupper($defterFilter, 'UTF-8'))
                 continue;
 
             $latest = $tanimList[0]; // En güncel tanım
@@ -3127,7 +3127,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             $bolgeName = trim($row->bolge ?: 'TANIMSIZ');
             $defter = trim($row->defter ?: '-');
 
-            $key = $bolgeName . '|' . $defter;
+            $key = mb_strtoupper($bolgeName . '|' . $defter, 'UTF-8');
 
             if (!isset($organized[$key])) {
                 $organized[$key] = [
@@ -3182,16 +3182,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                 'donemler' => []
             ];
 
-            $prevDate = null;
+            $projectStartDate = new DateTime('2025-10-31');
+            $prevDate = clone $projectStartDate;
+            
             foreach ($donemler as $donem) {
                 $donemInfo = $item['donemler'][$donem] ?? null;
                 if ($donemInfo && !empty($donemInfo['okuma_tarihi_raw'])) {
                     $currentDate = new DateTime($donemInfo['okuma_tarihi_raw']);
-                    $fark = null;
-                    if ($prevDate !== null) {
-                        $interval = $prevDate->diff($currentDate);
-                        $fark = (int) $interval->days;
-                    }
+                    $interval = $prevDate->diff($currentDate);
+                    $fark = (int) $interval->days;
 
                     $rowData['donemler'][$donem] = [
                         'okuma_tarihi' => $donemInfo['okuma_tarihi'],
@@ -3200,12 +3199,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                     ];
                     $prevDate = $currentDate;
                 } else {
+                    // Okuma yoksa, projenin başlangıcından veya son okumadan bu dönemin sonuna kadar olan farkı hesapla
+                    $year = substr($donem, 0, 4);
+                    $month = substr($donem, 4, 2);
+                    $periodEndDate = new DateTime("$year-$month-01");
+                    $periodEndDate->modify('last day of this month');
+                    
+                    // Eğer dönem gelecekteyse veya henüz bitmemişse bugünü baz alalım
+                    $now = new DateTime();
+                    $referenceDate = ($periodEndDate > $now) ? $now : $periodEndDate;
+                    
+                    $fark = null;
+                    if ($referenceDate > $prevDate) {
+                        $interval = $prevDate->diff($referenceDate);
+                        $fark = (int) $interval->days;
+                    }
+
                     $rowData['donemler'][$donem] = [
                         'okuma_tarihi' => '',
                         'okuma_tarihi_raw' => '',
-                        'fark' => null
+                        'fark' => $fark
                     ];
-                    // prevDate değişmez, boş dönem fark hesabını kesmez
+                    // prevDate değişmez, boş dönem fark hesabını bir sonraki okumaya kadar taşır
                 }
             }
 

@@ -865,7 +865,7 @@ class BordroPersonelModel extends Model
     /**
      * Verilen satır için tarih bazlı birim ücreti çözer.
      */
-    private function resolveIsTuruBirimUcret($TanimlamalarModel, $isTuruId, $isEmriSonucu, $tarih, $isAracli, $firmaId, &$ucretCache, $isTuruIdMap)
+    private function resolveIsTuruBirimUcret($TanimlamalarModel, $isTuruId, $isEmriSonucu, $tarih, $isAracli, $firmaId, &$ucretCache, $isTuruIdMap, $isOkuma = false)
     {
         $resolvedIsTuruId = intval($isTuruId);
         $sonucKey = trim((string) $isEmriSonucu);
@@ -878,13 +878,14 @@ class BordroPersonelModel extends Model
             return 0.0;
         }
 
-        $cacheKey = $resolvedIsTuruId . '|' . $tarih . '|' . ($isAracli ? '1' : '0');
+        $cacheKey = $resolvedIsTuruId . '|' . $tarih . '|' . ($isAracli ? '1' : '0') . '|' . ($isOkuma ? '1' : '0');
         if (!array_key_exists($cacheKey, $ucretCache)) {
             $ucretCache[$cacheKey] = floatval($TanimlamalarModel->getIsTuruUcretiByTarih(
                 $resolvedIsTuruId,
                 $tarih,
                 $isAracli,
-                $firmaId
+                $firmaId,
+                $isOkuma
             ));
         }
 
@@ -917,9 +918,10 @@ class BordroPersonelModel extends Model
         ");
         $deleteSql->execute([$personel_id, $donem_id]);
 
-        // 3. Araç kullanım durumunu belirle ve ücret çözümleme hazırlıklarını yap
+        // 3. Araç kullanım durumunu ve departmanı belirle
         $TanimlamalarModel = new \App\Model\TanimlamalarModel();
         $isAracli = (isset($personel->arac_kullanim) && $personel->arac_kullanim === 'Kendi Aracı');
+        $isOkuma = (isset($personel->departman) && stripos($personel->departman, 'Okuma') !== false);
         $firmaId = intval($personel->firma_id ?? ($_SESSION['firma_id'] ?? 0));
         $isTuruIdMap = $this->getIsTuruIdMapBySonuc($firmaId);
         $ucretCache = [];
@@ -957,7 +959,8 @@ class BordroPersonelModel extends Model
                 $isAracli,
                 $firmaId,
                 $ucretCache,
-                $isTuruIdMap
+                $isTuruIdMap,
+                $isOkuma
             );
         }
 
@@ -1080,6 +1083,7 @@ class BordroPersonelModel extends Model
         // 3. Tanımlamalar tablosundan ücretli iş türlerini al
         $TanimlamalarModel = new \App\Model\TanimlamalarModel();
         $isAracli = (isset($personel->arac_kullanim) && $personel->arac_kullanim === 'Kendi Aracı');
+        $isOkuma = (isset($personel->departman) && stripos($personel->departman, 'Okuma') !== false);
         $firmaId = intval($personel->firma_id ?? ($_SESSION['firma_id'] ?? 0));
         $isTuruIdMap = $this->getIsTuruIdMapBySonuc($firmaId);
         $ucretCache = [];
@@ -1131,7 +1135,8 @@ class BordroPersonelModel extends Model
                 $isAracli,
                 $firmaId,
                 $ucretCache,
-                $isTuruIdMap
+                $isTuruIdMap,
+                $isOkuma
             );
 
             if ($birimUcret <= 0) {

@@ -70,12 +70,22 @@ function formatDateToTr(value) {
   return `${parts[2]}.${parts[1]}.${parts[0]}`;
 }
 
+function formatMoneyTr(value) {
+  const num = parseFloat(value || 0);
+  const formatted = new Intl.NumberFormat("tr-TR", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(num);
+  return `₺${formatted}`;
+}
+
 function resetUcretGecmisiForm() {
   $("#gecmis_id").val("0");
   setFlatpickrValue("#gecmis_baslangic", getTodayTr());
   setFlatpickrValue("#gecmis_bitis", "");
   $("#gecmis_ucret").val("");
   $("#gecmis_aracli_ucret").val("");
+  $("#gecmis_okuma_ucret").val("");
 }
 
 function initUcretFlatpickr() {
@@ -124,7 +134,7 @@ function loadUcretGecmisi(isTuruId) {
       }
 
       if (!res.data || res.data.length === 0) {
-        const colspan = canManageUcretGecmisi ? 5 : 4;
+        const colspan = canManageUcretGecmisi ? 6 : 5;
         tbody.append(
           `<tr><td colspan="${colspan}" class="text-center text-muted">Kayıt bulunamadı</td></tr>`,
         );
@@ -139,7 +149,8 @@ function loadUcretGecmisi(isTuruId) {
                     data-baslangic="${item.gecerlilik_baslangic || ""}"
                     data-bitis="${item.gecerlilik_bitis || ""}"
                     data-ucret="${item.ucret || 0}"
-                    data-aracli-ucret="${item.aracli_ucret || 0}">
+                    data-aracli-ucret="${item.aracli_ucret || 0}"
+                    data-okuma-ucret="${item.okuma_ucret || 0}">
                   <i data-feather="edit-2" style="width:14px;height:14px;"></i> Düzenle
                 </button>
              </td>`
@@ -149,8 +160,9 @@ function loadUcretGecmisi(isTuruId) {
           <tr>
             <td>${formatDateToTr(item.gecerlilik_baslangic)}</td>
             <td>${item.gecerlilik_bitis ? formatDateToTr(item.gecerlilik_bitis) : "Aktif"}</td>
-            <td>${item.ucret || 0}</td>
-            <td>${item.aracli_ucret || 0}</td>
+            <td>${formatMoneyTr(item.ucret)}</td>
+            <td>${formatMoneyTr(item.aracli_ucret)}</td>
+            <td>${formatMoneyTr(item.okuma_ucret)}</td>
             ${islemBtn}
           </tr>
         `);
@@ -172,6 +184,7 @@ $(document).on("click", "#actionEkle", function () {
   $("#is_emri_sonucu").val("");
   $("#is_turu_ucret").val("");
   $("#aracli_personel_is_turu_ucret").val("");
+  $("#okuma_is_turu_ucret").val("");
   setFlatpickrValue("#ucret_gecerlilik_baslangic", getTodayTr());
   $("#rapor_sekmesi").val("").trigger("change");
   $("#actionModalLabel").text("İş Türü Ekle");
@@ -230,6 +243,7 @@ $(document).on("click", ".gecmis-duzenle", function () {
   setFlatpickrValue("#gecmis_bitis", toInputDate($(this).data("bitis")));
   $("#gecmis_ucret").val($(this).data("ucret"));
   $("#gecmis_aracli_ucret").val($(this).data("aracli-ucret"));
+  $("#gecmis_okuma_ucret").val($(this).data("okuma-ucret"));
 });
 
 $(document).on("click", "#ucretGecmisKaydet", function () {
@@ -254,6 +268,7 @@ $(document).on("click", "#ucretGecmisKaydet", function () {
   formData.append("gecerlilik_bitis", dmyToYmd($("#gecmis_bitis").val()));
   formData.append("ucret", $("#gecmis_ucret").val() || "0");
   formData.append("aracli_ucret", $("#gecmis_aracli_ucret").val() || "0");
+  formData.append("okuma_ucret", $("#gecmis_okuma_ucret").val() || "0");
 
   fetch(url, {
     method: "POST",
@@ -376,6 +391,7 @@ $(document).on("click", ".duzenle", function (e) {
         $("#aracli_personel_is_turu_ucret").val(
           data.data.aracli_personel_is_turu_ucret,
         );
+        $("#okuma_is_turu_ucret").val(data.data.okuma_is_turu_ucret || "");
         setFlatpickrValue("#ucret_gecerlilik_baslangic", getTodayTr());
         $("#rapor_sekmesi").val(data.data.rapor_sekmesi).trigger("change");
         $("#aciklama").val(data.data.aciklama);

@@ -73,7 +73,7 @@ class UserModel extends Model
      * @return string|null Kullanıcı rol ID'leri veya null
      * @throws \Exception
      */
-    public function getUserRoleID(int $userId): ?string
+    public function getUserRoleID($userId): ?string
     {
         $sql = $this->db->prepare("SELECT roles FROM $this->table WHERE id = ?");
         $sql->execute([$userId]);
@@ -93,7 +93,7 @@ class UserModel extends Model
      * @param int $id Kullanıcı ID'si
      * @return string HTML <tr> satırı
      */
-    public function renderUserTableRow(int $id, $isNew = false): string
+    public function renderUserTableRow($id, $isNew = false): string
     {
         $user = $this->find($id);
 
@@ -249,7 +249,7 @@ class UserModel extends Model
      * @param string $talepTuru 'avans', 'izin', 'genel', 'ariza'
      * @return bool True ise mail alır, false ise almaz
      */
-    public function checkMailBildirimi(int $userId, string $talepTuru): bool
+    public function checkMailBildirimi($userId, string $talepTuru): bool
     {
         $column_map = [
             'avans' => 'mail_avans_talep',
@@ -292,7 +292,7 @@ class UserModel extends Model
      * @param string $status Yeni durum ('Aktif' veya 'Pasif')
      * @return bool
      */
-    public function updateStatus(int $id, string $status): bool
+    public function updateStatus($id, string $status): bool
     {
         $sql = $this->db->prepare("UPDATE $this->table SET durum = ? WHERE id = ?");
         return $sql->execute([$status, $id]);

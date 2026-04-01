@@ -326,17 +326,19 @@ class EndeksOkumaModel extends Model
      */
     public function getSayacDurumSummary($baseWhere, $searchWhere, $params)
     {
-        $sql = "SELECT t.sayac_durum, COUNT(*) as adet, SUM(t.okunan_abone_sayisi) as toplam_abone
-                FROM {$this->table} t
+        $table = $this->table;
+        $sql = "SELECT UPPER(TRIM(t.sayac_durum)) as sayac_durum, 
+                       COUNT(*) as adet, 
+                       SUM(t.okunan_abone_sayisi) as toplam_abone
+                FROM {$table} t
                 LEFT JOIN personel p ON t.personel_id = p.id
                 LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
                 WHERE $baseWhere $searchWhere
-                GROUP BY t.sayac_durum
+                GROUP BY UPPER(TRIM(t.sayac_durum))
                 ORDER BY adet DESC";
 
         $stmt = $this->db->prepare($sql);
         foreach ($params as $key => $val) {
-            // :start ve :length parametrelerini skip et (Summary için gerek yok)
             if ($key === 'start' || $key === 'length') continue;
             $stmt->bindValue(":$key", $val);
         }

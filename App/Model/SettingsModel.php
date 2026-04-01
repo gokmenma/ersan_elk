@@ -29,11 +29,17 @@ class SettingsModel extends Model
 
     /**
      * Tüm ayarları 'set_name' => 'set_value' formatında bir dizi olarak döndürür.
-     * @param int|null $firma_id Firma bazlı ayarları almak için opsiyonel firma ID
+     * @param mixed $firma_id Firma bazlı ayarları almak için opsiyonel firma ID
      * @return array Ayarlar dizisi
      */
-    public function getAllSettingsAsKeyValue(?int $firma_id = null): array
+    public function getAllSettingsAsKeyValue($firma_id = null): array
     {
+        if ($firma_id === 'null' || empty($firma_id)) {
+            $firma_id = null;
+        } else {
+            $firma_id = (int) $firma_id;
+        }
+
         // Önce global ayarları al
         $stmt = $this->db->prepare("SELECT set_name, set_value FROM {$this->table} WHERE firma_id IS NULL AND user_id IS NULL");
         $stmt->execute();
@@ -76,9 +82,13 @@ class SettingsModel extends Model
     private function upsertSettingInternal(
         string $set_name,
         string $set_value,
-        ?int $firma_id = null,
-        ?int $user_id = null
+        $firma_id = null,
+        $user_id = null
     ): bool {
+        // Sanitize
+        if ($firma_id === 'null' || empty($firma_id)) $firma_id = null; else $firma_id = (int)$firma_id;
+        if ($user_id === 'null' || empty($user_id)) $user_id = null; else $user_id = (int)$user_id;
+
         // Mevcut kaydı kontrol et
         $sqlCheck = "SELECT id FROM {$this->table} WHERE set_name = :set_name ";
         $params = ['set_name' => $set_name];
@@ -170,9 +180,14 @@ class SettingsModel extends Model
     /**
      * Birden fazla ayarı upsert eder.
      */
-    public function upsertMultipleSettings(array $settingsToUpdate, ?int $firma_id = null, ?int $user_id = null): bool
+    public function upsertMultipleSettings(array $settingsToUpdate, $firma_id = null, $user_id = null): bool
     {
+        // Sanitize
+        if ($firma_id === 'null' || empty($firma_id)) $firma_id = null; else $firma_id = (int)$firma_id;
+        if ($user_id === 'null' || empty($user_id)) $user_id = null; else $user_id = (int)$user_id;
+
         if (empty($settingsToUpdate)) {
+
             return true;
         }
 

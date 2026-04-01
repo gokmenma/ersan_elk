@@ -295,7 +295,46 @@ class TanimlamalarModel extends Model
 
     public function getIsTurleri()
     {
-        $sql = $this->db->prepare("\n            SELECT\n                t.*,\n                COALESCE((\n                    SELECT g.ucret\n                    FROM is_turu_ucret_gecmisi g\n                    WHERE g.firma_id = t.firma_id\n                      AND g.is_turu_id = t.id\n                      AND g.silinme_tarihi IS NULL\n                      AND g.gecerlilik_baslangic <= CURDATE()\n                      AND (g.gecerlilik_bitis IS NULL OR g.gecerlilik_bitis >= CURDATE())\n                    ORDER BY g.gecerlilik_baslangic DESC, g.id DESC\n                    LIMIT 1\n                ), t.is_turu_ucret) AS is_turu_ucret,\n                COALESCE((\n                    SELECT g.aracli_ucret\n                    FROM is_turu_ucret_gecmisi g\n                    WHERE g.firma_id = t.firma_id\n                      AND g.is_turu_id = t.id\n                      AND g.silinme_tarihi IS NULL\n                      AND g.gecerlilik_baslangic <= CURDATE()\n                      AND (g.gecerlilik_bitis IS NULL OR g.gecerlilik_bitis >= CURDATE())\n                    ORDER BY g.gecerlilik_baslangic DESC, g.id DESC\n                    LIMIT 1\n                ), t.aracli_personel_is_turu_ucret) AS aracli_personel_is_turu_ucret\n            FROM $this->table t\n            WHERE t.grup = ? AND t.firma_id = ? AND t.silinme_tarihi IS NULL\n            ORDER BY t.id DESC\n        ");
+        $sql = $this->db->prepare("
+            SELECT
+                t.*,
+                COALESCE((
+                    SELECT g.ucret
+                    FROM is_turu_ucret_gecmisi g
+                    WHERE g.firma_id = t.firma_id
+                      AND g.is_turu_id = t.id
+                      AND g.silinme_tarihi IS NULL
+                      AND g.gecerlilik_baslangic <= CURDATE()
+                      AND (g.gecerlilik_bitis IS NULL OR g.gecerlilik_bitis >= CURDATE())
+                    ORDER BY g.gecerlilik_baslangic DESC, g.id DESC
+                    LIMIT 1
+                ), t.is_turu_ucret) AS is_turu_ucret,
+                COALESCE((
+                    SELECT g.aracli_ucret
+                    FROM is_turu_ucret_gecmisi g
+                    WHERE g.firma_id = t.firma_id
+                      AND g.is_turu_id = t.id
+                      AND g.silinme_tarihi IS NULL
+                      AND g.gecerlilik_baslangic <= CURDATE()
+                      AND (g.gecerlilik_bitis IS NULL OR g.gecerlilik_bitis >= CURDATE())
+                    ORDER BY g.gecerlilik_baslangic DESC, g.id DESC
+                    LIMIT 1
+                ), t.aracli_personel_is_turu_ucret) AS aracli_personel_is_turu_ucret,
+                COALESCE((
+                    SELECT g.okuma_ucret
+                    FROM is_turu_ucret_gecmisi g
+                    WHERE g.firma_id = t.firma_id
+                      AND g.is_turu_id = t.id
+                      AND g.silinme_tarihi IS NULL
+                      AND g.gecerlilik_baslangic <= CURDATE()
+                      AND (g.gecerlilik_bitis IS NULL OR g.gecerlilik_bitis >= CURDATE())
+                    ORDER BY g.gecerlilik_baslangic DESC, g.id DESC
+                    LIMIT 1
+                ), t.okuma_is_turu_ucret) AS okuma_is_turu_ucret
+            FROM $this->table t
+            WHERE t.grup = ? AND t.firma_id = ? AND t.silinme_tarihi IS NULL
+            ORDER BY t.id DESC
+        ");
         $sql->execute(['is_turu', $_SESSION['firma_id']]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
@@ -304,7 +343,7 @@ class TanimlamalarModel extends Model
      * İş türü ücretini belirtilen tarih için getirir.
      * Öncelik yeni ücret geçmişi tablosudur, kayıt yoksa tanimlamalar tablosuna fallback yapılır.
      */
-    public function getIsTuruUcretiByTarih($isTuruId, $tarih, $isAracli = false, $firmaId = null)
+    public function getIsTuruUcretiByTarih($isTuruId, $tarih, $isAracli = false, $firmaId = null, $isOkuma = false)
     {
         $isTuruId = intval($isTuruId);
         if ($isTuruId <= 0 || empty($tarih)) {
@@ -313,14 +352,29 @@ class TanimlamalarModel extends Model
 
         $firmaId = intval($firmaId ?: ($_SESSION['firma_id'] ?? 0));
 
-        $sql = $this->db->prepare("\n            SELECT ucret, aracli_ucret\n            FROM is_turu_ucret_gecmisi\n            WHERE is_turu_id = ?\n            AND firma_id = ?\n            AND silinme_tarihi IS NULL\n            AND gecerlilik_baslangic <= ?\n            AND (gecerlilik_bitis IS NULL OR gecerlilik_bitis >= ?)\n            ORDER BY gecerlilik_baslangic DESC, id DESC\n            LIMIT 1\n        ");
+        $sql = $this->db->prepare("
+            SELECT ucret, aracli_ucret, okuma_ucret
+            FROM is_turu_ucret_gecmisi
+            WHERE is_turu_id = ?
+            AND firma_id = ?
+            AND silinme_tarihi IS NULL
+            AND gecerlilik_baslangic <= ?
+            AND (gecerlilik_bitis IS NULL OR gecerlilik_bitis >= ?)
+            ORDER BY gecerlilik_baslangic DESC, id DESC
+            LIMIT 1
+        ");
         $sql->execute([$isTuruId, $firmaId, $tarih, $tarih]);
         $kayit = $sql->fetch(PDO::FETCH_OBJ);
 
         if ($kayit) {
             $normalUcret = floatval(Helper::formattedMoneyToNumber($kayit->ucret ?? 0));
             $aracliUcret = floatval(Helper::formattedMoneyToNumber($kayit->aracli_ucret ?? 0));
+            $okumaUcret = floatval(Helper::formattedMoneyToNumber($kayit->okuma_ucret ?? 0));
 
+            // Öncelik: Okuma > Araçlı > Normal
+            if ($isOkuma && $okumaUcret > 0) {
+                return $okumaUcret;
+            }
             if ($isAracli && $aracliUcret > 0) {
                 return $aracliUcret;
             }
@@ -328,7 +382,12 @@ class TanimlamalarModel extends Model
         }
 
         // Geriye uyumluluk: yeni tabloda kayıt yoksa eski kolonlardan oku.
-        $legacySql = $this->db->prepare("\n            SELECT is_turu_ucret, aracli_personel_is_turu_ucret\n            FROM {$this->table}\n            WHERE id = ? AND grup = 'is_turu' AND firma_id = ? AND silinme_tarihi IS NULL\n            LIMIT 1\n        ");
+        $legacySql = $this->db->prepare("
+            SELECT is_turu_ucret, aracli_personel_is_turu_ucret, okuma_is_turu_ucret
+            FROM {$this->table}
+            WHERE id = ? AND grup = 'is_turu' AND firma_id = ? AND silinme_tarihi IS NULL
+            LIMIT 1
+        ");
         $legacySql->execute([$isTuruId, $firmaId]);
         $legacy = $legacySql->fetch(PDO::FETCH_OBJ);
 
@@ -338,7 +397,11 @@ class TanimlamalarModel extends Model
 
         $legacyNormal = floatval(Helper::formattedMoneyToNumber($legacy->is_turu_ucret ?? 0));
         $legacyAracli = floatval(Helper::formattedMoneyToNumber($legacy->aracli_personel_is_turu_ucret ?? 0));
+        $legacyOkuma  = floatval(Helper::formattedMoneyToNumber($legacy->okuma_is_turu_ucret ?? 0));
 
+        if ($isOkuma && $legacyOkuma > 0) {
+            return $legacyOkuma;
+        }
         if ($isAracli && $legacyAracli > 0) {
             return $legacyAracli;
         }
@@ -686,15 +749,101 @@ class TanimlamalarModel extends Model
 
         // Sütun bazlı aramalar
         foreach ($columns as $index => $column) {
-            $searchVal = $column['search']['value'] ?? '';
+            $searchVal = trim((string)($column['search']['value'] ?? ''));
             if (!empty($searchVal)) {
                 $colName = $column['data'];
                 // Güvenlik için sütun adını doğrula
                 $allowedSearchColumns = ['id', 'tur_adi', 'defter_bolge', 'defter_mahalle', 'defter_abone_sayisi', 'baslangic_tarihi', 'bitis_tarihi', 'aciklama'];
                 if (in_array($colName, $allowedSearchColumns)) {
-                    $paramName = "col_search_" . $index;
-                    $where .= " AND $colName LIKE :$paramName";
-                    $sqlParams[$paramName] = "%$searchVal%";
+                    if (strpos($searchVal, ':') !== false) {
+                        list($mode, $pureVal) = explode(':', $searchVal, 2);
+
+                        // Tarih sütunları için format dönüşümü
+                        if (in_array($colName, ['baslangic_tarihi', 'bitis_tarihi'])) {
+                            if (!empty($pureVal)) {
+                                if (preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $pureVal)) {
+                                    $p = explode('.', $pureVal);
+                                    $pureVal = $p[2] . '-' . $p[1] . '-' . $p[0];
+                                } elseif (strpos($pureVal, '|') !== false) {
+                                    $dateParts = explode('|', $pureVal);
+                                    foreach ($dateParts as &$dp) {
+                                        if (preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $dp)) {
+                                            $p = explode('.', $dp);
+                                            $dp = $p[2] . '-' . $p[1] . '-' . $p[0];
+                                        }
+                                    }
+                                    $pureVal = implode('|', $dateParts);
+                                }
+                            }
+                        }
+
+                        $paramName = "col_search_" . $index;
+                        switch ($mode) {
+                            case 'equals':
+                                $where .= " AND $colName = :$paramName";
+                                break;
+                            case 'not_equals':
+                                $where .= " AND $colName <> :$paramName";
+                                break;
+                            case 'contains':
+                                $where .= " AND $colName LIKE :$paramName";
+                                $pureVal = "%$pureVal%";
+                                break;
+                            case 'not_contains':
+                                $where .= " AND $colName NOT LIKE :$paramName";
+                                $pureVal = "%$pureVal%";
+                                break;
+                            case 'starts_with':
+                                $where .= " AND $colName LIKE :$paramName";
+                                $pureVal = "$pureVal%";
+                                break;
+                            case 'ends_with':
+                                $where .= " AND $colName LIKE :$paramName";
+                                $pureVal = "%$pureVal%";
+                                break;
+                            case 'after':
+                            case 'greater_than':
+                            case 'greater_equal':
+                                $op = ($mode === 'greater_than' || $mode === 'after') ? '>' : '>=';
+                                $where .= " AND $colName $op :$paramName";
+                                break;
+                            case 'before':
+                            case 'less_than':
+                            case 'less_equal':
+                                $op = ($mode === 'less_than' || $mode === 'before') ? '<' : '<=';
+                                $where .= " AND $colName $op :$paramName";
+                                break;
+                            case 'null':
+                                $where .= " AND ($colName IS NULL OR $colName = '')";
+                                $pureVal = null;
+                                break;
+                            case 'not_null':
+                                $where .= " AND ($colName IS NOT NULL AND $colName <> '')";
+                                $pureVal = null;
+                                break;
+                            case 'between':
+                                $parts = explode('|', $pureVal);
+                                if (count($parts) == 2) {
+                                    $param1 = $paramName . "_1";
+                                    $param2 = $paramName . "_2";
+                                    $where .= " AND $colName BETWEEN :$param1 AND :$param2";
+                                    $sqlParams[$param1] = $parts[0];
+                                    $sqlParams[$param2] = $parts[1];
+                                }
+                                $pureVal = null; // Zaten atandı
+                                break;
+                            default:
+                                $where .= " AND $colName LIKE :$paramName";
+                                $pureVal = "%$pureVal%";
+                        }
+                        if ($pureVal !== null) {
+                            $sqlParams[$paramName] = $pureVal;
+                        }
+                    } else {
+                        $paramName = "col_search_" . $index;
+                        $where .= " AND $colName LIKE :$paramName";
+                        $sqlParams[$paramName] = "%$searchVal%";
+                    }
                 }
             }
         }

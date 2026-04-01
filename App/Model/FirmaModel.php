@@ -104,14 +104,17 @@ class FirmaModel extends Model
     }
 
     /** Firma get (id) */
-    public function getFirma(int $id)
+    public function getFirma($id)
     {
-        return $this->find($id);
+        if ($id === 'null' || empty($id)) return null;
+        return $this->find((int)$id);
     }
 
     /** Firma sil (soft delete) - ilişkileri kontrol eder */
-    public function deleteFirma(int $id)
+    public function deleteFirma($id)
     {
+        if ($id === 'null' || empty($id)) return false;
+        $id = (int)$id;
         $error = $this->hasRelations($id);
         if ($error) {
             throw new \Exception($error);

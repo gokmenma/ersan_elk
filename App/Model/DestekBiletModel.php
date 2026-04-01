@@ -38,10 +38,7 @@ class DestekBiletModel extends Model
             
             $biletId = $this->db->lastInsertId();
 
-            // İlk mesajı ekle (gonderenId her zaman user_id olarak saklayalım ya da personel varsa personel_id?)
-            // Aslında mesajlardaki gonderen_id'yi de user_id'ye çevirsek mi?
-            // Mevcut sistemde gonderen_tip='personel' ise gonderen_id=personel_id kullanılıyor.
-            
+            // İlk mesajı ekle
             $this->addMessage($biletId, 'personel', $personelId > 0 ? $personelId : $userId, $ilkMesaj, $dosyaYolu);
 
             $this->db->commit();
@@ -54,13 +51,38 @@ class DestekBiletModel extends Model
 
     /**
      * Bilete mesaj ekler
+     * @param int $biletId
+     * @param string $gonderenTip
+     * @param int $gonderenId
+     * @param string $mesaj
+     * @param string|array|null $dosyaYolu Tek dosya yolu (string) veya birden fazla dosya yolu (array)
      */
     public function addMessage($biletId, $gonderenTip, $gonderenId, $mesaj, $dosyaYolu = null)
     {
-        $sql = "INSERT INTO {$this->messageTable} (bilet_id, gonderen_tip, gonderen_id, mesaj, dosya_yolu) 
-                VALUES (?, ?, ?, ?, ?)";
+        // Ana mesajı ekle
+        $sql = "INSERT INTO {$this->messageTable} (bilet_id, gonderen_tip, gonderen_id, mesaj) 
+                VALUES (?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$biletId, $gonderenTip, $gonderenId, $mesaj, $dosyaYolu]);
+        $stmt->execute([$biletId, $gonderenTip, $gonderenId, $mesaj]);
+        
+        $mesajId = $this->db->lastInsertId();
+
+        // Dosyaları ekle
+        if ($dosyaYolu) {
+            $files = is_array($dosyaYolu) ? $dosyaYolu : [$dosyaYolu];
+            foreach ($files as $index => $path) {
+                if (empty($path)) continue;
+                
+                // İlk dosyayı geriye dönük uyumluluk için ana tabloya da yazalım (isteğe bağlı, ama temizlik için yeni tabloyu kullanalım)
+                if ($index === 0) {
+                    $sqlUpdate = "UPDATE {$this->messageTable} SET dosya_yolu = ? WHERE id = ?";
+                    $this->db->prepare($sqlUpdate)->execute([$path, $mesajId]);
+                }
+
+                $sqlFile = "INSERT INTO destek_bilet_dosyalari (bilet_id, mesaj_id, dosya_yolu) VALUES (?, ?, ?)";
+                $this->db->prepare($sqlFile)->execute([$biletId, $mesajId, $path]);
+            }
+        }
 
         // Bilet durumunu ve güncelleme tarihini güncelle
         $durum = ($gonderenTip === 'yonetici') ? 'yanitlandi' : 'personel_yaniti';
@@ -68,7 +90,7 @@ class DestekBiletModel extends Model
         $stmtStatus = $this->db->prepare($sqlStatus);
         $stmtStatus->execute([$durum, $biletId]);
 
-        return $this->db->lastInsertId();
+        return $mesajId;
     }
 
     /**
@@ -91,19 +113,22 @@ class DestekBiletModel extends Model
      */
     public function getPersonelTickets($userId, $personelId = 0, $status = null)
     {
-        $sql = "SELECT * FROM {$this->table} WHERE 1=1";
+        $sql = "SELECT t.*, 
+                (SELECT COUNT(*) FROM {$this->messageTable} WHERE bilet_id = t.id) as mesaj_sayisi,
+                (SELECT COUNT(*) FROM destek_bilet_dosyalari WHERE bilet_id = t.id) as dosya_sayisi
+                FROM {$this->table} t WHERE 1=1";
         $params = [];
         
         if ($userId > 0 && $personelId > 0) {
-            $sql .= " AND (user_id = ? OR personel_id = ?)";
+            $sql .= " AND (t.user_id = ? OR t.personel_id = ?)";
             $params[] = (int)$userId;
             $params[] = (int)$personelId;
         } elseif ($userId > 0) {
-            $sql .= " AND (user_id = ? OR personel_id = ?)";
+            $sql .= " AND (t.user_id = ? OR t.personel_id = ?)";
             $params[] = (int)$userId;
             $params[] = (int)$userId;
         } elseif ($personelId > 0) {
-            $sql .= " AND (personel_id = ? OR user_id = ?)";
+            $sql .= " AND (t.personel_id = ? OR t.user_id = ?)";
             $params[] = (int)$personelId;
             $params[] = (int)$personelId;
         } else {
@@ -111,11 +136,11 @@ class DestekBiletModel extends Model
         }
 
         if ($status) {
-            $sql .= " AND durum = ?";
+            $sql .= " AND t.durum = ?";
             $params[] = $status;
         }
 
-        $sql .= " ORDER BY guncelleme_tarihi DESC";
+        $sql .= " ORDER BY t.guncelleme_tarihi DESC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         $tickets = $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
@@ -129,7 +154,9 @@ class DestekBiletModel extends Model
     {
         $sql = "SELECT db.*, 
                 COALESCE(p.adi_soyadi, u.adi_soyadi) as personel_adi, 
-                p.departman 
+                p.departman,
+                (SELECT COUNT(*) FROM {$this->messageTable} WHERE bilet_id = db.id) as mesaj_sayisi,
+                (SELECT COUNT(*) FROM destek_bilet_dosyalari WHERE bilet_id = db.id) as dosya_sayisi
                 FROM {$this->table} db
                 LEFT JOIN personel p ON db.personel_id = p.id
                 LEFT JOIN users u ON db.user_id = u.id
@@ -190,7 +217,21 @@ class DestekBiletModel extends Model
                         ORDER BY dm.olusturma_tarihi ASC";
         $stmtMessages = $this->db->prepare($sqlMessages);
         $stmtMessages->execute([$biletId]);
-        $ticket->messages = $stmtMessages->fetchAll(PDO::FETCH_OBJ);
+        $messages = $stmtMessages->fetchAll(PDO::FETCH_OBJ);
+
+        // Her mesaj için dosyaları getir
+        foreach ($messages as &$msg) {
+            $sqlFiles = "SELECT dosya_yolu FROM destek_bilet_dosyalari WHERE mesaj_id = ?";
+            $stf = $this->db->prepare($sqlFiles);
+            $stf->execute([$msg->id]);
+            $msg->dosyalar = $stf->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            
+            // Eğer yeni tabloda dosya yoksa ama eski kolonda varsa onu da listeye ekle (backward compatibility)
+            if (empty($msg->dosyalar) && !empty($msg->dosya_yolu)) {
+                $msg->dosyalar = [$msg->dosya_yolu];
+            }
+        }
+        $ticket->messages = $messages;
 
         return $ticket;
     }
@@ -267,7 +308,9 @@ class DestekBiletModel extends Model
         $sql = "SELECT 
                     COUNT(*) as toplam,
                     SUM(CASE WHEN (durum = 'acik' OR durum = 'personel_yaniti') AND onay_durumu = 'onaylandi' THEN 1 ELSE 0 END) as bekleyen,
+                    SUM(CASE WHEN durum = 'isleme_alindi' AND onay_durumu = 'onaylandi' THEN 1 ELSE 0 END) as islemde,
                     SUM(CASE WHEN durum = 'yanitlandi' AND onay_durumu = 'onaylandi' THEN 1 ELSE 0 END) as yanitlanan,
+                    SUM(CASE WHEN durum = 'cozuldu' AND onay_durumu = 'onaylandi' THEN 1 ELSE 0 END) as cozuldu,
                     SUM(CASE WHEN durum = 'kapali' AND onay_durumu = 'onaylandi' THEN 1 ELSE 0 END) as kapali
                 FROM {$this->table}";
         

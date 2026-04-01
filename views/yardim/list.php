@@ -188,8 +188,10 @@ if (!(Gate::allows('admin_destek_talebi') || Gate::isSuperAdmin())) {
     /* Active States with brand colors */
     .status-filter-group .btn-check:checked + .btn[for="filter-all"] { background: #64748b !important; color: #fff !important; }
     .status-filter-group .btn-check:checked + .btn[for="filter-acik"] { background: #f59e0b !important; color: #fff !important; }
+    .status-filter-group .btn-check:checked + .btn[for="filter-isleme-alindi"] { background: #50a5f1 !important; color: #fff !important; }
     .status-filter-group .btn-check:checked + .btn[for="filter-yanitlandi"] { background: #10b981 !important; color: #fff !important; }
     .status-filter-group .btn-check:checked + .btn[for="filter-personel-yaniti"] { background: #3b82f6 !important; color: #fff !important; }
+    .status-filter-group .btn-check:checked + .btn[for="filter-cozuldu"] { background: #34c38f !important; color: #fff !important; }
     .status-filter-group .btn-check:checked + .btn[for="filter-kapali"] { background: #ef4444 !important; color: #fff !important; }
 
     /* DataTable Search Inputs */
@@ -224,7 +226,7 @@ if (!(Gate::allows('admin_destek_talebi') || Gate::isSuperAdmin())) {
 
 <!-- Stats Row -->
 <div class="row g-3 mb-4" id="ticket-stats">
-    <div class="col-xl-3 col-md-6">
+    <div class="col-xxl-2 col-md-4">
         <div class="card border-0 shadow-sm h-100 bordro-summary-card"
             style="--card-color: #556ee6; border-bottom: 3px solid var(--card-color) !important;">
             <div class="card-body p-3">
@@ -240,7 +242,7 @@ if (!(Gate::allows('admin_destek_talebi') || Gate::isSuperAdmin())) {
             </div>
         </div>
     </div>
-    <div class="col-xl-3 col-md-6">
+    <div class="col-xxl-2 col-md-4">
         <div class="card border-0 shadow-sm h-100 bordro-summary-card"
             style="--card-color: #f1b44c; border-bottom: 3px solid var(--card-color) !important;">
             <div class="card-body p-3">
@@ -256,7 +258,23 @@ if (!(Gate::allows('admin_destek_talebi') || Gate::isSuperAdmin())) {
             </div>
         </div>
     </div>
-    <div class="col-xl-3 col-md-6">
+    <div class="col-xxl-2 col-md-4">
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+            style="--card-color: #50a5f1; border-bottom: 3px solid var(--card-color) !important;">
+            <div class="card-body p-3">
+                <div class="icon-label-container">
+                    <div class="icon-box" style="background: rgba(80, 165, 241, 0.1);">
+                        <i class="bx bx-loader fs-4 text-info"></i>
+                    </div>
+                </div>
+                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">İŞLEMDERDE</p>
+                <h4 class="mb-0 fw-bold">
+                    <span class="counter-value" data-target="0" id="stat-islemde">0</span>
+                </h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-2 col-md-4">
         <div class="card border-0 shadow-sm h-100 bordro-summary-card"
             style="--card-color: #34c38f; border-bottom: 3px solid var(--card-color) !important;">
             <div class="card-body p-3">
@@ -272,7 +290,23 @@ if (!(Gate::allows('admin_destek_talebi') || Gate::isSuperAdmin())) {
             </div>
         </div>
     </div>
-    <div class="col-xl-3 col-md-6">
+    <div class="col-xxl-2 col-md-4">
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+            style="--card-color: #34c38f; border-bottom: 3px solid var(--card-color) !important; opacity: 0.8;">
+            <div class="card-body p-3">
+                <div class="icon-label-container">
+                    <div class="icon-box" style="background: rgba(52, 195, 143, 0.15);">
+                        <i class="bx bx-check-circle fs-4 text-success"></i>
+                    </div>
+                </div>
+                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">ÇÖZÜLENLER</p>
+                <h4 class="mb-0 fw-bold">
+                    <span class="counter-value" data-target="0" id="stat-cozuldu">0</span>
+                </h4>
+            </div>
+        </div>
+    </div>
+    <div class="col-xxl-2 col-md-4">
         <div class="card border-0 shadow-sm h-100 bordro-summary-card"
             style="--card-color: #f46a6a; border-bottom: 3px solid var(--card-color) !important;">
             <div class="card-body p-3">
@@ -302,12 +336,18 @@ if (!(Gate::allows('admin_destek_talebi') || Gate::isSuperAdmin())) {
                         
                         <input type="radio" class="btn-check" name="status-filter" id="filter-acik" value="acik">
                         <label class="btn" for="filter-acik"><i class="bx bx-loader-circle"></i> Açık</label>
+
+                        <input type="radio" class="btn-check" name="status-filter" id="filter-isleme-alindi" value="isleme_alindi">
+                        <label class="btn" for="filter-isleme-alindi"><i class="bx bx-loader bx-spin"></i> İşlemde</label>
                         
                         <input type="radio" class="btn-check" name="status-filter" id="filter-yanitlandi" value="yanitlandi">
                         <label class="btn" for="filter-yanitlandi"><i class="bx bx-check-circle"></i> Yanıtlandı</label>
                         
                         <input type="radio" class="btn-check" name="status-filter" id="filter-personel-yaniti" value="personel_yaniti">
                         <label class="btn" for="filter-personel-yaniti"><i class="bx bx-user-voice"></i> Personel Yanıtı</label>
+
+                        <input type="radio" class="btn-check" name="status-filter" id="filter-cozuldu" value="cozuldu">
+                        <label class="btn" for="filter-cozuldu"><i class="bx bx-check-square"></i> Çözüldü</label>
 
                         <input type="radio" class="btn-check" name="status-filter" id="filter-kapali" value="kapali">
                         <label class="btn" for="filter-kapali"><i class="bx bx-lock-alt"></i> Kapalı</label>
@@ -322,6 +362,8 @@ if (!(Gate::allows('admin_destek_talebi') || Gate::isSuperAdmin())) {
                             <th>Personel</th>
                             <th>Konu</th>
                             <th>Kategori</th>
+                            <th>Mesaj</th>
+                            <th>Dosya</th>
                             <th>Öncelik</th>
                             <th>Son Güncelleme</th>
                             <th>Durum</th>
@@ -377,6 +419,12 @@ if (!(Gate::allows('admin_destek_talebi') || Gate::isSuperAdmin())) {
                         </div>
                         
                         <div class="mt-4 pt-3 border-top" id="admin-actions">
+                            <button type="button" class="btn btn-outline-info btn-sm w-100 rounded-pill mb-2" id="btn-process-ticket">
+                                <i class="bx bx-loader me-1"></i> İşleme Al
+                            </button>
+                            <button type="button" class="btn btn-success btn-sm w-100 rounded-pill mb-2" id="btn-resolve-ticket">
+                                <i class="bx bx-check-circle me-1"></i> Çözüldü Olarak İşaretle
+                            </button>
                             <button type="button" class="btn btn-outline-danger btn-sm w-100 rounded-pill mb-2" id="btn-close-ticket">
                                 <i class="bx bx-lock-alt me-1"></i> Talebi Kapat
                             </button>
@@ -432,12 +480,25 @@ if (!(Gate::allows('admin_destek_talebi') || Gate::isSuperAdmin())) {
 <script>
 $(document).ready(function() {
     let table = destroyAndInitDataTable('#tickets-table', {
-        order: [[5, 'desc']], // Son güncellemeye göre
+        order: [[7, 'desc']], // Son güncellemeye göre (5 were Son Güncelleme, now 7)
         columns: [
             { data: 'ref_no' },
             { data: 'personel_adi' },
             { data: 'konu' },
             { data: 'kategori' },
+            { 
+                data: 'mesaj_sayisi', 
+                className: 'text-center',
+                render: data => `<span class="badge bg-primary text-white rounded-pill px-2 py-1 fw-bold" style="font-size: 0.75rem;"><i class="bx bx-chat me-1"></i>${data}</span>`
+            },
+            { 
+                data: 'dosya_sayisi', 
+                className: 'text-center',
+                render: data => {
+                    if(data == 0) return `<span class="text-muted opacity-50 small">-</span>`;
+                    return `<span class="badge bg-soft-info text-info rounded-pill px-2 py-1 fw-bold" style="font-size: 0.75rem;"><i class="bx bx-paperclip me-1"></i>${data}</span>`;
+                }
+            },
             { 
                 data: 'oncelik',
                 render: function(data) {
@@ -456,17 +517,38 @@ $(document).ready(function() {
                 }
 
                 let badge = 'bg-secondary';
+                let text = (data || 'ACIK').toUpperCase();
+                let icon = '';
+                
                 if(data === 'acik') badge = 'bg-warning';
                 if(data === 'yanitlandi') badge = 'bg-success';
                 if(data === 'personel_yaniti') badge = 'bg-primary';
+                if(data === 'isleme_alindi') { badge = 'bg-info text-white'; text = 'İŞLEME ALINDI'; icon = '<i class="bx bx-loader bx-spin me-1"></i>'; }
+                if(data === 'cozuldu') { badge = 'bg-success'; text = 'ÇÖZÜLDÜ'; icon = '<i class="bx bx-check-circle me-1"></i>'; }
                 if(data === 'kapali') badge = 'bg-danger';
-                return `<span class="badge ${badge} p-2 px-3 rounded-pill show-timeline-btn" data-id="${row.id}" data-ref="${row.ref_no}" data-konu="${row.konu}" style="cursor: pointer;" title="İşlem geçmişini gör">${data.toUpperCase()}</span>`;
+
+                return `<span class="badge ${badge} p-2 px-3 rounded-pill show-timeline-btn" data-id="${row.id}" data-ref="${row.ref_no}" data-konu="${row.konu}" style="cursor: pointer;" title="İşlem geçmişini gör">${icon}${text}</span>`;
             }
             },
             {
                 data: null,
+                className: 'text-center',
                 render: function(data) {
-                    return `<a href="?p=yardim/view&id=${data.encrypted_id || data.id}" class="btn btn-sm btn-primary">Görüntüle</a>`;
+                    let html = `<div class="d-flex gap-1 justify-content-center">`;
+                    html += `<a href="?p=yardim/view&id=${data.encrypted_id || data.id}" class="btn btn-sm btn-soft-primary px-2" title="Görüntüle"><i class="bx bx-show-alt"></i></a>`;
+                    
+                    if (data.durum !== 'kapali') {
+                        if (data.durum !== 'isleme_alindi') {
+                            html += `<button type="button" class="btn btn-sm btn-soft-info px-2 btn-process-ticket-direct" data-id="${data.id}" title="İşleme Al"><i class="bx bx-loader"></i></button>`;
+                        }
+                        if (data.durum !== 'cozuldu') {
+                            html += `<button type="button" class="btn btn-sm btn-soft-success px-2 btn-resolve-ticket-direct" data-id="${data.id}" title="Çözüldülarak İşaretle"><i class="bx bx-check-circle"></i></button>`;
+                        }
+                        html += `<button type="button" class="btn btn-sm btn-soft-danger px-2 btn-close-ticket-direct" data-id="${data.id}" title="Talebi Kapat"><i class="bx bx-lock-alt"></i></button>`;
+                    }
+                    
+                    html += `</div>`;
+                    return html;
                 }
             }
         ],
@@ -502,7 +584,9 @@ $(document).ready(function() {
                 // Stats
                 $('#stat-toplam').text(res.stats.toplam || 0);
                 $('#stat-bekleyen').text(res.stats.bekleyen || 0);
+                $('#stat-islemde').text(res.stats.islemde || 0);
                 $('#stat-yanitlanan').text(res.stats.yanitlanan || 0);
+                $('#stat-cozuldu').text(res.stats.cozuldu || 0);
                 $('#stat-kapali').text(res.stats.kapali || 0);
             }
         });
@@ -543,6 +627,83 @@ $(document).ready(function() {
         });
     });
 
+    $('#btn-process-ticket').on('click', function() {
+        const id = $(this).data('id');
+        $.post('views/yardim/api.php', { action: 'update-status', bilet_id: id, durum: 'isleme_alindi' }, function(res) {
+            if(res.success) {
+                Swal.fire('Bilgi', 'Talep işleme alındı olarak işaretlendi.', 'info');
+                $('#ticketDetailModal').modal('hide');
+                loadTickets($('input[name="status-filter"]:checked').val());
+            } else {
+                Swal.fire('Hata!', res.message, 'error');
+            }
+        });
+    });
+
+    $('#btn-resolve-ticket').on('click', function() {
+        const id = $(this).data('id');
+        $.post('views/yardim/api.php', { action: 'update-status', bilet_id: id, durum: 'cozuldu' }, function(res) {
+            if(res.success) {
+                Swal.fire('Başarılı', 'Talep çözüldü olarak işaretlendi.', 'success');
+                $('#ticketDetailModal').modal('hide');
+                loadTickets($('input[name="status-filter"]:checked').val());
+            } else {
+                Swal.fire('Hata!', res.message, 'error');
+            }
+        });
+    });
+
+    // Direct actions from table
+    $(document).on('click', '.btn-process-ticket-direct', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        const id = $(this).data('id');
+        $.post('views/yardim/api.php', { action: 'update-status', bilet_id: id, durum: 'isleme_alindi' }, function(res) {
+            if(res.success) {
+                Swal.fire('Bilgi', 'Talep işleme alındı.', 'info');
+                loadTickets($('input[name="status-filter"]:checked').val());
+            } else {
+                Swal.fire('Hata', res.message || 'Hata oluştu.', 'error');
+            }
+        });
+    });
+
+    $(document).on('click', '.btn-resolve-ticket-direct', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        const id = $(this).data('id');
+        $.post('views/yardim/api.php', { action: 'update-status', bilet_id: id, durum: 'cozuldu' }, function(res) {
+            if(res.success) {
+                Swal.fire('Başarılı', 'Talep çözüldü olarak işaretlendi.', 'success');
+                loadTickets($('input[name="status-filter"]:checked').val());
+            } else {
+                Swal.fire('Hata', res.message || 'Hata oluştu.', 'error');
+            }
+        });
+    });
+
+    $(document).on('click', '.btn-close-ticket-direct', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        const id = $(this).data('id');
+        Swal.fire({
+            title: 'Talebi Kapat?',
+            text: "Bu talep kapatılacaktır.",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, Kapat',
+            cancelButtonText: 'Vazgeç'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post('views/yardim/api.php', { action: 'update-status', bilet_id: id, durum: 'kapali' }, function(res) {
+                    if(res.success) {
+                        Swal.fire('Başarılı', 'Talep kapatıldı.', 'success');
+                        loadTickets($('input[name="status-filter"]:checked').val());
+                    } else {
+                        Swal.fire('Hata', res.message || 'Hata oluştu.', 'error');
+                    }
+                });
+            }
+        });
+    });
+
     function openTicketDetail(id, encryptedId) {
         $('#detail-konu').text('Yükleniyor...');
         $('#chat-loading').show();
@@ -575,10 +736,14 @@ $(document).ready(function() {
                 $('#detail-durum').html(`<span class="badge ${durumBadge} rounded-pill px-3">${ticket.durum.toUpperCase()}</span>`);
 
                 if(ticket.durum === 'kapali') {
-                    $('#btn-close-ticket').hide();
+                    $('#btn-close-ticket, #btn-process-ticket, #btn-resolve-ticket').hide();
                 } else {
                     $('#btn-close-ticket').show();
+                    if(ticket.durum === 'isleme_alindi') $('#btn-process-ticket').hide(); else $('#btn-process-ticket').show();
+                    if(ticket.durum === 'cozuldu') $('#btn-resolve-ticket').hide(); else $('#btn-resolve-ticket').show();
                 }
+
+                $('#btn-process-ticket, #btn-resolve-ticket').data('id', ticket.id);
 
                 // Render Messages
                 if(ticket.messages && ticket.messages.length > 0) {
@@ -595,7 +760,11 @@ $(document).ready(function() {
                                     <span class="small opacity-75 ms-3" style="font-size: 0.7rem;">${msg.olusturma_tarihi}</span>
                                 </div>
                                 <div class="message-text">${msg.mesaj.replace(/\n/g, '<br>')}</div>
-                                ${msg.dosya_yolu ? `<div class="mt-2 text-primary small"><a href="${msg.dosya_yolu}" target="_blank" class="text-reset"><i class="bx bx-paperclip me-1"></i> Dosya Eki</a></div>` : ''}
+                                ${msg.dosyalar && msg.dosyalar.length > 0 ? `
+                                    <div class="mt-2 d-flex flex-wrap gap-1">
+                                        ${msg.dosyalar.map(file => `<a href="${file}" target="_blank" class="badge bg-soft-primary text-primary text-decoration-none p-1 px-2 border"><i class="bx bx-paperclip me-1"></i> Dosya Eki</a>`).join('')}
+                                    </div>
+                                ` : ''}
                             </div>
                         `;
                     });

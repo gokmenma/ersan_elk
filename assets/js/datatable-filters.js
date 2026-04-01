@@ -149,17 +149,15 @@
     const mode = cell.mode;
     const val = cell.value;
 
-    // Determine if applied
-    const isApplied = Array.isArray(val)
-      ? true
-      : val && val.toString().trim() !== "";
-    if (!isApplied) return true;
-
-    // Handle empty array as "Select None"
-    if (Array.isArray(val) && val.length === 0) return false;
-
     const cellText = extractTextWithSpaces(cellValueRaw);
     const isSelect = cell.type === "select";
+
+    // Determine if applied
+    const isNullMode = ["null", "not_null"].includes(mode);
+    const isApplied = Array.isArray(val)
+      ? val.length > 0
+      : (val && val.toString().trim() !== "") || isNullMode;
+    if (!isApplied) return true;
 
     if (isSelect) {
       const nCell = normalizeTR(cellText);
@@ -176,7 +174,7 @@
       return match;
     }
 
-    if (cell.type === "string") {
+    if (cell.type === "string" || cell.type === "text") {
       const nCell = normalizeTR(cellText);
       const nFilter = normalizeTR(val);
       let match = false;
@@ -201,10 +199,48 @@
         case "not_equals":
           match = nCell !== nFilter;
           break;
+        case "null":
+          match = !cellText || cellText.trim() === "";
+          break;
+        case "not_null":
+          match = !!cellText && cellText.trim() !== "";
+          break;
         default:
           match = true;
       }
       return match;
+    }
+
+    if (cell.type === "date") {
+      const cellDate = parseDateDMY(cellText);
+      const filterDate = parseDateDMY(val);
+      const filterDate2 = cell.value2 ? parseDateDMY(cell.value2) : null;
+
+      if (mode === "null") return !cellText || cellText.trim() === "";
+      if (mode === "not_null") return !!cellText && cellText.trim() !== "";
+
+      if (!cellDate || !filterDate) return true;
+
+      cellDate.setHours(0, 0, 0, 0);
+      filterDate.setHours(0, 0, 0, 0);
+
+      switch (mode) {
+        case "equals":
+          return cellDate.getTime() === filterDate.getTime();
+        case "before":
+          return cellDate.getTime() <= filterDate.getTime();
+        case "after":
+          return cellDate.getTime() >= filterDate.getTime();
+        case "between":
+          if (!filterDate2) return true;
+          filterDate2.setHours(0, 0, 0, 0);
+          return (
+            cellDate.getTime() >= filterDate.getTime() &&
+            cellDate.getTime() <= filterDate2.getTime()
+          );
+        default:
+          return true;
+      }
     }
 
     if (cell.type === "number") {
@@ -229,6 +265,10 @@
           return numCell >= numFilter;
         case "less_equal":
           return numCell <= numFilter;
+        case "null":
+          return isNaN(numCell);
+        case "not_null":
+          return !isNaN(numCell);
         default:
           return true;
       }

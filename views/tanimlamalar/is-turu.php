@@ -2,6 +2,7 @@
 
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
 use App\Helper\Security;
+use App\Helper\Helper;
 use App\Helper\Form;
 use App\Service\Gate;
 
@@ -64,6 +65,7 @@ $canManageIsTuruUcret = Gate::allows('is_turu_ucret_tanimla');
                                 <th class="text-center">İş Emri Sonucu</th>
                                 <th class="text-center">İş Türü Ücreti</th>
                                 <th class="text-center">Araçlı Pers. İş Türü Ücreti</th>
+                                <th class="text-center">Okuma Pers. İş Türü Ücreti</th>
                                 <th class="text-center">Rapor Sekmesi</th>
                                 <th class="text-center">Açıklama</th>
                                 <th style="width:5%">İşlem</th>
@@ -90,10 +92,13 @@ $canManageIsTuruUcret = Gate::allows('is_turu_ucret_tanimla');
                                         <?php echo $isTuru->is_emri_sonucu ?>
                                     </td>
                                     <td class="text-center">
-                                        <?php echo $isTuru->is_turu_ucret ?? "0,00 TL" ?>
+                                        <?php echo Helper::formattedMoney($isTuru->is_turu_ucret ?? 0) ?>
                                     </td>
                                     <td class="text-center">
-                                        <?php echo $isTuru->aracli_personel_is_turu_ucret ?? "0,00 TL" ?>
+                                        <?php echo Helper::formattedMoney($isTuru->aracli_personel_is_turu_ucret ?? 0) ?>
+                                    </td>
+                                    <td class="text-center">
+                                        <?php echo Helper::formattedMoney($isTuru->okuma_is_turu_ucret ?? 0) ?>
                                     </td>
                                     <td class="text-center text-capitalize">
                                         <?php echo $isTuru->rapor_sekmesi ?>
@@ -188,7 +193,7 @@ $canManageIsTuruUcret = Gate::allows('is_turu_ucret_tanimla');
                         </div>
                     </div>
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <?php echo
                                 Form::FormFloatInput(
                                     "text",
@@ -201,7 +206,7 @@ $canManageIsTuruUcret = Gate::allows('is_turu_ucret_tanimla');
 
                                 ); ?>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <?php echo
                                 Form::FormFloatInput(
                                     "text",
@@ -210,6 +215,19 @@ $canManageIsTuruUcret = Gate::allows('is_turu_ucret_tanimla');
                                     "Araçlı Personel İş Türü Ücreti giriniz!",
                                     "Araçlı Personel İş Türü Ücreti",
                                     "truck",
+                                    "form-control money"
+
+                                ); ?>
+                        </div>
+                        <div class="col-md-4">
+                            <?php echo
+                                Form::FormFloatInput(
+                                    "text",
+                                    "okuma_is_turu_ucret",
+                                    "",
+                                    "Okuma Departmanı İş Türü Ücreti giriniz!",
+                                    "Okuma Dept. İş Türü Ücreti",
+                                    "book-open",
                                     "form-control money"
 
                                 ); ?>
@@ -298,7 +316,7 @@ $canManageIsTuruUcret = Gate::allows('is_turu_ucret_tanimla');
                 <?php if ($canManageIsTuruUcret): ?>
                     <div class="row g-3 mb-3 border rounded p-3 bg-light">
                         <input type="hidden" id="gecmis_id" value="0">
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <?php echo Form::FormFloatInput(
                                 "text",
                                 "gecmis_baslangic",
@@ -309,7 +327,7 @@ $canManageIsTuruUcret = Gate::allows('is_turu_ucret_tanimla');
                                 "form-control flatpickr"
                             ); ?>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <?php echo Form::FormFloatInput(
                                 "text",
                                 "gecmis_bitis",
@@ -320,7 +338,7 @@ $canManageIsTuruUcret = Gate::allows('is_turu_ucret_tanimla');
                                 "form-control flatpickr"
                             ); ?>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <?php echo Form::FormFloatInput(
                                 "text",
                                 "gecmis_ucret",
@@ -339,6 +357,17 @@ $canManageIsTuruUcret = Gate::allows('is_turu_ucret_tanimla');
                                 "Araçlı personel ücreti",
                                 "Araçlı Pers. Ücreti",
                                 "truck",
+                                "form-control money"
+                            ); ?>
+                        </div>
+                        <div class="col-md-3">
+                            <?php echo Form::FormFloatInput(
+                                "text",
+                                "gecmis_okuma_ucret",
+                                "",
+                                "Okuma departmanı ücreti",
+                                "Okuma Dept. Ücreti",
+                                "book-open",
                                 "form-control money"
                             ); ?>
                         </div>
@@ -363,6 +392,7 @@ $canManageIsTuruUcret = Gate::allows('is_turu_ucret_tanimla');
                                 <th>Geçerlilik Bitiş</th>
                                 <th>İş Türü Ücreti</th>
                                 <th>Araçlı Pers. Ücreti</th>
+                                <th>Okuma Dept. Ücreti</th>
                                 <?php if ($canManageIsTuruUcret): ?>
                                     <th style="width: 10%">İşlem</th>
                                 <?php endif; ?>

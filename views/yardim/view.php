@@ -161,14 +161,14 @@ if (!$canManageSupport) {
                         <div class="row align-items-center g-3">
                             <div class="col-md-7">
                                 <div id="upload-container" class="upload-area text-center p-3 border border-2 border-dashed rounded-3 bg-light position-relative" style="cursor: pointer; transition: all 0.3s ease;">
-                                    <input type="file" name="dosya" id="reply-file" accept="image/*" class="position-absolute w-100 h-100 top-0 start-0 opacity-0" style="cursor: pointer;">
+                                    <input type="file" name="dosya[]" id="reply-file" accept="image/*" multiple class="position-absolute w-100 h-100 top-0 start-0 opacity-0" style="cursor: pointer;">
                                     <div class="upload-icon mb-2">
                                         <i class="bx bx-cloud-upload fs-1 text-muted"></i>
                                     </div>
-                                    <p class="mb-0 text-muted small" id="upload-text">Dosya seçin veya buraya sürükleyin</p>
-                                    <div id="image-preview" class="mt-2" style="display: none;">
-                                        <div class="position-relative d-inline-block">
-                                            <img src="" alt="Preview icon" style="max-height: 80px;" class="rounded border shadow-sm">
+                                    <p class="mb-0 text-muted small" id="upload-text">En fazla 3 dosya seçin veya buraya sürükleyin</p>
+                                    <div id="image-preview" class="mt-2 d-flex flex-wrap gap-2 justify-content-center" style="display: none;">
+                                        <div class="position-relative d-inline-block template-preview" style="display:none;">
+                                            <img src="" alt="Preview icon" style="max-height: 80px; width: 80px; object-fit: cover;" class="rounded border shadow-sm">
                                             <button type="button" id="btn-remove-file" class="btn btn-danger btn-sm rounded-circle position-absolute" style="top: -10px; right: -10px; padding: 0.1rem 0.3rem;">
                                                 <i class="bx bx-x"></i>
                                             </button>
@@ -308,9 +308,13 @@ function renderMessages(messages) {
             <div class="chat-item ${sideClass}">
                 <div class="chat-bubble">
                     <div class="chat-text">${msg.mesaj.replace(/\n/g, '<br>')}</div>
-                    ${msg.dosya_yolu ? `
-                        <div class="chat-attachment">
-                            <img src="${msg.dosya_yolu}" onclick="window.open('${msg.dosya_yolu}', '_blank')">
+                    ${msg.dosyalar && msg.dosyalar.length > 0 ? `
+                        <div class="d-flex flex-wrap gap-2 mt-2">
+                            ${msg.dosyalar.map(file => `
+                                <div class="chat-attachment">
+                                    <img src="${file}" onclick="window.open('${file}', '_blank')" style="max-width: 150px; max-height: 150px; object-fit: cover;" class="rounded">
+                                </div>
+                            `).join('')}
                         </div>
                     ` : ''}
                 </div>
@@ -377,32 +381,94 @@ function updateStatus(status) {
     });
 }
 
-let pastedFile = null;
+let pastedFiles = [];
 
 $('#reply-file').on('change', function(e) {
-    const file = e.target.files[0];
-    if (file) {
-        showPreview(file);
-        pastedFile = null;
+    const files = Array.from(e.target.files);
+    if (files.length > 0) {
+        if (files.length + pastedFiles.length > 3) {
+            Swal.fire('Uyarı', 'En fazla 3 adet dosya ekleyebilirsiniz.', 'warning');
+            $(this).val('');
+            return;
+        }
+        showPreviews(files);
     }
 });
 
-function showPreview(file) {
-    const reader = new FileReader();
-    reader.onload = function(e) {
-        $('#image-preview img').attr('src', e.target.result);
-        $('#image-preview').show();
-        $('.upload-icon, #upload-text').hide();
-    };
-    reader.readAsDataURL(file);
+function showPreviews(selectedFiles) {
+    $('#image-preview').empty().show();
+    $('.upload-icon, #upload-text').hide();
+
+    // Show selected files
+    selectedFiles.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const previewHtml = `
+                <div class="position-relative d-inline-block m-1">
+                    <img src="${e.target.result}" style="max-height: 60px; width: 60px; object-fit: cover;" class="rounded border">
+                    <button type="button" class="btn btn-danger btn-sm rounded-circle position-absolute btn-remove-item-reply" 
+                        data-type="selected" data-index="${index}" style="top: -5px; right: -5px; padding: 2px 6px; line-height: 1;">
+                        <i class="bx bx-x"></i>
+                    </button>
+                </div>
+            `;
+            $('#image-preview').append(previewHtml);
+        };
+        reader.readAsDataURL(file);
+    });
+
+    // Show pasted files
+    pastedFiles.forEach((file, index) => {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            const previewHtml = `
+                <div class="position-relative d-inline-block m-1">
+                    <img src="${e.target.result}" style="max-height: 60px; width: 60px; object-fit: cover;" class="rounded border">
+                    <button type="button" class="btn btn-danger btn-sm rounded-circle position-absolute btn-remove-item-reply" 
+                        data-type="pasted" data-index="${index}" style="top: -5px; right: -5px; padding: 2px 6px; line-height: 1;">
+                        <i class="bx bx-x"></i>
+                    </button>
+                </div>
+            `;
+            $('#image-preview').append(previewHtml);
+        };
+        reader.readAsDataURL(file);
+    });
+
+    $('#image-preview').append(`<div class="w-100 mt-2"><button type="button" id="btn-remove-file" class="btn btn-outline-danger btn-sm rounded-pill px-3"><i class="bx bx-trash me-1"></i> Tümünü Kaldır</button></div>`);
 }
 
-$('#btn-remove-file').on('click', function(e) {
+$(document).on('click', '.btn-remove-item-reply', function(e) {
+    e.preventDefault(); e.stopPropagation();
+    const type = $(this).data('type');
+    const index = parseInt($(this).data('index'));
+    
+    if (type === 'pasted') {
+        pastedFiles.splice(index, 1);
+    } else {
+        const dt = new DataTransfer();
+        const input = document.getElementById('reply-file');
+        const { files } = input;
+        for (let i = 0; i < files.length; i++) {
+            if (i !== index) dt.items.add(files[i]);
+        }
+        input.files = dt.files;
+    }
+    
+    const selectedFiles = Array.from($('#reply-file')[0].files || []);
+    if (selectedFiles.length === 0 && pastedFiles.length === 0) {
+        $('#btn-remove-file').click();
+    } else {
+        showPreviews(selectedFiles);
+    }
+});
+
+$(document).on('click', '#btn-remove-file', function(e) {
     e.stopPropagation();
     e.preventDefault();
     $('#reply-file').val('');
-    pastedFile = null;
-    $('#image-preview').hide();
+    pastedFiles = [];
+    $('#image-preview').hide().empty();
     $('.upload-icon, #upload-text').show();
 });
 
@@ -412,10 +478,14 @@ $('#reply-message').on('paste', function(e) {
     for (let i = 0; i < items.length; i++) {
         if (items[i].type.indexOf('image') !== -1) {
             const blob = items[i].getAsFile();
-            pastedFile = blob;
-            showPreview(blob);
-            // Clear input if any since we are using pasted file
-            $('#reply-file').val('');
+            const currentFilesCount = $('#reply-file')[0].files ? $('#reply-file')[0].files.length : 0;
+            if (pastedFiles.length + currentFilesCount >= 3) {
+                Swal.fire('Uyarı', 'En fazla 3 adet dosya ekleyebilirsiniz.', 'warning');
+                return;
+            }
+            pastedFiles.push(blob);
+            const selectedFiles = Array.from($('#reply-file')[0].files || []);
+            showPreviews(selectedFiles);
             break;
         }
     }
@@ -425,10 +495,10 @@ $('#reply-form').on('submit', function(e) {
     e.preventDefault();
     const formData = new window.FormData(this);
     
-    // If there's a pasted file, use it instead (or append if multiple expected, but here it's one)
-    if (pastedFile) {
-        formData.set('dosya', pastedFile, 'pasted_image.png');
-    }
+    // Add pasted files
+    pastedFiles.forEach((file, index) => {
+        formData.append('dosya[]', file, `pasted_${index}.png`);
+    });
     
     const $btn = $(this).find('button[type="submit"]');
     const originalHtml = $btn.html();

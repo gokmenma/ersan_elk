@@ -48,9 +48,25 @@ try {
 
             if (empty($konu) || empty($mesaj)) throw new Exception('Konu ve mesaj gereklidir');
 
-            $dosyaYolu = null;
-            if (isset($_FILES['dosya']) && $_FILES['dosya']['error'] === UPLOAD_ERR_OK) {
-                $dosyaYolu = handleFileUpload($_FILES['dosya']);
+            $dosyaYolu = [];
+            if (isset($_FILES['dosya'])) {
+                if (is_array($_FILES['dosya']['name'])) {
+                    // Multiple files
+                    foreach ($_FILES['dosya']['name'] as $key => $name) {
+                        if ($_FILES['dosya']['error'][$key] === UPLOAD_ERR_OK) {
+                            $dosyaYolu[] = handleFileUpload([
+                                'name' => $_FILES['dosya']['name'][$key],
+                                'type' => $_FILES['dosya']['type'][$key],
+                                'tmp_name' => $_FILES['dosya']['tmp_name'][$key],
+                                'error' => $_FILES['dosya']['error'][$key],
+                                'size' => $_FILES['dosya']['size'][$key]
+                            ]);
+                        }
+                    }
+                } elseif ($_FILES['dosya']['error'] === UPLOAD_ERR_OK) {
+                    // Single file
+                    $dosyaYolu[] = handleFileUpload($_FILES['dosya']);
+                }
             }
 
             $canBypassApproval = isSupportAdminViewer() || Gate::allows('destek_talebi_onaylama');
@@ -304,9 +320,23 @@ try {
                 }
             }
 
-            $dosyaYolu = null;
-            if (isset($_FILES['dosya']) && $_FILES['dosya']['error'] === UPLOAD_ERR_OK) {
-                $dosyaYolu = handleFileUpload($_FILES['dosya']);
+            $dosyaYolu = [];
+            if (isset($_FILES['dosya'])) {
+                if (is_array($_FILES['dosya']['name'])) {
+                    foreach ($_FILES['dosya']['name'] as $key => $name) {
+                        if ($_FILES['dosya']['error'][$key] === UPLOAD_ERR_OK) {
+                            $dosyaYolu[] = handleFileUpload([
+                                'name' => $_FILES['dosya']['name'][$key],
+                                'type' => $_FILES['dosya']['type'][$key],
+                                'tmp_name' => $_FILES['dosya']['tmp_name'][$key],
+                                'error' => $_FILES['dosya']['error'][$key],
+                                'size' => $_FILES['dosya']['size'][$key]
+                            ]);
+                        }
+                    }
+                } elseif ($_FILES['dosya']['error'] === UPLOAD_ERR_OK) {
+                    $dosyaYolu[] = handleFileUpload($_FILES['dosya']);
+                }
             }
 
             $destekBiletModel->addMessage($biletId, $gonderenTip, $gonderenId, $mesaj, $dosyaYolu);
@@ -371,7 +401,7 @@ try {
             $biletId = (int) ($_POST['bilet_id'] ?? 0);
             $durum = $_POST['durum'] ?? '';
 
-            if (!$biletId || !in_array($durum, ['acik', 'yanitlandi', 'personel_yaniti', 'kapali'])) {
+            if (!$biletId || !in_array($durum, ['acik', 'yanitlandi', 'personel_yaniti', 'kapali', 'isleme_alindi', 'cozuldu'])) {
                 throw new Exception('Geçersiz parametreler');
             }
 
@@ -380,7 +410,9 @@ try {
             if (!$ticket) throw new Exception('Bilet bulunamadı');
             
             $isSuperAdmin = Gate::isSuperAdmin();
-            if (!$isSuperAdmin) {
+            $isAdminSupport = Gate::allows('admin_destek_talebi');
+            
+            if (!$isSuperAdmin && !$isAdminSupport) {
                 $currentUserId = (int) ($_SESSION['user_id'] ?? 0);
                 $currentPersonelId = (int) ($_SESSION['personel_id'] ?? 0);
                 

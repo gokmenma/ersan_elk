@@ -54,12 +54,12 @@ $defterKodlari = $Tanimlamalar->getByGrup('defter_kodu');
                         <thead>
                             <tr>
                                 <th class="text-center" data-data="id">Sıra</th>
-                                <th class="text-center" data-data="tur_adi">Defter Kodu</th>
-                                <th class="text-center" data-data="defter_bolge">Bölge</th>
-                                <th class="text-center" data-data="defter_mahalle">Mahalle</th>
-                                <th class="text-center" data-data="defter_abone_sayisi">Abone Sayısı</th>
-                                <th class="text-center" data-data="baslangic_tarihi">Başlangıç Tarihi</th>
-                                <th class="text-center" data-data="bitis_tarihi">Bitiş Tarihi</th>
+                                <th class="text-center" data-filter="number" data-data="tur_adi">Defter Kodu</th>
+                                <th class="text-center" data-filter="string" data-data="defter_bolge">Bölge</th>
+                                <th class="text-center" data-filter="string" data-data="defter_mahalle">Mahalle</th>
+                                <th class="text-center" data-filter="number" data-data="defter_abone_sayisi">Abone Sayısı</th>
+                                <th class="text-center" data-filter="date" data-data="baslangic_tarihi">Başlangıç Tarihi</th>
+                                <th class="text-center" data-filter="date" data-data="bitis_tarihi">Bitiş Tarihi</th>
                                 <th class="text-center" data-data="aciklama">Açıklama</th>
                                 <th style="width:5%" data-data="islem" data-orderable="false">İşlem</th>
                             </tr>

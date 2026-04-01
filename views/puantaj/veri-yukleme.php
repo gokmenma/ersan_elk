@@ -220,7 +220,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             <div class="tab-pane <?= $activeTab === 'okuma' ? 'active' : '' ?>" id="okuma" role="tabpanel">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h4 class="card-title">Endeks Okuma Raporu</h4>
+                        <h4 class="card-title" id="endeksTableTitle">Endeks Okuma Raporu</h4>
                         <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
                             <button type="button"
                                 class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
@@ -289,7 +289,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 role="tabpanel">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h4 class="card-title">İş Listesi</h4>
+                        <h4 class="card-title" id="puantajTableTitle">İş Listesi</h4>
                         <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
                             <button type="button"
                                 class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
@@ -369,7 +369,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 role="tabpanel">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h4 class="card-title">Kaçak Kontrol Listesi</h4>
+                        <h4 class="card-title" id="kacakTableTitle">Kaçak Kontrol Listesi</h4>
                         <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
                             <button type="button"
                                 class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
@@ -418,7 +418,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 role="tabpanel">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h4 class="card-title">Sayaç Sökme Takma Listesi</h4>
+                        <h4 class="card-title" id="sayacTableTitle">Sayaç Sökme Takma Listesi</h4>
                         <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
                             <button type="button"
                                 class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
@@ -483,7 +483,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             <div class="tab-pane <?= $activeTab === 'muhurleme' ? 'active' : '' ?>" id="muhurleme" role="tabpanel">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h4 class="card-title">Mühürleme İş Listesi</h4>
+                        <h4 class="card-title" id="muhurlemeTableTitle">Mühürleme İş Listesi</h4>
                         <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
                             <button type="button"
                                 class="btn btn-link btn-sm text-info text-decoration-none px-2 d-flex align-items-center"
@@ -1486,6 +1486,20 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         if (json.summary) {
                             renderSayacDurumSummary(json.summary);
                         }
+                        if (json.recordsFiltered !== undefined) {
+                            let totalAbone = 0;
+                            if (json.summary) {
+                                json.summary.forEach(function(item) {
+                                    totalAbone += parseInt(item.toplam_abone || 0);
+                                });
+                            }
+                            
+                            let html = `Endeks Okuma Raporu 
+                                <span class="badge bg-soft-success text-success border border-success ms-2 fs-12 fw-bold px-3 shadow-none card-animate">
+                                    <i class="bx bx-group me-1"></i> ${totalAbone.toLocaleString('tr-TR')} Abone
+                                </span>`;
+                            $('#endeksTableTitle').html(html);
+                        }
                         return json.data;
                     }
                 },
@@ -1541,6 +1555,18 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 subLabel: 'Kayıt'
                             });
                         }
+                        if (json.recordsFiltered !== undefined) {
+                            let totalIs = 0;
+                            if (json.summary) {
+                                json.summary.forEach(function(item) {
+                                    totalIs += parseInt(item.toplam_abone || 0);
+                                });
+                            }
+                            $('#puantajTableTitle').html(`İş Listesi 
+                                <span class="badge bg-soft-success text-success border border-success ms-2 fs-12 fw-bold px-3 shadow-none card-animate">
+                                    <i class="bx bx-briefcase me-1"></i> ${totalIs.toLocaleString('tr-TR')} İş
+                                </span>`);
+                        }
                         return json.data;
                     }
                 },
@@ -1594,7 +1620,21 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         $('#kacakTable').find('thead .search-input-row').remove();
                     }
                     $('#kacakKontrolBody').html(html);
-                    kacakDataTable = $('#kacakTable').DataTable(getDatatableOptions());
+                    kacakDataTable = $('#kacakTable').DataTable($.extend(true, {}, getDatatableOptions(), {
+                        drawCallback: function() {
+                            let total = 0;
+                            this.api().rows({filter: 'applied'}).data().each(function(row) {
+                                // Extract number from row'un relevant cell if needed, but summary is better.
+                                // Actually client-side table rows might not have summary easily.
+                                // I'll just use the count of visible rows for Kacak as it's client-side.
+                                total++; 
+                            });
+                            $('#kacakTableTitle').html(`Kaçak Kontrol Listesi 
+                                <span class="badge bg-soft-success text-success border border-success ms-2 fs-12 fw-bold px-3 shadow-none card-animate">
+                                    <i class="bx bx-check-shield me-1"></i> ${this.api().rows({filter: 'applied'}).count().toLocaleString('tr-TR')} İş
+                                </span>`);
+                        }
+                    }));
                 }
             });
         }
@@ -1626,6 +1666,18 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 label: 'Adet',
                                 subLabel: 'Kayıt'
                             });
+                        }
+                        if (json.recordsFiltered !== undefined) {
+                            let totalAdet = 0;
+                            if (json.summary) {
+                                json.summary.forEach(function(item) {
+                                    totalAdet += parseInt(item.toplam_abone || 0);
+                                });
+                            }
+                            $('#sayacTableTitle').html(`Sayaç Sökme Takma Listesi 
+                                <span class="badge bg-soft-success text-success border border-success ms-2 fs-12 fw-bold px-3 shadow-none card-animate">
+                                    <i class="bx bxs-component me-1"></i> ${totalAdet.toLocaleString('tr-TR')} Adet
+                                </span>`);
                         }
                         return json.data;
                     }
@@ -1678,6 +1730,18 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 label: 'İş',
                                 subLabel: 'Kayıt'
                             });
+                        }
+                        if (json.recordsFiltered !== undefined) {
+                            let totalIs = 0;
+                            if (json.summary) {
+                                json.summary.forEach(function(item) {
+                                    totalIs += parseInt(item.toplam_abone || 0);
+                                });
+                            }
+                            $('#muhurlemeTableTitle').html(`Mühürleme İş Listesi 
+                                <span class="badge bg-soft-success text-success border border-success ms-2 fs-12 fw-bold px-3 shadow-none card-animate">
+                                    <i class="bx bx-lock-alt me-1"></i> ${totalIs.toLocaleString('tr-TR')} İş
+                                </span>`);
                         }
                         return json.data;
                     }
