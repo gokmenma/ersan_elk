@@ -218,7 +218,7 @@ class Model extends Db
      * Get the department name the current user is allowed to see (Leave/Avans/Talep module only).
      * Returns null if no restriction.
      */
-    protected function getRestrictedDept()
+    public function getRestrictedDept()
     {
         $current_user_id = $_SESSION['user_id'] ?? 0;
         if (!$current_user_id) return null;

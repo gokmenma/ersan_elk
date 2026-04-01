@@ -182,7 +182,8 @@ if (Gate::allows("ana_sayfa")) {
 
     // Şu anda izinde olanlar
     $active_leaves = [];
-    if (Gate::allows("ana_sayfa_izinli_personel_karti")) {
+    $isLeaveManager = !empty($personelModel->getRestrictedDept());
+    if (Gate::allows("ana_sayfa_izinli_personel_karti") || $isLeaveManager) {
         try {
             $active_leaves = $izinModel->getAktifIzinler(10);
         } catch (\Exception $e) {
@@ -1588,7 +1589,8 @@ if (Gate::allows("ana_sayfa")) {
                 <?php $widgets['widget-talepler'] = ob_get_clean();
         }
 
-        if (Gate::allows("ana_sayfa_izinli_personel_karti")) {
+        $isLeaveManager = !empty($personelModel->getRestrictedDept());
+        if (Gate::allows("ana_sayfa_izinli_personel_karti") || $isLeaveManager) {
             ob_start(); ?>
             <div class="<?php echo getWidgetWidth('widget-izindekiler', 'col-md-6'); ?> widget-item" id="widget-izindekiler">
                 <div class="card">

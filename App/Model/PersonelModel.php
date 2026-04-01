@@ -259,8 +259,16 @@ class PersonelModel extends Model
 
     public function personelSayilari($modul = 'dashboard')
     {
-        $where = "WHERE firma_id = :firma_id AND silinme_tarihi IS NULL AND (disardan_sigortali = 0 OR FIND_IN_SET(:modul, gorunum_modulleri))";
+        $restricted_dept = $this->getRestrictedDept();
+        $is_restricted = ($restricted_dept !== null);
+
+        $extra_where = $is_restricted ? " AND FIND_IN_SET(departman, :restricted_dept)" : "";
+        
+        $where = "WHERE firma_id = :firma_id AND silinme_tarihi IS NULL AND (disardan_sigortali = 0 OR FIND_IN_SET(:modul, gorunum_modulleri)) $extra_where";
         $params = ['firma_id' => $_SESSION['firma_id'], 'modul' => $modul];
+        if ($is_restricted) {
+            $params['restricted_dept'] = $restricted_dept;
+        }
 
         $sql = $this->db->prepare("
         SELECT
@@ -1052,14 +1060,24 @@ class PersonelModel extends Model
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $bugun = date('Y-m-d');
 
+        $restricted_dept = $this->getRestrictedDept();
+        $is_restricted = ($restricted_dept !== null);
+        $extra_where_p = $is_restricted ? " AND FIND_IN_SET(p.departman, :restricted_dept)" : "";
+
         // Sahadaki Personel Sayısı (Bugün iş yapmış olanlar)
         $sqlSahadaki = "SELECT COUNT(DISTINCT p_id) as sahadaki FROM (
-            SELECT personel_id as p_id FROM yapilan_isler WHERE tarih = :bugun AND firma_id = :firma_id AND silinme_tarihi IS NULL
+            SELECT p.id as p_id FROM yapilan_isler y 
+            JOIN personel p ON y.personel_id = p.id
+            WHERE y.tarih = :bugun AND y.firma_id = :firma_id AND y.silinme_tarihi IS NULL $extra_where_p
             UNION
-            SELECT personel_id as p_id FROM endeks_okuma WHERE tarih = :bugun AND firma_id = :firma_id AND silinme_tarihi IS NULL
+            SELECT p.id as p_id FROM endeks_okuma e
+            JOIN personel p ON e.personel_id = p.id
+            WHERE e.tarih = :bugun AND e.firma_id = :firma_id AND e.silinme_tarihi IS NULL $extra_where_p
         ) as sahadakiler";
         $stmtS = $this->db->prepare($sqlSahadaki);
-        $stmtS->execute(['bugun' => $bugun, 'firma_id' => $firmaId]);
+        $paramsS = ['bugun' => $bugun, 'firma_id' => $firmaId];
+        if ($is_restricted) $paramsS['restricted_dept'] = $restricted_dept;
+        $stmtS->execute($paramsS);
         $sahadakiCount = $stmtS->fetch(PDO::FETCH_OBJ)->sahadaki ?? 0;
 
         // İzinli Personel Sayısı
@@ -1068,9 +1086,12 @@ class PersonelModel extends Model
                       LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
                       WHERE pi.baslangic_tarihi <= :bugun AND pi.bitis_tarihi >= :bugun 
                       AND pi.onay_durumu = 'Onaylandı' AND p.firma_id = :firma_id AND pi.silinme_tarihi IS NULL
+                      $extra_where_p
                       AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))";
         $stmtI = $this->db->prepare($sqlIzinli);
-        $stmtI->execute(['bugun' => $bugun, 'firma_id' => $firmaId]);
+        $paramsI = ['bugun' => $bugun, 'firma_id' => $firmaId];
+        if ($is_restricted) $paramsI['restricted_dept'] = $restricted_dept;
+        $stmtI->execute($paramsI);
         $izinliRecord = $stmtI->fetch(PDO::FETCH_OBJ);
         $izinliCount = $izinliRecord ? $izinliRecord->izinli : 0;
 
@@ -1104,14 +1125,24 @@ class PersonelModel extends Model
         $buAy = date('Y-m-01');
         $sonGun = date('Y-m-t');
 
+        $restricted_dept = $this->getRestrictedDept();
+        $is_restricted = ($restricted_dept !== null);
+        $extra_where_p = $is_restricted ? " AND FIND_IN_SET(p.departman, :restricted_dept)" : "";
+
         // Sahadaki Personel Sayısı (Bu ay iş yapmış olan benzersiz personeller)
         $sqlSahadaki = "SELECT COUNT(DISTINCT p_id) as sahadaki FROM (
-            SELECT personel_id as p_id FROM yapilan_isler WHERE tarih >= :buAy AND tarih <= :sonGun AND firma_id = :firma_id AND silinme_tarihi IS NULL
+            SELECT p.id as p_id FROM yapilan_isler y 
+            JOIN personel p ON y.personel_id = p.id
+            WHERE y.tarih >= :buAy AND y.tarih <= :sonGun AND y.firma_id = :firma_id AND y.silinme_tarihi IS NULL $extra_where_p
             UNION
-            SELECT personel_id as p_id FROM endeks_okuma WHERE tarih >= :buAy AND tarih <= :sonGun AND firma_id = :firma_id AND silinme_tarihi IS NULL
+            SELECT p.id as p_id FROM endeks_okuma e
+            JOIN personel p ON e.personel_id = p.id
+            WHERE e.tarih >= :buAy AND e.tarih <= :sonGun AND e.firma_id = :firma_id AND e.silinme_tarihi IS NULL $extra_where_p
         ) as sahadakiler";
         $stmtS = $this->db->prepare($sqlSahadaki);
-        $stmtS->execute(['buAy' => $buAy, 'sonGun' => $sonGun, 'firma_id' => $firmaId]);
+        $paramsS = ['buAy' => $buAy, 'sonGun' => $sonGun, 'firma_id' => $firmaId];
+        if ($is_restricted) $paramsS['restricted_dept'] = $restricted_dept;
+        $stmtS->execute($paramsS);
         $sahadakiCount = $stmtS->fetch(PDO::FETCH_OBJ)->sahadaki ?? 0;
 
         // İzinli Personel Sayısı (Bu ay içinde en az bir gün izin kullanan benzersiz personeller)
@@ -1120,9 +1151,12 @@ class PersonelModel extends Model
                       LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
                       WHERE ((pi.baslangic_tarihi <= :sonGun AND pi.bitis_tarihi >= :buAy))
                       AND pi.onay_durumu = 'Onaylandı' AND p.firma_id = :firma_id AND pi.silinme_tarihi IS NULL
+                      $extra_where_p
                       AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))";
         $stmtI = $this->db->prepare($sqlIzinli);
-        $stmtI->execute(['buAy' => $buAy, 'sonGun' => $sonGun, 'firma_id' => $firmaId]);
+        $paramsI = ['buAy' => $buAy, 'sonGun' => $sonGun, 'firma_id' => $firmaId];
+        if ($is_restricted) $paramsI['restricted_dept'] = $restricted_dept;
+        $stmtI->execute($paramsI);
         $izinliCount = $stmtI->fetch(PDO::FETCH_OBJ)->izinli ?? 0;
 
         // Sahadaki Araç Sayısı (Bu ay aktif olanlar)
