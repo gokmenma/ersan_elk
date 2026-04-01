@@ -90,16 +90,17 @@ try {
                 $personelId = $destekBiletModel->getPersonelIdByUserId($userId);
             }
 
+            $status = $_GET['status'] ?? $_POST['status'] ?? null;
             $isAdminSupport = isSupportAdminViewer();
             $isApproverOnly = Gate::allows('destek_talebi_onaylama') && !$isAdminSupport;
 
-            $ownTickets = $destekBiletModel->getPersonelTickets($userId, $personelId) ?: [];
+            $ownTickets = $destekBiletModel->getPersonelTickets($userId, $personelId, $status) ?: [];
             
             // For approvers: get both pending (beklemede) and approved (onaylandi) tickets
             $approvalTickets = [];
             if ($isApproverOnly) {
-                $pendingTickets = $destekBiletModel->getAllTickets(null, 'beklemede') ?: [];
-                $approvedTickets = $destekBiletModel->getAllTickets(null, 'onaylandi') ?: [];
+                $pendingTickets = $destekBiletModel->getAllTickets($status, 'beklemede') ?: [];
+                $approvedTickets = $destekBiletModel->getAllTickets($status, 'onaylandi') ?: [];
                 
                 // Filter approved to only include those approved by this user
                 $userId = (int) ($_SESSION['user_id'] ?? 0);

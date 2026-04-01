@@ -145,6 +145,14 @@ function formatMobileFileSize($bytes) {
     .no-scrollbar::-webkit-scrollbar { display: none; }
     .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     
+    /* Bottom Sheet Z-Index Fix */
+    #icraFormArea, #gorevFormArea, #ekipFormArea, #izinFormArea, #evrakFormArea, #icraHistoryArea {
+        z-index: 10000 !important;
+    }
+    #icraBottomSheetBackdrop, #gorevBottomSheetBackdrop, #ekipBottomSheetBackdrop, #izinBottomSheetBackdrop, #evrakBottomSheetBackdrop, #icraHistoryBottomSheetBackdrop {
+        z-index: 9999 !important;
+    }
+    
     /* Select2 Mobile Small Style */
     .select2-container--default .select2-selection--single {
         background-color: rgba(248, 250, 252, 0.8) !important;
@@ -427,73 +435,8 @@ function formatMobileFileSize($bytes) {
                         </button>
                     </div>
 
-                    <!-- Ekip Ekle/Düzenle Bottom Sheet Backdrop -->
-                    <div id="ekipBottomSheetBackdrop" class="fixed inset-0 bg-black/50 z-[100] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeEkipForm()"></div>
 
-                    <!-- Ekip Ekle/Düzenle Bottom Sheet -->
-                    <div id="ekipFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[101] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
-                        <div class="flex justify-center pt-3 pb-2">
-                            <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
-                        </div>
-                        
-                        <div class="px-6 pb-2 border-b border-slate-50 dark:border-slate-800/50 mb-4">
-                            <h5 id="ekipFormTitle" class="text-[17px] font-bold text-slate-800 dark:text-white">Yeni Ekip Ataması</h5>
-                        </div>
 
-                        <div class="px-6 space-y-4">
-                            <input type="hidden" id="ekip_gecmisi_id" value="">
-                            <input type="hidden" id="ekip_gecmisi_action" value="ekip-gecmisi-ekle">
-                            
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Bölge</label>
-                                    <select id="modal_ekip_bolge" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all" onchange="filterMobileEkiplerByBolge()">
-                                        <option value="">Seçiniz</option>
-                                        <?php foreach($bolgeler as $b): ?>
-                                            <option value="<?= htmlspecialchars($b) ?>"><?= htmlspecialchars($b) ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Ekip Kodu</label>
-                                    <select id="modal_ekip_kodu_id" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
-                                        <option value="">Seçiniz</option>
-                                        <?php foreach($ekip_kodlari_all as $e): ?>
-                                            <option value="<?= $e->id ?>" data-bolge="<?= htmlspecialchars($e->ekip_bolge ?: '') ?>"><?= htmlspecialchars($e->tur_adi) ?></option>
-                                        <?php endforeach; ?>
-                                    </select>
-                                </div>
-                            </div>
-                            
-                            <div class="grid grid-cols-2 gap-4">
-                                <div>
-                                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Başlangıç</label>
-                                    <input type="text" id="modal_ekip_baslangic" placeholder="GG.AA.YYYY" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all flatpickr-date">
-                                </div>
-                                <div>
-                                    <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Bitiş</label>
-                                    <input type="text" id="modal_ekip_bitis" placeholder="GG.AA.YYYY" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all flatpickr-date">
-                                </div>
-                            </div>
-
-                            <div>
-                                <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1.5 ml-1">Ekip Şefi mi?</label>
-                                <select id="modal_ekip_sefi_mi" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white focus:ring-2 focus:ring-indigo-500/20 focus:border-indigo-500 transition-all">
-                                    <option value="0">Hayır</option>
-                                    <option value="1">Evet</option>
-                                </select>
-                            </div>
-
-                            <div class="flex gap-3 pt-2">
-                                <button type="button" onclick="closeEkipForm()" class="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-2xl text-[15px] font-bold active:scale-95 transition-transform">
-                                    İptal
-                                </button>
-                                <button type="button" onclick="saveEkipGecmisi()" class="flex-[2] py-4 bg-indigo-600 text-white rounded-2xl text-[15px] font-bold shadow-lg shadow-indigo-600/30 active:scale-95 transition-transform flex items-center justify-center gap-2">
-                                    <span class="material-symbols-outlined text-[20px]">check_circle</span> Kaydet
-                                </button>
-                            </div>
-                        </div>
-                    </div>
 
                     <?php if(empty($gecmis)): ?>
                         <div class="text-center py-8 text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-2xl border border-slate-100 dark:border-slate-800">
@@ -1091,13 +1034,13 @@ function formatMobileFileSize($bytes) {
                 </div>
             </div>
     </div> <!-- flex-1 closure -->
-</div> <!-- Main div closure for line 85 -->
+</div> <!-- Main div closure for line 85 moved here -->
 
 <!-- Bottom Sheets Area (Root Level) -->
-    <div id="gorevBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[1000] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeGorevForm()"></div>
+    <div id="gorevBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[9999] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeGorevForm()"></div>
 
     <!-- Maaş Tipi Ekle/Düzenle Bottom Sheet -->
-    <div id="gorevFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[1001] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
+    <div id="gorevFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[10000] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
         <div class="flex justify-center pt-3 pb-2">
             <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
         </div>
@@ -1171,10 +1114,10 @@ function formatMobileFileSize($bytes) {
     </div>
 
     <!-- Ekip Atama Bottom Sheet Backdrop -->
-    <div id="ekipBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[1000] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeEkipForm()"></div>
+    <div id="ekipBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[9999] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeEkipForm()"></div>
 
     <!-- Ekip Atama Bottom Sheet -->
-    <div id="ekipFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[1001] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
+    <div id="ekipFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[10000] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
         <div class="flex justify-center pt-3 pb-2">
             <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
         </div>
@@ -1239,10 +1182,10 @@ function formatMobileFileSize($bytes) {
         </div>
 
     <!-- İzin Ekle/Düzenle Bottom Sheet Backdrop -->
-    <div id="izinBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[1000] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeIzinForm()"></div>
+    <div id="izinBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[9999] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeIzinForm()"></div>
 
     <!-- İzin Ekle/Düzenle Bottom Sheet -->
-    <div id="izinFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[1001] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
+    <div id="izinFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[10000] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
         <div class="flex justify-center pt-3 pb-2">
             <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
         </div>
@@ -1310,10 +1253,10 @@ function formatMobileFileSize($bytes) {
         </div>
     </div>
     <!-- Evrak Yükle Bottom Sheet Backdrop -->
-    <div id="evrakBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[1000] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeEvrakForm()"></div>
+    <div id="evrakBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[9999] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeEvrakForm()"></div>
 
     <!-- Evrak Yükle Bottom Sheet -->
-    <div id="evrakFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[1001] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
+    <div id="evrakFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[10000] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
         <div class="flex justify-center pt-3 pb-2">
             <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
         </div>
@@ -1371,10 +1314,10 @@ function formatMobileFileSize($bytes) {
         </div>
     </div>
     <!-- İcra Ekle/Düzenle Bottom Sheet Backdrop -->
-    <div id="icraBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[1000] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeIcraForm()"></div>
+    <div id="icraBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[9999] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeIcraForm()"></div>
 
     <!-- İcra Ekle/Düzenle Bottom Sheet -->
-    <div id="icraFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[1001] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
+    <div id="icraFormArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[10000] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
         <div class="flex justify-center pt-3 pb-2">
             <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
         </div>
@@ -1483,10 +1426,10 @@ function formatMobileFileSize($bytes) {
     </div>
 
     <!-- İcra Kesinti Geçmişi Bottom Sheet Backdrop -->
-    <div id="icraHistoryBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[1000] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeIcraHistory()"></div>
+    <div id="icraHistoryBottomSheetBackdrop" class="fixed inset-0 bg-black/60 z-[9999] hidden opacity-0 transition-opacity duration-300 pointer-events-none" onclick="closeIcraHistory()"></div>
 
     <!-- İcra Kesinti Geçmişi Bottom Sheet -->
-    <div id="icraHistoryArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[1001] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
+    <div id="icraHistoryArea" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[10000] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom pb-4 border-t border-slate-100 dark:border-slate-800">
         <div class="flex justify-center pt-3 pb-2">
             <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
         </div>
@@ -2207,6 +2150,7 @@ function openIcraForm() {
         backdrop.classList.remove('opacity-0', 'pointer-events-none');
         backdrop.classList.add('opacity-100');
         sheet.classList.remove('translate-y-full');
+        sheet.classList.add('translate-y-0');
     }, 10);
 }
 
@@ -2216,6 +2160,7 @@ function closeIcraForm() {
     backdrop.classList.add('opacity-0', 'pointer-events-none');
     backdrop.classList.remove('opacity-100');
     sheet.classList.add('translate-y-full');
+    sheet.classList.remove('translate-y-0');
     setTimeout(() => backdrop.classList.add('hidden'), 300);
 }
 
@@ -2306,6 +2251,7 @@ function editIcra(id) {
                     backdrop.classList.remove('opacity-0', 'pointer-events-none');
                     backdrop.classList.add('opacity-100');
                     sheet.classList.remove('translate-y-full');
+                    sheet.classList.add('translate-y-0');
                 }, 10);
             }
         }
@@ -2349,6 +2295,7 @@ function viewIcraKesintileri(id, dairesi, dosyaNo, toplamBorc) {
         backdrop.classList.remove('opacity-0', 'pointer-events-none');
         backdrop.classList.add('opacity-100');
         sheet.classList.remove('translate-y-full');
+        sheet.classList.add('translate-y-0');
     }, 10);
 
     fetch('../views/personel/ajax/kesinti-islemleri.php?action=get_icra_kesintileri&icra_id=' + id + '&personel_id=<?= $personel_id ?>')
@@ -2515,6 +2462,7 @@ function openEvrakForm() {
         backdrop.classList.remove('opacity-0', 'pointer-events-none');
         backdrop.classList.add('opacity-100');
         sheet.classList.remove('translate-y-full');
+        sheet.classList.add('translate-y-0');
     }, 10);
 }
 

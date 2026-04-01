@@ -72,11 +72,82 @@ $oncelikler = [
     .timeline-title { font-size: 0.9rem; font-weight: 700; color: #1e293b; margin-bottom: 0.25rem; }
     .timeline-desc { font-size: 0.8rem; color: #64748b; line-height: 1.4; }
     .timeline-duration { font-size: 0.7rem; background: #f1f5f9; color: #475569; padding: 2px 8px; border-radius: 100px; display: inline-block; margin-top: 0.5rem; font-weight: 600; }
-    .dot-create { border-color: #3b82f6; background: #3b82f6; }
-    .dot-approval { border-color: #f59e0b; background: #f59e0b; }
-    .dot-reply { border-color: #10b981; background: #10b981; }
     .dot-personel { border-color: #6366f1; background: #6366f1; }
     .dot-close { border-color: #ef4444; background: #ef4444; }
+
+    /* Premium Filter Buttons */
+    .status-filter-group {
+        background: #f8fafc;
+        padding: 4px;
+        border-radius: 50px;
+        border: 1px solid #e2e8f0;
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+    }
+
+    .status-filter-group .btn-check + .btn {
+        margin-bottom: 0 !important;
+        border: none !important;
+        border-radius: 50px !important;
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 6px 16px;
+        color: #64748b !important;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        white-space: nowrap;
+        line-height: normal;
+    }
+
+    .status-filter-group .btn-check + .btn i {
+        font-size: 0.95rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 1px;
+    }
+
+    .status-filter-group .btn-check + .btn:hover {
+        background: rgba(0, 0, 0, 0.04);
+        color: #1e293b !important;
+    }
+
+    .status-filter-group .btn-check:checked + .btn {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    .status-filter-group .btn-check:checked + .btn[for="filter-all"] { background: #64748b !important; color: #fff !important; }
+    .status-filter-group .btn-check:checked + .btn[for="filter-acik"] { background: #f59e0b !important; color: #fff !important; }
+    .status-filter-group .btn-check:checked + .btn[for="filter-yanitlandi"] { background: #10b981 !important; color: #fff !important; }
+    .status-filter-group .btn-check:checked + .btn[for="filter-personel-yaniti"] { background: #3b82f6 !important; color: #fff !important; }
+    .status-filter-group .btn-check:checked + .btn[for="filter-kapali"] { background: #ef4444 !important; color: #fff !important; }
+
+    /* DataTable Search Inputs */
+    tr.search-input-row th {
+        padding: 8px !important;
+        background: #fdfdfd !important;
+        border-bottom: 2px solid #f1f5f9 !important;
+    }
+
+    tr.search-input-row input {
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 6px !important;
+        font-size: 0.72rem !important;
+        padding: 0.4rem 0.6rem !important;
+        background-color: #fff !important;
+        transition: all 0.2s ease !important;
+        color: #475569 !important;
+    }
+
+    tr.search-input-row input:focus {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+        background-color: #fff !important;
+    }
 </style>
 
 <!-- Stats Row -->
@@ -146,6 +217,27 @@ $oncelikler = [
 <div class="row">
     <div class="col-12">
         <div class="card border-0 shadow-sm">
+            <div class="card-header bg-white border-bottom-0 pt-3 pb-0">
+                <div class="d-flex align-items-center justify-content-between flex-wrap gap-3">
+                    <h5 class="card-title mb-0">Taleplerim ve Süreç Takibi</h5>
+                    <div class="status-filter-group" role="group">
+                        <input type="radio" class="btn-check" name="status-filter" id="filter-all" value="" checked>
+                        <label class="btn" for="filter-all"><i class="bx bx-grid-alt"></i> Tümü</label>
+                        
+                        <input type="radio" class="btn-check" name="status-filter" id="filter-acik" value="acik">
+                        <label class="btn" for="filter-acik"><i class="bx bx-loader-circle"></i> Açık</label>
+                        
+                        <input type="radio" class="btn-check" name="status-filter" id="filter-yanitlandi" value="yanitlandi">
+                        <label class="btn" for="filter-yanitlandi"><i class="bx bx-check-circle"></i> Yanıtlandı</label>
+                        
+                        <input type="radio" class="btn-check" name="status-filter" id="filter-personel-yaniti" value="personel_yaniti">
+                        <label class="btn" for="filter-personel-yaniti"><i class="bx bx-user-voice"></i> Yanıtınız</label>
+
+                        <input type="radio" class="btn-check" name="status-filter" id="filter-kapali" value="kapali">
+                        <label class="btn" for="filter-kapali"><i class="bx bx-lock-alt"></i> Kapalı</label>
+                    </div>
+                </div>
+            </div>
             <div class="card-body">
                 <table id="userTicketsTable" class="table table-hover dt-responsive nowrap w-100 datatable-deferred">
                     <thead class="table-light">
@@ -292,6 +384,12 @@ $(document).ready(function() {
             updateStats(json.stats);
             if (typeof feather !== 'undefined') feather.replace();
         }
+    });
+
+    // Filter event
+    $('input[name="status-filter"]').on('change', function() {
+        const val = $(this).val();
+        userTable.ajax.url('views/yardim/api.php?action=get-tickets-pwa&status=' + val).load();
     });
 
     // Row Click Handler

@@ -415,9 +415,10 @@ if (!empty($dbGelirler)) {
                             $toplamSodexo += $sodexoP;
                             $toplamElden += $eldenP;
 
-                            // En son hesaplama tarihi
+                            // En son hesaplama tarihi ve hesaplayan bilgisi
                             if ($p->hesaplama_tarihi && (!$latestCalculation || $p->hesaplama_tarihi > $latestCalculation)) {
                                 $latestCalculation = $p->hesaplama_tarihi;
+                                $latestCalculator = $p->hesaplayan_ad_soyad;
                             }
 
                             // Ön-hesaplama sonuçlarını kaydet (tablo satırında kullanılacak)
@@ -491,7 +492,7 @@ if (!empty($dbGelirler)) {
                                                 <div class="text-muted mt-1"
                                                     style="font-size: 9px; font-weight: 600; opacity: 0.8;">
                                                     <i
-                                                        class="bx bx-check-double me-1"></i><?= date('d.m.Y H:i', strtotime($latestCalculation)) ?>
+                                                        class="bx bx-check-double me-1"></i><?= date('d.m.Y H:i', strtotime($latestCalculation)) ?><?= !empty($latestCalculator) ? ' | ' . htmlspecialchars($latestCalculator) : '' ?>
                                                 </div>
                                             </div>
                                         <?php endif; ?>

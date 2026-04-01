@@ -141,8 +141,85 @@ if (!(Gate::allows('admin_destek_talebi') || Gate::isSuperAdmin())) {
     .dot-create { border-color: #3b82f6; background: #3b82f6; }
     .dot-approval { border-color: #f59e0b; background: #f59e0b; }
     .dot-reply { border-color: #10b981; background: #10b981; }
-    .dot-personel { border-color: #6366f1; background: #6366f1; }
-    .dot-close { border-color: #ef4444; background: #ef4444; }
+    /* Premium Filter Buttons */
+    .status-filter-group {
+        background: #f8fafc;
+        padding: 4px;
+        border-radius: 50px;
+        border: 1px solid #e2e8f0;
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+    }
+
+    .status-filter-group .btn-check + .btn {
+        margin-bottom: 0 !important;
+        border: none !important;
+        border-radius: 50px !important;
+        font-size: 0.75rem;
+        font-weight: 600;
+        padding: 6px 16px;
+        color: #64748b;
+        transition: all 0.2s ease;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        line-height: normal;
+    }
+
+    .status-filter-group .btn-check + .btn i {
+        font-size: 0.95rem;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-top: 1px;
+    }
+
+    .status-filter-group .btn-check + .btn:hover {
+        background: rgba(0, 0, 0, 0.04);
+        color: #1e293b;
+    }
+
+    .status-filter-group .btn-check:checked + .btn {
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+    }
+
+    /* Active States with brand colors */
+    .status-filter-group .btn-check:checked + .btn[for="filter-all"] { background: #64748b !important; color: #fff !important; }
+    .status-filter-group .btn-check:checked + .btn[for="filter-acik"] { background: #f59e0b !important; color: #fff !important; }
+    .status-filter-group .btn-check:checked + .btn[for="filter-yanitlandi"] { background: #10b981 !important; color: #fff !important; }
+    .status-filter-group .btn-check:checked + .btn[for="filter-personel-yaniti"] { background: #3b82f6 !important; color: #fff !important; }
+    .status-filter-group .btn-check:checked + .btn[for="filter-kapali"] { background: #ef4444 !important; color: #fff !important; }
+
+    /* DataTable Search Inputs */
+    tr.search-input-row th {
+        padding: 8px !important;
+        background: #fdfdfd !important;
+        border-bottom: 2px solid #f1f5f9 !important;
+    }
+
+    tr.search-input-row input {
+        border: 1px solid #e2e8f0 !important;
+        border-radius: 6px !important;
+        font-size: 0.72rem !important;
+        padding: 0.4rem 0.6rem !important;
+        background-color: #fff !important;
+        transition: all 0.2s ease !important;
+        color: #475569 !important;
+    }
+
+    tr.search-input-row input:focus {
+        border-color: #3b82f6 !important;
+        box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
+        background-color: #fff !important;
+    }
+
+    tr.search-input-row input::placeholder {
+        color: #94a3b8 !important;
+        font-weight: 400 !important;
+        opacity: 0.8 !important;
+    }
 </style>
 
 <!-- Stats Row -->
@@ -219,21 +296,21 @@ if (!(Gate::allows('admin_destek_talebi') || Gate::isSuperAdmin())) {
             <div class="card-header bg-white">
                 <div class="d-flex align-items-center justify-content-between">
                     <h5 class="card-title mb-0">Tüm Destek Talepleri</h5>
-                    <div class="btn-group btn-group-sm" role="group">
+                    <div class="status-filter-group" role="group">
                         <input type="radio" class="btn-check" name="status-filter" id="filter-all" value="" checked>
-                        <label class="btn btn-outline-secondary" for="filter-all">Tümü</label>
+                        <label class="btn" for="filter-all"><i class="bx bx-grid-alt"></i> Tümü</label>
                         
                         <input type="radio" class="btn-check" name="status-filter" id="filter-acik" value="acik">
-                        <label class="btn btn-outline-warning" for="filter-acik">Açık</label>
+                        <label class="btn" for="filter-acik"><i class="bx bx-loader-circle"></i> Açık</label>
                         
                         <input type="radio" class="btn-check" name="status-filter" id="filter-yanitlandi" value="yanitlandi">
-                        <label class="btn btn-outline-success" for="filter-yanitlandi">Yanıtlandı</label>
+                        <label class="btn" for="filter-yanitlandi"><i class="bx bx-check-circle"></i> Yanıtlandı</label>
                         
                         <input type="radio" class="btn-check" name="status-filter" id="filter-personel-yaniti" value="personel_yaniti">
-                        <label class="btn btn-outline-primary" for="filter-personel-yaniti">Personel Yanıtı</label>
+                        <label class="btn" for="filter-personel-yaniti"><i class="bx bx-user-voice"></i> Personel Yanıtı</label>
 
                         <input type="radio" class="btn-check" name="status-filter" id="filter-kapali" value="kapali">
-                        <label class="btn btn-outline-danger" for="filter-kapali">Kapalı</label>
+                        <label class="btn" for="filter-kapali"><i class="bx bx-lock-alt"></i> Kapalı</label>
                     </div>
                 </div>
             </div>
@@ -354,11 +431,8 @@ if (!(Gate::allows('admin_destek_talebi') || Gate::isSuperAdmin())) {
 
 <script>
 $(document).ready(function() {
-    let table = $('#tickets-table').DataTable({
+    let table = destroyAndInitDataTable('#tickets-table', {
         order: [[5, 'desc']], // Son güncellemeye göre
-        language: {
-            url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/tr.json'
-        },
         columns: [
             { data: 'ref_no' },
             { data: 'personel_adi' },

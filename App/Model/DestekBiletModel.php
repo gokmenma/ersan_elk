@@ -89,20 +89,30 @@ class DestekBiletModel extends Model
     /**
      * Personelin veya kullanıcının biletlerini getirir
      */
-    public function getPersonelTickets($userId, $personelId = 0)
+    public function getPersonelTickets($userId, $personelId = 0, $status = null)
     {
-        $sql = "SELECT * FROM {$this->table} WHERE 1=0";
+        $sql = "SELECT * FROM {$this->table} WHERE 1=1";
         $params = [];
         
         if ($userId > 0 && $personelId > 0) {
-            $sql = "SELECT * FROM {$this->table} WHERE user_id = ? OR personel_id = ?";
-            $params = [(int)$userId, (int)$personelId];
+            $sql .= " AND (user_id = ? OR personel_id = ?)";
+            $params[] = (int)$userId;
+            $params[] = (int)$personelId;
         } elseif ($userId > 0) {
-            $sql = "SELECT * FROM {$this->table} WHERE user_id = ? OR personel_id = ?";
-            $params = [(int)$userId, (int)$userId];
+            $sql .= " AND (user_id = ? OR personel_id = ?)";
+            $params[] = (int)$userId;
+            $params[] = (int)$userId;
         } elseif ($personelId > 0) {
-            $sql = "SELECT * FROM {$this->table} WHERE personel_id = ? OR user_id = ?";
-            $params = [(int)$personelId, (int)$personelId];
+            $sql .= " AND (personel_id = ? OR user_id = ?)";
+            $params[] = (int)$personelId;
+            $params[] = (int)$personelId;
+        } else {
+            return []; // No valid ID
+        }
+
+        if ($status) {
+            $sql .= " AND durum = ?";
+            $params[] = $status;
         }
 
         $sql .= " ORDER BY guncelleme_tarihi DESC";

@@ -233,6 +233,7 @@ class BordroPersonelModel extends Model
         $sql = $this->db->prepare("
             SELECT bp.id, bp.donem_id, bp.personel_id, bp.brut_maas, bp.net_maas,
                    bp.kesinti_tutar, bp.prim_tutar, bp.hesaplama_tarihi,
+                   bp.hesaplayan_id, bp.hesaplayan_ad_soyad,
                    bp.banka_odemesi, bp.sodexo_odemesi, bp.diger_odeme, bp.elden_odeme, bp.dagitim_manuel,
                    bp.calisan_gun, bp.aciklama, bp.hesaplama_detay,
                    bp.sgk_isci, bp.issizlik_isci, bp.gelir_vergisi, bp.damga_vergisi,
@@ -481,11 +482,15 @@ class BordroPersonelModel extends Model
             banka_odemesi = :banka_odemesi,
             elden_odeme = :elden_odeme,
             hesaplama_detay = :hesaplama_detay,
-            hesaplama_tarihi = NOW()
+            hesaplama_tarihi = NOW(),
+            hesaplayan_id = :hesaplayan_id,
+            hesaplayan_ad_soyad = :hesaplayan_ad_soyad
         WHERE id = :id
     ");
 
         $sql->bindParam(':id', $id, PDO::PARAM_INT);
+        $sql->bindParam(':hesaplayan_id', $hesaplamaData['hesaplayan_id']);
+        $sql->bindParam(':hesaplayan_ad_soyad', $hesaplamaData['hesaplayan_ad_soyad']);
         $sql->bindParam(':brut_maas', $hesaplamaData['brut_maas']);
         $sql->bindParam(':sgk_isci', $hesaplamaData['sgk_isci']);
         $sql->bindParam(':issizlik_isci', $hesaplamaData['issizlik_isci']);
@@ -1928,8 +1933,16 @@ class BordroPersonelModel extends Model
      * Tek bir personelin maaşını hesaplar ve günceller
      * Parametrelere dayalı gelişmiş hesaplama
      */
-    public function hesaplaMaas($bordro_personel_id)
+    public function hesaplaMaas($bordro_personel_id, $hesaplayan_id = null, $hesaplayan_ad_soyad = null)
     {
+        // Enjektör: Eğer hesaplayan bilgisi gelmemişse oturumdan al
+        if ($hesaplayan_id === null) {
+            $hesaplayan_id = $_SESSION['user_id'] ?? $_SESSION['id'] ?? null;
+        }
+        if ($hesaplayan_ad_soyad === null) {
+            $hesaplayan_ad_soyad = $_SESSION['user_full_name'] ?? ($_SESSION['user']->adi_soyadi ?? 'Sistem');
+        }
+
         // BordroParametreModel'i tekil örnek olarak kullan (aynı istek boyunca yeniden kullanılır)
         if ($this->cachedParametreModel === null) {
             $this->cachedParametreModel = new BordroParametreModel();
@@ -3016,6 +3029,8 @@ class BordroPersonelModel extends Model
             'banka_odemesi' => round($bankaOdemesi, 2),
             'elden_odeme' => round($eldenOdeme, 2),
             'kumulatif_matrah' => round($yeniKumulatifMatrah, 2),
+            'hesaplayan_id' => $hesaplayan_id,
+            'hesaplayan_ad_soyad' => $hesaplayan_ad_soyad,
             'hesaplama_detay' => json_encode($hesaplamaDetay, JSON_UNESCAPED_UNICODE)
         ]);
     }
@@ -3051,7 +3066,9 @@ class BordroPersonelModel extends Model
         $bp = $sql->fetch(PDO::FETCH_OBJ);
 
         if ($bp) {
-            return $this->hesaplaMaas($bp->id);
+            $hesaplayanId = $_SESSION['user_id'] ?? $_SESSION['id'] ?? null;
+            $hesaplayanAdSoyad = $_SESSION['user_full_name'] ?? ($_SESSION['user']->adi_soyadi ?? 'Sistem');
+            return $this->hesaplaMaas($bp->id, $hesaplayanId, $hesaplayanAdSoyad);
         }
         return false;
     }
@@ -3197,6 +3214,7 @@ class BordroPersonelModel extends Model
             SELECT bp.*, 
                    bp.banka_odemesi,
                    bp.sodexo_odemesi,
+                   bp.hesaplayan_ad_soyad,
                    p.sodexo_kart_no,
                    bp.net_maas,
                    p.adi_soyadi, 

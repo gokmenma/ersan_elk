@@ -334,8 +334,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $Personel = new PersonelModel();
 
+                $hesaplayanId = $_SESSION['user_id'] ?? $_SESSION['id'] ?? null;
+                $hesaplayanAdSoyad = $_SESSION['user_full_name'] ?? ($_SESSION['user']->adi_soyadi ?? 'Sistem');
+
                 foreach ($personel_ids as $bp_id) {
-                    if ($BordroPersonel->hesaplaMaas(intval($bp_id))) {
+                    if ($BordroPersonel->hesaplaMaas(intval($bp_id), $hesaplayanId, $hesaplayanAdSoyad)) {
                         $hesaplananSayisi++;
                         $hesaplananIds[] = intval($bp_id);
                     }

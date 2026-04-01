@@ -214,7 +214,7 @@ class TalepModel extends Model
             LEFT JOIN users u ON pt.islem_yapan_id = u.id
             WHERE pt.durum IN ('cozuldu', 'reddedildi', 'iptal_edildi') AND pt.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
-            ORDER BY pt.islem_tarihi DESC
+            ORDER BY pt.cozum_tarihi DESC
             LIMIT {$limit}
         ";
         $query = $this->db->prepare($sql);

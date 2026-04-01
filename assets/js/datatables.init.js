@@ -15,16 +15,26 @@ $(document).ready(function () {
  * Merkezi dosyadan başlatma kuralına uymak içindir.
  */
 function destroyAndInitDataTable(selector, options = {}) {
-    if ($.fn.DataTable.isDataTable(selector)) {
-        $(selector).DataTable().destroy();
-        // Sadece tbody içeriğini temizle, thead kalmalı
-        $(selector).find('tbody').empty(); 
-    }
-    
-    let defaultOptions = getDatatableOptions();
-    let mergedOptions = $.extend(true, {}, defaultOptions, options);
-    
-    return $(selector).DataTable(mergedOptions);
+  if ($.fn.DataTable.isDataTable(selector)) {
+    $(selector).DataTable().destroy();
+    // Sadece tbody içeriğini temizle, thead kalmalı
+    $(selector).find("tbody").empty();
+  }
+
+  let defaultOptions = getDatatableOptions();
+
+  // initComplete fonksiyonlarını birleştir (overwrite etme)
+  let defaultInit = defaultOptions.initComplete;
+  let customInit = options.initComplete;
+
+  options.initComplete = function (settings, json) {
+    if (typeof defaultInit === "function") defaultInit.call(this, settings, json);
+    if (typeof customInit === "function") customInit.call(this, settings, json);
+  };
+
+  let mergedOptions = $.extend(true, {}, defaultOptions, options);
+
+  return $(selector).DataTable(mergedOptions);
 }
 
 function getDatatableOptions() {
