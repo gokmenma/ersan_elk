@@ -2592,13 +2592,15 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             _searchTimeout = setTimeout(function () {
                 renderTable(_tableData, _tableDonemler, true);
 
-                // Focusu geri al
+                // Focusu geri al - Robust handling
                 if (id) {
-                    const input = document.getElementById(id);
-                    if (input) {
-                        input.focus();
-                        input.setSelectionRange(pos, pos);
-                    }
+                    setTimeout(() => {
+                        const input = document.getElementById(id);
+                        if (input) {
+                            input.focus();
+                            input.setSelectionRange(pos, pos);
+                        }
+                    }, 0);
                 }
             }, 400);
         });
@@ -2852,19 +2854,24 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         $(document).on('input', '#okumaGunTable .column-search', function () {
             const col = $(this).data('col');
             const val = $(this).val();
+            const id = $(this).attr('id');
             const pos = this.selectionStart;
             
             _ogSearchFilters[col] = val;
             clearTimeout(_ogSearchTimeout);
             
-            const self = this;
             _ogSearchTimeout = setTimeout(function () {
                 renderOkumaGunTable(_okumaGunData, _okumaGunDonemler, true);
                 
-                // Focusu geri al
-                if (self) {
-                    self.focus();
-                    self.setSelectionRange(pos, pos);
+                // Focusu geri al - Detached olan self yerine ID üzerinden buluyoruz
+                if (id) {
+                    setTimeout(() => {
+                        const input = document.getElementById(id);
+                        if (input) {
+                            input.focus();
+                            input.setSelectionRange(pos, pos);
+                        }
+                    }, 0);
                 }
             }, 300);
         });
@@ -3132,18 +3139,18 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
             // Row 2: Search Inputs + Sub-headers
             html += '<tr class="sub-headers-row search-row">';
-            html += `<th class="fix-col-1"><input type="text" class="form-control column-search" data-col="ilce_tipi" value="${_ogSearchFilters.ilce_tipi || ''}" placeholder="İLÇE TİPİ"></th>`;
-            html += `<th class="fix-col-2"><input type="text" class="form-control column-search" data-col="bolge" value="${_ogSearchFilters.bolge || ''}" placeholder="BÖLGE"></th>`;
-            html += `<th class="fix-col-3"><input type="text" class="form-control column-search" data-col="defter" value="${_ogSearchFilters.defter || ''}" placeholder="DEFTER"></th>`;
-            html += `<th class="fix-col-4"><input type="text" class="form-control column-search" data-col="mahalle" value="${_ogSearchFilters.mahalle || ''}" placeholder="MAHALLE"></th>`;
-            html += `<th class="fix-col-5"><input type="text" class="form-control column-search" data-col="abone_sayisi" value="${_ogSearchFilters.abone_sayisi || ''}" placeholder="ABONE"></th>`;
+            html += `<th class="fix-col-1"><input type="text" class="form-control column-search" id="og_search_ilce_tipi" data-col="ilce_tipi" value="${_ogSearchFilters.ilce_tipi || ''}" placeholder="İLÇE TİPİ"></th>`;
+            html += `<th class="fix-col-2"><input type="text" class="form-control column-search" id="og_search_bolge" data-col="bolge" value="${_ogSearchFilters.bolge || ''}" placeholder="BÖLGE"></th>`;
+            html += `<th class="fix-col-3"><input type="text" class="form-control column-search" id="og_search_defter" data-col="defter" value="${_ogSearchFilters.defter || ''}" placeholder="DEFTER"></th>`;
+            html += `<th class="fix-col-4"><input type="text" class="form-control column-search" id="og_search_mahalle" data-col="mahalle" value="${_ogSearchFilters.mahalle || ''}" placeholder="MAHALLE"></th>`;
+            html += `<th class="fix-col-5"><input type="text" class="form-control column-search" id="og_search_abone_sayisi" data-col="abone_sayisi" value="${_ogSearchFilters.abone_sayisi || ''}" placeholder="ABONE"></th>`;
 
             donemler.forEach(function (donem, idx) {
                 const isLast = idx === donemler.length - 1;
                 
                 // Okuma Tarihi (Search input inside header)
                 html += `<th class="sub-header og-sortable-header" data-sort-col="${donem}_tarih">
-                    <input type="text" class="form-control column-search text-center mb-1 mx-auto" style="height:22px; width:90%; padding:2px; font-size:10px;" data-col="${donem}_tarih" value="${_ogSearchFilters[donem + '_tarih'] || ''}" placeholder="Ara...">
+                    <input type="text" class="form-control column-search text-center mb-1 mx-auto" id="og_search_${donem}_tarih" style="height:22px; width:90%; padding:2px; font-size:10px;" data-col="${donem}_tarih" value="${_ogSearchFilters[donem + '_tarih'] || ''}" placeholder="Ara...">
                     <br>OKUMA TARİHİ${ogSortIcon(donem + '_tarih')}
                 </th>`;
                 
@@ -3441,7 +3448,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             // Row 2: Arama ve Filtre Butonlari
             html += '<tr class="search-row">';
             // Bolge Arama
-            html += '<th class="fix-col-bolge"><input type="text" class="form-control do-column-search" placeholder="Bölge Ara..." value="' + (_doSearchFilters.bolge || '') + '"></th>';
+            html += '<th class="fix-col-bolge"><input type="text" class="form-control do-column-search" id="do_search_bolge" placeholder="Bölge Ara..." value="' + (_doSearchFilters.bolge || '') + '"></th>';
             
             donemler.forEach(function (donem, idx) {
                 const isLast = idx === donemler.length - 1;
@@ -3554,16 +3561,21 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         // 1. Bolge Arama (Input Handler)
         $(document).on('input', '#defterOzetTable .do-column-search', function () {
             const val = $(this).val();
+            const id = $(this).attr('id');
             const pos = this.selectionStart;
             _doSearchFilters.bolge = val;
             
             clearTimeout(_doSearchTimeout);
-            const self = this;
             _doSearchTimeout = setTimeout(function () {
                 if (_defterOzetData) renderDefterOzetTable(_defterOzetData);
-                if (self) {
-                    $(self).focus();
-                    self.setSelectionRange(pos, pos);
+                if (id) {
+                    setTimeout(() => {
+                        const input = document.getElementById(id);
+                        if (input) {
+                            input.focus();
+                            input.setSelectionRange(pos, pos);
+                        }
+                    }, 0);
                 }
             }, 300);
         });
