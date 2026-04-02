@@ -51,7 +51,7 @@
 
             if (response.success && response.data && response.data.length > 0) {
                 container.innerHTML = response.data.map(function (duyuru) {
-                    var duyuruJson = JSON.stringify(duyuru).replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+                    var duyuruJson = JSON.stringify(duyuru).replace(/\\/g, "\\\\").replace(/"/g, "&quot;").replace(/'/g, "\\'");
                     var onClick = "showEtkinlikFullScreen('" + duyuruJson + "');";
                     var cursorClass = 'cursor-pointer';
 

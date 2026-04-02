@@ -405,36 +405,7 @@ use App\Helper\Helper;
 
     <!-- Notification Modal follows directly -->
 
-    <!-- Notification Detail Modal -->
-    <div id="notification-detail-modal" class="modal-overlay">
-        <div class="modal-content p-6 pt-3">
-            <div class="modal-handle"></div>
-
-            <div class="flex items-center justify-between mb-4">
-                <div class="flex items-center gap-3">
-                    <button onclick="closeNotificationDetail()"
-                        class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-slate-600">arrow_back</span>
-                    </button>
-                    <h3 class="text-lg font-bold text-slate-900 dark:text-white">Bildirim Detayı</h3>
-                </div>
-                <button onclick="deleteCurrentNotification()"
-                    class="w-8 h-8 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center"
-                    title="Sil">
-                    <span class="material-symbols-outlined text-red-600 text-lg">delete</span>
-                </button>
-            </div>
-
-            <div id="notification-detail-content" class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
-                <!-- Detail content -->
-            </div>
-
-            <button onclick="closeNotificationDetail()"
-                class="w-full mt-4 py-3 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400 font-semibold rounded-xl">
-                Kapat
-            </button>
-        </div>
-    </div>
+    <!-- Notification Detail Modal removed and replaced by Generic Full Screen Modal in index.php -->
 
     <script>
         // Global data
@@ -1158,7 +1129,7 @@ use App\Helper\Helper;
                     container.innerHTML = response.data.map(function (duyuru) {
                         var bgImg = 'background: linear-gradient(135deg, var(--primary-light) 0%, var(--primary-dark) 100%);';
 
-                        var duyuruJson = JSON.stringify(duyuru).replace(/'/g, "&#39;").replace(/"/g, "&quot;");
+                        var duyuruJson = JSON.stringify(duyuru).replace(/\\/g, "\\\\").replace(/"/g, "&quot;").replace(/'/g, "\\'");
                         var onClick = "showEtkinlikFullScreen('" + duyuruJson + "');";
                         var cursorClass = 'cursor-pointer';
 
@@ -1250,37 +1221,61 @@ use App\Helper\Helper;
                 loadNotificationCount(); // Badge'i güncelle
             }
 
-            var container = document.getElementById('notification-detail-content');
-
-            // Resim HTML'i oluştur
-            var imageHtml = '';
+            const bgImg = `background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);`; // Dark slate for notifications
+            
+            let imageHtml = '';
             if (notification.image) {
-                imageHtml = '<div class="mt-4 rounded-xl overflow-hidden">' +
-                    '<img src="' + escapeHtml(notification.image) + '" alt="Bildirim resmi" class="w-full h-auto object-cover" onerror="this.parentElement.style.display=\'none\'">' +
-                    '</div>';
+                imageHtml = `
+                    <div class="mt-8">
+                        <p class="text-[10px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-widest mb-3 pl-1">EKLİ GÖRSEL</p>
+                        <div class="rounded-2xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800 relative bg-slate-100 dark:bg-slate-800">
+                            <img src="${escapeHtml(notification.image)}" class="w-full h-auto object-cover max-h-[400px]" alt="Bildirim Görseli">
+                        </div>
+                    </div>
+                `;
             }
 
-            container.innerHTML =
-                '<div class="flex items-center gap-3 mb-4">' +
-                '<div class="w-12 h-12 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">' +
-                '<span class="material-symbols-outlined text-blue-600 text-2xl">notifications</span>' +
-                '</div>' +
-                '<div>' +
-                '<p class="text-xs text-primary font-medium">' + escapeHtml(notification.time_ago) + '</p>' +
-                '</div>' +
-                '</div>' +
-                '<h4 class="text-lg font-bold text-slate-900 dark:text-white mb-3">' + escapeHtml(notification.title) + '</h4>' +
-                '<p class="text-sm text-slate-600 dark:text-slate-400 leading-relaxed whitespace-pre-wrap">' + escapeHtml(notification.body) + '</p>' +
-                imageHtml;
+            const actionsHtml = `
+                <button onclick="deleteCurrentNotification()" class="w-10 h-10 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center pointer-events-auto active:scale-90 transition-transform">
+                    <span class="material-symbols-outlined">delete</span>
+                </button>
+            `;
+
+            const html = `
+                <div class="header-main relative px-6 pt-12 pb-8 flex flex-col items-start shadow-xl rounded-b-[2.5rem] safe-area-top shrink-0 overflow-hidden" style="${bgImg}">
+                    <div class="absolute inset-0 opacity-10 overflow-hidden rounded-b-[2.5rem] pointer-events-none">
+                        <span class="material-symbols-outlined absolute -right-4 -top-4 text-[10rem] text-white opacity-10">notifications</span>
+                    </div>
+                    
+                    <div class="relative w-full z-10 flex flex-col h-full">
+                        <div class="flex items-center justify-between mb-6">
+                            <div class="w-10 h-10"></div> <!-- Placeholder -->
+                            <span class="bg-white/10 backdrop-blur-md border border-white/10 text-white/90 rounded-lg px-3 py-1 text-[11px] font-semibold tracking-wide shadow-sm">${escapeHtml(notification.time_ago)}</span>
+                        </div>
+
+                        <div class="flex flex-col justify-end mt-2">
+                            <h1 class="text-white text-2xl font-black tracking-tight leading-[1.15] break-words" style="text-shadow: 0 4px 8px rgba(0,0,0,0.5);">${escapeHtml(notification.title)}</h1>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="px-5 pb-8 flex-1 bg-transparent -mt-5 relative z-20">
+                    <div class="bg-white dark:bg-card-dark rounded-[2rem] p-6 shadow-xl shadow-black/5 dark:shadow-black/20 border border-slate-100 dark:border-slate-800">
+                        <p class="text-slate-700 dark:text-slate-300 text-[15px] leading-relaxed whitespace-pre-wrap">${escapeHtml(notification.body)}</p>
+                        ${imageHtml}
+                    </div>
+                </div>
+            `;
 
             Modal.close('notification-modal');
-            setTimeout(function () {
-                Modal.open('notification-detail-modal');
-            }, 200);
+            showPwaFullModal({ 
+                html: html,
+                actionsHtml: actionsHtml
+            });
         }
 
         function closeNotificationDetail() {
-            Modal.close('notification-detail-modal');
+            closePwaFullModal();
             setTimeout(function () {
                 Modal.open('notification-modal');
                 loadNotifications(); // Listeyi güncelle
