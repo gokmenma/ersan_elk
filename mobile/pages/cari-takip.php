@@ -842,7 +842,7 @@ window.editHareket = function(id) {
             if (data.dosya) {
                 const div = document.createElement('div');
                 div.className = 'existing-file mt-2 p-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700 flex items-center justify-between';
-                div.innerHTML = `<span class="text-[10px] font-bold text-slate-500">Mevcut Belge:</span> <a href="uploads/cari_belgeler/${data.dosya}" target="_blank" class="text-[10px] font-bold text-primary flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">visibility</span> Görüntüle</a>`;
+                div.innerHTML = `<span class="text-[10px] font-bold text-slate-500">Mevcut Belge:</span> <a href="../uploads/cari_belgeler/${data.dosya}" target="_blank" class="text-[10px] font-bold text-primary flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">visibility</span> Görüntüle</a>`;
                 form.querySelector('input[name="dosya"]').parentElement.parentElement.appendChild(div);
             }
 
@@ -932,7 +932,7 @@ window.viewHareketDetay = function(id) {
             const fileLink = document.getElementById('detailFileLink');
             if (data.dosya) {
                 fileRow.classList.remove('hidden');
-                fileLink.href = 'uploads/cari_belgeler/' + data.dosya;
+                fileLink.href = '../uploads/cari_belgeler/' + data.dosya;
             } else {
                 fileRow.classList.add('hidden');
             }

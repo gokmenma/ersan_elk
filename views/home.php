@@ -1618,14 +1618,15 @@ if (Gate::allows("ana_sayfa")) {
                                             </tr>
                                     <?php else: ?>
                                             <?php foreach ($active_leaves as $leave):
-                                                $bitis = new DateTime($leave->bitis_tarihi);
-                                                $bugun = new DateTime();
-                                                $kalan = $bugun->diff($bitis)->days;
+                                                $bitis = new DateTime(date('Y-m-d', strtotime($leave->bitis_tarihi)));
+                                                $bugun = new DateTime(date('Y-m-d'));
+                                                $diff = $bugun->diff($bitis);
+                                                $kalan = $diff->invert ? 0 : $diff->days + 1;
 
                                                 $badgeClass = 'badge-primary';
-                                                if ($leave->izin_tipi_adi == 'hastalik')
+                                                if (($leave->izin_tipi_adi ?? '') == 'hastalik' || stripos($leave->izin_tipi_adi ?? '', 'Hastalık') !== false)
                                                     $badgeClass = 'badge-danger';
-                                                if ($leave->izin_tipi_adi == 'mazeret')
+                                                if (($leave->izin_tipi_adi ?? '') == 'mazeret' || stripos($leave->izin_tipi_adi ?? '', 'Mazeret') !== false)
                                                     $badgeClass = 'badge-warning';
                                                 ?>
                                                     <tr>
@@ -1649,7 +1650,11 @@ if (Gate::allows("ana_sayfa")) {
                                                         </td>
                                                         <td><?php echo date('d.m.Y', strtotime($leave->bitis_tarihi)); ?></td>
                                                         <td>
-                                                            <span class="badge badge-info"><?php echo $kalan; ?> Gün Kaldı</span>
+                                                            <?php if ($kalan == 1): ?>
+                                                                <span class="badge badge-soft-danger font-size-12">Bugün Bitiyor</span>
+                                                            <?php else: ?>
+                                                                <span class="badge badge-soft-info font-size-12"><?php echo $kalan; ?> Gün Kaldı</span>
+                                                            <?php endif; ?>
                                                         </td>
                                                     </tr>
                                             <?php endforeach; ?>

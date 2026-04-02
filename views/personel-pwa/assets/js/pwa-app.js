@@ -738,6 +738,19 @@ const Push = {
       return;
     }
 
+    // iOS check
+    const isIOS =
+      /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+    const isStandalone =
+      window.navigator.standalone ||
+      window.matchMedia("(display-mode: standalone)").matches;
+
+    // iOS and not standalone? Guide the user
+    if (isIOS && !isStandalone) {
+      console.log("iOS detected but not in standalone mode. Skipping push init.");
+      return;
+    }
+
     // Service Worker'ın hazır olmasını bekle
     const registration = await navigator.serviceWorker.ready;
 
@@ -825,16 +838,12 @@ const Push = {
 
       console.log("Service Worker is active:", registration);
 
-      // Simple conversion
-      const binaryStr = atob(vapidKey.replace(/-/g, "+").replace(/_/g, "/"));
-      const bytes = new Uint8Array(binaryStr.length);
-      for (let i = 0; i < binaryStr.length; i++) {
-        bytes[i] = binaryStr.charCodeAt(i);
-      }
+      // Use cleaner helper for VAPID key
+      const applicationServerKey = Push.urlBase64ToUint8Array(vapidKey);
 
       const subscription = await registration.pushManager.subscribe({
         userVisibleOnly: true,
-        applicationServerKey: bytes,
+        applicationServerKey: applicationServerKey,
       });
 
       Push.subscription = subscription;

@@ -249,8 +249,10 @@ $(document).ready(function () {
         $.ajax({
             url: "views/cari/api.php",
             type: "POST",
-            data: $(this).serialize(),
+            data: new FormData(this),
             dataType: "json",
+            processData: false,
+            contentType: false,
             success: function (res) {
                 if (res.status === "success" || res.status === "success_alert") {
                     $('#hizliIslemModal').modal('hide');

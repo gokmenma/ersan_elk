@@ -166,7 +166,12 @@ if (!function_exists('formatMoneyCariTakip')) {
                         <span class="material-symbols-outlined text-[22px]"><?= $icon ?></span>
                     </div>
                     <div>
-                        <p class="font-bold text-[12px] text-slate-800 dark:text-slate-300 leading-tight mb-0.5"><?= $isBorc ? 'Aldım' : 'Verdim' ?></p>
+                        <div class="flex items-center gap-1.5">
+                            <p class="font-bold text-[12px] text-slate-800 dark:text-slate-300 leading-tight mb-0.5"><?= $isBorc ? 'Aldım' : 'Verdim' ?></p>
+                            <?php if(!empty($h->dosya)): ?>
+                                <span class="material-symbols-outlined text-[14px] text-primary">attachment</span>
+                            <?php endif; ?>
+                        </div>
                         <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 font-medium">
                             <span class="flex items-center gap-0.5"><span class="material-symbols-outlined text-[11px]">event</span> <?= $dateFormatted ?> <?= $timeFormatted ?></span>
                         </div>
@@ -262,6 +267,36 @@ if (!function_exists('formatMoneyCariTakip')) {
                         <input type="text" id="field_belge_no" name="belge_no" placeholder="Örn: 0045" class="w-full pl-9 pr-3 py-3 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm font-semibold placeholder-slate-300">
                     </div>
                 </div>
+
+                <div>
+                    <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Belge Yükle (Kamera/Galeri)</label>
+                    <div class="relative">
+                        <!-- Custom File Input -->
+                        <div id="fileUploadContainer" class="flex flex-col gap-2">
+                             <label for="field_dosya" class="w-full h-14 bg-slate-50 dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl flex items-center px-4 cursor-pointer active:scale-[0.98] transition-all hover:bg-slate-100 dark:hover:bg-slate-800">
+                                <div class="w-8 h-8 rounded-lg bg-primary/10 text-primary flex items-center justify-center mr-3 shrink-0">
+                                    <span class="material-symbols-outlined text-[20px]">camera_alt</span>
+                                </div>
+                                <div class="flex-grow min-w-0 pr-2">
+                                    <p id="fileNamePreview" class="text-xs font-bold text-slate-400 dark:text-slate-500 truncate">Dosya seçin veya fotoğraf çekin...</p>
+                                </div>
+                                <span class="material-symbols-outlined text-slate-400 text-[18px] shrink-0">add_circle_outline</span>
+                            </label>
+                            <input type="file" name="dosya" id="field_dosya" accept="image/*,application/pdf" class="hidden" onchange="window.handleFileSelect(this)">
+                            
+                            <!-- Selection Display -->
+                            <div id="fileSelectedInfo" class="hidden flex items-center justify-between p-2.5 bg-emerald-50 dark:bg-emerald-900/10 border border-emerald-100 dark:border-emerald-900/20 rounded-xl">
+                                <div class="flex items-center gap-2 min-w-0">
+                                    <span class="material-symbols-outlined text-emerald-500 text-[18px]">check_circle</span>
+                                    <span id="selectedFileName" class="text-[11px] font-bold text-emerald-700 dark:text-emerald-400 truncate"></span>
+                                </div>
+                                <button type="button" onclick="window.clearFileSelection()" class="w-6 h-6 rounded-full bg-white dark:bg-slate-800 shadow-sm flex items-center justify-center text-rose-500">
+                                    <span class="material-symbols-outlined text-[16px]">close</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
                 
                 <div>
                     <label class="block text-[11px] font-bold text-slate-500 dark:text-slate-400 uppercase tracking-widest mb-1">Açıklama</label>
@@ -321,6 +356,12 @@ if (!function_exists('formatMoneyCariTakip')) {
                 <div id="detailDescRow" class="flex flex-col gap-1 text-xs">
                     <span class="font-medium text-slate-400">Açıklama</span>
                     <span id="detailDesc" class="font-bold text-slate-800 dark:text-white leading-relaxed">-</span>
+                </div>
+                <div id="detailFileRow" class="flex items-center justify-between text-xs hidden">
+                    <span class="font-medium text-slate-400">Belge</span>
+                    <a id="detailFileLink" href="#" target="_blank" class="font-bold text-primary flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[16px]">visibility</span> Görüntüle
+                    </a>
                 </div>
             </div>
         </div>
@@ -579,6 +620,7 @@ window.editHareket = function(hareketId) {
     .then(res => res.json())
     .then(data => {
         if (data) {
+            const form = document.getElementById('hizliIslemForm');
             window.openHizliIslem('<?= $cari_id_enc ?>', data.type);
             document.getElementById('hizli_islem_hareket_id').value = hareketId;
             
@@ -592,6 +634,15 @@ window.editHareket = function(hareketId) {
             const [day, month, rest] = d;
             const [year, time] = rest.split(' ');
             document.getElementById('field_islem_tarihi').value = `${year}-${month}-${day}T${time}`;
+
+            const existingFile = document.getElementById('hizliIslemForm').querySelector('.existing-file');
+            if (existingFile) existingFile.remove();
+            if (data.dosya) {
+                const div = document.createElement('div');
+                div.className = 'existing-file mt-3 p-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700 flex items-center justify-between border-dashed';
+                div.innerHTML = `<span class="text-[10px] font-bold text-slate-500">Mevcut Belge:</span> <a href="../uploads/cari_belgeler/${data.dosya}" target="_blank" class="text-[10px] font-bold text-primary flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">visibility</span> Belgeyi Gör</a>`;
+                document.getElementById('field_dosya').parentElement.parentElement.appendChild(div);
+            }
 
             document.querySelector('#hizliIslemModal h3').innerText = 'İşlemi Düzenle';
             window.closeAllSwipes();
@@ -622,10 +673,15 @@ window.deleteHareket = async function(hareketId) {
 };
 
 window.openHizliIslem = function(cariId, type) {
-    document.getElementById('hizliIslemForm').reset();
+    const form = document.getElementById('hizliIslemForm');
+    form.reset();
     document.getElementById('hizli_islem_cari_id').value = cariId;
     document.getElementById('hizli_islem_hareket_id').value = '';
     document.getElementById('hidden_type').value = type;
+    
+    const existingFile = form.querySelector('.existing-file');
+    if (existingFile) existingFile.remove();
+    window.clearFileSelection();
     
     // UI feedback for modal theme depending on type
     const mIcon = document.getElementById('modalIcon');
@@ -735,6 +791,15 @@ window.viewHareketDetay = function(id) {
                 document.getElementById('detailDescRow').classList.add('hidden');
             }
 
+            const fileRow = document.getElementById('detailFileRow');
+            const fileLink = document.getElementById('detailFileLink');
+            if (data.dosya) {
+                fileRow.classList.remove('hidden');
+                fileLink.href = '../uploads/cari_belgeler/' + data.dosya;
+            } else {
+                fileRow.classList.add('hidden');
+            }
+
             window.closeAllSwipes();
             document.getElementById('modalOverlay2').classList.remove('pointer-events-none', 'opacity-0');
             document.getElementById('hareketDetayModal').classList.remove('translate-y-full');
@@ -780,5 +845,34 @@ window.submitHizliIslemForm = function(e) {
         btn.disabled = false;
         btn.innerHTML = defaultBtnHtml;
     });
+};
+
+window.handleFileSelect = function(input) {
+    const preview = document.getElementById('fileNamePreview');
+    const info = document.getElementById('fileSelectedInfo');
+    const nameEl = document.getElementById('selectedFileName');
+    const label = document.querySelector('label[for="field_dosya"]');
+    
+    if (input.files && input.files[0]) {
+        const file = input.files[0];
+        preview.innerText = file.name;
+        nameEl.innerText = file.name;
+        info.classList.remove('hidden');
+        label.classList.add('border-emerald-500', 'bg-emerald-50/50');
+    } else {
+        window.clearFileSelection();
+    }
+};
+
+window.clearFileSelection = function() {
+    const input = document.getElementById('field_dosya');
+    const preview = document.getElementById('fileNamePreview');
+    const info = document.getElementById('fileSelectedInfo');
+    const label = document.querySelector('label[for="field_dosya"]');
+    
+    input.value = '';
+    preview.innerText = 'Dosya seçin veya fotoğraf çekin...';
+    info.classList.add('hidden');
+    label.classList.remove('border-emerald-500', 'bg-emerald-50/50');
 };
 </script>

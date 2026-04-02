@@ -8,6 +8,21 @@ use App\Helper\Helper;
 ?>
 
 <div class="flex flex-col min-h-screen">
+    <!-- iOS PWA Kurulum Rehberi (Sadece iOS Safari'de görünür) -->
+    <div id="ios-install-guide" class="hidden px-4 pt-3">
+        <div class="bg-blue-600/10 dark:bg-blue-400/10 border border-blue-600/30 dark:border-blue-400/30 rounded-2xl p-4 flex items-center justify-between gap-3 shadow-lg shadow-blue-500/10 active:scale-95 transition-transform" onclick="showInstallInstructions()">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center">
+                    <span class="material-symbols-outlined">install_mobile</span>
+                </div>
+                <div>
+                    <h4 class="text-sm font-bold text-blue-700 dark:text-blue-400">Uygulama Olarak Kullanın</h4>
+                    <p class="text-[11px] text-blue-600/80 dark:text-blue-400/80 font-medium">Bildirimler için ana ekrana ekleyin</p>
+                </div>
+            </div>
+            <span class="material-symbols-outlined text-blue-600 dark:text-blue-400">chevron_right</span>
+        </div>
+    </div>
     <!-- Header -->
     <header class="bg-gradient-primary text-white px-4 pt-4 pb-8 rounded-b-3xl relative overflow-hidden">
         <!-- Background Pattern -->
@@ -433,6 +448,9 @@ use App\Helper\Helper;
         var gorevBaslangicZamani = null;
 
         document.addEventListener('DOMContentLoaded', function () {
+            // iOS Kurulum Rehberi Kontrolü
+            checkIOSInstallGuide();
+
             // Load görev durumu (öncelikli)
             loadGorevDurumu();
             // Load dashboard data
@@ -473,6 +491,50 @@ use App\Helper\Helper;
             } catch (error) {
                 console.error('Konum isteği kontrol hatası:', error);
             }
+        }
+
+        // iOS Kurulum Rehberi Fonksiyonları
+        function checkIOSInstallGuide() {
+            const isIOS = /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+            const isStandalone = window.navigator.standalone || window.matchMedia('(display-mode: standalone)').matches;
+
+            if (isIOS && !isStandalone) {
+                document.getElementById('ios-install-guide').classList.remove('hidden');
+            }
+        }
+
+        function showInstallInstructions() {
+            Swal.fire({
+                title: 'Uygulamayı Yükleyin',
+                html: `
+                    <div class="text-left text-sm leading-relaxed p-2">
+                        <p class="mb-3">Bildirimlerin çalışması ve tam uygulama deneyimi için Ersan Elektrik'i ana ekranınıza ekleyin:</p>
+                        <div class="space-y-4">
+                            <div class="flex items-start gap-3">
+                                <div class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center shrink-0 font-bold text-xs">1</div>
+                                <p>Safari alt çubuğundaki <b>Paylaş</b> simgesine <img src="https://simpleicons.org/icons/safari.svg" style="display:inline; width:14px;"/> tıklayın.</p>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <div class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center shrink-0 font-bold text-xs">2</div>
+                                <p>Menüyü yukarı kaydırıp <b>Ana Ekrana Ekle</b> seçeneğine dokunun.</p>
+                            </div>
+                            <div class="flex items-start gap-3">
+                                <div class="w-6 h-6 rounded-full bg-slate-100 flex items-center justify-center shrink-0 font-bold text-xs">3</div>
+                                <p>Sağ üstten <b>Ekle</b>'ye basın ve uygulamayı ana ekranınızdan açın.</p>
+                            </div>
+                        </div>
+                    </div>
+                `,
+                icon: 'info',
+                confirmButtonText: 'Anladım',
+                customClass: {
+                    popup: 'swal-custom-popup',
+                    title: 'swal-custom-title',
+                    htmlContainer: 'swal-custom-content',
+                    actions: 'swal-custom-actions',
+                    confirmButton: 'swal-custom-confirm swal-confirm-primary',
+                }
+            });
         }
 
         // ===== GÖREV TAKİP FONKSİYONLARI =====

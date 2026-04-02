@@ -9,6 +9,23 @@ async function checkNotificationStatus() {
 
   if (!statusEl || !btn) return;
 
+  const isIOS =
+    /iPad|iPhone|iPod/.test(navigator.userAgent) && !window.MSStream;
+  const isStandalone =
+    window.navigator.standalone ||
+    window.matchMedia("(display-mode: standalone)").matches;
+
+  // iOS check for PWA Support
+  if (isIOS && !isStandalone) {
+    statusEl.innerHTML =
+      '<span class="text-orange-500">Önce ana ekrana eklenmeli</span>';
+    btn.dataset.needsInstall = "true";
+    btn.textContent = "Nasıl Eklenir?";
+    btn.classList.add("bg-orange-500");
+    btn.classList.remove("bg-primary");
+    return;
+  }
+
   if (!("Notification" in window) || !("serviceWorker" in navigator)) {
     statusEl.textContent = "Tarayıcınız desteklemiyor";
     btn.disabled = true;
@@ -80,6 +97,34 @@ async function toggleNotifications() {
   const btn = document.getElementById("notification-toggle-btn");
   const statusEl = document.getElementById("notification-status");
   const isSubscribed = btn.dataset.subscribed === "true";
+  const needsInstall = btn.dataset.needsInstall === "true";
+
+  if (needsInstall) {
+    Swal.fire({
+      title: "Ana Ekrana Ekle",
+      html: `
+        <div class="text-left text-sm leading-relaxed p-2">
+          <p>iOS cihazlarda bildirim alabilmek için uygulamayı ana ekranınıza eklemeniz gerekmektedir:</p>
+          <ol class="list-decimal ml-5 mt-3 space-y-2">
+            <li>Safari alt çubuğundaki <b>Paylaş</b> simgesine <img src="https://simpleicons.org/icons/safari.svg" style="display:inline; width:16px;"/> tıklayın.</li>
+            <li>Açılan menüden <b>Ana Ekrana Ekle</b> seçeneğine dokunun.</li>
+            <li>Uygulamayı <b>ekleyin</b> ve ana sayfanızdan açın.</li>
+          </ol>
+          <p class="mt-3 text-primary font-bold">Daha sonra buradan bildirimleri açabilirsiniz.</p>
+        </div>
+      `,
+      icon: "info",
+      confirmButtonText: "Tamam",
+      customClass: {
+        popup: "swal-custom-popup",
+        title: "swal-custom-title",
+        htmlContainer: "swal-custom-content text-left",
+        actions: "swal-custom-actions",
+        confirmButton: "swal-custom-confirm swal-confirm-primary",
+      },
+    });
+    return;
+  }
 
   btn.disabled = true;
   btn.textContent = "İşleniyor...";
