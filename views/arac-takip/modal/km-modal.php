@@ -48,7 +48,12 @@
                                 $kmAracMap = [];
                                 foreach ($araclar as $arac) {
                                     $arac->display_name = $arac->plaka . ' - ' . ($arac->marka ?? '') . ' ' . ($arac->model ?? '');
-                                    $kmAracMap[$arac->id] = isset($maxKmList[$arac->id]) ? $maxKmList[$arac->id] : ($arac->baslangic_km ?? 0);
+                                    // En son KM'yi belirle: (MAX KM Kaydı, Aracın Güncel KM'si, Aracın Başlangıç KM'si)
+                                    $maxKm = isset($maxKmList[$arac->id]) ? intval($maxKmList[$arac->id]) : 0;
+                                    $guncelKm = intval($arac->guncel_km ?? 0);
+                                    $baslangicKm = intval($arac->baslangic_km ?? 0);
+                                    
+                                    $kmAracMap[$arac->id] = max($maxKm, $guncelKm, $baslangicKm);
                                 }
                                 ?>
 
@@ -61,16 +66,16 @@
                                     </div>
 
                                     <div class="col-md-6">
-                                        <?php echo \App\Helper\Form::FormFloatInput('number', 'baslangic_km', '', 'Gün başı KM', 'Başlangıç KM *', 'bx bx-chevrons-right', 'form-control', true, null, 'on', false, 'min="0"'); ?>
+                                        <?php echo \App\Helper\Form::FormFloatInput('number', 'baslangic_km', '', 'Gün başı KM', 'Başlangıç KM *', 'chevrons-right', 'form-control', true, null, 'on', false, 'min="0"'); ?>
                                     </div>
                                     <div class="col-md-6">
-                                        <?php echo \App\Helper\Form::FormFloatInput('number', 'bitis_km', '', 'Gün sonu KM', 'Bitiş KM *', 'bx bx-chevrons-left', 'form-control', true, null, 'on', false, 'min="0"'); ?>
+                                        <?php echo \App\Helper\Form::FormFloatInput('number', 'bitis_km', '', 'Gün sonu KM', 'Bitiş KM *', 'chevrons-left', 'form-control', true, null, 'on', false, 'min="0"'); ?>
                                     </div>
 
                                     <div class="col-12">
                                         <div class="p-3 border border-info border-opacity-25 rounded bg-info bg-opacity-10">
                                             <div class="d-flex justify-content-between align-items-center">
-                                                <div class="text-info fw-bold"><i class="bx bx-run me-1"></i>Kalkış - Varış Mesafesi</div>
+                                                <div class="text-info fw-bold"><i data-feather="map-pin" class="me-1"></i>Kalkış - Varış Mesafesi</div>
                                                 <h4 class="mb-0 text-info fw-bold" id="yapilan_km_badge">0 km</h4>
                                                 <input type="hidden" id="yapilan_km" value="">
                                             </div>
@@ -86,7 +91,7 @@
                         <div class="modal-footer bg-white p-3 border-top">
                             <button type="button" class="btn btn-outline-secondary px-4 me-2" data-bs-dismiss="modal">Vazgeç</button>
                             <button type="button" class="btn btn-dark text-white px-4 shadow-sm" id="btnKmKaydet">
-                                <i class="bx bx-save me-1"></i> Kaydet
+                                <i data-feather="save" class="me-1"></i> Kaydet
                             </button>
                         </div>
                     </div>

@@ -43,6 +43,53 @@ foreach ($workResults as $wr) {
 // PHP tarafında aktif sekmeyi belirle (URL -> Storage (yok) -> Varsayılan)
 $activeTab = $_GET['tab'] ?? 'okuma';
 ?>
+<style>
+    /* Tab-Specific Preloader */
+    .tab-loader-wrapper {
+        position: relative;
+        min-height: 400px;
+    }
+
+    .tab-preloader {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background: rgba(255, 255, 255, 0.7);
+        z-index: 100;
+        backdrop-filter: blur(2px);
+        display: none; /* JS ile kontrol edilecek */
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+        border-radius: 8px;
+    }
+
+    [data-bs-theme="dark"] .tab-preloader {
+        background: rgba(25, 30, 34, 0.8);
+    }
+
+    .tab-preloader .loader-content {
+        background: white;
+        padding: 2rem;
+        border-radius: 15px;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+        text-align: center;
+        min-width: 200px;
+    }
+
+    [data-bs-theme="dark"] .tab-preloader .loader-content {
+        background: #2a3042;
+        box-shadow: 0 10px 30px rgba(0,0,0,0.4);
+    }
+
+    .table-loading #puantajTabContent {
+        opacity: 0.6;
+        pointer-events: none;
+    }
+</style>
+
 <div class="container-fluid">
     <?php
     $maintitle = "Puantaj";
@@ -216,7 +263,16 @@ $activeTab = $_GET['tab'] ?? 'okuma';
 
         </ul>
 
-        <div class="tab-content" id="puantajTabContent">
+        <div class="tab-content position-relative" id="puantajTabContent">
+            <!-- Tab Preloader (Shared) -->
+            <div class="tab-preloader" id="tab-loader">
+                <div class="loader-content">
+                    <div class="spinner-border text-primary mb-2" role="status">
+                        <span class="sr-only">Yükleniyor...</span>
+                    </div>
+                    <h6 class="mb-0">Veriler Yükleniyor...</h6>
+                </div>
+            </div>
             <div class="tab-pane <?= $activeTab === 'okuma' ? 'active' : '' ?>" id="okuma" role="tabpanel">
                 <div class="card">
                     <div class="card-header d-flex justify-content-between align-items-center">
@@ -269,8 +325,8 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                             <thead>
                                 <tr class="table-light">
                                     <th data-filter="date">Tarih</th>
-                                    <th data-filter="string">Defter</th>
-                                    <th data-filter="string">Bölgesi</th>
+                                    <th data-filter="select">Defter</th>
+                                    <th data-filter="select">Bölgesi</th>
                                     <th data-filter="string">Ekip No</th>
                                     <th data-filter="string">Personel</th>
                                     <th data-filter="number">Abone Sayısı</th>
@@ -1354,13 +1410,30 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             var baseOptions = getDatatableOptions();
             // Server-side için gerekli ayarları ekle
             return $.extend(true, {}, baseOptions, {
-                processing: true,
+                processing: false, // Varsayılan processing'i kapat, kendi loader'ımızı kullanacağız
                 serverSide: true,
                 language: $.extend({}, baseOptions.language, {
-                    processing: '<div class="spinner-border text-primary" role="status"></div>'
+                    processing: ''
                 }),
+                preDrawCallback: function (settings) {
+                    showTabLoader();
+                },
+                drawCallback: function (settings) {
+                    hideTabLoader();
+                    if (typeof feather !== "undefined") {
+                        feather.replace();
+                    }
+                },
                 buttons: []
             }, customOptions);
+        }
+
+        function showTabLoader() {
+            $('#tab-loader').css('display', 'flex').hide().fadeIn(200);
+        }
+
+        function hideTabLoader() {
+            $('#tab-loader').fadeOut(200);
         }
 
         /**
@@ -1388,7 +1461,8 @@ $activeTab = $_GET['tab'] ?? 'okuma';
 
             summary.forEach(function (item, index) {
                 var variant = 'primary';
-                var status = (item.sonuc || item.sayac_durum || 'BELİRSİZ').toUpperCase();
+                var statusText = (item.sonuc || item.sayac_durum || 'BELİRSİZ');
+                var status = statusText.toUpperCase();
 
                 // Renk Belirleme
                 if (status.includes('OKUNDU') || status.includes('NORMAL') || status.includes('YAPILDI') || status.includes('AÇILDI')) variant = 'success';
@@ -1400,7 +1474,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 var subLabel = config.subLabel || 'Kayıt';
 
                 var html = `
-                    <div class="col">
+                    <div class="col summary-card-item" data-status="${statusText}" data-target-wrapper="${config.wrapper}" style="cursor: pointer;">
                         <div class="card shadow-sm border-0 mb-0 h-100 card-animate">
                             <div class="card-body p-2 px-3">
                                 <div class="d-flex align-items-center mb-2">
@@ -1433,6 +1507,43 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 }
             });
         }
+
+        // Kartlara tıklandığında filtreleme yap
+        $(document).on('click', '.summary-card-item', function() {
+            var status = $(this).data('status');
+            var wrapperId = $(this).data('target-wrapper');
+            var activeTab = $('#puantajTabs .nav-link.active').data('tab-name');
+            var table = null;
+            var colIdx = -1;
+
+            if (activeTab === 'okuma') {
+                table = endeksDataTable;
+                colIdx = 6; // Sayaç Durumu
+            } else if (activeTab === 'yapilan_isler') {
+                table = puantajDataTable;
+                colIdx = 5; // İş Emri Sonucu
+            } else if (activeTab === 'sayac_sokme_takma') {
+                table = sayacDegisimDataTable;
+                colIdx = 5; // İş Emri Sonucu
+            } else if (activeTab === 'muhurleme') {
+                table = muhurlemeDataTable;
+                colIdx = 5; // İş Emri Sonucu
+            }
+
+            if (table && colIdx !== -1) {
+                var filterValue = "multi:" + status;
+                var currentSearch = table.column(colIdx).search();
+                
+                // datatable-filters.js'ye yeni dtf:set-filter event'ı ile temiz ve senkronize bir emir gönder
+                if (currentSearch === filterValue) {
+                    // Eğer zaten bu filtre varsa temizle (Toggle mantığı)
+                    $(table.table().node()).trigger('dtf:set-filter', [colIdx, '']);
+                } else {
+                    // Sadece seçilen status'u gönder (multi modu kütüphane tarafından otomatik atanacak)
+                    $(table.table().node()).trigger('dtf:set-filter', [colIdx, status, 'multi']);
+                }
+            }
+        });
 
         // Önceki fonksiyonu buna yönlendir (Geriye dönük uyumluluk için)
         function renderSayacDurumSummary(summary) {

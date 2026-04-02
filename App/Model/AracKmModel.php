@@ -415,16 +415,21 @@ class AracKmModel extends Model
     }
 
     /**
-     * Tüm araçlar için en yüksek bitiş KM'lerini getirir
+     * Tüm araçlar için en son kaydedilen bitiş KM'lerini getirir
      */
     public function getAllMaxBitisKm()
     {
         $sql = $this->db->prepare("
-            SELECT arac_id, MAX(bitis_km) as max_km 
-            FROM {$this->table} 
-            WHERE firma_id = :firma_id 
-            AND silinme_tarihi IS NULL 
-            GROUP BY arac_id
+            SELECT t1.arac_id, t1.bitis_km as max_km 
+            FROM {$this->table} t1 
+            INNER JOIN (
+                SELECT arac_id, MAX(id) as last_id 
+                FROM {$this->table} 
+                WHERE firma_id = :firma_id 
+                AND silinme_tarihi IS NULL 
+                AND bitis_km > 0 
+                GROUP BY arac_id
+            ) t2 ON t1.id = t2.last_id
         ");
         $sql->execute(['firma_id' => $_SESSION['firma_id']]);
         return $sql->fetchAll(PDO::FETCH_KEY_PAIR);

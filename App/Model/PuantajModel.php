@@ -94,22 +94,20 @@ class PuantajModel extends Model
     public function getWorkTypes($personelId = null)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        // Hem yeni normalized hem de eski string alanından unique değerleri al
-        $sql = "
-            SELECT DISTINCT COALESCE(tn.tur_adi, t.is_emri_tipi) as tur_adi
-            FROM $this->table t 
-            LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id 
-            WHERE t.firma_id = ? 
-            AND t.silinme_tarihi IS NULL
-            AND COALESCE(tn.tur_adi, t.is_emri_tipi) IS NOT NULL 
-            AND COALESCE(tn.tur_adi, t.is_emri_tipi) != ''";
         $params = [$firmaId];
 
+        $sql = "SELECT DISTINCT TRIM(COALESCE(NULLIF(tn.tur_adi, ''), NULLIF(t.is_emri_tipi, ''))) as tur_adi
+                FROM $this->table t 
+                LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id 
+                WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL";
+        
         if ($personelId) {
             $sql .= " AND t.personel_id = ?";
             $params[] = $personelId;
         }
-
+        
+        $sql .= " HAVING tur_adi IS NOT NULL AND tur_adi != '' ORDER BY tur_adi ASC";
+        
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
@@ -118,16 +116,12 @@ class PuantajModel extends Model
     public function getWorkResults($personelId = null, $workType = null)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        // Hem yeni normalized hem de eski string alanından unique değerleri al
-        $sql = "
-            SELECT DISTINCT COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu
-            FROM $this->table t 
-            LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id 
-            WHERE t.firma_id = ? 
-            AND t.silinme_tarihi IS NULL
-            AND COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) IS NOT NULL 
-            AND COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) != ''";
         $params = [$firmaId];
+        
+        $sql = "SELECT DISTINCT TRIM(COALESCE(NULLIF(tn.is_emri_sonucu, ''), NULLIF(t.is_emri_sonucu, ''))) as is_emri_sonucu
+                FROM $this->table t 
+                LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id 
+                WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL";
 
         if ($personelId) {
             $sql .= " AND t.personel_id = ?";
@@ -135,12 +129,12 @@ class PuantajModel extends Model
         }
 
         if ($workType) {
-            $sql .= " AND (tn.tur_adi = ? OR t.is_emri_tipi = ?)";
-            $params[] = $workType;
-            $params[] = $workType;
+            $sql .= " AND (TRIM(tn.tur_adi) = ? OR TRIM(t.is_emri_tipi) = ?)";
+            $params[] = trim($workType);
+            $params[] = trim($workType);
         }
 
-        $sql .= " ORDER BY COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) ASC";
+        $sql .= " HAVING is_emri_sonucu IS NOT NULL AND is_emri_sonucu != '' ORDER BY is_emri_sonucu ASC";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -503,8 +497,8 @@ class PuantajModel extends Model
         $sql = "SELECT t.*, 
                     p.adi_soyadi as personel_adi,
                     f.firma_adi,
-                    COALESCE(tn.tur_adi, t.is_emri_tipi) as is_emri_tipi,
-                    COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu,
+                    TRIM(COALESCE(NULLIF(tn.tur_adi, ''), NULLIF(t.is_emri_tipi, ''))) as is_emri_tipi,
+                    TRIM(COALESCE(NULLIF(tn.is_emri_sonucu, ''), NULLIF(t.is_emri_sonucu, ''))) as is_emri_sonucu,
                     ek.tur_adi as ekip_kodu_adi,
                     tn.is_turu_ucret as ucret
                 FROM {$this->table} t 

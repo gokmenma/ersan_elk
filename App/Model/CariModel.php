@@ -32,6 +32,80 @@ class CariModel extends Model
             $bindParams['search'] = "%$search%";
         }
 
+        // Sütun Bazlı Arama
+        if (isset($params['columns'])) {
+            $colMap = [
+                1 => 'c.CariAdi',
+                2 => 'c.firma',
+                3 => 'c.Telefon',
+                4 => 'c.Email',
+                5 => 'c.Adres'
+            ];
+            foreach ($params['columns'] as $i => $column) {
+                if (!empty($column['search']['value']) && isset($colMap[$i])) {
+                    $field = $colMap[$i];
+                    $val = $column['search']['value'];
+                    $paramName = "col_" . $i;
+
+                    // Gelişmiş Filtre Ayrıştırıcı (mode:value) desteği
+                    if (strpos($val, ':') !== false) {
+                        list($mode, $filterVal) = explode(':', $val, 2);
+                        
+                        // Birden fazla değer desteği (multi-select)
+                        $vals = explode('|', $filterVal);
+                        $filterVal = $vals[0];
+
+                        switch ($mode) {
+                            case 'multi':
+                                if (!empty($vals)) {
+                                    $multiConditions = [];
+                                    foreach ($vals as $vIdx => $v) {
+                                        $vParam = $paramName . "_m_" . $vIdx;
+                                        $multiConditions[] = "$field LIKE :$vParam";
+                                        $bindParams[$vParam] = "%$v%";
+                                    }
+                                    $where .= " AND (" . implode(" OR ", $multiConditions) . ")";
+                                }
+                                break;
+                            case 'contains':
+                                $where .= " AND $field LIKE :$paramName";
+                                $bindParams[$paramName] = "%$filterVal%";
+                                break;
+                            case 'not_contains':
+                                $where .= " AND $field NOT LIKE :$paramName";
+                                $bindParams[$paramName] = "%$filterVal%";
+                                break;
+                            case 'equals':
+                                $where .= " AND $field = :$paramName";
+                                $bindParams[$paramName] = $filterVal;
+                                break;
+                            case 'not_equals':
+                                $where .= " AND $field != :$paramName";
+                                $bindParams[$paramName] = $filterVal;
+                                break;
+                            case 'starts_with':
+                                $where .= " AND $field LIKE :$paramName";
+                                $bindParams[$paramName] = "$filterVal%";
+                                break;
+                            case 'ends_with':
+                                $where .= " AND $field LIKE :$paramName";
+                                $bindParams[$paramName] = "%$filterVal";
+                                break;
+                            case 'null':
+                                $where .= " AND ($field IS NULL OR $field = '')";
+                                break;
+                            case 'not_null':
+                                $where .= " AND ($field IS NOT NULL AND $field != '')";
+                                break;
+                        }
+                    } else {
+                        $where .= " AND $field LIKE :$paramName";
+                        $bindParams[$paramName] = "%$val%";
+                    }
+                }
+            }
+        }
+
         // Toplam Kayıt Sayısı
         $totalCount = $this->db->query("SELECT COUNT(*) FROM $this->table WHERE silinme_tarihi IS NULL")->fetchColumn();
 

@@ -581,4 +581,45 @@ class EndeksOkumaModel extends Model
 
         return $result;
     }
+
+    public function getDistinctDefters()
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $sql = "SELECT DISTINCT TRIM(t.defter) as defter 
+                FROM $this->table t 
+                WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL 
+                AND t.defter IS NOT NULL AND t.defter != '' 
+                ORDER BY t.defter ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$firmaId]);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    public function getDistinctBolges()
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $sql = "SELECT DISTINCT TRIM(t.bolge) as bolge 
+                FROM $this->table t 
+                WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL 
+                AND t.bolge IS NOT NULL AND t.bolge != '' 
+                ORDER BY t.bolge ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$firmaId]);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    public function getDistinctSayacDurums()
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $sql = "SELECT DISTINCT TRIM(t.sayac_durum) as sayac_durum 
+                FROM $this->table t 
+                WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL 
+                AND t.sayac_durum IS NOT NULL AND t.sayac_durum != '' 
+                ORDER BY t.sayac_durum ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$firmaId]);
+        // Bazen küçük harf/büyük harf karışıklığı olabiliyor, normalize edebiliriz ama 
+        // kullanıcı veriyi olduğu gibi görmek isteyebilir. Yine de TRIM önemli.
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
 }

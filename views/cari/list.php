@@ -259,11 +259,11 @@ $title = 'Cari Yönetimi';
                         <thead class="table-light">
                             <tr>
                                 <th style="width: 40px;">#</th>
-                                <th>Cari Adı</th>
-                                <th>Firma</th>
-                                <th>Telefon</th>
-                                <th>Email</th>
-                                <th>Adres</th>
+                                <th data-filter="string">Cari Adı</th>
+                                <th data-filter="string">Firma</th>
+                                <th data-filter="string">Telefon</th>
+                                <th data-filter="string">Email</th>
+                                <th data-filter="string">Adres</th>
                                 <th class="text-end">Bakiye</th>
                                 <th class="text-center" style="width: 80px;">İşlem</th>
                             </tr>

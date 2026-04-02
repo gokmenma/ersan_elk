@@ -338,11 +338,11 @@ class AracModel extends Model
     {
         $sql = $this->db->prepare("
             UPDATE {$this->table} 
-            SET guncel_km = :km, guncelleme_tarihi = NOW()
+            SET guncel_km = GREATEST(COALESCE(guncel_km, 0), :km), guncelleme_tarihi = NOW()
             WHERE id = :id AND firma_id = :firma_id
         ");
         return $sql->execute([
-            'km' => $yeniKm,
+            'km' => intval($yeniKm),
             'id' => $aracId,
             'firma_id' => $_SESSION['firma_id']
         ]);

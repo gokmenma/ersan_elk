@@ -71,16 +71,16 @@
 
                                     <div class="col-12">
                                         <div class="p-3 border rounded bg-light bg-opacity-50">
-                                            <div class="text-muted small mb-3 fw-semibold"><i class="bx bx-calculator me-1"></i>Maliyet Hesaplama</div>
+                                            <div class="text-muted small mb-3 fw-semibold"><i data-feather="trending-up" class="me-1" style="width: 14px; height: 14px;"></i>Maliyet Hesaplama</div>
                                             <div class="row g-2">
                                                 <div class="col-md-3">
                                                     <?php echo \App\Helper\Form::FormFloatInput('number', 'yakit_miktari', '', '', 'Miktar (L) *', 'droplet', 'form-control', true, null, 'on', false, 'step="0.01" min="0"'); ?>
                                                 </div>
                                                 <div class="col-md-3">
-                                                    <?php echo \App\Helper\Form::FormFloatInput('number', 'birim_fiyat', '', '', 'Birim Fiyat', 'currency', 'form-control', false, null, 'on', false, 'step="0.01" min="0"'); ?>
+                                                    <?php echo \App\Helper\Form::FormFloatInput('number', 'birim_fiyat', '', '', 'Birim Fiyat', 'dollar-sign', 'form-control', false, null, 'on', false, 'step="0.01" min="0"'); ?>
                                                 </div>
                                                 <div class="col-md-3">
-                                                    <?php echo \App\Helper\Form::FormFloatInput('number', 'brut_tutar', '', '', 'Brüt Tutar', 'money', 'form-control', false, null, 'on', false, 'step="0.01" min="0"'); ?>
+                                                    <?php echo \App\Helper\Form::FormFloatInput('number', 'brut_tutar', '', '', 'Brüt Tutar', 'dollar-sign', 'form-control', false, null, 'on', false, 'step="0.01" min="0"'); ?>
                                                 </div>
                                                 <div class="col-md-3">
                                                     <?php echo \App\Helper\Form::FormFloatInput('number', 'iskonto', '0', '', 'İskonto %', 'percent', 'form-control', false, null, 'on', false, 'step="0.01" min="0" max="100"'); ?>
@@ -115,7 +115,7 @@
                         <div class="modal-footer bg-white p-3 border-top">
                             <button type="button" class="btn btn-outline-secondary px-4 me-2" data-bs-dismiss="modal">Vazgeç</button>
                             <button type="button" class="btn btn-dark px-4 shadow-sm" id="btnYakitKaydet">
-                                <i class="bx bx-save me-1"></i> Kaydet
+                                <i data-feather="save" class="me-1"></i> Kaydet
                             </button>
                         </div>
                     </div>
@@ -130,6 +130,9 @@
 
     // Araç seçildiğinde KM ve yakıt tipini otomatik doldur
     $(document).off('change', '#yakitModal #arac_id').on('change', '#yakitModal #arac_id', function () {
+        // Eğer düzenleme modundaysak (id varsa) otomatik doldurma yapma
+        if ($('#yakitModal input[name="id"]').val() !== "") return;
+
         const aracId = $(this).val();
         if (aracId && yakitAracMap[aracId]) {
             const data = yakitAracMap[aracId];

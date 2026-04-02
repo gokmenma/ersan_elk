@@ -1118,6 +1118,37 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     exit;
 }
 
+// Global unique value fetch for DataTable column filters
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'get-unique-values') {
+    header('Content-Type: application/json');
+    $column = $_POST['column'] ?? '';
+    
+    $Puantaj = new PuantajModel();
+    $EndeksOkuma = new \App\Model\EndeksOkumaModel();
+    $data = [];
+    
+    if ($column === 'is_emri_tipi' || $column === 'is_emri_sonucu') {
+        if ($column === 'is_emri_tipi') {
+            $data = $Puantaj->getWorkTypes();
+        } else {
+            $data = $Puantaj->getWorkResults();
+        }
+    } elseif ($column === 'defter' || $column === 'bolge' || $column === 'sayac_durum') {
+        if ($column === 'defter') {
+            $data = $EndeksOkuma->getDistinctDefters();
+        } elseif ($column === 'bolge') {
+            $data = $EndeksOkuma->getDistinctBolges();
+        } else {
+            $data = $EndeksOkuma->getDistinctSayacDurums();
+        }
+    } else {
+        // Generic fallback for other columns if needed
+    }
+    
+    echo json_encode(['status' => 'success', 'data' => $data]);
+    exit;
+}
+
 // Sayaç Değişim kaydı silme
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'sayac-degisim-sil') {
     $id = $_POST['id'] ?? 0;

@@ -866,6 +866,30 @@
       updateFilterBar();
     }
 
+    // --- External Control Support ---
+    $(api.table().node()).on("dtf:set-filter", function (e, colIdx, value, mode) {
+      const cell = filterCells.find((c) => c.colIdx === parseInt(colIdx));
+      if (!cell) return;
+
+      if (value === null || value === "") {
+        clearSingleFilter(cell);
+      } else {
+        cell.value = value;
+        cell.mode = mode || (cell.type === "select" ? "multi" : (DEFAULT_MODES[cell.type] || "contains"));
+        
+        // Update UI
+        if (cell.type === "select") {
+          if (cell.$displayInput) {
+             const count = Array.isArray(value) ? value.length : (value ? 1 : 0);
+             cell.$displayInput.val(count > 0 ? count + " seçildi" : "Tümü");
+          }
+        } else {
+           if (cell.input) $(cell.input).val(value);
+        }
+      }
+      applyFilters();
+    });
+
     // --- Column Visibility Listener ---
     api.on("column-visibility.dt", function (e, settings, column, state) {
       if (settings.sTableId !== tableId) return;

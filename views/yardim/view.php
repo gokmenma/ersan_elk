@@ -119,13 +119,21 @@ if (!$canManageSupport) {
                         </button>
                     </div>
                 </div>
-                <div class="mt-4 d-grid gap-2">
-                    <button id="btn-close-ticket" class="btn btn-danger w-100 shadow-sm" onclick="updateStatus('kapali')">
-                        <i class="bx bx-lock me-1"></i> Talebi Kapat
-                    </button>
-                    <button id="btn-reopen-ticket" class="btn btn-outline-warning w-100 shadow-sm" onclick="updateStatus('acik')" style="display:none;">
-                        <i class="bx bx-lock-open me-1"></i> Yeniden Aç
-                    </button>
+                <div class="mt-0 pt-3 border-top admin-actions" style="display:none;">
+                    <div class="d-flex flex-column gap-2">
+                        <button id="btn-in-progress" class="btn btn-soft-info w-100 fw-bold py-2" onclick="updateStatus('isleme_alindi')">
+                            <i class="bx bx-loader-circle me-1"></i> İşleme Al
+                        </button>
+                        <button id="btn-solve-ticket" class="btn btn-soft-success w-100 fw-bold py-2" onclick="updateStatus('cozuldu')">
+                            <i class="bx bx-check-double me-1"></i> Çözüldü Olarak İşaretle
+                        </button>
+                        <button id="btn-close-ticket" class="btn btn-danger w-100 fw-bold py-2" onclick="updateStatus('kapali')">
+                            <i class="bx bx-lock me-1"></i> Talebi Kapat
+                        </button>
+                        <button id="btn-reopen-ticket" class="btn btn-outline-warning w-100 fw-bold py-2" onclick="updateStatus('acik')" style="display:none;">
+                            <i class="bx bx-lock-open me-1"></i> Yeniden Aç
+                        </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -196,19 +204,35 @@ if (!$canManageSupport) {
 </div>
 
 <style>
-.chat-item { margin-bottom: 20px; max-width: 85%; width: fit-content; }
-.chat-item.mine { margin-left: auto; text-align: right; }
-.chat-bubble { padding: 12px 16px; border-radius: 12px; position: relative; display: inline-block; max-width: 100%; text-align: left; word-break: break-word; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-.chat-item.mine .chat-bubble { background: #3b82f6; color: #fff; border-bottom-right-radius: 2px; }
-.chat-item.others .chat-bubble { background: #f8fafc; color: #1e293b; border-bottom-left-radius: 2px; border: 1px solid #eef2f7; }
-.chat-meta { font-size: 11px; margin-top: 4px; color: #64748b; font-weight: 500; }
-.chat-item.mine .chat-meta { color: #94a3b8; }
-.chat-attachment { margin-top: 10px; border-radius: 10px; overflow: hidden; border: 1px solid rgba(0,0,0,0.05); }
-.chat-attachment img { max-width: 250px; cursor: pointer; transition: transform 0.2s; }
-.chat-attachment img:hover { transform: scale(1.02); }
+.chat-item { margin-bottom: 24px; position: relative; }
+.chat-container { display: flex; align-items: flex-end; gap: 12px; max-width: 85%; }
+.chat-item.mine .chat-container { margin-left: auto; flex-direction: row-reverse; }
+
+.chat-avatar { width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+
+.chat-bubble { padding: 12px 18px; border-radius: 12px; position: relative; display: flex; flex-direction: column; max-width: 100%; transition: all 0.2s ease; line-height: 1.5; }
+.chat-item.mine .chat-bubble { background: #2563eb; color: #fff; border-bottom-right-radius: 2px; box-shadow: 0 4px 12px rgba(37, 99, 235, 0.2); }
+.chat-item.others .chat-bubble { background: #ffffff; color: #1e293b; border-bottom-left-radius: 2px; border: 1px solid #e2e8f0; box-shadow: 0 4px 12px rgba(0,0,0,0.03); }
+
+.chat-item.mine .chat-text { color: #fff; }
+.chat-item.others .chat-text { color: #334155; }
+
+.chat-meta { font-size: 11px; margin-top: 6px; color: #64748b; font-weight: 500; display: flex; align-items: center; gap: 4px; }
+.chat-item.mine .chat-meta { justify-content: flex-end; color: #94a3b8; }
+
+.chat-attachment { margin-top: 10px; border-radius: 8px; overflow: hidden; border: 1px solid rgba(0,0,0,0.05); cursor: zoom-in; }
+.chat-attachment img { max-width: 280px; max-height: 300px; display: block; object-fit: contain; background: #000; }
 
 .upload-area:hover { border-color: #3b82f6 !important; background-color: #f0f7ff !important; }
 .upload-area.dragging { border-color: #3b82f6 !important; background-color: #e0efff !important; }
+
+/* Status Badges */
+.badge-status { font-weight: 600; padding: 6px 12px !important; letter-spacing: 0.3px; }
+.bg-soft-warning { background-color: #fef3c7 !important; color: #d97706 !important; }
+.bg-soft-success { background-color: #dcfce7 !important; color: #166534 !important; }
+.bg-soft-primary { background-color: #dbeafe !important; color: #1e40af !important; }
+.bg-soft-danger { background-color: #fee2e2 !important; color: #b91c1c !important; }
+.bg-soft-info { background-color: #e0f2fe !important; color: #0369a1 !important; }
 </style>
 
 <script>
@@ -243,21 +267,41 @@ function loadTicket() {
 
             // Durum Badge
             let badgeClass = 'bg-secondary';
-            if(ticket.durum === 'acik') badgeClass = 'bg-warning';
-            if(ticket.durum === 'yanitlandi') badgeClass = 'bg-success';
-            if(ticket.durum === 'personel_yaniti') badgeClass = 'bg-primary';
-            if(ticket.durum === 'kapali') badgeClass = 'bg-danger';
-            $('#ticket-status').html(`<span class="badge ${badgeClass} p-2 px-3 rounded-pill">${ticket.durum.toUpperCase()}</span>`);
+            let durumText = ticket.durum.toUpperCase().replace('_', ' ');
+            
+            if(ticket.durum === 'acik') badgeClass = 'bg-soft-warning';
+            if(ticket.durum === 'yanitlandi') badgeClass = 'bg-soft-success';
+            if(ticket.durum === 'personel_yaniti') badgeClass = 'bg-soft-primary';
+            if(ticket.durum === 'kapali') badgeClass = 'bg-soft-danger';
+            if(ticket.durum === 'isleme_alindi') { badgeClass = 'bg-soft-info'; durumText = 'İŞLEME ALINDI'; }
+            if(ticket.durum === 'cozuldu') { badgeClass = 'bg-soft-success'; durumText = 'ÇÖZÜLDÜ'; }
+            
+            $('#ticket-status').html(`<span class="badge ${badgeClass} badge-status rounded-pill">${durumText}</span>`);
 
             // Buton ve Form Görünürlüğü
             const isApprovedTicket = (ticket.onay_durumu || 'onaylandi') === 'onaylandi';
-            if(ticket.durum === 'kapali' || !isApprovedTicket) {
-                $('#btn-close-ticket').hide();
-                if (ticket.durum === 'kapali') {
+            const isClosed = ticket.durum === 'kapali' || ticket.durum === 'cozuldu';
+
+            if (currentViewerIsAdmin) {
+                $('.admin-actions').show();
+                
+                // Duruma göre admin butonlarını yönet
+                if (isClosed) {
+                    $('#btn-close-ticket, #btn-solve-ticket, #btn-in-progress').hide();
                     $('#btn-reopen-ticket').show();
                 } else {
                     $('#btn-reopen-ticket').hide();
+                    $('#btn-close-ticket, #btn-solve-ticket, #btn-in-progress').show();
+                    
+                    if (ticket.durum === 'isleme_alindi') {
+                        $('#btn-in-progress').hide();
+                    }
                 }
+            } else {
+                $('.admin-actions').hide();
+            }
+
+            if(isClosed || !isApprovedTicket) {
                 $('#reply-form').closest('.card').find('.card-body form').hide();
                 $('#reply-form').closest('.card').find('.card-body hr').hide();
                 $('#waiting-admin-alert').hide();
@@ -265,18 +309,16 @@ function loadTicket() {
                 if($('#closed-alert').length > 0) $('#closed-alert').remove();
                 
                 let alertText = '';
-                if (ticket.durum === 'kapali') {
-                    alertText = 'Bu talep kapatılmıştır. Yeni mesaj gönderilemez.';
+                if (isClosed) {
+                    alertText = ticket.durum === 'cozuldu' ? 'Bu talep çözüldü olarak işaretlenmiştir. Yeni mesaj gönderilemez.' : 'Bu talep kapatılmıştır. Yeni mesaj gönderilemez.';
                     if (ticket.kapatan_adi && ticket.kapatma_tarihi) {
-                        alertText = `Bu talep <strong>${ticket.kapatan_adi}</strong> tarafından <strong>${ticket.kapatma_tarihi}</strong> tarihinde kapatılmıştır. Yeni mesaj gönderilemez.`;
+                        alertText = `Bu talep <strong>${ticket.kapatan_adi}</strong> tarafından <strong>${ticket.kapatma_tarihi}</strong> tarihinde ${ticket.durum === 'cozuldu' ? 'çözülmüştür' : 'kapatılmıştır'}. Yeni mesaj gönderilemez.`;
                     }
                 } else {
                     alertText = 'Bu talep henüz onaylanmadı. Onay sonrası mesajlaşabilirsiniz.';
                 }
                 $('#chat-messages').after('<div id="closed-alert" class="alert alert-soft-danger text-center mt-3"><i class="bx bx-lock-alt me-1"></i> ' + alertText + '</div>');
             } else {
-                $('#btn-close-ticket').show();
-                $('#btn-reopen-ticket').hide();
                 if (ticket.can_reply) {
                     $('#reply-form').closest('.card').find('.card-body form').show();
                     $('#waiting-admin-alert').hide();
@@ -304,22 +346,26 @@ function renderMessages(messages) {
     messages.forEach(msg => {
         const isMine = (currentViewerIsAdmin && msg.gonderen_tip === 'yonetici') || (!currentViewerIsAdmin && msg.gonderen_tip === 'personel');
         const sideClass = isMine ? 'mine' : 'others';
+        const avatar = msg.gonderen_tip === 'yonetici' ? 'assets/images/users/avatar-admin.jpg' : 'assets/images/users/avatar-x.jpg';
         html += `
             <div class="chat-item ${sideClass}">
-                <div class="chat-bubble">
-                    <div class="chat-text">${msg.mesaj.replace(/\n/g, '<br>')}</div>
-                    ${msg.dosyalar && msg.dosyalar.length > 0 ? `
-                        <div class="d-flex flex-wrap gap-2 mt-2">
-                            ${msg.dosyalar.map(file => `
-                                <div class="chat-attachment">
-                                    <img src="${file}" onclick="window.open('${file}', '_blank')" style="max-width: 150px; max-height: 150px; object-fit: cover;" class="rounded">
-                                </div>
-                            `).join('')}
-                        </div>
-                    ` : ''}
+                <div class="chat-container">
+                    <div class="chat-bubble">
+                        <div class="chat-text">${msg.mesaj.replace(/\n/g, '<br>')}</div>
+                        ${msg.dosyalar && msg.dosyalar.length > 0 ? `
+                            <div class="d-flex flex-wrap gap-2 mt-2">
+                                ${msg.dosyalar.map(file => `
+                                    <div class="chat-attachment shadow-sm">
+                                        <img src="${file}" onclick="window.open('${file}', '_blank')" class="rounded">
+                                    </div>
+                                `).join('')}
+                            </div>
+                        ` : ''}
+                    </div>
                 </div>
                 <div class="chat-meta">
-                    <strong>${msg.gonderen_adi}</strong> &bull; ${msg.olusturma_tarihi}
+                    <strong>${msg.gonderen_adi}</strong> <span>&bull;</span> ${msg.olusturma_tarihi}
+                    ${isMine ? '<i class="bx bx-check-double text-primary fs-6"></i>' : ''}
                 </div>
             </div>
         `;

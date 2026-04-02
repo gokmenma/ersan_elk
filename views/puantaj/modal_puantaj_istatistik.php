@@ -74,6 +74,9 @@ for ($i = 0; $i <= 6; $i++) {
                     <button type="button" class="btn btn-outline-primary btn-puantaj-view-toggle p-2" data-view="table">
                         <i data-feather="list"></i>
                     </button>
+                    <button type="button" class="btn btn-outline-success p-2 ms-1" id="btnExportPuantajStatsExcel" title="Excel'e Aktar">
+                        <i data-feather="file-text"></i>
+                    </button>
                 </div>
             </div>
         </div>
@@ -240,13 +243,40 @@ for ($i = 0; $i <= 6; $i++) {
         });
 
         $('#btnExportPuantajStatsExcel').on('click', function () {
-            var content = document.getElementById('puantajStatsExportArea').innerHTML;
-            if (!content) content = document.getElementById('puantajComparisonTable').outerHTML;
-            var excelHtml = '<html><head><meta charset="utf-8"></head><body>' + content + '</body></html>';
-            var blob = new Blob(['\ufeff', excelHtml], { type: 'application/vnd.ms-excel' });
-            var url = URL.createObjectURL(blob);
-            var link = document.createElement('a');
-            link.download = 'puantaj_istatistikleri.xls';
+            const table = document.getElementById('puantajComparisonTable');
+            if (!table || !$('#puBodyRows').find('tr').length) {
+                Swal.fire('Uyarı', 'Aktarılacak veri bulunamadı.', 'warning');
+                return;
+            }
+            
+            const periods = $('#selectComparisonPeriodsPuantaj').val() || [];
+            const fileName = 'Kesme_Acma_Istatistikleri_' + periods.join('_') + '.xls';
+            
+            let excelHtml = `
+                <html>
+                <head>
+                    <meta charset="utf-8">
+                    <style>
+                        table { border-collapse: collapse; width: 100%; }
+                        th, td { border: 1px solid #000; padding: 5px; text-align: center; }
+                        th { background-color: #f2f2f2; font-weight: bold; }
+                        .text-left { text-align: left; }
+                    </style>
+                </head>
+                <body>
+                    <h2 style="text-align:center;">Kesme/Açma İşlemleri İstatistikleri</h2>
+                    <p><b>Dönemler:</b> ${periods.join(', ')}</p>
+                    <p><b>Personel:</b> ${$('#selectComparisonStaffPuantaj option:selected').text()}</p>
+                    <br>
+                    ${table.outerHTML}
+                </body>
+                </html>
+            `;
+            
+            const blob = new Blob(['\ufeff', excelHtml], { type: 'application/vnd.ms-excel' });
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.download = fileName;
             link.href = url;
             link.click();
             setTimeout(function () { URL.revokeObjectURL(url); }, 100);

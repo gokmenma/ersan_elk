@@ -228,6 +228,8 @@ function renderTickets(tickets) {
         if(ticket.durum === 'yanitlandi') { statusClass = 'bg-emerald-100 text-emerald-700'; statusText = 'YANITLANDI'; }
         if(ticket.durum === 'personel_yaniti') { statusClass = 'bg-blue-100 text-blue-700'; statusText = 'BEKLİYOR'; }
         if(ticket.durum === 'kapali') { statusClass = 'bg-slate-100 text-slate-500'; statusText = 'KAPALI'; }
+        if(ticket.durum === 'isleme_alindi') { statusClass = 'bg-sky-100 text-sky-700'; statusText = 'İŞLEMDE'; }
+        if(ticket.durum === 'cozuldu') { statusClass = 'bg-green-100 text-green-700'; statusText = 'ÇÖZÜLDÜ'; }
 
         html += `
             <a href="?page=yardim-detay&id=${ticket.encrypted_id || ticket.id}" class="card p-4 active:scale-[0.98] transition-all">
