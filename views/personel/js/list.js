@@ -19,6 +19,7 @@ $(document).ready(function () {
         type: "POST",
         data: function (d) {
           d.action = "personel-list";
+          d.status = $(".status-filter-badge.active").data("status") || "";
         },
       },
       drawCallback: function () {
@@ -201,13 +202,17 @@ $(document).ready(function () {
       // İlk açılışta eğer state'de filtre yoksa Aktif personelleri göster
       let state = table.state();
       if (state && (!state.columns || !state.columns[12] || !state.columns[12].search || !state.columns[12].search.search)) {
-          table.column(12).search("multi:Aktif").draw();
-          updateActiveBadge("Aktif");
+          // Varsayılan olarak Aktif seçili başlasın (eğer state'de bir şey yoksa)
+          if (!$(".status-filter-badge.active").length) {
+              updateActiveBadge("Aktif");
+          }
+          table.draw();
       } else if (state && state.columns && state.columns[12] && state.columns[12].search && state.columns[12].search.search) {
           let s = state.columns[12].search.search;
           if (s.includes("Aktif")) updateActiveBadge("Aktif");
           else if (s.includes("Pasif")) updateActiveBadge("Pasif");
           else updateActiveBadge("");
+          table.draw();
       }
       
       initColumnToggle();
@@ -765,16 +770,10 @@ function initImageHover() {
     });
 }
 
-/** Statü filtreleme tıklama olayları */
 $(document).on('click', '.status-filter-badge', function() {
     let status = $(this).data('status');
     let table = $("#membersTable").DataTable();
     
     updateActiveBadge(status);
-    
-    if (status === "") {
-        table.column(12).search("").draw();
-    } else {
-        table.column(12).search("multi:" + status).draw();
-    }
+    table.draw();
 });

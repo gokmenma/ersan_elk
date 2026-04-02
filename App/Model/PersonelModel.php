@@ -378,6 +378,16 @@ class PersonelModel extends Model
         // Filtreleme
         $filterSql = "";
 
+        // Status Filtresi (Hızlı Butonlar)
+        if (!empty($request['status'])) {
+            $status = $request['status'];
+            if ($status === 'Aktif') {
+                $filterSql .= " AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00')";
+            } elseif ($status === 'Pasif') {
+                $filterSql .= " AND (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi != '' AND p.isten_cikis_tarihi != '0000-00-00')";
+            }
+        }
+
         // Global Arama
         if (!empty($request['search']['value'])) {
             $searchValue = "%" . $request['search']['value'] . "%";

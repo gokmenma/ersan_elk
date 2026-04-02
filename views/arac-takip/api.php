@@ -531,9 +531,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $tarih = Date::Ymd($data['tarih'] ?? date('Y-m-d'));
 
                 // Aynı tarihte kayıt var mı kontrolü
-                $mevcutKayit = $Km->kayitVarMi($arac_id, $tarih, $km_id > 0 ? $km_id : null);
-                if ($mevcutKayit) {
-                    throw new Exception("Bu araç için bu tarihte zaten KM kaydı bulunmaktadır.");
+                // Eğer yeni ekliyorsak (km_id <= 0), silinmişleri de kontrol etmeliyiz ki DB unique constraint hatası vermesin
+                if ($km_id <= 0) {
+                    $mevcutKayit = $Km->kayitVarMi($arac_id, $tarih, null, true);
+                    if ($mevcutKayit) {
+                        // Eğer kayıt varsa ve silinmişse, bu kaydı tekrar canlandıracağız (re-use ID)
+                        if ($mevcutKayit->silinme_tarihi !== null) {
+                            $km_id = $mevcutKayit->id;
+                            $data['id'] = $km_id;
+                            $data['silinme_tarihi'] = null; // Silinme tarihini temizle
+                        } else {
+                            // Eğer silinmemiş bir kayıt varsa hata ver
+                            throw new Exception("Bu araç için bu tarihte zaten KM kaydı bulunmaktadır.");
+                        }
+                    }
+                } else {
+                    // Düzenleme modundaysak, sadece başka bir kayıtta aynı tarih var mı kontrol et (silinmişleri görmeyebiliriz)
+                    $mevcutKayit = $Km->kayitVarMi($arac_id, $tarih, $km_id);
+                    if ($mevcutKayit) {
+                        throw new Exception("Bu araç için bu tarihte zaten KM kaydı bulunmaktadır.");
+                    }
                 }
 
                 unset($data['action']);
