@@ -300,7 +300,9 @@ if (true) { // Always use unified logic for all standard tabs
                     }
 
                     if ($teamNo > 0) {
-                        if (!\App\Helper\EkipHelper::isTeamInTabRange($teamNo, $activeTab, $Settings)) {
+                        // Eğer bu tab için ilgili verisi VARSA veya ekip aralığındaysa göster. 
+                        // Sadece hem verisi yok hem de aralık dışındaysa gizle.
+                        if (!$hasRelevantData && !\App\Helper\EkipHelper::isTeamInTabRange($teamNo, $activeTab, $Settings)) {
                             continue;
                         }
                     } else if (!$hasRelevantData) {
