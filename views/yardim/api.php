@@ -426,6 +426,16 @@ try {
             }
 
             $destekBiletModel->updateStatus($biletId, $durum, (int) ($_SESSION['user_id'] ?? 0));
+            
+            // Kullanıcıya bildirim gönder
+            try {
+                if (in_array($durum, ['kapali', 'cozuldu', 'isleme_alindi'])) {
+                    notifyTicketOwnerForStatusChange($ticket, $durum);
+                }
+            } catch (Exception $e) {
+                error_log('Destek durum güncelleme bildirim hatası: ' . $e->getMessage());
+            }
+            
             echo json_encode(['success' => true]);
             break;
 
@@ -505,10 +515,16 @@ function getUsersByPersonelId(int $personelId): array
     $sql = "SELECT id, adi_soyadi, email_adresi, email FROM users WHERE personel_id = :personel_id";
     $params = [':personel_id' => $personelId];
 
+    /* 
+    NOT: owner_id filtresini kaldırdık çünkü yönetici farklı bir owner_id 
+    bağlamında olsa bile (örn. süper admin) personel sahibine bildirimin gitmesini istiyoruz.
+    */
+    /*
     if (!empty($_SESSION['owner_id'])) {
         $sql .= " AND owner_id = :owner_id";
         $params[':owner_id'] = (int) $_SESSION['owner_id'];
     }
+    */
 
     $stmt = $db->prepare($sql);
     $stmt->execute($params);
@@ -705,6 +721,49 @@ function notifyTicketOwnerForAdminReply($ticket, string $mesaj): void
     ";
 
     MailGonderService::gonder($emails, $subject, $mailContent);
+}
+
+function notifyTicketOwnerForStatusChange($ticket, string $newStatus): void
+{
+    $ticketId = (int) $ticket->id;
+    $personelId = (int) ($ticket->personel_id ?? 0);
+    $userId = (int) ($ticket->user_id ?? 0);
+
+    $linkedUsers = [];
+    if ($personelId > 0) {
+        $linkedUsers = getUsersByPersonelId($personelId);
+    } elseif ($userId > 0) {
+        $userModel = new UserModel();
+        $owner = $userModel->find($userId);
+        if ($owner) $linkedUsers = [$owner];
+    }
+
+    if (empty($linkedUsers)) return;
+
+    $bildirimModel = new BildirimModel();
+    
+    $statusLabels = [
+        'kapali' => 'Kapatıldı',
+        'cozuldu' => 'Çözüldü',
+        'isleme_alindi' => 'İşleme Alındı',
+        'yanitlandi' => 'Yanıtlandı',
+        'personel_yaniti' => 'Personel Yanıtı'
+    ];
+    
+    $statusText = $statusLabels[$newStatus] ?? $newStatus;
+    $title = 'Destek Talebi Durumu: ' . $statusText;
+    $message = 'Talep #' . ($ticket->ref_no ?? $ticketId) . ' durumu "' . $statusText . '" olarak güncellendi.';
+
+    foreach ($linkedUsers as $user) {
+        $bildirimModel->createNotification(
+            (int) $user->id,
+            $title,
+            $message,
+            buildTicketRoute($ticketId),
+            'info-circle',
+            'primary'
+        );
+    }
 }
 
 function notifyTicketOwnerForApprovalResult($ticket, string $onayDurumu, string $onayNotu = ''): void

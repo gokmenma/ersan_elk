@@ -147,9 +147,33 @@ if (!is_array($firma_option)) {
             <!-- Destek Talepleri -->
             <div class="dropdown d-inline-block">
                 <?php $supportUrl = \App\Service\Gate::allows('admin_destek_talebi') ? 'index.php?p=yardim/list' : 'index.php?p=yardim/user-list'; ?>
-                <button type="button" class="btn header-item noti-icon" onclick="location.href='<?php echo $supportUrl; ?>'" title="Destek Talepleri">
+                <button type="button" class="btn header-item noti-icon position-relative"
+                    id="page-header-support-dropdown" data-bs-toggle="dropdown" aria-haspopup="true"
+                    aria-expanded="false" title="Destek Talepleri">
                     <i data-feather="help-circle" class="icon-lg"></i>
+                    <span class="badge bg-danger rounded-pill" id="support-notification-badge" style="display: none;">0</span>
                 </button>
+                <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-0"
+                    aria-labelledby="page-header-support-dropdown" style="max-height: 500px; overflow: hidden;">
+                    <div class="p-3 border-bottom">
+                        <div class="row align-items-center">
+                            <div class="col">
+                                <h6 class="m-0"> Destek Bildirimleri</h6>
+                            </div>
+                        </div>
+                    </div>
+                    <div data-simplebar style="max-height: 350px; overflow-y: auto !important;"
+                        id="topbar-support-notification-list">
+                        <!-- Destek bildirimleri buraya yüklenecek -->
+                        <div class="text-center p-3 text-muted">Bildirim yok</div>
+                    </div>
+                    <div class="p-2 border-top d-grid">
+                        <a class="btn btn-sm btn-link font-size-14 text-center" href="<?php echo $supportUrl; ?>">
+                            <i class="mdi mdi-arrow-right-circle me-1"></i>
+                            <span>Tüm Destek Talepleri</span>
+                        </a>
+                    </div>
+                </div>
             </div>
 
             <!-- <div class="dropdown d-none d-lg-inline-block ms-1">
@@ -289,65 +313,91 @@ if (!is_array($firma_option)) {
         const POLLING_INTERVAL = 15000; // 15 saniye
 
         /**
-         * Badge'ı güncelle
+         * Badge'ları güncelle
          */
-        function updateBadge(count) {
+        function updateBadge(count, supportCount) {
+            // Normal bildirimler
             $('#notification-badge').text(count);
             if (count > 0) {
                 $('#notification-badge').show();
             } else {
                 $('#notification-badge').hide();
             }
+
+            // Destek bildirimleri
+            $('#support-notification-badge').text(supportCount);
+            if (supportCount > 0) {
+                $('#support-notification-badge').show();
+            } else {
+                $('#support-notification-badge').hide();
+            }
         }
 
         /**
          * Bildirim listesini güncelle
          */
-        function updateNotificationList(notifications) {
+        function updateNotificationList(notifications, supportNotifications) {
+            // Normal Bildirimler
             let html = '';
-
             if (!notifications || notifications.length === 0) {
                 html = '<div class="text-center p-3 text-muted">Bildirim yok</div>';
             } else {
-                notifications.forEach(function (n) {
-                    let iconClass = n.icon || 'bell';
-
-                    // İkon mapping - eski/hatalı ikon adlarını düzelt
-                    const iconMap = {
-                        'lira-sign': 'bx-money',
-                        'calendar': 'bx-calendar',
-                        'message-square': 'bx-message-square-detail',
-                        'bell': 'bx-bell'
-                    };
-
-                    if (iconMap[iconClass]) {
-                        iconClass = iconMap[iconClass];
-                    } else if (!iconClass.startsWith('bx-') && !iconClass.startsWith('mdi-')) {
-                        iconClass = 'bx-' + iconClass;
-                    }
-
-                    html += `
-                    <a href="${n.link}" class="text-reset notification-item" onclick="markAsRead(${n.id})">
-                        <div class="d-flex">
-                            <div class="flex-shrink-0 avatar-sm me-3">
-                                <span class="avatar-title bg-${n.color || 'primary'} rounded-circle font-size-16">
-                                    <i class="bx ${iconClass}"></i>
-                                </span>
-                            </div>
-                            <div class="flex-grow-1">
-                                <h6 class="mb-1">${n.title}</h6>
-                                <div class="font-size-13 text-muted">
-                                    <p class="mb-1">${n.message}</p>
-                                    <p class="mb-0"><i class="mdi mdi-clock-outline"></i> <span>${n.time_ago}</span></p>
-                                </div>
-                            </div>
-                        </div>
-                    </a>
-                    `;
+                notifications.forEach(function(n) {
+                    html += generateNotificationItemHtml(n);
                 });
             }
-
             $('#topbar-notification-list').html(html);
+
+            // Destek Bildirimleri
+            let supportHtml = '';
+            if (!supportNotifications || supportNotifications.length === 0) {
+                supportHtml = '<div class="text-center p-3 text-muted">Bildirim yok</div>';
+            } else {
+                supportNotifications.forEach(function(n) {
+                    supportHtml += generateNotificationItemHtml(n);
+                });
+            }
+            $('#topbar-support-notification-list').html(supportHtml);
+        }
+
+        /**
+         * Tekli bildirim HTML üretici
+         */
+        function generateNotificationItemHtml(n) {
+            let iconClass = n.icon || 'bell';
+
+            // İkon mapping - eski/hatalı ikon adlarını düzelt
+            const iconMap = {
+                'lira-sign': 'bx-money',
+                'calendar': 'bx-calendar',
+                'message-square': 'bx-message-square-detail',
+                'bell': 'bx-bell'
+            };
+
+            if (iconMap[iconClass]) {
+                iconClass = iconMap[iconClass];
+            } else if (!iconClass.startsWith('bx-') && !iconClass.startsWith('mdi-')) {
+                iconClass = 'bx-' + iconClass;
+            }
+
+            return `
+            <a href="${n.link}" class="text-reset notification-item" onclick="markAsRead(${n.id})">
+                <div class="d-flex">
+                    <div class="flex-shrink-0 avatar-sm me-3">
+                        <span class="avatar-title bg-${n.color || 'primary'} rounded-circle font-size-16">
+                            <i class="bx ${iconClass}"></i>
+                        </span>
+                    </div>
+                    <div class="flex-grow-1">
+                        <h6 class="mb-1">${n.title}</h6>
+                        <div class="font-size-13 text-muted">
+                            <p class="mb-1">${n.message}</p>
+                            <p class="mb-0"><i class="mdi mdi-clock-outline"></i> <span>${n.time_ago}</span></p>
+                        </div>
+                    </div>
+                </div>
+            </a>
+            `;
         }
 
         /**
@@ -377,11 +427,15 @@ if (!is_array($firma_option)) {
         function fetchNotifications() {
             $.post('views/bildirim/api.php', { action: 'get-unread' }, function (response) {
                 if (response.status === 'success') {
-                    updateBadge(response.count);
+                    updateBadge(response.count, response.support_count);
 
                     let maxId = 0;
-                    if (response.notifications && response.notifications.length > 0) {
-                        response.notifications.forEach(function (n) {
+                    
+                    // Tüm bildirimleri tara
+                    const allNotifications = (response.notifications || []).concat(response.support_notifications || []);
+                    
+                    if (allNotifications.length > 0) {
+                        allNotifications.forEach(function (n) {
                             if (n.id > maxId) maxId = n.id;
 
                             // İlk yüklemede toast gösterme, sadece yeni bildirimler için
@@ -391,7 +445,7 @@ if (!is_array($firma_option)) {
                         });
                     }
 
-                    updateNotificationList(response.notifications);
+                    updateNotificationList(response.notifications, response.support_notifications);
 
                     if (maxId > lastNotificationId) {
                         lastNotificationId = maxId;

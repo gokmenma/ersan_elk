@@ -18,7 +18,7 @@ $defter = $_GET['defter'] ?? '';
 
 // Bölge ve Defter listelerini endeks_okuma tablosundan çek
 $firmaId = $_SESSION['firma_id'] ?? 0;
-$bolgeListStmt = $EndeksOkuma->db->prepare("SELECT DISTINCT bolge FROM endeks_okuma WHERE firma_id = ? AND silinme_tarihi IS NULL AND bolge IS NOT NULL AND bolge != '' ORDER BY bolge");
+$bolgeListStmt = $EndeksOkuma->db->prepare("SELECT DISTINCT defter_bolge FROM tanimlamalar WHERE firma_id = ? AND grup = 'defter_kodu' AND silinme_tarihi IS NULL AND defter_bolge IS NOT NULL AND defter_bolge != '' ORDER BY defter_bolge");
 $bolgeListStmt->execute([$firmaId]);
 $bolgeListRaw = $bolgeListStmt->fetchAll(PDO::FETCH_COLUMN);
 $bolgeOptions = ['' => 'Seçiniz...'];
@@ -26,7 +26,7 @@ foreach ($bolgeListRaw as $b) {
     $bolgeOptions[$b] = $b;
 }
 
-$defterListStmt = $EndeksOkuma->db->prepare("SELECT DISTINCT defter FROM endeks_okuma WHERE firma_id = ? AND silinme_tarihi IS NULL AND defter IS NOT NULL AND defter != '' ORDER BY defter");
+$defterListStmt = $EndeksOkuma->db->prepare("SELECT DISTINCT tur_adi FROM tanimlamalar WHERE firma_id = ? AND grup = 'defter_kodu' AND silinme_tarihi IS NULL AND tur_adi IS NOT NULL AND tur_adi != '' ORDER BY tur_adi");
 $defterListStmt->execute([$firmaId]);
 $defterListRaw = $defterListStmt->fetchAll(PDO::FETCH_COLUMN);
 $defterOptions = ['' => 'Seçiniz...'];

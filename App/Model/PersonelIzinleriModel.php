@@ -78,10 +78,11 @@ class PersonelIzinleriModel extends Model
         $restricted_dept = $this->getRestrictedDept();
         $is_restricted = ($restricted_dept !== null);
         
-        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, :restricted_dept)" : "";
-        $params = [$_SESSION['firma_id']];
+        $bindParams = [$_SESSION['firma_id']];
+        $extra_where = "";
         if ($is_restricted) {
-            $params['restricted_dept'] = $restricted_dept;
+            $extra_where = " AND FIND_IN_SET(p.departman, ?)";
+            $bindParams[] = $restricted_dept;
         }
 
         $sql = "
@@ -95,14 +96,6 @@ class PersonelIzinleriModel extends Model
         ";
         
         $query = $this->db->prepare($sql);
-        // Parametreleri düzgün bind etmek için dizi yapısını değiştirelim
-        $bindParams = [$_SESSION['firma_id']];
-        if ($is_restricted) {
-            $sql = str_replace(':restricted_dept', '?', $sql);
-            $bindParams[] = $restricted_dept;
-            $query = $this->db->prepare($sql);
-        }
-        
         $query->execute($bindParams);
         return $query->fetch(PDO::FETCH_OBJ)->count ?? 0;
     }
@@ -254,21 +247,10 @@ class PersonelIzinleriModel extends Model
      */
     public function getReddedilmisIzinler($limit = 50)
     {
-        $restricted_users = [
-            69 => 'Endeks Okuma',
-            68 => 'Kesme Açma',
-            67 => 'Sayaç Sökme Takma',
-            70 => 'Kaçak Kontrol'
-        ];
-        $current_user_id = $_SESSION['user_id'] ?? 0;
-        $is_restricted = isset($restricted_users[$current_user_id]);
-        $restricted_dept = $is_restricted ? $restricted_users[$current_user_id] : null;
+        $restricted_dept = $this->getRestrictedDept();
+        $is_restricted = ($restricted_dept !== null);
 
-        if ($is_restricted && \App\Service\Gate::isSuperAdmin()) {
-            $is_restricted = false;
-        }
-
-        $extra_where = $is_restricted ? " AND p.departman = ?" : "";
+        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
         $bindParams = [$_SESSION['firma_id']];
         if ($is_restricted) {
             $bindParams[] = $restricted_dept;

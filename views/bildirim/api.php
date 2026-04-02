@@ -273,10 +273,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $BildirimModel = new BildirimModel();
                 $notifications = $BildirimModel->getUnreadNotifications($userId);
-                $count = count($notifications);
+                
+                $formattedNormal = [];
+                $formattedSupport = [];
+                $normalCount = 0;
+                $supportCount = 0;
 
-                // Format for frontend
-                $formatted = [];
                 foreach ($notifications as $n) {
                     // Timezone-aware time_ago hesaplama
                     $timeAgo = 'şimdi';
@@ -304,21 +306,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         }
                     }
 
-                    $formatted[] = [
+                    $item = [
                         'id' => $n->id,
                         'title' => $n->title,
-                        'message' => $n->message,
-                        'link' => $n->link,
-                        'icon' => $n->icon,
-                        'color' => $n->color,
+                        'message' => $n->message ?? '',
+                        'link' => $n->link ?? '#',
+                        'icon' => $n->icon ?? 'bell',
+                        'color' => $n->color ?? 'primary',
                         'time_ago' => $timeAgo
                     ];
+
+                    // Destek talebi bildirimlerini ayır (p=yardim içeren linkler)
+                    if (stripos($item['link'], 'p=yardim') !== false) {
+                        $formattedSupport[] = $item;
+                        $supportCount++;
+                    } else {
+                        $formattedNormal[] = $item;
+                        $normalCount++;
+                    }
                 }
 
                 echo json_encode([
                     'status' => 'success',
-                    'count' => $count,
-                    'notifications' => $formatted
+                    'count' => $normalCount,
+                    'support_count' => $supportCount,
+                    'notifications' => $formattedNormal,
+                    'support_notifications' => $formattedSupport
                 ]);
                 break;
 

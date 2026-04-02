@@ -2470,7 +2470,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $EndeksOkuma = new \App\Model\EndeksOkumaModel();
 
         // Bölge ve Defter bazında group by yaparak verileri çek
+        $minDonem = min($donemler);
+        $maxDonem = max($donemler);
+        $startDateSql = substr((string)$minDonem, 0, 4) . '-' . substr((string)$minDonem, 4, 2) . '-01';
+        $endDateSql = date('Y-m-t', strtotime(substr((string)$maxDonem, 0, 4) . '-' . substr((string)$maxDonem, 4, 2) . '-01'));
         $placeholders = implode(',', array_fill(0, count($donemler), '?'));
+
         $groupSql = "SELECT e.bolge, e.defter, DATE_FORMAT(e.tarih, '%Y%m') as donem,
                             SUM(e.okunan_abone_sayisi) as toplam_okunan,
                             SUM(e.okunan_abone_sayisi) as kayit_sayisi,
@@ -2478,9 +2483,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                      FROM endeks_okuma e
                      WHERE e.firma_id = ?
                        AND e.silinme_tarihi IS NULL
+                       AND e.tarih BETWEEN ? AND ?
                        AND DATE_FORMAT(e.tarih, '%Y%m') IN ($placeholders)";
 
-        $queryParams = [$firmaId];
+        $queryParams = [$firmaId, $startDateSql, $endDateSql];
         $queryParams = array_merge($queryParams, $donemler);
 
         if (!empty($bolge)) {
@@ -2769,16 +2775,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         }
 
         // 2. endeks_okuma'dan dönem bazlı okuma verilerini çek
+        $minDonem = min($donemler);
+        $maxDonem = max($donemler);
+        $startDateSql = substr((string)$minDonem, 0, 4) . '-' . substr((string)$minDonem, 4, 2) . '-01';
+        $endDateSql = date('Y-m-t', strtotime(substr((string)$maxDonem, 0, 4) . '-' . substr((string)$maxDonem, 4, 2) . '-01'));
         $placeholders = implode(',', array_fill(0, count($donemler), '?'));
-                $sql = "SELECT bolge, defter, DATE_FORMAT(tarih, '%Y%m') as donem,
+
+        $sql = "SELECT bolge, defter, DATE_FORMAT(tarih, '%Y%m') as donem,
                         SUM(okunan_abone_sayisi) as toplam_okunan,
                         SUM(okunan_abone_sayisi) as toplam_gidilen
                  FROM endeks_okuma
                  WHERE firma_id = ?
                    AND silinme_tarihi IS NULL
+                   AND tarih BETWEEN ? AND ?
                    AND DATE_FORMAT(tarih, '%Y%m') IN ($placeholders)";
 
-        $queryParams = [$firmaId];
+        $queryParams = [$firmaId, $startDateSql, $endDateSql];
         $queryParams = array_merge($queryParams, $donemler);
 
         if (!empty($bolgeFilter)) {
@@ -3037,16 +3049,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $TanimlamalarModel = new \App\Model\TanimlamalarModel();
 
         // 1. endeks_okuma'dan bolge + defter + dönem bazlı okuma tarihlerini çek
+        $minDonem = min($donemler);
+        $maxDonem = max($donemler);
+        $startDateSql = substr((string)$minDonem, 0, 4) . '-' . substr((string)$minDonem, 4, 2) . '-01';
+        $endDateSql = date('Y-m-t', strtotime(substr((string)$maxDonem, 0, 4) . '-' . substr((string)$maxDonem, 4, 2) . '-01'));
         $placeholders = implode(',', array_fill(0, count($donemler), '?'));
+
         $sql = "SELECT bolge, defter, DATE_FORMAT(tarih, '%Y%m') as donem,
                        MAX(tarih) as okuma_tarihi
                 FROM endeks_okuma
                 WHERE firma_id = ?
                   AND silinme_tarihi IS NULL
                   AND defter IS NOT NULL AND defter != ''
+                  AND tarih BETWEEN ? AND ?
                   AND DATE_FORMAT(tarih, '%Y%m') IN ($placeholders)";
 
-        $queryParams = [$firmaId];
+        $queryParams = [$firmaId, $startDateSql, $endDateSql];
         $queryParams = array_merge($queryParams, $donemler);
 
         if (!empty($bolge)) {

@@ -233,6 +233,7 @@ class Model extends Db
         $stmt->execute([$current_user_id]);
         $user = $stmt->fetch(PDO::FETCH_OBJ);
 
-        return (!empty($user->yonetilen_departman)) ? $user->yonetilen_departman : null;
+        $dept = isset($user->yonetilen_departman) ? trim($user->yonetilen_departman) : '';
+        return ($dept !== '') ? $dept : null;
     }
 }
