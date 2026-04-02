@@ -18,7 +18,17 @@ $(document).ready(function () {
         },
         columns: [
             { data: "islem_tarihi", className: "text-center" },
-            { data: "belge_no", className: "text-center" },
+            { 
+                data: "belge_no", 
+                className: "text-center",
+                render: function(data, type, row) {
+                    let html = data || '-';
+                    if (row.dosya) {
+                        html += ' <a href="uploads/cari_belgeler/' + row.dosya + '" target="_blank" class="ms-1 text-primary"><i class="bx bx-paperclip font-size-16"></i></a>';
+                    }
+                    return html;
+                }
+            },
             { data: "aciklama" },
             { data: "borc", className: "text-end text-danger" },
             { data: "alacak", className: "text-end text-success" },
@@ -70,6 +80,7 @@ $(document).ready(function () {
                         <div class="op-value">
                             <span class="op-amt ${isAldim ? 'text-danger' : 'text-success'}">${amt}</span>
                             <span class="op-type text-muted">${typeLabel}</span>
+                            ${item.dosya ? `<a href="uploads/cari_belgeler/${item.dosya}" target="_blank" class="d-block mt-1 text-primary"><i class="bx bx-paperclip"></i> Dosya</a>` : ''}
                         </div>
                     </div>
                     <div class="w-100 d-flex justify-content-end gap-2 mt-2 pt-2 border-top border-light-subtle">
@@ -97,6 +108,7 @@ $(document).ready(function () {
 
     function showHizliIslem(type) {
         $('#hizliIslemForm')[0].reset();
+        $('#hizliIslemForm').find('.existing-file').remove();
         $('#hizliIslemForm').find('input[name="hareket_id"]').remove();
         $('#hizli_islem_type').val(type);
         
@@ -137,12 +149,14 @@ $(document).ready(function () {
 
     $('#hizliIslemForm').on('submit', function(e) {
         e.preventDefault();
-        const formData = $(this).serialize();
+        const formData = new FormData(this);
         $.ajax({
             url: "views/cari/api.php",
             type: "POST",
             data: formData,
             dataType: "json",
+            processData: false,
+            contentType: false,
             success: function(res) {
                 if (res.status === "success") {
                     $('#hizliIslemModal').modal('hide');
@@ -218,6 +232,12 @@ $(document).ready(function () {
                         $('.modal-header .bg-primary-subtle').removeClass('bg-success-subtle text-success').addClass('bg-danger-subtle text-danger');
                         $('#hizliIslemModalIcon').html('<i data-feather="minus-circle" style="width: 24px; height: 24px; color: #ef4444;"></i>');
                         $('#hizli_islem_amt_label').text('Alınan Tutar');
+                    }
+                    
+                    const fileInput = $('#hizliIslemForm').find('input[name="dosya"]');
+                    fileInput.next('.existing-file').remove();
+                    if (res.dosya) {
+                        fileInput.after('<div class="existing-file mt-1 small text-muted"><i class="bx bx-file"></i> <a href="uploads/cari_belgeler/' + res.dosya + '" target="_blank">Mevcut Belge</a></div>');
                     }
                     
                     if (typeof feather !== 'undefined') feather.replace();

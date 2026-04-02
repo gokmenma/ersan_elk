@@ -162,6 +162,7 @@ if ($action == "hesap-hareketleri-ajax-list") {
                 "islem_tarihi" => date('d.m.Y H:i', strtotime($row->islem_tarihi)),
                 "belge_no" => $row->belge_no ?: '-',
                 "aciklama" => $row->aciklama ?: '-',
+                "dosya" => $row->dosya ?: null,
                 "borc" => $row->borc > 0 ? Helper::formattedMoney($row->borc) : '-',
                 "alacak" => $row->alacak > 0 ? Helper::formattedMoney($row->alacak) : '-',
                 "yuruyen_bakiye" => '<span class="fw-bold ' . ($row->yuruyen_bakiye < 0 ? 'text-danger' : ($row->yuruyen_bakiye > 0 ? 'text-success' : '')) . '">' . 
@@ -193,6 +194,23 @@ if ($action == "hizli-hareket-kaydet") {
     $aciklama = $_POST["aciklama"];
 
     try {
+        // Dosya Yükleme İşlemi
+        $dosya_adi = null;
+        if (isset($_FILES['dosya']) && $_FILES['dosya']['error'] === UPLOAD_ERR_OK) {
+            $upload_dir = dirname(__DIR__, 2) . '/uploads/cari_belgeler/';
+            if (!is_dir($upload_dir)) {
+                mkdir($upload_dir, 0777, true);
+            }
+            $file_ext = strtolower(pathinfo($_FILES['dosya']['name'], PATHINFO_EXTENSION));
+            $allowed_exts = ['jpg', 'jpeg', 'png', 'pdf'];
+            if (in_array($file_ext, $allowed_exts)) {
+                $dosya_adi = uniqid('cari_') . '.' . $file_ext;
+                if (!move_uploaded_file($_FILES['dosya']['tmp_name'], $upload_dir . $dosya_adi)) {
+                    $dosya_adi = null;
+                }
+            }
+        }
+
         $data = [
             "id" => $hareket_id ?: 0,
             "cari_id" => $cari_id,
@@ -202,6 +220,11 @@ if ($action == "hizli-hareket-kaydet") {
             "borc" => ($type == 'aldim' ? $tutar : 0),
             "alacak" => ($type == 'verdim' ? $tutar : 0)
         ];
+
+        // Eğer yeni dosya yüklendiyse dataya ekle
+        if ($dosya_adi) {
+            $data["dosya"] = $dosya_adi;
+        }
 
         $CariHareket->saveWithAttr($data);
         
@@ -335,6 +358,7 @@ if ($action == "tum-hareketler-getir") {
                 "amt" => $row->borc > 0 ? (float)$row->borc : (float)$row->alacak,
                 "is_borc" => $row->borc > 0,
                 "belge_no" => $row->belge_no,
+                "dosya" => $row->dosya,
                 "yuruyen" => (float)($row->global_yuruyen_bakiye ?? 0)
             ];
         }

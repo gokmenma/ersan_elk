@@ -4641,8 +4641,10 @@ if (Gate::allows("ana_sayfa")) {
                             }
                         });
 
+                        html += '</tbody>';
                         // Firma toplam footer
-                        html += '<tr style="background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%); border-top: 2px solid #a5b4fc; font-weight: 700;">';
+                        html += '<tfoot style="position: sticky; bottom: 0; z-index: 10; background: #fff;">';
+                        html += '<tr style="background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%); border-top: 2px solid #a5b4fc; font-weight: 700; box-shadow: 0 -4px 12px rgba(0,0,0,0.05);">';
                         html += '<td style="padding: 14px 16px; color: #3730a3; font-size: 13px; border-left: 3px solid #6366f1;"><i class="bx bx-buildings me-2"></i>GENEL TOPLAM</td>';
                         periodLabels.forEach((label, idx) => {
                             const isCurrent = periods[idx].is_current;
@@ -4652,9 +4654,9 @@ if (Gate::allows("ana_sayfa")) {
                         const fLastVal = firmaToplam[periodLabels[periodLabels.length - 1]];
                         const fPrevVal = periodLabels.length > 1 ? firmaToplam[periodLabels[periodLabels.length - 2]] : 0;
                         const fTrend = getTrendInfo(fLastVal, fPrevVal);
-                        html += `<td class="text-center" style="padding: 14px 12px;">${getTrendBadge(fTrend)}</td><td></td></tr>`;
+                        html += `<td class="text-center" style="padding: 14px 12px;">${getTrendBadge(fTrend)}</td><td></td></tr></tfoot>`;
 
-                        html += '</tbody></table></div>';
+                        html += '</table></div>';
 
                         // Alt açıklama + lejand
                         html += '<div class="px-3 py-2 d-flex align-items-center gap-3" style="border-top: 1px solid #e2e8f0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);">';

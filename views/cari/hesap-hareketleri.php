@@ -433,6 +433,10 @@ $bakiye = $ozet->bakiye ?? 0;
                     <div class="mb-3">
                         <?php echo Form::FormFloatTextarea("aciklama", "", "Açıklama giriniz...", "Açıklama", "list", "form-control", false, "80px"); ?>
                     </div>
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted mb-1">Dosya (Resim veya PDF)</label>
+                        <input type="file" name="dosya" class="form-control" accept="image/*,application/pdf">
+                    </div>
                 </div>
                 <div class="modal-footer border-top-0 pt-0 pb-4 px-4 justify-content-end">
                     <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal" style="background:#6c757d; color:#fff; border-radius: 10px; border:none; font-weight: 600;">İptal</button>

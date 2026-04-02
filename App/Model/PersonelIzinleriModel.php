@@ -81,7 +81,7 @@ class PersonelIzinleriModel extends Model
         $bindParams = [$_SESSION['firma_id']];
         $extra_where = "";
         if ($is_restricted) {
-            $extra_where = " AND FIND_IN_SET(p.departman, ?)";
+            $extra_where = " AND FIND_IN_SET(p.departman, ?) AND p.disardan_sigortali = 0";
             $bindParams[] = $restricted_dept;
         }
 
@@ -108,7 +108,7 @@ class PersonelIzinleriModel extends Model
         $restricted_dept = $this->getRestrictedDept();
         $is_restricted = ($restricted_dept !== null);
 
-        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
+        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?) AND p.disardan_sigortali = 0" : "";
         $bindParams = [$_SESSION['firma_id']];
         if ($is_restricted) {
             $bindParams[] = $restricted_dept;
@@ -124,6 +124,7 @@ class PersonelIzinleriModel extends Model
             WHERE pi.onay_durumu = 'beklemede' AND pi.silinme_tarihi IS NULL AND p.firma_id = ? 
             $extra_where
             AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
+            ORDER BY pi.talep_tarihi DESC
             LIMIT {$limit}
         ";
         
@@ -140,7 +141,7 @@ class PersonelIzinleriModel extends Model
         $restricted_dept = $this->getRestrictedDept();
         $is_restricted = ($restricted_dept !== null);
 
-        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
+        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?) AND p.disardan_sigortali = 0" : "";
         $today = date('Y-m-d');
         $bindParams = [$today, $today, $_SESSION['firma_id']];
         if ($is_restricted) {
@@ -173,7 +174,7 @@ class PersonelIzinleriModel extends Model
         $restricted_dept = $this->getRestrictedDept();
         $is_restricted = ($restricted_dept !== null);
 
-        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
+        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?) AND p.disardan_sigortali = 0" : "";
         $bindParams = [$_SESSION['firma_id']];
         if ($is_restricted) {
             $bindParams[] = $restricted_dept;
@@ -203,7 +204,7 @@ class PersonelIzinleriModel extends Model
         $restricted_dept = $this->getRestrictedDept();
         $is_restricted = ($restricted_dept !== null);
 
-        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
+        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?) AND p.disardan_sigortali = 0" : "";
         $bindParams = [$_SESSION['firma_id']];
         if ($is_restricted) {
             $bindParams[] = $restricted_dept;
@@ -250,7 +251,7 @@ class PersonelIzinleriModel extends Model
         $restricted_dept = $this->getRestrictedDept();
         $is_restricted = ($restricted_dept !== null);
 
-        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
+        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?) AND p.disardan_sigortali = 0" : "";
         $bindParams = [$_SESSION['firma_id']];
         if ($is_restricted) {
             $bindParams[] = $restricted_dept;

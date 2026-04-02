@@ -295,6 +295,14 @@ if (!function_exists('formatMoneyCariTakip')) {
                         <textarea name="aciklama" rows="2" class="w-full pl-9 pr-3 py-2.5 bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm placeholder-slate-300"></textarea>
                     </div>
                 </div>
+
+                <div>
+                    <label class="block text-xs font-semibold text-slate-500 dark:text-slate-400 mb-1">Belge Yükle (Resim/PDF)</label>
+                    <div class="relative">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[18px]">upload_file</span>
+                        <input type="file" name="dosya" accept="image/*,application/pdf" capture="environment" class="w-full pl-9 pr-3 py-2.5 bg-background-light dark:bg-background-dark border border-slate-200 dark:border-slate-700 rounded-xl focus:border-primary focus:ring-1 focus:ring-primary/20 text-sm">
+                    </div>
+                </div>
             </div>
             
             <button type="submit" id="islemSubmitBtn" class="w-full py-3 mt-6 bg-slate-900 border border-transparent dark:bg-primary dark:text-white dark:border-primary text-white rounded-xl font-bold flex items-center justify-center gap-2 active:scale-95 transition-transform mb-4">
@@ -397,6 +405,12 @@ if (!function_exists('formatMoneyCariTakip')) {
                 <div class="flex items-center justify-between text-xs">
                     <span class="font-medium text-slate-400">Açıklama</span>
                     <span id="detailDesc" class="font-bold text-slate-800 dark:text-white text-right max-w-[60%]">-</span>
+                </div>
+                <div id="detailFileRow" class="flex items-center justify-between text-xs hidden">
+                    <span class="font-medium text-slate-400">Belge</span>
+                    <a id="detailFileLink" href="#" target="_blank" class="font-bold text-primary flex items-center gap-1">
+                        <span class="material-symbols-outlined text-[16px]">visibility</span> Belgeyi Görüntüle
+                    </a>
                 </div>
             </div>
         </div>
@@ -601,7 +615,10 @@ window.openCariModal = function() {
 };
 
 window.openHizliIslem = function(cariId) {
-    document.getElementById('hizliIslemForm').reset();
+    const form = document.getElementById('hizliIslemForm');
+    form.reset();
+    const existingFile = form.querySelector('.existing-file');
+    if (existingFile) existingFile.remove();
     document.getElementById('hizli_islem_cari_id').value = cariId;
     
     // Set default datetime to current local time
@@ -745,7 +762,10 @@ window.loadModalHareketler = function() {
                         <p class="text-[9px] font-bold ${yColor} mt-0.5 opacity-80">
                             ${window.formatMoneyCariTakip(Math.abs(yBakiye))} ${ySign}
                         </p>
-                        ${h.belge_no ? `<span class="bg-slate-50 dark:bg-slate-700 px-1 rounded text-[8px] text-slate-400 font-bold uppercase tracking-tighter mt-1">#${h.belge_no}</span>` : ''}
+                        <div class="flex items-center gap-1 mt-1">
+                            ${h.dosya ? `<span class="material-symbols-outlined text-[14px] text-primary">attachment</span>` : ''}
+                            ${h.belge_no ? `<span class="bg-slate-50 dark:bg-slate-700 px-1 rounded text-[8px] text-slate-400 font-bold uppercase tracking-tighter">#${h.belge_no}</span>` : ''}
+                        </div>
                     </div>
                 </div>
             </div>`;
@@ -816,6 +836,15 @@ window.editHareket = function(id) {
                 form.appendChild(hInput);
             }
             hInput.value = id;
+
+            const existingFile = form.querySelector('.existing-file');
+            if (existingFile) existingFile.remove();
+            if (data.dosya) {
+                const div = document.createElement('div');
+                div.className = 'existing-file mt-2 p-2 bg-slate-50 dark:bg-slate-800 rounded-lg border border-slate-100 dark:border-slate-700 flex items-center justify-between';
+                div.innerHTML = `<span class="text-[10px] font-bold text-slate-500">Mevcut Belge:</span> <a href="uploads/cari_belgeler/${data.dosya}" target="_blank" class="text-[10px] font-bold text-primary flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">visibility</span> Görüntüle</a>`;
+                form.querySelector('input[name="dosya"]').parentElement.parentElement.appendChild(div);
+            }
 
             window.closeAllSwipes();
             document.getElementById('modalOverlay2').classList.remove('pointer-events-none', 'opacity-0');
@@ -898,6 +927,15 @@ window.viewHareketDetay = function(id) {
             document.getElementById('detailDateTime').innerText = data.islem_tarihi;
             document.getElementById('detailAccount').innerText = data.CariAdi || '-';
             document.getElementById('detailDesc').innerText = data.aciklama || '-';
+
+            const fileRow = document.getElementById('detailFileRow');
+            const fileLink = document.getElementById('detailFileLink');
+            if (data.dosya) {
+                fileRow.classList.remove('hidden');
+                fileLink.href = 'uploads/cari_belgeler/' + data.dosya;
+            } else {
+                fileRow.classList.add('hidden');
+            }
 
             window.closeAllSwipes();
             document.getElementById('modalOverlay2').classList.remove('pointer-events-none', 'opacity-0');
