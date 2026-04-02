@@ -8,11 +8,26 @@ $title = 'Görevler';
 ?>
 
 <link rel="stylesheet" href="views/gorevler/css/gorevler.css?v=<?php echo time(); ?>">
+<link rel="stylesheet" href="views/notlar/css/notlar.css?v=<?php echo time(); ?>">
 
 <div class="container-fluid">
     <?php include 'layouts/breadcrumb.php'; ?>
 
-    <div class="gorevler-wrapper">
+    <div class="gn-header">
+        <div class="gn-tabs">
+            <button class="gn-tab active" data-target="gorevler">
+                <i class="bx bx-check-double"></i>
+                <span>Yapılacak İşler</span>
+            </button>
+            <button class="gn-tab" data-target="notlar">
+                <i class="bx bx-note"></i>
+                <span>Notlarım</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="gorevler-wrapper-container active" id="view-gorevler">
+        <div class="gorevler-wrapper">
         <!-- ═══ SOL SIDEBAR ═══ -->
         <div class="gorevler-sidebar">
             <div class="gorevler-sidebar-header">
@@ -67,6 +82,57 @@ $title = 'Görevler';
                 <i class="bx bx-task"></i>
                 <h4>Yükleniyor...</h4>
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ NOTLAR GÖRÜNÜMÜ ═══ -->
+<div class="gorevler-wrapper-container" id="view-notlar" style="display:none">
+    <div class="notlar-wrapper">
+        <!-- Sol Panel: Defterler -->
+        <div class="notlar-sidebar">
+            <div class="notlar-sidebar-header">
+                <button class="btn-olustur" id="btnYeniDefter">
+                    <i class="bx bx-plus"></i>
+                    <span>Yeni Defter</span>
+                </button>
+            </div>
+            <div class="notlar-sidebar-nav" id="defterlerList">
+                <div class="nav-item nav-tum-notlar active" data-id="tum">
+                    <i class="bx bx-collection"></i>
+                    <span>Tüm Notlar</span>
+                    <span class="badge">0</span>
+                </div>
+                <div class="sidebar-divider"></div>
+                <div class="sidebar-section-title">Defterlerim</div>
+                <div class="defter-items">
+                    <!-- JS ile doldurulacak -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Sağ Panel: Notlar Grid -->
+        <div class="notlar-content">
+            <div class="notlar-content-header">
+                <div class="search-wrapper">
+                    <i class="bx bx-search"></i>
+                    <input type="text" id="notSearchInput" placeholder="Notlarda ara...">
+                </div>
+                <div class="header-actions">
+                    <button class="btn-grid-toggle" id="btnNotLayoutToggle" title="Görünümü değiştir">
+                        <i class="bx bx-grid-alt"></i>
+                    </button>
+                </div>
+            </div>
+
+            <div class="notlar-grid" id="notlarGrid">
+                <!-- JS ile doldurulacak -->
+            </div>
+
+            <!-- FAB -->
+            <button class="not-fab" id="btnYeniNot" title="Yeni Not Ekle">
+                <i class="bx bx-plus"></i>
+            </button>
         </div>
     </div>
 </div>
@@ -230,9 +296,7 @@ $title = 'Görevler';
             <div class="renk-secici">
                 <div class="renk-secici-item" data-renk="#4285f4" style="background:#4285f4" title="Mavi"></div>
                 <div class="renk-secici-item" data-renk="#ea4335" style="background:#ea4335" title="Kırmızı"></div>
-                <div class="renk-secici-item" data-renk="#fbbc04" style="background:#fbbc04" title="Sarı"></div>
-                <div class="renk-secici-item" data-renk="#34a853" style="background:#34a853" title="Yeşil"></div>
-                <div class="renk-secici-item" data-renk="#ff6d01" style="background:#ff6d01" title="Turuncu"></div>
+                <div class="renk-secici-i                <div class="renk-secici-item" data-renk="#ff6d01" style="background:#ff6d01" title="Turuncu"></div>
                 <div class="renk-secici-item" data-renk="#46bdc6" style="background:#46bdc6" title="Turkuaz"></div>
                 <div class="renk-secici-item" data-renk="#7baaf7" style="background:#7baaf7" title="Açık Mavi"></div>
                 <div class="renk-secici-item" data-renk="#a142f4" style="background:#a142f4" title="Mor"></div>
@@ -286,3 +350,95 @@ $title = 'Görevler';
         </div>
     </div>
 </div>
+
+<!-- ═══ YENİ NOT MODAL ═══ -->
+<div class="yeni-liste-modal" id="notModal">
+    <div class="yeni-liste-content" style="max-width: 600px;">
+        <h4 id="notModalTitle">Yeni Not</h4>
+        
+        <div style="margin-bottom: 12px;">
+            <input type="text" class="form-control-gt" id="notBaslik" placeholder="Başlık" style="font-weight: 600; font-size: 16px;">
+        </div>
+        
+        <div style="margin-bottom: 16px;">
+            <textarea class="form-control-gt" id="notIcerik" placeholder="Notunuzu yazın..." style="min-height: 200px; resize: vertical;"></textarea>
+        </div>
+
+        <div style="display:flex; gap: 12px; margin-bottom: 16px; align-items:center;">
+             <div style="flex:1">
+                <label class="form-label" style="font-size: 11px;">Defter</label>
+                <select id="notDefterSecim" class="form-control-gt">
+                    <!-- JS ile doldurulacak -->
+                </select>
+             </div>
+             <div>
+                <label class="form-label" style="font-size: 11px;">Renk</label>
+                <div class="not-renk-secici-trigger" id="notRenkTrigger" style="width:32px; height:32px; border-radius:50%; background:#fff; border:1px solid #dadce0; cursor:pointer;"></div>
+             </div>
+        </div>
+
+        <div class="yeni-liste-footer">
+            <input type="hidden" id="editNotId">
+            <button class="btn btn-soft-danger" id="btnNotSil" style="margin-right:auto; display:none;">Sil</button>
+            <button class="btn-iptal btn btn-light" id="notIptal">İptal</button>
+            <button class="btn-bitti btn btn-primary" id="notKaydet">Kaydet</button>
+        </div>
+    </div>
+</div>
+
+<!-- ═══ YENİ DEFTER MODAL ═══ -->
+<div class="yeni-liste-modal" id="defterModal">
+    <div class="yeni-liste-content">
+        <h4 id="defterModalTitle">Yeni Defter</h4>
+        
+        <div style="margin-bottom: 16px;">
+            <label class="form-label">Defter Adı</label>
+            <input type="text" class="form-control-gt" id="defterBaslik" placeholder="Örn: Bekleyenler">
+        </div>
+
+        <div style="margin-bottom: 16px;">
+            <label class="form-label">Renk</label>
+            <div class="renk-secici" id="defterRenkSecici">
+                <div class="renk-secici-item" data-renk="#4285f4" style="background:#4285f4"></div>
+                <div class="renk-secici-item" data-renk="#ea4335" style="background:#ea4335"></div>
+                <div class="renk-secici-item" data-renk="#fbbc04" style="background:#fbbc04"></div>
+                <div class="renk-secici-item" data-renk="#34a853" style="background:#34a853"></div>
+                <div class="renk-secici-item" data-renk="#a142f4" style="background:#a142f4"></div>
+                <div class="renk-secici-item" data-renk="#5f6368" style="background:#5f6368"></div>
+            </div>
+            <input type="hidden" id="defterRenk" value="#4285f4">
+        </div>
+
+        <div class="yeni-liste-footer">
+            <input type="hidden" id="editDefterId">
+            <button class="btn btn-soft-danger" id="btnDefterSil" style="margin-right:auto; display:none;">Sil</button>
+            <button class="btn-iptal btn btn-light" id="defterIptal">İptal</button>
+            <button class="btn-bitti btn btn-primary" id="defterKaydet">Kaydet</button>
+        </div>
+    </div>
+</div>
+
+<script src="views/notlar/js/notlar.js?v=<?php echo time(); ?>"></script>
+<script>
+    // Tab geçişleri
+    document.querySelectorAll('.gn-tab').forEach(tab => {
+        tab.addEventListener('click', function() {
+            document.querySelectorAll('.gn-tab').forEach(t => t.classList.remove('active'));
+            this.classList.add('active');
+            
+            const target = this.dataset.target;
+            document.querySelectorAll('.gorevler-wrapper-container').forEach(c => {
+                c.style.display = 'none';
+                c.classList.remove('active');
+            });
+            
+            const targetView = document.getElementById('view-' + target);
+            targetView.style.display = 'block';
+            targetView.classList.add('active');
+            
+            if(target === 'notlar') {
+                if(window.notlarManager) window.notlarManager.init();
+            }
+        });
+    });
+</script>

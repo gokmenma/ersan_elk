@@ -88,6 +88,113 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         opacity: 0.6;
         pointer-events: none;
     }
+
+    /* Premium Stat Styles */
+    /* Premium Mini-Card Stat Styles */
+    .stat-mini-card {
+        display: inline-flex;
+        align-items: center;
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-left: 4px solid #ced4da;
+        padding: 8px 18px;
+        border-radius: 10px;
+        box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
+        gap: 12px;
+        vertical-align: middle;
+        transition: all 0.3s ease;
+    }
+
+    [data-bs-theme="dark"] .stat-mini-card {
+        background: #2a3042;
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+
+    .stat-mini-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .stat-mini-card.stat-primary { border-left-color: #5156be; }
+    .stat-mini-card.stat-success { border-left-color: #2ab57d; }
+    .stat-mini-card.stat-info { border-left-color: #4ba6ef; }
+    .stat-mini-card.stat-warning { border-left-color: #ffbf53; }
+    .stat-mini-card.stat-secondary { border-left-color: #74788d; }
+
+    .stat-mini-card .icon-wrap {
+        width: 32px;
+        height: 32px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50%;
+        font-size: 1.1rem;
+    }
+
+    .stat-primary .icon-wrap { background: rgba(81, 86, 190, 0.1); color: #5156be; }
+    .stat-success .icon-wrap { background: rgba(42, 181, 125, 0.1); color: #2ab57d; }
+    .stat-info .icon-wrap { background: rgba(75, 166, 239, 0.1); color: #4ba6ef; }
+    .stat-warning .icon-wrap { background: rgba(255, 191, 83, 0.1); color: #ffbf53; }
+    .stat-secondary .icon-wrap { background: rgba(116, 120, 141, 0.1); color: #74788d; }
+
+    .stat-mini-card .value {
+        font-size: 1.25rem;
+        font-weight: 800;
+        color: #212529;
+    }
+
+    [data-bs-theme="dark"] .stat-mini-card .value {
+        color: #eff2f7;
+    }
+
+    .stat-mini-card .label {
+        font-size: 0.8rem;
+        font-weight: 600;
+        color: #6c757d;
+        text-transform: uppercase;
+        margin-left: 2px;
+    }
+
+    .summary-card-item .card {
+        transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid rgba(0, 0, 0, 0.05) !important;
+    }
+
+    .summary-card-item:hover .card {
+        transform: translateY(-5px);
+        box-shadow: 0 12px 24px rgba(0,0,0,0.1) !important;
+        border-color: var(--vz-primary) !important;
+    }
+
+    .summary-card-item .status-label {
+        letter-spacing: 0.025em;
+        font-weight: 700;
+    }
+
+    .summary-card-item .main-value {
+        font-size: 1.4rem;
+        color: #2a3042;
+    }
+
+    [data-bs-theme="dark"] .summary-card-item .main-value {
+        color: #eff2f7;
+    }
+
+    .summary-card-item .sub-badge {
+        font-weight: 600;
+        padding: 4px 10px;
+    }
+
+    /* Animation for total counts */
+    @keyframes count-pop {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.05); }
+        100% { transform: scale(1); }
+    }
+
+    .count-animate {
+        animation: count-pop 0.5s ease-out;
+    }
 </style>
 
 <div class="container-fluid">
@@ -1475,24 +1582,29 @@ $activeTab = $_GET['tab'] ?? 'okuma';
 
                 var html = `
                     <div class="col summary-card-item" data-status="${statusText}" data-target-wrapper="${config.wrapper}" style="cursor: pointer;">
-                        <div class="card shadow-sm border-0 mb-0 h-100 card-animate">
-                            <div class="card-body p-2 px-3">
+                        <div class="card shadow-sm border-start border-start-width-3 border-${variant} mb-0 h-100">
+                            <div class="card-body p-3">
                                 <div class="d-flex align-items-center mb-2">
                                     <div class="avatar-xs flex-shrink-0 me-2">
                                         <span class="avatar-title bg-${variant}-subtle text-${variant} rounded-circle fs-13">
                                             <i class="bx bx-stats"></i>
                                         </span>
                                     </div>
-                                    <h6 class="text-muted text-truncate mb-0 fs-10 fw-semibold text-uppercase flex-grow-1" title="${status}">${status}</h6>
+                                    <h6 class="text-muted text-truncate mb-0 fs-11 fw-bold text-uppercase flex-grow-1 status-label" title="${status}">${status}</h6>
                                 </div>
-                                <div class="d-flex align-items-baseline justify-content-between">
-                                    <h4 class="mb-0 fs-18 fw-bold">${parseInt(item.toplam_abone).toLocaleString('tr-TR')} <small class="fs-11 fw-normal text-muted">${label}</small></h4>
+                                <div class="d-flex align-items-center justify-content-between">
+                                    <h4 class="mb-0 fw-extrabold main-value">
+                                        <span class="counter-value" data-target="${item.toplam_abone}">${parseInt(item.toplam_abone).toLocaleString('tr-TR')}</span>
+                                        <small class="fs-11 fw-normal text-muted ms-1">${label}</small>
+                                    </h4>
                                     <div class="text-end">
-                                        <span class="badge bg-${variant}-subtle text-${variant} fs-11 p-1 px-2 rounded-pill">${parseInt(item.adet).toLocaleString('tr-TR')} ${subLabel}</span>
+                                        <span class="badge bg-${variant}-subtle text-${variant} sub-badge rounded-pill">
+                                            ${parseInt(item.adet).toLocaleString('tr-TR')} ${subLabel}
+                                        </span>
                                     </div>
                                 </div>
-                                <div class="progress animated-progress progress-sm mt-2" style="height: 3px;">
-                                    <div class="progress-bar bg-${variant}" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
+                                <div class="progress animated-progress progress-sm mt-3" style="height: 4px; border-radius: 20px;">
+                                    <div class="progress-bar bg-${variant} rounded" role="progressbar" style="width: 100%" aria-valuenow="100" aria-valuemin="0" aria-valuemax="100"></div>
                                 </div>
                             </div>
                         </div>
@@ -1606,9 +1718,13 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                             }
                             
                             let html = `Endeks Okuma Raporu 
-                                <span class="badge bg-soft-success text-success border border-success ms-2 fs-12 fw-bold px-3 shadow-none card-animate">
-                                    <i class="bx bx-group me-1"></i> ${totalAbone.toLocaleString('tr-TR')} Abone
-                                </span>`;
+                                <div class="stat-mini-card stat-success ms-3 count-animate">
+                                    <div class="icon-wrap"><i class="bx bx-group"></i></div>
+                                    <div>
+                                        <span class="value">${totalAbone.toLocaleString('tr-TR')}</span>
+                                        <span class="label">Abone</span>
+                                    </div>
+                                </div>`;
                             $('#endeksTableTitle').html(html);
                         }
                         return json.data;
@@ -1674,9 +1790,13 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 });
                             }
                             $('#puantajTableTitle').html(`İş Listesi 
-                                <span class="badge bg-soft-success text-success border border-success ms-2 fs-12 fw-bold px-3 shadow-none card-animate">
-                                    <i class="bx bx-briefcase me-1"></i> ${totalIs.toLocaleString('tr-TR')} İş
-                                </span>`);
+                                <div class="stat-mini-card stat-primary ms-3 count-animate">
+                                    <div class="icon-wrap"><i class="bx bx-briefcase"></i></div>
+                                    <div>
+                                        <span class="value">${totalIs.toLocaleString('tr-TR')}</span>
+                                        <span class="label">İş</span>
+                                    </div>
+                                </div>`);
                         }
                         return json.data;
                     }
@@ -1741,9 +1861,13 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 total++; 
                             });
                             $('#kacakTableTitle').html(`Kaçak Kontrol Listesi 
-                                <span class="badge bg-soft-success text-success border border-success ms-2 fs-12 fw-bold px-3 shadow-none card-animate">
-                                    <i class="bx bx-check-shield me-1"></i> ${this.api().rows({filter: 'applied'}).count().toLocaleString('tr-TR')} İş
-                                </span>`);
+                                <div class="stat-mini-card stat-info ms-3 count-animate">
+                                    <div class="icon-wrap"><i class="bx bx-check-shield"></i></div>
+                                    <div>
+                                        <span class="value">${this.api().rows({filter: 'applied'}).count().toLocaleString('tr-TR')}</span>
+                                        <span class="label">İş</span>
+                                    </div>
+                                </div>`);
                         }
                     }));
                 }
@@ -1786,9 +1910,13 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 });
                             }
                             $('#sayacTableTitle').html(`Sayaç Sökme Takma Listesi 
-                                <span class="badge bg-soft-success text-success border border-success ms-2 fs-12 fw-bold px-3 shadow-none card-animate">
-                                    <i class="bx bxs-component me-1"></i> ${totalAdet.toLocaleString('tr-TR')} Adet
-                                </span>`);
+                                <div class="stat-mini-card stat-warning ms-3 count-animate">
+                                    <div class="icon-wrap"><i class="bx bxs-component"></i></div>
+                                    <div>
+                                        <span class="value">${totalAdet.toLocaleString('tr-TR')}</span>
+                                        <span class="label">Adet</span>
+                                    </div>
+                                </div>`);
                         }
                         return json.data;
                     }
@@ -1850,9 +1978,13 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 });
                             }
                             $('#muhurlemeTableTitle').html(`Mühürleme İş Listesi 
-                                <span class="badge bg-soft-success text-success border border-success ms-2 fs-12 fw-bold px-3 shadow-none card-animate">
-                                    <i class="bx bx-lock-alt me-1"></i> ${totalIs.toLocaleString('tr-TR')} İş
-                                </span>`);
+                                <div class="stat-mini-card stat-secondary ms-3 count-animate">
+                                    <div class="icon-wrap"><i class="bx bx-lock-alt"></i></div>
+                                    <div>
+                                        <span class="value">${totalIs.toLocaleString('tr-TR')}</span>
+                                        <span class="label">İş</span>
+                                    </div>
+                                </div>`);
                         }
                         return json.data;
                     }

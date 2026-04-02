@@ -156,18 +156,23 @@ async function loadTicket() {
         if (ticket.durum === 'acik') statusClass = 'bg-amber-100 text-amber-700';
         if (ticket.durum === 'yanitlandi') statusClass = 'bg-emerald-100 text-emerald-700';
         if (ticket.durum === 'personel_yaniti') statusClass = 'bg-blue-100 text-blue-700';
+        if (ticket.durum === 'isleme_alindi') statusClass = 'bg-sky-100 text-sky-700';
+        if (ticket.durum === 'cozuldu') statusClass = 'bg-green-100 text-green-700';
         if (ticket.durum === 'kapali') statusClass = 'bg-slate-200 text-slate-500';
             
-        document.getElementById('ticket-status-badge').innerHTML = `<span class="px-2 py-1 rounded-lg text-[10px] font-black ${statusClass}">${ticket.durum.toUpperCase()}</span>`;
+        document.getElementById('ticket-status-badge').innerHTML = `<span class="px-2 py-1 rounded-lg text-[10px] font-black ${statusClass}">${ticket.durum.toUpperCase().replace('_', ' ')}</span>`;
 
         const closeButton = document.getElementById('close-ticket-button');
         const replyForm = document.getElementById('reply-form');
         const closedMessage = document.getElementById('closed-ticket-message');
         const waitingMessage = document.getElementById('waiting-admin-message');
 
-        if (ticket.durum === 'kapali') {
+        const isClosed = ticket.durum === 'kapali' || ticket.durum === 'cozuldu';
+
+        if (isClosed) {
             closeButton.classList.add('hidden');
             replyForm.classList.add('hidden');
+            closedMessage.innerHTML = ticket.durum === 'cozuldu' ? 'Bu destek talebi çözüldü. Yeni mesaj gönderemezsiniz.' : 'Bu destek talebi kapatıldı. Yeni mesaj gönderemezsiniz.';
             closedMessage.classList.remove('hidden');
             waitingMessage.classList.add('hidden');
         } else {

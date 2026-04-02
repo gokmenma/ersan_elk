@@ -1,13 +1,18 @@
 <?php
 use App\Model\GorevModel;
+use App\Model\NotModel;
 use App\Helper\Security;
 
 $gorevModel = new GorevModel();
+$notModel = new NotModel();
 $firmaId = $_SESSION['firma_id'] ?? 0;
 
 // $currentUserId is populated in mobile/index.php
 $listelerHam = $gorevModel->getListeler($firmaId, $currentUserId);
 $tumGorevler = $gorevModel->getTumGorevler($firmaId, $currentUserId);
+
+$defterlerHam = $notModel->getDefterler($firmaId, $currentUserId);
+$tumNotlar = $notModel->getTumNotlar($firmaId, $currentUserId);
 
 $listeler = [];
 $listeSecenekleri = [];
@@ -77,18 +82,92 @@ $renkler = [
 .color-swatch.selected {
     border-color: #1e293b; transform: scale(1.1); box-shadow: 0 0 0 2px white inset;
 }
+
+/* Tab Stilleri */
+.mobile-tabs {
+    display: flex;
+    background: rgba(255,255,255,0.15);
+    backdrop-filter: blur(10px);
+    -webkit-backdrop-filter: blur(10px);
+    border-radius: 12px;
+    padding: 3px;
+    margin: 12px 16px 0;
+}
+.mobile-tab {
+    flex: 1;
+    padding: 8px;
+    text-align: center;
+    font-size: 13px;
+    font-weight: 600;
+    color: white;
+    border-radius: 9px;
+    transition: all 0.2s;
+}
+.mobile-tab.active {
+    background: white;
+    color: var(--primary);
+}
+
+/* Not Defteri Yatay Kaydırma */
+.defter-scroll {
+    display: flex;
+    overflow-x: auto;
+    gap: 8px;
+    padding: 12px 16px;
+    scrollbar-width: none;
+}
+.defter-scroll::-webkit-scrollbar { display: none; }
+.defter-item {
+    flex-shrink: 0;
+    padding: 8px 16px;
+    background: white;
+    border-radius: 20px;
+    font-size: 12px;
+    font-weight: 600;
+    border: 1px solid #e2e8f0;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.defter-item.active {
+    background: var(--primary);
+    color: white;
+    border-color: var(--primary);
+}
+
+.not-fab-mobile {
+    position: fixed;
+    bottom: calc(5rem + env(safe-area-inset-bottom, 0px));
+    right: 1.25rem;
+    width: 60px;
+    height: 60px;
+    border-radius: 50%;
+    background: #fbbc04;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    z-index: 45;
+}
+.not-card-mobile {
+    background: white;
+    border: 1px solid #e2e8f0;
+    border-radius: 16px;
+    padding: 12px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
 </style>
 
 <!-- Gradient Başlık -->
-<header class="bg-gradient-primary text-white px-4 pt-4 pb-12 rounded-b-3xl relative overflow-hidden shadow-lg">
+<header class="bg-gradient-primary text-white pt-4 pb-8 rounded-b-3xl relative overflow-hidden shadow-lg">
     <div class="absolute inset-0 opacity-10">
         <div class="absolute top-0 right-0 w-64 h-64 bg-white rounded-full -mr-32 -mt-32"></div>
         <div class="absolute bottom-0 left-0 w-40 h-40 bg-white rounded-full -ml-20 -mb-20"></div>
     </div>
-    <div class="relative z-10 flex items-center justify-between">
-        <div>
-            <h2 class="text-2xl font-extrabold leading-tight tracking-tight">Görevleriniz</h2>
-        </div>
+    
+    <div class="relative z-10 px-4 flex items-center justify-between">
+        <h2 class="text-2xl font-extrabold leading-tight tracking-tight">Ajandam</h2>
         <div class="flex items-center gap-2">
             <a href="?p=talepler" class="relative w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white active:scale-95 transition-transform border border-white/10">
                 <span class="material-symbols-outlined text-[22px]">notifications</span>
@@ -100,36 +179,49 @@ $renkler = [
             </a>
         </div>
     </div>
-    <div class="relative z-10 flex gap-2 mt-4">
-        <div class="flex gap-2 flex-1">
-            <div class="text-center">
-                <div class="bg-white/20 rounded-xl px-2 py-1 backdrop-blur-sm min-w-[50px]">
-                    <span id="total-aktif-count" class="block text-lg font-bold leading-none"><?= $aktifToplam ?></span>
-                    <span class="text-[9px] uppercase tracking-wider text-white/90">Bekliyor</span>
-                </div>
-            </div>
-            <div class="text-center">
-                <div class="bg-white/10 rounded-xl px-2 py-1 backdrop-blur-sm border border-white/20 min-w-[50px]">
-                    <span id="total-completed-count" class="block text-lg font-bold leading-none"><?= $tamamlananToplam ?></span>
-                    <span class="text-[9px] uppercase tracking-wider text-white/90">Biten</span>
-                </div>
-            </div>
-        </div>
-    </div>
-    
-    <div class="relative z-10 flex gap-2 mt-2">
-        <button onclick="openListeModal()" class="flex-1 bg-white/20 hover:bg-white/30 text-white py-2 px-3 rounded-xl font-semibold text-xs flex items-center justify-center gap-1 backdrop-blur-sm transition-colors">
-            <span class="material-symbols-outlined text-[16px]">add_task</span> Liste Ekle
-        </button>
-        <?php if (!empty($listeSecenekleri)): ?>
-        <button onclick="openGorevModal()" class="flex-1 bg-white text-primary hover:bg-slate-50 py-2 px-3 rounded-xl font-bold text-xs flex items-center justify-center gap-1 shadow-sm transition-colors">
-            <span class="material-symbols-outlined text-[16px]">add</span> Görev Ekle
-        </button>
-        <?php endif; ?>
+
+    <!-- Tab Seçici -->
+    <div class="relative z-10 mobile-tabs">
+        <button class="mobile-tab active" data-target="gorevler">Yapılacaklar</button>
+        <button class="mobile-tab" data-target="notlar">Notlarım</button>
     </div>
 </header>
 
-<div class="px-4 mt-[-24px] relative z-10 space-y-4 pb-20"> <!-- Added pb-20 for FAB spacing if needed -->
+<div id="view-gorevler-mobile" class="mobile-tab-view active">
+    <!-- İstatistik Kartları -->
+    <div class="px-4 mt-[-40px] relative z-10 flex gap-2">
+        <div class="flex-1 bg-white dark:bg-card-dark rounded-2xl p-3 shadow-sm border border-slate-100 dark:border-slate-800 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center text-orange-600">
+                <span class="material-symbols-outlined text-[24px]">pending_actions</span>
+            </div>
+            <div>
+                <span id="total-aktif-count" class="block text-lg font-bold leading-none text-slate-800 dark:text-white"><?= $aktifToplam ?></span>
+                <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Bekleyen</span>
+            </div>
+        </div>
+        <div class="flex-1 bg-white dark:bg-card-dark rounded-2xl p-3 shadow-sm border border-slate-100 dark:border-slate-800 flex items-center gap-3">
+            <div class="w-10 h-10 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center text-green-600">
+                <span class="material-symbols-outlined text-[24px]">task_alt</span>
+            </div>
+            <div>
+                <span id="total-completed-count" class="block text-lg font-bold leading-none text-slate-800 dark:text-white"><?= $tamamlananToplam ?></span>
+                <span class="text-[10px] font-semibold text-slate-400 uppercase tracking-wider">Tamamlanan</span>
+            </div>
+        </div>
+    </div>
+
+    <div class="px-4 mt-4 relative z-10 flex gap-2">
+        <button onclick="openListeModal()" class="flex-1 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-sm active:scale-95 transition-all">
+            <span class="material-symbols-outlined text-[18px]">playlist_add</span> Liste
+        </button>
+        <?php if (!empty($listeSecenekleri)): ?>
+        <button onclick="openGorevModal()" class="flex-1 bg-primary text-white py-3 px-4 rounded-2xl font-bold text-xs flex items-center justify-center gap-2 shadow-lg shadow-blue-500/20 active:scale-95 transition-all">
+            <span class="material-symbols-outlined text-[18px]">add_circle</span> Yeni Görev
+        </button>
+        <?php endif; ?>
+    </div>
+
+    <div class="px-4 mt-6 space-y-4 pb-20">
     <?php if (empty($listeler)): ?>
         <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm p-8 text-center border border-slate-100 dark:border-slate-800">
             <div class="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -248,6 +340,60 @@ $renkler = [
         <?php endforeach; ?>
     <?php endif; ?>
 
+</div> <!-- #view-gorevler-mobile end -->
+
+<!-- NOTLAR GÖRÜNÜMÜ -->
+<div id="view-notlar-mobile" class="mobile-tab-view hidden pb-20">
+    <!-- Defter Scroll -->
+    <div class="defter-scroll">
+        <div class="defter-item active" data-id="tum" onclick="filterDefter('tum')">
+            <span class="material-symbols-outlined text-[18px]">apps</span> Tüm Notlar
+        </div>
+        <?php foreach($defterlerHam as $d): ?>
+            <div class="defter-item" data-id="<?= Security::encrypt($d->id) ?>" onclick="filterDefter('<?= Security::encrypt($d->id) ?>')">
+                <span class="material-symbols-outlined text-[18px]" style="color: <?= $d->renk ?>">folder</span> <?= htmlspecialchars($d->baslik) ?>
+            </div>
+        <?php endforeach; ?>
+        <button onclick="openDefterModal()" class="defter-item border-dashed border-primary text-primary">
+            <span class="material-symbols-outlined text-[18px]">add</span> Yeni
+        </button>
+    </div>
+
+    <!-- Notlar Listesi -->
+    <div class="px-4 space-y-3 pb-24" id="mobile-notlar-list">
+        <?php if (empty($tumNotlar)): ?>
+            <div class="py-12 text-center">
+                <span class="material-symbols-outlined text-5xl text-slate-200">note_stack</span>
+                <p class="text-slate-400 text-sm mt-2">Kayıtlı notunuz bulunamadı.</p>
+            </div>
+        <?php else: ?>
+            <div class="grid grid-cols-1 gap-3">
+                <?php foreach($tumNotlar as $n): ?>
+                    <div class="not-card-mobile p-4 relative" onclick="openNotModal('<?= Security::encrypt($n->id) ?>', '<?= htmlspecialchars(addslashes($n->baslik)) ?>', '<?= htmlspecialchars(addslashes($n->icerik)) ?>', '<?= Security::encrypt($n->defter_id) ?>')">
+                        <div class="flex items-center justify-between mb-1">
+                            <h4 class="font-bold text-slate-800 text-sm"><?= htmlspecialchars($n->baslik) ?></h4>
+                            <?php if($n->pinli): ?>
+                                <span class="material-symbols-outlined text-primary text-[16px] filled">push_pin</span>
+                            <?php endif; ?>
+                        </div>
+                        <p class="text-[11px] text-slate-600 line-clamp-3 leading-relaxed"><?= nl2br(htmlspecialchars($n->icerik)) ?></p>
+                        <div class="flex items-center justify-between mt-3">
+                            <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500" style="border-left: 3px solid <?= $n->defter_renk ?>"><?= htmlspecialchars($n->defter_adi) ?></span>
+                            <span class="text-[9px] text-slate-400"><?= date('d.m.Y', strtotime($n->updated_at)) ?></span>
+                        </div>
+                    </div>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+
+</div>
+
+<!-- Not FAB -->
+<div id="btnYeniNotFAB" class="hidden">
+    <button onclick="openNotModalMobile()" class="not-fab-mobile">
+        <span class="material-symbols-outlined text-3xl">add</span>
+    </button>
 </div>
 
 <!-- COMMON OVERLAYS AND MODALS -->
@@ -910,5 +1056,184 @@ function updateYinelemeSummaryText(dataRaw) {
     } catch(e) {
         document.getElementById('btnYinelemeText').textContent = 'Tekrarlama Yok';
     }
+}
+
+// === NOTLAR TAB MANTIĞI ===
+document.querySelectorAll('.mobile-tab').forEach(tab => {
+    tab.addEventListener('click', function() {
+        document.querySelectorAll('.mobile-tab').forEach(t => t.classList.remove('active'));
+        this.classList.add('active');
+        
+        const target = this.dataset.target;
+        $('.mobile-tab-view').addClass('hidden');
+        $(`#view-${target}-mobile`).removeClass('hidden');
+        
+        if(target === 'notlar') {
+            $('#btnYeniNotFAB').removeClass('hidden');
+        } else {
+            $('#btnYeniNotFAB').addClass('hidden');
+        }
+    });
+});
+
+// === NOTLAR CRUD ===
+function filterDefter(id) {
+    $('.defter-item').removeClass('active');
+    $(`.defter-item[data-id="${id}"]`).addClass('active');
+    
+    // Basit filtreleme (JS ile)
+    if(id === 'tum') {
+        $('.not-card-mobile').show();
+    } else {
+        $('.not-card-mobile').hide();
+        $('.not-card-mobile').each(function() {
+            // Note: This logic assumes we have data-defter-id on card. 
+            // Wait, I need to add that in the PHP part above if I didn't.
+        });
+    }
+    // Re-load via API is better
+    showLoader();
+    $.post('../views/notlar/api.php', { action: 'get-notlar', defter_id: id }, function(res) {
+        if(res.success) {
+            renderMobileNotlar(res.data);
+        }
+        hideLoader();
+    });
+}
+
+function renderMobileNotlar(notlar) {
+    const container = $('#mobile-notlar-list');
+    container.empty();
+    if(notlar.length === 0) {
+        container.append('<div class="py-12 text-center"><span class="material-symbols-outlined text-5xl text-slate-200">note_stack</span><p class="text-slate-400 text-sm mt-2">Kayıtlı notunuz bulunamadı.</p></div>');
+        return;
+    }
+    
+    let html = '<div class="grid grid-cols-1 gap-3">';
+    notlar.forEach(n => {
+        html += `
+            <div class="not-card-mobile p-4 relative" onclick="openNotModalMobile('${n.id_enc}', '${escapeJS(n.baslik)}', '${escapeJS(n.icerik)}', '${n.defter_id}')">
+                ${n.pinli == 1 ? '<span class="material-symbols-outlined absolute top-3 right-3 text-primary text-[18px] filled">push_pin</span>' : ''}
+                <h4 class="font-bold text-slate-800 text-sm">${n.baslik || ''}</h4>
+                <p class="text-[11px] text-slate-600 line-clamp-3 leading-relaxed">${n.icerik || ''}</p>
+                <div class="flex items-center justify-between mt-3">
+                    <span class="text-[9px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500" style="border-left: 3px solid ${n.defter_renk}">${n.defter_adi}</span>
+                    <span class="text-[9px] text-slate-400">${n.updated_at}</span>
+                </div>
+            </div>
+        `;
+    });
+    html += '</div>';
+    container.append(html);
+}
+
+function openNotModalMobile(id = '', baslik = '', icerik = '', defterId = '') {
+    activeTaskId = id; // use existing variable or dedicated
+    $('#mNotId').val(id);
+    $('#mNotBaslik').val(baslik);
+    $('#mNotIcerik').val(icerik);
+    if(defterId) $('#mNotDefterSecim').val(defterId);
+    
+    $('#notModalMobile').addClass('open');
+    overlay.classList.add('open');
+}
+
+function closeNotModalMobile() {
+    $('#notModalMobile').removeClass('open');
+    closeAllModals();
+}
+
+function escapeJS(str) {
+    if(!str) return '';
+    return str.replace(/'/g, "\\'").replace(/"/g, '\\"');
+}
+
+// Mobile specific modals for Notes
+</script>
+
+<!-- NOT EKLE/DÜZENLE BOTTOM SHEET MOBILE -->
+<div id="notModalMobile" class="fixed bottom-0 left-0 right-0 z-[65] bg-white dark:bg-card-dark rounded-t-2xl bottom-sheet shadow-2xl safe-area-bottom pb-4 max-h-[90vh] flex flex-col">
+    <div class="flex justify-center pt-3 pb-2 flex-shrink-0"><div class="w-10 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div></div>
+    <div class="flex items-center justify-between px-4 pb-3 border-b border-slate-100 dark:border-slate-800 flex-shrink-0">
+        <h3 class="text-base font-bold">Not</h3>
+        <button type="button" onclick="closeNotModalMobile()" class="text-slate-400"><span class="material-symbols-outlined">close</span></button>
+    </div>
+    <div class="flex-1 overflow-y-auto p-4 space-y-4">
+        <input type="hidden" id="mNotId">
+        <input type="text" id="mNotBaslik" class="w-full bg-slate-50 border-none rounded-xl text-sm font-bold" placeholder="Başlık">
+        <textarea id="mNotIcerik" rows="8" class="w-full bg-slate-50 border-none rounded-xl text-sm" placeholder="Notunuz..."></textarea>
+        
+        <select id="mNotDefterSecim" class="w-full bg-slate-50 border-none rounded-xl text-sm">
+            <?php foreach($defterlerHam as $d): ?>
+                <option value="<?= Security::encrypt($d->id) ?>"><?= htmlspecialchars($d->baslik) ?></option>
+            <?php endforeach; ?>
+        </select>
+    </div>
+    <div class="px-4 pt-2 flex gap-2">
+        <button onclick="deleteNotMobile()" class="p-3 rounded-xl bg-red-50 text-red-500"><span class="material-symbols-outlined">delete</span></button>
+        <button onclick="saveNotMobile()" class="flex-1 py-3 rounded-xl bg-primary text-white font-bold">Kaydet</button>
+    </div>
+</div>
+
+<script>
+async function saveNotMobile() {
+    const id = $('#mNotId').val();
+    const action = id ? 'update-not' : 'add-not';
+    showLoader();
+    
+    const fd = new URLSearchParams();
+    fd.append('action', action);
+    fd.append('not_id', id);
+    fd.append('baslik', $('#mNotBaslik').val());
+    fd.append('icerik', $('#mNotIcerik').val());
+    fd.append('defter_id', $('#mNotDefterSecim').val());
+    
+    try {
+        const res = await fetch('../views/notlar/api.php', { method: 'POST', body: fd });
+        const data = await res.json();
+        if(data.success) {
+            window.location.reload();
+        } else {
+            Toast.show(data.message, 'error');
+            hideLoader();
+        }
+    } catch(err) { hideLoader(); }
+}
+
+async function deleteNotMobile() {
+    const id = $('#mNotId').val();
+    if(!id) return;
+    if(!await Alert.confirmDelete('Sil', 'Bu notu silmek istediğinize emin misiniz?')) return;
+    
+    showLoader();
+    const fd = new URLSearchParams();
+    fd.append('action', 'delete-not');
+    fd.append('not_id', id);
+    try {
+        const res = await fetch('../views/notlar/api.php', { method: 'POST', body: fd });
+        const data = await res.json();
+        window.location.reload();
+    } catch(err) { hideLoader(); }
+}
+
+function openDefterModal() {
+    // Basic defter creation
+    Alert.show({
+        title: 'Yeni Defter',
+        content: '<input type="text" id="swalDefterBaslik" class="swal2-input" placeholder="Defter Adı">',
+        confirmButtonText: 'Oluştur',
+        showCancelButton: true
+    }).then(async (result) => {
+        if(result.isConfirmed) {
+            const baslik = document.getElementById('swalDefterBaslik').value;
+            if(!baslik) return;
+            showLoader();
+            const fd = new URLSearchParams();
+            fd.append('action', 'add-defter');
+            fd.append('baslik', baslik);
+            const res = await fetch('../views/notlar/api.php', { method: 'POST', body: fd });
+            window.location.reload();
+        }
+    });
 }
 </script>

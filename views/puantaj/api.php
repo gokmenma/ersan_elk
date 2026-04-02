@@ -224,21 +224,38 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             } else {
                 $isExistingTur = $Tanimlamalar->isEmriSonucu($isEmriTipi, $isEmriSonucu);
                 if (!$isExistingTur) {
+                    // Guess report tab based on keywords
+                    $raporSekmesi = '0';
+                    $keywords = [
+                        'kesme' => ['KESME', 'AÇMA', 'SUYU KES', 'SUYU AÇ', 'SKA'],
+                        'sokme_takma' => ['SÖKME', 'TAKMA', 'SAYAÇ DEGİSM', 'DEGISME'],
+                        'muhurleme' => ['MÜHÜR'],
+                        'okuma' => ['OKUMA'],
+                    ];
+                    
+                    $searchStr = mb_strtoupper($isEmriTipi . ' ' . $isEmriSonucu, 'UTF-8');
+                    foreach ($keywords as $tab => $kws) {
+                        foreach ($kws as $kw) {
+                            if (mb_stripos($searchStr, $kw, 0, 'UTF-8') !== false) {
+                                $raporSekmesi = $tab;
+                                break 2;
+                            }
+                        }
+                    }
+
                     $data = [
                         'firma_id' => $_SESSION["firma_id"],
                         'grup' => 'is_turu',
                         'tur_adi' => $isEmriTipi,
                         'is_emri_sonucu' => $isEmriSonucu,
+                        'rapor_sekmesi' => $raporSekmesi,
                         'aciklama' => "Puantaj yükleme sırasında otomatik oluşturuldu"
                     ];
                     $encryptedId = $Tanimlamalar->saveWithAttr($data);
-                    // saveWithAttr şifreli id döndürüyor, decrypt et
                     $isEmriSonucuId = \App\Helper\Security::decrypt($encryptedId);
-                    // Cache'e ekle
                     $workTypeCache[$cacheKey] = $isEmriSonucuId;
                 } else {
                     $isEmriSonucuId = $isExistingTur->id;
-                    // Cache'e ekle
                     $workTypeCache[$cacheKey] = $isEmriSonucuId;
                 }
             }
