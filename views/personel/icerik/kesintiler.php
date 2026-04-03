@@ -29,8 +29,14 @@ foreach ($kesintiler as $k) {
     if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli' && ($k->aktif ?? 1) == 1) {
         $aktifSurekliKesinti++;
     }
-    // Tek seferlik ve sabit tutarların toplamı
-    if (in_array(($k->tekrar_tipi ?? 'tek_sefer'), ['tek_sefer', 'taksitli']) || (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli' && ($k->hesaplama_tipi ?? 'sabit') == 'sabit')) {
+    // Tek seferlik, sürekli/taksitli birim tutarının toplamı (Özet için)
+    if (($k->tekrar_tipi ?? 'tek_sefer') == 'tek_sefer') {
+        $toplamKesinti += $k->tutar ?? 0;
+    } elseif (($k->tekrar_tipi ?? 'tek_sefer') == 'taksitli') {
+        // Taksitli bir kesintinin o aya ait payını ekle
+        $taksitSayisi = intval($k->taksit_sayisi ?? 1);
+        $toplamKesinti += ($taksitSayisi > 0) ? ($k->tutar / $taksitSayisi) : ($k->tutar);
+    } elseif (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli' && ($k->hesaplama_tipi ?? 'sabit') == 'sabit') {
         $toplamKesinti += $k->tutar ?? 0;
     }
 
@@ -46,8 +52,13 @@ foreach ($kesintiler as $k) {
     $grouped_kesintiler[$grup_adi]['items'][] = $k;
     $grouped_kesintiler[$grup_adi]['count']++;
 
-    // Grup toplam tutar
-    if (in_array(($k->tekrar_tipi ?? 'tek_sefer'), ['tek_sefer', 'taksitli']) || (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli' && ($k->hesaplama_tipi ?? 'sabit') == 'sabit')) {
+    // Grup toplam tutar (Özet için)
+    if (($k->tekrar_tipi ?? 'tek_sefer') == 'tek_sefer') {
+        $grouped_kesintiler[$grup_adi]['toplam_tutar'] += $k->tutar ?? 0;
+    } elseif (($k->tekrar_tipi ?? 'tek_sefer') == 'taksitli') {
+        $taksitSayisi = intval($k->taksit_sayisi ?? 1);
+        $grouped_kesintiler[$grup_adi]['toplam_tutar'] += ($taksitSayisi > 0) ? ($k->tutar / $taksitSayisi) : ($k->tutar);
+    } elseif (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli' && ($k->hesaplama_tipi ?? 'sabit') == 'sabit') {
         $grouped_kesintiler[$grup_adi]['toplam_tutar'] += $k->tutar ?? 0;
     }
 }
@@ -325,7 +336,12 @@ foreach ($kesintiler as $k) {
                                                             </td>
                                                             <td class="fw-bold">
                                                                 <?php if (($k->hesaplama_tipi ?? 'sabit') == 'sabit'): ?>
-                                                                    <?= number_format($k->tutar ?? 0, 2, ',', '.') ?> TL
+                                                                    <?php if (($k->tekrar_tipi ?? '') == 'taksitli'): ?>
+                                                                        <div class="text-primary"><?= number_format($k->tutar / ($k->taksit_sayisi ?: 1), 2, ',', '.') ?> TL</div>
+                                                                        <small class="text-muted" style="font-size: 0.75rem;">(Toplam: <?= number_format($k->tutar, 2, ',', '.') ?> TL)</small>
+                                                                    <?php else: ?>
+                                                                        <?= number_format($k->tutar ?? 0, 2, ',', '.') ?> TL
+                                                                    <?php endif; ?>
                                                                 <?php else: ?>
                                                                     %<?= number_format($k->oran ?? 0, 2, ',', '.') ?>
                                                                 <?php endif; ?>
@@ -463,7 +479,12 @@ foreach ($kesintiler as $k) {
                                     </td>
                                     <td class="fw-bold">
                                         <?php if (($k->hesaplama_tipi ?? 'sabit') == 'sabit'): ?>
-                                            <?= number_format($k->tutar ?? 0, 2, ',', '.') ?> TL
+                                            <?php if (($k->tekrar_tipi ?? '') == 'taksitli'): ?>
+                                                <div class="text-primary"><?= number_format($k->tutar / ($k->taksit_sayisi ?: 1), 2, ',', '.') ?> TL</div>
+                                                <small class="text-muted" style="font-size: 0.75rem;">(Toplam: <?= number_format($k->tutar, 2, ',', '.') ?> TL)</small>
+                                            <?php else: ?>
+                                                <?= number_format($k->tutar ?? 0, 2, ',', '.') ?> TL
+                                            <?php endif; ?>
                                         <?php else: ?>
                                             %<?= number_format($k->oran ?? 0, 2, ',', '.') ?>
                                         <?php endif; ?>

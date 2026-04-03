@@ -15,12 +15,10 @@ class PersonelKesintileriModel extends Model
         parent::__construct($this->table);
     }
 
-    /**
-     * Personelin tüm kesintilerini getirir (listeleme için)
-     * Sürekli kesintiler için ana_kesinti_id NULL olanları gösterir
-     */
     public function getPersonelKesintileri($personel_id, $filters = [])
     {
+        // Ana kesintileri (bağımsız tek seferlik kayıtlar ve sürekli/taksitli ana tanımları) getirir.
+        // Otomatik oluşturulan alt taksit/sürekli kayıtlarını (ana_kesinti_id IS NOT NULL) gizleyerek mükerrer görünümü engeller.
         $where = "pk.personel_id = ? AND pk.silinme_tarihi IS NULL AND pk.ana_kesinti_id IS NULL";
         $params = [$personel_id];
         $mode = $filters['filter_kesinti_mode'] ?? 'donem';
@@ -104,19 +102,23 @@ class PersonelKesintileriModel extends Model
         $donemTarih = $donem . '-01';
 
         $sql = $this->db->prepare("
-            SELECT pk.*, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bp.hesaplama_tipi as param_hesaplama_tipi
+            SELECT pk.*, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bp.hesaplama_tipi as param_hesaplama_tipi,
+                   bd.baslangic_tarihi as start_donem_date
             FROM {$this->table} pk
             LEFT JOIN bordro_parametreleri bp ON pk.parametre_id = bp.id
+            LEFT JOIN bordro_donemi bd ON pk.donem_id = bd.id
             WHERE pk.personel_id = ? 
-              AND pk.tekrar_tipi = 'surekli'
               AND pk.aktif = 1
               AND pk.silinme_tarihi IS NULL
               AND pk.ana_kesinti_id IS NULL
-              AND pk.baslangic_donemi <= ?
-              AND (pk.bitis_donemi IS NULL OR pk.bitis_donemi >= ?)
+              AND (
+                (pk.tekrar_tipi = 'surekli' AND pk.baslangic_donemi <= ? AND (pk.bitis_donemi IS NULL OR pk.bitis_donemi >= ?))
+                OR
+                (pk.tekrar_tipi = 'taksitli' AND bd.baslangic_tarihi IS NOT NULL AND ? >= bd.baslangic_tarihi AND ? < DATE_ADD(bd.baslangic_tarihi, INTERVAL pk.taksit_sayisi MONTH))
+              )
             ORDER BY pk.olusturma_tarihi ASC
         ");
-        $sql->execute([$personel_id, $donemTarih, $donemTarih]);
+        $sql->execute([$personel_id, $donemTarih, $donemTarih, $donemTarih, $donemTarih]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 

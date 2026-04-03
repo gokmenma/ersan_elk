@@ -291,13 +291,13 @@ class BordroPersonelModel extends Model
             LEFT JOIN (
                 SELECT personel_id, SUM(tutar) as toplam_kesinti
                 FROM personel_kesintileri 
-                WHERE donem_id = ? AND silinme_tarihi IS NULL AND (durum = 'onaylandi' OR tur = 'icra')
+                WHERE donem_id = ? AND tekrar_tipi = 'tek_sefer' AND silinme_tarihi IS NULL AND (durum = 'onaylandi' OR tur = 'icra')
                 GROUP BY personel_id
             ) pk_agg ON bp.personel_id = pk_agg.personel_id
             LEFT JOIN (
                 SELECT personel_id, SUM(tutar) as toplam_ek_odeme
                 FROM personel_ek_odemeler 
-                WHERE donem_id = ? AND silinme_tarihi IS NULL AND durum = 'onaylandi'
+                WHERE donem_id = ? AND (tekrar_tipi = 'tek_sefer' OR tekrar_tipi IS NULL) AND silinme_tarihi IS NULL AND durum = 'onaylandi'
                 GROUP BY personel_id
             ) eo_agg ON bp.personel_id = eo_agg.personel_id
             WHERE bp.donem_id = ? AND bp.silinme_tarihi IS NULL $idFilter
@@ -528,7 +528,7 @@ class BordroPersonelModel extends Model
         $sql = $this->db->prepare("
             SELECT SUM(tutar) as toplam 
             FROM personel_kesintileri 
-            WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL AND durum = 'onaylandi'
+            WHERE personel_id = ? AND donem_id = ? AND tekrar_tipi = 'tek_sefer' AND silinme_tarihi IS NULL AND (durum = 'onaylandi' OR tur = 'icra')
         ");
         $sql->execute([$personel_id, $donem_id]);
         return $sql->fetch(PDO::FETCH_OBJ)->toplam ?? 0;
@@ -542,7 +542,7 @@ class BordroPersonelModel extends Model
         $sql = $this->db->prepare("
             SELECT SUM(tutar) as toplam 
             FROM personel_ek_odemeler 
-            WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL AND durum = 'onaylandi'
+            WHERE personel_id = ? AND donem_id = ? AND (tekrar_tipi = 'tek_sefer' OR tekrar_tipi IS NULL) AND silinme_tarihi IS NULL AND durum = 'onaylandi'
         ");
         $sql->execute([$personel_id, $donem_id]);
         return $sql->fetch(PDO::FETCH_OBJ)->toplam ?? 0;
@@ -589,7 +589,7 @@ class BordroPersonelModel extends Model
             SELECT SUM(pk.tutar) as toplam_kesinti_avans
             FROM personel_kesintileri pk
             INNER JOIN bordro_donemi bd ON pk.donem_id = bd.id
-            WHERE pk.personel_id = ? AND pk.tur = 'avans' AND (bd.personel_gorsun = 1 OR bd.kapali_mi = 1) AND pk.silinme_tarihi IS NULL
+            WHERE pk.personel_id = ? AND pk.tur = 'avans' AND pk.tekrar_tipi = 'tek_sefer' AND (bd.personel_gorsun = 1 OR bd.kapali_mi = 1) AND pk.silinme_tarihi IS NULL
         ");
         $sqlAvansKesinti->execute([$personel_id]);
         $toplam_avans_kesinti = $sqlAvansKesinti->fetch(PDO::FETCH_OBJ)->toplam_kesinti_avans ?? 0;
@@ -710,6 +710,31 @@ class BordroPersonelModel extends Model
 
             if ($hesaplamaTipi === 'sabit') {
                 $tutar = floatval($kesinti->tutar ?? 0);
+
+                // Taksitli ise tutarı böl
+                if (($kesinti->tekrar_tipi ?? '') === 'taksitli' && intval($kesinti->taksit_sayisi ?? 1) > 1) {
+                    $taksitSayisi = intval($kesinti->taksit_sayisi);
+                    $birimTutar = round($tutar / $taksitSayisi, 2);
+
+                    // Hangi taksitte olduğumuzu bulalım (küsürat farkı için son taksit kontrolü)
+                    if (!empty($kesinti->start_donem_date)) {
+                        $d1 = new \DateTime(date('Y-m-01', strtotime($kesinti->start_donem_date)));
+                        $d2 = new \DateTime(date('Y-m-01', strtotime($donem . '-01')));
+                        $interval = $d1->diff($d2);
+                        $diffMonths = ($interval->y * 12) + $interval->m;
+
+                        if ($diffMonths + 1 >= $taksitSayisi) {
+                            // Son taksit (veya sonrası ise güvenlik amacıyla kalanı al)
+                            $tutar = $tutar - ($birimTutar * ($taksitSayisi - 1));
+                        } else {
+                            $tutar = $birimTutar;
+                        }
+                        
+                        $kesinti->aciklama .= " (" . ($diffMonths + 1) . "/" . $taksitSayisi . ". Taksit)";
+                    } else {
+                        $tutar = $birimTutar;
+                    }
+                }
             } elseif ($hesaplamaTipi === 'oran_net' && $netMaas > 0) {
                 $oran = floatval($kesinti->oran ?? 0);
                 $tutar = $netMaas * ($oran / 100);
@@ -3122,6 +3147,7 @@ class BordroPersonelModel extends Model
             LEFT JOIN personel_icralari pi ON pk.icra_id = pi.id
             WHERE pk.personel_id = ? AND pk.donem_id = ? AND pk.silinme_tarihi IS NULL
               AND pk.durum = 'onaylandi'
+              AND (pk.tekrar_tipi = 'tek_sefer' OR pk.tekrar_tipi IS NULL)
             ORDER BY pk.olusturma_tarihi DESC
         ");
         $sql->execute([$personel_id, $donem_id]);
@@ -3192,7 +3218,7 @@ class BordroPersonelModel extends Model
             FROM personel_ek_odemeler peo
             LEFT JOIN bordro_donemi bd ON peo.donem_id = bd.id
             WHERE peo.personel_id = ? AND peo.donem_id = ? AND peo.silinme_tarihi IS NULL
-            
+              AND (peo.tekrar_tipi = 'tek_sefer' OR peo.tekrar_tipi IS NULL)
             ORDER BY peo.created_at DESC
         ");
         $firma_id = $_SESSION["firma_id"] ?? 0;
