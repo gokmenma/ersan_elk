@@ -180,6 +180,13 @@ $statusFilter = $_GET['status'] ?? '';
 <script>
 $(document).ready(function() {
     refreshTickets();
+    
+    // Close dropdown on click outside
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('#reply-actions-trigger').length) {
+            $('#reply-actions-menu').addClass('hidden');
+        }
+    });
 });
 
 let currentStatusFilter = '';
@@ -430,28 +437,91 @@ function renderTicketDetail(ticket) {
     if (ticket.durum !== 'kapali') {
         if (isAdmin || ticket.can_reply) {
             actionButton = `
-                <div class="px-2 py-4 bg-white dark:bg-card-dark border-t border-slate-100 dark:border-slate-800 shrink-0 sticky bottom-0 mt-auto">
-                    <form id="reply-form" class="space-y-3">
+                <div class="px-3 py-4 bg-white dark:bg-card-dark border-t border-slate-100 dark:border-slate-800 shrink-0 sticky bottom-0 mt-auto">
+                    <form id="reply-form" class="space-y-4">
                         <div class="w-full">
-                            <textarea id="reply-message" rows="3" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-2xl text-[13px] font-semibold text-slate-800 dark:text-white focus:border-indigo-500 focus:ring-0 outline-none transition-all no-scrollbar" placeholder="Mesajınızı yazın..." style="max-height: 150px"></textarea>
+                            <textarea id="reply-message" rows="3" class="w-full px-4 py-3 bg-slate-50 dark:bg-slate-800 border-2 border-slate-100 dark:border-slate-700 rounded-3xl text-[14px] font-semibold text-slate-800 dark:text-white focus:border-indigo-500 focus:ring-0 outline-none transition-all no-scrollbar" placeholder="Mesajınızı yazın..." style="max-height: 150px"></textarea>
                         </div>
-                        <div class="flex items-center gap-2">
-                            ${isAdmin ? `
-                                 <button type="button" onclick="closeTicket(${ticket.id})" class="flex-1 py-3 text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-2xl active:scale-[0.95] transition-all flex items-center justify-center gap-1.5 uppercase tracking-wider">
-                                     <span class="material-symbols-outlined text-[18px]">lock</span>
-                                     Kapat
-                                 </button>
-                            ` : ''}
-                            <button type="button" onclick="sendReply(${ticket.id})" class="${isAdmin ? 'flex-[1.5]' : 'w-full'} py-3 bg-indigo-600 text-white rounded-2xl shadow-lg shadow-indigo-600/20 active:scale-[0.95] transition-all flex items-center justify-center gap-1.5 uppercase tracking-wider font-bold">
-                                <span class="material-symbols-outlined text-[18px]">send</span>
-                                Gönder
+                        
+                        <div class="flex items-center gap-3">
+                            <!-- Hidden File Input -->
+                            <input type="file" id="reply-file" class="hidden" onchange="updateReplyFileName(this)">
+                            
+                            <!-- Clip (Attachment) Button -->
+                            <button type="button" onclick="$('#reply-file').click()" class="w-12 h-12 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-2xl flex items-center justify-center active:scale-95 transition-all border border-slate-100 dark:border-slate-700 shadow-sm relative">
+                                <span class="material-symbols-outlined text-[22px]">attach_file</span>
+                                <div id="reply-file-dot" class="absolute top-3 right-3 w-2 h-2 bg-indigo-500 rounded-full hidden border-2 border-white dark:border-slate-800"></div>
+                            </button>
+                            
+                            <!-- More (Actions) Button -->
+                            <div class="relative">
+                                <button type="button" id="reply-actions-trigger" onclick="event.stopPropagation(); $('#reply-actions-menu').toggleClass('hidden')" class="w-12 h-12 bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 rounded-2xl flex items-center justify-center active:scale-95 transition-all border border-slate-100 dark:border-slate-700 shadow-sm">
+                                    <span class="material-symbols-outlined text-[22px]">more_vert</span>
+                                </button>
+                                
+                                <div id="reply-actions-menu" class="absolute bottom-full left-0 mb-3 w-64 bg-white dark:bg-card-dark rounded-[2.5rem] shadow-2xl border border-slate-100 dark:border-slate-800 py-3 hidden z-[120] animate-in fade-in slide-in-from-bottom-3 duration-200 overflow-hidden">
+                                    <div class="px-4 py-2 border-b border-slate-50 dark:border-slate-800 mb-1">
+                                        <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">İşlemler</p>
+                                    </div>
+                                    ${isAdmin ? `
+                                        ${ticket.durum !== 'isleme_alindi' && ticket.durum !== 'cozuldu' ? `
+                                            <button type="button" onclick="updateTicketStatus(${ticket.id}, 'isleme_alindi')" class="w-full text-left px-5 py-4 text-[13px] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3 active:bg-indigo-50 dark:active:bg-indigo-900/20 active:text-indigo-600 transition-colors">
+                                                <div class="w-9 h-9 rounded-xl bg-blue-50 dark:bg-blue-900/30 flex items-center justify-center text-blue-500">
+                                                    <span class="material-symbols-outlined text-[20px]">pending_actions</span>
+                                                </div>
+                                                İşleme Al
+                                            </button>
+                                        ` : ''}
+                                        ${ticket.durum !== 'cozuldu' ? `
+                                            <button type="button" onclick="updateTicketStatus(${ticket.id}, 'cozuldu')" class="w-full text-left px-5 py-4 text-[13px] font-bold text-slate-700 dark:text-slate-200 flex items-center gap-3 active:bg-indigo-50 dark:active:bg-indigo-900/20 active:text-indigo-600 transition-colors">
+                                                <div class="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-900/30 flex items-center justify-center text-emerald-500">
+                                                    <span class="material-symbols-outlined text-[20px]">check_circle</span>
+                                                </div>
+                                                Çözüldü Olarak İşaretle
+                                            </button>
+                                        ` : ''}
+                                    ` : ''}
+                                    <button type="button" onclick="updateTicketStatus(${ticket.id}, 'kapali')" class="w-full text-left px-5 py-4 text-[13px] font-bold text-red-600 flex items-center gap-3 active:bg-red-50 dark:active:bg-red-900/20 transition-colors">
+                                        <div class="w-9 h-9 rounded-xl bg-red-50 dark:bg-red-900/30 flex items-center justify-center text-red-500">
+                                            <span class="material-symbols-outlined text-[20px]">cancel</span>
+                                        </div>
+                                        Talebi Kapat
+                                    </button>
+                                    <button type="button" onclick="closeTicketDetail()" class="w-full text-left px-5 py-4 text-[13px] font-bold text-slate-500 flex items-center gap-3 active:bg-slate-50 dark:active:bg-slate-800 transition-colors mt-1 border-t border-slate-50 dark:border-slate-800 pt-3">
+                                        <div class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-400">
+                                            <span class="material-symbols-outlined text-[20px]">close</span>
+                                        </div>
+                                        Detayı Kapat
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Send Message Button -->
+                            <button type="button" onclick="sendReply(${ticket.id})" class="flex-1 h-12 bg-indigo-600 text-white rounded-[1.25rem] shadow-xl shadow-indigo-600/20 active:scale-[0.98] transition-all flex items-center justify-center gap-2 uppercase tracking-widest font-black text-[13px]">
+                                <span>MESAJI GÖNDER</span>
+                                <span class="material-symbols-outlined text-[20px]">send</span>
                             </button>
                         </div>
                     </form>
                 </div>
             `;
         } else {
-             actionButton = `<div class="p-4 text-center text-[11px] text-slate-400 italic">Destek ekibinin yanıtı bekleniyor...</div>`;
+             actionButton = `
+                <div class="px-5 pb-5">
+                    <div class="p-5 bg-slate-50 dark:bg-slate-800 rounded-3xl border border-dashed border-slate-200 dark:border-slate-700 text-center mb-4 shadow-inner">
+                        <p class="text-[11px] font-bold text-slate-400 italic">Destek ekibinin yanıtı bekleniyor...</p>
+                    </div>
+                    <div class="flex gap-3">
+                        <button type="button" onclick="updateTicketStatus(${ticket.id}, 'kapali')" class="flex-1 py-4 bg-red-50 text-red-600 rounded-2xl font-black uppercase tracking-widest text-[10px] active:scale-[0.95] transition-all flex items-center justify-center gap-2 border border-red-100 shadow-sm">
+                            <span class="material-symbols-outlined text-[18px]">lock</span>
+                            Talebi Kapat
+                        </button>
+                        <button type="button" onclick="closeTicketDetail()" class="flex-1 py-4 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-2xl font-bold uppercase tracking-widest text-[10px] active:scale-[0.95] transition-all border border-slate-200 dark:border-slate-700">
+                            Detayı Kapat
+                        </button>
+                    </div>
+                </div>
+             `;
         }
     } else {
         let closureInfo = 'Bu Talep Kapatılmıştır';
@@ -461,10 +531,17 @@ function renderTicketDetail(ticket) {
                 <span class="text-[9px] font-medium normal-case opacity-70">${ticket.kapatan_adi} tarafından ${formatDate(ticket.kapatma_tarihi)} tarihinde kapatıldı.</span>
             </div>`;
         }
-        actionButton = `<div class="p-4 text-center text-xs font-bold text-slate-400 bg-slate-50 dark:bg-slate-800 rounded-2xl mx-5 mb-5 uppercase tracking-widest flex items-center justify-center gap-2">
-            <span class="material-symbols-outlined text-sm">lock</span>
-            ${closureInfo}
-        </div>`;
+        actionButton = `
+            <div class="px-5 pb-5">
+                <div class="p-5 text-center text-xs font-bold text-slate-400 bg-slate-50 dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-800/50 uppercase tracking-widest flex items-center justify-center gap-2 mb-3">
+                    <span class="material-symbols-outlined text-sm">lock</span>
+                    ${closureInfo}
+                </div>
+                <button type="button" onclick="closeTicketDetail()" class="w-full py-4 bg-slate-100 dark:bg-slate-800 text-slate-500 rounded-2xl font-bold uppercase tracking-widest text-[10px]">
+                    Detayı Kapat
+                </button>
+            </div>
+        `;
     }
 
     const firstMsg = ticket.messages && ticket.messages[0] ? ticket.messages[0].mesaj : '';
@@ -516,41 +593,85 @@ function renderTicketDetail(ticket) {
     }
 }
 
+function updateReplyFileName(input) {
+    if (input.files && input.files[0]) {
+        $('#reply-file-dot').removeClass('hidden');
+    } else {
+        $('#reply-file-dot').addClass('hidden');
+    }
+}
+
 function sendReply(ticketId) {
     const msg = $('#reply-message').val().trim();
-    if (!msg) return;
+    const file = document.getElementById('reply-file').files[0];
+    
+    if (!msg && !file) return;
+    
+    const formData = new FormData();
+    formData.append('action', 'add-message');
+    formData.append('bilet_id', ticketId);
+    formData.append('mesaj', msg);
+    if (file) {
+        formData.append('dosya', file);
+    }
     
     Loading.show();
-    $.post(API_URL, { action: 'add-message', bilet_id: ticketId, mesaj: msg }, function(res) {
-        Loading.hide();
-        if (res.success) {
-            // Re-fetch detail
-            $.post(API_URL, { action: 'get-ticket-details', bilet_id: ticketId }, function(resDet) {
-                if (resDet.success) {
-                    renderTicketDetail(resDet.ticket);
-                    // Scroll to bottom
-                    setTimeout(() => {
-                        const container = document.querySelector('.messages-container').parentElement;
-                        container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
-                    }, 100);
-                }
-            });
-        } else {
-            Alert.error('Hata', res.message);
+    $.ajax({
+        url: API_URL,
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        success: function(res) {
+            Loading.hide();
+            if (res.success) {
+                // Clear inputs
+                $('#reply-message').val('');
+                $('#reply-file').val('');
+                $('#reply-file-dot').addClass('hidden');
+                
+                // Re-fetch detail
+                $.post(API_URL, { action: 'get-ticket-details', bilet_id: ticketId }, function(resDet) {
+                    if (resDet.success) {
+                        renderTicketDetail(resDet.ticket);
+                        // Scroll to bottom
+                        setTimeout(() => {
+                            const container = document.querySelector('.messages-container').parentElement;
+                            container.scrollTo({ top: container.scrollHeight, behavior: 'smooth' });
+                        }, 100);
+                    }
+                });
+            } else {
+                Alert.error('Hata', res.message);
+            }
+        },
+        error: function() {
+            Loading.hide();
+            Alert.error('Sistem Hatası', 'Mesaj gönderilirken bir hata oluştu.');
         }
     });
 }
 
-function closeTicket(ticketId) {
-    Alert.confirm('Emin misiniz?', 'Bu destek talebini kapatmak istediğinize emin misiniz?').then(ok => {
+function updateTicketStatus(ticketId, status) {
+    let msg = 'Bu destek talebini kapatmak istediğinize emin misiniz?';
+    if (status === 'isleme_alindi') msg = 'Talebi işleme almak istediğinize emin misiniz?';
+    if (status === 'cozuldu') msg = 'Talebi çözüldü olarak işaretlemek istediğinize emin misiniz?';
+    
+    Alert.confirm('Emin misiniz?', msg).then(ok => {
         if (ok) {
             Loading.show();
-            $.post(API_URL, { action: 'update-status', bilet_id: ticketId, durum: 'kapali' }, function(res) {
+            $.post(API_URL, { action: 'update-status', bilet_id: ticketId, durum: status }, function(res) {
                 Loading.hide();
                 if (res.success) {
-                    Alert.success('Başarılı', 'Talep başarıyla kapatıldı.');
-                    closeTicketDetail();
+                    Alert.success('Başarılı', 'İşlem başarıyla tamamlandı.');
+                    // Re-draw or refresh
                     refreshTickets();
+                    // If modal is open, re-fetch detail
+                    $.post(API_URL, { action: 'get-ticket-details', bilet_id: ticketId }, function(resDet) {
+                        if (resDet.success) {
+                            renderTicketDetail(resDet.ticket);
+                        }
+                    });
                 } else {
                     Alert.error('Hata', res.message);
                 }
