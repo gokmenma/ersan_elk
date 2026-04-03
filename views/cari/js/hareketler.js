@@ -9,6 +9,7 @@ $(document).ready(function () {
             data: function (d) {
                 d.action = "hesap-hareketleri-ajax-list";
                 d.cari_id = global_cari_id;
+                d.filter_type = $('input[name="filter_type"]:checked').val();
             },
             dataSrc: function(json) {
                 renderMobileHareketler(json.data);
@@ -30,8 +31,8 @@ $(document).ready(function () {
                 }
             },
             { data: "aciklama" },
-            { data: "borc", className: "text-end text-danger" },
-            { data: "alacak", className: "text-end text-success" },
+            { data: "borc", className: "text-end text-success" },
+            { data: "alacak", className: "text-end text-danger" },
             { data: "yuruyen_bakiye", className: "text-end" },
             { data: "actions", className: "text-center", orderable: false, searchable: false }
         ],
@@ -56,6 +57,10 @@ $(document).ready(function () {
         table.button('.buttons-excel').trigger();
     });
 
+    $('input[name="filter_type"]').on('change', function() {
+        table.ajax.reload();
+    });
+
     function safeFeatherReplace() {
         if (typeof feather !== 'undefined') {
             try {
@@ -77,8 +82,8 @@ $(document).ready(function () {
 
         data.forEach(item => {
             const isAldim = item.borc !== '-'; 
-            const icon = isAldim ? 'minus-circle' : 'plus-circle';
-            const cls = isAldim ? 'up' : 'down';
+            const icon = isAldim ? 'plus-circle' : 'minus-circle';
+            const cls = isAldim ? 'down' : 'up';
             const amt = isAldim ? item.borc : item.alacak;
             const typeLabel = isAldim ? 'Aldım' : 'Verdim';
 
@@ -91,7 +96,7 @@ $(document).ready(function () {
                             <div class="op-desc">${item.aciklama || 'Açıklama girilmemiş'}</div>
                         </div>
                         <div class="op-value">
-                            <span class="op-amt ${isAldim ? 'text-danger' : 'text-success'}">${amt}</span>
+                            <span class="op-amt ${isAldim ? 'text-success' : 'text-danger'}">${amt}</span>
                             <span class="op-type text-muted">${typeLabel}</span>
                             ${item.dosya ? `<a href="uploads/cari_belgeler/${item.dosya}" target="_blank" class="d-block mt-1 text-primary"><i data-feather="paperclip" style="width: 12px; height: 12px;"></i> Dosya</a>` : ''}
                         </div>
@@ -136,14 +141,14 @@ $(document).ready(function () {
         if (type === 'aldim') {
             $('#hizliIslemModalLabel').text('Aldım');
             $('#hizliIslemModalDesc').text('Alınan tutar bilgisini giriniz.');
-            $('.modal-header .bg-primary-subtle').removeClass('bg-success-subtle text-success').addClass('bg-danger-subtle text-danger');
-            $('#hizliIslemModalIcon').html('<i data-feather="minus-circle" style="width: 24px; height: 24px; color: #ef4444;"></i>');
+            $('.modal-header .bg-primary-subtle').removeClass('bg-danger-subtle text-danger').addClass('bg-success-subtle text-success');
+            $('#hizliIslemModalIcon').html('<i data-feather="plus-circle" style="width: 24px; height: 24px; color: #10b981;"></i>');
             $('#hizli_islem_amt_label').text('Alınan Tutar');
         } else {
             $('#hizliIslemModalLabel').text('Verdim');
             $('#hizliIslemModalDesc').text('Yapılan ödeme bilgisini giriniz.');
-            $('.modal-header .bg-primary-subtle').removeClass('bg-danger-subtle text-danger').addClass('bg-success-subtle text-success');
-            $('#hizliIslemModalIcon').html('<i data-feather="plus-circle" style="width: 24px; height: 24px; color: #10b981;"></i>');
+            $('.modal-header .bg-primary-subtle').removeClass('bg-success-subtle text-success').addClass('bg-danger-subtle text-danger');
+            $('#hizliIslemModalIcon').html('<i data-feather="minus-circle" style="width: 24px; height: 24px; color: #ef4444;"></i>');
             $('#hizli_islem_amt_label').text('Verilen Tutar');
         }
         
@@ -236,14 +241,14 @@ $(document).ready(function () {
                     if (res.type === 'verdim') {
                         $('#hizliIslemModalLabel').text('Verdim Düzenle');
                         $('#hizliIslemModalDesc').text('Yapılan ödeme bilgisini güncelleyin.');
-                        $('.modal-header .bg-primary-subtle').removeClass('bg-danger-subtle text-danger').addClass('bg-success-subtle text-success');
-                        $('#hizliIslemModalIcon').html('<i data-feather="plus-circle" style="width: 24px; height: 24px; color: #10b981;"></i>');
+                        $('.modal-header .bg-primary-subtle').removeClass('bg-success-subtle text-success').addClass('bg-danger-subtle text-danger');
+                        $('#hizliIslemModalIcon').html('<i data-feather="minus-circle" style="width: 24px; height: 24px; color: #ef4444;"></i>');
                         $('#hizli_islem_amt_label').text('Verilen Tutar');
                     } else {
                         $('#hizliIslemModalLabel').text('Aldım Düzenle');
                         $('#hizliIslemModalDesc').text('Alınan tutar bilgisini güncelleyin.');
-                        $('.modal-header .bg-primary-subtle').removeClass('bg-success-subtle text-success').addClass('bg-danger-subtle text-danger');
-                        $('#hizliIslemModalIcon').html('<i data-feather="minus-circle" style="width: 24px; height: 24px; color: #ef4444;"></i>');
+                        $('.modal-header .bg-primary-subtle').removeClass('bg-danger-subtle text-danger').addClass('bg-success-subtle text-success');
+                        $('#hizliIslemModalIcon').html('<i data-feather="plus-circle" style="width: 24px; height: 24px; color: #10b981;"></i>');
                         $('#hizli_islem_amt_label').text('Alınan Tutar');
                     }
                     

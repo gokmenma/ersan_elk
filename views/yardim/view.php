@@ -139,6 +139,14 @@ if (!$canManageSupport) {
                         </button>
                     </div>
                 </div>
+
+                <div class="mt-4 user-actions" style="display:none;">
+                    <div class="d-flex flex-column gap-2">
+                        <button id="btn-user-close-ticket" class="btn btn-danger w-100 fw-black py-2 rounded-3 shadow-danger-sm" onclick="updateStatus('kapali')">
+                            <i class="bx bx-lock me-1"></i> TALEBİ KAPAT
+                        </button>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
@@ -245,6 +253,7 @@ if (!$canManageSupport) {
 .hover-translate-y:hover { transform: translateY(-3px); }
 .shadow-primary-sm { box-shadow: 0 4px 14px 0 rgba(37, 99, 235, 0.39) !important; }
 .shadow-success-sm { box-shadow: 0 4px 14px 0 rgba(16, 185, 129, 0.39) !important; }
+.shadow-danger-sm { box-shadow: 0 4px 14px 0 rgba(220, 38, 38, 0.39) !important; }
 
 .file-type-card { transition: all 0.3s ease; border: 1px solid rgba(0,0,0,0.05) !important; }
 .file-type-card:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(0,0,0,0.05) !important; border-color: rgba(0,0,0,0.1) !important; }
@@ -309,6 +318,7 @@ function loadTicket() {
 
             if (currentViewerIsAdmin) {
                 $('.admin-actions').show();
+                $('.user-actions').hide();
                 
                 // Duruma göre admin butonlarını yönet
                 if (isClosed) {
@@ -324,6 +334,11 @@ function loadTicket() {
                 }
             } else {
                 $('.admin-actions').hide();
+                if (ticket.durum === 'cozuldu') {
+                    $('.user-actions').show();
+                } else {
+                    $('.user-actions').hide();
+                }
             }
 
             if(isClosed || !isApprovedTicket) {

@@ -391,8 +391,12 @@ $(document).ready(function() {
             { 
                 data: null, 
                 className: 'text-center',
-                render: data => {
-                    return `<a href="?p=yardim/view&id=${data.encrypted_id || data.id}" class="btn btn-sm btn-soft-info waves-effect waves-light px-3"><i class="bx bx-show-alt me-1"></i> Detay</a>`;
+                render: (data, type, row) => {
+                    let html = `<a href="?p=yardim/view&id=${data.encrypted_id || data.id}" class="btn btn-sm btn-soft-info waves-effect waves-light px-3"><i class="bx bx-show-alt me-1"></i> Detay</a>`;
+                    if (row.durum !== 'kapali') {
+                        html += ` <button type="button" class="btn btn-sm btn-soft-danger waves-effect waves-light px-3 btn-close-ticket-row" data-id="${data.id}"><i class="bx bx-lock-alt me-1"></i> Kapat</button>`;
+                    }
+                    return html;
                 }
             }
         ],
@@ -681,6 +685,8 @@ $(document).ready(function() {
                 if(ticket.durum === 'acik') durumBadge = 'bg-warning';
                 if(ticket.durum === 'yanitlandi') durumBadge = 'bg-success';
                 if(ticket.durum === 'personel_yaniti') durumBadge = 'bg-primary';
+                if(ticket.durum === 'isleme_alindi') durumBadge = 'bg-info';
+                if(ticket.durum === 'cozuldu') durumBadge = 'bg-success';
                 if(ticket.durum === 'kapali') durumBadge = 'bg-danger';
                 $('#detail-durum').html(`<span class="badge ${durumBadge} rounded-pill px-3">${ticket.durum.toUpperCase()}</span>`);
 
@@ -722,6 +728,47 @@ $(document).ready(function() {
             }
         });
     }
+
+    // Status Update Helper
+    function updateStatus(ticketId, status) {
+        Swal.fire({
+            title: 'Emin misiniz?',
+            text: `Bileti ${status === 'kapali' ? 'kapatmak' : 'güncellemek'} istediğinize emin misiniz?`,
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet',
+            cancelButtonText: 'Hayır',
+            confirmButtonColor: '#34c38f',
+            cancelButtonColor: '#f46a6a'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $.post('views/yardim/api.php', { action: 'update-status', bilet_id: ticketId, durum: status }, function(res) {
+                    if(res.success) {
+                        userTable.ajax.reload(null, false);
+                        if($('#ticketDetailModal').is(':visible')) {
+                            const encId = $('#btn-full-view').attr('href').split('id=')[1];
+                            openTicketDetail(ticketId, encId);
+                        }
+                        Swal.fire('Başarılı', 'Bilet durumu güncellendi', 'success');
+                    } else {
+                        Swal.fire('Hata', res.message || 'İşlem yapılamadı', 'error');
+                    }
+                });
+            }
+        });
+    }
+
+    // Modal Close Button Event
+    $(document).on('click', '#btn-close-ticket', function() {
+        const id = $(this).data('id');
+        updateStatus(id, 'kapali');
+    });
+
+    // DataTable Row Close Button Event
+    $(document).on('click', '.btn-close-ticket-row', function() {
+        const id = $(this).data('id');
+        updateStatus(id, 'kapali');
+    });
 });
 
 function showTimeline(id, refNo, konu) {

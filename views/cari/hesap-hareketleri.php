@@ -73,13 +73,13 @@ $bakiye = $ozet->bakiye ?? 0;
                 </button>
                
                 <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
-                 <button type="button" class="btn  btn-outline-danger btn-sm fw-semibold px-3 d-flex align-items-center" id="btnAldimDesktop">
-                    <i data-feather="minus-circle" class="me-1" style="width: 16px; height: 16px;"></i> Aldım
+                 <button type="button" class="btn  btn-outline-success btn-sm fw-semibold px-3 d-flex align-items-center" id="btnAldimDesktop">
+                    <i data-feather="plus-circle" class="me-1" style="width: 16px; height: 16px;"></i> Aldım
                 </button>
                 <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
 
-                <button type="button" class="btn btn-outline-success btn-sm fw-semibold px-3 d-flex align-items-center" id="btnVerdimDesktop">
-                    <i data-feather="plus-circle" class="me-1" style="width: 16px; height: 16px;"></i> Verdim
+                <button type="button" class="btn btn-outline-danger btn-sm fw-semibold px-3 d-flex align-items-center" id="btnVerdimDesktop">
+                    <i data-feather="minus-circle" class="me-1" style="width: 16px; height: 16px;"></i> Verdim
                 </button>
             </div>
             
@@ -100,15 +100,15 @@ $bakiye = $ozet->bakiye ?? 0;
     <div class="row g-2 mb-4 summary-cards-container">
         <div class="col-4 col-md-4">
             <div class="card border-0 shadow-sm h-100 bordro-summary-card minimal-card"
-                style="--card-color: #f43f5e; border-bottom: 2px solid var(--card-color) !important;">
+                style="--card-color: #2a9d8f; border-bottom: 2px solid var(--card-color) !important;">
                 <div class="card-body p-2 text-center text-md-start">
                     <div class="icon-label-container d-none d-md-flex">
-                        <div class="icon-box" style="background: rgba(244, 63, 94, 0.1);">
-                            <i data-feather="trending-up" class="text-danger"></i>
+                        <div class="icon-box" style="background: rgba(42, 157, 143, 0.1);">
+                            <i data-feather="trending-down" style="color: #2a9d8f;"></i>
                         </div>
                     </div>
-                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">TOP. ALDIM</p>
-                    <p class="text-danger mb-0 small fw-bold d-md-none" style="font-size: 10px;">TOP. ALDIM</p>
+                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">TOP. GİRİŞ (ALD.")</p>
+                    <p class="text-success mb-0 small fw-bold d-md-none" style="font-size: 10px;">TOP. GİRİŞ</p>
                     <h5 class="mb-0 fw-bold bordro-text-heading mt-md-0 mt-1">
                         <span id="toplam_borc_kart" style="font-size: 0.9rem;"><?php echo number_format($toplam_borc, 2, ',', '.'); ?></span> <span style="font-size: 0.7rem; font-weight: 600;">₺</span>
                     </h5>
@@ -118,15 +118,15 @@ $bakiye = $ozet->bakiye ?? 0;
 
         <div class="col-4 col-md-4">
             <div class="card border-0 shadow-sm h-100 bordro-summary-card minimal-card"
-                style="--card-color: #2a9d8f; border-bottom: 2px solid var(--card-color) !important;">
+                style="--card-color: #f43f5e; border-bottom: 2px solid var(--card-color) !important;">
                 <div class="card-body p-2 text-center text-md-start">
                     <div class="icon-label-container d-none d-md-flex">
-                        <div class="icon-box" style="background: rgba(42, 157, 143, 0.1);">
-                            <i data-feather="trending-down" style="color: #2a9d8f;"></i>
+                        <div class="icon-box" style="background: rgba(244, 63, 94, 0.1);">
+                            <i data-feather="trending-up" class="text-danger"></i>
                         </div>
                     </div>
-                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">TOP. VERDİM</p>
-                    <p class="text-success mb-0 small fw-bold d-md-none" style="font-size: 10px;">TOP. VERDİM</p>
+                    <p class="text-muted mb-1 small fw-bold d-none d-md-block" style="letter-spacing: 0.5px; opacity: 0.7;">TOP. ÇIKIŞ (VERD.")</p>
+                    <p class="text-danger mb-0 small fw-bold d-md-none" style="font-size: 10px;">TOP. ÇIKIŞ</p>
                     <h5 class="mb-0 fw-bold bordro-text-heading mt-md-0 mt-1">
                         <span id="toplam_alacak_kart" style="font-size: 0.9rem;"><?php echo number_format($toplam_alacak, 2, ',', '.'); ?></span> <span style="font-size: 0.7rem; font-weight: 600;">₺</span>
                     </h5>
@@ -153,6 +153,32 @@ $bakiye = $ozet->bakiye ?? 0;
             </div>
         </div>
     </div>
+
+    <div class="row mb-3 mt-n2">
+        <div class="col-12 d-flex justify-content-end">
+            <div class="btn-group shadow-sm bg-white p-1" role="group" aria-label="Hareket Filtresi" style="border-radius: 12px; border: 1px solid #e2e8f0;">
+                <input type="radio" class="btn-check" name="filter_type" id="filter_all" value="all" checked>
+                <label class="btn btn-outline-primary border-0 px-3 py-1 fw-bold filter-type-label" for="filter_all" style="border-radius: 8px !important; font-size: 13px;">Tümü</label>
+
+                <input type="radio" class="btn-check" name="filter_type" id="filter_in" value="aldim">
+                <label class="btn btn-outline-success border-0 px-3 py-1 fw-bold filter-type-label" for="filter_in" style="border-radius: 8px !important; font-size: 13px;">Girişler (+)</label>
+
+                <input type="radio" class="btn-check" name="filter_type" id="filter_out" value="verdim">
+                <label class="btn btn-outline-danger border-0 px-3 py-1 fw-bold filter-type-label" for="filter_out" style="border-radius: 8px !important; font-size: 13px;">Çıkışlar (-)</label>
+            </div>
+        </div>
+    </div>
+
+    <style>
+        .filter-type-label { color: #64748b; background: transparent; transition: all 0.2s; border: none !important; }
+        .btn-check:checked + .btn-outline-primary { background-color: rgba(19, 91, 236, 0.1) !important; color: #135bec !important; }
+        .btn-check:checked + .btn-outline-success { background-color: rgba(16, 185, 129, 0.1) !important; color: #10b981 !important; }
+        .btn-check:checked + .btn-outline-danger { background-color: rgba(239, 68, 68, 0.1) !important; color: #ef4444 !important; }
+        @media (max-width: 767.98px) {
+            .btn-group { width: 100%; display: flex; }
+            .filter-type-label { flex: 1; text-align: center; }
+        }
+    </style>
 
     <?php if($cariData->notlar): ?>
     <div class="row mb-4">
@@ -285,11 +311,11 @@ $bakiye = $ozet->bakiye ?? 0;
                 z-index: 1000;
                 border-top: 1px solid #e9ecef;
             }
-            .btn-aldim { background: transparent; color: #dc3545; flex: 1; border: 1px solid #dc3545; font-weight: 600; height: 40px; border-radius: 6px; font-size: 12px; display: flex; align-items: center; justify-content: center; }
-            .btn-aldim:active { background: #dc3545; color: #fff; }
+            .btn-aldim { background: transparent; color: #198754; flex: 1; border: 1px solid #198754; font-weight: 600; height: 40px; border-radius: 6px; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+            .btn-aldim:active { background: #198754; color: #fff; }
             
-            .btn-verdim { background: transparent; color: #198754; flex: 1; border: 1px solid #198754; font-weight: 600; height: 40px; border-radius: 6px; font-size: 12px; display: flex; align-items: center; justify-content: center; }
-            .btn-verdim:active { background: #198754; color: #fff; }
+            .btn-verdim { background: transparent; color: #dc3545; flex: 1; border: 1px solid #dc3545; font-weight: 600; height: 40px; border-radius: 6px; font-size: 12px; display: flex; align-items: center; justify-content: center; }
+            .btn-verdim:active { background: #dc3545; color: #fff; }
 
             /* Flatpickr Time input fix */
             .flatpickr-time input {
@@ -319,12 +345,12 @@ $bakiye = $ozet->bakiye ?? 0;
                     <table id="hareketTable" class="table table-hover table-bordered nowrap w-100 datatable-deferred">
                         <thead class="table-light sticky-top">
                             <tr>
-                                <th class="text-center" style="width: 100px;">Tarih</th>
-                                <th style="width: 120px;">Belge No</th>
-                                <th>Açıklama</th>
-                                <th class="text-end" style="width: 150px;">Aldım (-)</th>
-                                <th class="text-end" style="width: 150px;">Verdim (+)</th>
-                                <th class="text-end" style="width: 150px;">Yürüyen Bakiye</th>
+                                <th class="text-center" style="width: 120px;" data-filter="date">Tarih</th>
+                                <th style="width: 120px;" data-filter="string">Belge No</th>
+                                <th data-filter="string">Açıklama</th>
+                                <th class="text-end" style="width: 150px;" data-filter="number">Aldım (+)</th>
+                                <th class="text-end" style="width: 150px;" data-filter="number">Verdim (-)</th>
+                                <th class="text-end" style="width: 150px;" data-filter="number">Yürüyen Bakiye</th>
                                 <th class="text-center" style="width: 80px;">İşlem</th>
                             </tr>
                         </thead>

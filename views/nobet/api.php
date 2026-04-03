@@ -281,15 +281,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $borderColor = '#8b5cf6'; // Mor (Violet-500) çerçeve
                     }
 
+                    $isPending = ($nobet->yonetici_onayi == 0 || $nobet->has_talep > 0);
                     $events[] = [
                         'id' => Security::encrypt($nobet->id),
                         'title' => $nobet->adi_soyadi,
                         'start' => $nobet->nobet_tarihi,
                         'allDay' => true,
-                        'backgroundColor' => ($nobet->yonetici_onayi == 0) ? '#9ca3af' : $color, // Onaysızsa gri
-                        'borderColor' => ($nobet->yonetici_onayi == 0) ? '#6b7280' : $borderColor,
+                        'backgroundColor' => ($isPending) ? '#9ca3af' : $color, // Onaysız veya talep varsa gri
+                        'borderColor' => ($isPending) ? '#6b7280' : $borderColor,
                         'textColor' => $textColor,
-                        'classNames' => ($nobet->yonetici_onayi == 0 ? 'fc-event-unapproved ' : '') . ($nobet->nobet_tipi == 'hafta_sonu' ? 'fc-event-weekend' : ($nobet->nobet_tipi == 'resmi_tatil' ? 'fc-event-holiday' : '')),
+                        'classNames' => ($isPending ? 'fc-event-unapproved ' : '') . ($nobet->nobet_tipi == 'hafta_sonu' ? 'fc-event-weekend' : ($nobet->nobet_tipi == 'resmi_tatil' ? 'fc-event-holiday' : '')),
                         'extendedProps' => [
                             'personel_id' => Security::encrypt($nobet->personel_id),
                             'raw_personel_id' => $nobet->personel_id,

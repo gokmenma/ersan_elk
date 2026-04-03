@@ -9,8 +9,26 @@ $aktif_p    = (int) ($istatistik->aktif_personel  ?? 0);
 $pasif_p    = (int) ($istatistik->pasif_personel  ?? 0);
 
 $db = $PersonelModel->getDb();
-$stmt = $db->prepare("SELECT * FROM personel WHERE firma_id = ? AND silinme_tarihi IS NULL AND (disardan_sigortali = 0 OR FIND_IN_SET('personel', gorunum_modulleri)) ORDER BY adi_soyadi ASC");
-$stmt->execute([$_SESSION['firma_id'] ?? 0]);
+$stmt = $db->prepare("SELECT p.*, 
+                GROUP_CONCAT(DISTINCT REPLACE(t_all.tur_adi, 'ER-SAN ELEKTRİK ', '') SEPARATOR ', ') as ekip_adi,
+                GROUP_CONCAT(DISTINCT t_all.ekip_bolge SEPARATOR ', ') as ekip_gecmis_bolge
+                FROM personel p 
+                LEFT JOIN (
+                    SELECT pg.personel_id, t.tur_adi, t.ekip_bolge
+                    FROM personel_ekip_gecmisi pg
+                    JOIN tanimlamalar t ON pg.ekip_kodu_id = t.id
+                    WHERE pg.baslangic_tarihi <= CURDATE() 
+                    AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
+                    AND pg.firma_id = :firma_id_sub
+                ) t_all ON p.id = t_all.personel_id
+                WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL 
+                AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri)) 
+                GROUP BY p.id
+                ORDER BY p.adi_soyadi ASC");
+$stmt->execute([
+    'firma_id_sub' => $_SESSION['firma_id'] ?? 0,
+    'firma_id'     => $_SESSION['firma_id'] ?? 0
+]);
 $personeller = $stmt->fetchAll(PDO::FETCH_OBJ);
 
 // Helper function for user initials
@@ -85,7 +103,7 @@ if (!function_exists('getInitials')) {
             <?php foreach ($personeller as $kisi): 
                 $tel = $kisi->cep_telefonu ?? '';
                 $gorev = $kisi->gorev_gosterim ?? $kisi->gorev ?? '';
-                $departman = $kisi->departman_gosterim ?? $kisi->departman ?? '-';
+                $departman = $kisi->departman_gosterim ?? $kisi->departman ?? '';
                 
                 $dtAyrilis = $kisi->isten_cikis_tarihi ?? '';
                 $isAktif = (empty($dtAyrilis) || $dtAyrilis == '0000-00-00') ? 1 : 0;
@@ -110,20 +128,27 @@ if (!function_exists('getInitials')) {
                                 <?= htmlspecialchars($kisi->adi_soyadi ?? 'İsimsiz') ?>
                             </h3>
                             <p class="text-[11px] text-slate-500 font-medium truncate mb-1">
-                                <?= htmlspecialchars($gorev ?: $departman) ?>
+                                <?= htmlspecialchars($gorev) ?><?php if ($gorev && $departman): ?> • <?php endif; ?><?= htmlspecialchars($departman) ?>
                             </p>
                             
-                            <div class="flex items-center gap-3 mt-1 text-[11px]">
+                            <div class="flex flex-wrap items-center gap-x-3 gap-y-1.5 mt-1 text-[11px]">
                                 <?php if (!empty($tel)): ?>
-                                <a href="tel:<?= htmlspecialchars($tel) ?>" class="flex items-center gap-1 text-slate-600 dark:text-slate-400 font-semibold bg-slate-50 dark:bg-slate-800/50 px-2 py-0.5 rounded-md hover:text-indigo-600 transition-colors" onclick="event.stopPropagation()">
+                                <a href="tel:<?= htmlspecialchars($tel) ?>" class="flex items-center gap-1 text-slate-600 dark:text-slate-400 font-semibold bg-slate-50 dark:bg-slate-800/50 px-2 py-0.5 rounded-md hover:text-indigo-600 transition-colors shrink-0" onclick="event.stopPropagation()">
                                     <span class="material-symbols-outlined text-[13px]">call</span>
                                     <?= htmlspecialchars($tel) ?>
                                 </a>
                                 <?php endif; ?>
                                 
-                                <span class="flex items-center gap-1 text-slate-600 dark:text-slate-400 font-semibold bg-slate-50 dark:bg-slate-800/50 px-2 py-0.5 rounded-md">
+                                <?php if (!empty($kisi->ekip_adi)): ?>
+                                <span class="flex items-center gap-1 text-slate-600 dark:text-slate-400 font-semibold bg-indigo-50/50 dark:bg-indigo-900/20 px-2 py-0.5 rounded-md border border-indigo-100/50 dark:border-indigo-800/20 shrink-0">
+                                    <span class="material-symbols-outlined text-[13px]">badge</span>
+                                    <span class="max-w-[100px] truncate"><?= htmlspecialchars($kisi->ekip_adi) ?></span>
+                                </span>
+                                <?php endif; ?>
+
+                                <span class="flex items-center gap-1 text-slate-600 dark:text-slate-400 font-semibold bg-slate-50 dark:bg-slate-800/50 px-2 py-0.5 rounded-md shrink-0">
                                     <span class="material-symbols-outlined text-[13px]">location_on</span>
-                                    <span class="max-w-[80px] truncate"><?= htmlspecialchars($kisi->ekip_bolge ?? 'Bölge Yok') ?></span>
+                                    <span class="max-w-[100px] truncate"><?= htmlspecialchars($kisi->ekip_gecmis_bolge ?: ($kisi->ekip_bolge ?: 'Bölge Yok')) ?></span>
                                 </span>
                             </div>
                         </div>

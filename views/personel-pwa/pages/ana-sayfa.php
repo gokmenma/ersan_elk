@@ -1179,6 +1179,11 @@ use App\Helper\Helper;
                     container.innerHTML = response.data.map(function (notification, index) {
                         var unreadIndicator = notification.okundu ? '' : '<div class="absolute top-2 left-2 w-2 h-2 bg-primary rounded-full"></div>';
                         var bgClass = notification.okundu ? 'bg-slate-50 dark:bg-slate-800' : 'bg-blue-50 dark:bg-blue-900/20 border border-primary/20';
+                        
+                        var isNobet = notification.type === 'nobet_degisim';
+                        var icon = isNobet ? 'swap_horiz' : 'notifications';
+                        var iconBg = isNobet ? 'bg-amber-100' : 'bg-blue-100';
+                        var iconColor = isNobet ? 'text-amber-600' : 'text-blue-600';
 
                         // Resim varsa küçük thumbnail göster
                         var thumbnailHtml = notification.image
@@ -1187,8 +1192,8 @@ use App\Helper\Helper;
 
                         return '<div class="relative flex items-start gap-3 p-3 ' + bgClass + ' rounded-xl cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" onclick="showNotificationDetail(' + index + ')">' +
                             unreadIndicator +
-                            '<div class="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center flex-shrink-0">' +
-                            '<span class="material-symbols-outlined text-blue-600 text-lg">notifications</span>' +
+                            '<div class="w-8 h-8 rounded-full ' + iconBg + ' flex items-center justify-center flex-shrink-0">' +
+                            '<span class="material-symbols-outlined ' + iconColor + ' text-lg">' + icon + '</span>' +
                             '</div>' +
                             '<div class="flex-1 min-w-0">' +
                             '<p class="text-sm font-medium text-slate-900 dark:text-white ' + (notification.okundu ? '' : 'font-bold') + '">' + escapeHtml(notification.title) + '</p>' +
@@ -1214,14 +1219,17 @@ use App\Helper\Helper;
 
             currentNotificationIndex = index;
 
-            // Bildirimi okundu olarak işaretle
-            if (!notification.okundu) {
+            // Bildirimi okundu olarak işaretle (Sadece push tipi için)
+            if (!notification.okundu && notification.type === 'push') {
                 await API.request('markNotificationRead', { notification_id: notification.id });
                 allNotificationsData[index].okundu = true;
                 loadNotificationCount(); // Badge'i güncelle
             }
 
-            const bgImg = `background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);`; // Dark slate for notifications
+            const isNobet = notification.type === 'nobet_degisim';
+            const bgImg = isNobet 
+                ? `background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);` // Amber for shift requests
+                : `background: linear-gradient(135deg, #1e293b 0%, #0f172a 100%);`; // Dark slate for notifications
             
             let imageHtml = '';
             if (notification.image) {
@@ -1235,16 +1243,30 @@ use App\Helper\Helper;
                 `;
             }
 
-            const actionsHtml = `
-                <button onclick="deleteCurrentNotification()" class="w-10 h-10 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center pointer-events-auto active:scale-90 transition-transform">
-                    <span class="material-symbols-outlined">delete</span>
-                </button>
-            `;
+            let actionsHtml = '';
+            if (isNobet) {
+                actionsHtml = `
+                    <div class="flex items-center gap-3">
+                        <button onclick="reddetNotificationTalep('${notification.talep_id}')" class="w-10 h-10 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center pointer-events-auto active:scale-90 transition-transform">
+                            <span class="material-symbols-outlined">close</span>
+                        </button>
+                        <button onclick="onaylaNotificationTalep('${notification.talep_id}')" class="px-6 h-10 rounded-full bg-white text-amber-600 font-bold text-sm flex items-center justify-center pointer-events-auto active:scale-95 transition-transform shadow-lg">
+                            Onayla
+                        </button>
+                    </div>
+                `;
+            } else {
+                actionsHtml = `
+                    <button onclick="deleteCurrentNotification()" class="w-10 h-10 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center pointer-events-auto active:scale-90 transition-transform">
+                        <span class="material-symbols-outlined">delete</span>
+                    </button>
+                `;
+            }
 
             const html = `
                 <div class="header-main relative px-6 pt-12 pb-8 flex flex-col items-start shadow-xl rounded-b-[2.5rem] safe-area-top shrink-0 overflow-hidden" style="${bgImg}">
                     <div class="absolute inset-0 opacity-10 overflow-hidden rounded-b-[2.5rem] pointer-events-none">
-                        <span class="material-symbols-outlined absolute -right-4 -top-4 text-[10rem] text-white opacity-10">notifications</span>
+                        <span class="material-symbols-outlined absolute -right-4 -top-4 text-[10rem] text-white opacity-10">${isNobet ? 'swap_horiz' : 'notifications'}</span>
                     </div>
                     
                     <div class="relative w-full z-10 flex flex-col h-full">
@@ -1263,6 +1285,11 @@ use App\Helper\Helper;
                     <div class="bg-white dark:bg-card-dark rounded-[2rem] p-6 shadow-xl shadow-black/5 dark:shadow-black/20 border border-slate-100 dark:border-slate-800">
                         <p class="text-slate-700 dark:text-slate-300 text-[15px] leading-relaxed whitespace-pre-wrap">${escapeHtml(notification.body)}</p>
                         ${imageHtml}
+                        ${isNobet ? `
+                            <div class="mt-6 p-4 bg-amber-50 dark:bg-amber-900/10 rounded-2xl border border-amber-100 dark:border-amber-900/20">
+                                <p class="text-xs text-amber-700 dark:text-amber-400 font-medium">Bu talebi onayladığınızda, ilgili tarihteki nöbet sizin üzerinize atanacak ve bir amirin onayına sunulacaktır.</p>
+                            </div>
+                        ` : ''}
                     </div>
                 </div>
             `;
@@ -1272,6 +1299,42 @@ use App\Helper\Helper;
                 html: html,
                 actionsHtml: actionsHtml
             });
+        }
+
+        async function onaylaNotificationTalep(talepId) {
+            const confirmed = await Alert.confirm('Talebi Onayla', 'Bu nöbet değişim talebini onaylamak istediğinize emin misiniz?', 'Evet, Onayla', 'Vazgeç');
+            if (!confirmed) return;
+
+            try {
+                const response = await API.request('onaylaNobetDegisimTalebi', { talep_id: talepId });
+                if (response.success) {
+                    Toast.show('Talep onaylandı. Yönetici onayını bekliyor.', 'success');
+                    closePwaFullModal();
+                    loadNotificationCount();
+                } else {
+                    Toast.show(response.message || 'Bir hata oluştu', 'error');
+                }
+            } catch (error) {
+                Toast.show('Bir hata oluştu', 'error');
+            }
+        }
+
+        async function reddetNotificationTalep(talepId) {
+            const confirmed = await Alert.confirm('Talebi Reddet', 'Bu nöbet değişim talebini reddetmek istediğinize emin misiniz?', 'Evet, Reddet', 'Vazgeç');
+            if (!confirmed) return;
+
+            try {
+                const response = await API.request('reddetNobetDegisimTalebi', { talep_id: talepId });
+                if (response.success) {
+                    Toast.show('Talep reddedildi', 'success');
+                    closePwaFullModal();
+                    loadNotificationCount();
+                } else {
+                    Toast.show(response.message || 'Bir hata oluştu', 'error');
+                }
+            } catch (error) {
+                Toast.show('Bir hata oluştu', 'error');
+            }
         }
 
         function closeNotificationDetail() {
