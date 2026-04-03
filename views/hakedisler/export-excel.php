@@ -153,7 +153,7 @@ try {
             $dt = new \DateTime($dbDate);
             $excelDate = \PhpOffice\PhpSpreadsheet\Shared\Date::PHPToExcel($dt);
             $worksheet->setCellValue($cell, $excelDate);
-            $worksheet->getStyle($cell)->getNumberFormat()->setFormatCode(\PhpOffice\PhpSpreadsheet\Style\NumberFormat::FORMAT_DATE_DDMMYYYY);
+            $worksheet->getStyle($cell)->getNumberFormat()->setFormatCode('dd.mm.yyyy');
         } else {
             $worksheet->setCellValue($cell, '');
         }
@@ -357,6 +357,13 @@ try {
     // --- Fill 'Arka Kapak' Sheet ---
     $sheetArkaKapak = $spreadsheet->getSheetByName('Arka Kapak');
     if ($sheetArkaKapak) {
+        $sonGunStr = '...../...../202..';
+        if (!empty($hakedis['is_yapilan_ayin_son_gunu']) && $hakedis['is_yapilan_ayin_son_gunu'] != '0000-00-00') {
+            $sonGunStr = (new \DateTime($hakedis['is_yapilan_ayin_son_gunu']))->format('d.m.Y');
+        }
+        $hNo = $hakedis['hakedis_no'];
+        $hakedisBaslik = $sonGunStr . " TARİHİNE KADAR YAPILAN İŞLERE AİT " . $hNo . " NO'LU HAKEDİŞ RAPORU";
+        $sheetArkaKapak->setCellValue('A2', $hakedisBaslik);
       
         // Tasdik Eden
         $tasdik_tarihi = '...../...../2026';
@@ -376,6 +383,18 @@ try {
     // --- Fill 'Ön Kapak' Sheet ---
     $sheetOnKapak = $spreadsheet->getSheetByName('Ön Kapak');
     if ($sheetOnKapak) {
+        // --- Fix locale-dependent date formulas in template ---
+        setExcelDate($sheetOnKapak, 'G18', $hakedis['ihale_tarihi']);
+        setExcelDate($sheetOnKapak, 'G19', $hakedis['sozlesme_tarihi']);
+        setExcelDate($sheetOnKapak, 'G20', $hakedis['yer_teslim_tarihi']);
+        setExcelDate($sheetOnKapak, 'G22', $hakedis['isin_bitecegi_tarih']);
+
+        // Row 29 Tarihli Sözleşme override
+        if (!empty($hakedis['sozlesme_tarihi']) && $hakedis['sozlesme_tarihi'] != '0000-00-00') {
+             $st = (new \DateTime($hakedis['sozlesme_tarihi']))->format('d.m.Y');
+             $sheetOnKapak->setCellValue('F29', $st . ' Tarihli Sözleşme');
+        }
+
         $sheetOnKapak->setCellValue('F30', $hakedis['yuzde_yirmi_fazla_is'] ?? '');
         $sheetOnKapak->setCellValue('D35', $hakedis['son_sure_uzatimi'] ?? '');
         
@@ -482,6 +501,12 @@ try {
             $sheetIsTakip->setCellValue('G' . $row, $sozlesmeMiktar); // Tatbikat Projesi Miktarı aynı kabul ediliyor
             $sheetIsTakip->setCellValue('I' . $row, $yapilanMiktar);
             $sheetIsTakip->setCellValue('J' . $row, $kalanMiktar);
+        }
+
+        // Fix date formula in İş Takip-Ön Yüz or related sheet
+        $sheetOnYuz = $spreadsheet->getSheetByName('İş Takip-Ön Yüz');
+        if ($sheetOnYuz) {
+             setExcelDate($sheetOnYuz, 'A101', $hakedis['is_yapilan_ayin_son_gunu']);
         }
     }
 

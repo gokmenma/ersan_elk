@@ -267,7 +267,7 @@ if (!(Gate::allows('admin_destek_talebi') || Gate::isSuperAdmin())) {
                         <i class="bx bx-loader fs-4 text-info"></i>
                     </div>
                 </div>
-                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">İŞLEMDERDE</p>
+                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">İŞLEMDE</p>
                 <h4 class="mb-0 fw-bold">
                     <span class="counter-value" data-target="0" id="stat-islemde">0</span>
                 </h4>
