@@ -39,14 +39,15 @@ function loadKalemler() {
       if (res.status == "success") {
         let html = "";
         let totalImalat = 0;
-
-        if (res.data.length === 0) {
-          html = `<tr><td colspan="9" class="text-center text-muted py-4"><i class="bx bx-info-circle mb-2" style="font-size:30px;"></i><br>Henüz bu sözleşmeye ait kalem eklenmemiş. Lütfen sağ üstteki butondan yeni kalem ekleyin.</td></tr>`;
+        if (res.data.length === 0) {
+          html = `<tr><td colspan="10" class="text-center text-muted py-4"><i class="bx bx-info-circle mb-2" style="font-size:30px;"></i><br>Henüz bu sözleşmeye ait kalem eklenmemiş. Lütfen sağ üstteki butondan yeni kalem ekleyin.</td></tr>`;
         } else {
           res.data.forEach((kalem, index) => {
             const oncekiMiktar = parseFloat(kalem.onceki_miktar || 0);
             const buAyMiktar = parseFloat(kalem.bu_ay_miktar || 0);
             const toplamMiktar = oncekiMiktar + buAyMiktar;
+            const sozlesmeMiktari = parseFloat(kalem.miktari || 0);
+            const yuzde = sozlesmeMiktari > 0 ? (toplamMiktar / sozlesmeMiktari) * 100 : 0;
             const birimFiyat = parseFloat(kalem.teklif_edilen_birim_fiyat || 0);
             const rowTotal = toplamMiktar * birimFiyat;
             const donemTutari = buAyMiktar * birimFiyat;
@@ -58,17 +59,25 @@ function loadKalemler() {
                             <td class="text-center fw-bold">${index + 1}</td>
                             <td class="td-kalem-adi">
                                 <span class="badge bg-secondary mb-1 poz-no-badge">${kalem.poz_no || ""}</span>
-                                <div class="text-wrap" style="width: 250px;">${kalem.kalem_adi}</div>
+                                <div class="text-wrap" style="width: 200px;">${kalem.kalem_adi}</div>
                             </td>
-                            <td class="td-birim">${kalem.birim}</td>
+                            <td class="text-center td-birim" data-birim="${kalem.birim}" data-miktar="${sozlesmeMiktari}">
+                                <span class="fw-bold text-primary">${sozlesmeMiktari.toLocaleString("tr-TR")}</span> / <span class="text-muted">${kalem.birim}</span>
+                            </td>
                             <td class="text-end td-fiyat">${birimFiyat.toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺</td>
-                            <td style="width:120px;">
-                                <input type="number" step="0.01" class="form-control form-control-sm onceki-miktar-input" data-kalem-id="${kalem.id}" value="${oncekiMiktar}" placeholder="0">
+                            <td class="text-center" style="width:100px;">
+                                <input type="number" step="0.01" class="form-control form-control-sm onceki-miktar-input text-center px-1" data-kalem-id="${kalem.id}" value="${oncekiMiktar}" placeholder="0">
                             </td>
-                            <td style="width:120px;">
-                                <input type="number" step="0.01" class="form-control form-control-sm miktar-input" data-kalem-id="${kalem.id}" value="${buAyMiktar}" placeholder="0">
+                            <td class="text-center" style="width:100px;">
+                                <input type="number" step="0.01" class="form-control form-control-sm miktar-input text-center px-1" data-kalem-id="${kalem.id}" value="${buAyMiktar}" placeholder="0">
                             </td>
                             <td class="text-center table-warning fw-bold">${toplamMiktar.toLocaleString("tr-TR")}</td>
+                            <td class="text-center" style="width: 100px;">
+                                <div class="fw-bold mb-1 ${yuzde > 100 ? 'text-danger' : 'text-primary'}" style="font-size: 11px;">%${yuzde.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</div>
+                                <div class="progress progress-sm" style="height: 6px; background-color: #e9ecef;">
+                                    <div class="progress-bar ${yuzde > 100 ? 'bg-danger' : 'bg-success'}" role="progressbar" style="width: ${Math.min(yuzde, 100)}%" aria-valuenow="${yuzde}" aria-valuemin="0" aria-valuemax="100"></div>
+                                </div>
+                            </td>
                             <td class="text-end fw-bold text-success">${donemTutari.toLocaleString("tr-TR", { minimumFractionDigits: 2 })} ₺</td>
                             <td class="text-center actions-container">
                                 <div class="d-flex gap-1 justify-content-center">
@@ -81,18 +90,25 @@ function loadKalemler() {
         }
 
         $("#kalemlerBody").html(html);
+
+        // Toplam Gerçekleşme Yüzdesi (Kümülatif İmalat / Sözleşme Bedeli)
+        const genelYuzde = sozlesmeBedeli > 0 ? (totalImalat / sozlesmeBedeli) * 100 : 0;
+        $("#toplamGerceklesmeYuzdesi").text("%" + genelYuzde.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 }));
+        if (genelYuzde > 100) {
+            $("#toplamGerceklesmeYuzdesi").removeClass("bg-soft-success text-success").addClass("bg-soft-danger text-danger");
+        } else {
+            $("#toplamGerceklesmeYuzdesi").removeClass("bg-soft-danger text-danger").addClass("bg-soft-success text-success");
+        }
+
         $("#toplamImalatTutar").text(
           totalImalat.toLocaleString("tr-TR", { minimumFractionDigits: 2 }) +
             " ₺",
         );
 
         // Fiyat farkı calculation (Formula mockup from excel logic)
-        // (Pn - 1) * RowTotal vs -> Need backend calculation response to be precise.
-        // For now, doing a basic update from backend if we fetch stats:
         if (typeof res.fiyat_farki !== "undefined") {
           const ffValue = parseFloat(res.fiyat_farki);
 
-          console.log(ffValue);
           $("#hesaplananFiyatFarki").text(
             parseFloat(ffValue).toLocaleString("tr-TR", {
               minimumFractionDigits: 2,
@@ -120,7 +136,7 @@ function loadKalemler() {
         }
       } else {
         $("#kalemlerBody").html(
-          `<tr><td colspan="9" class="text-center text-danger">${res.message}</td></tr>`,
+          `<tr><td colspan="10" class="text-center text-danger">${res.message}</td></tr>`,
         );
       }
     },
@@ -158,7 +174,8 @@ function editKalemRow(btn, id) {
   const tr = $(btn).closest("tr");
   const kalemAdi = tr.find(".td-kalem-adi .text-wrap").text().trim();
   const pozNo = tr.find(".td-kalem-adi .poz-no-badge").text().trim();
-  const birim = tr.find(".td-birim").text().trim();
+  const birim = tr.find(".td-birim").data("birim");
+  const miktar = tr.find(".td-birim").data("miktar");
   const rawFiyat = tr
     .find(".td-fiyat")
     .text()
@@ -176,7 +193,7 @@ function editKalemRow(btn, id) {
     "Ton",
     "Litre",
   ];
-  let selectHtml = `<select class="form-select form-select-sm edit-birim">`;
+  let selectHtml = `<select class="form-select form-select-sm edit-birim mt-1">`;
   unitOptions.forEach((op) => {
     let sel = op === birim ? "selected" : "";
     selectHtml += `<option value="${op}" ${sel}>${op}</option>`;
@@ -187,7 +204,10 @@ function editKalemRow(btn, id) {
     `<input type="text" class="form-control form-control-sm edit-poz-no mb-1" value="${pozNo}" placeholder="Poz No">
      <input type="text" class="form-control form-control-sm edit-kalem-adi" value="${kalemAdi}">`
   );
-  tr.find(".td-birim").html(selectHtml);
+  tr.find(".td-birim").html(
+    `<input type="number" step="0.01" class="form-control form-control-sm edit-miktar" value="${miktar}" placeholder="Miktar">
+     ${selectHtml}`
+  );
   tr.find(".td-fiyat").html(
     `<input type="number" step="0.01" class="form-control form-control-sm text-end edit-fiyat" value="${floatFiyat}">`,
   );
@@ -205,6 +225,7 @@ function saveEditedKalem(btn, id) {
   const kalemAdi = tr.find(".edit-kalem-adi").val();
   const pozNo = tr.find(".edit-poz-no").val();
   const birim = tr.find(".edit-birim").val();
+  const miktar = tr.find(".edit-miktar").val();
   const teklifFiyat = tr.find(".edit-fiyat").val();
 
   if (!kalemAdi || !teklifFiyat) {
@@ -220,6 +241,7 @@ function saveEditedKalem(btn, id) {
       poz_no: pozNo,
       kalem_adi: kalemAdi,
       birim: birim,
+      miktari: miktar,
       teklif_edilen_birim_fiyat: teklifFiyat,
     },
     function (res) {
@@ -289,6 +311,54 @@ function exportHakedisToExcel(id) {
   setTimeout(() => {
     Swal.close();
   }, 3000);
+}
+
+function uploadHakedisTemplate(input) {
+    if (!input.files || !input.files[0]) return;
+    
+    let file = input.files[0];
+    let fileName = file.name;
+    
+    // Check extension
+    if (!fileName.toLowerCase().endsWith('.xlsx')) {
+        Swal.fire('Hata', 'Lütfen sadece .xlsx uzantılı Excel dosyası yükleyin.', 'error');
+        $(input).val('');
+        return;
+    }
+
+    Swal.fire({
+        title: 'Şablon Yükleniyor',
+        text: 'Lütfen bekleyin...',
+        allowOutsideClick: false,
+        didOpen: () => {
+            Swal.showLoading();
+        }
+    });
+
+    let formData = new FormData();
+    formData.append('type', 'uploadHakedisTemplate');
+    formData.append('templateFile', file);
+
+    $.ajax({
+        url: 'views/hakedisler/online-api.php',
+        type: 'POST',
+        data: formData,
+        processData: false,
+        contentType: false,
+        dataType: 'json',
+        success: function(res) {
+            if (res.status === 'success') {
+                Swal.fire('Başarılı', 'Excel şablon dosyası başarıyla güncellendi.', 'success');
+            } else {
+                Swal.fire('Hata', res.message || 'Dosya yüklenirken bir hata oluştu.', 'error');
+            }
+            $(input).val('');
+        },
+        error: function() {
+            Swal.fire('Hata', 'Sunucu ile iletişim kurulamadı.', 'error');
+            $(input).val('');
+        }
+    });
 }
 
 function addEndeksRow(containerId, type) {

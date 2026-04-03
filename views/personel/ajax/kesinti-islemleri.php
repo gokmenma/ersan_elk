@@ -138,12 +138,16 @@ try {
                 'aciklama' => $_POST['aciklama'] ?? '',
                 'parametre_id' => !empty($_POST['parametre_id']) ? intval($_POST['parametre_id']) : null,
                 'icra_id' => !empty($_POST['icra_id']) ? intval($_POST['icra_id']) : null,
-                'kayit_yapan' => $_SESSION['id'] ?? null
+                'kayit_yapan' => $_SESSION['id'] ?? null,
+                'taksit_sayisi' => ($tekrarTipi === 'taksitli') ? intval($_POST['taksit_sayisi'] ?? 1) : null
             ];
 
-            if ($tekrarTipi === 'tek_sefer') {
+            if ($tekrarTipi === 'tek_sefer' || $tekrarTipi === 'taksitli') {
                 $data['donem_id'] = $_POST['donem_id'] ?? null;
+                $data['baslangic_donemi'] = null;
+                $data['bitis_donemi'] = null;
             } else {
+                $data['donem_id'] = null;
                 $data['baslangic_donemi'] = $_POST['baslangic_donemi'] ?? date('Y-m');
                 $data['bitis_donemi'] = !empty($_POST['bitis_donemi']) ? $_POST['bitis_donemi'] : null;
             }

@@ -83,7 +83,7 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
 </div>
 
 <div class="row">
-    <div class="col-xl-3">
+    <div class="col-xl-3 col-xxl-2">
         <div class="card overflow-hidden">
             <div class="bg-primary">
                 <div class="row">
@@ -98,6 +98,9 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
                             </p>
                             <p class="mb-1"><strong>Bedel:</strong>
                                 <?= number_format($hakedis->sozlesme_bedeli, 2, ',', '.') ?> ₺
+                            </p>
+                            <p class="mb-1"><strong>Gerçekleşme Oranı:</strong>
+                                <span class="badge bg-soft-success text-success fw-bold p-1 px-2" id="toplamGerceklesmeYuzdesi" style="font-size: 11px;">%0,00</span>
                             </p>
                             <?php if ($hakedis->s_temel_endeks_ay && $hakedis->s_temel_endeks_yil): ?>
                                 <p class="mb-1"><strong>Temel Endeks Ayı:</strong>
@@ -309,7 +312,7 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
         </div>
     </div>
 
-    <div class="col-xl-9">
+    <div class="col-xl-9 col-xxl-10">
 
         <!-- Kalemler ve Miktarlar Ekleme Alanı -->
         <div class="card">
@@ -332,26 +335,35 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
                        
 
                         <!-- Excel Çıktısı -->
-                        <button type="button" class="btn btn-success waves-effect waves-light shadow-success"
-                            onclick="exportHakedisToExcel(<?= $hakedis->id ?>)">
-                            <i class="bx bx-file me-1"></i> Excel Çıktısı Al
-                        </button>
+                        <div class="d-flex align-items-center gap-1">
+                            <button type="button" class="btn btn-success waves-effect waves-light shadow-success btn-sm px-3"
+                                onclick="exportHakedisToExcel(<?= $hakedis->id ?>)">
+                                <i class="bx bx-file me-1"></i> Excel Çıktısı Al
+                            </button>
+                            <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+                            <button type="button" class="btn btn-info waves-effect waves-light shadow-info btn-sm px-3"
+                                onclick="$('#templateFileInput').click()" title="Hakedis.xlsx şablonunu günceller">
+                                <i class="bx bx-upload me-1"></i> Şablonu Güncelle
+                            </button>
+                            <input type="file" id="templateFileInput" style="display: none;" accept=".xlsx" onchange="uploadHakedisTemplate(this)">
+                        </div>
                          </div>
                     </div>
                 </div>
 
                 <!-- Main dynamic table for Kalemler & Miktarlar (İcmal structure) -->
                 <div class="table-responsive">
-                    <table class="table table-bordered align-middle table-nowrap table-hover" id="miktarlarTable">
+                    <table class="table table-bordered align-middle table-hover" id="miktarlarTable">
                         <thead class="table-light">
                             <tr>
                                 <th style="width: 50px;">Sıra</th>
                                 <th>İmalatın Cinsi (Kalem)</th>
-                                <th>Birim</th>
-                                <th>Teklif Birim Fiyat (TL)</th>
-                                <th>Önceki T. Miktar</th>
-                                <th>Bu Ayki Miktar</th>
-                                <th class="text-bg-warning">Toplam Miktar</th>
+                                <th class="text-center" style="width: 120px;">Sözleşme Miktarı / Birim</th>
+                                <th style="width: 130px;">Teklif Birim Fiyat (TL)</th>
+                                <th class="text-center" style="width: 100px;">Önceki T. Miktar</th>
+                                <th class="text-center" style="width: 100px;">Bu Ayki Miktar</th>
+                                <th class="text-bg-warning text-center" style="width: 100px;">Toplam Miktar</th>
+                                <th class="text-center" style="width: 100px;">Gerçekleşme %</th>
                                 <th>Bu Ayki Tutar (TL)</th>
                                 <th>İşlemler</th>
                             </tr>
@@ -364,23 +376,23 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
                         </tbody>
                         <tfoot class="table-light">
                             <tr>
-                                <th colspan="7" class="text-end font-size-15 h5">Bu Ayki Hakediş Tutarı (İmalat):</th>
+                                <th colspan="8" class="text-end font-size-15 h5">Bu Ayki Hakediş Tutarı (İmalat):</th>
                                 <th colspan="2" class="font-size-15 text-primary h5" id="toplamImalatTutar">0,00 ₺</th>
                             </tr>
                             <tr>
-                                <th colspan="7" class="text-end font-size-15 h5 text-success">Hesaplanan Fiyat Farkı:
+                                <th colspan="8" class="text-end font-size-15 h5 text-success">Hesaplanan Fiyat Farkı:
                                 </th>
                                 <th colspan="2" class="font-size-15 text-success h5" id="hesaplananFiyatFarki">0,00 ₺
                                 </th>
                             </tr>
                             <tr>
-                                <th colspan="7" class="text-end font-size-15 h5 text-info">Fiyat Farkı Dahil Toplam:
+                                <th colspan="8" class="text-end font-size-15 h5 text-info">Fiyat Farkı Dahil Toplam:
                                 </th>
                                 <th colspan="2" class="font-size-15 text-info h5" id="fiyatFarkiDahilToplam">0,00 ₺
                                 </th>
                             </tr>
                             <tr>
-                                <th colspan="7" class="text-end font-size-15 h5 text-danger">Bu Ayki KDV Dahil Toplam:
+                                <th colspan="8" class="text-end font-size-15 h5 text-danger">Bu Ayki KDV Dahil Toplam:
                                 </th>
                                 <th colspan="2" class="font-size-15 text-danger h5" id="kdvDahilToplam">0,00 ₺</th>
                             </tr>
@@ -398,4 +410,5 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
     var currentSozlesmeId = <?= $hakedis->sozlesme_id ?>;
     var currentHakedisAy = <?= $hakedis->hakedis_tarihi_ay ?>;
     var currentHakedisYil = <?= $hakedis->hakedis_tarihi_yil ?>;
+    var sozlesmeBedeli = <?= (float)$hakedis->sozlesme_bedeli ?>;
 </script>

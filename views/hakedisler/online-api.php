@@ -643,6 +643,7 @@ try {
                 'poz_no' => $_POST['poz_no'] ?? '',
                 'kalem_adi' => $_POST['kalem_adi'] ?? '',
                 'birim' => $_POST['birim'] ?? '',
+                'miktari' => floatval($_POST['miktari'] ?? 0),
                 'teklif_edilen_birim_fiyat' => floatval($_POST['teklif_edilen_birim_fiyat'] ?? 0)
             ];
 
@@ -837,7 +838,28 @@ try {
 
             echo json_encode(['status' => 'success', 'data' => $sonuc]);
             break;
-
+        
+        case 'uploadHakedisTemplate':
+            if (isset($_FILES['templateFile']) && $_FILES['templateFile']['error'] === UPLOAD_ERR_OK) {
+                $tempPath = $_FILES['templateFile']['tmp_name'];
+                $targetPath = __DIR__ . '/Hakedis.xlsx';
+                
+                // Backup existing? User didn't ask for it but it's safer.
+                // However, they specifically said they want to replace it.
+                if (move_uploaded_file($tempPath, $targetPath)) {
+                    echo json_encode(['status' => 'success']);
+                } else {
+                    echo json_encode(['status' => 'error', 'message' => 'Dosya şablon klasörüne kopyalanamadı.']);
+                }
+            } else {
+                $errorMsg = 'Dosya yüklenemedi.';
+                if (isset($_FILES['templateFile'])) {
+                    $errorMsg .= ' Hata Kodu: ' . $_FILES['templateFile']['error'];
+                }
+                echo json_encode(['status' => 'error', 'message' => $errorMsg]);
+            }
+            break;
+            
         default:
             echo json_encode(['status' => 'error', 'message' => 'Geçersiz işlem tipi.']);
             break;

@@ -46,13 +46,19 @@ class PersonelKesintileriModel extends Model
             if (!empty($filters['filter_kesinti_donem'])) {
                 $donem_id = $filters['filter_kesinti_donem'];
                 $where .= " AND (
-                    (pk.tekrar_tipi IN ('tek_sefer','taksitli') AND pk.donem_id = ?) 
+                    (pk.tekrar_tipi = 'tek_sefer' AND pk.donem_id = ?) 
                     OR 
-                    (pk.tekrar_tipi = 'surekli' AND EXISTS (
-                        SELECT 1 FROM bordro_donemi bd2 
-                        WHERE bd2.id = ? 
-                        AND pk.baslangic_donemi <= bd2.bitis_tarihi 
-                        AND (pk.bitis_donemi IS NULL OR pk.bitis_donemi >= bd2.baslangic_tarihi)
+                    ((pk.tekrar_tipi = 'surekli' OR pk.tekrar_tipi = 'taksitli') AND EXISTS (
+                        SELECT 1 FROM bordro_donemi bd_target
+                        LEFT JOIN bordro_donemi bd_start ON bd_start.id = pk.donem_id
+                        WHERE bd_target.id = ? 
+                        AND (
+                            -- Sürekli için: başlangıç-bitiş kontrolü
+                            (pk.tekrar_tipi = 'surekli' AND pk.baslangic_donemi <= bd_target.bitis_tarihi AND (pk.bitis_donemi IS NULL OR pk.bitis_donemi >= bd_target.baslangic_tarihi))
+                            OR
+                            -- Taksitli için: başlangıç dönemi ve taksit sayısı kontrolü
+                            (pk.tekrar_tipi = 'taksitli' AND bd_start.baslangic_tarihi IS NOT NULL AND bd_target.baslangic_tarihi >= bd_start.baslangic_tarihi AND bd_target.baslangic_tarihi < DATE_ADD(bd_start.baslangic_tarihi, INTERVAL pk.taksit_sayisi MONTH))
+                        )
                     ))
                 )";
                 $params[] = $donem_id;
