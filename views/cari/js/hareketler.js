@@ -24,7 +24,7 @@ $(document).ready(function () {
                 render: function(data, type, row) {
                     let html = data || '-';
                     if (row.dosya) {
-                        html += ' <a href="uploads/cari_belgeler/' + row.dosya + '" target="_blank" class="ms-1 text-primary"><i class="bx bx-paperclip font-size-16"></i></a>';
+                        html += ' <a href="uploads/cari_belgeler/' + row.dosya + '" target="_blank" class="ms-1 text-primary"><i data-feather="paperclip" style="width: 14px; height: 14px;"></i></a>';
                     }
                     return html;
                 }
@@ -35,6 +35,9 @@ $(document).ready(function () {
             { data: "yuruyen_bakiye", className: "text-end" },
             { data: "actions", className: "text-center", orderable: false, searchable: false }
         ],
+        drawCallback: function() {
+            safeFeatherReplace();
+        },
         order: [[0, 'desc'], [1, 'desc']], // SQL tarafında da desc gelmeli
         pageLength: 50,
         buttons: [
@@ -53,6 +56,16 @@ $(document).ready(function () {
         table.button('.buttons-excel').trigger();
     });
 
+    function safeFeatherReplace() {
+        if (typeof feather !== 'undefined') {
+            try {
+                feather.replace();
+            } catch (e) {
+                console.error("Feather Icons Error:", e);
+            }
+        }
+    }
+
     function renderMobileHareketler(data) {
         const container = $('#hareketMobileContainer');
         container.empty();
@@ -64,7 +77,7 @@ $(document).ready(function () {
 
         data.forEach(item => {
             const isAldim = item.borc !== '-'; 
-            const icon = isAldim ? 'bx-minus-circle' : 'bx-plus-circle';
+            const icon = isAldim ? 'minus-circle' : 'plus-circle';
             const cls = isAldim ? 'up' : 'down';
             const amt = isAldim ? item.borc : item.alacak;
             const typeLabel = isAldim ? 'Aldım' : 'Verdim';
@@ -72,7 +85,7 @@ $(document).ready(function () {
             const card = `
                 <div class="op-card flex-wrap">
                     <div class="d-flex align-items-center w-100">
-                        <div class="op-icon ${cls}"><i class="bx ${icon}"></i></div>
+                        <div class="op-icon ${cls}"><i data-feather="${icon}" style="width: 14px; height: 14px;"></i></div>
                         <div class="op-info">
                             <div class="op-date">${item.islem_tarihi}</div>
                             <div class="op-desc">${item.aciklama || 'Açıklama girilmemiş'}</div>
@@ -80,21 +93,22 @@ $(document).ready(function () {
                         <div class="op-value">
                             <span class="op-amt ${isAldim ? 'text-danger' : 'text-success'}">${amt}</span>
                             <span class="op-type text-muted">${typeLabel}</span>
-                            ${item.dosya ? `<a href="uploads/cari_belgeler/${item.dosya}" target="_blank" class="d-block mt-1 text-primary"><i class="bx bx-paperclip"></i> Dosya</a>` : ''}
+                            ${item.dosya ? `<a href="uploads/cari_belgeler/${item.dosya}" target="_blank" class="d-block mt-1 text-primary"><i data-feather="paperclip" style="width: 12px; height: 12px;"></i> Dosya</a>` : ''}
                         </div>
                     </div>
                     <div class="w-100 d-flex justify-content-end gap-2 mt-2 pt-2 border-top border-light-subtle">
                         <button class="btn btn-sm btn-light-primary px-2 py-1 hareket-duzenle" data-id="${item.actions.match(/data-id="([^"]+)"/)[1]}" style="font-size: 10px;">
-                            <i class="bx bx-edit-alt me-1"></i> Düzenle
+                            <i data-feather="edit" style="width: 12px; height: 12px; margin-right: 2px;"></i> Düzenle
                         </button>
                         <button class="btn btn-sm btn-light-danger px-2 py-1 hareket-sil" data-id="${item.actions.match(/data-id="([^"]+)"/)[1]}" style="font-size: 10px;">
-                            <i class="bx bx-trash me-1"></i> Sil
+                            <i data-feather="trash" style="width: 12px; height: 12px; margin-right: 2px;"></i> Sil
                         </button>
                     </div>
                 </div>
             `;
             container.append(card);
         });
+        safeFeatherReplace();
     }
 
     // Aldım / Verdim Butonları (Mobil ve Masaüstü)
@@ -185,10 +199,9 @@ $(document).ready(function () {
         });
     });
 
-    // Hareket Düzenle
-    $(document).on('click', '.hareket-duzenle', function (e) {
-        e.preventDefault();
-        const id = $(this).data('id');
+    // Hareket Düzenle Fonksiyonu
+    function editHareket(id) {
+        if(!id) return;
         $.ajax({
             url: "views/cari/api.php",
             type: "POST",
@@ -237,7 +250,7 @@ $(document).ready(function () {
                     const fileInput = $('#hizliIslemForm').find('input[name="dosya"]');
                     fileInput.next('.existing-file').remove();
                     if (res.dosya) {
-                        fileInput.after('<div class="existing-file mt-1 small text-muted"><i class="bx bx-file"></i> <a href="uploads/cari_belgeler/' + res.dosya + '" target="_blank">Mevcut Belge</a></div>');
+                        fileInput.after('<div class="existing-file mt-1 small text-muted"><i data-feather="file" style="width: 14px; height: 14px;"></i> <a href="uploads/cari_belgeler/' + res.dosya + '" target="_blank">Mevcut Belge</a></div>');
                     }
                     
                     if (typeof feather !== 'undefined') feather.replace();
@@ -245,6 +258,40 @@ $(document).ready(function () {
                 }
             }
         });
+    }
+
+    // Buton ile düzenleme
+    $(document).on('click', '.hareket-duzenle', function (e) {
+        e.preventDefault();
+        e.stopPropagation(); // Satır tıklamasını engelle
+        const id = $(this).data('id');
+        editHareket(id);
+    });
+
+    // Satır tıklama ile düzenleme
+    $('#hareketTable tbody').on('click', 'tr', function (e) {
+        // Eğer tıklanan element bir link, buton veya dropdown ise düzenleme açma
+        if ($(e.target).closest('a, button, .dropdown, .existing-file').length > 0) {
+            return;
+        }
+        
+        const rowData = table.row(this).data();
+        if (rowData && rowData.actions) {
+            // ID'yi actions stringinden çek
+            const match = rowData.actions.match(/data-id="([^"]+)"/);
+            if (match && match[1]) {
+                editHareket(match[1]);
+            }
+        }
+    });
+
+    // Mobilde karta tıklama ile düzenleme
+    $(document).on('click', '.op-card', function(e) {
+        if ($(e.target).closest('button, a').length > 0) return;
+        
+        const btn = $(this).find('.hareket-duzenle');
+        const id = btn.data('id');
+        if (id) editHareket(id);
     });
 
     // Hareket Sil
@@ -294,5 +341,28 @@ $(document).ready(function () {
                 });
             }
         });
+    });
+
+    // Cari Notu Düzenle (Global Fonksiyon)
+    window.editCariNoteDesktop = function() {
+        $('#cariNotuModal').modal('show');
+        safeFeatherReplace();
+    };
+
+    // Cari Notu Kaydet
+    $('#cariNotuForm').on('submit', function(e) {
+        e.preventDefault();
+        const notlar = $(this).find('textarea[name="notlar"]').val();
+        $.post('views/cari/api.php', {
+            action: 'cari-not-kaydet',
+            cari_id: global_cari_id,
+            notlar: notlar
+        }, function(res) {
+            if(res.status === 'success') {
+                location.reload();
+            } else {
+                Swal.fire('Hata', res.message, 'error');
+            }
+        }, 'json');
     });
 });

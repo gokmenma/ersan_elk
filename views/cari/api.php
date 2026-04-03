@@ -29,20 +29,20 @@ if ($action == "cari-ajax-list") {
             $actions = '
                 <div class="dropdown text-center">
                     <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <i class="bx bx-dots-vertical-rounded font-size-20 text-dark"></i>
+                        <i data-feather="more-vertical" class="text-dark" style="width: 20px; height: 20px;"></i>
                     </a>
                     <div class="dropdown-menu">
                         <a class="dropdown-item hesap-hareketleri" href="index.php?p=cari/hesap-hareketleri&id=' . $enc_id . '" data-id="' . $enc_id . '">
-                            <i class="bx bx-list-ul font-size-16 me-1"></i> Hareketler
+                            <i data-feather="list" class="font-size-16 me-1" style="width: 14px; height: 14px;"></i> Hareketler
                         </a>
                         <a class="dropdown-item hareket-ekle" href="#" data-id="' . $enc_id . '">
-                            <i class="bx bx-plus-circle font-size-16 me-1 text-success"></i> Hareket Ekle
+                            <i data-feather="plus-circle" class="font-size-16 me-1 text-success" style="width: 14px; height: 14px;"></i> Hareket Ekle
                         </a>
                         <a class="dropdown-item duzenle" href="#" data-id="' . $enc_id . '">
-                            <i class="bx bx-edit font-size-16 me-1"></i> Düzenle
+                            <i data-feather="edit" class="font-size-16 me-1" style="width: 14px; height: 14px;"></i> Düzenle
                         </a>
                         <a class="dropdown-item cari-sil" href="#" data-id="' . $enc_id . '">
-                            <i class="bx bx-trash font-size-16 me-1 text-danger"></i> Sil
+                            <i data-feather="trash" class="font-size-16 me-1 text-danger" style="width: 14px; height: 14px;"></i> Sil
                         </a>
                     </div>
                 </div>';
@@ -146,14 +146,14 @@ if ($action == "hesap-hareketleri-ajax-list") {
             $actions = '
                 <div class="dropdown text-center">
                     <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                        <i class="bx bx-dots-vertical-rounded font-size-20 text-dark"></i>
+                        <i data-feather="more-vertical" class="text-dark" style="width: 20px; height: 20px;"></i>
                     </a>
                     <div class="dropdown-menu">
                         <a class="dropdown-item hareket-duzenle" href="#" data-id="' . $enc_hareket_id . '">
-                            <i data-feather="edit-2" class="me-1" style="width: 14px; height: 14px;"></i> Düzenle
+                            <i data-feather="edit" class="me-1" style="width: 14px; height: 14px;"></i> Düzenle
                         </a>
                         <a class="dropdown-item hareket-sil" href="#" data-id="' . $enc_hareket_id . '">
-                            <i data-feather="trash-2" class="me-1 text-danger" style="width: 14px; height: 14px;"></i> Sil
+                            <i data-feather="trash" class="me-1 text-danger" style="width: 14px; height: 14px;"></i> Sil
                         </a>
                     </div>
                 </div>';

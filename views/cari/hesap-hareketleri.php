@@ -57,19 +57,19 @@ $bakiye = $ozet->bakiye ?? 0;
                 <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
 
             <button type="button" id="exportExcel" class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">
-                    <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel
+                    <i data-feather="file-text" class="me-1" style="width: 18px; height: 18px;"></i> Excel
                 </button>
                
                 <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
 
-                <a href="views/cari/export-ekstre-pdf.php?id=<?= $cari_id_enc ?>" target="_blank" class="btn btn-link btn-sm text-danger text-decoration-none px-2 d-flex align-items-center">
-                    <i class="mdi mdi-file-pdf-box fs-5 me-1"></i> PDF Ekstre
+                <a href="views/cari/export-ekstre-pdf.php?id=<?= urlencode($cari_id_enc) ?>" target="_blank" class="btn btn-link btn-sm text-danger text-decoration-none px-2 d-flex align-items-center">
+                    <i data-feather="file" class="me-1" style="width: 18px; height: 18px;"></i> PDF Ekstre
                 </a>
 
                 <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
 
                 <button type="button" onclick="editCariNoteDesktop()" class="btn btn-link btn-sm text-warning text-decoration-none px-2 d-flex align-items-center">
-                    <i class="mdi mdi-note-edit-outline fs-5 me-1"></i> Cari Notu
+                    <i data-feather="edit-2" class="me-1" style="width: 18px; height: 18px;"></i> Cari Notu
                 </button>
                
                 <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
@@ -161,7 +161,7 @@ $bakiye = $ozet->bakiye ?? 0;
                 <div class="card-body p-3">
                     <div class="d-flex align-items-center justify-content-between mb-2">
                         <div class="d-flex align-items-center">
-                            <i data-feather="sticky-note" class="text-warning me-2" style="width: 18px;"></i>
+                            <i data-feather="bookmark" class="text-warning me-2" style="width: 18px;"></i>
                             <h6 class="mb-0 fw-bold text-warning-emphasis">Cari Notu</h6>
                         </div>
                         <button type="button" onclick="editCariNoteDesktop()" class="btn btn-sm btn-light-warning">
@@ -308,6 +308,7 @@ $bakiye = $ozet->bakiye ?? 0;
             .hareket-mobile-list { display: none !important; }
             .bottom-actions { display: none !important; }
             .container-fluid { padding-bottom: 20px; }
+            #hareketTable tbody tr { cursor: pointer; }
         }
     </style>
 
@@ -338,7 +339,7 @@ $bakiye = $ozet->bakiye ?? 0;
     <div class="hareket-mobile-list">
 
         <div class="mobile-quick-actions">
-            <a href="#" class="quick-action-btn"><div class="quick-action-icon"><i data-feather="edit-2" style="width: 18px; height: 18px;"></i></div><span>Not</span></a>
+            <a href="javascript:void(0)" onclick="editCariNoteDesktop()" class="quick-action-btn"><div class="quick-action-icon"><i data-feather="edit-2" style="width: 18px; height: 18px;"></i></div><span>Not</span></a>
             <a href="tel:<?php echo $cariData->Telefon; ?>" class="quick-action-btn"><div class="quick-action-icon"><i data-feather="phone" style="width: 18px; height: 18px;"></i></div><span>Ara</span></a>
             <a href="#" class="quick-action-btn"><div class="quick-action-icon"><i data-feather="share-2" style="width: 18px; height: 18px;"></i></div><span>Paylaş</span></a>
             <a href="#" class="quick-action-btn" id="btnExportExcelMobile"><div class="quick-action-icon"><i data-feather="file-text" style="width: 18px; height: 18px;"></i></div><span>Raporlar</span></a>
@@ -367,30 +368,6 @@ $bakiye = $ozet->bakiye ?? 0;
 <script>
     const global_cari_id = '<?php echo $cari_id_enc; ?>';
 
-    async function editCariNoteDesktop() {
-        const { value: text } = await Swal.fire({
-            title: 'Cari Notu Düzenle',
-            input: 'textarea',
-            inputValue: <?= json_encode($cariData->notlar ?: '') ?>,
-            showCancelButton: true,
-            confirmButtonText: 'Kaydet',
-            cancelButtonText: 'İptal',
-        });
-
-        if (text !== undefined) {
-            $.post('views/cari/api.php', {
-                action: 'cari-not-kaydet',
-                cari_id: global_cari_id,
-                notlar: text
-            }, function(res) {
-                if(res.status === 'success') {
-                    location.reload();
-                } else {
-                    Swal.fire('Hata', res.message, 'error');
-                }
-            }, 'json');
-        }
-    }
 </script>
 <script src="views/cari/js/hareketler.js?v=<?php echo time(); ?>"></script>
 
@@ -439,6 +416,31 @@ $bakiye = $ozet->bakiye ?? 0;
                     </div>
                 </div>
                 <div class="modal-footer border-top-0 pt-0 pb-4 px-4 justify-content-end">
+                    <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal" style="background:#6c757d; color:#fff; border-radius: 10px; border:none; font-weight: 600;">İptal</button>
+                    <button type="submit" class="btn btn-dark px-4" style="background:#212529; color:#fff; border-radius: 10px; border:none; font-weight: 600;">Kaydet</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Cari Notu Modalı -->
+<div class="modal fade" id="cariNotuModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4 align-items-center">
+                <i data-feather="bookmark" class="text-warning me-2" style="width: 22px; height: 22px;"></i>
+                <h5 class="modal-title fw-bold mb-0" style="color: #1a1a1a;">Cari Notu Düzenle</h5>
+                <button type="button" class="btn-close ms-auto" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <form id="cariNotuForm">
+                <div class="modal-body px-4 pt-4">
+                    <div class="mb-3">
+                        <label class="form-label small fw-bold text-muted mb-1">Notlar</label>
+                        <textarea name="notlar" class="form-control" rows="6" style="border-radius: 12px; border: 1px solid #e2e8f0;" placeholder="Cari ile ilgili notu buraya yazın..."><?= htmlspecialchars($cariData->notlar ?: '') ?></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer border-top-0 pt-0 pb-4 px-4 justify-content-end gap-2">
                     <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal" style="background:#6c757d; color:#fff; border-radius: 10px; border:none; font-weight: 600;">İptal</button>
                     <button type="submit" class="btn btn-dark px-4" style="background:#212529; color:#fff; border-radius: 10px; border:none; font-weight: 600;">Kaydet</button>
                 </div>
