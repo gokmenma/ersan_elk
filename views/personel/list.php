@@ -109,33 +109,65 @@ if (Gate::canWithMessage("personel_listesi")) {
                             to { transform: scale(1); opacity: 1; }
                         }
 
-                        .status-filter-badge {
-                            cursor: pointer;
-                            transition: all 0.2s ease;
-                            padding: 8px 16px;
-                            border-radius: 10px;
+                        /* Premium Filter Buttons */
+                        .status-filter-group {
+                            background: #f8fafc;
+                            padding: 4px;
+                            border-radius: 50px;
+                            border: 1px solid #e2e8f0;
+                            display: inline-flex;
+                            align-items: center;
+                            gap: 2px;
+                        }
+
+                        .status-filter-group .btn-check + .btn {
+                            margin-bottom: 0 !important;
+                            border: none !important;
+                            border-radius: 50px !important;
+                            font-size: 0.75rem;
                             font-weight: 600;
+                            padding: 6px 16px;
+                            color: #64748b;
+                            transition: all 0.2s ease;
                             display: flex;
                             align-items: center;
-                            gap: 8px;
-                            border: 1px solid transparent;
+                            justify-content: center;
+                            gap: 6px;
+                            line-height: normal;
                         }
 
-                        .status-filter-badge:hover {
-                            transform: translateY(-2px);
-                            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+                        .status-filter-group .btn-check + .btn i {
+                            font-size: 0.95rem;
+                            display: inline-flex;
+                            align-items: center;
+                            justify-content: center;
+                            margin-top: 1px;
                         }
 
-                        .status-filter-badge.active {
-                            border-color: currentColor;
-                            box-shadow: inset 0 2px 4px rgba(0,0,0,0.1);
+                        .status-filter-group .btn-check + .btn:hover {
+                            background: rgba(0, 0, 0, 0.04);
+                            color: #1e293b;
                         }
 
-                        .status-filter-badge .count-tag {
+                        .status-filter-group .btn-check:checked + .btn {
+                            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+                        }
+
+                        /* Active States with brand colors */
+                        .status-filter-group .btn-check:checked + .btn[for="filter-all"] { background: #64748b !important; color: #fff !important; }
+                        .status-filter-group .btn-check:checked + .btn[for="filter-aktif"] { background: #34c38f !important; color: #fff !important; }
+                        .status-filter-group .btn-check:checked + .btn[for="filter-pasif"] { background: #ef4444 !important; color: #fff !important; }
+
+                        .status-filter-group .count-tag {
                             background: rgba(255,255,255,0.2);
                             padding: 2px 8px;
                             border-radius: 10px;
                             font-size: 11px;
+                        }
+
+                        .status-filter-group .btn-check:not(:checked) + .btn .count-tag {
+                            background: rgba(0,0,0,0.05);
+                            color: #64748b;
                         }
 
                         .fw-bold {
@@ -276,23 +308,24 @@ if (Gate::canWithMessage("personel_listesi")) {
                                         <i class='mdi mdi-file-import fs-5 me-1'></i> Excelden Yükle
                                     </button>
                                 </div>
-                                  <div class="d-flex gap-2">
-                                     <div id="filter-all" class="status-filter-badge bg-secondary bg-opacity-10 text-secondary border-secondary" data-status="">
-                                        <i class="mdi mdi-accounts"></i>
-                                        <span>Tümü</span>
-                                        <span class="count-tag" id="count-all">0</span>
-                                    </div>
-                                    <div id="filter-aktif" class="status-filter-badge bg-success bg-opacity-10 text-success border-success active" data-status="Aktif">
-                                        <i class="mdi mdi-account-check"></i>
-                                        <span>Aktif</span>
-                                        <span class="count-tag" id="count-aktif">0</span>
-                                    </div>
-                                    <div id="filter-pasif" class="status-filter-badge bg-danger bg-opacity-10 text-danger border-danger" data-status="Pasif">
-                                        <i class="mdi mdi-account-remove"></i>
-                                        <span>Pasif</span>
-                                        <span class="count-tag" id="count-pasif">0</span>
-                                    </div>
-                                   
+                                  <div class="status-filter-group" role="group">
+                                    <input type="radio" class="btn-check" name="status-filter" id="filter-all" value="" checked>
+                                    <label class="btn" for="filter-all">
+                                        <i class="bx bx-grid-alt"></i> Tümü 
+                                        <span class="count-tag ms-1" id="count-all">0</span>
+                                    </label>
+                                    
+                                    <input type="radio" class="btn-check" name="status-filter" id="filter-aktif" value="Aktif">
+                                    <label class="btn" for="filter-aktif">
+                                        <i class="bx bx-user-check"></i> Aktif 
+                                        <span class="count-tag ms-1" id="count-aktif">0</span>
+                                    </label>
+
+                                    <input type="radio" class="btn-check" name="status-filter" id="filter-pasif" value="Pasif">
+                                    <label class="btn" for="filter-pasif">
+                                        <i class="bx bx-user-x"></i> Pasif 
+                                        <span class="count-tag ms-1" id="count-pasif">0</span>
+                                    </label>
                                 </div>
                             </div>
                             <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">

@@ -34,7 +34,7 @@ foreach ($departmanlar as $dept) {
 
     <!-- Özet Kartları -->
     <div class="row g-3 mb-4">
-        <div class="col-xl-3 col-md-6">
+        <div class="col-xl col-md-6">
             <div class="card border-0 shadow-sm h-100 bordro-summary-card"
                 style="--card-color: #34c38f; border-bottom: 3px solid var(--card-color) !important;">
                 <div class="card-body p-3">
@@ -53,7 +53,7 @@ foreach ($departmanlar as $dept) {
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6">
+        <div class="col-xl col-md-6">
             <div class="card border-0 shadow-sm h-100 bordro-summary-card"
                 style="--card-color: #556ee6; border-bottom: 3px solid var(--card-color) !important;">
                 <div class="card-body p-3">
@@ -72,7 +72,7 @@ foreach ($departmanlar as $dept) {
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6">
+        <div class="col-xl col-md-6">
             <div class="card border-0 shadow-sm h-100 bordro-summary-card"
                 style="--card-color: #f1b44c; border-bottom: 3px solid var(--card-color) !important;">
                 <div class="card-body p-3">
@@ -91,7 +91,26 @@ foreach ($departmanlar as $dept) {
             </div>
         </div>
 
-        <div class="col-xl-3 col-md-6">
+        <div class="col-xl col-md-6">
+            <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                style="--card-color: #50a5f1; border-bottom: 3px solid var(--card-color) !important;">
+                <div class="card-body p-3">
+                    <div class="icon-label-container">
+                        <div class="icon-box" style="background: rgba(80, 165, 241, 0.1);">
+                            <i class="bx bx-calendar-minus fs-4 text-info"></i>
+                        </div>
+                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İSTATİSTİK</span>
+                    </div>
+                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">BUGÜN İZİNLİ
+                    </p>
+                    <h4 class="mb-0 fw-bold bordro-text-heading">
+                        <span class="counter-value" id="stat-izinli">0</span>
+                    </h4>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-xl col-md-6">
             <div class="card border-0 shadow-sm h-100 bordro-summary-card"
                 style="--card-color: #f46a6a; border-bottom: 3px solid var(--card-color) !important;">
                 <div class="card-body p-3">
@@ -189,46 +208,56 @@ foreach ($departmanlar as $dept) {
 
                         <!-- HARİTA TAB -->
                         <div class="tab-pane fade" id="tabHarita" role="tabpanel">
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <div class="d-flex align-items-center gap-3">
-                                    <h5 class="mb-0">Personel Konum Haritası</h5>
-                                    <div class="d-flex gap-2" id="mapLegendFilters">
-                                        <div class="badge-filter" style="cursor: pointer;" onclick="toggleMapStatusFilter('aktif', this)">
-                                            <span class="badge bg-success-subtle text-success border border-success px-2 py-1"><i class="bx bxs-circle me-1"></i> Görevde</span>
-                                        </div>
-                                        <div class="badge-filter" style="cursor: pointer;" onclick="toggleMapStatusFilter('bitti', this)">
-                                            <span class="badge bg-dark-subtle text-dark border border-dark px-2 py-1"><i class="bx bxs-circle me-1"></i> Tamamladı</span>
-                                        </div>
-                                        <div class="badge-filter" style="cursor: pointer;" onclick="toggleMapStatusFilter('baslamadi', this)">
-                                            <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1"><i class="bx bxs-circle me-1"></i> Başlamadı</span>
+                            <div id="mapFullWrapper" class="d-flex flex-column h-100">
+                                <div class="d-flex justify-content-between align-items-center mb-3">
+                                    <div class="d-flex align-items-center gap-3">
+                                        <h5 class="mb-0">Personel Konum Haritası</h5>
+                                        <div class="d-flex gap-2" id="mapLegendFilters">
+                                            <div class="badge-filter" style="cursor: pointer;" onclick="toggleMapStatusFilter('aktif', this)">
+                                                <span class="badge bg-success-subtle text-success border border-success px-2 py-1"><i class="bx bxs-circle me-1"></i> Görevde</span>
+                                            </div>
+                                            <div class="badge-filter" style="cursor: pointer;" onclick="toggleMapStatusFilter('bitti', this)">
+                                                <span class="badge bg-dark-subtle text-dark border border-dark px-2 py-1"><i class="bx bxs-circle me-1"></i> Tamamladı</span>
+                                            </div>
+                                            <div class="badge-filter" style="cursor: pointer;" onclick="toggleMapStatusFilter('baslamadi', this)">
+                                                <span class="badge bg-danger-subtle text-danger border border-danger px-2 py-1"><i class="bx bxs-circle me-1"></i> Başlamadı</span>
+                                            </div>
+                                            <div class="badge-filter" style="cursor: pointer;" onclick="toggleMapStatusFilter('izinli', this)">
+                                                <span class="badge bg-info-subtle text-info border border-info px-2 py-1"><i class="bx bxs-circle me-1"></i> İzinli</span>
+                                            </div>
                                         </div>
                                     </div>
-                                </div>
-                                <div class="d-flex align-items-center gap-2">
-                                    <div style="width: 200px;">
-                                        <?= Form::FormFloatInput("text", "mapSearchInput", "", "Personel ara...", "Personel Ara", "bx bx-search", "form-control form-control-sm", false, null, "on", false, 'onkeyup="filterMapMarkers()"') ?>
-                                    </div>
-                                    <div style="width: 200px;">
-                                        <?= Form::FormSelect2("mapDepartmanFilter", $departmanOptions, "", "Departman", "bx bx-buildings", "key", "", "form-select select2 form-select-sm", false, "width:100%", 'onchange="loadHaritaVerileri()"') ?>
-                                    </div>
-                                    <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1" style="height: 56px;">
-                                        <div class="btn-group btn-group-sm h-100" role="group">
-                                            <input type="radio" class="btn-check" name="haritaModu" id="modGorev" checked onchange="loadHaritaVerileri()">
-                                            <label class="btn btn-outline-primary border-0 rounded d-flex align-items-center px-3" for="modGorev">
-                                                <i class="bx bx-briefcase me-1"></i> Görev
-                                            </label>
+                                    <div class="d-flex align-items-center gap-2">
+                                        <div style="width: 200px;">
+                                            <?= Form::FormFloatInput("text", "mapSearchInput", "", "Personel ara...", "Personel Ara", "bx bx-search", "form-control form-control-sm", false, null, "on", false, 'onkeyup="filterMapMarkers()"') ?>
+                                        </div>
+                                        <div style="width: 200px;">
+                                            <?= Form::FormSelect2("mapDepartmanFilter", $departmanOptions, "", "Departman", "bx bx-buildings", "key", "", "form-select select2 form-select-sm", false, "width:100%", 'onchange="loadHaritaVerileri()"') ?>
+                                        </div>
+                                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1" style="height: 56px;">
+                                            <div class="btn-group btn-group-sm h-100" role="group">
+                                                <input type="radio" class="btn-check" name="haritaModu" id="modGorev" checked onchange="loadHaritaVerileri()">
+                                                <label class="btn btn-outline-primary border-0 rounded d-flex align-items-center px-3" for="modGorev">
+                                                    <i class="bx bx-briefcase me-1"></i> Görev
+                                                </label>
 
+                                                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+
+                                                <input type="radio" class="btn-check" name="haritaModu" id="modAnlik" onchange="loadHaritaVerileri(); autoIstekTumKonum()">
+                                                <label class="btn btn-outline-danger border-0 rounded d-flex align-items-center px-3" for="modAnlik">
+                                                    <i class="bx bx-target-lock me-1"></i> Anlık
+                                                </label>
+                                            </div>
                                             <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-
-                                            <input type="radio" class="btn-check" name="haritaModu" id="modAnlik" onchange="loadHaritaVerileri(); autoIstekTumKonum()">
-                                            <label class="btn btn-outline-danger border-0 rounded d-flex align-items-center px-3" for="modAnlik">
-                                                <i class="bx bx-target-lock me-1"></i> Anlık
-                                            </label>
+                                            <button type="button" class="btn btn-soft-dark border-0 rounded d-flex align-items-center px-3 h-100" 
+                                                    onclick="toggleMapFullscreen()" title="Tam Ekran">
+                                                <i class="bx bx-fullscreen fs-4"></i>
+                                            </button>
                                         </div>
                                     </div>
                                 </div>
+                                <div id="personelHarita" style="height: 500px; border-radius: 8px;"></div>
                             </div>
-                            <div id="personelHarita" style="height: 500px; border-radius: 8px;"></div>
                         </div>
 
                         <!-- ÇALIŞMA SÜRELERİ TAB -->
@@ -477,6 +506,21 @@ foreach ($departmanlar as $dept) {
     .marker-popup h6 {
         margin-bottom: 4px;
     }
+
+    .fullscreen-map-wrapper {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 9999 !important;
+        background: #f8f9fa;
+        padding: 20px !important;
+    }
+
+    .fullscreen-map-wrapper #personelHarita {
+        height: calc(100vh - 100px) !important;
+    }
 </style>
 
 <!-- Leaflet JS -->
@@ -488,7 +532,7 @@ foreach ($departmanlar as $dept) {
     var haritaMap = null;
     var allMapData = []; // Store raw data for filtering
     var haritaMarkers = [];
-    var activeStatusFilters = ['aktif', 'bitti', 'baslamadi']; // Başlangıçta hepsi aktif
+    var activeStatusFilters = ['aktif', 'bitti', 'baslamadi', 'izinli']; // Başlangıçta hepsi aktif
 
     document.addEventListener('DOMContentLoaded', function () {
         // İstatistikleri yükle
@@ -589,6 +633,7 @@ foreach ($departmanlar as $dept) {
                 document.getElementById('stat-gorevde').textContent = result.data.gorevde;
                 document.getElementById('stat-tamamladi').textContent = result.data.tamamladi;
                 document.getElementById('stat-baslamadi').textContent = result.data.baslamadi;
+                document.getElementById('stat-izinli').textContent = result.data.izin || 0;
                 document.getElementById('stat-gec-kalan').textContent = result.data.gec_kalan || 0;
             }
         } catch (error) {
@@ -825,6 +870,9 @@ foreach ($departmanlar as $dept) {
                 } else if (p.durum === 'bitti') {
                     markerColor = '#556ee6'; // Mavi
                     statusIcon = 'bx-check';
+                } else if (p.durum === 'izinli') {
+                    markerColor = '#74788d'; // Gri (İzinli)
+                    statusIcon = 'bx-calendar-minus';
                 }
 
                 // Konum yoksa marker'ı farklı göster
@@ -850,7 +898,7 @@ foreach ($departmanlar as $dept) {
                     ? '<small class="text-muted">Son konum: ' + new Date(p.son_zaman || Date.now()).toLocaleTimeString('tr-TR') + '</small>'
                     : '<small class="text-warning"><i class="bx bx-error-circle"></i> Konum bilgisi yok</small>';
 
-                var badgeClass = p.durum === 'aktif' ? 'bg-success' : (p.durum === 'bitti' ? 'bg-primary' : 'bg-secondary');
+                var badgeClass = p.durum === 'aktif' ? 'bg-success' : (p.durum === 'bitti' ? 'bg-primary' : (p.durum === 'izinli' ? 'bg-info' : 'bg-secondary'));
 
                 marker.bindPopup(
                     '<div class="marker-popup" style="text-align:center; min-width: 150px;">' +
@@ -1245,6 +1293,30 @@ foreach ($departmanlar as $dept) {
             Swal.fire('Hata', 'Sunucu ile iletişim kurulurken bir hata oluştu.', 'error');
         }
     }
+
+    function toggleMapFullscreen() {
+        const mapWrapper = document.getElementById('mapFullWrapper');
+        mapWrapper.classList.toggle('fullscreen-map-wrapper');
+        
+        if (haritaMap) {
+            setTimeout(() => {
+                haritaMap.invalidateSize();
+            }, 300);
+        }
+
+        // ESC tuşu ile çıkış için dinleyici (sadece eklendiğinde aktif olsun)
+        if (mapWrapper.classList.contains('fullscreen-map-wrapper')) {
+            const escHandler = function(e) {
+                if (e.key === "Escape") {
+                    mapWrapper.classList.remove('fullscreen-map-wrapper');
+                    if (haritaMap) haritaMap.invalidateSize();
+                    document.removeEventListener('keydown', escHandler);
+                }
+            };
+            document.addEventListener('keydown', escHandler);
+        }
+    }
+
 
 </script>
 

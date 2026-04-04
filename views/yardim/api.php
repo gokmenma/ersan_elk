@@ -107,16 +107,19 @@ try {
             }
 
             $status = $_GET['status'] ?? $_POST['status'] ?? null;
+            $search = $_POST['search'] ?? null;
+            $page = (int) ($_POST['page'] ?? 1);
+            $limit = (int) ($_POST['limit'] ?? 20);
             $isAdminSupport = isSupportAdminViewer();
             $isApproverOnly = Gate::allows('destek_talebi_onaylama') && !$isAdminSupport;
 
-            $ownTickets = $destekBiletModel->getPersonelTickets($userId, $personelId, $status) ?: [];
+            $ownTickets = $destekBiletModel->getPersonelTickets($userId, $personelId, $status, $search, $page, $limit) ?: [];
             
             // For approvers: get both pending (beklemede) and approved (onaylandi) tickets
             $approvalTickets = [];
             if ($isApproverOnly) {
-                $pendingTickets = $destekBiletModel->getAllTickets($status, 'beklemede') ?: [];
-                $approvedTickets = $destekBiletModel->getAllTickets($status, 'onaylandi') ?: [];
+                $pendingTickets = $destekBiletModel->getAllTickets($status, 'beklemede', $search, $page, $limit) ?: [];
+                $approvedTickets = $destekBiletModel->getAllTickets($status, 'onaylandi', $search, $page, $limit) ?: [];
                 
                 // Filter approved to only include those approved by this user
                 $userId = (int) ($_SESSION['user_id'] ?? 0);
@@ -197,6 +200,9 @@ try {
         // Biletleri listele (Admin)
         case 'get-tickets-admin':
             $status = $_POST['status'] ?? null;
+            $search = $_POST['search'] ?? null;
+            $page = (int) ($_POST['page'] ?? 1);
+            $limit = (int) ($_POST['limit'] ?? 20);
             $isAdminSupport = isSupportAdminViewer();
             $isApprover = Gate::allows('destek_talebi_onaylama');
             $approvalFilter = 'onaylandi';
@@ -208,7 +214,7 @@ try {
             $currentUserId = (int) ($_SESSION['user_id'] ?? 0);
             $currentPersonelId = $destekBiletModel->getPersonelIdByUserId($currentUserId);
 
-            $tickets = $destekBiletModel->getAllTickets($status, $approvalFilter);
+            $tickets = $destekBiletModel->getAllTickets($status, $approvalFilter, $search, $page, $limit);
             $stats = $destekBiletModel->getStats(null, $approvalFilter);
 
             // Her bilet için is_mine kontrolü ekle

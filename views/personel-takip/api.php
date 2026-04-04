@@ -54,6 +54,7 @@ try {
             $gorevde = 0;
             $tamamladi = 0;
             $baslamadi = 0;
+            $izinli_count = 0;
             $gec_kalan = 0;
             $limit_saat = '08:30';
 
@@ -91,6 +92,9 @@ try {
                     }
                 } elseif ($p->durum === 'bitti') {
                     $tamamladi++;
+                } elseif ($p->durum === 'izinli') {
+                    // İzinli olanları baslamadi'den sayma
+                    // İsterseniz yeni bir stat-izinli ekleyebilirsiniz
                 } else {
                     $baslamadi++;
                     // Başlamamış ve saat geçmiş (bugün için)
@@ -104,6 +108,7 @@ try {
                 'gorevde' => $gorevde,
                 'tamamladi' => $tamamladi,
                 'baslamadi' => $baslamadi,
+                'izinli' => $izinli_count,
                 'gec_kalan' => $gec_kalan,
                 'toplam' => count($personeller)
             ]);
@@ -129,6 +134,9 @@ try {
                         break;
                     case 'bitti':
                         $durum_badge = '<span class="badge bg-primary">Tamamladı</span>';
+                        break;
+                    case 'izinli':
+                        $durum_badge = '<span class="badge bg-info">İzinli</span>';
                         break;
                     default:
                         $durum_badge = '<span class="badge bg-secondary">Başlamadı</span>';
@@ -709,7 +717,6 @@ try {
                     }
 
                     if ($gec_kaldi) {
-                        $p->foto = $p->foto;
                         $p->gorev = $p->departman;
                         $data[] = $p;
                     }

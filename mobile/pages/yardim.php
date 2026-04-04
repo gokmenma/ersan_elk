@@ -63,6 +63,12 @@ $statusFilter = $_GET['status'] ?? '';
             <span class="text-[9px] uppercase font-bold tracking-wider text-slate-400">Çözüldü</span>
         </div>
     </div>
+    
+    <!-- Search Bar -->
+    <div class="relative">
+        <span class="material-symbols-outlined absolute left-4 top-3.5 text-slate-400">search</span>
+        <input type="text" id="ticket-search" oninput="debounceSearch()" class="w-full pl-12 pr-4 py-4 bg-white dark:bg-card-dark border border-slate-100 dark:border-slate-800 rounded-2xl shadow-sm text-sm font-semibold text-slate-800 dark:text-white focus:border-indigo-500 focus:ring-0 outline-none transition-all" placeholder="Talep konusu veya No ile ara...">
+    </div>
 
     <!-- Status Filters -->
     <div class="flex gap-2 p-1 bg-white dark:bg-card-dark rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-x-auto no-scrollbar">
@@ -89,6 +95,13 @@ $statusFilter = $_GET['status'] ?? '';
         <div class="flex justify-center py-20">
             <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div>
         </div>
+    </div>
+    
+    <!-- Load More -->
+    <div id="load-more-container" class="hidden py-1 pb-6 text-center">
+        <button onclick="loadMoreTickets()" class="px-8 py-4 bg-white dark:bg-card-dark border border-slate-100 dark:border-slate-800 rounded-2xl text-[11px] font-black text-slate-500 shadow-sm active:scale-95 transition-all uppercase tracking-widest">
+            Daha Fazla Yükle
+        </button>
     </div>
 
 </div>
@@ -190,29 +203,76 @@ $(document).ready(function() {
 });
 
 let currentStatusFilter = '';
+let searchQuery = '';
+let currentPage = 1;
+const limit = 20;
+let hasMore = true;
 const API_URL = '../views/yardim/api.php';
 const isAdmin = <?= $isAdmin ? 'true' : 'false' ?>;
 
 function setFilter(status) {
     currentStatusFilter = status;
-    $('.filter-btn').removeClass('bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400').addClass('text-slate-500');
-    $(`.filter-btn[data-status="${status}"]`).addClass('bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 active-filter').removeClass('text-slate-500');
+    $('.filter-btn').removeClass('bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400').addClass('text-slate-500');
+    $(`.filter-btn[data-status="${status}"]`).addClass('bg-indigo-50 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400 active-filter').removeClass('text-slate-500');
+    currentPage = 1;
     refreshTickets();
 }
 
+let searchTimer;
+function debounceSearch() {
+    clearTimeout(searchTimer);
+    searchTimer = setTimeout(() => {
+        searchQuery = $('#ticket-search').val().trim();
+        currentPage = 1;
+        refreshTickets();
+    }, 500);
+}
+
 function refreshTickets() {
-    $('#tickets-list').html(`<div class="flex justify-center py-20"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div></div>`);
+    if (currentPage === 1) {
+        $('#tickets-list').html(`<div class="flex justify-center py-20"><div class="animate-spin rounded-full h-10 w-10 border-b-2 border-indigo-600"></div></div>`);
+        $('#load-more-container').addClass('hidden');
+    }
     
     const action = isAdmin ? 'get-tickets-admin' : 'get-tickets-pwa';
     
-    $.post(API_URL, { action: action, status: currentStatusFilter }, function(res) {
+    $.post(API_URL, { 
+        action: action, 
+        status: currentStatusFilter,
+        search: searchQuery,
+        page: currentPage,
+        limit: limit
+    }, function(res) {
         if (res.success) {
-            renderTickets(res.tickets);
+            if (currentPage === 1) {
+                renderTickets(res.tickets, false);
+            } else {
+                renderTickets(res.tickets, true);
+            }
+            
             updateStats(res.stats);
+            
+            // Show/hide load more
+            hasMore = res.tickets && res.tickets.length >= limit;
+            if (hasMore) {
+                $('#load-more-container').removeClass('hidden');
+            } else {
+                $('#load-more-container').addClass('hidden');
+            }
         } else {
-            $('#tickets-list').html(`<div class="bg-red-50 text-red-600 p-4 rounded-2xl text-center font-bold text-sm border border-red-100">${res.message}</div>`);
+            if (currentPage === 1) {
+                $('#tickets-list').html(`<div class="bg-red-50 text-red-600 p-4 rounded-2xl text-center font-bold text-sm border border-red-100">${res.message}</div>`);
+            } else {
+                Alert.error('Hata', res.message);
+            }
         }
     });
+}
+
+function loadMoreTickets() {
+    if (!hasMore) return;
+    currentPage++;
+    refreshTickets();
 }
 
 function updateStats(stats) {
@@ -222,15 +282,15 @@ function updateStats(stats) {
     $('#stat-resolved').text(stats.yanitlanan || 0);
 }
 
-function renderTickets(tickets) {
-    if (!tickets || tickets.length === 0) {
+function renderTickets(tickets, append = false) {
+    if ((!tickets || tickets.length === 0) && !append) {
         $('#tickets-list').html(`
             <div class="bg-white dark:bg-card-dark rounded-2xl p-8 text-center border border-slate-100 dark:border-slate-800 shadow-sm">
                 <div class="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4 text-slate-400">
                     <span class="material-symbols-outlined text-3xl">inbox</span>
                 </div>
                 <h3 class="text-lg font-bold text-slate-800 dark:text-white">Kayıt Bulunamadı</h3>
-                <p class="text-xs text-slate-500 mt-1">Görünüşe göre bu kategoride henüz bir talep yok.</p>
+                <p class="text-xs text-slate-500 mt-1">Görünüşe göre aradığınız kriterlere uygun henüz bir talep yok.</p>
             </div>
         `);
         return;
@@ -238,7 +298,6 @@ function renderTickets(tickets) {
 
     let html = '';
     tickets.forEach(ticket => {
-        const date = ticket.guncelleme_tarihi ? ticket.guncelleme_tarihi.split(' ')[0] : '-';
         let statusBadge = '';
         let statusColor = '';
 
@@ -290,7 +349,12 @@ function renderTickets(tickets) {
             </div>
         `;
     });
-    $('#tickets-list').html(html);
+
+    if (append) {
+        $('#tickets-list').append(html);
+    } else {
+        $('#tickets-list').html(html);
+    }
 }
 
 function formatDate(dateStr) {

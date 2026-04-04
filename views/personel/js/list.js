@@ -19,7 +19,7 @@ $(document).ready(function () {
         type: "POST",
         data: function (d) {
           d.action = "personel-list";
-          d.status = $(".status-filter-badge.active").data("status") || "";
+          d.status = $('input[name="status-filter"]:checked').val() || "";
         },
       },
       drawCallback: function () {
@@ -203,7 +203,7 @@ $(document).ready(function () {
       let state = table.state();
       if (state && (!state.columns || !state.columns[12] || !state.columns[12].search || !state.columns[12].search.search)) {
           // Varsayılan olarak Aktif seçili başlasın (eğer state'de bir şey yoksa)
-          if (!$(".status-filter-badge.active").length) {
+          if (!$('input[name="status-filter"]:checked').val()) {
               updateActiveBadge("Aktif");
           }
           table.draw();
@@ -742,10 +742,9 @@ $(document).ready(function () {
 
 /** Statü badge güncelleme */
 function updateActiveBadge(status) {
-    $(".status-filter-badge").removeClass("active");
-    if (status === "Aktif") $("#filter-aktif").addClass("active");
-    else if (status === "Pasif") $("#filter-pasif").addClass("active");
-    else $("#filter-all").addClass("active");
+    if (status === "Aktif") $("#filter-aktif").prop("checked", true);
+    else if (status === "Pasif") $("#filter-pasif").prop("checked", true);
+    else $("#filter-all").prop("checked", true);
 }
 
 /** Resim hover mantığı */
@@ -770,10 +769,7 @@ function initImageHover() {
     });
 }
 
-$(document).on('click', '.status-filter-badge', function() {
-    let status = $(this).data('status');
+$(document).on('change', 'input[name="status-filter"]', function() {
     let table = $("#membersTable").DataTable();
-    
-    updateActiveBadge(status);
     table.draw();
 });

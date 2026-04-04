@@ -111,8 +111,9 @@ class DestekBiletModel extends Model
     /**
      * Personelin veya kullanıcının biletlerini getirir
      */
-    public function getPersonelTickets($userId, $personelId = 0, $status = null)
+    public function getPersonelTickets($userId, $personelId = 0, $status = null, $search = null, $page = 1, $limit = 20)
     {
+        $offset = ((int)$page - 1) * (int)$limit;
         $sql = "SELECT t.*, 
                 (SELECT COUNT(*) FROM {$this->messageTable} WHERE bilet_id = t.id) as mesaj_sayisi,
                 (SELECT COUNT(*) FROM destek_bilet_dosyalari WHERE bilet_id = t.id) as dosya_sayisi
@@ -140,7 +141,13 @@ class DestekBiletModel extends Model
             $params[] = $status;
         }
 
-        $sql .= " ORDER BY t.guncelleme_tarihi DESC";
+        if ($search) {
+            $sql .= " AND (t.konu LIKE ? OR t.ref_no LIKE ?)";
+            $params[] = '%' . $search . '%';
+            $params[] = '%' . $search . '%';
+        }
+
+        $sql .= " ORDER BY t.guncelleme_tarihi DESC LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         $tickets = $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
@@ -150,8 +157,9 @@ class DestekBiletModel extends Model
     /**
      * Tüm biletleri getirir (Yönetici için)
      */
-    public function getAllTickets($status = null, $approvalStatus = null)
+    public function getAllTickets($status = null, $approvalStatus = null, $search = null, $page = 1, $limit = 20)
     {
+        $offset = ((int)$page - 1) * (int)$limit;
         $sql = "SELECT db.*, 
                 COALESCE(p.adi_soyadi, u.adi_soyadi) as personel_adi, 
                 p.departman,
@@ -172,8 +180,16 @@ class DestekBiletModel extends Model
             $sql .= " AND db.onay_durumu = ?";
             $params[] = $approvalStatus;
         }
+
+        if ($search) {
+            $sql .= " AND (db.konu LIKE ? OR db.ref_no LIKE ? OR p.adi_soyadi LIKE ? OR u.adi_soyadi LIKE ?)";
+            $params[] = '%' . $search . '%';
+            $params[] = '%' . $search . '%';
+            $params[] = '%' . $search . '%';
+            $params[] = '%' . $search . '%';
+        }
         
-        $sql .= " ORDER BY db.guncelleme_tarihi DESC";
+        $sql .= " ORDER BY db.guncelleme_tarihi DESC LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         $tickets = $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
