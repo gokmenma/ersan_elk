@@ -577,7 +577,7 @@ $(document).ready(function() {
     });
 
     function loadTickets(status = '') {
-        $.post('views/yardim/api.php', { action: 'get-tickets-admin', status: status }, function(res) {
+        $.post('views/yardim/api.php', { action: 'get-tickets-admin', status: status, limit: 10000 }, function(res) {
             if(res.success) {
                 table.clear().rows.add(res.tickets).draw();
                 

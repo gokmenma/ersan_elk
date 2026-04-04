@@ -331,7 +331,7 @@ $(document).ready(function() {
     // DataTables initialization via standard pattern
     let userTable = destroyAndInitDataTable('#userTicketsTable', {
         ajax: {
-            url: 'views/yardim/api.php?action=get-tickets-pwa',
+            url: 'views/yardim/api.php?action=get-tickets-pwa&limit=10000',
             dataSrc: 'tickets'
         },
         columns: [
@@ -416,7 +416,7 @@ $(document).ready(function() {
     // Filter event
     $('input[name="status-filter"]').on('change', function() {
         const val = $(this).val();
-        userTable.ajax.url('views/yardim/api.php?action=get-tickets-pwa&status=' + val).load();
+        userTable.ajax.url('views/yardim/api.php?action=get-tickets-pwa&limit=10000&status=' + val).load();
     });
 
     // Row Click Handler
