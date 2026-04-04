@@ -72,32 +72,15 @@ if (Gate::canWithMessage("personel_listesi")) {
                             cursor: pointer;
                         }
 
-                        .personel-img-thumb:hover {
-                            transform: scale(1.1);
-                            z-index: 10;
-                            border-color: #556ee6;
-                        }
-
                         .personel-info-box {
                             display: flex;
                             align-items: center;
                             gap: 12px;
                         }
 
-                        .personel-info-box img + img {
-                            margin-left: -15px; /* Stacked effect */
-                        }
-
-                        .personel-info-box .position-relative:hover img {
-                            margin-left: 0;
-                            transform: scale(1.1);
-                            z-index: 11;
-                        }
-
                         .personel-details {
                             display: flex;
                             flex-direction: column;
-                            min-width: 0;
                         }
 
                         .personel-tc {
@@ -107,7 +90,7 @@ if (Gate::canWithMessage("personel_listesi")) {
                         }
 
                         .personel-hover-preview {
-                            position: absolute;
+                            position: absolute; /* Changed from fixed to absolute */
                             display: none;
                             z-index: 99999;
                             width: 150px;
@@ -119,12 +102,6 @@ if (Gate::canWithMessage("personel_listesi")) {
                             pointer-events: none;
                             background: #fff;
                             animation: zoomIn 0.2s ease-out;
-                        }
-
-                        .badge.rounded-pill {
-                            font-weight: 800 !important;
-                            letter-spacing: 0.5px;
-                            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
                         }
 
                         @keyframes zoomIn {
@@ -529,19 +506,11 @@ if (Gate::canWithMessage("personel_listesi")) {
                         <!-- Sol Taraf: Profil Özeti -->
                         <div class="col-md-3 bg-light border-end text-center p-4">
                             <div class="position-relative d-inline-block mb-3">
-                                <div class="d-flex flex-column align-items-center gap-2">
-                                    <div class="text-center">
-                                        <small class="text-muted d-block mb-1">Resmi Kayıt</small>
-                                        <img id="detailResim" src="assets/images/users/user-dummy-img.jpg" alt="Personel Resmi"
-                                            class="rounded-circle img-thumbnail shadow-sm"
-                                            style="width: 100px; height: 100px; object-fit: cover;">
-                                    </div>
-                                    <div class="text-center">
-                                        <small class="text-muted d-block mb-1">Uygulama Foto</small>
-                                        <img id="detailAppResim" src="assets/images/users/user-dummy-img.jpg" alt="Uygulama Resmi"
-                                            class="rounded-circle img-thumbnail shadow-sm"
-                                            style="width: 100px; height: 100px; object-fit: cover;">
-                                    </div>
+                                <div class="text-center">
+                                    <small class="text-muted d-block mb-1">Resmi Kayıt</small>
+                                    <img id="detailResim" src="assets/images/users/user-dummy-img.jpg" alt="Personel Resmi"
+                                        class="rounded-circle img-thumbnail shadow-sm"
+                                        style="width: 100px; height: 100px; object-fit: cover;">
                                 </div>
                             </div>
                             <h5 id="detailAdSoyad" class="mb-1 fw-bold text-primary text-truncate"></h5>

@@ -12,7 +12,6 @@ use App\Model\PermissionsModel;
 use App\Model\NobetModel;
 use App\Model\PersonelHareketleriModel;
 use App\Model\GorevModel;
-use App\Model\AyinPersoneliModel;
 use App\Service\RequestPerformanceProfiler;
 
 if (Gate::allows("ana_sayfa")) {
@@ -23,10 +22,6 @@ if (Gate::allows("ana_sayfa")) {
     $nobetModel = new NobetModel();
     $hareketModel = new PersonelHareketleriModel();
     $gorevModel = new GorevModel();
-    $ayinPersoneliModel = new AyinPersoneliModel();
-
-    $donem = date('Y-m');
-    $ayinYildizi = $ayinPersoneliModel->getWinnerForMonth($donem, $_SESSION['firma_id'] ?? 0);
 
     $measureDb = static function (string $segment, callable $callback, int $dbCount = 1) {
         return RequestPerformanceProfiler::measure($segment, $callback, $dbCount);
@@ -373,75 +368,6 @@ if (Gate::allows("ana_sayfa")) {
             </div>
         </div>
         <?php $widgets['widget-ana-slider'] = ob_get_clean();
-    }
-
-    if ($ayinYildizi) {
-        ob_start(); ?>
-        <div class="col-md-6 col-xl-4 widget-item" id="widget-ayin-personeli">
-            <div class="card award-card shadow-lg h-100 animate-card" style="border-radius: 12px;">
-                <canvas id="award-confetti" class="confetti-canvas"></canvas>
-                <div class="gift-ribbon"><?php echo $ayinYildizi->hediye_adi; ?></div>
-                <div class="card-body p-4 d-flex flex-column align-items-center text-center">
-                    <div class="badge-gold mb-3">
-                        <i class="bx bx-star"></i> <?php echo date('F', strtotime($ayinYildizi->donem . '-01')); ?> Ayın Yıldızı <i class="bx bx-star"></i>
-                    </div>
-                    
-                    <div class="position-relative mb-3">
-                        <img src="<?php echo !empty($ayinYildizi->resim_yolu) ? $ayinYildizi->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>" 
-                             class="winner-avatar" alt="Winner">
-                        <div style="position: absolute; bottom: 0; right: 0; background: #edb144; color: #000; width: 24px; height: 24px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 14px; border: 2px solid #1a1a1a;">
-                            <i class="bx bx-check-double"></i>
-                        </div>
-                    </div>
-
-                    <h5 class="fw-bold shine-text mb-1" style="font-family: 'Outfit', sans-serif;"><?php echo $ayinYildizi->adi_soyadi; ?></h5>
-                    <p class="text-white-50 small mb-4"><?php echo $ayinYildizi->departman; ?></p>
-
-                    <div class="d-flex gap-3 mt-auto w-100">
-                        <div class="flex-grow-1 p-2 rounded" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
-                            <div class="text-white-50 small" style="font-size: 10px;">PERFORMANS</div>
-                            <div class="fw-bold text-warning">%<?php echo number_format($ayinYildizi->skor, 0); ?></div>
-                        </div>
-                        <div class="flex-grow-1 p-2 rounded" style="background: rgba(255,255,255,0.05); border: 1px solid rgba(255,255,255,0.1);">
-                            <div class="text-white-50 small" style="font-size: 10px;">HEDİYE</div>
-                            <div class="fw-bold text-white"><i class="bx <?php echo $ayinYildizi->hediye_icon; ?> text-danger"></i></div>
-                        </div>
-                    </div>
-                    
-                    <button class="btn btn-sm btn-outline-warning w-100 mt-3 border-0" onclick="celebrateWinner()">
-                        Tebrik Et <i class="bx bx-party"></i>
-                    </button>
-                </div>
-            </div>
-        </div>
-        <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
-        <script>
-            function celebrateWinner() {
-                var duration = 3 * 1000;
-                var animationEnd = Date.now() + duration;
-                var defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 9999 };
-
-                function randomInRange(min, max) {
-                    return Math.random() * (max - min) + min;
-                }
-
-                var interval = setInterval(function() {
-                    var timeLeft = animationEnd - Date.now();
-
-                    if (timeLeft <= 0) {
-                        return clearInterval(interval);
-                    }
-
-                    var particleCount = 50 * (timeLeft / duration);
-                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 } }));
-                    confetti(Object.assign({}, defaults, { particleCount, origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 } }));
-                }, 250);
-            }
-            document.addEventListener('DOMContentLoaded', function() {
-                setTimeout(celebrateWinner, 1000);
-            });
-        </script>
-        <?php $widgets['widget-ayin-personeli'] = ob_get_clean();
     }
     ?>
     <?php if (\App\Service\Gate::allows("personel_listesi")) {

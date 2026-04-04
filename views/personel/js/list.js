@@ -51,28 +51,12 @@ $(document).ready(function () {
         {
           data: "adi_soyadi",
           render: function (data, type, row) {
-            let resimManager = row.resim_yolu ? row.resim_yolu : "assets/images/users/user-dummy-img.jpg";
-            let resimApp = row.personel_resim_yolu ? row.personel_resim_yolu : null;
-            
-            let imagesHtml = `
-              <div class="position-relative d-flex gap-1">
-                <div class="position-relative">
-                  <img src="${resimManager}" class="personel-img-thumb" data-hover-resim="${resimManager}" title="Resmi Kayıt">
-                  <span class="position-absolute top-0 start-0 translate-middle-y badge rounded-pill bg-primary" style="font-size: 6px; padding: 2px 4px; left: 50% !important;">RK</span>
-                </div>
-                ${resimApp ? `
-                <div class="position-relative">
-                  <img src="${resimApp}" class="personel-img-thumb" data-hover-resim="${resimApp}" title="Uygulama Foto" style="border-color: #34c38f;">
-                  <span class="position-absolute top-0 start-0 translate-middle-y badge rounded-pill bg-success" style="font-size: 6px; padding: 2px 4px; left: 50% !important;">APP</span>
-                </div>` : ''}
-              </div>
-            `;
-            
+            let resim = row.resim_yolu ? row.resim_yolu : "assets/images/users/user-dummy-img.jpg";
             return `
             <div class="personel-info-box">
-                ${imagesHtml}
+                <img src="${resim}" class="personel-img-thumb" data-hover-resim="${resim}">
                 <div class="personel-details">
-                    <a class="fw-bold text-truncate" style="max-width: 150px; display: inline-block;" target="_blank" href="index?p=personel/manage&id=${row.id}">${data}</a>
+                    <a class="fw-bold" target="_blank" href="index?p=personel/manage&id=${row.id}">${data}</a>
                     <span class="personel-tc">${row.tc_kimlik_no}</span>
                 </div>
             </div>`;
@@ -539,12 +523,6 @@ $(document).ready(function () {
               "src",
               data.resim_yolu
                 ? data.resim_yolu
-                : "assets/images/users/user-dummy-img.jpg",
-            );
-            $("#detailAppResim").attr(
-              "src",
-              data.personel_resim_yolu
-                ? data.personel_resim_yolu
                 : "assets/images/users/user-dummy-img.jpg",
             );
             $("#detailAdSoyad").text(data.adi_soyadi);

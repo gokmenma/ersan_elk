@@ -115,16 +115,7 @@ if ($id > 0) {
                                         <div class="text-center mt-1"><small class="text-primary fw-bold" style="font-size: 10px;">Resmi Kayıt</small></div>
                                     </div>
  
-                                    <?php if (!empty($personel->personel_resim_yolu)): ?>
-                                    <div class="avatar-lg position-relative" title="Personelin Kendi Yüklediği Fotoğraf">
-                                        <img src="<?php echo $personel->personel_resim_yolu; ?>"
-                                            alt="" class="img-thumbnail"
-                                            style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px !important; border-color: #34c38f !important; cursor: zoom-in;"
-                                            onclick="window.open(this.src, '_blank')">
-                                        <div class="text-center mt-1"><small class="text-success fw-bold" style="font-size: 10px;">Uygulama Foto</small></div>
-                                    </div>
-                                    <?php endif; ?>
-                                </div>
+                                 </div>
                                 <div>
                                     <h5 class="font-size-16 mb-1 text-truncate">
                                         <?php echo $adi_soyadi_ekipno; ?>

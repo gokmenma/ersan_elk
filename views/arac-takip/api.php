@@ -2644,6 +2644,121 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 ]);
                 break;
 
+            case 'arac-karsilastirma':
+                $yil = intval($_GET['yil'] ?? date('Y'));
+                $arac_id = intval($_GET['arac_id'] ?? 0);
+                $firma_id = $_SESSION['firma_id'];
+
+                $baslangic = "$yil-01-01";
+                $bitis = "$yil-12-31";
+
+                $whereArac = $arac_id > 0 ? "AND y.arac_id = :arac_id" : "";
+                $params = ['firma_id' => $firma_id, 'baslangic' => $baslangic, 'bitis' => $bitis];
+                if ($arac_id > 0) $params['arac_id'] = $arac_id;
+
+                // Yakıt
+                $yakitSql = "SELECT 
+                        MONTH(y.tarih) as ay,
+                        COALESCE(SUM(y.yakit_miktari), 0) as toplam_litre,
+                        COALESCE(SUM(y.toplam_tutar), 0) as toplam_tutar
+                    FROM arac_yakit_kayitlari y
+                    WHERE y.firma_id = :firma_id
+                    AND y.silinme_tarihi IS NULL
+                    AND y.tarih BETWEEN :baslangic AND :bitis
+                    $whereArac
+                    GROUP BY MONTH(y.tarih)
+                    ORDER BY ay ASC";
+                $yakitStmt = $Yakit->getDb()->prepare($yakitSql);
+                $yakitStmt->execute($params);
+                $yakitData = $yakitStmt->fetchAll(PDO::FETCH_OBJ);
+
+                // KM
+                $whereAracKm = $arac_id > 0 ? "AND k.arac_id = :arac_id" : "";
+                $kmSql = "SELECT 
+                        MONTH(k.tarih) as ay,
+                        COALESCE(SUM(k.yapilan_km), 0) as toplam_km
+                    FROM arac_km_kayitlari k
+                    WHERE k.firma_id = :firma_id
+                    AND k.silinme_tarihi IS NULL
+                    AND k.tarih BETWEEN :baslangic AND :bitis
+                    $whereAracKm
+                    GROUP BY MONTH(k.tarih)
+                    ORDER BY ay ASC";
+                $kmStmt = $Km->getDb()->prepare($kmSql);
+                $kmStmt->execute($params);
+                $kmData = $kmStmt->fetchAll(PDO::FETCH_OBJ);
+
+                // Combine by month
+                $results = [];
+                for ($i = 1; $i <= 12; $i++) {
+                    $results[$i] = [
+                        'ay' => $i,
+                        'toplam_litre' => 0,
+                        'toplam_tutar' => 0,
+                        'toplam_km' => 0
+                    ];
+                }
+
+                foreach ($yakitData as $y) {
+                    $results[$y->ay]['toplam_litre'] = floatval($y->toplam_litre);
+                    $results[$y->ay]['toplam_tutar'] = floatval($y->toplam_tutar);
+                }
+
+                foreach ($kmData as $k) {
+                    $results[$k->ay]['toplam_km'] = floatval($k->toplam_km);
+                }
+
+                echo json_encode([
+                    'status' => 'success',
+                    'data' => array_values($results)
+                ]);
+                break;
+
+            case 'get-comparison-stats':
+                $arac_id = intval($_GET['arac_id'] ?? 0);
+                $p1_start = $_GET['p1_start'] ?? '';
+                $p1_end = $_GET['p1_end'] ?? '';
+                $p2_start = $_GET['p2_start'] ?? '';
+                $p2_end = $_GET['p2_end'] ?? '';
+                $firma_id = $_SESSION['firma_id'];
+
+                if (!$p1_start || !$p1_end || !$p2_start || !$p2_end) {
+                    throw new Exception("Her iki dönem için de tarih seçimi zorunludur.");
+                }
+
+                $getData = function($start, $end) use ($Yakit, $Km, $Servis, $arac_id, $firma_id) {
+                    $yakitData = $Yakit->getByDateRange($start, $end, $arac_id);
+                    $kmData = $Km->getByDateRange($start, $end, $arac_id);
+                    $servisData = $Servis->getByDateRange($start, $end, $arac_id);
+
+                    // If all types, we might need firma-wide filtering. 
+                    // getByDateRange usually handles it if firma_id is in query, 
+                    // but some models use session internally.
+
+                    $yakitLitre = floatval(array_sum(array_column($yakitData, 'yakit_miktari')));
+                    $yakitMaliyet = floatval(array_sum(array_column($yakitData, 'toplam_tutar')));
+                    $km = floatval(array_sum(array_column($kmData, 'yapilan_km')));
+                    $servisMaliyet = floatval(array_sum(array_column($servisData, 'tutar')));
+                    $servisSayisi = count($servisData);
+
+                    return [
+                        'yakit' => $yakitLitre,
+                        'km' => $km,
+                        'yakit_maliyet' => $yakitMaliyet,
+                        'servis_maliyet' => $servisMaliyet,
+                        'servis_sayisi' => $servisSayisi,
+                        'toplam_maliyet' => $yakitMaliyet + $servisMaliyet,
+                        'verimlilik' => $km > 0 ? ($yakitLitre / $km) * 100 : 0
+                    ];
+                };
+
+                echo json_encode([
+                    'status' => 'success',
+                    'p1' => $getData($p1_start, $p1_end),
+                    'p2' => $getData($p2_start, $p2_end)
+                ]);
+                break;
+
 
             default:
                 throw new Exception("Geçersiz işlem.");

@@ -15,6 +15,7 @@ for ($year = 2025; $year <= (int) $thisYear; $year++) {
 }
 
 $activeTab = $_GET['tab'] ?? 'genel-bakis';
+$rootActive = ($activeTab === 'genel-bakis' || $activeTab === 'arac-analiz') ? 'performans' : 'karsilastirma';
 ?>
 
 <div class="container-fluid">
@@ -29,7 +30,28 @@ $activeTab = $_GET['tab'] ?? 'genel-bakis';
     ?>
     <?php include 'layouts/breadcrumb.php'; ?>
 
-    <!-- Filtre Barı -->
+    <!-- ROOT TABS -->
+    <div class="row mb-3">
+        <div class="col-12">
+            <ul class="nav nav-tabs nav-tabs-custom nav-justified bg-white shadow-sm" id="rootTabNav" role="tablist" style="border-radius: 12px; padding: 4px;">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link <?= $rootActive === 'performans' ? 'active' : '' ?> fw-bold py-3 fs-5" id="root-performans-tab" data-bs-toggle="tab" data-bs-target="#root-performans" type="button" role="tab">
+                        <i class="bx bx-pie-chart-alt-2 me-2"></i>Performans Raporu
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link <?= $rootActive === 'karsilastirma' ? 'active' : '' ?> fw-bold py-3 fs-5" id="root-karsilastirma-tab" data-bs-toggle="tab" data-bs-target="#root-karsilastirma" type="button" role="tab">
+                        <i class="bx bx-git-compare me-2"></i>Karşılaştırma
+                    </button>
+                </li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="tab-content" id="rootTabContent">
+        <!-- ROOT TAB 1: PERFORMANS RAPORU -->
+        <div class="tab-pane fade <?= $rootActive === 'performans' ? 'show active' : '' ?>" id="root-performans" role="tabpanel">
+
     <div class="row mb-3">
         <div class="col-12">
             <div class="card border-0 shadow-sm" style="border-radius: 12px;">
@@ -85,7 +107,7 @@ $activeTab = $_GET['tab'] ?? 'genel-bakis';
     <!-- Tab Navigasyonu -->
     <div class="row mb-3">
         <div class="col-12">
-            <ul class="nav nav-pills nav-justified bg-white p-1 shadow-sm mb-3" role="tablist" style="border-radius: 12px;">
+            <ul class="nav nav-pills nav-justified bg-light p-1 mb-3" role="tablist" style="border-radius: 10px;">
                 <li class="nav-item" role="presentation">
                     <button class="nav-link <?= $activeTab === 'genel-bakis' ? 'active' : '' ?> fw-bold py-2" id="genel-tab" data-bs-toggle="tab" data-bs-target="#genel-bakis" type="button" role="tab">
                         <i class="bx bx-pie-chart-alt-2 me-2"></i>Genel Performans
@@ -301,10 +323,9 @@ $activeTab = $_GET['tab'] ?? 'genel-bakis';
     </div>
 </div>
 
-    <!-- TAB 2: ARAÇ ANALİZ -->
-    <div class="tab-pane <?= $activeTab === 'arac-analiz' ? 'show active' : '' ?>" id="arac-analiz" role="tabpanel" style="position: relative;">
-        <span class="diagnostic-anchor badge bg-dark text-white p-1" data-tab="arac-analiz" style="position: absolute; top: 2px; right: 2px; font-size: 0.5rem; z-index: 1000; opacity: 0.4;">Anchor: Analiz</span>
-            <div class="row mb-3">
+        <!-- TAB 2: ARAÇ ANALİZ -->
+        <div class="tab-pane fade <?= $activeTab === 'arac-analiz' ? 'show active' : '' ?>" id="arac-analiz" role="tabpanel">
+             <div class="row mb-3">
                 <div class="col-12">
                     <div class="card border-0 shadow-sm" style="border-radius: 12px; border-top: 3px solid #556ee6;">
                         <div class="card-body p-3">
@@ -374,8 +395,127 @@ $activeTab = $_GET['tab'] ?? 'genel-bakis';
                 </div>
             </div>
         </div>
-    </div>
-</div>
+    </div> <!-- SUB TAB CONTENT END -->
+</div> <!-- ROOT TAB 1: PERFORMANS RAPORU END -->
+
+        <!-- ROOT TAB 2: KARŞILAŞTIRMA -->
+        <div class="tab-pane fade <?= $rootActive === 'karsilastirma' ? 'show active' : '' ?>" id="root-karsilastirma" role="tabpanel">
+            <div class="card border-0 shadow-sm mb-3" style="border-radius: 12px;">
+                <div class="card-body p-3">
+                    <div class="row g-3 align-items-end">
+                        <div class="col-md-3">
+                            <label class="form-label small fw-bold text-muted">Araç Seçimi</label>
+                            <?php echo Form::FormSelect2("compAracSecici", ["" => "Tüm Firma (Genel)"], "0", "", "truck", "key", "", "form-select form-select-sm select2", false, "width:100%"); ?>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">1. Dönem</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text"><i class="bx bx-calendar"></i></span>
+                                <input type="text" id="compRange1" class="form-control" placeholder="Seçiniz..." readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-bold text-muted">2. Dönem</label>
+                            <div class="input-group input-group-sm">
+                                <span class="input-group-text"><i class="bx bx-calendar"></i></span>
+                                <input type="text" id="compRange2" class="form-control" placeholder="Seçiniz..." readonly>
+                            </div>
+                        </div>
+                        <div class="col-md-1">
+                            <button class="btn btn-primary btn-sm w-100" id="btnCompRefresh" style="height: 31px;">
+                                <i class="bx bx-refresh"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Karşılaştırma Özet Kartları -->
+            <div class="row g-3 mb-4" id="compSummaryCards" style="display:none;">
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff, #f8f9fa);">
+                        <div class="card-body p-3">
+                            <h6 class="text-muted small fw-bold mb-3">YAKIT TÜKETİMİ (L)</h6>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small text-muted">1. Dönem:</span>
+                                <span class="fw-bold" id="c_y_1">0 L</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="small text-muted">2. Dönem:</span>
+                                <span class="fw-bold" id="c_y_2">0 L</span>
+                            </div>
+                            <div class="pt-2 border-top" id="c_y_diff"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff, #f8f9fa);">
+                        <div class="card-body p-3">
+                            <h6 class="text-muted small fw-bold mb-3">YAPILAN KM</h6>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small text-muted">1. Dönem:</span>
+                                <span class="fw-bold" id="c_k_1">0 KM</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="small text-muted">2. Dönem:</span>
+                                <span class="fw-bold" id="c_k_2">0 KM</span>
+                            </div>
+                            <div class="pt-2 border-top" id="c_k_diff"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-4">
+                    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff, #f8f9fa);">
+                        <div class="card-body p-3">
+                            <h6 class="text-muted small fw-bold mb-3">TOPLAM MALİYET</h6>
+                            <div class="d-flex justify-content-between align-items-center mb-2">
+                                <span class="small text-muted">1. Dönem:</span>
+                                <span class="fw-bold" id="c_m_1">0 ₺</span>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <span class="small text-muted">2. Dönem:</span>
+                                <span class="fw-bold" id="c_m_2">0 ₺</span>
+                            </div>
+                            <div class="pt-2 border-top" id="c_m_diff"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="row g-3 mb-4">
+                <div class="col-xl-8">
+                    <div class="card border-0 shadow-sm" style="border-radius: 12px; height: 100%;">
+                        <div class="card-body p-3">
+                            <h6 class="fw-bold mb-3"><i class="bx bx-bar-chart-alt-2 me-2"></i>Dönemsel Karşılaştırma Grafiği</h6>
+                            <div id="mainKarsilastirmaChart" style="min-height: 350px;"></div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-xl-4">
+                    <div class="card border-0 shadow-sm" style="border-radius: 12px; height: 100%;">
+                        <div class="card-body p-3">
+                            <h6 class="fw-bold mb-3"><i class="bx bx-info-circle me-2"></i>Verimlilik Karşılaştırması (L/100 KM)</h6>
+                            <div class="text-center py-4">
+                                <div class="mb-4">
+                                    <p class="text-muted small mb-1">1. Dönem</p>
+                                    <h2 class="fw-bold mb-0" id="c_v_1" style="color: #556ee6;">-</h2>
+                                </div>
+                                <div class="mb-4">
+                                    <i class="bx bx-down-arrow-alt fs-2 text-muted opacity-50"></i>
+                                </div>
+                                <div>
+                                    <p class="text-muted small mb-1">2. Dönem</p>
+                                    <h2 class="fw-bold mb-0" id="c_v_2" style="color: #e74a3b;">-</h2>
+                                </div>
+                                <div class="mt-4 pt-3 border-top" id="c_v_stats"></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div> <!-- ROOT TAB CONTENT END -->
+</div> <!-- CONTAINER FLUID END -->
 
 <!-- Loading Overlay -->
 <div id="loadingOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.7); z-index:9999; display:flex; align-items:center; justify-content:center;">
@@ -414,6 +554,23 @@ $activeTab = $_GET['tab'] ?? 'genel-bakis';
 
     #btnFiltrele {
         height: 58px;
+    }
+
+    .nav-tabs-custom .nav-link {
+        border: none;
+        border-bottom: 3px solid transparent;
+        color: #74788d;
+        transition: all 0.3s ease;
+    }
+
+    .nav-tabs-custom .nav-link.active {
+        color: #556ee6 !important;
+        background-color: transparent !important;
+        border-bottom-color: #556ee6 !important;
+    }
+
+    .nav-tabs-custom .nav-link:hover {
+        color: #556ee6;
     }
 
     .animate-card {
@@ -546,9 +703,53 @@ $(document).ready(function() {
         currentYear = String($(this).val() || new Date().getFullYear());
     });
 
+    $('#aracSecici').on('change', function() {
+        if (currentTab === 'arac-analiz') loadData();
+    });
+
     // İlk init
     initSingleDatePicker();
     toggleDateMode();
+
+    // COMPARISON PICKERS
+    const getDateStr = (date) => {
+        const d = new Date(date);
+        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+    };
+
+    const firstDay = new Date(); firstDay.setDate(1);
+    const lastDay = new Date(firstDay.getFullYear(), firstDay.getMonth() + 1, 0);
+    
+    const prevFirstDay = new Date(firstDay.getFullYear(), firstDay.getMonth() - 1, 1);
+    const prevLastDay = new Date(firstDay.getFullYear(), firstDay.getMonth(), 0);
+
+    const range1Default = typeof moment !== 'undefined' ? 
+        [moment().startOf('month').format('YYYY-MM-DD'), moment().endOf('month').format('YYYY-MM-DD')] : 
+        [getDateStr(firstDay), getDateStr(lastDay)];
+
+    const range2Default = typeof moment !== 'undefined' ? 
+        [moment().subtract(1, 'month').startOf('month').format('YYYY-MM-DD'), moment().subtract(1, 'month').endOf('month').format('YYYY-MM-DD')] : 
+        [getDateStr(prevFirstDay), getDateStr(prevLastDay)];
+
+    const compRange1 = flatpickr('#compRange1', {
+        locale: 'tr',
+        mode: 'range',
+        dateFormat: 'Y-m-d',
+        altInput: true,
+        altFormat: 'j F Y',
+        defaultDate: range1Default
+    });
+
+    const compRange2 = flatpickr('#compRange2', {
+        locale: 'tr',
+        mode: 'range',
+        dateFormat: 'Y-m-d',
+        altInput: true,
+        altFormat: 'j F Y',
+        defaultDate: range2Default
+    });
+
+    let rootActive = '<?= $rootActive ?>';
 
     // =============================================
     // DÖNEM DEĞİŞTİR
@@ -661,11 +862,25 @@ $(document).ready(function() {
     // SEKME YÖNETİMİ
     // =============================================
     
+    // ROOT TAB SWITCH
+    $('#rootTabNav button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+        const target = $(e.target).attr('data-bs-target');
+        console.log("Root Sekme değiştirildi:", target);
+        if (target === '#root-karsilastirma') {
+            loadMainKarsilastirma();
+        } else {
+            loadData();
+        }
+    });
+
+    // SUB TAB SWITCH (Inside Performans Raporu)
     $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
-        currentTab = $(e.target).attr('data-bs-target').replace('#', '');
-        console.log("Sekme değiştirildi:", currentTab);
+        const target = $(e.target).attr('data-bs-target');
+        if (target === '#root-performans' || target === '#root-karsilastirma') return; // Root tabları atla
         
-        // Üst araç filtresini göster/gizle
+        currentTab = target.replace('#', '');
+        console.log("Alt Sekme değiştirildi:", currentTab);
+        
         if (currentTab === 'arac-analiz') {
             $('#topAracFilterWrapper').fadeIn();
         } else {
@@ -675,20 +890,21 @@ $(document).ready(function() {
         loadData();
     });
 
-    // Araç listesini doldur (Filtreleme için)
+    // Araç listesini doldur
     function populateAracSelect(araclar) {
         const $select = $('#aracSecici');
-        if ($select.children('option').length > 1) return;
+        const $compSelect = $('#compAracSecici');
+        
+        lastAraclar = araclar;
+        
+        $select.empty().append(`<option value="">Araç Seçiniz...</option>`);
+        $compSelect.empty().append(`<option value="0">Tüm Firma (Genel)</option>`);
         
         araclar.forEach(a => {
-            $select.append(`<option value="${a.arac_id}">${a.plaka} - ${a.marka} ${a.model}</option>`);
+            const optionTxt = `${a.plaka} - ${a.marka} ${a.model}`;
+            $select.append(`<option value="${a.arac_id}">${optionTxt}</option>`);
+            $compSelect.append(`<option value="${a.arac_id}">${optionTxt}</option>`);
         });
-
-        // Eğer araç analiz sekmesindeysek ve henüz araç seçilmediyse ilk aracı otomatik seç
-        if (currentTab === 'arac-analiz' && !$select.val() && araclar.length > 0) {
-            console.log("İlk araç otomatik seçiliyor...");
-            $select.val(araclar[0].arac_id).trigger('change');
-        }
     }
 
     // =============================================
@@ -697,10 +913,9 @@ $(document).ready(function() {
     function loadData() {
         console.log("Veri yükleniyor. Mevcut sekme:", currentTab);
         
-        // Araç analizi sekmesindeysek ve araç listesi henüz gelmediyse, listeyi çekmek için genel bakışı tetikleyici ile çalıştır
+        // Araç analizi sekmesindeysek ve araç listesi henüz gelmediyse
         if (currentTab === 'arac-analiz' && lastAraclar.length === 0) {
-            console.log("Araç listesi eksik, genel bakış üzerinden liste çekiliyor...");
-            loadGenelBakis(true); // true = liste geldikten sonra analiz yükle
+            loadGenelBakis(true);
             return;
         }
 
@@ -735,8 +950,12 @@ $(document).ready(function() {
                     updateDonemBilgisi(res.baslangic, res.bitis);
                     populateAracSelect(res.araclar);
 
-                    if (triggerAracAnalizAfter && currentTab === 'arac-analiz') {
-                        loadAracAnaliz();
+                    if (triggerAracAnalizAfter) {
+                        if (rootActive === 'karsilastirma') {
+                            loadMainKarsilastirma();
+                        } else if (currentTab === 'arac-analiz') {
+                            loadAracAnaliz();
+                        }
                     }
                 } else {
                     Swal.fire('Hata', res.message || 'Veri yüklenemedi.', 'error');
@@ -771,7 +990,6 @@ $(document).ready(function() {
             },
             dataType: 'json',
             success: function(res) {
-                console.log("Araç Analiz Yanıtı Geldi:", res.status);
                 hideLoading();
                 if (res.status === 'success') {
                     $('#aracEmptyState').hide();
@@ -781,13 +999,109 @@ $(document).ready(function() {
                     Swal.fire('Hata', res.message, 'error');
                 }
             },
-            error: function(xhr, status, error) {
-                console.error("Araç Analiz AJAX Hatası:", status, error);
+            error: function() {
                 hideLoading();
                 Swal.fire('Hata', 'Veri yükleme hatası.', 'error');
             }
         });
     }
+
+    function loadMainKarsilastirma() {
+        const arac_id = $('#compAracSecici').val() || 0;
+        
+        const r1 = compRange1.selectedDates;
+        const r2 = compRange2.selectedDates;
+
+        if (r1.length < 2 || r2.length < 2) {
+            Swal.fire('Uyarı', 'Lütfen her iki dönem için de tarih aralığı seçiniz.', 'warning');
+            return;
+        }
+
+        const formatDate = (date) => typeof moment !== 'undefined' ? moment(date).format('YYYY-MM-DD') : getDateStr(date);
+
+        showLoading();
+
+        $.ajax({
+            url: 'views/arac-takip/api.php',
+            type: 'GET',
+            data: {
+                action: 'get-comparison-stats',
+                arac_id: arac_id,
+                p1_start: formatDate(r1[0]),
+                p1_end: formatDate(r1[1]),
+                p2_start: formatDate(r2[0]),
+                p2_end: formatDate(r2[1])
+            },
+            dataType: 'json',
+            success: function(res) {
+                hideLoading();
+                if (res.status === 'success') {
+                    renderMainKarsilastirma(res.p1, res.p2);
+                } else {
+                    Swal.fire('Hata', res.message, 'error');
+                }
+            },
+            error: function() {
+                hideLoading();
+                Swal.fire('Hata', 'Bağlantı hatası.', 'error');
+            }
+        });
+    }
+
+    let mainKarsilastirmaChart = null;
+    function renderMainKarsilastirma(p1, p2) {
+        $('#compSummaryCards').fadeIn();
+
+        // Totals update
+        $('#c_y_1').text(formatNumber(p1.yakit) + ' L');
+        $('#c_y_2').text(formatNumber(p2.yakit) + ' L');
+        $('#c_k_1').text(formatNumber(p1.km) + ' KM');
+        $('#c_k_2').text(formatNumber(p2.km) + ' KM');
+        $('#c_m_1').text(formatMoney(p1.toplam_maliyet) + ' ₺');
+        $('#c_m_2').text(formatMoney(p2.toplam_maliyet) + ' ₺');
+        $('#c_v_1').text(p1.verimlilik.toFixed(2));
+        $('#c_v_2').text(p2.verimlilik.toFixed(2));
+
+        const getDiffBadge = (cur, old, reverse = false) => {
+            if (old <= 0) return '';
+            const diff = ((cur - old) / old) * 100;
+            const isIncrease = diff > 0;
+            const isGood = reverse ? !isIncrease : isIncrease;
+            const color = isGood ? 'text-success' : 'text-danger';
+            const icon = isIncrease ? 'bx-trending-up' : 'bx-trending-down';
+            return `<span class="${color} small fw-bold"><i class="bx ${icon} me-1"></i>%${Math.abs(diff).toFixed(1)} ${isIncrease ? 'artış' : 'düşüş'}</span>`;
+        };
+
+        $('#c_y_diff').html(getDiffBadge(p1.yakit, p2.yakit, true));
+        $('#c_k_diff').html(getDiffBadge(p1.km, p2.km));
+        $('#c_m_diff').html(getDiffBadge(p1.toplam_maliyet, p2.toplam_maliyet, true));
+        
+        const vDiff = p1.verimlilik - p2.verimlilik;
+        $('#c_v_stats').html(`<span class="fw-bold ${vDiff <= 0 ? 'text-success' : 'text-danger'}">${vDiff > 0 ? '+' : ''}${vDiff.toFixed(2)} L/100 KM fark</span>`);
+
+        // Bar Chart
+        const options = {
+            series: [
+                { name: '1. Dönem', data: [p1.yakit, p1.km, p1.toplam_maliyet / 100] },
+                { name: '2. Dönem', data: [p2.yakit, p2.km, p2.toplam_maliyet / 100] }
+            ],
+            chart: { height: 350, type: 'bar', toolbar: { show: false } },
+            plotOptions: { bar: { horizontal: false, columnWidth: '55%', borderRadius: 5 } },
+            dataLabels: { enabled: false },
+            colors: ['#556ee6', '#e74a3b'],
+            xaxis: { categories: ['Yakıt (L)', 'Yapılan KM', 'Maliyet (₺x100)'] },
+            legend: { position: 'top' },
+            tooltip: { theme: 'light' }
+        };
+
+        if (mainKarsilastirmaChart) mainKarsilastirmaChart.destroy();
+        mainKarsilastirmaChart = new ApexCharts(document.querySelector("#mainKarsilastirmaChart"), options);
+        mainKarsilastirmaChart.render();
+    }
+
+    $('#btnCompRefresh').on('click', function() {
+        loadMainKarsilastirma();
+    });
 
     function showLoading() { $('#loadingOverlay').css('display', 'flex'); }
     function hideLoading() { $('#loadingOverlay').hide(); }
@@ -1342,9 +1656,11 @@ $(document).ready(function() {
     });
 
     // İlk yükleme
-    if (currentTab === 'arac-analiz') {
-        $('#topAracFilterWrapper').show();
+    if (rootActive === 'karsilastirma') {
+        // Araç listesi için genel bakışı tetikle ama genel bakış UI'ını güncelleme (arka planda liste çeksin)
+        loadGenelBakis(true); 
+    } else {
+        loadData();
     }
-    loadData();
 });
 </script>
