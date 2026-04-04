@@ -44,7 +44,7 @@ $id = is_numeric($id) ? (int) $id : 0;
                 <button type="button" onclick="document.getElementById('reply-file').click()" class="w-10 h-10 rounded-xl bg-white dark:bg-slate-700 flex items-center justify-center flex-shrink-0 shadow-sm active:scale-90 transition-all">
                     <span class="material-symbols-outlined text-slate-500 text-xl" id="file-icon">attach_file</span>
                 </button>
-                <input type="file" name="dosya[]" id="reply-file" accept="image/*" multiple class="hidden" onchange="updateFileStatus(this)">
+                <input type="file" name="dosya" id="reply-file" accept="image/*" class="hidden" onchange="updateFileStatus(this)">
                 
                 <textarea name="mesaj" id="reply-message" class="bg-transparent border-none focus:ring-0 w-full text-slate-900 dark:text-white text-sm py-2 px-1 resize-none" rows="1" placeholder="Mesajınızı yazın..." oninput="autoResize(this)" required></textarea>
                 
@@ -120,15 +120,9 @@ function autoResize(textarea) {
 }
 
 function updateFileStatus(input) {
-    if (input.files && input.files.length > 0) {
-        if (input.files.length > 3) {
-            Toast.show('En fazla 3 dosya seçebilirsiniz.', 'warning');
-            input.value = '';
-            clearFile();
-            return;
-        }
+    if (input.files && input.files[0]) {
         document.getElementById('file-status').classList.remove('hidden');
-        document.getElementById('file-name').textContent = input.files.length + ' dosya seçildi';
+        document.getElementById('file-name').textContent = input.files[0].name;
         const fileIcon = document.getElementById('file-icon');
         fileIcon.textContent = 'check';
         fileIcon.classList.add('text-emerald-600');
@@ -156,23 +150,18 @@ async function loadTicket() {
         if (ticket.durum === 'acik') statusClass = 'bg-amber-100 text-amber-700';
         if (ticket.durum === 'yanitlandi') statusClass = 'bg-emerald-100 text-emerald-700';
         if (ticket.durum === 'personel_yaniti') statusClass = 'bg-blue-100 text-blue-700';
-        if (ticket.durum === 'isleme_alindi') statusClass = 'bg-sky-100 text-sky-700';
-        if (ticket.durum === 'cozuldu') statusClass = 'bg-green-100 text-green-700';
         if (ticket.durum === 'kapali') statusClass = 'bg-slate-200 text-slate-500';
             
-        document.getElementById('ticket-status-badge').innerHTML = `<span class="px-2 py-1 rounded-lg text-[10px] font-black ${statusClass}">${ticket.durum.toUpperCase().replace('_', ' ')}</span>`;
+        document.getElementById('ticket-status-badge').innerHTML = `<span class="px-2 py-1 rounded-lg text-[10px] font-black ${statusClass}">${ticket.durum.toUpperCase()}</span>`;
 
         const closeButton = document.getElementById('close-ticket-button');
         const replyForm = document.getElementById('reply-form');
         const closedMessage = document.getElementById('closed-ticket-message');
         const waitingMessage = document.getElementById('waiting-admin-message');
 
-        const isClosed = ticket.durum === 'kapali' || ticket.durum === 'cozuldu';
-
-        if (isClosed) {
+        if (ticket.durum === 'kapali') {
             closeButton.classList.add('hidden');
             replyForm.classList.add('hidden');
-            closedMessage.innerHTML = ticket.durum === 'cozuldu' ? 'Bu destek talebi çözüldü. Yeni mesaj gönderemezsiniz.' : 'Bu destek talebi kapatıldı. Yeni mesaj gönderemezsiniz.';
             closedMessage.classList.remove('hidden');
             waitingMessage.classList.add('hidden');
         } else {
@@ -205,13 +194,9 @@ function renderMessages(messages) {
             <div class="flex flex-col ${isMine ? 'items-end' : 'items-start'}">
                 <div class="message-card ${cardClass}">
                     <div class="text-sm font-medium leading-relaxed">${msg.mesaj.replace(/\n/g, '<br>')}</div>
-                    ${msg.dosyalar && msg.dosyalar.length > 0 ? `
-                        <div class="flex flex-col gap-2 mt-3">
-                            ${msg.dosyalar.map(file => `
-                                <div class="message-attachment" onclick="window.open('${file}', '_blank')">
-                                    <img src="${file}" class="w-full object-cover rounded-lg">
-                                </div>
-                            `).join('')}
+                    ${msg.dosya_yolu ? `
+                        <div class="message-attachment" onclick="window.open('${msg.dosya_yolu}', '_blank')">
+                            <img src="${msg.dosya_yolu}" class="w-full object-cover">
                         </div>
                     ` : ''}
                     <div class="message-meta">${msg.gonderen_adi} &bull; ${msg.olusturma_tarihi}</div>

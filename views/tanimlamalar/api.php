@@ -22,47 +22,25 @@ if ($firma_id == 0 || $firma_id == null) {
 /**
  * İş türü ücret geçmişini günceller.
  */
-function upsertIsTuruUcretGecmisi(PDO $db, int $firmaId, int $isTuruId, float $ucret, float $aracliUcret, string $baslangicTarihi, float $okumaUcret = 0): void
+function upsertIsTuruUcretGecmisi(PDO $db, int $firmaId, int $isTuruId, float $ucret, float $aracliUcret, string $baslangicTarihi): void
 {
     $baslangicDate = date('Y-m-d', strtotime($baslangicTarihi));
     $oncekiGun = date('Y-m-d', strtotime($baslangicDate . ' -1 day'));
 
     // Aynı başlangıç tarihli kayıt varsa güncelle
-    $sameStart = $db->prepare("
-        SELECT id
-        FROM is_turu_ucret_gecmisi
-        WHERE firma_id = ? AND is_turu_id = ? AND gecerlilik_baslangic = ? AND silinme_tarihi IS NULL
-        ORDER BY id DESC
-        LIMIT 1
-    ");
+    $sameStart = $db->prepare("\n        SELECT id\n        FROM is_turu_ucret_gecmisi\n        WHERE firma_id = ? AND is_turu_id = ? AND gecerlilik_baslangic = ? AND silinme_tarihi IS NULL\n        ORDER BY id DESC\n        LIMIT 1\n    ");
     $sameStart->execute([$firmaId, $isTuruId, $baslangicDate]);
     $sameStartId = intval($sameStart->fetchColumn() ?: 0);
 
     if ($sameStartId > 0) {
-        $db->prepare("
-            UPDATE is_turu_ucret_gecmisi
-            SET ucret = ?, aracli_ucret = ?, okuma_ucret = ?, guncelleme_tarihi = NOW()
-            WHERE id = ?
-        ")->execute([$ucret, $aracliUcret, $okumaUcret, $sameStartId]);
+        $db->prepare("\n            UPDATE is_turu_ucret_gecmisi\n            SET ucret = ?, aracli_ucret = ?, guncelleme_tarihi = NOW()\n            WHERE id = ?\n        ")->execute([$ucret, $aracliUcret, $sameStartId]);
         return;
     }
 
     // Başlangıçtan önce başlayan açık kaydın bitişini bir gün önceye çek
-    $db->prepare("
-        UPDATE is_turu_ucret_gecmisi
-        SET gecerlilik_bitis = ?, guncelleme_tarihi = NOW()
-        WHERE firma_id = ?
-        AND is_turu_id = ?
-        AND silinme_tarihi IS NULL
-        AND gecerlilik_baslangic < ?
-        AND (gecerlilik_bitis IS NULL OR gecerlilik_bitis >= ?)
-    ")->execute([$oncekiGun, $firmaId, $isTuruId, $baslangicDate, $baslangicDate]);
+    $db->prepare("\n        UPDATE is_turu_ucret_gecmisi\n        SET gecerlilik_bitis = ?, guncelleme_tarihi = NOW()\n        WHERE firma_id = ?\n        AND is_turu_id = ?\n        AND silinme_tarihi IS NULL\n        AND gecerlilik_baslangic < ?\n        AND (gecerlilik_bitis IS NULL OR gecerlilik_bitis >= ?)\n    ")->execute([$oncekiGun, $firmaId, $isTuruId, $baslangicDate, $baslangicDate]);
 
-    $db->prepare("
-        INSERT INTO is_turu_ucret_gecmisi
-        (firma_id, is_turu_id, ucret, aracli_ucret, okuma_ucret, gecerlilik_baslangic, gecerlilik_bitis, olusturma_tarihi)
-        VALUES (?, ?, ?, ?, ?, ?, NULL, NOW())
-    ")->execute([$firmaId, $isTuruId, $ucret, $aracliUcret, $okumaUcret, $baslangicDate]);
+    $db->prepare("\n        INSERT INTO is_turu_ucret_gecmisi\n        (firma_id, is_turu_id, ucret, aracli_ucret, gecerlilik_baslangic, gecerlilik_bitis, olusturma_tarihi)\n        VALUES (?, ?, ?, ?, ?, NULL, NOW())\n    ")->execute([$firmaId, $isTuruId, $ucret, $aracliUcret, $baslangicDate]);
 }
 
 /**
@@ -71,15 +49,7 @@ function upsertIsTuruUcretGecmisi(PDO $db, int $firmaId, int $isTuruId, float $u
 function syncIsTuruCurrentUcret(PDO $db, int $firmaId, int $isTuruId): void
 {
     $today = date('Y-m-d');
-    $stmt = $db->prepare("
-        SELECT ucret, aracli_ucret, okuma_ucret
-        FROM is_turu_ucret_gecmisi
-        WHERE firma_id = ? AND is_turu_id = ? AND silinme_tarihi IS NULL
-          AND gecerlilik_baslangic <= ?
-          AND (gecerlilik_bitis IS NULL OR gecerlilik_bitis >= ?)
-        ORDER BY gecerlilik_baslangic DESC, id DESC
-        LIMIT 1
-    ");
+    $stmt = $db->prepare("\n        SELECT ucret, aracli_ucret\n        FROM is_turu_ucret_gecmisi\n        WHERE firma_id = ? AND is_turu_id = ? AND silinme_tarihi IS NULL\n          AND gecerlilik_baslangic <= ?\n          AND (gecerlilik_bitis IS NULL OR gecerlilik_bitis >= ?)\n        ORDER BY gecerlilik_baslangic DESC, id DESC\n        LIMIT 1\n    ");
     $stmt->execute([$firmaId, $isTuruId, $today, $today]);
     $active = $stmt->fetch(PDO::FETCH_ASSOC);
 
@@ -87,14 +57,9 @@ function syncIsTuruCurrentUcret(PDO $db, int $firmaId, int $isTuruId): void
         return;
     }
 
-    $db->prepare("
-        UPDATE tanimlamalar
-        SET is_turu_ucret = ?, aracli_personel_is_turu_ucret = ?, okuma_is_turu_ucret = ?
-        WHERE id = ? AND firma_id = ? AND grup = 'is_turu' AND silinme_tarihi IS NULL
-    ")->execute([
+    $db->prepare("\n        UPDATE tanimlamalar\n        SET is_turu_ucret = ?, aracli_personel_is_turu_ucret = ?\n        WHERE id = ? AND firma_id = ? AND grup = 'is_turu' AND silinme_tarihi IS NULL\n    ")->execute([
         floatval($active['ucret'] ?? 0),
         floatval($active['aracli_ucret'] ?? 0),
-        floatval($active['okuma_ucret'] ?? 0),
         $isTuruId,
         $firmaId
     ]);
@@ -290,7 +255,6 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-kaydet") {
     try {
         $yeniUcret = floatval(Helper::formattedMoneyToNumber($_POST["is_turu_ucret"] ?? "0"));
         $yeniAracliUcret = floatval(Helper::formattedMoneyToNumber($_POST["aracli_personel_is_turu_ucret"] ?? "0"));
-        $yeniOkumaUcret = floatval(Helper::formattedMoneyToNumber($_POST["okuma_is_turu_ucret"] ?? "0"));
 
         $data = [
             "id" => $id,
@@ -299,7 +263,6 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-kaydet") {
             "grup" => "is_turu",
             "is_turu_ucret" => $yeniUcret,
             "aracli_personel_is_turu_ucret" => $yeniAracliUcret,
-            "okuma_is_turu_ucret" => $yeniOkumaUcret,
             "is_emri_sonucu" => $_POST["is_emri_sonucu"] ?? "",
             "tur_adi" => $_POST["is_turu"] ?? "",
             "rapor_sekmesi" => $_POST["rapor_sekmesi"] ?? "",
@@ -324,8 +287,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-kaydet") {
         if ($eskiKayit) {
             $eskiUcret = floatval(Helper::formattedMoneyToNumber($eskiKayit->is_turu_ucret ?? 0));
             $eskiAracli = floatval(Helper::formattedMoneyToNumber($eskiKayit->aracli_personel_is_turu_ucret ?? 0));
-            $eskiOkuma = floatval(Helper::formattedMoneyToNumber($eskiKayit->okuma_is_turu_ucret ?? 0));
-            $ucretDegisti = (abs($eskiUcret - $yeniUcret) > 0.0001) || (abs($eskiAracli - $yeniAracliUcret) > 0.0001) || (abs($eskiOkuma - $yeniOkumaUcret) > 0.0001);
+            $ucretDegisti = (abs($eskiUcret - $yeniUcret) > 0.0001) || (abs($eskiAracli - $yeniAracliUcret) > 0.0001);
         }
 
         if ($plainId > 0 && ($id == 0 || $ucretDegisti)) {
@@ -335,8 +297,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-kaydet") {
                 intval($plainId),
                 $yeniUcret,
                 $yeniAracliUcret,
-                $ucretBaslangic,
-                $yeniOkumaUcret
+                $ucretBaslangic
             );
         }
 
@@ -383,12 +344,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-ucret-gecmisi-getir"
     $isTuruId = Security::decrypt($_POST["id"] ?? 0);
     try {
         $db = $Tanimlamalar->getDb();
-        $stmt = $db->prepare("
-            SELECT id, ucret, aracli_ucret, okuma_ucret, gecerlilik_baslangic, gecerlilik_bitis
-            FROM is_turu_ucret_gecmisi
-            WHERE firma_id = ? AND is_turu_id = ? AND silinme_tarihi IS NULL
-            ORDER BY gecerlilik_baslangic DESC, id DESC
-        ");
+        $stmt = $db->prepare("\n            SELECT id, ucret, aracli_ucret, gecerlilik_baslangic, gecerlilik_bitis\n            FROM is_turu_ucret_gecmisi\n            WHERE firma_id = ? AND is_turu_id = ? AND silinme_tarihi IS NULL\n            ORDER BY gecerlilik_baslangic DESC, id DESC\n        ");
         $stmt->execute([intval($firma_id), intval($isTuruId)]);
         $rows = $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
 
@@ -413,7 +369,6 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-ucret-gecmisi-kaydet
 
     $ucret = floatval(Helper::formattedMoneyToNumber($_POST["ucret"] ?? "0"));
     $aracliUcret = floatval(Helper::formattedMoneyToNumber($_POST["aracli_ucret"] ?? "0"));
-    $okumaUcret = floatval(Helper::formattedMoneyToNumber($_POST["okuma_ucret"] ?? "0"));
 
     $normalizeDate = static function ($value) {
         $raw = trim((string) ($value ?? ''));
@@ -472,19 +427,11 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-ucret-gecmisi-kaydet
         }
 
         if (intval($gecmisId) > 0) {
-            $stmt = $db->prepare("
-                UPDATE is_turu_ucret_gecmisi
-                SET ucret = ?, aracli_ucret = ?, okuma_ucret = ?, gecerlilik_baslangic = ?, gecerlilik_bitis = ?, guncelleme_tarihi = NOW()
-                WHERE id = ? AND firma_id = ? AND is_turu_id = ? AND silinme_tarihi IS NULL
-            ");
-            $stmt->execute([$ucret, $aracliUcret, $okumaUcret, $baslangic, $bitis, intval($gecmisId), intval($firma_id), intval($isTuruId)]);
+            $stmt = $db->prepare("\n                UPDATE is_turu_ucret_gecmisi\n                SET ucret = ?, aracli_ucret = ?, gecerlilik_baslangic = ?, gecerlilik_bitis = ?, guncelleme_tarihi = NOW()\n                WHERE id = ? AND firma_id = ? AND is_turu_id = ? AND silinme_tarihi IS NULL\n            ");
+            $stmt->execute([$ucret, $aracliUcret, $baslangic, $bitis, intval($gecmisId), intval($firma_id), intval($isTuruId)]);
         } else {
-            $stmt = $db->prepare("
-                INSERT INTO is_turu_ucret_gecmisi
-                (firma_id, is_turu_id, ucret, aracli_ucret, okuma_ucret, gecerlilik_baslangic, gecerlilik_bitis, olusturma_tarihi)
-                VALUES (?, ?, ?, ?, ?, ?, ?, NOW())
-            ");
-            $stmt->execute([intval($firma_id), intval($isTuruId), $ucret, $aracliUcret, $okumaUcret, $baslangic, $bitis]);
+            $stmt = $db->prepare("\n                INSERT INTO is_turu_ucret_gecmisi\n                (firma_id, is_turu_id, ucret, aracli_ucret, gecerlilik_baslangic, gecerlilik_bitis, olusturma_tarihi)\n                VALUES (?, ?, ?, ?, ?, ?, NOW())\n            ");
+            $stmt->execute([intval($firma_id), intval($isTuruId), $ucret, $aracliUcret, $baslangic, $bitis]);
         }
 
         syncIsTuruCurrentUcret($db, intval($firma_id), intval($isTuruId));

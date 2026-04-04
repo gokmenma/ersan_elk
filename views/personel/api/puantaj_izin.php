@@ -49,27 +49,8 @@ try {
         $startDate = "$yil-$ay-01";
         $endDate = date("Y-m-t", strtotime($startDate));
 
-        $current_user_id = $_SESSION['user_id'] ?? 0;
-        $db = (new \App\Core\Db())->db;
-
-        // Get restriction from DB instead of hardcoded array
-        $restricted_dept = null;
-        $is_restricted = false;
-
-        if ($current_user_id && !\App\Service\Gate::isSuperAdmin()) {
-            $uStmt = $db->prepare("SELECT yonetilen_departman FROM users WHERE id = ?");
-            $uStmt->execute([$current_user_id]);
-            $uRow = $uStmt->fetch(PDO::FETCH_OBJ);
-            if ($uRow && !empty($uRow->yonetilen_departman)) {
-                $is_restricted = true;
-                $restricted_dept = $uRow->yonetilen_departman;
-            }
-        }
-
-        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
-
         // Aktif personelleri ve o ay veya sonrasında işten çıkanları getir
-        $personeller_sql = "
+        $personeller = $Personel->db->prepare("
             SELECT p.id, p.adi_soyadi, p.resim_yolu, p.ekip_no, p.tc_kimlik_no, p.isten_cikis_tarihi, p.ise_giris_tarihi,
                    CASE WHEN gg.personel_id IS NOT NULL THEN 1 ELSE 0 END as gorev_gecmisi_var,
                    COALESCE(gg_days.toplam_gun, 0) as gg_toplam_gun
@@ -93,7 +74,6 @@ try {
             AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00' OR p.isten_cikis_tarihi >= ?)
             AND (p.disardan_sigortali = 0 OR FIND_IN_SET('puantaj', p.gorunum_modulleri))
             AND (p.ise_giris_tarihi IS NULL OR p.ise_giris_tarihi = '' OR p.ise_giris_tarihi <= ?)
-            $extra_where
             AND NOT EXISTS (
                 SELECT 1 FROM personel_gorev_gecmisi pgg
                 WHERE pgg.personel_id = p.id
@@ -102,16 +82,8 @@ try {
                 AND (pgg.maas_durumu = 'Maaş Hesaplanmayan')
             )
             ORDER BY p.adi_soyadi ASC
-        ";
-        
-        $personeller_params = [$endDate, $startDate, $endDate, $endDate, $startDate, $endDate, $startDate, $firma_id, $startDate, $startDate, $endDate];
-        if ($is_restricted) {
-            $personeller_params[] = $restricted_dept;
-        }
-        $personeller_params = array_merge($personeller_params, [$endDate, $startDate]);
-
-        $personeller = $Personel->db->prepare($personeller_sql);
-        $personeller->execute($personeller_params);
+        ");
+        $personeller->execute([$endDate, $startDate, $endDate, $endDate, $startDate, $endDate, $startDate, $firma_id, $startDate, $startDate, $endDate, $endDate, $startDate]);
         $personel_list = $personeller->fetchAll(PDO::FETCH_OBJ);
 
         // Varsayılan tanımlamaları al

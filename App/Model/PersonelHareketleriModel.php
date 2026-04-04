@@ -374,22 +374,13 @@ class PersonelHareketleriModel extends Model
                      ORDER BY ph.zaman DESC LIMIT 1) as son_enlem,
                     (SELECT ph.konum_boylam FROM personel_hareketleri ph 
                      WHERE ph.personel_id = p.id AND ph.silinme_tarihi IS NULL
-                     ORDER BY ph.zaman DESC LIMIT 1) as son_boylam,
-                    (SELECT 1 FROM personel_izinleri pi 
-                     LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id 
-                     WHERE pi.personel_id = p.id 
-                     AND pi.baslangic_tarihi <= :t3 
-                     AND pi.bitis_tarihi >= :t4 
-                     AND pi.onay_durumu = 'Onaylandı' 
-                     AND pi.silinme_tarihi IS NULL 
-                     AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0))) 
-                     LIMIT 1) as is_izinli
+                     ORDER BY ph.zaman DESC LIMIT 1) as son_boylam
                 FROM personel p
                 WHERE p.silinme_tarihi IS NULL
                 AND p.aktif_mi = 1
                 AND p.saha_takibi = 1";
 
-        $params = [':tarih' => $tarih, ':tarih2' => $tarih, ':t3' => $tarih, ':t4' => $tarih];
+        $params = [':tarih' => $tarih, ':tarih2' => $tarih];
 
         if ($firma_id) {
             $sql .= " AND p.firma_id = :firma_id";
@@ -416,9 +407,6 @@ class PersonelHareketleriModel extends Model
             } elseif ($personel->son_bitis) {
                 $personel->durum = 'bitti';
                 $personel->durum_text = 'Görevi Tamamladı';
-            } elseif ($personel->is_izinli) {
-                $personel->durum = 'izinli';
-                $personel->durum_text = 'Bugün İzinli';
             } else {
                 $personel->durum = 'baslamadi';
                 $personel->durum_text = 'Henüz Başlamadı';

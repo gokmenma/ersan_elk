@@ -27,18 +27,7 @@ $activeMenuIds = $Menus->getActiveMenuIds($currentMenu);
         <div id="sidebar-menu">
             <style>
                 .sidebar-search-container {
-                    padding: 10px 20px 10px 20px;
-                    position: sticky;
-                    top: 0;
-                    z-index: 100;
-                    background-color: #fff;
-                    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-                }
-
-                [data-bs-theme="dark"] .sidebar-search-container,
-                [data-theme-mode="dark"] .sidebar-search-container {
-                    background-color: #2a3042;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+                    padding: 10px 20px 5px 20px;
                 }
 
                 .sidebar-search {
@@ -82,30 +71,12 @@ $activeMenuIds = $Menus->getActiveMenuIds($currentMenu);
                     color: #74788d;
                     pointer-events: none;
                 }
-
-                .sidebar-search-container .clear-icon {
-                    position: absolute;
-                    right: 13px;
-                    top: 50%;
-                    transform: translateY(-50%);
-                    width: 15px;
-                    height: 15px;
-                    color: #74788d;
-                    cursor: pointer;
-                    display: none;
-                    transition: all 0.2s ease;
-                }
-
-                .sidebar-search-container .clear-icon:hover {
-                    color: #f46a6a;
-                }
             </style>
             <div class="sidebar-search-container">
                 <div class="position-relative">
                     <input type="text" class="form-control sidebar-search" id="menu-search-input"
                         placeholder="Menüde ara...">
                     <i data-feather="search" class="search-icon"></i>
-                    <i data-feather="x" class="clear-icon" id="menu-search-clear"></i>
                 </div>
             </div>
             <!-- Left Menu Start -->
@@ -195,7 +166,6 @@ $activeMenuIds = $Menus->getActiveMenuIds($currentMenu);
         }
 
         const searchInput = document.getElementById('menu-search-input');
-        const searchClear = document.getElementById('menu-search-clear');
         if (!searchInput) return;
 
         searchInput.addEventListener('input', function () {
@@ -204,16 +174,9 @@ $activeMenuIds = $Menus->getActiveMenuIds($currentMenu);
             const allLi = sideMenu.querySelectorAll('li:not(.menu-title)');
             const titles = sideMenu.querySelectorAll('.menu-title');
 
-            // Temizleme ikonunu göster/gizle
-            if (searchClear) {
-                searchClear.style.display = filter === '' ? 'none' : 'block';
-            }
-
             if (filter === '') {
                 allLi.forEach(li => {
                     li.style.display = '';
-                    // mm-active ve mm-show sınıflarını temizlemiyoruz ki mevcut aktif menüler açık kalsın
-                    // Ancak arama ile açılanları kapatmak isterseniz burada işlem yapmalısınız.
                 });
                 titles.forEach(t => t.style.display = '');
                 return;
@@ -243,6 +206,9 @@ $activeMenuIds = $Menus->getActiveMenuIds($currentMenu);
                         }
                         parent = parent.parentElement.closest('li');
                     }
+
+                    // Eğer bu bir parent menü ise, tüm çocuklarını da gösterelim mi? 
+                    // Genelde sadece eşleşen i göstermek daha temizdir.
                 }
             });
 
@@ -260,14 +226,5 @@ $activeMenuIds = $Menus->getActiveMenuIds($currentMenu);
                 title.style.display = hasVisible ? '' : 'none';
             });
         });
-
-        // Temizle butonuna basınca
-        if (searchClear) {
-            searchClear.addEventListener('click', function () {
-                searchInput.value = '';
-                searchInput.dispatchEvent(new Event('input'));
-                searchInput.focus();
-            });
-        }
     });
 </script>

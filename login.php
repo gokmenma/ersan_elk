@@ -214,7 +214,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <h5 class="mb-0">Tekrar Hoşgeldin !</h5>
                                     <p class="text-muted mt-2">Devam etmek için oturum açın</p>
                                 </div>
-                                <form id="login-form" method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
+                                <form method="post" action="<?php echo htmlspecialchars($_SERVER["PHP_SELF"]); ?>">
                                     <div class="form-floating form-floating-custom mb-4">
                                         <input type="text"
                                             class="form-control <?php echo (!empty($username_err)) ? 'has-error' : ''; ?>"
@@ -255,7 +255,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 
                                     </div>
                                     <div class="mb-3">
-                                        <button id="login-btn" class="btn btn-primary w-100 waves-effect waves-light"
+                                        <button class="btn btn-primary w-100 waves-effect waves-light"
                                             type="submit">Giriş Yap</button>
                                     </div>
                                 </form>
@@ -373,14 +373,6 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 </div>
 
 <?php include 'layouts/vendor-scripts.php'; ?>
-
-<script>
-    document.getElementById('login-form').addEventListener('submit', function() {
-        var btn = document.getElementById('login-btn');
-        btn.disabled = true;
-        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Giriş Yapılıyor...';
-    });
-</script>
 
 
 </body>

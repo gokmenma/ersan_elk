@@ -137,12 +137,6 @@ $page_titles = [
 
 $currentTitle = $page_titles[$page] ?? 'Ana Sayfa';
 
-// Log page view
-try {
-    $LogModel = new \App\Model\SystemLogModel();
-    $LogModel->logPageView($currentUserId, $page, 'Admin Mobile');
-} catch (\Exception $e) {}
-
 $nav_items = [];
 $more_pages_data = [];
 $more_pages = [];

@@ -125,9 +125,13 @@ if (Gate::allows("ana_sayfa")) {
     $avans_count = 0;
     $avanslar = [];
     if (Gate::allows('avans_talepleri')) {
-        $avansModel = new \App\Model\AvansModel();
-        $avans_count = $avansModel->getBekleyenAvansSayisi();
-        $avanslar = $avansModel->getBekleyenAvanslarForDashboard(5);
+        $stmt = $db->prepare("SELECT count(*) as count FROM personel_avanslari WHERE durum = 'beklemede' AND silinme_tarihi IS NULL");
+        $measureDb('home.avans_count', fn() => $stmt->execute());
+        $avans_count = $stmt->fetch(PDO::FETCH_OBJ)->count;
+        
+        $stmt = $db->prepare("SELECT 'Avans' as tip, id, personel_id, talep_tarihi as tarih, durum, tutar as detay FROM personel_avanslari WHERE durum = 'beklemede' AND silinme_tarihi IS NULL LIMIT 5");
+        $measureDb('home.avans_list', fn() => $stmt->execute());
+        $avanslar = $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
     // İzinler
@@ -147,9 +151,13 @@ if (Gate::allows("ana_sayfa")) {
     $talep_count = 0;
     $talepler = [];
     if (Gate::allows('ariza_talepleri')) {
-        $talepModelAlt = new \App\Model\TalepModel();
-        $talep_count = $talepModelAlt->getBekleyenTalepSayisi();
-        $talepler = $talepModelAlt->getBekleyenTaleplerForDashboard(5);
+        $stmt = $db->prepare("SELECT count(*) as count FROM personel_talepleri WHERE durum != 'cozuldu' AND silinme_tarihi IS NULL");
+        $measureDb('home.talep_count', fn() => $stmt->execute());
+        $talep_count = $stmt->fetch(PDO::FETCH_OBJ)->count;
+
+        $stmt = $db->prepare("SELECT 'Talep' as tip, id, personel_id, olusturma_tarihi as tarih, durum, baslik as detay FROM personel_talepleri WHERE durum != 'cozuldu' AND silinme_tarihi IS NULL LIMIT 5");
+        $measureDb('home.talep_list', fn() => $stmt->execute());
+        $talepler = $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
     $personel_talep_sayisi = $avans_count + $izin_count + $talep_count;
@@ -181,10 +189,8 @@ if (Gate::allows("ana_sayfa")) {
     }
 
     // Şu anda izinde olanlar
-    // Izinde olan personeller verisi (Dashboard için yetki kontrolü ile)
-    $isLeaveManager = !empty($personelModel->getRestrictedDept());
     $active_leaves = [];
-    if (Gate::isSuperAdmin() || Gate::allows("ana_sayfa_izinli_personel_karti") || Gate::allows("izin_talepleri") || $isLeaveManager) {
+    if (Gate::allows("ana_sayfa_izinli_personel_karti")) {
         try {
             $active_leaves = $izinModel->getAktifIzinler(10);
         } catch (\Exception $e) {
@@ -1590,7 +1596,7 @@ if (Gate::allows("ana_sayfa")) {
                 <?php $widgets['widget-talepler'] = ob_get_clean();
         }
 
-        if (Gate::isSuperAdmin() || Gate::allows("ana_sayfa_izinli_personel_karti") || Gate::allows("izin_talepleri") || $isLeaveManager) {
+        if (Gate::allows("ana_sayfa_izinli_personel_karti")) {
             ob_start(); ?>
             <div class="<?php echo getWidgetWidth('widget-izindekiler', 'col-md-6'); ?> widget-item" id="widget-izindekiler">
                 <div class="card">
@@ -1618,15 +1624,14 @@ if (Gate::allows("ana_sayfa")) {
                                             </tr>
                                     <?php else: ?>
                                             <?php foreach ($active_leaves as $leave):
-                                                $bitis = new DateTime(date('Y-m-d', strtotime($leave->bitis_tarihi)));
-                                                $bugun = new DateTime(date('Y-m-d'));
-                                                $diff = $bugun->diff($bitis);
-                                                $kalan = $diff->invert ? 0 : $diff->days + 1;
+                                                $bitis = new DateTime($leave->bitis_tarihi);
+                                                $bugun = new DateTime();
+                                                $kalan = $bugun->diff($bitis)->days;
 
                                                 $badgeClass = 'badge-primary';
-                                                if (($leave->izin_tipi_adi ?? '') == 'hastalik' || stripos($leave->izin_tipi_adi ?? '', 'Hastalık') !== false)
+                                                if ($leave->izin_tipi_adi == 'hastalik')
                                                     $badgeClass = 'badge-danger';
-                                                if (($leave->izin_tipi_adi ?? '') == 'mazeret' || stripos($leave->izin_tipi_adi ?? '', 'Mazeret') !== false)
+                                                if ($leave->izin_tipi_adi == 'mazeret')
                                                     $badgeClass = 'badge-warning';
                                                 ?>
                                                     <tr>
@@ -1650,11 +1655,7 @@ if (Gate::allows("ana_sayfa")) {
                                                         </td>
                                                         <td><?php echo date('d.m.Y', strtotime($leave->bitis_tarihi)); ?></td>
                                                         <td>
-                                                            <?php if ($kalan == 1): ?>
-                                                                <span class="badge badge-soft-danger font-size-12">Bugün Bitiyor</span>
-                                                            <?php else: ?>
-                                                                <span class="badge badge-soft-info font-size-12"><?php echo $kalan; ?> Gün Kaldı</span>
-                                                            <?php endif; ?>
+                                                            <span class="badge badge-info"><?php echo $kalan; ?> Gün Kaldı</span>
                                                         </td>
                                                     </tr>
                                             <?php endforeach; ?>
@@ -4646,10 +4647,8 @@ if (Gate::allows("ana_sayfa")) {
                             }
                         });
 
-                        html += '</tbody>';
                         // Firma toplam footer
-                        html += '<tfoot style="position: sticky; bottom: 0; z-index: 10; background: #fff;">';
-                        html += '<tr style="background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%); border-top: 2px solid #a5b4fc; font-weight: 700; box-shadow: 0 -4px 12px rgba(0,0,0,0.05);">';
+                        html += '<tr style="background: linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%); border-top: 2px solid #a5b4fc; font-weight: 700;">';
                         html += '<td style="padding: 14px 16px; color: #3730a3; font-size: 13px; border-left: 3px solid #6366f1;"><i class="bx bx-buildings me-2"></i>GENEL TOPLAM</td>';
                         periodLabels.forEach((label, idx) => {
                             const isCurrent = periods[idx].is_current;
@@ -4659,9 +4658,9 @@ if (Gate::allows("ana_sayfa")) {
                         const fLastVal = firmaToplam[periodLabels[periodLabels.length - 1]];
                         const fPrevVal = periodLabels.length > 1 ? firmaToplam[periodLabels[periodLabels.length - 2]] : 0;
                         const fTrend = getTrendInfo(fLastVal, fPrevVal);
-                        html += `<td class="text-center" style="padding: 14px 12px;">${getTrendBadge(fTrend)}</td><td></td></tr></tfoot>`;
+                        html += `<td class="text-center" style="padding: 14px 12px;">${getTrendBadge(fTrend)}</td><td></td></tr>`;
 
-                        html += '</table></div>';
+                        html += '</tbody></table></div>';
 
                         // Alt açıklama + lejand
                         html += '<div class="px-3 py-2 d-flex align-items-center gap-3" style="border-top: 1px solid #e2e8f0; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%);">';
