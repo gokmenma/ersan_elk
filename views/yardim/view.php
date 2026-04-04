@@ -314,7 +314,7 @@ function loadTicket() {
 
             // Buton ve Form Görünürlüğü
             const isApprovedTicket = (ticket.onay_durumu || 'onaylandi') === 'onaylandi';
-            const isAdminFinished = ticket.durum === 'kapali' || ticket.durum === 'cozuldu';
+            const isAdminFinished = ticket.durum === 'kapali';
             const isReplyDisabled = ticket.durum === 'kapali';
 
             if (currentViewerIsAdmin) {
@@ -331,6 +331,8 @@ function loadTicket() {
                     
                     if (ticket.durum === 'isleme_alindi') {
                         $('#btn-in-progress').hide();
+                    } else if (ticket.durum === 'cozuldu') {
+                        $('#btn-solve-ticket').hide();
                     }
                 }
             } else {

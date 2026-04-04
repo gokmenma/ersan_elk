@@ -2,17 +2,13 @@
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 $maintitle = "Demirbaş";
-$title = "Aparat Deposu";
+$title = "";
 ?>
 
 <div class="container-fluid">
 	<?php include 'layouts/breadcrumb.php'; ?>
 
 	<div class="card">
-		<div class="card-header d-flex align-items-center justify-content-between">
-			<h5 class="mb-0">Aparat Deposu</h5>
-			<small class="text-muted">Personel bazlı aparat stok ve hareket görünümü</small>
-		</div>
 		<div class="card-body">
 			<ul class="nav nav-pills mb-3" id="aparatDepoTab" role="tablist">
 				<li class="nav-item" role="presentation">
