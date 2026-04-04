@@ -633,7 +633,7 @@ foreach ($departmanlar as $dept) {
                 document.getElementById('stat-gorevde').textContent = result.data.gorevde;
                 document.getElementById('stat-tamamladi').textContent = result.data.tamamladi;
                 document.getElementById('stat-baslamadi').textContent = result.data.baslamadi;
-                document.getElementById('stat-izinli').textContent = result.data.izin || 0;
+                document.getElementById('stat-izinli').textContent = result.data.izinli || 0;
                 document.getElementById('stat-gec-kalan').textContent = result.data.gec_kalan || 0;
             }
         } catch (error) {

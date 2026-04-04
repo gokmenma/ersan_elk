@@ -93,8 +93,7 @@ try {
                 } elseif ($p->durum === 'bitti') {
                     $tamamladi++;
                 } elseif ($p->durum === 'izinli') {
-                    // İzinli olanları baslamadi'den sayma
-                    // İsterseniz yeni bir stat-izinli ekleyebilirsiniz
+                    $izinli_count++;
                 } else {
                     $baslamadi++;
                     // Başlamamış ve saat geçmiş (bugün için)
