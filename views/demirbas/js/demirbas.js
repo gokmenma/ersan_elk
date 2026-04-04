@@ -75,6 +75,9 @@ $(document).ready(function () {
       emptyTable:
         '<div class="text-center text-muted py-4"><i class="bx bx-package display-4 d-block mb-2"></i>Henüz demirbaş eklenmemiş.<br><small>"Yeni Demirbaş" butonuna tıklayarak ekleyebilirsiniz.</small></div>',
     },
+    initComplete: function () {
+      $("#personel-loader").fadeOut(300);
+    },
   };
 
   if ($("#demirbasTable").length) {
@@ -123,6 +126,9 @@ $(document).ready(function () {
         ...getDatatableOptions().language,
         emptyTable:
           '<div class="text-center text-muted py-4"><i class="bx bx-transfer display-4 d-block mb-2"></i>Henüz zimmet kaydı bulunmamaktadır.</div>',
+      },
+      initComplete: function () {
+        $("#personel-loader").fadeOut(300);
       },
     });
   }
@@ -197,6 +203,9 @@ $(document).ready(function () {
         emptyTable:
           '<div class="text-center text-muted py-4"><i class="bx bx-package display-4 d-block mb-2"></i>Henüz sayaç eklenmemiş.<br><small>"Yeni Sayaç" butonuna tıklayarak ekleyebilirsiniz.</small></div>',
       },
+      initComplete: function () {
+        $("#personel-loader").fadeOut(300);
+      },
     };
     sayacTable = $("#sayacTable").DataTable(sayacOptions);
   }
@@ -261,6 +270,9 @@ $(document).ready(function () {
         emptyTable:
           '<div class="text-center text-muted py-4"><i class="bx bx-package display-4 d-block mb-2"></i>Henüz aparat eklenmemiş.<br><small>"Yeni Aparat" butonuna tıklayarak ekleyebilirsiniz.</small></div>',
       },
+      initComplete: function () {
+        $("#personel-loader").fadeOut(300);
+      },
     };
     aparatTable = $("#aparatTable").DataTable(aparatOptions);
   }
@@ -295,6 +307,9 @@ $(document).ready(function () {
         ...getDatatableOptions().language,
         emptyTable:
           '<div class="text-center text-muted py-4"><i class="bx bx-wrench display-4 d-block mb-2"></i>Herhangi bir servis kaydı bulunamadı.</div>',
+      },
+      initComplete: function () {
+        $("#personel-loader").fadeOut(300);
       },
     });
   }

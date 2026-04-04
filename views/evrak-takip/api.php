@@ -124,13 +124,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 </div>
                                 <p style='color: #475569;'>Evrak detaylarını görüntülemek ve diğer işlemler için sisteme giriş yapabilirsiniz.</p>";
                             $html = EmailTemplateHelper::getTemplate("Evrak Bildirimi", $icerik, "Sisteme Giriş Yap", "https://" . $_SERVER['HTTP_HOST'] . "/index.php?p=evrak-takip/list");
-                            MailGonderService::gonder($email, "Evrak Bildirimi: " . $evrak->konu, $html);
-
+                            
                             // Bildirim tarihini güncelle
                             $Model->saveWithAttr([
                                 'id' => $id,
                                 'son_bildirim_tarihi_ilgili' => date('Y-m-d H:i:s')
                             ]);
+
+                            MailGonderService::gonder([$email], "Evrak Bildirimi: " . $evrak->konu, $html);
                         }
                     }
                 }
@@ -269,8 +270,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         "https://" . $_SERVER['HTTP_HOST'] . "/index.php?p=evrak-takip/list"
                     );
 
-                    MailGonderService::gonder($email, "Evrak Bildirimi: " . $evrak->konu, $html);
-                    
                     // Bildirim tarihini güncelle
                     $column = ($type == 'personel') ? 'son_bildirim_tarihi_personel' : 'son_bildirim_tarihi_ilgili';
                     $Model->saveWithAttr([
@@ -278,6 +277,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $column => date('Y-m-d H:i:s')
                     ]);
 
+                    MailGonderService::gonder([$email], "Evrak Bildirimi: " . $evrak->konu, $html);
+                    
                     $msg = "Bildirim ve mail başarıyla gönderildi.";
                 } else {
                     $msg = "Personelin e-posta adresi bulunmadığı için sadece sistem bildirimi gönderildi (Eğer kullanıcı hesabı varsa).";
@@ -290,7 +291,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 throw new Exception("Geçersiz işlem.");
         }
 
-    } catch (Exception $e) {
+    } catch (\Throwable $e) {
         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
     }
 }

@@ -25,6 +25,9 @@ $(function () {
       { data: "islemler", className: "text-center", orderable: false, searchable: false },
     ],
     order: [[1, "desc"]],
+    initComplete: function () {
+      $("#personel-loader").fadeOut(300);
+    },
   });
 
   const sayacZimmetTable = $("#sayacZimmetTable").DataTable({
@@ -54,6 +57,10 @@ $(function () {
       { data: "islemler", className: "text-center", orderable: false },
     ],
     order: [[1, "desc"]],
+    initComplete: function () {
+      // Hareketler tabı yüklendiğinde de preloader'dan emin olalım
+      $("#personel-loader").fadeOut(300);
+    },
   });
 
   $('button[data-bs-target="#sayacHareketPane"]').on("shown.bs.tab", function () {

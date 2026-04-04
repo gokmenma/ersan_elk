@@ -40,6 +40,9 @@ $(function () {
       $(row).attr("data-personel-id", data.personel_id);
       $(row).css("cursor", "pointer");
     },
+    initComplete: function () {
+      $("#personel-loader").fadeOut(300);
+    },
   });
 
   const hareketTable = $("#aparatHareketTable").DataTable({

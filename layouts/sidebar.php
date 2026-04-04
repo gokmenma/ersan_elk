@@ -27,7 +27,18 @@ $activeMenuIds = $Menus->getActiveMenuIds($currentMenu);
         <div id="sidebar-menu">
             <style>
                 .sidebar-search-container {
-                    padding: 10px 20px 5px 20px;
+                    padding: 12px 20px 12px 20px;
+                    position: sticky;
+                    top: 0;
+                    z-index: 100;
+                    background-color: #fff;
+                    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+                }
+
+                [data-bs-theme="dark"] .sidebar-search-container,
+                [data-theme-mode="dark"] .sidebar-search-container {
+                    background-color: #282f36;
+                    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
                 }
 
                 .sidebar-search {

@@ -326,6 +326,16 @@ if (!empty($aparatKatIds)) {
                 </div>
 
                 <div class="card-body">
+                    <!-- Preloader -->
+                    <div class="personel-preloader" id="personel-loader">
+                        <div class="loader-content">
+                            <div class="spinner-border text-primary m-1" role="status">
+                                <span class="sr-only">Yükleniyor...</span>
+                            </div>
+                            <h5 class="mt-2 mb-0">Demirbaş Listesi Hazırlanıyor...</h5>
+                            <p class="text-muted small mb-0">Lütfen bekleyiniz...</p>
+                        </div>
+                    </div>
                     <div class="tab-content" id="demirbasTabContent">
 
                         <!-- Demirbaş Listesi Tab -->
@@ -1067,6 +1077,41 @@ if (!empty($aparatKatIds)) {
     .filter-badge .filter-remove:hover {
         background: #f46a6a;
         color: #fff;
+    }
+
+    /* Preloader Styles */
+    .personel-preloader {
+        position: absolute;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        min-height: 400px;
+        background: rgba(255, 255, 255, 0.82);
+        z-index: 1060;
+        border-radius: 4px;
+        backdrop-filter: blur(3px);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    [data-bs-theme="dark"] .personel-preloader {
+        background: rgba(25, 30, 34, 0.85);
+    }
+
+    .personel-preloader .loader-content {
+        background: white;
+        padding: 2.5rem;
+        border-radius: 16px;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+        text-align: center;
+        min-width: 250px;
+    }
+
+    [data-bs-theme="dark"] .personel-preloader .loader-content {
+        background: #2a3042;
+        box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
     }
 </style>
 

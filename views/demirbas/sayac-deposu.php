@@ -55,26 +55,142 @@ $title = "";
 <div class="container-fluid">
 	<?php include 'layouts/breadcrumb.php'; ?>
 
-	<div class="d-flex justify-content-end mb-3">
-		<ul class="nav nav-pills" id="sayacDepoTab" role="tablist">
-			<li class="nav-item" role="presentation">
-				<button class="nav-link active" data-bs-toggle="tab" data-bs-target="#sayaclarPane" type="button">Sayaçlar</button>
-			</li>
-			<li class="nav-item" role="presentation">
-				<button class="nav-link" data-bs-toggle="tab" data-bs-target="#sayacHareketPane" type="button">Hareketler</button>
-			</li>
-		</ul>
-	</div>
+	<style>
+		/* Preloader Styles */
+		.personel-preloader {
+			position: absolute;
+			top: 0;
+			left: 0;
+			width: 100%;
+			height: 100%;
+			min-height: 400px;
+			background: rgba(255, 255, 255, 0.82);
+			z-index: 1060;
+			border-radius: 4px;
+			backdrop-filter: blur(3px);
+			display: flex;
+			align-items: center;
+			justify-content: center;
+		}
+
+		[data-bs-theme="dark"] .personel-preloader {
+			background: rgba(25, 30, 34, 0.85);
+		}
+
+		.personel-preloader .loader-content {
+			background: white;
+			padding: 2.5rem;
+			border-radius: 16px;
+			box-shadow: 0 15px 35px rgba(0, 0, 0, 0.15);
+			text-align: center;
+			min-width: 250px;
+		}
+
+		[data-bs-theme="dark"] .personel-preloader .loader-content {
+			background: #2a3042;
+			box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4);
+		}
+	</style>
 
 	<div class="card">
+		<div class="card-header bg-white">
+			<div class="d-flex justify-content-start">
+				<div class="bg-white border rounded shadow-sm p-1">
+					<ul class="nav nav-pills" id="sayacDepoTab" role="tablist">
+						<li class="nav-item" role="presentation">
+							<button class="nav-link active" data-bs-toggle="tab" data-bs-target="#sayaclarPane" type="button">
+								<i class="bx bx-tachometer me-1"></i> Sayaçlar
+							</button>
+						</li>
+						<li class="nav-item" role="presentation">
+							<button class="nav-link" data-bs-toggle="tab" data-bs-target="#sayacHareketPane" type="button">
+								<i class="bx bx-history me-1"></i> Hareketler
+							</button>
+						</li>
+					</ul>
+				</div>
+			</div>
+		</div>
 		<div class="card-body">
+			<!-- Preloader -->
+			<div class="personel-preloader" id="personel-loader">
+				<div class="loader-content">
+					<div class="spinner-border text-primary m-1" role="status">
+						<span class="sr-only">Yükleniyor...</span>
+					</div>
+					<h5 class="mt-2 mb-0">Sayaç Deposu Hazırlanıyor...</h5>
+					<p class="text-muted small mb-0">Lütfen bekleyiniz...</p>
+				</div>
+			</div>
+
 			<div class="tab-content">
 				<div class="tab-pane fade show active" id="sayaclarPane" role="tabpanel">
-					<div class="row g-3 mb-3">
-						<div class="col-md-3"><div class="card border h-100"><div class="card-body py-2"><small class="text-muted">Depodaki Toplam Yeni</small><h4 id="sayacCardYeniDepo" class="mb-0"><?php echo $depoOzet->yeni_depoda; ?></h4></div></div></div>
-						<div class="col-md-3"><div class="card border h-100"><div class="card-body py-2"><small class="text-muted">Depodaki Toplam Hurda</small><h4 id="sayacCardHurdaDepo" class="mb-0"><?php echo $depoOzet->hurda_depoda; ?></h4></div></div></div>
-						<div class="col-md-3"><div class="card border h-100"><div class="card-body py-2"><small class="text-muted">Zimmetli Yeni</small><h4 id="sayacCardYeniPersonel" class="mb-0"><?php echo $depoOzet->yeni_personelde; ?></h4></div></div></div>
-						<div class="col-md-3"><div class="card border h-100"><div class="card-body py-2"><small class="text-muted">Zimmetli Hurda</small><h4 id="sayacCardHurdaPersonel" class="mb-0"><?php echo $depoOzet->hurda_personelde; ?></h4></div></div></div>
+					<!-- Sayaç Özet Kartları -->
+					<div class="row g-3 mb-4">
+						<!-- Depodaki Toplam Yeni -->
+						<div class="col-md-3">
+							<div class="card border border-light shadow-none h-100 bordro-summary-card"
+								style="--card-color: #556ee6; border-bottom: 3px solid var(--card-color) !important;">
+								<div class="card-body p-2 px-3">
+									<div class="icon-label-container">
+										<div class="icon-box" style="background: rgba(85, 110, 230, 0.1); width: 32px; height: 32px;">
+											<i class="bx bx-package fs-5 text-primary"></i>
+										</div>
+										<span class="text-muted small fw-bold" style="font-size: 0.55rem; opacity: 0.5;">DEPO</span>
+									</div>
+									<p class="text-muted mb-0 small fw-bold text-uppercase" style="letter-spacing: 0.5px; font-size: 0.65rem;">Depodaki Toplam Yeni</p>
+									<h4 id="sayacCardYeniDepo" class="mb-0 fw-bold"><?php echo $depoOzet->yeni_depoda; ?></h4>
+								</div>
+							</div>
+						</div>
+						<!-- Depodaki Toplam Hurda -->
+						<div class="col-md-3">
+							<div class="card border border-light shadow-none h-100 bordro-summary-card"
+								style="--card-color: #f1b44c; border-bottom: 3px solid var(--card-color) !important;">
+								<div class="card-body p-2 px-3">
+									<div class="icon-label-container">
+										<div class="icon-box" style="background: rgba(241, 180, 76, 0.1); width: 32px; height: 32px;">
+											<i class="bx bx-recycle fs-5 text-warning"></i>
+										</div>
+										<span class="text-muted small fw-bold" style="font-size: 0.55rem; opacity: 0.5;">HURDA DEPO</span>
+									</div>
+									<p class="text-muted mb-0 small fw-bold text-uppercase" style="letter-spacing: 0.5px; font-size: 0.65rem;">Depodaki Toplam Hurda</p>
+									<h4 id="sayacCardHurdaDepo" class="mb-0 fw-bold"><?php echo $depoOzet->hurda_depoda; ?></h4>
+								</div>
+							</div>
+						</div>
+						<!-- Zimmetli Yeni -->
+						<div class="col-md-3">
+							<div class="card border border-light shadow-none h-100 bordro-summary-card"
+								style="--card-color: #34c38f; border-bottom: 3px solid var(--card-color) !important;">
+								<div class="card-body p-2 px-3">
+									<div class="icon-label-container">
+										<div class="icon-box" style="background: rgba(52, 195, 143, 0.1); width: 32px; height: 32px;">
+											<i class="bx bx-user-check fs-5 text-success"></i>
+										</div>
+										<span class="text-muted small fw-bold" style="font-size: 0.55rem; opacity: 0.5;">ZİMMET</span>
+									</div>
+									<p class="text-muted mb-0 small fw-bold text-uppercase" style="letter-spacing: 0.5px; font-size: 0.65rem;">Zimmetli Yeni</p>
+									<h4 id="sayacCardYeniPersonel" class="mb-0 fw-bold"><?php echo $depoOzet->yeni_personelde; ?></h4>
+								</div>
+							</div>
+						</div>
+						<!-- Zimmetli Hurda -->
+						<div class="col-md-3">
+							<div class="card border border-light shadow-none h-100 bordro-summary-card"
+								style="--card-color: #50a5f1; border-bottom: 3px solid var(--card-color) !important;">
+								<div class="card-body p-2 px-3">
+									<div class="icon-label-container">
+										<div class="icon-box" style="background: rgba(80, 165, 241, 0.1); width: 32px; height: 32px;">
+											<i class="bx bx-user-minus fs-5 text-info"></i>
+										</div>
+										<span class="text-muted small fw-bold" style="font-size: 0.55rem; opacity: 0.5;">HURDA ZİMMET</span>
+									</div>
+									<p class="text-muted mb-0 small fw-bold text-uppercase" style="letter-spacing: 0.5px; font-size: 0.65rem;">Zimmetli Hurda</p>
+									<h4 id="sayacCardHurdaPersonel" class="mb-0 fw-bold"><?php echo $depoOzet->hurda_personelde; ?></h4>
+								</div>
+							</div>
+						</div>
 					</div>
 
 					<div class="table-responsive mb-4">
@@ -127,3 +243,4 @@ $title = "";
 <script>
     var sayacKatIds = <?php echo json_encode($sayacKatIds); ?>;
 </script>
+
