@@ -3,7 +3,6 @@
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Helper\Helper;
-use App\Helper\Security;
 use App\Helper\Form;
 
 use App\Model\DemirbasModel;
@@ -205,7 +204,14 @@ if (!empty($aparatKatIds)) {
                         <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-2">
                             <!-- Tab Navigation -->
                             <?php
-                            $activeTab = $_GET['tab'] ?? 'demirbas';
+                            $routePage = $_GET['p'] ?? '';
+                            $routeToTabMap = [
+                                'demirbas/sayac-deposu' => 'depo',
+                                'demirbas/aparat-deposu' => 'aparat',
+                                'demirbas/servis' => 'servis',
+                                'demirbas/zimmet' => 'zimmet'
+                            ];
+                            $activeTab = $routeToTabMap[$routePage] ?? 'demirbas';
                             ?>
                             <ul class="nav nav-pills" id="demirbasTab" role="tablist">
                                 <li class="nav-item" role="presentation">
@@ -213,34 +219,6 @@ if (!empty($aparatKatIds)) {
                                         id="demirbas-tab" data-bs-toggle="tab" data-bs-target="#demirbasContent"
                                         type="button" role="tab">
                                         <i class="bx bx-package me-1"></i> Demirbaş Listesi
-                                    </button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link <?php echo $activeTab === 'depo' ? 'active' : ''; ?>"
-                                        id="depo-tab" data-bs-toggle="tab" data-bs-target="#depoContent" type="button"
-                                        role="tab">
-                                        <i class="bx bx-store-alt me-1"></i> Sayaç Deposu
-                                    </button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link <?php echo $activeTab === 'aparat' ? 'active' : ''; ?>"
-                                        id="aparat-tab" data-bs-toggle="tab" data-bs-target="#aparatContent"
-                                        type="button" role="tab">
-                                        <i class="bx bx-plug me-1"></i> Aparatlar
-                                    </button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link <?php echo $activeTab === 'servis' ? 'active' : ''; ?>"
-                                        id="servis-tab" data-bs-toggle="tab" data-bs-target="#servisContent"
-                                        type="button" role="tab">
-                                        <i class="bx bx-wrench me-1"></i> Servis Kayıtları
-                                    </button>
-                                </li>
-                                <li class="nav-item" role="presentation">
-                                    <button class="nav-link <?php echo $activeTab === 'zimmet' ? 'active' : ''; ?>"
-                                        id="zimmet-tab" data-bs-toggle="tab" data-bs-target="#zimmetContent"
-                                        type="button" role="tab">
-                                        <i class="bx bx-transfer me-1"></i> Zimmet Kayıtları
                                     </button>
                                 </li>
                             </ul>

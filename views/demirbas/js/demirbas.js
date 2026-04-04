@@ -77,59 +77,65 @@ $(document).ready(function () {
     },
   };
 
-  demirbasTable = $("#demirbasTable").DataTable(demirbasOptions);
+  if ($("#demirbasTable").length) {
+    demirbasTable = $("#demirbasTable").DataTable(demirbasOptions);
+  }
 
   // Zimmet tablosu DataTable
-  zimmetTable = $("#zimmetTable").DataTable({
-    ...getDatatableOptions(),
-    serverSide: true,
-    ajax: {
-      url: zimmetUrl,
-      type: "POST",
-      data: function (d) {
-        d.action = "zimmet-listesi";
-        d.filter_type = $('input[name="zimmetFilter"]:checked').val() || "all";
-        d.personel_id = $("#zimmet_personel_filtre").val() || "all";
-        d.sayac_kat_ids = typeof sayacKatIds !== "undefined" ? sayacKatIds : [];
-        d.aparat_kat_ids =
-          typeof aparatKatIds !== "undefined" ? aparatKatIds : [];
+  if ($("#zimmetTable").length) {
+    zimmetTable = $("#zimmetTable").DataTable({
+      ...getDatatableOptions(),
+      serverSide: true,
+      ajax: {
+        url: zimmetUrl,
+        type: "POST",
+        data: function (d) {
+          d.action = "zimmet-listesi";
+          d.filter_type = $('input[name="zimmetFilter"]:checked').val() || "all";
+          d.personel_id = $("#zimmet_personel_filtre").val() || "all";
+          d.sayac_kat_ids = typeof sayacKatIds !== "undefined" ? sayacKatIds : [];
+          d.aparat_kat_ids =
+            typeof aparatKatIds !== "undefined" ? aparatKatIds : [];
+        },
       },
-    },
-    columns: [
-      {
-        data: "checkbox",
-        className: "text-center",
-        orderable: false,
-        searchable: false,
+      columns: [
+        {
+          data: "checkbox",
+          className: "text-center",
+          orderable: false,
+          searchable: false,
+        },
+        { data: "id", className: "text-center" },
+        { data: "kategori_adi" },
+        { data: "demirbas_adi" },
+        { data: "marka_model" },
+        { data: "personel_adi" },
+        { data: "teslim_miktar", className: "text-center" },
+        { data: "teslim_tarihi" },
+        { data: "durum", className: "text-center" },
+        { data: "islemler", className: "text-center", orderable: false },
+      ],
+      order: [[0, "desc"]],
+      createdRow: function (row, data, dataIndex) {
+        $(row).attr("data-id", data.enc_id);
       },
-      { data: "id", className: "text-center" },
-      { data: "kategori_adi" },
-      { data: "demirbas_adi" },
-      { data: "marka_model" },
-      { data: "personel_adi" },
-      { data: "teslim_miktar", className: "text-center" },
-      { data: "teslim_tarihi" },
-      { data: "durum", className: "text-center" },
-      { data: "islemler", className: "text-center", orderable: false },
-    ],
-    order: [[0, "desc"]],
-    createdRow: function (row, data, dataIndex) {
-      $(row).attr("data-id", data.enc_id);
-    },
-    language: {
-      ...getDatatableOptions().language,
-      emptyTable:
-        '<div class="text-center text-muted py-4"><i class="bx bx-transfer display-4 d-block mb-2"></i>Henüz zimmet kaydı bulunmamaktadır.</div>',
-    },
-  });
+      language: {
+        ...getDatatableOptions().language,
+        emptyTable:
+          '<div class="text-center text-muted py-4"><i class="bx bx-transfer display-4 d-block mb-2"></i>Henüz zimmet kaydı bulunmamaktadır.</div>',
+      },
+    });
+  }
 
   // Depo Personel Tablosu
-  depoPersonelTable = $("#depoPersonelTable").DataTable({
-    ...getDatatableOptions(),
-    pageLength: 25,
-    order: [[1, "asc"]],
-    columnDefs: [{ orderable: false, targets: [0] }],
-  });
+  if ($("#depoPersonelTable").length) {
+    depoPersonelTable = $("#depoPersonelTable").DataTable({
+      ...getDatatableOptions(),
+      pageLength: 25,
+      order: [[1, "asc"]],
+      columnDefs: [{ orderable: false, targets: [0] }],
+    });
+  }
 
   // Sayaç Tablosu
   if ($("#sayacTable").length) {
@@ -810,7 +816,9 @@ $(document).on(
 
 // ============== ZİMMET LİSTESİ YÜKLE ==============
 function loadZimmetList() {
-  zimmetTable.ajax.reload(null, false);
+  if (zimmetTable) {
+    zimmetTable.ajax.reload(null, false);
+  }
 }
 
 // ============== DEMİRBAŞ İŞLEMLERİ ==============
@@ -2957,7 +2965,9 @@ $(document).on("click", ".demirbas-gecmis", function (e) {
 
 // Zimmet filtresi tıklandığında tabloyu yenile
 $(document).on("change", ".zimmet-filter", function () {
-  zimmetTable.ajax.reload();
+  if (zimmetTable) {
+    zimmetTable.ajax.reload();
+  }
 });
 
 // ============== ENVANTER RAPORU FİLTRELEME ==============
@@ -2970,7 +2980,9 @@ $(document).on("click", ".inventory-filter", function () {
   // Tabloyu yeniden yükle (Sunucu tarafında filtrelenecek)
   $("#activeFilterBadges").data("katAdi", katAdi);
   $("#activeFilterBadges").data("filterType", type);
-  demirbasTable.ajax.reload();
+  if (demirbasTable) {
+    demirbasTable.ajax.reload();
+  }
 
   // Filtre Badge'lerini oluştur (Yeni İstek)
   const filterNames = {
@@ -2997,12 +3009,14 @@ $(document).on("click", ".inventory-filter", function () {
   $("#activeFilterBadges").html(badgeHtml);
 
   // Tabloya kaydır
-  $("html, body").animate(
-    {
-      scrollTop: $("#demirbasTable").offset().top - 150,
-    },
-    500,
-  );
+  if ($("#demirbasTable").length) {
+    $("html, body").animate(
+      {
+        scrollTop: $("#demirbasTable").offset().top - 150,
+      },
+      500,
+    );
+  }
 
   // Eski butonu artık eklememize gerek yok (başlıkta badge var)
   if ($("#clearInventoryFilter").length) {
@@ -3016,7 +3030,9 @@ $(document).on("click", "#clearInventoryFilterBadge", function (e) {
   $("#activeFilterBadges").removeData("katAdi");
   $("#activeFilterBadges").removeData("filterType");
   $("#activeFilterBadges").empty();
-  demirbasTable.ajax.reload();
+  if (demirbasTable) {
+    demirbasTable.ajax.reload();
+  }
 });
 
 // Eski Filtreyi Temizle Butonu (Geriye dönük uyumluluk veya yedek)
@@ -3025,7 +3041,9 @@ $(document).on("click", "#clearInventoryFilter", function () {
   $("#activeFilterBadges").removeData("filterType");
   $("#activeFilterBadges").empty();
   $(this).remove();
-  demirbasTable.ajax.reload();
+  if (demirbasTable) {
+    demirbasTable.ajax.reload();
+  }
 });
 
 // ============== SERVİS KAYDI İŞLEMLERİ ==============

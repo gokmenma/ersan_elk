@@ -1892,7 +1892,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                                         <?= $gunlukToplam > 0 ? number_format($gunlukToplam, 0, ',', '.') : '-' ?>
                                     </td>
                                 <?php endfor; ?>
-                                <td class="text-center bg-primary text-white" id="puantajGrandTotal">
+                                <td class="text-center text-primary fw-bold fs-6" id="puantajGrandTotal">
                                     <?= number_format($genelAyToplam, 0, ',', '.') ?>
                                 </td>
                             </tr>

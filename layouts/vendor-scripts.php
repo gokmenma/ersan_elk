@@ -18,7 +18,7 @@ $page = $_GET['p'] ?? 'home';
 <!-- Sayfalara Özel Scriptler -->
 <!--***************************************-->
 
-<?php if ($page == 'home' || $page == 'demirbas/list' || $page == 'personel/performans-raporu' || $page == 'arac-takip/arac-performans' || $page == 'puantaj/defter-bazli-rapor' || $page == 'puantaj/veri-yukleme') { ?>
+<?php if ($page == 'home' || $page == 'demirbas/list' || $page == 'demirbas/sayac-deposu' || $page == 'demirbas/aparat-deposu' || $page == 'demirbas/servis' || $page == 'demirbas/zimmet' || $page == 'personel/performans-raporu' || $page == 'arac-takip/arac-performans' || $page == 'puantaj/defter-bazli-rapor' || $page == 'puantaj/veri-yukleme') { ?>
     <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
     <?php if ($page == 'home') { ?>
         <script src="assets/js/pages/allchart.js"></script>
@@ -36,6 +36,26 @@ $page = $_GET['p'] ?? 'home';
 <?php if ($page == 'personel/manage') { ?>
     <script src="views/personel/js/manage.js?v=<?php echo time(); ?>"></script>
     <script src="views/personel/js/izin.js?v=<?php echo time(); ?>"></script>
+<?php } ?>
+
+<?php if ($page == 'demirbas/list') { ?>
+    <script src="views/demirbas/js/list.js?v=<?php echo time(); ?>"></script>
+<?php } ?>
+
+<?php if ($page == 'demirbas/sayac-deposu') { ?>
+    <script src="views/demirbas/js/sayac-deposu.js?v=<?php echo time(); ?>"></script>
+<?php } ?>
+
+<?php if ($page == 'demirbas/aparat-deposu') { ?>
+    <script src="views/demirbas/js/aparat-deposu.js?v=<?php echo time(); ?>"></script>
+<?php } ?>
+
+<?php if ($page == 'demirbas/servis') { ?>
+    <script src="views/demirbas/js/servis.js?v=<?php echo time(); ?>"></script>
+<?php } ?>
+
+<?php if ($page == 'demirbas/zimmet') { ?>
+    <script src="views/demirbas/js/zimmet.js?v=<?php echo time(); ?>"></script>
 <?php } ?>
 
 
@@ -126,7 +146,7 @@ if ($page == "hakedisler/hakedis-detay") {
     $page == "gelir-gider/list" ||
     $page == "temsilcilik/list" || $page == "temsilcilik/talep" || $page == "temsilcilik/duzenle" ||
     $page == "tanimlamalar/gelir-gider-turu" ||
-    $page == "demirbas/list" || $page == "rehber/list" ||
+    $page == "demirbas/list" || $page == "demirbas/sayac-deposu" || $page == "demirbas/aparat-deposu" || $page == "demirbas/servis" || $page == "demirbas/zimmet" || $page == "rehber/list" ||
     $page == "evrak-takip/list" || $page == "evrak-takip/giden-evrak" ||
     $page == "slider/list" ||
     $page == "kullanici/list" || $page == "kullanici-gruplari/list" ||

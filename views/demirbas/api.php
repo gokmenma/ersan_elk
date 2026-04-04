@@ -36,6 +36,31 @@ function jsonResponse($status, $message, $data = null)
     exit;
 }
 
+function getCategoryIdsByKeywords($db, $firmaId, $keywords)
+{
+    $sql = $db->prepare("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'demirbas_kategorisi' AND firma_id = ? AND silinme_tarihi IS NULL");
+    $sql->execute([$firmaId]);
+    $rows = $sql->fetchAll(PDO::FETCH_OBJ);
+
+    $ids = [];
+    foreach ($rows as $row) {
+        $name = mb_strtolower((string) ($row->tur_adi ?? ''), 'UTF-8');
+        foreach ($keywords as $kw) {
+            if (str_contains($name, mb_strtolower($kw, 'UTF-8'))) {
+                $ids[] = (int) $row->id;
+                break;
+            }
+        }
+    }
+
+    return array_values(array_unique($ids));
+}
+
+function buildInClause($items)
+{
+    return implode(',', array_fill(0, count($items), '?'));
+}
+
 // ============== DEMİRBAŞ İŞLEMLERİ ==============
 
 // Demirbaş Kaydet/Güncelle
@@ -1934,6 +1959,562 @@ if ($action == "personel-bakiye") {
         }
     } catch (Exception $ex) {
         jsonResponse("error", $ex->getMessage());
+    }
+}
+
+// ============== PERSONEL BAZLI SAYAÇ/APARAT DEPOSU API ==============
+
+if ($action == "sayac-global-summary") {
+    try {
+        $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+        $catIds = getCategoryIdsByKeywords($Demirbas->db, $firmaId, ['sayaç', 'sayac']);
+        if (empty($catIds)) {
+            jsonResponse("success", "Başarılı", [
+                'yeni_depoda' => 0,
+                'hurda_depoda' => 0,
+                'yeni_personelde' => 0,
+                'hurda_personelde' => 0
+            ]);
+        }
+
+        $in = buildInClause($catIds);
+        $params = $catIds;
+        $params[] = $firmaId;
+
+        $sqlDepo = $Demirbas->db->prepare(" 
+            SELECT
+                COALESCE(SUM(CASE WHEN LOWER(COALESCE(durum,'')) = 'hurda' THEN kalan_miktar ELSE 0 END), 0) as hurda_depoda,
+                COALESCE(SUM(CASE WHEN LOWER(COALESCE(durum,'')) <> 'hurda' AND LOWER(COALESCE(durum,'')) <> 'kaskiye teslim edildi' THEN kalan_miktar ELSE 0 END), 0) as yeni_depoda
+            FROM demirbas
+            WHERE kategori_id IN ($in) AND firma_id = ? AND silinme_tarihi IS NULL
+        ");
+        $sqlDepo->execute($params);
+        $depo = $sqlDepo->fetch(PDO::FETCH_OBJ) ?: (object) ['yeni_depoda' => 0, 'hurda_depoda' => 0];
+
+        $sqlPersonel = $Demirbas->db->prepare(" 
+            SELECT
+                COALESCE(SUM(CASE WHEN LOWER(COALESCE(d.durum,'')) = 'hurda' THEN z.teslim_miktar ELSE 0 END), 0) as hurda_personelde,
+                COALESCE(SUM(CASE WHEN LOWER(COALESCE(d.durum,'')) <> 'hurda' AND LOWER(COALESCE(d.durum,'')) <> 'kaskiye teslim edildi' THEN z.teslim_miktar ELSE 0 END), 0) as yeni_personelde
+            FROM demirbas_zimmet z
+            INNER JOIN demirbas d ON d.id = z.demirbas_id
+            WHERE z.durum = 'teslim' AND d.kategori_id IN ($in) AND d.firma_id = ? AND z.silinme_tarihi IS NULL
+        ");
+        $sqlPersonel->execute($params);
+        $pers = $sqlPersonel->fetch(PDO::FETCH_OBJ) ?: (object) ['yeni_personelde' => 0, 'hurda_personelde' => 0];
+
+        jsonResponse("success", "Başarılı", [
+            'yeni_depoda' => (int) ($depo->yeni_depoda ?? 0),
+            'hurda_depoda' => (int) ($depo->hurda_depoda ?? 0),
+            'yeni_personelde' => (int) ($pers->yeni_personelde ?? 0),
+            'hurda_personelde' => (int) ($pers->hurda_personelde ?? 0)
+        ]);
+    } catch (Exception $ex) {
+        jsonResponse("error", $ex->getMessage());
+    }
+}
+
+if ($action == "sayac-personel-list") {
+    try {
+        $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+        $draw = intval($_POST['draw'] ?? 0);
+        $start = intval($_POST['start'] ?? 0);
+        $length = intval($_POST['length'] ?? 25);
+        $search = trim($_POST['search']['value'] ?? '');
+
+        $catIds = getCategoryIdsByKeywords($Demirbas->db, $firmaId, ['sayaç', 'sayac']);
+        if (empty($catIds)) {
+            echo json_encode([
+                'draw' => $draw,
+                'recordsTotal' => 0,
+                'recordsFiltered' => 0,
+                'data' => []
+            ]);
+            exit;
+        }
+
+        $in = buildInClause($catIds);
+        $baseParams = $catIds;
+        $baseParams[] = $firmaId;
+
+        $whereSearch = '';
+        $searchParams = [];
+        if ($search !== '') {
+            $whereSearch = " AND p.adi_soyadi LIKE ? ";
+            $searchParams[] = '%' . $search . '%';
+        }
+
+        $sqlCount = $Demirbas->db->prepare(" 
+            SELECT COUNT(*)
+            FROM (
+                SELECT h.personel_id
+                FROM demirbas_hareketler h
+                INNER JOIN demirbas d ON d.id = h.demirbas_id
+                LEFT JOIN personel p ON p.id = h.personel_id
+                WHERE h.silinme_tarihi IS NULL
+                  AND h.personel_id IS NOT NULL
+                  AND d.kategori_id IN ($in)
+                  AND d.firma_id = ?
+                  $whereSearch
+                GROUP BY h.personel_id
+            ) q
+        ");
+        $sqlCount->execute(array_merge($baseParams, $searchParams));
+        $filtered = (int) $sqlCount->fetchColumn();
+
+        $sql = $Demirbas->db->prepare(" 
+            SELECT
+                h.personel_id,
+                COALESCE(p.adi_soyadi, CONCAT('Personel #', h.personel_id)) as personel_adi,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' THEN h.miktar ELSE 0 END), 0) as bizden_toplam_aldigi,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' THEN h.miktar ELSE 0 END), 0) as toplam_taktigi,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND (h.aciklama IS NULL OR h.aciklama NOT LIKE '[DEPO_IADE]%') THEN h.miktar ELSE 0 END), 0) as toplam_hurda,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND h.aciklama LIKE '[DEPO_IADE]%' THEN h.miktar ELSE 0 END), 0) as teslim_edilen_hurda,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' THEN h.miktar ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' THEN h.miktar ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'kayip' THEN h.miktar ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND h.aciklama LIKE '[DEPO_IADE]%' THEN h.miktar ELSE 0 END), 0) as elinde_kalan_yeni,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND (h.aciklama IS NULL OR h.aciklama NOT LIKE '[DEPO_IADE]%') THEN h.miktar ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND h.aciklama LIKE '[DEPO_IADE]%' THEN h.miktar ELSE 0 END), 0) as elinde_kalan_hurda
+            FROM demirbas_hareketler h
+            INNER JOIN demirbas d ON d.id = h.demirbas_id
+            LEFT JOIN personel p ON p.id = h.personel_id
+            WHERE h.silinme_tarihi IS NULL
+              AND h.personel_id IS NOT NULL
+              AND d.kategori_id IN ($in)
+              AND d.firma_id = ?
+              $whereSearch
+            GROUP BY h.personel_id, p.adi_soyadi
+            ORDER BY p.adi_soyadi ASC
+            LIMIT ? OFFSET ?
+        ");
+        $params = array_merge($baseParams, $searchParams, [$length, $start]);
+        $sql->execute($params);
+        $rows = $sql->fetchAll(PDO::FETCH_OBJ);
+
+        $data = [];
+        $i = $start;
+        foreach ($rows as $r) {
+            $i++;
+            $data[] = [
+                'sira' => $i,
+                'personel_id' => (int) $r->personel_id,
+                'personel_adi' => htmlspecialchars((string) $r->personel_adi),
+                'bizden_toplam_aldigi' => (int) $r->bizden_toplam_aldigi,
+                'toplam_taktigi' => (int) $r->toplam_taktigi,
+                'elinde_kalan_yeni' => max(0, (int) $r->elinde_kalan_yeni),
+                'toplam_hurda' => max(0, (int) $r->toplam_hurda),
+                'teslim_edilen_hurda' => max(0, (int) $r->teslim_edilen_hurda),
+                'elinde_kalan_hurda' => max(0, (int) $r->elinde_kalan_hurda)
+            ];
+        }
+
+        echo json_encode([
+            'draw' => $draw,
+            'recordsTotal' => $filtered,
+            'recordsFiltered' => $filtered,
+            'data' => $data
+        ]);
+        exit;
+    } catch (Exception $ex) {
+        jsonResponse("error", $ex->getMessage());
+    }
+}
+
+if ($action == "sayac-personel-summary") {
+    try {
+        $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+        $personelId = intval($_POST['personel_id'] ?? 0);
+        if ($personelId <= 0) {
+            jsonResponse('error', 'Personel seçimi zorunludur.');
+        }
+
+        $catIds = getCategoryIdsByKeywords($Demirbas->db, $firmaId, ['sayaç', 'sayac']);
+        if (empty($catIds)) {
+            jsonResponse('success', 'Başarılı', ['summary' => [
+                'bizden_toplam_aldigi' => 0,
+                'toplam_taktigi' => 0,
+                'elinde_kalan_yeni' => 0,
+                'toplam_hurda' => 0,
+                'teslim_edilen_hurda' => 0,
+                'elinde_kalan_hurda' => 0
+            ]]);
+        }
+
+        $in = buildInClause($catIds);
+        $params = array_merge($catIds, [$firmaId, $personelId]);
+
+        $sql = $Demirbas->db->prepare(" 
+            SELECT
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' THEN h.miktar ELSE 0 END), 0) as bizden_toplam_aldigi,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' THEN h.miktar ELSE 0 END), 0) as toplam_taktigi,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND (h.aciklama IS NULL OR h.aciklama NOT LIKE '[DEPO_IADE]%') THEN h.miktar ELSE 0 END), 0) as toplam_hurda,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND h.aciklama LIKE '[DEPO_IADE]%' THEN h.miktar ELSE 0 END), 0) as teslim_edilen_hurda,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' THEN h.miktar ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' THEN h.miktar ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'kayip' THEN h.miktar ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND h.aciklama LIKE '[DEPO_IADE]%' THEN h.miktar ELSE 0 END), 0) as elinde_kalan_yeni,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND (h.aciklama IS NULL OR h.aciklama NOT LIKE '[DEPO_IADE]%') THEN h.miktar ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND h.aciklama LIKE '[DEPO_IADE]%' THEN h.miktar ELSE 0 END), 0) as elinde_kalan_hurda
+            FROM demirbas_hareketler h
+            INNER JOIN demirbas d ON d.id = h.demirbas_id
+            WHERE h.silinme_tarihi IS NULL
+              AND h.personel_id = ?
+              AND d.kategori_id IN ($in)
+              AND d.firma_id = ?
+        ");
+        // personel id başa gelecek şekilde yeniden sırala
+        $sql->execute(array_merge([$personelId], $catIds, [$firmaId]));
+        $row = $sql->fetch(PDO::FETCH_OBJ) ?: (object) [];
+
+        jsonResponse('success', 'Başarılı', ['summary' => [
+            'bizden_toplam_aldigi' => (int) ($row->bizden_toplam_aldigi ?? 0),
+            'toplam_taktigi' => (int) ($row->toplam_taktigi ?? 0),
+            'elinde_kalan_yeni' => max(0, (int) ($row->elinde_kalan_yeni ?? 0)),
+            'toplam_hurda' => max(0, (int) ($row->toplam_hurda ?? 0)),
+            'teslim_edilen_hurda' => max(0, (int) ($row->teslim_edilen_hurda ?? 0)),
+            'elinde_kalan_hurda' => max(0, (int) ($row->elinde_kalan_hurda ?? 0))
+        ]]);
+    } catch (Exception $ex) {
+        jsonResponse('error', $ex->getMessage());
+    }
+}
+
+if ($action == "sayac-personel-history") {
+    try {
+        $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+        $personelId = intval($_POST['personel_id'] ?? 0);
+        if ($personelId <= 0) {
+            jsonResponse('error', 'Personel seçimi zorunludur.');
+        }
+
+        $catIds = getCategoryIdsByKeywords($Demirbas->db, $firmaId, ['sayaç', 'sayac']);
+        if (empty($catIds)) {
+            jsonResponse('success', 'Başarılı', ['rows' => []]);
+        }
+
+        $in = buildInClause($catIds);
+        $sql = $Demirbas->db->prepare(" 
+            SELECT
+                DATE(h.tarih) as gun,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' THEN h.miktar ELSE 0 END), 0) as alinan,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' THEN h.miktar ELSE 0 END), 0) as taktigi,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND (h.aciklama IS NULL OR h.aciklama NOT LIKE '[DEPO_IADE]%') THEN h.miktar ELSE 0 END), 0) as hurda_alinan,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND h.aciklama LIKE '[DEPO_IADE]%' THEN h.miktar ELSE 0 END), 0) as hurda_teslim,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'kayip' THEN h.miktar ELSE 0 END), 0) as kayip
+            FROM demirbas_hareketler h
+            INNER JOIN demirbas d ON d.id = h.demirbas_id
+            WHERE h.silinme_tarihi IS NULL
+              AND h.personel_id = ?
+              AND d.kategori_id IN ($in)
+              AND d.firma_id = ?
+            GROUP BY DATE(h.tarih)
+            ORDER BY DATE(h.tarih) DESC
+            LIMIT 180
+        ");
+        $sql->execute(array_merge([$personelId], $catIds, [$firmaId]));
+        $rows = $sql->fetchAll(PDO::FETCH_OBJ);
+
+        foreach ($rows as $r) {
+            $r->gun_format = Date::engtodt($r->gun);
+            $r->net = (int) $r->alinan - (int) $r->taktigi - (int) $r->hurda_teslim - (int) $r->kayip;
+        }
+
+        jsonResponse('success', 'Başarılı', ['rows' => $rows]);
+    } catch (Exception $ex) {
+        jsonResponse('error', $ex->getMessage());
+    }
+}
+
+if ($action == "sayac-hareketler-list") {
+    try {
+        $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+        $draw = intval($_POST['draw'] ?? 0);
+        $start = intval($_POST['start'] ?? 0);
+        $length = intval($_POST['length'] ?? 25);
+
+        $catIds = getCategoryIdsByKeywords($Demirbas->db, $firmaId, ['sayaç', 'sayac']);
+        if (empty($catIds)) {
+            echo json_encode(['draw' => $draw, 'recordsTotal' => 0, 'recordsFiltered' => 0, 'data' => []]);
+            exit;
+        }
+
+        $in = buildInClause($catIds);
+        $countSql = $Demirbas->db->prepare(" 
+            SELECT COUNT(*)
+            FROM demirbas_hareketler h
+            INNER JOIN demirbas d ON d.id = h.demirbas_id
+            WHERE h.silinme_tarihi IS NULL AND d.kategori_id IN ($in) AND d.firma_id = ?
+        ");
+        $countSql->execute(array_merge($catIds, [$firmaId]));
+        $total = (int) $countSql->fetchColumn();
+
+        $sql = $Demirbas->db->prepare(" 
+            SELECT
+                h.tarih,
+                h.hareket_tipi,
+                h.miktar,
+                h.aciklama,
+                COALESCE(p.adi_soyadi, '-') as personel_adi,
+                COALESCE(d.demirbas_adi, '-') as demirbas_adi
+            FROM demirbas_hareketler h
+            INNER JOIN demirbas d ON d.id = h.demirbas_id
+            LEFT JOIN personel p ON p.id = h.personel_id
+            WHERE h.silinme_tarihi IS NULL AND d.kategori_id IN ($in) AND d.firma_id = ?
+            ORDER BY h.tarih DESC
+            LIMIT ? OFFSET ?
+        ");
+        $sql->execute(array_merge($catIds, [$firmaId, $length, $start]));
+        $rows = $sql->fetchAll(PDO::FETCH_OBJ);
+
+        $data = [];
+        foreach ($rows as $r) {
+            $data[] = [
+                'tarih' => Date::engtodt(date('Y-m-d', strtotime($r->tarih))),
+                'personel' => htmlspecialchars((string) $r->personel_adi),
+                'demirbas' => htmlspecialchars((string) $r->demirbas_adi),
+                'tip' => DemirbasHareketModel::getHareketTipiBadge($r->hareket_tipi),
+                'miktar' => (int) $r->miktar,
+                'aciklama' => htmlspecialchars((string) ($r->aciklama ?? ''))
+            ];
+        }
+
+        echo json_encode(['draw' => $draw, 'recordsTotal' => $total, 'recordsFiltered' => $total, 'data' => $data]);
+        exit;
+    } catch (Exception $ex) {
+        jsonResponse('error', $ex->getMessage());
+    }
+}
+
+if ($action == "aparat-global-summary") {
+    try {
+        $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+        $catIds = getCategoryIdsByKeywords($Demirbas->db, $firmaId, ['aparat']);
+        if (empty($catIds)) {
+            jsonResponse("success", "Başarılı", ['depoda' => 0, 'personelde' => 0, 'tuketilen' => 0, 'toplam_cesit' => 0]);
+        }
+
+        $in = buildInClause($catIds);
+        $params = array_merge($catIds, [$firmaId]);
+
+        $sql1 = $Demirbas->db->prepare("SELECT COALESCE(SUM(kalan_miktar),0) as depoda, COUNT(*) as toplam_cesit FROM demirbas WHERE kategori_id IN ($in) AND firma_id = ? AND silinme_tarihi IS NULL");
+        $sql1->execute($params);
+        $dep = $sql1->fetch(PDO::FETCH_OBJ) ?: (object) ['depoda' => 0, 'toplam_cesit' => 0];
+
+        $sql2 = $Demirbas->db->prepare(" 
+            SELECT
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' THEN h.miktar ELSE 0 END),0)
+                - COALESCE(SUM(CASE WHEN h.hareket_tipi IN ('sarf','kayip') THEN h.miktar ELSE 0 END),0)
+                - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND h.aciklama LIKE '[DEPO_IADE]%' THEN h.miktar ELSE 0 END),0) as personelde,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi IN ('sarf','kayip') THEN h.miktar ELSE 0 END),0) as tuketilen
+            FROM demirbas_hareketler h
+            INNER JOIN demirbas d ON d.id = h.demirbas_id
+            WHERE h.silinme_tarihi IS NULL AND d.kategori_id IN ($in) AND d.firma_id = ?
+        ");
+        $sql2->execute($params);
+        $mov = $sql2->fetch(PDO::FETCH_OBJ) ?: (object) ['personelde' => 0, 'tuketilen' => 0];
+
+        jsonResponse("success", "Başarılı", [
+            'depoda' => (int) ($dep->depoda ?? 0),
+            'personelde' => max(0, (int) ($mov->personelde ?? 0)),
+            'tuketilen' => max(0, (int) ($mov->tuketilen ?? 0)),
+            'toplam_cesit' => (int) ($dep->toplam_cesit ?? 0)
+        ]);
+    } catch (Exception $ex) {
+        jsonResponse('error', $ex->getMessage());
+    }
+}
+
+if ($action == "aparat-personel-list") {
+    try {
+        $_POST['action'] = 'aparat-personel-ozet';
+        $personel_id = intval($_POST['personel_id'] ?? 0);
+        $draw = intval($_POST['draw'] ?? 0);
+        $start = intval($_POST['start'] ?? 0);
+        $length = intval($_POST['length'] ?? 25);
+
+        $whereFilter = $personel_id > 0 ? fn($r) => (int) ($r->personel_id ?? 0) === $personel_id : fn($r) => true;
+
+        $where = " WHERE d.firma_id = ? AND h.silinme_tarihi IS NULL AND LOWER(COALESCE(k.tur_adi, '')) LIKE '%aparat%' ";
+        $params = [$_SESSION['firma_id']];
+        if ($personel_id > 0) {
+            $where .= " AND h.personel_id = ? ";
+            $params[] = $personel_id;
+        }
+
+        $sql = $Demirbas->db->prepare(" 
+            SELECT
+                h.personel_id,
+                p.adi_soyadi as personel_adi,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' THEN h.miktar ELSE 0 END), 0) as toplam_verilen,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' THEN h.miktar ELSE 0 END), 0) as toplam_tuketilen,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND h.aciklama LIKE '[DEPO_IADE]%' THEN h.miktar ELSE 0 END), 0) as toplam_depo_iade,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'kayip' THEN h.miktar ELSE 0 END), 0) as toplam_kayip,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' THEN h.miktar ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN h.hareket_tipi IN ('sarf', 'kayip') THEN h.miktar ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND h.aciklama LIKE '[DEPO_IADE]%' THEN h.miktar ELSE 0 END), 0) as kalan_miktar
+            FROM demirbas_hareketler h
+            INNER JOIN demirbas d ON h.demirbas_id = d.id
+            LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
+            LEFT JOIN personel p ON h.personel_id = p.id
+            $where
+            GROUP BY h.personel_id, p.adi_soyadi
+            ORDER BY p.adi_soyadi ASC
+        ");
+        $sql->execute($params);
+        $allRows = array_values(array_filter($sql->fetchAll(PDO::FETCH_OBJ), $whereFilter));
+
+        $total = count($allRows);
+        $rows = array_slice($allRows, $start, $length);
+        $data = [];
+        $i = $start;
+        foreach ($rows as $r) {
+            $i++;
+            $data[] = [
+                'sira' => $i,
+                'personel_id' => (int) $r->personel_id,
+                'personel_adi' => htmlspecialchars((string) ($r->personel_adi ?? ('Personel #' . $r->personel_id))),
+                'toplam_verilen' => (int) ($r->toplam_verilen ?? 0),
+                'toplam_tuketilen' => (int) ($r->toplam_tuketilen ?? 0),
+                'toplam_depo_iade' => (int) ($r->toplam_depo_iade ?? 0),
+                'toplam_kayip' => (int) ($r->toplam_kayip ?? 0),
+                'kalan_miktar' => max(0, (int) ($r->kalan_miktar ?? 0))
+            ];
+        }
+
+        echo json_encode(['draw' => $draw, 'recordsTotal' => $total, 'recordsFiltered' => $total, 'data' => $data]);
+        exit;
+    } catch (Exception $ex) {
+        jsonResponse('error', $ex->getMessage());
+    }
+}
+
+if ($action == "aparat-personel-summary") {
+    try {
+        $_POST['personel_id'] = intval($_POST['personel_id'] ?? 0);
+        $personel_id = intval($_POST['personel_id']);
+        if ($personel_id <= 0) {
+            jsonResponse('error', 'Personel seçimi zorunludur.');
+        }
+
+        $where = " WHERE d.firma_id = ? AND h.silinme_tarihi IS NULL AND LOWER(COALESCE(k.tur_adi, '')) LIKE '%aparat%' AND h.personel_id = ? ";
+        $sql = $Demirbas->db->prepare(" 
+            SELECT
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' THEN h.miktar ELSE 0 END), 0) as toplam_verilen,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' THEN h.miktar ELSE 0 END), 0) as toplam_tuketilen,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND h.aciklama LIKE '[DEPO_IADE]%' THEN h.miktar ELSE 0 END), 0) as toplam_depo_iade,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'kayip' THEN h.miktar ELSE 0 END), 0) as toplam_kayip,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' THEN h.miktar ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN h.hareket_tipi IN ('sarf', 'kayip') THEN h.miktar ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND h.aciklama LIKE '[DEPO_IADE]%' THEN h.miktar ELSE 0 END), 0) as kalan_miktar
+            FROM demirbas_hareketler h
+            INNER JOIN demirbas d ON h.demirbas_id = d.id
+            LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
+            $where
+        ");
+        $sql->execute([$_SESSION['firma_id'], $personel_id]);
+        $r = $sql->fetch(PDO::FETCH_OBJ) ?: (object) [];
+
+        jsonResponse('success', 'Başarılı', ['summary' => [
+            'toplam_verilen' => (int) ($r->toplam_verilen ?? 0),
+            'toplam_tuketilen' => (int) ($r->toplam_tuketilen ?? 0),
+            'toplam_depo_iade' => (int) ($r->toplam_depo_iade ?? 0),
+            'toplam_kayip' => (int) ($r->toplam_kayip ?? 0),
+            'kalan_miktar' => max(0, (int) ($r->kalan_miktar ?? 0))
+        ]]);
+    } catch (Exception $ex) {
+        jsonResponse('error', $ex->getMessage());
+    }
+}
+
+if ($action == "aparat-personel-history") {
+    try {
+        $personelId = intval($_POST['personel_id'] ?? 0);
+        if ($personelId <= 0) {
+            jsonResponse('error', 'Personel seçimi zorunludur.');
+        }
+
+        $sql = $Demirbas->db->prepare(" 
+            SELECT
+                DATE(h.tarih) as gun,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' THEN h.miktar ELSE 0 END), 0) as verilen,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' THEN h.miktar ELSE 0 END), 0) as tuketilen,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND h.aciklama LIKE '[DEPO_IADE]%' THEN h.miktar ELSE 0 END), 0) as depo_iade,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'kayip' THEN h.miktar ELSE 0 END), 0) as kayip
+            FROM demirbas_hareketler h
+            INNER JOIN demirbas d ON h.demirbas_id = d.id
+            LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
+            WHERE h.silinme_tarihi IS NULL
+              AND h.personel_id = ?
+              AND d.firma_id = ?
+              AND LOWER(COALESCE(k.tur_adi, '')) LIKE '%aparat%'
+            GROUP BY DATE(h.tarih)
+            ORDER BY DATE(h.tarih) DESC
+            LIMIT 180
+        ");
+        $sql->execute([$personelId, $_SESSION['firma_id']]);
+        $rows = $sql->fetchAll(PDO::FETCH_OBJ);
+        foreach ($rows as $r) {
+            $r->gun_format = Date::engtodt($r->gun);
+            $r->net = (int) $r->verilen - (int) $r->tuketilen - (int) $r->depo_iade - (int) $r->kayip;
+        }
+
+        jsonResponse('success', 'Başarılı', ['rows' => $rows]);
+    } catch (Exception $ex) {
+        jsonResponse('error', $ex->getMessage());
+    }
+}
+
+if ($action == "aparat-hareketler-list") {
+    try {
+        $draw = intval($_POST['draw'] ?? 0);
+        $start = intval($_POST['start'] ?? 0);
+        $length = intval($_POST['length'] ?? 25);
+
+        $sqlCount = $Demirbas->db->prepare(" 
+            SELECT COUNT(*)
+            FROM demirbas_hareketler h
+            INNER JOIN demirbas d ON d.id = h.demirbas_id
+            LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
+            WHERE h.silinme_tarihi IS NULL AND d.firma_id = ? AND LOWER(COALESCE(k.tur_adi, '')) LIKE '%aparat%'
+        ");
+        $sqlCount->execute([$_SESSION['firma_id']]);
+        $total = (int) $sqlCount->fetchColumn();
+
+        $sql = $Demirbas->db->prepare(" 
+            SELECT
+                h.tarih,
+                h.hareket_tipi,
+                h.miktar,
+                h.aciklama,
+                COALESCE(p.adi_soyadi, '-') as personel_adi,
+                COALESCE(d.demirbas_adi, '-') as demirbas_adi
+            FROM demirbas_hareketler h
+            INNER JOIN demirbas d ON d.id = h.demirbas_id
+            LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
+            LEFT JOIN personel p ON p.id = h.personel_id
+            WHERE h.silinme_tarihi IS NULL AND d.firma_id = ? AND LOWER(COALESCE(k.tur_adi, '')) LIKE '%aparat%'
+            ORDER BY h.tarih DESC
+            LIMIT ? OFFSET ?
+        ");
+        $sql->execute([$_SESSION['firma_id'], $length, $start]);
+        $rows = $sql->fetchAll(PDO::FETCH_OBJ);
+
+        $data = [];
+        foreach ($rows as $r) {
+            $data[] = [
+                'tarih' => Date::engtodt(date('Y-m-d', strtotime($r->tarih))),
+                'personel' => htmlspecialchars((string) $r->personel_adi),
+                'demirbas' => htmlspecialchars((string) $r->demirbas_adi),
+                'tip' => DemirbasHareketModel::getHareketTipiBadge($r->hareket_tipi),
+                'miktar' => (int) $r->miktar,
+                'aciklama' => htmlspecialchars((string) ($r->aciklama ?? ''))
+            ];
+        }
+
+        echo json_encode(['draw' => $draw, 'recordsTotal' => $total, 'recordsFiltered' => $total, 'data' => $data]);
+        exit;
+    } catch (Exception $ex) {
+        jsonResponse('error', $ex->getMessage());
     }
 }
 // ============== SERVİS KAYDI İŞLEMLERİ ==============
