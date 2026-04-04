@@ -44,8 +44,8 @@ $title = 'Cari Yönetimi';
     <!-- Özet Kartları (Minimal Mobil ve Desktop) -->
     <div class="row g-2 mb-4 summary-cards-container">
         <div class="col-4 col-md-4">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card minimal-card"
-                style="--card-color: #f43f5e; border-bottom: 2px solid var(--card-color) !important;">
+            <div id="card_toplam_aldim" class="card border-0 shadow-sm h-100 bordro-summary-card minimal-card"
+                style="--card-color: #f43f5e; border-bottom: 2px solid var(--card-color) !important; cursor: pointer;">
                 <div class="card-body p-2 text-center text-md-start">
                     <div class="icon-label-container d-none d-md-flex">
                         <div class="icon-box" style="background: rgba(244, 63, 94, 0.1);">
@@ -62,8 +62,8 @@ $title = 'Cari Yönetimi';
         </div>
 
         <div class="col-4 col-md-4">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card minimal-card"
-                style="--card-color: #2a9d8f; border-bottom: 2px solid var(--card-color) !important;">
+            <div id="card_toplam_verdim" class="card border-0 shadow-sm h-100 bordro-summary-card minimal-card"
+                style="--card-color: #2a9d8f; border-bottom: 2px solid var(--card-color) !important; cursor: pointer;">
                 <div class="card-body p-2 text-center text-md-start">
                     <div class="icon-label-container d-none d-md-flex">
                         <div class="icon-box" style="background: rgba(42, 157, 143, 0.1);">
@@ -80,8 +80,8 @@ $title = 'Cari Yönetimi';
         </div>
 
         <div class="col-4 col-md-4">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card minimal-card"
-                style="--card-color: #135bec; border-bottom: 2px solid var(--card-color) !important;">
+            <div id="card_bakiye" class="card border-0 shadow-sm h-100 bordro-summary-card minimal-card"
+                style="--card-color: #135bec; border-bottom: 2px solid var(--card-color) !important; cursor: pointer;">
                 <div class="card-body p-2 text-center text-md-start">
                     <div class="icon-label-container d-none d-md-flex">
                         <div class="icon-box" style="background: rgba(19, 91, 236, 0.1);">
@@ -100,6 +100,8 @@ $title = 'Cari Yönetimi';
     </div>
 
     <style>
+        .bordro-summary-card:hover { transform: translateY(-3px); box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important; transition: all 0.3s ease; }
+        .bordro-summary-card:active { transform: translateY(-1px); }
         /* Mobil Tasarım İyileştirmeleri - Dashboard Uyumluluğu */
         @media (max-width: 767.98px) {
             .bordro-info-bar { border-radius: 15px !important; margin-bottom: 1rem !important; }

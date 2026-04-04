@@ -27,6 +27,13 @@ class CariModel extends Model
         $where = "c.silinme_tarihi IS NULL";
         $bindParams = [];
 
+        $balance_filter = $params['balance_filter'] ?? 'all';
+        if ($balance_filter === 'borclu') {
+            $where .= " AND (SELECT ROUND(SUM(alacak) - SUM(borc), 2) FROM cari_hareketleri WHERE cari_id = c.id AND silinme_tarihi IS NULL) < 0";
+        } elseif ($balance_filter === 'alacakli') {
+            $where .= " AND (SELECT ROUND(SUM(alacak) - SUM(borc), 2) FROM cari_hareketleri WHERE cari_id = c.id AND silinme_tarihi IS NULL) > 0";
+        }
+
         if (!empty($search)) {
             $where .= " AND (c.CariAdi LIKE :search OR c.firma LIKE :search OR c.Telefon LIKE :search OR c.Email LIKE :search)";
             $bindParams['search'] = "%$search%";

@@ -61,6 +61,34 @@ $(document).ready(function () {
         table.ajax.reload();
     });
 
+    $('#card_toplam_aldim').on('click', function() {
+        $('#filter_in').prop('checked', true).trigger('change');
+        // Scroll to filters if mobile
+        if(window.innerWidth < 768) {
+            $('html, body').animate({
+                scrollTop: $(".btn-group").offset().top - 20
+            }, 500);
+        }
+    });
+
+    $('#card_toplam_verdim').on('click', function() {
+        $('#filter_out').prop('checked', true).trigger('change');
+        if(window.innerWidth < 768) {
+            $('html, body').animate({
+                scrollTop: $(".btn-group").offset().top - 20
+            }, 500);
+        }
+    });
+
+    $('#card_bakiye').on('click', function() {
+        $('#filter_all').prop('checked', true).trigger('change');
+        if(window.innerWidth < 768) {
+            $('html, body').animate({
+                scrollTop: $(".btn-group").offset().top - 20
+            }, 500);
+        }
+    });
+
     function safeFeatherReplace() {
         if (typeof feather !== 'undefined') {
             try {

@@ -68,6 +68,7 @@ use App\Helper\Helper;
     integrity="sha384-Q6E9RHvbIyZFJoft+2mJbHaEWldlvI9IOYy5n3zV9zzTtmI3UksdQRVvoxMfooAo"
     crossorigin="anonymous"></script>
 <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+<link href="<?php echo Helper::base_url('assets/css/ayin-personeli.css?v=' . filemtime("assets/css/ayin-personeli.css")); ?>" rel="stylesheet" type="text/css" />
 
 
 

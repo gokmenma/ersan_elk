@@ -72,15 +72,32 @@ if (Gate::canWithMessage("personel_listesi")) {
                             cursor: pointer;
                         }
 
+                        .personel-img-thumb:hover {
+                            transform: scale(1.1);
+                            z-index: 10;
+                            border-color: #556ee6;
+                        }
+
                         .personel-info-box {
                             display: flex;
                             align-items: center;
                             gap: 12px;
                         }
 
+                        .personel-info-box img + img {
+                            margin-left: -15px; /* Stacked effect */
+                        }
+
+                        .personel-info-box .position-relative:hover img {
+                            margin-left: 0;
+                            transform: scale(1.1);
+                            z-index: 11;
+                        }
+
                         .personel-details {
                             display: flex;
                             flex-direction: column;
+                            min-width: 0;
                         }
 
                         .personel-tc {
@@ -90,7 +107,7 @@ if (Gate::canWithMessage("personel_listesi")) {
                         }
 
                         .personel-hover-preview {
-                            position: absolute; /* Changed from fixed to absolute */
+                            position: absolute;
                             display: none;
                             z-index: 99999;
                             width: 150px;
@@ -102,6 +119,12 @@ if (Gate::canWithMessage("personel_listesi")) {
                             pointer-events: none;
                             background: #fff;
                             animation: zoomIn 0.2s ease-out;
+                        }
+
+                        .badge.rounded-pill {
+                            font-weight: 800 !important;
+                            letter-spacing: 0.5px;
+                            box-shadow: 0 1px 3px rgba(0,0,0,0.2);
                         }
 
                         @keyframes zoomIn {

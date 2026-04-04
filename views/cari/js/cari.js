@@ -1,4 +1,6 @@
 $(document).ready(function () {
+    let currentBalanceFilter = 'all';
+
     const table = $('#cariTable').DataTable({
         ...getDatatableOptions(),
         processing: true,
@@ -8,6 +10,7 @@ $(document).ready(function () {
             type: "POST",
             data: function (d) {
                 d.action = "cari-ajax-list";
+                d.balance_filter = currentBalanceFilter;
             },
             dataSrc: function(json) {
                 renderMobileList(json.data);
@@ -87,6 +90,38 @@ $(document).ready(function () {
     // Mobil Arama
     $('#mobileSearch').on('keyup', function () {
         table.search(this.value).draw();
+    });
+
+    // Kart Tıklama Filtreleri
+    $('#card_toplam_aldim').on('click', function() {
+        currentBalanceFilter = 'borclu';
+        table.ajax.reload();
+        // Mobilde listeye kaydır
+        if(window.innerWidth < 768) {
+            $('html, body').animate({
+                scrollTop: $("#cariMobileContainer").offset().top - 20
+            }, 500);
+        }
+    });
+
+    $('#card_toplam_verdim').on('click', function() {
+        currentBalanceFilter = 'alacakli';
+        table.ajax.reload();
+        if(window.innerWidth < 768) {
+            $('html, body').animate({
+                scrollTop: $("#cariMobileContainer").offset().top - 20
+            }, 500);
+        }
+    });
+
+    $('#card_bakiye').on('click', function() {
+        currentBalanceFilter = 'all';
+        table.ajax.reload();
+        if(window.innerWidth < 768) {
+            $('html, body').animate({
+                scrollTop: $("#cariMobileContainer").offset().top - 20
+            }, 500);
+        }
     });
 
     function renderMobileList(data) {
