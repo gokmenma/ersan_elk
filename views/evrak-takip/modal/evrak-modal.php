@@ -82,17 +82,26 @@
                             
                             <div class="mb-3">
                                 <?php 
-                                $per_options = ['' => 'Seçiniz...'];
+                                $per_options_ofis = ['' => 'Seçiniz...'];
+                                $per_options_ilgili = ['' => 'Seçiniz...'];
+                                
                                 foreach ($personeller as $per) {
-                                    $per_options[$per->id] = $per->adi_soyadi;
+                                    // Zimmetlenen (Ofis) için sadece BÜRO departmanı
+                                    if ($per->departman == 'BÜRO') {
+                                        $per_options_ofis[$per->id] = $per->adi_soyadi;
+                                    }
+                                    
+                                    // İlgili personel için hepsi
+                                    $per_options_ilgili[$per->id] = $per->adi_soyadi;
                                 }
-                                echo Form::FormSelect2('personel_id', $per_options, '', 'Zimmetlenen Personel (Ofis)', 'user-check', 'key', '', 'form-select evrak-select2'); 
+                                
+                                echo Form::FormSelect2('personel_id', $per_options_ofis, '', 'Zimmetlenen Personel (Ofis)', 'user-check', 'key', '', 'form-select evrak-select2'); 
                                 ?>
                             </div>
 
                             <div class="mb-3">
                                 <?php 
-                                echo Form::FormSelect2('ilgili_personel_id', $per_options, '', 'İlgili Personel', 'user', 'key', '', 'form-select evrak-select2'); 
+                                echo Form::FormSelect2('ilgili_personel_id', $per_options_ilgili, '', 'İlgili Personel', 'user', 'key', '', 'form-select evrak-select2'); 
                                 ?>
                             </div>
 

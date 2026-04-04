@@ -209,6 +209,15 @@ $gelen_evraklar = $Evrak->getGelenEvraklar();
                                                             <i data-feather="user-check" style="width: 10px;"></i>
                                                         </div>
                                                         <span class="small fw-bold text-dark"><?php echo $evrak->personel_adi; ?></span>
+
+                                                        <button type="button" class="btn btn-link text-primary p-0 ms-2 evrak-bildir-manuel" 
+                                                            data-id="<?php echo $evrak->id; ?>" 
+                                                            data-personel-id="<?php echo $evrak->personel_id; ?>"
+                                                            data-type="personel"
+                                                            data-last-notified="<?php echo $evrak->son_bildirim_tarihi_personel; ?>"
+                                                            title="Bildirim ve Mail Gönder">
+                                                            <i data-feather="bell" style="width: 14px;"></i>
+                                                        </button>
                                                     </div>
                                                 <?php else: ?>
                                                     <span class="text-muted small">-</span>
@@ -225,6 +234,8 @@ $gelen_evraklar = $Evrak->getGelenEvraklar();
                                                         <button type="button" class="btn btn-link text-warning p-0 ms-2 evrak-bildir-manuel" 
                                                             data-id="<?php echo $evrak->id; ?>" 
                                                             data-personel-id="<?php echo $evrak->ilgili_personel_id; ?>"
+                                                            data-type="ilgili"
+                                                            data-last-notified="<?php echo $evrak->son_bildirim_tarihi_ilgili; ?>"
                                                             title="Bildirim ve Mail Gönder">
                                                             <i data-feather="bell" style="width: 14px;"></i>
                                                         </button>

@@ -125,6 +125,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 <p style='color: #475569;'>Evrak detaylarını görüntülemek ve diğer işlemler için sisteme giriş yapabilirsiniz.</p>";
                             $html = EmailTemplateHelper::getTemplate("Evrak Bildirimi", $icerik, "Sisteme Giriş Yap", "https://" . $_SERVER['HTTP_HOST'] . "/index.php?p=evrak-takip/list");
                             MailGonderService::gonder($email, "Evrak Bildirimi: " . $evrak->konu, $html);
+
+                            // Bildirim tarihini güncelle
+                            $Model->saveWithAttr([
+                                'id' => $id,
+                                'son_bildirim_tarihi_ilgili' => date('Y-m-d H:i:s')
+                            ]);
                         }
                     }
                 }
@@ -183,6 +189,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             case 'evrak-bildir':
                 $id = intval($_POST['id'] ?? 0);
                 $personel_id = intval($_POST['personel_id'] ?? 0);
+                $type = $_POST['type'] ?? 'ilgili'; // 'personel' veya 'ilgili'
 
                 if ($id <= 0 || $personel_id <= 0) {
                     throw new Exception("Geçersiz veri.");
@@ -263,6 +270,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     );
 
                     MailGonderService::gonder($email, "Evrak Bildirimi: " . $evrak->konu, $html);
+                    
+                    // Bildirim tarihini güncelle
+                    $column = ($type == 'personel') ? 'son_bildirim_tarihi_personel' : 'son_bildirim_tarihi_ilgili';
+                    $Model->saveWithAttr([
+                        'id' => $id,
+                        $column => date('Y-m-d H:i:s')
+                    ]);
+
                     $msg = "Bildirim ve mail başarıyla gönderildi.";
                 } else {
                     $msg = "Personelin e-posta adresi bulunmadığı için sadece sistem bildirimi gönderildi (Eğer kullanıcı hesabı varsa).";

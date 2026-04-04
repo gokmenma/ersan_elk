@@ -239,12 +239,28 @@ $(document).ready(function () {
   $(document).on("click", ".evrak-bildir-manuel", function () {
     const id = $(this).data("id");
     const personId = $(this).data("personel-id");
+    const type = $(this).data("type") || "ilgili";
+    const lastNotified = $(this).data("last-notified");
     const btn = $(this);
     const originalIcon = btn.html();
 
+    let text = "Seçili personele evrak bilgileri bildirim ve mail olarak gönderilecektir.";
+    if (lastNotified && lastNotified !== "" && lastNotified !== "0000-00-00 00:00:00" && lastNotified !== "null") {
+        // Tarihi daha şık formatla (Y-m-d H:i:s -> d.m.Y H:i)
+        let formattedDate = lastNotified;
+        try {
+            const dateParts = lastNotified.split(' ');
+            const d = dateParts[0].split('-');
+            const t = dateParts[1].split(':');
+            formattedDate = d[2] + "." + d[1] + "." + d[0] + " " + t[0] + ":" + t[1];
+        } catch (e) {}
+        
+        text = `En son <b>${formattedDate}</b> tarihinde bildirim yapıldı.<br>Tekrar bildirim yapmak istiyor musunuz?`;
+    }
+
     Swal.fire({
         title: 'Emin misiniz?',
-        text: "Seçili personele evrak bilgileri bildirim ve mail olarak gönderilecektir.",
+        html: text,
         icon: 'question',
         showCancelButton: true,
         confirmButtonColor: '#0ea5e9',
@@ -255,10 +271,15 @@ $(document).ready(function () {
         if (result.isConfirmed) {
             btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm"></span>');
             
-            $.post(api_url, { action: "evrak-bildir", id: id, personel_id: personId }, function (response) {
+            $.post(api_url, { 
+                action: "evrak-bildir", 
+                id: id, 
+                personel_id: personId,
+                type: type 
+            }, function (response) {
                 btn.prop("disabled", false).html(originalIcon);
                 if (response.status === "success") {
-                    Swal.fire('Başarılı!', response.message, 'success');
+                    Swal.fire('Başarılı!', response.message, 'success').then(() => location.reload());
                 } else {
                     Swal.fire('Hata!', response.message, 'error');
                 }
