@@ -32,11 +32,14 @@ try {
     switch ($action) {
         // Yeni bilet oluştur (PWA)
         case 'create-ticket':
+            $userId = (int) ($_SESSION['user_id'] ?? 0);
             $personelId = (int) ($_SESSION['personel_id'] ?? 0);
-            if (!$personelId && isset($_SESSION['user_id'])) {
-                $personelId = $destekBiletModel->getPersonelIdByUserId($_SESSION['user_id']);
+            
+            if (!$personelId && $userId > 0) {
+                $personelId = $destekBiletModel->getPersonelIdByUserId($userId);
             }
-            if (!$personelId) throw new Exception('Talebi oluşturacak personel kaydı bulunamadı.');
+
+            if (!$userId) throw new Exception('Talebi oluşturacak kullanıcı oturumu bulunamadı.');
 
             $konu = trim($_POST['konu'] ?? '');
             $kategori = trim($_POST['kategori'] ?? 'Genel');
@@ -45,15 +48,31 @@ try {
 
             if (empty($konu) || empty($mesaj)) throw new Exception('Konu ve mesaj gereklidir');
 
-            $dosyaYolu = null;
-            if (isset($_FILES['dosya']) && $_FILES['dosya']['error'] === UPLOAD_ERR_OK) {
-                $dosyaYolu = handleFileUpload($_FILES['dosya']);
+            $dosyaYolu = [];
+            if (isset($_FILES['dosya'])) {
+                if (is_array($_FILES['dosya']['name'])) {
+                    // Multiple files
+                    foreach ($_FILES['dosya']['name'] as $key => $name) {
+                        if ($_FILES['dosya']['error'][$key] === UPLOAD_ERR_OK) {
+                            $dosyaYolu[] = handleFileUpload([
+                                'name' => $_FILES['dosya']['name'][$key],
+                                'type' => $_FILES['dosya']['type'][$key],
+                                'tmp_name' => $_FILES['dosya']['tmp_name'][$key],
+                                'error' => $_FILES['dosya']['error'][$key],
+                                'size' => $_FILES['dosya']['size'][$key]
+                            ]);
+                        }
+                    }
+                } elseif ($_FILES['dosya']['error'] === UPLOAD_ERR_OK) {
+                    // Single file
+                    $dosyaYolu[] = handleFileUpload($_FILES['dosya']);
+                }
             }
 
             $canBypassApproval = isSupportAdminViewer() || Gate::allows('destek_talebi_onaylama');
             $onayDurumu = $canBypassApproval ? 'onaylandi' : 'beklemede';
 
-            $biletId = $destekBiletModel->createTicket($personelId, $konu, $kategori, $oncelik, $mesaj, $dosyaYolu, $onayDurumu);
+            $biletId = $destekBiletModel->createTicket($userId, $personelId, $konu, $kategori, $oncelik, $mesaj, $dosyaYolu, $onayDurumu);
 
             // Onaylı taleplerde adminlere, bekleyen taleplerde onaylayıcılara bildirim gönder
             try {
@@ -81,21 +100,26 @@ try {
 
         // Biletleri listele (PWA)
         case 'get-tickets-pwa':
+            $userId = (int) ($_SESSION['user_id'] ?? 0);
             $personelId = (int) ($_SESSION['personel_id'] ?? 0);
-            if (!$personelId && isset($_SESSION['user_id'])) {
-                $personelId = $destekBiletModel->getPersonelIdByUserId($_SESSION['user_id']);
+            if (!$personelId && $userId > 0) {
+                $personelId = $destekBiletModel->getPersonelIdByUserId($userId);
             }
 
+            $status = $_GET['status'] ?? $_POST['status'] ?? null;
+            $search = $_POST['search'] ?? null;
+            $page = (int) ($_POST['page'] ?? 1);
+            $limit = (int) ($_POST['limit'] ?? 20);
             $isAdminSupport = isSupportAdminViewer();
             $isApproverOnly = Gate::allows('destek_talebi_onaylama') && !$isAdminSupport;
 
-            $ownTickets = $personelId > 0 ? ($destekBiletModel->getPersonelTickets($personelId) ?: []) : [];
+            $ownTickets = $destekBiletModel->getPersonelTickets($userId, $personelId, $status, $search, $page, $limit) ?: [];
             
             // For approvers: get both pending (beklemede) and approved (onaylandi) tickets
             $approvalTickets = [];
             if ($isApproverOnly) {
-                $pendingTickets = $destekBiletModel->getAllTickets(null, 'beklemede') ?: [];
-                $approvedTickets = $destekBiletModel->getAllTickets(null, 'onaylandi') ?: [];
+                $pendingTickets = $destekBiletModel->getAllTickets($status, 'beklemede', $search, $page, $limit) ?: [];
+                $approvedTickets = $destekBiletModel->getAllTickets($status, 'onaylandi', $search, $page, $limit) ?: [];
                 
                 // Filter approved to only include those approved by this user
                 $userId = (int) ($_SESSION['user_id'] ?? 0);
@@ -145,7 +169,7 @@ try {
                 }
             }
 
-            $stats = $destekBiletModel->getStats($personelId) ?: (object) ['toplam' => 0, 'bekleyen' => 0, 'yanitlanan' => 0, 'kapali' => 0];
+            $stats = $destekBiletModel->getStats($userId, $personelId) ?: (object) ['toplam' => 0, 'bekleyen' => 0, 'yanitlanan' => 0, 'kapali' => 0];
             $approvalStats = $isApproverOnly ? ($destekBiletModel->getStats(null, 'beklemede') ?: null) : null;
 
             $currentUserId = (int) ($_SESSION['user_id'] ?? 0);
@@ -157,7 +181,7 @@ try {
             // Her bilet için is_mine kontrolü ekle
             if (!empty($tickets)) {
                 foreach ($tickets as $t) {
-                    $t->is_mine = ($currentPersonelId > 0 && (int)$t->personel_id === $currentPersonelId);
+                    $t->is_mine = ($currentPersonelId > 0 && (int)$t->personel_id === $currentPersonelId) || ($currentUserId > 0 && (int)$t->user_id === $currentUserId);
                 }
             }
 
@@ -176,6 +200,9 @@ try {
         // Biletleri listele (Admin)
         case 'get-tickets-admin':
             $status = $_POST['status'] ?? null;
+            $search = $_POST['search'] ?? null;
+            $page = (int) ($_POST['page'] ?? 1);
+            $limit = (int) ($_POST['limit'] ?? 20);
             $isAdminSupport = isSupportAdminViewer();
             $isApprover = Gate::allows('destek_talebi_onaylama');
             $approvalFilter = 'onaylandi';
@@ -187,13 +214,13 @@ try {
             $currentUserId = (int) ($_SESSION['user_id'] ?? 0);
             $currentPersonelId = $destekBiletModel->getPersonelIdByUserId($currentUserId);
 
-            $tickets = $destekBiletModel->getAllTickets($status, $approvalFilter);
+            $tickets = $destekBiletModel->getAllTickets($status, $approvalFilter, $search, $page, $limit);
             $stats = $destekBiletModel->getStats(null, $approvalFilter);
 
             // Her bilet için is_mine kontrolü ekle
             if ($tickets) {
                 foreach ($tickets as $t) {
-                    $t->is_mine = ($currentPersonelId > 0 && (int)$t->personel_id === $currentPersonelId);
+                    $t->is_mine = ($currentPersonelId > 0 && (int)$t->personel_id === $currentPersonelId) || ($currentUserId > 0 && (int)$t->user_id === $currentUserId);
                 }
             }
 
@@ -218,12 +245,15 @@ try {
             $isApproverViewer = Gate::allows('destek_talebi_onaylama');
             $isPrivilegedViewer = Gate::isSuperAdmin() || $isAdminViewer || $isApproverViewer;
             if (!$isPrivilegedViewer) {
-                if (isset($_SESSION['personel_id']) && $ticket->personel_id != $_SESSION['personel_id']) {
+                $currentUserId = (int) ($_SESSION['user_id'] ?? 0);
+                $currentPersonelId = (int) ($_SESSION['personel_id'] ?? 0);
+                
+                $isOwner = false;
+                if ($currentUserId > 0 && (int)$ticket->user_id === $currentUserId) $isOwner = true;
+                if ($currentPersonelId > 0 && (int)$ticket->personel_id === $currentPersonelId) $isOwner = true;
+                
+                if (!$isOwner) {
                     throw new Exception('Yetkisiz erişim');
-                }
-                if (!isset($_SESSION['personel_id']) && isset($_SESSION['user_id'])) {
-                    $pId = $destekBiletModel->getPersonelIdByUserId($_SESSION['user_id']);
-                    if ($ticket->personel_id != $pId) throw new Exception('Yetkisiz erişim');
                 }
             }
 
@@ -250,12 +280,15 @@ try {
             
             $isSuperAdmin = Gate::isSuperAdmin();
             if (!$isSuperAdmin) {
-                if (isset($_SESSION['personel_id']) && $ticket->personel_id != $_SESSION['personel_id']) {
+                $currentUserId = (int) ($_SESSION['user_id'] ?? 0);
+                $currentPersonelId = (int) ($_SESSION['personel_id'] ?? 0);
+                
+                $isOwner = false;
+                if ($currentUserId > 0 && (int)($ticket->user_id ?? 0) === $currentUserId) $isOwner = true;
+                if ($currentPersonelId > 0 && (int)($ticket->personel_id ?? 0) === $currentPersonelId) $isOwner = true;
+                
+                if (!$isOwner) {
                     throw new Exception('Yetkisiz erişim');
-                }
-                if (!isset($_SESSION['personel_id']) && isset($_SESSION['user_id'])) {
-                    $pId = $destekBiletModel->getPersonelIdByUserId($_SESSION['user_id']);
-                    if ($ticket->personel_id != $pId) throw new Exception('Yetkisiz erişim');
                 }
             }
 
@@ -279,8 +312,13 @@ try {
                     $gonderenId = $destekBiletModel->getPersonelIdByUserId((int) $_SESSION['user_id']);
                 }
 
+                // If still 0, use user_id
                 if ($gonderenId <= 0) {
-                    throw new Exception('Mesaj gönderecek personel kaydı bulunamadı.');
+                    $gonderenId = (int) ($_SESSION['user_id'] ?? 0);
+                }
+
+                if ($gonderenId <= 0) {
+                    throw new Exception('Mesaj gönderecek kullanıcı kaydı bulunamadı.');
                 }
 
                 if (!$destekBiletModel->canRequesterReply($biletId)) {
@@ -288,9 +326,23 @@ try {
                 }
             }
 
-            $dosyaYolu = null;
-            if (isset($_FILES['dosya']) && $_FILES['dosya']['error'] === UPLOAD_ERR_OK) {
-                $dosyaYolu = handleFileUpload($_FILES['dosya']);
+            $dosyaYolu = [];
+            if (isset($_FILES['dosya'])) {
+                if (is_array($_FILES['dosya']['name'])) {
+                    foreach ($_FILES['dosya']['name'] as $key => $name) {
+                        if ($_FILES['dosya']['error'][$key] === UPLOAD_ERR_OK) {
+                            $dosyaYolu[] = handleFileUpload([
+                                'name' => $_FILES['dosya']['name'][$key],
+                                'type' => $_FILES['dosya']['type'][$key],
+                                'tmp_name' => $_FILES['dosya']['tmp_name'][$key],
+                                'error' => $_FILES['dosya']['error'][$key],
+                                'size' => $_FILES['dosya']['size'][$key]
+                            ]);
+                        }
+                    }
+                } elseif ($_FILES['dosya']['error'] === UPLOAD_ERR_OK) {
+                    $dosyaYolu[] = handleFileUpload($_FILES['dosya']);
+                }
             }
 
             $destekBiletModel->addMessage($biletId, $gonderenTip, $gonderenId, $mesaj, $dosyaYolu);
@@ -355,7 +407,7 @@ try {
             $biletId = (int) ($_POST['bilet_id'] ?? 0);
             $durum = $_POST['durum'] ?? '';
 
-            if (!$biletId || !in_array($durum, ['acik', 'yanitlandi', 'personel_yaniti', 'kapali'])) {
+            if (!$biletId || !in_array($durum, ['acik', 'yanitlandi', 'personel_yaniti', 'kapali', 'isleme_alindi', 'cozuldu'])) {
                 throw new Exception('Geçersiz parametreler');
             }
 
@@ -364,27 +416,44 @@ try {
             if (!$ticket) throw new Exception('Bilet bulunamadı');
             
             $isSuperAdmin = Gate::isSuperAdmin();
-            if (!$isSuperAdmin) {
-                if (isset($_SESSION['personel_id']) && $ticket->personel_id != $_SESSION['personel_id']) {
+            $isAdminSupport = Gate::allows('admin_destek_talebi');
+            
+            if (!$isSuperAdmin && !$isAdminSupport) {
+                $currentUserId = (int) ($_SESSION['user_id'] ?? 0);
+                $currentPersonelId = (int) ($_SESSION['personel_id'] ?? 0);
+                
+                $isOwner = false;
+                if ($currentUserId > 0 && (int)($ticket->user_id ?? 0) === $currentUserId) $isOwner = true;
+                if ($currentPersonelId > 0 && (int)($ticket->personel_id ?? 0) === $currentPersonelId) $isOwner = true;
+                
+                if (!$isOwner) {
                     throw new Exception('Yetkisiz erişim');
-                }
-                if (!isset($_SESSION['personel_id']) && isset($_SESSION['user_id'])) {
-                    $pId = $destekBiletModel->getPersonelIdByUserId($_SESSION['user_id']);
-                    if ($ticket->personel_id != $pId) throw new Exception('Yetkisiz erişim');
                 }
             }
 
-            $destekBiletModel->updateStatus($biletId, $durum);
+            $destekBiletModel->updateStatus($biletId, $durum, (int) ($_SESSION['user_id'] ?? 0));
+            
+            // Kullanıcıya bildirim gönder
+            try {
+                if (in_array($durum, ['kapali', 'cozuldu', 'isleme_alindi'])) {
+                    notifyTicketOwnerForStatusChange($ticket, $durum);
+                }
+            } catch (Exception $e) {
+                error_log('Destek durum güncelleme bildirim hatası: ' . $e->getMessage());
+            }
+            
             echo json_encode(['success' => true]);
             break;
 
         // İstatistikleri getir
         case 'get-stats':
-            $personelId = isset($_SESSION['personel_id']) ? $_SESSION['personel_id'] : null;
-            if (!$personelId && isset($_SESSION['user_id'])) {
-                $personelId = $destekBiletModel->getPersonelIdByUserId($_SESSION['user_id']);
+            $userId = (int) ($_SESSION['user_id'] ?? 0);
+            $personelId = (int) ($_SESSION['personel_id'] ?? 0);
+            if (!$personelId && $userId > 0) {
+                $personelId = $destekBiletModel->getPersonelIdByUserId($userId);
             }
-            $stats = $destekBiletModel->getStats($personelId);
+            // Use userId for stats if available
+            $stats = $destekBiletModel->getStats($userId, $personelId);
             echo json_encode(['success' => true, 'stats' => $stats]);
             break;
 
@@ -452,10 +521,16 @@ function getUsersByPersonelId(int $personelId): array
     $sql = "SELECT id, adi_soyadi, email_adresi, email FROM users WHERE personel_id = :personel_id";
     $params = [':personel_id' => $personelId];
 
+    /* 
+    NOT: owner_id filtresini kaldırdık çünkü yönetici farklı bir owner_id 
+    bağlamında olsa bile (örn. süper admin) personel sahibine bildirimin gitmesini istiyoruz.
+    */
+    /*
     if (!empty($_SESSION['owner_id'])) {
         $sql .= " AND owner_id = :owner_id";
         $params[':owner_id'] = (int) $_SESSION['owner_id'];
     }
+    */
 
     $stmt = $db->prepare($sql);
     $stmt->execute($params);
@@ -593,11 +668,17 @@ function notifyTicketOwnerForAdminReply($ticket, string $mesaj): void
 {
     $ticketId = (int) $ticket->id;
     $personelId = (int) ($ticket->personel_id ?? 0);
-    if ($personelId <= 0) {
-        return;
+    $userId = (int) ($ticket->user_id ?? 0);
+
+    $linkedUsers = [];
+    if ($personelId > 0) {
+        $linkedUsers = getUsersByPersonelId($personelId);
+    } elseif ($userId > 0) {
+        $userModel = new UserModel();
+        $owner = $userModel->find($userId);
+        if ($owner) $linkedUsers = [$owner];
     }
 
-    $linkedUsers = getUsersByPersonelId($personelId);
     $bildirimModel = new BildirimModel();
 
     foreach ($linkedUsers as $user) {
@@ -619,11 +700,13 @@ function notifyTicketOwnerForAdminReply($ticket, string $mesaj): void
         }
     }
 
-    $personelModel = new PersonelModel();
-    $personel = $personelModel->find($personelId);
-    $personelEmail = trim((string) ($personel->email_adresi ?? ''));
-    if ($personelEmail !== '') {
-        $emails[] = strtolower($personelEmail);
+    if ($personelId > 0) {
+        $personelModel = new PersonelModel();
+        $personel = $personelModel->find($personelId);
+        $personelEmail = trim((string) ($personel->email_adresi ?? ''));
+        if ($personelEmail !== '') {
+            $emails[] = strtolower($personelEmail);
+        }
     }
 
     $emails = array_values(array_unique($emails));
@@ -646,15 +729,64 @@ function notifyTicketOwnerForAdminReply($ticket, string $mesaj): void
     MailGonderService::gonder($emails, $subject, $mailContent);
 }
 
+function notifyTicketOwnerForStatusChange($ticket, string $newStatus): void
+{
+    $ticketId = (int) $ticket->id;
+    $personelId = (int) ($ticket->personel_id ?? 0);
+    $userId = (int) ($ticket->user_id ?? 0);
+
+    $linkedUsers = [];
+    if ($personelId > 0) {
+        $linkedUsers = getUsersByPersonelId($personelId);
+    } elseif ($userId > 0) {
+        $userModel = new UserModel();
+        $owner = $userModel->find($userId);
+        if ($owner) $linkedUsers = [$owner];
+    }
+
+    if (empty($linkedUsers)) return;
+
+    $bildirimModel = new BildirimModel();
+    
+    $statusLabels = [
+        'kapali' => 'Kapatıldı',
+        'cozuldu' => 'Çözüldü',
+        'isleme_alindi' => 'İşleme Alındı',
+        'yanitlandi' => 'Yanıtlandı',
+        'personel_yaniti' => 'Personel Yanıtı'
+    ];
+    
+    $statusText = $statusLabels[$newStatus] ?? $newStatus;
+    $title = 'Destek Talebi Durumu: ' . $statusText;
+    $message = 'Talep #' . ($ticket->ref_no ?? $ticketId) . ' durumu "' . $statusText . '" olarak güncellendi.';
+
+    foreach ($linkedUsers as $user) {
+        $bildirimModel->createNotification(
+            (int) $user->id,
+            $title,
+            $message,
+            buildTicketRoute($ticketId),
+            'info-circle',
+            'primary'
+        );
+    }
+}
+
 function notifyTicketOwnerForApprovalResult($ticket, string $onayDurumu, string $onayNotu = ''): void
 {
     $ticketId = (int) $ticket->id;
     $personelId = (int) ($ticket->personel_id ?? 0);
-    if ($personelId <= 0) {
-        return;
+    $userId = (int) ($ticket->user_id ?? 0);
+
+    $linkedUsers = [];
+    if ($personelId > 0) {
+        $linkedUsers = getUsersByPersonelId($personelId);
+    } elseif ($userId > 0) {
+        $userModel = new UserModel();
+        $owner = $userModel->find($userId);
+        if ($owner) $linkedUsers = [$owner];
     }
 
-    $linkedUsers = getUsersByPersonelId($personelId);
     $bildirimModel = new BildirimModel();
 
     $isApproved = ($onayDurumu === 'onaylandi');
@@ -684,11 +816,13 @@ function notifyTicketOwnerForApprovalResult($ticket, string $onayDurumu, string 
         }
     }
 
-    $personelModel = new PersonelModel();
-    $personel = $personelModel->find($personelId);
-    $personelEmail = trim((string) ($personel->email_adresi ?? ''));
-    if ($personelEmail !== '') {
-        $emails[] = strtolower($personelEmail);
+    if ($personelId > 0) {
+        $personelModel = new PersonelModel();
+        $personel = $personelModel->find($personelId);
+        $personelEmail = trim((string) ($personel->email_adresi ?? ''));
+        if ($personelEmail !== '') {
+            $emails[] = strtolower($personelEmail);
+        }
     }
 
     $emails = array_values(array_unique($emails));

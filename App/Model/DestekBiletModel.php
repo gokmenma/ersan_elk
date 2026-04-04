@@ -19,27 +19,27 @@ class DestekBiletModel extends Model
     /**
      * Yeni bilet oluşturur
      */
-    public function createTicket($personelId, $konu, $kategori, $oncelik, $ilkMesaj, $dosyaYolu = null, $onayDurumu = 'onaylandi')
+    public function createTicket($userId, $personelId, $konu, $kategori, $oncelik, $ilkMesaj, $dosyaYolu = null, $onayDurumu = 'onaylandi')
     {
         try {
             $this->db->beginTransaction();
 
-            if ($this->countActiveTickets((int) $personelId) >= 2) {
-                throw new \Exception('Aynı anda en fazla 2 açık destek talebiniz olabilir. Önce mevcut taleplerinizden birini kapatın.');
+            if ($this->countActiveTickets((int) $userId) >= 10) {
+                throw new \Exception('Aynı anda en fazla 10 açık destek talebiniz olabilir. Önce mevcut taleplerinizden birini kapatın.');
             }
 
             $refNo = $this->generateRefNo();
 
             // Bileti ekle
-                $sql = "INSERT INTO {$this->table} (personel_id, ref_no, konu, kategori, oncelik, durum, onay_durumu) 
-                    VALUES (?, ?, ?, ?, ?, 'acik', ?)";
+            $sql = "INSERT INTO {$this->table} (user_id, personel_id, ref_no, konu, kategori, oncelik, durum, onay_durumu) 
+                    VALUES (?, ?, ?, ?, ?, ?, 'acik', ?)";
             $stmt = $this->db->prepare($sql);
-                $stmt->execute([$personelId, $refNo, $konu, $kategori, $oncelik, $onayDurumu]);
+            $stmt->execute([(int) $userId, (int) $personelId, $refNo, $konu, $kategori, $oncelik, $onayDurumu]);
             
             $biletId = $this->db->lastInsertId();
 
             // İlk mesajı ekle
-            $this->addMessage($biletId, 'personel', $personelId, $ilkMesaj, $dosyaYolu);
+            $this->addMessage($biletId, 'personel', $personelId > 0 ? $personelId : $userId, $ilkMesaj, $dosyaYolu);
 
             $this->db->commit();
             return $biletId;
@@ -51,13 +51,38 @@ class DestekBiletModel extends Model
 
     /**
      * Bilete mesaj ekler
+     * @param int $biletId
+     * @param string $gonderenTip
+     * @param int $gonderenId
+     * @param string $mesaj
+     * @param string|array|null $dosyaYolu Tek dosya yolu (string) veya birden fazla dosya yolu (array)
      */
     public function addMessage($biletId, $gonderenTip, $gonderenId, $mesaj, $dosyaYolu = null)
     {
-        $sql = "INSERT INTO {$this->messageTable} (bilet_id, gonderen_tip, gonderen_id, mesaj, dosya_yolu) 
-                VALUES (?, ?, ?, ?, ?)";
+        // Ana mesajı ekle
+        $sql = "INSERT INTO {$this->messageTable} (bilet_id, gonderen_tip, gonderen_id, mesaj) 
+                VALUES (?, ?, ?, ?)";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$biletId, $gonderenTip, $gonderenId, $mesaj, $dosyaYolu]);
+        $stmt->execute([$biletId, $gonderenTip, $gonderenId, $mesaj]);
+        
+        $mesajId = $this->db->lastInsertId();
+
+        // Dosyaları ekle
+        if ($dosyaYolu) {
+            $files = is_array($dosyaYolu) ? $dosyaYolu : [$dosyaYolu];
+            foreach ($files as $index => $path) {
+                if (empty($path)) continue;
+                
+                // İlk dosyayı geriye dönük uyumluluk için ana tabloya da yazalım (isteğe bağlı, ama temizlik için yeni tabloyu kullanalım)
+                if ($index === 0) {
+                    $sqlUpdate = "UPDATE {$this->messageTable} SET dosya_yolu = ? WHERE id = ?";
+                    $this->db->prepare($sqlUpdate)->execute([$path, $mesajId]);
+                }
+
+                $sqlFile = "INSERT INTO destek_bilet_dosyalari (bilet_id, mesaj_id, dosya_yolu) VALUES (?, ?, ?)";
+                $this->db->prepare($sqlFile)->execute([$biletId, $mesajId, $path]);
+            }
+        }
 
         // Bilet durumunu ve güncelleme tarihini güncelle
         $durum = ($gonderenTip === 'yonetici') ? 'yanitlandi' : 'personel_yaniti';
@@ -65,7 +90,7 @@ class DestekBiletModel extends Model
         $stmtStatus = $this->db->prepare($sqlStatus);
         $stmtStatus->execute([$durum, $biletId]);
 
-        return $this->db->lastInsertId();
+        return $mesajId;
     }
 
     /**
@@ -84,13 +109,47 @@ class DestekBiletModel extends Model
     }
 
     /**
-     * Personelin biletlerini getirir
+     * Personelin veya kullanıcının biletlerini getirir
      */
-    public function getPersonelTickets($personelId)
+    public function getPersonelTickets($userId, $personelId = 0, $status = null, $search = null, $page = 1, $limit = 20)
     {
-        $sql = "SELECT * FROM {$this->table} WHERE personel_id = ? ORDER BY guncelleme_tarihi DESC";
+        $offset = ((int)$page - 1) * (int)$limit;
+        $sql = "SELECT t.*, 
+                (SELECT COUNT(*) FROM {$this->messageTable} WHERE bilet_id = t.id) as mesaj_sayisi,
+                (SELECT COUNT(*) FROM destek_bilet_dosyalari WHERE bilet_id = t.id) as dosya_sayisi
+                FROM {$this->table} t WHERE 1=1";
+        $params = [];
+        
+        if ($userId > 0 && $personelId > 0) {
+            $sql .= " AND (t.user_id = ? OR t.personel_id = ?)";
+            $params[] = (int)$userId;
+            $params[] = (int)$personelId;
+        } elseif ($userId > 0) {
+            $sql .= " AND (t.user_id = ? OR t.personel_id = ?)";
+            $params[] = (int)$userId;
+            $params[] = (int)$userId;
+        } elseif ($personelId > 0) {
+            $sql .= " AND (t.personel_id = ? OR t.user_id = ?)";
+            $params[] = (int)$personelId;
+            $params[] = (int)$personelId;
+        } else {
+            return []; // No valid ID
+        }
+
+        if ($status) {
+            $sql .= " AND t.durum = ?";
+            $params[] = $status;
+        }
+
+        if ($search) {
+            $sql .= " AND (t.konu LIKE ? OR t.ref_no LIKE ?)";
+            $params[] = '%' . $search . '%';
+            $params[] = '%' . $search . '%';
+        }
+
+        $sql .= " ORDER BY t.guncelleme_tarihi DESC LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$personelId]);
+        $stmt->execute($params);
         $tickets = $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
         return array_map([$this, 'appendEncryptedId'], $tickets);
     }
@@ -98,11 +157,17 @@ class DestekBiletModel extends Model
     /**
      * Tüm biletleri getirir (Yönetici için)
      */
-    public function getAllTickets($status = null, $approvalStatus = null)
+    public function getAllTickets($status = null, $approvalStatus = null, $search = null, $page = 1, $limit = 20)
     {
-        $sql = "SELECT db.*, p.adi_soyadi as personel_adi, p.departman 
+        $offset = ((int)$page - 1) * (int)$limit;
+        $sql = "SELECT db.*, 
+                COALESCE(p.adi_soyadi, u.adi_soyadi) as personel_adi, 
+                p.departman,
+                (SELECT COUNT(*) FROM {$this->messageTable} WHERE bilet_id = db.id) as mesaj_sayisi,
+                (SELECT COUNT(*) FROM destek_bilet_dosyalari WHERE bilet_id = db.id) as dosya_sayisi
                 FROM {$this->table} db
-                JOIN personel p ON db.personel_id = p.id
+                LEFT JOIN personel p ON db.personel_id = p.id
+                LEFT JOIN users u ON db.user_id = u.id
                 WHERE 1=1";
         
         $params = [];
@@ -115,8 +180,16 @@ class DestekBiletModel extends Model
             $sql .= " AND db.onay_durumu = ?";
             $params[] = $approvalStatus;
         }
+
+        if ($search) {
+            $sql .= " AND (db.konu LIKE ? OR db.ref_no LIKE ? OR p.adi_soyadi LIKE ? OR u.adi_soyadi LIKE ?)";
+            $params[] = '%' . $search . '%';
+            $params[] = '%' . $search . '%';
+            $params[] = '%' . $search . '%';
+            $params[] = '%' . $search . '%';
+        }
         
-        $sql .= " ORDER BY db.guncelleme_tarihi DESC";
+        $sql .= " ORDER BY db.guncelleme_tarihi DESC LIMIT " . (int)$limit . " OFFSET " . (int)$offset;
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         $tickets = $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
@@ -129,9 +202,14 @@ class DestekBiletModel extends Model
     public function getTicketDetails($biletId)
     {
         // Bilet bilgisi
-        $sqlTicket = "SELECT db.*, p.adi_soyadi as personel_adi, p.departman, p.resim_yolu
+        $sqlTicket = "SELECT db.*, 
+                      COALESCE(p.adi_soyadi, u.adi_soyadi) as personel_adi, 
+                      p.departman, p.resim_yolu,
+                      uk.adi_soyadi as kapatan_adi
                       FROM {$this->table} db
-                      JOIN personel p ON db.personel_id = p.id
+                      LEFT JOIN personel p ON db.personel_id = p.id
+                      LEFT JOIN users u ON db.user_id = u.id
+                      LEFT JOIN users uk ON db.kapatan_user_id = uk.id
                       WHERE db.id = ?";
         $stmtTicket = $this->db->prepare($sqlTicket);
         $stmtTicket->execute([$biletId]);
@@ -150,12 +228,26 @@ class DestekBiletModel extends Model
                         END as gonderen_adi
                         FROM {$this->messageTable} dm
                         LEFT JOIN personel p ON dm.gonderen_tip = 'personel' AND p.id = dm.gonderen_id
-                        LEFT JOIN users u ON dm.gonderen_tip = 'yonetici' AND u.id = dm.gonderen_id
+                        LEFT JOIN users u ON (dm.gonderen_tip = 'yonetici' AND u.id = dm.gonderen_id) OR (dm.gonderen_tip = 'personel' AND u.id = dm.gonderen_id AND p.id IS NULL)
                         WHERE dm.bilet_id = ?
                         ORDER BY dm.olusturma_tarihi ASC";
         $stmtMessages = $this->db->prepare($sqlMessages);
         $stmtMessages->execute([$biletId]);
-        $ticket->messages = $stmtMessages->fetchAll(PDO::FETCH_OBJ);
+        $messages = $stmtMessages->fetchAll(PDO::FETCH_OBJ);
+
+        // Her mesaj için dosyaları getir
+        foreach ($messages as &$msg) {
+            $sqlFiles = "SELECT dosya_yolu FROM destek_bilet_dosyalari WHERE mesaj_id = ?";
+            $stf = $this->db->prepare($sqlFiles);
+            $stf->execute([$msg->id]);
+            $msg->dosyalar = $stf->fetchAll(PDO::FETCH_COLUMN) ?: [];
+            
+            // Eğer yeni tabloda dosya yoksa ama eski kolonda varsa onu da listeye ekle (backward compatibility)
+            if (empty($msg->dosyalar) && !empty($msg->dosya_yolu)) {
+                $msg->dosyalar = [$msg->dosya_yolu];
+            }
+        }
+        $ticket->messages = $messages;
 
         return $ticket;
     }
@@ -163,11 +255,24 @@ class DestekBiletModel extends Model
     /**
      * Bilet durumunu manuel günceller (Kapatma vb.)
      */
-    public function updateStatus($biletId, $durum)
+    public function updateStatus($biletId, $durum, $userId = null)
     {
-        $sql = "UPDATE {$this->table} SET durum = ?, guncelleme_tarihi = CURRENT_TIMESTAMP WHERE id = ?";
+        $params = [$durum];
+        $sql = "UPDATE {$this->table} SET durum = ?, guncelleme_tarihi = CURRENT_TIMESTAMP";
+        
+        if ($durum === 'kapali') {
+            $sql .= ", kapatan_user_id = ?, kapatma_tarihi = CURRENT_TIMESTAMP";
+            $params[] = $userId;
+        } elseif ($durum === 'acik') {
+            // Reopening clears closure info
+            $sql .= ", kapatan_user_id = NULL, kapatma_tarihi = NULL";
+        }
+        
+        $sql .= " WHERE id = ?";
+        $params[] = $biletId;
+        
         $stmt = $this->db->prepare($sql);
-        return $stmt->execute([$durum, $biletId]);
+        return $stmt->execute($params);
     }
 
     /**
@@ -192,6 +297,11 @@ class DestekBiletModel extends Model
             return false;
         }
 
+        // Çözüldü olarak işaretlenen taleplerde kullanıcının tekrar yazabilmesine izin ver
+        if (($ticket->durum ?? '') === 'cozuldu') {
+            return true;
+        }
+
         $lastMessage = $this->getLastMessage($biletId);
         if (!$lastMessage) {
             return true;
@@ -203,24 +313,44 @@ class DestekBiletModel extends Model
     /**
      * İstatistikleri getirir
      */
-    public function getStats($personelId = null, $approvalStatus = null)
+    public function getStats($userId = null, $personelId = null, $approvalStatus = null)
     {
+        // Handle old call pattern: getStats($personelId, $approvalStatus)
+        // If the second param is a string, it's likely an approval status (from an old call)
+        if (is_string($personelId) && $approvalStatus === null) {
+            $approvalStatus = $personelId;
+            $pId = $userId;
+            $uId = $userId;
+        } else {
+            $uId = $userId;
+            $pId = $personelId;
+        }
+
         $sql = "SELECT 
                     COUNT(*) as toplam,
-                    SUM(CASE WHEN durum = 'acik' OR durum = 'personel_yaniti' THEN 1 ELSE 0 END) as bekleyen,
-                    SUM(CASE WHEN durum = 'yanitlandi' THEN 1 ELSE 0 END) as yanitlanan,
-                    SUM(CASE WHEN durum = 'kapali' THEN 1 ELSE 0 END) as kapali
+                    SUM(CASE WHEN (durum = 'acik' OR durum = 'personel_yaniti') AND onay_durumu = 'onaylandi' THEN 1 ELSE 0 END) as bekleyen,
+                    SUM(CASE WHEN durum = 'isleme_alindi' AND onay_durumu = 'onaylandi' THEN 1 ELSE 0 END) as islemde,
+                    SUM(CASE WHEN durum = 'yanitlandi' AND onay_durumu = 'onaylandi' THEN 1 ELSE 0 END) as yanitlanan,
+                    SUM(CASE WHEN durum = 'cozuldu' AND onay_durumu = 'onaylandi' THEN 1 ELSE 0 END) as cozuldu,
+                    SUM(CASE WHEN durum = 'kapali' AND onay_durumu = 'onaylandi' THEN 1 ELSE 0 END) as kapali
                 FROM {$this->table}";
         
         $params = [];
-        if ($personelId) {
-            $sql .= " WHERE personel_id = ?";
-            $params[] = $personelId;
+        $where = [];
+
+        if ($uId > 0 || $pId > 0) {
+            $where[] = "(user_id = ? OR personel_id = ?)";
+            $params[] = $uId > 0 ? (int)$uId : (int)$pId;
+            $params[] = $pId > 0 ? (int)$pId : (int)$uId;
         }
 
         if ($approvalStatus) {
-            $sql .= empty($params) ? " WHERE onay_durumu = ?" : " AND onay_durumu = ?";
+            $where[] = "onay_durumu = ?";
             $params[] = $approvalStatus;
+        }
+
+        if (!empty($where)) {
+            $sql .= " WHERE " . implode(" AND ", $where);
         }
 
         $stmt = $this->db->prepare($sql);
@@ -231,20 +361,20 @@ class DestekBiletModel extends Model
     /**
      * Kapalı olmayan destek taleplerini sayar.
      */
-    public function countActiveTickets(int $personelId): int
+    public function countActiveTickets(int $userId, int $personelId = 0): int
     {
-        $sql = "SELECT COUNT(*) FROM {$this->table} WHERE personel_id = ? AND durum != 'kapali'";
+        $sql = "SELECT COUNT(*) FROM {$this->table} WHERE (user_id = ? OR personel_id = ?) AND durum != 'kapali'";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$personelId]);
+        $stmt->execute([(int)$userId, (int)($personelId ?: $userId)]);
         return (int) $stmt->fetchColumn();
     }
 
     /**
-     * Personelin yeni destek talebi açıp açamayacağını döndürür.
+     * Kullanıcının yeni destek talebi açıp açamayacağını döndürür.
      */
-    public function canCreateNewTicket(int $personelId): bool
+    public function canCreateNewTicket(int $userId): bool
     {
-        return $this->countActiveTickets($personelId) < 2;
+        return $this->countActiveTickets($userId) < 10;
     }
 
     protected function appendEncryptedId($ticket)

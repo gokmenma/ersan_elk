@@ -2170,9 +2170,7 @@ try {
                 UNIQUE KEY unique_personel_mesaj (personel_id, mesaj_log_id)
             )");
 
-            // mesaj_log tablosundan push bildirimlerini çek
-            // recipients alanında personel adı veya "Tüm Aboneler" ibaresi geçenleri al
-            // silindi olarak işaretlenmemiş olanları getir
+            // 1. Normal Bildirimleri Çek
             $sql = "SELECT m.*, 
                     COALESCE(pbd.okundu, 0) as okundu,
                     pbd.okunma_tarihi
@@ -2186,7 +2184,7 @@ try {
                     )
                     AND (pbd.silindi IS NULL OR pbd.silindi = 0)
                     ORDER BY m.created_at DESC 
-                    LIMIT 50";
+                    LIMIT 40";
 
             $stmt = $db->prepare($sql);
             $stmt->execute([
@@ -2195,31 +2193,31 @@ try {
             ]);
             $notifications = $stmt->fetchAll(PDO::FETCH_OBJ);
 
-            $data = array_map(function ($item) {
-                // Zaman farkını hesapla
-                $created = new DateTime($item->created_at);
+            $data = [];
+            
+            // Helper function for time ago
+            $getTimeAgo = function($datetime) {
+                $created = new DateTime($datetime);
                 $now = new DateTime();
                 $diff = $now->diff($created);
 
                 if ($diff->days == 0) {
                     if ($diff->h == 0) {
                         if ($diff->i == 0) {
-                            $timeAgo = 'Az önce';
-                        } else {
-                            $timeAgo = $diff->i . ' dk önce';
+                            return 'Az önce';
                         }
-                    } else {
-                        $timeAgo = $diff->h . ' saat önce';
+                        return $diff->i . ' dk önce';
                     }
+                    return $diff->h . ' saat önce';
                 } elseif ($diff->days == 1) {
-                    $timeAgo = 'Dün';
+                    return 'Dün';
                 } elseif ($diff->days < 7) {
-                    $timeAgo = $diff->days . ' gün önce';
-                } else {
-                    $timeAgo = date('d M', strtotime($item->created_at));
+                    return $diff->days . ' gün önce';
                 }
+                return date('d M', strtotime($datetime));
+            };
 
-                // Payload'dan image URL'ini al
+            foreach ($notifications as $item) {
                 $imageUrl = null;
                 if (!empty($item->attachments)) {
                     $payload = json_decode($item->attachments, true);
@@ -2228,17 +2226,44 @@ try {
                     }
                 }
 
-                return [
+                $data[] = [
                     'id' => $item->id,
+                    'type' => 'push',
                     'title' => $item->subject,
                     'body' => $item->message,
                     'image' => $imageUrl,
-                    'time_ago' => $timeAgo,
+                    'time_ago' => $getTimeAgo($item->created_at),
                     'created_at' => $item->created_at,
-                    'status' => $item->status,
                     'okundu' => (bool) $item->okundu
                 ];
-            }, $notifications);
+            }
+
+            // 2. Nöbet Değişim Taleplerini Çek (Gelen & Beklemede)
+            $NobetModel = new \App\Model\NobetModel();
+            $talepler = $NobetModel->getPersonelDegisimTalepleri($personel_id, 'gelen');
+            
+            foreach ($talepler as $talep) {
+                if ($talep->durum !== 'beklemede') continue;
+
+                $tarihFormatli = date('d.m.Y', strtotime($talep->nobet_tarihi));
+                
+                $data[] = [
+                    'id' => 'nobet_' . $talep->id,
+                    'talep_id' => $talep->id,
+                    'type' => 'nobet_degisim',
+                    'title' => '🔄 Nöbet Değişim Talebi',
+                    'body' => "{$talep->talep_eden_adi}, {$tarihFormatli} tarihli nöbetini sizinle değiştirmek istiyor.",
+                    'image' => null,
+                    'time_ago' => $getTimeAgo($talep->talep_tarihi),
+                    'created_at' => $talep->talep_tarihi,
+                    'okundu' => false // Talepler her zaman "okunmamış" gibi görünsün (işlem bekliyor)
+                ];
+            }
+
+            // 3. Tarihe Göre Sırala (Azalan)
+            usort($data, function($a, $b) {
+                return strtotime($b['created_at']) - strtotime($a['created_at']);
+            });
 
             response(true, $data);
             break;

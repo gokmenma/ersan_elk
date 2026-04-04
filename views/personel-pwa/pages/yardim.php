@@ -99,7 +99,7 @@
             <div class="form-group">
                 <label class="form-label">Dosya Ekle (Resim)</label>
                 <div class="relative">
-                    <input type="file" name="dosya" id="ticket-file" accept="image/*" class="hidden" onchange="updateFileName(this)">
+                    <input type="file" name="dosya[]" id="ticket-file" accept="image/*" multiple class="hidden" onchange="updateFileName(this)">
                     <label for="ticket-file" class="flex items-center gap-3 p-4 border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl text-slate-500 cursor-pointer hover:border-primary transition-all">
                         <span class="material-symbols-outlined">add_a_photo</span>
                         <span id="file-name-label">Resim Seçin</span>
@@ -150,8 +150,15 @@ async function postFormData(url, formData) {
 
 function updateFileName(input) {
     const label = document.getElementById('file-name-label');
-    if (input.files && input.files[0]) {
-        label.textContent = input.files[0].name;
+    if (input.files && input.files.length > 0) {
+        if (input.files.length > 3) {
+            Toast.show('En fazla 3 dosya seçebilirsiniz.', 'warning');
+            input.value = '';
+            label.textContent = 'Resim Seçin';
+            label.classList.remove('text-primary', 'font-bold');
+            return;
+        }
+        label.textContent = input.files.length + ' dosya seçildi';
         label.classList.add('text-primary', 'font-bold');
     } else {
         label.textContent = 'Resim Seçin';
@@ -160,8 +167,8 @@ function updateFileName(input) {
 }
 
 function openNewTicketModal() {
-    if (activeTicketCount >= 2) {
-        Toast.show('Aynı anda en fazla 2 açık destek talebiniz olabilir.', 'error');
+    if (activeTicketCount >= 10) {
+        Toast.show('Aynı anda en fazla 10 açık destek talebiniz olabilir.', 'error');
         return;
     }
     Modal.open('new-ticket-modal');
@@ -173,7 +180,7 @@ function updateCreateButtonState() {
         return;
     }
 
-    if (activeTicketCount >= 2) {
+    if (activeTicketCount >= 10) {
         button.classList.add('opacity-50');
         button.classList.remove('bg-primary');
         button.classList.add('bg-slate-400');
@@ -221,6 +228,8 @@ function renderTickets(tickets) {
         if(ticket.durum === 'yanitlandi') { statusClass = 'bg-emerald-100 text-emerald-700'; statusText = 'YANITLANDI'; }
         if(ticket.durum === 'personel_yaniti') { statusClass = 'bg-blue-100 text-blue-700'; statusText = 'BEKLİYOR'; }
         if(ticket.durum === 'kapali') { statusClass = 'bg-slate-100 text-slate-500'; statusText = 'KAPALI'; }
+        if(ticket.durum === 'isleme_alindi') { statusClass = 'bg-sky-100 text-sky-700'; statusText = 'İŞLEMDE'; }
+        if(ticket.durum === 'cozuldu') { statusClass = 'bg-green-100 text-green-700'; statusText = 'ÇÖZÜLDÜ'; }
 
         html += `
             <a href="?page=yardim-detay&id=${ticket.encrypted_id || ticket.id}" class="card p-4 active:scale-[0.98] transition-all">
