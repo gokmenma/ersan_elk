@@ -2,7 +2,7 @@
 /**
  * Araç Performans Raporu
  * Araç bazlı yakıt, KM ve servis performans karşılaştırma sayfası
- * Versiyon: 1.0.6 (Diagnostic)
+ * Versiyon: 1.0.7 (Diagnostic)
  */
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
@@ -14,15 +14,34 @@ for ($year = 2025; $year <= (int) $thisYear; $year++) {
     $yearOptions[(string) $year] = (string) $year;
 }
 
-$activeTab = $_GET['tab'] ?? 'genel-bakis';
-$rootActive = ($activeTab === 'genel-bakis' || $activeTab === 'arac-analiz') ? 'performans' : 'karsilastirma';
+$activeTab = $_GET['tab'] ?? 'pane-performans';
+$activeSubTab = $_GET['sub'] ?? 'genel-bakis';
+
+if ($activeTab === 'genel-bakis' || $activeTab === 'arac-analiz') {
+    $activeSubTab = $activeTab;
+    $activeTab = 'pane-performans';
+}
+
+// Dönem ve Araç Listesi Hazırlığı
+$aracModel = new \App\Model\AracModel();
+$aktifAraclar = $aracModel->getAktifAraclar();
+$aracOptions = ['' => 'Tüm Araçlar'];
+foreach ($aktifAraclar as $a) {
+    $aracOptions[$a->id] = $a->plaka . ' - ' . $a->marka . ' ' . $a->model;
+}
+
+$periodOptions = [];
+$defaultPeriods = [];
+for ($i = 1; $i <= 12; $i++) {
+    $dateObj = strtotime("-$i month");
+    $val = date('Ym', $dateObj);
+    $text = date('Y / n', $dateObj);
+    $periodOptions[$val] = $text;
+    if ($i <= 3) $defaultPeriods[] = $val;
+}
 ?>
 
 <div class="container-fluid">
-    <div class="alert alert-info py-1 px-2 mb-2 d-flex justify-content-between align-items-center" style="font-size: 0.7rem; border-radius: 8px;">
-        <span><i class="bx bx-bug-alt me-1"></i>Diagnostic: Araç Performans v1.0.6 | Aktif Sekme: <strong><?= $activeTab ?></strong></span>
-        <span class="badge bg-info text-white"><?= date('H:i:s') ?></span>
-    </div>
     <?php
     $maintitle = "Araç Takip";
     $subtitle = "Performans";
@@ -30,17 +49,17 @@ $rootActive = ($activeTab === 'genel-bakis' || $activeTab === 'arac-analiz') ? '
     ?>
     <?php include 'layouts/breadcrumb.php'; ?>
 
-    <!-- ROOT TABS -->
+    <!-- Ana Sekme Navigasyonu -->
     <div class="row mb-3">
         <div class="col-12">
-            <ul class="nav nav-tabs nav-tabs-custom nav-justified bg-white shadow-sm" id="rootTabNav" role="tablist" style="border-radius: 12px; padding: 4px;">
+            <ul class="nav nav-tabs nav-tabs-custom pt-1 px-1 mb-3" id="mainTabs" role="tablist">
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link <?= $rootActive === 'performans' ? 'active' : '' ?> fw-bold py-3 fs-5" id="root-performans-tab" data-bs-toggle="tab" data-bs-target="#root-performans" type="button" role="tab">
-                        <i class="bx bx-pie-chart-alt-2 me-2"></i>Performans Raporu
+                    <button class="nav-link <?= $activeTab === 'pane-performans' ? 'active' : '' ?>" id="main-performans-tab" data-bs-toggle="tab" data-bs-target="#pane-performans" type="button" role="tab">
+                        <i class="bx bx-chart me-2"></i>Performans Raporu
                     </button>
                 </li>
                 <li class="nav-item" role="presentation">
-                    <button class="nav-link <?= $rootActive === 'karsilastirma' ? 'active' : '' ?> fw-bold py-3 fs-5" id="root-karsilastirma-tab" data-bs-toggle="tab" data-bs-target="#root-karsilastirma" type="button" role="tab">
+                    <button class="nav-link <?= $activeTab === 'pane-karsilastirma' ? 'active' : '' ?>" id="main-karsilastirma-tab" data-bs-toggle="tab" data-bs-target="#pane-karsilastirma" type="button" role="tab">
                         <i class="bx bx-git-compare me-2"></i>Karşılaştırma
                     </button>
                 </li>
@@ -48,190 +67,144 @@ $rootActive = ($activeTab === 'genel-bakis' || $activeTab === 'arac-analiz') ? '
         </div>
     </div>
 
-    <div class="tab-content" id="rootTabContent">
-        <!-- ROOT TAB 1: PERFORMANS RAPORU -->
-        <div class="tab-pane fade <?= $rootActive === 'performans' ? 'show active' : '' ?>" id="root-performans" role="tabpanel">
+    <div class="tab-content" id="mainTabContent">
+        <!-- ANA TAB 1: PERFORMANS RAPORU -->
+        <div class="tab-pane <?= $activeTab === 'pane-performans' ? 'show active' : '' ?>" id="pane-performans" role="tabpanel">
+            
+            <!-- Mevcut Filtre Barı (Sadece bu tabda geçerli) -->
+            <div class="row mb-3">
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+                        <div class="card-body p-3">
+                            <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
+                                <!-- Dönem Seçimi -->
+                                <div class="d-flex align-items-center gap-2">
+                                    <span class="text-muted small fw-bold me-1"><i class="bx bx-calendar me-1"></i>Dönem:</span>
+                                    <div class="btn-group btn-group-sm" role="group" id="periodGroup">
+                                        <button type="button" class="btn btn-outline-primary period-btn" data-period="gunluk">Günlük</button>
+                                        <button type="button" class="btn btn-outline-primary period-btn" data-period="haftalik">Haftalık</button>
+                                        <button type="button" class="btn btn-primary period-btn active" data-period="aylik">Aylık</button>
+                                        <button type="button" class="btn btn-outline-primary period-btn" data-period="yillik">Yıllık</button>
+                                    </div>
+                                </div>
 
-    <div class="row mb-3">
-        <div class="col-12">
-            <div class="card border-0 shadow-sm" style="border-radius: 12px;">
-                <div class="card-body p-3">
-                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3">
-                        <!-- Dönem Seçimi -->
-                        <div class="d-flex align-items-center gap-2">
-                            <span class="text-muted small fw-bold me-1"><i class="bx bx-calendar me-1"></i>Dönem:</span>
-                            <div class="btn-group btn-group-sm" role="group" id="periodGroup">
-                                <button type="button" class="btn btn-outline-primary period-btn" data-period="gunluk">Günlük</button>
-                                <button type="button" class="btn btn-outline-primary period-btn" data-period="haftalik">Haftalık</button>
-                                <button type="button" class="btn btn-primary period-btn active" data-period="aylik">Aylık</button>
-                                <button type="button" class="btn btn-outline-primary period-btn" data-period="yillik">Yıllık</button>
-                            </div>
-                        </div>
-
-                        <!-- Tarih Seçici -->
-                        <div class="d-flex flex-wrap align-items-end gap-2">
-                             <!-- Araç Seçimi -->
-                            <div id="topAracFilterWrapper" style="display:none;">
-                                <div class="filter-field" style="min-width: 220px;">
-                                    <?php echo Form::FormSelect2("aracSecici", ["" => "Araç Seçiniz..."], "", "Araç", "truck", "key", "", "form-select form-select-sm select2", false, "width:100%", 'data-placeholder="Araç Seçiniz..."'); ?>
+                                <!-- Tarih Seçici -->
+                                <div class="d-flex flex-wrap align-items-end gap-2">
+                                     <!-- Araç Seçimi -->
+                                    <div id="topAracFilterWrapper" style="display:none;">
+                                        <div class="filter-field" style="min-width: 220px;">
+                                            <?php echo Form::FormSelect2("aracSecici", ["" => "Araç Seçiniz..."], "", "Araç", "truck", "key", "", "form-select form-select-sm select2", false, "width:100%", 'data-placeholder="Araç Seçiniz..."'); ?>
+                                        </div>
+                                    </div>
+                                    <div class="filter-field" id="singleDateWrapper">
+                                        <?php echo Form::FormFloatInput("text", "tarihSecici", "", "Tarih", "Seçiniz", "calendar", "form-control form-control-sm", false, null, "off"); ?>
+                                    </div>
+                                    <div class="filter-field" id="yearSelectWrapper" style="display:none;">
+                                        <?php echo Form::FormSelect2("yilSecici", $yearOptions, $thisYear, "Yıl", "calendar", "key", "", "form-select form-select-sm select2", false, "width:100%"); ?>
+                                    </div>
+                                    <button class="btn btn-sm btn-primary" id="btnFiltrele">
+                                        <i class="bx bx-search-alt me-1"></i>Filtrele
+                                    </button>
                                 </div>
                             </div>
-                            <div class="filter-field" id="singleDateWrapper">
-                                <?php echo Form::FormFloatInput("text", "tarihSecici", "", "Tarih", "Seçiniz", "calendar", "form-control form-control-sm", false, null, "off"); ?>
-                            </div>
-                            <div class="filter-field" id="yearSelectWrapper" style="display:none;">
-                                <?php echo Form::FormSelect2("yilSecici", $yearOptions, $thisYear, "Yıl", "calendar", "key", "", "form-select form-select-sm select2", false, "width:100%"); ?>
-                            </div>
-                            <button class="btn btn-sm btn-primary" id="btnFiltrele">
-                                <i class="bx bx-search-alt me-1"></i>Filtrele
-                            </button>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Dönem Bilgisi -->
-    <div class="row mb-3">
-        <div class="col-12">
-            <div class="d-flex align-items-center">
-                <h6 class="mb-0 text-muted" id="donemBilgisi" style="font-size: 0.85rem;">
-                    <i class="bx bx-info-circle me-1"></i>
-                    <span id="donemText">Yükleniyor...</span>
-                </h6>
+            <!-- Dönem Bilgisi -->
+            <div class="row mb-3">
+                <div class="col-12">
+                    <div class="d-flex align-items-center">
+                        <h6 class="mb-0 text-muted" id="donemBilgisi" style="font-size: 0.85rem;">
+                            <i class="bx bx-info-circle me-1"></i>
+                            <span id="donemText">Yükleniyor...</span>
+                        </h6>
+                    </div>
+                </div>
             </div>
-        </div>
-    </div>
 
-    <!-- Tab Navigasyonu -->
-    <div class="row mb-3">
-        <div class="col-12">
-            <ul class="nav nav-pills nav-justified bg-light p-1 mb-3" role="tablist" style="border-radius: 10px;">
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link <?= $activeTab === 'genel-bakis' ? 'active' : '' ?> fw-bold py-2" id="genel-tab" data-bs-toggle="tab" data-bs-target="#genel-bakis" type="button" role="tab">
-                        <i class="bx bx-pie-chart-alt-2 me-2"></i>Genel Performans
-                    </button>
-                </li>
-                <li class="nav-item" role="presentation">
-                    <button class="nav-link <?= $activeTab === 'arac-analiz' ? 'active' : '' ?> fw-bold py-2" id="arac-tab" data-bs-toggle="tab" data-bs-target="#arac-analiz" type="button" role="tab">
-                        <i class="bx bx-truck me-2"></i>Araç Analizi
-                    </button>
-                </li>
-            </ul>
-        </div>
-    </div>
+            <!-- Sub Tab Navigasyonu -->
+            <div class="row mb-3">
+                <div class="col-12">
+                    <ul class="nav nav-pills nav-pills-custom bg-white p-2 shadow-sm rounded-3 mb-3" role="tablist">
+                        <li class="nav-item" role="presentation">
+                            <button class="nav-link <?= $activeSubTab === 'genel-bakis' ? 'active' : '' ?> px-4" id="genel-tab" data-bs-toggle="tab" data-bs-target="#genel-bakis" type="button" role="tab">
+                                <i class="bx bx-pie-chart-alt-2 me-2"></i>Genel Performans
+                            </button>
+                        </li>
+                        <li class="nav-item ms-2" role="presentation">
+                            <button class="nav-link <?= $activeSubTab === 'arac-analiz' ? 'active' : '' ?> px-4" id="arac-tab" data-bs-toggle="tab" data-bs-target="#arac-analiz" type="button" role="tab">
+                                <i class="bx bx-car me-2"></i>Araç Analizi
+                            </button>
+                        </li>
+                    </ul>
+                </div>
+            </div>
 
-    <div class="tab-content">
+            <div class="tab-content" id="performansTabContent">
         <!-- TAB 1: GENEL BAKIS -->
-        <div class="tab-pane <?= $activeTab === 'genel-bakis' ? 'show active' : '' ?>" id="genel-bakis" role="tabpanel" style="position: relative;">
+        <div class="tab-pane <?= $activeSubTab === 'genel-bakis' ? 'show active' : '' ?>" id="genel-bakis" role="tabpanel" style="position: relative;">
             <span class="diagnostic-anchor badge bg-dark text-white p-1" data-tab="genel-bakis" style="position: absolute; top: 2px; right: 2px; font-size: 0.5rem; z-index: 1000; opacity: 0.4;">Anchor: Genel</span>
 
-    <!-- KPI Kartları -->
-    <div class="row g-3 mb-4" id="kpiCards">
-        <!-- En Çok Yakıt Yakan -->
-        <div class="col-md-6 col-xl-2">
-            <div class="card border-0 shadow-sm h-100 animate-card"
-                style="border-radius: 12px; border-bottom: 3px solid #e74a3b !important;">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <div class="kpi-icon-box" style="background: rgba(231, 74, 59, 0.1);">
-                            <i class="bx bx-gas-pump fs-5" style="color: #e74a3b;"></i>
-                        </div>
-                        <span class="badge bg-danger-subtle text-danger fw-bold" style="font-size:0.6rem;">EN ÇOK</span>
-                    </div>
-                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7; font-size:0.7rem;">EN ÇOK YAKIT YAKAN</p>
-                    <h6 class="mb-0 fw-bold" style="color: #e74a3b; font-size: 0.95rem;" id="kpiEnCokYakit">-</h6>
+    <!-- KPI Kartları (Puantaj Stili) -->
+    <div class="row g-3 mb-4 mt-1" id="kpiCards">
+        <div class="col-md-4 col-xl-2">
+            <div class="card summary-card h-100" style="border-bottom: 4px solid #ef4444 !important;">
+                <div class="card-body">
+                    <span class="ghost-label">EN YÜKSEK</span>
+                    <p class="card-title-text text-danger">En Çok Yakıt Yakan</p>
+                    <h5 class="card-value py-1" id="kpiEnCokYakit">-</h5>
                     <small class="text-muted" id="kpiEnCokYakitSub"></small>
                 </div>
             </div>
         </div>
-
-        <!-- En Az Yakıt Yakan -->
-        <div class="col-md-6 col-xl-2">
-            <div class="card border-0 shadow-sm h-100 animate-card"
-                style="border-radius: 12px; border-bottom: 3px solid #34c38f !important;">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <div class="kpi-icon-box" style="background: rgba(52, 195, 143, 0.1);">
-                            <i class="bx bx-leaf fs-5" style="color: #34c38f;"></i>
-                        </div>
-                        <span class="badge bg-success-subtle text-success fw-bold" style="font-size:0.6rem;">EN AZ</span>
-                    </div>
-                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7; font-size:0.7rem;">EN AZ YAKIT YAKAN</p>
-                    <h6 class="mb-0 fw-bold" style="color: #34c38f; font-size: 0.95rem;" id="kpiEnAzYakit">-</h6>
+        <div class="col-md-4 col-xl-2">
+            <div class="card summary-card h-100" style="border-bottom: 4px solid #10b981 !important;">
+                <div class="card-body">
+                    <span class="ghost-label">EKONOMİK</span>
+                    <p class="card-title-text text-success">En Az Yakıt Yakan</p>
+                    <h5 class="card-value py-1" id="kpiEnAzYakit">-</h5>
                     <small class="text-muted" id="kpiEnAzYakitSub"></small>
                 </div>
             </div>
         </div>
-
-        <!-- En Çok KM Yapan -->
-        <div class="col-md-6 col-xl-2">
-            <div class="card border-0 shadow-sm h-100 animate-card"
-                style="border-radius: 12px; border-bottom: 3px solid #556ee6 !important;">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <div class="kpi-icon-box" style="background: rgba(85, 110, 230, 0.1);">
-                            <i class="bx bx-tachometer fs-5" style="color: #556ee6;"></i>
-                        </div>
-                        <span class="badge bg-primary-subtle text-primary fw-bold" style="font-size:0.6rem;">EN ÇOK</span>
-                    </div>
-                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7; font-size:0.7rem;">EN ÇOK KM YAPAN</p>
-                    <h6 class="mb-0 fw-bold" style="color: #556ee6; font-size: 0.95rem;" id="kpiEnCokKm">-</h6>
+        <div class="col-md-4 col-xl-2">
+            <div class="card summary-card h-100" style="border-bottom: 4px solid #3b82f6 !important;">
+                <div class="card-body">
+                    <span class="ghost-label">MESAFE</span>
+                    <p class="card-title-text text-primary">En Çok KM Yapan</p>
+                    <h5 class="card-value py-1" id="kpiEnCokKm">-</h5>
                     <small class="text-muted" id="kpiEnCokKmSub"></small>
                 </div>
             </div>
         </div>
-
-        <!-- En Az KM Yapan -->
-        <div class="col-md-6 col-xl-2">
-            <div class="card border-0 shadow-sm h-100 animate-card"
-                style="border-radius: 12px; border-bottom: 3px solid #0ea5e9 !important;">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <div class="kpi-icon-box" style="background: rgba(14, 165, 233, 0.1);">
-                            <i class="bx bx-walk fs-5" style="color: #0ea5e9;"></i>
-                        </div>
-                        <span class="badge bg-info-subtle text-info fw-bold" style="font-size:0.6rem;">EN AZ</span>
-                    </div>
-                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7; font-size:0.7rem;">EN AZ KM YAPAN</p>
-                    <h6 class="mb-0 fw-bold" style="color: #0ea5e9; font-size: 0.95rem;" id="kpiEnAzKm">-</h6>
+        <div class="col-md-4 col-xl-2">
+            <div class="card summary-card h-100" style="border-bottom: 4px solid #0ea5e9 !important;">
+                <div class="card-body">
+                    <span class="ghost-label">MİNİMUM</span>
+                    <p class="card-title-text text-info">En Az KM Yapan</p>
+                    <h5 class="card-value py-1" id="kpiEnAzKm">-</h5>
                     <small class="text-muted" id="kpiEnAzKmSub"></small>
                 </div>
             </div>
         </div>
-
-        <!-- En Çok Servise Giden -->
-        <div class="col-md-6 col-xl-2">
-            <div class="card border-0 shadow-sm h-100 animate-card"
-                style="border-radius: 12px; border-bottom: 3px solid #f1b44c !important;">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <div class="kpi-icon-box" style="background: rgba(241, 180, 76, 0.1);">
-                            <i class="bx bx-wrench fs-5" style="color: #f1b44c;"></i>
-                        </div>
-                        <span class="badge bg-warning-subtle text-warning fw-bold" style="font-size:0.6rem;">SERVİS</span>
-                    </div>
-                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7; font-size:0.7rem;">EN ÇOK SERVİSE GİDEN</p>
-                    <h6 class="mb-0 fw-bold" style="color: #f1b44c; font-size: 0.95rem;" id="kpiEnCokServis">-</h6>
+        <div class="col-md-4 col-xl-2">
+            <div class="card summary-card h-100" style="border-bottom: 4px solid #f59e0b !important;">
+                <div class="card-body">
+                    <span class="ghost-label">SERVİS</span>
+                    <p class="card-title-text text-warning">En Çok Servis</p>
+                    <h5 class="card-value py-1" id="kpiEnCokServis">-</h5>
                     <small class="text-muted" id="kpiEnCokServisSub"></small>
                 </div>
             </div>
         </div>
-
-        <!-- Toplam Maliyet -->
-        <div class="col-md-6 col-xl-2">
-            <div class="card border-0 shadow-sm h-100 animate-card"
-                style="border-radius: 12px; border-bottom: 3px solid #8b5cf6 !important;">
-                <div class="card-body p-3">
-                    <div class="d-flex align-items-center justify-content-between mb-2">
-                        <div class="kpi-icon-box" style="background: rgba(139, 92, 246, 0.1);">
-                            <i class="bx bx-wallet fs-5" style="color: #8b5cf6;"></i>
-                        </div>
-                        <span class="badge bg-light text-muted fw-bold" style="font-size:0.6rem;">TOPLAM</span>
-                    </div>
-                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7; font-size:0.7rem;">TOPLAM MALİYET</p>
-                    <h5 class="mb-0 fw-bold" style="color: #8b5cf6;" id="kpiToplamMaliyet">0 ₺</h5>
+        <div class="col-md-4 col-xl-2">
+            <div class="card summary-card h-100" style="border-bottom: 4px solid #1e293b !important;">
+                <div class="card-body">
+                    <span class="ghost-label">TOPLAM</span>
+                    <p class="card-title-text text-dark">Toplam Maliyet</p>
+                    <h5 class="card-value py-1 fw-bold" style="font-size: 1.1rem !important;" id="kpiToplamMaliyet">0 ₺</h5>
                     <small class="text-muted" id="kpiToplamMaliyetSub"></small>
                 </div>
             </div>
@@ -323,9 +296,10 @@ $rootActive = ($activeTab === 'genel-bakis' || $activeTab === 'arac-analiz') ? '
     </div>
 </div>
 
-        <!-- TAB 2: ARAÇ ANALİZ -->
-        <div class="tab-pane fade <?= $activeTab === 'arac-analiz' ? 'show active' : '' ?>" id="arac-analiz" role="tabpanel">
-             <div class="row mb-3">
+    <!-- TAB 2: ARAÇ ANALİZ -->
+    <div class="tab-pane <?= $activeTab === 'arac-analiz' ? 'show active' : '' ?>" id="arac-analiz" role="tabpanel" style="position: relative;">
+        <span class="diagnostic-anchor badge bg-dark text-white p-1" data-tab="arac-analiz" style="position: absolute; top: 2px; right: 2px; font-size: 0.5rem; z-index: 1000; opacity: 0.4;">Anchor: Analiz</span>
+            <div class="row mb-3">
                 <div class="col-12">
                     <div class="card border-0 shadow-sm" style="border-radius: 12px; border-top: 3px solid #556ee6;">
                         <div class="card-body p-3">
@@ -394,128 +368,148 @@ $rootActive = ($activeTab === 'genel-bakis' || $activeTab === 'arac-analiz') ? '
                     </div>
                 </div>
             </div>
-        </div>
-    </div> <!-- SUB TAB CONTENT END -->
-</div> <!-- ROOT TAB 1: PERFORMANS RAPORU END -->
+                </div> <!-- /arac-analiz -->
+            </div> <!-- /performansTabContent -->
+        </div> <!-- /pane-performans -->
 
-        <!-- ROOT TAB 2: KARŞILAŞTIRMA -->
-        <div class="tab-pane fade <?= $rootActive === 'karsilastirma' ? 'show active' : '' ?>" id="root-karsilastirma" role="tabpanel">
-            <div class="card border-0 shadow-sm mb-3" style="border-radius: 12px;">
-                <div class="card-body p-3">
-                    <div class="row g-3 align-items-end">
-                        <div class="col-md-3">
-                            <label class="form-label small fw-bold text-muted">Araç Seçimi</label>
-                            <?php echo Form::FormSelect2("compAracSecici", ["" => "Tüm Firma (Genel)"], "0", "", "truck", "key", "", "form-select form-select-sm select2", false, "width:100%"); ?>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-bold text-muted">1. Dönem</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text"><i class="bx bx-calendar"></i></span>
-                                <input type="text" id="compRange1" class="form-control" placeholder="Seçiniz..." readonly>
+        <!-- ANA TAB 2: KARŞILAŞTIRMA -->
+        <div class="tab-pane <?= $activeTab === 'pane-karsilastirma' ? 'show active' : '' ?>" id="pane-karsilastirma" role="tabpanel">
+            
+            <!-- FİLTRE -->
+            <div class="row mb-3 mt-3">
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+                        <div class="card-body p-3">
+                            <div class="row g-3 align-items-center">
+                                <div class="col-md-4">
+                                    <?= Form::FormMultipleSelect2('compDonemler', $periodOptions, $defaultPeriods, 'Dönem Seçimi', 'calendar', 'key', '', 'form-select select2-comp') ?>
+                                </div>
+                                <div class="col-md-4">
+                                    <?= Form::FormSelect2('compAraclar', $aracOptions, '', 'Araç Seçimi', 'truck', 'key', '', 'form-select select2-comp') ?>
+                                </div>
+
+                                <div class="col-md-4 d-flex align-items-center justify-content-md-end">
+                                    <div class="d-flex align-items-center gap-2 flex-wrap">
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button type="button" class="btn btn-outline-primary comp-quick-period" data-months="3">Son 3</button>
+                                            <button type="button" class="btn btn-outline-primary comp-quick-period" data-months="6">Son 6</button>
+                                        </div>
+                                        <div class="ms-1 vr" style="height: 20px;"></div>
+                                        <button type="button" class="btn btn-sm btn-dark px-3 rounded-pill shadow-sm" id="btnCompFiltrele">
+                                            <i class="bx bx-search-alt me-1"></i>Karşılaştır
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label small fw-bold text-muted">2. Dönem</label>
-                            <div class="input-group input-group-sm">
-                                <span class="input-group-text"><i class="bx bx-calendar"></i></span>
-                                <input type="text" id="compRange2" class="form-control" placeholder="Seçiniz..." readonly>
-                            </div>
-                        </div>
-                        <div class="col-md-1">
-                            <button class="btn btn-primary btn-sm w-100" id="btnCompRefresh" style="height: 31px;">
-                                <i class="bx bx-refresh"></i>
-                            </button>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <!-- Karşılaştırma Özet Kartları -->
-            <div class="row g-3 mb-4" id="compSummaryCards" style="display:none;">
-                <div class="col-md-4">
-                    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff, #f8f9fa);">
-                        <div class="card-body p-3">
-                            <h6 class="text-muted small fw-bold mb-3">YAKIT TÜKETİMİ (L)</h6>
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="small text-muted">1. Dönem:</span>
-                                <span class="fw-bold" id="c_y_1">0 L</span>
-                            </div>
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="small text-muted">2. Dönem:</span>
-                                <span class="fw-bold" id="c_y_2">0 L</span>
-                            </div>
-                            <div class="pt-2 border-top" id="c_y_diff"></div>
+            <!-- KARŞILAŞTIRMA ÖZET KARTLARI (Puantaj Stili) -->
+            <div class="row g-3 mb-4" id="compSummaryCards" style="display: none;">
+                <div class="col-md-3">
+                    <div class="card summary-card h-100" style="border-bottom: 4px solid #3b82f6 !important;">
+                        <div class="card-body">
+                            <span class="ghost-label">ARAÇ</span>
+                            <p class="card-title-text text-primary">Araç Sayısı</p>
+                            <h3 class="card-value" id="compTotalArac">0</h3>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff, #f8f9fa);">
-                        <div class="card-body p-3">
-                            <h6 class="text-muted small fw-bold mb-3">YAPILAN KM</h6>
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="small text-muted">1. Dönem:</span>
-                                <span class="fw-bold" id="c_k_1">0 KM</span>
-                            </div>
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="small text-muted">2. Dönem:</span>
-                                <span class="fw-bold" id="c_k_2">0 KM</span>
-                            </div>
-                            <div class="pt-2 border-top" id="c_k_diff"></div>
+                <div class="col-md-3">
+                    <div class="card summary-card h-100" style="border-bottom: 4px solid #10b981 !important;">
+                        <div class="card-body">
+                            <span class="ghost-label">YAKIT</span>
+                            <p class="card-title-text text-success">Toplam Yakıt (L)</p>
+                            <h3 class="card-value" id="compTotalFuel">0</h3>
                         </div>
                     </div>
                 </div>
-                <div class="col-md-4">
-                    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; background: linear-gradient(135deg, #ffffff, #f8f9fa);">
-                        <div class="card-body p-3">
-                            <h6 class="text-muted small fw-bold mb-3">TOPLAM MALİYET</h6>
-                            <div class="d-flex justify-content-between align-items-center mb-2">
-                                <span class="small text-muted">1. Dönem:</span>
-                                <span class="fw-bold" id="c_m_1">0 ₺</span>
-                            </div>
-                            <div class="d-flex justify-content-between align-items-center mb-3">
-                                <span class="small text-muted">2. Dönem:</span>
-                                <span class="fw-bold" id="c_m_2">0 ₺</span>
-                            </div>
-                            <div class="pt-2 border-top" id="c_m_diff"></div>
+                <div class="col-md-3">
+                    <div class="card summary-card h-100" style="border-bottom: 4px solid #f59e0b !important;">
+                        <div class="card-body">
+                            <span class="ghost-label">MESAFE</span>
+                            <p class="card-title-text text-warning">Toplam Mesafe (KM)</p>
+                            <h3 class="card-value" id="compTotalKm">0</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card summary-card h-100" style="border-bottom: 4px solid #ef4444 !important;">
+                        <div class="card-body">
+                            <span class="ghost-label">MALİYET</span>
+                            <p class="card-title-text text-danger">Toplam Maliyet</p>
+                            <h3 class="card-value" id="compTotalCost">0 ₺</h3>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="row g-3 mb-4">
-                <div class="col-xl-8">
-                    <div class="card border-0 shadow-sm" style="border-radius: 12px; height: 100%;">
-                        <div class="card-body p-3">
-                            <h6 class="fw-bold mb-3"><i class="bx bx-bar-chart-alt-2 me-2"></i>Dönemsel Karşılaştırma Grafiği</h6>
-                            <div id="mainKarsilastirmaChart" style="min-height: 350px;"></div>
-                        </div>
+            <!-- Aksiyonlar ve Görünüm -->
+            <div class="row mb-3" id="compActions" style="display: none;">
+                <div class="col-12 d-flex justify-content-between align-items-center">
+                    <div class="btn-group btn-group-sm" role="group">
+                        <input type="radio" class="btn-check v-mode" name="vMode" id="vmList" checked value="list">
+                        <label class="btn btn-outline-primary px-3" for="vmList"><i class="bx bx-list-ul me-1"></i> Liste</label>
+                        <input type="radio" class="btn-check v-mode" name="vMode" id="vmChart" value="chart">
+                        <label class="btn btn-outline-primary px-3" for="vmChart"><i class="bx bx-bar-chart-alt-2 me-1"></i> Grafik</label>
+                    </div>
+                    <button class="btn btn-sm btn-outline-success" id="btnCompExcel"><i class="mdi mdi-file-excel me-1"></i>Excel'e Aktar</button>
+                </div>
+            </div>
+
+            <!-- Liste Görünümü -->
+            <!-- LİSTE / GRAFİK SEÇİCİ VE ARAMA -->
+            <div class="row mb-3 align-items-center" id="compViewControls" style="display: none;">
+                <div class="col-auto">
+                    <div class="btn-group btn-group-sm rounded-pill p-1 bg-white shadow-sm border">
+                        <button type="button" class="btn btn-primary px-3 rounded-pill" id="btnCompListView"><i class="bx bx-list-ul me-1"></i>Liste</button>
+                        <button type="button" class="btn btn-outline-primary px-3 rounded-pill border-0" id="btnCompChartView"><i class="bx bx-chart me-1"></i>Grafik</button>
                     </div>
                 </div>
-                <div class="col-xl-4">
-                    <div class="card border-0 shadow-sm" style="border-radius: 12px; height: 100%;">
-                        <div class="card-body p-3">
-                            <h6 class="fw-bold mb-3"><i class="bx bx-info-circle me-2"></i>Verimlilik Karşılaştırması (L/100 KM)</h6>
-                            <div class="text-center py-4">
-                                <div class="mb-4">
-                                    <p class="text-muted small mb-1">1. Dönem</p>
-                                    <h2 class="fw-bold mb-0" id="c_v_1" style="color: #556ee6;">-</h2>
-                                </div>
-                                <div class="mb-4">
-                                    <i class="bx bx-down-arrow-alt fs-2 text-muted opacity-50"></i>
-                                </div>
-                                <div>
-                                    <p class="text-muted small mb-1">2. Dönem</p>
-                                    <h2 class="fw-bold mb-0" id="c_v_2" style="color: #e74a3b;">-</h2>
-                                </div>
-                                <div class="mt-4 pt-3 border-top" id="c_v_stats"></div>
-                            </div>
+                <div class="col-md-3">
+                    <div class="input-group input-group-sm shadow-sm" style="border-radius: 8px; overflow: hidden;">
+                        <span class="input-group-text bg-white border-end-0"><i class="bx bx-search text-muted"></i></span>
+                        <input type="text" class="form-control border-start-0 ps-0" id="compAracAra" placeholder="Plaka veya araç ara...">
+                    </div>
+                </div>
+                <div class="col text-end d-flex justify-content-end gap-2">
+                    <button type="button" class="btn btn-sm btn-outline-info px-3 rounded-pill shadow-sm" id="btnCompFullScreen">
+                        <i class="bx bx-fullscreen me-1"></i>Tam Ekran
+                    </button>
+                    <button type="button" class="btn btn-sm btn-outline-success px-3 rounded-pill shadow-sm" id="btnCompExcel">
+                        <i class="bx bx-file me-1"></i>Excel'e Aktar
+                    </button>
+                </div>
+            </div>
+
+            <div class="row" id="compListSection" style="display: none;">
+                <div class="col-12">
+                    <div class="card border-0 shadow-sm" style="border-radius: 12px;">
+                        <div class="card-body p-0">
+                            <div class="table-responsive" id="compTableWrapper" style="max-height: 550px; overflow: auto; border-radius: 12px;"></div>
                         </div>
                     </div>
                 </div>
             </div>
-        </div>
-    </div> <!-- ROOT TAB CONTENT END -->
-</div> <!-- CONTAINER FLUID END -->
+
+            <!-- Grafik Görünümü -->
+            <div class="row g-3" id="compChartSection" style="display: none;">
+                <div class="col-xl-12">
+                    <div class="card border-0 shadow-sm p-3" style="border-radius:12px;">
+                        <div id="compGroupedChart" style="min-height: 400px;"></div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="compEmptyState" class="text-center py-5">
+                <div class="mb-3"><i class="bx bx-calendar-check text-muted" style="font-size: 5rem; opacity: 0.3;"></i></div>
+                <h5 class="text-muted fw-bold">Karşılaştırma için lütfen dönem seçiniz</h5>
+            </div>
+
+        </div> <!-- /pane-karsilastirma -->
+    </div> <!-- /mainTabContent -->
 
 <!-- Loading Overlay -->
 <div id="loadingOverlay" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(255,255,255,0.7); z-index:9999; display:flex; align-items:center; justify-content:center;">
@@ -528,6 +522,208 @@ $rootActive = ($activeTab === 'genel-bakis' || $activeTab === 'arac-analiz') ? '
 </div>
 
 <style>
+    /* Puantaj Tarzı Premium Sekme Tasarımı */
+    .nav-tabs-custom {
+        background: transparent !important;
+        border: none !important;
+        padding: 0 !important;
+        gap: 8px;
+    }
+
+    .nav-tabs-custom .nav-link {
+        border-radius: 8px !important;
+        border: 1px solid #e2e8f0 !important;
+        background: #fff !important;
+        color: #4b5563 !important;
+        font-weight: 700;
+        padding: 0.6rem 1.4rem !important;
+        transition: all 0.3s ease;
+        display: flex;
+        align-items: center;
+        font-size: 0.82rem;
+        margin-bottom: 0 !important;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.02) !important;
+    }
+
+    .nav-tabs-custom .nav-link i { font-size: 1.1rem; }
+
+    .nav-tabs-custom .nav-link.active {
+        background: #1e293b !important;
+        color: #fff !important;
+        border-color: #1e293b !important;
+        box-shadow: 0 4px 10px rgba(30, 41, 59, 0.15) !important;
+    }
+
+    /* Puantaj Tarzı Gelişmiş Kolon Filtresi POPUP */
+    .col-filter-popup {
+        position: fixed;
+        width: 220px;
+        background: #fff;
+        border-radius: 12px;
+        box-shadow: 0 10px 25px rgba(0,0,0,0.15), 0 5px 10px rgba(0,0,0,0.05);
+        z-index: 9999;
+        padding: 12px;
+        display: none;
+        border: 1px solid #e2e8f0;
+    }
+
+    .col-filter-popup.show { display: block; animation: fadeInDown 0.2s ease-out; }
+
+    .filter-popup-title {
+        font-size: 0.75rem;
+        font-weight: 800;
+        color: #1e293b;
+        margin-bottom: 10px;
+        display: flex;
+        align-items: center;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+
+    .col-filter-popup select, .col-filter-popup input {
+        width: 100%;
+        margin-bottom: 8px;
+        font-size: 0.8rem;
+        padding: 6px 10px;
+        border-radius: 6px;
+        border: 1px solid #cbd5e1;
+    }
+
+    .filter-popup-actions {
+        display: flex;
+        gap: 8px;
+        margin-top: 4px;
+    }
+
+    .btn-filter-apply {
+        flex: 1;
+        background: #1e293b;
+        color: #fff;
+        border: none;
+        padding: 6px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+        transition: all 0.2s;
+    }
+
+    .btn-filter-apply:hover { background: #0f172a; }
+
+    .btn-filter-clear {
+        background: #f1f5f9;
+        color: #64748b;
+        border: none;
+        padding: 6px 10px;
+        border-radius: 6px;
+        font-size: 0.75rem;
+        font-weight: 700;
+    }
+
+    /* Tablo Başlık Filtre Butonları */
+    .col-filter-btn {
+        padding: 2px 5px;
+        border-radius: 4px;
+        background: transparent;
+        border: none;
+        color: #94a3b8;
+        cursor: pointer;
+        transition: all 0.2s;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        margin-right: 4px;
+    }
+
+    .col-filter-btn:hover { background: #e2e8f0; color: #1e293b; }
+    .col-filter-active { color: #3b82f6 !important; background: rgba(59, 130, 246, 0.1) !important; }
+
+    .filter-active-dot {
+        width: 6px;
+        height: 6px;
+        background: #3b82f6;
+        border-radius: 50%;
+        display: inline-block;
+        margin-left: -8px;
+        margin-top: -12px;
+        border: 1px solid #fff;
+        position: relative;
+        z-index: 5;
+    }
+
+    /* Puantaj Tarzı Özet Kartları */
+    .summary-card {
+        position: relative;
+        overflow: hidden;
+        border: none !important;
+        border-radius: 12px;
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05) !important;
+        background: #fff;
+        transition: transform 0.2s;
+    }
+
+    .summary-card:hover { transform: translateY(-3px); }
+
+    .summary-card .card-body { padding: 1.25rem !important; }
+
+    .summary-card .ghost-label {
+        position: absolute;
+        top: 8px;
+        right: 12px;
+        font-size: 0.65rem;
+        font-weight: 800;
+        text-transform: uppercase;
+        color: #94a3b8;
+        opacity: 0.3;
+        letter-spacing: 1px;
+    }
+
+    .summary-card .card-value {
+        font-size: 1.35rem;
+        font-weight: 800;
+        color: #1e293b;
+        margin-bottom: 0;
+    }
+
+    .summary-card .card-title-text {
+        font-size: 0.72rem;
+        font-weight: 700;
+        color: #64748b;
+        text-transform: uppercase;
+        margin-bottom: 2px;
+    }
+
+    /* Tablo & Sütun Renkleri */
+    #compResultTable th.comp-period-header {
+        background-color: #f8fafc !important;
+        color: #334155 !important;
+        border-bottom: 1px solid #e2e8f0 !important;
+        font-size: 0.75rem !important;
+        font-weight: 800 !important;
+    }
+
+    #compResultTable th.col-litre { color: #f59e0b !important; }
+    #compResultTable th.col-km { color: #3b82f6 !important; }
+
+    .text-litre { color: #d97706 !important; font-weight: 600; }
+    .text-km { color: #2563eb !important; font-weight: 600; }
+
+    .plaka-badge {
+        background: #f8fafc;
+        color: #1e293b;
+        padding: 3px 8px;
+        border-radius: 6px;
+        font-weight: 800;
+        font-size: 0.8rem;
+        border: 1px solid #e2e8f0;
+        display: inline-block;
+        white-space: nowrap;
+    }
+
+    @keyframes fadeInDown {
+        from { opacity: 0; transform: translateY(-5px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+
     .kpi-icon-box {
         width: 36px;
         height: 36px;
@@ -554,23 +750,6 @@ $rootActive = ($activeTab === 'genel-bakis' || $activeTab === 'arac-analiz') ? '
 
     #btnFiltrele {
         height: 58px;
-    }
-
-    .nav-tabs-custom .nav-link {
-        border: none;
-        border-bottom: 3px solid transparent;
-        color: #74788d;
-        transition: all 0.3s ease;
-    }
-
-    .nav-tabs-custom .nav-link.active {
-        color: #556ee6 !important;
-        background-color: transparent !important;
-        border-bottom-color: #556ee6 !important;
-    }
-
-    .nav-tabs-custom .nav-link:hover {
-        color: #556ee6;
     }
 
     .animate-card {
@@ -627,6 +806,22 @@ $rootActive = ($activeTab === 'genel-bakis' || $activeTab === 'arac-analiz') ? '
     #performansTable tbody tr:hover {
         background-color: rgba(231, 74, 59, 0.04) !important;
     }
+
+    /* Karşılaştırma Tablosu & Select2 Stilleri */
+    #compResultTable { border-collapse: separate; border-spacing: 0; }
+    #compResultTable th { padding: 12px 8px; }
+    #compResultTable th.sticky-header-top { position: sticky; top: 0; z-index: 20; background-color: #f1f5f9; border-bottom: 2px solid #e2e8f0; }
+    #compResultTable th:first-child, #compResultTable td:first-child { position: sticky; left: 0; z-index: 15; background-color: #fff; border-right: 2px solid #edf2f7; box-shadow: 2px 0 5px rgba(0,0,0,0.02); }
+    #compResultTable th:first-child { z-index: 25; background-color: #f1f5f9 !important; }
+    #compResultTable tr:hover td:first-child { background-color: #f8fafc; }
+    .comp-period-header { background: #556ee6 !important; color: white !important; font-weight: 600; text-align: center; border-bottom: none !important; font-size: 0.85rem; letter-spacing: 1px; }
+    .comp-sub-header { background-color: #f8fafc !important; font-size: 0.65rem !important; text-transform: uppercase; letter-spacing: 1px; color: #64748b; font-weight: 800; border-top: 1px solid #e2e8f0 !important; }
+    .plaka-badge { background: #1e293b; color: #fff; padding: 2px 8px; border-radius: 4px; font-family: 'Monaco', 'Consolas', monospace; font-size: 0.85rem; letter-spacing: 0.5px; }
+    
+    .select2-container--default .select2-selection--multiple { border: 1px solid #ced4da; border-radius: 8px; min-height: 42px; padding: 2px 6px; }
+    .select2-container--default .select2-selection--multiple .select2-selection__choice { background-color: #334155; border: none; color: #fff; border-radius: 6px; padding: 4px 10px; margin-top: 6px; font-weight: 500; }
+    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove { color: #94a3b8; margin-right: 8px; border-right: 1px solid #475569; padding-right: 4px; }
+    .select2-container--default .select2-selection--multiple .select2-selection__choice__remove:hover { color: #fff; background: none; }
 
     #loadingOverlay {
         backdrop-filter: blur(2px);
@@ -703,65 +898,9 @@ $(document).ready(function() {
         currentYear = String($(this).val() || new Date().getFullYear());
     });
 
-    $('#aracSecici').on('change', function() {
-        if (currentTab === 'arac-analiz') loadData();
-    });
-
     // İlk init
     initSingleDatePicker();
     toggleDateMode();
-
-    // COMPARISON PICKERS
-    const getDateStr = (date) => {
-        const d = new Date(date);
-        return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
-    };
-
-    const firstDay = new Date(); firstDay.setDate(1);
-    const lastDay = new Date(firstDay.getFullYear(), firstDay.getMonth() + 1, 0);
-    
-    const prevFirstDay = new Date(firstDay.getFullYear(), firstDay.getMonth() - 1, 1);
-    const prevLastDay = new Date(firstDay.getFullYear(), firstDay.getMonth(), 0);
-
-    const range1Default = typeof moment !== 'undefined' ? 
-        [moment().startOf('month').format('YYYY-MM-DD'), moment().endOf('month').format('YYYY-MM-DD')] : 
-        [getDateStr(firstDay), getDateStr(lastDay)];
-
-    const range2Default = typeof moment !== 'undefined' ? 
-        [moment().subtract(1, 'month').startOf('month').format('YYYY-MM-DD'), moment().subtract(1, 'month').endOf('month').format('YYYY-MM-DD')] : 
-        [getDateStr(prevFirstDay), getDateStr(prevLastDay)];
-
-    const compRange1 = flatpickr('#compRange1', {
-        locale: 'tr',
-        mode: 'range',
-        dateFormat: 'Y-m-d',
-        altInput: true,
-        altFormat: 'j F Y',
-        defaultDate: range1Default
-    });
-
-    const compRange2 = flatpickr('#compRange2', {
-        locale: 'tr',
-        mode: 'range',
-        dateFormat: 'Y-m-d',
-        altInput: true,
-        altFormat: 'j F Y',
-        defaultDate: range2Default
-    });
-
-    let rootActive = '<?= $rootActive ?>';
-
-    // =============================================
-    // DÖNEM DEĞİŞTİR
-    // =============================================
-    $('#periodGroup').on('click', '.period-btn', function() {
-        $('.period-btn').removeClass('btn-primary active').addClass('btn-outline-primary');
-        $(this).removeClass('btn-outline-primary').addClass('btn-primary active');
-        currentPeriod = $(this).data('period');
-        toggleDateMode();
-        if (currentPeriod !== 'yillik') initSingleDatePicker();
-        loadData();
-    });
 
     // Filtrele
     $('#btnFiltrele').on('click', function() {
@@ -862,25 +1001,11 @@ $(document).ready(function() {
     // SEKME YÖNETİMİ
     // =============================================
     
-    // ROOT TAB SWITCH
-    $('#rootTabNav button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
-        const target = $(e.target).attr('data-bs-target');
-        console.log("Root Sekme değiştirildi:", target);
-        if (target === '#root-karsilastirma') {
-            loadMainKarsilastirma();
-        } else {
-            loadData();
-        }
-    });
-
-    // SUB TAB SWITCH (Inside Performans Raporu)
     $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
-        const target = $(e.target).attr('data-bs-target');
-        if (target === '#root-performans' || target === '#root-karsilastirma') return; // Root tabları atla
+        currentTab = $(e.target).attr('data-bs-target').replace('#', '');
+        console.log("Sekme değiştirildi:", currentTab);
         
-        currentTab = target.replace('#', '');
-        console.log("Alt Sekme değiştirildi:", currentTab);
-        
+        // Üst araç filtresini göster/gizle
         if (currentTab === 'arac-analiz') {
             $('#topAracFilterWrapper').fadeIn();
         } else {
@@ -890,21 +1015,20 @@ $(document).ready(function() {
         loadData();
     });
 
-    // Araç listesini doldur
+    // Araç listesini doldur (Filtreleme için)
     function populateAracSelect(araclar) {
         const $select = $('#aracSecici');
-        const $compSelect = $('#compAracSecici');
-        
-        lastAraclar = araclar;
-        
-        $select.empty().append(`<option value="">Araç Seçiniz...</option>`);
-        $compSelect.empty().append(`<option value="0">Tüm Firma (Genel)</option>`);
+        if ($select.children('option').length > 1) return;
         
         araclar.forEach(a => {
-            const optionTxt = `${a.plaka} - ${a.marka} ${a.model}`;
-            $select.append(`<option value="${a.arac_id}">${optionTxt}</option>`);
-            $compSelect.append(`<option value="${a.arac_id}">${optionTxt}</option>`);
+            $select.append(`<option value="${a.arac_id}">${a.plaka} - ${a.marka} ${a.model}</option>`);
         });
+
+        // Eğer araç analiz sekmesindeysek ve henüz araç seçilmediyse ilk aracı otomatik seç
+        if (currentTab === 'arac-analiz' && !$select.val() && araclar.length > 0) {
+            console.log("İlk araç otomatik seçiliyor...");
+            $select.val(araclar[0].arac_id).trigger('change');
+        }
     }
 
     // =============================================
@@ -913,8 +1037,15 @@ $(document).ready(function() {
     function loadData() {
         console.log("Veri yükleniyor. Mevcut sekme:", currentTab);
         
-        // Araç analizi sekmesindeysek ve araç listesi henüz gelmediyse
+        if (currentTab === 'pane-karsilastirma') {
+            initComparisonTab();
+            hideLoading(); // Failsafe
+            return;
+        }
+
+        // Araç analizi sekmesindeysek ve araç listesi henüz gelmediyse, listeyi çekmek için genel bakışı tetikleyici ile çalıştır
         if (currentTab === 'arac-analiz' && lastAraclar.length === 0) {
+            console.log("Araç listesi eksik, genel bakış üzerinden liste çekiliyor...");
             loadGenelBakis(true);
             return;
         }
@@ -923,6 +1054,8 @@ $(document).ready(function() {
             loadGenelBakis(false);
         } else if (currentTab === 'arac-analiz') {
             loadAracAnaliz();
+        } else {
+            hideLoading(); // Failsafe
         }
     }
 
@@ -950,12 +1083,8 @@ $(document).ready(function() {
                     updateDonemBilgisi(res.baslangic, res.bitis);
                     populateAracSelect(res.araclar);
 
-                    if (triggerAracAnalizAfter) {
-                        if (rootActive === 'karsilastirma') {
-                            loadMainKarsilastirma();
-                        } else if (currentTab === 'arac-analiz') {
-                            loadAracAnaliz();
-                        }
+                    if (triggerAracAnalizAfter && currentTab === 'arac-analiz') {
+                        loadAracAnaliz();
                     }
                 } else {
                     Swal.fire('Hata', res.message || 'Veri yüklenemedi.', 'error');
@@ -990,6 +1119,7 @@ $(document).ready(function() {
             },
             dataType: 'json',
             success: function(res) {
+                console.log("Araç Analiz Yanıtı Geldi:", res.status);
                 hideLoading();
                 if (res.status === 'success') {
                     $('#aracEmptyState').hide();
@@ -999,109 +1129,13 @@ $(document).ready(function() {
                     Swal.fire('Hata', res.message, 'error');
                 }
             },
-            error: function() {
+            error: function(xhr, status, error) {
+                console.error("Araç Analiz AJAX Hatası:", status, error);
                 hideLoading();
                 Swal.fire('Hata', 'Veri yükleme hatası.', 'error');
             }
         });
     }
-
-    function loadMainKarsilastirma() {
-        const arac_id = $('#compAracSecici').val() || 0;
-        
-        const r1 = compRange1.selectedDates;
-        const r2 = compRange2.selectedDates;
-
-        if (r1.length < 2 || r2.length < 2) {
-            Swal.fire('Uyarı', 'Lütfen her iki dönem için de tarih aralığı seçiniz.', 'warning');
-            return;
-        }
-
-        const formatDate = (date) => typeof moment !== 'undefined' ? moment(date).format('YYYY-MM-DD') : getDateStr(date);
-
-        showLoading();
-
-        $.ajax({
-            url: 'views/arac-takip/api.php',
-            type: 'GET',
-            data: {
-                action: 'get-comparison-stats',
-                arac_id: arac_id,
-                p1_start: formatDate(r1[0]),
-                p1_end: formatDate(r1[1]),
-                p2_start: formatDate(r2[0]),
-                p2_end: formatDate(r2[1])
-            },
-            dataType: 'json',
-            success: function(res) {
-                hideLoading();
-                if (res.status === 'success') {
-                    renderMainKarsilastirma(res.p1, res.p2);
-                } else {
-                    Swal.fire('Hata', res.message, 'error');
-                }
-            },
-            error: function() {
-                hideLoading();
-                Swal.fire('Hata', 'Bağlantı hatası.', 'error');
-            }
-        });
-    }
-
-    let mainKarsilastirmaChart = null;
-    function renderMainKarsilastirma(p1, p2) {
-        $('#compSummaryCards').fadeIn();
-
-        // Totals update
-        $('#c_y_1').text(formatNumber(p1.yakit) + ' L');
-        $('#c_y_2').text(formatNumber(p2.yakit) + ' L');
-        $('#c_k_1').text(formatNumber(p1.km) + ' KM');
-        $('#c_k_2').text(formatNumber(p2.km) + ' KM');
-        $('#c_m_1').text(formatMoney(p1.toplam_maliyet) + ' ₺');
-        $('#c_m_2').text(formatMoney(p2.toplam_maliyet) + ' ₺');
-        $('#c_v_1').text(p1.verimlilik.toFixed(2));
-        $('#c_v_2').text(p2.verimlilik.toFixed(2));
-
-        const getDiffBadge = (cur, old, reverse = false) => {
-            if (old <= 0) return '';
-            const diff = ((cur - old) / old) * 100;
-            const isIncrease = diff > 0;
-            const isGood = reverse ? !isIncrease : isIncrease;
-            const color = isGood ? 'text-success' : 'text-danger';
-            const icon = isIncrease ? 'bx-trending-up' : 'bx-trending-down';
-            return `<span class="${color} small fw-bold"><i class="bx ${icon} me-1"></i>%${Math.abs(diff).toFixed(1)} ${isIncrease ? 'artış' : 'düşüş'}</span>`;
-        };
-
-        $('#c_y_diff').html(getDiffBadge(p1.yakit, p2.yakit, true));
-        $('#c_k_diff').html(getDiffBadge(p1.km, p2.km));
-        $('#c_m_diff').html(getDiffBadge(p1.toplam_maliyet, p2.toplam_maliyet, true));
-        
-        const vDiff = p1.verimlilik - p2.verimlilik;
-        $('#c_v_stats').html(`<span class="fw-bold ${vDiff <= 0 ? 'text-success' : 'text-danger'}">${vDiff > 0 ? '+' : ''}${vDiff.toFixed(2)} L/100 KM fark</span>`);
-
-        // Bar Chart
-        const options = {
-            series: [
-                { name: '1. Dönem', data: [p1.yakit, p1.km, p1.toplam_maliyet / 100] },
-                { name: '2. Dönem', data: [p2.yakit, p2.km, p2.toplam_maliyet / 100] }
-            ],
-            chart: { height: 350, type: 'bar', toolbar: { show: false } },
-            plotOptions: { bar: { horizontal: false, columnWidth: '55%', borderRadius: 5 } },
-            dataLabels: { enabled: false },
-            colors: ['#556ee6', '#e74a3b'],
-            xaxis: { categories: ['Yakıt (L)', 'Yapılan KM', 'Maliyet (₺x100)'] },
-            legend: { position: 'top' },
-            tooltip: { theme: 'light' }
-        };
-
-        if (mainKarsilastirmaChart) mainKarsilastirmaChart.destroy();
-        mainKarsilastirmaChart = new ApexCharts(document.querySelector("#mainKarsilastirmaChart"), options);
-        mainKarsilastirmaChart.render();
-    }
-
-    $('#btnCompRefresh').on('click', function() {
-        loadMainKarsilastirma();
-    });
 
     function showLoading() { $('#loadingOverlay').css('display', 'flex'); }
     function hideLoading() { $('#loadingOverlay').hide(); }
@@ -1585,7 +1619,376 @@ $(document).ready(function() {
     }
 
     // =============================================
-    // YARDIMCI FONKSİYONLAR
+    // DÖNEM DEĞİŞTİR
+    // =============================================
+    $('#periodGroup').on('click', '.period-btn', function() {
+        $('.period-btn').removeClass('btn-primary active').addClass('btn-outline-primary');
+        $(this).removeClass('btn-outline-primary').addClass('btn-primary active');
+        currentPeriod = $(this).data('period');
+        toggleDateMode();
+        if (currentPeriod !== 'yillik') initSingleDatePicker();
+        loadData();
+    });
+
+    // Filtrele
+    $('#btnFiltrele').on('click', function() {
+        loadData();
+    });
+
+    // =============================================
+    // ANA SEKME YÖNETİMİ
+    // =============================================
+    $('#mainTabs button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+        const targetId = $(e.target).attr('data-bs-target');
+        const mainTab = targetId.replace('#', '');
+        console.log("Ana Sekme Değişti (shown.bs.tab):", mainTab);
+        
+        // Manuel class kontrolü (Bootstrap 5 bazen fade/show çakışması yaşatabiliyor)
+        $('.tab-pane').removeClass('show active');
+        $(targetId).addClass('show active');
+
+        if (mainTab === 'pane-karsilastirma') {
+            console.log("Karşılaştırma sekmesi tespit edildi, init başlıyor...");
+            setTimeout(initComparisonTab, 50);
+        } else {
+            loadData();
+        }
+    });
+
+    $('button[data-bs-toggle="tab"]').not('#mainTabs button').on('shown.bs.tab', function (e) {
+        currentTab = $(e.target).attr('data-bs-target').replace('#', '');
+        console.log("Alt Sekme değiştirildi:", currentTab);
+        
+        if (currentTab === 'arac-analiz') {
+            $('#topAracFilterWrapper').fadeIn();
+        } else {
+            $('#topAracFilterWrapper').fadeOut();
+        }
+
+        loadData();
+    });
+
+    // =============================================
+    // KARŞILAŞTIRMA SEKME LOJİĞİ
+    // =============================================
+    let compTableDataTable = null;
+    let compFuelChart = null;
+    let compKmChart = null;
+
+    function initComparisonTab() {
+        if ($.fn.select2) {
+            $('#compDonemler').select2({
+                placeholder: "Başlamak için dönem seçin",
+                allowClear: true,
+                width: '100%'
+            });
+            $('#compAraclar').select2({
+                placeholder: "Seçili araca özel filtrele (Tümü için boş bırakın)",
+                allowClear: true,
+                width: '100%'
+            });
+        }
+    }
+
+    // Quick Period Seçimi
+    $('.comp-quick-period').on('click', function() {
+        const months = parseInt($(this).data('months'));
+        const values = [];
+        const now = new Date();
+        for (let i = 1; i <= months; i++) {
+            const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+            values.push(d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0'));
+        }
+        $('#compDonemler').val(values).trigger('change');
+    });
+
+    $('#btnCompFiltrele').on('click', function() {
+        const selected = $('#compDonemler').val();
+        if (!selected || selected.length === 0) {
+            Swal.fire('Uyarı', 'Lütfen en az bir dönem seçiniz.', 'warning');
+            return;
+        }
+        loadComparisonData(selected);
+    });
+
+    function loadComparisonData(periods) {
+        const aracId = $('#compAraclar').val();
+        showLoading();
+        console.log("Karşılaştırma Verisi İsteniyor. Dönemler:", periods, "Araç ID:", aracId);
+
+        $.ajax({
+            url: 'views/arac-takip/api.php',
+            type: 'POST',
+            data: {
+                action: 'arac-karsilastirma',
+                donemler: periods,
+                arac_id: aracId
+            },
+            dataType: 'json',
+            success: function(res) {
+                hideLoading();
+                console.log("Karşılaştırma Verisi Geldi:", res);
+
+                if (res.status === 'success') {
+                    if (res.data.length === 0) {
+                        $('#compTableWrapper').html('<div class="alert alert-info py-3 text-center">Seçilen dönemlerde araç verisi bulunamadı.</div>');
+                        $('#compEmptyState').hide();
+                        $('#compSummaryCards, #compActions').fadeIn();
+                        return;
+                    }
+
+                    $('#compEmptyState').hide();
+                    $('#compSummaryCards, #compActions, #compListSection').fadeIn();
+                    _compSummaryData = res.summary; // Global store
+                    updateCompSummary(res.summary);
+                    renderCompTable(res.periods, res.data, res.summary);
+                    renderCompCharts(res.periods, res.data, res.summary);
+                    
+                    // Görünüm moduna göre göster
+                    toggleCompView($('input[name="vMode"]:checked').val());
+                } else {
+                    Swal.fire('Hata', res.message || 'Karşılaştırma verisi yüklenemedi.', 'error');
+                }
+            },
+            error: function(xhr, status, error) {
+                hideLoading();
+                console.error("Karşılaştırma AJAX Hatası:", status, error, xhr.responseText);
+                Swal.fire('Hata', 'Sunucu ile bağlantı kurulamadı veya bir sunucu hatası oluştu.', 'error');
+            }
+        });
+    }
+
+    function updateCompSummary(summary) {
+        $('#compTotalArac').text(summary.toplam_arac);
+        
+        let totalFuel = 0, totalKm = 0, totalCost = 0;
+        Object.values(summary.donemler).forEach(d => {
+            totalFuel += d.toplam_litre;
+            totalKm += d.toplam_km;
+            totalCost += d.toplam_tutar;
+        });
+
+        $('#compTotalFuel').text(formatNumber(Math.round(totalFuel)));
+        $('#compTotalKm').text(formatNumber(Math.round(totalKm)));
+        $('#compTotalCost').text(formatMoney(totalCost) + ' ₺');
+    }
+
+    let _numericFilters = {}; // Key: '{donem}_{field}', Value: { operator, value }
+    let _compTableData = [];
+    let _compPeriods = [];
+
+    function renderCompTable(periods, data, summary) {
+        _compTableData = data;
+        _compPeriods = periods;
+        
+        // Sayısal Filtreleri Uygula
+        let filteredData = data.filter(item => {
+            for (const key in _numericFilters) {
+                const f = _numericFilters[key];
+                if (!f || f.value === undefined || f.value === '') continue;
+
+                const parts = key.split('_');
+                const field = parts.pop(); // litre, km
+                const donem = parts.join('_');
+                const val = parseFloat(item.donemler[donem] ? item.donemler[donem][field] : 0) || 0;
+
+                const filterVal = parseFloat(f.value);
+                switch (f.operator) {
+                    case '>': if (!(val > filterVal)) return false; break;
+                    case '<': if (!(val < filterVal)) return false; break;
+                    case '>=': if (!(val >= filterVal)) return false; break;
+                    case '<=': if (!(val <= filterVal)) return false; break;
+                    case '=': if (!(Math.abs(val - filterVal) < 0.01)) return false; break;
+                }
+            }
+            return true;
+        });
+
+        let html = `<table class="table table-sm table-hover mb-0" id="compResultTable">
+            <thead>
+                <tr>
+                    <th rowspan="2" class="align-middle sticky-header-top bg-light" style="min-width: 160px; border-bottom: 2px solid #e2e8f0; top: 0; position: sticky; z-index: 30;">
+                        <div class="d-flex flex-column gap-1">
+                            <span class="fw-bold text-dark" style="font-size: 0.75rem;">Araç / Plaka</span>
+                            <div class="input-group input-group-sm mt-1">
+                                <span class="input-group-text bg-white border-end-0 py-0"><i class="bx bx-search" style="font-size: 0.7rem;"></i></span>
+                                <input type="text" id="compAracAra" class="form-control form-control-sm border-start-0 ps-0" placeholder="Ara..." style="font-size: 0.7rem; height: 24px;">
+                            </div>
+                        </div>
+                    </th>`;
+        
+        periods.forEach(p => {
+            const label = p.substring(0, 4) + ' / ' + p.substring(4, 6);
+            html += `<th colspan="2" class="comp-period-header text-center bg-light" style="position: sticky; top: 0; z-index: 20; border-bottom: 1px solid #e2e8f0;">${label}</th>`;
+        });
+        
+        html += `</tr><tr>`;
+        periods.forEach(p => {
+            const getFilterBtn = (field) => {
+                const key = p + '_' + field;
+                const isActive = _numericFilters[key] && _numericFilters[key].value !== '';
+                const activeClass = isActive ? 'col-filter-active' : '';
+                const dot = isActive ? '<span class="filter-active-dot"></span>' : '';
+                return `<button type="button" class="col-filter-btn ${activeClass}" data-filter-col="${key}"><i class="bx bx-filter-alt"></i></button>${dot}`;
+            };
+
+            html += `<th class="text-center comp-sub-header col-litre bg-light" style="position: sticky; top: 31px; z-index: 20;">
+                        <div class="d-flex align-items-center justify-content-center">
+                            ${getFilterBtn('litre')} Litre
+                        </div>
+                     </th>
+                     <th class="text-center comp-sub-header col-km bg-light" style="position: sticky; top: 31px; z-index: 20;">
+                        <div class="d-flex align-items-center justify-content-center">
+                            ${getFilterBtn('km')} KM
+                        </div>
+                     </th>`;
+        });
+        html += `</tr></thead><tbody>`;
+
+        if (filteredData.length === 0) {
+            html += `<tr><td colspan="${(periods.length * 2) + 1}" class="text-center py-5">Veri bulunamadı.</td></tr>`;
+        } else {
+            filteredData.forEach(arac => {
+                html += `<tr class="arac-row">
+                    <td class="bg-white">
+                        <div class="d-flex flex-column">
+                            <span class="plaka-badge mb-1">${escapeHtml(arac.plaka)}</span>
+                            <span class="text-muted" style="font-size:0.65rem;">${escapeHtml(arac.marka)}</span>
+                        </div>
+                    </td>`;
+                
+                periods.forEach(p => {
+                    const d = arac.donemler[p] || { litre: 0, km: 0 };
+                    html += `<td class="text-end border-start text-litre ${d.litre > 0 ? '' : 'text-muted opacity-50'}">${d.litre > 0 ? formatNumber(d.litre) : '-'}</td>
+                             <td class="text-end text-km ${d.km > 0 ? '' : 'text-muted opacity-50'}">${d.km > 0 ? formatNumber(d.km) : '-'}</td>`;
+                });
+                html += `</tr>`;
+            });
+        }
+        html += `</tbody><tfoot class="bg-light fw-bold sticky-bottom" style="bottom: 0; z-index: 10;">
+            <tr>
+                <td class="bg-light text-primary">GENEL TOPLAM</td>`;
+        periods.forEach(p => {
+            const s = summary.donemler[p];
+            html += `<td class="text-end border-start text-primary">${formatNumber(Math.round(s.toplam_litre))}</td>
+                     <td class="text-end text-primary">${formatNumber(Math.round(s.toplam_km))}</td>`;
+        });
+        html += `</tr></tfoot></table>`;
+
+        $('#compTableWrapper').html(html);
+        $('#compAracAra').trigger('keyup');
+    }
+
+    let compGroupedChart = null;
+    function renderCompCharts(periods, data, summary) {
+        const categories = periods.map(p => p.substring(0, 4) + '/' + p.substring(4, 6));
+        
+        const fuelSeries = periods.map(p => Math.round(summary.donemler[p].toplam_litre));
+        const kmSeries = periods.map(p => Math.round(summary.donemler[p].toplam_km));
+
+        const options = {
+            series: [{
+                name: 'Toplam Yakıt (Litre)',
+                data: fuelSeries
+            }, {
+                name: 'Toplam Mesafe (KM)',
+                data: kmSeries
+            }],
+            chart: {
+                type: 'bar',
+                height: 400,
+                toolbar: { show: true },
+                fontFamily: 'inherit'
+            },
+            plotOptions: {
+                bar: {
+                    horizontal: false,
+                    columnWidth: '55%',
+                    borderRadius: 5,
+                    dataLabels: { position: 'top' }
+                }
+            },
+            dataLabels: {
+                enabled: true,
+                formatter: (val) => formatNumber(val),
+                offsetY: -20,
+                style: { fontSize: '10px', colors: ["#304758"] }
+            },
+            stroke: { show: true, width: 2, colors: ['transparent'] },
+            xaxis: { categories: categories },
+            yaxis: { title: { text: 'Miktarlar' } },
+            fill: { opacity: 1 },
+            colors: ['#e74a3b', '#556ee6'],
+            tooltip: {
+                y: {
+                    formatter: (val) => formatNumber(val)
+                }
+            },
+            title: {
+                text: 'Dönemsel Performans Karşılaştırması',
+                align: 'center',
+                style: { fontSize: '16px', fontWeight: 'bold' }
+            },
+            legend: { position: 'top', horizontalAlign: 'center' }
+        };
+
+        if (compGroupedChart) compGroupedChart.destroy();
+        compGroupedChart = new ApexCharts(document.querySelector("#compGroupedChart"), options);
+        compGroupedChart.render();
+    }
+
+    $('input[name="vMode"]').on('change', function() {
+        toggleCompView($(this).val());
+    });
+
+    function toggleCompView(mode) {
+        if (mode === 'chart') {
+            $('#compListSection').hide();
+            $('#compChartSection').fadeIn();
+        } else {
+            $('#compChartSection').hide();
+            $('#compListSection').fadeIn();
+        }
+    }
+
+    $('#btnCompExcel').on('click', function() {
+        const table = document.getElementById('compResultTable');
+        if (!table) return;
+        
+        let html = '<html><head><meta charset="utf-8"></head><body>' + table.outerHTML + '</body></html>';
+        const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `Arac_Karsilastirma_${new Date().getTime()}.xls`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+    });
+
+    $('#btnCompFullScreen').on('click', function() {
+        const elem = document.getElementById('pane-karsilastirma');
+        if (elem.requestFullscreen) {
+            elem.requestFullscreen();
+        } else if (elem.webkitRequestFullscreen) {
+            elem.webkitRequestFullscreen();
+        } else if (elem.msRequestFullscreen) {
+            elem.msRequestFullscreen();
+        }
+    });
+
+    $(document).on('fullscreenchange webkitfullscreenchange mozfullscreenchange MSFullscreenChange', function() {
+        const isFS = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+        const $elem = $('#pane-karsilastirma');
+        if (isFS) {
+            $elem.addClass('bg-light p-4 overflow-auto');
+        } else {
+            $elem.removeClass('bg-light p-4 overflow-auto');
+        }
+    });
+
+    // =============================================
+    // YARDIMCI FONKSİYONLAR & İLK YÜKLEME
     // =============================================
     function formatNumber(n) {
         if (n === null || n === undefined) return '0';
@@ -1597,16 +2000,19 @@ $(document).ready(function() {
         return Number(n).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
+    function formatDateFull(dateStr) {
+        if (!dateStr) return '';
+        if (dateStr.includes('.')) return dateStr;
+        const parts = dateStr.split('-');
+        if (parts.length < 3) return dateStr;
+        return parseInt(parts[2]) + ' ' + turkishMonths[parseInt(parts[1]) - 1] + ' ' + parts[0];
+    }
+
     function formatMonthLabel(monthStr) {
         if (!monthStr) return '';
         const parts = monthStr.split('-');
+        if (parts.length < 2) return monthStr;
         return turkishMonths[parseInt(parts[1]) - 1] + ' ' + parts[0];
-    }
-
-    function formatDateFull(dateStr) {
-        if (!dateStr) return '';
-        const parts = dateStr.split('-');
-        return parseInt(parts[2]) + ' ' + turkishMonths[parseInt(parts[1]) - 1] + ' ' + parts[0];
     }
 
     function escapeHtml(text) {
@@ -1616,51 +2022,125 @@ $(document).ready(function() {
         return div.innerHTML;
     }
 
-    // =============================================
-    // EXCEL EXPORT
-    // =============================================
-    $('#btnExcelExport').on('click', function() {
-        if (!dataTable || !dataTable.data().any()) {
-            Swal.fire({ icon: 'warning', title: 'Uyarı', text: 'Dışa aktarılacak veri bulunamadı.' });
-            return;
+    function showLoading() { $('#loadingOverlay').fadeIn(100); }
+    function hideLoading() { $('#loadingOverlay').fadeOut(100); }
+
+    // ======= SAYİSAL FİLTRE POPUP MANTIĞI =======
+    let _activeFilterCol = null;
+
+    $('body').append(`
+        <div class="col-filter-popup shadow-lg" id="colFilterPopup">
+            <div class="filter-popup-title border-bottom pb-2 mb-2">
+                <i class="bx bx-filter-alt me-1"></i> <span id="colFilterPopupTitle">Filtrele</span>
+            </div>
+            <div class="mb-2">
+                <label class="small fw-bold text-muted mb-1">Operatör</label>
+                <select id="colFilterOperator" class="form-select form-select-sm">
+                    <option value="">Seçiniz...</option>
+                    <option value=">">Büyüktür ( > )</option>
+                    <option value="<">Küçüktür ( < )</option>
+                    <option value=">=">Büyük Eşit ( ≥ )</option>
+                    <option value="<=">Küçük Eşit ( ≤ )</option>
+                    <option value="=">Eşit ( = )</option>
+                </select>
+            </div>
+            <div class="mb-3">
+                <label class="small fw-bold text-muted mb-1">Değer</label>
+                <input type="number" id="colFilterValue" class="form-control form-control-sm" placeholder="Sayı girin..." step="any">
+            </div>
+            <div class="filter-popup-actions pt-2 border-top text-end">
+                <button type="button" class="btn btn-sm btn-light me-1" id="colFilterClear">Temizle</button>
+                <button type="button" class="btn btn-sm btn-primary" id="colFilterApply">Uygula</button>
+            </div>
+        </div>
+    `);
+
+    $(document).on('click', '.col-filter-btn', function(e) {
+        e.preventDefault(); e.stopPropagation();
+        const colKey = $(this).data('filter-col');
+        const popup = $('#colFilterPopup');
+
+        if (_activeFilterCol === colKey && popup.hasClass('show')) {
+            popup.removeClass('show'); _activeFilterCol = null; return;
         }
 
-        let html = '<html><head><meta charset="utf-8"></head><body><table border="1">';
-        html += '<tr><th>Sıra</th><th>Plaka</th><th>Sürücü</th><th>Yakıt (L)</th><th>Yakıt Maliyeti</th><th>Toplam KM</th><th>L/100 KM</th><th>Servis Sayısı</th><th>Servis Maliyeti</th></tr>';
+        _activeFilterCol = colKey;
+        const pts = colKey.split('_');
+        const fld = pts.pop();
+        const dnm = pts.join('_');
+        $('#colFilterPopupTitle').text((dnm.substring(0,4)+'/'+dnm.substring(4)) + ' - ' + fld.toUpperCase());
 
-        let sira = 1;
-        dataTable.rows({ filter: 'applied' }).every(function() {
-            const node = this.node();
-            const plaka = $(node).find('td:eq(1) h6').text().trim();
-            const surucu = $(node).find('td:eq(1) .badge').text().trim() || '-';
-            const yakit = $(node).find('td:eq(2)').text().trim();
-            const yakitMaliyet = $(node).find('td:eq(3)').text().trim();
-            const km = $(node).find('td:eq(4)').text().trim();
-            const l100km = $(node).find('td:eq(7)').text().trim();
-            const servisSayi = $(node).find('td:eq(5)').text().trim();
-            const servisMaliyet = $(node).find('td:eq(6)').text().trim();
-            html += `<tr><td>${sira++}</td><td>${plaka}</td><td>${surucu}</td><td>${yakit}</td><td>${yakitMaliyet}</td><td>${km}</td><td>${l100km}</td><td>${servisSayi}</td><td>${servisMaliyet}</td></tr>`;
+        const existing = _numericFilters[colKey];
+        if (existing) {
+            $('#colFilterOperator').val(existing.operator);
+            $('#colFilterValue').val(existing.value);
+        } else {
+            $('#colFilterOperator').val(''); $('#colFilterValue').val('');
+        }
+
+        const rect = this.getBoundingClientRect();
+        popup.css({ top: (rect.bottom + window.scrollY + 5) + 'px', left: (rect.left + window.scrollX - 100) + 'px' }).addClass('show');
+        setTimeout(() => $('#colFilterOperator').focus(), 50);
+    });
+
+    $(document).on('click', '#colFilterApply', function() {
+        const op = $('#colFilterOperator').val();
+        const val = $('#colFilterValue').val();
+        if (val === '' || val === null) delete _numericFilters[_activeFilterCol];
+        else _numericFilters[_activeFilterCol] = { operator: op, value: parseFloat(val) };
+        $('#colFilterPopup').removeClass('show'); _activeFilterCol = null;
+        if (_compTableData) renderCompTable(_compPeriods, _compTableData, _compSummaryData); // summary global lazım olabilir
+    });
+
+    $(document).on('click', '#colFilterClear', function() {
+        if (_activeFilterCol) delete _numericFilters[_activeFilterCol];
+        $('#colFilterPopup').removeClass('show'); _activeFilterCol = null;
+        if (_compTableData) renderCompTable(_compPeriods, _compTableData, _compSummaryData);
+    });
+
+    $(document).on('click', function(e) {
+        if (!$(e.target).closest('#colFilterPopup, .col-filter-btn').length) $('#colFilterPopup').removeClass('show');
+    });
+
+    // Global summary storage for re-rendering
+    let _compSummaryData = null;
+
+    // Karşılaştırma Arama
+    $(document).on('keyup', '#compAracAra', function() {
+        var val = $(this).val().toLowerCase();
+        $("#compTableWrapper tr.arac-row").filter(function() {
+            var text = $(this).find('.plaka-badge').text().toLowerCase() + ' ' + 
+                       $(this).find('.text-muted').text().toLowerCase();
+            $(this).toggle(text.indexOf(val) > -1);
         });
+    });
 
-        html += '</table></body></html>';
-        const blob = new Blob([html], { type: 'application/vnd.ms-excel' });
-        const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        const range = getDateRange();
-        a.download = `Arac_Performans_${range.baslangic}_${range.bitis}.xls`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        window.URL.revokeObjectURL(url);
+    // Grafik/Liste Geçişleri
+    $(document).on('click', '#btnCompListView', function() {
+        $('#compListSection').fadeIn();
+        $('#compChartSection').hide();
+        $(this).addClass('btn-primary').removeClass('btn-outline-primary');
+        $('#btnCompChartView').addClass('btn-outline-primary').removeClass('btn-primary').addClass('border-0');
+    });
+
+    $(document).on('click', '#btnCompChartView', function() {
+        $('#compChartSection').fadeIn();
+        $('#compListSection').hide();
+        $(this).addClass('btn-primary').removeClass('btn-outline-primary').removeClass('border-0');
+        $('#btnCompListView').addClass('btn-outline-primary').removeClass('btn-primary');
     });
 
     // İlk yükleme
-    if (rootActive === 'karsilastirma') {
-        // Araç listesi için genel bakışı tetikle ama genel bakış UI'ını güncelleme (arka planda liste çeksin)
-        loadGenelBakis(true); 
-    } else {
-        loadData();
+    if (currentTab === 'pane-karsilastirma') {
+        const startupPeriods = $('#compDonemler').val();
+        if (startupPeriods && startupPeriods.length > 0) {
+            loadComparisonData(startupPeriods);
+        }
     }
+
+    if (currentTab === 'arac-analiz') {
+        $('#topAracFilterWrapper').show();
+    }
+    loadData();
 });
 </script>

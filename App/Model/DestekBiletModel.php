@@ -297,6 +297,11 @@ class DestekBiletModel extends Model
             return false;
         }
 
+        // Çözüldü olarak işaretlenen taleplerde kullanıcının tekrar yazabilmesine izin ver
+        if (($ticket->durum ?? '') === 'cozuldu') {
+            return true;
+        }
+
         $lastMessage = $this->getLastMessage($biletId);
         if (!$lastMessage) {
             return true;

@@ -6,6 +6,11 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Model\EvrakTakipModel;
+use App\Model\PersonelModel;
+use App\Model\UserModel;
+use App\Model\BildirimModel;
+use App\Service\MailGonderService;
+use App\Helper\EmailTemplateHelper;
 use App\Helper\Date;
 use App\Helper\Security;
 
@@ -75,6 +80,55 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $message = "Evrak başarıyla kaydedildi.";
                 }
 
+                // Otomatik bildirim gönderimi
+                if ($data['personel_bildirim_durumu'] == 1 && !empty($data['ilgili_personel_id'])) {
+                    $evrak = $Model->getById($id);
+                    $Personel = new PersonelModel();
+                    $personelData = $Personel->find($data['ilgili_personel_id']);
+                    
+                    if ($evrak && $personelData) {
+                        $email = $personelData->email_adresi ?? '';
+                        $adi_soyadi = $personelData->adi_soyadi;
+
+                        // Uygulama içi bildirim
+                        if (!empty($email)) {
+                            $User = new UserModel();
+                            $user = $User->checkUser($email);
+                            if ($user) {
+                                $Bildirim = new BildirimModel();
+                                $Bildirim->createNotification(
+                                    $user->id,
+                                    "Yeni Evrak Zimmetlendi",
+                                    "Tarafınıza '{$evrak->konu}' konulu bir evrak zimmetlenmiştir.",
+                                    "index.php?p=evrak-takip/list",
+                                    "file",
+                                    "info"
+                                );
+                            }
+                        }
+
+                        // E-Posta Bildirimi
+                        if (!empty($email)) {
+                            $evrak_tipi_label = $evrak->evrak_tipi == 'gelen' ? 'GELEN EVRAK' : 'GİDEN EVRAK';
+                            $icerik = "
+                                <p style='color: #020617; font-size: 16px; margin-bottom: 24px;'>Merhaba <b>{$adi_soyadi}</b>,</p>
+                                <p style='color: #475569; margin-bottom: 24px;'>Sistem üzerinden tarafınıza yeni bir evrak zimmetlenmiştir. Detaylar aşağıdadır:</p>
+                                <div style='background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 24px; margin-bottom: 24px;'>
+                                    <table style='width: 100%; border-collapse: collapse;'>
+                                        <tr><td style='padding: 8px 0; color: #64748B; font-size: 13px; width: 35%; border-bottom: 1px solid #EDF2F7;'>EVRAK TİPİ</td><td style='padding: 8px 0; color: #0F172A; font-weight: 600; font-size: 14px; border-bottom: 1px solid #EDF2F7;'>{$evrak_tipi_label}</td></tr>
+                                        <tr><td style='padding: 8px 0; color: #64748B; font-size: 13px; border-bottom: 1px solid #EDF2F7;'>TARİH</td><td style='padding: 8px 0; color: #0F172A; font-weight: 600; font-size: 14px; border-bottom: 1px solid #EDF2F7;'>" . date('d.m.Y', strtotime($evrak->tarih)) . "</td></tr>
+                                        <tr><td style='padding: 8px 0; color: #64748B; font-size: 13px; border-bottom: 1px solid #EDF2F7;'>EVRAK NO</td><td style='padding: 8px 0; color: #0F172A; font-weight: 600; font-size: 14px; border-bottom: 1px solid #EDF2F7;'>#{$evrak->evrak_no}</td></tr>
+                                        <tr><td style='padding: 8px 0; color: #64748B; font-size: 13px; border-bottom: 1px solid #EDF2F7;'>KONU</td><td style='padding: 8px 0; color: #0F172A; font-weight: 600; font-size: 14px; border-bottom: 1px solid #EDF2F7;'>{$evrak->konu}</td></tr>
+                                        <tr><td style='padding: 8px 0; color: #64748B; font-size: 13px;'>KURUM / FİRMA</td><td style='padding: 8px 0; color: #0F172A; font-weight: 600; font-size: 14px;'>{$evrak->kurum_adi}</td></tr>
+                                    </table>
+                                </div>
+                                <p style='color: #475569;'>Evrak detaylarını görüntülemek ve diğer işlemler için sisteme giriş yapabilirsiniz.</p>";
+                            $html = EmailTemplateHelper::getTemplate("Evrak Bildirimi", $icerik, "Sisteme Giriş Yap", "https://" . $_SERVER['HTTP_HOST'] . "/index.php?p=evrak-takip/list");
+                            MailGonderService::gonder($email, "Evrak Bildirimi: " . $evrak->konu, $html);
+                        }
+                    }
+                }
+
                 // Eğer giden evrak ise ve ilgili bir gelen evrak seçildiyse 
                 // o gelen evrakı "cevap verildi" olarak işaretle
                 if ($data['evrak_tipi'] == 'giden' && !empty($data['ilgili_evrak_id'])) {
@@ -124,6 +178,97 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             case 'get-konular':
                 $konular = $Model->getDistinctKonular();
                 echo json_encode(['status' => 'success', 'data' => $konular]);
+                break;
+
+            case 'evrak-bildir':
+                $id = intval($_POST['id'] ?? 0);
+                $personel_id = intval($_POST['personel_id'] ?? 0);
+
+                if ($id <= 0 || $personel_id <= 0) {
+                    throw new Exception("Geçersiz veri.");
+                }
+
+                $evrak = $Model->getById($id);
+                if (!$evrak) {
+                    throw new Exception("Evrak bulunamadı.");
+                }
+
+                $Personel = new PersonelModel();
+                $personelData = $Personel->find($personel_id);
+                if (!$personelData) {
+                    throw new Exception("Personel bulunamadı.");
+                }
+
+                $email = $personelData->email_adresi ?? '';
+                $adi_soyadi = $personelData->adi_soyadi;
+
+                // 1. Uygulama içi bildirim (Eğer email ile eşleşen bir kullanıcı varsa)
+                if (!empty($email)) {
+                    $User = new UserModel();
+                    $user = $User->checkUser($email);
+                    
+                    if ($user) {
+                        $Bildirim = new BildirimModel();
+                        $Bildirim->createNotification(
+                            $user->id,
+                            "Yeni Evrak Zimmetlendi",
+                            "Tarafınıza '{$evrak->konu}' konulu bir evrak zimmetlenmiştir.",
+                            "index.php?p=evrak-takip/list",
+                            "file",
+                            "info"
+                        );
+                    }
+                }
+
+                // 2. E-Posta Bildirimi
+                if (!empty($email)) {
+                    $evrak_tipi_label = $evrak->evrak_tipi == 'gelen' ? 'GELEN EVRAK' : 'GİDEN EVRAK';
+                    
+                    $icerik = "
+                        <p style='color: #020617; font-size: 16px; margin-bottom: 24px;'>Merhaba <b>{$adi_soyadi}</b>,</p>
+                        <p style='color: #475569; margin-bottom: 24px;'>Sistem üzerinden tarafınıza yeni bir evrak zimmetlenmiştir. Detaylar aşağıdadır:</p>
+                        
+                        <div style='background-color: #F8FAFC; border: 1px solid #E2E8F0; border-radius: 8px; padding: 24px; margin-bottom: 24px;'>
+                            <table style='width: 100%; border-collapse: collapse;'>
+                                <tr>
+                                    <td style='padding: 8px 0; color: #64748B; font-size: 13px; width: 35%; border-bottom: 1px solid #EDF2F7;'>EVRAK TİPİ</td>
+                                    <td style='padding: 8px 0; color: #0F172A; font-weight: 600; font-size: 14px; border-bottom: 1px solid #EDF2F7;'>{$evrak_tipi_label}</td>
+                                </tr>
+                                <tr>
+                                    <td style='padding: 8px 0; color: #64748B; font-size: 13px; border-bottom: 1px solid #EDF2F7;'>TARİH</td>
+                                    <td style='padding: 8px 0; color: #0F172A; font-weight: 600; font-size: 14px; border-bottom: 1px solid #EDF2F7;'>" . date('d.m.Y', strtotime($evrak->tarih)) . "</td>
+                                </tr>
+                                <tr>
+                                    <td style='padding: 8px 0; color: #64748B; font-size: 13px; border-bottom: 1px solid #EDF2F7;'>EVRAK NO</td>
+                                    <td style='padding: 8px 0; color: #0F172A; font-weight: 600; font-size: 14px; border-bottom: 1px solid #EDF2F7;'>#{$evrak->evrak_no}</td>
+                                </tr>
+                                <tr>
+                                    <td style='padding: 8px 0; color: #64748B; font-size: 13px; border-bottom: 1px solid #EDF2F7;'>KONU</td>
+                                    <td style='padding: 8px 0; color: #0F172A; font-weight: 600; font-size: 14px; border-bottom: 1px solid #EDF2F7;'>{$evrak->konu}</td>
+                                </tr>
+                                <tr>
+                                    <td style='padding: 8px 0; color: #64748B; font-size: 13px;'>KURUM / FİRMA</td>
+                                    <td style='padding: 8px 0; color: #0F172A; font-weight: 600; font-size: 14px;'>{$evrak->kurum_adi}</td>
+                                </tr>
+                            </table>
+                        </div>
+                        
+                        <p style='color: #475569;'>Evrak detaylarını görüntülemek ve diğer işlemler için sisteme giriş yapabilirsiniz.</p>";
+                    
+                    $html = EmailTemplateHelper::getTemplate(
+                        "Evrak Bildirimi",
+                        $icerik,
+                        "Sisteme Giriş Yap",
+                        "https://" . $_SERVER['HTTP_HOST'] . "/index.php?p=evrak-takip/list"
+                    );
+
+                    MailGonderService::gonder($email, "Evrak Bildirimi: " . $evrak->konu, $html);
+                    $msg = "Bildirim ve mail başarıyla gönderildi.";
+                } else {
+                    $msg = "Personelin e-posta adresi bulunmadığı için sadece sistem bildirimi gönderildi (Eğer kullanıcı hesabı varsa).";
+                }
+
+                echo json_encode(['status' => 'success', 'message' => $msg]);
                 break;
 
             default:

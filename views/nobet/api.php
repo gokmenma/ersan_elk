@@ -305,7 +305,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             'bitis_saati' => $nobet->bitis_saati,
                             'aciklama' => $nobet->aciklama,
                             'resim' => $nobet->resim_yolu ?? 'assets/images/users/user-dummy-img.jpg',
-                            'has_talep' => $nobet->has_talep > 0
+                            'has_talep' => $nobet->has_talep > 0,
+                            'pending_talep_id' => $nobet->pending_talep_id ? Security::encrypt($nobet->pending_talep_id) : null
                         ]
                     ];
                 }

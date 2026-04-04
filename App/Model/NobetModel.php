@@ -30,7 +30,8 @@ class NobetModel extends Model
     {
         $sql = "SELECT n.*, p.adi_soyadi, p.departman, p.resim_yolu, p.cep_telefonu,
                 t.tur_adi as ekip_adi, t.ekip_bolge,
-                (SELECT COUNT(*) FROM nobet_degisim_talepleri dt WHERE dt.nobet_id = n.id AND dt.durum IN ('beklemede', 'personel_onayladi')) as has_talep
+                (SELECT COUNT(*) FROM nobet_degisim_talepleri dt WHERE dt.nobet_id = n.id AND dt.durum IN ('beklemede', 'personel_onayladi')) as has_talep,
+                (SELECT dt.id FROM nobet_degisim_talepleri dt WHERE dt.nobet_id = n.id AND dt.durum IN ('beklemede', 'personel_onayladi') LIMIT 1) as pending_talep_id
                 FROM {$this->table} n
                 LEFT JOIN personel p ON n.personel_id = p.id
                 LEFT JOIN tanimlamalar t ON p.ekip_no = t.id

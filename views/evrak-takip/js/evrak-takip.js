@@ -176,16 +176,15 @@ $(document).ready(function () {
       success: function (response) {
         if (response.status === "success") {
           $("#evrakModal").modal("hide");
-          showToast(response.message, "success");
-          setTimeout(() => location.reload(), 800);
+          Swal.fire('Başarılı!', response.message, 'success').then(() => location.reload());
         } else {
-          showToast(response.message, "error");
+          Swal.fire('Hata!', response.message, 'error');
           btn.prop("disabled", false).text('Bilgileri Kaydet');
         }
       },
       error: function () {
         btn.prop("disabled", false).text('Bilgileri Kaydet');
-        showToast("Hata oluştu", "error");
+        Swal.fire('Hata!', "Sunucu ile iletişim kurulurken bir hata oluştu.", 'error');
       }
     });
   });
@@ -237,13 +236,62 @@ $(document).ready(function () {
     });
   });
 
+  $(document).on("click", ".evrak-bildir-manuel", function () {
+    const id = $(this).data("id");
+    const personId = $(this).data("personel-id");
+    const btn = $(this);
+    const originalIcon = btn.html();
+
+    Swal.fire({
+        title: 'Emin misiniz?',
+        text: "Seçili personele evrak bilgileri bildirim ve mail olarak gönderilecektir.",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#0ea5e9',
+        cancelButtonColor: '#f43f5e',
+        confirmButtonText: 'Evet, Gönder',
+        cancelButtonText: 'Vazgeç'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm"></span>');
+            
+            $.post(api_url, { action: "evrak-bildir", id: id, personel_id: personId }, function (response) {
+                btn.prop("disabled", false).html(originalIcon);
+                if (response.status === "success") {
+                    Swal.fire('Başarılı!', response.message, 'success');
+                } else {
+                    Swal.fire('Hata!', response.message, 'error');
+                }
+            }).fail(function() {
+                btn.prop("disabled", false).html(originalIcon);
+                Swal.fire('Hata!', "Sunucu ile iletişim kurulurken bir hata oluştu.", 'error');
+            });
+        }
+    });
+  });
+
   $(document).on("click", ".evrak-sil", function () {
     const id = $(this).data("id");
-    if(confirm("Kaydı silmek istediğinize emin misiniz?")) {
-        $.post(api_url, { action: "evrak-sil", id: id }, function (response) {
-            if (response.status === "success") location.reload();
-        });
-    }
+    Swal.fire({
+        title: 'Emin misiniz?',
+        text: "Bu kaydı sildiğinizde geri alamazsınız!",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#f43f5e',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Evet, Sil!',
+        cancelButtonText: 'Vazgeç'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.post(api_url, { action: "evrak-sil", id: id }, function (response) {
+                if (response.status === "success") {
+                    Swal.fire('Silindi!', response.message, 'success').then(() => location.reload());
+                } else {
+                    Swal.fire('Hata!', response.message, 'error');
+                }
+            });
+        }
+    });
   });
 
   $("#btnRefresh").on("click", function () { location.reload(); });

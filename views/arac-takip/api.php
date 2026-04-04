@@ -16,7 +16,7 @@ use App\Helper\Date;
 
 header('Content-Type: application/json; charset=utf-8');
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array($_GET['action'], ['get-arac-puantaj-table', 'get-arac-ozel-puantaj', 'arac-performans', 'arac-excel-aktar', 'get-arac-analiz']))) {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array($_GET['action'], ['get-arac-puantaj-table', 'get-arac-ozel-puantaj', 'arac-performans', 'arac-excel-aktar', 'get-arac-analiz', 'arac-karsilastirma']))) {
     $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
     $Arac = new AracModel();
@@ -2644,118 +2644,127 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 ]);
                 break;
 
+
             case 'arac-karsilastirma':
-                $yil = intval($_GET['yil'] ?? date('Y'));
-                $arac_id = intval($_GET['arac_id'] ?? 0);
-                $firma_id = $_SESSION['firma_id'];
+                $donemler = $_POST['donemler'] ?? []; // ['2026/01', '2026/02']
+                $arac_id = isset($_POST['arac_id']) ? intval($_POST['arac_id']) : 0;
+                $baslangic = $_POST['baslangic'] ?? null;
+                $bitis = $_POST['bitis'] ?? null;
 
-                $baslangic = "$yil-01-01";
-                $bitis = "$yil-12-31";
+                $periods = [];
+                if (!empty($donemler) && is_array($donemler)) {
+                    foreach ($donemler as $d) {
+                        $p = str_replace(['/', '-'], '', (string)$d);
+                        if (strlen($p) == 6) {
+                            $periods[] = $p;
+                        }
+                    }
+                } elseif ($baslangic && $bitis) {
+                    $start = new DateTime(substr($baslangic, 0, 4) . '-' . substr($baslangic, 4, 2) . '-01');
+                    $end = new DateTime(substr($bitis, 0, 4) . '-' . substr($bitis, 4, 2) . '-01');
+                    
+                    while ($start <= $end) {
+                        $periods[] = $start->format('Ym');
+                        $start->modify('+1 month');
+                    }
+                }
 
-                $whereArac = $arac_id > 0 ? "AND y.arac_id = :arac_id" : "";
-                $params = ['firma_id' => $firma_id, 'baslangic' => $baslangic, 'bitis' => $bitis];
-                if ($arac_id > 0) $params['arac_id'] = $arac_id;
+                if (empty($periods)) {
+                    for ($i = 3; $i >= 1; $i--) {
+                        $periods[] = date('Ym', strtotime("-$i months"));
+                    }
+                }
 
-                // Yakıt
-                $yakitSql = "SELECT 
-                        MONTH(y.tarih) as ay,
-                        COALESCE(SUM(y.yakit_miktari), 0) as toplam_litre,
-                        COALESCE(SUM(y.toplam_tutar), 0) as toplam_tutar
-                    FROM arac_yakit_kayitlari y
-                    WHERE y.firma_id = :firma_id
-                    AND y.silinme_tarihi IS NULL
-                    AND y.tarih BETWEEN :baslangic AND :bitis
-                    $whereArac
-                    GROUP BY MONTH(y.tarih)
-                    ORDER BY ay ASC";
-                $yakitStmt = $Yakit->getDb()->prepare($yakitSql);
-                $yakitStmt->execute($params);
-                $yakitData = $yakitStmt->fetchAll(PDO::FETCH_OBJ);
+                sort($periods);
 
-                // KM
-                $whereAracKm = $arac_id > 0 ? "AND k.arac_id = :arac_id" : "";
-                $kmSql = "SELECT 
-                        MONTH(k.tarih) as ay,
-                        COALESCE(SUM(k.yapilan_km), 0) as toplam_km
-                    FROM arac_km_kayitlari k
-                    WHERE k.firma_id = :firma_id
-                    AND k.silinme_tarihi IS NULL
-                    AND k.tarih BETWEEN :baslangic AND :bitis
-                    $whereAracKm
-                    GROUP BY MONTH(k.tarih)
-                    ORDER BY ay ASC";
-                $kmStmt = $Km->getDb()->prepare($kmSql);
-                $kmStmt->execute($params);
-                $kmData = $kmStmt->fetchAll(PDO::FETCH_OBJ);
+                if ($arac_id > 0) {
+                    $arac_data = $Arac->getById($arac_id);
+                    $aracListesi = $arac_data ? [$arac_data] : [];
+                } else {
+                    $aracListesi = $Arac->all();
+                }
 
-                // Combine by month
-                $results = [];
-                for ($i = 1; $i <= 12; $i++) {
-                    $results[$i] = [
-                        'ay' => $i,
-                        'toplam_litre' => 0,
-                        'toplam_tutar' => 0,
-                        'toplam_km' => 0
+                if (!$aracListesi) {
+                    $aracListesi = [];
+                }
+                
+                $karsilastirmaData = [];
+                foreach ($aracListesi as $arac) {
+                    $karsilastirmaData[$arac->id] = [
+                        'id' => $arac->id,
+                        'plaka' => $arac->plaka,
+                        'marka' => $arac->marka,
+                        'model' => $arac->model,
+                        'departman' => $arac->departmani ?? '',
+                        'donemler' => []
                     ];
                 }
 
-                foreach ($yakitData as $y) {
-                    $results[$y->ay]['toplam_litre'] = floatval($y->toplam_litre);
-                    $results[$y->ay]['toplam_tutar'] = floatval($y->toplam_tutar);
-                }
+                $summary = [
+                    'toplam_arac' => count($aracListesi),
+                    'toplam_donem' => count($periods),
+                    'donemler' => []
+                ];
 
-                foreach ($kmData as $k) {
-                    $results[$k->ay]['toplam_km'] = floatval($k->toplam_km);
+                foreach ($periods as $p) {
+                    $y = (int)substr($p, 0, 4);
+                    $m = (int)substr($p, 4, 2);
+                    
+                    $yakitOzet = $Yakit->getAylikOzet($y, $m);
+                    $kmOzet = $Km->getAylikOzet($y, $m);
+                    
+                    $yakitMap = [];
+                    if ($yakitOzet) {
+                        foreach ($yakitOzet as $y_row) { $yakitMap[$y_row->arac_id] = $y_row; }
+                    }
+                    
+                    $kmMap = [];
+                    if ($kmOzet) {
+                        foreach ($kmOzet as $k_row) { $kmMap[$k_row->arac_id] = $k_row; }
+                    }
+                    
+                    $donemLitre = 0;
+                    $donemTutar = 0;
+                    $donemKm = 0;
+
+                    foreach ($karsilastirmaData as $aid => &$adata) {
+                        $y_data = $yakitMap[$aid] ?? null;
+                        $k_data = $kmMap[$aid] ?? null;
+                        
+                        $litre = $y_data ? floatval($y_data->toplam_litre) : 0;
+                        $tutar = $y_data ? floatval($y_data->toplam_tutar) : 0;
+                        $km = $k_data ? floatval($k_data->toplam_km) : 0;
+                        
+                        $adata['donemler'][$p] = [
+                            'litre' => $litre,
+                            'tutar' => $tutar,
+                            'km' => $km,
+                            'ortalama' => ($km > 0) ? round(($litre / $km) * 100, 2) : 0
+                        ];
+
+                        $donemLitre += $litre;
+                        $donemTutar += $tutar;
+                        $donemKm += $km;
+                    }
+
+                    $summary['donemler'][$p] = [
+                        'donem' => $y . '/' . str_pad($m, 2, '0', STR_PAD_LEFT),
+                        'toplam_litre' => $donemLitre,
+                        'toplam_tutar' => $donemTutar,
+                        'toplam_km' => $donemKm,
+                        'ortalama' => ($donemKm > 0) ? round(($donemLitre / $donemKm) * 100, 2) : 0
+                    ];
                 }
 
                 echo json_encode([
                     'status' => 'success',
-                    'data' => array_values($results)
-                ]);
-                break;
-
-            case 'get-comparison-stats':
-                $arac_id = intval($_GET['arac_id'] ?? 0);
-                $p1_start = $_GET['p1_start'] ?? '';
-                $p1_end = $_GET['p1_end'] ?? '';
-                $p2_start = $_GET['p2_start'] ?? '';
-                $p2_end = $_GET['p2_end'] ?? '';
-                $firma_id = $_SESSION['firma_id'];
-
-                if (!$p1_start || !$p1_end || !$p2_start || !$p2_end) {
-                    throw new Exception("Her iki dönem için de tarih seçimi zorunludur.");
-                }
-
-                $getData = function($start, $end) use ($Yakit, $Km, $Servis, $arac_id, $firma_id) {
-                    $yakitData = $Yakit->getByDateRange($start, $end, $arac_id);
-                    $kmData = $Km->getByDateRange($start, $end, $arac_id);
-                    $servisData = $Servis->getByDateRange($start, $end, $arac_id);
-
-                    // If all types, we might need firma-wide filtering. 
-                    // getByDateRange usually handles it if firma_id is in query, 
-                    // but some models use session internally.
-
-                    $yakitLitre = floatval(array_sum(array_column($yakitData, 'yakit_miktari')));
-                    $yakitMaliyet = floatval(array_sum(array_column($yakitData, 'toplam_tutar')));
-                    $km = floatval(array_sum(array_column($kmData, 'yapilan_km')));
-                    $servisMaliyet = floatval(array_sum(array_column($servisData, 'tutar')));
-                    $servisSayisi = count($servisData);
-
-                    return [
-                        'yakit' => $yakitLitre,
-                        'km' => $km,
-                        'yakit_maliyet' => $yakitMaliyet,
-                        'servis_maliyet' => $servisMaliyet,
-                        'servis_sayisi' => $servisSayisi,
-                        'toplam_maliyet' => $yakitMaliyet + $servisMaliyet,
-                        'verimlilik' => $km > 0 ? ($yakitLitre / $km) * 100 : 0
-                    ];
-                };
-
-                echo json_encode([
-                    'status' => 'success',
-                    'p1' => $getData($p1_start, $p1_end),
-                    'p2' => $getData($p2_start, $p2_end)
+                    'debug' => [
+                        'periods_count' => count($periods),
+                        'arac_count' => count($aracListesi)
+                    ],
+                    'periods' => $periods,
+                    'data' => array_values($karsilastirmaData),
+                    'summary' => $summary
                 ]);
                 break;
 

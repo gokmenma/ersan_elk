@@ -221,6 +221,13 @@ $gelen_evraklar = $Evrak->getGelenEvraklar();
                                                             <i data-feather="user" style="width: 10px;"></i>
                                                         </div>
                                                         <span class="small fw-bold text-info"><?php echo $evrak->ilgili_personel_adi; ?></span>
+                                                        
+                                                        <button type="button" class="btn btn-link text-warning p-0 ms-2 evrak-bildir-manuel" 
+                                                            data-id="<?php echo $evrak->id; ?>" 
+                                                            data-personel-id="<?php echo $evrak->ilgili_personel_id; ?>"
+                                                            title="Bildirim ve Mail Gönder">
+                                                            <i data-feather="bell" style="width: 14px;"></i>
+                                                        </button>
                                                     </div>
                                                 <?php else: ?>
                                                     <span class="text-muted small">-</span>

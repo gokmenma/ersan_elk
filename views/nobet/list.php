@@ -154,8 +154,8 @@ foreach ($uniqueDepts as $dName) {
     }
 
     .fc-event-unapproved {
-        opacity: 0.8 !important;
-        border-style: dashed !important;
+        opacity: 0.75 !important;
+        border: 2px dashed rgba(0,0,0,0.3) !important;
     }
 
     .custom-scrollbar::-webkit-scrollbar {
@@ -1167,11 +1167,19 @@ $title = 'Nöbet Planlama';
 
                     // Onay butonlarını göster/gizle
                     const isOnayli = info.event.extendedProps.yonetici_onayi == 1;
+                    const hasTalep = info.event.extendedProps.has_talep;
                     const approveBtn = document.getElementById('menu-item-approve');
                     const unapproveBtn = document.getElementById('menu-item-unapprove');
                     
-                    if (approveBtn) approveBtn.style.display = isOnayli ? 'none' : 'flex';
-                    if (unapproveBtn) unapproveBtn.style.display = isOnayli ? 'flex' : 'none';
+                    if (approveBtn) {
+                        // Eğer talep varsa veya onaylanmamışsa onayla butonu görünmeli
+                        approveBtn.style.display = (hasTalep || !isOnayli) ? 'flex' : 'none';
+                        approveBtn.querySelector('span').textContent = hasTalep ? 'Değişimi Onayla' : 'Nöbeti Onayla';
+                    }
+                    if (unapproveBtn) {
+                        // Onay kaldır butonu sadece onaylanmış ve bekleyen talebi OLMAYAN nöbetlerde görünmeli
+                        unapproveBtn.style.display = (isOnayli && !hasTalep) ? 'flex' : 'none';
+                    }
                 });
             },
 
@@ -1452,14 +1460,24 @@ $title = 'Nöbet Planlama';
 
             // Durum Badge
             const badge = document.getElementById('modal-durum-badge');
-            badge.textContent = getDurumText(props.durum);
+            badge.textContent = props.has_talep ? 'Değişim Onayı Bekliyor' : getDurumText(props.durum);
 
             // Renk Belirleme
             badge.className = 'badge rounded-pill px-3 py-2 ';
-            switch (props.durum) {
-                case 'mazeret_bildirildi': badge.classList.add('bg-danger-subtle', 'text-danger'); break;
-                case 'devir_alindi': badge.classList.add('bg-success-subtle', 'text-success'); break;
-                default: badge.classList.add('bg-primary-subtle', 'text-primary');
+            if (props.has_talep) {
+                badge.classList.add('bg-warning-subtle', 'text-warning');
+            } else {
+                switch (props.durum) {
+                    case 'mazeret_bildirildi': badge.classList.add('bg-danger-subtle', 'text-danger'); break;
+                    case 'devir_alindi': badge.classList.add('bg-success-subtle', 'text-success'); break;
+                    default: 
+                        if (props.yonetici_onayi == 0) {
+                            badge.classList.add('bg-secondary-subtle', 'text-muted');
+                            badge.textContent = 'Amir Onayı Bekliyor';
+                        } else {
+                            badge.classList.add('bg-primary-subtle', 'text-primary');
+                        }
+                }
             }
 
             detailModal.show();
@@ -2352,7 +2370,18 @@ $title = 'Nöbet Planlama';
         if (menuApprove) {
             menuApprove.addEventListener('click', function() {
                 const eventId = document.getElementById('custom-context-menu').dataset.eventId;
-                if (eventId) approveNobetFromCalendar(eventId);
+                if (!eventId) return;
+
+                const event = calendar.getEventById(eventId);
+                const props = event.extendedProps;
+
+                if (props.has_talep && props.pending_talep_id) {
+                    // Değişim talebini onayla
+                    actionFetch('onayla-degisim-talebi', { talep_id: props.pending_talep_id });
+                } else {
+                    // Normal nöbeti onayla
+                    approveNobetFromCalendar(eventId);
+                }
             });
         }
 

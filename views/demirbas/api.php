@@ -2214,7 +2214,7 @@ if ($action == "get-unique-values") {
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } elseif ($column === 'personel_adi') {
             $sql = "SELECT DISTINCT p.adi_soyadi as val FROM demirbas_zimmet z
-                    INNER JOIN db_personel.personel p ON z.personel_id = p.id
+                    INNER JOIN personel p ON z.personel_id = p.id
                     LEFT JOIN demirbas d ON z.demirbas_id = d.id
                     WHERE z.silinme_tarihi IS NULL AND d.firma_id = ? ORDER BY val ASC"; // or p.firma_id
             $stmt = $Zimmet->getDb()->prepare($sql);
@@ -2250,5 +2250,156 @@ if ($action == "get-unique-values") {
         jsonResponse("success", "OK", ["data" => array_values(array_unique($results))]);
     } catch (Exception $e) {
         jsonResponse("error", $e->getMessage());
+    }
+}
+
+// ============== SAYAÇ VE APARAT PERSONEL BAZLI RAPORLAR ==============
+
+if ($action == "sayac-personel-listesi") {
+    $kategori = $_POST['kategori'] ?? 'sayac'; // 'sayac' veya 'aparat'
+    try {
+        $sayacKatIds = [];
+        $tumKategoriler = $Tanimlamalar->getDemirbasKategorileri();
+        foreach ($tumKategoriler as $kat) {
+            $katAdiLower = mb_strtolower($kat->tur_adi, 'UTF-8');
+            if ($kategori === 'sayac' && (str_contains($katAdiLower, 'sayac') || str_contains($katAdiLower, 'sayaç'))) {
+                $sayacKatIds[] = (string) $kat->id;
+            } elseif ($kategori === 'aparat' && (str_contains($katAdiLower, 'aparat') || $kat->id == 645)) {
+                $sayacKatIds[] = (string) $kat->id;
+            }
+        }
+
+        if (empty($sayacKatIds)) {
+            jsonResponse("success", "Başarılı", ['data' => [], 'totals' => []]);
+        }
+
+        $katPlaceholders = implode(',', array_fill(0, count($sayacKatIds), '?'));
+        $params = $sayacKatIds;
+        $params[] = $_SESSION['firma_id'];
+
+        $sql = $Demirbas->db->prepare("
+            SELECT 
+                p.id as personel_id,
+                p.adi_soyadi,
+                COALESCE(SUM(CASE WHEN z.durum = 'teslim' THEN z.teslim_miktar ELSE 0 END), 0) as elinde_kalan,
+                COALESCE(SUM(z.teslim_miktar), 0) as toplam_verilen,
+                COALESCE(SUM(CASE WHEN z.durum IN ('iade', 'kayip', 'arizali') THEN z.teslim_miktar ELSE 0 END), 0) as toplam_iade
+            FROM demirbas_zimmet z
+            INNER JOIN demirbas d ON z.demirbas_id = d.id
+            INNER JOIN personel p ON z.personel_id = p.id
+            WHERE d.kategori_id IN ($katPlaceholders) AND d.firma_id = ? AND z.silinme_tarihi IS NULL
+            GROUP BY p.id, p.adi_soyadi
+            HAVING toplam_verilen > 0
+            ORDER BY p.adi_soyadi ASC
+        ");
+        $sql->execute($params);
+        $rows = $sql->fetchAll(PDO::FETCH_ASSOC);
+
+        $totals = ['toplam_verilen' => 0, 'toplam_iade' => 0, 'elinde_kalan' => 0];
+        $data = [];
+        foreach ($rows as $r) {
+            $totals['toplam_verilen'] += (int) $r['toplam_verilen'];
+            $totals['toplam_iade'] += (int) $r['toplam_iade'];
+            $totals['elinde_kalan'] += (int) $r['elinde_kalan'];
+            
+            $actions = '<button type="button" class="btn btn-sm btn-soft-info btn-personel-detay" data-id="' . $r['personel_id'] . '" data-name="' . htmlspecialchars($r['adi_soyadi']) . '"><i class="bx bx-search-alt"></i> Detay/Hareketler</button>';
+
+            $data[] = [
+                "personel_adi" => '<span class="fw-bold text-dark">' . htmlspecialchars($r['adi_soyadi']) . '</span>',
+                "toplam_verilen" => '<div class="text-center">' . $r['toplam_verilen'] . '</div>',
+                "toplam_iade" => '<div class="text-center">' . $r['toplam_iade'] . '</div>',
+                "elinde_kalan" => '<div class="text-center"><a href="javascript:void(0);" class="fw-bold text-primary fs-5 elinde-kalan-indir" data-id="' . $r['personel_id'] . '" title="Serileri Excel Olarak İndir">' . $r['elinde_kalan'] . '</a></div>',
+                "islemler" => '<div class="text-center">' . $actions . '</div>'
+            ];
+        }
+
+        echo json_encode([
+            "status" => "success",
+            "draw" => intval($_POST['draw'] ?? 1),
+            "recordsTotal" => count($data),
+            "recordsFiltered" => count($data),
+            "data" => $data,
+            "totals" => $totals
+        ]);
+        exit;
+    } catch (Exception $ex) {
+        jsonResponse("error", $ex->getMessage());
+    }
+}
+
+if ($action == "sayac-personel-detay") {
+    $personel_id = Security::decrypt($_POST['personel_id'] ?? '') ?: $_POST['personel_id'];
+    $kategori = $_POST['kategori'] ?? 'sayac'; // 'sayac' veya 'aparat'
+    
+    try {
+        $sayacKatIds = [];
+        $tumKategoriler = $Tanimlamalar->getDemirbasKategorileri();
+        foreach ($tumKategoriler as $kat) {
+            $katAdiLower = mb_strtolower($kat->tur_adi, 'UTF-8');
+            if ($kategori === 'sayac' && (str_contains($katAdiLower, 'sayac') || str_contains($katAdiLower, 'sayaç'))) {
+                $sayacKatIds[] = (string) $kat->id;
+            } elseif ($kategori === 'aparat' && (str_contains($katAdiLower, 'aparat') || $kat->id == 645)) {
+                $sayacKatIds[] = (string) $kat->id;
+            }
+        }
+        
+        $katPlaceholders = implode(',', array_fill(0, count($sayacKatIds), '?'));
+        $params = $sayacKatIds;
+        $params[] = $_SESSION['firma_id'];
+        $params[] = $personel_id;
+
+        $sql = $Demirbas->db->prepare("
+            SELECT 
+                h.tarih, 
+                h.hareket_tipi, 
+                h.miktar, 
+                h.aciklama,
+                d.demirbas_adi,
+                d.marka,
+                d.model,
+                d.seri_no,
+                k.tur_adi as kategori_adi
+            FROM demirbas_hareketler h
+            INNER JOIN demirbas d ON h.demirbas_id = d.id
+            LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
+            WHERE d.kategori_id IN ($katPlaceholders) AND d.firma_id = ? AND h.personel_id = ? AND h.silinme_tarihi IS NULL
+            ORDER BY h.tarih DESC, h.id DESC
+        ");
+        $sql->execute($params);
+        $rows = $sql->fetchAll(PDO::FETCH_ASSOC);
+
+        $data = [];
+        foreach ($rows as $r) {
+            $tarih = date('d.m.Y H:i', strtotime($r['tarih']));
+            
+            $tip = strtolower($r['hareket_tipi']);
+            $tipBadge = '';
+            if ($tip == 'zimmet') $tipBadge = '<span class="badge bg-soft-warning text-warning">Zimmet Verildi</span>';
+            elseif ($tip == 'iade') $tipBadge = '<span class="badge bg-soft-success text-success">İade Edildi</span>';
+            elseif ($tip == 'kayip') $tipBadge = '<span class="badge bg-soft-danger text-danger">Kayıp/Hasar</span>';
+            elseif ($tip == 'sarf') $tipBadge = '<span class="badge bg-soft-primary text-primary">Kullanıldı (Sarf)</span>';
+            else $tipBadge = '<span class="badge bg-soft-secondary text-secondary">' . $r['hareket_tipi'] . '</span>';
+            
+            $data[] = [
+                "tarih" => $tarih,
+                "kategori" => '<span class="badge bg-light text-dark border">' . ($r['kategori_adi'] ?? '-') . '</span>',
+                "islem_tipi" => $tipBadge . ' <div><small class="text-muted">' . ($r['marka'] ?? '') . ' ' . ($r['model'] ?? '') . '</small></div>',
+                "seri_no" => '<span class="fw-bold">' . ($r['seri_no'] ?? '-') . '</span>',
+                "adet" => '<div class="text-center fw-bold">' . $r['miktar'] . '</div>',
+                "demirbas" => htmlspecialchars($r['demirbas_adi']),
+                "aciklama" => htmlspecialchars($r['aciklama'] ?? '-')
+            ];
+        }
+
+        echo json_encode([
+            "status" => "success",
+            "draw" => intval($_POST['draw'] ?? 1),
+            "recordsTotal" => count($data),
+            "recordsFiltered" => count($data),
+            "data" => $data
+        ]);
+        exit;
+    } catch (Exception $ex) {
+        jsonResponse("error", $ex->getMessage());
     }
 }

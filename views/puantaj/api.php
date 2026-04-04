@@ -2560,9 +2560,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                     baslangic_tarihi, bitis_tarihi
              FROM tanimlamalar
              WHERE firma_id = ? AND grup = 'defter_kodu' AND silinme_tarihi IS NULL
+               AND (bitis_tarihi IS NULL OR bitis_tarihi >= ?)
              ORDER BY baslangic_tarihi DESC"
         );
-        $defterTanimStmt->execute([$firmaId]);
+        $defterTanimStmt->execute([$firmaId, $startDateSql]);
         $defterTanimRaw = $defterTanimStmt->fetchAll(PDO::FETCH_OBJ);
 
         $defterTanimListMap = [];
@@ -2783,15 +2784,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
         $EndeksOkuma = new \App\Model\EndeksOkumaModel();
 
+        // Prepare date variables
+        $minDonem = min($donemler);
+        $maxDonem = max($donemler);
+        $startDateSql = substr((string)$minDonem, 0, 4) . '-' . substr((string)$minDonem, 4, 2) . '-01';
+        $endDateSql = date('Y-m-t', strtotime(substr((string)$maxDonem, 0, 4) . '-' . substr((string)$maxDonem, 4, 2) . '-01'));
+        $placeholders = implode(',', array_fill(0, count($donemler), '?'));
+
         // 1. tanimlamalar tablosundan tüm defterleri çek (toplam defter kaynağı)
         $defterTanimStmt = $EndeksOkuma->db->prepare(
             "SELECT tur_adi, defter_bolge, defter_mahalle, defter_abone_sayisi,
                     baslangic_tarihi, bitis_tarihi
              FROM tanimlamalar
              WHERE firma_id = ? AND grup = 'defter_kodu' AND silinme_tarihi IS NULL
+               AND (bitis_tarihi IS NULL OR bitis_tarihi >= ?)
              ORDER BY baslangic_tarihi DESC"
         );
-        $defterTanimStmt->execute([$firmaId]);
+        $defterTanimStmt->execute([$firmaId, $startDateSql]);
         $defterTanimRaw = $defterTanimStmt->fetchAll(PDO::FETCH_OBJ);
 
         // Defter tanımlarını key-based map'e dönüştür
@@ -2821,13 +2830,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             if (!empty($defterFilter) && $info['defter'] !== $defterFilter) continue;
             $allDefters[$key] = $info;
         }
-
-        // 2. endeks_okuma'dan dönem bazlı okuma verilerini çek
-        $minDonem = min($donemler);
-        $maxDonem = max($donemler);
-        $startDateSql = substr((string)$minDonem, 0, 4) . '-' . substr((string)$minDonem, 4, 2) . '-01';
-        $endDateSql = date('Y-m-t', strtotime(substr((string)$maxDonem, 0, 4) . '-' . substr((string)$maxDonem, 4, 2) . '-01'));
-        $placeholders = implode(',', array_fill(0, count($donemler), '?'));
 
         $sql = "SELECT bolge, defter, DATE_FORMAT(tarih, '%Y%m') as donem,
                         SUM(okunan_abone_sayisi) as toplam_okunan,
@@ -3138,9 +3140,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                     baslangic_tarihi, bitis_tarihi
              FROM tanimlamalar
              WHERE firma_id = ? AND grup = 'defter_kodu' AND silinme_tarihi IS NULL
+               AND (bitis_tarihi IS NULL OR bitis_tarihi >= ?)
              ORDER BY baslangic_tarihi DESC"
         );
-        $defterTanimStmt->execute([$firmaId]);
+        $defterTanimStmt->execute([$firmaId, $startDateSql]);
         $defterTanimRaw = $defterTanimStmt->fetchAll(PDO::FETCH_OBJ);
 
         // Defter kodu → [tanım listesi] map'i oluştur

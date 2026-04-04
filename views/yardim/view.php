@@ -314,14 +314,15 @@ function loadTicket() {
 
             // Buton ve Form Görünürlüğü
             const isApprovedTicket = (ticket.onay_durumu || 'onaylandi') === 'onaylandi';
-            const isClosed = ticket.durum === 'kapali' || ticket.durum === 'cozuldu';
+            const isAdminFinished = ticket.durum === 'kapali' || ticket.durum === 'cozuldu';
+            const isReplyDisabled = ticket.durum === 'kapali';
 
             if (currentViewerIsAdmin) {
                 $('.admin-actions').show();
                 $('.user-actions').hide();
                 
                 // Duruma göre admin butonlarını yönet
-                if (isClosed) {
+                if (isAdminFinished) {
                     $('#btn-close-ticket, #btn-solve-ticket, #btn-in-progress').hide();
                     $('#btn-reopen-ticket').show();
                 } else {
@@ -341,7 +342,7 @@ function loadTicket() {
                 }
             }
 
-            if(isClosed || !isApprovedTicket) {
+            if(isReplyDisabled || !isApprovedTicket) {
                 $('#reply-form').closest('.card').find('.card-body form').hide();
                 $('#reply-form').closest('.card').find('.card-body hr').hide();
                 $('#waiting-admin-alert').hide();
@@ -349,10 +350,10 @@ function loadTicket() {
                 if($('#closed-alert').length > 0) $('#closed-alert').remove();
                 
                 let alertText = '';
-                if (isClosed) {
-                    alertText = ticket.durum === 'cozuldu' ? 'Bu talep çözüldü olarak işaretlenmiştir. Yeni mesaj gönderilemez.' : 'Bu talep kapatılmıştır. Yeni mesaj gönderilemez.';
+                if (isReplyDisabled) {
+                    alertText = 'Bu talep kapatılmıştır. Yeni mesaj gönderilemez.';
                     if (ticket.kapatan_adi && ticket.kapatma_tarihi) {
-                        alertText = `Bu talep <strong>${ticket.kapatan_adi}</strong> tarafından <strong>${ticket.kapatma_tarihi}</strong> tarihinde ${ticket.durum === 'cozuldu' ? 'çözülmüştür' : 'kapatılmıştır'}. Yeni mesaj gönderilemez.`;
+                        alertText = `Bu talep <strong>${ticket.kapatan_adi}</strong> tarafından <strong>${ticket.kapatma_tarihi}</strong> tarihinde kapatılmıştır. Yeni mesaj gönderilemez.`;
                     }
                 } else {
                     alertText = 'Bu talep henüz onaylanmadı. Onay sonrası mesajlaşabilirsiniz.';
