@@ -17,11 +17,6 @@ class Db
     private $username = ""; // Update with your actual username
     private $password = ""; // Update with your actual password
 
-    // private $db_name = "mbeyazil_ersanelektrik"; // Update with your actual database name
-    // private $username = "mbeyazil_root"; // Update with your actual username
-    // private $password = "G=zGEX1_-6+Zms}&"; // Update with your actual password
-
-    //  $this->db = new PDO("mysql:host=localhost;dbname=cansagl1_cansaglik", "cansagl1_root", "dg49~wkAQmrm");
 
 
     public $db;

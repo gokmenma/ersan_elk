@@ -148,6 +148,81 @@ $oncelikler = [
         box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1) !important;
         background-color: #fff !important;
     }
+
+    /* Custom Status Badges */
+    .status-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        padding: 6px 16px; /* Exactly same as filter buttons */
+        border-radius: 50px;
+        font-size: 0.75rem; /* Exactly same as filter buttons */
+        font-weight: 600; /* Exactly same as filter buttons */
+        text-transform: capitalize;
+        letter-spacing: normal;
+        transition: all 0.2s ease;
+        border: 1px solid transparent;
+        white-space: nowrap;
+        line-height: normal;
+    }
+
+    .status-badge i {
+        font-size: 0.95rem; /* Exactly same as filter buttons */
+    }
+
+    .badge-soft-acik { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border-color: rgba(245, 158, 11, 0.15); }
+    .badge-soft-isleme-alindi { background: rgba(80, 165, 241, 0.1); color: #50a5f1; border-color: rgba(80, 165, 241, 0.15); }
+    .badge-soft-yanitlandi { background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.15); }
+    .badge-soft-personel-yaniti { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border-color: rgba(59, 130, 246, 0.15); }
+    .badge-soft-cozuldu { background: rgba(52, 195, 143, 0.1); color: #34c38f; border-color: rgba(52, 195, 143, 0.15); }
+    .badge-soft-kapali { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.15); }
+    .badge-soft-beklemede { background: #f1f5f9; color: #64748b; border-color: #e2e8f0; }
+
+    /* Record Type Badges */
+    .badge-type-onay { background: rgba(245, 158, 11, 0.1); color: #f59e0b; border-color: rgba(245, 158, 11, 0.2); }
+    .badge-type-tamam { background: rgba(16, 185, 129, 0.1); color: #10b981; border-color: rgba(16, 185, 129, 0.2); }
+    .badge-type-kendi { background: rgba(59, 130, 246, 0.1); color: #3b82f6; border-color: rgba(59, 130, 246, 0.2); }
+
+    /* Premium Action Buttons */
+    .action-btn-group {
+        display: flex;
+        gap: 6px;
+        justify-content: center;
+    }
+
+    .action-btn {
+        width: 34px;
+        height: 34px;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        border-radius: 50px;
+        transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        border: 1px solid transparent;
+        font-size: 0.95rem;
+        cursor: pointer;
+        position: relative;
+    }
+
+    .action-btn:hover {
+        transform: scale(1.1);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+    }
+
+    .action-btn:active {
+        transform: scale(0.95);
+    }
+
+    .action-btn.btn-view { background: #f8fafc; color: #64748b; border-color: #e2e8f0; }
+    .action-btn.btn-view:hover { background: #64748b; color: #fff; }
+
+    .action-btn.btn-close { background: rgba(239, 68, 68, 0.1); color: #ef4444; border-color: rgba(239, 68, 68, 0.15); }
+    .action-btn.btn-close:hover { background: #ef4444; color: #fff; }
+
+    .status-badge:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+    }
 </style>
 
 <!-- Stats Row -->
@@ -339,18 +414,18 @@ $(document).ready(function() {
             { data: 'personel_adi', defaultContent: '-' },
             { data: 'list_context', render: function(data, type, row) {
                 if ((data || '') === 'onay') {
-                    return '<span class="badge bg-soft-warning text-warning">Onay Bekleyen</span>';
+                    return '<span class="status-badge badge-type-onay"><i class="bx bx-shield-quarter"></i> Onay Bekleyen</span>';
                 }
 
                 if ((data || '') === 'onay_tamamlandi') {
-                    return '<span class="badge bg-soft-success text-success">Onaylanan</span>';
+                    return '<span class="status-badge badge-type-tamam"><i class="bx bx-check-shield"></i> Onaylanan</span>';
                 }
 
                 if ((row.onay_durumu || '') === 'beklemede') {
-                    return '<span class="badge bg-soft-secondary text-secondary">Kendi Talebim (Onayda)</span>';
+                    return '<span class="status-badge badge-soft-beklemede"><i class="bx bx-time"></i> Kendi Talebim (Onayda)</span>';
                 }
 
-                return '<span class="badge bg-soft-primary text-primary">Kendi Talebim</span>';
+                return '<span class="status-badge badge-type-kendi"><i class="bx bx-user"></i> Kendi Talebim</span>';
             }},
             { data: 'konu' },
             { data: 'kategori' },
@@ -370,32 +445,32 @@ $(document).ready(function() {
             { data: 'guncelleme_tarihi' },
             { data: 'durum', render: function(data, type, row) {
                 if ((row.onay_durumu || '') === 'beklemede') {
-                    return '<span class="badge bg-secondary p-2 px-3 rounded-pill">ONAY BEKLİYOR</span>';
+                    return '<span class="status-badge badge-soft-beklemede"><i class="bx bx-time"></i> ONAY BEKLİYOR</span>';
                 }
 
-                let badge = 'bg-secondary';
-                let text = (data || 'AÇIK').toUpperCase();
+                let badgeClass = 'badge-soft-beklemede';
+                let text = (data || 'AÇIK').toUpperCase().replace('_', ' ');
+                let icon = '<i class="bx bx-loader-circle"></i>';
                 
-                if(data === 'acik') badge = 'bg-warning';
-                if(data === 'yanitlandi') badge = 'bg-success';
-                if(data === 'personel_yaniti') badge = 'bg-primary';
-                if(data === 'isleme_alindi') badge = 'bg-info';
-                if(data === 'cozuldu') badge = 'bg-success';
-                if(data === 'kapali') badge = 'bg-danger';
+                if(data === 'acik') { badgeClass = 'badge-soft-acik'; icon = '<i class="bx bx-loader-circle"></i>'; }
+                if(data === 'yanitlandi') { badgeClass = 'badge-soft-yanitlandi'; icon = '<i class="bx bx-check-circle"></i>'; }
+                if(data === 'personel_yaniti') { badgeClass = 'badge-soft-personel-yaniti'; icon = '<i class="bx bx-user-voice"></i>'; text = 'YANITINIZ'; }
+                if(data === 'isleme_alindi') { badgeClass = 'badge-soft-isleme-alindi'; icon = '<i class="bx bx-loader bx-spin"></i>'; text = 'İŞLEMEDE'; }
+                if(data === 'cozuldu') { badgeClass = 'badge-soft-cozuldu'; icon = '<i class="bx bx-check-square"></i>'; text = 'ÇÖZÜLDÜ'; }
+                if(data === 'kapali') { badgeClass = 'badge-soft-kapali'; icon = '<i class="bx bx-lock-alt"></i>'; }
 
-                if(data === 'isleme_alindi') text = 'İŞLEME ALINDI';
-                if(data === 'cozuldu') text = 'ÇÖZÜLDÜ';
-
-                return `<span class="badge ${badge} p-2 px-3 rounded-pill show-timeline-btn" data-id="${row.id}" data-ref="${row.ref_no}" data-konu="${row.konu}" style="cursor: pointer;" title="İşlem geçmişini gör">${text}</span>`;
+                return `<span class="status-badge ${badgeClass} show-timeline-btn" data-id="${row.id}" data-ref="${row.ref_no}" data-konu="${row.konu}" style="cursor: pointer;" title="İşlem geçmişini gör">${icon} ${text}</span>`;
             }},
             { 
                 data: null, 
                 className: 'text-center',
                 render: (data, type, row) => {
-                    let html = `<a href="?p=yardim/view&id=${data.encrypted_id || data.id}" class="btn btn-sm btn-soft-info waves-effect waves-light px-3"><i class="bx bx-show-alt me-1"></i> Detay</a>`;
+                    let html = `<div class="action-btn-group">`;
+                    html += `<a href="?p=yardim/view&id=${data.encrypted_id || data.id}" class="action-btn btn-view" title="Görüntüle"><i class="bx bx-show-alt"></i></a>`;
                     if (row.durum !== 'kapali') {
-                        html += ` <button type="button" class="btn btn-sm btn-soft-danger waves-effect waves-light px-3 btn-close-ticket-row" data-id="${data.id}"><i class="bx bx-lock-alt me-1"></i> Kapat</button>`;
+                        html += ` <button type="button" class="action-btn btn-close btn-close-ticket-row" data-id="${data.id}" title="Talebi Kapat"><i class="bx bx-lock-alt"></i></button>`;
                     }
+                    html += `</div>`;
                     return html;
                 }
             }
@@ -675,20 +750,24 @@ $(document).ready(function() {
                 $('#detail-kategori').text(ticket.kategori);
                 $('#detail-tarih').text(ticket.olusturma_tarihi);
                 
-                let oncelikBadge = 'bg-secondary';
-                if(ticket.oncelik === 'yuksek') oncelikBadge = 'bg-danger';
-                if(ticket.oncelik === 'orta') oncelikBadge = 'bg-warning';
-                if(ticket.oncelik === 'dusuk') oncelikBadge = 'bg-info';
-                $('#detail-oncelik').html(`<span class="badge ${oncelikBadge}">${ticket.oncelik.toUpperCase()}</span>`);
+                let oncelikBadgeClass = 'badge-priority-orta';
+                let oncelikIcon = '<i class="bx bx-minus-circle"></i>';
+                if(ticket.oncelik === 'yuksek') { oncelikBadgeClass = 'badge-priority-yuksek'; oncelikIcon = '<i class="bx bxs-error-circle"></i>'; }
+                if(ticket.oncelik === 'dusuk') { oncelikBadgeClass = 'badge-priority-dusuk'; oncelikIcon = '<i class="bx bx-chevron-down-circle"></i>'; }
+                $('#detail-oncelik').html(`<span class="status-badge ${oncelikBadgeClass}">${oncelikIcon} ${ticket.oncelik.toUpperCase()}</span>`);
 
-                let durumBadge = 'bg-secondary';
-                if(ticket.durum === 'acik') durumBadge = 'bg-warning';
-                if(ticket.durum === 'yanitlandi') durumBadge = 'bg-success';
-                if(ticket.durum === 'personel_yaniti') durumBadge = 'bg-primary';
-                if(ticket.durum === 'isleme_alindi') durumBadge = 'bg-info';
-                if(ticket.durum === 'cozuldu') durumBadge = 'bg-success';
-                if(ticket.durum === 'kapali') durumBadge = 'bg-danger';
-                $('#detail-durum').html(`<span class="badge ${durumBadge} rounded-pill px-3">${ticket.durum.toUpperCase()}</span>`);
+                let durumBadgeClass = 'badge-soft-beklemede';
+                let durumIcon = '<i class="bx bx-loader-circle"></i>';
+                let durumText = (ticket.durum || 'ACIK').toUpperCase().replace('_', ' ');
+
+                if(ticket.durum === 'acik') { durumBadgeClass = 'badge-soft-acik'; durumIcon = '<i class="bx bx-loader-circle"></i>'; }
+                if(ticket.durum === 'yanitlandi') { durumBadgeClass = 'badge-soft-yanitlandi'; durumIcon = '<i class="bx bx-check-circle"></i>'; }
+                if(ticket.durum === 'personel_yaniti') { durumBadgeClass = 'badge-soft-personel-yaniti'; durumIcon = '<i class="bx bx-user-voice"></i>'; durumText = 'YANITINIZ'; }
+                if(ticket.durum === 'isleme_alindi') { durumBadgeClass = 'badge-soft-isleme-alindi'; durumIcon = '<i class="bx bx-loader bx-spin"></i>'; durumText = 'İŞLEMDE'; }
+                if(ticket.durum === 'cozuldu') { durumBadgeClass = 'badge-soft-cozuldu'; durumIcon = '<i class="bx bx-check-square"></i>'; durumText = 'ÇÖZÜLDÜ'; }
+                if(ticket.durum === 'kapali') { durumBadgeClass = 'badge-soft-kapali'; durumIcon = '<i class="bx bx-lock-alt"></i>'; }
+
+                $('#detail-durum').html(`<span class="status-badge ${durumBadgeClass}">${durumIcon} ${durumText}</span>`);
 
                 if(ticket.durum === 'kapali') {
                     $('#btn-close-ticket').hide();

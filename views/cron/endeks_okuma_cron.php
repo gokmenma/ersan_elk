@@ -116,8 +116,11 @@ try {
     $endeksSaatler = array_filter(array_map('trim', explode(',', $endeksSaatStr)));
 
     // Otomatik çalışma: 08:00 ile 18:00 saatlerini (dahil) listeye ekle
+    //her 15 dakikada çalışacak şekilde düzenle
     for ($i = 8; $i <= 18; $i++) {
-        $endeksSaatler[] = sprintf('%02d:00', $i);
+        for ($j = 0; $j < 60; $j += 15) {
+            $endeksSaatler[] = sprintf('%02d:%02d', $i, $j);
+        }
     }
     // Gün sonu çalışma: 23:55
     $endeksSaatler[] = '23:45';

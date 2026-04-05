@@ -94,14 +94,20 @@ $(function () {
       // Detayları API'dan çek
       $.post(apiUrl, { action: 'sayac-personel-daily-details', personel_id: pId, date: date }, function (res) {
         if (res.status === 'success') {
+          const detailTableId = `detailsTable_${pId}_${date.replace(/\./g, '_')}`;
           let html = `
-            <div class="ms-5 me-2 mb-3 bg-white border border-info border-start-0 border-end-0 border-bottom-0 border-top-4 rounded-bottom shadow-sm overflow-hidden">
+            <div class="ms-5 me-2 mb-3 bg-white border border-info border-start-0 border-end-0 border-bottom-0 border-top-4 rounded-bottom shadow-sm overflow-hidden animate__animated animate__fadeInDown">
                 <div class="px-3 py-2 bg-light border-bottom d-flex justify-content-between align-items-center">
-                    <span class="fw-bold small text-info"><i class="bx bx-list-ul me-1"></i> GÜNLÜK HAREKET DETAYLARI</span>
-                    <span class="badge bg-soft-info text-info">${res.data.length} işlem</span>
+                    <span class="fw-bold small text-info"><i class="bx bx-list-ul me-1"></i> GÜNLÜK HAREKET DETAYLARI (${data.personel_adi} - ${data.tarih})</span>
+                    <div class="d-flex align-items-center gap-2">
+                        <button class="btn btn-sm btn-outline-success border-0 fw-bold px-2 export-excel-btn" data-target="${detailTableId}" data-filename="Sayac_Hareket_Detay_${data.personel_adi}_${data.tarih}">
+                            <i class="bx bxs-file-export me-1"></i> Excel'e Aktar
+                        </button>
+                        <span class="badge bg-soft-info text-info">${res.data.length} işlem</span>
+                    </div>
                 </div>
                 <div class="table-responsive">
-                    <table class="table table-sm table-hover mb-0">
+                    <table id="${detailTableId}" class="table table-sm table-hover mb-0">
                         <thead class="bg-white">
                             <tr class="small text-muted border-top-0">
                                 <th class="ps-3">Saat</th>
@@ -141,6 +147,32 @@ $(function () {
         }
       }, 'json');
     }
+  });
+
+  // Excel Dışa Aktar Butonu Handleri
+  $(document).on('click', '.export-excel-btn', function(e) {
+    e.stopPropagation();
+    const tableId = $(this).data('target');
+    const filename = $(this).data('filename');
+    const table = document.getElementById(tableId);
+    
+    if (!table) return;
+
+    let excelContent = '<table>';
+    excelContent += table.innerHTML;
+    excelContent += '</table>';
+
+    // UTF-8 BOM ekle (Türkçe karakterler için)
+    const blob = new Blob(['\ufeff', excelContent], {
+        type: 'application/vnd.ms-excel;charset=utf-8'
+    });
+    
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename + '.xls';
+    a.click();
+    URL.revokeObjectURL(url);
   });
 
   // Zimmet filtre butonları
