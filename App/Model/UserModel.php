@@ -299,4 +299,41 @@ class UserModel extends Model
     }
 
 
+    /**
+     * Şifre sıfırlama token'ı oluşturur ve kaydeder.
+     * @param int $userId Kullanıcı ID'si
+     * @param string $token Token string'i
+     * @return bool
+     */
+    public function setResetToken(int $userId, string $token): bool
+    {
+        $expiry = date('Y-m-d H:i:s', strtotime('+1 hour'));
+        $sql = $this->db->prepare("UPDATE $this->table SET reset_token = ?, reset_token_expiry = ? WHERE id = ?");
+        return $sql->execute([$token, $expiry, $userId]);
+    }
+
+    /**
+     * Geçerli bir token'a sahip kullanıcıyı bulur.
+     * @param string $token
+     * @return object|null
+     */
+    public function getUserByResetToken(string $token)
+    {
+        $now = date('Y-m-d H:i:s');
+        $sql = $this->db->prepare("SELECT * FROM $this->table WHERE reset_token = ? AND reset_token_expiry > ?");
+        $sql->execute([$token, $now]);
+        return $sql->fetch(PDO::FETCH_OBJ) ?? null;
+    }
+
+    /**
+     * Şifreyi günceller ve token'ı temizler.
+     * @param int $userId Kullanıcı ID'si
+     * @param string $hashedPassword Yeni hashlenmiş şifre
+     * @return bool
+     */
+    public function resetPassword(int $userId, string $hashedPassword): bool
+    {
+        $sql = $this->db->prepare("UPDATE $this->table SET password = ?, reset_token = NULL, reset_token_expiry = NULL WHERE id = ?");
+        return $sql->execute([$hashedPassword, $userId]);
+    }
 }

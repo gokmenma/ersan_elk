@@ -211,7 +211,7 @@ if ($_POST['action'] == 'email_gonder') {
 
             $MesajLogModel = new \App\Model\MesajLogModel();
             $firmaId = $_SESSION['firma_id'] ?? $_SESSION['site_id'] ?? 0;
-            $sender = $allSettings['SMTP_FROM'] ?? 'noreply@yonapp.com.tr';
+            $sender = $allSettings['SMTP_FROM'] ?? 'noreply@ersan.com.tr';
 
             $MesajLogModel->logEmail(
                 $firmaId,

@@ -252,7 +252,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                                 </label>
                                             </div>
                                         </div>
-
+                                        <div class="col-auto">
+                                            <div class="text-sm-end">
+                                                <a href="javascript:void(0)" class="text-muted font-size-13" data-bs-toggle="modal" data-bs-target="#forgotPasswordModal">
+                                                    Şifremi Unuttum?
+                                                </a>
+                                            </div>
+                                        </div>
                                     </div>
                                     <div class="mb-3">
                                         <button class="btn btn-primary w-100 waves-effect waves-light"
@@ -372,7 +378,89 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
     <!-- end container fluid -->
 </div>
 
+<!-- Forgot Password Modal -->
+<div class="modal fade" id="forgotPasswordModal" tabindex="-1" aria-labelledby="forgotPasswordModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="forgotPasswordModalLabel">Şifremi Unuttum</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted">Lütfen sistemde kayıtlı kullanıcı adınızı, telefonunuzu veya e-posta adresinizi giriniz. Şifre sıfırlama bağlantısı e-posta adresinize gönderilecektir.</p>
+                <form id="forgotPasswordForm">
+                    <div class="form-floating form-floating-custom mb-3">
+                        <input type="text" class="form-control" id="forgot-input" name="identifier" placeholder="Kullanıcı Adı, Telefon veya Email" required>
+                        <label for="forgot-input">Kullanıcı Adı, Telefon veya Email</label>
+                        <div class="form-floating-icon">
+                            <i data-feather="mail"></i>
+                        </div>
+                    </div>
+                    <button type="submit" class="btn btn-primary w-100 waves-effect waves-light mt-3" id="btnForgotPassword">
+                        <span class="spinner-border spinner-border-sm d-none me-2" role="status" aria-hidden="true"></span>
+                        Şifre Sıfırlama Bağlantısı Gönder
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
 <?php include 'layouts/vendor-scripts.php'; ?>
+<script>
+    $(document).ready(function() {
+        $('#forgotPasswordForm').on('submit', function(e) {
+            e.preventDefault();
+            const btn = $('#btnForgotPassword');
+            const spinner = btn.find('.spinner-border');
+            const identifier = $('#forgot-input').val();
+
+            btn.attr('disabled', true);
+            spinner.removeClass('d-none');
+
+            $.ajax({
+                url: 'auth-api.php',
+                type: 'POST',
+                data: {
+                    action: 'forgot-password',
+                    identifier: identifier
+                },
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status === 'success') {
+                        Swal.fire({
+                            icon: 'success',
+                            title: 'Başarılı!',
+                            text: response.message || 'Şifre sıfırlama bağlantısı e-posta adresinize gönderildi.',
+                            confirmButtonColor: '#5156be'
+                        }).then(() => {
+                            $('#forgotPasswordModal').modal('hide');
+                        });
+                    } else {
+                        Swal.fire({
+                            icon: 'error',
+                            title: 'Hata!',
+                            text: response.message || 'Bir hata oluştu.',
+                            confirmButtonColor: '#fd625e'
+                        });
+                    }
+                },
+                error: function() {
+                    Swal.fire({
+                        icon: 'error',
+                        title: 'Hata!',
+                        text: 'Sistem hatası oluştu. Lütfen tekrar deneyiniz.',
+                        confirmButtonColor: '#fd625e'
+                    });
+                },
+                complete: function() {
+                    btn.attr('disabled', false);
+                    spinner.addClass('d-none');
+                }
+            });
+        });
+    });
+</script>
 
 
 </body>

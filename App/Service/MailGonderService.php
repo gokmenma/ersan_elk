@@ -18,7 +18,8 @@ class MailGonderService
         array $ekler = [],
         array $cc = [],
         array $bcc = [],
-        ?array $customSettings = null
+        ?array $customSettings = null,
+        ?int $firma_id = null
     ): bool {
         $mail = new PHPMailer(true);
         $debugOutput = '';
@@ -32,7 +33,10 @@ class MailGonderService
 
             /**Gönderici mail ayarlarını al */
             $Settings = new SettingsModel();
-            $firma_id = $_SESSION['firma_id'] ?? null;
+            
+            if ($firma_id === null) {
+                $firma_id = $_SESSION['firma_id'] ?? null;
+            }
 
             // CLI ortamında (test dosyası gibi) session olmayabilir, varsayılan 1 alalım
             if ($firma_id === null && php_sapi_name() === 'cli') {
