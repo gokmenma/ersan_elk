@@ -108,8 +108,8 @@ jobs:
         php -S localhost:8000 -t ./ &
         npx playwright test tests/e2e/e2e.spec.ts --project=chromium --reporter=list
 
-    # --- DEPLOY (AYNI MAKINA ICINDE) ---
-    - name: FTP ile Sunucuya Yukle
+    # --- DEPLOY (HIZLI VE GUVENLI YONTEM) ---
+    - name: FTP ile Dosya Temizligi ve Yukleme
       if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
@@ -117,3 +117,19 @@ jobs:
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         server-dir: /repositories/ersan_elk/
+        # Büyük ve gereksiz klasörleri hariç tutuyoruz (Timeout engellemek için)
+        exclude: |
+          **/.git*
+          **/node_modules/**
+          **/test-results/**
+          **/playwright-report/**
+          **/vendor/**
+
+    - name: Git Reset (deploy.php) Tetikle
+      if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
+      run: |
+        # deploy.php'ye boş POST atarak sunucunun kendini GitHub ile senkron etmesini sağlıyoruz
+        # Signature: a9f3cE7QmL2R6XKZ8N4VwH0JYbP5DStU (Secret) ile boş string HMAC-SHA256
+        curl -X POST "https://app.ersantr.com/deploy.php" \
+             -H "X-Hub-Signature-256: sha256=6e6129524ecfb7a0525b6a7183e8783e743da003cb43952f44747ebc793ff865" \
+             -d ""
