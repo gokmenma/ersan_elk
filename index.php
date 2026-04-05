@@ -12,6 +12,26 @@ use App\Model\MenuModel;
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 
+use App\Model\UserModel;
+
+$currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
+
+// Eğer oturum açmamışsa veya firma seçilmemişse giriş sayfasına yönlendir
+if ($currentUserId <= 0 || !isset($_SESSION['firma_id'])) {
+    header("Location: logout.php");
+    exit();
+}
+
+// Durum kontrolü: Pasif ise çıkış yap
+$StatusCheckUser = new UserModel();
+$currentUserStatusCheck = $StatusCheckUser->find($currentUserId);
+if (!$currentUserStatusCheck || ($currentUserStatusCheck->durum ?? 'Aktif') === 'Pasif') {
+    header("Location: logout.php?status=inactive");
+    exit();
+}
+
+$Menus = new MenuModel();
+
 
 
 use App\Service\Gate;
@@ -97,34 +117,7 @@ if (!isset($_SESSION['force_desktop'])) {
 
 
 
-<?php
 
-
-
-
-
-
-$Menus = new MenuModel();
-$currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
-
-//Eğer oturum açmamışsa giriş sayfasına yönlendir
-if ($currentUserId <= 0 || !isset($_SESSION['firma_id'])) {
-    header("Location: logout.php");
-    exit();
-}
-
-// Durum kontrolü: Pasif ise çıkış yap
-$StatusCheckUser = new \App\Model\UserModel();
-$currentUserStatusCheck = $StatusCheckUser->find($currentUserId);
-if (!$currentUserStatusCheck || ($currentUserStatusCheck->durum ?? 'Aktif') === 'Pasif') {
-    header("Location: logout.php?status=inactive");
-    exit();
-}
-
-
-//echo "sube id : " . $_SESSION['sube_id'];
-
-?>
 
 
 

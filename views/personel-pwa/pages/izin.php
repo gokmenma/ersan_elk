@@ -311,6 +311,8 @@
     let izinlerData = [];
     let izinTurleri = [];
     let hakedisData = null;
+    const iseGirisTarihi = '<?= $personel->ise_giris_tarihi ?? "" ?>';
+    const istenCikisTarihi = '<?= $personel->isten_cikis_tarihi ?? "" ?>';
 
     // Calendar State
     let currentView = 'calendar';
@@ -496,25 +498,46 @@
         if (isCurrentMonth) {
             // Saat 17:00'den sonraysa bugünü de dahil et
             const includeToday = now.getHours() >= 17;
-            totalDays = includeToday ? now.getDate() : Math.max(0, now.getDate() - 1);
-            limitDay = totalDays;
+            limitDay = includeToday ? now.getDate() : Math.max(0, now.getDate() - 1);
         } else if (isPastMonth) {
-            totalDays = daysInMonth;
             limitDay = daysInMonth;
         } else {
-            totalDays = 0;
             limitDay = 0;
         }
 
-        // 2. Calculate Leaves in this month up to limitDay
+        // 1. Calculate base worked days (Respecting employment dates)
+        let periodStart = new Date(year, month, 1);
+        let periodEnd = new Date(year, month, Math.max(1, limitDay));
+        periodStart.setHours(0, 0, 0, 0);
+        periodEnd.setHours(23, 59, 59, 999);
+
+        // Adjust by Hire Date
+        const hireDate = parseDateCustom(iseGirisTarihi);
+        if (hireDate) hireDate.setHours(0,0,0,0);
+        
+        if (hireDate && hireDate > periodStart) {
+            periodStart = hireDate;
+        }
+
+        // Adjust by Termination Date
+        const termDate = parseDateCustom(istenCikisTarihi);
+        if (termDate) termDate.setHours(23,59,59,999);
+
+        if (termDate && termDate < periodEnd && termDate.getFullYear() > 1970) {
+            periodEnd = termDate;
+        }
+
+        // Final total days in this period
+        if (periodStart <= periodEnd && limitDay > 0) {
+            const diffTime = Math.abs(periodEnd - periodStart);
+            totalDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        } else {
+            totalDays = 0;
+        }
+
+        // 2. Calculate Leaves in this month up to limitDay (respecting the worked period)
         let unpaidLeaveDays = 0;
         let paidLeaveDays = 0;
-
-        const monthStart = new Date(year, month, 1);
-        const monthEnd = new Date(year, month, Math.max(1, limitDay));
-        
-        monthStart.setHours(0,0,0,0);
-        monthEnd.setHours(0,0,0,0);
 
         if (totalDays > 0 && izinlerData && izinlerData.length > 0) {
             izinlerData.forEach(izin => {
@@ -530,17 +553,17 @@
                 if (!start || !end) return;
 
                 start.setHours(0,0,0,0);
-                end.setHours(0,0,0,0);
+                end.setHours(23,59,59,999);
 
-                // Check overlap
-                if (start > monthEnd || end < monthStart) return;
+                // Check overlap between leave and the "worked period"
+                if (start > periodEnd || end < periodStart) return;
 
-                const overlapStart = start < monthStart ? monthStart : start;
-                const overlapEnd = end > monthEnd ? monthEnd : end;
+                const overlapStart = start < periodStart ? periodStart : start;
+                const overlapEnd = end > periodEnd ? periodEnd : end;
 
-                // Calculate days in overlap (including weekends)
+                // Calculate days in overlap
                 const diffTime = Math.abs(overlapEnd - overlapStart);
-                const overlapDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)) + 1;
+                const overlapDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 
                 // Categorize
                 const typeName = (izin.izin_tipi_text || '').toLowerCase();
@@ -553,7 +576,7 @@
         }
 
         // 3. Update UI
-        // Worked = Total Days in Limit - (Paid + Unpaid Leaves)
+        // Worked = Total Days in Period - (Paid + Unpaid Leaves)
         const actualWorked = Math.max(0, totalDays - (paidLeaveDays + unpaidLeaveDays));
 
         document.getElementById('stat-calisilan').textContent = actualWorked;
