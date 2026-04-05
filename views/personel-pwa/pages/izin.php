@@ -586,9 +586,9 @@
         }
     }
 
-    async function loadIzinStats() {
+    async function loadIzinStats(showLoading = true) {
         try {
-            const response = await API.request('getIzinStats');
+            const response = await API.request('getIzinStats', {}, showLoading);
             if (response.success) {
                 hakedisData = response.data;
                 document.getElementById('kalan-izin').textContent = response.data.kalan_izin + ' Gün';
@@ -732,11 +732,11 @@
         }
     }
 
-    async function loadIzinler() {
+    async function loadIzinler(showLoading = true) {
         const container = document.getElementById('izin-list');
 
         try {
-            const response = await API.request('getIzinler');
+            const response = await API.request('getIzinler', {}, showLoading);
 
             if (response.success && response.data.length > 0) {
                 izinlerData = response.data;
@@ -982,8 +982,8 @@
                 Toast.show('İzin talebiniz başarıyla gönderildi', 'success');
                 Modal.close('izin-modal');
                 form.reset();
-                loadIzinler();
-                loadIzinStats();
+                loadIzinler(false);
+                loadIzinStats(false);
             } else {
                 Toast.show(response.message || 'Bir hata oluştu', 'error');
             }

@@ -89,7 +89,7 @@ function getPwaImageUrl($path)
     $host = $_SERVER['HTTP_HOST'];
     $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? 'https:' : 'http:';
 
-    // Eğer 'personel.' ile başlayan bir subdomain kullanılıyorsa (örn: personel.softran.online) 
+    // Eğer 'personel.' ile başlayan bir subdomain kullanılıyorsa (örn: personel.ersantr.com) 
     // Ana dizin (parent domain) üzerinden dosyayı çekelim.
     if (strpos($host, 'personel.') === 0) {
         $mainHost = substr($host, 9);
@@ -1506,7 +1506,7 @@ try {
                                 'title' => '📅 Yeni İzin Talebi',
                                 'body' => ($talep_eden->adi_soyadi ?? 'Personel') . ' ' . $izin_tipi_text . ' talep etti.',
                                 'url' => 'mobile/index.php?p=talepler'
-                            ]);
+                            ], true);
                         } catch (Exception $e) {
                             file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Push bildirim hatası: " . $e->getMessage() . "\n", FILE_APPEND);
                         }
@@ -1515,28 +1515,32 @@ try {
                     }
                 }
 
-                // 2. Mail Gönderimi (Sadece email adresi olanlara)
+                // 2. Mail Gönderimi (Toplu BCC gönderimi ile SMTP bağlantı sayısını azaltıyoruz)
                 $mailKullanicilari = $UserModel->getMailBildirimKullanicilari('izin');
+                $emails = [];
+                
                 if ($izin_onayi_yapacak_personel && !empty($izin_onayi_yapacak_personel->email_adresi)) {
-                    // Onaylayacak kişiyi de ekle (eğer listede yoksa)
-                    $found = false;
-                    foreach ($mailKullanicilari as $mk) {
-                        if ($mk->id == $izin_onayi_yapacak_personel->id) {
-                            $found = true;
-                            break;
-                        }
-                    }
-                    if (!$found)
-                        $mailKullanicilari[] = $izin_onayi_yapacak_personel;
+                    $emails[] = trim($izin_onayi_yapacak_personel->email_adresi);
                 }
-
+                
                 foreach ($mailKullanicilari as $kullanici) {
+                    if (!empty($kullanici->email_adresi)) {
+                        $emails[] = trim($kullanici->email_adresi);
+                    }
+                }
+                
+                $emails = array_unique($emails);
+
+                if (!empty($emails)) {
                     try {
                         $mail_template_path = dirname(__DIR__) . '/mail-template/izin_onay.php';
                         if (file_exists($mail_template_path)) {
                             $mail_content = file_get_contents($mail_template_path);
+                            // İlk kullanıcı adını örnek olarak şablona koyalım (BCC olduğu için hepsi kendi adını göremez ama şablon bozulmaz)
+                            $ornek_kullanici = $izin_onayi_yapacak_personel ? ($izin_onayi_yapacak_personel->adi_soyadi ?? 'Yetkili') : 'Yetkili';
+                            
                             $replacements = [
-                                '{{ONAYLAYAN_AD_SOYAD}}' => $kullanici->adi_soyadi ?? 'Yetkili',
+                                '{{ONAYLAYAN_AD_SOYAD}}' => $ornek_kullanici,
                                 '{{TALEP_EDEN_AD_SOYAD}}' => $talep_eden->adi_soyadi ?? 'Personel',
                                 '{{IZIN_TURU}}' => $izin_tipi_text,
                                 '{{BASLANGIC_TARIHI}}' => date('d.m.Y', strtotime($baslangic)),
@@ -1546,14 +1550,15 @@ try {
                                 '{{YIL}}' => date('Y')
                             ];
                             $mail_content = str_replace(array_keys($replacements), array_values($replacements), $mail_content);
+                            
                             $MailGonderService->gonder(
-                                [$kullanici->email_adresi],
+                                $emails,
                                 'Yeni İzin Talebi - ' . ($talep_eden->adi_soyadi ?? 'Personel'),
                                 $mail_content
                             );
                         }
                     } catch (Exception $e) {
-                        error_log('İzin talebi mail gönderme hatası: ' . $e->getMessage());
+                        error_log('İzin talebi toplu mail gönderme hatası: ' . $e->getMessage());
                     }
                 }
             } catch (Exception $e) {

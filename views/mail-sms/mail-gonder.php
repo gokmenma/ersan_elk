@@ -160,7 +160,7 @@ use App\Helper\Form;
                             name: "senderAccount",
                             label: "Gönderen Hesap",
                             options: [
-                                "1" => "noreply@softran.online"
+                                "1" => "noreply@ersantr.com"
                             ],
                             selectedValue: 1,
                             icon: "send"
@@ -232,7 +232,7 @@ use App\Helper\Form;
                     <div class="mail-preview-header">
                         <div class="mail-preview-subject" id="preview-subject">Konu burada görünecek...</div>
                         <div class="mail-preview-info">
-                            <div><strong>Kimden:</strong> <span id="preview-from">noreply@softran.online</span></div>
+                            <div><strong>Kimden:</strong> <span id="preview-from">noreply@ersantr.com</span></div>
                             <div><strong>Kime:</strong> <span id="preview-to">Alıcılar...</span></div>
                         </div>
                     </div>

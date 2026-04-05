@@ -48,7 +48,50 @@ if (Gate::allows("ana_sayfa")) {
 
     $saved_settings = isset($_COOKIE['dashboard_settings']) ? json_decode($_COOKIE['dashboard_settings'], true) : [];
 
+    // Operasyonel istatistikler ve son güncelleme bilgileri
     $last_update_endeks = $last_update_isler = $last_update_sayac = null;
+    $last_user_endeks = $last_user_isler = $last_user_sayac = null;
+
+    try {
+        $db = $personelModel->getDb();
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+
+        // Fetch last update users from logs
+        $getLastLogUser = function($actionTypes) use ($db, $firmaId) {
+            $placeholders = implode(',', array_fill(0, count($actionTypes), '?'));
+            $sql = "SELECT l.user_id, u.adi_soyadi, l.action_type
+                    FROM system_logs l
+                    LEFT JOIN users u ON l.user_id = u.id
+                    WHERE l.firma_id = ? 
+                      AND (l.action_type IN ($placeholders) OR l.action_type LIKE 'Cron%')
+                      AND l.created_at >= CURDATE()
+                    ORDER BY l.created_at DESC LIMIT 1";
+            $stmt = $db->prepare($sql);
+            $params = array_merge([$firmaId], $actionTypes);
+            $stmt->execute($params);
+            $log = $stmt->fetch(PDO::FETCH_OBJ);
+            if (!$log) return null;
+            if ($log->user_id == 0 || stripos($log->action_type, 'Cron') !== false) return 'Cron';
+            return $log->adi_soyadi ?: 'Sistem';
+        };
+
+        $last_user_isler = $getLastLogUser(['Online Kesme/Açma Sorgulama', 'Online Puantaj Sorgulama']);
+        $last_user_endeks = $getLastLogUser(['Online Endeks Okuma Sorgulama', 'Online İcmal (Endeks Okuma) Sorgulama']);
+        $last_user_sayac = $getLastLogUser(['Online Sayaç Değişim Sorgulama']);
+
+        // Fetch Timestamps (if not already fetched by AJAX, but we provide it for initial load)
+        $stmtUpdates = $db->prepare("SELECT
+                (SELECT MAX(created_at) FROM endeks_okuma WHERE firma_id = :firma_id AND created_at >= CURDATE()) AS last_update_endeks,
+                (SELECT MAX(created_at) FROM yapilan_isler WHERE firma_id = :firma_id AND created_at >= CURDATE()) AS last_update_isler,
+                (SELECT MAX(created_at) FROM sayac_degisim WHERE firma_id = :firma_id AND created_at >= CURDATE()) AS last_update_sayac");
+        $stmtUpdates->execute([':firma_id' => $firmaId]);
+        $updates = $stmtUpdates->fetch(PDO::FETCH_OBJ);
+        if ($updates) {
+            $last_update_endeks = $updates->last_update_endeks;
+            $last_update_isler = $updates->last_update_isler;
+            $last_update_sayac = $updates->last_update_sayac;
+        }
+    } catch (\Exception $e) { /* silent */ }
 
     if (!function_exists('getWidgetWidth')) {
         function getWidgetWidth($id, $default)
@@ -713,6 +756,7 @@ if (Gate::allows("ana_sayfa")) {
                     style="background: rgba(133, 135, 150, 0.05); font-size: 10px; color: #858796; border-top: 1px dashed rgba(133, 135, 150, 0.2);">
                     <i class="bx bx-time-five"></i> Son Güncelleme: <span
                         class="fw-bold last-update-value"><?php echo $last_update_isler ? date('d.m.Y H:i', strtotime($last_update_isler)) : '-'; ?></span>
+                    <br><i class="bx bx-user-circle"></i> Yapan: <span class="fw-bold last-update-user-value"><?php echo $last_user_isler ?: '-'; ?></span>
                 </div>
             </div>
         </div>
@@ -764,6 +808,7 @@ if (Gate::allows("ana_sayfa")) {
                     style="background: rgba(231, 74, 59, 0.05); font-size: 10px; color: #e74a3b; border-top: 1px dashed rgba(231, 74, 59, 0.2);">
                     <i class="bx bx-time-five"></i> Son Güncelleme: <span
                         class="fw-bold last-update-value"><?php echo $last_update_isler ? date('d.m.Y H:i', strtotime($last_update_isler)) : '-'; ?></span>
+                    <br><i class="bx bx-user-circle"></i> Yapan: <span class="fw-bold last-update-user-value"><?php echo $last_user_isler ?: '-'; ?></span>
                 </div>
             </div>
         </div>
@@ -812,6 +857,7 @@ if (Gate::allows("ana_sayfa")) {
                     style="background: rgba(54, 185, 204, 0.05); font-size: 10px; color: #36b9cc; border-top: 1px dashed rgba(54, 185, 204, 0.2);">
                     <i class="bx bx-time-five"></i> Son Güncelleme: <span
                         class="fw-bold last-update-value"><?php echo $last_update_endeks ? date('d.m.Y H:i', strtotime($last_update_endeks)) : '-'; ?></span>
+                    <br><i class="bx bx-user-circle"></i> Yapan: <span class="fw-bold last-update-user-value"><?php echo $last_user_endeks ?: '-'; ?></span>
                 </div>
             </div>
         </div>
@@ -861,6 +907,7 @@ if (Gate::allows("ana_sayfa")) {
                         style="background: rgba(28, 200, 138, 0.05); font-size: 10px; color: #1cc88a; border-top: 1px dashed rgba(28, 200, 138, 0.2);">
                         <i class="bx bx-time-five"></i> Son Güncelleme: <span
                             class="fw-bold last-update-value"><?php echo $last_update_sayac ? date('d.m.Y H:i', strtotime($last_update_sayac)) : '-'; ?></span>
+                        <br><i class="bx bx-user-circle"></i> Yapan: <span class="fw-bold last-update-user-value"><?php echo $last_user_sayac ?: '-'; ?></span>
                     </div>
                 </div>
             </div>
@@ -4179,7 +4226,7 @@ if (Gate::allows("ana_sayfa")) {
                     });
                 }
 
-                function updateOperationalWidget(widgetId, dailyValue, monthlyValue, lastUpdate) {
+                function updateOperationalWidget(widgetId, dailyValue, monthlyValue, lastUpdate, updatedByUser) {
                     const cardBody = document.querySelector(`#${widgetId} .card-body`);
                     if (!cardBody) return;
 
@@ -4215,6 +4262,11 @@ if (Gate::allows("ana_sayfa")) {
                     if (updateEl) {
                         updateEl.textContent = formatDashboardTimestamp(lastUpdate);
                     }
+
+                    const userEl = cardBody.querySelector('.last-update-user-value');
+                    if (userEl) {
+                        userEl.textContent = updatedByUser || '-';
+                    }
                 }
 
                 function refreshOperationalStats() {
@@ -4230,11 +4282,11 @@ if (Gate::allows("ana_sayfa")) {
                         const monthly = res.data.monthly || {};
                         const lastUpdate = res.data.last_update || {};
 
-                        updateOperationalWidget('widget-gunluk-muhurleme', daily.muhurleme, monthly.muhurleme, lastUpdate.isler);
-                        updateOperationalWidget('widget-gunluk-kesme-acma', daily.kesme_acma, monthly.kesme_acma, lastUpdate.isler);
-                        updateOperationalWidget('widget-gunluk-endeks-okuma', daily.endeks_okuma, monthly.endeks_okuma, lastUpdate.endeks);
-                        updateOperationalWidget('widget-gunluk-sayac-degisimi', daily.sayac_degisimi, monthly.sayac_degisimi, lastUpdate.sayac);
-                        updateOperationalWidget('widget-kacak-sayisi', daily.kacak, monthly.kacak, null);
+                        updateOperationalWidget('widget-gunluk-muhurleme', daily.muhurleme, monthly.muhurleme, lastUpdate.isler, lastUpdate.isler_user);
+                        updateOperationalWidget('widget-gunluk-kesme-acma', daily.kesme_acma, monthly.kesme_acma, lastUpdate.isler, lastUpdate.isler_user);
+                        updateOperationalWidget('widget-gunluk-endeks-okuma', daily.endeks_okuma, monthly.endeks_okuma, lastUpdate.endeks, lastUpdate.endeks_user);
+                        updateOperationalWidget('widget-gunluk-sayac-degisimi', daily.sayac_degisimi, monthly.sayac_degisimi, lastUpdate.sayac, lastUpdate.sayac_user);
+                        updateOperationalWidget('widget-kacak-sayisi', daily.kacak, monthly.kacak, null, '-');
                     }).fail(function (err) {
                         console.error('Dashboard stats refresh error:', err);
                     });

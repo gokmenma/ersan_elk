@@ -116,10 +116,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $lastUpdateIsler = null;
                 $lastUpdateSayac = null;
 
+                $lastUserEndeks = null;
+                $lastUserIsler = null;
+                $lastUserSayac = null;
+
                 try {
                     $db = $puantajModel->getDb();
                     $firmaId = $_SESSION['firma_id'] ?? 0;
 
+                    // Timestamps query
                     $stmtUpdates = $db->prepare("SELECT
                             (SELECT MAX(created_at)
                              FROM endeks_okuma
@@ -142,6 +147,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $lastUpdateEndeks = $updates['last_update_endeks'] ?? null;
                     $lastUpdateIsler = $updates['last_update_isler'] ?? null;
                     $lastUpdateSayac = $updates['last_update_sayac'] ?? null;
+
+                    // Function to get last update user/cron
+                    $getLastUpdateUser = function ($actionTypes) use ($db, $firmaId) {
+                        $placeholders = implode(',', array_fill(0, count($actionTypes), '?'));
+                        $stmt = $db->prepare("SELECT l.user_id, u.adi_soyadi, l.action_type
+                                             FROM system_logs l
+                                             LEFT JOIN users u ON l.user_id = u.id
+                                             WHERE l.firma_id = ? 
+                                               AND (l.action_type IN ($placeholders) OR l.action_type LIKE 'Cron%')
+                                               AND l.created_at >= CURDATE()
+                                             ORDER BY l.created_at DESC LIMIT 1");
+                        
+                        $params = array_merge([$firmaId], $actionTypes);
+                        $stmt->execute($params);
+                        $log = $stmt->fetch(\PDO::FETCH_ASSOC);
+                        
+                        if (!$log) return null;
+                        if ($log['user_id'] == 0 || stripos($log['action_type'], 'Cron') !== false) {
+                            return 'Cron';
+                        }
+                        return $log['adi_soyadi'] ?: 'Sistem';
+                    };
+
+                    $lastUserIsler = $getLastUpdateUser(['Online Kesme/Açma Sorgulama', 'Online Puantaj Sorgulama']);
+                    $lastUserEndeks = $getLastUpdateUser(['Online Endeks Okuma Sorgulama', 'Online İcmal (Endeks Okuma) Sorgulama']);
+                    $lastUserSayac = $getLastUpdateUser(['Online Sayaç Değişim Sorgulama']);
+
                 } catch (\Exception $e) {
                     // Ignore timestamp query failures; numeric stats are still returned.
                 }
@@ -165,8 +197,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         ],
                         'last_update' => [
                             'isler' => $lastUpdateIsler,
+                            'isler_user' => $lastUserIsler,
                             'endeks' => $lastUpdateEndeks,
+                            'endeks_user' => $lastUserEndeks,
                             'sayac' => $lastUpdateSayac,
+                            'sayac_user' => $lastUserSayac,
                         ],
                     ]
                 ], JSON_UNESCAPED_UNICODE);

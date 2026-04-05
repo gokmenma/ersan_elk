@@ -276,7 +276,7 @@ try {
     if ($_pwaCanliDestekAktif): ?>
         <link rel="stylesheet" href="assets/css/pwa-chat.css?v=<?= time() ?>">
     <?php endif; ?>
-    <link rel="canonical" href="https://www.personel.softran.online/index.php" />
+    <link rel="canonical" href="https://www.personel.ersantr.com/index.php" />  
 
 </head>
 

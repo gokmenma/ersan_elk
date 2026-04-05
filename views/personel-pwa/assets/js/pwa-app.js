@@ -608,9 +608,9 @@ const Modal = {
 const API = {
   baseUrl: "api.php",
 
-  async request(action, data = {}) {
+  async request(action, data = {}, showLoading = true) {
     try {
-      Loading.show();
+      if (showLoading) Loading.show();
 
       const formData = new FormData();
       formData.append("action", action);
@@ -632,7 +632,7 @@ const API = {
       Toast.show("Bir hata oluştu", "error");
       return { success: false, error: error.message };
     } finally {
-      Loading.hide();
+      if (showLoading) Loading.hide();
     }
   },
 };

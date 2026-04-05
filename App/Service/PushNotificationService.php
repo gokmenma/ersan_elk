@@ -65,15 +65,15 @@ class PushNotificationService
      * @param array $payload ['title' => '...', 'body' => '...', 'url' => '...']
      * @return bool
      */
-    public function sendToUser($userId, $payload)
+    public function sendToUser($userId, $payload, $skipEmail = false)
     {
-        return $this->sendNotification('user', $userId, $payload);
+        return $this->sendNotification('user', $userId, $payload, $skipEmail);
     }
 
     /**
      * Ortak bildirim gönderme fonksiyonu
      */
-    private function sendNotification($type, $id, $payload)
+    private function sendNotification($type, $id, $payload, $skipEmail = false)
     {
         $pushSent = false;
 
@@ -121,10 +121,12 @@ class PushNotificationService
         }
 
         // Email fallback
-        if ($type === 'user') {
-            $this->sendUserEmailFallback($id, $payload);
-        } else {
-            $this->sendEmailFallback($id, $payload);
+        if (!$skipEmail) {
+            if ($type === 'user') {
+                $this->sendUserEmailFallback($id, $payload);
+            } else {
+                $this->sendEmailFallback($id, $payload);
+            }
         }
 
         return $pushSent;
@@ -149,7 +151,7 @@ class PushNotificationService
                 if ($url) {
                     // Admin panel için base URL index.php üzerinden
                     if (strpos($url, 'http') === false) {
-                        $fullUrl = "https://" . ($_SERVER['HTTP_HOST'] ?? 'softran.online') . "/" . ltrim($url, '/');
+                        $fullUrl = "https://" . ($_SERVER['HTTP_HOST'] ?? 'ersantr.com') . "/" . ltrim($url, '/');
                     } else {
                         $fullUrl = $url;
                     }

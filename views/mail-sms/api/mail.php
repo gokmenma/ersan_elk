@@ -82,7 +82,7 @@ try {
             try {
                 $LogModel = new \App\Model\MesajLogModel();
                 $firmaId = $_SESSION['firma_id'] ?? 0;
-                $sender = $_SESSION['user_email'] ?? 'noreply@softran.online';
+                $sender = $_SESSION['user_email'] ?? 'noreply@ersantr.com';
 
                 $LogModel->logEmail(
                     $firmaId,

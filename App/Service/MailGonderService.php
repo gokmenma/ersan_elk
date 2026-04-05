@@ -89,7 +89,7 @@ class MailGonderService
             $mail->Encoding = 'quoted-printable';
 
             // Gönderen ve Alıcı Bilgileri
-            $fromEmail = $allSettings['gonderen_eposta'] ?? $allSettings['smtp_kullanici'] ?? 'noreply@softran.online';
+            $fromEmail = $allSettings['gonderen_eposta'] ?? $allSettings['smtp_kullanici'] ?? 'noreply@ersantr.com';
             $fromName = $allSettings['gonderen_adi'] ?? 'Ersan Elektrik | Personel Yönetim';
 
             $mail->setFrom($fromEmail, $fromName);
