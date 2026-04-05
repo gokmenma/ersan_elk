@@ -5,8 +5,7 @@ on:
     branches: [ "master", "main" ]
   pull_request:
     branches: [ "master", "main" ]
-env:
-  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+# env silindi çünkü Node 24 artık varsayılan oldu veya zorlanması uyarılara sebep oluyor
 jobs:
   test-and-deploy:
     name: Test ve Otomatik Yukle
@@ -39,7 +38,7 @@ jobs:
         coverage: none
 
     - name: Önbelleklenmis Composer Paketlerini Getir
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: vendor
         key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
@@ -47,11 +46,11 @@ jobs:
     - name: Node.js Ortamini Kur
       uses: actions/setup-node@v4
       with:
-        node-version: 20
+        node-version: 24
 
     - name: Playwright Tarayicilarini Cache'den Getir
       id: playwright-cache
-      uses: actions/cache@v3
+      uses: actions/cache@v4
       with:
         path: ~/.cache/ms-playwright
         key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
