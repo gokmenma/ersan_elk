@@ -1,6 +1,6 @@
 [2026-04-01 07:47:33] --- BACKUP CRON STARTED ---
-[2026-04-01 07:47:33] Executing backup for database: mbeyazil_ersanelektrik
-[2026-04-01 07:47:33] Target file: C:\xampp\htdocs\ersan_elk\backups\backup_mbeyazil_ersanelektrik_2026-04-01_07-47-33.sql
+[2026-04-01 07:47:33] Executing backup for database: ersantrc_personel
+[2026-04-01 07:47:33] Target file: C:\xampp\htdocs\ersan_elk\backups\backup_ersantrc_personel_2026-04-01_07-47-33.sql
 [2026-04-01 07:47:41] SUCCESS: Backup created successfully. Size: 53022.44 KB
 [2026-04-01 07:47:41] Retention: Keep last 7 days. Deleted 0 old files.
 [2026-04-01 07:47:41] --- BACKUP CRON FINISHED ---

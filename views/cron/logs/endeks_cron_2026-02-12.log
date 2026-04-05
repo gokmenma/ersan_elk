@@ -3,7 +3,7 @@
 [2026-02-12 09:14:57] === Endeks Okuma Cron başlatıldı ===
 [2026-02-12 09:14:57] Online sorgulama devre dışı. Çıkılıyor.
 [2026-02-12 09:22:19] === Endeks Okuma Cron başlatıldı ===
-[2026-02-12 09:22:19] Firma ID alınamadı: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'mbeyazil_ersanelektrik.firma' doesn't exist
+[2026-02-12 09:22:19] Firma ID alınamadı: SQLSTATE[42S02]: Base table or view not found: 1146 Table 'ersantrc_personel.firma' doesn't exist
 [2026-02-12 09:22:19] Ayarlar firma_id= ile yüklendi. Toplam 1 ayar.
 [2026-02-12 09:22:19] Online sorgulama devre dışı. (Değer: '0') Çıkılıyor.
 [2026-02-12 09:27:48] === Endeks Okuma Cron başlatıldı ===

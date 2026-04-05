@@ -1,6 +1,6 @@
 <?php
 try {
-    $db = new PDO('mysql:host=localhost;dbname=mbeyazil_ersanelektrik;charset=utf8', 'root', '');
+    $db = new PDO('mysql:host=localhost;dbname=ersantrc_personel;charset=utf8', 'root', '');
     $db->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
     $tables = ['tanimlamalar', 'yapilan_isler', 'endeks_okuma', 'sayac_degisim'];

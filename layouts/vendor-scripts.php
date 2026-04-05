@@ -28,7 +28,6 @@ $page = $_GET['p'] ?? 'home';
 
 
 
-
 <?php if ($page == 'personel/list') { ?>
     <script src="views/personel/js/list.js"></script>
 <?php } ?>

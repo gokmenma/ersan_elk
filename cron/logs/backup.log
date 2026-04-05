@@ -1,22 +1,22 @@
-[2026-03-14 10:46:52] Starting backup to C:\xampp\htdocs\ersan_elk\backups\backup_mbeyazil_ersanelektrik_2026-03-14_10-46-52.sql
+[2026-03-14 10:46:52] Starting backup to C:\xampp\htdocs\ersan_elk\backups\backup_ersantrc_personel_2026-03-14_10-46-52.sql
 [2026-03-14 10:46:58] SUCCESS: Backup created successfully.
 [2026-03-14 10:46:58] Backup process finished.
 [2026-04-01 07:46:56] --- BACKUP CRON STARTED ---
-[2026-04-01 07:46:56] Executing backup for database: mbeyazil_ersanelektrik
-[2026-04-01 07:46:56] Target file: C:\xampp\htdocs\ersan_elk\backups\backup_mbeyazil_ersanelektrik_2026-04-01_07-46-56.sql
+[2026-04-01 07:46:56] Executing backup for database: ersantrc_personel
+[2026-04-01 07:46:56] Target file: C:\xampp\htdocs\ersan_elk\backups\backup_ersantrc_personel_2026-04-01_07-46-56.sql
 [2026-04-01 07:47:04] SUCCESS: Backup created successfully. Size: 53022.44 KB
-[2026-04-01 07:47:04] Rotated old backup: backup_mbeyazil_ersanelektrik_2026-03-14_10-46-52.sql
+[2026-04-01 07:47:04] Rotated old backup: backup_ersantrc_personel_2026-03-14_10-46-52.sql
 [2026-04-01 07:47:04] Retention: Keep last 7 days. Deleted 1 old files.
 [2026-04-01 07:47:04] --- BACKUP CRON FINISHED ---
 [2026-04-01 07:47:33] --- BACKUP CRON STARTED ---
-[2026-04-01 07:47:33] Executing backup for database: mbeyazil_ersanelektrik
-[2026-04-01 07:47:33] Target file: C:\xampp\htdocs\ersan_elk\backups\backup_mbeyazil_ersanelektrik_2026-04-01_07-47-33.sql
+[2026-04-01 07:47:33] Executing backup for database: ersantrc_personel
+[2026-04-01 07:47:33] Target file: C:\xampp\htdocs\ersan_elk\backups\backup_ersantrc_personel_2026-04-01_07-47-33.sql
 [2026-04-01 07:47:41] SUCCESS: Backup created successfully. Size: 53022.44 KB
 [2026-04-01 07:47:41] Retention: Keep last 7 days. Deleted 0 old files.
 [2026-04-01 07:47:41] --- BACKUP CRON FINISHED ---
 [2026-04-01 07:51:30] --- BACKUP CRON STARTED ---
-[2026-04-01 07:51:30] Executing backup for database: mbeyazil_ersanelektrik
-[2026-04-01 07:51:30] Target file: C:\xampp\htdocs\ersan_elk\backups\backup_mbeyazil_ersanelektrik_2026-04-01_07-51-30.sql
+[2026-04-01 07:51:30] Executing backup for database: ersantrc_personel
+[2026-04-01 07:51:30] Target file: C:\xampp\htdocs\ersan_elk\backups\backup_ersantrc_personel_2026-04-01_07-51-30.sql
 [2026-04-01 07:51:37] SQL Dump success (53022.66 KB). Compressing...
 [2026-04-01 07:51:40] SUCCESS: Backup compressed to ZIP (5709.01 KB). Save ratio: 89.2%
 [2026-04-01 07:51:40] Retention: Keep last 7 days. Deleted 0 old files.
