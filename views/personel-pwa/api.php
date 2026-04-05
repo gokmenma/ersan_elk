@@ -205,6 +205,18 @@ function pwaNotifyAdminsForNewSupportTicket($ticket, string $ilkMesaj, int $pers
         if ($email !== '') {
             $emails[] = strtolower($email);
         }
+
+        // Push bildirimi (Email ile aynı kişilere)
+        try {
+            $pushService = new PushNotificationService();
+            $pushService->sendToUser((int)$admin->id, [
+                'title' => 'Yeni Destek Talebi',
+                'body' => $personelAdi . ' tarafından yeni destek talebi açıldı. Konu: ' . $ticketKonu,
+                'url' => pwaBuildTicketRoute($ticketId)
+            ], true);
+        } catch (Exception $e) {
+            error_log('Push bildirim hatası (PWA New Ticket Admin): ' . $e->getMessage());
+        }
     }
 
     $emails = array_values(array_unique($emails));
@@ -256,6 +268,18 @@ function pwaNotifyApproversForSupportTicket($ticket, string $ilkMesaj, int $pers
         $email = pwaExtractUserEmail($approver);
         if ($email !== '') {
             $emails[] = strtolower($email);
+        }
+
+        // Push bildirimi (Email ile aynı kişilere)
+        try {
+            $pushService = new PushNotificationService();
+            $pushService->sendToUser((int)$approver->id, [
+                'title' => 'Destek Talebi Onay Bekliyor',
+                'body' => $personelAdi . ' tarafından açılan destek talebi onay bekliyor. Konu: ' . $ticketKonu,
+                'url' => pwaBuildTicketRoute($ticketId)
+            ], true);
+        } catch (Exception $e) {
+            error_log('Push bildirim hatası (PWA Ticket Approval Pending): ' . $e->getMessage());
         }
     }
 

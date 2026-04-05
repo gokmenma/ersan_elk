@@ -577,10 +577,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $personel = $Personel->find($id);
 
             if ($personel) {
-                // Resim yolu kontrolü
-                if (empty($personel->resim_yolu)) {
-                    $personel->resim_yolu = 'assets/images/users/user-dummy-img.jpg'; // Varsayılan resim
+                // Resim yolu kontrolü (PWA resmi öncelikli, eğer dosya varsa)
+                $rootPath = dirname(__DIR__, 2) . '/';
+                $finalResim = 'assets/images/users/user-dummy-img.jpg';
+                
+                if (!empty($personel->personel_resim_yolu) && file_exists($rootPath . $personel->personel_resim_yolu)) {
+                    $finalResim = $personel->personel_resim_yolu;
+                } elseif (!empty($personel->resim_yolu) && file_exists($rootPath . $personel->resim_yolu)) {
+                    $finalResim = $personel->resim_yolu;
                 }
+                
+                $personel->resim_yolu = $finalResim;
                 echo json_encode(['status' => 'success', 'data' => $personel]);
             } else {
                 echo json_encode(['status' => 'error', 'message' => 'Personel bulunamadı.']);
@@ -994,6 +1001,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $dataRow['id'] = $enc_id;
 
                 // Format specific fields
+                $rootPath = dirname(__DIR__, 2) . '/';
+                $listResim = 'assets/images/users/user-dummy-img.jpg';
+                if (!empty($row->personel_resim_yolu) && file_exists($rootPath . $row->personel_resim_yolu)) {
+                    $listResim = $row->personel_resim_yolu;
+                } elseif (!empty($row->resim_yolu) && file_exists($rootPath . $row->resim_yolu)) {
+                    $listResim = $row->resim_yolu;
+                }
+                $dataRow['resim_yolu'] = $listResim;
+
                 $dataRow['ise_giris_tarihi'] = (!empty($row->ise_giris_tarihi) && $row->ise_giris_tarihi != '0000-00-00') ? Date::dmY($row->ise_giris_tarihi) : '';
                 $dataRow['isten_cikis_tarihi'] = (!empty($row->isten_cikis_tarihi) && $row->isten_cikis_tarihi != '0000-00-00') ? Date::dmY($row->isten_cikis_tarihi) : '';
                 $dataRow['dogum_tarihi'] = (!empty($row->dogum_tarihi) && $row->dogum_tarihi != '0000-00-00') ? Date::dmY($row->dogum_tarihi) : '';

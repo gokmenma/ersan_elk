@@ -16,6 +16,7 @@ use App\Model\BildirimModel;
 use App\Helper\Security;
 use App\Service\MailGonderService;
 use App\Service\Gate;
+use App\Service\PushNotificationService;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -595,6 +596,18 @@ function notifyAdminsForNewSupportTicket($ticket, string $ilkMesaj): void
         if ($email !== '') {
             $emails[] = strtolower($email);
         }
+
+        // Push bildirimi (Email ile aynı kişilere)
+        try {
+            $pushService = new PushNotificationService();
+            $pushService->sendToUser((int)$admin->id, [
+                'title' => 'Yeni Destek Talebi',
+                'body' => $personelAdi . ' tarafından yeni destek talebi açıldı. Konu: ' . ($ticket->konu ?? '-'),
+                'url' => buildTicketRoute((int)$ticket->id)
+            ], true);
+        } catch (Exception $e) {
+            error_log('Push bildirim hatası (New Ticket Admin): ' . $e->getMessage());
+        }
     }
 
     $emails = array_values(array_unique($emails));
@@ -645,6 +658,18 @@ function notifyApproversForSupportTicket($ticket, string $ilkMesaj): void
         if ($email !== '') {
             $emails[] = strtolower($email);
         }
+
+        // Push bildirimi (Email ile aynı kişilere)
+        try {
+            $pushService = new PushNotificationService();
+            $pushService->sendToUser((int)$approver->id, [
+                'title' => 'Destek Talebi Onay Bekliyor',
+                'body' => $personelAdi . ' tarafından açılan destek talebi onay bekliyor. Konu: ' . ($ticket->konu ?? '-'),
+                'url' => buildTicketRoute((int)$ticket->id)
+            ], true);
+        } catch (Exception $e) {
+            error_log('Push bildirim hatası (Ticket Approval Pending): ' . $e->getMessage());
+        }
     }
 
     $emails = array_values(array_unique($emails));
@@ -690,6 +715,18 @@ function notifyTicketOwnerForAdminReply($ticket, string $mesaj): void
             'message-square',
             'info'
         );
+
+        // Push bildirimi
+        try {
+            $pushService = new PushNotificationService();
+            $pushService->sendToUser((int) $user->id, [
+                'title' => 'Destek Talebinize Yanıt Geldi',
+                'body' => 'Talep #' . ($ticket->ref_no ?? $ticketId) . ' için yönetici tarafından yanıt verildi.',
+                'url' => buildTicketRoute($ticketId)
+            ], true);
+        } catch (Exception $e) {
+            error_log('Push bildirim hatası (Admin Reply): ' . $e->getMessage());
+        }
     }
 
     $emails = [];
@@ -769,6 +806,18 @@ function notifyTicketOwnerForStatusChange($ticket, string $newStatus): void
             'info-circle',
             'primary'
         );
+
+        // Push bildirimi
+        try {
+            $pushService = new PushNotificationService();
+            $pushService->sendToUser((int) $user->id, [
+                'title' => $title,
+                'body' => $message,
+                'url' => buildTicketRoute($ticketId)
+            ], true);
+        } catch (Exception $e) {
+            error_log('Push bildirim hatası (Status Change): ' . $e->getMessage());
+        }
     }
 }
 
@@ -806,6 +855,18 @@ function notifyTicketOwnerForApprovalResult($ticket, string $onayDurumu, string 
             $isApproved ? 'check-circle' : 'x-circle',
             $isApproved ? 'success' : 'danger'
         );
+
+        // Push bildirimi
+        try {
+            $pushService = new PushNotificationService();
+            $pushService->sendToUser((int) $user->id, [
+                'title' => $title,
+                'body' => $description,
+                'url' => buildTicketRoute($ticketId)
+            ], true);
+        } catch (Exception $e) {
+            error_log('Push bildirim hatası (Approval Result): ' . $e->getMessage());
+        }
     }
 
     $emails = [];

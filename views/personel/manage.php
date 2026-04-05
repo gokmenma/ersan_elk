@@ -99,10 +99,16 @@ if ($id > 0) {
                                 <div class="d-flex align-items-center gap-3">
                                     <div class="avatar-lg position-relative" title="Resmi Kayıtlı Fotoğraf">
                                         <?php
-                                        $resimYolu = $personel->resim_yolu ?? '';
+                                        $rootRoot = dirname(__DIR__, 2) . '/';
+                                        $resimYolu = 'assets/images/users/user-dummy-img.jpg';
+                                        if (!empty($personel->personel_resim_yolu) && file_exists($rootRoot . $personel->personel_resim_yolu)) {
+                                            $resimYolu = $personel->personel_resim_yolu;
+                                        } elseif (!empty($personel->resim_yolu) && file_exists($rootRoot . $personel->resim_yolu)) {
+                                            $resimYolu = $personel->resim_yolu;
+                                        }
                                         ?>
                                         <img id="personelImage"
-                                            src="<?php echo !empty($resimYolu) ? $resimYolu : 'assets/images/users/user-dummy-img.jpg'; ?>"
+                                            src="<?php echo $resimYolu; ?>"
                                             alt="" class="img-thumbnail"
                                             style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px !important; cursor: zoom-in;"
                                             onclick="window.open(this.src, '_blank')">
