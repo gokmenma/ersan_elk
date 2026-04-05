@@ -20,6 +20,7 @@ $(document).ready(function () {
         d.tab = "demirbas";
         d.inventory_kat_adi = $("#activeFilterBadges").data("katAdi") || null;
         d.inventory_type = $("#activeFilterBadges").data("filterType") || null;
+        d.status_filter = $('input[name="demirbas-status-filter"]:checked').val() || "";
       },
     },
     columns: [
@@ -75,8 +76,12 @@ $(document).ready(function () {
       emptyTable:
         '<div class="text-center text-muted py-4"><i class="bx bx-package display-4 d-block mb-2"></i>Henüz demirbaş eklenmemiş.<br><small>"Yeni Demirbaş" butonuna tıklayarak ekleyebilirsiniz.</small></div>',
     },
-    initComplete: function () {
+    initComplete: function (settings, json) {
       $("#personel-loader").fadeOut(300);
+      // Projenin standart gelişmiş filtrelerini başlat
+      if (typeof initAdvancedFilters === "function") {
+        initAdvancedFilters(this.api(), settings);
+      }
     },
   };
 
@@ -95,10 +100,10 @@ $(document).ready(function () {
         data: function (d) {
           d.action = "zimmet-listesi";
           d.filter_type = $('input[name="zimmetFilter"]:checked').val() || "all";
+          d.status_filter = $('input[name="zimmet-status-filter"]:checked').val() || "";
           d.personel_id = $("#zimmet_personel_filtre").val() || "all";
           d.sayac_kat_ids = typeof sayacKatIds !== "undefined" ? sayacKatIds : [];
-          d.aparat_kat_ids =
-            typeof aparatKatIds !== "undefined" ? aparatKatIds : [];
+          d.aparat_kat_ids = typeof aparatKatIds !== "undefined" ? aparatKatIds : [];
         },
       },
       columns: [
@@ -127,8 +132,12 @@ $(document).ready(function () {
         emptyTable:
           '<div class="text-center text-muted py-4"><i class="bx bx-transfer display-4 d-block mb-2"></i>Henüz zimmet kaydı bulunmamaktadır.</div>',
       },
-      initComplete: function () {
+      initComplete: function (settings, json) {
         $("#personel-loader").fadeOut(300);
+        // Projenin standart gelişmiş filtrelerini başlat
+        if (typeof initAdvancedFilters === "function") {
+          initAdvancedFilters(this.api(), settings);
+        }
       },
     });
   }
@@ -154,6 +163,7 @@ $(document).ready(function () {
         data: function (d) {
           d.action = "demirbas-listesi";
           d.tab = "sayac";
+          d.status_filter = $('input[name="sayac-status-filter"]:checked').val() || "";
         },
       },
       columns: [
@@ -203,12 +213,35 @@ $(document).ready(function () {
         emptyTable:
           '<div class="text-center text-muted py-4"><i class="bx bx-package display-4 d-block mb-2"></i>Henüz sayaç eklenmemiş.<br><small>"Yeni Sayaç" butonuna tıklayarak ekleyebilirsiniz.</small></div>',
       },
-      initComplete: function () {
+      initComplete: function (settings, json) {
         $("#personel-loader").fadeOut(300);
+
+        // Projenin standart gelişmiş filtrelerini başlat
+        if (typeof initAdvancedFilters === "function") {
+          initAdvancedFilters(this.api(), settings);
+        }
       },
     };
     sayacTable = $("#sayacTable").DataTable(sayacOptions);
   }
+
+  // Sayaç filtre butonları olay dinleyicisi
+  $(document).on("change", 'input[name="sayac-status-filter"]', function() {
+    $(this).closest(".status-filter-group").find("label").removeClass("active");
+    $(this).next("label").addClass("active");
+    if (typeof sayacTable !== "undefined" && sayacTable) {
+        sayacTable.draw();
+    }
+  });
+
+  // Zimmet filtre butonları olay dinleyicisi
+  $(document).on("change", 'input[name="zimmet-status-filter"]', function() {
+    $(this).closest(".status-filter-group").find("label").removeClass("active");
+    $(this).next("label").addClass("active");
+    if (typeof zimmetTable !== "undefined" && zimmetTable) {
+        zimmetTable.draw();
+    }
+  });
 
   // Aparat Tablosu
   if ($("#aparatTable").length) {
@@ -221,6 +254,7 @@ $(document).ready(function () {
         data: function (d) {
           d.action = "demirbas-listesi";
           d.tab = "aparat";
+          d.status_filter = $('input[name="aparat-status-filter"]:checked').val() || "";
         },
       },
       columns: [
@@ -270,12 +304,26 @@ $(document).ready(function () {
         emptyTable:
           '<div class="text-center text-muted py-4"><i class="bx bx-package display-4 d-block mb-2"></i>Henüz aparat eklenmemiş.<br><small>"Yeni Aparat" butonuna tıklayarak ekleyebilirsiniz.</small></div>',
       },
-      initComplete: function () {
+      initComplete: function (settings, json) {
         $("#personel-loader").fadeOut(300);
+
+        // Projenin standart gelişmiş filtrelerini başlat
+        if (typeof initAdvancedFilters === "function") {
+          initAdvancedFilters(this.api(), settings);
+        }
       },
     };
     aparatTable = $("#aparatTable").DataTable(aparatOptions);
   }
+
+  // Aparat filtre butonları olay dinleyicisi
+  $(document).on("change", 'input[name="aparat-status-filter"]', function() {
+    $(this).closest(".status-filter-group").find("label").removeClass("active");
+    $(this).next("label").addClass("active");
+    if (typeof aparatTable !== "undefined" && aparatTable) {
+        aparatTable.draw();
+    }
+  });
 
   // Servis Tablosu
   if ($("#servisTable").length) {
@@ -287,8 +335,11 @@ $(document).ready(function () {
         type: "POST",
         data: function (d) {
           d.action = "servis-listesi";
-          d.baslangic = $("#servis_filtre_baslangic").val();
-          d.bitis = $("#servis_filtre_bitis").val();
+          let dateRange = $("#servis_filtre_range").val() || "";
+          let dates = dateRange.split(" to ");
+          d.baslangic = dates[0] || "";
+          d.bitis = dates[1] || "";
+          d.status_filter = $('input[name="servis-status-filter"]:checked').val() || "all";
         },
       },
       columns: [
@@ -308,11 +359,48 @@ $(document).ready(function () {
         emptyTable:
           '<div class="text-center text-muted py-4"><i class="bx bx-wrench display-4 d-block mb-2"></i>Herhangi bir servis kaydı bulunamadı.</div>',
       },
-      initComplete: function () {
+      initComplete: function (settings, json) {
         $("#personel-loader").fadeOut(300);
+
+        if (json && json.stats) {
+          $("#servis_toplam_kayit").text(json.stats.toplam_kayit);
+          $("#servis_aktif_sayisi").text(json.stats.aktif_sayisi);
+          $("#servis_toplam_maliyet").text(json.stats.toplam_maliyet);
+        }
+
+        // Projenin standart gelişmiş filtrelerini başlat
+        if (typeof initAdvancedFilters === "function") {
+          initAdvancedFilters(this.api(), settings);
+        }
+      },
+      drawCallback: function (settings) {
+        let json = settings.json;
+        if (json && json.stats) {
+          $("#servis_toplam_kayit").text(json.stats.toplam_kayit);
+          $("#servis_aktif_sayisi").text(json.stats.aktif_sayisi);
+          $("#servis_toplam_maliyet").text(json.stats.toplam_maliyet);
+        }
       },
     });
   }
+
+  // Servis filtre butonları olay dinleyicisi
+  $(document).on("change", 'input[name="servis-status-filter"]', function() {
+    $(this).closest(".status-filter-group").find("label").removeClass("active");
+    $(this).next("label").addClass("active");
+    if (typeof servisTable !== "undefined" && servisTable) {
+        servisTable.draw();
+    }
+  });
+
+  // Demirbaş filtre butonları olay dinleyicisi
+  $(document).on("change", 'input[name="demirbas-status-filter"]', function() {
+    $(this).closest(".status-filter-group").find("label").removeClass("active");
+    $(this).next("label").addClass("active");
+    if (typeof demirbasTable !== "undefined" && demirbasTable) {
+        demirbasTable.draw();
+    }
+  });
 
   // Select2 başlat
   initSelect2();
@@ -332,6 +420,15 @@ $(document).ready(function () {
 
   if ($("#servis-tab").hasClass("active")) {
     loadServisList();
+  }
+
+  // Flatpickr Range Başlat
+  if ($(".flatpickr-range").length) {
+    $(".flatpickr-range").flatpickr({
+      mode: "range",
+      dateFormat: "d.m.Y",
+      locale: "tr",
+    });
   }
 });
 
@@ -639,6 +736,26 @@ function initSelect2() {
       dropdownParent: $("#servisModal"),
       placeholder: "Demirbaş Seçin...",
       allowClear: true,
+      minimumInputLength: 1,
+      ajax: {
+        url: zimmetUrl,
+        type: "POST",
+        dataType: "json",
+        delay: 300,
+        data: function (params) {
+          return {
+            action: "demirbas-ara",
+            type: "all",
+            q: params.term || "",
+          };
+        },
+        processResults: function (data) {
+          return {
+            results: data.results || [],
+          };
+        },
+        cache: true,
+      },
       width: "100%",
     });
   }
@@ -2641,25 +2758,31 @@ $(document).on("click", ".sayac-kasiye-teslim", function (e) {
 $(document).on("submit", "#kasiyeTeslimForm", function (e) {
   e.preventDefault();
 
-  let demirbasId = $("#kasiye_demirbas_id").val();
-  let tarih = $("#tarih").val();
-  let aciklama = $("#aciklama").val();
-  let submitBtn = $("#btnKasiyeKaydet");
+  const isToplu = $("#kasiye_is_toplu").val() === "1";
+  const demirbasId = $("#kasiye_demirbas_id").val();
+  const ids = $("#kasiye_toplu_ids").val();
+  const tarih = $(this).find('input[name="tarih"]').val();
+  const aciklama = $(this).find('textarea[name="aciklama"]').val();
+  const submitBtn = $("#btnKasiyeKaydet");
 
-  if (!demirbasId || !tarih) {
+  if ((!isToplu && !demirbasId) || (isToplu && !ids) || !tarih) {
     Swal.fire("Uyarı", "Lütfen gerekli alanları doldurunuz.", "warning");
     return;
   }
 
   // Submit butonunu yükleniyor yap
-  let originalBtnHtml = submitBtn.html();
+  const originalBtnHtml = submitBtn.html();
   submitBtn
     .prop("disabled", true)
     .html('<i class="bx bx-loader-alt bx-spin me-1"></i> Kaydediliyor...');
 
-  let formData = new FormData();
-  formData.append("action", "kasiye-teslim");
-  formData.append("demirbas_id", demirbasId);
+  const formData = new FormData();
+  formData.append("action", isToplu ? "toplu-kasiye-teslim" : "kasiye-teslim");
+  if (isToplu) {
+    formData.append("ids", ids); // JSON string expected by API
+  } else {
+    formData.append("demirbas_id", demirbasId);
+  }
   formData.append("tarih", tarih);
   formData.append("aciklama", aciklama);
 
@@ -2680,18 +2803,11 @@ $(document).on("submit", "#kasiyeTeslimForm", function (e) {
         });
 
         // Tabloyu yenile
-        let activeTab = $("#demirbasTab button.active").attr("id");
-        if (
-          activeTab === "demirbas-tab" &&
-          typeof demirbasTable !== "undefined"
-        ) {
-          demirbasTable.ajax.reload(null, false);
-        } else if (
-          activeTab === "depo-tab" &&
-          typeof sayacTable !== "undefined"
-        ) {
-          sayacTable.ajax.reload(null, false);
-        }
+        if (typeof demirbasTable !== "undefined") demirbasTable.ajax.reload(null, false);
+        if (typeof sayacTable !== "undefined") sayacTable.ajax.reload(null, false);
+        if (typeof aparatTable !== "undefined") aparatTable.ajax.reload(null, false);
+        if (typeof sayacZimmetTable !== "undefined") sayacZimmetTable.ajax.reload(null, false);
+        
       } else {
         Swal.fire("Hata!", data.message, "error");
       }
@@ -3102,6 +3218,11 @@ $(document).on("click", ".servis-ekle", function () {
 
   $("#servisForm")[0].reset();
   $("#servis_id").val("");
+  if ($("#servis_demirbas_id option[value='" + rawId + "']").length === 0) {
+    const displayText = (no ? no + " - " : "") + (name || "Demirbaş");
+    const opt = new Option(displayText, rawId, true, true);
+    $("#servis_demirbas_id").append(opt);
+  }
   $("#servis_demirbas_id").val(rawId).trigger("change");
   $("#teslim_eden_personel_id").val("").trigger("change");
 
@@ -3129,6 +3250,11 @@ $(document).on("click", ".servis-duzenle", function () {
         const data = response.data;
         $("#servisForm")[0].reset();
         $("#servis_id").val(encId);
+        if ($("#servis_demirbas_id option[value='" + data.demirbas_id + "']").length === 0) {
+          const detailText = (data.demirbas_no ? data.demirbas_no + " - " : "") + (data.demirbas_adi || "Demirbaş");
+          const opt = new Option(detailText, data.demirbas_id, true, true);
+          $("#servis_demirbas_id").append(opt);
+        }
         $("#servis_demirbas_id").val(data.demirbas_id).trigger("change");
         $("#teslim_eden_personel_id")
           .val(data.teslim_eden_personel_id)

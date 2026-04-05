@@ -57,21 +57,34 @@ class DemirbasServisModel extends Model
     /**
      * Tarih aralığına göre servis kayıtlarını getirir
      */
-    public function getByDateRange($baslangic, $bitis, $demirbasId = null)
+    public function getByDateRange($baslangic, $bitis, $demirbasId = null, $status = 'all')
     {
         $sqlStr = "SELECT s.*, d.demirbas_adi, d.demirbas_no, p.adi_soyadi as teslim_eden_adi
                   FROM {$this->table} s
-                  INNER JOIN demirbas d ON s.demirbas_id = d.id
+                  LEFT JOIN demirbas d ON s.demirbas_id = d.id
                   LEFT JOIN personel p ON s.teslim_eden_personel_id = p.id
                   WHERE s.firma_id = :firma_id 
-                  AND s.silinme_tarihi IS NULL
-                  AND s.servis_tarihi BETWEEN :baslangic AND :bitis";
+                  AND s.silinme_tarihi IS NULL";
 
         $params = [
-            'firma_id' => $_SESSION['firma_id'],
-            'baslangic' => $baslangic,
-            'bitis' => $bitis
+            'firma_id' => $_SESSION['firma_id']
         ];
+
+        if ($baslangic) {
+            $sqlStr .= " AND s.servis_tarihi >= :baslangic";
+            $params['baslangic'] = $baslangic;
+        }
+
+        if ($bitis) {
+            $sqlStr .= " AND s.servis_tarihi <= :bitis";
+            $params['bitis'] = $bitis;
+        }
+
+        if ($status === 'active') {
+            $sqlStr .= " AND s.iade_tarihi IS NULL";
+        } elseif ($status === 'completed') {
+            $sqlStr .= " AND s.iade_tarihi IS NOT NULL";
+        }
 
         if ($demirbasId) {
             $sqlStr .= " AND s.demirbas_id = :demirbas_id";

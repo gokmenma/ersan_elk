@@ -160,9 +160,14 @@ function getDatatableOptions() {
             $(column.header()).find('input[type="checkbox"]').length === 0
           ) {
             let input = document.createElement("input");
-            input.placeholder = title;
-            input.classList.add("form-control", "form-control-sm");
+            input.placeholder = title + "...";
+            input.classList.add("form-control", "form-control-sm", "border-light", "bg-light");
             input.setAttribute("autocomplete", "off");
+            $(input).css({
+                "font-size": "0.75rem",
+                "padding": "0.25rem 0.5rem",
+                "border-radius": "4px"
+            });
             $(input).attr("data-col-idx", column.index());
 
             const th = $('<th class="search">').append(input);

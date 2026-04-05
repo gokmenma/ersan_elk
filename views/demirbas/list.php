@@ -191,7 +191,7 @@ if (!empty($aparatKatIds)) {
     <!-- start page title -->
     <?php
     $maintitle = "Demirbaş";
-    $title = "Demirbaş & Zimmet Yönetimi";
+    $title = "Demirbaşlar";
     ?>
     <?php include 'layouts/breadcrumb.php'; ?>
     <!-- end page title -->
@@ -211,7 +211,7 @@ if (!empty($aparatKatIds)) {
                                 'demirbas/servis' => 'servis',
                                 'demirbas/zimmet' => 'zimmet'
                             ];
-                            $activeTab = $routeToTabMap[$routePage] ?? 'demirbas';
+                            $activeTab = $_GET['tab'] ?? ($routeToTabMap[$routePage] ?? 'demirbas');
                             ?>
                             <ul class="nav nav-pills" id="demirbasTab" role="tablist">
                                 <li class="nav-item" role="presentation">
@@ -223,6 +223,75 @@ if (!empty($aparatKatIds)) {
                                 </li>
                             </ul>
                         </div>
+
+                        <style>
+                            .status-filter-group {
+                                background: #f8f9fa;
+                                padding: 4px;
+                                border-radius: 50px;
+                                border: 1px solid #e2e8f0;
+                                display: inline-flex;
+                                align-items: center;
+                                gap: 2px;
+                            }
+
+                            [data-bs-theme="dark"] .status-filter-group {
+                                background: #2a3042;
+                                border-color: #32394e;
+                            }
+
+                            .status-filter-group .btn-check + .btn {
+                                margin-bottom: 0 !important;
+                                border: none !important;
+                                border-radius: 50px !important;
+                                font-size: 0.75rem;
+                                font-weight: 600;
+                                padding: 6px 16px;
+                                color: #64748b;
+                                transition: all 0.2s ease;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                gap: 6px;
+                                line-height: normal;
+                                background: transparent !important;
+                            }
+
+                            [data-bs-theme="dark"] .status-filter-group .btn-check + .btn {
+                                color: #a6b0cf;
+                            }
+
+                            .status-filter-group .btn-check + .btn i {
+                                font-size: 0.95rem;
+                                display: inline-flex;
+                                align-items: center;
+                                justify-content: center;
+                                margin-top: 1px;
+                            }
+
+                            .status-filter-group .btn-check + .btn:hover {
+                                background: rgba(0, 0, 0, 0.04) !important;
+                                color: #1e293b;
+                            }
+
+                            [data-bs-theme="dark"] .status-filter-group .btn-check + .btn:hover {
+                                background: rgba(255, 255, 255, 0.05) !important;
+                                color: #fff;
+                            }
+
+                            .status-filter-group .btn-check:checked + .btn {
+                                box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important;
+                                color: white !important;
+                            }
+
+                            .status-filter-group .btn-check:checked + .btn[for*="all"] { background: #3b82f6 !important; }
+                            .status-filter-group .btn-check:checked + .btn[for*="active"] { background: #f59e0b !important; }
+                            .status-filter-group .btn-check:checked + .btn[for*="completed"] { background: #10b981 !important; }
+                            .status-filter-group .btn-check:checked + .btn[for*="teslim"] { background: #f59e0b !important; }
+                            .status-filter-group .btn-check:checked + .btn[for*="iade"] { background: #10b981 !important; }
+                            .status-filter-group .btn-check:checked + .btn[for*="hurda"] { background: #ef4444 !important; }
+                        </style>
+
 
                         <!-- Butonlar -->
                         <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 ms-auto">
@@ -501,6 +570,31 @@ if (!empty($aparatKatIds)) {
                                 </div>
                             </div>
 
+                            <!-- Demirbaş Filtre Butonları -->
+                            <div class="d-flex align-items-center justify-content-between mb-3 mt-2">
+                                <div class="status-filter-group d-flex align-items-center shadow-sm" role="group">
+                                    <input type="radio" class="btn-check" name="demirbas-status-filter" id="demirbas-filter-all" value="" checked>
+                                    <label class="btn px-3" for="demirbas-filter-all">
+                                        <i class="bx bx-list-check"></i> Tümü
+                                    </label>
+
+                                    <input type="radio" class="btn-check" name="demirbas-status-filter" id="demirbas-filter-bosta" value="bosta">
+                                    <label class="btn px-3" for="demirbas-filter-bosta">
+                                        <i class="bx bx-package"></i> Boşta
+                                    </label>
+
+                                    <input type="radio" class="btn-check" name="demirbas-status-filter" id="demirbas-filter-zimmetli" value="zimmetli">
+                                    <label class="btn px-3" for="demirbas-filter-zimmetli">
+                                        <i class="bx bx-user-check"></i> Zimmetli
+                                    </label>
+
+                                    <input type="radio" class="btn-check" name="demirbas-status-filter" id="demirbas-filter-hurda" value="hurda">
+                                    <label class="btn px-3" for="demirbas-filter-hurda">
+                                        <i class="bx bx-recycle"></i> Hurda
+                                    </label>
+                                </div>
+                            </div>
+
                             <div class="table-responsive">
                                 <table id="demirbasTable"
                                     class="table table-demirbas table-hover table-bordered nowrap w-100">
@@ -513,12 +607,12 @@ if (!empty($aparatKatIds)) {
                                                     <label class="custom-checkbox-label" for="checkAllDemirbas"></label>
                                                 </div>
                                             </th>
-                                            <th class="text-center" style="width:5%">Sıra</th>
-                                            <th style="width:8%" class="text-center">D.No</th>
+                                            <th class="text-center" style="width:5%" data-filter="number">Sıra</th>
+                                            <th style="width:8%" class="text-center" data-filter="string">D.No</th>
                                             <th style="width:12%" data-filter="select">Kategori</th>
                                             <th style="width:20%" data-filter="string">Demirbaş Adı</th>
                                             <th style="width:15%" data-filter="string">Marka/Model</th>
-                                            <th style="width:10%" class="text-center" data-filter="number">Stok</th>
+                                            <th style="width:10%" class="text-center" data-filter="select">Stok</th>
                                             <th style="width:10%" class="text-center" data-filter="select">Durum</th>
                                             <th style="width:10%" class="text-end" data-filter="number">Edinme Tutarı
                                             </th>
@@ -745,14 +839,14 @@ if (!empty($aparatKatIds)) {
                                                     <label class="custom-checkbox-label" for="checkAllAparat"></label>
                                                 </div>
                                             </th>
-                                            <th class="text-center" style="width:5%">Sıra</th>
-                                            <th style="width:8%" class="text-center">D.No</th>
-                                            <th style="width:20%">Aparat Adı</th>
-                                            <th style="width:15%">Marka/Model</th>
-                                            <th style="width:15%">Seri No</th>
-                                            <th style="width:10%" class="text-center">Stok</th>
-                                            <th style="width:10%" class="text-center">Durum</th>
-                                            <th style="width:10%">Edinme Tarihi</th>
+                                            <th class="text-center" style="width:5%" data-filter="number">Sıra</th>
+                                            <th style="width:8%" class="text-center" data-filter="string">D.No</th>
+                                            <th style="width:20%" data-filter="string">Aparat Adı</th>
+                                            <th style="width:15%" data-filter="string">Marka/Model</th>
+                                            <th style="width:15%" data-filter="string">Seri No</th>
+                                            <th style="width:10%" class="text-center" data-filter="select">Stok</th>
+                                            <th style="width:10%" class="text-center" data-filter="select">Durum</th>
+                                            <th style="width:10%" data-filter="date">Edinme Tarihi</th>
                                             <th style="width:5%" class="text-center">İşlemler</th>
                                         </tr>
                                     </thead>
@@ -770,7 +864,7 @@ if (!empty($aparatKatIds)) {
                             id="servisContent" role="tabpanel">
 
                             <!-- Servis Özet Kartları -->
-                            <div class="row g-3 mb-4 d-none" id="servisStatsRow">
+                            <div class="row g-3 mb-4" id="servisStatsRow">
                                 <div class="col-xl col-md-4">
                                     <div class="card border-0 shadow-sm h-100 bordro-summary-card"
                                         style="--card-color: #0ea5e9; border-bottom: 3px solid var(--card-color) !important;">
@@ -825,18 +919,33 @@ if (!empty($aparatKatIds)) {
                                 </div>
                             </div>
 
-                            <div class="card bg-light border-0 shadow-none mb-3">
-                                <div class="card-body p-2 d-flex align-items-center">
+                            <div class="card bg-transparent border-0 shadow-none mb-2">
+                                <div class="card-body p-0 d-flex align-items-center">
                                     <div class="me-3 ps-2">
                                         <i class="bx bx-filter-alt text-primary"></i> <span
                                             class="fw-bold small text-muted">FİLTRELE:</span>
                                     </div>
                                     <div class="row g-2 align-items-center flex-grow-1">
-                                        <div class="col-md-2">
-                                            <?php echo Form::FormFloatInput('text', 'servis_filtre_baslangic', date('01.m.Y'), 'Başlangıç', 'Başlangıç', 'calendar', 'form-control flatpickr'); ?>
+                                        <div class="col-sm-auto border-end pe-3 me-2">
+                                            <div class="status-filter-group shadow-sm">
+                                                <input type="radio" class="btn-check" name="servis-status-filter" id="servis_status_all" value="all" checked>
+                                                <label class="btn px-3" for="servis_status_all">
+                                                    <i class="bx bx-check-double"></i> Tümü
+                                                </label>
+                                                
+                                                <input type="radio" class="btn-check" name="servis-status-filter" id="servis_status_active" value="active">
+                                                <label class="btn px-3" for="servis_status_active">
+                                                    <i class="bx bx-wrench"></i> Serviste
+                                                </label>
+                                                
+                                                <input type="radio" class="btn-check" name="servis-status-filter" id="servis_status_completed" value="completed">
+                                                <label class="btn px-3" for="servis_status_completed">
+                                                    <i class="bx bx-check-circle"></i> Bitti
+                                                </label>
+                                            </div>
                                         </div>
-                                        <div class="col-md-2">
-                                            <?php echo Form::FormFloatInput('text', 'servis_filtre_bitis', date('t.m.Y'), 'Bitiş', 'Bitiş', 'calendar', 'form-control flatpickr'); ?>
+                                        <div class="col-md-4">
+                                            <?php echo Form::FormFloatInput('text', 'servis_filtre_range', date('01.m.Y') . ' to ' . date('t.m.Y'), 'Tarih Aralığı', 'Tarih Aralığı', 'calendar', 'form-control flatpickr-range'); ?>
                                         </div>
                                         <div class="col-md-2 align-self-end p-1">
                                             <button type="button" class="btn btn-primary w-100" id="btnServisListele">
@@ -852,14 +961,14 @@ if (!empty($aparatKatIds)) {
                                     class="table table-demirbas table-hover table-bordered nowrap w-100">
                                     <thead class="table-light">
                                         <tr>
-                                            <th class="text-center" style="width:5%">Sıra</th>
-                                            <th style="width:15%">Demirbaş</th>
-                                            <th style="width:10%" class="text-center">Giriş Tarihi</th>
-                                            <th style="width:10%" class="text-center">Çıkış Tarihi</th>
-                                            <th style="width:15%">Servis Noktası</th>
-                                            <th style="width:15%">Teslim Eden</th>
-                                            <th style="width:20%">Neden / Yapılan İşlem</th>
-                                            <th style="width:10%" class="text-end">Tutar</th>
+                                            <th class="text-center" style="width:5%" data-filter="number">Sıra</th>
+                                            <th style="width:15%" data-filter="string">Demirbaş</th>
+                                            <th style="width:10%" class="text-center" data-filter="date">Giriş Tarihi</th>
+                                            <th style="width:10%" class="text-center" data-filter="date">Çıkış Tarihi</th>
+                                            <th style="width:15%" data-filter="string">Servis Noktası</th>
+                                            <th style="width:15%" data-filter="string">Teslim Eden</th>
+                                            <th style="width:20%" data-filter="string">Neden / Yapılan İşlem</th>
+                                            <th style="width:10%" class="text-end" data-filter="string">Tutar</th>
                                             <th style="width:10%" class="text-center">İşlemler</th>
                                         </tr>
                                     </thead>
@@ -905,6 +1014,23 @@ if (!empty($aparatKatIds)) {
                                                 class="segmented-control-input zimmet-filter">
                                             <label for="filterAparat" class="segmented-control-label"><i
                                                     class="bx bx-wrench me-1 fs-5"></i> Aparat</label>
+                                        </div>
+
+                                        <div class="status-filter-group ms-3 shadow-sm">
+                                            <input type="radio" class="btn-check" name="zimmet-status-filter" id="zimmet-filter-all" value="" checked>
+                                            <label class="btn px-3" for="zimmet-filter-all">
+                                                <i class="bx bx-check-double"></i> Tümü
+                                            </label>
+
+                                            <input type="radio" class="btn-check" name="zimmet-status-filter" id="zimmet-filter-teslim" value="teslim">
+                                            <label class="btn px-3" for="zimmet-filter-teslim">
+                                                <i class="bx bx-user-check"></i> Zimmetli
+                                            </label>
+
+                                            <input type="radio" class="btn-check" name="zimmet-status-filter" id="zimmet-filter-iade" value="iade">
+                                            <label class="btn px-3" for="zimmet-filter-iade">
+                                                <i class="bx bx-undo"></i> İade Alındı
+                                            </label>
                                         </div>
 
                                         <div class="col-md-3 ms-auto pe-2">
@@ -990,12 +1116,12 @@ if (!empty($aparatKatIds)) {
                                                     <label for="checkAllZimmet" class="custom-checkbox-label"></label>
                                                 </div>
                                             </th>
-                                            <th class="text-center" style="width:5%">ID</th>
-                                            <th style="width:12%">Kategori</th>
-                                            <th style="width:20%">Demirbaş</th>
-                                            <th style="width:15%">Marka/Model</th>
+                                            <th class="text-center" style="width:5%" data-filter="number">ID</th>
+                                            <th style="width:12%" data-filter="select">Kategori</th>
+                                            <th style="width:20%" data-filter="string">Demirbaş</th>
+                                            <th style="width:15%" data-filter="string">Marka/Model</th>
                                             <th style="width:18%" data-filter="string">Personel</th>
-                                            <th style="width:8%" class="text-center">Miktar</th>
+                                            <th style="width:8%" class="text-center" data-filter="number">Miktar</th>
                                             <th style="width:12%" data-filter="date">Teslim Tarihi</th>
                                             <th style="width:10%" data-filter="select" class="text-center">Durum</th>
                                             <th style="width:5%" class="text-center">İşlemler</th>

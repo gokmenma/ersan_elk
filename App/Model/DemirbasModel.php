@@ -104,7 +104,9 @@ class DemirbasModel extends Model
         $sayacCondition = "(LOWER(k.tur_adi) LIKE '%sayaç%' OR LOWER(k.tur_adi) LIKE '%sayac%')";
         $aparatCondition = "(LOWER(k.tur_adi) LIKE '%aparat%' OR k.id = 645)";
 
-        if ($type === 'sayac') {
+        if ($type === 'all') {
+            $whereType = "";
+        } elseif ($type === 'sayac') {
             $whereType = " AND " . $sayacCondition;
         } elseif ($type === 'aparat') {
             $whereType = " AND " . $aparatCondition;
@@ -125,6 +127,11 @@ class DemirbasModel extends Model
             $textSelect = "CONCAT($noSql, d.demirbas_adi, $markaModelSql, ' (', COALESCE(k.tur_adi, 'Kategorisiz'), ')', CASE WHEN d.seri_no IS NOT NULL AND d.seri_no != '' THEN CONCAT(' - SN: ', d.seri_no) ELSE '' END)";
         }
 
+        $stockFilter = "";
+        if ($type !== 'all') {
+            $stockFilter = " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(z2.teslim_miktar - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.zimmet_id = z2.id AND h2.hareket_tipi IN ('iade', 'sarf', 'kayip') AND h2.silinme_tarihi IS NULL), 0)) FROM demirbas_zimmet z2 WHERE z2.demirbas_id = d.id AND z2.durum = 'teslim' AND z2.silinme_tarihi IS NULL), 0)) > 0";
+        }
+
         $sql = $this->db->prepare("
             SELECT 
                 d.id,
@@ -133,9 +140,11 @@ class DemirbasModel extends Model
                 d.seri_no
             FROM {$this->table} d
             LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
-            WHERE (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(z2.teslim_miktar - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.zimmet_id = z2.id AND h2.hareket_tipi IN ('iade', 'sarf', 'kayip') AND h2.silinme_tarihi IS NULL), 0)) FROM demirbas_zimmet z2 WHERE z2.demirbas_id = d.id AND z2.durum = 'teslim' AND z2.silinme_tarihi IS NULL), 0)) > 0 AND d.firma_id = ?
+            WHERE d.firma_id = ? AND d.silinme_tarihi IS NULL
                 AND (d.demirbas_no LIKE ? OR d.demirbas_adi LIKE ? OR d.marka LIKE ? OR d.seri_no LIKE ?)
+                AND d.durum NOT IN ('pasif', 'hurda')
                 $whereType
+                $stockFilter
             ORDER BY d.demirbas_adi
             LIMIT 50
         ");
@@ -463,6 +472,20 @@ class DemirbasModel extends Model
             }
         }
 
+        // Durum Filtresi (Üst butonlar)
+        $statusFilter = $request['status_filter'] ?? null;
+        if (!empty($statusFilter)) {
+            if ($statusFilter === 'bosta') {
+                $searchWhere .= " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(z2.teslim_miktar - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.zimmet_id = z2.id AND h2.hareket_tipi IN ('iade', 'sarf', 'kayip') AND h2.silinme_tarihi IS NULL), 0)) FROM demirbas_zimmet z2 WHERE z2.demirbas_id = d.id AND z2.durum = 'teslim' AND z2.silinme_tarihi IS NULL), 0)) > 0 AND LOWER(d.durum) != 'hurda' AND LOWER(d.durum) != 'kaskiye teslim edildi'";
+            } elseif ($statusFilter === 'zimmetli') {
+                $searchWhere .= " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(z2.teslim_miktar - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.zimmet_id = z2.id AND h2.hareket_tipi IN ('iade', 'sarf', 'kayip') AND h2.silinme_tarihi IS NULL), 0)) FROM demirbas_zimmet z2 WHERE z2.demirbas_id = d.id AND z2.durum = 'teslim' AND z2.silinme_tarihi IS NULL), 0)) < COALESCE(d.miktar, 1) AND LOWER(d.durum) != 'hurda' AND LOWER(d.durum) != 'kaskiye teslim edildi'";
+            } elseif ($statusFilter === 'hurda') {
+                $searchWhere .= " AND LOWER(d.durum) = 'hurda'";
+            } elseif ($statusFilter === 'kaskiye') {
+                $searchWhere .= " AND LOWER(d.durum) = 'kaskiye teslim edildi'";
+            }
+        }
+
         // Envanter Raporu Filtreleri (Sadece Demirbaş tabında kullanılır)
         $inventoryKatAdi = $request['inventory_kat_adi'] ?? null;
         $inventoryType = $request['inventory_type'] ?? null;
@@ -586,4 +609,4 @@ class DemirbasModel extends Model
         $stmt->execute($params);
         return $stmt->fetchColumn();
     }
-}
+}

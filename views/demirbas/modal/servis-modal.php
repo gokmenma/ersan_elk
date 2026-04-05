@@ -1,11 +1,8 @@
 <?php
 use App\Helper\Form;
-use App\Model\DemirbasModel;
 use App\Model\PersonelModel;
 
-$DemirbasModel = new DemirbasModel();
 $PersonelModel = new PersonelModel();
-$demirbaslar = $DemirbasModel->getAllWithCategory();
 $personeller = $PersonelModel->all();
 
 $personelOptions = [];
@@ -27,17 +24,7 @@ foreach ($personeller as $p) {
 
                     <div class="row g-3">
                         <div class="col-md-12" id="servis_demirbas_select_area">
-                            <label class="form-label fw-bold">Demirbaş Seçin *</label>
-                            <select class="form-select select2" name="demirbas_id" id="servis_demirbas_id"
-                                style="width:100%">
-                                <option value="">Seçiniz...</option>
-                                <?php foreach ($demirbaslar as $d): ?>
-                                    <option value="<?php echo $d->id; ?>" data-no="<?php echo $d->demirbas_no; ?>"
-                                        data-name="<?php echo $d->demirbas_adi; ?>">
-                                        <?php echo ($d->demirbas_no ? $d->demirbas_no . ' - ' : '') . $d->demirbas_adi . ' (' . ($d->kategori_adi ?? 'Kategorisiz') . ')'; ?>
-                                    </option>
-                                <?php endforeach; ?>
-                            </select>
+                            <?php echo Form::FormSelect2('demirbas_id', [], null, 'Demirbaş Seçin *', 'package', 'key', '', 'form-select select2', true, 'width:100%', '', 'servis_demirbas_id'); ?>
                         </div>
 
                         <div class="col-md-12 d-none" id="servis_demirbas_info_area">

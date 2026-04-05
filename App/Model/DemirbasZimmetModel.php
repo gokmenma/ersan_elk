@@ -663,6 +663,13 @@ class DemirbasZimmetModel extends Model
             }
         }
 
+        // Durum Filtreleme (Üst butonlar)
+        $statusFilter = $request['status_filter'] ?? null;
+        if (!empty($statusFilter)) {
+            $searchWhere .= " AND z.durum = :status_filter";
+            $params['status_filter'] = $statusFilter;
+        }
+
         // Personel Bazlı Filtreleme
         $personelId = $request['personel_id'] ?? 'all';
         if ($personelId !== 'all' && $personelId > 0) {

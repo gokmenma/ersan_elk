@@ -40,8 +40,11 @@ $(function () {
       $(row).attr("data-personel-id", data.personel_id);
       $(row).css("cursor", "pointer");
     },
-    initComplete: function () {
+    initComplete: function (settings, json) {
       $("#personel-loader").fadeOut(300);
+      if (typeof initAdvancedFilters === "function") {
+          initAdvancedFilters(this.api(), settings);
+      }
     },
   });
 
@@ -53,6 +56,7 @@ $(function () {
       type: "POST",
       data: function (d) {
         d.action = "aparat-hareketler-list";
+        d.status_filter = $('input[name="aparat-hareket-status"]:checked').val() || "";
       },
     },
     columns: [
@@ -64,6 +68,11 @@ $(function () {
       { data: "aciklama" },
     ],
     order: [[0, "desc"]],
+    initComplete: function (settings, json) {
+      if (typeof initAdvancedFilters === "function") {
+          initAdvancedFilters(this.api(), settings);
+      }
+    },
   });
 
   function loadPersonelSummary(personelId, personelAdi) {
@@ -123,5 +132,30 @@ $(function () {
     hareketTable.columns.adjust().draw(false);
   });
 
+  $('button[data-bs-target="#aparatlarPane"]').on("shown.bs.tab", function () {
+    personelTable.columns.adjust().draw(false);
+  });
+
+  // Excel dışa aktar - aktif sekmeye göre doğru tabloyu export et
+  $(document)
+    .off("click", "#exportExcel")
+    .on("click", "#exportExcel", function (e) {
+      e.preventDefault();
+      const activeTarget = $("#aparatDepoTab button.active").data("bs-target");
+      const tbl = activeTarget === "#aparatHareketPane" ? hareketTable : personelTable;
+      if (tbl) {
+        tbl.button(".buttons-excel").trigger();
+      }
+    });
+
   loadGlobalSummary();
+
+  // Aparat hareket filtre butonları
+  $(document).on("change", 'input[name="aparat-hareket-status"]', function() {
+    $(this).closest(".status-filter-group").find("label").removeClass("active");
+    $(this).next("label").addClass("active");
+    if (typeof hareketTable !== "undefined" && hareketTable) {
+        hareketTable.draw();
+    }
+  });
 });

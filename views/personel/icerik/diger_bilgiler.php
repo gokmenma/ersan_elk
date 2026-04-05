@@ -14,7 +14,7 @@ use App\Helper\Form;
                 <div class="row">
                     <div class="col-md-12">
                         <div class="position-relative">
-                            <?php echo Form::FormFloatInput("password", "sifre", "", "Şifre (Değiştirmek için doldurun)", "Şifre", "lock", autocomplete: "new-password"); ?>
+                            <?php echo Form::FormFloatInput("password", "sifre", empty($personel->id) ? "1234" : "", "Şifre (Değiştirmek için doldurun)", "Şifre", "lock", autocomplete: "new-password"); ?>
                             <button type="button"
                                 class="btn btn-link position-absolute end-0 top-50 translate-middle-y text-muted password-toggle"
                                 style="z-index: 10; margin-right: 10px;">

@@ -38,6 +38,10 @@ $page = $_GET['p'] ?? 'home';
     <script src="views/personel/js/izin.js?v=<?php echo time(); ?>"></script>
 <?php } ?>
 
+<?php if ($page == 'demirbas/list' || $page == 'demirbas/sayac-deposu' || $page == 'demirbas/aparat-deposu' || $page == 'demirbas/servis' || $page == 'demirbas/zimmet') { ?>
+    <script src="views/demirbas/js/demirbas.js?v=<?php echo time(); ?>"></script>
+<?php } ?>
+
 <?php if ($page == 'demirbas/list') { ?>
     <script src="views/demirbas/js/list.js?v=<?php echo time(); ?>"></script>
 <?php } ?>
