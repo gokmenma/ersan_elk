@@ -158,6 +158,30 @@ $title = "Sayaç Deposu";
 		.status-filter-group .btn-check:checked + .btn[for*="hurda"] { background: #ef4444 !important; color: white !important; }
 		.status-filter-group .btn-check:checked + .btn[for*="kaskiye"] { background: #06b6d4 !important; color: white !important; }
 		.status-filter-group .btn-check:checked + .btn[for*="iade"] { background: #10b981 !important; color: white !important; }
+
+		/* Expand Icon Animation */
+		.transition-all {
+			transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+		}
+
+		.rotate-90 {
+			transform: rotate(90deg);
+			color: #1a73e8 !important;
+		}
+
+		#sayacPersonelTable tr.personel-day-row:hover {
+			background-color: rgba(26, 115, 232, 0.04) !important;
+			transition: background-color 0.1s ease;
+		}
+
+		#sayacPersonelTable tr.shown {
+			background-color: rgba(26, 115, 232, 0.02) !important;
+		}
+
+		.expand-icon-btn {
+			display: inline-block;
+			pointer-events: none;
+		}
 		.status-filter-group .btn-check:checked + .btn[for*="teslim"] { background: #f59e0b !important; color: white !important; }
 	</style>
 
@@ -359,18 +383,19 @@ $title = "Sayaç Deposu";
 
 				<!-- Personel Özeti Sekmesi -->
 				<div class="tab-pane fade" id="sayacPersonelPane" role="tabpanel">
-					<div class="table-responsive mb-4">
-						<table id="sayacPersonelTable" class="table table-bordered table-hover nowrap w-100">
-							<thead class="bg-light">
+					<div class="table-responsive mb-4 shadow-sm rounded border">
+						<table id="sayacPersonelTable" class="table table-bordered table-hover nowrap w-100 mb-0">
+							<thead class="table-light text-uppercase small fw-bold">
 								<tr>
+									<th style="width: 30px;"></th>
 									<th style="width: 50px;">#</th>
-									<th>Tarih</th>
-									<th>Personel</th>
-									<th class="text-center">Günlük Alınan</th>
-									<th class="text-center">Günlük Taktığı (Sarf)</th>
-									<th class="text-center">İade Edilen</th>
-									<th class="text-center">Kayıp</th>
-									<th class="text-center">Günü Kalan</th>
+									<th data-filter="date">Tarih</th>
+									<th data-filter="string">Personel</th>
+									<th class="text-center" data-filter="number">Alınan</th>
+									<th class="text-center" data-filter="number">Taktığı</th>
+									<th class="text-center" data-filter="number">İade Edilen</th>
+									<th class="text-center" data-filter="number">Kayıp</th>
+									<th class="text-center" data-filter="number">Günü Kalan</th>
 								</tr>
 							</thead>
 							<tbody></tbody>

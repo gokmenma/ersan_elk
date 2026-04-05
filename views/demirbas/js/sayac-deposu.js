@@ -53,9 +53,10 @@ $(function () {
         d.action = "sayac-personel-list";
       },
     },
-    order: [[1, "desc"]], // Tarihe göre azalan
+    order: [[2, "desc"]], // Tarihe göre azalan
     columns: [
-      { data: "sira" },
+      { data: "expand_icon", orderable: false, searchable: false, className: "text-center" },
+      { data: "sira", className: "text-center" },
       { data: "tarih" },
       { data: "personel_adi" },
       { data: "bizden_toplam_aldigi", className: "text-center" },
@@ -64,12 +65,7 @@ $(function () {
       { data: "toplam_hurda", className: "text-center" },
       {
         data: "elinde_kalan_yeni",
-        className: "text-center fw-bold",
-        render: function (data) {
-          return data > 0
-            ? '<span class="text-success">' + data + "</span>"
-            : '<span class="text-muted">' + data + "</span>";
-        }
+        className: "text-center fw-bold"
       }
     ],
     createdRow: function (row, data, dataIndex) {
@@ -84,10 +80,12 @@ $(function () {
   $('#sayacPersonelTable tbody').on('click', 'tr.personel-day-row', function () {
     const tr = $(this);
     const row = sayacPersonelTable.row(tr);
+    const icon = tr.find('.expand-icon-btn');
 
     if (row.child.isShown()) {
       row.child.hide();
       tr.removeClass('shown');
+      icon.removeClass('rotate-90');
     } else {
       const data = row.data();
       const pId = data.personel_id;
@@ -97,17 +95,21 @@ $(function () {
       $.post(apiUrl, { action: 'sayac-personel-daily-details', personel_id: pId, date: date }, function (res) {
         if (res.status === 'success') {
           let html = `
-            <div class="p-3 bg-light border rounded-3 m-2 shadow-sm">
+            <div class="ms-5 me-2 mb-3 bg-white border border-info border-start-0 border-end-0 border-bottom-0 border-top-4 rounded-bottom shadow-sm overflow-hidden">
+                <div class="px-3 py-2 bg-light border-bottom d-flex justify-content-between align-items-center">
+                    <span class="fw-bold small text-info"><i class="bx bx-list-ul me-1"></i> GÜNLÜK HAREKET DETAYLARI</span>
+                    <span class="badge bg-soft-info text-info">${res.data.length} işlem</span>
+                </div>
                 <div class="table-responsive">
                     <table class="table table-sm table-hover mb-0">
                         <thead class="bg-white">
-                            <tr class="small text-muted">
-                                <th>Saat</th>
-                                <th>İşlem Tipi</th>
-                                <th>Sayaç Adı</th>
+                            <tr class="small text-muted border-top-0">
+                                <th class="ps-3">Saat</th>
+                                <th>İşlem</th>
+                                <th>Sayaç / Demirbaş</th>
                                 <th>Marka/Model</th>
                                 <th>Seri No</th>
-                                <th>Miktar</th>
+                                <th class="text-center">Miktar</th>
                                 <th>Durum</th>
                                 <th>Açıklama</th>
                             </tr>
@@ -115,26 +117,27 @@ $(function () {
                         <tbody>`;
           
           if(res.data.length === 0) {
-              html += `<tr><td colspan="8" class="text-center py-2">Kayıt bulunamadı.</td></tr>`;
+              html += `<tr><td colspan="8" class="text-center py-4 text-muted">Kayıt bulunamadı.</td></tr>`;
           }
 
           res.data.forEach(item => {
             html += `
                 <tr>
-                    <td class="fw-medium">${item.tarih}</td>
+                    <td class="ps-3 fw-medium text-muted small">${item.tarih}</td>
                     <td>${item.tip}</td>
-                    <td>${item.demirbas}</td>
-                    <td>${item.marka_model}</td>
-                    <td><code class="text-dark">${item.seri_no}</code></td>
-                    <td class="text-center fw-bold">${item.miktar}</td>
+                    <td class="fw-medium">${item.demirbas}</td>
+                    <td class="small">${item.marka_model}</td>
+                    <td><code class="text-dark bg-light px-1 rounded">${item.seri_no}</code></td>
+                    <td class="text-center fw-bold text-primary">${item.miktar}</td>
                     <td>${item.durum_badge}</td>
-                    <td class="small">${item.aciklama}</td>
+                    <td class="small text-muted">${item.aciklama}</td>
                 </tr>`;
           });
 
           html += `</tbody></table></div></div>`;
           row.child(html).show();
           tr.addClass('shown');
+          icon.addClass('rotate-90');
         }
       }, 'json');
     }

@@ -2053,6 +2053,23 @@ if ($action == "sayac-personel-list") {
                      AND (LOWER(k.tur_adi) LIKE '%sayaç%' OR LOWER(k.tur_adi) LIKE '%sayac%') ";
         
         $params = [$firmaId];
+
+        // Sütun bazlı aramalar (Advanced Filters)
+        if (!empty($_POST['columns'])) {
+            // Tarih (Index 1)
+            $cDate = trim($_POST['columns'][1]['search']['value'] ?? '');
+            if ($cDate !== '') {
+                $where .= " AND DATE_FORMAT(h.tarih, '%d.%m.%Y') LIKE ? ";
+                $params[] = '%' . $cDate . '%';
+            }
+            // Personel (Index 2)
+            $cPers = trim($_POST['columns'][2]['search']['value'] ?? '');
+            if ($cPers !== '') {
+                $where .= " AND p.adi_soyadi LIKE ? ";
+                $params[] = '%' . $cPers . '%';
+            }
+        }
+
         if ($search !== '') {
             $where .= " AND (p.adi_soyadi LIKE ? OR DATE_FORMAT(h.tarih, '%d.%m.%Y') LIKE ?) ";
             $params[] = '%' . $search . '%';
@@ -2101,14 +2118,12 @@ if ($action == "sayac-personel-list") {
             LIMIT ? OFFSET ?
         ");
         
-        $sql->bindValue(1, $firmaId, PDO::PARAM_INT);
-        $pIdx = 2;
-        if ($search !== '') {
-            $sql->bindValue($pIdx++, '%' . $search . '%', PDO::PARAM_STR);
-            $sql->bindValue($pIdx++, '%' . $search . '%', PDO::PARAM_STR);
+        $bindIdx = 1;
+        foreach ($params as $pval) {
+            $sql->bindValue($bindIdx++, $pval, is_int($pval) ? PDO::PARAM_INT : PDO::PARAM_STR);
         }
-        $sql->bindValue($pIdx++, $length, PDO::PARAM_INT);
-        $sql->bindValue($pIdx++, $start, PDO::PARAM_INT);
+        $sql->bindValue($bindIdx++, $length, PDO::PARAM_INT);
+        $sql->bindValue($bindIdx++, $start, PDO::PARAM_INT);
         
         $sql->execute();
         $rows = $sql->fetchAll(PDO::FETCH_OBJ);
@@ -2118,17 +2133,18 @@ if ($action == "sayac-personel-list") {
         foreach ($rows as $r) {
             $i++;
             $data[] = [
+                'expand_icon' => '<i class="bx bx-chevron-right fs-4 text-muted transition-all expand-icon-btn"></i>',
                 'sira' => $i,
                 'tarih' => Date::engtodt($r->tarih),
                 'tarih_raw' => $r->tarih,
                 'personel_id' => (int) $r->personel_id,
-                'personel_adi' => htmlspecialchars((string) $r->personel_adi),
-                'bizden_toplam_aldigi' => (int) $r->bizden_toplam_aldigi,
-                'toplam_taktigi' => (int) $r->toplam_taktigi,
-                'teslim_edilen_hurda' => (int) $r->teslim_edilen_hurda,
-                'toplam_hurda' => (int) $r->toplam_hurda,
-                'elinde_kalan_yeni' => max(0, (int) $r->elinde_kalan_yeni),
-                'elinde_kalan_hurda' => max(0, (int) $r->elinde_kalan_hurda)
+                'personel_adi' => '<span class="fw-semibold text-dark">' . htmlspecialchars((string) $r->personel_adi) . '</span>',
+                'bizden_toplam_aldigi' => '<span class="fw-bold text-info">' . $r->bizden_toplam_aldigi . '</span>',
+                'toplam_taktigi' => '<span class="fw-bold text-success">' . $r->toplam_taktigi . '</span>',
+                'teslim_edilen_hurda' => '<span class="text-muted">' . $r->teslim_edilen_hurda . '</span>',
+                'toplam_hurda' => '<span class="text-danger">' . $r->toplam_hurda . '</span>',
+                'elinde_kalan_yeni' => '<strong>' . max(0, $r->elinde_kalan_yeni) . '</strong>',
+                'elinde_kalan_hurda' => (int) $r->elinde_kalan_hurda
             ];
         }
 
