@@ -445,11 +445,17 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                         });
                     }
                 },
-                error: function() {
+                error: function(xhr) {
+                    let msg = 'Sistem hatası oluştu. Lütfen tekrar deneyiniz.';
+                    try {
+                        const res = JSON.parse(xhr.responseText);
+                        if (res && res.message) msg = res.message;
+                    } catch(e) {}
+                    
                     Swal.fire({
                         icon: 'error',
                         title: 'Hata!',
-                        text: 'Sistem hatası oluştu. Lütfen tekrar deneyiniz.',
+                        text: msg,
                         confirmButtonColor: '#fd625e'
                     });
                 },

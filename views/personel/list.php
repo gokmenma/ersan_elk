@@ -16,7 +16,7 @@ if (Gate::canWithMessage("personel_listesi")) {
         <!-- start page title -->
         <?php
         $maintitle = "Personel";
-        $title = "Personel Listesi kontrol";
+        $title = "Personel Listesi";
         ?>
         <?php include 'layouts/breadcrumb.php'; ?>
         <!-- end page title -->
