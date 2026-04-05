@@ -12,7 +12,7 @@ if (!hash_equals($signature, $_SERVER['HTTP_X_HUB_SIGNATURE_256'] ?? '')) {
     exit('Yetkisiz');
 }
 
-$output = shell_exec('cd /home/mbeyazil/repositories/ersan_elk && git pull 2>&1');
+$output = shell_exec('cd /home/ersantrc/public_html/ersantr.com/app && git pull 2>&1');
 echo "<pre>$output</pre>";
 
 

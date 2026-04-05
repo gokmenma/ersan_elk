@@ -262,7 +262,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     </div>
                                     <div class="mb-3">
                                         <button class="btn btn-primary w-100 waves-effect waves-light"
-                                            type="submit">Giriş Yap</button>
+                                            type="submit" id="btnLogin">Giriş Yap</button>
                                     </div>
                                 </form>
 
@@ -396,7 +396,7 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                             <i data-feather="mail"></i>
                         </div>
                     </div>
-                    <button type="submit" class="btn btn-primary w-100 waves-effect waves-light mt-3" id="btnForgotPassword">
+                    <button type="button" class="btn btn-primary w-100 waves-effect waves-light mt-3" id="btnForgotPassword">
                         <span class="spinner-border spinner-border-sm d-none me-2" role="status" aria-hidden="true"></span>
                         Şifre Sıfırlama Bağlantısı Gönder
                     </button>
@@ -409,8 +409,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 <?php include 'layouts/vendor-scripts.php'; ?>
 <script>
     $(document).ready(function() {
-        $('#forgotPasswordForm').on('submit', function(e) {
-            e.preventDefault();
+        const handleForgotPassword = function(e) {
+            if (e) e.preventDefault();
             const btn = $('#btnForgotPassword');
             const spinner = btn.find('.spinner-border');
             const identifier = $('#forgot-input').val();
@@ -458,7 +458,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     spinner.addClass('d-none');
                 }
             });
-        });
+        };
+
+        $('#btnForgotPassword').on('click', handleForgotPassword);
+        $('#forgotPasswordForm').on('submit', handleForgotPassword);
     });
 </script>
 
