@@ -547,17 +547,26 @@ function extractUserEmail($user): string
 function buildTicketAdminLink(int $ticketId): string
 {
     $encryptedId = Security::encrypt($ticketId);
-    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'] ?? '';
-    if ($host !== '') {
-        return $scheme . '://' . $host . '/index?p=yardim/view&id=' . urlencode($encryptedId);
+    $appBase = trim($_ENV['APP_BASE'] ?? $_SERVER['HTTP_HOST'] ?? 'app.ersantr.com', " \t\n\r\0\x0B\"'");
+    $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http";
+    
+    if (strpos($appBase, 'http') === 0) {
+        return rtrim($appBase, '/') . '/index?p=yardim/view&id=' . urlencode($encryptedId);
     }
-    return 'index?p=yardim/view&id=' . urlencode($encryptedId);
+    return $protocol . '://' . $appBase . '/index?p=yardim/view&id=' . urlencode($encryptedId);
 }
 
 function buildTicketRoute(int $ticketId): string
 {
-    return 'index?p=yardim/view&id=' . urlencode(Security::encrypt($ticketId));
+    // For push notifications, we should also use absolute URL if intended for admin
+    $encryptedId = Security::encrypt($ticketId);
+    $appBase = trim($_ENV['APP_BASE'] ?? $_SERVER['HTTP_HOST'] ?? 'app.ersantr.com', " \t\n\r\0\x0B\"'");
+    $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http";
+    
+    if (strpos($appBase, 'http') === 0) {
+        return rtrim($appBase, '/') . '/index?p=yardim/view&id=' . urlencode($encryptedId);
+    }
+    return $protocol . '://' . $appBase . '/index?p=yardim/view&id=' . urlencode($encryptedId);
 }
 
 function isSupportAdminViewer(): bool

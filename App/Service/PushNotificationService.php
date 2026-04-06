@@ -85,6 +85,27 @@ class PushNotificationService
             }
 
             if (!empty($subscriptions)) {
+                // Ensure URL is absolute for push payload
+                if (isset($payload['url']) && strpos($payload['url'], 'http') === false) {
+                    $baseUrl = '';
+                    if ($type === 'user') {
+                        $baseUrl = trim($_ENV['APP_BASE'] ?? $_SERVER['HTTP_HOST'] ?? 'app.ersantr.com', " \t\n\r\0\x0B\"'");
+                    } else {
+                        $baseUrl = trim($_ENV['PERSON_APP_BASE'] ?? $_ENV['PERSONEL_APP_BASE'] ?? $_SERVER['HTTP_HOST'] ?? 'personel.ersantr.com', " \t\n\r\0\x0B\"'");
+                    }
+                    
+                    if (strpos($baseUrl, 'http') === false) {
+                        $baseUrl = "https://" . $baseUrl;
+                    }
+                    
+                    $targetUrl = ltrim($payload['url'], '/');
+                    if ($type === 'personel' && strpos($targetUrl, '?') === 0) {
+                        $payload['url'] = rtrim($baseUrl, '/') . "/index.php" . $targetUrl;
+                    } else {
+                        $payload['url'] = rtrim($baseUrl, '/') . "/" . $targetUrl;
+                    }
+                }
+
                 foreach ($subscriptions as $subData) {
                     $subscription = Subscription::create([
                         'endpoint' => $subData['endpoint'],
@@ -149,9 +170,10 @@ class PushNotificationService
 
                 $fullUrl = null;
                 if ($url) {
-                    // Admin panel için base URL index.php üzerinden
+                    $appBase = trim($_ENV['APP_BASE'] ?? $_SERVER['HTTP_HOST'] ?? 'app.ersantr.com', " \t\n\r\0\x0B\"'");
+                    
                     if (strpos($url, 'http') === false) {
-                        $fullUrl = "https://" . ($_SERVER['HTTP_HOST'] ?? 'ersantr.com') . "/" . ltrim($url, '/');
+                        $fullUrl = "https://" . $appBase . "/" . ltrim($url, '/');
                     } else {
                         $fullUrl = $url;
                     }
@@ -194,7 +216,8 @@ class PushNotificationService
 
                 $fullUrl = null;
                 if ($url) {
-                    $personAppBase = $_ENV['PERSON_APP_BASE'] ?? $_SERVER['HTTP_HOST'];
+                    $personAppBase = trim($_ENV['PERSON_APP_BASE'] ?? $_ENV['PERSONEL_APP_BASE'] ?? $_SERVER['HTTP_HOST'] ?? 'personel.ersantr.com', " \t\n\r\0\x0B\"'");
+                    
                     if (strpos($url, '?') === 0) {
                         $fullUrl = "https://" . $personAppBase . "/index.php" . $url;
                     } elseif (strpos($url, 'http') === false) {

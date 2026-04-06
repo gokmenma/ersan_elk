@@ -504,7 +504,6 @@ class PersonelHareketleriModel extends Model
                     WHERE ph.silinme_tarihi IS NULL
                       AND ph.zaman >= :gun_start
                       AND ph.zaman < :gun_end
-                      " . ($firma_id ? "AND ph.firma_id = :firma_id" : "") . "
                     GROUP BY ph.personel_id
                 ) hareket ON hareket.personel_id = p.id
                 WHERE p.silinme_tarihi IS NULL

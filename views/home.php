@@ -27,35 +27,16 @@ if (Gate::allows("ana_sayfa")) {
         return RequestPerformanceProfiler::measure($segment, $callback, $dbCount);
     };
 
-    $cacheDb = static function (string $key, int $ttl, callable $callback) use ($measureDb) {
-        $firmaId = $_SESSION['firma_id'] ?? 0;
-        $userId = $_SESSION['user_id'] ?? 0;
-        $cacheDir = dirname(__DIR__, 1) . '/cache/dashboard';
-        if (!is_dir($cacheDir)) {
-            @mkdir($cacheDir, 0777, true);
-        }
-        
-        $cacheFile = $cacheDir . "/{$key}_{$firmaId}_{$userId}.json";
-        if (file_exists($cacheFile) && (time() - filemtime($cacheFile)) < $ttl) {
-            $data = json_decode(file_get_contents($cacheFile), false);
-            if ($data !== null) return $data;
-        }
-        
-        $result = $measureDb($key, $callback);
-        @file_put_contents($cacheFile, json_encode($result, JSON_UNESCAPED_UNICODE));
-        return $result;
-    };
-
     $bugun = date('Y-m-d');
-    $nobetciler = $cacheDb('home.nobetciler', 60, fn() => $nobetModel->getNobetlerByTarih($bugun));
-    $gec_kalan_sayisi = $cacheDb('home.gec_kalan_sayisi', 60, fn() => $hareketModel->getGecKalanlarCount($_SESSION['firma_id'] ?? null));
+    $nobetciler = $measureDb('home.nobetciler', fn() => $nobetModel->getNobetlerByTarih($bugun));
+    $gec_kalan_sayisi = $measureDb('home.gec_kalan_sayisi', fn() => $hareketModel->getGecKalanlarCount($_SESSION['firma_id'] ?? null));
     $yaklasan_gorevler = [];
     if (Gate::allows("gorevler")) {
-        $yaklasan_gorevler = $cacheDb('home.yaklasan_gorevler', 60, fn() => $gorevModel->getYaklasanGorevler($_SESSION['firma_id'] ?? 0, $_SESSION['user_id'] ?? 0, 5));
+        $yaklasan_gorevler = $measureDb('home.yaklasan_gorevler', fn() => $gorevModel->getYaklasanGorevler($_SESSION['firma_id'] ?? 0, $_SESSION['user_id'] ?? 0, 5));
     }
 
     // Dashboard Ayarlarını Çerezden Oku
-    $extraStats = $cacheDb('home.extra_stats_daily', 60, fn() => $personelModel->getAdvancedDashboardStats());
+    $extraStats = $measureDb('home.extra_stats_daily', fn() => $personelModel->getAdvancedDashboardStats());
 
     // Operasyonel istatistikler mevcut AJAX endpoint'i ile istemci tarafında doldurulur.
     $dailyWorkStats = (object) ['muhurleme' => 0, 'kesme_acma' => 0, 'sayac_degisimi' => 0];

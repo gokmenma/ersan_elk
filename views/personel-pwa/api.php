@@ -160,17 +160,27 @@ function pwaExtractUserEmail($user): string
 function pwaBuildTicketAdminLink(int $ticketId): string
 {
     $encryptedId = Security::encrypt($ticketId);
-    $scheme = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') ? 'https' : 'http';
-    $host = $_SERVER['HTTP_HOST'] ?? '';
-    if ($host !== '') {
-        return $scheme . '://' . $host . '/index?p=yardim/view&id=' . urlencode($encryptedId);
+    $appBase = trim($_ENV['APP_BASE'] ?? $_SERVER['HTTP_HOST'] ?? 'app.ersantr.com', " \t\n\r\0\x0B\"'");
+    $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http";
+    
+    // APP_BASE already contains host, ensure it's absolute
+    if (strpos($appBase, 'http') === 0) {
+        return rtrim($appBase, '/') . '/index?p=yardim/view&id=' . urlencode($encryptedId);
     }
-    return 'index?p=yardim/view&id=' . urlencode($encryptedId);
+    return $protocol . '://' . $appBase . '/index?p=yardim/view&id=' . urlencode($encryptedId);
 }
 
 function pwaBuildTicketRoute(int $ticketId): string
 {
-    return 'index?p=yardim/view&id=' . urlencode(Security::encrypt($ticketId));
+    // For push notifications, we should also use absolute URL if intended for admin
+    $encryptedId = Security::encrypt($ticketId);
+    $appBase = trim($_ENV['APP_BASE'] ?? $_SERVER['HTTP_HOST'] ?? 'app.ersantr.com', " \t\n\r\0\x0B\"'");
+    $protocol = (isset($_SERVER['HTTPS']) && $_SERVER['HTTPS'] === 'on') ? "https" : "http";
+    
+    if (strpos($appBase, 'http') === 0) {
+        return rtrim($appBase, '/') . '/index?p=yardim/view&id=' . urlencode($encryptedId);
+    }
+    return $protocol . '://' . $appBase . '/index?p=yardim/view&id=' . urlencode($encryptedId);
 }
 
 function pwaNotifyAdminsForNewSupportTicket($ticket, string $ilkMesaj, int $personelId, MailGonderService $mailService): void
@@ -861,10 +871,10 @@ try {
 
                 // Eğer ekibe atanmış personel varsa:
                 // Sadece departmanında "Endeks Okuma" geçip geçmediğine bak
-                // Eğer departman bilgisi girilmemişse (null/boşsa) yine de göster (Kaan Akçadağ örneğindeki gibi)
+                // Diğer departmanlarının (örn: Kaçak Kontrol) ne olduğunun bir önemi yok
                 if ($personelResult) {
-                    $dep = trim($personelResult->departman ?? '');
-                    if (!empty($dep) && stripos($dep, 'Endeks Okuma') === false) {
+                    $dep = $personelResult->departman ?? '';
+                    if (stripos($dep, 'Endeks Okuma') === false) {
                         continue;
                     }
                 }
@@ -894,83 +904,53 @@ try {
             $PersonelModel = new PersonelModel();
             $TanimlamalarModel = new \App\Model\TanimlamalarModel();
 
-            // 1. Personelin ekip ┼şefi oldu─şu G├╝ncel Aktif ekip kodunu bul (Temizle┼şmi┼ş sorgu)
-            $db = (new \App\Model\Model('personel_ekip_gecmisi'))->getDb();
-            $sqlSef = "SELECT t.id as ekip_kodu_id, t.ekip_bolge 
-                       FROM personel_ekip_gecmisi peg
-                       JOIN tanimlamalar t ON peg.ekip_kodu_id = t.id
-                       WHERE peg.personel_id = :personel_id 
-                       AND peg.ekip_sefi_mi = 1 
-                       AND (peg.bitis_tarihi IS NULL OR peg.bitis_tarihi >= CURDATE()) 
-                       AND t.silinme_tarihi IS NULL 
-                       ORDER BY peg.baslangic_tarihi DESC 
-                       LIMIT 1";
-            
-            $stmtSef = $db->prepare($sqlSef);
-            $stmtSef->execute(['personel_id' => $personel_id]);
-            $sefAssignment = $stmtSef->fetch(PDO::FETCH_OBJ);
+            // 1. Personelin ekip şefi olduğu aktif ekip kodunu bul
+            $ekipGecmisi = $PersonelModel->getEkipGecmisi($personel_id);
+            $sefEkipKoduId = null;
+            foreach ($ekipGecmisi as $g) {
+                if (($g->ekip_sefi_mi ?? 0) == 1 && (empty($g->bitis_tarihi) || $g->bitis_tarihi >= date('Y-m-d'))) {
+                    $sefEkipKoduId = $g->ekip_kodu_id;
+                    break;
+                }
+            }
 
-            $sefEkipKoduId = $sefAssignment ? $sefAssignment->ekip_kodu_id : null;
-            $bolgeIdari = $sefAssignment ? trim($sefAssignment->ekip_bolge ?? '') : null;
+            if (!$sefEkipKoduId) {
+                response(false, null, 'Ekip şefi kaydı bulunamadı');
+            }
 
-            if (!$sefEkipKoduId || empty($bolgeIdari)) {
-                // E┼şer ┼şef rol├╝nde bir g├Ârevlendirme veya b├Âlge bulunamad─▒ysa bo┼ş d├Ând├╝r
-                return ['success' => true, 'data' => []];
+            // 2. O ekip kodunun bölgesini bul
+            $ekipKodu = $TanimlamalarModel->find($sefEkipKoduId);
+            if (!$ekipKodu) {
+                response(false, null, 'Ekip kodu bulunamadı');
+            }
+            $bolge = trim($ekipKodu->ekip_bolge ?? '');
+
+            if (empty($bolge)) {
+                response(false, null, 'Bölge bilgisi tanımlı değil');
             }
 
             $db = (new \App\Model\Model('tanimlamalar'))->getDb();
             $firmaId = $_SESSION['firma_id'] ?? 0;
 
-            // 3. Bölge Eşleşme Mantığı (Case-insensitive ve Alias desteği)
-            $bolgeUpper = mb_strtoupper($bolgeIdari, 'UTF-8');
-            $bolgeList = [$bolgeUpper, $bolgeIdari]; // Hem Title hem Upper ekleyelim
-
-            // Kahramanmaraş Merkez ilçeleri eşleşmesi
-            if ($bolgeUpper == 'MERKEZ') {
-                $bolgeList = array_merge($bolgeList, ['DULKADİROĞLU', 'ONİKİŞUBAT', 'MERKEZ']);
-            }
-            
-            // AKEDA┼₧ standartlar─▒nda 600 ve ├╝st├╝ defterler Beldeler (K├Âyler) olarak kabul edilir.
-            $isBeldeler = ($bolgeUpper == 'BELDELER');
-
-            // 4. B├Âlgedeki defterleri ve son okuma tarihlerini bul
-            $whereClause = "t.grup = 'defter_kodu' AND t.firma_id = :firma_id AND t.silinme_tarihi IS NULL";
-            $sqlParams = ['firma_id' => $firmaId];
-
-            if ($isBeldeler) {
-                // Beldeler ┼şefi t├╝m il├ğelerin 600+ (Belde/K├Ây) defterlerini g├Âr├╝r.
-                $whereClause .= " AND (CAST(NULLIF(t.tur_adi, '') AS UNSIGNED) >= 600)";
-            } else {
-                // ─░l├ğe ┼şefleri kendi b├Âlgelerinin "Merkez" (<600) defterlerini g├Âr├╝r.
-                $placeholders = [];
-                foreach ($bolgeList as $idx => $b) {
-                    $key = "b$idx";
-                    $placeholders[] = ":$key";
-                    $sqlParams[$key] = $b;
-                }
-                $whereClause .= " AND UPPER(t.defter_bolge) IN (" . implode(',', $placeholders) . ")";
-                $whereClause .= " AND (CAST(NULLIF(t.tur_adi, '') AS UNSIGNED) < 600)";
-            }
-
+            // 3. Bölgedeki defterleri ve son okuma tarihlerini bul
             $sql = "SELECT 
                         t.id, 
                         t.tur_adi as defter_kodu, 
                         t.defter_mahalle as mahalle,
                         t.baslangic_tarihi,
-                        t.defter_bolge,
-                        stats.son_okuma_tarihi
+                        (SELECT MAX(eo.tarih) 
+                         FROM endeks_okuma eo 
+                         WHERE eo.defter = t.tur_adi 
+                         AND eo.firma_id = :firma_id 
+                         AND eo.silinme_tarihi IS NULL) as son_okuma_tarihi
                     FROM tanimlamalar t
-                    LEFT JOIN (
-                        SELECT defter, MAX(tarih) as son_okuma_tarihi
-                        FROM endeks_okuma
-                        WHERE firma_id = :firma_id_stat AND silinme_tarihi IS NULL
-                        GROUP BY defter
-                    ) stats ON t.tur_adi = stats.defter
-                    WHERE $whereClause";
+                    WHERE t.grup = 'defter_kodu' 
+                    AND t.defter_bolge = :bolge 
+                    AND t.firma_id = :firma_id 
+                    AND t.silinme_tarihi IS NULL";
 
-            $sqlParams['firma_id_stat'] = $firmaId;
             $stmt = $db->prepare($sql);
-            $stmt->execute($sqlParams);
+            $stmt->execute(['bolge' => $bolge, 'firma_id' => $firmaId]);
             $defterler = $stmt->fetchAll(PDO::FETCH_OBJ);
 
             $delayed = [];
@@ -984,13 +964,10 @@ try {
                     $interval = $bugun->diff($sonTarih);
                     $gunFarki = $interval->days;
 
-                    // Defter bugünden önce ise ve fark 35'ten büyükse
-                    if ($sonTarih < $bugun && $gunFarki > 35) {
+                    if ($gunFarki > 35) {
                         $delayed[] = [
-                            'id' => $d->id,
                             'defter_kodu' => $d->defter_kodu,
-                            'bolge' => $d->defter_bolge,
-                            'mahalle' => !empty($d->mahalle) ? $d->mahalle : $d->defter_bolge,
+                            'mahalle' => $d->mahalle,
                             'gun' => $gunFarki,
                             'son_okuma' => date('d.m.Y', strtotime($sonOkuma))
                         ];
@@ -998,10 +975,6 @@ try {
                 }
             }
 
-            // Eğer Beldeler şefi ise, muhtemelen çok fazla sonuç gelebilir. 
-            // Sadece bu ekiplerin daha önce okuma yapmış olduğu defterleri filtrelemek daha mantıklı olabilir
-            // Ama şimdilik hepsini gösterelim ki görünürlük sorunu çözülsün.
-            
             response(true, $delayed);
             break;
 
