@@ -11,6 +11,7 @@ use App\Model\DemirbasServisModel;
 use App\Model\DemirbasZimmetModel;
 use App\Model\TanimlamalarModel;
 use App\Model\DemirbasHareketModel;
+use App\Model\SystemLogModel;
 use App\Service\Gate;
 
 $Demirbas = new DemirbasModel();
@@ -18,6 +19,7 @@ $Servis = new DemirbasServisModel();
 $Zimmet = new DemirbasZimmetModel();
 $Tanimlamalar = new TanimlamalarModel();
 $Hareket = new DemirbasHareketModel();
+$SystemLog = new SystemLogModel();
 
 
 $action = $_POST["action"] ?? $_GET["action"] ?? null;
@@ -288,6 +290,15 @@ if ($action == "demirbas-getir") {
 if ($action == "bulk-demirbas-sil") {
     Gate::can('demirbas_toplu_islem_sil');
     $ids = $_POST["ids"] ?? [];
+    $allFiltered = intval($_POST["all_filtered"] ?? 0);
+
+    if ($allFiltered === 1) {
+        $tab = $_POST["tab"] ?? 'demirbas';
+        $idsRaw = $Demirbas->getFilteredIds($_POST, $tab);
+        // Delete metodu encrypted id beklediği için encrypt edelim
+        $ids = array_map(fn($id) => Security::encrypt($id), $idsRaw);
+    }
+
     if (empty($ids)) {
         jsonResponse("error", "Lütfen silmek için en az bir kayıt seçin.");
     }
@@ -298,6 +309,16 @@ if ($action == "bulk-demirbas-sil") {
         $hatalar = [];
 
         $Demirbas->db->beginTransaction();
+
+        // Silinmeden önce detaylarını topla (günlük kaydı için)
+        $details = [];
+        $idsRawForDetails = array_map(fn($enc) => Security::decrypt($enc), $ids);
+        if (!empty($idsRawForDetails)) {
+            $placeholders = implode(',', array_fill(0, count($idsRawForDetails), '?'));
+            $sqlDetails = $Demirbas->db->prepare("SELECT demirbas_adi, seri_no FROM demirbas WHERE id IN ($placeholders)");
+            $sqlDetails->execute($idsRawForDetails);
+            $details = $sqlDetails->fetchAll(PDO::FETCH_OBJ);
+        }
 
         foreach ($ids as $enc_id) {
             $id = Security::decrypt($enc_id);
@@ -320,6 +341,25 @@ if ($action == "bulk-demirbas-sil") {
         $Demirbas->db->commit();
 
         if ($successCount > 0) {
+            // Detaylı log mesajı oluştur
+            $logItems = [];
+            foreach ($details as $idx => $d) {
+                if ($idx < 100) { // İlk 100 kaydı detaylı yaz
+                    $logItems[] = $d->demirbas_adi . ($d->seri_no ? " (SN: " . $d->seri_no . ")" : "");
+                } else {
+                    $moreCount = count($details) - 100;
+                    $logItems[] = "... ve $moreCount adet daha";
+                    break;
+                }
+            }
+            $detailStr = implode(", ", $logItems);
+
+            $logMsg = "[$successCount] adet sayaç/demirbaş toplu silme işlemi ile sistemden silindi. Silinenler: $detailStr";
+            if ($errorCount > 0) {
+                $logMsg .= " | ($errorCount kayıt zimmet geçmişi sebebiyle silinemedi.)";
+            }
+            $SystemLog->logAction($_SESSION['id'], "Toplu Silme", $logMsg, SystemLogModel::LEVEL_CRITICAL);
+
             $msg = "$successCount kayıt başarıyla silindi.";
             if ($errorCount > 0) {
                 $msg .= " ($errorCount kayıt zimmet geçmişi olduğu için silinemedi!)";

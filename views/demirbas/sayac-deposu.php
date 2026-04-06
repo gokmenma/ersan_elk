@@ -231,6 +231,12 @@ $title = "Sayaç Deposu";
 									<i class="bx bx-recycle me-2 fs-5" style="color: #ef4444;"></i> Hurda Sayaç İade Al
 								</a>
 							</li>
+							<li><hr class="dropdown-divider"></li>
+							<li>
+								<a class="dropdown-item py-2 fw-bold" href="javascript:void(0);" id="btnTopluSilSayac" style="color: #ef4444;">
+									<i class="bx bx-trash me-2 fs-5"></i> Seçilenleri Sil
+								</a>
+							</li>
 						</ul>
 					</div>
 
@@ -360,11 +366,29 @@ $title = "Sayaç Deposu";
 						</div>
 					</div>
 
+					<div class="alert alert-info py-2 px-3 mb-2 d-none align-items-center justify-content-between animate__animated animate__fadeIn" id="sayacSelectAllInfo">
+						<div class="d-flex align-items-center">
+							<i class="bx bx-info-circle fs-4 me-2"></i>
+							<div id="sayacSelectionMessage">
+								<span id="sayacSelectedCount">0</span> kayıt seçildi. 
+								<a href="javascript:void(0);" class="fw-bold text-decoration-underline ms-1" id="btnSelectAllFiltered">
+									Filtrelenmiş <span id="sayacTotalFilteredCount">0</span> kaydın tümünü seç
+								</a>
+							</div>
+						</div>
+						<button type="button" class="btn-close small" style="padding: 0.5rem;" id="btnClearSelection"></button>
+					</div>
+
 					<div class="table-responsive mb-4">
 						<table id="sayacTable" class="table table-demirbas table-hover table-bordered nowrap w-100">
 							<thead class="table-light">
 								<tr>
-									<th class="text-center" style="width:3%"></th>
+									<th class="text-center" style="width:3%">
+										<div class="custom-checkbox-container d-inline-block">
+											<input type="checkbox" class="custom-checkbox-input" id="selectAllSayac">
+											<label class="custom-checkbox-label" for="selectAllSayac"></label>
+										</div>
+									</th>
 									<th class="text-center" style="width:5%" data-filter="string">Sıra</th>
 									<th style="width:8%" class="text-center" data-filter="string">D.No</th>
 									<th style="width:20%" data-filter="string">Sayaç Adı</th>

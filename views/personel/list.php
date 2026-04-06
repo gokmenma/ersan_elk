@@ -16,7 +16,7 @@ if (Gate::canWithMessage("personel_listesi")) {
         <!-- start page title -->
         <?php
         $maintitle = "Personel";
-        $title = "Personel Listesi git kontrol";
+        $title = "Personel Listesi";
         ?>
         <?php include 'layouts/breadcrumb.php'; ?>
         <!-- end page title -->
@@ -90,7 +90,7 @@ if (Gate::canWithMessage("personel_listesi")) {
                         }
 
                         .personel-hover-preview {
-                            position: absolute; /* Changed from fixed to absolute */
+                            position: fixed;
                             display: none;
                             z-index: 99999;
                             width: 150px;
@@ -99,10 +99,11 @@ if (Gate::canWithMessage("personel_listesi")) {
                             border: 4px solid #fff;
                             box-shadow: 0 10px 25px rgba(0,0,0,0.2);
                             object-fit: cover;
-                            pointer-events: none;
+                            pointer-events: none !important;
                             background: #fff;
                             animation: zoomIn 0.2s ease-out;
                         }
+
 
                         @keyframes zoomIn {
                             from { transform: scale(0.8); opacity: 0; }
@@ -297,18 +298,7 @@ if (Gate::canWithMessage("personel_listesi")) {
                         <div class="d-flex justify-content-between align-items-center mb-3 flex-wrap gap-3">
                             <div class="d-flex gap-3 align-items-center flex-wrap">
                               
-                                <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
-                                    <button type="button" id="exportExcel"
-                                        class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">
-                                        <i class='mdi mdi-file-excel fs-5 me-1'></i> Excele Aktar
-                                    </button>
-                                    <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                                    <button type="button" id="btnImportExcel"
-                                        class="btn btn-link btn-sm text-warning text-decoration-none px-2 d-flex align-items-center">
-                                        <i class='mdi mdi-file-import fs-5 me-1'></i> Excelden Yükle
-                                    </button>
-                                </div>
-                                  <div class="status-filter-group" role="group">
+                                <div class="status-filter-group" role="group">
                                     <input type="radio" class="btn-check" name="status-filter" id="filter-all" value="" checked>
                                     <label class="btn" for="filter-all">
                                         <i class="bx bx-grid-alt"></i> Tümü 
@@ -327,6 +317,7 @@ if (Gate::canWithMessage("personel_listesi")) {
                                         <span class="count-tag ms-1" id="count-pasif">0</span>
                                     </label>
                                 </div>
+
                             </div>
                             <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
                                 <div class="dropdown d-inline-block">
@@ -361,23 +352,31 @@ if (Gate::canWithMessage("personel_listesi")) {
                                     class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">
                                     <i class="mdi mdi-plus-circle fs-5 me-1"></i> Yeni Personel</a>
                                 <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                                <button type="button" id="btnEditSelected"
-                                    class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
-                                    disabled>
-                                    <i class="mdi mdi-pencil fs-5 me-1"></i> Görüntüle
-                                </button>
-                                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                                <button type="button" id="btnDeleteSelected"
-                                    class="btn btn-link btn-sm text-danger text-decoration-none px-2 d-flex align-items-center"
-                                    disabled>
-                                    <i class="mdi mdi-trash-can fs-5 me-1"></i> Sil
-                                </button>
-                                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
                                 <button type="button" id="btnDetailSelected"
                                     class="btn btn-link btn-sm text-info text-decoration-none px-2 d-flex align-items-center"
                                     disabled>
                                     <i class="mdi mdi-information fs-5 me-1"></i> Detay
                                 </button>
+                                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                                <div class="dropdown d-inline-block">
+                                    <button type="button" class="btn btn-link btn-sm text-dark text-decoration-none px-2 d-flex align-items-center"
+                                        id="btnActions" data-bs-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        <i class="mdi mdi-dots-vertical fs-5 me-1"></i> İşlemler
+                                    </button>
+                                    <div class="dropdown-menu dropdown-menu-end shadow-lg border-0">
+                                        <button type="button" id="exportExcel" class="dropdown-item d-flex align-items-center text-success">
+                                            <i class='mdi mdi-file-excel fs-5 me-2'></i> Excele Aktar
+                                        </button>
+                                        <button type="button" id="btnImportExcel" class="dropdown-item d-flex align-items-center text-warning">
+                                            <i class='mdi mdi-file-import fs-5 me-2'></i> Excelden Yükle
+                                        </button>
+                                        <div class="dropdown-divider"></div>
+                                        <button type="button" id="btnDeleteSelected" class="dropdown-item d-flex align-items-center text-danger" disabled>
+                                            <i class="mdi mdi-trash-can fs-5 me-2"></i> Personeli Sil
+                                        </button>
+                                    </div>
+                                </div>
+
                             </div>
                         </div>
 

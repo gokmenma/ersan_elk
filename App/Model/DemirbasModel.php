@@ -609,4 +609,160 @@ class DemirbasModel extends Model
         $stmt->execute($params);
         return $stmt->fetchColumn();
     }
+    /**
+     * Filtrelenmiş tüm kayıtların ID'lerini getirir
+     */
+    public function getFilteredIds($request, $tab = 'demirbas')
+    {
+        $search = $request['search_val'] ?? null;
+        
+        $fromSql = " FROM {$this->table} d
+                    LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'";
+
+        $whereSql = " WHERE d.firma_id = :firma_id";
+        $params = ['firma_id' => $_SESSION['firma_id']];
+
+        // Tab filtremesi
+        $sayacCondition = "(LOWER(k.tur_adi) LIKE '%sayaç%' OR LOWER(k.tur_adi) LIKE '%sayac%')";
+        $aparatCondition = "(LOWER(k.tur_adi) LIKE '%aparat%' OR k.id = 645)";
+
+        if ($tab === 'sayac') {
+            $whereSql .= " AND " . $sayacCondition;
+        } elseif ($tab === 'aparat') {
+            $whereSql .= " AND " . $aparatCondition;
+        } else {
+            $whereSql .= " AND NOT " . $sayacCondition . " AND NOT " . $aparatCondition;
+        }
+
+        $searchWhere = "";
+
+        // Global Arama
+        if (!empty($search)) {
+            $searchWhere .= " AND (d.demirbas_no LIKE :search 
+                            OR d.demirbas_adi LIKE :search 
+                            OR k.tur_adi LIKE :search
+                            OR d.marka LIKE :search
+                            OR d.model LIKE :search
+                            OR d.seri_no LIKE :search)";
+            $params['search'] = "%$search%";
+        }
+
+        // Sütun Bazlı Arama
+        if ($tab === 'demirbas') {
+            $colSearchMap = [
+                2 => 'd.demirbas_no',
+                3 => 'k.tur_adi',
+                4 => 'd.demirbas_adi',
+                5 => 'CONCAT_WS(" ", d.marka, d.model, d.seri_no)',
+                7 => 'd.durum',
+                8 => 'd.edinme_tutari',
+                9 => 'DATE_FORMAT(d.edinme_tarihi, "%d.%m.%Y")'
+            ];
+        } else {
+            $colSearchMap = [
+                2 => 'd.demirbas_no',
+                3 => 'd.demirbas_adi',
+                4 => 'CONCAT_WS(" ", d.marka, d.model, d.seri_no)',
+                5 => 'd.seri_no',
+                7 => 'd.durum',
+                8 => 'DATE_FORMAT(d.edinme_tarihi, "%d.%m.%Y")'
+            ];
+        }
+
+        $column_searches = $request['column_searches'] ?? [];
+        if (!empty($column_searches)) {
+            foreach ($column_searches as $colIdx => $searchValue) {
+                if (!empty($searchValue) && isset($colSearchMap[$colIdx])) {
+                    $field = $colSearchMap[$colIdx];
+                    $paramKey = "col_search_" . $colIdx;
+
+                    if (strpos($searchValue, ':') !== false) {
+                        list($mode, $val) = explode(':', $searchValue, 2);
+                        $vals = explode('|', $val);
+                        $val = $vals[0];
+                        $val2 = isset($vals[1]) ? $vals[1] : null;
+
+                        if ($val !== '' || $val2 !== null || in_array($mode, ['multi', 'null', 'not_null'])) {
+                            
+                            if (($tab === 'demirbas' && $colIdx == 9) || ($tab === 'sayac' && $colIdx == 8) || ($tab === 'aparat' && $colIdx == 8)) {
+                                $field = 'd.edinme_tarihi';
+                            }
+                            $isDateColumn = ($field === 'd.edinme_tarihi');
+
+                            if ($isDateColumn) {
+                                if ($val && strpos($val, '.') !== false) $val = \App\Helper\Date::Ymd($val, 'Y-m-d');
+                                if ($val2 && strpos($val2, '.') !== false) $val2 = \App\Helper\Date::Ymd($val2, 'Y-m-d');
+                            }
+
+                            switch ($mode) {
+                                case 'multi':
+                                    if (!empty($vals)) {
+                                        $orConditions = [];
+                                        foreach ($vals as $vIdx => $v) {
+                                            $vParam = $paramKey . "_" . $vIdx;
+                                            if ($v === '(Boş)') {
+                                                $orConditions[] = "($field IS NULL OR $field = '' OR $field = '0000-00-00')";
+                                            } else {
+                                                if ($isDateColumn && strpos($v, '.') !== false) {
+                                                    $v = \App\Helper\Date::Ymd($v, 'Y-m-d');
+                                                    $orConditions[] = "$field = :$vParam";
+                                                    $params[$vParam] = $v;
+                                                } else {
+                                                    $orConditions[] = "$field LIKE :$vParam";
+                                                    $params[$vParam] = "%$v%";
+                                                }
+                                            }
+                                        }
+                                        $searchWhere .= " AND (" . implode(" OR ", $orConditions) . ")";
+                                    }
+                                    break;
+                                case 'contains': $searchWhere .= " AND $field LIKE :$paramKey"; $params[$paramKey] = "%$val%"; break;
+                                case 'not_contains': $searchWhere .= " AND $field NOT LIKE :$paramKey"; $params[$paramKey] = "%$val%"; break;
+                                case 'starts_with': $searchWhere .= " AND $field LIKE :$paramKey"; $params[$paramKey] = "$val%"; break;
+                                case 'ends_with': $searchWhere .= " AND $field LIKE :$paramKey"; $params[$paramKey] = "%$val"; break;
+                                case 'equals': $searchWhere .= " AND $field = :$paramKey"; $params[$paramKey] = $val; break;
+                                case 'not_equals': $searchWhere .= " AND $field != :$paramKey"; $params[$paramKey] = $val; break;
+                                case 'before': $searchWhere .= " AND $field < :$paramKey"; $params[$paramKey] = $val; break;
+                                case 'after': $searchWhere .= " AND $field > :$paramKey"; $params[$paramKey] = $val; break;
+                                case 'between':
+                                    if ($val && $val2) {
+                                        $p1 = $paramKey . "_1"; $p2 = $paramKey . "_2";
+                                        $searchWhere .= " AND $field BETWEEN :$p1 AND :$p2";
+                                        $params[$p1] = $val; $params[$p2] = $val2;
+                                    }
+                                    break;
+                                case 'null': $searchWhere .= " AND ($field IS NULL OR $field = '' OR $field = '0000-00-00')"; break;
+                                case 'not_null': $searchWhere .= " AND $field IS NOT NULL AND $field != '' AND $field != '0000-00-00'"; break;
+                            }
+                        }
+                    } else {
+                        $searchWhere .= " AND $field LIKE :$paramKey";
+                        $params[$paramKey] = "%$searchValue%";
+                    }
+                }
+            }
+        }
+
+        // Durum Filtresi
+        $statusFilter = $request['status_filter'] ?? null;
+        if (!empty($statusFilter)) {
+            if ($statusFilter === 'bosta') {
+                $searchWhere .= " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(z2.teslim_miktar - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.zimmet_id = z2.id AND h2.hareket_tipi IN ('iade', 'sarf', 'kayip') AND h2.silinme_tarihi IS NULL), 0)) FROM demirbas_zimmet z2 WHERE z2.demirbas_id = d.id AND z2.durum = 'teslim' AND z2.silinme_tarihi IS NULL), 0)) > 0 AND LOWER(d.durum) != 'hurda' AND LOWER(d.durum) != 'kaskiye teslim edildi'";
+            } elseif ($statusFilter === 'zimmetli') {
+                $searchWhere .= " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(z2.teslim_miktar - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.zimmet_id = z2.id AND h2.hareket_tipi IN ('iade', 'sarf', 'kayip') AND h2.silinme_tarihi IS NULL), 0)) FROM demirbas_zimmet z2 WHERE z2.demirbas_id = d.id AND z2.durum = 'teslim' AND z2.silinme_tarihi IS NULL), 0)) < COALESCE(d.miktar, 1) AND LOWER(d.durum) != 'hurda' AND LOWER(d.durum) != 'kaskiye teslim edildi'";
+            } elseif ($statusFilter === 'hurda') {
+                $searchWhere .= " AND LOWER(d.durum) = 'hurda'";
+            } elseif ($statusFilter === 'kaskiye') {
+                $searchWhere .= " AND LOWER(d.durum) = 'kaskiye teslim edildi'";
+            }
+        }
+
+        $finalSql = "SELECT d.id" . $fromSql . $whereSql . $searchWhere;
+        $stmt = $this->db->prepare($finalSql);
+        foreach ($params as $key => $val) {
+            $stmt->bindValue($key, $val);
+        }
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
 }

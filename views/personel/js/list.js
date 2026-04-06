@@ -752,14 +752,14 @@ function initImageHover() {
     
     $(document).on('mouseenter', '.personel-img-thumb', function(e) {
         let src = $(this).data('hover-resim');
-        $preview.attr('src', src).fadeIn(100);
+        $preview.attr('src', src).show();
     }).on('mousemove', '.personel-img-thumb', function(e) {
         $preview.css({
-            top: e.pageY - 75 + 'px',
-            left: e.pageX + 20 + 'px'
+            top: (e.clientY - 75) + 'px',
+            left: (e.clientX + 20) + 'px'
         });
     }).on('mouseleave', '.personel-img-thumb', function() {
-        $preview.stop().fadeOut(100);
+        $preview.hide();
     });
 }
 

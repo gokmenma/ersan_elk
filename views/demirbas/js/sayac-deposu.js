@@ -298,5 +298,176 @@ $(function () {
     $("#kasiye_demirbas_id").val("");
     $("#kasiyeOnayMesaji").html('Seçili <span class="fw-bold text-dark" id="kasiyeTopluAdetV2">1</span> adet sayacı Kaskiye teslim etmek istiyor musunuz?');
   });
+
+  // Sayaçları Tümünü Seç
+  let isAllFilteredSelected = false;
+
+  function updateSelectionInfo() {
+    const selectedOnPage = $(".sayac-select:checked").length;
+    const totalFiltered = (typeof sayacTable !== "undefined") ? sayacTable.page.info().recordsDisplay : 0;
+
+    if (selectedOnPage > 0 || isAllFilteredSelected) {
+      $("#sayacSelectedCount").text(isAllFilteredSelected ? totalFiltered : selectedOnPage);
+      $("#sayacTotalFilteredCount").text(totalFiltered);
+      $("#sayacSelectAllInfo").removeClass("d-none").addClass("d-flex");
+      
+      const infoArea = $("#sayacSelectionMessage");
+
+      if (isAllFilteredSelected) {
+        infoArea.html('Filtrelenmiş <span class="fw-bold">' + totalFiltered + '</span> kaydın tümü seçildi. ' + 
+            (totalFiltered > $(".sayac-select").length ? '<a href="javascript:void(0);" class="text-primary ms-2" id="btnSelectOnlyVisible">Sadece bu sayfayı seç</a>' : '') +
+            '<a href="javascript:void(0);" class="text-danger ms-2" id="btnClearSelectionLink">Seçimi Temizle</a>');
+      } else {
+        infoArea.html('<span id="sayacSelectedCount">' + selectedOnPage + '</span> kayıt seçildi. ' + 
+            (totalFiltered > selectedOnPage ? '<a href="javascript:void(0);" class="fw-bold text-decoration-underline ms-1" id="btnSelectAllFiltered">Filtrelenmiş ' + totalFiltered + ' kaydın tümünü seç</a>' : '') +
+            '<a href="javascript:void(0);" class="text-danger ms-2" id="btnClearSelectionLink">Seçimi Temizle</a>');
+      }
+    } else {
+      isAllFilteredSelected = false;
+      $("#sayacSelectAllInfo").addClass("d-none").removeClass("d-flex");
+    }
+  }
+
+  function resetSelectAllLink() {
+    $("#btnSelectAllFiltered").parent().html('Filtrelenmiş <span id="sayacTotalFilteredCount">0</span> kaydın tümünü seç');
+  }
+
+  $(document).on("change", "#selectAllSayac", function () {
+    const isChecked = $(this).prop("checked");
+    const totalFiltered = (typeof sayacTable !== "undefined") ? sayacTable.page.info().recordsDisplay : 0;
+    
+    $(".sayac-select").prop("checked", isChecked);
+    
+    if (isChecked && totalFiltered > 0) {
+      isAllFilteredSelected = true;
+    } else {
+      isAllFilteredSelected = false;
+    }
+    
+    updateSelectionInfo();
+  });
+
+  $(document).on("click", "#btnSelectOnlyVisible", function (e) {
+    e.preventDefault();
+    isAllFilteredSelected = false;
+    updateSelectionInfo();
+  });
+
+  $(document).on("click", "#btnSelectAllFiltered", function (e) {
+    e.preventDefault();
+    isAllFilteredSelected = true;
+    updateSelectionInfo();
+  });
+
+  $(document).on("click", "#btnClearSelection, #btnClearSelectionLink", function (e) {
+    e.preventDefault();
+    isAllFilteredSelected = false;
+    $(".sayac-select, #selectAllSayac").prop("checked", false);
+    updateSelectionInfo();
+    resetSelectAllLink();
+  });
+
+  $(document).on("change", ".sayac-select", function () {
+    if (!$(this).prop("checked")) {
+      $("#selectAllSayac").prop("checked", false);
+      isAllFilteredSelected = false;
+    } else {
+      if ($(".sayac-select:checked").length === $(".sayac-select").length && $(".sayac-select").length > 0) {
+        $("#selectAllSayac").prop("checked", true);
+      }
+    }
+    updateSelectionInfo();
+  });
+
+  // Toplu Silme İşlemi
+  $(document).on("click", "#btnTopluSilSayac", function (e) {
+    e.preventDefault();
+    const selected = [];
+    $(".sayac-select:checked").each(function () {
+      selected.push($(this).val());
+    });
+
+    const totalFiltered = (typeof sayacTable !== "undefined") ? sayacTable.page.info().recordsDisplay : 0;
+    
+    if (selected.length === 0 && !isAllFilteredSelected) {
+      Swal.fire("Uyarı", "Lütfen silmek istediğiniz sayaçları seçin.", "warning");
+      return;
+    }
+
+    const countToDel = isAllFilteredSelected ? totalFiltered : selected.length;
+
+    Swal.fire({
+      title: "Emin misiniz?",
+      html: `Seçili <b>${countToDel}</b> adet sayacı silmek istediğinizden emin misiniz? <br><small class="text-danger">Zimmet geçmişi olan kayıtlar silinemeyecektir.</small>`,
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#d33",
+      cancelButtonColor: "#3085d6",
+      confirmButtonText: "Evet, Sil!",
+      cancelButtonText: "İptal",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: "Siliniyor...",
+          allowOutsideClick: false,
+          didOpen: () => Swal.showLoading(),
+        });
+
+        // Backend'e gönderilecek parametreler
+        const postData = { 
+          action: "bulk-demirbas-sil", 
+          ids: selected,
+          all_filtered: isAllFilteredSelected ? 1 : 0
+        };
+
+        // Eğer tümü seçiliyse filtreleri de gönder
+        if (isAllFilteredSelected) {
+          postData.tab = "sayac";
+          postData.status_filter = $('input[name="sayac-status-filter"]:checked').val() || "";
+          
+          // Gelişmiş filtreleri/arama parametrelerini de ekle (DataTable'dan alabiliriz)
+          if (typeof sayacTable !== "undefined") {
+            postData.search_val = sayacTable.search();
+            // Kolon bazlı filtreleri topla
+            const colSearches = {};
+            sayacTable.columns().every(function(idx) {
+               const s = this.search();
+               if(s) colSearches[idx] = s;
+            });
+            postData.column_searches = colSearches;
+          }
+        }
+
+        $.post(apiUrl, postData, function (res) {
+          if (res.status === "success") {
+            Swal.fire("Başarılı", res.message, "success");
+            if (typeof sayacTable !== "undefined") sayacTable.ajax.reload(null, false);
+            $("#selectAllSayac, .sayac-select").prop("checked", false);
+            isAllFilteredSelected = false;
+            updateSelectionInfo();
+            
+            if (typeof window.loadStats === "function") window.loadStats();
+          } else {
+            Swal.fire("Hata", res.message, "error");
+          }
+        }, 'json').fail(function() {
+          Swal.fire("Hata", "Sistem hatası oluştu.", "error");
+        });
+      }
+    });
+  });
+
+  // Tablo yenilendiğinde seçimi temizle (veya koru, ama genellikle temizlenmesi istenir)
+  if (typeof sayacTable !== "undefined") {
+    sayacTable.on('draw', function() {
+       if(!isAllFilteredSelected) {
+           $("#selectAllSayac, .sayac-select").prop("checked", false);
+           updateSelectionInfo();
+       } else {
+           // Tüm filtrelenmiş seçiliyken yeni gelen satırları da işaretle
+           $(".sayac-select").prop("checked", true);
+       }
+    });
+  }
 });
 

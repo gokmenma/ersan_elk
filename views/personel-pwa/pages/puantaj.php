@@ -164,6 +164,7 @@ if ($isKacakKontrol && $hasKacak) {
     </section>
     <?php endif; ?>
 
+
     <!-- Filter Section -->
     <section class="px-4 mt-6">
         <div class="flex flex-col gap-3">
@@ -298,6 +299,8 @@ if ($isKacakKontrol && $hasKacak) {
         </div>
     </div>
 </div>
+
+
 
 <script>
     let currentTab = '<?php echo $defaultTab; ?>';

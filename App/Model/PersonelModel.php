@@ -1079,7 +1079,7 @@ class PersonelModel extends Model
             SELECT p.id as p_id FROM yapilan_isler y 
             JOIN personel p ON y.personel_id = p.id
             WHERE y.tarih = :bugun AND y.firma_id = :firma_id AND y.silinme_tarihi IS NULL $extra_where_p
-            UNION
+            UNION ALL
             SELECT p.id as p_id FROM endeks_okuma e
             JOIN personel p ON e.personel_id = p.id
             WHERE e.tarih = :bugun AND e.firma_id = :firma_id AND e.silinme_tarihi IS NULL $extra_where_p
@@ -1144,7 +1144,7 @@ class PersonelModel extends Model
             SELECT p.id as p_id FROM yapilan_isler y 
             JOIN personel p ON y.personel_id = p.id
             WHERE y.tarih >= :buAy AND y.tarih <= :sonGun AND y.firma_id = :firma_id AND y.silinme_tarihi IS NULL $extra_where_p
-            UNION
+            UNION ALL
             SELECT p.id as p_id FROM endeks_okuma e
             JOIN personel p ON e.personel_id = p.id
             WHERE e.tarih >= :buAy AND e.tarih <= :sonGun AND e.firma_id = :firma_id AND e.silinme_tarihi IS NULL $extra_where_p

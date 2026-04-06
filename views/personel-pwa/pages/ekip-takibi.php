@@ -275,13 +275,16 @@ use App\Helper\Date;
                             <span class="text-[10px] bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 px-2.5 py-1 rounded-full font-bold">${item.gun} Gün Gecikti</span>
                         </div>
                         <div class="flex items-center justify-between">
-                            <div class="flex items-center gap-1.5">
-                                <span class="material-symbols-outlined text-slate-400 text-sm">location_on</span>
-                                <span class="text-sm font-medium text-slate-700 dark:text-slate-300">${item.mahalle}</span>
+                            <div class="flex flex-col gap-0.5 min-w-0 flex-1 pr-2">
+                                <span class="text-[9px] text-primary font-black uppercase tracking-widest truncate">${item.bolge || ''}</span>
+                                <div class="flex items-center gap-1.5">
+                                    <span class="material-symbols-outlined text-slate-400 text-sm">location_on</span>
+                                    <span class="text-[13px] font-bold text-slate-700 dark:text-slate-200 truncate">${item.mahalle}</span>
+                                </div>
                             </div>
-                            <div class="text-right">
-                                <p class="text-[10px] text-slate-400 uppercase font-bold">Son Okuma</p>
-                                <p class="text-[11px] text-slate-600 dark:text-slate-400">${item.son_okuma}</p>
+                            <div class="text-right flex-shrink-0">
+                                <p class="text-[9px] text-slate-400 uppercase font-black tracking-tighter mb-0.5">Son Okuma</p>
+                                <p class="text-[11px] font-bold text-slate-600 dark:text-slate-400">${item.son_okuma}</p>
                             </div>
                         </div>
                     </div>
