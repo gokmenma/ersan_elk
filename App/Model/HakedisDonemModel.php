@@ -102,8 +102,8 @@ class HakedisDonemModel extends Model
                 $oncekiMiktar = $prevSum + $baslangic;
             }
             
-            $totalCumulativeImalat += ($oncekiMiktar + $buAyMiktar) * $birimFiyat;
-            $totalPeriodImalat += $buAyMiktar * $birimFiyat;
+            $totalCumulativeImalat += round(($oncekiMiktar + $buAyMiktar) * $birimFiyat, 2);
+            $totalPeriodImalat += round($buAyMiktar * $birimFiyat, 2);
         }
 
         // 4. Fiyat Farkı Hesapla
@@ -131,18 +131,18 @@ class HakedisDonemModel extends Model
         if ($pn > 1) {
             // Fiyat Farkı = Tutar * 0.90 * (Pn - 1)
             // User clarified that calculation should be on current period manufacture
-            $fiyatFarki = $totalPeriodImalat * 0.90 * ($pn - 1);
+            $fiyatFarki = round($totalPeriodImalat * 0.90 * ($pn - 1), 2);
         }
 
-        $araToplam = $totalCumulativeImalat + $fiyatFarki;
-        $kdvTutar = ($araToplam * $kdvRate) / 100;
-        $genelToplam = $araToplam + $kdvTutar;
+        $araToplam = round($totalCumulativeImalat + $fiyatFarki, 2);
+        $kdvTutar = round(($araToplam * $kdvRate) / 100, 2);
+        $genelToplam = round($araToplam + $kdvTutar, 2);
 
         return [
-            'imalat_kumulatif' => $totalCumulativeImalat,
-            'imalat_donem' => $totalPeriodImalat,
-            'fiyat_farki' => $fiyatFarki,
-            'kdv_dahil_toplam' => $genelToplam,
+            'imalat_kumulatif' => round($totalCumulativeImalat, 2),
+            'imalat_donem' => round($totalPeriodImalat, 2),
+            'fiyat_farki' => round($fiyatFarki, 2),
+            'kdv_dahil_toplam' => round($genelToplam, 2),
             'kdv_orani' => $kdvRate
         ];
     }

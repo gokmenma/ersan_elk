@@ -269,7 +269,7 @@ try {
             
             $miktari = floatval($k['miktari']);
             $b_fiyat = floatval($k['teklif_edilen_birim_fiyat']);
-            $tutar = $miktari * $b_fiyat;
+            $tutar = round($miktari * $b_fiyat, 2);
             $genelToplam += $tutar;
             
             $sheetBFTC->setCellValue('B' . $row, $k['poz_no'] ?? '');
@@ -349,9 +349,12 @@ try {
         $sheetFFT->setCellValue('E12', $hakedis['hakedis_tarihi_yil'] ?? '');
         $sheetFFT->setCellValue('F12', $aylar[$hakedis['hakedis_tarihi_ay']] ?? '');
 
-        // Alt Satır Özet (30. Satır)
+        // FFT Ay/Yıl Bilgileri
         $sheetFFT->setCellValue('A30', $hakedis['hakedis_tarihi_yil'] ?? '');
         $sheetFFT->setCellValue('B30', $aylar[$hakedis['hakedis_tarihi_ay']] ?? '');
+
+        // Fiyat Farkı Toplamını yuvarla
+        $sheetFFT->setCellValue('F30', '=ROUND(C28, 2)');
     }
 
     // --- Fill 'Arka Kapak' Sheet ---
@@ -378,6 +381,18 @@ try {
         $sheetArkaKapak->setCellValue('A47', $tasdik_tarihi);
         $sheetArkaKapak->setCellValue('A48', $hakedis['idare_onaylayan'] ?? '');
         $sheetArkaKapak->setCellValue('A49', $hakedis['idare_onaylayan_unvan'] ?? '');
+
+        // Yuvarlama hatalarını önlemek için Arka Kapak formüllerini ROUND ile güncelliyoruz
+        // D5: Toplam İş Tutarı (A), D6: Toplam Fiyat Farkı (B), D7: Toplam Tutar (C)
+        // D8: Önceki Hakediş (D), D9: Bu Hakediş Tutarı (E), D10: KDV (F), D11: Tahakkuk (H)
+        
+        $sheetArkaKapak->setCellValue('D5', '=ROUND(D3+D4, 2)');
+        $sheetArkaKapak->setCellValue('D6', '=ROUND(\'Fiyat Farkı Tutanağı\'!F30, 2)');
+        $sheetArkaKapak->setCellValue('D7', '=ROUND(D5+D6, 2)');
+        $sheetArkaKapak->setCellValue('D8', '=ROUND(Bilgiler!D23, 2)');
+        $sheetArkaKapak->setCellValue('D9', '=ROUND(D7-D8, 2)');
+        $sheetArkaKapak->setCellValue('D10', '=ROUND(D9*0.2, 2)');
+        $sheetArkaKapak->setCellValue('D11', '=ROUND(D9+D10, 2)');
     }
 
     // --- Fill 'Ön Kapak' Sheet ---
@@ -533,22 +548,21 @@ try {
             $fiyatFarki = floatval($totals['fiyat_farki'] ?? 0);
             $kdvOrani = floatval($totals['kdv_orani'] ?? 20);
             
-            // Ara toplam (Pn farkı dahil ama KDV hariç) -> Aslında tahakkuk hesaplanırken bu kalemler ayrı
             // Tahakkuka Bağlanan Hakediş Toplamı (f = c + d + e) -> c=bu hakedişte yapılan iş, d=fiyat farkı, e=kdv
-            $kdvTutar = ($donemImalat + $fiyatFarki) * ($kdvOrani / 100);
-            $tahakkukToplam = $donemImalat + $fiyatFarki + $kdvTutar;
+            $kdvTutar = round(($donemImalat + $fiyatFarki) * ($kdvOrani / 100), 2);
+            $tahakkukToplam = round($donemImalat + $fiyatFarki + $kdvTutar, 2);
 
             // Kesintiler
-            $kesinHesapKesintisi = $donemImalat * 0.05; // %5 Kesin hesap kesintisi (h)
+            $kesinHesapKesintisi = round($donemImalat * 0.05, 2); // %5 Kesin hesap kesintisi (h)
             
             $damgaVergisiOrani = floatval($hRec['damga_vergisi_orani'] ?? 0.00948);
-            $damgaVergisi = ($donemImalat + $fiyatFarki) * $damgaVergisiOrani;
+            $damgaVergisi = round(($donemImalat + $fiyatFarki) * $damgaVergisiOrani, 2);
             
             $avansMahsubu = floatval($hRec['avans_mahsubu'] ?? 0);
             
-            $toplamKesinti = $kesinHesapKesintisi + $damgaVergisi + $avansMahsubu; // (g)
+            $toplamKesinti = round($kesinHesapKesintisi + $damgaVergisi + $avansMahsubu, 2); // (g)
             
-            $netHakedis = $tahakkukToplam - $toplamKesinti; // (i)
+            $netHakedis = round($tahakkukToplam - $toplamKesinti, 2); // (i)
 
             $sheetDengeleme->setCellValue('A' . $rowIdx, $hRec['hakedis_no']);
             setExcelDate($sheetDengeleme, 'B' . $rowIdx, $hRec['tutanak_tasdik_tarihi']);
