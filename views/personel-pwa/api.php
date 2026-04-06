@@ -894,37 +894,28 @@ try {
             $PersonelModel = new PersonelModel();
             $TanimlamalarModel = new \App\Model\TanimlamalarModel();
 
-            // 1. Personelin ekip şefi olduğu aktif ekip kodunu bul
-            $ekipGecmisi = $PersonelModel->getEkipGecmisi($personel_id);
-            $sefEkipKoduId = null;
-            foreach ($ekipGecmisi as $g) {
-                if (($g->ekip_sefi_mi ?? 0) == 1 && (empty($g->bitis_tarihi) || $g->bitis_tarihi >= date('Y-m-d'))) {
-                    $sefEkipKoduId = $g->ekip_kodu_id;
-                    break;
-                }
-            }
+            // 1. Personelin ekip ┼şefi oldu─şu G├╝ncel Aktif ekip kodunu bul (Temizle┼şmi┼ş sorgu)
+            $db = (new \App\Model\Model('personel_ekip_gecmisi'))->getDb();
+            $sqlSef = "SELECT t.id as ekip_kodu_id, t.ekip_bolge 
+                       FROM personel_ekip_gecmisi peg
+                       JOIN tanimlamalar t ON peg.ekip_kodu_id = t.id
+                       WHERE peg.personel_id = :personel_id 
+                       AND peg.ekip_sefi_mi = 1 
+                       AND (peg.bitis_tarihi IS NULL OR peg.bitis_tarihi >= CURDATE()) 
+                       AND t.silinme_tarihi IS NULL 
+                       ORDER BY peg.baslangic_tarihi DESC 
+                       LIMIT 1";
+            
+            $stmtSef = $db->prepare($sqlSef);
+            $stmtSef->execute(['personel_id' => $personel_id]);
+            $sefAssignment = $stmtSef->fetch(PDO::FETCH_OBJ);
 
-            if (!$sefEkipKoduId) {
-                // Alternatif: Eğer ana şeflik ayarı varsa onu da kontrol et
-                $personel = $PersonelModel->find($personel_id);
-                if ($personel && !empty($personel->ekip_no)) {
-                    $sefEkipKoduId = $personel->ekip_no;
-                }
-            }
+            $sefEkipKoduId = $sefAssignment ? $sefAssignment->ekip_kodu_id : null;
+            $bolgeIdari = $sefAssignment ? trim($sefAssignment->ekip_bolge ?? '') : null;
 
-            if (!$sefEkipKoduId) {
-                response(false, null, 'Ekip şefi kaydı bulunamadı');
-            }
-
-            // 2. O ekip kodunun bölgesini bul
-            $ekipKodu = $TanimlamalarModel->find($sefEkipKoduId);
-            if (!$ekipKodu) {
-                response(false, null, 'Ekip kodu bulunamadı');
-            }
-            $bolgeIdari = trim($ekipKodu->ekip_bolge ?? '');
-
-            if (empty($bolgeIdari)) {
-                response(false, null, 'Bölge bilgisi tanımlı değil');
+            if (!$sefEkipKoduId || empty($bolgeIdari)) {
+                // E┼şer ┼şef rol├╝nde bir g├Ârevlendirme veya b├Âlge bulunamad─▒ysa bo┼ş d├Ând├╝r
+                return ['success' => true, 'data' => []];
             }
 
             $db = (new \App\Model\Model('tanimlamalar'))->getDb();
