@@ -1098,6 +1098,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     } elseif ($action == 'ekip-gecmisi-sil') {
         try {
             $id = $_POST['id'];
+            $force = isset($_POST['force']) && $_POST['force'] == 1;
             $Personel = new PersonelModel();
 
             // Kaydı getir
@@ -1106,18 +1107,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 throw new Exception("Kayıt bulunamadı.");
             }
 
-            // Yapılan işler tablosunda kontrol et
-            $stmt = $Personel->db->prepare("SELECT COUNT(*) FROM yapilan_isler WHERE personel_id = ? AND ekip_kodu_id = ? AND silinme_tarihi IS NULL");
-            $stmt->execute([$gecmis->personel_id, $gecmis->ekip_kodu_id]);
-            if ($stmt->fetchColumn() > 0) {
-                throw new Exception("Bu ekip atamasına ait 'Yapılan İşler' kaydı bulunduğu için silemezsiniz.". $gecmis->personel_id . " ---- " . $gecmis->ekip_kodu_id);
+            // Bağlı görevleri kontrol et
+            if (!$force && $Personel->hasRelatedTasks($gecmis->personel_id, $gecmis->ekip_kodu_id)) {
+                echo json_encode([
+                    'status' => 'confirm', 
+                    'message' => "Bu ekip atamasına ait çalışma kayıtları (Yapılan İşler, Endeks Okuma vb.) bulunmaktadır. Silmeniz durumunda bu kayıtlar da silinecektir. Devam etmek istiyor musunuz?"
+                ]);
+                exit;
             }
 
-            // Endeks okuma tablosunda kontrol et
-            $stmt = $Personel->db->prepare("SELECT COUNT(*) FROM endeks_okuma WHERE personel_id = ? AND ekip_kodu_id = ? AND silinme_tarihi IS NULL");
-            $stmt->execute([$gecmis->personel_id, $gecmis->ekip_kodu_id]);
-            if ($stmt->fetchColumn() > 0) {
-                throw new Exception("Bu ekip atamasına ait 'Endeks Okuma' kaydı bulunduğu için silemezsiniz.");
+            if ($force) {
+                $Personel->softDeleteRelatedTasks($gecmis->personel_id, $gecmis->ekip_kodu_id);
             }
 
             $Personel->deleteEkipGecmisi($id);

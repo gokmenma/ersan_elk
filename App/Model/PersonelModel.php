@@ -788,6 +788,43 @@ class PersonelModel extends Model
     }
 
     /**
+     * Ekip geçmişi silinirken bağlı görevlerin olup olmadığını kontrol eder
+     */
+    public function hasRelatedTasks($personel_id, $ekip_kodu_id)
+    {
+        $tables = ['yapilan_isler', 'endeks_okuma', 'sayac_degisim'];
+        foreach ($tables as $table) {
+            try {
+                $stmt = $this->db->prepare("SELECT id FROM $table WHERE personel_id = ? AND ekip_kodu_id = ? AND silinme_tarihi IS NULL LIMIT 1");
+                $stmt->execute([$personel_id, $ekip_kodu_id]);
+                if ($stmt->fetch()) {
+                    return true;
+                }
+            } catch (\Exception $e) {
+                // Table might not exist
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Bağlı görevleri soft delete yapar
+     */
+    public function softDeleteRelatedTasks($personel_id, $ekip_kodu_id)
+    {
+        $tables = ['yapilan_isler', 'endeks_okuma', 'sayac_degisim'];
+        $now = date('Y-m-d H:i:s');
+        foreach ($tables as $table) {
+            try {
+                $stmt = $this->db->prepare("UPDATE $table SET silinme_tarihi = ? WHERE personel_id = ? AND ekip_kodu_id = ? AND silinme_tarihi IS NULL");
+                $stmt->execute([$now, $personel_id, $ekip_kodu_id]);
+            } catch (\Exception $e) {
+                // Table might not exist
+            }
+        }
+    }
+
+    /**
      * Personelin açıkta kalan (bitiş tarihi olmayan) ekip atamalarını kapatır
      */
     public function closeActiveEkipAssignments($personel_id, $endDate)

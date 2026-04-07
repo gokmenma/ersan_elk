@@ -351,9 +351,52 @@ use App\Helper\Form;
 
                 $(document).off('click', '.btn-ekip-gecmisi-sil').on('click', '.btn-ekip-gecmisi-sil', function () {
                     var id = $(this).data('id');
+                    
+                    function performDelete(force = 0) {
+                        Swal.fire({
+                            title: 'İşlem Yapılıyor...',
+                            text: 'Lütfen bekleyiniz, kayıtlar siliniyor.',
+                            allowOutsideClick: false,
+                            didOpen: () => {
+                                Swal.showLoading()
+                            }
+                        });
+
+                        $.ajax({
+                            url: 'views/personel/api.php',
+                            type: 'POST',
+                            data: { action: 'ekip-gecmisi-sil', id: id, force: force },
+                            dataType: 'json',
+                            success: function (response) {
+                                if (response.status === 'success') {
+                                    Swal.fire('Silindi', response.message, 'success').then(() => {
+                                        refreshEkipGecmisiTable();
+                                    });
+                                } else if (response.status === 'confirm') {
+                                    Swal.fire({
+                                        title: 'Kayıtlar Mevcut!',
+                                        text: response.message,
+                                        icon: 'warning',
+                                        showCancelButton: true,
+                                        confirmButtonColor: '#d33',
+                                        cancelButtonColor: '#3085d6',
+                                        confirmButtonText: 'Evet, Hepsini Sil!',
+                                        cancelButtonText: 'İptal'
+                                    }).then((result) => {
+                                        if (result.isConfirmed) {
+                                            performDelete(1);
+                                        }
+                                    });
+                                } else {
+                                    Swal.fire('Hata', response.message, 'error');
+                                }
+                            }
+                        });
+                    }
+
                     Swal.fire({
                         title: 'Emin misiniz?',
-                        text: "Bu ekip geçmişi kaydı kalıcı olarak silinecektir.",
+                        text: "Bu ekip geçmişi kaydı silinecektir.",
                         icon: 'warning',
                         showCancelButton: true,
                         confirmButtonColor: '#d33',
@@ -362,21 +405,7 @@ use App\Helper\Form;
                         cancelButtonText: 'İptal'
                     }).then((result) => {
                         if (result.isConfirmed) {
-                            $.ajax({
-                                url: 'views/personel/api.php',
-                                type: 'POST',
-                                data: { action: 'ekip-gecmisi-sil', id: id },
-                                dataType: 'json',
-                                success: function (response) {
-                                    if (response.status === 'success') {
-                                        Swal.fire('Silindi', response.message, 'success').then(() => {
-                                            refreshEkipGecmisiTable();
-                                        });
-                                    } else {
-                                        Swal.fire('Hata', response.message, 'error');
-                                    }
-                                }
-                            });
+                            performDelete(0);
                         }
                     });
                 });
