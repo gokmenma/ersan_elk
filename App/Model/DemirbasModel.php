@@ -132,6 +132,11 @@ class DemirbasModel extends Model
             $stockFilter = " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(z2.teslim_miktar - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.zimmet_id = z2.id AND h2.hareket_tipi IN ('iade', 'sarf', 'kayip') AND h2.silinme_tarihi IS NULL), 0)) FROM demirbas_zimmet z2 WHERE z2.demirbas_id = d.id AND z2.durum = 'teslim' AND z2.silinme_tarihi IS NULL), 0)) > 0";
         }
 
+        $lokasyonFilter = "";
+        if ($type === 'sayac') {
+            $lokasyonFilter = " AND (d.lokasyon = 'bizim_depo' OR d.lokasyon IS NULL OR d.lokasyon = '')";
+        }
+
         $sql = $this->db->prepare("
             SELECT 
                 d.id,
@@ -145,6 +150,7 @@ class DemirbasModel extends Model
                 AND d.durum NOT IN ('pasif', 'hurda')
                 $whereType
                 $stockFilter
+                $lokasyonFilter
             ORDER BY d.demirbas_adi
             LIMIT 50
         ");
@@ -303,6 +309,14 @@ class DemirbasModel extends Model
 
         if ($tab === 'sayac') {
             $whereSql .= " AND " . $sayacCondition;
+            if (!empty($request['lokasyon'])) {
+                if ($request['lokasyon'] === 'bizim_depo') {
+                    $whereSql .= " AND (d.lokasyon = :lokasyon OR d.lokasyon IS NULL OR d.lokasyon = '')";
+                } else {
+                    $whereSql .= " AND d.lokasyon = :lokasyon";
+                }
+                $params['lokasyon'] = $request['lokasyon'];
+            }
         } elseif ($tab === 'aparat') {
             $whereSql .= " AND " . $aparatCondition;
         } else {
@@ -335,24 +349,22 @@ class DemirbasModel extends Model
                 9 => 'DATE_FORMAT(d.edinme_tarihi, "%d.%m.%Y")'
             ];
         } elseif ($tab === 'sayac') {
-            // indices: 0=>checkbox, 1=>sira, 2=>no, 3=>adi, 4=>marka_model_seri, 5=>seri, 6=>stok, 7=>durum, 8=>tarih
+            // sayac-deposu.js indices: 0=>cb, 1=>adi, 2=>marka_model, 3=>seri, 4=>stok, 5=>durum, 6=>tarih, 7=>islemler
             $colSearchMap = [
-                2 => 'd.demirbas_no',
-                3 => 'd.demirbas_adi',
-                4 => 'CONCAT_WS(" ", d.marka, d.model, d.seri_no)',
-                5 => 'd.seri_no',
-                7 => 'd.durum',
-                8 => 'DATE_FORMAT(d.edinme_tarihi, "%d.%m.%Y")'
+                1 => 'd.demirbas_adi',
+                2 => 'CONCAT_WS(" ", d.marka, d.model)',
+                3 => 'd.seri_no',
+                5 => 'd.durum',
+                6 => 'DATE_FORMAT(d.edinme_tarihi, "%d.%m.%Y")'
             ];
         } else {
-            // aparat (no checkbox): 0=>checkbox, 1=>sira, 2=>no, 3=>adi, 4=>marka_model_seri, 5=>seri, 6=>stok, 7=>durum, 8=>tarih
+            // aparat: 0=>sira, 1=>adi, 2=>marka_model, 3=>seri, 4=>stok, 5=>durum, 6=>tarih, 7=>islemler
             $colSearchMap = [
-                2 => 'd.demirbas_no',
-                3 => 'd.demirbas_adi',
-                4 => 'CONCAT_WS(" ", d.marka, d.model, d.seri_no)',
-                5 => 'd.seri_no',
-                7 => 'd.durum',
-                8 => 'DATE_FORMAT(d.edinme_tarihi, "%d.%m.%Y")'
+                1 => 'd.demirbas_adi',
+                2 => 'CONCAT_WS(" ", d.marka, d.model)',
+                3 => 'd.seri_no',
+                5 => 'd.durum',
+                6 => 'DATE_FORMAT(d.edinme_tarihi, "%d.%m.%Y")'
             ];
         }
 
@@ -377,9 +389,9 @@ class DemirbasModel extends Model
                             // Tarih sütunu için d.m.Y -> Y-m-d dönüşümü
                             if ($tab === 'demirbas' && $colIdx == 9)
                                 $field = 'd.edinme_tarihi';
-                            elseif ($tab === 'sayac' && $colIdx == 8)
+                            elseif ($tab === 'sayac' && $colIdx == 6)
                                 $field = 'd.edinme_tarihi';
-                            elseif ($tab === 'aparat' && $colIdx == 8)
+                            elseif ($tab === 'aparat' && $colIdx == 6)
                                 $field = 'd.edinme_tarihi';
 
                             $isDateColumn = ($field === 'd.edinme_tarihi');
@@ -464,8 +476,8 @@ class DemirbasModel extends Model
                             }
                         }
                     } else {
-                        // Normal Filtre Mantığı (Sadece LIKE)
-                        $searchWhere .= " AND {$colSearchMap[$colIdx]} LIKE :$paramKey";
+                        // Basit arama (colon yoksa varsayılan: 'contains')
+                        $searchWhere .= " AND $field LIKE :$paramKey";
                         $params[$paramKey] = "%$searchValue%";
                     }
                 }
@@ -505,10 +517,14 @@ class DemirbasModel extends Model
             }
         }
 
-        // Toplam kayıt sayısı (sadece tab filtresi ile)
+        // Toplam kayıt sayısı (tab + lokasyon filtresi ile)
         $totalSql = "SELECT COUNT(d.id)" . $fromSql . $whereSql;
         $stmtTotal = $this->db->prepare($totalSql);
-        $stmtTotal->execute(['firma_id' => $_SESSION['firma_id']]);
+        // $params zaten firma_id + lokasyon (varsa) içerir
+        foreach ($params as $key => $val) {
+            $stmtTotal->bindValue($key, $val);
+        }
+        $stmtTotal->execute();
         $totalRecords = $stmtTotal->fetchColumn();
 
         // Filtrelenmiş kayıt sayısı
@@ -626,12 +642,18 @@ class DemirbasModel extends Model
         $sayacCondition = "(LOWER(k.tur_adi) LIKE '%sayaç%' OR LOWER(k.tur_adi) LIKE '%sayac%')";
         $aparatCondition = "(LOWER(k.tur_adi) LIKE '%aparat%' OR k.id = 645)";
 
-        if ($tab === 'sayac') {
+        if ($tab === 'sayac' || $tab === 'sayac_bizim_depo') {
             $whereSql .= " AND " . $sayacCondition;
+            if ($tab === 'sayac_bizim_depo') {
+                $whereSql .= " AND d.lokasyon = 'bizim_depo'";
+            }
         } elseif ($tab === 'aparat') {
             $whereSql .= " AND " . $aparatCondition;
         } else {
-            $whereSql .= " AND NOT " . $sayacCondition . " AND NOT " . $aparatCondition;
+            $baseWhere = " AND d.silinme_tarihi IS NULL";
+            if ($tab === 'demirbas') {
+                $whereSql .= " AND NOT " . $sayacCondition . " AND NOT " . $aparatCondition;
+            }
         }
 
         $searchWhere = "";
