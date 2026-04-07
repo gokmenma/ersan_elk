@@ -157,18 +157,10 @@ $(function () {
                 $("#sayacCardPersonelHurda").text(hurdaPersonel);
                 $("#sayacCardKayipHurda").text(kayip > 0 ? kayip : 0);
 
-                // UI Güncelleme (Kaski Tabı - Senkronize)
-                $("#kaskiCardToplamGiren").text(yeniToplam);
-                $("#kaskiCardDepoKalan").text(yeniDepo);
-                $("#kaskiCardTakilan").text(takilan);
-                $("#kaskiCardPersonelZimmetli").text(yeniPersonel);
-                $("#kaskiCardKayipYeni").text(yeniKayip > 0 ? yeniKayip : 0);
-
-                $("#kaskiCardToplamHurda").text(hurdaToplam);
-                $("#kaskiCardHurdaKaskiye").text(hurdaKaski);
-                $("#kaskiCardHurdaDepoda").text(hurdaDepo);
-                $("#kaskiCardPersonelHurda").text(hurdaPersonel);
-                $("#kaskiCardKayipHurda").text(kayip > 0 ? kayip : 0);
+                // UI Güncelleme (Kaski Tabı - Yeni Basit Görünüm)
+                $("#kaskiSummaryToplamAlinan").text(yeniToplam);
+                $("#kaskiSummaryIadeEdilen").text(hurdaKaski);
+                $("#kaskiSummaryFark").text(yeniToplam - hurdaKaski);
             }
         }, "json");
     }
@@ -212,7 +204,11 @@ $(function () {
         
         // URL Hash güncelle
         var tabPaneId = $(e.target).data("bs-target").replace("#", "");
-        window.location.hash = tabPaneId;
+        if (history.replaceState) {
+            history.replaceState(null, null, "#" + tabPaneId);
+        } else {
+            window.location.hash = tabPaneId;
+        }
 
         setTimeout(function() {
             $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
@@ -247,7 +243,19 @@ $(function () {
     // =============================================
     $('input[name="sayac-status-filter"]').on('change', function () {
         depoSayacTable.ajax.reload();
-    });
+        
+        var filter = $(this).val();
+        if (filter === 'yeni') {
+            $("#yeniSayacCardCol").fadeIn(300).removeClass('col-xl-6 col-md-6').addClass('col-xl-12 col-md-12');
+            $("#hurdaSayacCardCol").hide();
+        } else if (filter === 'hurda') {
+            $("#hurdaSayacCardCol").fadeIn(300).removeClass('col-xl-6 col-md-6').addClass('col-xl-12 col-md-12');
+            $("#yeniSayacCardCol").hide();
+        } else {
+            $("#yeniSayacCardCol").fadeIn(300).removeClass('col-xl-12 col-md-12').addClass('col-xl-6 col-md-6');
+            $("#hurdaSayacCardCol").fadeIn(300).removeClass('col-xl-12 col-md-12').addClass('col-xl-6 col-md-6');
+        }
+    }).filter(':checked').trigger('change');
     $('input[name="hareket-status-filter"]').on('change', function () {
         hareketTable.ajax.reload();
     });
@@ -256,15 +264,26 @@ $(function () {
     var isTumuSecildi = false;
 
     // =============================================
-    // SATIRA TIKLA = SEÇ (Bizim Depo tablosu)
+    // SATIRA TIKLA = SEÇ (Genel Seçim Desteği)
     // =============================================
-    $(document).on("click", "#depoSayacTable tbody tr", function (e) {
-        // label ve checkbox-container tıklamasını hariç tut (çift toggle önleme)
-        if ($(e.target).closest("input, button, a, label, .dropdown-menu, .custom-checkbox-container").length) return;
-        var $cb = $(this).find(".sayac-select");
-        if ($cb.length) {
-            $cb.prop("checked", !$cb.prop("checked")).trigger("change");
+    $(document).on("click", "#depoSayacTable tbody tr, #zimmetListesiBody tr, #personelZimmetTable tr, #aparatZimmetTable tr", function (e) {
+        // Tıklanan eleman etkileşimli bir element ise (input, link, button vb.) seçimi tetikleme
+        if ($(e.target).closest("input, button, a, label, .dropdown, .select2, .custom-checkbox-container, .personel-tarih-row").length) {
+            return;
         }
+        
+        // Bu satırdaki seçim checkbox'ını bul
+        var $cb = $(this).find('input[type="checkbox"].sayac-select, input[type="checkbox"].zimmet-select, .sayac-select');
+        if ($cb.length) {
+            var isChecked = $cb.prop("checked");
+            $cb.prop("checked", !isChecked).trigger("change");
+            $(this).toggleClass("selected", !isChecked);
+        }
+    });
+
+    // Sayfa değiştiğinde veya tablo yenilendiğinde seçili sınıflarını temizle
+    $(document).on("draw.dt", function () {
+        $("tr.selected").removeClass("selected");
     });
 
     // =============================================
@@ -1003,12 +1022,43 @@ $(function () {
     function loadDepoSummary() {
         $.post(apiUrl, { action: "sayac-global-summary" }, function (res) {
             if (res.status === "success") {
-                $("#sayacCardToplamGiren, #kaskiCardToplamGiren").text(res.toplam_alinan ?? 0);
-                $("#sayacCardDepoKalan, #kaskiCardDepoKalan").text(res.yeni_depoda ?? 0);
-                $("#sayacCardPersonelZimmetli, #kaskiCardPersonelZimmetli").text(res.yeni_personelde ?? 0);
-                $("#sayacCardKaskiyeTeslim, #kaskiCardHurdaKaskiye").text(res.hurda_kaskiye ?? 0);
-                $("#sayacCardHurda, #kaskiCardHurda").text(res.hurda_depoda ?? 0);
-                $("#sayacCardPersonelHurda, #kaskiCardPersonelHurda").text(res.hurda_personelde ?? 0);
+                var yeniToplam = parseInt(res.toplam_alinan) || 0;
+                var yeniDepo = parseInt(res.yeni_depoda) || 0;
+                var yeniPersonel = parseInt(res.yeni_personelde) || 0;
+                var takilan = parseInt(res.takilan) || 0;
+                var yeniKayip = yeniToplam - (yeniDepo + yeniPersonel + takilan);
+
+                var hurdaToplam = takilan; // Her takılan 1 hurda üretir
+                var hurdaDepo = parseInt(res.hurda_depoda) || 0;
+                var hurdaPersonel = parseInt(res.hurda_personelde) || 0;
+                var hurdaKaski = parseInt(res.hurda_kaskiye) || 0;
+                var hurdaKayip = hurdaToplam - (hurdaDepo + hurdaPersonel + hurdaKaski);
+
+                // Bizim Depo Tabı
+                $("#sayacCardToplamGiren").text(yeniToplam);
+                $("#sayacCardDepoKalan").text(yeniDepo);
+                $("#sayacCardTakilan").text(takilan);
+                $("#sayacCardPersonelZimmetli").text(yeniPersonel);
+                $("#sayacCardKayipYeni").text(yeniKayip > 0 ? yeniKayip : 0);
+
+                $("#sayacCardToplamHurda").text(hurdaToplam);
+                $("#sayacCardKaskiyeTeslim").text(hurdaKaski);
+                $("#sayacCardHurda").text(hurdaDepo);
+                $("#sayacCardPersonelHurda").text(hurdaPersonel);
+                $("#sayacCardKayipHurda").text(hurdaKayip > 0 ? hurdaKayip : 0);
+
+                // Kaski Tabı
+                $("#kaskiCardToplamGiren").text(yeniToplam);
+                $("#kaskiCardDepoKalan").text(yeniDepo);
+                $("#kaskiCardTakilan").text(takilan);
+                $("#kaskiCardPersonelZimmetli").text(yeniPersonel);
+                $("#kaskiCardKayipYeni").text(yeniKayip > 0 ? yeniKayip : 0);
+
+                $("#kaskiCardToplamHurda").text(hurdaToplam);
+                $("#kaskiCardHurdaKaskiye").text(hurdaKaski);
+                $("#kaskiCardHurdaDepoda").text(hurdaDepo);
+                $("#kaskiCardPersonelHurda").text(hurdaPersonel);
+                $("#kaskiCardKayipHurda").text(hurdaKayip > 0 ? hurdaKayip : 0);
             }
         }, "json");
     }
@@ -1027,7 +1077,6 @@ $(function () {
     $(document).on("demirbas-saved zimmet-saved iade-saved kaskiye-teslim-saved hurda-iade-saved", function() {
         reloadAllTables();
     });
-});
 
     // ============== HURDA SAYAÇ İADE İŞLEMLERİ (SAYAÇ DEPOSU ÖZEL) ==============
 
@@ -1114,10 +1163,10 @@ $(function () {
             }
         }, 'json');
     });
-
     // Flatpickr Init for Hurda Modal
     $("#hurdaIadeModal").on("shown.bs.modal", function () {
         if(!$("#hurda_iade_tarihi").hasClass("flatpickr-input")) {
             flatpickr("#hurda_iade_tarihi", { dateFormat: "d.m.Y", locale: "tr", defaultDate: "today" });
         }
     });
+});

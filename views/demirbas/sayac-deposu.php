@@ -4,7 +4,30 @@ require_once __DIR__ . '/../../Autoloader.php';
 use App\Model\DemirbasModel;
 use App\Model\PersonelModel;
 use App\Model\TanimlamalarModel;
+?>
 
+<style>
+	/* Tablo Satır Seçimi Görselleştirme */
+	.table.dataTable tbody tr {
+		transition: background-color 0.2s;
+		cursor: pointer;
+	}
+	.table.dataTable tbody tr.selected {
+		background-color: rgba(85, 110, 230, 0.1) !important;
+		border-left: 3px solid #556ee6 !important;
+	}
+	.table.dataTable tbody tr:hover {
+		background-color: rgba(0, 0, 0, 0.02) !important;
+	}
+	.custom-checkbox-container {
+		pointer-events: none; /* TR click üzerinden yönetilecek */
+	}
+	.custom-checkbox-input, .custom-checkbox-label {
+		pointer-events: auto; /* Checkbox'ın kendisine direkt basılabilir */
+	}
+</style>
+
+<?php
 $Demirbas = new DemirbasModel();
 $Personel = new PersonelModel();
 $Tanimlamalar = new TanimlamalarModel();
@@ -117,6 +140,69 @@ $title = "Sayaç Deposu";
 		}
 		[data-bs-theme="dark"] .personel-preloader .loader-content { background: #2a3042; box-shadow: 0 15px 35px rgba(0, 0, 0, 0.4); }
 
+		/* Neo Style Cards */
+		.neo-card {
+			background: #ffffff;
+			border: none;
+			border-radius: 16px;
+			box-shadow: 0 10px 30px rgba(0, 0, 0, 0.04);
+			transition: all 0.3s ease;
+			position: relative;
+			overflow: hidden;
+		}
+		.neo-card:hover {
+			transform: translateY(-5px);
+			box-shadow: 0 15px 35px rgba(0, 0, 0, 0.08);
+		}
+		.neo-card::after {
+			content: '';
+			position: absolute;
+			bottom: 0;
+			left: 0;
+			right: 0;
+			height: 4px;
+			background: var(--card-color, #556ee6);
+			opacity: 0.8;
+		}
+		.neo-card .icon-box {
+			width: 48px;
+			height: 48px;
+			border-radius: 12px;
+			display: flex;
+			align-items: center;
+			justify-content: center;
+			background: var(--icon-bg, rgba(85, 110, 230, 0.1));
+			color: var(--card-color, #556ee6);
+			margin-bottom: 1rem;
+		}
+		.neo-value {
+			font-size: 1.5rem;
+			font-weight: 800;
+			line-height: 1;
+			margin-bottom: 0.25rem;
+			color: #2a3042;
+		}
+		.neo-label {
+			font-size: 0.7rem;
+			text-transform: uppercase;
+			letter-spacing: 0.5px;
+			font-weight: 600;
+			color: #74788d;
+			margin-bottom: 0;
+		}
+		.grid-5-cols {
+			display: grid;
+			grid-template-columns: repeat(5, 1fr);
+			gap: 0;
+		}
+		.neo-stat-item {
+			padding: 1rem 0.5rem;
+			border-right: 1px solid #f1f5f9;
+		}
+		.neo-stat-item:last-child {
+			border-right: none;
+		}
+
 		/* Premium Filter Buttons */
 		.status-filter-group {
 			background: #f8fafc; padding: 4px; border-radius: 50px;
@@ -147,6 +233,13 @@ $title = "Sayaç Deposu";
 		.icon-box { width: 42px; height: 42px; border-radius: 12px; display: flex; align-items: center; justify-content: center; }
 		.bordro-text-heading { font-size: 1.5rem; letter-spacing: -0.5px; }
 		[data-bs-theme="dark"] .icon-label-container .text-muted { color: #a6b0cf !important; }
+		/* Personel Tarih Accordion */
+		.personel-tarih-row { transition: background-color 0.2s ease; }
+		.personel-tarih-row:hover { background-color: rgba(85, 110, 230, 0.05) !important; }
+		.expand-chevron { transition: transform 0.3s ease; }
+		.personel-tarih-row.expanded { background-color: rgba(85, 110, 230, 0.05) !important; }
+		.personel-detail-row { background-color: #f8fafc; }
+		.personel-detail-row table { border-radius: 8px; overflow: hidden; }
 	</style>
 
 	<div class="card">
@@ -222,94 +315,52 @@ $title = "Sayaç Deposu";
 			<div class="tab-content">
 				<!-- 1. KASKI PANE -->
 				<div class="tab-pane fade show active" id="kaskiPane" role="tabpanel">
-					<!-- ÖZET KARTLARI (KASKİ): TEK SATIRDA İKİ KART -->
+					<!-- ÖZET KARTLARI (KASKİ) -->
 					<div class="row g-3 mb-4">
-						<!-- YENİ SAYAÇ KARTI -->
-						<div class="col-xl-6 col-md-6">
-							<div class="card border-0 shadow-sm" style="border-left: 4px solid #556ee6 !important; background: #fff; border-radius: 10px;">
+						<!-- TOPLAM ALINAN SAYAÇ KARTI -->
+						<div class="col-xl-4 col-md-6">
+							<div class="card border-0 shadow-sm h-100 bordro-summary-card" style="--card-color: #556ee6; border-bottom: 3px solid var(--card-color) !important;">
 								<div class="card-body p-3">
-									<div class="d-flex align-items-center mb-3">
-										<div class="rounded-2 p-2 me-2" style="background: rgba(85, 110, 230, 0.1);">
-											<i class="bx bx-star text-primary fs-5"></i>
+									<div class="icon-label-container mb-3">
+										<div class="icon-box" style="background: rgba(85, 110, 230, 0.1);">
+											<i class="bx bx-plus-circle fs-4" style="color: #556ee6;"></i>
 										</div>
-										<h6 class="mb-0 fw-bold text-dark">Kaski Sayaç Bilgisi</h6>
+										<span class="text-muted fw-bold" style="font-size: 0.85rem;">TOPLAM ALINAN</span>
 									</div>
-									<div class="row text-center g-0 row-cols-5">
-										<div class="col">
-											<div class="border-end">
-												<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Top. Alınan</p>
-												<h4 class="fw-bold mb-0" style="color:#556ee6; font-size: 1rem;" id="kaskiCardToplamGiren"><?php echo (int)($stats['toplam_alinan_yeni'] ?? 0); ?></h4>
-											</div>
-										</div>
-										<div class="col">
-											<div class="border-end">
-												<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Depoda</p>
-												<h4 class="fw-bold mb-0" style="color:#10b981; font-size: 1rem;" id="kaskiCardDepoKalan"><?php echo (int)($stats['yeni_depoda'] ?? 0); ?></h4>
-											</div>
-										</div>
-										<div class="col">
-											<div class="border-end">
-												<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Takılan</p>
-												<h4 class="fw-bold mb-0" style="color:#6366f1; font-size: 1rem;" id="kaskiCardTakilan"><?php echo (int)($stats['takilan_sayac'] ?? 0); ?></h4>
-											</div>
-										</div>
-										<div class="col">
-											<div class="border-end">
-												<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Personelde</p>
-												<h4 class="fw-bold mb-0" style="color:#f59e0b; font-size: 1rem;" id="kaskiCardPersonelZimmetli"><?php echo (int)($stats['yeni_personelde'] ?? 0); ?></h4>
-											</div>
-										</div>
-										<div class="col">
-											<div>
-												<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Kayıp</p>
-												<h4 class="fw-bold mb-0" style="color:#f43f5e; font-size: 1rem;" id="kaskiCardKayipYeni"><?php echo (int)($stats['kayip_yeni'] ?? 0); ?></h4>
-											</div>
-										</div>
+									<div class="text-center">
+										<h3 class="mb-0 fw-bold text-primary" id="kaskiSummaryToplamAlinan">0</h3>
 									</div>
 								</div>
 							</div>
 						</div>
-						<!-- HURDA / İADE KARTI -->
-						<div class="col-xl-6 col-md-6">
-							<div class="card border-0 shadow-sm" style="border-left: 4px solid #ef4444 !important; background: #fff; border-radius: 10px;">
+						<!-- KASKİ'YE İADE EDİLDİ SAYAÇ KARTI -->
+						<div class="col-xl-4 col-md-6">
+							<div class="card border-0 shadow-sm h-100 bordro-summary-card" style="--card-color: #10b981; border-bottom: 3px solid var(--card-color) !important;">
 								<div class="card-body p-3">
-									<div class="d-flex align-items-center mb-3">
-										<div class="rounded-2 p-2 me-2" style="background: rgba(239, 68, 68, 0.1);">
-											<i class="bx bx-recycle text-danger fs-5"></i>
+									<div class="icon-label-container mb-3">
+										<div class="icon-box" style="background: rgba(16, 185, 129, 0.1);">
+											<i class="bx bx-redo fs-4" style="color: #10b981;"></i>
 										</div>
-										<h6 class="mb-0 fw-bold text-dark">Hurda Yönetimi</h6>
+										<span class="text-muted fw-bold" style="font-size: 0.85rem;">KASKİ'YE İADE EDİLDİ</span>
 									</div>
-									<div class="row text-center g-0 row-cols-5">
-										<div class="col">
-											<div class="border-end">
-												<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Top. Hurda</p>
-												<h4 class="fw-bold mb-0" style="color:#ef4444; font-size: 1rem;" id="kaskiCardToplamHurda"><?php echo (int)($stats['toplam_hurda'] ?? 0); ?></h4>
-											</div>
+									<div class="text-center">
+										<h3 class="mb-0 fw-bold text-success" id="kaskiSummaryIadeEdilen">0</h3>
+									</div>
+								</div>
+							</div>
+						</div>
+						<!-- BAKİYE (FARK) SAYAÇ KARTI -->
+						<div class="col-xl-4 col-md-6">
+							<div class="card border-0 shadow-sm h-100 bordro-summary-card" style="--card-color: #ef4444; border-bottom: 3px solid var(--card-color) !important;">
+								<div class="card-body p-3">
+									<div class="icon-label-container mb-3">
+										<div class="icon-box" style="background: rgba(239, 68, 68, 0.1);">
+											<i class="bx bx-calculator fs-4" style="color: #ef4444;"></i>
 										</div>
-										<div class="col">
-											<div class="border-end">
-												<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Kaskiye Tesl.</p>
-												<h4 class="fw-bold mb-0" style="color:#64748b; font-size: 1rem;" id="kaskiCardHurdaKaskiye"><?php echo (int)($stats['hurda_kaskiye'] ?? 0); ?></h4>
-											</div>
-										</div>
-										<div class="col">
-											<div class="border-end">
-												<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Depoda</p>
-												<h4 class="fw-bold mb-0" style="color:#ef4444; font-size: 1rem;" id="kaskiCardHurdaDepoda"><?php echo (int)($stats['hurda_elimizde'] ?? 0); ?></h4>
-											</div>
-										</div>
-										<div class="col">
-											<div class="border-end">
-												<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Personelde</p>
-												<h4 class="fw-bold mb-0" style="color:#d946ef; font-size: 1rem;" id="kaskiCardPersonelHurda"><?php echo (int)($stats['hurda_personelde'] ?? 0); ?></h4>
-											</div>
-										</div>
-										<div class="col">
-											<div>
-												<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Kayıp</p>
-												<h4 class="fw-bold mb-0" style="color:#f43f5e; font-size: 1rem;" id="kaskiCardKayipHurda"><?php echo (int)($stats['kayip_hurda'] ?? 0); ?></h4>
-											</div>
-										</div>
+										<span class="text-muted fw-bold" style="font-size: 0.85rem;">BAKİYE (FARK)</span>
+									</div>
+									<div class="text-center">
+										<h3 class="mb-0 fw-bold text-danger" id="kaskiSummaryFark">0</h3>
 									</div>
 								</div>
 							</div>
@@ -333,99 +384,79 @@ $title = "Sayaç Deposu";
 
 				<!-- 2. BİZİM DEPO PANE -->
 				<div class="tab-pane fade" id="depoPane" role="tabpanel">
-			<!-- ÖZET KARTLARI: TEK SATIRDA İKİ KART -->
-			<div class="row g-3 mb-4">
-				<!-- YENİ SAYAÇ KARTI -->
-				<div class="col-xl-6 col-md-6">
-					<div class="card border-0 shadow-sm" style="border-left: 4px solid #556ee6 !important; background: #fff; border-radius: 10px;">
-						<div class="card-body p-3">
-							<div class="d-flex align-items-center mb-3">
-								<div class="rounded-2 p-2 me-2" style="background: rgba(85, 110, 230, 0.1);">
-									<i class="bx bx-star text-primary fs-5"></i>
+					<!-- ÖZET KARTLARI (BİZİM DEPO) -->
+					<div class="row g-3 mb-4">
+						<!-- YENİ SAYAÇ KARTI -->
+						<div id="yeniSayacCardCol" class="col-xl-6 col-md-6">
+							<div class="card border-0 shadow-sm h-100 bordro-summary-card" id="yeniSayacCard" style="--card-color: #556ee6; border-bottom: 3px solid var(--card-color) !important;">
+								<div class="card-body p-3">
+									<div class="icon-label-container mb-3">
+										<div class="icon-box" style="background: rgba(85, 110, 230, 0.1);">
+											<i class="bx bx-package fs-4" style="color: #556ee6;"></i>
+										</div>
+										<span class="text-muted fw-bold" style="font-size: 0.65rem;">BİZİM DEPO: YENİ SAYAÇ</span>
+									</div>
+									<div class="grid-5-cols text-center">
+										<div class="neo-stat-item">
+											<p class="neo-label">Top. Alınan</p>
+											<div class="neo-value text-primary" id="sayacCardToplamGiren"><?php echo (int)($stats['toplam_alinan_yeni'] ?? 0); ?></div>
+										</div>
+										<div class="neo-stat-item">
+											<p class="neo-label">Depoda</p>
+											<div class="neo-value text-success" id="sayacCardDepoKalan"><?php echo (int)($stats['yeni_depoda'] ?? 0); ?></div>
+										</div>
+										<div class="neo-stat-item">
+											<p class="neo-label">Takılan</p>
+											<div class="neo-value" style="color: #6366f1;" id="sayacCardTakilan"><?php echo (int)($stats['takilan_sayac'] ?? 0); ?></div>
+										</div>
+										<div class="neo-stat-item">
+											<p class="neo-label">Personelde</p>
+											<div class="neo-value text-warning" id="sayacCardPersonelZimmetli"><?php echo (int)($stats['yeni_personelde'] ?? 0); ?></div>
+										</div>
+										<div class="neo-stat-item">
+											<p class="neo-label">Kayıp</p>
+											<div class="neo-value text-danger" id="sayacCardKayipYeni"><?php echo (int)($stats['kayip_yeni'] ?? 0); ?></div>
+										</div>
+									</div>
 								</div>
-								<h6 class="mb-0 fw-bold text-dark">Yeni Sayaç</h6>
 							</div>
-							<div class="row text-center g-0 row-cols-5">
-								<div class="col">
-									<div class="border-end">
-										<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Top. Alınan</p>
-										<h4 class="fw-bold mb-0" style="color:#556ee6; font-size: 1rem;" id="sayacCardToplamGiren"><?php echo (int)($stats['toplam_alinan_yeni'] ?? 0); ?></h4>
+						</div>
+						<!-- HURDA SAYAÇ KARTI -->
+						<div id="hurdaSayacCardCol" class="col-xl-6 col-md-6">
+							<div class="card border-0 shadow-sm h-100 bordro-summary-card" id="hurdaSayacCard" style="--card-color: #ef4444; border-bottom: 3px solid var(--card-color) !important;">
+								<div class="card-body p-3">
+									<div class="icon-label-container mb-3">
+										<div class="icon-box" style="background: rgba(239, 68, 68, 0.1);">
+											<i class="bx bx-recycle fs-4" style="color: #ef4444;"></i>
+										</div>
+										<span class="text-muted fw-bold" style="font-size: 0.65rem;">BİZİM DEPO: HURDA SAYAÇ</span>
 									</div>
-								</div>
-								<div class="col">
-									<div class="border-end">
-										<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Depoda</p>
-										<h4 class="fw-bold mb-0" style="color:#10b981; font-size: 1rem;" id="sayacCardDepoKalan"><?php echo (int)($stats['yeni_depoda'] ?? 0); ?></h4>
-									</div>
-								</div>
-								<div class="col">
-									<div class="border-end">
-										<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Takılan</p>
-										<h4 class="fw-bold mb-0" style="color:#6366f1; font-size: 1rem;" id="sayacCardTakilan"><?php echo (int)($stats['takilan_sayac'] ?? 0); ?></h4>
-									</div>
-								</div>
-								<div class="col">
-									<div class="border-end">
-										<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Personelde</p>
-										<h4 class="fw-bold mb-0" style="color:#f59e0b; font-size: 1rem;" id="sayacCardPersonelZimmetli"><?php echo (int)($stats['yeni_personelde'] ?? 0); ?></h4>
-									</div>
-								</div>
-								<div class="col">
-									<div>
-										<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Kayıp</p>
-										<h4 class="fw-bold mb-0" style="color:#f43f5e; font-size: 1rem;" id="sayacCardKayipYeni"><?php echo (int)($stats['kayip_yeni'] ?? 0); ?></h4>
+									<div class="grid-5-cols text-center">
+										<div class="neo-stat-item">
+											<p class="neo-label">Top. Hurda</p>
+											<div class="neo-value text-danger" id="sayacCardToplamHurda"><?php echo (int)($stats['toplam_hurda'] ?? 0); ?></div>
+										</div>
+										<div class="neo-stat-item">
+											<p class="neo-label">Kaski Tesl.</p>
+											<div class="neo-value text-secondary" id="sayacCardKaskiyeTeslim"><?php echo (int)($stats['hurda_kaskiye'] ?? 0); ?></div>
+										</div>
+										<div class="neo-stat-item">
+											<p class="neo-label">Depoda</p>
+											<div class="neo-value text-danger" id="sayacCardHurda"><?php echo (int)($stats['hurda_elimizde'] ?? 0); ?></div>
+										</div>
+										<div class="neo-stat-item">
+											<p class="neo-label">Personelde</p>
+											<div class="neo-value" style="color: #d946ef;" id="sayacCardPersonelHurda"><?php echo (int)($stats['hurda_personelde'] ?? 0); ?></div>
+										</div>
+										<div class="neo-stat-item">
+											<p class="neo-label">Kayıp</p>
+											<div class="neo-value text-danger" id="sayacCardKayipHurda"><?php echo (int)($stats['kayip_hurda'] ?? 0); ?></div>
+										</div>
 									</div>
 								</div>
 							</div>
 						</div>
 					</div>
-				</div>
-				<!-- HURDA SAYAÇ KARTI -->
-				<div class="col-xl-6 col-md-6">
-					<div class="card border-0 shadow-sm" style="border-left: 4px solid #ef4444 !important; background: #fff; border-radius: 10px;">
-						<div class="card-body p-3">
-							<div class="d-flex align-items-center mb-3">
-								<div class="rounded-2 p-2 me-2" style="background: rgba(239, 68, 68, 0.1);">
-									<i class="bx bx-recycle text-danger fs-5"></i>
-								</div>
-								<h6 class="mb-0 fw-bold text-dark">Hurda Sayaç</h6>
-							</div>
-							<div class="row text-center g-0 row-cols-5">
-								<div class="col">
-									<div class="border-end">
-										<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Top. Hurda</p>
-										<h4 class="fw-bold mb-0" style="color:#ef4444; font-size: 1rem;" id="sayacCardToplamHurda"><?php echo (int)($stats['toplam_hurda'] ?? 0); ?></h4>
-									</div>
-								</div>
-								<div class="col">
-									<div class="border-end">
-										<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Kaskiye Tesl.</p>
-										<h4 class="fw-bold mb-0" style="color:#64748b; font-size: 1rem;" id="sayacCardKaskiyeTeslim"><?php echo (int)($stats['hurda_kaskiye'] ?? 0); ?></h4>
-									</div>
-								</div>
-								<div class="col">
-									<div class="border-end">
-										<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Depoda</p>
-										<h4 class="fw-bold mb-0" style="color:#ef4444; font-size: 1rem;" id="sayacCardHurda"><?php echo (int)($stats['hurda_elimizde'] ?? 0); ?></h4>
-									</div>
-								</div>
-								<div class="col">
-									<div class="border-end">
-										<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Personelde</p>
-										<h4 class="fw-bold mb-0" style="color:#d946ef; font-size: 1rem;" id="sayacCardPersonelHurda"><?php echo (int)($stats['hurda_personelde'] ?? 0); ?></h4>
-									</div>
-								</div>
-								<div class="col">
-									<div>
-										<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Kayıp</p>
-										<h4 class="fw-bold mb-0" style="color:#f43f5e; font-size: 1rem;" id="sayacCardKayipHurda"><?php echo (int)($stats['kayip_hurda'] ?? 0); ?></h4>
-									</div>
-								</div>
-							</div>
-						</div>
-					</div>
-				</div>
-			</div>
 
 					<!-- Bizim Depo Filtre Butonları -->
 					<div class="d-flex align-items-center justify-content-between mb-3 mt-2">

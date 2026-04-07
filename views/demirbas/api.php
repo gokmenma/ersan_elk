@@ -217,6 +217,12 @@ if ($action == "kasiye-teslim") {
         $sqlUpdate = $Demirbas->db->prepare("UPDATE demirbas SET durum = 'Kaskiye Teslim Edildi', lokasyon = 'kaski', kaskiye_teslim_tarihi = ?, kaskiye_teslim_eden = ?, aciklama = ?, kalan_miktar = 0, miktar = 0 WHERE id = ?");
         $sqlUpdate->execute([$formatted_tarih, $teslim_eden, $aciklama, $demirbas_id]);
 
+        // Hareket kaydı ekle (Tarihçe için)
+        $personel_id_extra = $Demirbas->db->query("SELECT id FROM personel WHERE silinme_tarihi IS NULL LIMIT 1")->fetchColumn() ?: 1;
+        $sqlMov = $Demirbas->db->prepare("INSERT INTO demirbas_hareketler (demirbas_id, hareket_tipi, miktar, tarih, aciklama, islem_yapan_id, kaynak, personel_id) VALUES (?, 'sarf', 1, ?, ?, ?, 'sistem', ?)");
+        $desc = "KASKİ'ye Teslim Edildi. Teslim Eden: $teslim_eden. " . ($aciklama ? "Not: $aciklama" : "");
+        $sqlMov->execute([$demirbas_id, $formatted_tarih, $desc, $_SESSION['id'] ?? 0, $personel_id_extra]);
+
         jsonResponse("success", "Sayaç başarıyla Kaskiye teslim edildi. Durum güncellendi.");
     } catch (Exception $ex) {
         jsonResponse("error", "Hata: " . $ex->getMessage());
@@ -239,12 +245,18 @@ if ($action == "toplu-kasiye-teslim") {
         $formatted_tarih = Date::Ymd($tarih, 'Y-m-d');
         $successCount = 0;
 
+        $personel_id_extra = $Demirbas->db->query("SELECT id FROM personel WHERE silinme_tarihi IS NULL LIMIT 1")->fetchColumn() ?: 1;
         $sqlUpdate = $Demirbas->db->prepare("UPDATE demirbas SET durum = 'Kaskiye Teslim Edildi', lokasyon = 'kaski', kaskiye_teslim_tarihi = ?, kaskiye_teslim_eden = ?, aciklama = ?, kalan_miktar = 0, miktar = 0 WHERE id = ?");
+        $sqlMov = $Demirbas->db->prepare("INSERT INTO demirbas_hareketler (demirbas_id, hareket_tipi, miktar, tarih, aciklama, islem_yapan_id, kaynak, personel_id) VALUES (?, 'sarf', 1, ?, ?, ?, 'sistem', ?)");
 
         foreach ($ids as $id_raw) {
             $id = intval(Security::decrypt($id_raw));
             if ($id > 0) {
                 $sqlUpdate->execute([$formatted_tarih, $teslim_eden, $aciklama, $id]);
+                
+                $desc = "Toplu KASKİ'ye Teslim. Teslim Eden: $teslim_eden. " . ($aciklama ? "Not: $aciklama" : "");
+                $sqlMov->execute([$id, $formatted_tarih, $desc, $_SESSION['id'] ?? 0, $personel_id_extra]);
+
                 $successCount++;
             }
         }
@@ -685,7 +697,7 @@ if ($action == "demirbas-listesi") {
                     'pasif' => '<span class="badge" style="background: #64748b; color: #fff; padding: 5px 12px; border-radius: 50px; font-weight: 600;">Pasif</span>',
                     'arizali' => '<span class="badge" style="background: #f59e0b; color: #fff; padding: 5px 12px; border-radius: 50px; font-weight: 600;">Arızalı</span>',
                     'hurda' => '<span class="badge" style="background: #ef4444; color: #fff; padding: 5px 12px; border-radius: 50px; font-weight: 600;">Hurda</span>',
-                    'kaskiye teslim edildi' => '<span class="badge" style="background: #06b6d4; color: #fff; padding: 5px 12px; border-radius: 50px; font-weight: 600;">Kaskiye Teslim</span>',
+                    'kaskiye teslim edildi' => '<span class="badge" style="background: #06b6d4; color: #fff; padding: 5px 12px; border-radius: 50px; font-weight: 600;">KASKİ\'ye İade Edildi</span>',
                 ];
                 $durumBadge = $durumMap[strtolower($durumText)] ?? '<span class="badge bg-soft-secondary text-secondary">' . $durumText . '</span>';
 
@@ -2276,6 +2288,71 @@ if ($action == "personel-bakiye") {
 }
 
 // ============== PERSONEL BAZLI SAYAÇ/APARAT DEPOSU API ==============
+
+// KASKİ Tarih Bazlı Hareket Listesi
+if ($action == "sayac-kaski-tarih-list") {
+    try {
+        $start = (int)($_POST['start'] ?? 0);
+        $length = (int)($_POST['length'] ?? 10);
+        $search = $_POST['search']['value'] ?? '';
+
+        $params = [];
+        $where = " WHERE h.silinme_tarihi IS NULL AND (h.aciklama LIKE '%KASKİ%Teslim%' OR h.aciklama LIKE '%KASKI%Teslim%') ";
+
+        if (!empty($search)) {
+            $where .= " AND (d.demirbas_adi LIKE ? OR d.seri_no LIKE ? OR h.aciklama LIKE ?)";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+        }
+
+        // Toplam Sayı
+        $countSql = "SELECT COUNT(h.id) FROM demirbas_hareketler h INNER JOIN demirbas d ON h.demirbas_id = d.id $where";
+        $stmtCount = $Demirbas->db->prepare($countSql);
+        $stmtCount->execute($params);
+        $recordsTotal = (int) ($stmtCount->fetchColumn() ?: 0);
+
+        // Veri
+        $sql = "SELECT h.*, d.demirbas_adi, d.seri_no, u.adi_soyadi as islem_yapan_adi 
+                FROM demirbas_hareketler h 
+                INNER JOIN demirbas d ON h.demirbas_id = d.id 
+                LEFT JOIN db_personel.personel u ON h.islem_yapan_id = u.id 
+                $where 
+                ORDER BY h.tarih DESC, h.id DESC 
+                LIMIT $start, $length";
+        
+        $stmt = $Demirbas->db->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        $data = [];
+        foreach ($rows as $r) {
+            $data[] = [
+                "id"                => $r["id"],
+                "tarih"             => Date::dmY($r["tarih"]),
+                "islem_tipi"        => "KASKİ'ye Teslim",
+                "yon"               => '<span class="badge bg-soft-danger text-danger"><i class="bx bx-down-arrow-alt"></i> Çıkış</span>',
+                "adet"              => "1 Adet",
+                "demirbas_adi"      => $r["demirbas_adi"],
+                "seri_no"           => $r["seri_no"] ?? '-',
+                "teslim_eden"       => $r["islem_yapan_adi"] ?? 'Sistem',
+                "aciklama"          => $r["aciklama"],
+                "status_badge"      => '<span class="badge bg-soft-info text-info">KASKİ\'ye İade Edildi</span>'
+            ];
+        }
+
+        echo json_encode([
+            "draw" => intval($_POST['draw'] ?? 0),
+            "recordsTotal" => $recordsTotal,
+            "recordsFiltered" => $recordsTotal,
+            "data" => $data
+        ]);
+        exit;
+
+    } catch (Exception $ex) {
+        jsonResponse("error", $ex->getMessage());
+    }
+}
 
 if ($action == "sayac-global-summary") {
     try {

@@ -311,7 +311,7 @@ class DemirbasModel extends Model
             $whereSql .= " AND " . $sayacCondition;
             if (!empty($request['lokasyon'])) {
                 if ($request['lokasyon'] === 'bizim_depo') {
-                    $whereSql .= " AND (d.lokasyon = :lokasyon OR d.lokasyon IS NULL OR d.lokasyon = '')";
+                    $whereSql .= " AND (d.lokasyon = :lokasyon OR d.lokasyon IS NULL OR d.lokasyon = '' OR d.lokasyon = 'kaski')";
                 } else {
                     $whereSql .= " AND d.lokasyon = :lokasyon";
                 }
@@ -520,10 +520,11 @@ class DemirbasModel extends Model
         // Toplam kayıt sayısı (tab + lokasyon filtresi ile)
         $totalSql = "SELECT COUNT(d.id)" . $fromSql . $whereSql;
         $stmtTotal = $this->db->prepare($totalSql);
-        // $params zaten firma_id + lokasyon (varsa) içerir
-        foreach ($params as $key => $val) {
-            $stmtTotal->bindValue($key, $val);
-        }
+        
+        // Sadece SQL'de bulunan parametreleri bind edelim
+        if (strpos($totalSql, ':firma_id') !== false) $stmtTotal->bindValue(':firma_id', $params['firma_id']);
+        if (strpos($totalSql, ':lokasyon') !== false) $stmtTotal->bindValue(':lokasyon', $params['lokasyon']);
+        
         $stmtTotal->execute();
         $totalRecords = $stmtTotal->fetchColumn();
 
@@ -531,12 +532,12 @@ class DemirbasModel extends Model
         $filterSql = "SELECT COUNT(d.id)" . $fromSql . $whereSql . $searchWhere;
         $stmtFilter = $this->db->prepare($filterSql);
         foreach ($params as $key => $val) {
-            $stmtFilter->bindValue($key, $val);
+            if (strpos($filterSql, $key) !== false) {
+                $stmtFilter->bindValue($key, $val);
+            }
         }
         $stmtFilter->execute();
         $recordsFiltered = $stmtFilter->fetchColumn();
-
-
 
         // Sıralama
         if ($tab === 'demirbas') {
@@ -547,35 +548,31 @@ class DemirbasModel extends Model
                 3 => 'k.tur_adi',
                 4 => 'd.demirbas_adi',
                 5 => 'd.marka',
-                6 => 'kalan_miktar',
                 7 => 'd.durum',
                 8 => 'd.edinme_tutari',
                 9 => 'd.edinme_tarihi'
             ];
         } elseif ($tab === 'sayac') {
+            // sayac-deposu.js: 0=>cb, 1=>adi, 2=>marka_model, 3=>seri, 4=>stok, 5=>durum, 6=>tarih, 7=>islemler
             $colMapOrder = [
                 0 => 'd.id',
-                1 => 'd.id',
-                2 => 'd.demirbas_no',
-                3 => 'd.demirbas_adi',
-                4 => 'd.marka',
-                5 => 'd.seri_no',
-                6 => 'kalan_miktar',
-                7 => 'd.durum',
-                8 => 'd.edinme_tarihi'
+                1 => 'd.demirbas_adi',
+                2 => 'd.marka',
+                3 => 'd.seri_no',
+                4 => 'kalan_miktar',
+                5 => 'd.durum',
+                6 => 'd.edinme_tarihi'
             ];
         } else {
             // aparat
             $colMapOrder = [
                 0 => 'd.id',
-                1 => 'd.id',
-                2 => 'd.demirbas_no',
-                3 => 'd.demirbas_adi',
-                4 => 'd.marka',
-                5 => 'd.seri_no',
-                6 => 'kalan_miktar',
-                7 => 'd.durum',
-                8 => 'd.edinme_tarihi'
+                1 => 'd.demirbas_adi',
+                2 => 'd.marka',
+                3 => 'd.seri_no',
+                4 => 'kalan_miktar',
+                5 => 'd.durum',
+                6 => 'd.edinme_tarihi'
             ];
         }
 
@@ -592,7 +589,9 @@ class DemirbasModel extends Model
         $finalSql = $selectCols . $fromSql . $whereSql . $searchWhere . $orderSql . $limitSql;
         $stmt = $this->db->prepare($finalSql);
         foreach ($params as $key => $val) {
-            $stmt->bindValue($key, $val);
+            if (strpos($finalSql, $key) !== false) {
+                $stmt->bindValue($key, $val);
+            }
         }
         $stmt->bindValue('start', (int) $start, PDO::PARAM_INT);
         $stmt->bindValue('length', (int) $length, PDO::PARAM_INT);
