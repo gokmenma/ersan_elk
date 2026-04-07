@@ -2464,6 +2464,47 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     exit;
 }
 
+// ======= RAPOR AYARLARINI KAYDET =======
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['action'] === 'save-report-settings') {
+    header('Content-Type: application/json; charset=utf-8');
+    $response = ['status' => 'error', 'message' => 'Yetkisiz işlem'];
+
+    try {
+        if (!\App\Service\Gate::allows('defter_bazli_rapor_alt_limit')) {
+            throw new Exception("Bu işlemi yapmaya yetkiniz yok.");
+        }
+
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $SettingsModel = new \App\Model\SettingsModel();
+        
+        $settingsData = [];
+        if (isset($_POST['defter_bazli_rapor_alt_limit'])) {
+            $settingsData['defter_bazli_rapor_alt_limit'] = (int)$_POST['defter_bazli_rapor_alt_limit'];
+        }
+
+        if (empty($settingsData)) {
+            throw new Exception("Kaydedilecek veri bulunamadı.");
+        }
+
+        $success = $SettingsModel->upsertMultipleSettings($settingsData, $firmaId);
+
+        if ($success) {
+            $response = ['status' => 'success', 'message' => 'Ayarlar başarıyla kaydedildi.'];
+            
+            $SystemLog = new \App\Model\SystemLogModel();
+            $userId = $_SESSION['user_id'] ?? 0;
+            $SystemLog->logAction($userId, 'Rapor Ayarları', "Defter bazlı rapor alt limiti güncellendi: " . ($settingsData['defter_bazli_rapor_alt_limit'] ?? 0), \App\Model\SystemLogModel::LEVEL_INFO);
+        } else {
+            throw new Exception("Ayarlar kaydedilirken bir hata oluştu.");
+        }
+    } catch (Exception $e) {
+        $response['message'] = $e->getMessage();
+    }
+
+    echo json_encode($response, JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 // ======= DEFTER BAZLI RAPOR (Abone Dönem Karşılaştırma) =======
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'defter-bazli-rapor') {
     header('Content-Type: application/json; charset=utf-8');
@@ -3106,7 +3147,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $placeholders = implode(',', array_fill(0, count($donemler), '?'));
 
         $sql = "SELECT bolge, defter, DATE_FORMAT(tarih, '%Y%m') as donem,
-                       MAX(tarih) as okuma_tarihi
+                       MAX(tarih) as okuma_tarihi,
+                       SUM(okunan_abone_sayisi) as toplam_okunan
                 FROM endeks_okuma
                 WHERE firma_id = ?
                   AND silinme_tarihi IS NULL
@@ -3191,8 +3233,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             ];
         }
 
+        // Rapor alt limit ayarını al
+        $SettingsModel = new \App\Model\SettingsModel();
+        $altLimit = (int) ($SettingsModel->getAllSettingsAsKeyValue($firmaId)['defter_bazli_rapor_alt_limit'] ?? 0);
+
         // 2. Şimdi okuma tarihlerini işle
         foreach ($rawData as $row) {
+            // ALT LİMİT KONTROLÜ: Eğer toplam okunan limitin altındaysa, hiç okunmamış say
+            if ($altLimit > 0 && (int)$row->toplam_okunan < $altLimit) {
+                continue;
+            }
+
             $bolgeName = trim($row->bolge ?: 'TANIMSIZ');
             $defter = trim($row->defter ?: '-');
 

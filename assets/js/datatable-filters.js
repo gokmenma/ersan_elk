@@ -315,9 +315,10 @@
         "NOBET",
         "BİLDİRİM",
         "BILDIRIM",
+        "İŞLEM", // Added this here as requested for some cases
       ].includes(title.toUpperCase().replace(/\s/g, ""));
 
-      if (!filterType && isActionCol) return;
+      if (filterType === "none" || (!filterType && isActionCol)) return;
 
       let $modeTrigger = null;
       let $dropdown = null;

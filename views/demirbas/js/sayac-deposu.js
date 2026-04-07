@@ -28,14 +28,63 @@ $(function () {
             data: function (d) { d.action = "sayac-kaski-tarih-list"; },
         },
         columns: [
-            { data: "tarih" },
-            { data: "islem_tipi" },
-            { data: "yon", className: "text-center" },
-            { data: "adet", className: "text-center" },
+            {
+                className: 'details-control text-center',
+                orderable: false,
+                data: null,
+                defaultContent: '<i class="bx bx-chevron-right fs-4 cursor-pointer text-primary"></i>',
+                width: '5%'
+            },
+            { data: "tarih", width: '20%' },
+            { data: "islem_tipi", width: '40%' },
+            { data: "yon", className: "text-center", width: '15%' },
+            { data: "adet", className: "text-center", width: '15%' },
         ],
-        order: [[0, "desc"]],
+        order: [[1, "desc"]],
         pageLength: 25,
         initComplete: function () { $("#personel-loader").fadeOut(300); }
+    });
+
+    $('#kaskiTarihTable tbody').on('click', 'tr', function (e) {
+        // Eğer bir butona veya etkileşimli elemana basıldıysa accordion'u tetikleme
+        if ($(e.target).closest('button, a, input, .dropdown').length) return;
+        
+        e.stopImmediatePropagation();
+        
+        var tr = $(this);
+        var row = kaskiTarihTable.row(tr);
+        var icon = tr.find('td.details-control i');
+
+        if (tr.hasClass('shown')) {
+            // Açıksa kapat
+            row.child.hide();
+            tr.removeClass('shown');
+            icon.removeClass('bx-chevron-down').addClass('bx-chevron-right');
+        } else {
+            // Kapalıysa aç
+            var dateRaw = row.data().islem_tarih_raw;
+            if (!dateRaw) return;
+
+            tr.addClass('shown');
+            icon.removeClass('bx-chevron-right').addClass('bx-chevron-down');
+            
+            // Geçici yükleme göster
+            row.child('<div class="text-center p-3"><div class="spinner-border text-primary spinner-border-sm me-2"></div> Detaylar Yükleniyor...</div>').show();
+            
+            $.post(apiUrl, { action: 'sayac-kaski-date-details', tarih: dateRaw }, function(res) {
+                if (res.status === 'success') {
+                    row.child(res.html).show();
+                } else {
+                    row.child('<div class="alert alert-danger m-2">' + res.message + '</div>').show();
+                    tr.removeClass('shown'); // Açılmadıysa class'ı temizle
+                    icon.removeClass('bx-chevron-down').addClass('bx-chevron-right');
+                }
+            }, 'json').fail(function() {
+                row.child('<div class="alert alert-danger m-2">Sunucu hatası oluştu.</div>').show();
+                tr.removeClass('shown');
+                icon.removeClass('bx-chevron-down').addClass('bx-chevron-right');
+            });
+        }
     });
 
     // =============================================
@@ -246,12 +295,15 @@ $(function () {
         
         var filter = $(this).val();
         if (filter === 'yeni') {
+            $("#depoSayacTable thead th").eq(3).text("Seri No");
             $("#yeniSayacCardCol").fadeIn(300).removeClass('col-xl-6 col-md-6').addClass('col-xl-12 col-md-12');
             $("#hurdaSayacCardCol").hide();
         } else if (filter === 'hurda') {
+            $("#depoSayacTable thead th").eq(3).text("Abone No");
             $("#hurdaSayacCardCol").fadeIn(300).removeClass('col-xl-6 col-md-6').addClass('col-xl-12 col-md-12');
             $("#yeniSayacCardCol").hide();
         } else {
+            $("#depoSayacTable thead th").eq(3).text("Seri / Abone No");
             $("#yeniSayacCardCol").fadeIn(300).removeClass('col-xl-12 col-md-12').addClass('col-xl-6 col-md-6');
             $("#hurdaSayacCardCol").fadeIn(300).removeClass('col-xl-12 col-md-12').addClass('col-xl-6 col-md-6');
         }
@@ -266,18 +318,17 @@ $(function () {
     // =============================================
     // SATIRA TIKLA = SEÇ (Genel Seçim Desteği)
     // =============================================
-    $(document).on("click", "#depoSayacTable tbody tr, #zimmetListesiBody tr, #personelZimmetTable tr, #aparatZimmetTable tr", function (e) {
-        // Tıklanan eleman etkileşimli bir element ise (input, link, button vb.) seçimi tetikleme
-        if ($(e.target).closest("input, button, a, label, .dropdown, .select2, .custom-checkbox-container, .personel-tarih-row").length) {
-            return;
-        }
+    $(document).on("click", "#depoSayacTable tbody tr, #zimmetListesiBody tr, #personelZimmetTable tr, #aparatZimmetTable tr, #kaskiTarihTable tbody tr", function (e) {
+        // Eğer bir butona, linke, ok işaretine veya checkbox'ın kendisine basıldıysa tetikleme
+        if ($(e.target).closest('input[type="checkbox"], label, button, a, i, .dropdown, .details-control').length) return;
         
-        // Bu satırdaki seçim checkbox'ını bul
-        var $cb = $(this).find('input[type="checkbox"].sayac-select, input[type="checkbox"].zimmet-select, .sayac-select');
-        if ($cb.length) {
-            var isChecked = $cb.prop("checked");
-            $cb.prop("checked", !isChecked).trigger("change");
-            $(this).toggleClass("selected", !isChecked);
+        var $tr = $(this);
+        var $cb = $tr.find('input[type="checkbox"].sayac-select, input[type="checkbox"].zimmet-select, .sayac-select');
+        
+        if ($cb.length > 0 && !$cb.prop('disabled')) {
+            var checked = $cb.prop("checked");
+            $cb.prop("checked", !checked).trigger("change");
+            $tr.toggleClass('table-active', !checked); // Görsel olarak da seçildiğini belli et
         }
     });
 
@@ -1042,23 +1093,10 @@ $(function () {
                 $("#sayacCardKayipYeni").text(yeniKayip > 0 ? yeniKayip : 0);
 
                 $("#sayacCardToplamHurda").text(hurdaToplam);
-                $("#sayacCardKaskiyeTeslim").text(hurdaKaski);
-                $("#sayacCardHurda").text(hurdaDepo);
-                $("#sayacCardPersonelHurda").text(hurdaPersonel);
-                $("#sayacCardKayipHurda").text(hurdaKayip > 0 ? hurdaKayip : 0);
-
-                // Kaski Tabı
-                $("#kaskiCardToplamGiren").text(yeniToplam);
-                $("#kaskiCardDepoKalan").text(yeniDepo);
-                $("#kaskiCardTakilan").text(takilan);
-                $("#kaskiCardPersonelZimmetli").text(yeniPersonel);
-                $("#kaskiCardKayipYeni").text(yeniKayip > 0 ? yeniKayip : 0);
-
-                $("#kaskiCardToplamHurda").text(hurdaToplam);
-                $("#kaskiCardHurdaKaskiye").text(hurdaKaski);
-                $("#kaskiCardHurdaDepoda").text(hurdaDepo);
-                $("#kaskiCardPersonelHurda").text(hurdaPersonel);
-                $("#kaskiCardKayipHurda").text(hurdaKayip > 0 ? hurdaKayip : 0);
+                // Kaski Tabı (PHP'deki ID'lerle eşleşecek şekilde güncellendi)
+                $("#kaskiSummaryToplamAlinan").text(hurdaToplam); // Kaç adet hurda çıktı?
+                $("#kaskiSummaryIadeEdilen").text(hurdaKaski);   // Kaç adet Kaskiye gitti?
+                $("#kaskiSummaryFark").text(hurdaToplam - hurdaKaski); // Kalan fark
             }
         }, "json");
     }

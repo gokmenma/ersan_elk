@@ -54,6 +54,14 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
     ?>
     <?php include 'layouts/breadcrumb.php'; ?>
 
+    <?php if (\App\Service\Gate::allows('defter_bazli_rapor_alt_limit')): ?>
+        <div class="d-flex justify-content-end mb-3">
+            <button type="button" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#defterLimitAyarlarModal">
+                <i class="bx bx-cog fs-5"></i> 
+            </button>
+        </div>
+    <?php endif; ?>
+
     <!-- ======= SEKME NAVİGASYONU ======= -->
     <ul class="nav nav-tabs nav-tabs-custom mb-3" id="defterRaporTabs" role="tablist">
         <li class="nav-item" role="presentation">
@@ -3917,5 +3925,79 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             }
         }
 
+        // ======= AYARLARI KAYDET =======
+        $('#btnSaveDefterLimit').on('click', function () {
+            const limit = $('#defterOkunanLimit').val();
+            const $btn = $(this);
+            
+            $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Kaydediliyor...');
+            
+            $.ajax({
+                url: 'views/puantaj/api.php',
+                type: 'POST',
+                data: {
+                    action: 'save-report-settings',
+                    defter_bazli_rapor_alt_limit: limit
+                },
+                dataType: 'json',
+                success: function (response) {
+                    $btn.prop('disabled', false).html('Değişiklikleri Kaydet');
+                    if (response.status === 'success') {
+                        Swal.fire({
+                            title: 'Başarılı',
+                            text: 'Ayarlar kaydedildi.',
+                            icon: 'success',
+                            timer: 1500,
+                            showConfirmButton: false
+                        }).then(() => {
+                            location.reload();
+                        });
+                        $('#defterLimitAyarlarModal').modal('hide');
+                    } else {
+                        Swal.fire('Hata', response.message || 'Bir hata oluştu.', 'error');
+                    }
+                },
+                error: function () {
+                    $btn.prop('disabled', false).html('Değişiklikleri Kaydet');
+                    Swal.fire('Hata', 'Sunucuyla iletişim kurulamadı.', 'error');
+                }
+            });
+        });
     });
 </script>
+
+<?php if (\App\Service\Gate::allows('defter_bazli_rapor_alt_limit')): 
+    $SettingsModel = new \App\Model\SettingsModel();
+    $currentLimit = $SettingsModel->getAllSettingsAsKeyValue($_SESSION['firma_id'])['defter_bazli_rapor_alt_limit'] ?? 0;
+?>
+<!-- Ayarlar Modalı -->
+<div class="modal fade" id="defterLimitAyarlarModal" tabindex="-1" aria-labelledby="defterLimitAyarlarModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title" id="defterLimitAyarlarModalLabel">
+                    <i class="bx bx-cog me-1"></i> Rapor Ayarları
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="mb-3">
+                    <label for="defterOkunanLimit" class="form-label fw-bold primary-text">Okuma Alt Sınırı</label>
+                    <div class="input-group">
+                        <input type="number" class="form-control" id="defterOkunanLimit" value="<?= (int)$currentLimit ?>" min="0">
+                        <span class="input-group-text">Abone</span>
+                    </div>
+                    <div class="form-text mt-2">
+                        <i class="bx bx-info-circle me-1"></i>
+                        Defterdeki "Okunan abone sayısı" bu değerden az ise, ilgili dönemde o defter <b>okunmuş</b> kabul edilmeyecektir. (Örn: 8 yazarsanız 8'den az okunanlar okunmamış sayılır.)
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light p-3">
+                <button type="button" class="btn btn-secondary px-4" data-bs-dismiss="modal">Kapat</button>
+                <button type="button" class="btn btn-primary px-4" id="btnSaveDefterLimit">Değişiklikleri Kaydet</button>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>

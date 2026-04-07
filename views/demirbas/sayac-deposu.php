@@ -371,10 +371,11 @@ $title = "Sayaç Deposu";
 						<table id="kaskiTarihTable" class="table table-hover table-bordered nowrap w-100">
 							<thead class="table-light">
 								<tr>
-									<th style="width:25%">Tarih</th>
-									<th style="width:30%">İşlem</th>
-									<th style="width:20%" class="text-center">Yön</th>
-									<th style="width:15%" class="text-center">Adet</th>
+									<th style="width:5%" data-filter="none"></th>
+									<th style="width:25%" data-filter="date">Tarih</th>
+									<th style="width:30%" data-filter="string">İşlem</th>
+									<th style="width:20%" class="text-center" data-filter="string">Yön</th>
+									<th style="width:15%" class="text-center" data-filter="number">Adet</th>
 								</tr>
 							</thead>
 							<tbody></tbody>
@@ -482,7 +483,7 @@ $title = "Sayaç Deposu";
 									</th>
 									<th style="width:18%" data-filter="string">Sayaç Adı</th>
 									<th style="width:12%" data-filter="string">Marka/Model</th>
-									<th style="width:12%" data-filter="string">Seri No</th>
+									<th style="width:12%" data-filter="string">Seri / Abone No</th>
 									<th style="width:8%" class="text-center" data-filter="select">Stok</th>
 									<th style="width:10%" class="text-center" data-filter="select">Durum</th>
 									<th style="width:10%" data-filter="date">Tarih</th>
@@ -620,7 +621,7 @@ $title = "Sayaç Deposu";
 									<th class="text-center" style="width:5%">ID</th>
 									<th style="width:15%">Hareket Tipi</th>
 									<th style="width:20%">Sayaç</th>
-									<th style="width:15%">Seri No</th>
+									<th style="width:15%">Seri / Abone No</th>
 									<th style="width:15%">Lokasyon / Personel</th>
 									<th data-filter="date">Tarih</th>
 									<th style="width:5%" class="text-center">İşlem</th>

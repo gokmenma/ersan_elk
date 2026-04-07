@@ -311,7 +311,7 @@ class DemirbasModel extends Model
             $whereSql .= " AND " . $sayacCondition;
             if (!empty($request['lokasyon'])) {
                 if ($request['lokasyon'] === 'bizim_depo') {
-                    $whereSql .= " AND (d.lokasyon = :lokasyon OR d.lokasyon IS NULL OR d.lokasyon = '' OR d.lokasyon = 'kaski')";
+                    $whereSql .= " AND (d.lokasyon = :lokasyon OR d.lokasyon IS NULL OR d.lokasyon = '')";
                 } else {
                     $whereSql .= " AND d.lokasyon = :lokasyon";
                 }
