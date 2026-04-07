@@ -213,8 +213,8 @@ if ($action == "kasiye-teslim") {
 
         $formatted_tarih = Date::Ymd($tarih, 'Y-m-d');
 
-        // Durumu güncelle, stoğu sıfırla
-        $sqlUpdate = $Demirbas->db->prepare("UPDATE demirbas SET durum = 'Kaskiye Teslim Edildi', kaskiye_teslim_tarihi = ?, kaskiye_teslim_eden = ?, aciklama = ?, kalan_miktar = 0, miktar = 0 WHERE id = ?");
+        // Durumu güncelle, lokasyon değiştir, stoğu sıfırla
+        $sqlUpdate = $Demirbas->db->prepare("UPDATE demirbas SET durum = 'Kaskiye Teslim Edildi', lokasyon = 'kaski', kaskiye_teslim_tarihi = ?, kaskiye_teslim_eden = ?, aciklama = ?, kalan_miktar = 0, miktar = 0 WHERE id = ?");
         $sqlUpdate->execute([$formatted_tarih, $teslim_eden, $aciklama, $demirbas_id]);
 
         jsonResponse("success", "Sayaç başarıyla Kaskiye teslim edildi. Durum güncellendi.");
@@ -239,7 +239,7 @@ if ($action == "toplu-kasiye-teslim") {
         $formatted_tarih = Date::Ymd($tarih, 'Y-m-d');
         $successCount = 0;
 
-        $sqlUpdate = $Demirbas->db->prepare("UPDATE demirbas SET durum = 'Kaskiye Teslim Edildi', kaskiye_teslim_tarihi = ?, kaskiye_teslim_eden = ?, aciklama = ?, kalan_miktar = 0, miktar = 0 WHERE id = ?");
+        $sqlUpdate = $Demirbas->db->prepare("UPDATE demirbas SET durum = 'Kaskiye Teslim Edildi', lokasyon = 'kaski', kaskiye_teslim_tarihi = ?, kaskiye_teslim_eden = ?, aciklama = ?, kalan_miktar = 0, miktar = 0 WHERE id = ?");
 
         foreach ($ids as $id_raw) {
             $id = intval(Security::decrypt($id_raw));
@@ -267,42 +267,7 @@ if ($action == "get-filtered-sayac-ids") {
     }
 }
 
-// Personel Search API (for Select2)
-if ($action == "personel-search") {
-    $q = $_POST['q'] ?? '';
-    // Sadece sayaç zimmetlenebilecek personelleri (demirbas/arac yetkisi olanları) arar
-    $results = $Personel->searchForZimmet($q);
-    echo json_encode(["results" => $results]);
-    exit;
-}
-
-// Demirbaş Search API (for Select2)
-if ($action == "demirbas-search") {
-    $q = $_POST['q'] ?? '';
-    $lokasyon = $_POST['lokasyon'] ?? '';
-    
-    $params = [$_SESSION['firma_id'], "%$q%"];
-    $where = "firma_id = ? AND kategori_id IN (SELECT id FROM kategoriler WHERE (tur = 'sayac' OR is_sayac = 1)) AND silinme_tarihi IS NULL AND (seri_no LIKE ?)";
-    
-    if ($lokasyon == 'bizim_depo') {
-        $where .= " AND lokasyon = 'bizim_depo' AND durum != 'Kaskiye Teslim Edildi' AND durum != 'Hurda'";
-    }
-
-    $sql = "SELECT id, demirbas_adi, seri_no, marka, model FROM demirbas WHERE $where LIMIT 50";
-    $stmt = $Demirbas->db->prepare($sql);
-    $stmt->execute($params);
-    $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
-    
-    $results = [];
-    foreach ($rows as $row) {
-        $results[] = [
-            'id' => $row->id,
-            'text' => ($row->seri_no ? "SN: " . $row->seri_no . " - " : "") . $row->demirbas_adi
-        ];
-    }
-    echo json_encode(["results" => $results]);
-    exit;
-}
+// Search Actions handled below (personel-ara, demirbas-ara)
 
 // Zimmet Ver
 if ($action == "zimmet-ver") {
@@ -2361,13 +2326,24 @@ if ($action == "sayac-global-summary") {
         $sqlExtra->execute($params);
         $extra = $sqlExtra->fetch(PDO::FETCH_OBJ);
 
+        // Takılan (Sarf) Sayaç Sayısı
+        $sqlTakilan = $Demirbas->db->prepare("
+            SELECT COALESCE(SUM(h.miktar), 0)
+            FROM demirbas_hareketler h
+            INNER JOIN demirbas d ON d.id = h.demirbas_id
+            WHERE h.hareket_tipi = 'sarf' AND d.kategori_id IN ($in) AND d.firma_id = ? AND h.silinme_tarihi IS NULL
+        ");
+        $sqlTakilan->execute($params);
+        $takilan = (int) $sqlTakilan->fetchColumn();
+
         jsonResponse("success", "Başarılı", [
             'yeni_depoda' => (int) ($depo->yeni_depoda ?? 0),
             'hurda_depoda' => (int) ($depo->hurda_depoda ?? 0),
             'yeni_personelde' => (int) ($pers->yeni_personelde ?? 0),
             'hurda_personelde' => (int) ($pers->hurda_personelde ?? 0),
             'toplam_alinan' => (int) ($extra->toplam_alinan ?? 0),
-            'hurda_kaskiye' => (int) ($extra->hurda_kaskiye ?? 0)
+            'hurda_kaskiye' => (int) ($extra->hurda_kaskiye ?? 0),
+            'takilan' => $takilan
         ]);
     } catch (Exception $ex) {
         jsonResponse("error", $ex->getMessage());

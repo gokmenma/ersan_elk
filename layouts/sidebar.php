@@ -17,6 +17,10 @@ $currentPath = $_GET['p'] ?? '';
 $currentMenu = $Menus->getMenuByLink($currentPath);
 $activeMenuIds = $Menus->getActiveMenuIds($currentMenu);
 
+// Favori menüler
+$favoriteMenuIds = $Menus->getFavoriteMenuIds($currentUserId);
+$favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
+
 ?>
 
 <div class="vertical-menu">
@@ -82,6 +86,62 @@ $activeMenuIds = $Menus->getActiveMenuIds($currentMenu);
                     color: #74788d;
                     pointer-events: none;
                 }
+
+                /* Favori Yıldız Buton Stilleri */
+                .star-btn {
+                    position: absolute;
+                    right: 3px;
+                    top: 7px; /* Ana menü için ortalama */
+                    z-index: 10;
+                    color: #adb5bd;
+                    transition: all 0.2s ease;
+                    padding: 5px;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                /* Ok işareti olduğunda yıldızı ok işaretinin sağına (en uçta) bırakıp oku sola çekiyoruz */
+                .has-arrow:after {
+                    right: 29px !important;
+                    top: 19px !important; /* Oku da dikey ortalıyoruz */
+                }
+
+                .has-arrow + .star-btn {
+                    right: 3px;
+                    top: 8px;
+                }
+
+                .sub-menu .star-btn {
+                    right: 3px;
+                    top: 3px;
+                }
+
+                .star-btn:hover {
+                    color: #f1b44c;
+                    transform: scale(1.2);
+                }
+
+                .star-btn.active {
+                    color: #f1b44c;
+                }
+
+                #side-menu li {
+                    position: relative;
+                }
+
+                #side-menu li a {
+                    padding-right: 45px !important;
+                }
+
+                [data-bs-theme="dark"] .star-btn {
+                    color: #495057;
+                }
+
+                [data-bs-theme="dark"] .star-btn.active {
+                    color: #f1b44c;
+                }
             </style>
             <div class="sidebar-search-container">
                 <div class="position-relative">
@@ -93,65 +153,86 @@ $activeMenuIds = $Menus->getActiveMenuIds($currentMenu);
             <!-- Left Menu Start -->
             <ul class="metismenu list-unstyled" id="side-menu">
 
+                <!-- Sık Kullanılanlar Başlığı -->
+                <li class="menu-title fav-title" data-key="t-favorites" style="<?php echo empty($favoriteMenus) ? 'display:none;' : ''; ?>">Sık Kullanılanlar</li>
+                
+                <div id="favorites-container">
+                    <?php foreach ($favoriteMenus as $fav): ?>
+                        <li class="fav-item" data-id="<?php echo $fav->id; ?>">
+                            <a href="<?php echo Route::Link($fav->menu_link); ?>" class="waves-effect">
+                                <?php if (!empty($fav->menu_icon)): ?>
+                                    <i data-feather="<?php echo htmlspecialchars($fav->menu_icon); ?>"></i>
+                                <?php endif; ?>
+                                <span><?php echo htmlspecialchars($fav->menu_name); ?></span>
+                            </a>
+                            <div class="star-btn active" data-id="<?php echo $fav->id; ?>" title="Favorilerden Kaldır">
+                                <i class="fas fa-star" style="font-size: 11px;"></i>
+                            </div>
+                        </li>
+                    <?php endforeach; ?>
+                </div>
+
                 <?php foreach ($menu_data as $group_name => $menus): ?>
 
                     <li class="menu-title" data-key="t-menu"><?php echo htmlspecialchars($group_name); ?></li>
 
                     <?php foreach ($menus as $menu): ?>
                         <?php
-                        // DEBUG: echo "<!-- ID: " . $menu->id . " Name: " . $menu->menu_name . " is_menu: " . (isset($menu->is_menu) ? $menu->is_menu : 'NOT SET') . " -->";
-                
                         if (isset($menu->is_menu) && $menu->is_menu == 0)
                             continue;
 
                         $has_children = !empty($menu->children);
 
-                        // Runtime güvenlik katmanı: cache eski kalsa bile yetkisiz menüleri göstermeyelim.
                         $visibleChildren = [];
                         if ($has_children) {
                             foreach ($menu->children as $sub_menu) {
-                                if (isset($sub_menu->is_menu) && $sub_menu->is_menu == 0) {
-                                    continue;
-                                }
-                                if (!empty($sub_menu->menu_link) && !$Menus->userCanAccessMenuLink($currentUserId, $sub_menu->menu_link)) {
-                                    continue;
-                                }
+                                if (isset($sub_menu->is_menu) && $sub_menu->is_menu == 0) continue;
+                                if (!empty($sub_menu->menu_link) && !$Menus->userCanAccessMenuLink($currentUserId, $sub_menu->menu_link)) continue;
                                 $visibleChildren[] = $sub_menu;
                             }
                             $has_children = !empty($visibleChildren);
                         }
 
-                        if (!$has_children && !empty($menu->menu_link) && !$Menus->userCanAccessMenuLink($currentUserId, $menu->menu_link)) {
-                            continue;
-                        }
+                        if (!$has_children && !empty($menu->menu_link) && !$Menus->userCanAccessMenuLink($currentUserId, $menu->menu_link)) continue;
 
                         $is_active = in_array((int) $menu->id, $activeMenuIds);
                         $active_class = $is_active ? 'mm-active' : '';
                         $has_arrow_class = $has_children ? 'has-arrow' : '';
-
-                        // Eğer alt menüsü yoksa kendi linkini kullanır, varsa javascript:void(0) olur.
                         $link = $has_children ? 'javascript: void(0);' : Route::Link($menu->menu_link);
+                        
+                        $isFavorited = in_array((int) $menu->id, $favoriteMenuIds);
                         ?>
-                        <li class="<?php echo $active_class; ?>">
+                        <li class="<?php echo $active_class; ?>" data-menu-id="<?php echo $menu->id; ?>">
                             <a href="<?php echo $link; ?>"
                                 class="<?php echo $has_arrow_class; ?> waves-effect <?php echo $is_active ? 'active' : ''; ?>">
                                 <?php if (!empty($menu->menu_icon)): ?>
                                     <i data-feather="<?php echo htmlspecialchars($menu->menu_icon); ?>"></i>
                                 <?php endif; ?>
-                                <span data-key="t-users"><?php echo htmlspecialchars($menu->menu_name); ?></span>
+                                <span class="menu-name"><?php echo htmlspecialchars($menu->menu_name); ?></span>
                             </a>
+                            <div class="star-btn <?php echo $isFavorited ? 'active' : ''; ?>" 
+                                 data-id="<?php echo $menu->id; ?>" 
+                                 title="<?php echo $isFavorited ? 'Favorilerden Kaldır' : 'Favorilere Ekle'; ?>">
+                                <i class="<?php echo $isFavorited ? 'fas' : 'far'; ?> fa-star" style="font-size: 11px;"></i>
+                            </div>
 
                             <?php if ($has_children): ?>
                                 <ul class="sub-menu" aria-expanded="<?php echo $is_active ? 'true' : 'false'; ?>">
                                     <?php
                                     foreach ($visibleChildren as $sub_menu):
                                         $is_sub_active = in_array((int) $sub_menu->id, $activeMenuIds);
+                                        $isSubFavorited = in_array((int) $sub_menu->id, $favoriteMenuIds);
                                         ?>
-                                        <li class="<?php echo $is_sub_active ? 'mm-active' : ''; ?>">
+                                        <li class="<?php echo $is_sub_active ? 'mm-active' : ''; ?>" data-menu-id="<?php echo $sub_menu->id; ?>">
                                             <a class="waves-effect <?php echo $is_sub_active ? 'active' : ''; ?>"
                                                 href="<?php echo Route::Link($sub_menu->menu_link); ?>" data-key="t-user-grid">
-                                                <?php echo htmlspecialchars($sub_menu->menu_name); ?>
+                                                <span class="menu-name"><?php echo htmlspecialchars($sub_menu->menu_name); ?></span>
                                             </a>
+                                            <div class="star-btn <?php echo $isSubFavorited ? 'active' : ''; ?>" 
+                                                 data-id="<?php echo $sub_menu->id; ?>" 
+                                                 title="<?php echo $isSubFavorited ? 'Favorilerden Kaldır' : 'Favorilere Ekle'; ?>">
+                                                <i class="<?php echo $isSubFavorited ? 'fas' : 'far'; ?> fa-star" style="font-size: 11px;"></i>
+                                            </div>
                                         </li>
                                     <?php endforeach; ?>
                                 </ul>
@@ -193,10 +274,8 @@ $activeMenuIds = $Menus->getActiveMenuIds($currentMenu);
                 return;
             }
 
-            // Önce her şeyi gizle
             allLi.forEach(li => li.style.display = 'none');
 
-            // Eşleşenleri bul ve göster
             allLi.forEach(li => {
                 const anchor = li.querySelector('a');
                 if (!anchor) return;
@@ -205,7 +284,6 @@ $activeMenuIds = $Menus->getActiveMenuIds($currentMenu);
                 if (text.includes(filter)) {
                     li.style.display = '';
 
-                    // Üst menüleri aç ve göster (Parent items)
                     let parent = li.parentElement.closest('li');
                     while (parent) {
                         parent.style.display = '';
@@ -217,13 +295,9 @@ $activeMenuIds = $Menus->getActiveMenuIds($currentMenu);
                         }
                         parent = parent.parentElement.closest('li');
                     }
-
-                    // Eğer bu bir parent menü ise, tüm çocuklarını da gösterelim mi? 
-                    // Genelde sadece eşleşen i göstermek daha temizdir.
                 }
             });
 
-            // Grup başlıklarını güncelle
             titles.forEach(title => {
                 let next = title.nextElementSibling;
                 let hasVisible = false;
@@ -237,5 +311,96 @@ $activeMenuIds = $Menus->getActiveMenuIds($currentMenu);
                 title.style.display = hasVisible ? '' : 'none';
             });
         });
+
+        // Favori Yıldız İşlemi (Real-time)
+        document.addEventListener('click', function(e) {
+            const starBtn = e.target.closest('.star-btn');
+            if (!starBtn) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            const menuId = starBtn.getAttribute('data-id');
+            const isActive = starBtn.classList.contains('active');
+            
+            // UI'ı hemen güncelle (Optimistic Update)
+            toggleStarUI(menuId, !isActive);
+
+            fetch('api/menu-favorites.php', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+                body: 'menu_id=' + menuId
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (!data.success) {
+                    // Hata olursa geri al
+                    toggleStarUI(menuId, isActive);
+                    alert(data.message);
+                }
+            })
+            .catch(error => {
+                toggleStarUI(menuId, isActive);
+                console.error('Error:', error);
+            });
+        });
+
+        function toggleStarUI(menuId, setActive) {
+            const stars = document.querySelectorAll(`.star-btn[data-id="${menuId}"]`);
+            stars.forEach(s => {
+                if (setActive) {
+                    s.classList.add('active');
+                    s.querySelector('i').classList.replace('far', 'fas');
+                    s.setAttribute('title', 'Favorilerden Kaldır');
+                } else {
+                    s.classList.remove('active');
+                    s.querySelector('i').classList.replace('fas', 'far');
+                    s.setAttribute('title', 'Favorilere Ekle');
+                }
+            });
+
+            const favoritesContainer = document.getElementById('favorites-container');
+            const favTitle = document.querySelector('.fav-title');
+
+            if (setActive) {
+                // Sık kullanılanlara ekle
+                if (!document.querySelector(`.fav-item[data-id="${menuId}"]`)) {
+                    // Ana menüdeki öğeyi bulup kopyala
+                    const mainMenuItem = document.querySelector(`li[data-menu-id="${menuId}"]`);
+                    if (mainMenuItem) {
+                        const clone = document.createElement('li');
+                        clone.className = 'fav-item';
+                        clone.setAttribute('data-id', menuId);
+                        
+                        const link = mainMenuItem.querySelector('a').cloneNode(true);
+                        link.classList.remove('has-arrow', 'mm-active', 'active');
+                        link.href = mainMenuItem.querySelector('a').getAttribute('href'); // Re-set because cloneNode might lose some properties depending on browser
+                        
+                        // Icon ve yazı düzeltme (Eğer alt menü ise ikon olmayabilir, ana menü ikonunu alabiliriz)
+                        // Şimdilik sadece mevcut link içeriğini alıyoruz.
+                        
+                        const star = document.createElement('div');
+                        star.className = 'star-btn active';
+                        star.setAttribute('data-id', menuId);
+                        star.innerHTML = '<i class="fas fa-star" style="font-size: 11px;"></i>';
+                        
+                        clone.appendChild(link);
+                        clone.appendChild(star);
+                        favoritesContainer.appendChild(clone);
+                        
+                        // Feather icons refresh
+                        if (typeof feather !== 'undefined') feather.replace();
+                    }
+                }
+            } else {
+                // Sık kullanılanlardan kaldır
+                const favItem = document.querySelector(`.fav-item[data-id="${menuId}"]`);
+                if (favItem) favItem.remove();
+            }
+
+            // Başlığı göster/gizle
+            const hasFavs = favoritesContainer.querySelectorAll('.fav-item').length > 0;
+            favTitle.style.display = hasFavs ? '' : 'none';
+        }
     });
 </script>

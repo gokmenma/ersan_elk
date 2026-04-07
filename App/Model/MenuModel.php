@@ -411,4 +411,49 @@ class MenuModel extends Model
 
                 return (int) $stmt->fetchColumn() > 0;
     }
+
+    /**
+     * Kullanıcının favori menü ID'lerini döndürür.
+     */
+    public function getFavoriteMenuIds(int $userId): array
+    {
+        $stmt = $this->db->prepare("SELECT menu_id FROM user_favorites WHERE user_id = ?");
+        $stmt->execute([$userId]);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+    }
+
+    /**
+     * Kullanıcının favori menülerini (hiyerarşik değil, düz liste) döndürür.
+     */
+    public function getFavoriteMenus(int $userId): array
+    {
+        $favoriteIds = $this->getFavoriteMenuIds($userId);
+        if (empty($favoriteIds)) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($favoriteIds), '?'));
+        $sql = "SELECT * FROM {$this->table} WHERE id IN ({$placeholders}) AND is_active = 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($favoriteIds);
+        return $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
+    }
+
+    /**
+     * Favori menü durumunu değiştirir (varsa siler, yoksa ekler).
+     */
+    public function toggleFavorite(int $userId, int $menuId): bool
+    {
+        $stmt = $this->db->prepare("SELECT id FROM user_favorites WHERE user_id = ? AND menu_id = ?");
+        $stmt->execute([$userId, $menuId]);
+        $exists = $stmt->fetch();
+
+        if ($exists) {
+            $stmt = $this->db->prepare("DELETE FROM user_favorites WHERE user_id = ? AND menu_id = ?");
+            return $stmt->execute([$userId, $menuId]);
+        } else {
+            $stmt = $this->db->prepare("INSERT INTO user_favorites (user_id, menu_id) VALUES (?, ?)");
+            return $stmt->execute([$userId, $menuId]);
+        }
+    }
 }

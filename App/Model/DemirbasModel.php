@@ -682,12 +682,11 @@ class DemirbasModel extends Model
             ];
         } else {
             $colSearchMap = [
-                2 => 'd.demirbas_no',
-                3 => 'd.demirbas_adi',
-                4 => 'CONCAT_WS(" ", d.marka, d.model, d.seri_no)',
-                5 => 'd.seri_no',
-                7 => 'd.durum',
-                8 => 'DATE_FORMAT(d.edinme_tarihi, "%d.%m.%Y")'
+                1 => 'd.demirbas_adi',
+                2 => 'CONCAT_WS(" ", d.marka, d.model)',
+                3 => 'd.seri_no',
+                5 => 'd.durum',
+                6 => 'd.edinme_tarihi'
             ];
         }
 

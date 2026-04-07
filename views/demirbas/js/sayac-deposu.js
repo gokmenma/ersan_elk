@@ -118,6 +118,72 @@ $(function () {
     });
 
     // =============================================
+    // ÖZET KARTLARINI YÜKLE
+    // =============================================
+    function loadDepoSummary() {
+        $.post(apiUrl, { action: "sayac-global-summary" }, function (res) {
+            if (res.status === "success") {
+                let d = res;
+                // Yeni Sayaç Hesaplamaları
+                let yeniDepo = parseInt(d.yeni_depoda) || 0;
+                let yeniPersonel = parseInt(d.yeni_personelde) || 0;
+                let takilan = parseInt(d.takilan) || 0;
+                
+                // Toplam Alınan (DB'deki Ham Kayıt Sayısı)
+                let yeniToplam = parseInt(d.toplam_alinan) || 0; 
+                let yeniMevcut = yeniDepo + yeniPersonel + takilan;
+                let yeniKayip = yeniToplam - yeniMevcut;
+
+                // Hurda Sayaç Hesaplamaları
+                let hurdaDepo = parseInt(d.hurda_depoda) || 0;
+                let hurdaPersonel = parseInt(d.hurda_personelde) || 0;
+                let hurdaKaski = parseInt(d.hurda_kaskiye) || 0;
+                
+                // Volkan Bey'in istediği denge: Takılan Sayaç = Toplam Hurda Olmalı
+                let hurdaToplam = takilan; 
+                let hurdaMevcut = hurdaDepo + hurdaPersonel + hurdaKaski;
+                let kayip = hurdaToplam - hurdaMevcut;
+
+                // UI Güncelleme (Bizim Depo Tabı)
+                $("#sayacCardToplamGiren").text(yeniToplam);
+                $("#sayacCardDepoKalan").text(yeniDepo);
+                $("#sayacCardTakilan").text(takilan);
+                $("#sayacCardPersonelZimmetli").text(yeniPersonel);
+                $("#sayacCardKayipYeni").text(yeniKayip > 0 ? yeniKayip : 0);
+
+                $("#sayacCardToplamHurda").text(hurdaToplam);
+                $("#sayacCardKaskiyeTeslim").text(hurdaKaski);
+                $("#sayacCardHurda").text(hurdaDepo);
+                $("#sayacCardPersonelHurda").text(hurdaPersonel);
+                $("#sayacCardKayipHurda").text(kayip > 0 ? kayip : 0);
+
+                // UI Güncelleme (Kaski Tabı - Senkronize)
+                $("#kaskiCardToplamGiren").text(yeniToplam);
+                $("#kaskiCardDepoKalan").text(yeniDepo);
+                $("#kaskiCardTakilan").text(takilan);
+                $("#kaskiCardPersonelZimmetli").text(yeniPersonel);
+                $("#kaskiCardKayipYeni").text(yeniKayip > 0 ? yeniKayip : 0);
+
+                $("#kaskiCardToplamHurda").text(hurdaToplam);
+                $("#kaskiCardHurdaKaskiye").text(hurdaKaski);
+                $("#kaskiCardHurdaDepoda").text(hurdaDepo);
+                $("#kaskiCardPersonelHurda").text(hurdaPersonel);
+                $("#kaskiCardKayipHurda").text(kayip > 0 ? kayip : 0);
+            }
+        }, "json");
+    }
+    loadDepoSummary();
+
+    function reloadAllTables() {
+        try { kaskiTarihTable.ajax.reload(null, false); } catch(e) {}
+        try { depoSayacTable.ajax.reload(null, false); } catch(e) {}
+        try { personelTable.ajax.reload(null, false); } catch(e) {}
+        try { hareketTable.ajax.reload(null, false); } catch(e) {}
+        loadDepoSummary();
+        loadPersonelAllSummary();
+    }
+
+    // =============================================
     // PERSONEL KPI KARTLARI
     // =============================================
     function loadPersonelAllSummary() {
@@ -962,3 +1028,96 @@ $(function () {
         reloadAllTables();
     });
 });
+
+    // ============== HURDA SAYAÇ İADE İŞLEMLERİ (SAYAÇ DEPOSU ÖZEL) ==============
+
+    $(document).on("click", "#btnHurdaSayacIade", function (e) {
+        e.preventDefault();
+        $("#hurdaIadeForm")[0].reset();
+        $("#hurda_iade_tarihi").val(new Date().toLocaleDateString("tr-TR"));
+        $("#hurdaZimmetListesi").addClass("d-none");
+        $("#hurdaZimmetBody").html('<tr><td colspan="4" class="text-center text-muted py-3 small">Personel seçildiğinde listelenecektir.</td></tr>');
+        $("#hurdaPersonelAktif").prop("checked", true);
+        updateHurdaPersonelList("aktif");
+        bootstrap.Modal.getOrCreateInstance(document.getElementById("hurdaIadeModal")).show();
+    });
+
+    function updateHurdaPersonelList(filterType) {
+        let list = filterType === "aktif" ? hurdaAktifPersoneller : hurdaTumPersoneller;
+        let $el = $("#hurda_personel_id");
+        $el.empty().append('<option value="">Personel Seçin</option>');
+        list.forEach(p => $el.append(new Option(p.text, p.id, false, false)));
+        if(!$el.hasClass("select2-hidden-accessible")) {
+            $el.select2({ dropdownParent: $("#hurdaIadeModal"), placeholder: "Personel Seçin", allowClear: true, width: "100%" });
+        }
+        $el.val(null).trigger("change");
+    }
+
+    $(document).on("change", 'input[name="hurdaPersonelFilter"]', function () {
+        updateHurdaPersonelList($(this).val());
+    });
+
+    $(document).on("change", "#hurda_personel_id", function () {
+        let pId = $(this).val();
+        if(!pId) {
+            $("#hurdaZimmetListesi").addClass("d-none");
+            return;
+        }
+        $("#hurdaZimmetListesi").removeClass("d-none");
+        $("#hurdaZimmetBody").html('<tr><td colspan="4" class="text-center py-3"><i class="bx bx-loader-alt bx-spin"></i> Yükleniyor...</td></tr>');
+        
+        $.post(apiUrl, { action: "hurda-zimmet-listesi", personel_id: pId }, function(res) {
+            if(res.status === 'success') {
+                let html = "";
+                (res.data || []).forEach(item => {
+                    html += `<tr>
+                        <td class="text-center"><input type="checkbox" class="form-check-input hurda-zimmet-check" value="${item.id}"></td>
+                        <td><div class="fw-bold small">${item.demirbas_adi}</div><small class="text-muted">SN: ${item.seri_no}</small></td>
+                        <td class="text-center"><span class="badge bg-danger">${item.kalan_miktar}</span></td>
+                        <td class="small">${item.teslim_tarihi}</td>
+                    </tr>`;
+                });
+                if(!html) html = '<tr><td colspan="4" class="text-center text-muted py-3">Zimmetinde hurda sayaç bulunamadı.</td></tr>';
+                $("#hurdaZimmetBody").html(html);
+            }
+        }, 'json');
+    });
+
+    $(document).on("change", "#hurdaCheckAll", function() { $(".hurda-zimmet-check").prop("checked", this.checked); });
+
+    $(document).on("click", "#btnHurdaIadeKaydet", function() {
+        let selected = [];
+        $(".hurda-zimmet-check:checked").each(function() { selected.push($(this).val()); });
+
+        if(selected.length === 0) {
+            Swal.fire("Uyarı", "Lütfen iade edilecek sayaçları seçin.", "warning");
+            return;
+        }
+
+        let $btn = $(this);
+        $btn.prop("disabled", true).html('<i class="bx bx-loader-alt bx-spin"></i> İşleniyor...');
+
+        $.post(apiUrl, {
+            action: "hurda-sayac-iade",
+            mode: "select",
+            selected_ids: JSON.stringify(selected),
+            hurda_iade_tarihi: $("#hurda_iade_tarihi").val(),
+            hurda_aciklama: $("#hurda_aciklama").val()
+        }, function(res) {
+            $btn.prop("disabled", false).html('<i class="bx bx-check-square me-1"></i>İadeyi Kaydet');
+            if(res.status === 'success') {
+                bootstrap.Modal.getOrCreateInstance(document.getElementById("hurdaIadeModal")).hide();
+                Swal.fire("Başarılı", res.message, "success");
+                reloadAllTables();
+            } else {
+                Swal.fire("Hata", res.message, "error");
+            }
+        }, 'json');
+    });
+
+    // Flatpickr Init for Hurda Modal
+    $("#hurdaIadeModal").on("shown.bs.modal", function () {
+        if(!$("#hurda_iade_tarihi").hasClass("flatpickr-input")) {
+            flatpickr("#hurda_iade_tarihi", { dateFormat: "d.m.Y", locale: "tr", defaultDate: "today" });
+        }
+    });

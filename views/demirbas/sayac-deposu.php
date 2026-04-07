@@ -67,7 +67,7 @@ if (!empty($sayacKatIds)) {
 	$stats['yeni_personelde'] = (int)$res2->yeni_personelde;
 	$stats['hurda_personelde'] = (int)$res2->hurda_personelde;
 
-	// 3. Montaj (Sarf) istatistiği
+	// 3. Montaj (Sarf) istatistiği (Takılan)
 	$sql3 = $Demirbas->db->prepare("
 		SELECT COALESCE(SUM(h.miktar), 0) as takilan
 		FROM demirbas_hareketler h
@@ -77,30 +77,23 @@ if (!empty($sayacKatIds)) {
 	$sql3->execute($paramArr);
 	$stats['takilan_sayac'] = (int)$sql3->fetchColumn();
 
-	// 4. Toplam Alınan (KASKİ'den depoya giren toplam sayaç)
-	$sql4 = $Demirbas->db->prepare("
-		SELECT COUNT(*) as toplam
-		FROM demirbas
-		WHERE kategori_id IN ($katPlaceholders) AND firma_id = ? AND silinme_tarihi IS NULL
-	");
+	// 4. Hesaplamalar
+	// Yeni Sayaç Mantığı: Toplam Alınan (DB Kayıtları) - (Takılan + Depoda + Personelde) = Kayıp
+	$sql4 = $Demirbas->db->prepare("SELECT COUNT(*) FROM demirbas WHERE kategori_id IN ($katPlaceholders) AND firma_id = ? AND silinme_tarihi IS NULL");
 	$sql4->execute($paramArr);
-	$stats['toplam_alinan'] = (int)$sql4->fetchColumn();
+	$stats['toplam_alinan_yeni'] = (int)$sql4->fetchColumn();
+	
+	$mevcutYeni = $stats['yeni_depoda'] + $stats['takilan_sayac'] + $stats['yeni_personelde'];
+	$stats['kayip_yeni'] = max(0, $stats['toplam_alinan_yeni'] - $mevcutYeni);
 
-	// 5. Zimmetli sayaç sayısı
-	$sql5 = $Demirbas->db->prepare("
-		SELECT COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' THEN h.miktar ELSE 0 END), 0)
-			 - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' THEN h.miktar ELSE 0 END), 0)
-			 - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'kayip' THEN h.miktar ELSE 0 END), 0)
-			 - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND h.aciklama LIKE '[DEPO_IADE]%%' THEN h.miktar ELSE 0 END), 0) as zimmetli
-		FROM demirbas_hareketler h
-		INNER JOIN demirbas d ON h.demirbas_id = d.id
-		WHERE d.kategori_id IN ($katPlaceholders) AND d.firma_id = ? AND h.silinme_tarihi IS NULL AND h.personel_id IS NOT NULL
-	");
-	$sql5->execute($paramArr);
-	$stats['zimmetli'] = max(0, (int)$sql5->fetchColumn());
+	// Hurda Sayaç Mantığı: Takılan Sayaç Sayısı = Toplam Hurda Olmalı
+	$stats['toplam_hurda'] = $stats['takilan_sayac'];
+	$mevcutHurda = $stats['hurda_elimizde'] + $stats['hurda_personelde'] + $stats['hurda_kaskiye'];
+	$stats['kayip_hurda'] = max(0, $stats['toplam_hurda'] - $mevcutHurda);
 }
 
-$stats['toplam_giren'] = $stats['toplam_alinan'] ?: ($stats['kaski_depoda'] + $stats['yeni_depoda'] + $stats['yeni_personelde'] + $stats['takilan_sayac']);
+// Global top-level variables for layout compatibility
+$stats['toplam_giren'] = $stats['toplam_alinan_yeni'] ?? 0;
 
 $maintitle = "Demirbaş";
 $title = "Sayaç Deposu";
@@ -229,36 +222,94 @@ $title = "Sayaç Deposu";
 			<div class="tab-content">
 				<!-- 1. KASKI PANE -->
 				<div class="tab-pane fade show active" id="kaskiPane" role="tabpanel">
-					<!-- Kaski Özet Kartları (Bordro Tarzı) -->
-					<div class="row g-2 mb-4">
-						<!-- Toplam Alınan Yeni Sayaç -->
+					<!-- ÖZET KARTLARI (KASKİ): TEK SATIRDA İKİ KART -->
+					<div class="row g-3 mb-4">
+						<!-- YENİ SAYAÇ KARTI -->
 						<div class="col-xl-6 col-md-6">
-							<div class="card border-0 shadow-sm bordro-summary-card" style="--card-color: #556ee6; border-bottom: 2px solid var(--card-color) !important; background: #fff;">
-								<div class="card-body p-2">
-									<div class="icon-label-container mb-1">
-										<div class="icon-box" style="width:36px; height:36px; background: rgba(85, 110, 230, 0.1);">
-											<i class="bx bx-down-arrow-alt fs-5" style="color: #556ee6;"></i>
+							<div class="card border-0 shadow-sm" style="border-left: 4px solid #556ee6 !important; background: #fff; border-radius: 10px;">
+								<div class="card-body p-3">
+									<div class="d-flex align-items-center mb-3">
+										<div class="rounded-2 p-2 me-2" style="background: rgba(85, 110, 230, 0.1);">
+											<i class="bx bx-star text-primary fs-5"></i>
 										</div>
-										<span class="card-label fw-bold">TOPLAM ALINAN YENİ</span>
+										<h6 class="mb-0 fw-bold text-dark">Kaski Sayaç Bilgisi</h6>
 									</div>
-									<div class="card-value-container">
-										<span class="card-value fs-4 fw-bold" id="kaskiCardToplamGiren"><?php echo (int)($stats['toplam_alinan'] ?? 0); ?></span>
+									<div class="row text-center g-0 row-cols-5">
+										<div class="col">
+											<div class="border-end">
+												<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Top. Alınan</p>
+												<h4 class="fw-bold mb-0" style="color:#556ee6; font-size: 1rem;" id="kaskiCardToplamGiren"><?php echo (int)($stats['toplam_alinan_yeni'] ?? 0); ?></h4>
+											</div>
+										</div>
+										<div class="col">
+											<div class="border-end">
+												<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Depoda</p>
+												<h4 class="fw-bold mb-0" style="color:#10b981; font-size: 1rem;" id="kaskiCardDepoKalan"><?php echo (int)($stats['yeni_depoda'] ?? 0); ?></h4>
+											</div>
+										</div>
+										<div class="col">
+											<div class="border-end">
+												<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Takılan</p>
+												<h4 class="fw-bold mb-0" style="color:#6366f1; font-size: 1rem;" id="kaskiCardTakilan"><?php echo (int)($stats['takilan_sayac'] ?? 0); ?></h4>
+											</div>
+										</div>
+										<div class="col">
+											<div class="border-end">
+												<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Personelde</p>
+												<h4 class="fw-bold mb-0" style="color:#f59e0b; font-size: 1rem;" id="kaskiCardPersonelZimmetli"><?php echo (int)($stats['yeni_personelde'] ?? 0); ?></h4>
+											</div>
+										</div>
+										<div class="col">
+											<div>
+												<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Kayıp</p>
+												<h4 class="fw-bold mb-0" style="color:#f43f5e; font-size: 1rem;" id="kaskiCardKayipYeni"><?php echo (int)($stats['kayip_yeni'] ?? 0); ?></h4>
+											</div>
+										</div>
 									</div>
 								</div>
 							</div>
 						</div>
-						<!-- Toplam Teslim Edilen Hurda -->
+						<!-- HURDA / İADE KARTI -->
 						<div class="col-xl-6 col-md-6">
-							<div class="card border-0 shadow-sm bordro-summary-card" style="--card-color: #ef4444; border-bottom: 2px solid var(--card-color) !important; background: #fff;">
-								<div class="card-body p-2">
-									<div class="icon-label-container mb-1">
-										<div class="icon-box" style="width:36px; height:36px; background: rgba(239, 68, 68, 0.1);">
-											<i class="bx bx-up-arrow-alt fs-5" style="color: #ef4444;"></i>
+							<div class="card border-0 shadow-sm" style="border-left: 4px solid #ef4444 !important; background: #fff; border-radius: 10px;">
+								<div class="card-body p-3">
+									<div class="d-flex align-items-center mb-3">
+										<div class="rounded-2 p-2 me-2" style="background: rgba(239, 68, 68, 0.1);">
+											<i class="bx bx-recycle text-danger fs-5"></i>
 										</div>
-										<span class="card-label fw-bold">TOPLAM TESLİM EDİLEN HURDA</span>
+										<h6 class="mb-0 fw-bold text-dark">Hurda Yönetimi</h6>
 									</div>
-									<div class="card-value-container">
-										<span class="card-value fs-4 fw-bold" id="kaskiCardHurdaKaskiye"><?php echo (int)($stats['hurda_kaskiye'] ?? 0); ?></span>
+									<div class="row text-center g-0 row-cols-5">
+										<div class="col">
+											<div class="border-end">
+												<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Top. Hurda</p>
+												<h4 class="fw-bold mb-0" style="color:#ef4444; font-size: 1rem;" id="kaskiCardToplamHurda"><?php echo (int)($stats['toplam_hurda'] ?? 0); ?></h4>
+											</div>
+										</div>
+										<div class="col">
+											<div class="border-end">
+												<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Kaskiye Tesl.</p>
+												<h4 class="fw-bold mb-0" style="color:#64748b; font-size: 1rem;" id="kaskiCardHurdaKaskiye"><?php echo (int)($stats['hurda_kaskiye'] ?? 0); ?></h4>
+											</div>
+										</div>
+										<div class="col">
+											<div class="border-end">
+												<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Depoda</p>
+												<h4 class="fw-bold mb-0" style="color:#ef4444; font-size: 1rem;" id="kaskiCardHurdaDepoda"><?php echo (int)($stats['hurda_elimizde'] ?? 0); ?></h4>
+											</div>
+										</div>
+										<div class="col">
+											<div class="border-end">
+												<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Personelde</p>
+												<h4 class="fw-bold mb-0" style="color:#d946ef; font-size: 1rem;" id="kaskiCardPersonelHurda"><?php echo (int)($stats['hurda_personelde'] ?? 0); ?></h4>
+											</div>
+										</div>
+										<div class="col">
+											<div>
+												<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Kayıp</p>
+												<h4 class="fw-bold mb-0" style="color:#f43f5e; font-size: 1rem;" id="kaskiCardKayipHurda"><?php echo (int)($stats['kayip_hurda'] ?? 0); ?></h4>
+											</div>
+										</div>
 									</div>
 								</div>
 							</div>
@@ -294,23 +345,35 @@ $title = "Sayaç Deposu";
 								</div>
 								<h6 class="mb-0 fw-bold text-dark">Yeni Sayaç</h6>
 							</div>
-							<div class="row text-center g-0">
-								<div class="col-4">
+							<div class="row text-center g-0 row-cols-5">
+								<div class="col">
 									<div class="border-end">
-										<p class="text-muted mb-1 small">Toplam</p>
-										<h4 class="fw-bold mb-0" style="color:#556ee6;" id="sayacCardToplamGiren"><?php echo (int)($stats['toplam_giren'] ?? 0); ?></h4>
+										<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Top. Alınan</p>
+										<h4 class="fw-bold mb-0" style="color:#556ee6; font-size: 1rem;" id="sayacCardToplamGiren"><?php echo (int)($stats['toplam_alinan_yeni'] ?? 0); ?></h4>
 									</div>
 								</div>
-								<div class="col-4">
+								<div class="col">
 									<div class="border-end">
-										<p class="text-muted mb-1 small">Depoda</p>
-										<h4 class="fw-bold mb-0" style="color:#10b981;" id="sayacCardDepoKalan"><?php echo (int)($stats['depoda_yeni'] ?? 0); ?></h4>
+										<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Depoda</p>
+										<h4 class="fw-bold mb-0" style="color:#10b981; font-size: 1rem;" id="sayacCardDepoKalan"><?php echo (int)($stats['yeni_depoda'] ?? 0); ?></h4>
 									</div>
 								</div>
-								<div class="col-4">
+								<div class="col">
+									<div class="border-end">
+										<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Takılan</p>
+										<h4 class="fw-bold mb-0" style="color:#6366f1; font-size: 1rem;" id="sayacCardTakilan"><?php echo (int)($stats['takilan_sayac'] ?? 0); ?></h4>
+									</div>
+								</div>
+								<div class="col">
+									<div class="border-end">
+										<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Personelde</p>
+										<h4 class="fw-bold mb-0" style="color:#f59e0b; font-size: 1rem;" id="sayacCardPersonelZimmetli"><?php echo (int)($stats['yeni_personelde'] ?? 0); ?></h4>
+									</div>
+								</div>
+								<div class="col">
 									<div>
-										<p class="text-muted mb-1 small">Personelde</p>
-										<h4 class="fw-bold mb-0" style="color:#f59e0b;" id="sayacCardPersonelZimmetli"><?php echo (int)($stats['personelde_yeni'] ?? 0); ?></h4>
+										<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Kayıp</p>
+										<h4 class="fw-bold mb-0" style="color:#f43f5e; font-size: 1rem;" id="sayacCardKayipYeni"><?php echo (int)($stats['kayip_yeni'] ?? 0); ?></h4>
 									</div>
 								</div>
 							</div>
@@ -327,23 +390,35 @@ $title = "Sayaç Deposu";
 								</div>
 								<h6 class="mb-0 fw-bold text-dark">Hurda Sayaç</h6>
 							</div>
-							<div class="row text-center g-0">
-								<div class="col-4">
+							<div class="row text-center g-0 row-cols-5">
+								<div class="col">
 									<div class="border-end">
-										<p class="text-muted mb-1 small">Teslim Edilen</p>
-										<h4 class="fw-bold mb-0" style="color:#64748b;" id="sayacCardKaskiyeTeslim"><?php echo (int)($stats['teslim_edilen_hurda'] ?? 0); ?></h4>
+										<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Top. Hurda</p>
+										<h4 class="fw-bold mb-0" style="color:#ef4444; font-size: 1rem;" id="sayacCardToplamHurda"><?php echo (int)($stats['toplam_hurda'] ?? 0); ?></h4>
 									</div>
 								</div>
-								<div class="col-4">
+								<div class="col">
 									<div class="border-end">
-										<p class="text-muted mb-1 small">Depoda</p>
-										<h4 class="fw-bold mb-0" style="color:#ef4444;" id="sayacCardHurda"><?php echo (int)($stats['depoda_hurda'] ?? 0); ?></h4>
+										<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Kaskiye Tesl.</p>
+										<h4 class="fw-bold mb-0" style="color:#64748b; font-size: 1rem;" id="sayacCardKaskiyeTeslim"><?php echo (int)($stats['hurda_kaskiye'] ?? 0); ?></h4>
 									</div>
 								</div>
-								<div class="col-4">
+								<div class="col">
+									<div class="border-end">
+										<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Depoda</p>
+										<h4 class="fw-bold mb-0" style="color:#ef4444; font-size: 1rem;" id="sayacCardHurda"><?php echo (int)($stats['hurda_elimizde'] ?? 0); ?></h4>
+									</div>
+								</div>
+								<div class="col">
+									<div class="border-end">
+										<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Personelde</p>
+										<h4 class="fw-bold mb-0" style="color:#d946ef; font-size: 1rem;" id="sayacCardPersonelHurda"><?php echo (int)($stats['hurda_personelde'] ?? 0); ?></h4>
+									</div>
+								</div>
+								<div class="col">
 									<div>
-										<p class="text-muted mb-1 small">Personelde</p>
-										<h4 class="fw-bold mb-0" style="color:#d946ef;" id="sayacCardPersonelHurda"><?php echo (int)($stats['personelde_hurda'] ?? 0); ?></h4>
+										<p class="text-muted mb-1 small" style="font-size: 0.6rem;">Kayıp</p>
+										<h4 class="fw-bold mb-0" style="color:#f43f5e; font-size: 1rem;" id="sayacCardKayipHurda"><?php echo (int)($stats['kayip_hurda'] ?? 0); ?></h4>
 									</div>
 								</div>
 							</div>
@@ -697,27 +772,109 @@ $title = "Sayaç Deposu";
 				</div>
 				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
 			</div>
-			<div class="modal-body p-0">
-				<div class="table-responsive">
-					<table id="demirbasGecmisTable" class="table table-hover table-striped dt-responsive nowrap w-100 mb-0">
-						<thead class="table-light">
-							<tr>
-								<th>İşlem Tipi</th>
-								<th class="text-center">Miktar</th>
-								<th>Tarih</th>
-								<th>İlgili Personel</th>
-								<th>Açıklama</th>
-								<th class="text-end">İşlem Yapan</th>
-							</tr>
-						</thead>
-						<tbody id="demirbasGecmisBody"></tbody>
-					</table>
-				</div>
-			</div>
-			<div class="modal-footer border-top py-2">
-				<button type="button" class="btn btn-secondary btn-sm fw-bold px-4" data-bs-dismiss="modal">Kapat</button>
-			</div>
 		</div>
 	</div>
 </div>
+
+<!-- Hurda Sayaç İade Modal (Eksik Modal Eklendi) -->
+<div class="modal fade" id="hurdaIadeModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
+            <div class="modal-header bg-soft-danger border-bottom">
+                <div class="modal-title-section d-flex align-items-center">
+                    <div class="avatar-xs me-2 rounded bg-danger bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
+                        <i class="bx bx-recycle text-danger fs-5"></i>
+                    </div>
+                    <h6 class="modal-title text-danger mb-0 fw-bold">Hurda Sayaç İade Al</h6>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <form id="hurdaIadeForm">
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-7">
+                            <label class="form-label text-dark small fw-bold">Personel Seçimi</label>
+                            <div class="mb-2">
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="hurdaPersonelFilter" id="hurdaPersonelAktif" value="aktif" checked>
+                                    <label class="form-check-label small" for="hurdaPersonelAktif">Aktif (Zimmetliler)</label>
+                                </div>
+                                <div class="form-check form-check-inline">
+                                    <input class="form-check-input" type="radio" name="hurdaPersonelFilter" id="hurdaPersonelTum" value="all">
+                                    <label class="form-check-label small" for="hurdaPersonelTum">Tüm Personel</label>
+                                </div>
+                            </div>
+                            <select class="form-select select2-hurda" id="hurda_personel_id" name="personel_id">
+                                <option value="">Personel Seçin</option>
+                            </select>
+                        </div>
+                        <div class="col-md-5">
+                            <label class="form-label text-dark small fw-bold">İade Tarihi</label>
+                            <input type="text" class="form-control flatpickr-hurda" id="hurda_iade_tarihi" name="iade_tarihi" required>
+                        </div>
+                    </div>
+
+                    <!-- Zimmetli Listesi -->
+                    <div id="hurdaZimmetListesi" class="d-none">
+                        <h6 class="text-dark fw-bold mb-2 small d-flex justify-content-between align-items-center">
+                            <span>Seçili Personelin Hurda Zimmetleri</span>
+                            <div class="form-check form-check-inline me-0">
+                                <input type="checkbox" class="form-check-input" id="hurdaCheckAll">
+                                <label class="form-check-label small" for="hurdaCheckAll">Tümünü Seç</label>
+                            </div>
+                        </h6>
+                        <div class="table-responsive border rounded mb-3" style="max-height: 250px; overflow-y: auto;">
+                            <table class="table table-sm table-hover mb-0">
+                                <thead class="table-light sticky-top">
+                                    <tr>
+                                        <th style="width:40px"></th>
+                                        <th>Sayaç / Seri No</th>
+                                        <th class="text-center">Adet</th>
+                                        <th>Tarih</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="hurdaZimmetBody">
+                                    <tr><td colspan="4" class="text-center text-muted py-3 small">Personel seçildiğinde listelenecektir.</td></tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div class="row g-3">
+                        <div class="col-md-12">
+                            <label class="form-label text-dark small fw-bold">Açıklama</label>
+                            <textarea class="form-control" rows="2" id="hurda_aciklama" placeholder="İade detayları..."></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer border-top py-2 bg-light bg-opacity-50">
+                <button type="button" class="btn btn-secondary btn-sm fw-bold px-4" data-bs-dismiss="modal">Kapat</button>
+                <button type="button" class="btn btn-danger btn-sm fw-bold px-4" id="btnHurdaIadeKaydet">
+                    <i class="bx bx-check-square me-1"></i>İadeyi Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// PHP'den gelen personel listeleri (Zimmetli/Tüm)
+var hurdaAktifPersoneller = [];
+var hurdaTumPersoneller = [];
+<?php
+// Bu listeleri fetch edebilirsiniz veya modelden direkt basabilirsiniz
+$dbP = $Demirbas->db;
+$fId = $_SESSION['firma_id'];
+// Aktif hurda zimmeti olanlar
+$sqlA = $dbP->prepare("SELECT DISTINCT p.id, p.adi_soyadi FROM demirbas_zimmet z INNER JOIN personel p ON p.id = z.personel_id INNER JOIN demirbas d ON d.id = z.demirbas_id WHERE z.durum = 'teslim' AND z.silinme_tarihi IS NULL AND LOWER(d.durum) = 'hurda' AND p.firma_id = ?");
+$sqlA->execute([$fId]);
+while($r=$sqlA->fetch()) echo "hurdaAktifPersoneller.push({id:{$r['id']}, text:'".addslashes($r['adi_soyadi'])."'});\n";
+
+// Tüm personel
+$sqlT = $dbP->prepare("SELECT id, adi_soyadi FROM personel WHERE firma_id = ? AND silinme_tarihi IS NULL ORDER BY adi_soyadi ASC");
+$sqlT->execute([$fId]);
+while($r=$sqlT->fetch()) echo "hurdaTumPersoneller.push({id:{$r['id']}, text:'".addslashes($r['adi_soyadi'])."'});\n";
+?>
+</script>
 <script src="views/demirbas/js/sayac-deposu.js?v=<?php echo time(); ?>"></script>
