@@ -915,23 +915,5 @@ $title = "Sayaç Deposu";
 
 <!-- Hurda Sayaç İade Modal (Eksik Modal Eklendi - Kaldırıldı, çünkü yukarıda include ediliyor) -->
 
-<script>
-// PHP'den gelen personel listeleri (Zimmetli/Tüm)
-var hurdaAktifPersoneller = [];
-var hurdaTumPersoneller = [];
-<?php
-// Bu listeleri fetch edebilirsiniz veya modelden direkt basabilirsiniz
-$dbP = $Demirbas->db;
-$fId = $_SESSION['firma_id'];
-// Aktif hurda zimmeti olanlar
-$sqlA = $dbP->prepare("SELECT DISTINCT p.id, p.adi_soyadi FROM demirbas_zimmet z INNER JOIN personel p ON p.id = z.personel_id INNER JOIN demirbas d ON d.id = z.demirbas_id WHERE z.durum = 'teslim' AND z.silinme_tarihi IS NULL AND LOWER(d.durum) = 'hurda' AND p.firma_id = ?");
-$sqlA->execute([$fId]);
-while($r=$sqlA->fetch()) echo "hurdaAktifPersoneller.push({id:{$r['id']}, text:'".addslashes($r['adi_soyadi'])."'});\n";
-
-// Tüm personel
-$sqlT = $dbP->prepare("SELECT id, adi_soyadi FROM personel WHERE firma_id = ? AND silinme_tarihi IS NULL ORDER BY adi_soyadi ASC");
-$sqlT->execute([$fId]);
-while($r=$sqlT->fetch()) echo "hurdaTumPersoneller.push({id:{$r['id']}, text:'".addslashes($r['adi_soyadi'])."'});\n";
-?>
 </script>
 <!-- sayac-deposu.js vendor-scripts.php'den yükleniyor, burada tekrar yüklemeye gerek yok -->

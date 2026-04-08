@@ -335,8 +335,8 @@ if (Gate::allows("ana_sayfa")) {
             $desc .= '<br><small class="text-warning fw-bold mt-1 d-inline-block"><i class="bx bx-time-five"></i> Son Tarih: ' . date('d.m.Y', strtotime($d['etkinlik_tarihi'])) . '</small>';
         }
 
-        $linkClass = $d['hedef_sayfa'] ? 'cursor-pointer' : '';
-        $onClick = $d['hedef_sayfa'] ? "onclick=\"window.location.href='" . htmlspecialchars($d['hedef_sayfa']) . "'\"" : "";
+        $linkClass = 'cursor-pointer';
+        $onClick = "onclick=\"showDuyuruDetail({$d['id']})\"";
 
         $slider_notifications[] = [
             'id' => $d['id'],
@@ -348,6 +348,9 @@ if (Gate::allows("ana_sayfa")) {
             'link_class' => $linkClass
         ];
     }
+
+    // Modal için veriyi hazırla
+    $duyurular_json = json_encode(array_column($duyurular, null, 'id'), JSON_UNESCAPED_UNICODE);
 
     // Widget İçeriklerini Tanımla
     $widgets = [];
@@ -4837,11 +4840,69 @@ if (Gate::allows("ana_sayfa")) {
 
                     // Sayfa yüklendiğinde veri çek
                     loadEndeksComparison();
+
                 })();
                 // ========== /ENDEKS KARŞILAŞTIRMA KART LOGIC ==========
 
+                var appDuyurular = <?php echo $duyurular_json ?? '{}'; ?>;
+
+                window.showDuyuruDetail = function(id) {
+                    var d = appDuyurular[id];
+                    if (!d) return;
+
+                    var $modal = $('#homeDuyuruDetailModal');
+                    $modal.find('.modal-title').text(d.baslik);
+                    $modal.find('#duyuruContent').html(d.icerik);
+                    
+                    if (d.resim) {
+                        $modal.find('#duyuruImage').attr('src', d.resim).parent().show();
+                    } else {
+                        $modal.find('#duyuruImage').parent().hide();
+                    }
+
+                    if (d.etkinlik_tarihi) {
+                        var dateStr = new Date(d.etkinlik_tarihi).toLocaleDateString('tr-TR');
+                        $modal.find('#duyuruDate').html('<i class="bx bx-calendar me-1"></i>Son Tarih: ' + dateStr).show();
+                    } else {
+                        $modal.find('#duyuruDate').hide();
+                    }
+
+                    if (d.hedef_sayfa) {
+                        $modal.find('#duyuruLink').attr('href', d.hedef_sayfa).show();
+                    } else {
+                        $modal.find('#duyuruLink').hide();
+                    }
+
+                    $modal.modal('show');
+                };
+
             });
         </script>
+
+        <!-- Duyuru Detay Modal -->
+        <div class="modal fade" id="homeDuyuruDetailModal" tabindex="-1" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+                    <div class="modal-header border-0 p-4 pb-0">
+                        <h5 class="modal-title fw-bold" style="font-family: 'Outfit', sans-serif; font-size: 1.25rem;"></h5>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div class="mb-3 text-center" style="display:none;">
+                            <img id="duyuruImage" src="" class="img-fluid rounded-3 shadow-sm" style="max-height: 350px; width: 100%; object-fit: cover;">
+                        </div>
+                        <div id="duyuruDate" class="badge bg-soft-warning text-warning mb-3 p-2 px-3 rounded-pill" style="display:none; font-size: 0.85rem;"></div>
+                        <div id="duyuruContent" class="text-muted leading-relaxed" style="font-size: 1rem; line-height: 1.6;"></div>
+                    </div>
+                    <div class="modal-footer border-0 p-4 pt-0">
+                        <button type="button" class="btn btn-light rounded-pill px-4" data-bs-dismiss="modal">Kapat</button>
+                        <a id="duyuruLink" href="#" class="btn btn-primary rounded-pill px-4" style="display:none;">
+                            Detaya Git <i class="bx bx-right-arrow-alt ms-1"></i>
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
         <?php
 } else {
     //Alert::danger("Bu sayfaya erişim yetkiniz yok!");

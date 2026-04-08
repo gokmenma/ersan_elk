@@ -118,7 +118,8 @@ foreach ($personeller as $p) {
                     <div class="row g-4">
                         <!-- Personel Seçimi -->
                         <div class="col-md-5">
-                            <?php echo Form::FormSelect2('hurda_personel_id', [], null, 'Personel *', 'user'); ?>
+                            <label class="form-label fw-bold small text-muted text-uppercase mb-2">Personel *</label>
+                            <?php echo Form::FormSelect2('hurda_personel_id', [], null, null, 'user'); ?>
                         </div>
 
                         <!-- Tarih -->

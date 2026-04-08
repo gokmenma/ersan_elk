@@ -255,7 +255,7 @@ if (!is_array($firma_option)) {
                         <!-- Notifications will be loaded here -->
                     </div>
                     <div class="p-2 border-top d-grid">
-                        <a class="btn btn-sm btn-link font-size-14 text-center" href="index.php?p=mail-sms/list">
+                        <a class="btn btn-sm btn-link font-size-14 text-center" href="index.php?p=bildirim/list">
                             <i class="mdi mdi-arrow-right-circle me-1"></i>
                             <span>Tümünü Gör</span>
                         </a>

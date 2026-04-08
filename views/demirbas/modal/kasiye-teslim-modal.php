@@ -45,6 +45,12 @@ if (isset($personeller) && is_array($personeller)) {
                         </div>
                     </div>
 
+                    <div class="row" id="kasiyeAdetRow" style="display: none;">
+                        <div class="col-md-12 mb-3">
+                            <?php echo Form::FormFloatInput('number', 'adet', '1', null, 'İade Sayısı (Adet) *', 'hash', 'form-control', false, null, 'off', false, 'min="1"'); ?>
+                        </div>
+                    </div>
+
                     <div class="row">
                         <div class="col-md-12 mb-3">
                             <?php echo Form::FormFloatTextarea('aciklama', null, 'Teslima dair notlar giriniz...', 'Açıklama', 'file-text'); ?>

@@ -1,6 +1,28 @@
 $(function () {
     var apiUrl = "views/demirbas/api.php";
 
+    // Preloader Manager - Gruplanmış AJAX takibi ile pırpır yapmayı önler
+    $(document).ajaxStart(function() {
+        $("#personel-loader").stop(true, true).fadeIn(200);
+    });
+
+    $(document).ajaxStop(function() {
+        // Kısa bir gecikme ile gerçekten bittiğinden emin ol ($.active ile kontrol et)
+        setTimeout(function() {
+            if ($.active === 0) {
+                $("#personel-loader").fadeOut(600);
+            }
+        }, 200);
+    });
+
+    // Fail-safe: Herhangi bir sebeple takılırsa 10 saniye sonra zorla kapat
+    setTimeout(function() {
+        if ($("#personel-loader").is(":visible")) {
+            console.warn("Preloader zorla kapatıldı (Timeout)");
+            $("#personel-loader").fadeOut(600);
+        }
+    }, 10000);
+
     // Güvenli DataTable başlatma (Otomatik Preloader Desteği ile)
     function safeInitTable(selector, customOptions) {
         if ($.fn.DataTable.isDataTable(selector)) {
@@ -8,26 +30,11 @@ $(function () {
         }
         var defaults = getDatatableOptions();
         
-        // Preloader Mantığı
-        var custPreDraw = customOptions.preDrawCallback;
-        customOptions.preDrawCallback = function (settings) {
-            $("#personel-loader").show();
-            if (typeof custPreDraw === "function") custPreDraw.call(this, settings);
-        };
-
-        var custDraw = customOptions.drawCallback;
-        customOptions.drawCallback = function (settings) {
-            // Tablo çizimi bitince preloader'ı kapat (Hafif gecikmeyle ki görsellik otursun)
-            setTimeout(function() {
-                $("#personel-loader").fadeOut(300);
-            }, 100);
-            if (typeof custDraw === "function") custDraw.call(this, settings);
-        };
-
-        var defInit = defaults.initComplete;
-        var custInit = customOptions.initComplete;
+        // initComplete ve diğer callback'leri güvenli şekilde birleştir
+        let defInit = defaults.initComplete;
+        let custInit = customOptions.initComplete;
+        
         customOptions.initComplete = function(settings, json) {
-            $("#personel-loader").fadeOut(300); 
             if (typeof defInit === "function") defInit.call(this, settings, json);
             if (typeof custInit === "function") custInit.call(this, settings, json);
         };
@@ -60,8 +67,7 @@ $(function () {
             { data: "adet", className: "text-center", width: '15%' },
         ],
         order: [[1, "desc"]],
-        pageLength: 25,
-        initComplete: function () { $("#personel-loader").fadeOut(300); }
+        pageLength: 25
     });
 
     $('#kaskiTarihTable tbody').on('click', 'tr', function (e) {
@@ -82,6 +88,7 @@ $(function () {
         } else {
             // Kapalıysa aç
             var dateRaw = row.data().islem_tarih_raw;
+            var islemTipiRaw = row.data().islem_tipi_raw || row.data().islem_tipi;
             if (!dateRaw) return;
 
             tr.addClass('shown');
@@ -90,7 +97,7 @@ $(function () {
             // Geçici yükleme göster
             row.child('<div class="text-center p-3"><div class="spinner-border text-primary spinner-border-sm me-2"></div> Detaylar Yükleniyor...</div>').show();
             
-            $.post(apiUrl, { action: 'sayac-kaski-date-details', tarih: dateRaw }, function(res) {
+            $.post(apiUrl, { action: 'sayac-kaski-date-details', tarih: dateRaw, islem_tipi: islemTipiRaw }, function(res) {
                 if (res.status === 'success') {
                     row.child(res.html).show();
                 } else {
@@ -198,40 +205,40 @@ $(function () {
         $.post(apiUrl, { action: "sayac-global-summary" }, function (res) {
             if (res.status === "success") {
                 let d = res;
-                // Değişkenleri alalım
                 let yeniDepo = parseInt(d.yeni_depoda) || 0;
                 let hurdaDepo = parseInt(d.hurda_depoda) || 0;
                 let yeniPersonel = parseInt(d.yeni_personelde) || 0;
+                let hurdaPersonel = parseInt(d.hurda_personelde) || 0;
                 let takilan = parseInt(d.takilan) || 0;
                 let hurdaKaski = parseInt(d.hurda_kaskiye) || 0;
-                let yeniToplam = parseInt(d.toplam_alinan) || 0; 
-
-                // 1. Yeni Sayaç Bölümü
-                let herSeyDahilMevcut = yeniDepo + yeniPersonel + takilan; 
-                let yeniKayip = yeniToplam - herSeyDahilMevcut;
-
-                // 2. Hurda Sayaç Bölümü (Toplam Hurda = Eldeki + Teslim Edilen)
-                let hurdaMevcut = hurdaDepo + hurdaKaski; 
-                let hurdaToplam = hurdaMevcut; // Toplam hurda eldeki ve gidenlerin toplamıdır
-                let hurdaKayip = 0; // Kayıp mantığı burada farklı işleyebilir ama şu an sıfırlıyoruz
+                let yeniToplam = parseInt(d.toplam_alinan) || 0;
+                let yeniKayip = parseInt(d.kayip_yeni) || 0;
+                let hurdaToplam = parseInt(d.toplam_hurda) || 0;
 
                 // UI Güncelleme (Bizim Depo Tabı)
                 $("#sayacCardToplamGiren").text(yeniToplam);
                 $("#sayacCardDepoKalan").text(yeniDepo);
-                $("#sayacCardTakilan").text(takilan); // Bu rakam toplam hurdaya (4915) eşit olacak
+                $("#sayacCardTakilan").text(takilan);
                 $("#sayacCardPersonelZimmetli").text(yeniPersonel);
-                $("#sayacCardKayipYeni").text(yeniKayip > 0 ? yeniKayip : 0);
+                $("#sayacCardKayipYeni").text(yeniKayip);
 
-                $("#sayacCardToplamHurda").text(hurdaToplam); // 4915
-                $("#sayacCardKaskiyeTeslim").text(hurdaKaski); // 10
-                $("#sayacCardHurda").text(hurdaDepo); // 4905
-                $("#sayacCardPersonelHurda").text(d.hurda_personelde || 0);
+                $("#sayacCardToplamHurda").text(hurdaToplam);
+                $("#sayacCardKaskiyeTeslim").text(hurdaKaski);
+                $("#sayacCardHurda").text(hurdaDepo);
+                $("#sayacCardPersonelHurda").text(hurdaPersonel);
                 $("#sayacCardKayipHurda").text(0);
 
-                // UI Güncelleme (Kaski Tabı)
-                $("#kaskiSummaryToplamAlinan").text(yeniToplam);
-                $("#kaskiSummaryIadeEdilen").text(hurdaKaski);
-                $("#kaskiSummaryFark").text(yeniToplam - hurdaKaski);
+            }
+        }, "json");
+
+        $.post(apiUrl, { action: "sayac-kaski-ozet" }, function (res) {
+            if (res.status === "success") {
+                let toplamAlinanYeni = parseInt(res.toplam_alinan_yeni) || 0;
+                let toplamTeslimHurda = parseInt(res.toplam_teslim_hurda) || 0;
+
+                $("#kaskiSummaryToplamAlinan").text(toplamAlinanYeni);
+                $("#kaskiSummaryIadeEdilen").text(toplamTeslimHurda);
+                $("#kaskiSummaryFark").text(toplamAlinanYeni - toplamTeslimHurda);
             }
         }, "json");
     }
@@ -1000,15 +1007,26 @@ $(function () {
         e.preventDefault();
         e.stopImmediatePropagation();
         var selected = getAktifSeciliIdler();
+        
+        // Modal elemanı
+        var $modalEl = $("#kasiyeTeslimModal");
+        
         if (selected.length === 0) {
-            Swal.fire("Uyarı", "Lütfen Kaski'ye iade edilecek sayaçları seçin.", "warning");
-            return;
+            // Hiç seçim yoksa "Manuel" mod
+            $("#kasiye_is_toplu").val("manual");
+            $("#kasiye_toplu_ids").val("");
+            $("#kasiyeAdetRow").show();
+            $("#kasiyeTopluAdetV2").text("0");
+            $modalEl.find(".alert-soft-info").hide(); // Seçim bilgisini gizle
+        } else {
+            // Seçili sayaçlar var
+            $("#kasiye_toplu_ids").val(selected.join(','));
+            $("#kasiye_is_toplu").val("1");
+            $("#kasiyeAdetRow").hide();
+            $("#kasiyeTopluAdetV2").text(selected.length);
+            $modalEl.find(".alert-soft-info").show();
         }
-        // Şifrelenmiş ID'ler zaten elimizde, modalda toplayalım.
-        // Ancak IDler dizi olarak geliyor. kaskiyeTeslimForm submission js array olarak alıyor.
-        $("#kasiye_toplu_ids").val(selected.join(','));
-        $("#kasiye_is_toplu").val("1");
-        $("#kasiyeTopluAdetV2").text(selected.length);
+        
         var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById("kasiyeTeslimModal"));
         modal.show();
     });
@@ -1019,7 +1037,9 @@ $(function () {
         $("#kasiye_demirbas_id").val(id);
         $("#kasiye_is_toplu").val("0");
         $("#kasiye_toplu_ids").val("");
+        $("#kasiyeAdetRow").hide();
         $("#kasiyeTopluAdetV2").text("1");
+        $("#kasiyeTeslimModal .alert-soft-info").show();
         var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById("kasiyeTeslimModal"));
         modal.show();
     });
@@ -1034,16 +1054,20 @@ $(function () {
         if (isKaskiyeSubmitting) return;
         isKaskiyeSubmitting = true;
 
+        var $form = $(this);
         var isToplu = $("#kasiye_is_toplu").val() === "1";
+        var isManual = $("#kasiye_is_toplu").val() === "manual";
         
         var postData = {
-            action: isToplu ? "toplu-kasiye-teslim" : "kasiye-teslim",
-            tarih: $("#kasiye_tarih").val(),
-            aciklama: $("#kasiye_aciklama").val(),
-            teslim_eden: $("#kasiye_teslim_eden").val()
+            action: isManual ? "manual-kasiye-teslim" : (isToplu ? "toplu-kasiye-teslim" : "kasiye-teslim"),
+            tarih: $form.find('[name="tarih"]').val(),
+            aciklama: $form.find('[name="aciklama"]').val(),
+            teslim_eden: $form.find('[name="teslim_eden"]').val()
         };
 
-        if (isToplu) {
+        if (isManual) {
+            postData.adet = $form.find('[name="adet"]').val();
+        } else if (isToplu) {
             postData.ids = JSON.stringify($("#kasiye_toplu_ids").val().split(','));
         } else {
             postData.demirbas_id = $("#kasiye_demirbas_id").val();
@@ -1483,5 +1507,33 @@ $(function () {
         reloadAllTables();
     });
 
-// Hurda Sayaç İade İşlemleri demirbas.js'den yönetiliyor. Duplike olmaması için silindi.
+    // =============================================
+    // PERSONEL TABLOSU - HURDA İADE TETİKLEME
+    // =============================================
+    $(document).on("click", ".hurda-iade-trigger", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+        
+        var personelId = $(this).data("personel-id");
+        if (!personelId) return;
+
+        // Hurda iade modalını açan butonu tetikle (bu buton demirbas.js'deki hazırlıkları yapar)
+        $("#btnHurdaSayacIade").trigger("click");
+
+        // Modal açıldıktan sonra personel seçimini yap
+        // Not: updateHurdaPersonelList demirbas.js içinde select2'yi sıfırlayıp dolduruyor.
+        setTimeout(function() {
+            var $personelSelect = $("#hurda_personel_id");
+            if ($personelSelect.length) {
+                // Eğer personel mevcut "Aktif" listede yoksa, "Tüm Personeller" filtresine geç
+                var exists = $personelSelect.find("option[value='" + personelId + "']").length > 0;
+                if (!exists) {
+                    $("#hurdaPersonelTum").prop("checked", true).trigger("change");
+                }
+                $personelSelect.val(personelId).trigger("change");
+            }
+        }, 250);
+    });
+
+    // Hurda Sayaç İade İşlemleri demirbas.js'den yönetiliyor. Duplike olmaması için silindi.
 });

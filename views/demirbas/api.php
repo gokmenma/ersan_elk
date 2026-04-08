@@ -205,7 +205,7 @@ if ($action == "kasiye-teslim") {
         $demirbas_id = $demirbas_id_raw ? intval(Security::decrypt($demirbas_id_raw)) : 0;
         $tarih = $_POST["tarih"] ?? date('d.m.Y');
         
-        $teslim_eden_id = intval($_POST["teslim_eden"] ?? 0);
+        $teslim_eden_id = intval($_POST["teslim_eden"] ?? ($_SESSION['personel_id'] ?? 0));
         $teslim_eden = $_SESSION["adi_soyadi"] ?? 'Sistem Kullanıcısı';
         if ($teslim_eden_id > 0) {
             $pName = $Demirbas->db->query("SELECT adi_soyadi FROM personel WHERE id = $teslim_eden_id")->fetchColumn();
@@ -217,19 +217,30 @@ if ($action == "kasiye-teslim") {
         if ($demirbas_id <= 0 || empty($tarih)) {
             jsonResponse("error", "Geçersiz parametreler. Lütfen formu eksiksiz doldurun.");
         }
+        if ($teslim_eden_id <= 0) {
+            jsonResponse("error", "Lütfen teslim eden personeli seçin.");
+        }
 
         $formatted_tarih = Date::Ymd($tarih, 'Y-m-d');
+        $demirbas = $Demirbas->find($demirbas_id);
+        if (!$demirbas) {
+            jsonResponse("error", "Sayaç kaydı bulunamadı.");
+        }
+        $teslimMiktari = (int)($demirbas->kalan_miktar ?? $demirbas->miktar ?? 0);
+        if ($teslimMiktari <= 0) {
+            $teslimMiktari = (int)($demirbas->miktar ?? 0);
+        }
+        if ($teslimMiktari <= 0) {
+            $teslimMiktari = 1;
+        }
 
         // Durumu güncelle, lokasyon değiştir, stoğu sıfırla
         $sqlUpdate = $Demirbas->db->prepare("UPDATE demirbas SET durum = 'Kaskiye Teslim Edildi', lokasyon = 'kaski', kaskiye_teslim_tarihi = ?, kaskiye_teslim_eden = ?, aciklama = ?, kalan_miktar = 0, miktar = 0 WHERE id = ?");
         $sqlUpdate->execute([$formatted_tarih, $teslim_eden, $aciklama, $demirbas_id]);
 
-        // Hareket kaydı ekle (Tarihçe için)
-        // Personel bağımsız depo çıkışı (sarf)
-        $personel_id_extra = null; 
-        $sqlMov = $Demirbas->db->prepare("INSERT INTO demirbas_hareketler (demirbas_id, hareket_tipi, miktar, tarih, aciklama, islem_yapan_id, kaynak, personel_id) VALUES (?, 'sarf', 1, ?, ?, ?, 'sistem', ?)");
+        $sqlMov = $Demirbas->db->prepare("INSERT INTO demirbas_hareketler (demirbas_id, hareket_tipi, miktar, tarih, aciklama, islem_yapan_id, kaynak, personel_id) VALUES (?, 'sarf', ?, ?, ?, ?, 'sistem', ?)");
         $desc = "KASKİ'ye Teslim Edildi. Teslim Eden: $teslim_eden. " . ($aciklama ? "Not: $aciklama" : "");
-        $sqlMov->execute([$demirbas_id, $formatted_tarih, $desc, $_SESSION['id'] ?? 0, $personel_id_extra]);
+        $sqlMov->execute([$demirbas_id, $teslimMiktari, $formatted_tarih, $desc, $_SESSION['id'] ?? 0, $teslim_eden_id]);
 
         jsonResponse("success", "Sayaç başarıyla Kaskiye teslim edildi. Durum güncellendi.");
     } catch (Exception $ex) {
@@ -244,7 +255,7 @@ if ($action == "toplu-kasiye-teslim") {
         $ids = json_decode($ids_json, true);
         $tarih = $_POST["tarih"] ?? date('d.m.Y');
         
-        $teslim_eden_id = intval($_POST["teslim_eden"] ?? 0);
+        $teslim_eden_id = intval($_POST["teslim_eden"] ?? ($_SESSION['personel_id'] ?? 0));
         $teslim_eden = $_SESSION["adi_soyadi"] ?? 'Sistem Kullanıcısı';
         if ($teslim_eden_id > 0) {
             $pName = $Demirbas->db->query("SELECT adi_soyadi FROM personel WHERE id = $teslim_eden_id")->fetchColumn();
@@ -256,21 +267,35 @@ if ($action == "toplu-kasiye-teslim") {
         if (empty($ids) || empty($tarih)) {
             jsonResponse("error", "Seçili sayaç bulunamadı veya tarih eksik.");
         }
+        if ($teslim_eden_id <= 0) {
+            jsonResponse("error", "Lütfen teslim eden personeli seçin.");
+        }
 
         $formatted_tarih = Date::Ymd($tarih, 'Y-m-d');
         $successCount = 0;
 
-        $personel_id_extra = null; // Personel bağımsız depo çıkışı (sarf)
         $sqlUpdate = $Demirbas->db->prepare("UPDATE demirbas SET durum = 'Kaskiye Teslim Edildi', lokasyon = 'kaski', kaskiye_teslim_tarihi = ?, kaskiye_teslim_eden = ?, aciklama = ?, kalan_miktar = 0, miktar = 0 WHERE id = ?");
-        $sqlMov = $Demirbas->db->prepare("INSERT INTO demirbas_hareketler (demirbas_id, hareket_tipi, miktar, tarih, aciklama, islem_yapan_id, kaynak, personel_id) VALUES (?, 'sarf', 1, ?, ?, ?, 'sistem', ?)");
+        $sqlMov = $Demirbas->db->prepare("INSERT INTO demirbas_hareketler (demirbas_id, hareket_tipi, miktar, tarih, aciklama, islem_yapan_id, kaynak, personel_id) VALUES (?, 'sarf', ?, ?, ?, ?, 'sistem', ?)");
 
         foreach ($ids as $id_raw) {
             $id = intval(Security::decrypt($id_raw));
             if ($id > 0) {
+                $demirbas = $Demirbas->find($id);
+                if (!$demirbas) {
+                    continue;
+                }
+                $teslimMiktari = (int)($demirbas->kalan_miktar ?? $demirbas->miktar ?? 0);
+                if ($teslimMiktari <= 0) {
+                    $teslimMiktari = (int)($demirbas->miktar ?? 0);
+                }
+                if ($teslimMiktari <= 0) {
+                    $teslimMiktari = 1;
+                }
+
                 $sqlUpdate->execute([$formatted_tarih, $teslim_eden, $aciklama, $id]);
                 
                 $desc = "Toplu KASKİ'ye Teslim. Teslim Eden: $teslim_eden. " . ($aciklama ? "Not: $aciklama" : "");
-                $sqlMov->execute([$id, $formatted_tarih, $desc, $_SESSION['id'] ?? 0, $personel_id_extra]);
+                $sqlMov->execute([$id, $teslimMiktari, $formatted_tarih, $desc, $_SESSION['id'] ?? 0, $teslim_eden_id]);
 
                 $successCount++;
             }
@@ -278,6 +303,68 @@ if ($action == "toplu-kasiye-teslim") {
 
         jsonResponse("success", "Toplam $successCount adet sayaç Kaskiye teslim edildi.");
     } catch (Exception $ex) {
+        jsonResponse("error", "Hata: " . $ex->getMessage());
+    }
+}
+
+// Manuel Kaskiye Teslim (Adet girerek toplu teslim)
+if ($action == "manual-kasiye-teslim" || $action == "manual-kaski-teslim") {
+    try {
+        $tarih = $_POST["tarih"] ?? date('d.m.Y');
+        $adet = intval($_POST["adet"] ?? 0);
+        $aciklama = $_POST["aciklama"] ?? null;
+        
+        $teslim_eden_id = intval($_POST["teslim_eden"] ?? ($_SESSION['personel_id'] ?? 0));
+        $teslim_eden = 'Sistem Kullanıcısı';
+        if ($teslim_eden_id > 0) {
+            $stmtP = $Demirbas->db->prepare("SELECT adi_soyadi FROM personel WHERE id = ?");
+            $stmtP->execute([$teslim_eden_id]);
+            $pName = $stmtP->fetchColumn();
+            if ($pName) $teslim_eden = $pName;
+        }
+
+        if ($adet <= 0 || empty($tarih)) {
+            jsonResponse("error", "Geçersiz adet veya tarih.");
+        }
+
+        $formatted_tarih = Date::Ymd($tarih, 'Y-m-d');
+
+        // Sayaç kategori ID'sini bul
+        $sqlKat = $Demirbas->db->prepare("SELECT id FROM tanimlamalar WHERE grup = 'demirbas_kategorisi' AND (LOWER(tur_adi) LIKE '%sayaç%' OR LOWER(tur_adi) LIKE '%sayac%') AND firma_id = ? LIMIT 1");
+        $sqlKat->execute([$_SESSION['firma_id']]);
+        $sayacKatId = $sqlKat->fetchColumn();
+
+        $Demirbas->db->beginTransaction();
+
+        // 1. Manuel kayıt oluştur (Kaskiye teslim edilmiş olarak)
+        $sqlInsert = $Demirbas->db->prepare("
+            INSERT INTO demirbas 
+            (firma_id, kategori_id, demirbas_adi, miktar, kalan_miktar, durum, lokasyon, aciklama, kayit_yapan, kaskiye_teslim_tarihi, kaskiye_teslim_eden)
+            VALUES (?, ?, ?, ?, ?, 'Kaskiye Teslim Edildi', 'kaski', ?, ?, ?, ?)
+        ");
+        $sqlInsert->execute([
+            $_SESSION['firma_id'],
+            $sayacKatId ?: null,
+            "Hurda Sayaç (Manuel KASKİ Teslim)",
+            $adet, 
+            0, // Kalan miktar 0 çünkü teslim edildi
+            ($aciklama ?: "Manuel Kaskiye Teslim"),
+            $_SESSION['id'] ?? null,
+            $formatted_tarih,
+            $teslim_eden
+        ]);
+        $yeniId = $Demirbas->db->lastInsertId();
+
+        // 2. Hareket ekle (Personel_id teslim eden bilgisi olarak kalır ama hesaplamalarda d.lokasyon = 'kaski' kontrol edilerek dışlanacaktır)
+        $sqlMov = $Demirbas->db->prepare("INSERT INTO demirbas_hareketler (demirbas_id, hareket_tipi, miktar, tarih, aciklama, islem_yapan_id, kaynak, personel_id) VALUES (?, 'sarf', ?, ?, ?, ?, 'sistem', ?)");
+        $desc = "[KASKI_TESLIM] Toplu KASKİ'ye Teslim. Teslim Eden: $teslim_eden. " . ($aciklama ? "Not: $aciklama" : "");
+        $sqlMov->execute([$yeniId, $adet, $formatted_tarih, $desc, $_SESSION['id'] ?? 0, $teslim_eden_id]);
+
+        $Demirbas->db->commit();
+        jsonResponse("success", "$adet adet sayaç Kaskiye teslim edildi.");
+
+    } catch (Exception $ex) {
+        if ($Demirbas->db->inTransaction()) $Demirbas->db->rollBack();
         jsonResponse("error", "Hata: " . $ex->getMessage());
     }
 }
@@ -844,69 +931,90 @@ if ($action == "bulk-demirbas-sil") {
 if ($action == "bulk-hareket-sil") {
     Gate::can('demirbas_toplu_islem_sil');
     $allFiltered = intval($_POST["all_filtered"] ?? 0);
+    $ids = [];
+
     if ($allFiltered === 1) {
         // Pagination parametrelerini temizleyelim ki model tümünü çeksin
         unset($_POST['length'], $_POST['start']);
-        $idsRaw = $Hareket->getFilteredIds($_POST);
-        $ids = array_map(fn($id) => Security::encrypt($id), $idsRaw);
+        $idsRawList = $Hareket->getFilteredIds($_POST);
+        $ids = array_map(fn($id) => (int)$id, $idsRawList);
     } else {
-        $ids = $_POST["ids"] ?? [];
-        if (!empty($ids) && is_string($ids)) {
-            $ids = json_decode($ids, true) ?: [];
+        $idsInput = $_POST["ids"] ?? [];
+        if (!empty($idsInput) && is_string($idsInput)) {
+            $idsInput = json_decode($idsInput, true) ?: [];
         }
+        $ids = array_map(fn($id) => is_numeric($id) ? (int)$id : (int)Security::decrypt($id), (array)$idsInput);
     }
+    $ids = array_filter($ids, fn($id) => $id > 0);
 
     if (empty($ids)) {
         jsonResponse("error", "Lütfen silmek için en az bir kayıt seçin.");
     }
 
-    // Zaman ve bellek limitlerini büyük işlemler için artır
+    // Zaman ve bellek limitlerini büyük işlemler için artır (11.000+ kayıt için)
     set_time_limit(0);
     ini_set('memory_limit', '512M');
 
     try {
         $successCount = 0;
-        $errorCount = 0;
         $Demirbas->db->beginTransaction();
 
-        foreach ($ids as $idEnc) {
-            // ID şifreli olabilir (Tümünü Seç modunda) veya düz sayı olabilir (Sayfadaki seçimde)
-            $id = is_numeric($idEnc) ? (int)$idEnc : (int)Security::decrypt($idEnc);
-            if ($id <= 0) continue;
+        // 1. Tüm hareket detaylarını tek sorguda çek
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $stmtH = $Demirbas->db->prepare("SELECT id, demirbas_id, aciklama, hareket_tipi, zimmet_id FROM demirbas_hareketler WHERE id IN ($placeholders)");
+        $stmtH->execute($ids);
+        $hareketler = $stmtH->fetchAll(PDO::FETCH_ASSOC);
 
-            // Revert state logic for Kaski deliveries and Personnel assignments
-            $stmtH = $Demirbas->db->prepare("SELECT demirbas_id, aciklama, hareket_tipi, zimmet_id FROM demirbas_hareketler WHERE id = ?");
-            $stmtH->execute([$id]);
-            $hareket = $stmtH->fetch(PDO::FETCH_ASSOC);
+        $zimmetIdsToDelete = [];
+        $demirbasIdsToRevertKaski = [];
+        $movementIdsToSoftDelete = [];
 
-            if ($hareket) {
-                $aciklamaLower = mb_strtolower($hareket['aciklama'] ?? '', 'UTF-8');
-                $tip = $hareket['hareket_tipi'] ?? '';
-                $zimmetId = $hareket['zimmet_id'] ?? 0;
+        foreach ($hareketler as $h) {
+            $aciklamaLower = mb_strtolower($h['aciklama'] ?? '', 'UTF-8');
+            $tip = $h['hareket_tipi'] ?? '';
+            $zimmetId = $h['zimmet_id'] ?? 0;
+            $mId = (int)$h['id'];
 
-                if ($tip === 'zimmet' && $zimmetId > 0) {
-                    // Zimmet silme işlemi (Stok ve durumu kendi içinde halleder)
-                    $Zimmet->delete($zimmetId, false);
-                } elseif (str_contains($aciklamaLower, 'kaski') && (str_contains($aciklamaLower, 'teslim') || str_contains($aciklamaLower, 'iade'))) {
-                    // Kaski iadesini geri al
-                    $Demirbas->db->prepare("UPDATE demirbas SET durum = 'aktif', lokasyon = 'bizim_depo', kaskiye_teslim_tarihi = NULL, kaskiye_teslim_eden = NULL, miktar = 1, kalan_miktar = 1 WHERE id = ?")->execute([$hareket['demirbas_id']]);
-                }
-            }
-
-            $stmt = $Demirbas->db->prepare("UPDATE demirbas_hareketler SET silinme_tarihi = NOW(), silen_kisi_id = ? WHERE id = ?");
-            if ($stmt->execute([$_SESSION['id'] ?? 0, $id])) {
-                $successCount++;
+            if ($tip === 'zimmet' && $zimmetId > 0) {
+                $zimmetIdsToDelete[] = $zimmetId;
             } else {
-                $errorCount++;
+                if (str_contains($aciklamaLower, 'kaski') && (str_contains($aciklamaLower, 'teslim') || str_contains($aciklamaLower, 'iade'))) {
+                    $demirbasIdsToRevertKaski[] = $h['demirbas_id'];
+                }
+                $movementIdsToSoftDelete[] = $mId;
             }
+        }
+
+        // 2. Zimmet kayıtlarını sil (Eski sistem uyumu için model üzerinden)
+        $uniqueZimmetIds = array_unique($zimmetIdsToDelete);
+        foreach ($uniqueZimmetIds as $zId) {
+            $Zimmet->delete($zId, false);
+            // Bir zimmet silindiğinde ona bağlı hareketler de silinir, ancak sayacın başarısını 1 artırıyoruz (mantıksal birim)
+            $successCount++; 
+        }
+
+        // 3. Kaski durumlarını toplu geri al
+        $uniqueDemirbasIds = array_unique($demirbasIdsToRevertKaski);
+        if (!empty($uniqueDemirbasIds)) {
+            $placeholdersD = implode(',', array_fill(0, count($uniqueDemirbasIds), '?'));
+            $sqlRevert = "UPDATE demirbas SET durum = 'aktif', lokasyon = 'bizim_depo', kaskiye_teslim_tarihi = NULL, kaskiye_teslim_eden = NULL, miktar = 1, kalan_miktar = 1 WHERE id IN ($placeholdersD)";
+            $Demirbas->db->prepare($sqlRevert)->execute($uniqueDemirbasIds);
+        }
+
+        // 4. Kalan hareketleri toplu soft-delete yap
+        if (!empty($movementIdsToSoftDelete)) {
+            $placeholdersM = implode(',', array_fill(0, count($movementIdsToSoftDelete), '?'));
+            $stmtM = $Demirbas->db->prepare("UPDATE demirbas_hareketler SET silinme_tarihi = NOW(), silen_kisi_id = ? WHERE id IN ($placeholdersM)");
+            $stmtM->execute(array_merge([$_SESSION['id'] ?? 0], $movementIdsToSoftDelete));
+            $successCount += count($movementIdsToSoftDelete);
         }
 
         $Demirbas->db->commit();
         
         // Log kaydı
-        $SystemLog->logAction($_SESSION['id'] ?? 0, "Toplu Hareket Silme", "[$successCount] adet sayaç hareket kaydı toplu olarak silindi.", SystemLogModel::LEVEL_CRITICAL);
+        $SystemLog->logAction($_SESSION['id'] ?? 0, "Toplu Hareket Silme", "[$successCount] adet sayaç hareket kaydı toplu silme işlemi ile silindi.", SystemLogModel::LEVEL_CRITICAL);
 
-        jsonResponse("success", "$successCount adet hareket kaydı başarıyla silindi. Kaski teslimatları geri alındı.");
+        jsonResponse("success", "$successCount adet hareket kaydı başarıyla silindi. Kaski teslimatları ve zimmetler geri alındı.");
     } catch (Exception $ex) {
         if ($Demirbas->db->inTransaction()) {
             $Demirbas->db->rollBack();
@@ -995,11 +1103,10 @@ if ($action == "demirbas-listesi") {
                 $kalan = $d->kalan_miktar ?? 1;
                 $minStok = $d->minimun_stok_uyari_miktari ?? 0;
 
-                // Stok durumu badge (Hurda ise stok 0 sayılmalı)
+                // Stok durumu badge
                 $isIsimHurda = str_contains(mb_strtolower($d->demirbas_adi, 'UTF-8'), 'hurda');
                 if ($isIsimHurda) {
-                    $stokBadge = '<span class="badge" style="background: #ef4444; color: #fff; padding: 4px 8px; border-radius: 6px; font-weight: 700;">Hurda (0/1)</span>';
-                    $kalan = 0;
+                    $stokBadge = '<span class="badge" style="background: #ef4444; color: #fff; padding: 4px 8px; border-radius: 6px; font-weight: 700;">Hurda (' . (int)$kalan . '/' . (int)$miktar . ')</span>';
                 } else {
                     if ($kalan == 0) {
                         $stokBadge = '<span class="badge" style="background: #ef4444; color: #fff; padding: 4px 8px; border-radius: 6px; font-weight: 700;">Stok Yok</span>';
@@ -1153,11 +1260,19 @@ if ($action == "bulk-kasiye-teslim") {
     try {
         $ids_raw = $_POST["ids"] ?? [];
         $tarih = $_POST["tarih"] ?? date('d.m.Y');
+        $teslim_eden_id = intval($_POST["teslim_eden"] ?? ($_SESSION['personel_id'] ?? 0));
         $teslim_eden = $_SESSION["adi_soyadi"] ?? 'Sistem Kullanıcısı';
+        if ($teslim_eden_id > 0) {
+            $pName = $Demirbas->db->query("SELECT adi_soyadi FROM personel WHERE id = $teslim_eden_id")->fetchColumn();
+            if ($pName) $teslim_eden = $pName;
+        }
         $aciklama = $_POST["aciklama"] ?? null;
 
         if (empty($ids_raw) || empty($tarih)) {
             jsonResponse("error", "Lütfen en az bir sayaç seçin ve tarih girin.");
+        }
+        if ($teslim_eden_id <= 0) {
+            jsonResponse("error", "Lütfen teslim eden personeli seçin.");
         }
 
         $formatted_tarih = Date::Ymd($tarih, 'Y-m-d');
@@ -1167,7 +1282,7 @@ if ($action == "bulk-kasiye-teslim") {
         $Demirbas->db->beginTransaction();
 
         $sqlUpdate = $Demirbas->db->prepare("UPDATE demirbas SET durum = 'Kaskiye Teslim Edildi', lokasyon = 'kaski', kaskiye_teslim_tarihi = ?, kaskiye_teslim_eden = ?, aciklama = ?, kalan_miktar = 0, miktar = 0 WHERE id = ?");
-        $sqlMov = $Demirbas->db->prepare("INSERT INTO demirbas_hareketler (demirbas_id, hareket_tipi, miktar, tarih, aciklama, islem_yapan_id, kaynak, personel_id) VALUES (?, 'sarf', 1, ?, ?, ?, 'sistem', ?)");
+        $sqlMov = $Demirbas->db->prepare("INSERT INTO demirbas_hareketler (demirbas_id, hareket_tipi, miktar, tarih, aciklama, islem_yapan_id, kaynak, personel_id) VALUES (?, 'sarf', ?, ?, ?, ?, 'sistem', ?)");
 
         foreach ($ids_raw as $enc_id) {
             $id = Security::decrypt($enc_id);
@@ -1178,9 +1293,16 @@ if ($action == "bulk-kasiye-teslim") {
             if (!$demirbas)
                 continue;
 
-            $personel_id_extra = null; // Personel bağımsız depo çıkışı (sarf)
+            $teslimMiktari = (int)($demirbas->kalan_miktar ?? $demirbas->miktar ?? 0);
+            if ($teslimMiktari <= 0) {
+                $teslimMiktari = (int)($demirbas->miktar ?? 0);
+            }
+            if ($teslimMiktari <= 0) {
+                $teslimMiktari = 1;
+            }
+
             $sqlUpdate->execute([$formatted_tarih, $teslim_eden, ($aciklama ?? null), $id]);
-            $sqlMov->execute([$id, $formatted_tarih, "KASKİ'ye Teslim: " . ($aciklama ?? 'Detay yok'), ($_SESSION['id'] ?? 0), $personel_id_extra]);
+            $sqlMov->execute([$id, $teslimMiktari, $formatted_tarih, "KASKİ'ye Teslim: " . ($aciklama ?? 'Detay yok'), ($_SESSION['id'] ?? 0), $teslim_eden_id]);
             
             $successCount++;
         }
@@ -1807,7 +1929,23 @@ if ($action == "hurda-zimmet-listesi") {
             ];
         }
 
-        jsonResponse("success", "OK", ["data" => $result]);
+        // ELİNDEKİ TOPLAM HURDA SAYISINI HESAPLA (Takılan - İade Edilen)
+        $sqlScrap = $Demirbas->db->prepare("
+            SELECT
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' THEN h.miktar ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND (h.aciklama IS NULL OR h.aciklama NOT LIKE '[DEPO_IADE]%') THEN h.miktar ELSE 0 END), 0) as elinde_hurda
+            FROM demirbas_hareketler h
+            INNER JOIN demirbas d ON d.id = h.demirbas_id
+            INNER JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
+            WHERE h.silinme_tarihi IS NULL 
+              AND h.personel_id = ? 
+              AND d.firma_id = ? 
+              AND (LOWER(k.tur_adi) LIKE '%sayaç%' OR LOWER(k.tur_adi) LIKE '%sayac%')
+        ");
+        $sqlScrap->execute([$personel_id, $_SESSION['firma_id']]);
+        $elindeHurdaCount = (int) $sqlScrap->fetchColumn();
+
+        jsonResponse("success", "OK", ["data" => $result, "elinde_hurda" => $elindeHurdaCount]);
     } catch (Exception $ex) {
         jsonResponse("error", $ex->getMessage());
     }
@@ -1815,6 +1953,23 @@ if ($action == "hurda-zimmet-listesi") {
 
 // Hurda Sayaç İade Al (Personelden depoya)
 if ($action == "hurda-sayac-iade") {
+    // Tüm modellerin aynı DB bağlantısını kullanmasını sağla (Transaction uyumu için)
+    $sharedDb = $Demirbas->db;
+    $Zimmet->db = $sharedDb;
+    $Hareket->db = $sharedDb;
+
+    // Zimmet modelinin içindeki private Hareket modeline de aynı db'yi ver
+    try {
+        $ref = new ReflectionProperty(get_class($Zimmet), 'Hareket');
+        $ref->setAccessible(true);
+        $zHareket = $ref->getValue($Zimmet);
+        if ($zHareket) {
+            $zHareket->db = $sharedDb;
+        }
+    } catch (Exception $e) {
+        // Reflection hatası durumunda sessizce devam et (Veya logla)
+    }
+
     try {
         $mode = $_POST["mode"] ?? "manual"; // manual veya select
 
@@ -2641,29 +2796,52 @@ if ($action == "personel-bakiye") {
 if ($action == "sayac-kaski-date-details") {
     try {
         $tarih = $_POST['tarih']; // YYYY-MM-DD
+                $islemTipi = trim((string)($_POST['islem_tipi'] ?? ''));
         $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
         
         if (empty($tarih)) {
             jsonResponse("error", "Tarih bilgisi eksik.");
         }
 
-        $sql = "SELECT h.*, d.demirbas_adi, d.seri_no, u.adi_soyadi as islem_yapan_adi 
-                FROM demirbas_hareketler h 
-                INNER JOIN demirbas d ON h.demirbas_id = d.id 
-                LEFT JOIN personel u ON h.islem_yapan_id = u.id 
-                WHERE h.silinme_tarihi IS NULL 
-                  AND d.firma_id = ? 
-                  AND DATE(h.tarih) = ?
-                   AND (
-                    (h.aciklama LIKE '%KASKİ%' OR h.aciklama LIKE '%KASKI%')
-                    OR (LOWER(COALESCE(d.durum,'')) = 'kaskiye teslim edildi' AND DATE(d.kaskiye_teslim_tarihi) = ?)
-                    OR (DATE(COALESCE(d.edinme_tarihi, d.kayit_tarihi)) = ?)
-                  )
-                ORDER BY h.id ASC";
-        
-        $stmt = $Demirbas->db->prepare($sql);
-        $stmt->execute([$firmaId, $tarih, $tarih, $tarih]);
-        $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $catIds = getCategoryIdsByKeywords($Demirbas->db, $firmaId, ['sayaç', 'sayac']);
+                if (empty($catIds)) {
+                        jsonResponse("success", "Başarılı", ["html" => '<div class="text-center text-muted p-3">Kayıt bulunamadı.</div>']);
+                }
+                $in = buildInClause($catIds);
+
+                if ($islemTipi === 'KASKİ İşlemi') {
+                        $sql = "SELECT h.id, d.demirbas_adi, d.seri_no, u.adi_soyadi as islem_yapan_adi, h.aciklama
+                                        FROM demirbas_hareketler h
+                                        INNER JOIN demirbas d ON h.demirbas_id = d.id
+                                        LEFT JOIN personel u ON h.islem_yapan_id = u.id
+                                        WHERE h.silinme_tarihi IS NULL
+                                            AND d.firma_id = ?
+                                            AND d.kategori_id IN ($in)
+                                            AND DATE(h.tarih) = ?
+                                            AND h.hareket_tipi = 'sarf'
+                                            AND (
+                                                        LOWER(COALESCE(h.aciklama, '')) LIKE '%kask%'
+                                                        OR (LOWER(COALESCE(d.durum,'')) = 'kaskiye teslim edildi' AND DATE(d.kaskiye_teslim_tarihi) = ?)
+                                                    )
+                                        ORDER BY h.id ASC";
+                        $params = array_merge([$firmaId], $catIds, [$tarih, $tarih]);
+                } else {
+                        $sql = "SELECT d.id, d.demirbas_adi, d.seri_no, u.adi_soyadi as islem_yapan_adi, d.aciklama
+                                        FROM demirbas d
+                                        LEFT JOIN personel u ON d.kayit_yapan = u.id
+                                        WHERE d.firma_id = ?
+                                            AND d.kategori_id IN ($in)
+                                            AND d.silinme_tarihi IS NULL
+                                            AND DATE(COALESCE(d.edinme_tarihi, d.kayit_tarihi)) = ?
+                                            AND LOWER(COALESCE(d.durum,'')) NOT LIKE '%hurda%'
+                                            AND LOWER(COALESCE(d.demirbas_adi,'')) NOT LIKE '%hurda%'
+                                        ORDER BY d.id ASC";
+                        $params = array_merge([$firmaId], $catIds, [$tarih]);
+                }
+
+                $stmt = $Demirbas->db->prepare($sql);
+                $stmt->execute($params);
+                $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $html = '<div class="p-3 bg-light rounded"><table class="table table-sm table-bordered mb-0 bg-white shadow-sm">
                     <thead class="table-dark">
@@ -2720,73 +2898,122 @@ if ($action == "sayac-global-summary") {
                 'yeni_personelde' => 0,
                 'hurda_personelde' => 0,
                 'toplam_alinan' => 0,
+                'toplam_hurda' => 0,
                 'hurda_kaskiye' => 0,
+                'kayip_yeni' => 0,
                 'takilan' => 0
             ]);
         }
 
-        $in = buildInClause($catIds);
-        
-        // 1. İSTATİSTİKLERİ HESAPLA
+        // Sayaç akışı: KASKI'den alınan yeni -> personele verilen -> takılan -> personelde hurda -> depoya teslim hurda -> KASKI'ye teslim hurda
         $inStr = implode(',', array_map('intval', $catIds));
 
         $sqlStats = $Demirbas->db->prepare("
             SELECT
-                -- YENİ DEPODA
-                COUNT(CASE WHEN d.silinme_tarihi IS NULL 
-                    AND (d.lokasyon = 'bizim_depo' OR d.lokasyon IS NULL OR d.lokasyon = '' OR d.lokasyon = '0')
-                    AND LOWER(COALESCE(d.durum,'')) NOT LIKE '%hurda%'
-                    AND LOWER(d.demirbas_adi) NOT LIKE '%hurda%'
-                    AND d.durum NOT IN ('arizali', 'pasif', 'personelde')
-                    AND NOT EXISTS (SELECT 1 FROM demirbas_zimmet z2 WHERE z2.demirbas_id = d.id AND z2.durum = 'teslim' AND z2.silinme_tarihi IS NULL)
-                    AND NOT EXISTS (SELECT 1 FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.silinme_tarihi IS NULL AND (LOWER(h2.aciklama) LIKE '%kask%'))
-                THEN 1 END) as yeni_depoda,
+                -- KASKI'den alınan yeni sayaç adedi
+                (SELECT COUNT(d1.id)
+                 FROM demirbas d1
+                 WHERE d1.kategori_id IN ($inStr)
+                   AND d1.firma_id = ?
+                   AND d1.silinme_tarihi IS NULL
+                   AND LOWER(COALESCE(d1.durum, '')) NOT LIKE '%hurda%'
+                   AND LOWER(COALESCE(d1.demirbas_adi, '')) NOT LIKE '%hurda%') as toplam_alinan,
 
-                -- HURDA DEPODA
-                COUNT(CASE WHEN d.silinme_tarihi IS NULL 
-                    AND (LOWER(COALESCE(d.durum,'')) LIKE '%hurda%' OR LOWER(d.demirbas_adi) LIKE '%hurda%')
-                    AND (d.lokasyon = 'bizim_depo' OR d.lokasyon IS NULL OR d.lokasyon = '' OR d.lokasyon = '0')
-                    AND NOT EXISTS (SELECT 1 FROM demirbas_hareketler h4 WHERE h4.demirbas_id = d.id AND h4.silinme_tarihi IS NULL AND (LOWER(h4.aciklama) LIKE '%kask%'))
-                THEN 1 END) as hurda_depoda,
+                -- Personelde kalan yeni sayaç = zimmet - personel sarf - kayıp - depoya iade
+                (SELECT
+                    COALESCE(SUM(CASE WHEN h2.hareket_tipi = 'zimmet' 
+                        AND LOWER(COALESCE(d2.durum, '')) NOT LIKE '%hurda%' 
+                        AND LOWER(COALESCE(d2.durum, '')) NOT LIKE '%kaski%'
+                        AND LOWER(COALESCE(d2.lokasyon, '')) != 'kaski'
+                        THEN h2.miktar ELSE 0 END), 0)
+                    - COALESCE(SUM(CASE WHEN h2.hareket_tipi = 'sarf' THEN h2.miktar ELSE 0 END), 0)
+                    - COALESCE(SUM(CASE WHEN h2.hareket_tipi = 'kayip' THEN h2.miktar ELSE 0 END), 0)
+                    - COALESCE(SUM(CASE WHEN h2.hareket_tipi = 'iade' AND h2.aciklama LIKE '[DEPO_IADE]%' THEN h2.miktar ELSE 0 END), 0)
+                 FROM demirbas_hareketler h2
+                 INNER JOIN demirbas d2 ON d2.id = h2.demirbas_id
+                 WHERE d2.kategori_id IN ($inStr)
+                   AND d2.firma_id = ?
+                   AND h2.silinme_tarihi IS NULL
+                   AND h2.personel_id IS NOT NULL
+                   AND LOWER(COALESCE(d2.durum, '')) NOT LIKE '%hurda%'
+                   AND LOWER(COALESCE(d2.demirbas_adi, '')) NOT LIKE '%hurda%') as yeni_personelde,
 
-                -- YENİ PERSONELDE
-                (SELECT COUNT(DISTINCT z3.demirbas_id) FROM demirbas_zimmet z3 
-                 INNER JOIN demirbas d2 ON d2.id = z3.demirbas_id 
-                 WHERE d2.kategori_id IN ($inStr) AND d2.firma_id = ? AND z3.durum = 'teslim' AND z3.silinme_tarihi IS NULL 
-                 AND LOWER(COALESCE(d2.durum,'')) NOT LIKE '%hurda%' AND LOWER(d2.demirbas_adi) NOT LIKE '%hurda%') as yeni_personelde,
+                -- Takılan yeni sayaç (yalnızca personel kaynaklı sarf, kaskiye teslimat hariç)
+                (SELECT COALESCE(SUM(h3.miktar), 0)
+                 FROM demirbas_hareketler h3
+                 INNER JOIN demirbas d3 ON d3.id = h3.demirbas_id
+                 WHERE d3.kategori_id IN ($inStr)
+                   AND d3.firma_id = ?
+                   AND h3.silinme_tarihi IS NULL
+                   AND h3.hareket_tipi = 'sarf'
+                   AND (LOWER(COALESCE(d3.lokasyon, '')) != 'kaski' AND LOWER(COALESCE(d3.durum, '')) NOT LIKE '%kaski%')
+                   AND h3.personel_id IS NOT NULL) as takilan,
 
-                -- KASKİ'ye TESLİM (Kategoriden bağımsız taranması daha güvenli)
-                (SELECT COALESCE(SUM(h6.miktar), 0) FROM demirbas_hareketler h6 
-                 INNER JOIN demirbas d4 ON d4.id = h6.demirbas_id 
-                 WHERE d4.firma_id = ? AND h6.silinme_tarihi IS NULL 
-                 AND (LOWER(h6.aciklama) LIKE '%kask%' OR d4.lokasyon = 'kaski' OR d4.durum = 'Kaskiye Teslim Edildi')) as kaski_teslim
+                -- Personeldeki yeni sayaç kayıp
+                (SELECT COALESCE(SUM(h4.miktar), 0)
+                 FROM demirbas_hareketler h4
+                 INNER JOIN demirbas d4 ON d4.id = h4.demirbas_id
+                 WHERE d4.kategori_id IN ($inStr)
+                   AND d4.firma_id = ?
+                   AND h4.silinme_tarihi IS NULL
+                   AND h4.hareket_tipi = 'kayip'
+                   AND h4.personel_id IS NOT NULL
+                   AND LOWER(COALESCE(d4.durum, '')) NOT LIKE '%hurda%'
+                   AND LOWER(COALESCE(d4.demirbas_adi, '')) NOT LIKE '%hurda%') as kayip_yeni,
 
-            FROM demirbas d
-            WHERE d.kategori_id IN ($inStr) AND d.firma_id = ? AND d.silinme_tarihi IS NULL
+                     -- Personelden depoya alınan hurda (personel KPI'daki teslim hurda ile aynı mantık)
+                (SELECT COALESCE(SUM(h5.miktar), 0)
+                 FROM demirbas_hareketler h5
+                 INNER JOIN demirbas d5 ON d5.id = h5.demirbas_id
+                 WHERE d5.kategori_id IN ($inStr)
+                   AND d5.firma_id = ?
+                   AND h5.silinme_tarihi IS NULL
+                   AND h5.hareket_tipi = 'iade'
+                   AND h5.personel_id IS NOT NULL
+                         AND (LOWER(COALESCE(d5.lokasyon, '')) != 'kaski' OR d5.lokasyon IS NULL)
+                         AND (h5.aciklama IS NULL OR h5.aciklama NOT LIKE '[DEPO_IADE]%')) as hurda_depoya_alinan,
+
+                -- Bizim depodan KASKI'ye teslim edilen hurda
+                (SELECT COALESCE(SUM(h6.miktar), 0)
+                 FROM demirbas_hareketler h6
+                 INNER JOIN demirbas d6 ON d6.id = h6.demirbas_id
+                 WHERE d6.kategori_id IN ($inStr)
+                   AND d6.firma_id = ?
+                   AND h6.silinme_tarihi IS NULL
+                   AND h6.hareket_tipi = 'sarf'
+                   AND (
+                        LOWER(COALESCE(h6.aciklama, '')) LIKE '%kask%'
+                        OR d6.lokasyon = 'kaski'
+                        OR LOWER(COALESCE(d6.durum, '')) = 'kaskiye teslim edildi'
+                   )) as hurda_kaskiye
         ");
 
-        $sqlStats->execute([$firmaId, $firmaId, $firmaId]);
+        $sqlStats->execute([$firmaId, $firmaId, $firmaId, $firmaId, $firmaId, $firmaId]);
         $res = $sqlStats->fetch(PDO::FETCH_OBJ);
 
-        $kaskiTeslimCount = (int)$res->kaski_teslim;
-        
-        // Kullanıcı Talebi: Takılan Sayısı = Toplam Hurda Sayısı (Eldeki + Kaskiye Giden)
-        // 4905 + 10 = 4915
-        $toplamHurdaSayisi = (int)$res->hurda_depoda + $kaskiTeslimCount;
-        $takilan = $toplamHurdaSayisi;
+        $toplamAlinanYeni = max(0, (int)($res->toplam_alinan ?? 0));
+        $yPersonelde = max(0, (int)($res->yeni_personelde ?? 0));
+        $takilan = max(0, (int)($res->takilan ?? 0));
+        $kayipYeni = max(0, (int)($res->kayip_yeni ?? 0));
 
-        // Toplam Alınan = Yeni (Depo+Pers) + Takılan (yani hurdaya çıkanların toplamı)
-        // 6478 + 4915 = 11393
-        $toplamAlinanYeni = (int)$res->yeni_depoda + (int)$res->yeni_personelde + $takilan;
+        $hurdaDepoyaAlinan = max(0, (int)($res->hurda_depoya_alinan ?? 0));
+        $kaskiTeslim = max(0, (int)($res->hurda_kaskiye ?? 0));
+
+        // Akışa göre türetilen KPI'lar
+        $yDepoda = max(0, $toplamAlinanYeni - $yPersonelde - $takilan - $kayipYeni);
+        $hPersonelde = max(0, $takilan - $hurdaDepoyaAlinan);
+        $hDepoda = max(0, $hurdaDepoyaAlinan - $kaskiTeslim);
+        $toplamHurda = $takilan;
 
         jsonResponse("success", "Başarılı", [
-            'yeni_depoda' => (int)$res->yeni_depoda,
-            'hurda_depoda' => (int)$res->hurda_depoda,
-            'yeni_personelde' => (int)$res->yeni_personelde,
-            'hurda_personelde' => 0,
+            'yeni_depoda' => $yDepoda,
+            'hurda_depoda' => $hDepoda,
+            'yeni_personelde' => $yPersonelde,
+            'hurda_personelde' => $hPersonelde,
             'toplam_alinan' => $toplamAlinanYeni,
-            'toplam_alinan_hurda' => $toplamHurdaSayisi,
-            'hurda_kaskiye' => $kaskiTeslimCount,
+            'toplam_hurda' => $toplamHurda,
+            'hurda_kaskiye' => $kaskiTeslim,
+            'kayip_yeni' => $kayipYeni,
             'takilan' => $takilan
         ]);
     } catch (Exception $ex) {
@@ -2806,32 +3033,30 @@ if ($action == "sayac-kaski-ozet") {
             ]);
         }
 
-        // Placeholder karmaşasını önlemek için kategori ID'lerini doğrudan string olarak gömüyoruz
         $inStr = implode(',', array_map('intval', $catIds));
 
         $sqlStats = $Demirbas->db->prepare("
             SELECT
-                -- YENİ DEPODA
-                COUNT(CASE WHEN d.silinme_tarihi IS NULL 
-                    AND (d.lokasyon = 'bizim_depo' OR d.lokasyon IS NULL OR d.lokasyon = '' OR d.lokasyon = '0')
-                    AND LOWER(COALESCE(d.durum,'')) NOT LIKE '%hurda%'
-                    AND LOWER(d.demirbas_adi) NOT LIKE '%hurda%'
-                    AND d.durum NOT IN ('arizali', 'pasif', 'personelde')
-                    AND NOT EXISTS (SELECT 1 FROM demirbas_zimmet z2 WHERE z2.demirbas_id = d.id AND z2.durum = 'teslim' AND z2.silinme_tarihi IS NULL)
-                    AND NOT EXISTS (SELECT 1 FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.silinme_tarihi IS NULL AND (LOWER(h2.aciklama) LIKE '%kask%'))
-                THEN 1 END) as yeni_depoda,
+                (SELECT COUNT(d1.id)
+                 FROM demirbas d1
+                 WHERE d1.kategori_id IN ($inStr)
+                   AND d1.firma_id = ?
+                   AND d1.silinme_tarihi IS NULL
+                   AND LOWER(COALESCE(d1.durum,'')) NOT LIKE '%hurda%'
+                   AND LOWER(COALESCE(d1.demirbas_adi,'')) NOT LIKE '%hurda%') as toplam_alinan,
 
-                -- YENİ PERSONELDE
-                (SELECT COUNT(DISTINCT z3.demirbas_id) FROM demirbas_zimmet z3 
-                 INNER JOIN demirbas d2 ON d2.id = z3.demirbas_id 
-                 WHERE d2.kategori_id IN ($inStr) AND d2.firma_id = ? AND z3.durum = 'teslim' AND z3.silinme_tarihi IS NULL 
-                 AND LOWER(COALESCE(d2.durum,'')) NOT LIKE '%hurda%' AND LOWER(d2.demirbas_adi) NOT LIKE '%hurda%') as yeni_personelde,
-
-                -- KASKİ'ye TESLİM (Kategoriden bağımsız)
-                (SELECT COALESCE(SUM(h6.miktar), 0) FROM demirbas_hareketler h6 
-                 INNER JOIN demirbas d4 ON d4.id = h6.demirbas_id 
-                 WHERE d4.firma_id = ? AND h6.silinme_tarihi IS NULL 
-                 AND (LOWER(h6.aciklama) LIKE '%kask%' OR d4.lokasyon = 'kaski' OR d4.durum = 'Kaskiye Teslim Edildi')) as kaski_teslim
+                (SELECT COALESCE(SUM(h6.miktar), 0)
+                 FROM demirbas_hareketler h6
+                 INNER JOIN demirbas d4 ON d4.id = h6.demirbas_id
+                 WHERE d4.kategori_id IN ($inStr)
+                   AND d4.firma_id = ?
+                   AND h6.silinme_tarihi IS NULL
+                   AND h6.hareket_tipi = 'sarf'
+                   AND (
+                        LOWER(COALESCE(h6.aciklama, '')) LIKE '%kask%'
+                        OR d4.lokasyon = 'kaski'
+                        OR LOWER(COALESCE(d4.durum, '')) = 'kaskiye teslim edildi'
+                   )) as kaski_teslim
 
             FROM demirbas d
             WHERE d.kategori_id IN ($inStr) AND d.firma_id = ? AND d.silinme_tarihi IS NULL
@@ -2841,10 +3066,7 @@ if ($action == "sayac-kaski-ozet") {
         $res = $sqlStats->fetch(PDO::FETCH_OBJ);
 
         $kaskiTeslimCount = (int)$res->kaski_teslim;
-        // Toplam Hurda = Eldeki (4905) + Giden (10) = 4915
-        $takilan = (int)$res->hurda_depoda + $kaskiTeslimCount;
-        // Toplam Alınan = Yeni (Depo+Pers) + Takılan = 6478 + 4915 = 11393
-        $toplamAlinan = (int)$res->yeni_depoda + (int)$res->yeni_personelde + $takilan;
+        $toplamAlinan = (int)($res->toplam_alinan ?? 0);
 
         jsonResponse("success", "Başarılı", [
             'toplam_alinan_yeni' => $toplamAlinan,
@@ -2875,7 +3097,9 @@ if ($action == "sayac-kaski-tarih-list") {
         $unionSql = "
             SELECT DATE(COALESCE(edinme_tarihi, kayit_tarihi)) as tarih, 'Yeni Sayaç Girişi' as islem_tipi, COUNT(id) as adet, 'gelen' as yon
             FROM demirbas
-            WHERE kategori_id IN ($in) AND firma_id = ? AND silinme_tarihi IS NULL
+                        WHERE kategori_id IN ($in) AND firma_id = ? AND silinme_tarihi IS NULL
+                            AND LOWER(COALESCE(durum,'')) NOT LIKE '%hurda%'
+                            AND LOWER(COALESCE(demirbas_adi,'')) NOT LIKE '%hurda%'
             GROUP BY DATE(COALESCE(edinme_tarihi, kayit_tarihi))
 
             UNION ALL
@@ -2884,7 +3108,11 @@ if ($action == "sayac-kaski-tarih-list") {
             FROM demirbas_hareketler h
             INNER JOIN demirbas d ON h.demirbas_id = d.id
             WHERE d.kategori_id IN ($in) AND d.firma_id = ? AND h.silinme_tarihi IS NULL
-              AND (h.aciklama LIKE '%KASKİ%' OR h.aciklama LIKE '%KASKI%' OR h.aciklama LIKE '%kaskiye%' OR h.aciklama LIKE '%Kaskiye%')
+                            AND h.hareket_tipi = 'sarf'
+                            AND (
+                                        LOWER(COALESCE(h.aciklama,'')) LIKE '%kask%'
+                                        OR (LOWER(COALESCE(d.durum,'')) = 'kaskiye teslim edildi' AND DATE(d.kaskiye_teslim_tarihi) = DATE(h.tarih))
+                                    )
             GROUP BY DATE(h.tarih), islem_tipi, yon
         ";
 
@@ -2912,6 +3140,7 @@ if ($action == "sayac-kaski-tarih-list") {
             $data[] = [
                 'tarih' => Date::dmY($r->tarih),
                 'islem_tarih_raw' => $r->tarih,
+                'islem_tipi_raw' => $r->islem_tipi,
                 'islem_tipi' => $r->islem_tipi,
                 'yon' => $yonBadge,
                 'adet' => '<span class="fw-bold">' . (int)$r->adet . '</span>'
@@ -3010,16 +3239,37 @@ if ($action == "sayac-personel-list") {
             SELECT
                 h.personel_id,
                 COALESCE(p.adi_soyadi, CONCAT('Personel #', h.personel_id)) as personel_adi,
-                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' THEN h.miktar ELSE 0 END), 0) as aldigi_yeni,
-                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' THEN h.miktar ELSE 0 END), 0) as taktigi,
-                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' THEN h.miktar ELSE 0 END), 0)
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' 
+                    AND (LOWER(COALESCE(d.durum, '')) IN ('aktif', 'personelde', 'teslim', 'zimmetli', 'hurda_atama') OR d.durum IS NULL)
+                    AND LOWER(COALESCE(d.durum, '')) NOT LIKE '%hurda%' 
+                    AND LOWER(COALESCE(d.durum, '')) NOT LIKE '%kaski%'
+                    AND LOWER(COALESCE(d.lokasyon, '')) != 'kaski'
+                    AND LOWER(COALESCE(d.demirbas_adi, '')) NOT LIKE '%hurda%'
+                    THEN h.miktar ELSE 0 END), 0) as aldigi_yeni,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' AND LOWER(COALESCE(d.lokasyon, '')) != 'kaski' 
+                    AND (h.aciklama IS NULL OR h.aciklama NOT LIKE '[DEPO_IADE]%')
+                    THEN h.miktar ELSE 0 END), 0) as taktigi,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' 
+                    AND (LOWER(COALESCE(d.durum, '')) IN ('aktif', 'personelde', 'teslim', 'zimmetli', 'hurda_atama') OR d.durum IS NULL)
+                    AND LOWER(COALESCE(d.durum, '')) NOT LIKE '%hurda%'
+                    AND LOWER(COALESCE(d.durum, '')) NOT LIKE '%kaski%'
+                    AND LOWER(COALESCE(d.lokasyon, '')) != 'kaski'
+                    AND LOWER(COALESCE(d.demirbas_adi, '')) NOT LIKE '%hurda%'
+                    THEN h.miktar ELSE 0 END), 0)
                 - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' THEN h.miktar ELSE 0 END), 0)
                 - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'kayip' THEN h.miktar ELSE 0 END), 0)
                 - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND h.aciklama LIKE '[DEPO_IADE]%' THEN h.miktar ELSE 0 END), 0) as elinde_yeni,
-                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' THEN h.miktar ELSE 0 END), 0) as aldigi_hurda,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' AND LOWER(COALESCE(d.lokasyon, '')) != 'kaski' THEN h.miktar ELSE 0 END), 0) 
+                + COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' AND (LOWER(COALESCE(d.durum, '')) LIKE '%hurda%' OR LOWER(COALESCE(d.demirbas_adi, '')) LIKE '%hurda%') 
+                    AND (h.aciklama IS NULL OR (h.aciklama NOT LIKE 'Hurda sayaç personelden%' AND h.aciklama NOT LIKE 'Manuel Hurda İade%'))
+                    THEN h.miktar ELSE 0 END), 0) as aldigi_hurda,
                 COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND (h.aciklama IS NULL OR h.aciklama NOT LIKE '[DEPO_IADE]%') THEN h.miktar ELSE 0 END), 0) as teslim_hurda,
-                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' THEN h.miktar ELSE 0 END), 0)
-                - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND (h.aciklama IS NULL OR h.aciklama NOT LIKE '[DEPO_IADE]%') THEN h.miktar ELSE 0 END), 0) as elinde_hurda
+                (COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' AND LOWER(COALESCE(d.lokasyon, '')) != 'kaski' THEN h.miktar ELSE 0 END), 0)
+                + COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' AND (LOWER(COALESCE(d.durum, '')) LIKE '%hurda%' OR LOWER(COALESCE(d.demirbas_adi, '')) LIKE '%hurda%') 
+                    AND (h.aciklama IS NULL OR (h.aciklama NOT LIKE 'Hurda sayaç personelden%' AND h.aciklama NOT LIKE 'Manuel Hurda İade%'))
+                    THEN h.miktar ELSE 0 END), 0))
+                - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND (h.aciklama IS NULL OR h.aciklama NOT LIKE '[DEPO_IADE]%') THEN h.miktar ELSE 0 END), 0) 
+                - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' AND (LOWER(COALESCE(d.lokasyon, '')) = 'kaski' OR h.aciklama LIKE '[KASKI_TESLIM]%') THEN h.miktar ELSE 0 END), 0) as elinde_hurda
             FROM demirbas_hareketler h
             INNER JOIN demirbas d ON d.id = h.demirbas_id
             INNER JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
@@ -3055,7 +3305,7 @@ if ($action == "sayac-personel-list") {
                 'elinde_yeni' => ($elindeYeni > 0 ? '<span class="badge bg-warning text-dark fw-bold px-2 py-1">' . $elindeYeni . '</span>' : '<span class="text-muted">0</span>'),
                 'aldigi_hurda' => '<span class="text-danger fw-bold">' . (int)$r->aldigi_hurda . '</span>',
                 'teslim_hurda' => '<span class="text-muted">' . (int)$r->teslim_hurda . '</span>',
-                'elinde_hurda' => ($elindeHurda > 0 ? '<span class="badge bg-danger fw-bold px-2 py-1">' . $elindeHurda . '</span>' : '<span class="text-muted">0</span>')
+                'elinde_hurda' => ($elindeHurda > 0 ? '<span class="badge bg-danger fw-bold px-2 py-1 hurda-iade-trigger" style="cursor:pointer" data-personel-id="' . (int)$r->personel_id . '">' . $elindeHurda . '</span>' : '<span class="text-muted">0</span>')
             ];
         }
 
@@ -3168,16 +3418,34 @@ if ($action == "sayac-personel-summary") {
 
         $sql = $Demirbas->db->prepare(" 
             SELECT
-                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' THEN h.miktar ELSE 0 END), 0) as bizden_toplam_aldigi,
-                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' THEN h.miktar ELSE 0 END), 0) as toplam_taktigi,
-                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND (h.aciklama IS NULL OR h.aciklama NOT LIKE '[DEPO_IADE]%') THEN h.miktar ELSE 0 END), 0) as toplam_hurda,
-                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND h.aciklama LIKE '[DEPO_IADE]%' THEN h.miktar ELSE 0 END), 0) as teslim_edilen_hurda,
-                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' THEN h.miktar ELSE 0 END), 0)
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' 
+                    AND (LOWER(COALESCE(d.durum, '')) IN ('aktif', 'personelde', 'teslim', 'zimmetli', 'hurda_atama') OR d.durum IS NULL)
+                    AND LOWER(COALESCE(d.durum, '')) NOT LIKE '%hurda%' 
+                    AND LOWER(COALESCE(d.durum, '')) NOT LIKE '%kaski%'
+                    AND LOWER(COALESCE(d.lokasyon, '')) != 'kaski'
+                    AND LOWER(COALESCE(d.demirbas_adi, '')) NOT LIKE '%hurda%'
+                    THEN h.miktar ELSE 0 END), 0) as bizden_toplam_aldigi,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' AND LOWER(COALESCE(d.lokasyon, '')) != 'kaski' THEN h.miktar ELSE 0 END), 0) 
+                + COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' AND (LOWER(COALESCE(d.durum, '')) LIKE '%hurda%' OR LOWER(COALESCE(d.demirbas_adi, '')) LIKE '%hurda%') 
+                    AND (h.aciklama IS NULL OR (h.aciklama NOT LIKE 'Hurda sayaç personelden%' AND h.aciklama NOT LIKE 'Manuel Hurda İade%'))
+                    THEN h.miktar ELSE 0 END), 0) as toplam_hurda,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND (h.aciklama IS NULL OR h.aciklama NOT LIKE '[DEPO_IADE]%') THEN h.miktar ELSE 0 END), 0) as teslim_edilen_hurda,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' 
+                    AND (LOWER(COALESCE(d.durum, '')) IN ('aktif', 'personelde', 'teslim', 'zimmetli') OR d.durum IS NULL)
+                    AND LOWER(COALESCE(d.durum, '')) NOT LIKE '%hurda%' 
+                    AND LOWER(COALESCE(d.durum, '')) NOT LIKE '%kaski%'
+                    AND LOWER(COALESCE(d.lokasyon, '')) != 'kaski'
+                    AND LOWER(COALESCE(d.demirbas_adi, '')) NOT LIKE '%hurda%'
+                    THEN h.miktar ELSE 0 END), 0)
                 - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' THEN h.miktar ELSE 0 END), 0)
                 - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'kayip' THEN h.miktar ELSE 0 END), 0)
                 - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND h.aciklama LIKE '[DEPO_IADE]%' THEN h.miktar ELSE 0 END), 0) as elinde_kalan_yeni,
-                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND (h.aciklama IS NULL OR h.aciklama NOT LIKE '[DEPO_IADE]%') THEN h.miktar ELSE 0 END), 0)
-                - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND h.aciklama LIKE '[DEPO_IADE]%' THEN h.miktar ELSE 0 END), 0) as elinde_kalan_hurda
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' AND LOWER(COALESCE(d.lokasyon, '')) != 'kaski' THEN h.miktar ELSE 0 END), 0)
+                + COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' AND (LOWER(COALESCE(d.durum, '')) LIKE '%hurda%' OR LOWER(COALESCE(d.demirbas_adi, '')) LIKE '%hurda%') 
+                    AND (h.aciklama IS NULL OR (h.aciklama NOT LIKE 'Hurda sayaç personelden%' AND h.aciklama NOT LIKE 'Manuel Hurda İade%'))
+                    THEN h.miktar ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND (h.aciklama IS NULL OR h.aciklama NOT LIKE '[DEPO_IADE]%') THEN h.miktar ELSE 0 END), 0)
+                - COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' AND (LOWER(COALESCE(d.lokasyon, '')) = 'kaski' OR h.aciklama LIKE '[KASKI_TESLIM]%') THEN h.miktar ELSE 0 END), 0) as elinde_kalan_hurda
             FROM demirbas_hareketler h
             INNER JOIN demirbas d ON d.id = h.demirbas_id
             WHERE h.silinme_tarihi IS NULL
@@ -3219,10 +3487,19 @@ if ($action == "sayac-personel-history") {
         $sql = $Demirbas->db->prepare(" 
             SELECT
                 DATE(h.tarih) as gun,
-                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' THEN h.miktar ELSE 0 END), 0) as alinan,
-                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' THEN h.miktar ELSE 0 END), 0) as taktigi,
-                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND (h.aciklama IS NULL OR h.aciklama NOT LIKE '[DEPO_IADE]%') THEN h.miktar ELSE 0 END), 0) as hurda_alinan,
-                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND h.aciklama LIKE '[DEPO_IADE]%' THEN h.miktar ELSE 0 END), 0) as hurda_teslim,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' 
+                    AND (LOWER(COALESCE(d.durum, '')) IN ('aktif', 'personelde', 'teslim', 'zimmetli', 'hurda_atama') OR d.durum IS NULL)
+                    AND LOWER(COALESCE(d.durum, '')) NOT LIKE '%hurda%' 
+                    AND LOWER(COALESCE(d.durum, '')) NOT LIKE '%kaski%'
+                    AND (LOWER(COALESCE(d.lokasyon, '')) != 'kaski' OR d.lokasyon IS NULL)
+                    AND LOWER(COALESCE(d.demirbas_adi, '')) NOT LIKE '%hurda%'
+                    THEN h.miktar ELSE 0 END), 0) as alinan,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' AND (LOWER(COALESCE(d.lokasyon, '')) != 'kaski' OR d.lokasyon IS NULL) THEN h.miktar ELSE 0 END), 0) as taktigi,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'sarf' AND (LOWER(COALESCE(d.lokasyon, '')) != 'kaski' OR d.lokasyon IS NULL) THEN h.miktar ELSE 0 END), 0) 
+                + COALESCE(SUM(CASE WHEN h.hareket_tipi = 'zimmet' AND (LOWER(COALESCE(d.durum, '')) LIKE '%hurda%' OR LOWER(COALESCE(d.demirbas_adi, '')) LIKE '%hurda%') 
+                    AND (h.aciklama IS NULL OR (h.aciklama NOT LIKE 'Hurda sayaç personelden%' AND h.aciklama NOT LIKE 'Manuel Hurda İade%'))
+                    THEN h.miktar ELSE 0 END), 0) as hurda_alinan,
+                COALESCE(SUM(CASE WHEN h.hareket_tipi = 'iade' AND (h.aciklama IS NULL OR h.aciklama NOT LIKE '[DEPO_IADE]%') THEN h.miktar ELSE 0 END), 0) as hurda_teslim,
                 COALESCE(SUM(CASE WHEN h.hareket_tipi = 'kayip' THEN h.miktar ELSE 0 END), 0) as kayip
             FROM demirbas_hareketler h
             INNER JOIN demirbas d ON d.id = h.demirbas_id

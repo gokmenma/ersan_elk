@@ -361,6 +361,167 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 echo json_encode(['status' => 'success']);
                 break;
+
+            case 'datatable-list':
+                $userId = (int) ($_SESSION['user_id'] ?? ($_SESSION['user']->id ?? 0));
+                if ($userId <= 0) {
+                    throw new Exception('Oturum bulunamadı.');
+                }
+
+                $BildirimModel = new BildirimModel();
+                $db = $BildirimModel->getDb();
+
+                $draw = (int) ($_POST['draw'] ?? 1);
+                $start = max(0, (int) ($_POST['start'] ?? 0));
+                $length = (int) ($_POST['length'] ?? 20);
+                if ($length < 1) {
+                    $length = 20;
+                }
+
+                $searchValue = trim((string) ($_POST['search']['value'] ?? ''));
+                $filter = trim((string) ($_POST['filter'] ?? 'all'));
+                $category = trim((string) ($_POST['cat'] ?? ''));
+                $columnSearchDate = trim((string) ($_POST['columns'][0]['search']['value'] ?? ''));
+                $columnSearchType = trim((string) ($_POST['columns'][1]['search']['value'] ?? ''));
+                $columnSearchContent = trim((string) ($_POST['columns'][2]['search']['value'] ?? ''));
+
+                $columnMap = [
+                    0 => 'created_at',
+                    1 => 'title',
+                    2 => 'message',
+                    3 => 'id'
+                ];
+                $orderIndex = (int) ($_POST['order'][0]['column'] ?? 0);
+                $orderDir = strtolower((string) ($_POST['order'][0]['dir'] ?? 'desc')) === 'asc' ? 'ASC' : 'DESC';
+                $orderColumn = $columnMap[$orderIndex] ?? 'created_at';
+
+                $where = ['user_id = :user_id'];
+                $params = [':user_id' => $userId];
+
+                if ($filter === 'unread') {
+                    $where[] = 'is_read = 0';
+                }
+
+                if ($category !== '') {
+                    $where[] = '(title LIKE :category OR message LIKE :category OR link LIKE :category)';
+                    $params[':category'] = '%' . $category . '%';
+                }
+
+                if ($searchValue !== '') {
+                    $where[] = '(title LIKE :search OR message LIKE :search OR link LIKE :search OR DATE_FORMAT(created_at, "%d.%m.%Y %H:%i") LIKE :search)';
+                    $params[':search'] = '%' . $searchValue . '%';
+                }
+
+                if ($columnSearchDate !== '') {
+                    $where[] = 'DATE_FORMAT(created_at, "%d.%m.%Y %H:%i") LIKE :col_date';
+                    $params[':col_date'] = '%' . $columnSearchDate . '%';
+                }
+
+                if ($columnSearchType !== '') {
+                    $where[] = '(title LIKE :col_type OR message LIKE :col_type OR link LIKE :col_type)';
+                    $params[':col_type'] = '%' . $columnSearchType . '%';
+                }
+
+                if ($columnSearchContent !== '') {
+                    $where[] = '(title LIKE :col_content OR message LIKE :col_content)';
+                    $params[':col_content'] = '%' . $columnSearchContent . '%';
+                }
+
+                $whereSql = ' WHERE ' . implode(' AND ', $where);
+
+                $countStmt = $db->prepare('SELECT COUNT(*) FROM bildirimler' . $whereSql);
+                $countStmt->execute($params);
+                $filteredCount = (int) $countStmt->fetchColumn();
+
+                $totalStmt = $db->prepare('SELECT COUNT(*) FROM bildirimler WHERE user_id = :user_id');
+                $totalStmt->execute([':user_id' => $userId]);
+                $totalCount = (int) $totalStmt->fetchColumn();
+
+                $listSql = 'SELECT id, title, message, link, is_read, created_at
+                            FROM bildirimler'
+                    . $whereSql
+                    . " ORDER BY {$orderColumn} {$orderDir}, id DESC LIMIT :start, :length";
+                $listStmt = $db->prepare($listSql);
+                foreach ($params as $k => $v) {
+                    $listStmt->bindValue($k, $v);
+                }
+                $listStmt->bindValue(':start', $start, PDO::PARAM_INT);
+                $listStmt->bindValue(':length', $length, PDO::PARAM_INT);
+                $listStmt->execute();
+                $rows = $listStmt->fetchAll(PDO::FETCH_OBJ);
+
+                $unreadCount = (int) $BildirimModel->getUnreadCount($userId);
+
+                $data = [];
+                foreach ($rows as $row) {
+                    $title = trim((string) ($row->title ?? ''));
+                    $message = trim((string) ($row->message ?? ''));
+                    $link = (string) ($row->link ?? '');
+                    $typeSource = $title . ' ' . $message . ' ' . $link;
+
+                    $groupedType = 'Sistem Bildirimi';
+                    $badgeClass = 'bg-secondary';
+                    if (
+                        stripos($typeSource, 'destek') !== false ||
+                        stripos($typeSource, 'yardim') !== false ||
+                        stripos($typeSource, 'yardım') !== false
+                    ) {
+                        $groupedType = 'Destek Talebi';
+                        $badgeClass = 'bg-info';
+                    } elseif (stripos($typeSource, 'avans') !== false) {
+                        $groupedType = 'Avans Talebi';
+                        $badgeClass = 'bg-primary';
+                    } elseif (
+                        stripos($typeSource, 'izin') !== false ||
+                        stripos($typeSource, 'İzin') !== false ||
+                        stripos($typeSource, 'Izin') !== false
+                    ) {
+                        $groupedType = 'İzin Talebi';
+                        $badgeClass = 'bg-success';
+                    } elseif (
+                        stripos($typeSource, 'arıza') !== false ||
+                        stripos($typeSource, 'ariza') !== false
+                    ) {
+                        $groupedType = 'Arıza Talebi';
+                        $badgeClass = 'bg-warning text-dark';
+                    }
+
+                    $safeTitle = htmlspecialchars($title !== '' ? $title : 'Bildirim', ENT_QUOTES, 'UTF-8');
+                    $safeMessage = nl2br(htmlspecialchars($message, ENT_QUOTES, 'UTF-8'));
+                    $safeLink = htmlspecialchars((string) ($row->link ?? '#'), ENT_QUOTES, 'UTF-8');
+                    $safeGroupedType = htmlspecialchars($groupedType, ENT_QUOTES, 'UTF-8');
+
+                    $contentHtml = '<div class="d-flex flex-column">'
+                        . '<div class="fw-semibold mb-1">' . $safeTitle . '</div>'
+                        . '<div class="text-muted">' . $safeMessage . '</div>'
+                        . '</div>';
+
+                    $actionsHtml = '<div class="d-flex align-items-center gap-1">';
+                    if ((int) $row->is_read === 0) {
+                        $actionsHtml .= '<button type="button" class="btn btn-soft-success btn-sm mark-as-read-btn" data-id="' . (int) $row->id . '" title="Okundu işaretle"><i class="bx bx-check"></i></button>';
+                    }
+                    if (!empty($row->link)) {
+                        $actionsHtml .= '<a class="btn btn-soft-primary btn-sm mark-read-and-go" data-id="' . (int) $row->id . '" href="' . $safeLink . '" title="Detaya git"><i class="bx bx-link-external"></i></a>';
+                    }
+                    $actionsHtml .= '</div>';
+
+                    $data[] = [
+                        'tarih' => !empty($row->created_at) ? date('d.m.Y H:i', strtotime($row->created_at)) : '-',
+                        'turu' => '<span class="badge ' . $badgeClass . '">' . $safeGroupedType . '</span>',
+                        'content' => $contentHtml,
+                        'islemler' => $actionsHtml,
+                        'unread' => ((int) $row->is_read === 0)
+                    ];
+                }
+
+                echo json_encode([
+                    'draw' => $draw,
+                    'recordsTotal' => $totalCount,
+                    'recordsFiltered' => $filteredCount,
+                    'data' => $data,
+                    'unreadCount' => $unreadCount
+                ]);
+                break;
             
             case 'save-subscription':
                 $input = json_decode(file_get_contents('php://input'), true);

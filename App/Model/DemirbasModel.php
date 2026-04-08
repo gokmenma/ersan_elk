@@ -313,7 +313,26 @@ class DemirbasModel extends Model
                 if ($request['lokasyon'] === 'bizim_depo') {
                     $whereSql .= " AND NOT EXISTS (SELECT 1 FROM demirbas_zimmet z2 WHERE z2.demirbas_id = d.id AND z2.durum = 'teslim' AND z2.silinme_tarihi IS NULL)
                         AND NOT EXISTS (SELECT 1 FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.silinme_tarihi IS NULL AND (h2.aciklama LIKE '%KASKİ%' OR h2.aciklama LIKE '%KASKI%' OR h2.aciklama LIKE '%kaskiye%' OR h2.aciklama LIKE '%Kaskiye%'))
-                        AND (d.lokasyon = :lokasyon OR d.lokasyon IS NULL OR d.lokasyon = '')";
+                        AND (d.lokasyon = :lokasyon OR d.lokasyon IS NULL OR d.lokasyon = '')
+                        AND (
+                            (
+                                LOWER(TRIM(COALESCE(d.durum, ''))) NOT LIKE '%hurda%'
+                                AND LOWER(TRIM(COALESCE(d.demirbas_adi, ''))) NOT LIKE '%hurda%'
+                                AND COALESCE(d.kalan_miktar, 0) > 0
+                            )
+                            OR
+                            (
+                                (LOWER(TRIM(COALESCE(d.durum, ''))) LIKE '%hurda%' OR LOWER(TRIM(COALESCE(d.demirbas_adi, ''))) LIKE '%hurda%')
+                                AND EXISTS (
+                                    SELECT 1
+                                    FROM demirbas_hareketler h3
+                                    WHERE h3.demirbas_id = d.id
+                                      AND h3.silinme_tarihi IS NULL
+                                      AND h3.hareket_tipi = 'iade'
+                                      AND h3.personel_id IS NOT NULL
+                                )
+                            )
+                        )";
                 } else {
                     $whereSql .= " AND d.lokasyon = :lokasyon";
                 }

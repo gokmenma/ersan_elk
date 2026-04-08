@@ -11,6 +11,78 @@ use App\Helper\Security;
 use App\Helper\Date;
 use App\Model\SystemLogModel;
 use App\Service\Gate;
+use App\Service\MailGonderService;
+
+function notifyDegisimTaraflari(NobetModel $Nobet, PersonelModel $Personel, $talep, string $durum, ?string $redNedeni = null): void
+{
+    if (!$talep) {
+        return;
+    }
+
+    $nobetTarihi = $talep->nobet_tarihi ?? '';
+
+    // Her iki personele de PWA/push bildirimi gönder.
+    try {
+        $Nobet->sendDegisimSonucBildirimi((int) $talep->talep_eden_id, $durum, $nobetTarihi);
+    } catch (Exception $e) {
+        error_log('Talep eden bildirim hatası: ' . $e->getMessage());
+    }
+
+    try {
+        $Nobet->sendDegisimSonucBildirimi((int) $talep->talep_edilen_id, $durum, $nobetTarihi);
+    } catch (Exception $e) {
+        error_log('Talep edilen bildirim hatası: ' . $e->getMessage());
+    }
+
+    $talepEden = $Personel->find((int) $talep->talep_eden_id);
+    $talepEdilen = $Personel->find((int) $talep->talep_edilen_id);
+
+    $emails = [];
+    $mailEden = trim((string) ($talepEden->email_adresi ?? ''));
+    $mailEdilen = trim((string) ($talepEdilen->email_adresi ?? ''));
+
+    if ($mailEden !== '') {
+        $emails[] = strtolower($mailEden);
+    }
+    if ($mailEdilen !== '') {
+        $emails[] = strtolower($mailEdilen);
+    }
+
+    $emails = array_values(array_unique($emails));
+    if (empty($emails)) {
+        return;
+    }
+
+    $tarihFormatli = $nobetTarihi ? date('d.m.Y', strtotime($nobetTarihi)) : '-';
+    $talepEdenAdi = $talepEden->adi_soyadi ?? 'Personel';
+    $talepEdilenAdi = $talepEdilen->adi_soyadi ?? 'Personel';
+
+    if ($durum === 'onaylandi') {
+        $subject = 'Nöbet Değişim Talebi Onaylandı - ' . $tarihFormatli;
+        $durumText = 'Onaylandı';
+        $ekBilgi = '';
+    } else {
+        $subject = 'Nöbet Değişim Talebi Reddedildi - ' . $tarihFormatli;
+        $durumText = 'Reddedildi';
+        $ekBilgi = '<p><strong>Red Nedeni:</strong> ' . htmlspecialchars((string) ($redNedeni ?? ''), ENT_QUOTES, 'UTF-8') . '</p>';
+    }
+
+    $mailContent = "
+        <h3>Nöbet Değişim Talebi Sonucu</h3>
+        <p><strong>Durum:</strong> {$durumText}</p>
+        <p><strong>Nöbet Tarihi:</strong> " . htmlspecialchars($tarihFormatli, ENT_QUOTES, 'UTF-8') . "</p>
+        <p><strong>Talep Eden:</strong> " . htmlspecialchars($talepEdenAdi, ENT_QUOTES, 'UTF-8') . "</p>
+        <p><strong>Talep Edilen:</strong> " . htmlspecialchars($talepEdilenAdi, ENT_QUOTES, 'UTF-8') . "</p>
+        {$ekBilgi}
+        <p>Nöbet detaylarını uygulama üzerinden görüntüleyebilirsiniz.</p>
+    ";
+
+    try {
+        MailGonderService::gonder($emails, $subject, $mailContent);
+    } catch (Exception $e) {
+        error_log('Nöbet değişim mail hatası: ' . $e->getMessage());
+    }
+}
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $action = $_POST['action'] ?? '';
@@ -544,13 +616,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             case 'onayla-amir-talebi':
                 $talep_id = Security::decrypt($_POST['talep_id']);
-                $stmt = $Nobet->getDb()->prepare("SELECT dt.*, p.adi_soyadi FROM nobet_degisim_talepleri dt JOIN nobetler n ON dt.nobet_id = n.id JOIN personel p ON n.personel_id = p.id WHERE dt.id = ?");
+                $stmt = $Nobet->getDb()->prepare("SELECT dt.*, n.nobet_tarihi, pe.adi_soyadi as talep_eden_adi, ped.adi_soyadi as talep_edilen_adi FROM nobet_degisim_talepleri dt JOIN nobetler n ON dt.nobet_id = n.id LEFT JOIN personel pe ON dt.talep_eden_id = pe.id LEFT JOIN personel ped ON dt.talep_edilen_id = ped.id WHERE dt.id = ?");
                 $stmt->execute([$talep_id]);
                 $talep = $stmt->fetch(PDO::FETCH_OBJ);
                 $result = $Nobet->onaylaAmirTalebi($talep_id, $userId);
 
                 if ($result) {
-                    $pName = $talep->adi_soyadi ?? "Bilinmeyen";
+                    notifyDegisimTaraflari($Nobet, $Personel, $talep, 'onaylandi');
+                    $pName = $talep->talep_eden_adi ?? "Bilinmeyen";
                     $SystemLog->logAction($userId, 'Nöbet Değişim Onayı', "{$pName} isimli personelin nöbet değişim talebi #{$talep_id} onaylandı.");
                     echo json_encode(['success' => true, 'status' => 'success', 'message' => 'Değişim onaylandı. Takvim güncellendi.']);
                 } else {
@@ -562,9 +635,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $talep_id = Security::decrypt($_POST['talep_id']);
                 $red_nedeni = $_POST['red_nedeni'] ?? null;
 
+                $stmt = $Nobet->getDb()->prepare("SELECT dt.*, n.nobet_tarihi, pe.adi_soyadi as talep_eden_adi, ped.adi_soyadi as talep_edilen_adi FROM nobet_degisim_talepleri dt JOIN nobetler n ON dt.nobet_id = n.id LEFT JOIN personel pe ON dt.talep_eden_id = pe.id LEFT JOIN personel ped ON dt.talep_edilen_id = ped.id WHERE dt.id = ?");
+                $stmt->execute([$talep_id]);
+                $talep = $stmt->fetch(PDO::FETCH_OBJ);
+
                 $result = $Nobet->reddetTalebi($talep_id, $userId, $red_nedeni);
 
                 if ($result) {
+                    notifyDegisimTaraflari($Nobet, $Personel, $talep, 'reddedildi', $red_nedeni);
                     echo json_encode(['success' => true, 'status' => 'success', 'message' => 'Talep reddedildi.']);
                 } else {
                     throw new Exception("Reddetme başarısız.");
@@ -730,13 +808,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception("Talep ID gerekli.");
                 }
 
+                $stmtTalep = $Nobet->getDb()->prepare("SELECT dt.*, n.nobet_tarihi, pe.adi_soyadi as talep_eden_adi, ped.adi_soyadi as talep_edilen_adi FROM nobet_degisim_talepleri dt JOIN nobetler n ON dt.nobet_id = n.id LEFT JOIN personel pe ON dt.talep_eden_id = pe.id LEFT JOIN personel ped ON dt.talep_edilen_id = ped.id WHERE dt.id = ?");
+                $stmtTalep->execute([$talepId]);
+                $talep = $stmtTalep->fetch(PDO::FETCH_OBJ);
+
                 // Yönetici olarak talebi onayla ve nöbeti değiştir
                 $result = $Nobet->onaylaAmirTalebi($talepId, $userId);
 
                 if ($result) {
-                    $stmt = $Nobet->getDb()->prepare("SELECT p.adi_soyadi FROM nobet_degisim_talepleri dt JOIN nobetler n ON dt.nobet_id = n.id JOIN personel p ON n.personel_id = p.id WHERE dt.id = ?");
-                    $stmt->execute([$talepId]);
-                    $pName = $stmt->fetch(PDO::FETCH_OBJ)->adi_soyadi ?? "Bilinmeyen";
+                    notifyDegisimTaraflari($Nobet, $Personel, $talep, 'onaylandi');
+                    $pName = $talep->talep_eden_adi ?? "Bilinmeyen";
                     $SystemLog->logAction($userId, 'Nöbet Değişim Onayı', "{$pName} isimli personelin nöbet değişim talebi #{$talepId} onaylandı.");
                     echo json_encode(['success' => true, 'message' => 'Değişim talebi onaylandı.']);
                 } else {

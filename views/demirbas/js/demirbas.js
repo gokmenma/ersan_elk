@@ -4317,6 +4317,7 @@ $(document).on("change", "#hurda_personel_id", function () {
 
   if (!personelId || personelId <= 0) {
     $("#hurdaZimmetListesi").addClass("d-none");
+    $("#hurda_iade_adet").val(1);
     $("#hurdaZimmetBody").html(
       '<tr><td colspan="4" class="text-center text-muted py-3">Personel seçildiğinde listelenecektir.</td></tr>',
     );
@@ -4338,17 +4339,37 @@ $(document).on("change", "#hurda_personel_id", function () {
     },
     dataType: "json",
     success: function (res) {
-      if (res.status === "success") {
-        let data = res.data || [];
-        let tbody = $("#hurdaZimmetBody");
-        tbody.empty();
+        if (res.status === "success") {
+          // Elindeki hurda sayısını adet alanına otomatik yaz
+          if (typeof res.elinde_hurda !== "undefined") {
+            $("#hurda_iade_adet").val(res.elinde_hurda);
+          }
 
-        if (data.length === 0) {
-          tbody.html(
-            '<tr><td colspan="4" class="text-center text-muted py-3"><i class="bx bx-info-circle me-1"></i> Bu personelin zimmetinde hurda sayaç bulunmuyor.</td></tr>',
-          );
-          return;
-        }
+          let data = res.data || [];
+          let tbody = $("#hurdaZimmetBody");
+          tbody.empty();
+
+          if (data.length === 0) {
+            let emptyMsg =
+              '<tr><td colspan="4" class="text-center text-muted py-3"><i class="bx bx-info-circle me-1"></i> Bu personelin zimmetinde hurda sayaç bulunmuyor.</td></tr>';
+
+            // Eğer zimmet yok ama elinde hurda (takılanlardan kaynaklı) varsa bilgilendir
+            if (res.elinde_hurda > 0) {
+              emptyMsg = `
+                <tr>
+                  <td colspan="4" class="text-center py-3">
+                    <div class="alert alert-soft-danger border-0 m-0 py-2">
+                      <i class="bx bx-info-circle me-1"></i>
+                      Personelin taktığı sayaçlardan kaynaklı <b>${res.elinde_hurda}</b> adet iade bekleyen hurda sayacı bulunuyor.
+                    </div>
+                  </td>
+                </tr>
+              `;
+            }
+
+            tbody.html(emptyMsg);
+            return;
+          }
 
         data.forEach(function (item) {
           let row = `
