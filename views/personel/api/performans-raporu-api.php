@@ -102,7 +102,7 @@ try {
                         p.id as personel_id,
                         p.adi_soyadi,
                         p.resim_yolu,
-                        p.departman,
+                        COALESCE(NULLIF(p.departman, ''), 'Kesme Açma') as departman,
                         COALESCE(SUM(t.sonuclanmis), 0) as toplam
                     FROM yapilan_isler t
                     LEFT JOIN personel p ON p.id = t.personel_id
@@ -142,7 +142,7 @@ try {
                         p.id as personel_id,
                         p.adi_soyadi,
                         p.resim_yolu,
-                        p.departman,
+                        COALESCE(NULLIF(p.departman, ''), 'Endeks Okuma') as departman,
                         COALESCE(SUM(e.okunan_abone_sayisi), 0) as toplam,
                         COALESCE(AVG(e.okuma_performansi), 0) as ort_performans,
                         COALESCE(SUM(e.okunan_gun_sayisi), 0) as toplam_gun
@@ -178,7 +178,7 @@ try {
                         p.id as personel_id,
                         p.adi_soyadi,
                         p.resim_yolu,
-                        p.departman,
+                        COALESCE(NULLIF(p.departman, ''), 'Sayaç Değişim') as departman,
                         COUNT(*) as toplam
                     FROM sayac_degisim s
                     LEFT JOIN personel p ON p.id = s.personel_id

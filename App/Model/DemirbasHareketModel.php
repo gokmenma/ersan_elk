@@ -252,12 +252,19 @@ class DemirbasHareketModel extends Model
      */
     public static function getHareketTipiBadge($tip, $aciklama = '')
     {
+        $aciklamaLower = mb_strtolower((string)$aciklama, 'UTF-8');
+
         if ($tip === 'iade' && strpos((string) $aciklama, '[DEPO_IADE]') === 0) {
             return '<span class="badge bg-danger">Depoya İade</span>';
         }
 
         if ($tip === 'sarf' && (strpos($aciklama, 'Zimmetten Düşüldü') !== false || strpos($aciklama, 'Zimmetten Düsüldü') !== false)) {
             return '<span class="badge bg-danger">Zimmetten Düşüldü</span>';
+        }
+
+        // Kaski teslimatı için özel kontrol (User talebi: tüketildi yerine Kaskiye Teslim Edildi)
+        if ($tip === 'sarf' && (strpos($aciklamaLower, 'kaski') !== false)) {
+            return '<span class="badge bg-info">Kaskiye Teslim Edildi</span>';
         }
 
         $badges = [
@@ -370,5 +377,42 @@ class DemirbasHareketModel extends Model
             'recordsFiltered' => $recordsFiltered,
             'data' => $data
         ];
+    }
+
+    /**
+     * Filtrelenmiş tüm hareket kayıtlarının ID'lerini getirir
+     */
+    public function getFilteredIds($request)
+    {
+        $search = $request['search']['value'] ?? '';
+        $status_filter = $request['status_filter'] ?? '';
+
+        $params = [$_SESSION['firma_id']];
+        $whereSql = " WHERE d.firma_id = ? AND h.silinme_tarihi IS NULL";
+
+        if (!empty($search)) {
+            $whereSql .= " AND (d.demirbas_adi LIKE ? OR d.seri_no LIKE ? OR p.adi_soyadi LIKE ?)";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+            $params[] = "%$search%";
+        }
+
+        if ($status_filter === 'kaski') {
+            $whereSql .= " AND d.lokasyon = 'kaski'";
+        } elseif ($status_filter === 'depo') {
+            $whereSql .= " AND d.lokasyon = 'bizim_depo'";
+        } elseif ($status_filter === 'zimmet') {
+            $whereSql .= " AND h.hareket_tipi = 'zimmet'";
+        }
+
+        $sql = "SELECT h.id
+                FROM demirbas_hareketler h
+                INNER JOIN demirbas d ON h.demirbas_id = d.id
+                LEFT JOIN personel p ON h.personel_id = p.id
+                $whereSql";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 }

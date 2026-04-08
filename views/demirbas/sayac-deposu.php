@@ -52,73 +52,17 @@ $stats = [
 	'hurda_elimizde' => 0,
 	'hurda_personelde' => 0,
 	'hurda_kaskiye' => 0,
-	'zimmetli' => 0
+	'zimmetli' => 0,
+    'toplam_alinan_yeni' => 0,
+    'kayip_yeni' => 0,
+    'toplam_hurda' => 0,
+    'kayip_hurda' => 0
 ];
 
-if (!empty($sayacKatIds)) {
-	$katPlaceholders = implode(',', array_fill(0, count($sayacKatIds), '?'));
-	$paramArr = array_merge($sayacKatIds, [$_SESSION['firma_id']]);
-
-	// 1. Demirbas tablosundan veriler (Lokasyon bazlı)
-	$sql1 = $Demirbas->db->prepare("
-		SELECT 
-			COALESCE(SUM(CASE WHEN lokasyon = 'kaski' AND LOWER(durum) != 'hurda' AND LOWER(durum) != 'kaskiye teslim edildi' THEN kalan_miktar ELSE 0 END), 0) as kaski_depoda,
-			COALESCE(SUM(CASE WHEN (lokasyon = 'bizim_depo' OR lokasyon IS NULL) AND LOWER(durum) != 'hurda' AND LOWER(durum) != 'kaskiye teslim edildi' THEN kalan_miktar ELSE 0 END), 0) as bizim_depoda,
-			COALESCE(SUM(CASE WHEN LOWER(durum) = 'hurda' THEN kalan_miktar ELSE 0 END), 0) as hurda_elimizde,
-			COALESCE(SUM(CASE WHEN LOWER(durum) = 'kaskiye teslim edildi' THEN 1 ELSE 0 END), 0) as hurda_kaskiye
-		FROM demirbas
-		WHERE kategori_id IN ($katPlaceholders) AND firma_id = ? AND silinme_tarihi IS NULL
-	");
-	$sql1->execute($paramArr);
-	$res1 = $sql1->fetch(PDO::FETCH_OBJ);
-	$stats['kaski_depoda'] = (int)$res1->kaski_depoda;
-	$stats['yeni_depoda'] = (int)$res1->bizim_depoda;
-	$stats['hurda_elimizde'] = (int)$res1->hurda_elimizde;
-	$stats['hurda_kaskiye'] = (int)$res1->hurda_kaskiye;
-
-	// 2. Zimmet tablosundan veriler (Personeldeki Yeni ve Hurda)
-	$sql2 = $Demirbas->db->prepare("
-		SELECT 
-			COALESCE(SUM(CASE WHEN LOWER(d.durum) != 'hurda' AND LOWER(d.durum) != 'kaskiye teslim edildi' THEN z.teslim_miktar - COALESCE((SELECT SUM(h.miktar) FROM demirbas_hareketler h WHERE h.zimmet_id = z.id AND h.hareket_tipi IN ('iade', 'sarf', 'kayip') AND h.silinme_tarihi IS NULL), 0) ELSE 0 END), 0) as yeni_personelde,
-			COALESCE(SUM(CASE WHEN LOWER(d.durum) = 'hurda' THEN z.teslim_miktar - COALESCE((SELECT SUM(h.miktar) FROM demirbas_hareketler h WHERE h.zimmet_id = z.id AND h.hareket_tipi IN ('iade', 'sarf', 'kayip') AND h.silinme_tarihi IS NULL), 0) ELSE 0 END), 0) as hurda_personelde
-		FROM demirbas_zimmet z
-		INNER JOIN demirbas d ON z.demirbas_id = d.id
-		WHERE z.durum = 'teslim' AND d.kategori_id IN ($katPlaceholders) AND d.firma_id = ? AND z.silinme_tarihi IS NULL
-	");
-	$sql2->execute($paramArr);
-	$res2 = $sql2->fetch(PDO::FETCH_OBJ);
-	$stats['yeni_personelde'] = (int)$res2->yeni_personelde;
-	$stats['hurda_personelde'] = (int)$res2->hurda_personelde;
-
-	// 3. Montaj (Sarf) istatistiği (Takılan)
-	$sql3 = $Demirbas->db->prepare("
-		SELECT COALESCE(SUM(h.miktar), 0) as takilan
-		FROM demirbas_hareketler h
-		INNER JOIN demirbas d ON h.demirbas_id = d.id
-		WHERE h.hareket_tipi = 'sarf' AND d.kategori_id IN ($katPlaceholders) AND d.firma_id = ? AND h.silinme_tarihi IS NULL
-	");
-	$sql3->execute($paramArr);
-	$stats['takilan_sayac'] = (int)$sql3->fetchColumn();
-
-	// 4. Hesaplamalar
-	// Yeni Sayaç Mantığı: Toplam Alınan (DB Kayıtları) - (Takılan + Depoda + Personelde) = Kayıp
-	$sql4 = $Demirbas->db->prepare("SELECT COUNT(*) FROM demirbas WHERE kategori_id IN ($katPlaceholders) AND firma_id = ? AND silinme_tarihi IS NULL");
-	$sql4->execute($paramArr);
-	$stats['toplam_alinan_yeni'] = (int)$sql4->fetchColumn();
-	
-	$mevcutYeni = $stats['yeni_depoda'] + $stats['takilan_sayac'] + $stats['yeni_personelde'];
-	$stats['kayip_yeni'] = max(0, $stats['toplam_alinan_yeni'] - $mevcutYeni);
-
-	// Hurda Sayaç Mantığı: Takılan Sayaç Sayısı = Toplam Hurda Olmalı
-	$stats['toplam_hurda'] = $stats['takilan_sayac'];
-	$mevcutHurda = $stats['hurda_elimizde'] + $stats['hurda_personelde'] + $stats['hurda_kaskiye'];
-	$stats['kayip_hurda'] = max(0, $stats['toplam_hurda'] - $mevcutHurda);
-}
-
 // Global top-level variables for layout compatibility
-$stats['toplam_giren'] = $stats['toplam_alinan_yeni'] ?? 0;
+$stats['toplam_giren'] = 0;
 
-$maintitle = "Demirbaş";
+$maintitle = "Sayaçlar";
 $title = "Sayaç Deposu";
 ?>
 
@@ -128,9 +72,9 @@ $title = "Sayaç Deposu";
 	<style>
 		/* Preloader Styles */
 		.personel-preloader {
-			position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-			min-height: 400px; background: rgba(255, 255, 255, 0.82); z-index: 1060;
-			border-radius: 4px; backdrop-filter: blur(3px);
+			position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+			background: rgba(255, 255, 255, 0.7); z-index: 9999;
+			backdrop-filter: blur(4px);
 			display: flex; align-items: center; justify-content: center;
 		}
 		[data-bs-theme="dark"] .personel-preloader { background: rgba(25, 30, 34, 0.85); }
@@ -226,6 +170,35 @@ $title = "Sayaç Deposu";
 		.status-filter-group .btn-check:checked + .btn[for*="kaskiye"] { background: #06b6d4 !important; color: white !important; }
 		.status-filter-group .btn-check:checked + .btn[for*="iade"] { background: #10b981 !important; color: white !important; }
 		.status-filter-group .btn-check:checked + .btn[for*="teslim"] { background: #f59e0b !important; color: white !important; }
+		
+		/* View Mode and Action Button specific styles within group */
+		.status-filter-group .btn-check:checked + .btn[for*="grouped"] { background: #64748b !important; color: white !important; }
+		.status-filter-group .btn-check:checked + .btn[for*="list"] { background: #556ee6 !important; color: white !important; }
+		
+		/* Red Action Button (Delete) to match filter style */
+		.btn-filter-danger {
+			background: transparent; border: none !important; border-radius: 50px !important;
+			font-size: 0.75rem; font-weight: 600; padding: 6px 16px; color: #ef4444;
+			transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center; gap: 6px; line-height: normal;
+		}
+		.btn-filter-danger:hover { background: rgba(239, 68, 68, 0.1); color: #dc2626; }
+		.btn-filter-danger:active { background: #ef4444; color: white; }
+
+		.btn-filter-warning {
+			background: transparent; border: none !important; border-radius: 50px !important;
+			font-size: 0.75rem; font-weight: 600; padding: 6px 16px; color: #f59e0b;
+			transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center; gap: 6px; line-height: normal;
+		}
+		.btn-filter-warning:hover { background: rgba(245, 158, 11, 0.1); color: #d97706; }
+		.btn-filter-warning:active { background: #f59e0b; color: white; }
+
+		.btn-filter-info {
+			background: transparent; border: none !important; border-radius: 50px !important;
+			font-size: 0.75rem; font-weight: 600; padding: 6px 16px; color: #06b6d4;
+			transition: all 0.2s ease; display: inline-flex; align-items: center; justify-content: center; gap: 6px; line-height: normal;
+		}
+		.btn-filter-info:hover { background: rgba(6, 182, 212, 0.1); color: #0891b2; }
+		.btn-filter-info:active { background: #06b6d4; color: white; }
 
 		/* Bordro Style Card CSS */
 		.bordro-summary-card { position: relative; overflow: hidden; }
@@ -240,6 +213,63 @@ $title = "Sayaç Deposu";
 		.personel-tarih-row.expanded { background-color: rgba(85, 110, 230, 0.05) !important; }
 		.personel-detail-row { background-color: #f8fafc; }
 		.personel-detail-row table { border-radius: 8px; overflow: hidden; }
+		
+		/* Masaüstü Tablo Yükseklik Ayarı */
+		.table-demirbas thead th { padding: 8px 10px !important; font-size: 0.85rem !important; }
+		.table-demirbas tbody td { padding: 6px 10px !important; font-size: 0.85rem !important; vertical-align: middle !important; }
+		.table-demirbas .btn-sm { padding: 0.2rem 0.4rem; font-size: 0.75rem; }
+		.dt-filter-row th { padding: 4px 6px !important; }
+		.dt-filter-control { padding: 4px 8px !important; font-size: 0.75rem !important; height: auto !important; }
+
+		/* Floating Action Buttons */
+		.floating-action-bar {
+			position: fixed;
+			bottom: 24px;
+			right: 24px;
+			z-index: 1050;
+			display: flex;
+			flex-direction: column;
+			gap: 10px;
+			align-items: flex-end;
+			pointer-events: none;
+			opacity: 0;
+			transform: translateY(20px);
+			transition: opacity 0.35s ease, transform 0.35s ease;
+		}
+		.floating-action-bar.visible {
+			pointer-events: auto;
+			opacity: 1;
+			transform: translateY(0);
+		}
+		.floating-action-bar .fab-btn {
+			display: flex;
+			align-items: center;
+			gap: 8px;
+			padding: 12px 22px;
+			border: none;
+			border-radius: 50px;
+			font-weight: 700;
+			font-size: 0.85rem;
+			cursor: pointer;
+			box-shadow: 0 6px 20px rgba(0,0,0,0.18);
+			transition: transform 0.2s, box-shadow 0.2s;
+			white-space: nowrap;
+		}
+		.floating-action-bar .fab-btn:hover {
+			transform: scale(1.05);
+			box-shadow: 0 8px 28px rgba(0,0,0,0.24);
+		}
+		.floating-action-bar .fab-btn:active {
+			transform: scale(0.97);
+		}
+		.fab-btn-zimmet {
+			background: linear-gradient(135deg, #f59e0b, #f97316);
+			color: #fff;
+		}
+		.fab-btn-kaski {
+			background: linear-gradient(135deg, #06b6d4, #0ea5e9);
+			color: #fff;
+		}
 	</style>
 
 	<div class="card">
@@ -275,30 +305,41 @@ $title = "Sayaç Deposu";
 
 				<!-- Sağ: İşlem Butonları -->
 				<div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 ms-auto">
+					<!-- Sayaç İşlemleri Menüsü -->
 					<div class="dropdown">
 						<button class="btn btn-link btn-sm px-3 fw-bold dropdown-toggle text-dark d-flex align-items-center"
 							type="button" data-bs-toggle="dropdown" aria-expanded="false">
-							<i class="bx bx-menu me-1 fs-5"></i> İşlemler
+							<i class="bx bx-cog me-1 fs-5"></i> Sayaç İşlemleri
 							<i class="bx bx-chevron-down ms-1"></i>
 						</button>
 						<ul class="dropdown-menu dropdown-menu-end shadow-lg border-0">
-							<li><a class="dropdown-item py-2" href="javascript:void(0);" id="exportExcel"><i class="bx bx-spreadsheet me-2 text-success fs-5"></i> Excel'e Aktar</a></li>
+							<li><a class="dropdown-item py-2 fw-bold" href="javascript:void(0);" id="btnSayacEkleDrop"><i class="bx bx-plus-circle me-2 text-primary fs-5"></i> Sayaç Gir</a></li>
+							<li><a class="dropdown-item py-2 fw-bold" href="javascript:void(0);" id="btnPersoneleZimmetleDrop"><i class="bx bx-user-check me-2 text-warning fs-5"></i> Personele Zimmetle</a></li>
+							<li><a class="dropdown-item py-2 fw-bold" href="javascript:void(0);" id="btnSayacKaskiyeTeslimDrop"><i class="bx bx-upload me-2 text-info fs-5"></i> Kaskiye İade Et</a></li>
 							<li><hr class="dropdown-divider"></li>
 							<li><a class="dropdown-item py-2 fw-bold" href="javascript:void(0);" id="btnHurdaSayacIade" style="color: #ef4444;"><i class="bx bx-recycle me-2 fs-5" style="color: #ef4444;"></i> Hurda Sayaç İade Al</a></li>
-							<li><hr class="dropdown-divider"></li>
-							<li><a class="dropdown-item py-2 fw-bold" href="javascript:void(0);" id="btnTopluSilSayac" style="color: #ef4444;"><i class="bx bx-trash me-2 fs-5"></i> Seçilenleri Sil</a></li>
 						</ul>
 					</div>
+
 					<div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-					<button type="button" id="btnSayacEkle" class="btn btn-primary btn-sm px-3 py-2 fw-bold d-flex align-items-center shadow-sm ms-1 d-none">
-						<i class="bx bx-plus-circle fs-5 me-1"></i> Sayaç Gir
-					</button>
-					<button type="button" id="btnPersoneleZimmetle" class="btn btn-warning btn-sm px-3 py-2 fw-bold d-flex align-items-center shadow-sm ms-1 d-none">
-						<i class="bx bx-user-check fs-5 me-1"></i> Personele Zimmetle
-					</button>
-					<button type="button" id="btnSayacKaskiyeTeslim" class="btn btn-info btn-sm px-3 py-2 fw-bold d-flex align-items-center shadow-sm ms-1 d-none">
-						<i class="bx bx-upload fs-5 me-1"></i> Kaskiye İade Et
-					</button>
+
+					<!-- Araçlar (Excel, Sil vb.) -->
+					<div class="d-flex align-items-center gap-1">
+						<button type="button" id="exportExcel" class="btn btn-link btn-sm text-success p-2" title="Excel'e Aktar">
+							<i class="bx bx-spreadsheet fs-4"></i>
+						</button>
+						<button type="button" id="btnTopluSilSayac" class="btn btn-link btn-sm text-danger p-2" title="Seçilenleri Sil">
+							<i class="bx bx-trash fs-4"></i>
+						</button>
+					</div>
+
+				</div>
+
+				<!-- Destekleyici Gizli Butonlar (JS uyumluluğu için) -->
+				<div class="d-none">
+					<button type="button" id="btnSayacEkle"></button>
+					<button type="button" id="btnPersoneleZimmetle"></button>
+					<button type="button" id="btnSayacKaskiyeTeslim"></button>
 				</div>
 			</div>
 		</div>
@@ -463,11 +504,19 @@ $title = "Sayaç Deposu";
 					<div class="d-flex align-items-center justify-content-between mb-3 mt-2">
 						<div class="status-filter-group d-flex align-items-center" role="group">
 							<input type="radio" class="btn-check" name="sayac-status-filter" id="filter-all" value="" checked>
-							<label class="btn btn-outline-primary fw-medium px-3 active" for="filter-all"><i class="bx bx-list-check me-1"></i> Tümü</label>
+							<label class="btn btn-outline-primary fw-medium px-3 text-nowrap" for="filter-all"><i class="bx bx-list-check me-1"></i> Tümü</label>
 							<input type="radio" class="btn-check" name="sayac-status-filter" id="filter-depo-yeni" value="yeni">
-							<label class="btn btn-outline-success fw-medium px-3" for="filter-depo-yeni"><i class="bx bx-package me-1"></i> Yeni</label>
+							<label class="btn btn-outline-success fw-medium px-3 text-nowrap" for="filter-depo-yeni"><i class="bx bx-package me-1"></i> Yeni</label>
 							<input type="radio" class="btn-check" name="sayac-status-filter" id="filter-hurda" value="hurda">
-							<label class="btn btn-outline-danger fw-medium px-3" for="filter-hurda"><i class="bx bx-recycle me-1"></i> Hurda</label>
+							<label class="btn btn-outline-danger fw-medium px-3 text-nowrap" for="filter-hurda"><i class="bx bx-recycle me-1"></i> Hurda</label>
+						</div>
+
+						<div class="d-flex align-items-center">
+							<div class="status-filter-group d-flex align-items-center">
+								<button type="button" class="btn-filter-danger" id="btnTopluSilSayacTab" disabled>
+									<i class="bx bx-trash-alt"></i> Seçilenleri Sil
+								</button>
+							</div>
 						</div>
 					</div>
 
@@ -475,7 +524,7 @@ $title = "Sayaç Deposu";
 						<table id="depoSayacTable" class="table table-demirbas table-hover table-bordered nowrap w-100">
 							<thead class="table-light">
 								<tr>
-									<th class="text-center" style="width:3%">
+									<th class="text-center" style="width:3%" data-filter="none">
 										<div class="custom-checkbox-container d-inline-block">
 											<input type="checkbox" class="custom-checkbox-input" id="selectAllSayac">
 											<label class="custom-checkbox-label" for="selectAllSayac"></label>
@@ -483,11 +532,11 @@ $title = "Sayaç Deposu";
 									</th>
 									<th style="width:18%" data-filter="string">Sayaç Adı</th>
 									<th style="width:12%" data-filter="string">Marka/Model</th>
-									<th style="width:12%" data-filter="string">Seri / Abone No</th>
+									<th style="width:12%" data-filter="string">Abone No</th>
 									<th style="width:8%" class="text-center" data-filter="select">Stok</th>
 									<th style="width:10%" class="text-center" data-filter="select">Durum</th>
 									<th style="width:10%" data-filter="date">Tarih</th>
-									<th style="width:5%" class="text-center">İşlemler</th>
+									<th style="width:5%" class="text-center" data-filter="none">İşlemler</th>
 								</tr>
 							</thead>
 							<tbody></tbody>
@@ -605,19 +654,38 @@ $title = "Sayaç Deposu";
 					<div class="d-flex align-items-center justify-content-between mb-3 mt-2">
 						<div class="status-filter-group d-flex align-items-center" role="group">
 							<input type="radio" class="btn-check" name="hareket-status-filter" id="hareket-filter-all" value="" checked>
-							<label class="btn btn-outline-primary fw-medium px-3 active" for="hareket-filter-all"><i class="bx bx-list-check me-1"></i> Tüm Hareketler</label>
+							<label class="btn btn-outline-primary fw-medium px-3 text-nowrap" for="hareket-filter-all"><i class="bx bx-list-check me-1"></i> Tüm Sayaç Hareketleri</label>
 							<input type="radio" class="btn-check" name="hareket-status-filter" id="hareket-filter-kaski" value="kaski">
-							<label class="btn btn-outline-info fw-medium px-3" for="hareket-filter-kaski"><i class="bx bx-building-house me-1"></i> Kaski İşlemleri</label>
+							<label class="btn btn-outline-info fw-medium px-3 text-nowrap" for="hareket-filter-kaski"><i class="bx bx-building-house me-1"></i> Kaski Sayaç İşlemleri</label>
 							<input type="radio" class="btn-check" name="hareket-status-filter" id="hareket-filter-depo" value="depo">
-							<label class="btn btn-outline-success fw-medium px-3" for="hareket-filter-depo"><i class="bx bx-store-alt me-1"></i> Depo İşlemleri</label>
+							<label class="btn btn-outline-success fw-medium px-3 text-nowrap" for="hareket-filter-depo"><i class="bx bx-store-alt me-1"></i> Depo Sayaç İşlemleri</label>
 							<input type="radio" class="btn-check" name="hareket-status-filter" id="hareket-filter-zimmet" value="zimmet">
-							<label class="btn btn-outline-warning fw-medium px-3" for="hareket-filter-zimmet"><i class="bx bx-user-check me-1"></i> Personel Zimmetleri</label>
+							<label class="btn btn-outline-warning fw-medium px-3 text-nowrap" for="hareket-filter-zimmet"><i class="bx bx-user-check me-1"></i> Personel Sayaç Zimmetleri</label>
+						</div>
+
+						<div class="d-flex align-items-center">
+							<div class="status-filter-group d-flex align-items-center">
+								<button type="button" class="btn-filter-danger d-none" id="btnTopluSilHareket">
+									<i class="bx bx-trash-alt"></i> Seçilenleri Sil
+								</button>
+
+								<input type="radio" class="btn-check" name="hareket-view-mode" id="hareket-view-grouped" value="grouped" checked>
+								<label class="btn" for="hareket-view-grouped" title="Grup Görünümü (Personel + Tarih)"><i class="bx bx-grid-alt me-1"></i> Grup</label>
+								
+								<input type="radio" class="btn-check" name="hareket-view-mode" id="hareket-view-list" value="list">
+								<label class="btn" for="hareket-view-list" title="Liste Görünümü"><i class="bx bx-list-ul me-1"></i> Liste</label>
+							</div>
 						</div>
 					</div>
 					<div class="table-responsive">
 						<table id="hareketTable" class="table table-demirbas table-hover table-bordered nowrap w-100">
 							<thead class="table-light">
 								<tr>
+									<th class="text-center" style="width:40px" data-filter="none">
+										<div class="form-check d-flex justify-content-center m-0">
+											<input class="form-check-input" type="checkbox" id="selectAllHareket">
+										</div>
+									</th>
 									<th class="text-center" style="width:5%">ID</th>
 									<th style="width:15%">Hareket Tipi</th>
 									<th style="width:20%">Sayaç</th>
@@ -636,6 +704,16 @@ $title = "Sayaç Deposu";
 	</div>
 </div>
 
+<!-- Floating Action Buttons -->
+<div class="floating-action-bar" id="floatingActionBar">
+	<button type="button" class="fab-btn fab-btn-zimmet" id="fabPersoneleZimmetle">
+		<i class="bx bx-user-check fs-5"></i> Personele Zimmetle
+	</button>
+	<button type="button" class="fab-btn fab-btn-kaski" id="fabKaskiyeTeslim">
+		<i class="bx bx-upload fs-5"></i> Kaskiye İade Et
+	</button>
+</div>
+
 <script>
     var sayacKatIds = <?php echo json_encode($sayacKatIds); ?>;
     
@@ -647,6 +725,33 @@ $title = "Sayaç Deposu";
             $("#btnSayacEkle, #btnPersoneleZimmetle, #btnSayacKaskiyeTeslim").removeClass("d-none");
         }
     });
+
+    // Floating Action Buttons - scroll ile göster/gizle
+    var $fab = $("#floatingActionBar");
+    var $headerBtns = $("#btnPersoneleZimmetle");
+    var isDepoTab = false;
+
+    function checkFloatingButtons() {
+        // Sadece Depo sekmesi aktifken
+        isDepoTab = $("#depo-tab").hasClass("active");
+        if (!isDepoTab) {
+            $fab.removeClass("visible");
+            return;
+        }
+        // Header butonları viewport dışına çıktıysa floating göster
+        var btnTop = $headerBtns.offset();
+        if (btnTop) {
+            var scrolledPast = (btnTop.top + $headerBtns.outerHeight()) < $(window).scrollTop();
+            $fab.toggleClass("visible", scrolledPast);
+        }
+    }
+
+    $(window).on("scroll", checkFloatingButtons);
+    $('button[data-bs-toggle="tab"]').on('shown.bs.tab', checkFloatingButtons);
+
+    // Floating butonları orijinal butonlara yönlendir
+    $("#fabPersoneleZimmetle").on("click", function() { $("#btnPersoneleZimmetle").trigger("click"); });
+    $("#fabKaskiyeTeslim").on("click", function() { $("#btnSayacKaskiyeTeslim").trigger("click"); });
 </script>
 
 <!-- Sayaç Gir Modal -->
@@ -798,7 +903,7 @@ $title = "Sayaç Deposu";
 						<i class="bx bx-history text-info fs-5"></i>
 					</div>
 					<div>
-						<h6 class="modal-title text-info mb-0 fw-bold">Demirbaş İşlem Geçmişi</h6>
+						<h6 class="modal-title text-info mb-0 fw-bold">Sayaç İşlem Geçmişi</h6>
 						<p class="text-muted small mb-0" id="gecmisDemirbasAdi" style="font-size: 0.7rem;">-</p>
 					</div>
 				</div>
@@ -808,87 +913,7 @@ $title = "Sayaç Deposu";
 	</div>
 </div>
 
-<!-- Hurda Sayaç İade Modal (Eksik Modal Eklendi) -->
-<div class="modal fade" id="hurdaIadeModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
-            <div class="modal-header bg-soft-danger border-bottom">
-                <div class="modal-title-section d-flex align-items-center">
-                    <div class="avatar-xs me-2 rounded bg-danger bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
-                        <i class="bx bx-recycle text-danger fs-5"></i>
-                    </div>
-                    <h6 class="modal-title text-danger mb-0 fw-bold">Hurda Sayaç İade Al</h6>
-                </div>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <div class="modal-body">
-                <form id="hurdaIadeForm">
-                    <div class="row g-3 mb-4">
-                        <div class="col-md-7">
-                            <label class="form-label text-dark small fw-bold">Personel Seçimi</label>
-                            <div class="mb-2">
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="hurdaPersonelFilter" id="hurdaPersonelAktif" value="aktif" checked>
-                                    <label class="form-check-label small" for="hurdaPersonelAktif">Aktif (Zimmetliler)</label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" type="radio" name="hurdaPersonelFilter" id="hurdaPersonelTum" value="all">
-                                    <label class="form-check-label small" for="hurdaPersonelTum">Tüm Personel</label>
-                                </div>
-                            </div>
-                            <select class="form-select select2-hurda" id="hurda_personel_id" name="personel_id">
-                                <option value="">Personel Seçin</option>
-                            </select>
-                        </div>
-                        <div class="col-md-5">
-                            <label class="form-label text-dark small fw-bold">İade Tarihi</label>
-                            <input type="text" class="form-control flatpickr-hurda" id="hurda_iade_tarihi" name="iade_tarihi" required>
-                        </div>
-                    </div>
-
-                    <!-- Zimmetli Listesi -->
-                    <div id="hurdaZimmetListesi" class="d-none">
-                        <h6 class="text-dark fw-bold mb-2 small d-flex justify-content-between align-items-center">
-                            <span>Seçili Personelin Hurda Zimmetleri</span>
-                            <div class="form-check form-check-inline me-0">
-                                <input type="checkbox" class="form-check-input" id="hurdaCheckAll">
-                                <label class="form-check-label small" for="hurdaCheckAll">Tümünü Seç</label>
-                            </div>
-                        </h6>
-                        <div class="table-responsive border rounded mb-3" style="max-height: 250px; overflow-y: auto;">
-                            <table class="table table-sm table-hover mb-0">
-                                <thead class="table-light sticky-top">
-                                    <tr>
-                                        <th style="width:40px"></th>
-                                        <th>Sayaç / Seri No</th>
-                                        <th class="text-center">Adet</th>
-                                        <th>Tarih</th>
-                                    </tr>
-                                </thead>
-                                <tbody id="hurdaZimmetBody">
-                                    <tr><td colspan="4" class="text-center text-muted py-3 small">Personel seçildiğinde listelenecektir.</td></tr>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div class="row g-3">
-                        <div class="col-md-12">
-                            <label class="form-label text-dark small fw-bold">Açıklama</label>
-                            <textarea class="form-control" rows="2" id="hurda_aciklama" placeholder="İade detayları..."></textarea>
-                        </div>
-                    </div>
-                </form>
-            </div>
-            <div class="modal-footer border-top py-2 bg-light bg-opacity-50">
-                <button type="button" class="btn btn-secondary btn-sm fw-bold px-4" data-bs-dismiss="modal">Kapat</button>
-                <button type="button" class="btn btn-danger btn-sm fw-bold px-4" id="btnHurdaIadeKaydet">
-                    <i class="bx bx-check-square me-1"></i>İadeyi Kaydet
-                </button>
-            </div>
-        </div>
-    </div>
-</div>
+<!-- Hurda Sayaç İade Modal (Eksik Modal Eklendi - Kaldırıldı, çünkü yukarıda include ediliyor) -->
 
 <script>
 // PHP'den gelen personel listeleri (Zimmetli/Tüm)
@@ -909,4 +934,4 @@ $sqlT->execute([$fId]);
 while($r=$sqlT->fetch()) echo "hurdaTumPersoneller.push({id:{$r['id']}, text:'".addslashes($r['adi_soyadi'])."'});\n";
 ?>
 </script>
-<script src="views/demirbas/js/sayac-deposu.js?v=<?php echo time(); ?>"></script>
+<!-- sayac-deposu.js vendor-scripts.php'den yükleniyor, burada tekrar yüklemeye gerek yok -->

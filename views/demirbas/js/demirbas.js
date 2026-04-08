@@ -2755,8 +2755,13 @@ $(document).on("click", ".sayac-kasiye-teslim", function (e) {
 });
 
 // Form Gönderimi (Kaskiye Teslim Kaydet)
+// NOT: sayac-deposu.js kendi submit handler'ını kullanır, çakışma olmasın
 $(document).on("submit", "#kasiyeTeslimForm", function (e) {
   e.preventDefault();
+
+  // Sayaç Deposu sayfasındaysak bu handler'ı atla (sayac-deposu.js yönetiyor)
+  if (document.getElementById("depoSayacTable")) return;
+
 
   const isToplu = $("#kasiye_is_toplu").val() === "1";
   const demirbasId = $("#kasiye_demirbas_id").val();
@@ -3662,13 +3667,24 @@ $(document).on("click", "#btnTopluDemirbasSil", function (e) {
     cancelButtonText: "İptal",
   }).then((result) => {
     if (result.isConfirmed) {
+      // Yükleniyor durumunu göster
+      Swal.fire({
+        title: 'Lütfen Bekleyiniz...',
+        text: 'Seçili ' + secilenKayıtlar.length + ' adet kayıt siliniyor, bu işlem biraz zaman alabilir...',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => {
+          Swal.showLoading();
+        }
+      });
+
       $.ajax({
         url: zimmetUrl,
         type: "POST",
         dataType: "json",
         data: {
           action: "bulk-demirbas-sil",
-          ids: secilenKayıtlar,
+          ids: JSON.stringify(secilenKayıtlar),
         },
         success: function (res) {
           if (res.status === "success") {
@@ -4461,6 +4477,7 @@ function doHurdaIade(mode, extraData) {
           timer: 2000,
           showConfirmButton: false,
         });
+        $(document).trigger("hurda-iade-saved");
         // Tabloları yenile
         if (typeof sayacTable !== "undefined") {
           sayacTable.ajax.reload(null, false);

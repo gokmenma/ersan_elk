@@ -1,12 +1,33 @@
+@font-face {
+    font-family: Geist;
+    font-style: normal;
+    font-weight: 100 900;
+    font-display: swap;
+    src: url(../media/8a480f0b521d4e75-s.8e0177b5.woff2) format("woff2");
+    unicode-range: U +301, U +400 -45F, U +490 -491, U +4B0 -4B1, U +2116;
+}
+
 @import url("https://fonts.googleapis.com/css2?family=Geist:wght@100..900&display=swap");
 @import url("https://fonts.googleapis.com/css2?family=Google+Sans:ital,opsz,wght@0,17..18,400..700;1,17..18,400..700&display=swap");
 :root {
+  --bs-body-bg: #fcfcfd;
   --bs-body-color: #30373f;
-  --bs-border-color: #dedee2;
-  --bs-primary: #1c84ee;
-  --bs-secondary: #6c757d;
+  --bs-border-color: #f1f1f4;
+  --bs-primary: #18181b;
+  --bs-secondary: #71717a;
   --bs-border-radius: 0.5rem;
-  --slate-primary: #252526;
+  --slate-primary: #18181b;
+  --bs-sidebar-bg: #ffffff;
+  --bs-sidebar-border: #f1f1f4;
+  --bs-font-sans-serif: "Geist", sans-serif;
+}
+
+body {
+  font-family: var(--bs-font-sans-serif);
+  background-color: var(--bs-body-bg);
+  color: var(--bs-body-color);
+  font-weight: 400;
+  -webkit-font-smoothing: antialiased;
 }
 
 /* Bordro & Dashboard Summary Cards */
@@ -530,10 +551,6 @@
 [data-theme-mode="slate"] #page-topbar {
   border-bottom: 1px solid var(--bs-border-color) !important;
   box-shadow: none !important;
-}
-
-[data-theme-mode="slate"] .vertical-menu {
-  border-right: 1px solid var(--bs-border-color) !important;
 }
 
 [data-theme-mode="slate"][data-bs-theme="dark"] .vertical-menu,
@@ -3203,23 +3220,18 @@ body[data-sidebar-size="sm"] #sidebar-menu > ul > li:hover > ul.sub-menu {
 }
 
 #sidebar-menu ul li ul.sub-menu:before {
-  content: "";
-  position: absolute;
-  left: 28px;
-  top: 0;
-  bottom: 20px;
-  width: 1px;
-  background-color: var(--bs-border-color);
-  z-index: 1;
+  display: none !important; /* Removing the extra line from here too to be safe and clean */
 }
 
 #sidebar-menu ul li ul.sub-menu li a {
   position: relative;
   transition: all 0.2s ease-in-out;
+  white-space: nowrap !important;
+  padding-left: 0.50rem !important;
 }
 
 #sidebar-menu ul li ul.sub-menu li a:hover {
-  padding-left: 3.75rem !important;
+  padding-left: 0.50rem !important;
 }
 
 #sidebar-menu ul li ul.sub-menu li.mm-active > a {

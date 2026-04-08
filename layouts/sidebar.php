@@ -30,101 +30,185 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
         <!--- Sidemenu -->
         <div id="sidebar-menu">
             <style>
-                .sidebar-search-container {
-                    padding: 12px 20px 12px 20px;
+                :root {
+                    --sidebar-bg: #ffffff;
+                    --sidebar-border: #f1f1f4;
+                    --sidebar-item-hover: #f4f4f5;
+                    --sidebar-item-active: #f4f4f5;
+                    --sidebar-foreground: #3f3f46;
+                    --sidebar-muted: #71717a;
+                    --sidebar-accent: #18181b;
+                    --sidebar-font: "Geist", sans-serif;
+                }
+
+                [data-bs-theme="dark"] {
+                    --sidebar-bg: #111827;
+                    --sidebar-border: #1f2937;
+                    --sidebar-item-hover: #1f2937;
+                    --sidebar-item-active: #1f2937;
+                    --sidebar-foreground: #e5e7eb;
+                    --sidebar-muted: #9ca3af;
+                    --sidebar-accent: #f9fafb;
+                }
+
+                .vertical-menu {
+                    background-color: var(--sidebar-bg) !important;
+                    border-right: 1px solid var(--sidebar-border) !important;
+                    box-shadow: none !important;
+                    font-family: var(--sidebar-font);
+                    top: 0 !important; /* Ensure it starts from top */
+                }
+
+                /* Hide topbar brand box since we have it in sidebar */
+                .navbar-brand-box {
+                    display: none !important;
+                }
+
+                #page-topbar {
+                    left: 250px !important; /* Standard sidebar width */
+                    background-color: var(--sidebar-bg) !important;
+                    border-bottom: 1px solid var(--sidebar-border) !important;
+                    box-shadow: none !important;
+                }
+
+                body[data-sidebar-size="sm"] #page-topbar {
+                    left: 60px !important;
+                }
+
+                @media (max-width: 992px) {
+                    #page-topbar {
+                        left: 0 !important;
+                    }
+                    .navbar-brand-box {
+                        display: flex !important; /* Show on mobile if needed */
+                    }
+                    .sidebar-brand-box {
+                        display: none !important;
+                    }
+                }
+
+                #sidebar-menu {
+                    padding: 8px;
+                }
+
+                /* Sticky Sidebar Header (Brand + Search) */
+                .sidebar-sticky-top {
                     position: sticky;
                     top: 0;
                     z-index: 100;
-                    background-color: #fff;
-                    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
-                }
-
-                [data-bs-theme="dark"] .sidebar-search-container,
-                [data-theme-mode="dark"] .sidebar-search-container {
-                    background-color: #282f36;
-                    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-                }
-
-                .sidebar-search {
-                    background-color: rgba(0, 0, 0, 0.03) !important;
-                    border: 1px solid rgba(0, 0, 0, 0.1) !important;
-                    color: inherit !important;
-                    border-radius: 8px !important;
-                    padding-left: 38px !important;
-                    height: 38px;
-                    font-size: 13px;
-                    transition: all 0.3s ease;
-                }
-
-                [data-bs-theme="dark"] .sidebar-search,
-                [data-theme-mode="dark"] .sidebar-search {
-                    background-color: rgba(255, 255, 255, 0.05) !important;
-                    border: 1px solid rgba(255, 255, 255, 0.1) !important;
-                    color: #ced4da !important;
-                }
-
-                .sidebar-search:focus {
-                    background-color: rgba(0, 0, 0, 0.05) !important;
-                    border-color: rgba(0, 0, 0, 0.15) !important;
-                    box-shadow: none;
-                }
-
-                [data-bs-theme="dark"] .sidebar-search:focus,
-                [data-theme-mode="dark"] .sidebar-search:focus {
-                    background-color: rgba(255, 255, 255, 0.1) !important;
-                    border-color: rgba(255, 255, 255, 0.2) !important;
-                    color: #fff !important;
-                }
-
-                .sidebar-search-container .search-icon {
-                    position: absolute;
-                    left: 13px;
-                    top: 50%;
-                    transform: translateY(-50%);
-                    width: 15px;
-                    height: 15px;
-                    color: #74788d;
-                    pointer-events: none;
-                }
-
-                /* Favori Yıldız Buton Stilleri */
-                .star-btn {
-                    position: absolute;
-                    right: 3px;
-                    top: 7px; /* Ana menü için ortalama */
-                    z-index: 10;
-                    color: #adb5bd;
+                    background-color: var(--sidebar-bg);
+                    padding: 12px 8px 16px 8px;
+                    margin: -8px -8px 0 -8px;
+                    border-bottom: 1px solid transparent;
                     transition: all 0.2s ease;
-                    padding: 5px;
-                    cursor: pointer;
+                }
+
+                /* Hide brand logo on small sidebar */
+                body[data-sidebar-size="sm"] .sidebar-sticky-top {
+                    position: static;
+                    padding: 12px 8px;
+                }
+
+                /* Sidebar Brand/Header Section */
+                .sidebar-brand-box {
+                    padding: 0 12px 24px 12px;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    position: relative;
+                }
+
+                .brand-logo {
+                    width: 32px;
+                    height: 32px;
+                    background-color: var(--sidebar-accent);
+                    border-radius: 8px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
+                    color: #fff;
+                    flex-shrink: 0;
                 }
 
-                /* Ok işareti olduğunda yıldızı ok işaretinin sağına (en uçta) bırakıp oku sola çekiyoruz */
-                .has-arrow:after {
-                    right: 29px !important;
-                    top: 19px !important; /* Oku da dikey ortalıyoruz */
+                .brand-logo i {
+                    width: 18px;
+                    height: 18px;
                 }
 
-                .has-arrow + .star-btn {
-                    right: 3px;
-                    top: 8px;
+                .brand-info {
+                    display: flex;
+                    flex-direction: column;
+                    line-height: 1.25;
                 }
 
-                .sub-menu .star-btn {
-                    right: 3px;
-                    top: 3px;
+                .brand-name {
+                    font-weight: 600;
+                    font-size: 14px;
+                    color: var(--sidebar-foreground);
                 }
 
-                .star-btn:hover {
-                    color: #f1b44c;
-                    transform: scale(1.2);
+                .brand-sub {
+                    font-size: 11px;
+                    color: var(--sidebar-muted);
                 }
 
-                .star-btn.active {
-                    color: #f1b44c;
+                /* Sidebar Search */
+                .sidebar-search-container {
+                    padding: 0 8px;
+                    position: relative;
+                }
+
+                .sidebar-search {
+                    background-color: var(--sidebar-item-hover) !important;
+                    border: 1px solid var(--sidebar-border) !important;
+                    color: var(--sidebar-foreground) !important;
+                    border-radius: 8px !important;
+                    padding-left: 36px !important;
+                    height: 38px;
+                    font-size: 13px;
+                    transition: all 0.2s ease;
+                    width: 100%;
+                }
+
+                .sidebar-search:focus {
+                    border-color: var(--sidebar-accent) !important;
+                    background-color: #fff !important;
+                }
+
+                .sidebar-search-container .search-icon {
+                    position: absolute !important;
+                    left: 20px !important;
+                    top: 50% !important;
+                    width: 14px;
+                    height: 14px;
+                    color: var(--sidebar-muted);
+                    pointer-events: none;
+                    transform: translateY(-50%);
+                }
+
+                /* Menu Items Styling */
+                #side-menu {
+                    padding: 0;
+                }
+
+                #side-menu .menu-title {
+                    font-size: 11px;
+                    font-weight: 600;
+                    text-transform: none;
+                    color: var(--sidebar-muted);
+                    padding: 16px 12px 8px 12px;
+                    letter-spacing: 0.01em;
+                }
+
+                #sidebar-menu ul li ul.sub-menu li a:hover {
+                    padding-left: 1.2rem !important;
+                }
+
+                #sidebar-menu ul li ul.sub-menu li a {
+                    position: relative;
+                    transition: background-color 0.2s ease, color 0.2s ease, padding 0.2s ease;
+                    white-space: nowrap !important;
+                    padding-left: 1rem !important;
                 }
 
                 #side-menu li {
@@ -132,29 +216,198 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 }
 
                 #side-menu li a {
-                    padding-right: 45px !important;
+                    padding: 8px 12px !important;
+                    border-radius: 8px;
+                    font-size: 14px;
+                    color: var(--sidebar-foreground) !important;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    transition: background-color 0.2s ease, color 0.2s ease, padding 0.2s ease;
+                    margin: 0 8px 2px 0; /* Menu backgrounds more space from right */
+                    position: relative;
                 }
 
-                [data-bs-theme="dark"] .star-btn {
-                    color: #495057;
+                #side-menu li a:hover {
+                    background-color: var(--sidebar-item-hover) !important;
                 }
 
-                [data-bs-theme="dark"] .star-btn.active {
-                    color: #f1b44c;
+                #side-menu li.mm-active > a,
+                #side-menu li a.active {
+                    background-color: var(--sidebar-item-active) !important;
+                    font-weight: 500;
+                }
+
+                #side-menu li a i {
+                    width: 16px;
+                    height: 16px;
+                    font-size: 16px;
+                    color: var(--sidebar-muted);
+                    transition: color 0.2s ease;
+                    margin: 0 !important;
+                }
+
+                #side-menu li a:hover i,
+                #side-menu li.mm-active > a i,
+                #side-menu li a.active i {
+                    color: var(--sidebar-foreground);
+                }
+
+                /* Sub-menu Indentation (Shadcn style with requested padding) */
+                .sub-menu {
+                    padding: 0 0 0 12px !important; /* Indent text by 12px from the line */
+                    margin: 0 0 0 28px !important; /* Align the line with parent icons (28-12=16 actually? No, 28px is the line) */
+                    list-style: none;
+                    border-left: 1px solid var(--sidebar-border) !important;
+                    position: relative;
+                }
+
+                .sub-menu li a {
+                    font-size: 13px !important;
+                    padding-left: 1rem !important; /* As requested: 1rem */
+                    color: var(--sidebar-foreground) !important;
+                    border-radius: 6px;
+                    margin: 0 12px 2px 0;
+                    white-space: nowrap !important; /* As requested */
+                }
+
+                .sub-menu li a:hover {
+                    padding-left: 1.2rem !important; /* As requested: 1.2rem padding on hover */
+                }
+
+                /* Arrow styling (Chevron) - Accurate Shadcn placement */
+                .has-arrow:after {
+                    content: "" !important;
+                    display: block !important;
+                    width: 6px !important;
+                    height: 6px !important;
+                    border-width: 0 0 1.5px 1.5px !important;
+                    border-style: solid !important;
+                    border-color: var(--sidebar-muted) !important;
+                    position: absolute;
+                    right: 20px !important;
+                    top: 50% !important;
+                    transform: translateY(-60%) rotate(-135deg) !important;
+                    transition: transform 0.2s ease !important;
+                    pointer-events: none;
+                }
+
+                .mm-active > .has-arrow:after {
+                    transform: translateY(-30%) rotate(45deg) !important; /* Point up when open */
+                }
+
+                /* Sidebar Icons Refresh */
+                [data-feather] {
+                    width: 16px;
+                    height: 16px;
+                }
+
+                /* Star styling refinement */
+                .star-btn {
+                    position: absolute;
+                    right: 16px; /* Moved slightly more to the left as requested */
+                    top: 50%;
+                    transform: translateY(-50%);
+                    color: var(--sidebar-muted);
+                    opacity: 0;
+                    transition: all 0.2s ease;
+                    width: 24px;
+                    height: 24px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border-radius: 4px;
+                    z-index: 5;
+                }
+
+                /* Shift star left if there is an arrow */
+                .has-arrow + .star-btn {
+                    right: 44px !important; /* Adjusted slightly more to the left as requested */
+                }
+
+                /* Star: show on hover of the li's direct child */
+                #side-menu li:hover > .star-btn {
+                    opacity: 1 !important;
+                }
+
+                /* CRITICAL FIX: When hovering inside sub-menu, HIDE the parent li's star */
+                #side-menu li:has(> .sub-menu:hover) > .star-btn {
+                    opacity: 0 !important;
+                    pointer-events: none !important;
+                }
+
+                .star-btn.active {
+                    opacity: 1 !important;
+                    color: #f1b44c !important;
+                }
+
+                .star-btn:hover {
+                    background-color: rgba(241, 180, 76, 0.1);
+                    color: #f1b44c !important;
+                }
+
+                /* Link padding adjustments to accommodate moved stars */
+                #side-menu li a {
+                    padding-right: 72px !important;
+                }
+                
+                .sub-menu li a {
+                    padding-right: 52px !important;
+                }
+
+                /* Scrollbar Refinement */
+                .simplebar-track.simplebar-vertical {
+                    background-color: transparent;
+                    width: 6px;
+                }
+                .simplebar-scrollbar:before {
+                    background: var(--sidebar-border);
+                    opacity: 0.5;
+                }
+
+                /* Specific for mobile and collapsed */
+                body[data-sidebar-size="sm"] .vertical-menu {
+                    width: 60px !important;
+                }
+                
+                body[data-sidebar-size="sm"] .brand-info,
+                body[data-sidebar-size="sm"] .brand-sub,
+                body[data-sidebar-size="sm"] .menu-name,
+                body[data-sidebar-size="sm"] .menu-title,
+                body[data-sidebar-size="sm"] .sidebar-search-container {
+                    display: none !important;
+                }
+
+                body[data-sidebar-size="sm"] .sidebar-brand-box {
+                    padding: 12px;
+                    justify-content: center;
                 }
             </style>
-            <div class="sidebar-search-container">
-                <div class="position-relative">
-                    <input type="text" class="form-control sidebar-search" id="menu-search-input"
-                        placeholder="Menüde ara...">
-                    <i data-feather="search" class="search-icon"></i>
+
+            <div class="sidebar-sticky-top">
+                <div class="sidebar-brand-box">
+                    <div class="brand-logo">
+                        <i data-feather="box"></i>
+                    </div>
+                    <div class="brand-info">
+                        <span class="brand-name">Ersan ELK</span>
+                        <span class="brand-sub">Yönetim Paneli</span>
+                    </div>
+                </div>
+
+                <div class="sidebar-search-container">
+                    <div class="position-relative">
+                        <input type="text" class="form-control sidebar-search" id="menu-search-input"
+                            placeholder="Menüde ara...">
+                        <i data-feather="search" class="search-icon"></i>
+                    </div>
                 </div>
             </div>
             <!-- Left Menu Start -->
             <ul class="metismenu list-unstyled" id="side-menu">
 
                 <!-- Sık Kullanılanlar Başlığı -->
-                <li class="menu-title fav-title" data-key="t-favorites" style="<?php echo empty($favoriteMenus) ? 'display:none;' : ''; ?>">Sık Kullanılanlar</li>
+                <li class="menu-title fav-title" data-key="t-favorites" style="<?php echo empty($favoriteMenus) ? 'display:none;' : ''; ?>">Favoriler</li>
                 
                 <div id="favorites-container">
                     <?php foreach ($favoriteMenus as $fav): ?>
@@ -163,7 +416,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                                 <?php if (!empty($fav->menu_icon)): ?>
                                     <i data-feather="<?php echo htmlspecialchars($fav->menu_icon); ?>"></i>
                                 <?php endif; ?>
-                                <span><?php echo htmlspecialchars($fav->menu_name); ?></span>
+                                <span class="menu-name"><?php echo htmlspecialchars($fav->menu_name); ?></span>
                             </a>
                             <div class="star-btn active" data-id="<?php echo $fav->id; ?>" title="Favorilerden Kaldır">
                                 <i class="fas fa-star" style="font-size: 11px;"></i>

@@ -1,18 +1,37 @@
 $(function () {
     var apiUrl = "views/demirbas/api.php";
 
-    // Güvenli DataTable başlatma
+    // Güvenli DataTable başlatma (Otomatik Preloader Desteği ile)
     function safeInitTable(selector, customOptions) {
         if ($.fn.DataTable.isDataTable(selector)) {
             return $(selector).DataTable();
         }
         var defaults = getDatatableOptions();
+        
+        // Preloader Mantığı
+        var custPreDraw = customOptions.preDrawCallback;
+        customOptions.preDrawCallback = function (settings) {
+            $("#personel-loader").show();
+            if (typeof custPreDraw === "function") custPreDraw.call(this, settings);
+        };
+
+        var custDraw = customOptions.drawCallback;
+        customOptions.drawCallback = function (settings) {
+            // Tablo çizimi bitince preloader'ı kapat (Hafif gecikmeyle ki görsellik otursun)
+            setTimeout(function() {
+                $("#personel-loader").fadeOut(300);
+            }, 100);
+            if (typeof custDraw === "function") custDraw.call(this, settings);
+        };
+
         var defInit = defaults.initComplete;
         var custInit = customOptions.initComplete;
         customOptions.initComplete = function(settings, json) {
+            $("#personel-loader").fadeOut(300); 
             if (typeof defInit === "function") defInit.call(this, settings, json);
             if (typeof custInit === "function") custInit.call(this, settings, json);
         };
+
         var merged = $.extend(true, {}, defaults, customOptions);
         return $(selector).DataTable(merged);
     }
@@ -143,17 +162,23 @@ $(function () {
     // =============================================
     // 4. HAREKETLER TABLOSU
     // =============================================
+    // Görünüm Modu Restore Et
+    var savedHareketView = localStorage.getItem('sayac_hareket_view_mode') || 'grouped';
+    $('input[name="hareket-view-mode"][value="' + savedHareketView + '"]').prop('checked', true);
+
     var hareketTable = safeInitTable("#hareketTable", {
         serverSide: true,
         ajax: {
             url: apiUrl,
             type: "POST",
             data: function (d) {
-                d.action = "sayac-depo-hareketleri";
+                var viewMode = $('input[name="hareket-view-mode"]:checked').val() || "grouped";
+                d.action = viewMode === "grouped" ? "sayac-depo-hareketleri-grouped" : "sayac-depo-hareketleri";
                 d.status_filter = $('input[name="hareket-status-filter"]:checked').val() || "";
             },
         },
         columns: [
+            { data: "checkbox", className: "text-center", orderable: false, searchable: false },
             { data: "id", className: "text-center" },
             { data: "hareket_tipi" },
             { data: "demirbas_adi" },
@@ -173,40 +198,37 @@ $(function () {
         $.post(apiUrl, { action: "sayac-global-summary" }, function (res) {
             if (res.status === "success") {
                 let d = res;
-                // Yeni Sayaç Hesaplamaları
+                // Değişkenleri alalım
                 let yeniDepo = parseInt(d.yeni_depoda) || 0;
+                let hurdaDepo = parseInt(d.hurda_depoda) || 0;
                 let yeniPersonel = parseInt(d.yeni_personelde) || 0;
                 let takilan = parseInt(d.takilan) || 0;
-                
-                // Toplam Alınan (DB'deki Ham Kayıt Sayısı)
-                let yeniToplam = parseInt(d.toplam_alinan) || 0; 
-                let yeniMevcut = yeniDepo + yeniPersonel + takilan;
-                let yeniKayip = yeniToplam - yeniMevcut;
-
-                // Hurda Sayaç Hesaplamaları
-                let hurdaDepo = parseInt(d.hurda_depoda) || 0;
-                let hurdaPersonel = parseInt(d.hurda_personelde) || 0;
                 let hurdaKaski = parseInt(d.hurda_kaskiye) || 0;
-                
-                // Volkan Bey'in istediği denge: Takılan Sayaç = Toplam Hurda Olmalı
-                let hurdaToplam = takilan; 
-                let hurdaMevcut = hurdaDepo + hurdaPersonel + hurdaKaski;
-                let kayip = hurdaToplam - hurdaMevcut;
+                let yeniToplam = parseInt(d.toplam_alinan) || 0; 
+
+                // 1. Yeni Sayaç Bölümü
+                let herSeyDahilMevcut = yeniDepo + yeniPersonel + takilan; 
+                let yeniKayip = yeniToplam - herSeyDahilMevcut;
+
+                // 2. Hurda Sayaç Bölümü (Toplam Hurda = Eldeki + Teslim Edilen)
+                let hurdaMevcut = hurdaDepo + hurdaKaski; 
+                let hurdaToplam = hurdaMevcut; // Toplam hurda eldeki ve gidenlerin toplamıdır
+                let hurdaKayip = 0; // Kayıp mantığı burada farklı işleyebilir ama şu an sıfırlıyoruz
 
                 // UI Güncelleme (Bizim Depo Tabı)
                 $("#sayacCardToplamGiren").text(yeniToplam);
                 $("#sayacCardDepoKalan").text(yeniDepo);
-                $("#sayacCardTakilan").text(takilan);
+                $("#sayacCardTakilan").text(takilan); // Bu rakam toplam hurdaya (4915) eşit olacak
                 $("#sayacCardPersonelZimmetli").text(yeniPersonel);
                 $("#sayacCardKayipYeni").text(yeniKayip > 0 ? yeniKayip : 0);
 
-                $("#sayacCardToplamHurda").text(hurdaToplam);
-                $("#sayacCardKaskiyeTeslim").text(hurdaKaski);
-                $("#sayacCardHurda").text(hurdaDepo);
-                $("#sayacCardPersonelHurda").text(hurdaPersonel);
-                $("#sayacCardKayipHurda").text(kayip > 0 ? kayip : 0);
+                $("#sayacCardToplamHurda").text(hurdaToplam); // 4915
+                $("#sayacCardKaskiyeTeslim").text(hurdaKaski); // 10
+                $("#sayacCardHurda").text(hurdaDepo); // 4905
+                $("#sayacCardPersonelHurda").text(d.hurda_personelde || 0);
+                $("#sayacCardKayipHurda").text(0);
 
-                // UI Güncelleme (Kaski Tabı - Yeni Basit Görünüm)
+                // UI Güncelleme (Kaski Tabı)
                 $("#kaskiSummaryToplamAlinan").text(yeniToplam);
                 $("#kaskiSummaryIadeEdilen").text(hurdaKaski);
                 $("#kaskiSummaryFark").text(yeniToplam - hurdaKaski);
@@ -242,9 +264,6 @@ $(function () {
     loadPersonelAllSummary();
 
     // =============================================
-    // TAB BUTON GÖRÜNÜRLÜKLERİ
-    // =============================================
-    // =============================================
     // TAB BUTON GÖRÜNÜRLÜKLERİ & URL PERSISTENCE
     // =============================================
     $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
@@ -279,13 +298,24 @@ $(function () {
     loadTabFromHash();
 
     function updateButtonVisibility(activeTabId) {
-        // Tüm butonları gizle
-        $("#btnSayacEkle, #btnPersoneleZimmetle, #btnSayacKaskiyeTeslim").addClass("d-none");
-        // Sadece Depo sekmesinde tüm butonlar görünsün
+        // Dropdown öğelerini (li) gizle/göster
+        $("#btnSayacEkleDrop, #btnPersoneleZimmetleDrop, #btnSayacKaskiyeTeslimDrop").closest('li').addClass("d-none");
+        // Divider'ı da gizle
+        $("#btnSayacKaskiyeTeslimDrop").closest('li').next('li').find('hr').closest('li').addClass("d-none");
+
         if (activeTabId === "depo-tab") {
-            $("#btnSayacEkle, #btnPersoneleZimmetle, #btnSayacKaskiyeTeslim").removeClass("d-none");
+            $("#btnSayacEkleDrop, #btnPersoneleZimmetleDrop, #btnSayacKaskiyeTeslimDrop").closest('li').removeClass("d-none");
+             $("#btnSayacKaskiyeTeslimDrop").closest('li').next('li').find('hr').closest('li').removeClass("d-none");
         }
     }
+
+    // Dropdown öğelerine basınca gizli asıl butonları tetikle
+    $(document).on("click", "#btnSayacEkleDrop", function() { $("#btnSayacEkle").trigger("click"); });
+    $(document).on("click", "#btnPersoneleZimmetleDrop", function() { $("#btnPersoneleZimmetle").trigger("click"); });
+    $(document).on("click", "#btnSayacKaskiyeTeslimDrop", function() { $("#btnSayacKaskiyeTeslim").trigger("click"); });
+
+    // Tab-level seçim butonları tetiklemeleri
+    $(document).on("click", "#btnTopluSilSayacTab", function() { $("#btnTopluSilSayac").trigger("click"); });
 
     // =============================================
     // FİLTRELER
@@ -293,6 +323,10 @@ $(function () {
     $('input[name="sayac-status-filter"]').on('change', function () {
         depoSayacTable.ajax.reload();
         
+        // Görsel efekt: Aktif butonu işaretle
+        $(this).closest('.status-filter-group').find('label.btn').removeClass('active');
+        $('label[for="' + $(this).attr('id') + '"]').addClass('active');
+
         var filter = $(this).val();
         if (filter === 'yeni') {
             $("#depoSayacTable thead th").eq(3).text("Seri No");
@@ -303,32 +337,114 @@ $(function () {
             $("#hurdaSayacCardCol").fadeIn(300).removeClass('col-xl-6 col-md-6').addClass('col-xl-12 col-md-12');
             $("#yeniSayacCardCol").hide();
         } else {
-            $("#depoSayacTable thead th").eq(3).text("Seri / Abone No");
+            $("#depoSayacTable thead th").eq(3).text("Abone No");
             $("#yeniSayacCardCol").fadeIn(300).removeClass('col-xl-12 col-md-12').addClass('col-xl-6 col-md-6');
             $("#hurdaSayacCardCol").fadeIn(300).removeClass('col-xl-12 col-md-12').addClass('col-xl-6 col-md-6');
         }
+
+        // Buton durumlarını güncelle
+        if (typeof updateBulkActionButtons === "function") updateBulkActionButtons();
     }).filter(':checked').trigger('change');
     $('input[name="hareket-status-filter"]').on('change', function () {
         hareketTable.ajax.reload();
+        
+        // Görsel efekt: Aktif butonu işaretle
+        $(this).closest('.status-filter-group').find('label.btn').removeClass('active');
+        $('label[for="' + $(this).attr('id') + '"]').addClass('active');
+    });
+
+    $('input[name="hareket-view-mode"]').on('change', function () {
+        var val = $(this).val();
+        localStorage.setItem('sayac_hareket_view_mode', val);
+        hareketTable.ajax.reload();
+    });
+
+    // Hareket Grubu Detaylarını Göster (Accordion)
+    $(document).on("click", ".view-details-group, tr.group-row", function (e) {
+        // Eğer bir butona veya seçme kutusuna tıklandıysa işlemi durdur
+        if ($(e.target).closest('input, .hareket-select, .hareket-sil-btn, button:not(.view-details-group)').length) return;
+        
+        var tr = $(this).closest('tr');
+        var row = hareketTable.row(tr);
+        
+        if (row.child.isShown()) {
+            row.child.hide();
+            tr.removeClass('shown');
+            tr.find('.view-details-group i').removeClass('bx-chevron-up').addClass('bx-chevron-down');
+        } else {
+            var data = row.data();
+            var gun = data.gun;
+            var personelId = data.personel_id;
+            var statusFilter = $('input[name="hareket-status-filter"]:checked').val() || "";
+            
+            // Yükleniyor göster
+            row.child('<div class="text-center p-3 text-muted"><span class="spinner-border spinner-border-sm me-2"></span> Hareketler getiriliyor...</div>').show();
+            tr.addClass('shown');
+            tr.find('.view-details-group i').removeClass('bx-chevron-down').addClass('bx-chevron-up');
+            
+            $.post(apiUrl, { action: "sayac-depo-hareketleri-detay", gun: gun, personel_id: personelId, status_filter: statusFilter }, function (res) {
+                if (res.status === 'success') {
+                    row.child(res.html).show();
+                    // Yeni açılan tablodaki checkbox vb. olaylarını tetiklemek gerekirse burada yapılabilir
+                } else {
+                    row.child('<div class="alert alert-danger m-2">' + res.message + '</div>').show();
+                }
+            }, 'json');
+        }
     });
 
     var globalSeciliSayacIds = [];
     var isTumuSecildi = false;
+    var globalSeciliHareketIds = [];
+    var isHareketTumuSecildi = false;
 
     // =============================================
     // SATIRA TIKLA = SEÇ (Genel Seçim Desteği)
     // =============================================
-    $(document).on("click", "#depoSayacTable tbody tr, #zimmetListesiBody tr, #personelZimmetTable tr, #aparatZimmetTable tr, #kaskiTarihTable tbody tr", function (e) {
-        // Eğer bir butona, linke, ok işaretine veya checkbox'ın kendisine basıldıysa tetikleme
-        if ($(e.target).closest('input[type="checkbox"], label, button, a, i, .dropdown, .details-control').length) return;
+    // mousedown kullanıyoruz çünkü DataTable responsive eklentisi 
+    // click olayını yakalayıp engelleyebiliyor.
+    // document üzerinden delegasyon yapıyoruz çünkü DataTable tbody'yi dinamik oluşturuyor.
+    $(document).on("mousedown", "#depoSayacTable tbody td, #zimmetListesiBody td, #personelZimmetTable tbody td, #aparatZimmetTable tbody td, #hareketTable tbody td", function (e) {
+        // Sadece sol tıklama
+        if (e.which !== 1) return;
         
-        var $tr = $(this);
-        var $cb = $tr.find('input[type="checkbox"].sayac-select, input[type="checkbox"].zimmet-select, .sayac-select');
+        var target = e.target;
+        var tagName = target.tagName.toUpperCase();
+        
+        // Checkbox veya label ise tarayıcı kendi halletsin
+        if (tagName === 'INPUT' || tagName === 'LABEL') return;
+        // Checkbox container içine tıklandıysa (label'ın üstü)
+        if ($(target).closest('.custom-checkbox-container').length) return;
+        // Buton, link, dropdown, dtr-control
+        if ($(target).closest('button, a, .dropdown, .details-control, .btn, .dtr-control').length) return;
+        
+        var $tr = $(this).closest('tr');
+        var $cb = $tr.find('input.sayac-select, input.zimmet-select, input.hareket-select').first();
         
         if ($cb.length > 0 && !$cb.prop('disabled')) {
-            var checked = $cb.prop("checked");
-            $cb.prop("checked", !checked).trigger("change");
-            $tr.toggleClass('table-active', !checked); // Görsel olarak da seçildiğini belli et
+            e.preventDefault(); // Metnin seçilmesini engelle
+            var newVal = !$cb.prop("checked");
+            $cb.prop("checked", newVal);
+            $cb.trigger('change'); // Change olayını tetikle ki butonlar güncellensin
+        }
+    });
+
+    // Checkbox doğrudan tıklandığında (label üzerinden) satırı renklendir
+    $(document).on("change", ".sayac-select, .zimmet-select, .hareket-select", function () {
+        var isChecked = $(this).prop("checked");
+        $(this).closest("tr").toggleClass("table-active", isChecked);
+        if (typeof updateSelectionInfo === "function") updateSelectionInfo();
+        if (typeof updateBulkActionButtons === "function") updateBulkActionButtons();
+        
+        // Hareket seçim bilgisini güncelle
+        if ($(this).hasClass("hareket-select")) {
+            updateHareketSelectionInfo();
+        }
+        
+        // Hareket silme butonunu göster/gizle
+        if ($(this).hasClass("hareket-select")) {
+            var hasHarekSecim = $(".hareket-select:checked").length > 0;
+            $("#btnTopluSilHareket").toggleClass("d-none", !hasHarekSecim);
         }
     });
 
@@ -360,6 +476,7 @@ $(function () {
             globalSeciliSayacIds = [];
             $(".sayac-select").prop("checked", false);
             updateSelectionInfo();
+            if (typeof updateBulkActionButtons === "function") updateBulkActionButtons();
         }
     });
 
@@ -429,6 +546,7 @@ $(function () {
                 $(".sayac-select").prop("checked", true);
                 $("#selectAllSayac").prop("checked", true);
                 updateSelectionInfo();
+                if (typeof updateBulkActionButtons === "function") updateBulkActionButtons();
             } else {
                 Swal.fire("Hata", res.message, "error");
                 $btn.html(oldHtml).css("pointer-events", "auto");
@@ -443,6 +561,55 @@ $(function () {
         $("#selectAllSayac").prop("checked", false);
         updateSelectionInfo();
     });
+
+    function updateBulkActionButtons() {
+        var filter = $('input[name="sayac-status-filter"]:checked').val() || "";
+        var seciliIdler = getAktifSeciliIdler();
+        var hasSecim = seciliIdler.length > 0;
+
+        // Varsayılan State
+        var canZimmet = true;
+        var canKaski = true;
+
+        if (filter === 'yeni') {
+            canZimmet = true;
+            canKaski = false;
+        } else if (filter === 'hurda') {
+            canZimmet = false;
+            canKaski = true;
+        } else {
+            // Tümü modundaysa seçilen satırların içeriğine bak
+            if (hasSecim && !isTumuSecildi) {
+                var hasHurda = false;
+                var hasYeni = false;
+                $(".sayac-select:checked").each(function() {
+                    var rowData = depoSayacTable.row($(this).closest('tr')).data();
+                    if (rowData && rowData.DT_RowData) {
+                        if (rowData.DT_RowData.durum === 'hurda' || rowData.durum === 'hurda') hasHurda = true;
+                        else hasYeni = true;
+                    }
+                });
+
+                if (hasHurda && !hasYeni) { canZimmet = false; canKaski = true; }
+                else if (hasYeni && !hasHurda) { canZimmet = true; canKaski = false; }
+            }
+        }
+
+        // Uygula
+        // Functional Buttons (Hidden & FAB)
+        $("#btnPersoneleZimmetle, #fabPersoneleZimmetle").prop("disabled", !canZimmet).css("opacity", canZimmet ? "1" : "0.5");
+        $("#btnSayacKaskiyeTeslim, #fabKaskiyeTeslim").prop("disabled", !canKaski).css("opacity", canKaski ? "1" : "0.5");
+
+        // Header Trash icon
+        $("#btnTopluSilSayac").prop("disabled", !hasSecim).css("opacity", hasSecim ? "1" : "0.5");
+
+        // Dropdown Items (Zimmetle, İade Et)
+        $("#btnPersoneleZimmetleDrop").toggleClass("disabled", !canZimmet).css("pointer-events", canZimmet ? "auto" : "none").css("opacity", canZimmet ? "1" : "0.5");
+        $("#btnSayacKaskiyeTeslimDrop").toggleClass("disabled", !canKaski).css("pointer-events", canKaski ? "auto" : "none").css("opacity", canKaski ? "1" : "0.5");
+
+        // Tab-level seçim butonları durumu
+        $("#btnTopluSilSayacTab").prop("disabled", !hasSecim).css("opacity", hasSecim ? "1" : "0.5");
+    }
 
     // =============================================
     // SAYAÇ GİR BUTONI → Modal aç
@@ -857,9 +1024,16 @@ $(function () {
         modal.show();
     });
 
-    // Kaskiye teslim form submit
+    // Kaskiye teslim form submit (double-submit koruması ile)
+    var isKaskiyeSubmitting = false;
     $(document).on("submit", "#kasiyeTeslimForm", function (e) {
         e.preventDefault();
+        e.stopImmediatePropagation();
+
+        // Double-submit guard
+        if (isKaskiyeSubmitting) return;
+        isKaskiyeSubmitting = true;
+
         var isToplu = $("#kasiye_is_toplu").val() === "1";
         
         var postData = {
@@ -875,22 +1049,29 @@ $(function () {
             postData.demirbas_id = $("#kasiye_demirbas_id").val();
         }
 
-        var $btn = $(this).find('button[type="submit"]');
+        var $btn = $("#btnKasiyeKaydet");
         $btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-1"></span> İşleniyor...');
 
         $.post(apiUrl, postData, function (res) {
-            $btn.prop("disabled", false).html('<i class="bx bx-check me-1"></i>Evet, Teslim Et');
             if (res.status === "success") {
                 var modalEl = document.getElementById("kasiyeTeslimModal");
                 bootstrap.Modal.getOrCreateInstance(modalEl).hide();
                 Swal.fire("Başarılı", res.message, "success");
                 reloadAllTables();
+                // Seçimi ve bilgi barını temizle
+                isTumuSecildi = false;
+                globalSeciliSayacIds = [];
+                $(".sayac-select").prop("checked", false);
+                $("#selectAllSayac").prop("checked", false);
+                $("#sayacSecimInfo").remove();
             } else {
                 Swal.fire("Hata", res.message, "error");
             }
         }, "json").fail(function() {
-            $btn.prop("disabled", false).html('<i class="bx bx-check me-1"></i>Evet, Teslim Et');
             Swal.fire("Hata", "Sunucu hatası oluştu.", "error");
+        }).always(function() {
+            isKaskiyeSubmitting = false;
+            $btn.prop("disabled", false).html('<i class="bx bx-check me-1"></i>Evet, Teslim Et');
         });
     });
 
@@ -1033,7 +1214,7 @@ $(function () {
     // TOPLU SİLME
     // =============================================
     $(document).on("click", "#btnTopluSilSayac", function () {
-        var selected = getSelectedIds(".sayac-select");
+        var selected = getAktifSeciliIdler();
         if (selected.length === 0) {
             Swal.fire("Uyarı", "Lütfen silinecek kayıtları seçin.", "warning");
             return;
@@ -1048,11 +1229,157 @@ $(function () {
             cancelButtonText: "İptal"
         }).then(function(result) {
             if (result.isConfirmed) {
-                $.post(apiUrl, { action: "bulk-demirbas-sil", ids: selected }, function (res) {
+                // İşlem sürerken kullanıcıyı bilgilendirelim (Loading)
+                Swal.fire({
+                    title: 'Lütfen Bekleyiniz...',
+                    text: 'Seçili ' + selected.length + ' adet kayıt siliniyor, bu işlem biraz zaman alabilir...',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    didOpen: () => {
+                        Swal.showLoading();
+                    }
+                });
+
+                var postData = { 
+                    action: "bulk-demirbas-sil", 
+                    ids: JSON.stringify(selected),
+                    all_filtered: (typeof isTumuSecildi !== 'undefined' && isTumuSecildi) ? 1 : 0
+                };
+
+                // Eğer "Tümünü Seç" aktifse filtreleri ve tab bilgisini de gönderelim
+                if (typeof isTumuSecildi !== 'undefined' && isTumuSecildi) {
+                    var params = $('#depoSayacTable').DataTable().ajax.params();
+                    // params içindeki 'action' ve diğer çakışabilecekleri ayıklayalım veya postData'yı en son ezelim
+                    $.extend(params, postData); 
+                    postData = params;
+                    // Tab bilgisini ve filtreleri koruyalım
+                    postData.tab = $('#sayacTabControl .nav-link.active').data('bs-target')?.replace('#', '') || 'sayac';
+                }
+
+                $.post(apiUrl, postData, function (res) {
+                    Swal.close(); // Loading kapat
                     if (res.status === "success") {
                         Swal.fire("Başarılı", res.message, "success");
+                        
+                        // Durumu sıfırlayalım
+                        isTumuSecildi = false;
+                        globalSeciliSayacIds = [];
+                        
                         reloadAllTables();
+                        // Seçim durumunu temizle
+                        $(".sayac-select").prop("checked", false);
+                        $("#selectAllSayac").prop("checked", false);
                         $("#sayacSecimInfo").remove();
+                        if (typeof updateBulkActionButtons === "function") updateBulkActionButtons();
+                    } else {
+                        Swal.fire("Hata", res.message, "error");
+                    }
+                }, "json").fail(function() {
+                    Swal.fire("Hata", "Sunucu hatası oluştu.", "error");
+                });
+            }
+        });
+    });
+
+    // =============================================
+    // HAREKET TOPLU SİLME
+    // =============================================
+    // =============================================
+    // HAREKET TOPLU SEÇİM
+    // =============================================
+    $(document).on("change", "#selectAllHareket", function () {
+        var checked = $(this).prop("checked");
+        if (checked) {
+            $(".hareket-select").prop("checked", true);
+            updateHareketSelectionInfo();
+        } else {
+            isHareketTumuSecildi = false;
+            globalSeciliHareketIds = [];
+            $(".hareket-select").prop("checked", false);
+            updateHareketSelectionInfo();
+        }
+    });
+
+    $(document).on("change", ".hareket-select", function () {
+        if (isHareketTumuSecildi && !$(this).prop("checked")) {
+            isHareketTumuSecildi = false;
+            globalSeciliHareketIds = [];
+            $("#selectAllHareket").prop("checked", false);
+        }
+        updateHareketSelectionInfo();
+    });
+
+    $(document).on("click", "#hareketSecimTumuFiltre", function () {
+        var params = hareketTable.ajax.params();
+        params.action = "get-filtered-hareket-ids";
+        params.status_filter = $('input[name="hareket-status-filter"]:checked').val() || "";
+        
+        var $btn = $(this);
+        var oldHtml = $btn.html();
+        $btn.html('<span class="spinner-border spinner-border-sm"></span> Bekleyiniz...').css("pointer-events", "none");
+        
+        $.post(apiUrl, params, function (res) {
+            $btn.html(oldHtml).css("pointer-events", "auto");
+            if (res.status === 'success') {
+                globalSeciliHareketIds = res.ids;
+                isHareketTumuSecildi = true;
+                $(".hareket-select").prop("checked", true);
+                updateHareketSelectionInfo();
+            }
+        }, 'json');
+    });
+
+    $(document).on("click", "#btnTopluSilHareket", function () {
+        var selected = getAktifSeciliHareketIdleri();
+        if (selected.length === 0) {
+            Swal.fire("Uyarı", "Lütfen silinecek hareketleri seçin.", "warning");
+            return;
+        }
+        Swal.fire({
+            title: "Emin misiniz?",
+            text: "Seçili " + selected.length + " hareket kaydı silinecek!",
+            icon: "warning",
+            showCancelButton: true,
+            confirmButtonColor: "#d33",
+            confirmButtonText: "Evet, Sil",
+            cancelButtonText: "İptal"
+        }).then(function(result) {
+            if (result.isConfirmed) {
+                Swal.fire({
+                    title: 'Lütfen Bekleyiniz...',
+                    text: 'İşlem yapılıyor...',
+                    allowOutsideClick: false,
+                    showConfirmButton: false,
+                    didOpen: () => { Swal.showLoading(); }
+                });
+
+                var postData = { 
+                    action: "bulk-hareket-sil", 
+                    ids: JSON.stringify(selected),
+                    all_filtered: (typeof isHareketTumuSecildi !== 'undefined' && isHareketTumuSecildi) ? 1 : 0
+                };
+
+                // Eğer "Tümünü Seç" aktifse filtreleri de gönderelim ki backend tekrar bulabilsin
+                if (typeof isHareketTumuSecildi !== 'undefined' && isHareketTumuSecildi) {
+                    var params = hareketTable.ajax.params();
+                    $.extend(params, postData);
+                    postData = params;
+                    postData.status_filter = $('input[name="hareket-status-filter"]:checked').val() || "";
+                }
+
+                $.post(apiUrl, postData, function (res) {
+                    Swal.close();
+                    if (res.status === "success") {
+                        Swal.fire("Başarılı", res.message, "success");
+                        
+                        // ÖNEMLİ: Durumu sıfırlayalım
+                        isHareketTumuSecildi = false;
+                        globalSeciliHareketIds = [];
+                        
+                        reloadAllTables();
+                        $("#btnTopluSilHareket").addClass("d-none");
+                        $("#selectAllHareket").prop("checked", false);
+                        updateHareketSelectionInfo(); 
                     } else {
                         Swal.fire("Hata", res.message, "error");
                     }
@@ -1064,147 +1391,97 @@ $(function () {
     // =============================================
     // YARDIMCI FONKSİYONLAR
     // =============================================
+    function updateHareketSelectionInfo() {
+        var $info = $("#hareketSecimInfo");
+        var selectedOnPage = $(".hareket-select:checked").length;
+        var totalOnPage = $(".hareket-select").length;
+        
+        if (isHareketTumuSecildi) {
+            if ($info.length === 0) {
+                $("#hareketTable_wrapper").prepend('<div id="hareketSecimInfo"></div>');
+                $info = $("#hareketSecimInfo");
+            }
+            $info.attr("class", "alert alert-success py-2 px-3 mb-2 d-flex align-items-center justify-content-between shadow-sm border-0").css({"border-radius":"8px"})
+                  .html('<span><i class="bx bx-check-double me-1"></i> Filtrelenen tüm <strong class="text-success">' + globalSeciliHareketIds.length + '</strong> hareket kaydı seçildi.</span><span><a href="javascript:void(0);" id="hareketSecimTemizle" class="text-danger fw-bold text-decoration-none">Temizle</a></span>');
+            return;
+        }
+
+        if (selectedOnPage > 0) {
+            if ($info.length === 0) {
+                var html = `
+                    <div id="hareketSecimInfo" class="alert alert-info py-2 px-3 mb-2 d-flex align-items-center justify-content-between shadow-sm border-0" style="background: #e0f2fe; color: #0369a1; border-radius: 8px;">
+                        <span><i class="bx bx-check-circle me-1"></i> Sayfadan <strong id="hareketSecimAdet">${selectedOnPage}</strong> / ${totalOnPage} hareket kaydı seçildi</span>
+                        <span>
+                            <a href="javascript:void(0);" id="hareketSecimTumuFiltre" class="text-primary fw-bold me-3 text-decoration-none">Tüm Filtrelenenleri Seç</a>
+                            <a href="javascript:void(0);" id="hareketSecimTemizle" class="text-danger fw-bold text-decoration-none">Temizle</a>
+                        </span>
+                    </div>
+                `;
+                $("#hareketTable_wrapper").prepend(html);
+            } else {
+                $("#hareketSecimAdet").text(selectedOnPage);
+                if ($("#hareketSecimTumuFiltre").length === 0) {
+                     $info.remove();
+                     updateHareketSelectionInfo();
+                }
+            }
+        } else {
+            if ($info.length > 0) $info.remove();
+        }
+
+        if (selectedOnPage > 0 && selectedOnPage === totalOnPage) {
+            $("#selectAllHareket").prop("checked", true);
+        } else {
+            $("#selectAllHareket").prop("checked", false);
+        }
+
+        // Hareket silme butonunu göster/gizle
+        var hasHarekSecim = $(".hareket-select:checked").length > 0 || (typeof isHareketTumuSecildi !== 'undefined' && isHareketTumuSecildi);
+        if (hasHarekSecim) {
+            $("#btnTopluSilHareket").removeClass("d-none").fadeIn(200);
+        } else {
+            $("#btnTopluSilHareket").addClass("d-none").hide();
+        }
+    }
+
+    $(document).on("click", "#hareketSecimTemizle", function() {
+        isHareketTumuSecildi = false;
+        globalSeciliHareketIds = [];
+        $(".hareket-select").prop("checked", false).trigger("change");
+        $("#selectAllHareket").prop("checked", false);
+        updateHareketSelectionInfo();
+    });
+
+    $(document).on("draw.dt", "#hareketTable", function() {
+        if (isHareketTumuSecildi) {
+             $(".hareket-select").prop("checked", true);
+             $("#selectAllHareket").prop("checked", true);
+        }
+        updateHareketSelectionInfo();
+    });
+
+    function getAktifSeciliHareketIdleri() {
+        if (isHareketTumuSecildi && globalSeciliHareketIds.length > 0) {
+            return globalSeciliHareketIds;
+        }
+        return getSelectedIds(".hareket-select");
+    }
+
     function getSelectedIds(selector) {
         var arr = [];
         $(selector + ":checked").each(function () { arr.push($(this).val()); });
         return arr;
     }
 
-    function loadDepoSummary() {
-        $.post(apiUrl, { action: "sayac-global-summary" }, function (res) {
-            if (res.status === "success") {
-                var yeniToplam = parseInt(res.toplam_alinan) || 0;
-                var yeniDepo = parseInt(res.yeni_depoda) || 0;
-                var yeniPersonel = parseInt(res.yeni_personelde) || 0;
-                var takilan = parseInt(res.takilan) || 0;
-                var yeniKayip = yeniToplam - (yeniDepo + yeniPersonel + takilan);
-
-                var hurdaToplam = takilan; // Her takılan 1 hurda üretir
-                var hurdaDepo = parseInt(res.hurda_depoda) || 0;
-                var hurdaPersonel = parseInt(res.hurda_personelde) || 0;
-                var hurdaKaski = parseInt(res.hurda_kaskiye) || 0;
-                var hurdaKayip = hurdaToplam - (hurdaDepo + hurdaPersonel + hurdaKaski);
-
-                // Bizim Depo Tabı
-                $("#sayacCardToplamGiren").text(yeniToplam);
-                $("#sayacCardDepoKalan").text(yeniDepo);
-                $("#sayacCardTakilan").text(takilan);
-                $("#sayacCardPersonelZimmetli").text(yeniPersonel);
-                $("#sayacCardKayipYeni").text(yeniKayip > 0 ? yeniKayip : 0);
-
-                $("#sayacCardToplamHurda").text(hurdaToplam);
-                // Kaski Tabı (PHP'deki ID'lerle eşleşecek şekilde güncellendi)
-                $("#kaskiSummaryToplamAlinan").text(hurdaToplam); // Kaç adet hurda çıktı?
-                $("#kaskiSummaryIadeEdilen").text(hurdaKaski);   // Kaç adet Kaskiye gitti?
-                $("#kaskiSummaryFark").text(hurdaToplam - hurdaKaski); // Kalan fark
-            }
-        }, "json");
-    }
-
-    function reloadAllTables() {
-        try { kaskiTarihTable.ajax.reload(null, false); } catch(e) {}
-        try { depoSayacTable.ajax.reload(null, false); } catch(e) {}
-        try { personelTable.ajax.reload(null, false); } catch(e) {}
-        try { hareketTable.ajax.reload(null, false); } catch(e) {}
-        loadPersonelAllSummary();
-        loadDepoSummary();
-    }
+    // reloadAllTables ve loadDepoSummary zaten yukarıda tanımlı (satır 191-244)
+    // Buraya tekrar yazmıyoruz, sadece global erişim atıyoruz
     window.reloadSayacTables = reloadAllTables;
+
 
     // Tüm kaydedme olaylarından sonra tabloları yenile
     $(document).on("demirbas-saved zimmet-saved iade-saved kaskiye-teslim-saved hurda-iade-saved", function() {
         reloadAllTables();
     });
 
-    // ============== HURDA SAYAÇ İADE İŞLEMLERİ (SAYAÇ DEPOSU ÖZEL) ==============
-
-    $(document).on("click", "#btnHurdaSayacIade", function (e) {
-        e.preventDefault();
-        $("#hurdaIadeForm")[0].reset();
-        $("#hurda_iade_tarihi").val(new Date().toLocaleDateString("tr-TR"));
-        $("#hurdaZimmetListesi").addClass("d-none");
-        $("#hurdaZimmetBody").html('<tr><td colspan="4" class="text-center text-muted py-3 small">Personel seçildiğinde listelenecektir.</td></tr>');
-        $("#hurdaPersonelAktif").prop("checked", true);
-        updateHurdaPersonelList("aktif");
-        bootstrap.Modal.getOrCreateInstance(document.getElementById("hurdaIadeModal")).show();
-    });
-
-    function updateHurdaPersonelList(filterType) {
-        let list = filterType === "aktif" ? hurdaAktifPersoneller : hurdaTumPersoneller;
-        let $el = $("#hurda_personel_id");
-        $el.empty().append('<option value="">Personel Seçin</option>');
-        list.forEach(p => $el.append(new Option(p.text, p.id, false, false)));
-        if(!$el.hasClass("select2-hidden-accessible")) {
-            $el.select2({ dropdownParent: $("#hurdaIadeModal"), placeholder: "Personel Seçin", allowClear: true, width: "100%" });
-        }
-        $el.val(null).trigger("change");
-    }
-
-    $(document).on("change", 'input[name="hurdaPersonelFilter"]', function () {
-        updateHurdaPersonelList($(this).val());
-    });
-
-    $(document).on("change", "#hurda_personel_id", function () {
-        let pId = $(this).val();
-        if(!pId) {
-            $("#hurdaZimmetListesi").addClass("d-none");
-            return;
-        }
-        $("#hurdaZimmetListesi").removeClass("d-none");
-        $("#hurdaZimmetBody").html('<tr><td colspan="4" class="text-center py-3"><i class="bx bx-loader-alt bx-spin"></i> Yükleniyor...</td></tr>');
-        
-        $.post(apiUrl, { action: "hurda-zimmet-listesi", personel_id: pId }, function(res) {
-            if(res.status === 'success') {
-                let html = "";
-                (res.data || []).forEach(item => {
-                    html += `<tr>
-                        <td class="text-center"><input type="checkbox" class="form-check-input hurda-zimmet-check" value="${item.id}"></td>
-                        <td><div class="fw-bold small">${item.demirbas_adi}</div><small class="text-muted">SN: ${item.seri_no}</small></td>
-                        <td class="text-center"><span class="badge bg-danger">${item.kalan_miktar}</span></td>
-                        <td class="small">${item.teslim_tarihi}</td>
-                    </tr>`;
-                });
-                if(!html) html = '<tr><td colspan="4" class="text-center text-muted py-3">Zimmetinde hurda sayaç bulunamadı.</td></tr>';
-                $("#hurdaZimmetBody").html(html);
-            }
-        }, 'json');
-    });
-
-    $(document).on("change", "#hurdaCheckAll", function() { $(".hurda-zimmet-check").prop("checked", this.checked); });
-
-    $(document).on("click", "#btnHurdaIadeKaydet", function() {
-        let selected = [];
-        $(".hurda-zimmet-check:checked").each(function() { selected.push($(this).val()); });
-
-        if(selected.length === 0) {
-            Swal.fire("Uyarı", "Lütfen iade edilecek sayaçları seçin.", "warning");
-            return;
-        }
-
-        let $btn = $(this);
-        $btn.prop("disabled", true).html('<i class="bx bx-loader-alt bx-spin"></i> İşleniyor...');
-
-        $.post(apiUrl, {
-            action: "hurda-sayac-iade",
-            mode: "select",
-            selected_ids: JSON.stringify(selected),
-            hurda_iade_tarihi: $("#hurda_iade_tarihi").val(),
-            hurda_aciklama: $("#hurda_aciklama").val()
-        }, function(res) {
-            $btn.prop("disabled", false).html('<i class="bx bx-check-square me-1"></i>İadeyi Kaydet');
-            if(res.status === 'success') {
-                bootstrap.Modal.getOrCreateInstance(document.getElementById("hurdaIadeModal")).hide();
-                Swal.fire("Başarılı", res.message, "success");
-                reloadAllTables();
-            } else {
-                Swal.fire("Hata", res.message, "error");
-            }
-        }, 'json');
-    });
-    // Flatpickr Init for Hurda Modal
-    $("#hurdaIadeModal").on("shown.bs.modal", function () {
-        if(!$("#hurda_iade_tarihi").hasClass("flatpickr-input")) {
-            flatpickr("#hurda_iade_tarihi", { dateFormat: "d.m.Y", locale: "tr", defaultDate: "today" });
-        }
-    });
+// Hurda Sayaç İade İşlemleri demirbas.js'den yönetiliyor. Duplike olmaması için silindi.
 });

@@ -81,17 +81,17 @@ class DemirbasZimmetModel extends Model
         }
 
         try {
-            // If it's active (teslim), restore stock to demirbas
+            // Check for deducted amount (sarf/kayip) to restore global miktar (Done via dynamic formula now, but we still need to manage durum)
+            
+            // If it's active (teslim), manage durum correctly
             if ($zimmet->durum === 'teslim') {
-                $processed = $this->getProcessedAmount($raw_id);
-                $kalan_zimmet = (int) $zimmet->teslim_miktar - $processed;
-                if ($kalan_zimmet > 0) {
-                    $sqlStok = $this->db->prepare("UPDATE demirbas SET kalan_miktar = kalan_miktar + ? WHERE id = ?");
-                    $sqlStok->execute([$kalan_zimmet, $zimmet->demirbas_id]);
-                }
+                $this->db->prepare("UPDATE demirbas SET durum = 'aktif' WHERE id = ? AND durum IN ('Personelde', 'pasif')")->execute([$zimmet->demirbas_id]);
+            } else if ($zimmet->durum === 'iade') {
+                // If it was already closed but we are deleting it, just ensure durum is correct
+                $this->db->prepare("UPDATE demirbas SET durum = 'aktif' WHERE id = ? AND durum = 'pasif'")->execute([$zimmet->demirbas_id]);
             }
 
-            // Delete related movements (optional but recommended for data integrity since the zimmet is as if it never happened)
+            // Deleted movements logic (will be handled by the next lines)
             $sqlDelHareketArr = $this->db->prepare("DELETE FROM demirbas_hareketler WHERE zimmet_id = ?");
             $sqlDelHareketArr->execute([$raw_id]);
 
@@ -277,13 +277,7 @@ class DemirbasZimmetModel extends Model
                 'kaynak' => $data['kaynak'] ?? 'manuel'
             ]);
 
-            // Stok miktarını düşür
-            $updateStock = $this->db->prepare("
-                UPDATE demirbas 
-                SET kalan_miktar = kalan_miktar - ?
-                WHERE id = ?
-            ");
-            $updateStock->execute([$teslim_miktar, $data['demirbas_id']]);
+            // Stok miktarını düşürmüyoruz - Dinamik hesaplama kullanılacak
 
             if ($startedTransaction) {
                 $this->db->commit();
@@ -781,13 +775,7 @@ class DemirbasZimmetModel extends Model
                 'kaynak' => $kaynak
             ]);
 
-            // Demirbaş stok miktarını artır
-            $sqlDemirbas = $this->db->prepare("
-                UPDATE demirbas 
-                SET kalan_miktar = kalan_miktar + ?
-                WHERE id = ?
-            ");
-            $sqlDemirbas->execute([$iade_miktar, $zimmet->demirbas_id]);
+            // Demirbaş stok miktarını artırmıyoruz - Dinamik hesaplama kullanılacak
 
             if ($startedTransaction) {
                 $this->db->commit();
@@ -852,13 +840,7 @@ class DemirbasZimmetModel extends Model
                 'kaynak' => $kaynak
             ]);
 
-            // Tüketim olduğu için demirbaşın toplam miktarını düşür. (kalan_miktar zimmet verildiğinde düşmüştü zaten)
-            $sqlDemirbas = $this->db->prepare("
-                UPDATE demirbas 
-                SET miktar = miktar - ?
-                WHERE id = ?
-            ");
-            $sqlDemirbas->execute([$tuketim_miktar, $zimmet->demirbas_id]);
+            // Tüketim olduğu için demirbaşın toplam miktarını düşürmüyoruz - Dinamik hesaplama kullanılacak
 
             // Eğer demirbaşın kalanı ve miktarı sıfırlandıysa pasif yap
             if ($yeniDurum === 'iade') {
@@ -1408,13 +1390,7 @@ class DemirbasZimmetModel extends Model
                 throw new \Exception("Zimmet kaydı bulunamadı.");
             }
 
-            // 3. Demirbaş stok miktarını düzelte (azalt - çünkü iade siliniyor)
-            if ($h->hareket_tipi === 'sarf') {
-                $sqlDemirbas = $this->db->prepare("UPDATE demirbas SET miktar = miktar + ? WHERE id = ?");
-            } else {
-                $sqlDemirbas = $this->db->prepare("UPDATE demirbas SET kalan_miktar = kalan_miktar - ? WHERE id = ?");
-            }
-            $sqlDemirbas->execute([$h->miktar, $h->demirbas_id]);
+            // Demirbaş stok miktarını düzelte (hareket silindiği için dinamik kalan kendiliğinden düzelecek)
 
             $processed = $this->getProcessedAmount($h->zimmet_id);
             $yeniDurum = ($processed < (int) $z->teslim_miktar) ? 'teslim' : 'iade';

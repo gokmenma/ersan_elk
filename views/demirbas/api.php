@@ -204,7 +204,14 @@ if ($action == "kasiye-teslim") {
         $demirbas_id_raw = $_POST["demirbas_id"] ?? '';
         $demirbas_id = $demirbas_id_raw ? intval(Security::decrypt($demirbas_id_raw)) : 0;
         $tarih = $_POST["tarih"] ?? date('d.m.Y');
+        
+        $teslim_eden_id = intval($_POST["teslim_eden"] ?? 0);
         $teslim_eden = $_SESSION["adi_soyadi"] ?? 'Sistem Kullanıcısı';
+        if ($teslim_eden_id > 0) {
+            $pName = $Demirbas->db->query("SELECT adi_soyadi FROM personel WHERE id = $teslim_eden_id")->fetchColumn();
+            if ($pName) $teslim_eden = $pName;
+        }
+        
         $aciklama = $_POST["aciklama"] ?? null;
 
         if ($demirbas_id <= 0 || empty($tarih)) {
@@ -218,7 +225,8 @@ if ($action == "kasiye-teslim") {
         $sqlUpdate->execute([$formatted_tarih, $teslim_eden, $aciklama, $demirbas_id]);
 
         // Hareket kaydı ekle (Tarihçe için)
-        $personel_id_extra = $Demirbas->db->query("SELECT id FROM personel WHERE silinme_tarihi IS NULL LIMIT 1")->fetchColumn() ?: 1;
+        // Personel bağımsız depo çıkışı (sarf)
+        $personel_id_extra = null; 
         $sqlMov = $Demirbas->db->prepare("INSERT INTO demirbas_hareketler (demirbas_id, hareket_tipi, miktar, tarih, aciklama, islem_yapan_id, kaynak, personel_id) VALUES (?, 'sarf', 1, ?, ?, ?, 'sistem', ?)");
         $desc = "KASKİ'ye Teslim Edildi. Teslim Eden: $teslim_eden. " . ($aciklama ? "Not: $aciklama" : "");
         $sqlMov->execute([$demirbas_id, $formatted_tarih, $desc, $_SESSION['id'] ?? 0, $personel_id_extra]);
@@ -235,7 +243,14 @@ if ($action == "toplu-kasiye-teslim") {
         $ids_json = $_POST['ids'] ?? '[]';
         $ids = json_decode($ids_json, true);
         $tarih = $_POST["tarih"] ?? date('d.m.Y');
+        
+        $teslim_eden_id = intval($_POST["teslim_eden"] ?? 0);
         $teslim_eden = $_SESSION["adi_soyadi"] ?? 'Sistem Kullanıcısı';
+        if ($teslim_eden_id > 0) {
+            $pName = $Demirbas->db->query("SELECT adi_soyadi FROM personel WHERE id = $teslim_eden_id")->fetchColumn();
+            if ($pName) $teslim_eden = $pName;
+        }
+        
         $aciklama = $_POST["aciklama"] ?? null;
 
         if (empty($ids) || empty($tarih)) {
@@ -245,7 +260,7 @@ if ($action == "toplu-kasiye-teslim") {
         $formatted_tarih = Date::Ymd($tarih, 'Y-m-d');
         $successCount = 0;
 
-        $personel_id_extra = $Demirbas->db->query("SELECT id FROM personel WHERE silinme_tarihi IS NULL LIMIT 1")->fetchColumn() ?: 1;
+        $personel_id_extra = null; // Personel bağımsız depo çıkışı (sarf)
         $sqlUpdate = $Demirbas->db->prepare("UPDATE demirbas SET durum = 'Kaskiye Teslim Edildi', lokasyon = 'kaski', kaskiye_teslim_tarihi = ?, kaskiye_teslim_eden = ?, aciklama = ?, kalan_miktar = 0, miktar = 0 WHERE id = ?");
         $sqlMov = $Demirbas->db->prepare("INSERT INTO demirbas_hareketler (demirbas_id, hareket_tipi, miktar, tarih, aciklama, islem_yapan_id, kaynak, personel_id) VALUES (?, 'sarf', 1, ?, ?, ?, 'sistem', ?)");
 
@@ -272,6 +287,19 @@ if ($action == "get-filtered-sayac-ids") {
     try {
         $tab = $_POST["tab"] ?? 'sayac_bizim_depo';
         $idsRaw = $Demirbas->getFilteredIds($_POST, $tab);
+        $ids = array_map(fn($id) => Security::encrypt($id), $idsRaw);
+        jsonResponse("success", "Başarılı", ["ids" => $ids]);
+    } catch (Exception $ex) {
+        jsonResponse("error", "Hata: " . $ex->getMessage());
+    }
+}
+
+// Get Filtered IDs for Movements
+if ($action == "get-filtered-hareket-ids") {
+    try {
+        $idsRaw = $Hareket->getFilteredIds($_POST);
+        // Hareket tablosunda numeric ID kullanıldığı için şifrelemeye gerek yok veya frontend ile uyumlu olmalı
+        // Ancak güvenlik için şifreli gönderelim, backend'de çözeriz.
         $ids = array_map(fn($id) => Security::encrypt($id), $idsRaw);
         jsonResponse("success", "Başarılı", ["ids" => $ids]);
     } catch (Exception $ex) {
@@ -436,8 +464,19 @@ if ($action == "sayac-depo-hareketleri") {
         $search = $_POST['search']['value'] ?? '';
         $status_filter = $_POST['status_filter'] ?? '';
 
-        $params = [$_SESSION['firma_id']];
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $params = [$firmaId];
         $whereSql = " WHERE d.firma_id = ? AND h.silinme_tarihi IS NULL";
+
+        // Sadece Sayaç kategorisindeki hareketleri göster
+        $sayacCatIds = getCategoryIdsByKeywords($Demirbas->db, $firmaId, ['sayaç', 'sayac']);
+        if (!empty($sayacCatIds)) {
+            $in = buildInClause($sayacCatIds);
+            $whereSql .= " AND d.kategori_id IN ($in)";
+            foreach ($sayacCatIds as $catId) {
+                $params[] = $catId;
+            }
+        }
 
         if (!empty($search)) {
             $whereSql .= " AND (d.demirbas_adi LIKE ? OR d.seri_no LIKE ? OR p.adi_soyadi LIKE ?)";
@@ -447,7 +486,7 @@ if ($action == "sayac-depo-hareketleri") {
         }
 
         if ($status_filter === 'kaski') {
-            $whereSql .= " AND d.lokasyon = 'kaski'";
+            $whereSql .= " AND (h.aciklama LIKE '%KASKİ%' OR h.aciklama LIKE '%KASKI%' OR d.lokasyon = 'kaski' OR d.durum = 'kaskiye teslim edildi')";
         } elseif ($status_filter === 'depo') {
             $whereSql .= " AND d.lokasyon = 'bizim_depo'";
         } elseif ($status_filter === 'zimmet') {
@@ -481,6 +520,7 @@ if ($action == "sayac-depo-hareketleri") {
             }
 
             $data[] = [
+                "checkbox" => '<div class="form-check d-flex justify-content-center m-0"><input class="form-check-input hareket-select" type="checkbox" value="' . $row->id . '"></div>',
                 "id" => $row->id,
                 "hareket_tipi" => DemirbasHareketModel::getHareketTipiBadge($row->hareket_tipi, $row->aciklama),
                 "demirbas_adi" => $displayDemirbasAdi,
@@ -497,9 +537,9 @@ if ($action == "sayac-depo-hareketleri") {
         $recordsFiltered = $stmtTotal->fetchColumn();
 
         echo json_encode([
-            "draw" => intval($_POST['draw'] ?? 0),
-            "recordsTotal" => $recordsFiltered,
-            "recordsFiltered" => $recordsFiltered,
+            "draw" => intval($_POST['draw'] ?? 1),
+            "recordsTotal" => (int)$recordsFiltered,
+            "recordsFiltered" => (int)$recordsFiltered,
             "data" => $data
         ]);
         exit;
@@ -508,16 +548,159 @@ if ($action == "sayac-depo-hareketleri") {
     }
 }
 
-// Hareket Sil
-if ($action == "hareket-sil") {
+// Sayaç Depo Hareketleri - Gruplanmış (Tarih Bazlı)
+if ($action == "sayac-depo-hareketleri-grouped") {
     try {
-        $hareketId = intval($_POST['hareket_id'] ?? 0);
-        if ($hareketId <= 0) {
-            jsonResponse("error", "Geçersiz hareket ID.");
+        $start = intval($_POST['start'] ?? 0);
+        $length = intval($_POST['length'] ?? 10);
+        $status_filter = $_POST['status_filter'] ?? '';
+
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $params = [$firmaId];
+        $whereSql = " WHERE h.silinme_tarihi IS NULL AND d.firma_id = ?";
+
+        // Sadece Sayaç kategorisindeki hareketleri göster
+        $sayacCatIds = getCategoryIdsByKeywords($Demirbas->db, $firmaId, ['sayaç', 'sayac']);
+        if (!empty($sayacCatIds)) {
+            $in = buildInClause($sayacCatIds);
+            $whereSql .= " AND d.kategori_id IN ($in)";
+            foreach ($sayacCatIds as $catId) {
+                $params[] = $catId;
+            }
         }
-        $stmt = $Demirbas->db->prepare("UPDATE demirbas_hareketler SET silinme_tarihi = NOW() WHERE id = ?");
-        $stmt->execute([$hareketId]);
-        jsonResponse("success", "Hareket kaydı silindi.");
+
+        if ($status_filter === 'kaski') {
+            $whereSql .= " AND (h.aciklama LIKE '%KASKİ%' OR h.aciklama LIKE '%KASKI%' OR d.lokasyon = 'kaski' OR d.durum = 'kaskiye teslim edildi')";
+        } elseif ($status_filter === 'depo') {
+            $whereSql .= " AND d.lokasyon = 'bizim_depo'";
+        } elseif ($status_filter === 'zimmet') {
+            $whereSql .= " AND h.hareket_tipi = 'zimmet'";
+        }
+
+        $sql = "SELECT p.adi_soyadi as personel_adi, h.personel_id, DATE(h.tarih) as gun, COUNT(*) as adet
+                FROM demirbas_hareketler h
+                INNER JOIN demirbas d ON h.demirbas_id = d.id
+                LEFT JOIN personel p ON h.personel_id = p.id
+                $whereSql
+                GROUP BY h.personel_id, gun
+                ORDER BY gun DESC, personel_adi ASC
+                LIMIT $start, $length";
+
+        $stmt = $Demirbas->db->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $data = [];
+        foreach ($rows as $row) {
+            $pAdi = $row->personel_adi ?: 'Genel Depo';
+            $data[] = [
+                "checkbox" => "",
+                "id" => '-',
+                "hareket_tipi" => '<span class="fw-bold text-primary"><i class="bx bx-user me-1"></i> ' . $pAdi . '</span>',
+                "demirbas_adi" => '<span class="fw-bold">' . date('d.m.Y', strtotime($row->gun)) . '</span>',
+                "seri_no" => '-',
+                "lokasyon_personel" => '<span class="badge bg-soft-info text-info">' . $row->adet . ' İşlem</span>',
+                "tarih" => $row->gun,
+                "islem" => '<button class="btn btn-sm btn-soft-primary view-details-group"><i class="bx bx-chevron-down"></i> Detaylar</button>',
+                "DT_RowClass" => "group-row",
+                "gun" => $row->gun,
+                "personel_id" => $row->personel_id
+            ];
+        }
+
+        $totalSql = "SELECT COUNT(*) FROM (SELECT h.id FROM demirbas_hareketler h INNER JOIN demirbas d ON h.demirbas_id = d.id $whereSql GROUP BY h.personel_id, DATE(h.tarih)) as sub";
+        $stmtTotal = $Demirbas->db->prepare($totalSql);
+        $stmtTotal->execute($params);
+        $recordsFiltered = $stmtTotal->fetchColumn();
+
+        echo json_encode([
+            "draw" => intval($_POST['draw'] ?? 1),
+            "recordsTotal" => (int)$recordsFiltered,
+            "recordsFiltered" => (int)$recordsFiltered,
+            "data" => $data
+        ]);
+        exit;
+    } catch (Exception $ex) {
+        jsonResponse("error", "Hata: " . $ex->getMessage());
+    }
+}
+
+// Gruplanmış Hareket Detayı
+if ($action == "sayac-depo-hareketleri-detay") {
+    try {
+        $gun = $_POST['gun'] ?? '';
+        $personel_id = $_POST['personel_id'] ?? null;
+        $status_filter = $_POST['status_filter'] ?? '';
+
+        $params = [$_SESSION['firma_id'] ?? 0, $gun];
+        $whereSql = " WHERE h.silinme_tarihi IS NULL AND d.firma_id = ? AND DATE(h.tarih) = ?";
+
+        if ($personel_id === "null" || is_null($personel_id) || $personel_id === "") {
+            $whereSql .= " AND h.personel_id IS NULL";
+        } else {
+            $whereSql .= " AND h.personel_id = ?";
+            $params[] = $personel_id;
+        }
+
+        if ($status_filter === 'kaski') {
+            $whereSql .= " AND d.lokasyon = 'kaski'";
+        } elseif ($status_filter === 'depo') {
+            $whereSql .= " AND d.lokasyon = 'bizim_depo'";
+        } elseif ($status_filter === 'zimmet') {
+            $whereSql .= " AND h.hareket_tipi = 'zimmet'";
+        }
+
+        $sql = "SELECT h.*, d.demirbas_adi, d.seri_no, p.adi_soyadi as personel_adi, d.lokasyon
+                FROM demirbas_hareketler h
+                INNER JOIN demirbas d ON h.demirbas_id = d.id
+                LEFT JOIN personel p ON h.personel_id = p.id
+                $whereSql
+                ORDER BY h.tarih DESC, h.id DESC";
+
+        $stmt = $Demirbas->db->prepare($sql);
+        $stmt->execute($params);
+        $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $html = '<div class="p-2 bg-light border-top border-bottom"><table class="table table-sm table-hover mb-0 bg-white shadow-sm rounded">';
+        $html .= '<thead class="table-dark"><tr>
+                 <th class="text-center" style="width:30px"><i class="bx bx-check-square"></i></th>
+                 <th style="width:60px">ID</th>
+                 <th style="width:120px">İşlem</th>
+                 <th>Sayaç / Demirbaş</th>
+                 <th>Seri / Abone</th>
+                 <th>Sorumlu / Yer</th>
+                 <th class="text-center" style="width:60px">Saat</th>
+                 <th class="text-center" style="width:80px">İşlem</th>
+                 </tr></thead><tbody>';
+
+        foreach ($rows as $row) {
+            $tipBadge = DemirbasHareketModel::getHareketTipiBadge($row->hareket_tipi, $row->aciklama);
+            $lokP = $row->personel_adi ?: ($row->lokasyon === 'kaski' ? 'Kaski Depo' : 'Bizim Depo');
+            
+            $displaySeriNo = $row->seri_no;
+            $displayDemirbasAdi = $row->demirbas_adi;
+            if (preg_match('/\s*\/\s*Abone(?:\s*No)?[:\s]+(\d+)/i', $displayDemirbasAdi, $matches)) {
+                $aboneNo = $matches[1];
+                if (empty($displaySeriNo) || $displaySeriNo == '-') $displaySeriNo = $aboneNo;
+                $displayDemirbasAdi = preg_replace('/\s*\/\s*Abone(?:\s*No)?[:\s]+(\d+)/i', '', $displayDemirbasAdi);
+            }
+
+            $html .= '<tr>';
+            $html .= '<td class="text-center"><div class="form-check d-flex justify-content-center m-0"><input class="form-check-input hareket-select" type="checkbox" value="' . $row->id . '"></div></td>';
+            $html .= '<td>'.$row->id.'</td>';
+            $html .= '<td>'.$tipBadge.'</td>';
+            $html .= '<td>'.htmlspecialchars($displayDemirbasAdi).'</td>';
+            $html .= '<td>'.($displaySeriNo ? '<code class="text-dark bg-light px-1">'.$displaySeriNo.'</code>' : '-').'</td>';
+            $html .= '<td>'.$lokP.'</td>';
+            $html .= '<td class="text-center">'.date('H:i', strtotime($row->tarih)).'</td>';
+            $html .= '<td class="text-center">
+                        <button class="btn btn-sm btn-soft-danger hareket-sil-btn" data-id="'.$row->id.'" title="Sil"><i class="bx bx-trash"></i></button>
+                      </td>';
+            $html .= '</tr>';
+        }
+        $html .= '</tbody></table></div>';
+
+        jsonResponse("success", "Başarılı", ["html" => $html]);
     } catch (Exception $ex) {
         jsonResponse("error", "Hata: " . $ex->getMessage());
     }
@@ -562,6 +745,12 @@ if ($action == "demirbas-getir") {
 if ($action == "bulk-demirbas-sil") {
     Gate::can('demirbas_toplu_islem_sil');
     $ids = $_POST["ids"] ?? [];
+    
+    // JSON dizesi olarak gelmiş olabilir (max_input_vars aşımı için stringified gönderiyoruz)
+    if (!empty($ids) && is_string($ids)) {
+        $ids = json_decode($ids, true) ?: [];
+    }
+    
     $allFiltered = intval($_POST["all_filtered"] ?? 0);
 
     if ($allFiltered === 1) {
@@ -574,6 +763,9 @@ if ($action == "bulk-demirbas-sil") {
     if (empty($ids)) {
         jsonResponse("error", "Lütfen silmek için en az bir kayıt seçin.");
     }
+
+    // Büyük veriler için zaman limitini kaldır (11.000+ kayıt için)
+    set_time_limit(0);
 
     try {
         $successCount = 0;
@@ -648,6 +840,118 @@ if ($action == "bulk-demirbas-sil") {
     }
 }
 
+// Toplu Hareket Sil
+if ($action == "bulk-hareket-sil") {
+    Gate::can('demirbas_toplu_islem_sil');
+    $allFiltered = intval($_POST["all_filtered"] ?? 0);
+    if ($allFiltered === 1) {
+        // Pagination parametrelerini temizleyelim ki model tümünü çeksin
+        unset($_POST['length'], $_POST['start']);
+        $idsRaw = $Hareket->getFilteredIds($_POST);
+        $ids = array_map(fn($id) => Security::encrypt($id), $idsRaw);
+    } else {
+        $ids = $_POST["ids"] ?? [];
+        if (!empty($ids) && is_string($ids)) {
+            $ids = json_decode($ids, true) ?: [];
+        }
+    }
+
+    if (empty($ids)) {
+        jsonResponse("error", "Lütfen silmek için en az bir kayıt seçin.");
+    }
+
+    // Zaman ve bellek limitlerini büyük işlemler için artır
+    set_time_limit(0);
+    ini_set('memory_limit', '512M');
+
+    try {
+        $successCount = 0;
+        $errorCount = 0;
+        $Demirbas->db->beginTransaction();
+
+        foreach ($ids as $idEnc) {
+            // ID şifreli olabilir (Tümünü Seç modunda) veya düz sayı olabilir (Sayfadaki seçimde)
+            $id = is_numeric($idEnc) ? (int)$idEnc : (int)Security::decrypt($idEnc);
+            if ($id <= 0) continue;
+
+            // Revert state logic for Kaski deliveries and Personnel assignments
+            $stmtH = $Demirbas->db->prepare("SELECT demirbas_id, aciklama, hareket_tipi, zimmet_id FROM demirbas_hareketler WHERE id = ?");
+            $stmtH->execute([$id]);
+            $hareket = $stmtH->fetch(PDO::FETCH_ASSOC);
+
+            if ($hareket) {
+                $aciklamaLower = mb_strtolower($hareket['aciklama'] ?? '', 'UTF-8');
+                $tip = $hareket['hareket_tipi'] ?? '';
+                $zimmetId = $hareket['zimmet_id'] ?? 0;
+
+                if ($tip === 'zimmet' && $zimmetId > 0) {
+                    // Zimmet silme işlemi (Stok ve durumu kendi içinde halleder)
+                    $Zimmet->delete($zimmetId, false);
+                } elseif (str_contains($aciklamaLower, 'kaski') && (str_contains($aciklamaLower, 'teslim') || str_contains($aciklamaLower, 'iade'))) {
+                    // Kaski iadesini geri al
+                    $Demirbas->db->prepare("UPDATE demirbas SET durum = 'aktif', lokasyon = 'bizim_depo', kaskiye_teslim_tarihi = NULL, kaskiye_teslim_eden = NULL, miktar = 1, kalan_miktar = 1 WHERE id = ?")->execute([$hareket['demirbas_id']]);
+                }
+            }
+
+            $stmt = $Demirbas->db->prepare("UPDATE demirbas_hareketler SET silinme_tarihi = NOW(), silen_kisi_id = ? WHERE id = ?");
+            if ($stmt->execute([$_SESSION['id'] ?? 0, $id])) {
+                $successCount++;
+            } else {
+                $errorCount++;
+            }
+        }
+
+        $Demirbas->db->commit();
+        
+        // Log kaydı
+        $SystemLog->logAction($_SESSION['id'] ?? 0, "Toplu Hareket Silme", "[$successCount] adet sayaç hareket kaydı toplu olarak silindi.", SystemLogModel::LEVEL_CRITICAL);
+
+        jsonResponse("success", "$successCount adet hareket kaydı başarıyla silindi. Kaski teslimatları geri alındı.");
+    } catch (Exception $ex) {
+        if ($Demirbas->db->inTransaction()) {
+            $Demirbas->db->rollBack();
+        }
+        jsonResponse("error", "Hata: " . $ex->getMessage());
+    }
+}
+
+// Tekil Hareket Sil
+if ($action == "hareket-sil") {
+    Gate::can('demirbas_toplu_islem_sil');
+    $id = $_POST["hareket_id"] ?? $_POST["id"] ?? null;
+    if (!$id) jsonResponse("error", "Geçersiz hareket ID.");
+
+    try {
+        // Revert state logic for Kaski deliveries and Personnel assignments
+        $qHareket = $Demirbas->db->prepare("SELECT demirbas_id, aciklama, hareket_tipi, zimmet_id FROM demirbas_hareketler WHERE id = ?");
+        $qHareket->execute([$id]);
+        $hareket = $qHareket->fetch(PDO::FETCH_ASSOC);
+
+        if ($hareket) {
+            $aciklamaLower = mb_strtolower($hareket['aciklama'] ?? '', 'UTF-8');
+            $tip = $hareket['hareket_tipi'] ?? '';
+            $zimmetId = $hareket['zimmet_id'] ?? 0;
+
+            if ($tip === 'zimmet' && $zimmetId > 0) {
+                // Zimmet silme işlemi (Stok ve durumu kendi içinde halleder)
+                $Zimmet->delete($zimmetId, false);
+            } elseif (str_contains($aciklamaLower, 'kaski') && (str_contains($aciklamaLower, 'teslim') || str_contains($aciklamaLower, 'iade'))) {
+                // Meter is back in stock
+                $Demirbas->db->prepare("UPDATE demirbas SET durum = 'aktif', lokasyon = 'bizim_depo', kaskiye_teslim_tarihi = NULL, kaskiye_teslim_eden = NULL, miktar = 1, kalan_miktar = 1 WHERE id = ?")->execute([$hareket['demirbas_id']]);
+            }
+        }
+
+        $stmt = $Demirbas->db->prepare("UPDATE demirbas_hareketler SET silinme_tarihi = NOW(), silen_kisi_id = ? WHERE id = ?");
+        if ($stmt->execute([$_SESSION['id'] ?? 0, $id])) {
+            jsonResponse("success", "Hareket kaydı silindi ve işlem geri alındı.");
+        } else {
+            jsonResponse("error", "Silme işlemi başarısız.");
+        }
+    } catch (Exception $ex) {
+        jsonResponse("error", "Hata: " . $ex->getMessage());
+    }
+}
+
 // Demirbaş Sil
 if ($action == "demirbas-sil") {
     $id = $_POST["id"] ?? null;
@@ -687,31 +991,46 @@ if ($action == "demirbas-listesi") {
                 // OR we can just return what we expect. Let's return the columns directly.
 
                 $enc_id = Security::encrypt($d->id);
-                $miktar = $d->miktar ?? 1;
+                $miktar = (isset($d->miktar) && $d->miktar > 0) ? $d->miktar : (($tab === 'sayac') ? 1 : ($d->miktar ?? 1));
                 $kalan = $d->kalan_miktar ?? 1;
                 $minStok = $d->minimun_stok_uyari_miktari ?? 0;
 
-                // Stok durumu badge
-                if ($kalan == 0) {
-                    $stokBadge = '<span class="badge" style="background: #ef4444; color: #fff; padding: 4px 8px; border-radius: 6px; font-weight: 700;">Stok Yok</span>';
-                } elseif ($minStok > 0 && $kalan <= $minStok) {
-                    $stokBadge = '<span class="badge" style="background: #ef4444; color: #fff; padding: 4px 8px; border-radius: 6px; font-weight: 700;">Stok Azaldı (' . $kalan . '/' . $miktar . ')</span>';
-                } elseif ($kalan < $miktar) {
-                    $stokBadge = '<span class="badge" style="background: #f59e0b; color: #fff; padding: 4px 8px; border-radius: 6px; font-weight: 700;"> ' . $kalan . '/' . $miktar . '</span>';
+                // Stok durumu badge (Hurda ise stok 0 sayılmalı)
+                $isIsimHurda = str_contains(mb_strtolower($d->demirbas_adi, 'UTF-8'), 'hurda');
+                if ($isIsimHurda) {
+                    $stokBadge = '<span class="badge" style="background: #ef4444; color: #fff; padding: 4px 8px; border-radius: 6px; font-weight: 700;">Hurda (0/1)</span>';
+                    $kalan = 0;
                 } else {
-                    $stokBadge = '<span class="badge" style="background: #10b981; color: #fff; padding: 4px 8px; border-radius: 6px; font-weight: 700;">' . $kalan . '/' . $miktar . '</span>';
+                    if ($kalan == 0) {
+                        $stokBadge = '<span class="badge" style="background: #ef4444; color: #fff; padding: 4px 8px; border-radius: 6px; font-weight: 700;">Stok Yok</span>';
+                    } elseif ($minStok > 0 && $kalan <= $minStok) {
+                        $stokBadge = '<span class="badge" style="background: #ef4444; color: #fff; padding: 4px 8px; border-radius: 6px; font-weight: 700;">Stok Azaldı (' . $kalan . '/' . $miktar . ')</span>';
+                    } elseif ($kalan < $miktar) {
+                        $stokBadge = '<span class="badge" style="background: #f59e0b; color: #fff; padding: 4px 8px; border-radius: 6px; font-weight: 700;"> ' . $kalan . '/' . $miktar . '</span>';
+                    } else {
+                        $stokBadge = '<span class="badge" style="background: #10b981; color: #fff; padding: 4px 8px; border-radius: 6px; font-weight: 700;">' . $kalan . '/' . $miktar . '</span>';
+                    }
                 }
 
-                // Durum badge
+                // Durum badge (İsimde 'hurda' geçiyorsa otomatik hurda say)
                 $durumText = $d->durum ?? 'aktif';
-                $durumMap = [
-                    'aktif' => '<span class="badge" style="background: #10b981; color: #fff; padding: 5px 12px; border-radius: 50px; font-weight: 600;">Boşta</span>',
-                    'pasif' => '<span class="badge" style="background: #64748b; color: #fff; padding: 5px 12px; border-radius: 50px; font-weight: 600;">Pasif</span>',
-                    'arizali' => '<span class="badge" style="background: #f59e0b; color: #fff; padding: 5px 12px; border-radius: 50px; font-weight: 600;">Arızalı</span>',
-                    'hurda' => '<span class="badge" style="background: #ef4444; color: #fff; padding: 5px 12px; border-radius: 50px; font-weight: 600;">Hurda</span>',
-                    'kaskiye teslim edildi' => '<span class="badge" style="background: #06b6d4; color: #fff; padding: 5px 12px; border-radius: 50px; font-weight: 600;">KASKİ\'ye İade Edildi</span>',
-                ];
-                $durumBadge = $durumMap[strtolower($durumText)] ?? '<span class="badge bg-soft-secondary text-secondary">' . $durumText . '</span>';
+                $isSayacTab = ($tab === 'sayac');
+                $isIsimHurda = str_contains(mb_strtolower($d->demirbas_adi, 'UTF-8'), 'hurda');
+                
+                if ($isIsimHurda) {
+                    $durumBadge = '<span class="badge" style="background: #ef4444; color: #fff; padding: 5px 12px; border-radius: 50px; font-weight: 600;">Hurda</span>';
+                    $durumText = 'hurda';
+                } else {
+                    $durumMap = [
+                        'aktif' => '<span class="badge" style="background: #10b981; color: #fff; padding: 5px 12px; border-radius: 50px; font-weight: 600;">' . ($isSayacTab ? 'Yeni' : 'Boşta') . '</span>',
+                        'pasif' => '<span class="badge" style="background: #64748b; color: #fff; padding: 5px 12px; border-radius: 50px; font-weight: 600;">Pasif</span>',
+                        'arizali' => '<span class="badge" style="background: #f59e0b; color: #fff; padding: 5px 12px; border-radius: 50px; font-weight: 600;">Arızalı</span>',
+                        'hurda' => '<span class="badge" style="background: #ef4444; color: #fff; padding: 5px 12px; border-radius: 50px; font-weight: 600;">Hurda</span>',
+                        'personelde' => '<span class="badge" style="background: #f59e0b; color: #fff; padding: 5px 12px; border-radius: 50px; font-weight: 600;">Personelde</span>',
+                        'kaskiye teslim edildi' => '<span class="badge" style="background: #06b6d4; color: #fff; padding: 5px 12px; border-radius: 50px; font-weight: 600;">KASKİ\'ye İade Edildi</span>',
+                    ];
+                    $durumBadge = $durumMap[strtolower($durumText)] ?? '<span class="badge bg-soft-secondary text-secondary">' . $durumText . '</span>';
+                }
 
                 $actions = '';
 
@@ -811,7 +1130,7 @@ if ($action == "demirbas-listesi") {
                     "stok" => '<div class="text-center">' . $stokBadge . '</div>',
                     "durum" => '<div class="text-center">' . $durumBadge . '</div>',
                     "tutar" => '<div class="text-end">' . Helper::formattedMoney($d->edinme_tutari ?? 0) . ' ₺' . '</div>',
-                    "tarih" => ($d->edinme_tarihi ? date('d.m.Y', strtotime($d->edinme_tarihi)) : '-'),
+                    "tarih" => (($d->edinme_tarihi ? date('d.m.Y', strtotime($d->edinme_tarihi)) : ($d->kayit_tarihi ? date('d.m.Y', strtotime($d->kayit_tarihi)) : '-'))),
                     "islemler" => '<div class="text-center text-nowrap">' . $actions . '</div>'
                 ];
             }
@@ -847,6 +1166,9 @@ if ($action == "bulk-kasiye-teslim") {
 
         $Demirbas->db->beginTransaction();
 
+        $sqlUpdate = $Demirbas->db->prepare("UPDATE demirbas SET durum = 'Kaskiye Teslim Edildi', lokasyon = 'kaski', kaskiye_teslim_tarihi = ?, kaskiye_teslim_eden = ?, aciklama = ?, kalan_miktar = 0, miktar = 0 WHERE id = ?");
+        $sqlMov = $Demirbas->db->prepare("INSERT INTO demirbas_hareketler (demirbas_id, hareket_tipi, miktar, tarih, aciklama, islem_yapan_id, kaynak, personel_id) VALUES (?, 'sarf', 1, ?, ?, ?, 'sistem', ?)");
+
         foreach ($ids_raw as $enc_id) {
             $id = Security::decrypt($enc_id);
             if (!$id)
@@ -856,13 +1178,10 @@ if ($action == "bulk-kasiye-teslim") {
             if (!$demirbas)
                 continue;
 
-            // Stok kontrolü - sadece stokta olanlar (kalan_miktar > 0) teslim edilebilir mi?
-            // User requested bulk delivery, usually for meters in stock.
-
-            $sqlUpdate = $Demirbas->db->prepare("UPDATE demirbas SET durum = 'Kaskiye Teslim Edildi', kaskiye_teslim_tarihi = ?, kaskiye_teslim_eden = ?, aciklama = ?, kalan_miktar = 0, miktar = 0 WHERE id = ?");
+            $personel_id_extra = null; // Personel bağımsız depo çıkışı (sarf)
             $sqlUpdate->execute([$formatted_tarih, $teslim_eden, ($aciklama ?? null), $id]);
-
-            // Kaskiye teslimatı demirbaş tablosunda takip edildiği için artık demirbas_hareketler tablosuna zimmet-siz hareket kaydı eklemiyoruz.
+            $sqlMov->execute([$id, $formatted_tarih, "KASKİ'ye Teslim: " . ($aciklama ?? 'Detay yok'), ($_SESSION['id'] ?? 0), $personel_id_extra]);
+            
             $successCount++;
         }
 
@@ -2316,65 +2635,7 @@ if ($action == "personel-bakiye") {
 // ============== PERSONEL BAZLI SAYAÇ/APARAT DEPOSU API ==============
 
 // KASKİ Tarih Bazlı Hareket Listesi
-if ($action == "sayac-kaski-tarih-list") {
-    try {
-        $start = (int)($_POST['start'] ?? 0);
-        $length = (int)($_POST['length'] ?? 10);
-        $search = $_POST['search']['value'] ?? '';
 
-        $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
-        $params = [$firmaId];
-        $where = " WHERE h.silinme_tarihi IS NULL AND d.firma_id = ? AND (h.aciklama LIKE '%KASKİ%Teslim%' OR h.aciklama LIKE '%KASKI%Teslim%') ";
-
-        if (!empty($search)) {
-            $where .= " AND (d.demirbas_adi LIKE ? OR d.seri_no LIKE ? OR h.aciklama LIKE ?)";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
-            $params[] = "%$search%";
-        }
-
-        // Toplam Gün Sayısı (Gruplanmış)
-        $countSql = "SELECT COUNT(DISTINCT DATE(h.tarih)) FROM demirbas_hareketler h INNER JOIN demirbas d ON h.demirbas_id = d.id $where";
-        $stmtCount = $Demirbas->db->prepare($countSql);
-        $stmtCount->execute($params);
-        $recordsTotal = (int) ($stmtCount->fetchColumn() ?: 0);
-
-        // Tarih Bazlı Gruplanmış Veri
-        $sql = "SELECT DATE(h.tarih) as islem_tarih, COUNT(h.id) as toplam_adet 
-                FROM demirbas_hareketler h 
-                INNER JOIN demirbas d ON h.demirbas_id = d.id 
-                $where 
-                GROUP BY DATE(h.tarih)
-                ORDER BY islem_tarih DESC 
-                LIMIT $start, $length";
-        
-        $stmt = $Demirbas->db->prepare($sql);
-        $stmt->execute($params);
-        $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
-
-        $data = [];
-        foreach ($rows as $r) {
-            $data[] = [
-                "tarih"             => Date::dmY($r->islem_tarih),
-                "islem_tarih_raw"    => $r->islem_tarih,
-                "islem_tipi"        => "KASKİ'ye Teslim",
-                "yon"               => '<span class="badge bg-soft-danger text-danger"><i class="bx bx-down-arrow-alt"></i> Çıkış</span>',
-                "adet"              => "<strong>$r->toplam_adet</strong> Adet",
-                "status_badge"      => '<span class="badge bg-soft-info text-info">KASKİ\'ye İade Edildi</span>'
-            ];
-        }
-
-        echo json_encode([
-            "draw" => intval($_POST['draw'] ?? 0),
-            "recordsTotal" => $recordsTotal,
-            "recordsFiltered" => $recordsTotal,
-            "data" => $data
-        ]);
-        exit;
-    } catch (Exception $ex) {
-        jsonResponse("error", $ex->getMessage());
-    }
-}
 
 // KASKİ Tarih Bazlı Detay Listesi (Accordion için)
 if ($action == "sayac-kaski-date-details") {
@@ -2393,11 +2654,15 @@ if ($action == "sayac-kaski-date-details") {
                 WHERE h.silinme_tarihi IS NULL 
                   AND d.firma_id = ? 
                   AND DATE(h.tarih) = ?
-                  AND (h.aciklama LIKE '%KASKİ%Teslim%' OR h.aciklama LIKE '%KASKI%Teslim%')
+                   AND (
+                    (h.aciklama LIKE '%KASKİ%' OR h.aciklama LIKE '%KASKI%')
+                    OR (LOWER(COALESCE(d.durum,'')) = 'kaskiye teslim edildi' AND DATE(d.kaskiye_teslim_tarihi) = ?)
+                    OR (DATE(COALESCE(d.edinme_tarihi, d.kayit_tarihi)) = ?)
+                  )
                 ORDER BY h.id ASC";
         
         $stmt = $Demirbas->db->prepare($sql);
-        $stmt->execute([$firmaId, $tarih]);
+        $stmt->execute([$firmaId, $tarih, $tarih, $tarih]);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
         $html = '<div class="p-3 bg-light rounded"><table class="table table-sm table-bordered mb-0 bg-white shadow-sm">
@@ -2453,62 +2718,75 @@ if ($action == "sayac-global-summary") {
                 'yeni_depoda' => 0,
                 'hurda_depoda' => 0,
                 'yeni_personelde' => 0,
-                'hurda_personelde' => 0
+                'hurda_personelde' => 0,
+                'toplam_alinan' => 0,
+                'hurda_kaskiye' => 0,
+                'takilan' => 0
             ]);
         }
 
         $in = buildInClause($catIds);
-        $params = $catIds;
-        $params[] = $firmaId;
+        
+        // 1. İSTATİSTİKLERİ HESAPLA
+        $inStr = implode(',', array_map('intval', $catIds));
 
-        $sqlDepo = $Demirbas->db->prepare(" 
+        $sqlStats = $Demirbas->db->prepare("
             SELECT
-                COALESCE(SUM(CASE WHEN LOWER(COALESCE(durum,'')) = 'hurda' THEN kalan_miktar ELSE 0 END), 0) as hurda_depoda,
-                COALESCE(SUM(CASE WHEN LOWER(COALESCE(durum,'')) <> 'hurda' AND LOWER(COALESCE(durum,'')) <> 'kaskiye teslim edildi' THEN kalan_miktar ELSE 0 END), 0) as yeni_depoda
-            FROM demirbas
-            WHERE kategori_id IN ($in) AND firma_id = ? AND silinme_tarihi IS NULL
-        ");
-        $sqlDepo->execute($params);
-        $depo = $sqlDepo->fetch(PDO::FETCH_OBJ) ?: (object) ['yeni_depoda' => 0, 'hurda_depoda' => 0];
+                -- YENİ DEPODA
+                COUNT(CASE WHEN d.silinme_tarihi IS NULL 
+                    AND (d.lokasyon = 'bizim_depo' OR d.lokasyon IS NULL OR d.lokasyon = '' OR d.lokasyon = '0')
+                    AND LOWER(COALESCE(d.durum,'')) NOT LIKE '%hurda%'
+                    AND LOWER(d.demirbas_adi) NOT LIKE '%hurda%'
+                    AND d.durum NOT IN ('arizali', 'pasif', 'personelde')
+                    AND NOT EXISTS (SELECT 1 FROM demirbas_zimmet z2 WHERE z2.demirbas_id = d.id AND z2.durum = 'teslim' AND z2.silinme_tarihi IS NULL)
+                    AND NOT EXISTS (SELECT 1 FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.silinme_tarihi IS NULL AND (LOWER(h2.aciklama) LIKE '%kask%'))
+                THEN 1 END) as yeni_depoda,
 
-        $sqlPersonel = $Demirbas->db->prepare(" 
-            SELECT
-                COALESCE(SUM(CASE WHEN LOWER(COALESCE(d.durum,'')) = 'hurda' THEN z.teslim_miktar ELSE 0 END), 0) as hurda_personelde,
-                COALESCE(SUM(CASE WHEN LOWER(COALESCE(d.durum,'')) <> 'hurda' AND LOWER(COALESCE(d.durum,'')) <> 'kaskiye teslim edildi' THEN z.teslim_miktar ELSE 0 END), 0) as yeni_personelde
-            FROM demirbas_zimmet z
-            INNER JOIN demirbas d ON d.id = z.demirbas_id
-            WHERE z.durum = 'teslim' AND d.kategori_id IN ($in) AND d.firma_id = ? AND z.silinme_tarihi IS NULL
-        ");
-        $sqlPersonel->execute($params);
-        $pers = $sqlPersonel->fetch(PDO::FETCH_OBJ) ?: (object) ['yeni_personelde' => 0, 'hurda_personelde' => 0];
+                -- HURDA DEPODA
+                COUNT(CASE WHEN d.silinme_tarihi IS NULL 
+                    AND (LOWER(COALESCE(d.durum,'')) LIKE '%hurda%' OR LOWER(d.demirbas_adi) LIKE '%hurda%')
+                    AND (d.lokasyon = 'bizim_depo' OR d.lokasyon IS NULL OR d.lokasyon = '' OR d.lokasyon = '0')
+                    AND NOT EXISTS (SELECT 1 FROM demirbas_hareketler h4 WHERE h4.demirbas_id = d.id AND h4.silinme_tarihi IS NULL AND (LOWER(h4.aciklama) LIKE '%kask%'))
+                THEN 1 END) as hurda_depoda,
 
-        // Ekstralar: Toplam Alınan ve Kaskiye İade
-        // KASKİYE İade miktarını hareketler tablosuyla senkronize ediyoruz (tablodaki 24 adet ile karttaki 24 adet tutsun diye)
-        $sqlExtra = $Demirbas->db->prepare("
-            SELECT
-                (SELECT COUNT(*) FROM demirbas WHERE kategori_id IN ($in) AND firma_id = ? AND silinme_tarihi IS NULL) as toplam_alinan,
-                (SELECT COUNT(h.id) FROM demirbas_hareketler h INNER JOIN demirbas d ON d.id = h.demirbas_id WHERE d.firma_id = ? AND h.silinme_tarihi IS NULL AND (h.aciklama LIKE '%KASKİ%Teslim%' OR h.aciklama LIKE '%KASKI%Teslim%')) as hurda_kaskiye
-        ");
-        $sqlExtra->execute([$firmaId, $firmaId]);
-        $extra = $sqlExtra->fetch(PDO::FETCH_OBJ);
+                -- YENİ PERSONELDE
+                (SELECT COUNT(DISTINCT z3.demirbas_id) FROM demirbas_zimmet z3 
+                 INNER JOIN demirbas d2 ON d2.id = z3.demirbas_id 
+                 WHERE d2.kategori_id IN ($inStr) AND d2.firma_id = ? AND z3.durum = 'teslim' AND z3.silinme_tarihi IS NULL 
+                 AND LOWER(COALESCE(d2.durum,'')) NOT LIKE '%hurda%' AND LOWER(d2.demirbas_adi) NOT LIKE '%hurda%') as yeni_personelde,
 
-        // Takılan (Sarf) Sayaç Sayısı
-        $sqlTakilan = $Demirbas->db->prepare("
-            SELECT COALESCE(SUM(h.miktar), 0)
-            FROM demirbas_hareketler h
-            INNER JOIN demirbas d ON d.id = h.demirbas_id
-            WHERE h.hareket_tipi = 'sarf' AND d.kategori_id IN ($in) AND d.firma_id = ? AND h.silinme_tarihi IS NULL
+                -- KASKİ'ye TESLİM (Kategoriden bağımsız taranması daha güvenli)
+                (SELECT COALESCE(SUM(h6.miktar), 0) FROM demirbas_hareketler h6 
+                 INNER JOIN demirbas d4 ON d4.id = h6.demirbas_id 
+                 WHERE d4.firma_id = ? AND h6.silinme_tarihi IS NULL 
+                 AND (LOWER(h6.aciklama) LIKE '%kask%' OR d4.lokasyon = 'kaski' OR d4.durum = 'Kaskiye Teslim Edildi')) as kaski_teslim
+
+            FROM demirbas d
+            WHERE d.kategori_id IN ($inStr) AND d.firma_id = ? AND d.silinme_tarihi IS NULL
         ");
-        $sqlTakilan->execute($params);
-        $takilan = (int) $sqlTakilan->fetchColumn();
+
+        $sqlStats->execute([$firmaId, $firmaId, $firmaId]);
+        $res = $sqlStats->fetch(PDO::FETCH_OBJ);
+
+        $kaskiTeslimCount = (int)$res->kaski_teslim;
+        
+        // Kullanıcı Talebi: Takılan Sayısı = Toplam Hurda Sayısı (Eldeki + Kaskiye Giden)
+        // 4905 + 10 = 4915
+        $toplamHurdaSayisi = (int)$res->hurda_depoda + $kaskiTeslimCount;
+        $takilan = $toplamHurdaSayisi;
+
+        // Toplam Alınan = Yeni (Depo+Pers) + Takılan (yani hurdaya çıkanların toplamı)
+        // 6478 + 4915 = 11393
+        $toplamAlinanYeni = (int)$res->yeni_depoda + (int)$res->yeni_personelde + $takilan;
 
         jsonResponse("success", "Başarılı", [
-            'yeni_depoda' => (int) ($depo->yeni_depoda ?? 0),
-            'hurda_depoda' => (int) ($depo->hurda_depoda ?? 0),
-            'yeni_personelde' => (int) ($pers->yeni_personelde ?? 0),
-            'hurda_personelde' => (int) ($pers->hurda_personelde ?? 0),
-            'toplam_alinan' => (int) ($extra->toplam_alinan ?? 0),
-            'hurda_kaskiye' => (int) ($extra->hurda_kaskiye ?? 0),
+            'yeni_depoda' => (int)$res->yeni_depoda,
+            'hurda_depoda' => (int)$res->hurda_depoda,
+            'yeni_personelde' => (int)$res->yeni_personelde,
+            'hurda_personelde' => 0,
+            'toplam_alinan' => $toplamAlinanYeni,
+            'toplam_alinan_hurda' => $toplamHurdaSayisi,
+            'hurda_kaskiye' => $kaskiTeslimCount,
             'takilan' => $takilan
         ]);
     } catch (Exception $ex) {
@@ -2528,22 +2806,49 @@ if ($action == "sayac-kaski-ozet") {
             ]);
         }
 
-        $in = buildInClause($catIds);
-        $params = array_merge($catIds, [$firmaId]);
+        // Placeholder karmaşasını önlemek için kategori ID'lerini doğrudan string olarak gömüyoruz
+        $inStr = implode(',', array_map('intval', $catIds));
 
-        $sqlToplam = $Demirbas->db->prepare("
+        $sqlStats = $Demirbas->db->prepare("
             SELECT
-                COUNT(*) as toplam_alinan_yeni,
-                COALESCE(SUM(CASE WHEN LOWER(COALESCE(durum,'')) = 'kaskiye teslim edildi' THEN 1 ELSE 0 END), 0) as toplam_teslim_hurda
-            FROM demirbas
-            WHERE kategori_id IN ($in) AND firma_id = ? AND silinme_tarihi IS NULL
+                -- YENİ DEPODA
+                COUNT(CASE WHEN d.silinme_tarihi IS NULL 
+                    AND (d.lokasyon = 'bizim_depo' OR d.lokasyon IS NULL OR d.lokasyon = '' OR d.lokasyon = '0')
+                    AND LOWER(COALESCE(d.durum,'')) NOT LIKE '%hurda%'
+                    AND LOWER(d.demirbas_adi) NOT LIKE '%hurda%'
+                    AND d.durum NOT IN ('arizali', 'pasif', 'personelde')
+                    AND NOT EXISTS (SELECT 1 FROM demirbas_zimmet z2 WHERE z2.demirbas_id = d.id AND z2.durum = 'teslim' AND z2.silinme_tarihi IS NULL)
+                    AND NOT EXISTS (SELECT 1 FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.silinme_tarihi IS NULL AND (LOWER(h2.aciklama) LIKE '%kask%'))
+                THEN 1 END) as yeni_depoda,
+
+                -- YENİ PERSONELDE
+                (SELECT COUNT(DISTINCT z3.demirbas_id) FROM demirbas_zimmet z3 
+                 INNER JOIN demirbas d2 ON d2.id = z3.demirbas_id 
+                 WHERE d2.kategori_id IN ($inStr) AND d2.firma_id = ? AND z3.durum = 'teslim' AND z3.silinme_tarihi IS NULL 
+                 AND LOWER(COALESCE(d2.durum,'')) NOT LIKE '%hurda%' AND LOWER(d2.demirbas_adi) NOT LIKE '%hurda%') as yeni_personelde,
+
+                -- KASKİ'ye TESLİM (Kategoriden bağımsız)
+                (SELECT COALESCE(SUM(h6.miktar), 0) FROM demirbas_hareketler h6 
+                 INNER JOIN demirbas d4 ON d4.id = h6.demirbas_id 
+                 WHERE d4.firma_id = ? AND h6.silinme_tarihi IS NULL 
+                 AND (LOWER(h6.aciklama) LIKE '%kask%' OR d4.lokasyon = 'kaski' OR d4.durum = 'Kaskiye Teslim Edildi')) as kaski_teslim
+
+            FROM demirbas d
+            WHERE d.kategori_id IN ($inStr) AND d.firma_id = ? AND d.silinme_tarihi IS NULL
         ");
-        $sqlToplam->execute($params);
-        $res = $sqlToplam->fetch(PDO::FETCH_OBJ);
+
+        $sqlStats->execute([$firmaId, $firmaId, $firmaId]);
+        $res = $sqlStats->fetch(PDO::FETCH_OBJ);
+
+        $kaskiTeslimCount = (int)$res->kaski_teslim;
+        // Toplam Hurda = Eldeki (4905) + Giden (10) = 4915
+        $takilan = (int)$res->hurda_depoda + $kaskiTeslimCount;
+        // Toplam Alınan = Yeni (Depo+Pers) + Takılan = 6478 + 4915 = 11393
+        $toplamAlinan = (int)$res->yeni_depoda + (int)$res->yeni_personelde + $takilan;
 
         jsonResponse("success", "Başarılı", [
-            'toplam_alinan_yeni' => (int) ($res->toplam_alinan_yeni ?? 0),
-            'toplam_teslim_hurda' => (int) ($res->toplam_teslim_hurda ?? 0)
+            'toplam_alinan_yeni' => $toplamAlinan,
+            'toplam_teslim_hurda' => $kaskiTeslimCount
         ]);
     } catch (Exception $ex) {
         jsonResponse('error', $ex->getMessage());
@@ -2568,17 +2873,19 @@ if ($action == "sayac-kaski-tarih-list") {
         $in = buildInClause($catIds);
 
         $unionSql = "
-            SELECT DATE(COALESCE(edinme_tarihi, kayit_tarihi)) as tarih, 'Yeni Sayaç Girişi' as islem_tipi, COUNT(*) as adet, 'gelen' as yon
+            SELECT DATE(COALESCE(edinme_tarihi, kayit_tarihi)) as tarih, 'Yeni Sayaç Girişi' as islem_tipi, COUNT(id) as adet, 'gelen' as yon
             FROM demirbas
             WHERE kategori_id IN ($in) AND firma_id = ? AND silinme_tarihi IS NULL
             GROUP BY DATE(COALESCE(edinme_tarihi, kayit_tarihi))
 
             UNION ALL
 
-            SELECT DATE(kaskiye_teslim_tarihi) as tarih, 'Hurda Teslim' as islem_tipi, COUNT(*) as adet, 'giden' as yon
-            FROM demirbas
-            WHERE kategori_id IN ($in) AND firma_id = ? AND silinme_tarihi IS NULL AND kaskiye_teslim_tarihi IS NOT NULL AND LOWER(COALESCE(durum,'')) = 'kaskiye teslim edildi'
-            GROUP BY DATE(kaskiye_teslim_tarihi)
+            SELECT DATE(h.tarih) as tarih, 'KASKİ İşlemi' as islem_tipi, SUM(h.miktar) as adet, 'giden' as yon
+            FROM demirbas_hareketler h
+            INNER JOIN demirbas d ON h.demirbas_id = d.id
+            WHERE d.kategori_id IN ($in) AND d.firma_id = ? AND h.silinme_tarihi IS NULL
+              AND (h.aciklama LIKE '%KASKİ%' OR h.aciklama LIKE '%KASKI%' OR h.aciklama LIKE '%kaskiye%' OR h.aciklama LIKE '%Kaskiye%')
+            GROUP BY DATE(h.tarih), islem_tipi, yon
         ";
 
         $wrapWhere = "";
@@ -2603,7 +2910,8 @@ if ($action == "sayac-kaski-tarih-list") {
                 ? '<span class="badge" style="background:#10b981;color:#fff;padding:4px 10px;border-radius:50px;font-weight:600;font-size:11px;"><i class="bx bx-down-arrow-alt me-1"></i>Giriş</span>'
                 : '<span class="badge" style="background:#ef4444;color:#fff;padding:4px 10px;border-radius:50px;font-weight:600;font-size:11px;"><i class="bx bx-up-arrow-alt me-1"></i>Çıkış</span>';
             $data[] = [
-                'tarih' => Date::engtodt($r->tarih),
+                'tarih' => Date::dmY($r->tarih),
+                'islem_tarih_raw' => $r->tarih,
                 'islem_tipi' => $r->islem_tipi,
                 'yon' => $yonBadge,
                 'adet' => '<span class="fw-bold">' . (int)$r->adet . '</span>'
@@ -3503,34 +3811,39 @@ if ($action == "get-unique-values") {
 
     try {
         $firma_id = $_SESSION['firma_id'];
+        $tab = $_POST['tab'] ?? '';
         $rows = [];
 
         if ($column === 'durum') {
-            $sql = "SELECT DISTINCT z.durum as val FROM demirbas_zimmet z 
-                    LEFT JOIN demirbas d ON z.demirbas_id = d.id 
-                    WHERE z.silinme_tarihi IS NULL AND d.firma_id = ? ORDER BY val ASC";
-            $stmt = $Zimmet->getDb()->prepare($sql);
+            if ($tab === 'sayac' || $tab === 'aparat' || $tab === 'demirbas') {
+                $sql = "SELECT DISTINCT durum as val FROM demirbas WHERE silinme_tarihi IS NULL AND firma_id = ? ORDER BY val ASC";
+            } else {
+                $sql = "SELECT DISTINCT z.durum as val FROM demirbas_zimmet z 
+                        LEFT JOIN demirbas d ON z.demirbas_id = d.id 
+                        WHERE z.silinme_tarihi IS NULL AND d.firma_id = ? ORDER BY val ASC";
+            }
+            $stmt = $Demirbas->db->prepare($sql);
             $stmt->execute([$firma_id]);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } elseif ($column === 'kategori_adi') {
             $sql = "SELECT DISTINCT k.tur_adi as val FROM demirbas d
                     INNER JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
                     WHERE d.firma_id = ? ORDER BY val ASC";
-            $stmt = $Zimmet->getDb()->prepare($sql);
+            $stmt = $Demirbas->db->prepare($sql);
             $stmt->execute([$firma_id]);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } elseif ($column === 'personel_adi') {
             $sql = "SELECT DISTINCT p.adi_soyadi as val FROM demirbas_zimmet z
                     INNER JOIN personel p ON z.personel_id = p.id
                     LEFT JOIN demirbas d ON z.demirbas_id = d.id
-                    WHERE z.silinme_tarihi IS NULL AND d.firma_id = ? ORDER BY val ASC"; // or p.firma_id
-            $stmt = $Zimmet->getDb()->prepare($sql);
+                    WHERE z.silinme_tarihi IS NULL AND d.firma_id = ? ORDER BY val ASC";
+            $stmt = $Demirbas->db->prepare($sql);
             $stmt->execute([$firma_id]);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } elseif ($column === 'marka_model' || $column === 'marka_sade') {
             $sql = "SELECT DISTINCT d.marka as val FROM demirbas d 
                     WHERE d.firma_id = ? AND d.marka IS NOT NULL AND d.marka != '' ORDER BY val ASC";
-            $stmt = $Zimmet->getDb()->prepare($sql);
+            $stmt = $Demirbas->db->prepare($sql);
             $stmt->execute([$firma_id]);
             $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } else {
@@ -3538,11 +3851,19 @@ if ($action == "get-unique-values") {
         }
 
         $results = [];
+        $isSayacTab = ($tab === 'sayac');
+
         $durumMap = [
+            'aktif' => ($isSayacTab ? 'Yeni' : 'Boşta'),
+            'pasif' => 'Pasif',
+            'arizali' => 'Arızalı',
+            'hurda' => 'Hurda',
+            'personelde' => 'Personelde',
+            'kaskiye teslim edildi' => 'KASKİ\'ye İade Edildi',
+            // Zimmet tablosu için
             'teslim' => 'Zimmetli',
             'iade' => 'İade Edildi',
-            'kayip' => 'Kayıp',
-            'arizali' => 'Arızalı'
+            'kayip' => 'Kayıp'
         ];
 
         foreach ($rows as $r) {

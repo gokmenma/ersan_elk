@@ -395,39 +395,23 @@ File: Main Js File
         localStorage.setItem("data-bs-theme", "light");
         updateRadio("layout-mode-light");
 
-        // Only set topbar to light if it was forced to dark by dark mode toggle
-        if (
-          localStorage.getItem("data-topbar") == "dark" ||
-          !localStorage.getItem("data-topbar")
-        ) {
-          document.body.setAttribute("data-topbar", "light");
-          localStorage.setItem("data-topbar", "light");
-          updateRadio("topbar-color-light");
-        }
+        document.body.setAttribute("data-topbar", "light");
+        document.body.setAttribute("data-sidebar", "light");
+        localStorage.setItem("data-topbar", "light");
+        localStorage.setItem("data-sidebar", "light");
+        updateRadio("topbar-color-light");
+        updateRadio("sidebar-color-light");
       } else {
         html.setAttribute("data-bs-theme", "dark");
         localStorage.setItem("data-bs-theme", "dark");
         updateRadio("layout-mode-dark");
 
-        // Keep existing topbar if it's not simply 'light'
-        if (
-          body.getAttribute("data-topbar") == "light" ||
-          !body.getAttribute("data-topbar")
-        ) {
-          document.body.setAttribute("data-topbar", "dark");
-          localStorage.setItem("data-topbar", "dark");
-          updateRadio("topbar-color-dark");
-        }
-
-        // Dark mode sidebar defaults to dark
-        if (
-          body.getAttribute("data-sidebar") == "light" ||
-          !body.getAttribute("data-sidebar")
-        ) {
-          document.body.setAttribute("data-sidebar", "dark");
-          localStorage.setItem("data-sidebar", "dark");
-          updateRadio("sidebar-color-dark");
-        }
+        document.body.setAttribute("data-topbar", "dark");
+        document.body.setAttribute("data-sidebar", "dark");
+        localStorage.setItem("data-topbar", "dark");
+        localStorage.setItem("data-sidebar", "dark");
+        updateRadio("topbar-color-dark");
+        updateRadio("sidebar-color-dark");
       }
     });
 
@@ -647,63 +631,23 @@ File: Main Js File
     // on layout mode change
     $("input[name='layout-mode']").on("change", function () {
       var val = $(this).val();
-      if (val == "light") {
-        html.setAttribute("data-bs-theme", "light");
-        localStorage.setItem("data-bs-theme", "light");
-
-        // Preserve specialized topbar/sidebar if they aren't 'dark' default
-        if (
-          localStorage.getItem("data-topbar") == "dark" ||
-          !localStorage.getItem("data-topbar")
-        ) {
-          document.body.setAttribute("data-topbar", "light");
-          localStorage.setItem("data-topbar", "light");
-          updateRadio("topbar-color-light");
-        }
-
-        if (localStorage.getItem("data-sidebar") == "light") {
-          // Keep it light
-        } else {
-          document.body.setAttribute("data-sidebar", "dark");
-          localStorage.setItem("data-sidebar", "dark");
-          updateRadio("sidebar-color-dark");
-        }
-      } else {
-        html.setAttribute("data-bs-theme", "dark");
-        localStorage.setItem("data-bs-theme", "dark");
-
-        // Force dark topbar/sidebar for dark theme unless they are colored custom
-        const currentTopbar = localStorage.getItem("data-topbar");
-        if (currentTopbar == "light" || !currentTopbar) {
-          document.body.setAttribute("data-topbar", "dark");
-          localStorage.setItem("data-topbar", "dark");
-          updateRadio("topbar-color-dark");
-        }
-
-        const currentSidebar = localStorage.getItem("data-sidebar");
-        if (currentSidebar == "light" || !currentSidebar) {
-          document.body.setAttribute("data-sidebar", "dark");
-          localStorage.setItem("data-sidebar", "dark");
-          updateRadio("sidebar-color-dark");
-        }
-      }
-    });
-
-    // on layout mode change
-    $("input[name='layout-mode']").on("change", function () {
-      var val = $(this).val();
       html.setAttribute("data-bs-theme", val);
       localStorage.setItem("data-bs-theme", val);
-      if (val == "dark") {
-        document.body.setAttribute("data-topbar", "dark");
-        document.body.setAttribute("data-sidebar", "dark");
-        localStorage.setItem("data-topbar", "dark");
-        localStorage.setItem("data-sidebar", "dark");
-      } else {
+
+      if (val == "light") {
         document.body.setAttribute("data-topbar", "light");
         document.body.setAttribute("data-sidebar", "light");
         localStorage.setItem("data-topbar", "light");
         localStorage.setItem("data-sidebar", "light");
+        updateRadio("topbar-color-light");
+        updateRadio("sidebar-color-light");
+      } else {
+        document.body.setAttribute("data-topbar", "dark");
+        document.body.setAttribute("data-sidebar", "dark");
+        localStorage.setItem("data-topbar", "dark");
+        localStorage.setItem("data-sidebar", "dark");
+        updateRadio("topbar-color-dark");
+        updateRadio("sidebar-color-dark");
       }
     });
 
