@@ -1,39 +1,31 @@
 $(function () {
     var apiUrl = "views/demirbas/api.php";
+    var $pageLoader = $("#personel-loader");
+    var activeLoaderRequests = 0;
+    var loaderHideTimer = null;
 
-    var loaderTimer = null;
-    var failSafeTimer = null;
+    function showPageLoader() {
+        if (loaderHideTimer) {
+            clearTimeout(loaderHideTimer);
+            loaderHideTimer = null;
+        }
+        activeLoaderRequests += 1;
+        $pageLoader.stop(true, true).show();
+    }
 
-    // Preloader Manager - Akıllı AJAX Takibi (Pırpır önleyici)
-    $(document).ajaxStart(function() {
-        // Hızlı işlemler için preloader'ı hemen açma, 300ms bekle
-        clearTimeout(loaderTimer);
-        loaderTimer = setTimeout(function() {
-            if ($.active > 0) {
-                $("#personel-loader").stop(true, true).fadeIn(200);
-            }
-        }, 300);
+    function hidePageLoader(force) {
+        if (force === true) {
+            activeLoaderRequests = 0;
+        } else {
+            activeLoaderRequests = Math.max(0, activeLoaderRequests - 1);
+        }
 
-        // Fail-safe: Her işlem başladığında 10 saniyelik zorla kapatma sayacını kur/yenile
-        clearTimeout(failSafeTimer);
-        failSafeTimer = setTimeout(function() {
-            if ($("#personel-loader").is(":visible")) {
-                console.warn("Preloader zorla kapatıldı (Güvenlik Zaman Aşımı)");
-                $("#personel-loader").fadeOut(600);
-            }
-        }, 10000);
-    });
+        if (activeLoaderRequests > 0) return;
 
-    $(document).ajaxStop(function() {
-        clearTimeout(loaderTimer); // Başlamamışsa (işlem çok hızlıysa) loader hiç açılmayacak
-        // İşlemler bittiğinde kısa bir gecikme ile (başka işlem başlamazsa) kapat
-        setTimeout(function() {
-            if ($.active === 0) {
-                $("#personel-loader").stop(true, true).fadeOut(600);
-                clearTimeout(failSafeTimer);
-            }
-        }, 200);
-    });
+        loaderHideTimer = setTimeout(function () {
+            $pageLoader.stop(true, true).fadeOut(200);
+        }, 120);
+    }
 
     // Güvenli DataTable başlatma (Otomatik Preloader Desteği ile)
     function safeInitTable(selector, customOptions) {
@@ -41,15 +33,19 @@ $(function () {
             return $(selector).DataTable();
         }
         var defaults = getDatatableOptions();
-        
-        // initComplete ve diğer callback'leri güvenli şekilde birleştir
-        let defInit = defaults.initComplete;
-        let custInit = customOptions.initComplete;
-        
-        customOptions.initComplete = function(settings, json) {
-            if (typeof defInit === "function") defInit.call(this, settings, json);
-            if (typeof custInit === "function") custInit.call(this, settings, json);
-        };
+
+        // Loader'ı çizim yerine gerçek ajax lifecycle'ına bağla.
+        var $table = $(selector);
+        $table.off('.sayacLoader');
+        $table.on('preXhr.dt.sayacLoader', function () {
+            showPageLoader();
+        });
+        $table.on('xhr.dt.sayacLoader', function () {
+            hidePageLoader();
+        });
+        $table.on('error.dt.sayacLoader', function () {
+            hidePageLoader();
+        });
 
         var merged = $.extend(true, {}, defaults, customOptions);
         return $(selector).DataTable(merged);
@@ -79,7 +75,7 @@ $(function () {
             { data: "adet", className: "text-center", width: '15%' },
         ],
         order: [[1, "desc"]],
-        pageLength: 25
+        pageLength: 25,
     });
 
     $('#kaskiTarihTable tbody').on('click', 'tr', function (e) {
@@ -147,7 +143,6 @@ $(function () {
             { data: "seri_no" },
             { data: "stok", className: "text-center" },
             { data: "durum", className: "text-center" },
-            { data: "aciklama" },
             { data: "tarih" },
             { data: "islemler", className: "text-center", orderable: false },
         ],
@@ -205,11 +200,11 @@ $(function () {
             { data: "seri_no" },
             { data: "miktar", className: "text-center" },
             { data: "lokasyon_personel" },
-            { data: "aciklama" },
+            { data: "aciklama", defaultContent: "" },
             { data: "tarih", className: "text-center" },
             { data: "islem", className: "text-center", orderable: false, searchable: false },
         ],
-        order: [[7, "desc"]],
+        order: [[8, "desc"]],
         pageLength: 25,
     });
 
@@ -521,41 +516,40 @@ $(function () {
     function updateSelectionInfo() {
         var count = getSelectedIds(".sayac-select").length;
         var total = $(".sayac-select").length;
+        var $info = $("#sayacSecimInfo");
 
         if (isTumuSecildi) {
-             if (!$("#sayacSecimInfo").length) {
-                 $("#depoSayacTable_wrapper").prepend('<div id="sayacSecimInfo"></div>');
-             }
-             $("#sayacSecimInfo").attr("class", "alert alert-success py-1 px-2 mb-2 d-flex align-items-center shadow-sm border-0").css({"border-radius":"8px"})
-                 .html('<div class="d-flex align-items-center gap-2">' +
-                       '<button type="button" id="secimTemizle" class="btn btn-sm btn-white border shadow-sm p-1 px-2 d-flex align-items-center text-danger" style="font-size:11px;"><i class="bx bx-x fs-6 me-1"></i>Temizle</button>' +
-                       '<span class="ms-2 small text-dark opacity-75" style="font-size:11px;"><i class="bx bx-check-double me-1 text-success"></i> Filtrelenen tüm <strong class="text-success">' + globalSeciliSayacIds.length + '</strong> kayıt seçildi.</span>' +
-                       '</div>');
-             return;
+            if ($info.length === 0) {
+                $("#depoSayacTable_wrapper").prepend('<div id="sayacSecimInfo"></div>');
+                $info = $("#sayacSecimInfo");
+            }
+
+            $info.attr("class", "selection-info-bar selection-info-bar-success").html(
+                '<div class="selection-info-actions">' +
+                    '<button type="button" id="secimTemizle" class="selection-action-btn selection-action-btn-danger"><i class="bx bx-x me-1"></i> Temizle</button>' +
+                '</div>' +
+                '<div class="selection-info-status">' +
+                    '<i class="bx bx-check-circle me-1"></i> Filtrelenen tüm <strong class="mx-1">' + globalSeciliSayacIds.length + '</strong> kayıt seçildi' +
+                '</div>'
+            );
+            return;
         }
 
         if (count > 0) {
-            if (!$("#sayacSecimInfo").length) {
-                var html = `
-                    <div id="sayacSecimInfo" class="alert alert-info py-1 px-2 mb-2 d-flex align-items-center shadow-sm border-0" style="background: #e0f2fe; color: #0369a1; border-radius: 8px;">
-                        <div class="d-flex align-items-center gap-2">
-                            <button type="button" id="secimTumuFiltre" class="btn btn-sm btn-white border shadow-sm p-1 px-2 d-flex align-items-center text-primary" style="font-size:11px;">
-                                <i class="bx bx-select-multiple fs-6 me-1"></i> Tüm Filtrelenenleri Seç
-                            </button>
-                            <button type="button" id="secimTemizle" class="btn btn-sm btn-white border shadow-sm p-1 px-2 d-flex align-items-center text-danger" style="font-size:11px;">
-                                <i class="bx bx-x fs-6 me-1"></i> Temizle
-                            </button>
-                            <span class="ms-2 small opacity-75" style="font-size:11px;"><i class="bx bx-check-circle me-1"></i> Sayfadan <strong id="secimAdet">${count}</strong> / ${total} kayıt seçildi</span>
-                        </div>
-                    </div>`;
-                $("#depoSayacTable_wrapper").prepend(html);
-            } else {
-                $("#secimAdet").text(count);
-                if ($("#secimTumuFiltre").length === 0 && !isTumuSecildi) {
-                    $("#sayacSecimInfo").remove();
-                    updateSelectionInfo();
-                }
+            if ($info.length === 0) {
+                $("#depoSayacTable_wrapper").prepend('<div id="sayacSecimInfo"></div>');
+                $info = $("#sayacSecimInfo");
             }
+
+            $info.attr("class", "selection-info-bar").html(
+                '<div class="selection-info-actions">' +
+                    '<button type="button" id="secimTumuFiltre" class="selection-action-btn selection-action-btn-primary"><i class="bx bx-check-square me-1"></i> Tüm Filtrelenenleri Seç</button>' +
+                    '<button type="button" id="secimTemizle" class="selection-action-btn selection-action-btn-danger"><i class="bx bx-x me-1"></i> Temizle</button>' +
+                '</div>' +
+                '<div class="selection-info-status">' +
+                    '<i class="bx bx-info-circle me-1"></i> Sayfadan <strong class="mx-1">' + count + '</strong> / ' + total + ' kayıt seçildi' +
+                '</div>'
+            );
         } else {
             $("#sayacSecimInfo").remove();
         }
@@ -1031,44 +1025,15 @@ $(function () {
         e.preventDefault();
         e.stopImmediatePropagation();
         var selected = getAktifSeciliIdler();
-        
-        // Modal elemanı
-        var $modalEl = $("#kasiyeTeslimModal");
-        
         if (selected.length === 0) {
-            // Hiç seçim yoksa "Manuel" mod
-            $("#kasiye_is_toplu").val("manual");
-            $("#kasiye_toplu_ids").val("");
-            $("#kasiyeAdetRow").show();
-            $("#kasiyeTopluAdetV2").text("0");
-            $modalEl.find(".alert-soft-info").hide(); // Seçim bilgisini gizle
-        } else {
-            // Seçili sayaçlar var - Toplam miktarı hesapla
-            var totalStok = 0;
-            if (!isTumuSecildi) {
-                $(".sayac-select:checked").each(function() {
-                    var rowData = depoSayacTable.row($(this).closest('tr')).data();
-                    if (rowData) {
-                        totalStok += parseInt(rowData.stok) || 0;
-                    }
-                });
-            } else {
-                // Tümünü seç modunda tam miktar hesaplamak için ek bir API gerekebilir 
-                // ya da şimdilik sadece seçili kayıt sayısını gösterelim
-                totalStok = selected.length; 
-            }
-
-            $("#kasiye_toplu_ids").val(selected.join(','));
-            $("#kasiye_is_toplu").val("1");
-            $("#kasiyeAdetRow").hide();
-            
-            var infoText = selected.length + " kayıt";
-            if (totalStok > selected.length) infoText += " (Toplam " + totalStok + " adet)";
-            $("#kasiyeTopluAdetV2").text(infoText);
-            
-            $modalEl.find(".alert-soft-info").show();
+            Swal.fire("Uyarı", "Lütfen Kaski'ye iade edilecek sayaçları seçin.", "warning");
+            return;
         }
-        
+        // Şifrelenmiş ID'ler zaten elimizde, modalda toplayalım.
+        // Ancak IDler dizi olarak geliyor. kaskiyeTeslimForm submission js array olarak alıyor.
+        $("#kasiye_toplu_ids").val(selected.join(','));
+        $("#kasiye_is_toplu").val("1");
+        $("#kasiyeTopluAdetV2").text(selected.length);
         var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById("kasiyeTeslimModal"));
         modal.show();
     });
@@ -1076,15 +1041,10 @@ $(function () {
     // Tekli kaskiye teslim (satırdaki butondan)
     $(document).on("click", ".kaskiye-teslim-btn", function () {
         var id = $(this).data("id");
-        var rowData = depoSayacTable.row($(this).closest('tr')).data();
-        var stok = rowData ? (parseInt(rowData.stok) || 1) : 1;
-        
         $("#kasiye_demirbas_id").val(id);
         $("#kasiye_is_toplu").val("0");
         $("#kasiye_toplu_ids").val("");
-        $("#kasiyeAdetRow").hide();
-        $("#kasiyeTopluAdetV2").text(stok + " adet");
-        $("#kasiyeTeslimModal .alert-soft-info").show();
+        $("#kasiyeTopluAdetV2").text("1");
         var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById("kasiyeTeslimModal"));
         modal.show();
     });
@@ -1101,18 +1061,15 @@ $(function () {
 
         var $form = $(this);
         var isToplu = $("#kasiye_is_toplu").val() === "1";
-        var isManual = $("#kasiye_is_toplu").val() === "manual";
         
         var postData = {
-            action: isManual ? "manual-kasiye-teslim" : (isToplu ? "toplu-kasiye-teslim" : "kasiye-teslim"),
+            action: isToplu ? "toplu-kasiye-teslim" : "kasiye-teslim",
             tarih: $form.find('[name="tarih"]').val(),
             aciklama: $form.find('[name="aciklama"]').val(),
             teslim_eden: $form.find('[name="teslim_eden"]').val()
         };
 
-        if (isManual) {
-            postData.adet = $form.find('[name="adet"]').val();
-        } else if (isToplu) {
+        if (isToplu) {
             postData.ids = JSON.stringify($("#kasiye_toplu_ids").val().split(','));
         } else {
             postData.demirbas_id = $("#kasiye_demirbas_id").val();
@@ -1193,6 +1150,42 @@ $(function () {
                 $("#personelDetayTarihBody").html(html);
             }
         }, "json");
+    });
+
+    // Personel tablosundaki "Elinde Hurda" badge'ine basınca iade modalını aç
+    $(document).on("click", ".hurda-iade-trigger", function (e) {
+        e.preventDefault();
+        e.stopPropagation();
+
+        var personelId = $(this).data("personel-id");
+        var badgeAdet = parseInt($(this).text().replace(/[^0-9]/g, ''), 10) || 0;
+        if (!personelId) return;
+
+        // Modal açıldığında demirbas.js tarafında öncelikli olarak bu adet kullanılacak
+        window.prefillHurdaIadeAdet = badgeAdet > 0 ? badgeAdet : null;
+
+        $("#btnHurdaSayacIade").trigger("click");
+
+        // Süreç: önce personelden depoya iade alınır, fiziksel teslimde ayrıca KASKI yapılır.
+        // Bu yüzden modal badge ile açılsa da "Doğrudan KASKI" varsayılanı kapalı tutulur.
+        setTimeout(function () {
+            $("#direct_kaski").prop("checked", false).trigger("change");
+
+            var $personelSelect = $("#hurda_personel_id");
+            if ($personelSelect.length) {
+                var exists = $personelSelect.find("option[value='" + personelId + "']").length > 0;
+                if (!exists) {
+                    $("#hurdaPersonelTum").prop("checked", true).trigger("change");
+                }
+                $personelSelect.val(personelId).trigger("change");
+
+                if (window.prefillHurdaIadeAdet && window.prefillHurdaIadeAdet > 0) {
+                    setTimeout(function () {
+                        $("#hurda_iade_adet").val(window.prefillHurdaIadeAdet);
+                    }, 350);
+                }
+            }
+        }, 250);
     });
 
     // Personel tarih satırına tıklayınca accordion
@@ -1470,37 +1463,35 @@ $(function () {
                 $("#hareketTable_wrapper").prepend('<div id="hareketSecimInfo"></div>');
                 $info = $("#hareketSecimInfo");
             }
-            $info.attr("class", "alert alert-success py-1 px-2 mb-2 d-flex align-items-center shadow-sm border-0").css({"border-radius":"8px"})
-                  .html('<div class="d-flex align-items-center gap-2">' +
-                        '<button type="button" id="hareketSecimTemizle" class="btn btn-sm btn-white border shadow-sm p-1 px-2 d-flex align-items-center text-danger" style="font-size:11px;"><i class="bx bx-x fs-6 me-1"></i>Temizle</button>' +
-                        '<span class="ms-2 small text-dark opacity-75" style="font-size:11px;"><i class="bx bx-check-double me-1 text-success"></i> Filtrelenen tüm <strong class="text-success">' + globalSeciliHareketIds.length + '</strong> hareket kaydı seçildi.</span>' +
-                        '</div>');
+            $info.attr("class", "selection-info-bar selection-info-bar-success")
+                  .html(
+                      '<div class="selection-info-actions">' +
+                          '<button type="button" id="hareketSecimTemizle" class="selection-action-btn selection-action-btn-danger"><i class="bx bx-x me-1"></i> Temizle</button>' +
+                      '</div>' +
+                      '<div class="selection-info-status">' +
+                          '<i class="bx bx-check-circle me-1"></i> Filtrelenen tüm <strong class="mx-1">' + globalSeciliHareketIds.length + '</strong> hareket kaydı seçildi' +
+                      '</div>'
+                  );
             return;
         }
 
         if (selectedOnPage > 0) {
             if ($info.length === 0) {
-                var html = `
-                    <div id="hareketSecimInfo" class="alert alert-info py-1 px-2 mb-2 d-flex align-items-center shadow-sm border-0" style="background: #e0f2fe; color: #0369a1; border-radius: 8px;">
-                        <div class="d-flex align-items-center gap-2">
-                             <button type="button" id="hareketSecimTumuFiltre" class="btn btn-sm btn-white border shadow-sm p-1 px-2 d-flex align-items-center text-primary" style="font-size:11px;">
-                                <i class="bx bx-select-multiple fs-6 me-1"></i> Tüm Filtrelenenleri Seç
-                             </button>
-                             <button type="button" id="hareketSecimTemizle" class="btn btn-sm btn-white border shadow-sm p-1 px-2 d-flex align-items-center text-danger" style="font-size:11px;">
-                                <i class="bx bx-x fs-6 me-1"></i> Temizle
-                             </button>
-                             <span class="ms-2 small opacity-75" style="font-size:11px;"><i class="bx bx-check-circle me-1"></i> Sayfadan <strong id="hareketSecimAdet">${selectedOnPage}</strong> / ${totalOnPage} hareket kaydı seçildi</span>
-                        </div>
-                    </div>
-                `;
-                $("#hareketTable_wrapper").prepend(html);
+                $("#hareketTable_wrapper").prepend('<div id="hareketSecimInfo"></div>');
+                $info = $("#hareketSecimInfo");
             } else {
-                $("#hareketSecimAdet").text(selectedOnPage);
-                if ($("#hareketSecimTumuFiltre").length === 0) {
-                     $info.remove();
-                     updateHareketSelectionInfo();
-                }
+                $info = $("#hareketSecimInfo");
             }
+
+            $info.attr("class", "selection-info-bar").html(
+                '<div class="selection-info-actions">' +
+                    '<button type="button" id="hareketSecimTumuFiltre" class="selection-action-btn selection-action-btn-primary"><i class="bx bx-check-square me-1"></i> Tüm Filtrelenenleri Seç</button>' +
+                    '<button type="button" id="hareketSecimTemizle" class="selection-action-btn selection-action-btn-danger"><i class="bx bx-x me-1"></i> Temizle</button>' +
+                '</div>' +
+                '<div class="selection-info-status">' +
+                    '<i class="bx bx-info-circle me-1"></i> Sayfadan <strong class="mx-1">' + selectedOnPage + '</strong> / ' + totalOnPage + ' hareket kaydı seçildi' +
+                '</div>'
+            );
         } else {
             if ($info.length > 0) $info.remove();
         }
@@ -1559,33 +1550,5 @@ $(function () {
         reloadAllTables();
     });
 
-    // =============================================
-    // PERSONEL TABLOSU - HURDA İADE TETİKLEME
-    // =============================================
-    $(document).on("click", ".hurda-iade-trigger", function (e) {
-        e.preventDefault();
-        e.stopPropagation();
-        
-        var personelId = $(this).data("personel-id");
-        if (!personelId) return;
-
-        // Hurda iade modalını açan butonu tetikle (bu buton demirbas.js'deki hazırlıkları yapar)
-        $("#btnHurdaSayacIade").trigger("click");
-
-        // Modal açıldıktan sonra personel seçimini yap
-        // Not: updateHurdaPersonelList demirbas.js içinde select2'yi sıfırlayıp dolduruyor.
-        setTimeout(function() {
-            var $personelSelect = $("#hurda_personel_id");
-            if ($personelSelect.length) {
-                // Eğer personel mevcut "Aktif" listede yoksa, "Tüm Personeller" filtresine geç
-                var exists = $personelSelect.find("option[value='" + personelId + "']").length > 0;
-                if (!exists) {
-                    $("#hurdaPersonelTum").prop("checked", true).trigger("change");
-                }
-                $personelSelect.val(personelId).trigger("change");
-            }
-        }, 250);
-    });
-
-    // Hurda Sayaç İade İşlemleri demirbas.js'den yönetiliyor. Duplike olmaması için silindi.
+// Hurda Sayaç İade İşlemleri demirbas.js'den yönetiliyor. Duplike olmaması için silindi.
 });

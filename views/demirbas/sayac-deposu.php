@@ -25,6 +25,117 @@ use App\Model\TanimlamalarModel;
 	.custom-checkbox-input, .custom-checkbox-label {
 		pointer-events: auto; /* Checkbox'ın kendisine direkt basılabilir */
 	}
+
+	/* Kompakt seçim bilgi barı (tüm alt sekmeler için ortak) */
+	.selection-info-bar {
+		position: fixed;
+		bottom: 40px;
+		left: 50%;
+		transform: translateX(-50%);
+		z-index: 1060;
+		display: flex;
+		flex-direction: row-reverse;
+		align-items: center;
+		justify-content: center;
+		gap: 28px;
+		padding: 14px 28px;
+		border-radius: 50px;
+		border: 2px solid #3b82f6;
+		background: #ffffff;
+		color: #1e40af;
+		box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04), 0 0 0 4px rgba(59, 130, 246, 0.1);
+		animation: slideUpInfo 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+		min-width: 500px;
+	}
+	@keyframes slideUpInfo {
+		from { opacity: 0; transform: translate(-50%, 20px); }
+		to { opacity: 1; transform: translate(-50%, 0); }
+	}
+	.selection-info-bar-success {
+		border: 2px solid #10b981;
+		background: #ffffff;
+		color: #064e3b;
+		box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 0 0 4px rgba(16, 185, 129, 0.1);
+	}
+	.selection-info-actions {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		flex-wrap: wrap;
+	}
+	.selection-action-btn {
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		gap: 6px;
+		border-radius: 50px;
+		border: 1px solid #bae6fd;
+		background: #fff;
+		padding: 6px 16px;
+		font-size: 0.75rem;
+		font-weight: 700;
+		text-transform: uppercase;
+		letter-spacing: 0.3px;
+		line-height: normal;
+		transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+		cursor: pointer;
+		color: #0369a1;
+		box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+	}
+	.selection-action-btn:hover {
+		transform: translateY(-1px);
+		box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+	}
+	.selection-action-btn:active {
+		transform: translateY(0);
+	}
+	.selection-action-btn-primary {
+		color: #2563eb;
+		border-color: #bfdbfe;
+	}
+	.selection-action-btn-primary:hover {
+		background: #2563eb;
+		border-color: #2563eb;
+		color: #fff;
+	}
+	.selection-action-btn-danger {
+		color: #ef4444;
+		border-color: #fecaca;
+	}
+	.selection-action-btn-danger:hover {
+		background: #ef4444;
+		border-color: #ef4444;
+		color: #fff;
+	}
+	.selection-info-status {
+		display: inline-flex;
+		align-items: center;
+		font-size: 0.8rem;
+		font-weight: 700;
+		color: #0c4a6e;
+		white-space: nowrap;
+		text-transform: uppercase;
+		letter-spacing: 0.5px;
+	}
+	.selection-info-status i {
+		font-size: 1rem;
+		margin-right: 8px;
+		opacity: 0.8;
+	}
+	.selection-info-status strong {
+		color: #2563eb;
+		margin: 0 4px;
+		font-size: 0.9rem;
+	}
+	@media (max-width: 991.98px) {
+		.selection-info-bar {
+			flex-direction: column;
+			align-items: flex-start;
+		}
+		.selection-info-status {
+			white-space: normal;
+		}
+	}
 </style>
 
 <?php
@@ -530,14 +641,14 @@ $title = "Sayaç Deposu";
 											<label class="custom-checkbox-label" for="selectAllSayac"></label>
 										</div>
 									</th>
-									<th style="width:18%" data-filter="string">Sayaç Adı</th>
-									<th style="width:12%" data-filter="string">Marka/Model</th>
-									<th style="width:12%" data-filter="string">Abone No</th>
-									<th style="width:8%" class="text-center" data-filter="select">Stok</th>
-									<th style="width:10%" class="text-center" data-filter="select">Durum</th>
-									<th style="width:15%" data-filter="string">Açıklama</th>
-									<th style="width:10%" data-filter="date">Tarih</th>
-									<th style="width:5%" class="text-center" data-filter="none">İşlemler</th>
+									<th style="width:10%" data-filter="string">Sayaç Adı</th>
+									<th style="width:25%" data-filter="string">Marka/Model</th>
+									<th style="width:10%" data-filter="string">Abone No</th>
+									<th style="width:7%" class="text-center" data-filter="select">Stok</th>
+									<th style="width:9%" class="text-center" data-filter="select">Durum</th>
+									<th style="width:23%" data-filter="string">Açıklama</th>
+									<th style="width:12%" data-filter="date">Tarih</th>
+									<th style="width:4%" class="text-center" data-filter="none">İşlemler</th>
 								</tr>
 							</thead>
 							<tbody></tbody>
@@ -687,15 +798,15 @@ $title = "Sayaç Deposu";
 											<input class="form-check-input" type="checkbox" id="selectAllHareket">
 										</div>
 									</th>
-									<th class="text-center" style="width:5%" data-filter="number">ID</th>
-									<th style="width:15%" data-filter="string">Hareket Tipi</th>
-									<th style="width:15%" data-filter="string">Sayaç</th>
-									<th style="width:15%" data-filter="string">Seri / Abone No</th>
-									<th class="text-center" style="width:8%" data-filter="number">Adet</th>
-									<th style="width:15%" data-filter="string">Lokasyon / Personel</th>
-									<th style="width:15%" data-filter="string">Açıklama</th>
-									<th data-filter="date">Tarih</th>
-									<th style="width:5%" class="text-center" data-filter="none">İşlem</th>
+									<th class="text-center" style="width:4%" data-filter="number">ID</th>
+									<th style="width:12%" data-filter="string">Hareket Tipi</th>
+									<th style="width:25%" data-filter="string">Sayaç</th>
+									<th style="width:10%" data-filter="string">Seri / Abone No</th>
+									<th class="text-center" style="width:6%" data-filter="number">Adet</th>
+									<th style="width:12%" data-filter="string">Sorumlu / Yer</th>
+									<th style="width:21%" data-filter="string">Açıklama</th>
+									<th style="width:7%" data-filter="date">Tarih</th>
+									<th style="width:3%" class="text-center" data-filter="none">İşlem</th>
 								</tr>
 							</thead>
 							<tbody></tbody>

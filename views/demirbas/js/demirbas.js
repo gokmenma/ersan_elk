@@ -4351,8 +4351,11 @@ $(document).on("change", "#hurda_personel_id", function () {
     dataType: "json",
     success: function (res) {
         if (res.status === "success") {
-          // Elindeki hurda sayısını adet alanına otomatik yaz
-          if (typeof res.elinde_hurda !== "undefined") {
+          // Elindeki hurda sayısını adet alanına otomatik yaz.
+          // Sayac deposu ekranından badge tıklamasıyla gelindiyse, tıklanan sayı önceliklidir.
+          if (window.prefillHurdaIadeAdet && window.prefillHurdaIadeAdet > 0) {
+            $("#hurda_iade_adet").val(window.prefillHurdaIadeAdet);
+          } else if (typeof res.elinde_hurda !== "undefined") {
             $("#hurda_iade_adet").val(res.elinde_hurda);
           }
 
@@ -4538,6 +4541,7 @@ $("#hurdaIadeModal").on("hidden.bs.modal", function () {
   $("#hurdaIadeForm")[0].reset();
   $("#hurdaZimmetListesi").addClass("d-none");
   $("#hurdaZimmetBody").empty();
+  window.prefillHurdaIadeAdet = null;
   if ($("#hurda_personel_id").hasClass("select2-hidden-accessible")) {
     $("#hurda_personel_id").val(null).trigger("change");
   }
