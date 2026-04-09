@@ -10,7 +10,9 @@ use App\Model\AracZimmetModel;
 use App\Model\AracYakitModel;
 use App\Model\AracKmModel;
 use App\Model\AracServisModel;
+use App\Model\AracKmBildirimModel;
 use App\Model\SystemLogModel;
+
 use App\Helper\Security;
 use App\Helper\Date;
 
@@ -24,6 +26,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
     $Yakit = new AracYakitModel();
     $Km = new AracKmModel();
     $Servis = new AracServisModel();
+    $KmBildirim = new AracKmBildirimModel();
 
     try {
         switch ($action) {
@@ -582,7 +585,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 break;
 
             case 'km-sil':
-                $id = intval($_POST['id'] ?? 0);
+                $id = intval(Security::decrypt($_POST['id'] ?? ''));
                 $aciklama = trim($_POST['aciklama'] ?? '');
                 if ($id <= 0) {
                     throw new Exception("Geçersiz KM kaydı ID.");
@@ -705,14 +708,52 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     throw new Exception("Sadece .xlsx ve .xls dosyaları kabul edilmektedir.");
                 }
 
-                $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($_FILES['excel_file']['tmp_name']);
+                $inputFileName = $_FILES['excel_file']['tmp_name'];
+                $spreadsheet = \PhpOffice\PhpSpreadsheet\IOFactory::load($inputFileName);
                 $excelSheet = $spreadsheet->getActiveSheet();
-                $excelRows = $excelSheet->toArray(null, true, true, true);
+                $rows = $excelSheet->toArray();
+
+                if (count($rows) < 2) {
+                    throw new Exception("Excel dosyası boş veya sadece başlık satırı içeriyor.");
+                }
 
                 $success = 0;
                 $skip = 0;
                 $errors = [];
                 $unmatchedPlates = [];
+
+                // Header mapping logic
+                $headers = array_map(function ($h) {
+                    $h = trim($h ?? '');
+                    $h = str_replace(['İ', 'I', 'Ğ', 'Ü', 'Ş', 'Ö', 'Ç'], ['i', 'i', 'g', 'u', 's', 'o', 'c'], $h);
+                    return mb_strtolower($h, 'UTF-8');
+                }, $rows[0]);
+
+                $columnMap = [
+                    'plaka' => ['plaka', 'araç plakası', 'arac plakasi', 'araç'],
+                    'tarih' => ['tarih', 'gün', 'km tarihi', 'tarih (gg.aa.yyyy)'],
+                    'baslangic_km' => ['başlangıç km', 'baslangic km', 'ilk km', 'başlangıç', 'baslangic'],
+                    'bitis_km' => ['bitiş km', 'bitis km', 'son km', 'bitiş', 'bitis'],
+                    'notlar' => ['not', 'notlar', 'açıklama', 'notları']
+                ];
+
+                $colIndices = [];
+                foreach ($columnMap as $dbCol => $possibleNames) {
+                    foreach ($possibleNames as $name) {
+                        $index = array_search($name, $headers);
+                        if ($index !== false) {
+                            $colIndices[$dbCol] = $index;
+                            break;
+                        }
+                    }
+                }
+
+                // Fallback to fixed positions if mapping fails (A=0, B=1, C=2, D=3, E=4)
+                if (!isset($colIndices['plaka'])) $colIndices['plaka'] = 0;
+                if (!isset($colIndices['tarih'])) $colIndices['tarih'] = 1;
+                if (!isset($colIndices['baslangic_km'])) $colIndices['baslangic_km'] = 2;
+                if (!isset($colIndices['bitis_km'])) $colIndices['bitis_km'] = 3;
+                if (!isset($colIndices['notlar'])) $colIndices['notlar'] = 4;
 
                 $normalize = function($p) {
                     $p = mb_strtoupper((string) $p, 'UTF-8');
@@ -738,15 +779,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 }
 
                 $rowNum = 0;
-                foreach ($excelRows as $row) {
-                    $rowNum++;
-                    if ($rowNum <= 1)
-                        continue; // Sadece 1. satır (başlık) atla
+                for ($i = 1; $i < count($rows); $i++) {
+                    $row = $rows[$i];
+                    $rowNum = $i + 1;
 
-                    $plaka = trim($row['A'] ?? '');
-                    $tarihRaw = trim($row['B'] ?? '');
-                    $baslangicKm = trim($row['C'] ?? '');
-                    $bitisKm = trim($row['D'] ?? '');
+                    $plaka = trim($row[$colIndices['plaka']] ?? '');
+                    $tarihRaw = trim($row[$colIndices['tarih']] ?? '');
+                    $baslangicKm = trim($row[$colIndices['baslangic_km']] ?? '');
+                    $bitisKm = trim($row[$colIndices['bitis_km']] ?? '');
 
                     if (empty($plaka) && empty($bitisKm)) {
                         $skip++;
@@ -771,26 +811,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $arac_id_yukle = $aracMap[$plakaNorm];
 
                     // Tarihi dönüştür
-                    $tarih = null;
-                    if (!empty($tarihRaw)) {
-                        if (strpos($tarihRaw, '.') !== false) {
-                            $parts = explode('.', $tarihRaw);
-                            if (count($parts) === 3) {
-                                $tarih = $parts[2] . '-' . str_pad($parts[1], 2, '0', STR_PAD_LEFT) . '-' . str_pad($parts[0], 2, '0', STR_PAD_LEFT);
-                            }
-                        } elseif (strpos($tarihRaw, '-') !== false) {
-                            $tarih = $tarihRaw;
-                        } elseif (is_numeric($tarihRaw)) {
-                            // Excel serial date
-                            $unixDate = ($tarihRaw - 25569) * 86400;
-                            $tarih = date('Y-m-d', $unixDate);
-                        }
-                    }
-                    if (!$tarih || !strtotime($tarih)) {
+                    $tarih = Date::convertExcelDate($tarihRaw);
+
+                    if (!$tarih) {
                         $errors[] = "Satır $rowNum ($plaka): Geçersiz tarih '$tarihRaw'.";
                         continue;
                     }
-                    $tarih = date('Y-m-d', strtotime($tarih));
 
                     $bVal = intval(str_replace(['.', ',', ' '], '', $baslangicKm));
                     $eVal = intval(str_replace(['.', ',', ' '], '', $bitisKm));
@@ -815,6 +841,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         'olusturan_kullanici_id' => $_SESSION['user_id'] ?? null,
                         'silinme_tarihi' => null // Eğer silinmişse geri getir
                     ];
+                    
+                    if (isset($colIndices['notlar']) && !empty($row[$colIndices['notlar']])) {
+                        $saveData['aciklama'] = trim($row[$colIndices['notlar']]);
+                    }
+
                     if ($mevcutKayit) {
                         $saveData['id'] = $mevcutKayit->id;
                     }
@@ -825,10 +856,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $success++;
                 }
 
+                if ($success === 0 && $skip > 0 && empty($errors)) {
+                    $errors[] = "Lütfen 'BİTİŞ KM' sütununu doldurduğunuzdan emin olun. Boş bitiş KM değeri içeren satırlar atlanmıştır.";
+                }
+
                 // KM Excel yükleme logla
                 $SystemLog = new SystemLogModel();
                 $userId = $_SESSION['user_id'] ?? 0;
                 $SystemLog->logAction($userId, 'KM Excel Yükleme', "Excel'den {$success} adet KM kaydı yüklendi, {$skip} atlandı.", SystemLogModel::LEVEL_IMPORTANT);
+                
+                $message = "$success kayıt başarıyla işlendi.";
+                if ($success === 0) {
+                    $message = "Yüklenecek veri bulunamadı.";
+                    if ($skip > 0) $message .= " ($skip satır atlandı. Lütfen Bitiş KM sütununu kontrol edin)";
+                }
 
                 echo json_encode([
                     'status' => 'success',
@@ -836,7 +877,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     'skip' => $skip,
                     'errors' => $errors,
                     'unmatchedPlates' => $unmatchedPlates,
-                    'message' => "$success kayıt başarıyla işlendi."
+                    'message' => $message
                 ]);
                 break;
 
@@ -1130,19 +1171,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
                         // Tarih
                         if (isset($colIndices['tarih'])) {
-                            $tarihVal = $row[$colIndices['tarih']];
-                            if (is_numeric($tarihVal) && $tarihVal > 30000) { // Excel format check
-                                $tarihVal = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($tarihVal)->format('Y-m-d');
-                            } else {
-                                $tarihVal = trim($tarihVal ?? '');
-                                if (!empty($tarihVal)) {
-                                    $timestamp = strtotime(str_replace(['.', '/'], '-', $tarihVal));
-                                    $tarihVal = $timestamp ? date('Y-m-d', $timestamp) : date('Y-m-d');
-                                } else {
-                                    $tarihVal = date('Y-m-d');
-                                }
-                            }
-                            $newData['tarih'] = $tarihVal;
+                            $newData['tarih'] = Date::convertExcelDate($row[$colIndices['tarih']]) ?? date('Y-m-d');
                         } else {
                             $newData['tarih'] = date('Y-m-d');
                         }
@@ -1163,16 +1192,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
                         // Fatura Tarihi
                         if (isset($colIndices['fatura_tarihi'])) {
-                            $ft = $row[$colIndices['fatura_tarihi']];
-                            if (is_numeric($ft) && $ft > 30000) {
-                                $newData['fatura_tarihi'] = \PhpOffice\PhpSpreadsheet\Shared\Date::excelToDateTimeObject($ft)->format('Y-m-d');
-                            } else {
-                                $ft = trim($ft ?? '');
-                                if (!empty($ft)) {
-                                    $timestamp = strtotime(str_replace(['.', '/'], '-', $ft));
-                                    $newData['fatura_tarihi'] = $timestamp ? date('Y-m-d', $timestamp) : null;
-                                }
-                            }
+                            $newData['fatura_tarihi'] = Date::convertExcelDate($row[$colIndices['fatura_tarihi']]);
                         }
 
                         // Hesaplamaları yap
@@ -1837,17 +1857,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                                                 $tooltip = 'data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="<div class=\'text-center\'><span class=\'fw-bold\'>' . $kisiStr . '</span><br><small class=\'opacity-75\'>' . $tarihStr . '</small></div>"';
                                             }
                                             ?>
-                                            <td class="text-center km-col km-start-col d-none bg-light <?= $cellClass ?>"
-                                                data-arac-id="<?= Security::encrypt($arac_id) ?>" data-day="<?= $i ?>" data-type="baslangic"
+                                            <td class="text-center km-col km-start-col d-none bg-light <?= $cellClass ?> km-ctx-target"
+                                                data-arac-id="<?= Security::encrypt($arac_id) ?>" 
+                                                data-km-id="<?= $gunData && isset($gunData['id']) ? Security::encrypt($gunData['id']) : '' ?>"
+                                                data-day="<?= $i ?>" data-type="baslangic"
                                                 <?= $tooltip ?>>
                                                 <?= $gunData ? number_format($gunData['baslangic'], 0, ',', '.') : '-' ?>
                                             </td>
-                                            <td class="text-center km-col km-end-col d-none bg-light <?= $cellClass ?>"
-                                                data-arac-id="<?= Security::encrypt($arac_id) ?>" data-day="<?= $i ?>" data-type="bitis" <?= $tooltip ?>>
+                                            <td class="text-center km-col km-end-col d-none bg-light <?= $cellClass ?> km-ctx-target"
+                                                data-arac-id="<?= Security::encrypt($arac_id) ?>" 
+                                                data-km-id="<?= $gunData && isset($gunData['id']) ? Security::encrypt($gunData['id']) : '' ?>"
+                                                data-day="<?= $i ?>" data-type="bitis" <?= $tooltip ?>>
                                                 <?= $gunData ? number_format($gunData['bitis'], 0, ',', '.') : '-' ?>
                                             </td>
-                                            <td class="text-center km-total-col fw-bold <?= $yapilan > 0 ? 'text-dark' : 'text-muted opacity-50' ?> <?= $cellClass ?>"
-                                                data-arac-id="<?= Security::encrypt($arac_id) ?>" data-day="<?= $i ?>" data-type="yapilan"
+                                            <td class="text-center km-total-col fw-bold <?= $yapilan > 0 ? 'text-dark' : 'text-muted opacity-50' ?> <?= $cellClass ?> km-ctx-target"
+                                                data-arac-id="<?= Security::encrypt($arac_id) ?>" 
+                                                data-km-id="<?= $gunData && isset($gunData['id']) ? Security::encrypt($gunData['id']) : '' ?>"
+                                                data-day="<?= $i ?>" data-type="yapilan"
                                                 <?= $tooltip ?>>
                                                 <?= $yapilan > 0 ? number_format($yapilan, 0, ',', '.') : '-' ?>
                                             </td>
@@ -2768,6 +2794,85 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 ]);
                 break;
 
+            case 'km-onay-ver':
+                $id = intval($_POST['id'] ?? 0);
+                if ($id <= 0) throw new Exception("Geçersiz bildirim ID.");
+
+                $bildirim = $KmBildirim->find($id);
+                if (!$bildirim) throw new Exception("Bildirim bulunamadı.");
+
+                $tarih = $bildirim->tarih;
+                $arac_id = $bildirim->arac_id;
+                $deger_km = $bildirim->bitis_km; // Bu alan bildirilen degeri tutuyor
+                $tur = $bildirim->tur;
+
+                // Mevcut kaydı bul
+                $mevcutKmKaydi = $Km->kayitVarMi($arac_id, $tarih, null, true);
+                
+                if ($tur === 'sabah') {
+                    // SABAH (BAŞLANGIÇ) BİLDİRİMİ
+                    $baslangic_km = $deger_km;
+                    $bitis_km = $mevcutKmKaydi ? $mevcutKmKaydi->bitis_km : 0;
+                } else {
+                    // AKŞAM (BİTİŞ) BİLDİRİMİ
+                    if ($mevcutKmKaydi) {
+                        $baslangic_km = $mevcutKmKaydi->baslangic_km;
+                    } else {
+                        // Önceki kaydın bitiş KM'sini al
+                        $sql = $Km->getDb()->prepare("SELECT bitis_km FROM arac_km_kayitlari WHERE arac_id = ? AND tarih <= ? AND silinme_tarihi IS NULL ORDER BY tarih DESC, id DESC LIMIT 1");
+                        $sql->execute([$arac_id, $tarih]);
+                        $baslangic_km = $sql->fetchColumn() ?: 0;
+                    }
+                    $bitis_km = $deger_km;
+                }
+
+                $saveData = [
+                    'firma_id' => $bildirim->firma_id,
+                    'arac_id' => $arac_id,
+                    'tarih' => $tarih,
+                    'baslangic_km' => $baslangic_km,
+                    'bitis_km' => $bitis_km,
+                    'yapilan_km' => ($bitis_km > $baslangic_km && $baslangic_km > 0) ? ($bitis_km - $baslangic_km) : 0,
+                    'aciklama' => $bildirim->aciklama,
+                    'olusturan_kullanici_id' => $_SESSION['user_id'] ?? null
+                ];
+
+                if ($mevcutKmKaydi) {
+                    $saveData['id'] = $mevcutKmKaydi->id;
+                }
+
+                $Km->saveWithAttr($saveData);
+
+                // 2. Araç Tablosunu Güncelle (Yalnızca bitiş KM'si bildirilmişse veya sabah bildirimi araç KM'sinden büyükse)
+                $Arac->updateKm($arac_id, $deger_km);
+
+                // 3. Bildirimi Onayla
+                $KmBildirim->saveWithAttr([
+                    'id' => $id,
+                    'durum' => 'onaylandi',
+                    'onaylayan_id' => $_SESSION['user_id'] ?? null,
+                    'onay_tarihi' => date('Y-m-d H:i:s')
+                ]);
+
+                echo json_encode(['status' => 'success', 'message' => 'KM bildirimi onaylandı ve sisteme işlendi.']);
+                break;
+
+            case 'km-onay-reddet':
+                $id = intval($_POST['id'] ?? 0);
+                $neden = trim($_POST['red_nedeni'] ?? '');
+                
+                if ($id <= 0) throw new Exception("Geçersiz bildirim ID.");
+
+                $KmBildirim->saveWithAttr([
+                    'id' => $id,
+                    'durum' => 'reddedildi',
+                    'red_nedeni' => $neden,
+                    'onaylayan_id' => $_SESSION['user_id'] ?? null,
+                    'onay_tarihi' => date('Y-m-d H:i:s')
+                ]);
+
+                echo json_encode(['status' => 'success', 'message' => 'KM bildirimi reddedildi.']);
+                break;
 
             default:
                 throw new Exception("Geçersiz işlem.");

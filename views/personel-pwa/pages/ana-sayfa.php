@@ -140,7 +140,7 @@ use App\Helper\Helper;
                     <!-- GÖREVİ BİTİR (Görev Var) -->
                     <div id="gorev-bitir-panel" class="hidden">
                         <!-- Aktif Görev Bilgi Kartı -->
-                        <div class="bg-gradient-to-r from-primary to-primary-dark text-white p-4 rounded-t-none">
+                        <div class="bg-gradient-to-r from-primary to-primary-dark text-white p-4 rounded-t-xl">
                             <div class="flex items-center gap-3">
                                 <div
                                     class="w-12 h-12 rounded-xl bg-white/20 flex items-center justify-center animate-pulse">
@@ -168,6 +168,42 @@ use App\Helper\Helper;
                 </div>
             </div>
         </section>
+
+        <?php if ($aktifAracZimmeti): ?>
+        <!-- ARAÇ KM TAKİBİ (Separate Premium Card) -->
+        <section class="px-4 mt-6">
+            <div class="card overflow-hidden border-none shadow-xl shadow-indigo-500/10 bg-white dark:bg-slate-900 group">
+                <div class="p-5 flex flex-col gap-4">
+                    <div class="flex items-center gap-4">
+                        <div class="w-12 h-12 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 flex items-center justify-center text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
+                            <span class="material-symbols-outlined text-3xl">directions_car</span>
+                        </div>
+                        <div class="flex-1">
+                            <h3 class="text-base font-bold text-slate-800 dark:text-white line-clamp-1">Araç KM Yönetimi</h3>
+                            <p class="text-xs text-slate-500 dark:text-slate-400 font-medium">Aktif Araç: <span class="text-indigo-600 dark:text-indigo-400 font-bold"><?= $aktifAracZimmeti->plaka ?? 'Zimmetli Araç' ?></span></p>
+                        </div>
+                        <div class="text-right">
+                            <div class="px-2 py-1 rounded-md bg-indigo-50 dark:bg-indigo-900/30 text-[10px] font-bold text-indigo-600 dark:text-indigo-400 border border-indigo-100 dark:border-indigo-800">
+                                AKTİF
+                            </div>
+                        </div>
+                    </div>
+
+                    <button onclick="openKmBildirModal()"
+                        class="w-full py-4 px-6 rounded-2xl font-black text-white text-base transition-all duration-300 flex items-center justify-center gap-3 bg-gradient-to-r from-indigo-500 to-violet-600 hover:from-indigo-600 hover:to-violet-700 shadow-lg shadow-indigo-500/40 active:scale-[0.97] border-none group-active:translate-y-0.5">
+                        <span class="material-symbols-outlined text-2xl animate-pulse">speed</span>
+                        <span class="tracking-tight uppercase">Günlük KM Bildir</span>
+                    </button>
+                    
+                    <div class="flex items-center justify-center gap-2 mt-1">
+                        <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span>
+                        <p class="text-[10px] text-slate-400 dark:text-slate-500 font-medium italic">Resimli bildirim zorunludur</p>
+                        <span class="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-700"></span>
+                    </div>
+                </div>
+            </div>
+        </section>
+        <?php endif; ?>
     <?php endif; ?>
 
 

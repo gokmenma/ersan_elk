@@ -15,6 +15,7 @@ use App\Helper\Helper;
 use App\Model\PersonelModel;
 use App\Model\PersonelGirisLogModel;
 use App\Model\PersonelIcralariModel;
+use App\Model\AracZimmetModel;
 
 // Oturum kontrolü öncesi beni hatırla kontrolü
 if (!isset($_SESSION['personel_id']) && isset($_COOKIE['remember_token'])) {
@@ -97,6 +98,10 @@ if (!isset($_SESSION['firma_id']) && isset($personel->firma_id)) {
     $_SESSION['firma_id'] = $personel->firma_id;
 }
 
+// Araç zimmet kontrolü
+$AracZimmetModel = new AracZimmetModel();
+$aktifAracZimmeti = $AracZimmetModel->getAktifZimmetByPersonel($personel_id);
+
 // Departman & Görev bazlı kontrol
 $isEndeksOkuma = (stripos($personel->departman ?? '', 'Endeks Okuma') !== false);
 $isSayacSokmeTakma = (stripos($personel->departman ?? '', 'Sayaç Sökme Takma') !== false);
@@ -122,7 +127,7 @@ $hasIcra = count($devamEdenIcralar) > 0;
 
 // Sayfa yönlendirmesi
 $page = $_GET['page'] ?? 'ana-sayfa';
-$allowed_pages = ['ana-sayfa', 'bordro', 'izin', 'talep', 'profil', 'puantaj', 'etkinlikler', 'zimmetler', 'icralar', 'yardim', 'yardim-detay'];
+$allowed_pages = ['ana-sayfa', 'bordro', 'izin', 'talep', 'profil', 'puantaj', 'etkinlikler', 'zimmetler', 'icralar', 'yardim', 'yardim-detay', 'km-bildirimleri'];
 
 if ($isEndeksOkuma && $isEkipSefi) {
     $allowed_pages[] = 'ekip-takibi';
@@ -338,7 +343,7 @@ try {
             <span class="text-[10px] font-semibold">Talepler</span>
         </a>
         <?php
-        $moreActivePages = ['profil', 'etkinlikler', 'bordro', 'izin'];
+        $moreActivePages = ['profil', 'etkinlikler', 'bordro', 'izin', 'km-bildirimleri'];
         $isZimmetInBottomNav = !(($isEndeksOkuma && $isEkipSefi) || $isKesmeAcma);
         // Zimmetler zaten bottom nav'da gösteriliyorsa diğer menüde highlight etme
         if (!$isZimmetInBottomNav) {
@@ -411,6 +416,14 @@ try {
                     <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
                 </a>
 
+                <a href="?page=km-bildirimleri"
+                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'km-bildirimleri' ? 'bg-primary/10' : ''; ?>">
+                    <div class="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-indigo-600 text-lg">speed</span>
+                    </div>
+                    <span class="font-medium text-slate-900 dark:text-white text-sm">KM Bildirimleri</span>
+                    <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
+                </a>
                 <a href="?page=etkinlikler"
                     class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'etkinlikler' ? 'bg-primary/10' : ''; ?>">
                     <div class="w-9 h-9 rounded-lg bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
@@ -722,6 +735,11 @@ try {
             try {
                 window.history.pushState({ modal: 'pwa-full-modal' }, '', '');
             } catch (err) { }
+
+            // Trigger onOpen callback if provided
+            if (typeof options.onOpen === 'function') {
+                setTimeout(options.onOpen, 100);
+            }
         }
 
         function closePwaFullModal() {
@@ -835,7 +853,10 @@ try {
 
         // Close functions for backward compatibility or simple naming
         function closeEtkinlikFullScreen() { closePwaFullModal(); }
+    </script>
 
+    <?php include "includes/km-modal.php"; ?>
+    <script>
         // Catch the native back button
         window.addEventListener('popstate', function (e) {
             const modalFS = document.getElementById('pwa-full-modal');

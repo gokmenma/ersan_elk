@@ -141,6 +141,21 @@ for ($m = 1; $m <= 12; $m++) {
     </div>
 </div>
 
+<!-- KM Context Menu -->
+<div id="kmContextMenu" class="ctx-premium-menu" style="display: none;">
+    <div class="ctx-header-label">İşlemler</div>
+    <div class="ctx-items">
+        <button class="ctx-btn" type="button" id="ctxKmDuzenle">
+            <i class="bx bx-edit-alt"></i> 
+            <span>Düzenle</span>
+        </button>
+        <button class="ctx-btn ctx-btn-danger" type="button" id="ctxKmSil">
+            <i class="bx bx-trash"></i> 
+            <span>Sil</span>
+        </button>
+    </div>
+</div>
+
 <?php include_once "modal/km-excel-yukle-modal.php"; ?>
 
 <style>
@@ -207,6 +222,115 @@ for ($m = 1; $m <= 12; $m++) {
     .km-end-col {
         transition: all 0.3s ease;
     }
+
+    /* KM Context Menu Exact Match Design */
+    .ctx-premium-menu {
+        position: fixed;
+        z-index: 100000;
+        min-width: 156px;
+        background: #ffffff;
+        border: 1px solid rgba(0, 0, 0, 0.08);
+        border-radius: 16px;
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.06), 0 4px 6px -2px rgba(0, 0, 0, 0.04) !important;
+        padding: 4px;
+        user-select: none;
+        overflow: hidden;
+    }
+
+    [data-bs-theme="dark"] .ctx-premium-menu {
+        background: #232731;
+        border-color: rgba(255, 255, 255, 0.1);
+        box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.5) !important;
+    }
+
+    .ctx-header-label {
+        padding: 12px 14px 8px 14px;
+        font-size: 11px;
+        font-weight: 600;
+        color: #94a3b8;
+        letter-spacing: 0.1px;
+    }
+
+    [data-bs-theme="dark"] .ctx-header-label {
+        color: #64748b;
+    }
+
+    .ctx-items {
+        border-top: 1px solid rgba(0, 0, 0, 0.04);
+        padding-top: 4px;
+    }
+
+    [data-bs-theme="dark"] .ctx-items {
+        border-top-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .ctx-btn {
+        display: flex;
+        align-items: center;
+        width: 100%;
+        padding: 9px 12px;
+        border: none;
+        background: transparent;
+        color: #1e293b;
+        font-size: 13.5px;
+        font-weight: 500;
+        text-align: left;
+        border-radius: 10px;
+        transition: all 0.15s ease;
+        gap: 12px;
+        cursor: pointer;
+    }
+
+    [data-bs-theme="dark"] .ctx-btn {
+        color: #e2e8f0;
+    }
+
+    .ctx-btn:hover {
+        background: #f8fafc;
+        color: #0f172a;
+    }
+
+    [data-bs-theme="dark"] .ctx-btn:hover {
+        background: rgba(255, 255, 255, 0.05);
+        color: #ffffff;
+    }
+
+    .ctx-btn i {
+        font-size: 19px;
+        color: #475569;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    [data-bs-theme="dark"] .ctx-btn i {
+        color: #94a3b8;
+    }
+
+    /* Danger State Match */
+    .ctx-btn-danger {
+        color: #f43f5e !important;
+    }
+
+    .ctx-btn-danger i {
+        color: #f43f5e !important;
+    }
+
+    .ctx-btn-danger:hover {
+        background: #fff1f2 !important;
+        color: #e11d48 !important;
+    }
+
+    [data-bs-theme="dark"] .ctx-btn-danger:hover {
+        background: rgba(244, 63, 94, 0.1) !important;
+        color: #fb7185 !important;
+    }
+
+    /* Highlight cell on right click */
+    .km-cell-active {
+        background-color: rgba(59, 130, 246, 0.12) !important;
+        box-shadow: inset 0 0 0 2px #3b82f6 !important;
+    }
 </style>
 
 <script>
@@ -215,7 +339,7 @@ for ($m = 1; $m <= 12; $m++) {
         let currentMonth = '<?= $month ?>';
         let currentAracId = '<?= $arac_id ?>';
 
-        const loadReport = function () {
+        window.loadReport = function () {
             $('#reportContent').html('<div class="text-center p-5"><div class="spinner-border text-primary" role="status"></div><p class="mt-2">Rapor hazırlanıyor...</p></div>');
             updateFilterSummary();
 

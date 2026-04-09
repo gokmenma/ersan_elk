@@ -4205,6 +4205,102 @@ try {
             }
             break;
 
+        // ============ Araç KM Bildirim İşlemleri ============
+        case 'save-km-report':
+            $KmBildirim = new \App\Model\AracKmBildirimModel();
+            $data = $_POST;
+            unset($data['action']);
+            $id = isset($data['id']) ? intval($data['id']) : 0;
+            
+            $personel_id = $_SESSION['personel_id'];
+            $arac_id = intval($data['arac_id']);
+            $tarih = $data['tarih'];
+            $tur = $data['tur'];
+            $bitis_km = intval($data['bitis_km']);
+
+            // KM Doğrulaması (Backend)
+            $lastKm = $KmBildirim->getLastKm($arac_id, $tarih, $tur, $id);
+            if ($bitis_km < $lastKm) {
+                response(false, null, "Hata: Girilen KM değeri ({$bitis_km}), önceki KM değerinden ({$lastKm}) düşük olamaz.");
+            }
+
+            // Eğer resim gelmişse yükle
+            if (isset($_FILES['resim']) && $_FILES['resim']['error'] === UPLOAD_ERR_OK) {
+                // Ana dizini bul (ersan_elk)
+                $uploadDir = dirname(dirname(__DIR__)) . '/uploads/km_bildirim/';
+                if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+                
+                $ext = pathinfo($_FILES['resim']['name'], PATHINFO_EXTENSION);
+                $fileName = 'km_' . $personel_id . '_' . time() . '.' . $ext;
+                $filePath = $uploadDir . $fileName;
+                
+                if (move_uploaded_file($_FILES['resim']['tmp_name'], $filePath)) {
+                    $data['resim_yolu'] = 'uploads/km_bildirim/' . $fileName;
+                }
+            }
+            
+            $data['personel_id'] = $personel_id;
+            $data['firma_id'] = $personel->firma_id ?? $_SESSION['firma_id'] ?? null;
+            $data['durum'] = 'beklemede'; // Her kayıtta/güncellemede beklemede olur
+            
+            // Tarih kontrolü
+            if (empty($data['tarih'])) {
+                $data['tarih'] = date('Y-m-d');
+            }
+            
+            $result = $KmBildirim->saveWithAttr($data);
+            
+            if ($result) {
+                // Yöneticiye bildirim
+                try {
+                    $BildirimModel = new \App\Model\BildirimModel();
+                    $tarihFormatli = date('d.m.Y', strtotime($data['tarih']));
+                    $turLabel = $data['tur'] === 'sabah' ? 'Sabah' : 'Akşam';
+                    $BildirimModel->createNotification(
+                        1, // Admin (Veya bir grup/rol bazlı da olabilir ama genelde 1 admin)
+                        'Yeni KM Bildirimi',
+                        $personel->adi_soyadi . ", $tarihFormatli tarihi için $turLabel KM bildirimi yaptı: " . $data['bitis_km'] . " KM",
+                        'index?p=arac-takip/km-onaylari',
+                        'speed',
+                        'info'
+                    );
+                } catch (\Exception $e) {
+                    // Bildirim hatası kritik değil
+                }
+
+                response(true, null, 'KM bildiriminiz başarıyla iletildi. Yönetici onayı bekleniyor.');
+            } else {
+                response(false, null, 'Bildirim kaydedilemedi.');
+            }
+            break;
+
+        case 'get-km-history':
+            $KmBildirim = new \App\Model\AracKmBildirimModel();
+            $history = $KmBildirim->getPersonelHistory($personel_id, 20); // Son 20 kayıt
+            
+            $data = [];
+            foreach ($history as $item) {
+                $item->tarih_format = date('d.m.Y', strtotime($item->tarih));
+                $item->tur_label = $item->tur === 'sabah' ? 'Sabah' : 'Akşam';
+                $item->resim_url = !empty($item->resim_yolu) ? \App\Helper\Helper::base_url($item->resim_yolu) : null;
+                $data[] = $item;
+            }
+            
+            response(true, $data);
+            break;
+            
+        case 'get-last-km':
+            $arac_id = isset($_POST['arac_id']) ? intval($_POST['arac_id']) : 0;
+            $tarih = $_POST['tarih'] ?? date('Y-m-d');
+            $tur = $_POST['tur'] ?? 'sabah';
+            $exclude_id = isset($_POST['exclude_id']) ? intval($_POST['exclude_id']) : 0;
+            
+            $KmBildirim = new \App\Model\AracKmBildirimModel();
+            $lastKm = $KmBildirim->getLastKm($arac_id, $tarih, $tur, $exclude_id);
+            
+            response(true, ['last_km' => $lastKm]);
+            break;
+
         default:
             response(false, null, 'Geçersiz işlem');
     }

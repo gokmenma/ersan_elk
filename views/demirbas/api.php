@@ -1413,7 +1413,6 @@ if ($action == "demirbas-listesi") {
                     "seri_no" => $displaySeriNo,
                     "stok" => '<div class="text-center">' . $stokBadge . '</div>',
                     "durum" => '<div class="text-center">' . $durumBadge . '</div>',
-                    "aciklama" => '<div class="text-muted small">' . ($d->aciklama ?? '-') . '</div>',
                     "tutar" => '<div class="text-end">' . Helper::formattedMoney($d->edinme_tutari ?? 0) . ' ₺' . '</div>',
                     "tarih" => (($d->edinme_tarihi ? date('d.m.Y', strtotime($d->edinme_tarihi)) : ($d->kayit_tarihi ? date('d.m.Y', strtotime($d->kayit_tarihi)) : '-'))),
                     "islemler" => '<div class="text-center text-nowrap">' . $actions . '</div>'

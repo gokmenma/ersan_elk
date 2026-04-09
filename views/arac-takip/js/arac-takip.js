@@ -862,7 +862,7 @@ const AracTakip = {
     });
   },
 
-  kmSil: function (id) {
+  kmSil: function (id, fromPuantaj = false) {
     Swal.fire({
       title: "Emin misiniz?",
       html: `Bu KM kaydını silmek istediğinize emin misiniz?<br><br>
@@ -891,7 +891,13 @@ const AracTakip = {
               text: response.message,
               timer: 1500,
               showConfirmButton: false,
-            }).then(() => location.reload());
+            }).then(() => {
+              if (fromPuantaj && typeof window.loadReport === 'function') {
+                window.loadReport();
+              } else {
+                location.reload();
+              }
+            });
           } else {
             Swal.fire("Hata", response.message, "error");
           }
@@ -1082,8 +1088,98 @@ const AracTakip = {
           container.html(html);
           self.initDataTable("#raporTable");
         }
-      },
+      }
     );
+  },
+
+  // =============================================
+  // PUANTAJ CONTEXT MENU
+  // =============================================
+  initPuantajContextMenu: function () {
+    const menu = $("#kmContextMenu");
+    if (!menu.length) return;
+
+    // Body'ye taşı (Konumlandırma sorunlarını önlemek için)
+    menu.appendTo("body");
+
+    $(document).on("contextmenu", ".km-ctx-target", function (e) {
+      const td = $(this);
+      const kmId = td.attr("data-km-id");
+      const aracId = td.attr("data-arac-id");
+
+      if (!kmId) return;
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      $(".km-cell-active").removeClass("km-cell-active");
+      td.addClass("km-cell-active");
+
+      menu.data("km-id", kmId);
+      menu.data("arac-id", aracId);
+
+      let posX = e.clientX;
+      let posY = e.clientY;
+
+      const menuWidth = menu.outerWidth();
+      const menuHeight = menu.outerHeight();
+      const winWidth = $(window).width();
+      const winHeight = $(window).height();
+
+      if (posX + menuWidth > winWidth) posX -= menuWidth;
+      if (posY + menuHeight > winHeight) posY -= menuHeight;
+
+      menu.css({
+        display: "block",
+        left: posX,
+        top: posY,
+      });
+
+      // Dışarı tıklayınca kapat
+      $(document).one("mousedown", function (de) {
+        if (!$(de.target).closest("#kmContextMenu").length) {
+          menu.hide();
+          td.removeClass("km-cell-active");
+        }
+      });
+    });
+
+    // Düzenle
+    $("#ctxKmDuzenle").on("click", function () {
+      const aracId = menu.data("arac-id");
+      if (!aracId) return;
+
+      const year = $('select[name="year"]').val();
+      const month = $('select[name="month"]').val();
+
+      $("#aracOzelPuantajContent").html(
+        '<div class="text-center py-5"><div class="spinner-border text-primary"></div><p class="mt-2 text-muted">Puantaj detayları yükleniyor...</p></div>',
+      );
+      $("#aracOzelPuantajModal").modal("show");
+
+      $.get(
+        AracTakip.apiUrl,
+        {
+          action: "get-arac-ozel-puantaj",
+          id: aracId,
+          month: month,
+          year: year,
+        },
+        function (html) {
+          $("#aracOzelPuantajContent").html(html);
+        },
+      );
+      menu.hide();
+    });
+
+    // Sil
+    $("#ctxKmSil").on("click", function () {
+      const kmId = menu.data("km-id");
+      if (kmId) {
+        AracTakip.kmSil(kmId, true);
+      }
+      menu.hide();
+    });
   },
 
   // =============================================
@@ -1563,6 +1659,108 @@ const AracTakip = {
   },
 
   // =============================================
+  // KM ONAY İŞLEMLERİ
+  // =============================================
+  kmOnayla: function (id, aracId, km, plaka, tur) {
+    const turText = tur === 'sabah' ? '<span class="text-warning">SABAH (Başlangıç)</span>' : '<span class="text-info">AKŞAM (Bitiş)</span>';
+    Swal.fire({
+      title: "Kilometre Onayı",
+      html: `<b>${plaka}</b> plakalı aracın bildirilen ${turText} <b>${km} KM</b> değerini onaylıyor musunuz?<br><br><small class="text-muted">Bu işlem aracın güncel KM değerini güncelleyecektir.</small>`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#34c38f",
+      cancelButtonColor: "#f46a6a",
+      confirmButtonText: "Evet, Onayla",
+      cancelButtonText: "Vazgeç",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: "İşlem Yapılıyor",
+          text: "Lütfen bekleyiniz...",
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          }
+        });
+
+        $.post(
+          this.apiUrl,
+          { action: "km-onay-ver", id: id },
+          (response) => {
+            if (response.status === "success") {
+              Swal.fire({
+                icon: "success",
+                title: "Onaylandı",
+                text: response.message,
+                timer: 1500,
+                showConfirmButton: false,
+              }).then(() => location.reload());
+            } else {
+              Swal.fire("Hata", response.message, "error");
+            }
+          },
+        ).fail(() => {
+          Swal.fire("Hata", "Sunucu hatası oluştu. Lütfen tekrar deneyiniz.", "error");
+        });
+      }
+    });
+  },
+
+  kmReddet: function (id) {
+    $("#kmRedForm")[0].reset();
+    $("#red_bildirim_id").val(id);
+    $("#kmRedModal").modal("show");
+  },
+
+  kmRedKaydet: function () {
+    const formData = new FormData($("#kmRedForm")[0]);
+    const btn = $("#btnKmReddetSubmit");
+    const originalText = btn.html();
+
+    btn.html('<i class="bx bx-loader-alt bx-spin me-1"></i> Reddediliyor...')
+       .prop("disabled", true);
+
+    Swal.fire({
+      title: "İşlem Yapılıyor",
+      text: "Lütfen bekleyiniz...",
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      }
+    });
+
+    $.ajax({
+      url: this.apiUrl,
+      type: "POST",
+      data: formData,
+      processData: false,
+      contentType: false,
+      success: (response) => {
+        if (response.status === "success") {
+          Swal.fire({
+            icon: "success",
+            title: "Reddedildi",
+            text: response.message,
+            timer: 1500,
+            showConfirmButton: false,
+          }).then(() => {
+            $("#kmRedModal").modal("hide");
+            location.reload();
+          });
+        } else {
+          Swal.fire("Hata", response.message, "error");
+        }
+      },
+      error: () => {
+        Swal.fire("Hata", "Sunucu hatası oluştu. Lütfen tekrar deneyiniz.", "error");
+      },
+      complete: () => {
+        btn.html(originalText).prop("disabled", false);
+      }
+    });
+  },
+
+  // =============================================
   // MODAL RESETLEME
   // =============================================
   resetAracModal: function () {
@@ -2023,8 +2221,8 @@ $(document).ready(function () {
       $("#liExcelKmYukle").hide();
     }
 
-    // Yeni Ekle butonu görünürlüğü (Rapor sekmesinde gizle)
-    if (tabName === "rapor") {
+    // Yeni Ekle butonu görünürlüğü (Rapor ve KM Onay sekmesinde gizle)
+    if (tabName === "rapor" || tabName === "kmOnay") {
       $("#btnYeniEkle").attr("style", "display: none !important");
     } else {
       $("#btnYeniEkle").attr("style", "display: block !important");
@@ -2427,6 +2625,28 @@ $(document).ready(function () {
     e.preventDefault();
     AracTakip.servisSil($(this).data("id"));
   });
+
+  // KM Onay İşlemleri
+  $(document).on("click", ".btn-km-onayla", function (e) {
+    e.preventDefault();
+    const btn = $(this);
+    AracTakip.kmOnayla(
+      btn.data("id"),
+      btn.data("arac-id"),
+      btn.data("km"),
+      btn.data("plaka"),
+      btn.data("tur"),
+    );
+  });
+
+  $(document).on("click", ".btn-km-reddet", function (e) {
+    e.preventDefault();
+    AracTakip.kmReddet($(this).data("id"));
+  });
+  $(document).on("submit", "#kmRedForm", function (e) {
+    e.preventDefault();
+    AracTakip.kmRedKaydet();
+  });
   $(document).on("click", "#btnExcelYukle", (e) => {
     e.preventDefault();
     AracTakip.yakitExcelYukle();
@@ -2793,4 +3013,7 @@ $(document).ready(function () {
     $("#ikame-detay-iade-km").text(s.ikame_iade_km ? AracTakip.formatNumber(s.ikame_iade_km) + " km" : "-");
     $("#ikameDetayModal").modal("show");
   });
+
+  // Puantaj Context Menu Başlat
+  AracTakip.initPuantajContextMenu();
 });

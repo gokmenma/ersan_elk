@@ -160,6 +160,7 @@ if ($page == "hakedisler/hakedis-detay") {
     strpos($page, "tanimlamalar/") === 0 ||
     strpos($page, "puantaj/") === 0 ||
     strpos($page, "nobet/") === 0 ||
+    strpos($page, "arac-takip/") === 0 ||
     $page == "mail-sms/mail-gonder" || $page == "arac-takip/list" || $page == "arac-takip/duzenle" ||
     $page == "personel-takip/list" || $page == "nobet/talepler" || $page == "talepler/list" ||
     $page == "tanimlamalar/unvan-ucret" ||

@@ -675,7 +675,7 @@ class DemirbasModel extends Model
      */
     public function getFilteredIds($request, $tab = 'demirbas')
     {
-        $search = $request['search_val'] ?? ($request['search']['value'] ?? null);
+        $search = $request['search_val'] ?? null;
         
         $fromSql = " FROM {$this->table} d
                     LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'";
@@ -690,38 +690,16 @@ class DemirbasModel extends Model
         if ($tab === 'sayac' || $tab === 'sayac_bizim_depo') {
             $whereSql .= " AND " . $sayacCondition;
             if ($tab === 'sayac_bizim_depo') {
-                $whereSql .= " AND NOT EXISTS (SELECT 1 FROM demirbas_zimmet z2 WHERE z2.demirbas_id = d.id AND z2.durum = 'teslim' AND z2.silinme_tarihi IS NULL)
-                    AND NOT EXISTS (SELECT 1 FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.silinme_tarihi IS NULL AND (h2.aciklama LIKE '%KASKİ%' OR h2.aciklama LIKE '%KASKI%' OR h2.aciklama LIKE '%kaskiye%' OR h2.aciklama LIKE '%Kaskiye%'))
-                    AND (d.lokasyon = 'bizim_depo' OR d.lokasyon IS NULL OR d.lokasyon = '')
-                    AND (
-                        (
-                            LOWER(TRIM(COALESCE(d.durum, ''))) NOT LIKE '%hurda%'
-                            AND LOWER(TRIM(COALESCE(d.demirbas_adi, ''))) NOT LIKE '%hurda%'
-                            AND COALESCE(d.kalan_miktar, 0) > 0
-                        )
-                        OR
-                        (
-                            (LOWER(TRIM(COALESCE(d.durum, ''))) LIKE '%hurda%' OR LOWER(TRIM(COALESCE(d.demirbas_adi, ''))) LIKE '%hurda%')
-                            AND EXISTS (
-                                SELECT 1
-                                FROM demirbas_hareketler h3
-                                WHERE h3.demirbas_id = d.id
-                                  AND h3.silinme_tarihi IS NULL
-                                  AND h3.hareket_tipi = 'iade'
-                                  AND h3.personel_id IS NOT NULL
-                            )
-                        )
-                    )";
+                $whereSql .= " AND d.lokasyon = 'bizim_depo' AND LOWER(d.durum) != 'personelde'";
             }
         } elseif ($tab === 'aparat') {
             $whereSql .= " AND " . $aparatCondition;
         } else {
+            $baseWhere = " AND d.silinme_tarihi IS NULL";
             if ($tab === 'demirbas') {
                 $whereSql .= " AND NOT " . $sayacCondition . " AND NOT " . $aparatCondition;
             }
         }
-
-        $whereSql .= " AND d.silinme_tarihi IS NULL";
 
         $searchWhere = "";
 
@@ -748,7 +726,6 @@ class DemirbasModel extends Model
                 9 => 'DATE_FORMAT(d.edinme_tarihi, "%d.%m.%Y")'
             ];
         } else {
-            // sayac/aparat: col indices vs depoSayacTable: 1=>adi, 2=>marka, 3=>seri, 5=>durum, 6=>tarih
             $colSearchMap = [
                 1 => 'd.demirbas_adi',
                 2 => 'CONCAT_WS(" ", d.marka, d.model)',
@@ -758,10 +735,9 @@ class DemirbasModel extends Model
             ];
         }
 
-        $column_searches = $request['column_searches'] ?? ($request['columns'] ?? []);
+        $column_searches = $request['column_searches'] ?? [];
         if (!empty($column_searches)) {
-            foreach ($column_searches as $colIdx => $colData) {
-                $searchValue = is_array($colData) ? ($colData['search']['value'] ?? '') : $colData;
+            foreach ($column_searches as $colIdx => $searchValue) {
                 if (!empty($searchValue) && isset($colSearchMap[$colIdx])) {
                     $field = $colSearchMap[$colIdx];
                     $paramKey = "col_search_" . $colIdx;
@@ -833,14 +809,14 @@ class DemirbasModel extends Model
             }
         }
 
-        // Durum Filtresi (Üst Buton)
+        // Durum Filtresi
         $statusFilter = $request['status_filter'] ?? null;
         if (!empty($statusFilter)) {
             if ($statusFilter === 'bosta' || $statusFilter === 'yeni') {
-                $searchWhere .= " AND LOWER(TRIM(COALESCE(d.durum, ''))) NOT LIKE '%hurda%' 
+                $searchWhere .= " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0)) > 0 
+                    AND LOWER(TRIM(COALESCE(d.durum, ''))) NOT LIKE '%hurda%' 
                     AND LOWER(TRIM(COALESCE(d.demirbas_adi, ''))) NOT LIKE '%hurda%'
-                    AND LOWER(TRIM(COALESCE(d.durum, ''))) NOT LIKE 'kaskiye%' 
-                    AND NOT EXISTS (SELECT 1 FROM demirbas_zimmet z2 WHERE z2.demirbas_id = d.id AND z2.durum = 'teslim' AND z2.silinme_tarihi IS NULL)";
+                    AND LOWER(TRIM(COALESCE(d.durum, ''))) NOT LIKE 'kaskiye%'";
             } elseif ($statusFilter === 'zimmetli') {
                 $searchWhere .= " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0)) < COALESCE(d.miktar, 1) 
                     AND LOWER(TRIM(COALESCE(d.durum, ''))) NOT LIKE '%hurda%' 
@@ -856,9 +832,7 @@ class DemirbasModel extends Model
         $finalSql = "SELECT d.id" . $fromSql . $whereSql . $searchWhere;
         $stmt = $this->db->prepare($finalSql);
         foreach ($params as $key => $val) {
-            if (strpos($finalSql, ":" . $key) !== false || (strpos($key, 'col_search_') === 0 && strpos($finalSql, $key) !== false)) {
-                $stmt->bindValue($key, $val);
-            }
+            $stmt->bindValue($key, $val);
         }
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_COLUMN);

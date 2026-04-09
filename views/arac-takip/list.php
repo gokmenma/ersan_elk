@@ -10,6 +10,7 @@ use App\Model\AracYakitModel;
 use App\Model\AracKmModel;
 use App\Model\PersonelModel;
 use App\Model\AracServisModel;
+use App\Model\AracKmBildirimModel;
 
 $Arac = new AracModel();
 $Zimmet = new AracZimmetModel();
@@ -17,6 +18,8 @@ $Yakit = new AracYakitModel();
 $Km = new AracKmModel();
 $Personel = new PersonelModel();
 $Servis = new AracServisModel();
+$KmBildirim = new AracKmBildirimModel();
+
 $personeller = $Personel->all(false, 'arac');
 $departmanlar = $Arac->getDepartmanlar();
 $aracStats = $Arac->getStats();
@@ -198,8 +201,6 @@ if ($filter === 'muayene') {
                                     <i class="bx bx-wrench me-1"></i> Servis Kayıtları
                                 </button>
                             </li>
-
-
                         </ul>
 
 
@@ -441,17 +442,17 @@ if ($filter === 'muayene') {
                                     <thead class="table-light">
                                         <tr>
                                             <th class="text-center" style="width:5%">Sıra</th>
-                                            <th style="width:8%" class="text-center">Tip</th>
-                                            <th style="width:15%">Plaka / Araç</th>
-                                            <th style="width:10%">Departman</th>
-                                            <th style="width:8%">Mülkiyet</th>
-                                            <th style="width:12%">Zimmetli Personel</th>
-                                            <th style="width:8%" class="text-center">Durum</th>
-                                            <th style="width:7%" class="text-center">Yakıt</th>
-                                            <th style="width:8%" class="text-end">KM</th>
-                                            <th style="width:9%" class="text-center">Muayene Bitiş</th>
-                                            <th style="width:9%" class="text-center">Sigorta Bitiş</th>
-                                            <th style="width:9%" class="text-center">Kasko Bitiş</th>
+                                            <th style="width:8%" class="text-center" data-filter="string">Tip</th>
+                                            <th style="width:15%" data-filter="string">Plaka / Araç</th>
+                                            <th style="width:10%" data-filter="string">Departman</th>
+                                            <th style="width:8%" data-filter="string">Mülkiyet</th>
+                                            <th style="width:12%" data-filter="string">Zimmetli Personel</th>
+                                            <th style="width:8%" class="text-center" data-filter="string">Durum</th>
+                                            <th style="width:7%" class="text-center" data-filter="string">Yakıt</th>
+                                            <th style="width:8%" class="text-end" data-filter="number">KM</th>
+                                            <th style="width:9%" class="text-center" data-filter="date">Muayene Bitiş</th>
+                                            <th style="width:9%" class="text-center" data-filter="date">Sigorta Bitiş</th>
+                                            <th style="width:9%" class="text-center" data-filter="date">Kasko Bitiş</th>
                                             <th style="width:10%" class="text-center">İşlemler</th>
                                         </tr>
                                     </thead>
@@ -579,11 +580,11 @@ if ($filter === 'muayene') {
                                     <thead class="table-light">
                                         <tr>
                                             <th class="text-center" style="width:5%">Sıra</th>
-                                            <th style="width:18%">Araç</th>
-                                            <th style="width:18%">Personel</th>
-                                            <th style="width:12%">Zimmet Tarihi</th>
-                                            <th style="width:12%">İade Tarihi</th>
-                                            <th style="width:10%" class="text-center">Durum</th>
+                                            <th style="width:18%" data-filter="string">Araç</th>
+                                            <th style="width:18%" data-filter="string">Personel</th>
+                                            <th style="width:12%" data-filter="date">Zimmet Tarihi</th>
+                                            <th style="width:12%" data-filter="date">İade Tarihi</th>
+                                            <th style="width:10%" class="text-center" data-filter="string">Durum</th>
                                             <th style="width:10%" class="text-center">İşlemler</th>
                                         </tr>
                                     </thead>
@@ -753,15 +754,15 @@ if ($filter === 'muayene') {
                                     <thead class="table-light">
                                         <tr>
                                             <th class="text-center" style="width:5%">Sıra</th>
-                                            <th style="width:12%">Plaka</th>
-                                            <th style="width:10%">Tarih</th>
-                                            <th style="width:10%" class="text-end">KM</th>
-                                            <th style="width:10%" class="text-end">Miktar (L)</th>
-                                            <th style="width:10%" class="text-end">Birim Fiyat</th>
-                                            <th style="width:10%" class="text-end">Brüt Tutar</th>
-                                            <th style="width:8%" class="text-end">İskonto%</th>
-                                            <th style="width:12%" class="text-end">Net Tutar</th>
-                                            <th style="width:15%">İstasyon</th>
+                                            <th style="width:12%" data-filter="string">Plaka</th>
+                                            <th style="width:10%" data-filter="date">Tarih</th>
+                                            <th style="width:10%" class="text-end" data-filter="number">KM</th>
+                                            <th style="width:10%" class="text-end" data-filter="number">Miktar (L)</th>
+                                            <th style="width:10%" class="text-end" data-filter="number">Birim Fiyat</th>
+                                            <th style="width:10%" class="text-end" data-filter="number">Brüt Tutar</th>
+                                            <th style="width:8%" class="text-end" data-filter="number">İskonto%</th>
+                                            <th style="width:12%" class="text-end" data-filter="number">Net Tutar</th>
+                                            <th style="width:15%" data-filter="string">İstasyon</th>
                                             <th style="width:8%" class="text-center">İşlemler</th>
                                         </tr>
                                     </thead>
@@ -909,11 +910,11 @@ if ($filter === 'muayene') {
                                     <thead class="table-light">
                                         <tr>
                                             <th class="text-center" style="width:5%">Sıra</th>
-                                            <th style="width:15%">Plaka</th>
-                                            <th style="width:15%">Tarih</th>
-                                            <th style="width:15%" class="text-end">Başlangıç KM</th>
-                                            <th style="width:15%" class="text-end">Bitiş KM</th>
-                                            <th style="width:15%" class="text-end">Yapılan KM</th>
+                                            <th style="width:15%" data-filter="string">Plaka</th>
+                                            <th style="width:15%" data-filter="date">Tarih</th>
+                                            <th style="width:15%" class="text-end" data-filter="number">Başlangıç KM</th>
+                                            <th style="width:15%" class="text-end" data-filter="number">Bitiş KM</th>
+                                            <th style="width:15%" class="text-end" data-filter="number">Yapılan KM</th>
                                             <th style="width:10%" class="text-center">İşlemler</th>
                                         </tr>
                                     </thead>
@@ -1048,13 +1049,13 @@ if ($filter === 'muayene') {
                                     <thead class="table-light">
                                         <tr>
                                             <th class="text-center" style="width:5%">Sıra</th>
-                                            <th style="width:12%">Plaka</th>
-                                            <th style="width:12%">Servis Giriş</th>
-                                            <th style="width:12%">Servis Çıkış</th>
-                                            <th style="width:10%" class="text-end">Giriş KM</th>
-                                            <th style="width:10%" class="text-end">Çıkış KM</th>
-                                            <th style="width:20%">Servis Nedeni</th>
-                                            <th style="width:10%" class="text-center">İkame Araç</th>
+                                            <th style="width:12%" data-filter="string">Plaka</th>
+                                            <th style="width:12%" data-filter="date">Servis Giriş</th>
+                                            <th style="width:12%" data-filter="date">Servis Çıkış</th>
+                                            <th style="width:10%" class="text-end" data-filter="number">Giriş KM</th>
+                                            <th style="width:10%" class="text-end" data-filter="number">Çıkış KM</th>
+                                            <th style="width:20%" data-filter="string">Servis Nedeni</th>
+                                            <th style="width:10%" class="text-center" data-filter="string">İkame Araç</th>
                                             <th style="width:10%" class="text-center">İşlemler</th>
                                         </tr>
                                     </thead>
@@ -1077,6 +1078,7 @@ if ($filter === 'muayene') {
                                 </table>
                             </div>
                         </div>
+
 
                     </div>
                 </div>
