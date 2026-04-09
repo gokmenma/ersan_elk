@@ -143,6 +143,7 @@ $(function () {
             { data: "seri_no" },
             { data: "stok", className: "text-center" },
             { data: "durum", className: "text-center" },
+            { data: "aciklama", defaultContent: "" },
             { data: "tarih" },
             { data: "islemler", className: "text-center", orderable: false },
         ],
