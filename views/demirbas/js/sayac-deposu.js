@@ -1,27 +1,39 @@
 $(function () {
     var apiUrl = "views/demirbas/api.php";
 
-    // Preloader Manager - Gruplanmış AJAX takibi ile pırpır yapmayı önler
+    var loaderTimer = null;
+    var failSafeTimer = null;
+
+    // Preloader Manager - Akıllı AJAX Takibi (Pırpır önleyici)
     $(document).ajaxStart(function() {
-        $("#personel-loader").stop(true, true).fadeIn(200);
+        // Hızlı işlemler için preloader'ı hemen açma, 300ms bekle
+        clearTimeout(loaderTimer);
+        loaderTimer = setTimeout(function() {
+            if ($.active > 0) {
+                $("#personel-loader").stop(true, true).fadeIn(200);
+            }
+        }, 300);
+
+        // Fail-safe: Her işlem başladığında 10 saniyelik zorla kapatma sayacını kur/yenile
+        clearTimeout(failSafeTimer);
+        failSafeTimer = setTimeout(function() {
+            if ($("#personel-loader").is(":visible")) {
+                console.warn("Preloader zorla kapatıldı (Güvenlik Zaman Aşımı)");
+                $("#personel-loader").fadeOut(600);
+            }
+        }, 10000);
     });
 
     $(document).ajaxStop(function() {
-        // Kısa bir gecikme ile gerçekten bittiğinden emin ol ($.active ile kontrol et)
+        clearTimeout(loaderTimer); // Başlamamışsa (işlem çok hızlıysa) loader hiç açılmayacak
+        // İşlemler bittiğinde kısa bir gecikme ile (başka işlem başlamazsa) kapat
         setTimeout(function() {
             if ($.active === 0) {
-                $("#personel-loader").fadeOut(600);
+                $("#personel-loader").stop(true, true).fadeOut(600);
+                clearTimeout(failSafeTimer);
             }
         }, 200);
     });
-
-    // Fail-safe: Herhangi bir sebeple takılırsa 10 saniye sonra zorla kapat
-    setTimeout(function() {
-        if ($("#personel-loader").is(":visible")) {
-            console.warn("Preloader zorla kapatıldı (Timeout)");
-            $("#personel-loader").fadeOut(600);
-        }
-    }, 10000);
 
     // Güvenli DataTable başlatma (Otomatik Preloader Desteği ile)
     function safeInitTable(selector, customOptions) {
@@ -190,11 +202,12 @@ $(function () {
             { data: "hareket_tipi" },
             { data: "demirbas_adi" },
             { data: "seri_no" },
+            { data: "miktar", className: "text-center" },
             { data: "lokasyon_personel" },
             { data: "tarih", className: "text-center" },
             { data: "islem", className: "text-center", orderable: false, searchable: false },
         ],
-        order: [[0, "desc"]],
+        order: [[7, "desc"]],
         pageLength: 25,
     });
 
@@ -1019,11 +1032,29 @@ $(function () {
             $("#kasiyeTopluAdetV2").text("0");
             $modalEl.find(".alert-soft-info").hide(); // Seçim bilgisini gizle
         } else {
-            // Seçili sayaçlar var
+            // Seçili sayaçlar var - Toplam miktarı hesapla
+            var totalStok = 0;
+            if (!isTumuSecildi) {
+                $(".sayac-select:checked").each(function() {
+                    var rowData = depoSayacTable.row($(this).closest('tr')).data();
+                    if (rowData) {
+                        totalStok += parseInt(rowData.stok) || 0;
+                    }
+                });
+            } else {
+                // Tümünü seç modunda tam miktar hesaplamak için ek bir API gerekebilir 
+                // ya da şimdilik sadece seçili kayıt sayısını gösterelim
+                totalStok = selected.length; 
+            }
+
             $("#kasiye_toplu_ids").val(selected.join(','));
             $("#kasiye_is_toplu").val("1");
             $("#kasiyeAdetRow").hide();
-            $("#kasiyeTopluAdetV2").text(selected.length);
+            
+            var infoText = selected.length + " kayıt";
+            if (totalStok > selected.length) infoText += " (Toplam " + totalStok + " adet)";
+            $("#kasiyeTopluAdetV2").text(infoText);
+            
             $modalEl.find(".alert-soft-info").show();
         }
         
@@ -1034,11 +1065,14 @@ $(function () {
     // Tekli kaskiye teslim (satırdaki butondan)
     $(document).on("click", ".kaskiye-teslim-btn", function () {
         var id = $(this).data("id");
+        var rowData = depoSayacTable.row($(this).closest('tr')).data();
+        var stok = rowData ? (parseInt(rowData.stok) || 1) : 1;
+        
         $("#kasiye_demirbas_id").val(id);
         $("#kasiye_is_toplu").val("0");
         $("#kasiye_toplu_ids").val("");
         $("#kasiyeAdetRow").hide();
-        $("#kasiyeTopluAdetV2").text("1");
+        $("#kasiyeTopluAdetV2").text(stok + " adet");
         $("#kasiyeTeslimModal .alert-soft-info").show();
         var modal = bootstrap.Modal.getOrCreateInstance(document.getElementById("kasiyeTeslimModal"));
         modal.show();

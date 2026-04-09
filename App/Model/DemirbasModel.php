@@ -25,7 +25,7 @@ class DemirbasModel extends Model
                 d.*,
                 k.tur_adi as kategori_adi,
                 COALESCE(d.miktar, 1) as miktar,
-                (1 - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0)) as kalan_miktar,
+                (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama LIKE 'Hurda Sayaç İade%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi IN ('sarf', 'kayip') AND h2.zimmet_id IS NULL AND h2.silinme_tarihi IS NULL), 0)) as kalan_miktar,
                 (SELECT id FROM demirbas_servis_kayitlari WHERE demirbas_id = d.id AND iade_tarihi IS NULL AND silinme_tarihi IS NULL LIMIT 1) as active_servis_id
             FROM {$this->table} d
             LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
@@ -45,10 +45,10 @@ class DemirbasModel extends Model
             SELECT 
                 d.*,
                 k.tur_adi as kategori_adi,
-                (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0)) as kalan_miktar
+                (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama LIKE 'Hurda Sayaç İade%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi IN ('sarf', 'kayip') AND h2.zimmet_id IS NULL AND h2.silinme_tarihi IS NULL), 0)) as kalan_miktar
             FROM {$this->table} d
             LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
-            WHERE (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0)) > 0 AND d.firma_id = ?
+            WHERE (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama LIKE 'Hurda Sayaç İade%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi IN ('sarf', 'kayip') AND h2.zimmet_id IS NULL AND h2.silinme_tarihi IS NULL), 0)) > 0 AND d.firma_id = ?
             ORDER BY k.tur_adi, d.demirbas_adi
         ");
         $sql->execute([$_SESSION['firma_id']]);
@@ -80,8 +80,8 @@ class DemirbasModel extends Model
             SELECT 
                 COUNT(*) as toplam_cesit,
                 COALESCE(SUM(miktar), 0) as toplam_adet,
-                SUM((COALESCE(miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = demirbas.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = demirbas.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0))) as stokta_kalan,
-                (COALESCE(SUM(miktar), 0) - SUM((COALESCE(miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = demirbas.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = demirbas.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0)))) as zimmetli_adet
+                SUM((COALESCE(miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = demirbas.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = demirbas.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama LIKE 'Hurda Sayaç İade%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0))) as stokta_kalan,
+                (COALESCE(SUM(miktar), 0) - SUM((COALESCE(miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = demirbas.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = demirbas.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama LIKE 'Hurda Sayaç İade%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0)))) as zimmetli_adet
             FROM {$this->table}
             WHERE firma_id = ?
         ");
@@ -129,7 +129,7 @@ class DemirbasModel extends Model
 
         $stockFilter = "";
         if ($type !== 'all') {
-            $stockFilter = " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0)) > 0";
+            $stockFilter = " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama LIKE 'Hurda Sayaç İade%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi IN ('sarf', 'kayip') AND h2.zimmet_id IS NULL AND h2.silinme_tarihi IS NULL), 0)) > 0";
         }
 
         $lokasyonFilter = "";
@@ -166,7 +166,7 @@ class DemirbasModel extends Model
     {
         $sql = $this->db->prepare("
             SELECT d.*, k.tur_adi as kategori_adi,
-            (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0)) as dynamic_kalan
+            (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama LIKE 'Hurda Sayaç İade%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi IN ('sarf', 'kayip') AND h2.zimmet_id IS NULL AND h2.silinme_tarihi IS NULL), 0)) as dynamic_kalan
             FROM {$this->table} d
             LEFT JOIN tanimlamalar k ON d.kategori_id = k.id AND k.grup = 'demirbas_kategorisi'
             WHERE d.id = ?
@@ -292,8 +292,8 @@ class DemirbasModel extends Model
         $selectCols = "SELECT 
                         d.*,
                         k.tur_adi as kategori_adi,
-                        1 as miktar_val,
-                        (1 - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0)) as kalan_miktar,
+                        COALESCE(d.miktar, 1) as miktar_val,
+                        (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama LIKE 'Hurda Sayaç İade%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi IN ('sarf', 'kayip') AND h2.zimmet_id IS NULL AND h2.silinme_tarihi IS NULL), 0)) as kalan_miktar,
                         (SELECT id FROM demirbas_servis_kayitlari WHERE demirbas_id = d.id AND iade_tarihi IS NULL AND silinme_tarihi IS NULL LIMIT 1) as active_servis_id";
 
         $fromSql = " FROM {$this->table} d
@@ -533,7 +533,7 @@ class DemirbasModel extends Model
                     AND LOWER(TRIM(COALESCE(d.durum, ''))) NOT LIKE 'kaskiye%' 
                     AND NOT EXISTS (SELECT 1 FROM demirbas_zimmet z2 WHERE z2.demirbas_id = d.id AND z2.durum = 'teslim' AND z2.silinme_tarihi IS NULL)";
             } elseif ($statusFilter === 'zimmetli') {
-                $searchWhere .= " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0)) < COALESCE(d.miktar, 1) 
+                $searchWhere .= " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama LIKE 'Hurda Sayaç İade%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi IN ('sarf', 'kayip') AND h2.zimmet_id IS NULL AND h2.silinme_tarihi IS NULL), 0)) < COALESCE(d.miktar, 1) 
                     AND LOWER(TRIM(COALESCE(d.durum, ''))) NOT LIKE '%hurda%' 
                     AND LOWER(TRIM(COALESCE(d.demirbas_adi, ''))) NOT LIKE '%hurda%'
                     AND LOWER(TRIM(COALESCE(d.durum, ''))) NOT LIKE 'kaskiye%'";
@@ -553,9 +553,9 @@ class DemirbasModel extends Model
             $params['inv_kat'] = $inventoryKatAdi;
 
             if ($inventoryType === 'bosta') {
-                $searchWhere .= " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0)) > 0";
+                $searchWhere .= " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama LIKE 'Hurda Sayaç İade%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi IN ('sarf', 'kayip') AND h2.zimmet_id IS NULL AND h2.silinme_tarihi IS NULL), 0)) > 0";
             } elseif ($inventoryType === 'zimmetli') {
-                $searchWhere .= " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0)) < COALESCE(d.miktar, 1) AND d.durum NOT IN ('arizali', 'hurda')";
+                $searchWhere .= " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama LIKE 'Hurda Sayaç İade%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi IN ('sarf', 'kayip') AND h2.zimmet_id IS NULL AND h2.silinme_tarihi IS NULL), 0)) < COALESCE(d.miktar, 1) AND d.durum NOT IN ('arizali', 'hurda')";
             } elseif ($inventoryType === 'arizali') {
                 $searchWhere .= " AND LOWER(d.durum) = 'arizali'";
             } elseif ($inventoryType === 'hurda') {
@@ -813,12 +813,12 @@ class DemirbasModel extends Model
         $statusFilter = $request['status_filter'] ?? null;
         if (!empty($statusFilter)) {
             if ($statusFilter === 'bosta' || $statusFilter === 'yeni') {
-                $searchWhere .= " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0)) > 0 
+                $searchWhere .= " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama LIKE 'Hurda Sayaç İade%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi IN ('sarf', 'kayip') AND h2.zimmet_id IS NULL AND h2.silinme_tarihi IS NULL), 0)) > 0 
                     AND LOWER(TRIM(COALESCE(d.durum, ''))) NOT LIKE '%hurda%' 
                     AND LOWER(TRIM(COALESCE(d.demirbas_adi, ''))) NOT LIKE '%hurda%'
                     AND LOWER(TRIM(COALESCE(d.durum, ''))) NOT LIKE 'kaskiye%'";
             } elseif ($statusFilter === 'zimmetli') {
-                $searchWhere .= " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0)) < COALESCE(d.miktar, 1) 
+                $searchWhere .= " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama LIKE 'Hurda Sayaç İade%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi IN ('sarf', 'kayip') AND h2.zimmet_id IS NULL AND h2.silinme_tarihi IS NULL), 0)) < COALESCE(d.miktar, 1) 
                     AND LOWER(TRIM(COALESCE(d.durum, ''))) NOT LIKE '%hurda%' 
                     AND LOWER(TRIM(COALESCE(d.demirbas_adi, ''))) NOT LIKE '%hurda%'
                     AND LOWER(TRIM(COALESCE(d.durum, ''))) NOT LIKE 'kaskiye%'";

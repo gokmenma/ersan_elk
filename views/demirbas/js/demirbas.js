@@ -2041,6 +2041,17 @@ $(document).on("click", ".zimmet-iade", function (e) {
     $("#iadeTarihLabel").text("Tüketim Tarihi *");
     $("#iadeAciklamaLabel").text("Tüketim ile ilgili notlar...");
     $("#iadeKaydetText").text("Tüketim Olarak İşle");
+  } else if (islemTuru === "montaj_yap") {
+    $("#iadeModalTitle").html(
+      '<i data-feather="plus-circle" class="me-2"></i>Sayaç Montaj İşlemi (Takıldı)',
+    );
+    $("#iadeModalInfoText").text(
+      "Sayacın montajını (sarf) kaydedin. Sistem otomatik olarak sökülen hurda sayacı personelin zimmetine alacaktır.",
+    );
+    $("#iadeMiktarLabel").text("Takılan Miktar (Adet) *");
+    $("#iadeTarihLabel").text("Montaj Tarihi *");
+    $("#iadeAciklamaLabel").text("Montaj/Hurda ile ilgili notlar...");
+    $("#iadeKaydetText").text("Montajı Kaydet ve Hurda Oluştur");
   } else if (isAparat && islemTuru === "depo_iade") {
     $("#iadeModalTitle").html(
       '<i data-feather="corner-down-left" class="me-2"></i>Aparatı Depoya İade Al',

@@ -688,8 +688,9 @@ $title = "Sayaç Deposu";
 									</th>
 									<th class="text-center" style="width:5%">ID</th>
 									<th style="width:15%">Hareket Tipi</th>
-									<th style="width:20%">Sayaç</th>
+									<th style="width:15%">Sayaç</th>
 									<th style="width:15%">Seri / Abone No</th>
+									<th class="text-center" style="width:8%">Adet</th>
 									<th style="width:15%">Lokasyon / Personel</th>
 									<th data-filter="date">Tarih</th>
 									<th style="width:5%" class="text-center">İşlem</th>
