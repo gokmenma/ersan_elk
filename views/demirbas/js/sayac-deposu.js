@@ -147,6 +147,7 @@ $(function () {
             { data: "seri_no" },
             { data: "stok", className: "text-center" },
             { data: "durum", className: "text-center" },
+            { data: "aciklama" },
             { data: "tarih" },
             { data: "islemler", className: "text-center", orderable: false },
         ],
@@ -204,6 +205,7 @@ $(function () {
             { data: "seri_no" },
             { data: "miktar", className: "text-center" },
             { data: "lokasyon_personel" },
+            { data: "aciklama" },
             { data: "tarih", className: "text-center" },
             { data: "islem", className: "text-center", orderable: false, searchable: false },
         ],
@@ -524,19 +526,28 @@ $(function () {
              if (!$("#sayacSecimInfo").length) {
                  $("#depoSayacTable_wrapper").prepend('<div id="sayacSecimInfo"></div>');
              }
-             $("#sayacSecimInfo").attr("class", "alert alert-success py-2 px-3 mb-2 d-flex align-items-center justify-content-between shadow-sm border-0").css({"border-radius":"8px"})
-                 .html('<span><i class="bx bx-check-double me-1"></i> Filtrelenen tüm <strong class="text-success">' + globalSeciliSayacIds.length + '</strong> kayıt seçildi.</span><span><a href="javascript:void(0);" id="secimTemizle" class="text-danger fw-bold text-decoration-none">Temizle</a></span>');
+             $("#sayacSecimInfo").attr("class", "alert alert-success py-1 px-2 mb-2 d-flex align-items-center shadow-sm border-0").css({"border-radius":"8px"})
+                 .html('<div class="d-flex align-items-center gap-2">' +
+                       '<button type="button" id="secimTemizle" class="btn btn-sm btn-white border shadow-sm p-1 px-2 d-flex align-items-center text-danger" style="font-size:11px;"><i class="bx bx-x fs-6 me-1"></i>Temizle</button>' +
+                       '<span class="ms-2 small text-dark opacity-75" style="font-size:11px;"><i class="bx bx-check-double me-1 text-success"></i> Filtrelenen tüm <strong class="text-success">' + globalSeciliSayacIds.length + '</strong> kayıt seçildi.</span>' +
+                       '</div>');
              return;
         }
 
         if (count > 0) {
             if (!$("#sayacSecimInfo").length) {
-                var html = '<div id="sayacSecimInfo" class="alert alert-info py-2 px-3 mb-2 d-flex align-items-center justify-content-between shadow-sm border-0" style="background: #e0f2fe; color: #0369a1; border-radius: 8px;">';
-                html += '<span><i class="bx bx-check-circle me-1"></i> Sayfadan <strong id="secimAdet">' + count + '</strong> / ' + total + ' kayıt seçildi</span>';
-                html += '<span>';
-                html += '<a href="javascript:void(0);" id="secimTumuFiltre" class="text-primary fw-bold me-3 text-decoration-none">Tüm Filtrelenenleri Seç</a>';
-                html += '<a href="javascript:void(0);" id="secimTemizle" class="text-danger fw-bold text-decoration-none">Temizle</a>';
-                html += '</span></div>';
+                var html = `
+                    <div id="sayacSecimInfo" class="alert alert-info py-1 px-2 mb-2 d-flex align-items-center shadow-sm border-0" style="background: #e0f2fe; color: #0369a1; border-radius: 8px;">
+                        <div class="d-flex align-items-center gap-2">
+                            <button type="button" id="secimTumuFiltre" class="btn btn-sm btn-white border shadow-sm p-1 px-2 d-flex align-items-center text-primary" style="font-size:11px;">
+                                <i class="bx bx-select-multiple fs-6 me-1"></i> Tüm Filtrelenenleri Seç
+                            </button>
+                            <button type="button" id="secimTemizle" class="btn btn-sm btn-white border shadow-sm p-1 px-2 d-flex align-items-center text-danger" style="font-size:11px;">
+                                <i class="bx bx-x fs-6 me-1"></i> Temizle
+                            </button>
+                            <span class="ms-2 small opacity-75" style="font-size:11px;"><i class="bx bx-check-circle me-1"></i> Sayfadan <strong id="secimAdet">${count}</strong> / ${total} kayıt seçildi</span>
+                        </div>
+                    </div>`;
                 $("#depoSayacTable_wrapper").prepend(html);
             } else {
                 $("#secimAdet").text(count);
@@ -1459,20 +1470,27 @@ $(function () {
                 $("#hareketTable_wrapper").prepend('<div id="hareketSecimInfo"></div>');
                 $info = $("#hareketSecimInfo");
             }
-            $info.attr("class", "alert alert-success py-2 px-3 mb-2 d-flex align-items-center justify-content-between shadow-sm border-0").css({"border-radius":"8px"})
-                  .html('<span><i class="bx bx-check-double me-1"></i> Filtrelenen tüm <strong class="text-success">' + globalSeciliHareketIds.length + '</strong> hareket kaydı seçildi.</span><span><a href="javascript:void(0);" id="hareketSecimTemizle" class="text-danger fw-bold text-decoration-none">Temizle</a></span>');
+            $info.attr("class", "alert alert-success py-1 px-2 mb-2 d-flex align-items-center shadow-sm border-0").css({"border-radius":"8px"})
+                  .html('<div class="d-flex align-items-center gap-2">' +
+                        '<button type="button" id="hareketSecimTemizle" class="btn btn-sm btn-white border shadow-sm p-1 px-2 d-flex align-items-center text-danger" style="font-size:11px;"><i class="bx bx-x fs-6 me-1"></i>Temizle</button>' +
+                        '<span class="ms-2 small text-dark opacity-75" style="font-size:11px;"><i class="bx bx-check-double me-1 text-success"></i> Filtrelenen tüm <strong class="text-success">' + globalSeciliHareketIds.length + '</strong> hareket kaydı seçildi.</span>' +
+                        '</div>');
             return;
         }
 
         if (selectedOnPage > 0) {
             if ($info.length === 0) {
                 var html = `
-                    <div id="hareketSecimInfo" class="alert alert-info py-2 px-3 mb-2 d-flex align-items-center justify-content-between shadow-sm border-0" style="background: #e0f2fe; color: #0369a1; border-radius: 8px;">
-                        <span><i class="bx bx-check-circle me-1"></i> Sayfadan <strong id="hareketSecimAdet">${selectedOnPage}</strong> / ${totalOnPage} hareket kaydı seçildi</span>
-                        <span>
-                            <a href="javascript:void(0);" id="hareketSecimTumuFiltre" class="text-primary fw-bold me-3 text-decoration-none">Tüm Filtrelenenleri Seç</a>
-                            <a href="javascript:void(0);" id="hareketSecimTemizle" class="text-danger fw-bold text-decoration-none">Temizle</a>
-                        </span>
+                    <div id="hareketSecimInfo" class="alert alert-info py-1 px-2 mb-2 d-flex align-items-center shadow-sm border-0" style="background: #e0f2fe; color: #0369a1; border-radius: 8px;">
+                        <div class="d-flex align-items-center gap-2">
+                             <button type="button" id="hareketSecimTumuFiltre" class="btn btn-sm btn-white border shadow-sm p-1 px-2 d-flex align-items-center text-primary" style="font-size:11px;">
+                                <i class="bx bx-select-multiple fs-6 me-1"></i> Tüm Filtrelenenleri Seç
+                             </button>
+                             <button type="button" id="hareketSecimTemizle" class="btn btn-sm btn-white border shadow-sm p-1 px-2 d-flex align-items-center text-danger" style="font-size:11px;">
+                                <i class="bx bx-x fs-6 me-1"></i> Temizle
+                             </button>
+                             <span class="ms-2 small opacity-75" style="font-size:11px;"><i class="bx bx-check-circle me-1"></i> Sayfadan <strong id="hareketSecimAdet">${selectedOnPage}</strong> / ${totalOnPage} hareket kaydı seçildi</span>
+                        </div>
                     </div>
                 `;
                 $("#hareketTable_wrapper").prepend(html);

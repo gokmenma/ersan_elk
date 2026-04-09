@@ -110,8 +110,8 @@ foreach ($personeller as $p) {
                         <i data-feather="info" class="me-3 text-warning flex-shrink-0"
                             style="width: 24px; height: 24px;"></i>
                         <div class="small text-dark">
-                            Personelin zimmetindeki hurda sayaçları depoya iade almak için bu formu kullanın.
-                            Hurda sayaçlar depoya girdikten sonra <strong>Kaskiye Teslim</strong> işlemi yapılabilir.
+                            Personelin zimmetindeki hurda sayaçları depoya iade almak için bu formu kullanın. 
+                            Dilerseniz <strong>Doğrudan Kaskiye</strong> seçeneği ile tek adımda işlemi tamamlayabilirsiniz.
                         </div>
                     </div>
 
@@ -135,6 +135,19 @@ foreach ($personeller as $p) {
                         <!-- Sayaç Adı -->
                         <div class="col-md-7">
                             <?php echo Form::FormFloatInput('text', 'hurda_sayac_adi', '', 'Opsiyonel (Boş bırakılırsa otomatik oluşturulur)', 'Hurda Sayaç Adı', 'package', 'form-control', false); ?>
+                        </div>
+
+                        <!-- Doğrudan Kaskiye -->
+                        <div class="col-12">
+                            <div class="p-3 border rounded border-warning bg-warning bg-opacity-10">
+                                <div class="form-check form-switch mb-0">
+                                    <input class="form-check-input me-2" type="checkbox" id="direct_kaski" name="direct_kaski" value="1" style="width: 2.5em; height: 1.2em;">
+                                    <label class="form-check-label fw-bold text-dark" for="direct_kaski">
+                                        Doğrudan KASKİ'ye Teslim Et
+                                    </label>
+                                    <div class="text-muted small mt-1 ml-4">Bu seçenek işaretlenirse, iade alınan sayaçlar bekletilmeden KASKİ'ye teslim edilmiş olarak sisteme işlenecektir.</div>
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Açıklama -->

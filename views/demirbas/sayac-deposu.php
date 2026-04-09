@@ -535,6 +535,7 @@ $title = "Sayaç Deposu";
 									<th style="width:12%" data-filter="string">Abone No</th>
 									<th style="width:8%" class="text-center" data-filter="select">Stok</th>
 									<th style="width:10%" class="text-center" data-filter="select">Durum</th>
+									<th style="width:15%" data-filter="string">Açıklama</th>
 									<th style="width:10%" data-filter="date">Tarih</th>
 									<th style="width:5%" class="text-center" data-filter="none">İşlemler</th>
 								</tr>
@@ -634,14 +635,14 @@ $title = "Sayaç Deposu";
 						<table id="sayacPersonelTable" class="table table-bordered table-hover nowrap w-100 mb-0">
 							<thead class="table-light text-uppercase small fw-bold">
 								<tr>
-									<th style="width:5%">#</th>
-									<th style="width:20%">Personel</th>
-									<th class="text-center" style="width:12%">Aldığı Yeni</th>
-									<th class="text-center" style="width:12%">Taktığı</th>
-									<th class="text-center" style="width:10%">Elinde Yeni</th>
-									<th class="text-center" style="width:12%">Aldığı Hurda</th>
-									<th class="text-center" style="width:12%">Teslim Hurda</th>
-									<th class="text-center" style="width:10%">Elinde Hurda</th>
+									<th style="width:5%" data-filter="none">#</th>
+									<th style="width:20%" data-filter="string">Personel</th>
+									<th class="text-center" style="width:12%" data-filter="number">Aldığı Yeni</th>
+									<th class="text-center" style="width:12%" data-filter="number">Taktığı</th>
+									<th class="text-center" style="width:10%" data-filter="number">Elinde Yeni</th>
+									<th class="text-center" style="width:12%" data-filter="number">Aldığı Hurda</th>
+									<th class="text-center" style="width:12%" data-filter="number">Teslim Hurda</th>
+									<th class="text-center" style="width:10%" data-filter="number">Elinde Hurda</th>
 								</tr>
 							</thead>
 							<tbody></tbody>
@@ -686,14 +687,15 @@ $title = "Sayaç Deposu";
 											<input class="form-check-input" type="checkbox" id="selectAllHareket">
 										</div>
 									</th>
-									<th class="text-center" style="width:5%">ID</th>
-									<th style="width:15%">Hareket Tipi</th>
-									<th style="width:15%">Sayaç</th>
-									<th style="width:15%">Seri / Abone No</th>
-									<th class="text-center" style="width:8%">Adet</th>
-									<th style="width:15%">Lokasyon / Personel</th>
+									<th class="text-center" style="width:5%" data-filter="number">ID</th>
+									<th style="width:15%" data-filter="string">Hareket Tipi</th>
+									<th style="width:15%" data-filter="string">Sayaç</th>
+									<th style="width:15%" data-filter="string">Seri / Abone No</th>
+									<th class="text-center" style="width:8%" data-filter="number">Adet</th>
+									<th style="width:15%" data-filter="string">Lokasyon / Personel</th>
+									<th style="width:15%" data-filter="string">Açıklama</th>
 									<th data-filter="date">Tarih</th>
-									<th style="width:5%" class="text-center">İşlem</th>
+									<th style="width:5%" class="text-center" data-filter="none">İşlem</th>
 								</tr>
 							</thead>
 							<tbody></tbody>

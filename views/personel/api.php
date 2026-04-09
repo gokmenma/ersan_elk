@@ -577,13 +577,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $personel = $Personel->find($id);
 
             if ($personel) {
-                // Resim yolu kontrolü (PWA resmi öncelikli, eğer dosya varsa)
+                // Resim yolu kontrolü (Sadece yönetici resmi, yoksa dummy)
                 $rootPath = dirname(__DIR__, 2) . '/';
                 $finalResim = 'assets/images/users/user-dummy-img.jpg';
                 
-                if (!empty($personel->personel_resim_yolu) && file_exists($rootPath . $personel->personel_resim_yolu)) {
-                    $finalResim = $personel->personel_resim_yolu;
-                } elseif (!empty($personel->resim_yolu) && file_exists($rootPath . $personel->resim_yolu)) {
+                if (!empty($personel->resim_yolu) && file_exists($rootPath . $personel->resim_yolu)) {
                     $finalResim = $personel->resim_yolu;
                 }
                 
@@ -1003,9 +1001,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // Format specific fields
                 $rootPath = dirname(__DIR__, 2) . '/';
                 $listResim = 'assets/images/users/user-dummy-img.jpg';
-                if (!empty($row->personel_resim_yolu) && file_exists($rootPath . $row->personel_resim_yolu)) {
-                    $listResim = $row->personel_resim_yolu;
-                } elseif (!empty($row->resim_yolu) && file_exists($rootPath . $row->resim_yolu)) {
+                if (!empty($row->resim_yolu) && file_exists($rootPath . $row->resim_yolu)) {
                     $listResim = $row->resim_yolu;
                 }
                 $dataRow['resim_yolu'] = $listResim;

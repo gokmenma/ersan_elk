@@ -100,15 +100,13 @@ if ($id > 0) {
                                     <div class="avatar-lg position-relative" title="Resmi Kayıtlı Fotoğraf">
                                         <?php
                                         $rootRoot = dirname(__DIR__, 2) . '/';
-                                        $resimYolu = 'assets/images/users/user-dummy-img.jpg';
-                                        if (!empty($personel->personel_resim_yolu) && file_exists($rootRoot . $personel->personel_resim_yolu)) {
-                                            $resimYolu = $personel->personel_resim_yolu;
-                                        } elseif (!empty($personel->resim_yolu) && file_exists($rootRoot . $personel->resim_yolu)) {
-                                            $resimYolu = $personel->resim_yolu;
+                                        $resimYoluAdmin = 'assets/images/users/user-dummy-img.jpg';
+                                        if (!empty($personel->resim_yolu) && file_exists($rootRoot . $personel->resim_yolu)) {
+                                            $resimYoluAdmin = $personel->resim_yolu;
                                         }
                                         ?>
                                         <img id="personelImage"
-                                            src="<?php echo $resimYolu; ?>"
+                                            src="<?php echo $resimYoluAdmin; ?>"
                                             alt="" class="img-thumbnail"
                                             style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px !important; cursor: zoom-in;"
                                             onclick="window.open(this.src, '_blank')">
@@ -120,8 +118,18 @@ if ($id > 0) {
                                             style="display: none;">
                                         <div class="text-center mt-1"><small class="text-primary fw-bold" style="font-size: 10px;">Resmi Kayıt</small></div>
                                     </div>
- 
-                                 </div>
+
+                                    <?php if (!empty($personel->personel_resim_yolu) && file_exists($rootRoot . $personel->personel_resim_yolu)): ?>
+                                        <div class="avatar-lg position-relative" title="PWA Profil Fotoğrafı">
+                                            <img id="personelPwaImage"
+                                                src="<?php echo $personel->personel_resim_yolu; ?>"
+                                                alt="" class="img-thumbnail"
+                                                style="width: 80px; height: 80px; object-fit: cover; border-radius: 8px !important; cursor: zoom-in;"
+                                                onclick="window.open(this.src, '_blank')">
+                                            <div class="text-center mt-1"><small class="text-success fw-bold" style="font-size: 10px;">Mobil</small></div>
+                                        </div>
+                                    <?php endif; ?>
+                                </div>
                                 <div>
                                     <h5 class="font-size-16 mb-1 text-truncate">
                                         <?php echo $adi_soyadi_ekipno; ?>

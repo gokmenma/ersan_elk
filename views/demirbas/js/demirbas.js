@@ -4433,6 +4433,7 @@ $(document).on("click", "#btnHurdaIadeKaydet", function () {
   let adet = $("#hurda_iade_adet").val();
   let sayacAdi = $("#hurda_sayac_adi").val();
   let aciklama = $("#hurda_aciklama").val();
+  let directKaski = $("#direct_kaski").is(":checked") ? "1" : "0";
 
   // Eğer zimmet listesinden seçim yapıldıysa "select" mode
   if (selectedZimmetler.length > 0) {
@@ -4451,6 +4452,7 @@ $(document).on("click", "#btnHurdaIadeKaydet", function () {
           selected_ids: JSON.stringify(selectedZimmetler),
           hurda_iade_tarihi: iadeTarihi,
           hurda_aciklama: aciklama,
+          direct_kaski: directKaski,
         });
       }
     });
@@ -4475,6 +4477,7 @@ $(document).on("click", "#btnHurdaIadeKaydet", function () {
       hurda_iade_adet: adet,
       hurda_sayac_adi: sayacAdi,
       hurda_aciklama: aciklama,
+      direct_kaski: directKaski,
     });
   }
 });

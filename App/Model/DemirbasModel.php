@@ -356,7 +356,8 @@ class DemirbasModel extends Model
                             OR k.tur_adi LIKE :search
                             OR d.marka LIKE :search
                             OR d.model LIKE :search
-                            OR d.seri_no LIKE :search)";
+                            OR d.seri_no LIKE :search
+                            OR d.aciklama LIKE :search)";
             $params['search'] = "%$search%";
         }
 
@@ -377,9 +378,10 @@ class DemirbasModel extends Model
             $colSearchMap = [
                 1 => 'd.demirbas_adi',
                 2 => 'CONCAT_WS(" ", d.marka, d.model)',
-                3 => '(CASE WHEN d.seri_no IS NOT NULL AND d.seri_no != "" THEN d.seri_no ELSE d.demirbas_adi END)',
+                3 => 'd.seri_no', // We will handle dual search in the filter loop
                 5 => 'd.durum',
-                6 => 'd.edinme_tarihi'
+                6 => 'd.aciklama',
+                7 => 'd.edinme_tarihi'
             ];
         } else {
             // aparat: 0=>sira, 1=>adi, 2=>marka_model, 3=>seri, 4=>stok, 5=>durum, 6=>tarih, 7=>islemler
@@ -388,7 +390,8 @@ class DemirbasModel extends Model
                 2 => 'CONCAT_WS(" ", d.marka, d.model)',
                 3 => 'd.seri_no',
                 5 => 'd.durum',
-                6 => 'd.edinme_tarihi'
+                6 => 'd.aciklama',
+                7 => 'd.edinme_tarihi'
             ];
         }
 
@@ -411,7 +414,7 @@ class DemirbasModel extends Model
                         if ($val !== '' || $val2 !== null || in_array($mode, ['null', 'not_null', 'multi'])) {
 
                             // Tarih sütunu için d.m.Y -> Y-m-d dönüşümü
-                            if (($tab === 'demirbas' && $colIdx == 9) || ($tab === 'sayac' && $colIdx == 6) || ($tab === 'aparat' && $colIdx == 6)) {
+                            if (($tab === 'demirbas' && $colIdx == 9) || ($tab === 'sayac' && $colIdx == 7) || ($tab === 'aparat' && $colIdx == 7)) {
                                 $field = 'd.edinme_tarihi';
                             }
 
@@ -517,8 +520,14 @@ class DemirbasModel extends Model
                         }
                     } else {
                         // Basit arama (colon yoksa varsayılan: 'contains')
-                        $searchWhere .= " AND $field LIKE :$paramKey";
-                        $params[$paramKey] = "%$searchValue%";
+                        if ($tab === 'sayac' && $colIdx == 3) {
+                            $searchWhere .= " AND (d.seri_no LIKE :$paramKey OR d.demirbas_adi LIKE :{$paramKey}_adi)";
+                            $params[$paramKey] = "%$searchValue%";
+                            $params[$paramKey . "_adi"] = "%$searchValue%";
+                        } else {
+                            $searchWhere .= " AND $field LIKE :$paramKey";
+                            $params[$paramKey] = "%$searchValue%";
+                        }
                     }
                 }
             }
