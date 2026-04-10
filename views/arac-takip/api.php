@@ -786,7 +786,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $aracMap[$normalized] = $a->id;
                 }
 
+                $firma_id = $_SESSION['firma_id'] ?? 0;
+                if (!$firma_id) {
+                    throw new Exception("Oturum süresi dolmuş veya firma bilgisi bulunamadı. Lütfen tekrar giriş yapın.");
+                }
+
                 $rowNum = 0;
+                $debugDate = "";
                 for ($i = 1; $i < count($rows); $i++) {
                     $row = $rows[$i];
                     $rowNum = $i + 1;
@@ -807,7 +813,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $cleanNum = function($val) {
                         if (empty($val)) return 0;
                         // Binlik ayırıcıları temizle (Türkçe formatında . binliktir)
-                        // Örn: 1.234,50 -> 1234,50
                         $val = str_replace([' ', '.'], '', $val);
                         // Ondalık ayırıcıyı nokta yap (Türkçe formatında , ondalıktır)
                         $val = str_replace(',', '.', $val);
@@ -829,12 +834,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     }
                     $arac_id_id_yukle = $aracMap[$plakaNorm];
 
-                    // Tarihi dönüştür
-                    $tarih = Date::convertExcelDate($tarihRaw);
+                    // Tarihi dönüştür (Kullanıcının isteği üzerine Date::Ymd kullanıldı)
+                    $tarih = Date::Ymd($tarihRaw);
                     if (!$tarih) {
                         $errors[] = "Satır $rowNum ($plaka): Geçersiz tarih '$tarihRaw'.";
                         continue;
                     }
+
+                    // İlk satırın tarihini debug için sakla
+                    if ($debugDate === "") $debugDate = "Excel: $tarihRaw -> Sistem: $tarih";
 
                     // Başlangıç KM
                     $bVal = 0;
@@ -857,9 +865,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
                     $mevcutKayit = $Km->kayitVarMi($arac_id_id_yukle, $tarih, null, true);
                     $saveData = [
-                        'firma_id' => $_SESSION['firma_id'],
+                        'firma_id' => $firma_id,
                         'arac_id' => $arac_id_id_yukle,
-                        'tarih' => $tarih,
+                        'tarih' => Date::Ymd($tarih),
                         'baslangic_km' => $bVal,
                         'bitis_km' => $eVal,
                         'yapilan_km' => ($eVal > 0 && $bVal > 0) ? ($eVal - $bVal) : 0,
@@ -891,9 +899,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 // KM Excel yükleme logla
                 $SystemLog = new SystemLogModel();
                 $userId = $_SESSION['user_id'] ?? 0;
-                $SystemLog->logAction($userId, 'KM Excel Yükleme', "Excel'den {$success} adet KM kaydı yüklendi, {$skip} atlandı.", SystemLogModel::LEVEL_IMPORTANT);
+                $SystemLog->logAction($userId, 'KM Excel Yükleme', "Excel'den {$success} adet KM kaydı yüklendi, {$skip} atlandı. Debug: $debugDate", SystemLogModel::LEVEL_IMPORTANT);
                 
-                $message = "$success kayıt başarıyla işlendi.";
+                echo json_encode([
+                    'status' => 'success', 
+                    'success' => $success, 
+                    'skip' => $skip, 
+                    'errors' => $errors, 
+                    'unmatchedPlates' => $unmatchedPlates,
+                    'debugDate' => $debugDate
+                ]);
+                exit;
                 if ($success === 0) {
                     $message = "Yüklenecek veri bulunamadı.";
                     if ($skip > 0) $message .= " ($skip satır atlandı. Lütfen Bitiş KM sütununu kontrol edin)";

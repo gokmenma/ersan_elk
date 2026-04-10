@@ -994,6 +994,33 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         margin: 0 !important;
     }
 
+    .do-sub-row td {
+        background-color: rgba(var(--bs-primary-rgb), 0.02) !important;
+        font-size: 11px !important;
+    }
+
+    .do-sub-label {
+        font-size: 9px;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: #94a3b8;
+        display: block;
+        margin-bottom: 2px;
+    }
+
+    .do-badge-sub {
+        display: inline-block;
+        padding: 2px 6px;
+        border-radius: 4px;
+        font-weight: 600;
+        font-size: 10.5px;
+    }
+
+    .do-badge-sub-toplam { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
+    .do-badge-sub-okunan { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+    .do-badge-sub-kalan { background: #fff1f2; color: #9f1239; border: 1px solid #fecdd3; }
+    }
+
     .column-search::placeholder {
         color: #adb5bd;
         text-transform: none;
@@ -3492,29 +3519,44 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             } else {
                 // GENEL TOPLAM SATIRI
                 html += '<tr class="do-genel-row">';
-                html += '<td class="fix-col-bolge fw-bold" style="font-size: 13px;"><i class="bx bx-globe me-1 text-primary"></i>GENEL TOPLAM</td>';
+                html += '<td rowspan="2" class="fix-col-bolge fw-bold" style="font-size: 13px; vertical-align: middle;"><i class="bx bx-globe me-1 text-primary"></i>GENEL TOPLAM</td>';
                 donemler.forEach(function (donem, idx) {
                     const isLast = idx === donemler.length - 1;
                     const d = String(donem);
-                    const g = genel[d] || { toplam_defter: 0, okunan_defter: 0, okunmayan_defter: 0, oran: 0 };
+                    const g = genel[d] || { toplam_defter: 0, okunan_defter: 0, okunmayan_defter: 0, oran: 0, sub_toplam: 0, sub_okunan: 0, sub_kalan: 0, sub_oran: 0 };
                     const oranClass = g.oran >= 80 ? 'do-oran-high' : (g.oran >= 50 ? 'do-oran-medium' : 'do-oran-low');
 
-                    html += '<td><span class="do-badge-toplam clickable no-upgrade" data-type="toplam_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Toplam defterleri görün">' + g.toplam_defter + '</span></td>';
-                    html += '<td><span class="do-badge-okunan clickable no-upgrade" data-type="okunan_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Okunan defterleri görün">' + g.okunan_defter + '</span></td>';
+                    html += '<td><span class="do-sub-label">Defter</span><span class="do-badge-toplam clickable no-upgrade" data-type="toplam_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Toplam defterleri görün">' + g.toplam_defter + '</span></td>';
+                    html += '<td><span class="do-sub-label">Okunan</span><span class="do-badge-okunan clickable no-upgrade" data-type="okunan_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Okunan defterleri görün">' + g.okunan_defter + '</span></td>';
 
                     if (g.okunmayan_defter > 0) {
-                        html += '<td><span class="do-badge-okunmayan clickable no-upgrade" data-type="okunmayan_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Okunmayan defterleri görün">' + g.okunmayan_defter + '</span></td>';
+                        html += '<td><span class="do-sub-label">Kalan</span><span class="do-badge-okunmayan clickable no-upgrade" data-type="okunmayan_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Okunmayan defterleri görün">' + g.okunmayan_defter + '</span></td>';
                     } else {
-                        html += '<td><span class="do-badge-okunmayan zero no-upgrade">' + g.okunmayan_defter + '</span></td>';
+                        html += '<td><span class="do-sub-label">Kalan</span><span class="do-badge-okunmayan zero no-upgrade">' + g.okunmayan_defter + '</span></td>';
                     }
 
-                    let subOranClassGenel = g.sub_oran >= 80 ? 'text-success' : (g.sub_oran >= 50 ? 'text-warning' : 'text-danger');
-                    let cellHtmlGenel = '<div class="d-flex flex-column align-items-center gap-0">';
-                    cellHtmlGenel += '<span class="do-badge-oran ' + oranClass + '" style="padding: 2px 6px;">' + g.oran + '%</span>';
-                    cellHtmlGenel += '<small class="' + subOranClassGenel + ' fw-bold" style="font-size: 8.5px;" title="Abone Başarı Oranı (Okunan/Gidilen)">A: ' + g.sub_oran + '%</small>';
-                    cellHtmlGenel += '</div>';
+                    html += '<td class="' + (isLast ? 'do-period-end' : '') + '">';
+                    html += '<div class="d-flex flex-column align-items-center gap-1">';
+                    html += '<span class="do-sub-label text-center">Başarı</span>';
+                    html += '<span class="do-badge-oran ' + oranClass + '" style="padding: 2px 6px;">' + g.oran + '%</span>';
+                    html += '</div>';
+                    html += '</td>';
+                });
+                html += '</tr>';
 
-                    html += '<td class="' + (isLast ? 'do-period-end' : '') + '">' + cellHtmlGenel + '</td>';
+                // GENEL TOPLAM ABONE SATIRI
+                html += '<tr class="do-sub-row">';
+                donemler.forEach(function (donem, idx) {
+                    const isLast = idx === donemler.length - 1;
+                    const d = String(donem);
+                    const g = genel[d] || { sub_toplam: 0, sub_okunan: 0, sub_kalan: 0, sub_oran: 0 };
+
+                    html += '<td><span class="do-badge-sub do-badge-sub-toplam">' + (g.sub_toplam || 0).toLocaleString('tr-TR') + '</span> <small class="text-muted d-block" style="font-size:8px;">ABONE</small></td>';
+                    html += '<td><span class="do-badge-sub do-badge-sub-okunan">' + (g.sub_okunan || 0).toLocaleString('tr-TR') + '</span></td>';
+                    html += '<td><span class="do-badge-sub do-badge-sub-kalan">' + (g.sub_kalan || 0).toLocaleString('tr-TR') + '</span></td>';
+                    
+                    let subOranClassGenel = g.sub_oran >= 80 ? 'text-success' : (g.sub_oran >= 50 ? 'text-warning' : 'text-danger');
+                    html += '<td class="' + (isLast ? 'do-period-end' : '') + '"><span class="' + subOranClassGenel + ' fw-bold" style="font-size: 11px;">' + g.sub_oran + '%</span><br/><small style="font-size:7px;">ABONE %</small></td>';
                 });
                 html += '</tr>';
 
@@ -3525,7 +3567,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                     regionIdx++;
 
                     html += '<tr class="do-bolge-row">';
-                    html += '<td class="fix-col-bolge fw-semibold text-start" style="background: ' + regionColor.bg + ';">';
+                    html += '<td rowspan="2" class="fix-col-bolge fw-semibold text-start" style="background: ' + regionColor.bg + '; vertical-align: middle;">';
                     html += '<i class="bx bx-map me-1" style="color: ' + regionColor.text + ';"></i>' + bName;
                     html += '</td>';
 
@@ -3544,15 +3586,26 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                             html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-okunmayan zero no-upgrade">' + bStat.okunmayan_defter + '</span></td>';
                         }
 
-                        let subOranClass = bStat.sub_oran >= 80 ? 'text-success' : (bStat.sub_oran >= 50 ? 'text-warning' : 'text-danger');
-                        let cellHtml = '<div class="d-flex flex-column align-items-center gap-0">';
-                        cellHtml += '<span class="do-badge-oran ' + oranClass + '" style="padding: 2px 6px;">' + bStat.oran + '%</span>';
-                        cellHtml += '<small class="' + subOranClass + ' fw-bold" style="font-size: 8.5px;" title="Abone Başarı Oranı (Okunan/Gidilen)">A: ' + bStat.sub_oran + '%</small>';
-                        cellHtml += '</div>';
-
-                        html += '<td class="' + (isLast ? 'do-period-end' : '') + '" style="background: ' + regionColor.bg + ';">' + cellHtml + '</td>';
+                        html += '<td class="' + (isLast ? 'do-period-end' : '') + '" style="background: ' + regionColor.bg + ';">';
+                        html += '<span class="do-badge-oran ' + oranClass + '" style="padding: 2px 6px;">' + bStat.oran + '%</span>';
+                        html += '</td>';
                     });
+                    html += '</tr>';
 
+                    // BÖLGE ABONE SATIRI
+                    html += '<tr class="do-sub-row">';
+                    donemler.forEach(function (donem, idx) {
+                        const isLast = idx === donemler.length - 1;
+                        const d = String(donem);
+                        const bStat = (bolgeData[bName] && bolgeData[bName][d]) || { sub_toplam: 0, sub_okunan: 0, sub_kalan: 0, sub_oran: 0 };
+
+                        html += '<td><span class="do-badge-sub do-badge-sub-toplam">' + (bStat.sub_toplam || 0).toLocaleString('tr-TR') + '</span></td>';
+                        html += '<td><span class="do-badge-sub do-badge-sub-okunan">' + (bStat.sub_okunan || 0).toLocaleString('tr-TR') + '</span></td>';
+                        html += '<td><span class="do-badge-sub do-badge-sub-kalan">' + (bStat.sub_kalan || 0).toLocaleString('tr-TR') + '</span></td>';
+                        
+                        let subOranClass = bStat.sub_oran >= 80 ? 'text-success' : (bStat.sub_oran >= 50 ? 'text-warning' : 'text-danger');
+                        html += '<td class="' + (isLast ? 'do-period-end' : '') + '"><span class="' + subOranClass + ' fw-bold" style="font-size: 11px;">' + bStat.sub_oran + '%</span></td>';
+                    });
                     html += '</tr>';
                 });
             }

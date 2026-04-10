@@ -1,5 +1,5 @@
 <?php
-$dates = ['3.04.2026', '03.04.2026', '3/04/2026'];
+$dates = ['4/3/2026', '4.3.2026', '4-3-2026'];
 foreach($dates as $d) {
     try {
         $dt = new DateTime($d);
@@ -7,4 +7,10 @@ foreach($dates as $d) {
     } catch (Exception $e) {
         echo "Input: $d | Error: " . $e->getMessage() . "\n";
     }
+}
+
+echo "Using strtotime:\n";
+foreach($dates as $d) {
+    $t = strtotime($d);
+    echo "Input: $d | Result: " . ($t ? date('Y-m-d', $t) : 'Fail') . "\n";
 }

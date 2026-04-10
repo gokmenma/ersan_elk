@@ -1944,6 +1944,14 @@ const AracTakip = {
                                 </div>`;
             }
 
+            if (response.debugDate) {
+              html += `<div class="alert alert-info py-1 mb-2 small">
+                                    <i class="mdi mdi-information-outline me-1"></i>
+                                    <strong>Tarih Kontrolü:</strong> ${response.debugDate}
+                                    <br><small>Eğer bu tarih yanlışsa, puantajda doğru ayı göremiyor olabilirsiniz.</small>
+                                </div>`;
+            }
+
             if (response.success > 0) {
               html += `<div class="mt-2 text-end">
                                     <button type="button" class="btn btn-sm btn-primary" id="btnKmYukleSonrasiYenile">

@@ -14,6 +14,7 @@ use App\Model\PersonelHareketleriModel;
 use App\Model\PersonelModel;
 use App\Model\AracModel;
 use App\Model\AracHareketleriModel;
+use App\Model\SettingsModel;
 use App\Helper\Security;
 
 // Response helper
@@ -35,8 +36,18 @@ try {
     $PersonelModel = new PersonelModel();
 
     $db = (new \App\Core\Db())->db;
-    
-    $db = (new \App\Core\Db())->db;
+    $SettingsModel = new SettingsModel();
+
+    // Departman Mesailerini Al
+    $deptMesaileriJson = $SettingsModel->getSettings('personel_takip_departman_mesaileri');
+    $deptMesaileri = $deptMesaileriJson ? json_decode($deptMesaileriJson, true) : [];
+
+    function getDeptMesai($dept, $deptMesaileri) {
+        if (!empty($dept) && isset($deptMesaileri[$dept])) {
+            return $deptMesaileri[$dept];
+        }
+        return '08:30';
+    }
 
     switch ($action) {
 
@@ -56,16 +67,9 @@ try {
             $baslamadi = 0;
             $izinli_count = 0;
             $gec_kalan = 0;
-            $limit_saat = '08:30';
 
             $gun = date('Y-m-d');
             $now = new DateTime();
-
-            try {
-                $limit_time = new DateTime($gun . ' ' . $limit_saat);
-            } catch (Exception $e) {
-                $limit_time = new DateTime($gun . ' 08:30');
-            }
 
             $izinliler = [];
             $stmt_izin = $db->prepare("SELECT pi.personel_id FROM personel_izinleri pi LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id WHERE pi.baslangic_tarihi <= :gun AND pi.bitis_tarihi >= :gun AND pi.onay_durumu = 'Onaylandı' AND pi.silinme_tarihi IS NULL AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))");
@@ -76,6 +80,12 @@ try {
 
             foreach ($personeller as $p) {
                 $is_izinli = in_array($p->personel_id, $izinliler);
+                $limit_saat = getDeptMesai($p->departman, $deptMesaileri);
+                try {
+                    $limit_time = new DateTime($gun . ' ' . $limit_saat);
+                } catch (Exception $e) {
+                    $limit_time = new DateTime($gun . ' 08:30');
+                }
 
                 if ($p->durum === 'aktif') {
                     $gorevde++;
@@ -403,7 +413,6 @@ try {
                 $baslama_saatleri = [];
                 $bitis_saatleri = [];
                 $gec_kalma_sayisi = 0;
-                $limit_saat = '08:30'; // Geç kalma limiti
 
                 foreach ($hareketler as $h) {
                     $timestamp = strtotime($h->zaman);
@@ -422,6 +431,7 @@ try {
                         $baslama_saatleri[] = strtotime('1970-01-01 ' . ($saat_sn ?? '00:00:00'));
 
                         // Geç kalma kontrolü
+                        $limit_saat = getDeptMesai($personel->departman ?? '', $deptMesaileri);
                         if ($saat > $limit_saat) {
                             $gec_kalma_sayisi++;
                         }
@@ -475,7 +485,7 @@ try {
 
         // Geç kalanları getir
         case 'getGecKalanlar':
-            $limit_saat = $_POST['limit_saat'] ?? '08:30';
+            $limit_saat_param = $_POST['limit_saat'] ?? null;
             $tarih_req = $_POST['tarih'] ?? date('Y-m-d');
             $firma_id = $_SESSION['firma_id'] ?? null;
             $departman = $_POST['departman'] ?? null;
@@ -520,6 +530,16 @@ try {
             foreach ($personeller as $p) {
                 if (in_array($p->personel_id, $izinliler)) {
                     continue;
+                }
+
+                $limit_saat = $limit_saat_param ?: getDeptMesai($p->departman, $deptMesaileri);
+                try {
+                    // Limit zamanını güvenli oluştur
+                    $limit_time = new DateTime($gun . ' ' . $limit_saat);
+                } catch (Exception $e) {
+                    // Hatalı format gelirse varsayılanı kullan
+                    $limit_time = new DateTime($gun . ' 08:30');
+                    $limit_saat = '08:30';
                 }
 
                 $gec_kaldi = false;
@@ -588,6 +608,7 @@ try {
                         'gecikme_dk' => $gecikme_dk,
                         'durum' => $durum_text,
                         'aciklama' => $aciklama_bilgi ? $aciklama_bilgi['aciklama'] : '',
+                        'limit_saat' => $limit_saat,
                         'ekleyen_ad' => $aciklama_bilgi ? $aciklama_bilgi['ekleyen_ad'] : '',
                         'guncelleyen_ad' => $aciklama_bilgi ? $aciklama_bilgi['guncelleyen_ad'] : '',
                         'guncellenme_tarihi' => $aciklama_bilgi ? date('d.m.Y H:i', strtotime($aciklama_bilgi['guncellenme_tarihi'])) : ''
@@ -662,7 +683,6 @@ try {
             $type = $_POST['type'] ?? 'saha';
             $firma_id = $_SESSION['firma_id'] ?? null;
             $bugun = date('Y-m-d');
-            $limit_saat = '08:30';
             $data = [];
 
             if ($type === 'izinli') {
@@ -683,11 +703,6 @@ try {
             } elseif ($type === 'gec_kalan') {
                 // getGecKalanlar logic
                 $personeller = $HareketModel->getTumPersonelDurumu($firma_id, $bugun, null);
-                try {
-                    $limit_time = new DateTime($bugun . ' ' . $limit_saat);
-                } catch (Exception $e) {
-                    $limit_time = new DateTime($bugun . ' 08:30');
-                }
                 $now = new DateTime();
 
                 $izinliler = [];
@@ -700,6 +715,13 @@ try {
                 foreach ($personeller as $p) {
                     if (in_array($p->personel_id, $izinliler)) {
                         continue;
+                    }
+
+                    $limit_saat = getDeptMesai($p->departman, $deptMesaileri);
+                    try {
+                        $limit_time = new DateTime($bugun . ' ' . $limit_saat);
+                    } catch (Exception $e) {
+                        $limit_time = new DateTime($bugun . ' 08:30');
                     }
 
                     $gec_kaldi = false;
@@ -781,6 +803,45 @@ try {
             }
 
             response(true, $data);
+            break;
+
+        case 'getDepartmanMesaileri':
+            // Yetki kontrolü
+            if (!\App\Service\Gate::allows("personel_takip_deparmana_gore_ise_baslama_belirleme")) {
+                response(false, null, 'Yetkiniz bulunmuyor');
+            }
+
+            $stmt = $db->prepare("SELECT DISTINCT departman FROM personel WHERE silinme_tarihi IS NULL AND departman IS NOT NULL AND departman != '' ORDER BY departman ASC");
+            $stmt->execute();
+            $departmanlar = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+            $result = [];
+            foreach ($departmanlar as $dept) {
+                $result[] = [
+                    'departman' => $dept,
+                    'mesai_saati' => $deptMesaileri[$dept] ?? '08:30'
+                ];
+            }
+
+            response(true, $result);
+            break;
+
+        case 'saveDepartmanMesaileri':
+            // Yetki kontrolü
+            if (!\App\Service\Gate::allows("personel_takip_deparmana_gore_ise_baslama_belirleme")) {
+                response(false, null, 'Yetkiniz bulunmuyor');
+            }
+
+            $settings = $_POST['settings'] ?? [];
+            if (!is_array($settings)) {
+                $settings = json_decode($settings, true);
+            }
+
+            if ($SettingsModel->upsertSetting('personel_takip_departman_mesaileri', json_encode($settings))) {
+                response(true, null, 'Ayarlar başarıyla kaydedildi');
+            } else {
+                response(false, null, 'Kaydedilirken bir hata oluştu');
+            }
             break;
 
         default:

@@ -183,6 +183,14 @@ foreach ($departmanlar as $dept) {
                                             id="exportExcel">
                                             <i class="mdi mdi-file-excel fs-5 me-1"></i> Excel
                                         </button>
+                                        <?php if (\App\Service\Gate::allows("personel_takip_deparmana_gore_ise_baslama_belirleme")): ?>
+                                        <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                                        <button type="button"
+                                            class="btn btn-link btn-sm text-dark text-decoration-none px-2 d-flex align-items-center"
+                                            onclick="openMesaiSettings()">
+                                            <i class="bx bx-cog fs-5 me-1"></i> Ayarlar
+                                        </button>
+                                        <?php endif; ?>
                                     </div>
                                 </div>
                             </div>
@@ -345,6 +353,7 @@ foreach ($departmanlar as $dept) {
                                     <thead>
                                         <tr>
                                             <th>Personel</th>
+                                            <th class="text-center">Limit</th>
                                             <th class="text-center">Başlama Saati</th>
                                             <th class="text-center">Gecikme Süresi</th>
                                             <th class="text-center">Durum</th>
@@ -429,7 +438,6 @@ foreach ($departmanlar as $dept) {
             <div class="modal-footer">
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
             </div>
-        </div>
     </div>
 </div>
 
@@ -467,6 +475,34 @@ foreach ($departmanlar as $dept) {
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                 <button type="button" class="btn btn-success" onclick="saveAciklama()">
                     <i class="bx bx-save me-1"></i> Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Departman Mesai Ayarları Modalı -->
+<div class="modal fade" id="mesaiAyarlariModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title"><i class="bx bx-cog me-2"></i> Departman Bazlı Mesai Saatleri</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info py-2 small mb-3">
+                    <i class="bx bx-info-circle me-1"></i> Belirtilmeyen departmanlar için varsayılan olarak <b>08:30</b> kullanılacaktır.
+                </div>
+                <form id="mesaiAyarlariForm">
+                    <div id="mesaiSettingsList" class="p-2" style="max-height: 400px; overflow-y: auto;">
+                        <div class="text-center p-3 text-muted">Yükleniyor...</div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                <button type="button" class="btn btn-primary" onclick="saveMesaiSettings()">
+                    <i class="bx bx-save me-1"></i> Değişiklikleri Kaydet
                 </button>
             </div>
         </div>
@@ -1076,6 +1112,7 @@ foreach ($departmanlar as $dept) {
 
                     html += '<tr>';
                     html += '<td><strong>' + p.adi_soyadi + '</strong></td>';
+                    html += '<td class="text-center">' + (p.limit_saat || '-') + '</td>';
                     html += '<td class="text-center">' + p.baslama_saati + '</td>';
                     html += '<td class="text-center"><span class="badge bg-soft-danger text-danger">' + p.gecikme + '</span></td>';
                     html += '<td class="text-center">' + p.durum + '</td>';
@@ -1318,6 +1355,57 @@ foreach ($departmanlar as $dept) {
     }
 
 
+
+    async function openMesaiSettings() {
+        const modalEl = document.getElementById('mesaiAyarlariModal');
+        new bootstrap.Modal(modalEl).show();
+        const listDiv = document.getElementById('mesaiSettingsList');
+        listDiv.innerHTML = '<div class="text-center p-3 text-muted">Yükleniyor...</div>';
+        try {
+            const response = await fetch('views/personel-takip/api.php?action=getDepartmanMesaileri');
+            const result = await response.json();
+            if (result.success && result.data) {
+                let html = '<div class="row g-2 fw-bold text-muted small mb-2 border-bottom pb-1"><div class="col-8">Departman</div><div class="col-4">Başlangıç</div></div>';
+                result.data.forEach(item => {
+                    html += `<div class="row g-2 align-items-center mb-2"><div class="col-8"><span class="fw-medium">${item.departman}</span></div><div class="col-4"><input type="time" class="form-control form-control-sm dept-mesai-input" data-dept="${item.departman}" value="${item.mesai_saati}"></div></div>`;
+                });
+                listDiv.innerHTML = html;
+            } else { listDiv.innerHTML = '<div class="alert alert-warning">Veriler alınamadı.</div>'; }
+        } catch (error) {
+            console.error('Mesai ayarları yüklenirken hata:', error);
+            listDiv.innerHTML = '<div class="alert alert-danger">Bir hata oluştu.</div>';
+        }
+    }
+
+    async function saveMesaiSettings() {
+        const settings = {};
+        document.querySelectorAll('.dept-mesai-input').forEach(input => {
+            settings[input.getAttribute('data-dept')] = input.value;
+        });
+        const btn = document.querySelector('#mesaiAyarlariModal .modal-footer .btn-primary');
+        const oldHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span> Kaydediliyor...';
+        try {
+            const formData = new FormData();
+            formData.append('action', 'saveDepartmanMesaileri');
+            formData.append('settings', JSON.stringify(settings));
+            const response = await fetch('views/personel-takip/api.php', { method: 'POST', body: formData });
+            const result = await response.json();
+            if (result.success) {
+                Swal.fire('Başarılı', result.message, 'success');
+                bootstrap.Modal.getInstance(document.getElementById('mesaiAyarlariModal')).hide();
+                loadOzet();
+                if ($('#tabGecKalanlar').hasClass('active')) loadGecKalanlar();
+            } else { Swal.fire('Hata', result.message, 'error'); }
+        } catch (error) {
+            console.error('Mesai ayarları kaydedilirken hata:', error);
+            Swal.fire('Hata', 'Bağlantı hatası oluştu', 'error');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = oldHtml;
+        }
+    }
 </script>
 
 <?php // } ?>

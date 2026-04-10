@@ -249,7 +249,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     } 
                     elseif ($widgetId == 'widget-bildirimler') {
                         $systemLogModel = new \App\Model\SystemLogModel();
-                        $data['loginLogs'] = $systemLogModel->getRecentLogs(20, \App\Model\SystemLogModel::LEVEL_IMPORTANT);
+                        $data['recent_logs'] = $systemLogModel->getRecentLogs(20, 0); // minLevel = 0 to show all logs
+                        $data['personelLogs'] = $systemLogModel->getPersonelLoginLogs(10);
+                        $data['kullaniciLogs'] = $systemLogModel->getUserLoginLogs(10);
                     }
 
                     $html = renderWidget($widgetId, $data);

@@ -72,12 +72,28 @@ class Date
         return date($format, strtotime($date));
     }
 
-    public static function Ymd($date, $format = 'Ymd')
+    public static function Ymd($date, $format = 'Y-m-d')
     {
-        if ($date == null) {
-            return 0;
+        if ($date === null || (is_string($date) && trim($date) === '')) {
+            return ($format == 'Ymd') ? 0 : null;
         }
-        return date($format, strtotime($date));
+
+        // 1. Eğer veri Excel'in sayısal tarih formatındaysa (örn: 46115)
+        if (is_numeric($date)) {
+            try {
+                $dt = PhpSpreadsheetDate::excelToDateTimeObject((float) $date);
+                return $dt->format($format);
+            } catch (\Exception $e) {
+                // Hata alırsak string olarak devam et
+            }
+        }
+
+        // 2. Eğer veri metin ise
+        // SLASH (/) karakterini NOKTA (.) ile değiştirerek Türkiye formatına zorla
+        $cleanDate = str_replace('/', '.', trim($date));
+        
+        $time = strtotime($cleanDate);
+        return $time ? date($format, $time) : null;
     }
 
     /**Bugün */
