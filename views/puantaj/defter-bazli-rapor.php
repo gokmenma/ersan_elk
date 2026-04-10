@@ -994,37 +994,84 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         margin: 0 !important;
     }
 
-    .do-sub-row td {
-        background-color: rgba(var(--bs-primary-rgb), 0.02) !important;
-        font-size: 11px !important;
+    /* Premium Report Layout */
+    .do-genel-row {
+        background-color: #f1f5f9 !important;
+        border-top: 3px solid var(--bs-primary) !important;
+    }
+    
+    .do-bolge-row td {
+        border-top: 2px solid #edf2f7 !important;
+    }
+    
+    .do-oran-cell {
+        background-color: rgba(var(--bs-primary-rgb), 0.04) !important;
+        border-left: 1px dashed rgba(var(--bs-primary-rgb), 0.2) !important;
     }
 
-    .do-sub-label {
-        font-size: 9px;
-        font-weight: 700;
-        text-transform: uppercase;
+    .do-sub-info-text {
+        font-size: 8px;
         color: #94a3b8;
+        text-transform: uppercase;
         display: block;
-        margin-bottom: 2px;
+        margin-top: -2px;
+        letter-spacing: 0.5px;
+    }
+    
+    .do-period-end {
+        border-right: 3px solid rgba(var(--bs-primary-rgb), 0.4) !important;
     }
 
-    .do-badge-sub {
-        display: inline-block;
-        padding: 2px 6px;
-        border-radius: 4px;
-        font-weight: 600;
-        font-size: 10.5px;
+    /* Sub-row Indentation & Shading */
+    .do-sub-row td {
+        background-color: rgba(var(--bs-primary-rgb), 0.005) !important;
+        border-top: none !important;
+        padding-top: 0 !important;
+        padding-bottom: 8px !important;
+        vertical-align: top !important;
+    }
+    
+    .do-sub-row .do-badge-sub {
+        font-size: 11px;
+        color: #64748b;
+        font-weight: 500;
     }
 
-    .do-badge-sub-toplam { background: #f8fafc; color: #475569; border: 1px solid #e2e8f0; }
-    .do-badge-sub-okunan { background: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
-    .do-badge-sub-kalan { background: #fff1f2; color: #9f1239; border: 1px solid #fecdd3; }
+    /* Enhanced Data Points */
+    .do-badge-toplam {
+        color: #1e293b !important;
+        font-weight: 800 !important;
+        font-size: 14px !important;
+    }
+    .do-badge-okunan {
+        color: #059669 !important;
+        font-weight: 700 !important;
+        font-size: 13.5px !important;
+    }
+    .do-badge-okunmayan {
+        color: #dc2626 !important;
+        font-weight: 700 !important;
+        font-size: 13.5px !important;
+    }
+
+    /* Period Headers */
+    #defterOzetTable thead .period-header {
+        background: #f8fafc !important;
+        font-weight: 800 !important;
+        color: #334155 !important;
+        font-size: 12px !important;
+        letter-spacing: 1px;
+    }
+
+    #defterOzetTable .column-search {
+        height: 30px !important;
+        font-size: 11px !important;
+        border-radius: 4px !important;
     }
 
     .column-search::placeholder {
-        color: #adb5bd;
-        text-transform: none;
-        font-weight: 400;
+        color: #94a3b8;
+        opacity: 0.7;
     }
 
     .column-search:focus {
@@ -3472,7 +3519,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
             // Row 1: Basliklar
             html += '<tr>';
-            html += '<th class="fix-col-bolge">BÖLGE</th>';
+            html += '<th class="fix-col-bolge" colspan="2">BÖLGE / TÜR</th>';
             donemler.forEach(function (donem, idx) {
                 const isLast = idx === donemler.length - 1;
                 const formatted = String(donem).substring(0, 4) + '/' + String(donem).substring(4);
@@ -3484,11 +3531,12 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             html += '<tr class="search-row">';
             // Bolge Arama
             html += '<th class="fix-col-bolge"><input type="text" class="form-control do-column-search" id="do_search_bolge" placeholder="Bölge Ara..." value="' + (_doSearchFilters.bolge || '') + '"></th>';
+            html += '<th style="width: 30px; font-size: 8px; font-weight: 800; color: #94a3b8; background: #f8f9fa; vertical-align: middle; text-align: center;">TÜR</th>';
             
             donemler.forEach(function (donem, idx) {
                 const isLast = idx === donemler.length - 1;
                 const fields = ['toplam', 'okunan', 'okunmayan', 'oran'];
-                const labels = ['TOPLAM', 'OKUNAN', 'OKUNMAYAN', 'ORAN %'];
+                const labels = ['TOPLAM', 'OKUNAN', 'KALAN', 'BAŞARI %'];
 
                 fields.forEach(function(f, fIdx) {
                     const fKey = donem + '_' + f;
@@ -3514,49 +3562,50 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             html += '<tbody>';
 
             if (filteredBolgeNames.length === 0) {
-                const totalCols = 1 + (donemler.length * 4);
+                const totalCols = 2 + (donemler.length * 4);
                 html += '<tr><td colspan="' + totalCols + '" class="text-center p-4 text-muted">Filtrelere uygun bölge bulunamadı.</td></tr>';
             } else {
                 // GENEL TOPLAM SATIRI
                 html += '<tr class="do-genel-row">';
-                html += '<td rowspan="2" class="fix-col-bolge fw-bold" style="font-size: 13px; vertical-align: middle;"><i class="bx bx-globe me-1 text-primary"></i>GENEL TOPLAM</td>';
+                html += '<td rowspan="2" class="fix-col-bolge fw-bold" style="font-size: 13px; vertical-align: middle; background: #fff; border-right: none;"><i class="bx bx-globe me-1 text-primary"></i>GENEL TOPLAM</td>';
+                html += '<td style="vertical-align: middle; background: #fff; text-align: center; border-left: none;" title="Defter Bazlı Veriler"><i class="bx bx-book-open text-muted fs-5"></i></td>';
+                
                 donemler.forEach(function (donem, idx) {
                     const isLast = idx === donemler.length - 1;
                     const d = String(donem);
                     const g = genel[d] || { toplam_defter: 0, okunan_defter: 0, okunmayan_defter: 0, oran: 0, sub_toplam: 0, sub_okunan: 0, sub_kalan: 0, sub_oran: 0 };
                     const oranClass = g.oran >= 80 ? 'do-oran-high' : (g.oran >= 50 ? 'do-oran-medium' : 'do-oran-low');
 
-                    html += '<td><span class="do-sub-label">Defter</span><span class="do-badge-toplam clickable no-upgrade" data-type="toplam_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Toplam defterleri görün">' + g.toplam_defter + '</span></td>';
-                    html += '<td><span class="do-sub-label">Okunan</span><span class="do-badge-okunan clickable no-upgrade" data-type="okunan_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Okunan defterleri görün">' + g.okunan_defter + '</span></td>';
+                    html += '<td><span class="do-badge-toplam clickable no-upgrade" data-type="toplam_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Toplam defterleri görün">' + g.toplam_defter + '</span></td>';
+                    html += '<td><span class="do-badge-okunan clickable no-upgrade" data-type="okunan_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Okunan defterleri görün">' + g.okunan_defter + '</span></td>';
 
                     if (g.okunmayan_defter > 0) {
-                        html += '<td><span class="do-sub-label">Kalan</span><span class="do-badge-okunmayan clickable no-upgrade" data-type="okunmayan_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Okunmayan defterleri görün">' + g.okunmayan_defter + '</span></td>';
+                        html += '<td><span class="do-badge-okunmayan clickable no-upgrade" data-type="okunmayan_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Okunmayan defterleri görün">' + g.okunmayan_defter + '</span></td>';
                     } else {
-                        html += '<td><span class="do-sub-label">Kalan</span><span class="do-badge-okunmayan zero no-upgrade">' + g.okunmayan_defter + '</span></td>';
+                        html += '<td><span class="do-badge-okunmayan zero no-upgrade">' + g.okunmayan_defter + '</span></td>';
                     }
 
-                    html += '<td class="' + (isLast ? 'do-period-end' : '') + '">';
-                    html += '<div class="d-flex flex-column align-items-center gap-1">';
-                    html += '<span class="do-sub-label text-center">Başarı</span>';
-                    html += '<span class="do-badge-oran ' + oranClass + '" style="padding: 2px 6px;">' + g.oran + '%</span>';
-                    html += '</div>';
+                    html += '<td class="do-oran-cell ' + (isLast ? 'do-period-end' : '') + '">';
+                    html += '<span class="do-badge-oran ' + oranClass + '" style="padding: 2px 8px; font-size: 13px;">' + g.oran + '%</span>';
                     html += '</td>';
                 });
                 html += '</tr>';
 
                 // GENEL TOPLAM ABONE SATIRI
                 html += '<tr class="do-sub-row">';
+                html += '<td style="vertical-align: middle; text-align: center; border-left: none; background: rgba(var(--bs-primary-rgb), 0.01);" title="Abone Bazlı Veriler"><i class="bx bx-user text-muted fs-5"></i></td>';
+                
                 donemler.forEach(function (donem, idx) {
                     const isLast = idx === donemler.length - 1;
                     const d = String(donem);
                     const g = genel[d] || { sub_toplam: 0, sub_okunan: 0, sub_kalan: 0, sub_oran: 0 };
 
-                    html += '<td><span class="do-badge-sub do-badge-sub-toplam">' + (g.sub_toplam || 0).toLocaleString('tr-TR') + '</span> <small class="text-muted d-block" style="font-size:8px;">ABONE</small></td>';
+                    html += '<td><span class="do-badge-sub do-badge-sub-toplam">' + (g.sub_toplam || 0).toLocaleString('tr-TR') + '</span></td>';
                     html += '<td><span class="do-badge-sub do-badge-sub-okunan">' + (g.sub_okunan || 0).toLocaleString('tr-TR') + '</span></td>';
                     html += '<td><span class="do-badge-sub do-badge-sub-kalan">' + (g.sub_kalan || 0).toLocaleString('tr-TR') + '</span></td>';
                     
                     let subOranClassGenel = g.sub_oran >= 80 ? 'text-success' : (g.sub_oran >= 50 ? 'text-warning' : 'text-danger');
-                    html += '<td class="' + (isLast ? 'do-period-end' : '') + '"><span class="' + subOranClassGenel + ' fw-bold" style="font-size: 11px;">' + g.sub_oran + '%</span><br/><small style="font-size:7px;">ABONE %</small></td>';
+                    html += '<td class="do-oran-cell ' + (isLast ? 'do-period-end' : '') + '"><span class="' + subOranClassGenel + ' fw-bold" style="font-size: 11.5px;">' + g.sub_oran + '%</span></td>';
                 });
                 html += '</tr>';
 
@@ -3567,9 +3616,10 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                     regionIdx++;
 
                     html += '<tr class="do-bolge-row">';
-                    html += '<td rowspan="2" class="fix-col-bolge fw-semibold text-start" style="background: ' + regionColor.bg + '; vertical-align: middle;">';
-                    html += '<i class="bx bx-map me-1" style="color: ' + regionColor.text + ';"></i>' + bName;
+                    html += '<td rowspan="2" class="fix-col-bolge fw-semibold text-start" style="background: ' + regionColor.bg + '; vertical-align: middle; border-left: 4px solid ' + regionColor.text + '; border-right: none;">';
+                    html += bName;
                     html += '</td>';
+                    html += '<td style="vertical-align: middle; background: ' + regionColor.bg + '; text-align: center; border-left: none;" title="Defter Verileri"><i class="bx bx-book-open text-muted fs-6"></i></td>';
 
                     donemler.forEach(function (donem, idx) {
                         const isLast = idx === donemler.length - 1;
@@ -3586,14 +3636,16 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                             html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-okunmayan zero no-upgrade">' + bStat.okunmayan_defter + '</span></td>';
                         }
 
-                        html += '<td class="' + (isLast ? 'do-period-end' : '') + '" style="background: ' + regionColor.bg + ';">';
-                        html += '<span class="do-badge-oran ' + oranClass + '" style="padding: 2px 6px;">' + bStat.oran + '%</span>';
+                        html += '<td class="do-oran-cell ' + (isLast ? 'do-period-end' : '') + '" style="background: ' + regionColor.bg + ';">';
+                        html += '<span class="do-badge-oran ' + oranClass + '" style="padding: 2px 8px; font-size: 13px;">' + bStat.oran + '%</span>';
                         html += '</td>';
                     });
                     html += '</tr>';
 
                     // BÖLGE ABONE SATIRI
                     html += '<tr class="do-sub-row">';
+                    html += '<td style="vertical-align: middle; text-align: center; border-left: none; background: rgba(var(--bs-primary-rgb), 0.005);" title="Abone Verileri"><i class="bx bx-user text-muted fs-6"></i></td>';
+                    
                     donemler.forEach(function (donem, idx) {
                         const isLast = idx === donemler.length - 1;
                         const d = String(donem);
@@ -3604,7 +3656,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                         html += '<td><span class="do-badge-sub do-badge-sub-kalan">' + (bStat.sub_kalan || 0).toLocaleString('tr-TR') + '</span></td>';
                         
                         let subOranClass = bStat.sub_oran >= 80 ? 'text-success' : (bStat.sub_oran >= 50 ? 'text-warning' : 'text-danger');
-                        html += '<td class="' + (isLast ? 'do-period-end' : '') + '"><span class="' + subOranClass + ' fw-bold" style="font-size: 11px;">' + bStat.sub_oran + '%</span></td>';
+                        html += '<td class="do-oran-cell ' + (isLast ? 'do-period-end' : '') + '"><span class="' + subOranClass + ' fw-bold" style="font-size: 11.5px;">' + bStat.sub_oran + '%</span></td>';
                     });
                     html += '</tr>';
                 });

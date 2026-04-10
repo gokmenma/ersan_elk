@@ -143,6 +143,7 @@ $(function () {
             { data: "seri_no" },
             { data: "stok", className: "text-center" },
             { data: "durum", className: "text-center" },
+            { data: "aciklama", defaultContent: "" },
             { data: "tarih" },
             { data: "islemler", className: "text-center", orderable: false },
         ],
@@ -515,44 +516,44 @@ $(function () {
 
     function updateSelectionInfo() {
         var count = getSelectedIds(".sayac-select").length;
-        var total = $(".sayac-select").length;
+        var total = isTumuSecildi ? globalSeciliSayacIds.length : count;
         var $info = $("#sayacSecimInfo");
 
-        if (isTumuSecildi) {
+        if (count > 0 || isTumuSecildi) {
             if ($info.length === 0) {
-                $("#depoSayacTable_wrapper").prepend('<div id="sayacSecimInfo"></div>');
+                $("body").append('<div id="sayacSecimInfo" class="selection-info-bar"></div>');
                 $info = $("#sayacSecimInfo");
             }
 
-            $info.attr("class", "selection-info-bar selection-info-bar-success").html(
-                '<div class="selection-info-actions">' +
-                    '<button type="button" id="secimTemizle" class="selection-action-btn selection-action-btn-danger"><i class="bx bx-x me-1"></i> Temizle</button>' +
-                '</div>' +
+            var statusText = isTumuSecildi ? 'Filtrelenen tüm ' : 'Seçilen: ';
+            
+            $info.html(
                 '<div class="selection-info-status">' +
-                    '<i class="bx bx-check-circle me-1"></i> Filtrelenen tüm <strong class="mx-1">' + globalSeciliSayacIds.length + '</strong> kayıt seçildi' +
+                    '<span>' + statusText + '</span>' +
+                    '<span class="count-badge">' + total + '</span>' +
+                    '<span> kayıt</span>' +
+                '</div>' +
+                '<div class="selection-info-actions">' +
+                    (!isTumuSecildi ? '<button type="button" id="secimTumuFiltre" class="selection-action-btn selection-action-btn-primary"><i class="bx bx-select-multiple"></i> Tümünü Seç</button>' : '') +
+                    '<button type="button" id="secimTemizle" class="selection-action-btn selection-action-btn-danger"><i class="bx bx-trash"></i> Temizle</button>' +
                 '</div>'
             );
-            return;
-        }
-
-        if (count > 0) {
-            if ($info.length === 0) {
-                $("#depoSayacTable_wrapper").prepend('<div id="sayacSecimInfo"></div>');
-                $info = $("#sayacSecimInfo");
+            
+            // Reflow trigger for transition
+            if ($info[0]) {
+                $info[0].offsetHeight;
+                $info.addClass("show");
             }
-
-            $info.attr("class", "selection-info-bar").html(
-                '<div class="selection-info-actions">' +
-                    '<button type="button" id="secimTumuFiltre" class="selection-action-btn selection-action-btn-primary"><i class="bx bx-check-square me-1"></i> Tüm Filtrelenenleri Seç</button>' +
-                    '<button type="button" id="secimTemizle" class="selection-action-btn selection-action-btn-danger"><i class="bx bx-x me-1"></i> Temizle</button>' +
-                '</div>' +
-                '<div class="selection-info-status">' +
-                    '<i class="bx bx-info-circle me-1"></i> Sayfadan <strong class="mx-1">' + count + '</strong> / ' + total + ' kayıt seçildi' +
-                '</div>'
-            );
         } else {
-            $("#sayacSecimInfo").remove();
+            $info.removeClass("show");
+            setTimeout(function() {
+                if ($("#sayacSecimInfo").length && !$("#sayacSecimInfo").hasClass("show")) {
+                    $("#sayacSecimInfo").remove();
+                }
+            }, 500);
         }
+        
+        if (typeof updateBulkActionButtons === "function") updateBulkActionButtons();
     }
 
     $(document).on("click", "#secimTumuFiltre", function () {

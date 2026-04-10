@@ -20,84 +20,131 @@ use App\Model\TanimlamalarModel;
 		background-color: rgba(0, 0, 0, 0.02) !important;
 	}
 	.custom-checkbox-container {
-		pointer-events: none; /* TR click üzerinden yönetilecek */
+		pointer-events: none;
 	}
 	.custom-checkbox-input, .custom-checkbox-label {
-		pointer-events: auto; /* Checkbox'ın kendisine direkt basılabilir */
+		pointer-events: auto;
 	}
 
-	/* Kompakt seçim bilgi barı (tüm alt sekmeler için ortak) */
+	/* Premium Yüzer Seçim Bilgi Barı */
 	.selection-info-bar {
+		position: fixed;
+		bottom: 30px;
+		left: 50%;
+		transform: translateX(-50%) translateY(100px);
+		z-index: 9999;
 		display: flex;
 		align-items: center;
-		justify-content: space-between;
-		gap: 15px;
-		margin-bottom: 12px;
-		padding: 6px 16px;
-		border-radius: 8px;
-		border: 1px solid #e0f2fe;
-		background: #f0f9ff;
-		color: #0369a1;
+		justify-content: center;
+		gap: 20px;
+		padding: 12px 28px;
+		background: rgba(255, 255, 255, 1);
+		backdrop-filter: blur(15px);
+		-webkit-backdrop-filter: blur(15px);
+		border: 2px solid #2563eb;
+		border-radius: 60px;
+		box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4), 0 15px 30px -10px rgba(0, 0, 0, 0.2);
+		transition: all 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+		opacity: 0;
+		visibility: hidden;
+		width: max-content;
+		max-width: 95vw;
 	}
-	.selection-info-bar-success {
-		border-color: #dcfce7;
-		background: #f0fdf4;
-		color: #166534;
+
+	.selection-info-bar.show {
+		transform: translateX(-50%) translateY(0);
+		opacity: 1;
+		visibility: visible;
 	}
+
+	.selection-info-status {
+		display: flex;
+		align-items: center;
+		gap: 12px;
+		font-size: 0.95rem;
+		font-weight: 700;
+		color: #0f172a;
+		border-right: 1px solid #e2e8f0;
+		padding-right: 24px;
+	}
+
+	.selection-info-status .count-badge {
+		background: #3b82f6;
+		color: #fff;
+		padding: 2px 14px;
+		border-radius: 20px;
+		font-size: 1.1rem;
+		box-shadow: 0 4px 10px rgba(59, 130, 246, 0.3);
+	}
+
 	.selection-info-actions {
 		display: flex;
 		align-items: center;
-		gap: 10px;
-		flex-wrap: wrap;
+		gap: 12px;
 	}
+
 	.selection-action-btn {
+		height: 42px;
 		display: inline-flex;
 		align-items: center;
 		justify-content: center;
-		gap: 6px;
-		border-radius: 6px;
-		border: 1px solid #bae6fd;
-		background: #fff;
-		padding: 4px 12px;
-		font-size: 0.8rem;
+		gap: 8px;
+		padding: 0 20px;
+		border-radius: 30px;
+		font-size: 0.9rem;
 		font-weight: 600;
-		line-height: 1.5;
-		transition: all 0.2s ease;
+		transition: all 0.25s ease;
+		border: 1px solid transparent;
+		white-space: nowrap;
 		cursor: pointer;
 	}
+
 	.selection-action-btn-primary {
-		color: #0369a1;
-		border-color: #bae6fd;
+		background: #eff6ff;
+		color: #2563eb;
+		border-color: #bfdbfe;
 	}
+
 	.selection-action-btn-primary:hover {
-		background: #f0f9ff;
-		border-color: #0369a1;
-		color: #0c4a6e;
+		background: #2563eb;
+		color: #fff;
+		transform: translateY(-2px);
+		box-shadow: 0 5px 15px rgba(37, 99, 235, 0.2);
 	}
+
 	.selection-action-btn-danger {
-		color: #ef4444;
-		border-color: #fecaca;
+		background: #fff5f5;
+		color: #e53e3e;
+		border-color: #feb2b2;
 	}
+
 	.selection-action-btn-danger:hover {
-		background: #fef2f2;
-		border-color: #ef4444;
-		color: #991b1b;
+		background: #e53e3e;
+		color: #fff;
+		transform: translateY(-2px);
+		box-shadow: 0 5px 15px rgba(229, 62, 62, 0.2);
 	}
-	.selection-info-status {
-		display: inline-flex;
-		align-items: center;
-		font-size: 0.82rem;
-		font-weight: 600;
-		color: #0369a1;
-		white-space: nowrap;
-	}
-	@media (max-width: 991.98px) {
+
+	/* Mobil Uyumluluk */
+	@media (max-width: 768px) {
 		.selection-info-bar {
+			bottom: 15px;
+			padding: 15px 20px;
+			gap: 15px;
 			flex-direction: column;
-			align-items: flex-start;
+			border-radius: 24px;
 		}
 		.selection-info-status {
-			white-space: normal;
+			border-right: none;
+			padding-right: 0;
+			border-bottom: 1px solid #e2e8f0;
+			padding-bottom: 12px;
+			width: 100%;
+			justify-content: center;
+		}
+		.selection-info-actions {
+			width: 100%;
+			justify-content: center;
 		}
 	}
 </style>
@@ -605,13 +652,13 @@ $title = "Sayaç Deposu";
 											<label class="custom-checkbox-label" for="selectAllSayac"></label>
 										</div>
 									</th>
-									<th style="width:18%" data-filter="string">Sayaç Adı</th>
-									<th style="width:12%" data-filter="string">Marka/Model</th>
-									<th style="width:12%" data-filter="string">Abone No</th>
-									<th style="width:8%" class="text-center" data-filter="select">Stok</th>
-									<th style="width:10%" class="text-center" data-filter="select">Durum</th>
+									<th style="width:7%" data-filter="string">Sayaç Adı</th>
+									<th style="width:40%" data-filter="string">Marka/Model</th>
+									<th style="width:8%" data-filter="string">Abone No</th>
+									<th style="width:6%" class="text-center" data-filter="select">Stok</th>
+									<th style="width:8%" class="text-center" data-filter="select">Durum</th>
 									<th style="width:15%" data-filter="string">Açıklama</th>
-									<th style="width:10%" data-filter="date">Tarih</th>
+									<th style="width:8%" data-filter="date">Tarih</th>
 									<th style="width:5%" class="text-center" data-filter="none">İşlemler</th>
 								</tr>
 							</thead>

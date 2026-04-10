@@ -603,6 +603,7 @@ try {
                     $gec_kalanlar[] = [
                         'personel_id' => $p->personel_id,
                         'adi_soyadi' => $p->adi_soyadi,
+                        'departman' => $p->departman,
                         'baslama_saati' => $baslama_saati,
                         'gecikme' => $gecikme_text,
                         'gecikme_dk' => $gecikme_dk,

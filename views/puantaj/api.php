@@ -3052,13 +3052,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
             // Oran hesapla
             $genel[$donem]['oran'] = $genel[$donem]['toplam_defter'] > 0 ? round(($genel[$donem]['okunan_defter'] / $genel[$donem]['toplam_defter']) * 100, 1) : 0;
-            $genel[$donem]['sub_oran'] = $genel[$donem]['sub_gidilen'] > 0 ? round(($genel[$donem]['sub_okunan'] / $genel[$donem]['sub_gidilen']) * 100, 1) : 0;
+            $genel[$donem]['sub_oran'] = $genel[$donem]['sub_toplam'] > 0 ? round(($genel[$donem]['sub_okunan'] / $genel[$donem]['sub_toplam']) * 100, 1) : 0;
 
             // Bölge verileri
             foreach ($bolgeTotals as $bName => &$bStat) {
                 $bStat['sub_kalan'] = max(0, $bStat['sub_toplam'] - $bStat['sub_okunan']);
                 $bStat['oran'] = $bStat['toplam_defter'] > 0 ? round(($bStat['okunan_defter'] / $bStat['toplam_defter']) * 100, 1) : 0;
-                $bStat['sub_oran'] = $bStat['sub_gidilen'] > 0 ? round(($bStat['sub_okunan'] / $bStat['sub_gidilen']) * 100, 1) : 0;
+                $bStat['sub_oran'] = $bStat['sub_toplam'] > 0 ? round(($bStat['sub_okunan'] / $bStat['sub_toplam']) * 100, 1) : 0;
                 $bolgeData[$bName][$donem] = $bStat;
             }
 

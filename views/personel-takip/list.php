@@ -325,9 +325,15 @@ foreach ($departmanlar as $dept) {
                                     <div style="width: 160px;">
                                         <?= Form::FormFloatInput("text", "gecKalmaTarih", Date::today(), "", "Tarih", "calendar", 'form-control flatpickr', ) ?>
                                     </div>
+                                    <?php if (\App\Service\Gate::allows("personel_takip_deparmana_gore_ise_baslama_belirleme")): ?>
                                     <div style="width: 160px;">
-                                        <?= Form::FormFloatInput("time", "gecKalmaSaati", "08:30", "", "Limit Saati", "bx bx-time") ?>
+                                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1" style="height: 56px;">
+                                            <button type="button" class="btn btn-link text-dark text-decoration-none w-100 h-100 d-flex align-items-center justify-content-center" onclick="openMesaiSettings()">
+                                                <i class="bx bx-cog fs-5 me-1"></i> Ayarlar
+                                            </button>
+                                        </div>
                                     </div>
+                                    <?php endif; ?>
                                     <div style="width: 160px;" class="ms-2">
                                         <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1"
                                             style="height: 56px;">
@@ -353,6 +359,7 @@ foreach ($departmanlar as $dept) {
                                     <thead>
                                         <tr>
                                             <th>Personel</th>
+                                            <th>Departman</th>
                                             <th class="text-center">Limit</th>
                                             <th class="text-center">Başlama Saati</th>
                                             <th class="text-center">Gecikme Süresi</th>
@@ -439,6 +446,7 @@ foreach ($departmanlar as $dept) {
                 <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
             </div>
     </div>
+</div>
 </div>
 
 <!-- Gecikme Açıklama Modalı -->
@@ -1056,7 +1064,7 @@ foreach ($departmanlar as $dept) {
 
     // ============ GEÇ KALANLAR FONKSİYONLARI ============
     async function loadGecKalanlar() {
-        const gecKalmaSaati = document.getElementById('gecKalmaSaati').value;
+        const gecKalmaSaati = ''; // Boş bırakıldığında API ayarlardan alır
         const gecKalmaTarihRaw = document.getElementById('gecKalmaTarih').value;
 
         // API için YYYY-MM-DD formatına çevir
@@ -1112,6 +1120,7 @@ foreach ($departmanlar as $dept) {
 
                     html += '<tr>';
                     html += '<td><strong>' + p.adi_soyadi + '</strong></td>';
+                    html += '<td>' + (p.departman || '-') + '</td>';
                     html += '<td class="text-center">' + (p.limit_saat || '-') + '</td>';
                     html += '<td class="text-center">' + p.baslama_saati + '</td>';
                     html += '<td class="text-center"><span class="badge bg-soft-danger text-danger">' + p.gecikme + '</span></td>';
@@ -1149,7 +1158,7 @@ foreach ($departmanlar as $dept) {
         currentPersonelId = personelId;
 
         // Modal göster
-        var modal = new bootstrap.Modal(document.getElementById('gecmisModal'));
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('gecmisModal'));
         modal.show();
 
         // Loading göster
@@ -1254,8 +1263,7 @@ foreach ($departmanlar as $dept) {
         document.getElementById('aciklamaTarih').value = normalizeToISO(tarihRaw);
 
         loadGecikmeHistory(personelId);
-
-        new bootstrap.Modal(document.getElementById('aciklamaModal')).show();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('aciklamaModal')).show();
     }
 
     async function loadGecikmeHistory(personelId) {
@@ -1358,7 +1366,8 @@ foreach ($departmanlar as $dept) {
 
     async function openMesaiSettings() {
         const modalEl = document.getElementById('mesaiAyarlariModal');
-        new bootstrap.Modal(modalEl).show();
+        const modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+        modal.show();
         const listDiv = document.getElementById('mesaiSettingsList');
         listDiv.innerHTML = '<div class="text-center p-3 text-muted">Yükleniyor...</div>';
         try {
@@ -1394,7 +1403,7 @@ foreach ($departmanlar as $dept) {
             const result = await response.json();
             if (result.success) {
                 Swal.fire('Başarılı', result.message, 'success');
-                bootstrap.Modal.getInstance(document.getElementById('mesaiAyarlariModal')).hide();
+                bootstrap.Modal.getOrCreateInstance(document.getElementById('mesaiAyarlariModal')).hide();
                 loadOzet();
                 if ($('#tabGecKalanlar').hasClass('active')) loadGecKalanlar();
             } else { Swal.fire('Hata', result.message, 'error'); }
