@@ -278,7 +278,9 @@ function applyLengthStateSave(options) {
 }
 
 $("#exportExcel").on("click", function () {
-  table.button(".buttons-excel").trigger();
+  if (typeof table !== "undefined" && table) {
+    table.button(".buttons-excel").trigger();
+  }
 });
 
 function getTableSpecificOptions() {

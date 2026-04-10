@@ -52,8 +52,9 @@ function turkishNormalize(str) {
 //   },
 // );
 
+var table;
 $(document).ready(function () {
-  var table = $(".datatable").DataTable({
+  table = $(".datatable").DataTable({
     stateSave: true,
     responsive: false,
     pageLength: 25,
@@ -127,7 +128,7 @@ $(document).ready(function () {
       });
 
       // Responsive olayını dinle
-      table.on("responsive-resize", function (e, datatable, columns) {
+      api.on("responsive-resize", function (e, datatable, columns) {
         // Sütun görünürlüğünü kontrol et ve inputları gizle/göster
         $("#" + tableId + " .search-input-row th").each(function (index) {
           if (columns[index]) {
@@ -138,9 +139,9 @@ $(document).ready(function () {
         });
       });
 
-      var state = table.state.loaded();
+      var state = api.state.loaded();
       if (state) {
-        $("input", table.table().header()).each(function (index) {
+        $("input", api.table().header()).each(function (index) {
           var searchValue = state.columns[index].search.search;
           if (searchValue) {
             $(this).val(searchValue);
@@ -150,9 +151,11 @@ $(document).ready(function () {
     },
   });
 });
+
 $("#exportExcel").on("click", function () {
-  alert("Excel'e Aktarılıyor...");
-  table.button(".buttons-excel").trigger();
+  if (typeof table !== "undefined" && table && typeof table.button === "function") {
+    table.button(".buttons-excel").trigger();
+  }
 });
 
 function getTableSpecificOptions() {
