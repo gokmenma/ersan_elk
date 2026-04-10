@@ -730,11 +730,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 }, $rows[0]);
 
                 $columnMap = [
-                    'plaka' => ['plaka', 'araç plakası', 'arac plakasi', 'araç'],
-                    'tarih' => ['tarih', 'gün', 'km tarihi', 'tarih (gg.aa.yyyy)'],
-                    'baslangic_km' => ['başlangıç km', 'baslangic km', 'ilk km', 'başlangıç', 'baslangic'],
-                    'bitis_km' => ['bitiş km', 'bitis km', 'son km', 'bitiş', 'bitis'],
-                    'notlar' => ['not', 'notlar', 'açıklama', 'notları']
+                    'plaka' => ['plaka', 'araç plakası', 'arac plakasi', 'araç', 'plakası', 'plaka no', 'arac'],
+                    'tarih' => ['tarih', 'gün', 'km tarihi', 'tarih (gg.aa.yyyy)', 'tarihi'],
+                    'baslangic_km' => ['başlangıç km', 'baslangic km', 'ilk km', 'başlangıç', 'baslangic', 'ilk'],
+                    'bitis_km' => ['bitiş km', 'bitis km', 'son km', 'bitiş', 'bitis', 'son', 'bitis km.'],
+                    'notlar' => ['not', 'notlar', 'açıklama', 'notları', 'notu']
                 ];
 
                 $colIndices = [];
@@ -748,12 +748,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     }
                 }
 
-                // Fallback to fixed positions if mapping fails (A=0, B=1, C=2, D=3, E=4)
-                if (!isset($colIndices['plaka'])) $colIndices['plaka'] = 0;
-                if (!isset($colIndices['tarih'])) $colIndices['tarih'] = 1;
-                if (!isset($colIndices['baslangic_km'])) $colIndices['baslangic_km'] = 2;
-                if (!isset($colIndices['bitis_km'])) $colIndices['bitis_km'] = 3;
-                if (!isset($colIndices['notlar'])) $colIndices['notlar'] = 4;
+                // Gerekli kolonlar var mı kontrol et
+                $requiredCols = ['plaka', 'tarih', 'bitis_km'];
+                $missingCols = [];
+                foreach ($requiredCols as $req) {
+                    if (!isset($colIndices[$req])) $missingCols[] = $columnMap[$req][0];
+                }
+
+                if (!empty($missingCols)) {
+                    throw new Exception("Excel dosyasında gerekli sütunlar bulunamadı: " . implode(', ', $missingCols) . ". Lütfen başlık isimlerini kontrol edin (Plaka, Tarih, Bitiş KM).");
+                }
+
+                // Fallback for notlar if missing
+                if (!isset($colIndices['notlar'])) $colIndices['notlar'] = -1;
+                if (!isset($colIndices['baslangic_km'])) $colIndices['baslangic_km'] = -1;
 
                 $normalize = function($p) {
                     $p = mb_strtoupper((string) $p, 'UTF-8');
@@ -785,18 +793,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
                     $plaka = trim($row[$colIndices['plaka']] ?? '');
                     $tarihRaw = trim($row[$colIndices['tarih']] ?? '');
-                    $baslangicKm = trim($row[$colIndices['baslangic_km']] ?? '');
-                    $bitisKm = trim($row[$colIndices['bitis_km']] ?? '');
+                    $bitisKmRaw = trim($row[$colIndices['bitis_km']] ?? '');
 
-                    if (empty($plaka) && empty($bitisKm)) {
-                        $skip++;
+                    if (empty($plaka) && empty($bitisKmRaw)) {
                         continue;
                     }
                     if (empty($plaka)) {
                         $errors[] = "Satır $rowNum: Plaka eksik.";
                         continue;
                     }
-                    if (empty($bitisKm) || $bitisKm === '0') {
+
+                    // KM değerini temizle ve parse et (Ondalık varsa yuvarla)
+                    $cleanNum = function($val) {
+                        if (empty($val)) return 0;
+                        // Binlik ayırıcıları temizle (Türkçe formatında . binliktir)
+                        // Örn: 1.234,50 -> 1234,50
+                        $val = str_replace([' ', '.'], '', $val);
+                        // Ondalık ayırıcıyı nokta yap (Türkçe formatında , ondalıktır)
+                        $val = str_replace(',', '.', $val);
+                        return (int) round(floatval($val));
+                    };
+
+                    $eVal = $cleanNum($bitisKmRaw);
+                    if (empty($bitisKmRaw) || $eVal <= 0) {
                         $skip++;
                         continue;
                     }
@@ -808,41 +827,47 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         }
                         continue;
                     }
-                    $arac_id_yukle = $aracMap[$plakaNorm];
+                    $arac_id_id_yukle = $aracMap[$plakaNorm];
 
                     // Tarihi dönüştür
                     $tarih = Date::convertExcelDate($tarihRaw);
-
                     if (!$tarih) {
                         $errors[] = "Satır $rowNum ($plaka): Geçersiz tarih '$tarihRaw'.";
                         continue;
                     }
 
-                    $bVal = intval(str_replace(['.', ',', ' '], '', $baslangicKm));
-                    $eVal = intval(str_replace(['.', ',', ' '], '', $bitisKm));
-
-                    if ($eVal <= 0) {
-                        $skip++;
-                        continue;
+                    // Başlangıç KM
+                    $bVal = 0;
+                    if ($colIndices['baslangic_km'] !== -1) {
+                        $bVal = $cleanNum($row[$colIndices['baslangic_km']] ?? '');
                     }
+
+                    // Eğer başlangıç KM yoksa sistemden önceki kaydı bulmaya çalış
+                    if ($bVal <= 0) {
+                        $onceki = $Km->getOncekiKayit($arac_id_id_yukle, $tarih);
+                        if ($onceki) {
+                            $bVal = (int) $onceki->bitis_km;
+                        }
+                    }
+
                     if ($bVal > 0 && $eVal < $bVal) {
                         $errors[] = "Satır $rowNum ($plaka, $tarih): Bitiş KM ({$eVal}) başlangıçtan ({$bVal}) küçük.";
                         continue;
                     }
 
-                    $mevcutKayit = $Km->kayitVarMi($arac_id_yukle, $tarih, null, true);
+                    $mevcutKayit = $Km->kayitVarMi($arac_id_id_yukle, $tarih, null, true);
                     $saveData = [
                         'firma_id' => $_SESSION['firma_id'],
-                        'arac_id' => $arac_id_yukle,
+                        'arac_id' => $arac_id_id_yukle,
                         'tarih' => $tarih,
                         'baslangic_km' => $bVal,
                         'bitis_km' => $eVal,
                         'yapilan_km' => ($eVal > 0 && $bVal > 0) ? ($eVal - $bVal) : 0,
                         'olusturan_kullanici_id' => $_SESSION['user_id'] ?? null,
-                        'silinme_tarihi' => null // Eğer silinmişse geri getir
+                        'silinme_tarihi' => null
                     ];
                     
-                    if (isset($colIndices['notlar']) && !empty($row[$colIndices['notlar']])) {
+                    if ($colIndices['notlar'] !== -1 && !empty($row[$colIndices['notlar']])) {
                         $saveData['aciklama'] = trim($row[$colIndices['notlar']]);
                     }
 
@@ -851,13 +876,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     }
                     $Km->saveWithAttr($saveData);
                     if ($eVal > 0) {
-                        $Arac->updateKm($arac_id_yukle, $eVal);
+                        $Arac->updateKm($arac_id_id_yukle, $eVal);
                     }
                     $success++;
                 }
 
-                if ($success === 0 && $skip > 0 && empty($errors)) {
-                    $errors[] = "Lütfen 'BİTİŞ KM' sütununu doldurduğunuzdan emin olun. Boş bitiş KM değeri içeren satırlar atlanmıştır.";
+                if ($success === 0 && empty($errors) && empty($unmatchedPlates)) {
+                    $message = "Yüklenecek veri bulunamadı.";
+                    if ($skip > 0) $message .= " ($skip satır 'Bitiş KM' eksik olduğu için atlandı)";
+                    echo json_encode(['status' => 'error', 'message' => $message]);
+                    exit;
                 }
 
                 // KM Excel yükleme logla
@@ -1846,6 +1874,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                                         <?php for ($i = 1; $i <= $gunSayisi; $i++):
                                             $gunData = $row['gunler'][$i] ?? null;
                                             $yapilan = $gunData ? (float) $gunData['yapilan'] : 0;
+                                            if ($yapilan < 0) $yapilan = 0; // Bitiş KM yoksa negatif gelebilir, 0 sayalım
                                             $aylikToplam += $yapilan;
                                             $isSunday = date('N', strtotime("$yil-$ay-$i")) == 7;
                                             $cellClass = $isSunday ? 'weekend-cell' : '';
@@ -1900,9 +1929,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                                         foreach ($puantajData as $row) {
                                             $gd = $row['gunler'][$i] ?? null;
                                             if ($gd) {
+                                                $yapVal = (float) ($gd['yapilan'] ?? 0);
                                                 $gunlukBaslangic += (float) ($gd['baslangic'] ?? 0);
                                                 $gunlukBitis += (float) ($gd['bitis'] ?? 0);
-                                                $gunlukToplam += (float) ($gd['yapilan'] ?? 0);
+                                                $gunlukToplam += ($yapVal > 0 ? $yapVal : 0);
                                             }
                                         }
                                     }
@@ -2801,6 +2831,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $bildirim = $KmBildirim->find($id);
                 if (!$bildirim) throw new Exception("Bildirim bulunamadı.");
 
+                if ($bildirim->durum !== 'beklemede') {
+                    $statusText = $bildirim->durum === 'onaylandi' ? 'onaylanmış' : 'reddedilmiş';
+                    throw new Exception("Bu bildirim daha önce zaten {$statusText}. Sayfa yenileniyor...");
+                }
+
                 $tarih = $bildirim->tarih;
                 $arac_id = $bildirim->arac_id;
                 $deger_km = $bildirim->bitis_km; // Bu alan bildirilen degeri tutuyor
@@ -2862,6 +2897,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $neden = trim($_POST['red_nedeni'] ?? '');
                 
                 if ($id <= 0) throw new Exception("Geçersiz bildirim ID.");
+
+                $bildirim = $KmBildirim->find($id);
+                if (!$bildirim) throw new Exception("Bildirim bulunamadı.");
+
+                if ($bildirim->durum !== 'beklemede') {
+                    $statusText = $bildirim->durum === 'onaylandi' ? 'onaylanmış' : 'reddedilmiş';
+                    throw new Exception("Bu bildirim daha önce zaten {$statusText}. Sayfa yenileniyor...");
+                }
 
                 $KmBildirim->saveWithAttr([
                     'id' => $id,

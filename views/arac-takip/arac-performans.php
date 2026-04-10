@@ -831,7 +831,7 @@ for ($i = 1; $i <= 12; $i++) {
 <script>
 $(document).ready(function() {
     console.log("Araç Performans JS Yüklendi. Versiyon: 1.0.6");
-    let currentTab = '<?= $activeTab ?>';
+    let currentTab = '<?= ($activeTab === "pane-performans") ? $activeSubTab : $activeTab ?>';
     let currentPeriod = 'aylik';
     let currentYear = '<?= date("Y") ?>';
     let trendChart = null;
@@ -1001,11 +1001,23 @@ $(document).ready(function() {
     // SEKME YÖNETİMİ
     // =============================================
     
+    // Global tab tracking - ensuring we track the LOADABLE sub-tabs inside the performance pane
     $('button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
-        currentTab = $(e.target).attr('data-bs-target').replace('#', '');
-        console.log("Sekme değiştirildi:", currentTab);
+        const targetId = $(e.target).attr('data-bs-target').replace('#', '');
         
-        // Üst araç filtresini göster/gizle
+        // If switching to the main performance pane, use the currently active sub-pill
+        if (targetId === 'pane-performans') {
+            currentTab = $('.nav-pills-custom .nav-link.active').data('bs-target').replace('#', '') || 'genel-bakis';
+        } else if (targetId === 'genel-bakis' || targetId === 'arac-analiz' || targetId === 'pane-karsilastirma') {
+            currentTab = targetId;
+        } else {
+            // Keep currentTab as is for other purely visual tabs if any
+            return;
+        }
+
+        console.log("Aktif sekme güncellendi:", currentTab);
+        
+        // Toggle vehicle filter visibility
         if (currentTab === 'arac-analiz') {
             $('#topAracFilterWrapper').fadeIn();
         } else {
@@ -1035,18 +1047,16 @@ $(document).ready(function() {
     // VERİ YÜKLEME (ANA FONKSİYON)
     // =============================================
     function loadData() {
-        console.log("Veri yükleniyor. Mevcut sekme:", currentTab);
+        console.log("loadData tetiklendi. Sekme:", currentTab);
+
+        // Failsafe: currentTab 'pane-performans' ise aktif sub-tab'ı bul
+        if (currentTab === 'pane-performans') {
+            currentTab = $('.nav-pills-custom .nav-link.active').data('bs-target')?.replace('#', '') || 'genel-bakis';
+        }
         
         if (currentTab === 'pane-karsilastirma') {
             initComparisonTab();
-            hideLoading(); // Failsafe
-            return;
-        }
-
-        // Araç analizi sekmesindeysek ve araç listesi henüz gelmediyse, listeyi çekmek için genel bakışı tetikleyici ile çalıştır
-        if (currentTab === 'arac-analiz' && lastAraclar.length === 0) {
-            console.log("Araç listesi eksik, genel bakış üzerinden liste çekiliyor...");
-            loadGenelBakis(true);
+            hideLoading();
             return;
         }
 
@@ -1055,7 +1065,8 @@ $(document).ready(function() {
         } else if (currentTab === 'arac-analiz') {
             loadAracAnaliz();
         } else {
-            hideLoading(); // Failsafe
+            console.warn("Bilinmeyen sekme veya yükleme gerektirmeyen alan:", currentTab);
+            hideLoading();
         }
     }
 
@@ -1073,6 +1084,7 @@ $(document).ready(function() {
             },
             dataType: 'json',
             success: function(res) {
+                console.log("Dashboard AJAX Response:", res);
                 hideLoading();
                 if (res.status === 'success') {
                     lastAraclar = res.araclar;
@@ -1204,10 +1216,14 @@ $(document).ready(function() {
     // TREND GRAFİĞİ
     // =============================================
     function updateTrendChart(yakitTrend, kmTrend) {
-        const yakitCats = yakitTrend.map(d => formatMonthLabel(d.ay));
-        const yakitVals = yakitTrend.map(d => parseFloat(d.toplam_litre));
-        const kmCats = kmTrend.map(d => formatMonthLabel(d.ay));
-        const kmVals = kmTrend.map(d => parseFloat(d.toplam_km));
+        if (!Array.isArray(yakitTrend) || !Array.isArray(kmTrend)) {
+            console.error("Dashboard: Trend verisi array değil!");
+            return;
+        }
+        const yakitCats = yakitTrend.map(d => d.ay ? formatMonthLabel(d.ay) : '');
+        const yakitVals = yakitTrend.map(d => parseFloat(d.toplam_litre) || 0);
+        const kmCats = kmTrend.map(d => d.ay ? formatMonthLabel(d.ay) : '');
+        const kmVals = kmTrend.map(d => parseFloat(d.toplam_km) || 0);
 
         // Tüm ayları birleştir
         const allMonths = [...new Set([...yakitTrend.map(d => d.ay), ...kmTrend.map(d => d.ay)])].sort();
@@ -1549,7 +1565,10 @@ $(document).ready(function() {
     }
 
     function renderAracDetailChart(yakitData, kmData) {
-        if (!yakitData || !kmData) return;
+        if (!Array.isArray(yakitData) || !Array.isArray(kmData)) {
+            console.error("Dashboard: Chart verisi array değil!");
+            return;
+        }
         
         const dates = [...new Set([...yakitData.map(d => d.tarih), ...kmData.map(d => d.tarih)])].sort();
         if (dates.length === 0) {
@@ -1558,20 +1577,20 @@ $(document).ready(function() {
             return;
         }
         
-        const yakitSeries = dates.map(d => {
+        const yakitSeriesData = dates.map(d => {
             const row = yakitData.find(y => y.tarih === d);
             return row ? parseFloat(row.yakit_miktari) : 0;
         });
 
-        const kmSeries = dates.map(d => {
+        const kmSeriesData = dates.map(d => {
             const row = kmData.find(k => k.tarih === d);
             return row ? parseFloat(row.yapilan_km) : 0;
         });
 
         const options = {
             series: [
-                { name: 'Yakıt (Litre)', type: 'column', data: yakitSeries },
-                { name: 'Yapılan KM', type: 'line', data: kmSeries }
+                { name: 'Yakıt (Litre)', type: 'column', data: yakitSeriesData },
+                { name: 'Yapılan KM', type: 'line', data: kmSeriesData }
             ],
             chart: { height: 400, type: 'line', toolbar: { show: false }, stacked: false, fontFamily: 'inherit' },
             stroke: { width: [0, 3], curve: 'smooth' },
@@ -1635,38 +1654,7 @@ $(document).ready(function() {
         loadData();
     });
 
-    // =============================================
-    // ANA SEKME YÖNETİMİ
-    // =============================================
-    $('#mainTabs button[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
-        const targetId = $(e.target).attr('data-bs-target');
-        const mainTab = targetId.replace('#', '');
-        console.log("Ana Sekme Değişti (shown.bs.tab):", mainTab);
-        
-        // Manuel class kontrolü (Bootstrap 5 bazen fade/show çakışması yaşatabiliyor)
-        $('.tab-pane').removeClass('show active');
-        $(targetId).addClass('show active');
-
-        if (mainTab === 'pane-karsilastirma') {
-            console.log("Karşılaştırma sekmesi tespit edildi, init başlıyor...");
-            setTimeout(initComparisonTab, 50);
-        } else {
-            loadData();
-        }
-    });
-
-    $('button[data-bs-toggle="tab"]').not('#mainTabs button').on('shown.bs.tab', function (e) {
-        currentTab = $(e.target).attr('data-bs-target').replace('#', '');
-        console.log("Alt Sekme değiştirildi:", currentTab);
-        
-        if (currentTab === 'arac-analiz') {
-            $('#topAracFilterWrapper').fadeIn();
-        } else {
-            $('#topAracFilterWrapper').fadeOut();
-        }
-
-        loadData();
-    });
+    // Eski redundant event listenerlar kaldırıldı. Tüm tab yönetimi yukarıdaki tek bir handler'a toplandı.
 
     // =============================================
     // KARŞILAŞTIRMA SEKME LOJİĞİ

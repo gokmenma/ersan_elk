@@ -108,4 +108,29 @@ class AracKmBildirimModel extends Model
         $res = $sql->fetch(PDO::FETCH_OBJ);
         return $res ? (int)$res->bitis_km : 0;
     }
+
+    /**
+     * Aynı gün, aynı araç ve aynı tür (sabah/akşam) için mükerrer kayıt kontrolü yapar.
+     * Reddedilen kayıtlar mükerrer sayılmaz (tekrar denenebilir).
+     */
+    public function checkDuplicate($aracId, $tarih, $tur, $excludeId = 0)
+    {
+        $sqlStr = "SELECT id FROM {$this->table} 
+                WHERE arac_id = :aid AND tarih = :tarih AND tur = :tur AND durum != 'reddedildi'";
+        
+        $params = [
+            'aid' => $aracId,
+            'tarih' => $tarih,
+            'tur' => $tur
+        ];
+
+        if ($excludeId > 0) {
+            $sqlStr .= " AND id != :exid";
+            $params['exid'] = $excludeId;
+        }
+
+        $sql = $this->db->prepare($sqlStr);
+        $sql->execute($params);
+        return $sql->fetchColumn() !== false;
+    }
 }

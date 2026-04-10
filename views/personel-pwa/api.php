@@ -4224,6 +4224,13 @@ try {
                 response(false, null, "Hata: Girilen KM değeri ({$bitis_km}), önceki KM değerinden ({$lastKm}) düşük olamaz.");
             }
 
+            // Mükerrer Kayıt Kontrolü
+            if ($KmBildirim->checkDuplicate($arac_id, $tarih, $tur, $id)) {
+                $turLabel = $tur === 'sabah' ? 'Sabah' : 'Akşam';
+                $tarihF = date('d.m.Y', strtotime($tarih));
+                response(false, null, "Hata: {$tarihF} tarihi {$turLabel} dönemi için zaten bir bildiriminiz bulunuyor.");
+            }
+
             // Eğer resim gelmişse yükle
             if (isset($_FILES['resim']) && $_FILES['resim']['error'] === UPLOAD_ERR_OK) {
                 // Ana dizini bul (ersan_elk)
@@ -4251,13 +4258,14 @@ try {
             $result = $KmBildirim->saveWithAttr($data);
             
             if ($result) {
-                // Yöneticiye bildirim
+                // Yetkili tüm yöneticilere bildirim gönder
                 try {
                     $BildirimModel = new \App\Model\BildirimModel();
                     $tarihFormatli = date('d.m.Y', strtotime($data['tarih']));
                     $turLabel = $data['tur'] === 'sabah' ? 'Sabah' : 'Akşam';
-                    $BildirimModel->createNotification(
-                        1, // Admin (Veya bir grup/rol bazlı da olabilir ama genelde 1 admin)
+                    
+                    $BildirimModel->broadcastByPermission(
+                        'arac-takip/km-onaylari',
                         'Yeni KM Bildirimi',
                         $personel->adi_soyadi . ", $tarihFormatli tarihi için $turLabel KM bildirimi yaptı: " . $data['bitis_km'] . " KM",
                         'index?p=arac-takip/km-onaylari',
@@ -4297,8 +4305,12 @@ try {
             
             $KmBildirim = new \App\Model\AracKmBildirimModel();
             $lastKm = $KmBildirim->getLastKm($arac_id, $tarih, $tur, $exclude_id);
+            $alreadyExists = $KmBildirim->checkDuplicate($arac_id, $tarih, $tur, $exclude_id);
             
-            response(true, ['last_km' => $lastKm]);
+            response(true, [
+                'last_km' => $lastKm,
+                'exists' => $alreadyExists
+            ]);
             break;
 
         default:

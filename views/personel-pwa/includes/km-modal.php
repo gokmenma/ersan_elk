@@ -162,6 +162,14 @@
 
                         if (response.success) {
                             currentLastKm = parseInt(response.last_km || 0);
+                            
+                            if (response.exists) {
+                                hint.innerHTML = `<span class="text-red-500 font-bold"><span class="material-symbols-outlined text-xs align-middle">warning</span> Bu döneme ait bildirim zaten var!</span>`;
+                                hint.classList.remove('hidden');
+                                if (submitBtn) submitBtn.disabled = true;
+                                return;
+                            }
+
                             if (currentLastKm > 0) {
                                 hint.innerText = `Önceki: ${currentLastKm.toLocaleString()} KM`;
                                 hint.classList.remove('hidden');

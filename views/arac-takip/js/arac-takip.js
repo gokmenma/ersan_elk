@@ -925,13 +925,26 @@ const AracTakip = {
         let html = "";
         if (response.data && response.data.length > 0) {
           response.data.forEach(function (k, index) {
+            let yapilanKm = parseFloat(k.yapilan_km) || 0;
+            if (yapilanKm < 0) yapilanKm = 0;
+
             html += `<tr>
                             <td class="text-center">${index + 1}</td>
                             <td><strong>${k.plaka}</strong></td>
                             <td>${self.formatDate(k.tarih)}</td>
-                            <td class="text-end"><a href="arac-puantaj?arac_id=${k.arac_id}" class="text-primary fw-bold" title="Puantajda Görüntüle">${self.formatNumber(k.baslangic_km)} km</a></td>
-                            <td class="text-end"><a href="arac-puantaj?arac_id=${k.arac_id}" class="text-primary fw-bold" title="Puantajda Görüntüle">${self.formatNumber(k.bitis_km)} km</a></td>
-                            <td class="text-end">${self.formatNumber(k.yapilan_km)} km</td>
+                            <td class="text-end">
+                                <div class="d-flex flex-column align-items-end">
+                                    <a href="arac-puantaj?arac_id=${k.arac_id}" class="text-primary fw-bold" title="Puantajda Görüntüle">${self.formatNumber(k.baslangic_km)} km</a>
+                                    ${k.sabah_personel ? `<span class="badge bg-light text-dark border p-1 mt-1" style="font-size: 0.65rem;"><i class='bx bx-sun me-1'></i>${k.sabah_personel}</span>` : ''}
+                                </div>
+                            </td>
+                            <td class="text-end">
+                                <div class="d-flex flex-column align-items-end">
+                                    <a href="arac-puantaj?arac_id=${k.arac_id}" class="text-primary fw-bold" title="Puantajda Görüntüle">${self.formatNumber(k.bitis_km)} km</a>
+                                    ${k.aksam_personel ? `<span class="badge bg-light text-dark border p-1 mt-1" style="font-size: 0.65rem;"><i class='bx bx-moon me-1'></i>${k.aksam_personel}</span>` : ''}
+                                </div>
+                            </td>
+                            <td class="text-end fw-bold ${yapilanKm > 0 ? 'text-success' : 'text-muted'}">${self.formatNumber(yapilanKm)} km</td>
                             <td class="text-center">
                                 <div class="btn-group btn-group-sm">
                                     <button class="btn btn-primary km-duzenle" data-id="${k.id}" title="Düzenle"><i class="bx bx-edit"></i></button>
@@ -1696,7 +1709,11 @@ const AracTakip = {
                 showConfirmButton: false,
               }).then(() => location.reload());
             } else {
-              Swal.fire("Hata", response.message, "error");
+              Swal.fire("Hata", response.message, "error").then(() => {
+                  if (response.message && response.message.indexOf("Sayfa yenileniyor") !== -1) {
+                      location.reload();
+                  }
+              });
             }
           },
         ).fail(() => {
@@ -1748,7 +1765,11 @@ const AracTakip = {
             location.reload();
           });
         } else {
-          Swal.fire("Hata", response.message, "error");
+          Swal.fire("Hata", response.message, "error").then(() => {
+              if (response.message && response.message.indexOf("Sayfa yenileniyor") !== -1) {
+                  location.reload();
+              }
+          });
         }
       },
       error: () => {

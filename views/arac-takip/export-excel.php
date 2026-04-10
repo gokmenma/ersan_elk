@@ -92,6 +92,7 @@ try {
         for ($i = 1; $i <= $gunSayisi; $i++) {
             $gunData = $row['gunler'][$i] ?? null;
             $yapilan = $gunData ? (float) $gunData['yapilan'] : 0;
+            if ($yapilan < 0) $yapilan = 0;
             $aylikToplam += $yapilan;
 
             if ($showKm) {

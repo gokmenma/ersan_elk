@@ -136,4 +136,55 @@ class BildirimModel extends Model
         $result = $stmt->fetch(PDO::FETCH_OBJ);
         return $result ? ($result->last_id ?? 0) : 0;
     }
+
+    /**
+     * Belirli bir yetkiye sahip tüm aktif kullanıcılara bildirim gönder
+     * @param string $menuLink Menü linki veya yetki adı (örn: 'arac-takip/km-onaylari')
+     */
+    public function broadcastByPermission($menuLink, $title, $message, $link = null, $icon = 'bell', $color = 'primary')
+    {
+        // 1. Menü ID'sini bul
+        $stmt = $this->db->prepare("SELECT id FROM menus WHERE menu_link = ?");
+        $stmt->execute([$menuLink]);
+        $menuId = $stmt->fetchColumn();
+
+        // 2. Bu menüye veya auth_name'e sahip rolleri bul
+        $sqlRoles = "
+            SELECT DISTINCT role_id 
+            FROM user_role_permissions urp
+            LEFT JOIN permissions p ON urp.permission_id = p.id
+            WHERE urp.permission_id = :mid
+            OR p.name = :mlink
+            OR p.auth_name = :mlink
+        ";
+        $stmtRoles = $this->db->prepare($sqlRoles);
+        $stmtRoles->execute(['mid' => $menuId ?: 0, 'mlink' => $menuLink]);
+        $roleIds = $stmtRoles->fetchAll(PDO::FETCH_COLUMN);
+
+        // 3. Bu rollere sahip tüm aktif kullanıcıları bul
+        $usersToNotify = [];
+        if (!empty($roleIds)) {
+            foreach ($roleIds as $roleId) {
+                $stmtU = $this->db->prepare("SELECT id FROM users WHERE FIND_IN_SET(?, roles) AND durum = 'Aktif'");
+                $stmtU->execute([$roleId]);
+                while ($uid = $stmtU->fetchColumn()) {
+                    $usersToNotify[$uid] = $uid;
+                }
+            }
+        }
+
+        // 4. Superadmin'leri de her zaman ekle (opsiyonel ama genelde istenir)
+        $stmtS = $this->db->prepare("SELECT u.id FROM users u JOIN user_roles ur ON FIND_IN_SET(ur.id, u.roles) WHERE ur.superadmin = 1 AND u.durum = 'Aktif'");
+        $stmtS->execute();
+        while ($sid = $stmtS->fetchColumn()) {
+            $usersToNotify[$sid] = $sid;
+        }
+
+        // 5. Bildirimleri oluştur
+        foreach ($usersToNotify as $userId) {
+            $this->createNotification($userId, $title, $message, $link, $icon, $color);
+        }
+
+        return count($usersToNotify);
+    }
 }

@@ -330,28 +330,28 @@ class Date
             $norm = preg_replace('/(\b\d{2}\.\d{2}\.\d{4})-(\d{2}:\d{2}(?::\d{2})?\b)/', '$1 $2', $norm);
             $norm = preg_replace('/(\b\d{2}-\d{2}-\d{4})-(\d{2}:\d{2}(?::\d{2})?\b)/', '$1 $2', $norm);
 
-            // 2.b) Önce en net formatları dene
+            // 2.b) Önce en net formatları dene (Türkiye formatları öncelikli)
             $knownFormats = [
+                'd.m.Y H:i:s',
+                'd.m.Y H:i',
+                'd.m.Y',
                 'j.n.Y H:i:s',
                 'j.n.Y H:i',
                 'j.n.Y',
+                'd/m/Y H:i:s',
+                'd/m/Y H:i',
+                'd/m/Y',
                 'j/n/Y H:i:s',
                 'j/n/Y H:i',
                 'j/n/Y',
-                'd.m.Y H:i:s',
-                'd.m.Y H:i',
-                'd/m/Y H:i:s',
-                'd/m/Y H:i',
                 'd-m-Y H:i:s',
                 'd-m-Y H:i',
+                'd-m-Y',
                 'Y-m-d H:i:s',
                 'Y-m-d H:i',
+                'Y-m-d',
                 'Y/m/d H:i:s',
                 'Y/m/d H:i',
-                'd/m/Y',
-                'd.m.Y',
-                'd-m-Y',
-                'Y-m-d',
                 'Y/m/d',
             ];
 
@@ -359,7 +359,8 @@ class Date
                 $dt = \DateTime::createFromFormat($fmt, $norm);
                 if ($dt instanceof \DateTimeInterface) {
                     $errors = \DateTime::getLastErrors();
-                    if (empty($errors['warning_count']) && empty($errors['error_count'])) {
+                    // d.m.Y ve j.n.Y gibi formatlarda leading zero uyarılarını (warning) görmezden gel
+                    if (empty($errors['error_count'])) {
                         $res = ($format === 'timestamp') ? (int) $dt->format('U') : $dt->format($format);
                         file_put_contents($logFile, $log . "Result (String Match $fmt): $res\n----------------\n", FILE_APPEND);
                         return $res;

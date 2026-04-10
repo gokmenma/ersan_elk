@@ -8,7 +8,7 @@ use App\Model\AracKmBildirimModel;
 
 $KmBildirim = new AracKmBildirimModel();
 $pendingReports = $KmBildirim->getPendingReports();
-$approvedReports = $KmBildirim->getReportsByStatus('onaylendi');
+$approvedReports = $KmBildirim->getReportsByStatus('onaylandi');
 $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
 ?>
 
@@ -134,9 +134,13 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                                 <td class="text-end fw-bold text-primary"><?= number_format($report->bitis_km, 0, ',', '.') ?> KM</td>
                                                 <td><small><?= $report->aciklama ?: '-' ?></small></td>
                                                 <td class="text-center">
-                                                    <a href="<?= Helper::base_url($report->resim_yolu) ?>" target="_blank" class="btn btn-sm btn-soft-info">
+                                                    <button type="button" class="btn btn-sm btn-soft-info btn-view-km-img" 
+                                                        data-img="<?= Helper::base_url($report->resim_yolu) ?>"
+                                                        data-plaka="<?= $report->plaka ?>"
+                                                        data-date="<?= date('d.m.Y', strtotime($report->tarih)) ?>"
+                                                        data-tur="<?= ucfirst($report->tur) ?>">
                                                         <i class="bx bx-image-alt"></i>
-                                                    </a>
+                                                    </button>
                                                 </td>
                                                 <td class="text-center">
                                                     <div class="btn-group">
@@ -199,9 +203,13 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                                     <small class="text-muted"><?= date('d.m.Y H:i', strtotime($report->onay_tarihi)) ?></small>
                                                 </td>
                                                 <td class="text-center">
-                                                    <a href="<?= Helper::base_url($report->resim_yolu) ?>" target="_blank" class="btn btn-sm btn-soft-info">
+                                                    <button type="button" class="btn btn-sm btn-soft-info btn-view-km-img" 
+                                                        data-img="<?= Helper::base_url($report->resim_yolu) ?>"
+                                                        data-plaka="<?= $report->plaka ?>"
+                                                        data-date="<?= date('d.m.Y', strtotime($report->tarih)) ?>"
+                                                        data-tur="<?= ucfirst($report->tur) ?>">
                                                         <i class="bx bx-image-alt"></i>
-                                                    </a>
+                                                    </button>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -249,9 +257,13 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                                     <small class="d-block text-muted mt-1">Reddeden: <?= $report->onaylayan_adi ?></small>
                                                 </td>
                                                 <td class="text-center">
-                                                    <a href="<?= Helper::base_url($report->resim_yolu) ?>" target="_blank" class="btn btn-sm btn-soft-info">
+                                                    <button type="button" class="btn btn-sm btn-soft-info btn-view-km-img" 
+                                                        data-img="<?= Helper::base_url($report->resim_yolu) ?>"
+                                                        data-plaka="<?= $report->plaka ?>"
+                                                        data-date="<?= date('d.m.Y', strtotime($report->tarih)) ?>"
+                                                        data-tur="<?= ucfirst($report->tur) ?>">
                                                         <i class="bx bx-image-alt"></i>
-                                                    </a>
+                                                    </button>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -294,4 +306,64 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
     </div>
 </div>
 
+<!-- Resim Görüntüleme Modalı -->
+<div class="modal fade no-upgrade" id="imgViewModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content overflow-hidden border-0 shadow-lg" style="border-radius: 12px;">
+            <div class="modal-header border-0 bg-light py-2 px-3">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-xs me-2">
+                        <span class="avatar-title rounded-circle bg-soft-info text-info">
+                            <i class="bx bx-car"></i>
+                        </span>
+                    </div>
+                    <div>
+                        <h6 class="modal-title mb-0">Gün ve KM Bildirimi</h6>
+                        <small class="text-muted" id="modalImgHeaderInfo"></small>
+                    </div>
+                </div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <img src="" id="modalViewImg" class="img-fluid w-100" alt="KM Bildirim Resmi" style="max-height: 85vh; object-fit: contain;">
+            </div>
+        </div>
+    </div>
+</div>
+
 <script src="views/arac-takip/js/arac-takip.js?v=<?= time() ?>"></script>
+<script>
+$(document).ready(function() {
+    // Initialize all datatables on the page
+    $('.datatable').each(function() {
+        AracTakip.initDataTable(this);
+    });
+
+    // Excel Export Handler
+    $('#exportExcelKm').on('click', function() {
+        // Get the active tab's table
+        var activeTable = $('.tab-pane.active table.datatable').DataTable();
+        if (activeTable) {
+            activeTable.button('.buttons-excel').trigger();
+        }
+    });
+
+    // Handle tab changes to re-adjust datatable columns if needed
+    $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
+        $($.fn.dataTable.tables(true)).DataTable().columns.adjust();
+    });
+
+    // Image Modal Viewer
+    $(document).on('click', '.btn-view-km-img', function() {
+        const btn = $(this);
+        const imgSrc = btn.data('img');
+        const plaka = btn.data('plaka');
+        const date = btn.data('date');
+        const tur = btn.data('tur');
+
+        $('#modalImgHeaderInfo').text(plaka + ' | ' + date + ' - ' + tur);
+        $('#modalViewImg').attr('src', imgSrc);
+        $('#imgViewModal').modal('show');
+    });
+});
+</script>

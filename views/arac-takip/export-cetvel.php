@@ -83,6 +83,7 @@ try {
     for ($i = 1; $i <= $data['gunSayisi']; $i++) {
         $gunData = $data['gunler'][$i] ?? null;
         $yapilan = $gunData ? (float) $gunData['yapilan'] : 0;
+        if ($yapilan < 0) $yapilan = 0;
         $genelToplam += $yapilan;
         $tarih = str_pad($i, 2, '0', STR_PAD_LEFT) . '.' . $month . '.' . $year;
 

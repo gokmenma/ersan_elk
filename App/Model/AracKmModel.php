@@ -22,9 +22,27 @@ class AracKmModel extends Model
     {
         $sql = "
             SELECT k.*, 
-                   a.plaka, a.marka, a.model
+                   a.plaka, a.marka, a.model,
+                   p1.adi_soyadi as sabah_personel,
+                   p2.adi_soyadi as aksam_personel,
+                   s.sabah_durum,
+                   ak.aksam_durum
             FROM {$this->table} k
             INNER JOIN araclar a ON k.arac_id = a.id
+            LEFT JOIN (
+                SELECT arac_id, tarih, personel_id, durum as sabah_durum
+                FROM arac_km_bildirimleri 
+                WHERE tur = 'sabah' AND silinme_tarihi IS NULL
+                GROUP BY arac_id, tarih
+            ) s ON k.arac_id = s.arac_id AND k.tarih = s.tarih
+            LEFT JOIN (
+                SELECT arac_id, tarih, personel_id, durum as aksam_durum
+                FROM arac_km_bildirimleri 
+                WHERE tur = 'aksam' AND silinme_tarihi IS NULL
+                GROUP BY arac_id, tarih
+            ) ak ON k.arac_id = ak.arac_id AND k.tarih = ak.tarih
+            LEFT JOIN personel p1 ON s.personel_id = p1.id
+            LEFT JOIN personel p2 ON ak.personel_id = p2.id
             WHERE k.firma_id = :firma_id
             AND k.silinme_tarihi IS NULL
         ";
@@ -46,9 +64,27 @@ class AracKmModel extends Model
     {
         $sql = "
             SELECT k.*, 
-                   a.plaka, a.marka, a.model
+                   a.plaka, a.marka, a.model,
+                   p1.adi_soyadi as sabah_personel,
+                   p2.adi_soyadi as aksam_personel,
+                   s.sabah_durum,
+                   ak.aksam_durum
             FROM {$this->table} k
             INNER JOIN araclar a ON k.arac_id = a.id
+            LEFT JOIN (
+                SELECT arac_id, tarih, personel_id, durum as sabah_durum
+                FROM arac_km_bildirimleri 
+                WHERE tur = 'sabah' AND silinme_tarihi IS NULL
+                GROUP BY arac_id, tarih
+            ) s ON k.arac_id = s.arac_id AND k.tarih = s.tarih
+            LEFT JOIN (
+                SELECT arac_id, tarih, personel_id, durum as aksam_durum
+                FROM arac_km_bildirimleri 
+                WHERE tur = 'aksam' AND silinme_tarihi IS NULL
+                GROUP BY arac_id, tarih
+            ) ak ON k.arac_id = ak.arac_id AND k.tarih = ak.tarih
+            LEFT JOIN personel p1 ON s.personel_id = p1.id
+            LEFT JOIN personel p2 ON ak.personel_id = p2.id
             WHERE k.arac_id = :arac_id
             AND k.firma_id = :firma_id
             AND k.silinme_tarihi IS NULL
@@ -79,11 +115,29 @@ class AracKmModel extends Model
     {
         $sql = "
             SELECT k.*, 
-                   a.plaka, a.marka, a.model
+                   a.plaka, a.marka, a.model,
+                   p1.adi_soyadi as sabah_personel,
+                   p2.adi_soyadi as aksam_personel,
+                   s.sabah_durum,
+                   ak.aksam_durum
             FROM {$this->table} k
             INNER JOIN araclar a ON k.arac_id = a.id
-            WHERE k.firma_id = :firma_id
-            AND k.tarih BETWEEN :baslangic AND :bitis
+            LEFT JOIN (
+                SELECT arac_id, tarih, personel_id, durum as sabah_durum
+                FROM arac_km_bildirimleri 
+                WHERE tur = 'sabah' AND silinme_tarihi IS NULL
+                GROUP BY arac_id, tarih
+            ) s ON k.arac_id = s.arac_id AND k.tarih = s.tarih
+            LEFT JOIN (
+                SELECT arac_id, tarih, personel_id, durum as aksam_durum
+                FROM arac_km_bildirimleri 
+                WHERE tur = 'aksam' AND silinme_tarihi IS NULL
+                GROUP BY arac_id, tarih
+            ) ak ON k.arac_id = ak.arac_id AND k.tarih = ak.tarih
+            LEFT JOIN personel p1 ON s.personel_id = p1.id
+            LEFT JOIN personel p2 ON ak.personel_id = p2.id
+            WHERE k.tarih BETWEEN :baslangic AND :bitis
+            AND k.firma_id = :firma_id
             AND k.silinme_tarihi IS NULL
         ";
 
@@ -122,7 +176,7 @@ class AracKmModel extends Model
                 a.marka,
                 a.model,
                 COUNT(k.id) as kayit_sayisi,
-                COALESCE(SUM(k.yapilan_km), 0) as toplam_km,
+                COALESCE(SUM(CASE WHEN k.yapilan_km > 0 THEN k.yapilan_km ELSE 0 END), 0) as toplam_km,
                 COALESCE(MIN(k.baslangic_km), 0) as range_baslangic_km,
                 COALESCE(MAX(k.bitis_km), 0) as range_bitis_km
             FROM araclar a
@@ -168,7 +222,7 @@ class AracKmModel extends Model
                 a.marka,
                 a.model,
                 COUNT(k.id) as kayit_sayisi,
-                COALESCE(SUM(k.yapilan_km), 0) as toplam_km,
+                COALESCE(SUM(CASE WHEN k.yapilan_km > 0 THEN k.yapilan_km ELSE 0 END), 0) as toplam_km,
                 COALESCE(MIN(k.baslangic_km), 0) as ay_baslangic_km,
                 COALESCE(MAX(k.bitis_km), 0) as ay_bitis_km
             FROM araclar a
@@ -255,7 +309,7 @@ class AracKmModel extends Model
         $sql = "
             SELECT 
                 COUNT(*) as toplam_kayit,
-                COALESCE(SUM(k.yapilan_km), 0) as toplam_km,
+                COALESCE(SUM(CASE WHEN k.yapilan_km > 0 THEN k.yapilan_km ELSE 0 END), 0) as toplam_km,
                 COALESCE(AVG(k.yapilan_km), 0) as ortalama_gunluk_km
             FROM {$this->table} k
             INNER JOIN araclar a ON k.arac_id = a.id
@@ -454,7 +508,7 @@ class AracKmModel extends Model
                 DAY(k.tarih) as gun,
                 k.baslangic_km,
                 k.bitis_km,
-                k.yapilan_km,
+                CASE WHEN k.yapilan_km > 0 THEN k.yapilan_km ELSE 0 END as yapilan_km,
                 k.olusturma_tarihi as created_at,
                 u.adi_soyadi as giren_kullanici
             FROM araclar a
@@ -544,7 +598,8 @@ class AracKmModel extends Model
 
         // Günlük Veriler
         $sqlKm = "
-            SELECT k.id, k.tarih, DAY(k.tarih) as gun, k.baslangic_km, k.bitis_km, k.yapilan_km,
+            SELECT k.id, k.tarih, DAY(k.tarih) as gun, k.baslangic_km, k.bitis_km, 
+                   CASE WHEN k.yapilan_km > 0 THEN k.yapilan_km ELSE 0 END as yapilan_km,
                    k.olusturma_tarihi as created_at, u.adi_soyadi as giren_kullanici
             FROM {$this->table} k
             LEFT JOIN users u ON k.olusturan_kullanici_id = u.id
