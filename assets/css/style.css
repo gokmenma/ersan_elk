@@ -1166,6 +1166,11 @@ body {
   box-shadow: 0 2px 8px 0 rgba(var(--bs-primary-rgb), 0.3);
 }
 
+.shadow-success {
+    -webkit-box-shadow: 0 2px 8px 0 rgba(16, 185, 129, 0.3); /* Emerald green matching bootstrap success */
+    box-shadow: 0 2px 8px 0 rgba(16, 185, 129, 0.3);
+}
+
 .main-content {
   transition: all 0.3s ease-in-out !important;
 }

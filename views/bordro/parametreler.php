@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use App\Model\BordroParametreModel;
 use App\Helper\Form;
@@ -569,13 +569,28 @@ for ($y = date('Y') + 1; $y >= 2020; $y--) {
                                     required: true
                                 ) ?>
                             </div>
-                            <div class="col-md-6">
+                            <div class="col-md-4">
                                 <?= Form::FormSelect2(
                                     name: "hesaplama_tipi",
                                     options: $hesaplamaTipleri,
                                     selectedValue: 'net',
                                     label: "Hesaplama Tipi",
                                     icon: "sliders",
+                                    required: true
+                                ) ?>
+                            </div>
+                            <div class="col-md-8">
+                                <?= Form::FormSelect2(
+                                    name: "odeme_yontemi",
+                                    options: [
+                                        'banka' => 'Banka Hesabına (Net Maaş Üzerine Eklenecek)',
+                                        'elden' => 'Elden Ödeme (Nakit)',
+                                        'sodexo' => 'Sodexo / Yemek Kartı',
+                                        'diger' => 'Diğer'
+                                    ],
+                                    selectedValue: 'banka',
+                                    label: "Ödeme Türü",
+                                    icon: "credit-card",
                                     required: true
                                 ) ?>
                             </div>
@@ -1012,6 +1027,7 @@ for ($y = date('Y') + 1; $y >= 2020; $y--) {
             $('input[name="etiket"]').val(param.etiket);
             $('select[name="kategori"]').val(param.kategori).trigger('change');
             $('select[name="hesaplama_tipi"]').val(param.hesaplama_tipi).trigger('change');
+            $('select[name="odeme_yontemi"]').val(param.odeme_yontemi || 'banka').trigger('change');
             $('select[name="muaf_limit_tipi"]').val(param.muaf_limit_tipi).trigger('change');
             $('input[name="gunluk_muaf_limit"]').val(param.gunluk_muaf_limit);
             $('input[name="aylik_muaf_limit"]').val(param.aylik_muaf_limit);
@@ -1055,6 +1071,7 @@ for ($y = date('Y') + 1; $y >= 2020; $y--) {
             $('input[name="etiket"]').val(param.etiket);
             $('select[name="kategori"]').val(param.kategori).trigger('change');
             $('select[name="hesaplama_tipi"]').val(param.hesaplama_tipi).trigger('change');
+            $('select[name="odeme_yontemi"]').val(param.odeme_yontemi || 'banka').trigger('change');
             $('select[name="muaf_limit_tipi"]').val(param.muaf_limit_tipi).trigger('change');
             $('input[name="gunluk_muaf_limit"]').val(param.gunluk_muaf_limit);
             $('input[name="aylik_muaf_limit"]').val(param.aylik_muaf_limit);

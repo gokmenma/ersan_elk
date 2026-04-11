@@ -1723,6 +1723,52 @@ const AracTakip = {
     });
   },
 
+  kmTopluOnayla: function (ids) {
+    if (!ids || ids.length === 0) return;
+
+    Swal.fire({
+      title: "Toplu KM Onayı",
+      html: `Seçilen <b>${ids.length}</b> adet KM bildirimini onaylamak istediğinize emin misiniz?`,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#34c38f",
+      cancelButtonColor: "#f46a6a",
+      confirmButtonText: "Evet, Hepsini Onayla",
+      cancelButtonText: "Vazgeç",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        Swal.fire({
+          title: "İşlem Yapılıyor",
+          text: "Lütfen bekleyiniz...",
+          allowOutsideClick: false,
+          didOpen: () => {
+            Swal.showLoading();
+          }
+        });
+
+        $.post(
+          this.apiUrl,
+          { action: "km-onay-toplu-onayla", ids: ids },
+          (response) => {
+            if (response.status === "success") {
+              Swal.fire({
+                icon: "success",
+                title: "Başarılı",
+                text: response.message,
+                timer: 2000,
+                showConfirmButton: false,
+              }).then(() => location.reload());
+            } else {
+              Swal.fire("Hata", response.message, "error");
+            }
+          },
+        ).fail(() => {
+          Swal.fire("Hata", "Sunucu hatası oluştu. Lütfen tekrar deneyiniz.", "error");
+        });
+      }
+    });
+  },
+
   kmReddet: function (id) {
     $("#kmRedForm")[0].reset();
     $("#red_bildirim_id").val(id);

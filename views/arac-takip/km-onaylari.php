@@ -89,9 +89,13 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                             </a>
                         </div>
 
-                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 ms-auto">
-                            <button type="button" id="exportExcelKm" class="btn btn-link btn-sm text-success p-2" title="Excel'e Aktar">
-                                <i class="bx bx-spreadsheet fs-4"></i>
+                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 ms-auto">
+                            <button type="button" id="btnTopluOnayla" class="btn btn-success btn-sm text-white shadow-success text-decoration-none px-2 d-none align-items-center" title="Seçilenleri Onayla">
+                                <i class="bx bx-check-double fs-5 me-1"></i> <span>Toplu Onayla (<span id="selectedCount">0</span>)</span>
+                            </button>
+                            <div class="vr d-none" id="btnTopluOnaylaDivider" style="height: 20px; align-self: center;"></div>
+                            <button type="button" id="exportExcelKm" class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center" title="Excel'e Aktar">
+                                <i class="bx bx-spreadsheet fs-5 me-1"></i> <span class="d-none d-xl-inline">Excel'e Aktar</span>
                             </button>
                         </div>
                     </div>
@@ -103,6 +107,12 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                 <table class="table table-hover table-bordered nowrap w-100 datatable">
                                     <thead class="table-light">
                                         <tr>
+                                            <th class="text-center" style="width:3%">
+                                                <div class="form-check font-size-16">
+                                                    <input class="form-check-input" type="checkbox" id="checkAllKm">
+                                                    <label class="form-check-label" for="checkAllKm"></label>
+                                                </div>
+                                            </th>
                                             <th class="text-center" style="width:5%">Sıra</th>
                                             <th style="width:15%" data-filter="text">Personel</th>
                                             <th style="width:15%" data-filter="text">Araç</th>
@@ -117,6 +127,12 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                     <tbody>
                                         <?php foreach ($pendingReports as $index => $report): ?>
                                             <tr>
+                                                <td class="text-center">
+                                                    <div class="form-check font-size-16">
+                                                        <input class="form-check-input km-checkbox" type="checkbox" data-id="<?= $report->id ?>">
+                                                        <label class="form-check-label"></label>
+                                                    </div>
+                                                </td>
                                                 <td class="text-center"><?= $index + 1 ?></td>
                                                 <td><span class="fw-bold"><?= $report->personel_adi ?></span></td>
                                                 <td>
@@ -364,6 +380,44 @@ $(document).ready(function() {
         $('#modalImgHeaderInfo').text(plaka + ' | ' + date + ' - ' + tur);
         $('#modalViewImg').attr('src', imgSrc);
         $('#imgViewModal').modal('show');
+    });
+
+    // Toplu Seçim İşlemleri
+    $('#checkAllKm').on('change', function() {
+        $('.km-checkbox').prop('checked', $(this).is(':checked'));
+        updateBatchButton();
+    });
+
+    $(document).on('change', '.km-checkbox', function() {
+        updateBatchButton();
+        if ($('.km-checkbox:checked').length === $('.km-checkbox').length) {
+            $('#checkAllKm').prop('checked', true);
+        } else {
+            $('#checkAllKm').prop('checked', false);
+        }
+    });
+
+    function updateBatchButton() {
+        const selectedCount = $('.km-checkbox:checked').length;
+        $('#selectedCount').text(selectedCount);
+        if (selectedCount > 0) {
+            $('#btnTopluOnayla').removeClass('d-none').addClass('d-flex');
+            $('#btnTopluOnaylaDivider').removeClass('d-none');
+        } else {
+            $('#btnTopluOnayla').addClass('d-none').removeClass('d-flex');
+            $('#btnTopluOnaylaDivider').addClass('d-none');
+        }
+    }
+
+    $('#btnTopluOnayla').on('click', function() {
+        const selectedIds = [];
+        $('.km-checkbox:checked').each(function() {
+            selectedIds.push($(this).data('id'));
+        });
+        
+        if (selectedIds.length > 0) {
+            AracTakip.kmTopluOnayla(selectedIds);
+        }
     });
 });
 </script>

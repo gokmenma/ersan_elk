@@ -2933,6 +2933,81 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 echo json_encode(['status' => 'success', 'message' => 'KM bildirimi reddedildi.']);
                 break;
 
+            case 'km-onay-toplu-onayla':
+                $ids = $_POST['ids'] ?? [];
+                if (empty($ids) || !is_array($ids)) {
+                    throw new Exception("Seçili bildirim bulunamadı.");
+                }
+
+                $successCount = 0;
+                $errorCount = 0;
+                $userId = $_SESSION['user_id'] ?? null;
+                $now = date('Y-m-d H:i:s');
+
+                foreach ($ids as $id) {
+                    try {
+                        $bildirim = $KmBildirim->find($id);
+                        if (!$bildirim || $bildirim->durum !== 'beklemede') continue;
+
+                        $tarih = $bildirim->tarih;
+                        $arac_id = $bildirim->arac_id;
+                        $deger_km = $bildirim->bitis_km;
+                        $tur = $bildirim->tur;
+
+                        // Mevcut kaydı bul
+                        $mevcutKmKaydi = $Km->kayitVarMi($arac_id, $tarih, null, true);
+                        
+                        if ($tur === 'sabah') {
+                            $baslangic_km = $deger_km;
+                            $bitis_km = $mevcutKmKaydi ? $mevcutKmKaydi->bitis_km : 0;
+                        } else {
+                            if ($mevcutKmKaydi) {
+                                $baslangic_km = $mevcutKmKaydi->baslangic_km;
+                            } else {
+                                $sql = $Km->getDb()->prepare("SELECT bitis_km FROM arac_km_kayitlari WHERE arac_id = ? AND tarih <= ? AND silinme_tarihi IS NULL ORDER BY tarih DESC, id DESC LIMIT 1");
+                                $sql->execute([$arac_id, $tarih]);
+                                $baslangic_km = $sql->fetchColumn() ?: 0;
+                            }
+                            $bitis_km = $deger_km;
+                        }
+
+                        $saveData = [
+                            'firma_id' => $bildirim->firma_id,
+                            'arac_id' => $arac_id,
+                            'tarih' => $tarih,
+                            'baslangic_km' => $baslangic_km,
+                            'bitis_km' => $bitis_km,
+                            'yapilan_km' => ($bitis_km > $baslangic_km && $baslangic_km > 0) ? ($bitis_km - $baslangic_km) : 0,
+                            'aciklama' => $bildirim->aciklama,
+                            'olusturan_kullanici_id' => $userId
+                        ];
+
+                        if ($mevcutKmKaydi) {
+                            $saveData['id'] = $mevcutKmKaydi->id;
+                        }
+
+                        $Km->saveWithAttr($saveData);
+                        $Arac->updateKm($arac_id, $deger_km);
+
+                        $KmBildirim->saveWithAttr([
+                            'id' => $id,
+                            'durum' => 'onaylandi',
+                            'onaylayan_id' => $userId,
+                            'onay_tarihi' => $now
+                        ]);
+
+                        $successCount++;
+                    } catch (Exception $e) {
+                        $errorCount++;
+                    }
+                }
+
+                echo json_encode([
+                    'status' => 'success', 
+                    'message' => "{$successCount} adet bildirim başarıyla onaylandı." . ($errorCount > 0 ? " {$errorCount} adet bildirimde hata oluştu." : "")
+                ]);
+                break;
+
             default:
                 throw new Exception("Geçersiz işlem.");
         }

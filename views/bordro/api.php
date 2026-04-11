@@ -825,12 +825,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $tur = 'nobet_grubu';
                         }
 
+                        // Hesaplama detaylarından (JSON) gerçek tutarı ve adet bilgisini al
+                        $hesaplananTutar = floatval($odeme->tutar);
+                        $hesaplananAdet = $parsedAdet;
+                        
+                        if (isset($detay['ek_odemeler']) && is_array($detay['ek_odemeler'])) {
+                            foreach ($detay['ek_odemeler'] as $jedo) {
+                                if ($jedo['kod'] === $odeme->tur) {
+                                    $hesaplananTutar = floatval($jedo['hesaplanan_tutar'] ?? $jedo['tutar']);
+                                    $hesaplananAdet = intval($jedo['gun_sayisi'] ?? $parsedAdet);
+                                    break; 
+                                }
+                            }
+                        }
+
                         if (!isset($ekOdemelerNonPuantaj[$tur])) {
                             $ekOdemelerNonPuantaj[$tur] = ['toplam' => 0, 'adet' => 0, 'kayit_sayisi' => 0, 'items' => []];
                         }
-                        $ekOdemelerNonPuantaj[$tur]['toplam'] += floatval($odeme->tutar);
-                        $ekOdemelerNonPuantaj[$tur]['adet'] += $parsedAdet;
+                        $ekOdemelerNonPuantaj[$tur]['toplam'] += $hesaplananTutar;
+                        $ekOdemelerNonPuantaj[$tur]['adet'] += $hesaplananAdet;
                         $ekOdemelerNonPuantaj[$tur]['kayit_sayisi']++;
+                        
+                        $odeme->tutar = $hesaplananTutar; // Detay için güncelle
                         $ekOdemelerNonPuantaj[$tur]['items'][] = $odeme;
                     }
                 }
@@ -1434,6 +1450,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'etiket' => trim($_POST['etiket'] ?? ''),
                     'kategori' => $_POST['kategori'] ?? 'gelir',
                     'hesaplama_tipi' => $_POST['hesaplama_tipi'] ?? 'net',
+                    'odeme_yontemi' => $_POST['odeme_yontemi'] ?? 'banka',
                     'gunluk_muaf_limit' => floatval($_POST['gunluk_muaf_limit'] ?? 0),
                     'aylik_muaf_limit' => floatval($_POST['aylik_muaf_limit'] ?? 0),
                     'muaf_limit_tipi' => $_POST['muaf_limit_tipi'] ?? 'yok',
@@ -1480,6 +1497,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'etiket' => trim($_POST['etiket'] ?? ''),
                     'kategori' => $_POST['kategori'] ?? 'gelir',
                     'hesaplama_tipi' => $_POST['hesaplama_tipi'] ?? 'net',
+                    'odeme_yontemi' => $_POST['odeme_yontemi'] ?? 'banka',
                     'gunluk_muaf_limit' => floatval($_POST['gunluk_muaf_limit'] ?? 0),
                     'aylik_muaf_limit' => floatval($_POST['aylik_muaf_limit'] ?? 0),
                     'muaf_limit_tipi' => $_POST['muaf_limit_tipi'] ?? 'yok',

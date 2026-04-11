@@ -164,6 +164,26 @@ class BordroPersonelModel extends Model
             $toplamAlacagi = $maasTutari + $rawEkOdeme;
         }
 
+        // Ödeme yöntemi bazlı ek ödemeleri hesapla (Banka/Sodexo/Elden ayrımı için)
+        // Bu veriler modalda/listede güncel dağılımı göstermek için gereklidir.
+        $yontemliBankaEki = 0;
+        $yontemliSodexoEki = 0;
+        $ekOdemelerQuery = $this->db->prepare("SELECT tur, tutar FROM personel_ek_odemeler WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL AND durum = 'onaylandi'");
+        $ekOdemelerQuery->execute([$p->personel_id, $p->donem_id]);
+        $ekOdemelerList = $ekOdemelerQuery->fetchAll(PDO::FETCH_OBJ);
+        
+        foreach ($ekOdemelerList as $eo) {
+            $param = $this->getParametreCached($eo->tur, $donemBaslangic);
+            if ($param) {
+                $yontem = $param->odeme_yontemi ?? 'banka';
+                if ($yontem === 'banka') {
+                    $yontemliBankaEki += floatval($eo->tutar);
+                } elseif ($yontem === 'sodexo') {
+                    $yontemliSodexoEki += floatval($eo->tutar);
+                }
+            }
+        }
+
         $netAlacagi = $toplamAlacagi - $kesintiHaricIcra;
         $netMaasGercek = max(0, $netAlacagi - $icraKesintisi);
 
@@ -176,18 +196,23 @@ class BordroPersonelModel extends Model
             $digerOdeme = floatval($p->diger_odeme ?? 0);
 
             if ($calismaGunu >= 30) {
-                $bankaBaz = $asgariUcretNet;
+                $asgariUcretYatacak = $asgariUcretNet;
             } else {
-                $bankaBaz = ($asgariUcretNet / 30) * $calismaGunu;
+                $asgariUcretYatacak = ($asgariUcretNet / 30) * $calismaGunu;
             }
+
+            if (($p->sgk_yapilan_firma ?? "") === "İŞKUR") {
+                $asgariUcretYatacak = 0;
+            }
+
+            $bankaBaz = $asgariUcretYatacak + $yontemliBankaEki;
+
+            // Sodexo ek ödemesini de ekle
+            $sodexoOdemesi += $yontemliSodexoEki;
 
             $bankaMax = max(0, $netAlacagi - $sodexoOdemesi);
             $bankaBaz = min($bankaBaz, $bankaMax);
             $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
-
-            if (($p->sgk_yapilan_firma ?? '') === 'İŞKUR') {
-                $bankaOdemesi = 0;
-            }
         }
 
         $eldenOdeme = max(0, $netMaasGercek - $bankaOdemesi - $sodexoOdemesi - $digerOdeme);
@@ -2344,6 +2369,12 @@ class BordroPersonelModel extends Model
 
         // JSON detay için diziler
         $ekOdemeDetaylari = [];
+        $yontemliOdemeler = [
+            'banka' => 0,
+            'elden' => 0,
+            'sodexo' => 0,
+            'diger' => 0
+        ];
         $kesintiDetaylari = [];
 
         // Her ek ödemeyi parametresine göre işle
@@ -2404,6 +2435,15 @@ class BordroPersonelModel extends Model
                             $kayit->baslangic_tarihi,
                             $kayit->bitis_tarihi
                         );
+                        
+                        // FALLBACK: Puantaj verisi yoksa (ekip_no boş veya veri girilmemiş)
+                        // personelin maaş hesap gününü kullan (dönem için hesaplanan gerçek çalışma günü)
+                        if ($gunSayisi <= 0) {
+                            $gunSayisi = $maasHesapGunu;
+                            $detay['gun_kaynak'] = 'maas_hesap_gunu (puantaj verisi yok)';
+                        } else {
+                            $detay['gun_kaynak'] = 'puantaj';
+                        }
                     } else {
                         // Manuel/Sabit gün sayısı - ama izinleri düş
                         $varsayilanGun = intval($parametre->varsayilan_gun_sayisi ?? 30);
@@ -2419,6 +2459,7 @@ class BordroPersonelModel extends Model
                             $kayit->bitis_tarihi
                         );
                         $gunSayisi = max(0, $varsayilanGun - $ucretliIzinGunu - $ucretsizIzinGunu);
+                        $detay['gun_kaynak'] = 'manuel';
                     }
 
                     // Toplam tutarı hesapla
@@ -2429,14 +2470,27 @@ class BordroPersonelModel extends Model
                         $toplamTutar = $gunlukTutar * $gunSayisi;
                         $detay['gunluk_tutar'] = $gunlukTutar;
                     } else {
-                        // Aylık (Çalışılan Gün) bazlı: Tutar = (Aylık Tutar / 30) * Gün Sayısı
-                        // Burada $tutar, personelin ek ödemesinde tanımlı olan aylık tutardır
-                        $toplamTutar = ($tutar / 30) * $gunSayisi;
+                        // Aylık (Çalışılan Gün) bazlı: Tutar = Günlük Tutar * Gün Sayısı
+                        // Burada $tutar, personelin ek ödemesinde tanımlı olan günlük tutardır (UI açıklamasına uyum)
+                        $toplamTutar = $tutar * $gunSayisi;
                         $detay['aylik_tutar'] = $tutar;
                     }
 
                     $detay['gun_sayisi'] = $gunSayisi;
                     $detay['hesaplanan_tutar'] = round($toplamTutar, 2);
+                    
+                    // Hesaplanan toplam tutarı personel_ek_odemeler tablosuna geri yaz
+                    // (UI'da doğru görünmesi için)
+                    if (isset($odeme->id) && $odeme->id > 0) {
+                        $yeniAciklama = '(' . $gunSayisi . ' Gün x ' . number_format($tutar, 2, ',', '.') . ' ₺)';
+                        $this->db->prepare(
+                            "UPDATE personel_ek_odemeler SET tutar = ?, aciklama = ? WHERE id = ?"
+                        )->execute([
+                            round($toplamTutar, 2),
+                            $yeniAciklama,
+                            $odeme->id
+                        ]);
+                    }
 
                     // Hesaplama tipine göre işle (prefix'leri kaldırarak)
                     $temelTip = str_replace(['gunluk_', 'aylik_gun_'], '', $parametre->hesaplama_tipi);
@@ -2517,7 +2571,6 @@ class BordroPersonelModel extends Model
                     $detay['vergili_kisim'] = round($vergiliKisim, 2);
                     $detay['net_etki'] = round($muafKisim + $vergiliKisim, 2);
                     break;
-
                 case 'net':
                 default:
                     // Net: Direkt net maaşa eklenir
@@ -2525,6 +2578,20 @@ class BordroPersonelModel extends Model
                     $detay['net_etki'] = $tutar;
                     break;
             }
+
+            // Ödeme yöntemine göre tutarı grupla (dağılım için)
+            // Kısmi muafiyet/Brüt durumlarında "tutar" brüt olsa bile 
+            // kullanıcı bu tutarın şu kanaldan ödenmesini istediği için 
+            // dağılımda direkt bu tutar baz alınır.
+            $ekOdemeTutari = isset($toplamTutar) ? $toplamTutar : $tutar;
+            $yontem = $parametre->odeme_yontemi ?? 'banka';
+            if (isset($yontemliOdemeler[$yontem])) {
+                $yontemliOdemeler[$yontem] += $ekOdemeTutari;
+            } else {
+                $yontemliOdemeler['banka'] += $ekOdemeTutari;
+            }
+
+            unset($toplamTutar); // Bir sonraki döngü için temizle
 
             $ekOdemeDetaylari[] = $detay;
         }
@@ -2567,7 +2634,7 @@ class BordroPersonelModel extends Model
                 } else {
                     $gunSayisi = intval($parametre->varsayilan_gun_sayisi ?? 26);
                 }
-                $hesaplananTutar = ($tutar / 30) * $gunSayisi;
+                $hesaplananTutar = $tutar * $gunSayisi;
                 $tutar = $hesaplananTutar;
                 $detay['tutar'] = round($tutar, 2);
                 $detay['gun_sayisi'] = $gunSayisi;
@@ -2859,7 +2926,7 @@ class BordroPersonelModel extends Model
                 $sodexoOdemesi = floatval($kayit->sodexo_odemesi ?? 0);
             } else {
                 $aylikSodexo = floatval($kayit->sodexo ?? 0);
-                $sodexoOdemesi = ($aylikSodexo / 30) * $fiiliCalismaGunu;
+                $sodexoOdemesi = (($aylikSodexo / 30) * $fiiliCalismaGunu) + ($yontemliOdemeler['sodexo'] ?? 0);
             }
 
             if ($isPrimUsulu) {
@@ -2883,9 +2950,10 @@ class BordroPersonelModel extends Model
 
                 // 1. Önce Sodexo düşülür (zaten hesaplandı)
                 // 2. Bankaya yatacak tutar = Minimum asgari ücret tutarı
-                // Ancak net maaş - sodexo'dan büyük olamaz
+                // USER REQ: Banka yöntemli ek ödemeleri de banka bazına ekle
                 $bankaIcinMaksimum = max(0, $toplamPrim - $sodexoOdemesi);
-                $bankaBaz = min($bankaYatacakMinimum, $bankaIcinMaksimum);
+                $bankaBazVal = $bankaYatacakMinimum + ($yontemliOdemeler['banka'] ?? 0);
+                $bankaBaz = min($bankaBazVal, $bankaIcinMaksimum);
 
                 // Banka tutarı minimum asgari ücretin altına düşmemeli (yeterli bakiye varsa)
                 if ($bankaBaz < $bankaYatacakMinimum && $bankaIcinMaksimum >= $bankaYatacakMinimum) {
@@ -2928,9 +2996,10 @@ class BordroPersonelModel extends Model
 
                 // 1. Önce Sodexo düşülür (zaten yukarıda hesaplandı)
                 // 2. Bankaya yatacak tutar = Minimum banka tutarı (icra kesintisi bankadan düşülmez!)
-                // Ancak net maaş - sodexo'dan büyük olamaz
+                // USER REQ: Banka yöntemli ek ödemeleri de banka bazına ekle
                 $bankaIcinMaksimum = max(0, $netMaas - $sodexoOdemesi);
-                $bankaBaz = min($bankaYatacakMinimum, $bankaIcinMaksimum);
+                $bankaBazVal = $bankaYatacakMinimum + ($yontemliOdemeler['banka'] ?? 0);
+                $bankaBaz = min($bankaBazVal, $bankaIcinMaksimum);
 
                 // Banka tutarı minimum asgari ücretın altına düşmemeli (yeterli bakiye varsa)
                 if ($bankaBaz < $bankaYatacakMinimum && $bankaIcinMaksimum >= $bankaYatacakMinimum) {
@@ -2965,9 +3034,10 @@ class BordroPersonelModel extends Model
 
                 // 1. Önce Sodexo düşülür (zaten hesaplandı)
                 // 2. Bankaya yatacak tutar = Minimum asgari ücret tutarı
-                // Ancak net maaş - sodexo'dan büyük olamaz
+                // USER REQ: Banka yöntemli ek ödemeleri de banka bazına ekle
                 $bankaIcinMaksimum = max(0, $netMaas - $sodexoOdemesi);
-                $bankaBaz = min($bankaYatacakMinimum, $bankaIcinMaksimum);
+                $bankaBazVal = $bankaYatacakMinimum + ($yontemliOdemeler['banka'] ?? 0);
+                $bankaBaz = min($bankaBazVal, $bankaIcinMaksimum);
 
                 // Banka tutarı minimum asgari ücretin altına düşmemeli (yeterli bakiye varsa)
                 if ($bankaBaz < $bankaYatacakMinimum && $bankaIcinMaksimum >= $bankaYatacakMinimum) {
