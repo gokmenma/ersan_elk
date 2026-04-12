@@ -1007,19 +1007,20 @@ class BordroPersonelModel extends Model
         $sql = $this->db->prepare("
             SELECT 
                 DATE(t.tarih) as is_tarihi,
-                MAX(t.is_emri_sonucu_id) as is_emri_sonucu_id,
+                t.is_emri_sonucu_id,
                 COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu,
                 COALESCE(tn.tur_adi, t.is_emri_tipi) as is_emri_tipi,
                 SUM(t.sonuclanmis) as adet
             FROM yapilan_isler t
             LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
             WHERE t.personel_id = ? 
+            AND t.firma_id = ?
             AND t.tarih BETWEEN ? AND ?
             AND (t.is_emri_sonucu_id > 0 OR (t.is_emri_sonucu IS NOT NULL AND t.is_emri_sonucu != ''))
             AND t.silinme_tarihi IS NULL
-            GROUP BY DATE(t.tarih), COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu), COALESCE(tn.tur_adi, t.is_emri_tipi)
+            GROUP BY DATE(t.tarih), t.is_emri_sonucu_id, COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu), COALESCE(tn.tur_adi, t.is_emri_tipi)
         ");
-        $sql->execute([$personel_id, $baslangic_tarihi, $bitis_tarihi]);
+        $sql->execute([$personel_id, $personel->firma_id, $baslangic_tarihi, $bitis_tarihi]);
         $yapilanIsler = $sql->fetchAll(PDO::FETCH_OBJ);
 
         if (empty($yapilanIsler)) {

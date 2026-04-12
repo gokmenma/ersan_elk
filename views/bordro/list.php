@@ -1565,7 +1565,8 @@ if (!empty($dbGelirler)) {
                 </form>
             </div>
         </div>
-    <?php if ($selectedDonem && !$donemKapali): ?>
+    </div>
+    <?php if ($selectedDonem): ?>
     <!-- Floating Maaş Hesapla Butonu -->
     <button type="button" 
             class="btn btn-primary text-white shadow-lg align-items-center justify-content-center floating-hesapla-btn rounded-pill px-4 py-3" 
@@ -1578,7 +1579,7 @@ if (!empty($dbGelirler)) {
         position: fixed !important;
         bottom: 90px !important;
         right: 40px !important;
-        z-index: 99999 !important;
+        z-index: 10000 !important;
         transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
         opacity: 0;
         visibility: hidden;
@@ -1606,8 +1607,12 @@ if (!empty($dbGelirler)) {
         
         if (floatBtn && originalBtn) {
             function handleScroll() {
+                // Skote gibi temalar bazen body veya iç div üzerinden kayar
                 var scrollVal = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop;
-                if (scrollVal > 150) {
+                
+                // Bazı mizanpajlarda header sticky olduğu için threshold biraz daha yüksek olabilir
+                // Ama biz 150-200 arası bir değerde görünür yapalım
+                if (scrollVal > 200) {
                     floatBtn.classList.add('show-float');
                 } else {
                     floatBtn.classList.remove('show-float');
@@ -1615,16 +1620,17 @@ if (!empty($dbGelirler)) {
             }
             
             window.addEventListener('scroll', handleScroll, { passive: true });
-            window.addEventListener('resize', handleScroll);
+            // Skote layout'u için olası scroll containerlarını da dinle
+            var mainContent = document.querySelector('.main-content');
+            if (mainContent) mainContent.addEventListener('scroll', handleScroll, { passive: true });
             
-            // Initial check
-            handleScroll();
+            // İlk kontrol
+            setTimeout(handleScroll, 500);
             
             floatBtn.addEventListener('click', function() {
                 originalBtn.click();
-                // Tıklayınca hafif bir geri bildirim için butonu sarsalım
-                this.style.transform = 'scale(0.9)';
-                setTimeout(() => { this.style.transform = ''; }, 100);
+                this.classList.add('btn-success');
+                setTimeout(() => { this.classList.remove('btn-success'); }, 500);
             });
         }
     })();
