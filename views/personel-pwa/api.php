@@ -869,10 +869,15 @@ try {
                 $stmtPersonel->execute([$ekipId, $firmaId]);
                 $personelResult = $stmtPersonel->fetch(PDO::FETCH_OBJ);
 
-                // Eğer ekibe atanmış personel varsa:
-                // Sadece departmanında "Endeks Okuma" geçip geçmediğine bak
-                // Diğer departmanlarının (örn: Kaçak Kontrol) ne olduğunun bir önemi yok
-                if ($personelResult) {
+                // Sadece aktif personel ataması olan veya bu dönemde okuma verisi olan ekipleri göster
+                if (!$personelResult) {
+                    // Atanmış personel yoksa, seçilen dönemde hiç okuma yapılıp yapılmadığına bak
+                    if ($aylikToplam == 0) {
+                        continue;
+                    }
+                } else {
+                    // Personel atanmışsa: Sadece departmanında "Endeks Okuma" olanları göster
+                    // Diğer departmanlara (örn: Kaçak Kontrol) ait ekipler takibe girmez
                     $dep = $personelResult->departman ?? '';
                     if (stripos($dep, 'Endeks Okuma') === false) {
                         continue;

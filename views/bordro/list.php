@@ -1575,46 +1575,59 @@ if (!empty($dbGelirler)) {
 
     <style>
     .floating-hesapla-btn {
-        position: fixed;
-        bottom: 40px;
-        right: 40px;
-        z-index: 1050;
-        transition: all 0.3s ease;
+        position: fixed !important;
+        bottom: 90px !important;
+        right: 40px !important;
+        z-index: 99999 !important;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
         opacity: 0;
         visibility: hidden;
-        transform: translateY(20px) scale(0.95);
-        display: flex;
+        transform: translateY(50px) scale(0.8);
+        display: flex !important;
+        box-shadow: 0 15px 35px rgba(13, 110, 253, 0.4) !important;
+        border: 2px solid rgba(255, 255, 255, 0.2) !important;
     }
     .floating-hesapla-btn.show-float {
-        opacity: 1;
-        visibility: visible;
-        transform: translateY(0) scale(1);
+        opacity: 1 !important;
+        visibility: visible !important;
+        transform: translateY(0) scale(1) !important;
     }
     .floating-hesapla-btn:hover {
-        transform: translateY(-5px) scale(1.02);
-        box-shadow: 0 15px 25px rgba(var(--bs-primary-rgb), 0.4) !important;
+        transform: translateY(-5px) scale(1.05) !important;
+        box-shadow: 0 20px 40px rgba(13, 110, 253, 0.5) !important;
+        background-color: #0b5ed7 !important;
     }
     </style>
 
     <script>
-    document.addEventListener('DOMContentLoaded', function() {
+    (function() {
         var floatBtn = document.getElementById('btnHesaplaFloat');
         var originalBtn = document.getElementById('btnHesapla');
         
         if (floatBtn && originalBtn) {
-            window.addEventListener('scroll', function() {
-                if (window.scrollY > 300) {
+            function handleScroll() {
+                var scrollVal = window.pageYOffset || document.documentElement.scrollTop || document.body.scrollTop;
+                if (scrollVal > 150) {
                     floatBtn.classList.add('show-float');
                 } else {
                     floatBtn.classList.remove('show-float');
                 }
-            });
+            }
+            
+            window.addEventListener('scroll', handleScroll, { passive: true });
+            window.addEventListener('resize', handleScroll);
+            
+            // Initial check
+            handleScroll();
             
             floatBtn.addEventListener('click', function() {
                 originalBtn.click();
+                // Tıklayınca hafif bir geri bildirim için butonu sarsalım
+                this.style.transform = 'scale(0.9)';
+                setTimeout(() => { this.style.transform = ''; }, 100);
             });
         }
-    });
+    })();
     </script>
     <?php endif; ?>
 
