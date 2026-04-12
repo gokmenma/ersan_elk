@@ -604,6 +604,57 @@ const AracTakip = {
     });
   },
 
+  zimmetGecmisi: function(aracId, plaka) {
+    console.log("Arac Takip: Zimmet geçmişi isteniyor.", {aracId, plaka});
+    $("#gecmisAracPlaka").text(plaka);
+    const tbody = $("#zimmetGecmisiTableBody");
+    tbody.html('<tr><td colspan="7" class="text-center p-4 text-muted"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Yükleniyor...</td></tr>');
+    
+    const modalEl = document.getElementById('zimmetGecmisiModal');
+    if (modalEl) {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            const m = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            m.show();
+        } else {
+            $(modalEl).modal("show");
+        }
+    } else {
+        console.error("Zimmet Geçmişi Modalı bulunamadı!");
+        return;
+    }
+
+    $.post(this.apiUrl, { action: "zimmet-gecmisi", arac_id: aracId }, (response) => {
+        if (response.status === "success") {
+            let html = "";
+            if (response.data && response.data.length > 0) {
+                response.data.forEach((z, index) => {
+                    const durumBadge = z.durum === "aktif" 
+                        ? '<span class="badge bg-success">Aktif</span>' 
+                        : '<span class="badge bg-secondary">İade Edildi</span>';
+                    
+                    html += `<tr>
+                        <td class="text-center">${index + 1}</td>
+                        <td><strong>${z.personel_adi || 'Bilinmiyor'}</strong></td>
+                        <td class="text-center">${z.zimmet_tarihi_fmt || '-'}</td>
+                        <td class="text-center">${z.iade_tarihi_fmt || '-'}</td>
+                        <td class="text-center fw-bold">${z.teslim_km ? this.formatNumber(z.teslim_km) + ' km' : '-'}</td>
+                        <td class="text-center fw-bold">${z.iade_km ? this.formatNumber(z.iade_km) + ' km' : '-'}</td>
+                        <td class="text-center">${durumBadge}</td>
+                    </tr>`;
+                });
+            } else {
+                html = '<tr><td colspan="7" class="text-center text-muted p-4">Bu araca ait zimmet geçmişi bulunmamaktadır.</td></tr>';
+            }
+            tbody.html(html);
+        } else {
+            tbody.html(`<tr><td colspan="7" class="text-center text-danger p-4">Hata: ${response.message}</td></tr>`);
+        }
+    }).fail((xhr) => {
+        console.error("API Hatası:", xhr);
+        tbody.html('<tr><td colspan="7" class="text-center text-danger p-4">Sunucu hatası oluştu.</td></tr>');
+    });
+  },
+
   zimmetListesiYukle: function () {
     const self = this;
     if ($.fn.DataTable.isDataTable("#zimmetTable")) {
@@ -630,7 +681,25 @@ const AracTakip = {
                             <td>${z.iade_tarihi ? self.formatDate(z.iade_tarihi) : "-"}</td>
                             <td class="text-center">${durumBadge}</td>
                             <td class="text-center">
-                                ${z.durum === "aktif" ? `<button class="btn btn-sm btn-warning zimmet-iade" data-id="${z.id}" data-plaka="${z.plaka}" title="İade Al"><i class="bx bx-undo"></i></button>` : ""}
+                                <div class="dropdown">
+                                    <button class="btn btn-soft-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                        <i class="bx bx-dots-vertical-rounded"></i>
+                                    </button>
+                                    <ul class="dropdown-menu dropdown-menu-end">
+                                        ${z.durum === "aktif" ? `
+                                            <li>
+                                                <a class="dropdown-item text-warning zimmet-iade" href="javascript:void(0);" data-id="${z.id}" data-plaka="${z.plaka}">
+                                                    <i class="bx bx-undo me-2"></i> İade Al
+                                                </a>
+                                            </li>
+                                        ` : ''}
+                                        <li>
+                                            <a class="dropdown-item text-info arac-zimmet-gecmisi" href="javascript:void(0);" data-id="${z.arac_id}" data-plaka="${z.plaka}">
+                                                <i class="bx bx-history me-2"></i> Zimmet Geçmişi
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
                             </td>
                         </tr>`;
           });
@@ -2626,6 +2695,12 @@ $(document).ready(function () {
     const id = $(this).data("id");
     const plaka = $(this).data("plaka");
     if (id) AracTakip.aracSil(id, plaka);
+  });
+  $(document).on("click", ".arac-zimmet-gecmisi", function (e) {
+    e.preventDefault();
+    const id = $(this).data("id");
+    const plaka = $(this).data("plaka");
+    if (id) AracTakip.zimmetGecmisi(id, plaka);
   });
   $(document).on("click", ".yakit-duzenle", function (e) {
     e.preventDefault();

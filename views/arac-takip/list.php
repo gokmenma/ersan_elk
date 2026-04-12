@@ -488,7 +488,7 @@ if ($filter === 'muayene') {
                                                     <span
                                                         class="badge bg-light text-dark border"><?php echo $tipLabels[$arac->arac_tipi] ?? '-'; ?></span>
                                                 </td>
-                                                <td data-search="<?php echo $arac->plaka; ?>">
+                                                <td>
                                                     <div class="arac-info-box">
                                                         <a href="javascript:void(0)"
                                                             class="plaka-label text-primary arac-duzenle"
@@ -543,24 +543,35 @@ if ($filter === 'muayene') {
                                                         class="small"><?php echo $arac->kasko_bitis_tarihi ? date('d.m.Y', strtotime($arac->kasko_bitis_tarihi)) : '-'; ?></span>
                                                 </td>
                                                 <td class="text-center">
-                                                    <div class="btn-group btn-group-sm">
-                                                        <?php if (empty($arac->zimmetli_personel_id)): ?>
-                                                            <button type="button" class="btn btn-soft-warning zimmet-hizli"
-                                                                data-id="<?php echo $arac->id; ?>"
-                                                                data-plaka="<?php echo $arac->plaka; ?>"
-                                                                data-km="<?php echo $arac->guncel_km; ?>" title="Zimmet Ver">
-                                                                <i class="bx bx-transfer"></i>
-                                                            </button>
-                                                        <?php endif; ?>
-                                                        <button type="button" class="btn btn-soft-primary arac-duzenle"
-                                                            data-id="<?php echo $arac->id; ?>" title="Düzenle">
-                                                            <i class="bx bx-edit"></i>
+                                                    <div class="dropdown">
+                                                        <button class="btn btn-soft-secondary btn-sm dropdown-toggle" type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                                            <i class="bx bx-dots-vertical-rounded"></i>
                                                         </button>
-                                                        <button type="button" class="btn btn-soft-danger arac-sil"
-                                                            data-id="<?php echo $arac->id; ?>"
-                                                            data-plaka="<?php echo $arac->plaka; ?>" title="Sil">
-                                                            <i class="bx bx-trash"></i>
-                                                        </button>
+                                                        <ul class="dropdown-menu dropdown-menu-end">
+                                                            <?php if (empty($arac->zimmetli_personel_id)): ?>
+                                                                <li>
+                                                                    <a class="dropdown-item text-warning zimmet-hizli" href="javascript:void(0);" data-id="<?php echo $arac->id; ?>" data-plaka="<?php echo $arac->plaka; ?>" data-km="<?php echo $arac->guncel_km; ?>">
+                                                                        <i class="bx bx-transfer me-2"></i> Zimmet Ver
+                                                                    </a>
+                                                                </li>
+                                                            <?php endif; ?>
+                                                            <li>
+                                                                <a class="dropdown-item text-info arac-zimmet-gecmisi" href="javascript:void(0);" data-id="<?php echo $arac->id; ?>" data-plaka="<?php echo $arac->plaka; ?>">
+                                                                    <i class="bx bx-history me-2"></i> Zimmet Geçmişi
+                                                                </a>
+                                                            </li>
+                                                            <li>
+                                                                <a class="dropdown-item text-primary arac-duzenle" href="javascript:void(0);" data-id="<?php echo $arac->id; ?>">
+                                                                    <i class="bx bx-edit me-2"></i> Düzenle
+                                                                </a>
+                                                            </li>
+                                                            <li><hr class="dropdown-divider"></li>
+                                                            <li>
+                                                                <a class="dropdown-item text-danger arac-sil" href="javascript:void(0);" data-id="<?php echo $arac->id; ?>" data-plaka="<?php echo $arac->plaka; ?>">
+                                                                    <i class="bx bx-trash me-2"></i> Sil
+                                                                </a>
+                                                            </li>
+                                                        </ul>
                                                     </div>
                                                 </td>
                                             </tr>
@@ -1149,6 +1160,7 @@ if ($filter === 'muayene') {
 <?php include_once "modal/arac-modal.php"; ?>
 <?php include_once "modal/zimmet-modal.php"; ?>
 <?php include_once "modal/zimmet-iade-modal.php"; ?>
+<?php include_once "modal/zimmet-gecmisi-modal.php"; ?>
 <?php include_once "modal/yakit-modal.php"; ?>
 <?php include_once "modal/km-modal.php"; ?>
 <?php include_once "modal/excel-modal.php"; ?>
@@ -1233,4 +1245,4 @@ if ($filter === 'muayene') {
     </div>
 </div>
 
-<script src="views/arac-takip/js/arac-takip.js"></script>
+<script src="views/arac-takip/js/arac-takip.js?v=<?=time()?>"></script>

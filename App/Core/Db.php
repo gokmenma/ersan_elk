@@ -41,8 +41,15 @@ class Db
     }
 
 
+    private static $shared_db = null;
+
     public function getConnection()
     {
+        if (self::$shared_db !== null) {
+            $this->db = self::$shared_db;
+            return $this->db;
+        }
+
         $this->db = null;
         try {
             $this->db = new \PDO(
@@ -52,8 +59,10 @@ class Db
             );
             $this->db->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
             $this->db->exec("set names utf8mb4");
+            
+            self::$shared_db = $this->db;
         } catch (\PDOException $e) {
-            error_log("Conection error: " . $e->getMessage());
+            error_log("Connection error: " . $e->getMessage());
             throw $e;
         }
         return $this->db;

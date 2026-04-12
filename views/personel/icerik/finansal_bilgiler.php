@@ -39,6 +39,19 @@ use App\Helper\Helper;
         background-color: #f8f9fa;
 
     }
+
+    /* Toggle Switch Styling */
+    .form-switch-lg .form-check-input {
+        width: 3rem;
+        height: 1.5rem;
+        cursor: pointer;
+    }
+    .form-switch-lg .form-check-label {
+        padding-left: 0.5rem;
+        padding-top: 0.2rem;
+        cursor: pointer;
+        font-size: 1rem;
+    }
 </style>
 
 <div class="row">
@@ -64,7 +77,7 @@ use App\Helper\Helper;
                 <!-- YAN HAKLAR VE BANKA BİLGİLERİ -->
 
                 <!-- 3. Grup: Yan Haklar & Kesintiler -->
-                <div>
+                <div class="mb-4">
                     <h6 class="fw-bold text-muted mb-3"><i class="bx bx-star me-1"></i>Yan Haklar & Kesintiler</h6>
                     <div class="row">
                         <div class="col-md-2 mb-2">
@@ -78,28 +91,70 @@ use App\Helper\Helper;
                         </div>
                     </div>
                 </div>
+
+                <!-- 4. Grup: Ek Sosyal Yardımlar -->
+                <div class="mt-4 pt-2 border-top">
+                    <h6 class="fw-bold text-muted mb-3"><i class="bx bx-plus-circle me-1"></i>Ek Sosyal Yardımlar</h6>
+                    <div class="row">
+                        <!-- Yemek Yardımı -->
+                        <div class="col-md-6 mb-3">
+                            <div class="card">
+                                <div class="card-body p-3">
+                                    <div class="form-check form-switch mb-3">
+                                        <input type="hidden" name="yemek_yardimi_aliyor" value="0">
+                                        <input class="form-check-input" type="checkbox" id="yemek_yardimi_aliyor" name="yemek_yardimi_aliyor" value="1" <?= ($personel->yemek_yardimi_aliyor ?? 0) == 1 ? 'checked' : '' ?>>
+                                        <label class="form-check-label fw-bold text-dark" for="yemek_yardimi_aliyor">
+                                            <i class="bx bx-dish me-1 text-primary"></i> Yemek Yardımı Alıyor mu?
+                                        </label>
+                                    </div>
+                                    <div id="sectionYemekParametre" style="display: <?= ($personel->yemek_yardimi_aliyor ?? 0) == 1 ? 'block' : 'none' ?>;">
+                                        <?php 
+                                        $BordroParametreModel = new \App\Model\BordroParametreModel();
+                                        $yemekParams = $BordroParametreModel->where('aktif', 1);
+                                        $yemekOptions = [];
+                                        foreach ($yemekParams as $yp) {
+                                            if (stripos($yp->kod, 'yemek') !== false) {
+                                                $yemekOptions[$yp->id] = $yp->etiket . " (" . $yp->kod . ")";
+                                            }
+                                        }
+                                        echo Form::FormSelect2("yemek_yardimi_parametre_id", $yemekOptions, $personel->yemek_yardimi_parametre_id ?? '', "Yemek Yardımı Parametresi", "file-text");
+                                        ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Eş Yardımı -->
+                        <div class="col-md-6 mb-3">
+                            <div class="card">
+                                <div class="card-body p-3">
+                                    <div class="form-check form-switch mb-3">
+                                        <input type="hidden" name="es_yardimi_aliyor" value="0">
+                                        <input class="form-check-input" type="checkbox" id="es_yardimi_aliyor" name="es_yardimi_aliyor" value="1" <?= ($personel->es_yardimi_aliyor ?? 0) == 1 ? 'checked' : '' ?>>
+                                        <label class="form-check-label fw-bold text-dark" for="es_yardimi_aliyor">
+                                            <i class="bx bx-heart me-1 text-danger"></i> Eş Yardımı Alıyor mu?
+                                        </label>
+                                    </div>
+                                    <div id="sectionEsParametre" style="display: <?= ($personel->es_yardimi_aliyor ?? 0) == 1 ? 'block' : 'none' ?>;">
+                                        <?php 
+                                        $esParams = $BordroParametreModel->where('aktif', 1);
+                                        $esOptions = [];
+                                        foreach ($esParams as $ep) {
+                                            if (stripos($ep->kod, 'es_yardimi') !== false || stripos($ep->kod, 'aile') !== false) {
+                                                $esOptions[$ep->id] = $ep->etiket . " (" . $ep->kod . ")";
+                                            }
+                                        }
+                                        echo Form::FormSelect2("es_yardimi_parametre_id", $esOptions, $personel->es_yardimi_parametre_id ?? '', "Eş Yardımı Parametresi", "file-text");
+                                        ?>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
             </div>
         </div>
     </div>
-
-    <!-- Bilgilendirme Mesajı -->
-    <!-- <div class="col-md-12 mt-3">
-        <div class="alert alert-success border-success border-dashed d-flex align-items-center mb-0" role="alert">
-            <i class="bx bx-info-circle fs-4 me-3"></i>
-            <div>
-                <h6 class="alert-heading fw-bold mb-1">Maaş Tipi Geçmişi Sistemi</h6>
-                <p class="mb-0 small">
-                    Personelin maaş hesaplamaları <strong>Maaş Tipi Geçmişi</strong> kayıtlarına göre yapılmaktadır.
-                    Eğer bir bordro dönemi içerisinde (örneğin aynı ay içinde) birden fazla tanım varsa,
-                    sistem her bir tanımı geçerli olduğu gün sayısına göre <strong>oranlayarak (pro-rata)</strong>
-                    otomatik hesaplar.
-                    <br>
-                    Eğer tanımlı maaş tipi geçmişi kayıtları bulunamazsa, sistem girdiğiniz <strong>Maaş Tipi</strong>
-                    ile hesaplar.
-                </p>
-            </div>
-        </div>
-    </div> -->
 
     <!-- Görev/Maaş Geçmişi Tablosu -->
     <div class="col-md-12 mt-3">
@@ -204,3 +259,27 @@ use App\Helper\Helper;
     </div>
 
 </div>
+
+<script>
+$(document).ready(function() {
+    // Yemek Yardımı Toggle
+    $('input[name="yemek_yardimi_aliyor"]').on('change', function() {
+        if ($(this).is(':checked')) {
+            $('#sectionYemekParametre').slideDown();
+        } else {
+            $('#sectionYemekParametre').slideUp();
+            $('select[name="yemek_yardimi_parametre_id"]').val('').trigger('change');
+        }
+    });
+
+    // Eş Yardımı Toggle
+    $('input[name="es_yardimi_aliyor"]').on('change', function() {
+        if ($(this).is(':checked')) {
+            $('#sectionEsParametre').slideDown();
+        } else {
+            $('#sectionEsParametre').slideUp();
+            $('select[name="es_yardimi_parametre_id"]').val('').trigger('change');
+        }
+    });
+});
+</script>

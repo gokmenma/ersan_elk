@@ -117,6 +117,7 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                             <th style="width:15%" data-filter="text">Personel</th>
                                             <th style="width:15%" data-filter="text">Araç</th>
                                             <th style="width:10%" data-filter="date">Tarih</th>
+                                            <th style="width:10%" data-filter="text">Kayıt Tarihi</th>
                                             <th style="width:10%" data-filter="select">Tür</th>
                                             <th style="width:10%" class="text-end">Bildirilen KM</th>
                                             <th style="width:15%">Açıklama</th>
@@ -140,6 +141,7 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                                     <small class="d-block text-muted"><?= $report->marka . ' ' . $report->model ?></small>
                                                 </td>
                                                 <td><?= date('d.m.Y', strtotime($report->tarih)) ?></td>
+                                                <td><small class="fw-bold"><?= date('d.m.Y H:i', strtotime($report->olusturma_tarihi)) ?></small></td>
                                                 <td>
                                                     <?php if ($report->tur === 'sabah'): ?>
                                                         <span class="badge bg-soft-warning text-warning"><i class="bx bx-sun me-1"></i> Sabah</span>
@@ -190,6 +192,7 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                             <th style="width:15%">Personel</th>
                                             <th style="width:15%">Araç</th>
                                             <th style="width:10%">Tarih</th>
+                                            <th style="width:10%">Kayıt Tarihi</th>
                                             <th style="width:10%">Tür</th>
                                             <th style="width:10%" class="text-end">Onaylanan KM</th>
                                             <th style="width:15%">Onaylayan / Tarih</th>
@@ -206,6 +209,7 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                                     <small class="d-block text-muted"><?= $report->marka . ' ' . $report->model ?></small>
                                                 </td>
                                                 <td><?= date('d.m.Y', strtotime($report->tarih)) ?></td>
+                                                <td><small class="fw-bold"><?= date('d.m.Y H:i', strtotime($report->olusturma_tarihi)) ?></small></td>
                                                 <td>
                                                     <?php if ($report->tur === 'sabah'): ?>
                                                         <span class="badge bg-soft-warning text-warning"><i class="bx bx-sun me-1"></i> Sabah</span>
@@ -244,6 +248,7 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                             <th style="width:15%">Personel</th>
                                             <th style="width:15%">Araç</th>
                                             <th style="width:10%">Tarih</th>
+                                            <th style="width:10%">Kayıt Tarihi</th>
                                             <th style="width:10%">Tür</th>
                                             <th style="width:10%" class="text-end">Bildirilen KM</th>
                                             <th style="width:15%">Red Nedeni</th>
@@ -260,6 +265,7 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                                     <small class="d-block text-muted"><?= $report->marka . ' ' . $report->model ?></small>
                                                 </td>
                                                 <td><?= date('d.m.Y', strtotime($report->tarih)) ?></td>
+                                                <td><small class="fw-bold"><?= date('d.m.Y H:i', strtotime($report->olusturma_tarihi)) ?></small></td>
                                                 <td>
                                                     <?php if ($report->tur === 'sabah'): ?>
                                                         <span class="badge bg-soft-warning text-warning"><i class="bx bx-sun me-1"></i> Sabah</span>

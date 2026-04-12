@@ -440,13 +440,15 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
         }
 
         .modal-card {
-            background: var(--bs-card-bg);
+            background-color: var(--bs-body-bg);
             width: 100%;
             max-width: 600px;
             border-radius: var(--radius);
             overflow: hidden;
             animation: modalIn 0.3s ease-out;
             border: 1px solid var(--bs-border-color);
+            box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+            z-index: 101;
         }
 
         @keyframes modalIn {
@@ -467,6 +469,7 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
             display: flex;
             justify-content: space-between;
             align-items: center;
+            background-color: var(--bs-body-bg);
         }
 
         .modal-header h2 {
@@ -507,6 +510,7 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
             display: flex;
             justify-content: flex-end;
             gap: 1rem;
+            background-color: var(--bs-body-bg);
         }
 
         .btn-save {
@@ -558,6 +562,14 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
                             <?php if (!empty($branch->firma_kodu)) { ?>
                                 <p><i class="fa fa-hashtag" style="width: 1.25rem;"></i>
                                     <?php echo htmlspecialchars($branch->firma_kodu, ENT_QUOTES, 'UTF-8'); ?></p>
+                            <?php } ?>
+                            <?php if (!empty($branch->mersis_no)) { ?>
+                                <p><i class="fa fa-fingerprint" style="width: 1.25rem;"></i> Mersis:
+                                    <?php echo htmlspecialchars($branch->mersis_no, ENT_QUOTES, 'UTF-8'); ?></p>
+                            <?php } ?>
+                            <?php if (!empty($branch->ticaret_sicil_no)) { ?>
+                                <p><i class="fa fa-id-card" style="width: 1.25rem;"></i> Tic. Sicil:
+                                    <?php echo htmlspecialchars($branch->ticaret_sicil_no, ENT_QUOTES, 'UTF-8'); ?></p>
                             <?php } ?>
                             <?php if ($branch->adres) { ?>
                                 <p><i class="fa fa-location-dot" style="width: 1.25rem;"></i> <?php echo $branch->adres ?>
@@ -622,6 +634,15 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
                         </div>
                         <div class="form-group">
                             <?php echo Form::FormFloatInput("text", "vergi_dairesi", "", "Vergi Dairesi", "Vergi Dairesi", "hash"); ?>
+                        </div>
+                        <div class="form-group">
+                            <?php echo Form::FormFloatInput("text", "vergi_dairesi_no", "", "Vergi Dairesi No", "Vergi Dairesi No", "hash"); ?>
+                        </div>
+                        <div class="form-group">
+                            <?php echo Form::FormFloatInput("text", "mersis_no", "", "Mersis No", "Mersis No", "hash"); ?>
+                        </div>
+                        <div class="form-group">
+                            <?php echo Form::FormFloatInput("text", "ticaret_sicil_no", "", "Ticaret Sicil No", "Ticaret Sicil No", "hash"); ?>
                         </div>
                         <div class="form-group">
                             <?php echo Form::FormFloatInput("text", "telefon", "", "Telefon", "Telefon", "phone"); ?>
@@ -711,6 +732,15 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
                     }
                     document.getElementById('vergi_no').value = data.vergi_no;
                     document.getElementById('vergi_dairesi').value = data.vergi_dairesi;
+                    if (document.getElementById('vergi_dairesi_no')) {
+                        document.getElementById('vergi_dairesi_no').value = data.vergi_dairesi_no ?? '';
+                    }
+                    if (document.getElementById('mersis_no')) {
+                        document.getElementById('mersis_no').value = data.mersis_no ?? '';
+                    }
+                    if (document.getElementById('ticaret_sicil_no')) {
+                        document.getElementById('ticaret_sicil_no').value = data.ticaret_sicil_no ?? '';
+                    }
                     document.getElementById('telefon').value = data.telefon;
                     document.getElementById('adres').value = data.adres;
                     if (document.getElementById('firma_unvan')) {

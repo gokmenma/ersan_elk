@@ -1565,7 +1565,58 @@ if (!empty($dbGelirler)) {
                 </form>
             </div>
         </div>
-    </div>
+    <?php if ($selectedDonem && !$donemKapali): ?>
+    <!-- Floating Maaş Hesapla Butonu -->
+    <button type="button" 
+            class="btn btn-primary text-white shadow-lg align-items-center justify-content-center floating-hesapla-btn rounded-pill px-4 py-3" 
+            id="btnHesaplaFloat">
+        <i class="mdi mdi-calculator fs-4 me-2"></i> <span class="fw-bold fs-5">Maaş Hesapla</span>
+    </button>
+
+    <style>
+    .floating-hesapla-btn {
+        position: fixed;
+        bottom: 40px;
+        right: 40px;
+        z-index: 1050;
+        transition: all 0.3s ease;
+        opacity: 0;
+        visibility: hidden;
+        transform: translateY(20px) scale(0.95);
+        display: flex;
+    }
+    .floating-hesapla-btn.show-float {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(0) scale(1);
+    }
+    .floating-hesapla-btn:hover {
+        transform: translateY(-5px) scale(1.02);
+        box-shadow: 0 15px 25px rgba(var(--bs-primary-rgb), 0.4) !important;
+    }
+    </style>
+
+    <script>
+    document.addEventListener('DOMContentLoaded', function() {
+        var floatBtn = document.getElementById('btnHesaplaFloat');
+        var originalBtn = document.getElementById('btnHesapla');
+        
+        if (floatBtn && originalBtn) {
+            window.addEventListener('scroll', function() {
+                if (window.scrollY > 300) {
+                    floatBtn.classList.add('show-float');
+                } else {
+                    floatBtn.classList.remove('show-float');
+                }
+            });
+            
+            floatBtn.addEventListener('click', function() {
+                originalBtn.click();
+            });
+        }
+    });
+    </script>
+    <?php endif; ?>
 
 </div>
 

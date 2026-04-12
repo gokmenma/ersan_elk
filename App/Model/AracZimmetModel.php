@@ -122,6 +122,27 @@ class AracZimmetModel extends Model
     }
 
     /**
+     * Araca ait tüm zimmet geçmişini getirir
+     */
+    public function getByArac($aracId)
+    {
+        $sql = $this->db->prepare("
+            SELECT az.*, 
+                   p.adi_soyadi as personel_adi
+            FROM {$this->table} az
+            LEFT JOIN personel p ON az.personel_id = p.id
+            WHERE az.arac_id = :arac_id
+            AND az.firma_id = :firma_id
+            ORDER BY az.zimmet_tarihi DESC
+        ");
+        $sql->execute([
+            'arac_id' => $aracId,
+            'firma_id' => $_SESSION['firma_id']
+        ]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
      * Personele ait aktif zimmetler
      */
     public function getByPersonel($personelId)

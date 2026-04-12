@@ -375,6 +375,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 echo json_encode(['status' => 'success', 'data' => $zimmetler]);
                 break;
 
+            case 'zimmet-gecmisi':
+                $arac_id = intval($_POST['arac_id'] ?? 0);
+                if ($arac_id <= 0) {
+                    throw new Exception("Araç ID geçersiz.");
+                }
+                $gecmis = $Zimmet->getByArac($arac_id);
+                // Tarihi formatlayalim
+                foreach($gecmis as $g) {
+                    $g->zimmet_tarihi_fmt = Date::dmY($g->zimmet_tarihi);
+                    $g->iade_tarihi_fmt = $g->iade_tarihi ? Date::dmY($g->iade_tarihi) : '-';
+                }
+                echo json_encode(['status' => 'success', 'data' => $gecmis]);
+                break;
+
             // =============================================
             // YAKIT KAYDI İŞLEMLERİ
             // =============================================
@@ -503,7 +517,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $id = intval($_POST['id'] ?? 0);
                 $kayit = $Yakit->find($id);
                 /**tarihi çevir */
-                $kayit->tarih = Date::dmy($kayit->tarih);
+                $kayit->tarih = Date::dmY($kayit->tarih);
 
                 if (!$kayit) {
                     throw new Exception("Yakıt kaydı bulunamadı.");
@@ -687,7 +701,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $id = intval($_POST['id'] ?? 0);
                 $kayit = $Km->find($id);
                 /**tarihi çevir */
-                $kayit->tarih = Date::dmy($kayit->tarih);
+                $kayit->tarih = Date::dmY($kayit->tarih);
 
                 if (!$kayit) {
                     throw new Exception("KM kaydı bulunamadı.");

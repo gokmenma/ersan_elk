@@ -337,11 +337,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $hesaplayanId = $_SESSION['user_id'] ?? $_SESSION['id'] ?? null;
                 $hesaplayanAdSoyad = $_SESSION['user_full_name'] ?? ($_SESSION['user']->adi_soyadi ?? 'Sistem');
 
-                foreach ($personel_ids as $bp_id) {
-                    if ($BordroPersonel->hesaplaMaas(intval($bp_id), $hesaplayanId, $hesaplayanAdSoyad)) {
-                        $hesaplananSayisi++;
-                        $hesaplananIds[] = intval($bp_id);
+                $db = $BordroPersonel->getDb();
+                try {
+                    $db->beginTransaction();
+                    foreach ($personel_ids as $bp_id) {
+                        if ($BordroPersonel->hesaplaMaas(intval($bp_id), $hesaplayanId, $hesaplayanAdSoyad)) {
+                            $hesaplananSayisi++;
+                            $hesaplananIds[] = intval($bp_id);
+                        }
                     }
+                    $db->commit();
+                } catch (\Exception $e) {
+                    if ($db->inTransaction()) {
+                        $db->rollBack();
+                    }
+                    throw $e;
                 }
 
                 // Onay bekleyen kesintileri tek sorguda toplu çek (N+1 önlemi)

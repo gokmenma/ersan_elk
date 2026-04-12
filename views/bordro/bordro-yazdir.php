@@ -45,104 +45,39 @@ if (!$firma) {
     die('Firma kaydı bulunamadı.');
 }
 
-// Ortak Stiller
+// Ortak Stiller (Resimdeki stile uygun olarak güncellendi)
 $style = '
-    body { font-family: "DejaVu Sans", sans-serif; color: #333; font-size: 8pt; line-height: 1.4; }
-    .header { border-bottom: 2px solid #2563eb; padding-bottom: 8px; margin-bottom: 15px; }
-    .logo-box { width: 110px; }
-    .company-name { font-size: 13pt; font-weight: bold; color: #1e293b; }
-    .document-title { font-size: 11pt; color: #2563eb; text-align: right; font-weight: bold; }
+    body { font-family: "DejaVu Sans", sans-serif; color: #000; font-size: 8pt; line-height: 1.2; padding: 0; margin: 0; }
+    .bordro-container { width: 100%; }
     
-    .section-header { 
-        background: #f8fafc; 
-        padding: 4px 8px; 
-        font-weight: bold; 
-        color: #1e293b; 
-        margin-bottom: 8px; 
-        border-left: 3px solid #2563eb; 
-        font-size: 8pt;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
+    .main-title { text-align: center; font-size: 11pt; font-weight: bold; margin-bottom: 10px; text-transform: uppercase; }
     
-    .info-table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-    .info-table td { padding: 2px 5px; vertical-align: top; }
-    .label { color: #64748b; width: 90px; font-size: 7pt; text-transform: uppercase; }
-    .value { font-weight: bold; color: #1e293b; font-size: 8pt; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 5px; }
+    th, td { padding: 3px 5px; vertical-align: middle; }
     
-    .dept-badge { 
-        display: inline-block; 
-        padding: 1px 4px; 
-        border-radius: 2px; 
-        color: #fff; 
-        font-weight: bold; 
-        font-size: 7pt;
-        margin-right: 4px;
-    }
+    .border-table th, .border-table td { border: 1px solid #000; }
+    .border-table th { background: #fff; font-weight: bold; text-align: center; }
     
-    .grid-container { width: 100%; border-collapse: separate; border-spacing: 8px 0; margin-bottom: 15px; table-layout: fixed; border-radius: 10px; }
+    .info-table td { border: none; padding: 1px 5px; }
+    .info-label { font-weight: bold; width: 120px; }
+    .info-sep { width: 10px; text-align: center; }
     
-    .grid-box { 
-        border: 1px solid #cbd5e1; 
-        border-radius: 10px; 
-        padding: 15px; 
-        background: #ffffff;
-        vertical-align: top;
-    }
+    .section-title { font-weight: bold; text-align: center; background: #fff; border: 1px solid #000; padding: 2px; text-transform: uppercase; }
     
-    .grid-title { 
-        font-weight: bold; 
-        font-size: 8.5pt; 
-        margin-bottom: 8px; 
-        padding-bottom: 4px;
-        border-bottom: 1px solid #e2e8f0;
-        text-transform: uppercase;
-        letter-spacing: 0.5px;
-    }
+    .text-center { text-align: center; }
+    .text-right { text-align: right; }
+    .text-bold { font-weight: bold; }
     
-    .data-table { width: 100%; border-collapse: collapse; }
-    .data-table th { text-align: left; padding: 4px 0; color: #64748b; font-size: 6.5pt; text-transform: uppercase; border-bottom: 1px solid #f1f5f9; }
-    .data-table td { padding: 6px 0; border-bottom: 1px solid #f8fafc; font-size: 7.5pt; vertical-align: top; }
-    .amount { text-align: right; font-weight: bold; width: 75px; white-space: nowrap; }
+    .breakdown-container { width: 100%; border-spacing: 0; }
+    .breakdown-left { width: 50%; padding-right: 5px; vertical-align: top; }
+    .breakdown-right { width: 50%; padding-left: 5px; vertical-align: top; }
     
-    .puantaj-detail { font-size: 6.5pt; color: #64748b; margin-top: 2px; line-height: 1.2; font-weight: normal; }
+    .footer-text { margin-top: 50px; font-size: 8pt; text-align: left; }
     
-    .summary-box { 
-        background: #ffffff; 
-        border: 1px solid #cbd5e1; 
-        padding: 15px; 
-        border-radius: 10px; 
-        margin-top: 15px;
-    }
+    .mt-10 { margin-top: 10px; }
+    .mb-5 { margin-bottom: 5px; }
     
-    .net-salary-container { text-align: right; }
-    .net-salary-label { font-size: 9pt; font-weight: bold; color: #64748b; }
-    .net-salary-value { font-size: 16pt; font-weight: bold; color: #10b981; }
-    
-    .days-box { 
-        background: #f0f9ff; 
-        border: 1px solid #bae6fd; 
-        padding: 8px; 
-        border-radius: 10px; 
-        margin-bottom: 15px;
-    }
-    .day-grid { width: 100%; border-collapse: collapse; }
-    .day-item { text-align: center; border-right: 1px solid #bae6fd; width: 25%; }
-    .day-item:last-child { border-right: none; }
-    .day-label { font-size: 6.5pt; color: #0369a1; text-transform: uppercase; margin-right: 4px; }
-    .day-value { font-size: 10pt; font-weight: bold; color: #0369a1; }
-    
-    .cost-section { background: #f8fafc; padding: 10px; border-radius: 10px; margin-top: 10px; border: 1px solid #f1f5f9; }
-    .cost-table { width: 100%; border-collapse: collapse; }
-    .cost-td { text-align: center; padding: 3px; }
-    
-    .signature-section { margin-top: 40px; width: 100%; }
-    .signature-box { border-top: 1px solid #cbd5e1; padding-top: 8px; width: 180px; text-align: center; }
-    
-    .footer { font-size: 6.5pt; color: #94a3b8; text-align: center; border-top: 1px solid #f1f5f9; padding-top: 8px; }
-    @page {
-        footer: html_myFooter;
-    }
+    .bg-light { background-color: #f9f9f9; }
 ';
 
 $htmlBody = '';
@@ -169,265 +104,305 @@ foreach ($bordroListesi as $index => $bordro) {
         continue;
     }
 
-    // Ekip ve Bölge bilgilerini getir
     $db = $BordroModel->getDb();
-    $sqlEkip = $db->prepare("
-        SELECT 
-            GROUP_CONCAT(DISTINCT t.tur_adi SEPARATOR ', ') as ekip_adi,
-            GROUP_CONCAT(DISTINCT t.ekip_bolge SEPARATOR ', ') as ekip_bolge
-        FROM personel_ekip_gecmisi pg
-        JOIN tanimlamalar t ON pg.ekip_kodu_id = t.id
-        WHERE pg.personel_id = ? 
-        AND pg.baslangic_tarihi <= ? 
-        AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= ?)
-        AND pg.firma_id = ?
-        GROUP BY pg.personel_id
-    ");
     
     // Bordro donem tarihlerini alalım
-    $sqlDonemDates = $db->prepare("SELECT baslangic_tarihi, bitis_tarihi FROM bordro_donemi WHERE id = ?");
+    $sqlDonemDates = $db->prepare("SELECT baslangic_tarihi, bitis_tarihi, donem_adi FROM bordro_donemi WHERE id = ?");
     $sqlDonemDates->execute([$bordro->donem_id]);
-    $donemDates = $sqlDonemDates->fetch(PDO::FETCH_OBJ);
-    $bitis_tarihi_ref = $donemDates->bitis_tarihi ?? date('Y-m-t');
-    $baslangic_tarihi_ref = $donemDates->baslangic_tarihi ?? date('Y-m-01');
-
-    $sqlEkip->execute([$personel_id, $bitis_tarihi_ref, $baslangic_tarihi_ref, $_SESSION['firma_id']]);
-    $ekipBilgisi = $sqlEkip->fetch(PDO::FETCH_OBJ);
-
-    $kesintilerDetay = $BordroModel->getDonemKesintileriListe($personel_id, $bordro->donem_id);
-    $ekOdemelerDetay = $BordroModel->getDonemEkOdemeleriListe($personel_id, $bordro->donem_id);
-    $guncelKesinti = $BordroModel->getDonemKesintileri($personel_id, $bordro->donem_id);
-    $guncelEkOdeme = $BordroModel->getDonemEkOdemeleri($personel_id, $bordro->donem_id);
+    $donemData = $sqlDonemDates->fetch(PDO::FETCH_OBJ);
+    
+    $baslangic_tarihi_ref = $donemData->baslangic_tarihi ?? date('Y-m-01');
+    $donemYil = date('Y', strtotime($baslangic_tarihi_ref));
+    $donemAyNum = date('m', strtotime($baslangic_tarihi_ref));
+    $donemAyAdi = strtr(date('F', strtotime($baslangic_tarihi_ref)), $aylar);
+    $donemText = $donemAyNum . '/' . $donemYil;
 
     $hesaplamaDetay = !empty($bordro->hesaplama_detay) ? json_decode($bordro->hesaplama_detay, true) : [];
-    $calismaGunu = $hesaplamaDetay['matrahlar']['fiili_calisma_gunu'] ?? 30;
+    
+    // Matrahlar ve Günler
+    $normalGun = $hesaplamaDetay['matrahlar']['normal_gun'] ?? 0;
+    $haftaTatili = $hesaplamaDetay['matrahlar']['hafta_tatili_gunu'] ?? 0;
+    $genelTatil = $hesaplamaDetay['matrahlar']['genel_tatil_gunu'] ?? 0;
+    $ucretliIzin = $hesaplamaDetay['matrahlar']['ucretli_izin_gunu'] ?? 0;
+    $raporGun = $hesaplamaDetay['matrahlar']['rapor_gunu'] ?? 0;
     $ucretsizIzinGunu = $hesaplamaDetay['matrahlar']['ucretsiz_izin_gunu'] ?? 0;
-    $ucretliIzinGunu = $hesaplamaDetay['matrahlar']['ucretli_izin_gunu'] ?? 0;
-    $toplamIzinGunu = $ucretsizIzinGunu + $ucretliIzinGunu;
-    $icraKesintisi = $hesaplamaDetay['odeme_dagilimi']['icra_kesintisi'] ?? 0;
+    $sskGun = $hesaplamaDetay['matrahlar']['ssk_gunu'] ?? ($bordro->calisan_gun ?? 30);
 
-    $toplamYasalKesinti = floatval($bordro->sgk_isci) + floatval($bordro->issizlik_isci) + floatval($bordro->gelir_vergisi) + floatval($bordro->damga_vergisi);
-    $toplamKesinti = $guncelKesinti + $toplamYasalKesinti;
-    $toplamEkOdeme = $guncelEkOdeme;
+    // SSK Gün ile diğer günlerin uyumlu olması için Normal Günü her zaman (SSK - Kesilen Günler) olarak hesaplarız.
+    $normalGun = max(0, $sskGun - $haftaTatili - $genelTatil - $ucretliIzin - $raporGun - $ucretsizIzinGunu);
+    
+    // Kazançları günlere göre orantılayalım (Genelde Toplam Brüt / SSK Gün * Tür Gün)
+    $gunlukUcret = ($sskGun > 0) ? ($bordro->brut_maas / $sskGun) : 0;
+    
+    $normalTutar = round($gunlukUcret * $normalGun, 2);
+    $haftaTatiliTutar = round($gunlukUcret * $haftaTatili, 2);
+    $genelTatilTutar = round($gunlukUcret * $genelTatil, 2);
+    $ucretliIzinTutar = round($gunlukUcret * $ucretliIzin, 2);
+    
+    $raporTutar = 0; 
+    $toplamTutarGun = $normalTutar + $haftaTatiliTutar + $genelTatilTutar + $ucretliIzinTutar;
 
-    $donemAdi = date('F Y', strtotime($baslangic_tarihi_ref));
-    $donemAdiTr = strtr($donemAdi, $aylar);
+    // Yasal Kesintiler Detay
+    $sgkMatrah = $hesaplamaDetay['matrahlar']['sgk_matrahi'] ?? ($bordro->brut_maas + ($hesaplamaDetay['ozet']['sgk_matrah_ekleri'] ?? 0));
+    $gelirVergisiMatrah = $hesaplamaDetay['matrahlar']['gelir_vergisi_matrahi'] ?? 0;
+    $sgkIsci = $bordro->sgk_isci ?? 0;
+    $sgkIsveren = $bordro->sgk_isveren ?? 0;
+    $issizlikIsci = $bordro->issizlik_isci ?? 0;
+    $issizlikIsveren = $bordro->issizlik_isveren ?? 0;
+    $gelirVergisi = $bordro->gelir_vergisi ?? 0;
+    $damgaVergisi = $bordro->damga_vergisi ?? 0;
+    
+    $istisnaGV = $hesaplamaDetay['indirimler']['asgari_ucret_istisna_gv'] ?? 0;
+    $istisnaDV = $hesaplamaDetay['indirimler']['asgari_ucret_istisna_dv'] ?? 0;
+    $oncekiAyMatrah = $hesaplamaDetay['matrahlar']['onceki_kumulatif'] ?? 0;
+    $yilIciToplam = $hesaplamaDetay['matrahlar']['yeni_kumulatif'] ?? $gelirVergisiMatrah + $oncekiAyMatrah;
 
-    $deptName = $personel->departman ?? '-';
-    $deptUp = mb_convert_case($deptName, MB_CASE_UPPER, "UTF-8");
-    $dInfo = ['code' => '??', 'color' => '#6c757d'];
+    // Ek Kazançlar ve Özel Kesintiler
+    $kesintilerDetay = $BordroModel->getDonemKesintileriListe($personel_id, $bordro->donem_id);
+    $ekOdemelerDetay = $BordroModel->getDonemEkOdemeleriListe($personel_id, $bordro->donem_id);
 
-    if (strpos($deptUp, 'OKUMA') !== false)
-        $dInfo = ['code' => 'EO', 'color' => '#0ea5e9'];
-    elseif (strpos($deptUp, 'KESME') !== false)
-        $dInfo = ['code' => 'KA', 'color' => '#f43f5e'];
-    elseif (strpos($deptUp, 'SAYAÇ') !== false || strpos($deptUp, 'DEGİŞ') !== false)
-        $dInfo = ['code' => 'ST', 'color' => '#10b981'];
-    elseif (strpos($deptUp, 'KAÇAK') !== false)
-        $dInfo = ['code' => 'KÇ', 'color' => '#8b5cf6'];
-    else {
-        $words = explode(' ', $deptUp);
-        if (count($words) >= 2) {
-            $dInfo['code'] = mb_substr($words[0], 0, 1) . mb_substr($words[1], 0, 1);
+    // Ek Ödemeleri Grupla (Özellikle puantaj kalemlerini)
+    $groupedEkOdemeler = [];
+    foreach ($ekOdemelerDetay as $ek) {
+        $desc = $ek->aciklama;
+        
+        if (strpos($desc, '[Puantaj]') === 0) {
+            $key = 'puantaj_toplam';
+            if (!isset($groupedEkOdemeler[$key])) {
+                $groupedEkOdemeler[$key] = [
+                    'aciklama' => 'Puantaj Ödemeleri',
+                    'toplam' => 0
+                ];
+            }
+            $groupedEkOdemeler[$key]['toplam'] += floatval($ek->tutar);
         } else {
-            $dInfo['code'] = mb_substr($deptUp, 0, 2);
+            $cleanedDesc = $desc;
+            if (strpos($desc, '[Yemek Yardımı]') !== false) $cleanedDesc = 'Yemek Yardımı';
+            if (strpos($desc, '[Eş Yardımı]') !== false) $cleanedDesc = 'Aile Yardımı';
+
+            $groupedEkOdemeler[] = [
+                'aciklama' => $cleanedDesc,
+                'toplam' => floatval($ek->tutar)
+            ];
         }
     }
+
+    $toplamEkKazanc = 0;
+    foreach($ekOdemelerDetay as $ek) $toplamEkKazanc += $ek->tutar;
+
+    $toplamOzelKesinti = 0;
+    foreach($kesintilerDetay as $k) $toplamOzelKesinti += $k->tutar;
+
+    $toplamYasalKesinti = $sgkIsci + $issizlikIsci + $gelirVergisi + $damgaVergisi;
+    $toplamKesinti = $toplamYasalKesinti + $toplamOzelKesinti;
 
     $htmlBody .= '
     <div class="bordro-container">
-        <table width="100%" class="header">
-            <tr>
-                <td class="logo-box"><img src="' . dirname(__DIR__, 2) . '/assets/images/logo.png" height="30"></td>
-                <td>
-                    <div class="company-name">' . ($firma->firma_adi ?? 'ERSAN ELEKTRİK') . '</div>
-                    <div style="font-size: 7.5pt; color: #64748b;">Maaş Ödeme Bordrosu (Çalışan Nüshası)</div>
-                </td>
-                <td class="document-title">' . $donemAdiTr . '</td>
-            </tr>
-        </table>
-
-        <div class="section-header">Personel Bilgileri</div>
+        <div class="main-title">ÜCRET HESAP PUSULASI</div>
+        
         <table class="info-table">
             <tr>
-                <td class="label">Ad Soyad</td>
-                <td class="value" width="350">
-                    <span class="dept-badge" style="background-color: ' . $dInfo['color'] . ';">' . $dInfo['code'] . '</span>
-                    ' . ($personel->adi_soyadi ?? '-') . '
-                </td>
-                <td class="label">TC Kimlik</td>
-                <td class="value">' . ($personel->tc_kimlik_no ?? '-') . '</td>
+                <td class="info-label">Ad Soyad</td><td class="info-sep">:</td><td width="250">' . ($personel->adi_soyadi ?? '-') . '</td>
+                <td class="info-label">Bordro Tür</td><td class="info-sep">:</td><td>' . ($bordro->bordro_turu ?? 'Maaş') . '</td>
             </tr>
             <tr>
-                <td class="label">Birim / Görev</td>
-                <td class="value"><strong>' . ($personel->departman ?? '-') . '</strong> / ' . ($personel->gorev ?? '-') . '</td>
-                <td class="label">İşe Giriş</td>
-                <td class="value">' . ($personel->ise_giris_tarihi ? date('d.m.Y', strtotime($personel->ise_giris_tarihi)) : '-') . '</td>
+                <td class="info-label">İşyeri</td><td class="info-sep">:</td><td>' . ($firma->firma_adi ?? 'ERSAN ELEKTRİK') . '</td>
+                <td class="info-label">İşyeri No</td><td class="info-sep">:</td><td>' . (!empty($firma->sgk_no) && $firma->sgk_no !== '0' ? $firma->sgk_no : '-') . '</td>
             </tr>
             <tr>
-                <td class="label">Ekip / Bölge</td>
-                <td class="value">' . ($ekipBilgisi->ekip_adi ?? '-') . ' / ' . ($ekipBilgisi->ekip_bolge ?? '-') . '</td>
-                <td class="label">İşten Çıkış</td>
-                <td class="value">' . (!empty($personel->isten_cikis_tarihi) && $personel->isten_cikis_tarihi != '0000-00-00' && $personel->isten_cikis_tarihi != '00.00.0000' ? date('d.m.Y', strtotime($personel->isten_cikis_tarihi)) : '-') . '</td>
+                <td class="info-label">Görevi</td><td class="info-sep">:</td><td>' . ($personel->gorev ?? '-') . '</td>
+                <td class="info-label">Vergi Dairesi No</td><td class="info-sep">:</td><td>' . (!empty($firma->vergi_dairesi) ? $firma->vergi_dairesi : '') . (!empty($firma->vergi_no) && $firma->vergi_no !== '0' ? ' / ' . $firma->vergi_no : (!empty($firma->vergi_dairesi) ? '' : '-')) . '</td>
             </tr>
             <tr>
-                <td class="label">Maaş Tipi</td>
-                <td class="value">' . ($personel->maas_durumu ?? 'Brüt') . '</td>
-                <td class="label"></td>
-                <td class="value"></td>
+                <td class="info-label">Dönem</td><td class="info-sep">:</td><td>' . $donemText . '</td>
+                <td class="info-label">Mersis No</td><td class="info-sep">:</td><td>' . (!empty($firma->mersis_no) && $firma->mersis_no !== '0' ? $firma->mersis_no : '-') . '</td>
+            </tr>
+            <tr>
+                <td class="info-label">Adres</td><td class="info-sep">:</td><td>' . (!empty($firma->adres) && $firma->adres !== '0' ? $firma->adres : '-') . '</td>
+                <td class="info-label">Ticaret Sicil No</td><td class="info-sep">:</td><td>' . (!empty($firma->sicil_no) && $firma->sicil_no !== '0' ? $firma->sicil_no : '-') . '</td>
+            </tr>
+            <tr>
+                <td class="info-label">Merkez Adres</td><td class="info-sep">:</td><td>' . (!empty($firma->merkez_adres) && $firma->merkez_adres !== '0' ? $firma->merkez_adres : (!empty($firma->adres) && $firma->adres !== '0' ? $firma->adres : '-')) . '</td>
+                <td class="info-label">Vatandaş No</td><td class="info-sep">:</td><td>' . ($personel->tc_kimlik_no ?? '-') . '</td>
+            </tr>
+            <tr>
+                <td class="info-label">Web Adresi</td><td class="info-sep">:</td><td>' . (!empty($firma->web_adresi) && $firma->web_adresi !== '0' ? $firma->web_adresi : '-') . '</td>
+                <td class="info-label">SSK No</td><td class="info-sep">:</td><td>-</td>
+            </tr>
+            <tr>
+                <td class="info-label"></td><td class="info-sep"></td><td></td>
+                <td class="info-label">Giriş Tarihi</td><td class="info-sep">:</td><td>' . ($personel->ise_giris_tarihi ? date('d.m.Y', strtotime($personel->ise_giris_tarihi)) : '-') . '</td>
+            </tr>
+            <tr>
+                <td class="info-label"></td><td class="info-sep"></td><td></td>
+                <td class="info-label">Çıkış Tarihi</td><td class="info-sep">:</td><td>' . (!empty($personel->isten_cikis_tarihi) && $personel->isten_cikis_tarihi != '0000-00-00' ? date('d.m.Y', strtotime($personel->isten_cikis_tarihi)) : '-') . '</td>
             </tr>
         </table>
 
-        <div class="days-box">
-            <table class="day-grid">
+        <div class="section-title">ÇALIŞMA VE İZİN GÜNLERİ</div>
+        <table class="border-table">
+            <thead>
                 <tr>
-                    <td class="day-item"><span class="day-label">Fiili Çalışma:</span><span class="day-value">' . $calismaGunu . ' Gün</span></td>
-                    <td class="day-item"><span class="day-label">Ücretli İzin:</span><span class="day-value">' . $ucretliIzinGunu . ' Gün</span></td>
-                    <td class="day-item"><span class="day-label">Ücretsiz İzin:</span><span class="day-value">' . $ucretsizIzinGunu . ' Gün</span></td>
-                    <td class="day-item"><span class="day-label">Hakedilen Gün:</span><span class="day-value">' . ($calismaGunu + $ucretliIzinGunu) . ' Gün</span></td>
+                    <th width="14%">Tür</th>
+                    <th width="14%">SSK Gün</th>
+                    <th width="14%">Normal Gün</th>
+                    <th width="14%">Hafta Tatili</th>
+                    <th width="14%">Genel Tatil</th>
+                    <th width="14%">Ücretli İzin</th>
+                    <th width="14%">Rapor / Ü.İ.</th>
                 </tr>
-            </table>
-        </div>
+            </thead>
+            <tbody>
+                <tr>
+                    <td class="text-bold">Gün Sayısı</td>
+                    <td class="text-center">' . $sskGun . '</td>
+                    <td class="text-center">' . $normalGun . '</td>
+                    <td class="text-center">' . $haftaTatili . '</td>
+                    <td class="text-center">' . $genelTatil . '</td>
+                    <td class="text-center">' . $ucretliIzin . '</td>
+                    <td class="text-center">' . ($raporGun + $ucretsizIzinGunu) . '</td>
+                </tr>
+                <tr>
+                    <td class="text-bold">Toplam Tutar</td>
+                    <td class="text-right">' . number_format($bordro->brut_maas, 2, ',', '.') . '</td>
+                    <td class="text-right">' . ($normalTutar > 0 ? number_format($normalTutar, 2, ',', '.') : '') . '</td>
+                    <td class="text-right">' . ($haftaTatiliTutar > 0 ? number_format($haftaTatiliTutar, 2, ',', '.') : '') . '</td>
+                    <td class="text-right">' . ($genelTatilTutar > 0 ? number_format($genelTatilTutar, 2, ',', '.') : '') . '</td>
+                    <td class="text-right">' . ($ucretliIzinTutar > 0 ? number_format($ucretliIzinTutar, 2, ',', '.') : '') . '</td>
+                    <td class="text-right"></td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div style="margin: 3px 0; font-weight: bold;">Eksik Gün: ' . 
+            (($raporGun > 0 || $ucretsizIzinGunu > 0) 
+                ? ($raporGun > 0 ? $raporGun . ' GÜN RAPORLU ' : '') . ($ucretsizIzinGunu > 0 ? $ucretsizIzinGunu . ' GÜN ÜCRETSİZ İZİNLİ' : '') 
+                : 'YOK') . 
+        '</div>';
 
-        <table class="grid-container">
+
+        $htmlBody .= '<table class="breakdown-container">
             <tr>
-                <td width="50%" valign="top" class="grid-box">
-                    <div class="grid-title" style="color: #2563eb;">KAZANÇLAR</div>
-                        <table class="data-table">
-                            <thead><tr><th>AÇIKLAMA</th><th class="amount">TUTAR</th></tr></thead>
-                            <tbody>
-                                <tr><td>Brüt Maaş</td><td class="amount">' . number_format($bordro->brut_maas ?? 0, 2, ',', '.') . ' ₺</td></tr>';
-
-    if (!empty($ekOdemelerDetay)) {
-        foreach ($ekOdemelerDetay as $ek) {
-            $desc = $ek->aciklama;
-            $sub = "";
-
-            if (preg_match('/^\[Puantaj\]\s*(.*?)\s*\((.*?)\)$/i', $desc, $matches)) {
-                $desc = '<strong>' . $matches[1] . '</strong>';
-                $sub = '<div class="puantaj-detail">' . $matches[2] . '</div>';
-            } else {
-                $desc = '<strong>' . (!empty($ek->aciklama) ? $ek->aciklama : (!empty($ek->etiket) ? $ek->etiket : ucfirst($ek->tur))) . '</strong>';
-            }
-
-            $htmlBody .= '
-                            <tr>
-                                <td>' . $desc . $sub . '</td>
-                                <td class="amount" style="color: #16a34a;">+' . number_format($ek->tutar, 2, ',', '.') . ' ₺</td>
-                            </tr>';
+                <td class="breakdown-left">
+                    <div class="section-title">YASAL KESİNTİLER</div>
+                    <table class="border-table">
+                        <tr>
+                            <td rowspan="3" width="20%" class="text-center text-bold">SİGORTA</td>
+                            <td width="50%">Matrah</td>
+                            <td width="30%" class="text-right">' . number_format($sgkMatrah, 2, ',', '.') . '</td>
+                        </tr>
+                        <tr>
+                            <td>İşçi Prim Tutarı</td>
+                            <td class="text-right">' . number_format($sgkIsci, 2, ',', '.') . '</td>
+                        </tr>
+                        <tr>
+                            <td>İşveren Prim Tutarı</td>
+                            <td class="text-right">' . number_format($sgkIsveren, 2, ',', '.') . '</td>
+                        </tr>
+                        <tr>
+                            <td rowspan="6" class="text-center text-bold">VERGİ</td>
+                            <td>Matrah</td>
+                            <td class="text-right">' . number_format($gelirVergisiMatrah, 2, ',', '.') . '</td>
+                        </tr>
+                        <tr>
+                            <td>Gelir Vergisi</td>
+                            <td class="text-right">' . number_format($gelirVergisi, 2, ',', '.') . '</td>
+                        </tr>
+                        <tr>
+                            <td>İndirim</td>
+                            <td class="text-right">0,00</td>
+                        </tr>
+                        <tr>
+                            <td>Önceki Ay Matrah</td>
+                            <td class="text-right">' . number_format($oncekiAyMatrah, 2, ',', '.') . '</td>
+                        </tr>
+                        <tr>
+                            <td>Yıl İçi Toplam</td>
+                            <td class="text-right">' . number_format($yilIciToplam, 2, ',', '.') . '</td>
+                        </tr>
+                        <tr>
+                            <td>Damga Vergisi</td>
+                            <td class="text-right">' . number_format($damgaVergisi, 2, ',', '.') . '</td>
+                        </tr>
+                        <tr>
+                            <td rowspan="2" class="text-center text-bold">İŞSİZLİK</td>
+                            <td>İşçi Prim Tutarı</td>
+                            <td class="text-right">' . number_format($issizlikIsci, 2, ',', '.') . '</td>
+                        </tr>
+                        <tr>
+                            <td>İşveren Prim Tutarı</td>
+                            <td class="text-right">' . number_format($issizlikIsveren, 2, ',', '.') . '</td>
+                        </tr>
+                    </table>
+                </td>
+                <td class="breakdown-right">
+                    <div class="section-title">EK KAZANÇLAR</div>
+                    <table class="border-table">
+                        ';
+    if(empty($groupedEkOdemeler)) {
+        $htmlBody .= '<tr><td height="40" colspan="3"></td></tr>';
+    } else {
+        foreach($groupedEkOdemeler as $ek) {
+            $htmlBody .= '<tr>
+                <td width="70%">' . $ek['aciklama'] . '</td>
+                <td width="10%" class="text-center"></td>
+                <td width="20%" class="text-right">' . number_format($ek['toplam'], 2, ',', '.') . ' ₺</td>
+            </tr>';
         }
     }
-
+    
     $htmlBody .= '
-                            </tbody>
-                        </table>
-                        <table width="100%" style="margin-top: 10px; border-top: 1px solid #e2e8f0;">
-                            <tr>
-                                <td style="font-weight: bold; font-size: 8pt; padding-top: 8px;">Toplam Kazanç</td>
-                                <td class="amount" style="font-weight: bold; font-size: 8pt; padding-top: 8px;">' . number_format(floatval($bordro->brut_maas) + $toplamEkOdeme, 2, ',', '.') . ' ₺</td>
-                            </tr>
-                        </table>
-                </td>
-                <td width="50%" valign="top" class="grid-box">
-                    <div class="grid-title" style="color: #dc2626;">KESİNTİLER</div>
-                        <table class="data-table">
-                            <thead><tr><th>AÇIKLAMA</th><th class="amount">TUTAR</th></tr></thead>
-                            <tbody>';
-
-    $hasYasal = ($personel->maas_durumu ?? '') != 'Prim Usülü';
-    if ($hasYasal || $bordro->sgk_isci > 0) {
-        $htmlBody .= '<tr><td>SGK İşçi Payı (%14)</td><td class="amount">-' . number_format($bordro->sgk_isci ?? 0, 2, ',', '.') . ' ₺</td></tr>';
-        $htmlBody .= '<tr><td>İşsizlik Sigortası (%1)</td><td class="amount">-' . number_format($bordro->issizlik_isci ?? 0, 2, ',', '.') . ' ₺</td></tr>';
-        $htmlBody .= '<tr><td>Gelir Vergisi</td><td class="amount">-' . number_format($bordro->gelir_vergisi ?? 0, 2, ',', '.') . ' ₺</td></tr>';
-        $htmlBody .= '<tr><td>Damga Vergisi</td><td class="amount">-' . number_format($bordro->damga_vergisi ?? 0, 2, ',', '.') . ' ₺</td></tr>';
-    }
-
-    if ($icraKesintisi > 0) {
-        $htmlBody .= '<tr><td><strong>İcra Kesintisi</strong></td><td class="amount" style="color: #dc2626;">-' . number_format($icraKesintisi, 2, ',', '.') . ' ₺</td></tr>';
-    }
-
-    if (!empty($kesintilerDetay)) {
-        foreach ($kesintilerDetay as $k) {
-            if ($k->tur === 'icra')
-                continue;
-
-            $desc = $k->aciklama;
-            $sub = "";
-            if (preg_match('/^\[(.*?)\]\s*(.*?)\s*\((.*?)\)$/i', $desc, $matches)) {
-                $desc = '<strong>[' . $matches[1] . '] ' . $matches[2] . '</strong>';
-                $sub = '<div class="puantaj-detail">' . $matches[3] . '</div>';
-            }
-
-            $htmlBody .= '
-                            <tr>
-                                <td>' . $desc . $sub . '</td>
-                                <td class="amount">-' . number_format($k->tutar, 2, ',', '.') . ' ₺</td>
-                            </tr>';
+                    </table>
+                    
+                    <div class="section-title mt-10">ÖZEL KESİNTİLER</div>
+                    <table class="border-table">
+                        ';
+    if(empty($kesintilerDetay)) {
+        $htmlBody .= '<tr><td height="40" colspan="2"></td></tr>';
+    } else {
+        foreach($kesintilerDetay as $k) {
+            $htmlBody .= '<tr>
+                <td width="80%">' . $k->aciklama . '</td>
+                <td width="20%" class="text-right">' . number_format($k->tutar, 2, ',', '.') . ' ₺</td>
+            </tr>';
         }
     }
-
+    
     $htmlBody .= '
-                            </tbody>
-                        </table>
-                        <table width="100%" style="margin-top: 10px; border-top: 1px solid #e2e8f0;">
-                            <tr>
-                                <td style="font-weight: bold; font-size: 8pt; padding-top: 8px;">Toplam Kesinti</td>
-                                <td class="amount" style="font-weight: bold; font-size: 8pt; padding-top: 8px;">-' . number_format($toplamKesinti, 2, ',', '.') . ' ₺</td>
-                            </tr>
-                        </table>
+                    </table>
                 </td>
             </tr>
         </table>
 
-        <div class="summary-box">
-            <table width="100%">
-                <tr>
-                    <td width="50%" valign="top">
-                        <div style="font-weight: bold; color: #64748b; font-size: 7pt; margin-bottom: 5px; text-transform: uppercase;">Ödeme Detayları</div>
-                        <table width="100%" style="font-size: 7.5pt;">
-                            <tr><td style="color: #64748b; padding: 1px 0;">Banka Hesabı</td><td style="text-align: right; font-weight: bold;">' . number_format($bordro->banka_odemesi ?? 0, 2, ',', '.') . ' ₺</td></tr>
-                            <tr><td style="color: #64748b; padding: 1px 0;">Sodexo / Yemek</td><td style="text-align: right; font-weight: bold;">' . number_format($bordro->sodexo_odemesi ?? 0, 2, ',', '.') . ' ₺</td></tr>';
-
-    $elden = ($bordro->net_maas ?? 0) - ($bordro->banka_odemesi ?? 0) - ($bordro->sodexo_odemesi ?? 0) - ($bordro->diger_odeme ?? 0);
-    if ($elden > 0) {
-        $htmlBody .= '<tr><td style="color: #64748b; padding: 1px 0;">Nakit / Elden</td><td style="text-align: right; font-weight: bold;">' . number_format($elden, 2, ',', '.') . ' ₺</td></tr>';
-    }
-
-    $htmlBody .= '
-                        </table>
-                    </td>
-                    <td width="50%" align="right" valign="bottom">
-                        <div class="net-salary-container">
-                            <div class="net-salary-label">NET ÖDENECEK</div>
-                            <div class="net-salary-value">' . number_format($bordro->net_maas ?? 0, 2, ',', '.') . ' ₺</div>
-                        </div>
-                    </td>
-                </tr>
-            </table>
-        </div>
-
-        <div class="cost-section">
-            <table class="cost-table">
-                <tr>
-                    <td class="cost-td" width="30%"><span class="day-label">SGK İşveren:</span><span class="value" style="font-size: 8pt;">' . number_format($bordro->sgk_isveren ?? 0, 2, ',', '.') . ' ₺</span></td>
-                    <td class="cost-td" width="30%"><span class="day-label">İşsizlik İşveren:</span><span class="value" style="font-size: 8pt;">' . number_format($bordro->issizlik_isveren ?? 0, 2, ',', '.') . ' ₺</span></td>
-                    <td class="cost-td" width="40%" style="border-left: 1px solid #e2e8f0;"><span class="day-label" style="color: #2563eb;">Toplam Maliyet:</span><span class="value" style="color: #2563eb; font-size: 9pt;">' . number_format($bordro->toplam_maliyet ?? 0, 2, ',', '.') . ' ₺</span></td>
-                </tr>
-            </table>
-        </div>
-
-        <table class="signature-section">
+        <table class="breakdown-container mt-10">
             <tr>
-                <td width="50%"><div class="signature-box"><div style="height: 40px;"></div><div class="label" style="width: 100%;">İşveren / Yetkili İmza</div></div></td>
-                <td width="50%" align="right"><div class="signature-box"><div style="height: 40px;"></div><div class="label" style="width: 100%;">Personel İmza</div></div></td>
+                <td width="50%" valign="top">
+                    <div class="section-title">ÖZET BİLGİLER</div>
+                    <table class="border-table">
+                        <tr><td width="70%">Kazanç Toplam</td><td width="30%" class="text-right">' . number_format($bordro->brut_maas + $toplamEkKazanc, 2, ',', '.') . '</td></tr>
+                        <tr><td>Yasal Kesinti Toplamı</td><td class="text-right">' . number_format($toplamYasalKesinti, 2, ',', '.') . '</td></tr>
+                        <tr><td>Kesintiler Toplamı</td><td class="text-right">' . number_format($toplamKesinti, 2, ',', '.') . '</td></tr>
+                        <tr><td>Özel Kesinti Toplamı</td><td class="text-right">' . number_format($toplamOzelKesinti, 2, ',', '.') . '</td></tr>
+                    </table>
+                    
+                    <table class="border-table mt-10">
+                        <tr><td width="70%">Asgari Ücret Gelir Vergisi</td><td width="30%" class="text-right">' . number_format($istisnaGV, 2, ',', '.') . '</td></tr>
+                        <tr><td>Asgari Ücret Damga Vergisi</td><td class="text-right">' . number_format($istisnaDV, 2, ',', '.') . '</td></tr>
+                        <tr class="bg-light"><td class="text-bold">Net Ödenen</td><td class="text-right text-bold">' . number_format($bordro->net_maas, 2, ',', '.') . '</td></tr>
+                    </table>
+                </td>
+                <td width="50%" valign="bottom" align="center">
+                    <table style="width: 200px; margin-top: 20px;">
+                        <tr><td style="border-top: 1px solid #000; text-align: center; padding-top: 5px;">PERSONEL İMZA</td></tr>
+                        <tr><td height="40"></td></tr>
+                    </table>
+                </td>
             </tr>
         </table>
 
-        <htmlpagefooter name="myFooter">
-            <div class="footer">
-                Bu belge sistem tarafından otomatik olarak oluşturulmuştur. | Kurumsal İnsan Kaynakları Yönetimi | ' . ($bordro->hesaplama_tarihi ? date('d.m.Y H:i', strtotime($bordro->hesaplama_tarihi)) : date('d.m.Y H:i')) . '
-            </div>
-        </htmlpagefooter>
+        <div class="footer-text">
+            ' . $donemYil . ' YILI ' . mb_convert_case($donemAyAdi, MB_CASE_UPPER, "UTF-8") . ' AYINA AİT, ADIMA TAHAKKUK EDEN YUKARIDA YAZILI GELİRLERE KARŞILIK NET TUTARIN TAMAMINI NAKDEN ALDIM.
+        </div>
     </div>';
 
     if ($index < count($bordroListesi) - 1) {
@@ -456,13 +431,13 @@ if (count($bordroListesi) === 1) {
 $mpdf = new Mpdf([
     'mode' => 'utf-8',
     'format' => 'A4',
-    'margin_left' => 15,
-    'margin_right' => 15,
-    'margin_top' => 15,
-    'margin_bottom' => 15,
+    'margin_left' => 10,
+    'margin_right' => 10,
+    'margin_top' => 10,
+    'margin_bottom' => 10,
 ]);
 
-$mpdf->SetTitle('Maaş Bordroları');
+$mpdf->SetTitle('Ücret Hesap Pusulası');
 $mpdf->WriteHTML($html);
 $mpdf->Output($fileName, 'I');
 exit;

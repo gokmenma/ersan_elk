@@ -87,7 +87,8 @@ $hesaplamaTipleriGelir = [
     'gunluk_net' => 'Günlük Net',
     'gunluk_kismi_muaf' => 'Günlük Kısmi Muaf',
     'aylik_gun_brut' => 'Aylık (Çalışılan Gün) - Brüt',
-    'aylik_gun_net' => 'Aylık (Çalışılan Gün) - Net'
+    'aylik_gun_net' => 'Aylık (Çalışılan Gün) - Net',
+    'aylik_fiili_gun_net' => 'Aylık (Fiili Çalışılan Gün) - Net'
 ];
 
 $hesaplamaTipleriKesinti = [
@@ -247,7 +248,7 @@ for ($y = date('Y') + 1; $y >= 2020; $y--) {
                                             <?php
                                             $badge = match ($param->hesaplama_tipi) {
                                                 'brut', 'gunluk_brut', 'aylik_gun_brut' => 'bg-primary',
-                                                'net', 'gunluk_net', 'aylik_gun_net' => 'bg-success',
+                                                'net', 'gunluk_net', 'aylik_gun_net', 'aylik_fiili_gun_net' => 'bg-success',
                                                 'kismi_muaf', 'gunluk_kismi_muaf' => 'bg-warning text-dark',
                                                 'netten' => 'bg-secondary',
                                                 'brutten', 'gunluk_kesinti', 'aylik_gun_kesinti' => 'bg-danger',

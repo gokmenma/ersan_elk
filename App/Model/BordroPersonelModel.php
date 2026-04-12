@@ -19,6 +19,8 @@ class BordroPersonelModel extends Model
     private ?array $genelAyarlarCache = null;
     /** @var array|null Tüm bordro parametreleri (kod => nesne) — dönem tarihine göre cache */
     private ?array $parametrelerCache = null;
+    /** @var array|null Personel ek ödemeler cache (personel_id => array) */
+    private ?array $ekOdemelerCache = null;
 
     /**
      * Parametre cache'ini kullanarak getByKod() işlevi görür.
@@ -31,7 +33,8 @@ class BordroPersonelModel extends Model
         }
         // Cache dolmamışsa (standalone çağrı) doğrudan sorgula
         $model = $this->cachedParametreModel ?? new BordroParametreModel();
-        return $model->getByKod($kod, $tarih);
+        $result = $model->getByKod($kod, $tarih);
+        return $result ?: null;
     }
 
     public function __construct()
@@ -83,10 +86,13 @@ class BordroPersonelModel extends Model
             return 0;
         }
 
-        if ($eksikGunToplami <= 0 && $aktifTakvimGun >= $donemTakvimGun) {
-            return 30;
+        // Eğer personel ayın tamamında aktifse (giriş çıkışı yoksa dönemi kapsıyorsa)
+        // SSK günü 30'dur. Eksik günleri 30 üzerinden düşeriz.
+        if ($aktifTakvimGun >= $donemTakvimGun) {
+            return max(0, 30 - $eksikGunToplami);
         }
 
+        // Kıst dönem (Ay ortası giriş/çıkış) ise aktif gün sayısından düşeriz
         return max(0, $aktifTakvimGun - $eksikGunToplami);
     }
 
@@ -168,9 +174,14 @@ class BordroPersonelModel extends Model
         // Bu veriler modalda/listede güncel dağılımı göstermek için gereklidir.
         $yontemliBankaEki = 0;
         $yontemliSodexoEki = 0;
-        $ekOdemelerQuery = $this->db->prepare("SELECT tur, tutar FROM personel_ek_odemeler WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL AND durum = 'onaylandi'");
-        $ekOdemelerQuery->execute([$p->personel_id, $p->donem_id]);
-        $ekOdemelerList = $ekOdemelerQuery->fetchAll(PDO::FETCH_OBJ);
+        
+        if ($this->ekOdemelerCache !== null) {
+            $ekOdemelerList = $this->ekOdemelerCache[$p->personel_id] ?? [];
+        } else {
+            $ekOdemelerQuery = $this->db->prepare("SELECT tur, tutar FROM personel_ek_odemeler WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL AND durum = 'onaylandi'");
+            $ekOdemelerQuery->execute([$p->personel_id, $p->donem_id]);
+            $ekOdemelerList = $ekOdemelerQuery->fetchAll(PDO::FETCH_OBJ);
+        }
         
         foreach ($ekOdemelerList as $eo) {
             $param = $this->getParametreCached($eo->tur, $donemBaslangic);
@@ -249,6 +260,21 @@ class BordroPersonelModel extends Model
         $donemDates = $donemSql->fetch(PDO::FETCH_OBJ);
         $donemBitis = $donemDates->bitis_tarihi ?? date('Y-m-t');
         $donemBaslangic = $donemDates->baslangic_tarihi ?? date('Y-m-01');
+
+        if ($this->parametrelerCache === null) {
+            $parametreModel = $this->cachedParametreModel ?? new BordroParametreModel();
+            $this->parametrelerCache = $parametreModel->getAllParametrelerMap($donemBaslangic);
+        }
+
+        if ($this->ekOdemelerCache === null) {
+            $this->ekOdemelerCache = [];
+            $eoQuery = $this->db->prepare("SELECT personel_id, tur, tutar FROM personel_ek_odemeler WHERE donem_id = ? AND silinme_tarihi IS NULL AND durum = 'onaylandi'");
+            $eoQuery->execute([$donem_id]);
+            $eoRows = $eoQuery->fetchAll(PDO::FETCH_OBJ);
+            foreach ($eoRows as $row) {
+                $this->ekOdemelerCache[$row->personel_id][] = $row;
+            }
+        }
 
         if (!empty($ids)) {
             $placeholders = implode(',', array_fill(0, count($ids), '?'));
@@ -567,7 +593,7 @@ class BordroPersonelModel extends Model
         $sql = $this->db->prepare("
             SELECT SUM(tutar) as toplam 
             FROM personel_ek_odemeler 
-            WHERE personel_id = ? AND donem_id = ? AND (tekrar_tipi = 'tek_sefer' OR tekrar_tipi IS NULL) AND silinme_tarihi IS NULL AND durum = 'onaylandi'
+            WHERE personel_id = ? AND donem_id = ? AND (tekrar_tipi IN ('tek_sefer', 'profil_bazli') OR tekrar_tipi IS NULL) AND silinme_tarihi IS NULL AND durum = 'onaylandi'
         ");
         $sql->execute([$personel_id, $donem_id]);
         return $sql->fetch(PDO::FETCH_OBJ)->toplam ?? 0;
@@ -1500,6 +1526,112 @@ class BordroPersonelModel extends Model
      *   → 1. icraya 5.000 TL kesilir (borç biter)
      *   → Kalan 2.500 TL, 2. icraya kesilir
      */
+    /**
+     * Personel profilinde seçili olan (yemek, eş yardımı vb.) ödemeleri dönem için oluşturur
+     */
+    public function olusturProfilBazliOdemeler($personel_id, $donem_id, $baslangic_tarihi)
+    {
+        $PersonelModel = new \App\Model\PersonelModel();
+        $personel = $PersonelModel->find($personel_id);
+
+        if (!$personel) return;
+
+        // 1. Yemek Yardımı
+        if (!empty($personel->yemek_yardimi_aliyor) && !empty($personel->yemek_yardimi_parametre_id)) {
+            $param = $this->cachedParametreModel->find($personel->yemek_yardimi_parametre_id);
+            if ($param) {
+                $tutar = floatval($param->varsayilan_tutar ?? 0);
+                if ($tutar > 0 || $param->hesaplama_tipi === 'aylik_fiili_gun_net') {
+                    $aciklama = "[Yemek Yardımı] " . ($param->etiket ?? 'Yemek Yardımı');
+                    $this->db->prepare("
+                        INSERT INTO personel_ek_odemeler 
+                        (personel_id, donem_id, tur, parametre_id, aciklama, tutar, tekrar_tipi, durum, aktif, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, 'tek_sefer', 'onaylandi', 1, NOW())
+                    ")->execute([$personel_id, $donem_id, $param->kod, $param->id, $aciklama, $tutar]);
+                }
+            }
+        }
+
+        // 2. Eş Yardımı
+        if (!empty($personel->es_yardimi_aliyor) && !empty($personel->es_yardimi_parametre_id)) {
+            $param = $this->cachedParametreModel->find($personel->es_yardimi_parametre_id);
+            if ($param) {
+                $tutar = floatval($param->varsayilan_tutar ?? 0);
+                if ($tutar > 0) {
+                    $aciklama = "[Eş Yardımı] " . ($param->etiket ?? 'Eş Yardımı');
+                    $this->db->prepare("
+                        INSERT INTO personel_ek_odemeler 
+                        (personel_id, donem_id, tur, parametre_id, aciklama, tutar, tekrar_tipi, durum, aktif, created_at)
+                        VALUES (?, ?, ?, ?, ?, ?, 'tek_sefer', 'onaylandi', 1, NOW())
+                    ")->execute([$personel_id, $donem_id, $param->kod, $param->id, $aciklama, $tutar]);
+                }
+            }
+        }
+    }
+
+    /**
+     * Puantaj (personel_izinleri + tanimlamalar) sisteminden fiili çalışma gününü alır.
+     */
+    public function getFiiliCalismaGunuSayisi($personel_id, $baslangic_tarihi, $bitis_tarihi)
+    {
+        $PersonelModel = new \App\Model\PersonelModel();
+        $personel = $PersonelModel->find($personel_id);
+        if (!$personel) return 0;
+
+        $p_giris = strtotime($personel->ise_giris_tarihi ?: '1970-01-01');
+        $p_cikis = strtotime($personel->isten_cikis_tarihi ?: '2099-12-31');
+
+        $sql = $this->db->prepare("
+            SELECT pi.baslangic_tarihi, pi.bitis_tarihi, t.normal_mesai_sayilir
+            FROM personel_izinleri pi
+            JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
+            WHERE pi.personel_id = ? 
+            AND pi.onay_durumu = 'Onaylandı'
+            AND pi.silinme_tarihi IS NULL
+            AND (
+                (pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ?)
+            )
+        ");
+        $sql->execute([$personel_id, $bitis_tarihi, $baslangic_tarihi]);
+        $izinler = $sql->fetchAll(PDO::FETCH_OBJ);
+
+        $gunluk_durum = [];
+        foreach ($izinler as $izin) {
+            $cur = strtotime($izin->baslangic_tarihi);
+            $end = strtotime($izin->bitis_tarihi);
+            while ($cur <= $end) {
+                $date_str = date('Y-m-d', $cur);
+                if ($date_str >= $baslangic_tarihi && $date_str <= $bitis_tarihi) {
+                    $gunluk_durum[$date_str] = intval($izin->normal_mesai_sayilir);
+                }
+                $cur = strtotime("+1 day", $cur);
+            }
+        }
+
+        $fiili_gun_sayisi = 0;
+        $cur = strtotime($baslangic_tarihi);
+        $end = strtotime($bitis_tarihi);
+
+        while ($cur <= $end) {
+            $date_str = date('Y-m-d', $cur);
+            if ($cur >= $p_giris && $cur <= $p_cikis) {
+                if (isset($gunluk_durum[$date_str])) {
+                    if ($gunluk_durum[$date_str] === 1) {
+                        $fiili_gun_sayisi++;
+                    }
+                } else {
+                    $isSunday = date('w', $cur) == 0;
+                    if (!$isSunday) {
+                        $fiili_gun_sayisi++;
+                    }
+                }
+            }
+            $cur = strtotime("+1 day", $cur);
+        }
+
+        return $fiili_gun_sayisi;
+    }
+
     public function olusturIcraKesintileri($personel_id, $donem_id, $baslangic_tarihi, $bitis_tarihi)
     {
         // İcra parametresini bul
@@ -1811,7 +1943,10 @@ class BordroPersonelModel extends Model
         // Ücretli izin türlerini bul (tanimlamalar tablosundan ucretli_mi = 1 olanlar)
         $izinTurleriSql = $this->db->prepare("
             SELECT id FROM tanimlamalar 
-            WHERE grup = 'izin_turu' AND ucretli_mi = 1 AND silinme_tarihi IS NULL
+            WHERE grup = 'izin_turu' 
+            AND ucretli_mi = 1 
+            AND kisa_kod NOT IN ('X', 'HT', 'GT')
+            AND silinme_tarihi IS NULL
         ");
         $izinTurleriSql->execute();
         $ucretliIzinTurIds = $izinTurleriSql->fetchAll(PDO::FETCH_COLUMN);
@@ -1848,10 +1983,54 @@ class BordroPersonelModel extends Model
             $kesisimBitis = min($izinBitis, $donemBitisDate);
 
             if ($kesisimBaslangic <= $kesisimBitis) {
-                $toplamGun += $kesisimBaslangic->diff($kesisimBitis)->days + 1;
+                // diff()->days gives days difference. For 1 day (same start/end), it's 0. So we add 1.
+                $interval = $kesisimBaslangic->diff($kesisimBitis);
+                $toplamGun += $interval->days + 1;
             }
         }
 
+        return $toplamGun;
+    }
+
+    /**
+     * Kisa koda gore gun sayisini hesaplar (HT, X, GT, RP vb.)
+     */
+    public function getGunSayisiByKisaKod($personel_id, $donem_baslangic, $donem_bitis, $kisa_kod)
+    {
+        $sql = $this->db->prepare("
+            SELECT pi.baslangic_tarihi, pi.bitis_tarihi
+            FROM personel_izinleri pi
+            JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
+            WHERE pi.personel_id = ?
+            AND pi.onay_durumu = 'Onaylandı'
+            AND pi.silinme_tarihi IS NULL
+            AND LOWER(t.kisa_kod) = LOWER(?)
+            AND pi.baslangic_tarihi <= ?
+            AND pi.bitis_tarihi >= ?
+        ");
+        $sql->execute([$personel_id, $kisa_kod, $donem_bitis, $donem_baslangic]);
+        $izinler = $sql->fetchAll(PDO::FETCH_OBJ);
+
+        $toplamGun = 0;
+        $donemBaslangicDate = new \DateTime($donem_baslangic);
+        $donemBitisDate = new \DateTime($donem_bitis);
+
+        foreach ($izinler as $izin) {
+            try {
+                $izinBaslangic = new \DateTime($izin->baslangic_tarihi);
+                $izinBitis = new \DateTime($izin->bitis_tarihi);
+
+                $kesisimBaslangic = max($izinBaslangic, $donemBaslangicDate);
+                $kesisimBitis = min($izinBitis, $donemBitisDate);
+
+                if ($kesisimBaslangic <= $kesisimBitis) {
+                    $interval = $kesisimBaslangic->diff($kesisimBitis);
+                    $toplamGun += $interval->days + 1;
+                }
+            } catch (\Exception $e) {
+                continue;
+            }
+        }
         return $toplamGun;
     }
 
@@ -1863,7 +2042,10 @@ class BordroPersonelModel extends Model
         // Ücretsiz izin türlerini bul (tanimlamalar tablosundan ucretli_mi = 0 olanlar)
         $izinTurleriSql = $this->db->prepare("
             SELECT id FROM tanimlamalar 
-            WHERE grup = 'izin_turu' AND ucretli_mi = 0 AND silinme_tarihi IS NULL
+            WHERE grup = 'izin_turu' 
+            AND ucretli_mi = 0 
+            AND kisa_kod NOT IN ('RP')
+            AND silinme_tarihi IS NULL
         ");
         $izinTurleriSql->execute();
         $ucretsizIzinTurIds = $izinTurleriSql->fetchAll(PDO::FETCH_COLUMN);
@@ -1966,22 +2148,57 @@ class BordroPersonelModel extends Model
         $PersonelModel = new \App\Model\PersonelModel();
         $personel = $PersonelModel->find($personel_id);
 
-        if (!$personel || empty($personel->ekip_no)) {
+        if (!$personel) {
             return 0;
         }
 
-        // Dönemdeki çalışma günlerini say (DISTINCT tarih)
-        $sql = $this->db->prepare("
-            SELECT COUNT(DISTINCT DATE(tarih)) as gun_sayisi
-            FROM yapilan_isler 
-            WHERE ekip_kodu = ? 
-            AND DATE(tarih) BETWEEN ? AND ?
-            AND silinme_tarihi IS NULL
-        ");
-        $sql->execute([$personel->ekip_no, $baslangic_tarihi, $bitis_tarihi]);
-        $sonuc = $sql->fetch(PDO::FETCH_OBJ);
+        $dates = [];
 
-        return intval($sonuc->gun_sayisi ?? 0);
+        // 1. Yapılan işlerden gelen tarihler
+        if (!empty($personel->ekip_no)) {
+            $sql = $this->db->prepare("
+                SELECT DISTINCT DATE(tarih) as gun
+                FROM yapilan_isler 
+                WHERE ekip_kodu = ? 
+                AND DATE(tarih) BETWEEN ? AND ?
+                AND silinme_tarihi IS NULL
+            ");
+            $sql->execute([$personel->ekip_no, $baslangic_tarihi, $bitis_tarihi]);
+            while ($row = $sql->fetch(PDO::FETCH_ASSOC)) {
+                $dates[$row['gun']] = true;
+            }
+        }
+
+        // 2. Puantaj (personel_izinleri) 'X' kodlu kayıtlardan gelen tarihler
+        $sqlX = $this->db->prepare("
+            SELECT pi.baslangic_tarihi, pi.bitis_tarihi
+            FROM personel_izinleri pi
+            JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
+            WHERE pi.personel_id = ?
+            AND pi.onay_durumu = 'Onaylandı'
+            AND pi.silinme_tarihi IS NULL
+            AND LOWER(t.kisa_kod) = 'x'
+            AND pi.baslangic_tarihi <= ?
+            AND pi.bitis_tarihi >= ?
+        ");
+        $sqlX->execute([$personel_id, $bitis_tarihi, $baslangic_tarihi]);
+        $izinlerX = $sqlX->fetchAll(PDO::FETCH_OBJ);
+
+        $donemBas = strtotime($baslangic_tarihi);
+        $donemBit = strtotime($bitis_tarihi);
+
+        foreach ($izinlerX as $izin) {
+            $cur = strtotime($izin->baslangic_tarihi);
+            $end = strtotime($izin->bitis_tarihi);
+            while ($cur <= $end) {
+                if ($cur >= $donemBas && $cur <= $donemBit) {
+                    $dates[date('Y-m-d', $cur)] = true;
+                }
+                $cur = strtotime("+1 day", $cur);
+            }
+        }
+
+        return count($dates);
     }
 
     /**
@@ -2169,11 +2386,14 @@ class BordroPersonelModel extends Model
             )
         ")->execute([$kayit->personel_id, $kayit->donem_id]);
 
-        // 2) Otomatik oluşturulan EK ÖDEMELERİ soft-delete  
-        //    - Sürekli ek ödemeler (ana_odeme_id NOT NULL)
-        //    - Puantaj ödemeleri (açıklama [Puantaj] ile başlayan)
-        //    - Nöbet ödemeleri (açıklama [Nöbet] ile başlayan)
-        //    - Kaçak kontrol primleri (açıklama [Kaçak Kontrol] ile başlayan)
+        // PANIC CLEANUP: Önceki hatalardan kalma "katlanan" sahipsiz kayıtları temizle
+        $this->db->prepare("
+            UPDATE personel_ek_odemeler 
+            SET silinme_tarihi = NOW() 
+            WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL
+            AND aciklama LIKE '(%' AND aciklama LIKE '%Fiili Gün x%'
+        ")->execute([$kayit->personel_id, $kayit->donem_id]);
+
         $this->db->prepare("
         UPDATE personel_ek_odemeler 
         SET silinme_tarihi = NOW() 
@@ -2184,6 +2404,11 @@ class BordroPersonelModel extends Model
             OR aciklama LIKE '[Sayaç]%'
             OR aciklama LIKE '[Nöbet]%'
             OR aciklama LIKE '[Kaçak Kontrol]%'
+            OR tur IN ('yemek_yardimi', 'es_yardimi', 'YY', 'EY')
+            OR aciklama LIKE '[Yemek Yardımı]%'
+            OR aciklama LIKE '[Eş Yardımı]%'
+            OR tekrar_tipi = 'profil_bazli'
+            OR (parametre_id IN (SELECT id FROM bordro_parametreleri WHERE kod IN ('yemek_yardimi_tum', 'es_yardimi')))
         )
     ")->execute([$kayit->personel_id, $kayit->donem_id]);
 
@@ -2191,6 +2416,7 @@ class BordroPersonelModel extends Model
         // Bu işlem, aktif sürekli kayıtları bordro dönemine tek seferlik olarak ekler
         $this->olusturSurekliKesintiler($kayit->personel_id, $kayit->donem_id, $donem, $brutMaas, $netMaasTahmini);
         $this->olusturSurekliEkOdemeler($kayit->personel_id, $kayit->donem_id, $donem, $brutMaas, $netMaasTahmini);
+        $this->olusturProfilBazliOdemeler($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi);
 
         // Puantaj (Yapılan İşler) Hesaplaması
         $this->olusturPuantajOdemeleri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
@@ -2224,6 +2450,12 @@ class BordroPersonelModel extends Model
         // ========== ÜCRETLİ İZİN BİLGİSİ ==========
         $ucretliIzinGunu = $this->getUcretliIzinGunu($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
 
+        // ========== RApOR GÜNÜ BİLGİSİ ==========
+        $raporGunu = $this->getGunSayisiByKisaKod($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi, 'RP');
+
+        // ========== GENEL TATİL GÜNÜ BİLGİSİ ==========
+        $genelTatilGunu = $this->getGunSayisiByKisaKod($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi, 'GT');
+
         // ========== ÇALIŞMA GÜNÜ HESAPLAMASI ==========
         // Mantık:
         // 1) Önce personelin dönem içindeki aktif takvim gününü bul
@@ -2247,32 +2479,72 @@ class BordroPersonelModel extends Model
 
         $gunlukBase = $aktifTakvimGun;
 
-        // Puantajdan (yapılan işler) fiili çalışma gününü al
+        // Puantajdan (yapılan işler + X kodları) fiili çalışma gününü al
         $puantajGunSayisiRaw = $this->getCalismaGunuSayisi($kayit->personel_id, $donemTarihi, $donemBitis);
-        $puantajGunSayisi = $puantajGunSayisiRaw;
+        $normGun = $puantajGunSayisiRaw;
 
         // USER REQ: Hak edilen hafta tatili (6 güne 1 gün) eklenmelidir. 
-        // Aksi takdirde puantaj pazar günlerini içermediği için tam çalışan personel 26 günde kalır.
-        if ($puantajGunSayisi > 0) {
-            $haftaTatili = floor($puantajGunSayisi / 6);
-            $puantajGunSayisi += $haftaTatili;
+        // Ama kullanıcı "HT olanları say" diyor. Önce puantajdaki gerçek kayıtları sayalım.
+        $haftaTatiliGunu = $this->getGunSayisiByKisaKod($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi, 'HT');
+
+        $manualHT = false;
+        if ($haftaTatiliGunu > 0) {
+            $manualHT = true;
+            $puantajGunSayisi = $normGun + $haftaTatiliGunu;
+        } else {
+            // Hiç HT girilmemişse otomatik hesapla (Takvim üzerindeki aktif pazar günleri kadar)
+            // Bu sayede puantajı kaydedilmemiş sabit maaşlı personellerin de listesinde HT'leri doğru görünür.
+            $aktifStart = max(strtotime($kayit->baslangic_tarihi), strtotime($kayit->ise_giris_tarihi ?? $kayit->baslangic_tarihi));
+            if (!empty($kayit->isten_cikis_tarihi) && $kayit->isten_cikis_tarihi != '0000-00-00') {
+                $aktifEnd = min(strtotime($kayit->bitis_tarihi), strtotime($kayit->isten_cikis_tarihi));
+            } else {
+                $aktifEnd = strtotime($kayit->bitis_tarihi);
+            }
+            
+            $haftaTatiliGunu = 0;
+            if ($aktifStart <= $aktifEnd) {
+                $cur = $aktifStart;
+                while ($cur <= $aktifEnd) {
+                    if (date('w', $cur) == 0) { // 0 = Pazar
+                        $haftaTatiliGunu++;
+                    }
+                    $cur = strtotime("+1 day", $cur);
+                }
+            }
+            $puantajGunSayisi = $normGun + $haftaTatiliGunu;
         }
+
+        // Genel Tatil ve Ücretli İzinleri de ekleyelim
+        $puantajGunSayisi += $genelTatilGunu + $ucretliIzinGunu;
 
         // NEW: Eğer ayı 30 gün olarak kabul ediyorsak (bordro mantığı), puantaj gününü de bu orana çekmeliyiz
         // Özellikle Şubat ayı için (28/29 gün) tam çalışanların 30 gün görünmesi için bu oranlama şart
         if ($puantajGunSayisi > 0 && $aydakiGunSayisi != 30) {
+            $eskiToplam = $puantajGunSayisi;
             if ($puantajGunSayisi >= $aydakiGunSayisi) {
                 $puantajGunSayisi = 30;
             } else {
-                $puantajGunSayisi = round($puantajGunSayisi * (30 / $aydakiGunSayisi));
+                $puantajGunSayisi = (int) round($puantajGunSayisi * (30 / $aydakiGunSayisi));
             }
+            // Farkı normal güne ekleyelim (Orantısal düzeltme)
+            $fark = $puantajGunSayisi - $eskiToplam;
+            $normGun += $fark;
         }
 
-        // Maaş günü: sadece ücretsiz izin düşülür.
+        // Maaş günü: ücretsiz izin ve rapor günleri düşülür.
         // Eksik gün yoksa tam dönem için 30, eksik varsa aktif takvim gününden düş.
-        // Fiili gün: aktif takvim günü - eksik günler, gerekirse puantaj gününe limitlenir.
-        $maasEksikGunToplami = $ucretsizIzinGunu;
+        $maasEksikGunToplami = $ucretsizIzinGunu + $raporGunu;
         $maasHesapGunu = $this->getMaasHesapGunu($aktifTakvimGun, $aydakiGunSayisi, $maasEksikGunToplami);
+
+        // PDF ve Gösterim için gün dağılımını optimize edelim (Toplam = maasHesapGunu olmalı)
+        // Eğer puantaj verisi toplamı ssk gününden (maasHesapGunu) azsa, aradaki farkı normal gün sayalım (Sabit maaşlılar için)
+        $mevcutToplam = $normGun + $haftaTatiliGunu + $genelTatilGunu + $ucretliIzinGunu;
+        if ($mevcutToplam < $maasHesapGunu) {
+            $normGun += ($maasHesapGunu - $mevcutToplam);
+        } elseif ($mevcutToplam > $maasHesapGunu) {
+            // Eğer fazlaysa (manuel giriş hatası vb) normal günden düşelim
+            $normGun = max(0, $normGun - ($mevcutToplam - $maasHesapGunu));
+        }
 
         // Ücretsiz izin günü varsa brüt maaşı düşür (Günlük ücret × izin günü kadar)
         if ($isNetMaas || $maasDurumu === 'brüt') {
@@ -2447,18 +2719,18 @@ class BordroPersonelModel extends Model
                     } else {
                         // Manuel/Sabit gün sayısı - ama izinleri düş
                         $varsayilanGun = intval($parametre->varsayilan_gun_sayisi ?? 30);
-                        $ucretliIzinGunu = $this->getUcretliIzinGunu(
+                        $loopUcretliIzin = $this->getUcretliIzinGunu(
                             $kayit->personel_id,
                             $kayit->baslangic_tarihi,
                             $kayit->bitis_tarihi
                         );
                         // Ücretsiz izin gün sayısını da al
-                        $ucretsizIzinGunu = $this->getUcretsizIzinGunuDirekt(
+                        $loopUcretsizIzin = $this->getUcretsizIzinGunuDirekt(
                             $kayit->personel_id,
                             $kayit->baslangic_tarihi,
                             $kayit->bitis_tarihi
                         );
-                        $gunSayisi = max(0, $varsayilanGun - $ucretliIzinGunu - $ucretsizIzinGunu);
+                        $gunSayisi = max(0, $varsayilanGun - $loopUcretliIzin - $loopUcretsizIzin);
                         $detay['gun_kaynak'] = 'manuel';
                     }
 
@@ -2535,6 +2807,45 @@ class BordroPersonelModel extends Model
                         $detay['vergili_kisim'] = round($vergiliKisim, 2);
                         $detay['net_etki'] = round($muafKisim + $vergiliKisim, 2); // Net etki toplam tutardır
                     }
+                    break;
+
+                case 'aylik_fiili_gun_net':
+                    // Fiili Çalışılan Gün bazlı Net hesaplama (Bireysel Puantajdan)
+                    $gunSayisi = $this->getFiiliCalismaGunuSayisi(
+                        $kayit->personel_id,
+                        $kayit->baslangic_tarihi,
+                        $kayit->bitis_tarihi
+                    );
+                    
+                    // FALLBACK: Eğer puantajdan fiili gün sıfır geliyorsa SSK (Normal) çalışma gününü baz al.
+                    if ($gunSayisi <= 0) {
+                        $gunSayisi = $normGun;
+                        $detay['gun_kaynak'] = 'norm_gun (fallback)';
+                    } else {
+                        $detay['gun_kaynak'] = 'puantaj_bireysel';
+                    }
+                    
+                    $detay['gun_sayisi'] = $gunSayisi;
+                    
+                    $toplamTutar = $tutar * $gunSayisi;
+                    $detay['aylik_tutar'] = $tutar;
+                    $detay['hesaplanan_tutar'] = round($toplamTutar, 2);
+
+                    // Personel ek ödemeler tablosunu güncelle (UI açıklaması için)
+                    if (isset($odeme->id) && $odeme->id > 0) {
+                        $label = strpos($odeme->aciklama, ']') !== false ? explode(']', $odeme->aciklama)[0] . '] ' : '';
+                        $yeniAciklama = $label . '(' . $gunSayisi . ' Fiili Gün x ' . number_format($tutar, 2, ',', '.') . ' ₺)';
+                        $this->db->prepare(
+                            "UPDATE personel_ek_odemeler SET tutar = ?, aciklama = ? WHERE id = ?"
+                        )->execute([
+                            round($toplamTutar, 2),
+                            $yeniAciklama,
+                            $odeme->id
+                        ]);
+                    }
+
+                    $netEkOdemeler += $toplamTutar;
+                    $detay['net_etki'] = $toplamTutar;
                     break;
 
                 case 'kismi_muaf':
@@ -3081,6 +3392,11 @@ class BordroPersonelModel extends Model
             'matrahlar' => [
                 'brut_maas' => round($brutMaas, 2),
                 'nominal_maas' => round($nominalBrutMaas, 2),
+                'ssk_gunu' => $maasHesapGunu,
+                'normal_gun' => $normGun,
+                'hafta_tatili_gunu' => $haftaTatiliGunu,
+                'genel_tatil_gunu' => $genelTatilGunu,
+                'rapor_gunu' => $raporGunu,
                 'ucretsiz_izin_gunu' => $ucretsizIzinGunu,
                 'ucretsiz_izin_dusumu' => round($ucretsizIzinDusumu, 2),
                 'ucretli_izin_gunu' => $ucretliIzinGunu,
@@ -3284,15 +3600,17 @@ class BordroPersonelModel extends Model
     {
         $sql = $this->db->prepare("
             SELECT peo.*,bd.kapali_mi,
-            (SELECT etiket FROM bordro_parametreleri bp WHERE bp.kod = peo.tur AND firma_id = ? LIMIT 1) as etiket
+            COALESCE(
+                (SELECT etiket FROM bordro_parametreleri bp WHERE bp.id = peo.parametre_id LIMIT 1),
+                (SELECT etiket FROM bordro_parametreleri bp WHERE bp.kod = peo.tur LIMIT 1)
+            ) as etiket
             FROM personel_ek_odemeler peo
             LEFT JOIN bordro_donemi bd ON peo.donem_id = bd.id
             WHERE peo.personel_id = ? AND peo.donem_id = ? AND peo.silinme_tarihi IS NULL
-              AND (peo.tekrar_tipi = 'tek_sefer' OR peo.tekrar_tipi IS NULL)
+              AND (peo.tekrar_tipi IN ('tek_sefer', 'profil_bazli') OR peo.tekrar_tipi IS NULL)
             ORDER BY peo.created_at DESC
         ");
-        $firma_id = $_SESSION["firma_id"] ?? 0;
-        $sql->execute([$firma_id, $personel_id, $donem_id]);
+        $sql->execute([$personel_id, $donem_id]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 

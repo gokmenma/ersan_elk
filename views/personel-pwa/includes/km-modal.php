@@ -13,6 +13,60 @@
      * KM Bildirim Modalını Açar
      * @param {Object|null} editData Düzenleme yapılacak veri varsa gönderilir
      */
+    async function watermarkImage(file, text) {
+        return new Promise((resolve) => {
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const img = new Image();
+                img.onload = () => {
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    
+                    // Resim boyutlarını ayarla (Maksimum 1280px genişlik performansı artırır)
+                    const maxW = 1280;
+                    let w = img.width;
+                    let h = img.height;
+                    
+                    if (w > maxW) {
+                        h = Math.floor(h * (maxW / w));
+                        w = maxW;
+                    }
+
+                    canvas.width = w;
+                    canvas.height = h;
+                    
+                    // Resmi çiz
+                    ctx.drawImage(img, 0, 0, w, h);
+                    
+                    // Filigran stili
+                    const fontSize = Math.max(16, Math.floor(w / 35));
+                    ctx.font = `bold ${fontSize}px sans-serif`;
+                    
+                    // Filigranı çiz (Sağ alt köşe - Koyu Gölge üzerine Beyaz yazı)
+                    const padding = 20;
+                    const x = w - padding;
+                    const y = h - padding;
+
+                    // Arka plan bandı (daha iyi okunabilirlik için)
+                    const textWidth = ctx.measureText(text).width;
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
+                    ctx.fillRect(x - textWidth - 10, y - fontSize - 5, textWidth + 20, fontSize + 15);
+                    
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.textAlign = 'right';
+                    ctx.textBaseline = 'bottom';
+                    ctx.fillText(text, x, y);
+                    
+                    canvas.toBlob((blob) => {
+                        resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+                    }, 'image/jpeg', 0.85);
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        });
+    }
+
     async function openKmBildirModal(editData = null) {
         if (!sharedAktifAracId && !editData) {
             Alert.warning('Araç Zimmeti Yok', 'Zimmetinizde aktif bir araç bulunmuyor.');
@@ -107,13 +161,13 @@
                         <div class="space-y-2">
                             <label class="text-sm font-bold text-slate-700 dark:text-slate-300 ml-1">KM Gösterge Resmi ${editData ? '<span class="text-[10px] text-primary font-medium">(Değiştirmek istemiyorsanız boş bırakın)</span>' : ''}</label>
                             <div class="relative group">
-                                <input type="file" name="resim" id="km-resim-input" accept="image/*" capture="camera" class="hidden">
+                                <input type="file" name="resim" id="km-resim-input" accept="image/*" capture="environment" class="hidden">
                                 <label for="km-resim-input" 
                                     class="flex flex-col items-center justify-center w-full min-h-[160px] border-2 border-dashed border-slate-200 dark:border-slate-800 rounded-2xl bg-white dark:bg-slate-800/30 cursor-pointer hover:border-primary/50 transition-all p-4 text-center">
                                     <div class="w-16 h-16 rounded-2xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center mb-3 group-hover:scale-110 transition-transform">
                                         <span class="material-symbols-outlined text-3xl">add_a_photo</span>
                                     </div>
-                                    <span class="text-sm font-bold text-slate-600 dark:text-slate-400" id="resim-placeholder">Fotoğraf Çek veya Yükle</span>
+                                    <span class="text-sm font-bold text-slate-600 dark:text-slate-400" id="resim-placeholder">Fotoğraf Çek</span>
                                     <img id="resim-preview" src="${editData && editData.resim_url ? editData.resim_url : ''}" class="${editData && editData.resim_url ? '' : 'hidden'} mt-2 rounded-xl max-h-[120px] object-cover border-2 border-primary/20 shadow-lg">
                                 </label>
                             </div>
@@ -275,6 +329,14 @@
                         btnText.innerText = 'GÖNDERİLİYOR...';
                         btn.classList.add('opacity-70');
 
+                        // Resim varsa filigran ekle
+                        let resimFile = rInput.files[0];
+                        if (resimFile) {
+                            const now = new Date();
+                            const timestamp = now.toLocaleDateString('tr-TR') + ' ' + now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
+                            resimFile = await watermarkImage(resimFile, timestamp);
+                        }
+
                         // Verileri hazırla
                         const data = {
                             arac_id: f.querySelector('[name=arac_id]').value,
@@ -282,7 +344,7 @@
                             tarih: f.querySelector('[name=tarih]').value,
                             tur: f.querySelector('[name=tur]').value,
                             aciklama: f.querySelector('[name=aciklama]').value,
-                            resim: rInput.files[0]
+                            resim: resimFile
                         };
                         
                         if (editData) {
