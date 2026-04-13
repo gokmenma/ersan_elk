@@ -66,6 +66,7 @@ $(document).ready(function () {
     $("#btnPersonelEkOdemeKaydet").html('<i class="bx bx-save me-1"></i>Kaydet');
     
     $("#ek_odeme_parametre_id").val("").trigger("change");
+    $("#param_info_bar").addClass("d-none").hide();
     $("#ek_tekrar_tek_sefer").prop("checked", true);
     $("#ek_hesaplama_sabit").prop("checked", true);
     updateEkTekrarTipiUI();
@@ -188,12 +189,12 @@ $(document).ready(function () {
 
     if (tekrarTipi === "surekli") {
       $("#ek_div_tek_sefer_donem").addClass("d-none").hide();
-      $("#ek_div_surekli_donem").removeClass("d-none").show();
+      $("#ek_div_surekli_baslangic, #ek_div_surekli_bitis").removeClass("d-none").show();
       $("select[name='ek_odeme_donem']").prop("required", false);
       $("#ek_odeme_baslangic_donemi").prop("required", true);
     } else {
       $("#ek_div_tek_sefer_donem").removeClass("d-none").show();
-      $("#ek_div_surekli_donem").addClass("d-none").hide();
+      $("#ek_div_surekli_baslangic, #ek_div_surekli_bitis").addClass("d-none").hide();
       $("select[name='ek_odeme_donem']").prop("required", true);
       $("#ek_odeme_baslangic_donemi").prop("required", false);
     }
@@ -211,47 +212,75 @@ $(document).ready(function () {
     if (hesaplamaTipi === "sabit") {
       $("#ek_div_tutar").removeClass("d-none").show();
       $("#ek_div_oran").addClass("d-none").hide();
-      $("#formPersonelEkOdemeEkle input[name='ek_odeme_tutar']").prop("required", true);
-      $("#formPersonelEkOdemeEkle input[name='oran']").prop("required", false);
+      $("#ek_odeme_tutar").prop("required", true);
+      $("#ek_odeme_oran").prop("required", false);
     } else {
       $("#ek_div_tutar").addClass("d-none").hide();
       $("#ek_div_oran").removeClass("d-none").show();
-      $("#formPersonelEkOdemeEkle input[name='ek_odeme_tutar']").prop("required", false);
-      $("#formPersonelEkOdemeEkle input[name='oran']").prop("required", true);
+      $("#ek_odeme_tutar").prop("required", false);
+      $("#ek_odeme_oran").prop("required", true);
     }
   }
 
   // Parametre seçilince - EVENT DELEGATION
   $(document).on("change", "#ek_odeme_parametre_id", function () {
     var selected = $(this).find("option:selected");
-    var hesaplama = selected.data("hesaplama") || "";
+    var hes_key = selected.data("hesaplama") || "";
+    var hes_etiket = selected.data("hesaplama-etiket") || "Sabit Tutar";
     var oran = selected.data("oran") || 0;
     var tutar = selected.data("tutar") || 0;
+    var sgk = selected.data("sgk");
+    var gv = selected.data("gv");
+    var dv = selected.data("dv");
 
-    console.log("Ek ödeme parametre seçildi:", hesaplama, oran, tutar); // Debug
+    console.log("Ek ödeme parametre seçildi:", hes_key, hes_etiket, oran, tutar, sgk, gv, dv); // Debug
 
-    // Hesaplama tipini otomatik ayarla
-    if (hesaplama.includes("oran_bazli_net") || hesaplama === "oran_net") {
-      $("#ek_hesaplama_oran_net").prop("checked", true);
-      if (oran > 0) {
-        $("#formPersonelEkOdemeEkle input[name='oran']").val(oran);
-      }
-    } else if (
-      hesaplama.includes("oran_bazli_brut") ||
-      hesaplama === "oran_brut"
-    ) {
-      $("#ek_hesaplama_oran_brut").prop("checked", true);
-      if (oran > 0) {
-        $("#formPersonelEkOdemeEkle input[name='oran']").val(oran);
-      }
+    if (selected.val() != "") {
+        $("#param_info_bar").removeClass("d-none").fadeIn();
+        
+        var h_text = hes_etiket;
+        var v_text = tutar + " ₺";
+        
+        if (hes_key.includes("oran_bazli_net") || hes_key === "oran_net") {
+            v_text = "%" + oran;
+            $("#ek_hesaplama_oran_net").prop("checked", true);
+            $("#ek_odeme_oran").val(oran);
+        } else if (hes_key.includes("oran_bazli_brut") || hes_key === "oran_brut") {
+            v_text = "%" + oran;
+            $("#ek_hesaplama_oran_brut").prop("checked", true);
+            $("#ek_odeme_oran").val(oran);
+        } else {
+            $("#ek_hesaplama_sabit").prop("checked", true);
+            $("#ek_odeme_tutar").val(tutar);
+        }
+        
+        $("#info_hesaplama").text(h_text);
+        $("#info_deger").text(v_text);
+
+        // Vergi / SGK Ayarları
+        updateInfoBadge("#info_sgk", sgk, "SGK");
+        updateInfoBadge("#info_gv", gv, "GV");
+        updateInfoBadge("#info_dv", dv, "DV");
+
     } else {
-      $("#ek_hesaplama_sabit").prop("checked", true);
-      if (tutar > 0) {
-        $("#formPersonelEkOdemeEkle input[name='ek_odeme_tutar']").val(tutar);
-      }
+        $("#param_info_bar").addClass("d-none").hide();
     }
+    
     updateEkHesaplamaTipiUI();
   });
+
+  function updateInfoBadge(selector, value, label) {
+    var el = $(selector);
+    if (value == 1) {
+        el.removeClass("bg-light text-dark").addClass("bg-success text-white border-success");
+        el.html('<i class="bx bx-check me-1"></i>' + label);
+        el.attr("title", label + " Matrahına Dahil");
+    } else {
+        el.removeClass("bg-success text-white border-success").addClass("bg-light text-muted border");
+        el.html('<i class="bx bx-x me-1"></i>' + label);
+        el.attr("title", label + " Matrahına Dahil Değil");
+    }
+  }
 
   // Ek Ödeme Kaydet
   $(document).on("click", "#btnPersonelEkOdemeKaydet", function () {
