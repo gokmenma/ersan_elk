@@ -242,7 +242,8 @@ if (Gate::allows("ana_sayfa")) {
 
     // Şu anda izinde olanlar
     $active_leaves = [];
-    if (Gate::allows("ana_sayfa_izinli_personel_karti")) {
+    $is_dept_manager = $personelModel->getRestrictedDept() !== null;
+    if (Gate::allows("ana_sayfa_izinli_personel_karti") || $is_dept_manager) {
         try {
             $active_leaves = $izinModel->getAktifIzinler(10);
         } catch (\Exception $e) {
@@ -927,7 +928,7 @@ if (Gate::allows("ana_sayfa")) {
                 <?php $widgets['widget-talepler'] = ob_get_clean();
         }
 
-        if (Gate::allows("ana_sayfa_izinli_personel_karti")) {
+        if (Gate::allows("ana_sayfa_izinli_personel_karti") || $is_dept_manager) {
             ob_start(); ?>
             <div class="<?php echo getWidgetWidth('widget-izindekiler', 'col-md-6'); ?> widget-item" id="widget-izindekiler">
                 <div class="card">
@@ -1320,7 +1321,7 @@ if (Gate::allows("ana_sayfa")) {
                                         Arıza/İzin/Avans Talepleri
                                     </label>
                                 </li>
-                                <?php if (Gate::allows("ana_sayfa_izinli_personel_karti")): ?>
+                                <?php if (Gate::allows("ana_sayfa_izinli_personel_karti") || $is_dept_manager): ?>
                                     <li>
                                         <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
                                             <input type="checkbox" class="form-check-input widget-toggle me-2"

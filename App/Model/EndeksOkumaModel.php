@@ -15,6 +15,28 @@ class EndeksOkumaModel extends Model
         parent::__construct($this->table);
     }
 
+    public function getSummaryDetailedByRange($startDate, $endDate)
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $sql = "SELECT t.personel_id, t.ekip_kodu_id, def.tur_adi as ekip_kodu, t.tarih, SUM(t.okunan_abone_sayisi) as toplam 
+                FROM $this->table t
+                LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
+                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
+                GROUP BY t.personel_id, t.ekip_kodu_id, def.tur_adi, t.tarih";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$firmaId, $startDate, $endDate]);
+        $results = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $summary = [];
+        foreach ($results as $row) {
+            $key = $row->ekip_kodu_id . '|' . $row->ekip_kodu;
+            // Endeks okuma has only one "work result" name logically for the report
+            $summary[$row->personel_id][$key][$row->tarih]['Endeks Okuma'] = (float) $row->toplam;
+        }
+        return $summary;
+    }
+
     public function getSummaryByRange($startDate, $endDate)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
@@ -31,7 +53,7 @@ class EndeksOkumaModel extends Model
         $summary = [];
         foreach ($results as $row) {
             $key = $row->ekip_kodu_id . '|' . $row->ekip_kodu;
-            $summary[$row->personel_id][$key][$row->tarih] = $row->toplam;
+            $summary[$row->personel_id][$key][$row->tarih] = (float) $row->toplam;
         }
         return $summary;
     }

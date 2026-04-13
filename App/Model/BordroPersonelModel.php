@@ -1010,6 +1010,7 @@ class BordroPersonelModel extends Model
                 t.is_emri_sonucu_id,
                 COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) as is_emri_sonucu,
                 COALESCE(tn.tur_adi, t.is_emri_tipi) as is_emri_tipi,
+                tn.rapor_sekmesi,
                 SUM(t.sonuclanmis) as adet
             FROM yapilan_isler t
             LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
@@ -1018,7 +1019,7 @@ class BordroPersonelModel extends Model
             AND t.tarih BETWEEN ? AND ?
             AND (t.is_emri_sonucu_id > 0 OR (t.is_emri_sonucu IS NOT NULL AND t.is_emri_sonucu != ''))
             AND t.silinme_tarihi IS NULL
-            GROUP BY DATE(t.tarih), t.is_emri_sonucu_id, COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu), COALESCE(tn.tur_adi, t.is_emri_tipi)
+            GROUP BY DATE(t.tarih), t.is_emri_sonucu_id, COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu), COALESCE(tn.tur_adi, t.is_emri_tipi), tn.rapor_sekmesi
         ");
         $sql->execute([$personel_id, $personel->firma_id, $baslangic_tarihi, $bitis_tarihi]);
         $yapilanIsler = $sql->fetchAll(PDO::FETCH_OBJ);
@@ -1121,8 +1122,18 @@ class BordroPersonelModel extends Model
                 continue;
             }
 
-            // "Sayaç Değişimi" tipindeki işleri genel puantajdan hariç tut (olusturSayacDegisimOdemeleri'nde sayac_degisim tablosundan hesaplanıyor)
-            if (($is->is_emri_tipi ?? '') === 'Sayaç Değişimi') {
+            // "Sayaç Değişimi" ve "Endeks Okuma" tipindeki işleri genel puantajdan hariç tut 
+            // (olusturSayacDegisimOdemeleri ve EndeksOkumaModel üzerinden ayrıca hesaplanıyor)
+            $isEmriTipi = $is->is_emri_tipi ?? '';
+            $isEmriSonucu = $is->is_emri_sonucu ?? '';
+            $raporSekmesi = $is->rapor_sekmesi ?? '';
+            
+            if ($raporSekmesi === 'sokme_takma' || 
+                $raporSekmesi === 'endeks_okuma' ||
+                stripos($isEmriTipi, 'Sayaç Değişimi') !== false || 
+                stripos($isEmriSonucu, 'Sayaç Değişimi') !== false ||
+                stripos($isEmriTipi, 'Endeks Okuma') !== false ||
+                stripos($isEmriSonucu, 'Endeks Okuma') !== false) {
                 continue;
             }
 
@@ -1230,7 +1241,7 @@ class BordroPersonelModel extends Model
             $adetText = (abs($adet - round($adet)) < 0.0001)
                 ? number_format($adet, 0, ',', '.')
                 : number_format($adet, 2, ',', '.');
-            $aciklama = "[Puantaj] $isemriSonucu (" . $adetText . " Adet x " . number_format($birimUcret, 2, ',', '.') . " ₺)";
+            $aciklama = "[Sayaç] $isemriSonucu (" . $adetText . " Adet x " . number_format($birimUcret, 2, ',', '.') . " ₺)";
 
             $this->db->prepare("
                 INSERT INTO personel_ek_odemeler 
@@ -2375,16 +2386,10 @@ class BordroPersonelModel extends Model
         // Sonra fonksiyonlar güncel verilere göre yeniden oluşturacak
         // Manuel eklenen kayıtlar (kullanıcının elle eklediği) korunur
 
-        // 1) Otomatik oluşturulan KESİNTİLERİ soft-delete
-        //    - Sürekli kesintiler (ana_kesinti_id NOT NULL)
-        //    - Avans kesintileri (tur = 'avans' ve açıklama [Avans] ile başlayan)
-        //    - İcra kesintileri (tur = 'icra')
-        //    - BES kesintileri (açıklama [BES] ile başlayan)
-        //    NOT: izin_kesinti artık oluşturulmaz, ücretsiz izin doğrudan brüt maaştan düşülür
+        // 1) Otomatik oluşturulan KESİNTİLERİ TEMİZLE
         $this->db->prepare("
-            UPDATE personel_kesintileri 
-            SET silinme_tarihi = NOW() 
-            WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL
+            DELETE FROM personel_kesintileri 
+            WHERE personel_id = ? AND donem_id = ? 
             AND (
                 ana_kesinti_id IS NOT NULL
                 OR tur = 'icra'
@@ -2393,31 +2398,25 @@ class BordroPersonelModel extends Model
             )
         ")->execute([$kayit->personel_id, $kayit->donem_id]);
 
-        // PANIC CLEANUP: Önceki hatalardan kalma "katlanan" sahipsiz kayıtları temizle
+        // 2) Otomatik oluşturulan EK ÖDEMELERİ TEMİZLE (HARD DELETE)
+        // Soft-delete (UPDATE) yerine DELETE kullanarak mükerrerleşmeyi ve ID kalabalığını önlüyoruz.
         $this->db->prepare("
-            UPDATE personel_ek_odemeler 
-            SET silinme_tarihi = NOW() 
-            WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL
-            AND aciklama LIKE '(%' AND aciklama LIKE '%Fiili Gün x%'
+            DELETE FROM personel_ek_odemeler 
+            WHERE personel_id = ? AND donem_id = ? 
+            AND (
+                ana_odeme_id IS NOT NULL
+                OR aciklama LIKE '[Puantaj]%'
+                OR aciklama LIKE '[Sayaç]%'
+                OR aciklama LIKE '[Nöbet]%'
+                OR aciklama LIKE '[Kaçak Kontrol]%'
+                OR tur IN ('yemek_yardimi', 'es_yardimi', 'YY', 'EY')
+                OR aciklama LIKE '[Yemek Yardımı]%'
+                OR aciklama LIKE '[Eş Yardımı]%'
+                OR tekrar_tipi = 'profil_bazli'
+                OR (parametre_id IN (SELECT id FROM bordro_parametreleri WHERE kod IN ('yemek_yardimi_tum', 'es_yardimi')))
+                OR (aciklama LIKE '(%' AND aciklama LIKE '%Fiili Gün x%')
+            )
         ")->execute([$kayit->personel_id, $kayit->donem_id]);
-
-        $this->db->prepare("
-        UPDATE personel_ek_odemeler 
-        SET silinme_tarihi = NOW() 
-        WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL
-        AND (
-            ana_odeme_id IS NOT NULL
-            OR aciklama LIKE '[Puantaj]%'
-            OR aciklama LIKE '[Sayaç]%'
-            OR aciklama LIKE '[Nöbet]%'
-            OR aciklama LIKE '[Kaçak Kontrol]%'
-            OR tur IN ('yemek_yardimi', 'es_yardimi', 'YY', 'EY')
-            OR aciklama LIKE '[Yemek Yardımı]%'
-            OR aciklama LIKE '[Eş Yardımı]%'
-            OR tekrar_tipi = 'profil_bazli'
-            OR (parametre_id IN (SELECT id FROM bordro_parametreleri WHERE kod IN ('yemek_yardimi_tum', 'es_yardimi')))
-        )
-    ")->execute([$kayit->personel_id, $kayit->donem_id]);
 
         // ========== SÜREKLİ KESİNTİ VE EK ÖDEMELERİ DÖNEME AKTAR ==========
         // Bu işlem, aktif sürekli kayıtları bordro dönemine tek seferlik olarak ekler

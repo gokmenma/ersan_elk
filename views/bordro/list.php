@@ -346,6 +346,14 @@ if (!empty($dbGelirler)) {
                                                 <i class="mdi mdi-wallet me-2 text-info fs-5"></i> Ödeme Dağıt (Excel)
                                             </a>
                                         </li>
+                                        <li>
+                                            <hr class="dropdown-divider">
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item py-2" href="javascript:void(0);" id="btnHataliIslemler">
+                                                <i class="mdi mdi-alert-circle me-2 text-warning fs-5"></i> Hatalı İşlemler Sayıları
+                                            </a>
+                                        </li>
                                     </ul>
                                 </div>
                                 <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
@@ -1640,3 +1648,277 @@ if (!empty($dbGelirler)) {
 </div>
 
 <script src="views/bordro/js/bordro.js?v=<?= time() ?>"></script>
+
+<!-- Hatalı İşlemler Sayıları Modal -->
+<script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+<div class="modal fade" id="modalHataliIslemler" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header bg-warning bg-opacity-10">
+                <h5 class="modal-title"><i class="bx bx-error text-warning me-2"></i> Hatalı İşlemler Sayıları Raporu</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info py-2" style="font-size: 13px;">
+                    <i class="bx bx-info-circle me-1"></i> Bu rapor, "İş Takip" sistemindeki ham kayıt sayıları ile Bordro'da (personel_ek_odemeler) hesaplanan adetleri karşılaştırır.
+                </div>
+                
+                <div class="mb-3 d-flex justify-content-between align-items-center">
+                    <div class="form-check form-switch p-2 px-4 border rounded bg-light" style="display: inline-block;">
+                        <input class="form-check-input" type="checkbox" id="checkOnlyErrors" checked>
+                        <label class="form-check-label fw-bold small mb-0" for="checkOnlyErrors">Sadece Farklı Olanları Göster</label>
+                    </div>
+                    <div class="text-muted small">
+                        Seçili Dönem: <strong id="compareDonemName">...</strong>
+                    </div>
+                </div>
+
+                <div class="table-responsive">
+                    <table class="table table-sm table-bordered table-hover align-middle mb-0" id="tableHataliIslemler" style="font-size: 13px;">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Personel</th>
+                                <th>İş Türü</th>
+                                <th class="text-center" style="width: 100px;">İş Takip</th>
+                                <th class="text-center" style="width: 100px;">Bordro</th>
+                                <th class="text-center" style="width: 100px;">Fark</th>
+                                <th class="text-center" style="width: 100px;">Durum</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <!-- Veriler JS ile yüklenecek -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer border-0">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                <button type="button" class="btn btn-success" onclick="exportHataliIslemlerToExcel()">
+                    <i class="bx bx-file me-1"></i> Excel'e Aktar
+                </button>
+                <button type="button" class="btn btn-primary" onclick="loadHataliIslemler()">
+                    <i class="bx bx-refresh me-1"></i> Yenile
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    $(document).ready(function() {
+        $('#btnHataliIslemler').on('click', function() {
+            loadHataliIslemler();
+            $('#modalHataliIslemler').modal('show');
+        });
+
+        $('#checkOnlyErrors').on('change', function() {
+            renderHataliIslemlerTable();
+        });
+    });
+
+    let hataliIslemlerRawData = [];
+
+    function loadHataliIslemler() {
+        // donemSelect selectbox'ından veya PHP'den gelen değerden al
+        const donemId = $('select[name="donemSelect"]').val() || '<?= $selectedDonemId ?>';
+        if (!donemId) {
+            Swal.fire('Hata', 'Lütfen önce bir dönem seçiniz.', 'error');
+            return;
+        }
+
+        $('#compareDonemName').text($('#displayDonemAdi').text());
+        const $tbody = $('#tableHataliIslemler tbody');
+        $tbody.html('<tr><td colspan="6" class="text-center py-4"><div class="spinner-border spinner-border-sm text-primary me-2"></div> Analiz ediliyor...</td></tr>');
+
+        $.post('views/bordro/api.php', {
+            action: 'get-hatali-islem-raporu',
+            donem_id: donemId
+        }, function(res) {
+            if (res.status === 'success') {
+                hataliIslemlerRawData = res.data;
+                renderHataliIslemlerTable();
+            } else {
+                $tbody.html('<tr><td colspan="6" class="text-center text-danger py-4">' + (res.message || 'Veri alınamadı') + '</td></tr>');
+            }
+        }, 'json').fail(function() {
+            $tbody.html('<tr><td colspan="6" class="text-center text-danger py-4">Sistem hatası oluştu.</td></tr>');
+        });
+    }
+
+    function renderHataliIslemlerTable() {
+        const $tbody = $('#tableHataliIslemler tbody');
+        const onlyErrors = $('#checkOnlyErrors').is(':checked');
+        
+        let groups = {};
+        
+        hataliIslemlerRawData.forEach(function(row) {
+            if (onlyErrors && row.fark === 0) return;
+            
+            if (!groups[row.personel_id]) {
+                groups[row.personel_id] = {
+                    name: row.personel_adi,
+                    maas_durumu: row.maas_durumu,
+                    items: [],
+                    errorCount: 0,
+                    totalIsTakip: 0,
+                    totalBordro: 0,
+                    totalFark: 0
+                };
+            }
+            groups[row.personel_id].items.push(row);
+            groups[row.personel_id].totalIsTakip += row.is_takip_sayisi;
+            groups[row.personel_id].totalBordro += row.bordro_sayisi;
+            groups[row.personel_id].totalFark += row.fark;
+            
+            if (row.fark != 0) groups[row.personel_id].errorCount++;
+        });
+
+        let html = '';
+        let personCount = 0;
+
+        Object.keys(groups).forEach(function(pId) {
+            const group = groups[pId];
+            const hasError = group.errorCount > 0;
+            const bgClass = hasError ? 'bg-danger bg-opacity-10' : 'bg-success bg-opacity-10';
+            const icon = hasError ? 'bx-error text-danger' : 'bx-check-circle text-success';
+            
+            const isPrimUsulu = (group.maas_durumu && group.maas_durumu.toLowerCase().includes('prim'));
+            const maasDurumuHtml = group.maas_durumu ? `<span class="badge ${isPrimUsulu ? 'bg-info' : 'bg-light text-dark'} ms-2">${group.maas_durumu}</span>` : '';
+
+            // Formatting numbers for clean view
+            const formatNum = (num) => Number.isInteger(num) ? num : num.toFixed(2).replace(/\.00$/, '');
+
+            html += `<tr class="personel-group-row cursor-pointer ${bgClass}" data-personel-id="${pId}">
+                <td colspan="2" class="fw-bold">
+                    <i class="bx bx-chevron-right me-1 transition-icon"></i>
+                    <i class="bx ${icon} me-1"></i>
+                    ${group.name} 
+                    ${maasDurumuHtml}
+                    <span class="badge bg-secondary ms-2">${group.items.length} İşlem</span>
+                </td>
+                <td class="text-center fw-bold">${formatNum(group.totalIsTakip)}</td>
+                <td class="text-center fw-bold">${formatNum(group.totalBordro)}</td>
+                <td class="text-center fw-bold ${group.totalFark != 0 ? 'text-danger' : 'text-success'}">${formatNum(group.totalFark)}</td>
+                <td class="text-center">
+                    <span class="badge ${hasError ? 'bg-danger' : 'bg-success'}">${hasError ? group.errorCount + ' Hatalı' : 'Tamam'}</span>
+                </td>
+            </tr>`;
+
+            group.items.forEach(function(item) {
+                const diffClass = item.fark != 0 ? 'text-danger fw-bold' : 'text-success';
+                const statusHtml = item.fark != 0 
+                    ? '<span class="badge bg-danger">Hatalı</span>' 
+                    : '<span class="badge bg-success">Tamam</span>';
+
+                html += `<tr class="detail-row detail-p-${pId}" style="display: none; background-color: #fafafa;">
+                    <td class="ps-4 text-muted border-end-0" colspan="2"><i class="bx bx-subdirectory-right me-1"></i> ${item.is_turu}</td>
+                    <td class="text-center">${formatNum(item.is_takip_sayisi)}</td>
+                    <td class="text-center">${formatNum(item.bordro_sayisi)}</td>
+                    <td class="text-center ${diffClass}">${formatNum(item.fark)}</td>
+                    <td class="text-center">${statusHtml}</td>
+                </tr>`;
+            });
+            personCount++;
+        });
+
+        if (personCount === 0) {
+            html = '<tr><td colspan="6" class="text-center py-4 text-muted">' + (onlyErrors ? 'Fark bulunan kayıt yok.' : (onlyPrim ? 'Prim usulü kayıt bulunamadı.' : 'Kayıt bulunamadı.')) + '</td></tr>';
+        }
+
+        $tbody.html(html);
+
+        // Click handler for toggle
+        $('.personel-group-row').off('click').on('click', function() {
+            const pId = $(this).data('personel-id');
+            const $icon = $(this).find('.transition-icon');
+            const $detailRows = $('.detail-p-' + pId);
+            
+            $detailRows.toggle();
+            if ($detailRows.is(':visible')) {
+                $icon.css('transform', 'rotate(90deg)');
+            } else {
+                $icon.css('transform', 'rotate(0deg)');
+            }
+        });
+    }
+
+    function exportHataliIslemlerToExcel() {
+        if (!hataliIslemlerRawData || hataliIslemlerRawData.length === 0) {
+            Swal.fire('Hata', 'Aktarılacak veri bulunamadı.', 'error');
+            return;
+        }
+
+        const onlyErrors = $('#checkOnlyErrors').is(':checked');
+        const donemLabel = $('#compareDonemName').text().replace(/\s+/g, '_');
+        
+        let excelData = [];
+        
+        // Header
+        excelData.push([
+            "Personel", 
+            "Maaş Durumu", 
+            "İş Türü", 
+            "İş Takip Sayısı", 
+            "Bordro Sayısı", 
+            "Fark", 
+            "Durum"
+        ]);
+
+        hataliIslemlerRawData.forEach(function(row) {
+            if (onlyErrors && row.fark === 0) return;
+            
+            // Note: Data is already filtered by backend for Prim Usulü workers
+            
+            excelData.push([
+                row.personel_adi,
+                row.maas_durumu,
+                row.is_turu,
+                row.is_takip_sayisi,
+                row.bordro_sayisi,
+                row.fark,
+                row.durum
+            ]);
+        });
+
+        if (excelData.length <= 1) {
+            Swal.fire('Bilgi', 'Filtreleme sonucunda aktarılacak kayıt bulunamadı.', 'info');
+            return;
+        }
+
+        // Create workbook
+        const wb = XLSX.utils.book_new();
+        const ws = XLSX.utils.aoa_to_sheet(excelData);
+
+        // Column widths
+        ws['!cols'] = [
+            { wch: 30 }, // Personel
+            { wch: 15 }, // Maaş Durumu
+            { wch: 30 }, // İş Türü
+            { wch: 15 }, // İş Takip
+            { wch: 15 }, // Bordro
+            { wch: 10 }, // Fark
+            { wch: 15 }  // Durum
+        ];
+
+        XLSX.utils.book_append_sheet(wb, ws, "Hatalı_İşlemler");
+
+        // Filename
+        const filename = "Hatali_Islemler_Raporu_" + donemLabel + "_" + moment().format('YYYYMMDD_HHmm') + ".xlsx";
+
+        // Download
+        XLSX.writeFile(wb, filename);
+    }
+</script>
+
+<style>
+    .personel-group-row:hover {
+        filter: brightness(0.95);
+    }
+    .transition-icon {
+        transition: transform 0.2s ease;
+        display: inline-block;
+    }
+    .cursor-pointer {
+        cursor: pointer;
+    }
+</style>

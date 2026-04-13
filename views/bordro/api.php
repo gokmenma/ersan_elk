@@ -2128,6 +2128,220 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
                 break;
 
+            case 'get-hatali-islem-raporu':
+                $donem_id = intval($_POST['donem_id'] ?? 0);
+                if ($donem_id <= 0) {
+                    throw new Exception('Geçersiz dönem.');
+                }
+
+                $donem = $BordroDonem->getDonemById($donem_id);
+                if (!$donem) {
+                    throw new Exception('Dönem bulunamadı.');
+                }
+
+                $start = $donem->baslangic_tarihi;
+                $end = $donem->bitis_tarihi;
+
+                // 1. RAW DATA (İş Takip)
+                $Puantaj = new \App\Model\PuantajModel();
+                $SayacDegisim = new \App\Model\SayacDegisimModel();
+                $EndeksOkuma = new \App\Model\EndeksOkumaModel();
+
+                // Get all personnel in this period with their salary status
+                $personelData = $BordroPersonel->getDb()->prepare("
+                    SELECT bp.id as bp_id, p.id as p_id, p.adi_soyadi, p.maas_durumu
+                    FROM bordro_personel bp
+                    INNER JOIN personel p ON bp.personel_id = p.id
+                    WHERE bp.donem_id = ? AND bp.silinme_tarihi IS NULL
+                    AND p.maas_durumu LIKE '%Prim%'
+                ");
+                $personelData->execute([$donem_id]);
+                $allPersonel = $personelData->fetchAll(PDO::FETCH_ASSOC);
+
+                $names = [];
+                $maasDurumlari = [];
+                foreach ($allPersonel as $p) {
+                    $names[$p['p_id']] = $p['adi_soyadi'];
+                    $maasDurumlari[$p['p_id']] = $p['maas_durumu'];
+                }
+
+                $rawPuantaj = $Puantaj->getSummaryDetailedByRange($start, $end);
+                $rawSayac = $SayacDegisim->getSummaryDetailedByRange($start, $end);
+                $rawOkuma = $EndeksOkuma->getSummaryDetailedByRange($start, $end);
+
+                // Types to exclude from Puantaj (yapilan_isler) raw data because they are handled by Sayac/Okuma tables
+                $typesToExcludeSql = $BordroPersonel->getDb()->prepare("
+                    SELECT DISTINCT is_emri_sonucu 
+                    FROM tanimlamalar 
+                    WHERE rapor_sekmesi IN ('sokme_takma', 'endeks_okuma')
+                    AND grup = 'is_turu'
+                    AND is_emri_sonucu IS NOT NULL AND is_emri_sonucu != ''
+                ");
+                $typesToExcludeSql->execute();
+                $typesToExclude = $typesToExcludeSql->fetchAll(PDO::FETCH_COLUMN);
+                $excludeMap = array_flip(array_map('trim', $typesToExclude));
+
+                // Paid types filter
+                $paidTypesSql = $BordroPersonel->getDb()->prepare("
+                    SELECT DISTINCT is_emri_sonucu 
+                    FROM tanimlamalar 
+                    WHERE (is_turu_ucret > 0 OR aracli_personel_is_turu_ucret > 0 OR okuma_is_turu_ucret > 0) 
+                    AND grup = 'is_turu'
+                    AND is_emri_sonucu IS NOT NULL AND is_emri_sonucu != ''
+                ");
+                $paidTypesSql->execute();
+                $paidTypes = $paidTypesSql->fetchAll(PDO::FETCH_COLUMN);
+                $paidTypes[] = "Endeks Okuma";
+                $paidTypes[] = "Kaçak Kontrol";
+                $paidTypesMap = array_flip(array_map('trim', $paidTypes));
+
+                $allData = [];
+
+                // Helper to add data to allData
+                $addData = function($pId, $type, $count) use (&$allData, $paidTypesMap) {
+                    if ($count <= 0) return;
+                    if (!isset($paidTypesMap[$type])) return; // Skip unpaid types
+                    
+                    if (!isset($allData[$pId])) $allData[$pId] = [];
+                    $allData[$pId][$type] = ($allData[$pId][$type] ?? 0) + $count;
+                };
+
+                // Process Raw Puantaj (Kesme/Açma/etc)
+                foreach ($rawPuantaj as $pId => $comps) {
+                    foreach ($comps as $cKey => $days) {
+                        foreach ($days as $day => $works) {
+                            foreach ($works as $wName => $count) {
+                                // Skip types that belong to exclusive tables (Sayac/Okuma)
+                                if (isset($excludeMap[trim($wName)])) continue;
+                                
+                                $addData($pId, $wName, $count);
+                            }
+                        }
+                    }
+                }
+
+                // Process Raw Sayac Degisim
+                foreach ($rawSayac as $pId => $comps) {
+                    foreach ($comps as $cKey => $days) {
+                        foreach ($days as $day => $works) {
+                            foreach ($works as $wName => $count) {
+                                // Important: In sayac_degisim, is_emri_sonucu is usually the key
+                                $addData($pId, $wName, $count);
+                            }
+                        }
+                    }
+                }
+
+                // Process Raw Okuma
+                foreach ($rawOkuma as $pId => $comps) {
+                    foreach ($comps as $cKey => $days) {
+                        foreach ($days as $day => $works) {
+                            foreach ($works as $wName => $count) {
+                                // "Endeks Okuma" raw counts from endeks_okuma table
+                                $addData($pId, $wName, $count);
+                            }
+                        }
+                    }
+                }
+
+                // Process Raw Kacak - Attribute to individual personnel
+                $kacakSql = $BordroPersonel->getDb()->prepare("
+                    SELECT id, personel_ids, sayi 
+                    FROM kacak_kontrol 
+                    WHERE tarih BETWEEN ? AND ? 
+                    AND silinme_tarihi IS NULL
+                    AND personel_ids IS NOT NULL
+                    AND (aciklama != 'Manuel Düşüm' OR aciklama IS NULL)
+                ");
+                $kacakSql->execute([$start, $end]);
+                $kacakRows = $kacakSql->fetchAll(PDO::FETCH_ASSOC);
+
+                foreach ($kacakRows as $kr) {
+                    $pIds = array_filter(array_map('trim', explode(',', $kr['personel_ids'])));
+                    $val = floatval($kr['sayi']);
+                    foreach ($pIds as $pId) {
+                        $addData($pId, "Kaçak Kontrol", $val);
+                    }
+                }
+
+                // 2. PAYROLL DATA (Calculated)
+                $payrollCounts = [];
+                $sql = $BordroPersonel->getDb()->prepare("
+                    SELECT personel_id, aciklama 
+                    FROM personel_ek_odemeler 
+                    WHERE donem_id = ? AND silinme_tarihi IS NULL 
+                    AND (aciklama LIKE '[Puantaj]%' OR aciklama LIKE '[Sayaç]%' OR aciklama LIKE '[Kaçak Kontrol]%')
+                ");
+                $sql->execute([$donem_id]);
+                $eklar = $sql->fetchAll(PDO::FETCH_OBJ);
+
+                foreach ($eklar as $ek) {
+                    $pId = $ek->personel_id;
+                    $desc = $ek->aciklama;
+
+                    $type = "";
+                    $count = 0;
+
+                    // Parse description: 
+                    // 1. [Prefix] Type (X Adet x ...)
+                    // 2. [Kaçak Kontrol] (X işlem Toplam)(Y işlem Muaf)
+                    if (preg_match('/^\[(Puantaj|Sayaç)\]\s+(.*?)\s+\((.*?)\s+Adet/', $desc, $matches)) {
+                        $type = trim($matches[2]);
+                        // Adet can contain comma if it's float (like 0,5)
+                        $countStr = str_replace(',', '.', $matches[3]);
+                        $count = floatval($countStr);
+                    } elseif (preg_match('/^\[Kaçak Kontrol\]\s+\((\d+)\s+işlem/', $desc, $matches)) {
+                        $type = "Kaçak Kontrol";
+                        $count = intval($matches[1]);
+                    }
+                    
+                    if ($type !== "" && $count > 0) {
+                        if (!isset($payrollCounts[$pId])) $payrollCounts[$pId] = [];
+                        $payrollCounts[$pId][$type] = ($payrollCounts[$pId][$type] ?? 0) + $count;
+                    }
+                }
+
+                // 3. COMPARE
+                $report = [];
+                // Use already filtered $names from the top of the action 
+                // which contains only 'Prim Usulü' workers.
+                $pMap = $names;
+
+                // Merge all unique pIds and types
+                $relevantPIds = array_unique(array_merge(array_keys($allData), array_keys($payrollCounts)));
+                
+                foreach ($relevantPIds as $pId) {
+                    if (!isset($pMap[$pId])) continue; // Person who is not in this payroll donem but has data? Should not happen often.
+
+                    $rawPData = $allData[$pId] ?? [];
+                    $payPData = $payrollCounts[$pId] ?? [];
+                    
+                    $allTypes = array_unique(array_merge(array_keys($rawPData), array_keys($payPData)));
+                    
+                    foreach ($allTypes as $type) {
+                        $rCount = $rawPData[$type] ?? 0;
+                        $pCount = $payPData[$type] ?? 0;
+                        $diff = $rCount - $pCount;
+
+                        $report[] = [
+                            'personel_id' => $pId,
+                            'personel_adi' => $pMap[$pId],
+                            'maas_durumu' => $maasDurumlari[$pId] ?? '',
+                            'is_turu' => $type,
+                            'is_takip_sayisi' => $rCount,
+                            'bordro_sayisi' => $pCount,
+                            'fark' => $diff,
+                            'durum' => ($diff == 0 ? 'Tamam' : 'Hatalı')
+                        ];
+                    }
+                }
+
+                echo json_encode([
+                    'status' => 'success',
+                    'data' => $report
+                ]);
+                break;
+
             default:
                 throw new Exception('Geçersiz işlem.');
 
