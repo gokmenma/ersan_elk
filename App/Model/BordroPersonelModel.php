@@ -1121,8 +1121,8 @@ class BordroPersonelModel extends Model
                 continue;
             }
 
-            // Sayaç ile ilgili işleri genel puantajdan hariç tut (olusturSayacDegisimOdemeleri'nde hesaplanıyor)
-            if (mb_stripos($isEmriSonucu, 'Sayaç', 0, 'UTF-8') !== false) {
+            // "Sayaç Değişimi" tipindeki işleri genel puantajdan hariç tut (olusturSayacDegisimOdemeleri'nde sayac_degisim tablosundan hesaplanıyor)
+            if (($is->is_emri_tipi ?? '') === 'Sayaç Değişimi') {
                 continue;
             }
 
@@ -1156,10 +1156,11 @@ class BordroPersonelModel extends Model
         $personel = $PersonelModel->find($personel_id);
         if (!$personel) return;
 
+        // Sadece [Sayaç] ile başlayanları temizle. [Puantaj] olanlar (SKA vb.) yukarıda olusturPuantajOdemeleri tarafından oluşturuldu.
         $this->db->prepare("
             DELETE FROM personel_ek_odemeler 
             WHERE personel_id = ? AND donem_id = ? 
-            AND (aciklama LIKE '[Sayaç]%' OR aciklama LIKE '[Puantaj] %Sayaç%')
+            AND aciklama LIKE '[Sayaç]%'
         ")->execute([$personel_id, $donem_id]);
 
         // 3. Tanımlamalar tablosundan ücretli iş türlerini al
