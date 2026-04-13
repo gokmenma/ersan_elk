@@ -8,12 +8,13 @@
     // Global Değişkenler (Ana Sayfadan veya İlgili Sayfadan Alınabilir)
     var sharedAktifAracId = <?php echo json_encode($aktifAracZimmeti->arac_id ?? null); ?>;
     var sharedAktifAracPlaka = <?php echo json_encode($aktifAracZimmeti->plaka ?? ''); ?>;
+    var sharedPersonelAdi = <?php echo json_encode($_SESSION['personel_adi'] ?? 'Bilinmeyen'); ?>;
 
     /**
      * KM Bildirim Modalını Açar
      * @param {Object|null} editData Düzenleme yapılacak veri varsa gönderilir
      */
-    async function watermarkImage(file, text) {
+    async function watermarkImage(file, lines) {
         return new Promise((resolve) => {
             const reader = new FileReader();
             reader.onload = (e) => {
@@ -39,23 +40,34 @@
                     ctx.drawImage(img, 0, 0, w, h);
                     
                     // Filigran stili
-                    const fontSize = Math.max(16, Math.floor(w / 35));
+                    const fontSize = Math.max(14, Math.floor(w / 45));
                     ctx.font = `bold ${fontSize}px sans-serif`;
-                    
-                    // Filigranı çiz (Sağ alt köşe - Koyu Gölge üzerine Beyaz yazı)
-                    const padding = 20;
-                    const x = w - padding;
-                    const y = h - padding;
-
-                    // Arka plan bandı (daha iyi okunabilirlik için)
-                    const textWidth = ctx.measureText(text).width;
-                    ctx.fillStyle = 'rgba(0, 0, 0, 0.4)';
-                    ctx.fillRect(x - textWidth - 10, y - fontSize - 5, textWidth + 20, fontSize + 15);
-                    
-                    ctx.fillStyle = '#FFFFFF';
                     ctx.textAlign = 'right';
                     ctx.textBaseline = 'bottom';
-                    ctx.fillText(text, x, y);
+
+                    const padding = 20;
+                    const lineHeight = fontSize + 8;
+                    
+                    // En uzun satırı bul
+                    let maxTextWidth = 0;
+                    lines.forEach(line => {
+                        const width = ctx.measureText(line).width;
+                        if (width > maxTextWidth) maxTextWidth = width;
+                    });
+
+                    // Arka plan bandı (daha iyi okunabilirlik için)
+                    const bgWidth = maxTextWidth + 20;
+                    const bgHeight = (lines.length * lineHeight) + 10;
+                    
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.5)';
+                    ctx.fillRect(w - bgWidth - padding + 5, h - bgHeight - padding + 5, bgWidth, bgHeight);
+                    
+                    // Metinleri çiz
+                    ctx.fillStyle = '#FFFFFF';
+                    // Satırları tersten (alttan üste) çiziyoruz
+                    [...lines].reverse().forEach((line, index) => {
+                        ctx.fillText(line, w - padding, h - padding - (index * lineHeight));
+                    });
                     
                     canvas.toBlob((blob) => {
                         resolve(new File([blob], file.name, { type: 'image/jpeg' }));
@@ -334,7 +346,16 @@
                         if (resimFile) {
                             const now = new Date();
                             const timestamp = now.toLocaleDateString('tr-TR') + ' ' + now.toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' });
-                            resimFile = await watermarkImage(resimFile, timestamp);
+                            const turLabel = f.querySelector('[name=tur]').value === 'sabah' ? 'Sabah Bildirimi' : 'Akşam Bildirimi';
+                            
+                            const watermarkLines = [
+                                sharedPersonelAdi,
+                                plaka,
+                                turLabel,
+                                timestamp
+                            ];
+                            
+                            resimFile = await watermarkImage(resimFile, watermarkLines);
                         }
 
                         // Verileri hazırla

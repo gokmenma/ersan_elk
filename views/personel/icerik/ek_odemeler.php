@@ -34,19 +34,47 @@ foreach ($ek_odemeler as $k) {
         $toplamEkOdeme += $k->tutar ?? 0;
     }
 
-    // Gruplama
+    // Gruplama Ana Adı (Örn: Prim, Yol Yardımı vb.)
     $grup_adi = $k->parametre_adi ?? ucfirst($k->tur ?? 'Diğer');
     if (!isset($grouped_ek_odemeler[$grup_adi])) {
         $grouped_ek_odemeler[$grup_adi] = [
-            'items' => [],
+            'items' => [], // Alt gruplandırılmış öğeler
             'toplam_tutar' => 0,
             'count' => 0
         ];
     }
-    $grouped_ek_odemeler[$grup_adi]['items'][] = $k;
+
+    // Açıklamayı normalleştir (Adet bilgisini temizle, sadece fiyatı bırak)
+    // Örn: "[Sayaç] ... (20 Adet x 80,00 ₺)" -> "[Sayaç] ... (80,00 ₺)"
+    $raw_desc = $k->aciklama ?? '';
+    $normalized_desc = preg_replace('/\(\d+\s*Adet\s*x\s*([\d,.]+)\s*₺\)/iu', '($1 ₺)', $raw_desc);
+    
+    // Alt Gruplama Anahtarı: Tür + Dönem + Normalize Edilmiş Açıklama
+    $sub_key = md5(
+        ($k->parametre_id ?? 0) . 
+        ($k->donem_id ?? 0) . 
+        ($k->hesaplama_tipi ?? '') . 
+        ($k->tekrar_tipi ?? '') .
+        $normalized_desc
+    );
+
+    if (!isset($grouped_ek_odemeler[$grup_adi]['items'][$sub_key])) {
+        $grouped_ek_odemeler[$grup_adi]['items'][$sub_key] = (object)[
+            'item' => clone $k,
+            'adet' => 0,
+            'toplam_tutar' => 0,
+            'ids' => [],
+            'display_desc' => $normalized_desc
+        ];
+    }
+
+    $grouped_ek_odemeler[$grup_adi]['items'][$sub_key]->adet++;
+    $grouped_ek_odemeler[$grup_adi]['items'][$sub_key]->toplam_tutar += $k->tutar ?? 0;
+    $grouped_ek_odemeler[$grup_adi]['items'][$sub_key]->ids[] = $k->id;
+    
     $grouped_ek_odemeler[$grup_adi]['count']++;
 
-    // Grup toplam tutar (Sadece sabit tutarlı olanlar eklenir, oranlılar eklenmez çünkü maaşa göre değişir)
+    // Grup toplam tutar
     if (($k->tekrar_tipi ?? 'tek_sefer') == 'tek_sefer' || (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli' && ($k->hesaplama_tipi ?? 'sabit') == 'sabit')) {
         $grouped_ek_odemeler[$grup_adi]['toplam_tutar'] += $k->tutar ?? 0;
     }
@@ -300,9 +328,15 @@ foreach ($ek_odemeler as $k) {
                                                     </tr>
                                                 </thead>
                                                 <tbody>
-                                                    <?php foreach ($grup['items'] as $k): ?>
-                                                        <?php $enc_id = Security::encrypt($k->id); ?>
-                                                        <tr data-id="<?= $enc_id ?>">
+                                                    <?php foreach ($grup['items'] as $g_item): ?>
+                                                        <?php 
+                                                        $k = $g_item->item; 
+                                                        $adet = $g_item->adet;
+                                                        $toplam_tutar = $g_item->toplam_tutar;
+                                                        $ids = implode(',', $g_item->ids);
+                                                        $enc_id = Security::encrypt($k->id); 
+                                                        ?>
+                                                        <tr data-id="<?= $enc_id ?>" data-ids="<?= $ids ?>">
                                                             <td>
                                                                 <span class="badge bg-soft-danger text-white">
                                                                     <?= $k->parametre_adi ?? ucfirst($k->tur ?? 'Diğer') ?>
@@ -327,37 +361,49 @@ foreach ($ek_odemeler as $k) {
                                                                 ?>
                                                             </td>
                                                             <td class="fw-bold">
-                                                                <?php if (($k->hesaplama_tipi ?? 'sabit') == 'sabit'): ?>
-                                                                    <?= number_format($k->tutar ?? 0, 2, ',', '.') ?> TL
-                                                                <?php else: ?>
-                                                                    %<?= number_format($k->oran ?? 0, 2, ',', '.') ?>
-                                                                <?php endif; ?>
-                                                            </td>
-                                                            <td>
-                                                                <div class="fw-bold text-dark">
-                                                                    <?= htmlspecialchars($k->kayit_yapan_ad_soyad ?? 'Sistem') ?>
-                                                                </div>
-                                                                <div class="text-muted small">
-                                                                    <?= !empty($k->created_at) ? date('d.m.Y H:i', strtotime($k->created_at)) : '-' ?>
-                                                                </div>
-                                                            </td>
-                                                            <td>
-                                                                <div class="fw-bold">
-                                                                    <?= !empty($k->tarih) ? date('d.m.Y', strtotime($k->tarih)) : '-' ?>
-                                                                </div>
-                                                            </td>
-                                                            <td>
-                                                                <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli'): ?>
-                                                                    <small>
-                                                                        <?= $k->baslangic_donemi ? date('d.m.Y', strtotime($k->baslangic_donemi)) : '-' ?>
-                                                                        <i class="bx bx-right-arrow-alt"></i>
-                                                                        <?= $k->bitis_donemi ? date('d.m.Y', strtotime($k->bitis_donemi)) : '<span class="text-success">Süresiz</span>' ?>
-                                                                    </small>
-                                                                <?php else: ?>
-                                                                    <?= $k->donem_adi ?? App\Helper\Helper::getDonemAdi($k->donem_id) ?>
-                                                                <?php endif; ?>
-                                                            </td>
-                                                            <td><?= htmlspecialchars($k->aciklama ?? '-') ?></td>
+                                                                 <?php if (($k->hesaplama_tipi ?? 'sabit') == 'sabit'): ?>
+                                                                     <?= number_format($toplam_tutar, 2, ',', '.') ?> TL
+                                                                     <?php if ($adet > 1): ?>
+                                                                         <div class="small text-muted mt-1">
+                                                                             <span class="badge bg-light text-dark border"><?= $adet ?> Adet</span>
+                                                                             <!-- <span class="ms-1">(Adet: <?= number_format($k->tutar ?? 0, 2, ',', '.') ?> TL)</span> -->
+                                                                         </div>
+                                                                     <?php endif; ?>
+                                                                 <?php else: ?>
+                                                                     %<?= number_format($k->oran ?? 0, 2, ',', '.') ?>
+                                                                 <?php endif; ?>
+                                                             </td>
+                                                             <td>
+                                                                 <div class="fw-bold text-dark">
+                                                                     <?= htmlspecialchars($k->kayit_yapan_ad_soyad ?? 'Sistem') ?>
+                                                                 </div>
+                                                                 <div class="text-muted small">
+                                                                     <?= !empty($k->created_at) ? date('d.m.Y H:i', strtotime($k->created_at)) : '-' ?>
+                                                                 </div>
+                                                             </td>
+                                                             <td>
+                                                                 <div class="fw-bold">
+                                                                     <?php if ($adet > 1): ?>
+                                                                         <span class="text-muted" title="Birden fazla tarih içeriyor">-</span>
+                                                                     <?php else: ?>
+                                                                         <?= !empty($k->tarih) ? date('d.m.Y', strtotime($k->tarih)) : '-' ?>
+                                                                     <?php endif; ?>
+                                                                 </div>
+                                                             </td>
+                                                             <td>
+                                                                 <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli'): ?>
+                                                                     <small>
+                                                                         <?= $k->baslangic_donemi ? date('d.m.Y', strtotime($k->baslangic_donemi)) : '-' ?>
+                                                                         <i class="bx bx-right-arrow-alt"></i>
+                                                                         <?= $k->bitis_donemi ? date('d.m.Y', strtotime($k->bitis_donemi)) : '<span class="text-success">Süresiz</span>' ?>
+                                                                     </small>
+                                                                 <?php else: ?>
+                                                                     <?= $k->donem_adi ?? App\Helper\Helper::getDonemAdi($k->donem_id) ?>
+                                                                 <?php endif; ?>
+                                                             </td>
+                                                             <td>
+                                                                 <?= htmlspecialchars($g_item->display_desc ?? $k->aciklama ?? '-') ?>
+                                                             </td>
                                                             <td>
                                                                 <?php if (($k->tekrar_tipi ?? 'tek_sefer') == 'surekli'): ?>
                                                                     <?php if (($k->aktif ?? 1) == 1): ?>
@@ -385,7 +431,9 @@ foreach ($ek_odemeler as $k) {
                                                                     </button>
                                                                     <button type="button"
                                                                         class="btn btn-sm btn-danger btn-personel-ek-odeme-sil"
-                                                                        data-id="<?= $k->id ?>" title="Sil">
+                                                                        data-id="<?= $adet > 1 ? $ids : $k->id ?>" 
+                                                                        data-multiple="<?= $adet > 1 ? 'true' : 'false' ?>"
+                                                                        title="<?= $adet > 1 ? 'Tüm Grubu Sil' : 'Sil' ?>">
                                                                         <i class="bx bx-trash"></i>
                                                                     </button>
                                                                 <?php endif; ?>

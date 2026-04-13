@@ -142,25 +142,38 @@ try {
             break;
 
         case 'delete_ek_odeme':
-            $id = intval($_POST['id'] ?? 0);
-            if (!$id) {
+            $id_input = $_POST['id'] ?? '';
+            $ids = array_filter(array_map('trim', explode(',', $id_input)), 'is_numeric');
+            
+            if (empty($ids)) {
                 echo json_encode(['error' => 'Ek ödeme ID gerekli']);
                 break;
             }
 
-            // Ek ödemenin bağlı olduğu dönemi kontrol et
-            $ekOdeme = $ekOdemeModel->getEkOdeme($id);
-            if ($ekOdeme && $ekOdeme->donem_id) {
-                $BordroDonem = new BordroDonemModel();
-                $donem = $BordroDonem->getDonemById($ekOdeme->donem_id);
-                if ($donem && $donem->kapali_mi == 1) {
-                    echo json_encode(['error' => 'Bu dönem kapatılmış. Kapalı dönemlerdeki ek ödemeler silinemez.']);
-                    break;
+            $success_count = 0;
+            $error_message = '';
+
+            foreach ($ids as $id) {
+                $ekOdeme = $ekOdemeModel->getEkOdeme($id);
+                if ($ekOdeme && $ekOdeme->donem_id) {
+                    $BordroDonem = new BordroDonemModel();
+                    $donem = $BordroDonem->getDonemById($ekOdeme->donem_id);
+                    if ($donem && $donem->kapali_mi == 1) {
+                        $error_message = 'Kapalı dönemlerdeki ek ödemeler silinemez.';
+                        continue;
+                    }
+                }
+                
+                if ($ekOdemeModel->softDelete($id)) {
+                    $success_count++;
                 }
             }
 
-            $ekOdemeModel->softDelete($id);
-            echo json_encode(['success' => true]);
+            if ($success_count > 0) {
+                echo json_encode(['success' => true, 'count' => $success_count, 'error' => $error_message]);
+            } else {
+                echo json_encode(['error' => $error_message ?: 'Silme işlemi başarısız.']);
+            }
             break;
 
         default:

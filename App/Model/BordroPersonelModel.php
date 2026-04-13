@@ -1121,6 +1121,11 @@ class BordroPersonelModel extends Model
                 continue;
             }
 
+            // Sayaç ile ilgili işleri genel puantajdan hariç tut (olusturSayacDegisimOdemeleri'nde hesaplanıyor)
+            if (mb_stripos($isEmriSonucu, 'Sayaç', 0, 'UTF-8') !== false) {
+                continue;
+            }
+
             if ($adet > 0) {
                 $toplamTutar = round($adet * $birimUcret, 2);
                 // Açıklama formatı: [Puantaj] Sonuç (Adet x Birim ₺)
@@ -1151,10 +1156,10 @@ class BordroPersonelModel extends Model
         $personel = $PersonelModel->find($personel_id);
         if (!$personel) return;
 
-        // 2. Önceki sayaç değişim kaynaklı ek ödemeleri temizle
         $this->db->prepare("
             DELETE FROM personel_ek_odemeler 
-            WHERE personel_id = ? AND donem_id = ? AND aciklama LIKE '[Sayaç]%'
+            WHERE personel_id = ? AND donem_id = ? 
+            AND (aciklama LIKE '[Sayaç]%' OR aciklama LIKE '[Puantaj] %Sayaç%')
         ")->execute([$personel_id, $donem_id]);
 
         // 3. Tanımlamalar tablosundan ücretli iş türlerini al
@@ -1224,7 +1229,7 @@ class BordroPersonelModel extends Model
             $adetText = (abs($adet - round($adet)) < 0.0001)
                 ? number_format($adet, 0, ',', '.')
                 : number_format($adet, 2, ',', '.');
-            $aciklama = "[Sayaç] $isemriSonucu (" . $adetText . " Adet x " . number_format($birimUcret, 2, ',', '.') . " ₺)";
+            $aciklama = "[Puantaj] $isemriSonucu (" . $adetText . " Adet x " . number_format($birimUcret, 2, ',', '.') . " ₺)";
 
             $this->db->prepare("
                 INSERT INTO personel_ek_odemeler 
@@ -2888,6 +2893,13 @@ class BordroPersonelModel extends Model
                     // Net: Direkt net maaşa eklenir
                     $netEkOdemeler += $tutar;
                     $detay['net_etki'] = $tutar;
+
+                    // Eğer önceden fiili gün açıklaması kalmışsa temizle
+                    if (isset($odeme->id) && $odeme->id > 0 && strpos($odeme->aciklama, 'Fiili Gün') !== false) {
+                        $yeniAciklama = $parametre->etiket . ' (Sabit)';
+                        $this->db->prepare("UPDATE personel_ek_odemeler SET aciklama = ? WHERE id = ?")
+                            ->execute([$yeniAciklama, $odeme->id]);
+                    }
                     break;
             }
 

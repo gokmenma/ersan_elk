@@ -157,11 +157,14 @@ class PersonelEkOdemelerModel extends Model
                 silinme_tarihi = NULL, 
                 durum = 'onaylandi', 
                 tutar = ?, 
+                aciklama = ?,
+                hesaplama_tipi = ?,
+                tur = ?,
                 updated_at = NOW() 
                 WHERE id = ?";
 
             $updateStmt = $this->db->prepare($updateSql);
-            $updateStmt->execute([$tutar, $mevcut->id]);
+            $updateStmt->execute([$tutar, $surekliOdeme->aciklama . ' (Otomatik)', $surekliOdeme->hesaplama_tipi, $surekliOdeme->tur, $mevcut->id]);
 
             return true;
         }
