@@ -2626,6 +2626,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
         // Verileri organize et: key = bolge|defter
         $organized = [];
+        $allBolgeSet = [];
 
         // 1. Önce tanımlı olan tüm defterleri ekle (Okuma olmasa bile görünsünler)
         foreach ($defterTanimListMap as $key => $tanimList) {
@@ -2645,11 +2646,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                 'abone_sayisi' => $latest['abone_sayisi'],
                 'donemler' => []
             ];
+            $allBolgeSet[$tBolge] = true;
         }
 
+        // Rapor alt limit ayarını al
+        $SettingsModel = new \App\Model\SettingsModel();
+        $altLimit = (int) ($SettingsModel->getAllSettingsAsKeyValue($firmaId)['defter_bazli_rapor_alt_limit'] ?? 0);
+
         // 2. Şimdi okuma verilerini işle
-        $allBolgeSet = [];
         foreach ($rawData as $row) {
+            // ALT LİMİT KONTROLÜ: Eğer toplam okunan limitin altındaysa, hiç okunmamış say
+            if ($altLimit > 0 && (int)$row->toplam_okunan < $altLimit) {
+                continue;
+            }
+
             $bolgeName = trim($row->bolge);
             $defter = trim($row->defter ?: '-');
             $key = mb_strtoupper($bolgeName . '|' . $defter, 'UTF-8');
@@ -2696,8 +2706,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         
         // Sonuç verisini oluştur
         $resultData = [];
-        $toplamKayit = 0;
-        $toplamAboneSonDonem = 0;
+        $toplamDefter = 0;
+        $toplamAbone = 0;
+        $okunanDefter = 0;
+        $okunanAbone = 0;
         $sonDonem = !empty($donemler) ? end($donemler) : '';
 
         foreach ($organized as $key => $item) {
@@ -2733,11 +2745,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             }
 
             $resultData[] = $rowData;
-            $toplamKayit++;
+            $toplamDefter++;
 
-            // Son dönem abone toplamı
+            // Son dönem istatistikleri (Filtrelenmiş veri üzerinden)
             if ($sonDonem && isset($rowData['donemler'][$sonDonem])) {
-                $toplamAboneSonDonem += $rowData['donemler'][$sonDonem]['abone'];
+                $sd = $rowData['donemler'][$sonDonem];
+                $toplamAbone += (int)$item['abone_sayisi'];
+                if ((int)$sd['okunan'] > 0) {
+                    $okunanDefter++;
+                }
+                $okunanAbone += (int)$sd['okunan'];
             }
         }
 
@@ -2757,7 +2774,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
         // Formatlı son dönem
         $sonDonemFormatted = $sonDonem
-            ? substr($sonDonem, 0, 4) . '/' . substr($sonDonem, 4, 2)
+            ? substr((string)$sonDonem, 0, 4) . '/' . substr((string)$sonDonem, 4, 2)
             : '-';
 
         $response = [
@@ -2766,8 +2783,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'donemler' => $donemler,
             'summary' => [
                 'toplam_bolge' => count($allBolgeSet),
-                'toplam_kayit' => $toplamKayit,
-                'toplam_abone' => $toplamAboneSonDonem,
+                'toplam_defter' => $toplamDefter,
+                'toplam_abone' => $toplamAbone,
+                'okunan_defter' => $okunanDefter,
+                'kalan_defter' => max(0, $toplamDefter - $okunanDefter),
+                'okunan_abone' => $okunanAbone,
+                'kalan_abone' => max(0, $toplamAbone - $okunanAbone),
                 'son_donem' => $sonDonemFormatted,
                 'donem_sayisi' => count($donemler)
             ]
@@ -2899,9 +2920,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $stmt->execute($queryParams);
         $rawData = $stmt->fetchAll(PDO::FETCH_OBJ);
 
+        // Rapor alt limit ayarını al
+        $SettingsModel = new \App\Model\SettingsModel();
+        $altLimit = (int) ($SettingsModel->getAllSettingsAsKeyValue($firmaId)['defter_bazli_rapor_alt_limit'] ?? 0);
+
         // Okunan defter setini oluştur ve eksik defterleri allDefters'a ekle
         $okunanMap = [];
         foreach ($rawData as $row) {
+            // ALT LİMİT KONTROLÜ: Eğer toplam okunan limitin altındaysa, hiç okunmamış say
+            if ($altLimit > 0 && (int)$row->toplam_okunan < $altLimit) {
+                continue;
+            }
+
             $donem = $row->donem;
             $bolgeName = trim($row->bolge ?: 'TANIMSIZ');
             $defterCode = trim($row->defter ?: '-');
@@ -3617,7 +3647,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $workType = $_GET['work_type'] ?? '';
     $workResult = $_GET['work_result'] ?? '';
     $sorguTuru = $_GET['sorgu_turu'] ?? '';
-    $response = $Puantaj->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $workType, $workResult, $sorguTuru);
+    $region = $_GET['region'] ?? '';
+    $defter = $_GET['defter'] ?? '';
+    $response = $Puantaj->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $workType, $workResult, $sorguTuru, $region, $defter);
     $response['data'] = array_map(function($row) {
         return [
             'id' => $row->id,
@@ -3641,7 +3673,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $startDate = $_GET['start_date'] ?? date('Y-m-d');
     $endDate = $_GET['end_date'] ?? date('Y-m-d');
     $personelId = $_GET['ekip_kodu'] ?? ''; 
-    $response = $Model->getDataTable($_GET, $startDate, $endDate, $personelId);
+    $region = $_GET['region'] ?? '';
+    $defter = $_GET['defter'] ?? '';
+    $response = $Model->getDataTable($_GET, $startDate, $endDate, $personelId, $region, $defter);
     $response['data'] = array_map(function($row) {
         return [
             'id' => $row->id,
@@ -3664,7 +3698,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $startDate = $_GET['start_date'] ?? date('Y-m-d');
     $endDate = $_GET['end_date'] ?? date('Y-m-d');
     $ekipKodu = $_GET['ekip_kodu'] ?? ''; 
-    $response = $Model->getDataTable($_GET, $startDate, $endDate, $ekipKodu);
+    $region = $_GET['region'] ?? '';
+    $response = $Model->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $region);
     $response['data'] = array_map(function($row) {
         return [
             'id' => $row->id,
@@ -3720,7 +3755,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
     if ($category === 'KESME_ACMA') {
         $Model = new PuantajModel('yapilan_isler_sorgu');
-        $res = $Model->getDataTable($_GET, $startDate, $endDate, $ekipKodu);
+        $region = $_GET['region'] ?? '';
+        $defter = $_GET['defter'] ?? '';
+        $res = $Model->getDataTable($_GET, $startDate, $endDate, $ekipKodu, '', '', '', $region, $defter);
         $records = $res['data'] ?? [];
         $headers = ['Tarih', 'Ekip Kodu', 'Personel', 'İş Emri Tipi', 'İş Emri Sonucu', 'Sonuçlanmış', 'Açık Olanlar'];
         $cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
@@ -3738,7 +3775,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         }
     } elseif ($category === 'ENDEKS_OKUMA') {
         $Model = new \App\Model\EndeksOkumaModel('endeks_okuma_sorgu');
-        $res = $Model->getDataTable($_GET, $startDate, $endDate, $ekipKodu);
+        $region = $_GET['region'] ?? '';
+        $defter = $_GET['defter'] ?? '';
+        $res = $Model->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $region, $defter);
         $records = $res['data'] ?? [];
         $headers = ['Tarih', 'Defter', 'Bölge', 'Ekip No', 'Personel', 'Okunan Abone', 'Sayaç Durum'];
         $cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G'];
@@ -3756,7 +3795,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         }
     } elseif ($category === 'SAYAC_DEGISIM') {
         $Model = new \App\Model\SayacDegisimModel('sayac_degisim_sorgu');
-        $res = $Model->getDataTable($_GET, $startDate, $endDate, $ekipKodu);
+        $region = $_GET['region'] ?? '';
+        $res = $Model->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $region);
         $records = $res['data'] ?? [];
         $headers = ['Tarih', 'Ekip No', 'Personel', 'Bölge', 'Sebep', 'Sonuç', 'Abone No', 'Takılan Sayaç No'];
         $cols = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];

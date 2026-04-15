@@ -29,6 +29,7 @@ $month = $month ?? $_GET['month'] ?? date('m');
 $activeTab = $activeTab ?? $_GET['tab'] ?? 'okuma';
 $filterPersonelId = $_GET['personel_id'] ?? '';
 $filterRegion = $_GET['region'] ?? '';
+$filterDefter = $_GET['defter'] ?? '';
 
 // Month name to number mapping safeguard
 if (!is_numeric($month)) {
@@ -112,15 +113,15 @@ if ($filterRegion) {
 // Fetch summary based on active tab
 $workTypes = [];
 if ($activeTab === 'okuma') {
-    $summary = $EndeksOkuma->getSummaryByRange($startDateStr, $endDateStr);
+    $summary = $EndeksOkuma->getSummaryByRange($startDateStr, $endDateStr, $filterPersonelId, $filterRegion, $filterDefter);
 } elseif ($activeTab === 'kacakkontrol') {
-    $summary = $Puantaj->getKacakSummaryByRange($startDateStr, $endDateStr);
+    $summary = $Puantaj->getKacakSummaryByRange($startDateStr, $endDateStr, $filterRegion);
 } elseif ($activeTab === 'sokme_takma') {
     $SayacDegisim = new SayacDegisimService();
-    $summary = $SayacDegisim->getSummaryDetailedByRange($startDateStr, $endDateStr);
+    $summary = $SayacDegisim->getSummaryDetailedByRange($startDateStr, $endDateStr, $filterPersonelId, $filterRegion);
     $workTypes = $SayacDegisim->getDistinctWorkTypes();
 } else {
-    $summary = $Puantaj->getSummaryDetailedByRange($startDateStr, $endDateStr);
+    $summary = $Puantaj->getSummaryDetailedByRange($startDateStr, $endDateStr, $filterPersonelId, $filterRegion);
     // Fetch work types based on active tab from tanimlamalar
     $workTypes = $Tanimlamalar->getIsTurleriByRaporTuru($activeTab);
 

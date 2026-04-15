@@ -140,16 +140,28 @@ class PuantajModel extends Model
         $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
-    public function getSummaryByRange($startDate, $endDate)
+    public function getSummaryByRange($startDate, $endDate, $personelId = '', $region = '')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $sql = "SELECT personel_id, ekip_kodu_id, ekip_kodu, tarih, SUM(sonuclanmis) as toplam 
-                FROM $this->table 
-                WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL
-                GROUP BY personel_id, ekip_kodu_id, ekip_kodu, tarih";
+        $sql = "SELECT t.personel_id, t.ekip_kodu_id, t.ekip_kodu, t.tarih, SUM(t.sonuclanmis) as toplam 
+                FROM $this->table t
+                LEFT JOIN tanimlamalar ek ON t.ekip_kodu_id = ek.id
+                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL";
+        $params = [$firmaId, $startDate, $endDate];
+
+        if ($personelId) {
+            $sql .= " AND t.personel_id = ?";
+            $params[] = $personelId;
+        }
+        if ($region) {
+            $sql .= " AND ek.ekip_bolge = ?";
+            $params[] = $region;
+        }
+
+        $sql .= " GROUP BY t.personel_id, t.ekip_kodu_id, t.ekip_kodu, t.tarih";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$firmaId, $startDate, $endDate]);
+        $stmt->execute($params);
         $results = $stmt->fetchAll(PDO::FETCH_OBJ);
 
         $summary = [];
@@ -160,7 +172,7 @@ class PuantajModel extends Model
         return $summary;
     }
 
-    public function getSummaryDetailedByRange($startDate, $endDate)
+    public function getSummaryDetailedByRange($startDate, $endDate, $personelId = '', $region = '')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $sql = "SELECT t.personel_id, t.ekip_kodu_id, t.ekip_kodu, t.tarih, 
@@ -168,11 +180,23 @@ class PuantajModel extends Model
                     SUM(t.sonuclanmis) as toplam 
                 FROM $this->table t
                 LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
-                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
-                GROUP BY t.personel_id, t.ekip_kodu_id, t.ekip_kodu, t.tarih, TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu))";
+                LEFT JOIN tanimlamalar ek ON t.ekip_kodu_id = ek.id
+                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL";
+        $params = [$firmaId, $startDate, $endDate];
+
+        if ($personelId) {
+            $sql .= " AND t.personel_id = ?";
+            $params[] = $personelId;
+        }
+        if ($region) {
+            $sql .= " AND ek.ekip_bolge = ?";
+            $params[] = $region;
+        }
+
+        $sql .= " GROUP BY t.personel_id, t.ekip_kodu_id, t.ekip_kodu, t.tarih, TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu))";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$firmaId, $startDate, $endDate]);
+        $stmt->execute($params);
         $results = $stmt->fetchAll(PDO::FETCH_OBJ);
 
         $summary = [];
@@ -183,17 +207,25 @@ class PuantajModel extends Model
         return $summary;
     }
 
-    public function getKacakSummaryByRange($startDate, $endDate)
+    public function getKacakSummaryByRange($startDate, $endDate, $region = '')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $sql = "SELECT ekip_adi, tarih, SUM(sayi) as toplam 
-                FROM kacak_kontrol 
-                WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL
-                AND (aciklama != 'Manuel Düşüm' OR aciklama IS NULL)
-                GROUP BY ekip_adi, tarih";
+        $sql = "SELECT k.ekip_adi, k.tarih, SUM(k.sayi) as toplam 
+                FROM kacak_kontrol k
+                LEFT JOIN tanimlamalar ek ON k.ekip_adi = ek.tur_adi AND ek.grup = 'ekip_kodu' AND ek.firma_id = k.firma_id
+                WHERE k.firma_id = ? AND k.tarih BETWEEN ? AND ? AND k.silinme_tarihi IS NULL
+                AND (k.aciklama != 'Manuel Düşüm' OR k.aciklama IS NULL)";
+        $params = [$firmaId, $startDate, $endDate];
+
+        if ($region) {
+            $sql .= " AND ek.ekip_bolge = ?";
+            $params[] = $region;
+        }
+
+        $sql .= " GROUP BY k.ekip_adi, k.tarih";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$firmaId, $startDate, $endDate]);
+        $stmt->execute($params);
         $results = $stmt->fetchAll(PDO::FETCH_OBJ);
 
         $summary = [];
@@ -249,7 +281,7 @@ class PuantajModel extends Model
     /**
      * Server-side DataTable için veri çekme
      */
-    public function getDataTable($request, $startDate, $endDate, $ekipKodu = '', $workType = '', $workResult = '', $sorguTuru = '')
+    public function getDataTable($request, $startDate, $endDate, $ekipKodu = '', $workType = '', $workResult = '', $sorguTuru = '', $region = '', $defter = '')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $params = ['firma_id' => $firmaId];
@@ -289,6 +321,17 @@ class PuantajModel extends Model
             $baseWhere .= " AND t.is_emri_tipi = 'Sayaç Değişimi'";
         } elseif ($sorguTuru === 'KESME_ACMA') {
             $baseWhere .= " AND t.is_emri_tipi NOT IN ('Endeks Okuma', 'Sayaç Değişimi')";
+        }
+
+        if ($region) {
+            $baseWhere .= " AND ek.ekip_bolge = :region";
+            $params['region'] = $region;
+        }
+
+        if ($defter && $sorguTuru === 'ENDEKS_OKUMA') {
+             // Puantaj endeks okuma tab verisi defter bilgisi içerebilir
+             $baseWhere .= " AND t.ekip_kodu LIKE :defter_search";
+             $params['defter_search'] = "%$defter%";
         }
 
         // Toplam kayıt sayısı (filtresiz)

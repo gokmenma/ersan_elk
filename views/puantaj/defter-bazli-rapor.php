@@ -312,79 +312,111 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
             <!-- ======= ÖZET KARTLARI (Minimal & Premium) ======= -->
             <div class="row g-3 mb-4" id="summaryCards" style="display: none;">
-                <!-- Toplam Bölge -->
-                <div class="col-xl col-md-3 col-sm-6">
+                <!-- Toplam Defter Sayısı -->
+                <div class="col-xl-2 col-md-4 col-sm-6">
                     <div class="card border-0 shadow-sm h-100 bordro-summary-card"
                         style="--card-color: var(--bs-primary, #556ee6); border-bottom: 3px solid var(--card-color) !important;">
                         <div class="card-body p-2 px-3">
                             <div class="icon-label-container mb-2">
                                 <div class="icon-box"
                                     style="width: 32px; height: 32px; border-radius: 8px; background: rgba(var(--bs-primary-rgb, 85, 110, 230), 0.1);">
-                                    <i class="bx bx-map-alt fs-5" style="color: var(--bs-primary, #556ee6);"></i>
+                                    <i class="bx bx-book fs-5" style="color: var(--bs-primary, #556ee6);"></i>
                                 </div>
-                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">LOKASYON</span>
+                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">DEFTER</span>
                             </div>
                             <p class="text-muted mb-0 small fw-bold"
-                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">TOPLAM BÖLGE</p>
-                            <h4 class="mb-0 fw-bold bordro-text-heading" id="totalBolge" style="font-size: 1.25rem;">0
-                            </h4>
+                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">TOPLAM DEFTER</p>
+                            <h4 class="mb-0 fw-bold bordro-text-heading" id="totalDefter" style="font-size: 1.25rem;">0</h4>
                         </div>
                     </div>
                 </div>
-                <!-- Toplam Kayıt -->
-                <div class="col-xl col-md-3 col-sm-6">
+                <!-- Okunan Defter Sayısı -->
+                <div class="col-xl-2 col-md-4 col-sm-6">
+                    <div class="card border-0 shadow-sm h-100 bordro-summary-card drill-down-card" data-type="okunan"
+                        style="--card-color: #34c38f; border-bottom: 3px solid var(--card-color) !important; cursor: pointer;">
+                        <div class="card-body p-2 px-3">
+                            <div class="icon-label-container mb-2">
+                                <div class="icon-box"
+                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(52, 195, 143, 0.1);">
+                                    <i class="bx bx-check-double fs-5 text-success"></i>
+                                </div>
+                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">OKUMA</span>
+                            </div>
+                            <p class="text-muted mb-0 small fw-bold"
+                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">OKUNAN DEFTER</p>
+                            <h4 class="mb-0 fw-bold bordro-text-heading" id="okunanDefter" style="font-size: 1.25rem;">0</h4>
+                        </div>
+                    </div>
+                </div>
+                <!-- Kalan Defter Sayısı -->
+                <div class="col-xl-2 col-md-4 col-sm-6">
+                    <div class="card border-0 shadow-sm h-100 bordro-summary-card drill-down-card" data-type="kalan"
+                        style="--card-color: #f1b44c; border-bottom: 3px solid var(--card-color) !important; cursor: pointer;">
+                        <div class="card-body p-2 px-3">
+                            <div class="icon-label-container mb-2">
+                                <div class="icon-box"
+                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(241, 180, 76, 0.1);">
+                                    <i class="bx bx-time fs-5 text-warning"></i>
+                                </div>
+                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">BEKLEYEN</span>
+                            </div>
+                            <p class="text-muted mb-0 small fw-bold"
+                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">KALAN DEFTER</p>
+                            <h4 class="mb-0 fw-bold bordro-text-heading" id="kalanDefter" style="font-size: 1.25rem;">0</h4>
+                        </div>
+                    </div>
+                </div>
+                <!-- Toplam Abone Sayısı -->
+                <div class="col-xl-2 col-md-4 col-sm-6">
+                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
+                        style="--card-color: #50a5f1; border-bottom: 3px solid var(--card-color) !important;">
+                        <div class="card-body p-2 px-3">
+                            <div class="icon-label-container mb-2">
+                                <div class="icon-box"
+                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(80, 165, 241, 0.1);">
+                                    <i class="bx bx-group fs-5 text-info"></i>
+                                </div>
+                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">KİTLE</span>
+                            </div>
+                            <p class="text-muted mb-0 small fw-bold"
+                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">TOPLAM ABONE</p>
+                            <h4 class="mb-0 fw-bold bordro-text-heading" id="totalAbone" style="font-size: 1.25rem;">0</h4>
+                        </div>
+                    </div>
+                </div>
+                <!-- Okunan Abone Sayısı -->
+                <div class="col-xl-2 col-md-4 col-sm-6">
                     <div class="card border-0 shadow-sm h-100 bordro-summary-card"
                         style="--card-color: #34c38f; border-bottom: 3px solid var(--card-color) !important;">
                         <div class="card-body p-2 px-3">
                             <div class="icon-label-container mb-2">
                                 <div class="icon-box"
                                     style="width: 32px; height: 32px; border-radius: 8px; background: rgba(52, 195, 143, 0.1);">
-                                    <i class="bx bx-list-ul fs-5 text-success"></i>
+                                    <i class="bx bx-user-check fs-5 text-success"></i>
                                 </div>
-                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">VERİ</span>
+                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">BAŞARI</span>
                             </div>
                             <p class="text-muted mb-0 small fw-bold"
-                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">TOPLAM KAYİT</p>
-                            <h4 class="mb-0 fw-bold bordro-text-heading" id="totalKayit" style="font-size: 1.25rem;">0
-                            </h4>
+                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">OKUNAN ABONE</p>
+                            <h4 class="mb-0 fw-bold bordro-text-heading" id="okunanAbone" style="font-size: 1.25rem;">0</h4>
                         </div>
                     </div>
                 </div>
-                <!-- Toplam Abone -->
-                <div class="col-xl col-md-3 col-sm-6">
+                <!-- Kalan Abone Sayısı -->
+                <div class="col-xl-2 col-md-4 col-sm-6">
                     <div class="card border-0 shadow-sm h-100 bordro-summary-card"
                         style="--card-color: #f43f5e; border-bottom: 3px solid var(--card-color) !important;">
                         <div class="card-body p-2 px-3">
                             <div class="icon-label-container mb-2">
                                 <div class="icon-box"
                                     style="width: 32px; height: 32px; border-radius: 8px; background: rgba(244, 63, 94, 0.1);">
-                                    <i class="bx bx-user fs-5 text-danger"></i>
+                                    <i class="bx bx-user-x fs-5 text-danger"></i>
                                 </div>
-                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">ABONE</span>
+                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">KAYIP</span>
                             </div>
                             <p class="text-muted mb-0 small fw-bold"
-                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">SON DÖNEM ABONE</p>
-                            <h4 class="mb-0 fw-bold bordro-text-heading" id="totalAbone" style="font-size: 1.25rem;">0
-                            </h4>
-                        </div>
-                    </div>
-                </div>
-                <!-- Dönem Sayısı -->
-                <div class="col-xl col-md-3 col-sm-6">
-                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                        style="--card-color: #f1b44c; border-bottom: 3px solid var(--card-color) !important;">
-                        <div class="card-body p-2 px-3">
-                            <div class="icon-label-container mb-2">
-                                <div class="icon-box"
-                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(241, 180, 76, 0.1);">
-                                    <i class="bx bx-calendar fs-5 text-warning"></i>
-                                </div>
-                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">DÖNEM</span>
-                            </div>
-                            <p class="text-muted mb-0 small fw-bold"
-                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">DÖNEM SAYISI</p>
-                            <h4 class="mb-0 fw-bold bordro-text-heading" id="totalDonem" style="font-size: 1.25rem;">0
-                            </h4>
+                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">KALAN ABONE</p>
+                            <h4 class="mb-0 fw-bold bordro-text-heading" id="kalanAbone" style="font-size: 1.25rem;">0</h4>
                         </div>
                     </div>
                 </div>
@@ -457,15 +489,6 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                                             class="bx bx-show me-2 text-success"></i>Okunan</span>
                                     <div class="form-check form-switch m-0">
                                         <input class="form-check-input col-toggle" type="checkbox" data-col="okunan"
-                                            checked>
-                                    </div>
-                                </label>
-                                <label
-                                    class="list-group-item d-flex justify-content-between align-items-center py-2 px-0 border-0 cursor-pointer">
-                                    <span class="fw-medium text-dark"><i
-                                            class="bx bx-walk me-2 text-info"></i>Gidilen</span>
-                                    <div class="form-check form-switch m-0">
-                                        <input class="form-check-input col-toggle" type="checkbox" data-col="gidilen"
                                             checked>
                                     </div>
                                 </label>
@@ -1397,10 +1420,6 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         color: rgba(255, 255, 255, 0.85) !important;
     }
 
-    .sub-header-gidilen {
-        color: rgba(255, 255, 255, 0.85) !important;
-    }
-
     .sub-header-oran {
         color: rgba(255, 255, 255, 1) !important;
     }
@@ -1422,10 +1441,6 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         background-color: rgba(244, 106, 106, 0.15) !important;
         color: #f46a6a !important;
         font-weight: 700;
-    }
-
-    .gidilen-cell {
-        background-color: rgba(244, 106, 106, 0.08) !important;
     }
 
     #comparisonTable td {
@@ -2126,6 +2141,72 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             updateFilterSummary();
         });
 
+        // ======= DRILL DOWN CLICK =======
+        $(document).on('click', '.drill-down-card', function() {
+            const type = $(this).data('type');
+            openDrillDown(type);
+        });
+
+        function openDrillDown(type) {
+            if (!_tableData || _tableData.length === 0) return;
+            
+            const sonDonem = _tableDonemler[_tableDonemler.length - 1];
+            const sonDonemFormatted = String(sonDonem).substring(0, 4) + '/' + String(sonDonem).substring(4);
+            
+            let list = [];
+            let title = '';
+            let icon = '';
+            let color = '';
+            let valField = '';
+            let valLabel = '';
+
+            if (type === 'okunan') {
+                list = _tableData.filter(d => (d.donemler[sonDonem]?.okunan || 0) > 0);
+                title = 'Okunan Defterler';
+                icon = 'bx-check-double';
+                color = 'linear-gradient(135deg, #34c38f 0%, #2ca01c 100%)';
+                valField = 'okunan';
+                valLabel = 'Okunan Abone';
+            } else if (type === 'kalan') {
+                list = _tableData.filter(d => (d.donemler[sonDonem]?.okunan || 0) == 0);
+                title = 'Kalan Defterler';
+                icon = 'bx-time';
+                color = 'linear-gradient(135deg, #f1b44c 0%, #e2a03f 100%)';
+                valField = 'abone_sayisi';
+                valLabel = 'Abone Sayısı';
+            }
+
+            $('#modalDefterListTitle').html('<i class="bx ' + icon + ' me-2"></i>' + title + ' (' + sonDonemFormatted + ')');
+            $('#modalOkunmayanDefterler .modal-header').css('background', color);
+
+            let html = '';
+            if (list.length === 0) {
+                html = '<div class="text-center p-4 text-muted"><i class="bx bx-info-circle fs-3 d-block mb-2"></i>Veri bulunamadı.</div>';
+            } else {
+                html += '<div class="table-responsive" style="max-height: 500px;"><table class="table table-sm table-bordered table-hover mb-0">';
+                html += '<thead class="bg-light sticky-top"><tr><th style="width: 50px;">#</th><th>Bölge</th><th>Defter</th><th>Mahalle</th><th class="text-end">' + valLabel + '</th></tr></thead><tbody>';
+                list.forEach((item, index) => {
+                    const dData = item.donemler[sonDonem] || {};
+                    const val = type === 'okunan' ? (dData.okunan || 0) : (item.abone_sayisi || 0);
+                    html += `<tr>
+                        <td class="text-muted small">${index + 1}</td>
+                        <td>${item.bolge}</td>
+                        <td class="fw-bold">${item.defter}</td>
+                        <td>${item.mahalle}</td>
+                        <td class="text-end fw-semibold">${val.toLocaleString('tr-TR')}</td>
+                    </tr>`;
+                });
+                html += '</tbody></table></div>';
+                html += `<div class="mt-3 text-end"><span class="badge bg-primary-subtle text-primary py-2 px-3" style="font-size: 13px;">Toplam ${list.length} Kayıt</span></div>`;
+            }
+            $('#modalDefterListBody').html(html);
+            
+            var modalEl = document.getElementById('modalOkunmayanDefterler');
+            var modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            modal.show();
+        }
+
+
         function formatDonem(d) {
             return d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0');
         }
@@ -2218,11 +2299,12 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
         // ======= ÖZET KARTLARI =======
         function renderSummaryCards(summary) {
-            $('#totalBolge').text(summary.toplam_bolge.toLocaleString('tr-TR'));
-            $('#totalKayit').text(summary.toplam_kayit.toLocaleString('tr-TR'));
+            $('#totalDefter').text(summary.toplam_defter.toLocaleString('tr-TR'));
+            $('#okunanDefter').text(summary.okunan_defter.toLocaleString('tr-TR'));
+            $('#kalanDefter').text(summary.kalan_defter.toLocaleString('tr-TR'));
             $('#totalAbone').text(summary.toplam_abone.toLocaleString('tr-TR'));
-            $('#totalAboneDonem').text(summary.son_donem);
-            $('#totalDonem').text(summary.donem_sayisi);
+            $('#okunanAbone').text(summary.okunan_abone.toLocaleString('tr-TR'));
+            $('#kalanAbone').text(summary.kalan_abone.toLocaleString('tr-TR'));
         }
 
         // ======= SORT STATE =======
@@ -2233,7 +2315,6 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         let _visibleColumns = {
             abone: true,
             okunan: true,
-            gidilen: true,
             oran: true
         };
 
@@ -2275,9 +2356,9 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                     if (!f || !f.operator || f.value === '' || f.value === null || f.value === undefined) continue;
 
                     const parts = filterKey.split('_');
-                    const field = parts.pop(); // abone, okunan, gidilen, oran
+                    const field = parts.pop(); // abone, okunan, oran
                     const donemKey = parts.join('_');
-                    const donemData = item.donemler[donemKey] || { abone: 0, okunan: 0, gidilen: 0 };
+                    const donemData = item.donemler[donemKey] || { abone: 0, okunan: 0 };
 
                     let cellVal;
                     if (field === 'oran') {
@@ -2329,10 +2410,10 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                     } else {
                         // Period column: format is '{donem}_{field}'
                         const parts = _sortColumn.split('_');
-                        const field = parts.pop(); // abone, okunan, gidilen, oran
+                        const field = parts.pop(); // abone, okunan, oran
                         const donem = parts.join('_');
-                        const dA = a.donemler[donem] || { abone: 0, okunan: 0, gidilen: 0 };
-                        const dB = b.donemler[donem] || { abone: 0, okunan: 0, gidilen: 0 };
+                        const dA = a.donemler[donem] || { abone: 0, okunan: 0 };
+                        const dB = b.donemler[donem] || { abone: 0, okunan: 0 };
 
                         if (field === 'oran') {
                             valA = dA.abone > 0 ? (dA.okunan / dA.abone) * 100 : 0;
@@ -2415,8 +2496,6 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                     html += `<th class="sub-header sub-header-abone sortable-header" data-sort-col="${donem}_abone">${filterBtn(donem + '_abone')} ABONE${sortIcon(donem + '_abone')}</th>`;
                 if (_visibleColumns.okunan)
                     html += `<th class="sub-header sub-header-okunan sortable-header" data-sort-col="${donem}_okunan">${filterBtn(donem + '_okunan')} OKUNAN${sortIcon(donem + '_okunan')}</th>`;
-                if (_visibleColumns.gidilen)
-                    html += `<th class="sub-header sub-header-gidilen sortable-header" data-sort-col="${donem}_gidilen">${filterBtn(donem + '_gidilen')} GİDİLEN${sortIcon(donem + '_gidilen')}</th>`;
                 if (_visibleColumns.oran)
                     html += `<th class="sub-header sub-header-oran sortable-header ${isLast ? 'period-end' : ''}" data-sort-col="${donem}_oran">${filterBtn(donem + '_oran')} ORAN %${sortIcon(donem + '_oran')}</th>`;
             });
@@ -2430,14 +2509,13 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             // Totals calculation object
             let colTotals = {};
             donemler.forEach(d => {
-                colTotals[d] = { abone: 0, okunan: 0, gidilen: 0 };
+                colTotals[d] = { abone: 0, okunan: 0 };
             });
 
             // Calculate active columns for colspan
             let visibleCountPerPeriod = 0;
             if (_visibleColumns.abone) visibleCountPerPeriod++;
             if (_visibleColumns.okunan) visibleCountPerPeriod++;
-            if (_visibleColumns.gidilen) visibleCountPerPeriod++;
             if (_visibleColumns.oran) visibleCountPerPeriod++;
             const totalHeaderCols = 5 + (donemler.length * visibleCountPerPeriod);
 
@@ -2452,16 +2530,15 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                     donemler: {}
                 };
                 donemler.forEach(d => {
-                    regionTotals.donemler[d] = { abone: 0, okunan: 0, gidilen: 0 };
+                    regionTotals.donemler[d] = { abone: 0, okunan: 0 };
                 });
 
                 rows.forEach(function (row) {
                     regionTotals.master_abone += parseInt(row.abone_sayisi) || 0;
                     donemler.forEach(d => {
-                        const dData = row.donemler[d] || { abone: 0, okunan: 0, gidilen: 0 };
+                        const dData = row.donemler[d] || { abone: 0, okunan: 0 };
                         regionTotals.donemler[d].abone += parseInt(dData.abone) || 0;
                         regionTotals.donemler[d].okunan += parseInt(dData.okunan) || 0;
-                        regionTotals.donemler[d].gidilen += parseInt(dData.gidilen) || 0;
                     });
                 });
 
@@ -2509,8 +2586,6 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                         html += `<td class="ogr-region-header text-end" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.abone.toLocaleString('tr-TR')}</td>`;
                     if (_visibleColumns.okunan)
                         html += `<td class="ogr-region-header text-end" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.okunan.toLocaleString('tr-TR')}</td>`;
-                    if (_visibleColumns.gidilen)
-                        html += `<td class="ogr-region-header text-end" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.gidilen.toLocaleString('tr-TR')}</td>`;
                     if (_visibleColumns.oran)
                         html += `<td class="ogr-region-header text-end ${isLast ? 'period-end' : ''}" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;"></td>`;
                 });
@@ -2546,8 +2621,6 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                             html += `<td>${donemData.abone > 0 ? donemData.abone.toLocaleString('tr-TR') : ''}</td>`;
                         if (_visibleColumns.okunan)
                             html += `<td>${donemData.okunan > 0 ? donemData.okunan.toLocaleString('tr-TR') : ''}</td>`;
-                        if (_visibleColumns.gidilen)
-                            html += `<td class="gidilen-cell">${donemData.gidilen > 0 ? donemData.gidilen.toLocaleString('tr-TR') : ''}</td>`;
                         if (_visibleColumns.oran)
                             html += `<td class="${oranClass} ${isLast ? 'period-end' : ''}">${donemData.abone > 0 ? oran + '%' : ''}</td>`;
                     });
@@ -2570,8 +2643,6 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                     html += `<th>${totals.abone.toLocaleString('tr-TR')}</th>`;
                 if (_visibleColumns.okunan)
                     html += `<th>${totals.okunan.toLocaleString('tr-TR')}</th>`;
-                if (_visibleColumns.gidilen)
-                    html += `<th class="gidilen-cell">${totals.gidilen.toLocaleString('tr-TR')}</th>`;
                 if (_visibleColumns.oran)
                     html += `<th class="${isLast ? 'period-end' : ''}"></th>`; // Oranları toplama
             });

@@ -18,7 +18,7 @@ use App\Helper\Date;
 
 header('Content-Type: application/json; charset=utf-8');
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array($_GET['action'], ['get-arac-puantaj-table', 'get-arac-ozel-puantaj', 'arac-performans', 'arac-excel-aktar', 'get-arac-analiz', 'arac-karsilastirma']))) {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array($_GET['action'], ['get-arac-puantaj-table', 'get-arac-ozel-puantaj', 'arac-performans', 'arac-excel-aktar', 'get-arac-analiz', 'arac-karsilastirma', 'get-km-onay-yapmayanlar']))) {
     $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
     $Arac = new AracModel();
@@ -2852,6 +2852,103 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     'data' => array_values($karsilastirmaData),
                     'summary' => $summary
                 ]);
+                break;
+
+            case 'get-km-onay-yapmayanlar':
+                $yesterday = date('Y-m-d', strtotime('-1 day'));
+                $today = date('Y-m-d');
+                $now = date('H:i');
+
+                $list = [];
+
+                // 1. Yesterday Sabah
+                $res = $KmBildirim->getUnreported($yesterday, 'sabah');
+                foreach ($res as $r) {
+                    $r->gecikme_turu = 'Dün Sabah';
+                    $r->hedef_tarih = $yesterday;
+                    $r->hedef_tur = 'sabah';
+                    $list[] = $r;
+                }
+
+                // 2. Yesterday Akşam
+                $res = $KmBildirim->getUnreported($yesterday, 'aksam');
+                foreach ($res as $r) {
+                    $r->gecikme_turu = 'Dün Akşam';
+                    $r->hedef_tarih = $yesterday;
+                    $r->hedef_tur = 'aksam';
+                    $list[] = $r;
+                }
+
+                // 3. Today Sabah (if after 08:00)
+                if ($now >= '08:00') {
+                    $res = $KmBildirim->getUnreported($today, 'sabah');
+                    foreach ($res as $r) {
+                        $r->gecikme_turu = 'Bugün Sabah';
+                        $r->hedef_tarih = $today;
+                        $r->hedef_tur = 'sabah';
+                        $list[] = $r;
+                    }
+                }
+
+                // 4. Today Akşam (if after 17:00)
+                if ($now >= '17:00') {
+                    $res = $KmBildirim->getUnreported($today, 'aksam');
+                    foreach ($res as $r) {
+                        $r->gecikme_turu = 'Bugün Akşam';
+                        $r->hedef_tarih = $today;
+                        $r->hedef_tur = 'aksam';
+                        $list[] = $r;
+                    }
+                }
+
+                echo json_encode(['status' => 'success', 'data' => $list]);
+                break;
+
+            case 'send-km-bildirim-hatirlatma':
+                $personel_id = intval($_POST['personel_id'] ?? 0);
+                $tarih = $_POST['tarih'] ?? '';
+                $tur = $_POST['tur'] ?? '';
+
+                if (!$personel_id)
+                    throw new Exception("Personel ID geçersiz.");
+
+                $turFmt = $tur === 'sabah' ? 'Sabah' : 'Akşam';
+                $tarihFmt = date('d.m.Y', strtotime($tarih));
+                $message = "{$tarihFmt} tarihli {$turFmt} bildirimini yapmadınız, Lütfen yapınız.";
+
+                // Bildirim gönder
+                $Bildirim = new \App\Model\BildirimModel();
+                
+                // Personelin bağlı olduğu kullanıcıyı bul
+                $pdo = $Arac->getDb();
+                $stmt = $pdo->prepare("SELECT id FROM users WHERE personel_id = ? AND durum = 'Aktif'");
+                $stmt->execute([$personel_id]);
+                $userIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+                foreach ($userIds as $uid) {
+                    $Bildirim->createNotification(
+                        $uid,
+                        'KM Bildirim Hatırlatması',
+                        $message,
+                        'index.php?p=personel-pwa/pages/ana-sayfa', // PWA ana sayfa veya bildirim sayfası
+                        'bell',
+                        'warning'
+                    );
+
+                    // Push
+                    try {
+                        $push = new \App\Service\PushNotificationService();
+                        $push->sendToUser($uid, [
+                            'title' => 'KM Bildirim Hatırlatması',
+                            'body' => $message,
+                            'url' => 'index_pwa.php' 
+                        ], true);
+                    } catch (\Exception $e) {
+                        // Log but ignore
+                    }
+                }
+
+                echo json_encode(['status' => 'success', 'message' => 'Hatırlatma başarıyla gönderildi.']);
                 break;
 
             case 'km-onay-ver':

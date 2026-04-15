@@ -15,17 +15,33 @@ class EndeksOkumaModel extends Model
         parent::__construct($this->table);
     }
 
-    public function getSummaryDetailedByRange($startDate, $endDate)
+    public function getSummaryDetailedByRange($startDate, $endDate, $personelId = '', $region = '', $defter = '')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $sql = "SELECT t.personel_id, t.ekip_kodu_id, def.tur_adi as ekip_kodu, t.tarih, SUM(t.okunan_abone_sayisi) as toplam 
                 FROM $this->table t
                 LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
-                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
-                GROUP BY t.personel_id, t.ekip_kodu_id, def.tur_adi, t.tarih";
+                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL";
+        $params = [$firmaId, $startDate, $endDate];
+
+        if ($personelId) {
+            $sql .= " AND t.personel_id = ?";
+            $params[] = $personelId;
+        }
+        if ($region) {
+            $sql .= " AND (t.bolge = ? OR def.ekip_bolge = ?)";
+            $params[] = $region;
+            $params[] = $region;
+        }
+        if ($defter) {
+            $sql .= " AND t.defter = ?";
+            $params[] = $defter;
+        }
+
+        $sql .= " GROUP BY t.personel_id, t.ekip_kodu_id, def.tur_adi, t.tarih";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$firmaId, $startDate, $endDate]);
+        $stmt->execute($params);
         $results = $stmt->fetchAll(PDO::FETCH_OBJ);
 
         $summary = [];
@@ -37,17 +53,33 @@ class EndeksOkumaModel extends Model
         return $summary;
     }
 
-    public function getSummaryByRange($startDate, $endDate)
+    public function getSummaryByRange($startDate, $endDate, $personelId = '', $region = '', $defter = '')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $sql = "SELECT t.personel_id, t.ekip_kodu_id, def.tur_adi as ekip_kodu, t.tarih, SUM(t.okunan_abone_sayisi) as toplam 
                 FROM $this->table t
                 LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
-                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
-                GROUP BY t.personel_id, t.ekip_kodu_id, def.tur_adi, t.tarih";
+                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL";
+        $params = [$firmaId, $startDate, $endDate];
+
+        if ($personelId) {
+            $sql .= " AND t.personel_id = ?";
+            $params[] = $personelId;
+        }
+        if ($region) {
+            $sql .= " AND (t.bolge = ? OR def.ekip_bolge = ?)";
+            $params[] = $region;
+            $params[] = $region;
+        }
+        if ($defter) {
+            $sql .= " AND t.defter = ?";
+            $params[] = $defter;
+        }
+
+        $sql .= " GROUP BY t.personel_id, t.ekip_kodu_id, def.tur_adi, t.tarih";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$firmaId, $startDate, $endDate]);
+        $stmt->execute($params);
         $results = $stmt->fetchAll(PDO::FETCH_OBJ);
 
         $summary = [];
@@ -99,7 +131,7 @@ class EndeksOkumaModel extends Model
     /**
      * Server-side DataTable için veri çekme
      */
-    public function getDataTable($request, $startDate, $endDate, $personelId = '')
+    public function getDataTable($request, $startDate, $endDate, $personelId = '', $region = '', $defter = '')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $params = ['firma_id' => $firmaId];
@@ -119,6 +151,14 @@ class EndeksOkumaModel extends Model
         if ($personelId) {
             $baseWhere .= " AND t.personel_id = :personel_id";
             $params['personel_id'] = $personelId;
+        }
+        if ($region) {
+            $baseWhere .= " AND (t.bolge = :region OR def.ekip_bolge = :region)";
+            $params['region'] = $region;
+        }
+        if ($defter) {
+            $baseWhere .= " AND t.defter = :defter";
+            $params['defter'] = $defter;
         }
 
         // Toplam kayıt sayısı (filtresiz)

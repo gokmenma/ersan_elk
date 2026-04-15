@@ -496,6 +496,18 @@ class TanimlamalarModel extends Model
     }
 
     /**
+     * Defter kodlarını getirir
+     * @return array Defter kodları listesi
+     */
+    public function getDefterKodlari()
+    {
+        $sql = "SELECT DISTINCT TRIM(tur_adi) FROM $this->table WHERE grup = 'defter_kodu' AND tur_adi IS NOT NULL AND tur_adi != '' AND firma_id = ? AND silinme_tarihi IS NULL ORDER BY tur_adi ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$_SESSION['firma_id']]);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    /**
      * Belirli bir bölgedeki müsait ekip kodlarını getirir
      * @param string $bolge Bölge adı
      * @param int|null $includeEkipNo Dahil edilecek ekip kodu ID'si

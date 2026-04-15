@@ -131,10 +131,10 @@ class SayacDegisimService
     /**
      * Tarih aralığındaki sayaç değişim sayısını çeker (detaylı, isemri_sonucu'na göre gruplu)
      */
-    public function getSummaryDetailedByRange($startDate, $endDate)
+    public function getSummaryDetailedByRange($startDate, $endDate, $personelId = '', $region = '')
     {
         $Model = new \App\Model\SayacDegisimModel();
-        return $Model->getSummaryDetailedByRange($startDate, $endDate);
+        return $Model->getSummaryDetailedByRange($startDate, $endDate, $personelId, $region);
     }
 
     /**

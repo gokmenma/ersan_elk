@@ -40,9 +40,43 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
     .status-filter-group .nav-link.active[href="#pending"] { background: #3b82f6 !important; }
     .status-filter-group .nav-link.active[href="#approved"] { background: #10b981 !important; }
     .status-filter-group .nav-link.active[href="#rejected"] { background: #ef4444 !important; }
+    .status-filter-group .nav-link.active[href="#unreported"] { background: #f59e0b !important; }
     
     .status-filter-group .nav-link i { font-size: 1.1rem; }
     .status-filter-group .nav-link .badge { font-size: 0.7rem; padding: 0.25em 0.6em; }
+
+    /* Custom Checkbox Styles */
+    .unreported-checkbox-wrapper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+    }
+    .custom-check {
+        cursor: pointer;
+        width: 20px;
+        height: 20px;
+        background: #fff;
+        border: 2px solid #ccc;
+        border-radius: 4px;
+        position: relative;
+        transition: all 0.2s;
+    }
+    input.unreported-checkbox:checked + .custom-check,
+    input#checkAllUnreported:checked + .custom-check {
+        background: #3b82f6;
+        border-color: #3b82f6;
+    }
+    input.unreported-checkbox:checked + .custom-check::after,
+    input#checkAllUnreported:checked + .custom-check::after {
+        content: '\2713';
+        color: white;
+        font-size: 14px;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+    }
+    .unreported-checkbox { display: none !important; }
 </style>
 
 <div class="container-fluid">
@@ -86,6 +120,10 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                 <i class="bx bx-x-circle"></i>
                                 <span>Reddedilenler</span>
                                 <span class="badge bg-secondary ms-1"><?= count($rejectedReports) ?></span>
+                            </a>
+                            <a class="nav-link" data-bs-toggle="tab" href="#unreported" role="tab" id="tabUnreportedLink">
+                                <i class="bx bx-error-circle"></i>
+                                <span>Bildirim Yapmayanlar</span>
                             </a>
                         </div>
 
@@ -293,6 +331,46 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                 </table>
                             </div>
                         </div>
+
+                        <!-- Bildirim Yapmayanlar -->
+                        <div class="tab-pane" id="unreported" role="tabpanel">
+                            <div class="d-flex align-items-center mb-3 gap-2">
+                                <button type="button" class="btn btn-primary btn-sm d-none" id="btnBulkSendReminder">
+                                    <i class="bx bx-paper-plane"></i> Seçilenlere Bildirim Gönder
+                                </button>
+                                <div class="ms-auto text-muted small" id="selectionSummary"></div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-hover table-bordered nowrap w-100" id="tableUnreported">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th class="text-center" style="width:3%">
+                                                <div class="unreported-checkbox-wrapper">
+                                                    <input type="checkbox" id="checkAllUnreported" class="unreported-checkbox">
+                                                    <label for="checkAllUnreported" class="custom-check mb-0"></label>
+                                                </div>
+                                            </th>
+                                            <th style="width:22%">Personel</th>
+                                            <th style="width:15%">Araç / Plaka</th>
+                                            <th style="width:12%">Hedef Tarih</th>
+                                            <th style="width:18%">Tür / Gecikme</th>
+                                            <th style="width:15%">Telefon</th>
+                                            <th style="width:15%" class="text-center">İşlemler</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="unreportedListBody">
+                                        <tr>
+                                            <td colspan="7" class="text-center py-4">
+                                                <div class="spinner-border text-primary" role="status">
+                                                    <span class="visually-hidden">Yükleniyor...</span>
+                                                </div>
+                                                <p class="mt-2 text-muted">Veriler kontrol ediliyor...</p>
+                                            </td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
                     </div>
 
                 </div>
@@ -386,6 +464,303 @@ $(document).ready(function() {
         $('#modalImgHeaderInfo').text(plaka + ' | ' + date + ' - ' + tur);
         $('#modalViewImg').attr('src', imgSrc);
         $('#imgViewModal').modal('show');
+    });
+
+    // Onay Yapmayanlar Listesini Yükle
+    function loadUnreported() {
+        // Prepare table for loading
+        if ($.fn.DataTable.isDataTable('#tableUnreported')) {
+            $('#tableUnreported').DataTable().destroy();
+        }
+        $('#unreportedListBody').html('<tr><td colspan="7" class="text-center py-4"><div class="spinner-border text-primary" role="status"></div><p class="mt-2 text-muted">Veriler kontrol ediliyor...</p></td></tr>');
+
+        $.get('views/arac-takip/api.php?action=get-km-onay-yapmayanlar', function(res) {
+            if (res.status === 'success') {
+                const body = $('#unreportedListBody');
+                body.empty();
+                if (res.data.length === 0) {
+                    body.append('<tr><td colspan="7" class="text-center py-4 text-success"><i class="bx bx-check-double fs-2"></i><br>Tüm bildirimler eksiksiz!</td></tr>');
+                    return;
+                }
+                res.data.forEach((r, i) => {
+                    const turBadge = r.hedef_tur === 'sabah' ? '<span class="badge bg-soft-warning text-warning"><i class="bx bx-sun"></i> Sabah</span>' : '<span class="badge bg-soft-info text-info"><i class="bx bx-moon"></i> Akşam</span>';
+                    const rowId = `row_un_${r.personel_id}_${r.hedef_tarih}_${r.hedef_tur}`;
+                    body.append(`
+                        <tr>
+                            <td class="text-center">
+                                <div class="unreported-checkbox-wrapper">
+                                    <input type="checkbox" class="unreported-checkbox row-selector" id="${rowId}"
+                                        data-id="${r.personel_id}" 
+                                        data-tarih="${r.hedef_tarih}" 
+                                        data-tur="${r.hedef_tur}"
+                                        data-adi="${r.personel_adi}">
+                                    <label for="${rowId}" class="custom-check mb-0"></label>
+                                </div>
+                            </td>
+                            <td><span class="fw-bold">${r.personel_adi}</span></td>
+                            <td><span class="badge bg-light text-dark border">${r.plaka}</span></td>
+                            <td>${r.hedef_tarih.split('-').reverse().join('.')}</td>
+                            <td><span class="fw-bold text-danger">${r.gecikme_turu}</span> <br> ${turBadge}</td>
+                            <td><a href="tel:${r.telefon || ''}">${r.telefon || '-'}</a></td>
+                            <td class="text-center">
+                                <button type="button" class="btn btn-sm btn-warning btn-send-reminder" 
+                                    data-id="${r.personel_id}" 
+                                    data-tarih="${r.hedef_tarih}" 
+                                    data-tur="${r.hedef_tur}"
+                                    title="Bildirim Gönder">
+                                    <i class="bx bx-bell"></i> Bildirim Gönder
+                                </button>
+                            </td>
+                        </tr>
+                    `);
+                });
+
+                // Initialize DataTable
+                if (typeof AracTakip !== 'undefined' && AracTakip.initDataTable) {
+                    AracTakip.initDataTable('#tableUnreported');
+                }
+            } else {
+                $('#unreportedListBody').html(`<tr><td colspan="7" class="text-center py-4 text-warning"><i class="bx bx-error fs-2"></i><br>${res.message || 'Veriler alınamadı.'}</td></tr>`);
+            }
+        }, 'json').fail(function(xhr, status, error) {
+            console.error("AJAX Error:", error);
+            $('#unreportedListBody').html('<tr><td colspan="7" class="text-center py-4 text-danger"><i class="bx bx-error fs-2"></i><br>Veriler yüklenirken sunucu hatası oluştu.</td></tr>');
+        });
+    }
+
+    $(document).on('click', '#tabUnreportedLink', function() {
+        loadUnreported();
+    });
+
+    // Sayfa açıldığında veya yenilendiğinde kontrol et
+    function checkInitialTab() {
+        const hash = window.location.hash;
+        const activeTab = $('.nav-link.active').attr('href');
+        
+        if (hash === '#unreported' || activeTab === '#unreported') {
+            loadUnreported();
+        }
+    }
+
+    $(document).ready(function() {
+        setTimeout(checkInitialTab, 500);
+    });
+
+    // Toplu Seçim Olayları (DataTables uyumlu)
+    $(document).on('change', '#checkAllUnreported', function() {
+        const isChecked = $(this).is(':checked');
+        const table = $('#tableUnreported').DataTable();
+        
+        // Tüm sayfalardaki checkboxları seçmek için DataTable API kullan
+        // Ancak görsel olarak sadece bu sayfadakiler değişir
+        $('.row-selector').prop('checked', isChecked);
+        
+        // Global durum için bir marker ekle
+        if (isChecked) {
+            $('#tableUnreported').addClass('all-selected-mode');
+        } else {
+            $('#tableUnreported').removeClass('all-selected-mode');
+        }
+        
+        updateSelectionSummary();
+    });
+
+    $(document).on('change', '.row-selector', function() {
+        if (!$(this).is(':checked')) {
+            $('#checkAllUnreported').prop('checked', false);
+            $('#tableUnreported').removeClass('all-selected-mode');
+        }
+        updateSelectionSummary();
+    });
+
+    function updateSelectionSummary() {
+        const table = $('#tableUnreported').DataTable();
+        let count = 0;
+        
+        if ($('#tableUnreported').hasClass('all-selected-mode')) {
+            count = table.rows({ filter: 'applied' }).count();
+        } else {
+            count = $('.row-selector:checked').length;
+        }
+        
+        if (count > 0) {
+            $('#btnBulkSendReminder').removeClass('d-none');
+            $('#selectionSummary').html(`<span class="badge bg-primary">${count}</span> kayıt seçildi`);
+        } else {
+            $('#btnBulkSendReminder').addClass('d-none');
+            $('#selectionSummary').text('');
+        }
+    }
+
+    // Toplu Bildirim Gönderimi (Tüm sayfaları kapsar)
+    $(document).on('click', '#btnBulkSendReminder', function() {
+        const table = $('#tableUnreported').DataTable();
+        const selectedItems = [];
+        
+        if ($('#tableUnreported').hasClass('all-selected-mode')) {
+            // Filtrelenmiş TÜM kayıtları al (sayfalamadan bağımsız)
+            table.rows({ filter: 'applied' }).every(function() {
+                const node = this.node();
+                const $chk = $(node).find('.row-selector');
+                selectedItems.push({
+                    personel_id: $chk.data('id'),
+                    tarih: $chk.data('tarih'),
+                    tur: $chk.data('tur'),
+                    adi: $chk.data('adi')
+                });
+            });
+        } else {
+            // Sadece seçili olan yerel kayıtları al
+            $('.row-selector:checked').each(function() {
+                selectedItems.push({
+                    personel_id: $(this).data('id'),
+                    tarih: $(this).data('tarih'),
+                    tur: $(this).data('tur'),
+                    adi: $(this).data('adi')
+                });
+            });
+        }
+
+        if (selectedItems.length === 0) return;
+
+        Swal.fire({
+            title: 'Toplu Bildirim',
+            text: `${selectedItems.length} personele hatırlatma bildirimi gönderilecektir. Onaylıyor musunuz?`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, Gönder',
+            cancelButtonText: 'Vazgeç',
+            confirmButtonColor: '#3b82f6'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                processBulkReminders(selectedItems);
+            }
+        });
+    });
+
+    async function processBulkReminders(items) {
+        Swal.fire({
+            title: 'Bildirimler Gönderiliyor',
+            html: `Lütfen pencereyi kapatmayın... <br><br> <div class="progress mb-2"><div class="progress-bar progress-bar-animated progress-bar-striped" role="progressbar" style="width: 0%"></div></div> <b id="bulkProgressText">0 / ${items.length}</b>`,
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => { Swal.showLoading(); }
+        });
+
+        let successCount = 0;
+        const progressBar = Swal.getHtmlContainer().querySelector('.progress-bar');
+        const progressText = Swal.getHtmlContainer().querySelector('#bulkProgressText');
+
+        for (let i = 0; i < items.length; i++) {
+            const item = items[i];
+            try {
+                const res = await $.post('views/arac-takip/api.php', {
+                    action: 'send-km-bildirim-hatirlatma',
+                    personel_id: item.personel_id,
+                    tarih: item.tarih,
+                    tur: item.tur
+                });
+                if (res.status === 'success') successCount++;
+            } catch (err) {
+                console.error("Bulk send error for " + item.adi, err);
+            }
+
+            const percent = Math.round(((i + 1) / items.length) * 100);
+            progressBar.style.width = percent + '%';
+            progressText.textContent = `${i + 1} / ${items.length}`;
+        }
+
+        Swal.fire({
+            title: 'İşlem Tamamlandı',
+            text: `${successCount} personele bildirim başarıyla iletildi.`,
+            icon: 'success',
+            confirmButtonText: 'Kapat'
+        }).then(() => {
+            loadUnreported(); // Listeyi yenile
+        });
+    }
+
+    // Hatırlatma Gönder
+    $(document).on('click', '.btn-send-reminder', function() {
+        const btn = $(this);
+        const personelId = btn.data('id');
+        const tarih = btn.data('tarih');
+        const tur = btn.data('tur');
+        const personelAdi = btn.closest('tr').find('td').eq(1).text();
+
+        const trFmt = tur === 'sabah' ? 'Sabah' : 'Akşam';
+        const tarihFmt = tarih.split('-').reverse().join('.');
+        const message = `${tarihFmt} tarihli ${trFmt} bildirimini yapmadınız, Lütfen yapınız.`;
+
+        Swal.fire({
+            title: 'Bildirim Onayı',
+            html: `
+                <div class="text-start">
+                    <p class="mb-2">Aşağıdaki personele hatırlatma bildirimi gönderilecektir:</p>
+                    <div class="p-2 border rounded bg-light mb-3">
+                        <span class="fw-bold">Personel:</span> ${personelAdi}
+                    </div>
+                    <p class="mb-2 fw-bold">Gönderilecek Mesaj:</p>
+                    <div class="alert alert-warning py-2 px-3 border-0 bg-soft-warning text-warning mb-0" style="font-size: 0.9rem;">
+                        ${message}
+                    </div>
+                </div>
+            `,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#f59e0b',
+            cancelButtonColor: '#74788d',
+            confirmButtonText: 'Evet, Gönder',
+            cancelButtonText: 'İptal',
+            reverseButtons: true
+        }).then((result) => {
+            if (result.isConfirmed) {
+                btn.prop('disabled', true).html('<i class="bx bx-loader bx-spin"></i>');
+
+                const data = {
+                    action: 'send-km-bildirim-hatirlatma',
+                    personel_id: personelId,
+                    tarih: tarih,
+                    tur: tur
+                };
+
+                $.post('views/arac-takip/api.php', data, function(res) {
+                        if (res.status === 'success') {
+                            if (typeof Toastify !== 'undefined') {
+                                Toastify({
+                                    text: "Bildirim başarıyla gönderildi.",
+                                    duration: 3000,
+                                    gravity: "top",
+                                    position: "right",
+                                    stopOnFocus: true,
+                                    style: {
+                                        background: "linear-gradient(to right, #00b09b, #96c93d)",
+                                        borderRadius: "8px",
+                                        boxShadow: "0 4px 12px rgba(0,0,0,0.1)"
+                                    }
+                                }).showToast();
+                            }
+
+                            // Buton durumunu güncelle (Tekrar gönderime izin ver)
+                            btn.prop('disabled', false)
+                                .removeClass('btn-warning')
+                                .addClass('btn-outline-secondary btn-sm')
+                                .html('<i class="bx bx-redo"></i> Tekrar Gönder');
+                            
+                            // Gönderildi bilgisini yanına ekle (Mavi çift tik)
+                            if (btn.parent().find('.sent-status-icon').length === 0) {
+                                btn.before('<span class="sent-status-icon me-1" style="color: #34B7F1 !important; font-size: 1.3rem; vertical-align: middle;" title="Gönderildi"><i class="bx bx-check-double"></i></span>');
+                            }
+                        } else {
+                            Swal.fire('Hata', res.message, 'error');
+                            btn.prop('disabled', false).html('<i class="bx bx-bell"></i> Bildirim Gönder');
+                        }
+                }, 'json').fail(function() {
+                    Swal.fire('Hata', 'İşlem sırasında bir bağlantı hatası oluştu.', 'error');
+                    btn.prop('disabled', false).html('<i class="bx bx-bell"></i> Bildirim Gönder');
+                });
+            }
+        });
     });
 
     // Toplu Seçim İşlemleri

@@ -19,7 +19,7 @@ class SayacDegisimModel extends Model
     /**
      * Server-side DataTable için sayaç değişim verilerini çeker
      */
-    public function getDataTable($request, $startDate, $endDate, $ekipKodu = '')
+    public function getDataTable($request, $startDate, $endDate, $ekipKodu = '', $region = '')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $params = ['firma_id' => $firmaId];
@@ -39,6 +39,10 @@ class SayacDegisimModel extends Model
         if ($ekipKodu) {
             $baseWhere .= " AND t.personel_id = :ekip_kodu";
             $params['ekip_kodu'] = $ekipKodu;
+        }
+        if ($region) {
+            $baseWhere .= " AND (t.bolge = :region OR ek.ekip_bolge = :region)";
+            $params['region'] = $region;
         }
 
         // Toplam kayıt sayısı (filtresiz)
@@ -318,7 +322,7 @@ class SayacDegisimModel extends Model
     /**
      * Tarih aralığındaki sayaç değişim sayısını çeker (özet)
      */
-    public function getSummaryByRange($startDate, $endDate)
+    public function getSummaryByRange($startDate, $endDate, $personelId = '', $region = '')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $sql = "SELECT 
@@ -338,11 +342,23 @@ class SayacDegisimModel extends Model
                     GROUP BY tarih, SUBSTRING_INDEX(islem_id, '_', 1)
                 ) pay ON pay.tarih = t.tarih
                     AND pay.ortak_islem_id = SUBSTRING_INDEX(t.islem_id, '_', 1)
-                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
-                GROUP BY t.personel_id, t.ekip_kodu_id, t.ekip, t.tarih";
+                LEFT JOIN tanimlamalar ek ON t.ekip_kodu_id = ek.id
+                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL";
+        $params = [$firmaId, $startDate, $endDate, $firmaId, $startDate, $endDate];
+
+        if ($personelId) {
+            $sql .= " AND t.personel_id = ?";
+            $params[] = $personelId;
+        }
+        if ($region) {
+            $sql .= " AND ek.ekip_bolge = ?";
+            $params[] = $region;
+        }
+
+        $sql .= " GROUP BY t.personel_id, t.ekip_kodu_id, t.ekip, t.tarih";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$firmaId, $startDate, $endDate, $firmaId, $startDate, $endDate]);
+        $stmt->execute($params);
         $results = $stmt->fetchAll(PDO::FETCH_OBJ);
 
         $summary = [];
@@ -429,7 +445,7 @@ class SayacDegisimModel extends Model
     /**
      * Tarih aralığındaki sayaç değişim sayısını çeker (detaylı, isemri_sonucu'na göre gruplu)
      */
-    public function getSummaryDetailedByRange($startDate, $endDate)
+    public function getSummaryDetailedByRange($startDate, $endDate, $personelId = '', $region = '')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $sql = "SELECT 
@@ -450,11 +466,23 @@ class SayacDegisimModel extends Model
                     GROUP BY tarih, SUBSTRING_INDEX(islem_id, '_', 1)
                 ) pay ON pay.tarih = t.tarih
                     AND pay.ortak_islem_id = SUBSTRING_INDEX(t.islem_id, '_', 1)
-                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
-                GROUP BY t.personel_id, t.ekip_kodu_id, t.ekip, t.tarih, t.isemri_sonucu";
+                LEFT JOIN tanimlamalar ek ON t.ekip_kodu_id = ek.id
+                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL";
+        $params = [$firmaId, $startDate, $endDate, $firmaId, $startDate, $endDate];
+
+        if ($personelId) {
+            $sql .= " AND t.personel_id = ?";
+            $params[] = $personelId;
+        }
+        if ($region) {
+            $sql .= " AND ek.ekip_bolge = ?";
+            $params[] = $region;
+        }
+
+        $sql .= " GROUP BY t.personel_id, t.ekip_kodu_id, t.ekip, t.tarih, t.isemri_sonucu";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$firmaId, $startDate, $endDate, $firmaId, $startDate, $endDate]);
+        $stmt->execute($params);
         $results = $stmt->fetchAll(PDO::FETCH_OBJ);
 
         $summary = [];

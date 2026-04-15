@@ -133,4 +133,35 @@ class AracKmBildirimModel extends Model
         $sql->execute($params);
         return $sql->fetchColumn() !== false;
     }
+
+    /**
+     * Belirli bir tarih ve tür için KM bildirimi yapmayan personelleri getirir
+     */
+    public function getUnreported($tarih, $tur)
+    {
+        $sql = "SELECT z.personel_id, z.arac_id, p.adi_soyadi as personel_adi, p.cep_telefonu as telefon, a.plaka
+                FROM arac_zimmetleri z
+                INNER JOIN personel p ON z.personel_id = p.id
+                INNER JOIN araclar a ON z.arac_id = a.id
+                WHERE z.durum = 'aktif'
+                AND z.firma_id = :firma_id
+                AND z.silinme_tarihi IS NULL
+                AND z.zimmet_tarihi <= :tarih
+                AND NOT EXISTS (
+                    SELECT 1 FROM arac_km_bildirimleri b
+                    WHERE b.arac_id = z.arac_id
+                    AND b.personel_id = z.personel_id
+                    AND b.tarih = :tarih
+                    AND b.tur = :tur
+                    AND b.silinme_tarihi IS NULL
+                    AND b.durum != 'reddedildi'
+                )";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            'firma_id' => $_SESSION['firma_id'],
+            'tarih' => $tarih,
+            'tur' => $tur
+        ]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
 }

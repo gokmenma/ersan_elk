@@ -190,6 +190,7 @@ class PersonelModel extends Model
                 p.email_adresi LIKE :term OR
                 p.gorev LIKE :term OR
                 t.tur_adi LIKE :term OR
+                t.ekip_bolge LIKE :term OR
                 p.ekip_bolge LIKE :term OR
                 (CASE WHEN (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00') THEN 'Aktif' ELSE 'Pasif' END) LIKE :term
             )";
@@ -225,7 +226,7 @@ class PersonelModel extends Model
                         }
                     } elseif ($idx == 10) { // Ekip / Bölge
                         $val = "%$val%";
-                        $sql .= " AND (t.tur_adi LIKE :$paramName OR p.ekip_bolge LIKE :$paramName)";
+                        $sql .= " AND (t.tur_adi LIKE :$paramName OR t.ekip_bolge LIKE :$paramName OR p.ekip_bolge LIKE :$paramName)";
                         $params[$paramName] = $val;
                     } elseif ($idx == 5 || $idx == 6) { // Tarih
                         $val = "%$val%";
@@ -398,6 +399,7 @@ class PersonelModel extends Model
                 p.email_adresi LIKE :search OR
                 p.gorev LIKE :search OR
                 p.ekip_bolge LIKE :search OR
+                t_all.ekip_bolge LIKE :search OR
                 t_all.tur_adi LIKE :search
             )";
             $params['search'] = $searchValue;
@@ -413,7 +415,7 @@ class PersonelModel extends Model
             7 => 'p.email_adresi',
             8 => 'p.gorev',
             9 => 'p.departman',
-            10 => 't_all.tur_adi',
+            10 => "CONCAT_WS(' ', t_all.tur_adi, t_all.ekip_bolge, p.ekip_bolge)",
             11 => 'bildirim_abonesi',
             12 => 'p.isten_cikis_tarihi',
             23 => 'p.sgk_yapilan_firma'
@@ -567,7 +569,7 @@ class PersonelModel extends Model
                                 $filterSql .= " AND (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi != '' AND p.isten_cikis_tarihi != '0000-00-00')";
                             }
                         } elseif ($i == 10) { // Ekip / Bölge
-                            $filterSql .= " AND (t_all.tur_adi LIKE :$paramName OR p.ekip_bolge LIKE :$paramName)";
+                            $filterSql .= " AND (t_all.tur_adi LIKE :$paramName OR t_all.ekip_bolge LIKE :$paramName OR p.ekip_bolge LIKE :$paramName)";
                             $params[$paramName] = "%$searchValue%";
                         } elseif ($i == 4 || $i == 5) { // Tarih (DataTables sütun indexine göre)
                             $filterSql .= " AND DATE_FORMAT($field, '%d.%m.%Y') LIKE :$paramName";

@@ -18,6 +18,7 @@ $year = $_GET['year'] ?? date('Y');
 $month = $_GET['month'] ?? date('m');
 $personel_id = $_GET['personel_id'] ?? '';
 $region = $_GET['region'] ?? '';
+$defter = $_GET['defter'] ?? '';
 $startDate = $_GET['start_date'] ?? '';
 $endDate = $_GET['end_date'] ?? '';
 $filterType = $_GET['filter_type'] ?? 'period';
@@ -44,6 +45,12 @@ $regionList = $Tanimlamalar->getEkipBolgeleri();
 $regionOptions = ['' => 'Tüm Bölgeler'];
 foreach ($regionList as $r) {
     $regionOptions[$r] = $r;
+}
+
+$defterList = $Tanimlamalar->getDefterKodlari();
+$defterOptions = ['' => 'Tüm Defterler'];
+foreach ($defterList as $d) {
+    $defterOptions[$d] = $d;
 }
 
 $kesmeWorkTypes = $Tanimlamalar->getIsTurleriByRaporTuru('kesme');
@@ -231,6 +238,9 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                                         </div>
                                         <div class="col-md-2">
                                             <?php echo Form::FormSelect2("region", $regionOptions, $region, "Bölge", "bx bx-map-pin", "key", "", "form-control-sm select2"); ?>
+                                        </div>
+                                        <div class="col-md-2">
+                                            <?php echo Form::FormSelect2("defter", $defterOptions, $defter, "Defter", "bx bx-book", "key", "", "form-control-sm select2"); ?>
                                         </div>
 
                                         <div class="col-md-2 d-flex align-items-end">
@@ -489,6 +499,7 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
         let currentMonth = '<?= $month ?>';
         let currentPersonelId = '<?= $personel_id ?>';
         let currentRegion = '<?= $region ?>';
+        let currentDefter = '<?= $defter ?>';
         let currentStartDate = '<?= $startDate ?>';
         let currentEndDate = '<?= $endDate ?>';
         let currentFilterType = '<?= $filterType ?>';
@@ -502,6 +513,7 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                 month: currentMonth,
                 personel_id: currentPersonelId,
                 region: currentRegion,
+                defter: currentDefter,
                 start_date: currentStartDate,
                 end_date: currentEndDate,
                 filter_type: currentFilterType
@@ -521,6 +533,7 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                 if (!urlParams.has('month')) currentMonth = filters.month || currentMonth;
                 if (!urlParams.has('personel_id')) currentPersonelId = filters.personel_id || currentPersonelId;
                 if (!urlParams.has('region')) currentRegion = filters.region || currentRegion;
+                if (!urlParams.has('defter')) currentDefter = filters.defter || currentDefter;
                 if (!urlParams.has('start_date')) currentStartDate = filters.start_date || currentStartDate;
                 if (!urlParams.has('end_date')) currentEndDate = filters.end_date || currentEndDate;
                 if (!urlParams.has('filter_type')) currentFilterType = filters.filter_type || currentFilterType;
@@ -531,6 +544,7 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                 $('select[name="month"]').val(currentMonth).trigger('change.select2');
                 $('select[name="personel_id"]').val(currentPersonelId).trigger('change.select2');
                 $('select[name="region"]').val(currentRegion).trigger('change.select2');
+                $('select[name="defter"]').val(currentDefter).trigger('change.select2');
                 $('input[name="start_date"]').val(currentStartDate);
                 $('input[name="end_date"]').val(currentEndDate);
                 $(`input[name="filter_type"][value="${currentFilterType}"]`).prop('checked', true).trigger('change');
@@ -551,6 +565,7 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                     month: currentMonth,
                     personel_id: currentPersonelId,
                     region: currentRegion,
+                    defter: currentDefter,
                     start_date: currentStartDate,
                     end_date: currentEndDate,
                     filter_type: currentFilterType
@@ -582,6 +597,7 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
             const monthText = $('select[name="month"] option:selected').text();
             const personelText = $('select[name="personel_id"] option:selected').text();
             const regionText = $('select[name="region"] option:selected').text();
+            const defterText = $('select[name="defter"] option:selected').text();
             const startDate = $('input[name="start_date"]').val();
             const endDate = $('input[name="end_date"]').val();
             const filterType = $('input[name="filter_type"]:checked').val();
@@ -606,6 +622,10 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                 summary += `<div class="filter-summary-badge"><span class="badge-label">Bölge:</span><span class="badge-value">${regionText}</span><button type="button" class="btn-clear-filter" data-filter="region"><i class="bx bx-x"></i></button></div>`;
             }
 
+            if (currentDefter && currentDefter !== '') {
+                summary += `<div class="filter-summary-badge"><span class="badge-label">Defter:</span><span class="badge-value">${defterText}</span><button type="button" class="btn-clear-filter" data-filter="defter"><i class="bx bx-x"></i></button></div>`;
+            }
+
             $('#filterSummary').html(summary);
         };
 
@@ -618,6 +638,9 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
             } else if (filterType === 'region') {
                 currentRegion = '';
                 $('select[name="region"]').val('').trigger('change');
+            } else if (filterType === 'defter') {
+                currentDefter = '';
+                $('select[name="defter"]').val('').trigger('change');
             } else if (filterType === 'start_date') {
                 currentStartDate = '';
                 $('input[name="start_date"]').val('');
@@ -635,6 +658,7 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
             url.searchParams.set('month', currentMonth);
             if (currentPersonelId) url.searchParams.set('personel_id', currentPersonelId); else url.searchParams.delete('personel_id');
             if (currentRegion) url.searchParams.set('region', currentRegion); else url.searchParams.delete('region');
+            if (currentDefter) url.searchParams.set('defter', currentDefter); else url.searchParams.delete('defter');
             if (currentStartDate) url.searchParams.set('start_date', currentStartDate); else url.searchParams.delete('start_date');
             if (currentEndDate) url.searchParams.set('end_date', currentEndDate); else url.searchParams.delete('end_date');
             if (currentFilterType) url.searchParams.set('filter_type', currentFilterType); else url.searchParams.delete('filter_type');
@@ -773,6 +797,7 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
             currentMonth = $('select[name="month"]').val();
             currentPersonelId = $('select[name="personel_id"]').val();
             currentRegion = $('select[name="region"]').val();
+            currentDefter = $('select[name="defter"]').val();
             currentStartDate = $('input[name="start_date"]').val();
             currentEndDate = $('input[name="end_date"]').val();
             currentFilterType = $('input[name="filter_type"]:checked').val();
@@ -785,10 +810,12 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
         $('#btnClearFilters').on('click', function () {
             currentPersonelId = '';
             currentRegion = '';
+            currentDefter = '';
             currentStartDate = '';
             currentEndDate = '';
             $('select[name="personel_id"]').val('').trigger('change');
             $('select[name="region"]').val('').trigger('change');
+            $('select[name="defter"]').val('').trigger('change');
             $('input[name="start_date"]').val('');
             $('input[name="end_date"]').val('');
             // Reset to period mode maybe? Let's keep the user's selected mode but clear values.
@@ -796,7 +823,7 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
         });
 
         $('#btnExportExcel').on('click', function () {
-            const url = `views/puantaj/rapor-excel.php?tab=${currentTab}&year=${currentYear}&month=${currentMonth}&personel_id=${currentPersonelId}&region=${currentRegion}&start_date=${currentStartDate}&end_date=${currentEndDate}&filter_type=${currentFilterType}`;
+            const url = `views/puantaj/rapor-excel.php?tab=${currentTab}&year=${currentYear}&month=${currentMonth}&personel_id=${currentPersonelId}&region=${currentRegion}&defter=${currentDefter}&start_date=${currentStartDate}&end_date=${currentEndDate}&filter_type=${currentFilterType}`;
             window.location.href = url;
         });
 

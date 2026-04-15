@@ -14,6 +14,8 @@ $startDate = $_GET['start_date'] ?? Date::firstDayOfThisMonth();
 $endDate = $_GET['end_date'] ?? Date::today();
 $ekipKodu = $_GET['ekip_kodu'] ?? '';
 $workType = $_GET['work_type'] ?? '';
+$region = $_GET['region'] ?? '';
+$defter = $_GET['defter'] ?? '';
 
 
 //Helper::dd([$startDate, $endDate, $ekipKodu, $workType]);
@@ -33,10 +35,26 @@ foreach ($workTypes as $wt) {
     $workTypeOptions[$wt] = $wt;
 }
 
+
 $workResults = $Puantaj->getWorkResults();
 $workResultOptions = ['' => 'Tüm Sonuçlar'];
 foreach ($workResults as $wr) {
-    $workResultOptions[$wr] = $wr;
+    if ($wr)
+        $workResultOptions[$wr] = $wr;
+}
+
+$Tanimlar = new \App\Model\TanimlamalarModel();
+$regionList = $Tanimlar->getEkipBolgeleri();
+$regionOptions = ['' => 'Tüm Bölgeler'];
+foreach ($regionList as $r) {
+    $regionOptions[$r] = $r;
+}
+
+$defterList = $Tanimlar->getDefterKodlari();
+$defterOptions = ['' => 'Tüm Defterler'];
+foreach ($defterList as $d) {
+    if ($d)
+        $defterOptions[$d] = $d;
 }
 
 
@@ -195,6 +213,47 @@ $activeTab = $_GET['tab'] ?? 'okuma';
     .count-animate {
         animation: count-pop 0.5s ease-out;
     }
+    /* Accordion Header Improvements */
+    #filterAccordion .accordion-button {
+        background-color: transparent !important;
+        box-shadow: none !important;
+        padding-right: 3rem !important; /* Space for arrow */
+    }
+
+    #filterAccordion .accordion-button::after {
+        position: absolute;
+        right: 1rem;
+        top: 50%;
+        transform: translateY(-50%);
+        margin-top: 0;
+    }
+
+    #filterAccordion .accordion-button:not(.collapsed)::after {
+        transform: translateY(-50%) rotate(-180deg);
+    }
+
+    #filterAccordion .nav-tabs-custom .nav-link {
+        padding: 0.6rem 1.2rem;
+        font-weight: 600;
+        font-size: 0.85rem;
+        border: none;
+        color: var(--vz-body-color);
+        transition: all 0.2s ease;
+    }
+
+    #filterAccordion .nav-tabs-custom .nav-link:hover {
+        color: var(--vz-primary);
+    }
+
+    #filterAccordion .nav-tabs-custom .nav-link.active {
+        color: var(--vz-primary);
+        background-color: rgba(var(--vz-primary-rgb), 0.1);
+        border-radius: 6px;
+    }
+
+    [data-bs-theme="dark"] #filterAccordion .nav-tabs-custom .nav-link.active {
+        background-color: rgba(var(--vz-primary-rgb), 0.2);
+    }
 </style>
 
 <div class="container-fluid">
@@ -210,29 +269,65 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 <div class="card-body p-2">
                     <div class="accordion" id="filterAccordion">
                         <div class="accordion-item border-0">
-                            <h2 class="accordion-header" id="headingOne">
-                                <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse"
-                                    data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne">
-                                    <div class="d-flex align-items-center justify-content-between w-100 me-3">
-                                        <div class="d-flex align-items-center gap-3">
-                                            <div class="fw-bold fs-15 text-primary d-flex align-items-center">
-                                                <i class="bx bx-filter-alt me-2 fs-18"></i> Filtreleme Seçenekleri
-                                            </div>
-                                            <!-- Tarih Aralığı / Dönem Toggle -->
-                                            <div class="btn-group bg-light p-1 rounded-pill" role="group" id="dateFilterTypeGroup" style="height: 34px;">
-                                                <input type="radio" class="btn-check" name="dateFilterType" id="dateFilterTypeRange" value="range" checked>
-                                                <label class="btn btn-sm btn-outline-primary border-0 rounded-pill px-3 d-flex align-items-center fs-11 fw-bold" for="dateFilterTypeRange">Tarih Aralığı</label>
-                                                
-                                                <input type="radio" class="btn-check" name="dateFilterType" id="dateFilterTypePeriod" value="period">
-                                                <label class="btn btn-sm btn-outline-primary border-0 rounded-pill px-3 d-flex align-items-center fs-11 fw-bold" for="dateFilterTypePeriod">Dönem</label>
-                                            </div>
+                            <div class="accordion-header" id="headingOne">
+                                <div class="accordion-button collapsed py-1 d-flex align-items-center justify-content-between" role="button" data-bs-toggle="collapse"
+                                    data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne" style="cursor: pointer;">
+                                    
+                                    <div class="d-flex align-items-center flex-grow-1" onclick="event.stopPropagation()">
+                                        <ul class="nav nav-tabs nav-tabs-custom nav-success border-bottom-0" role="tablist" id="puantajTabs">
+                                            <li class="nav-item">
+                                                <a class="nav-link <?= $activeTab === 'okuma' ? 'active' : '' ?>" data-bs-toggle="tab" href="#okuma"
+                                                    role="tab" data-tab-name="okuma">
+                                                    <span class="d-block d-sm-none"><i class="fas fa-home"></i></span>
+                                                    <span class="d-none d-sm-block">Okuma İşlemleri</span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-item">
+                                                <a class="nav-link <?= $activeTab === 'yapilan_isler' ? 'active' : '' ?>" data-bs-toggle="tab"
+                                                    href="#yapilan_isler" role="tab" data-tab-name="yapilan_isler">
+                                                    <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
+                                                    <span class="d-none d-sm-block">Kesme/Açma İşlem.</span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-item">
+                                                <a class="nav-link <?= $activeTab === 'sayac_sokme_takma' ? 'active' : '' ?>" data-bs-toggle="tab"
+                                                    href="#sayac_sokme_takma" role="tab" data-tab-name="sayac_sokme_takma">
+                                                    <span class="d-block d-sm-none"><i class="fas fa-exchange-alt"></i></span>
+                                                    <span class="d-none d-sm-block">Sayaç Sökme Takma</span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-item">
+                                                <a class="nav-link <?= $activeTab === 'muhurleme' ? 'active' : '' ?>" data-bs-toggle="tab"
+                                                    href="#muhurleme" role="tab" data-tab-name="muhurleme">
+                                                    <span class="d-block d-sm-none"><i class="fas fa-lock"></i></span>
+                                                    <span class="d-none d-sm-block">Mühürleme</span>
+                                                </a>
+                                            </li>
+                                            <li class="nav-item">
+                                                <a class="nav-link <?= $activeTab === 'kacak_kontrol' ? 'active' : '' ?>" data-bs-toggle="tab"
+                                                    href="#kacak_kontrol" role="tab" data-tab-name="kacak_kontrol">
+                                                    <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
+                                                    <span class="d-none d-sm-block">Kaçak Kontrol</span>
+                                                </a>
+                                            </li>
+                                        </ul>
+                                    </div>
+
+                                    <div class="d-flex align-items-center gap-3 ms-auto me-2" onclick="event.stopPropagation()">
+                                        <!-- Tarih Aralığı / Dönem Toggle -->
+                                        <div class="btn-group bg-light p-1 rounded-pill" role="group" id="dateFilterTypeGroup" style="height: 34px;">
+                                            <input type="radio" class="btn-check" name="dateFilterType" id="dateFilterTypeRange" value="range" checked>
+                                            <label class="btn btn-sm btn-outline-primary border-0 rounded-pill px-3 d-flex align-items-center fs-11 fw-bold" for="dateFilterTypeRange">Tarih Aralığı</label>
+                                            
+                                            <input type="radio" class="btn-check" name="dateFilterType" id="dateFilterTypePeriod" value="period">
+                                            <label class="btn btn-sm btn-outline-primary border-0 rounded-pill px-3 d-flex align-items-center fs-11 fw-bold" for="dateFilterTypePeriod">Dönem</label>
                                         </div>
                                         <div id="filterSummary" class="d-none d-md-flex gap-2">
                                             <!-- JS ile doldurulacak -->
                                         </div>
                                     </div>
-                                </button>
-                            </h2>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -243,7 +338,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 <input type="hidden" name="p" value="puantaj/veri-yukleme">
                                 <input type="hidden" name="tab" id="activeTabInput"
                                     value="<?= $_GET['tab'] ?? 'okuma' ?>">
-                                <div class="row g-3">
+                                <div class="row g-2">
                                     <div class="col-md-2 date-range-input">
                                         <?php echo Form::FormFloatInput(
                                             type: 'text',
@@ -278,8 +373,14 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                             readonly: true
                                         ); ?>
                                     </div>
-                                    <div class="col-md-3">
-                                        <?php echo Form::FormSelect2('ekip_kodu', $personelOptions, $ekipKodu, 'Personel Adı Soyadı', 'grid', 'key', '', 'form-select select2'); ?>
+                                    <div class="col-md-2">
+                                        <?php echo Form::FormSelect2('region', $regionOptions, $region, 'Bölge', 'globe', 'key', '', 'form-select select2'); ?>
+                                    </div>
+                                    <div class="col-md-2" id="defterFilterContainer" style="display: <?= $activeTab === 'okuma' ? 'block' : 'none' ?>;">
+                                        <?php echo Form::FormSelect2('defter', $defterOptions, $defter, 'Defter', 'book', 'key', '', 'form-select select2'); ?>
+                                    </div>
+                                    <div class="col-md-2">
+                                        <?php echo Form::FormSelect2('ekip_kodu', $personelOptions, $ekipKodu, 'Personel', 'user', 'key', '', 'form-select select2'); ?>
                                     </div>
                                     <div class="col-md-2" id="workTypeFilterContainer"
                                         style="display: <?= $activeTab === 'yapilan_isler' ? 'block' : 'none' ?>;">
@@ -289,11 +390,11 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                             selectedValue: $workType,
                                             textField: "",
                                             label: "Yapılan İş",
-                                            icon: "users",
+                                            icon: "briefcase",
                                             valueField: "key"
                                         ); ?>
                                     </div>
-                                    <div class="col-md-3" id="workResultFilterContainer"
+                                    <div class="col-md-2" id="workResultFilterContainer"
                                         style="display: <?= $activeTab === 'yapilan_isler' ? 'block' : 'none' ?>;">
                                         <?php echo Form::FormSelect2(
                                             name: 'work_result',
@@ -331,44 +432,6 @@ $activeTab = $_GET['tab'] ?? 'okuma';
 
 
     <div id="puantajMainWrapper" style="opacity: 0;">
-        <ul class="nav nav-tabs nav-tabs-custom nav-success mb-3" role="tablist" id="puantajTabs">
-            <li class="nav-item">
-                <a class="nav-link <?= $activeTab === 'okuma' ? 'active' : '' ?>" data-bs-toggle="tab" href="#okuma"
-                    role="tab" data-tab-name="okuma">
-                    <span class="d-block d-sm-none"><i class="fas fa-home"></i></span>
-                    <span class="d-none d-sm-block">Okuma İşlemleri</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link <?= $activeTab === 'yapilan_isler' ? 'active' : '' ?>" data-bs-toggle="tab"
-                    href="#yapilan_isler" role="tab" data-tab-name="yapilan_isler">
-                    <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
-                    <span class="d-none d-sm-block">Kesme/Açma İşlem.</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link <?= $activeTab === 'sayac_sokme_takma' ? 'active' : '' ?>" data-bs-toggle="tab"
-                    href="#sayac_sokme_takma" role="tab" data-tab-name="sayac_sokme_takma">
-                    <span class="d-block d-sm-none"><i class="fas fa-exchange-alt"></i></span>
-                    <span class="d-none d-sm-block">Sayaç Sökme Takma</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link <?= $activeTab === 'muhurleme' ? 'active' : '' ?>" data-bs-toggle="tab"
-                    href="#muhurleme" role="tab" data-tab-name="muhurleme">
-                    <span class="d-block d-sm-none"><i class="fas fa-lock"></i></span>
-                    <span class="d-none d-sm-block">Mühürleme</span>
-                </a>
-            </li>
-            <li class="nav-item">
-                <a class="nav-link <?= $activeTab === 'kacak_kontrol' ? 'active' : '' ?>" data-bs-toggle="tab"
-                    href="#kacak_kontrol" role="tab" data-tab-name="kacak_kontrol">
-                    <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
-                    <span class="d-none d-sm-block">Kaçak Kontrol</span>
-                </a>
-            </li>
-
-        </ul>
 
         <div class="tab-content position-relative" id="puantajTabContent">
             <!-- Tab Preloader (Shared) -->
@@ -1288,6 +1351,10 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             let summary = '';
             const startDate = $('input[name="start_date"]').val();
             const endDate = $('input[name="end_date"]').val();
+            const region = $('select[name="region"]').val();
+            const regionText = $('select[name="region"] option:selected').text();
+            const defter = $('select[name="defter"]').val();
+            const defterText = $('select[name="defter"] option:selected').text();
             const ekipKodu = $('select[name="ekip_kodu"]').val();
             const ekipText = $('select[name="ekip_kodu"] option:selected').text();
             const workType = $('select[name="work_type"]').val();
@@ -1298,6 +1365,14 @@ $activeTab = $_GET['tab'] ?? 'okuma';
 
             if (startDate && endDate) {
                 summary += '<div class="filter-summary-badge"><span class="badge-label">Tarih:</span><span class="badge-value">' + startDate + ' - ' + endDate + '</span></div>';
+            }
+
+            if (region && region !== '') {
+                summary += '<div class="filter-summary-badge"><span class="badge-label">Bölge:</span><span class="badge-value">' + regionText + '</span><button type="button" class="btn-clear-filter" data-filter="region"><i class="bx bx-x"></i></button></div>';
+            }
+
+            if (activeTab === 'okuma' && defter && defter !== '') {
+                summary += '<div class="filter-summary-badge"><span class="badge-label">Defter:</span><span class="badge-value">' + defterText + '</span><button type="button" class="btn-clear-filter" data-filter="defter"><i class="bx bx-x"></i></button></div>';
             }
 
             if (ekipKodu && ekipKodu !== '') {
@@ -1319,7 +1394,11 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         $(document).on('click', '.btn-clear-filter', function (e) {
             e.stopPropagation();
             const filterType = $(this).data('filter');
-            if (filterType === 'ekip_kodu') {
+            if (filterType === 'region') {
+                $('select[name="region"]').val('').trigger('change');
+            } else if (filterType === 'defter') {
+                $('select[name="defter"]').val('').trigger('change');
+            } else if (filterType === 'ekip_kodu') {
                 $('select[name="ekip_kodu"]').val('').trigger('change');
             } else if (filterType === 'work_type') {
                 $('select[name="work_type"]').val('').trigger('change');
@@ -1335,6 +1414,8 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 dateFilterType: $('input[name="dateFilterType"]:checked').val(),
                 start_date: $('input[name="start_date"]').val(),
                 end_date: $('input[name="end_date"]').val(),
+                region: $('select[name="region"]').val(),
+                defter: $('select[name="defter"]').val(),
                 ekip_kodu: $('select[name="ekip_kodu"]').val(),
                 work_type: $('select[name="work_type"]').val(),
                 work_result: $('select[name="work_result"]').val(),
@@ -1417,6 +1498,12 @@ $activeTab = $_GET['tab'] ?? 'okuma';
 
                 // Diğer filtreler sadece URL boşsa storage'dan
                 if (!hasFilters) {
+                    if (filters.region) {
+                        $('select[name="region"]').val(filters.region).trigger('change');
+                    }
+                    if (filters.defter) {
+                        $('select[name="defter"]').val(filters.defter).trigger('change');
+                    }
                     if (filters.ekip_kodu) {
                         $('select[name="ekip_kodu"]').val(filters.ekip_kodu).trigger('change');
                     }
@@ -1448,12 +1535,16 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             // Mevcut filtre değerlerini URL'ye ekle
             var startDate = $('input[name="start_date"]').val();
             var endDate = $('input[name="end_date"]').val();
+            var region = $('select[name="region"]').val();
+            var defter = $('select[name="defter"]').val();
             var ekipKodu = $('select[name="ekip_kodu"]').val();
             var workType = $('select[name="work_type"]').val();
             var workResult = $('select[name="work_result"]').val();
 
             if (startDate) url.searchParams.set('start_date', startDate);
             if (endDate) url.searchParams.set('end_date', endDate);
+            if (region) url.searchParams.set('region', region);
+            if (defter) url.searchParams.set('defter', defter);
             if (ekipKodu) url.searchParams.set('ekip_kodu', ekipKodu);
             if (workType) url.searchParams.set('work_type', workType);
             if (workResult) url.searchParams.set('work_result', workResult);
@@ -1467,9 +1558,15 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             if (tabName === 'yapilan_isler') {
                 $('#workTypeFilterContainer').show();
                 $('#workResultFilterContainer').show();
+                $('#defterFilterContainer').hide();
+            } else if (tabName === 'okuma') {
+                $('#workTypeFilterContainer').hide();
+                $('#workResultFilterContainer').hide();
+                $('#defterFilterContainer').show();
             } else {
                 $('#workTypeFilterContainer').hide();
                 $('#workResultFilterContainer').hide();
+                $('#defterFilterContainer').hide();
             }
 
             // İçeriği yükle
@@ -1484,6 +1581,8 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         // Temizle butonu mantığı
         $('#btnClearFilters').on('click', function () {
             // Sadece ekip ve iş filtrelerini temizle
+            $('select[name="region"]').val('').trigger('change');
+            $('select[name="defter"]').val('').trigger('change');
             $('select[name="ekip_kodu"]').val('').trigger('change');
             $('select[name="work_type"]').val('').trigger('change');
             $('select[name="work_result"]').val('').trigger('change');
@@ -1703,6 +1802,8 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         d.action = 'endeks-datatable';
                         d.start_date = $('input[name="start_date"]').val();
                         d.end_date = $('input[name="end_date"]').val();
+                        d.region = $('select[name="region"]').val();
+                        d.defter = $('select[name="defter"]').val();
                         d.ekip_kodu = $('select[name="ekip_kodu"]').val();
                     },
                     dataSrc: function (json) {
@@ -1767,6 +1868,8 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         d.sorgu_turu = 'KESME_ACMA';
                         d.start_date = $('input[name="start_date"]').val();
                         d.end_date = $('input[name="end_date"]').val();
+                        d.region = $('select[name="region"]').val();
+                        d.defter = $('select[name="defter"]').val();
                         d.ekip_kodu = $('select[name="ekip_kodu"]').val();
                         d.work_type = $('select[name="work_type"]').val();
                         d.work_result = $('select[name="work_result"]').val();
@@ -1836,6 +1939,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 tab: 'kacak_kontrol',
                 start_date: $('input[name="start_date"]').val(),
                 end_date: $('input[name="end_date"]').val(),
+                region: $('select[name="region"]').val(),
                 ekip_kodu: $('select[name="ekip_kodu"]').val()
             };
 
@@ -1889,6 +1993,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         d.action = 'sayac-degisim-datatable';
                         d.start_date = $('input[name="start_date"]').val();
                         d.end_date = $('input[name="end_date"]').val();
+                        d.region = $('select[name="region"]').val();
                         d.ekip_kodu = $('select[name="ekip_kodu"]').val();
                     },
                     dataSrc: function (json) {
@@ -1957,6 +2062,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         d.action = 'muhurleme-datatable';
                         d.start_date = $('input[name="start_date"]').val();
                         d.end_date = $('input[name="end_date"]').val();
+                        d.region = $('select[name="region"]').val();
                         d.ekip_kodu = $('select[name="ekip_kodu"]').val();
                     },
                     dataSrc: function (json) {
