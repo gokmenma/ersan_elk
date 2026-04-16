@@ -18,7 +18,13 @@ class AracKmBildirimModel extends Model
         $sql = $this->db->prepare("
             SELECT akb.*, 
                    a.plaka, a.marka, a.model,
-                   p.adi_soyadi as personel_adi
+                   p.adi_soyadi as personel_adi,
+                   (SELECT bitis_km FROM {$this->table} b2 
+                    WHERE b2.arac_id = akb.arac_id 
+                    AND b2.tarih = akb.tarih 
+                    AND b2.tur = 'sabah' 
+                    AND b2.durum != 'reddedildi' 
+                    LIMIT 1) as sabah_km
             FROM {$this->table} akb
             INNER JOIN araclar a ON akb.arac_id = a.id
             INNER JOIN personel p ON akb.personel_id = p.id
@@ -36,7 +42,13 @@ class AracKmBildirimModel extends Model
             SELECT akb.*, 
                    a.plaka, a.marka, a.model,
                    p.adi_soyadi as personel_adi,
-                   u.adi_soyadi as onaylayan_adi
+                   u.adi_soyadi as onaylayan_adi,
+                   (SELECT bitis_km FROM {$this->table} b2 
+                    WHERE b2.arac_id = akb.arac_id 
+                    AND b2.tarih = akb.tarih 
+                    AND b2.tur = 'sabah' 
+                    AND b2.durum != 'reddedildi' 
+                    LIMIT 1) as sabah_km
             FROM {$this->table} akb
             INNER JOIN araclar a ON akb.arac_id = a.id
             INNER JOIN personel p ON akb.personel_id = p.id
@@ -163,5 +175,56 @@ class AracKmBildirimModel extends Model
             'tur' => $tur
         ]);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+    /**
+     * Belirli bir tarih ve tür için bildirim yapmayan tüm personellere hatirlatma gönderir
+     */
+    public function sendBatchKmHatirlatma($tarih, $tur)
+    {
+        $unreported = $this->getUnreported($tarih, $tur);
+        if (empty($unreported)) return 0;
+
+        $Bildirim = new \App\Model\BildirimModel();
+        
+        $count = 0;
+        $turFmt = $tur === 'sabah' ? 'Sabah' : 'Akşam';
+        $tarihFmt = date('d.m.Y', strtotime($tarih));
+        $message = "{$tarihFmt} tarihli {$turFmt} bildirimini yapmadınız, Lütfen yapınız.";
+
+        foreach ($unreported as $r) {
+            // Personelin bağlı olduğu kullanıcıyı bul
+            $stmt = $this->db->prepare("SELECT id FROM users WHERE personel_id = ? AND durum = 'Aktif' AND silinme_tarihi IS NULL");
+            $stmt->execute([$r->personel_id]);
+            $userIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+            if (empty($userIds)) continue;
+
+            foreach ($userIds as $uid) {
+                // 1. Sistem Bildirimi
+                $Bildirim->createNotification(
+                    $uid,
+                    'KM Bildirim Hatırlatması',
+                    $message,
+                    'index.php?p=personel-pwa/pages/ana-sayfa',
+                    'bell',
+                    'warning'
+                );
+
+                // 2. Push Bildirimi
+                try {
+                    $push = new \App\Service\PushNotificationService();
+                    $push->sendToUser($uid, [
+                        'title' => 'KM Bildirim Hatırlatması',
+                        'body' => $message,
+                        'url' => 'index_pwa.php' 
+                    ], true);
+                } catch (\Exception $e) {
+                    // Log but ignore push errors
+                }
+                
+                $count++;
+            }
+        }
+        return $count;
     }
 }

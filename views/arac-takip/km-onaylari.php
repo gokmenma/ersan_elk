@@ -187,7 +187,21 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                                         <span class="badge bg-soft-info text-info"><i class="bx bx-moon me-1"></i> Akşam</span>
                                                     <?php endif; ?>
                                                 </td>
-                                                <td class="text-end fw-bold text-primary"><?= number_format($report->bitis_km, 0, ',', '.') ?> KM</td>
+                                                <td class="text-end fw-bold text-primary">
+                                                    <?= number_format($report->bitis_km, 0, ',', '.') ?> KM
+                                                    <?php if ($report->tur === 'aksam'): ?>
+                                                        <br>
+                                                        <small class="text-muted">
+                                                            (<?php 
+                                                                if ($report->sabah_km > 0) {
+                                                                    echo number_format($report->bitis_km - $report->sabah_km, 0, ',', '.') . ' KM Bugün';
+                                                                } else {
+                                                                    echo '<span class="text-danger">0 KM Bugün</span>';
+                                                                }
+                                                            ?>)
+                                                        </small>
+                                                    <?php endif; ?>
+                                                </td>
                                                 <td><small><?= $report->aciklama ?: '-' ?></small></td>
                                                 <td class="text-center">
                                                     <button type="button" class="btn btn-sm btn-soft-info btn-view-km-img" 
@@ -255,7 +269,21 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                                         <span class="badge bg-soft-info text-info"><i class="bx bx-moon me-1"></i> Akşam</span>
                                                     <?php endif; ?>
                                                 </td>
-                                                <td class="text-end fw-bold text-success"><?= number_format($report->bitis_km, 0, ',', '.') ?> KM</td>
+                                                <td class="text-end fw-bold text-success">
+                                                    <?= number_format($report->bitis_km, 0, ',', '.') ?> KM
+                                                    <?php if ($report->tur === 'aksam'): ?>
+                                                        <br>
+                                                        <small class="text-muted">
+                                                            (<?php 
+                                                                if ($report->sabah_km > 0) {
+                                                                    echo number_format($report->bitis_km - $report->sabah_km, 0, ',', '.') . ' KM Bugün';
+                                                                } else {
+                                                                    echo '<span class="text-danger">0 KM Bugün</span>';
+                                                                }
+                                                            ?>)
+                                                        </small>
+                                                    <?php endif; ?>
+                                                </td>
                                                 <td>
                                                     <span class="d-block"><?= $report->onaylayan_adi ?></span>
                                                     <small class="text-muted"><?= date('d.m.Y H:i', strtotime($report->onay_tarihi)) ?></small>
@@ -311,7 +339,21 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                                         <span class="badge bg-soft-info text-info"><i class="bx bx-moon me-1"></i> Akşam</span>
                                                     <?php endif; ?>
                                                 </td>
-                                                <td class="text-end fw-bold text-danger"><?= number_format($report->bitis_km, 0, ',', '.') ?> KM</td>
+                                                <td class="text-end fw-bold text-danger">
+                                                    <?= number_format($report->bitis_km, 0, ',', '.') ?> KM
+                                                    <?php if ($report->tur === 'aksam'): ?>
+                                                        <br>
+                                                        <small class="text-muted">
+                                                            (<?php 
+                                                                if ($report->sabah_km > 0) {
+                                                                    echo number_format($report->bitis_km - $report->sabah_km, 0, ',', '.') . ' KM Bugün';
+                                                                } else {
+                                                                    echo '<span class="text-danger">0 KM Bugün</span>';
+                                                                }
+                                                            ?>)
+                                                        </small>
+                                                    <?php endif; ?>
+                                                </td>
                                                 <td>
                                                     <span class="text-danger"><?= $report->red_nedeni ?: 'Neden belirtilmedi' ?></span>
                                                     <small class="d-block text-muted mt-1">Reddeden: <?= $report->onaylayan_adi ?></small>
