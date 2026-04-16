@@ -186,7 +186,11 @@ class BordroPersonelModel extends Model
         foreach ($ekOdemelerList as $eo) {
             $param = $this->getParametreCached($eo->tur, $donemBaslangic);
             if ($param) {
-                $yontem = $param->odeme_yontemi ?? 'banka';
+                // USER REQ: Prim usulü personelde ek ödemeler varsayılan olarak Elden (Cash) kabul edilmelidir.
+                // Böylece yüksek primlerin sadece asgari ücret kadar olan kısmı bankaya gider, kalanı elden kalır.
+                $isPrimUsulu = (stripos($maasDurumu, 'Prim') !== false);
+                $defaultYontem = $isPrimUsulu ? 'elden' : 'banka';
+                $yontem = $param->odeme_yontemi ?? $defaultYontem;
                 if ($yontem === 'banka') {
                     $yontemliBankaEki += floatval($eo->tutar);
                 } elseif ($yontem === 'sodexo') {
@@ -216,7 +220,14 @@ class BordroPersonelModel extends Model
                 $asgariUcretYatacak = 0;
             }
 
-            $bankaBaz = $asgariUcretYatacak + $yontemliBankaEki;
+            // USER REQ: Prim Usulü personelde asgari ücret ek ödemelerin üzerine eklenmez (mükerrerlik olmaması için).
+            // Onun yerine asgari ücret banka ödemesi için bir "taban" (minimum) olarak kullanılır.
+            $isPrimUsulu = (stripos($maasDurumu, 'Prim') !== false);
+            if ($isPrimUsulu) {
+                $bankaBaz = max($asgariUcretYatacak, $yontemliBankaEki);
+            } else {
+                $bankaBaz = $asgariUcretYatacak + $yontemliBankaEki;
+            }
 
             // Sodexo ek ödemesini de ekle
             $sodexoOdemesi += $yontemliSodexoEki;
@@ -2908,7 +2919,9 @@ class BordroPersonelModel extends Model
             // kullanıcı bu tutarın şu kanaldan ödenmesini istediği için 
             // dağılımda direkt bu tutar baz alınır.
             $ekOdemeTutari = isset($toplamTutar) ? $toplamTutar : $tutar;
-            $yontem = $parametre->odeme_yontemi ?? 'banka';
+            // USER REQ: Prim usulü personelde ek ödemeler varsayılan olarak Elden (Cash) kabul edilmelidir.
+            $defaultYontem = $isPrimUsulu ? 'elden' : 'banka';
+            $yontem = $parametre->odeme_yontemi ?? $defaultYontem;
             if (isset($yontemliOdemeler[$yontem])) {
                 $yontemliOdemeler[$yontem] += $ekOdemeTutari;
             } else {
@@ -3113,15 +3126,14 @@ class BordroPersonelModel extends Model
                 $bankaYatacakBaz = ($asgariUcretNet / 30) * $fiiliCalismaGunu;
             }
 
-            $toplamIcraBudget = 0;
-            // USER REQ: (Asgari Ücret / 30) * Çalışılan Gün
-            $asgariDaily = $asgariUcretNet / 30;
-            $asgariCalculatedBase = $asgariDaily * $fiiliCalismaGunu;
+            // USER REQ: İcra baz tutarı, (Asgari Ücret / 30 * Gün) ile (Personelin Net Alacağı) değerlerinden KÜÇÜK olanı olmalıdır.
+            // Bu sayede asgari ücretten az kazanan (prim usulü vb.) personelin tüm maaşı kesilmez, kendi alacağının %25'i kesilir.
+            $icraBazTutar = min($bankaYatacakBaz, $icraMatrahi);
 
             if ($firstHTip === 'asgari_oran_net' || $firstHTip === 'oran_net') {
                 // Her iki tip de artık aynı formülü takip ediyor (Image 1: 28.075,50 / 30 * 22 * 0.25)
                 $oranKullan = ($firstOran > 0) ? $firstOran : 25;
-                $toplamIcraBudget = round($asgariCalculatedBase * ($oranKullan / 100), 2);
+                $toplamIcraBudget = round($icraBazTutar * ($oranKullan / 100), 2);
             } else {
                 // Sabit tutar
                 $sabitToplam = 0;
@@ -3267,7 +3279,13 @@ class BordroPersonelModel extends Model
                 // 2. Bankaya yatacak tutar = Minimum asgari ücret tutarı
                 // USER REQ: Banka yöntemli ek ödemeleri de banka bazına ekle
                 $bankaIcinMaksimum = max(0, $toplamPrim - $sodexoOdemesi);
-                $bankaBazVal = $bankaYatacakMinimum + ($yontemliOdemeler['banka'] ?? 0);
+                // USER REQ: Prim Usulü personelde asgari ücret ek ödemelerin üzerine eklenmez.
+                // Asgari ücret bu personeller için bankaya yatacak minimum garantiyi ifade eder.
+                if ($isPrimUsulu) {
+                    $bankaBazVal = max($bankaYatacakMinimum, ($yontemliOdemeler['banka'] ?? 0));
+                } else {
+                    $bankaBazVal = $bankaYatacakMinimum + ($yontemliOdemeler['banka'] ?? 0);
+                }
                 $bankaBaz = min($bankaBazVal, $bankaIcinMaksimum);
 
                 // Banka tutarı minimum asgari ücretin altına düşmemeli (yeterli bakiye varsa)

@@ -10,6 +10,7 @@ if (!isset($_SESSION['id'])) {
 
 use App\Model\PersonelEkOdemelerModel;
 use App\Model\BordroDonemModel;
+use App\Helper\Date;
 
 $action = $_REQUEST['action'] ?? '';
 $personel_id = $_REQUEST['personel_id'] ?? 0;
@@ -44,7 +45,7 @@ try {
                 'hesaplama_tipi' => $hesaplamaTipi,
                 'tutar' => floatval($_POST['tutar'] ?? 0),
                 'oran' => floatval($_POST['oran'] ?? 0),
-                'tarih' => $_POST['tarih'] ?? date('Y-m-d'),
+                'tarih' => Date::dttoeng($_POST['tarih'] ?? date('d.m.Y')),
                 'aciklama' => $_POST['aciklama'] ?? '',
                 'parametre_id' => !empty($_POST['parametre_id']) ? intval($_POST['parametre_id']) : null,
                 'kayit_yapan' => $_SESSION['id'] ?? null,
@@ -59,8 +60,8 @@ try {
             } else {
                 // Sürekli ödeme - dönem aralığı kullan
                 $data['donem_id'] = null;
-                $data['baslangic_donemi'] = $_POST['baslangic_donemi'] ?? date('Y-m');
-                $data['bitis_donemi'] = !empty($_POST['bitis_donemi']) ? $_POST['bitis_donemi'] : null;
+                $data['baslangic_donemi'] = Date::dttoeng($_POST['baslangic_donemi'] ?? date('d.m.Y'));
+                $data['bitis_donemi'] = !empty($_POST['bitis_donemi']) ? Date::dttoeng($_POST['bitis_donemi']) : null;
             }
 
             $result = $ekOdemeModel->saveWithAttr($data);
@@ -88,7 +89,7 @@ try {
                 'hesaplama_tipi' => $hesaplamaTipi,
                 'tutar' => floatval($_POST['tutar'] ?? 0),
                 'oran' => floatval($_POST['oran'] ?? 0),
-                'tarih' => $_POST['tarih'] ?? date('Y-m-d'),
+                'tarih' => Date::dttoeng($_POST['tarih'] ?? date('d.m.Y')),
                 'aciklama' => $_POST['aciklama'] ?? '',
                 'parametre_id' => !empty($_POST['parametre_id']) ? intval($_POST['parametre_id']) : null,
                 'kayit_yapan' => $_SESSION['id'] ?? null
@@ -97,8 +98,8 @@ try {
             if ($tekrarTipi === 'tek_sefer') {
                 $data['donem_id'] = $_POST['donem_id'] ?? null;
             } else {
-                $data['baslangic_donemi'] = $_POST['baslangic_donemi'] ?? date('Y-m');
-                $data['bitis_donemi'] = !empty($_POST['bitis_donemi']) ? $_POST['bitis_donemi'] : null;
+                $data['baslangic_donemi'] = Date::dttoeng($_POST['baslangic_donemi'] ?? date('d.m.Y'));
+                $data['bitis_donemi'] = !empty($_POST['bitis_donemi']) ? Date::dttoeng($_POST['bitis_donemi']) : null;
             }
 
             $result = $ekOdemeModel->updateEkOdeme($id, $data);

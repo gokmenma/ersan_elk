@@ -729,10 +729,10 @@ foreach ($ek_odemeler as $k) {
                         </div>
 
                         <div class="col-md-6 d-none" id="ek_div_surekli_baslangic">
-                            <?= Form::FormFloatInput("date", "baslangic_donemi", date('Y-m-d'), "", "Başlangıç Tarihi", "bx bx-calendar-play", "form-control", false, null, "off", false, 'id="ek_odeme_baslangic_donemi"') ?>
+                            <?= Form::FormFloatInput("text", "ek_odeme_baslangic_donemi", date('01.m.Y'), "GG.AA.YYYY", "Başlangıç Tarihi", "calendar", "form-control flatpickr", true, null, "off", false, '') ?>
                         </div>
                         <div class="col-md-6 d-none" id="ek_div_surekli_bitis">
-                            <?= Form::FormFloatInput("date", "bitis_donemi", "", "", "Bitiş Tarihi (Opsiyonel)", "bx bx-calendar-stop", "form-control", false, null, "off", false, 'id="ek_odeme_bitis_donemi"') ?>
+                            <?= Form::FormFloatInput("text", "ek_odeme_bitis_donemi", "", "GG.AA.YYYY", "Bitiş Tarihi (Opsiyonel)", "calendar", "form-control flatpickr", false, null, "off", false, '') ?>
                         </div>
 
                         <!-- Değer & Kayıt Tarihi -->
@@ -744,7 +744,7 @@ foreach ($ek_odemeler as $k) {
                         </div>
 
                         <div class="col-md-6">
-                            <?= Form::FormFloatInput("text", "ek_odeme_tarih", Date::today(), "GG.AA.YYYY", "Kayıt/İşlem Tarihi", "bx bx-calendar", "form-control flatpickr", true, null, "off", false) ?>
+                            <?= Form::FormFloatInput("text", "ek_odeme_tarih", Date::today(), "GG.AA.YYYY", "Kayıt/İşlem Tarihi", "calendar", "form-control flatpickr", true, null, "off", false) ?>
                         </div>
 
                         <!-- Açıklama -->

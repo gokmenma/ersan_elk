@@ -84,6 +84,22 @@ $(document).ready(function () {
     if (dateInput[0] && dateInput[0]._flatpickr) {
       dateInput[0]._flatpickr.setDate(dateStr);
     }
+
+    // Set default start date (1st of current month)
+    var dMonth = String(today.getMonth() + 1).padStart(2, "0");
+    var dYear = today.getFullYear();
+    var defaultStartStr = "01." + dMonth + "." + dYear;
+
+    var startInput = $("#ek_odeme_baslangic_donemi");
+    startInput.val(defaultStartStr);
+    if (startInput[0] && startInput[0]._flatpickr) {
+      startInput[0]._flatpickr.setDate(defaultStartStr);
+    }
+    
+    $("#ek_odeme_bitis_donemi").val("");
+    if ($("#ek_odeme_bitis_donemi")[0] && $("#ek_odeme_bitis_donemi")[0]._flatpickr) {
+      $("#ek_odeme_bitis_donemi")[0]._flatpickr.clear();
+    }
   }
 
   // Ek Ödeme Düzenle
@@ -129,8 +145,38 @@ $(document).ready(function () {
           // Tekrar tipi
           if (response.tekrar_tipi === 'surekli') {
             $("#ek_tekrar_surekli").prop("checked", true);
-            $("#ek_odeme_baslangic_donemi").val(response.baslangic_donemi);
-            $("#ek_odeme_bitis_donemi").val(response.bitis_donemi);
+            if (response.baslangic_donemi) {
+                var bparts = response.baslangic_donemi.split("-");
+                var bstr = "";
+                if (bparts.length === 3) {
+                    bstr = bparts[2] + "." + bparts[1] + "." + bparts[0];
+                } else if (bparts.length === 2) {
+                    bstr = "01." + bparts[1] + "." + bparts[0];
+                }
+                
+                if (bstr) {
+                    $("#ek_odeme_baslangic_donemi").val(bstr);
+                    if ($("#ek_odeme_baslangic_donemi")[0]._flatpickr) {
+                        $("#ek_odeme_baslangic_donemi")[0]._flatpickr.setDate(bstr);
+                    }
+                }
+            }
+            if (response.bitis_donemi) {
+                var eparts = response.bitis_donemi.split("-");
+                var estr = "";
+                if (eparts.length === 3) {
+                    estr = eparts[2] + "." + eparts[1] + "." + eparts[0];
+                } else if (eparts.length === 2) {
+                    estr = "01." + eparts[1] + "." + eparts[0];
+                }
+
+                if (estr) {
+                    $("#ek_odeme_bitis_donemi").val(estr);
+                    if ($("#ek_odeme_bitis_donemi")[0]._flatpickr) {
+                        $("#ek_odeme_bitis_donemi")[0]._flatpickr.setDate(estr);
+                    }
+                }
+            }
           } else {
             $("#ek_tekrar_tek_sefer").prop("checked", true);
             $("select[name='ek_odeme_donem']").val(response.donem_id).trigger('change');
