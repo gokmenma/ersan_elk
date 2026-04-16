@@ -8,13 +8,46 @@ use App\Helper\Security;
 
 $duyuruModel = new DuyuruModel();
 $personelModel = new PersonelModel();
+$tanimlamalarModel = new \App\Model\TanimlamalarModel();
+$aracZimmetModel = new \App\Model\AracZimmetModel();
 
 $duyurular = $duyuruModel->getAll();
 $stats = $duyuruModel->getStats();
 
+// Departmanları getir (Personel tablosundan direkt çekiyoruz)
+$db = $personelModel->getDb();
+$stmt = $db->prepare("SELECT DISTINCT departman FROM personel WHERE departman IS NOT NULL AND departman != '' AND firma_id = ? ORDER BY departman ASC");
+$stmt->execute([$_SESSION['firma_id']]);
+$departments = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+// Araç zimmeti olanları getir
+$aktifZimmetler = $aracZimmetModel->getAktifZimmetler();
+$aracliPersonelIds = array_column($aktifZimmetler, 'personel_id');
+
+// Ekip şeflerini getir
+$db = $personelModel->getDb();
+$stmt = $db->prepare("SELECT DISTINCT personel_id FROM personel_ekip_gecmisi WHERE ekip_sefi_mi = 1 AND (bitis_tarihi IS NULL OR bitis_tarihi >= CURDATE()) AND firma_id = ?");
+$stmt->execute([$_SESSION['firma_id']]);
+$ekipSefiIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
 $personeller = $personelModel->all(true);
-$personelList = [];
+$personelData = [];
+$personelList = []; // Select2 fallback için hâlâ kalsın
+$aracliIdsStr = array_map('strval', $aracliPersonelIds);
+$ekipSefiIdsStr = array_map('strval', $ekipSefiIds);
+
 foreach ($personeller as $p) {
+    $isAracli = in_array((string)$p->id, $aracliIdsStr);
+    $isEkipSefi = in_array((string)$p->id, $ekipSefiIdsStr);
+    
+    $personelData[] = [
+        'id' => $p->id,
+        'adi_soyadi' => $p->adi_soyadi,
+        'departman' => $p->departman,
+        'ekip_adi' => $p->ekip_adi,
+        'is_aracli' => $isAracli,
+        'is_ekip_sefi' => $isEkipSefi
+    ];
     $personelList[$p->id] = $p->adi_soyadi;
 }
 
@@ -196,7 +229,7 @@ foreach ($personeller as $p) {
 
 <!-- Modal -->
 <div class="modal fade" id="duyuruModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
             <div class="modal-header border-bottom py-3">
                 <div class="d-flex align-items-center">
@@ -206,107 +239,177 @@ foreach ($personeller as $p) {
                     </div>
                     <div>
                         <h5 class="modal-title fw-bold mb-0" id="modalTitle">Yeni Duyuru Ekle</h5>
-                        <small class="text-muted">Yeni kayıt oluşturmak için bilgileri doldurun.</small>
+                        <small class="text-muted">Gerekli bilgileri doldurup hedef kitleyi seçin.</small>
                     </div>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body p-0">
                 <form id="duyuruForm" enctype="multipart/form-data">
                     <input type="hidden" name="id" id="duyuruId">
                     <input type="hidden" name="action" value="save">
                     <input type="hidden" name="resim_sil" id="resimSil" value="0">
-                    <div class="row g-3">
-                        <div class="col-12">
-                            <?= Form::FormFloatInput('text', 'baslik', '', 'Duyuru başlığı...', 'Başlık *', 'type', 'form-control', true) ?>
-                        </div>
-                        <div class="col-12">
-                            <?= Form::FormFloatTextarea('icerik', '', 'Duyuru içeriği...', 'İçerik', 'align-left', 'form-control', false, '100px') ?>
-                        </div>
-                        <div class="col-md-6">
-                            <?= Form::FormFloatInput('date', 'etkinlik_tarihi', '', '', 'Etkinlik/Bitiş Tarihi', 'calendar', 'form-control', false) ?>
-                        </div>
-                        <div class="col-md-6">
-                            <?= Form::FormSelect2('durum', ['Yayında' => 'Yayında', 'Taslak' => 'Taslak', 'Kapalı' => 'Kapalı'], 'Yayında', 'Yayın Durumu', 'activity', 'key', '', 'form-select select2') ?>
-                        </div>
-                        <div class="col-12">
-                            <label class="form-label text-muted small mb-1">Duyuru Resmi</label>
-                            <div id="imageUploadZone"
-                                class="border-2 border-dashed rounded-3 p-3 text-center position-relative bg-light"
-                                style="cursor: pointer; transition: all 0.2s; border-color: #dee2e6 !important;">
-                                <input type="file" name="resim" id="duyuruResim" accept="image/*"
-                                    class="position-absolute top-0 start-0 w-100 h-100 opacity-0"
-                                    style="cursor:pointer; z-index:2;">
-                                
-                                <div id="uploadPlaceholder">
-                                    <i class="mdi mdi-image-plus text-primary" style="font-size: 2rem;"></i>
-                                    <p class="fw-semibold mb-0">Duyuru Görseli Seçin veya Sürükleyin</p>
-                                    <p class="text-muted small mb-0">Optimal görünüm için yatay görseller önerilir (.jpg, .png)</p>
-                                </div>
-                                
-                                <div id="uploadPreview" class="d-none position-relative" style="z-index: 3;">
-                                    <div class="position-relative d-inline-block">
-                                        <img id="previewImage" src="" class="rounded shadow-sm" style="max-height: 150px; max-width: 100%;">
-                                        <button type="button" id="btnRemoveImage" class="btn btn-danger btn-sm position-absolute top-0 end-0 translate-middle rounded-circle p-1" style="width: 24px; height: 24px; display: flex; align-items: center; justify-content: center;">
-                                            <i data-feather="x" style="width: 14px; height: 14px;"></i>
-                                        </button>
-                                    </div>
-                                    <p class="fw-semibold mb-0 mt-2" id="fileNameDisplay">Görsel Seçildi</p>
-                                    <p class="text-muted small mb-0">Değiştirmek için resmin üzerine tıklayın veya sürükleyin</p>
-                                </div>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="p-3 bg-light rounded border">
-                                <label class="fw-bold mb-2">Görünürlük</label>
-                                <div class="d-flex gap-4">
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" name="ana_sayfada_goster"
-                                            id="ana_sayfada_goster">
-                                        <label class="form-check-label" for="ana_sayfada_goster">Admin Ana
-                                            Sayfası</label>
-                                    </div>
-                                    <div class="form-check form-switch">
-                                        <input class="form-check-input" type="checkbox" name="pwa_goster"
-                                            id="pwa_goster">
-                                        <label class="form-check-label" for="pwa_goster">Personel Ana Sayfası
-                                            (PWA)</label>
+                    <div class="row g-0">
+                        <!-- Form Kolonu: Dinamik Genişlik -->
+                        <div class="col-lg-12 p-4 transition-all" id="formColumn" style="transition: all 0.3s ease;">
+                            <div class="row g-3">
+                                <div class="col-12" id="resimRow">
+                                    <label class="form-label text-muted small mb-1">Duyuru Resmi</label>
+                                    <div id="imageUploadZone"
+                                        class="border-2 border-dashed rounded-3 p-3 text-center position-relative bg-light"
+                                        style="cursor: pointer; transition: all 0.2s; border-color: #dee2e6 !important;">
+                                        <input type="file" name="resim" id="duyuruResim" accept="image/*"
+                                            class="position-absolute top-0 start-0 w-100 h-100 opacity-0"
+                                            style="cursor:pointer; z-index:2;">
+                                        
+                                        <div id="uploadPlaceholder">
+                                            <i class="mdi mdi-image-plus text-primary fs-2"></i>
+                                            <p class="fw-semibold mb-0">Görsel Seçin</p>
+                                        </div>
+                                        
+                                        <div id="uploadPreview" class="d-none position-relative" style="z-index: 3;">
+                                            <div class="position-relative d-inline-block">
+                                                <img id="previewImage" src="" class="rounded shadow-sm" style="max-height: 100px; max-width: 100%;">
+                                                <button type="button" id="btnRemoveImage" class="btn btn-danger btn-sm position-absolute top-0 end-0 translate-middle rounded-circle p-0" style="width: 20px; height: 20px;">
+                                                    <i data-feather="x" style="width: 12px; height: 12px;"></i>
+                                                </button>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                            </div>
-                        </div>
-                        <div class="col-12">
-                            <div class="p-3 bg-light rounded border">
-                                <label class="fw-bold mb-2">Hedef Kitle</label>
-                                <div class="d-flex gap-3 mb-3">
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="alici_tipi" id="tipToplu"
-                                            value="toplu" checked>
-                                        <label class="form-check-label" for="tipToplu">Tüm Personeller</label>
-                                    </div>
-                                    <div class="form-check">
-                                        <input class="form-check-input" type="radio" name="alici_tipi" id="tipTekli"
-                                            value="tekli">
-                                        <label class="form-check-label" for="tipTekli">Belirli Personeller</label>
+                                <div class="col-12">
+                                    <?= Form::FormFloatInput('text', 'baslik', '', 'Duyuru başlığı...', 'Başlık *', 'type', 'form-control', true) ?>
+                                </div>
+                                <div class="col-12">
+                                    <?= Form::FormFloatTextarea('icerik', '', 'Duyuru içeriği...', 'İçerik', 'align-left', 'form-control', false, '120px') ?>
+                                </div>
+                                <div class="col-md-6">
+                                    <?= Form::FormFloatInput('date', 'etkinlik_tarihi', '', '', 'Bitiş Tarihi', 'calendar', 'form-control', false) ?>
+                                </div>
+                                <div class="col-md-6">
+                                    <?= Form::FormSelect2('durum', ['Yayında' => 'Yayında', 'Taslak' => 'Taslak', 'Kapalı' => 'Kapalı'], 'Yayında', 'Durum', 'activity', 'key', '', 'form-select select2') ?>
+                                </div>
+                                <div class="col-12">
+                                    <?= Form::FormFloatInput('text', 'hedef_sayfa', '', 'URL girin...', 'Hedef URL (Opsiyonel)', 'link', 'form-control') ?>
+                                </div>
+                                <div class="col-12">
+                                    <div class="p-3 bg-light rounded border">
+                                        <label class="fw-bold mb-2 small text-uppercase">Görünürlük</label>
+                                        <div class="d-flex flex-column gap-2">
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" name="ana_sayfada_goster" id="ana_sayfada_goster">
+                                                <label class="form-check-label small" for="ana_sayfada_goster">Admin Ana Sayfası</label>
+                                            </div>
+                                            <div class="form-check form-switch">
+                                                <input class="form-check-input" type="checkbox" name="pwa_goster" id="pwa_goster">
+                                                <label class="form-check-label small" for="pwa_goster">Personel Ana Sayfası (PWA)</label>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
-                                <div id="personelSecimContainer" style="display:none;">
-                                    <?= Form::FormMultipleSelect2('personel_ids', $personelList, [], 'Personel Seçiniz', 'users', 'key', '', 'form-select select2') ?>
+                                <div class="col-12">
+                                    <div class="p-3 bg-light rounded border">
+                                        <label class="fw-bold mb-2 small text-uppercase">Hedef Kitle</label>
+                                        <div class="d-flex gap-3">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="alici_tipi" id="tipToplu" value="toplu" checked>
+                                                <label class="form-check-label" for="tipToplu">Herkes</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="radio" name="alici_tipi" id="tipTekli" value="tekli">
+                                                <label class="form-check-label" for="tipTekli">Özel Liste</label>
+                                            </div>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
                         </div>
-                        <div class="col-12">
-                            <?= Form::FormFloatInput('text', 'hedef_sayfa', '', 'Eğer bir sayfaya yönlendirilecekse URL girin...', 'Hedef URL (Opsiyonel)', 'link', 'form-control') ?>
+
+                        <!-- Sağ Kolon: Personel Seçimi (Full Height) -->
+                        <div class="col-lg-7 p-4 bg-white border-start" id="personelSecimContainer" style="display:none; min-height: 600px;">
+                            <div class="d-flex flex-column h-100">
+                                <!-- Filtreler Paneli (WhatsApp Style) -->
+                                <div class="mb-4">
+                                    <div class="d-flex align-items-center justify-content-between bg-light p-2 rounded-3 border">
+                                        <div class="d-flex align-items-center gap-3 flex-grow-1">
+                                            <!-- Departman Dropdown (Checklist) -->
+                                            <div class="dropdown" id="deptDropdownContainer">
+                                                <button class="filter-chip dropdown-toggle d-flex align-items-center" type="button" id="deptDropdownBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="padding: 8px 16px;">
+                                                    <i class="bx bx-buildings me-1"></i> Departmanlar <span id="deptCountBadge" class="badge bg-primary ms-1 d-none" style="font-size: 10px;">0</span>
+                                                </button>
+                                                <div class="dropdown-menu p-3 shadow-lg border-0" aria-labelledby="deptDropdownBtn" style="min-width: 250px; border-radius: 15px; max-height: 350px; overflow-y: auto;">
+                                                    <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
+                                                        <span class="fw-bold small text-muted text-uppercase" style="letter-spacing: 0.5px;">Departman Listesi</span>
+                                                        <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-danger small" id="btnClearDepts">Temizle</button>
+                                                    </div>
+                                                    <div id="deptCheckboxes">
+                                                        <?php foreach ($departments as $dept): ?>
+                                                            <div class="form-check mb-2">
+                                                                <input class="form-check-input dept-checkbox" type="checkbox" value="<?= htmlspecialchars($dept) ?>" id="dept_<?= md5($dept) ?>" style="cursor: pointer;">
+                                                                <label class="form-check-label small w-100" for="dept_<?= md5($dept) ?>" style="cursor: pointer; user-select: none;">
+                                                                    <?= htmlspecialchars($dept) ?>
+                                                                </label>
+                                                            </div>
+                                                        <?php endforeach; ?>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            
+                                            <!-- Hızlı Filtre Chip'leri (Şef ve Araç) -->
+                                            <div class="d-flex align-items-center gap-2 border-start ps-3" id="statusFilters">
+                                                <div class="filter-chip" data-type="sefi" data-value="1" style="padding: 8px 16px;"><i class="bx bx-star me-1"></i> Şefler</div>
+                                                <div class="filter-chip" data-type="arac" data-value="1" style="padding: 8px 16px;"><i class="bx bx-car me-1"></i> Araçlılar</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="d-flex gap-2 ms-3 border-start ps-3">
+                                            <button type="button" class="btn btn-primary btn-sm rounded-pill d-flex align-items-center px-3" id="btnSelectAll" title="Filtrelenmişleri Ekle">
+                                                <i class="bx bx-plus fs-5"></i>
+                                            </button>
+                                            <button type="button" class="btn btn-soft-danger btn-sm rounded-pill d-flex align-items-center px-3" id="btnClearSelection" title="Temizle">
+                                                <i class="bx bx-trash-alt fs-5"></i>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row g-3 flex-grow-1">
+                                    <!-- Sol Liste: Tüm Personeller -->
+                                    <div class="col-md-6 h-100 d-flex flex-column">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <label class="fw-bold small mb-0"><i class="bx bxs-user-account me-1"></i> Personeller (<span id="availableCount">0</span>)</label>
+                                        </div>
+                                        <div class="mb-3">
+                                            <?= Form::FormFloatInput('text', 'searchAvailable', '', 'İsim ile ara...', 'Personel Ara', 'bx bx-search', 'form-control') ?>
+                                        </div>
+                                        <div id="availableList" class="personel-list-container border rounded bg-white p-1 flex-grow-1" style="min-height: 400px; max-height: 500px; overflow-y: auto;">
+                                            <!-- JS ile doldurulacak -->
+                                        </div>
+                                    </div>
+
+                                    <!-- Sağ Liste: Seçilen Personeller -->
+                                    <div class="col-md-6 h-100 d-flex flex-column">
+                                        <div class="d-flex align-items-center justify-content-between mb-2">
+                                            <label class="fw-bold small mb-0 text-primary"><i class="bx bxs-user-check me-1"></i> Seçilenler (<span id="selectedCountDisplay">0</span>)</label>
+                                        </div>
+                                        <div class="mb-3">
+                                            <?= Form::FormFloatInput('text', 'searchSelected', '', 'Seçilenlerde ara...', 'Seçilen Ara', 'bx bx-search', 'form-control') ?>
+                                        </div>
+                                        <div id="selectedList" class="personel-list-container border-primary-subtle border border-2 border-dashed rounded bg-light p-1 flex-grow-1" style="min-height: 400px; max-height: 500px; overflow-y: auto;">
+                                            <!-- JS ile doldurulacak -->
+                                        </div>
+                                        <!-- Gizli select elemanı form gönderimi için -->
+                                        <select name="personel_ids[]" id="personel_ids" multiple style="display:none;"></select>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </form>
             </div>
-            <div class="modal-footer border-top bg-light py-3"
-                style="border-bottom-left-radius: 15px; border-bottom-right-radius: 15px;">
-                <button type="button" class="btn btn-vazgec px-4" data-bs-dismiss="modal">
-                    <i data-feather="x" class="me-1" style="width: 16px; height: 16px;"></i> Vazgeç
-                </button>
-                <button type="submit" form="duyuruForm" class="btn btn-kaydet px-4">
+            <div class="modal-footer border-top bg-light py-3">
+                <button type="button" class="btn btn-vazgec px-4" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="submit" form="duyuruForm" class="btn btn-kaydet px-4 shadow-sm">
                     <i data-feather="save" class="me-1" style="width: 16px; height: 16px;"></i> Kaydet
                 </button>
             </div>
@@ -315,6 +418,9 @@ foreach ($personeller as $p) {
 </div>
 
 <script>
+    const personelData = <?= json_encode($personelData) ?>;
+    let selectedIds = [];
+
     $(document).ready(function () {
         const API_URL = 'views/duyuru/api.php';
         if (typeof feather !== 'undefined') {
@@ -331,21 +437,29 @@ foreach ($personeller as $p) {
             });
         }
 
-        // Resim Yükleme Önizleme
-        $('#duyuruResim').on('change', function () {
-            const file = this.files[0];
-            if (file) {
-                const reader = new FileReader();
-                reader.onload = function(e) {
-                    $('#previewImage').attr('src', e.target.result);
-                    $('#uploadPlaceholder').addClass('d-none');
-                    $('#uploadPreview').removeClass('d-none');
-                    $('#fileNameDisplay').text(file.name);
-                    $('#resimSil').val('0');
-                }
-                reader.readAsDataURL(file);
-            }
+        // Departman Filtresi (Checkbox) Değişimi
+        $(document).on('change', '.dept-checkbox', function() {
+            updateDeptFilterUI();
+            renderPersonnelLists();
         });
+
+        $(document).on('click', '#btnClearDepts', function(e) {
+            e.preventDefault();
+            $('.dept-checkbox').prop('checked', false);
+            updateDeptFilterUI();
+            renderPersonnelLists();
+        });
+
+        function updateDeptFilterUI() {
+            const count = $('.dept-checkbox:checked').length;
+            if (count > 0) {
+                $('#deptCountBadge').text(count).removeClass('d-none');
+                $('#deptDropdownBtn').addClass('active');
+            } else {
+                $('#deptCountBadge').addClass('d-none');
+                $('#deptDropdownBtn').removeClass('active');
+            }
+        }
 
         // Resim Silme Butonu
         $('#btnRemoveImage').click(function(e) {
@@ -376,9 +490,11 @@ foreach ($personeller as $p) {
 
         $('input[name="alici_tipi"]').change(function () {
             if ($(this).val() === 'tekli') {
-                $('#personelSecimContainer').slideDown();
+                $('#formColumn').removeClass('col-lg-12').addClass('col-lg-5');
+                $('#personelSecimContainer').fadeIn();
             } else {
-                $('#personelSecimContainer').slideUp();
+                $('#personelSecimContainer').hide();
+                $('#formColumn').removeClass('col-lg-5').addClass('col-lg-12');
             }
         });
 
@@ -447,8 +563,8 @@ foreach ($personeller as $p) {
 
                         if (d.alici_tipi == 'tekli') {
                             $('#tipTekli').prop('checked', true).trigger('change');
-                            const ids = d.alici_ids ? d.alici_ids.split(',') : [];
-                            $('#personel_ids').val(ids).trigger('change');
+                            selectedIds = d.alici_ids ? d.alici_ids.split(',').map(String) : [];
+                            renderPersonnelLists();
                         } else {
                             $('#tipToplu').prop('checked', true).trigger('change');
                         }
@@ -503,13 +619,236 @@ foreach ($personeller as $p) {
         $('#resimSil').val('0');
         
         $('#personelSecimContainer').hide();
-        $('#personel_ids').val(null).trigger('change');
+        selectedIds = [];
+        renderPersonnelLists();
     }
+
+    // Personel Listesi İşlemleri
+    function renderPersonnelLists() {
+        const availableList = $('#availableList');
+        const selectedList = $('#selectedList');
+        const searchAvailable = $('#searchAvailable').val().toLowerCase();
+        const searchSelected = $('#searchSelected').val().toLowerCase();
+        
+        // Get Active Filters
+        const selectedDepts = $('.dept-checkbox:checked').map(function() { return $(this).val(); }).get();
+        const filterEkipSefi = $('.filter-chip[data-type="sefi"].active').length > 0;
+        const filterAracli = $('.filter-chip[data-type="arac"].active').length > 0;
+
+        availableList.empty();
+        selectedList.empty();
+        $('#personel_ids').empty();
+
+        let availableCount = 0;
+        let selectedCount = 0;
+
+        personelData.forEach(p => {
+            const pid = String(p.id);
+            const isSelected = selectedIds.includes(pid);
+            
+            if (isSelected) {
+                const matchesSearch = p.adi_soyadi.toLowerCase().includes(searchSelected);
+                if (matchesSearch) {
+                    selectedList.append(createPersonelItem(p, true));
+                    selectedCount++;
+                }
+                $('#personel_ids').append(`<option value="${p.id}" selected>${p.adi_soyadi}</option>`);
+            } else {
+                const matchesSearch = p.adi_soyadi.toLowerCase().includes(searchAvailable);
+                const matchesDept = selectedDepts.length === 0 || selectedDepts.includes(p.departman);
+                const matchesEkipSefi = !filterEkipSefi || p.is_ekip_sefi;
+                const matchesAracli = !filterAracli || p.is_aracli;
+
+                if (matchesSearch && matchesDept && matchesEkipSefi && matchesAracli) {
+                    availableList.append(createPersonelItem(p, false));
+                    availableCount++;
+                }
+            }
+        });
+
+        $('#availableCount').text(availableCount + ' Kişi');
+        $('#selectedCountDisplay').text(selectedCount + ' Kişi');
+
+        if (selectedCount === 0) {
+            selectedList.append('<div class="text-center p-5 text-muted small opacity-50">Lütfen soldan personel seçin</div>');
+        }
+        if (availableCount === 0) {
+            availableList.append('<div class="text-center p-5 text-muted small opacity-50">Personel bulunamadı</div>');
+        }
+    }
+
+    function createPersonelItem(p, isSelected) {
+        const icon = isSelected ? 'bx-minus-circle text-danger' : 'bx-plus-circle text-success';
+        const badges = [];
+        if (p.is_ekip_sefi) badges.push('<span class="badge bg-primary" style="font-size: 8px;">Şef</span>');
+        if (p.is_aracli) badges.push('<span class="badge bg-warning text-dark" style="font-size: 8px;">Araç</span>');
+        
+        return `
+            <div class="personel-item d-flex align-items-center p-2 mb-1 border rounded bg-white shadow-sm" 
+                 style="cursor: pointer; user-select: none;" onclick="togglePersonel('${p.id}')" draggable="true" ondragstart="handleDragStart(event, '${p.id}')">
+                <div class="flex-grow-1">
+                    <div class="fw-bold" style="font-size: 13px;">${p.adi_soyadi}</div>
+                    <div class="text-muted d-flex align-items-center gap-1" style="font-size: 10px;">
+                        <span>${p.departman || 'Bölüm Yok'}</span>
+                        ${badges.join('')}
+                    </div>
+                </div>
+                <i class="bx ${icon} fs-5"></i>
+            </div>
+        `;
+    }
+
+    function togglePersonel(id) {
+        id = String(id);
+        if (selectedIds.includes(id)) {
+            selectedIds = selectedIds.filter(i => i !== id);
+        } else {
+            selectedIds.push(id);
+        }
+        renderPersonnelLists();
+    }
+
+    function handleDragStart(e, id) {
+        e.originalEvent.dataTransfer.setData('text/plain', id);
+    }
+
+    // Drag and drop handlers
+    $(document).on('dragover', '.personel-list-container', function(e) {
+        e.preventDefault();
+        $(this).addClass('bg-soft-primary border-primary');
+    }).on('dragleave', '.personel-list-container', function(e) {
+        $(this).removeClass('bg-soft-primary border-primary');
+    }).on('drop', '#availableList', function(e) {
+        e.preventDefault();
+        $(this).removeClass('bg-soft-primary border-primary');
+        const id = String(e.originalEvent.dataTransfer.getData('text'));
+        if (selectedIds.includes(id)) {
+            selectedIds = selectedIds.filter(i => i !== id);
+            renderPersonnelLists();
+        }
+    }).on('drop', '#selectedList', function(e) {
+        e.preventDefault();
+        $(this).removeClass('bg-soft-primary border-primary');
+        const id = String(e.originalEvent.dataTransfer.getData('text'));
+        if (!selectedIds.includes(id)) {
+            selectedIds.push(id);
+            renderPersonnelLists();
+        }
+    });
+
+    // Filtre Eventleri
+    $(document).on('click', '.filter-chip', function() {
+        $(this).toggleClass('active');
+        renderPersonnelLists();
+    });
+
+    $(document).on('keyup', '#searchAvailable, #searchSelected', renderPersonnelLists);
+
+    $(document).on('click', '#btnSelectAll', function() {
+        const selectedDepts = $('.dept-checkbox:checked').map(function() { return $(this).val(); }).get();
+        const filterEkipSefi = $('.filter-chip[data-type="sefi"].active').length > 0;
+        const filterAracli = $('.filter-chip[data-type="arac"].active').length > 0;
+        const searchAvailable = $('#searchAvailable').val().toLowerCase();
+
+        personelData.forEach(p => {
+            const pid = String(p.id);
+            if (!selectedIds.includes(pid)) {
+                const matchesSearch = p.adi_soyadi.toLowerCase().includes(searchAvailable);
+                const matchesDept = selectedDepts.length === 0 || selectedDepts.includes(p.departman);
+                const matchesEkipSefi = !filterEkipSefi || p.is_ekip_sefi;
+                const matchesAracli = !filterAracli || p.is_aracli;
+
+                if (matchesSearch && matchesDept && matchesEkipSefi && matchesAracli) {
+                    selectedIds.push(pid);
+                }
+            }
+        });
+        renderPersonnelLists();
+    });
+
+    $(document).on('click', '#btnClearSelection', function() {
+        selectedIds = [];
+        renderPersonnelLists();
+    });
 </script>
 
 <style>
-    .bg-soft-primary {
-        background-color: rgba(102, 126, 234, 0.1);
+    .bg-soft-info {
+        background-color: rgba(13, 202, 240, 0.1);
+    }
+
+    .filter-chip {
+        padding: 6px 16px;
+        border-radius: 20px;
+        background-color: white;
+        border: 1px solid #dee2e6;
+        color: #6c757d;
+        cursor: pointer;
+        font-size: 13px;
+        font-weight: 500;
+        transition: all 0.2s;
+        white-space: nowrap;
+        user-select: none;
+    }
+
+    .filter-chip:hover {
+        background-color: #f8f9fa;
+        border-color: #adb5bd;
+    }
+
+    .filter-chip.active {
+        background-color: #e7f5ed;
+        color: #128c7e;
+        border-color: #128c7e;
+    }
+
+    .filter-chips-container::-webkit-scrollbar {
+        height: 4px;
+    }
+
+    .filter-chips-container::-webkit-scrollbar-thumb {
+        background: #dee2e6;
+        border-radius: 10px;
+    }
+
+    .personel-item:hover {
+        background-color: #f8f9fa !important;
+        transform: translateY(-1px);
+    }
+
+    .personel-list-container::-webkit-scrollbar {
+        width: 5px;
+    }
+
+    .personel-list-container::-webkit-scrollbar-track {
+        background: transparent;
+    }
+
+    .personel-list-container::-webkit-scrollbar-thumb {
+        background: #dee2e6;
+        border-radius: 10px;
+    }
+
+    .custom-switch-primary .form-check-input:checked {
+        background-color: #667eea;
+        border-color: #667eea;
+    }
+
+    .custom-switch-warning .form-check-input:checked {
+        background-color: #f59e0b;
+        border-color: #f59e0b;
+    }
+
+    .personel-item i {
+        transition: transform 0.2s;
+    }
+
+    .personel-item:hover i {
+        transform: scale(1.2);
+    }
+
+    .personel-list-container {
+        transition: all 0.2s;
     }
 
     .bg-soft-success {
