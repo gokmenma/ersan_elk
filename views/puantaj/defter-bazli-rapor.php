@@ -54,41 +54,17 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
     ?>
     <?php include 'layouts/breadcrumb.php'; ?>
 
-    <?php if (\App\Service\Gate::allows('defter_bazli_rapor_alt_limit')): ?>
-        <div class="d-flex justify-content-end mb-3">
-            <button type="button" class="btn btn-outline-primary btn-sm d-flex align-items-center gap-1" data-bs-toggle="modal" data-bs-target="#defterLimitAyarlarModal">
-                <i class="bx bx-cog fs-5"></i> 
-            </button>
-        </div>
-    <?php endif; ?>
+    <!-- ======= KOMPAKT ÜST PANEL (Sekmeler ve Filtreler Birleşik) ======= -->
 
-    <!-- ======= SEKME NAVİGASYONU ======= -->
-    <ul class="nav nav-tabs nav-tabs-custom mb-3" id="defterRaporTabs" role="tablist">
-        <li class="nav-item" role="presentation">
-            <button class="nav-link active" id="tab-abone-donem" data-bs-toggle="tab" data-bs-target="#pane-abone-donem"
-                type="button" role="tab" aria-controls="pane-abone-donem" aria-selected="true">
-                <i class="bx bx-bar-chart-alt-2 me-1"></i>Abone Dönem Karşılaştırma
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="tab-okuma-gun" data-bs-toggle="tab" data-bs-target="#pane-okuma-gun"
-                type="button" role="tab" aria-controls="pane-okuma-gun" aria-selected="false">
-                <i class="bx bx-calendar-event me-1"></i>Okuma Gün Sayıları
-            </button>
-        </li>
-        <li class="nav-item" role="presentation">
-            <button class="nav-link" id="tab-defter-ozet" data-bs-toggle="tab" data-bs-target="#pane-defter-ozet"
-                type="button" role="tab" aria-controls="pane-defter-ozet" aria-selected="false">
-                <i class="bx bx-pie-chart-alt-2 me-1"></i>Aylık Defter Özeti
-            </button>
-        </li>
-    </ul>
 
     <!-- Flatpickr MonthSelect Plugin Assets -->
     <link rel="stylesheet" href="assets/libs/flatpickr/plugins/monthSelect/style.css">
     <script src="assets/libs/flatpickr/plugins/monthSelect/index.js"></script>
 
     <style>
+        .page-content{
+padding-bottom:  10px !important;
+        }
         /* MonthSelect premium aesthetic with borders */
         .flatpickr-monthSelect-months {
             padding: 5px !important;
@@ -129,29 +105,99 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             border-color: #94a3b8 !important;
             border-width: 1px !important;
         }
+
+        /* Modal Sortable Headers */
+        .sortable-header {
+            cursor: pointer !important;
+            position: relative;
+            padding-right: 25px !important;
+            user-select: none;
+            transition: background-color 0.2s;
+            white-space: nowrap;
+        }
+        .sortable-header:hover {
+            background-color: rgba(var(--bs-primary-rgb), 0.05) !important;
+        }
+        .sortable-header i.sort-icon {
+            position: absolute;
+            right: 8px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 14px;
+            opacity: 0.3;
+        }
+        .sortable-header.active {
+            color: var(--bs-primary) !important;
+            background-color: rgba(var(--bs-primary-rgb), 0.02) !important;
+        }
+        .sortable-header.active i.sort-icon {
+            opacity: 1;
+        }
+        .nav-pills .nav-link {
+            transition: all 0.3s ease;
+        }
+        .nav-pills .nav-link.active {
+            border-radius: 50px !important;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+        }
     </style>
 
     <!-- ======= FİLTRE ACCORDION ======= -->
-    <div class="row mb-3">
+    <div class="row mb-2">
         <div class="col-12">
-            <div class="card">
-                <div class="card-body p-2">
-                    <div class="accordion" id="filterAccordion">
+            <div class="accordion shadow-sm" id="filterAccordion" style="border-radius: 12px;">
                         <div class="accordion-item border-0">
-                            <h2 class="accordion-header" id="headingFilter">
-                                <button class="accordion-button collapsed py-2" type="button" data-bs-toggle="collapse"
-                                    data-bs-target="#collapseFilter" aria-expanded="false"
-                                    aria-controls="collapseFilter">
-                                    <div class="d-flex align-items-center justify-content-between w-100 me-3">
-                                        <div>
-                                            <i class="bx bx-filter-alt me-2"></i> Filtreleme Seçenekleri
-                                        </div>
-                                        <div id="filterSummary" class="d-none d-md-flex gap-2">
-                                            <!-- JS ile doldurulacak -->
+                            <div class="accordion-header" id="headingFilter">
+                                <div class="card border-0 shadow-sm mb-0" style="border-radius: 12px; overflow: hidden;">
+                                    <div class="card-body p-1">
+                                        <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+                                            
+                                            <!-- SOL: Sekmeler -->
+                                            <ul class="nav nav-pills nav-justified bg-light p-1 rounded-pill" id="defterRaporTabs" role="tablist" style="min-width: 450px;">
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link active py-2 rounded-pill fw-bold" id="tab-abone-donem" data-bs-toggle="tab" data-bs-target="#pane-abone-donem"
+                                                        type="button" role="tab" style="font-size: 0.75rem;">
+                                                        <i class="bx bx-bar-chart-alt-2 me-1"></i>Abone Dönem
+                                                    </button>
+                                                </li>
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link py-2 rounded-pill fw-bold" id="tab-okuma-gun" data-bs-toggle="tab" data-bs-target="#pane-okuma-gun"
+                                                        type="button" role="tab" style="font-size: 0.75rem;">
+                                                        <i class="bx bx-calendar-event me-1"></i>Okuma Günleri
+                                                    </button>
+                                                </li>
+                                                <li class="nav-item" role="presentation">
+                                                    <button class="nav-link py-2 rounded-pill fw-bold" id="tab-defter-ozet" data-bs-toggle="tab" data-bs-target="#pane-defter-ozet"
+                                                        type="button" role="tab" style="font-size: 0.75rem;">
+                                                        <i class="bx bx-pie-chart-alt-2 me-1"></i>Defter Özeti
+                                                    </button>
+                                                </li>
+                                            </ul>
+
+                                            <!-- SAĞ: Filtre Özeti, Ayarlar ve Accordion Tetikleyici -->
+                                            <div class="d-flex align-items-center gap-2 me-2">
+                                                <div id="filterSummary" class="d-none d-md-flex gap-2">
+                                                    <!-- ARALIK: ... JS ile dolacak -->
+                                                </div>
+
+                                                <?php if (\App\Service\Gate::allows('defter_bazli_rapor_alt_limit')): ?>
+                                                    <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+                                                    <button type="button" class="btn btn-outline-primary btn-sm rounded-circle d-flex align-items-center justify-content-center" 
+                                                            style="width: 32px; height: 32px;" data-bs-toggle="modal" data-bs-target="#defterLimitAyarlarModal" title="Rapor Ayarları">
+                                                        <i class="bx bx-cog fs-5"></i> 
+                                                    </button>
+                                                <?php endif; ?>
+
+                                                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+                                                <button class="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center accordion-button collapsed p-0 border" 
+                                                        type="button" data-bs-toggle="collapse" data-bs-target="#collapseFilter" style="width: 32px; height: 32px; background: #fff;">
+                                                </button>
+                                            </div>
+
                                         </div>
                                     </div>
-                                </button>
-                            </h2>
+                                </div>
+                            </div>
                         </div>
                     </div>
 
@@ -311,11 +357,11 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         <div class="tab-pane fade show active" id="pane-abone-donem" role="tabpanel" aria-labelledby="tab-abone-donem">
 
             <!-- ======= ÖZET KARTLARI (Minimal & Premium) ======= -->
-            <div class="row g-3 mb-4" id="summaryCards" style="display: none;">
+            <div class="row g-3 mb-4 px-4" id="summaryCards" style="display: none;">
                 <!-- Toplam Defter Sayısı -->
                 <div class="col-xl-2 col-md-4 col-sm-6">
-                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                        style="--card-color: var(--bs-primary, #556ee6); border-bottom: 3px solid var(--card-color) !important;">
+                    <div class="card border-0 shadow-sm h-100 bordro-summary-card drill-down-card" data-type="toplam"
+                        style="--card-color: var(--bs-primary, #556ee6); border-bottom: 3px solid var(--card-color) !important; cursor: pointer;">
                         <div class="card-body p-2 px-3">
                             <div class="icon-label-container mb-2">
                                 <div class="icon-box"
@@ -368,8 +414,8 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 </div>
                 <!-- Toplam Abone Sayısı -->
                 <div class="col-xl-2 col-md-4 col-sm-6">
-                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                        style="--card-color: #50a5f1; border-bottom: 3px solid var(--card-color) !important;">
+                    <div class="card border-0 shadow-sm h-100 bordro-summary-card drill-down-card" data-type="toplam"
+                        style="--card-color: #50a5f1; border-bottom: 3px solid var(--card-color) !important; cursor: pointer;">
                         <div class="card-body p-2 px-3">
                             <div class="icon-label-container mb-2">
                                 <div class="icon-box"
@@ -386,8 +432,8 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 </div>
                 <!-- Okunan Abone Sayısı -->
                 <div class="col-xl-2 col-md-4 col-sm-6">
-                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                        style="--card-color: #34c38f; border-bottom: 3px solid var(--card-color) !important;">
+                    <div class="card border-0 shadow-sm h-100 bordro-summary-card drill-down-card" data-type="okunan"
+                        style="--card-color: #34c38f; border-bottom: 3px solid var(--card-color) !important; cursor: pointer;">
                         <div class="card-body p-2 px-3">
                             <div class="icon-label-container mb-2">
                                 <div class="icon-box"
@@ -404,8 +450,8 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 </div>
                 <!-- Kalan Abone Sayısı -->
                 <div class="col-xl-2 col-md-4 col-sm-6">
-                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                        style="--card-color: #f43f5e; border-bottom: 3px solid var(--card-color) !important;">
+                    <div class="card border-0 shadow-sm h-100 bordro-summary-card drill-down-card" data-type="kalan"
+                        style="--card-color: #f43f5e; border-bottom: 3px solid var(--card-color) !important; cursor: pointer;">
                         <div class="card-body p-2 px-3">
                             <div class="icon-label-container mb-2">
                                 <div class="icon-box"
@@ -424,7 +470,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
 
             <!-- Tab 1 Actions -->
-            <div class="row mb-2" id="reportActions" style="display: none;">
+            <div class="row mb-3 px-4" id="reportActions" style="display: none;">
                 <div class="col-12 d-flex justify-content-end gap-2">
                     <button type="button" class="btn btn-sm btn-outline-info btn-tab-fullscreen"
                         data-target="reportSection">
@@ -436,7 +482,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                     </button>
                 </div>
             </div>
-            <div class="row" id="reportSection" style="display: none;">
+            <div class="row px-4" id="reportSection" style="display: none;">
                 <div class="col-12">
                     <div class="card border-0 shadow-sm">
                         <div class="card-body p-0">
@@ -517,7 +563,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         <div class="tab-pane fade" id="pane-okuma-gun" role="tabpanel" aria-labelledby="tab-okuma-gun">
 
             <!-- Özet Kartları -->
-            <div class="row g-3 mb-4" id="okumaGunSummaryCards" style="display: none;">
+                <div class="row g-3 mb-4 px-4" id="okumaGunSummaryCards" style="display: none;">
                 <div class="col-xl col-md-4 col-sm-6">
                     <div class="card border-0 shadow-sm h-100 bordro-summary-card"
                         style="--card-color: var(--bs-primary, #556ee6); border-bottom: 3px solid var(--card-color) !important;">
@@ -575,7 +621,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             </div>
 
             <!-- 35+ Gün Filtresi -->
-            <div class="row mb-3" id="okumaGunFilterRow" style="display: none;">
+                <div class="row mb-3 px-4" id="okumaGunFilterRow" style="display: none;">
                 <div class="col-12">
                     <div class="d-flex align-items-center justify-content-between gap-3 w-100">
                             <div class="d-flex align-items-center gap-4">
@@ -612,8 +658,8 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 </div>
             </div>
 
-            <!-- Rapor Tablosu -->
-            <div class="row" id="okumaGunReportSection" style="display: none;">
+                <!-- Rapor Tablosu -->
+                <div class="row px-4" id="okumaGunReportSection" style="display: none;">
                 <div class="col-12">
                     <div class="card border-0 shadow-sm">
                         <div class="card-body p-0">
@@ -643,7 +689,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         <div class="tab-pane fade" id="pane-defter-ozet" role="tabpanel" aria-labelledby="tab-defter-ozet">
 
             <!-- Özet Kartları -->
-            <div class="row g-3 mb-4" id="defterOzetSummaryCards" style="display: none;">
+                <div class="row g-3 mb-4 px-4" id="defterOzetSummaryCards" style="display: none;">
                 <div class="col-xl col-md-4 col-sm-6">
                     <div class="card border-0 shadow-sm h-100 bordro-summary-card"
                         style="--card-color: var(--bs-primary, #556ee6); border-bottom: 3px solid var(--card-color) !important;">
@@ -701,7 +747,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             </div>
 
             <!-- Aksiyon Butonları -->
-            <div class="row mb-2" id="defterOzetActions" style="display: none;">
+                <div class="row mb-3 px-4" id="defterOzetActions" style="display: none;">
                 <div class="col-12 d-flex justify-content-end align-items-center gap-2">
                     <div class="btn-group btn-group-sm me-auto" role="group" aria-label="Görünüm Seçimi">
                         <input type="radio" class="btn-check view-toggle" name="vOzetView" id="vOzetList" checked data-view="list" data-tab="ozet">
@@ -722,8 +768,8 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 </div>
             </div>
 
-            <!-- Grafik Bölümü -->
-            <div class="row" id="defterOzetChartSection" style="display: none;">
+                <!-- Grafik Bölümü -->
+                <div class="row px-4" id="defterOzetChartSection" style="display: none;">
                 <div class="col-12">
                     <div class="card border-0 shadow-sm mb-3">
                         <div class="card-body">
@@ -743,8 +789,8 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 </div>
             </div>
 
-            <!-- Rapor Tablosu -->
-            <div class="row" id="defterOzetReportSection" style="display: none;">
+                <!-- Rapor Tablosu -->
+                <div class="row px-4" id="defterOzetReportSection" style="display: none;">
                 <div class="col-12">
                     <div class="card border-0 shadow-sm">
                         <div class="card-body p-0">
@@ -768,21 +814,63 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 </div>
             </div>
 
-            <!-- Okunmayan Defter Listesi Modal -->
+            <!-- ======= BİRLEŞİK DEFTER LİSTESİ MODALI ======= -->
             <div class="modal fade no-upgrade" id="modalOkunmayanDefterler" tabindex="-1" aria-hidden="true">
-                <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-                    <div class="modal-content border-0 shadow-lg" style="border-radius: 14px;">
-                        <div class="modal-header border-bottom-0 pb-2" style="border-radius: 14px 14px 0 0; background: linear-gradient(135deg, #f43f5e 0%, #e11d48 100%);">
-                            <h5 class="modal-title fw-bold text-white" id="modalDefterListTitle">
-                                <i class="bx bx-error-circle me-2"></i>Defter Listesi
-                            </h5>
+                <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+                    <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+                        <div class="modal-header border-bottom-0 py-3" id="unifiedModalHeader" style="background: #2a3042;">
+                            <div class="d-flex align-items-center justify-content-between w-100 me-2">
+                                <h5 class="modal-title fw-bold text-white mb-0" id="modalDefterListTitle">
+                                    <i class="bx bx-list-ul me-2"></i>Defter Listesi
+                                </h5>
+                                <div class="d-none" id="modalViewToggles"></div>
+                            </div>
                             <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
                         </div>
-                        <div class="modal-body pt-3" id="modalDefterListBody">
-                            <!-- JS ile doldurulacak -->
+                        <div class="modal-body bg-light pt-0">
+                            <!-- Modal Summary Area -->
+                            <div class="row g-2 mb-3 bg-white p-3 border-bottom shadow-sm sticky-top" style="z-index: 100; margin-left: -1rem; margin-right: -1rem;">
+                                <div class="col-md-auto">
+                                    <div class="d-flex align-items-center bg-primary-subtle text-primary py-2 px-3 rounded-3 border border-primary-subtle h-100">
+                                        <i class="bx bx-book-open fs-4 me-2"></i>
+                                        <div>
+                                            <div class="small fw-bold opacity-75" style="font-size: 0.65rem; line-height: 1;">DEFTER SAYISI</div>
+                                            <div class="fw-bold fs-5" id="modalStatDefterCount">0</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-auto">
+                                    <div class="d-flex align-items-center bg-success-subtle text-success py-2 px-3 rounded-3 border border-success-subtle h-100">
+                                        <i class="bx bx-user-check fs-4 me-2"></i>
+                                        <div>
+                                            <div class="small fw-bold opacity-75" style="font-size: 0.65rem; line-height: 1;">OKUNAN ABONE</div>
+                                            <div class="fw-bold fs-5" id="modalStatReadAbone">0</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-auto">
+                                    <div class="d-flex align-items-center bg-danger-subtle text-danger py-2 px-3 rounded-3 border border-danger-subtle h-100">
+                                        <i class="bx bx-user-x fs-4 me-2"></i>
+                                        <div>
+                                            <div class="small fw-bold opacity-75" style="font-size: 0.65rem; line-height: 1;">OKUNMAYAN ABONE</div>
+                                            <div class="fw-bold fs-5" id="modalStatUnreadAbone">0</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-auto ms-md-auto">
+                                    <div class="input-group input-group-sm">
+                                        <span class="input-group-text bg-white border-end-0"><i class="bx bx-search text-muted"></i></span>
+                                        <input type="text" class="form-control border-start-0" id="modalListSearch" placeholder="Listede ara...">
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div id="modalDefterListBody">
+                                <!-- JS ile doldurulacak -->
+                            </div>
                         </div>
-                        <div class="modal-footer border-top-0 pt-0">
-                            <button type="button" class="btn btn-secondary btn-sm px-4" data-bs-dismiss="modal" style="border-radius: 8px;">Kapat</button>
+                        <div class="modal-footer bg-light border-top-0 py-2">
+                            <button type="button" class="btn btn-secondary btn-sm px-4 fw-bold" data-bs-dismiss="modal" style="border-radius: 8px;">Kapat</button>
                         </div>
                     </div>
                 </div>
@@ -1462,8 +1550,9 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
     }
 
     /* Period separator */
-    .period-end {
-        border-right: 2px solid var(--bs-primary, #556ee6) !important;
+    .period-end, .ogr-period-end, .do-period-end {
+        border-right: 3px solid #94a3b8 !important;
+        box-shadow: inset -1px 0 0 0 #94a3b8 !important;
     }
 
     /* ======= STICKY FOOTER (TOTALS) ======= */
@@ -1896,7 +1985,13 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
     }
 
     .do-period-end {
-        border-right: 2px solid var(--bs-primary, #556ee6) !important;
+        border-right: 3px solid #94a3b8 !important;
+        box-shadow: inset -1px 0 0 0 #94a3b8 !important;
+    }
+
+    /* Alternating Month Column Background tint */
+    .do-month-alt {
+        background-image: linear-gradient(rgba(0, 0, 0, 0.03), rgba(0, 0, 0, 0.03)) !important;
     }
 
     .do-badge-toplam {
@@ -2147,63 +2242,118 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             openDrillDown(type);
         });
 
+        // Modal type toggle
+        $(document).on('click', '.modal-type-toggle', function() {
+            $('.modal-type-toggle').removeClass('active btn-light').addClass('btn-outline-light');
+            $(this).addClass('active btn-light').removeClass('btn-outline-light');
+            
+            const type = $(this).data('type');
+            const searchText = $('#modalListSearch').val();
+            renderUnifiedModalContent(type, searchText);
+        });
+
+        // Modal search
+        $(document).on('input', '#modalListSearch', function() {
+            const searchText = $(this).val();
+            renderUnifiedModalContent(searchText);
+        });
+
         function openDrillDown(type) {
             if (!_tableData || _tableData.length === 0) return;
             
+            // Clear search
+            $('#modalListSearch').val('');
+            
+            // Update title
             const sonDonem = _tableDonemler[_tableDonemler.length - 1];
             const sonDonemFormatted = String(sonDonem).substring(0, 4) + '/' + String(sonDonem).substring(4);
-            
-            let list = [];
-            let title = '';
-            let icon = '';
-            let color = '';
-            let valField = '';
-            let valLabel = '';
+            $('#modalDefterListTitle').html('<i class="bx bx-list-ul me-2"></i>Defter Listesi (' + sonDonemFormatted + ')');
 
-            if (type === 'okunan') {
-                list = _tableData.filter(d => (d.donemler[sonDonem]?.okunan || 0) > 0);
-                title = 'Okunan Defterler';
-                icon = 'bx-check-double';
-                color = 'linear-gradient(135deg, #34c38f 0%, #2ca01c 100%)';
-                valField = 'okunan';
-                valLabel = 'Okunan Abone';
-            } else if (type === 'kalan') {
-                list = _tableData.filter(d => (d.donemler[sonDonem]?.okunan || 0) == 0);
-                title = 'Kalan Defterler';
-                icon = 'bx-time';
-                color = 'linear-gradient(135deg, #f1b44c 0%, #e2a03f 100%)';
-                valField = 'abone_sayisi';
-                valLabel = 'Abone Sayısı';
+            // Render content
+            renderUnifiedModalContent();
+            
+            // Show modal
+            var modalEl = document.getElementById('modalOkunmayanDefterler');
+            var modal = bootstrap.Modal.getOrCreateInstance(modalEl);
+            modal.show();
+        }
+
+        function renderUnifiedModalContent(filterText = '') {
+            const sonDonem = _tableDonemler[_tableDonemler.length - 1];
+            if (!sonDonem) return;
+
+            filterText = filterText.toLowerCase();
+
+            let list = _tableData;
+            
+            // Search filter
+            if (filterText) {
+                list = list.filter(d => 
+                    d.bolge.toLowerCase().includes(filterText) || 
+                    d.defter.toLowerCase().includes(filterText) || 
+                    d.mahalle.toLowerCase().includes(filterText)
+                );
             }
 
-            $('#modalDefterListTitle').html('<i class="bx ' + icon + ' me-2"></i>' + title + ' (' + sonDonemFormatted + ')');
-            $('#modalOkunmayanDefterler .modal-header').css('background', color);
+            // 3. Totals
+            let totalAbone = 0;
+            let readAbone = 0;
+            let unreadAbone = 0;
 
+            list.forEach(item => {
+                const dData = item.donemler[sonDonem] || { okunan: 0 };
+                totalAbone += (item.abone_sayisi || 0);
+                readAbone += (dData.okunan || 0);
+            });
+            unreadAbone = Math.max(0, totalAbone - readAbone);
+
+            $('#modalStatDefterCount').text(list.length.toLocaleString('tr-TR'));
+            $('#modalStatReadAbone').text(readAbone.toLocaleString('tr-TR'));
+            $('#modalStatUnreadAbone').text(unreadAbone.toLocaleString('tr-TR'));
+
+            // 4. Render Table
             let html = '';
             if (list.length === 0) {
-                html = '<div class="text-center p-4 text-muted"><i class="bx bx-info-circle fs-3 d-block mb-2"></i>Veri bulunamadı.</div>';
+                html = '<div class="text-center p-5 text-muted bg-white border rounded-3 mt-3"><i class="bx bx-search-alt fs-1 d-block mb-3 opacity-25"></i>Aradığınız kriterlere uygun defter bulunamadı.</div>';
             } else {
-                html += '<div class="table-responsive" style="max-height: 500px;"><table class="table table-sm table-bordered table-hover mb-0">';
-                html += '<thead class="bg-light sticky-top"><tr><th style="width: 50px;">#</th><th>Bölge</th><th>Defter</th><th>Mahalle</th><th class="text-end">' + valLabel + '</th></tr></thead><tbody>';
+                html += '<div class="table-responsive bg-white border rounded-3 mt-1 shadow-sm"><table class="table table-sm table-hover mb-0 align-middle">';
+                html += '<thead class="bg-light sticky-top"><tr><th class="ps-3" style="width: 50px;">#</th><th>Bölge / İlçe Tipi</th><th>Defter</th><th>Mahalle</th><th class="text-end">Toplam Abone</th><th class="text-end text-success">Okunan</th><th class="text-end text-danger">Kalan</th><th class="text-end">Oran %</th><th class="text-end pe-3">Durum</th></tr></thead><tbody>';
+                
                 list.forEach((item, index) => {
-                    const dData = item.donemler[sonDonem] || {};
-                    const val = type === 'okunan' ? (dData.okunan || 0) : (item.abone_sayisi || 0);
+                    const dData = item.donemler[sonDonem] || { okunan: 0 };
+                    const itemTotal = (item.abone_sayisi || 0);
+                    const itemRead = (dData.okunan || 0);
+                    const itemKalan = Math.max(0, itemTotal - itemRead);
+                    const itemOran = itemTotal > 0 ? ((itemRead / itemTotal) * 100).toFixed(1) : '0.0';
+                    
+                    const isOkunan = itemRead > 0;
+                    const statusBadge = isOkunan ? 
+                        '<span class="badge bg-success-subtle text-success px-2 py-1"><i class="bx bx-check me-1"></i>Okundu</span>' : 
+                        '<span class="badge bg-danger-subtle text-danger px-2 py-1"><i class="bx bx-x me-1"></i>Bekliyor</span>';
+
                     html += `<tr>
-                        <td class="text-muted small">${index + 1}</td>
-                        <td>${item.bolge}</td>
-                        <td class="fw-bold">${item.defter}</td>
-                        <td>${item.mahalle}</td>
-                        <td class="text-end fw-semibold">${val.toLocaleString('tr-TR')}</td>
+                        <td class="text-muted small ps-3">${index + 1}</td>
+                        <td>
+                            <div class="fw-bold text-dark">${item.bolge}</div>
+                            <div class="text-muted" style="font-size: 0.75rem;">${item.ilce_tipi}</div>
+                        </td>
+                        <td><span class="badge bg-primary-subtle text-primary fw-bold" style="font-size: 0.85rem;">${item.defter}</span></td>
+                        <td class="small">${item.mahalle}</td>
+                        <td class="text-end fw-semibold">${itemTotal.toLocaleString('tr-TR')}</td>
+                        <td class="text-end text-success fw-bold">${itemRead.toLocaleString('tr-TR')}</td>
+                        <td class="text-end text-danger fw-bold">${itemKalan.toLocaleString('tr-TR')}</td>
+                        <td class="text-end">
+                            <div class="fw-bold">${itemOran}%</div>
+                            <div class="progress" style="height: 3px; width: 40px; margin-left: auto;">
+                                <div class="progress-bar ${itemOran > 50 ? 'bg-success' : 'bg-warning'}" role="progressbar" style="width: ${itemOran}%"></div>
+                            </div>
+                        </td>
+                        <td class="text-end pe-3">${statusBadge}</td>
                     </tr>`;
                 });
                 html += '</tbody></table></div>';
-                html += `<div class="mt-3 text-end"><span class="badge bg-primary-subtle text-primary py-2 px-3" style="font-size: 13px;">Toplam ${list.length} Kayıt</span></div>`;
             }
             $('#modalDefterListBody').html(html);
-            
-            var modalEl = document.getElementById('modalOkunmayanDefterler');
-            var modal = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
-            modal.show();
         }
 
 
@@ -2468,9 +2618,9 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
 
             donemler.forEach(function (donem, idx) {
                 if (visibleCount === 0) return;
-                const isLast = idx === donemler.length - 1;
+                const isAlt = idx % 2 === 1;
                 const formatted = donem.substring(0, 4) + '/' + donem.substring(4);
-                html += `<th colspan="${visibleCount}" class="period-header ${isLast ? 'period-end' : ''}">${formatted}</th>`;
+                html += `<th colspan="${visibleCount}" class="period-header period-end ${isAlt ? 'do-month-alt' : ''}">${formatted}</th>`;
             });
             html += '</tr>';
 
@@ -2491,13 +2641,13 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             }
 
             donemler.forEach(function (donem, idx) {
-                const isLast = idx === donemler.length - 1;
+                const isAlt = idx % 2 === 1;
                 if (_visibleColumns.abone)
-                    html += `<th class="sub-header sub-header-abone sortable-header" data-sort-col="${donem}_abone">${filterBtn(donem + '_abone')} ABONE${sortIcon(donem + '_abone')}</th>`;
+                    html += `<th class="sub-header sub-header-abone sortable-header ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${donem}_abone">${filterBtn(donem + '_abone')} ABONE${sortIcon(donem + '_abone')}</th>`;
                 if (_visibleColumns.okunan)
-                    html += `<th class="sub-header sub-header-okunan sortable-header" data-sort-col="${donem}_okunan">${filterBtn(donem + '_okunan')} OKUNAN${sortIcon(donem + '_okunan')}</th>`;
+                    html += `<th class="sub-header sub-header-okunan sortable-header ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${donem}_okunan">${filterBtn(donem + '_okunan')} OKUNAN${sortIcon(donem + '_okunan')}</th>`;
                 if (_visibleColumns.oran)
-                    html += `<th class="sub-header sub-header-oran sortable-header ${isLast ? 'period-end' : ''}" data-sort-col="${donem}_oran">${filterBtn(donem + '_oran')} ORAN %${sortIcon(donem + '_oran')}</th>`;
+                    html += `<th class="sub-header sub-header-oran sortable-header period-end ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${donem}_oran">${filterBtn(donem + '_oran')} ORAN %${sortIcon(donem + '_oran')}</th>`;
             });
             html += '</tr>';
 
@@ -3284,9 +3434,9 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             html += `<th class="fix-col-5 og-sortable-header" data-sort-col="abone_sayisi">ABONE SAYISI${ogSortIcon('abone_sayisi')}</th>`;
 
             donemler.forEach(function (donem, idx) {
-                const isLast = idx === donemler.length - 1;
+                const isAlt = idx % 2 === 1;
                 const formatted = donem.substring(0, 4) + '/' + donem.substring(4);
-                html += `<th colspan="2" class="period-header ${isLast ? 'ogr-period-end' : ''}">${formatted}</th>`;
+                html += `<th colspan="2" class="period-header ogr-period-end ${isAlt ? 'do-month-alt' : ''}">${formatted}</th>`;
             });
             html += '</tr>';
 
@@ -3299,10 +3449,10 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             html += `<th class="fix-col-5"><input type="text" class="form-control column-search" id="og_search_abone_sayisi" data-col="abone_sayisi" value="${_ogSearchFilters.abone_sayisi || ''}" placeholder="ABONE"></th>`;
 
             donemler.forEach(function (donem, idx) {
-                const isLast = idx === donemler.length - 1;
+                const isAlt = idx % 2 === 1;
                 
                 // Okuma Tarihi (Search input inside header)
-                html += `<th class="sub-header og-sortable-header" data-sort-col="${donem}_tarih">
+                html += `<th class="sub-header og-sortable-header ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${donem}_tarih">
                     <input type="text" class="form-control column-search text-center mb-1 mx-auto" id="og_search_${donem}_tarih" style="height:22px; width:90%; padding:2px; font-size:10px;" data-col="${donem}_tarih" value="${_ogSearchFilters[donem + '_tarih'] || ''}" placeholder="Ara...">
                     <br>OKUMA TARİHİ${ogSortIcon(donem + '_tarih')}
                 </th>`;
@@ -3312,7 +3462,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 const isActive = _numericFilters[filterKey] && _numericFilters[filterKey].operator && _numericFilters[filterKey].value !== '';
                 const activeClass = isActive ? 'col-filter-active' : '';
                 const dot = isActive ? '<span class="filter-dot"></span>' : '';
-                html += `<th class="sub-header og-sortable-header ${isLast ? 'ogr-period-end' : ''}" data-sort-col="${filterKey}">
+                html += `<th class="sub-header og-sortable-header ogr-period-end ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${filterKey}">
                     <div class="d-flex align-items-center justify-content-center gap-1">
                         <button type="button" class="col-filter-btn ${activeClass}" data-filter-col="${filterKey}" title="Sayısal Filtrele">
                             <i class="bx bx-filter-alt"></i>
@@ -3369,10 +3519,11 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                     html += `<td class="fix-col-5" style="background-color: ${regionColor.bg};">${row.abone_sayisi ? row.abone_sayisi.toLocaleString('tr-TR') : '-'}</td>`;
 
                     donemler.forEach(function (donem, idx) {
-                        const isLast = idx === donemler.length - 1;
+                        const isAlt = idx % 2 === 1;
                         const di = row.donemler[donem] || { okuma_tarihi: '', fark: null };
+                        const altClass = isAlt ? 'do-month-alt' : '';
 
-                        html += `<td>${di.okuma_tarihi || ''}</td>`;
+                        html += `<td class="${altClass}">${di.okuma_tarihi || ''}</td>`;
 
                         let farkClass = '';
                         let farkText = '';
@@ -3380,7 +3531,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                             farkText = di.fark;
                             farkClass = di.fark >= 35 ? 'fark-danger' : 'fark-normal';
                         }
-                        html += `<td class="${farkClass} ${isLast ? 'ogr-period-end' : ''}">${farkText}</td>`;
+                        html += `<td class="${farkClass} ogr-period-end ${altClass}">${farkText}</td>`;
                     });
 
                     html += '</tr>';
@@ -3592,9 +3743,9 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             html += '<tr>';
             html += '<th class="fix-col-bolge" colspan="2">BÖLGE / TÜR</th>';
             donemler.forEach(function (donem, idx) {
-                const isLast = idx === donemler.length - 1;
+                const isAlt = idx % 2 === 1;
                 const formatted = String(donem).substring(0, 4) + '/' + String(donem).substring(4);
-                html += '<th colspan="4" class="period-header ' + (isLast ? 'do-period-end' : '') + '">' + formatted + '</th>';
+                html += `<th colspan="4" class="period-header do-period-end ${isAlt ? 'do-month-alt' : ''}">${formatted}</th>`;
             });
             html += '</tr>';
 
@@ -3605,7 +3756,7 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             html += '<th style="width: 30px; font-size: 8px; font-weight: 800; color: #94a3b8; background: #f8f9fa; vertical-align: middle; text-align: center;">TÜR</th>';
             
             donemler.forEach(function (donem, idx) {
-                const isLast = idx === donemler.length - 1;
+                const isAlt = idx % 2 === 1;
                 const fields = ['toplam', 'okunan', 'okunmayan', 'oran'];
                 const labels = ['TOPLAM', 'OKUNAN', 'KALAN', 'BAŞARI %'];
 
@@ -3615,10 +3766,11 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                     const activeClass = isActive ? 'col-filter-active' : '';
                     const dot = isActive ? '<span class="filter-dot"></span>' : '';
                     const isLastField = fIdx === 3;
+                    const altClass = isAlt ? 'do-month-alt' : '';
 
-                    html += '<th class="sub-header ' + (isLast && isLastField ? 'do-period-end' : '') + '">';
+                    html += `<th class="sub-header ${isLastField ? 'do-period-end' : ''} ${altClass}">`;
                     html += '<div class="d-flex align-items-center justify-content-center gap-1 mb-1">';
-                    html += '<button type="button" class="col-filter-btn ' + activeClass + '" data-do-filter-col="' + fKey + '" title="' + labels[fIdx] + ' Filtrele">';
+                    html += `<button type="button" class="col-filter-btn ${activeClass}" data-do-filter-col="${fKey}" title="${labels[fIdx]} Filtrele">`;
                     html += '<i class="bx bx-filter-alt" style="font-size:10px;"></i>';
                     html += '</button>' + dot;
                     html += '</div>';
@@ -3642,23 +3794,24 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 html += '<td style="vertical-align: middle; background: #fff; text-align: center; border-left: none;" title="Defter Bazlı Veriler"><i class="bx bx-book-open text-muted fs-5"></i></td>';
                 
                 donemler.forEach(function (donem, idx) {
-                    const isLast = idx === donemler.length - 1;
+                    const isAlt = idx % 2 === 1;
                     const d = String(donem);
                     const g = genel[d] || { toplam_defter: 0, okunan_defter: 0, okunmayan_defter: 0, oran: 0, sub_toplam: 0, sub_okunan: 0, sub_kalan: 0, sub_oran: 0 };
                     const oranClass = g.oran >= 80 ? 'do-oran-high' : (g.oran >= 50 ? 'do-oran-medium' : 'do-oran-low');
+                    const altClass = isAlt ? 'do-month-alt' : '';
 
-                    html += '<td><span class="do-badge-toplam clickable no-upgrade" data-type="toplam_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Toplam defterleri görün">' + g.toplam_defter + '</span></td>';
-                    html += '<td><span class="do-badge-okunan clickable no-upgrade" data-type="okunan_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Okunan defterleri görün">' + g.okunan_defter + '</span></td>';
+                    html += `<td class="${altClass}"><span class="do-badge-toplam clickable no-upgrade" data-type="toplam_detay" data-donem="${d}" data-bolge="__GENEL__" title="Tıklayın: Toplam defterleri görün">${g.toplam_defter}</span></td>`;
+                    html += `<td class="${altClass}"><span class="do-badge-okunan clickable no-upgrade" data-type="okunan_detay" data-donem="${d}" data-bolge="__GENEL__" title="Tıklayın: Okunan defterleri görün">${g.okunan_defter}</span></td>`;
 
                     if (g.okunmayan_defter > 0) {
-                        html += '<td><span class="do-badge-okunmayan clickable no-upgrade" data-type="okunmayan_detay" data-donem="' + d + '" data-bolge="__GENEL__" title="Tıklayın: Okunmayan defterleri görün">' + g.okunmayan_defter + '</span></td>';
+                        html += `<td class="${altClass}"><span class="do-badge-okunmayan clickable no-upgrade" data-type="okunmayan_detay" data-donem="${d}" data-bolge="__GENEL__" title="Tıklayın: Okunmayan defterleri görün">${g.okunmayan_defter}</span></td>`;
                     } else {
-                        html += '<td><span class="do-badge-okunmayan zero no-upgrade">' + g.okunmayan_defter + '</span></td>';
+                        html += `<td class="${altClass}"><span class="do-badge-okunmayan zero no-upgrade">${g.okunmayan_defter}</span></td>`;
                     }
 
-                    html += '<td class="do-oran-cell ' + (isLast ? 'do-period-end' : '') + '">';
-                    html += '<span class="do-badge-oran ' + oranClass + '" style="padding: 2px 8px; font-size: 13px;">' + g.oran + '%</span>';
-                    html += '</td>';
+                    html += `<td class="do-oran-cell do-period-end ${altClass}">`;
+                    html += `<span class="do-badge-oran ${oranClass}" style="padding: 2px 8px; font-size: 13px;">${g.oran}%</span>`;
+                    html += `</td>`;
                 });
                 html += '</tr>';
 
@@ -3667,16 +3820,17 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 html += '<td style="vertical-align: middle; text-align: center; border-left: none; background: rgba(var(--bs-primary-rgb), 0.01);" title="Abone Bazlı Veriler"><i class="bx bx-user text-muted fs-5"></i></td>';
                 
                 donemler.forEach(function (donem, idx) {
-                    const isLast = idx === donemler.length - 1;
+                    const isAlt = idx % 2 === 1;
                     const d = String(donem);
                     const g = genel[d] || { sub_toplam: 0, sub_okunan: 0, sub_kalan: 0, sub_oran: 0 };
+                    const altClass = isAlt ? 'do-month-alt' : '';
 
-                    html += '<td><span class="do-badge-sub do-badge-sub-toplam">' + (g.sub_toplam || 0).toLocaleString('tr-TR') + '</span></td>';
-                    html += '<td><span class="do-badge-sub do-badge-sub-okunan">' + (g.sub_okunan || 0).toLocaleString('tr-TR') + '</span></td>';
-                    html += '<td><span class="do-badge-sub do-badge-sub-kalan">' + (g.sub_kalan || 0).toLocaleString('tr-TR') + '</span></td>';
+                    html += `<td class="${altClass}"><span class="do-badge-sub do-badge-sub-toplam">${(g.sub_toplam || 0).toLocaleString('tr-TR')}</span></td>`;
+                    html += `<td class="${altClass}"><span class="do-badge-sub do-badge-sub-okunan">${(g.sub_okunan || 0).toLocaleString('tr-TR')}</span></td>`;
+                    html += `<td class="${altClass}"><span class="do-badge-sub do-badge-sub-kalan">${(g.sub_kalan || 0).toLocaleString('tr-TR')}</span></td>`;
                     
                     let subOranClassGenel = g.sub_oran >= 80 ? 'text-success' : (g.sub_oran >= 50 ? 'text-warning' : 'text-danger');
-                    html += '<td class="do-oran-cell ' + (isLast ? 'do-period-end' : '') + '"><span class="' + subOranClassGenel + ' fw-bold" style="font-size: 11.5px;">' + g.sub_oran + '%</span></td>';
+                    html += `<td class="do-oran-cell do-period-end ${altClass}"><span class="${subOranClassGenel} fw-bold" style="font-size: 11.5px;">${g.sub_oran}%</span></td>`;
                 });
                 html += '</tr>';
 
@@ -3693,23 +3847,24 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                     html += '<td style="vertical-align: middle; background: ' + regionColor.bg + '; text-align: center; border-left: none;" title="Defter Verileri"><i class="bx bx-book-open text-muted fs-6"></i></td>';
 
                     donemler.forEach(function (donem, idx) {
-                        const isLast = idx === donemler.length - 1;
+                        const isAlt = idx % 2 === 1;
                         const d = String(donem);
                         const bStat = (bolgeData[bName] && bolgeData[bName][d]) || { toplam_defter: 0, okunan_defter: 0, okunmayan_defter: 0, oran: 0 };
                         const oranClass = bStat.oran >= 80 ? 'do-oran-high' : (bStat.oran >= 50 ? 'do-oran-medium' : 'do-oran-low');
+                        const altClass = isAlt ? 'do-month-alt' : '';
 
-                        html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-toplam clickable no-upgrade" data-type="toplam_detay" data-donem="' + d + '" data-bolge="' + bName + '" title="Tıklayın: ' + bName + ' toplam defterleri">' + bStat.toplam_defter + '</span></td>';
-                        html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-okunan clickable no-upgrade" data-type="okunan_detay" data-donem="' + d + '" data-bolge="' + bName + '" title="Tıklayın: ' + bName + ' okunan defterleri">' + bStat.okunan_defter + '</span></td>';
+                        html += `<td style="background: ${regionColor.bg};" class="${altClass}"><span class="do-badge-toplam clickable no-upgrade" data-type="toplam_detay" data-donem="${d}" data-bolge="${bName}" title="Tıklayın: ${bName} toplam defterleri">${bStat.toplam_defter}</span></td>`;
+                        html += `<td style="background: ${regionColor.bg};" class="${altClass}"><span class="do-badge-okunan clickable no-upgrade" data-type="okunan_detay" data-donem="${d}" data-bolge="${bName}" title="Tıklayın: ${bName} okunan defterleri">${bStat.okunan_defter}</span></td>`;
 
                         if (bStat.okunmayan_defter > 0) {
-                            html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-okunmayan clickable no-upgrade" data-type="okunmayan_detay" data-donem="' + d + '" data-bolge="' + bName + '" title="Tıklayın: ' + bName + ' okunmayan defterleri">' + bStat.okunmayan_defter + '</span></td>';
+                            html += `<td style="background: ${regionColor.bg};" class="${altClass}"><span class="do-badge-okunmayan clickable no-upgrade" data-type="okunmayan_detay" data-donem="${d}" data-bolge="${bName}" title="Tıklayın: ${bName} okunmayan defterleri">${bStat.okunmayan_defter}</span></td>`;
                         } else {
-                            html += '<td style="background: ' + regionColor.bg + ';"><span class="do-badge-okunmayan zero no-upgrade">' + bStat.okunmayan_defter + '</span></td>';
+                            html += `<td style="background: ${regionColor.bg};" class="${altClass}"><span class="do-badge-okunmayan zero no-upgrade">${bStat.okunmayan_defter}</span></td>`;
                         }
 
-                        html += '<td class="do-oran-cell ' + (isLast ? 'do-period-end' : '') + '" style="background: ' + regionColor.bg + ';">';
-                        html += '<span class="do-badge-oran ' + oranClass + '" style="padding: 2px 8px; font-size: 13px;">' + bStat.oran + '%</span>';
-                        html += '</td>';
+                        html += `<td class="do-oran-cell do-period-end ${altClass}" style="background: ${regionColor.bg};">`;
+                        html += `<span class="do-badge-oran ${oranClass}" style="padding: 2px 8px; font-size: 13px;">${bStat.oran}%</span>`;
+                        html += `</td>`;
                     });
                     html += '</tr>';
 
@@ -3718,16 +3873,17 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                     html += '<td style="vertical-align: middle; text-align: center; border-left: none; background: rgba(var(--bs-primary-rgb), 0.005);" title="Abone Verileri"><i class="bx bx-user text-muted fs-6"></i></td>';
                     
                     donemler.forEach(function (donem, idx) {
-                        const isLast = idx === donemler.length - 1;
+                        const isAlt = idx % 2 === 1;
                         const d = String(donem);
                         const bStat = (bolgeData[bName] && bolgeData[bName][d]) || { sub_toplam: 0, sub_okunan: 0, sub_kalan: 0, sub_oran: 0 };
+                        const altClass = isAlt ? 'do-month-alt' : '';
 
-                        html += '<td><span class="do-badge-sub do-badge-sub-toplam">' + (bStat.sub_toplam || 0).toLocaleString('tr-TR') + '</span></td>';
-                        html += '<td><span class="do-badge-sub do-badge-sub-okunan">' + (bStat.sub_okunan || 0).toLocaleString('tr-TR') + '</span></td>';
-                        html += '<td><span class="do-badge-sub do-badge-sub-kalan">' + (bStat.sub_kalan || 0).toLocaleString('tr-TR') + '</span></td>';
+                        html += `<td class="${altClass}"><span class="do-badge-sub do-badge-sub-toplam">${(bStat.sub_toplam || 0).toLocaleString('tr-TR')}</span></td>`;
+                        html += `<td class="${altClass}"><span class="do-badge-sub do-badge-sub-okunan">${(bStat.sub_okunan || 0).toLocaleString('tr-TR')}</span></td>`;
+                        html += `<td class="${altClass}"><span class="do-badge-sub do-badge-sub-kalan">${(bStat.sub_kalan || 0).toLocaleString('tr-TR')}</span></td>`;
                         
                         let subOranClass = bStat.sub_oran >= 80 ? 'text-success' : (bStat.sub_oran >= 50 ? 'text-warning' : 'text-danger');
-                        html += '<td class="do-oran-cell ' + (isLast ? 'do-period-end' : '') + '"><span class="' + subOranClass + ' fw-bold" style="font-size: 11.5px;">' + bStat.sub_oran + '%</span></td>';
+                        html += `<td class="do-oran-cell do-period-end ${altClass}"><span class="${subOranClass} fw-bold" style="font-size: 11.5px;">${bStat.sub_oran}%</span></td>`;
                     });
                     html += '</tr>';
                 });
@@ -3765,6 +3921,172 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
         });
 
         // 2. Sayisal Filtre Popu'unu Ac - (Global handler handles this now)
+        
+        // ======= DEFTER DETAY MODALI (Sıralama Destekli) =======
+        let _modalDataList = [];
+        let _modalDataType = '';
+        let _modalColTitle = '';
+        let _modalBadgeLabel = '';
+        let _modalSortCol = 'bolge';
+        let _modalSortDir = 'asc';
+
+        function renderDefterModalTable() {
+            const type = _modalDataType;
+            
+            let defterList = [..._modalDataList];
+            
+            // Stats for the top boxes
+            let totalBooks = defterList.length;
+            let totalAbone = 0;
+            let totalRead = 0;
+            let totalUnread = 0;
+
+            defterList.forEach(d => {
+                totalAbone += (parseInt(d.abone_sayisi) || 0);
+                totalRead += (parseInt(d.okunan) || 0);
+                totalUnread += (parseInt(d.okunmayan) || 0);
+            });
+
+            $('#modalStatDefterCount').text(totalBooks.toLocaleString('tr-TR'));
+            $('#modalStatReadAbone').text(totalRead.toLocaleString('tr-TR'));
+            $('#modalStatUnreadAbone').text(totalUnread.toLocaleString('tr-TR'));
+
+            // Group data
+            const grouped = {};
+            defterList.forEach(function (d) {
+                const b = d.bolge || 'TANIMSIZ';
+                if (!grouped[b]) grouped[b] = { items: [], sumToplam: 0, sumOkunan: 0, sumKalan: 0 };
+                
+                grouped[b].items.push(d);
+                grouped[b].sumToplam += (parseInt(d.abone_sayisi) || 0);
+                grouped[b].sumOkunan += (parseInt(d.okunan) || 0);
+                grouped[b].sumKalan += (parseInt(d.okunmayan) || 0);
+            });
+
+            // Sort groups
+            let groupedKeys = Object.keys(grouped);
+            groupedKeys.sort((a, b) => {
+                let v1, v2;
+                if (_modalSortCol === 'bolge') {
+                    v1 = a; v2 = b;
+                } else if (_modalSortCol === 'abone' || _modalSortCol === 'toplam') {
+                    v1 = grouped[a].sumToplam; v2 = grouped[b].sumToplam;
+                } else if (_modalSortCol === 'okunan') {
+                    v1 = grouped[a].sumOkunan; v2 = grouped[b].sumOkunan;
+                } else {
+                    v1 = a; v2 = b;
+                }
+                return _modalSortDir === 'asc' ? v1.toString().localeCompare(v2, 'tr') : v2.toString().localeCompare(v1, 'tr');
+            });
+
+            // Sort items in groups
+            groupedKeys.forEach(b => {
+                grouped[b].items.sort((a, b) => {
+                    let v1, v2;
+                    if (_modalSortCol === 'defter') {
+                        v1 = a.defter; v2 = b.defter;
+                    } else if (_modalSortCol === 'mahalle') {
+                        v1 = a.mahalle || ''; v2 = b.mahalle || '';
+                    } else if (_modalSortCol === 'abone' || _modalSortCol === 'toplam') {
+                        v1 = (parseInt(a.abone_sayisi) || 0); v2 = (parseInt(b.abone_sayisi) || 0);
+                    } else if (_modalSortCol === 'okunan') {
+                        v1 = (parseInt(a.okunan) || 0); v2 = (parseInt(b.okunan) || 0);
+                    } else if (_modalSortCol === 'kalan') {
+                        v1 = (parseInt(a.okunmayan) || 0); v2 = (parseInt(b.okunmayan) || 0);
+                    } else {
+                        v1 = a.defter; v2 = b.defter;
+                    }
+
+                    if (typeof v1 === 'string') {
+                        return _modalSortDir === 'asc' ? v1.localeCompare(v2, 'tr') : v2.localeCompare(v1, 'tr');
+                    } else {
+                        return _modalSortDir === 'asc' ? v1 - v2 : v2 - v1;
+                    }
+                });
+            });
+
+            let modalHtml = '';
+            modalHtml += '<div class="table-responsive bg-white border rounded-3 shadow-sm mt-3" style="max-height: 500px; overflow: auto;">';
+            modalHtml += '<table class="table table-sm table-hover mb-0 align-middle" id="okunmayanDefterTable">';
+            modalHtml += '<thead class="bg-light sticky-top"><tr>';
+            modalHtml += '<th class="ps-3" style="width: 50px;">#</th>';
+            
+            const cols = [
+                { id: 'bolge', label: 'BÖLGE' },
+                { id: 'defter', label: 'DEFTER' },
+                { id: 'mahalle', label: 'MAHALLE' },
+                { id: 'toplam', label: 'TOPLAM ABONE' },
+                { id: 'okunan', label: 'OKUNAN' },
+                { id: 'kalan', label: 'KALAN' },
+                { id: 'oran', label: 'ORAN %' }
+            ];
+
+            cols.forEach(c => {
+                const isActive = _modalSortCol === c.id;
+                const icon = isActive ? (_modalSortDir === 'asc' ? 'bx-sort-a-z' : 'bx-sort-z-a') : 'bx-hash';
+                modalHtml += `<th class="sortable-header ${isActive ? 'active' : ''} ${c.id.includes('toplam')||c.id.includes('okunan')||c.id.includes('kalan')||c.id.includes('oran') ? 'text-end' : ''}" data-sort="${c.id}">${c.label} <i class="bx ${icon} sort-icon"></i></th>`;
+            });
+            modalHtml += '<th class="text-end pe-3">DURUM</th></tr></thead><tbody>';
+
+            let sira = 0;
+            groupedKeys.forEach(function (bName) {
+                const group = grouped[bName];
+                const items = group.items;
+
+                // Bölge header row
+                modalHtml += `<tr class="bg-primary-subtle" style="position: sticky; top: 31px; z-index: 10;">
+                    <td colspan="4" class="ps-3 fw-bold py-2"><i class="bx bx-map me-1 text-primary"></i>${bName} <span class="badge bg-white text-dark border ms-2 fw-normal">${items.length} Defter</span></td>
+                    <td class="text-end fw-bold py-2">${group.sumToplam.toLocaleString('tr-TR')}</td>
+                    <td class="text-end fw-bold text-success py-2">${group.sumOkunan.toLocaleString('tr-TR')}</td>
+                    <td class="text-end fw-bold text-danger py-2">${group.sumKalan.toLocaleString('tr-TR')}</td>
+                    <td colspan="2" class="text-end pe-3 py-2">
+                        <span class="badge bg-white text-primary border">${(group.sumToplam > 0 ? (group.sumOkunan/group.sumToplam*100).toFixed(1) : 0)}%</span>
+                    </td>
+                </tr>`;
+
+                items.forEach(function (d) {
+                    sira++;
+                    const itemTotal = (parseInt(d.abone_sayisi) || 0);
+                    const itemRead = (parseInt(d.okunan) || 0);
+                    const itemKalan = (parseInt(d.okunmayan) || 0);
+                    const itemOran = itemTotal > 0 ? ((itemRead/itemTotal)*100).toFixed(1) : '0.0';
+                    const isOkunan = itemRead > 0;
+                    
+                    const statusBadge = isOkunan ? 
+                        '<span class="badge bg-success-subtle text-success px-2 py-1"><i class="bx bx-check me-1"></i>Okundu</span>' : 
+                        '<span class="badge bg-danger-subtle text-danger px-2 py-1"><i class="bx bx-x me-1"></i>Bekliyor</span>';
+
+                    modalHtml += `<tr>
+                        <td class="text-muted small ps-3">${sira}</td>
+                        <td class="text-muted small">${d.bolge || ''}</td>
+                        <td><span class="badge bg-primary-subtle text-primary fw-bold" style="font-size: 0.85rem;">${d.defter}</span></td>
+                        <td class="small">${d.mahalle || ''}</td>
+                        <td class="text-end fw-semibold">${itemTotal.toLocaleString('tr-TR')}</td>
+                        <td class="text-end text-success fw-bold">${itemRead.toLocaleString('tr-TR')}</td>
+                        <td class="text-end text-danger fw-bold">${itemKalan.toLocaleString('tr-TR')}</td>
+                        <td class="text-end text-dark fw-bold">${itemOran}%</td>
+                        <td class="text-end pe-3">${statusBadge}</td>
+                    </tr>`;
+                });
+            });
+
+            modalHtml += '</tbody></table></div>';
+            $('#modalDefterListBody').html(modalHtml);
+        }
+
+        // Modal Header Click Listener for Sorting
+        $(document).on('click', '#modalDefterListBody .sortable-header', function() {
+            const col = $(this).data('sort');
+            if (_modalSortCol === col) {
+                _modalSortDir = (_modalSortDir === 'asc' ? 'desc' : 'asc');
+            } else {
+                _modalSortCol = col;
+                _modalSortDir = 'asc';
+                // Değer bazlılarda desc başlasın daha mantıklı (büyükten küçüğe)
+                if (col === 'abone') _modalSortDir = 'desc';
+            }
+            renderDefterModalTable();
+        });
 
         // ======= BADGE CLICK HANDLER (Dışarıda, tek sefer bağlanır) =======
         $(document).on('click', '.do-badge-toplam.clickable, .do-badge-okunan.clickable, .do-badge-okunmayan.clickable', function (e) {
@@ -3819,14 +4141,9 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
             $('#modalOkunmayanDefterler .modal-header').css('background', titleBg);
 
             // Modal içeriğini oluştur
-            let modalHtml = '';
-
             if (defterList.length === 0) {
-                modalHtml = '<div class="text-center p-4 text-muted"><i class="bx bx-info-circle fs-1 text-info d-block mb-2"></i>Bu dönem için veri bulunmuyor.</div>';
+                $('#modalDefterListBody').html('<div class="text-center p-4 text-muted"><i class="bx bx-info-circle fs-1 text-info d-block mb-2"></i>Bu dönem için veri bulunmuyor.</div>');
             } else {
-                // Bölge bazlı grupla ve toplamları hesapla
-                const grouped = {};
-                let grandTotalAbone = 0;
                 let badgeLabel = 'Abone';
                 let colTitle = 'Abone Sayısı';
 
@@ -3838,76 +4155,15 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                     colTitle = 'Okunmayan Sayısı';
                 }
 
-                defterList.forEach(function (d) {
-                    const b = d.bolge || 'TANIMSIZ';
-                    if (!grouped[b]) grouped[b] = [];
-                    grouped[b].push(d);
-                    
-                    if (type === 'okunan_detay') {
-                        grandTotalAbone += parseInt(d.okunan) || 0;
-                    } else if (type === 'okunmayan_detay') {
-                        grandTotalAbone += parseInt(d.okunmayan) || 0;
-                    } else {
-                        grandTotalAbone += parseInt(d.abone_sayisi) || 0;
-                    }
-                });
+                _modalDataList = defterList;
+                _modalDataType = type;
+                _modalColTitle = colTitle;
+                _modalBadgeLabel = badgeLabel;
+                _modalSortCol = 'bolge';
+                _modalSortDir = 'asc';
 
-                modalHtml += '<div class="d-flex align-items-center flex-wrap gap-2 mb-3">';
-                modalHtml += '<span class="badge bg-primary-subtle text-primary" style="font-size: 13px; padding: 8px 16px; border-radius: 8px;"><i class="bx bx-list-ul me-1"></i>Toplam ' + defterList.length + ' defter</span>';
-                modalHtml += '<span class="badge bg-danger-subtle text-danger" style="font-size: 13px; padding: 8px 16px; border-radius: 8px;"><i class="bx bx-user me-1"></i>' + grandTotalAbone.toLocaleString('tr-TR') + ' ' + badgeLabel + '</span>';
-                modalHtml += '<span class="badge bg-secondary-subtle text-secondary" style="font-size: 12px; padding: 6px 12px; border-radius: 8px;">' + Object.keys(grouped).length + ' bölge</span>';
-                modalHtml += '</div>';
-
-                modalHtml += '<div class="table-responsive" style="max-height: 450px; overflow: auto;">';
-                modalHtml += '<table class="table table-sm table-bordered mb-0" id="okunmayanDefterTable">';
-                modalHtml += '<thead><tr>';
-                modalHtml += '<th style="width:40px;">#</th>';
-                modalHtml += '<th>Bölge</th>';
-                modalHtml += '<th>Defter</th>';
-                modalHtml += '<th>Mahalle</th>';
-                modalHtml += '<th>' + colTitle + '</th>';
-                modalHtml += '</tr></thead>';
-                modalHtml += '<tbody>';
-
-                let sira = 0;
-                const groupedKeys = Object.keys(grouped).sort();
-                groupedKeys.forEach(function (bName) {
-                    const items = grouped[bName];
-                    let regionAboneSum = 0;
-                    items.forEach(function (d) { 
-                        if (type === 'okunan_detay') {
-                            regionAboneSum += parseInt(d.okunan) || 0; 
-                        } else if (type === 'okunmayan_detay') {
-                            regionAboneSum += parseInt(d.okunmayan) || 0;
-                        } else {
-                            regionAboneSum += parseInt(d.abone_sayisi) || 0; 
-                        }
-                    });
-
-                    // Bölge başlık satırı
-                    modalHtml += '<tr style="background: rgba(var(--bs-primary-rgb), 0.06);">';
-                    modalHtml += '<td colspan="4" class="fw-bold text-start" style="font-size: 12px;"><i class="bx bx-map me-1 text-primary"></i>' + bName + ' <span class="badge bg-white text-dark border ms-2" style="font-size: 10px;">' + items.length + ' defter</span></td>';
-                    modalHtml += '<td class="text-end fw-bold" style="font-size: 12px;">' + regionAboneSum.toLocaleString('tr-TR') + '</td>';
-                    modalHtml += '</tr>';
-
-                    items.forEach(function (d) {
-                        sira++;
-                        const displayVal = (type === 'okunan_detay') ? (parseInt(d.okunan) || 0) : 
-                                           (type === 'okunmayan_detay' ? (parseInt(d.okunmayan) || 0) : (parseInt(d.abone_sayisi) || 0));
-                        modalHtml += '<tr>';
-                        modalHtml += '<td class="text-muted">' + sira + '</td>';
-                        modalHtml += '<td class="fw-medium">' + (d.bolge || '-') + '</td>';
-                        modalHtml += '<td class="fw-bold">' + d.defter + '</td>';
-                        modalHtml += '<td>' + (d.mahalle || '-') + '</td>';
-                        modalHtml += '<td class="fw-semibold">' + displayVal.toLocaleString('tr-TR') + '</td>';
-                        modalHtml += '</tr>';
-                    });
-                });
-
-                modalHtml += '</tbody></table></div>';
+                renderDefterModalTable();
             }
-
-            $('#modalDefterListBody').html(modalHtml);
 
             // Modal'ı aç (mevcut instance varsa onu kullan)
             var modalEl = document.getElementById('modalOkunmayanDefterler');
@@ -4100,6 +4356,11 @@ $ilceTipiOptions = ['' => 'Seçiniz...', 'Uzak İlçeler' => 'Uzak İlçeler', '
                 _defterOzetChartInstances.push(chart);
             }
         }
+
+        // Sekme geçişleri sırasında accordion'un kapanmasını engelle
+        $('#defterRaporTabs button').on('click', function(e) {
+            e.stopPropagation();
+        });
 
         // ======= AYARLARI KAYDET =======
         $('#btnSaveDefterLimit').on('click', function () {

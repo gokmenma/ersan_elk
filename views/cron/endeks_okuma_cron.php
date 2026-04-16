@@ -330,6 +330,12 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
             $okuyucuAdi = trim($veri['OKUYUCUADI'] ?? '');
             $bolge = trim($veri['BOLGE'] ?? '');
             $defter = trim($veri['DEFTER'] ?? '');
+            // BELDELER mapping: Certain books are always BELDELER in our system
+            $beldelerDefterList = ['939', '944', '946', '950', '951', '952', '986', '1011', '1039', '1060', '1201', '1202', '1203', '1204', '1205', '1250', '1251', '1252', '1253', '1254', '1255', '1256', '1258'];
+            if (in_array(ltrim($defter, '0'), $beldelerDefterList)) {
+                $bolge = 'BELDELER';
+            }
+
             $okuyucuNo = trim($veri['OKUYUCUNO'] ?? '');
             $sayacDurum = trim($veri['SAYACDURUM'] ?? '');
 

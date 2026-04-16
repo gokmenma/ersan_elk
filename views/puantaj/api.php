@@ -2343,6 +2343,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $okuyucuAdi = trim($veri['OKUYUCUADI'] ?? '');
             $bolge = trim($veri['BOLGE'] ?? '');
             $defter = trim($veri['DEFTER'] ?? '');
+
+            // BELDELER mapping: Certain books are always BELDELER in our system
+            $beldelerDefterList = ['939', '944', '946', '950', '951', '952', '986', '1011', '1039', '1060', '1201', '1202', '1203', '1204', '1205', '1250', '1251', '1252', '1253', '1254', '1255', '1256', '1258'];
+            if (in_array(ltrim($defter, '0'), $beldelerDefterList)) {
+                $bolge = 'BELDELER';
+            }
+
             $okuyucuNo = trim($veri['OKUYUCUNO'] ?? '');
             $sayacDurum = trim($veri['SAYACDURUM'] ?? '');
 
@@ -2618,10 +2625,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                     baslangic_tarihi, bitis_tarihi
              FROM tanimlamalar
              WHERE firma_id = ? AND grup = 'defter_kodu' AND silinme_tarihi IS NULL
-               AND (bitis_tarihi IS NULL OR bitis_tarihi >= ?)
+               AND bitis_tarihi IS NULL
              ORDER BY baslangic_tarihi DESC"
         );
-        $defterTanimStmt->execute([$firmaId, $startDateSql]);
+        $defterTanimStmt->execute([$firmaId]);
         $defterTanimRaw = $defterTanimStmt->fetchAll(PDO::FETCH_OBJ);
 
         $defterTanimListMap = [];
@@ -2682,13 +2689,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             $key = mb_strtoupper($bolgeName . '|' . $defter, 'UTF-8');
             
             if (!isset($organized[$key])) {
-                $organized[$key] = [
-                    'bolge' => $bolgeName,
-                    'defter' => $defter,
-                    'mahalle' => '', 
-                    'abone_sayisi' => 0,
-                    'donemler' => []
-                ];
+                continue;
             }
 
             // Bu dönem için aktif olan tanımı bul (Son okuma tarihine göre)
@@ -2876,10 +2877,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                     baslangic_tarihi, bitis_tarihi
              FROM tanimlamalar
              WHERE firma_id = ? AND grup = 'defter_kodu' AND silinme_tarihi IS NULL
-               AND (bitis_tarihi IS NULL OR bitis_tarihi >= ?)
+               AND bitis_tarihi IS NULL
              ORDER BY baslangic_tarihi DESC"
         );
-        $defterTanimStmt->execute([$firmaId, $startDateSql]);
+        $defterTanimStmt->execute([$firmaId]);
         $defterTanimRaw = $defterTanimStmt->fetchAll(PDO::FETCH_OBJ);
 
         // Defter tanımlarını key-based map'e dönüştür
@@ -2963,14 +2964,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
             // Eğer bu defter tanımlarda yoksa, allDefters listesine ekle ki istatistiklere girsin
             if (!isset($allDefters[$key])) {
-                $allDefters[$key] = [
-                    'bolge' => $bolgeName,
-                    'defter' => $defterCode,
-                    'mahalle' => '',
-                    'abone_sayisi' => 0,
-                    'baslangic' => '1900-01-01',
-                    'bitis' => '2099-12-31'
-                ];
+                continue;
             }
         }
 
@@ -3233,10 +3227,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                     baslangic_tarihi, bitis_tarihi
              FROM tanimlamalar
              WHERE firma_id = ? AND grup = 'defter_kodu' AND silinme_tarihi IS NULL
-               AND (bitis_tarihi IS NULL OR bitis_tarihi >= ?)
+               AND bitis_tarihi IS NULL
              ORDER BY baslangic_tarihi DESC"
         );
-        $defterTanimStmt->execute([$firmaId, $startDateSql]);
+        $defterTanimStmt->execute([$firmaId]);
         $defterTanimRaw = $defterTanimStmt->fetchAll(PDO::FETCH_OBJ);
 
         // Defter kodu → [tanım listesi] map'i oluştur
@@ -3301,14 +3295,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             $key = mb_strtoupper($bolgeName . '|' . $defter, 'UTF-8');
 
             if (!isset($organized[$key])) {
-                $organized[$key] = [
-                    'bolge' => $bolgeName,
-                    'defter' => $defter,
-                    'ilce' => $bolgeName, 
-                    'mahalle' => '',
-                    'abone_sayisi' => 0,
-                    'donemler' => []
-                ];
+                continue;
             }
             
             // Bu okuma tarihi için aktif olan tanımı bul
@@ -3594,6 +3581,14 @@ function handleOnlineSorgu($sorguTuru) {
                 $isEmriTipi = trim($veri['ISEMRITIPI'] ?? '');
                 $isEmriSonucu = trim($veri['SONUC'] ?? '');
                 if (empty($isEmriTipi)) continue;
+
+                $itemBolge = trim($veri['BOLGE'] ?? '');
+                $itemDefter = trim($veri['DEFTER'] ?? '');
+                $beldelerDefterList = ['939', '944', '946', '950', '951', '952', '986', '1011', '1039', '1060', '1201', '1202', '1203', '1204', '1205', '1250', '1251', '1252', '1253', '1254', '1255', '1256', '1258'];
+                if (in_array(ltrim($itemDefter, '0'), $beldelerDefterList)) {
+                    $itemBolge = 'BELDELER';
+                }
+
                 $existingTur = $Tanimlamalar->isEmriSonucu($isEmriTipi, $isEmriSonucu);
                 $isEmriSonucuId = $existingTur ? $existingTur->id : 0;
                 if (!$isEmriSonucuId && (!empty($isEmriTipi) || !empty($isEmriSonucu))) {
@@ -3603,13 +3598,33 @@ function handleOnlineSorgu($sorguTuru) {
                 $islemId = md5($normDate .'|'. $ekipKoduStr .'|'. $isEmriTipi .'|'. $isEmriSonucu .'|'. ($veri['ISEMRI_NO'] ?? ''));
                 $insertBatch[] = [$islemId, $personelId, $defId, $firmaId, $isEmriSonucuId, $isEmriTipi, $ekipKoduStr, $isEmriSonucu, $veri['SONUCLANMIS'] ?? 0, $veri['ACIK'] ?? 0, $normDate];
             } elseif ($sorguTuru === 'ENDEKS_OKUMA') {
-                $islemId = md5($normDate .'|'. $ekipKoduStr .'|'. ($veri['DEFTER'] ?? '') .'|'. ($veri['BOLGE'] ?? ''));
+                $itemBolge = trim($veri['BOLGE'] ?? '');
+                $itemDefter = trim($veri['DEFTER'] ?? '');
+                $okuyucuNo = trim($veri['OKUYUCUNO'] ?? '');
+                $sayacDurum = trim($veri['SAYACDURUM'] ?? '');
+                
+                // BELDELER mapping: Certain books in ONİKİŞUBAT are actually BELDELER
+                $beldelerDefterList = ['939', '944', '946', '950', '951', '952', '986', '1011', '1039', '1060', '1201', '1202', '1203', '1204', '1205', '1250', '1251', '1252', '1253', '1254', '1255', '1256', '1258'];
+                if (in_array(ltrim($itemDefter, '0'), $beldelerDefterList)) {
+                    $itemBolge = 'BELDELER';
+                }
+
+                $islemId = md5($normDate .'|'. $itemBolge .'|'. $itemDefter .'|'. $okuyucuNo .'|'. $sayacDurum);
                 $okunan = (int)($veri['ABONE_SAYISI'] ?? 0);
                 if ($okunan === 0) continue;
-                $insertBatch[] = [$islemId, $firmaId, $personelId, $defId, $normDate, $veri['BOLGE'] ?? '', $veri['DEFTER'] ?? '', $okunan, $veri['SAYACDURUM'] ?? '', $veri['OKUYUCUADI'] ?? '', date('Y-m-d H:i:s')];
+                $insertBatch[] = [$islemId, $firmaId, $personelId, $defId, $normDate, $itemBolge, $itemDefter, $okunan, $sayacDurum, $veri['OKUYUCUADI'] ?? '', date('Y-m-d H:i:s')];
             } elseif ($sorguTuru === 'SAYAC_DEGISIM') {
+                $itemBolge = trim($veri['BOLGE'] ?? '');
+                $itemDefter = trim($veri['DEFTER'] ?? '');
+                
+                // BELDELER mapping
+                $beldelerDefterList = ['939', '944', '946', '950', '951', '952', '986', '1011', '1039', '1060', '1201', '1202', '1203', '1204', '1205', '1250', '1251', '1252', '1253', '1254', '1255', '1256', '1258'];
+                if (in_array(ltrim($itemDefter, '0'), $beldelerDefterList)) {
+                    $itemBolge = 'BELDELER';
+                }
+
                 $islemId = md5($normDate .'|'. $ekipKoduStr .'|'. ($veri['ISEMRI_NO'] ?? ''));
-                $insertBatch[] = [$islemId, $firmaId, $personelId, 1, $defId, $veri['ISEMRI_NO'] ?? '', $veri['ABONE_NO'] ?? '', $veri['ISEMRI_SEBEP'] ?? '', $ekipKoduStr, $veri['MEMUR'] ?? '', '', $veri['BOLGE'] ?? '', $veri['ISEMRI_SONUCU'] ?? '', '', $veri['TAKILAN_SAYACNO'] ?? '', 0, date('Y-m-d H:i:s'), $normDate];
+                $insertBatch[] = [$islemId, $firmaId, $personelId, 1, $defId, $veri['ISEMRI_NO'] ?? '', $veri['ABONE_NO'] ?? '', $veri['ISEMRI_SEBEP'] ?? '', $ekipKoduStr, $veri['MEMUR'] ?? '', '', $itemBolge, $veri['ISEMRI_SONUCU'] ?? '', '', $veri['TAKILAN_SAYACNO'] ?? '', 0, date('Y-m-d H:i:s'), $normDate];
             }
             $yeniKayit++;
         }
