@@ -737,13 +737,75 @@ class TanimlamalarModel extends Model
      */
     public function getServerSideData($grup, $params)
     {
-        $draw = $params['draw'];
-        $start = $params['start'];
-        $length = $params['length'];
-        $searchValue = $params['search']['value'] ?? '';
+        $draw = $params['draw'] ?? 0;
+        $start = $params['start'] ?? 0;
+        $length = $params['length'] ?? 25;
         $orderColumn = $params['order'][0]['column'] ?? 0;
         $orderDir = $params['order'][0]['dir'] ?? 'asc';
-        $columns = $params['columns'];
+        $columns = $params['columns'] ?? [];
+        list($where, $sqlParams) = $this->buildWhereClause($grup, $params);
+
+        // Toplam kayıt sayısı (filtresiz)
+        $totalSql = "SELECT COUNT(*) FROM {$this->table} WHERE grup = ? AND firma_id = ? AND silinme_tarihi IS NULL";
+        $totalStmt = $this->db->prepare($totalSql);
+        $totalStmt->execute([$grup, $_SESSION['firma_id']]);
+        $totalData = $totalStmt->fetchColumn();
+
+        // Filtrelenmiş kayıt sayısı
+        $filterSql = "SELECT COUNT(*) FROM {$this->table} $where";
+        $filterStmt = $this->db->prepare($filterSql);
+        $filterStmt->execute($sqlParams);
+        $totalFiltered = $filterStmt->fetchColumn();
+
+        // Sıralama
+        $orderColName = $columns[$orderColumn]['data'] ?? 'id';
+        // Güvenlik için sütun adını kontrol et
+        $allowedColumns = ['id', 'tur_adi', 'defter_bolge', 'defter_mahalle', 'defter_abone_sayisi', 'baslangic_tarihi', 'bitis_tarihi', 'aciklama'];
+        if (!in_array($orderColName, $allowedColumns)) {
+            $orderColName = 'id';
+        }
+
+        // Verileri getir
+        $dataSql = "SELECT * FROM {$this->table} $where ORDER BY $orderColName $orderDir LIMIT $start, $length";
+        $dataStmt = $this->db->prepare($dataSql);
+        $dataStmt->execute($sqlParams);
+        $dataRows = $dataStmt->fetchAll(PDO::FETCH_OBJ);
+
+        return [
+            "draw" => intval($draw),
+            "recordsTotal" => intval($totalData),
+            "recordsFiltered" => intval($totalFiltered),
+            "data" => $dataRows
+        ];
+    }
+
+    /**
+     * Filtrelenmiş verilerin bölge bazlı özetini getirir
+     */
+    public function getFilteredAggregates($grup, $params)
+    {
+        list($where, $sqlParams) = $this->buildWhereClause($grup, $params);
+
+        $sql = "SELECT 
+                    defter_bolge AS bolge, 
+                    COUNT(id) AS defter_sayisi, 
+                    SUM(COALESCE(defter_abone_sayisi, 0)) AS abone_sayisi
+                FROM {$this->table} 
+                $where
+                GROUP BY defter_bolge
+                ORDER BY defter_bolge ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($sqlParams);
+        return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * DataTable parametrelerine göre WHERE cümlesini oluşturur
+     */
+    protected function buildWhereClause($grup, $params)
+    {
+        $searchValue = $params['search']['value'] ?? '';
+        $columns = $params['columns'] ?? [];
 
         $where = "WHERE grup = :grup AND firma_id = :firma_id AND silinme_tarihi IS NULL";
         $sqlParams = [
@@ -763,7 +825,7 @@ class TanimlamalarModel extends Model
         foreach ($columns as $index => $column) {
             $searchVal = trim((string)($column['search']['value'] ?? ''));
             if (!empty($searchVal)) {
-                $colName = $column['data'];
+                $colName = $column['data'] ?? '';
                 // Güvenlik için sütun adını doğrula
                 $allowedSearchColumns = ['id', 'tur_adi', 'defter_bolge', 'defter_mahalle', 'defter_abone_sayisi', 'baslangic_tarihi', 'bitis_tarihi', 'aciklama'];
                 if (in_array($colName, $allowedSearchColumns)) {
@@ -859,38 +921,6 @@ class TanimlamalarModel extends Model
                 }
             }
         }
-
-        // Toplam kayıt sayısı (filtresiz)
-        $totalSql = "SELECT COUNT(*) FROM {$this->table} WHERE grup = ? AND firma_id = ? AND silinme_tarihi IS NULL";
-        $totalStmt = $this->db->prepare($totalSql);
-        $totalStmt->execute([$grup, $_SESSION['firma_id']]);
-        $totalData = $totalStmt->fetchColumn();
-
-        // Filtrelenmiş kayıt sayısı
-        $filterSql = "SELECT COUNT(*) FROM {$this->table} $where";
-        $filterStmt = $this->db->prepare($filterSql);
-        $filterStmt->execute($sqlParams);
-        $totalFiltered = $filterStmt->fetchColumn();
-
-        // Sıralama
-        $orderColName = $columns[$orderColumn]['data'] ?? 'id';
-        // Güvenlik için sütun adını kontrol et
-        $allowedColumns = ['id', 'tur_adi', 'defter_bolge', 'defter_mahalle', 'defter_abone_sayisi', 'baslangic_tarihi', 'bitis_tarihi', 'aciklama'];
-        if (!in_array($orderColName, $allowedColumns)) {
-            $orderColName = 'id';
-        }
-
-        // Verileri getir
-        $dataSql = "SELECT * FROM {$this->table} $where ORDER BY $orderColName $orderDir LIMIT $start, $length";
-        $dataStmt = $this->db->prepare($dataSql);
-        $dataStmt->execute($sqlParams);
-        $dataRows = $dataStmt->fetchAll(PDO::FETCH_OBJ);
-
-        return [
-            "draw" => intval($draw),
-            "recordsTotal" => intval($totalData),
-            "recordsFiltered" => intval($totalFiltered),
-            "data" => $dataRows
-        ];
+        return [$where, $sqlParams];
     }
 }

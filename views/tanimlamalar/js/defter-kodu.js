@@ -23,32 +23,76 @@ $(document).ready(function () {
   let datatableOptions =
     typeof getDatatableOptions === "function" ? getDatatableOptions() : {};
 
-  datatableOptions = {
-    ...datatableOptions,
-    processing: true,
-    serverSide: true,
-    ajax: {
-      url: url,
-      type: "POST",
-      data: function (d) {
-        d.action = "defter-kodu-liste";
-      },
-    },
-    columns: [
-      { data: "id", className: "text-center" },
-      { data: "tur_adi", className: "text-center" },
-      { data: "defter_bolge", className: "text-center" },
-      { data: "defter_mahalle", className: "text-center" },
-      { data: "defter_abone_sayisi", className: "text-center" },
-      { data: "baslangic_tarihi", className: "text-center" },
-      { data: "bitis_tarihi", className: "text-center" },
-      { data: "aciklama", className: "text-center" },
-      { data: "islem", className: "text-center", orderable: false },
-    ],
-    order: [[0, "desc"]],
-  };
+    datatableOptions = {
+        ...datatableOptions,
+        processing: true,
+        serverSide: true,
+        ajax: {
+            url: url,
+            type: "POST",
+            data: function (d) {
+                d.action = "defter-kodu-liste";
+            },
+        },
+        columns: [
+            { data: "id", className: "text-center" },
+            { data: "tur_adi", className: "text-center" },
+            { data: "defter_bolge", className: "text-center" },
+            { data: "defter_mahalle", className: "text-center" },
+            { data: "defter_abone_sayisi", className: "text-center" },
+            { data: "baslangic_tarihi", className: "text-center" },
+            { data: "bitis_tarihi", className: "text-center" },
+            { data: "aciklama", className: "text-center" },
+            { data: "islem", className: "text-center", orderable: false },
+        ],
+        order: [[0, "desc"]],
+        buttons: [
+            {
+                extend: "excelHtml5",
+                title: "Defter Kodları Listesi",
+                exportOptions: {
+                    columns: [0, 1, 2, 3, 4, 5, 6, 7],
+                },
+            },
+        ],
+    };
 
-  actionTable = $("#actionTable").DataTable(datatableOptions);
+    actionTable = $("#actionTable").DataTable(datatableOptions);
+});
+
+// Excel'e Aktar butonuna tıklandığında tüm filtrelenmiş veriyi çek
+$(document).on("click", "#btnExcelAktar", function () {
+    if (actionTable) {
+        let params = actionTable.ajax.params();
+        
+        // POST ile dosya indirme için geçici form oluştur (URL uzunluk sınırlarını aşmamak için)
+        let form = $('<form>', {
+            action: url,
+            method: 'POST'
+        });
+
+        const addInputs = (obj, prefix = "") => {
+            for (let key in obj) {
+                let name = prefix ? `${prefix}[${key}]` : key;
+                if (typeof obj[key] === "object" && obj[key] !== null) {
+                    addInputs(obj[key], name);
+                } else {
+                    $("<input>", {
+                        type: "hidden",
+                        name: name,
+                        value: obj[key],
+                    }).appendTo(form);
+                }
+            }
+        };
+
+        addInputs({
+            ...params,
+            action: "defter-kodu-excel"
+        });
+
+        form.appendTo("body").submit().remove();
+    }
 });
 
 $(document).on("click", "#actionEkle", function () {
@@ -282,4 +326,70 @@ $(document).on("submit", "#formExcelYukle", function (e) {
         confirmButtonText: "Tamam",
       });
     });
+});
+
+// İcmal Butonu Tıklama
+$(document).on("click", "#btnIcmal", function () {
+    $("#icmalModal").modal("show");
+    $("#icmalContent").html(`
+        <div class="text-center p-4">
+            <div class="spinner-border text-primary" role="status">
+                <span class="visually-hidden">Yükleniyor...</span>
+            </div>
+        </div>
+    `);
+
+    // DataTable'ın mevcut filtre parametrelerini al
+    let dtParams = actionTable ? actionTable.ajax.params() : {};
+    
+    $.ajax({
+        url: url,
+        type: "POST",
+        data: {
+            ...dtParams,
+            action: "defter-kodu-icmal"
+        },
+        dataType: "json",
+        success: function (data) {
+            if (data.status === "success") {
+                $("#icmalContent").html(data.html);
+            } else {
+                $("#icmalContent").html(
+                    '<div class="alert alert-danger m-3">' + data.message + "</div>"
+                );
+            }
+        },
+        error: function (xhr, status, error) {
+            $("#icmalContent").html(
+                '<div class="alert alert-danger m-3">Bir hata oluştu: ' + error + '</div>'
+            );
+        }
+    });
+});
+
+// İcmal Tablosundan Bölgeye Göre Filtreleme
+$(document).on("click", ".icmal-bolge-filter", function () {
+  let bolge = $(this).data("bolge");
+  
+  // Gelişmiş filtre inputunu bul ve değeri set et (badge görünmesi için)
+  // Bölge sütunu indexi 2
+  let $filterInput = $('#actionTable thead tr.dt-filter-row th').eq(2).find('input');
+  
+  if ($filterInput.length) {
+      $filterInput.val(bolge).trigger('input');
+  } else {
+      actionTable.column(2).search(bolge).draw();
+  }
+  
+  $("#icmalModal").modal("hide");
+
+  // Filtre bilgisini kullanıcıya göster
+  Swal.fire({
+    toast: true,
+    position: "top-end",
+    icon: "info",
+    title: bolge + " bölgesi filtrelendi",
+    showConfirmButton: false,
+    timer: 2000,
+  });
 });

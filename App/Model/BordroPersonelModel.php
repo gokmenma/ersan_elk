@@ -3028,18 +3028,9 @@ class BordroPersonelModel extends Model
         }
 
         // ========== ÖDEME DAĞILIMI ÖN HAZIRLIK ==========
-        // Fiili çalışma günü, gerçek çalışma bazlı kullanım içindir.
-        // Ücretli izin ve ücretsiz izin düşülür; varsa puantaj gününe de limitlenir.
-        // NOT: Gün tüm maaş tipleri için düşer (banka/sodexo oranlaması için gerekli)
-        // Prim Usülü'de fark: toplam alacağı gün bazlı düşmez, ama banka/sodexo düşer
-        $fiiliCalismaGunu = $gunlukBase - $ucretsizIzinGunu - $ucretliIzinGunu;
-        // Puantaj kontrolü
-        if ($puantajGunSayisi > 0) {
-            // $puantajGunSayisi yukarıda zaten oranlanmış durumda
-            $fiiliCalismaGunu = min($fiiliCalismaGunu, $puantajGunSayisi);
-        }
-        if ($fiiliCalismaGunu < 0)
-            $fiiliCalismaGunu = 0;
+        // USER REQ: İcra/Sodexo/Banka dağılımı için bordro çalışma günü (maasHesapGunu) baz alınmalıdır.
+        // Puantaj verisi eksik olduğunda (sadece 5 gün iş girilmişse) ödemeler hatalı düşmektedir.
+        $fiiliCalismaGunu = $maasHesapGunu;
 
         // İcra Matrahı: personelin toplam hakedişi (alt sınır kontrolü için)
         $icraMatrahi = max(0, $hakedisNet);

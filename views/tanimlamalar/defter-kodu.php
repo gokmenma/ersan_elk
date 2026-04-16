@@ -24,33 +24,36 @@ $defterKodlari = $Tanimlamalar->getByGrup('defter_kodu');
     <div class="row">
         <div class="col-12">
             <div class="card">
-                <div class="card-header d-grid d-md-flex d-block">
-                    <div class="card-title col-md-8">
-
-                        <h4 class="card-title">Defter Kodları Listesi</h4>
-                        <p class="card-title-desc">Defter kodlarını görüntüleyebilir ve yeni defter kodu
-                            ekleyebilirsiniz.
-                        </p>
+                <div class="card-header d-flex flex-wrap justify-content-between align-items-center gap-2">
+                    <div class="flex-grow-1">
+                        <h4 class="card-title mb-1">Defter Kodları Listesi</h4>
+                        <p class="text-muted small mb-0">Defter kodlarını görüntüleyebilir ve yeni defter kodu ekleyebilirsiniz.</p>
                     </div>
 
-                    <div class="col-md-4">
-                        <button type="button" id="actionEkle"
-                            class="btn btn-success waves-effect btn-label waves-light float-end ms-2"
-                            data-bs-toggle="modal" data-bs-target="#excelModal"><i
-                                class="bx bx-upload label-icon"></i>Excelden Yükle
+                    <div class="d-flex flex-wrap gap-2">
+                        <button type="button" id="btnIcmal" class="btn btn-info waves-effect btn-label waves-light">
+                            <i class="bx bx-list-check label-icon"></i>İcmal
                         </button>
 
-                        <button type="button" id="actionEkle"
-                            class="btn btn-primary waves-effect btn-label waves-light float-end" data-bs-toggle="modal"
-                            data-bs-target="#actionModal"><i class="bx bx-save label-icon"></i>Yeni Ekle
+                        <button type="button" id="btnExcelAktar" class="btn btn-success waves-effect btn-label waves-light">
+                            <i class="bx bx-download label-icon"></i>Excel'e Aktar
                         </button>
 
+                        <button type="button" id="btnExcelYukle" class="btn btn-success waves-effect btn-label waves-light"
+                            data-bs-toggle="modal" data-bs-target="#excelModal">
+                            <i class="bx bx-upload label-icon"></i>Excelden Yükle
+                        </button>
+
+                        <button type="button" id="actionEkle" class="btn btn-primary waves-effect btn-label waves-light"
+                            data-bs-toggle="modal" data-bs-target="#actionModal">
+                            <i class="bx bx-save label-icon"></i>Yeni Ekle
+                        </button>
                     </div>
-
                 </div>
 
-                <div class="card-body overflow-auto">
-                    <table id="actionTable" class="datatable table table-bordered nowrap w-100">
+                <div class="card-body">
+                    <div class="table-responsive overflow-auto">
+                        <table id="actionTable" class="datatable table table-bordered nowrap w-100">
                         <thead>
                             <tr>
                                 <th class="text-center" data-data="id">Sıra</th>
@@ -238,4 +241,22 @@ $defterKodlari = $Tanimlamalar->getByGrup('defter_kodu');
     </div>
 </div>
 
-<script src="views/tanimlamalar/js/defter-kodu.js"></script>
+<!-- İcmal Modal -->
+<div class="modal fade" id="icmalModal" tabindex="-1" aria-labelledby="icmalModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header bg-info text-white">
+                <h5 class="modal-title" id="icmalModalLabel"><i class="bx bx-list-check me-2"></i>Bölge Bazlı Defter ve Abone İcmali</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0" id="icmalContent">
+                <!-- AJAX ile yüklenecek -->
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="views/tanimlamalar/js/defter-kodu.js"></script>
