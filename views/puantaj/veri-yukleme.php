@@ -270,42 +270,42 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     <div class="accordion" id="filterAccordion">
                         <div class="accordion-item border-0">
                             <div class="accordion-header" id="headingOne">
-                                <div class="accordion-button collapsed py-1 d-flex align-items-center justify-content-between" role="button" data-bs-toggle="collapse"
-                                    data-bs-target="#collapseOne" aria-expanded="false" aria-controls="collapseOne" style="cursor: pointer;">
+                                <div class="accordion-button collapsed py-1 d-flex align-items-center justify-content-between" 
+                                    id="filterAccordionHeader" aria-expanded="false" aria-controls="collapseOne" style="cursor: pointer;">
                                     
-                                    <div class="d-flex align-items-center flex-grow-1" onclick="event.stopPropagation()">
+                                    <div class="d-flex align-items-center flex-grow-1">
                                         <ul class="nav nav-tabs nav-tabs-custom nav-success border-bottom-0" role="tablist" id="puantajTabs">
                                             <li class="nav-item">
                                                 <a class="nav-link <?= $activeTab === 'okuma' ? 'active' : '' ?>" data-bs-toggle="tab" href="#okuma"
-                                                    role="tab" data-tab-name="okuma">
+                                                    role="tab" data-tab-name="okuma" onclick="event.stopPropagation();">
                                                     <span class="d-block d-sm-none"><i class="fas fa-home"></i></span>
                                                     <span class="d-none d-sm-block">Okuma İşlemleri</span>
                                                 </a>
                                             </li>
                                             <li class="nav-item">
                                                 <a class="nav-link <?= $activeTab === 'yapilan_isler' ? 'active' : '' ?>" data-bs-toggle="tab"
-                                                    href="#yapilan_isler" role="tab" data-tab-name="yapilan_isler">
+                                                    href="#yapilan_isler" role="tab" data-tab-name="yapilan_isler" onclick="event.stopPropagation();">
                                                     <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
                                                     <span class="d-none d-sm-block">Kesme/Açma İşlem.</span>
                                                 </a>
                                             </li>
                                             <li class="nav-item">
                                                 <a class="nav-link <?= $activeTab === 'sayac_sokme_takma' ? 'active' : '' ?>" data-bs-toggle="tab"
-                                                    href="#sayac_sokme_takma" role="tab" data-tab-name="sayac_sokme_takma">
+                                                    href="#sayac_sokme_takma" role="tab" data-tab-name="sayac_sokme_takma" onclick="event.stopPropagation();">
                                                     <span class="d-block d-sm-none"><i class="fas fa-exchange-alt"></i></span>
                                                     <span class="d-none d-sm-block">Sayaç Sökme Takma</span>
                                                 </a>
                                             </li>
                                             <li class="nav-item">
                                                 <a class="nav-link <?= $activeTab === 'muhurleme' ? 'active' : '' ?>" data-bs-toggle="tab"
-                                                    href="#muhurleme" role="tab" data-tab-name="muhurleme">
+                                                    href="#muhurleme" role="tab" data-tab-name="muhurleme" onclick="event.stopPropagation();">
                                                     <span class="d-block d-sm-none"><i class="fas fa-lock"></i></span>
                                                     <span class="d-none d-sm-block">Mühürleme</span>
                                                 </a>
                                             </li>
                                             <li class="nav-item">
                                                 <a class="nav-link <?= $activeTab === 'kacak_kontrol' ? 'active' : '' ?>" data-bs-toggle="tab"
-                                                    href="#kacak_kontrol" role="tab" data-tab-name="kacak_kontrol">
+                                                    href="#kacak_kontrol" role="tab" data-tab-name="kacak_kontrol" onclick="event.stopPropagation();">
                                                     <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
                                                     <span class="d-none d-sm-block">Kaçak Kontrol</span>
                                                 </a>
@@ -313,7 +313,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                         </ul>
                                     </div>
 
-                                    <div class="d-flex align-items-center gap-3 ms-auto me-2" onclick="event.stopPropagation()">
+                                    <div class="d-flex align-items-center gap-3 ms-auto me-2">
                                         <!-- Tarih Aralığı / Dönem Toggle -->
                                         <div class="btn-group bg-light p-1 rounded-pill" role="group" id="dateFilterTypeGroup" style="height: 34px;">
                                             <input type="radio" class="btn-check" name="dateFilterType" id="dateFilterTypeRange" value="range" checked>
@@ -1279,14 +1279,24 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             }
         });
 
-        $('#dateFilterTypeGroup').on('click', function (e) {
-            e.stopPropagation();
-            var collapseElement = document.getElementById('collapseOne');
-            if (collapseElement) {
-                var bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseElement);
-                // Eğer kapalıysa aç, açıksa hiçbir şey yapma (Bootstrap show() açıksa zaten açık bırakır)
-                bsCollapse.show();
+ 
+        // Accordion Manuel Toggle (Sekmeleri Hariç Tut)
+        $('#filterAccordionHeader').on('click', function(e) {
+            // Eğer tıklanan yer tab linkleri, tarih buton grubu veya filtre temizleme butonları ise hiçbir şey yapma
+            if ($(e.target).closest('#puantajTabs, #dateFilterTypeGroup, .btn-clear-filter').length) {
+                return;
             }
+            
+            var collapseElement = document.getElementById('collapseOne');
+            var bsCollapse = bootstrap.Collapse.getOrCreateInstance(collapseElement);
+            bsCollapse.toggle();
+        });
+
+        // Accordion açılıp kapandığında header stilini ve aria özelliklerini güncelle
+        $('#collapseOne').on('show.bs.collapse', function () {
+            $('#filterAccordionHeader').removeClass('collapsed').attr('aria-expanded', 'true');
+        }).on('hide.bs.collapse', function () {
+            $('#filterAccordionHeader').addClass('collapsed').attr('aria-expanded', 'false');
         });
 
         // Dönem (Ay) picker instance

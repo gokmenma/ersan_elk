@@ -24,6 +24,7 @@ if (!isset($Puantaj))
 $compareTab = $_GET['compare_tab'] ?? 'okuma';
 $compareMode = $_GET['compare_mode'] ?? 'personel';
 $periodsRaw = $_GET['periods'] ?? [];
+$region = $_GET['region'] ?? '';
 
 if (empty($periodsRaw) || !is_array($periodsRaw)) {
     echo '<div class="alert alert-warning d-flex align-items-center gap-2 m-3">
@@ -78,14 +79,14 @@ if (count($periods) < 2) {
 
 // Fetch data based on tab
 if ($compareTab === 'okuma') {
-    $data = $EndeksOkuma->getComparisonByPeriods($periods);
+    $data = $EndeksOkuma->getComparisonByPeriods($periods, $region);
 } elseif ($compareTab === 'kacakkontrol') {
-    $data = $Puantaj->getKacakComparisonByPeriods($periods);
+    $data = $Puantaj->getKacakComparisonByPeriods($periods, $region);
 } elseif ($compareTab === 'sokme_takma') {
     $SayacDegisim = new \App\Model\SayacDegisimModel();
-    $data = $SayacDegisim->getComparisonByPeriods($periods);
+    $data = $SayacDegisim->getComparisonByPeriods($periods, $region);
 } else {
-    $data = $Puantaj->getComparisonByPeriods($periods, $compareTab);
+    $data = $Puantaj->getComparisonByPeriods($periods, $compareTab, $region);
 }
 
 $periodLabels = array_column($periods, 'label');

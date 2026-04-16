@@ -956,9 +956,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $startDate = $_GET['start_date'] ?? '';
     $endDate = $_GET['end_date'] ?? '';
     $ekipKodu = $_GET['ekip_kodu'] ?? '';
+    $region = $_GET['region'] ?? '';
+    $defter = $_GET['defter'] ?? '';
 
     $EndeksOkuma = new \App\Model\EndeksOkumaModel();
-    $result = $EndeksOkuma->getDataTable($_GET, $startDate, $endDate, $ekipKodu);
+    $result = $EndeksOkuma->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $region, $defter);
 
     // Veriyi DataTable formatına dönüştür
     $formattedData = [];
@@ -1001,9 +1003,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $ekipKodu = $_GET['ekip_kodu'] ?? '';
     $workType = $_GET['work_type'] ?? '';
     $workResult = $_GET['work_result'] ?? '';
+    $sorguTuru = $_GET['sorgu_turu'] ?? '';
+    $region = $_GET['region'] ?? '';
+    $defter = $_GET['defter'] ?? '';
 
     $Puantaj = new PuantajModel();
-    $result = $Puantaj->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $workType, $workResult);
+    $result = $Puantaj->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $workType, $workResult, $sorguTuru, $region, $defter);
 
     // Veriyi DataTable formatına dönüştür
     $formattedData = [];
@@ -1037,9 +1042,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $startDate = $_GET['start_date'] ?? '';
     $endDate = $_GET['end_date'] ?? '';
     $ekipKodu = $_GET['ekip_kodu'] ?? '';
+    $region = $_GET['region'] ?? '';
 
     $SayacDegisim = new SayacDegisimModel();
-    $result = $SayacDegisim->getDataTable($_GET, $startDate, $endDate, $ekipKodu);
+    $result = $SayacDegisim->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $region);
 
     // Veriyi DataTable formatına dönüştür
     $formattedData = [];
@@ -1089,6 +1095,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $startDate = $_GET['start_date'] ?? '';
     $endDate = $_GET['end_date'] ?? '';
     $ekipKodu = $_GET['ekip_kodu'] ?? '';
+    $region = $_GET['region'] ?? '';
+    $defter = $_GET['defter'] ?? '';
 
     $Puantaj = new PuantajModel();
 
@@ -1108,7 +1116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     // Tek bir iş tipi olarak birleştir (ilk bulunan)
     $workTypeFilter = !empty($muhurlemeTypeNames) ? $muhurlemeTypeNames[0] : 'MÜHÜRLEME';
 
-    $result = $Puantaj->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $workTypeFilter);
+    $result = $Puantaj->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $workTypeFilter, '', '', $region, $defter);
 
     // Veriyi DataTable formatına dönüştür
     $formattedData = [];
@@ -1577,6 +1585,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $ekipKodu = $_GET['ekip_kodu'] ?? '';
     $workType = $_GET['work_type'] ?? '';
     $workResult = $_GET['work_result'] ?? '';
+    $region = $_GET['region'] ?? '';
+    $defter = $_GET['defter'] ?? '';
 
     ob_start();
     // Convert dates for SQL
@@ -1587,7 +1597,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
     if ($tab === 'okuma') {
         $EndeksOkuma = new \App\Model\EndeksOkumaModel();
-        $endeksRecords = $EndeksOkuma->getFiltered($dbStartDate, $dbEndDate, $ekipKodu);
+        $endeksRecords = $EndeksOkuma->getFiltered($dbStartDate, $dbEndDate, $ekipKodu, $region, $defter);
         foreach ($endeksRecords as $record): ?>
             <tr>
                 <td><?= $record->bolge ?></td>
@@ -1610,8 +1620,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     } elseif ($tab === 'kacak_kontrol') {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         // personel_ids artık virgülle ayrılmış ID'ler içerdiği için doğrudan ekip_adi gösteriliyor
-        $sql = "SELECT k.* FROM kacak_kontrol k WHERE k.tarih >= ? AND k.tarih < DATE_ADD(?, INTERVAL 1 DAY) AND k.silinme_tarihi IS NULL AND k.firma_id = ?";
+        $sql = "SELECT k.* FROM kacak_kontrol k 
+                LEFT JOIN tanimlamalar ek ON k.ekip_adi = ek.tur_adi AND ek.grup = 'ekip_kodu' AND ek.firma_id = k.firma_id
+                WHERE k.tarih >= ? AND k.tarih < DATE_ADD(?, INTERVAL 1 DAY) AND k.silinme_tarihi IS NULL AND k.firma_id = ?";
         $params = [$dbStartDate, $dbEndDate, $firmaId];
+
+        if (!empty($region)) {
+            $sql .= " AND ek.ekip_bolge = ?";
+            $params[] = $region;
+        }
 
         // Personel filtresi - personel_ids içinde aranan ID var mı kontrol et
         if (!empty($ekipKodu)) {
@@ -1638,7 +1655,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             </tr>
         <?php endforeach;
     } else {
-        $records = $Puantaj->getFiltered($dbStartDate, $dbEndDate, $ekipKodu, $workType, $workResult);
+        $records = $Puantaj->getFiltered($dbStartDate, $dbEndDate, $ekipKodu, $workType, $workResult, null, null, null, false, $region, $defter);
         foreach ($records as $record): ?>
             <tr>
                 <td><?= $record->firma ?></td>

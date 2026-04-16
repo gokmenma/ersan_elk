@@ -529,7 +529,7 @@ class SayacDegisimModel extends Model
      * @param array $periods [['start' => 'Y-m-d', 'end' => 'Y-m-d', 'label' => 'Ocak 2026'], ...]
      * @return array ['personel' => [...], 'bolge' => [...], 'firma' => [...]]
      */
-    public function getComparisonByPeriods(array $periods): array
+    public function getComparisonByPeriods(array $periods, $region = ''): array
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $result = ['personel' => [], 'bolge' => [], 'firma' => []];
@@ -556,11 +556,19 @@ class SayacDegisimModel extends Model
                         AND pay.ortak_islem_id = SUBSTRING_INDEX(t.islem_id, '_', 1)
                     LEFT JOIN personel p ON t.personel_id = p.id
                     LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
-                    WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
-                    GROUP BY t.personel_id, t.ekip_kodu_id, p.adi_soyadi, def.tur_adi, def.ekip_bolge";
+                    WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL";
+            $params = [$firmaId, $period['start'], $period['end'], $firmaId, $period['start'], $period['end']];
+
+            if ($region) {
+                $sql .= " AND (t.bolge = ? OR def.ekip_bolge = ?)";
+                $params[] = $region;
+                $params[] = $region;
+            }
+
+            $sql .= " GROUP BY t.personel_id, t.ekip_kodu_id, p.adi_soyadi, def.tur_adi, def.ekip_bolge";
 
             $stmt = $this->db->prepare($sql);
-            $stmt->execute([$firmaId, $period['start'], $period['end'], $firmaId, $period['start'], $period['end']]);
+            $stmt->execute($params);
             $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
 
             $periodTotal = 0;

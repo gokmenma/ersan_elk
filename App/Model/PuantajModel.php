@@ -14,7 +14,7 @@ class PuantajModel extends Model
         parent::__construct($this->table);
     }
 
-    public function getFiltered($startDate = null, $endDate = null, $ekipKodu = null, $workType = null, $workResult = null, $raporSekmesi = null, $limit = null, $offset = null, $onlyCount = false)
+    public function getFiltered($startDate = null, $endDate = null, $ekipKodu = null, $workType = null, $workResult = null, $raporSekmesi = null, $limit = null, $offset = null, $onlyCount = false, $region = '', $defter = '')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         
@@ -35,8 +35,21 @@ class PuantajModel extends Model
                 LEFT JOIN personel p ON t.personel_id = p.id 
                 LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
                 LEFT JOIN firmalar f ON f.id = t.firma_id
+                LEFT JOIN tanimlamalar ek ON t.ekip_kodu_id = ek.id
                 WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL";
         $params = [$firmaId];
+
+        if ($region) {
+            $sql .= " AND (t.bolge = ? OR ek.ekip_bolge = ?)";
+            $params[] = $region;
+            $params[] = $region;
+        }
+
+        if ($defter) {
+            $sql .= " AND (t.defter = ? OR tn.defter_kodlari = ?)"; // Some records store defter in tn or t
+            $params[] = $defter;
+            $params[] = $defter;
+        }
 
         if ($startDate) {
             $sql .= " AND t.tarih >= ?";
@@ -804,7 +817,7 @@ class PuantajModel extends Model
      * @param string $raporTuru 'kesme', 'sokme_takma', 'muhurleme'
      * @return array ['personel' => [...], 'bolge' => [...], 'firma' => [...]]
      */
-    public function getComparisonByPeriods(array $periods, string $raporTuru = ''): array
+    public function getComparisonByPeriods(array $periods, string $raporTuru = '', string $region = ''): array
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $result = ['personel' => [], 'bolge' => [], 'firma' => []];
@@ -849,8 +862,15 @@ class PuantajModel extends Model
                     LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
                     LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
                     WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
-                    $wtClause
-                    GROUP BY t.personel_id, t.ekip_kodu_id, p.adi_soyadi, def.tur_adi, def.ekip_bolge";
+                    $wtClause";
+
+            if ($region) {
+                $sql .= " AND (t.bolge = ? OR def.ekip_bolge = ?)";
+                $params[] = $region;
+                $params[] = $region;
+            }
+
+            $sql .= " GROUP BY t.personel_id, t.ekip_kodu_id, p.adi_soyadi, def.tur_adi, def.ekip_bolge";
 
             $stmt = $this->db->prepare($sql);
             $stmt->execute($params);
@@ -905,7 +925,7 @@ class PuantajModel extends Model
     /**
      * Kaçak kontrol karşılaştırma raporu (ekip bazlı)
      */
-    public function getKacakComparisonByPeriods(array $periods): array
+    public function getKacakComparisonByPeriods(array $periods, $region = ''): array
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $result = ['personel' => [], 'bolge' => [], 'firma' => []];
@@ -913,12 +933,20 @@ class PuantajModel extends Model
         foreach ($periods as $period) {
             $sql = "SELECT k.ekip_adi, SUM(k.sayi) as toplam, COUNT(DISTINCT k.tarih) as gun_sayisi
                     FROM kacak_kontrol k
+                    LEFT JOIN tanimlamalar ek ON k.ekip_adi = ek.tur_adi AND ek.grup = 'ekip_kodu' AND ek.firma_id = k.firma_id
                     WHERE k.firma_id = ? AND k.tarih BETWEEN ? AND ? AND k.silinme_tarihi IS NULL
-                    AND (k.aciklama != 'Manuel Düşüm' OR k.aciklama IS NULL)
-                    GROUP BY k.ekip_adi";
+                    AND (k.aciklama != 'Manuel Düşüm' OR k.aciklama IS NULL)";
+            $params = [$firmaId, $period['start'], $period['end']];
+
+            if ($region) {
+                $sql .= " AND ek.ekip_bolge = ?";
+                $params[] = $region;
+            }
+
+            $sql .= " GROUP BY k.ekip_adi";
 
             $stmt = $this->db->prepare($sql);
-            $stmt->execute([$firmaId, $period['start'], $period['end']]);
+            $stmt->execute($params);
             $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
 
             $periodLabel = $period['label'];
