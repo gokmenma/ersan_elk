@@ -94,10 +94,9 @@ class BordroPersonelModel extends Model
                 return 30;
             }
             
-            // Eğer eksik gün varsa, gerçek takvim gününden eksik gün düşülür
-            // SGK Kuralı: Ayın 31 çektiği aylarda, eksik gün sayısı takvim gününden (31) düşülür.
-            // Örn: Mart (31 gün) - 1 gün ücretsiz izin = 30 gün
-            // Örn: Şubat (28 gün) - 1 gün ücretsiz izin = 27 gün
+            // USER REQ: Gün hesaplaması yapılırken "ay günü - ücretsiz izin günü" baz alınmalıdır.
+            // Örn: Mart (31 gün) - 5 gün eksik = 26 gün.
+            // Ancak hakediş hesaplanırken bu gün sayısı "Maaş / 30" birim ücreti ile çarpılacaktır.
             return max(0, $donemTakvimGun - $eksikGunToplami);
         }
 
@@ -2355,19 +2354,18 @@ class BordroPersonelModel extends Model
 
             // NEW: Eğer ayı 30 gün olarak kabul ediyorsak (bordro mantığı), görev geçmişi gününü de bu orana çekmeliyiz
             // Özellikle Şubat ayı için (28/29 gün) tam çalışanların 30 gün görünmesi için bu oranlama şart
-            // ÖNEMLİ: Bu oranlama sadece ayı TAM töötüyse yapılmalıdır. Eksik töötülen günlerde gerçek takvim günü alınır.
+            // USER REQ: Bordro mantığında aylık maktu ücret 30 gün kabul edilir.
+            // Eğer personel ayın tamamında çalışmışsa (giriş/çıkış yoksa), eksik günü olsa dahi baz gününü 30'a sabitliyoruz.
+            // Bu sayede eksik gün düşümü (getMaasHesapGunu içinde) 30 üzerinden sağlıklı bir şekilde yapılır.
             $aydakiGunSayisiDonem = date('t', strtotime($donemTarihi));
             if ($toplamGecerliGun > 0 && $aydakiGunSayisiDonem != 30) {
-                // USER REQ: SGK kuralına göre 31 çeken aylarda eksik gün varsa, eksik gün 31 üzerinden düşülür.
-                // Eğer eksik gün YOKSA personelin SSK günü 30'a sabitlenmelidir.
-                if ($toplamGecerliGun >= $aydakiGunSayisiDonem && ($ucretsizIzinGunu + $raporGunu) == 0) {
-                    // Ayı tam çalışmışsa ve hiç eksik günü yoksa 30'a tamamla
+                if ($toplamGecerliGun >= $aydakiGunSayisiDonem) {
+                    // Ayı tam kapsamışsa (giriş/çıkış yoksa) 30'a sabitle
                     $eskToplam = $toplamGecerliGun;
                     $toplamGecerliGun = 30;
-                    // Eğer 30 güne çıkartıldıysa, ağırlıklı brüt maaşı da orantılı olarak arttır ki nominal net tutar 33.000 gibi tam miktar çıksın
+                    // Ölçekleme: Eğer 31 günden 30 güne düşüyorsa veya 28'den 30'a çıkıyorsa maaşı da oranla
                     $agirlikliBrutMaas = ($agirlikliBrutMaas / $eskToplam) * 30;
                 }
-                // Else: Eksik gün çalışmışsa olduğu gibi bırakıyoruz, GERÇEK GÜN hesaplanıyor
             }
 
             // Toplam geçerli gün 30'u geçemez
@@ -2671,6 +2669,16 @@ class BordroPersonelModel extends Model
         foreach ($ekOdemeler as $odeme) {
             $tutar = floatval($odeme->tutar);
             $parametre = $parametrelerMap[$odeme->tur] ?? null;
+
+            // MÜKERRER HESAPLAMA KONTROLÜ: Eğer açıklama içinde zaten hesaplanmış bir tutar deseni varsa (örn: "30 Gün x 700 TL"),
+            // bir sonraki hesaplamada compounding (katlanma) olmaması için baz ücreti açıklamadan geri kazanıyoruz.
+            if (!empty($odeme->aciklama) && preg_match('/\((?:[\d.,]+) (?:Fiili )?Gün x ([\d.,]+)/u', $odeme->aciklama, $matches)) {
+                $baseFromLabel = \App\Helper\Helper::formattedMoneyToNumber($matches[1]);
+                if ($baseFromLabel > 0) {
+                    $tutar = floatval($baseFromLabel);
+                    // use log if needed
+                }
+            }
 
             // Detay kaydı
             $detay = [
@@ -3121,15 +3129,15 @@ class BordroPersonelModel extends Model
             $firstHTip = $firstKesinti->hesaplama_tipi ?? 'sabit';
             $firstOran = floatval($firstKesinti->oran ?? 0);
 
-            // Bankaya yatacak baz (asgari ücret bazlı hesaplama için)
-            $bankaYatacakBaz = $asgariUcretNet;
-            if ($fiiliCalismaGunu < 30) {
-                $bankaYatacakBaz = ($asgariUcretNet / 30) * $fiiliCalismaGunu;
-            }
+            // USER REQ: İcra baz tutarı hesaplanırken bordro çalışma gününü baz al (Asgari Ücret Net / 30 * Gün Sayısı)
+            // USER REQ: Raporlu günlerin icra bazını düşürmemesi isteniyor. Bu nedenle sadece ücretsiz izinleri düşen bir gün sayısı hesaplıyoruz.
+            $icraBazGunu = $this->getMaasHesapGunu($aktifTakvimGun, $aydakiGunSayisi, $ucretsizIzinGunu);
+            $bankaYatacakBaz = ($asgariUcretNet / 30) * $icraBazGunu;
 
-            // USER REQ: İcra baz tutarı, (Asgari Ücret / 30 * Gün) ile (Personelin Net Alacağı) değerlerinden KÜÇÜK olanı olmalıdır.
-            // Bu sayede asgari ücretten az kazanan (prim usulü vb.) personelin tüm maaşı kesilmez, kendi alacağının %25'i kesilir.
-            $icraBazTutar = min($bankaYatacakBaz, $icraMatrahi);
+            // USER REQ: İcra baz tutarı, (Asgari Ücret / 30 * Gün) olmalıdır. 
+            // Daha önce eklenen min() kontrolü, raporlu günlerde matrahı peşinen düşürdüğü için hatalı sonuç veriyordu.
+            // Bütçe zaten aşağıda ($icraMatrahi) ile nihai olarak sınırlandırılmaktadır.
+            $icraBazTutar = $bankaYatacakBaz;
 
             if ($firstHTip === 'asgari_oran_net' || $firstHTip === 'oran_net') {
                 // Her iki tip de artık aynı formülü takip ediyor (Image 1: 28.075,50 / 30 * 22 * 0.25)
@@ -3623,11 +3631,20 @@ class BordroPersonelModel extends Model
             return [];
         }
 
-        $PersonelEkOdemelerModel = new \App\Model\PersonelEkOdemelerModel();
-        return $PersonelEkOdemelerModel->getPersonelEkOdemeler($personel_id, [
-            'filter_ek_mode' => 'donem',
-            'filter_ek_donem' => $donem_id
-        ]);
+        // USER REQ: Mükerrer hesaplamayı önlemek için; master sürekli ödemeler (ana_odeme_id NULL olanlar) yerine, 
+        // bu dönem için halihazırda oluşturulmuş olan (aligned) kayıtları çekmeliyiz.
+        // Böylece master kayıtlar (rate) güncel kalır, period kayıtları (amount) hesaplanır.
+        $sql = $this->db->prepare("
+            SELECT peo.*, bp.etiket as parametre_adi, bp.kod as parametre_kodu
+            FROM personel_ek_odemeler peo
+            LEFT JOIN bordro_parametreleri bp ON peo.parametre_id = bp.id
+            WHERE peo.personel_id = ? 
+              AND peo.donem_id = ? 
+              AND peo.silinme_tarihi IS NULL
+            ORDER BY peo.id ASC
+        ");
+        $sql->execute([$personel_id, $donem_id]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
     /**

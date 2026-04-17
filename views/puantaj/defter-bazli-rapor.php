@@ -189,8 +189,10 @@ padding-bottom:  10px !important;
                                                 <?php endif; ?>
 
                                                 <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
-                                                <button class="btn btn-outline-secondary btn-sm rounded-circle d-flex align-items-center justify-content-center accordion-button collapsed p-0 border" 
-                                                        type="button" data-bs-toggle="collapse" data-bs-target="#collapseFilter" style="width: 32px; height: 32px; background: #fff;">
+                                                <button class="btn btn-outline-primary btn-sm rounded-pill d-flex align-items-center px-3 accordion-button p-1 border shadow-sm" 
+                                                        type="button" data-bs-toggle="collapse" data-bs-target="#collapseFilter" style="background: #fff; height: 34px;">
+                                                    <i class="bx bx-filter-alt me-1"></i>
+                                                    <span class="fw-bold" style="font-size: 0.75rem;">Filtreler</span>
                                                 </button>
                                             </div>
 
@@ -198,10 +200,8 @@ padding-bottom:  10px !important;
                                     </div>
                                 </div>
                             </div>
-                        </div>
-                    </div>
 
-                    <div id="collapseFilter" class="accordion-collapse collapse" aria-labelledby="headingFilter"
+                    <div id="collapseFilter" class="accordion-collapse collapse show" aria-labelledby="headingFilter"
                         data-bs-parent="#filterAccordion">
                         <div class="accordion-body pt-3">
                             <!-- Satır 1: Tarihle İlgili Filtreler (3-3-6) -->
@@ -874,14 +874,7 @@ padding-bottom:  10px !important;
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-md-auto d-flex align-items-center">
-                                    <div class="form-check form-switch mb-0">
-                                        <input class="form-check-input" type="checkbox" id="chkModalMahalleBirlestir" style="cursor:pointer;">
-                                        <label class="form-check-label fw-semibold" for="chkModalMahalleBirlestir" style="cursor:pointer; font-size: 0.75rem;">
-                                            Mahalle bazlı birleştir
-                                        </label>
-                                    </div>
-                                </div>
+
                                 <div class="col-md-auto ms-md-auto">
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text bg-white border-end-0"><i class="bx bx-search text-muted"></i></span>
@@ -4062,38 +4055,12 @@ padding-bottom:  10px !important;
         let _modalSortCol = 'bolge';
         let _modalSortDir = 'asc';
 
+
+        function renderDefterModalTable() {
             let defterList = [..._modalDataList];
 
-            // ======= MAHALLE BAZLI BİRLEŞTİRME (Modal) =======
-            const isModalMergeActive = $('#chkModalMahalleBirlestir').is(':checked');
-            if (isModalMergeActive) {
-                const mergeMap = {};
-                defterList.forEach(function(row) {
-                    const mahalle = (row.mahalle || '').trim();
-                    const bolge = (row.bolge || '').trim();
-                    const key = bolge + '|' + mahalle;
-                    if (!mergeMap[key]) {
-                        mergeMap[key] = {
-                            bolge: bolge,
-                            defter: String(row.defter || ''),
-                            mahalle: mahalle,
-                            abone_sayisi: parseInt(row.abone_sayisi) || 0,
-                            okunan: parseInt(row.okunan) || 0,
-                            okunmayan: parseInt(row.okunmayan) || 0
-                        };
-                    } else {
-                        const existingDefters = mergeMap[key].defter.split(', ');
-                        const newDefter = String(row.defter || '');
-                        if (newDefter && !existingDefters.includes(newDefter)) {
-                            mergeMap[key].defter += ', ' + newDefter;
-                        }
-                        mergeMap[key].abone_sayisi += parseInt(row.abone_sayisi) || 0;
-                        mergeMap[key].okunan += parseInt(row.okunan) || 0;
-                        mergeMap[key].okunmayan += parseInt(row.okunmayan) || 0;
-                    }
-                });
-                defterList = Object.values(mergeMap);
-            }
+
+
             
             // Stats for the top boxes
             let totalBooks = defterList.length;
@@ -4248,10 +4215,7 @@ padding-bottom:  10px !important;
             renderDefterModalTable();
         });
 
-        // Modal Mahalle Birleştirme Change Listener
-        $(document).on('change', '#chkModalMahalleBirlestir', function() {
-            renderDefterModalTable();
-        });
+
 
         // ======= BADGE CLICK HANDLER (Dışarıda, tek sefer bağlanır) =======
         $(document).on('click', '.do-badge-toplam.clickable, .do-badge-okunan.clickable, .do-badge-okunmayan.clickable', function (e) {
