@@ -2352,31 +2352,12 @@ class BordroPersonelModel extends Model
                 }
             }
 
-            // NEW: Eğer ayı 30 gün olarak kabul ediyorsak (bordro mantığı), görev geçmişi gününü de bu orana çekmeliyiz
-            // Özellikle Şubat ayı için (28/29 gün) tam çalışanların 30 gün görünmesi için bu oranlama şart
-            // USER REQ: Bordro mantığında aylık maktu ücret 30 gün kabul edilir.
-            // Eğer personel ayın tamamında çalışmışsa (giriş/çıkış yoksa), eksik günü olsa dahi baz gününü 30'a sabitliyoruz.
-            // Bu sayede eksik gün düşümü (getMaasHesapGunu içinde) 30 üzerinden sağlıklı bir şekilde yapılır.
-            $aydakiGunSayisiDonem = date('t', strtotime($donemTarihi));
-            if ($toplamGecerliGun > 0 && $aydakiGunSayisiDonem != 30) {
-                if ($toplamGecerliGun >= $aydakiGunSayisiDonem) {
-                    // Ayı tam kapsamışsa (giriş/çıkış yoksa) 30'a sabitle
-                    $eskToplam = $toplamGecerliGun;
-                    $toplamGecerliGun = 30;
-                    // Ölçekleme: Eğer 31 günden 30 güne düşüyorsa veya 28'den 30'a çıkıyorsa maaşı da oranla
-                    $agirlikliBrutMaas = ($agirlikliBrutMaas / $eskToplam) * 30;
-                }
-            }
-
-            // Toplam geçerli gün 30'u geçemez
-            if ($toplamGecerliGun > 30)
-                $toplamGecerliGun = 30;
-
             // Nominal Brüt Maaş (Daily wage hesabı için oranlanmamış tam aylık tutar)
-            // Eğer 30 günün tamamı kapsanmıyorsa (kıst çalışma), ağırlık üzerinden 30 güne tamamlıyoruz
+            // Eğer 30 günden farklı ise (31 çeken ay veya Şubat), 30 güne oranlıyoruz
             $nominalBrutMaas = ($toplamGecerliGun > 0) ? ($agirlikliBrutMaas / $toplamGecerliGun * 30) : $agirlikliBrutMaas;
 
-            $kayit->maas_tutari = round($agirlikliBrutMaas, 2);
+            // USER REQ: Bordro slips and display should show the 30-day fixed salary, not the calendar-inflated value.
+            $kayit->maas_tutari = round($nominalBrutMaas, 2);
             $kayit->maas_durumu = $maasDurumuRaw;
         } else {
             // Hiç geçmiş yoksa eski fallback mantığıyla maaş durumunu bul
