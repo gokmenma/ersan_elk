@@ -1461,19 +1461,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'kategori' => $_POST['kategori'] ?? 'gelir',
                     'hesaplama_tipi' => $_POST['hesaplama_tipi'] ?? 'net',
                     'odeme_yontemi' => $_POST['odeme_yontemi'] ?? 'banka',
-                    'gunluk_muaf_limit' => floatval($_POST['gunluk_muaf_limit'] ?? 0),
-                    'aylik_muaf_limit' => floatval($_POST['aylik_muaf_limit'] ?? 0),
+                    'gunluk_muaf_limit' => Helper::formattedMoneyToNumber($_POST['gunluk_muaf_limit'] ?? 0),
+                    'aylik_muaf_limit' => Helper::formattedMoneyToNumber($_POST['aylik_muaf_limit'] ?? 0),
                     'muaf_limit_tipi' => $_POST['muaf_limit_tipi'] ?? 'yok',
                     'sgk_matrahi_dahil' => intval($_POST['sgk_matrahi_dahil'] ?? 0),
                     'gelir_vergisi_dahil' => intval($_POST['gelir_vergisi_dahil'] ?? 1),
                     'damga_vergisi_dahil' => intval($_POST['damga_vergisi_dahil'] ?? 0),
                     'gecerlilik_baslangic' => !empty($_POST['gecerlilik_baslangic']) ? $_POST['gecerlilik_baslangic'] : null,
                     'gecerlilik_bitis' => !empty($_POST['gecerlilik_bitis']) ? $_POST['gecerlilik_bitis'] : null,
-                    'varsayilan_tutar' => floatval($_POST['varsayilan_tutar'] ?? 0),
-                    'gunluk_tutar' => floatval($_POST['gunluk_tutar'] ?? 0),
+                    'varsayilan_tutar' => Helper::formattedMoneyToNumber($_POST['varsayilan_tutar'] ?? 0),
+                    'gunluk_tutar' => Helper::formattedMoneyToNumber($_POST['gunluk_tutar'] ?? 0),
                     'gun_sayisi_otomatik' => intval($_POST['gun_sayisi_otomatik'] ?? 0),
                     'varsayilan_gun_sayisi' => intval($_POST['varsayilan_gun_sayisi'] ?? 26),
-                    'oran' => floatval($_POST['oran'] ?? 0),
+                    'oran' => Helper::formattedMoneyToNumber($_POST['oran'] ?? 0),
                     'aciklama' => trim($_POST['aciklama'] ?? ''),
                     'sira' => intval($_POST['sira'] ?? 0),
                     'aktif' => 1
@@ -1508,19 +1508,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'kategori' => $_POST['kategori'] ?? 'gelir',
                     'hesaplama_tipi' => $_POST['hesaplama_tipi'] ?? 'net',
                     'odeme_yontemi' => $_POST['odeme_yontemi'] ?? 'banka',
-                    'gunluk_muaf_limit' => floatval($_POST['gunluk_muaf_limit'] ?? 0),
-                    'aylik_muaf_limit' => floatval($_POST['aylik_muaf_limit'] ?? 0),
+                    'gunluk_muaf_limit' => Helper::formattedMoneyToNumber($_POST['gunluk_muaf_limit'] ?? 0),
+                    'aylik_muaf_limit' => Helper::formattedMoneyToNumber($_POST['aylik_muaf_limit'] ?? 0),
                     'muaf_limit_tipi' => $_POST['muaf_limit_tipi'] ?? 'yok',
                     'sgk_matrahi_dahil' => intval($_POST['sgk_matrahi_dahil'] ?? 0),
                     'gelir_vergisi_dahil' => intval($_POST['gelir_vergisi_dahil'] ?? 1),
                     'damga_vergisi_dahil' => intval($_POST['damga_vergisi_dahil'] ?? 0),
                     'gecerlilik_baslangic' => !empty($_POST['gecerlilik_baslangic']) ? $_POST['gecerlilik_baslangic'] : null,
                     'gecerlilik_bitis' => !empty($_POST['gecerlilik_bitis']) ? $_POST['gecerlilik_bitis'] : null,
-                    'varsayilan_tutar' => floatval($_POST['varsayilan_tutar'] ?? 0),
-                    'gunluk_tutar' => floatval($_POST['gunluk_tutar'] ?? 0),
+                    'varsayilan_tutar' => Helper::formattedMoneyToNumber($_POST['varsayilan_tutar'] ?? 0),
+                    'gunluk_tutar' => Helper::formattedMoneyToNumber($_POST['gunluk_tutar'] ?? 0),
                     'gun_sayisi_otomatik' => intval($_POST['gun_sayisi_otomatik'] ?? 0),
                     'varsayilan_gun_sayisi' => intval($_POST['varsayilan_gun_sayisi'] ?? 26),
-                    'oran' => floatval($_POST['oran'] ?? 0),
+                    'oran' => Helper::formattedMoneyToNumber($_POST['oran'] ?? 0),
                     'aciklama' => trim($_POST['aciklama'] ?? ''),
                     'sira' => intval($_POST['sira'] ?? 0)
                 ];
@@ -1541,7 +1541,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $parametre_kodu = trim($_POST['parametre_kodu'] ?? '');
                 $parametre_adi = trim($_POST['parametre_adi'] ?? '');
-                $deger = floatval(str_replace(['.', ','], ['', '.'], $_POST['deger'] ?? '0'));
+                $deger = Helper::formattedMoneyToNumber($_POST['deger'] ?? '0');
                 $gecerlilik_baslangic = $_POST['ayar_gecerlilik_baslangic'] ?? date('Y-m-d');
                 $aciklama = trim($_POST['ayar_aciklama'] ?? '');
 
@@ -1598,7 +1598,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $id = intval($_POST['id'] ?? 0);
                 $parametre_kodu = trim($_POST['parametre_kodu'] ?? '');
                 $parametre_adi = trim($_POST['parametre_adi'] ?? '');
-                $deger = floatval(str_replace(['.', ','], ['', '.'], $_POST['deger'] ?? '0'));
+                $deger = Helper::formattedMoneyToNumber($_POST['deger'] ?? '0');
                 $gecerlilik_baslangic = $_POST['ayar_gecerlilik_baslangic'] ?? date('Y-m-d');
                 $aciklama = trim($_POST['ayar_aciklama'] ?? '');
 

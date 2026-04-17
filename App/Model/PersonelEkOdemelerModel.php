@@ -49,18 +49,28 @@ class PersonelEkOdemelerModel extends Model
             // Dönem Filtresi
             if (!empty($filters['filter_ek_donem'])) {
                 $donem_id = $filters['filter_ek_donem'];
+                
+                // Dönem tarihlerini al
+                $donemQuery = $this->db->prepare("SELECT baslangic_tarihi, bitis_tarihi FROM bordro_donemi WHERE id = ?");
+                $donemQuery->execute([$donem_id]);
+                $donemInfo = $donemQuery->fetch(PDO::FETCH_OBJ);
+                $donemBas = $donemInfo->baslangic_tarihi ?? '2000-01-01';
+                $donemBit = $donemInfo->bitis_tarihi ?? '2099-12-31';
+
                 $where .= " AND (
                     (peo.tekrar_tipi = 'tek_sefer' AND peo.donem_id = ?) 
                     OR 
                     (peo.tekrar_tipi = 'surekli' AND EXISTS (
                         SELECT 1 FROM bordro_donemi bd2 
                         WHERE bd2.id = ? 
-                        AND peo.baslangic_donemi <= bd2.bitis_tarihi 
-                        AND (peo.bitis_donemi IS NULL OR peo.bitis_donemi >= bd2.baslangic_tarihi)
+                        AND peo.baslangic_donemi <= ? 
+                        AND (peo.bitis_donemi IS NULL OR peo.bitis_donemi >= ?)
                     ))
                 )";
                 $params[] = $donem_id;
                 $params[] = $donem_id;
+                $params[] = $donemBit;
+                $params[] = $donemBas;
             }
         } elseif ($mode === 'ay_yil') {
             // Ay-Yıl Filtresi
@@ -99,8 +109,8 @@ class PersonelEkOdemelerModel extends Model
     public function getAktifSurekliOdemeler($personel_id, $donem)
     {
         // Dönemden tarih oluştur
-        $donemBaslangic = $donem . '-01';
-        $donemBitis = date('Y-m-t', strtotime($donemBaslangic));
+        $donemBas = $donem . '-01';
+        $donemBit = date('Y-m-t', strtotime($donemBas));
 
         $sql = $this->db->prepare("
             SELECT peo.*, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bp.hesaplama_tipi as param_hesaplama_tipi
@@ -115,7 +125,7 @@ class PersonelEkOdemelerModel extends Model
               AND (peo.bitis_donemi IS NULL OR peo.bitis_donemi >= ?)
             ORDER BY peo.created_at ASC
         ");
-        $sql->execute([$personel_id, $donemBitis, $donemBaslangic]);
+        $sql->execute([$personel_id, $donemBit, $donemBas]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -179,6 +189,7 @@ class PersonelEkOdemelerModel extends Model
             'oran' => $surekliOdeme->oran,
             'aciklama' => $surekliOdeme->aciklama . ' (Otomatik)',
             'parametre_id' => $surekliOdeme->parametre_id,
+            'tarih' => $surekliOdeme->tarih,
             'ana_odeme_id' => $surekliOdeme->id, // Ana kayıt referansı
             'aktif' => 1
         ];

@@ -1798,22 +1798,32 @@ function loadKesintiListesi(personelId, donemId) {
                 <tbody>`;
 
           response.data.forEach((item) => {
-            const turLabel =
-              kesintiMap[item.tur] || item.tur.replace(/_/g, " ");
-            const fullDate = item.tarih
-              ? item.tarih
-              : item.olusturma_tarihi
-                ? item.olusturma_tarihi
-                : "";
+            const turLabel = item.parametre_adi || kesintiMap[item.tur] || item.tur.replace(/_/g, " ");
+            const statusBadge = item.durum === 'beklemede' ? ' <span class="badge bg-warning small ms-1" style="font-size:10px;">Beklemede</span>' : '';
+            const fullDate = item.tarih || item.olusturma_tarihi || "";
             const dateStr = fullDate.split(" ")[0];
-            const formattedDate = dateStr
-              ? new Date(dateStr).toLocaleDateString("tr-TR")
-              : "-";
+            let formattedDate = "";
+
+            if (dateStr) {
+                if (dateStr.includes("-")) {
+                    const parts = dateStr.split("-");
+                    formattedDate = `${parts[2]}.${parts[1]}.${parts[0]}`;
+                } else if (dateStr.includes(".")) {
+                    formattedDate = dateStr;
+                } else {
+                    formattedDate = new Date(dateStr).toLocaleDateString("tr-TR");
+                }
+            } else {
+                formattedDate = "-";
+            }
 
             html += `
                   <tr>
                     <td>${formattedDate}</td>
-                    <td><span class="badge bg-danger bg-opacity-10 text-danger">${turLabel}</span></td>
+                    <td>
+                        <span class="badge bg-danger bg-opacity-10 text-danger">${turLabel}</span>
+                        ${statusBadge}
+                    </td>
                     <td class="small">${item.aciklama || "-"}</td>
                     <td class="text-end fw-bold text-danger">-${formatMoney(item.tutar)} ₺</td>
                     <td class="text-center">

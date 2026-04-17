@@ -471,15 +471,26 @@ padding-bottom:  10px !important;
 
             <!-- Tab 1 Actions -->
             <div class="row mb-3 px-4" id="reportActions" style="display: none;">
-                <div class="col-12 d-flex justify-content-end gap-2">
-                    <button type="button" class="btn btn-sm btn-outline-info btn-tab-fullscreen"
-                        data-target="reportSection">
-                        <i class="mdi mdi-fullscreen me-1"></i>Tam Ekran
-                    </button>
-                    <button type="button" class="btn btn-sm btn-outline-success btn-tab-excel"
-                        data-table="comparisonTable" data-filename="abone_donem_karsilastirma.xls">
-                        <i class="mdi mdi-file-excel me-1"></i>Excel’e Aktar
-                    </button>
+                <div class="col-12 d-flex justify-content-between align-items-center gap-2">
+                    <div class="d-flex align-items-center gap-3">
+                        <div class="form-check form-switch">
+                            <input class="form-check-input" type="checkbox" id="chkMahalleBirlestir" style="cursor:pointer;">
+                            <label class="form-check-label fw-semibold" for="chkMahalleBirlestir" style="cursor:pointer; font-size: 0.8rem;">
+                                <i class="bx bx-merge text-primary me-1"></i>Mahalle bazlı birleştir
+                                <span class="text-muted" style="font-size: 0.7rem;">(Aynı mahalledeki farklı defter kodları tek satırda)</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="d-flex align-items-center gap-2">
+                        <button type="button" class="btn btn-sm btn-outline-info btn-tab-fullscreen"
+                            data-target="reportSection">
+                            <i class="mdi mdi-fullscreen me-1"></i>Tam Ekran
+                        </button>
+                        <button type="button" class="btn btn-sm btn-outline-success btn-tab-excel"
+                            data-table="comparisonTable" data-filename="abone_donem_karsilastirma.xls">
+                            <i class="mdi mdi-file-excel me-1"></i>Excel'e Aktar
+                        </button>
+                    </div>
                 </div>
             </div>
             <div class="row px-4" id="reportSection" style="display: none;">
@@ -625,6 +636,12 @@ padding-bottom:  10px !important;
                 <div class="col-12">
                     <div class="d-flex align-items-center justify-content-between gap-3 w-100">
                             <div class="d-flex align-items-center gap-4">
+                                <div class="form-check form-switch">
+                                    <input class="form-check-input" type="checkbox" id="chkOkumaGunMahalleBirlestir" style="cursor:pointer;">
+                                    <label class="form-check-label fw-semibold" for="chkOkumaGunMahalleBirlestir" style="cursor:pointer; font-size: 0.8rem;">
+                                        <i class="bx bx-merge text-primary me-1"></i>Mahalle bazlı birleştir
+                                    </label>
+                                </div>
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" id="chk35Plus" style="cursor:pointer;">
                                     <label class="form-check-label fw-semibold" for="chk35Plus" style="cursor:pointer;">
@@ -855,6 +872,14 @@ padding-bottom:  10px !important;
                                             <div class="small fw-bold opacity-75" style="font-size: 0.65rem; line-height: 1;">OKUNMAYAN ABONE</div>
                                             <div class="fw-bold fs-5" id="modalStatUnreadAbone">0</div>
                                         </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-auto d-flex align-items-center">
+                                    <div class="form-check form-switch mb-0">
+                                        <input class="form-check-input" type="checkbox" id="chkModalMahalleBirlestir" style="cursor:pointer;">
+                                        <label class="form-check-label fw-semibold" for="chkModalMahalleBirlestir" style="cursor:pointer; font-size: 0.75rem;">
+                                            Mahalle bazlı birleştir
+                                        </label>
                                     </div>
                                 </div>
                                 <div class="col-md-auto ms-md-auto">
@@ -2366,6 +2391,13 @@ padding-bottom:  10px !important;
             loadReport();
         });
 
+        // ======= MAHALLE BAZLI BİRLEŞTİRME TOGGLE =======
+        $(document).on('change', '#chkMahalleBirlestir', function () {
+            if (_tableData && _tableData.length > 0) {
+                renderTable(_tableData, _tableDonemler, true);
+            }
+        });
+
         $('#btnTemizle').on('click', function () {
             $('#filterIlceTipi').val('').trigger('change');
             $('#filterBolge').val('').trigger('change');
@@ -2489,6 +2521,53 @@ padding-bottom:  10px !important;
             if (!data || data.length === 0) {
                 $('#reportTableWrapper').html('<div class="text-center p-5 text-muted"><i class="bx bx-search-alt fs-1 d-block mb-2"></i>Seçilen kriterlere uygun veri bulunamadı.</div>');
                 return;
+            }
+
+            // ======= MAHALLE BAZLI BİRLEŞTİRME =======
+            const isMergeActive = $('#chkMahalleBirlestir').is(':checked');
+            if (isMergeActive) {
+                const mergeMap = {}; // key: bolge|mahalle
+                data.forEach(function(row) {
+                    const mahalle = (row.mahalle || '').trim();
+                    const bolge = (row.bolge || '').trim();
+                    const key = bolge + '|' + mahalle;
+                    if (!mergeMap[key]) {
+                        mergeMap[key] = {
+                            ilce_tipi: row.ilce_tipi,
+                            bolge: bolge,
+                            defter: String(row.defter || ''),
+                            mahalle: mahalle,
+                            abone_sayisi: parseInt(row.abone_sayisi) || 0,
+                            donemler: {}
+                        };
+                        // Her dönem için başlangıç değerleri
+                        donemler.forEach(function(d) {
+                            const dd = row.donemler[d] || { abone: 0, okunan: 0, gidilen: 0 };
+                            mergeMap[key].donemler[d] = {
+                                abone: parseInt(dd.abone) || 0,
+                                okunan: parseInt(dd.okunan) || 0,
+                                gidilen: parseInt(dd.gidilen) || 0
+                            };
+                        });
+                    } else {
+                        // Defter kodlarını birleştir
+                        const existingDefters = mergeMap[key].defter.split(', ');
+                        const newDefter = String(row.defter || '');
+                        if (newDefter && !existingDefters.includes(newDefter)) {
+                            mergeMap[key].defter += ', ' + newDefter;
+                        }
+                        // Abone sayısını topla
+                        mergeMap[key].abone_sayisi += parseInt(row.abone_sayisi) || 0;
+                        // Dönem verilerini topla
+                        donemler.forEach(function(d) {
+                            const dd = row.donemler[d] || { abone: 0, okunan: 0, gidilen: 0 };
+                            mergeMap[key].donemler[d].abone += parseInt(dd.abone) || 0;
+                            mergeMap[key].donemler[d].okunan += parseInt(dd.okunan) || 0;
+                            mergeMap[key].donemler[d].gidilen += parseInt(dd.gidilen) || 0;
+                        });
+                    }
+                });
+                data = Object.values(mergeMap);
             }
 
             // Arama filtrelerini uygula
@@ -3132,8 +3211,8 @@ padding-bottom:  10px !important;
             }
         });
 
-        // 35+ gün filtreleri
-        $('#chk35Plus, #chk35PlusNoRead').on('change', function () {
+        // 35+ gün filtreleri + Mahalle birleştirme
+        $('#chk35Plus, #chk35PlusNoRead, #chkOkumaGunMahalleBirlestir').on('change', function () {
             if (_okumaGunData.length > 0) {
                 renderOkumaGunTable(_okumaGunData, _okumaGunDonemler, true);
             }
@@ -3257,6 +3336,59 @@ padding-bottom:  10px !important;
                 _ogSortColumn = null;
                 _ogSortDirection = 'asc';
                 _ogSearchFilters = { ilce_tipi: '', bolge: '', defter: '', mahalle: '', abone_sayisi: '' };
+            }
+
+            // ======= MAHALLE BAZLI BİRLEŞTİRME (Okuma Günleri) =======
+            const isOgMergeActive = $('#chkOkumaGunMahalleBirlestir').is(':checked');
+            if (isOgMergeActive) {
+                const mergeMap = {};
+                data.forEach(function(row) {
+                    const mahalle = (row.mahalle || '').trim();
+                    const bolge = (row.bolge || '').trim();
+                    const key = bolge + '|' + mahalle;
+                    if (!mergeMap[key]) {
+                        mergeMap[key] = {
+                            ilce_tipi: row.ilce_tipi,
+                            bolge: bolge,
+                            defter: String(row.defter || ''),
+                            mahalle: mahalle,
+                            abone_sayisi: parseInt(row.abone_sayisi) || 0,
+                            donemler: {}
+                        };
+                        donemler.forEach(function(d) {
+                            const dd = row.donemler[d] || { okuma_tarihi: '', okuma_tarihi_raw: '', fark: null };
+                            mergeMap[key].donemler[d] = {
+                                okuma_tarihi: dd.okuma_tarihi || '',
+                                okuma_tarihi_raw: dd.okuma_tarihi_raw || '',
+                                fark: dd.fark
+                            };
+                        });
+                    } else {
+                        const existingDefters = mergeMap[key].defter.split(', ');
+                        const newDefter = String(row.defter || '');
+                        if (newDefter && !existingDefters.includes(newDefter)) {
+                            mergeMap[key].defter += ', ' + newDefter;
+                        }
+                        mergeMap[key].abone_sayisi += parseInt(row.abone_sayisi) || 0;
+                        // Dönemlerde en son okuma tarihini ve en büyük farkı al
+                        donemler.forEach(function(d) {
+                            const dd = row.donemler[d] || { okuma_tarihi: '', okuma_tarihi_raw: '', fark: null };
+                            const existing = mergeMap[key].donemler[d];
+                            // En son okuma tarihini al
+                            if (dd.okuma_tarihi_raw && (!existing.okuma_tarihi_raw || dd.okuma_tarihi_raw > existing.okuma_tarihi_raw)) {
+                                existing.okuma_tarihi = dd.okuma_tarihi;
+                                existing.okuma_tarihi_raw = dd.okuma_tarihi_raw;
+                            }
+                            // En büyük farkı al
+                            if (dd.fark !== null && dd.fark !== undefined) {
+                                if (existing.fark === null || existing.fark === undefined || dd.fark > existing.fark) {
+                                    existing.fark = dd.fark;
+                                }
+                            }
+                        });
+                    }
+                });
+                data = Object.values(mergeMap);
             }
 
             const only35Plus = $('#chk35Plus').is(':checked');
@@ -3930,10 +4062,38 @@ padding-bottom:  10px !important;
         let _modalSortCol = 'bolge';
         let _modalSortDir = 'asc';
 
-        function renderDefterModalTable() {
-            const type = _modalDataType;
-            
             let defterList = [..._modalDataList];
+
+            // ======= MAHALLE BAZLI BİRLEŞTİRME (Modal) =======
+            const isModalMergeActive = $('#chkModalMahalleBirlestir').is(':checked');
+            if (isModalMergeActive) {
+                const mergeMap = {};
+                defterList.forEach(function(row) {
+                    const mahalle = (row.mahalle || '').trim();
+                    const bolge = (row.bolge || '').trim();
+                    const key = bolge + '|' + mahalle;
+                    if (!mergeMap[key]) {
+                        mergeMap[key] = {
+                            bolge: bolge,
+                            defter: String(row.defter || ''),
+                            mahalle: mahalle,
+                            abone_sayisi: parseInt(row.abone_sayisi) || 0,
+                            okunan: parseInt(row.okunan) || 0,
+                            okunmayan: parseInt(row.okunmayan) || 0
+                        };
+                    } else {
+                        const existingDefters = mergeMap[key].defter.split(', ');
+                        const newDefter = String(row.defter || '');
+                        if (newDefter && !existingDefters.includes(newDefter)) {
+                            mergeMap[key].defter += ', ' + newDefter;
+                        }
+                        mergeMap[key].abone_sayisi += parseInt(row.abone_sayisi) || 0;
+                        mergeMap[key].okunan += parseInt(row.okunan) || 0;
+                        mergeMap[key].okunmayan += parseInt(row.okunmayan) || 0;
+                    }
+                });
+                defterList = Object.values(mergeMap);
+            }
             
             // Stats for the top boxes
             let totalBooks = defterList.length;
@@ -4085,6 +4245,11 @@ padding-bottom:  10px !important;
                 // Değer bazlılarda desc başlasın daha mantıklı (büyükten küçüğe)
                 if (col === 'abone') _modalSortDir = 'desc';
             }
+            renderDefterModalTable();
+        });
+
+        // Modal Mahalle Birleştirme Change Listener
+        $(document).on('change', '#chkModalMahalleBirlestir', function() {
             renderDefterModalTable();
         });
 

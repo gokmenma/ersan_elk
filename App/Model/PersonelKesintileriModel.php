@@ -43,6 +43,14 @@ class PersonelKesintileriModel extends Model
         } elseif ($mode === 'donem') {
             if (!empty($filters['filter_kesinti_donem'])) {
                 $donem_id = $filters['filter_kesinti_donem'];
+                
+                // Dönem tarihlerini al
+                $donemQuery = $this->db->prepare("SELECT baslangic_tarihi, bitis_tarihi FROM bordro_donemi WHERE id = ?");
+                $donemQuery->execute([$donem_id]);
+                $donemInfo = $donemQuery->fetch(PDO::FETCH_OBJ);
+                $donemBas = $donemInfo->baslangic_tarihi ?? '2000-01-01';
+                $donemBit = $donemInfo->bitis_tarihi ?? '2099-12-31';
+
                 $where .= " AND (
                     (pk.tekrar_tipi = 'tek_sefer' AND pk.donem_id = ?) 
                     OR 
@@ -51,8 +59,8 @@ class PersonelKesintileriModel extends Model
                         LEFT JOIN bordro_donemi bd_start ON bd_start.id = pk.donem_id
                         WHERE bd_target.id = ? 
                         AND (
-                            -- Sürekli için: başlangıç-bitiş kontrolü
-                            (pk.tekrar_tipi = 'surekli' AND pk.baslangic_donemi <= bd_target.bitis_tarihi AND (pk.bitis_donemi IS NULL OR pk.bitis_donemi >= bd_target.baslangic_tarihi))
+                            -- Sürekli için: başlangıç-bitiş kontrolü (Dönem bitmeden başlamış olmalı)
+                            (pk.tekrar_tipi = 'surekli' AND pk.baslangic_donemi <= ? AND (pk.bitis_donemi IS NULL OR pk.bitis_donemi >= ?))
                             OR
                             -- Taksitli için: başlangıç dönemi ve taksit sayısı kontrolü
                             (pk.tekrar_tipi = 'taksitli' AND bd_start.baslangic_tarihi IS NOT NULL AND bd_target.baslangic_tarihi >= bd_start.baslangic_tarihi AND bd_target.baslangic_tarihi < DATE_ADD(bd_start.baslangic_tarihi, INTERVAL pk.taksit_sayisi MONTH))
@@ -61,6 +69,8 @@ class PersonelKesintileriModel extends Model
                 )";
                 $params[] = $donem_id;
                 $params[] = $donem_id;
+                $params[] = $donemBit;
+                $params[] = $donemBas;
             }
         } elseif ($mode === 'ay_yil') {
             if (!empty($filters['filter_kesinti_ay_yil'])) {
@@ -98,8 +108,9 @@ class PersonelKesintileriModel extends Model
      */
     public function getAktifSurekliKesintiler($personel_id, $donem)
     {
-        // Dönemden tarih oluştur (ayın ilk günü)
-        $donemTarih = $donem . '-01';
+        // Dönemden tarihleri oluştur (ayın başı ve sonu)
+        $donemBas = $donem . '-01';
+        $donemBit = date('Y-m-t', strtotime($donemBas));
 
         $sql = $this->db->prepare("
             SELECT pk.*, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bp.hesaplama_tipi as param_hesaplama_tipi,
@@ -118,7 +129,7 @@ class PersonelKesintileriModel extends Model
               )
             ORDER BY pk.olusturma_tarihi ASC
         ");
-        $sql->execute([$personel_id, $donemTarih, $donemTarih, $donemTarih, $donemTarih]);
+        $sql->execute([$personel_id, $donemBit, $donemBas, $donemBas, $donemBas]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
@@ -161,6 +172,7 @@ class PersonelKesintileriModel extends Model
             'aciklama' => $surekliKesinti->aciklama . ' (Otomatik)',
             'parametre_id' => $surekliKesinti->parametre_id,
             'icra_id' => $surekliKesinti->icra_id,
+            'tarih' => $surekliKesinti->tarih,
             'ana_kesinti_id' => $surekliKesinti->id, // Ana kayıt referansı
             'aktif' => 1
         ];

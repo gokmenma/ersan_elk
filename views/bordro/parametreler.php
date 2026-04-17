@@ -1100,8 +1100,9 @@ for ($y = date('Y') + 1; $y >= 2020; $y--) {
         // Para formatını sayısal değere çeviren yardımcı fonksiyon
         function parseMoney(value) {
             if (!value) return 0;
-            // ₺ sembolünü kaldır, binlik ayracı (.) kaldır, ondalık ayracı (,) noktaya çevir
-            return parseFloat(value.toString().replace(/[₺\s]/g, '').replace(/\./g, '').replace(',', '.')) || 0;
+            // Sadece para birimi sembollerini ve boşlukları temizle, 
+            // ayraçları (nokta/virgül) backend'deki Helper::formattedMoneyToNumber'a bırak
+            return value.toString().replace(/[₺\s$€TLtryTRY]/g, '').trim();
         }
 
         // Parametre formu submit

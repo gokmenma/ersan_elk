@@ -136,7 +136,7 @@ class BordroPersonelModel extends Model
             $maasTutari = $fallbackMaasTutari;
         }
 
-        $toplamKesinti = floatval($p->kesinti_tutar ?? 0);
+        $toplamKesinti = floatval($p->guncel_toplam_kesinti ?? $p->kesinti_tutar ?? 0);
         $icraKesintisi = floatval($p->hd_icra_kesintisi ?? 0);
         $kesintiHaricIcra = $toplamKesinti - $icraKesintisi;
 
@@ -150,6 +150,11 @@ class BordroPersonelModel extends Model
             && floatval($p->hd_nominal_maas) > 0
         ) {
             $ucretsizIzinGunu = (int) round(floatval($p->hd_ucretsiz_izin_dusumu) / (floatval($p->hd_nominal_maas) / 30));
+        }
+
+        $raporGunu = 0;
+        if (isset($p->hd_rapor_gunu) && $p->hd_rapor_gunu !== null) {
+            $raporGunu = intval($p->hd_rapor_gunu);
         }
 
         $aktifTakvimGun = $this->getAktifTakvimGunSayisi(
@@ -166,14 +171,15 @@ class BordroPersonelModel extends Model
             }
         }
 
-        $calismaGunu = $this->getMaasHesapGunu($aktifTakvimGun, $donemTakvimGunu, $ucretsizIzinGunu);
+        $calismaGunu = $this->getMaasHesapGunu($aktifTakvimGun, $donemTakvimGunu, $ucretsizIzinGunu + $raporGunu);
 
-        $isNet = ($maasDurumu === 'Net');
+        $isNet = (stripos($maasDurumu, 'Net') !== false);
+        $isBrut = (stripos($maasDurumu, 'Brüt') !== false || stripos($maasDurumu, 'Brut') !== false);
         $isPrimUsulu = (stripos($maasDurumu, 'Prim') !== false);
 
         if ($isPrimUsulu) {
             $toplamAlacagi = floatval($p->brut_maas ?? 0) + $rawEkOdeme;
-        } elseif ($isNet || $maasDurumu === 'Brüt') {
+        } elseif ($isNet || $isBrut) {
             $toplamAlacagi = (($maasTutari / 30) * $calismaGunu) + $rawEkOdeme;
         } else {
             $toplamAlacagi = $maasTutari + $rawEkOdeme;
@@ -326,6 +332,7 @@ class BordroPersonelModel extends Model
                    JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.ucretsiz_izin_dusumu')) as hd_ucretsiz_izin_dusumu,
                    JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.nominal_maas')) as hd_nominal_maas,
                    JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.ucretli_izin_gunu')) as hd_ucretli_izin_gunu,
+                   JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.rapor_gunu')) as hd_rapor_gunu,
                    JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.maas_hesap_gunu')) as hd_maas_hesap_gunu
             FROM {$this->table} bp
             STRAIGHT_JOIN personel p ON bp.personel_id = p.id
@@ -362,13 +369,13 @@ class BordroPersonelModel extends Model
             LEFT JOIN (
                 SELECT personel_id, SUM(tutar) as toplam_kesinti
                 FROM personel_kesintileri 
-                WHERE donem_id = ? AND tekrar_tipi = 'tek_sefer' AND silinme_tarihi IS NULL AND (durum = 'onaylandi' OR tur = 'icra')
+                WHERE donem_id = ? AND silinme_tarihi IS NULL
                 GROUP BY personel_id
             ) pk_agg ON bp.personel_id = pk_agg.personel_id
             LEFT JOIN (
                 SELECT personel_id, SUM(tutar) as toplam_ek_odeme
                 FROM personel_ek_odemeler 
-                WHERE donem_id = ? AND (tekrar_tipi = 'tek_sefer' OR tekrar_tipi IS NULL) AND silinme_tarihi IS NULL AND durum = 'onaylandi'
+                WHERE donem_id = ? AND silinme_tarihi IS NULL
                 GROUP BY personel_id
             ) eo_agg ON bp.personel_id = eo_agg.personel_id
             WHERE bp.donem_id = ? AND bp.silinme_tarihi IS NULL $idFilter
@@ -2277,6 +2284,13 @@ class BordroPersonelModel extends Model
         $donemTarihi = $kayit->baslangic_tarihi ?? date('Y-m-d');
         $donemBitis = $kayit->bitis_tarihi ?? date('Y-m-t');
 
+        // ========== ÜCRETSİZ İZİN VE RApOR HAKEDİŞLERİNİ BAŞTAN HESAPLA ==========
+        // SGK uyumlu gün hesabı (30/31 gün kuralları) için bu veriler scaling öncesi gerekli.
+        $ucretsizIzinGunu = $this->getUcretsizIzinGunuDirekt($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
+        $raporGunu = $this->getGunSayisiByKisaKod($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi, 'RP');
+        $ucretliIzinGunu = $this->getUcretliIzinGunu($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
+        $genelTatilGunu = $this->getGunSayisiByKisaKod($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi, 'GT');
+
         // Genel ayarlar ve bordro parametrelerini tek sorguda yükle (ilk personelde), sonrakiler cache'i kullanır
         if ($this->genelAyarlarCache === null) {
             $this->genelAyarlarCache = $parametreModel->getAllGenelAyarlarMap($donemTarihi);
@@ -2344,8 +2358,10 @@ class BordroPersonelModel extends Model
             // ÖNEMLİ: Bu oranlama sadece ayı TAM töötüyse yapılmalıdır. Eksik töötülen günlerde gerçek takvim günü alınır.
             $aydakiGunSayisiDonem = date('t', strtotime($donemTarihi));
             if ($toplamGecerliGun > 0 && $aydakiGunSayisiDonem != 30) {
-                if ($toplamGecerliGun >= $aydakiGunSayisiDonem) {
-                    // Ayı tam çalışmışsa 30'a tamamla
+                // USER REQ: SGK kuralına göre 31 çeken aylarda eksik gün varsa, eksik gün 31 üzerinden düşülür.
+                // Eğer eksik gün YOKSA personelin SSK günü 30'a sabitlenmelidir.
+                if ($toplamGecerliGun >= $aydakiGunSayisiDonem && ($ucretsizIzinGunu + $raporGunu) == 0) {
+                    // Ayı tam çalışmışsa ve hiç eksik günü yoksa 30'a tamamla
                     $eskToplam = $toplamGecerliGun;
                     $toplamGecerliGun = 30;
                     // Eğer 30 güne çıkartıldıysa, ağırlıklı brüt maaşı da orantılı olarak arttır ki nominal net tutar 33.000 gibi tam miktar çıksın
@@ -2466,21 +2482,7 @@ class BordroPersonelModel extends Model
         // Aktif icra dosyalarını bulup kesinti olarak ekle
         $this->olusturIcraKesintileri($kayit->personel_id, $kayit->donem_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
 
-        // ========== ÜCRETSİZ İZİN HESAPLAMASI ==========
-        // Ücretsiz izinler artık ayrı kesinti olarak oluşturulmaz.
-        // Bunun yerine doğrudan brüt maaştan düşülür: Brüt = Günlük Ücret × (30 - ücretsiz izin günü)
-        // Bu sayede çift düşme problemi ortadan kalkar.
-        // Kesintiler yalnızca avans, ceza, icra gibi gerçek kesintiler için kullanılır.
-        $ucretsizIzinGunu = $this->getUcretsizIzinGunuDirekt($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
-
-        // ========== ÜCRETLİ İZİN BİLGİSİ ==========
-        $ucretliIzinGunu = $this->getUcretliIzinGunu($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
-
-        // ========== RApOR GÜNÜ BİLGİSİ ==========
-        $raporGunu = $this->getGunSayisiByKisaKod($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi, 'RP');
-
-        // ========== GENEL TATİL GÜNÜ BİLGİSİ ==========
-        $genelTatilGunu = $this->getGunSayisiByKisaKod($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi, 'GT');
+        // (Leave/Report/Holiday calculations are now at the top of the function for scaling logic)
 
         // ========== ÇALIŞMA GÜNÜ HESAPLAMASI ==========
         // Mantık:
@@ -3548,17 +3550,15 @@ class BordroPersonelModel extends Model
      */
     public function getDonemKesintileriListe($personel_id, $donem_id)
     {
-        $sql = $this->db->prepare("
-            SELECT pk.*, pi.dosya_no, pi.icra_dairesi
-            FROM personel_kesintileri pk
-            LEFT JOIN personel_icralari pi ON pk.icra_id = pi.id
-            WHERE pk.personel_id = ? AND pk.donem_id = ? AND pk.silinme_tarihi IS NULL
-              AND pk.durum = 'onaylandi'
-              AND (pk.tekrar_tipi = 'tek_sefer' OR pk.tekrar_tipi IS NULL)
-            ORDER BY pk.olusturma_tarihi DESC
-        ");
-        $sql->execute([$personel_id, $donem_id]);
-        return $sql->fetchAll(PDO::FETCH_OBJ);
+        if (empty($personel_id) || empty($donem_id)) {
+            return [];
+        }
+
+        $PersonelKesintileriModel = new \App\Model\PersonelKesintileriModel();
+        return $PersonelKesintileriModel->getPersonelKesintileri($personel_id, [
+            'filter_kesinti_mode' => 'donem',
+            'filter_kesinti_donem' => $donem_id
+        ]);
     }
 
     /**
@@ -3619,20 +3619,15 @@ class BordroPersonelModel extends Model
      */
     public function getDonemEkOdemeleriListe($personel_id, $donem_id)
     {
-        $sql = $this->db->prepare("
-            SELECT peo.*,bd.kapali_mi,
-            COALESCE(
-                (SELECT etiket FROM bordro_parametreleri bp WHERE bp.id = peo.parametre_id LIMIT 1),
-                (SELECT etiket FROM bordro_parametreleri bp WHERE bp.kod = peo.tur LIMIT 1)
-            ) as etiket
-            FROM personel_ek_odemeler peo
-            LEFT JOIN bordro_donemi bd ON peo.donem_id = bd.id
-            WHERE peo.personel_id = ? AND peo.donem_id = ? AND peo.silinme_tarihi IS NULL
-              AND (peo.tekrar_tipi IN ('tek_sefer', 'profil_bazli') OR peo.tekrar_tipi IS NULL)
-            ORDER BY peo.created_at DESC
-        ");
-        $sql->execute([$personel_id, $donem_id]);
-        return $sql->fetchAll(PDO::FETCH_OBJ);
+        if (empty($personel_id) || empty($donem_id)) {
+            return [];
+        }
+
+        $PersonelEkOdemelerModel = new \App\Model\PersonelEkOdemelerModel();
+        return $PersonelEkOdemelerModel->getPersonelEkOdemeler($personel_id, [
+            'filter_ek_mode' => 'donem',
+            'filter_ek_donem' => $donem_id
+        ]);
     }
 
     /**
