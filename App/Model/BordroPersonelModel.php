@@ -3121,9 +3121,10 @@ class BordroPersonelModel extends Model
             $icraBazTutar = $bankaYatacakBaz;
 
             if ($firstHTip === 'asgari_oran_net' || $firstHTip === 'oran_net') {
-                // Her iki tip de artık aynı formülü takip ediyor (Image 1: 28.075,50 / 30 * 22 * 0.25)
+                // Personelin alacağı, net asgari ücret bazından düşükse kesinti alacağın üzerinden hesaplanır.
                 $oranKullan = ($firstOran > 0) ? $firstOran : 25;
-                $toplamIcraBudget = round($icraBazTutar * ($oranKullan / 100), 2);
+                $icraKesintiBazi = min($icraBazTutar, $icraMatrahi);
+                $toplamIcraBudget = round($icraKesintiBazi * ($oranKullan / 100), 2);
             } else {
                 // Sabit tutar
                 $sabitToplam = 0;
