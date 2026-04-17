@@ -348,7 +348,7 @@ class PuantajModel extends Model
         }
 
         // Toplam kayıt sayısı (filtresiz)
-        $totalQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id LEFT JOIN firmalar f ON t.firma_id = f.id WHERE $baseWhere");
+        $totalQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id LEFT JOIN firmalar f ON t.firma_id = f.id LEFT JOIN tanimlamalar ek ON t.ekip_kodu_id = ek.id WHERE $baseWhere");
         foreach ($params as $key => $val) {
             $totalQuery->bindValue(":$key", $val);
         }

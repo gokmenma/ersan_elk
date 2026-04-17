@@ -87,9 +87,18 @@ class BordroPersonelModel extends Model
         }
 
         // Eğer personel ayın tamamında aktifse (giriş çıkışı yoksa dönemi kapsıyorsa)
-        // SSK günü 30'dur. Eksik günleri 30 üzerinden düşeriz.
+        // SSK günü 30'dur. 
         if ($aktifTakvimGun >= $donemTakvimGun) {
-            return max(0, 30 - $eksikGunToplami);
+            // Eğer eksik gün yoksa 30 gün kabul edilir
+            if ($eksikGunToplami == 0) {
+                return 30;
+            }
+            
+            // Eğer eksik gün varsa, gerçek takvim gününden eksik gün düşülür
+            // SGK Kuralı: Ayın 31 çektiği aylarda, eksik gün sayısı takvim gününden (31) düşülür.
+            // Örn: Mart (31 gün) - 1 gün ücretsiz izin = 30 gün
+            // Örn: Şubat (28 gün) - 1 gün ücretsiz izin = 27 gün
+            return max(0, $donemTakvimGun - $eksikGunToplami);
         }
 
         // Kıst dönem (Ay ortası giriş/çıkış) ise aktif gün sayısından düşeriz
@@ -2534,19 +2543,9 @@ class BordroPersonelModel extends Model
         // Genel Tatil ve Ücretli İzinleri de ekleyelim
         $puantajGunSayisi += $genelTatilGunu + $ucretliIzinGunu;
 
-        // NEW: Eğer ayı 30 gün olarak kabul ediyorsak (bordro mantığı), puantaj gününü de bu orana çekmeliyiz
-        // Özellikle Şubat ayı için (28/29 gün) tam çalışanların 30 gün görünmesi için bu oranlama şart
-        if ($puantajGunSayisi > 0 && $aydakiGunSayisi != 30) {
-            $eskiToplam = $puantajGunSayisi;
-            if ($puantajGunSayisi >= $aydakiGunSayisi) {
-                $puantajGunSayisi = 30;
-            } else {
-                $puantajGunSayisi = (int) round($puantajGunSayisi * (30 / $aydakiGunSayisi));
-            }
-            // Farkı normal güne ekleyelim (Orantısal düzeltme)
-            $fark = $puantajGunSayisi - $eskiToplam;
-            $normGun += $fark;
-        }
+        // Not: Eski doğrusal oranlama mantığı kaldırıldı (30/31 vb.). 
+        // Bunun yerine getMaasHesapGunu içindeki SGK uyumlu (31-1=30) mantık ve 
+        // aşağıdaki normalization bloğu kullanılıyor.
 
         // Maaş günü: ücretsiz izin ve rapor günleri düşülür.
         // Eksik gün yoksa tam dönem için 30, eksik varsa aktif takvim gününden düş.

@@ -171,7 +171,7 @@ class EndeksOkumaModel extends Model
         }
 
         // Toplam kayıt sayısı (filtresiz)
-        $totalQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t WHERE $baseWhere");
+        $totalQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id WHERE $baseWhere");
         foreach ($params as $key => $val) {
             $totalQuery->bindValue(":$key", $val);
         }
