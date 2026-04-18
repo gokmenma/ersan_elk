@@ -1614,7 +1614,10 @@ class BordroPersonelModel extends Model
         if (!empty($personel->yemek_yardimi_aliyor) && !empty($personel->yemek_yardimi_parametre_id)) {
             $param = $this->cachedParametreModel->find($personel->yemek_yardimi_parametre_id);
             if ($param) {
-                $tutar = floatval($param->varsayilan_tutar ?? 0);
+                // Eğer personelde manuel yemek tutarı girilmişse (0'dan büyükse) onu kullan, yoksa parametredeki varsayılanı kullan
+                $tutar = (floatval($personel->yemek_yardimi_tutari ?? 0) > 0) 
+                    ? floatval($personel->yemek_yardimi_tutari) 
+                    : floatval($param->varsayilan_tutar ?? 0);
                 if ($tutar > 0 || $param->hesaplama_tipi === 'aylik_fiili_gun_net') {
                     $aciklama = "[Yemek Yardımı] " . ($param->etiket ?? 'Yemek Yardımı');
                     $this->db->prepare("
