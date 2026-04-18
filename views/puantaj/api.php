@@ -2590,7 +2590,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $placeholders = implode(',', array_fill(0, count($donemler), '?'));
 
         $groupSql = "SELECT e.bolge, e.defter, DATE_FORMAT(e.tarih, '%Y%m') as donem,
-                            SUM(e.okunan_abone_sayisi) as toplam_okunan,
+                            SUM(CASE WHEN e.sayac_durum NOT IN ('EVDE YOK', 'ABONE BULUNAMIYOR', 'DEPREMDE YIKILMIŞ') THEN e.okunan_abone_sayisi ELSE 0 END) as toplam_okunan,
                             SUM(e.okunan_abone_sayisi) as kayit_sayisi,
                             MAX(e.tarih) as son_okuma
                      FROM endeks_okuma e
@@ -2729,6 +2729,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $toplamAbone = 0;
         $okunanDefter = 0;
         $okunanAbone = 0;
+        $gidilenAbone = 0;
         $sonDonem = !empty($donemler) ? end($donemler) : '';
 
         foreach ($organized as $key => $item) {
@@ -2774,6 +2775,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                     $okunanDefter++;
                 }
                 $okunanAbone += (int)$sd['okunan'];
+                $gidilenAbone += (int)$sd['gidilen'];
             }
         }
 
@@ -2807,7 +2809,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                 'okunan_defter' => $okunanDefter,
                 'kalan_defter' => max(0, $toplamDefter - $okunanDefter),
                 'okunan_abone' => $okunanAbone,
-                'kalan_abone' => max(0, $toplamAbone - $okunanAbone),
+                'gidilen_abone' => $gidilenAbone,
+                'kalan_abone' => max(0, $toplamAbone - $gidilenAbone),
                 'son_donem' => $sonDonemFormatted,
                 'donem_sayisi' => count($donemler)
             ]
@@ -2914,7 +2917,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         }
 
         $sql = "SELECT bolge, defter, DATE_FORMAT(tarih, '%Y%m') as donem,
-                        SUM(okunan_abone_sayisi) as toplam_okunan,
+                        SUM(CASE WHEN sayac_durum NOT IN ('EVDE YOK', 'ABONE BULUNAMIYOR', 'DEPREMDE YIKILMIŞ') THEN okunan_abone_sayisi ELSE 0 END) as toplam_okunan,
                         SUM(okunan_abone_sayisi) as toplam_gidilen
                  FROM endeks_okuma
                  WHERE firma_id = ?
@@ -3123,7 +3126,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'toplam_detay' => $toplamDetay,
             'summary' => [
                 'toplam_bolge' => count($bolgeData),
-                'toplam_defter' => count($allDefters),
+                'toplam_defter' => !empty($donemler) ? ($genel[end($donemler)]['toplam_defter'] ?? 0) : 0,
                 'donem_sayisi' => count($donemler)
             ]
         ];

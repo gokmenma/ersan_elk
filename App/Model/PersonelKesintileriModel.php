@@ -19,7 +19,17 @@ class PersonelKesintileriModel extends Model
     {
         // Ana kesintileri (bağımsız tek seferlik kayıtlar ve sürekli/taksitli ana tanımları) getirir.
         // Otomatik oluşturulan alt taksit/sürekli kayıtlarını (ana_kesinti_id IS NOT NULL) gizleyerek mükerrer görünümü engeller.
-        $where = "pk.personel_id = ? AND pk.silinme_tarihi IS NULL AND pk.ana_kesinti_id IS NULL";
+        $actualOnly = $filters['actual_only'] ?? false;
+        
+        $where = "pk.personel_id = ? AND pk.silinme_tarihi IS NULL";
+        if ($actualOnly) {
+            // Sadece gerçek tutarları (tek seferlik kayıtlar, ister manuel ister otomatik oluşturulmuş) getir
+            $where .= " AND pk.tekrar_tipi = 'tek_sefer'";
+        } else {
+            // UI görünümü: Ana tanımları getir, otomatik alt kayıtları gizle
+            $where .= " AND pk.ana_kesinti_id IS NULL";
+        }
+        
         $params = [$personel_id];
         $mode = $filters['filter_kesinti_mode'] ?? 'donem';
 
@@ -44,33 +54,39 @@ class PersonelKesintileriModel extends Model
             if (!empty($filters['filter_kesinti_donem'])) {
                 $donem_id = $filters['filter_kesinti_donem'];
                 
-                // Dönem tarihlerini al
-                $donemQuery = $this->db->prepare("SELECT baslangic_tarihi, bitis_tarihi FROM bordro_donemi WHERE id = ?");
-                $donemQuery->execute([$donem_id]);
-                $donemInfo = $donemQuery->fetch(PDO::FETCH_OBJ);
-                $donemBas = $donemInfo->baslangic_tarihi ?? '2000-01-01';
-                $donemBit = $donemInfo->bitis_tarihi ?? '2099-12-31';
+                if ($actualOnly) {
+                    // Sadece o döneme ait kayıtları getir
+                    $where .= " AND pk.donem_id = ?";
+                    $params[] = $donem_id;
+                } else {
+                    // Dönem tarihlerini al
+                    $donemQuery = $this->db->prepare("SELECT baslangic_tarihi, bitis_tarihi FROM bordro_donemi WHERE id = ?");
+                    $donemQuery->execute([$donem_id]);
+                    $donemInfo = $donemQuery->fetch(PDO::FETCH_OBJ);
+                    $donemBas = $donemInfo->baslangic_tarihi ?? '2000-01-01';
+                    $donemBit = $donemInfo->bitis_tarihi ?? '2099-12-31';
 
-                $where .= " AND (
-                    (pk.tekrar_tipi = 'tek_sefer' AND pk.donem_id = ?) 
-                    OR 
-                    ((pk.tekrar_tipi = 'surekli' OR pk.tekrar_tipi = 'taksitli') AND EXISTS (
-                        SELECT 1 FROM bordro_donemi bd_target
-                        LEFT JOIN bordro_donemi bd_start ON bd_start.id = pk.donem_id
-                        WHERE bd_target.id = ? 
-                        AND (
-                            -- Sürekli için: başlangıç-bitiş kontrolü (Dönem bitmeden başlamış olmalı)
-                            (pk.tekrar_tipi = 'surekli' AND pk.baslangic_donemi <= ? AND (pk.bitis_donemi IS NULL OR pk.bitis_donemi >= ?))
-                            OR
-                            -- Taksitli için: başlangıç dönemi ve taksit sayısı kontrolü
-                            (pk.tekrar_tipi = 'taksitli' AND bd_start.baslangic_tarihi IS NOT NULL AND bd_target.baslangic_tarihi >= bd_start.baslangic_tarihi AND bd_target.baslangic_tarihi < DATE_ADD(bd_start.baslangic_tarihi, INTERVAL pk.taksit_sayisi MONTH))
-                        )
-                    ))
-                )";
-                $params[] = $donem_id;
-                $params[] = $donem_id;
-                $params[] = $donemBit;
-                $params[] = $donemBas;
+                    $where .= " AND (
+                        (pk.tekrar_tipi = 'tek_sefer' AND pk.donem_id = ?) 
+                        OR 
+                        ((pk.tekrar_tipi = 'surekli' OR pk.tekrar_tipi = 'taksitli') AND EXISTS (
+                            SELECT 1 FROM bordro_donemi bd_target
+                            LEFT JOIN bordro_donemi bd_start ON bd_start.id = pk.donem_id
+                            WHERE bd_target.id = ? 
+                            AND (
+                                -- Sürekli için: başlangıç-bitiş kontrolü (Dönem bitmeden başlamış olmalı)
+                                (pk.tekrar_tipi = 'surekli' AND pk.baslangic_donemi <= ? AND (pk.bitis_donemi IS NULL OR pk.bitis_donemi >= ?))
+                                OR
+                                -- Taksitli için: başlangıç dönemi ve taksit sayısı kontrolü
+                                (pk.tekrar_tipi = 'taksitli' AND bd_start.baslangic_tarihi IS NOT NULL AND bd_target.baslangic_tarihi >= bd_start.baslangic_tarihi AND bd_target.baslangic_tarihi < DATE_ADD(bd_start.baslangic_tarihi, INTERVAL pk.taksit_sayisi MONTH))
+                            )
+                        ))
+                    )";
+                    $params[] = $donem_id;
+                    $params[] = $donem_id;
+                    $params[] = $donemBit;
+                    $params[] = $donemBas;
+                }
             }
         } elseif ($mode === 'ay_yil') {
             if (!empty($filters['filter_kesinti_ay_yil'])) {

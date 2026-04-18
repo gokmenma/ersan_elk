@@ -21,6 +21,20 @@ class BordroPersonelModel extends Model
     private ?array $parametrelerCache = null;
     /** @var array|null Personel ek ödemeler cache (personel_id => array) */
     private ?array $ekOdemelerCache = null;
+    private array $isTuruIdMapCache = [];
+    private array $isTuruUcretCache = [];
+    private array $settingsCache = [];
+    private ?array $ucretsizIzinTurIdsCache = null;
+    /** @var PersonelModel|null Personel model cache */
+    private ?PersonelModel $personelModelCache = null;
+    /** @var TanimlamalarModel|null Tanımlamalar model cache */
+    private ?TanimlamalarModel $tanimlamalarModelCache = null;
+    /** @var bool Toplu hesaplama modu aktif mi? */
+    public bool $batchMode = false;
+
+
+
+
 
     /**
      * Parametre cache'ini kullanarak getByKod() işlevi görür.
@@ -368,13 +382,13 @@ class BordroPersonelModel extends Model
             LEFT JOIN (
                 SELECT personel_id, SUM(tutar) as toplam_kesinti
                 FROM personel_kesintileri 
-                WHERE donem_id = ? AND silinme_tarihi IS NULL
+                WHERE donem_id = ? AND silinme_tarihi IS NULL AND tekrar_tipi = 'tek_sefer'
                 GROUP BY personel_id
             ) pk_agg ON bp.personel_id = pk_agg.personel_id
             LEFT JOIN (
                 SELECT personel_id, SUM(tutar) as toplam_ek_odeme
                 FROM personel_ek_odemeler 
-                WHERE donem_id = ? AND silinme_tarihi IS NULL
+                WHERE donem_id = ? AND silinme_tarihi IS NULL AND tekrar_tipi = 'tek_sefer'
                 GROUP BY personel_id
             ) eo_agg ON bp.personel_id = eo_agg.personel_id
             WHERE bp.donem_id = ? AND bp.silinme_tarihi IS NULL $idFilter
@@ -949,6 +963,11 @@ class BordroPersonelModel extends Model
      */
     private function getIsTuruIdMapBySonuc($firmaId)
     {
+        if (isset($this->isTuruIdMapCache[$firmaId])) {
+            return $this->isTuruIdMapCache[$firmaId];
+        }
+
+
         $sql = $this->db->prepare("\n            SELECT MAX(id) as id, TRIM(is_emri_sonucu) as is_emri_sonucu\n            FROM tanimlamalar\n            WHERE grup = 'is_turu'\n            AND firma_id = ?\n            AND silinme_tarihi IS NULL\n            AND is_emri_sonucu IS NOT NULL\n            AND is_emri_sonucu != ''\n            GROUP BY TRIM(is_emri_sonucu)\n        ");
         $sql->execute([$firmaId]);
         $rows = $sql->fetchAll(PDO::FETCH_OBJ);
@@ -961,7 +980,9 @@ class BordroPersonelModel extends Model
             }
             $map[$key] = intval($row->id);
         }
+        $this->isTuruIdMapCache[$firmaId] = $map;
         return $map;
+
     }
 
     /**
@@ -981,8 +1002,9 @@ class BordroPersonelModel extends Model
         }
 
         $cacheKey = $resolvedIsTuruId . '|' . $tarih . '|' . ($isAracli ? '1' : '0') . '|' . ($isOkuma ? '1' : '0');
-        if (!array_key_exists($cacheKey, $ucretCache)) {
-            $ucretCache[$cacheKey] = floatval($TanimlamalarModel->getIsTuruUcretiByTarih(
+        if (!array_key_exists($cacheKey, $this->isTuruUcretCache)) {
+
+            $this->isTuruUcretCache[$cacheKey] = floatval($TanimlamalarModel->getIsTuruUcretiByTarih(
                 $resolvedIsTuruId,
                 $tarih,
                 $isAracli,
@@ -991,7 +1013,7 @@ class BordroPersonelModel extends Model
             ));
         }
 
-        return floatval($ucretCache[$cacheKey]);
+        return floatval($this->isTuruUcretCache[$cacheKey]);
     }
 
     /**
@@ -1005,7 +1027,11 @@ class BordroPersonelModel extends Model
     public function olusturPuantajOdemeleri($personel_id, $donem_id, $baslangic_tarihi, $bitis_tarihi)
     {
         // 1. Personelin ekip kodunu bul
-        $PersonelModel = new \App\Model\PersonelModel();
+        if ($this->personelModelCache === null) {
+            $this->personelModelCache = new \App\Model\PersonelModel();
+        }
+        $PersonelModel = $this->personelModelCache;
+
         $personel = $PersonelModel->find($personel_id);
 
         if (!$personel) {
@@ -1021,7 +1047,11 @@ class BordroPersonelModel extends Model
         $deleteSql->execute([$personel_id, $donem_id]);
 
         // 3. Araç kullanım durumunu ve departmanı belirle
-        $TanimlamalarModel = new \App\Model\TanimlamalarModel();
+        if ($this->tanimlamalarModelCache === null) {
+            $this->tanimlamalarModelCache = new \App\Model\TanimlamalarModel();
+        }
+        $TanimlamalarModel = $this->tanimlamalarModelCache;
+
         $isAracli = (isset($personel->arac_kullanim) && $personel->arac_kullanim === 'Kendi Aracı');
         $isOkuma = (isset($personel->departman) && stripos($personel->departman, 'Okuma') !== false);
         $firmaId = intval($personel->firma_id ?? ($_SESSION['firma_id'] ?? 0));
@@ -1618,7 +1648,11 @@ class BordroPersonelModel extends Model
      */
     public function getFiiliCalismaGunuSayisi($personel_id, $baslangic_tarihi, $bitis_tarihi)
     {
-        $PersonelModel = new \App\Model\PersonelModel();
+        if ($this->personelModelCache === null) {
+            $this->personelModelCache = new \App\Model\PersonelModel();
+        }
+        $PersonelModel = $this->personelModelCache;
+
         $personel = $PersonelModel->find($personel_id);
         if (!$personel) return 0;
 
@@ -2091,8 +2125,14 @@ class BordroPersonelModel extends Model
             AND kisa_kod NOT IN ('RP')
             AND silinme_tarihi IS NULL
         ");
-        $izinTurleriSql->execute();
-        $ucretsizIzinTurIds = $izinTurleriSql->fetchAll(PDO::FETCH_COLUMN);
+        if ($this->ucretsizIzinTurIdsCache === null) {
+            $izinTurleriSql->execute();
+            $this->ucretsizIzinTurIdsCache = $izinTurleriSql->fetchAll(PDO::FETCH_COLUMN) ?: [];
+        }
+        $ucretsizIzinTurIds = $this->ucretsizIzinTurIdsCache;
+
+
+
 
         if (empty($ucretsizIzinTurIds)) {
             return 0;
@@ -2189,7 +2229,11 @@ class BordroPersonelModel extends Model
     public function getCalismaGunuSayisi($personel_id, $baslangic_tarihi, $bitis_tarihi)
     {
         // Personelin ekip kodunu al
-        $PersonelModel = new \App\Model\PersonelModel();
+        if ($this->personelModelCache === null) {
+            $this->personelModelCache = new \App\Model\PersonelModel();
+        }
+        $PersonelModel = $this->personelModelCache;
+
         $personel = $PersonelModel->find($personel_id);
 
         if (!$personel) {
@@ -2249,7 +2293,81 @@ class BordroPersonelModel extends Model
      * Tek bir personelin maaşını hesaplar ve günceller
      * Parametrelere dayalı gelişmiş hesaplama
      */
+    /**
+     * Toplu hesaplama öncesi seçilen personellerin otomatik verilerini tek seferde temizler.
+     * Bu işlem N+1 delete sorununu çözer.
+     */
+    public function bulkDeleteAutoGeneratedRecords(array $bordroPersonelIds, int $donemId)
+    {
+        if (empty($bordroPersonelIds)) return;
+
+        $placeholders = implode(',', array_fill(0, count($bordroPersonelIds), '?'));
+        
+        // Önce personel_id listesini alalım (bazı tablolar personel_id kullanıyor)
+        $sqlP = $this->db->prepare("SELECT DISTINCT personel_id FROM bordro_personel WHERE id IN ($placeholders)");
+        $sqlP->execute($bordroPersonelIds);
+        $personelIds = $sqlP->fetchAll(PDO::FETCH_COLUMN);
+        
+        if (empty($personelIds)) return;
+        $pPlaceholders = implode(',', array_fill(0, count($personelIds), '?'));
+
+        // 1) Otomatik KESİNTİLERİ TEMİZLE
+        $this->db->prepare("
+            DELETE FROM personel_kesintileri 
+            WHERE donem_id = ? 
+            AND personel_id IN ($pPlaceholders)
+            AND (
+                ana_kesinti_id IS NOT NULL
+                OR tur = 'icra'
+                OR (tur = 'avans' AND (aciklama LIKE '[Avans]%' OR aciklama LIKE 'Avans - %'))
+                OR aciklama LIKE '[BES]%'
+            )
+        ")->execute(array_merge([$donemId], $personelIds));
+
+        // 2) Otomatik EK ÖDEMELERİ TEMİZLE
+        $this->db->prepare("
+            DELETE FROM personel_ek_odemeler 
+            WHERE donem_id = ? 
+            AND personel_id IN ($pPlaceholders)
+            AND (
+                ana_odeme_id IS NOT NULL
+                OR aciklama LIKE '[Puantaj]%'
+                OR aciklama LIKE '[Sayaç]%'
+                OR aciklama LIKE '[Nöbet]%'
+                OR aciklama LIKE '[Kaçak Kontrol]%'
+                OR tur IN ('yemek_yardimi', 'es_yardimi', 'YY', 'EY')
+                OR aciklama LIKE '[Yemek Yardımı]%'
+                OR aciklama LIKE '[Eş Yardımı]%'
+                OR tekrar_tipi = 'profil_bazli'
+                OR (aciklama LIKE '(%' AND aciklama LIKE '%Fiili Gün x%')
+            )
+        ")->execute(array_merge([$donemId], $personelIds));
+    }
+
+    /**
+     * Verilen verileri toplu olarak veritabanına ekler.
+     */
+    public function bulkInsert(string $table, array $columns, array $values)
+    {
+        if (empty($values)) return;
+
+        $colString = implode(',', $columns);
+        $rowPlaceholders = '(' . implode(',', array_fill(0, count($columns), '?')) . ')';
+        $allPlaceholders = implode(',', array_fill(0, count($values), $rowPlaceholders));
+
+        $flatValues = [];
+        foreach ($values as $row) {
+            foreach ($columns as $col) {
+                $flatValues[] = $row[$col] ?? null;
+            }
+        }
+
+        $sql = "INSERT INTO $table ($colString) VALUES $allPlaceholders";
+        $this->db->prepare($sql)->execute($flatValues);
+    }
+
     public function hesaplaMaas($bordro_personel_id, $hesaplayan_id = null, $hesaplayan_ad_soyad = null)
+
     {
         // Enjektör: Eğer hesaplayan bilgisi gelmemişse oturumdan al
         if ($hesaplayan_id === null) {
@@ -3547,7 +3665,8 @@ class BordroPersonelModel extends Model
         $PersonelKesintileriModel = new \App\Model\PersonelKesintileriModel();
         return $PersonelKesintileriModel->getPersonelKesintileri($personel_id, [
             'filter_kesinti_mode' => 'donem',
-            'filter_kesinti_donem' => $donem_id
+            'filter_kesinti_donem' => $donem_id,
+            'actual_only' => true
         ]);
     }
 

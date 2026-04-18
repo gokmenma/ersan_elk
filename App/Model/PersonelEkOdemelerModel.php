@@ -21,7 +21,17 @@ class PersonelEkOdemelerModel extends Model
      */
     public function getPersonelEkOdemeler($personel_id, $filters = [])
     {
-        $where = "peo.personel_id = ? AND peo.silinme_tarihi IS NULL AND peo.ana_odeme_id IS NULL";
+        $actualOnly = $filters['actual_only'] ?? false;
+        
+        $where = "peo.personel_id = ? AND peo.silinme_tarihi IS NULL";
+        if ($actualOnly) {
+            // Sadece gerçek tutarları getir (tek seferlik kayıtlar)
+            $where .= " AND peo.tekrar_tipi = 'tek_sefer'";
+        } else {
+            // UI görünümü: Ana tanımları getir
+            $where .= " AND peo.ana_odeme_id IS NULL";
+        }
+        
         $params = [$personel_id];
         $mode = $filters['filter_ek_mode'] ?? 'donem';
 
@@ -50,27 +60,33 @@ class PersonelEkOdemelerModel extends Model
             if (!empty($filters['filter_ek_donem'])) {
                 $donem_id = $filters['filter_ek_donem'];
                 
-                // Dönem tarihlerini al
-                $donemQuery = $this->db->prepare("SELECT baslangic_tarihi, bitis_tarihi FROM bordro_donemi WHERE id = ?");
-                $donemQuery->execute([$donem_id]);
-                $donemInfo = $donemQuery->fetch(PDO::FETCH_OBJ);
-                $donemBas = $donemInfo->baslangic_tarihi ?? '2000-01-01';
-                $donemBit = $donemInfo->bitis_tarihi ?? '2099-12-31';
+                if ($actualOnly) {
+                    // Sadece o döneme ait kayıtları getir
+                    $where .= " AND peo.donem_id = ?";
+                    $params[] = $donem_id;
+                } else {
+                    // Dönem tarihlerini al
+                    $donemQuery = $this->db->prepare("SELECT baslangic_tarihi, bitis_tarihi FROM bordro_donemi WHERE id = ?");
+                    $donemQuery->execute([$donem_id]);
+                    $donemInfo = $donemQuery->fetch(PDO::FETCH_OBJ);
+                    $donemBas = $donemInfo->baslangic_tarihi ?? '2000-01-01';
+                    $donemBit = $donemInfo->bitis_tarihi ?? '2099-12-31';
 
-                $where .= " AND (
-                    (peo.tekrar_tipi = 'tek_sefer' AND peo.donem_id = ?) 
-                    OR 
-                    (peo.tekrar_tipi = 'surekli' AND EXISTS (
-                        SELECT 1 FROM bordro_donemi bd2 
-                        WHERE bd2.id = ? 
-                        AND peo.baslangic_donemi <= ? 
-                        AND (peo.bitis_donemi IS NULL OR peo.bitis_donemi >= ?)
-                    ))
-                )";
-                $params[] = $donem_id;
-                $params[] = $donem_id;
-                $params[] = $donemBit;
-                $params[] = $donemBas;
+                    $where .= " AND (
+                        (peo.tekrar_tipi = 'tek_sefer' AND peo.donem_id = ?) 
+                        OR 
+                        (peo.tekrar_tipi = 'surekli' AND EXISTS (
+                            SELECT 1 FROM bordro_donemi bd2 
+                            WHERE bd2.id = ? 
+                            AND peo.baslangic_donemi <= ? 
+                            AND (peo.bitis_donemi IS NULL OR peo.bitis_donemi >= ?)
+                        ))
+                    )";
+                    $params[] = $donem_id;
+                    $params[] = $donem_id;
+                    $params[] = $donemBit;
+                    $params[] = $donemBas;
+                }
             }
         } elseif ($mode === 'ay_yil') {
             // Ay-Yıl Filtresi

@@ -356,118 +356,64 @@ padding-bottom:  10px !important;
     <div class="tab-content" id="defterRaporTabContent">
         <div class="tab-pane fade show active" id="pane-abone-donem" role="tabpanel" aria-labelledby="tab-abone-donem">
 
-            <!-- ======= ÖZET KARTLARI (Minimal & Premium) ======= -->
-            <div class="row g-3 mb-4 px-4" id="summaryCards" style="display: none;">
-                <!-- Toplam Defter Sayısı -->
-                <div class="col-xl-2 col-md-4 col-sm-6">
-                    <div class="card border-0 shadow-sm h-100 bordro-summary-card drill-down-card" data-type="toplam"
-                        style="--card-color: var(--bs-primary, #556ee6); border-bottom: 3px solid var(--card-color) !important; cursor: pointer;">
-                        <div class="card-body p-2 px-3">
-                            <div class="icon-label-container mb-2">
-                                <div class="icon-box"
-                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(var(--bs-primary-rgb, 85, 110, 230), 0.1);">
-                                    <i class="bx bx-book fs-5" style="color: var(--bs-primary, #556ee6);"></i>
-                                </div>
-                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">DEFTER</span>
+            <!-- ======= ÖZET KARTLARI (MİNİMAL) ======= -->
+            <div class="row g-2 mb-4 px-4" id="summaryCards" style="display: none;">
+                <!-- Defter Bilgileri -->
+                <div class="col-xl-4">
+                    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; border-left: 3px solid #50a5f1 !important;">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-primary fw-bold small" style="letter-spacing: 0.5px;">DEFTER BİLGİLERİ</span>
+                                <span class="badge bg-primary-subtle text-primary" style="font-size: 0.65rem;">SON DÖNEM</span>
                             </div>
-                            <p class="text-muted mb-0 small fw-bold"
-                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">TOPLAM DEFTER</p>
-                            <h4 class="mb-0 fw-bold bordro-text-heading" id="totalDefter" style="font-size: 1.25rem;">0</h4>
+                            <div class="row g-0 text-center">
+                                <div class="col-4 drill-down-card" data-type="toplam_defter" style="cursor: pointer;">
+                                    <p class="text-muted mb-0 small opacity-75">TOPLAM</p>
+                                    <h4 class="mb-0 fw-bold text-dark" id="totalDefter">0</h4>
+                                </div>
+                                <div class="col-4 border-start drill-down-card" data-type="okunan_defter" style="cursor: pointer;">
+                                    <p class="text-success mb-0 small opacity-75">OKUNAN</p>
+                                    <h4 class="mb-0 fw-bold text-success" id="okunanDefter">0</h4>
+                                </div>
+                                <div class="col-4 border-start drill-down-card" data-type="kalan_defter" style="cursor: pointer;">
+                                    <p class="text-warning mb-0 small opacity-75">KALAN</p>
+                                    <h4 class="mb-0 fw-bold text-warning" id="kalanDefter">0</h4>
+                                </div>
+                            </div>
                         </div>
                     </div>
                 </div>
-                <!-- Okunan Defter Sayısı -->
-                <div class="col-xl-2 col-md-4 col-sm-6">
-                    <div class="card border-0 shadow-sm h-100 bordro-summary-card drill-down-card" data-type="okunan"
-                        style="--card-color: #34c38f; border-bottom: 3px solid var(--card-color) !important; cursor: pointer;">
-                        <div class="card-body p-2 px-3">
-                            <div class="icon-label-container mb-2">
-                                <div class="icon-box"
-                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(52, 195, 143, 0.1);">
-                                    <i class="bx bx-check-double fs-5 text-success"></i>
-                                </div>
-                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">OKUMA</span>
+
+                <!-- Abone Bilgileri -->
+                <div class="col-xl-8">
+                    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; border-left: 3px solid #34c38f !important;">
+                        <div class="card-body p-3">
+                            <div class="d-flex align-items-center justify-content-between mb-2">
+                                <span class="text-success fw-bold small" style="letter-spacing: 0.5px;">ABONE BİLGİLERİ</span>
+                                <span class="badge bg-success-subtle text-success" style="font-size: 0.65rem;">OPERASYONEL</span>
                             </div>
-                            <p class="text-muted mb-0 small fw-bold"
-                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">OKUNAN DEFTER</p>
-                            <h4 class="mb-0 fw-bold bordro-text-heading" id="okunanDefter" style="font-size: 1.25rem;">0</h4>
-                        </div>
-                    </div>
-                </div>
-                <!-- Kalan Defter Sayısı -->
-                <div class="col-xl-2 col-md-4 col-sm-6">
-                    <div class="card border-0 shadow-sm h-100 bordro-summary-card drill-down-card" data-type="kalan"
-                        style="--card-color: #f1b44c; border-bottom: 3px solid var(--card-color) !important; cursor: pointer;">
-                        <div class="card-body p-2 px-3">
-                            <div class="icon-label-container mb-2">
-                                <div class="icon-box"
-                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(241, 180, 76, 0.1);">
-                                    <i class="bx bx-time fs-5 text-warning"></i>
+                            <div class="row g-0 text-center">
+                                <div class="col-3 drill-down-card" data-type="toplam" style="cursor: pointer;">
+                                    <p class="text-muted mb-0 small opacity-75">TOPLAM</p>
+                                    <h4 class="mb-0 fw-bold text-dark" id="totalAbone">0</h4>
                                 </div>
-                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">BEKLEYEN</span>
-                            </div>
-                            <p class="text-muted mb-0 small fw-bold"
-                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">KALAN DEFTER</p>
-                            <h4 class="mb-0 fw-bold bordro-text-heading" id="kalanDefter" style="font-size: 1.25rem;">0</h4>
-                        </div>
-                    </div>
-                </div>
-                <!-- Toplam Abone Sayısı -->
-                <div class="col-xl-2 col-md-4 col-sm-6">
-                    <div class="card border-0 shadow-sm h-100 bordro-summary-card drill-down-card" data-type="toplam"
-                        style="--card-color: #50a5f1; border-bottom: 3px solid var(--card-color) !important; cursor: pointer;">
-                        <div class="card-body p-2 px-3">
-                            <div class="icon-label-container mb-2">
-                                <div class="icon-box"
-                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(80, 165, 241, 0.1);">
-                                    <i class="bx bx-group fs-5 text-info"></i>
+                                <div class="col-3 border-start drill-down-card" data-type="gidilen" style="cursor: pointer;">
+                                    <p class="text-info mb-0 small opacity-75">GİDİLEN</p>
+                                    <h4 class="mb-0 fw-bold text-info" id="gidilenAbone">0</h4>
                                 </div>
-                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">KİTLE</span>
-                            </div>
-                            <p class="text-muted mb-0 small fw-bold"
-                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">TOPLAM ABONE</p>
-                            <h4 class="mb-0 fw-bold bordro-text-heading" id="totalAbone" style="font-size: 1.25rem;">0</h4>
-                        </div>
-                    </div>
-                </div>
-                <!-- Okunan Abone Sayısı -->
-                <div class="col-xl-2 col-md-4 col-sm-6">
-                    <div class="card border-0 shadow-sm h-100 bordro-summary-card drill-down-card" data-type="okunan"
-                        style="--card-color: #34c38f; border-bottom: 3px solid var(--card-color) !important; cursor: pointer;">
-                        <div class="card-body p-2 px-3">
-                            <div class="icon-label-container mb-2">
-                                <div class="icon-box"
-                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(52, 195, 143, 0.1);">
-                                    <i class="bx bx-user-check fs-5 text-success"></i>
+                                <div class="col-3 border-start drill-down-card" data-type="okunan" style="cursor: pointer;">
+                                    <p class="text-success mb-0 small opacity-75">OKUNAN</p>
+                                    <h4 class="mb-0 fw-bold text-success" id="okunanAbone">0</h4>
                                 </div>
-                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">BAŞARI</span>
-                            </div>
-                            <p class="text-muted mb-0 small fw-bold"
-                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">OKUNAN ABONE</p>
-                            <h4 class="mb-0 fw-bold bordro-text-heading" id="okunanAbone" style="font-size: 1.25rem;">0</h4>
-                        </div>
-                    </div>
-                </div>
-                <!-- Kalan Abone Sayısı -->
-                <div class="col-xl-2 col-md-4 col-sm-6">
-                    <div class="card border-0 shadow-sm h-100 bordro-summary-card drill-down-card" data-type="kalan"
-                        style="--card-color: #f43f5e; border-bottom: 3px solid var(--card-color) !important; cursor: pointer;">
-                        <div class="card-body p-2 px-3">
-                            <div class="icon-label-container mb-2">
-                                <div class="icon-box"
-                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(244, 63, 94, 0.1);">
-                                    <i class="bx bx-user-x fs-5 text-danger"></i>
+                                <div class="col-3 border-start drill-down-card" data-type="kalan" style="cursor: pointer;">
+                                    <p class="text-danger mb-0 small opacity-75">KALAN</p>
+                                    <h4 class="mb-0 fw-bold text-danger" id="kalanAbone">0</h4>
                                 </div>
-                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">KAYIP</span>
                             </div>
-                            <p class="text-muted mb-0 small fw-bold"
-                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">KALAN ABONE</p>
-                            <h4 class="mb-0 fw-bold bordro-text-heading" id="kalanAbone" style="font-size: 1.25rem;">0</h4>
                         </div>
                     </div>
                 </div>
             </div>
-
 
             <!-- Tab 1 Actions -->
             <div class="row mb-3 px-4" id="reportActions" style="display: none;">
@@ -705,64 +651,33 @@ padding-bottom:  10px !important;
         <!-- ======= TAB 3: Aylık Defter Özeti ======= -->
         <div class="tab-pane fade" id="pane-defter-ozet" role="tabpanel" aria-labelledby="tab-defter-ozet">
 
-            <!-- Özet Kartları -->
-                <div class="row g-3 mb-4 px-4" id="defterOzetSummaryCards" style="display: none;">
-                <div class="col-xl col-md-4 col-sm-6">
-                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                        style="--card-color: var(--bs-primary, #556ee6); border-bottom: 3px solid var(--card-color) !important;">
-                        <div class="card-body p-2 px-3">
-                            <div class="icon-label-container mb-2">
-                                <div class="icon-box"
-                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(var(--bs-primary-rgb, 85, 110, 230), 0.1);">
-                                    <i class="bx bx-book-open fs-5" style="color: var(--bs-primary, #556ee6);"></i>
-                                </div>
-                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">DEFTER</span>
-                            </div>
-                            <p class="text-muted mb-0 small fw-bold"
-                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">TOPLAM DEFTER</p>
-                            <h4 class="mb-0 fw-bold bordro-text-heading" id="defterOzetTotalDefter"
-                                style="font-size: 1.25rem;">0</h4>
+            <!-- Özet Kartları (MİNİMAL) -->
+            <div class="row g-2 mb-4 px-4" id="defterOzetSummaryCards" style="display: none;">
+                <div class="col-xl-4 col-md-4">
+                    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; border-left: 3px solid #556ee6 !important;">
+                        <div class="card-body p-3">
+                            <p class="text-muted mb-1 small fw-bold opacity-75" style="letter-spacing: 0.5px;">TOPLAM DEFTER</p>
+                            <h4 class="mb-0 fw-bold text-dark" id="defterOzetTotalDefter">0</h4>
                         </div>
                     </div>
                 </div>
-                <div class="col-xl col-md-4 col-sm-6">
-                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                        style="--card-color: #34c38f; border-bottom: 3px solid var(--card-color) !important;">
-                        <div class="card-body p-2 px-3">
-                            <div class="icon-label-container mb-2">
-                                <div class="icon-box"
-                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(52, 195, 143, 0.1);">
-                                    <i class="bx bx-map-alt fs-5 text-success"></i>
-                                </div>
-                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">BÖLGE</span>
-                            </div>
-                            <p class="text-muted mb-0 small fw-bold"
-                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">TOPLAM BÖLGE</p>
-                            <h4 class="mb-0 fw-bold bordro-text-heading" id="defterOzetTotalBolge"
-                                style="font-size: 1.25rem;">0</h4>
+                <div class="col-xl-4 col-md-4">
+                    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; border-left: 3px solid #34c38f !important;">
+                        <div class="card-body p-3">
+                            <p class="text-muted mb-1 small fw-bold opacity-75" style="letter-spacing: 0.5px;">TOPLAM BÖLGE</p>
+                            <h4 class="mb-0 fw-bold text-dark" id="defterOzetTotalBolge">0</h4>
                         </div>
                     </div>
                 </div>
-                <div class="col-xl col-md-4 col-sm-6">
-                    <div class="card border-0 shadow-sm h-100 bordro-summary-card"
-                        style="--card-color: #f1b44c; border-bottom: 3px solid var(--card-color) !important;">
-                        <div class="card-body p-2 px-3">
-                            <div class="icon-label-container mb-2">
-                                <div class="icon-box"
-                                    style="width: 32px; height: 32px; border-radius: 8px; background: rgba(241, 180, 76, 0.1);">
-                                    <i class="bx bx-calendar fs-5 text-warning"></i>
-                                </div>
-                                <span class="text-muted small fw-bold" style="font-size: 0.6rem;">DÖNEM</span>
-                            </div>
-                            <p class="text-muted mb-0 small fw-bold"
-                                style="letter-spacing: 0.5px; opacity: 0.7; font-size: 0.65rem;">DÖNEM SAYISI</p>
-                            <h4 class="mb-0 fw-bold bordro-text-heading" id="defterOzetTotalDonem"
-                                style="font-size: 1.25rem;">0</h4>
+                <div class="col-xl-4 col-md-4">
+                    <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; border-left: 3px solid #f1b44c !important;">
+                        <div class="card-body p-3">
+                            <p class="text-muted mb-1 small fw-bold opacity-75" style="letter-spacing: 0.5px;">DÖNEM SAYISI</p>
+                            <h4 class="mb-0 fw-bold text-dark" id="defterOzetTotalDonem">0</h4>
                         </div>
                     </div>
                 </div>
             </div>
-
             <!-- Aksiyon Butonları -->
                 <div class="row mb-3 px-4" id="defterOzetActions" style="display: none;">
                 <div class="col-12 d-flex justify-content-end align-items-center gap-2">
@@ -848,7 +763,8 @@ padding-bottom:  10px !important;
                             <!-- Modal Summary Area -->
                             <div class="row g-2 mb-3 bg-white p-3 border-bottom shadow-sm sticky-top" style="z-index: 100; margin-left: -1rem; margin-right: -1rem;">
                                 <div class="col-md-auto">
-                                    <div class="d-flex align-items-center bg-primary-subtle text-primary py-2 px-3 rounded-3 border border-primary-subtle h-100">
+                                    <div class="d-flex align-items-center bg-primary-subtle text-primary py-2 px-3 rounded-3 border border-primary-subtle h-100 modal-summary-box modal-filter-card active"
+                                         data-status="all" role="button" tabindex="0" title="Tüm defterleri göster">
                                         <i class="bx bx-book-open fs-4 me-2"></i>
                                         <div>
                                             <div class="small fw-bold opacity-75" style="font-size: 0.65rem; line-height: 1;">DEFTER SAYISI</div>
@@ -857,7 +773,7 @@ padding-bottom:  10px !important;
                                     </div>
                                 </div>
                                 <div class="col-md-auto">
-                                    <div class="d-flex align-items-center bg-success-subtle text-success py-2 px-3 rounded-3 border border-success-subtle h-100">
+                                    <div class="d-flex align-items-center bg-success-subtle text-success py-2 px-3 rounded-3 border border-success-subtle h-100 modal-summary-box">
                                         <i class="bx bx-user-check fs-4 me-2"></i>
                                         <div>
                                             <div class="small fw-bold opacity-75" style="font-size: 0.65rem; line-height: 1;">OKUNAN ABONE</div>
@@ -866,11 +782,31 @@ padding-bottom:  10px !important;
                                     </div>
                                 </div>
                                 <div class="col-md-auto">
-                                    <div class="d-flex align-items-center bg-danger-subtle text-danger py-2 px-3 rounded-3 border border-danger-subtle h-100">
+                                    <div class="d-flex align-items-center bg-danger-subtle text-danger py-2 px-3 rounded-3 border border-danger-subtle h-100 modal-summary-box">
                                         <i class="bx bx-user-x fs-4 me-2"></i>
                                         <div>
                                             <div class="small fw-bold opacity-75" style="font-size: 0.65rem; line-height: 1;">OKUNMAYAN ABONE</div>
                                             <div class="fw-bold fs-5" id="modalStatUnreadAbone">0</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-auto">
+                                    <div class="d-flex align-items-center bg-success-subtle text-success py-2 px-3 rounded-3 border border-success-subtle h-100 modal-summary-box modal-filter-card"
+                                         data-status="okunan" role="button" tabindex="0" title="Okunan defterleri filtrele">
+                                        <i class="bx bx-check-double fs-4 me-2"></i>
+                                        <div>
+                                            <div class="small fw-bold opacity-75" style="font-size: 0.65rem; line-height: 1;">OKUNAN DEFTER</div>
+                                            <div class="fw-bold fs-5" id="modalStatReadDefter">0</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-auto">
+                                    <div class="d-flex align-items-center bg-danger-subtle text-danger py-2 px-3 rounded-3 border border-danger-subtle h-100 modal-summary-box modal-filter-card"
+                                         data-status="okunmayan" role="button" tabindex="0" title="Okunmayan defterleri filtrele">
+                                        <i class="bx bx-x-circle fs-4 me-2"></i>
+                                        <div>
+                                            <div class="small fw-bold opacity-75" style="font-size: 0.65rem; line-height: 1;">OKUNMAYAN DEFTER</div>
+                                            <div class="fw-bold fs-5" id="modalStatUnreadDefter">0</div>
                                         </div>
                                     </div>
                                 </div>
@@ -1148,7 +1084,7 @@ padding-bottom:  10px !important;
     }
     
     .do-period-end {
-        border-right: 3px solid rgba(var(--bs-primary-rgb), 0.4) !important;
+        border-right: 5px solid rgba(var(--bs-primary-rgb), 0.6) !important;
     }
 
     /* Sub-row Indentation & Shading */
@@ -1569,8 +1505,19 @@ padding-bottom:  10px !important;
 
     /* Period separator */
     .period-end, .ogr-period-end, .do-period-end {
-        border-right: 3px solid #94a3b8 !important;
-        box-shadow: inset -1px 0 0 0 #94a3b8 !important;
+        border-right: 5px solid #64748b !important;
+        box-shadow: inset -1px 0 0 0 #64748b !important;
+    }
+
+    .period-start, .ogr-period-start, .do-period-start {
+        border-left: 5px solid #64748b !important;
+    }
+
+    .month-frame-header {
+        border-left: 5px solid #334155 !important;
+        border-right: 5px solid #334155 !important;
+        background: rgba(51, 65, 85, 0.08) !important;
+        color: #1e293b !important;
     }
 
     /* ======= STICKY FOOTER (TOTALS) ======= */
@@ -2139,6 +2086,44 @@ padding-bottom:  10px !important;
     #okunmayanDefterTable td {
         padding: 8px 12px;
     }
+
+    .modal-summary-box {
+        transition: transform 0.2s ease, box-shadow 0.2s ease, filter 0.2s ease;
+    }
+
+    .modal-filter-card {
+        cursor: pointer;
+        user-select: none;
+    }
+
+    .modal-filter-card:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 10px 20px rgba(15, 23, 42, 0.08);
+        filter: saturate(1.02);
+    }
+
+    .modal-filter-card:focus-visible {
+        outline: 2px solid rgba(var(--bs-primary-rgb, 85, 110, 230), 0.35);
+        outline-offset: 2px;
+    }
+
+    .modal-filter-card.active {
+        transform: translateY(-1px);
+        box-shadow: 0 0 0 2px rgba(var(--bs-primary-rgb, 85, 110, 230), 0.2), 0 12px 24px rgba(15, 23, 42, 0.1);
+    }
+
+    .modal-filter-card[data-status="okunan"].active {
+        box-shadow: 0 0 0 2px rgba(16, 185, 129, 0.25), 0 12px 24px rgba(16, 185, 129, 0.12);
+    }
+
+    .modal-filter-card[data-status="okunmayan"].active {
+        box-shadow: 0 0 0 2px rgba(244, 63, 94, 0.25), 0 12px 24px rgba(244, 63, 94, 0.12);
+    }
+
+    [data-bs-theme="dark"] .modal-filter-card:hover,
+    [data-bs-theme="dark"] .modal-filter-card.active {
+        box-shadow: 0 0 0 2px rgba(148, 163, 184, 0.25), 0 12px 24px rgba(2, 6, 23, 0.35);
+    }
 </style>
 
 <script>
@@ -2265,27 +2250,51 @@ padding-bottom:  10px !important;
             $('.modal-type-toggle').removeClass('active btn-light').addClass('btn-outline-light');
             $(this).addClass('active btn-light').removeClass('btn-outline-light');
             
-            const type = $(this).data('type');
             const searchText = $('#modalListSearch').val();
-            renderUnifiedModalContent(type, searchText);
+            renderUnifiedModalContent(searchText);
         });
 
         // Modal search
         $(document).on('input', '#modalListSearch', function() {
             const searchText = $(this).val();
+            if (_modalContext === 'defter-ozet') {
+                renderDefterModalTable();
+                return;
+            }
             renderUnifiedModalContent(searchText);
+        });
+
+        $(document).on('click', '.modal-filter-card', function () {
+            if (!_modalContext) return;
+
+            const selectedStatus = $(this).data('status') || 'all';
+            _modalStatusFilter = (_modalStatusFilter === selectedStatus && selectedStatus !== 'all') ? 'all' : selectedStatus;
+            setModalFilterCardState();
+
+            if (_modalContext === 'defter-ozet') {
+                renderDefterModalTable();
+            } else {
+                renderUnifiedModalContent($('#modalListSearch').val());
+            }
+        });
+
+        $(document).on('keydown', '.modal-filter-card', function (e) {
+            if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                $(this).trigger('click');
+            }
         });
 
         function openDrillDown(type) {
             if (!_tableData || _tableData.length === 0) return;
             
-            // Clear search
-            $('#modalListSearch').val('');
+            resetModalFilters('drilldown');
             
             // Update title
             const sonDonem = _tableDonemler[_tableDonemler.length - 1];
             const sonDonemFormatted = String(sonDonem).substring(0, 4) + '/' + String(sonDonem).substring(4);
             $('#modalDefterListTitle').html('<i class="bx bx-list-ul me-2"></i>Defter Listesi (' + sonDonemFormatted + ')');
+            $('#modalOkunmayanDefterler .modal-header').css('background', '#2a3042');
 
             // Render content
             renderUnifiedModalContent();
@@ -2300,34 +2309,54 @@ padding-bottom:  10px !important;
             const sonDonem = _tableDonemler[_tableDonemler.length - 1];
             if (!sonDonem) return;
 
-            filterText = filterText.toLowerCase();
+            const normalizedFilter = normalizeModalSearchText(filterText);
 
-            let list = _tableData;
+            let baseList = _tableData;
             
             // Search filter
-            if (filterText) {
-                list = list.filter(d => 
-                    d.bolge.toLowerCase().includes(filterText) || 
-                    d.defter.toLowerCase().includes(filterText) || 
-                    d.mahalle.toLowerCase().includes(filterText)
-                );
+            if (normalizedFilter) {
+                baseList = baseList.filter(function (d) {
+                    return normalizeModalSearchText(d.bolge).includes(normalizedFilter) ||
+                        normalizeModalSearchText(d.defter).includes(normalizedFilter) ||
+                        normalizeModalSearchText(d.mahalle).includes(normalizedFilter);
+                });
             }
 
             // 3. Totals
             let totalAbone = 0;
             let readAbone = 0;
             let unreadAbone = 0;
+            let readBooks = 0;
+            let unreadBooks = 0;
 
-            list.forEach(item => {
+            baseList.forEach(item => {
                 const dData = item.donemler[sonDonem] || { okunan: 0 };
-                totalAbone += (item.abone_sayisi || 0);
-                readAbone += (dData.okunan || 0);
+                const itemTotal = parseInt(item.abone_sayisi) || 0;
+                const itemRead = parseInt(dData.okunan) || 0;
+
+                totalAbone += itemTotal;
+                readAbone += itemRead;
+                if (itemRead > 0) readBooks++;
+                else unreadBooks++;
             });
             unreadAbone = Math.max(0, totalAbone - readAbone);
 
-            $('#modalStatDefterCount').text(list.length.toLocaleString('tr-TR'));
-            $('#modalStatReadAbone').text(readAbone.toLocaleString('tr-TR'));
-            $('#modalStatUnreadAbone').text(unreadAbone.toLocaleString('tr-TR'));
+            updateModalSummaryCards({
+                totalBooks: baseList.length,
+                totalRead: readAbone,
+                totalUnread: unreadAbone,
+                readBooks: readBooks,
+                unreadBooks: unreadBooks
+            });
+
+            let list = baseList;
+            if (_modalStatusFilter === 'okunan' || _modalStatusFilter === 'okunmayan') {
+                list = baseList.filter(function (item) {
+                    const dData = item.donemler[sonDonem] || { okunan: 0 };
+                    const itemRead = parseInt(dData.okunan) || 0;
+                    return (itemRead > 0 ? 'okunan' : 'okunmayan') === _modalStatusFilter;
+                });
+            }
 
             // 4. Render Table
             let html = '';
@@ -2478,6 +2507,7 @@ padding-bottom:  10px !important;
             $('#okunanDefter').text(summary.okunan_defter.toLocaleString('tr-TR'));
             $('#kalanDefter').text(summary.kalan_defter.toLocaleString('tr-TR'));
             $('#totalAbone').text(summary.toplam_abone.toLocaleString('tr-TR'));
+            $('#gidilenAbone').text(summary.gidilen_abone.toLocaleString('tr-TR'));
             $('#okunanAbone').text(summary.okunan_abone.toLocaleString('tr-TR'));
             $('#kalanAbone').text(summary.kalan_abone.toLocaleString('tr-TR'));
         }
@@ -2692,7 +2722,7 @@ padding-bottom:  10px !important;
                 if (visibleCount === 0) return;
                 const isAlt = idx % 2 === 1;
                 const formatted = donem.substring(0, 4) + '/' + donem.substring(4);
-                html += `<th colspan="${visibleCount}" class="period-header period-end ${isAlt ? 'do-month-alt' : ''}">${formatted}</th>`;
+                html += `<th colspan="${visibleCount}" class="period-header month-frame-header ${isAlt ? 'do-month-alt' : ''}">${formatted}</th>`;
             });
             html += '</tr>';
 
@@ -2715,11 +2745,11 @@ padding-bottom:  10px !important;
             donemler.forEach(function (donem, idx) {
                 const isAlt = idx % 2 === 1;
                 if (_visibleColumns.abone)
-                    html += `<th class="sub-header sub-header-abone sortable-header ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${donem}_abone">${filterBtn(donem + '_abone')} ABONE${sortIcon(donem + '_abone')}</th>`;
+                    html += `<th class="sub-header sub-header-abone sortable-header period-start ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${donem}_abone">${filterBtn(donem + '_abone')} ABONE${sortIcon(donem + '_abone')}</th>`;
                 if (_visibleColumns.okunan)
-                    html += `<th class="sub-header sub-header-okunan sortable-header ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${donem}_okunan">${filterBtn(donem + '_okunan')} OKUNAN${sortIcon(donem + '_okunan')}</th>`;
+                    html += `<th class="sub-header sub-header-okunan sortable-header ${_visibleColumns.abone ? '' : 'period-start'} ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${donem}_okunan">${filterBtn(donem + '_okunan')} OKUNAN${sortIcon(donem + '_okunan')}</th>`;
                 if (_visibleColumns.oran)
-                    html += `<th class="sub-header sub-header-oran sortable-header period-end ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${donem}_oran">${filterBtn(donem + '_oran')} ORAN %${sortIcon(donem + '_oran')}</th>`;
+                    html += `<th class="sub-header sub-header-oran sortable-header period-end ${_visibleColumns.abone || _visibleColumns.okunan ? '' : 'period-start'} ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${donem}_oran">${filterBtn(donem + '_oran')} ORAN %${sortIcon(donem + '_oran')}</th>`;
             });
             html += '</tr>';
 
@@ -2800,16 +2830,15 @@ padding-bottom:  10px !important;
 
                 // Period Totals for Region
                 donemler.forEach(function (donem, idx) {
-                    const isLast = idx === donemler.length - 1;
                     const rTotals = regionTotals.donemler[donem];
                     const rOran = rTotals.abone > 0 ? ((rTotals.okunan / rTotals.abone) * 100).toFixed(1) : 0;
                     
                     if (_visibleColumns.abone)
-                        html += `<td class="ogr-region-header text-end" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.abone.toLocaleString('tr-TR')}</td>`;
+                        html += `<td class="ogr-region-header text-end period-start" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.abone.toLocaleString('tr-TR')}</td>`;
                     if (_visibleColumns.okunan)
-                        html += `<td class="ogr-region-header text-end" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.okunan.toLocaleString('tr-TR')}</td>`;
+                        html += `<td class="ogr-region-header text-end ${_visibleColumns.abone ? '' : 'period-start'}" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.okunan.toLocaleString('tr-TR')}</td>`;
                     if (_visibleColumns.oran)
-                        html += `<td class="ogr-region-header text-end ${isLast ? 'period-end' : ''}" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;"></td>`;
+                        html += `<td class="ogr-region-header text-end period-end ${_visibleColumns.abone || _visibleColumns.okunan ? '' : 'period-start'}" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;"></td>`;
                 });
                 html += '</tr>';
 
@@ -2823,7 +2852,6 @@ padding-bottom:  10px !important;
                     html += `<td class="fix-col-5" style="background-color: ${regionColor.bg};">${row.abone_sayisi ? row.abone_sayisi.toLocaleString('tr-TR') : ''}</td>`;
 
                     donemler.forEach(function (donem, idx) {
-                        const isLast = idx === donemler.length - 1;
                         const donemData = row.donemler[donem] || { abone: 0, okunan: 0, gidilen: 0 };
 
                         // Add to totals
@@ -2840,11 +2868,11 @@ padding-bottom:  10px !important;
                         else if (oran >= 50) oranClass = 'oran-medium';
 
                         if (_visibleColumns.abone)
-                            html += `<td>${donemData.abone > 0 ? donemData.abone.toLocaleString('tr-TR') : ''}</td>`;
+                            html += `<td class="period-start">${donemData.abone > 0 ? donemData.abone.toLocaleString('tr-TR') : ''}</td>`;
                         if (_visibleColumns.okunan)
-                            html += `<td>${donemData.okunan > 0 ? donemData.okunan.toLocaleString('tr-TR') : ''}</td>`;
+                            html += `<td class="${_visibleColumns.abone ? '' : 'period-start'}">${donemData.okunan > 0 ? donemData.okunan.toLocaleString('tr-TR') : ''}</td>`;
                         if (_visibleColumns.oran)
-                            html += `<td class="${oranClass} ${isLast ? 'period-end' : ''}">${donemData.abone > 0 ? oran + '%' : ''}</td>`;
+                            html += `<td class="${oranClass} period-end ${_visibleColumns.abone || _visibleColumns.okunan ? '' : 'period-start'}">${donemData.abone > 0 ? oran + '%' : ''}</td>`;
                     });
 
                     html += '</tr>';
@@ -2859,14 +2887,13 @@ padding-bottom:  10px !important;
 
             donemler.forEach(function (donem, idx) {
                 const totals = colTotals[donem];
-                const isLast = idx === donemler.length - 1;
-
+                
                 if (_visibleColumns.abone)
-                    html += `<th>${totals.abone.toLocaleString('tr-TR')}</th>`;
+                    html += `<th class="period-start">${totals.abone.toLocaleString('tr-TR')}</th>`;
                 if (_visibleColumns.okunan)
-                    html += `<th>${totals.okunan.toLocaleString('tr-TR')}</th>`;
+                    html += `<th class="${_visibleColumns.abone ? '' : 'period-start'}">${totals.okunan.toLocaleString('tr-TR')}</th>`;
                 if (_visibleColumns.oran)
-                    html += `<th class="${isLast ? 'period-end' : ''}"></th>`; // Oranları toplama
+                    html += `<th class="period-end ${_visibleColumns.abone || _visibleColumns.okunan ? '' : 'period-start'}"></th>`; // Oranları toplama
             });
             html += '</tr>';
             html += '</tfoot>';
@@ -4054,29 +4081,150 @@ padding-bottom:  10px !important;
         let _modalBadgeLabel = '';
         let _modalSortCol = 'bolge';
         let _modalSortDir = 'asc';
+        let _modalContext = null;
+        let _modalStatusFilter = 'all';
+
+        function normalizeModalSearchText(value) {
+            return String(value || '').toLocaleLowerCase('tr-TR');
+        }
+
+        function getModalItemStatus(item) {
+            return (parseInt(item.okunan) || 0) > 0 ? 'okunan' : 'okunmayan';
+        }
+
+        function compareModalValues(v1, v2, dir) {
+            const isNumeric = typeof v1 === 'number' && typeof v2 === 'number';
+            if (isNumeric) {
+                return dir === 'asc' ? v1 - v2 : v2 - v1;
+            }
+
+            const value1 = String(v1 || '');
+            const value2 = String(v2 || '');
+            return dir === 'asc'
+                ? value1.localeCompare(value2, 'tr', { numeric: true, sensitivity: 'base' })
+                : value2.localeCompare(value1, 'tr', { numeric: true, sensitivity: 'base' });
+        }
+
+        function setModalFilterCardState() {
+            $('.modal-filter-card').removeClass('active');
+            $('.modal-filter-card[data-status="' + (_modalStatusFilter || 'all') + '"]').addClass('active');
+        }
+
+        function updateModalSummaryCards(stats) {
+            $('#modalStatDefterCount').text((stats.totalBooks || 0).toLocaleString('tr-TR'));
+            $('#modalStatReadAbone').text((stats.totalRead || 0).toLocaleString('tr-TR'));
+            $('#modalStatUnreadAbone').text((stats.totalUnread || 0).toLocaleString('tr-TR'));
+            $('#modalStatReadDefter').text((stats.readBooks || 0).toLocaleString('tr-TR'));
+            $('#modalStatUnreadDefter').text((stats.unreadBooks || 0).toLocaleString('tr-TR'));
+            setModalFilterCardState();
+        }
+
+        function resetModalFilters(context) {
+            _modalContext = context;
+            _modalStatusFilter = 'all';
+            $('#modalListSearch').val('');
+            setModalFilterCardState();
+        }
+
+        function applyModalStatusFilter(list) {
+            if (_modalStatusFilter !== 'okunan' && _modalStatusFilter !== 'okunmayan') {
+                return list;
+            }
+
+            return list.filter(function (item) {
+                return getModalItemStatus(item) === _modalStatusFilter;
+            });
+        }
+
+        function getModalGroupSortValue(groupName, group) {
+            switch (_modalSortCol) {
+                case 'abone':
+                case 'toplam':
+                    return group.sumToplam;
+                case 'okunan':
+                    return group.sumOkunan;
+                case 'kalan':
+                    return group.sumKalan;
+                case 'oran':
+                    return group.sumToplam > 0 ? (group.sumOkunan / group.sumToplam) * 100 : 0;
+                case 'durum':
+                    return group.items.filter(function (item) {
+                        return getModalItemStatus(item) === 'okunan';
+                    }).length;
+                case 'bolge':
+                default:
+                    return groupName;
+            }
+        }
+
+        function getModalItemSortValue(item) {
+            const itemTotal = parseInt(item.abone_sayisi) || 0;
+            const itemRead = parseInt(item.okunan) || 0;
+            const itemKalan = parseInt(item.okunmayan) || 0;
+
+            switch (_modalSortCol) {
+                case 'defter':
+                    return item.defter || '';
+                case 'mahalle':
+                    return item.mahalle || '';
+                case 'abone':
+                case 'toplam':
+                    return itemTotal;
+                case 'okunan':
+                    return itemRead;
+                case 'kalan':
+                    return itemKalan;
+                case 'oran':
+                    return itemTotal > 0 ? (itemRead / itemTotal) * 100 : 0;
+                case 'durum':
+                    return getModalItemStatus(item) === 'okunan' ? 1 : 0;
+                case 'bolge':
+                    return item.bolge || '';
+                default:
+                    return item.defter || '';
+            }
+        }
 
 
         function renderDefterModalTable() {
-            let defterList = [..._modalDataList];
+            const searchText = normalizeModalSearchText($('#modalListSearch').val());
+            let baseList = [..._modalDataList];
 
+            if (searchText) {
+                baseList = baseList.filter(function (d) {
+                    return normalizeModalSearchText(d.bolge).includes(searchText) ||
+                        normalizeModalSearchText(d.defter).includes(searchText) ||
+                        normalizeModalSearchText(d.mahalle).includes(searchText);
+                });
+            }
 
-
-            
-            // Stats for the top boxes
-            let totalBooks = defterList.length;
             let totalAbone = 0;
             let totalRead = 0;
             let totalUnread = 0;
+            let readBooks = 0;
+            let unreadBooks = 0;
 
-            defterList.forEach(d => {
+            baseList.forEach(function (d) {
                 totalAbone += (parseInt(d.abone_sayisi) || 0);
                 totalRead += (parseInt(d.okunan) || 0);
                 totalUnread += (parseInt(d.okunmayan) || 0);
+                if (getModalItemStatus(d) === 'okunan') readBooks++;
+                else unreadBooks++;
             });
 
-            $('#modalStatDefterCount').text(totalBooks.toLocaleString('tr-TR'));
-            $('#modalStatReadAbone').text(totalRead.toLocaleString('tr-TR'));
-            $('#modalStatUnreadAbone').text(totalUnread.toLocaleString('tr-TR'));
+            updateModalSummaryCards({
+                totalBooks: baseList.length,
+                totalRead: totalRead,
+                totalUnread: totalUnread,
+                readBooks: readBooks,
+                unreadBooks: unreadBooks
+            });
+
+            const defterList = applyModalStatusFilter(baseList);
+            if (defterList.length === 0) {
+                $('#modalDefterListBody').html('<div class="text-center p-5 text-muted bg-white border rounded-3 mt-3"><i class="bx bx-search-alt fs-1 d-block mb-3 opacity-25"></i>Aradığınız kriterlere uygun defter bulunamadı.</div>');
+                return;
+            }
 
             // Group data
             const grouped = {};
@@ -4093,44 +4241,24 @@ padding-bottom:  10px !important;
             // Sort groups
             let groupedKeys = Object.keys(grouped);
             groupedKeys.sort((a, b) => {
-                let v1, v2;
-                if (_modalSortCol === 'bolge') {
-                    v1 = a; v2 = b;
-                } else if (_modalSortCol === 'abone' || _modalSortCol === 'toplam') {
-                    v1 = grouped[a].sumToplam; v2 = grouped[b].sumToplam;
-                } else if (_modalSortCol === 'okunan') {
-                    v1 = grouped[a].sumOkunan; v2 = grouped[b].sumOkunan;
-                } else {
-                    v1 = a; v2 = b;
-                }
-                return _modalSortDir === 'asc' ? v1.toString().localeCompare(v2, 'tr') : v2.toString().localeCompare(v1, 'tr');
+                return compareModalValues(
+                    getModalGroupSortValue(a, grouped[a]),
+                    getModalGroupSortValue(b, grouped[b]),
+                    _modalSortDir
+                );
             });
 
             // Sort items in groups
             groupedKeys.forEach(b => {
                 grouped[b].items.sort((a, b) => {
-                    let v1, v2;
-                    if (_modalSortCol === 'defter') {
-                        v1 = a.defter; v2 = b.defter;
-                    } else if (_modalSortCol === 'mahalle') {
-                        v1 = a.mahalle || ''; v2 = b.mahalle || '';
-                    } else if (_modalSortCol === 'abone' || _modalSortCol === 'toplam') {
-                        v1 = (parseInt(a.abone_sayisi) || 0); v2 = (parseInt(b.abone_sayisi) || 0);
-                    } else if (_modalSortCol === 'okunan') {
-                        v1 = (parseInt(a.okunan) || 0); v2 = (parseInt(b.okunan) || 0);
-                    } else if (_modalSortCol === 'kalan') {
-                        v1 = (parseInt(a.okunmayan) || 0); v2 = (parseInt(b.okunmayan) || 0);
-                    } else {
-                        v1 = a.defter; v2 = b.defter;
-                    }
-
-                    if (typeof v1 === 'string') {
-                        return _modalSortDir === 'asc' ? v1.localeCompare(v2, 'tr') : v2.localeCompare(v1, 'tr');
-                    } else {
-                        return _modalSortDir === 'asc' ? v1 - v2 : v2 - v1;
-                    }
+                    return compareModalValues(getModalItemSortValue(a), getModalItemSortValue(b), _modalSortDir);
                 });
             });
+
+            const sortIcon = function (col) {
+                if (_modalSortCol !== col) return 'bx-sort';
+                return _modalSortDir === 'asc' ? 'bx-sort-up' : 'bx-sort-down';
+            };
 
             let modalHtml = '';
             modalHtml += '<div class="table-responsive bg-white border rounded-3 shadow-sm mt-3" style="max-height: 500px; overflow: auto;">';
@@ -4145,15 +4273,16 @@ padding-bottom:  10px !important;
                 { id: 'toplam', label: 'TOPLAM ABONE' },
                 { id: 'okunan', label: 'OKUNAN' },
                 { id: 'kalan', label: 'KALAN' },
-                { id: 'oran', label: 'ORAN %' }
+                { id: 'oran', label: 'ORAN %' },
+                { id: 'durum', label: 'DURUM' }
             ];
 
             cols.forEach(c => {
                 const isActive = _modalSortCol === c.id;
-                const icon = isActive ? (_modalSortDir === 'asc' ? 'bx-sort-a-z' : 'bx-sort-z-a') : 'bx-hash';
-                modalHtml += `<th class="sortable-header ${isActive ? 'active' : ''} ${c.id.includes('toplam')||c.id.includes('okunan')||c.id.includes('kalan')||c.id.includes('oran') ? 'text-end' : ''}" data-sort="${c.id}">${c.label} <i class="bx ${icon} sort-icon"></i></th>`;
+                const isNumericLike = ['toplam', 'okunan', 'kalan', 'oran', 'durum'].includes(c.id);
+                modalHtml += `<th class="sortable-header ${isActive ? 'active' : ''} ${isNumericLike ? 'text-end' : ''}" data-sort="${c.id}">${c.label} <i class="bx ${sortIcon(c.id)} sort-icon"></i></th>`;
             });
-            modalHtml += '<th class="text-end pe-3">DURUM</th></tr></thead><tbody>';
+            modalHtml += '</tr></thead><tbody>';
 
             let sira = 0;
             groupedKeys.forEach(function (bName) {
@@ -4210,7 +4339,7 @@ padding-bottom:  10px !important;
                 _modalSortCol = col;
                 _modalSortDir = 'asc';
                 // Değer bazlılarda desc başlasın daha mantıklı (büyükten küçüğe)
-                if (col === 'abone') _modalSortDir = 'desc';
+                if (['abone', 'toplam', 'okunan', 'kalan', 'oran'].includes(col)) _modalSortDir = 'desc';
             }
             renderDefterModalTable();
         });
@@ -4269,30 +4398,26 @@ padding-bottom:  10px !important;
             // Modal Header rengini güncelle
             $('#modalOkunmayanDefterler .modal-header').css('background', titleBg);
 
-            // Modal içeriğini oluştur
-            if (defterList.length === 0) {
-                $('#modalDefterListBody').html('<div class="text-center p-4 text-muted"><i class="bx bx-info-circle fs-1 text-info d-block mb-2"></i>Bu dönem için veri bulunmuyor.</div>');
-            } else {
-                let badgeLabel = 'Abone';
-                let colTitle = 'Abone Sayısı';
+            let badgeLabel = 'Abone';
+            let colTitle = 'Abone Sayısı';
 
-                if (type === 'okunan_detay') {
-                    badgeLabel = 'Okunan';
-                    colTitle = 'Okunan Sayısı';
-                } else if (type === 'okunmayan_detay') {
-                    badgeLabel = 'Okunmayan';
-                    colTitle = 'Okunmayan Sayısı';
-                }
-
-                _modalDataList = defterList;
-                _modalDataType = type;
-                _modalColTitle = colTitle;
-                _modalBadgeLabel = badgeLabel;
-                _modalSortCol = 'bolge';
-                _modalSortDir = 'asc';
-
-                renderDefterModalTable();
+            if (type === 'okunan_detay') {
+                badgeLabel = 'Okunan';
+                colTitle = 'Okunan Sayısı';
+            } else if (type === 'okunmayan_detay') {
+                badgeLabel = 'Okunmayan';
+                colTitle = 'Okunmayan Sayısı';
             }
+
+            resetModalFilters('defter-ozet');
+            _modalDataList = defterList;
+            _modalDataType = type;
+            _modalColTitle = colTitle;
+            _modalBadgeLabel = badgeLabel;
+            _modalSortCol = 'bolge';
+            _modalSortDir = 'asc';
+
+            renderDefterModalTable();
 
             // Modal'ı aç (mevcut instance varsa onu kullan)
             var modalEl = document.getElementById('modalOkunmayanDefterler');

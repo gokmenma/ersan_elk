@@ -108,17 +108,24 @@ use App\Helper\Helper;
                                         </label>
                                     </div>
                                     <div id="sectionYemekParametre" style="display: <?= ($personel->yemek_yardimi_aliyor ?? 0) == 1 ? 'block' : 'none' ?>;">
-                                        <?php 
-                                        $BordroParametreModel = new \App\Model\BordroParametreModel();
-                                        $yemekParams = $BordroParametreModel->where('aktif', 1);
-                                        $yemekOptions = [];
-                                        foreach ($yemekParams as $yp) {
-                                            if (stripos($yp->kod, 'yemek') !== false) {
-                                                $yemekOptions[$yp->id] = $yp->etiket . " (" . $yp->kod . ")";
-                                            }
-                                        }
-                                        echo Form::FormSelect2("yemek_yardimi_parametre_id", $yemekOptions, $personel->yemek_yardimi_parametre_id ?? '', "Yemek Yardımı Parametresi", "file-text");
-                                        ?>
+                                        <div class="row">
+                                            <div class="col-md-7">
+                                                <?php 
+                                                $BordroParametreModel = new \App\Model\BordroParametreModel();
+                                                $yemekParams = $BordroParametreModel->where('aktif', 1);
+                                                $yemekOptions = [];
+                                                foreach ($yemekParams as $yp) {
+                                                    if (stripos($yp->kod, 'yemek') !== false) {
+                                                        $yemekOptions[$yp->id] = $yp->etiket . " (" . $yp->kod . ")";
+                                                    }
+                                                }
+                                                echo Form::FormSelect2("yemek_yardimi_parametre_id", $yemekOptions, $personel->yemek_yardimi_parametre_id ?? '', "Yemek Yardımı Parametresi", "file-text");
+                                                ?>
+                                            </div>
+                                            <div class="col-md-5">
+                                                <?php echo Form::FormFloatInput("text", "yemek_yardimi_tutari", Helper::formattedMoney($personel->yemek_yardimi_tutari ?? 0), "Manuel Yemek Tutarı", "Manuel Tutar", "dollar-sign", "form-control money"); ?>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -264,12 +271,13 @@ use App\Helper\Helper;
 $(document).ready(function() {
     // Yemek Yardımı Toggle
     $('input[name="yemek_yardimi_aliyor"]').on('change', function() {
-        if ($(this).is(':checked')) {
-            $('#sectionYemekParametre').slideDown();
-        } else {
-            $('#sectionYemekParametre').slideUp();
-            $('select[name="yemek_yardimi_parametre_id"]').val('').trigger('change');
-        }
+      if ($(this).is(':checked')) {
+        $('#sectionYemekParametre').slideDown();
+      } else {
+        $('#sectionYemekParametre').slideUp();
+        $('select[name="yemek_yardimi_parametre_id"]').val('').trigger('change');
+        $('input[name="yemek_yardimi_tutari"]').val('0,00');
+      }
     });
 
     // Eş Yardımı Toggle
