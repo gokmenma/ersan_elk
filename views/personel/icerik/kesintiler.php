@@ -604,146 +604,189 @@ foreach ($kesintiler as $k) {
 <!-- Kesinti Ekle Modal -->
 <div class="modal fade" id="modalPersonelKesintiEkle" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
-        <div class="modal-content">
-            <div class="modal-header bg-danger text-white">
-                <h5 class="modal-title"><i class="bx bx-plus-circle me-2"></i>Yeni Kesinti Ekle</h5>
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-danger bg-gradient text-white py-3">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-sm me-3">
+                        <div class="avatar-title bg-white bg-opacity-25 rounded-circle fs-4">
+                            <i class="bx bx-minus-circle"></i>
+                        </div>
+                    </div>
+                    <div>
+                        <h5 class="modal-title mb-0">Yeni Kesinti Ekle</h5>
+                        <p class="mb-0 fs-12 opacity-75">Personel için kesinti veya icra kaydı oluşturun.</p>
+                    </div>
+                </div>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
             <form id="formPersonelKesintiEkle" novalidate>
                 <input type="hidden" name="personel_id" value="<?= $id ?>">
-                <div class="modal-body">
-                    <!-- Kesinti Türü Seçimi (Parametrelerden) -->
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Kesinti Türü <span class="text-danger">*</span></label>
-                        <select class="form-select select2" id="kesinti_parametre_id" name="parametre_id" required
-                            style="width: 100%">
-                            <option value="">Kesinti türü seçiniz...</option>
-                            <?php foreach ($kesinti_turleri_param as $param): ?>
-                                <option value="<?= $param->id ?>" data-kod="<?= $param->kod ?>"
-                                    data-hesaplama="<?= $param->hesaplama_tipi ?>" data-oran="<?= $param->oran ?? 0 ?>"
-                                    data-tutar="<?= $param->varsayilan_tutar ?? 0 ?>">
-                                    <?= htmlspecialchars($param->etiket) ?>
-                                    <?php if (strpos($param->hesaplama_tipi ?? '', 'oran') !== false && ($param->oran ?? 0) > 0): ?>
-                                        (%<?= $param->oran ?>)
-                                    <?php endif; ?>
-                                </option>
-                            <?php endforeach; ?>
-                        </select>
-                    </div>
-
-                    <!-- Tekrar Tipi Seçimi -->
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Kesinti Tipi</label>
-                        <div class="d-flex gap-3">
-                            <div class="form-check form-check-danger">
-                                <input class="form-check-input" type="radio" name="tekrar_tipi" id="tekrar_tek_sefer"
-                                    value="tek_sefer" checked>
-                                <label class="form-check-label" for="tekrar_tek_sefer">
-                                    <i class="bx bx-calendar-check me-1"></i> Tek Seferlik
-                                </label>
-                            </div>
-                            <div class="form-check form-check-warning">
-                                <input class="form-check-input" type="radio" name="tekrar_tipi" id="tekrar_surekli"
-                                    value="surekli">
-                                <label class="form-check-label" for="tekrar_surekli">
-                                    <i class="bx bx-refresh me-1"></i> Sürekli (Her Ay)
-                                </label>
-                            </div>
-                            <div class="form-check form-check-info">
-                                <input class="form-check-input" type="radio" name="tekrar_tipi" id="tekrar_taksitli"
-                                    value="taksitli">
-                                <label class="form-check-label" for="tekrar_taksitli">
-                                    <i class="bx bx-list-ol me-1"></i> Taksitli
-                                </label>
+                <div class="modal-body p-4">
+                    <div class="row g-3">
+                        <!-- Kesinti Türü -->
+                        <div class="col-12">
+                            <div class="form-floating form-floating-custom">
+                                <select class="form-select select2" id="kesinti_parametre_id" name="parametre_id" required
+                                    style="width: 100%" data-dropdown-parent="#modalPersonelKesintiEkle">
+                                    <option value="">Kesinti türü seçiniz...</option>
+                                    <?php foreach ($kesinti_turleri_param as $param): ?>
+                                        <option value="<?= $param->id ?>" 
+                                            data-kod="<?= $param->kod ?>"
+                                            data-hesaplama="<?= $param->hesaplama_tipi ?>" 
+                                            data-oran="<?= $param->oran ?? 0 ?>"
+                                            data-tutar="<?= $param->varsayilan_tutar ?? 0 ?>">
+                                            <?= htmlspecialchars($param->etiket) ?>
+                                            <?php if (strpos($param->hesaplama_tipi ?? '', 'oran') !== false && ($param->oran ?? 0) > 0): ?>
+                                                (%<?= $param->oran ?>)
+                                            <?php endif; ?>
+                                        </option>
+                                    <?php endforeach; ?>
+                                </select>
+                                <label for="kesinti_parametre_id">Kesinti Türü</label>
+                                <div class="form-floating-icon">
+                                    <i class="bx bx-category"></i>
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Taksit Sayısı -->
-                    <div class="mb-3 d-none" id="div_taksit_sayisi">
-                        <label class="form-label fw-semibold">Taksit Sayısı</label>
-                        <input type="number" class="form-control" name="taksit_sayisi" id="kesinti_taksit_sayisi" value="1" min="1" max="60">
-                    </div>
-
-                    <!-- Dönem Seçimi - Tek Seferlik -->
-                    <div class="mb-3" id="div_tek_sefer_donem">
-                        <?= Form::FormSelect2(
-                            name: "kesinti_donem",
-                            options: $acik_donemler,
-                            selectedValue: array_key_first($acik_donemler) ?? '',
-                            label: "Dönem Seçin",
-                            icon: "calendar",
-                            valueField: '',
-                            textField: '',
-                            required: true,
-                        ) ?>
-                    </div>
-
-                    <!-- Tarih Aralığı - Sürekli -->
-                    <div class="row d-none" id="div_surekli_donem">
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Başlangıç Tarihi <span class="text-danger">*</span></label>
-                            <input type="date" class="form-control" id="baslangic_donemi" name="baslangic_donemi"
-                                value="<?= date('Y-m-d') ?>">
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label class="form-label">Bitiş Tarihi <small class="text-muted">(Boş =
-                                    Süresiz)</small></label>
-                            <input type="date" class="form-control" id="bitis_donemi" name="bitis_donemi">
-                        </div>
-                    </div>
-
-                    <!-- Hesaplama Tipi -->
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold">Hesaplama Tipi</label>
-                        <div class="d-flex gap-3">
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="hesaplama_tipi" id="hesaplama_sabit"
-                                    value="sabit" checked>
-                                <label class="form-check-label" for="hesaplama_sabit">
-                                    <i class="bx bx-money me-1"></i> Sabit Tutar
-                                </label>
+                        <!-- Parametre Bilgi Barı -->
+                        <div class="col-12 mt-0">
+                            <div id="param_info_bar" class="d-none">
+                                <div class="alert alert-soft-danger border-0 p-2 mb-0 fs-12 rounded-3">
+                                    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                        <div>
+                                            <i class="bx bx-info-circle me-1 fs-5 align-middle"></i>
+                                            <span class="fw-bold">Varsayılan Hesaplama:</span> <span id="info_hesaplama">-</span> | 
+                                            <span class="fw-bold">Değer:</span> <span id="info_deger">-</span>
+                                        </div>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="hesaplama_tipi"
-                                    id="hesaplama_oran_net" value="oran_net">
-                                <label class="form-check-label" for="hesaplama_oran_net">
-                                    <i class="bx bx-percent me-1"></i> Net Maaş Üzerinden (%)
-                                </label>
+                        </div>
+
+                        <!-- İcra Dosya Seçimi (Dinamik) -->
+                        <div class="col-12 d-none" id="div_icra_secimi">
+                            <div class="form-floating form-floating-custom">
+                                <select class="form-select select2" id="kesinti_icra_id" name="icra_id" style="width: 100%" data-dropdown-parent="#modalPersonelKesintiEkle">
+                                    <option value="">Dosya seçiniz...</option>
+                                </select>
+                                <label for="kesinti_icra_id">İcra Dosyası</label>
+                                <div class="form-floating-icon">
+                                    <i class="bx bx-file"></i>
+                                </div>
                             </div>
-                            <div class="form-check">
-                                <input class="form-check-input" type="radio" name="hesaplama_tipi"
-                                    id="hesaplama_oran_brut" value="oran_brut">
-                                <label class="form-check-label" for="hesaplama_oran_brut">
-                                    <i class="bx bx-percent me-1"></i> Brüt Maaş Üzerinden (%)
+                            <div id="no_icra_warning" class="text-danger fs-12 mt-1 d-none">
+                                <i class="bx bx-error-circle me-1"></i>Personel adına kayıtlı aktif icra dosyası bulunamadı.
+                            </div>
+                        </div>
+
+                        <!-- Ücretsiz İzin Seçenekleri (Dinamik) -->
+                        <div class="col-12 d-none" id="div_ucretsiz_izin_secenek">
+                            <label class="form-label fs-11 fw-bold text-uppercase text-muted mb-1 ls-1">Kesinti Yöntemi</label>
+                            <div class="segmented-control-container bg-light w-100 p-1 rounded-3" style="height: 48px;">
+                                <input type="radio" class="segmented-control-input" name="rad_kesinti_tip" id="kesinti_tip_tutar" value="tutar" checked>
+                                <label class="segmented-control-label rounded-2 py-2" for="kesinti_tip_tutar">
+                                    <i class="bx bx-money me-1"></i> Tutar Gir
+                                </label>
+
+                                <input type="radio" class="segmented-control-input" name="rad_kesinti_tip" id="kesinti_tip_gun" value="gun">
+                                <label class="segmented-control-label rounded-2 py-2" for="kesinti_tip_gun">
+                                    <i class="bx bx-calendar me-1"></i> Gün Gir
                                 </label>
                             </div>
                         </div>
-                    </div>
 
-                    <!-- Tutar/Oran Girişi -->
-                    <div class="row">
-                        <div class="col-md-6 mb-3" id="div_tutar">
-                            <?= Form::FormFloatInput("number", "kesinti_tutar", "", "0,00", "Tutar (TL)", "credit-card", "form-control", true, null, "off", false, 'step="0.01" id="kesinti_tutar" min="0"') ?>
-                        </div>
-                        <div class="col-md-6 mb-3 d-none" id="div_oran">
-                            <?= Form::FormFloatInput("number", "oran", "", "0", "Oran (%)", "percent", "form-control", false, null, "off", false, 'step="0.01" id="kesinti_oran" min="0" max="100"') ?>
-                        </div>
-                        <!-- Tarih Seçimi -->
-                        <div class="col-md-6 mb-3">
-                            <?= Form::FormFloatInput("text", "kesinti_tarih", Date::today(), "Kesinti Tarihi", "Tarih", "calendar", "form-control flatpickr", true, null, "off", false) ?>
-                        </div>
-                    </div>
+                        <!-- Kesinti Tipi & Hesaplama Tipi -->
+                        <div class="col-md-6">
+                            <label class="form-label fs-11 fw-bold text-uppercase text-muted mb-1 ls-1">Kesinti Tipi</label>
+                            <div class="segmented-control-container bg-light w-100 p-1 rounded-3" style="height: 48px;">
+                                <input type="radio" class="segmented-control-input" name="tekrar_tipi" id="tekrar_tek_sefer" value="tek_sefer" checked>
+                                <label class="segmented-control-label rounded-2 py-2" for="tekrar_tek_sefer">
+                                    <i class="bx bx-calendar-check me-1"></i> Tek Sefer
+                                </label>
 
-                    <!-- Açıklama -->
-                    <div class="mb-3">
-                        <?= Form::FormFloatInput("text", "aciklama", "", "Açıklama giriniz", "Açıklama", "message-square", "form-control", false, null, "off", false, 'id="kesinti_aciklama"') ?>
+                                <input type="radio" class="segmented-control-input" name="tekrar_tipi" id="tekrar_surekli" value="surekli">
+                                <label class="segmented-control-label rounded-2 py-2" for="tekrar_surekli">
+                                    <i class="bx bx-refresh me-1"></i> Sürekli
+                                </label>
+
+                                <input type="radio" class="segmented-control-input" name="tekrar_tipi" id="tekrar_taksitli" value="taksitli">
+                                <label class="segmented-control-label rounded-2 py-2" for="tekrar_taksitli">
+                                    <i class="bx bx-list-ol"></i> Taksitli
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label fs-11 fw-bold text-uppercase text-muted mb-1 ls-1">Hesaplama Tipi</label>
+                            <div class="segmented-control-container bg-light w-100 p-1 rounded-3" style="height: 48px;">
+                                <input type="radio" class="segmented-control-input" name="hesaplama_tipi" id="hesaplama_sabit" value="sabit" checked>
+                                <label class="segmented-control-label rounded-2 py-2" for="hesaplama_sabit" title="Sabit Tutar">
+                                    <i class="bx bx-money"></i> Sabit
+                                </label>
+
+                                <input type="radio" class="segmented-control-input" name="hesaplama_tipi" id="hesaplama_oran_net" value="oran_net">
+                                <label class="segmented-control-label rounded-2 py-2" for="hesaplama_oran_net" title="Net Üzerinden %">
+                                    Net %
+                                </label>
+
+                                <input type="radio" class="segmented-control-input" name="hesaplama_tipi" id="hesaplama_oran_brut" value="oran_brut">
+                                <label class="segmented-control-label rounded-2 py-2" for="hesaplama_oran_brut" title="Brüt Üzerinden %">
+                                    Brüt %
+                                </label>
+                            </div>
+                        </div>
+
+                        <!-- Taksit Sayısı (Dinamik) -->
+                        <div class="col-12 d-none" id="div_taksit_sayisi">
+                            <?= Form::FormFloatInput("number", "taksit_sayisi", "1", "Taksit Sayısı", "Taksit Sayısı", "bx bx-list-ol", "form-control", true, null, "off", false, 'id="kesinti_taksit_sayisi" min="1" max="60"') ?>
+                        </div>
+
+                        <!-- Dinamik Dönem/Tarih Alanları -->
+                        <div class="col-12" id="div_tek_sefer_donem">
+                            <?= Form::FormSelect2(
+                                name: "kesinti_donem",
+                                options: $acik_donemler,
+                                selectedValue: array_key_first($acik_donemler) ?? '',
+                                label: "Uygulanacak Dönem",
+                                icon: "bx bx-calendar-event",
+                                required: true
+                            ) ?>
+                        </div>
+
+                        <div class="col-md-6 d-none" id="div_surekli_donem_baslangic">
+                            <?= Form::FormFloatInput("text", "baslangic_donemi", date('01.m.Y'), "GG.AA.YYYY", "Başlangıç Tarihi", "calendar", "form-control flatpickr", true, null, "off", false, 'id="baslangic_donemi"') ?>
+                        </div>
+                        <div class="col-md-6 d-none" id="div_surekli_donem_bitis">
+                            <?= Form::FormFloatInput("text", "bitis_donemi", "", "GG.AA.YYYY", "Bitiş Tarihi (Opsiyonel)", "calendar", "form-control flatpickr", false, null, "off", false, 'id="bitis_donemi"') ?>
+                        </div>
+
+                        <!-- Değer Alanları -->
+                        <div class="col-md-6 d-none" id="div_kesinti_gun">
+                            <?= Form::FormFloatInput("number", "gun_sayisi", "", "0", "Kesilecek Gün Sayısı", "bx bx-calendar", "form-control", false, null, "off", false, 'step="0.5" id="kesinti_gun_sayisi" min="0"') ?>
+                        </div>
+
+                        <div class="col-md-6" id="div_tutar">
+                            <?= Form::FormFloatInput("number", "kesinti_tutar", "", "0.00", "Kesinti Tutarı (TL)", "bx bx-wallet", "form-control", true, null, "off", false, 'step="0.01" id="kesinti_tutar" min="0"') ?>
+                        </div>
+                        <div class="col-md-6 d-none" id="div_oran">
+                            <?= Form::FormFloatInput("number", "oran", "", "0", "Hesaplama Oranı (%)", "bx bx-percent", "form-control", false, null, "off", false, 'step="0.01" id="kesinti_oran" min="0" max="100"') ?>
+                        </div>
+
+                        <div class="col-md-6">
+                            <?= Form::FormFloatInput("text", "kesinti_tarih", Date::today(), "GG.AA.YYYY", "İşlem Tarihi", "calendar", "form-control flatpickr", true, null, "off", false, 'id="kesinti_tarih"') ?>
+                        </div>
+
+                        <!-- Açıklama -->
+                        <div class="col-12">
+                            <?= Form::FormFloatInput("text", "aciklama", "", "Kısa bir açıklama belirtin...", "Açıklama / Not", "bx bx-message-square-detail", "form-control", false, null, "off", false, 'id="kesinti_aciklama"') ?>
+                        </div>
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
-                    <button type="button" class="btn btn-danger" id="btnPersonelKesintiKaydet">
-                        <i class="bx bx-save me-1"></i>Kaydet
+                <div class="modal-footer bg-light p-3 border-top">
+                    <button type="button" class="btn btn-outline-secondary px-4 me-auto" data-bs-dismiss="modal">İptal</button>
+                    <button type="button" class="btn btn-danger px-5" id="btnPersonelKesintiKaydet">
+                        <i class="bx bx-check-circle me-1 fs-5"></i><span>Kaydet</span>
                     </button>
                 </div>
             </form>

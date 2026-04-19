@@ -68,14 +68,17 @@ $(document).ready(function () {
     form.find('input[name="id"]').remove();
     
     // Modal başlığını ve buton metnini sıfırla
-    $("#modalPersonelKesintiEkle .modal-title").html('<i class="bx bx-minus-circle me-2"></i>Yeni Kesinti Ekle');
-    $("#btnPersonelKesintiKaydet").html('<i class="bx bx-save me-1"></i>Kaydet');
+    $("#modalPersonelKesintiEkle .modal-title").text("Yeni Kesinti Ekle");
+    $("#btnPersonelKesintiKaydet span").text("Kaydet");
     
     $("#kesinti_parametre_id").val("").trigger("change");
     $("#tekrar_tek_sefer").prop("checked", true);
     $("#hesaplama_sabit").prop("checked", true);
+    
+    // UI Sıfırla
     updateTekrarTipiUI();
     updateHesaplamaTipiUI();
+    $("#param_info_bar").addClass("d-none");
     $("#div_icra_secimi").addClass("d-none");
     $("#div_ucretsiz_izin_secenek").addClass("d-none");
     $("#div_kesinti_gun").addClass("d-none");
@@ -209,24 +212,23 @@ $(document).ready(function () {
 
   function updateTekrarTipiUI() {
     var tekrarTipi = $('input[name="tekrar_tipi"]:checked').val();
-    console.log("Tekrar tipi değişti:", tekrarTipi); // Debug
-
+    
     if (tekrarTipi === "surekli") {
-      $("#div_tek_sefer_donem").addClass("d-none").hide();
-      $("#div_surekli_donem").removeClass("d-none").show();
-      $("#div_taksit_sayisi").addClass("d-none").hide();
+      $("#div_tek_sefer_donem").addClass("d-none");
+      $("#div_surekli_donem_baslangic, #div_surekli_donem_bitis").removeClass("d-none");
+      $("#div_taksit_sayisi").addClass("d-none");
       $("select[name='kesinti_donem']").prop("required", false);
       $("#baslangic_donemi").prop("required", true);
     } else if (tekrarTipi === "taksitli") {
-      $("#div_tek_sefer_donem").removeClass("d-none").show();
-      $("#div_surekli_donem").addClass("d-none").hide();
-      $("#div_taksit_sayisi").removeClass("d-none").show();
+      $("#div_tek_sefer_donem").removeClass("d-none");
+      $("#div_surekli_donem_baslangic, #div_surekli_donem_bitis").addClass("d-none");
+      $("#div_taksit_sayisi").removeClass("d-none");
       $("select[name='kesinti_donem']").prop("required", true);
       $("#baslangic_donemi").prop("required", false);
     } else {
-      $("#div_tek_sefer_donem").removeClass("d-none").show();
-      $("#div_surekli_donem").addClass("d-none").hide();
-      $("#div_taksit_sayisi").addClass("d-none").hide();
+      $("#div_tek_sefer_donem").removeClass("d-none");
+      $("#div_surekli_donem_baslangic, #div_surekli_donem_bitis").addClass("d-none");
+      $("#div_taksit_sayisi").addClass("d-none");
       $("select[name='kesinti_donem']").prop("required", true);
       $("#baslangic_donemi").prop("required", false);
     }
@@ -257,20 +259,32 @@ $(document).ready(function () {
   // Parametre seçilince - EVENT DELEGATION
   $(document).on("change", "#kesinti_parametre_id", function () {
     var selected = $(this).find("option:selected");
+    if (!selected.val()) {
+        $("#param_info_bar").addClass("d-none");
+        return;
+    }
+
     var kod = selected.data("kod");
     var hesaplama = selected.data("hesaplama") || "";
     var oran = selected.data("oran") || 0;
     var tutar = selected.data("tutar") || 0;
     var personel_id = $('input[name="personel_id"]').val();
 
-    console.log("Parametre seçildi:", kod, hesaplama, oran, tutar); // Debug
+    // Bilgi barını güncelle
+    $("#param_info_bar").removeClass("d-none");
+    var hLabel = "Sabit Tutar";
+    if (hesaplama.includes("oran_bazli_net") || hesaplama === "oran_net") hLabel = "Net Maaş %";
+    else if (hesaplama.includes("oran_bazli_brut") || hesaplama === "oran_brut") hLabel = "Brüt Maaş %";
+    
+    $("#info_hesaplama").text(hLabel);
+    $("#info_deger").text(hesaplama.includes("oran") ? "%" + oran : tutar + " TL");
 
     // İcra seçildiyse icra dosyalarını getir
     if (kod === "icra") {
-      $("#div_icra_secimi").removeClass("d-none").show();
+      $("#div_icra_secimi").removeClass("d-none");
       loadIcraDosyalari(personel_id);
     } else {
-      $("#div_icra_secimi").addClass("d-none").hide();
+      $("#div_icra_secimi").addClass("d-none");
       $("#kesinti_icra_id").val("");
     }
 
@@ -303,11 +317,11 @@ $(document).ready(function () {
 
       if (maasDurumu === "Prim Usulü") {
         $("#kesinti_tip_gun").prop("disabled", true);
-        $("label[for='kesinti_tip_gun']").addClass("d-none");
+        $("label[for='kesinti_tip_gun']").addClass("opacity-50");
         $("#kesinti_tip_tutar").prop("checked", true).trigger("change");
       } else {
         $("#kesinti_tip_gun").prop("disabled", false);
-        $("label[for='kesinti_tip_gun']").removeClass("d-none");
+        $("label[for='kesinti_tip_gun']").removeClass("opacity-50");
       }
     } else {
       $("#div_ucretsiz_izin_secenek").addClass("d-none");
@@ -322,12 +336,12 @@ $(document).ready(function () {
     if (tip === "gun") {
       $("#div_kesinti_gun").removeClass("d-none");
       $("#div_tutar").addClass("d-none");
-      $("input[name='tutar']").prop("required", false);
+      $("input[name='kesinti_tutar']").prop("required", false);
       $("#kesinti_gun_sayisi").prop("required", true).focus();
     } else {
       $("#div_kesinti_gun").addClass("d-none");
       $("#div_tutar").removeClass("d-none");
-      $("input[name='tutar']").prop("required", true);
+      $("input[name='kesinti_tutar']").prop("required", true);
       $("#kesinti_gun_sayisi").prop("required", false);
     }
   });
@@ -340,9 +354,9 @@ $(document).ready(function () {
     if (gun > 0 && maas > 0) {
       const gunluk = maas / 30;
       const toplam = (gunluk * gun).toFixed(2);
-      $("input[name='tutar']").val(toplam);
+      $("input[name='kesinti_tutar']").val(toplam);
     } else {
-      $("input[name='tutar']").val(0);
+      $("input[name='kesinti_tutar']").val(0);
     }
   });
 

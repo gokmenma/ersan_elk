@@ -41,8 +41,9 @@ class SayacDegisimModel extends Model
             $params['ekip_kodu'] = $ekipKodu;
         }
         if ($region) {
-            $baseWhere .= " AND (t.bolge = :region OR ek.ekip_bolge = :region)";
-            $params['region'] = $region;
+            $baseWhere .= " AND (t.bolge = :region_t OR ek.ekip_bolge = :region_ek)";
+            $params['region_t'] = $region;
+            $params['region_ek'] = $region;
         }
 
         // Toplam kayıt sayısı (filtresiz)
@@ -297,13 +298,14 @@ class SayacDegisimModel extends Model
                        ROUND(SUM(CASE WHEN pay.personel_sayisi > 0 THEN 1.0 / pay.personel_sayisi ELSE 0 END), 4) as toplam_abone
                 FROM {$this->table} t 
                 LEFT JOIN personel p ON t.personel_id = p.id 
+                LEFT JOIN tanimlamalar ek ON t.ekip_kodu_id = ek.id
                 JOIN (
                     SELECT 
                         tarih,
                         SUBSTRING_INDEX(islem_id, '_', 1) as ortak_islem_id,
                         COUNT(*) as personel_sayisi
                     FROM {$this->table}
-                    WHERE firma_id = :firma_id AND silinme_tarihi IS NULL
+                    WHERE firma_id = :firma_id_sub AND silinme_tarihi IS NULL
                     GROUP BY tarih, SUBSTRING_INDEX(islem_id, '_', 1)
                 ) pay ON pay.tarih = t.tarih
                     AND pay.ortak_islem_id = SUBSTRING_INDEX(t.islem_id, '_', 1)
@@ -316,6 +318,7 @@ class SayacDegisimModel extends Model
             if ($key === 'start' || $key === 'length') continue;
             $stmt->bindValue(":$key", $val);
         }
+        $stmt->bindValue(":firma_id_sub", $params['firma_id']);
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }

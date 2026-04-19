@@ -1,0 +1,30 @@
+Personel: 76
+yemek_yardimi_dahil: 1
+hedef_net_maas_tutari: 33000
+brutMaas: 31900
+ICERIDE!
+Personel: 76
+yemek_yardimi_dahil: 1
+hedef_net_maas_tutari: 33000
+brutMaas: 31900
+ICERIDE!
+Personel: 76
+yemek_yardimi_dahil: 1
+hedef_net_maas_tutari: 33000
+brutMaas: 27139.65
+ICERIDE!
+Personel: 76
+yemek_yardimi_dahil: 1
+hedef_net_maas_tutari: 33000
+brutMaas: 27139.65
+ICERIDE!
+Personel: 76
+yemek_yardimi_dahil: 1
+hedef_net_maas_tutari: 33000
+brutMaas: 27139.65
+ICERIDE!
+Personel: 76
+yemek_yardimi_dahil: 1
+hedef_net_maas_tutari: 33000
+brutMaas: 27139.65
+ICERIDE!

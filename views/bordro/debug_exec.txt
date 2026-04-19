@@ -1,0 +1,4 @@
+2026-04-19 00:52:38 - ID: 76 - Dahil: 1
+RESULT - Net: 39400 - Banka: 39400 - Elden: 0 - Yemek: 4760.35
+2026-04-19 00:53:01 - ID: 76 - Dahil: 1
+RESULT - Net: 39400 - Banka: 39400 - Elden: 0 - Yemek: 4760.35

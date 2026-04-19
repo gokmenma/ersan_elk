@@ -598,10 +598,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $donemBaslangicTarihi = $donemBilgi?->baslangic_tarihi ?? date('Y-m-01');
                 $asgariUcretNet = $BordroParametre->getGenelAyar('asgari_ucret_net', $donemBaslangicTarihi) ?? 17002.12;
                 $hesap = $BordroPersonel->hesaplaOrtakGosterimDegerleri($bp, $donemBilgi, floatval($asgariUcretNet));
+                $mealDeduction = floatval($hesap['mealAllowanceDeduction'] ?? 0);
                 $guncelEkOdeme = floatval($hesap['rawEkOdeme']);
 
                 $maasDurumuGosterim = $hesap['maasDurumu'] ?: ($personel->maas_durumu ?? '-');
                 $nominalMaas = floatval($hesap['maasTutari']);
+                
+                // USER REQ: Üst kısımdaki 'Net Maaş' ve 'Günlük Ücret' personelin kendi sözleşme maaşı (Örn: 33.000) üzerinden görünmelidir.
+                // Alt kısımdaki 'Asgari Ücret Hakedişi' ise yine yasal tabanı koruyacaktır.
+                
                 $gunlukUcret = $nominalMaas / 30;
                 $ucretsizIzinGunu = intval($hesap['ucretsizIzinGunu']);
                 $calismaGunu = intval($hesap['calismaGunu']);
@@ -642,7 +647,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 // Ücretsiz izin veya net/brüt maaş ise, çalışılan brüt/net maaşı göster
                 $calisanBrutMaas = $toplamAlacak - floatval($hesap['rawEkOdeme']);
-                if ($ucretsizIzinGunu > 0 || in_array($maasDurumuGosterim, ['Net', 'Brüt'])) {
+                
+                // USER REQ: Maaşa Dahil Yemek Yardımı Detay Gösterimi (19.04.2026 Hassas)
+                if (!empty($bp->yemek_yardimi_dahil) && $bp->yemek_yardimi_dahil == 1) {
+                    $asgariHakedisModal = round(($asgariUcretNet / 30) * $calismaGunu, 2);
+                    $html .= '<tr><td class="text-muted">Asgari Ücret Hakedişi:</td><td class="text-secondary">' . number_format($asgariHakedisModal, 2, ',', '.') . ' ₺</td></tr>';
+                    
+                    if ($mealDeduction > 0) {
+                        $html .= '<tr><td class="text-muted">Yemek Yardımı (Maaşa Dahil):</td><td class="text-success">+' . number_format($mealDeduction, 2, ',', '.') . ' ₺</td></tr>';
+                    }
+                    
+                    $html .= '<tr class="table-warning"><td class="text-muted">Net Alacağı:</td><td class="fw-bold text-success">' . number_format($netAlacak, 2, ',', '.') . ' ₺</td></tr>';
+                } elseif ($ucretsizIzinGunu > 0 || in_array($maasDurumuGosterim, ['Net', 'Brüt'])) {
                     $descText = ($maasDurumuGosterim == 'Net' || $maasDurumuGosterim == 'Brüt') ? ' (Gün x Ücret)' : ' (SGK matrahı)';
                     $html .= '<tr class="table-warning"><td class="text-muted">Hakediş (Maaş):</td><td class="fw-bold text-warning">' . number_format($calisanBrutMaas, 2, ',', '.') . ' ₺ <small class="text-muted">' . $descText . '</small></td></tr>';
                 } else {
@@ -666,7 +682,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // ============================================================
                 // HTML ÇIKTISI
                 // ============================================================
-                $html .= '<tr><td class="text-muted">Ek Ödeme:</td><td class="text-success fw-medium">+' . number_format($guncelEkOdeme, 2, ',', '.') . ' ₺</td></tr>';
+                // Ek ödeme satırından "Maaşa Dahil Yemek" tutarını çıkaralım (Çünkü yukarıda ana maaş içinde gösterdik)
+                $gosterilecekEkOdeme = $guncelEkOdeme;
+                if (!empty($bp->yemek_yardimi_dahil) && $bp->yemek_yardimi_dahil == 1) {
+                    $gosterilecekEkOdeme = max(0, $guncelEkOdeme - $mealDeduction);
+                }
+                
+                $html .= '<tr><td class="text-muted">Ek Ödeme:</td><td class="text-success fw-medium">+' . number_format($gosterilecekEkOdeme, 2, ',', '.') . ' ₺</td></tr>';
 
 
                 // Kesinti Tutarı (Yasal)
@@ -1082,7 +1104,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
 
-                $html .= '<tr class="table-light"><td class="ps-3 fw-bold">Toplam</td><td class="text-end pe-3 fw-bold text-success">+' . number_format($guncelEkOdeme, 2, ',', '.') . ' ₺</td></tr>';
+                $html .= '<tr class="table-light"><td class="ps-3 fw-bold">Toplam</td><td class="text-end pe-3 fw-bold text-success">+' . number_format($gosterilecekEkOdeme, 2, ',', '.') . ' ₺</td></tr>';
                 $html .= '</tbody>';
                 $html .= '</table>';
                 $html .= '</div>';

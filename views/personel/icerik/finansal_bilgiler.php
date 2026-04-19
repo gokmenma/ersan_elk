@@ -123,7 +123,20 @@ use App\Helper\Helper;
                                                 ?>
                                             </div>
                                             <div class="col-md-5">
-                                                <?php echo Form::FormFloatInput("text", "yemek_yardimi_tutari", Helper::formattedMoney($personel->yemek_yardimi_tutari ?? 0), "Manuel Yemek Tutarı", "Manuel Tutar", "dollar-sign", "form-control money"); ?>
+                                                <div class="d-flex align-items-center">
+                                                    <div class="flex-grow-1">
+                                                        <?php echo Form::FormFloatInput("text", "yemek_yardimi_tutari", Helper::formattedMoney($personel->yemek_yardimi_tutari ?? 0), "Manuel Yemek Tutarı", "Manuel Tutar", "dollar-sign", "form-control money"); ?>
+                                                    </div>
+                                                    <div class="ms-2 mt-3">
+                                                        <div class="form-check" title="Bu seçenek işaretlenirse, yemek yardımı tutarı sistem tarafından (Hedef Maaş - Asgari Ücret) farkı olarak otomatik hesaplanır ve toplam hakediş sözleşme tutarına eşitlenir.">
+                                                            <input type="hidden" name="yemek_yardimi_dahil" value="0">
+                                                            <input class="form-check-input" type="checkbox" name="yemek_yardimi_dahil" value="1" id="yemek_yardimi_dahil" <?= ($personel->yemek_yardimi_dahil ?? 0) == 1 ? 'checked' : '' ?>>
+                                                            <label class="form-check-label text-nowrap" for="yemek_yardimi_dahil" style="font-size: 11px;">
+                                                                Maaşa Dahil
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
@@ -277,6 +290,7 @@ $(document).ready(function() {
         $('#sectionYemekParametre').slideUp();
         $('select[name="yemek_yardimi_parametre_id"]').val('').trigger('change');
         $('input[name="yemek_yardimi_tutari"]').val('0,00');
+        $('input[name="yemek_yardimi_dahil"]').prop('checked', false);
       }
     });
 

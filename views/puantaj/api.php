@@ -1039,52 +1039,62 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'sayac-degisim-datatable') {
     header('Content-Type: application/json');
 
-    $startDate = $_GET['start_date'] ?? '';
-    $endDate = $_GET['end_date'] ?? '';
-    $ekipKodu = $_GET['ekip_kodu'] ?? '';
-    $region = $_GET['region'] ?? '';
+    try {
+        $startDate = $_GET['start_date'] ?? '';
+        $endDate = $_GET['end_date'] ?? '';
+        $ekipKodu = $_GET['ekip_kodu'] ?? '';
+        $region = $_GET['region'] ?? '';
 
-    $SayacDegisim = new SayacDegisimModel();
-    $result = $SayacDegisim->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $region);
+        $SayacDegisim = new SayacDegisimModel();
+        $result = $SayacDegisim->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $region);
 
-    // Veriyi DataTable formatına dönüştür
-    $formattedData = [];
-    foreach ($result['data'] as $record) {
-        $zimmetBadgeClass = '';
-        if (!empty($record->takilan_sayacno)) {
-            if ($record->zimmet_dusuldu == 1) {
-                $zimmetBadgeClass = 'bg-success';
-            } else {
-                $zimmetBadgeClass = 'bg-danger';
+        // Veriyi DataTable formatına dönüştür
+        $formattedData = [];
+        foreach ($result['data'] as $record) {
+            $zimmetBadgeClass = '';
+            if (!empty($record->takilan_sayacno)) {
+                if ($record->zimmet_dusuldu == 1) {
+                    $zimmetBadgeClass = 'bg-success';
+                } else {
+                    $zimmetBadgeClass = 'bg-danger';
+                }
             }
+
+            $takilanSayacNoHtml = $record->takilan_sayacno ?? '-';
+            if ($zimmetBadgeClass && $takilanSayacNoHtml != '-') {
+                $takilanSayacNoHtml = '<span class="badge ' . $zimmetBadgeClass . '">' . htmlspecialchars($record->takilan_sayacno) . '</span>';
+            }
+
+            $formattedData[] = [
+                'kayit_tarihi' => $record->kayit_tarihi ? date('d.m.Y H:i', strtotime($record->kayit_tarihi)) : '-',
+                'ekip' => $record->ekip ?? '-',
+                'personel_adi' => $record->personel_adi ?: '<span class="text-muted">' . htmlspecialchars($record->ekip ?? '') . '</span>',
+                'bolge' => $record->bolge ?? '-',
+                'isemri_sebep' => $record->isemri_sebep ?? '-',
+                'isemri_sonucu' => $record->isemri_sonucu ?? '-',
+                'abone_no' => $record->abone_no ?? '-',
+                'takilan_sayacno' => $takilanSayacNoHtml,
+                'id' => $record->id,
+                'zimmet_dusuldu' => $record->zimmet_dusuldu ?? 0
+            ];
         }
 
-        $takilanSayacNoHtml = $record->takilan_sayacno ?? '-';
-        if ($zimmetBadgeClass && $takilanSayacNoHtml != '-') {
-            $takilanSayacNoHtml = '<span class="badge ' . $zimmetBadgeClass . '">' . htmlspecialchars($record->takilan_sayacno) . '</span>';
-        }
-
-        $formattedData[] = [
-            'kayit_tarihi' => $record->kayit_tarihi ? date('d.m.Y H:i', strtotime($record->kayit_tarihi)) : '-',
-            'ekip' => $record->ekip ?? '-',
-            'personel_adi' => $record->personel_adi ?: '<span class="text-muted">' . htmlspecialchars($record->ekip ?? '') . '</span>',
-            'bolge' => $record->bolge ?? '-',
-            'isemri_sebep' => $record->isemri_sebep ?? '-',
-            'isemri_sonucu' => $record->isemri_sonucu ?? '-',
-            'abone_no' => $record->abone_no ?? '-',
-            'takilan_sayacno' => $takilanSayacNoHtml,
-            'id' => $record->id,
-            'zimmet_dusuldu' => $record->zimmet_dusuldu ?? 0
-        ];
+        echo json_encode([
+            'draw' => $result['draw'],
+            'recordsTotal' => $result['recordsTotal'],
+            'recordsFiltered' => $result['recordsFiltered'],
+            'data' => $formattedData,
+            'summary' => $result['summary'] ?? []
+        ]);
+    } catch (Exception $e) {
+        echo json_encode([
+            'draw' => isset($_GET['draw']) ? intval($_GET['draw']) : 0,
+            'recordsTotal' => 0,
+            'recordsFiltered' => 0,
+            'data' => [],
+            'error' => $e->getMessage()
+        ]);
     }
-
-    echo json_encode([
-        'draw' => $result['draw'],
-        'recordsTotal' => $result['recordsTotal'],
-        'recordsFiltered' => $result['recordsFiltered'],
-        'data' => $formattedData,
-        'summary' => $result['summary'] ?? []
-    ]);
     exit;
 }
 
