@@ -1298,6 +1298,12 @@ if ($action == "demirbas-listesi") {
 
                 // Durum badge (İsimde 'hurda' geçiyorsa otomatik hurda say)
                 $durumText = $d->durum ?? 'aktif';
+
+                // Eğer stok kalmadıysa ve hala aktif görünüyorsa otomatik Personelde göster
+                if ($kalan <= 0 && strtolower($durumText) === 'aktif') {
+                    $durumText = 'personelde';
+                }
+
                 $isSayacTab = ($tab === 'sayac');
                 $isIsimHurda = str_contains(mb_strtolower($d->demirbas_adi, 'UTF-8'), 'hurda');
                 
@@ -1413,6 +1419,7 @@ if ($action == "demirbas-listesi") {
                     "seri_no" => $displaySeriNo,
                     "stok" => '<div class="text-center">' . $stokBadge . '</div>',
                     "durum" => '<div class="text-center">' . $durumBadge . '</div>',
+                    "tutar" => '<div class="text-end">' . Helper::formattedMoney($d->edinme_tutari ?? 0) . '</div>',
                     "aciklama" => '<div class="text-muted small">' . ($d->aciklama ?? '-') . '</div>',
                     "tarih" => (($d->edinme_tarihi ? date('d.m.Y', strtotime($d->edinme_tarihi)) : ($d->kayit_tarihi ? date('d.m.Y', strtotime($d->kayit_tarihi)) : '-'))),
                     "islemler" => '<div class="text-center text-nowrap">' . $actions . '</div>'

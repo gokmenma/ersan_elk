@@ -55,6 +55,14 @@ $tur_option = [
     $title = "Kesinti Raporu";
     ?>
     <?php include 'layouts/breadcrumb.php'; ?>
+    <style>
+        .copyable:hover {
+            background-color: rgba(0, 123, 255, 0.1);
+            border-radius: 4px;
+            padding: 0 2px;
+            transition: all 0.2s;
+        }
+    </style>
 
     <div class="row">
         <div class="col-12">
@@ -121,6 +129,8 @@ $tur_option = [
                                         <th>Personel Bilgileri</th>
                                         <th>Kesinti Türü</th>
                                         <th>Açıklama / Detay</th>
+                                        <th>Banka Bilgileri</th>
+                                        <th>Ödeme Açıklaması</th>
                                         <th class="text-end">Tutar</th>
                                         <th class="text-center">Durum</th>
                                     </tr>
@@ -170,7 +180,7 @@ $tur_option = [
                                                 <span class="badge <?= $badgeBg ?> fs-6 px-2 py-1 shadow-sm"><?= $turAdi ?></span>
                                             </td>
                                             <td>
-                                                <div class="text-wrap" style="max-width:300px;">
+                                                <div class="text-wrap" style="max-width:250px;">
                                                     <span class="fw-medium text-dark d-block">
                                                         <?= htmlspecialchars($k->aciklama ?? '-') ?>
                                                     </span>
@@ -180,6 +190,36 @@ $tur_option = [
                                                         </span>
                                                     <?php endif; ?>
                                                 </div>
+                                            </td>
+                                            <td>
+                                                <?php if ($k->tur === 'icra'): ?>
+                                                    <div class="text-wrap" style="max-width:200px; font-size: 0.85rem;">
+                                                        <?php if(!empty($k->iban)): ?>
+                                                            <div class="d-flex align-items-center mb-1">
+                                                                <code class="text-primary me-1 copyable" title="Kopyalamak için tıkla" style="cursor:pointer;"><?= htmlspecialchars($k->iban) ?></code>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                        <?php if(!empty($k->hesap_bilgileri)): ?>
+                                                            <div class="text-muted small">
+                                                                <i class="bx bx-user me-1"></i><?= htmlspecialchars($k->hesap_bilgileri) ?>
+                                                            </div>
+                                                        <?php endif; ?>
+                                                    </div>
+                                                <?php else: ?>
+                                                    -
+                                                <?php endif; ?>
+                                            </td>
+                                            <td>
+                                                <?php if ($k->tur === 'icra'): ?>
+                                                    <?php 
+                                                        $odemeAciklama = ($k->dosya_no ?? '...') . " dosya numaralı, " . ($k->tc_kimlik_no ?? '...') . " tc kimlik numaralı " . ($k->adi_soyadi ?? '...') . " isimli personele ait icra ödemesi";
+                                                    ?>
+                                                    <div class="text-wrap" style="max-width:250px; font-size: 0.8rem;">
+                                                        <span class="copyable text-muted" title="Kopyalamak için tıkla" style="cursor:pointer;"><?= htmlspecialchars($odemeAciklama) ?></span>
+                                                    </div>
+                                                <?php else: ?>
+                                                    -
+                                                <?php endif; ?>
                                             </td>
                                             <td class="text-end fw-bold text-danger" style="font-size: 1.05rem;">
                                                 <span class="<?= $k->durum === 'reddedildi' ? 'text-decoration-line-through' : '' ?>">
@@ -196,7 +236,7 @@ $tur_option = [
                                 </tbody>
                                 <tfoot class="table-light">
                                     <tr>
-                                        <th colspan="4" class="text-end font-size-14 fw-bold">Toplam Kesinti Tutarı:</th>
+                                        <th colspan="6" class="text-end font-size-14 fw-bold">Toplam Kesinti Tutarı:</th>
                                         <th class="text-end text-danger font-size-16 fw-bold">
                                             <?= number_format($toplamTutar, 2, ',', '.') ?> ₺
                                         </th>
@@ -241,7 +281,7 @@ $tur_option = [
             var table = $('#kesintiRaporuTable').DataTable();
             
             var html = '<table border="1"><thead><tr>' +
-                       '<th>Sira</th><th>Personel Bilgileri</th><th>Kesinti Turu</th><th>Aciklama / Detay</th><th>Tutar</th><th>Durum</th>' +
+                       '<th>Sira</th><th>Personel Bilgileri</th><th>Kesinti Turu</th><th>Aciklama / Detay</th><th>IBAN</th><th>Hesap Bilgileri</th><th>Odeme Aciklamasi</th><th>Tutar</th><th>Durum</th>' +
                        '</tr></thead><tbody>';
             
             table.rows({ search: 'applied' }).nodes().each(function(node, index) {
@@ -258,17 +298,24 @@ $tur_option = [
                 aciklamaWrapper.find('.small, i').remove();
                 var aciklama = aciklamaWrapper.text().trim();
                 
+                var iban = row.find('td:eq(4)').find('code').text().trim();
+                var hesapBilgileri = row.find('td:eq(4)').find('.text-muted').text().trim();
+                var odemeAciklama = row.find('td:eq(5)').text().trim();
+                
                 // Get original text of Tutar without span styles
-                var tutarCell = row.find('td:eq(4)');
+                var tutarCell = row.find('td:eq(6)');
                 var tutarText = tutarCell.text().trim().replace(/₺/g, '').trim(); 
                 
-                var durum = row.find('td:eq(5)').text().trim();
+                var durum = row.find('td:eq(7)').text().trim();
                 
                 html += '<tr>' +
                         '<td>' + sira + '</td>' +
                         '<td>' + personel + '</td>' +
                         '<td>' + kesintiTuru + '</td>' +
                         '<td>' + aciklama + '</td>' +
+                        '<td>' + iban + '</td>' +
+                        '<td>' + hesapBilgileri + '</td>' +
+                        '<td>' + odemeAciklama + '</td>' +
                         '<td>' + tutarText + '</td>' +
                         '<td>' + durum + '</td>' +
                         '</tr>';
@@ -285,6 +332,27 @@ $tur_option = [
             link.download = "Kesinti_Raporu.xls";
             link.href = uri + base64(format(template, ctx));
             link.click();
+        });
+
+        // Kopyalama özelliği
+        $(document).on('click', '.copyable', function() {
+            var text = $(this).text().trim();
+            var $temp = $("<input>");
+            $("body").append($temp);
+            $temp.val(text).select();
+            document.execCommand("copy");
+            $temp.remove();
+            
+            // Toast veya bildirim gösterilebilir
+            Swal.fire({
+                icon: 'success',
+                title: 'Kopyalandı!',
+                text: 'Metin panoya kopyalandı.',
+                timer: 1000,
+                showConfirmButton: false,
+                position: 'top-end',
+                toast: true
+            });
         });
 
         const yilSelect = $('[name="yilSelectRapor"]');

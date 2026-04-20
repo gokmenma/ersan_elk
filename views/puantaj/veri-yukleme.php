@@ -254,6 +254,57 @@ $activeTab = $_GET['tab'] ?? 'okuma';
     [data-bs-theme="dark"] #filterAccordion .nav-tabs-custom .nav-link.active {
         background-color: rgba(var(--vz-primary-rgb), 0.2);
     }
+
+    /* Ticker Tape Styles */
+    .ticker-container {
+        background: #fff;
+        border: 1px solid rgba(240, 101, 72, 0.2);
+        border-radius: 8px;
+        overflow: hidden;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: center;
+        height: 40px;
+        box-shadow: 0 4px 12px rgba(240, 101, 72, 0.08);
+        border-left: 4px solid #f06548;
+    }
+    [data-bs-theme="dark"] .ticker-container {
+        background: #2a3042;
+        border-color: rgba(240, 101, 72, 0.3);
+    }
+    .ticker-label {
+        background: #f06548;
+        color: white;
+        padding: 0 15px;
+        height: 100%;
+        display: flex;
+        align-items: center;
+        font-weight: 800;
+        font-size: 11px;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        z-index: 2;
+        white-space: nowrap;
+    }
+    .ticker-content {
+        flex-grow: 1;
+        overflow: hidden;
+    }
+    .ticker-item {
+        display: inline-block;
+        margin-right: 40px;
+        font-weight: 600;
+        color: #f06548;
+        cursor: pointer;
+        font-size: 13px;
+    }
+    .ticker-item:hover {
+        text-decoration: underline;
+    }
+    marquee {
+        vertical-align: middle;
+        padding-top: 4px;
+    }
 </style>
 
 <div class="container-fluid">
@@ -262,6 +313,18 @@ $activeTab = $_GET['tab'] ?? 'okuma';
     $title = "İş Takip Listesi";
     ?>
     <?php include 'layouts/breadcrumb.php'; ?>
+
+    <!-- Riskli İşlemler Bantı -->
+    <div id="riskyOperationsTicker" class="ticker-container" style="display: none; cursor: pointer;">
+        <div class="ticker-label">
+            <i class="ri-error-warning-fill fs-14 me-2"></i> RİSKLİ İŞLEMLER
+        </div>
+        <div class="ticker-content" onclick="$('#riskyPersonnelModal').modal('show');">
+            <marquee behavior="scroll" direction="left" scrollamount="6" id="riskyMarquee" onmouseover="this.stop();" onmouseout="this.start();">
+                <!-- Risky personnel will be injected here -->
+            </marquee>
+        </div>
+    </div>
 
     <div class="row">
         <div class="col-12">
@@ -1265,6 +1328,47 @@ $activeTab = $_GET['tab'] ?? 'okuma';
 
 
 
+<!-- Risky Personnel Modal -->
+<div class="modal fade zoomIn" id="riskyPersonnelModal" tabindex="-1" aria-labelledby="riskyPersonnelModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow">
+            <div class="modal-header bg-danger p-3">
+                <h5 class="modal-title text-white" id="riskyPersonnelModalLabel">
+                    <i class="ri-alarm-warning-line align-middle me-2"></i> Riskli İşlem Yapan Personeller
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-0">
+                <div class="p-3 bg-danger-subtle text-danger border-bottom border-danger-subtle">
+                    <p class="mb-0 fs-13 fw-medium">
+                        <i class="ri-information-fill me-1"></i> Bu liste, <strong>Evde Yok</strong> sayısının <strong>Sayaç Normal</strong> sayısına oranı <strong>%80'in</strong> üzerinde olan personelleri göstermektedir.
+                    </p>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover table-nowrap align-middle mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th scope="col">Personel</th>
+                                <th scope="col">Ekip</th>
+                                <th scope="col" class="text-center">Sayaç Normal</th>
+                                <th scope="col" class="text-center">Evde Yok</th>
+                                <th scope="col" class="text-center">Oran</th>
+                                <th scope="col" class="text-center">Durum</th>
+                            </tr>
+                        </thead>
+                        <tbody id="riskyPersonnelTableBody">
+                            <!-- Data will be injected here -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
     $(document).ready(function () {
         // Tarih filtresi toggle mantığı
@@ -1667,6 +1771,9 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 return;
             }
 
+            // Büyükten küçüğe sırala (İş sayısına göre)
+            summary.sort((a, b) => parseFloat(b.toplam_abone) - parseFloat(a.toplam_abone));
+
             wrapper.show();
             container.empty();
             otherContainer.empty();
@@ -1820,6 +1927,52 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         if (json.summary) {
                             renderSayacDurumSummary(json.summary);
                         }
+
+                        // Riskli İşlemler Bantı ve Modal Güncelleme
+                        if (json.risky_personnel && json.risky_personnel.length > 0) {
+                            $('#riskyOperationsTicker').fadeIn();
+                            let tickerHtml = '';
+                            let modalHtml = '';
+                            
+                            json.risky_personnel.forEach(function(p) {
+                                let ratio = (parseFloat(p.evde_yok_sayisi) / parseFloat(p.normal_sayisi) * 100).toFixed(1);
+                                tickerHtml += `<span class="ticker-item">
+                                    ⚠️ ${p.personel_adi} (${p.ekip_adi}): Evde Yok Oranı %${ratio} (${p.evde_yok_sayisi}/${p.normal_sayisi})
+                                </span>`;
+
+                                modalHtml += `<tr>
+                                    <td>
+                                        <div class="d-flex align-items-center">
+                                            <div class="avatar-xs flex-shrink-0 me-2">
+                                                <div class="avatar-title bg-danger-subtle text-danger rounded-circle fs-11">
+                                                    ${p.personel_adi.charAt(0)}
+                                                </div>
+                                            </div>
+                                            <div class="flex-grow-1">
+                                                <h6 class="fs-13 mb-0">${p.personel_adi}</h6>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td>${p.ekip_adi}</td>
+                                    <td class="text-center fw-medium">${parseInt(p.normal_sayisi).toLocaleString('tr-TR')}</td>
+                                    <td class="text-center text-danger fw-medium">${parseInt(p.evde_yok_sayisi).toLocaleString('tr-TR')}</td>
+                                    <td class="text-center">
+                                        <div class="d-flex align-items-center justify-content-center">
+                                            <span class="badge bg-danger-subtle text-danger fs-12">%${ratio}</span>
+                                        </div>
+                                    </td>
+                                    <td class="text-center">
+                                        <span class="badge bg-danger">YÜKSEK RİSK</span>
+                                    </td>
+                                </tr>`;
+                            });
+                            
+                            $('#riskyMarquee').html(tickerHtml);
+                            $('#riskyPersonnelTableBody').html(modalHtml);
+                        } else {
+                            $('#riskyOperationsTicker').fadeOut();
+                        }
+
                         if (json.recordsFiltered !== undefined) {
                             let totalAbone = 0;
                             if (json.summary) {
@@ -2135,6 +2288,11 @@ $activeTab = $_GET['tab'] ?? 'okuma';
 
         function loadTabContent(tabName) {
             initialTabLoaded = true;
+            
+            // Riskli işlemler bandını her tab geçişinde gizle, 
+            // sadece okuma tabında veri varsa gösterilecek.
+            $('#riskyOperationsTicker').hide();
+
             if (tabName === 'okuma') {
                 initEndeksDataTable();
             } else if (tabName === 'yapilan_isler') {

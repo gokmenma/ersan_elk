@@ -984,12 +984,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         ];
     }
 
+    $riskyPersonnel = [];
+    try {
+        $riskyPersonnel = $EndeksOkuma->getRiskyPersonnel($startDate, $endDate, $region, $defter);
+    } catch (\Exception $e) {
+        // Hata durumunda boş dizi dön, ana tabloyu bozma
+    }
+
     echo json_encode([
         'draw' => $result['draw'],
         'recordsTotal' => $result['recordsTotal'],
         'recordsFiltered' => $result['recordsFiltered'],
         'data' => $formattedData,
-        'summary' => $result['summary'] ?? []
+        'summary' => $result['summary'] ?? [],
+        'risky_personnel' => $riskyPersonnel
     ]);
     exit;
 }

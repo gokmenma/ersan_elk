@@ -118,6 +118,108 @@ class BordroPersonelModel extends Model
         return max(0, $aktifTakvimGun - $eksikGunToplami);
     }
 
+    private function hasMaasaDahilSosyalYardim(object $kayit): bool
+    {
+        return intval($kayit->yemek_yardimi_dahil ?? 0) === 1
+            || intval($kayit->es_yardimi_dahil ?? 0) === 1;
+    }
+
+    private function getYemekYardimiGunlukLimit(object $kayit): float
+    {
+        $limit = floatval($kayit->yemek_yardimi_tutari ?? 0);
+
+        if ($limit <= 0 && !empty($kayit->yemek_yardimi_parametre_id)) {
+            if ($this->cachedParametreModel === null) {
+                $this->cachedParametreModel = new BordroParametreModel();
+            }
+
+            $paramYemek = $this->cachedParametreModel->find($kayit->yemek_yardimi_parametre_id);
+            $limit = floatval($paramYemek->varsayilan_tutar ?? 0);
+        }
+
+        return $limit;
+    }
+
+    private function getEsYardimiAylikLimit(object $kayit): float
+    {
+        $limit = floatval($kayit->es_yardimi_tutari ?? 0);
+
+        if ($limit <= 0 && !empty($kayit->es_yardimi_parametre_id)) {
+            if ($this->cachedParametreModel === null) {
+                $this->cachedParametreModel = new BordroParametreModel();
+            }
+
+            $paramEs = $this->cachedParametreModel->find($kayit->es_yardimi_parametre_id);
+            $limit = floatval($paramEs->varsayilan_tutar ?? 0);
+        }
+
+        return $limit;
+    }
+
+    private function hesaplaMaasaDahilYardimDagilimi(object $kayit, float $asgariUcretNet, int $maasHesapGunu, int $fiiliGunSayisi): array
+    {
+        $sonuc = [
+            'aktif' => false,
+            'asgari_hakedis' => 0.0,
+            'hedef_net_hakedis' => 0.0,
+            'fark_tutari' => 0.0,
+            'yemek_gunluk_ham' => 0.0,
+            'yemek_gunluk' => 0.0,
+            'yemek_toplam' => 0.0,
+            'es_toplam' => 0.0,
+            'toplam' => 0.0,
+            'kalan_fark' => 0.0,
+            'fiili_gun' => max(0, $fiiliGunSayisi),
+        ];
+
+        if (!$this->hasMaasaDahilSosyalYardim($kayit) || $maasHesapGunu <= 0) {
+            return $sonuc;
+        }
+
+        $sonuc['aktif'] = true;
+        $sonuc['asgari_hakedis'] = round(($asgariUcretNet / 30) * $maasHesapGunu, 2);
+        $hedefMaasTutari = floatval($kayit->hedef_net_maas_tutari ?? 0);
+        if ($hedefMaasTutari <= 0) {
+            $hedefMaasTutari = floatval($kayit->hd_nominal_maas ?? 0);
+        }
+        if ($hedefMaasTutari <= 0) {
+            $hedefMaasTutari = floatval($kayit->gg_maas_tutari ?? 0);
+        }
+        if ($hedefMaasTutari <= 0) {
+            $hedefMaasTutari = floatval($kayit->maas_tutari ?? 0);
+        }
+        $sonuc['hedef_net_hakedis'] = round(($hedefMaasTutari / 30) * $maasHesapGunu, 2);
+        $sonuc['fark_tutari'] = max(0, round($sonuc['hedef_net_hakedis'] - $sonuc['asgari_hakedis'], 2));
+
+        $kalanFark = $sonuc['fark_tutari'];
+        $fiiliGun = max(0, $sonuc['fiili_gun']);
+
+        if (intval($kayit->yemek_yardimi_dahil ?? 0) === 1 && $kalanFark > 0 && $fiiliGun > 0) {
+            $sonuc['yemek_gunluk_ham'] = $kalanFark / $fiiliGun;
+            $gunlukYemek = ceil($sonuc['yemek_gunluk_ham']);
+            $yemekLimit = $this->getYemekYardimiGunlukLimit($kayit);
+
+            if ($yemekLimit > 0 && $gunlukYemek > $yemekLimit) {
+                $gunlukYemek = $yemekLimit;
+            }
+
+            $sonuc['yemek_gunluk'] = $gunlukYemek;
+            $sonuc['yemek_toplam'] = round($gunlukYemek * $fiiliGun, 2);
+            $kalanFark = max(0, round($kalanFark - $sonuc['yemek_toplam'], 2));
+        }
+
+        if (intval($kayit->es_yardimi_dahil ?? 0) === 1 && $kalanFark > 0) {
+            $esLimit = $this->getEsYardimiAylikLimit($kayit);
+            $sonuc['es_toplam'] = round($esLimit > 0 ? min($kalanFark, $esLimit) : $kalanFark, 2);
+            $kalanFark = max(0, round($kalanFark - $sonuc['es_toplam'], 2));
+        }
+
+        $sonuc['toplam'] = round($sonuc['yemek_toplam'] + $sonuc['es_toplam'], 2);
+        $sonuc['kalan_fark'] = $kalanFark;
+
+        return $sonuc;
+    }
+
     /**
      * Liste ve Detay ekranında ortak kullanılacak gösterim hesapları.
      * Böylece iki ekranın çalışma günü ve ödeme dağılımı mantığı tek kaynaktan yürür.
@@ -152,7 +254,7 @@ class BordroPersonelModel extends Model
         // USER REQ: Görüntüleme için kendi maaşı (33.000) kalsın
         // Ancak hakediş hesabı için taban maaşı (asgari) ayrıca belirleyelim
         $hesaplamayaEsasMaas = $maasTutari;
-        if (!empty($p->yemek_yardimi_dahil) && $p->yemek_yardimi_dahil == 1) {
+        if ($this->hasMaasaDahilSosyalYardim($p)) {
             $hesaplamayaEsasMaas = $asgariUcretNet;
         }
 
@@ -210,7 +312,7 @@ class BordroPersonelModel extends Model
         if ($this->ekOdemelerCache !== null) {
             $ekOdemelerList = $this->ekOdemelerCache[$p->personel_id] ?? [];
         } else {
-            $ekOdemelerQuery = $this->db->prepare("SELECT tur, tutar FROM personel_ek_odemeler WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL AND durum = 'onaylandi'");
+            $ekOdemelerQuery = $this->db->prepare("SELECT tur, tutar, aciklama FROM personel_ek_odemeler WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL AND durum = 'onaylandi'");
             $ekOdemelerQuery->execute([$p->personel_id, $p->donem_id]);
             $ekOdemelerList = $ekOdemelerQuery->fetchAll(PDO::FETCH_OBJ);
         }
@@ -220,8 +322,27 @@ class BordroPersonelModel extends Model
         $yontemliBankaEki = 0;
         $yontemliSodexoEki = 0;
         $mealAllowanceDeduction = 0;
+        $spouseAllowanceDeduction = 0;
+        $includedAllowanceDeduction = 0;
 
         foreach ($ekOdemelerList as $eo) {
+            // MÜKERRER KONTROL: Veritabanındaki 'Maaşa Dahil Dengeleme' kayıtlarını toplama dahil etme (Çünkü aşağıda anlık hesaplanacak)
+            if (stripos($eo->aciklama ?? '', 'Maaşa Dahil Dengeleme') !== false) {
+                continue;
+            }
+
+            if ($this->hasMaasaDahilSosyalYardim($p)) {
+                $eoTurLower = mb_strtolower((string) ($eo->tur ?? ''), 'UTF-8');
+                $isDahilYemek = intval($p->yemek_yardimi_dahil ?? 0) === 1
+                    && ($eoTurLower === 'yemek_yardimi_tum' || $eoTurLower === 'yemek' || strpos($eoTurLower, 'yemek') !== false);
+                $isDahilEs = intval($p->es_yardimi_dahil ?? 0) === 1
+                    && ($eoTurLower === 'es_yardimi' || strpos($eoTurLower, 'es_yardimi') !== false || strpos($eoTurLower, 'aile') !== false);
+
+                if ($isDahilYemek || $isDahilEs) {
+                    continue;
+                }
+            }
+
             $tutar = floatval($eo->tutar);
             $rawEkOdeme += $tutar;
 
@@ -239,24 +360,20 @@ class BordroPersonelModel extends Model
             }
         }
 
-        // USER REQ: Yemek Yardımı Maaşa Dahil ise, ek ödemeler tablosunda olmasa bile anlık hesapla ve ekle
-        if (!empty($p->yemek_yardimi_dahil) && $p->yemek_yardimi_dahil == 1) {
-            $asgariHakedis = round(($asgariUcretNet / 30) * $calismaGunu, 2);
-            $targetMaas = floatval($p->maas_tutari ?? 0);
-            $hedefNetHakedis = round(($targetMaas / 30) * $calismaGunu, 2);
-            $maxYemekTutari = max(0, $hedefNetHakedis - $asgariHakedis);
-            
-            $fiiliGunSayisi = 25; 
+        if ($this->hasMaasaDahilSosyalYardim($p)) {
+            $fiiliGunSayisi = 25;
             if (isset($p->hd_fiili_calisma_gunu) && intval($p->hd_fiili_calisma_gunu) > 0) {
                 $fiiliGunSayisi = intval($p->hd_fiili_calisma_gunu);
             }
-            
-            if ($fiiliGunSayisi > 0) {
-                $gunlukYemekYuvarlanmis = ceil($maxYemekTutari / $fiiliGunSayisi);
-                $mealAllowanceDeduction = $gunlukYemekYuvarlanmis * $fiiliGunSayisi;
-                
-                $rawEkOdeme += $mealAllowanceDeduction;
-                $yontemliBankaEki += $mealAllowanceDeduction;
+
+            $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi($p, $asgariUcretNet, $calismaGunu, $fiiliGunSayisi);
+            $mealAllowanceDeduction = floatval($dahilDagilim['yemek_toplam'] ?? 0);
+            $spouseAllowanceDeduction = floatval($dahilDagilim['es_toplam'] ?? 0);
+            $includedAllowanceDeduction = floatval($dahilDagilim['toplam'] ?? 0);
+
+            if ($includedAllowanceDeduction > 0) {
+                $rawEkOdeme += $includedAllowanceDeduction;
+                $yontemliBankaEki += $includedAllowanceDeduction;
             }
         }
 
@@ -275,7 +392,7 @@ class BordroPersonelModel extends Model
         $netAlacagi = $toplamAlacagi - $kesintiHaricIcra;
         
         // USER REQ: Maaşa Dahil ise banka ödemesi zorlamasını burada da yansıt (Modal için)
-        if (!empty($p->yemek_yardimi_dahil) && $p->yemek_yardimi_dahil == 1) {
+        if ($this->hasMaasaDahilSosyalYardim($p)) {
              $netAlacagi = $toplamAlacagi; // İcra kesintisi net alacaktan düşer ama modalda toplam görünüyor
         }
         
@@ -315,7 +432,7 @@ class BordroPersonelModel extends Model
             $bankaBaz = min($bankaBaz, $bankaMax);
             
             // USER REQ: Yemek Yardımı Maaşa Dahil ise banka ödemesini düzelt
-            if (!empty($p->yemek_yardimi_dahil) && $p->yemek_yardimi_dahil == 1) {
+            if ($this->hasMaasaDahilSosyalYardim($p)) {
                 // $netAlacagi zaten (Base + Yemek) toplamıdır. Üzerine tekrar eklemeyin.
                 $bankaOdemesi = max(0, $netAlacagi - $sodexoOdemesi - $icraKesintisi - ($p->diger_odeme ?? 0));
             } else {
@@ -340,7 +457,9 @@ class BordroPersonelModel extends Model
             'sodexoOdemesi' => $sodexoOdemesi,
             'digerOdeme' => $digerOdeme,
             'eldenOdeme' => $eldenOdeme,
-            'mealAllowanceDeduction' => $mealAllowanceDeduction
+            'mealAllowanceDeduction' => $mealAllowanceDeduction,
+            'spouseAllowanceDeduction' => $spouseAllowanceDeduction,
+            'includedAllowanceDeduction' => $includedAllowanceDeduction
         ];
     }
 
@@ -366,7 +485,7 @@ class BordroPersonelModel extends Model
 
         if ($this->ekOdemelerCache === null) {
             $this->ekOdemelerCache = [];
-            $eoQuery = $this->db->prepare("SELECT personel_id, tur, tutar FROM personel_ek_odemeler WHERE donem_id = ? AND silinme_tarihi IS NULL AND durum = 'onaylandi'");
+            $eoQuery = $this->db->prepare("SELECT personel_id, tur, tutar, aciklama FROM personel_ek_odemeler WHERE donem_id = ? AND silinme_tarihi IS NULL AND durum = 'onaylandi'");
             $eoQuery->execute([$donem_id]);
             $eoRows = $eoQuery->fetchAll(PDO::FETCH_OBJ);
             foreach ($eoRows as $row) {
@@ -389,7 +508,9 @@ class BordroPersonelModel extends Model
                    bp.sgk_isveren, bp.issizlik_isveren, bp.toplam_maliyet,
                    p.adi_soyadi, p.tc_kimlik_no, p.departman, p.gorev, 
                    p.ise_giris_tarihi, p.isten_cikis_tarihi, p.maas_tutari, p.maas_durumu,
-                   p.cep_telefonu, p.resim_yolu, p.sgk_yapilan_firma, p.yemek_yardimi_dahil,
+                   p.cep_telefonu, p.resim_yolu, p.sgk_yapilan_firma, 
+                   p.yemek_yardimi_dahil, p.yemek_yardimi_tutari, p.yemek_yardimi_parametre_id,
+                   p.es_yardimi_dahil, p.es_yardimi_tutari, p.es_yardimi_parametre_id,
                    t_all.ekip_adi, t_all.ekip_bolge,
                    gg.maas_tutari as gg_maas_tutari,
                    gg.maas_durumu as gg_maas_durumu,
@@ -965,18 +1086,39 @@ class BordroPersonelModel extends Model
             );
             
             if ($isYemekParam) {
-                $pSql = $this->db->prepare("SELECT yemek_yardimi_dahil, maas_tutari FROM personel WHERE id = ?");
+                $pSql = $this->db->prepare("SELECT yemek_yardimi_dahil, maas_tutari, yemek_yardimi_tutari, yemek_yardimi_parametre_id FROM personel WHERE id = ?");
                 $pSql->execute([$personel_id]);
                 $pRec = $pSql->fetch(PDO::FETCH_OBJ);
                 
                 if ($pRec && intval($pRec->yemek_yardimi_dahil) == 1) {
                     // Sistemdeki en güncel asgari ücreti al (Parametrelerden)
+                    if ($this->cachedParametreModel === null) {
+                        $this->cachedParametreModel = new \App\Model\BordroParametreModel();
+                    }
                     $asgariNetVal = $this->cachedParametreModel->getGenelAyar('asgari_ucret_net') ?? 28075.50;
                     $hedefNet = floatval($pRec->maas_tutari);
+
+                    // Fiili çalışma gününü al (Eğer fonksiyonda hesaplanmamışsa burada hesapla)
+                    if (!isset($fiiliGun)) {
+                        $donemBaslangic = $donem . '-01';
+                        $donemBitis = date('Y-m-t', strtotime($donemBaslangic));
+                        $fiiliGun = $this->getFiiliCalismaGunuSayisi($personel_id, $donemBaslangic, $donemBitis);
+                    }
                     
-                    // Günlük farkı bul (Aylık fark / 30)
+                    // Günlük farkı bul (Aylık fark / fiiliGun) - hesaplaMaas ile uyumlu
                     $aylikFark = max(0, $hedefNet - $asgariNetVal);
-                    $gunlukFark = $aylikFark / 30;
+                    $gunlukFark = $fiiliGun > 0 ? ceil($aylikFark / $fiiliGun) : 0;
+                    
+                    // USER REQ: Günlük yemek ücreti manuel veya parametredeki tutarı geçmemeli
+                    $gunlukLimit = floatval($pRec->yemek_yardimi_tutari ?? 0);
+                    if ($gunlukLimit <= 0 && !empty($pRec->yemek_yardimi_parametre_id)) {
+                        $paramYemek = $this->cachedParametreModel->find($pRec->yemek_yardimi_parametre_id);
+                        $gunlukLimit = floatval($paramYemek->varsayilan_tutar ?? 0);
+                    }
+
+                    if ($gunlukLimit > 0 && $gunlukFark > $gunlukLimit) {
+                        $gunlukFark = $gunlukLimit;
+                    }
                     
                     // Toplam tutar = Fiili Gün * Günlük Fark
                     $tutar = $fiiliGun * $gunlukFark;
@@ -1722,20 +1864,29 @@ class BordroPersonelModel extends Model
                     $asgariNetVal = $this->cachedParametreModel->getGenelAyar('asgari_ucret_net') ?? 28075.50;
                     $hedefNet = $hedefNetMaas;
                     
-                    // Günlük farkı bul (Aylık fark / 30)
-                    $aylikFark = max(0, $hedefNet - $asgariNetVal);
-                    $gunlukFark = $aylikFark / 30;
-                    
                     // Çalışılan gün sayısını al
                     $donemTarihi = $baslangic_tarihi ?? date('Y-m-01');
                     $donemBitis = date('Y-m-t', strtotime($donemTarihi));
                     $fiiliGun = $this->getFiiliCalismaGunuSayisi($personel_id, $donemTarihi, $donemBitis);
+
+                    // Günlük farkı bul (Aylık fark / fiiliGun) - hesaplaMaas ile uyumlu
+                    $aylikFark = max(0, $hedefNet - $asgariNetVal);
+                    $gunlukFark = $fiiliGun > 0 ? ceil($aylikFark / $fiiliGun) : 0;
+                    
+                    // USER REQ: Günlük yemek ücreti manuel veya parametredeki tutarı geçmemeli
+                    $gunlukLimit = (floatval($personel->yemek_yardimi_tutari ?? 0) > 0) 
+                        ? floatval($personel->yemek_yardimi_tutari) 
+                        : floatval($param->varsayilan_tutar ?? 0);
+                    
+                    if ($gunlukLimit > 0 && $gunlukFark > $gunlukLimit) {
+                        $gunlukFark = $gunlukLimit;
+                    }
                     
                     $tutar = $fiiliGun * $gunlukFark;
                     $aciklama = "[Yemek Yardımı] Maaşa Dahil Dengeleme (" . $fiiliGun . " Gün x " . number_format($gunlukFark, 2, ',', '.') . " ₺)";
                 }
 
-                if ($tutar > 0 || $param->hesaplama_tipi === 'aylik_fiili_gun_net') {
+                if (($tutar > 0 || $param->hesaplama_tipi === 'aylik_fiili_gun_net') && $yemekYardimiDahil !== 1) {
                     $this->db->prepare("
                         INSERT INTO personel_ek_odemeler 
                         (personel_id, donem_id, tur, parametre_id, aciklama, tutar, tekrar_tipi, durum, aktif, created_at)
@@ -2459,6 +2610,7 @@ class BordroPersonelModel extends Model
                 OR aciklama LIKE '[Eş Yardımı]%'
                 OR tekrar_tipi = 'profil_bazli'
                 OR (aciklama LIKE '(%' AND aciklama LIKE '%Fiili Gün x%')
+                OR aciklama LIKE '%Maaşa Dahil Dengeleme%'
             )
         ")->execute(array_merge([$donemId], $personelIds));
     }
@@ -2506,6 +2658,7 @@ class BordroPersonelModel extends Model
         $sql = $this->db->prepare("
             SELECT bp.*, p.maas_tutari, p.maas_durumu, p.bes_kesintisi_varmi, p.sodexo, p.sgk_yapilan_firma, p.ise_giris_tarihi, p.isten_cikis_tarihi, 
                    p.yemek_yardimi_dahil, p.yemek_yardimi_tutari, p.yemek_yardimi_parametre_id,
+                   p.es_yardimi_dahil, p.es_yardimi_tutari, p.es_yardimi_parametre_id,
                    bd.baslangic_tarihi, bd.bitis_tarihi
             FROM {$this->table} bp
             INNER JOIN personel p ON bp.personel_id = p.id
@@ -2581,7 +2734,7 @@ class BordroPersonelModel extends Model
                     $toplamGecerliGun += $gecerliGun;
 
                     // MAAŞA DAHİL MANTIĞI: Baz Maaş Asgari Ücret, Hedef Maaş Sözleşmedir
-                    if (isset($kayit->yemek_yardimi_dahil) && $kayit->yemek_yardimi_dahil == 1) {
+                    if ($this->hasMaasaDahilSosyalYardim($kayit)) {
                         $asgariNetVal = $this->genelAyarlarCache['asgari_ucret_net'] ?? 28075.50;
                         $gunlukAsgari = $asgariNetVal / 30;
                         $gunlukSozlesme = floatval($g->maas_tutari) / 30;
@@ -2605,7 +2758,7 @@ class BordroPersonelModel extends Model
                 }
             }
 
-            if (!empty($kayit->yemek_yardimi_dahil) && $kayit->yemek_yardimi_dahil == 1) {
+            if ($this->hasMaasaDahilSosyalYardim($kayit)) {
                 // Tavan ve Baz tutarları kesinleştir
                 $kayit->hedef_net_maas_tutari = ($toplamGecerliGun > 0) ? ($agirlikliHedefNet / $toplamGecerliGun * 30) : 0;
                 $kayit->hesaplama_baz_maas = ($toplamGecerliGun > 0) ? ($agirlikliAsgariNet / $toplamGecerliGun * 30) : 0;
@@ -2621,7 +2774,7 @@ class BordroPersonelModel extends Model
         } else {
             $nominalBrutMaas = floatval($kayit->maas_tutari ?? 0);
             
-            if (!empty($kayit->yemek_yardimi_dahil) && $kayit->yemek_yardimi_dahil == 1) {
+            if ($this->hasMaasaDahilSosyalYardim($kayit)) {
                 $kayit->hedef_net_maas_tutari = $nominalBrutMaas;
                 $kayit->hesaplama_baz_maas = $genelAyarlarMap['asgari_ucret_net'] ?? 28075.50;
                 $isNetMaas = true;
@@ -2811,7 +2964,7 @@ class BordroPersonelModel extends Model
         $bazAlinacakTutar = floatval($nominalBrutMaas);
         
         // Maaşa Dahil kontrolü (Hakedişi asgari ücrete sabitleyip üzerini yemekle tamamlayacağız)
-        if (isset($kayit->yemek_yardimi_dahil) && $kayit->yemek_yardimi_dahil == 1) {
+        if ($this->hasMaasaDahilSosyalYardim($kayit)) {
              $kayit->hedef_net_maas_tutari = $nominalBrutMaas; 
              $bazAlinacakTutar = $genelAyarlarMap['asgari_ucret_net'] ?? 28075.50;
         } elseif (isset($kayit->hesaplama_baz_maas) && $kayit->hesaplama_baz_maas > 0) {
@@ -2926,6 +3079,18 @@ class BordroPersonelModel extends Model
         foreach ($ekOdemeler as $odeme) {
             $tutar = floatval($odeme->tutar);
             $parametre = $parametrelerMap[$odeme->tur] ?? null;
+
+            if ($this->hasMaasaDahilSosyalYardim($kayit)) {
+                $odemeTurLower = mb_strtolower((string) ($odeme->tur ?? ''), 'UTF-8');
+                $isDahilYemek = intval($kayit->yemek_yardimi_dahil ?? 0) === 1
+                    && ($odemeTurLower === 'yemek_yardimi_tum' || $odemeTurLower === 'yemek' || strpos($odemeTurLower, 'yemek') !== false);
+                $isDahilEs = intval($kayit->es_yardimi_dahil ?? 0) === 1
+                    && ($odemeTurLower === 'es_yardimi' || strpos($odemeTurLower, 'es_yardimi') !== false || strpos($odemeTurLower, 'aile') !== false);
+
+                if ($isDahilYemek || $isDahilEs) {
+                    continue;
+                }
+            }
 
             // MÜKERRER HESAPLAMA KONTROLÜ: Eğer açıklama içinde zaten hesaplanmış bir tutar deseni varsa (örn: "30 Gün x 700 TL"),
             // bir sonraki hesaplamada compounding (katlanma) olmaması için baz ücreti açıklamadan geri kazanıyoruz.
@@ -3265,7 +3430,7 @@ class BordroPersonelModel extends Model
 
         // USER REQ: Yemek Yardımı Maaşa Dahil dengelemesi
         // Yemek yardımı tutarını ana maaş hakedişinden düşüyoruz ki toplam hakediş (net hedef) değişmesin.
-        if (!empty($kayit->yemek_yardimi_dahil) && $kayit->yemek_yardimi_dahil == 1) {
+        if ($this->hasMaasaDahilSosyalYardim($kayit)) {
             $asgariNetNominal = floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50);
             $brutMaas = round(($asgariNetNominal / 30) * $maasHesapGunu, 2);
         } elseif ($mealAllowanceDeduction > 0) {
@@ -3510,43 +3675,44 @@ class BordroPersonelModel extends Model
             }
         }
 
-        // USER REQ: Yemek Yardımı Maaşa Dahil ise (Excel Mantığı: 19.04.2026 Hassas Hesaplama)
-        if (!empty($kayit->yemek_yardimi_dahil) && $kayit->yemek_yardimi_dahil == 1) {
+        $hesaplananYemekToplam = 0;
+        $hesaplananEsToplam = 0;
+        $toplamDahilYardim = 0;
+        if ($this->hasMaasaDahilSosyalYardim($kayit)) {
             $asgariNetNominal = $genelAyarlarMap['asgari_ucret_net'] ?? 28075.50;
-            
-            // 1. Asgari Ücret Hakedişi (Çalışılan Gün / 30 * Nominal)
-            $asgariHakedis = round(($asgariNetNominal / 30) * $maasHesapGunu, 2);
-            
-            // 2. Hedef Net Hakediş (Çalışılan Gün / 30 * Personel Maaş Tutarı)
-            $hedefNetHakedis = round(($nominalBrutMaas / 30) * $maasHesapGunu, 2);
-            
-            // 3. Maksimum Yemek Tutarı (Fark)
-            $maxYemekTutari = max(0, $hedefNetHakedis - $asgariHakedis);
-            
-            // 4. Günlük Yemek (Fark / Fiili Gün) ve Yukarı Yuvarlama
-            $fiiliGunSayisi = ($fiiliCalismaGunu > 0) ? $fiiliCalismaGunu : 25; // Puantaj yoksa varsayılan 25
-            $gunlukYemekHam = $maxYemekTutari / $fiiliGunSayisi;
-            $gunlukYemekYuvarlanmis = ceil($gunlukYemekHam);
-            
-            // 5. Toplam Hesaplanan Yemek
-            $hesaplananYemekToplam = $gunlukYemekYuvarlanmis * $fiiliGunSayisi;
-            
-            // USER REQ: Artık ek ödemeler tablosuna kaydetmiyoruz, standart ödeme olarak üstte gösteriyoruz.
-            // Önce varsa eski/mükerrer yemek kayıtlarını bu dönem için temizleyelim (Mükerrerlik olmaması için)
-            $this->db->prepare("UPDATE personel_ek_odemeler SET silinme_tarihi = NOW(), updated_at = NOW() 
-                               WHERE personel_id = ? AND donem_id = ? 
-                               AND (tur = 'yemek_yardimi_tum' OR tur = 'yemek' OR tur LIKE '%yemek%') 
-                               AND silinme_tarihi IS NULL")
-                ->execute([$kayit->personel_id, $kayit->donem_id]);
+            $fiiliGunSayisi = ($fiiliCalismaGunu > 0) ? $fiiliCalismaGunu : 25;
+            $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi($kayit, floatval($asgariNetNominal), $maasHesapGunu, $fiiliGunSayisi);
 
-            // Bu tutarı toplam ek ödemelere ekleyelim ki banka ve net hakediş bozulmasın
-            $toplamEkOdeme += $hesaplananYemekToplam;
-            $netEkOdemeler += $hesaplananYemekToplam;
-            
-            // Detay JSON'u için bu özel tutarı saklayalım (Modalda üst kısımda göstermek için)
+            $hesaplananYemekToplam = floatval($dahilDagilim['yemek_toplam'] ?? 0);
+            $hesaplananEsToplam = floatval($dahilDagilim['es_toplam'] ?? 0);
+            $toplamDahilYardim = floatval($dahilDagilim['toplam'] ?? 0);
+
+            if (intval($kayit->yemek_yardimi_dahil ?? 0) === 1) {
+                $this->db->prepare("UPDATE personel_ek_odemeler SET silinme_tarihi = NOW(), updated_at = NOW() 
+                                   WHERE personel_id = ? AND donem_id = ? 
+                                   AND (tur = 'yemek_yardimi_tum' OR tur = 'yemek' OR tur LIKE '%yemek%') 
+                                   AND silinme_tarihi IS NULL")
+                    ->execute([$kayit->personel_id, $kayit->donem_id]);
+            }
+
+            if (intval($kayit->es_yardimi_dahil ?? 0) === 1) {
+                $this->db->prepare("UPDATE personel_ek_odemeler SET silinme_tarihi = NOW(), updated_at = NOW() 
+                                   WHERE personel_id = ? AND donem_id = ? 
+                                   AND (tur = 'es_yardimi' OR tur LIKE '%es_yardimi%' OR tur LIKE '%aile%') 
+                                   AND silinme_tarihi IS NULL")
+                    ->execute([$kayit->personel_id, $kayit->donem_id]);
+            }
+
+            if ($toplamDahilYardim > 0) {
+                $toplamEkOdeme += $toplamDahilYardim;
+                $netEkOdemeler += $toplamDahilYardim;
+            }
+
             $hesaplamaDetay['ozet']['dahil_yemek_yardimi'] = $hesaplananYemekToplam;
-            $hesaplamaDetay['ozet']['dahil_yemek_gun'] = $fiiliGunSayisi;
-            $hesaplamaDetay['ozet']['dahil_yemek_gunluk'] = $gunlukYemekYuvarlanmis;
+            $hesaplamaDetay['ozet']['dahil_yemek_gun'] = intval($dahilDagilim['fiili_gun'] ?? $fiiliGunSayisi);
+            $hesaplamaDetay['ozet']['dahil_yemek_gunluk'] = floatval($dahilDagilim['yemek_gunluk'] ?? 0);
+            $hesaplamaDetay['ozet']['dahil_es_yardimi'] = $hesaplananEsToplam;
+            $hesaplamaDetay['ozet']['dahil_toplam_yardim'] = $toplamDahilYardim;
         }
 
         // Net Maaş Hesabı
@@ -3779,19 +3945,18 @@ class BordroPersonelModel extends Model
             ]
         ];
 
-        // USER REQ: Yemek Yardımı Maaşa Dahil ise banka ve elden dağılımını zorla (Excel Mantığı: 19.04.2026)
-        if (!empty($kayit->yemek_yardimi_dahil) && $kayit->yemek_yardimi_dahil == 1) {
-            // Banka = Asgari Hakediş + Hesaplanan Yemek
+        // USER REQ: Maaşa dahil sosyal yardımlar varsa banka ve elden dağılımını zorla
+        if ($this->hasMaasaDahilSosyalYardim($kayit)) {
+            // Banka = Asgari Hakediş + Hesaplanan dahil yardımlar
             // Bu tutar icra veya diğer kesintiler varsa onlardan arındırılmalıdır
             $asgariNetNominal = $genelAyarlarMap['asgari_ucret_net'] ?? 28075.50;
             $asgariHakedis = round(($asgariNetNominal / 30) * $maasHesapGunu, 2);
             
-            // Yemek zaten yukarıda güncellendi ve $netEkOdemeler içine girdi
-            $bankaOdemesi = max(0, $asgariHakedis + $hesaplananYemekToplam - $icraKesintisi - ($kayit->diger_odeme ?? 0));
+            $bankaOdemesi = max(0, $asgariHakedis + $toplamDahilYardim - $icraKesintisi - ($kayit->diger_odeme ?? 0));
             $eldenOdeme = 0;
             
             // Listedeki gösterim değerlerini de hedef nete (veya yuvarlanmış yeni nete) sabitle
-            $netAlacak = $asgariHakedis + $hesaplananYemekToplam;
+            $netAlacak = $asgariHakedis + $toplamDahilYardim;
             $toplamAlacak = $netAlacak + ($icraKesintisi ?? 0);
         }
 
@@ -4021,7 +4186,12 @@ class BordroPersonelModel extends Model
                    p.email_adresi,
                    p.iban_numarasi,
                    p.sgk_yapilan_firma,
-                   p.yemek_yardimi_dahil
+                   p.yemek_yardimi_dahil,
+                   p.yemek_yardimi_tutari,
+                   p.yemek_yardimi_parametre_id,
+                   p.es_yardimi_dahil,
+                   p.es_yardimi_tutari,
+                   p.es_yardimi_parametre_id
             FROM {$this->table} bp
             INNER JOIN personel p ON bp.personel_id = p.id
             WHERE bp.donem_id = ? AND bp.silinme_tarihi IS NULL $idFilter

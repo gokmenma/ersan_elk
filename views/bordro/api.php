@@ -599,6 +599,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $asgariUcretNet = $BordroParametre->getGenelAyar('asgari_ucret_net', $donemBaslangicTarihi) ?? 17002.12;
                 $hesap = $BordroPersonel->hesaplaOrtakGosterimDegerleri($bp, $donemBilgi, floatval($asgariUcretNet));
                 $mealDeduction = floatval($hesap['mealAllowanceDeduction'] ?? 0);
+                $spouseDeduction = floatval($hesap['spouseAllowanceDeduction'] ?? 0);
+                $includedDeduction = floatval($hesap['includedAllowanceDeduction'] ?? 0);
                 $guncelEkOdeme = floatval($hesap['rawEkOdeme']);
 
                 $maasDurumuGosterim = $hesap['maasDurumu'] ?: ($personel->maas_durumu ?? '-');
@@ -649,12 +651,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $calisanBrutMaas = $toplamAlacak - floatval($hesap['rawEkOdeme']);
                 
                 // USER REQ: Maaşa Dahil Yemek Yardımı Detay Gösterimi (19.04.2026 Hassas)
-                if (!empty($bp->yemek_yardimi_dahil) && $bp->yemek_yardimi_dahil == 1) {
+                if ($includedDeduction > 0 || !empty($bp->yemek_yardimi_dahil) || !empty($bp->es_yardimi_dahil)) {
                     $asgariHakedisModal = round(($asgariUcretNet / 30) * $calismaGunu, 2);
                     $html .= '<tr><td class="text-muted">Asgari Ücret Hakedişi:</td><td class="text-secondary">' . number_format($asgariHakedisModal, 2, ',', '.') . ' ₺</td></tr>';
                     
                     if ($mealDeduction > 0) {
                         $html .= '<tr><td class="text-muted">Yemek Yardımı (Maaşa Dahil):</td><td class="text-success">+' . number_format($mealDeduction, 2, ',', '.') . ' ₺</td></tr>';
+                    }
+
+                    if ($spouseDeduction > 0) {
+                        $html .= '<tr><td class="text-muted">Eş Yardımı (Maaşa Dahil):</td><td class="text-success">+' . number_format($spouseDeduction, 2, ',', '.') . ' ₺</td></tr>';
                     }
                     
                     $html .= '<tr class="table-warning"><td class="text-muted">Net Alacağı:</td><td class="fw-bold text-success">' . number_format($netAlacak, 2, ',', '.') . ' ₺</td></tr>';
@@ -684,8 +690,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // ============================================================
                 // Ek ödeme satırından "Maaşa Dahil Yemek" tutarını çıkaralım (Çünkü yukarıda ana maaş içinde gösterdik)
                 $gosterilecekEkOdeme = $guncelEkOdeme;
-                if (!empty($bp->yemek_yardimi_dahil) && $bp->yemek_yardimi_dahil == 1) {
-                    $gosterilecekEkOdeme = max(0, $guncelEkOdeme - $mealDeduction);
+                if ($includedDeduction > 0 || !empty($bp->yemek_yardimi_dahil) || !empty($bp->es_yardimi_dahil)) {
+                    $gosterilecekEkOdeme = max(0, $guncelEkOdeme - $includedDeduction);
                 }
                 
                 $html .= '<tr><td class="text-muted">Ek Ödeme:</td><td class="text-success fw-medium">+' . number_format($gosterilecekEkOdeme, 2, ',', '.') . ' ₺</td></tr>';

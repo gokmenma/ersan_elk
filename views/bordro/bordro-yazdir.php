@@ -115,6 +115,7 @@ $ekOdemeTurEtiketleri = [
     'puantaj_toplam' => 'Puantaj Ödemeleri',
     'kacak_kontrol' => 'Kaçak Kontrol',
     'yemek_maasa_dahil' => 'Yemek Yardımı (Maaşa Dahil)',
+    'es_maasa_dahil' => 'Eş Yardımı (Maaşa Dahil)',
 ];
 
 $formatMoney = static fn(float $value): string => number_format($value, 2, ',', '.');
@@ -210,6 +211,16 @@ $buildEkOdemeGroups = static function (array $kayitlar, array $hesaplamaDetay, a
         ];
     }
 
+    $dahilEsTutari = floatval($ozet['dahil_es_yardimi'] ?? 0);
+    if ($dahilEsTutari > 0) {
+        $groups['es_maasa_dahil'] = [
+            'aciklama' => $etiketler['es_maasa_dahil'] ?? 'Eş Yardımı (Maaşa Dahil)',
+            'toplam' => $dahilEsTutari,
+            'adet' => 1,
+            'detay' => null,
+        ];
+    }
+
     uasort($groups, static fn(array $a, array $b): int => $b['toplam'] <=> $a['toplam']);
 
     return array_values($groups);
@@ -276,6 +287,7 @@ foreach ($bordroListesi as $bordro) {
     $maasDurumuGosterim = (string) ($hesap['maasDurumu'] ?? ($bordro->maas_durumu ?? ''));
 
     $asgariMatrarhGoster = !empty($bordro->yemek_yardimi_dahil)
+        || !empty($bordro->es_yardimi_dahil)
         || stripos($maasDurumuGosterim, 'Net') !== false;
 
     if ($asgariMatrarhGoster) {

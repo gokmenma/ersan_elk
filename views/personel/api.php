@@ -207,7 +207,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 // Evet/Hayır -> 1/0 dönüşümü (tinyint alanlar için)
-                if (in_array($key, ['bes_kesintisi_varmi', 'aktif_mi', 'disardan_sigortali', 'yemek_yardimi_aliyor', 'es_yardimi_aliyor'])) {
+                if (in_array($key, ['bes_kesintisi_varmi', 'aktif_mi', 'disardan_sigortali', 'yemek_yardimi_aliyor', 'es_yardimi_aliyor', 'yemek_yardimi_dahil', 'es_yardimi_dahil'])) {
                     if (mb_strtolower($value, 'UTF-8') == 'evet' || $value === '1' || $value === 1) {
                         $data[$key] = 1;
                     } elseif (mb_strtolower($value, 'UTF-8') == 'hayır' || mb_strtolower($value, 'UTF-8') == 'hayir' || $value === '0' || $value === 0) {

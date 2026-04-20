@@ -156,6 +156,8 @@ use App\Helper\Helper;
                                         </label>
                                     </div>
                                     <div id="sectionEsParametre" style="display: <?= ($personel->es_yardimi_aliyor ?? 0) == 1 ? 'block' : 'none' ?>;">
+                                        <div class="row">
+                                            <div class="col-md-7">
                                         <?php 
                                         $esParams = $BordroParametreModel->where('aktif', 1);
                                         $esOptions = [];
@@ -166,6 +168,24 @@ use App\Helper\Helper;
                                         }
                                         echo Form::FormSelect2("es_yardimi_parametre_id", $esOptions, $personel->es_yardimi_parametre_id ?? '', "Eş Yardımı Parametresi", "file-text");
                                         ?>
+                                            </div>
+                                            <div class="col-md-5">
+                                                <div class="d-flex align-items-center">
+                                                    <div class="flex-grow-1">
+                                                        <?php echo Form::FormFloatInput("text", "es_yardimi_tutari", Helper::formattedMoney($personel->es_yardimi_tutari ?? 0), "Manuel Es Yardimi Tutari", "Manuel Tutar", "dollar-sign", "form-control money"); ?>
+                                                    </div>
+                                                    <div class="ms-2 mt-3">
+                                                        <div class="form-check">
+                                                            <input type="hidden" name="es_yardimi_dahil" value="0">
+                                                            <input class="form-check-input" type="checkbox" name="es_yardimi_dahil" value="1" id="es_yardimi_dahil" <?= ($personel->es_yardimi_dahil ?? 0) == 1 ? 'checked' : '' ?>>
+                                                            <label class="form-check-label text-nowrap" for="es_yardimi_dahil" style="font-size: 11px;">
+                                                                Maa&#351;a Dahil
+                                                            </label>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -301,6 +321,8 @@ $(document).ready(function() {
         } else {
             $('#sectionEsParametre').slideUp();
             $('select[name="es_yardimi_parametre_id"]').val('').trigger('change');
+            $('input[name="es_yardimi_tutari"]').val('0,00');
+            $('input[name="es_yardimi_dahil"]').prop('checked', false);
         }
     });
 });

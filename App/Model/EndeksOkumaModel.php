@@ -701,4 +701,55 @@ class EndeksOkumaModel extends Model
         // kullanıcı veriyi olduğu gibi görmek isteyebilir. Yine de TRIM önemli.
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
+
+    /**
+     * Riski personelleri getirir (Evde Yok / Sayaç Normal > %80)
+     */
+    public function getRiskyPersonnel($startDate, $endDate, $region = '', $defter = '')
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $params = ['firma_id' => $firmaId];
+
+        $where = "t.firma_id = :firma_id AND t.silinme_tarihi IS NULL";
+
+        if ($startDate) {
+            $where .= " AND t.tarih >= :start_date";
+            $params['start_date'] = \App\Helper\Date::convertExcelDate($startDate, 'Y-m-d') ?: $startDate;
+        }
+        if ($endDate) {
+            $where .= " AND t.tarih <= :end_date";
+            $params['end_date'] = \App\Helper\Date::convertExcelDate($endDate, 'Y-m-d') ?: $endDate;
+        }
+        if ($region) {
+            $where .= " AND (t.bolge = :region OR def.ekip_bolge = :region)";
+            $params['region'] = $region;
+        }
+        if ($defter) {
+            $where .= " AND t.defter = :defter";
+            $params['defter'] = $defter;
+        }
+
+        $sql = "SELECT * FROM (
+                    SELECT 
+                        p.adi_soyadi as personel_adi,
+                        def.tur_adi as ekip_adi,
+                        SUM(CASE WHEN t.sayac_durum LIKE '%NORMAL%' THEN t.okunan_abone_sayisi ELSE 0 END) as normal_sayisi,
+                        SUM(CASE WHEN t.sayac_durum LIKE '%YOK%' THEN t.okunan_abone_sayisi ELSE 0 END) as evde_yok_sayisi,
+                        SUM(CASE WHEN t.sayac_durum LIKE '%KULLANILMIYOR%' THEN t.okunan_abone_sayisi ELSE 0 END) as kullanilmiyor_sayisi
+                    FROM {$this->table} t
+                    LEFT JOIN personel p ON t.personel_id = p.id
+                    LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
+                    WHERE $where
+                    GROUP BY t.personel_id, t.ekip_kodu_id
+                ) as sub
+                WHERE normal_sayisi > 0 AND (evde_yok_sayisi / normal_sayisi) > 0.8
+                ORDER BY (evde_yok_sayisi / normal_sayisi) DESC";
+
+        $stmt = $this->db->prepare($sql);
+        foreach ($params as $key => $val) {
+            $stmt->bindValue(":$key", $val);
+        }
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
 }

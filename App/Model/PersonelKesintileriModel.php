@@ -295,7 +295,7 @@ class PersonelKesintileriModel extends Model
 
         $sql = $this->db->prepare("
             SELECT pk.*, p.adi_soyadi, p.tc_kimlik_no, p.departman,
-                   pi.dosya_no, pi.icra_dairesi, bp.etiket as parametre_adi
+                   pi.dosya_no, pi.icra_dairesi, pi.iban, pi.hesap_bilgileri, bp.etiket as parametre_adi
             FROM {$this->table} pk
             INNER JOIN personel p ON pk.personel_id = p.id
             LEFT JOIN personel_icralari pi ON pk.icra_id = pi.id

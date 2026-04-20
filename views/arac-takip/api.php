@@ -64,6 +64,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $data['kasko_bitis_tarihi'] = Date::Ymd($data['kasko_bitis_tarihi']);
                 }
 
+                // İkame araç flag'ini mülkiyet durumuna göre ayarla
+                $data['ikame_mi'] = ($data['mulkiyet'] === 'İkame Araç') ? 1 : 0;
+
                 // Boş değerleri null yap
                 foreach ($data as $key => $value) {
                     if ($value === '') {

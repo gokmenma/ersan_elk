@@ -323,6 +323,12 @@ if (!empty($dbGelirler)) {
                                             </a>
                                         </li>
                                         <li>
+                                            <a class="dropdown-item py-2" href="javascript:void(0);"
+                                                id="btnExportExcelYemek">
+                                                <i class="mdi mdi-silverware-fork-knife me-2 text-warning fs-5"></i> Yemek Bedeli Listesi (Excel)
+                                            </a>
+                                        </li>
+                                        <li>
                                             <hr class="dropdown-divider">
                                         </li>
                                         <li>

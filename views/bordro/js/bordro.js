@@ -844,6 +844,19 @@ $(document).ready(function () {
     }
   });
 
+  // Excel Export (Yemek Bedeli Listesi)
+  $("#btnExportExcelYemek").on("click", function () {
+    const donemId = $("#donemSelect").val();
+    if (donemId) {
+      let url = "views/bordro/excel-yemek-export.php?donem_id=" + donemId;
+      const ids = getFilteredIds();
+      if (ids.length > 0) {
+        url += "&ids=" + ids.join(",");
+      }
+      window.location.href = url;
+    }
+  });
+
   $(document).on("click", ".btn-odeme", function () {
     const id = $(this).data("id");
     const ad = $(this).data("ad");
