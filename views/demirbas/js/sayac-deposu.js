@@ -1546,10 +1546,78 @@ $(function () {
     window.reloadSayacTables = reloadAllTables;
 
 
-    // Tüm kaydedme olaylarından sonra tabloları yenile
-    $(document).on("demirbas-saved zimmet-saved iade-saved kaskiye-teslim-saved hurda-iade-saved", function() {
-        reloadAllTables();
+    // =============================================
+    // EXCEL'E AKTAR
+    // =============================================
+    $(document).on("click", "#exportSayacExcel", function() {
+        var activeTab = $('#sayacDepoTab .nav-link.active').attr('id');
+        var exportTab = '';
+        var table = null;
+        var statusFilter = '';
+        var viewMode = '';
+
+        if (activeTab === 'kaski-tab') {
+            exportTab = 'sayac_kaski';
+            table = kaskiTarihTable;
+        } else if (activeTab === 'depo-tab') {
+            exportTab = 'sayac_bizim_depo';
+            table = depoSayacTable;
+            statusFilter = $('input[name="sayac-status-filter"]:checked').val() || "";
+        } else if (activeTab === 'personel-tab') {
+            exportTab = 'sayac_personel';
+            table = personelTable;
+        } else if (activeTab === 'hareket-tab') {
+            exportTab = 'sayac_hareket';
+            table = hareketTable;
+            statusFilter = $('input[name="hareket-status-filter"]:checked').val() || "";
+            viewMode = $('input[name="hareket-view-mode"]:checked').val() || "list";
+        }
+
+        if (!exportTab || !table) {
+            Swal.fire("Uyarı", "Geçersiz sekme seçimi. Lütfen sayfayı yenileyip tekrar deneyiniz.", "warning");
+            return;
+        }
+
+        var searchValue = table.search() || '';
+        var colSearches = [];
+        table.columns().every(function() {
+            var val = this.search();
+            if (val) {
+                colSearches.push({ field: this.index(), value: val });
+            }
+        });
+
+        var exportUrl = 'views/demirbas/export-excel.php?tab=' + exportTab;
+        exportUrl += '&search=' + encodeURIComponent(searchValue);
+        exportUrl += '&col_search=' + encodeURIComponent(JSON.stringify(colSearches));
+        if (statusFilter) exportUrl += '&status_filter=' + encodeURIComponent(statusFilter);
+        if (viewMode) exportUrl += '&view_mode=' + encodeURIComponent(viewMode);
+
+        // UI Feedback
+        Swal.fire({
+            title: 'Excel Hazırlanıyor',
+            text: 'Veriler işleniyor, lütfen bekleyiniz...',
+            allowOutsideClick: false,
+            showConfirmButton: false,
+            didOpen: () => {
+                Swal.showLoading();
+            }
+        });
+
+        var $btn = $(this);
+        var oldHtml = $btn.html();
+        $btn.html('<span class="spinner-border spinner-border-sm"></span>').prop('disabled', true);
+
+        // Trigger Download
+        window.location.href = exportUrl;
+
+        // Reset state after a short delay
+        setTimeout(function() {
+            $btn.html(oldHtml).prop('disabled', false);
+            Swal.close();
+        }, 3000);
     });
 
 // Hurda Sayaç İade İşlemleri demirbas.js'den yönetiliyor. Duplike olmaması için silindi.
 });
+

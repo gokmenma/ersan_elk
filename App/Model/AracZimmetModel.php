@@ -128,9 +128,11 @@ class AracZimmetModel extends Model
     {
         $sql = $this->db->prepare("
             SELECT az.*, 
-                   p.adi_soyadi as personel_adi
+                   p.adi_soyadi as personel_adi,
+                   u.adi_soyadi as olusturan_kullanici_adi
             FROM {$this->table} az
             LEFT JOIN personel p ON az.personel_id = p.id
+            LEFT JOIN users u ON az.olusturan_kullanici_id = u.id
             WHERE az.arac_id = :arac_id
             AND az.firma_id = :firma_id
             ORDER BY az.zimmet_tarihi DESC

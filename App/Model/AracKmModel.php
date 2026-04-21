@@ -310,7 +310,7 @@ class AracKmModel extends Model
             SELECT 
                 COUNT(*) as toplam_kayit,
                 COALESCE(SUM(CASE WHEN k.yapilan_km > 0 THEN k.yapilan_km ELSE 0 END), 0) as toplam_km,
-                COALESCE(AVG(k.yapilan_km), 0) as ortalama_gunluk_km
+                COALESCE(AVG(CASE WHEN k.yapilan_km > 0 THEN k.yapilan_km ELSE NULL END), 0) as ortalama_gunluk_km
             FROM {$this->table} k
             INNER JOIN araclar a ON k.arac_id = a.id
             WHERE k.firma_id = :firma_id
@@ -435,7 +435,7 @@ class AracKmModel extends Model
             return false;
 
         $bitisKm = intval($kayit->bitis_km);
-        $yapilanKm = ($bitisKm > 0 && $yeniBaslangicKm > 0) ? ($bitisKm - $yeniBaslangicKm) : 0;
+        $yapilanKm = ($bitisKm > 0 && $yeniBaslangicKm > 0 && $bitisKm > $yeniBaslangicKm) ? ($bitisKm - $yeniBaslangicKm) : 0;
 
         $sql = "UPDATE {$this->table} 
                 SET baslangic_km = :baslangic_km, yapilan_km = :yapilan_km 

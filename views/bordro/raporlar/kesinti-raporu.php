@@ -199,9 +199,14 @@ $tur_option = [
                                                                 <code class="text-primary me-1 copyable" title="Kopyalamak için tıkla" style="cursor:pointer;"><?= htmlspecialchars($k->iban) ?></code>
                                                             </div>
                                                         <?php endif; ?>
+                                                        <div class="mb-1">
+                                                            <span class="copyable fw-medium text-dark" title="Hesap adını kopyalamak için tıkla" style="cursor:pointer;">
+                                                                <i class="bx bx-user me-1"></i><?= htmlspecialchars($k->icra_dairesi ?? '-') ?>
+                                                            </span>
+                                                        </div>
                                                         <?php if(!empty($k->hesap_bilgileri)): ?>
-                                                            <div class="text-muted small">
-                                                                <i class="bx bx-user me-1"></i><?= htmlspecialchars($k->hesap_bilgileri) ?>
+                                                            <div class="text-muted small" style="font-size: 0.75rem;">
+                                                                <i class="bx bx-info-circle me-1"></i><?= htmlspecialchars($k->hesap_bilgileri) ?>
                                                             </div>
                                                         <?php endif; ?>
                                                     </div>
@@ -299,7 +304,8 @@ $tur_option = [
                 var aciklama = aciklamaWrapper.text().trim();
                 
                 var iban = row.find('td:eq(4)').find('code').text().trim();
-                var hesapBilgileri = row.find('td:eq(4)').find('.text-muted').text().trim();
+                var hesapAdi = row.find('td:eq(4)').find('span.copyable').text().trim();
+                var hesapDetay = row.find('td:eq(4)').find('.text-muted').text().trim();
                 var odemeAciklama = row.find('td:eq(5)').text().trim();
                 
                 // Get original text of Tutar without span styles
@@ -314,7 +320,7 @@ $tur_option = [
                         '<td>' + kesintiTuru + '</td>' +
                         '<td>' + aciklama + '</td>' +
                         '<td>' + iban + '</td>' +
-                        '<td>' + hesapBilgileri + '</td>' +
+                        '<td>' + (hesapAdi + (hesapDetay ? ' - ' + hesapDetay : '')) + '</td>' +
                         '<td>' + odemeAciklama + '</td>' +
                         '<td>' + tutarText + '</td>' +
                         '<td>' + durum + '</td>' +

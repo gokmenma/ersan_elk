@@ -509,8 +509,27 @@ if ($filter === 'muayene') {
                                                     <span class="small"><?php echo $arac->mulkiyet ?: '-'; ?></span>
                                                 </td>
                                                 <td>
-                                                    <span
-                                                        class="small fw-bold text-dark"><?php echo $arac->zimmetli_personel_adi ?: '<span class="text-muted">Boşta</span>'; ?></span>
+                                                     <div class="d-flex align-items-center">
+                                                         <?php if ($arac->zimmetli_personel_id): ?>
+                                                             <span class="small fw-bold text-dark">
+                                                                 <a href="javascript:void(0);" class="zimmet-iade text-dark" 
+                                                                    data-id="<?php echo $arac->zimmet_id; ?>" 
+                                                                    data-plaka="<?php echo $arac->plaka; ?>"
+                                                                    title="Zimmeti İade Al">
+                                                                     <i class="bx bx-user me-1 text-primary"></i><?php echo $arac->zimmetli_personel_adi; ?>
+                                                                 </a>
+                                                             </span>
+                                                         <?php else: ?>
+                                                             <span class="badge bg-light text-muted me-2 fw-normal">Boşta</span>
+                                                             <button class="btn btn-sm btn-soft-warning zimmet-hizli py-1 px-2 border-0" 
+                                                                     data-id="<?php echo $arac->id; ?>" 
+                                                                     data-plaka="<?php echo $arac->plaka; ?>" 
+                                                                     data-km="<?php echo $arac->guncel_km; ?>"
+                                                                     style="font-size: 0.75rem;">
+                                                                 <i class="bx bx-plus-circle me-1"></i>Zimmet Ver
+                                                             </button>
+                                                         <?php endif; ?>
+                                                     </div>
                                                 </td>
                                                 <td class="text-center">
                                                     <?php
@@ -1160,6 +1179,70 @@ if ($filter === 'muayene') {
 <?php include_once "modal/arac-modal.php"; ?>
 <?php include_once "modal/zimmet-modal.php"; ?>
 <?php include_once "modal/zimmet-iade-modal.php"; ?>
+
+<!-- Shadcn Style Context Menu -->
+<div id="arac-context-menu" class="dropdown-menu shadow-sm border" style="display: none; position: fixed; z-index: 9999; min-width: 180px; border-radius: 8px; padding: 4px; background: #ffffff; border-color: #e2e8f0 !important;">
+    <div class="dropdown-header py-2 px-2 mb-1" style="font-size: 12px; font-weight: 500; color: #64748b; letter-spacing: -0.01em;">
+        <span id="context-arac-plaka">İşlemler</span>
+    </div>
+    <div id="context-menu-items">
+        <!-- JS ile doldurulacak -->
+    </div>
+</div>
+
+<style>
+    #arac-context-menu {
+        animation: shadcnIn 0.1s ease-out;
+        box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -1px rgb(0 0 0 / 0.06) !important;
+    }
+    @keyframes shadcnIn {
+        from { opacity: 0; transform: scale(0.98); }
+        to { opacity: 1; transform: scale(1); }
+    }
+    #arac-context-menu .dropdown-item {
+        padding: 6px 8px;
+        font-size: 13px;
+        display: flex;
+        align-items: center;
+        border-radius: 4px;
+        margin: 0;
+        transition: background-color 0.1s;
+        color: #1e293b !important;
+        font-weight: 400;
+        cursor: pointer;
+    }
+    #arac-context-menu .dropdown-item:hover {
+        background-color: #f1f5f9 !important;
+        color: #0f172a !important;
+    }
+    #arac-context-menu .dropdown-item i {
+        font-size: 15px;
+        margin-right: 10px;
+        width: 16px;
+        text-align: center;
+        color: #64748b !important; /* Neutral icons */
+    }
+    /* Danger Action (Delete) */
+    #arac-context-menu .dropdown-item.text-danger {
+        color: #ef4444 !important;
+    }
+    #arac-context-menu .dropdown-item.text-danger i {
+        color: #ef4444 !important;
+    }
+    #arac-context-menu .dropdown-item.text-danger:hover {
+        background-color: #fef2f2 !important;
+        color: #dc2626 !important;
+    }
+    #arac-context-menu .dropdown-divider {
+        margin: 4px;
+        border-top: 1px solid #e2e8f0;
+        opacity: 1;
+    }
+    /* Satır vurgulama - Shadcn tarzı daha hafif */
+    .context-menu-active {
+        background-color: #f8fafc !important;
+    }
+</style>
 <?php include_once "modal/zimmet-gecmisi-modal.php"; ?>
 <?php include_once "modal/yakit-modal.php"; ?>
 <?php include_once "modal/km-modal.php"; ?>

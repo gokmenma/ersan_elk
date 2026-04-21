@@ -447,7 +447,7 @@ $title = "Sayaç Deposu";
 
 					<!-- Araçlar (Excel, Sil vb.) -->
 					<div class="d-flex align-items-center gap-1">
-						<button type="button" id="exportExcel" class="btn btn-link btn-sm text-success p-2" title="Excel'e Aktar">
+						<button type="button" id="exportSayacExcel" class="btn btn-link btn-sm text-success p-2" title="Excel'e Aktar">
 							<i class="bx bx-spreadsheet fs-4"></i>
 						</button>
 						<button type="button" id="btnTopluSilSayac" class="btn btn-link btn-sm text-danger p-2" title="Seçilenleri Sil">
@@ -1040,5 +1040,5 @@ $title = "Sayaç Deposu";
 
 <!-- Hurda Sayaç İade Modal (Eksik Modal Eklendi - Kaldırıldı, çünkü yukarıda include ediliyor) -->
 
-</script>
+
 <!-- sayac-deposu.js vendor-scripts.php'den yükleniyor, burada tekrar yüklemeye gerek yok -->

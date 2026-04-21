@@ -607,8 +607,9 @@ const AracTakip = {
   zimmetGecmisi: function(aracId, plaka) {
     console.log("Arac Takip: Zimmet geçmişi isteniyor.", {aracId, plaka});
     $("#gecmisAracPlaka").text(plaka);
+    $("#btnZimmetGecmisiExcel").attr("data-arac-id", aracId);
     const tbody = $("#zimmetGecmisiTableBody");
-    tbody.html('<tr><td colspan="7" class="text-center p-4 text-muted"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Yükleniyor...</td></tr>');
+    tbody.html('<tr><td colspan="8" class="text-center p-4 text-muted"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Yükleniyor...</td></tr>');
     
     const modalEl = document.getElementById('zimmetGecmisiModal');
     if (modalEl) {
@@ -639,19 +640,23 @@ const AracTakip = {
                         <td class="text-center">${z.iade_tarihi_fmt || '-'}</td>
                         <td class="text-center fw-bold">${z.teslim_km ? this.formatNumber(z.teslim_km) + ' km' : '-'}</td>
                         <td class="text-center fw-bold">${z.iade_km ? this.formatNumber(z.iade_km) + ' km' : '-'}</td>
+                        <td class="text-center">
+                            <small class="d-block fw-bold">${z.olusturan_kullanici_adi || '-'}</small>
+                            <small class="text-muted" style="font-size: 0.7rem;">${z.olusturma_tarihi_fmt || '-'}</small>
+                        </td>
                         <td class="text-center">${durumBadge}</td>
                     </tr>`;
                 });
             } else {
-                html = '<tr><td colspan="7" class="text-center text-muted p-4">Bu araca ait zimmet geçmişi bulunmamaktadır.</td></tr>';
+                html = '<tr><td colspan="8" class="text-center text-muted p-4">Bu araca ait zimmet geçmişi bulunmamaktadır.</td></tr>';
             }
             tbody.html(html);
         } else {
-            tbody.html(`<tr><td colspan="7" class="text-center text-danger p-4">Hata: ${response.message}</td></tr>`);
+            tbody.html(`<tr><td colspan="8" class="text-center text-danger p-4">Hata: ${response.message}</td></tr>`);
         }
     }).fail((xhr) => {
         console.error("API Hatası:", xhr);
-        tbody.html('<tr><td colspan="7" class="text-center text-danger p-4">Sunucu hatası oluştu.</td></tr>');
+        tbody.html('<tr><td colspan="8" class="text-center text-danger p-4">Sunucu hatası oluştu.</td></tr>');
     });
   },
 
@@ -1172,6 +1177,86 @@ const AracTakip = {
         }
       }
     );
+  },
+
+  initListContextMenu: function () {
+    const contextMenu = $("#arac-context-menu");
+    if (!contextMenu.length) return;
+
+    $(document).on("contextmenu", "#aracTable tbody tr, #zimmetTable tbody tr", function (e) {
+      // Input veya textarea üzerinde sağ tıklandığında engelleme
+      if ($(e.target).is("input, textarea, select")) return;
+
+      e.preventDefault();
+      
+      const tr = $(this);
+      const dropdownMenu = tr.find(".dropdown-menu");
+      if (dropdownMenu.length === 0) return;
+
+      // Aktif satır vurgusu
+      $(".context-menu-active").removeClass("context-menu-active");
+      tr.addClass("context-menu-active");
+
+      const x = e.clientX;
+      const y = e.clientY;
+      const menuItems = $("#context-menu-items");
+      
+      // Dropdown içindeki menü elemanlarını kopyala
+      menuItems.empty();
+      
+      // Plaka bilgisini al
+      let plaka = tr.find("strong").first().text();
+      if (!plaka) {
+          plaka = tr.find("td:nth-child(2) strong").text();
+      }
+      $("#context-arac-plaka").text(plaka || "Seçili Araç");
+
+      dropdownMenu.find("li").each(function() {
+          const li = $(this);
+          const originalA = li.find("a");
+          
+          if (originalA.length > 0) {
+              const clonedA = originalA.clone();
+              clonedA.addClass("context-link");
+              menuItems.append(clonedA);
+          } else if (li.find("hr").length > 0) {
+              menuItems.append('<div class="dropdown-divider"></div>');
+          }
+      });
+
+      // Menü konumlandırma ve gösterim
+      contextMenu.show();
+      
+      const menuWidth = contextMenu.outerWidth();
+      const menuHeight = contextMenu.outerHeight();
+      const windowWidth = $(window).width();
+      const windowHeight = $(window).height();
+
+      let left = x;
+      let top = y;
+
+      if (x + menuWidth > windowWidth) left = x - menuWidth;
+      if (y + menuHeight > windowHeight) top = y - menuHeight;
+
+      contextMenu.css({
+          left: left + "px",
+          top: top + "px"
+      });
+    });
+
+    // Menü dışına tıklandığında kapat
+    $(document).on("mousedown", function (e) {
+      if (!$(e.target).closest("#arac-context-menu").length) {
+          contextMenu.hide();
+          $(".context-menu-active").removeClass("context-menu-active");
+      }
+    });
+
+    // Context link tıklandığında menüyü kapat
+    $(document).on("click", ".context-link", function() {
+      contextMenu.hide();
+      $(".context-menu-active").removeClass("context-menu-active");
+    });
   },
 
   // =============================================
@@ -1743,7 +1828,21 @@ const AracTakip = {
   // =============================================
   // KM ONAY İŞLEMLERİ
   // =============================================
-  kmOnayla: function (id, aracId, km, plaka, tur) {
+  kmOnayla: function (id, aracId, km, plaka, tur, tarih) {
+    const now = new Date();
+    const currentHour = now.getHours();
+    const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
+    if (tarih === todayStr && tur === 'aksam' && currentHour < 13) {
+        Swal.fire({
+            icon: 'warning',
+            title: 'Onay Engellendi',
+            text: 'Bugün için henüz akşam KM onayı yapılamaz. Lütfen saat 13:00\'dan sonra tekrar deneyiniz.',
+            confirmButtonText: 'Tamam'
+        });
+        return;
+    }
+
     const turText = tur === 'sabah' ? '<span class="text-warning">SABAH (Başlangıç)</span>' : '<span class="text-info">AKŞAM (Bitiş)</span>';
     Swal.fire({
       title: "Kilometre Onayı",
@@ -2786,6 +2885,7 @@ $(document).ready(function () {
       btn.data("km"),
       btn.data("plaka"),
       btn.data("tur"),
+      btn.data("tarih")
     );
   });
 
@@ -3164,6 +3264,15 @@ $(document).ready(function () {
     $("#ikameDetayModal").modal("show");
   });
 
-  // Puantaj Context Menu Başlat
+  // Zimmet Geçmişi Excel Aktar
+  $(document).on("click", "#btnZimmetGecmisiExcel", function() {
+    const aracId = $(this).attr("data-arac-id");
+    if (aracId) {
+        window.location.href = AracTakip.apiUrl + "?action=zimmet-gecmisi-excel&arac_id=" + aracId;
+    }
+  });
+
+  // Context Menüleri Başlat
   AracTakip.initPuantajContextMenu();
+  AracTakip.initListContextMenu();
 });

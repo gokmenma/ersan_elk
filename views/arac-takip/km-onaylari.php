@@ -168,7 +168,10 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                             <tr>
                                                 <td class="text-center">
                                                     <div class="form-check font-size-16">
-                                                        <input class="form-check-input km-checkbox" type="checkbox" data-id="<?= $report->id ?>">
+                                                        <input class="form-check-input km-checkbox" type="checkbox" 
+                                                            data-id="<?= $report->id ?>"
+                                                            data-tur="<?= $report->tur ?>"
+                                                            data-tarih="<?= $report->tarih ?>">
                                                         <label class="form-check-label"></label>
                                                     </div>
                                                 </td>
@@ -219,7 +222,8 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                                             data-arac-id="<?= $report->arac_id ?>"
                                                             data-km="<?= $report->bitis_km ?>"
                                                             data-plaka="<?= $report->plaka ?>"
-                                                            data-tur="<?= $report->tur ?>">
+                                                            data-tur="<?= $report->tur ?>"
+                                                            data-tarih="<?= $report->tarih ?>">
                                                             <i class="bx bx-check"></i>
                                                         </button>
                                                         <button type="button" class="btn btn-sm btn-danger btn-km-reddet" data-id="<?= $report->id ?>">
@@ -834,11 +838,42 @@ $(document).ready(function() {
 
     $('#btnTopluOnayla').on('click', function() {
         const selectedIds = [];
-        $('.km-checkbox:checked').each(function() {
-            selectedIds.push($(this).data('id'));
-        });
+        let hasInvalidAksam = false;
         
-        if (selectedIds.length > 0) {
+        const now = new Date();
+        const currentHour = now.getHours();
+        const todayStr = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0') + '-' + String(now.getDate()).padStart(2, '0');
+
+        $('.km-checkbox:checked').each(function() {
+            const id = $(this).data('id');
+            const tur = $(this).data('tur');
+            const tarih = $(this).data('tarih');
+
+            // Eğer bugün ise, tür akşam ise ve saat 13:00'dan önce ise
+            if (tarih === todayStr && tur === 'aksam' && currentHour < 13) {
+                hasInvalidAksam = true;
+                $(this).closest('tr').addClass('table-danger');
+                setTimeout(() => $(this).closest('tr').removeClass('table-danger'), 5000);
+            } else {
+                selectedIds.push(id);
+            }
+        });
+
+        if (hasInvalidAksam) {
+            Swal.fire({
+                icon: 'warning',
+                title: 'Uyarı',
+                text: 'Bugün için henüz akşam KM onayı yapılamaz (Saat 13:00\'dan sonra onaylanabilir). Akşam türündeki kayıtlar hariç tutularak devam edilsin mi?',
+                showCancelButton: true,
+                confirmButtonText: 'Evet, Kalanları Onayla',
+                cancelButtonText: 'Vazgeç',
+                confirmButtonColor: '#34c38f',
+            }).then((result) => {
+                if (result.isConfirmed && selectedIds.length > 0) {
+                    AracTakip.kmTopluOnayla(selectedIds);
+                }
+            });
+        } else if (selectedIds.length > 0) {
             AracTakip.kmTopluOnayla(selectedIds);
         }
     });

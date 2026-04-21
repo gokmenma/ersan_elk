@@ -318,7 +318,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 }
 
                 $data = [
-                    'firma_id' => $_SESSION['firma_id'],
+                    'firma_id' => $_SESSION['firma_id'] ?? 0,
                     'arac_id' => $arac_id,
                     'personel_id' => $personel_id,
                     'zimmet_tarihi' => Date::Ymd($zimmet_tarihi),
@@ -327,6 +327,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     'durum' => 'aktif',
                     'olusturan_kullanici_id' => $_SESSION['user_id'] ?? null
                 ];
+
+                // firma_id hala 0 ise veya boşsa bir şekilde session'dan tekrar almayı dene veya hata ver
+                if (empty($data['firma_id'])) {
+                    $data['firma_id'] = $_SESSION['firma_id'] ?? 0;
+                }
 
                 $Zimmet->saveWithAttr($data);
 
@@ -388,9 +393,62 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 foreach($gecmis as $g) {
                     $g->zimmet_tarihi_fmt = Date::dmY($g->zimmet_tarihi);
                     $g->iade_tarihi_fmt = $g->iade_tarihi ? Date::dmY($g->iade_tarihi) : '-';
+                    $g->olusturma_tarihi_fmt = isset($g->olusturma_tarihi) ? date('d.m.Y H:i', strtotime($g->olusturma_tarihi)) : '-';
                 }
                 echo json_encode(['status' => 'success', 'data' => $gecmis]);
                 break;
+
+            case 'zimmet-gecmisi-excel':
+                $arac_id = intval($_GET['arac_id'] ?? 0);
+                if ($arac_id <= 0) throw new Exception("Geçersiz araç ID.");
+
+                $arac = $Arac->getById($arac_id);
+                if (!$arac) throw new Exception("Araç bulunamadı.");
+
+                $gecmis = $Zimmet->getByArac($arac_id);
+
+                $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
+                $sheet = $spreadsheet->getActiveSheet();
+                $sheet->setTitle('Zimmet Geçmişi');
+
+                // Header
+                $headers = ['#', 'Personel', 'Zimmet Tarihi', 'İade Tarihi', 'Teslim KM', 'İade KM', 'İşlem Yapan', 'Kayıt Tarihi', 'Durum'];
+                foreach ($headers as $i => $h) {
+                    $sheet->setCellValueByColumnAndRow($i + 1, 1, $h);
+                }
+
+                // Style header
+                $sheet->getStyle('A1:I1')->getFont()->setBold(true);
+                $sheet->getStyle('A1:I1')->getFill()->setFillType(\PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID)->getStartColor()->setARGB('FFE0E0E0');
+
+                // Data
+                $row = 2;
+                foreach ($gecmis as $index => $z) {
+                    $sheet->setCellValue('A' . $row, $index + 1);
+                    $sheet->setCellValue('B' . $row, $z->personel_adi);
+                    $sheet->setCellValue('C' . $row, Date::dmY($z->zimmet_tarihi));
+                    $sheet->setCellValue('D' . $row, $z->iade_tarihi ? Date::dmY($z->iade_tarihi) : '-');
+                    $sheet->setCellValue('E' . $row, $z->teslim_km);
+                    $sheet->setCellValue('F' . $row, $z->iade_km ?: '-');
+                    $sheet->setCellValue('G' . $row, $z->olusturan_kullanici_adi ?: '-');
+                    $sheet->setCellValue('H' . $row, $z->olusturma_tarihi ? date('d.m.Y H:i', strtotime($z->olusturma_tarihi)) : '-');
+                    $sheet->setCellValue('I' . $row, $z->durum == 'aktif' ? 'Aktif' : 'İade Edildi');
+                    $row++;
+                }
+
+                // Column width
+                foreach (range('A', 'I') as $col) {
+                    $sheet->getColumnDimension($col)->setAutoSize(true);
+                }
+
+                $filename = 'Zimmet_Gecmisi_' . str_replace(' ', '_', $arac->plaka) . '_' . date('Ymd_His') . '.xlsx';
+                header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+                header('Content-Disposition: attachment;filename="' . $filename . '"');
+                header('Cache-Control: max-age=0');
+
+                $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
+                $writer->save('php://output');
+                exit;
 
             // =============================================
             // YAKIT KAYDI İŞLEMLERİ
@@ -534,8 +592,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
             // =============================================
             case 'km-kaydet':
                 $data = $_POST;
-                $km_id = isset($data['id']) ? intval($data['id']) : 0;
-                $arac_id = intval($data['arac_id'] ?? 0);
+                $km_id_raw = $data['id'] ?? '';
+                $km_id = intval(is_numeric($km_id_raw) ? $km_id_raw : Security::decrypt($km_id_raw));
+                $arac_id_raw = $data['arac_id'] ?? '';
+                $arac_id = intval(is_numeric($arac_id_raw) ? $arac_id_raw : Security::decrypt($arac_id_raw));
 
                 if ($arac_id <= 0) {
                     throw new Exception("Araç seçimi zorunludur.");
@@ -588,7 +648,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 // Yapılan KM hesapla (Eğer gönderilmemişse veya hatalıysa)
                 $b = intval($data['baslangic_km'] ?? 0);
                 $e = intval($data['bitis_km'] ?? 0);
-                $data['yapilan_km'] = ($e > 0 && $b > 0) ? ($e - $b) : 0;
+                $data['yapilan_km'] = ($e > 0 && $b > 0 && $e > $b) ? ($e - $b) : 0;
 
                 $Km->saveWithAttr($data);
 
@@ -602,7 +662,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 break;
 
             case 'km-sil':
-                $id = intval(Security::decrypt($_POST['id'] ?? ''));
+                $idRaw = $_POST['id'] ?? '';
+                $id = intval(is_numeric($idRaw) ? $idRaw : Security::decrypt($idRaw));
                 $aciklama = trim($_POST['aciklama'] ?? '');
                 if ($id <= 0) {
                     throw new Exception("Geçersiz KM kaydı ID.");
@@ -701,7 +762,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 break;
 
             case 'km-detay':
-                $id = intval($_POST['id'] ?? 0);
+                $idRaw = $_POST['id'] ?? '';
+                $id = intval(is_numeric($idRaw) ? $idRaw : Security::decrypt($idRaw));
                 $kayit = $Km->find($id);
                 /**tarihi çevir */
                 $kayit->tarih = Date::dmY($kayit->tarih);
@@ -887,7 +949,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         'tarih' => Date::Ymd($tarih),
                         'baslangic_km' => $bVal,
                         'bitis_km' => $eVal,
-                        'yapilan_km' => ($eVal > 0 && $bVal > 0) ? ($eVal - $bVal) : 0,
+                        'yapilan_km' => ($eVal > 0 && $bVal > 0 && $eVal > $bVal) ? ($eVal - $bVal) : 0,
                         'olusturan_kullanici_id' => $_SESSION['user_id'] ?? null,
                         'silinme_tarihi' => null
                     ];
@@ -944,8 +1006,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
             case 'km-kaydet-inline':
                 $data = $_POST;
-                $arac_id = intval($data['arac_id'] ?? 0);
-                $km_id = intval($data['id'] ?? 0);
+                $arac_id_raw = $data['arac_id'] ?? '';
+                $arac_id = intval(is_numeric($arac_id_raw) ? $arac_id_raw : Security::decrypt($arac_id_raw));
+                $km_id_raw = $data['id'] ?? '';
+                $km_id = intval(is_numeric($km_id_raw) ? $km_id_raw : Security::decrypt($km_id_raw));
 
                 // Tarih formatını dd.mm.yyyy -> Y-m-d dönüştür
                 $inputTarih = $data['tarih'] ?? '';
@@ -994,7 +1058,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     'tarih' => $tarih,
                     'baslangic_km' => $baslangic_km,
                     'bitis_km' => $bitis_km,
-                    'yapilan_km' => ($bitis_km > 0 && $baslangic_km > 0) ? ($bitis_km - $baslangic_km) : 0,
+                    'yapilan_km' => ($bitis_km > 0 && $baslangic_km > 0 && $bitis_km > $baslangic_km) ? ($bitis_km - $baslangic_km) : 0,
                     'olusturan_kullanici_id' => $_SESSION['user_id'] ?? null,
                     'silinme_tarihi' => null // Geri yükleme ihtimaline karşı
                 ];
