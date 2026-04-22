@@ -1084,6 +1084,17 @@ class PersonelModel extends Model
     {
         $aktifKayit = $this->getAktifGorevGecmisi($personel_id);
 
+        // Eğer şu an aktif bir kayıt yoksa, en son eklenen/başlayacak olan kaydı baz al
+        if (!$aktifKayit) {
+            $sql = "SELECT * FROM personel_gorev_gecmisi 
+                    WHERE personel_id = ? 
+                    ORDER BY baslangic_tarihi DESC, id DESC 
+                    LIMIT 1";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$personel_id]);
+            $aktifKayit = $stmt->fetch(\PDO::FETCH_OBJ);
+        }
+
         if ($aktifKayit) {
             $sql = "UPDATE {$this->table} SET 
                     departman = ?, 

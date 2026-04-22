@@ -523,7 +523,7 @@ if (!empty($icralar)) {
 
 <!-- İcra Kesinti Detay Modal -->
 <div class="modal fade" id="modalIcraKesintileri" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-info text-white border-bottom-0">
                 <h5 class="modal-title"><i data-feather="activity" class="me-2"

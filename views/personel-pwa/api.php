@@ -673,7 +673,9 @@ try {
             $monthlyTotal = $monthlyIsler + $monthlyEndeks;
 
             // ---- YENİ: SIRALAMA EKLENMESİ ----
-            $departman = $personelDetails->departman ?? '';
+            $aktifGorev = $PersonelModel->getAktifGorevGecmisi($personel_id);
+            $departman = $aktifGorev->departman ?? $personelDetails->departman ?? '';
+
             $aktifEkipGecmisi = $PersonelModel->getEkipGecmisi($personel_id);
             $aktifEkipId = null;
             $aktifEkipBolge = '';
@@ -692,7 +694,11 @@ try {
             }
 
             // Tüm aktif personelleri departman ve bölgesine göre çekelim
-            $allActiveQuery = "SELECT p.id, p.departman, 
+            $allActiveQuery = "SELECT p.id, 
+                COALESCE((SELECT g.departman FROM personel_gorev_gecmisi g 
+                  WHERE g.personel_id = p.id AND g.baslangic_tarihi <= CURDATE() 
+                  AND (g.bitis_tarihi IS NULL OR g.bitis_tarihi >= CURDATE())
+                  ORDER BY g.baslangic_tarihi DESC LIMIT 1), p.departman) as departman,
                 (SELECT t.ekip_bolge FROM personel_ekip_gecmisi peg 
                  LEFT JOIN tanimlamalar t ON peg.ekip_kodu_id = t.id
                  WHERE peg.personel_id = p.id AND (peg.bitis_tarihi IS NULL OR peg.bitis_tarihi >= CURDATE())
