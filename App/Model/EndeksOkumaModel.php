@@ -98,8 +98,12 @@ class EndeksOkumaModel extends Model
                 FROM $this->table t 
                 LEFT JOIN personel p ON t.personel_id = p.id 
                 LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
-                LEFT JOIN tanimlamalar tm ON t.defter = tm.tur_adi 
-                    AND tm.grup = 'defter_kodu' 
+                LEFT JOIN (
+                    SELECT tur_adi, defter_bolge, firma_id, MAX(defter_mahalle) as defter_mahalle
+                    FROM tanimlamalar
+                    WHERE grup = 'defter_kodu' AND silinme_tarihi IS NULL
+                    GROUP BY tur_adi, defter_bolge, firma_id
+                ) tm ON t.defter = tm.tur_adi 
                     AND t.bolge = tm.defter_bolge 
                     AND tm.firma_id = t.firma_id
                 WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL";
@@ -703,7 +707,7 @@ class EndeksOkumaModel extends Model
     }
 
     /**
-     * Riski personelleri getirir (Evde Yok / Sayaç Normal > %80)
+     * Riski personelleri getirir (Evde Yok / Sayaç Normal >= %60)
      */
     public function getRiskyPersonnel($startDate, $endDate, $region = '', $defter = '')
     {
@@ -742,7 +746,7 @@ class EndeksOkumaModel extends Model
                     WHERE $where
                     GROUP BY t.personel_id, t.ekip_kodu_id
                 ) as sub
-                WHERE normal_sayisi > 0 AND (evde_yok_sayisi / normal_sayisi) > 0.8
+                WHERE normal_sayisi > 0 AND (evde_yok_sayisi / normal_sayisi) >= 0.6
                 ORDER BY (evde_yok_sayisi / normal_sayisi) DESC";
 
         $stmt = $this->db->prepare($sql);

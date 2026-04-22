@@ -1,6 +1,24 @@
 <?php
 use App\Helper\Security;
 use App\Helper\Form;
+use App\Model\IcraDaireleriModel;
+
+$IcraDaireleriModel = new IcraDaireleriModel();
+$icraDaireleri = $IcraDaireleriModel->where('aktif', 1);
+$icraDaireleriOptions = ['' => 'Seçiniz veya Yazınız...'];
+$icraDaireleriData = [];
+foreach($icraDaireleri as $daire) {
+    $icraDaireleriOptions[$daire->daire_adi] = $daire->daire_adi;
+    $icraDaireleriData[$daire->daire_adi] = [
+        'iban' => $daire->iban ?? '',
+        'vergi_dairesi' => $daire->vergi_dairesi ?? '',
+        'vergi_no' => $daire->vergi_no ?? '',
+        'il' => $daire->il ?? '',
+        'ilce' => $daire->ilce ?? ''
+    ];
+}
+?>
+<?php
 
 // Personel ID (Manage.php'den geliyor olmalı, gelmiyorsa decrypt et)
 if (!isset($id) || empty($id)) {
@@ -286,7 +304,8 @@ if (!empty($icralar)) {
                                             <?php endif; ?>
                                         </div>
                                     </td>
-                                    <td class="text-primary fw-bold"><?= number_format($i->toplam_kesilen, 2, ',', '.') ?>
+                                    <td class="text-primary fw-bold btn-icra-kesinti-detay" style="cursor: pointer;" data-id="<?= $i->id ?>" data-icra-dairesi="<?= htmlspecialchars($i->icra_dairesi) ?>" data-dosya-no="<?= htmlspecialchars($i->dosya_no) ?>" data-toplam-borc="<?= $i->toplam_borc ?>">
+                                        <?= number_format($i->toplam_kesilen, 2, ',', '.') ?>
                                         <small>TL</small>
                                     </td>
                                     <td>
@@ -440,7 +459,7 @@ if (!empty($icralar)) {
                                     <?= Form::FormFloatInput("number", "icra_toplam_borc", "", "Toplam Borç", "Borç (TL)", "dollar-sign", "form-control shadow-none", true, null, "off", false, 'step="0.01"') ?>
                                 </div>
                                 <div class="col-md-6 mb-3">
-                                    <?= Form::FormFloatInput("text", "icra_dairesi", "", "İcra Dairesi", "İcra Dairesi Adı", "home", "form-control shadow-none", true, null, "off", false) ?>
+                                    <?= Form::FormSelect2("icra_dairesi", $icraDaireleriOptions, "", "İcra Dairesi", "home", "key", "", "form-select select2 shadow-none", true, 'width:100%', 'data-tags="true"') ?>
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <?= Form::FormFloatInput("text", "icra_dosya_no", "", "Dosya No", "Esas No", "file-text", "form-control shadow-none", true, null, "off", false) ?>
@@ -566,6 +585,8 @@ if (!empty($icralar)) {
                                 <th>Detay</th>
                                 <th>Açıklama</th>
                                 <th class="text-end">Tutar</th>
+                                <th class="text-center">Ödeme</th>
+                                <th class="text-center">Dekont</th>
                                 <th class="text-center">Durum</th>
                                 <th>Tarih</th>
                             </tr>
@@ -754,9 +775,31 @@ if (!empty($icralar)) {
 </div>
 
 <script>
-    if (typeof feather !== 'undefined') {
-        feather.replace();
-        setTimeout(function () { feather.replace(); }, 100);
-        setTimeout(function () { feather.replace(); }, 500);
-    }
+    var icraDaireleriData = <?= json_encode($icraDaireleriData ?? []) ?>;
+    $(document).ready(function() {
+        if (typeof feather !== 'undefined') {
+            feather.replace();
+            setTimeout(function () { feather.replace(); }, 100);
+            setTimeout(function () { feather.replace(); }, 500);
+        }
+
+        // İcra Dairesi Seçildiğinde IBAN ve Hesap Bilgilerini Doldur
+        $(document).on('change', 'select[name="icra_dairesi"]', function(e, isProgrammatic) {
+            if (isProgrammatic) return;
+
+            const daireAdi = $(this).val();
+            const data = icraDaireleriData[daireAdi];
+            
+            if (data) {
+                $('input[name="icra_iban"]').val(data.iban).trigger('input');
+                
+                let hesapBilgisi = '';
+                if (data.vergi_dairesi) hesapBilgisi += data.vergi_dairesi + ' V.D. ';
+                if (data.vergi_no) hesapBilgisi += 'No: ' + data.vergi_no + '\n';
+                if (data.il) hesapBilgisi += data.il + (data.ilce ? ' / ' + data.ilce : '');
+                
+                $('textarea[name="icra_hesap_bilgileri"]').val(hesapBilgisi.trim());
+            }
+        });
+    });
 </script>

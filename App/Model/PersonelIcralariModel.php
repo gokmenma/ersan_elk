@@ -62,7 +62,7 @@ class PersonelIcralariModel extends Model
     public function getIcraKesintileri($icra_id)
     {
         $sql = $this->db->prepare("
-            SELECT pk.id, pk.tutar, pk.aciklama, pk.durum, pk.olusturma_tarihi,
+            SELECT pk.id, pk.tutar, pk.aciklama, pk.durum, pk.olusturma_tarihi, pk.odeme_durumu, pk.dekont_dosyasi,
                    bd.donem_adi, bd.baslangic_tarihi as donem_baslangic
             FROM personel_kesintileri pk
             LEFT JOIN bordro_donemi bd ON pk.donem_id = bd.id

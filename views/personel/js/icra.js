@@ -101,7 +101,7 @@ $(document).ready(function () {
           $("#icra_id_hidden").val(response.id);
           // Helper'ın oluşturduğu id'leri (input name ile aynı) kullanıyoruz
           $("#icra_sira").val(response.sira);
-          $("#icra_dairesi").val(response.icra_dairesi);
+          $("#icra_dairesi").val(response.icra_dairesi).trigger("change", true);
           $("#icra_dosya_no").val(response.dosya_no);
           $("#icra_toplam_borc").val(response.toplam_borc);
           $("#icra_kesinti_tipi")
@@ -223,27 +223,15 @@ $(document).ready(function () {
 
   // İcra Kesinti Detay Modal
   var currentIcraId = null;
+  var currentToplamBorc = 0;
 
-  $(document).on("click", ".btn-icra-kesinti-detay", function () {
-    var icraId = $(this).data("id");
-    var icraDairesi = $(this).data("icra-dairesi");
-    var dosyaNo = $(this).data("dosya-no");
-    var toplamBorc = parseFloat($(this).data("toplam-borc")) || 0;
-
+  function loadIcraKesintileri(icraId, toplamBorc) {
     currentIcraId = icraId;
-
-    $("#icraDetayDairesi").text(icraDairesi);
-    $("#icraDetayDosyaNo").text(dosyaNo);
-    $("#icraDetayToplamBorc").text(
-      toplamBorc.toLocaleString("tr-TR", { minimumFractionDigits: 2 }) + " TL",
-    );
+    currentToplamBorc = toplamBorc;
 
     $("#icraKesintileriBody").html(
-      '<tr><td colspan="6" class="text-center py-5 text-muted"><div class="spinner-border spinner-border-sm text-warning me-2" role="status"></div>Yükleniyor...</td></tr>',
+      '<tr><td colspan="8" class="text-center py-5 text-muted"><div class="spinner-border spinner-border-sm text-warning me-2" role="status"></div>Yükleniyor...</td></tr>',
     );
-
-    $("#modalIcraKesintileri").modal("show");
-    setTimeout(syncFeather, 100);
 
     $.ajax({
       url: "views/personel/ajax/kesinti-islemleri.php",
@@ -257,7 +245,7 @@ $(document).ready(function () {
       success: function (response) {
         if (response.error) {
           $("#icraKesintileriBody").html(
-            '<tr><td colspan="6" class="text-center py-3 text-danger">' +
+            '<tr><td colspan="8" class="text-center py-3 text-danger">' +
               response.error +
               "</td></tr>",
           );
@@ -270,7 +258,7 @@ $(document).ready(function () {
 
         if (kesintiler.length === 0) {
           html =
-            '<tr><td colspan="6" class="text-center py-5 text-muted">Bu dosyaya ait kesinti kaydı bulunamadı.</td></tr>';
+            '<tr><td colspan="8" class="text-center py-5 text-muted">Bu dosyaya ait kesinti kaydı bulunamadı.</td></tr>';
         } else {
           for (var idx = 0; idx < kesintiler.length; idx++) {
             var k = kesintiler[idx];
@@ -282,6 +270,24 @@ $(document).ready(function () {
                 ? '<span class="badge bg-success-subtle text-success border border-success-subtle">Onaylı</span>'
                 : '<span class="badge bg-warning-subtle text-warning border border-warning-subtle">Beklemede</span>';
 
+            var oBadge = 
+              k.odeme_durumu === "odendi"
+                ? '<span class="badge bg-success pointer-cursor update-odeme-modal" data-id="'+k.id+'" data-durum="odenmedi" style="cursor:pointer" title="Ödenmedi Olarak İşaretle">Ödendi</span>'
+                : '<span class="badge bg-danger pointer-cursor update-odeme-modal" data-id="'+k.id+'" data-durum="odendi" style="cursor:pointer" title="Ödendi Olarak İşaretle">Ödenmedi</span>';
+
+            var dekontHtml = "";
+            if (k.dekont_dosyasi) {
+                dekontHtml = '<div class="d-flex flex-column align-items-center gap-1">' +
+                             '<div class="btn-group">' +
+                             '<a href="uploads/kesintiler/'+k.dekont_dosyasi+'" target="_blank" class="btn btn-xs btn-outline-info" title="Görüntüle"><i class="bx bx-show"></i></a>' +
+                             '<button class="btn btn-xs btn-outline-danger btn-dekont-sil-modal" data-id="'+k.id+'" title="Sil"><i class="bx bx-trash"></i></button>' +
+                             '</div>' +
+                             '<small class="text-muted text-truncate" style="max-width: 80px;" title="'+k.dekont_dosyasi+'">'+k.dekont_dosyasi+'</small>' +
+                             '</div>';
+            } else {
+                dekontHtml = '<button class="btn btn-xs btn-outline-primary btn-upload-modal" data-id="'+k.id+'" title="Yükle"><i class="bx bx-upload"></i></button>';
+            }
+
             html += "<tr>";
             html += '<td class="text-center">' + (idx + 1) + "</td>";
             html += "<td>" + (k.donem_adi || "-") + "</td>";
@@ -291,6 +297,8 @@ $(document).ready(function () {
               '<td class="text-end fw-bold text-dark">' +
               tutar.toLocaleString("tr-TR", { minimumFractionDigits: 2 }) +
               " TL</td>";
+            html += '<td class="text-center">' + oBadge + "</td>";
+            html += '<td class="text-center">' + dekontHtml + "</td>";
             html += '<td class="text-center">' + dBadge + "</td>";
             html +=
               "<td>" +
@@ -309,7 +317,7 @@ $(document).ready(function () {
           tKesilen.toLocaleString("tr-TR", { minimumFractionDigits: 2 }) +
             " TL",
         );
-        var kalan = toplamBorc - tKesilen;
+        var kalan = currentToplamBorc - tKesilen;
         $("#icraDetayKalanTutar")
           .text(
             kalan.toLocaleString("tr-TR", { minimumFractionDigits: 2 }) + " TL",
@@ -319,10 +327,28 @@ $(document).ready(function () {
       },
       error: function () {
         $("#icraKesintileriBody").html(
-          '<tr><td colspan="6" class="text-center text-danger py-3">Bağlantı hatası!</td></tr>',
+          '<tr><td colspan="8" class="text-center text-danger py-3">Bağlantı hatası!</td></tr>',
         );
       },
     });
+  }
+
+  $(document).on("click", ".btn-icra-kesinti-detay", function () {
+    var icraId = $(this).data("id");
+    var icraDairesi = $(this).data("icra-dairesi");
+    var dosyaNo = $(this).data("dosya-no");
+    var toplamBorc = parseFloat($(this).data("toplam-borc")) || 0;
+
+    $("#icraDetayDairesi").text(icraDairesi);
+    $("#icraDetayDosyaNo").text(dosyaNo);
+    $("#icraDetayToplamBorc").text(
+      toplamBorc.toLocaleString("tr-TR", { minimumFractionDigits: 2 }) + " TL",
+    );
+
+    $("#modalIcraKesintileri").modal("show");
+    setTimeout(syncFeather, 100);
+
+    loadIcraKesintileri(icraId, toplamBorc);
   });
 
   $(document).on("click", "#btnIcraListYazdir", function () {
@@ -336,6 +362,153 @@ $(document).ready(function () {
       currentIcraId +
       "&personel_id=" +
       getPersonelId();
+  });
+  
+  // Ödeme Durumu Güncelle (Modal içinden)
+  $(document).on("click", ".update-odeme-modal", function() {
+      const id = $(this).data("id");
+      const durum = $(this).data("durum");
+      const pId = getPersonelId();
+      
+      $.post("views/personel/ajax/kesinti-islemleri.php", {
+          action: "update_odeme_durumu",
+          id: id,
+          odeme_durumu: durum,
+          personel_id: pId
+      }, function(response) {
+          if (response.success) {
+              loadIcraKesintileri(currentIcraId, currentToplamBorc);
+              showToast("Ödeme durumu güncellendi.", "success");
+          } else {
+              showToast(response.error || "Hata oluştu", "error");
+          }
+      }, "json");
+  });
+  
+  $(document).on("click", ".btn-upload-modal", function() {
+      const id = $(this).data("id");
+      const pId = getPersonelId();
+      
+      Swal.fire({
+          title: 'Dekont Yükleme',
+          html: `
+              <div class="p-3">
+                  <div class="upload-container border-2 border-dashed border-info rounded-3 p-4 text-center mb-3" 
+                       style="background-color: #f8f9fa; cursor: pointer;"
+                       onclick="document.getElementById('dekontFileInputModal').click()">
+                      <i class="bx bx-cloud-upload display-4 text-info mb-2"></i>
+                      <h6 class="fw-bold">Ödeme Dekontu Seçin</h6>
+                      <p class="text-muted small mb-0">PDF, JPG, JPEG veya PNG (Maks 5MB)</p>
+                      <p class="text-primary small mt-2 mb-0"><i class="bx bx-info-circle me-1"></i> Belge yüklendiğinde durum otomatik olarak <b>"Ödendi"</b> yapılacaktır.</p>
+                      <div id="file-info-modal" class="mt-3 d-none">
+                          <span class="badge bg-info px-3 py-2 rounded-pill">
+                              <i class="bx bx-file me-1"></i> <span id="file-name-modal">dosya.pdf</span>
+                          </span>
+                      </div>
+                  </div>
+                  <input type="file" id="dekontFileInputModal" class="d-none" accept=".pdf,.jpg,.jpeg,.png" onchange="
+                      if(this.files[0]) {
+                          document.getElementById('file-info-modal').classList.remove('d-none');
+                          document.getElementById('file-name-modal').innerText = this.files[0].name;
+                      }
+                  ">
+              </div>
+          `,
+          showCancelButton: true,
+          confirmButtonText: '<i class="bx bx-upload me-1"></i> Yükle',
+          cancelButtonText: 'Vazgeç',
+          confirmButtonColor: '#50a5f1',
+          cancelButtonColor: '#f46a6a',
+          customClass: {
+              confirmButton: 'btn btn-info text-white px-4 rounded-pill',
+              cancelButton: 'btn btn-light px-4 rounded-pill'
+          },
+          buttonsStyling: false,
+          preConfirm: () => {
+              const file = document.getElementById('dekontFileInputModal').files[0];
+              if (!file) {
+                  Swal.showValidationMessage('Lütfen bir dosya seçin');
+                  return false;
+              }
+              return file;
+          }
+      }).then((result) => {
+          if (result.isConfirmed) {
+              const formData = new FormData();
+              formData.append('action', 'upload_dekont');
+              formData.append('id', id);
+              formData.append('dekont', result.value);
+              formData.append('personel_id', pId);
+
+              // Yükleme bildirimi
+              Swal.fire({
+                  title: 'Yükleniyor...',
+                  text: 'Dekont sisteme kaydediliyor.',
+                  allowOutsideClick: false,
+                  didOpen: () => {
+                      Swal.showLoading();
+                  }
+              });
+
+              $.ajax({
+                  url: 'views/personel/ajax/kesinti-islemleri.php',
+                  type: 'POST',
+                  data: formData,
+                  processData: false,
+                  contentType: false,
+                  dataType: 'json',
+                  success: function(response) {
+                      if (response.success) {
+                          loadIcraKesintileri(currentIcraId, currentToplamBorc);
+                          Swal.fire({
+                              icon: 'success',
+                              title: 'Başarılı',
+                              text: 'Dekont yüklendi ve ödeme durumu "Ödendi" olarak güncellendi.',
+                              timer: 2000
+                          });
+                      } else {
+                          showToast(response.error || "Yükleme başarısız", "error");
+                      }
+                  }
+              });
+          }
+      });
+  });
+
+  // Dekont Sil (Modal içinden)
+  $(document).on("click", ".btn-dekont-sil-modal", function() {
+      const id = $(this).data("id");
+      
+      Swal.fire({
+          title: 'Emin misiniz?',
+          text: "Bu dekont dosyası kalıcı olarak silinecektir!",
+          icon: 'warning',
+          showCancelButton: true,
+          confirmButtonColor: '#f46a6a',
+          cancelButtonColor: '#74788d',
+          confirmButtonText: 'Evet, Sil!',
+          cancelButtonText: 'Vazgeç',
+          customClass: {
+              confirmButton: 'btn btn-danger text-white px-4 rounded-pill me-2',
+              cancelButton: 'btn btn-light px-4 rounded-pill'
+          },
+          buttonsStyling: false
+      }).then((result) => {
+          if (result.isConfirmed) {
+              $.post("views/personel/ajax/kesinti-islemleri.php", {
+                  action: "delete_dekont",
+                  id: id,
+                  personel_id: getPersonelId()
+              }, function(response) {
+                  if (response.success) {
+                      loadIcraKesintileri(currentIcraId, currentToplamBorc);
+                      showToast("Dekont dosyası silindi.", "success");
+                  } else {
+                      showToast(response.error || "Hata oluştu", "error");
+                  }
+              }, "json");
+          }
+      });
   });
 
   function refreshIcraTab() {

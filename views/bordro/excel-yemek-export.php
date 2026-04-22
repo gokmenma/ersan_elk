@@ -60,6 +60,7 @@ try {
         $hesap = $BordroPersonel->hesaplaOrtakGosterimDegerleri($p, $donem, floatval($asgariUcretNet));
         
         $toplamYemek = 0;
+        $esYardimi = 0;
         $fiiliGun = 25; // Varsayılan çalışma günü
         
         // 1. Maaşa Dahil Yemek Yardımı (mealAllowanceDeduction banka üzerinden ödeniyor)
@@ -84,27 +85,34 @@ try {
             }
         }
 
-        // Eğer herhangi bir yemek bedeli varsa listeye ekle
-        if ($toplamYemek > 0) {
-            $gunlukUcret = $toplamYemek / $fiiliGun;
+        // 3. Eş Yardımı
+        if (isset($hesap['spouseAllowanceDeduction']) && $hesap['spouseAllowanceDeduction'] > 0) {
+            $esYardimi = $hesap['spouseAllowanceDeduction'];
+        }
+
+        // Eğer herhangi bir yemek bedeli veya eş yardımı varsa listeye ekle
+        if ($toplamYemek > 0 || $esYardimi > 0) {
+            $gunlukUcret = $toplamYemek > 0 ? ($toplamYemek / $fiiliGun) : 0;
             $yemekVerileri[] = [
                 'tc_kimlik' => $p->tc_kimlik_no ?? '-',
                 'adi_soyadi' => $p->adi_soyadi ?? '-',
                 'fiili_gun' => $fiiliGun,
                 'gunluk_ucret' => round($gunlukUcret, 2),
-                'toplam_tutar' => $toplamYemek
+                'toplam_yemek' => $toplamYemek,
+                'es_yardimi' => $esYardimi,
+                'genel_toplam' => $toplamYemek + $esYardimi
             ];
         }
     }
 
     if (empty($yemekVerileri)) {
-        die('Bu dönemde yemek bedeli hakedişi olan personel bulunmamaktadır.');
+        die('Bu dönemde yemek bedeli veya eş yardımı hakedişi olan personel bulunmamaktadır.');
     }
 
     // Yeni Excel dosyası oluştur
     $spreadsheet = new Spreadsheet();
     $sheet = $spreadsheet->getActiveSheet();
-    $sheet->setTitle('Yemek Bedeli Listesi');
+    $sheet->setTitle('Yemek-Eş Yardımı Listesi');
 
     // Başlıklar
     $basliklar = [
@@ -112,7 +120,9 @@ try {
         'B' => 'ADI SOYADI',
         'C' => 'FİİLİ ÇALIŞMA GÜN',
         'D' => 'YEMEK TUTARI GÜNLÜK ÜCRETİ',
-        'E' => 'TOPLAM YEMEK TUTARI'
+        'E' => 'TOPLAM YEMEK TUTARI',
+        'F' => 'EŞ YARDIMI',
+        'G' => 'GENEL TOPLAM'
     ];
 
     // Başlık stili
@@ -144,7 +154,7 @@ try {
     }
 
     // Başlık satırına stil uygula
-    $sheet->getStyle('A1:E1')->applyFromArray($baslikStyle);
+    $sheet->getStyle('A1:G1')->applyFromArray($baslikStyle);
     $sheet->getRowDimension(1)->setRowHeight(25);
 
     // Veri stili
@@ -167,14 +177,18 @@ try {
         $sheet->setCellValue('B' . $satir, $veri['adi_soyadi']);
         $sheet->setCellValue('C' . $satir, $veri['fiili_gun']);
         $sheet->setCellValue('D' . $satir, $veri['gunluk_ucret']);
-        $sheet->setCellValue('E' . $satir, $veri['toplam_tutar']);
+        $sheet->setCellValue('E' . $satir, $veri['toplam_yemek']);
+        $sheet->setCellValue('F' . $satir, $veri['es_yardimi']);
+        $sheet->setCellValue('G' . $satir, $veri['genel_toplam']);
 
         // Formatlar
         $sheet->getStyle('C' . $satir)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $sheet->getStyle('D' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         $sheet->getStyle('E' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+        $sheet->getStyle('F' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+        $sheet->getStyle('G' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         
-        $sheet->getStyle("A{$satir}:E{$satir}")->applyFromArray($dataStyle);
+        $sheet->getStyle("A{$satir}:G{$satir}")->applyFromArray($dataStyle);
         
         $satir++;
     }
@@ -183,9 +197,13 @@ try {
     $toplamSatir = $satir;
     $sheet->setCellValue('B' . $toplamSatir, 'TOPLAM');
     $sheet->setCellValue('E' . $toplamSatir, '=SUM(E2:E' . ($satir - 1) . ')');
-    $sheet->getStyle('A' . $toplamSatir . ':E' . $toplamSatir)->getFont()->setBold(true);
+    $sheet->setCellValue('F' . $toplamSatir, '=SUM(F2:F' . ($satir - 1) . ')');
+    $sheet->setCellValue('G' . $toplamSatir, '=SUM(G2:G' . ($satir - 1) . ')');
+    $sheet->getStyle('A' . $toplamSatir . ':G' . $toplamSatir)->getFont()->setBold(true);
     $sheet->getStyle('E' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
-    $sheet->getStyle('A' . $toplamSatir . ':E' . $toplamSatir)->applyFromArray([
+    $sheet->getStyle('F' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+    $sheet->getStyle('G' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+    $sheet->getStyle('A' . $toplamSatir . ':G' . $toplamSatir)->applyFromArray([
         'fill' => [
             'fillType' => Fill::FILL_SOLID,
             'startColor' => ['rgb' => 'F3F4F6']
@@ -197,7 +215,7 @@ try {
 
     // Dosya adı
     $donemAdiSlug = preg_replace('/[^a-zA-Z0-9]/', '_', $donem->donem_adi);
-    $dosyaAdi = 'yemek_bedeli_listesi_' . $donemAdiSlug . '_' . date('Y-m-d') . '.xlsx';
+    $dosyaAdi = 'yemek_es_yardimi_listesi_' . $donemAdiSlug . '_' . date('Y-m-d') . '.xlsx';
 
     // HTTP başlıkları
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

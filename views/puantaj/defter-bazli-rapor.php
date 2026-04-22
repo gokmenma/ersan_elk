@@ -174,6 +174,12 @@ padding-bottom:  10px !important;
                                                 </li>
                                             </ul>
 
+                                            <!-- ORTA: Boşluk ve Tetikleyici (Kullanıcının işaretlediği yer) -->
+                                            <div class="flex-grow-1" style="cursor: pointer; min-height: 40px;" 
+                                                 data-bs-toggle="collapse" data-bs-target="#collapseFilter" 
+                                                 title="Filtreleri Göster/Gizle" role="button">
+                                            </div>
+
                                             <!-- SAĞ: Filtre Özeti, Ayarlar ve Accordion Tetikleyici -->
                                             <div class="d-flex align-items-center gap-2 me-2">
                                                 <div id="filterSummary" class="d-none d-md-flex gap-2">

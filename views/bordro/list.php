@@ -215,6 +215,69 @@ if (!empty($dbGelirler)) {
         .dropdown-menu .show {
             z-index: 1060;
         }
+
+        /* Modern Checkbox Tasarımı */
+        .form-check .form-check-input {
+            width: 1.35rem;
+            height: 1.35rem;
+            margin-top: 0;
+            border: 2px solid #94a3b8;
+            cursor: pointer;
+            transition: all 0.2s ease-in-out;
+            box-shadow: none;
+            background-color: #fff;
+            border-radius: 6px;
+        }
+
+        .form-check .form-check-input:hover {
+            border-color: #3b82f6;
+            transform: scale(1.1);
+        }
+
+        .form-check .form-check-input:checked {
+            background-color: #3b82f6;
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.15);
+        }
+
+        .form-check .form-check-input:focus {
+            border-color: #3b82f6;
+            box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1);
+        }
+
+        /* Tablo içindeki checkbox hücrelerini ortala */
+        #bordroTable th:first-child, 
+        #bordroTable td:first-child {
+            text-align: center !important;
+            vertical-align: middle !important;
+            padding: 0 !important;
+            width: 50px !important;
+            min-width: 50px !important;
+            max-width: 50px !important;
+        }
+
+        #bordroTable .form-check {
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            min-height: auto !important;
+            width: 100%;
+            height: 100%;
+        }
+
+        #bordroTable .form-check-input {
+            margin: 0 !important;
+            float: none !important;
+            position: relative !important;
+            left: 0 !important;
+        }
+
+        /* Seçili satır rengi */
+        #bordroTable tr.selected-row {
+            background-color: rgba(59, 130, 246, 0.05) !important;
+        }
     </style>
 
     <div class="row">
@@ -325,7 +388,7 @@ if (!empty($dbGelirler)) {
                                         <li>
                                             <a class="dropdown-item py-2" href="javascript:void(0);"
                                                 id="btnExportExcelYemek">
-                                                <i class="mdi mdi-silverware-fork-knife me-2 text-warning fs-5"></i> Yemek Bedeli Listesi (Excel)
+                                                <i class="mdi mdi-silverware-fork-knife me-2 text-warning fs-5"></i> Yemek/Eş Yardımı Listesi (Excel)
                                             </a>
                                         </li>
                                         <li>
@@ -691,7 +754,7 @@ if (!empty($dbGelirler)) {
                                 <table id="bordroTable" class="table table-hover table-bordered nowrap w-100">
                                     <thead class="table-light sticky-top">
                                         <tr>
-                                            <th style="width: 20px;">
+                                            <th style="width: 40px;">
                                                 <div class="form-check">
                                                     <input type="checkbox" class="form-check-input" id="selectAll">
                                                 </div>

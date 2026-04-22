@@ -1341,7 +1341,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             <div class="modal-body p-0">
                 <div class="p-3 bg-danger-subtle text-danger border-bottom border-danger-subtle">
                     <p class="mb-0 fs-13 fw-medium">
-                        <i class="ri-information-fill me-1"></i> Bu liste, <strong>Evde Yok</strong> sayısının <strong>Sayaç Normal</strong> sayısına oranı <strong>%80'in</strong> üzerinde olan personelleri göstermektedir.
+                        <i class="ri-information-fill me-1"></i> Bu liste, <strong>Evde Yok</strong> sayısının <strong>Sayaç Normal</strong> sayısına oranı <strong>%80 ve üzeri</strong> (Yüksek Risk) veya <strong>%60 ile %80 arası</strong> (Risk) olan personelleri göstermektedir.
                     </p>
                 </div>
                 <div class="table-responsive">
@@ -1935,34 +1935,52 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                             let modalHtml = '';
                             
                             json.risky_personnel.forEach(function(p) {
-                                let ratio = (parseFloat(p.evde_yok_sayisi) / parseFloat(p.normal_sayisi) * 100).toFixed(1);
+                                let ratioRaw = (parseFloat(p.evde_yok_sayisi) / parseFloat(p.normal_sayisi) * 100);
+                                let ratio = ratioRaw.toFixed(1);
+                                
+                                let riskCategory = 'RİSK';
+                                let riskClass = 'warning';
+                                let riskBadgeClass = 'bg-warning';
+                                let tickerEmoji = '⚠️';
+
+                                if (ratioRaw >= 80) {
+                                    riskCategory = 'YÜKSEK RİSK';
+                                    riskClass = 'danger';
+                                    riskBadgeClass = 'bg-danger';
+                                    tickerEmoji = '🚨';
+                                }
+
+                                let pName = p.personel_adi || 'Bilinmeyen';
+                                let pInitial = pName.charAt(0);
+                                let eName = p.ekip_adi || '-';
+
                                 tickerHtml += `<span class="ticker-item">
-                                    ⚠️ ${p.personel_adi} (${p.ekip_adi}): Evde Yok Oranı %${ratio} (${p.evde_yok_sayisi}/${p.normal_sayisi})
+                                    ${tickerEmoji} ${pName} (${eName}): Evde Yok Oranı %${ratio} (${p.evde_yok_sayisi}/${p.normal_sayisi})
                                 </span>`;
 
                                 modalHtml += `<tr>
                                     <td>
                                         <div class="d-flex align-items-center">
                                             <div class="avatar-xs flex-shrink-0 me-2">
-                                                <div class="avatar-title bg-danger-subtle text-danger rounded-circle fs-11">
-                                                    ${p.personel_adi.charAt(0)}
+                                                <div class="avatar-title bg-${riskClass}-subtle text-${riskClass} rounded-circle fs-11">
+                                                    ${pInitial}
                                                 </div>
                                             </div>
                                             <div class="flex-grow-1">
-                                                <h6 class="fs-13 mb-0">${p.personel_adi}</h6>
+                                                <h6 class="fs-13 mb-0">${pName}</h6>
                                             </div>
                                         </div>
                                     </td>
-                                    <td>${p.ekip_adi}</td>
-                                    <td class="text-center fw-medium">${parseInt(p.normal_sayisi).toLocaleString('tr-TR')}</td>
-                                    <td class="text-center text-danger fw-medium">${parseInt(p.evde_yok_sayisi).toLocaleString('tr-TR')}</td>
+                                    <td>${eName}</td>
+                                    <td class="text-center fw-medium">${parseInt(p.normal_sayisi || 0).toLocaleString('tr-TR')}</td>
+                                    <td class="text-center text-${riskClass} fw-medium">${parseInt(p.evde_yok_sayisi || 0).toLocaleString('tr-TR')}</td>
                                     <td class="text-center">
                                         <div class="d-flex align-items-center justify-content-center">
-                                            <span class="badge bg-danger-subtle text-danger fs-12">%${ratio}</span>
+                                            <span class="badge bg-${riskClass}-subtle text-${riskClass} fs-12">%${ratio}</span>
                                         </div>
                                     </td>
                                     <td class="text-center">
-                                        <span class="badge bg-danger">YÜKSEK RİSK</span>
+                                        <span class="badge ${riskBadgeClass}">${riskCategory}</span>
                                     </td>
                                 </tr>`;
                             });

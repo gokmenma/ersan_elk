@@ -132,7 +132,9 @@ $tur_option = [
                                         <th>Banka Bilgileri</th>
                                         <th>Ödeme Açıklaması</th>
                                         <th class="text-end">Tutar</th>
-                                        <th class="text-center">Durum</th>
+                                        <th class="text-center">Ödeme Durumu</th>
+                                        <th class="text-center">Dekont</th>
+                                        <th class="text-center">Onay</th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -232,6 +234,37 @@ $tur_option = [
                                                 </span>
                                             </td>
                                             <td class="text-center">
+                                                <div class="form-check form-switch d-flex justify-content-center">
+                                                    <input class="form-check-input odeme-durum-toggle" type="checkbox" role="switch" 
+                                                           data-id="<?= $k->id ?>" <?= $k->odeme_durumu === 'odendi' ? 'checked' : '' ?>>
+                                                </div>
+                                                <small class="text-muted odeme-durum-text" id="odemeDurumText_<?= $k->id ?>">
+                                                    <?= $k->odeme_durumu === 'odendi' ? 'Ödendi' : 'Ödenmedi' ?>
+                                                </small>
+                                            </td>
+                                            <td class="text-center">
+                                                <?php if (!empty($k->dekont_dosyasi)): ?>
+                                                    <div class="d-flex flex-column align-items-center gap-1">
+                                                        <div class="btn-group">
+                                                            <a href="uploads/kesintiler/<?= htmlspecialchars($k->dekont_dosyasi) ?>" target="_blank" 
+                                                            class="btn btn-sm btn-outline-info" title="Dekontu Görüntüle">
+                                                                <i class="bx bx-show"></i>
+                                                            </a>
+                                                            <button type="button" class="btn btn-sm btn-outline-danger btn-dekont-sil" data-id="<?= $k->id ?>" title="Dekontu Sil">
+                                                                <i class="bx bx-trash"></i>
+                                                            </button>
+                                                        </div>
+                                                        <small class="text-muted text-truncate" style="max-width: 100px;" title="<?= htmlspecialchars($k->dekont_dosyasi) ?>">
+                                                            <?= htmlspecialchars($k->dekont_dosyasi) ?>
+                                                        </small>
+                                                    </div>
+                                                <?php else: ?>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary btn-dekont-yukle" data-id="<?= $k->id ?>" title="Dekont Yükle">
+                                                        <i class="bx bx-upload me-1"></i> Yükle
+                                                    </button>
+                                                <?php endif; ?>
+                                            </td>
+                                            <td class="text-center">
                                                 <span class="badge <?= $durumBg ?> px-2 py-1 fs-6">
                                                     <i class="bx <?= $durumIcon ?> me-1 align-middle"></i><?= $durumMetin ?>
                                                 </span>
@@ -245,7 +278,7 @@ $tur_option = [
                                         <th class="text-end text-danger font-size-16 fw-bold">
                                             <?= number_format($toplamTutar, 2, ',', '.') ?> ₺
                                         </th>
-                                        <th></th>
+                                        <th colspan="3"></th>
                                     </tr>
                                 </tfoot>
                             </table>
@@ -383,5 +416,165 @@ $tur_option = [
         yilSelect.on('change', applyFilters);
         donemSelect.on('change', applyFilters);
         turSelect.on('change', applyFilters);
+
+        // Ödeme Durumu Güncelleme
+        $(document).on('change', '.odeme-durum-toggle', function() {
+            const id = $(this).data('id');
+            const durum = $(this).prop('checked') ? 'odendi' : 'odenmedi';
+            const $text = $('#odemeDurumText_' + id);
+
+            $.post('views/personel/ajax/kesinti-islemleri.php', {
+                action: 'update_odeme_durumu',
+                id: id,
+                odeme_durumu: durum,
+                personel_id: 1 // Bu AJAX dosyasında personel_id zorunlu tutulmuş, rapor sayfasında herhangi bir değer gönderebiliriz
+            }, function(response) {
+                if (response.success) {
+                    $text.text(durum === 'odendi' ? 'Ödendi' : 'Ödenmedi');
+                    Swal.fire({
+                        icon: 'success',
+                        title: 'Güncellendi',
+                        text: 'Ödeme durumu güncellendi.',
+                        timer: 1000,
+                        showConfirmButton: false,
+                        toast: true,
+                        position: 'top-end'
+                    });
+                } else {
+                    Swal.fire('Hata', response.error || 'İşlem başarısız', 'error');
+                }
+            }, 'json');
+        });
+
+        // Dekont Yükleme
+        $(document).on('click', '.btn-dekont-yukle', function() {
+            const id = $(this).data('id');
+            
+            Swal.fire({
+                title: 'Dekont Yükleme',
+                html: `
+                    <div class="p-3">
+                        <div class="upload-container border-2 border-dashed border-primary rounded-3 p-4 text-center mb-3" 
+                             style="background-color: #f8f9fa; cursor: pointer;"
+                             onclick="document.getElementById('dekontFileInput').click()">
+                            <i class="bx bx-cloud-upload display-4 text-primary mb-2"></i>
+                            <h6 class="fw-bold">Ödeme Dekontu Seçin</h6>
+                            <p class="text-muted small mb-0">PDF, JPG, JPEG veya PNG (Maks 5MB)</p>
+                            <p class="text-info small mt-2 mb-0"><i class="bx bx-info-circle me-1"></i> Belge yüklendiğinde durum otomatik olarak <b>"Ödendi"</b> yapılacaktır.</p>
+                            <div id="file-info" class="mt-3 d-none">
+                                <span class="badge bg-success px-3 py-2 rounded-pill">
+                                    <i class="bx bx-file me-1"></i> <span id="file-name">dosya.pdf</span>
+                                </span>
+                            </div>
+                        </div>
+                        <input type="file" id="dekontFileInput" class="d-none" accept=".pdf,.jpg,.jpeg,.png" onchange="
+                            if(this.files[0]) {
+                                document.getElementById('file-info').classList.remove('d-none');
+                                document.getElementById('file-name').innerText = this.files[0].name;
+                            }
+                        ">
+                    </div>
+                `,
+                showCancelButton: true,
+                confirmButtonText: '<i class="bx bx-upload me-1"></i> Yükle',
+                cancelButtonText: 'Vazgeç',
+                confirmButtonColor: '#34c38f',
+                cancelButtonColor: '#f46a6a',
+                customClass: {
+                    confirmButton: 'btn btn-success px-4 rounded-pill',
+                    cancelButton: 'btn btn-light px-4 rounded-pill'
+                },
+                buttonsStyling: false,
+                preConfirm: () => {
+                    const file = document.getElementById('dekontFileInput').files[0];
+                    if (!file) {
+                        Swal.showValidationMessage('Lütfen bir dosya seçin');
+                        return false;
+                    }
+                    return file;
+                }
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const formData = new FormData();
+                    formData.append('action', 'upload_dekont');
+                    formData.append('id', id);
+                    formData.append('dekont', result.value);
+                    formData.append('personel_id', 1);
+
+                    // Yükleme bildirimi
+                    Swal.fire({
+                        title: 'Yükleniyor...',
+                        text: 'Lütfen bekleyin, dekont sisteme kaydediliyor.',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+
+                    $.ajax({
+                        url: 'views/personel/ajax/kesinti-islemleri.php',
+                        type: 'POST',
+                        data: formData,
+                        processData: false,
+                        contentType: false,
+                        dataType: 'json',
+                        success: function(response) {
+                            if (response.success) {
+                                Swal.fire({
+                                    icon: 'success',
+                                    title: 'Başarılı',
+                                    text: 'Dekont yüklendi ve ödeme durumu "Ödendi" olarak güncellendi.',
+                                    timer: 2000
+                                }).then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire('Hata', response.error || 'Yükleme başarısız', 'error');
+                            }
+                        },
+                        error: function() {
+                            Swal.fire('Hata', 'Sunucu hatası', 'error');
+                        }
+                    });
+                }
+            });
+        });
+
+        // Dekont Sil
+        $(document).on('click', '.btn-dekont-sil', function() {
+            const id = $(this).data('id');
+            
+            Swal.fire({
+                title: 'Emin misiniz?',
+                text: "Yüklenmiş olan dekont dosyası kalıcı olarak silinecektir!",
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#f46a6a',
+                cancelButtonColor: '#74788d',
+                confirmButtonText: 'Evet, Sil!',
+                cancelButtonText: 'Vazgeç'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    $.post('views/personel/ajax/kesinti-islemleri.php', {
+                        action: 'delete_dekont',
+                        id: id,
+                        personel_id: 1
+                    }, function(response) {
+                        if (response.success) {
+                            Swal.fire({
+                                icon: 'success',
+                                title: 'Silindi',
+                                text: 'Dekont dosyası başarıyla silindi.',
+                                timer: 1500
+                            }).then(() => {
+                                location.reload();
+                            });
+                        } else {
+                            Swal.fire('Hata', response.error || 'Silme işlemi başarısız', 'error');
+                        }
+                    }, 'json');
+                }
+            });
+        });
     });
 </script>

@@ -279,6 +279,27 @@ $chartBorderColors = array_map(function ($c) {
     .accordion-button.collapsed~.compare-summary-badges {
         display: flex !important;
     }
+
+    .sortable-header {
+        cursor: pointer;
+        user-select: none;
+        transition: background-color 0.2s;
+    }
+
+    .sortable-header:hover {
+        background-color: rgba(81, 86, 190, 0.1) !important;
+    }
+
+    .sortable-header i {
+        font-size: 14px;
+        margin-left: 4px;
+        opacity: 0.5;
+    }
+
+    .sortable-header.active-sort i {
+        opacity: 1;
+        color: #5156be;
+    }
 </style>
 
 <?php
@@ -463,24 +484,25 @@ $changeIcon = $totalChange > 0 ? 'bx-trending-up' : ($totalChange < 0 ? 'bx-tren
                 <thead>
                     <tr>
                         <th style="min-width: 50px;">#</th>
+                        <?php $colIdx = 1; ?>
                         <?php if ($compareMode === 'personel'): ?>
-                            <th style="min-width: 180px;">Personel</th>
-                            <th style="min-width: 120px;">Ekip</th>
-                            <th style="min-width: 100px;">Bölge</th>
+                            <th class="sortable-header" onclick="sortCompareTable(<?= $colIdx++ ?>)" style="min-width: 180px;">Personel <i class="bx bx-sort"></i></th>
+                            <th class="sortable-header" onclick="sortCompareTable(<?= $colIdx++ ?>)" style="min-width: 120px;">Ekip <i class="bx bx-sort"></i></th>
+                            <th class="sortable-header" onclick="sortCompareTable(<?= $colIdx++ ?>)" style="min-width: 100px;">Bölge <i class="bx bx-sort"></i></th>
                         <?php elseif ($compareMode === 'bolge'): ?>
-                            <th style="min-width: 180px;">Bölge</th>
+                            <th class="sortable-header" onclick="sortCompareTable(<?= $colIdx++ ?>)" style="min-width: 180px;">Bölge <i class="bx bx-sort"></i></th>
                         <?php else: ?>
-                            <th style="min-width: 180px;">Metrik</th>
+                            <th class="sortable-header" onclick="sortCompareTable(<?= $colIdx++ ?>)" style="min-width: 180px;">Metrik <i class="bx bx-sort"></i></th>
                         <?php endif; ?>
 
                         <?php foreach ($periodLabels as $label): ?>
-                            <th class="period-col" style="min-width: 110px;">
-                                <?= $label ?>
+                            <th class="period-col sortable-header" onclick="sortCompareTable(<?= $colIdx++ ?>)" style="min-width: 110px;">
+                                <?= $label ?> <i class="bx bx-sort"></i>
                             </th>
                         <?php endforeach; ?>
 
-                        <th class="period-col" style="min-width: 90px;">Ortalama</th>
-                        <th class="trend-col" style="min-width: 90px;">Trend</th>
+                        <th class="period-col sortable-header" onclick="sortCompareTable(<?= $colIdx++ ?>)" style="min-width: 90px;">Ortalama <i class="bx bx-sort"></i></th>
+                        <th class="trend-col sortable-header" onclick="sortCompareTable(<?= $colIdx++ ?>)" style="min-width: 90px;">Trend <i class="bx bx-sort"></i></th>
                     </tr>
                 </thead>
                 <tbody>
@@ -998,6 +1020,74 @@ $changeIcon = $totalChange > 0 ? 'bx-trending-up' : ($totalChange < 0 ? 'bx-tren
             if (typeof window.loadComparisonReport === 'function') {
                 window.loadComparisonReport(mode);
             }
+        };
+
+        // Table Sorting Function
+        window.sortCompareTable = function(colIndex) {
+            const table = document.getElementById('compareTable');
+            if (!table) return;
+            
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            const header = table.querySelectorAll('thead th')[colIndex];
+            
+            const currentOrder = header.getAttribute('data-sort-order') || 'none';
+            let newOrder = 'desc'; // Default to descending for numbers
+            
+            if (currentOrder === 'desc') newOrder = 'asc';
+            else if (currentOrder === 'asc') newOrder = 'desc';
+
+            rows.sort((a, b) => {
+                let cellA = a.cells[colIndex];
+                let cellB = b.cells[colIndex];
+                
+                let valA = cellA.textContent.trim();
+                let valB = cellB.textContent.trim();
+                
+                // If cell has a badge (like Trend or Ekip), use badge text
+                const badgeA = cellA.querySelector('.badge');
+                const badgeB = cellB.querySelector('.badge');
+                if (badgeA) valA = badgeA.textContent.trim();
+                if (badgeB) valB = badgeB.textContent.trim();
+
+                // Clean numeric values (remove dots for thousands, replace comma with dot for decimals, remove % for trend)
+                let cleanA = valA.replace(/\./g, '').replace(/,/g, '.').replace(/%/g, '').replace(/\+/g, '');
+                let cleanB = valB.replace(/\./g, '').replace(/,/g, '.').replace(/%/g, '').replace(/\+/g, '');
+                
+                let numA = parseFloat(cleanA);
+                let numB = parseFloat(cleanB);
+                
+                if (!isNaN(numA) && !isNaN(numB)) {
+                    return newOrder === 'asc' ? numA - numB : numB - numA;
+                }
+                
+                // Alphanumeric sort
+                return newOrder === 'asc' 
+                    ? valA.localeCompare(valB, 'tr') 
+                    : valB.localeCompare(valA, 'tr');
+            });
+            
+            // Update UI
+            table.querySelectorAll('thead th').forEach((th, idx) => {
+                if (idx === colIndex) {
+                    th.setAttribute('data-sort-order', newOrder);
+                    th.classList.add('active-sort');
+                    const icon = th.querySelector('i');
+                    if (icon) icon.className = newOrder === 'asc' ? 'bx bx-sort-up' : 'bx bx-sort-down';
+                } else {
+                    th.removeAttribute('data-sort-order');
+                    th.classList.remove('active-sort');
+                    const icon = th.querySelector('i');
+                    if (icon) icon.className = 'bx bx-sort';
+                }
+            });
+            
+            // Re-append rows and update serial numbers
+            rows.forEach((row, idx) => {
+                tbody.appendChild(row);
+                // Update # column if it exists
+                if (row.cells[0]) row.cells[0].textContent = idx + 1;
+            });
         };
 
     })();

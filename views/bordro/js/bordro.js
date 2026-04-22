@@ -363,11 +363,29 @@ $(document).ready(function () {
     const isChecked = $(this).prop("checked");
     const table = $("#bordroTable").DataTable();
     // Tüm sayfalardaki checkboxları seç/kaldır
-    table.$(".personel-check").prop("checked", isChecked);
+    const $checkboxes = table.$(".personel-check");
+    $checkboxes.prop("checked", isChecked);
+    
+    // Satır renklerini güncelle
+    $checkboxes.each(function() {
+        if (isChecked) {
+            $(this).closest("tr").addClass("selected-row");
+        } else {
+            $(this).closest("tr").removeClass("selected-row");
+        }
+    });
+
     updateButtonStates();
   });
 
   $(document).on("change", ".personel-check", function () {
+    // Satır rengini güncelle
+    if ($(this).is(":checked")) {
+        $(this).closest("tr").addClass("selected-row");
+    } else {
+        $(this).closest("tr").removeClass("selected-row");
+    }
+
     updateButtonStates();
     const table = $("#bordroTable").DataTable();
     const allCheckboxes = table.$(".personel-check");
@@ -844,7 +862,7 @@ $(document).ready(function () {
     }
   });
 
-  // Excel Export (Yemek Bedeli Listesi)
+  // Excel Export (Yemek/Eş Yardımı Listesi)
   $("#btnExportExcelYemek").on("click", function () {
     const donemId = $("#donemSelect").val();
     if (donemId) {

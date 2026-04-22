@@ -578,7 +578,9 @@ if ($id > 0) {
     function initPlugins(container) {
         if ($(container).find(".select2:not(#topbar-personel-search)").length > 0) {
             $(container).find(".select2:not(#topbar-personel-search)").each(function () {
+                var tags = $(this).data('tags') || false;
                 $(this).select2({
+                    tags: tags,
                     dropdownParent: $(this).closest('.modal').length ? $(this).closest('.modal') : $(document.body)
                 });
             });
@@ -644,11 +646,8 @@ if ($id > 0) {
             });
         }
 
-        if (typeof feather !== 'undefined') {
+        if (typeof feather !== "undefined") {
             feather.replace();
-            // More aggressive replace for AJAX content
-            setTimeout(function () { feather.replace(); }, 50);
-            setTimeout(function () { feather.replace(); }, 300);
         }
     }
 

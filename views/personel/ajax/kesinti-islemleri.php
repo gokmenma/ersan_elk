@@ -16,7 +16,9 @@ use App\Helper\Date;
 $action = $_REQUEST['action'] ?? '';
 $personel_id = $_REQUEST['personel_id'] ?? 0;
 
-if (!$personel_id) {
+$no_personel_id_actions = ['update_odeme_durumu', 'upload_dekont', 'get_icra_kesintileri', 'delete_dekont'];
+
+if (!$personel_id && !in_array($action, $no_personel_id_actions)) {
     echo json_encode(['error' => 'Personel ID missing']);
     exit;
 }
@@ -396,6 +398,86 @@ try {
             $writer = new \PhpOffice\PhpSpreadsheet\Writer\Xlsx($spreadsheet);
             $writer->save('php://output');
             exit;
+
+        case 'update_odeme_durumu':
+            $id = intval($_POST['id'] ?? 0);
+            $durum = $_POST['odeme_durumu'] ?? 'odenmedi';
+            if (!$id) {
+                echo json_encode(['error' => 'Kesinti ID gerekli']);
+                break;
+            }
+            $result = $kesintiModel->updateKesinti($id, ['odeme_durumu' => $durum]);
+            echo json_encode(['success' => $result]);
+            break;
+
+        case 'upload_dekont':
+            $id = intval($_POST['id'] ?? 0);
+            if (!$id) {
+                echo json_encode(['error' => 'Kesinti ID gerekli']);
+                break;
+            }
+
+            if (!isset($_FILES['dekont']) || $_FILES['dekont']['error'] !== UPLOAD_ERR_OK) {
+                echo json_encode(['error' => 'Dosya yüklenemedi']);
+                break;
+            }
+
+            $uploadDir = dirname(__DIR__, 3) . '/uploads/kesintiler/';
+            if (!is_dir($uploadDir)) {
+                mkdir($uploadDir, 0777, true);
+            }
+
+            $originalName = $_FILES['dekont']['name'];
+            $fileExtension = pathinfo($originalName, PATHINFO_EXTENSION);
+            $fileName = 'dekont_' . $id . '_' . time() . '.' . $fileExtension;
+            $targetFile = $uploadDir . $fileName;
+
+            if (move_uploaded_file($_FILES['dekont']['tmp_name'], $targetFile)) {
+                // Eski dosyayı sil
+                $kesinti = $kesintiModel->find($id);
+                if ($kesinti && !empty($kesinti->dekont_dosyasi)) {
+                    $oldFile = $uploadDir . $kesinti->dekont_dosyasi;
+                    if (file_exists($oldFile)) {
+                        unlink($oldFile);
+                    }
+                }
+
+                // Belge yüklendiğinde otomatik olarak 'odendi' yapıyoruz
+                $result = $kesintiModel->updateKesinti($id, [
+                    'dekont_dosyasi' => $fileName,
+                    'odeme_durumu' => 'odendi'
+                ]);
+                echo json_encode([
+                    'success' => $result, 
+                    'fileName' => $fileName, 
+                    'originalName' => $originalName
+                ]);
+            } else {
+                echo json_encode(['error' => 'Dosya taşıma hatası']);
+            }
+            break;
+
+        case 'delete_dekont':
+            $id = intval($_POST['id'] ?? 0);
+            if (!$id) {
+                echo json_encode(['error' => 'Kesinti ID gerekli']);
+                break;
+            }
+
+            $kesinti = $kesintiModel->find($id);
+            if ($kesinti && !empty($kesinti->dekont_dosyasi)) {
+                $uploadDir = dirname(__DIR__, 3) . '/uploads/kesintiler/';
+                $file = $uploadDir . $kesinti->dekont_dosyasi;
+                if (file_exists($file)) {
+                    unlink($file);
+                }
+                
+                $result = $kesintiModel->updateKesinti($id, ['dekont_dosyasi' => null]);
+                echo json_encode(['success' => $result]);
+            } else {
+                echo json_encode(['error' => 'Silinecek dosya bulunamadı']);
+            }
+            break;
 
         default:
             echo json_encode(['error' => 'Invalid action']);
