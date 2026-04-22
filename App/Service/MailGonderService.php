@@ -58,7 +58,7 @@ class MailGonderService
             $mail->Username = $allSettings['smtp_kullanici'] ?? $_ENV['SMTP_USER'];
 
             // Hem smtp_sifre hem de smtp_sifre_yeni kontrolü
-            $mail->Password = $allSettings['smtp_sifre_yeni'] ?? $allSettings['smtp_sifre'] ?? $_ENV['SMTP_PASSWORD'];
+            $mail->Password = $allSettings['smtp_sifre_yeni'] ?? $allSettings['smtp_sifre'] ?? $_ENV['SMTP_PASS'];
 
             $secureType = $allSettings['smtp_guvenlik'] ?? 'tls';
             $port = $allSettings['smtp_port'] ?? $_ENV['SMTP_PORT'] ?? 587;

@@ -85,11 +85,11 @@ $backupFile = $backupDir . DIRECTORY_SEPARATOR . "backup_{$dbName}_{$date}.sql";
 if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
     $mysqldumpPath = 'C:\xampp\mysql\bin\mysqldump.exe';
 } else {
-    $mysqldumpPath = 'mysqldump'; // Linux/Unix için direkt komut adı
+    $mysqldumpPath = '/usr/local/bin/mysqldump'; // Linux/Unix için direkt komut adı
 }
 if (!file_exists($mysqldumpPath)) {
     logMessage("WARNING: Default path $mysqldumpPath not found. Trying 'mysqldump' from PATH.");
-    $mysqldumpPath = 'mysqldump';
+    $mysqldumpPath = '/usr/local/bin/mysqldump';
 }
 
 // Prepare command
