@@ -551,6 +551,10 @@ $currentTabName = $tabNames[$activeTab] ?? 'Rapor';
                 <i class="bx bx-show me-1"></i> Günlük Topl. Göster
             </button>
         <?php endif; ?>
+        <button type="button" class="btn btn-outline-warning btn-sm d-flex align-items-center gap-1"
+            id="btnToggleRegionTotals">
+            <i class="bx bx-list-check me-1"></i> Bölge Topl. Göster
+        </button>
         <?php if (\App\Service\Gate::allows('is_takip_ayarlar')): ?>
             <button type="button"
                 class="btn btn-outline-secondary btn-sm btn-tab-settings d-flex align-items-center justify-content-center"
@@ -1011,6 +1015,16 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
 
             foreach ($tableData as $item):
                 $regionTotal = 0;
+                $regionDailyTotals = array_fill_keys($reportDates, 0);
+                $regionDetailedDailyTotals = [];
+                if ($hasSubCols) {
+                    foreach ($reportDates as $date) {
+                        foreach ($workTypeCols as $wt) {
+                            $regionDetailedDailyTotals[$date][$wt['name']] = 0;
+                        }
+                    }
+                }
+
                 foreach ($item['teams'] as $tData) {
                     $pId = $tData['pId'];
                     $tId = $tData['tId'];
@@ -1117,6 +1131,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                                 }
 
                                 $dailyTotals[$date] += $val;
+                                $regionDailyTotals[$date] += $val;
                                 $isSunday = in_array($date, $sundayDates);
                                 $currentDateFormatted = date('d.m.Y', strtotime($date));
                                 ?>
@@ -1215,9 +1230,46 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                             <?php $firstRow = false; ?>
                         <?php endif; ?>
                     </tr>
-                <?php endforeach;
-            endforeach;
-            ?>
+                <?php endforeach; ?>
+                <!-- Bölge Toplam Satırı -->
+                <tr class="region-total-row table-light fw-bold" data-region-id="<?= $regionId ?>" style="display: none;">
+                    <td class="sticky-col-1" style="background-color: #f8f9fa !important;"><?= $sira - 1 ?>.T</td>
+                    <?php if ($activeTab !== 'kacakkontrol'): ?>
+                        <td class="sticky-col-2" style="background-color: #f8f9fa !important;">TOPLAM</td>
+                    <?php endif; ?>
+                    <td class="<?= ($activeTab === 'kacakkontrol') ? 'kacakkontrol-name-col' : 'sticky-col-3' ?> text-end" style="background-color: #f8f9fa !important; font-size: 11px;">
+                        <?= $item['region'] ?> BÖLGE TOPLAMI
+                    </td>
+
+                    <?php if ($activeTab === 'okuma' || $activeTab === 'kacakkontrol'): ?>
+                        <?php foreach ($reportDates as $date): ?>
+                            <td class="<?= in_array($date, $sundayDates) ? 'sunday-cell' : '' ?>"><?= $regionDailyTotals[$date] ?: '' ?></td>
+                        <?php endforeach; ?>
+                    <?php else: ?>
+                        <?php foreach ($reportDates as $date): ?>
+                            <?php foreach ($workTypeCols as $wt): ?>
+                                <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> <?= in_array($date, $sundayDates) ? 'sunday-cell' : '' ?>"><?= $regionDetailedDailyTotals[$date][$wt['name']] ?: '' ?></td>
+                            <?php endforeach; ?>
+                            <?php if (in_array($activeTab, ['kesme', 'sokme_takma', 'muhurleme'])): ?>
+                                <td class="day-total-col table-light day-separator <?= in_array($date, $sundayDates) ? 'sunday-cell' : '' ?>" style="display: none;"><?= $regionDailyTotals[$date] ?: '' ?></td>
+                            <?php endif; ?>
+                        <?php endforeach; ?>
+                        <?php foreach ($workTypeCols as $wt): 
+                             $wtRegTotal = 0;
+                             foreach($reportDates as $date) $wtRegTotal += $regionDetailedDailyTotals[$date][$wt['name']];
+                        ?>
+                            <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> table-info"><?= $wtRegTotal ?: '' ?></td>
+                        <?php endforeach; ?>
+                    <?php endif; ?>
+                    <td class="table-light"><?= $regionTotal ?: '' ?></td>
+                    <?php if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma', 'kacakkontrol'])): ?>
+                        <td></td>
+                        <td></td>
+                    <?php endif; ?>
+                    <td class="table-light"><?= $regionTotal ?: '' ?></td>
+                    <td></td>
+                </tr>
+            <?php endforeach; ?>
         </tbody>
         <tfoot class="table-light fw-bold">
             <?php if ($hasSubCols): ?>
@@ -1499,7 +1551,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
         const rows = table.tBodies[0].rows;
         for (let r = 0; r < rows.length; r++) {
             const row = rows[r];
-            if (row.style.display === 'none') continue;
+            if (row.style.display === 'none' || row.classList.contains('region-total-row')) continue;
 
             let rowTotal = 0;
             const rowActTotals = {};
@@ -1639,6 +1691,24 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
         });
     }
 
+    $(document).off('click', '#btnToggleRegionTotals').on('click', '#btnToggleRegionTotals', function () {
+        const $btn = $(this);
+        const activeTab = '<?= $activeTab ?>';
+        const isTurningOn = !$btn.hasClass('active');
+
+        if (isTurningOn) {
+            $btn.addClass('active btn-warning').removeClass('btn-outline-warning').html('<i class="bx bx-list-check me-1"></i> Bölge Topl. Gizle');
+            $('.region-total-row').show();
+            localStorage.setItem('show_region_totals_' + activeTab, '1');
+        } else {
+            $btn.removeClass('active btn-warning').addClass('btn-outline-warning').html('<i class="bx bx-list-check me-1"></i> Bölge Topl. Göster');
+            $('.region-total-row').hide();
+            localStorage.setItem('show_region_totals_' + activeTab, '0');
+        }
+        
+        if (typeof adjustTableHeight === 'function') adjustTableHeight();
+    });
+
     $(document).off('click', '#btnToggleDailyTotals').on('click', '#btnToggleDailyTotals', function () {
         const $btn = $(this);
         const activeTab = '<?= $activeTab ?>';
@@ -1663,6 +1733,10 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
         const activeTab = '<?= $activeTab ?>';
         if (localStorage.getItem('show_daily_totals_' + activeTab) === '1') {
             $('#btnToggleDailyTotals').trigger('click');
+        }
+        if (localStorage.getItem('show_region_totals_' + activeTab) === '1') {
+            $('#btnToggleRegionTotals').addClass('active btn-warning').removeClass('btn-outline-warning').html('<i class="bx bx-list-check me-1"></i> Bölge Topl. Gizle');
+            $('.region-total-row').show();
         }
     });
 </script>

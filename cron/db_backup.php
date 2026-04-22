@@ -8,6 +8,12 @@
 error_reporting(E_ALL);
 ini_set('display_errors', 1);
 
+// Gerekli dosyaları yükle
+require_once dirname(__DIR__) . '/Autoloader.php';
+require_once dirname(__DIR__) . '/vendor/autoload.php';
+
+use App\Service\MailGonderService;
+
 // Define paths
 $baseDir = dirname(__DIR__);
 $backupDir = $baseDir . DIRECTORY_SEPARATOR . 'backups';
@@ -27,11 +33,14 @@ if (!is_dir($backupDir)) {
     }
 }
 
+$currentLogEntries = ""; // To capture logs for email
+
 function logMessage($message) {
-    global $logFile;
+    global $logFile, $currentLogEntries;
     $timestamp = date('Y-m-d H:i:s');
     $logLine = "[$timestamp] $message" . PHP_EOL;
     file_put_contents($logFile, $logLine, FILE_APPEND);
+    $currentLogEntries .= $logLine; // Store for email
     // Also echo to console for batch file capture
     echo $logLine;
 }
@@ -73,7 +82,11 @@ $date = date('Y-m-d_H-i-s');
 $backupFile = $backupDir . DIRECTORY_SEPARATOR . "backup_{$dbName}_{$date}.sql";
 
 // 3. Command for mysqldump
-$mysqldumpPath = 'C:\xampp\mysql\bin\mysqldump.exe';
+if (strtoupper(substr(PHP_OS, 0, 3)) === 'WIN') {
+    $mysqldumpPath = 'C:\xampp\mysql\bin\mysqldump.exe';
+} else {
+    $mysqldumpPath = 'mysqldump'; // Linux/Unix için direkt komut adı
+}
 if (!file_exists($mysqldumpPath)) {
     logMessage("WARNING: Default path $mysqldumpPath not found. Trying 'mysqldump' from PATH.");
     $mysqldumpPath = 'mysqldump';
@@ -163,3 +176,25 @@ if ($files) {
 
 logMessage("Retention: Keep last $daysToKeep days. Deleted $countDeleted old files.");
 logMessage("--- BACKUP CRON FINISHED ---");
+
+// 6. Send Email Notification
+try {
+    $emailTo = 'beyzade83@gmail.com';
+    $subject = "DB Backup Report: " . $dbName . " (" . date('Y-m-d H:i') . ")";
+    
+    // HTML format for the log entries
+    $mailIcerik = "<h3>Database Backup Report</h3>";
+    $mailIcerik .= "<p><b>Database:</b> $dbName</p>";
+    $mailIcerik .= "<p><b>Date:</b> " . date('d.m.Y H:i:s') . "</p>";
+    $mailIcerik .= "<hr>";
+    $mailIcerik .= "<pre style='background: #f4f4f4; padding: 10px; border: 1px solid #ddd;'>" . $currentLogEntries . "</pre>";
+
+    MailGonderService::gonder(
+        [$emailTo],
+        $subject,
+        $mailIcerik
+    );
+    echo "Notification email sent via MailGonderService to $emailTo\n";
+} catch (Exception $e) {
+    echo "ERROR: Failed to send notification email: " . $e->getMessage() . "\n";
+}
