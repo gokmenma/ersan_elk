@@ -21,3 +21,10 @@
 [2026-04-01 07:51:40] SUCCESS: Backup compressed to ZIP (5709.01 KB). Save ratio: 89.2%
 [2026-04-01 07:51:40] Retention: Keep last 7 days. Deleted 0 old files.
 [2026-04-01 07:51:40] --- BACKUP CRON FINISHED ---
+[2026-04-22 15:08:02] --- BACKUP CRON STARTED ---
+[2026-04-22 15:08:02] Executing backup for database: ersantrc_personel
+[2026-04-22 15:08:02] Target file: C:\xampp\htdocs\ersan_elk\backups\backup_ersantrc_personel_2026-04-22_15-08-02.sql
+[2026-04-22 15:08:16] SQL Dump success (103800.89 KB). Compressing...
+[2026-04-22 15:08:21] SUCCESS: Backup compressed to ZIP (11461.7 KB). Save ratio: 89%
+[2026-04-22 15:08:21] Retention: Keep last 7 days. Deleted 0 old files.
+[2026-04-22 15:08:21] --- BACKUP CRON FINISHED ---

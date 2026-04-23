@@ -2837,14 +2837,19 @@ padding-bottom:  10px !important;
                 // Period Totals for Region
                 donemler.forEach(function (donem, idx) {
                     const rTotals = regionTotals.donemler[donem];
-                    const rOran = rTotals.abone > 0 ? ((rTotals.okunan / rTotals.abone) * 100).toFixed(1) : 0;
                     
                     if (_visibleColumns.abone)
                         html += `<td class="ogr-region-header text-end period-start" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.abone.toLocaleString('tr-TR')}</td>`;
                     if (_visibleColumns.okunan)
                         html += `<td class="ogr-region-header text-end ${_visibleColumns.abone ? '' : 'period-start'}" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.okunan.toLocaleString('tr-TR')}</td>`;
-                    if (_visibleColumns.oran)
-                        html += `<td class="ogr-region-header text-end period-end ${_visibleColumns.abone || _visibleColumns.okunan ? '' : 'period-start'}" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;"></td>`;
+                    if (_visibleColumns.oran) {
+                        const rOranRaw = rTotals.abone > 0 ? (rTotals.okunan / rTotals.abone) * 100 : 0;
+                        const rOran = rOranRaw.toFixed(1);
+                        let rOranClass = 'text-danger';
+                        if (rOranRaw >= 70) rOranClass = 'text-success';
+                        else if (rOranRaw >= 50) rOranClass = 'text-warning';
+                        html += `<td class="ogr-region-header text-end period-end ${_visibleColumns.abone || _visibleColumns.okunan ? '' : 'period-start'} ${rOranClass}" style="background: ${regionColor.header}; font-weight: 800;">${rOran}%</td>`;
+                    }
                 });
                 html += '</tr>';
 
@@ -2898,8 +2903,14 @@ padding-bottom:  10px !important;
                     html += `<th class="period-start">${totals.abone.toLocaleString('tr-TR')}</th>`;
                 if (_visibleColumns.okunan)
                     html += `<th class="${_visibleColumns.abone ? '' : 'period-start'}">${totals.okunan.toLocaleString('tr-TR')}</th>`;
-                if (_visibleColumns.oran)
-                    html += `<th class="period-end ${_visibleColumns.abone || _visibleColumns.okunan ? '' : 'period-start'}"></th>`; // Oranları toplama
+                if (_visibleColumns.oran) {
+                    const rawOran = totals.abone > 0 ? (totals.okunan / totals.abone) * 100 : 0;
+                    const totalOran = rawOran.toFixed(1);
+                    let totalOranClass = 'oran-low';
+                    if (rawOran >= 70) totalOranClass = 'oran-high';
+                    else if (rawOran >= 50) totalOranClass = 'oran-medium';
+                    html += `<th class="period-end ${_visibleColumns.abone || _visibleColumns.okunan ? '' : 'period-start'} ${totalOranClass} text-center">${totalOran}%</th>`;
+                }
             });
             html += '</tr>';
             html += '</tfoot>';

@@ -1341,7 +1341,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             <div class="modal-body p-0">
                 <div class="p-3 bg-danger-subtle text-danger border-bottom border-danger-subtle">
                     <p class="mb-0 fs-13 fw-medium">
-                        <i class="ri-information-fill me-1"></i> Bu liste, <strong>Evde Yok</strong> sayısının <strong>Sayaç Normal</strong> sayısına oranı <strong>%80 ve üzeri</strong> (Yüksek Risk) veya <strong>%60 ile %80 arası</strong> (Risk) olan personelleri göstermektedir.
+                        <i class="ri-information-fill me-1"></i> Bu liste, <strong>Evde Yok + Kullanılmıyor</strong> sayısının <strong>Sayaç Normal</strong> sayısına oranı <strong>%80 ve üzeri</strong> (Yüksek Risk) veya <strong>%60 ile %80 arası</strong> (Risk) olan personelleri göstermektedir.
                     </p>
                 </div>
                 <div class="table-responsive">
@@ -1351,7 +1351,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 <th scope="col">Personel</th>
                                 <th scope="col">Ekip</th>
                                 <th scope="col" class="text-center">Sayaç Normal</th>
-                                <th scope="col" class="text-center">Evde Yok</th>
+                                <th scope="col" class="text-center">Evde Yok + Kullanılmıyor</th>
                                 <th scope="col" class="text-center">Oran</th>
                                 <th scope="col" class="text-center">Durum</th>
                             </tr>
@@ -1955,7 +1955,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 let eName = p.ekip_adi || '-';
 
                                 tickerHtml += `<span class="ticker-item">
-                                    ${tickerEmoji} ${pName} (${eName}): Evde Yok Oranı %${ratio} (${p.evde_yok_sayisi}/${p.normal_sayisi})
+                                    ${tickerEmoji} ${pName} (${eName}): Risk Oranı %${ratio} (${p.evde_yok_sayisi}/${p.normal_sayisi})
                                 </span>`;
 
                                 modalHtml += `<tr>

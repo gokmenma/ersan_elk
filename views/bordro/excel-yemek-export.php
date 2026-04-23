@@ -59,13 +59,14 @@ try {
         // Ortak hesaplama değerlerini al
         $hesap = $BordroPersonel->hesaplaOrtakGosterimDegerleri($p, $donem, floatval($asgariUcretNet));
         
-        $toplamYemek = 0;
+        $nakitYemek = 0;
+        $sodexoYemek = 0;
         $esYardimi = 0;
         $fiiliGun = 25; // Varsayılan çalışma günü
         
-        // 1. Maaşa Dahil Yemek Yardımı (mealAllowanceDeduction banka üzerinden ödeniyor)
+        // 1. Maaşa Dahil Yemek Yardımı (Nakit/Banka)
         if (isset($hesap['mealAllowanceDeduction']) && $hesap['mealAllowanceDeduction'] > 0) {
-            $toplamYemek += $hesap['mealAllowanceDeduction'];
+            $nakitYemek = $hesap['mealAllowanceDeduction'];
             
             // Eğer fiili çalışma günü girilmişse onu al (hesaplama detayından geliyor)
             if (isset($p->hd_fiili_calisma_gunu) && intval($p->hd_fiili_calisma_gunu) > 0) {
@@ -75,10 +76,10 @@ try {
         
         // 2. Sodexo / Yemek Kartı Ödemeleri
         if (isset($hesap['sodexoOdemesi']) && $hesap['sodexoOdemesi'] > 0) {
-            $toplamYemek += $hesap['sodexoOdemesi'];
+            $sodexoYemek = $hesap['sodexoOdemesi'];
             
             // Eğer Maaşa Dahil değilse ama Sodexo varsa, fiili gün olarak puantajdaki çalışma gününü baz alabiliriz
-            if (!isset($p->hd_fiili_calisma_gunu) || intval($p->hd_fiili_calisma_gunu) <= 0) {
+            if ($nakitYemek <= 0) {
                 if (isset($hesap['calismaGunu']) && $hesap['calismaGunu'] > 0) {
                     $fiiliGun = $hesap['calismaGunu'];
                 }
@@ -90,17 +91,18 @@ try {
             $esYardimi = $hesap['spouseAllowanceDeduction'];
         }
 
-        // Eğer herhangi bir yemek bedeli veya eş yardımı varsa listeye ekle
-        if ($toplamYemek > 0 || $esYardimi > 0) {
-            $gunlukUcret = $toplamYemek > 0 ? ($toplamYemek / $fiiliGun) : 0;
+        // Eğer herhangi bir hakediş varsa listeye ekle
+        if ($nakitYemek > 0 || $sodexoYemek > 0 || $esYardimi > 0) {
+            $gunlukNakit = $nakitYemek > 0 ? ($nakitYemek / $fiiliGun) : 0;
             $yemekVerileri[] = [
                 'tc_kimlik' => $p->tc_kimlik_no ?? '-',
                 'adi_soyadi' => $p->adi_soyadi ?? '-',
                 'fiili_gun' => $fiiliGun,
-                'gunluk_ucret' => round($gunlukUcret, 2),
-                'toplam_yemek' => $toplamYemek,
+                'gunluk_nakit' => round($gunlukNakit, 2),
+                'nakit_yemek' => $nakitYemek,
+                'sodexo_yemek' => $sodexoYemek,
                 'es_yardimi' => $esYardimi,
-                'genel_toplam' => $toplamYemek + $esYardimi
+                'genel_toplam' => $nakitYemek + $sodexoYemek + $esYardimi
             ];
         }
     }
@@ -118,11 +120,12 @@ try {
     $basliklar = [
         'A' => 'TC KİMLİK NO',
         'B' => 'ADI SOYADI',
-        'C' => 'FİİLİ ÇALIŞMA GÜN',
-        'D' => 'YEMEK TUTARI GÜNLÜK ÜCRETİ',
-        'E' => 'TOPLAM YEMEK TUTARI',
-        'F' => 'EŞ YARDIMI',
-        'G' => 'GENEL TOPLAM'
+        'C' => 'FİİLİ GÜN',
+        'D' => 'GÜNLÜK YEMEK (NAKİT)',
+        'E' => 'YEMEK (NAKİT/BANKA)',
+        'F' => 'SODEXO / KART',
+        'G' => 'EŞ YARDIMI',
+        'H' => 'GENEL TOPLAM'
     ];
 
     // Başlık stili
@@ -154,7 +157,7 @@ try {
     }
 
     // Başlık satırına stil uygula
-    $sheet->getStyle('A1:G1')->applyFromArray($baslikStyle);
+    $sheet->getStyle('A1:H1')->applyFromArray($baslikStyle);
     $sheet->getRowDimension(1)->setRowHeight(25);
 
     // Veri stili
@@ -176,10 +179,11 @@ try {
         $sheet->setCellValueExplicit('A' . $satir, $veri['tc_kimlik'], DataType::TYPE_STRING);
         $sheet->setCellValue('B' . $satir, $veri['adi_soyadi']);
         $sheet->setCellValue('C' . $satir, $veri['fiili_gun']);
-        $sheet->setCellValue('D' . $satir, $veri['gunluk_ucret']);
-        $sheet->setCellValue('E' . $satir, $veri['toplam_yemek']);
-        $sheet->setCellValue('F' . $satir, $veri['es_yardimi']);
-        $sheet->setCellValue('G' . $satir, $veri['genel_toplam']);
+        $sheet->setCellValue('D' . $satir, $veri['gunluk_nakit']);
+        $sheet->setCellValue('E' . $satir, $veri['nakit_yemek']);
+        $sheet->setCellValue('F' . $satir, $veri['sodexo_yemek']);
+        $sheet->setCellValue('G' . $satir, $veri['es_yardimi']);
+        $sheet->setCellValue('H' . $satir, $veri['genel_toplam']);
 
         // Formatlar
         $sheet->getStyle('C' . $satir)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
@@ -187,8 +191,9 @@ try {
         $sheet->getStyle('E' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         $sheet->getStyle('F' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         $sheet->getStyle('G' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+        $sheet->getStyle('H' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         
-        $sheet->getStyle("A{$satir}:G{$satir}")->applyFromArray($dataStyle);
+        $sheet->getStyle("A{$satir}:H{$satir}")->applyFromArray($dataStyle);
         
         $satir++;
     }
@@ -199,11 +204,13 @@ try {
     $sheet->setCellValue('E' . $toplamSatir, '=SUM(E2:E' . ($satir - 1) . ')');
     $sheet->setCellValue('F' . $toplamSatir, '=SUM(F2:F' . ($satir - 1) . ')');
     $sheet->setCellValue('G' . $toplamSatir, '=SUM(G2:G' . ($satir - 1) . ')');
-    $sheet->getStyle('A' . $toplamSatir . ':G' . $toplamSatir)->getFont()->setBold(true);
+    $sheet->setCellValue('H' . $toplamSatir, '=SUM(H2:H' . ($satir - 1) . ')');
+    $sheet->getStyle('A' . $toplamSatir . ':H' . $toplamSatir)->getFont()->setBold(true);
     $sheet->getStyle('E' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
     $sheet->getStyle('F' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
     $sheet->getStyle('G' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
-    $sheet->getStyle('A' . $toplamSatir . ':G' . $toplamSatir)->applyFromArray([
+    $sheet->getStyle('H' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+    $sheet->getStyle('A' . $toplamSatir . ':H' . $toplamSatir)->applyFromArray([
         'fill' => [
             'fillType' => Fill::FILL_SOLID,
             'startColor' => ['rgb' => 'F3F4F6']
