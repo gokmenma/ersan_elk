@@ -76,6 +76,7 @@ $all_mobile_menus = [
     'personel'    => ['label' => 'Personel',    'icon' => 'group', 'color_bg' => 'bg-indigo-100 dark:bg-indigo-900/30', 'color_icon' => 'text-indigo-600', 'link_match' => 'personel/list'],
     'gorevler'    => ['label' => 'Görevler',    'icon' => 'task_alt', 'color_bg' => 'bg-green-100 dark:bg-green-900/30', 'color_icon' => 'text-green-600', 'link_match' => 'gorevler/list'],
     'talepler'    => ['label' => 'Talepler',    'icon' => 'assignment', 'color_bg' => 'bg-orange-100 dark:bg-orange-900/30', 'color_icon' => 'text-orange-600', 'link_match' => 'talepler/list'],
+    'evrak-takip' => ['label' => 'Evrak Takip', 'icon' => 'drafts', 'color_bg' => 'bg-sky-100 dark:bg-sky-900/30', 'color_icon' => 'text-sky-600', 'link_match' => 'evrak-takip/list'],
     'yardim'      => ['label' => 'Destek',      'icon' => 'support_agent', 'color_bg' => 'bg-indigo-100 dark:bg-indigo-900/30', 'color_icon' => 'text-indigo-600', 'link_match' => 'yardim/list'],
 ];
 
@@ -132,6 +133,7 @@ $page_titles = [
     'hesap-hareketleri' => 'Hesap Hareketleri',
     'talepler'    => 'Talepler',
     'raporlar'    => 'Raporlar',
+    'evrak-takip' => 'Evrak Takip',
     'yardim'      => 'Yardım ve Destek',
 ];
 
@@ -592,7 +594,7 @@ try {
 
     <?php 
     // Kendi özel (gradient vb.) başlık yapısı olan veya üst bar istenmeyen sayfalar
-    $no_header_pages = ['home', 'hesap-hareketleri', 'arac', 'gorevler', 'talepler', 'personel', 'personel-duzenle', 'yardim'];
+    $no_header_pages = ['home', 'hesap-hareketleri', 'arac', 'gorevler', 'talepler', 'personel', 'personel-duzenle', 'yardim', 'evrak-takip'];
     if (!in_array($page, $no_header_pages)): 
     ?>
     <!-- Sayfa Başlığı (Gradient) -->

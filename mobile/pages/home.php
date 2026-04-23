@@ -597,6 +597,13 @@ $activeAnnouncements = $duyuruModel->getAll(true);
                 </div>
                 <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-300 text-center leading-tight">Talepler</span>
             </a>
+            <a href="?p=evrak-takip"
+                class="flex flex-col items-center gap-1.5 p-2 rounded-xl active:scale-95 active:bg-slate-50 dark:active:bg-slate-700 transition-transform">
+                <div class="w-12 h-12 rounded-xl bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-sky-600 text-2xl">drafts</span>
+                </div>
+                <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-300 text-center leading-tight">Evrak Takip</span>
+            </a>
         </div>
     </div>
 
