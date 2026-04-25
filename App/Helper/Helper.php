@@ -193,6 +193,25 @@ class Helper
     }
 
 
+    public static function ayIsmi($ay)
+    {
+        $aylar = [
+            '01' => 'Ocak', '1' => 'Ocak',
+            '02' => 'Şubat', '2' => 'Şubat',
+            '03' => 'Mart', '3' => 'Mart',
+            '04' => 'Nisan', '4' => 'Nisan',
+            '05' => 'Mayıs', '5' => 'Mayıs',
+            '06' => 'Haziran', '6' => 'Haziran',
+            '07' => 'Temmuz', '7' => 'Temmuz',
+            '08' => 'Ağustos', '8' => 'Ağustos',
+            '09' => 'Eylül', '9' => 'Eylül',
+            '10' => 'Ekim',
+            '11' => 'Kasım',
+            '12' => 'Aralık'
+        ];
+        return $aylar[(string)$ay] ?? $ay;
+    }
+
     public static function getDonemAdi($donem)
     {
         if (empty($donem)) {

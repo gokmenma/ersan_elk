@@ -19,6 +19,11 @@ if ($show === 'approved') {
     $reports = $KmBildirim->getReportsByStatus('reddedildi');
     $title = "Reddedilen KM'ler";
     $subtitle = "İşleme alınmayan bildirimler";
+} elseif ($show === 'unreported') {
+    $today = date('Y-m-d');
+    $reports = $KmBildirim->getUnreported($today, 'sabah'); // Default to morning
+    $title = "Bildirim Yapmayanlar";
+    $subtitle = "Bugün KM bildirimi yapmayan personeller";
 } else {
     $reports = $KmBildirim->getPendingReports();
     $title = "KM Onayları";
@@ -57,17 +62,21 @@ $rejectedCount = count($KmBildirim->getReportsByStatus('reddedildi'));
 <div class="px-4 mt-[-36px] relative z-10 space-y-4 pb-6">
     <!-- Filter Tabs -->
     <div class="flex gap-2 p-1 bg-white dark:bg-card-dark rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-x-auto no-scrollbar">
-        <a href="?p=km-onaylari&show=pending" class="flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all <?= $show === 'pending' ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400' : 'text-slate-500' ?>">
-            <span class="material-symbols-outlined text-[18px]">schedule</span>
+        <a href="?p=km-onaylari&show=pending" class="shrink-0 py-2 px-3 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all <?= $show === 'pending' ? 'bg-cyan-100 text-cyan-700 dark:bg-cyan-900/30 dark:text-cyan-400' : 'text-slate-500' ?>">
+            <span class="material-symbols-outlined text-[16px]">schedule</span>
             Bekleyen
-            <?php if($pendingCount > 0): ?><span class="bg-cyan-500 text-white text-[10px] px-1.5 py-0.5 rounded-full ml-1"><?= $pendingCount ?></span><?php endif; ?>
+            <?php if($pendingCount > 0): ?><span class="bg-cyan-500 text-white text-[9px] px-1.5 py-0.5 rounded-full ml-1"><?= $pendingCount ?></span><?php endif; ?>
         </a>
-        <a href="?p=km-onaylari&show=approved" class="flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all <?= $show === 'approved' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'text-slate-500' ?>">
-            <span class="material-symbols-outlined text-[18px]">check_circle</span>
+        <a href="?p=km-onaylari&show=unreported" class="shrink-0 py-2 px-3 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all <?= $show === 'unreported' ? 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' : 'text-slate-500' ?>">
+            <span class="material-symbols-outlined text-[16px]">error</span>
+            Yapmayanlar
+        </a>
+        <a href="?p=km-onaylari&show=approved" class="shrink-0 py-2 px-3 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all <?= $show === 'approved' ? 'bg-green-100 text-green-700 dark:bg-green-900/30 dark:text-green-400' : 'text-slate-500' ?>">
+            <span class="material-symbols-outlined text-[16px]">check_circle</span>
             Onaylanan
         </a>
-        <a href="?p=km-onaylari&show=rejected" class="flex-1 py-2 px-3 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all <?= $show === 'rejected' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'text-slate-500' ?>">
-            <span class="material-symbols-outlined text-[18px]">cancel</span>
+        <a href="?p=km-onaylari&show=rejected" class="shrink-0 py-2 px-3 rounded-lg text-[11px] font-bold flex items-center justify-center gap-1 transition-all <?= $show === 'rejected' ? 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400' : 'text-slate-500' ?>">
+            <span class="material-symbols-outlined text-[16px]">cancel</span>
             Reddedilen
         </a>
     </div>
@@ -84,6 +93,26 @@ $rejectedCount = count($KmBildirim->getReportsByStatus('reddedildi'));
             </div>
         <?php else: ?>
             <?php foreach ($reports as $report): 
+                if ($show === 'unreported') {
+                    ?>
+                    <div class="bg-white dark:bg-card-dark rounded-2xl p-4 shadow-sm border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+                        <div class="flex items-center gap-3">
+                            <div class="w-10 h-10 rounded-full bg-amber-50 dark:bg-amber-900/20 flex items-center justify-center text-amber-600 font-bold text-sm">
+                                <?= mb_strtoupper(mb_substr($report->personel_adi, 0, 1)) ?>
+                            </div>
+                            <div>
+                                <h4 class="text-sm font-black text-slate-700 dark:text-white"><?= htmlspecialchars($report->personel_adi) ?></h4>
+                                <p class="text-[10px] text-slate-400 font-bold uppercase tracking-tight"><?= $report->plaka ?> • Bildirim Yapmadı</p>
+                            </div>
+                        </div>
+                        <button onclick="sendReminder('<?= $report->personel_id ?>')" class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center active:scale-95 transition-all">
+                            <span class="material-symbols-outlined text-[20px]">notifications_active</span>
+                        </button>
+                    </div>
+                    <?php
+                    continue;
+                }
+
                 $imgUrl = !empty($report->resim_yolu) ? '../' . $report->resim_yolu : '../assets/images/no-image.png';
                 $reportData = [
                     'id' => $report->id,
@@ -122,13 +151,21 @@ $rejectedCount = count($KmBildirim->getReportsByStatus('reddedildi'));
                     </div>
 
                     <div class="p-4">
-                        <div class="flex items-center gap-3 mb-4">
-                            <div class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500">
-                                <span class="material-symbols-outlined text-[18px]">person</span>
+                        <div class="flex items-center gap-3">
+                            <?php if (!empty($report->personel_resim)): ?>
+                                <img src="../<?= $report->personel_resim ?>" class="w-10 h-10 rounded-full object-cover border border-slate-100 dark:border-slate-800">
+                            <?php else: ?>
+                                <div class="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 font-bold text-xs">
+                                    <?= mb_strtoupper(mb_substr($report->personel_adi, 0, 1)) ?>
+                                </div>
+                            <?php endif; ?>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-[10px] text-slate-400 font-bold uppercase leading-none mb-1">Bildiren Personel</p>
+                                <p class="text-xs font-black text-slate-700 dark:text-white truncate"><?= htmlspecialchars($report->personel_adi) ?></p>
                             </div>
-                            <div>
-                                <p class="text-[10px] text-slate-400 font-bold uppercase leading-none mb-0.5">Bildiren Personel</p>
-                                <p class="text-xs font-bold text-slate-700 dark:text-slate-300"><?= htmlspecialchars($report->personel_adi) ?></p>
+                            <div class="text-right shrink-0">
+                                <p class="text-[9px] text-slate-400 font-bold uppercase mb-0.5">ARAÇ</p>
+                                <p class="text-[11px] font-black text-slate-600 dark:text-slate-400"><?= htmlspecialchars($report->marka) ?> <?= htmlspecialchars($report->model) ?></p>
                             </div>
                         </div>
 
@@ -243,6 +280,22 @@ function performKmAction(action, data) {
         error: function() {
             Loading.hide();
             Alert.error('Hata', 'Bağlantı hatası oluştu');
+        }
+    });
+}
+function sendReminder(personelId) {
+    Loading.show();
+    $.ajax({
+        url: '../views/arac-takip/api.php',
+        type: 'POST',
+        data: { action: 'km-hatirlat', personel_id: personelId },
+        success: function(res) {
+            Loading.hide();
+            Toast.show('Hatırlatma gönderildi');
+        },
+        error: function() {
+            Loading.hide();
+            Toast.show('Hata oluştu');
         }
     });
 }

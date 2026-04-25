@@ -7,6 +7,7 @@
 use App\Model\NobetModel;
 use App\Model\PersonelModel;
 use App\Helper\Security;
+use App\Helper\Helper;
 
 $nobetModel = new NobetModel();
 $personelModel = new PersonelModel();
@@ -16,7 +17,7 @@ $ay = isset($_GET['ay']) ? (int)$_GET['ay'] : (int)date('m');
 $yil = isset($_GET['yil']) ? (int)$_GET['yil'] : (int)date('Y');
 $showTab = isset($_GET['tab']) ? $_GET['tab'] : 'planlama'; // Varsayılan planlama
 
-// İstatistikler (Bekleyenler)
+// İstatistikler (Bekleyenler - Seçili Aya Göre)
 try {
     $db = $nobetModel->getDb();
     $stmt = $db->prepare("SELECT 
@@ -27,8 +28,9 @@ try {
     WHERE (yonetici_onayi = 0 OR yonetici_onayi IS NULL) 
     AND silinme_tarihi IS NULL 
     AND (durum IS NULL OR durum NOT IN ('reddedildi', 'iptal'))
+    AND MONTH(nobet_tarihi) = ? AND YEAR(nobet_tarihi) = ?
     AND firma_id = ?");
-    $stmt->execute([$_SESSION['firma_id']]);
+    $stmt->execute([$ay, $yil, $_SESSION['firma_id']]);
     $stats = $stmt->fetch(PDO::FETCH_OBJ);
 } catch (\Exception $e) {
     $stats = (object)['total_bekleyen' => 0, 'hafta_sonu_bekleyen' => 0, 'resmi_tatil_bekleyen' => 0];
@@ -38,18 +40,18 @@ try {
 $personeller = $personelModel->all(true);
 $aylikDagilim = $nobetModel->getAylikNobetDagilimi($yil, $ay);
 
-// Bekleyenleri Getir
+// Bekleyenleri Getir (Seçili Aya Göre)
 try {
-    $stmt = $db->prepare("SELECT n.*, p.adi_soyadi as personel_adi, d.departman_adi as departman, p.resim_yolu as personel_resim
+    $stmt = $db->prepare("SELECT n.*, p.adi_soyadi as personel_adi, p.departman as departman, p.resim_yolu as personel_resim
         FROM nobetler n
         LEFT JOIN personel p ON n.personel_id = p.id
-        LEFT JOIN departmanlar d ON p.departman_id = d.id
         WHERE (n.yonetici_onayi = 0 OR n.yonetici_onayi IS NULL)
         AND n.silinme_tarihi IS NULL
         AND (n.durum IS NULL OR n.durum NOT IN ('reddedildi', 'iptal'))
+        AND MONTH(n.nobet_tarihi) = ? AND YEAR(n.nobet_tarihi) = ?
         AND n.firma_id = ?
         ORDER BY n.nobet_tarihi ASC, n.baslangic_saati ASC");
-    $stmt->execute([$_SESSION['firma_id']]);
+    $stmt->execute([$ay, $yil, $_SESSION['firma_id']]);
     $bekleyenler = $stmt->fetchAll(PDO::FETCH_OBJ);
 } catch (\Exception $e) {
     $bekleyenler = [];
@@ -99,13 +101,15 @@ function getInitial($name) {
         <div class="bg-white dark:bg-card-dark rounded-3xl p-3 shadow-sm border border-slate-100 dark:border-slate-800">
             <!-- Ay Seçici Header -->
             <div class="flex items-center justify-between mb-4 px-1">
-                <button onclick="changeMonth(-1)" class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+                <button onclick="calendar.prev()" class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
                     <span class="material-symbols-outlined text-slate-400 text-lg">chevron_left</span>
                 </button>
                 <div class="text-center">
-                    <h4 class="text-sm font-black text-slate-800 dark:text-white uppercase"><?= date('F Y', strtotime("$yil-$ay-01")) ?></h4>
+                    <h4 id="calendar-month-title" class="text-sm font-black text-slate-800 dark:text-white uppercase tracking-tight">
+                        <?= Helper::ayIsmi($ay) . ' ' . $yil ?>
+                    </h4>
                 </div>
-                <button onclick="changeMonth(1)" class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+                <button onclick="calendar.next()" class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
                     <span class="material-symbols-outlined text-slate-400 text-lg">chevron_right</span>
                 </button>
             </div>
@@ -130,6 +134,21 @@ function getInitial($name) {
 
     <!-- ONAY BEKLEYENLER TAB -->
     <div id="tab-bekleyen" class="tab-content <?= $showTab === 'bekleyen' ? '' : 'hidden' ?> space-y-4">
+        <!-- Ay Seçici (Onay Sekmesi İçin) -->
+        <div class="bg-white dark:bg-card-dark rounded-2xl p-3 shadow-sm border border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <button onclick="changeNobetMonth(-1)" class="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+                <span class="material-symbols-outlined text-slate-400">chevron_left</span>
+            </button>
+            <div class="text-center">
+                <h4 class="text-xs font-black text-slate-800 dark:text-white uppercase tracking-widest">
+                    <?= Helper::ayIsmi($ay) . ' ' . $yil ?>
+                </h4>
+            </div>
+            <button onclick="changeNobetMonth(1)" class="w-10 h-10 rounded-xl bg-slate-50 dark:bg-slate-800 flex items-center justify-center">
+                <span class="material-symbols-outlined text-slate-400">chevron_right</span>
+            </button>
+        </div>
+
         <!-- İstatistik Özetleri -->
         <div class="grid grid-cols-2 gap-3">
             <div class="bg-white dark:bg-card-dark p-3 rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 flex items-center gap-3">
@@ -358,13 +377,19 @@ function initCalendar() {
         eventContent: function(arg) {
             const name = arg.event.title;
             const initial = name ? name.charAt(0).toUpperCase() : '?';
+            const bgColor = arg.event.backgroundColor || 'var(--primary)';
             return {
                 html: `<div class="fc-event-main-frame flex items-center justify-center w-full h-full">
-                         <div class="w-5 h-5 rounded-full bg-rose-500 text-white flex items-center justify-center text-[8px] font-black border border-white shadow-sm" title="${name}">
+                         <div class="w-5 h-5 rounded-full text-white flex items-center justify-center text-[8px] font-black border border-white shadow-sm" style="background-color: ${bgColor}" title="${name}">
                             ${initial}
                          </div>
                        </div>`
             };
+        },
+        datesSet: function(info) {
+            // Ay ismini Türkçe olarak güncelle
+            const title = info.view.title;
+            $('#calendar-month-title').text(title);
         },
         dateClick: function(info) {
             openAddNobetModal(info.dateStr);
@@ -516,6 +541,21 @@ function performAction(action, data) {
 
 function getInitial(name) {
     return name ? name.charAt(0).toUpperCase() : '?';
+}
+function changeNobetMonth(offset) {
+    let currentAy = <?= $ay ?>;
+    let currentYil = <?= $yil ?>;
+    
+    currentAy += offset;
+    if (currentAy > 12) {
+        currentAy = 1;
+        currentYil++;
+    } else if (currentAy < 1) {
+        currentAy = 12;
+        currentYil--;
+    }
+    
+    window.location.href = `?p=nobet&tab=bekleyen&ay=${currentAy}&yil=${currentYil}`;
 }
 </script>
 

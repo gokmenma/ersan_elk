@@ -687,73 +687,65 @@ try {
         onclick="closeMoreMenu()"></div>
 
     <!-- Daha Fazla Bottom Sheet -->
-    <div id="more-menu-sheet"
-        class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-3xl z-[61] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom max-h-[65vh] flex flex-col">
-        <div class="flex justify-center pt-3 pb-2 shrink-0 cursor-pointer" onclick="toggleMoreMenu()">
-            <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+    <div id="more-menu-sheet" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[100] transform translate-y-full transition-transform duration-500 shadow-2xl safe-area-bottom max-h-[70vh] flex flex-col">
+        <div class="flex justify-center pt-3 pb-1 shrink-0 cursor-pointer" onclick="closeMoreMenu()">
+            <div class="w-12 h-1 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
         </div>
         
-        <div class="flex-1 overflow-y-auto px-4 pb-8 no-scrollbar">
-            <div class="py-2">
-                <!-- Masaüstü Görünümü -->
-                <a href="?force_desktop=1&p=home"
-                    class="flex items-center gap-3 p-3.5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors mb-2 border border-transparent hover:border-slate-100 dark:hover:border-slate-700">
-                    <div class="w-10 h-10 rounded-xl bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-blue-600 text-xl">desktop_windows</span>
-                    </div>
-                    <div class="flex-1">
-                        <span class="font-bold text-slate-900 dark:text-white text-[13px] block">Masaüstü Görünümü</span>
-                        <span class="text-[10px] text-slate-400 font-medium">Tam sürüme geçiş yap</span>
-                    </div>
-                    <span class="material-symbols-outlined text-slate-300 text-lg">chevron_right</span>
-                </a>
+        <div class="flex-1 overflow-y-auto px-5 py-4 no-scrollbar">
+            <!-- Profil Bilgileri -->
+            <a href="?p=profil" class="flex items-center gap-3 p-3 rounded-2xl bg-primary/5 border border-primary/10 mb-4 active:bg-primary/10 transition-colors">
+                <div class="w-11 h-11 rounded-full bg-primary/20 flex items-center justify-center text-primary shrink-0">
+                    <span class="material-symbols-outlined text-2xl">person</span>
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-[9px] text-primary/70 font-black uppercase tracking-widest leading-none mb-1">KULLANICI PROFİLİ</p>
+                    <p class="text-sm font-black text-slate-800 dark:text-white truncate"><?= htmlspecialchars($_SESSION['user_name'] ?? 'Kullanıcı') ?></p>
+                </div>
+                <span class="material-symbols-outlined text-primary/40">chevron_right</span>
+            </a>
 
-                <!-- Profil Sayfası -->
-                <a href="?p=profil"
-                    class="flex items-center gap-3 p-3.5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors <?= $page === 'profil' ? 'bg-primary/5 border-primary/10' : 'border-transparent' ?> mb-2 border hover:border-slate-100 dark:hover:border-slate-700">
-                    <div class="w-10 h-10 rounded-xl bg-indigo-50 dark:bg-indigo-900/20 flex items-center justify-center">
-                        <span class="material-symbols-outlined text-indigo-600 text-xl">person</span>
-                    </div>
-                    <div class="flex-1">
-                        <span class="font-bold text-slate-900 dark:text-white text-[13px] block">Profil Bilgileri</span>
-                        <span class="text-[10px] text-slate-400 font-medium">Hesap ve güvenlik ayarları</span>
-                    </div>
-                    <span class="material-symbols-outlined text-slate-300 text-lg">chevron_right</span>
-                </a>
-
+            <!-- Menü Listesi (Dinamik) -->
+            <div class="space-y-1">
                 <?php if (!empty($more_pages_data)): ?>
-                <div class="flex items-center gap-3 px-4 py-3">
-                    <div class="h-px bg-slate-100 dark:bg-slate-800 flex-1"></div>
-                    <span class="text-[10px] font-black text-slate-300 tracking-widest uppercase">Modüller</span>
-                    <div class="h-px bg-slate-100 dark:bg-slate-800 flex-1"></div>
-                </div>
-
-                <div class="grid grid-cols-1 gap-1">
-                    <?php foreach ($more_pages_data as $pKey => $mItem): ?>
-                    <a href="?p=<?= $pKey ?>"
-                        class="flex items-center gap-3 p-3.5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors <?= $page === $pKey ? 'bg-primary/5 border-primary/10' : 'border-transparent' ?> border hover:border-slate-100 dark:hover:border-slate-700">
-                        <div class="w-10 h-10 rounded-xl <?= $mItem['color_bg'] ?> flex items-center justify-center">
-                            <span class="material-symbols-outlined <?= $mItem['color_icon'] ?> text-xl"><?= $mItem['icon'] ?></span>
-                        </div>
-                        <div class="flex-1">
-                            <span class="font-bold text-slate-900 dark:text-white text-[13px] block"><?= $mItem['label'] ?></span>
-                        </div>
-                        <span class="material-symbols-outlined text-slate-300 text-lg">chevron_right</span>
-                    </a>
+                    <?php foreach ($more_pages_data as $pKey => $mItem): 
+                        // Color mapping based on icon or key if not provided in dynamic data
+                        $color = 'slate';
+                        if (strpos($pKey, 'kasa') !== false || strpos($pKey, 'gelir') !== false) $color = 'amber';
+                        if (strpos($pKey, 'rapor') !== false) $color = 'purple';
+                        if (strpos($pKey, 'gorev') !== false) $color = 'green';
+                        if (strpos($pKey, 'talep') !== false) $color = 'rose';
+                        if (strpos($pKey, 'evrak') !== false) $color = 'sky';
+                        if (strpos($pKey, 'nobet') !== false) $color = 'pink';
+                        if (strpos($pKey, 'personel') !== false) $color = 'indigo';
+                        if (strpos($pKey, 'km') !== false) $color = 'cyan';
+                        if (strpos($pKey, 'yardim') !== false) $color = 'blue';
+                        
+                        // Use existing color if available
+                        $bgClass = $mItem['color_bg'] ?? "bg-{$color}-100 dark:bg-{$color}-900/30";
+                        $iconClass = $mItem['color_icon'] ?? "text-{$color}-600";
+                    ?>
+                        <a href="?p=<?= $pKey ?>" class="flex items-center gap-4 p-2.5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all border border-transparent hover:border-slate-100">
+                            <div class="w-9 h-9 rounded-xl <?= $bgClass ?> flex items-center justify-center <?= $iconClass ?> shrink-0">
+                                <span class="material-symbols-outlined text-[20px]"><?= $mItem['icon'] ?></span>
+                            </div>
+                            <span class="text-[13px] font-bold text-slate-700 dark:text-slate-300"><?= $mItem['label'] ?></span>
+                            <span class="material-symbols-outlined ml-auto text-slate-300 text-[18px]">chevron_right</span>
+                        </a>
                     <?php endforeach; ?>
-                </div>
                 <?php endif; ?>
+            </div>
 
-                <div class="mt-4 pt-2 border-t border-slate-100 dark:border-slate-800">
-                    <a href="../logout.php"
-                        class="flex items-center gap-3 p-3.5 rounded-2xl bg-red-50/50 dark:bg-red-900/10 hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors border border-red-100/50 dark:border-red-900/20">
-                        <div class="w-10 h-10 rounded-xl bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                            <span class="material-symbols-outlined text-red-600 text-xl">logout</span>
-                        </div>
-                        <span class="font-bold text-red-600 text-[13px]">Güvenli Çıkış</span>
-                        <span class="material-symbols-outlined text-red-300 ml-auto text-lg">power_settings_new</span>
-                    </a>
-                </div>
+            <!-- Alt Menü -->
+            <div class="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2 pb-8">
+                <a href="?force_desktop=1&p=home" class="flex items-center gap-4 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 text-slate-500 active:bg-slate-100">
+                    <span class="material-symbols-outlined text-[20px]">desktop_windows</span>
+                    <span class="text-[12px] font-bold">Masaüstü Görünümü</span>
+                </a>
+                <a href="../logout.php" class="flex items-center gap-4 p-3 rounded-2xl bg-red-50 text-red-600 dark:bg-red-900/20 active:bg-red-100">
+                    <span class="material-symbols-outlined text-[20px]">logout</span>
+                    <span class="text-[12px] font-bold">Güvenli Çıkış</span>
+                </a>
             </div>
         </div>
     </div>

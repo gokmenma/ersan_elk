@@ -18,7 +18,7 @@ class AracKmBildirimModel extends Model
         $sql = $this->db->prepare("
             SELECT akb.*, 
                    a.plaka, a.marka, a.model,
-                   p.adi_soyadi as personel_adi,
+                   p.adi_soyadi as personel_adi, p.resim_yolu as personel_resim,
                    (SELECT bitis_km FROM {$this->table} b2 
                     WHERE b2.arac_id = akb.arac_id 
                     AND b2.tarih = akb.tarih 
@@ -41,7 +41,7 @@ class AracKmBildirimModel extends Model
         $sql = $this->db->prepare("
             SELECT akb.*, 
                    a.plaka, a.marka, a.model,
-                   p.adi_soyadi as personel_adi,
+                   p.adi_soyadi as personel_adi, p.resim_yolu as personel_resim,
                    u.adi_soyadi as onaylayan_adi,
                    (SELECT bitis_km FROM {$this->table} b2 
                     WHERE b2.arac_id = akb.arac_id 
