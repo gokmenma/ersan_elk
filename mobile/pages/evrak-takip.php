@@ -127,10 +127,10 @@ if (!function_exists('formatDateEvrak')) {
             <div class="mt-3 pt-3 border-t border-slate-50 dark:border-slate-800/50 flex items-center justify-between">
                 <div class="flex items-center gap-2">
                     <?php if ($evrak->dosya_yolu): ?>
-                        <a href="../<?= $evrak->dosya_yolu ?>" target="_blank" class="flex items-center gap-1 text-[11px] font-bold text-sky-600 bg-sky-50 dark:bg-sky-900/20 px-2 py-1 rounded-lg">
+                        <button onclick="event.stopPropagation(); previewFile('../<?= $evrak->dosya_yolu ?>')" class="flex items-center gap-1 text-[11px] font-bold text-sky-600 bg-sky-50 dark:bg-sky-900/20 px-2 py-1 rounded-lg">
                             <span class="material-symbols-outlined text-[16px]">visibility</span>
                             Dosya
-                        </a>
+                        </button>
                     <?php endif; ?>
                 </div>
                 
@@ -176,6 +176,21 @@ if (!function_exists('formatDateEvrak')) {
         </div>
         <div id="bs-body" class="p-4 overflow-y-auto w-full grow flex flex-col space-y-4 pb-28 relative">
             <?php include 'sheets/evrak-sheet.php'; ?>
+            <!-- Dosya Önizleme İçeriği -->
+            <div id="sheet-content-preview" class="app-sheet-content hidden">
+                <div id="preview-container" class="w-full flex flex-col items-center gap-4">
+                    <!-- Dinamik İçerik Buraya Gelecek -->
+                </div>
+                <div class="mt-6 flex gap-3">
+                    <a id="preview-download-link" href="#" download class="flex-1 py-3 bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300 rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95">
+                        <span class="material-symbols-outlined text-lg">download</span>
+                        İndir
+                    </a>
+                    <button onclick="closeSheet()" class="flex-1 py-3 bg-sky-500 text-white rounded-xl font-bold text-sm flex items-center justify-center gap-2 transition-all active:scale-95 shadow-lg shadow-sky-500/30">
+                        Kapat
+                    </button>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -327,6 +342,42 @@ function editEvrak(id) {
             MobileSwal.fire('Hata', 'Bilgiler alınamadı.', 'error');
         }
     });
+}
+
+function previewFile(url) {
+    const container = document.getElementById('preview-container');
+    const downloadLink = document.getElementById('preview-download-link');
+    const ext = url.split('.').pop().toLowerCase();
+    
+    downloadLink.href = url;
+    container.innerHTML = ''; // Temizle
+
+    if (['jpg', 'jpeg', 'png', 'gif', 'webp'].includes(ext)) {
+        container.innerHTML = `<img src="${url}" class="w-full rounded-2xl shadow-lg border border-slate-200 dark:border-slate-800 animate__animated animate__fadeIn">`;
+    } else if (ext === 'pdf') {
+        container.innerHTML = `
+            <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-2xl p-6 text-center border-2 border-dashed border-slate-300 dark:border-slate-700">
+                <span class="material-symbols-outlined text-5xl text-rose-500 mb-2">picture_as_pdf</span>
+                <p class="text-sm font-bold text-slate-700 dark:text-slate-300 mb-4">PDF Belgesi</p>
+                <iframe src="${url}" class="w-full h-[60vh] rounded-xl shadow-sm border-0 mb-4"></iframe>
+                <div class="text-[10px] text-slate-500">Not: Bazı mobil cihazlar PDF'i doğrudan göstermeyebilir. Eğer görünmüyorsa "İndir" butonuna basarak görüntüleyebilirsiniz.</div>
+            </div>
+        `;
+    } else {
+        container.innerHTML = `
+            <div class="w-full bg-slate-100 dark:bg-slate-800 rounded-2xl p-10 text-center border-2 border-dashed border-slate-300 dark:border-slate-700">
+                <span class="material-symbols-outlined text-5xl text-slate-400 mb-2">draft</span>
+                <p class="text-sm font-bold text-slate-700 dark:text-slate-300">Bu dosya türü önizlenemiyor.</p>
+                <p class="text-[11px] text-slate-500 mt-1">Görüntülemek için indirmeyi deneyin.</p>
+            </div>
+        `;
+    }
+
+    document.getElementById('bs-title').innerHTML = `
+        <span class="material-symbols-outlined text-sky-500">visibility</span>
+        <span>Dosya Önizleme</span>
+    `;
+    openSheet('preview');
 }
 
 function deleteEvrak(id) {
