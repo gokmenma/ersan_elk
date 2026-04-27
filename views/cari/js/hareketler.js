@@ -40,21 +40,15 @@ $(document).ready(function () {
             safeFeatherReplace();
         },
         order: [[0, 'desc'], [1, 'desc']], // SQL tarafında da desc gelmeli
-        pageLength: 50,
-        buttons: [
-            {
-                extend: 'excelHtml5',
-                title: 'Hesap Hareketleri',
-                exportOptions: {
-                    columns: ':visible'
-                }
-            }
-        ]
+        pageLength: 50
     });
 
     // Excel Aktar Butonu
     $('#btnExportExcel, #btnExportExcelMobile, #btnExportExcelMobileTop').on('click', function () {
-        table.button('.buttons-excel').trigger();
+        const filterType = $('input[name="filter_type"]:checked').val();
+        const searchVal = table.search();
+        const url = `views/cari/export-hareketler-excel.php?id=${global_cari_id}&filter_type=${filterType}&search=${encodeURIComponent(searchVal)}`;
+        window.open(url, '_blank');
     });
 
     $('input[name="filter_type"]').on('change', function() {

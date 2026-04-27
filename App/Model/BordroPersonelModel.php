@@ -126,34 +126,36 @@ class BordroPersonelModel extends Model
 
     private function getYemekYardimiGunlukLimit(object $kayit): float
     {
-        $limit = floatval($kayit->yemek_yardimi_tutari ?? 0);
+        $personelLimit = floatval($kayit->yemek_yardimi_tutari ?? 0);
+        $paramLimit = 0;
 
-        if ($limit <= 0 && !empty($kayit->yemek_yardimi_parametre_id)) {
+        if (!empty($kayit->yemek_yardimi_parametre_id)) {
             if ($this->cachedParametreModel === null) {
                 $this->cachedParametreModel = new BordroParametreModel();
             }
 
             $paramYemek = $this->cachedParametreModel->find($kayit->yemek_yardimi_parametre_id);
-            $limit = floatval($paramYemek->varsayilan_tutar ?? 0);
+            $paramLimit = floatval($paramYemek->varsayilan_tutar ?? 0);
         }
 
-        return $limit;
+        return max($personelLimit, $paramLimit);
     }
 
     private function getEsYardimiAylikLimit(object $kayit): float
     {
-        $limit = floatval($kayit->es_yardimi_tutari ?? 0);
+        $personelLimit = floatval($kayit->es_yardimi_tutari ?? 0);
+        $paramLimit = 0;
 
-        if ($limit <= 0 && !empty($kayit->es_yardimi_parametre_id)) {
+        if (!empty($kayit->es_yardimi_parametre_id)) {
             if ($this->cachedParametreModel === null) {
                 $this->cachedParametreModel = new BordroParametreModel();
             }
 
             $paramEs = $this->cachedParametreModel->find($kayit->es_yardimi_parametre_id);
-            $limit = floatval($paramEs->varsayilan_tutar ?? 0);
+            $paramLimit = floatval($paramEs->varsayilan_tutar ?? 0);
         }
 
-        return $limit;
+        return max($personelLimit, $paramLimit);
     }
 
     private function hesaplaMaasaDahilYardimDagilimi(object $kayit, float $asgariUcretNet, int $maasHesapGunu, int $fiiliGunSayisi, float $ekKesintiTutar = 0.0, float $ekOdemeTutar = 0.0): array
@@ -333,7 +335,7 @@ class BordroPersonelModel extends Model
             }
         }
 
-        if ($this->hasMaasaDahilSosyalYardim($p)) {
+        if ($this->hasMaasaDahilSosyalYardim($p) && !$isPrimUsulu) {
             $fiiliGunSayisi = 25;
             if (isset($p->hd_fiili_calisma_gunu) && intval($p->hd_fiili_calisma_gunu) > 0) $fiiliGunSayisi = intval($p->hd_fiili_calisma_gunu);
             $totalDeductions = $toplamKesinti + floatval($p->sodexo_odemesi ?? 0) + floatval($p->diger_odeme ?? 0);
@@ -348,7 +350,7 @@ class BordroPersonelModel extends Model
             }
         }
 
-        if ($isPrimUsulu) $toplamAlacagi = floatval($p->brut_maas ?? 0) + $rawEkOdeme;
+        if ($isPrimUsulu) $toplamAlacagi = $hesaplamayaEsasMaas + $rawEkOdeme;
         elseif ($isNet || $isBrut) $toplamAlacagi = (($hesaplamayaEsasMaas / 30) * $calismaGunu) + $rawEkOdeme;
         else $toplamAlacagi = $hesaplamayaEsasMaas + $rawEkOdeme;
 
@@ -2850,7 +2852,7 @@ class BordroPersonelModel extends Model
         $bazAlinacakTutar = floatval($nominalBrutMaas);
         
         // Maaşa Dahil kontrolü (Hakedişi asgari ücrete sabitleyip üzerini yemekle tamamlayacağız)
-        if ($this->hasMaasaDahilSosyalYardim($kayit)) {
+        if ($this->hasMaasaDahilSosyalYardim($kayit) && !$isPrimUsulu) {
              $kayit->hedef_net_maas_tutari = $nominalBrutMaas; 
              $bazAlinacakTutar = $genelAyarlarMap['asgari_ucret_net'] ?? 28075.50;
         } elseif (isset($kayit->hesaplama_baz_maas) && $kayit->hesaplama_baz_maas > 0) {
@@ -3316,7 +3318,7 @@ class BordroPersonelModel extends Model
 
                 // USER REQ: Yemek Yardımı Maaşa Dahil dengelemesi
         // Yemek yardımı tutarını ana maaş hakedişinden düşüyoruz ki toplam hakediş (net hedef) değişmesin.
-        if ($this->hasMaasaDahilSosyalYardim($kayit)) {
+        if ($this->hasMaasaDahilSosyalYardim($kayit) && !$isPrimUsulu) {
             $asgariNetNominal = floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50);
             $brutMaas = round(($asgariNetNominal / 30) * $maasHesapGunu, 2);
         } elseif ($mealAllowanceDeduction > 0) {

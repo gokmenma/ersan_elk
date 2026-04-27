@@ -207,10 +207,10 @@ function getInitial($name) {
                             </div>
                         </div>
                         <div class="flex gap-2">
-                            <button onclick="approveNobet(<?= $nobet->id ?>)" class="flex-1 h-10 bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-500/20 flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+                            <button onclick="approveNobet('<?= Security::encrypt($nobet->id) ?>')" class="flex-1 h-10 bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-lg shadow-emerald-500/25 flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
                                 <span class="material-symbols-outlined text-[18px] filled">check_circle</span> ONAYLA
                             </button>
-                            <button onclick="deleteNobet(<?= $nobet->id ?>)" class="w-10 h-10 bg-rose-50 text-rose-600 dark:bg-rose-900/20 rounded-xl flex items-center justify-center border border-rose-100 dark:border-rose-800">
+                            <button onclick="deleteNobet('<?= Security::encrypt($nobet->id) ?>')" class="w-10 h-10 bg-rose-50 text-rose-600 dark:bg-rose-900/20 rounded-xl flex items-center justify-center border border-rose-100 dark:border-rose-800">
                                 <span class="material-symbols-outlined text-[20px]">delete</span>
                             </button>
                         </div>

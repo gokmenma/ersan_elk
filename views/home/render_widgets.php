@@ -246,6 +246,217 @@ function renderWidget(string $widgetId, array $data = []) {
             </div>
             <?php
             break;
+
+        case 'widget-gec-kalanlar':
+            ?>
+            <div class="col-6 col-md-2 widget-item" id="widget-gec-kalanlar">
+                <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card stat-card"
+                    style="--card-color: #f46a6a; border-bottom: 3px solid var(--card-color) !important; --delay: 0.9s">
+                    <div class="card-body p-3 pb-2">
+                        <div class="icon-label-container d-flex justify-content-between align-items-start">
+                            <div class="icon-box" style="background: rgba(244, 106, 106, 0.1);">
+                                <i class="bx bx-time fs-4" style="color: #f46a6a;"></i>
+                            </div>
+                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">GECİKME</span>
+                        </div>
+                        <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GEÇ KALAN PERSONEL
+                        </p>
+                        <h4 class="mb-0 fw-bold bordro-text-heading"><?php echo (int)($gec_kalan_sayisi ?? 0); ?></h4>
+                        <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Mesaiye geç kalanlar</div>
+                        <div class="card-footer-actions mt-2 d-flex justify-content-end">
+                            <a href="index.php?p=puantaj/list" class="btn btn-xs btn-soft-danger rounded-pill">
+                                <i class="bx bx-right-arrow-alt"></i> Git
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php
+            break;
+
+        case 'widget-talepler':
+            ?>
+            <div class="<?php echo ($width ?? 'col-md-6'); ?> widget-item" id="widget-talepler">
+                <div class="card summary-card" style="border-radius: 12px; overflow: hidden;">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Arıza/İzin/Avans Talepleri</h5>
+                    </div>
+                    <div class="card-body p-0" style="height: <?php echo ($height ?? '300px'); ?>; overflow-y: auto;">
+                        <div class="table-responsive">
+                            <table class="table table-centered table-nowrap mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Personel</th>
+                                        <th>Talep Tipi</th>
+                                        <th>Detay</th>
+                                        <th>Tarih</th>
+                                        <th>İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (empty($recent_requests)): ?>
+                                        <tr><td colspan="5" class="text-center py-4">Bekleyen talep bulunmamaktadır.</td></tr>
+                                    <?php else: ?>
+                                        <?php foreach ($recent_requests as $req):
+                                            $personel = $personel_map[$req->personel_id] ?? null;
+                                            $badgeClass = 'badge-warning';
+                                            if ($req->tip == 'Avans') $badgeClass = 'badge-success';
+                                            if ($req->tip == 'İzin') $badgeClass = 'badge-primary';
+                                            if ($req->tip == 'Talep') $badgeClass = 'badge-info';
+                                            ?>
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="flex-shrink-0 me-3">
+                                                            <img src="<?php echo !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>" alt="" class="avatar-xs rounded-circle">
+                                                        </div>
+                                                        <div class="flex-grow-1">
+                                                            <h5 class="font-size-14 mb-1"><?php echo $personel ? $personel->adi_soyadi : 'Personel #'.$req->personel_id; ?></h5>
+                                                            <p class="text-muted mb-0 font-size-12"><?php echo $personel ? $personel->departman : ''; ?></p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td><span class="badge <?php echo $badgeClass; ?> font-size-12"><?php echo $req->tip; ?></span></td>
+                                                <td><?php echo $req->tip == 'Avans' ? number_format($req->detay, 2) . ' ₺' : $req->detay; ?></td>
+                                                <td><?php echo date('d.m.Y', strtotime($req->tarih)); ?></td>
+                                                <td>
+                                                    <div class="btn-group">
+                                                        <a href="index.php?p=talepler/list" class="btn btn-primary btn-sm"><i class='bx bx-right-arrow-alt'></i></a>
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php
+            break;
+
+        case 'widget-izindekiler':
+            ?>
+            <div class="<?php echo ($width ?? 'col-md-6'); ?> widget-item" id="widget-izindekiler">
+                <div class="card summary-card" style="border-radius: 12px; overflow: hidden;">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Şu Anda İzinde Olan Personeller</h5>
+                    </div>
+                    <div class="card-body p-0" style="height: <?php echo ($height ?? '300px'); ?>; overflow-y: auto;">
+                        <div class="table-responsive">
+                            <table class="table table-centered table-nowrap mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Personel</th>
+                                        <th>İzin Tipi</th>
+                                        <th>Bitiş Tarihi</th>
+                                        <th>Kalan Gün</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (empty($izindekiler)): ?>
+                                        <tr><td colspan="4" class="text-center py-4">Şu an izinde olan personel bulunmamaktadır.</td></tr>
+                                    <?php else: ?>
+                                        <?php foreach ($izindekiler as $izin): ?>
+                                            <tr>
+                                                <td>
+                                                    <div class="d-flex align-items-center">
+                                                        <div class="flex-shrink-0 me-3">
+                                                            <img src="<?php echo !empty($izin->resim_yolu) ? $izin->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>" alt="" class="avatar-xs rounded-circle">
+                                                        </div>
+                                                        <div class="flex-grow-1">
+                                                            <h5 class="font-size-14 mb-1"><?php echo $izin->adi_soyadi; ?></h5>
+                                                            <p class="text-muted mb-0 font-size-12"><?php echo $izin->departman; ?></p>
+                                                        </div>
+                                                    </div>
+                                                </td>
+                                                <td><?php echo $izin->izin_tipi_adi; ?></td>
+                                                <td><?php echo date('d.m.Y', strtotime($izin->bitis_tarihi)); ?></td>
+                                                <td>
+                                                    <?php
+                                                    $bitis = new DateTime($izin->bitis_tarihi);
+                                                    $bugun = new DateTime();
+                                                    $diff = $bugun->diff($bitis);
+                                                    echo $diff->format('%a gün');
+                                                    ?>
+                                                </td>
+                                            </tr>
+                                        <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php
+            break;
+
+        case 'widget-is-turu-istatistikleri':
+            ?>
+            <div class="<?php echo ($width ?? 'col-md-6'); ?> widget-item" id="widget-is-turu-istatistikleri">
+                <div class="card summary-card" style="border-radius: 12px; overflow: hidden;">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> İş Türü İstatistikleri</h5>
+                        <div class="d-flex align-items-center gap-2">
+                            <select class="form-select form-select-sm" id="stats-year-filter" style="width: 100px;">
+                                <?php
+                                $currentYear = date('Y');
+                                for ($y = $currentYear; $y >= $currentYear - 4; $y--) {
+                                    echo "<option value='$y'>$y</option>";
+                                }
+                                ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body" style="height: <?php echo ($height ?? '400px'); ?>; overflow-y: auto;">
+                        <div id="work-type-stats-chart" style="min-height: 400px; height: 100%;">
+                            <!-- Chart will be initialized by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php
+            break;
+
+        case 'widget-is-emri-sonucu-istatistikleri':
+            ?>
+            <div class="<?php echo ($width ?? 'col-md-6'); ?> widget-item" id="widget-is-emri-sonucu-istatistikleri">
+                <div class="card summary-card" style="border-radius: 12px; overflow: hidden;">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> İş Emri Sonuç İstatistikleri</h5>
+                        <div class="d-flex align-items-center gap-2">
+                            <select class="form-select form-select-sm" id="stats-result-month-filter" style="width: 120px;">
+                                <?php
+                                $aylar = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+                                $currentMonth = date('n');
+                                foreach ($aylar as $index => $ay) {
+                                    $val = $index + 1;
+                                    $selected = ($val == $currentMonth) ? 'selected' : '';
+                                    echo "<option value='$val' $selected>$ay</option>";
+                                }
+                                ?>
+                            </select>
+                            <select class="form-select form-select-sm" id="stats-result-year-filter" style="width: 100px;">
+                                <?php
+                                $currentYear = date('Y');
+                                for ($y = $currentYear; $y >= $currentYear - 4; $y--) {
+                                    echo "<option value='$y'>$y</option>";
+                                }
+                                ?>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="card-body" style="height: <?php echo ($height ?? '400px'); ?>; overflow-y: auto;">
+                        <div id="work-result-stats-chart" style="min-height: 400px; height: 100%;">
+                            <!-- Chart will be initialized by JS -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php
+            break;
     }
 
     return ob_get_clean();

@@ -56,7 +56,7 @@ $bakiye = $ozet->bakiye ?? 0;
                 </a>   
                 <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
 
-            <button type="button" id="exportExcel" class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">
+            <button type="button" id="btnExportExcel" class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center">
                     <i data-feather="file-text" class="me-1" style="width: 18px; height: 18px;"></i> Excel
                 </button>
                

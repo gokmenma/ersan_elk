@@ -13,6 +13,13 @@ use App\Service\SayacDegisimService;
 header('Content-Type: application/json; charset=utf-8');
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+    // PERF: Session değişkenlerini oku ve session lock'ı hemen serbest bırak.
+    // Bu sayede paralel AJAX istekleri birbirini beklemez.
+    $firmaId = $_SESSION['firma_id'] ?? 0;
+    $userId = $_SESSION['user_id'] ?? 0;
+    $firmaKodu = $_SESSION['firma_kodu'] ?? 17;
+    session_write_close();
+
     $action = $_POST['action'] ?? '';
     $puantajModel = new PuantajModel();
     $aylar = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
@@ -123,7 +130,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 try {
                     $db = $puantajModel->getDb();
-                    $firmaId = $_SESSION['firma_id'] ?? 0;
+                    // $firmaId zaten üst scope'dan geliyor (session_write_close öncesi)
 
                     // Timestamps query
                     $stmtUpdates = $db->prepare("SELECT
@@ -208,6 +215,86 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 ], JSON_UNESCAPED_UNICODE);
                 break;
 
+            case 'batch-load-widgets':
+                $widgetIds = $_POST['widget_ids'] ?? [];
+                $widths = $_POST['widths'] ?? [];
+                $results = [];
+
+                try {
+                    $personelModel = new \App\Model\PersonelModel();
+                    $aracModel = new \App\Model\AracModel();
+                    $talepModel = new \App\Model\TalepModel();
+                    $nobetModel = new \App\Model\NobetModel();
+                    $gorevModel = new \App\Model\GorevModel();
+                    $systemLogModel = new \App\Model\SystemLogModel();
+                    $hareketModel = new \App\Model\PersonelHareketleriModel();
+
+                    foreach ($widgetIds as $index => $widgetId) {
+                        $data = [];
+                        if ($widgetId == 'widget-personel-ozet') {
+                            $data['istatistik'] = $personelModel->personelSayilari('personel');
+                            $data['extraStats'] = $personelModel->getAdvancedDashboardStats();
+                            $data['gec_kalan_sayisi'] = $hareketModel->getGecKalanlarCount($firmaId);
+                        } 
+                        elseif ($widgetId == 'widget-arac-ozet') {
+                            $aracStats = $aracModel->getStats();
+                            $data['toplam_aktif_arac'] = $aracStats->aktif_arac ?? 0;
+                            $data['servisteki_arac'] = $aracModel->getServistekiAracSayisi();
+                            $data['bosta_arac'] = $aracStats->bosta_arac ?? 0;
+                            $data['saha_arac'] = max(0, $data['toplam_aktif_arac'] - $data['servisteki_arac'] - $data['bosta_arac']);
+                            
+                            $total_for_calc = $data['toplam_aktif_arac'] ?: 1;
+                            $data['aktif_a_yuzde'] = ($data['saha_arac'] / $total_for_calc) * 100;
+                            $data['servis_a_yuzde'] = ($data['servisteki_arac'] / $total_for_calc) * 100;
+                            $data['bosta_a_yuzde'] = ($data['bosta_arac'] / $total_for_calc) * 100;
+                        } 
+                        elseif ($widgetId == 'widget-bekleyen-talepler') {
+                            $data['personel_talep_sayisi'] = $talepModel->getBekleyenTalepSayisi();
+                        } 
+                        elseif ($widgetId == 'widget-nobetciler') {
+                            $data['nobetciler'] = $nobetModel->getNobetlerByTarih(date('Y-m-d'));
+                        } 
+                        elseif ($widgetId == 'widget-yaklasan-gorevler') {
+                            $data['yaklasan_gorevler'] = $gorevModel->getYaklasanGorevler($firmaId, $userId, 10);
+                        } 
+                        elseif ($widgetId == 'widget-bildirimler') {
+                            $data['recent_logs'] = $systemLogModel->getRecentLogs(20, 0);
+                            $data['personelLogs'] = $systemLogModel->getPersonelLoginLogs(10);
+                            $data['kullaniciLogs'] = $systemLogModel->getUserLoginLogs(10);
+                        }
+                        elseif ($widgetId == 'widget-gec-kalanlar') {
+                            $data['gec_kalan_sayisi'] = $hareketModel->getGecKalanlarCount($firmaId);
+                        }
+                        elseif ($widgetId == 'widget-talepler') {
+                            $avanslar = $personelModel->getBekleyenAvansTalepleri();
+                            $izinler = $personelModel->getBekleyenIzinTalepleri();
+                            $talepler = $talepModel->getBekleyenTalepler();
+                            
+                            $all = array_merge($avanslar, $izinler, $talepler);
+                            usort($all, fn($a, $b) => strtotime($b->tarih) - strtotime($a->tarih));
+                            
+                            $data['recent_requests'] = array_slice($all, 0, 10);
+                            
+                            // Personel map'ini de dolduralım
+                            $pIds = array_unique(array_column($data['recent_requests'], 'personel_id'));
+                            $data['personel_map'] = [];
+                            if (!empty($pIds)) {
+                                $personeller = $personelModel->whereIn('id', $pIds);
+                                foreach ($personeller as $p) $data['personel_map'][$p->id] = $p;
+                            }
+                        }
+                        elseif ($widgetId == 'widget-izindekiler') {
+                            $data['izindekiler'] = $personelModel->getIzindekiler(date('Y-m-d'));
+                        }
+
+                        $results[$widgetId] = renderWidget($widgetId, $data);
+                    }
+                    echo json_encode(['status' => 'success', 'widgets' => $results]);
+                } catch (Exception $e) {
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+                break;
+
             case 'load-widget':
                 $widgetId = $_POST['widget_id'] ?? '';
                 $data = [];
@@ -258,6 +345,45 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     echo json_encode(['status' => 'success', 'html' => $html]);
                 } catch (Exception $e) {
                     error_log("Dashboard Widget Error ($widgetId): " . $e->getMessage());
+                    echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+                }
+                break;
+
+            case 'get-arac-evrak-stats':
+                try {
+                    $aracModel = new \App\Model\AracModel();
+                    $expiredCounts = $aracModel->getAracEvrakStats();
+                    $parts = [];
+                    $hasExpired = false;
+
+                    if ($expiredCounts) {
+                        if ($expiredCounts->muayene_biten > 0) {
+                            $parts[] = '<a href="index.php?p=arac-takip/list&filter=muayene" class="text-white fw-bold" style="text-decoration:underline">' . $expiredCounts->muayene_biten . ' muayene</a>';
+                            $hasExpired = true;
+                        }
+                        if ($expiredCounts->sigorta_biten > 0) {
+                            $parts[] = '<a href="index.php?p=arac-takip/list&filter=sigorta" class="text-white fw-bold" style="text-decoration:underline">' . $expiredCounts->sigorta_biten . ' sigorta</a>';
+                            $hasExpired = true;
+                        }
+                        if ($expiredCounts->kasko_biten > 0) {
+                            $parts[] = '<a href="index.php?p=arac-takip/list&filter=kasko" class="text-white fw-bold" style="text-decoration:underline">' . $expiredCounts->kasko_biten . ' kasko</a>';
+                            $hasExpired = true;
+                        }
+                    }
+
+                    $notifText = !empty($parts) 
+                        ? implode(', ', $parts) . ' süresi dolan araçlar bulunmaktadır.'
+                        : 'Tüm araçların evrakları (Muayene, Sigorta, Kasko) günceldir.';
+
+                    echo json_encode([
+                        'status' => 'success',
+                        'data' => [
+                            'has_expired' => $hasExpired,
+                            'notif_text' => $notifText,
+                            'counts' => $expiredCounts
+                        ]
+                    ], JSON_UNESCAPED_UNICODE);
+                } catch (Exception $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
                 }
                 break;

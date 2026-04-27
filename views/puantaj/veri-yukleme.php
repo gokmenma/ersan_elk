@@ -1341,7 +1341,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             <div class="modal-body p-0">
                 <div class="p-3 bg-danger-subtle text-danger border-bottom border-danger-subtle">
                     <p class="mb-0 fs-13 fw-medium">
-                        <i class="ri-information-fill me-1"></i> Bu liste, <strong>Evde Yok + Kullanılmıyor</strong> sayısının <strong>Sayaç Normal</strong> sayısına oranı <strong>%80 ve üzeri</strong> (Yüksek Risk) veya <strong>%60 ile %80 arası</strong> (Risk) olan personelleri göstermektedir.
+                        <i class="ri-information-fill me-1"></i> Bu rapor, <strong>Evde Yok + Kullanılmıyor</strong> sayısının <strong>Toplam Abone</strong> sayısına oranı <strong>%80 ve üzeri</strong> (Yüksek Risk) veya <strong>%60 ile %80 arası</strong> (Risk) olan personelleri göstermektedir.
                     </p>
                 </div>
                 <div class="table-responsive">
@@ -1350,7 +1350,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                             <tr>
                                 <th scope="col">Personel</th>
                                 <th scope="col">Ekip</th>
-                                <th scope="col" class="text-center">Sayaç Normal</th>
+                                <th scope="col" class="text-center">Toplam Abone</th>
                                 <th scope="col" class="text-center">Evde Yok + Kullanılmıyor</th>
                                 <th scope="col" class="text-center">Oran</th>
                                 <th scope="col" class="text-center">Durum</th>
@@ -1935,7 +1935,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                             let modalHtml = '';
                             
                             json.risky_personnel.forEach(function(p) {
-                                let ratioRaw = (parseFloat(p.evde_yok_sayisi) / parseFloat(p.normal_sayisi) * 100);
+                                let ratioRaw = (parseFloat(p.evde_yok_sayisi) / parseFloat(p.toplam_abone_sayisi) * 100);
                                 let ratio = ratioRaw.toFixed(1);
                                 
                                 let riskCategory = 'RİSK';
@@ -1955,7 +1955,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 let eName = p.ekip_adi || '-';
 
                                 tickerHtml += `<span class="ticker-item">
-                                    ${tickerEmoji} ${pName} (${eName}): Risk Oranı %${ratio} (${p.evde_yok_sayisi}/${p.normal_sayisi})
+                                    ${tickerEmoji} ${pName} (${eName}): Risk Oranı %${ratio} (${p.evde_yok_sayisi}/${p.toplam_abone_sayisi})
                                 </span>`;
 
                                 modalHtml += `<tr>
@@ -1972,7 +1972,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                         </div>
                                     </td>
                                     <td>${eName}</td>
-                                    <td class="text-center fw-medium">${parseInt(p.normal_sayisi || 0).toLocaleString('tr-TR')}</td>
+                                    <td class="text-center fw-medium">${parseInt(p.toplam_abone_sayisi || 0).toLocaleString('tr-TR')}</td>
                                     <td class="text-center text-${riskClass} fw-medium">${parseInt(p.evde_yok_sayisi || 0).toLocaleString('tr-TR')}</td>
                                     <td class="text-center">
                                         <div class="d-flex align-items-center justify-content-center">

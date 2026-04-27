@@ -737,17 +737,17 @@ class EndeksOkumaModel extends Model
                     SELECT 
                         p.adi_soyadi as personel_adi,
                         def.tur_adi as ekip_adi,
+                        SUM(t.okunan_abone_sayisi) as toplam_abone_sayisi,
                         SUM(CASE WHEN t.sayac_durum LIKE '%NORMAL%' THEN t.okunan_abone_sayisi ELSE 0 END) as normal_sayisi,
-                        SUM(CASE WHEN (t.sayac_durum LIKE '%EVDE YOK%' OR t.sayac_durum LIKE '%KULLANILMIYOR%') THEN t.okunan_abone_sayisi ELSE 0 END) as evde_yok_sayisi,
-                        SUM(CASE WHEN t.sayac_durum LIKE '%KULLANILMIYOR%' THEN t.okunan_abone_sayisi ELSE 0 END) as kullanilmiyor_sayisi
+                        SUM(CASE WHEN (t.sayac_durum LIKE '%EVDE YOK%' OR t.sayac_durum LIKE '%KULLANILMIYOR%') THEN t.okunan_abone_sayisi ELSE 0 END) as evde_yok_sayisi
                     FROM {$this->table} t
                     LEFT JOIN personel p ON t.personel_id = p.id
                     LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
                     WHERE $where
                     GROUP BY t.personel_id, t.ekip_kodu_id
                 ) as sub
-                WHERE normal_sayisi > 0 AND (evde_yok_sayisi / normal_sayisi) >= 0.6
-                ORDER BY (evde_yok_sayisi / normal_sayisi) DESC";
+                WHERE toplam_abone_sayisi > 0 AND (evde_yok_sayisi / toplam_abone_sayisi) >= 0.6
+                ORDER BY (evde_yok_sayisi / toplam_abone_sayisi) DESC";
 
         $stmt = $this->db->prepare($sql);
         foreach ($params as $key => $val) {

@@ -4438,9 +4438,9 @@ padding-bottom:  10px !important;
 
             // Modal'ı aç (mevcut instance varsa onu kullan)
             var modalEl = document.getElementById('modalOkunmayanDefterler');
-            var existingModal = bootstrap.Modal.getInstance(modalEl);
-            if (existingModal) {
-                existingModal.show();
+            const _existingModal_ = bootstrap.Modal.getInstance(modalEl);
+            if (_existingModal_) {
+                _existingModal_.show();
             } else {
                 var modal = new bootstrap.Modal(modalEl);
                 modal.show();
@@ -4448,7 +4448,7 @@ padding-bottom:  10px !important;
         });
 
         // ======= GRAFİK MANTİĞI =======
-        let _defterOzetChart = null;
+        let _defterOzetChartInstances = [];
 
         $(document).on('change', '.view-toggle', function() {
             const view = $(this).data('view');
@@ -4472,9 +4472,6 @@ padding-bottom:  10px !important;
             const type = $(this).data('type');
             renderDefterOzetChart(_defterOzetData, type);
         });
-
-        // ======= GRAFİK MANTİĞI =======
-        let _defterOzetChartInstances = [];
 
         function renderDefterOzetChart(data, type = 'percent') {
             if (!data || !data.donemler || !data.bolge) return;
@@ -4635,7 +4632,13 @@ padding-bottom:  10px !important;
 
         // ======= AYARLARI KAYDET =======
         $('#btnSaveDefterLimit').on('click', function () {
-            const limit = $('#defterOkunanLimit').val();
+            let limit = $('#defterOkunanLimit').val();
+            const type = $('#defterLimitType').val();
+            
+            if (type === 'yuzde') {
+                limit = limit + '%';
+            }
+
             const $btn = $(this);
             
             $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Kaydediliyor...');
@@ -4676,7 +4679,9 @@ padding-bottom:  10px !important;
 
 <?php if (\App\Service\Gate::allows('defter_bazli_rapor_alt_limit')): 
     $SettingsModel = new \App\Model\SettingsModel();
-    $currentLimit = $SettingsModel->getAllSettingsAsKeyValue($_SESSION['firma_id'])['defter_bazli_rapor_alt_limit'] ?? 0;
+    $currentLimitRaw = $SettingsModel->getAllSettingsAsKeyValue($_SESSION['firma_id'])['defter_bazli_rapor_alt_limit'] ?? '0';
+    $isPercent = str_contains($currentLimitRaw, '%');
+    $currentLimitValue = str_replace('%', '', $currentLimitRaw);
 ?>
 <!-- Ayarlar Modalı -->
 <div class="modal fade" id="defterLimitAyarlarModal" tabindex="-1" aria-labelledby="defterLimitAyarlarModalLabel" aria-hidden="true">
@@ -4692,12 +4697,19 @@ padding-bottom:  10px !important;
                 <div class="mb-3">
                     <label for="defterOkunanLimit" class="form-label fw-bold primary-text">Okuma Alt Sınırı</label>
                     <div class="input-group">
-                        <input type="number" class="form-control" id="defterOkunanLimit" value="<?= (int)$currentLimit ?>" min="0">
-                        <span class="input-group-text">Abone</span>
+                        <input type="number" class="form-control" id="defterOkunanLimit" value="<?= htmlspecialchars($currentLimitValue) ?>" min="0">
+                        <select class="form-select" id="defterLimitType" style="max-width: 110px;">
+                            <option value="adet" <?= !$isPercent ? 'selected' : '' ?>>Abone</option>
+                            <option value="yuzde" <?= $isPercent ? 'selected' : '' ?>>% (Yüzde)</option>
+                        </select>
                     </div>
                     <div class="form-text mt-2">
                         <i class="bx bx-info-circle me-1"></i>
-                        Defterdeki "Okunan abone sayısı" bu değerden az ise, ilgili dönemde o defter <b>okunmuş</b> kabul edilmeyecektir. (Örn: 8 yazarsanız 8'den az okunanlar okunmamış sayılır.)
+                        <span id="limitDescription">
+                            <?= $isPercent 
+                                ? 'Defterdeki "Okunan abone oranı" bu % değerden az ise, o defter <b>okunmamış</b> sayılacaktır.' 
+                                : 'Defterdeki "Okunan abone sayısı" bu değerden az ise, o defter <b>okunmamış</b> sayılacaktır.' ?>
+                        </span>
                     </div>
                 </div>
             </div>
@@ -4708,4 +4720,17 @@ padding-bottom:  10px !important;
         </div>
     </div>
 </div>
+
+<script>
+$(document).ready(function() {
+    $('#defterLimitType').on('change', function() {
+        const type = $(this).val();
+        if (type === 'yuzde') {
+            $('#limitDescription').html('Defterdeki "Okunan abone oranı" bu % değerden az ise, o defter <b>okunmamış</b> sayılacaktır.');
+        } else {
+            $('#limitDescription').html('Defterdeki "Okunan abone sayısı" bu değerden az ise, o defter <b>okunmamış</b> sayılacaktır.');
+        }
+    });
+});
+</script>
 <?php endif; ?>

@@ -52,16 +52,7 @@ $(document).ready(function () {
         createdRow: function(row, data, dataIndex) {
             $(row).find('td:not(:last-child)').attr('style', 'cursor: pointer !important');
         },
-        order: [[1, 'asc']],
-        buttons: [
-            {
-                extend: 'excelHtml5',
-                title: 'Cari Listesi',
-                exportOptions: {
-                    columns: [0, 1, 2, 3, 4, 5]
-                }
-            }
-        ]
+        order: [[1, 'asc']]
     });
  
     // Satır Tıklama (Hareketlere Git) - Komple Satır (İşlem Sütunu Hariç)
@@ -73,7 +64,9 @@ $(document).ready(function () {
 
     // Excel Aktar Butonu
     $('#btnExportExcel').on('click', function () {
-        table.button('.buttons-excel').trigger();
+        const searchVal = table.search();
+        const url = `views/cari/export-excel.php?balance_filter=${currentBalanceFilter}&search=${encodeURIComponent(searchVal)}`;
+        window.open(url, '_blank');
     });
 
     // Yeni Cari Butonu

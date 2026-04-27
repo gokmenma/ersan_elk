@@ -306,6 +306,15 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
             }
         }
 
+        // Defter kodlarını yükle (Lookup için)
+        $stmtAllDefter = $EndeksOkuma->db->prepare("SELECT tur_adi, defter_bolge, defter_mahalle FROM tanimlamalar WHERE grup = 'defter_kodu' AND silinme_tarihi IS NULL AND firma_id = ?");
+        $stmtAllDefter->execute([$firmaId]);
+        $existingDefters = [];
+        while ($df = $stmtAllDefter->fetch(PDO::FETCH_ASSOC)) {
+            $key = trim($df['tur_adi']) . '|' . trim($df['defter_bolge']) . '|' . trim($df['defter_mahalle']);
+            $existingDefters[$key] = true;
+        }
+
         $stmtAllHist = $EndeksOkuma->db->prepare("SELECT ekip_kodu_id, personel_id, baslangic_tarihi, bitis_tarihi FROM personel_ekip_gecmisi");
         $stmtAllHist->execute();
         $ekipGecmisi = [];
@@ -338,6 +347,21 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
 
             $okuyucuNo = trim($veri['OKUYUCUNO'] ?? '');
             $sayacDurum = trim($veri['SAYACDURUM'] ?? '');
+
+            // Defter kodu tanımlamalarda yoksa ekle (Bölge ve Mahalleye göre arama)
+            $mahalle = trim($veri['MAHALLE'] ?? $veri['MAHALLE_ADI'] ?? '');
+            $defterKey = trim($defter) . '|' . trim($bolge) . '|' . $mahalle;
+            
+            if (!empty($defter) && !empty($bolge) && !isset($existingDefters[$defterKey])) {
+                try {
+                    $insDefter = $EndeksOkuma->db->prepare("INSERT INTO tanimlamalar (firma_id, type, grup, tur_adi, defter_bolge, defter_mahalle, kayit_tarihi, kayit_yapan) VALUES (?, 1, 'defter_kodu', ?, ?, ?, NOW(), 0)");
+                    $insDefter->execute([$firmaId, $defter, $bolge, $mahalle]);
+                    $existingDefters[$defterKey] = true;
+                    cronLog("Yeni defter kodu otomatik eklendi: $defter (Bölge: $bolge, Mahalle: $mahalle)");
+                } catch (Exception $e) {
+                    cronLog("Defter kodu ekleme hatası: " . $e->getMessage());
+                }
+            }
 
             $normDate = \App\Helper\Date::convertExcelDate($veri['OKUMATARIHI'], 'Y-m-d') ?: $veri['OKUMATARIHI'];
             $islemId = md5($normDate . '|' . $bolge . '|' . $defter . '|' . $okuyucuNo . '|' . $sayacDurum);

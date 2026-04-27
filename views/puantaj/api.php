@@ -2521,7 +2521,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         
         $settingsData = [];
         if (isset($_POST['defter_bazli_rapor_alt_limit'])) {
-            $settingsData['defter_bazli_rapor_alt_limit'] = (int)$_POST['defter_bazli_rapor_alt_limit'];
+            $settingsData['defter_bazli_rapor_alt_limit'] = $_POST['defter_bazli_rapor_alt_limit'];
         }
 
         if (empty($settingsData)) {
@@ -2694,15 +2694,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
         // Rapor alt limit ayarını al
         $SettingsModel = new \App\Model\SettingsModel();
-        $altLimit = (int) ($SettingsModel->getAllSettingsAsKeyValue($firmaId)['defter_bazli_rapor_alt_limit'] ?? 0);
+        $altLimit = $SettingsModel->getAllSettingsAsKeyValue($firmaId)['defter_bazli_rapor_alt_limit'] ?? 0;
 
         // 2. Şimdi okuma verilerini işle
         foreach ($rawData as $row) {
-            // ALT LİMİT KONTROLÜ: Eğer toplam okunan limitin altındaysa, hiç okunmamış say
-            if ($altLimit > 0 && (int)$row->toplam_okunan < $altLimit) {
-                continue;
-            }
-
             $bolgeName = trim($row->bolge);
             $defter = trim($row->defter ?: '-');
             $key = mb_strtoupper($bolgeName . '|' . $defter, 'UTF-8');
@@ -2724,6 +2719,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             }
 
             $currentAbone = $activeTanim ? $activeTanim['abone_sayisi'] : 0;
+
+            // ALT LİMİT KONTROLÜ
+            if ($altLimit) {
+                if (str_contains($altLimit, '%')) {
+                    $percent = (float)str_replace('%', '', $altLimit);
+                    $calculatedLimit = ($currentAbone * $percent) / 100;
+                    if ((int)$row->toplam_okunan < $calculatedLimit) continue;
+                } else {
+                    if ((int)$row->toplam_okunan < (int)$altLimit) continue;
+                }
+            }
+
             if ($activeTanim && (empty($organized[$key]['mahalle']) || $organized[$key]['abone_sayisi'] == 0)) {
                 $organized[$key]['mahalle'] = $activeTanim['mahalle'];
                 $organized[$key]['abone_sayisi'] = $activeTanim['abone_sayisi'];
@@ -2963,20 +2970,27 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
         // Rapor alt limit ayarını al
         $SettingsModel = new \App\Model\SettingsModel();
-        $altLimit = (int) ($SettingsModel->getAllSettingsAsKeyValue($firmaId)['defter_bazli_rapor_alt_limit'] ?? 0);
+        $altLimit = $SettingsModel->getAllSettingsAsKeyValue($firmaId)['defter_bazli_rapor_alt_limit'] ?? 0;
 
         // Okunan defter setini oluştur ve eksik defterleri allDefters'a ekle
         $okunanMap = [];
         foreach ($rawData as $row) {
-            // ALT LİMİT KONTROLÜ: Eğer toplam okunan limitin altındaysa, hiç okunmamış say
-            if ($altLimit > 0 && (int)$row->toplam_okunan < $altLimit) {
-                continue;
-            }
-
             $donem = $row->donem;
             $bolgeName = trim($row->bolge ?: 'TANIMSIZ');
             $defterCode = trim($row->defter ?: '-');
             $key = mb_strtoupper($bolgeName . '|' . $defterCode, 'UTF-8');
+
+            // ALT LİMİT KONTROLÜ
+            if ($altLimit) {
+                $currentAbone = isset($allDefters[$key]) ? $allDefters[$key]['abone_sayisi'] : 0;
+                if (str_contains($altLimit, '%')) {
+                    $percent = (float)str_replace('%', '', $altLimit);
+                    $calculatedLimit = ($currentAbone * $percent) / 100;
+                    if ((int)$row->toplam_okunan < $calculatedLimit) continue;
+                } else {
+                    if ((int)$row->toplam_okunan < (int)$altLimit) continue;
+                }
+            }
             
             if (!isset($okunanMap[$donem])) $okunanMap[$donem] = [];
             if (!isset($okunanMap[$donem][$key])) {
@@ -3304,15 +3318,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
 
         // Rapor alt limit ayarını al
         $SettingsModel = new \App\Model\SettingsModel();
-        $altLimit = (int) ($SettingsModel->getAllSettingsAsKeyValue($firmaId)['defter_bazli_rapor_alt_limit'] ?? 0);
+        $altLimit = $SettingsModel->getAllSettingsAsKeyValue($firmaId)['defter_bazli_rapor_alt_limit'] ?? 0;
 
         // 2. Şimdi okuma tarihlerini işle
         foreach ($rawData as $row) {
-            // ALT LİMİT KONTROLÜ: Eğer toplam okunan limitin altındaysa, hiç okunmamış say
-            if ($altLimit > 0 && (int)$row->toplam_okunan < $altLimit) {
-                continue;
-            }
-
             $bolgeName = trim($row->bolge ?: 'TANIMSIZ');
             $defter = trim($row->defter ?: '-');
 
@@ -3332,6 +3341,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                     }
                 }
                 if (!$activeTanim) $activeTanim = $defterTanimListMap[$key][0];
+            }
+
+            $currentAbone = $activeTanim ? $activeTanim['abone_sayisi'] : 0;
+
+            // ALT LİMİT KONTROLÜ
+            if ($altLimit) {
+                if (str_contains($altLimit, '%')) {
+                    $percent = (float)str_replace('%', '', $altLimit);
+                    $calculatedLimit = ($currentAbone * $percent) / 100;
+                    if ((int)$row->toplam_okunan < $calculatedLimit) continue;
+                } else {
+                    if ((int)$row->toplam_okunan < (int)$altLimit) continue;
+                }
             }
 
             if ($activeTanim && (empty($organized[$key]['mahalle']) || $organized[$key]['abone_sayisi'] == 0)) {

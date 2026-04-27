@@ -651,7 +651,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $calisanBrutMaas = $toplamAlacak - floatval($hesap['rawEkOdeme']);
                 
                 // USER REQ: Maaşa Dahil Yemek Yardımı Detay Gösterimi (19.04.2026 Hassas)
-                if ($includedDeduction > 0 || !empty($bp->yemek_yardimi_dahil) || !empty($bp->es_yardimi_dahil)) {
+                $isPrimUsulu = (stripos($maasDurumuGosterim, 'Prim') !== false);
+                if (($includedDeduction > 0 || !empty($bp->yemek_yardimi_dahil) || !empty($bp->es_yardimi_dahil)) && !$isPrimUsulu) {
                     $asgariHakedisModal = round(($asgariUcretNet / 30) * $calismaGunu, 2);
                     $html .= '<tr><td class="text-muted">Asgari Ücret Hakedişi:</td><td class="text-secondary">' . number_format($asgariHakedisModal, 2, ',', '.') . ' ₺</td></tr>';
                     
