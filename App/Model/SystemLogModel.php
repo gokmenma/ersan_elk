@@ -79,12 +79,13 @@ class SystemLogModel extends Model
                 LIMIT :limit";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->bindValue(':firma_id', $_SESSION["firma_id"], PDO::PARAM_INT);
+        $stmt->bindValue(':firma_id', $_SESSION["firma_id"] ?? 0, PDO::PARAM_INT);
         $stmt->bindValue(':limit', $limit, PDO::PARAM_INT);
 
         $stmt->execute();
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
+
 
     /**
      * Get all logs with filtering

@@ -160,6 +160,14 @@ class TalepModel extends Model
     }
 
     /**
+     * Alias for getButunBekleyenTalepler for consistency
+     */
+    public function getBekleyenTalepler()
+    {
+        return $this->getButunBekleyenTalepler();
+    }
+
+    /**
      * Talebin durumunu günceller
      */
     public function updateDurum($id, $durum, $cozum_aciklama = null)

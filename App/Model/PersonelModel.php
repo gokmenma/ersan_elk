@@ -16,6 +16,64 @@ class PersonelModel extends Model
     }
 
     /**
+     * Get pending advance requests
+     */
+    public function getBekleyenAvansTalepleri()
+    {
+        $sql = "SELECT 'Avans' as tip, pa.id, pa.personel_id, pa.talep_tarihi as tarih, pa.durum,
+                pa.tutar as detay
+                FROM personel_avanslari pa
+                JOIN personel p ON pa.personel_id = p.id
+                WHERE pa.durum = 'beklemede' AND pa.silinme_tarihi IS NULL AND p.firma_id = :firma_id
+                ORDER BY pa.talep_tarihi DESC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':firma_id' => $_SESSION['firma_id']]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Get pending leave requests
+     */
+    public function getBekleyenIzinTalepleri()
+    {
+        $sql = "SELECT 'İzin' as tip, pi.id, pi.personel_id, pi.talep_tarihi as tarih, pi.onay_durumu as durum,
+                COALESCE(t.tur_adi, 'İzin') as detay
+                FROM personel_izinleri pi
+                JOIN personel p ON pi.personel_id = p.id
+                LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
+                WHERE LOWER(pi.onay_durumu) IN ('beklemede', 'bekliyor')
+                  AND pi.silinme_tarihi IS NULL
+                  AND p.firma_id = :firma_id
+                ORDER BY pi.talep_tarihi DESC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':firma_id' => $_SESSION['firma_id']]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Get employees currently on leave
+     */
+    public function getIzindekiler($tarih = null)
+    {
+        $tarih = $tarih ?? date('Y-m-d');
+        $sql = "SELECT pi.*, p.adi_soyadi, p.resim_yolu, p.departman, t.tur_adi as izin_tipi_adi
+                FROM personel_izinleri pi
+                JOIN personel p ON pi.personel_id = p.id
+                LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
+                WHERE :tarih BETWEEN pi.baslangic_tarihi AND pi.bitis_tarihi
+                  AND LOWER(pi.onay_durumu) IN ('onaylandı', 'onaylandi', 'kabuledildi')
+                  AND pi.silinme_tarihi IS NULL
+                  AND p.firma_id = :firma_id";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':tarih' => $tarih, ':firma_id' => $_SESSION['firma_id']]);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+
+    /**
      * Personelin silinmeden önce bağlı kayıtları olup olmadığını kontrol eder
      * @param int $id
      * @return string|false
@@ -1123,20 +1181,30 @@ class PersonelModel extends Model
         $restricted_dept = $this->getRestrictedDept();
         $is_restricted = ($restricted_dept !== null);
         $extra_where_p = $is_restricted ? " AND FIND_IN_SET(p.departman, :restricted_dept)" : "";
+        $extra_where_p1 = $is_restricted ? " AND FIND_IN_SET(p.departman, :restricted_dept1)" : "";
+        $extra_where_p2 = $is_restricted ? " AND FIND_IN_SET(p.departman, :restricted_dept2)" : "";
 
         // Sahadaki Personel Sayısı (Bugün iş yapmış olanlar)
         $sqlSahadaki = "SELECT COUNT(DISTINCT p_id) as sahadaki FROM (
             SELECT p.id as p_id FROM yapilan_isler y 
             JOIN personel p ON y.personel_id = p.id
-            WHERE y.tarih = :bugun AND y.firma_id = :firma_id AND y.silinme_tarihi IS NULL $extra_where_p
+            WHERE y.tarih = :bugun1 AND y.firma_id = :firma_id1 AND y.silinme_tarihi IS NULL $extra_where_p1
             UNION ALL
             SELECT p.id as p_id FROM endeks_okuma e
             JOIN personel p ON e.personel_id = p.id
-            WHERE e.tarih = :bugun AND e.firma_id = :firma_id AND e.silinme_tarihi IS NULL $extra_where_p
+            WHERE e.tarih = :bugun2 AND e.firma_id = :firma_id2 AND e.silinme_tarihi IS NULL $extra_where_p2
         ) as sahadakiler";
         $stmtS = $this->db->prepare($sqlSahadaki);
-        $paramsS = ['bugun' => $bugun, 'firma_id' => $firmaId];
-        if ($is_restricted) $paramsS['restricted_dept'] = $restricted_dept;
+        $paramsS = [
+            'bugun1' => $bugun,
+            'firma_id1' => $firmaId,
+            'bugun2' => $bugun,
+            'firma_id2' => $firmaId
+        ];
+        if ($is_restricted) {
+            $paramsS['restricted_dept1'] = $restricted_dept;
+            $paramsS['restricted_dept2'] = $restricted_dept;
+        }
         $stmtS->execute($paramsS);
         $sahadakiCount = $stmtS->fetch(PDO::FETCH_OBJ)->sahadaki ?? 0;
 
@@ -1188,20 +1256,32 @@ class PersonelModel extends Model
         $restricted_dept = $this->getRestrictedDept();
         $is_restricted = ($restricted_dept !== null);
         $extra_where_p = $is_restricted ? " AND FIND_IN_SET(p.departman, :restricted_dept)" : "";
+        $extra_where_p1 = $is_restricted ? " AND FIND_IN_SET(p.departman, :restricted_dept1)" : "";
+        $extra_where_p2 = $is_restricted ? " AND FIND_IN_SET(p.departman, :restricted_dept2)" : "";
 
         // Sahadaki Personel Sayısı (Bu ay iş yapmış olan benzersiz personeller)
         $sqlSahadaki = "SELECT COUNT(DISTINCT p_id) as sahadaki FROM (
             SELECT p.id as p_id FROM yapilan_isler y 
             JOIN personel p ON y.personel_id = p.id
-            WHERE y.tarih >= :buAy AND y.tarih <= :sonGun AND y.firma_id = :firma_id AND y.silinme_tarihi IS NULL $extra_where_p
+            WHERE y.tarih >= :buAy1 AND y.tarih <= :sonGun1 AND y.firma_id = :firma_id1 AND y.silinme_tarihi IS NULL $extra_where_p1
             UNION ALL
             SELECT p.id as p_id FROM endeks_okuma e
             JOIN personel p ON e.personel_id = p.id
-            WHERE e.tarih >= :buAy AND e.tarih <= :sonGun AND e.firma_id = :firma_id AND e.silinme_tarihi IS NULL $extra_where_p
+            WHERE e.tarih >= :buAy2 AND e.tarih <= :sonGun2 AND e.firma_id = :firma_id2 AND e.silinme_tarihi IS NULL $extra_where_p2
         ) as sahadakiler";
         $stmtS = $this->db->prepare($sqlSahadaki);
-        $paramsS = ['buAy' => $buAy, 'sonGun' => $sonGun, 'firma_id' => $firmaId];
-        if ($is_restricted) $paramsS['restricted_dept'] = $restricted_dept;
+        $paramsS = [
+            'buAy1' => $buAy,
+            'sonGun1' => $sonGun,
+            'firma_id1' => $firmaId,
+            'buAy2' => $buAy,
+            'sonGun2' => $sonGun,
+            'firma_id2' => $firmaId
+        ];
+        if ($is_restricted) {
+            $paramsS['restricted_dept1'] = $restricted_dept;
+            $paramsS['restricted_dept2'] = $restricted_dept;
+        }
         $stmtS->execute($paramsS);
         $sahadakiCount = $stmtS->fetch(PDO::FETCH_OBJ)->sahadaki ?? 0;
 

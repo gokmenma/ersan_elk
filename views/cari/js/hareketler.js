@@ -47,7 +47,7 @@ $(document).ready(function () {
     $('#btnExportExcel, #btnExportExcelMobile, #btnExportExcelMobileTop').on('click', function () {
         const filterType = $('input[name="filter_type"]:checked').val();
         const searchVal = table.search();
-        const url = `views/cari/export-hareketler-excel.php?id=${global_cari_id}&filter_type=${filterType}&search=${encodeURIComponent(searchVal)}`;
+        const url = `views/cari/export-hareketler-excel.php?id=${encodeURIComponent(global_cari_id)}&filter_type=${filterType}&search=${encodeURIComponent(searchVal)}`;
         window.open(url, '_blank');
     });
 

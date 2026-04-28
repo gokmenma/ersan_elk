@@ -10,6 +10,7 @@ use App\Model\PuantajModel;
 use App\Model\EndeksOkumaModel;
 use App\Service\SayacDegisimService;
 
+ini_set('display_errors', '0');
 header('Content-Type: application/json; charset=utf-8');
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
@@ -216,12 +217,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 break;
 
             case 'batch-load-widgets':
-                $widgetIds = $_POST['widget_ids'] ?? [];
+                $widgetIds = $_POST['widgets'] ?? $_POST['widget_ids'] ?? [];
                 $widths = $_POST['widths'] ?? [];
                 $results = [];
 
                 try {
                     $personelModel = new \App\Model\PersonelModel();
+                    $avansModel = new \App\Model\AvansModel();
+                    $izinModel = new \App\Model\PersonelIzinleriModel();
                     $aracModel = new \App\Model\AracModel();
                     $talepModel = new \App\Model\TalepModel();
                     $nobetModel = new \App\Model\NobetModel();
@@ -231,65 +234,72 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                     foreach ($widgetIds as $index => $widgetId) {
                         $data = [];
-                        if ($widgetId == 'widget-personel-ozet') {
-                            $data['istatistik'] = $personelModel->personelSayilari('personel');
-                            $data['extraStats'] = $personelModel->getAdvancedDashboardStats();
-                            $data['gec_kalan_sayisi'] = $hareketModel->getGecKalanlarCount($firmaId);
-                        } 
-                        elseif ($widgetId == 'widget-arac-ozet') {
-                            $aracStats = $aracModel->getStats();
-                            $data['toplam_aktif_arac'] = $aracStats->aktif_arac ?? 0;
-                            $data['servisteki_arac'] = $aracModel->getServistekiAracSayisi();
-                            $data['bosta_arac'] = $aracStats->bosta_arac ?? 0;
-                            $data['saha_arac'] = max(0, $data['toplam_aktif_arac'] - $data['servisteki_arac'] - $data['bosta_arac']);
-                            
-                            $total_for_calc = $data['toplam_aktif_arac'] ?: 1;
-                            $data['aktif_a_yuzde'] = ($data['saha_arac'] / $total_for_calc) * 100;
-                            $data['servis_a_yuzde'] = ($data['servisteki_arac'] / $total_for_calc) * 100;
-                            $data['bosta_a_yuzde'] = ($data['bosta_arac'] / $total_for_calc) * 100;
-                        } 
-                        elseif ($widgetId == 'widget-bekleyen-talepler') {
-                            $data['personel_talep_sayisi'] = $talepModel->getBekleyenTalepSayisi();
-                        } 
-                        elseif ($widgetId == 'widget-nobetciler') {
-                            $data['nobetciler'] = $nobetModel->getNobetlerByTarih(date('Y-m-d'));
-                        } 
-                        elseif ($widgetId == 'widget-yaklasan-gorevler') {
-                            $data['yaklasan_gorevler'] = $gorevModel->getYaklasanGorevler($firmaId, $userId, 10);
-                        } 
-                        elseif ($widgetId == 'widget-bildirimler') {
-                            $data['recent_logs'] = $systemLogModel->getRecentLogs(20, 0);
-                            $data['personelLogs'] = $systemLogModel->getPersonelLoginLogs(10);
-                            $data['kullaniciLogs'] = $systemLogModel->getUserLoginLogs(10);
-                        }
-                        elseif ($widgetId == 'widget-gec-kalanlar') {
-                            $data['gec_kalan_sayisi'] = $hareketModel->getGecKalanlarCount($firmaId);
-                        }
-                        elseif ($widgetId == 'widget-talepler') {
-                            $avanslar = $personelModel->getBekleyenAvansTalepleri();
-                            $izinler = $personelModel->getBekleyenIzinTalepleri();
-                            $talepler = $talepModel->getBekleyenTalepler();
-                            
-                            $all = array_merge($avanslar, $izinler, $talepler);
-                            usort($all, fn($a, $b) => strtotime($b->tarih) - strtotime($a->tarih));
-                            
-                            $data['recent_requests'] = array_slice($all, 0, 10);
-                            
-                            // Personel map'ini de dolduralım
-                            $pIds = array_unique(array_column($data['recent_requests'], 'personel_id'));
-                            $data['personel_map'] = [];
-                            if (!empty($pIds)) {
-                                $personeller = $personelModel->whereIn('id', $pIds);
-                                foreach ($personeller as $p) $data['personel_map'][$p->id] = $p;
+                        $data['width'] = is_array($widths) ? ($widths[$index] ?? null) : null;
+                        try {
+                            if ($widgetId == 'widget-personel-ozeti' || $widgetId == 'widget-personel-ozet') {
+                                $data['istatistik'] = $personelModel->personelSayilari('personel');
+                                $data['extraStats'] = $personelModel->getAdvancedDashboardStats();
+                                $data['gec_kalan_sayisi'] = $hareketModel->getGecKalanlarCount($firmaId);
                             }
-                        }
-                        elseif ($widgetId == 'widget-izindekiler') {
-                            $data['izindekiler'] = $personelModel->getIzindekiler(date('Y-m-d'));
-                        }
+                            elseif ($widgetId == 'widget-arac-ozeti' || $widgetId == 'widget-arac-ozet') {
+                                $aracStats = $aracModel->getStats();
+                                $data['toplam_aktif_arac'] = $aracStats->aktif_arac ?? 0;
+                                $data['servisteki_arac'] = $aracModel->getServistekiAracSayisi();
+                                $data['bosta_arac'] = $aracStats->bosta_arac ?? 0;
+                                $data['saha_arac'] = max(0, $data['toplam_aktif_arac'] - $data['servisteki_arac'] - $data['bosta_arac']);
 
-                        $results[$widgetId] = renderWidget($widgetId, $data);
+                                $total_for_calc = $data['toplam_aktif_arac'] ?: 1;
+                                $data['aktif_a_yuzde'] = ($data['saha_arac'] / $total_for_calc) * 100;
+                                $data['servis_a_yuzde'] = ($data['servisteki_arac'] / $total_for_calc) * 100;
+                                $data['bosta_a_yuzde'] = ($data['bosta_arac'] / $total_for_calc) * 100;
+                            }
+                            elseif ($widgetId == 'widget-bekleyen-talepler') {
+                                $data['personel_talep_sayisi'] =
+                                    (int) $avansModel->getBekleyenAvansSayisi()
+                                    + (int) $izinModel->getBekleyenIzinSayisi()
+                                    + (int) $talepModel->getBekleyenTalepSayisi();
+                            }
+                            elseif ($widgetId == 'widget-nobetciler') {
+                                $data['nobetciler'] = $nobetModel->getNobetlerByTarih(date('Y-m-d'));
+                            }
+                            elseif ($widgetId == 'widget-gorevler' || $widgetId == 'widget-yaklasan-gorevler') {
+                                $data['yaklasan_gorevler'] = $gorevModel->getYaklasanGorevler($firmaId, $userId, 10);
+                            }
+                            elseif ($widgetId == 'widget-bildirimler') {
+                                $data['recent_logs'] = $systemLogModel->getRecentLogs(20, 0);
+                                $data['personelLogs'] = $systemLogModel->getPersonelLoginLogs(10);
+                                $data['kullaniciLogs'] = $systemLogModel->getUserLoginLogs(10);
+                            }
+                            elseif ($widgetId == 'widget-gec-kalanlar') {
+                                $data['gec_kalan_sayisi'] = $hareketModel->getGecKalanlarCount($firmaId);
+                            }
+                            elseif ($widgetId == 'widget-talepler') {
+                                $avanslar = $avansModel->getBekleyenAvanslarForDashboard(5);
+                                $izinler = $izinModel->getBekleyenIzinlerForDashboard(5);
+                                $talepler = $talepModel->getBekleyenTaleplerForDashboard(5);
+
+                                $all = array_merge($avanslar, $izinler, $talepler);
+                                usort($all, fn($a, $b) => strtotime($b->tarih) - strtotime($a->tarih));
+
+                                $data['recent_requests'] = array_slice($all, 0, 10);
+
+                                $pIds = array_unique(array_column($data['recent_requests'], 'personel_id'));
+                                $data['personel_map'] = [];
+                                if (!empty($pIds)) {
+                                    $personeller = $personelModel->whereIn('id', $pIds);
+                                    foreach ($personeller as $p) $data['personel_map'][$p->id] = $p;
+                                }
+                            }
+                            elseif ($widgetId == 'widget-izindekiler') {
+                                $data['izindekiler'] = $izinModel->getAktifIzinler(10);
+                            }
+
+                            $results[$widgetId] = renderWidget($widgetId, $data);
+                        } catch (Throwable $we) {
+                            $results[$widgetId] = '<div class="alert alert-danger small p-2" style="font-size:10px;">Widget Error: ' . $we->getMessage() . '</div>';
+                        }
                     }
-                    echo json_encode(['status' => 'success', 'widgets' => $results]);
+                    echo json_encode(['status' => 'success', 'results' => $results]);
                 } catch (Exception $e) {
                     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
                 }
@@ -306,14 +316,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $nobetModel = new \App\Model\NobetModel();
                     $gorevModel = new \App\Model\GorevModel();
 
-                    if ($widgetId == 'widget-personel-ozet') {
+                    if ($widgetId == 'widget-personel-ozet' || $widgetId == 'widget-personel-ozeti') {
                         $data['istatistik'] = $personelModel->personelSayilari('personel');
                         $data['extraStats'] = $personelModel->getAdvancedDashboardStats();
                         
                         $hareketModel = new \App\Model\PersonelHareketleriModel();
                         $data['gec_kalan_sayisi'] = $hareketModel->getGecKalanlarCount($_SESSION['firma_id'] ?? null);
                     } 
-                    elseif ($widgetId == 'widget-arac-ozet') {
+                    elseif ($widgetId == 'widget-arac-ozet' || $widgetId == 'widget-arac-ozeti') {
                         $aracStats = $aracModel->getStats();
                         $data['toplam_aktif_arac'] = $aracStats->aktif_arac ?? 0;
                         $data['servisteki_arac'] = $aracModel->getServistekiAracSayisi();
@@ -331,7 +341,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     elseif ($widgetId == 'widget-nobetciler') {
                         $data['nobetciler'] = $nobetModel->getNobetlerByTarih(date('Y-m-d'));
                     } 
-                    elseif ($widgetId == 'widget-yaklasan-gorevler') {
+                    elseif ($widgetId == 'widget-yaklasan-gorevler' || $widgetId == 'widget-gorevler') {
                         $data['yaklasan_gorevler'] = $gorevModel->getYaklasanGorevler($_SESSION['firma_id'], $_SESSION['user_id'], 10);
                     } 
                     elseif ($widgetId == 'widget-bildirimler') {

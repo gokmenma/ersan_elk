@@ -15,6 +15,7 @@ class AracModel extends Model
         parent::__construct($this->table);
     }
 
+
     /**
      * Firma bazlı tüm araçları getirir
      */

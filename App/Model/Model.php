@@ -215,6 +215,19 @@ class Model extends Db
     }
 
     /**
+     * whereIn clause
+     */
+    public function whereIn($column, array $values)
+    {
+        if (empty($values)) return [];
+        $placeholders = implode(',', array_fill(0, count($values), '?'));
+        $sql = "SELECT * FROM $this->table WHERE $column IN ($placeholders)";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($values);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
      * Get the department name the current user is allowed to see (Leave/Avans/Talep module only).
      * Returns null if no restriction.
      */

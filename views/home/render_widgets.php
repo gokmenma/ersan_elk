@@ -8,13 +8,15 @@ use App\Helper\Security;
 use App\Service\Gate;
 
 function renderWidget(string $widgetId, array $data = []) {
-    extract($data);
+    $widgetDomId = htmlspecialchars($data['render_id'] ?? $widgetId, ENT_QUOTES, 'UTF-8');
+    extract($data, EXTR_SKIP);
     ob_start();
     
     switch ($widgetId) {
+        case 'widget-personel-ozeti':
         case 'widget-personel-ozet':
             ?>
-            <div class="col-md-6 col-xl-4 widget-item" id="widget-personel-ozet">
+            <div class="<?php echo ($width ?? 'col-md-6 col-xl-4'); ?> widget-item" id="<?php echo $widgetDomId; ?>">
                 <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card" style="border-radius: 12px; background: #fff;">
                     <div class="card-body p-4 d-flex flex-column">
                         <div class="d-flex justify-content-between align-items-start mb-4">
@@ -55,9 +57,10 @@ function renderWidget(string $widgetId, array $data = []) {
             <?php
             break;
 
+        case 'widget-arac-ozeti':
         case 'widget-arac-ozet':
             ?>
-            <div class="col-md-6 col-xl-4 widget-item" id="widget-arac-ozet">
+            <div class="<?php echo ($width ?? 'col-md-6 col-xl-4'); ?> widget-item" id="<?php echo $widgetDomId; ?>">
                 <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card" style="border-radius: 12px; background: #fff;">
                     <div class="card-body p-4 d-flex flex-column">
                         <div class="d-flex justify-content-between align-items-start mb-4">
@@ -132,9 +135,10 @@ function renderWidget(string $widgetId, array $data = []) {
             <?php
             break;
 
+        case 'widget-gorevler':
         case 'widget-yaklasan-gorevler':
             ?>
-            <div class="<?php echo ($width ?? 'col-md-6'); ?> widget-item" id="widget-yaklasan-gorevler">
+            <div class="<?php echo ($width ?? 'col-md-6'); ?> widget-item" id="<?php echo $widgetDomId; ?>">
                 <div class="card summary-card" style="background: linear-gradient(145deg, rgba(255,255,255,0.98), rgba(248,250,252,0.99)); border: 1px solid rgba(226,232,240,0.8); border-radius: 12px; box-shadow: 0 4px 15px -3px rgba(0,0,0,0.05), 0 2px 5px -2px rgba(0,0,0,0.02);">
                     <div class="card-header align-items-center d-flex flex-wrap gap-2" style="border-bottom: 1px solid rgba(226,232,240,0.6); padding-bottom: 12px;">
                         <h5 class="card-title mb-0 d-flex align-items-center gap-2" style="font-family: 'Outfit', sans-serif;"><i class='bx bx-grid-vertical drag-handle' style="cursor: move;"></i><i class='bx bx-task' style="color: #6366f1;"></i> Yaklaşan Görevler <?php if (!empty($yaklasan_gorevler)): ?><span class="badge bg-light text-muted ms-1" style="font-size: 0.75rem; border: 1px solid var(--bs-border-color);"><?php echo count($yaklasan_gorevler); ?></span><?php endif; ?></h5>

@@ -357,23 +357,74 @@ if (Gate::allows("ana_sayfa")) {
     }
 
     if (\App\Service\Gate::allows("personel_listesi")) {
-        $widgets['widget-personel-ozet'] = renderSkeleton('widget-personel-ozet', 'col-md-6 col-xl-4', '260px');
+        try {
+            $istatistik = $personelModel->personelSayilari('personel');
+            $extraStats = $personelModel->getAdvancedDashboardStats();
+            $gec_kalan_sayisi = $hareketModel->getGecKalanlarCount($_SESSION['firma_id'] ?? 0);
+        } catch (\Throwable $e) {
+            $istatistik = (object)['aktif_personel' => 0];
+            $extraStats = (object)['sahadaki_personel' => 0, 'izinli_personel' => 0];
+            $gec_kalan_sayisi = 0;
+        }
+
+        $widgets['widget-personel-ozeti'] = renderWidget('widget-personel-ozeti', [
+            'width' => 'col-md-6 col-xl-4',
+            'istatistik' => $istatistik,
+            'extraStats' => $extraStats,
+            'gec_kalan_sayisi' => $gec_kalan_sayisi,
+        ]);
     }
 
     if (\App\Service\Gate::allows("arac_takip_yonetim")) {
-        $widgets['widget-arac-ozet'] = renderSkeleton('widget-arac-ozet', 'col-md-6 col-xl-4', '260px');
+        try {
+            $aracModel = new \App\Model\AracModel();
+            $aracStats = $aracModel->getStats();
+            $toplam_aktif_arac = $aracStats->aktif_arac ?? 0;
+            $servisteki_arac = $aracModel->getServistekiAracSayisi();
+            $bosta_arac = $aracStats->bosta_arac ?? 0;
+            $saha_arac = max(0, $toplam_aktif_arac - $servisteki_arac - $bosta_arac);
+
+            $total_for_calc = $toplam_aktif_arac ?: 1;
+            $aktif_a_yuzde = ($saha_arac / $total_for_calc) * 100;
+            $servis_a_yuzde = ($servisteki_arac / $total_for_calc) * 100;
+            $bosta_a_yuzde = ($bosta_arac / $total_for_calc) * 100;
+        } catch (\Throwable $e) {
+            $toplam_aktif_arac = $saha_arac = $servisteki_arac = $bosta_arac = 0;
+            $aktif_a_yuzde = $servis_a_yuzde = $bosta_a_yuzde = 0;
+        }
+
+        $widgets['widget-arac-ozeti'] = renderWidget('widget-arac-ozeti', [
+            'width' => 'col-md-6 col-xl-4',
+            'toplam_aktif_arac' => $toplam_aktif_arac,
+            'saha_arac' => $saha_arac,
+            'servisteki_arac' => $servisteki_arac,
+            'bosta_arac' => $bosta_arac,
+            'aktif_a_yuzde' => $aktif_a_yuzde,
+            'servis_a_yuzde' => $servis_a_yuzde,
+            'bosta_a_yuzde' => $bosta_a_yuzde,
+        ]);
     }
 
     if (\App\Service\Gate::allows("talepler")) {
-        $widgets['widget-bekleyen-talepler'] = renderSkeleton('widget-bekleyen-talepler', 'col-6 col-md-2', '140px');
+        $widgets['widget-bekleyen-talepler'] = renderWidget('widget-bekleyen-talepler', [
+            'personel_talep_sayisi' => $personel_talep_sayisi,
+        ]);
     }
 
-    ob_start(); ?>
     if (\App\Service\Gate::allows("personel_listesi")) {
-        $widgets['widget-gec-kalanlar'] = renderSkeleton('widget-gec-kalanlar', 'col-6 col-md-2', '140px');
+        $widgets['widget-gec-kalanlar'] = renderWidget('widget-gec-kalanlar', [
+            'gec_kalan_sayisi' => $gec_kalan_sayisi,
+        ]);
     }
 
-    $widgets['widget-nobetciler'] = renderSkeleton('widget-nobetciler', 'col-6 col-md-2', '140px');
+    try {
+        $nobetciler = $nobetModel->getNobetlerByTarih($bugun);
+    } catch (\Throwable $e) {
+        $nobetciler = [];
+    }
+    $widgets['widget-nobetciler'] = renderWidget('widget-nobetciler', [
+        'nobetciler' => $nobetciler,
+    ]);
 
     ob_start(); ?>
     <div class="col-12 mt-4 mb-3">
@@ -686,7 +737,7 @@ if (Gate::allows("ana_sayfa")) {
     $widgets['widget-endeks-karsilastirma'] = ob_get_clean();
 
     if (\App\Service\Gate::allows("gorevler")) {
-        $widgets['widget-yaklasan-gorevler'] = renderSkeleton('widget-yaklasan-gorevler', getWidgetWidth('widget-yaklasan-gorevler', 'col-md-6'), '260px');
+        $widgets['widget-gorevler'] = renderSkeleton('widget-gorevler', getWidgetWidth('widget-gorevler', 'col-md-6'), '260px');
     }
 
     if (\App\Service\Gate::allows("gorev_bildirim_log_kayitlari")) {
@@ -890,14 +941,14 @@ if (Gate::allows("ana_sayfa")) {
                                 <li>
                                     <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
                                         <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                            data-widget="widget-personel-ozet" checked>
+                                            data-widget="widget-personel-ozeti" checked>
                                         Personel Durumu
                                     </label>
                                 </li>
                                 <li>
                                     <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
                                         <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                            data-widget="widget-arac-ozet" checked>
+                                            data-widget="widget-arac-ozeti" checked>
                                         Araç Durumu
                                     </label>
                                 </li>
@@ -1004,7 +1055,7 @@ if (Gate::allows("ana_sayfa")) {
                                     <li>
                                         <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
                                             <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                                data-widget="widget-yaklasan-gorevler" checked>
+                                                data-widget="widget-gorevler" checked>
                                             Yaklaşan Görevler
                                         </label>
                                     </li>
@@ -2540,8 +2591,8 @@ if (Gate::allows("ana_sayfa")) {
                 const criticalSkeletonStyle = document.getElementById('dashboard-skeleton-critical');
                 const criticalWidgetIds = new Set([
                     'widget-ana-slider',
-                    'widget-personel-ozet',
-                    'widget-arac-ozet',
+                    'widget-personel-ozeti',
+                    'widget-arac-ozeti',
                     'widget-bekleyen-talepler',
                     'widget-gec-kalanlar',
                     'widget-nobetciler'
@@ -2974,26 +3025,42 @@ if (Gate::allows("ana_sayfa")) {
                 handleFormSubmit('formTalepCozuldu');
 
                 // İş Türü İstatistikleri (Yıllık)
-                const yearFilter = document.getElementById('stats-year-filter');
-                if (yearFilter) {
-                    yearFilter.addEventListener('change', function () {
-                        loadWorkTypeStats(this.value);
-                    });
-                    loadWorkTypeStats(yearFilter.value);
-                }
+                function initializeDashboardStatWidgets() {
+                    const yearFilter = document.getElementById('stats-year-filter');
+                    if (yearFilter) {
+                        if (yearFilter.dataset.dashboardBound !== 'true') {
+                            yearFilter.addEventListener('change', function () {
+                                loadWorkTypeStats(this.value);
+                            });
+                            yearFilter.dataset.dashboardBound = 'true';
+                        }
+                        loadWorkTypeStats(yearFilter.value);
+                    }
 
                 // İş Emri Sonuçları (Aylık)
-                const resultMonthFilter = document.getElementById('stats-result-month-filter');
-                const resultYearFilter = document.getElementById('stats-result-year-filter');
+                    const resultMonthFilter = document.getElementById('stats-result-month-filter');
+                    const resultYearFilter = document.getElementById('stats-result-year-filter');
 
-                if (resultMonthFilter && resultYearFilter) {
-                    const refreshResultStats = () => {
-                        loadWorkResultStats(resultYearFilter.value, resultMonthFilter.value);
-                    };
-                    resultMonthFilter.addEventListener('change', refreshResultStats);
-                    resultYearFilter.addEventListener('change', refreshResultStats);
-                    refreshResultStats();
+                    if (resultMonthFilter && resultYearFilter) {
+                        const refreshResultStats = () => {
+                            loadWorkResultStats(resultYearFilter.value, resultMonthFilter.value);
+                        };
+
+                        if (resultMonthFilter.dataset.dashboardBound !== 'true') {
+                            resultMonthFilter.addEventListener('change', refreshResultStats);
+                            resultMonthFilter.dataset.dashboardBound = 'true';
+                        }
+
+                        if (resultYearFilter.dataset.dashboardBound !== 'true') {
+                            resultYearFilter.addEventListener('change', refreshResultStats);
+                            resultYearFilter.dataset.dashboardBound = 'true';
+                        }
+
+                        refreshResultStats();
+                    }
                 }
+
+                initializeDashboardStatWidgets();
                 // Dashboard Config Persistence
                 const dashboard = $("#dashboard-widgets");
 
@@ -3756,7 +3823,7 @@ if (Gate::allows("ana_sayfa")) {
                     lazyWidgets.forEach(widget => {
                         widgetIds.push(widget.id);
                         const widthStr = $(widget).attr('class') || '';
-                        const width = widthStr.split(' ').find(c => c.startsWith('col-')) || 'col-md-6';
+                        const width = widthStr.split(/\s+/).filter(c => c.startsWith('col-')).join(' ') || 'col-md-6';
                         widths.push(width);
                     });
                     
@@ -3765,17 +3832,19 @@ if (Gate::allows("ana_sayfa")) {
                         type: 'POST',
                         data: {
                             action: 'batch-load-widgets',
-                            widget_ids: widgetIds,
+                            widgets: widgetIds,
                             widths: widths
                         },
                         success: function(response) {
                             try {
                                 const res = typeof response === 'object' ? response : JSON.parse(response);
-                                if (res.status === 'success' && res.widgets) {
-                                    Object.keys(res.widgets).forEach(widgetId => {
-                                        const html = res.widgets[widgetId];
+                                if (res.status === 'success' && res.results) {
+                                    Object.keys(res.results).forEach(widgetId => {
+                                        const html = res.results[widgetId];
                                         $('#' + widgetId).replaceWith(html);
                                     });
+
+                                    initializeDashboardStatWidgets();
                                     
                                     // Trigger resize for charts
                                     setTimeout(() => {
