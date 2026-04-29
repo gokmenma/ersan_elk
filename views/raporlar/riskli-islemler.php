@@ -93,7 +93,8 @@ $calcTypeOptions = [
                         <div class="flex-grow-1">
                             <h5 class="card-title mb-0">Riskli Personel Listesi</h5>
                             <p class="text-muted small mb-0">Belirlenen kriterlere göre risk oranı yüksek olan işlemler listelenmektedir.</p>
-                           <div class="flex-shrink-0">
+                        </div>
+                        <div class="flex-shrink-0">
                             <button type="button" class="btn btn-soft-success btn-sm" id="exportExcel">
                                 <i class="mdi mdi-file-excel me-1"></i> Excel'e Aktar
                             </button>
@@ -133,14 +134,18 @@ $calcTypeOptions = [
                                     <tr>
                                         <td>
                                             <div class="d-flex align-items-center">
-                                                <div class="avatar-xs flex-shrink-0 me-3">
-                                                    <span class="avatar-title bg-primary-subtle text-primary rounded-circle font-size-12">
-                                                        <?= mb_substr($row->personel_adi ?? '?', 0, 1) ?>
-                                                    </span>
+                                                <div class="avatar-md flex-shrink-0 me-3">
+                                                    <?php if (!empty($row->personel_resim) && file_exists($row->personel_resim)): ?>
+                                                        <img src="<?= $row->personel_resim ?>" alt="" class="avatar-title rounded-circle shadow-sm">
+                                                    <?php else: ?>
+                                                        <span class="avatar-title bg-primary-subtle text-primary rounded-circle font-size-16 fw-bold">
+                                                            <?= mb_substr($row->personel_adi ?? '?', 0, 1) ?>
+                                                        </span>
+                                                    <?php endif; ?>
                                                 </div>
                                                 <div>
-                                                    <h5 class="font-size-14 mb-1"><?= htmlspecialchars($row->personel_adi ?? 'Bilinmiyor') ?></h5>
-                                                    <p class="text-muted mb-0 font-size-12"><?= htmlspecialchars($row->ekip_adi ?? '-') ?></p>
+                                                    <h5 class="font-size-15 mb-1 fw-bold"><?= htmlspecialchars($row->personel_adi ?? 'Bilinmiyor') ?></h5>
+                                                    <p class="text-muted mb-0 font-size-12"><i class="bx bx-group me-1"></i><?= htmlspecialchars($row->ekip_adi ?? '-') ?></p>
                                                 </div>
                                             </div>
                                         </td>
@@ -194,9 +199,61 @@ $calcTypeOptions = [
             });
         }
 
-        // DataTable nesnesini yakala (init.js tarafından oluşturuldu)
+        // DataTable nesnesini yakala
+        let table;
         setTimeout(function() {
-            table = $('#riskyTable').DataTable();
+            if ($.fn.DataTable.isDataTable('#riskyTable')) {
+                table = $('#riskyTable').DataTable();
+            } else {
+                table = $('#riskyTable').DataTable({
+                    language: {
+                        url: "assets/js/tr.json"
+                    },
+                    pageLength: 25,
+                    responsive: true,
+                    dom: 't<"row"<"col-sm-12 col-md-5"i><"col-sm-12 col-md-7"p>>'
+                });
+            }
         }, 100);
+
+        // Manuel Excel Aktarımı (HTML Formatında - Daha Güvenli)
+        $('#exportExcel').on('click', function() {
+            let table_html = '<table border="1">';
+            
+            // Başlıkları al
+            table_html += '<tr>';
+            $('#riskyTable thead tr:first th').each(function() {
+                table_html += '<th style="background-color: #f8f9fa;">' + $(this).text().trim() + '</th>';
+            });
+            table_html += '</tr>';
+
+            // Verileri al (Sadece filtrelenmiş olanlar)
+            let rows = table.rows({ filter: 'applied' }).nodes();
+            $(rows).each(function() {
+                table_html += '<tr>';
+                $(this).find('td').each(function() {
+                    let cell = $(this).clone();
+                    // Temizleme işlemleri
+                    if (cell.find('h5').length) {
+                        // Personel ve Ekibi ayır veya birleştir ama temizle
+                        let pName = cell.find('h5').text().trim();
+                        let eName = cell.find('p').text().trim();
+                        table_html += '<td>' + pName + ' (' + eName + ')</td>';
+                    } else if (cell.find('.fw-bold').length) {
+                        table_html += '<td>' + cell.find('.fw-bold').text().trim() + '</td>';
+                    } else {
+                        table_html += '<td>' + cell.text().trim() + '</td>';
+                    }
+                });
+                table_html += '</tr>';
+            });
+            table_html += '</table>';
+
+            let blob = new Blob(['\ufeff' + table_html], { type: 'application/vnd.ms-excel' });
+            let link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = 'riskli_islemler_raporu.xls';
+            link.click();
+        });
     });
 </script>
