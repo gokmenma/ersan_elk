@@ -12,7 +12,8 @@ $endDate = $_GET['end_date'] ?? Date::today();
 $region = $_GET['region'] ?? '';
 $defter = $_GET['defter'] ?? '';
 $calcType = $_GET['calc_type'] ?? 'total'; // 'total' or 'normal'
-$threshold = $_GET['threshold'] ?? 0.6;
+$thresholdInput = $_GET['threshold'] ?? 60; // Default %60
+$threshold = (float)$thresholdInput / 100;
 
 $regionList = $Tanimlar->getEkipBolgeleri();
 $regionOptions = ['' => 'Tüm Bölgeler'];
@@ -55,10 +56,10 @@ $calcTypeOptions = [
                         <input type="hidden" name="p" value="raporlar/riskli-islemler">
                         <div class="row g-3">
                             <div class="col-md-2">
-                                <?= Form::FormFloatInput('text', 'start_date', $startDate, 'Başlangıç Tarihi', '', 'calendar', 'form-control flatpickr') ?>
+                                <?= Form::FormFloatInput('text', 'start_date', $startDate, 'Başlangıç Tarihi', 'Başlangıç Tarihi', 'calendar', 'form-control flatpickr') ?>
                             </div>
                             <div class="col-md-2">
-                                <?= Form::FormFloatInput('text', 'end_date', $endDate, 'Bitiş Tarihi', '', 'calendar', 'form-control flatpickr') ?>
+                                <?= Form::FormFloatInput('text', 'end_date', $endDate, 'Bitiş Tarihi', 'Bitiş Tarihi', 'calendar', 'form-control flatpickr') ?>
                             </div>
                             <div class="col-md-2">
                                 <?= Form::FormSelect2('region', $regionOptions, $region, 'Bölge', 'globe', 'key', '', 'form-select select2') ?>
@@ -66,12 +67,15 @@ $calcTypeOptions = [
                             <div class="col-md-2">
                                 <?= Form::FormSelect2('defter', $defterOptions, $defter, 'Defter', 'book', 'key', '', 'form-select select2') ?>
                             </div>
-                            <div class="col-md-3">
-                                <?= Form::FormSelect2('calc_type', $calcTypeOptions, $calcType, 'Hesaplama Yöntemi', 'calculator', 'key', '', 'form-select select2') ?>
+                            <div class="col-md-2">
+                                <?= Form::FormSelect2('calc_type', $calcTypeOptions, $calcType, 'Hesaplama Yöntemi', 'hash', 'key', '', 'form-select select2') ?>
+                            </div>
+                            <div class="col-md-1">
+                                <?= Form::FormFloatInput('number', 'threshold', $thresholdInput, 'Risk Oranı (%)', 'Risk Oranı (%)', 'percent', 'form-control') ?>
                             </div>
                             <div class="col-md-1 d-flex align-items-end">
-                                <button type="submit" class="btn btn-primary w-100">
-                                    <i class="bx bx-filter-alt me-1"></i> Filtrele
+                                <button type="submit" class="btn btn-dark w-100 h-100" style="min-height: 58px;">
+                                    <i class="bx bx-filter-alt"></i>
                                 </button>
                             </div>
                         </div>
@@ -103,6 +107,7 @@ $calcTypeOptions = [
                             <thead class="table-light">
                                 <tr>
                                     <th>Personel / Ekip</th>
+                                    <th>Bölge</th>
                                     <th class="text-center">Toplam Abone</th>
                                     <th class="text-center">Sayaç Normal</th>
                                     <th class="text-center text-danger">Evde Yok + Kull.</th>
@@ -143,6 +148,9 @@ $calcTypeOptions = [
                                                     <p class="text-muted mb-0 font-size-12"><?= htmlspecialchars($row->ekip_adi ?? '-') ?></p>
                                                 </div>
                                             </div>
+                                        </td>
+                                        <td>
+                                            <span class="badge bg-soft-info text-info"><?= htmlspecialchars($row->bolge ?? '-') ?></span>
                                         </td>
                                         <td class="text-center fw-medium"><?= number_format($row->toplam_abone_sayisi, 0, ',', '.') ?></td>
                                         <td class="text-center"><?= number_format($row->normal_sayisi, 0, ',', '.') ?></td>

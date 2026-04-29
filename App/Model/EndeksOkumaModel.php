@@ -743,6 +743,7 @@ class EndeksOkumaModel extends Model
                         t.ekip_kodu_id,
                         p.adi_soyadi as personel_adi,
                         def.tur_adi as ekip_adi,
+                        def.ekip_bolge as bolge,
                         SUM(t.okunan_abone_sayisi) as toplam_abone_sayisi,
                         SUM(CASE WHEN t.sayac_durum LIKE '%NORMAL%' THEN t.okunan_abone_sayisi ELSE 0 END) as normal_sayisi,
                         SUM(CASE WHEN (t.sayac_durum LIKE '%EVDE YOK%' OR t.sayac_durum LIKE '%KULLANILMIYOR%') THEN t.okunan_abone_sayisi ELSE 0 END) as evde_yok_sayisi
@@ -750,7 +751,7 @@ class EndeksOkumaModel extends Model
                     LEFT JOIN personel p ON t.personel_id = p.id
                     LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
                     WHERE $where
-                    GROUP BY t.personel_id, t.ekip_kodu_id
+                    GROUP BY t.personel_id, t.ekip_kodu_id, p.adi_soyadi, def.tur_adi, def.ekip_bolge
                 ) as sub
                 WHERE $denominator > 0 AND (evde_yok_sayisi / $denominator) >= :threshold
                 ORDER BY (evde_yok_sayisi / $denominator) DESC";
