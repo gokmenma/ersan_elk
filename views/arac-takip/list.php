@@ -1085,6 +1085,7 @@ if ($filter === 'muayene') {
                                             <th style="width:10%" class="text-end" data-filter="number">Giriş KM</th>
                                             <th style="width:10%" class="text-end" data-filter="number">Çıkış KM</th>
                                             <th style="width:20%" data-filter="string">Servis Nedeni</th>
+                                            <th style="width:15%" data-filter="string">İşlem Sonucu</th>
                                             <th style="width:10%" class="text-center" data-filter="string">İkame Araç</th>
                                             <th style="width:10%" class="text-center">İşlemler</th>
                                         </tr>

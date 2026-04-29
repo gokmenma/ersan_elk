@@ -984,7 +984,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $adetSubText = $toplamPuantajAdet > 0 ? '<div class="text-muted fw-normal" style="font-size: 10px;">(Toplam ' . number_format($toplamPuantajAdet, 0, ',', '.') . ' Adet)</div>' : '';
                         $puantajSectionClass = 'puantaj-section-' . $bp->id;
 
-                        $html .= '<tr class="bg-light cursor-pointer" style="border-top: 1px solid #e9ecef !important; border-bottom: 1px solid #e9ecef !important;" data-bs-toggle="collapse" data-bs-target=".' . $puantajSectionClass . '" aria-expanded="true">
+                        $html .= '<tr class="bg-light cursor-pointer" style="border-top: 1px solid #e9ecef !important; border-bottom: 1px solid #e9ecef !important;" data-bs-toggle="collapse" data-bs-target=".' . $puantajSectionClass . '" aria-expanded="false">
                                     <td class="ps-3 pt-2 pb-2">
                                         <div class="d-flex align-items-center">
                                             <i class="bx bx-briefcase me-2 text-primary fs-5"></i>
@@ -1083,7 +1083,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $detailClass = 'puantaj-detail-' . substr(md5($grup['ana']), 0, 12);
 
                             if ($hasMultiplePrice) {
-                                $html .= '<tr class="collapse show cursor-pointer ' . $puantajSectionClass . '" data-bs-toggle="collapse" data-bs-target=".' . $detailClass . '" aria-expanded="false"><td class="ps-4 py-2"><div class="fw-medium">' . htmlspecialchars($grup['ana']) . '</div>' . $detayText . '</td><td class="text-end pe-3 text-success align-middle"><div class="d-flex justify-content-end align-items-center gap-2"><span>+' . number_format($grup['tutar'], 2, ',', '.') . ' ₺</span><i class="bx bx-chevron-down text-muted"></i></div></td></tr>';
+                                $html .= '<tr class="collapse cursor-pointer ' . $puantajSectionClass . '" data-bs-toggle="collapse" data-bs-target=".' . $detailClass . '" aria-expanded="false"><td class="ps-4 py-2"><div class="fw-medium">' . htmlspecialchars($grup['ana']) . '</div>' . $detayText . '</td><td class="text-end pe-3 text-success align-middle"><div class="d-flex justify-content-end align-items-center gap-2"><span>+' . number_format($grup['tutar'], 2, ',', '.') . ' ₺</span><i class="bx bx-chevron-down text-muted"></i></div></td></tr>';
 
                                 $fiyatKirimlari = array_values($grup['fiyat_kirilim']);
                                 usort($fiyatKirimlari, function ($a, $b) {
@@ -1105,7 +1105,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     $html .= '<tr class="collapse ' . $detailClass . '"><td class="ps-5 py-2 small text-muted">' . htmlspecialchars(implode(' ', $detayEtiket)) . '</td><td class="text-end pe-3 small text-success">+' . number_format($kirilim['tutar'], 2, ',', '.') . ' ₺</td></tr>';
                                 }
                             } else {
-                                $html .= '<tr class="collapse show ' . $puantajSectionClass . '"><td class="ps-4 py-2"><div class="fw-medium">' . htmlspecialchars($grup['ana']) . '</div>' . $detayText . '</td><td class="text-end pe-3 text-success align-middle">+' . number_format($grup['tutar'], 2, ',', '.') . ' ₺</td></tr>';
+                                $html .= '<tr class="collapse ' . $puantajSectionClass . '"><td class="ps-4 py-2"><div class="fw-medium">' . htmlspecialchars($grup['ana']) . '</div>' . $detayText . '</td><td class="text-end pe-3 text-success align-middle">+' . number_format($grup['tutar'], 2, ',', '.') . ' ₺</td></tr>';
                             }
                         }
                     }

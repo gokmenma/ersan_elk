@@ -1781,6 +1781,7 @@ const AracTakip = {
                             <td class="text-end">${self.formatNumber(s.giris_km)} km</td>
                             <td class="text-end">${self.formatNumber(s.cikis_km)} km</td>
                             <td class="text-truncate" style="max-width: 200px;" title="${s.servis_nedeni}">${s.servis_nedeni || "-"}</td>
+                            <td class="text-truncate" style="max-width: 150px;" title="${s.yapilan_islemler || ""}">${s.yapilan_islemler || "-"}</td>
                             <td class="text-center">${ikameInfo}</td>
                             <td class="text-center">
                                 ${actionButtons}
