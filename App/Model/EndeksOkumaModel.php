@@ -707,9 +707,11 @@ class EndeksOkumaModel extends Model
     }
 
     /**
-     * Riski personelleri getirir (Evde Yok / Sayaç Normal >= %60)
+     * Riski personelleri getirir
+     * @param string $calcType 'total' (Toplam Abone) veya 'normal' (Sayaç Normal)
+     * @param float $threshold Risk eşiği (0.6 = %60)
      */
-    public function getRiskyPersonnel($startDate, $endDate, $region = '', $defter = '')
+    public function getRiskyPersonnel($startDate, $endDate, $region = '', $defter = '', $calcType = 'total', $threshold = 0.6)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $params = ['firma_id' => $firmaId];
@@ -733,8 +735,12 @@ class EndeksOkumaModel extends Model
             $params['defter'] = $defter;
         }
 
+        $denominator = ($calcType === 'normal') ? 'normal_sayisi' : 'toplam_abone_sayisi';
+
         $sql = "SELECT * FROM (
                     SELECT 
+                        t.personel_id,
+                        t.ekip_kodu_id,
                         p.adi_soyadi as personel_adi,
                         def.tur_adi as ekip_adi,
                         SUM(t.okunan_abone_sayisi) as toplam_abone_sayisi,
@@ -746,8 +752,10 @@ class EndeksOkumaModel extends Model
                     WHERE $where
                     GROUP BY t.personel_id, t.ekip_kodu_id
                 ) as sub
-                WHERE toplam_abone_sayisi > 0 AND (evde_yok_sayisi / toplam_abone_sayisi) >= 0.6
-                ORDER BY (evde_yok_sayisi / toplam_abone_sayisi) DESC";
+                WHERE $denominator > 0 AND (evde_yok_sayisi / $denominator) >= :threshold
+                ORDER BY (evde_yok_sayisi / $denominator) DESC";
+
+        $params['threshold'] = $threshold;
 
         $stmt = $this->db->prepare($sql);
         foreach ($params as $key => $val) {
