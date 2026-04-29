@@ -11,7 +11,7 @@ $startDate = $_GET['start_date'] ?? Date::firstDayOfThisMonth();
 $endDate = $_GET['end_date'] ?? Date::today();
 $region = $_GET['region'] ?? '';
 $defter = $_GET['defter'] ?? '';
-$calcType = $_GET['calc_type'] ?? 'total'; // 'total' or 'normal'
+$calcType = $_GET['calc_type'] ?? 'normal'; // 'total' or 'normal'
 $thresholdInput = $_GET['threshold'] ?? 60; // Default %60
 $threshold = (float)$thresholdInput / 100;
 
@@ -93,9 +93,8 @@ $calcTypeOptions = [
                         <div class="flex-grow-1">
                             <h5 class="card-title mb-0">Riskli Personel Listesi</h5>
                             <p class="text-muted small mb-0">Belirlenen kriterlere göre risk oranı yüksek olan işlemler listelenmektedir.</p>
-                        </div>
-                        <div class="flex-shrink-0">
-                            <button type="button" class="btn btn-soft-success btn-sm" id="btnExportExcel">
+                           <div class="flex-shrink-0">
+                            <button type="button" class="btn btn-soft-success btn-sm" id="exportExcel">
                                 <i class="mdi mdi-file-excel me-1"></i> Excel'e Aktar
                             </button>
                         </div>
@@ -103,7 +102,7 @@ $calcTypeOptions = [
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-hover align-middle table-nowrap mb-0" id="riskyTable">
+                        <table class="table table-hover align-middle table-nowrap mb-0 datatable" id="riskyTable">
                             <thead class="table-light">
                                 <tr>
                                     <th>Personel / Ekip</th>
@@ -119,11 +118,7 @@ $calcTypeOptions = [
                             <tbody>
                                 <?php
                                 $riskyData = $EndeksOkuma->getRiskyPersonnel($startDate, $endDate, $region, $defter, $calcType, $threshold);
-                                if (empty($riskyData)): ?>
-                                    <tr>
-                                        <td colspan="7" class="text-center py-4 text-muted">Kayıt bulunamadı.</td>
-                                    </tr>
-                                <?php else: 
+                                if (!empty($riskyData)): 
                                     foreach ($riskyData as $row): 
                                         $denominator = ($calcType === 'normal') ? $row->normal_sayisi : $row->toplam_abone_sayisi;
                                         $ratio = ($denominator > 0) ? ($row->evde_yok_sayisi / $denominator) * 100 : 0;
@@ -199,14 +194,9 @@ $calcTypeOptions = [
             });
         }
 
-        $('#btnExportExcel').on('click', function() {
-            let table = document.getElementById('riskyTable');
-            let html = table.outerHTML;
-            let url = 'data:application/vnd.ms-excel,' + encodeURIComponent(html);
-            let link = document.createElement('a');
-            link.download = 'riskli_islemler_raporu.xls';
-            link.href = url;
-            link.click();
-        });
+        // DataTable nesnesini yakala (init.js tarafından oluşturuldu)
+        setTimeout(function() {
+            table = $('#riskyTable').DataTable();
+        }, 100);
     });
 </script>

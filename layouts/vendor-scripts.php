@@ -175,7 +175,8 @@ if ($page == "hakedisler/hakedis-detay") {
     $page == "cari/list" || $page == "cari/hesap-hareketleri" ||
     $page == "formlar/list" || $page == "formlar/manage" ||
     $page == "yardim/list" || $page == "yardim/user-list" ||
-    $page == "bildirim/list"
+    $page == "bildirim/list" ||
+    $page == "raporlar/riskli-islemler"
 
 
 ) { ?>
