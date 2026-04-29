@@ -62,16 +62,13 @@ try {
         $nakitYemek = 0;
         $sodexoYemek = 0;
         $esYardimi = 0;
-        $fiiliGun = 25; // Varsayılan çalışma günü
+        $fiiliGun = intval($hesap['includedAllowanceFiiliGun'] ?? 0);
         
         // 1. Maaşa Dahil Yemek Yardımı (Nakit/Banka)
         if (isset($hesap['mealAllowanceDeduction']) && $hesap['mealAllowanceDeduction'] > 0) {
             $nakitYemek = $hesap['mealAllowanceDeduction'];
             
-            // Eğer fiili çalışma günü girilmişse onu al (hesaplama detayından geliyor)
-            if (isset($p->hd_fiili_calisma_gunu) && intval($p->hd_fiili_calisma_gunu) > 0) {
-                $fiiliGun = intval($p->hd_fiili_calisma_gunu);
-            }
+            $fiiliGun = intval($hesap['includedAllowanceFiiliGun'] ?? $fiiliGun);
         }
         
         // 2. Sodexo / Yemek Kartı Ödemeleri
@@ -93,7 +90,7 @@ try {
 
         // Eğer herhangi bir hakediş varsa listeye ekle
         if ($nakitYemek > 0 || $sodexoYemek > 0 || $esYardimi > 0) {
-            $gunlukNakit = $nakitYemek > 0 ? ($nakitYemek / $fiiliGun) : 0;
+            $gunlukNakit = ($nakitYemek > 0 && $fiiliGun > 0) ? ($nakitYemek / $fiiliGun) : 0;
             $yemekVerileri[] = [
                 'tc_kimlik' => $p->tc_kimlik_no ?? '-',
                 'adi_soyadi' => $p->adi_soyadi ?? '-',

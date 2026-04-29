@@ -129,16 +129,30 @@ class BordroPersonelModel extends Model
         $personelLimit = floatval($kayit->yemek_yardimi_tutari ?? 0);
         $paramLimit = 0;
 
-        if (!empty($kayit->yemek_yardimi_parametre_id)) {
-            if ($this->cachedParametreModel === null) {
-                $this->cachedParametreModel = new BordroParametreModel();
-            }
-
-            $paramYemek = $this->cachedParametreModel->find($kayit->yemek_yardimi_parametre_id);
-            $paramLimit = floatval($paramYemek->varsayilan_tutar ?? 0);
+        if ($this->cachedParametreModel === null) {
+            $this->cachedParametreModel = new BordroParametreModel();
         }
 
-        return max($personelLimit, $paramLimit);
+        if (!empty($kayit->yemek_yardimi_parametre_id)) {
+            $paramYemek = $this->cachedParametreModel->find($kayit->yemek_yardimi_parametre_id);
+            if ($paramYemek) {
+                $paramLimit = floatval($paramYemek->varsayilan_tutar ?? 0);
+            }
+        }
+
+        // Eğer personel kartında özel bir parametre seçilmemişse, global olarak "yemek_yardimi_tum" veya "yemek" kodlu parametreyi alalım
+        if ($paramLimit <= 0) {
+            $paramYemek = $this->cachedParametreModel->getByKod('yemek_yardimi_tum') ?: $this->cachedParametreModel->getByKod('yemek');
+            if ($paramYemek) {
+                $paramLimit = floatval($paramYemek->varsayilan_tutar ?? 0);
+            }
+        }
+
+        // USER REQ: Yemek parası parametrede belirlenen tutarı geçmemeli.
+        if ($personelLimit > 0 && $paramLimit > 0) {
+            return (float) min($personelLimit, $paramLimit);
+        }
+        return (float) max($personelLimit, $paramLimit);
     }
 
     private function getEsYardimiAylikLimit(object $kayit): float
@@ -171,6 +185,7 @@ class BordroPersonelModel extends Model
             'es_toplam' => 0.0,
             'toplam' => 0.0,
             'kalan_fark' => 0.0,
+            'dengeleme' => 0.0,
             'fiili_gun' => max(0, $fiiliGunSayisi),
         ];
 
@@ -316,6 +331,7 @@ class BordroPersonelModel extends Model
         $mealAllowanceDeduction = 0;
         $spouseAllowanceDeduction = 0;
         $includedAllowanceDeduction = 0;
+        $fiiliGunSayisi = 0;
 
         foreach ($ekOdemelerList as $eo) {
             if (stripos($eo->aciklama ?? '', 'Maaşa Dahil Dengeleme') !== false) continue;
@@ -336,8 +352,10 @@ class BordroPersonelModel extends Model
         }
 
         if ($this->hasMaasaDahilSosyalYardim($p) && !$isPrimUsulu) {
-            $fiiliGunSayisi = 25;
-            if (isset($p->hd_fiili_calisma_gunu) && intval($p->hd_fiili_calisma_gunu) > 0) $fiiliGunSayisi = intval($p->hd_fiili_calisma_gunu);
+            // USER REQ: Puantaj sayfasındaki X'ler üzerinden hesapla (Grid mantığı + fallback)
+            $fiiliGunSayisi = $this->getPuantajXGunSayisi($p->personel_id, $donemBaslangic, $donemBitis);
+            if ($fiiliGunSayisi <= 0) $fiiliGunSayisi = $calismaGunu; // Fallback to norm days
+
             $totalDeductions = $toplamKesinti + floatval($p->sodexo_odemesi ?? 0) + floatval($p->diger_odeme ?? 0);
             $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi($p, $asgariUcretNet, $calismaGunu, $fiiliGunSayisi, $totalDeductions, $rawEkOdeme);
             $mealAllowanceDeduction = floatval($dahilDagilim['yemek_toplam'] ?? 0);
@@ -391,7 +409,8 @@ class BordroPersonelModel extends Model
             'kesintiHaricIcra' => $kesintiHaricIcra, 'icraKesintisi' => $icraKesintisi,
             'toplamAlacagi' => $toplamAlacagi, 'netAlacagi' => $netAlacagi, 'netMaasGercek' => $netMaasGercek,
             'bankaOdemesi' => $bankaOdemesi, 'sodexoOdemesi' => $sodexoOdemesi, 'digerOdeme' => $digerOdeme, 'eldenOdeme' => $eldenOdeme,
-            'mealAllowanceDeduction' => $mealAllowanceDeduction, 'spouseAllowanceDeduction' => $spouseAllowanceDeduction, 'includedAllowanceDeduction' => $includedAllowanceDeduction
+            'mealAllowanceDeduction' => $mealAllowanceDeduction, 'spouseAllowanceDeduction' => $spouseAllowanceDeduction, 'includedAllowanceDeduction' => $includedAllowanceDeduction,
+            'includedAllowanceFiiliGun' => $fiiliGunSayisi, 'calismaGunu' => $calismaGunu
         ];
     }
 
@@ -986,11 +1005,12 @@ class BordroPersonelModel extends Model
                     $asgariNetVal = $this->cachedParametreModel->getGenelAyar('asgari_ucret_net') ?? 28075.50;
                     $hedefNet = floatval($pRec->maas_tutari);
 
-                    // Fiili çalışma gününü al (Eğer fonksiyonda hesaplanmamışsa burada hesapla)
+                    // USER REQ: Puantaj sayfasındaki X'ler üzerinden hesapla (Grid mantığı + fallback)
                     if (!isset($fiiliGun)) {
                         $donemBaslangic = $donem . '-01';
                         $donemBitis = date('Y-m-t', strtotime($donemBaslangic));
-                        $fiiliGun = $this->getFiiliCalismaGunuSayisi($personel_id, $donemBaslangic, $donemBitis);
+                        $fiiliGun = $this->getPuantajXGunSayisi($personel_id, $donemBaslangic, $donemBitis);
+                        if ($fiiliGun <= 0) $fiiliGun = $pRec->calisan_gun ?? 26;
                     }
                     
                     // Günlük farkı bul (Aylık fark / fiiliGun) - hesaplaMaas ile uyumlu
@@ -998,11 +1018,7 @@ class BordroPersonelModel extends Model
                     $gunlukFark = $fiiliGun > 0 ? ceil($aylikFark / $fiiliGun) : 0;
                     
                     // USER REQ: Günlük yemek ücreti manuel veya parametredeki tutarı geçmemeli
-                    $gunlukLimit = floatval($pRec->yemek_yardimi_tutari ?? 0);
-                    if ($gunlukLimit <= 0 && !empty($pRec->yemek_yardimi_parametre_id)) {
-                        $paramYemek = $this->cachedParametreModel->find($pRec->yemek_yardimi_parametre_id);
-                        $gunlukLimit = floatval($paramYemek->varsayilan_tutar ?? 0);
-                    }
+                    $gunlukLimit = $this->getYemekYardimiGunlukLimit($pRec);
 
                     if ($gunlukLimit > 0 && $gunlukFark > $gunlukLimit) {
                         $gunlukFark = $gunlukLimit;
@@ -2229,8 +2245,64 @@ class BordroPersonelModel extends Model
     }
 
     /**
-     * Kisa koda gore gun sayisini hesaplar (HT, X, GT, RP vb.)
+     * Puantaj gridindeki 'X' (Çalışılan Gün) mantığına göre gün sayısını hesaplar.
+     * (Herhangi bir izin girilmeyen ve Pazar olmayan günler + Veritabanındaki 'X' kayıtları)
      */
+    public function getPuantajXGunSayisi($personel_id, $baslangic_tarihi, $bitis_tarihi)
+    {
+        // 1. Veritabanındaki tüm izin/puantaj kayıtlarını al (X dahil)
+        $sql = $this->db->prepare("
+            SELECT pi.baslangic_tarihi, pi.bitis_tarihi, t.kisa_kod
+            FROM personel_izinleri pi
+            JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
+            WHERE pi.personel_id = ?
+            AND pi.onay_durumu != 'Reddedildi'
+            AND pi.silinme_tarihi IS NULL
+            AND pi.baslangic_tarihi <= ?
+            AND pi.bitis_tarihi >= ?
+        ");
+        $sql->execute([$personel_id, $bitis_tarihi, $baslangic_tarihi]);
+        $kayitlar = $sql->fetchAll(PDO::FETCH_OBJ);
+
+        $gunluk_durum = [];
+        foreach ($kayitlar as $k) {
+            $cur = strtotime($k->baslangic_tarihi);
+            $end = strtotime($k->bitis_tarihi);
+            while ($cur <= $end) {
+                $d = date('Y-m-d', $cur);
+                if ($d >= $baslangic_tarihi && $d <= $bitis_tarihi) {
+                    $gunluk_durum[$d] = strtoupper($k->kisa_kod ?? '');
+                }
+                $cur = strtotime("+1 day", $cur);
+            }
+        }
+
+        // 2. Gün gün tara ve grid mantığını uygula
+        $x_sayisi = 0;
+        $cur = strtotime($baslangic_tarihi);
+        $end = strtotime($bitis_tarihi);
+
+        while ($cur <= $end) {
+            $d = date('Y-m-d', $cur);
+            $isSunday = date('w', $cur) == 0;
+
+            if (isset($gunluk_durum[$d])) {
+                // Eğer veritabanında 'X' olarak kayıtlıysa say
+                if ($gunluk_durum[$d] === 'X') {
+                    $x_sayisi++;
+                }
+            } else {
+                // Veritabanında kayıt yoksa ve Pazar değilse (Grid'deki Default X) say
+                if (!$isSunday) {
+                    $x_sayisi++;
+                }
+            }
+            $cur = strtotime("+1 day", $cur);
+        }
+
+        return $x_sayisi;
+    }
+
     public function getGunSayisiByKisaKod($personel_id, $donem_baslangic, $donem_bitis, $kisa_kod)
     {
         $sql = $this->db->prepare("
@@ -3443,7 +3515,11 @@ class BordroPersonelModel extends Model
         $toplamDahilYardim = 0;
         if ($this->hasMaasaDahilSosyalYardim($kayit)) {
             $asgariNetNominal = $genelAyarlarMap['asgari_ucret_net'] ?? 28075.50;
-            $fiiliGunSayisi = ($fiiliCalismaGunu > 0) ? $fiiliCalismaGunu : 25;
+            
+            // USER REQ: Puantaj sayfasındaki X'ler üzerinden hesapla (Grid mantığı + fallback)
+            $fiiliGunSayisi = $this->getPuantajXGunSayisi($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
+            if ($fiiliGunSayisi <= 0) $fiiliGunSayisi = $maasHesapGunu;
+            
             $totalDeductions = $toplamKesinti + $sodexoOdemesi + floatval($kayit->diger_odeme ?? 0);
             $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi($kayit, floatval($asgariNetNominal), $maasHesapGunu, $fiiliGunSayisi, $totalDeductions, $toplamEkOdeme);
             $hesaplananYemekToplam = floatval($dahilDagilim['yemek_toplam'] ?? 0);

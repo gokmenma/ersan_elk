@@ -673,9 +673,7 @@ try {
             $monthlyTotal = $monthlyIsler + $monthlyEndeks;
 
             // ---- YENİ: SIRALAMA EKLENMESİ ----
-            $aktifGorev = $PersonelModel->getAktifGorevGecmisi($personel_id);
-            $departman = $aktifGorev->departman ?? $personelDetails->departman ?? '';
-
+            $departman = $personelDetails->departman ?? '';
             $aktifEkipGecmisi = $PersonelModel->getEkipGecmisi($personel_id);
             $aktifEkipId = null;
             $aktifEkipBolge = '';
@@ -694,11 +692,7 @@ try {
             }
 
             // Tüm aktif personelleri departman ve bölgesine göre çekelim
-            $allActiveQuery = "SELECT p.id, 
-                COALESCE((SELECT g.departman FROM personel_gorev_gecmisi g 
-                  WHERE g.personel_id = p.id AND g.baslangic_tarihi <= CURDATE() 
-                  AND (g.bitis_tarihi IS NULL OR g.bitis_tarihi >= CURDATE())
-                  ORDER BY g.baslangic_tarihi DESC LIMIT 1), p.departman) as departman,
+            $allActiveQuery = "SELECT p.id, p.departman, 
                 (SELECT t.ekip_bolge FROM personel_ekip_gecmisi peg 
                  LEFT JOIN tanimlamalar t ON peg.ekip_kodu_id = t.id
                  WHERE peg.personel_id = p.id AND (peg.bitis_tarihi IS NULL OR peg.bitis_tarihi >= CURDATE())
@@ -875,15 +869,10 @@ try {
                 $stmtPersonel->execute([$ekipId, $firmaId]);
                 $personelResult = $stmtPersonel->fetch(PDO::FETCH_OBJ);
 
-                // Sadece aktif personel ataması olan veya bu dönemde okuma verisi olan ekipleri göster
-                if (!$personelResult) {
-                    // Atanmış personel yoksa, seçilen dönemde hiç okuma yapılıp yapılmadığına bak
-                    if ($aylikToplam == 0) {
-                        continue;
-                    }
-                } else {
-                    // Personel atanmışsa: Sadece departmanında "Endeks Okuma" olanları göster
-                    // Diğer departmanlara (örn: Kaçak Kontrol) ait ekipler takibe girmez
+                // Eğer ekibe atanmış personel varsa:
+                // Sadece departmanında "Endeks Okuma" geçip geçmediğine bak
+                // Diğer departmanlarının (örn: Kaçak Kontrol) ne olduğunun bir önemi yok
+                if ($personelResult) {
                     $dep = $personelResult->departman ?? '';
                     if (stripos($dep, 'Endeks Okuma') === false) {
                         continue;

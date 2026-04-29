@@ -305,7 +305,8 @@ if (!isset($_SESSION['force_desktop'])) {
             }
 
 
-            include_once "views/" . $page . ".php" ?>
+
+            include_once "views/" . $page . ".php"; ?>
         </div>
         <!-- End Page-content -->
 

@@ -76,9 +76,6 @@ $all_mobile_menus = [
     'personel'    => ['label' => 'Personel',    'icon' => 'group', 'color_bg' => 'bg-indigo-100 dark:bg-indigo-900/30', 'color_icon' => 'text-indigo-600', 'link_match' => 'personel/list'],
     'gorevler'    => ['label' => 'Görevler',    'icon' => 'task_alt', 'color_bg' => 'bg-green-100 dark:bg-green-900/30', 'color_icon' => 'text-green-600', 'link_match' => 'gorevler/list'],
     'talepler'    => ['label' => 'Talepler',    'icon' => 'assignment', 'color_bg' => 'bg-orange-100 dark:bg-orange-900/30', 'color_icon' => 'text-orange-600', 'link_match' => 'talepler/list'],
-    'evrak-takip' => ['label' => 'Evrak Takip', 'icon' => 'drafts', 'color_bg' => 'bg-sky-100 dark:bg-sky-900/30', 'color_icon' => 'text-sky-600', 'link_match' => 'evrak-takip/list'],
-    'nobet'       => ['label' => 'Nöbetler',     'icon' => 'event_available', 'color_bg' => 'bg-rose-100 dark:bg-rose-900/30', 'color_icon' => 'text-rose-600', 'link_match' => 'nobet/onay-islemleri'],
-    'km-onaylari' => ['label' => 'KM Onayları',  'icon' => 'speed', 'color_bg' => 'bg-cyan-100 dark:bg-cyan-900/30', 'color_icon' => 'text-cyan-600', 'link_match' => 'arac-takip/km-onaylari'],
     'yardim'      => ['label' => 'Destek',      'icon' => 'support_agent', 'color_bg' => 'bg-indigo-100 dark:bg-indigo-900/30', 'color_icon' => 'text-indigo-600', 'link_match' => 'yardim/list'],
 ];
 
@@ -135,9 +132,6 @@ $page_titles = [
     'hesap-hareketleri' => 'Hesap Hareketleri',
     'talepler'    => 'Talepler',
     'raporlar'    => 'Raporlar',
-    'evrak-takip' => 'Evrak Takip',
-    'nobet'       => 'Nöbetler',
-    'km-onaylari' => 'KM Onayları',
     'yardim'      => 'Yardım ve Destek',
 ];
 
@@ -239,19 +233,26 @@ try {
     <!-- Google Fonts & Material Symbols -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
-    
-    <!-- Scripts & Styles -->
-    <script src="../assets/libs/jquery/jquery.min.js"></script>
+    <link rel="stylesheet" href="../assets/libs/flatpickr/flatpickr.min.css">
+
+    <!-- Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/style.css">
+    <link rel="stylesheet" href="../assets/libs/flatpickr/plugins/monthSelect/style.css">
+
+    <!-- jQuery -->
+    <script src="../assets/libs/jquery/jquery.min.js"></script>
+
+    <!-- Select2 -->
     <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
     <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/fullcalendar@6.1.10/index.global.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/plugins/monthSelect/index.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/tr.js"></script>
+
+    <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    
+    <!-- Flatpickr -->
+    <script src="../assets/libs/flatpickr/flatpickr.min.js"></script>
+    <script src="../assets/libs/flatpickr/l10n/tr.js"></script>
+    <script src="../assets/libs/flatpickr/plugins/monthSelect/index.js"></script>
 
     <!-- Tema & Dark Mode ön yüklemesi (personel-pwa ile aynı) -->
     <script>
@@ -386,20 +387,22 @@ try {
                     },
                 });
             },
-            async prompt(title, text, confirmText = "Gönder", placeholder = "") {
-                const result = await Swal.fire({
-                    title: title, text: text, icon: "question", showCancelButton: true,
-                    confirmButtonText: confirmText, cancelButtonText: "Vazgeç",
-                    input: 'text', inputPlaceholder: placeholder,
-                    buttonsStyling: false, reverseButtons: true, width: 320, padding: 0,
+            show(options) {
+                return Swal.fire({
+                    title: options.title || "",
+                    html: options.content || "",
+                    icon: options.icon || null,
+                    confirmButtonText: options.confirmButtonText || "Tamam",
+                    showCancelButton: options.showCancelButton || false,
+                    cancelButtonText: options.cancelButtonText || "Vazgeç",
+                    buttonsStyling: false, width: options.width || 320, padding: 0,
                     customClass: {
                         popup: "swal-custom-popup", title: "swal-custom-title",
-                        htmlContainer: "swal-custom-content", actions: "swal-custom-actions swal-actions-two",
-                        confirmButton: "swal-custom-confirm swal-confirm-primary",
-                        cancelButton: "swal-custom-cancel", input: "swal-custom-input",
+                        htmlContainer: "swal-custom-content", actions: "swal-custom-actions",
+                        confirmButton: "swal-custom-confirm swal-confirm-primary swal-confirm-full",
+                        cancelButton: "swal-custom-cancel",
                     },
                 });
-                return result.isConfirmed ? result.value : false;
             }
         };
 
@@ -558,9 +561,6 @@ try {
             background: var(--primary) !important;
             color: #fff;
         }
-
-        .no-scrollbar::-webkit-scrollbar { display: none; }
-        .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
     </style>
 </head>
 
@@ -592,7 +592,7 @@ try {
 
     <?php 
     // Kendi özel (gradient vb.) başlık yapısı olan veya üst bar istenmeyen sayfalar
-    $no_header_pages = ['home', 'hesap-hareketleri', 'arac', 'gorevler', 'talepler', 'personel', 'personel-duzenle', 'yardim', 'evrak-takip', 'nobet', 'km-onaylari'];
+    $no_header_pages = ['home', 'hesap-hareketleri', 'arac', 'gorevler', 'talepler', 'personel', 'personel-duzenle', 'yardim'];
     if (!in_array($page, $no_header_pages)): 
     ?>
     <!-- Sayfa Başlığı (Gradient) -->
@@ -687,66 +687,64 @@ try {
         onclick="closeMoreMenu()"></div>
 
     <!-- Daha Fazla Bottom Sheet -->
-    <div id="more-menu-sheet" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[100] transform translate-y-full transition-transform duration-500 shadow-2xl safe-area-bottom max-h-[70vh] flex flex-col">
-        <div class="flex justify-center pt-3 pb-1 shrink-0 cursor-pointer" onclick="closeMoreMenu()">
-            <div class="w-12 h-1 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+    <div id="more-menu-sheet"
+        class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-2xl z-[61] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom">
+        <div class="flex justify-center pt-2 pb-1">
+            <div class="w-8 h-1 bg-slate-300 dark:bg-slate-600 rounded-full"></div>
         </div>
-        
-        <div class="flex-1 overflow-y-auto px-5 py-4 no-scrollbar">
-            <!-- Profil Bilgileri -->
-            <a href="?p=profil" class="flex items-center gap-3 p-3 rounded-2xl bg-primary/5 border border-primary/10 mb-4 active:bg-primary/10 transition-colors">
-                <div class="w-11 h-11 rounded-full bg-primary/20 flex items-center justify-center text-primary shrink-0">
-                    <span class="material-symbols-outlined text-2xl">person</span>
+        <div class="px-4 pb-4">
+
+            <!-- Masaüstü Görünümü -->
+            <a href="?force_desktop=1&p=home"
+                class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors mb-1">
+                <div class="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-blue-600 text-lg">desktop_windows</span>
                 </div>
-                <div class="flex-1 min-w-0">
-                    <p class="text-[9px] text-primary/70 font-black uppercase tracking-widest leading-none mb-1">KULLANICI PROFİLİ</p>
-                    <p class="text-sm font-black text-slate-800 dark:text-white truncate"><?= htmlspecialchars($_SESSION['user_name'] ?? 'Kullanıcı') ?></p>
+                <div>
+                    <span class="font-medium text-slate-900 dark:text-white text-sm block">Masaüstü Görünümü</span>
+                    <span class="text-xs text-slate-400">Tam sürüme geç</span>
                 </div>
-                <span class="material-symbols-outlined text-primary/40">chevron_right</span>
+                <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
             </a>
 
-            <!-- Menü Listesi (Dinamik) -->
-            <div class="space-y-1">
-                <?php if (!empty($more_pages_data)): ?>
-                    <?php foreach ($more_pages_data as $pKey => $mItem): 
-                        // Color mapping based on icon or key if not provided in dynamic data
-                        $color = 'slate';
-                        if (strpos($pKey, 'kasa') !== false || strpos($pKey, 'gelir') !== false) $color = 'amber';
-                        if (strpos($pKey, 'rapor') !== false) $color = 'purple';
-                        if (strpos($pKey, 'gorev') !== false) $color = 'green';
-                        if (strpos($pKey, 'talep') !== false) $color = 'rose';
-                        if (strpos($pKey, 'evrak') !== false) $color = 'sky';
-                        if (strpos($pKey, 'nobet') !== false) $color = 'pink';
-                        if (strpos($pKey, 'personel') !== false) $color = 'indigo';
-                        if (strpos($pKey, 'km') !== false) $color = 'cyan';
-                        if (strpos($pKey, 'yardim') !== false) $color = 'blue';
-                        
-                        // Use existing color if available
-                        $bgClass = $mItem['color_bg'] ?? "bg-{$color}-100 dark:bg-{$color}-900/30";
-                        $iconClass = $mItem['color_icon'] ?? "text-{$color}-600";
-                    ?>
-                        <a href="?p=<?= $pKey ?>" class="flex items-center gap-4 p-2.5 rounded-2xl hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all border border-transparent hover:border-slate-100">
-                            <div class="w-9 h-9 rounded-xl <?= $bgClass ?> flex items-center justify-center <?= $iconClass ?> shrink-0">
-                                <span class="material-symbols-outlined text-[20px]"><?= $mItem['icon'] ?></span>
-                            </div>
-                            <span class="text-[13px] font-bold text-slate-700 dark:text-slate-300"><?= $mItem['label'] ?></span>
-                            <span class="material-symbols-outlined ml-auto text-slate-300 text-[18px]">chevron_right</span>
-                        </a>
-                    <?php endforeach; ?>
-                <?php endif; ?>
-            </div>
+            <!-- Profil Sayfası -->
+            <a href="?p=profil"
+                class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?= $page === 'profil' ? 'bg-primary/10' : '' ?> mb-1">
+                <div class="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-indigo-600 text-lg">person</span>
+                </div>
+                <div>
+                    <span class="font-medium text-slate-900 dark:text-white text-sm block">Profilim</span>
+                    <span class="text-xs text-slate-400">Hesap ve ayarlar</span>
+                </div>
+                <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
+            </a>
 
-            <!-- Alt Menü -->
-            <div class="mt-6 pt-4 border-t border-slate-100 dark:border-slate-800 space-y-2 pb-8">
-                <a href="?force_desktop=1&p=home" class="flex items-center gap-4 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 text-slate-500 active:bg-slate-100">
-                    <span class="material-symbols-outlined text-[20px]">desktop_windows</span>
-                    <span class="text-[12px] font-bold">Masaüstü Görünümü</span>
-                </a>
-                <a href="../logout.php" class="flex items-center gap-4 p-3 rounded-2xl bg-red-50 text-red-600 dark:bg-red-900/20 active:bg-red-100">
-                    <span class="material-symbols-outlined text-[20px]">logout</span>
-                    <span class="text-[12px] font-bold">Güvenli Çıkış</span>
-                </a>
-            </div>
+            <?php if (!empty($more_pages_data)): ?>
+            <div class="h-px bg-slate-100 dark:bg-slate-700 my-2"></div>
+
+            <?php foreach ($more_pages_data as $pKey => $mItem): ?>
+            <a href="?p=<?= $pKey ?>"
+                class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?= $page === $pKey ? 'bg-primary/10' : '' ?>">
+                <div class="w-9 h-9 rounded-lg <?= $mItem['color_bg'] ?> flex items-center justify-center">
+                    <span class="material-symbols-outlined <?= $mItem['color_icon'] ?> text-lg"><?= $mItem['icon'] ?></span>
+                </div>
+                <span class="font-medium text-slate-900 dark:text-white text-sm"><?= $mItem['label'] ?></span>
+                <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
+            </a>
+            <?php endforeach; ?>
+            <?php endif; ?>
+
+            <div class="h-px bg-slate-100 dark:bg-slate-700 my-2"></div>
+
+            <a href="../logout.php"
+                class="flex items-center gap-3 p-3 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
+                <div class="w-9 h-9 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-red-600 text-lg">logout</span>
+                </div>
+                <span class="font-medium text-red-600 text-sm">Çıkış Yap</span>
+            </a>
+
         </div>
     </div>
 

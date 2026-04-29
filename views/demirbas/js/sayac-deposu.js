@@ -143,7 +143,6 @@ $(function () {
             { data: "seri_no" },
             { data: "stok", className: "text-center" },
             { data: "durum", className: "text-center" },
-            { data: "aciklama", defaultContent: "" },
             { data: "tarih" },
             { data: "islemler", className: "text-center", orderable: false },
         ],
@@ -516,44 +515,44 @@ $(function () {
 
     function updateSelectionInfo() {
         var count = getSelectedIds(".sayac-select").length;
-        var total = isTumuSecildi ? globalSeciliSayacIds.length : count;
+        var total = $(".sayac-select").length;
         var $info = $("#sayacSecimInfo");
 
-        if (count > 0 || isTumuSecildi) {
+        if (isTumuSecildi) {
             if ($info.length === 0) {
-                $("body").append('<div id="sayacSecimInfo" class="selection-info-bar"></div>');
+                $("#depoSayacTable_wrapper").prepend('<div id="sayacSecimInfo"></div>');
                 $info = $("#sayacSecimInfo");
             }
 
-            var statusText = isTumuSecildi ? 'Filtrelenen tüm ' : 'Seçilen: ';
-            
-            $info.html(
-                '<div class="selection-info-status">' +
-                    '<span>' + statusText + '</span>' +
-                    '<span class="count-badge">' + total + '</span>' +
-                    '<span> kayıt</span>' +
-                '</div>' +
+            $info.attr("class", "selection-info-bar selection-info-bar-success").html(
                 '<div class="selection-info-actions">' +
-                    (!isTumuSecildi ? '<button type="button" id="secimTumuFiltre" class="selection-action-btn selection-action-btn-primary"><i class="bx bx-select-multiple"></i> Tümünü Seç</button>' : '') +
-                    '<button type="button" id="secimTemizle" class="selection-action-btn selection-action-btn-danger"><i class="bx bx-trash"></i> Temizle</button>' +
+                    '<button type="button" id="secimTemizle" class="selection-action-btn selection-action-btn-danger"><i class="bx bx-x me-1"></i> Temizle</button>' +
+                '</div>' +
+                '<div class="selection-info-status">' +
+                    '<i class="bx bx-check-circle me-1"></i> Filtrelenen tüm <strong class="mx-1">' + globalSeciliSayacIds.length + '</strong> kayıt seçildi' +
                 '</div>'
             );
-            
-            // Reflow trigger for transition
-            if ($info[0]) {
-                $info[0].offsetHeight;
-                $info.addClass("show");
-            }
-        } else {
-            $info.removeClass("show");
-            setTimeout(function() {
-                if ($("#sayacSecimInfo").length && !$("#sayacSecimInfo").hasClass("show")) {
-                    $("#sayacSecimInfo").remove();
-                }
-            }, 500);
+            return;
         }
-        
-        if (typeof updateBulkActionButtons === "function") updateBulkActionButtons();
+
+        if (count > 0) {
+            if ($info.length === 0) {
+                $("#depoSayacTable_wrapper").prepend('<div id="sayacSecimInfo"></div>');
+                $info = $("#sayacSecimInfo");
+            }
+
+            $info.attr("class", "selection-info-bar").html(
+                '<div class="selection-info-actions">' +
+                    '<button type="button" id="secimTumuFiltre" class="selection-action-btn selection-action-btn-primary"><i class="bx bx-check-square me-1"></i> Tüm Filtrelenenleri Seç</button>' +
+                    '<button type="button" id="secimTemizle" class="selection-action-btn selection-action-btn-danger"><i class="bx bx-x me-1"></i> Temizle</button>' +
+                '</div>' +
+                '<div class="selection-info-status">' +
+                    '<i class="bx bx-info-circle me-1"></i> Sayfadan <strong class="mx-1">' + count + '</strong> / ' + total + ' kayıt seçildi' +
+                '</div>'
+            );
+        } else {
+            $("#sayacSecimInfo").remove();
+        }
     }
 
     $(document).on("click", "#secimTumuFiltre", function () {
@@ -1546,78 +1545,10 @@ $(function () {
     window.reloadSayacTables = reloadAllTables;
 
 
-    // =============================================
-    // EXCEL'E AKTAR
-    // =============================================
-    $(document).on("click", "#exportSayacExcel", function() {
-        var activeTab = $('#sayacDepoTab .nav-link.active').attr('id');
-        var exportTab = '';
-        var table = null;
-        var statusFilter = '';
-        var viewMode = '';
-
-        if (activeTab === 'kaski-tab') {
-            exportTab = 'sayac_kaski';
-            table = kaskiTarihTable;
-        } else if (activeTab === 'depo-tab') {
-            exportTab = 'sayac_bizim_depo';
-            table = depoSayacTable;
-            statusFilter = $('input[name="sayac-status-filter"]:checked').val() || "";
-        } else if (activeTab === 'personel-tab') {
-            exportTab = 'sayac_personel';
-            table = personelTable;
-        } else if (activeTab === 'hareket-tab') {
-            exportTab = 'sayac_hareket';
-            table = hareketTable;
-            statusFilter = $('input[name="hareket-status-filter"]:checked').val() || "";
-            viewMode = $('input[name="hareket-view-mode"]:checked').val() || "list";
-        }
-
-        if (!exportTab || !table) {
-            Swal.fire("Uyarı", "Geçersiz sekme seçimi. Lütfen sayfayı yenileyip tekrar deneyiniz.", "warning");
-            return;
-        }
-
-        var searchValue = table.search() || '';
-        var colSearches = [];
-        table.columns().every(function() {
-            var val = this.search();
-            if (val) {
-                colSearches.push({ field: this.index(), value: val });
-            }
-        });
-
-        var exportUrl = 'views/demirbas/export-excel.php?tab=' + exportTab;
-        exportUrl += '&search=' + encodeURIComponent(searchValue);
-        exportUrl += '&col_search=' + encodeURIComponent(JSON.stringify(colSearches));
-        if (statusFilter) exportUrl += '&status_filter=' + encodeURIComponent(statusFilter);
-        if (viewMode) exportUrl += '&view_mode=' + encodeURIComponent(viewMode);
-
-        // UI Feedback
-        Swal.fire({
-            title: 'Excel Hazırlanıyor',
-            text: 'Veriler işleniyor, lütfen bekleyiniz...',
-            allowOutsideClick: false,
-            showConfirmButton: false,
-            didOpen: () => {
-                Swal.showLoading();
-            }
-        });
-
-        var $btn = $(this);
-        var oldHtml = $btn.html();
-        $btn.html('<span class="spinner-border spinner-border-sm"></span>').prop('disabled', true);
-
-        // Trigger Download
-        window.location.href = exportUrl;
-
-        // Reset state after a short delay
-        setTimeout(function() {
-            $btn.html(oldHtml).prop('disabled', false);
-            Swal.close();
-        }, 3000);
+    // Tüm kaydedme olaylarından sonra tabloları yenile
+    $(document).on("demirbas-saved zimmet-saved iade-saved kaskiye-teslim-saved hurda-iade-saved", function() {
+        reloadAllTables();
     });
 
 // Hurda Sayaç İade İşlemleri demirbas.js'den yönetiliyor. Duplike olmaması için silindi.
 });
-

@@ -58,12 +58,50 @@ if (Gate::allows("ana_sayfa")) {
     $saved_settings = isset($_COOKIE['dashboard_settings']) ? json_decode($_COOKIE['dashboard_settings'], true) : [];
 
     // Operasyonel istatistikler ve son güncelleme bilgileri
-    // PERF: Tüm bu veriler zaten AJAX (refreshOperationalStats) ile yükleniyor.
-    // Sunucu tarafında sadece placeholder değerler bırakıyoruz, gerçek veriler AJAX ile dolacak.
     $last_update_endeks = $last_update_isler = $last_update_sayac = null;
     $last_user_endeks = $last_user_isler = $last_user_sayac = null;
-    // NOT: Eski kod 4 ayrı DB sorgusu çalıştırıyordu (3x getLastLogUser + 1x MAX subqueries).
-    // Bu veriler artık sadece AJAX (refreshOperationalStats) ile yükleniyor.
+
+    try {
+        $db = $personelModel->getDb();
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+
+        // Fetch last update users from logs
+        $getLastLogUser = function($actionTypes) use ($db, $firmaId) {
+            $placeholders = implode(',', array_fill(0, count($actionTypes), '?'));
+            $sql = "SELECT l.user_id, u.adi_soyadi, l.action_type
+                    FROM system_logs l
+                    LEFT JOIN users u ON l.user_id = u.id
+                    WHERE l.firma_id = ? 
+                      AND (l.action_type IN ($placeholders) OR l.action_type LIKE 'Cron%')
+                      AND l.created_at >= CURDATE()
+                    ORDER BY l.created_at DESC LIMIT 1";
+            $stmt = $db->prepare($sql);
+            $params = array_merge([$firmaId], $actionTypes);
+            $stmt->execute($params);
+            $log = $stmt->fetch(PDO::FETCH_OBJ);
+            if (!$log) return null;
+            if ($log->user_id == 0 || stripos($log->action_type, 'Cron') !== false) return 'Cron';
+            return $log->adi_soyadi ?: 'Sistem';
+        };
+
+        $last_user_isler = $measureDb('home.last_user_isler', fn() => $getLastLogUser(['Online Kesme/Açma Sorgulama', 'Online Puantaj Sorgulama']));
+        $last_user_endeks = $measureDb('home.last_user_endeks', fn() => $getLastLogUser(['Online Endeks Okuma Sorgulama', 'Online İcmal (Endeks Okuma) Sorgulama']));
+        $last_user_sayac = $measureDb('home.last_user_sayac', fn() => $getLastLogUser(['Online Sayaç Değişim Sorgulama']));
+
+        $updates = $measureDb('home.stmtUpdates', function() use ($db, $firmaId) {
+            $stmtUpdates = $db->prepare("SELECT
+                (SELECT MAX(created_at) FROM endeks_okuma WHERE firma_id = :firma_id AND created_at >= CURDATE()) AS last_update_endeks,
+                (SELECT MAX(created_at) FROM yapilan_isler WHERE firma_id = :firma_id AND created_at >= CURDATE()) AS last_update_isler,
+                (SELECT MAX(created_at) FROM sayac_degisim WHERE firma_id = :firma_id AND created_at >= CURDATE()) AS last_update_sayac");
+            $stmtUpdates->execute([':firma_id' => $firmaId]);
+            return $stmtUpdates->fetch(PDO::FETCH_OBJ);
+        }, 1);
+        if ($updates) {
+            $last_update_endeks = $updates->last_update_endeks;
+            $last_update_isler = $updates->last_update_isler;
+            $last_update_sayac = $updates->last_update_sayac;
+        }
+    } catch (\Exception $e) { /* silent */ }
 
     if (!function_exists('getWidgetWidth')) {
         function getWidgetWidth($id, $default)
@@ -115,8 +153,8 @@ if (Gate::allows("ana_sayfa")) {
         }
     }
 
-    // Sistem Logları - PERF: Lazy-load ile yüklenecek (widget-bildirimler AJAX ile çekiyor)
-    $recent_logs = [];
+    // Sistem Logları
+    $recent_logs = $systemLogModel->getRecentLogs(10);
 
 
     // $istatistik = $personelModel->personelSayilari('personel'); // Lazy load edilecek
@@ -205,8 +243,7 @@ if (Gate::allows("ana_sayfa")) {
 
     // Şu anda izinde olanlar
     $active_leaves = [];
-    $is_dept_manager = $personelModel->getRestrictedDept() !== null;
-    if (Gate::allows("ana_sayfa_izinli_personel_karti") || $is_dept_manager) {
+    if (Gate::allows("ana_sayfa_izinli_personel_karti")) {
         try {
             $active_leaves = $izinModel->getAktifIzinler(10);
         } catch (\Exception $e) {
@@ -221,15 +258,51 @@ if (Gate::allows("ana_sayfa")) {
     $toplam_gider = 30000;
     $toplam_bakiye = 20000;
 
-    // Araç Evrak Hatırlatması — PERF: AJAX ile yüklenecek (slider placeholder)
+    // Araç Verilerini Çek (Dashboard Hatırlatıcı için)
+    $aracModelHome = new \App\Model\AracModel();
+    $expiredCounts = $aracModelHome->getAracEvrakStats();
     $aracNotifText = "";
     $hasExpired = false;
-    // Araç evrak verisi artık AJAX ile yükleniyor, sayfa yüklenme süresini bloklamıyor.
+
+    if ($expiredCounts) {
+        $parts = [];
+        if ($expiredCounts->muayene_biten > 0) {
+            $parts[] = '<a href="index.php?p=arac-takip/list&filter=muayene" class="text-white fw-bold" style="text-decoration:underline">' . $expiredCounts->muayene_biten . ' muayene</a>';
+            $hasExpired = true;
+        }
+        if ($expiredCounts->sigorta_biten > 0) {
+            $parts[] = '<a href="index.php?p=arac-takip/list&filter=sigorta" class="text-white fw-bold" style="text-decoration:underline">' . $expiredCounts->sigorta_biten . ' sigorta</a>';
+            $hasExpired = true;
+        }
+        if ($expiredCounts->kasko_biten > 0) {
+            $parts[] = '<a href="index.php?p=arac-takip/list&filter=kasko" class="text-white fw-bold" style="text-decoration:underline">' . $expiredCounts->kasko_biten . ' kasko</a>';
+            $hasExpired = true;
+        }
+
+        if (!empty($parts)) {
+            $aracNotifText = implode(', ', $parts) . ' süresi dolan araçlar bulunmaktadır.';
+        }
+    }
+
+    if (!$aracNotifText) {
+        $aracNotifText = "Tüm araçların evrakları (Muayene, Sigorta, Kasko) günceldir.";
+    }
 
     // Slider Duyuruları
     $slider_notifications = [];
 
-    // PERF: Araç evrak hatırlatması artık AJAX ile yüklenecek (slider dışında)\r\n    // Slider'da statik olarak gösterilmesine gerek yok.
+    // Sabit araç hatırlatması da bir slider elemanı olsun (Eğer gösterilecekse)
+    if ($hasExpired || $aracNotifText !== "Tüm araçların evrakları (Muayene, Sigorta, Kasko) günceldir.") {
+        $slider_notifications[] = [
+            'id' => 0,
+            'title' => $hasExpired ? 'Araç Evrak Hatırlatması' : 'Araçlar Güncel',
+            'description' => $aracNotifText,
+            'icon' => $hasExpired ? 'bx-error-circle' : 'bx-check-shield',
+            'gradient' => $hasExpired ? 'linear-gradient(135deg, #7f1d1d 0%, #ef4444 100%)' : 'linear-gradient(135deg, #1e293b 0%, #2563eb 100%)',
+            'link_action' => '',
+            'link_class' => ''
+        ];
+    }
 
     $db = $personelModel->getDb();
 
@@ -357,74 +430,42 @@ if (Gate::allows("ana_sayfa")) {
     }
 
     if (\App\Service\Gate::allows("personel_listesi")) {
-        try {
-            $istatistik = $personelModel->personelSayilari('personel');
-            $extraStats = $personelModel->getAdvancedDashboardStats();
-            $gec_kalan_sayisi = $hareketModel->getGecKalanlarCount($_SESSION['firma_id'] ?? 0);
-        } catch (\Throwable $e) {
-            $istatistik = (object)['aktif_personel' => 0];
-            $extraStats = (object)['sahadaki_personel' => 0, 'izinli_personel' => 0];
-            $gec_kalan_sayisi = 0;
-        }
-
-        $widgets['widget-personel-ozeti'] = renderWidget('widget-personel-ozeti', [
-            'width' => 'col-md-6 col-xl-4',
-            'istatistik' => $istatistik,
-            'extraStats' => $extraStats,
-            'gec_kalan_sayisi' => $gec_kalan_sayisi,
-        ]);
+        $widgets['widget-personel-ozet'] = renderSkeleton('widget-personel-ozet', 'col-md-4 col-xl-4', '260px');
     }
 
     if (\App\Service\Gate::allows("arac_takip_yonetim")) {
-        try {
-            $aracModel = new \App\Model\AracModel();
-            $aracStats = $aracModel->getStats();
-            $toplam_aktif_arac = $aracStats->aktif_arac ?? 0;
-            $servisteki_arac = $aracModel->getServistekiAracSayisi();
-            $bosta_arac = $aracStats->bosta_arac ?? 0;
-            $saha_arac = max(0, $toplam_aktif_arac - $servisteki_arac - $bosta_arac);
-
-            $total_for_calc = $toplam_aktif_arac ?: 1;
-            $aktif_a_yuzde = ($saha_arac / $total_for_calc) * 100;
-            $servis_a_yuzde = ($servisteki_arac / $total_for_calc) * 100;
-            $bosta_a_yuzde = ($bosta_arac / $total_for_calc) * 100;
-        } catch (\Throwable $e) {
-            $toplam_aktif_arac = $saha_arac = $servisteki_arac = $bosta_arac = 0;
-            $aktif_a_yuzde = $servis_a_yuzde = $bosta_a_yuzde = 0;
-        }
-
-        $widgets['widget-arac-ozeti'] = renderWidget('widget-arac-ozeti', [
-            'width' => 'col-md-6 col-xl-4',
-            'toplam_aktif_arac' => $toplam_aktif_arac,
-            'saha_arac' => $saha_arac,
-            'servisteki_arac' => $servisteki_arac,
-            'bosta_arac' => $bosta_arac,
-            'aktif_a_yuzde' => $aktif_a_yuzde,
-            'servis_a_yuzde' => $servis_a_yuzde,
-            'bosta_a_yuzde' => $bosta_a_yuzde,
-        ]);
+        $widgets['widget-arac-ozet'] = renderSkeleton('widget-arac-ozet', 'col-md-4 col-xl-4', '260px');
     }
 
     if (\App\Service\Gate::allows("talepler")) {
-        $widgets['widget-bekleyen-talepler'] = renderWidget('widget-bekleyen-talepler', [
-            'personel_talep_sayisi' => $personel_talep_sayisi,
-        ]);
+        $widgets['widget-bekleyen-talepler'] = renderSkeleton('widget-bekleyen-talepler', 'col-6 col-md-2', '140px');
     }
 
-    if (\App\Service\Gate::allows("personel_listesi")) {
-        $widgets['widget-gec-kalanlar'] = renderWidget('widget-gec-kalanlar', [
-            'gec_kalan_sayisi' => $gec_kalan_sayisi,
-        ]);
-    }
+    ob_start(); ?>
+    <div class="col-6 col-md-2 widget-item" id="widget-gec-kalanlar">
+        <a href="index.php?p=personel-takip/list&tab=tabGecKalanlar" class="text-decoration-none">
+            <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card stat-card"
+                style="--card-color: #f46a6a; border-bottom: 3px solid var(--card-color) !important; --delay: 0.65s">
+                <div class="card-body p-3 pb-2">
+                    <div class="icon-label-container">
+                        <div class="icon-box" style="background: rgba(244, 106, 106, 0.1);">
+                            <i class="bx bx-alarm-exclamation fs-4" style="color: #f46a6a;"></i>
+                        </div>
+                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">GECİKME</span>
+                    </div>
+                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GEÇ KALANLAR</p>
+                    <h4 class="mb-0 fw-bold bordro-text-heading text-danger">
+                        <?php echo $gec_kalan_sayisi ?? 0; ?>
+                    </h4>
+                    <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Bugün geç kalanlar</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <?php
+    $widgets['widget-gec-kalanlar'] = ob_get_clean();
 
-    try {
-        $nobetciler = $nobetModel->getNobetlerByTarih($bugun);
-    } catch (\Throwable $e) {
-        $nobetciler = [];
-    }
-    $widgets['widget-nobetciler'] = renderWidget('widget-nobetciler', [
-        'nobetciler' => $nobetciler,
-    ]);
+    $widgets['widget-nobetciler'] = renderSkeleton('widget-nobetciler', 'col-6 col-md-2', '140px');
 
     ob_start(); ?>
     <div class="col-12 mt-4 mb-3">
@@ -737,7 +778,7 @@ if (Gate::allows("ana_sayfa")) {
     $widgets['widget-endeks-karsilastirma'] = ob_get_clean();
 
     if (\App\Service\Gate::allows("gorevler")) {
-        $widgets['widget-gorevler'] = renderSkeleton('widget-gorevler', getWidgetWidth('widget-gorevler', 'col-md-6'), '260px');
+        $widgets['widget-yaklasan-gorevler'] = renderSkeleton('widget-yaklasan-gorevler', getWidgetWidth('widget-yaklasan-gorevler', 'col-md-6'), '260px');
     }
 
     if (\App\Service\Gate::allows("gorev_bildirim_log_kayitlari")) {
@@ -745,22 +786,312 @@ if (Gate::allows("ana_sayfa")) {
     }
 
     if (\App\Service\Gate::allows("talepler")) {
-        $widgets['widget-talepler'] = renderSkeleton('widget-talepler', getWidgetWidth('widget-talepler', 'col-md-6'), '300px');
-    }
+        ob_start(); ?>
+                <div class="<?php echo getWidgetWidth('widget-talepler', 'col-md-6'); ?> widget-item" id="widget-talepler">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Arıza/İzin/Avans Talepleri</h5>
+                            <?php echo getWidthControl(); ?>
+                        </div>
+                        <div class="card-body"
+                            style="height: <?php echo getWidgetHeight('widget-talepler', 'auto'); ?>; overflow-y: auto;">
+                            <div class="table-responsive">
+                                <table class="table table-centered table-nowrap mb-0">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Personel</th>
+                                            <th>Talep Tipi</th>
+                                            <th>Detay</th>
+                                            <th>Tarih</th>
+                                            <th>İşlem</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php if (empty($recent_requests)): ?>
+                                                <tr>
+                                                    <td colspan="5" class="text-center">Bekleyen talep bulunmamaktadır.</td>
+                                                </tr>
+                                        <?php else: ?>
+                                                <?php foreach ($recent_requests as $req):
+                                                    $personel = $personel_map[$req->personel_id] ?? null;
+                                                    $badgeClass = 'badge-warning';
+                                                    if ($req->tip == 'Avans')
+                                                        $badgeClass = 'badge-success';
+                                                    if ($req->tip == 'İzin')
+                                                        $badgeClass = 'badge-primary';
+                                                    if ($req->tip == 'Talep')
+                                                        $badgeClass = 'badge-info';
+                                                    ?>
+                                                        <tr>
+                                                            <td>
+                                                                <?php if ($personel): ?>
+                                                                        <div class="d-flex align-items-center">
+                                                                            <div class="flex-shrink-0 me-3">
+                                                                                <img src="<?php echo !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>"
+                                                                                    alt="" class="avatar-xs rounded-circle">
+                                                                            </div>
+                                                                            <div class="flex-grow-1">
+                                                                                <h5 class="font-size-14 mb-1"><?php echo $personel->adi_soyadi; ?></h5>
+                                                                                <p class="text-muted mb-0 font-size-12">
+                                                                                    <?php echo $personel->departman; ?>
+                                                                                </p>
+                                                                            </div>
+                                                                        </div>
+                                                                <?php else: ?>
+                                                                        Personel #<?php echo $req->personel_id; ?>
+                                                                <?php endif; ?>
+                                                            </td>
+                                                            <td><span
+                                                                    class="badge <?php echo $badgeClass; ?> font-size-12"><?php echo $req->tip; ?></span>
+                                                            </td>
+                                                            <td>
+                                                                <?php
+                                                                if ($req->tip == 'Avans')
+                                                                    echo number_format($req->detay, 2) . ' ₺';
+                                                                elseif ($req->tip == 'İzin')
+                                                                    echo htmlspecialchars($req->detay);
+                                                                else
+                                                                    echo $req->detay;
+                                                                ?>
+                                                            </td>
+                                                            <td><?php echo date('d.m.Y', strtotime($req->tarih)); ?></td>
+                                                            <td>
+                                                                <div class="btn-group" role="group">
+                                                                    <button type="button" class="btn btn-info btn-sm btn-home-detay"
+                                                                        data-id="<?php echo $req->id; ?>" data-tip="<?php echo $req->tip; ?>"
+                                                                        data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
+                                                                        data-detay="<?php echo htmlspecialchars($req->tip == 'Avans' ? number_format($req->detay, 2) . ' ₺' : $req->detay); ?>"
+                                                                        data-tarih="<?php echo date('d.m.Y', strtotime($req->tarih)); ?>" title="Detay">
+                                                                        <i class='bx bx-show'></i>
+                                                                    </button>
 
+                                                                    <?php if ($req->tip == 'Avans'): ?>
+                                                                            <button type="button" class="btn btn-success btn-sm btn-avans-onayla"
+                                                                                data-id="<?php echo $req->id; ?>"
+                                                                                data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
+                                                                                data-tutar="<?php echo $req->detay; ?>" title="Onayla">
+                                                                                <i class="bx bx-check"></i>
+                                                                            </button>
+                                                                            <button type="button" class="btn btn-danger btn-sm btn-avans-reddet"
+                                                                                data-id="<?php echo $req->id; ?>"
+                                                                                data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
+                                                                                title="Reddet">
+                                                                                <i class="bx bx-x"></i>
+                                                                            </button>
+                                                                    <?php elseif ($req->tip == 'İzin'): ?>
+                                                                            <button type="button" class="btn btn-success btn-sm btn-izin-onayla"
+                                                                                data-id="<?php echo $req->id; ?>"
+                                                                                data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
+                                                                                data-tur="<?php echo htmlspecialchars($req->detay); ?>"
+                                                                                data-gun="<?php echo $req->toplam_gun ?? 0; ?>" title="Onayla">
+                                                                                <i class="bx bx-check"></i>
+                                                                            </button>
+                                                                            <button type="button" class="btn btn-danger btn-sm btn-izin-reddet"
+                                                                                data-id="<?php echo $req->id; ?>"
+                                                                                data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
+                                                                                title="Reddet">
+                                                                                <i class="bx bx-x"></i>
+                                                                            </button>
+                                                                    <?php elseif ($req->tip == 'Talep'): ?>
+                                                                            <button type="button" class="btn btn-success btn-sm btn-talep-cozuldu"
+                                                                                data-id="<?php echo $req->id; ?>"
+                                                                                data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
+                                                                                data-baslik="<?php echo htmlspecialchars($req->detay); ?>" title="Çözüldü">
+                                                                                <i class="bx bx-check"></i>
+                                                                            </button>
+                                                                    <?php endif; ?>
 
-        if (Gate::allows("ana_sayfa_izinli_personel_karti") || $is_dept_manager) {
-            $widgets['widget-izindekiler'] = renderSkeleton('widget-izindekiler', getWidgetWidth('widget-izindekiler', 'col-md-6'), '300px');
+                                                                    <?php
+                                                                    $tabParam = 'avans';
+                                                                    if ($req->tip == 'Avans')
+                                                                        $tabParam = 'avans';
+                                                                    elseif ($req->tip == 'İzin')
+                                                                        $tabParam = 'izin';
+                                                                    else
+                                                                        $tabParam = 'talep';
+                                                                    ?>
+                                                                    <a href="index.php?p=talepler/list&tab=<?php echo $tabParam; ?>"
+                                                                        class="btn btn-primary btn-sm" title="Talepler Sayfasına Git">
+                                                                        <i class='bx bx-right-arrow-alt'></i>
+                                                                    </a>
+                                                                </div>
+                                                            </td>
+                                                        </tr>
+                                                <?php endforeach; ?>
+                                        <?php endif; ?>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <?php $widgets['widget-talepler'] = ob_get_clean();
         }
 
+        if (Gate::allows("ana_sayfa_izinli_personel_karti")) {
+            ob_start(); ?>
+            <div class="<?php echo getWidgetWidth('widget-izindekiler', 'col-md-6'); ?> widget-item" id="widget-izindekiler">
+                <div class="card">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Şu Anda İzinde Olan Personeller</h5>
+                        <?php echo getWidthControl(); ?>
+                    </div>
+                    <div class="card-body"
+                        style="height: <?php echo getWidgetHeight('widget-izindekiler', 'auto'); ?>; overflow-y: auto;">
+                        <div class="table-responsive">
+                            <table class="table table-centered table-nowrap mb-0">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th>Personel</th>
+                                        <th>İzin Tipi</th>
+                                        <th>Bitiş Tarihi</th>
+                                        <th>Kalan Süre</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php if (empty($active_leaves)): ?>
+                                            <tr>
+                                                <td colspan="4" class="text-center">Şu anda izinde olan personel bulunmamaktadır.
+                                                </td>
+                                            </tr>
+                                    <?php else: ?>
+                                            <?php foreach ($active_leaves as $leave):
+                                                $bitis = new DateTime($leave->bitis_tarihi);
+                                                $bugun = new DateTime();
+                                                $kalan = $bugun->diff($bitis)->days;
 
-        if (Gate::allows("ana_sayfa_is_turu_istatistikleri")) {
-            $widgets['widget-is-turu-istatistikleri'] = renderSkeleton('widget-is-turu-istatistikleri', getWidgetWidth('widget-is-turu-istatistikleri', 'col-md-6'), '400px');
+                                                $badgeClass = 'badge-primary';
+                                                if ($leave->izin_tipi_adi == 'hastalik')
+                                                    $badgeClass = 'badge-danger';
+                                                if ($leave->izin_tipi_adi == 'mazeret')
+                                                    $badgeClass = 'badge-warning';
+                                                ?>
+                                                    <tr>
+                                                        <td>
+                                                            <div class="d-flex align-items-center">
+                                                                <div class="flex-shrink-0 me-3">
+                                                                    <img src="<?php echo !empty($leave->resim_yolu) ? $leave->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>"
+                                                                        alt="" class="avatar-xs rounded-circle">
+                                                                </div>
+                                                                <div class="flex-grow-1">
+                                                                    <h5 class="font-size-14 mb-1"><?php echo $leave->adi_soyadi; ?></h5>
+                                                                    <p class="text-muted mb-0 font-size-12"><?php echo $leave->departman; ?>
+                                                                    </p>
+                                                                </div>
+                                                            </div>
+                                                        </td>
+                                                        <td>
+                                                            <span class="badge <?php echo $badgeClass; ?> font-size-12">
+                                                                <?php echo htmlspecialchars($leave->izin_tipi_adi ?? $leave->izin_tipi ?? 'İzin'); ?>
+                                                            </span>
+                                                        </td>
+                                                        <td><?php echo date('d.m.Y', strtotime($leave->bitis_tarihi)); ?></td>
+                                                        <td>
+                                                            <span class="badge badge-info"><?php echo $kalan; ?> Gün Kaldı</span>
+                                                        </td>
+                                                    </tr>
+                                            <?php endforeach; ?>
+                                    <?php endif; ?>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <?php $widgets['widget-izindekiler'] = ob_get_clean();
         }
-        
-        if (Gate::allows("ana_sayfa_is_emri_sonuc_istatistikleri")) {
-            $widgets['widget-is-emri-sonucu-istatistikleri'] = renderSkeleton('widget-is-emri-sonucu-istatistikleri', getWidgetWidth('widget-is-emri-sonucu-istatistikleri', 'col-md-6'), '400px');
-        }
+
+        ob_start(); ?>
+        <div class="<?php echo getWidgetWidth('widget-is-turu-istatistikleri', 'col-md-6'); ?> widget-item"
+            id="widget-is-turu-istatistikleri">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> İş Türü İstatistikleri</h5>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="flex-shrink-0">
+                            <select class="form-select form-select-sm" id="stats-year-filter" style="width: 100px;">
+                                <?php
+                                $currentYear = date('Y');
+                                for ($y = $currentYear; $y >= $currentYear - 4; $y--) {
+                                    echo "<option value='$y'>$y</option>";
+                                }
+                                ?>
+                            </select>
+                        </div>
+                        <?php echo getWidthControl(); ?>
+                    </div>
+                </div>
+                <div class="card-body"
+                    style="height: <?php echo getWidgetHeight('widget-is-turu-istatistikleri', 'auto'); ?>; overflow-y: auto;">
+                    <div id="work-type-stats-chart" style="min-height: 400px; height: 100%;">
+                        <div id="work-type-stats-skeleton" class="dashboard-chart-skeleton">
+                            <div class="skeleton-line w-40 mb-3"></div>
+                            <div class="skeleton-chart-bars">
+                                <span style="height: 32%;"></span>
+                                <span style="height: 46%;"></span>
+                                <span style="height: 64%;"></span>
+                                <span style="height: 52%;"></span>
+                                <span style="height: 75%;"></span>
+                                <span style="height: 58%;"></span>
+                                <span style="height: 80%;"></span>
+                                <span style="height: 43%;"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php $widgets['widget-is-turu-istatistikleri'] = ob_get_clean();
+
+        ob_start(); ?>
+        <div class="<?php echo getWidgetWidth('widget-is-emri-sonucu-istatistikleri', 'col-md-6'); ?> widget-item"
+            id="widget-is-emri-sonucu-istatistikleri">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> İş Emri Sonuç İstatistikleri</h5>
+                    <div class="d-flex align-items-center gap-2">
+                        <div class="flex-shrink-0 d-flex gap-2">
+                            <select class="form-select form-select-sm" id="stats-result-month-filter" style="width: 120px;">
+                                <?php
+                                $aylar = ["Ocak", "Şubat", "Mart", "Nisan", "Mayıs", "Haziran", "Temmuz", "Ağustos", "Eylül", "Ekim", "Kasım", "Aralık"];
+                                $currentMonth = date('n');
+                                foreach ($aylar as $index => $ay) {
+                                    $val = $index + 1;
+                                    $selected = ($val == $currentMonth) ? 'selected' : '';
+                                    echo "<option value='$val' $selected>$ay</option>";
+                                }
+                                ?>
+                            </select>
+                            <select class="form-select form-select-sm" id="stats-result-year-filter" style="width: 100px;">
+                                <?php
+                                $currentYear = date('Y');
+                                for ($y = $currentYear; $y >= $currentYear - 4; $y--) {
+                                    echo "<option value='$y'>$y</option>";
+                                }
+                                ?>
+                            </select>
+                        </div>
+                        <?php echo getWidthControl(); ?>
+                    </div>
+                </div>
+                <div class="card-body"
+                    style="height: <?php echo getWidgetHeight('widget-is-emri-sonucu-istatistikleri', 'auto'); ?>; overflow-y: auto;">
+                    <div id="work-result-stats-chart" style="min-height: 400px; height: 100%;">
+                        <div id="work-result-stats-skeleton" class="dashboard-chart-skeleton">
+                            <div class="skeleton-line w-50 mb-3"></div>
+                            <div class="skeleton-chart-lines">
+                                <span class="w-100"></span>
+                                <span class="w-85"></span>
+                                <span class="w-70"></span>
+                                <span class="w-92"></span>
+                                <span class="w-60"></span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php $widgets['widget-is-emri-sonucu-istatistikleri'] = ob_get_clean();
 
         //ob_start(); ?>
         <!-- <div class="col-md-4 widget-item" id="widget-istatistikler">
@@ -941,14 +1272,14 @@ if (Gate::allows("ana_sayfa")) {
                                 <li>
                                     <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
                                         <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                            data-widget="widget-personel-ozeti" checked>
+                                            data-widget="widget-personel-ozet" checked>
                                         Personel Durumu
                                     </label>
                                 </li>
                                 <li>
                                     <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
                                         <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                            data-widget="widget-arac-ozeti" checked>
+                                            data-widget="widget-arac-ozet" checked>
                                         Araç Durumu
                                     </label>
                                 </li>
@@ -990,7 +1321,7 @@ if (Gate::allows("ana_sayfa")) {
                                         Arıza/İzin/Avans Talepleri
                                     </label>
                                 </li>
-                                <?php if (Gate::allows("ana_sayfa_izinli_personel_karti") || $is_dept_manager): ?>
+                                <?php if (Gate::allows("ana_sayfa_izinli_personel_karti")): ?>
                                     <li>
                                         <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
                                             <input type="checkbox" class="form-check-input widget-toggle me-2"
@@ -1055,7 +1386,7 @@ if (Gate::allows("ana_sayfa")) {
                                     <li>
                                         <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
                                             <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                                data-widget="widget-gorevler" checked>
+                                                data-widget="widget-yaklasan-gorevler" checked>
                                             Yaklaşan Görevler
                                         </label>
                                     </li>
@@ -1703,6 +2034,38 @@ if (Gate::allows("ana_sayfa")) {
                 justify-content: center;
                 margin-bottom: 12px;
                 transition: all 0.3s ease;
+            }
+
+            /* Card Loading State */
+            .card.is-loading {
+                position: relative;
+                pointer-events: none;
+                user-select: none;
+            }
+
+            .card.is-loading .card-loading-overlay {
+                display: flex !important;
+            }
+
+            .card-loading-overlay {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 100%;
+                height: 100%;
+                background: rgba(255, 255, 255, 0.7);
+                z-index: 10;
+                display: none;
+                align-items: center;
+                justify-content: center;
+                border-radius: inherit;
+                backdrop-filter: blur(1.5px);
+                animation: fadeIn 0.3s ease-in-out;
+            }
+
+            @keyframes fadeIn {
+                from { opacity: 0; }
+                to { opacity: 1; }
             }
 
             .animate-card {
@@ -2591,8 +2954,8 @@ if (Gate::allows("ana_sayfa")) {
                 const criticalSkeletonStyle = document.getElementById('dashboard-skeleton-critical');
                 const criticalWidgetIds = new Set([
                     'widget-ana-slider',
-                    'widget-personel-ozeti',
-                    'widget-arac-ozeti',
+                    'widget-personel-ozet',
+                    'widget-arac-ozet',
                     'widget-bekleyen-talepler',
                     'widget-gec-kalanlar',
                     'widget-nobetciler'
@@ -3025,42 +3388,26 @@ if (Gate::allows("ana_sayfa")) {
                 handleFormSubmit('formTalepCozuldu');
 
                 // İş Türü İstatistikleri (Yıllık)
-                function initializeDashboardStatWidgets() {
-                    const yearFilter = document.getElementById('stats-year-filter');
-                    if (yearFilter) {
-                        if (yearFilter.dataset.dashboardBound !== 'true') {
-                            yearFilter.addEventListener('change', function () {
-                                loadWorkTypeStats(this.value);
-                            });
-                            yearFilter.dataset.dashboardBound = 'true';
-                        }
-                        loadWorkTypeStats(yearFilter.value);
-                    }
-
-                // İş Emri Sonuçları (Aylık)
-                    const resultMonthFilter = document.getElementById('stats-result-month-filter');
-                    const resultYearFilter = document.getElementById('stats-result-year-filter');
-
-                    if (resultMonthFilter && resultYearFilter) {
-                        const refreshResultStats = () => {
-                            loadWorkResultStats(resultYearFilter.value, resultMonthFilter.value);
-                        };
-
-                        if (resultMonthFilter.dataset.dashboardBound !== 'true') {
-                            resultMonthFilter.addEventListener('change', refreshResultStats);
-                            resultMonthFilter.dataset.dashboardBound = 'true';
-                        }
-
-                        if (resultYearFilter.dataset.dashboardBound !== 'true') {
-                            resultYearFilter.addEventListener('change', refreshResultStats);
-                            resultYearFilter.dataset.dashboardBound = 'true';
-                        }
-
-                        refreshResultStats();
-                    }
+                const yearFilter = document.getElementById('stats-year-filter');
+                if (yearFilter) {
+                    yearFilter.addEventListener('change', function () {
+                        loadWorkTypeStats(this.value);
+                    });
+                    loadWorkTypeStats(yearFilter.value);
                 }
 
-                initializeDashboardStatWidgets();
+                // İş Emri Sonuçları (Aylık)
+                const resultMonthFilter = document.getElementById('stats-result-month-filter');
+                const resultYearFilter = document.getElementById('stats-result-year-filter');
+
+                if (resultMonthFilter && resultYearFilter) {
+                    const refreshResultStats = () => {
+                        loadWorkResultStats(resultYearFilter.value, resultMonthFilter.value);
+                    };
+                    resultMonthFilter.addEventListener('change', refreshResultStats);
+                    resultYearFilter.addEventListener('change', refreshResultStats);
+                    refreshResultStats();
+                }
                 // Dashboard Config Persistence
                 const dashboard = $("#dashboard-widgets");
 
@@ -3239,35 +3586,108 @@ if (Gate::allows("ana_sayfa")) {
                     }
                 }
 
-                function refreshOperationalStats() {
+                function initDashboard(force = false) {
+                    const $operationalCards = $('.widget-item .stat-card');
+                    const lazyWidgets = document.querySelectorAll('[data-lazy-load="true"]');
+                    
+                    // 1. Client-Side Cache (Instant Feel)
+                    const cacheKey = 'dashboard_cache_<?php echo $_SESSION['user_id']; ?>';
+                    const cachedData = localStorage.getItem(cacheKey);
+                    
+                    if (cachedData && !force) {
+                        try {
+                            const data = JSON.parse(cachedData);
+                            if (data.stats) renderOperationalStats(data.stats);
+                            if (data.results) {
+                                Object.keys(data.results).forEach(id => {
+                                    const $el = $('#' + id);
+                                    if ($el.length && $el.hasClass('lazy-widget')) $el.replaceWith(data.results[id]);
+                                });
+                            }
+                        } catch(e) { console.error("Cache render error", e); }
+                    }
+
+                    // 2. Loading State
+                    $operationalCards.addClass('is-loading');
+                    $operationalCards.each(function() {
+                        if (!$(this).find('.card-loading-overlay').length) {
+                            $(this).append('<div class="card-loading-overlay"><div class="spinner-border text-primary" role="status"></div></div>');
+                        }
+                    });
+
+                    const widgetIds = [];
+                    const widths = [];
+                    lazyWidgets.forEach(widget => {
+                        const widthStr = $(widget).attr('class') || '';
+                        const width = widthStr.split(' ').find(c => c.startsWith('col-')) || 'col-md-6';
+                        widgetIds.push(widget.id);
+                        widths.push(width);
+                    });
+
+                    // 3. Single Combined Request
                     return $.ajax({
                         url: 'views/home/api.php',
                         type: 'POST',
-                        data: { action: 'get-dashboard-operational-stats' }
+                        data: { 
+                            action: 'batch-load-all',
+                            widgets: widgetIds,
+                            widths: widths,
+                            force: force
+                        }
                     }).done(function (response) {
-                        const res = typeof response === 'object' ? response : JSON.parse(response);
-                        if (res.status !== 'success' || !res.data) return;
+                        try {
+                            const res = typeof response === 'object' ? response : JSON.parse(response);
+                            if (res.status === 'success') {
+                                // Save to localStorage
+                                localStorage.setItem(cacheKey, JSON.stringify({
+                                    stats: res.stats,
+                                    results: res.results,
+                                    time: Date.now()
+                                }));
 
-                        const daily = res.data.daily || {};
-                        const monthly = res.data.monthly || {};
-                        const lastUpdate = res.data.last_update || {};
+                                // Render Stats
+                                if (res.stats) renderOperationalStats(res.stats);
 
-                        updateOperationalWidget('widget-gunluk-muhurleme', daily.muhurleme, monthly.muhurleme, lastUpdate.isler, lastUpdate.isler_user);
-                        updateOperationalWidget('widget-gunluk-kesme-acma', daily.kesme_acma, monthly.kesme_acma, lastUpdate.isler, lastUpdate.isler_user);
-                        updateOperationalWidget('widget-gunluk-endeks-okuma', daily.endeks_okuma, monthly.endeks_okuma, lastUpdate.endeks, lastUpdate.endeks_user);
-                        updateOperationalWidget('widget-gunluk-sayac-degisimi', daily.sayac_degisimi, monthly.sayac_degisimi, lastUpdate.sayac, lastUpdate.sayac_user);
-                        updateOperationalWidget('widget-kacak-sayisi', daily.kacak, monthly.kacak, null, '-');
-                    }).fail(function (err) {
-                        console.error('Dashboard stats refresh error:', err);
+                                // Render Widgets
+                                if (res.results) {
+                                    Object.keys(res.results).forEach(widgetId => {
+                                        const $el = $('#' + widgetId);
+                                        if ($el.length) $el.replaceWith(res.results[widgetId]);
+                                    });
+                                }
+
+                                setTimeout(() => {
+                                    window.dispatchEvent(new Event('resize'));
+                                    if (window.feather) feather.replace();
+                                }, 150);
+                            }
+                        } catch (err) { console.error('Dashboard init error:', err); }
+                    }).always(function() {
+                        $operationalCards.removeClass('is-loading');
                     });
                 }
 
-                refreshOperationalStats();
+                function renderOperationalStats(stats) {
+                    const daily = stats.daily || {};
+                    const monthly = stats.monthly || {};
+                    const lastUpdate = stats.last_update || {};
+
+                    updateOperationalWidget('widget-gunluk-muhurleme', daily.muhurleme, monthly.muhurleme, lastUpdate.isler, lastUpdate.isler_user);
+                    updateOperationalWidget('widget-gunluk-kesme-acma', daily.kesme_acma, monthly.kesme_acma, lastUpdate.isler, lastUpdate.isler_user);
+                    updateOperationalWidget('widget-gunluk-endeks-okuma', daily.endeks_okuma, monthly.endeks_okuma, lastUpdate.endeks, lastUpdate.endeks_user);
+                    updateOperationalWidget('widget-gunluk-sayac-degisimi', daily.sayac_degisimi, monthly.sayac_degisimi, lastUpdate.sayac, lastUpdate.sayac_user);
+                    updateOperationalWidget('widget-kacak-sayisi', daily.kacak, monthly.kacak, null, '-');
+                }
+
+                function refreshOperationalStats() { return initDashboard(true); }
+
+                initDashboard();
 
                 // Online API Sync Logic
                 $(document).on('click', '.btn-api-sync', function (e) {
                     e.preventDefault();
                     const $btn = $(this);
+                    const $card = $btn.closest('.card');
                     const $icon = $btn.find('i');
                     const action = $btn.data('action');
                     const today = '<?php echo date('Y-m-d'); ?>';
@@ -3277,6 +3697,14 @@ if (Gate::allows("ana_sayfa")) {
 
                     $btn.addClass('syncing');
                     $icon.addClass('bx-spin text-primary');
+
+                    // Kartı loading moduna al
+                    if ($card.length) {
+                        $card.addClass('is-loading');
+                        if (!$card.find('.card-loading-overlay').length) {
+                            $card.append('<div class="card-loading-overlay"><div class="spinner-border text-primary" role="status"></div></div>');
+                        }
+                    }
 
                     $.ajax({
                         url: 'views/puantaj/api.php',
@@ -3302,6 +3730,7 @@ if (Gate::allows("ana_sayfa")) {
                                         msg += '<br><br><span class="text-danger fw-bold">⚠️ Aparat Zimmeti Eksik Personeller (' + Object.keys(res.eksik_zimmetler).length + '):</span><br><small>Şu personellerin zimmetinde aparat olmadığı için tüketim düşülemedi.</small>';
                                     }
                                     refreshOperationalStats().always(function () {
+                                        $card.removeClass('is-loading');
                                         Swal.fire({
                                             icon: 'success',
                                             title: 'Sorgulama Başarılı',
@@ -3311,9 +3740,11 @@ if (Gate::allows("ana_sayfa")) {
                                         });
                                     });
                                 } else {
+                                    $card.removeClass('is-loading');
                                     Swal.fire('Hata', res.message || 'Sorgulama sırasında bir hata oluştu.', 'error');
                                 }
                             } catch (err) {
+                                $card.removeClass('is-loading');
                                 console.error("API Response Error:", err);
                                 console.log("Raw Response:", response);
                                 Swal.fire('Hata', 'Sunucudan geçersiz yanıt alındı.', 'error');
@@ -3322,6 +3753,7 @@ if (Gate::allows("ana_sayfa")) {
                         error: function () {
                             $btn.removeClass('syncing');
                             $icon.removeClass('bx-spin text-primary');
+                            $card.removeClass('is-loading');
                             Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
                         }
                     });
@@ -3810,112 +4242,7 @@ if (Gate::allows("ana_sayfa")) {
                 })();
                 // ========== /ENDEKS KARŞILAŞTIRMA KART LOGIC ==========
 
-                // ========== LAZY LOADING WIDGETS (BATCH) ==========
-                function loadLazyWidgets() {
-                    const lazyWidgets = document.querySelectorAll('[data-lazy-load="true"]');
-                    if (lazyWidgets.length === 0) return;
-                    
-                    console.log('Batch loading ' + lazyWidgets.length + ' widgets...');
-                    
-                    const widgetIds = [];
-                    const widths = [];
-                    
-                    lazyWidgets.forEach(widget => {
-                        widgetIds.push(widget.id);
-                        const widthStr = $(widget).attr('class') || '';
-                        const width = widthStr.split(/\s+/).filter(c => c.startsWith('col-')).join(' ') || 'col-md-6';
-                        widths.push(width);
-                    });
-                    
-                    $.ajax({
-                        url: 'views/home/api.php',
-                        type: 'POST',
-                        data: {
-                            action: 'batch-load-widgets',
-                            widgets: widgetIds,
-                            widths: widths
-                        },
-                        success: function(response) {
-                            try {
-                                const res = typeof response === 'object' ? response : JSON.parse(response);
-                                if (res.status === 'success' && res.results) {
-                                    Object.keys(res.results).forEach(widgetId => {
-                                        const html = res.results[widgetId];
-                                        $('#' + widgetId).replaceWith(html);
-                                    });
-
-                                    initializeDashboardStatWidgets();
-                                    
-                                    // Trigger resize for charts
-                                    setTimeout(() => {
-                                        window.dispatchEvent(new Event('resize'));
-                                    }, 150);
-                                }
-                            } catch (e) {
-                                console.error('Batch load error:', e);
-                            }
-                        }
-                    });
-                }
-
-                // ========== ARAÇ EVRAK HATIRLATMASI (DYNAMIC) ==========
-                function loadAracEvrakStats() {
-                    $.ajax({
-                        url: 'views/home/api.php',
-                        type: 'POST',
-                        data: { action: 'get-arac-evrak-stats' },
-                        success: function(response) {
-                            try {
-                                const res = typeof response === 'object' ? response : JSON.parse(response);
-                                if (res.status === 'success' && res.data) {
-                                    updateSliderNotification(res.data);
-                                }
-                            } catch (e) {}
-                        }
-                    });
-                }
-
-                function updateSliderNotification(data) {
-                    if (!data.has_expired) return;
-                    
-                    // Eğer slider varsa içine yeni bir slide ekle veya mevcut placeholder'ı güncelle
-                    const $carousel = $('#dashboardCarousel');
-                    if ($carousel.length) {
-                        const newSlideHtml = `
-                            <div class="carousel-item h-100">
-                                <div class="carousel-content p-4 px-5 d-flex align-items-center h-100"
-                                    style="background: linear-gradient(135deg, #7f1d1d 0%, #ef4444 100%); min-height: 260px; position: relative; overflow: hidden;">
-                                    <div class="circles" style="opacity: 0.12;"><div></div><div></div><div></div><div></div></div>
-                                    <div class="flex-grow-1 position-relative" style="z-index: 2; padding-right: 25px;">
-                                        <h5 class="text-white fw-bold mb-3" style="font-family: 'Outfit', sans-serif; letter-spacing: -0.01em; font-size: 1.1rem;">
-                                            Araç Evrak Hatırlatması
-                                        </h5>
-                                        <p class="text-white-50 mb-0" style="max-width: 580px; line-height: 1.5; opacity: 0.8; font-size: 0.95rem;">
-                                            ${data.notif_text}
-                                        </p>
-                                    </div>
-                                    <div class="flex-shrink-0 ms-auto d-none d-md-block opacity-20 position-relative" style="z-index: 1;">
-                                        <i class='bx bx-error-circle' style="font-size: 90px; color: white;"></i>
-                                    </div>
-                                </div>
-                            </div>`;
-                        
-                        $carousel.find('.carousel-inner').prepend(newSlideHtml);
-                        
-                        // Indicators ekle
-                        const newIdx = $carousel.find('.carousel-item').length - 1;
-                        const $indicators = $carousel.find('.carousel-indicators');
-                        $indicators.append(`<button type="button" data-bs-target="#dashboardCarousel" data-bs-slide-to="${newIdx}" aria-label="Slide ${newIdx+1}" style="width: 8px; height: 8px; border-radius: 50%;"></button>`);
-                        
-                        // İlk slide'ı aktif yap ve carousel'i yenile
-                        $carousel.find('.carousel-item').first().addClass('active');
-                        $carousel.find('.carousel-indicators button').first().addClass('active');
-                    }
-                }
-
-                loadLazyWidgets();
-                loadAracEvrakStats();
-                // ========== /ENDEKS KARŞILAŞTIRMA KART LOGIC ==========
+                // Combined into initDashboard()
 
             });
         </script>

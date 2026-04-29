@@ -16,7 +16,7 @@ function renderWidget(string $widgetId, array $data = []) {
         case 'widget-personel-ozeti':
         case 'widget-personel-ozet':
             ?>
-            <div class="<?php echo ($width ?? 'col-md-6 col-xl-4'); ?> widget-item" id="<?php echo $widgetDomId; ?>">
+            <div class="<?php echo ($width ?? 'col-md-4 col-xl-4'); ?> widget-item" id="<?php echo $widgetDomId; ?>">
                 <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card" style="border-radius: 12px; background: #fff;">
                     <div class="card-body p-4 d-flex flex-column">
                         <div class="d-flex justify-content-between align-items-start mb-4">
@@ -60,7 +60,7 @@ function renderWidget(string $widgetId, array $data = []) {
         case 'widget-arac-ozeti':
         case 'widget-arac-ozet':
             ?>
-            <div class="<?php echo ($width ?? 'col-md-6 col-xl-4'); ?> widget-item" id="<?php echo $widgetDomId; ?>">
+            <div class="<?php echo ($width ?? 'col-md-4 col-xl-4'); ?> widget-item" id="<?php echo $widgetDomId; ?>">
                 <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card" style="border-radius: 12px; background: #fff;">
                     <div class="card-body p-4 d-flex flex-column">
                         <div class="d-flex justify-content-between align-items-start mb-4">

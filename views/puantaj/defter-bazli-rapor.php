@@ -817,7 +817,10 @@ padding-bottom:  10px !important;
                                     </div>
                                 </div>
 
-                                <div class="col-md-auto ms-md-auto">
+                                <div class="col-md-auto ms-md-auto d-flex gap-2">
+                                    <button type="button" class="btn btn-sm btn-outline-success d-flex align-items-center fw-bold" id="btnModalExcelExport" title="Listeyi Excel'e aktar">
+                                        <i class="bx bxs-file-export me-1"></i> Excel
+                                    </button>
                                     <div class="input-group input-group-sm">
                                         <span class="input-group-text bg-white border-end-0"><i class="bx bx-search text-muted"></i></span>
                                         <input type="text" class="form-control border-start-0" id="modalListSearch" placeholder="Listede ara...">
@@ -2369,7 +2372,7 @@ padding-bottom:  10px !important;
             if (list.length === 0) {
                 html = '<div class="text-center p-5 text-muted bg-white border rounded-3 mt-3"><i class="bx bx-search-alt fs-1 d-block mb-3 opacity-25"></i>Aradığınız kriterlere uygun defter bulunamadı.</div>';
             } else {
-                html += '<div class="table-responsive bg-white border rounded-3 mt-1 shadow-sm"><table class="table table-sm table-hover mb-0 align-middle">';
+                html += '<div class="table-responsive bg-white border rounded-3 mt-1 shadow-sm"><table class="table table-sm table-hover mb-0 align-middle" id="modalUnifiedTable">';
                 html += '<thead class="bg-light sticky-top"><tr><th class="ps-3" style="width: 50px;">#</th><th>Bölge / İlçe Tipi</th><th>Defter</th><th>Mahalle</th><th class="text-end">Toplam Abone</th><th class="text-end text-success">Okunan</th><th class="text-end text-danger">Kalan</th><th class="text-end">Oran %</th><th class="text-end pe-3">Durum</th></tr></thead><tbody>';
                 
                 list.forEach((item, index) => {
@@ -3138,6 +3141,12 @@ padding-bottom:  10px !important;
             link.click();
             setTimeout(() => URL.revokeObjectURL(url), 100);
         }
+
+        $(document).on('click', '#btnModalExcelExport', function () {
+            let tableId = $('#modalUnifiedTable').length > 0 ? 'modalUnifiedTable' : 'okunmayanDefterTable';
+            let title = $('#modalDefterListTitle').text().trim().replace(/[^a-z0-9]/gi, '_').toLowerCase();
+            exportTableToExcel(tableId, (title || 'defter_listesi') + '.xls');
+        });
 
         function toggleFullscreen(elemId, btn) {
             const elem = document.getElementById(elemId);

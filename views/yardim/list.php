@@ -304,6 +304,18 @@ if (!(Gate::allows('admin_destek_talebi') || Gate::isSuperAdmin())) {
         transform: translateY(-1px);
         box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
     }
+
+    #tickets-table tbody tr.ticket-row.ticket-row-selected > * {
+        background-color: rgba(85, 110, 230, 0.12) !important;
+    }
+
+    #tickets-table tbody tr.ticket-row.ticket-row-selected > td:first-child {
+        box-shadow: inset 4px 0 0 #556ee6;
+    }
+
+    #tickets-table tbody tr.ticket-row.ticket-row-selected:hover > * {
+        background-color: rgba(85, 110, 230, 0.18) !important;
+    }
 </style>
 
 <!-- Stats Row -->
@@ -677,6 +689,13 @@ $(document).ready(function() {
     // Row Click Handler
     $('#tickets-table tbody').on('click', 'tr.ticket-row', function(e) {
         if ($(e.target).closest('a, button, .badge').length) return;
+
+        $('#tickets-table tbody tr.ticket-row')
+            .removeClass('ticket-row-selected')
+            .attr('aria-selected', 'false');
+        $(this)
+            .addClass('ticket-row-selected')
+            .attr('aria-selected', 'true');
         
         const id = $(this).data('id');
         const encryptedId = $(this).data('encrypted-id');

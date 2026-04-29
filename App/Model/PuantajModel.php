@@ -740,9 +740,9 @@ class PuantajModel extends Model
         $bugun = date('Y-m-d');
 
         $sql = "SELECT 
-                    SUM(CASE WHEN (tn.rapor_sekmesi = 'kesme' OR t.is_emri_tipi LIKE '%Kesme%') THEN t.sonuclanmis ELSE 0 END) as kesme_acma,
-                    SUM(CASE WHEN (tn.rapor_sekmesi = 'sokme_takma' OR t.is_emri_tipi LIKE '%Sayaç%') THEN t.sonuclanmis ELSE 0 END) as sayac_degisimi,
-                    SUM(CASE WHEN (tn.rapor_sekmesi = 'muhurleme' OR t.is_emri_tipi LIKE '%Mühürleme%') THEN t.sonuclanmis ELSE 0 END) as muhurleme
+                    SUM(CASE WHEN tn.rapor_sekmesi = 'kesme' THEN t.sonuclanmis ELSE 0 END) as kesme_acma,
+                    SUM(CASE WHEN tn.rapor_sekmesi = 'sokme_takma' THEN t.sonuclanmis ELSE 0 END) as sayac_degisimi,
+                    SUM(CASE WHEN tn.rapor_sekmesi = 'muhurleme' THEN t.sonuclanmis ELSE 0 END) as muhurleme
                 FROM $this->table t
                 LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
                 WHERE t.firma_id = ? 
@@ -761,9 +761,9 @@ class PuantajModel extends Model
         $sonGun = date('Y-m-t');
 
         $sql = "SELECT 
-                    SUM(CASE WHEN (tn.rapor_sekmesi = 'kesme' OR t.is_emri_tipi LIKE '%Kesme%') THEN t.sonuclanmis ELSE 0 END) as kesme_acma,
-                    SUM(CASE WHEN (tn.rapor_sekmesi = 'sokme_takma' OR t.is_emri_tipi LIKE '%Sayaç%') THEN t.sonuclanmis ELSE 0 END) as sayac_degisimi,
-                    SUM(CASE WHEN (tn.rapor_sekmesi = 'muhurleme' OR t.is_emri_tipi LIKE '%Mühürleme%') THEN t.sonuclanmis ELSE 0 END) as muhurleme
+                    SUM(CASE WHEN tn.rapor_sekmesi = 'kesme' THEN t.sonuclanmis ELSE 0 END) as kesme_acma,
+                    SUM(CASE WHEN tn.rapor_sekmesi = 'sokme_takma' THEN t.sonuclanmis ELSE 0 END) as sayac_degisimi,
+                    SUM(CASE WHEN tn.rapor_sekmesi = 'muhurleme' THEN t.sonuclanmis ELSE 0 END) as muhurleme
                 FROM $this->table t
                 LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
                 WHERE t.firma_id = ? 
