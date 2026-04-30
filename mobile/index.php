@@ -679,13 +679,11 @@ try {
                     <span class="text-[10px] font-semibold"><?= $item['label'] ?></span>
                 </a>
             <?php endforeach; ?>
-            <?php if (!empty($more_pages)): ?>
             <button type="button" onclick="toggleMoreMenu()"
                 class="nav-item flex flex-col items-center gap-0.5 py-2 px-3 rounded-xl transition-all <?= $isMoreActive ? 'text-primary' : 'text-slate-400 dark:text-slate-500' ?>">
                 <span class="material-symbols-outlined text-[26px] <?= $isMoreActive ? 'filled' : '' ?>">more_horiz</span>
                 <span class="text-[10px] font-semibold">Daha Fazla</span>
             </button>
-            <?php endif; ?>
         </div>
     </nav>
 
