@@ -18,21 +18,44 @@ class RegisterController
         $validator = new RegisterValidator($post);
         $email = $post['email'];
 
+        if (session_status() === PHP_SESSION_NONE) {
+            session_start();
+        }
+
         if (!$validator->passes()) {
+            $_SESSION['registration_attempts'] = ($_SESSION['registration_attempts'] ?? 0) + 1;
             FlashMessageService::add('error', 'Hata!', $validator->getFirstError());
             return false;
         }
+        
         if ($User->isEmailExists(trim($post['email']))) {
+            $_SESSION['registration_attempts'] = ($_SESSION['registration_attempts'] ?? 0) + 1;
             FlashMessageService::add('error', 'Hata!', 'Bu email adresi ile daha önce kayıt olunmuş.');
             return false;
         }
-        $recaptchaSecret = '6LdplvwrAAAAADd32U8ewJDPyLd0FzZ_UFAMW4FB';
-        $recaptchaResponse = $post['g-recaptcha-response'] ?? '';
-        $response = file_get_contents("https://www.google.com/recaptcha/api/siteverify?secret=$recaptchaSecret&response=$recaptchaResponse");
-        $responseKeys = json_decode($response, true);
-        if (intval($responseKeys["success"] ?? 0) !== 1) {
-            FlashMessageService::add('error', 'Hata!', 'Lütfen reCAPTCHA doğrulamasını yapınız.');
-            return false;
+
+        // Session-based reCAPTCHA throttling
+        $attempts = $_SESSION['registration_attempts'] ?? 0;
+        if ($attempts >= 3) {
+            $recaptchaSecret = $_ENV['RECAPTCHA_SECRET'] ?? '6LdplvwrAAAAADd32U8ewJDPyLd0FzZ_UFAMW4FB';
+            $recaptchaResponse = $post['g-recaptcha-response'] ?? '';
+            
+            if (empty($recaptchaResponse)) {
+                FlashMessageService::add('error', 'Hata!', 'Çok fazla deneme yaptınız. Lütfen reCAPTCHA doğrulamasını yapınız.');
+                return false;
+            }
+
+            $response = file_get_contents("https://www.google.com/recaptcha/api/siteverify?secret=$recaptchaSecret&response=$recaptchaResponse");
+            $responseKeys = json_decode($response, true);
+            
+            if (intval($responseKeys["success"] ?? 0) !== 1) {
+                $_SESSION['registration_attempts']++;
+                FlashMessageService::add('error', 'Hata!', 'reCAPTCHA doğrulaması başarısız oldu.');
+                return false;
+            }
+            
+            // On successful recaptcha, we can reset or just let it pass
+            $_SESSION['registration_attempts'] = 0;
         }
         try {
             $db->beginTransaction();
@@ -70,6 +93,7 @@ class RegisterController
                 'Hesap Aktivasyon',
                 "Merhaba " . $post['full_name'] . ",<br><br>Kayıt işleminiz başarıyla tamamlandı. Hesabınızı aktifleştirmek için lütfen aşağıdaki linke tıklayınız:<br><a href='" . $activate_link . "'>Hesabımı Aktifleştir</a><br><br>Bu link 1 saat geçerlidir.<br><br>Teşekkürler,<br>Yönetim Ekibi"
             );
+            $_SESSION['registration_attempts'] = 0;
             header('Location: /register-success.php');
             exit;
         } catch (\PDOException $e) {
