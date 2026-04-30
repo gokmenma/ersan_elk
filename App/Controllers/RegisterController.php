@@ -37,7 +37,7 @@ class RegisterController
         // Session-based reCAPTCHA throttling
         $attempts = $_SESSION['registration_attempts'] ?? 0;
         if ($attempts >= 3) {
-            $recaptchaSecret = $_ENV['RECAPTCHA_SECRET'] ?? '6LdplvwrAAAAADd32U8ewJDPyLd0FzZ_UFAMW4FB';
+            $recaptchaSecret = $_ENV['RECAPTCHA_SECRET'] ?? '6LdHvNlsAAAAAI_8_P5v-NuLY3cd2rb4OMnOUIHI';
             $recaptchaResponse = $post['g-recaptcha-response'] ?? '';
             
             if (empty($recaptchaResponse)) {
