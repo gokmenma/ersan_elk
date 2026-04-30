@@ -140,6 +140,45 @@ padding-bottom:  10px !important;
             border-radius: 50px !important;
             box-shadow: 0 4px 15px rgba(0,0,0,0.1);
         }
+
+        /* Column Drag & Drop Styles */
+        .sortable-ghost {
+            opacity: 0.4;
+            background-color: var(--bs-primary-bg-subtle) !important;
+            border: 2px dashed var(--bs-primary) !important;
+        }
+        .sortable-chosen {
+            background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
+        }
+        .sortable-drag {
+            cursor: grabbing !important;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2) !important;
+            background-color: #fff !important;
+            z-index: 9999 !important;
+            opacity: 0.9 !important;
+        }
+        .draggable-header {
+            cursor: grab !important;
+            transition: background-color 0.2s;
+        }
+        .draggable-header:hover {
+            background-color: rgba(var(--bs-primary-rgb), 0.1) !important;
+        }
+        .draggable-header:active {
+            cursor: grabbing !important;
+        }
+        .drag-indicator {
+            display: inline-block;
+            margin-right: 6px;
+            color: #94a3b8;
+            font-size: 14px;
+            vertical-align: middle;
+            opacity: 0.6;
+        }
+        .draggable-header:hover .drag-indicator {
+            color: var(--bs-primary);
+            opacity: 1;
+        }
     </style>
 
     <!-- ======= FİLTRE ACCORDION ======= -->
@@ -328,7 +367,16 @@ padding-bottom:  10px !important;
                                             <i class="mdi mdi-filter-remove fs-5"></i>
                                         </button>
                                         <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
-                                        <button type="button"
+                                         <div class="btn-group btn-group-sm rounded-pill overflow-hidden border ms-2 shadow-sm" role="group" style="background: #f8fafc;">
+                                            <button type="button" class="btn btn-primary px-3 view-mode-btn d-flex align-items-center" data-mode="period" title="Dönemlere Göre Grupla">
+                                                <i class="bx bx-calendar me-1"></i> <span>Dönem</span>
+                                            </button>
+                                            <button type="button" class="btn btn-light px-3 view-mode-btn d-flex align-items-center" data-mode="type" title="Türlere Göre Grupla (Örn: Tüm Yüzdeler Yan Yana)">
+                                                <i class="bx bx-list-ul me-1"></i> <span>Tür</span>
+                                            </button>
+                                         </div>
+                                         <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+                                         <button type="button"
                                             class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
                                             id="btnExcelIndir" data-filename="rapor.xls">
                                             <i class="mdi mdi-file-excel fs-5 me-1"></i>
@@ -2137,6 +2185,64 @@ padding-bottom:  10px !important;
 
 <script>
     $(document).ready(function () {
+        // View Mode Switcher
+        $(document).on('click', '.view-mode-btn', function() {
+            const mode = $(this).data('mode');
+            $('.view-mode-btn').removeClass('active btn-primary').addClass('btn-light');
+            $(this).addClass('active btn-primary').removeClass('btn-light');
+            _viewMode = mode;
+            
+            if ($('#tab-abone-donem').hasClass('active')) renderTable(_tableData, _tableDonemler, true);
+            else if ($('#tab-okuma-gun').hasClass('active')) renderOkumaGunTable(_okumaGunData, _okumaGunDonemler, true);
+            else if ($('#tab-defter-ozet').hasClass('active')) renderDefterOzetTable(_defterOzetData, true);
+        });
+        // Helper: Init Column Sortable
+        window.initColumnSortable = function(tableId, onEndCallback) {
+            const headerRow = document.querySelector('#' + tableId + ' thead tr.main-headers-row');
+            if (!headerRow || typeof Sortable === 'undefined') return;
+
+            // Clear previous instances if any (though unlikely on new DOM)
+            if (Sortable.get(headerRow)) Sortable.get(headerRow).destroy();
+
+            new Sortable(headerRow, {
+                animation: 150,
+                handle: '.draggable-header',
+                draggable: '.draggable-header',
+                ghostClass: 'sortable-ghost',
+                chosenClass: 'sortable-chosen',
+                dragClass: 'sortable-drag',
+                forceFallback: true, // Native drag bazen çakışabiliyor, fallback daha güvenli
+                onStart: function() {
+                    console.log('Column drag started on:', tableId);
+                },
+                onEnd: function () {
+                    const newOrder = [];
+                    const headers = headerRow.querySelectorAll('.period-header');
+                    headers.forEach(h => {
+                        const d = h.getAttribute('data-donem');
+                        if (d) newOrder.push(d);
+                        
+                        // Handle Type Order if in Type mode
+                        const t = h.getAttribute('data-type');
+                        if (t) {
+                            if (!window._tempTypeOrder) window._tempTypeOrder = [];
+                            window._tempTypeOrder.push(t);
+                        }
+                    });
+                    
+                    if (newOrder.length > 0) _columnOrder = newOrder;
+                    if (window._tempTypeOrder && window._tempTypeOrder.length > 0) {
+                        _typeOrder = window._tempTypeOrder;
+                        delete window._tempTypeOrder;
+                    }
+
+                    console.log('New column order:', _columnOrder);
+                    console.log('New type order:', _typeOrder);
+                    if (onEndCallback) onEndCallback();
+                }
+            });
+            console.log('Sortable initialized for:', tableId);
+        };
         // Initialize Select2
         $('.select2').select2({
             width: '100%',
@@ -2531,6 +2637,9 @@ padding-bottom:  10px !important;
             okunan: true,
             oran: true
         };
+        let _columnOrder = null; // Will store the array of period strings
+        let _viewMode = 'period'; // 'period' (Dönem Bazlı) or 'type' (Tür Bazlı)
+        let _typeOrder = ['abone', 'okunan', 'oran'];
 
         // ======= NUMERIC FILTER STATE =======
         // Key: '{donem}_{field}', Value: { operator: '>' | '<' | '>=' | '<=' | '=', value: number }
@@ -2717,31 +2826,16 @@ padding-bottom:  10px !important;
             // ======= THEAD =======
             html += '<thead>';
 
-            // Row 1: Fixed labels + Periods
-            html += '<tr class="main-headers-row">';
-            html += `<th class="fix-col-1 sortable-header" data-sort-col="ilce_tipi">İLÇE TİPİ${sortIcon('ilce_tipi')}</th>`;
-            html += `<th class="fix-col-2 sortable-header" data-sort-col="bolge">BÖLGE${sortIcon('bolge')}</th>`;
-            html += `<th class="fix-col-3 sortable-header" data-sort-col="defter">DEFTER${sortIcon('defter')}</th>`;
-            html += `<th class="fix-col-4 sortable-header" data-sort-col="mahalle">MAHALLE${sortIcon('mahalle')}</th>`;
-            html += `<th class="fix-col-5 sortable-header" data-sort-col="abone_sayisi">ABONE SAYISI${sortIcon('abone_sayisi')}</th>`;
-
             const visibleCount = Object.values(_visibleColumns).filter(v => v).length;
 
-            donemler.forEach(function (donem, idx) {
-                if (visibleCount === 0) return;
-                const isAlt = idx % 2 === 1;
-                const formatted = donem.substring(0, 4) + '/' + donem.substring(4);
-                html += `<th colspan="${visibleCount}" class="period-header month-frame-header ${isAlt ? 'do-month-alt' : ''}">${formatted}</th>`;
-            });
-            html += '</tr>';
-
-            // Row 2: Search Inputs + Sub-headers
-            html += '<tr class="sub-headers-row search-row">';
-            html += `<th class="fix-col-1"><input type="text" class="form-control column-search" id="search_ilce_tipi" data-col="ilce_tipi" value="${_searchFilters.ilce_tipi || ''}" placeholder="İLÇE TİPİ"></th>`;
-            html += `<th class="fix-col-2"><input type="text" class="form-control column-search" id="search_bolge" data-col="bolge" value="${_searchFilters.bolge || ''}" placeholder="BÖLGE"></th>`;
-            html += `<th class="fix-col-3"><input type="text" class="form-control column-search" id="search_defter" data-col="defter" value="${_searchFilters.defter || ''}" placeholder="DEFTER"></th>`;
-            html += `<th class="fix-col-4"><input type="text" class="form-control column-search" id="search_mahalle" data-col="mahalle" value="${_searchFilters.mahalle || ''}" placeholder="MAHALLE"></th>`;
-            html += `<th class="fix-col-5"><input type="text" class="form-control column-search" id="search_abone_sayisi" data-col="abone_sayisi" value="${_searchFilters.abone_sayisi || ''}" placeholder="ABONE"></th>`;
+            // Apply Column Order if exists
+            let effectiveDonemler = [...donemler];
+            if (_columnOrder && _columnOrder.length > 0) {
+                effectiveDonemler = _columnOrder.filter(d => donemler.includes(d));
+                donemler.forEach(d => {
+                    if (!effectiveDonemler.includes(d)) effectiveDonemler.push(d);
+                });
+            }
 
             // Filter button helper
             function filterBtn(colKey) {
@@ -2751,16 +2845,85 @@ padding-bottom:  10px !important;
                 return `<button type="button" class="col-filter-btn ${activeClass}" data-filter-col="${colKey}" title="Filtrele"><i class="bx bx-filter-alt"></i></button>${dot}`;
             }
 
-            donemler.forEach(function (donem, idx) {
-                const isAlt = idx % 2 === 1;
+            if (_viewMode === 'period') {
+                // Row 1: Months
+                html += '<tr class="main-headers-row">';
+                html += `<th class="fix-col-1 sortable-header" data-sort-col="ilce_tipi">İLÇE TİPİ${sortIcon('ilce_tipi')}</th>`;
+                html += `<th class="fix-col-2 sortable-header" data-sort-col="bolge">BÖLGE${sortIcon('bolge')}</th>`;
+                html += `<th class="fix-col-3 sortable-header" data-sort-col="defter">DEFTER${sortIcon('defter')}</th>`;
+                html += `<th class="fix-col-4 sortable-header" data-sort-col="mahalle">MAHALLE${sortIcon('mahalle')}</th>`;
+                html += `<th class="fix-col-5 sortable-header" data-sort-col="abone_sayisi">ABONE SAYISI${sortIcon('abone_sayisi')}</th>`;
+
+                effectiveDonemler.forEach(function (donem, idx) {
+                    if (visibleCount === 0) return;
+                    const isAlt = idx % 2 === 1;
+                    const formatted = donem.substring(0, 4) + '/' + donem.substring(4);
+                    html += `<th colspan="${visibleCount}" class="period-header month-frame-header draggable-header ${isAlt ? 'do-month-alt' : ''}" data-donem="${donem}">
+                        <i class="bx bx-grid-vertical drag-indicator"></i>${formatted}
+                    </th>`;
+                });
+                html += '</tr>';
+
+                // Row 2: Search Inputs + Sub-headers
+                html += '<tr class="sub-headers-row search-row">';
+                html += `<th class="fix-col-1"><input type="text" class="form-control column-search" id="search_ilce_tipi" data-col="ilce_tipi" value="${_searchFilters.ilce_tipi || ''}" placeholder="İLÇE TİPİ"></th>`;
+                html += `<th class="fix-col-2"><input type="text" class="form-control column-search" id="search_bolge" data-col="bolge" value="${_searchFilters.bolge || ''}" placeholder="BÖLGE"></th>`;
+                html += `<th class="fix-col-3"><input type="text" class="form-control column-search" id="search_defter" data-col="defter" value="${_searchFilters.defter || ''}" placeholder="DEFTER"></th>`;
+                html += `<th class="fix-col-4"><input type="text" class="form-control column-search" id="search_mahalle" data-col="mahalle" value="${_searchFilters.mahalle || ''}" placeholder="MAHALLE"></th>`;
+                html += `<th class="fix-col-5"><input type="text" class="form-control column-search" id="search_abone_sayisi" data-col="abone_sayisi" value="${_searchFilters.abone_sayisi || ''}" placeholder="ABONE"></th>`;
+
+                effectiveDonemler.forEach(function (donem, idx) {
+                    const isAlt = idx % 2 === 1;
+                    if (_visibleColumns.abone)
+                        html += `<th class="sub-header sub-header-abone sortable-header period-start ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${donem}_abone">${filterBtn(donem + '_abone')} ABONE${sortIcon(donem + '_abone')}</th>`;
+                    if (_visibleColumns.okunan)
+                        html += `<th class="sub-header sub-header-okunan sortable-header ${_visibleColumns.abone ? '' : 'period-start'} ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${donem}_okunan">${filterBtn(donem + '_okunan')} OKUNAN${sortIcon(donem + '_okunan')}</th>`;
+                    if (_visibleColumns.oran)
+                        html += `<th class="sub-header sub-header-oran sortable-header period-end ${_visibleColumns.abone || _visibleColumns.okunan ? '' : 'period-start'} ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${donem}_oran">${filterBtn(donem + '_oran')} ORAN %${sortIcon(donem + '_oran')}</th>`;
+                });
+                html += '</tr>';
+            } else {
+                // Row 1: Types (Abone, Okunan, Oran)
+                html += '<tr class="main-headers-row">';
+                html += `<th class="fix-col-1 sortable-header" data-sort-col="ilce_tipi">İLÇE TİPİ${sortIcon('ilce_tipi')}</th>`;
+                html += `<th class="fix-col-2 sortable-header" data-sort-col="bolge">BÖLGE${sortIcon('bolge')}</th>`;
+                html += `<th class="fix-col-3 sortable-header" data-sort-col="defter">DEFTER${sortIcon('defter')}</th>`;
+                html += `<th class="fix-col-4 sortable-header" data-sort-col="mahalle">MAHALLE${sortIcon('mahalle')}</th>`;
+                html += `<th class="fix-col-5 sortable-header" data-sort-col="abone_sayisi">ABONE SAYISI${sortIcon('abone_sayisi')}</th>`;
+
                 if (_visibleColumns.abone)
-                    html += `<th class="sub-header sub-header-abone sortable-header period-start ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${donem}_abone">${filterBtn(donem + '_abone')} ABONE${sortIcon(donem + '_abone')}</th>`;
+                    html += `<th colspan="${effectiveDonemler.length}" class="period-header month-frame-header draggable-header" data-type="abone" style="background: #eff6ff; color: #1e40af;">
+                        <i class="bx bx-grid-vertical drag-indicator"></i>ABONE SAYILARI
+                    </th>`;
                 if (_visibleColumns.okunan)
-                    html += `<th class="sub-header sub-header-okunan sortable-header ${_visibleColumns.abone ? '' : 'period-start'} ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${donem}_okunan">${filterBtn(donem + '_okunan')} OKUNAN${sortIcon(donem + '_okunan')}</th>`;
+                    html += `<th colspan="${effectiveDonemler.length}" class="period-header month-frame-header draggable-header" data-type="okunan" style="background: #ecfdf5; color: #065f46;">
+                        <i class="bx bx-grid-vertical drag-indicator"></i>OKUNAN SAYILARI
+                    </th>`;
                 if (_visibleColumns.oran)
-                    html += `<th class="sub-header sub-header-oran sortable-header period-end ${_visibleColumns.abone || _visibleColumns.okunan ? '' : 'period-start'} ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${donem}_oran">${filterBtn(donem + '_oran')} ORAN %${sortIcon(donem + '_oran')}</th>`;
-            });
-            html += '</tr>';
+                    html += `<th colspan="${effectiveDonemler.length}" class="period-header month-frame-header draggable-header" data-type="oran" style="background: #fffbeb; color: #92400e;">
+                        <i class="bx bx-grid-vertical drag-indicator"></i>OKUMA ORANLARI %
+                    </th>`;
+                html += '</tr>';
+
+                // Row 2: Search Inputs + Months
+                html += '<tr class="sub-headers-row search-row">';
+                html += `<th class="fix-col-1"><input type="text" class="form-control column-search" id="search_ilce_tipi" data-col="ilce_tipi" value="${_searchFilters.ilce_tipi || ''}" placeholder="İLÇE TİPİ"></th>`;
+                html += `<th class="fix-col-2"><input type="text" class="form-control column-search" id="search_bolge" data-col="bolge" value="${_searchFilters.bolge || ''}" placeholder="BÖLGE"></th>`;
+                html += `<th class="fix-col-3"><input type="text" class="form-control column-search" id="search_defter" data-col="defter" value="${_searchFilters.defter || ''}" placeholder="DEFTER"></th>`;
+                html += `<th class="fix-col-4"><input type="text" class="form-control column-search" id="search_mahalle" data-col="mahalle" value="${_searchFilters.mahalle || ''}" placeholder="MAHALLE"></th>`;
+                html += `<th class="fix-col-5"><input type="text" class="form-control column-search" id="search_abone_sayisi" data-col="abone_sayisi" value="${_searchFilters.abone_sayisi || ''}" placeholder="ABONE"></th>`;
+
+                _typeOrder.forEach(type => {
+                    if (!_visibleColumns[type]) return;
+                    effectiveDonemler.forEach(function (donem, idx) {
+                        const isAlt = idx % 2 === 1;
+                        const formatted = donem.substring(0, 4) + '/' + donem.substring(4);
+                        const colKey = donem + '_' + type;
+                        html += `<th class="sub-header sortable-header ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${colKey}">${filterBtn(colKey)} ${formatted}${sortIcon(colKey)}</th>`;
+                    });
+                });
+                html += '</tr>';
+            }
 
             html += '</thead>';
 
@@ -2769,8 +2932,10 @@ padding-bottom:  10px !important;
 
             // Totals calculation object
             let colTotals = {};
-            donemler.forEach(d => {
+            let globalDefterStats = {};
+            effectiveDonemler.forEach(d => {
                 colTotals[d] = { abone: 0, okunan: 0 };
+                globalDefterStats[d] = { read: 0, unread: 0, total: 0 };
             });
 
             // Calculate active columns for colspan
@@ -2778,7 +2943,7 @@ padding-bottom:  10px !important;
             if (_visibleColumns.abone) visibleCountPerPeriod++;
             if (_visibleColumns.okunan) visibleCountPerPeriod++;
             if (_visibleColumns.oran) visibleCountPerPeriod++;
-            const totalHeaderCols = 5 + (donemler.length * visibleCountPerPeriod);
+            const totalHeaderCols = 5 + (effectiveDonemler.length * visibleCountPerPeriod);
 
             let rowNum = 0;
             regionOrder.forEach(function (region, regionIdx) {
@@ -2790,13 +2955,13 @@ padding-bottom:  10px !important;
                     master_abone: 0,
                     donemler: {}
                 };
-                donemler.forEach(d => {
+                effectiveDonemler.forEach(d => {
                     regionTotals.donemler[d] = { abone: 0, okunan: 0 };
                 });
 
                 rows.forEach(function (row) {
                     regionTotals.master_abone += parseInt(row.abone_sayisi) || 0;
-                    donemler.forEach(d => {
+                    effectiveDonemler.forEach(d => {
                         const dData = row.donemler[d] || { abone: 0, okunan: 0 };
                         regionTotals.donemler[d].abone += parseInt(dData.abone) || 0;
                         regionTotals.donemler[d].okunan += parseInt(dData.okunan) || 0;
@@ -2805,24 +2970,30 @@ padding-bottom:  10px !important;
 
                 // Calculate Region Stats (Defter counts)
                 let regionDefterStats = {};
-                donemler.forEach(d => {
+                effectiveDonemler.forEach(d => {
                     let rCount = 0;
                     rows.forEach(item => {
                         const dData = item.donemler[d];
                         if (dData && parseInt(dData.okunan) > 0) rCount++;
                     });
                     regionDefterStats[d] = { read: rCount, unread: rows.length - rCount };
+                    
+                    // Update global stats
+                    globalDefterStats[d].read += regionDefterStats[d].read;
+                    globalDefterStats[d].unread += regionDefterStats[d].unread;
+                    globalDefterStats[d].total += rows.length;
                 });
 
                 // Defter Durum Satırı (Bölge başlığı üstüne)
                 html += `<tr class="ogr-region-stats-row"><td colspan="5" class="text-end fw-bold py-1" style="background: rgba(0,0,0,0.02); font-size: 10px; color: #64748b;">OKUMA DURUMU (DEFTER):</td>`;
-                donemler.forEach(donem => {
+                effectiveDonemler.forEach(donem => {
                     const stats = regionDefterStats[donem];
                     const rTotals = regionTotals.donemler[donem];
                     const content = `<div class="d-flex justify-content-center gap-1">
-                        <span class="badge bg-soft-success text-success border border-success-subtle px-2" style="font-size:9.5px;" title="Okunan Defter Sayısı">Okunan: <b>${stats.read}</b></span>
-                        <span class="badge bg-soft-danger text-danger border border-danger-subtle px-2" style="font-size:9.5px;" title="Okunmayan Defter Sayısı">Okunmayan: <b>${stats.unread}</b></span>
-                        <span class="badge bg-light text-dark border px-2 ms-1" style="font-size:9.5px;" title="Toplam Okunan Abone (92173 gibi)">Abone: <b>${rTotals.okunan.toLocaleString('tr-TR')}</b></span>
+                        <span class="badge bg-soft-success text-success border border-success-subtle px-2" style="font-size:9.5px;" title="Okunan Defter Sayısı">Okn. Def: <b>${stats.read}</b></span>
+                        <span class="badge bg-soft-danger text-danger border border-danger-subtle px-2" style="font-size:9.5px;" title="Okunmayan Defter Sayısı">Okn.m. Def: <b>${stats.unread}</b></span>
+                        <span class="badge bg-soft-primary text-primary border border-primary-subtle px-2 ms-1" style="font-size:9.5px;" title="Toplam Kayıtlı Abone Sayısı">Abone: <b>${rTotals.abone.toLocaleString('tr-TR')}</b></span>
+                        <span class="badge bg-light text-dark border px-2" style="font-size:9.5px;" title="Toplam Okunan Abone Sayısı">Okunan: <b>${rTotals.okunan.toLocaleString('tr-TR')}</b></span>
                     </div>`;
                     html += `<td colspan="${visibleCountPerPeriod}" class="text-center py-1" style="background: rgba(0,0,0,0.02);">${content}</td>`;
                 });
@@ -2838,22 +3009,42 @@ padding-bottom:  10px !important;
                 html += `<td class="ogr-region-header text-end" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${regionTotals.master_abone.toLocaleString('tr-TR')}</td>`;
 
                 // Period Totals for Region
-                donemler.forEach(function (donem, idx) {
-                    const rTotals = regionTotals.donemler[donem];
-                    
-                    if (_visibleColumns.abone)
-                        html += `<td class="ogr-region-header text-end period-start" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.abone.toLocaleString('tr-TR')}</td>`;
-                    if (_visibleColumns.okunan)
-                        html += `<td class="ogr-region-header text-end ${_visibleColumns.abone ? '' : 'period-start'}" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.okunan.toLocaleString('tr-TR')}</td>`;
-                    if (_visibleColumns.oran) {
-                        const rOranRaw = rTotals.abone > 0 ? (rTotals.okunan / rTotals.abone) * 100 : 0;
-                        const rOran = rOranRaw.toFixed(1);
-                        let rOranClass = 'text-danger';
-                        if (rOranRaw >= 70) rOranClass = 'text-success';
-                        else if (rOranRaw >= 50) rOranClass = 'text-warning';
-                        html += `<td class="ogr-region-header text-end period-end ${_visibleColumns.abone || _visibleColumns.okunan ? '' : 'period-start'} ${rOranClass}" style="background: ${regionColor.header}; font-weight: 800;">${rOran}%</td>`;
-                    }
-                });
+                if (_viewMode === 'period') {
+                    effectiveDonemler.forEach(function (donem, idx) {
+                        const rTotals = regionTotals.donemler[donem];
+                        if (_visibleColumns.abone)
+                            html += `<td class="ogr-region-header text-end period-start" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.abone.toLocaleString('tr-TR')}</td>`;
+                        if (_visibleColumns.okunan)
+                            html += `<td class="ogr-region-header text-end ${_visibleColumns.abone ? '' : 'period-start'}" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.okunan.toLocaleString('tr-TR')}</td>`;
+                        if (_visibleColumns.oran) {
+                            const rOranRaw = rTotals.abone > 0 ? (rTotals.okunan / rTotals.abone) * 100 : 0;
+                            const rOran = rOranRaw.toFixed(1);
+                            let rOranClass = 'text-danger';
+                            if (rOranRaw >= 70) rOranClass = 'text-success';
+                            else if (rOranRaw >= 50) rOranClass = 'text-warning';
+                            html += `<td class="ogr-region-header text-end period-end ${_visibleColumns.abone || _visibleColumns.okunan ? '' : 'period-start'} ${rOranClass}" style="background: ${regionColor.header}; font-weight: 800;">${rOran}%</td>`;
+                        }
+                    });
+                } else {
+                    _typeOrder.forEach(type => {
+                        if (!_visibleColumns[type]) return;
+                        effectiveDonemler.forEach(function (donem) {
+                            const rTotals = regionTotals.donemler[donem];
+                            if (type === 'abone')
+                                html += `<td class="ogr-region-header text-end" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.abone.toLocaleString('tr-TR')}</td>`;
+                            else if (type === 'okunan')
+                                html += `<td class="ogr-region-header text-end" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.okunan.toLocaleString('tr-TR')}</td>`;
+                            else if (type === 'oran') {
+                                const rOranRaw = rTotals.abone > 0 ? (rTotals.okunan / rTotals.abone) * 100 : 0;
+                                const rOran = rOranRaw.toFixed(1);
+                                let rOranClass = 'text-danger';
+                                if (rOranRaw >= 70) rOranClass = 'text-success';
+                                else if (rOranRaw >= 50) rOranClass = 'text-warning';
+                                html += `<td class="ogr-region-header text-end ${rOranClass}" style="background: ${regionColor.header}; font-weight: 800;">${rOran}%</td>`;
+                            }
+                        });
+                    });
+                }
                 html += '</tr>';
 
                 rows.forEach(function (row) {
@@ -2865,29 +3056,36 @@ padding-bottom:  10px !important;
                     html += `<td class="fix-col-4 text-start" style="background-color: ${regionColor.bg};">${row.mahalle || ''}</td>`;
                     html += `<td class="fix-col-5" style="background-color: ${regionColor.bg};">${row.abone_sayisi ? row.abone_sayisi.toLocaleString('tr-TR') : ''}</td>`;
 
-                    donemler.forEach(function (donem, idx) {
-                        const donemData = row.donemler[donem] || { abone: 0, okunan: 0, gidilen: 0 };
-
-                        // Add to totals
-                        colTotals[donem].abone += parseInt(donemData.abone) || 0;
-                        colTotals[donem].okunan += parseInt(donemData.okunan) || 0;
-                        colTotals[donem].gidilen += parseInt(donemData.gidilen) || 0;
-
-                        const oran = donemData.abone > 0
-                            ? ((donemData.okunan / donemData.abone) * 100).toFixed(1)
-                            : 0;
-
-                        let oranClass = 'oran-low';
-                        if (oran >= 70) oranClass = 'oran-high';
-                        else if (oran >= 50) oranClass = 'oran-medium';
-
-                        if (_visibleColumns.abone)
-                            html += `<td class="period-start">${donemData.abone > 0 ? donemData.abone.toLocaleString('tr-TR') : ''}</td>`;
-                        if (_visibleColumns.okunan)
-                            html += `<td class="${_visibleColumns.abone ? '' : 'period-start'}">${donemData.okunan > 0 ? donemData.okunan.toLocaleString('tr-TR') : ''}</td>`;
-                        if (_visibleColumns.oran)
-                            html += `<td class="${oranClass} period-end ${_visibleColumns.abone || _visibleColumns.okunan ? '' : 'period-start'}">${donemData.abone > 0 ? oran + '%' : ''}</td>`;
-                    });
+                    if (_viewMode === 'period') {
+                        effectiveDonemler.forEach(function (donem, idx) {
+                            const donemData = row.donemler[donem] || { abone: 0, okunan: 0, gidilen: 0 };
+                            colTotals[donem].abone += parseInt(donemData.abone) || 0;
+                            colTotals[donem].okunan += parseInt(donemData.okunan) || 0;
+                            const oran = donemData.abone > 0 ? ((donemData.okunan / donemData.abone) * 100).toFixed(1) : 0;
+                            let oranClass = oran >= 70 ? 'oran-high' : (oran >= 50 ? 'oran-medium' : 'oran-low');
+                            if (_visibleColumns.abone) html += `<td class="period-start">${donemData.abone > 0 ? donemData.abone.toLocaleString('tr-TR') : ''}</td>`;
+                            if (_visibleColumns.okunan) html += `<td class="${_visibleColumns.abone ? '' : 'period-start'}">${donemData.okunan > 0 ? donemData.okunan.toLocaleString('tr-TR') : ''}</td>`;
+                            if (_visibleColumns.oran) html += `<td class="${oranClass} period-end ${_visibleColumns.abone || _visibleColumns.okunan ? '' : 'period-start'}">${donemData.abone > 0 ? oran + '%' : ''}</td>`;
+                        });
+                    } else {
+                        _typeOrder.forEach(type => {
+                            if (!_visibleColumns[type]) return;
+                            effectiveDonemler.forEach(function (donem) {
+                                const donemData = row.donemler[donem] || { abone: 0, okunan: 0 };
+                                if (type === 'abone') {
+                                    colTotals[donem].abone += parseInt(donemData.abone) || 0;
+                                    html += `<td>${donemData.abone > 0 ? donemData.abone.toLocaleString('tr-TR') : ''}</td>`;
+                                } else if (type === 'okunan') {
+                                    colTotals[donem].okunan += parseInt(donemData.okunan) || 0;
+                                    html += `<td>${donemData.okunan > 0 ? donemData.okunan.toLocaleString('tr-TR') : ''}</td>`;
+                                } else if (type === 'oran') {
+                                    const oran = donemData.abone > 0 ? ((donemData.okunan / donemData.abone) * 100).toFixed(1) : 0;
+                                    let oranClass = oran >= 70 ? 'oran-high' : (oran >= 50 ? 'oran-medium' : 'oran-low');
+                                    html += `<td class="${oranClass}">${donemData.abone > 0 ? oran + '%' : ''}</td>`;
+                                }
+                            });
+                        });
+                    }
 
                     html += '</tr>';
                 });
@@ -2899,22 +3097,54 @@ padding-bottom:  10px !important;
             html += '<tr>';
             html += '<th class="fix-col-1 text-center" colspan="5">GENEL TOPLAM</th>';
 
-            donemler.forEach(function (donem, idx) {
-                const totals = colTotals[donem];
-                
-                if (_visibleColumns.abone)
-                    html += `<th class="period-start">${totals.abone.toLocaleString('tr-TR')}</th>`;
-                if (_visibleColumns.okunan)
-                    html += `<th class="${_visibleColumns.abone ? '' : 'period-start'}">${totals.okunan.toLocaleString('tr-TR')}</th>`;
-                if (_visibleColumns.oran) {
-                    const rawOran = totals.abone > 0 ? (totals.okunan / totals.abone) * 100 : 0;
-                    const totalOran = rawOran.toFixed(1);
-                    let totalOranClass = 'oran-low';
-                    if (rawOran >= 70) totalOranClass = 'oran-high';
-                    else if (rawOran >= 50) totalOranClass = 'oran-medium';
-                    html += `<th class="period-end ${_visibleColumns.abone || _visibleColumns.okunan ? '' : 'period-start'} ${totalOranClass} text-center">${totalOran}%</th>`;
-                }
-            });
+            if (_viewMode === 'period') {
+                effectiveDonemler.forEach(function (donem, idx) {
+                    const totals = colTotals[donem];
+                    const gStats = globalDefterStats[donem];
+                    if (_visibleColumns.abone) {
+                        html += `<th class="period-start text-end">
+                            <div style="font-size: 9px; color: #64748b; font-weight: normal; margin-bottom: 2px;">Def: ${gStats.total}</div>
+                            ${totals.abone.toLocaleString('tr-TR')}
+                        </th>`;
+                    }
+                    if (_visibleColumns.okunan) {
+                        html += `<th class="${_visibleColumns.abone ? '' : 'period-start'} text-end">
+                            <div style="font-size: 9px; color: #10b981; font-weight: normal; margin-bottom: 2px;">Okn: ${gStats.read}</div>
+                            ${totals.okunan.toLocaleString('tr-TR')}
+                        </th>`;
+                    }
+                    if (_visibleColumns.oran) {
+                        const rawOran = totals.abone > 0 ? (totals.okunan / totals.abone) * 100 : 0;
+                        const totalOran = rawOran.toFixed(1);
+                        let totalOranClass = rawOran >= 70 ? 'oran-high' : (rawOran >= 50 ? 'oran-medium' : 'oran-low');
+                        
+                        let warningIcon = "";
+                        if (rawOran > 100.5) {
+                            warningIcon = `<i class="bx bx-info-circle text-warning ms-1" title="Bazı defterlerde abone sayısı 0 veya eksik tanımlandığı için oran %100'ü geçmiştir."></i>`;
+                        }
+
+                        html += `<th class="period-end ${_visibleColumns.abone || _visibleColumns.okunan ? '' : 'period-start'} ${totalOranClass} text-center">
+                            <div style="font-size: 9px; color: #64748b; font-weight: normal; margin-bottom: 2px;">Başarı</div>
+                            ${totalOran}% ${warningIcon}
+                        </th>`;
+                    }
+                });
+            } else {
+                _typeOrder.forEach(type => {
+                    if (!_visibleColumns[type]) return;
+                    effectiveDonemler.forEach(function (donem) {
+                        const totals = colTotals[donem];
+                        if (type === 'abone') html += `<th>${totals.abone.toLocaleString('tr-TR')}</th>`;
+                        else if (type === 'okunan') html += `<th>${totals.okunan.toLocaleString('tr-TR')}</th>`;
+                        else if (type === 'oran') {
+                            const rawOran = totals.abone > 0 ? (totals.okunan / totals.abone) * 100 : 0;
+                            const totalOran = rawOran.toFixed(1);
+                            let totalOranClass = rawOran >= 70 ? 'oran-high' : (rawOran >= 50 ? 'oran-medium' : 'oran-low');
+                            html += `<th class="${totalOranClass} text-center">${totalOran}%</th>`;
+                        }
+                    });
+                });
+            }
             html += '</tr>';
             html += '</tfoot>';
 
@@ -2922,6 +3152,11 @@ padding-bottom:  10px !important;
 
             $('#reportTableWrapper').html(html);
             $('#reportActions').fadeIn(300);
+
+            // Initialize Sortable for columns
+            initColumnSortable('comparisonTable', function() {
+                renderTable(_tableData, _tableDonemler, true);
+            });
 
             // Bind sort click handlers
             $('#comparisonTable').on('click', '.sortable-header', function (e) {
@@ -3611,10 +3846,21 @@ padding-bottom:  10px !important;
             html += `<th class="fix-col-4 og-sortable-header" data-sort-col="mahalle">MAHALLE${ogSortIcon('mahalle')}</th>`;
             html += `<th class="fix-col-5 og-sortable-header" data-sort-col="abone_sayisi">ABONE SAYISI${ogSortIcon('abone_sayisi')}</th>`;
 
-            donemler.forEach(function (donem, idx) {
+            // Apply Column Order if exists
+            let effectiveDonemler = [...donemler];
+            if (_columnOrder && _columnOrder.length > 0) {
+                effectiveDonemler = _columnOrder.filter(d => donemler.includes(d));
+                donemler.forEach(d => {
+                    if (!effectiveDonemler.includes(d)) effectiveDonemler.push(d);
+                });
+            }
+
+            effectiveDonemler.forEach(function (donem, idx) {
                 const isAlt = idx % 2 === 1;
                 const formatted = donem.substring(0, 4) + '/' + donem.substring(4);
-                html += `<th colspan="2" class="period-header ogr-period-end ${isAlt ? 'do-month-alt' : ''}">${formatted}</th>`;
+                html += `<th colspan="2" class="period-header ogr-period-end draggable-header ${isAlt ? 'do-month-alt' : ''}" data-donem="${donem}">
+                    <i class="bx bx-grid-vertical drag-indicator"></i>${formatted}
+                </th>`;
             });
             html += '</tr>';
 
@@ -3626,7 +3872,7 @@ padding-bottom:  10px !important;
             html += `<th class="fix-col-4"><input type="text" class="form-control column-search" id="og_search_mahalle" data-col="mahalle" value="${_ogSearchFilters.mahalle || ''}" placeholder="MAHALLE"></th>`;
             html += `<th class="fix-col-5"><input type="text" class="form-control column-search" id="og_search_abone_sayisi" data-col="abone_sayisi" value="${_ogSearchFilters.abone_sayisi || ''}" placeholder="ABONE"></th>`;
 
-            donemler.forEach(function (donem, idx) {
+            effectiveDonemler.forEach(function (donem, idx) {
                 const isAlt = idx % 2 === 1;
                 
                 // Okuma Tarihi (Search input inside header)
@@ -3681,8 +3927,8 @@ padding-bottom:  10px !important;
                 html += `<td class="ogr-region-header text-end" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${regionAboneSum.toLocaleString('tr-TR')}</td>`;
 
                 // Empty cells for periods (Date and Diff don't sum)
-                donemler.forEach(function (donem, idx) {
-                    const isLast = idx === donemler.length - 1;
+                effectiveDonemler.forEach(function (donem, idx) {
+                    const isLast = idx === effectiveDonemler.length - 1;
                     html += `<td class="ogr-region-header" style="background: ${regionColor.header};" colspan="2"></td>`;
                 });
                 html += '</tr>';
@@ -3696,7 +3942,7 @@ padding-bottom:  10px !important;
                     html += `<td class="fix-col-4 text-start" style="background-color: ${regionColor.bg};">${row.mahalle || '-'}</td>`;
                     html += `<td class="fix-col-5" style="background-color: ${regionColor.bg};">${row.abone_sayisi ? row.abone_sayisi.toLocaleString('tr-TR') : '-'}</td>`;
 
-                    donemler.forEach(function (donem, idx) {
+                    effectiveDonemler.forEach(function (donem, idx) {
                         const isAlt = idx % 2 === 1;
                         const di = row.donemler[donem] || { okuma_tarihi: '', fark: null };
                         const altClass = isAlt ? 'do-month-alt' : '';
@@ -3721,6 +3967,10 @@ padding-bottom:  10px !important;
 
             $('#okumaGunTableWrapper').html(html);
             updateNumericFilterBadges();
+
+            initColumnSortable('okumaGunTable', function() {
+                renderOkumaGunTable(_okumaGunData, _okumaGunDonemler, true);
+            });
         }
 
         function updateNumericFilterBadges() {
@@ -3917,46 +4167,97 @@ padding-bottom:  10px !important;
             // ======= THEAD =======
             html += '<thead>';
 
-            // Row 1: Basliklar
-            html += '<tr>';
-            html += '<th class="fix-col-bolge" colspan="2">BÖLGE / TÜR</th>';
-            donemler.forEach(function (donem, idx) {
-                const isAlt = idx % 2 === 1;
-                const formatted = String(donem).substring(0, 4) + '/' + String(donem).substring(4);
-                html += `<th colspan="4" class="period-header do-period-end ${isAlt ? 'do-month-alt' : ''}">${formatted}</th>`;
-            });
-            html += '</tr>';
-
-            // Row 2: Arama ve Filtre Butonlari
-            html += '<tr class="search-row">';
-            // Bolge Arama
-            html += '<th class="fix-col-bolge"><input type="text" class="form-control do-column-search" id="do_search_bolge" placeholder="Bölge Ara..." value="' + (_doSearchFilters.bolge || '') + '"></th>';
-            html += '<th style="width: 30px; font-size: 8px; font-weight: 800; color: #94a3b8; background: #f8f9fa; vertical-align: middle; text-align: center;">TÜR</th>';
-            
-            donemler.forEach(function (donem, idx) {
-                const isAlt = idx % 2 === 1;
-                const fields = ['toplam', 'okunan', 'okunmayan', 'oran'];
-                const labels = ['TOPLAM', 'OKUNAN', 'KALAN', 'BAŞARI %'];
-
-                fields.forEach(function(f, fIdx) {
-                    const fKey = donem + '_' + f;
-                    const isActive = _doNumericFilters[fKey] && _doNumericFilters[fKey].value !== '';
-                    const activeClass = isActive ? 'col-filter-active' : '';
-                    const dot = isActive ? '<span class="filter-dot"></span>' : '';
-                    const isLastField = fIdx === 3;
-                    const altClass = isAlt ? 'do-month-alt' : '';
-
-                    html += `<th class="sub-header ${isLastField ? 'do-period-end' : ''} ${altClass}">`;
-                    html += '<div class="d-flex align-items-center justify-content-center gap-1 mb-1">';
-                    html += `<button type="button" class="col-filter-btn ${activeClass}" data-do-filter-col="${fKey}" title="${labels[fIdx]} Filtrele">`;
-                    html += '<i class="bx bx-filter-alt" style="font-size:10px;"></i>';
-                    html += '</button>' + dot;
-                    html += '</div>';
-                    html += '<div style="font-size:9px;">' + labels[fIdx] + '</div>';
-                    html += '</th>';
+            // Apply Column Order if exists
+            let effectiveDonemler = [...donemler];
+            if (_columnOrder && _columnOrder.length > 0) {
+                effectiveDonemler = _columnOrder.filter(d => donemler.includes(d));
+                donemler.forEach(d => {
+                    if (!effectiveDonemler.includes(d)) effectiveDonemler.push(d);
                 });
-            });
-            html += '</tr>';
+            }
+
+            if (_viewMode === 'period') {
+                // Row 1: Basliklar (Months)
+                html += '<tr class="main-headers-row">';
+                html += '<th class="fix-col-bolge" colspan="2">BÖLGE / TÜR</th>';
+                effectiveDonemler.forEach(function (donem, idx) {
+                    const isAlt = idx % 2 === 1;
+                    const formatted = String(donem).substring(0, 4) + '/' + String(donem).substring(4);
+                    html += `<th colspan="4" class="period-header do-period-end draggable-header ${isAlt ? 'do-month-alt' : ''}" data-donem="${donem}">
+                        <i class="bx bx-grid-vertical drag-indicator"></i>${formatted}
+                    </th>`;
+                });
+                html += '</tr>';
+
+                // Row 2: Search + Sub-headers
+                html += '<tr class="search-row">';
+                html += '<th class="fix-col-bolge"><input type="text" class="form-control do-column-search" id="do_search_bolge" placeholder="Bölge Ara..." value="' + (_doSearchFilters.bolge || '') + '"></th>';
+                html += '<th style="width: 30px; font-size: 8px; font-weight: 800; color: #94a3b8; background: #f8f9fa; vertical-align: middle; text-align: center;">TÜR</th>';
+                
+                effectiveDonemler.forEach(function (donem, idx) {
+                    const isAlt = idx % 2 === 1;
+                    const fields = ['toplam', 'okunan', 'okunmayan', 'oran'];
+                    const labels = ['TOPLAM', 'OKUNAN', 'KALAN', 'BAŞARI %'];
+
+                    fields.forEach(function(f, fIdx) {
+                        const fKey = donem + '_' + f;
+                        const isActive = _doNumericFilters[fKey] && _doNumericFilters[fKey].value !== '';
+                        const activeClass = isActive ? 'col-filter-active' : '';
+                        const dot = isActive ? '<span class="filter-dot"></span>' : '';
+                        const isLastField = fIdx === 3;
+                        const altClass = isAlt ? 'do-month-alt' : '';
+
+                        html += `<th class="sub-header ${isLastField ? 'do-period-end' : ''} ${altClass}">`;
+                        html += '<div class="d-flex align-items-center justify-content-center gap-1 mb-1">';
+                        html += `<button type="button" class="col-filter-btn ${activeClass}" data-do-filter-col="${fKey}" title="${labels[fIdx]} Filtrele">`;
+                        html += '<i class="bx bx-filter-alt" style="font-size:10px;"></i>';
+                        html += '</button>' + dot;
+                        html += '</div>';
+                        html += '<div style="font-size:9px;">' + labels[fIdx] + '</div>';
+                        html += '</th>';
+                    });
+                });
+                html += '</tr>';
+            } else {
+                // Row 1: Types (TOPLAM, OKUNAN, KALAN, BAŞARI %)
+                html += '<tr class="main-headers-row">';
+                html += '<th class="fix-col-bolge" colspan="2">BÖLGE / TÜR</th>';
+                const typeLabels = ['DEFTER TOPLAM', 'DEFTER OKUNAN', 'DEFTER KALAN', 'BAŞARI ORANI %'];
+                const typeColors = ['#eff6ff', '#ecfdf5', '#fef2f2', '#fffbeb'];
+                const textColors = ['#1e40af', '#065f46', '#991b1b', '#92400e'];
+
+                typeLabels.forEach((label, tIdx) => {
+                    html += `<th colspan="${effectiveDonemler.length}" class="period-header" style="background: ${typeColors[tIdx]}; color: ${textColors[tIdx]};">${label}</th>`;
+                });
+                html += '</tr>';
+
+                // Row 2: Search + Months
+                html += '<tr class="search-row">';
+                html += '<th class="fix-col-bolge"><input type="text" class="form-control do-column-search" id="do_search_bolge" placeholder="Bölge Ara..." value="' + (_doSearchFilters.bolge || '') + '"></th>';
+                html += '<th style="width: 30px; font-size: 8px; font-weight: 800; color: #94a3b8; background: #f8f9fa; vertical-align: middle; text-align: center;">TÜR</th>';
+
+                ['toplam', 'okunan', 'okunmayan', 'oran'].forEach(type => {
+                    effectiveDonemler.forEach(function (donem, idx) {
+                        const isAlt = idx % 2 === 1;
+                        const fKey = donem + '_' + type;
+                        const formatted = String(donem).substring(0, 4) + '/' + String(donem).substring(4);
+                        const isActive = _doNumericFilters[fKey] && _doNumericFilters[fKey].value !== '';
+                        const activeClass = isActive ? 'col-filter-active' : '';
+                        const dot = isActive ? '<span class="filter-dot"></span>' : '';
+                        const altClass = isAlt ? 'do-month-alt' : '';
+
+                        html += `<th class="sub-header ${altClass}">`;
+                        html += '<div class="d-flex align-items-center justify-content-center gap-1 mb-1">';
+                        html += `<button type="button" class="col-filter-btn ${activeClass}" data-do-filter-col="${fKey}">`;
+                        html += '<i class="bx bx-filter-alt" style="font-size:10px;"></i>';
+                        html += '</button>' + dot;
+                        html += '</div>';
+                        html += '<div style="font-size:9px;">' + formatted + '</div>';
+                        html += '</th>';
+                    });
+                });
+                html += '</tr>';
+            }
             html += '</thead>';
 
             // ======= TBODY =======
@@ -3971,7 +4272,8 @@ padding-bottom:  10px !important;
                 html += '<td rowspan="2" class="fix-col-bolge fw-bold" style="font-size: 13px; vertical-align: middle; background: #fff; border-right: none;"><i class="bx bx-globe me-1 text-primary"></i>GENEL TOPLAM</td>';
                 html += '<td style="vertical-align: middle; background: #fff; text-align: center; border-left: none;" title="Defter Bazlı Veriler"><i class="bx bx-book-open text-muted fs-5"></i></td>';
                 
-                donemler.forEach(function (donem, idx) {
+            if (_viewMode === 'period') {
+                effectiveDonemler.forEach(function (donem, idx) {
                     const isAlt = idx % 2 === 1;
                     const d = String(donem);
                     const g = genel[d] || { toplam_defter: 0, okunan_defter: 0, okunmayan_defter: 0, oran: 0, sub_toplam: 0, sub_okunan: 0, sub_kalan: 0, sub_oran: 0 };
@@ -3991,25 +4293,42 @@ padding-bottom:  10px !important;
                     html += `<span class="do-badge-oran ${oranClass}" style="padding: 2px 8px; font-size: 13px;">${g.oran}%</span>`;
                     html += `</td>`;
                 });
+            } else {
+                ['toplam', 'okunan', 'okunmayan', 'oran'].forEach(type => {
+                    effectiveDonemler.forEach(function (donem, idx) {
+                        const isAlt = idx % 2 === 1;
+                        const d = String(donem);
+                        const g = genel[d] || { toplam_defter: 0, okunan_defter: 0, okunmayan_defter: 0, oran: 0 };
+                        const altClass = isAlt ? 'do-month-alt' : '';
+                        if (type === 'toplam') html += `<td class="${altClass}"><span class="do-badge-toplam clickable no-upgrade" data-type="toplam_detay" data-donem="${d}" data-bolge="__GENEL__">${g.toplam_defter}</span></td>`;
+                        else if (type === 'okunan') html += `<td class="${altClass}"><span class="do-badge-okunan clickable no-upgrade" data-type="okunan_detay" data-donem="${d}" data-bolge="__GENEL__">${g.okunan_defter}</span></td>`;
+                        else if (type === 'okunmayan') html += `<td class="${altClass}"><span class="do-badge-okunmayan ${g.okunmayan_defter > 0 ? 'clickable' : 'zero'} no-upgrade" data-type="okunmayan_detay" data-donem="${d}" data-bolge="__GENEL__">${g.okunmayan_defter}</span></td>`;
+                        else if (type === 'oran') {
+                            const oranClass = g.oran >= 80 ? 'do-oran-high' : (g.oran >= 50 ? 'do-oran-medium' : 'do-oran-low');
+                            html += `<td class="do-oran-cell ${altClass}"><span class="do-badge-oran ${oranClass}" style="padding: 2px 8px;">${g.oran}%</span></td>`;
+                        }
+                    });
+                });
+            }
                 html += '</tr>';
 
                 // GENEL TOPLAM ABONE SATIRI
                 html += '<tr class="do-sub-row">';
                 html += '<td style="vertical-align: middle; text-align: center; border-left: none; background: rgba(var(--bs-primary-rgb), 0.01);" title="Abone Bazlı Veriler"><i class="bx bx-user text-muted fs-5"></i></td>';
                 
-                donemler.forEach(function (donem, idx) {
-                    const isAlt = idx % 2 === 1;
-                    const d = String(donem);
-                    const g = genel[d] || { sub_toplam: 0, sub_okunan: 0, sub_kalan: 0, sub_oran: 0 };
-                    const altClass = isAlt ? 'do-month-alt' : '';
+            effectiveDonemler.forEach(function (donem, idx) {
+                const isAlt = idx % 2 === 1;
+                const d = String(donem);
+                const g = genel[d] || { sub_toplam: 0, sub_okunan: 0, sub_kalan: 0, sub_oran: 0 };
+                const altClass = isAlt ? 'do-month-alt' : '';
 
-                    html += `<td class="${altClass}"><span class="do-badge-sub do-badge-sub-toplam">${(g.sub_toplam || 0).toLocaleString('tr-TR')}</span></td>`;
-                    html += `<td class="${altClass}"><span class="do-badge-sub do-badge-sub-okunan">${(g.sub_okunan || 0).toLocaleString('tr-TR')}</span></td>`;
-                    html += `<td class="${altClass}"><span class="do-badge-sub do-badge-sub-kalan">${(g.sub_kalan || 0).toLocaleString('tr-TR')}</span></td>`;
-                    
-                    let subOranClassGenel = g.sub_oran >= 80 ? 'text-success' : (g.sub_oran >= 50 ? 'text-warning' : 'text-danger');
-                    html += `<td class="do-oran-cell do-period-end ${altClass}"><span class="${subOranClassGenel} fw-bold" style="font-size: 11.5px;">${g.sub_oran}%</span></td>`;
-                });
+                html += `<td class="${altClass}"><span class="do-badge-sub do-badge-sub-toplam">${(g.sub_toplam || 0).toLocaleString('tr-TR')}</span></td>`;
+                html += `<td class="${altClass}"><span class="do-badge-sub do-badge-sub-okunan">${(g.sub_okunan || 0).toLocaleString('tr-TR')}</span></td>`;
+                html += `<td class="${altClass}"><span class="do-badge-sub do-badge-sub-kalan">${(g.sub_kalan || 0).toLocaleString('tr-TR')}</span></td>`;
+                
+                let subOranClassGenel = g.sub_oran >= 80 ? 'text-success' : (g.sub_oran >= 50 ? 'text-warning' : 'text-danger');
+                html += `<td class="do-oran-cell do-period-end ${altClass}"><span class="${subOranClassGenel} fw-bold" style="font-size: 11.5px;">${g.sub_oran}%</span></td>`;
+            });
                 html += '</tr>';
 
                 // BÖLGE SATIRLARI
@@ -4024,7 +4343,7 @@ padding-bottom:  10px !important;
                     html += '</td>';
                     html += '<td style="vertical-align: middle; background: ' + regionColor.bg + '; text-align: center; border-left: none;" title="Defter Verileri"><i class="bx bx-book-open text-muted fs-6"></i></td>';
 
-                    donemler.forEach(function (donem, idx) {
+                    effectiveDonemler.forEach(function (donem, idx) {
                         const isAlt = idx % 2 === 1;
                         const d = String(donem);
                         const bStat = (bolgeData[bName] && bolgeData[bName][d]) || { toplam_defter: 0, okunan_defter: 0, okunmayan_defter: 0, oran: 0 };
@@ -4050,7 +4369,7 @@ padding-bottom:  10px !important;
                     html += '<tr class="do-sub-row">';
                     html += '<td style="vertical-align: middle; text-align: center; border-left: none; background: rgba(var(--bs-primary-rgb), 0.005);" title="Abone Verileri"><i class="bx bx-user text-muted fs-6"></i></td>';
                     
-                    donemler.forEach(function (donem, idx) {
+                    effectiveDonemler.forEach(function (donem, idx) {
                         const isAlt = idx % 2 === 1;
                         const d = String(donem);
                         const bStat = (bolgeData[bName] && bolgeData[bName][d]) || { sub_toplam: 0, sub_okunan: 0, sub_kalan: 0, sub_oran: 0 };
@@ -4072,6 +4391,10 @@ padding-bottom:  10px !important;
 
             $('#defterOzetTableWrapper').html(html);
             if (resetScroll) $('#defterOzetTableWrapper').scrollTop(0);
+
+            initColumnSortable('defterOzetTable', function() {
+                renderDefterOzetTable(_defterOzetData, false);
+            });
         }
 
         // ======= TAB 3 OLAYLARI (Arama ve Filtreleme) =======

@@ -72,10 +72,13 @@ $all_mobile_menus = [
     'cari-takip'  => ['label' => 'Cari',        'icon' => 'account_balance_wallet', 'color_bg' => 'bg-emerald-100 dark:bg-emerald-900/30', 'color_icon' => 'text-emerald-600', 'link_match' => 'cari/list'],
     'gelir-gider' => ['label' => 'Gelir Gider', 'icon' => 'account_balance', 'color_bg' => 'bg-amber-100 dark:bg-amber-900/30', 'color_icon' => 'text-amber-600', 'link_match' => 'gelir-gider/list'],
     'raporlar'    => ['label' => 'Raporlar',    'icon' => 'bar_chart', 'color_bg' => 'bg-purple-100 dark:bg-purple-900/30', 'color_icon' => 'text-purple-600', 'link_match' => 'puantaj/raporlar'],
-    'arac'        => ['label' => 'Araç',        'icon' => 'directions_car', 'color_bg' => 'bg-teal-100 dark:bg-teal-900/30', 'color_icon' => 'text-teal-600', 'link_match' => 'arac-takip/list'],
-    'personel'    => ['label' => 'Personel',    'icon' => 'group', 'color_bg' => 'bg-indigo-100 dark:bg-indigo-900/30', 'color_icon' => 'text-indigo-600', 'link_match' => 'personel/list'],
-    'gorevler'    => ['label' => 'Görevler',    'icon' => 'task_alt', 'color_bg' => 'bg-green-100 dark:bg-green-900/30', 'color_icon' => 'text-green-600', 'link_match' => 'gorevler/list'],
+    'arac'        => ['label' => 'Araç',        'icon' => 'directions_car', 'color_bg' => 'bg-green-100 dark:bg-green-900/30', 'color_icon' => 'text-green-600', 'link_match' => 'arac-takip/list'],
+    'personel'    => ['label' => 'Personel',    'icon' => 'group', 'color_bg' => 'bg-blue-100 dark:bg-blue-900/30', 'color_icon' => 'text-blue-600', 'link_match' => 'personel/list'],
+    'gorevler'    => ['label' => 'Görevler',    'icon' => 'task_alt', 'color_bg' => 'bg-purple-100 dark:bg-purple-900/30', 'color_icon' => 'text-purple-600', 'link_match' => 'gorevler/list'],
     'talepler'    => ['label' => 'Talepler',    'icon' => 'assignment', 'color_bg' => 'bg-orange-100 dark:bg-orange-900/30', 'color_icon' => 'text-orange-600', 'link_match' => 'talepler/list'],
+    'evrak-takip' => ['label' => 'Evrak Takip', 'icon' => 'drafts', 'color_bg' => 'bg-sky-100 dark:bg-sky-900/30', 'color_icon' => 'text-sky-600', 'link_match' => 'evrak-takip/list'],
+    'nobet'       => ['label' => 'Nöbet Onay',  'icon' => 'event_available', 'color_bg' => 'bg-rose-100 dark:bg-rose-900/30', 'color_icon' => 'text-rose-600', 'link_match' => 'nobet/onay-islemleri'],
+    'km-onaylari' => ['label' => 'KM Onayları', 'icon' => 'speed', 'color_bg' => 'bg-cyan-100 dark:bg-cyan-900/30', 'color_icon' => 'text-cyan-600', 'link_match' => 'arac-takip/km-onaylari'],
     'yardim'      => ['label' => 'Destek',      'icon' => 'support_agent', 'color_bg' => 'bg-indigo-100 dark:bg-indigo-900/30', 'color_icon' => 'text-indigo-600', 'link_match' => 'yardim/list'],
 ];
 
@@ -131,6 +134,9 @@ $page_titles = [
     'cari-takip'  => 'Cari',    
     'hesap-hareketleri' => 'Hesap Hareketleri',
     'talepler'    => 'Talepler',
+    'evrak-takip' => 'Evrak Takip',
+    'nobet'       => 'Nöbet Onay',
+    'km-onaylari' => 'KM Onayları',
     'raporlar'    => 'Raporlar',
     'yardim'      => 'Yardım ve Destek',
 ];
@@ -253,6 +259,11 @@ try {
     <script src="../assets/libs/flatpickr/flatpickr.min.js"></script>
     <script src="../assets/libs/flatpickr/l10n/tr.js"></script>
     <script src="../assets/libs/flatpickr/plugins/monthSelect/index.js"></script>
+
+    <!-- FullCalendar (Nöbet Onay sayfasında gerekli) -->
+    <?php if ($page === 'nobet'): ?>
+    <script src="../assets/libs/fullcalendar/index.global.min.js"></script>
+    <?php endif; ?>
 
     <!-- Tema & Dark Mode ön yüklemesi (personel-pwa ile aynı) -->
     <script>
@@ -592,7 +603,7 @@ try {
 
     <?php 
     // Kendi özel (gradient vb.) başlık yapısı olan veya üst bar istenmeyen sayfalar
-    $no_header_pages = ['home', 'hesap-hareketleri', 'arac', 'gorevler', 'talepler', 'personel', 'personel-duzenle', 'yardim'];
+    $no_header_pages = ['home', 'hesap-hareketleri', 'arac', 'gorevler', 'talepler', 'personel', 'personel-duzenle', 'yardim', 'evrak-takip', 'km-onaylari', 'nobet'];
     if (!in_array($page, $no_header_pages)): 
     ?>
     <!-- Sayfa Başlığı (Gradient) -->
@@ -688,63 +699,60 @@ try {
 
     <!-- Daha Fazla Bottom Sheet -->
     <div id="more-menu-sheet"
-        class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-2xl z-[61] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom">
+        class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[2.5rem] z-[61] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom max-h-[75vh] flex flex-col">
         <div class="flex justify-center pt-2 pb-1">
             <div class="w-8 h-1 bg-slate-300 dark:bg-slate-600 rounded-full"></div>
         </div>
-        <div class="px-4 pb-4">
-
-            <!-- Masaüstü Görünümü -->
-            <a href="?force_desktop=1&p=home"
-                class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors mb-1">
-                <div class="w-9 h-9 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-blue-600 text-lg">desktop_windows</span>
-                </div>
-                <div>
-                    <span class="font-medium text-slate-900 dark:text-white text-sm block">Masaüstü Görünümü</span>
-                    <span class="text-xs text-slate-400">Tam sürüme geç</span>
-                </div>
-                <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
-            </a>
-
-            <!-- Profil Sayfası -->
+        <div class="px-5 pb-6 overflow-y-auto no-scrollbar flex-1">
+            <!-- Profil Özet -->
             <a href="?p=profil"
-                class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?= $page === 'profil' ? 'bg-primary/10' : '' ?> mb-1">
-                <div class="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-indigo-600 text-lg">person</span>
+                class="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 mb-4 active:scale-95 transition-all mt-2">
+                <div class="w-12 h-12 rounded-xl bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-indigo-600 text-2xl">person</span>
                 </div>
-                <div>
-                    <span class="font-medium text-slate-900 dark:text-white text-sm block">Profilim</span>
-                    <span class="text-xs text-slate-400">Hesap ve ayarlar</span>
+                <div class="flex-1 min-w-0">
+                    <h4 class="font-bold text-slate-900 dark:text-white text-sm truncate"><?= htmlspecialchars($userObj->adi_soyadi) ?></h4>
+                    <p class="text-[10px] text-slate-500 dark:text-slate-400 font-medium">Profil ve Ayarlar</p>
                 </div>
-                <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
+                <span class="material-symbols-outlined text-slate-300 text-lg">chevron_right</span>
             </a>
 
-            <?php if (!empty($more_pages_data)): ?>
-            <div class="h-px bg-slate-100 dark:bg-slate-700 my-2"></div>
+            <div class="space-y-1">
+                <!-- Masaüstü Görünümü -->
+                <a href="?force_desktop=1&p=home"
+                    class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors active:bg-slate-100 dark:active:bg-slate-700">
+                    <div class="w-10 h-10 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-blue-600 text-xl">desktop_windows</span>
+                    </div>
+                    <span class="font-semibold text-slate-700 dark:text-slate-200 text-sm flex-1">Masaüstü Görünümü</span>
+                    <span class="material-symbols-outlined text-slate-300 text-lg">chevron_right</span>
+                </a>
 
-            <?php foreach ($more_pages_data as $pKey => $mItem): ?>
-            <a href="?p=<?= $pKey ?>"
-                class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?= $page === $pKey ? 'bg-primary/10' : '' ?>">
-                <div class="w-9 h-9 rounded-lg <?= $mItem['color_bg'] ?> flex items-center justify-center">
-                    <span class="material-symbols-outlined <?= $mItem['color_icon'] ?> text-lg"><?= $mItem['icon'] ?></span>
-                </div>
-                <span class="font-medium text-slate-900 dark:text-white text-sm"><?= $mItem['label'] ?></span>
-                <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
-            </a>
-            <?php endforeach; ?>
-            <?php endif; ?>
+                <?php if (!empty($more_pages_data)): ?>
+                <?php foreach ($more_pages_data as $pKey => $mItem): ?>
+                <a href="?p=<?= $pKey ?>"
+                    class="flex items-center gap-3 p-2.5 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors active:bg-slate-100 dark:active:bg-slate-700 <?= $page === $pKey ? 'bg-primary/5' : '' ?>">
+                    <div class="w-10 h-10 rounded-xl <?= $mItem['color_bg'] ?> flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined <?= $mItem['color_icon'] ?> text-xl"><?= $mItem['icon'] ?></span>
+                    </div>
+                    <span class="font-semibold text-slate-700 dark:text-slate-200 text-sm flex-1"><?= $mItem['label'] ?></span>
+                    <span class="material-symbols-outlined text-slate-300 text-lg">chevron_right</span>
+                </a>
+                <?php endforeach; ?>
+                <?php endif; ?>
+            </div>
 
-            <div class="h-px bg-slate-100 dark:bg-slate-700 my-2"></div>
+            <!-- Ayırıcı Çizgi -->
+            <div class="h-px bg-slate-100 dark:bg-slate-800 my-4"></div>
 
+            <!-- Çıkış Yap -->
             <a href="../logout.php"
-                class="flex items-center gap-3 p-3 rounded-lg hover:bg-red-50 dark:hover:bg-red-900/20 transition-colors">
-                <div class="w-9 h-9 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-red-600 text-lg">logout</span>
+                class="flex items-center gap-3 p-2.5 rounded-xl text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-900/10 transition-colors active:bg-rose-100 dark:active:bg-rose-900/20">
+                <div class="w-10 h-10 rounded-xl bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center shrink-0">
+                    <span class="material-symbols-outlined text-rose-600 text-xl">logout</span>
                 </div>
-                <span class="font-medium text-red-600 text-sm">Çıkış Yap</span>
+                <span class="font-bold text-sm">Çıkış Yap</span>
             </a>
-
         </div>
     </div>
 

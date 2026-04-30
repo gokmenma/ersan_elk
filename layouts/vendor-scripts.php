@@ -245,8 +245,10 @@ if ($page == "hakedisler/hakedis-detay") {
     }
 </script>
 
-<?php if ($page == 'gorevler/list') { ?>
+<?php if ($page == 'gorevler/list' || $page == 'puantaj/defter-bazli-rapor') { ?>
     <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.6/Sortable.min.js"></script>
+<?php } ?>
+<?php if ($page == 'gorevler/list') { ?>
     <script src="views/gorevler/js/gorevler.js?v=<?php echo time(); ?>"></script>
 <?php } ?>
 

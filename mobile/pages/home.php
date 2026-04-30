@@ -569,55 +569,18 @@ $activeAnnouncements = $duyuruModel->getAll(true);
     <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm p-4">
         <h3 class="font-bold text-slate-900 dark:text-white text-sm mb-3">Hızlı Erişim</h3>
         <div class="grid grid-cols-4 gap-2">
-            <a href="?p=personel"
+            <?php 
+            foreach ($user_mobile_menus as $pKey => $mData): 
+                if ($pKey === 'home') continue;
+            ?>
+            <a href="?p=<?= $pKey ?>"
                 class="flex flex-col items-center gap-1.5 p-2 rounded-xl active:scale-95 active:bg-slate-50 dark:active:bg-slate-700 transition-transform">
-                <div class="w-12 h-12 rounded-xl bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-blue-600 text-2xl">group</span>
+                <div class="w-12 h-12 rounded-xl <?= $mData['color_bg'] ?> flex items-center justify-center">
+                    <span class="material-symbols-outlined <?= $mData['color_icon'] ?> text-2xl"><?= $mData['icon'] ?></span>
                 </div>
-                <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-300 text-center leading-tight">Personel</span>
+                <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-300 text-center leading-tight"><?= $mData['label'] ?></span>
             </a>
-            <a href="?p=gorevler"
-                class="flex flex-col items-center gap-1.5 p-2 rounded-xl active:scale-95 active:bg-slate-50 dark:active:bg-slate-700 transition-transform">
-                <div class="w-12 h-12 rounded-xl bg-purple-100 dark:bg-purple-900/30 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-purple-600 text-2xl">task_alt</span>
-                </div>
-                <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-300 text-center leading-tight">Görevler</span>
-            </a>
-            <a href="?p=arac"
-                class="flex flex-col items-center gap-1.5 p-2 rounded-xl active:scale-95 active:bg-slate-50 dark:active:bg-slate-700 transition-transform">
-                <div class="w-12 h-12 rounded-xl bg-green-100 dark:bg-green-900/30 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-green-600 text-2xl">directions_car</span>
-                </div>
-                <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-300 text-center leading-tight">Araç</span>
-            </a>
-            <a href="?p=talepler"
-                class="flex flex-col items-center gap-1.5 p-2 rounded-xl active:scale-95 active:bg-slate-50 dark:active:bg-slate-700 transition-transform">
-                <div class="w-12 h-12 rounded-xl bg-orange-100 dark:bg-orange-900/30 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-orange-600 text-2xl">assignment</span>
-                </div>
-                <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-300 text-center leading-tight">Talepler</span>
-            </a>
-            <a href="?p=evrak-takip"
-                class="flex flex-col items-center gap-1.5 p-2 rounded-xl active:scale-95 active:bg-slate-50 dark:active:bg-slate-700 transition-transform">
-                <div class="w-12 h-12 rounded-xl bg-sky-100 dark:bg-sky-900/30 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-sky-600 text-2xl">drafts</span>
-                </div>
-                <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-300 text-center leading-tight">Evrak Takip</span>
-            </a>
-            <a href="?p=nobet"
-                class="flex flex-col items-center gap-1.5 p-2 rounded-xl active:scale-95 active:bg-slate-50 dark:active:bg-slate-700 transition-transform">
-                <div class="w-12 h-12 rounded-xl bg-rose-100 dark:bg-rose-900/30 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-rose-600 text-2xl">event_available</span>
-                </div>
-                <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-300 text-center leading-tight">Nöbet Onay</span>
-            </a>
-            <a href="?p=km-onaylari"
-                class="flex flex-col items-center gap-1.5 p-2 rounded-xl active:scale-95 active:bg-slate-50 dark:active:bg-slate-700 transition-transform">
-                <div class="w-12 h-12 rounded-xl bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center">
-                    <span class="material-symbols-outlined text-cyan-600 text-2xl">speed</span>
-                </div>
-                <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-300 text-center leading-tight">KM Onayları</span>
-            </a>
+            <?php endforeach; ?>
         </div>
     </div>
 
