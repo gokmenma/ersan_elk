@@ -351,7 +351,7 @@ class BordroPersonelModel extends Model
             }
         }
 
-        if ($this->hasMaasaDahilSosyalYardim($p) && !$isPrimUsulu) {
+        if ($this->hasMaasaDahilSosyalYardim($p)) {
             // USER REQ: Puantaj sayfasındaki X'ler üzerinden hesapla (Grid mantığı + fallback)
             $fiiliGunSayisi = $this->getPuantajXGunSayisi($p->personel_id, $donemBaslangic, $donemBitis);
             if ($fiiliGunSayisi <= 0) $fiiliGunSayisi = $calismaGunu; // Fallback to norm days

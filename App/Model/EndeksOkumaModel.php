@@ -144,7 +144,7 @@ class EndeksOkumaModel extends Model
     /**
      * Server-side DataTable için veri çekme
      */
-    public function getDataTable($request, $startDate, $endDate, $personelId = '', $region = '', $defter = '')
+    public function getDataTable($request, $startDate, $endDate, $personelId = '', $region = '', $defter = '', $mahalle = '')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $params = ['firma_id' => $firmaId];
@@ -173,9 +173,23 @@ class EndeksOkumaModel extends Model
             $baseWhere .= " AND t.defter = :defter";
             $params['defter'] = $defter;
         }
+        if ($mahalle) {
+            $baseWhere .= " AND tm.defter_mahalle = :mahalle";
+            $params['mahalle'] = $mahalle;
+        }
 
         // Toplam kayıt sayısı (filtresiz)
-        $totalQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id WHERE $baseWhere");
+        $totalQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t 
+            LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id 
+            LEFT JOIN (
+                SELECT tur_adi, defter_bolge, firma_id, MAX(defter_mahalle) as defter_mahalle
+                FROM tanimlamalar
+                WHERE grup = 'defter_kodu' AND silinme_tarihi IS NULL
+                GROUP BY tur_adi, defter_bolge, firma_id
+            ) tm ON t.defter = tm.tur_adi 
+                AND t.bolge = tm.defter_bolge 
+                AND tm.firma_id = t.firma_id
+            WHERE $baseWhere");
         foreach ($params as $key => $val) {
             $totalQuery->bindValue(":$key", $val);
         }
@@ -191,6 +205,7 @@ class EndeksOkumaModel extends Model
                 t.kullanici_adi LIKE :search OR
                 p.adi_soyadi LIKE :search OR
                 t.defter LIKE :search OR
+                tm.defter_mahalle LIKE :search OR
                 t.sayac_durum LIKE :search OR
                 DATE_FORMAT(t.tarih, '%d.%m.%Y') LIKE :search
             )";
@@ -201,11 +216,12 @@ class EndeksOkumaModel extends Model
         $colSearchMap = [
             0 => 'DATE_FORMAT(t.tarih, "%d.%m.%Y")',
             1 => 't.defter',
-            2 => 't.bolge',
-            3 => 'def.tur_adi', // Ekip No
-            4 => 'p.adi_soyadi',
-            5 => 't.okunan_abone_sayisi',
-            6 => 't.sayac_durum'
+            2 => 'tm.defter_mahalle',
+            3 => 't.bolge',
+            4 => 'def.tur_adi', // Ekip No
+            5 => 'p.adi_soyadi',
+            6 => 't.okunan_abone_sayisi',
+            7 => 't.sayac_durum'
         ];
 
         if (isset($request['columns']) && is_array($request['columns'])) {
@@ -336,7 +352,18 @@ class EndeksOkumaModel extends Model
         }
 
         // Filtrelenmiş kayıt sayısı
-        $filteredQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t LEFT JOIN personel p ON t.personel_id = p.id LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id WHERE $baseWhere $searchWhere");
+        $filteredQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t 
+            LEFT JOIN personel p ON t.personel_id = p.id 
+            LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id 
+            LEFT JOIN (
+                SELECT tur_adi, defter_bolge, firma_id, MAX(defter_mahalle) as defter_mahalle
+                FROM tanimlamalar
+                WHERE grup = 'defter_kodu' AND silinme_tarihi IS NULL
+                GROUP BY tur_adi, defter_bolge, firma_id
+            ) tm ON t.defter = tm.tur_adi 
+                AND t.bolge = tm.defter_bolge 
+                AND tm.firma_id = t.firma_id
+            WHERE $baseWhere $searchWhere");
         foreach ($params as $key => $val) {
             $filteredQuery->bindValue(":$key", $val);
         }
@@ -349,11 +376,12 @@ class EndeksOkumaModel extends Model
         $colMap = [
             0 => 't.tarih',
             1 => 't.defter',
-            2 => 't.bolge',
-            3 => 'def.tur_adi',
-            4 => 'p.adi_soyadi',
-            5 => 't.okunan_abone_sayisi',
-            6 => 't.sayac_durum'
+            2 => 'tm.defter_mahalle',
+            3 => 't.bolge',
+            4 => 'def.tur_adi',
+            5 => 'p.adi_soyadi',
+            6 => 't.okunan_abone_sayisi',
+            7 => 't.sayac_durum'
         ];
         if (isset($request['order'][0])) {
             $orderColIdx = $request['order'][0]['column'];
@@ -364,10 +392,18 @@ class EndeksOkumaModel extends Model
         }
 
         // Veri çekme (Ekip adı için tanimlamalar joinlendi)
-        $sql = "SELECT t.*, p.adi_soyadi as personel_adi, def.tur_adi as ekip_kodu_adi 
+        $sql = "SELECT t.*, p.adi_soyadi as personel_adi, def.tur_adi as ekip_kodu_adi, tm.defter_mahalle
                 FROM {$this->table} t 
                 LEFT JOIN personel p ON t.personel_id = p.id 
                 LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
+                LEFT JOIN (
+                    SELECT tur_adi, defter_bolge, firma_id, MAX(defter_mahalle) as defter_mahalle
+                    FROM tanimlamalar
+                    WHERE grup = 'defter_kodu' AND silinme_tarihi IS NULL
+                    GROUP BY tur_adi, defter_bolge, firma_id
+                ) tm ON t.defter = tm.tur_adi 
+                    AND t.bolge = tm.defter_bolge 
+                    AND tm.firma_id = t.firma_id
                 WHERE $baseWhere $searchWhere
                 ORDER BY $orderColumn $orderDir";
 
@@ -408,6 +444,14 @@ class EndeksOkumaModel extends Model
                 FROM {$table} t
                 LEFT JOIN personel p ON t.personel_id = p.id
                 LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
+                LEFT JOIN (
+                    SELECT tur_adi, defter_bolge, firma_id, MAX(defter_mahalle) as defter_mahalle
+                    FROM tanimlamalar
+                    WHERE grup = 'defter_kodu' AND silinme_tarihi IS NULL
+                    GROUP BY tur_adi, defter_bolge, firma_id
+                ) tm ON t.defter = tm.tur_adi 
+                    AND t.bolge = tm.defter_bolge 
+                    AND tm.firma_id = t.firma_id
                 WHERE $baseWhere $searchWhere
                 GROUP BY UPPER(TRIM(t.sayac_durum))
                 ORDER BY adet DESC";

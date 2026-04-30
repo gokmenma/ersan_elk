@@ -958,9 +958,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     $ekipKodu = $_GET['ekip_kodu'] ?? '';
     $region = $_GET['region'] ?? '';
     $defter = $_GET['defter'] ?? '';
+    $mahalle = $_GET['mahalle'] ?? '';
 
     $EndeksOkuma = new \App\Model\EndeksOkumaModel();
-    $result = $EndeksOkuma->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $region, $defter);
+    $result = $EndeksOkuma->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $region, $defter, $mahalle);
 
     // Veriyi DataTable formatına dönüştür
     $formattedData = [];
@@ -968,6 +969,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $formattedData[] = [
             'tarih' => \App\Helper\Date::dmY($record->tarih),
             'defter' => $record->defter ?? '-',
+            'mahalle' => $record->defter_mahalle ?? '-',
             'bolge' => $record->bolge,
             'ekip_no' => $record->ekip_kodu_adi ?: ($record->ekip_kodu_id ?: '-'),
             'personel_adi' => $record->personel_adi ?: '<span class="text-muted">' . htmlspecialchars($record->kullanici_adi) . '</span>',

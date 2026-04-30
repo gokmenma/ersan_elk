@@ -508,6 +508,18 @@ class TanimlamalarModel extends Model
     }
 
     /**
+     * Defter mahallelerini getirir
+     * @return array Mahalle listesi
+     */
+    public function getDefterMahalleleri()
+    {
+        $sql = "SELECT DISTINCT TRIM(defter_mahalle) FROM $this->table WHERE grup = 'defter_kodu' AND defter_mahalle IS NOT NULL AND defter_mahalle != '' AND firma_id = ? AND silinme_tarihi IS NULL ORDER BY defter_mahalle ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$_SESSION['firma_id']]);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    /**
      * Belirli bir bölgedeki müsait ekip kodlarını getirir
      * @param string $bolge Bölge adı
      * @param int|null $includeEkipNo Dahil edilecek ekip kodu ID'si

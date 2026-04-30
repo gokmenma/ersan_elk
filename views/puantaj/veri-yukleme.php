@@ -16,6 +16,7 @@ $ekipKodu = $_GET['ekip_kodu'] ?? '';
 $workType = $_GET['work_type'] ?? '';
 $region = $_GET['region'] ?? '';
 $defter = $_GET['defter'] ?? '';
+$mahalle = $_GET['mahalle'] ?? '';
 
 
 //Helper::dd([$startDate, $endDate, $ekipKodu, $workType]);
@@ -55,6 +56,13 @@ $defterOptions = ['' => 'Tüm Defterler'];
 foreach ($defterList as $d) {
     if ($d)
         $defterOptions[$d] = $d;
+}
+
+$mahalleList = $Tanimlar->getDefterMahalleleri();
+$mahalleOptions = ['' => 'Tüm Mahalleler'];
+foreach ($mahalleList as $m) {
+    if ($m)
+        $mahalleOptions[$m] = $m;
 }
 
 
@@ -442,6 +450,9 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                     <div class="col-md-2" id="defterFilterContainer" style="display: <?= $activeTab === 'okuma' ? 'block' : 'none' ?>;">
                                         <?php echo Form::FormSelect2('defter', $defterOptions, $defter, 'Defter', 'book', 'key', '', 'form-select select2'); ?>
                                     </div>
+                                    <div class="col-md-2" id="mahalleFilterContainer" style="display: <?= $activeTab === 'okuma' ? 'block' : 'none' ?>;">
+                                        <?php echo Form::FormSelect2('mahalle', $mahalleOptions, $mahalle, 'Mahalle', 'map-pin', 'key', '', 'form-select select2'); ?>
+                                    </div>
                                     <div class="col-md-2">
                                         <?php echo Form::FormSelect2('ekip_kodu', $personelOptions, $ekipKodu, 'Personel', 'user', 'key', '', 'form-select select2'); ?>
                                     </div>
@@ -559,6 +570,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 <tr class="table-light">
                                     <th data-filter="date">Tarih</th>
                                     <th data-filter="select">Defter</th>
+                                    <th data-filter="select">Mahalle</th>
                                     <th data-filter="select">Bölgesi</th>
                                     <th data-filter="string">Ekip No</th>
                                     <th data-filter="string">Personel</th>
@@ -1485,8 +1497,13 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 summary += '<div class="filter-summary-badge"><span class="badge-label">Bölge:</span><span class="badge-value">' + regionText + '</span><button type="button" class="btn-clear-filter" data-filter="region"><i class="bx bx-x"></i></button></div>';
             }
 
-            if (activeTab === 'okuma' && defter && defter !== '') {
-                summary += '<div class="filter-summary-badge"><span class="badge-label">Defter:</span><span class="badge-value">' + defterText + '</span><button type="button" class="btn-clear-filter" data-filter="defter"><i class="bx bx-x"></i></button></div>';
+            if (activeTab === 'okuma') {
+                if (defter && defter !== '') {
+                    summary += '<div class="filter-summary-badge"><span class="badge-label">Defter:</span><span class="badge-value">' + defterText + '</span><button type="button" class="btn-clear-filter" data-filter="defter"><i class="bx bx-x"></i></button></div>';
+                }
+                if ($('select[name="mahalle"]').val() && $('select[name="mahalle"]').val() !== '') {
+                    summary += '<div class="filter-summary-badge"><span class="badge-label">Mah:</span><span class="badge-value">' + $('select[name="mahalle"] option:selected').text() + '</span><button type="button" class="btn-clear-filter" data-filter="mahalle"><i class="bx bx-x"></i></button></div>';
+                }
             }
 
             if (ekipKodu && ekipKodu !== '') {
@@ -1530,6 +1547,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 end_date: $('input[name="end_date"]').val(),
                 region: $('select[name="region"]').val(),
                 defter: $('select[name="defter"]').val(),
+                mahalle: $('select[name="mahalle"]').val(),
                 ekip_kodu: $('select[name="ekip_kodu"]').val(),
                 work_type: $('select[name="work_type"]').val(),
                 work_result: $('select[name="work_result"]').val(),
@@ -1618,6 +1636,9 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     if (filters.defter) {
                         $('select[name="defter"]').val(filters.defter).trigger('change');
                     }
+                    if (filters.mahalle) {
+                        $('select[name="mahalle"]').val(filters.mahalle).trigger('change');
+                    }
                     if (filters.ekip_kodu) {
                         $('select[name="ekip_kodu"]').val(filters.ekip_kodu).trigger('change');
                     }
@@ -1651,6 +1672,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             var endDate = $('input[name="end_date"]').val();
             var region = $('select[name="region"]').val();
             var defter = $('select[name="defter"]').val();
+            var mahalle = $('select[name="mahalle"]').val();
             var ekipKodu = $('select[name="ekip_kodu"]').val();
             var workType = $('select[name="work_type"]').val();
             var workResult = $('select[name="work_result"]').val();
@@ -1659,6 +1681,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             if (endDate) url.searchParams.set('end_date', endDate);
             if (region) url.searchParams.set('region', region);
             if (defter) url.searchParams.set('defter', defter);
+            if (mahalle) url.searchParams.set('mahalle', mahalle);
             if (ekipKodu) url.searchParams.set('ekip_kodu', ekipKodu);
             if (workType) url.searchParams.set('work_type', workType);
             if (workResult) url.searchParams.set('work_result', workResult);
@@ -1677,10 +1700,12 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 $('#workTypeFilterContainer').hide();
                 $('#workResultFilterContainer').hide();
                 $('#defterFilterContainer').show();
+                $('#mahalleFilterContainer').show();
             } else {
                 $('#workTypeFilterContainer').hide();
                 $('#workResultFilterContainer').hide();
                 $('#defterFilterContainer').hide();
+                $('#mahalleFilterContainer').hide();
             }
 
             // İçeriği yükle
@@ -1697,6 +1722,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             // Sadece ekip ve iş filtrelerini temizle
             $('select[name="region"]').val('').trigger('change');
             $('select[name="defter"]').val('').trigger('change');
+            $('select[name="mahalle"]').val('').trigger('change');
             $('select[name="ekip_kodu"]').val('').trigger('change');
             $('select[name="work_type"]').val('').trigger('change');
             $('select[name="work_result"]').val('').trigger('change');
@@ -1921,6 +1947,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         d.end_date = $('input[name="end_date"]').val();
                         d.region = $('select[name="region"]').val();
                         d.defter = $('select[name="defter"]').val();
+                        d.mahalle = $('select[name="mahalle"]').val();
                         d.ekip_kodu = $('select[name="ekip_kodu"]').val();
                     },
                     dataSrc: function (json) {
@@ -2015,6 +2042,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 columns: [
                     { data: 'tarih' },
                     { data: 'defter' },
+                    { data: 'mahalle' },
                     { data: 'bolge' },
                     { data: 'ekip_no' },
                     { data: 'personel_adi' },
@@ -2367,6 +2395,9 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             url.searchParams.set('start_date', $('input[name="start_date"]').val());
             url.searchParams.set('end_date', $('input[name="end_date"]').val());
             url.searchParams.set('ekip_kodu', $('select[name="ekip_kodu"]').val());
+            url.searchParams.set('region', $('select[name="region"]').val());
+            url.searchParams.set('defter', $('select[name="defter"]').val());
+            url.searchParams.set('mahalle', $('select[name="mahalle"]').val());
             url.searchParams.set('work_type', $('select[name="work_type"]').val());
             url.searchParams.set('work_result', $('select[name="work_result"]').val());
 
