@@ -12,6 +12,20 @@ $Personel = new \App\Model\PersonelModel();
 $allPersonnelRaw = $Personel->all(true, 'puantaj');
 $allPersonnel = array_merge([(object)['id' => '', 'adi_soyadi' => 'Tüm Personeller']], $allPersonnelRaw);
 
+$Tanimlar = new \App\Model\TanimlamalarModel();
+$regionList = $Tanimlar->getEkipBolgeleri();
+$regionOptions = ['' => 'Tüm Bölgeler'];
+foreach ($regionList as $r) {
+    $regionOptions[$r] = $r;
+}
+
+$defterList = $Tanimlar->getDefterKodlari();
+$defterOptions = ['' => 'Tüm Defterler'];
+foreach ($defterList as $d) {
+    if ($d)
+        $defterOptions[$d] = $d;
+}
+
 // Convert dates for SQL
 $sqlStart = \App\Helper\Date::convertExcelDate($startDate, 'Y-m-d') ?: $startDate;
 $sqlEnd = \App\Helper\Date::convertExcelDate($endDate, 'Y-m-d') ?: $endDate;
@@ -34,11 +48,19 @@ for ($i = 0; $i < 24; $i++) {
 <div class="card border-0 shadow-none mb-3">
     <div class="card-body p-0">
         <div class="row align-items-end g-2">
-            <div class="col-md-5">
+            <div class="col-md-6">
                 <?= Form::FormMultipleSelect2('selectComparisonPeriods', $periodsSelection, [date('Y-m')], 'Karşılaştırılacak Dönemleri Seçin', 'calendar', 'key', '', 'form-select select2', false, 'selectComparisonPeriods', 'data-placeholder="Dönem(ler) seçiniz..."') ?>
             </div>
-            <div class="col-md-4">
+            <div class="col-md-6">
                 <?= Form::FormSelect2('selectComparisonStaff', $allPersonnel, '', 'Personel Filtresi', 'user', 'id', 'adi_soyadi', 'form-select select2', false, 'width:100%', 'data-placeholder="Tüm Personeller"', 'selectComparisonStaff') ?>
+            </div>
+        </div>
+        <div class="row align-items-end g-2 mt-1">
+            <div class="col-md-5">
+                <?= Form::FormSelect2('selectComparisonRegion', $regionOptions, '', 'Bölge Filtresi', 'globe', 'key', '', 'form-select select2', false, 'width:100%', 'data-placeholder="Tüm Bölgeler"', 'selectComparisonRegion') ?>
+            </div>
+            <div class="col-md-4">
+                <?= Form::FormSelect2('selectComparisonDefter', $defterOptions, '', 'Defter Filtresi', 'book', 'key', '', 'form-select select2', false, 'width:100%', 'data-placeholder="Tüm Defterler"', 'selectComparisonDefter') ?>
             </div>
             <div class="col-md-3">
                 <button type="button" class="btn btn-primary w-100" id="btnRefreshOkumaComparison">
@@ -89,6 +111,9 @@ for ($i = 0; $i < 24; $i++) {
                     <tbody id="compBodyRows">
                         <!-- JS ile dolacak -->
                     </tbody>
+                    <tfoot class="table-light fw-bold" id="compFooterRows">
+                        <!-- JS ile dolacak -->
+                    </tfoot>
                 </table>
             </div>
         </div>
@@ -100,7 +125,7 @@ for ($i = 0; $i < 24; $i++) {
         if (typeof $ === 'undefined') return;
         
         // Initialize Select2 in modal
-        $('#selectComparisonPeriods, #selectComparisonStaff').select2({
+        $('#selectComparisonPeriods, #selectComparisonStaff, #selectComparisonRegion, #selectComparisonDefter').select2({
             dropdownParent: $('#statsModal'),
             width: '100%',
             allowClear: true,
@@ -124,11 +149,15 @@ for ($i = 0; $i < 24; $i++) {
             }
 
             const staffId = $('#selectComparisonStaff').val() || '';
+            const region = $('#selectComparisonRegion').val() || '';
+            const defter = $('#selectComparisonDefter').val() || '';
 
             $.get('views/puantaj/api.php', {
                 action: 'get-okuma-comparison',
                 comparison_periods: selectedPeriods.join(','),
-                personel_id: staffId
+                personel_id: staffId,
+                region: region,
+                defter: defter
             }, function(res) {
                 const data = typeof res === 'object' ? res : JSON.parse(res);
                 
@@ -136,6 +165,7 @@ for ($i = 0; $i < 24; $i++) {
                     $('#okumaComparisonChart').html('<div class="text-center p-5 text-muted">Seçilen dönem(ler) için veri bulunamadı.</div>');
                     $('#compHeaderRows').html('');
                     $('#compBodyRows').html('');
+                    $('#compFooterRows').html('');
                     return;
                 }
 
@@ -171,6 +201,29 @@ for ($i = 0; $i < 24; $i++) {
                     });
                 });
                 $('#compBodyRows').html(bodyHtml);
+
+                // Calculate and build footer totals
+                let footerHtml = '<tr class="table-light fw-bold"><td>Toplam</td>';
+                let grandTotal = 0;
+                const columnTotals = {};
+                
+                data.periods.forEach(p => {
+                    columnTotals[p] = 0;
+                });
+
+                data.types.forEach(type => {
+                    data.periods.forEach(p => {
+                        const val = (data.matrix[type] && data.matrix[type][p]) ? data.matrix[type][p] : 0;
+                        columnTotals[p] += val;
+                        grandTotal += val;
+                    });
+                });
+
+                data.periods.forEach(p => {
+                    footerHtml += `<td class="text-center">${columnTotals[p].toLocaleString('tr-TR')}</td>`;
+                });
+                footerHtml += `<td class="text-center bg-light fw-bold">${grandTotal.toLocaleString('tr-TR')}</td></tr>`;
+                $('#compFooterRows').html(footerHtml);
 
                 // Grafiği Oluştur
                 if (comparisonChart) comparisonChart.destroy();

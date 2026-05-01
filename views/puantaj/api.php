@@ -3963,6 +3963,8 @@ if (isset($_GET['action']) && $_GET['action'] === 'get-okuma-comparison') {
     $periodsReq = array_values(array_unique(array_filter(array_map('trim', $periodsReq))));
     
     $personelId = $_GET['personel_id'] ?? '';
+    $region = $_GET['region'] ?? '';
+    $defter = $_GET['defter'] ?? '';
     $firmaId = $_SESSION['firma_id'] ?? 0;
 
     if (empty($periodsReq)) {
@@ -3985,6 +3987,14 @@ if (isset($_GET['action']) && $_GET['action'] === 'get-okuma-comparison') {
     if ($personelId) {
         $sql .= " AND personel_id = ?";
         $params[] = $personelId;
+    }
+    if ($region) {
+        $sql .= " AND bolge = ?";
+        $params[] = $region;
+    }
+    if ($defter) {
+        $sql .= " AND defter = ?";
+        $params[] = $defter;
     }
     
     $sql .= " GROUP BY period, status ORDER BY period ASC";
