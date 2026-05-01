@@ -558,6 +558,14 @@ padding-bottom:  10px !important;
                                             checked>
                                     </div>
                                 </label>
+                                <label
+                                    class="list-group-item d-flex justify-content-between align-items-center py-2 px-0 border-0 cursor-pointer">
+                                    <span class="fw-medium text-dark"><i
+                                            class="bx bx-trending-up me-2 text-info"></i>Aylık Değişim %</span>
+                                    <div class="form-check form-switch m-0">
+                                        <input class="form-check-input col-toggle" type="checkbox" data-col="degisim">
+                                    </div>
+                                </label>
                             </div>
                         </div>
                         <div class="modal-footer border-top-0 pt-0">
@@ -2635,11 +2643,12 @@ padding-bottom:  10px !important;
         let _visibleColumns = {
             abone: true,
             okunan: true,
-            oran: true
+            oran: true,
+            degisim: false
         };
         let _columnOrder = null; // Will store the array of period strings
         let _viewMode = 'period'; // 'period' (Dönem Bazlı) or 'type' (Tür Bazlı)
-        let _typeOrder = ['abone', 'okunan', 'oran'];
+        let _typeOrder = ['abone', 'okunan', 'degisim', 'oran'];
 
         // ======= NUMERIC FILTER STATE =======
         // Key: '{donem}_{field}', Value: { operator: '>' | '<' | '>=' | '<=' | '=', value: number }
@@ -2878,8 +2887,10 @@ padding-bottom:  10px !important;
                         html += `<th class="sub-header sub-header-abone sortable-header period-start ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${donem}_abone">${filterBtn(donem + '_abone')} ABONE${sortIcon(donem + '_abone')}</th>`;
                     if (_visibleColumns.okunan)
                         html += `<th class="sub-header sub-header-okunan sortable-header ${_visibleColumns.abone ? '' : 'period-start'} ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${donem}_okunan">${filterBtn(donem + '_okunan')} OKUNAN${sortIcon(donem + '_okunan')}</th>`;
+                    if (_visibleColumns.degisim)
+                        html += `<th class="sub-header sub-header-degisim sortable-header ${_visibleColumns.abone || _visibleColumns.okunan ? '' : 'period-start'} ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${donem}_degisim">${filterBtn(donem + '_degisim')} DEĞİŞİM %${sortIcon(donem + '_degisim')}</th>`;
                     if (_visibleColumns.oran)
-                        html += `<th class="sub-header sub-header-oran sortable-header period-end ${_visibleColumns.abone || _visibleColumns.okunan ? '' : 'period-start'} ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${donem}_oran">${filterBtn(donem + '_oran')} ORAN %${sortIcon(donem + '_oran')}</th>`;
+                        html += `<th class="sub-header sub-header-oran sortable-header period-end ${_visibleColumns.abone || _visibleColumns.okunan || _visibleColumns.degisim ? '' : 'period-start'} ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${donem}_oran">${filterBtn(donem + '_oran')} ORAN %${sortIcon(donem + '_oran')}</th>`;
                 });
                 html += '</tr>';
             } else {
@@ -2898,6 +2909,10 @@ padding-bottom:  10px !important;
                 if (_visibleColumns.okunan)
                     html += `<th colspan="${effectiveDonemler.length}" class="period-header month-frame-header draggable-header" data-type="okunan" style="background: #ecfdf5; color: #065f46;">
                         <i class="bx bx-grid-vertical drag-indicator"></i>OKUNAN SAYILARI
+                    </th>`;
+                if (_visibleColumns.degisim)
+                    html += `<th colspan="${effectiveDonemler.length}" class="period-header month-frame-header draggable-header" data-type="degisim" style="background: #f0f9ff; color: #0369a1;">
+                        <i class="bx bx-grid-vertical drag-indicator"></i>AYLIK DEĞİŞİM %
                     </th>`;
                 if (_visibleColumns.oran)
                     html += `<th colspan="${effectiveDonemler.length}" class="period-header month-frame-header draggable-header" data-type="oran" style="background: #fffbeb; color: #92400e;">
@@ -2937,11 +2952,11 @@ padding-bottom:  10px !important;
                 colTotals[d] = { abone: 0, okunan: 0 };
                 globalDefterStats[d] = { read: 0, unread: 0, total: 0 };
             });
-
             // Calculate active columns for colspan
             let visibleCountPerPeriod = 0;
             if (_visibleColumns.abone) visibleCountPerPeriod++;
             if (_visibleColumns.okunan) visibleCountPerPeriod++;
+            if (_visibleColumns.degisim) visibleCountPerPeriod++;
             if (_visibleColumns.oran) visibleCountPerPeriod++;
             const totalHeaderCols = 5 + (effectiveDonemler.length * visibleCountPerPeriod);
 
@@ -3012,28 +3027,53 @@ padding-bottom:  10px !important;
                 if (_viewMode === 'period') {
                     effectiveDonemler.forEach(function (donem, idx) {
                         const rTotals = regionTotals.donemler[donem];
+                        const prevDonem = effectiveDonemler[idx - 1];
+                        const pTotals = prevDonem ? regionTotals.donemler[prevDonem] : null;
+
                         if (_visibleColumns.abone)
                             html += `<td class="ogr-region-header text-end period-start" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.abone.toLocaleString('tr-TR')}</td>`;
                         if (_visibleColumns.okunan)
                             html += `<td class="ogr-region-header text-end ${_visibleColumns.abone ? '' : 'period-start'}" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.okunan.toLocaleString('tr-TR')}</td>`;
+                        
+                        if (_visibleColumns.degisim) {
+                            let degVal = 0;
+                            if (pTotals && pTotals.okunan > 0) {
+                                degVal = ((rTotals.okunan - pTotals.okunan) / pTotals.okunan) * 100;
+                            }
+                            const degStr = prevDonem ? (degVal > 0 ? '+' : '') + degVal.toFixed(1) + '%' : '-';
+                            const degClass = degVal > 0 ? 'text-success' : (degVal < 0 ? 'text-danger' : '');
+                            html += `<td class="ogr-region-header text-end ${_visibleColumns.abone || _visibleColumns.okunan || _visibleColumns.degisim ? '' : 'period-start'} ${degClass}" style="background: ${regionColor.header}; font-weight: 800;">${degStr}</td>`;
+                        }
+
                         if (_visibleColumns.oran) {
                             const rOranRaw = rTotals.abone > 0 ? (rTotals.okunan / rTotals.abone) * 100 : 0;
                             const rOran = rOranRaw.toFixed(1);
                             let rOranClass = 'text-danger';
                             if (rOranRaw >= 70) rOranClass = 'text-success';
                             else if (rOranRaw >= 50) rOranClass = 'text-warning';
-                            html += `<td class="ogr-region-header text-end period-end ${_visibleColumns.abone || _visibleColumns.okunan ? '' : 'period-start'} ${rOranClass}" style="background: ${regionColor.header}; font-weight: 800;">${rOran}%</td>`;
+                            html += `<td class="ogr-region-header text-end period-end ${_visibleColumns.abone || _visibleColumns.okunan || _visibleColumns.degisim ? '' : 'period-start'} ${rOranClass}" style="background: ${regionColor.header}; font-weight: 800;">${rOran}%</td>`;
                         }
                     });
                 } else {
                     _typeOrder.forEach(type => {
                         if (!_visibleColumns[type]) return;
-                        effectiveDonemler.forEach(function (donem) {
+                        effectiveDonemler.forEach(function (donem, idx) {
                             const rTotals = regionTotals.donemler[donem];
                             if (type === 'abone')
                                 html += `<td class="ogr-region-header text-end" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.abone.toLocaleString('tr-TR')}</td>`;
                             else if (type === 'okunan')
                                 html += `<td class="ogr-region-header text-end" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.okunan.toLocaleString('tr-TR')}</td>`;
+                            else if (type === 'degisim') {
+                                const prevDonem = effectiveDonemler[idx - 1];
+                                const pTotals = prevDonem ? regionTotals.donemler[prevDonem] : null;
+                                let degVal = 0;
+                                if (pTotals && pTotals.okunan > 0) {
+                                    degVal = ((rTotals.okunan - pTotals.okunan) / pTotals.okunan) * 100;
+                                }
+                                const degStr = prevDonem ? (degVal > 0 ? '+' : '') + degVal.toFixed(1) + '%' : '-';
+                                const degClass = degVal > 0 ? 'text-success' : (degVal < 0 ? 'text-danger' : '');
+                                html += `<td class="ogr-region-header text-end ${degClass}" style="background: ${regionColor.header}; font-weight: 800;">${degStr}</td>`;
+                            }
                             else if (type === 'oran') {
                                 const rOranRaw = rTotals.abone > 0 ? (rTotals.okunan / rTotals.abone) * 100 : 0;
                                 const rOran = rOranRaw.toFixed(1);
@@ -3061,16 +3101,34 @@ padding-bottom:  10px !important;
                             const donemData = row.donemler[donem] || { abone: 0, okunan: 0, gidilen: 0 };
                             colTotals[donem].abone += parseInt(donemData.abone) || 0;
                             colTotals[donem].okunan += parseInt(donemData.okunan) || 0;
+                            
+                            const prevDonem = effectiveDonemler[idx - 1];
+                            const prevData = prevDonem ? row.donemler[prevDonem] : null;
+                            
                             const oran = donemData.abone > 0 ? ((donemData.okunan / donemData.abone) * 100).toFixed(1) : 0;
                             let oranClass = oran >= 70 ? 'oran-high' : (oran >= 50 ? 'oran-medium' : 'oran-low');
+                            
                             if (_visibleColumns.abone) html += `<td class="period-start">${donemData.abone > 0 ? donemData.abone.toLocaleString('tr-TR') : ''}</td>`;
                             if (_visibleColumns.okunan) html += `<td class="${_visibleColumns.abone ? '' : 'period-start'}">${donemData.okunan > 0 ? donemData.okunan.toLocaleString('tr-TR') : ''}</td>`;
-                            if (_visibleColumns.oran) html += `<td class="${oranClass} period-end ${_visibleColumns.abone || _visibleColumns.okunan ? '' : 'period-start'}">${donemData.abone > 0 ? oran + '%' : ''}</td>`;
+                            
+                            if (_visibleColumns.degisim) {
+                                let degVal = 0;
+                                const currentVal = parseInt(donemData.okunan) || 0;
+                                const prevVal = prevData ? (parseInt(prevData.okunan) || 0) : 0;
+                                if (prevVal > 0) {
+                                    degVal = ((currentVal - prevVal) / prevVal) * 100;
+                                }
+                                const degStr = prevDonem ? (degVal > 0 ? '+' : '') + degVal.toFixed(1) + '%' : '-';
+                                const degClass = degVal > 0 ? 'text-success fw-bold' : (degVal < 0 ? 'text-danger fw-bold' : '');
+                                html += `<td class="${degClass} ${_visibleColumns.abone || _visibleColumns.okunan || _visibleColumns.degisim ? '' : 'period-start'}">${degStr}</td>`;
+                            }
+
+                            if (_visibleColumns.oran) html += `<td class="${oranClass} period-end ${_visibleColumns.abone || _visibleColumns.okunan || _visibleColumns.degisim ? '' : 'period-start'}">${donemData.abone > 0 ? oran + '%' : ''}</td>`;
                         });
                     } else {
                         _typeOrder.forEach(type => {
                             if (!_visibleColumns[type]) return;
-                            effectiveDonemler.forEach(function (donem) {
+                            effectiveDonemler.forEach(function (donem, idx) {
                                 const donemData = row.donemler[donem] || { abone: 0, okunan: 0 };
                                 if (type === 'abone') {
                                     colTotals[donem].abone += parseInt(donemData.abone) || 0;
@@ -3078,6 +3136,18 @@ padding-bottom:  10px !important;
                                 } else if (type === 'okunan') {
                                     colTotals[donem].okunan += parseInt(donemData.okunan) || 0;
                                     html += `<td>${donemData.okunan > 0 ? donemData.okunan.toLocaleString('tr-TR') : ''}</td>`;
+                                } else if (type === 'degisim') {
+                                    const prevDonem = effectiveDonemler[idx - 1];
+                                    const prevData = prevDonem ? row.donemler[prevDonem] : null;
+                                    let degVal = 0;
+                                    const currentVal = parseInt(donemData.okunan) || 0;
+                                    const prevVal = prevData ? (parseInt(prevData.okunan) || 0) : 0;
+                                    if (prevVal > 0) {
+                                        degVal = ((currentVal - prevVal) / prevVal) * 100;
+                                    }
+                                    const degStr = prevDonem ? (degVal > 0 ? '+' : '') + degVal.toFixed(1) + '%' : '-';
+                                    const degClass = degVal > 0 ? 'text-success fw-bold' : (degVal < 0 ? 'text-danger fw-bold' : '');
+                                    html += `<td class="${degClass}">${degStr}</td>`;
                                 } else if (type === 'oran') {
                                     const oran = donemData.abone > 0 ? ((donemData.okunan / donemData.abone) * 100).toFixed(1) : 0;
                                     let oranClass = oran >= 70 ? 'oran-high' : (oran >= 50 ? 'oran-medium' : 'oran-low');
@@ -3101,6 +3171,9 @@ padding-bottom:  10px !important;
                 effectiveDonemler.forEach(function (donem, idx) {
                     const totals = colTotals[donem];
                     const gStats = globalDefterStats[donem];
+                    const prevDonem = effectiveDonemler[idx - 1];
+                    const prevTotals = prevDonem ? colTotals[prevDonem] : null;
+
                     if (_visibleColumns.abone) {
                         html += `<th class="period-start text-end">
                             <div style="font-size: 9px; color: #64748b; font-weight: normal; margin-bottom: 2px;">Def: ${gStats.total}</div>
@@ -3113,6 +3186,18 @@ padding-bottom:  10px !important;
                             ${totals.okunan.toLocaleString('tr-TR')}
                         </th>`;
                     }
+                    if (_visibleColumns.degisim) {
+                        let degVal = 0;
+                        if (prevTotals && prevTotals.okunan > 0) {
+                            degVal = ((totals.okunan - prevTotals.okunan) / prevTotals.okunan) * 100;
+                        }
+                        const degStr = prevDonem ? (degVal > 0 ? '+' : '') + degVal.toFixed(1) + '%' : '-';
+                        const degClass = degVal > 0 ? 'text-success' : (degVal < 0 ? 'text-danger' : '');
+                        html += `<th class="${_visibleColumns.abone || _visibleColumns.okunan || _visibleColumns.degisim ? '' : 'period-start'} ${degClass} text-center">
+                            <div style="font-size: 9px; color: #64748b; font-weight: normal; margin-bottom: 2px;">Değişim</div>
+                            ${degStr}
+                        </th>`;
+                    }
                     if (_visibleColumns.oran) {
                         const rawOran = totals.abone > 0 ? (totals.okunan / totals.abone) * 100 : 0;
                         const totalOran = rawOran.toFixed(1);
@@ -3123,7 +3208,7 @@ padding-bottom:  10px !important;
                             warningIcon = `<i class="bx bx-info-circle text-warning ms-1" title="Bazı defterlerde abone sayısı 0 veya eksik tanımlandığı için oran %100'ü geçmiştir."></i>`;
                         }
 
-                        html += `<th class="period-end ${_visibleColumns.abone || _visibleColumns.okunan ? '' : 'period-start'} ${totalOranClass} text-center">
+                        html += `<th class="period-end ${_visibleColumns.abone || _visibleColumns.okunan || _visibleColumns.degisim ? '' : 'period-start'} ${totalOranClass} text-center">
                             <div style="font-size: 9px; color: #64748b; font-weight: normal; margin-bottom: 2px;">Başarı</div>
                             ${totalOran}% ${warningIcon}
                         </th>`;
@@ -3132,15 +3217,47 @@ padding-bottom:  10px !important;
             } else {
                 _typeOrder.forEach(type => {
                     if (!_visibleColumns[type]) return;
-                    effectiveDonemler.forEach(function (donem) {
+                    effectiveDonemler.forEach(function (donem, idx) {
                         const totals = colTotals[donem];
-                        if (type === 'abone') html += `<th>${totals.abone.toLocaleString('tr-TR')}</th>`;
-                        else if (type === 'okunan') html += `<th>${totals.okunan.toLocaleString('tr-TR')}</th>`;
-                        else if (type === 'oran') {
+                        const gStats = globalDefterStats[donem];
+                        const prevDonem = effectiveDonemler[idx - 1];
+                        const prevTotals = prevDonem ? colTotals[prevDonem] : null;
+
+                        if (type === 'abone') {
+                            html += `<th class="text-end">
+                                <div style="font-size: 9px; color: #64748b; font-weight: normal; margin-bottom: 2px;">Def: ${gStats.total}</div>
+                                ${totals.abone.toLocaleString('tr-TR')}
+                            </th>`;
+                        } else if (type === 'okunan') {
+                            html += `<th class="text-end">
+                                <div style="font-size: 9px; color: #10b981; font-weight: normal; margin-bottom: 2px;">Okn: ${gStats.read}</div>
+                                ${totals.okunan.toLocaleString('tr-TR')}
+                            </th>`;
+                        } else if (type === 'degisim') {
+                            let degVal = 0;
+                            if (prevTotals && prevTotals.okunan > 0) {
+                                degVal = ((totals.okunan - prevTotals.okunan) / prevTotals.okunan) * 100;
+                            }
+                            const degStr = prevDonem ? (degVal > 0 ? '+' : '') + degVal.toFixed(1) + '%' : '-';
+                            const degClass = degVal > 0 ? 'text-success' : (degVal < 0 ? 'text-danger' : '');
+                            html += `<th class="text-center ${degClass}">
+                                <div style="font-size: 9px; color: #64748b; font-weight: normal; margin-bottom: 2px;">Değişim</div>
+                                ${degStr}
+                            </th>`;
+                        } else if (type === 'oran') {
                             const rawOran = totals.abone > 0 ? (totals.okunan / totals.abone) * 100 : 0;
                             const totalOran = rawOran.toFixed(1);
                             let totalOranClass = rawOran >= 70 ? 'oran-high' : (rawOran >= 50 ? 'oran-medium' : 'oran-low');
-                            html += `<th class="${totalOranClass} text-center">${totalOran}%</th>`;
+                            
+                            let warningIcon = "";
+                            if (rawOran > 100.5) {
+                                warningIcon = `<i class="bx bx-info-circle text-warning ms-1" title="Bazı defterlerde abone sayısı 0 veya eksik tanımlandığı için oran %100'ü geçmiştir."></i>`;
+                            }
+
+                            html += `<th class="${totalOranClass} text-center">
+                                <div style="font-size: 9px; color: #64748b; font-weight: normal; margin-bottom: 2px;">Başarı</div>
+                                ${totalOran}% ${warningIcon}
+                            </th>`;
                         }
                     });
                 });
@@ -3858,7 +3975,8 @@ padding-bottom:  10px !important;
             effectiveDonemler.forEach(function (donem, idx) {
                 const isAlt = idx % 2 === 1;
                 const formatted = donem.substring(0, 4) + '/' + donem.substring(4);
-                html += `<th colspan="2" class="period-header ogr-period-end draggable-header ${isAlt ? 'do-month-alt' : ''}" data-donem="${donem}">
+                const colSpan = _visibleColumns.degisim ? 3 : 2;
+                html += `<th colspan="${colSpan}" class="period-header ogr-period-end draggable-header ${isAlt ? 'do-month-alt' : ''}" data-donem="${donem}">
                     <i class="bx bx-grid-vertical drag-indicator"></i>${formatted}
                 </th>`;
             });
@@ -3886,14 +4004,18 @@ padding-bottom:  10px !important;
                 const isActive = _numericFilters[filterKey] && _numericFilters[filterKey].operator && _numericFilters[filterKey].value !== '';
                 const activeClass = isActive ? 'col-filter-active' : '';
                 const dot = isActive ? '<span class="filter-dot"></span>' : '';
-                html += `<th class="sub-header og-sortable-header ogr-period-end ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${filterKey}">
-                    <div class="d-flex align-items-center justify-content-center gap-1">
+                html += `<th class="sub-header og-sortable-header ${_visibleColumns.degisim ? '' : 'ogr-period-end'} ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${filterKey}">
+                    <div class="d-flex align-items-center justify-content-center gap-1 mb-1">
                         <button type="button" class="col-filter-btn ${activeClass}" data-filter-col="${filterKey}" title="Sayısal Filtrele">
                             <i class="bx bx-filter-alt"></i>
                         </button>${dot}
                     </div>
                     FARK${ogSortIcon(filterKey)}
                 </th>`;
+
+                if (_visibleColumns.degisim) {
+                    html += `<th class="sub-header og-sortable-header ogr-period-end ${isAlt ? 'do-month-alt' : ''}">DEĞİŞİM</th>`;
+                }
             });
             html += '</tr>';
             html += '</thead>';
@@ -3928,8 +4050,8 @@ padding-bottom:  10px !important;
 
                 // Empty cells for periods (Date and Diff don't sum)
                 effectiveDonemler.forEach(function (donem, idx) {
-                    const isLast = idx === effectiveDonemler.length - 1;
-                    html += `<td class="ogr-region-header" style="background: ${regionColor.header};" colspan="2"></td>`;
+                    const colSpan = _visibleColumns.degisim ? 3 : 2;
+                    html += `<td class="ogr-region-header" style="background: ${regionColor.header};" colspan="${colSpan}"></td>`;
                 });
                 html += '</tr>';
 
@@ -3955,7 +4077,21 @@ padding-bottom:  10px !important;
                             farkText = di.fark;
                             farkClass = di.fark >= 35 ? 'fark-danger' : 'fark-normal';
                         }
-                        html += `<td class="${farkClass} ogr-period-end ${altClass}">${farkText}</td>`;
+                        html += `<td class="${farkClass} ${_visibleColumns.degisim ? '' : 'ogr-period-end'} ${altClass}">${farkText}</td>`;
+
+                        if (_visibleColumns.degisim) {
+                            const prevDonem = effectiveDonemler[idx - 1];
+                            const prevDi = prevDonem ? row.donemler[prevDonem] : null;
+                            let degText = '-';
+                            let degClass = '';
+                            if (prevDi && prevDi.fark !== null && di.fark !== null) {
+                                const diff = di.fark - prevDi.fark;
+                                degText = (diff > 0 ? '+' : '') + diff;
+                                if (diff < 0) degClass = 'text-success fw-bold';
+                                else if (diff > 0) degClass = 'text-danger fw-bold';
+                            }
+                            html += `<td class="${degClass} ogr-period-end ${altClass}">${degText}</td>`;
+                        }
                     });
 
                     html += '</tr>';
@@ -4183,7 +4319,8 @@ padding-bottom:  10px !important;
                 effectiveDonemler.forEach(function (donem, idx) {
                     const isAlt = idx % 2 === 1;
                     const formatted = String(donem).substring(0, 4) + '/' + String(donem).substring(4);
-                    html += `<th colspan="4" class="period-header do-period-end draggable-header ${isAlt ? 'do-month-alt' : ''}" data-donem="${donem}">
+                    const colSpan = _visibleColumns.degisim ? 5 : 4;
+                    html += `<th colspan="${colSpan}" class="period-header do-period-end draggable-header ${isAlt ? 'do-month-alt' : ''}" data-donem="${donem}">
                         <i class="bx bx-grid-vertical drag-indicator"></i>${formatted}
                     </th>`;
                 });
@@ -4204,10 +4341,10 @@ padding-bottom:  10px !important;
                         const isActive = _doNumericFilters[fKey] && _doNumericFilters[fKey].value !== '';
                         const activeClass = isActive ? 'col-filter-active' : '';
                         const dot = isActive ? '<span class="filter-dot"></span>' : '';
-                        const isLastField = fIdx === 3;
+                        const isLastFieldWithoutDeg = !_visibleColumns.degisim && fIdx === 3;
                         const altClass = isAlt ? 'do-month-alt' : '';
 
-                        html += `<th class="sub-header ${isLastField ? 'do-period-end' : ''} ${altClass}">`;
+                        html += `<th class="sub-header ${isLastFieldWithoutDeg ? 'do-period-end' : ''} ${altClass}">`;
                         html += '<div class="d-flex align-items-center justify-content-center gap-1 mb-1">';
                         html += `<button type="button" class="col-filter-btn ${activeClass}" data-do-filter-col="${fKey}" title="${labels[fIdx]} Filtrele">`;
                         html += '<i class="bx bx-filter-alt" style="font-size:10px;"></i>';
@@ -4289,9 +4426,21 @@ padding-bottom:  10px !important;
                         html += `<td class="${altClass}"><span class="do-badge-okunmayan zero no-upgrade">${g.okunmayan_defter}</span></td>`;
                     }
 
-                    html += `<td class="do-oran-cell do-period-end ${altClass}">`;
+                    html += `<td class="do-oran-cell ${_visibleColumns.degisim ? '' : 'do-period-end'} ${altClass}">`;
                     html += `<span class="do-badge-oran ${oranClass}" style="padding: 2px 8px; font-size: 13px;">${g.oran}%</span>`;
                     html += `</td>`;
+
+                    if (_visibleColumns.degisim) {
+                        const prevDonem = effectiveDonemler[idx - 1];
+                        const prevG = prevDonem ? (genel[String(prevDonem)] || { okunan_defter: 0 }) : null;
+                        let degVal = 0;
+                        if (prevG && prevG.okunan_defter > 0) {
+                            degVal = ((g.okunan_defter - prevG.okunan_defter) / prevG.okunan_defter) * 100;
+                        }
+                        const degStr = prevDonem ? (degVal > 0 ? '+' : '') + degVal.toFixed(1) + '%' : '-';
+                        const degClass = degVal > 0 ? 'text-success fw-bold' : (degVal < 0 ? 'text-danger fw-bold' : '');
+                        html += `<td class="do-period-end ${altClass} text-center"><span class="${degClass}" style="font-size: 11.5px;">${degStr}</span></td>`;
+                    }
                 });
             } else {
                 ['toplam', 'okunan', 'okunmayan', 'oran'].forEach(type => {
@@ -4327,7 +4476,19 @@ padding-bottom:  10px !important;
                 html += `<td class="${altClass}"><span class="do-badge-sub do-badge-sub-kalan">${(g.sub_kalan || 0).toLocaleString('tr-TR')}</span></td>`;
                 
                 let subOranClassGenel = g.sub_oran >= 80 ? 'text-success' : (g.sub_oran >= 50 ? 'text-warning' : 'text-danger');
-                html += `<td class="do-oran-cell do-period-end ${altClass}"><span class="${subOranClassGenel} fw-bold" style="font-size: 11.5px;">${g.sub_oran}%</span></td>`;
+                html += `<td class="do-oran-cell ${_visibleColumns.degisim ? '' : 'do-period-end'} ${altClass}"><span class="${subOranClassGenel} fw-bold" style="font-size: 11.5px;">${g.sub_oran}%</span></td>`;
+                
+                if (_visibleColumns.degisim) {
+                    const prevDonem = effectiveDonemler[idx - 1];
+                    const prevG = prevDonem ? (genel[String(prevDonem)] || { sub_okunan: 0 }) : null;
+                    let degVal = 0;
+                    if (prevG && prevG.sub_okunan > 0) {
+                        degVal = ((g.sub_okunan - prevG.sub_okunan) / prevG.sub_okunan) * 100;
+                    }
+                    const degStr = prevDonem ? (degVal > 0 ? '+' : '') + degVal.toFixed(1) + '%' : '-';
+                    const degClass = degVal > 0 ? 'text-success fw-bold' : (degVal < 0 ? 'text-danger fw-bold' : '');
+                    html += `<td class="do-period-end ${altClass} text-center"><span class="${degClass}" style="font-size: 11.5px;">${degStr}</span></td>`;
+                }
             });
                 html += '</tr>';
 
@@ -4359,9 +4520,21 @@ padding-bottom:  10px !important;
                             html += `<td style="background: ${regionColor.bg};" class="${altClass}"><span class="do-badge-okunmayan zero no-upgrade">${bStat.okunmayan_defter}</span></td>`;
                         }
 
-                        html += `<td class="do-oran-cell do-period-end ${altClass}" style="background: ${regionColor.bg};">`;
+                        html += `<td class="do-oran-cell ${_visibleColumns.degisim ? '' : 'do-period-end'} ${altClass}" style="background: ${regionColor.bg};">`;
                         html += `<span class="do-badge-oran ${oranClass}" style="padding: 2px 8px; font-size: 13px;">${bStat.oran}%</span>`;
                         html += `</td>`;
+
+                        if (_visibleColumns.degisim) {
+                            const prevDonem = effectiveDonemler[idx - 1];
+                            const prevB = prevDonem ? ((bolgeData[bName] && bolgeData[bName][String(prevDonem)]) || { okunan_defter: 0 }) : null;
+                            let degVal = 0;
+                            if (prevB && prevB.okunan_defter > 0) {
+                                degVal = ((bStat.okunan_defter - prevB.okunan_defter) / prevB.okunan_defter) * 100;
+                            }
+                            const degStr = prevDonem ? (degVal > 0 ? '+' : '') + degVal.toFixed(1) + '%' : '-';
+                            const degClass = degVal > 0 ? 'text-success fw-bold' : (degVal < 0 ? 'text-danger fw-bold' : '');
+                            html += `<td class="do-period-end ${altClass} text-center" style="background: ${regionColor.bg};"><span class="${degClass}" style="font-size: 11.5px;">${degStr}</span></td>`;
+                        }
                     });
                     html += '</tr>';
 
@@ -4380,7 +4553,19 @@ padding-bottom:  10px !important;
                         html += `<td class="${altClass}"><span class="do-badge-sub do-badge-sub-kalan">${(bStat.sub_kalan || 0).toLocaleString('tr-TR')}</span></td>`;
                         
                         let subOranClass = bStat.sub_oran >= 80 ? 'text-success' : (bStat.sub_oran >= 50 ? 'text-warning' : 'text-danger');
-                        html += `<td class="do-oran-cell do-period-end ${altClass}"><span class="${subOranClass} fw-bold" style="font-size: 11.5px;">${bStat.sub_oran}%</span></td>`;
+                        html += `<td class="do-oran-cell ${_visibleColumns.degisim ? '' : 'do-period-end'} ${altClass}"><span class="${subOranClass} fw-bold" style="font-size: 11.5px;">${bStat.sub_oran}%</span></td>`;
+                        
+                        if (_visibleColumns.degisim) {
+                            const prevDonem = effectiveDonemler[idx - 1];
+                            const prevB = prevDonem ? ((bolgeData[bName] && bolgeData[bName][String(prevDonem)]) || { sub_okunan: 0 }) : null;
+                            let degVal = 0;
+                            if (prevB && prevB.sub_okunan > 0) {
+                                degVal = ((bStat.sub_okunan - prevB.sub_okunan) / prevB.sub_okunan) * 100;
+                            }
+                            const degStr = prevDonem ? (degVal > 0 ? '+' : '') + degVal.toFixed(1) + '%' : '-';
+                            const degClass = degVal > 0 ? 'text-success fw-bold' : (degVal < 0 ? 'text-danger fw-bold' : '');
+                            html += `<td class="do-period-end ${altClass} text-center"><span class="${degClass}" style="font-size: 11.5px;">${degStr}</span></td>`;
+                        }
                     });
                     html += '</tr>';
                 });

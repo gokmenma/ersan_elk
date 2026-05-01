@@ -136,6 +136,13 @@ if (!isset($_SESSION['force_desktop'])) {
             <?php
             $page = $_GET['p'] ?? 'home';
 
+            try {
+                if ($currentUserId > 0) {
+                    $logModel = new \App\Model\SystemLogModel();
+                    $logModel->logPageView($currentUserId, $page, 'Desktop');
+                }
+            } catch (\Exception $e) {}
+
             $publicPages = [
                 'home'
             ];

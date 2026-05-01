@@ -2363,8 +2363,43 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             $('#kacakUploadForm input[name="excel_file"]').val('');
         });
 
+        // Bölge seçildiğinde personelleri filtrele
+        $('select[name="region"]').on('change', function() {
+            var region = $(this).val();
+            var $personelSelect = $('select[name="ekip_kodu"]');
+            var startDate = $('input[name="start_date"]').val();
+            
+            $.get('views/puantaj/api.php', {
+                action: 'get-personel-by-region',
+                region: region,
+                date: startDate
+            }, function(data) {
+                var currentVal = $personelSelect.val();
+                $personelSelect.empty();
+                $personelSelect.append('<option value="">Seçiniz</option>');
+                
+                if (data && data.length > 0) {
+                    data.forEach(function(p) {
+                        $personelSelect.append('<option value="' + p.id + '">' + p.adi_soyadi + '</option>');
+                    });
+                }
+                
+                if (currentVal && $personelSelect.find('option[value="' + currentVal + '"]').length > 0) {
+                    $personelSelect.val(currentVal).trigger('change.select2');
+                } else {
+                    $personelSelect.val('').trigger('change.select2');
+                }
+            });
+        });
+
         // Sayfa yüklendiğinde filtreleri storage'dan al
         loadFiltersFromStorage();
+
+        // Eğer başlangıçta bir bölge seçili ise (URL'den veya varsayılan) ve storage tetiklememişse manuel tetikle
+        if ($('select[name="region"]').val() && !localStorage.getItem('puantaj_filters')) {
+            $('select[name="region"]').trigger('change');
+        }
+
 
         // İlk yükleme: Şu an aktif olan sekmeyi bul ve içeriğini yükle
         var currentActiveTab = $('#puantajTabs .nav-link.active').data('tab-name');

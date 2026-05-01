@@ -4167,3 +4167,59 @@ if (isset($_GET['action']) && $_GET['action'] === 'get-sayac-comparison') {
     echo json_encode(['periods' => $periods, 'types' => $types, 'matrix' => $matrix]);
     exit;
 }
+
+if (isset($_GET['action']) && $_GET['action'] === 'get-personel-by-region') {
+    $region = $_GET['region'] ?? '';
+    $firmaId = $_SESSION['firma_id'] ?? 0;
+    $dateParam = $_GET['date'] ?? '';
+    $date = \App\Helper\Date::dttoeng(!empty($dateParam) ? $dateParam : date('Y-m-d'));
+
+    $Model = new \App\Model\PersonelModel();
+    $sql = "SELECT DISTINCT p.id, p.adi_soyadi 
+            FROM personel p
+            WHERE p.firma_id = ? AND p.silinme_tarihi IS NULL";
+    
+    $params = [$firmaId];
+
+    if (!empty($region)) {
+        $sql .= " AND (
+                    EXISTS (
+                        SELECT 1 FROM personel_ekip_gecmisi peg 
+                        JOIN tanimlamalar t ON peg.ekip_kodu_id = t.id 
+                        WHERE peg.personel_id = p.id 
+                        AND t.grup = 'ekip_kodu' 
+                        AND t.silinme_tarihi IS NULL
+                        AND TRIM(t.ekip_bolge) = ? 
+                        AND peg.baslangic_tarihi <= ? 
+                        AND (peg.bitis_tarihi IS NULL OR peg.bitis_tarihi >= ?)
+                    )
+                    OR 
+                    EXISTS (
+                        SELECT 1 FROM tanimlamalar t2 
+                        WHERE p.ekip_no = t2.id 
+                        AND t2.grup = 'ekip_kodu' 
+                        AND t2.silinme_tarihi IS NULL
+                        AND TRIM(t2.ekip_bolge) = ?
+                    )
+                    OR
+                    TRIM(p.ekip_bolge) = ?
+                  )";
+        
+        $trimmedRegion = trim($region);
+        $params[] = $trimmedRegion;
+        $params[] = $date;
+        $params[] = $date;
+        $params[] = $trimmedRegion;
+        $params[] = $trimmedRegion;
+    }
+
+    $sql .= " ORDER BY p.adi_soyadi ASC";
+
+    $stmt = $Model->db->prepare($sql);
+    $stmt->execute($params);
+    $results = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+    header('Content-Type: application/json');
+    echo json_encode($results);
+    exit;
+}

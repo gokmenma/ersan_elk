@@ -50,6 +50,13 @@ if (isset($_GET['force_desktop'])) {
 $raw_page = $_GET['p'] ?? 'home';
 $page     = preg_replace('/[^a-z0-9\-_]/', '', strtolower($raw_page));
 
+try {
+    if ($currentUserId > 0) {
+        $logModel = new \App\Model\SystemLogModel();
+        $logModel->logPageView($currentUserId, $page, 'Mobile');
+    }
+} catch (\Exception $e) {}
+
 use App\Model\MenuModel;
 $Menus = new MenuModel();
 $menu_data = $Menus->getHierarchicalMenuForRole($currentUserId);

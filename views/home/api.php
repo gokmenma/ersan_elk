@@ -151,7 +151,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         } elseif ($widgetId == 'widget-gorevler' || $widgetId == 'widget-yaklasan-gorevler') {
                             $data['yaklasan_gorevler'] = $gorevModel->getYaklasanGorevler($firmaId, $userId, 10);
                         } elseif ($widgetId == 'widget-bildirimler') {
-                            $data['recent_logs'] = $systemLogModel->getRecentLogs(20, 0);
+                            $data['recent_logs'] = $systemLogModel->getRecentLogs(10, 0);
                             $data['personelLogs'] = $systemLogModel->getPersonelLoginLogs(10);
                             $data['kullaniciLogs'] = $systemLogModel->getUserLoginLogs(10);
                         } elseif ($widgetId == 'widget-gec-kalanlar') {
