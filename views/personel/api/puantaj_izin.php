@@ -56,7 +56,7 @@ try {
                    COALESCE(gg_days.toplam_gun, 0) as gg_toplam_gun
             FROM personel p
             LEFT JOIN (
-                SELECT pgg.personel_id
+                SELECT DISTINCT pgg.personel_id
                 FROM personel_gorev_gecmisi pgg
                 WHERE pgg.baslangic_tarihi <= ?
                   AND (pgg.bitis_tarihi IS NULL OR pgg.bitis_tarihi >= ?)

@@ -326,6 +326,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception('Hesaplama için dönem ve personel seçimi zorunludur.');
                 }
 
+                $donem = $BordroDonem->getDonemById($donem_id);
+                if ($donem) {
+                    $stmt = $BordroPersonel->getDb()->prepare("SELECT id FROM bordro_personel WHERE donem_id = ? AND silinme_tarihi IS NULL");
+                    $stmt->execute([$donem_id]);
+                    $existingBpIdsBefore = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+                    $BordroPersonel->addPersonellerToDonem(
+                        $donem_id,
+                        $donem->baslangic_tarihi,
+                        $donem->bitis_tarihi
+                    );
+
+                    $stmt = $BordroPersonel->getDb()->prepare("SELECT id FROM bordro_personel WHERE donem_id = ? AND silinme_tarihi IS NULL");
+                    $stmt->execute([$donem_id]);
+                    $existingBpIdsAfter = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+                    $newlyAddedBpIds = array_diff($existingBpIdsAfter, $existingBpIdsBefore);
+
+                    if (!empty($newlyAddedBpIds)) {
+                        $personel_ids = array_unique(array_merge(array_map('intval', $personel_ids), $newlyAddedBpIds));
+                    }
+                }
+
                 $hesaplananSayisi = 0;
                 $hesaplananIds = []; // Başarıyla hesaplanan bp_id'leri topla
                 $toplamOnayBekleyen = 0;

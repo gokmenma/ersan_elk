@@ -515,14 +515,19 @@ class BordroPersonelModel extends Model
     public function addPersonellerToDonem($donem_id, $baslangic_tarihi, $bitis_tarihi)
     {
         // Önce mevcut dönemdeki tüm personelleri al (soft-deleted dahil)
-        $sqlExisting = $this->db->prepare("SELECT personel_id, silinme_tarihi FROM {$this->table} WHERE donem_id = ?");
+        $sqlExisting = $this->db->prepare("SELECT personel_id, silinme_tarihi, aciklama FROM {$this->table} WHERE donem_id = ?");
         $sqlExisting->execute([$donem_id]);
         $existingData = $sqlExisting->fetchAll(PDO::FETCH_ASSOC);
         $existingIds = array_column($existingData, 'personel_id');
         $softDeletedIds = [];
+        $explicitlyRemovedIds = [];
         foreach ($existingData as $row) {
             if ($row['silinme_tarihi'] !== null) {
-                $softDeletedIds[] = $row['personel_id'];
+                if (trim($row['aciklama'] ?? '') === 'cikarildi') {
+                    $explicitlyRemovedIds[] = $row['personel_id'];
+                } else {
+                    $softDeletedIds[] = $row['personel_id'];
+                }
             }
         }
 
@@ -577,6 +582,11 @@ class BordroPersonelModel extends Model
         $eklenenSayisi = 0;
 
         foreach ($uygunPersoneller as $personel) {
+            // Eğer personel dönemden çıkarılmış ise tekrar ekleme
+            if (in_array($personel->id, $explicitlyRemovedIds)) {
+                continue;
+            }
+
             // Zaten eklenmişse
             if (in_array($personel->id, $existingIds)) {
                 // Eğer soft-deleted ise geri getir (ancak sadece hala uygunsa)
@@ -603,11 +613,12 @@ class BordroPersonelModel extends Model
     }
 
     /**
-     * Personeli dönemden çıkarır (soft delete)
+     * Personeli dönemden çıkarır (soft delete ve açıklama 'cikarildi' olarak işaretlenir)
      */
     public function removeFromDonem($id)
     {
-        return $this->softDelete($id);
+        $sql = $this->db->prepare("UPDATE {$this->table} SET silinme_tarihi = NOW(), aciklama = 'cikarildi' WHERE id = ?");
+        return $sql->execute([$id]);
     }
 
     /**

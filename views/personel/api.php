@@ -1255,12 +1255,47 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 throw new Exception("Personelin aktif bir görev geçmişi bulunmaktadır. Yeni bir görev kaydı eklemeden önce mevcut görev kaydına bitiş tarihi ekleyerek sonlandırmalısınız.");
             }
 
+            $gapAddedMessage = "";
+            $stmt = $Personel->db->prepare("SELECT * FROM personel_gorev_gecmisi WHERE personel_id = ? AND bitis_tarihi IS NOT NULL AND bitis_tarihi < ? ORDER BY bitis_tarihi DESC LIMIT 1");
+            $stmt->execute([$data['personel_id'], $saveData['baslangic_tarihi']]);
+            $latestRecord = $stmt->fetch(\PDO::FETCH_OBJ);
+
+            if ($latestRecord && !empty($latestRecord->bitis_tarihi)) {
+                $startGap = date('Y-m-d', strtotime($latestRecord->bitis_tarihi . ' +1 day'));
+                $endGap = date('Y-m-d', strtotime($saveData['baslangic_tarihi'] . ' -1 day'));
+                if ($startGap <= $endGap) {
+                    $stmtUZ = $Personel->db->prepare("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'izin_turu' AND kisa_kod = 'UZ' AND silinme_tarihi IS NULL LIMIT 1");
+                    $stmtUZ->execute();
+                    $uzLeave = $stmtUZ->fetch(\PDO::FETCH_OBJ);
+                    if (!$uzLeave) {
+                        $stmtUZ = $Personel->db->prepare("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'izin_turu' AND tur_adi LIKE '%Çalışılmayan Gün%' AND silinme_tarihi IS NULL LIMIT 1");
+                        $stmtUZ->execute();
+                        $uzLeave = $stmtUZ->fetch(\PDO::FETCH_OBJ);
+                    }
+                    if ($uzLeave) {
+                        $toplamGun = (int) round((strtotime($endGap) - strtotime($startGap)) / 86400) + 1;
+                        $stmtInsertIzin = $Personel->db->prepare("
+                            INSERT INTO personel_izinleri (personel_id, izin_tipi_id, baslangic_tarihi, bitis_tarihi, toplam_gun, onay_durumu, talep_tarihi, olusturma_tarihi)
+                            VALUES (?, ?, ?, ?, ?, 'Onaylandı', NOW(), NOW())
+                        ");
+                        $stmtInsertIzin->execute([
+                            $data['personel_id'],
+                            $uzLeave->id,
+                            $startGap,
+                            $endGap,
+                            $toplamGun
+                        ]);
+                        $gapAddedMessage = " Önceki ücret türü bitiş tarihi ile yeni ücret türü başlangıç tarihi arasında boşluk olan tarihler için (" . Date::dmY($startGap) . " - " . Date::dmY($endGap) . ") '{$uzLeave->tur_adi}' izni eklenmiştir.";
+                    }
+                }
+            }
+
             $Personel->addGorevGecmisi($saveData);
 
             // Personel tablosunu aktif kayıtla senkronize et
             $Personel->syncPersonelFromGorevGecmisi($data['personel_id']);
 
-            echo json_encode(['status' => 'success', 'message' => 'Görev geçmişi başarıyla eklendi.']);
+            echo json_encode(['status' => 'success', 'message' => 'Görev geçmişi başarıyla eklendi.' . $gapAddedMessage]);
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
@@ -1319,6 +1354,47 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
             }
 
+            $gapAddedMessage = "";
+            if ($personel_id > 0) {
+                $stmt = $Personel->db->prepare("SELECT * FROM personel_gorev_gecmisi WHERE personel_id = ? AND bitis_tarihi IS NOT NULL AND bitis_tarihi < ? AND id != ? ORDER BY bitis_tarihi DESC LIMIT 1");
+                $stmt->execute([$personel_id, $saveData['baslangic_tarihi'], $saveData['id']]);
+                $latestRecord = $stmt->fetch(\PDO::FETCH_OBJ);
+
+                if ($latestRecord && !empty($latestRecord->bitis_tarihi)) {
+                    $startGap = date('Y-m-d', strtotime($latestRecord->bitis_tarihi . ' +1 day'));
+                    $endGap = date('Y-m-d', strtotime($saveData['baslangic_tarihi'] . ' -1 day'));
+                    if ($startGap <= $endGap) {
+                        $stmtCheckIzin = $Personel->db->prepare("SELECT COUNT(*) FROM personel_izinleri WHERE personel_id = ? AND baslangic_tarihi = ? AND bitis_tarihi = ? AND silinme_tarihi IS NULL");
+                        $stmtCheckIzin->execute([$personel_id, $startGap, $endGap]);
+                        if ($stmtCheckIzin->fetchColumn() == 0) {
+                            $stmtUZ = $Personel->db->prepare("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'izin_turu' AND kisa_kod = 'UZ' AND silinme_tarihi IS NULL LIMIT 1");
+                            $stmtUZ->execute();
+                            $uzLeave = $stmtUZ->fetch(\PDO::FETCH_OBJ);
+                            if (!$uzLeave) {
+                                $stmtUZ = $Personel->db->prepare("SELECT id, tur_adi FROM tanimlamalar WHERE grup = 'izin_turu' AND tur_adi LIKE '%Çalışılmayan Gün%' AND silinme_tarihi IS NULL LIMIT 1");
+                                $stmtUZ->execute();
+                                $uzLeave = $stmtUZ->fetch(\PDO::FETCH_OBJ);
+                            }
+                            if ($uzLeave) {
+                                $toplamGun = (int) round((strtotime($endGap) - strtotime($startGap)) / 86400) + 1;
+                                $stmtInsertIzin = $Personel->db->prepare("
+                                    INSERT INTO personel_izinleri (personel_id, izin_tipi_id, baslangic_tarihi, bitis_tarihi, toplam_gun, onay_durumu, talep_tarihi, olusturma_tarihi)
+                                    VALUES (?, ?, ?, ?, ?, 'Onaylandı', NOW(), NOW())
+                                ");
+                                $stmtInsertIzin->execute([
+                                    $personel_id,
+                                    $uzLeave->id,
+                                    $startGap,
+                                    $endGap,
+                                    $toplamGun
+                                ]);
+                                $gapAddedMessage = " Önceki ücret türü bitiş tarihi ile yeni ücret türü başlangıç tarihi arasında boşluk olan tarihler için (" . Date::dmY($startGap) . " - " . Date::dmY($endGap) . ") '{$uzLeave->tur_adi}' izni eklenmiştir.";
+                            }
+                        }
+                    }
+                }
+            }
+
             $Personel->updateGorevGecmisi($saveData);
 
             // Personel tablosunu aktif kayıtla senkronize et
@@ -1327,7 +1403,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $Personel->syncPersonelFromGorevGecmisi($personel_id);
             }
 
-            echo json_encode(['status' => 'success', 'message' => 'Görev geçmişi başarıyla güncellendi.']);
+            echo json_encode(['status' => 'success', 'message' => 'Görev geçmişi başarıyla güncellendi.' . $gapAddedMessage]);
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
