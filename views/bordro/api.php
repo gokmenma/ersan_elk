@@ -1362,10 +1362,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception('Geçersiz personel.');
                 }
 
-                // Manuel dağıtım bayraklarını kaldır
+                // Manuel dağıtım bayraklarını kaldır ve değerleri sıfırla
                 $sql = $BordroPersonel->getDb()->prepare("
                     UPDATE bordro_personel 
-                    SET dagitim_manuel = 0, sodexo_manuel = 0
+                    SET dagitim_manuel = 0, sodexo_manuel = 0, banka_odemesi = 0, sodexo_odemesi = 0, diger_odeme = 0, elden_odeme = 0
                     WHERE id = ?
                 ");
                 $sql->execute([$id]);

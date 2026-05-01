@@ -390,15 +390,16 @@ class BordroPersonelModel extends Model
             $digerOdeme = floatval($p->diger_odeme ?? 0);
             $asgariUcretYatacak = ($calismaGunu >= 30) ? $asgariUcretNet : (($asgariUcretNet / 30) * $calismaGunu);
             if (($p->sgk_yapilan_firma ?? "") === "İŞKUR") $asgariUcretYatacak = 0;
-            $bankaBaz = ($isPrimUsulu) ? max($asgariUcretYatacak, $yontemliBankaEki) : ($asgariUcretYatacak + $yontemliBankaEki);
+            if ($isNet || $isInclusive) {
+                $bankaBaz = max(0, $netAlacagi - $sodexoOdemesi);
+            } elseif ($isPrimUsulu) {
+                $bankaBaz = max($asgariUcretYatacak, $yontemliBankaEki);
+            } else {
+                $bankaBaz = $asgariUcretYatacak + $yontemliBankaEki;
+            }
             $bankaMax = max(0, $netAlacagi - $sodexoOdemesi);
             $bankaBaz = min($bankaBaz, $bankaMax);
-            if ($isInclusive) {
-                 // Banka = Asgari Hakediş + Yuvarlanmış Yemek (ceil)
-                 $bankaOdemesi = max(0, $asgariUcretYatacak + $includedAllowanceDeduction - $icraKesintisi);
-            } else {
-                 $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
-            }
+            $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
         }
 
         $eldenOdeme = max(0, $netMaasGercek - $bankaOdemesi - $sodexoOdemesi - $digerOdeme);
@@ -669,6 +670,7 @@ class BordroPersonelModel extends Model
             kumulatif_matrah = :kumulatif_matrah,
             sodexo_odemesi = :sodexo_odemesi,
             banka_odemesi = :banka_odemesi,
+            diger_odeme = :diger_odeme,
             elden_odeme = :elden_odeme,
             hesaplama_detay = :hesaplama_detay,
             hesaplama_tarihi = NOW(),
@@ -701,6 +703,8 @@ class BordroPersonelModel extends Model
         $sql->bindParam(':sodexo_odemesi', $sodexoOdemesi);
         $bankaOdemesi = $hesaplamaData['banka_odemesi'] ?? 0;
         $sql->bindParam(':banka_odemesi', $bankaOdemesi);
+        $digerOdeme = $hesaplamaData['diger_odeme'] ?? 0;
+        $sql->bindParam(':diger_odeme', $digerOdeme);
         $eldenOdeme = $hesaplamaData['elden_odeme'] ?? 0;
         $sql->bindParam(':elden_odeme', $eldenOdeme);
         $hesaplamaDetay = $hesaplamaData['hesaplama_detay'] ?? null;
@@ -3576,7 +3580,7 @@ class BordroPersonelModel extends Model
         if (isset($kayit->dagitim_manuel) && $kayit->dagitim_manuel == 1) {
             $sodexoOdemesi = floatval($kayit->sodexo_odemesi ?? 0);
             $bankaOdemesi = floatval($kayit->banka_odemesi ?? 0);
-            $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - floatval($kayit->diger_odeme ?? 0));
+            $eldenOdeme = floatval($kayit->elden_odeme ?? 0);
         } else {
             if (isset($kayit->sodexo_manuel) && $kayit->sodexo_manuel == 1) {
                 $sodexoOdemesi = floatval($kayit->sodexo_odemesi ?? 0);
@@ -3592,14 +3596,12 @@ class BordroPersonelModel extends Model
                 if (($kayit->sgk_yapilan_firma ?? '') === 'İŞKUR') $bankaOdemesi = 0;
                 $eldenOdeme = max(0, $toplamPrim - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
             } elseif ($isNetMaas) {
-                $bankaYatacakMinimum = ($fiiliCalismaGunu >= 30) ? $asgariUcretNet : (($asgariUcretNet / 30) * $fiiliCalismaGunu);
-                $bankaBaz = min($bankaYatacakMinimum + ($yontemliOdemeler['banka'] ?? 0), max(0, $netMaas - $sodexoOdemesi));
+                $bankaBaz = max(0, $netMaas - $sodexoOdemesi);
                 $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
                 if (($kayit->sgk_yapilan_firma ?? '') === 'İŞKUR') $bankaOdemesi = 0;
                 $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
             } else {
-                $bankaYatacakMinimum = ($fiiliCalismaGunu >= 30) ? $asgariUcretNet : (($asgariUcretNet / 30) * $fiiliCalismaGunu);
-                $bankaBaz = min($bankaYatacakMinimum + ($yontemliOdemeler['banka'] ?? 0), max(0, $netMaas - $sodexoOdemesi));
+                $bankaBaz = max(0, $netMaas - $sodexoOdemesi);
                 $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
                 if (($kayit->sgk_yapilan_firma ?? '') === 'İŞKUR') $bankaOdemesi = 0;
                 $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
@@ -3632,13 +3634,7 @@ class BordroPersonelModel extends Model
             ]
         ];
 
-        if ($this->hasMaasaDahilSosyalYardim($kayit)) {
-            $asgariNetNominal = $genelAyarlarMap['asgari_ucret_net'] ?? 28075.50;
-            $asgariHakedis = round(($asgariNetNominal / 30) * $maasHesapGunu, 2);
-            $bankaOdemesi = max(0, $asgariHakedis + $toplamDahilYardim - $icraKesintisi);
-            // Elden ödeme: Net alacak ile banka arasındaki fark
-            $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - floatval($kayit->diger_odeme ?? 0));
-        }
+
 
         return $this->saveBordroHesaplama($bordro_personel_id, [
             'brut_maas' => round($brutMaas, 2), 'sgk_isci' => round($sgkIsci, 2), 'issizlik_isci' => round($issizlikIsci, 2),
