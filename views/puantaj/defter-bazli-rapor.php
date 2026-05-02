@@ -221,7 +221,7 @@ padding-bottom:  10px !important;
 
                                             <!-- SAĞ: Filtre Özeti, Ayarlar ve Accordion Tetikleyici -->
                                             <div class="d-flex align-items-center gap-2 me-2">
-                                                <div id="filterSummary" class="d-none d-md-flex gap-2">
+                                                <div id="filterSummary" class="d-none d-md-flex gap-2 flex-nowrap align-items-center">
                                                     <!-- ARALIK: ... JS ile dolacak -->
                                                 </div>
 
@@ -498,7 +498,7 @@ padding-bottom:  10px !important;
                     <div class="card border-0 shadow-sm">
                         <div class="card-body p-0">
                             <div class="table-responsive" id="reportTableWrapper"
-                                style="max-height: calc(100vh - 550px); overflow: auto;">
+                                style="max-height: calc(100vh - 410px); overflow: auto;">
                                 <!-- AJAX ile doldurulacak -->
                             </div>
                         </div>
@@ -689,7 +689,7 @@ padding-bottom:  10px !important;
                     <div class="card border-0 shadow-sm">
                         <div class="card-body p-0">
                             <div class="table-responsive" id="okumaGunTableWrapper"
-                                style="max-height: calc(100vh - 550px); overflow: auto;">
+                                style="max-height: calc(100vh - 410px); overflow: auto;">
                             </div>
                         </div>
                     </div>
@@ -789,7 +789,7 @@ padding-bottom:  10px !important;
                     <div class="card border-0 shadow-sm">
                         <div class="card-body p-0">
                             <div class="table-responsive" id="defterOzetTableWrapper"
-                                style="max-height: calc(100vh - 450px); overflow: auto;">
+                                style="max-height: calc(100vh - 410px); overflow: auto;">
                             </div>
                         </div>
                     </div>
@@ -915,6 +915,8 @@ padding-bottom:  10px !important;
         font-size: 11px;
         font-weight: 500;
         overflow: hidden;
+        white-space: nowrap;
+        flex-shrink: 0;
         border: 1px solid var(--bs-primary);
         box-shadow: 0 2px 4px rgba(var(--bs-primary-rgb), 0.15);
     }
@@ -1053,10 +1055,16 @@ padding-bottom:  10px !important;
         opacity: 1;
     }
 
+    .footer {
+        display: none !important;
+    }
+
     /* ======= COMPARISON TABLE ======= */
-    #reportTableWrapper {
+    #reportTableWrapper,
+    #okumaGunTableWrapper {
         border-radius: 6px;
-        overflow: hidden;
+        overflow: auto;
+        max-height: calc(100vh - 410px);
         border: 1px solid var(--bs-border-color, #eee);
     }
 
@@ -1574,6 +1582,11 @@ padding-bottom:  10px !important;
         box-shadow: inset -1px 0 0 0 #64748b !important;
     }
 
+    .type-end {
+        border-right: 4px solid #64748b !important;
+        box-shadow: inset -1px 0 0 0 #64748b !important;
+    }
+
     .period-start, .ogr-period-start, .do-period-start {
         border-left: 5px solid #64748b !important;
     }
@@ -1694,7 +1707,7 @@ padding-bottom:  10px !important;
     .fullscreen-mode .table-responsive,
     .fullscreen-mode #reportTableWrapper,
     .fullscreen-mode #okumaGunTableWrapper {
-        max-height: none !important;
+        max-height: none !important;1
         flex: 1;
         overflow: auto !important;
     }
@@ -2903,19 +2916,19 @@ padding-bottom:  10px !important;
                 html += `<th class="fix-col-5 sortable-header" data-sort-col="abone_sayisi">ABONE SAYISI${sortIcon('abone_sayisi')}</th>`;
 
                 if (_visibleColumns.abone)
-                    html += `<th colspan="${effectiveDonemler.length}" class="period-header month-frame-header draggable-header" data-type="abone" style="background: #eff6ff; color: #1e40af;">
+                    html += `<th colspan="${effectiveDonemler.length}" class="period-header month-frame-header draggable-header type-end" data-type="abone" style="background: #eff6ff; color: #1e40af;">
                         <i class="bx bx-grid-vertical drag-indicator"></i>ABONE SAYILARI
                     </th>`;
                 if (_visibleColumns.okunan)
-                    html += `<th colspan="${effectiveDonemler.length}" class="period-header month-frame-header draggable-header" data-type="okunan" style="background: #ecfdf5; color: #065f46;">
+                    html += `<th colspan="${effectiveDonemler.length}" class="period-header month-frame-header draggable-header type-end" data-type="okunan" style="background: #ecfdf5; color: #065f46;">
                         <i class="bx bx-grid-vertical drag-indicator"></i>OKUNAN SAYILARI
                     </th>`;
                 if (_visibleColumns.degisim)
-                    html += `<th colspan="${effectiveDonemler.length}" class="period-header month-frame-header draggable-header" data-type="degisim" style="background: #f0f9ff; color: #0369a1;">
+                    html += `<th colspan="${effectiveDonemler.length}" class="period-header month-frame-header draggable-header type-end" data-type="degisim" style="background: #f0f9ff; color: #0369a1;">
                         <i class="bx bx-grid-vertical drag-indicator"></i>AYLIK DEĞİŞİM %
                     </th>`;
                 if (_visibleColumns.oran)
-                    html += `<th colspan="${effectiveDonemler.length}" class="period-header month-frame-header draggable-header" data-type="oran" style="background: #fffbeb; color: #92400e;">
+                    html += `<th colspan="${effectiveDonemler.length}" class="period-header month-frame-header draggable-header type-end" data-type="oran" style="background: #fffbeb; color: #92400e;">
                         <i class="bx bx-grid-vertical drag-indicator"></i>OKUMA ORANLARI %
                     </th>`;
                 html += '</tr>';
@@ -2934,7 +2947,8 @@ padding-bottom:  10px !important;
                         const isAlt = idx % 2 === 1;
                         const formatted = donem.substring(0, 4) + '/' + donem.substring(4);
                         const colKey = donem + '_' + type;
-                        html += `<th class="sub-header sortable-header ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${colKey}">${filterBtn(colKey)} ${formatted}${sortIcon(colKey)}</th>`;
+                        const isEnd = idx === effectiveDonemler.length - 1;
+                        html += `<th class="sub-header sortable-header ${isAlt ? 'do-month-alt' : ''} ${isEnd ? 'type-end' : ''}" data-sort-col="${colKey}">${filterBtn(colKey)} ${formatted}${sortIcon(colKey)}</th>`;
                     });
                 });
                 html += '</tr>';
@@ -3058,11 +3072,12 @@ padding-bottom:  10px !important;
                     _typeOrder.forEach(type => {
                         if (!_visibleColumns[type]) return;
                         effectiveDonemler.forEach(function (donem, idx) {
+                            const isEnd = idx === effectiveDonemler.length - 1;
                             const rTotals = regionTotals.donemler[donem];
                             if (type === 'abone')
-                                html += `<td class="ogr-region-header text-end" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.abone.toLocaleString('tr-TR')}</td>`;
+                                html += `<td class="ogr-region-header text-end ${isEnd ? 'type-end' : ''}" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.abone.toLocaleString('tr-TR')}</td>`;
                             else if (type === 'okunan')
-                                html += `<td class="ogr-region-header text-end" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.okunan.toLocaleString('tr-TR')}</td>`;
+                                html += `<td class="ogr-region-header text-end ${isEnd ? 'type-end' : ''}" style="background: ${regionColor.header}; color: ${regionColor.text}; font-weight: 800;">${rTotals.okunan.toLocaleString('tr-TR')}</td>`;
                             else if (type === 'degisim') {
                                 const prevDonem = effectiveDonemler[idx - 1];
                                 const pTotals = prevDonem ? regionTotals.donemler[prevDonem] : null;
@@ -3072,7 +3087,7 @@ padding-bottom:  10px !important;
                                 }
                                 const degStr = prevDonem ? (degVal > 0 ? '+' : '') + degVal.toFixed(1) + '%' : '-';
                                 const degClass = degVal > 0 ? 'text-success' : (degVal < 0 ? 'text-danger' : '');
-                                html += `<td class="ogr-region-header text-end ${degClass}" style="background: ${regionColor.header}; font-weight: 800;">${degStr}</td>`;
+                                html += `<td class="ogr-region-header text-end ${degClass} ${isEnd ? 'type-end' : ''}" style="background: ${regionColor.header}; font-weight: 800;">${degStr}</td>`;
                             }
                             else if (type === 'oran') {
                                 const rOranRaw = rTotals.abone > 0 ? (rTotals.okunan / rTotals.abone) * 100 : 0;
@@ -3080,7 +3095,7 @@ padding-bottom:  10px !important;
                                 let rOranClass = 'text-danger';
                                 if (rOranRaw >= 70) rOranClass = 'text-success';
                                 else if (rOranRaw >= 50) rOranClass = 'text-warning';
-                                html += `<td class="ogr-region-header text-end ${rOranClass}" style="background: ${regionColor.header}; font-weight: 800;">${rOran}%</td>`;
+                                html += `<td class="ogr-region-header text-end ${rOranClass} ${isEnd ? 'type-end' : ''}" style="background: ${regionColor.header}; font-weight: 800;">${rOran}%</td>`;
                             }
                         });
                     });
@@ -3090,11 +3105,11 @@ padding-bottom:  10px !important;
                 rows.forEach(function (row) {
                     rowNum++;
                     html += `<tr style="background-color: ${regionColor.bg};">`;
-                    html += `<td class="fix-col-1 text-start fw-medium" style="background-color: ${regionColor.bg};">${row.ilce_tipi}</td>`;
-                    html += `<td class="fix-col-2 text-start fw-medium" style="background-color: ${regionColor.bg};">${row.bolge}</td>`;
-                    html += `<td class="fix-col-3 text-start fw-medium" style="background-color: ${regionColor.bg};">${row.defter}</td>`;
-                    html += `<td class="fix-col-4 text-start" style="background-color: ${regionColor.bg};">${row.mahalle || ''}</td>`;
-                    html += `<td class="fix-col-5" style="background-color: ${regionColor.bg};">${row.abone_sayisi ? row.abone_sayisi.toLocaleString('tr-TR') : ''}</td>`;
+                    html += `<td class="fix-col-1 text-start fw-medium" style="background: linear-gradient(${regionColor.bg}, ${regionColor.bg}), #ffffff;">${row.ilce_tipi}</td>`;
+                    html += `<td class="fix-col-2 text-start fw-medium" style="background: linear-gradient(${regionColor.bg}, ${regionColor.bg}), #ffffff;">${row.bolge}</td>`;
+                    html += `<td class="fix-col-3 text-start fw-medium" style="background: linear-gradient(${regionColor.bg}, ${regionColor.bg}), #ffffff;">${row.defter}</td>`;
+                    html += `<td class="fix-col-4 text-start" style="background: linear-gradient(${regionColor.bg}, ${regionColor.bg}), #ffffff;">${row.mahalle || ''}</td>`;
+                    html += `<td class="fix-col-5" style="background: linear-gradient(${regionColor.bg}, ${regionColor.bg}), #ffffff;">${row.abone_sayisi ? row.abone_sayisi.toLocaleString('tr-TR') : ''}</td>`;
 
                     if (_viewMode === 'period') {
                         effectiveDonemler.forEach(function (donem, idx) {
@@ -3129,13 +3144,15 @@ padding-bottom:  10px !important;
                         _typeOrder.forEach(type => {
                             if (!_visibleColumns[type]) return;
                             effectiveDonemler.forEach(function (donem, idx) {
+                                const isEnd = idx === effectiveDonemler.length - 1;
+                                const endClass = isEnd ? 'type-end' : '';
                                 const donemData = row.donemler[donem] || { abone: 0, okunan: 0 };
                                 if (type === 'abone') {
                                     colTotals[donem].abone += parseInt(donemData.abone) || 0;
-                                    html += `<td>${donemData.abone > 0 ? donemData.abone.toLocaleString('tr-TR') : ''}</td>`;
+                                    html += `<td class="${endClass}">${donemData.abone > 0 ? donemData.abone.toLocaleString('tr-TR') : ''}</td>`;
                                 } else if (type === 'okunan') {
                                     colTotals[donem].okunan += parseInt(donemData.okunan) || 0;
-                                    html += `<td>${donemData.okunan > 0 ? donemData.okunan.toLocaleString('tr-TR') : ''}</td>`;
+                                    html += `<td class="${endClass}">${donemData.okunan > 0 ? donemData.okunan.toLocaleString('tr-TR') : ''}</td>`;
                                 } else if (type === 'degisim') {
                                     const prevDonem = effectiveDonemler[idx - 1];
                                     const prevData = prevDonem ? row.donemler[prevDonem] : null;
@@ -3147,11 +3164,11 @@ padding-bottom:  10px !important;
                                     }
                                     const degStr = prevDonem ? (degVal > 0 ? '+' : '') + degVal.toFixed(1) + '%' : '-';
                                     const degClass = degVal > 0 ? 'text-success fw-bold' : (degVal < 0 ? 'text-danger fw-bold' : '');
-                                    html += `<td class="${degClass}">${degStr}</td>`;
+                                    html += `<td class="${degClass} ${endClass}">${degStr}</td>`;
                                 } else if (type === 'oran') {
                                     const oran = donemData.abone > 0 ? ((donemData.okunan / donemData.abone) * 100).toFixed(1) : 0;
                                     let oranClass = oran >= 70 ? 'oran-high' : (oran >= 50 ? 'oran-medium' : 'oran-low');
-                                    html += `<td class="${oranClass}">${donemData.abone > 0 ? oran + '%' : ''}</td>`;
+                                    html += `<td class="${oranClass} ${endClass}">${donemData.abone > 0 ? oran + '%' : ''}</td>`;
                                 }
                             });
                         });
@@ -3218,18 +3235,20 @@ padding-bottom:  10px !important;
                 _typeOrder.forEach(type => {
                     if (!_visibleColumns[type]) return;
                     effectiveDonemler.forEach(function (donem, idx) {
+                        const isEnd = idx === effectiveDonemler.length - 1;
+                        const endClass = isEnd ? 'type-end' : '';
                         const totals = colTotals[donem];
                         const gStats = globalDefterStats[donem];
                         const prevDonem = effectiveDonemler[idx - 1];
                         const prevTotals = prevDonem ? colTotals[prevDonem] : null;
 
                         if (type === 'abone') {
-                            html += `<th class="text-end">
+                            html += `<th class="text-end ${endClass}">
                                 <div style="font-size: 9px; color: #64748b; font-weight: normal; margin-bottom: 2px;">Def: ${gStats.total}</div>
                                 ${totals.abone.toLocaleString('tr-TR')}
                             </th>`;
                         } else if (type === 'okunan') {
-                            html += `<th class="text-end">
+                            html += `<th class="text-end ${endClass}">
                                 <div style="font-size: 9px; color: #10b981; font-weight: normal; margin-bottom: 2px;">Okn: ${gStats.read}</div>
                                 ${totals.okunan.toLocaleString('tr-TR')}
                             </th>`;
@@ -3240,7 +3259,7 @@ padding-bottom:  10px !important;
                             }
                             const degStr = prevDonem ? (degVal > 0 ? '+' : '') + degVal.toFixed(1) + '%' : '-';
                             const degClass = degVal > 0 ? 'text-success' : (degVal < 0 ? 'text-danger' : '');
-                            html += `<th class="text-center ${degClass}">
+                            html += `<th class="text-center ${degClass} ${endClass}">
                                 <div style="font-size: 9px; color: #64748b; font-weight: normal; margin-bottom: 2px;">Değişim</div>
                                 ${degStr}
                             </th>`;
@@ -3254,7 +3273,7 @@ padding-bottom:  10px !important;
                                 warningIcon = `<i class="bx bx-info-circle text-warning ms-1" title="Bazı defterlerde abone sayısı 0 veya eksik tanımlandığı için oran %100'ü geçmiştir."></i>`;
                             }
 
-                            html += `<th class="${totalOranClass} text-center">
+                            html += `<th class="${totalOranClass} text-center ${endClass}">
                                 <div style="font-size: 9px; color: #64748b; font-weight: normal; margin-bottom: 2px;">Başarı</div>
                                 ${totalOran}% ${warningIcon}
                             </th>`;
@@ -4058,11 +4077,11 @@ padding-bottom:  10px !important;
                 rows.forEach(function (row) {
                     rowNum++;
                     html += `<tr style="background-color: ${regionColor.bg};">`;
-                    html += `<td class="fix-col-1 text-start" style="background-color: ${regionColor.bg};">${row.ilce_tipi || '-'}</td>`;
-                    html += `<td class="fix-col-2 text-start fw-medium" style="background-color: ${regionColor.bg};">${row.bolge || '-'}</td>`;
-                    html += `<td class="fix-col-3 fw-bold" style="background-color: ${regionColor.bg};">${row.defter}</td>`;
-                    html += `<td class="fix-col-4 text-start" style="background-color: ${regionColor.bg};">${row.mahalle || '-'}</td>`;
-                    html += `<td class="fix-col-5" style="background-color: ${regionColor.bg};">${row.abone_sayisi ? row.abone_sayisi.toLocaleString('tr-TR') : '-'}</td>`;
+                    html += `<td class="fix-col-1 text-start" style="background: linear-gradient(${regionColor.bg}, ${regionColor.bg}), #ffffff;">${row.ilce_tipi || '-'}</td>`;
+                    html += `<td class="fix-col-2 text-start fw-medium" style="background: linear-gradient(${regionColor.bg}, ${regionColor.bg}), #ffffff;">${row.bolge || '-'}</td>`;
+                    html += `<td class="fix-col-3 fw-bold" style="background: linear-gradient(${regionColor.bg}, ${regionColor.bg}), #ffffff;">${row.defter}</td>`;
+                    html += `<td class="fix-col-4 text-start" style="background: linear-gradient(${regionColor.bg}, ${regionColor.bg}), #ffffff;">${row.mahalle || '-'}</td>`;
+                    html += `<td class="fix-col-5" style="background: linear-gradient(${regionColor.bg}, ${regionColor.bg}), #ffffff;">${row.abone_sayisi ? row.abone_sayisi.toLocaleString('tr-TR') : '-'}</td>`;
 
                     effectiveDonemler.forEach(function (donem, idx) {
                         const isAlt = idx % 2 === 1;
@@ -4499,10 +4518,10 @@ padding-bottom:  10px !important;
                     regionIdx++;
 
                     html += '<tr class="do-bolge-row">';
-                    html += '<td rowspan="2" class="fix-col-bolge fw-semibold text-start" style="background: ' + regionColor.bg + '; vertical-align: middle; border-left: 4px solid ' + regionColor.text + '; border-right: none;">';
+                    html += '<td rowspan="2" class="fix-col-bolge fw-semibold text-start" style="background: linear-gradient(' + regionColor.bg + ', ' + regionColor.bg + '), #ffffff; vertical-align: middle; border-left: 4px solid ' + regionColor.text + '; border-right: none;">';
                     html += bName;
                     html += '</td>';
-                    html += '<td style="vertical-align: middle; background: ' + regionColor.bg + '; text-align: center; border-left: none;" title="Defter Verileri"><i class="bx bx-book-open text-muted fs-6"></i></td>';
+                    html += '<td style="vertical-align: middle; background: linear-gradient(' + regionColor.bg + ', ' + regionColor.bg + '), #ffffff; text-align: center; border-left: none;" title="Defter Verileri"><i class="bx bx-book-open text-muted fs-6"></i></td>';
 
                     effectiveDonemler.forEach(function (donem, idx) {
                         const isAlt = idx % 2 === 1;
