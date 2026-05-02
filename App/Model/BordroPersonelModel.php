@@ -158,13 +158,22 @@ class BordroPersonelModel extends Model
         $personelLimit = floatval($kayit->es_yardimi_tutari ?? 0);
         $paramLimit = 0;
 
-        if (!empty($kayit->es_yardimi_parametre_id)) {
-            if ($this->cachedParametreModel === null) {
-                $this->cachedParametreModel = new BordroParametreModel();
-            }
+        if ($this->cachedParametreModel === null) {
+            $this->cachedParametreModel = new BordroParametreModel();
+        }
 
+        if (!empty($kayit->es_yardimi_parametre_id)) {
             $paramEs = $this->cachedParametreModel->find($kayit->es_yardimi_parametre_id);
-            $paramLimit = floatval($paramEs->varsayilan_tutar ?? 0);
+            if ($paramEs) {
+                $paramLimit = floatval($paramEs->varsayilan_tutar ?? 0);
+            }
+        }
+
+        if ($paramLimit <= 0) {
+            $paramEs = $this->cachedParametreModel->getByKod('es_yardimi') ?: $this->cachedParametreModel->getByKod('aile');
+            if ($paramEs) {
+                $paramLimit = floatval($paramEs->varsayilan_tutar ?? 0);
+            }
         }
 
         return max($personelLimit, $paramLimit);
@@ -207,14 +216,15 @@ class BordroPersonelModel extends Model
 
         // USER REQ: Fark tutarı hesaplanırken diğer kesinti ve ek ödemeleri de dahil et (Excel mantığı)
         // Kalan Hakediş = Hedef Net Hakediş
-        $kalanHakedis = $sonuc['hedef_net_hakedis'];
+        $kalanHakedis = max(0, $sonuc['hedef_net_hakedis'] - $ekKesintiTutar);
         $sonuc['fark_tutari'] = max(0, round($kalanHakedis - $sonuc['asgari_hakedis'], 2));
 
         $kalanFark = $sonuc['fark_tutari'];
         $fiiliGun = max(0, $sonuc['fiili_gun']);
 
         if (intval($kayit->yemek_yardimi_dahil ?? 0) === 1 && $kalanFark > 0) {
-            $sonuc['yemek_gunluk_ham'] = $kalanFark / 26;
+            $calcFiiliGun = $fiiliGun > 0 ? $fiiliGun : 26;
+            $sonuc['yemek_gunluk_ham'] = $kalanFark / $calcFiiliGun;
             $gunlukYemek = ceil($sonuc['yemek_gunluk_ham']);
             $yemekLimit = 300;
 
@@ -223,7 +233,7 @@ class BordroPersonelModel extends Model
             }
 
             $sonuc['yemek_gunluk'] = $gunlukYemek;
-            $sonuc['yemek_toplam'] = round($gunlukYemek * 26, 2);
+            $sonuc['yemek_toplam'] = round($gunlukYemek * $calcFiiliGun, 2);
             $kalanFark = max(0, round($kalanFark - $sonuc['yemek_toplam'], 2));
         }
 
@@ -405,7 +415,9 @@ class BordroPersonelModel extends Model
                     : 0;
             }
 
-            $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi($p, $asgariUcretNet, $calismaGunu, $fiiliGunSayisi, 0, 0);
+            $sodexoLocal = floatval($p->sodexo_odemesi ?? 0) + $yontemliSodexoEki;
+            $totalDeductions = $toplamKesinti + $sodexoLocal + floatval($p->diger_odeme ?? 0);
+            $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi($p, $asgariUcretNet, $calismaGunu, $fiiliGunSayisi, $totalDeductions, $rawEkOdeme);
             $mealAllowanceDeduction = floatval($dahilDagilim['yemek_toplam'] ?? 0);
             $spouseAllowanceDeduction = floatval($dahilDagilim['es_toplam'] ?? 0);
             $includedAllowanceDeduction = floatval($dahilDagilim['toplam'] ?? 0);

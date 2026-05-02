@@ -3388,7 +3388,7 @@ if (Gate::allows("ana_sayfa")) {
                     const widgetVisibility = JSON.parse(localStorage.getItem('dashboard_widget_visibility') || '{}');
 
                     lazyWidgets.forEach(widget => {
-                        const isVisible = widgetVisibility[widget.id] !== false && $(widget).is(':visible');
+                        const isVisible = widgetVisibility[widget.id] !== false;
                         if (!isVisible) return; // Kapalı olan kartların verilerini getirmesin
 
                         const widthStr = $(widget).attr('class') || '';
