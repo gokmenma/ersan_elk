@@ -61,47 +61,69 @@ if (Gate::allows("ana_sayfa")) {
     $last_update_endeks = $last_update_isler = $last_update_sayac = null;
     $last_user_endeks = $last_user_isler = $last_user_sayac = null;
 
-    try {
-        $db = $personelModel->getDb();
-        $firmaId = $_SESSION['firma_id'] ?? 0;
+    $firmaId = $_SESSION['firma_id'] ?? 0;
+    $cache_key = "home_last_update_cache_" . $firmaId;
 
-        // Fetch last update users from logs
-        $getLastLogUser = function($actionTypes) use ($db, $firmaId) {
-            $placeholders = implode(',', array_fill(0, count($actionTypes), '?'));
-            $sql = "SELECT l.user_id, u.adi_soyadi, l.action_type
-                    FROM system_logs l
-                    LEFT JOIN users u ON l.user_id = u.id
-                    WHERE l.firma_id = ? 
-                      AND (l.action_type IN ($placeholders) OR l.action_type LIKE 'Cron%')
-                      AND l.created_at >= CURDATE()
-                    ORDER BY l.created_at DESC LIMIT 1";
-            $stmt = $db->prepare($sql);
-            $params = array_merge([$firmaId], $actionTypes);
-            $stmt->execute($params);
-            $log = $stmt->fetch(PDO::FETCH_OBJ);
-            if (!$log) return null;
-            if ($log->user_id == 0 || stripos($log->action_type, 'Cron') !== false) return 'Cron';
-            return $log->adi_soyadi ?: 'Sistem';
-        };
+    if (isset($_SESSION[$cache_key]) && $_SESSION[$cache_key]['expires'] > time()) {
+        $cached = $_SESSION[$cache_key];
+        $last_update_endeks = $cached['last_update_endeks'];
+        $last_update_isler = $cached['last_update_isler'];
+        $last_update_sayac = $cached['last_update_sayac'];
+        $last_user_endeks = $cached['last_user_endeks'];
+        $last_user_isler = $cached['last_user_isler'];
+        $last_user_sayac = $cached['last_user_sayac'];
+    } else {
+        try {
+            $db = $personelModel->getDb();
 
-        $last_user_isler = $measureDb('home.last_user_isler', fn() => $getLastLogUser(['Online Kesme/Açma Sorgulama', 'Online Puantaj Sorgulama']));
-        $last_user_endeks = $measureDb('home.last_user_endeks', fn() => $getLastLogUser(['Online Endeks Okuma Sorgulama', 'Online İcmal (Endeks Okuma) Sorgulama']));
-        $last_user_sayac = $measureDb('home.last_user_sayac', fn() => $getLastLogUser(['Online Sayaç Değişim Sorgulama']));
+            // Fetch last update users from logs
+            $getLastLogUser = function($actionTypes) use ($db, $firmaId) {
+                $placeholders = implode(',', array_fill(0, count($actionTypes), '?'));
+                $sql = "SELECT l.user_id, u.adi_soyadi, l.action_type
+                        FROM system_logs l
+                        LEFT JOIN users u ON l.user_id = u.id
+                        WHERE l.firma_id = ? 
+                          AND (l.action_type IN ($placeholders) OR l.action_type LIKE 'Cron%')
+                          AND l.created_at >= CURDATE()
+                        ORDER BY l.created_at DESC LIMIT 1";
+                $stmt = $db->prepare($sql);
+                $params = array_merge([$firmaId], $actionTypes);
+                $stmt->execute($params);
+                $log = $stmt->fetch(PDO::FETCH_OBJ);
+                if (!$log) return null;
+                if ($log->user_id == 0 || stripos($log->action_type, 'Cron') !== false) return 'Cron';
+                return $log->adi_soyadi ?: 'Sistem';
+            };
 
-        $updates = $measureDb('home.stmtUpdates', function() use ($db, $firmaId) {
-            $stmtUpdates = $db->prepare("SELECT
-                (SELECT MAX(created_at) FROM endeks_okuma WHERE firma_id = :firma_id AND created_at >= CURDATE()) AS last_update_endeks,
-                (SELECT MAX(created_at) FROM yapilan_isler WHERE firma_id = :firma_id AND created_at >= CURDATE()) AS last_update_isler,
-                (SELECT MAX(created_at) FROM sayac_degisim WHERE firma_id = :firma_id AND created_at >= CURDATE()) AS last_update_sayac");
-            $stmtUpdates->execute([':firma_id' => $firmaId]);
-            return $stmtUpdates->fetch(PDO::FETCH_OBJ);
-        }, 1);
-        if ($updates) {
-            $last_update_endeks = $updates->last_update_endeks;
-            $last_update_isler = $updates->last_update_isler;
-            $last_update_sayac = $updates->last_update_sayac;
-        }
-    } catch (\Exception $e) { /* silent */ }
+            $last_user_isler = $measureDb('home.last_user_isler', fn() => $getLastLogUser(['Online Kesme/Açma Sorgulama', 'Online Puantaj Sorgulama']));
+            $last_user_endeks = $measureDb('home.last_user_endeks', fn() => $getLastLogUser(['Online Endeks Okuma Sorgulama', 'Online İcmal (Endeks Okuma) Sorgulama']));
+            $last_user_sayac = $measureDb('home.last_user_sayac', fn() => $getLastLogUser(['Online Sayaç Değişim Sorgulama']));
+
+            $updates = $measureDb('home.stmtUpdates', function() use ($db, $firmaId) {
+                $stmtUpdates = $db->prepare("SELECT
+                    (SELECT MAX(created_at) FROM endeks_okuma WHERE firma_id = :firma_id AND created_at >= CURDATE()) AS last_update_endeks,
+                    (SELECT MAX(created_at) FROM yapilan_isler WHERE firma_id = :firma_id AND created_at >= CURDATE()) AS last_update_isler,
+                    (SELECT MAX(created_at) FROM sayac_degisim WHERE firma_id = :firma_id AND created_at >= CURDATE()) AS last_update_sayac");
+                $stmtUpdates->execute([':firma_id' => $firmaId]);
+                return $stmtUpdates->fetch(PDO::FETCH_OBJ);
+            }, 1);
+            if ($updates) {
+                $last_update_endeks = $updates->last_update_endeks;
+                $last_update_isler = $updates->last_update_isler;
+                $last_update_sayac = $updates->last_update_sayac;
+            }
+
+            $_SESSION[$cache_key] = [
+                'expires' => time() + 300,
+                'last_update_endeks' => $last_update_endeks,
+                'last_update_isler' => $last_update_isler,
+                'last_update_sayac' => $last_update_sayac,
+                'last_user_endeks' => $last_user_endeks,
+                'last_user_isler' => $last_user_isler,
+                'last_user_sayac' => $last_user_sayac,
+            ];
+        } catch (\Exception $e) { /* silent */ }
+    }
 
     if (!function_exists('getWidgetWidth')) {
         function getWidgetWidth($id, $default)
@@ -154,7 +176,7 @@ if (Gate::allows("ana_sayfa")) {
     }
 
     // Sistem Logları
-    $recent_logs = $systemLogModel->getRecentLogs(10);
+    // $recent_logs = $systemLogModel->getRecentLogs(10);
 
 
     // $istatistik = $personelModel->personelSayilari('personel'); // Lazy load edilecek
@@ -172,84 +194,23 @@ if (Gate::allows("ana_sayfa")) {
 // $toplam_personel_sayisi = count($personelModel->all());
 
     // Bekleyen Talepler
-    $db = $personelModel->getDb();
-
-    // Avanslar
     $avans_count = 0;
     $avanslar = [];
-    if (Gate::allows('avans_talepleri')) {
-        $stmt = $db->prepare("SELECT count(*) as count FROM personel_avanslari WHERE durum = 'beklemede' AND silinme_tarihi IS NULL");
-        $measureDb('home.avans_count', fn() => $stmt->execute());
-        $avans_count = $stmt->fetch(PDO::FETCH_OBJ)->count;
-        
-        $stmt = $db->prepare("SELECT 'Avans' as tip, id, personel_id, talep_tarihi as tarih, durum, tutar as detay FROM personel_avanslari WHERE durum = 'beklemede' AND silinme_tarihi IS NULL LIMIT 5");
-        $measureDb('home.avans_list', fn() => $stmt->execute());
-        $avanslar = $stmt->fetchAll(PDO::FETCH_OBJ);
-    }
-
-    // İzinler
     $izin_count = 0;
     $izinler = [];
-    if (Gate::allows('izin_talepleri')) {
-        try {
-            $izin_count = $izinModel->getBekleyenIzinSayisi();
-            $izinler = $izinModel->getBekleyenIzinlerForDashboard(5);
-        } catch (\Exception $e) {
-            $izin_count = 0;
-            $izinler = [];
-        }
-    }
-
-    // Talepler (Ariza)
     $talep_count = 0;
     $talepler = [];
-    if (Gate::allows('ariza_talepleri')) {
-        $stmt = $db->prepare("SELECT count(*) as count FROM personel_talepleri WHERE durum != 'cozuldu' AND silinme_tarihi IS NULL");
-        $measureDb('home.talep_count', fn() => $stmt->execute());
-        $talep_count = $stmt->fetch(PDO::FETCH_OBJ)->count;
-
-        $stmt = $db->prepare("SELECT 'Talep' as tip, id, personel_id, olusturma_tarihi as tarih, durum, baslik as detay FROM personel_talepleri WHERE durum != 'cozuldu' AND silinme_tarihi IS NULL LIMIT 5");
-        $measureDb('home.talep_list', fn() => $stmt->execute());
-        $talepler = $stmt->fetchAll(PDO::FETCH_OBJ);
-    }
-
-    $personel_talep_sayisi = $avans_count + $izin_count + $talep_count;
-
-    $all_requests = array_merge($avanslar, $izinler, $talepler);
-
-    // Tarihe göre sırala
-    usort($all_requests, function ($a, $b) {
-        return strtotime($b->tarih) - strtotime($a->tarih);
-    });
-
-    $recent_requests = array_slice($all_requests, 0, 10);
-
-    // Personel bilgilerini çek
+    $nobet_degisim_count = 0;
+    $nobet_degisimler = [];
+    $nobet_mazeret_count = 0;
+    $nobet_mazeretler = [];
+    $nobet_talep_count = 0;
+    $nobet_talepleri = [];
+    $personel_talep_sayisi = 0;
+    $all_requests = [];
+    $recent_requests = [];
     $personel_map = [];
-    if (!empty($recent_requests)) {
-        $p_ids = array_unique(array_map(function ($r) {
-            return $r->personel_id;
-        }, $recent_requests));
-        if (!empty($p_ids)) {
-            $ids_str = implode(',', $p_ids);
-            $stmt = $db->prepare("SELECT id, adi_soyadi, resim_yolu, departman FROM personel WHERE id IN ($ids_str)");
-            $measureDb('home.personel_map', fn() => $stmt->execute());
-            $personels = $stmt->fetchAll(PDO::FETCH_OBJ);
-            foreach ($personels as $p) {
-                $personel_map[$p->id] = $p;
-            }
-        }
-    }
-
-    // Şu anda izinde olanlar
     $active_leaves = [];
-    if (Gate::allows("ana_sayfa_izinli_personel_karti")) {
-        try {
-            $active_leaves = $izinModel->getAktifIzinler(10);
-        } catch (\Exception $e) {
-            $active_leaves = [];
-        }
-    }
 
     // Chart değişkenleri (Placeholder values for now)
     $months = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
@@ -258,67 +219,82 @@ if (Gate::allows("ana_sayfa")) {
     $toplam_gider = 30000;
     $toplam_bakiye = 20000;
 
-    // Araç Verilerini Çek (Dashboard Hatırlatıcı için)
-    $aracModelHome = new \App\Model\AracModel();
-    $expiredCounts = $aracModelHome->getAracEvrakStats();
-    $aracNotifText = "";
-    $hasExpired = false;
+    // Araç Verilerini ve Duyuruları Çek (Cache'li)
+    $cache_key_slider = "home_slider_notifications_cache_" . $firmaId;
+    if (isset($_SESSION[$cache_key_slider]) && $_SESSION[$cache_key_slider]['expires'] > time()) {
+        $slider_notifications = $_SESSION[$cache_key_slider]['slider_notifications'];
+        $duyurular = $_SESSION[$cache_key_slider]['duyurular'];
+    } else {
+        // Araç Verilerini Çek (Dashboard Hatırlatıcı için)
+        $aracModelHome = new \App\Model\AracModel();
+        $expiredCounts = $aracModelHome->getAracEvrakStats();
+        $aracNotifText = "";
+        $hasExpired = false;
 
-    if ($expiredCounts) {
-        $parts = [];
-        if ($expiredCounts->muayene_biten > 0) {
-            $parts[] = '<a href="index.php?p=arac-takip/list&filter=muayene" class="text-white fw-bold" style="text-decoration:underline">' . $expiredCounts->muayene_biten . ' muayene</a>';
-            $hasExpired = true;
+        if ($expiredCounts) {
+            $parts = [];
+            if ($expiredCounts->muayene_biten > 0) {
+                $parts[] = '<a href="index.php?p=arac-takip/list&filter=muayene" class="text-white fw-bold" style="text-decoration:underline">' . $expiredCounts->muayene_biten . ' muayene</a>';
+                $hasExpired = true;
+            }
+            if ($expiredCounts->sigorta_biten > 0) {
+                $parts[] = '<a href="index.php?p=arac-takip/list&filter=sigorta" class="text-white fw-bold" style="text-decoration:underline">' . $expiredCounts->sigorta_biten . ' sigorta</a>';
+                $hasExpired = true;
+            }
+            if ($expiredCounts->kasko_biten > 0) {
+                $parts[] = '<a href="index.php?p=arac-takip/list&filter=kasko" class="text-white fw-bold" style="text-decoration:underline">' . $expiredCounts->kasko_biten . ' kasko</a>';
+                $hasExpired = true;
+            }
+
+            if (!empty($parts)) {
+                $aracNotifText = implode(', ', $parts) . ' süresi dolan araçlar bulunmaktadır.';
+            }
         }
-        if ($expiredCounts->sigorta_biten > 0) {
-            $parts[] = '<a href="index.php?p=arac-takip/list&filter=sigorta" class="text-white fw-bold" style="text-decoration:underline">' . $expiredCounts->sigorta_biten . ' sigorta</a>';
-            $hasExpired = true;
-        }
-        if ($expiredCounts->kasko_biten > 0) {
-            $parts[] = '<a href="index.php?p=arac-takip/list&filter=kasko" class="text-white fw-bold" style="text-decoration:underline">' . $expiredCounts->kasko_biten . ' kasko</a>';
-            $hasExpired = true;
+
+        if (!$aracNotifText) {
+            $aracNotifText = "Tüm araçların evrakları (Muayene, Sigorta, Kasko) günceldir.";
         }
 
-        if (!empty($parts)) {
-            $aracNotifText = implode(', ', $parts) . ' süresi dolan araçlar bulunmaktadır.';
+        // Slider Duyuruları
+        $slider_notifications = [];
+
+        // Sabit araç hatırlatması da bir slider elemanı olsun (Eğer gösterilecekse)
+        if ($hasExpired || $aracNotifText !== "Tüm araçların evrakları (Muayene, Sigorta, Kasko) günceldir.") {
+            $slider_notifications[] = [
+                'id' => 0,
+                'title' => $hasExpired ? 'Araç Evrak Hatırlatması' : 'Araçlar Güncel',
+                'description' => $aracNotifText,
+                'icon' => $hasExpired ? 'bx-error-circle' : 'bx-check-shield',
+                'gradient' => $hasExpired ? 'linear-gradient(135deg, #7f1d1d 0%, #ef4444 100%)' : 'linear-gradient(135deg, #1e293b 0%, #2563eb 100%)',
+                'link_action' => '',
+                'link_class' => ''
+            ];
         }
-    }
 
-    if (!$aracNotifText) {
-        $aracNotifText = "Tüm araçların evrakları (Muayene, Sigorta, Kasko) günceldir.";
-    }
+        try {
+            $db = $personelModel->getDb();
 
-    // Slider Duyuruları
-    $slider_notifications = [];
+            $duyuruSql = "SELECT id, baslik, icerik, resim, hedef_sayfa, tarih, etkinlik_tarihi 
+                          FROM duyurular 
+                          WHERE silinme_tarihi IS NULL 
+                          AND ana_sayfada_goster = 1
+                          AND firma_id = :firma_id
+                          AND durum = 'Yayında'
+                          AND (etkinlik_tarihi IS NULL OR etkinlik_tarihi >= CURDATE())
+                          ORDER BY id DESC LIMIT 5";
+            $stmt = $db->prepare($duyuruSql);
+            $measureDb('home.duyuru_list', fn() => $stmt->execute([':firma_id' => $_SESSION['firma_id']]));
+            $duyurular = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        } catch (\Exception $de) {
+            $duyurular = [];
+        }
 
-    // Sabit araç hatırlatması da bir slider elemanı olsun (Eğer gösterilecekse)
-    if ($hasExpired || $aracNotifText !== "Tüm araçların evrakları (Muayene, Sigorta, Kasko) günceldir.") {
-        $slider_notifications[] = [
-            'id' => 0,
-            'title' => $hasExpired ? 'Araç Evrak Hatırlatması' : 'Araçlar Güncel',
-            'description' => $aracNotifText,
-            'icon' => $hasExpired ? 'bx-error-circle' : 'bx-check-shield',
-            'gradient' => $hasExpired ? 'linear-gradient(135deg, #7f1d1d 0%, #ef4444 100%)' : 'linear-gradient(135deg, #1e293b 0%, #2563eb 100%)',
-            'link_action' => '',
-            'link_class' => ''
+        $_SESSION[$cache_key_slider] = [
+            'expires' => time() + 300,
+            'slider_notifications' => $slider_notifications,
+            'duyurular' => $duyurular
         ];
     }
-
-    $db = $personelModel->getDb();
-
-    // Hem geçmiş gönderimleri kapatmak, hem de geçerli olanları listelemenin sorgusu
-    // (etkinlik_tarihi NULL ise geçerlidir, atanmışsa CURDATE() veya sonrası olmalıdır)
-    $duyuruSql = "SELECT id, baslik, icerik, resim, hedef_sayfa, tarih, etkinlik_tarihi 
-                  FROM duyurular 
-                  WHERE silinme_tarihi IS NULL 
-                  AND ana_sayfada_goster = 1
-                  AND firma_id = :firma_id
-                  AND durum = 'Yayında'
-                  AND (etkinlik_tarihi IS NULL OR etkinlik_tarihi >= CURDATE())
-                  ORDER BY id DESC LIMIT 5";
-    $stmt = $db->prepare($duyuruSql);
-    $measureDb('home.duyuru_list', fn() => $stmt->execute([':firma_id' => $_SESSION['firma_id']]));
-    $duyurular = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
     $gradients = [
         'linear-gradient(135deg, #0f172a 0%, #10b981 100%)',
@@ -786,222 +762,14 @@ if (Gate::allows("ana_sayfa")) {
     }
 
     if (\App\Service\Gate::allows("talepler")) {
-        ob_start(); ?>
-                <div class="<?php echo getWidgetWidth('widget-talepler', 'col-md-6'); ?> widget-item" id="widget-talepler">
-                    <div class="card">
-                        <div class="card-header d-flex justify-content-between align-items-center">
-                            <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Arıza/İzin/Avans Talepleri</h5>
-                            <?php echo getWidthControl(); ?>
-                        </div>
-                        <div class="card-body"
-                            style="height: <?php echo getWidgetHeight('widget-talepler', 'auto'); ?>; overflow-y: auto;">
-                            <div class="table-responsive">
-                                <table class="table table-centered table-nowrap mb-0">
-                                    <thead class="table-light">
-                                        <tr>
-                                            <th>Personel</th>
-                                            <th>Talep Tipi</th>
-                                            <th>Detay</th>
-                                            <th>Tarih</th>
-                                            <th>İşlem</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        <?php if (empty($recent_requests)): ?>
-                                                <tr>
-                                                    <td colspan="5" class="text-center">Bekleyen talep bulunmamaktadır.</td>
-                                                </tr>
-                                        <?php else: ?>
-                                                <?php foreach ($recent_requests as $req):
-                                                    $personel = $personel_map[$req->personel_id] ?? null;
-                                                    $badgeClass = 'badge-warning';
-                                                    if ($req->tip == 'Avans')
-                                                        $badgeClass = 'badge-success';
-                                                    if ($req->tip == 'İzin')
-                                                        $badgeClass = 'badge-primary';
-                                                    if ($req->tip == 'Talep')
-                                                        $badgeClass = 'badge-info';
-                                                    ?>
-                                                        <tr>
-                                                            <td>
-                                                                <?php if ($personel): ?>
-                                                                        <div class="d-flex align-items-center">
-                                                                            <div class="flex-shrink-0 me-3">
-                                                                                <img src="<?php echo !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>"
-                                                                                    alt="" class="avatar-xs rounded-circle">
-                                                                            </div>
-                                                                            <div class="flex-grow-1">
-                                                                                <h5 class="font-size-14 mb-1"><?php echo $personel->adi_soyadi; ?></h5>
-                                                                                <p class="text-muted mb-0 font-size-12">
-                                                                                    <?php echo $personel->departman; ?>
-                                                                                </p>
-                                                                            </div>
-                                                                        </div>
-                                                                <?php else: ?>
-                                                                        Personel #<?php echo $req->personel_id; ?>
-                                                                <?php endif; ?>
-                                                            </td>
-                                                            <td><span
-                                                                    class="badge <?php echo $badgeClass; ?> font-size-12"><?php echo $req->tip; ?></span>
-                                                            </td>
-                                                            <td>
-                                                                <?php
-                                                                if ($req->tip == 'Avans')
-                                                                    echo number_format($req->detay, 2) . ' ₺';
-                                                                elseif ($req->tip == 'İzin')
-                                                                    echo htmlspecialchars($req->detay);
-                                                                else
-                                                                    echo $req->detay;
-                                                                ?>
-                                                            </td>
-                                                            <td><?php echo date('d.m.Y', strtotime($req->tarih)); ?></td>
-                                                            <td>
-                                                                <div class="btn-group" role="group">
-                                                                    <button type="button" class="btn btn-info btn-sm btn-home-detay"
-                                                                        data-id="<?php echo $req->id; ?>" data-tip="<?php echo $req->tip; ?>"
-                                                                        data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
-                                                                        data-detay="<?php echo htmlspecialchars($req->tip == 'Avans' ? number_format($req->detay, 2) . ' ₺' : $req->detay); ?>"
-                                                                        data-tarih="<?php echo date('d.m.Y', strtotime($req->tarih)); ?>" title="Detay">
-                                                                        <i class='bx bx-show'></i>
-                                                                    </button>
+        $widgets['widget-talepler'] = renderSkeleton('widget-talepler', getWidgetWidth('widget-talepler', 'col-md-6'), '300px');
+    }
 
-                                                                    <?php if ($req->tip == 'Avans'): ?>
-                                                                            <button type="button" class="btn btn-success btn-sm btn-avans-onayla"
-                                                                                data-id="<?php echo $req->id; ?>"
-                                                                                data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
-                                                                                data-tutar="<?php echo $req->detay; ?>" title="Onayla">
-                                                                                <i class="bx bx-check"></i>
-                                                                            </button>
-                                                                            <button type="button" class="btn btn-danger btn-sm btn-avans-reddet"
-                                                                                data-id="<?php echo $req->id; ?>"
-                                                                                data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
-                                                                                title="Reddet">
-                                                                                <i class="bx bx-x"></i>
-                                                                            </button>
-                                                                    <?php elseif ($req->tip == 'İzin'): ?>
-                                                                            <button type="button" class="btn btn-success btn-sm btn-izin-onayla"
-                                                                                data-id="<?php echo $req->id; ?>"
-                                                                                data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
-                                                                                data-tur="<?php echo htmlspecialchars($req->detay); ?>"
-                                                                                data-gun="<?php echo $req->toplam_gun ?? 0; ?>" title="Onayla">
-                                                                                <i class="bx bx-check"></i>
-                                                                            </button>
-                                                                            <button type="button" class="btn btn-danger btn-sm btn-izin-reddet"
-                                                                                data-id="<?php echo $req->id; ?>"
-                                                                                data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
-                                                                                title="Reddet">
-                                                                                <i class="bx bx-x"></i>
-                                                                            </button>
-                                                                    <?php elseif ($req->tip == 'Talep'): ?>
-                                                                            <button type="button" class="btn btn-success btn-sm btn-talep-cozuldu"
-                                                                                data-id="<?php echo $req->id; ?>"
-                                                                                data-personel="<?php echo htmlspecialchars($personel ? $personel->adi_soyadi : 'Personel #' . $req->personel_id); ?>"
-                                                                                data-baslik="<?php echo htmlspecialchars($req->detay); ?>" title="Çözüldü">
-                                                                                <i class="bx bx-check"></i>
-                                                                            </button>
-                                                                    <?php endif; ?>
+    if (Gate::allows("ana_sayfa_izinli_personel_karti") || $izinModel->getRestrictedDept() !== null) {
+        $widgets['widget-izindekiler'] = renderSkeleton('widget-izindekiler', getWidgetWidth('widget-izindekiler', 'col-md-6'), '300px');
+    }
 
-                                                                    <?php
-                                                                    $tabParam = 'avans';
-                                                                    if ($req->tip == 'Avans')
-                                                                        $tabParam = 'avans';
-                                                                    elseif ($req->tip == 'İzin')
-                                                                        $tabParam = 'izin';
-                                                                    else
-                                                                        $tabParam = 'talep';
-                                                                    ?>
-                                                                    <a href="index.php?p=talepler/list&tab=<?php echo $tabParam; ?>"
-                                                                        class="btn btn-primary btn-sm" title="Talepler Sayfasına Git">
-                                                                        <i class='bx bx-right-arrow-alt'></i>
-                                                                    </a>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                <?php endforeach; ?>
-                                        <?php endif; ?>
-                                    </tbody>
-                                </table>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                <?php $widgets['widget-talepler'] = ob_get_clean();
-        }
-
-        if (Gate::allows("ana_sayfa_izinli_personel_karti")) {
-            ob_start(); ?>
-            <div class="<?php echo getWidgetWidth('widget-izindekiler', 'col-md-6'); ?> widget-item" id="widget-izindekiler">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Şu Anda İzinde Olan Personeller</h5>
-                        <?php echo getWidthControl(); ?>
-                    </div>
-                    <div class="card-body"
-                        style="height: <?php echo getWidgetHeight('widget-izindekiler', 'auto'); ?>; overflow-y: auto;">
-                        <div class="table-responsive">
-                            <table class="table table-centered table-nowrap mb-0">
-                                <thead class="table-light">
-                                    <tr>
-                                        <th>Personel</th>
-                                        <th>İzin Tipi</th>
-                                        <th>Bitiş Tarihi</th>
-                                        <th>Kalan Süre</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <?php if (empty($active_leaves)): ?>
-                                            <tr>
-                                                <td colspan="4" class="text-center">Şu anda izinde olan personel bulunmamaktadır.
-                                                </td>
-                                            </tr>
-                                    <?php else: ?>
-                                            <?php foreach ($active_leaves as $leave):
-                                                $bitis = new DateTime($leave->bitis_tarihi);
-                                                $bugun = new DateTime();
-                                                $kalan = $bugun->diff($bitis)->days;
-
-                                                $badgeClass = 'badge-primary';
-                                                if ($leave->izin_tipi_adi == 'hastalik')
-                                                    $badgeClass = 'badge-danger';
-                                                if ($leave->izin_tipi_adi == 'mazeret')
-                                                    $badgeClass = 'badge-warning';
-                                                ?>
-                                                    <tr>
-                                                        <td>
-                                                            <div class="d-flex align-items-center">
-                                                                <div class="flex-shrink-0 me-3">
-                                                                    <img src="<?php echo !empty($leave->resim_yolu) ? $leave->resim_yolu : 'assets/images/users/user-dummy-img.jpg'; ?>"
-                                                                        alt="" class="avatar-xs rounded-circle">
-                                                                </div>
-                                                                <div class="flex-grow-1">
-                                                                    <h5 class="font-size-14 mb-1"><?php echo $leave->adi_soyadi; ?></h5>
-                                                                    <p class="text-muted mb-0 font-size-12"><?php echo $leave->departman; ?>
-                                                                    </p>
-                                                                </div>
-                                                            </div>
-                                                        </td>
-                                                        <td>
-                                                            <span class="badge <?php echo $badgeClass; ?> font-size-12">
-                                                                <?php echo htmlspecialchars($leave->izin_tipi_adi ?? $leave->izin_tipi ?? 'İzin'); ?>
-                                                            </span>
-                                                        </td>
-                                                        <td><?php echo date('d.m.Y', strtotime($leave->bitis_tarihi)); ?></td>
-                                                        <td>
-                                                            <span class="badge badge-info"><?php echo $kalan; ?> Gün Kaldı</span>
-                                                        </td>
-                                                    </tr>
-                                            <?php endforeach; ?>
-                                    <?php endif; ?>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-                </div>
-            </div>
-            <?php $widgets['widget-izindekiler'] = ob_get_clean();
-        }
-
-        ob_start(); ?>
+    ob_start(); ?>
         <div class="<?php echo getWidgetWidth('widget-is-turu-istatistikleri', 'col-md-6'); ?> widget-item"
             id="widget-is-turu-istatistikleri">
             <div class="card">
@@ -1321,7 +1089,7 @@ if (Gate::allows("ana_sayfa")) {
                                         Arıza/İzin/Avans Talepleri
                                     </label>
                                 </li>
-                                <?php if (Gate::allows("ana_sayfa_izinli_personel_karti")): ?>
+                                <?php if (Gate::allows("ana_sayfa_izinli_personel_karti") || $izinModel->getRestrictedDept() !== null): ?>
                                     <li>
                                         <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
                                             <input type="checkbox" class="form-check-input widget-toggle me-2"
@@ -3617,7 +3385,12 @@ if (Gate::allows("ana_sayfa")) {
 
                     const widgetIds = [];
                     const widths = [];
+                    const widgetVisibility = JSON.parse(localStorage.getItem('dashboard_widget_visibility') || '{}');
+
                     lazyWidgets.forEach(widget => {
+                        const isVisible = widgetVisibility[widget.id] !== false && $(widget).is(':visible');
+                        if (!isVisible) return; // Kapalı olan kartların verilerini getirmesin
+
                         const widthStr = $(widget).attr('class') || '';
                         const width = widthStr.split(' ').find(c => c.startsWith('col-')) || 'col-md-6';
                         widgetIds.push(widget.id);

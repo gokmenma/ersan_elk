@@ -714,7 +714,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // ============================================================
                 // Ek ödeme satırından "Maaşa Dahil Yemek" tutarını çıkaralım (Çünkü yukarıda ana maaş içinde gösterdik)
                 $gosterilecekEkOdeme = $guncelEkOdeme;
-                if ($includedDeduction > 0 || !empty($bp->yemek_yardimi_dahil) || !empty($bp->es_yardimi_dahil)) {
+                if (($includedDeduction > 0 || !empty($bp->yemek_yardimi_dahil) || !empty($bp->es_yardimi_dahil)) && !$isPrimUsulu) {
                     $gosterilecekEkOdeme = max(0, $guncelEkOdeme - $includedDeduction);
                 }
                 

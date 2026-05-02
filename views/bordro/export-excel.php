@@ -64,19 +64,22 @@ try {
     // Başlıklar (UI Table Format)
     $basliklar = [
         'A' => 'Birim',
-        'B' => 'Ekip',
-        'C' => 'Bölge',
-        'D' => 'Personel',
-        'E' => 'TC No',
-        'F' => 'Maaş Tipi',
-        'G' => 'Gün',
+        'B' => 'Personel',
+        'C' => 'TC No',
+        'D' => 'Maaş Tipi',
+        'E' => 'Gün',
+        'F' => 'Fiili Gün',
+        'G' => 'Maaş',
         'H' => 'Toplam Alacağı',
-        'I' => 'Kesinti Tutarı',
-        'J' => 'Net Alacağı',
-        'K' => 'İcra Kesintisi',
-        'L' => 'Banka',
-        'M' => 'Sodexo',
-        'N' => 'Elden'
+        'I' => 'Hesaplanan Asgari Ücret',
+        'J' => 'Kesinti Tutarı',
+        'K' => 'Net Alacağı',
+        'L' => 'İcra Kesintisi',
+        'M' => 'Yemek Ücreti',
+        'N' => 'Eş yardımı',
+        'O' => 'Banka',
+        'P' => 'Sodexo',
+        'Q' => 'Elden'
     ];
 
     // Başlık stili
@@ -107,8 +110,8 @@ try {
         $sheet->getColumnDimension($kolon)->setAutoSize(true);
     }
 
-    // Başlık satırına stil uygula (A1:N1)
-    $sheet->getStyle('A1:N1')->applyFromArray($baslikStyle);
+    // Başlık satırına stil uygula (A1:Q1)
+    $sheet->getStyle('A1:Q1')->applyFromArray($baslikStyle);
 
     // Veri stili
     $dataStyle = [
@@ -255,30 +258,46 @@ try {
             }
         }
 
+        $ortak = $BordroPersonel->hesaplaOrtakGosterimDegerleri($personel, $donem, floatval($asgariUcretNet));
+
+        $pFiiliGun = $ortak['includedAllowanceFiiliGun'] ?? 0;
+        if ($pFiiliGun <= 0) {
+            $personelIdToUse = $personel->personel_id ?? $personel->id;
+            if (method_exists($BordroPersonel, 'getPuantajXGunSayisi')) {
+                $pFiiliGun = $BordroPersonel->getPuantajXGunSayisi($personelIdToUse, $donem->baslangic_tarihi, $donem->bitis_tarihi);
+                if ($pFiiliGun <= 0) $pFiiliGun = 26;
+            }
+        }
+
+        $pAsgariYatacak = ($ortak['calismaGunu'] >= 30) ? $asgariUcretNet : (($asgariUcretNet / 30) * $ortak['calismaGunu']);
+
         // Excel Satırı Doldur
         $sheet->setCellValue('A' . $satir, $birimCode);
-        $sheet->setCellValue('B' . $satir, $personel->ekip_adi ?? '');
-        $sheet->setCellValue('C' . $satir, $personel->ekip_bolge ?? '');
-        $sheet->setCellValue('D' . $satir, $personel->adi_soyadi);
-        $sheet->setCellValueExplicit('E' . $satir, $personel->tc_kimlik_no ?? '', DataType::TYPE_STRING);
-        $sheet->setCellValue('F' . $satir, $pMaasDurumu ?: '-');
-        $sheet->setCellValue('G' . $satir, $pCalismaGunu);
-        $sheet->setCellValue('H' . $satir, $pToplamAlacagi);
-        $sheet->setCellValue('I' . $satir, $pKesintiHaricIcra);
-        $sheet->setCellValue('J' . $satir, $pNetAlacagi);
-        $sheet->setCellValue('K' . $satir, $pIcra);
-        $sheet->setCellValue('L' . $satir, $bankaP);
-        $sheet->setCellValue('M' . $satir, $sodexoP);
-        $sheet->setCellValue('N' . $satir, $eldenP);
+        $sheet->setCellValue('B' . $satir, $personel->adi_soyadi);
+        $sheet->setCellValueExplicit('C' . $satir, $personel->tc_kimlik_no ?? '', DataType::TYPE_STRING);
+        $sheet->setCellValue('D' . $satir, $ortak['maasDurumu'] ?: '-');
+        $sheet->setCellValue('E' . $satir, $ortak['calismaGunu']);
+        $sheet->setCellValue('F' . $satir, $pFiiliGun);
+        $sheet->setCellValue('G' . $satir, $ortak['maasTutari']);
+        $sheet->setCellValue('H' . $satir, $ortak['toplamAlacagi']);
+        $sheet->setCellValue('I' . $satir, $pAsgariYatacak);
+        $sheet->setCellValue('J' . $satir, $ortak['kesintiHaricIcra']);
+        $sheet->setCellValue('K' . $satir, $ortak['netAlacagi']);
+        $sheet->setCellValue('L' . $satir, $ortak['icraKesintisi']);
+        $sheet->setCellValue('M' . $satir, $ortak['mealAllowanceDeduction']);
+        $sheet->setCellValue('N' . $satir, $ortak['spouseAllowanceDeduction']);
+        $sheet->setCellValue('O' . $satir, $ortak['bankaOdemesi']);
+        $sheet->setCellValue('P' . $satir, $ortak['sodexoOdemesi']);
+        $sheet->setCellValue('Q' . $satir, $ortak['eldenOdeme']);
 
-        // Sayı formatları (H:N)
-        $sheet->getStyle('H' . $satir . ':N' . $satir)->getNumberFormat()->setFormatCode('#,##0.00');
+        // Sayı formatları (G:Q)
+        $sheet->getStyle('G' . $satir . ':Q' . $satir)->getNumberFormat()->setFormatCode('#,##0.00');
 
         $satir++;
     }
 
     // Tüm tabloya stil uygula
-    $sheet->getStyle('A1:N' . ($satir - 1))->applyFromArray($dataStyle);
+    $sheet->getStyle('A1:Q' . ($satir - 1))->applyFromArray($dataStyle);
 
     // Dosya adı
     $donemAdiSlug = preg_replace('/[^a-zA-Z0-9]/', '_', $donem->donem_adi);

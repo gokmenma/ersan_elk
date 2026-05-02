@@ -916,76 +916,43 @@ use App\Helper\Helper;
 
                     let siralamaHtml = '';
                     if (stat.siralama) {
-                        const isEndeksDept = (stat.departman || '').toLowerCase().includes('endeks okuma');
-
-                        if (isEndeksDept) {
-                            // Show both rankings for Endeks teams
-                            siralamaHtml = `
-                                <div class="col-span-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
-                                    <h4 class="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">Aylık Performans Sıralaması</h4>
-                                    <div class="grid grid-cols-2 gap-3">
-                                        <div class="flex items-center gap-3 bg-white dark:bg-slate-800/80 rounded-2xl p-3 border border-slate-100 dark:border-slate-700 shadow-sm active:scale-[0.98] transition-all">
-                                            <div class="relative shrink-0">
-                                                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex flex-col items-center justify-center shadow-lg shadow-blue-500/30">
-                                                    <span class="text-[10px] text-white/70 font-bold leading-none mb-0.5">SIRA</span>
-                                                    <span class="text-lg font-black text-white leading-none">#${stat.siralama.ekip_sira}</span>
-                                                </div>
-                                                <!-- Ring effect -->
-                                                <div class="absolute -inset-1 rounded-2xl border border-blue-500/20 animate-pulse"></div>
-                                            </div>
-                                            <div class="min-w-0">
-                                                <p class="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tighter mb-0.5">BÖLGE GENELİ</p>
-                                                <p class="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate" title="${stat.ekip_bolge || 'Bölge Bulunamadı'}">${stat.ekip_bolge || 'Bölge Bulunamadı'}</p>
-                                                <p class="text-[9px] text-slate-400 font-medium">${stat.siralama.ekip_kisi} Kişi Arasında</p>
-                                            </div>
-                                        </div>
-                                        <div class="flex items-center gap-3 bg-white dark:bg-slate-800/80 rounded-2xl p-3 border border-slate-100 dark:border-slate-700 shadow-sm active:scale-[0.98] transition-all">
-                                            <div class="relative shrink-0">
-                                                <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex flex-col items-center justify-center shadow-lg shadow-indigo-500/30">
-                                                    <span class="text-[10px] text-white/70 font-bold leading-none mb-0.5">SIRA</span>
-                                                    <span class="text-lg font-black text-white leading-none">#${stat.siralama.departman_sira}</span>
-                                                </div>
-                                                <!-- Ring effect -->
-                                                <div class="absolute -inset-1 rounded-2xl border border-indigo-500/20 animate-pulse"></div>
-                                            </div>
-                                            <div class="min-w-0">
-                                                <p class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter mb-0.5">DEPARTMAN</p>
-                                                <p class="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate" title="${stat.departman || 'Departman Bulunamadı'}">${stat.departman || 'Departman Bulunamadı'}</p>
-                                                <p class="text-[9px] text-slate-400 font-medium">${stat.siralama.departman_kisi} Kişi Arasında</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            `;
-                        } else {
-                            // Only show Department ranking for other teams
-                            siralamaHtml = `
-                                <div class="col-span-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
-                                    <h4 class="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">Aylık Performans Sıralaması</h4>
-                                    <div class="flex items-center gap-4 bg-white dark:bg-slate-800/80 rounded-2xl p-4 border border-slate-100 dark:border-slate-700 shadow-sm active:scale-[0.98] transition-all">
+                        siralamaHtml = `
+                            <div class="col-span-2 mt-3 pt-3 border-t border-slate-100 dark:border-slate-700/50">
+                                <h4 class="text-xs font-semibold text-slate-500 mb-2 uppercase tracking-wide">Aylık Performans Sıralaması</h4>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div class="flex items-center gap-3 bg-white dark:bg-slate-800/80 rounded-2xl p-3 border border-slate-100 dark:border-slate-700 shadow-sm active:scale-[0.98] transition-all">
                                         <div class="relative shrink-0">
-                                            <div class="w-14 h-14 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex flex-col items-center justify-center shadow-lg shadow-indigo-500/30">
-                                                <span class="text-[10px] text-white/70 font-bold leading-none mb-1">SIRA</span>
-                                                <span class="text-xl font-black text-white leading-none">#${stat.siralama.departman_sira}</span>
+                                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-blue-500 to-blue-700 flex flex-col items-center justify-center shadow-lg shadow-blue-500/30">
+                                                <span class="text-[10px] text-white/70 font-bold leading-none mb-0.5">SIRA</span>
+                                                <span class="text-lg font-black text-white leading-none">#${stat.siralama.ekip_sira}</span>
                                             </div>
                                             <!-- Ring effect -->
-                                            <div class="absolute -inset-1.5 rounded-2xl border-2 border-indigo-500/10 animate-pulse"></div>
+                                            <div class="absolute -inset-1 rounded-2xl border border-blue-500/20 animate-pulse"></div>
                                         </div>
-                                        <div class="flex-1 min-w-0">
-                                            <p class="text-[11px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-widest mb-1">DEPARTMAN SIRALAMASI</p>
-                                            <p class="text-[13px] font-bold text-slate-700 dark:text-slate-200 truncate mb-0.5" title="${stat.departman || 'Departman Bulunamadı'}">${stat.departman || 'Departman Bulunamadı'}</p>
-                                            <div class="flex items-center gap-2">
-                                                <span class="flex h-1.5 w-1.5 rounded-full bg-slate-300"></span>
-                                                <p class="text-xs text-slate-400 font-medium">${stat.siralama.departman_kisi} Kişi Arasında</p>
+                                        <div class="min-w-0">
+                                            <p class="text-[10px] font-bold text-blue-600 dark:text-blue-400 uppercase tracking-tighter mb-0.5">BÖLGE GENELİ</p>
+                                            <p class="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate" title="${stat.ekip_bolge || 'Bölge Bulunamadı'}">${stat.ekip_bolge || 'Bölge Bulunamadı'}</p>
+                                            <p class="text-[9px] text-slate-400 font-medium">${stat.siralama.ekip_kisi} Kişi Arasında</p>
+                                        </div>
+                                    </div>
+                                    <div class="flex items-center gap-3 bg-white dark:bg-slate-800/80 rounded-2xl p-3 border border-slate-100 dark:border-slate-700 shadow-sm active:scale-[0.98] transition-all">
+                                        <div class="relative shrink-0">
+                                            <div class="w-12 h-12 rounded-2xl bg-gradient-to-br from-indigo-500 to-indigo-700 flex flex-col items-center justify-center shadow-lg shadow-indigo-500/30">
+                                                <span class="text-[10px] text-white/70 font-bold leading-none mb-0.5">SIRA</span>
+                                                <span class="text-lg font-black text-white leading-none">#${stat.siralama.departman_sira}</span>
                                             </div>
+                                            <!-- Ring effect -->
+                                            <div class="absolute -inset-1 rounded-2xl border border-indigo-500/20 animate-pulse"></div>
                                         </div>
-                                        <div class="shrink-0 pr-2">
-                                            <span class="material-symbols-outlined text-indigo-200 dark:text-indigo-900/50 text-4xl">workspace_premium</span>
+                                        <div class="min-w-0">
+                                            <p class="text-[10px] font-bold text-indigo-600 dark:text-indigo-400 uppercase tracking-tighter mb-0.5">DEPARTMAN</p>
+                                            <p class="text-[11px] font-bold text-slate-700 dark:text-slate-200 truncate" title="${stat.departman || 'Departman Bulunamadı'}">${stat.departman || 'Departman Bulunamadı'}</p>
+                                            <p class="text-[9px] text-slate-400 font-medium">${stat.siralama.departman_kisi} Kişi Arasında</p>
                                         </div>
                                     </div>
                                 </div>
-                            `;
-                        }
+                            </div>
+                        `;
                     }
 
                     container.innerHTML = `

@@ -6,6 +6,7 @@ $(document).ready(function () {
   let definitionsMap = {}; // { shortCode: { id, name, color, shortCode } }
   let personnelMap = {}; // { nameOrTc: personObj }
   let ucretsizIzinIds = new Set();
+  let ucretliIzinIds = new Set();
   let excelReplacedPersonnel = new Set(); // Excel'den yüklenen personellerin ID'leri
   let ucretliDefinitions = [];
   let ucretsizDefinitions = [];
@@ -171,10 +172,15 @@ $(document).ready(function () {
     $.post(API_URL, { action: "get-definitions" }, function (res) {
       if (res.status === "success") {
         ucretsizIzinIds.clear();
+        ucretliIzinIds.clear();
         const render = (list, containerId, isUcretsiz = false) => {
           let html = "";
           list.forEach((item) => {
-            if (isUcretsiz) ucretsizIzinIds.add(item.id.toString());
+            if (isUcretsiz) {
+              ucretsizIzinIds.add(item.id.toString());
+            } else {
+              ucretliIzinIds.add(item.id.toString());
+            }
             const style = getStyleFromTailwind(item.renk);
             const shortCode = getShortCode(item);
             html += `
@@ -276,7 +282,7 @@ $(document).ready(function () {
                         </td>`;
 
                   let disabledDaysCount = 0;
-                  let unpaidCount = 0;
+                  let paidCount = 0;
 
                   for (let d = 1; d <= daysCount; d++) {
                     const dateStr = `${yil}-${ay.toString().padStart(2, "0")}-${d.toString().padStart(2, "0")}`;
@@ -312,7 +318,7 @@ $(document).ready(function () {
                         unsaved.type_id || unsaved.typeId
                       )?.toString();
                       // Sadece manuel giriş yapılan ücretsiz izinleri say (default HT/X değil)
-                      if (ucretsizIzinIds.has(typeId)) unpaidCount++;
+                      if (!isDisabled && typeId && ucretliIzinIds.has(typeId)) paidCount++;
 
                       hasEntryClass = "has-entry unsaved";
                       cellContent = `
@@ -333,7 +339,7 @@ $(document).ready(function () {
                       const styleObj = getStyleFromTailwind(entry.color);
                       const typeId = entry.tip_id?.toString();
                       // Sadece manuel giriş yapılan ücretsiz izinleri say (default HT/X değil)
-                      if (entry.type !== "default" && ucretsizIzinIds.has(typeId)) unpaidCount++;
+                      if (!isDisabled && typeId && ucretliIzinIds.has(typeId)) paidCount++;
                       
                       hasEntryClass = "has-entry";
                       const shortCode = getShortCode(entry);
@@ -364,20 +370,11 @@ $(document).ready(function () {
                                         ${cellContent}
                                     </td>`;
                   }
-
-                   const calisilmasiGerekenGun = daysCount - disabledDaysCount;
-                  let activeDaysLimit = calisilmasiGerekenGun;
-                  
-                  // Eğer görev geçmişi varsa, toplam gün limitine göre adjust et
                   if (p.gorev_gecmisi_var && p.gg_toplam_gun > 0) {
-                    activeDaysLimit = Math.min(calisilmasiGerekenGun, parseInt(p.gg_toplam_gun));
+                    paidCount = Math.min(paidCount, parseInt(p.gg_toplam_gun));
                   }
-                  
-                  const toplamCalisma =
-                    activeDaysLimit > 0
-                      ? activeDaysLimit - unpaidCount
-                      : 0;
-                  bodyHtml += `<td class="sticky-col-right-1 toplam-calisma-gunu">${Math.max(0, toplamCalisma)}</td>`;
+
+                  bodyHtml += `<td class="sticky-col-right-1 toplam-calisma-gunu">${Math.max(0, paidCount)}</td>`;
                   bodyHtml += "</tr>";
                 });
                 $("#table-body").html(bodyHtml);
@@ -778,48 +775,42 @@ $(document).ready(function () {
   }
 
   let calculateTotalsTimer = null;
+  function getRowPaidDayCount(row) {
+    const dayCells = row.querySelectorAll(".day-cell");
+    let paidCount = 0;
+
+    for (let i = 0; i < dayCells.length; i++) {
+      const cell = dayCells[i];
+      if (cell.classList.contains("disabled")) continue;
+
+      const content = cell.querySelector(".cell-content");
+      if (!content) continue;
+
+      const typeId = content.getAttribute("data-id");
+      if (typeId && ucretliIzinIds.has(typeId.toString())) {
+        paidCount++;
+      }
+    }
+
+    const personelCell = row.querySelector(".personel-info");
+    const gorevGecmisiVar = parseInt(personelCell.getAttribute("data-gorev-gecmisi")) || 0;
+    const ggToplamGun = parseInt(personelCell.getAttribute("data-gg-toplam-gun")) || 0;
+
+    if (gorevGecmisiVar && ggToplamGun > 0) {
+      paidCount = Math.min(paidCount, ggToplamGun);
+    }
+
+    return Math.max(0, paidCount);
+  }
+
   function updateRowTotals(rowOrId) {
     const row = typeof rowOrId === "object" ? rowOrId : document.querySelector(`.personel-info[data-personel-id="${rowOrId}"]`)?.closest("tr");
     if (!row) return;
 
-    let unpaidCount = 0;
-    const dayCells = row.querySelectorAll(".day-cell");
-    let disabledCount = 0;
-
-    for (let i = 0; i < dayCells.length; i++) {
-      const cell = dayCells[i];
-      if (cell.classList.contains("disabled")) {
-        disabledCount++;
-        continue;
-      }
-
-      const content = cell.querySelector(".cell-content");
-      if (content) {
-        const typeId = content.getAttribute("data-id");
-        const isDefault = content.getAttribute("data-is-default") === "true";
-        if (!isDefault && typeId && ucretsizIzinIds.has(typeId)) {
-          unpaidCount++;
-        }
-      }
-    }
-
-    const totalCells = dayCells.length;
-    const activeDays = Math.max(0, totalCells - disabledCount);
-    
-    // Görev geçmişi limitini uygula
-    const personelCell = row.querySelector(".personel-info");
-    const gorevGecmisiVar = parseInt(personelCell.getAttribute("data-gorev-gecmisi")) || 0;
-    const ggToplamGun = parseInt(personelCell.getAttribute("data-gg-toplam-gun")) || 0;
-    
-    let activeDaysLimit = activeDays;
-    if (gorevGecmisiVar && ggToplamGun > 0) {
-      activeDaysLimit = Math.min(activeDays, ggToplamGun);
-    }
-    
-    const toplamCalisma = activeDaysLimit > 0 ? activeDaysLimit - unpaidCount : 0;
+    const toplamCalisma = getRowPaidDayCount(row);
     const totalDisplayCell = row.querySelector(".toplam-calisma-gunu");
     if (totalDisplayCell) {
-        totalDisplayCell.textContent = Math.max(0, toplamCalisma);
+        totalDisplayCell.textContent = toplamCalisma;
     }
 
     // Satır toplamı değiştiyse genel toplamı da güncelle
@@ -1741,3 +1732,4 @@ $(document).ready(function () {
     }
   }
 });
+

@@ -673,7 +673,7 @@ try {
             $monthlyTotal = $monthlyIsler + $monthlyEndeks;
 
             // ---- YENİ: SIRALAMA EKLENMESİ ----
-            $departman = $personelDetails->departman ?? '';
+            $departman = isset($personelDetails->departman) ? trim($personelDetails->departman) : '';
             $aktifEkipGecmisi = $PersonelModel->getEkipGecmisi($personel_id);
             $aktifEkipId = null;
             $aktifEkipBolge = '';
@@ -688,6 +688,19 @@ try {
                 $ekip = $TanimlamalarModel->find($aktifEkipId);
                 if ($ekip) {
                     $aktifEkipBolge = $ekip->ekip_bolge ?? '';
+                }
+            }
+
+            if ($departman === '') {
+                if ($aktifEkipId) {
+                    $TanimlamalarModel = new \App\Model\TanimlamalarModel();
+                    $ekip = $TanimlamalarModel->find($aktifEkipId);
+                    if ($ekip && !empty($ekip->tur_adi)) {
+                        $departman = trim($ekip->tur_adi);
+                    }
+                }
+                if ($departman === '') {
+                    $departman = 'Genel';
                 }
             }
 
@@ -708,10 +721,38 @@ try {
             $ekipPersonelIds = [];
 
             foreach ($tumPersoneller as $p) {
-                if ($p->departman == $departman) {
-                    $departmanPersonelIds[] = $p->id;
+                $pDept = isset($p->departman) ? trim($p->departman) : '';
+                if ($pDept !== '') {
+                    if (mb_strtolower($pDept, 'UTF-8') === mb_strtolower($departman, 'UTF-8')) {
+                        $departmanPersonelIds[] = $p->id;
+                    }
+                } else {
+                    $pEkipId = null;
+                    $pEkipGecmisi = $PersonelModel->getEkipGecmisi($p->id);
+                    foreach ($pEkipGecmisi as $gecmis) {
+                        if (empty($gecmis->bitis_tarihi) || $gecmis->bitis_tarihi >= date('Y-m-d')) {
+                            $pEkipId = $gecmis->ekip_kodu_id;
+                            break;
+                        }
+                    }
+                    $pDeptCalculated = '';
+                    if ($pEkipId) {
+                        $TanimlamalarModel = new \App\Model\TanimlamalarModel();
+                        $pEkip = $TanimlamalarModel->find($pEkipId);
+                        if ($pEkip && !empty($pEkip->tur_adi)) {
+                            $pDeptCalculated = trim($pEkip->tur_adi);
+                        }
+                    }
+                    if ($pDeptCalculated === '') {
+                        $pDeptCalculated = 'Genel';
+                    }
+
+                    if (mb_strtolower($pDeptCalculated, 'UTF-8') === mb_strtolower($departman, 'UTF-8')) {
+                        $departmanPersonelIds[] = $p->id;
+                    }
                 }
-                if ($aktifEkipBolge && $p->bolge == $aktifEkipBolge) {
+
+                if ($aktifEkipBolge && isset($p->bolge) && trim(mb_strtolower($p->bolge, 'UTF-8')) === trim(mb_strtolower($aktifEkipBolge, 'UTF-8'))) {
                     $ekipPersonelIds[] = $p->id;
                 }
             }

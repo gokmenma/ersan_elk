@@ -145,7 +145,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $data['servis_a_yuzde'] = ($data['servisteki_arac'] / $total_for_calc) * 100;
                             $data['bosta_a_yuzde'] = ($data['bosta_arac'] / $total_for_calc) * 100;
                         } elseif ($widgetId == 'widget-bekleyen-talepler') {
-                            $data['personel_talep_sayisi'] = (int)$avansModel->getBekleyenAvansSayisi() + (int)$izinModel->getBekleyenIzinSayisi() + (int)$talepModel->getBekleyenTalepSayisi();
+                            $db = $nobetModel->getDb();
+                            $degisim_c = 0; $mazeret_c = 0; $talep_c = 0;
+                            try {
+                                $stmtDegisim = $db->prepare("SELECT COUNT(*) as count FROM nobet_degisim_talepleri dt LEFT JOIN nobetler n ON dt.nobet_id = n.id WHERE dt.durum IN ('beklemede', 'personel_onayladi') AND n.firma_id = :firma_id");
+                                $stmtDegisim->execute([':firma_id' => $firmaId]);
+                                $degisim_c = (int) $stmtDegisim->fetch(PDO::FETCH_OBJ)->count;
+
+                                $stmtMazeret = $db->prepare("SELECT COUNT(*) as count FROM nobetler WHERE durum = 'mazeret_bildirildi' AND silinme_tarihi IS NULL AND firma_id = :firma_id");
+                                $stmtMazeret->execute([':firma_id' => $firmaId]);
+                                $mazeret_c = (int) $stmtMazeret->fetch(PDO::FETCH_OBJ)->count;
+
+                                $stmtTalep = $db->prepare("SELECT COUNT(*) as count FROM nobetler WHERE durum = 'talep_edildi' AND silinme_tarihi IS NULL AND firma_id = :firma_id");
+                                $stmtTalep->execute([':firma_id' => $firmaId]);
+                                $talep_c = (int) $stmtTalep->fetch(PDO::FETCH_OBJ)->count;
+                            } catch (\Exception $e) {}
+
+                            $data['personel_talep_sayisi'] = (int)$avansModel->getBekleyenAvansSayisi() + (int)$izinModel->getBekleyenIzinSayisi() + (int)$talepModel->getBekleyenTalepSayisi() + $degisim_c + $mazeret_c + $talep_c;
                         } elseif ($widgetId == 'widget-nobetciler') {
                             $data['nobetciler'] = $nobetModel->getNobetlerByTarih(date('Y-m-d'));
                         } elseif ($widgetId == 'widget-gorevler' || $widgetId == 'widget-yaklasan-gorevler') {
@@ -160,7 +176,54 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $avanslar = $avansModel->getBekleyenAvanslarForDashboard(5);
                             $izinler = $izinModel->getBekleyenIzinlerForDashboard(5);
                             $talepler = $talepModel->getBekleyenTaleplerForDashboard(5);
-                            $all = array_merge($avanslar, $izinler, $talepler);
+
+                            $nobet_all = [];
+                            try {
+                                $db = $nobetModel->getDb();
+                                // Nöbet Değişim
+                                $stmt = $db->prepare("SELECT dt.id, dt.talep_eden_id as personel_id, dt.talep_tarihi as tarih, dt.durum, n.nobet_tarihi, p1.adi_soyadi as talep_eden_adi, p2.adi_soyadi as talep_edilen_adi FROM nobet_degisim_talepleri dt LEFT JOIN nobetler n ON dt.nobet_id = n.id LEFT JOIN personel p1 ON dt.talep_eden_id = p1.id LEFT JOIN personel p2 ON dt.talep_edilen_id = p2.id WHERE dt.durum IN ('beklemede', 'personel_onayladi') AND n.firma_id = :firma_id");
+                                $stmt->execute([':firma_id' => $firmaId]);
+                                foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $nd) {
+                                    $nobet_all[] = (object) [
+                                        'tip' => 'Nöbet Değişim',
+                                        'id' => $nd->id,
+                                        'personel_id' => $nd->personel_id,
+                                        'tarih' => $nd->tarih ?: $nd->nobet_tarihi,
+                                        'durum' => $nd->durum,
+                                        'detay' => ($nd->talep_eden_adi ?? 'Personel') . ' -> ' . ($nd->talep_edilen_adi ?? 'Personel') . ' (' . date('d.m.Y', strtotime($nd->nobet_tarihi)) . ')',
+                                    ];
+                                }
+
+                                // Nöbet Mazeret
+                                $stmt = $db->prepare("SELECT id, personel_id, nobet_tarihi as tarih, durum, mazeret_aciklama as detay FROM nobetler WHERE durum = 'mazeret_bildirildi' AND silinme_tarihi IS NULL AND firma_id = :firma_id");
+                                $stmt->execute([':firma_id' => $firmaId]);
+                                foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $nm) {
+                                    $nobet_all[] = (object) [
+                                        'tip' => 'Nöbet Mazeret',
+                                        'id' => $nm->id,
+                                        'personel_id' => $nm->personel_id,
+                                        'tarih' => $nm->tarih,
+                                        'durum' => $nm->durum,
+                                        'detay' => 'Mazeret Bildirimi: ' . date('d.m.Y', strtotime($nm->tarih)) . ' ' . ($nm->detay ?: ''),
+                                    ];
+                                }
+
+                                // Nöbet Talebi
+                                $stmt = $db->prepare("SELECT id, personel_id, nobet_tarihi as tarih, durum, aciklama as detay FROM nobetler WHERE durum = 'talep_edildi' AND silinme_tarihi IS NULL AND firma_id = :firma_id");
+                                $stmt->execute([':firma_id' => $firmaId]);
+                                foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $nt) {
+                                    $nobet_all[] = (object) [
+                                        'tip' => 'Nöbet Talebi',
+                                        'id' => $nt->id,
+                                        'personel_id' => $nt->personel_id,
+                                        'tarih' => $nt->tarih,
+                                        'durum' => $nt->durum,
+                                        'detay' => 'Nöbet Talebi: ' . date('d.m.Y', strtotime($nt->tarih)) . ' ' . ($nt->detay ?: ''),
+                                    ];
+                                }
+                            } catch (\Exception $e) {}
+
+                            $all = array_merge($avanslar, $izinler, $talepler, $nobet_all);
                             usort($all, fn($a, $b) => strtotime($b->tarih) - strtotime($a->tarih));
                             $data['recent_requests'] = array_slice($all, 0, 10);
                             $pIds = array_unique(array_column($data['recent_requests'], 'personel_id'));

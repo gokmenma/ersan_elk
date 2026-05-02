@@ -283,7 +283,7 @@ function renderWidget(string $widgetId, array $data = []) {
             <div class="<?php echo ($width ?? 'col-md-6'); ?> widget-item" id="widget-talepler">
                 <div class="card summary-card" style="border-radius: 12px; overflow: hidden;">
                     <div class="card-header d-flex justify-content-between align-items-center">
-                        <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Arıza/İzin/Avans Talepleri</h5>
+                        <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Bekleyen Talepler</h5>
                     </div>
                     <div class="card-body p-0" style="height: <?php echo ($height ?? '300px'); ?>; overflow-y: auto;">
                         <div class="table-responsive">
@@ -307,6 +307,12 @@ function renderWidget(string $widgetId, array $data = []) {
                                             if ($req->tip == 'Avans') $badgeClass = 'badge-success';
                                             if ($req->tip == 'İzin') $badgeClass = 'badge-primary';
                                             if ($req->tip == 'Talep') $badgeClass = 'badge-info';
+                                            if ($req->tip == 'Nöbet Değişim') $badgeClass = 'bg-warning text-dark';
+                                            if ($req->tip == 'Nöbet Mazeret') $badgeClass = 'bg-danger text-white';
+                                            if ($req->tip == 'Nöbet Talebi') $badgeClass = 'bg-info text-white';
+
+                                            $is_nobet = in_array($req->tip, ['Nöbet Değişim', 'Nöbet Mazeret', 'Nöbet Talebi']);
+                                            $link_url = $is_nobet ? 'index.php?p=nobet/talepler' : 'index.php?p=talepler/list';
                                             ?>
                                             <tr>
                                                 <td>
@@ -325,7 +331,7 @@ function renderWidget(string $widgetId, array $data = []) {
                                                 <td><?php echo date('d.m.Y', strtotime($req->tarih)); ?></td>
                                                 <td>
                                                     <div class="btn-group">
-                                                        <a href="index.php?p=talepler/list" class="btn btn-primary btn-sm"><i class='bx bx-right-arrow-alt'></i></a>
+                                                        <a href="<?php echo $link_url; ?>" class="btn btn-primary btn-sm"><i class='bx bx-right-arrow-alt'></i></a>
                                                     </div>
                                                 </td>
                                             </tr>

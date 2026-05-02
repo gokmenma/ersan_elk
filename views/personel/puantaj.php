@@ -1038,4 +1038,4 @@ use App\Service\Gate;
 <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
 
 <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
-<script src="views/personel/js/puantaj_izin.js"></script>
+<script src="views/personel/js/puantaj_izin.js?v=<?= filemtime(__DIR__ . '/js/puantaj_izin.js') ?>"></script>
