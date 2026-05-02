@@ -69,7 +69,7 @@ if (!is_array($firma_option)) {
             </div>
 
             <button type="button" class="btn btn-sm header-item" id="vertical-menu-btn">
-                <i data-feather="menu"></i>
+                <i data-feather="menu" class="icon-lg"></i>
             </button>
 
             <!-- App Search-->

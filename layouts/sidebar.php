@@ -114,8 +114,14 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     padding: 0 12px 24px 12px;
                     display: flex;
                     align-items: center;
-                    gap: 12px;
+                    justify-content: space-between;
                     position: relative;
+                }
+
+                .brand-wrapper {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
                 }
 
                 .brand-logo {
@@ -382,17 +388,26 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     padding: 12px;
                     justify-content: center;
                 }
+
+                body[data-sidebar-size="sm"] #sidebar-collapse-btn {
+                    display: none !important;
+                }
             </style>
 
             <div class="sidebar-sticky-top">
                 <div class="sidebar-brand-box">
-                    <div class="brand-logo">
-                        <i data-feather="box"></i>
+                    <div class="brand-wrapper">
+                        <div class="brand-logo">
+                            <i data-feather="box"></i>
+                        </div>
+                        <div class="brand-info">
+                            <span class="brand-name">Ersan ELK</span>
+                            <span class="brand-sub">Yönetim Paneli</span>
+                        </div>
                     </div>
-                    <div class="brand-info">
-                        <span class="brand-name">Ersan ELK</span>
-                        <span class="brand-sub">Yönetim Paneli</span>
-                    </div>
+                    <button type="button" class="btn btn-sm p-1 border-0 bg-transparent text-muted" id="sidebar-collapse-btn" style="display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; z-index: 101; min-width: 32px; min-height: 32px;">
+                        <i data-feather="menu" style="width: 20px; height: 20px;"></i>
+                    </button>
                 </div>
 
                 <div class="sidebar-search-container">
@@ -508,6 +523,14 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
     document.addEventListener('DOMContentLoaded', function () {
         if (typeof feather !== 'undefined') {
             feather.replace();
+        }
+
+        const sidebarCollapseBtn = document.getElementById('sidebar-collapse-btn');
+        if (sidebarCollapseBtn) {
+            sidebarCollapseBtn.addEventListener('click', function (e) {
+                e.preventDefault();
+                document.getElementById('vertical-menu-btn')?.click();
+            });
         }
 
         const searchInput = document.getElementById('menu-search-input');

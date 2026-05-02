@@ -498,7 +498,7 @@ padding-bottom:  10px !important;
                     <div class="card border-0 shadow-sm">
                         <div class="card-body p-0">
                             <div class="table-responsive" id="reportTableWrapper"
-                                style="max-height: calc(100vh - 410px); overflow: auto;">
+                                style="overflow: auto;">
                                 <!-- AJAX ile doldurulacak -->
                             </div>
                         </div>
@@ -689,7 +689,7 @@ padding-bottom:  10px !important;
                     <div class="card border-0 shadow-sm">
                         <div class="card-body p-0">
                             <div class="table-responsive" id="okumaGunTableWrapper"
-                                style="max-height: calc(100vh - 410px); overflow: auto;">
+                                style="overflow: auto;">
                             </div>
                         </div>
                     </div>
@@ -789,7 +789,7 @@ padding-bottom:  10px !important;
                     <div class="card border-0 shadow-sm">
                         <div class="card-body p-0">
                             <div class="table-responsive" id="defterOzetTableWrapper"
-                                style="max-height: calc(100vh - 410px); overflow: auto;">
+                                style="overflow: auto;">
                             </div>
                         </div>
                     </div>
@@ -1061,10 +1061,11 @@ padding-bottom:  10px !important;
 
     /* ======= COMPARISON TABLE ======= */
     #reportTableWrapper,
-    #okumaGunTableWrapper {
+    #okumaGunTableWrapper,
+    #defterOzetTableWrapper {
         border-radius: 6px;
         overflow: auto;
-        max-height: calc(100vh - 410px);
+        max-height: calc(100vh - 405px) !important;
         border: 1px solid var(--bs-border-color, #eee);
     }
 
@@ -2810,6 +2811,19 @@ padding-bottom:  10px !important;
                         if (field === 'oran') {
                             valA = dA.abone > 0 ? (dA.okunan / dA.abone) * 100 : 0;
                             valB = dB.abone > 0 ? (dB.okunan / dB.abone) * 100 : 0;
+                        } else if (field === 'degisim') {
+                            const idx = effectiveDonemler.indexOf(donem);
+                            const prevDonem = effectiveDonemler[idx - 1];
+                            const prevA = prevDonem ? a.donemler[prevDonem] : null;
+                            const prevB = prevDonem ? b.donemler[prevDonem] : null;
+
+                            const curValA = parseInt(dA.okunan) || 0;
+                            const prevValA = prevA ? (parseInt(prevA.okunan) || 0) : 0;
+                            valA = prevValA > 0 ? ((curValA - prevValA) / prevValA) * 100 : 0;
+
+                            const curValB = parseInt(dB.okunan) || 0;
+                            const prevValB = prevB ? (parseInt(prevB.okunan) || 0) : 0;
+                            valB = prevValB > 0 ? ((curValB - prevValB) / prevValB) * 100 : 0;
                         } else {
                             valA = parseInt(dA[field]) || 0;
                             valB = parseInt(dB[field]) || 0;
@@ -2880,7 +2894,13 @@ padding-bottom:  10px !important;
                     if (visibleCount === 0) return;
                     const isAlt = idx % 2 === 1;
                     const formatted = donem.substring(0, 4) + '/' + donem.substring(4);
-                    html += `<th colspan="${visibleCount}" class="period-header month-frame-header draggable-header ${isAlt ? 'do-month-alt' : ''}" data-donem="${donem}">
+                    let firstVisible = 'abone';
+                    if (_visibleColumns.abone) firstVisible = 'abone';
+                    else if (_visibleColumns.okunan) firstVisible = 'okunan';
+                    else if (_visibleColumns.degisim) firstVisible = 'degisim';
+                    else if (_visibleColumns.oran) firstVisible = 'oran';
+
+                    html += `<th colspan="${visibleCount}" class="period-header month-frame-header draggable-header sortable-header ${isAlt ? 'do-month-alt' : ''}" data-donem="${donem}" data-sort-col="${donem}_${firstVisible}">
                         <i class="bx bx-grid-vertical drag-indicator"></i>${formatted}
                     </th>`;
                 });
@@ -2916,19 +2936,19 @@ padding-bottom:  10px !important;
                 html += `<th class="fix-col-5 sortable-header" data-sort-col="abone_sayisi">ABONE SAYISI${sortIcon('abone_sayisi')}</th>`;
 
                 if (_visibleColumns.abone)
-                    html += `<th colspan="${effectiveDonemler.length}" class="period-header month-frame-header draggable-header type-end" data-type="abone" style="background: #eff6ff; color: #1e40af;">
+                    html += `<th colspan="${effectiveDonemler.length}" class="period-header month-frame-header draggable-header type-end sortable-header" data-type="abone" data-sort-col="${effectiveDonemler[effectiveDonemler.length - 1]}_abone" style="background: #eff6ff; color: #1e40af;">
                         <i class="bx bx-grid-vertical drag-indicator"></i>ABONE SAYILARI
                     </th>`;
                 if (_visibleColumns.okunan)
-                    html += `<th colspan="${effectiveDonemler.length}" class="period-header month-frame-header draggable-header type-end" data-type="okunan" style="background: #ecfdf5; color: #065f46;">
+                    html += `<th colspan="${effectiveDonemler.length}" class="period-header month-frame-header draggable-header type-end sortable-header" data-type="okunan" data-sort-col="${effectiveDonemler[effectiveDonemler.length - 1]}_okunan" style="background: #ecfdf5; color: #065f46;">
                         <i class="bx bx-grid-vertical drag-indicator"></i>OKUNAN SAYILARI
                     </th>`;
                 if (_visibleColumns.degisim)
-                    html += `<th colspan="${effectiveDonemler.length}" class="period-header month-frame-header draggable-header type-end" data-type="degisim" style="background: #f0f9ff; color: #0369a1;">
+                    html += `<th colspan="${effectiveDonemler.length}" class="period-header month-frame-header draggable-header type-end sortable-header" data-type="degisim" data-sort-col="${effectiveDonemler[effectiveDonemler.length - 1]}_degisim" style="background: #f0f9ff; color: #0369a1;">
                         <i class="bx bx-grid-vertical drag-indicator"></i>AYLIK DEĞİŞİM %
                     </th>`;
                 if (_visibleColumns.oran)
-                    html += `<th colspan="${effectiveDonemler.length}" class="period-header month-frame-header draggable-header type-end" data-type="oran" style="background: #fffbeb; color: #92400e;">
+                    html += `<th colspan="${effectiveDonemler.length}" class="period-header month-frame-header draggable-header type-end sortable-header" data-type="oran" data-sort-col="${effectiveDonemler[effectiveDonemler.length - 1]}_oran" style="background: #fffbeb; color: #92400e;">
                         <i class="bx bx-grid-vertical drag-indicator"></i>OKUMA ORANLARI %
                     </th>`;
                 html += '</tr>';
