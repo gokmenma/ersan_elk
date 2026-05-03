@@ -483,16 +483,35 @@ class TanimlamalarModel extends Model
         $stmt->execute([$ekip_no, $firma_id]);
         return $stmt->fetch(PDO::FETCH_OBJ);
     }
+    private static $cachedDefterAndEkipData = null;
+
+    private function loadCachedDefinitions()
+    {
+        if (self::$cachedDefterAndEkipData === null) {
+            $sql = "SELECT grup, TRIM(ekip_bolge) as ekip_bolge, TRIM(tur_adi) as tur_adi, TRIM(defter_mahalle) as defter_mahalle 
+                    FROM $this->table 
+                    WHERE grup IN ('ekip_kodu', 'defter_kodu') AND firma_id = ? AND silinme_tarihi IS NULL";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$_SESSION['firma_id']]);
+            self::$cachedDefterAndEkipData = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        }
+        return self::$cachedDefterAndEkipData;
+    }
+
     /**
      * Ekip bölgelerini getirir
      * @return array Bölgeler listesi
      */
     public function getEkipBolgeleri()
     {
-        $sql = "SELECT DISTINCT TRIM(ekip_bolge) FROM $this->table WHERE grup = 'ekip_kodu' AND ekip_bolge IS NOT NULL AND ekip_bolge != '' AND ekip_bolge != '0' AND firma_id = ? AND silinme_tarihi IS NULL";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$_SESSION['firma_id']]);
-        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $data = $this->loadCachedDefinitions();
+        $results = [];
+        foreach ($data as $row) {
+            if ($row['grup'] === 'ekip_kodu' && $row['ekip_bolge'] !== null && $row['ekip_bolge'] !== '' && $row['ekip_bolge'] !== '0') {
+                $results[] = $row['ekip_bolge'];
+            }
+        }
+        return array_values(array_unique($results));
     }
 
     /**
@@ -501,10 +520,15 @@ class TanimlamalarModel extends Model
      */
     public function getDefterKodlari()
     {
-        $sql = "SELECT DISTINCT TRIM(tur_adi) FROM $this->table WHERE grup = 'defter_kodu' AND tur_adi IS NOT NULL AND tur_adi != '' AND firma_id = ? AND silinme_tarihi IS NULL ORDER BY tur_adi ASC";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$_SESSION['firma_id']]);
-        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $data = $this->loadCachedDefinitions();
+        $results = [];
+        foreach ($data as $row) {
+            if ($row['grup'] === 'defter_kodu' && $row['tur_adi'] !== null && $row['tur_adi'] !== '') {
+                $results[] = $row['tur_adi'];
+            }
+        }
+        sort($results);
+        return array_values(array_unique($results));
     }
 
     /**
@@ -513,10 +537,15 @@ class TanimlamalarModel extends Model
      */
     public function getDefterMahalleleri()
     {
-        $sql = "SELECT DISTINCT TRIM(defter_mahalle) FROM $this->table WHERE grup = 'defter_kodu' AND defter_mahalle IS NOT NULL AND defter_mahalle != '' AND firma_id = ? AND silinme_tarihi IS NULL ORDER BY defter_mahalle ASC";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([$_SESSION['firma_id']]);
-        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $data = $this->loadCachedDefinitions();
+        $results = [];
+        foreach ($data as $row) {
+            if ($row['grup'] === 'defter_kodu' && $row['defter_mahalle'] !== null && $row['defter_mahalle'] !== '') {
+                $results[] = $row['defter_mahalle'];
+            }
+        }
+        sort($results);
+        return array_values(array_unique($results));
     }
 
     /**

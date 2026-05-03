@@ -1557,8 +1557,10 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             updateFilterSummary();
         }
 
+        window.isInitializingFilters = false;
         // localStorage'dan filtreleri yükle (eğer URL'de yoksa)
         function loadFiltersFromStorage() {
+            window.isInitializingFilters = true;
             var urlParams = new URLSearchParams(window.location.search);
             var hasFilters = urlParams.has('ekip_kodu') || urlParams.has('work_type') || urlParams.has('work_result');
 
@@ -1654,6 +1656,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 if (!$('input[name="start_date"]').val()) $('input[name="start_date"]').val(firstDayStr);
                 if (!$('input[name="end_date"]').val()) $('input[name="end_date"]').val(todayStr);
             }
+            window.isInitializingFilters = false;
             updateFilterSummary();
         }
 
@@ -1872,7 +1875,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
 
             if (activeTab === 'okuma') {
                 table = endeksDataTable;
-                colIdx = 6; // Sayaç Durumu
+                colIdx = 7; // Sayaç Durumu
             } else if (activeTab === 'yapilan_isler') {
                 table = puantajDataTable;
                 colIdx = 5; // İş Emri Sonucu
@@ -2363,8 +2366,8 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             $('#kacakUploadForm input[name="excel_file"]').val('');
         });
 
-        // Bölge seçildiğinde personelleri filtrele
         $('select[name="region"]').on('change', function() {
+            if (window.isInitializingFilters) return;
             var region = $(this).val();
             var $personelSelect = $('select[name="ekip_kodu"]');
             var startDate = $('input[name="start_date"]').val();

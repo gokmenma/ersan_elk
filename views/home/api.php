@@ -148,15 +148,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $db = $nobetModel->getDb();
                             $degisim_c = 0; $mazeret_c = 0; $talep_c = 0;
                             try {
-                                $stmtDegisim = $db->prepare("SELECT COUNT(*) as count FROM nobet_degisim_talepleri dt LEFT JOIN nobetler n ON dt.nobet_id = n.id WHERE dt.durum IN ('beklemede', 'personel_onayladi') AND n.firma_id = :firma_id");
+                                $stmtDegisim = $db->prepare("SELECT COUNT(*) as count FROM nobet_degisim_talepleri dt LEFT JOIN nobetler n ON dt.nobet_id = n.id WHERE dt.durum IN ('beklemede', 'personel_onayladi') AND n.firma_id = :firma_id AND n.nobet_tarihi >= CURDATE()");
                                 $stmtDegisim->execute([':firma_id' => $firmaId]);
                                 $degisim_c = (int) $stmtDegisim->fetch(PDO::FETCH_OBJ)->count;
 
-                                $stmtMazeret = $db->prepare("SELECT COUNT(*) as count FROM nobetler WHERE durum = 'mazeret_bildirildi' AND silinme_tarihi IS NULL AND firma_id = :firma_id");
+                                $stmtMazeret = $db->prepare("SELECT COUNT(*) as count FROM nobetler WHERE durum = 'mazeret_bildirildi' AND silinme_tarihi IS NULL AND firma_id = :firma_id AND nobet_tarihi >= CURDATE()");
                                 $stmtMazeret->execute([':firma_id' => $firmaId]);
                                 $mazeret_c = (int) $stmtMazeret->fetch(PDO::FETCH_OBJ)->count;
 
-                                $stmtTalep = $db->prepare("SELECT COUNT(*) as count FROM nobetler WHERE durum = 'talep_edildi' AND silinme_tarihi IS NULL AND firma_id = :firma_id");
+                                $stmtTalep = $db->prepare("SELECT COUNT(*) as count FROM nobetler WHERE durum = 'talep_edildi' AND silinme_tarihi IS NULL AND firma_id = :firma_id AND nobet_tarihi >= CURDATE()");
                                 $stmtTalep->execute([':firma_id' => $firmaId]);
                                 $talep_c = (int) $stmtTalep->fetch(PDO::FETCH_OBJ)->count;
                             } catch (\Exception $e) {}
@@ -181,7 +181,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             try {
                                 $db = $nobetModel->getDb();
                                 // Nöbet Değişim
-                                $stmt = $db->prepare("SELECT dt.id, dt.talep_eden_id as personel_id, dt.talep_tarihi as tarih, dt.durum, n.nobet_tarihi, p1.adi_soyadi as talep_eden_adi, p2.adi_soyadi as talep_edilen_adi FROM nobet_degisim_talepleri dt LEFT JOIN nobetler n ON dt.nobet_id = n.id LEFT JOIN personel p1 ON dt.talep_eden_id = p1.id LEFT JOIN personel p2 ON dt.talep_edilen_id = p2.id WHERE dt.durum IN ('beklemede', 'personel_onayladi') AND n.firma_id = :firma_id");
+                                $stmt = $db->prepare("SELECT dt.id, dt.talep_eden_id as personel_id, dt.talep_tarihi as tarih, dt.durum, n.nobet_tarihi, p1.adi_soyadi as talep_eden_adi, p2.adi_soyadi as talep_edilen_adi FROM nobet_degisim_talepleri dt LEFT JOIN nobetler n ON dt.nobet_id = n.id LEFT JOIN personel p1 ON dt.talep_eden_id = p1.id LEFT JOIN personel p2 ON dt.talep_edilen_id = p2.id WHERE dt.durum IN ('beklemede', 'personel_onayladi') AND n.firma_id = :firma_id AND n.nobet_tarihi >= CURDATE()");
                                 $stmt->execute([':firma_id' => $firmaId]);
                                 foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $nd) {
                                     $nobet_all[] = (object) [
@@ -195,7 +195,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 }
 
                                 // Nöbet Mazeret
-                                $stmt = $db->prepare("SELECT id, personel_id, nobet_tarihi as tarih, durum, mazeret_aciklama as detay FROM nobetler WHERE durum = 'mazeret_bildirildi' AND silinme_tarihi IS NULL AND firma_id = :firma_id");
+                                $stmt = $db->prepare("SELECT id, personel_id, nobet_tarihi as tarih, durum, mazeret_aciklama as detay FROM nobetler WHERE durum = 'mazeret_bildirildi' AND silinme_tarihi IS NULL AND firma_id = :firma_id AND nobet_tarihi >= CURDATE()");
                                 $stmt->execute([':firma_id' => $firmaId]);
                                 foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $nm) {
                                     $nobet_all[] = (object) [
@@ -209,7 +209,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 }
 
                                 // Nöbet Talebi
-                                $stmt = $db->prepare("SELECT id, personel_id, nobet_tarihi as tarih, durum, aciklama as detay FROM nobetler WHERE durum = 'talep_edildi' AND silinme_tarihi IS NULL AND firma_id = :firma_id");
+                                $stmt = $db->prepare("SELECT id, personel_id, nobet_tarihi as tarih, durum, aciklama as detay FROM nobetler WHERE durum = 'talep_edildi' AND silinme_tarihi IS NULL AND firma_id = :firma_id AND nobet_tarihi >= CURDATE()");
                                 $stmt->execute([':firma_id' => $firmaId]);
                                 foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $nt) {
                                     $nobet_all[] = (object) [

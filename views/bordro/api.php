@@ -687,7 +687,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $html .= '<tr><td class="text-muted">Eş Yardımı (Maaşa Dahil):</td><td class="text-success">+' . number_format($spouseDeduction, 2, ',', '.') . ' ₺</td></tr>';
                     }
                     
-                    $html .= '<tr class="table-warning"><td class="text-muted">Net Alacağı:</td><td class="fw-bold text-success">' . number_format($netAlacak, 2, ',', '.') . ' ₺</td></tr>';
+                    $html .= '<tr class="table-warning"><td class="text-muted">Toplam Alacağı:</td><td class="fw-bold text-success">' . number_format($toplamAlacak, 2, ',', '.') . ' ₺</td></tr>';
                 } elseif ($ucretsizIzinGunu > 0 || in_array($maasDurumuGosterim, ['Net', 'Brüt'])) {
                     $descText = ($maasDurumuGosterim == 'Net' || $maasDurumuGosterim == 'Brüt') ? ' (Gün x Ücret)' : ' (SGK matrahı)';
                     $html .= '<tr class="table-warning"><td class="text-muted">Hakediş (Maaş):</td><td class="fw-bold text-warning">' . number_format($calisanBrutMaas, 2, ',', '.') . ' ₺ <small class="text-muted">' . $descText . '</small></td></tr>';

@@ -147,20 +147,46 @@ class EndeksOkumaModel extends Model
     public function getDataTable($request, $startDate, $endDate, $personelId = '', $region = '', $defter = '', $mahalle = '')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $params = ['firma_id' => $firmaId];
 
-        // Temel sorgu
-        $baseWhere = "t.firma_id = :firma_id AND t.silinme_tarihi IS NULL";
+        // 1. Create date range filtered subset table for fast DataTables
+        $this->db->exec("DROP TEMPORARY TABLE IF EXISTS temp_endeks_range");
 
-        // Tarih filtreleri
+        $rangeSql = "CREATE TEMPORARY TABLE temp_endeks_range AS
+            SELECT t.* FROM {$this->table} t 
+            WHERE t.firma_id = :firma_id AND t.silinme_tarihi IS NULL";
+            
+        $rangeParams = ['firma_id' => $firmaId];
         if ($startDate) {
-            $baseWhere .= " AND t.tarih >= :start_date";
-            $params['start_date'] = \App\Helper\Date::convertExcelDate($startDate, 'Y-m-d') ?: $startDate;
+            $rangeSql .= " AND t.tarih >= :start_date";
+            $rangeParams['start_date'] = \App\Helper\Date::convertExcelDate($startDate, 'Y-m-d') ?: $startDate;
         }
         if ($endDate) {
-            $baseWhere .= " AND t.tarih <= :end_date";
-            $params['end_date'] = \App\Helper\Date::convertExcelDate($endDate, 'Y-m-d') ?: $endDate;
+            $rangeSql .= " AND t.tarih <= :end_date";
+            $rangeParams['end_date'] = \App\Helper\Date::convertExcelDate($endDate, 'Y-m-d') ?: $endDate;
         }
+        
+        $rangeStmt = $this->db->prepare($rangeSql);
+        foreach ($rangeParams as $k => $v) {
+            $rangeStmt->bindValue(":$k", $v);
+        }
+        $rangeStmt->execute();
+
+        // Add index on temp_endeks_range for fast joins and sorting
+        $this->db->exec("ALTER TABLE temp_endeks_range ADD INDEX idx_range_tarih (tarih)");
+
+        // 2. Create temporary table for optimized joining of defter_mahalle
+        $this->db->exec("DROP TEMPORARY TABLE IF EXISTS temp_defter_mahalle");
+        $this->db->exec("CREATE TEMPORARY TABLE temp_defter_mahalle AS
+            SELECT tur_adi, defter_bolge, firma_id, MAX(defter_mahalle) as defter_mahalle
+            FROM tanimlamalar
+            WHERE grup = 'defter_kodu' AND silinme_tarihi IS NULL
+            GROUP BY tur_adi, defter_bolge, firma_id");
+        $this->db->exec("ALTER TABLE temp_defter_mahalle ADD INDEX idx_tm (tur_adi, defter_bolge, firma_id)");
+
+        // Temel sorgu
+        $baseWhere = "1=1";
+        $params = [];
+
         if ($personelId) {
             $baseWhere .= " AND t.personel_id = :personel_id";
             $params['personel_id'] = $personelId;
@@ -179,14 +205,9 @@ class EndeksOkumaModel extends Model
         }
 
         // Toplam kayıt sayısı (filtresiz)
-        $totalQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t 
+        $totalQuery = $this->db->prepare("SELECT COUNT(*) FROM temp_endeks_range t 
             LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id 
-            LEFT JOIN (
-                SELECT tur_adi, defter_bolge, firma_id, MAX(defter_mahalle) as defter_mahalle
-                FROM tanimlamalar
-                WHERE grup = 'defter_kodu' AND silinme_tarihi IS NULL
-                GROUP BY tur_adi, defter_bolge, firma_id
-            ) tm ON t.defter = tm.tur_adi 
+            LEFT JOIN temp_defter_mahalle tm ON t.defter = tm.tur_adi 
                 AND t.bolge = tm.defter_bolge 
                 AND tm.firma_id = t.firma_id
             WHERE $baseWhere");
@@ -352,15 +373,10 @@ class EndeksOkumaModel extends Model
         }
 
         // Filtrelenmiş kayıt sayısı
-        $filteredQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t 
+        $filteredQuery = $this->db->prepare("SELECT COUNT(*) FROM temp_endeks_range t 
             LEFT JOIN personel p ON t.personel_id = p.id 
             LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id 
-            LEFT JOIN (
-                SELECT tur_adi, defter_bolge, firma_id, MAX(defter_mahalle) as defter_mahalle
-                FROM tanimlamalar
-                WHERE grup = 'defter_kodu' AND silinme_tarihi IS NULL
-                GROUP BY tur_adi, defter_bolge, firma_id
-            ) tm ON t.defter = tm.tur_adi 
+            LEFT JOIN temp_defter_mahalle tm ON t.defter = tm.tur_adi 
                 AND t.bolge = tm.defter_bolge 
                 AND tm.firma_id = t.firma_id
             WHERE $baseWhere $searchWhere");
@@ -393,15 +409,10 @@ class EndeksOkumaModel extends Model
 
         // Veri çekme (Ekip adı için tanimlamalar joinlendi)
         $sql = "SELECT t.*, p.adi_soyadi as personel_adi, def.tur_adi as ekip_kodu_adi, tm.defter_mahalle
-                FROM {$this->table} t 
+                FROM temp_endeks_range t 
                 LEFT JOIN personel p ON t.personel_id = p.id 
                 LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
-                LEFT JOIN (
-                    SELECT tur_adi, defter_bolge, firma_id, MAX(defter_mahalle) as defter_mahalle
-                    FROM tanimlamalar
-                    WHERE grup = 'defter_kodu' AND silinme_tarihi IS NULL
-                    GROUP BY tur_adi, defter_bolge, firma_id
-                ) tm ON t.defter = tm.tur_adi 
+                LEFT JOIN temp_defter_mahalle tm ON t.defter = tm.tur_adi 
                     AND t.bolge = tm.defter_bolge 
                     AND tm.firma_id = t.firma_id
                 WHERE $baseWhere $searchWhere
@@ -437,19 +448,14 @@ class EndeksOkumaModel extends Model
      */
     public function getSayacDurumSummary($baseWhere, $searchWhere, $params)
     {
-        $table = $this->table;
+        $table = 'temp_endeks_range';
         $sql = "SELECT UPPER(TRIM(t.sayac_durum)) as sayac_durum, 
                        COUNT(*) as adet, 
                        SUM(t.okunan_abone_sayisi) as toplam_abone
                 FROM {$table} t
                 LEFT JOIN personel p ON t.personel_id = p.id
                 LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
-                LEFT JOIN (
-                    SELECT tur_adi, defter_bolge, firma_id, MAX(defter_mahalle) as defter_mahalle
-                    FROM tanimlamalar
-                    WHERE grup = 'defter_kodu' AND silinme_tarihi IS NULL
-                    GROUP BY tur_adi, defter_bolge, firma_id
-                ) tm ON t.defter = tm.tur_adi 
+                LEFT JOIN temp_defter_mahalle tm ON t.defter = tm.tur_adi 
                     AND t.bolge = tm.defter_bolge 
                     AND tm.firma_id = t.firma_id
                 WHERE $baseWhere $searchWhere

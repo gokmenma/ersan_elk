@@ -316,7 +316,7 @@ class BordroPersonelModel extends Model
         if (!empty($p->gorev_gecmisi_var) && isset($p->gg_toplam_gun)) {
             $ggToplamGun = intval($p->gg_toplam_gun);
             if ($ggToplamGun > 0) {
-                $aktifTakvimGun = min($aktifTakvimGun, $ggToplamGun);
+                $aktifTakvimGun = min($aktifTakvimGun, $ggToplamGun + $ucretsizIzinGunu + $raporGunu);
             }
         }
 
@@ -3024,7 +3024,7 @@ class BordroPersonelModel extends Model
         // USER REQ: Maaş hesaplaması görev geçmişi kapsamına göre olmalı (Örn: Geçmiş 1 günlük ise 1 gün ödenmeli)
         if (count($gecmisKayitlar) > 0) {
             $workingHistoryCoverage = $toplamGecerliGun;
-            $aktifTakvimGun = min($aktifTakvimGun, $workingHistoryCoverage);
+            $aktifTakvimGun = min($aktifTakvimGun, $workingHistoryCoverage + $ucretsizIzinGunu + $raporGunu);
         }
 
         $gunlukBase = $aktifTakvimGun;

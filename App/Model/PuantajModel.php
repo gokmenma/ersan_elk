@@ -104,9 +104,17 @@ class PuantajModel extends Model
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
+    private static $cachedWorkTypes = [];
+    private static $cachedWorkResults = [];
+
     public function getWorkTypes($personelId = null)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
+        $cacheKey = $firmaId . '_' . ($personelId ?? 'all');
+        if (isset(self::$cachedWorkTypes[$cacheKey])) {
+            return self::$cachedWorkTypes[$cacheKey];
+        }
+
         $params = [$firmaId];
 
         $sql = "SELECT DISTINCT TRIM(COALESCE(NULLIF(tn.tur_adi, ''), NULLIF(t.is_emri_tipi, ''))) as tur_adi
@@ -123,12 +131,18 @@ class PuantajModel extends Model
         
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        self::$cachedWorkTypes[$cacheKey] = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        return self::$cachedWorkTypes[$cacheKey];
     }
 
     public function getWorkResults($personelId = null, $workType = null)
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
+        $cacheKey = $firmaId . '_' . ($personelId ?? 'all') . '_' . ($workType ?? 'all');
+        if (isset(self::$cachedWorkResults[$cacheKey])) {
+            return self::$cachedWorkResults[$cacheKey];
+        }
+
         $params = [$firmaId];
         
         $sql = "SELECT DISTINCT TRIM(COALESCE(NULLIF(tn.is_emri_sonucu, ''), NULLIF(t.is_emri_sonucu, ''))) as is_emri_sonucu
@@ -151,7 +165,8 @@ class PuantajModel extends Model
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
-        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        self::$cachedWorkResults[$cacheKey] = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        return self::$cachedWorkResults[$cacheKey];
     }
     public function getSummaryByRange($startDate, $endDate, $personelId = '', $region = '')
     {

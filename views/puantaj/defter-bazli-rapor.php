@@ -2746,7 +2746,8 @@ padding-bottom:  10px !important;
                 // Sayısal kolon filtrelerini uygula
                 for (const filterKey in _numericFilters) {
                     const f = _numericFilters[filterKey];
-                    if (!f || !f.operator || f.value === '' || f.value === null || f.value === undefined) continue;
+                    if (!f || !f.operator) continue;
+                    if (f.operator !== 'empty' && f.operator !== 'not_empty' && (f.value === '' || f.value === null || f.value === undefined)) continue;
 
                     const parts = filterKey.split('_');
                     const field = parts.pop(); // abone, okunan, oran
@@ -2756,19 +2757,32 @@ padding-bottom:  10px !important;
                     let cellVal;
                     if (field === 'oran') {
                         cellVal = donemData.abone > 0 ? (donemData.okunan / donemData.abone) * 100 : 0;
+                    } else if (field === 'degisim') {
+                        const idx = effectiveDonemler.indexOf(donemKey);
+                        const prevDonem = effectiveDonemler[idx - 1];
+                        const prevData = prevDonem ? item.donemler[prevDonem] : null;
+                        const curVal = parseInt(donemData.okunan) || 0;
+                        const prevVal = prevData ? (parseInt(prevData.okunan) || 0) : 0;
+                        cellVal = prevVal > 0 ? ((curVal - prevVal) / prevVal) * 100 : 0;
                     } else {
                         cellVal = parseFloat(donemData[field]) || 0;
                     }
 
-                    const filterVal = parseFloat(f.value);
-                    if (isNaN(filterVal)) continue;
+                    if (f.operator === 'empty') {
+                        if (cellVal !== 0 && cellVal !== '' && cellVal !== null && cellVal !== undefined) return false;
+                    } else if (f.operator === 'not_empty') {
+                        if (cellVal === 0 || cellVal === '' || cellVal === null || cellVal === undefined) return false;
+                    } else {
+                        const filterVal = parseFloat(f.value);
+                        if (isNaN(filterVal)) continue;
 
-                    switch (f.operator) {
-                        case '>': if (!(cellVal > filterVal)) return false; break;
-                        case '<': if (!(cellVal < filterVal)) return false; break;
-                        case '>=': if (!(cellVal >= filterVal)) return false; break;
-                        case '<=': if (!(cellVal <= filterVal)) return false; break;
-                        case '=': if (!(Math.abs(cellVal - filterVal) < 0.01)) return false; break;
+                        switch (f.operator) {
+                            case '>': if (!(cellVal > filterVal)) return false; break;
+                            case '<': if (!(cellVal < filterVal)) return false; break;
+                            case '>=': if (!(cellVal >= filterVal)) return false; break;
+                            case '<=': if (!(cellVal <= filterVal)) return false; break;
+                            case '=': if (!(Math.abs(cellVal - filterVal) < 0.01)) return false; break;
+                        }
                     }
                 }
                 return true;
@@ -2875,7 +2889,8 @@ padding-bottom:  10px !important;
 
             // Filter button helper
             function filterBtn(colKey) {
-                const isActive = _numericFilters[colKey] && _numericFilters[colKey].operator && _numericFilters[colKey].value !== '' && _numericFilters[colKey].value !== null;
+                const f = _numericFilters[colKey];
+                const isActive = f && f.operator && (f.operator === 'empty' || f.operator === 'not_empty' || (f.value !== '' && f.value !== null));
                 const activeClass = isActive ? 'col-filter-active' : '';
                 const dot = isActive ? '<span class="filter-active-dot"></span>' : '';
                 return `<button type="button" class="col-filter-btn ${activeClass}" data-filter-col="${colKey}" title="Filtrele"><i class="bx bx-filter-alt"></i></button>${dot}`;
@@ -3357,9 +3372,14 @@ padding-bottom:  10px !important;
             if (existing) {
                 $('#colFilterOperator').val(existing.operator || '');
                 $('#colFilterValue').val(existing.value !== null && existing.value !== undefined ? existing.value : '');
+                if (existing.operator === 'empty' || existing.operator === 'not_empty') {
+                    $('#colFilterValue').hide();
+                } else {
+                    $('#colFilterValue').show();
+                }
             } else {
                 $('#colFilterOperator').val('');
-                $('#colFilterValue').val('');
+                $('#colFilterValue').val('').show();
             }
 
             // Pozisyon hesapla
@@ -3434,6 +3454,8 @@ padding-bottom:  10px !important;
                     <option value=">=">Büyük Eşit ( ≥ )</option>
                     <option value="<=">Küçük Eşit ( ≤ )</option>
                     <option value="=">Eşit ( = )</option>
+                    <option value="empty">Boş olanlar</option>
+                    <option value="not_empty">Boş olmayanlar</option>
                 </select>
                 <input type="number" id="colFilterValue" placeholder="Değer girin..." step="any">
                 <div class="filter-popup-actions">
@@ -3443,6 +3465,15 @@ padding-bottom:  10px !important;
             </div>
         `);
 
+        $(document).on('change', '#colFilterOperator', function () {
+            const op = $(this).val();
+            if (op === 'empty' || op === 'not_empty') {
+                $('#colFilterValue').hide();
+            } else {
+                $('#colFilterValue').show();
+            }
+        });
+
         let _activeFilterCol = null;
         let _activeFilterTab = null;
 
@@ -3451,22 +3482,24 @@ padding-bottom:  10px !important;
             const operator = $('#colFilterOperator').val();
             const value = $('#colFilterValue').val();
 
+            const isNoValueOp = operator === 'empty' || operator === 'not_empty';
+
             if (_activeFilterTab === 'defter-ozet') {
-                if (value === '') {
+                if (value === '' && !isNoValueOp) {
                     delete _doNumericFilters[_activeFilterCol];
                 } else {
                     _doNumericFilters[_activeFilterCol] = { operator, value };
                 }
                 renderDefterOzetTable(_defterOzetData);
             } else if ($('#tab-okuma-gun').hasClass('active')) {
-                if (value === '') {
+                if (value === '' && !isNoValueOp) {
                     delete _numericFilters[_activeFilterCol];
                 } else {
                     _numericFilters[_activeFilterCol] = { operator, value };
                 }
                 renderOkumaGunTable(_okumaGunData, _okumaGunDonemler, true);
             } else {
-                if (value === '') {
+                if (value === '' && !isNoValueOp) {
                     delete _numericFilters[_activeFilterCol];
                 } else {
                     _numericFilters[_activeFilterCol] = { operator, value };
@@ -3890,7 +3923,8 @@ padding-bottom:  10px !important;
             // Sayısal filtreleri uygula (FARK ve TARIH için)
             for (const filterKey in _numericFilters) {
                 const filter = _numericFilters[filterKey];
-                if (!filter || filter.value === null || filter.value === '') continue;
+                if (!filter || !filter.operator) continue;
+                if (filter.operator !== 'empty' && filter.operator !== 'not_empty' && (filter.value === null || filter.value === '')) continue;
 
                 const isOkumaGun = filterKey.endsWith('_fark') || filterKey.endsWith('_tarih');
                 if (!isOkumaGun) continue;
@@ -3901,14 +3935,12 @@ padding-bottom:  10px !important;
 
                 filteredData = filteredData.filter(function (row) {
                     const donemData = row.donemler[filterDonem];
-                    if (!donemData) return false;
+                    let rowVal = donemData ? donemData[field] : null;
 
-                    let rowVal = null;
-                    if (field === 'fark') {
-                        rowVal = donemData.fark;
-                    } else if (field === 'tarih') {
-                        // Tarih filtresi için string karşılaştırma veya parselama gerekebilir, 
-                        // ancak genellikle sayısal filtreler (fark) daha yaygındır.
+                    if (filter.operator === 'empty') {
+                        return (rowVal === null || rowVal === undefined || rowVal === '');
+                    } else if (filter.operator === 'not_empty') {
+                        return (rowVal !== null && rowVal !== undefined && rowVal !== '');
                     }
 
                     if (rowVal === null || rowVal === undefined) return false;
@@ -4040,7 +4072,8 @@ padding-bottom:  10px !important;
                 
                 // Fark (Numeric filter button)
                 const filterKey = donem + '_fark';
-                const isActive = _numericFilters[filterKey] && _numericFilters[filterKey].operator && _numericFilters[filterKey].value !== '';
+                const f = _numericFilters[filterKey];
+                const isActive = f && f.operator && (f.operator === 'empty' || f.operator === 'not_empty' || (f.value !== '' && f.value !== null));
                 const activeClass = isActive ? 'col-filter-active' : '';
                 const dot = isActive ? '<span class="filter-dot"></span>' : '';
                 html += `<th class="sub-header og-sortable-header ${_visibleColumns.degisim ? '' : 'ogr-period-end'} ${isAlt ? 'do-month-alt' : ''}" data-sort-col="${filterKey}">
@@ -4303,7 +4336,8 @@ padding-bottom:  10px !important;
                 // 2. Sayisal Filtreler
                 for (let fKey in _doNumericFilters) {
                     const filter = _doNumericFilters[fKey];
-                    if (!filter || filter.value === '' || filter.value === null) continue;
+                    if (!filter || !filter.operator) continue;
+                    if (filter.operator !== 'empty' && filter.operator !== 'not_empty' && (filter.value === '' || filter.value === null)) continue;
 
                     const parts = fKey.split('_');
                     const field = parts.pop(); // toplam, okunan, okunmayan, oran
@@ -4316,20 +4350,26 @@ padding-bottom:  10px !important;
                     else if (field === 'okunmayan') rowVal = bStat.okunmayan_defter;
                     else if (field === 'oran') rowVal = bStat.oran;
 
-                    const fVal = parseFloat(filter.value);
-                    const rVal = parseFloat(rowVal);
-                    if (isNaN(fVal) || isNaN(rVal)) continue;
+                    if (filter.operator === 'empty') {
+                        if (rowVal !== 0 && rowVal !== '' && rowVal !== null && rowVal !== undefined) return false;
+                    } else if (filter.operator === 'not_empty') {
+                        if (rowVal === 0 || rowVal === '' || rowVal === null || rowVal === undefined) return false;
+                    } else {
+                        const fVal = parseFloat(filter.value);
+                        const rVal = parseFloat(rowVal);
+                        if (isNaN(fVal) || isNaN(rVal)) continue;
 
-                    let match = false;
-                    switch (filter.operator) {
-                        case '>': match = rVal > fVal; break;
-                        case '<': match = rVal < fVal; break;
-                        case '>=': match = rVal >= fVal; break;
-                        case '<=': match = rVal <= fVal; break;
-                        case '=': match = rVal === fVal; break;
-                        default: match = true;
+                        let match = false;
+                        switch (filter.operator) {
+                            case '>': match = rVal > fVal; break;
+                            case '<': match = rVal < fVal; break;
+                            case '>=': match = rVal >= fVal; break;
+                            case '<=': match = rVal <= fVal; break;
+                            case '=': match = rVal === fVal; break;
+                            default: match = true;
+                        }
+                        if (!match) return false;
                     }
-                    if (!match) return false;
                 }
                 return true;
             });
