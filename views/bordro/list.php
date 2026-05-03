@@ -1827,8 +1827,8 @@ if (!empty($dbGelirler)) {
     }
     .floating-hesapla-btn:hover {
         transform: translateY(-5px) scale(1.05) !important;
-        box-shadow: 0 20px 40px rgba(13, 110, 253, 0.5) !important;
-        background-color: #0b5ed7 !important;
+        /* box-shadow: 0 20px 40px rgba(13, 110, 253, 0.5) !important;
+        background-color: #0b5ed7 !important; */
     }
     </style>
 

@@ -206,7 +206,8 @@ class PersonelEkOdemelerModel extends Model
             'aciklama' => $surekliOdeme->aciklama . ' (Otomatik)',
             'parametre_id' => $surekliOdeme->parametre_id,
             'tarih' => $surekliOdeme->tarih,
-            'ana_odeme_id' => $surekliOdeme->id, // Ana kayıt referansı
+            'ana_odeme_id' => $surekliOdeme->id,
+            'durum' => 'onaylandi', // Ana kayıt referansı
             'aktif' => 1
         ];
 
