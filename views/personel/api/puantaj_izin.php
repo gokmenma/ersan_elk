@@ -191,6 +191,108 @@ try {
             'status' => 'success',
             'data' => $data
         ]);
+    } elseif ($action === 'get-personel-month-data') {
+        $personel_id = $_POST['personel_id'] ?? 0;
+        $ay = str_pad($_POST['ay'] ?? date('m'), 2, '0', STR_PAD_LEFT);
+        $yil = $_POST['yil'] ?? date('Y');
+
+        if (!$personel_id) {
+            throw new Exception("Personel ID gerekli.");
+        }
+
+        $startDate = "$yil-$ay-01";
+        $endDate = date("Y-m-t", strtotime($startDate));
+
+        $personel_stmt = $Personel->db->prepare("SELECT id, ise_giris_tarihi, isten_cikis_tarihi FROM personel WHERE id = ?");
+        $personel_stmt->execute([$personel_id]);
+        $p = $personel_stmt->fetch(PDO::FETCH_OBJ);
+
+        if (!$p) {
+            echo json_encode(['status' => 'error', 'message' => 'Personel bulunamadı.']);
+            exit;
+        }
+
+        $varsayilan_X = $Tanimlamalar->db->prepare("SELECT id, tur_adi, kisa_kod, renk FROM tanimlamalar WHERE grup = 'izin_turu' AND (kisa_kod = 'X' OR kisa_kod = 'x' OR tur_adi LIKE '%Çalışılan Gün%') AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL LIMIT 1");
+        $varsayilan_X->execute([$firma_id]);
+        $x_tanim = $varsayilan_X->fetch(PDO::FETCH_OBJ);
+
+        $varsayilan_HT = $Tanimlamalar->db->prepare("SELECT id, tur_adi, kisa_kod, renk FROM tanimlamalar WHERE grup = 'izin_turu' AND (kisa_kod = 'HT' OR kisa_kod = 'ht' OR tur_adi LIKE '%Hafta Tatili%') AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL LIMIT 1");
+        $varsayilan_HT->execute([$firma_id]);
+        $ht_tanim = $varsayilan_HT->fetch(PDO::FETCH_OBJ);
+
+        $izin_stmt = $PersonelIzinleri->db->prepare("
+            SELECT pi.id, pi.baslangic_tarihi, pi.bitis_tarihi, pi.izin_tipi_id, t.tur_adi, t.kisa_kod, t.renk 
+            FROM personel_izinleri pi
+            JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
+            WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL AND pi.onay_durumu != 'Reddedildi'
+            AND (
+                (pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ?)
+            )
+        ");
+        $izin_stmt->execute([$personel_id, $endDate, $startDate]);
+        $izinler = $izin_stmt->fetchAll(PDO::FETCH_OBJ);
+
+        $entries = [];
+        $mevcut_gunler = [];
+
+        foreach ($izinler as $izin) {
+            $cur = strtotime($izin->baslangic_tarihi);
+            $end = strtotime($izin->bitis_tarihi);
+            while ($cur <= $end) {
+                $date_str = date('Y-m-d', $cur);
+                if ($date_str >= $startDate && $date_str <= $endDate) {
+                    $entries[$date_str][] = [
+                        'type' => 'izin',
+                        'id' => $izin->id,
+                        'tip_id' => $izin->izin_tipi_id,
+                        'name' => $izin->tur_adi,
+                        'kisa_kod' => $izin->kisa_kod,
+                        'color' => $izin->renk ?: '#34c38f'
+                    ];
+                    $mevcut_gunler[$date_str] = true;
+                }
+                $cur = strtotime("+1 day", $cur);
+            }
+        }
+
+        $cur = strtotime($startDate);
+        $end = strtotime($endDate);
+        $p_giris = $p->ise_giris_tarihi && $p->ise_giris_tarihi != '0000-00-00' ? strtotime($p->ise_giris_tarihi) : 0;
+        $p_cikis = $p->isten_cikis_tarihi && $p->isten_cikis_tarihi != '0000-00-00' ? strtotime($p->isten_cikis_tarihi) : PHP_INT_MAX;
+
+        while ($cur <= $end) {
+            $date_str = date('Y-m-d', $cur);
+            $isWeekend = date('w', $cur) == 0;
+            if (!isset($mevcut_gunler[$date_str])) {
+                if ($cur >= $p_giris && $cur <= $p_cikis) {
+                    if ($isWeekend && $ht_tanim) {
+                        $entries[$date_str][] = [
+                            'type' => 'default',
+                            'id' => 0,
+                            'tip_id' => $ht_tanim->id,
+                            'name' => $ht_tanim->tur_adi,
+                            'kisa_kod' => $ht_tanim->kisa_kod,
+                            'color' => $ht_tanim->renk ?: '#f46a6a'
+                        ];
+                    } elseif (!$isWeekend && $x_tanim) {
+                        $entries[$date_str][] = [
+                            'type' => 'default',
+                            'id' => 0,
+                            'tip_id' => $x_tanim->id,
+                            'name' => $x_tanim->tur_adi,
+                            'kisa_kod' => $x_tanim->kisa_kod,
+                            'color' => $x_tanim->renk ?: '#556ee6'
+                        ];
+                    }
+                }
+            }
+            $cur = strtotime("+1 day", $cur);
+        }
+
+        echo json_encode([
+            'status' => 'success',
+            'data' => $entries
+        ]);
     } elseif ($action === 'get-personel-yearly-data') {
         $personel_id = $_POST['personel_id'] ?? 0;
         $yil = $_POST['yil'] ?? date('Y');
@@ -1089,7 +1191,7 @@ try {
         throw new Exception("Geçersiz işlem: " . $action);
     }
 
-} catch (Exception $e) {
+} catch (Throwable $e) {
     echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
 }
 
