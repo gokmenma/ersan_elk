@@ -3744,10 +3744,10 @@ class BordroPersonelModel extends Model
             $toplamDahilYardim = floatval($dahilDagilim['toplam'] ?? 0);
 
             if (intval($kayit->yemek_yardimi_dahil ?? 0) === 1) {
-                $this->db->prepare("UPDATE personel_ek_odemeler SET silinme_tarihi = NOW(), updated_at = NOW() WHERE personel_id = ? AND donem_id = ? AND (tur = 'yemek_yardimi_tum' OR tur = 'yemek' OR tur LIKE '%yemek%') AND silinme_tarihi IS NULL")->execute([$kayit->personel_id, $kayit->donem_id]);
+                // $this->db->prepare("UPDATE personel_ek_odemeler SET silinme_tarihi = NOW(), updated_at = NOW() WHERE personel_id = ? AND donem_id = ? AND (tur = 'yemek_yardimi_tum' OR tur = 'yemek' OR tur LIKE '%yemek%') AND silinme_tarihi IS NULL")->execute([$kayit->personel_id, $kayit->donem_id]);
             }
             if (intval($kayit->es_yardimi_dahil ?? 0) === 1) {
-                $this->db->prepare("UPDATE personel_ek_odemeler SET silinme_tarihi = NOW(), updated_at = NOW() WHERE personel_id = ? AND donem_id = ? AND (tur = 'es_yardimi' OR tur LIKE '%es_yardimi%' OR tur LIKE '%aile%') AND silinme_tarihi IS NULL")->execute([$kayit->personel_id, $kayit->donem_id]);
+                // $this->db->prepare("UPDATE personel_ek_odemeler SET silinme_tarihi = NOW(), updated_at = NOW() WHERE personel_id = ? AND donem_id = ? AND (tur = 'es_yardimi' OR tur LIKE '%es_yardimi%' OR tur LIKE '%aile%') AND silinme_tarihi IS NULL")->execute([$kayit->personel_id, $kayit->donem_id]);
             }
             if ($toplamDahilYardim > 0) {
                 if ($isPrimUsuluDahilYardim) {
