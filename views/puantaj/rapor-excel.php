@@ -705,7 +705,7 @@ foreach ($regions as $regionName) {
             $grandDusum += $dusum;
         }
 
-        $regionTotal += $personelTotal;
+        $regionTotal += $hasManuelCols ? ($personelTotal - $dusum) : $personelTotal;
         $grandTotal += $personelTotal;
         $row++;
     }
@@ -809,7 +809,7 @@ foreach ($regionGrouped as $regionName => $teamsInRegion) {
             $grandDusum += $dusum;
         }
 
-        $regionTotal += $personelTotal;
+        $regionTotal += $hasManuelCols ? ($personelTotal - $dusum) : $personelTotal;
         $grandTotal += $personelTotal;
         $row++;
     }
@@ -890,6 +890,9 @@ if ($hasManuelCols) {
     // Toplam düşüm ve kalan hesaplanmış olmalı
     $sheet->setCellValue($dusumCol . $row, $grandDusum ?: '');
     $sheet->setCellValue($kalanCol . $row, ($grandTotal - $grandDusum) ?: '');
+    if ($activeTab !== 'kacakkontrol' && isset($bolgeToplamCol)) {
+        $sheet->setCellValue($bolgeToplamCol . $row, ($grandTotal - $grandDusum) ?: '');
+    }
 }
 
 $sheet->getStyle('A' . $row . ':' . $lastCol . $row)->applyFromArray($footerStyle);

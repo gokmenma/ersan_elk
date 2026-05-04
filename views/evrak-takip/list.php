@@ -9,7 +9,7 @@ $Evrak = new EvrakTakipModel();
 $Personel = new PersonelModel();
 
 $evraklar = $Evrak->all();
-$personeller = $Personel->all(false, 'evrak');
+$personeller = $Personel->all(false, 'all_with_external');
 $stats = $Evrak->getStats();
 $gelen_evraklar = $Evrak->getGelenEvraklar();
 ?>

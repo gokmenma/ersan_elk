@@ -1015,6 +1015,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
 
             foreach ($tableData as $item):
                 $regionTotal = 0;
+                $regionOriginalTotal = 0;
                 $regionDailyTotals = array_fill_keys($reportDates, 0);
                 $regionDetailedDailyTotals = [];
                 if ($hasSubCols) {
@@ -1030,15 +1031,16 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                     $tId = $tData['tId'];
                     $team = $tData['team'];
 
+                    $pTotal = 0;
                     if ($activeTab === 'kacakkontrol') {
                         if (isset($summary[$team->tur_adi])) {
-                            $regionTotal += array_sum($summary[$team->tur_adi]);
+                            $pTotal = array_sum($summary[$team->tur_adi]);
                         }
                     } else {
                         $compositeKey = $tData['compositeKey'] ?? ($tId . '|' . ($team->tur_adi ?? ''));
                         if (isset($summary[$pId][$compositeKey])) {
                             if ($activeTab === 'okuma') {
-                                $regionTotal += array_sum($summary[$pId][$compositeKey]);
+                                $pTotal = array_sum($summary[$pId][$compositeKey]);
                             } else {
                                 // İŞLEM TOPLAMLARI kolonlarının toplamını hesapla
                                 foreach ($workTypeCols as $wt) {
@@ -1046,11 +1048,21 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                                     foreach ($summary[$pId][$compositeKey] as $dayData) {
                                         $wtTotal += $dayData[$wt['name']] ?? 0;
                                     }
-                                    $regionTotal += $wtTotal;
+                                    $pTotal += $wtTotal;
                                 }
                             }
                         }
                     }
+                    $regionOriginalTotal += $pTotal;
+                    if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma', 'kacakkontrol'])) {
+                        if ($activeTab === 'kacakkontrol') {
+                            $dusum = $manuelDusumMap[0][$team->tur_adi] ?? 0;
+                        } else {
+                            $dusum = $manuelDusumMap[$pId][$tId] ?? 0;
+                        }
+                        $pTotal -= $dusum;
+                    }
+                    $regionTotal += $pTotal;
                 }
 
                 $firstRow = true;
@@ -1261,10 +1273,10 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                             <td class="wt-cell-sub wt-code-<?= $wt['code'] ?> table-info"><?= $wtRegTotal ?: '' ?></td>
                         <?php endforeach; ?>
                     <?php endif; ?>
-                    <td class="table-light"><?= $regionTotal ?: '' ?></td>
+                    <td class="table-light"><?= $regionOriginalTotal ?: '' ?></td>
                     <?php if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma', 'kacakkontrol'])): ?>
-                        <td></td>
-                        <td></td>
+                        <td><?= ($regionOriginalTotal - $regionTotal) ?: '' ?></td>
+                        <td><?= $regionTotal ?: '' ?></td>
                     <?php endif; ?>
                     <td class="table-light"><?= $regionTotal ?: '' ?></td>
                     <td></td>
@@ -1356,8 +1368,7 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                     <td class="grand-dusum-cell table-danger"><?= $grandDusumVal ?: '0' ?></td>
                     <td class="grand-kalan-cell table-success"><?= ($grandTotal - $grandDusumVal) ?: '0' ?></td>
                 <?php endif; ?>
-                <td class="grand-region-total-cell table-light fw-bold"><?= number_format($grandTotal, 0, '', '') ?>
-                </td>
+                <td class="grand-region-total-cell table-light fw-bold"><?= number_format(in_array($activeTab, ['kesme', 'okuma', 'sokme_takma', 'kacakkontrol']) ? ($grandTotal - $grandDusumVal) : $grandTotal, 0, '', '') ?></td>
                 <td></td>
             </tr>
         </tfoot>
@@ -1669,7 +1680,13 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
         if (grandCell) grandCell.textContent = overallGrandTotal || '';
 
         const grandRegionCell = table.querySelector('.grand-region-total-cell');
-        if (grandRegionCell) grandRegionCell.textContent = overallGrandTotal || '';
+        if (grandRegionCell) {
+            if (['kesme', 'okuma', 'sokme_takma', 'kacakkontrol'].includes(activeTab)) {
+                grandRegionCell.textContent = overallGrandKalan || '0';
+            } else {
+                grandRegionCell.textContent = overallGrandTotal || '';
+            }
+        }
 
         if (['kesme', 'okuma', 'sokme_takma', 'kacakkontrol'].includes(activeTab)) {
             const gdCell = table.querySelector('.grand-dusum-cell');
@@ -1682,9 +1699,14 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
             const rid = cell.dataset.regionId;
             let rSum = 0;
             table.querySelectorAll(`tbody tr[data-region-id="${rid}"]`).forEach(tr => {
-                if (tr.style.display !== 'none') {
+                if (tr.style.display !== 'none' && !tr.classList.contains('region-total-row')) {
+                    const ktc = tr.querySelector('.kalan-toplam-cell');
                     const rtc = tr.querySelector('.row-total-cell');
-                    rSum += parseFloat(rtc ? rtc.textContent : 0) || 0;
+                    if (ktc) {
+                        rSum += parseFloat(ktc.textContent) || 0;
+                    } else if (rtc) {
+                        rSum += parseFloat(rtc.textContent) || 0;
+                    }
                 }
             });
             cell.textContent = rSum || '';

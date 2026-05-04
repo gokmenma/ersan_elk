@@ -7,6 +7,45 @@
 use App\Helper\Security;
 use App\Service\Gate;
 
+$saved_settings = isset($_COOKIE['dashboard_settings']) ? json_decode($_COOKIE['dashboard_settings'], true) : [];
+
+if (!function_exists('getWidgetWidthClass')) {
+    function getWidgetWidthClass($id, $defaultClass) {
+        global $saved_settings;
+        $w = $saved_settings[$id]['width'] ?? '';
+        if (empty($w) || !str_contains($w, 'col-')) {
+            return $defaultClass;
+        }
+        return $w;
+    }
+}
+
+if (!function_exists('getWidgetStyle')) {
+    function getWidgetStyle($id) {
+        global $saved_settings;
+        $w = $saved_settings[$id]['width'] ?? '';
+        $h = $saved_settings[$id]['height'] ?? '';
+        $left = $saved_settings[$id]['left'] ?? '';
+        $top = $saved_settings[$id]['top'] ?? '';
+        $hidden = $saved_settings[$id]['hidden'] ?? '';
+        
+        $style = '';
+        if (!empty($w) && !str_contains($w, 'col-')) {
+            $style .= "width: {$w} !important; flex: none !important; max-width: none !important; ";
+        }
+        if (!empty($h) && $h !== 'auto') {
+            $style .= "height: {$h} !important; ";
+        }
+        if ($left !== '' && $top !== '') {
+            $style .= "position: absolute !important; left: {$left} !important; top: {$top} !important; z-index: 100 !important; ";
+        }
+        if ($hidden === 'true') {
+            $style .= "display: none !important; ";
+        }
+        return $style;
+    }
+}
+
 function renderWidget(string $widgetId, array $data = []) {
     $widgetDomId = htmlspecialchars($data['render_id'] ?? $widgetId, ENT_QUOTES, 'UTF-8');
     extract($data, EXTR_SKIP);
@@ -16,7 +55,7 @@ function renderWidget(string $widgetId, array $data = []) {
         case 'widget-personel-ozeti':
         case 'widget-personel-ozet':
             ?>
-            <div class="<?php echo ($width ?? 'col-md-4 col-xl-4'); ?> widget-item" id="<?php echo $widgetDomId; ?>">
+            <div class="<?php echo getWidgetWidthClass($widgetDomId, 'col-md-4 col-xl-4'); ?> widget-item" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
                 <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card" style="border-radius: 12px; background: #fff;">
                     <div class="card-body p-4 d-flex flex-column">
                         <div class="d-flex justify-content-between align-items-start mb-4">
@@ -60,7 +99,7 @@ function renderWidget(string $widgetId, array $data = []) {
         case 'widget-arac-ozeti':
         case 'widget-arac-ozet':
             ?>
-            <div class="<?php echo ($width ?? 'col-md-4 col-xl-4'); ?> widget-item" id="<?php echo $widgetDomId; ?>">
+            <div class="<?php echo getWidgetWidthClass($widgetDomId, 'col-md-4 col-xl-4'); ?> widget-item" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
                 <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card" style="border-radius: 12px; background: #fff;">
                     <div class="card-body p-4 d-flex flex-column">
                         <div class="d-flex justify-content-between align-items-start mb-4">
@@ -280,7 +319,7 @@ function renderWidget(string $widgetId, array $data = []) {
 
         case 'widget-talepler':
             ?>
-            <div class="<?php echo ($width ?? 'col-md-6'); ?> widget-item" id="widget-talepler">
+            <div class="<?php echo getWidgetWidthClass('widget-talepler', 'col-md-6'); ?> widget-item" id="widget-talepler" style="<?php echo getWidgetStyle('widget-talepler'); ?>">
                 <div class="card summary-card" style="border-radius: 12px; overflow: hidden;">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Bekleyen Talepler</h5>
@@ -348,7 +387,7 @@ function renderWidget(string $widgetId, array $data = []) {
 
         case 'widget-izindekiler':
             ?>
-            <div class="<?php echo ($width ?? 'col-md-6'); ?> widget-item" id="widget-izindekiler">
+            <div class="<?php echo getWidgetWidthClass('widget-izindekiler', 'col-md-6'); ?> widget-item" id="widget-izindekiler" style="<?php echo getWidgetStyle('widget-izindekiler'); ?>">
                 <div class="card summary-card" style="border-radius: 12px; overflow: hidden;">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> Şu Anda İzinde Olan Personeller</h5>
@@ -472,13 +511,35 @@ function renderWidget(string $widgetId, array $data = []) {
     return ob_get_clean();
 }
 
-/**
- * Skeleton HTML returner
- */
 function renderSkeleton(string $widgetId, string $width = 'col-md-6', string $height = '200px') {
+    global $saved_settings;
+    $w = $saved_settings[$widgetId]['width'] ?? '';
+    $h = $saved_settings[$widgetId]['height'] ?? '';
+    $hidden = $saved_settings[$widgetId]['hidden'] ?? '';
+    $style = '';
+    $class = $width;
+
+    if (!empty($w)) {
+        if (!str_contains($w, 'col-')) {
+            $style .= "width: {$w} !important; ";
+        } else {
+            $class = $w;
+        }
+    }
+
+    if (!empty($h) && $h !== 'auto') {
+        $style .= "height: {$h} !important; ";
+    } else {
+        $style .= "min-height: {$height}; ";
+    }
+
+    if ($hidden === 'true') {
+        $style .= "display: none !important; ";
+    }
+
     return '
-    <div class="'.$width.' widget-item lazy-widget" id="'.$widgetId.'" data-lazy-load="true">
-        <div class="card border-0 shadow-sm h-100" style="border-radius: 12px; min-height: '.$height.';">
+    <div class="'.$class.' widget-item lazy-widget" id="'.$widgetId.'" data-lazy-load="true" style="'.$style.'">
+        <div class="card border-0 shadow-sm h-100" style="border-radius: 12px;">
             <div class="card-body p-4">
                 <div class="skeleton-shimmer" style="height: 20px; width: 40%; margin-bottom: 20px; border-radius: 4px; background: rgba(0,0,0,0.05);"></div>
                 <div class="skeleton-shimmer" style="height: 15px; width: 100%; margin-bottom: 10px; border-radius: 4px; background: rgba(0,0,0,0.03);"></div>

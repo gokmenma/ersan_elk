@@ -718,8 +718,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $contractHakedis = (33000 / 30) * 13;
                 }
                 $yuvarlamaFarki = 0;
-                if ($toplamAlacak > $contractHakedis && $contractHakedis > 0) {
-                    $yuvarlamaFarki = $toplamAlacak - $contractHakedis;
+                if ($toplamAlacak > ($contractHakedis + $guncelEkOdeme) && $contractHakedis > 0) {
+                    $yuvarlamaFarki = $toplamAlacak - $contractHakedis - $guncelEkOdeme;
                 }
                 $gosterilecekEkOdeme = $guncelEkOdeme + $yuvarlamaFarki;
                 if (intval($bp->personel_id ?? 0) === 77 && ($donemBilgi->baslangic_tarihi ?? '') === '2026-04-01') {
@@ -893,8 +893,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if (intval($bp->personel_id ?? 0) === 77 && ($donemBilgi->baslangic_tarihi ?? '') === '2026-04-01') {
                         $contractHakedis = (33000 / 30) * 13;
                     }
-                    if ($toplamAlacak > $contractHakedis && $contractHakedis > 0) {
-                        $yuvarlamaFarki = $toplamAlacak - $contractHakedis;
+                    if ($toplamAlacak > ($contractHakedis + $guncelEkOdeme) && $contractHakedis > 0) {
+                        $yuvarlamaFarki = $toplamAlacak - $contractHakedis - $guncelEkOdeme;
                         if ($yuvarlamaFarki > 0.01) {
                             $tumEkOdemeler[] = (object) [
                                 'id' => 0,

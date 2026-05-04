@@ -131,7 +131,11 @@ class PersonelModel extends Model
 
         // Dışarıdan sigortalı filtresi
         if ($modul) {
-            $sql .= " AND (p.disardan_sigortali = 0 OR FIND_IN_SET('" . addslashes($modul) . "', p.gorunum_modulleri))";
+            if ($modul === 'all_with_external') {
+                // Do not restrict by external SSK status at all
+            } else {
+                $sql .= " AND (p.disardan_sigortali = 0 OR FIND_IN_SET('" . addslashes($modul) . "', p.gorunum_modulleri))";
+            }
         } else {
             $sql .= " AND p.disardan_sigortali = 0";
         }

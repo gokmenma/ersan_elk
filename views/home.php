@@ -141,6 +141,41 @@ if (Gate::allows("ana_sayfa")) {
         }
     }
 
+    if (!function_exists('getWidgetWidthClass')) {
+        function getWidgetWidthClass($id, $defaultClass)
+        {
+            global $saved_settings;
+            $w = $saved_settings[$id]['width'] ?? '';
+            if (empty($w) || !str_contains($w, 'col-')) {
+                return $defaultClass;
+            }
+            return $w;
+        }
+    }
+
+    if (!function_exists('getWidgetStyle')) {
+        function getWidgetStyle($id)
+        {
+            global $saved_settings;
+            $w = $saved_settings[$id]['width'] ?? '';
+            $h = $saved_settings[$id]['height'] ?? '';
+            $left = $saved_settings[$id]['left'] ?? '';
+            $top = $saved_settings[$id]['top'] ?? '';
+            
+            $style = '';
+            if (!empty($w) && $w !== '0px' && !str_contains($w, 'col-')) {
+                $style .= "width: {$w} !important; flex: none !important; max-width: none !important; ";
+            }
+            if (!empty($h) && $h !== 'auto' && $h !== '0px') {
+                $style .= "height: {$h} !important; ";
+            }
+            if ($left !== '' && $top !== '') {
+                $style .= "position: absolute !important; left: {$left} !important; top: {$top} !important; z-index: 100 !important; ";
+            }
+            return $style;
+        }
+    }
+
     if (!function_exists('getWidthControl')) {
         function getWidthControl()
         {
@@ -419,24 +454,27 @@ if (Gate::allows("ana_sayfa")) {
 
     ob_start(); ?>
     <div class="col-6 col-md-2 widget-item" id="widget-gec-kalanlar">
-        <a href="index.php?p=personel-takip/list&tab=tabGecKalanlar" class="text-decoration-none">
-            <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card stat-card"
-                style="--card-color: #f46a6a; border-bottom: 3px solid var(--card-color) !important; --delay: 0.65s">
-                <div class="card-body p-3 pb-2">
-                    <div class="icon-label-container">
-                        <div class="icon-box" style="background: rgba(244, 106, 106, 0.1);">
-                            <i class="bx bx-alarm-exclamation fs-4" style="color: #f46a6a;"></i>
-                        </div>
-                        <span class="text-muted small fw-bold" style="font-size: 0.65rem;">GECİKME</span>
+        <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card stat-card"
+            style="--card-color: #f46a6a; border-bottom: 3px solid var(--card-color) !important; --delay: 0.65s">
+            <div class="card-body p-3 pb-2">
+                <div class="icon-label-container">
+                    <div class="icon-box" style="background: rgba(244, 106, 106, 0.1);">
+                        <i class="bx bx-alarm-exclamation fs-4" style="color: #f46a6a;"></i>
                     </div>
-                    <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GEÇ KALANLAR</p>
-                    <h4 class="mb-0 fw-bold bordro-text-heading text-danger">
-                        <?php echo $gec_kalan_sayisi ?? 0; ?>
-                    </h4>
-                    <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Bugün geç kalanlar</div>
+                    <span class="text-muted small fw-bold" style="font-size: 0.65rem;">GECİKME</span>
+                </div>
+                <p class="text-muted mb-1 small fw-bold" style="letter-spacing: 0.5px; opacity: 0.7;">GEÇ KALANLAR</p>
+                <h4 class="mb-0 fw-bold bordro-text-heading text-danger">
+                    <?php echo $gec_kalan_sayisi ?? 0; ?>
+                </h4>
+                <div class="sub-text mt-2" style="font-size: 10px; color: #858796;">Bugün geç kalanlar</div>
+                <div class="card-footer-actions mt-2 d-flex justify-content-end">
+                    <a href="index.php?p=personel-takip/list&tab=tabGecKalanlar" class="btn btn-xs btn-soft-danger rounded-pill">
+                        <i class="bx bx-right-arrow-alt"></i> Git
+                    </a>
                 </div>
             </div>
-        </a>
+        </div>
     </div>
     <?php
     $widgets['widget-gec-kalanlar'] = ob_get_clean();
@@ -444,13 +482,6 @@ if (Gate::allows("ana_sayfa")) {
     $widgets['widget-nobetciler'] = renderSkeleton('widget-nobetciler', 'col-6 col-md-2', '140px');
 
     ob_start(); ?>
-    <div class="col-12 mt-4 mb-3">
-        <div class="d-flex justify-content-between align-items-center pb-2 border-bottom border-light">
-            <h5 class="mb-0 text-secondary fw-bold" style="font-family: 'Outfit', sans-serif; opacity: 0.8;">
-                <i class="bx bx-stats me-1"></i> Operasyonel İstatistikler
-            </h5>
-        </div>
-    </div>
     <?php $widgets['widget-row-break'] = ob_get_clean();
 
     ob_start(); ?>
@@ -697,8 +728,8 @@ if (Gate::allows("ana_sayfa")) {
         <?php $widgets['widget-kacak-sayisi'] = ob_get_clean();
 
         ob_start(); ?>
-        <div class="<?php echo getWidgetWidth('widget-endeks-karsilastirma', 'col-12'); ?> widget-item"
-            id="widget-endeks-karsilastirma">
+        <div class="<?php echo getWidgetWidthClass('widget-endeks-karsilastirma', 'col-12'); ?> widget-item"
+            id="widget-endeks-karsilastirma" style="<?php echo getWidgetStyle('widget-endeks-karsilastirma'); ?>">
             <div class="card summary-card"
                 style="background: linear-gradient(145deg, rgba(255,255,255,0.98), rgba(248,250,252,0.99)); border: 1px solid rgba(226,232,240,0.8); border-radius: 12px; box-shadow: 0 4px 15px -3px rgba(0,0,0,0.05), 0 2px 5px -2px rgba(0,0,0,0.02);">
                 <div class="card-header align-items-center d-flex flex-wrap gap-2"
@@ -770,8 +801,8 @@ if (Gate::allows("ana_sayfa")) {
     }
 
     ob_start(); ?>
-        <div class="<?php echo getWidgetWidth('widget-is-turu-istatistikleri', 'col-md-6'); ?> widget-item"
-            id="widget-is-turu-istatistikleri">
+        <div class="<?php echo getWidgetWidthClass('widget-is-turu-istatistikleri', 'col-md-6'); ?> widget-item"
+            id="widget-is-turu-istatistikleri" style="<?php echo getWidgetStyle('widget-is-turu-istatistikleri'); ?>">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> İş Türü İstatistikleri</h5>
@@ -812,8 +843,8 @@ if (Gate::allows("ana_sayfa")) {
         <?php $widgets['widget-is-turu-istatistikleri'] = ob_get_clean();
 
         ob_start(); ?>
-        <div class="<?php echo getWidgetWidth('widget-is-emri-sonucu-istatistikleri', 'col-md-6'); ?> widget-item"
-            id="widget-is-emri-sonucu-istatistikleri">
+        <div class="<?php echo getWidgetWidthClass('widget-is-emri-sonucu-istatistikleri', 'col-md-6'); ?> widget-item"
+            id="widget-is-emri-sonucu-istatistikleri" style="<?php echo getWidgetStyle('widget-is-emri-sonucu-istatistikleri'); ?>">
             <div class="card">
                 <div class="card-header d-flex justify-content-between align-items-center">
                     <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> İş Emri Sonuç İstatistikleri</h5>
@@ -887,6 +918,242 @@ if (Gate::allows("ana_sayfa")) {
         <div class="container-fluid">
 
             <style id="dashboard-skeleton-critical">
+                .mac-controls {
+                    display: flex !important;
+                    gap: 6px !important;
+                    align-items: center !important;
+                    cursor: default !important;
+                    margin-right: 12px !important;
+                }
+                .mac-control {
+                    width: 12px !important;
+                    height: 12px !important;
+                    border-radius: 50% !important;
+                    display: inline-block !important;
+                    cursor: pointer !important;
+                    transition: filter 0.15s ease, transform 0.1s ease !important;
+                }
+                .mac-control:hover {
+                    filter: brightness(0.8) !important;
+                    transform: scale(1.1) !important;
+                }
+                .mac-close {
+                    background-color: #ff5f56 !important;
+                    border: 1px solid #e0443e !important;
+                }
+                .mac-minimize {
+                    background-color: #ffbd2e !important;
+                    border: 1px solid #dfa123 !important;
+                }
+                .mac-maximize {
+                    background-color: #27c93f !important;
+                    border: 1px solid #1aab29 !important;
+                }
+                #dashboard-widgets.free-layout-active .drag-handle,
+                #dashboard-widgets.free-layout-active .bx-grid-vertical,
+                #dashboard-widgets.free-layout-active .drag-handle-indicator {
+                    display: none !important;
+                }
+                #dashboard-widgets.free-layout-active {
+                    position: relative !important;
+                    min-height: 1000px;
+                }
+                .widget-hidden {
+                    display: none !important;
+                }
+                #dashboard-widgets .widget-collapsed .card-body {
+                    display: none !important;
+                }
+                #dashboard-widgets .widget-collapsed {
+                    height: 34px !important;
+                    min-height: 34px !important;
+                    overflow: hidden !important;
+                }
+                #dashboard-widgets .widget-collapsed .card,
+                #dashboard-widgets .widget-collapsed .carousel {
+                    height: 34px !important;
+                    min-height: 34px !important;
+                    overflow: hidden !important;
+                }
+                #dashboard-widgets .resizable-widget {
+                    position: relative;
+                    overflow: visible !important;
+                    resize: none !important;
+                    margin-bottom: 24px;
+                    min-width: 180px;
+                    min-height: 120px;
+                }
+                #dashboard-widgets .card,
+                #dashboard-widgets .carousel,
+                #dashboard-widgets .carousel-inner,
+                #dashboard-widgets .card-body {
+                    border: 2px solid #334155 !important;
+                    border-radius: 12px !important;
+                    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12) !important;
+                    overflow: visible !important;
+                    background: #ffffff !important;
+                    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
+                }
+                #dashboard-widgets .card:hover {
+                    border-color: #2563eb !important;
+                    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.16) !important;
+                }
+                #dashboard-widgets .resizable-widget .card {
+                    height: 100% !important;
+                    position: relative !important;
+                    z-index: 1;
+                }
+                #dashboard-widgets .resizable-widget::-webkit-resizer {
+                    background: linear-gradient(135deg, transparent 0 45%, #2563eb 45% 100%);
+                }
+                #dashboard-widgets .custom-resize-handle {
+                    display: none !important;
+                }
+                #dashboard-widgets .custom-resize-handle:hover {
+                    background: rgba(29, 78, 216, 0.95) !important;
+                    opacity: 1;
+                }
+                #dashboard-widgets .custom-resize-handle.handle-se {
+                    width: 32px !important;
+                    height: 32px !important;
+                    right: -6px !important;
+                    bottom: -6px !important;
+                    background: #2563eb !important;
+                    border: 3px solid #ffffff !important;
+                    border-radius: 50% !important;
+                    cursor: se-resize !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    box-shadow: 0 4px 14px rgba(37,99,235,0.45) !important;
+                }
+                #dashboard-widgets .custom-resize-handle.handle-se::after {
+                    content: "" !important;
+                    width: 8px !important;
+                    height: 8px !important;
+                    border-right: 2.5px solid #ffffff !important;
+                    border-bottom: 2.5px solid #ffffff !important;
+                    display: block !important;
+                    margin-right: 2px !important;
+                    margin-bottom: 2px !important;
+                }
+                #dashboard-widgets .custom-resize-handle.handle-se:hover {
+                    transform: scale(1.15) !important;
+                    box-shadow: 0 6px 18px rgba(29,78,216,0.5) !important;
+                }
+                #dashboard-widgets .custom-resize-handle,
+                #dashboard-widgets .custom-resize-handle.handle-se,
+                #dashboard-widgets .custom-resize-handle.handle-e,
+                #dashboard-widgets .custom-resize-handle.handle-s,
+                #dashboard-widgets .custom-resize-handle.handle-w,
+                #dashboard-widgets .custom-resize-handle.handle-n {
+                    display: none !important;
+                    pointer-events: none !important;
+                }
+                #dashboard-widgets .custom-resize-handle.handle-e,
+                #dashboard-widgets .custom-resize-handle.handle-w {
+                    top: 14px !important;
+                    bottom: 14px !important;
+                    width: 10px !important;
+                    border-radius: 999px !important;
+                    background: rgba(37, 99, 235, 0.28) !important;
+                }
+                #dashboard-widgets .custom-resize-handle.handle-e {
+                    right: -5px !important;
+                    cursor: e-resize !important;
+                }
+                #dashboard-widgets .custom-resize-handle.handle-w {
+                    left: -5px !important;
+                    cursor: w-resize !important;
+                }
+                #dashboard-widgets .custom-resize-handle.handle-n,
+                #dashboard-widgets .custom-resize-handle.handle-s {
+                    left: 14px !important;
+                    right: 14px !important;
+                    height: 10px !important;
+                    border-radius: 999px !important;
+                    background: rgba(37, 99, 235, 0.28) !important;
+                }
+                #dashboard-widgets .custom-resize-handle.handle-n {
+                    top: -5px !important;
+                    cursor: n-resize !important;
+                }
+                #dashboard-widgets .custom-resize-handle.handle-s {
+                    bottom: -5px !important;
+                    cursor: s-resize !important;
+                }
+                #dashboard-widgets .ui-resizable-handle {
+                    position: absolute !important;
+                    z-index: 10002 !important;
+                }
+                #dashboard-widgets .dashboard-resize-grip {
+                    position: absolute !important;
+                    right: -7px !important;
+                    bottom: -7px !important;
+                    width: 26px !important;
+                    height: 26px !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    background: #2563eb !important;
+                    border: 3px solid #fff !important;
+                    border-radius: 50% !important;
+                    cursor: nwse-resize !important;
+                    z-index: 2147483000 !important;
+                    pointer-events: auto !important;
+                    touch-action: none !important;
+                    box-shadow: 0 6px 18px rgba(37, 99, 235, 0.45) !important;
+                }
+                #dashboard-widgets .dashboard-resize-grip::after {
+                    content: "" !important;
+                    width: 8px !important;
+                    height: 8px !important;
+                    border-right: 2px solid #fff !important;
+                    border-bottom: 2px solid #fff !important;
+                    display: block !important;
+                }
+                #dashboard-widgets .dashboard-resizing {
+                    user-select: none !important;
+                }
+                #dashboard-widgets .ui-resizable-se {
+                    width: 32px !important;
+                    height: 32px !important;
+                    right: -6px !important;
+                    bottom: -6px !important;
+                    background: #2563eb !important;
+                    border: 3px solid #ffffff !important;
+                    border-radius: 50% !important;
+                    cursor: se-resize !important;
+                    box-shadow: 0 4px 14px rgba(37,99,235,0.45) !important;
+                }
+                #dashboard-widgets .ui-resizable-se::after {
+                    content: "" !important;
+                    position: absolute !important;
+                    right: 8px !important;
+                    bottom: 8px !important;
+                    width: 8px !important;
+                    height: 8px !important;
+                    border-right: 2.5px solid #ffffff !important;
+                    border-bottom: 2.5px solid #ffffff !important;
+                }
+                #dashboard-widgets .ui-resizable-e {
+                    top: 14px !important;
+                    bottom: 14px !important;
+                    right: -5px !important;
+                    width: 10px !important;
+                    border-radius: 999px !important;
+                    background: rgba(37, 99, 235, 0.28) !important;
+                    cursor: e-resize !important;
+                }
+                #dashboard-widgets .ui-resizable-s {
+                    left: 14px !important;
+                    right: 14px !important;
+                    bottom: -5px !important;
+                    height: 10px !important;
+                    border-radius: 999px !important;
+                    background: rgba(37, 99, 235, 0.28) !important;
+                    cursor: s-resize !important;
+                }
                 #dashboard-page-skeleton {
                     padding: 0.5rem 0 1rem;
                     display: block;
@@ -1003,6 +1270,28 @@ if (Gate::allows("ana_sayfa")) {
                     </div>
                 </div>
             </div>
+
+            <script>
+                window.setTimeout(function () {
+                    try {
+                        var skeleton = document.getElementById('dashboard-page-skeleton');
+                        var content = document.getElementById('dashboard-page-content');
+                        var criticalStyle = document.getElementById('dashboard-skeleton-critical');
+
+                        if (content && window.getComputedStyle(content).display === 'none') {
+                            content.style.display = '';
+                        }
+
+                        if (skeleton && skeleton.style.display !== 'none') {
+                            skeleton.style.display = 'none';
+                        }
+
+                        if (criticalStyle) {
+                            criticalStyle.remove();
+                        }
+                    } catch (e) {}
+                }, 1800);
+            </script>
 
             <div id="dashboard-page-content" style="display: none;">
 
@@ -1171,6 +1460,10 @@ if (Gate::allows("ana_sayfa")) {
                                 </li>
                             </ul>
                         </div>
+                        <div class="form-check form-switch d-flex align-items-center mb-0 me-3" style="min-height: 31px;">
+                            <input class="form-check-input me-2 cursor-pointer" type="checkbox" id="switch-free-layout" style="width: 36px; height: 18px; cursor: pointer;">
+                            <label class="form-check-label mb-0 cursor-pointer" for="switch-free-layout" style="font-weight: 500; font-size: 13px; color: #475569;">Serbest Yerleşim</label>
+                        </div>
                         <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-reset-dashboard"
                             style="font-weight: 500;">
                             <i class="bx bx-reset me-1"></i> Varsayılan Yerleşime Dön
@@ -1178,7 +1471,7 @@ if (Gate::allows("ana_sayfa")) {
                     </div>
                 </div>
 
-                <div class="row" id="dashboard-widgets">
+                <div class="row" id="dashboard-widgets" style="position: relative; min-height: 800px;">
                     <?php
                     foreach ($render_order as $widget_id) {
                         if (isset($widgets[$widget_id])) {
@@ -2750,6 +3043,9 @@ if (Gate::allows("ana_sayfa")) {
                     if (pageSkeleton) pageSkeleton.style.display = 'none';
                     if (pageContent) pageContent.style.display = '';
                     if (criticalSkeletonStyle) criticalSkeletonStyle.remove();
+                    if (typeof initResizableWidgets === 'function') {
+                        setTimeout(initResizableWidgets, 80);
+                    }
 
                     if ('requestIdleCallback' in window) {
                         requestIdleCallback(() => revealPhase2Widgets(), { timeout: 500 });
@@ -2777,6 +3073,32 @@ if (Gate::allows("ana_sayfa")) {
                 const API_URL = 'views/talepler/api.php';
 
                 // Load widget visibility from localStorage
+                function setWidgetVisibility(widgetId, isVisible, options = {}) {
+                    const widget = $(`#${widgetId}`);
+                    if (!widget.length) return;
+
+                    const animate = options.animate === true;
+                    const syncCheckbox = options.syncCheckbox !== false;
+
+                    widget.toggleClass('widget-hidden', !isVisible);
+
+                    if (animate) {
+                        if (isVisible) {
+                            widget.stop(true, true).fadeIn(200);
+                        } else {
+                            widget.stop(true, true).fadeOut(200);
+                        }
+                    } else if (isVisible) {
+                        widget.show();
+                    } else {
+                        widget.hide();
+                    }
+
+                    if (syncCheckbox) {
+                        $(`input[data-widget="${widgetId}"]`).prop('checked', isVisible);
+                    }
+                }
+
                 function loadWidgetVisibility() {
                     const visibility = localStorage.getItem('dashboard_widget_visibility');
                     if (visibility) {
@@ -2785,12 +3107,7 @@ if (Gate::allows("ana_sayfa")) {
                             const id = $(this).attr('id');
                             // Eğer localStorage'da yoksa varsayılan olarak göster (true)
                             const isVisible = visibleWidgets[id] !== false;
-                            if (!isVisible) {
-                                $(this).hide();
-                            } else {
-                                $(this).show();
-                            }
-                            $(`input[data-widget="${id}"]`).prop('checked', isVisible);
+                            setWidgetVisibility(id, isVisible, { syncCheckbox: true });
                         });
                     }
                 }
@@ -2809,8 +3126,9 @@ if (Gate::allows("ana_sayfa")) {
                 $(document).on('change', '.widget-toggle', function () {
                     const widgetId = $(this).data('widget');
                     const isChecked = $(this).is(':checked');
-                    $(`#${widgetId}`).fadeToggle(300);
+                    setWidgetVisibility(widgetId, isChecked, { animate: true, syncCheckbox: false });
                     saveWidgetVisibility();
+                    saveDashboardConfig();
                 });
 
                 // Load visibility on page load
@@ -3138,8 +3456,9 @@ if (Gate::allows("ana_sayfa")) {
                                 } else {
                                     Swal.fire({ icon: 'error', title: 'Hata', text: data.message });
                                     submitBtn.disabled = false;
+                }
+
                                     submitBtn.innerHTML = originalText;
-                                }
                             })
                             .catch(error => {
                                 Swal.fire({ icon: 'error', title: 'Hata', text: 'Bir sorun oluştu.' });
@@ -3180,50 +3499,409 @@ if (Gate::allows("ana_sayfa")) {
                 const dashboard = $("#dashboard-widgets");
 
                 function saveDashboardConfig() {
-                    const order = dashboard.sortable("toArray");
+                    const order = [];
+                    $("#dashboard-widgets .widget-item").each(function() {
+                        const id = $(this).attr('id');
+                        if (id) order.push(id);
+                    });
                     const settings = {};
                     $("#dashboard-widgets .widget-item").each(function () {
                         const id = $(this).attr('id');
+                        const isResized = $(this).attr('data-resized') === 'true' || ($(this).css('width') && $(this).css('width').indexOf('px') !== -1 && $(this).attr('style') && $(this).attr('style').indexOf('width') !== -1);
+                        const isHidden = $(this).is(':hidden') || $(this).hasClass('widget-hidden');
 
-                        // Width
-                        const classes = $(this).attr('class').split(' ');
-                        const widthClass = classes.find(c => c.startsWith('col-'));
+                        const s = {};
+                        if (isResized) {
+                            s.width = $(this).css('width');
+                            let heightVal = $(this).css('height');
+                            if (!heightVal || heightVal === '0px') {
+                                heightVal = $(this).find('.card').css('height');
+                            }
+                            s.height = heightVal;
+                        }
+                        if (isHidden) {
+                            s.hidden = 'true';
+                        }
+                        let positionVal = $(this).css('position');
+                        if (positionVal === 'absolute') {
+                            s.left = $(this).css('left');
+                            s.top = $(this).css('top');
+                            let zVal = parseInt($(this).css('z-index'), 10);
+                            if (Number.isFinite(zVal)) {
+                                s.zIndex = zVal;
+                            }
+                        }
 
-                        // Height
-                        const height = $(this).find('.card-body').css('height');
-
-                        if (id) {
-                            settings[id] = {
-                                width: widthClass,
-                                height: height
-                            };
+                        if (id && Object.keys(s).length > 0) {
+                            settings[id] = s;
                         }
                     });
 
                     const cookieOptions = "; path=/; max-age=" + (60 * 60 * 24 * 30);
                     document.cookie = "dashboard_order=" + JSON.stringify(order) + cookieOptions;
                     document.cookie = "dashboard_settings=" + JSON.stringify(settings) + cookieOptions;
+                    
+                    // Save to localStorage too for backup & reliability
+                    localStorage.setItem('dashboard_widget_settings', JSON.stringify(settings));
                 }
 
-                // Dashboard Sortable Logic
-                dashboard.sortable({
-                    handle: ".card-header, .card-header-flex, .bordro-summary-card, .drag-handle",
-                    cancel: ".btn-api-sync, .stats-local-btn, .btn, .bx-no-drag, .carousel-control-prev, .carousel-control-next, .carousel-indicators",
-                    placeholder: "ui-sortable-placeholder",
-                    start: function (e, ui) {
-                        const classes = ui.item.attr('class');
-                        ui.placeholder.attr('class', 'ui-sortable-placeholder ' + classes);
-                    },
-                    update: function (event, ui) {
-                        saveDashboardConfig();
+                function applyWidgetSettings() {
+                    const settings = JSON.parse(localStorage.getItem('dashboard_widget_settings') || '{}');
+                    Object.keys(settings).forEach(id => {
+                        const widget = $('#' + id);
+                        if (widget.length && settings[id]) {
+                            const s = settings[id];
+                            setWidgetVisibility(id, s.hidden !== 'true', { syncCheckbox: true });
+                        }
+                    });
+
+                    Object.keys(settings).forEach(id => {
+                        const widget = $('#' + id);
+                        if (widget.length && settings[id]) {
+                            const s = settings[id];
+                            const css = {};
+                            if (s.width && s.width !== '0px' && s.width.indexOf('col-') === -1) {
+                                css.width = s.width;
+                                css.flex = 'none';
+                                css.maxWidth = 'none';
+                            }
+                            if (s.height && s.height !== 'auto' && s.height !== '0px') {
+                                css.height = s.height;
+                                widget.find('.card, .carousel').css({
+                                    'height': '100%',
+                                    'min-height': '0',
+                                    'max-height': 'none'
+                                });
+                            }
+                            if (s.left && s.top) {
+                                css.position = 'absolute';
+                                css.left = s.left;
+                                css.top = s.top;
+                                css.zIndex = 100;
+                            }
+                            widget.css(css);
+                        }
+                    });
+                }
+
+                let gridSortable = null;
+
+                function initGridSortable() {
+                    if (typeof Sortable !== 'undefined') {
+                        const container = document.getElementById('dashboard-widgets');
+                        if (container && !gridSortable) {
+                            gridSortable = new Sortable(container, {
+                                animation: 150,
+                                handle: '.drag-handle, .card-header, .stat-card, .card',
+                                filter: '.mac-title-bar, .btn, a, input, select, textarea, .custom-resize-handle, .dashboard-resize-grip, .mac-controls',
+                                preventOnFilter: true,
+                                ghostClass: 'bg-light',
+                                onEnd: function () {
+                                    saveDashboardConfig();
+                                }
+                            });
+                        }
+                    }
+                }
+
+                function destroyGridSortable() {
+                    if (gridSortable) {
+                        gridSortable.destroy();
+                        gridSortable = null;
+                    }
+                }
+
+                applyWidgetSettings();
+
+                if (typeof Sortable === 'undefined') {
+                    const s = document.createElement('script');
+                    s.src = 'https://cdn.jsdelivr.net/npm/sortablejs@latest/Sortable.min.js';
+                    s.onload = function() {
+                        if (!$('#switch-free-layout').is(':checked')) {
+                            initGridSortable();
+                        }
+                    };
+                    document.head.appendChild(s);
+                } else {
+                    if (!$('#switch-free-layout').is(':checked')) {
+                        initGridSortable();
+                    }
+                }
+
+                // Raise z-index on clicking/focusing any part of a card
+                $(document).on('mousedown', '#dashboard-widgets .widget-item', function () {
+                    if ($('#switch-free-layout').is(':checked')) {
+                        maxZIndex++;
+                        $(this).css('z-index', maxZIndex);
                     }
                 });
+
+                // Switch change listener
+                $(document).on('change', '#switch-free-layout', function() {
+                    localStorage.setItem('switch_free_layout', this.checked ? 'true' : 'false');
+                    if (this.checked) {
+                        destroyGridSortable();
+                        $('#dashboard-widgets').addClass('free-layout-active');
+                        applyWidgetSettings();
+                        if (typeof initResizableWidgets === 'function') initResizableWidgets();
+                    } else {
+                        initGridSortable();
+                        $('#dashboard-widgets').removeClass('free-layout-active');
+                        // Restore all widgets to flow
+                        $('#dashboard-widgets .widget-item').removeClass('resizable-widget').css({
+                            position: '',
+                            left: '',
+                            top: '',
+                            width: '',
+                            height: '',
+                            flex: '',
+                            maxWidth: '',
+                            zIndex: ''
+                        });
+                        $('#dashboard-widgets .card-header.mac-title-bar').each(function () {
+                            $(this).removeClass('mac-title-bar').removeAttr('style');
+                            $(this).find('.mac-controls, .drag-handle-indicator').remove();
+                        });
+                        $('#dashboard-widgets .mac-title-bar').not('.card-header').remove();
+                        $('.custom-resize-handle, .dashboard-resize-grip').remove();
+                        $('#dashboard-widgets .widget-item h5, #dashboard-widgets .widget-item h6, #dashboard-widgets .widget-item strong').show();
+                    }
+                });
+
+                let maxZIndex = 1100;
+
+                // Card Movement Logic (Move like a Windows Desktop Window)
+                $(document).on('mousedown touchstart', '#dashboard-widgets .widget-item .mac-title-bar, #dashboard-widgets .widget-item .card-header', function (e) {
+                    if (!$('#switch-free-layout').is(':checked')) return;
+                    if ($(e.target).closest('.mac-control, .btn, a, input, select, textarea, .custom-resize-handle, .dashboard-resize-grip').length) return;
+
+                    let clientX = e.type.startsWith('touch') ? e.originalEvent.touches[0].clientX : e.clientX;
+                    let clientY = e.type.startsWith('touch') ? e.originalEvent.touches[0].clientY : e.clientY;
+
+                    const widget = $(this).closest('.widget-item');
+                    maxZIndex++;
+
+                    if (widget.css('position') !== 'absolute') {
+                        const offset = widget.position();
+                        widget.css({
+                            'position': 'absolute',
+                            'left': offset.left + 'px',
+                            'top': offset.top + 'px',
+                            'z-index': maxZIndex,
+                            'flex': 'none',
+                            'max-width': 'none'
+                        });
+                    } else {
+                        widget.css('z-index', maxZIndex);
+                    }
+
+                    let startX = clientX;
+                    let startY = clientY;
+                    let initialLeft = parseFloat(widget.css('left')) || 0;
+                    let initialTop = parseFloat(widget.css('top')) || 0;
+                    let isMoving = true;
+
+                    $(document).on('mousemove.widgetMove touchmove.widgetMove', function (e) {
+                        if (!isMoving) return;
+                        let moveX = e.type.startsWith('touch') ? e.originalEvent.touches[0].clientX : e.clientX;
+                        let moveY = e.type.startsWith('touch') ? e.originalEvent.touches[0].clientY : e.clientY;
+                        const newLeft = initialLeft + (moveX - startX);
+                        const newTop = initialTop + (moveY - startY);
+
+                        widget.css({
+                            'left': newLeft + 'px',
+                            'top': newTop + 'px'
+                        });
+
+                        // Dynamically increase container height as cards go down
+                        const cardBottom = newTop + widget.outerHeight();
+                        const container = $('#dashboard-widgets');
+                        if (cardBottom > container.height()) {
+                            container.css('min-height', (cardBottom + 100) + 'px');
+                            localStorage.setItem('dashboard_container_height', (cardBottom + 100) + 'px');
+                        }
+                    });
+
+                    $(document).on('mouseup.widgetMove touchend.widgetMove', function () {
+                        if (isMoving) {
+                            isMoving = false;
+                            $(document).off('.widgetMove');
+                            saveDashboardConfig();
+                        }
+                    });
+                });
+
+                // Apple/Mac Style Controls Logic
+                function initMacControls() {
+                    if (!$('#switch-free-layout').is(':checked')) return;
+                    $('#dashboard-widgets .widget-item').each(function() {
+                        let card = $(this).find('.card');
+                        if (card.length === 0) {
+                            card = $(this).find('.carousel').first();
+                        }
+                        if (card.length && card.find('.mac-title-bar').length === 0) {
+                            const existingHeader = card.children('.card-header').first();
+                            // Clear hardcoded mapping + dynamic selector fallback
+                            const titles = {
+                                'widget-ana-slider': 'Duyurular',
+                                'widget-bekleyen-talepler': 'Bekleyen Talepler',
+                                'widget-gec-kalanlar': 'Geç Kalanlar',
+                                'widget-nobetciler': 'Nöbetçiler',
+                                'widget-gunluk-muhurleme': 'Mühürleme',
+                                'widget-gunluk-kesme-acma': 'Kesme Açma',
+                                'widget-gunluk-endeks-okuma': 'Endeks Okuma',
+                                'widget-gunluk-sayac-degisimi': 'Sayaç Değişimi',
+                                'widget-gunluk-kacak': 'Kaçak Kontrolü',
+                                'widget-izinliler': 'İzinliler',
+                                'widget-yaklasan-gorevler': 'Yaklaşan Görevler'
+                            };
+                            let titleText = titles[$(this).attr('id')] || card.find('h1, h2, h3, h4, h5, h6, strong, .stat-label, p.fw-bold, .card-title').first().text().replace('drag_handle', '').trim();
+                            if ($(this).attr('id') === 'widget-ana-slider' || card.hasClass('carousel')) {
+                                titleText = 'Duyurular';
+                            }
+                            if (!titleText || titleText.length < 2) {
+                                titleText = 'Bilgi Kartı';
+                            }
+                            // strip out boxicon names if extracted
+                            if (titleText.startsWith('bx-')) {
+                                titleText = titleText.replace(/^bx-[a-z0-9-]+/i, '').trim();
+                            }
+                            if (!existingHeader.length) {
+                                card.find('h5, h6, strong').first().hide();
+                            }
+
+                            const controls = $(`
+                                <div class="mac-title-bar d-flex justify-content-between align-items-center" style="background: #e2e8f0; padding: 6px 12px; border-bottom: 2px solid #cbd5e1; border-top-left-radius: 10px; border-top-right-radius: 10px; cursor: move; user-select: none; position: relative; z-index: 1001; height: 34px;">
+                                    <div class="mac-controls d-flex align-items-center" style="gap: 6px;">
+                                        <span class="mac-control mac-close" title="Kapat" style="width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: #ff5f56; border: 1px solid #e0443e; cursor: pointer;"></span>
+                                        <span class="mac-control mac-minimize" title="Küçült" style="width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: #ffbd2e; border: 1px solid #dfa123; cursor: pointer;"></span>
+                                        <span class="mac-control mac-maximize" title="Tam Ekran" style="width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: #27c93f; border: 1px solid #1aab29; cursor: pointer;"></span>
+                                    </div>
+                                    <div class="mac-title-text fw-bold" style="font-size: 11.5px; text-align: center; flex: 1; margin: 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #1e293b;"></div>
+                                    <div class="drag-handle-indicator text-muted d-flex align-items-center" style="font-size: 14px; opacity: 0.5; width: 32px; justify-content: flex-end;">
+                                        <i class="bx bx-grid-horizontal" style="font-size: 20px;"></i>
+                                    </div>
+                                </div>
+                            `);
+                            controls.find('.mac-title-text').text(titleText);
+
+                            controls.find('.mac-close').on('click', function (e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                const widget = $(this).closest('.widget-item');
+                                const widgetId = widget.attr('id');
+                                setWidgetVisibility(widgetId, false, { syncCheckbox: false });
+                                $(`.widget-toggle[data-widget="${widgetId}"]`).prop('checked', false).trigger('change');
+                                saveDashboardConfig();
+                            });
+
+                            controls.find('.mac-minimize').on('click', function (e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                const widget = $(this).closest('.widget-item');
+                                widget.toggleClass('widget-collapsed');
+                                $(this).toggleClass('is-collapsed', widget.hasClass('widget-collapsed'));
+                                
+                                if (widget.hasClass('widget-collapsed')) {
+                                    widget.data('old-height-before-collapse', widget[0].style.height || widget.css('height'));
+                                    widget.css({
+                                        'height': '34px',
+                                        'min-height': '34px'
+                                    });
+                                } else {
+                                    const oldH = widget.data('old-height-before-collapse');
+                                    widget.css({
+                                        'height': (oldH && oldH !== '34px') ? oldH : 'auto',
+                                        'min-height': ''
+                                    });
+                                }
+                            });
+
+                            controls.find('.mac-maximize').on('click', function (e) {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                const widget = $(this).closest('.widget-item');
+                                if (widget.data('maximized')) {
+                                    widget.css({
+                                        'position': widget.data('old-pos') || 'absolute',
+                                        'left': widget.data('old-left') || '',
+                                        'top': widget.data('old-top') || '',
+                                        'width': widget.data('old-width') || '',
+                                        'height': widget.data('old-height') || '',
+                                        'z-index': widget.data('old-z') || '100'
+                                    });
+                                    widget.data('maximized', false);
+                                } else {
+                                    widget.data('old-pos', widget.css('position'));
+                                    widget.data('old-left', widget.css('left'));
+                                    widget.data('old-top', widget.css('top'));
+                                    widget.data('old-width', widget.css('width'));
+                                    widget.data('old-height', widget.css('height'));
+                                    widget.data('old-z', widget.css('z-index'));
+                                    widget.css({
+                                        'position': 'absolute',
+                                        'left': '0px',
+                                        'top': '0px',
+                                        'width': '100%',
+                                        'height': '100%',
+                                        'z-index': 9999
+                                    });
+                                    widget.data('maximized', true);
+                                }
+                            });
+
+                            card.prepend(controls);
+                            if (existingHeader.length) {
+                                const insertedTitleBar = card.children('.mac-title-bar').first();
+                                existingHeader.addClass('mac-title-bar').css({
+                                    background: '#e2e8f0',
+                                    borderBottom: '2px solid #cbd5e1',
+                                    cursor: 'move',
+                                    userSelect: 'none',
+                                    position: 'relative',
+                                    zIndex: 1001,
+                                    minHeight: '34px',
+                                    paddingTop: '6px',
+                                    paddingBottom: '6px'
+                                });
+                                existingHeader.find('h5, h6, strong, .card-title').first().show();
+                                insertedTitleBar.find('.mac-controls').prependTo(existingHeader);
+                                insertedTitleBar.find('.drag-handle-indicator').appendTo(existingHeader);
+                                insertedTitleBar.remove();
+                            }
+                        }
+                    });
+                }
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
                 // Card Resize Logic (Width)
                 $(document).on('click', '.btn-resize-width', function (e) {
                     e.preventDefault();
                     const newWidth = $(this).data('width');
                     const widget = $(this).closest('.widget-item');
+
+                    widget.removeAttr('data-resized');
+                    widget.css('width', '');
 
                     // Remove existing col- classes
                     const classes = widget.attr('class').split(' ');
@@ -3244,8 +3922,11 @@ if (Gate::allows("ana_sayfa")) {
                     e.preventDefault();
                     const newHeight = $(this).data('height');
                     const widget = $(this).closest('.widget-item');
-                    const cardBody = widget.find('.card-body');
+                    
+                    widget.removeAttr('data-resized');
+                    widget.css('height', '');
 
+                    const cardBody = widget.find('.card-body');
                     cardBody.css('height', newHeight);
                     saveDashboardConfig();
 
@@ -3254,6 +3935,286 @@ if (Gate::allows("ana_sayfa")) {
                         window.dispatchEvent(new Event('resize'));
                     }, 100);
                 });
+
+                $(document).on('mousedown', '.mac-control', function(e) {
+                    e.stopPropagation();
+                });
+
+                function appendResizeHandles() {
+                    return;
+                }
+
+                let nativeResizeObserver = null;
+                let nativeResizeSaveTimer = null;
+
+                function scheduleNativeResizeSave(widget) {
+                    widget.attr('data-resized', 'true');
+                    clearTimeout(nativeResizeSaveTimer);
+                    nativeResizeSaveTimer = setTimeout(function () {
+                        saveDashboardConfig();
+                        window.dispatchEvent(new Event('resize'));
+                    }, 150);
+                }
+
+                // First version removed. Only the second version is used.
+
+
+                function ensureAbsoluteWidgetPosition(widget) {
+                    if (widget.css('position') !== 'absolute') {
+                        const offset = widget.position();
+                        widget.css({
+                            position: 'absolute',
+                            left: offset.left + 'px',
+                            top: offset.top + 'px',
+                            flex: 'none',
+                            maxWidth: 'none'
+                        });
+                    }
+                }
+
+                // Free-layout resize grip
+                $(document).off('mousedown.dashboardResizeGrip', '.dashboard-resize-grip').on('mousedown.dashboardResizeGrip', '.dashboard-resize-grip', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+
+                    const widget = $(this).closest('.widget-item');
+                    ensureAbsoluteWidgetPosition(widget);
+
+                    maxZIndex++;
+                    widget.addClass('dashboard-resizing').css({
+                        zIndex: maxZIndex,
+                        width: widget.outerWidth() + 'px',
+                        height: widget.outerHeight() + 'px',
+                        flex: 'none',
+                        maxWidth: 'none'
+                    });
+
+                    const startX = e.clientX;
+                    const startY = e.clientY;
+                    const startWidth = widget.outerWidth();
+                    const startHeight = widget.outerHeight();
+                    document.body.style.userSelect = 'none';
+
+                    $(document)
+                        .off('.dashboardResizeGripMove')
+                        .on('mousemove.dashboardResizeGripMove', function (moveEvent) {
+                            const newWidth = Math.max(180, startWidth + (moveEvent.clientX - startX));
+                            const newHeight = Math.max(120, startHeight + (moveEvent.clientY - startY));
+
+                            widget.css({
+                                width: newWidth + 'px',
+                                height: newHeight + 'px',
+                                flex: 'none',
+                                maxWidth: 'none'
+                            });
+                            widget.attr('data-resized', 'true');
+                            widget.find('.card, .carousel, .carousel-inner, .card-body, .tab-content').css({
+                                height: '100%',
+                                minHeight: '0',
+                                maxHeight: 'none'
+                            });
+                        })
+                        .on('mouseup.dashboardResizeGripMove', function () {
+                            $(document).off('.dashboardResizeGripMove');
+                            document.body.style.userSelect = '';
+                            widget.removeClass('dashboard-resizing');
+                            saveDashboardConfig();
+                            setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 100);
+                        });
+                });
+
+                // Free-layout resize grip
+                $(document).off('mousedown.dashboardResize', '.custom-resize-handle').on('mousedown.dashboardResize', '.custom-resize-handle', function (e) {
+                    e.preventDefault();
+                    e.stopPropagation();
+                    let isResizing = true;
+                    const widget = $(this).closest('.widget-item');
+                    maxZIndex++;
+                    ensureAbsoluteWidgetPosition(widget);
+                    widget.css({
+                        'z-index': maxZIndex,
+                        'width': widget.outerWidth() + 'px',
+                        'height': widget.outerHeight() + 'px',
+                        'flex': 'none',
+                        'max-width': 'none'
+                    });
+                    
+                    let startX = e.clientX;
+                    let startY = e.clientY;
+                    let startWidth = widget.outerWidth();
+                    let startHeight = widget.outerHeight();
+
+                    document.body.style.userSelect = 'none';
+
+                    $(document).on('mousemove.widgetResize', function (e) {
+                        if (!isResizing) return;
+                        let clientX = e.clientX;
+                        let clientY = e.clientY;
+                        const newWidth = startWidth + (clientX - startX);
+                        const newHeight = startHeight + (clientY - startY);
+
+                        if (newWidth >= 120) {
+                            widget.css({
+                                'width': newWidth + 'px',
+                                'flex': 'none',
+                                'max-width': 'none'
+                            });
+                            widget.attr('data-resized', 'true');
+                        }
+                        if (newHeight >= 100) {
+                            widget.css({
+                                'height': newHeight + 'px'
+                            });
+                            widget.find('.card, .carousel, .carousel-inner, .card-body, .tab-content').css({
+                                'height': '100%',
+                                'min-height': '0',
+                                'max-height': 'none'
+                            });
+                        }
+                    });
+
+                    $(document).on('mouseup.widgetResize', function () {
+                        if (isResizing) {
+                            isResizing = false;
+                            $(document).off('.widgetResize');
+                            document.body.style.userSelect = '';
+                            saveDashboardConfig();
+                            setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 100);
+                        }
+                    });
+                });
+
+                // Rebuilt resize layer: every dashboard card gets a visible bottom-right grip.
+                // Rebuilt resize layer with pure JavaScript to ensure it always works without any UI plugin dependencies
+                function initResizableWidgets() {
+                    const pageContent = $('#dashboard-page-content');
+
+                    if (pageContent.length && pageContent.css('display') === 'none') {
+                        pageContent.show();
+                        $('#dashboard-page-skeleton').hide();
+                        $('#dashboard-skeleton-critical').remove();
+                    }
+
+                    $('#dashboard-widgets .widget-item').each(function () {
+                        const widget = $(this);
+                        const id = widget.attr('id');
+                        if (!id || id === 'widget-row-break' || widget.hasClass('widget-hidden')) return;
+                        if (!widget.is(':visible') || widget.outerWidth() <= 0 || widget.outerHeight() <= 0) return;
+
+                        const position = widget.position();
+                        const currentLeft = parseFloat(widget.css('left'));
+                        const currentTop = parseFloat(widget.css('top'));
+                        const currentWidth = widget[0].style.width;
+                        const currentHeight = widget[0].style.height;
+
+                        widget.addClass('resizable-widget').css({
+                            position: 'absolute',
+                            left: Number.isFinite(currentLeft) ? currentLeft + 'px' : position.left + 'px',
+                            top: Number.isFinite(currentTop) ? currentTop + 'px' : position.top + 'px',
+                            width: currentWidth && currentWidth !== '0px' ? currentWidth : widget.outerWidth() + 'px',
+                            height: currentHeight && currentHeight !== '0px' && currentHeight !== 'auto' ? currentHeight : 'auto',
+                            flex: 'none',
+                            maxWidth: 'none',
+                            overflow: 'visible'
+                        });
+
+                        widget.find('.card, .carousel, .carousel-inner, .card-body, .tab-content').css({
+                            height: '100%',
+                            minHeight: '0',
+                            maxHeight: 'none'
+                        });
+
+                        if (widget.find('.dashboard-resize-edge-e').length === 0) {
+                            widget.append('<div class="dashboard-resize-edge-e" style="position: absolute; width: 6px; top: 0; right: -3px; bottom: 0; cursor: e-resize; z-index: 1051; pointer-events: auto !important;" title="Sağa Boyutlandır"></div>');
+                        }
+                        if (widget.find('.dashboard-resize-edge-s').length === 0) {
+                            widget.append('<div class="dashboard-resize-edge-s" style="position: absolute; height: 6px; left: 0; right: 0; bottom: -3px; cursor: s-resize; z-index: 1051; pointer-events: auto !important;" title="Aşağı Boyutlandır"></div>');
+                        }
+                        if (widget.find('.dashboard-resize-grip').length === 0) {
+                            widget.append('<div class="dashboard-resize-grip" style="position: absolute; width: 14px; height: 14px; bottom: -3px; right: -3px; cursor: se-resize; z-index: 1051; background: transparent; pointer-events: auto !important;" title="Çapraz Boyutlandır"></div>');
+                        }
+                    });
+
+                    $(document)
+                        .off('mousedown.widgetResize touchstart.widgetResize', '.dashboard-resize-grip, .dashboard-resize-edge-e, .dashboard-resize-edge-s')
+                        .on('mousedown.widgetResize touchstart.widgetResize', '.dashboard-resize-grip, .dashboard-resize-edge-e, .dashboard-resize-edge-s', function (e) {
+                            e.preventDefault();
+                            e.stopPropagation();
+
+                            const handle = $(this);
+                            const widget = handle.closest('.widget-item');
+                            const isTouch = e.type.startsWith('touch');
+                            const startX = isTouch ? e.originalEvent.touches[0].clientX : e.clientX;
+                            const startY = isTouch ? e.originalEvent.touches[0].clientY : e.clientY;
+                            const startWidth = widget.outerWidth();
+                            const startHeight = widget.outerHeight();
+                            const minWidth = 180;
+                            const minHeight = 120;
+
+                            const isE = handle.hasClass('dashboard-resize-edge-e');
+                            const isS = handle.hasClass('dashboard-resize-edge-s');
+                            const isSE = handle.hasClass('dashboard-resize-grip');
+
+                            widget.addClass('dashboard-resizing');
+
+                            $(document)
+                                .off('mousemove.widgetResize touchmove.widgetResize')
+                                .on('mousemove.widgetResize touchmove.widgetResize', function (moveEvent) {
+                                    const moveIsTouch = moveEvent.type.startsWith('touch');
+                                    const movePoint = moveIsTouch ? moveEvent.originalEvent.touches[0] : moveEvent;
+                                    if (!movePoint) return;
+
+                                    let newWidth = startWidth;
+                                    let newHeight = startHeight;
+
+                                    if (isE || isSE) {
+                                        newWidth = Math.max(minWidth, startWidth + (movePoint.clientX - startX));
+                                    }
+                                    if (isS || isSE) {
+                                        newHeight = Math.max(minHeight, startHeight + (movePoint.clientY - startY));
+                                    }
+
+                                    widget.css({
+                                        width: newWidth + 'px',
+                                        height: newHeight + 'px'
+                                    });
+
+                                    widget.find('.card, .carousel, .carousel-inner, .card-body, .tab-content').css({
+                                        height: '100%',
+                                        minHeight: '0',
+                                        maxHeight: 'none'
+                                    });
+                                })
+                                .off('mouseup.widgetResize touchend.widgetResize')
+                                .on('mouseup.widgetResize touchend.widgetResize', function () {
+                                    $(document).off('mousemove.widgetResize touchmove.widgetResize mouseup.widgetResize touchend.widgetResize');
+                                    widget.removeClass('dashboard-resizing');
+                                    widget.attr('data-resized', 'true');
+                                    saveDashboardConfig();
+                                    setTimeout(function () { window.dispatchEvent(new Event('resize')); }, 100);
+                                });
+                        });
+                    if (typeof initMacControls === 'function') initMacControls();
+                }
+
+                let savedFreeLayout = localStorage.getItem('switch_free_layout');
+                if (savedFreeLayout === null) {
+                    savedFreeLayout = 'true';
+                    localStorage.setItem('switch_free_layout', 'true');
+                }
+                const isFreeLayoutActive = savedFreeLayout === 'true';
+                $('#switch-free-layout').prop('checked', isFreeLayoutActive);
+                if (isFreeLayoutActive) {
+                    destroyGridSortable();
+                    $('#dashboard-widgets').addClass('free-layout-active');
+                    applyWidgetSettings();
+                    initResizableWidgets();
+                    setTimeout(initResizableWidgets, 300);
+                } else {
+                    initGridSortable();
+                    $('#dashboard-widgets').removeClass('free-layout-active');
+                }
+
 
                 // Reset Dashboard Logic
                 $('#btn-reset-dashboard').on('click', function () {
@@ -3271,6 +4232,8 @@ if (Gate::allows("ana_sayfa")) {
                             document.cookie = "dashboard_order=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
                             document.cookie = "dashboard_settings=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
                             localStorage.removeItem('dashboard_widget_visibility');
+                            localStorage.removeItem('dashboard_widget_settings');
+                            localStorage.removeItem('dashboard_container_height');
                             location.reload();
                         }
                     });
@@ -3371,6 +4334,7 @@ if (Gate::allows("ana_sayfa")) {
                                     const $el = $('#' + id);
                                     if ($el.length && $el.hasClass('lazy-widget')) $el.replaceWith(data.results[id]);
                                 });
+                                if (typeof initResizableWidgets === 'function') initResizableWidgets();
                             }
                         } catch(e) { console.error("Cache render error", e); }
                     }
@@ -3432,6 +4396,8 @@ if (Gate::allows("ana_sayfa")) {
                                 setTimeout(() => {
                                     window.dispatchEvent(new Event('resize'));
                                     if (window.feather) feather.replace();
+                                    if (typeof applyWidgetSettings === 'function') applyWidgetSettings();
+                                    if (typeof initResizableWidgets === 'function') initResizableWidgets();
                                 }, 150);
                             }
                         } catch (err) { console.error('Dashboard init error:', err); }
