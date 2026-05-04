@@ -288,146 +288,185 @@ if (!empty($dbGelirler)) {
         }
 
         #modalIzinTakvim .modal-dialog {
-            max-width: 760px;
+            max-width: 820px;
         }
 
         #modalIzinTakvim .modal-content {
             border: 0;
-            border-radius: 18px;
+            border-radius: 20px;
             overflow: hidden;
+            box-shadow: 0 15px 40px rgba(0,0,0,0.12);
         }
 
         #modalIzinTakvim .modal-header {
             background: #fff !important;
-            color: #1e293b !important;
-            border-bottom: 1px solid #e2e8f0;
-            padding: 1rem 1.25rem;
+            color: #0f172a !important;
+            border-bottom: 1px solid #f1f5f9;
+            padding: 1.2rem 1.5rem;
         }
 
         #modalIzinTakvim .btn-close {
             filter: none;
-            opacity: 0.6;
+            opacity: 0.7;
+            transition: all 0.2s;
+        }
+
+        #modalIzinTakvim .btn-close:hover {
+            opacity: 1;
         }
 
         #modalIzinTakvim .modal-body {
             background: #fff !important;
-            padding: 1rem 1.25rem 1.1rem;
+            padding: 1.25rem 1.5rem;
         }
 
         #modalIzinTakvim .modal-footer {
-            border-top: 1px solid #e2e8f0;
-            padding: 0.9rem 1.25rem 1.1rem;
+            border-top: 1px solid #f1f5f9;
+            background: #fcfcfc;
+            padding: 1rem 1.5rem;
         }
 
         .year-calendar-month {
             border: 1px solid #e2e8f0;
-            border-radius: 14px;
+            border-radius: 16px;
             overflow: hidden;
-            box-shadow: none !important;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
         }
 
         .year-calendar-header {
             text-align: center;
-            letter-spacing: 0.02em;
-            font-size: 1rem !important;
-            background: #fff !important;
+            letter-spacing: 0.05em;
+            font-size: 1.05rem !important;
+            background: #fafafa !important;
+            color: #334155;
             margin-bottom: 0 !important;
-            padding: 0.9rem 1rem 0.65rem !important;
-            border-bottom: 1px solid #e2e8f0;
+            padding: 0.85rem 1rem !important;
+            border-bottom: 1px solid #f1f5f9;
         }
 
         .year-calendar-table {
             width: 100%;
-            border-collapse: collapse;
+            border-collapse: separate;
+            border-spacing: 4px;
             table-layout: fixed;
         }
 
         .year-calendar-table th {
             text-align: center;
-            color: #94a3b8;
+            color: #64748b;
             font-size: 0.72rem;
-            font-weight: 600;
-            padding: 0.55rem 0 0.45rem;
+            font-weight: 500;
+            padding: 0.35rem 0;
+            background: transparent !important;
+            border: 0 !important;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
         }
 
         .year-calendar-table td {
-            height: 58px;
-            vertical-align: top;
-            background: #fff;
-            border: 1px solid #eef2f7;
-            border-radius: 0;
+            height: 56px;
+            vertical-align: middle;
+            background: #f8fafc !important;
+            border: 1px solid #f1f5f9 !important;
+            border-radius: 12px !important;
             padding: 0.35rem;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .year-calendar-table td:hover {
+            background-color: #f1f5f9 !important;
+            border-color: #e2e8f0 !important;
+            transform: translateY(-1px);
         }
 
         .year-calendar-table td.is-filled {
-            background: #f8fafc;
+            border: 1px solid transparent !important;
+        }
+
+        .year-calendar-table td.is-filled:hover {
+            filter: brightness(0.97);
         }
 
         .year-calendar-table td.today {
-            box-shadow: inset 0 0 0 1px #2563eb;
+            background-color: #eff6ff !important;
+            border: 1px solid #3b82f6 !important;
         }
 
         .year-calendar-table td.passive-date {
             opacity: 0.35;
-            background: #fafafa;
+            background: #f8fafc !important;
         }
 
         .year-calendar-day {
             display: flex;
             flex-direction: column;
-            align-items: flex-start;
-            gap: 0.3rem;
+            justify-content: space-between;
+            align-items: center;
             height: 100%;
+            position: relative;
         }
 
         .year-calendar-day-number {
             font-size: 0.78rem;
-            font-weight: 600;
+            font-weight: 500;
             line-height: 1;
-            color: #0f172a;
+            color: #64748b;
+            align-self: flex-start;
         }
 
         .year-calendar-day-code {
             display: inline-flex;
             align-items: center;
             justify-content: center;
-            min-height: 22px;
+            min-width: 24px;
+            height: 18px;
             border-radius: 6px;
-            font-size: 0.72rem;
+            font-size: 0.65rem;
             font-weight: 700;
-            padding: 0.1rem 0.4rem;
+            padding: 0.1rem 0.35rem;
             width: auto;
             max-width: 100%;
+            box-shadow: none;
+            border: 1px solid rgba(255,255,255,0.25);
         }
 
         .takvim-legend {
             display: flex;
             flex-wrap: wrap;
-            gap: 0.4rem;
-            margin-bottom: 0.75rem;
+            gap: 0.55rem;
+            margin-bottom: 1.1rem;
+            justify-content: flex-start;
         }
 
         .takvim-legend-item {
             display: inline-flex;
             align-items: center;
-            gap: 0.35rem;
-            background: transparent;
+            gap: 0.45rem;
+            background: #f8fafc;
             border: 1px solid #e2e8f0;
-            border-radius: 8px;
-            padding: 0.32rem 0.55rem;
-            font-size: 0.73rem;
+            border-radius: 12px;
+            padding: 0.42rem 0.75rem;
+            font-size: 0.76rem;
             font-weight: 600;
-            color: #475569;
+            color: #334155;
+            transition: all 0.2s;
+            box-shadow: 0 1px 2px rgba(0, 0, 0, 0.02);
+        }
+
+        .takvim-legend-item:hover {
+            background: #f1f5f9;
+            border-color: #cbd5e1;
         }
 
         .takvim-legend-swatch {
-            width: 8px;
-            height: 8px;
-            border-radius: 999px;
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
             border: 0;
-            flex: 0 0 8px;
+            flex: 0 0 10px;
         }
     </style>
+
 
     <div class="row">
         <div class="col-12">
@@ -1932,7 +1971,10 @@ if (!empty($dbGelirler)) {
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
                 <div class="modal-header">
-                    <h5 class="modal-title mb-0"><span id="takvim_personel_ad"></span> <span class="text-muted fw-normal">/</span> <span id="takvim_yil_gosterge"></span></h5>
+                    <h5 class="modal-title mb-0 d-flex align-items-center gap-2">
+                        <i class="bx bx-calendar-event fs-3 text-primary"></i>
+                        <span><strong id="takvim_personel_ad"></strong> <span class="text-muted fw-normal mx-1">/</span> <span id="takvim_yil_gosterge" class="fw-semibold"></span></span>
+                    </h5>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
                 <div class="modal-body">
@@ -1997,24 +2039,51 @@ if (!empty($dbGelirler)) {
 
     function renderYearlyModalCalendar(year, month, events, iseGiris, istenCikis) {
         const summary = collectTakvimSummary(events);
-        const legendItems = [
-            { label: 'Çalışılan Gün', color: '#556ee6', count: summary.x || 0 },
-            { label: 'Hafta Tatili', color: '#f46a6a', count: summary.ht || 0 },
-            ...summary.other
-        ];
 
         let html = '';
         html += `<div class="col-12">`;
-        if (legendItems.length > 0) {
-            html += `<div class="takvim-legend">${legendItems.map(item => `
-                <div class="takvim-legend-item">
-                    <span class="takvim-legend-swatch" style="background:${item.color};"></span>
-                    <span>${item.label}${typeof item.count === 'number' ? ` (${item.count})` : ''}</span>
+        
+        // Özet Kartları
+        html += `<div class="row g-2 mb-3">
+            <div class="col-md-4">
+                <div class="p-3 bg-light rounded-4 border border-light-subtle h-100 d-flex flex-column justify-content-between" style="min-height: 100px;">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span class="text-muted small fw-medium">Toplam Gün</span>
+                        <i class="bx bx-calendar fs-4 text-secondary"></i>
+                    </div>
+                    <h3 class="mb-0 fw-bold text-dark">${summary.toplamGun} <small class="text-muted fs-6 fw-normal">Gün</small></h3>
                 </div>
-            `).join('')}</div>`;
-        }
-        html += `<div class="year-calendar-month shadow-sm border bg-white">
-                <div class="year-calendar-header bg-light-subtle rounded-top py-2 mb-2 fs-5 fw-bold">${window.ayIsimleriModal[month]}</div>
+            </div>
+            
+            <div class="col-md-4">
+                <div class="p-3 bg-light rounded-4 border border-light-subtle h-100 d-flex flex-column justify-content-between" style="min-height: 100px;">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span class="text-muted small fw-medium">Ücretli Günler</span>
+                        <i class="bx bx-check-circle fs-4 text-success"></i>
+                    </div>
+                    <h3 class="mb-1 fw-bold text-success">${summary.ucretliToplam} <small class="text-muted fs-6 fw-normal">Gün</small></h3>
+                    <div class="d-flex flex-wrap gap-1 mt-1">
+                        ${summary.ucretliList.map(item => `<span class="badge bg-white text-dark border px-2 py-1" style="font-size:10px; font-weight:600;">${item.kisa_kod}: ${item.count}</span>`).join('')}
+                    </div>
+                </div>
+            </div>
+
+            <div class="col-md-4">
+                <div class="p-3 bg-light rounded-4 border border-light-subtle h-100 d-flex flex-column justify-content-between" style="min-height: 100px;">
+                    <div class="d-flex align-items-center justify-content-between mb-1">
+                        <span class="text-muted small fw-medium">Ücretsiz Günler</span>
+                        <i class="bx bx-x-circle fs-4 text-danger"></i>
+                    </div>
+                    <h3 class="mb-1 fw-bold text-danger">${summary.ucretsizToplam} <small class="text-muted fs-6 fw-normal">Gün</small></h3>
+                    <div class="d-flex flex-wrap gap-1 mt-1">
+                        ${summary.ucretsizList.map(item => `<span class="badge bg-white text-dark border px-2 py-1" style="font-size:10px; font-weight:600;">${item.kisa_kod}: ${item.count}</span>`).join('')}
+                    </div>
+                </div>
+            </div>
+        </div>`;
+
+        html += `<div class="year-calendar-month">
+                <div class="year-calendar-header">${window.ayIsimleriModal[month]}</div>
                 <div class="p-2">
                     <table class="year-calendar-table">
                         <thead>
@@ -2032,7 +2101,7 @@ if (!empty($dbGelirler)) {
         // Tooltipleri başlat
         var tooltipTriggerList = [].slice.call(document.querySelectorAll('#modalTakvimContainer [data-bs-toggle="tooltip"]'));
         tooltipTriggerList.map(function (tooltipTriggerEl) {
-            return new bootstrap.Tooltip(tooltipTriggerEl);
+            return new bootstrap.Tooltip(tooltipTriggerEl, { container: '#modalIzinTakvim' });
         });
     }
 
@@ -2078,11 +2147,10 @@ if (!empty($dbGelirler)) {
                         const event = dayEvents[0];
                         const eventStyle = getStyleFromTailwindProxyModal(event.color);
                         style = `background-color: ${eventStyle.bg} !important; color: ${eventStyle.color} !important; border-radius: 12px; font-weight: bold;`;
-                        cellContent = `<div class="year-calendar-day">
+                        cellContent = `<div class="year-calendar-day" data-bs-toggle="tooltip" title="${event.kisa_kod} : ${event.name}">
                             <span class="year-calendar-day-number">${day}</span>
                             <span class="year-calendar-day-code" style="background-color:${eventStyle.color}; color:#fff;">${event.kisa_kod}</span>
                         </div>`;
-                        titleAttr = `data-bs-toggle="tooltip" title="${event.name}"`;
                         filledClass = 'is-filled';
                     }
 
@@ -2129,45 +2197,55 @@ if (!empty($dbGelirler)) {
     }
 
     function collectTakvimSummary(events) {
-        const legendMap = new Map();
-        let xCount = 0;
-        let htCount = 0;
+        let ucretliList = [];
+        let ucretsizList = [];
+        const eventCounts = {};
 
         Object.values(events || {}).forEach(function(dayEntries) {
             (dayEntries || []).forEach(function(entry) {
                 if (!entry || !entry.name || !entry.kisa_kod) {
                     return;
                 }
-
-                if (entry.kisa_kod === 'X') {
-                    xCount++;
-                    return;
-                }
-
-                if (entry.kisa_kod === 'HT') {
-                    htCount++;
-                    return;
-                }
-
-                const style = getStyleFromTailwindProxyModal(entry.color);
                 const key = `${entry.kisa_kod}-${entry.name}`;
-
-                if (!legendMap.has(key)) {
-                    legendMap.set(key, {
-                        label: `${entry.kisa_kod} - ${entry.name}`,
+                if (!eventCounts[key]) {
+                    const style = getStyleFromTailwindProxyModal(entry.color);
+                    eventCounts[key] = {
+                        kisa_kod: entry.kisa_kod,
+                        name: entry.name,
                         color: style.color,
                         count: 0
-                    });
+                    };
                 }
-
-                legendMap.get(key).count++;
+                eventCounts[key].count++;
             });
         });
 
+        let toplamGun = 0;
+        let ucretliToplam = 0;
+        let ucretsizToplam = 0;
+
+        Object.values(eventCounts).forEach(function(item) {
+            toplamGun += item.count;
+            const lowName = (item.name || '').toLowerCase();
+            const lowKod = (item.kisa_kod || '').toLowerCase();
+            
+            const isUnpaid = lowName.includes('ücretsiz') || lowName.includes('mazeret') || lowKod.includes('üi') || lowKod.includes('mi');
+            
+            if (isUnpaid) {
+                ucretsizToplam += item.count;
+                ucretsizList.push(item);
+            } else {
+                ucretliToplam += item.count;
+                ucretliList.push(item);
+            }
+        });
+
         return {
-            x: xCount,
-            ht: htCount,
-            other: Array.from(legendMap.values())
+            toplamGun: toplamGun,
+            ucretliToplam: ucretliToplam,
+            ucretsizToplam: ucretsizToplam,
+            ucretliList: ucretliList,
+            ucretsizList: ucretsizList
         };
     }
 
