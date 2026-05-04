@@ -12,6 +12,9 @@ $saved_settings = isset($_COOKIE['dashboard_settings']) ? json_decode($_COOKIE['
 if (!function_exists('getWidgetWidthClass')) {
     function getWidgetWidthClass($id, $defaultClass) {
         global $saved_settings;
+        $is_free = ($_COOKIE['switch_free_layout'] ?? 'false') === 'true';
+        if (!$is_free) return $defaultClass;
+        
         $w = $saved_settings[$id]['width'] ?? '';
         if (empty($w) || !str_contains($w, 'col-')) {
             return $defaultClass;
@@ -20,9 +23,29 @@ if (!function_exists('getWidgetWidthClass')) {
     }
 }
 
+if (!function_exists('getWidgetWidth')) {
+    function getWidgetWidth($id, $default) {
+        global $saved_settings;
+        $is_free = ($_COOKIE['switch_free_layout'] ?? 'false') === 'true';
+        if (!$is_free) return $default;
+        return $saved_settings[$id]['width'] ?? $default;
+    }
+}
+
+if (!function_exists('getWidgetHeight')) {
+    function getWidgetHeight($id, $default) {
+        global $saved_settings;
+        $is_free = ($_COOKIE['switch_free_layout'] ?? 'false') === 'true';
+        if (!$is_free) return $default;
+        return $saved_settings[$id]['height'] ?? $default;
+    }
+}
+
 if (!function_exists('getWidgetStyle')) {
     function getWidgetStyle($id) {
         global $saved_settings;
+        $is_free = ($_COOKIE['switch_free_layout'] ?? 'false') === 'true';
+        
         $w = $saved_settings[$id]['width'] ?? '';
         $h = $saved_settings[$id]['height'] ?? '';
         $left = $saved_settings[$id]['left'] ?? '';
@@ -30,15 +53,20 @@ if (!function_exists('getWidgetStyle')) {
         $hidden = $saved_settings[$id]['hidden'] ?? '';
         
         $style = '';
-        if (!empty($w) && !str_contains($w, 'col-')) {
-            $style .= "width: {$w} !important; flex: none !important; max-width: none !important; ";
+        
+        // Only apply manual dimensions and positions if free layout is active
+        if ($is_free) {
+            if (!empty($w) && !str_contains($w, 'col-')) {
+                $style .= "width: {$w} !important; flex: none !important; max-width: none !important; ";
+            }
+            if (!empty($h) && $h !== 'auto') {
+                $style .= "height: {$h} !important; ";
+            }
+            if ($left !== '' && $top !== '') {
+                $style .= "position: absolute !important; left: {$left} !important; top: {$top} !important; z-index: 100 !important; ";
+            }
         }
-        if (!empty($h) && $h !== 'auto') {
-            $style .= "height: {$h} !important; ";
-        }
-        if ($left !== '' && $top !== '') {
-            $style .= "position: absolute !important; left: {$left} !important; top: {$top} !important; z-index: 100 !important; ";
-        }
+
         if ($hidden === 'true') {
             $style .= "display: none !important; ";
         }
@@ -513,22 +541,28 @@ function renderWidget(string $widgetId, array $data = []) {
 
 function renderSkeleton(string $widgetId, string $width = 'col-md-6', string $height = '200px') {
     global $saved_settings;
+    $is_free = ($_COOKIE['switch_free_layout'] ?? 'false') === 'true';
+
     $w = $saved_settings[$widgetId]['width'] ?? '';
     $h = $saved_settings[$widgetId]['height'] ?? '';
     $hidden = $saved_settings[$widgetId]['hidden'] ?? '';
     $style = '';
     $class = $width;
 
-    if (!empty($w)) {
-        if (!str_contains($w, 'col-')) {
-            $style .= "width: {$w} !important; ";
-        } else {
-            $class = $w;
+    if ($is_free) {
+        if (!empty($w)) {
+            if (!str_contains($w, 'col-')) {
+                $style .= "width: {$w} !important; ";
+            } else {
+                $class = $w;
+            }
         }
-    }
 
-    if (!empty($h) && $h !== 'auto') {
-        $style .= "height: {$h} !important; ";
+        if (!empty($h) && $h !== 'auto') {
+            $style .= "height: {$h} !important; ";
+        } else {
+            $style .= "min-height: {$height}; ";
+        }
     } else {
         $style .= "min-height: {$height}; ";
     }

@@ -92,16 +92,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $lastUpdateIsler = $updates['last_update_isler'] ?? null;
                         $lastUpdateSayac = $updates['last_update_sayac'] ?? null;
 
-                        $getLastUpdateUser = function ($actionTypes) use ($db, $firmaId) {
-                            $placeholders = implode(',', array_fill(0, count($actionTypes), '?'));
-                            $stmt = $db->prepare("SELECT u.adi_soyadi, l.action_type FROM system_logs l LEFT JOIN users u ON l.user_id = u.id WHERE l.firma_id = ? AND (l.action_type IN ($placeholders) OR l.action_type LIKE 'Cron%') AND l.created_at >= CURDATE() ORDER BY l.created_at DESC LIMIT 1");
-                            $stmt->execute(array_merge([$firmaId], $actionTypes));
-                            $log = $stmt->fetch(PDO::FETCH_ASSOC);
-                            return $log ? ($log['adi_soyadi'] ?: 'Sistem') : null;
+                        $stmtLogs = $db->prepare("SELECT u.adi_soyadi, l.action_type FROM system_logs l LEFT JOIN users u ON l.user_id = u.id WHERE l.firma_id = ? AND l.created_at >= CURDATE() AND (l.action_type LIKE 'Online%' OR l.action_type LIKE 'Cron%') ORDER BY l.created_at DESC");
+                        $stmtLogs->execute([$firmaId]);
+                        $allLogs = $stmtLogs->fetchAll(PDO::FETCH_ASSOC);
+
+                        $findUser = function($types) use ($allLogs) {
+                            foreach($allLogs as $log) {
+                                if (in_array($log['action_type'], $types) || stripos($log['action_type'], 'Cron') !== false) {
+                                    return $log['adi_soyadi'] ?: 'Sistem';
+                                }
+                            }
+                            return null;
                         };
-                        $lastUserIsler = $getLastUpdateUser(['Online Kesme/Açma Sorgulama', 'Online Puantaj Sorgulama']);
-                        $lastUserEndeks = $getLastUpdateUser(['Online Endeks Okuma Sorgulama', 'Online İcmal (Endeks Okuma) Sorgulama']);
-                        $lastUserSayac = $getLastUpdateUser(['Online Sayaç Değişim Sorgulama']);
+                        $lastUserIsler = $findUser(['Online Kesme/Açma Sorgulama', 'Online Puantaj Sorgulama']);
+                        $lastUserEndeks = $findUser(['Online Endeks Okuma Sorgulama', 'Online İcmal (Endeks Okuma) Sorgulama']);
+                        $lastUserSayac = $findUser(['Online Sayaç Değişim Sorgulama']);
                     } catch (\Exception $e) {}
 
                     $stats = [

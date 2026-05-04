@@ -76,28 +76,24 @@ if (Gate::allows("ana_sayfa")) {
         try {
             $db = $personelModel->getDb();
 
-            // Fetch last update users from logs
-            $getLastLogUser = function($actionTypes) use ($db, $firmaId) {
-                $placeholders = implode(',', array_fill(0, count($actionTypes), '?'));
-                $sql = "SELECT l.user_id, u.adi_soyadi, l.action_type
-                        FROM system_logs l
-                        LEFT JOIN users u ON l.user_id = u.id
-                        WHERE l.firma_id = ? 
-                          AND (l.action_type IN ($placeholders) OR l.action_type LIKE 'Cron%')
-                          AND l.created_at >= CURDATE()
-                        ORDER BY l.created_at DESC LIMIT 1";
-                $stmt = $db->prepare($sql);
-                $params = array_merge([$firmaId], $actionTypes);
-                $stmt->execute($params);
-                $log = $stmt->fetch(PDO::FETCH_OBJ);
-                if (!$log) return null;
-                if ($log->user_id == 0 || stripos($log->action_type, 'Cron') !== false) return 'Cron';
-                return $log->adi_soyadi ?: 'Sistem';
+            // Combined Last Log User Lookup
+            $stmtLogs = $db->prepare("SELECT u.adi_soyadi, l.action_type, l.user_id FROM system_logs l LEFT JOIN users u ON l.user_id = u.id WHERE l.firma_id = ? AND l.created_at >= CURDATE() AND (l.action_type LIKE 'Online%' OR l.action_type LIKE 'Cron%') ORDER BY l.created_at DESC");
+            $stmtLogs->execute([$firmaId]);
+            $allLogs = $stmtLogs->fetchAll(PDO::FETCH_ASSOC);
+
+            $findUser = function($types) use ($allLogs) {
+                foreach($allLogs as $log) {
+                    if (in_array($log['action_type'], $types) || stripos($log['action_type'], 'Cron') !== false) {
+                        if ($log['user_id'] == 0 || stripos($log['action_type'], 'Cron') !== false) return 'Cron';
+                        return $log['adi_soyadi'] ?: 'Sistem';
+                    }
+                }
+                return null;
             };
 
-            $last_user_isler = $measureDb('home.last_user_isler', fn() => $getLastLogUser(['Online Kesme/Açma Sorgulama', 'Online Puantaj Sorgulama']));
-            $last_user_endeks = $measureDb('home.last_user_endeks', fn() => $getLastLogUser(['Online Endeks Okuma Sorgulama', 'Online İcmal (Endeks Okuma) Sorgulama']));
-            $last_user_sayac = $measureDb('home.last_user_sayac', fn() => $getLastLogUser(['Online Sayaç Değişim Sorgulama']));
+            $last_user_isler = $findUser(['Online Kesme/Açma Sorgulama', 'Online Puantaj Sorgulama']);
+            $last_user_endeks = $findUser(['Online Endeks Okuma Sorgulama', 'Online İcmal (Endeks Okuma) Sorgulama']);
+            $last_user_sayac = $findUser(['Online Sayaç Değişim Sorgulama']);
 
             $updates = $measureDb('home.stmtUpdates', function() use ($db, $firmaId) {
                 $stmtUpdates = $db->prepare("SELECT
@@ -114,7 +110,7 @@ if (Gate::allows("ana_sayfa")) {
             }
 
             $_SESSION[$cache_key] = [
-                'expires' => time() + 300,
+                'expires' => time() + 1800,
                 'last_update_endeks' => $last_update_endeks,
                 'last_update_isler' => $last_update_isler,
                 'last_update_sayac' => $last_update_sayac,
@@ -125,56 +121,6 @@ if (Gate::allows("ana_sayfa")) {
         } catch (\Exception $e) { /* silent */ }
     }
 
-    if (!function_exists('getWidgetWidth')) {
-        function getWidgetWidth($id, $default)
-        {
-            global $saved_settings;
-            return $saved_settings[$id]['width'] ?? $default;
-        }
-    }
-
-    if (!function_exists('getWidgetHeight')) {
-        function getWidgetHeight($id, $default)
-        {
-            global $saved_settings;
-            return $saved_settings[$id]['height'] ?? $default;
-        }
-    }
-
-    if (!function_exists('getWidgetWidthClass')) {
-        function getWidgetWidthClass($id, $defaultClass)
-        {
-            global $saved_settings;
-            $w = $saved_settings[$id]['width'] ?? '';
-            if (empty($w) || !str_contains($w, 'col-')) {
-                return $defaultClass;
-            }
-            return $w;
-        }
-    }
-
-    if (!function_exists('getWidgetStyle')) {
-        function getWidgetStyle($id)
-        {
-            global $saved_settings;
-            $w = $saved_settings[$id]['width'] ?? '';
-            $h = $saved_settings[$id]['height'] ?? '';
-            $left = $saved_settings[$id]['left'] ?? '';
-            $top = $saved_settings[$id]['top'] ?? '';
-            
-            $style = '';
-            if (!empty($w) && $w !== '0px' && !str_contains($w, 'col-')) {
-                $style .= "width: {$w} !important; flex: none !important; max-width: none !important; ";
-            }
-            if (!empty($h) && $h !== 'auto' && $h !== '0px') {
-                $style .= "height: {$h} !important; ";
-            }
-            if ($left !== '' && $top !== '') {
-                $style .= "position: absolute !important; left: {$left} !important; top: {$top} !important; z-index: 100 !important; ";
-            }
-            return $style;
-        }
-    }
 
     if (!function_exists('getWidthControl')) {
         function getWidthControl()
@@ -1271,28 +1217,6 @@ if (Gate::allows("ana_sayfa")) {
                 </div>
             </div>
 
-            <script>
-                window.setTimeout(function () {
-                    try {
-                        var skeleton = document.getElementById('dashboard-page-skeleton');
-                        var content = document.getElementById('dashboard-page-content');
-                        var criticalStyle = document.getElementById('dashboard-skeleton-critical');
-
-                        if (content && window.getComputedStyle(content).display === 'none') {
-                            content.style.display = '';
-                        }
-
-                        if (skeleton && skeleton.style.display !== 'none') {
-                            skeleton.style.display = 'none';
-                        }
-
-                        if (criticalStyle) {
-                            criticalStyle.remove();
-                        }
-                    } catch (e) {}
-                }, 1800);
-            </script>
-
             <div id="dashboard-page-content" style="display: none;">
 
                 <div class="d-flex justify-content-between align-items-center mb-3">
@@ -1304,170 +1228,150 @@ if (Gate::allows("ana_sayfa")) {
                     </div>
                     <div class="d-flex gap-2">
                         <div class="dropdown">
-                            <button class="btn btn-outline-secondary btn-sm dropdown-toggle" type="button"
-                                data-bs-toggle="dropdown" aria-expanded="false" style="font-weight: 500;">
-                                <i class="bx bx-show me-1"></i> Kart Görünürlüğü
+                            <button class="btn btn-soft-secondary btn-sm dropdown-toggle d-flex align-items-center" type="button"
+                                data-bs-toggle="dropdown" aria-expanded="false" style="font-weight: 600; padding: 6px 16px; border-radius: 8px;">
+                                <i class="bx bx-cog me-2 fs-5"></i> Dashboard Ayarları
                             </button>
-                            <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0"
-                                style="min-width: 280px; z-index: 1060;">
-                                <li>
-                                    <h6 class="dropdown-header fw-bold">Gösterilecek Kartları Seçin</h6>
+                            <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0 py-2"
+                                style="min-width: 320px; z-index: 1060; border-radius: 12px;">
+                                <li class="px-3 py-2">
+                                    <div class="d-flex justify-content-between align-items-center">
+                                        <h6 class="dropdown-header px-0 mb-0 fw-bold text-primary">YERLEŞİM AYARLARI</h6>
+                                        <button type="button" class="btn btn-link btn-sm text-danger p-0 fw-bold" id="btn-reset-dashboard" style="text-decoration: none; font-size: 11px;">
+                                            <i class="bx bx-reset me-1"></i> SIFIRLA
+                                        </button>
+                                    </div>
                                 </li>
-                                <li>
-                                    <hr class="dropdown-divider">
+                                <li class="px-3 mb-2">
+                                    <div class="form-check form-switch p-0 d-flex justify-content-between align-items-center" style="margin-left: 0;">
+                                        <label class="form-check-label mb-0 cursor-pointer fw-semibold text-muted" for="switch-free-layout" style="font-size: 13px;">Serbest Yerleşim Modu</label>
+                                        <input class="form-check-input cursor-pointer m-0" type="checkbox" id="switch-free-layout" style="width: 36px; height: 18px;">
+                                    </div>
+                                    <div class="small text-muted mt-1" style="font-size: 10px; line-height: 1.2;">Kartları istediğiniz yere taşıyabilir ve boyutlandırabilirsiniz.</div>
                                 </li>
-                                <li>
-                                    <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                        <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                            data-widget="widget-ana-slider" checked>
-                                        <strong>Haberler ve Duyurular</strong>
-                                    </label>
+                                <li><hr class="dropdown-divider"></li>
+                                <li class="px-3 py-1">
+                                    <h6 class="dropdown-header px-0 mb-1 fw-bold text-primary">KART GÖRÜNÜRLÜĞÜ</h6>
                                 </li>
-                                <li>
-                                    <hr class="dropdown-divider">
-                                </li>
-                                <li>
-                                    <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                        <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                            data-widget="widget-personel-ozet" checked>
-                                        Personel Durumu
-                                    </label>
-                                </li>
-                                <li>
-                                    <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                        <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                            data-widget="widget-arac-ozet" checked>
-                                        Araç Durumu
-                                    </label>
-                                </li>
-                                <li>
-                                    <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                        <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                            data-widget="widget-bekleyen-talepler" checked>
-                                        Bekleyen Talepler
-                                    </label>
-                                </li>
-                                <li>
-                                    <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                        <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                            data-widget="widget-gec-kalanlar" checked>
-                                        Geç Kalanlar
-                                    </label>
-                                </li>
-                                <li>
-                                    <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                        <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                            data-widget="widget-nobetciler" checked>
-                                        Bugünkü Nöbetçiler
-                                    </label>
-                                </li>
-                                <li>
-                                    <hr class="dropdown-divider">
-                                </li>
-                                <li>
-                                    <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                        <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                            data-widget="widget-bildirimler" checked>
-                                        Görev ve Bildirimler
-                                    </label>
-                                </li>
-                                <li>
-                                    <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                        <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                            data-widget="widget-talepler" checked>
-                                        Arıza/İzin/Avans Talepleri
-                                    </label>
-                                </li>
-                                <?php if (Gate::allows("ana_sayfa_izinli_personel_karti") || $izinModel->getRestrictedDept() !== null): ?>
+                                <div style="max-height: 350px; overflow-y: auto; padding: 0 8px;">
                                     <li>
-                                        <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                                data-widget="widget-izindekiler" checked>
-                                            İzinde Olan Personeller
+                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-ana-slider" checked>
+                                            <strong style="font-size: 13px;">Haberler ve Duyurular</strong>
                                         </label>
                                     </li>
-                                <?php endif; ?>
-                                <li>
-                                    <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                        <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                            data-widget="widget-is-turu-istatistikleri" checked>
-                                        İş Türü İstatistikleri
-                                    </label>
-                                </li>
-                                <li>
-                                    <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                        <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                            data-widget="widget-is-emri-sonucu-istatistikleri" checked>
-                                        İş Emri Sonuç İstatistikleri
-                                    </label>
-                                </li>
-                                <li>
-                                    <hr class="dropdown-divider">
-                                </li>
-                                <li>
-                                    <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                        <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                            data-widget="widget-gunluk-kesme-acma" checked>
-                                        Günlük Kesme Açma
-                                    </label>
-                                </li>
-                                <li>
-                                    <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                        <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                            data-widget="widget-gunluk-endeks-okuma" checked>
-                                        Günlük Endeks Okuma
-                                    </label>
-                                </li>
-                                <li>
-                                    <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                        <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                            data-widget="widget-gunluk-sayac-degisimi" checked>
-                                        Günlük Sayaç Değişimi
-                                    </label>
-                                </li>
-                                <li>
-                                    <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                        <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                            data-widget="widget-gunluk-muhurleme" checked>
-                                        Günlük Mühürleme
-                                    </label>
-                                </li>
-                                <li>
-                                    <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                        <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                            data-widget="widget-kacak-sayisi" checked>
-                                        Kaçak Kontrol
-                                    </label>
-                                </li>
-                                <?php if (Gate::allows("gorevler")): ?>
                                     <li>
-                                        <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                            <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                                data-widget="widget-yaklasan-gorevler" checked>
-                                            Yaklaşan Görevler
+                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-personel-ozet" checked>
+                                            <span style="font-size: 13px;">Personel Durumu</span>
                                         </label>
                                     </li>
-                                <?php endif; ?>
-                                <li>
-                                    <hr class="dropdown-divider">
-                                </li>
-                                <li>
-                                    <label class="dropdown-item cursor-pointer mb-0" style="cursor: pointer;">
-                                        <input type="checkbox" class="form-check-input widget-toggle me-2"
-                                            data-widget="widget-endeks-karsilastirma" checked>
-                                        <strong>Endeks Karşılaştırma</strong>
-                                    </label>
-                                </li>
+                                    <li>
+                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-arac-ozet" checked>
+                                            <span style="font-size: 13px;">Araç Durumu</span>
+                                        </label>
+                                    </li>
+                                    <li>
+                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-bekleyen-talepler" checked>
+                                            <span style="font-size: 13px;">Bekleyen Talepler</span>
+                                        </label>
+                                    </li>
+                                    <li>
+                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-gec-kalanlar" checked>
+                                            <span style="font-size: 13px;">Geç Kalanlar</span>
+                                        </label>
+                                    </li>
+                                    <li>
+                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-nobetciler" checked>
+                                            <span style="font-size: 13px;">Bugünkü Nöbetçiler</span>
+                                        </label>
+                                    </li>
+                                    <li><hr class="dropdown-divider opacity-50"></li>
+                                    <li>
+                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-bildirimler" checked>
+                                            <span style="font-size: 13px;">Görev ve Bildirimler</span>
+                                        </label>
+                                    </li>
+                                    <li>
+                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-talepler" checked>
+                                            <span style="font-size: 13px;">Arıza/İzin/Avans Talepleri</span>
+                                        </label>
+                                    </li>
+                                    <?php if (Gate::allows("ana_sayfa_izinli_personel_karti") || $izinModel->getRestrictedDept() !== null): ?>
+                                        <li>
+                                            <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
+                                                <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-izindekiler" checked>
+                                                <span style="font-size: 13px;">İzinde Olan Personeller</span>
+                                            </label>
+                                        </li>
+                                    <?php endif; ?>
+                                    <li>
+                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-is-turu-istatistikleri" checked>
+                                            <span style="font-size: 13px;">İş Türü İstatistikleri</span>
+                                        </label>
+                                    </li>
+                                    <li>
+                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-is-emri-sonucu-istatistikleri" checked>
+                                            <span style="font-size: 13px;">İş Emri Sonuç İstatistikleri</span>
+                                        </label>
+                                    </li>
+                                    <li><hr class="dropdown-divider opacity-50"></li>
+                                    <li>
+                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-gunluk-kesme-acma" checked>
+                                            <span style="font-size: 13px;">Günlük Kesme Açma</span>
+                                        </label>
+                                    </li>
+                                    <li>
+                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-gunluk-endeks-okuma" checked>
+                                            <span style="font-size: 13px;">Günlük Endeks Okuma</span>
+                                        </label>
+                                    </li>
+                                    <li>
+                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-gunluk-sayac-degisimi" checked>
+                                            <span style="font-size: 13px;">Günlük Sayaç Değişimi</span>
+                                        </label>
+                                    </li>
+                                    <li>
+                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-gunluk-muhurleme" checked>
+                                            <span style="font-size: 13px;">Günlük Mühürleme</span>
+                                        </label>
+                                    </li>
+                                    <li>
+                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-kacak-sayisi" checked>
+                                            <span style="font-size: 13px;">Kaçak Kontrol</span>
+                                        </label>
+                                    </li>
+                                    <?php if (Gate::allows("gorevler")): ?>
+                                        <li>
+                                            <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
+                                                <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-yaklasan-gorevler" checked>
+                                                <span style="font-size: 13px;">Yaklaşan Görevler</span>
+                                            </label>
+                                        </li>
+                                    <?php endif; ?>
+                                    <li><hr class="dropdown-divider opacity-50"></li>
+                                    <li>
+                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-endeks-karsilastirma" checked>
+                                            <strong style="font-size: 13px;">Endeks Karşılaştırma</strong>
+                                        </label>
+                                    </li>
+                                </div>
                             </ul>
                         </div>
-                        <div class="form-check form-switch d-flex align-items-center mb-0 me-3" style="min-height: 31px;">
-                            <input class="form-check-input me-2 cursor-pointer" type="checkbox" id="switch-free-layout" style="width: 36px; height: 18px; cursor: pointer;">
-                            <label class="form-check-label mb-0 cursor-pointer" for="switch-free-layout" style="font-weight: 500; font-size: 13px; color: #475569;">Serbest Yerleşim</label>
-                        </div>
-                        <button type="button" class="btn btn-outline-secondary btn-sm" id="btn-reset-dashboard"
-                            style="font-weight: 500;">
-                            <i class="bx bx-reset me-1"></i> Varsayılan Yerleşime Dön
-                        </button>
                     </div>
                 </div>
 
@@ -3495,58 +3399,55 @@ if (Gate::allows("ana_sayfa")) {
                     resultYearFilter.addEventListener('change', refreshResultStats);
                     refreshResultStats();
                 }
-                // Dashboard Config Persistence
-                const dashboard = $("#dashboard-widgets");
 
+                let saveConfigTimeout = null;
                 function saveDashboardConfig() {
-                    const order = [];
-                    $("#dashboard-widgets .widget-item").each(function() {
-                        const id = $(this).attr('id');
-                        if (id) order.push(id);
-                    });
-                    const settings = {};
-                    $("#dashboard-widgets .widget-item").each(function () {
-                        const id = $(this).attr('id');
-                        const isResized = $(this).attr('data-resized') === 'true' || ($(this).css('width') && $(this).css('width').indexOf('px') !== -1 && $(this).attr('style') && $(this).attr('style').indexOf('width') !== -1);
-                        const isHidden = $(this).is(':hidden') || $(this).hasClass('widget-hidden');
+                    clearTimeout(saveConfigTimeout);
+                    saveConfigTimeout = setTimeout(function() {
+                        const order = [];
+                        const settings = {};
+                        $('#dashboard-widgets .widget-item').each(function () {
+                            const id = $(this).attr('id');
+                            if (!id || id === 'widget-row-break') return;
+                            order.push(id);
 
-                        const s = {};
-                        if (isResized) {
-                            s.width = $(this).css('width');
-                            let heightVal = $(this).css('height');
-                            if (!heightVal || heightVal === '0px') {
-                                heightVal = $(this).find('.card').css('height');
+                            const s = {};
+                            const isHidden = $(this).hasClass('widget-hidden');
+                            if (isHidden) {
+                                s.hidden = 'true';
                             }
-                            s.height = heightVal;
-                        }
-                        if (isHidden) {
-                            s.hidden = 'true';
-                        }
-                        let positionVal = $(this).css('position');
-                        if (positionVal === 'absolute') {
-                            s.left = $(this).css('left');
-                            s.top = $(this).css('top');
-                            let zVal = parseInt($(this).css('z-index'), 10);
-                            if (Number.isFinite(zVal)) {
-                                s.zIndex = zVal;
+                            let positionVal = $(this).css('position');
+                            if (positionVal === 'absolute') {
+                                s.left = $(this).css('left');
+                                s.top = $(this).css('top');
+                                let zVal = parseInt($(this).css('z-index'), 10);
+                                if (Number.isFinite(zVal)) {
+                                    s.zIndex = zVal;
+                                }
                             }
-                        }
+                            
+                            // Width/Height logic
+                            if ($(this).attr('data-resized') === 'true') {
+                                s.width = $(this).css('width');
+                                s.height = $(this).css('height');
+                            }
 
-                        if (id && Object.keys(s).length > 0) {
-                            settings[id] = s;
-                        }
-                    });
+                            if (id && Object.keys(s).length > 0) {
+                                settings[id] = s;
+                            }
+                        });
 
-                    const cookieOptions = "; path=/; max-age=" + (60 * 60 * 24 * 30);
-                    document.cookie = "dashboard_order=" + JSON.stringify(order) + cookieOptions;
-                    document.cookie = "dashboard_settings=" + JSON.stringify(settings) + cookieOptions;
-                    
-                    // Save to localStorage too for backup & reliability
-                    localStorage.setItem('dashboard_widget_settings', JSON.stringify(settings));
+                        const cookieOptions = "; path=/; max-age=" + (60 * 60 * 24 * 30);
+                        document.cookie = "dashboard_order=" + JSON.stringify(order) + cookieOptions;
+                        document.cookie = "dashboard_settings=" + JSON.stringify(settings) + cookieOptions;
+                        localStorage.setItem('dashboard_widget_settings', JSON.stringify(settings));
+                    }, 500);
                 }
 
                 function applyWidgetSettings() {
                     const settings = JSON.parse(localStorage.getItem('dashboard_widget_settings') || '{}');
+                    const isFreeLayout = $('#switch-free-layout').is(':checked');
+
                     Object.keys(settings).forEach(id => {
                         const widget = $('#' + id);
                         if (widget.length && settings[id]) {
@@ -3555,33 +3456,52 @@ if (Gate::allows("ana_sayfa")) {
                         }
                     });
 
-                    Object.keys(settings).forEach(id => {
-                        const widget = $('#' + id);
-                        if (widget.length && settings[id]) {
-                            const s = settings[id];
-                            const css = {};
-                            if (s.width && s.width !== '0px' && s.width.indexOf('col-') === -1) {
-                                css.width = s.width;
-                                css.flex = 'none';
-                                css.maxWidth = 'none';
+                    if (isFreeLayout) {
+                        Object.keys(settings).forEach(id => {
+                            const widget = $('#' + id);
+                            if (widget.length && settings[id]) {
+                                const s = settings[id];
+                                const css = {};
+                                if (s.width && s.width !== '0px' && s.width.indexOf('col-') === -1) {
+                                    css.width = s.width;
+                                    css.flex = 'none';
+                                    css.maxWidth = 'none';
+                                }
+                                if (s.height && s.height !== 'auto' && s.height !== '0px') {
+                                    css.height = s.height;
+                                    widget.find('.card, .carousel').css({
+                                        'height': '100%',
+                                        'min-height': '0',
+                                        'max-height': 'none'
+                                    });
+                                }
+                                if (s.left && s.top) {
+                                    css.position = 'absolute';
+                                    css.left = s.left;
+                                    css.top = s.top;
+                                    css.zIndex = 100;
+                                }
+                                widget.css(css);
                             }
-                            if (s.height && s.height !== 'auto' && s.height !== '0px') {
-                                css.height = s.height;
-                                widget.find('.card, .carousel').css({
-                                    'height': '100%',
-                                    'min-height': '0',
-                                    'max-height': 'none'
-                                });
-                            }
-                            if (s.left && s.top) {
-                                css.position = 'absolute';
-                                css.left = s.left;
-                                css.top = s.top;
-                                css.zIndex = 100;
-                            }
-                            widget.css(css);
-                        }
-                    });
+                        });
+                    } else {
+                        // Clear manual styles if free layout is not active
+                        $('#dashboard-widgets .widget-item').css({
+                            position: '',
+                            left: '',
+                            top: '',
+                            width: '',
+                            height: '',
+                            flex: '',
+                            maxWidth: '',
+                            zIndex: ''
+                        });
+                        $('.card, .carousel', '#dashboard-widgets').css({
+                            height: '',
+                            minHeight: '',
+                            maxHeight: ''
+                        });
+                    }
                 }
 
                 let gridSortable = null;
@@ -3638,8 +3558,10 @@ if (Gate::allows("ana_sayfa")) {
 
                 // Switch change listener
                 $(document).on('change', '#switch-free-layout', function() {
-                    localStorage.setItem('switch_free_layout', this.checked ? 'true' : 'false');
-                    if (this.checked) {
+                    const active = this.checked;
+                    localStorage.setItem('switch_free_layout', active ? 'true' : 'false');
+                    document.cookie = "switch_free_layout=" + (active ? 'true' : 'false') + "; path=/; max-age=" + (60 * 60 * 24 * 30);
+                    if (active) {
                         destroyGridSortable();
                         $('#dashboard-widgets').addClass('free-layout-active');
                         applyWidgetSettings();
@@ -3647,7 +3569,6 @@ if (Gate::allows("ana_sayfa")) {
                     } else {
                         initGridSortable();
                         $('#dashboard-widgets').removeClass('free-layout-active');
-                        // Restore all widgets to flow
                         $('#dashboard-widgets .widget-item').removeClass('resizable-widget').css({
                             position: '',
                             left: '',
@@ -3656,15 +3577,16 @@ if (Gate::allows("ana_sayfa")) {
                             height: '',
                             flex: '',
                             maxWidth: '',
-                            zIndex: ''
+                            zIndex: '',
+                            overflow: ''
+                        }).find('.card, .carousel, .carousel-inner, .card-body, .tab-content').css({
+                            height: '',
+                            minHeight: '',
+                            maxHeight: ''
                         });
-                        $('#dashboard-widgets .card-header.mac-title-bar').each(function () {
-                            $(this).removeClass('mac-title-bar').removeAttr('style');
-                            $(this).find('.mac-controls, .drag-handle-indicator').remove();
-                        });
-                        $('#dashboard-widgets .mac-title-bar').not('.card-header').remove();
-                        $('.custom-resize-handle, .dashboard-resize-grip').remove();
-                        $('#dashboard-widgets .widget-item h5, #dashboard-widgets .widget-item h6, #dashboard-widgets .widget-item strong').show();
+                        $('.dashboard-resize-edge-e, .dashboard-resize-edge-s, .dashboard-resize-grip').remove();
+                        // Redraw standard layout
+                        setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 100);
                     }
                 });
 
@@ -3873,27 +3795,6 @@ if (Gate::allows("ana_sayfa")) {
                     });
                 }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
                 // Card Resize Logic (Width)
                 $(document).on('click', '.btn-resize-width', function (e) {
                     e.preventDefault();
@@ -3940,25 +3841,6 @@ if (Gate::allows("ana_sayfa")) {
                     e.stopPropagation();
                 });
 
-                function appendResizeHandles() {
-                    return;
-                }
-
-                let nativeResizeObserver = null;
-                let nativeResizeSaveTimer = null;
-
-                function scheduleNativeResizeSave(widget) {
-                    widget.attr('data-resized', 'true');
-                    clearTimeout(nativeResizeSaveTimer);
-                    nativeResizeSaveTimer = setTimeout(function () {
-                        saveDashboardConfig();
-                        window.dispatchEvent(new Event('resize'));
-                    }, 150);
-                }
-
-                // First version removed. Only the second version is used.
-
-
                 function ensureAbsoluteWidgetPosition(widget) {
                     if (widget.css('position') !== 'absolute') {
                         const offset = widget.position();
@@ -3972,121 +3854,10 @@ if (Gate::allows("ana_sayfa")) {
                     }
                 }
 
-                // Free-layout resize grip
-                $(document).off('mousedown.dashboardResizeGrip', '.dashboard-resize-grip').on('mousedown.dashboardResizeGrip', '.dashboard-resize-grip', function (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-
-                    const widget = $(this).closest('.widget-item');
-                    ensureAbsoluteWidgetPosition(widget);
-
-                    maxZIndex++;
-                    widget.addClass('dashboard-resizing').css({
-                        zIndex: maxZIndex,
-                        width: widget.outerWidth() + 'px',
-                        height: widget.outerHeight() + 'px',
-                        flex: 'none',
-                        maxWidth: 'none'
-                    });
-
-                    const startX = e.clientX;
-                    const startY = e.clientY;
-                    const startWidth = widget.outerWidth();
-                    const startHeight = widget.outerHeight();
-                    document.body.style.userSelect = 'none';
-
-                    $(document)
-                        .off('.dashboardResizeGripMove')
-                        .on('mousemove.dashboardResizeGripMove', function (moveEvent) {
-                            const newWidth = Math.max(180, startWidth + (moveEvent.clientX - startX));
-                            const newHeight = Math.max(120, startHeight + (moveEvent.clientY - startY));
-
-                            widget.css({
-                                width: newWidth + 'px',
-                                height: newHeight + 'px',
-                                flex: 'none',
-                                maxWidth: 'none'
-                            });
-                            widget.attr('data-resized', 'true');
-                            widget.find('.card, .carousel, .carousel-inner, .card-body, .tab-content').css({
-                                height: '100%',
-                                minHeight: '0',
-                                maxHeight: 'none'
-                            });
-                        })
-                        .on('mouseup.dashboardResizeGripMove', function () {
-                            $(document).off('.dashboardResizeGripMove');
-                            document.body.style.userSelect = '';
-                            widget.removeClass('dashboard-resizing');
-                            saveDashboardConfig();
-                            setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 100);
-                        });
-                });
-
-                // Free-layout resize grip
-                $(document).off('mousedown.dashboardResize', '.custom-resize-handle').on('mousedown.dashboardResize', '.custom-resize-handle', function (e) {
-                    e.preventDefault();
-                    e.stopPropagation();
-                    let isResizing = true;
-                    const widget = $(this).closest('.widget-item');
-                    maxZIndex++;
-                    ensureAbsoluteWidgetPosition(widget);
-                    widget.css({
-                        'z-index': maxZIndex,
-                        'width': widget.outerWidth() + 'px',
-                        'height': widget.outerHeight() + 'px',
-                        'flex': 'none',
-                        'max-width': 'none'
-                    });
-                    
-                    let startX = e.clientX;
-                    let startY = e.clientY;
-                    let startWidth = widget.outerWidth();
-                    let startHeight = widget.outerHeight();
-
-                    document.body.style.userSelect = 'none';
-
-                    $(document).on('mousemove.widgetResize', function (e) {
-                        if (!isResizing) return;
-                        let clientX = e.clientX;
-                        let clientY = e.clientY;
-                        const newWidth = startWidth + (clientX - startX);
-                        const newHeight = startHeight + (clientY - startY);
-
-                        if (newWidth >= 120) {
-                            widget.css({
-                                'width': newWidth + 'px',
-                                'flex': 'none',
-                                'max-width': 'none'
-                            });
-                            widget.attr('data-resized', 'true');
-                        }
-                        if (newHeight >= 100) {
-                            widget.css({
-                                'height': newHeight + 'px'
-                            });
-                            widget.find('.card, .carousel, .carousel-inner, .card-body, .tab-content').css({
-                                'height': '100%',
-                                'min-height': '0',
-                                'max-height': 'none'
-                            });
-                        }
-                    });
-
-                    $(document).on('mouseup.widgetResize', function () {
-                        if (isResizing) {
-                            isResizing = false;
-                            $(document).off('.widgetResize');
-                            document.body.style.userSelect = '';
-                            saveDashboardConfig();
-                            setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 100);
-                        }
-                    });
-                });
-
-                // Rebuilt resize layer: every dashboard card gets a visible bottom-right grip.
                 // Rebuilt resize layer with pure JavaScript to ensure it always works without any UI plugin dependencies
                 function initResizableWidgets() {
+                    if (!$('#switch-free-layout').is(':checked')) return;
+                    
                     const pageContent = $('#dashboard-page-content');
 
                     if (pageContent.length && pageContent.css('display') === 'none') {
@@ -4199,9 +3970,10 @@ if (Gate::allows("ana_sayfa")) {
 
                 let savedFreeLayout = localStorage.getItem('switch_free_layout');
                 if (savedFreeLayout === null) {
-                    savedFreeLayout = 'true';
-                    localStorage.setItem('switch_free_layout', 'true');
+                    savedFreeLayout = 'false';
+                    localStorage.setItem('switch_free_layout', 'false');
                 }
+                document.cookie = "switch_free_layout=" + savedFreeLayout + "; path=/; max-age=" + (60 * 60 * 24 * 30);
                 const isFreeLayoutActive = savedFreeLayout === 'true';
                 $('#switch-free-layout').prop('checked', isFreeLayoutActive);
                 if (isFreeLayoutActive) {
@@ -4213,6 +3985,7 @@ if (Gate::allows("ana_sayfa")) {
                 } else {
                     initGridSortable();
                     $('#dashboard-widgets').removeClass('free-layout-active');
+                    applyWidgetSettings();
                 }
 
 
@@ -4234,6 +4007,7 @@ if (Gate::allows("ana_sayfa")) {
                             localStorage.removeItem('dashboard_widget_visibility');
                             localStorage.removeItem('dashboard_widget_settings');
                             localStorage.removeItem('dashboard_container_height');
+                            localStorage.removeItem('switch_free_layout');
                             location.reload();
                         }
                     });
@@ -4321,8 +4095,15 @@ if (Gate::allows("ana_sayfa")) {
                     const $operationalCards = $('.widget-item .stat-card');
                     const lazyWidgets = document.querySelectorAll('[data-lazy-load="true"]');
                     
+                    const showContent = function() {
+                        $('#dashboard-page-skeleton').hide();
+                        $('#dashboard-page-content').show();
+                        $('#dashboard-skeleton-critical').remove();
+                    };
+
                     // 1. Client-Side Cache (Instant Feel)
-                    const cacheKey = 'dashboard_cache_<?php echo $_SESSION['user_id']; ?>';
+                    const isFreeLayout = $('#switch-free-layout').is(':checked');
+                    const cacheKey = 'dashboard_cache_<?php echo $_SESSION['user_id']; ?>' + (isFreeLayout ? '_free' : '_grid');
                     const cachedData = localStorage.getItem(cacheKey);
                     
                     if (cachedData && !force) {
@@ -4336,6 +4117,8 @@ if (Gate::allows("ana_sayfa")) {
                                 });
                                 if (typeof initResizableWidgets === 'function') initResizableWidgets();
                             }
+                            // Cache exists, show content IMMEDIATELY
+                            showContent();
                         } catch(e) { console.error("Cache render error", e); }
                     }
 
@@ -4398,6 +4181,8 @@ if (Gate::allows("ana_sayfa")) {
                                     if (window.feather) feather.replace();
                                     if (typeof applyWidgetSettings === 'function') applyWidgetSettings();
                                     if (typeof initResizableWidgets === 'function') initResizableWidgets();
+                                    // Data loaded, ensure content is shown
+                                    showContent();
                                 }, 150);
                             }
                         } catch (err) { console.error('Dashboard init error:', err); }

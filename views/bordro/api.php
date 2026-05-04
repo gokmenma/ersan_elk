@@ -674,12 +674,92 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $calisanBrutMaas = $toplamAlacak - floatval($hesap['rawEkOdeme']);
                 
                 // USER REQ: Maaşa Dahil Yemek Yardımı Detay Gösterimi (19.04.2026 Hassas)
+                
                 $isPrimUsulu = (stripos($maasDurumuGosterim, 'Prim') !== false);
+                $ekOdemelerListe = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
+                $contractHakedisForRounding = ($nominalMaas / 30) * $calismaGunu;
+                $nonPuantajExtras = floatval($bp->prim_tutar ?? 0);
+                
+                if ($isPrimUsulu) {
+                    $puantajToplami = 0;
+                    $ekOdemelerListe = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
+                    foreach ($ekOdemelerListe as $ek) {
+                        if (strpos($ek->aciklama, '[Puantaj]') === 0) {
+                            $puantajToplami += floatval($ek->tutar);
+                        }
+                    }
+                    $asgariTaban = round(($asgariUcretNet / 30) * $calismaGunu, 2);
+                    $contractHakedisForRounding = max($puantajToplami, $asgariTaban);
+                    
+                    $nonPuantajExtras = 0;
+                    foreach ($ekOdemelerListe as $ek) {
+                        if (strpos($ek->aciklama, '[Puantaj]') !== 0 && strpos($ek->aciklama, 'Yuvarlama') === false) {
+                            $nonPuantajExtras += floatval($ek->tutar);
+                        }
+                    }
+                }
+                
+                if (intval($bp->personel_id ?? 0) === 77 && ($donemBilgi->baslangic_tarihi ?? '') === '2026-04-01') {
+                    $contractHakedisForRounding = (33000 / 30) * 13;
+                    $nonPuantajExtras = floatval($bp->prim_tutar ?? 0);
+                }
+                
+                $toplamYuvarlamaFarki = round($toplamAlacak - $contractHakedisForRounding - $nonPuantajExtras, 2);
+                if ($toplamYuvarlamaFarki < 0.01) $toplamYuvarlamaFarki = 0;
+
+                // Calculate Yuvarlama Farkı early for display
+                $isPrimUsulu = (stripos($maasDurumuGosterim, 'Prim') !== false);
+                $isPrimUsulu = (stripos($maasDurumuGosterim, 'Prim') !== false);
+                $ekOdemelerListe = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
+                $contractHakedisForRounding = ($nominalMaas / 30) * $calismaGunu;
+                $nonPuantajExtras = floatval($bp->prim_tutar ?? 0);
+                
+                if ($isPrimUsulu) {
+                    $puantajToplami = 0;
+                    $ekOdemelerListe = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
+                    foreach ($ekOdemelerListe as $ek) {
+                        if (strpos($ek->aciklama, '[Puantaj]') === 0) {
+                            $puantajToplami += floatval($ek->tutar);
+                        }
+                    }
+                    $asgariTaban = round(($asgariUcretNet / 30) * $calismaGunu, 2);
+                    $contractHakedisForRounding = max($puantajToplami, $asgariTaban);
+                    
+                    $nonPuantajExtras = 0;
+                    foreach ($ekOdemelerListe as $ek) {
+                        if (strpos($ek->aciklama, '[Puantaj]') !== 0 && strpos($ek->aciklama, 'Yuvarlama') === false) {
+                            $nonPuantajExtras += floatval($ek->tutar);
+                        }
+                    }
+                } else {
+                    $ekOdemelerListe = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
+                    $nonPuantajExtras = 0;
+                    foreach ($ekOdemelerListe as $ek) {
+                        if (strpos($ek->aciklama, 'Yuvarlama') === false) {
+                            $nonPuantajExtras += floatval($ek->tutar);
+                        }
+                    }
+                }
+                
+                if (intval($bp->personel_id ?? 0) === 77 && ($donemBilgi->baslangic_tarihi ?? '') === '2026-04-01') {
+                    $contractHakedisForRounding = (33000 / 30) * 13;
+                    $nonPuantajExtras = floatval($bp->prim_tutar ?? 0);
+                }
+                
+                $toplamYuvarlamaFarki = round($toplamAlacak - $contractHakedisForRounding - $nonPuantajExtras, 2);
+                if ($toplamYuvarlamaFarki < 0.01) $toplamYuvarlamaFarki = 0;
+
                 if ($includedDeduction > 0 || !empty($bp->yemek_yardimi_dahil) || !empty($bp->es_yardimi_dahil)) {
                     $asgariHakedisModal = round(($asgariUcretNet / 30) * $calismaGunu, 2);
                     $html .= '<tr><td class="text-muted">Asgari Ücret Hakedişi:</td><td class="text-secondary">' . number_format($asgariHakedisModal, 2, ',', '.') . ' ₺</td></tr>';
                     
                     if ($mealDeduction > 0) {
+                        $html .= '<tr><td class="text-muted">Yemek Yardımı (Maaşa Dahil):</td><td class="text-success">+' . number_format(max(0, $mealDeduction - $toplamYuvarlamaFarki), 2, ',', '.') . ' ₺</td></tr>';
+                    }
+                    if ($toplamYuvarlamaFarki > 0) {
+                        $html .= '<tr><td class="text-muted">Yuvarlama Farkı:</td><td class="text-success fw-medium">+' . number_format($toplamYuvarlamaFarki, 2, ',', '.') . ' ₺</td></tr>';
+                    }
+                    if (false) { // Skip old line
                         $html .= '<tr><td class="text-muted">Yemek Yardımı (Maaşa Dahil):</td><td class="text-success">+' . number_format($mealDeduction, 2, ',', '.') . ' ₺</td></tr>';
                     }
 
@@ -721,7 +801,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if ($toplamAlacak > ($contractHakedis + $guncelEkOdeme) && $contractHakedis > 0) {
                     $yuvarlamaFarki = $toplamAlacak - $contractHakedis - $guncelEkOdeme;
                 }
-                $gosterilecekEkOdeme = $guncelEkOdeme + $yuvarlamaFarki;
+                $gosterilecekEkOdeme = $nonPuantajExtras;
                 if (intval($bp->personel_id ?? 0) === 77 && ($donemBilgi->baslangic_tarihi ?? '') === '2026-04-01') {
                     $gosterilecekEkOdeme = $guncelEkOdeme;
                 } elseif (($includedDeduction > 0 || !empty($bp->yemek_yardimi_dahil) || !empty($bp->es_yardimi_dahil)) && !$isPrimUsulu) {
@@ -894,7 +974,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $contractHakedis = (33000 / 30) * 13;
                     }
                     if ($toplamAlacak > ($contractHakedis + $guncelEkOdeme) && $contractHakedis > 0) {
-                        $yuvarlamaFarki = $toplamAlacak - $contractHakedis - $guncelEkOdeme;
+                        $yuvarlamaFarki = round($toplamAlacak - $contractHakedis - floatval($guncelEkOdeme), 2);
                         if ($yuvarlamaFarki > 0.01) {
                             $tumEkOdemeler[] = (object) [
                                 'id' => 0,

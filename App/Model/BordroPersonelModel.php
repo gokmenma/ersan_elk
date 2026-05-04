@@ -179,7 +179,7 @@ class BordroPersonelModel extends Model
         return max($personelLimit, $paramLimit);
     }
 
-    private function hesaplaMaasaDahilYardimDagilimi(object $kayit, float $asgariUcretNet, int $maasHesapGunu, int $fiiliGunSayisi, float $ekKesintiTutar = 0.0, float $ekOdemeTutar = 0.0): array
+    private function hesaplaMaasaDahilYardimDagilimi(object $kayit, float $asgariUcretNet, int $maasHesapGunu, int $fiiliGunSayisi, float $puantajToplami = 0.0): array
     {
         $sonuc = [
             'aktif' => false,
@@ -216,7 +216,13 @@ class BordroPersonelModel extends Model
 
         // USER REQ: Fark tutarı hesaplanırken diğer kesinti ve ek ödemeleri de dahil et (Excel mantığı)
         // Kalan Hakediş = Hedef Net Hakediş
-        $kalanHakedis = max(0, $sonuc['hedef_net_hakedis'] - $ekKesintiTutar);
+        $maasDurumu = $kayit->maas_durumu ?? 'Net';
+        $isPrimUsulu = (stripos($maasDurumu, 'Prim') !== false);
+        $targetHakedis = $sonuc['hedef_net_hakedis'];
+        if ($isPrimUsulu || $puantajToplami > $targetHakedis) {
+            $targetHakedis = max($targetHakedis, $puantajToplami);
+        }
+        $kalanHakedis = $targetHakedis;
         $sonuc['fark_tutari'] = max(0, round($kalanHakedis - $sonuc['asgari_hakedis'], 2));
 
         $kalanFark = $sonuc['fark_tutari'];
@@ -417,10 +423,17 @@ class BordroPersonelModel extends Model
 
             $sodexoLocal = floatval($p->sodexo_odemesi ?? 0) + $yontemliSodexoEki;
             $totalDeductions = $toplamKesinti + $sodexoLocal + floatval($p->diger_odeme ?? 0);
-            $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi($p, $asgariUcretNet, $calismaGunu, $fiiliGunSayisi, $totalDeductions, $rawEkOdeme);
+            $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi($p, $asgariUcretNet, $calismaGunu, $fiiliGunSayisi, $primUsuluPuantajHedefToplami);
             $mealAllowanceDeduction = floatval($dahilDagilim['yemek_toplam'] ?? 0);
             $spouseAllowanceDeduction = floatval($dahilDagilim['es_toplam'] ?? 0);
             $includedAllowanceDeduction = floatval($dahilDagilim['toplam'] ?? 0);
+            $asgariTabanVal = round(($asgariUcretNet / 30) * $calismaGunu, 2);
+            $toplamAlacagi = $asgariTabanVal + $includedAllowanceDeduction;
+            foreach ($ekOdemelerList as $eo) {
+                if (strpos((string)$eo->aciklama, '[Puantaj]') !== 0 && stripos((string)$eo->aciklama, 'Yuvarlama') === false) {
+                    $toplamAlacagi += floatval($eo->tutar);
+                }
+            }
         }
 
         if (intval($p->personel_id ?? 0) === 77 && $donemBaslangic === '2026-04-01') {
@@ -3759,7 +3772,33 @@ class BordroPersonelModel extends Model
             }
 
             $totalDeductions = $toplamKesinti + $sodexoOdemesi + floatval($kayit->diger_odeme ?? 0);
-            $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi($kayit, floatval($asgariNetNominal), $maasHesapGunu, $fiiliGunSayisi, $totalDeductions, $toplamEkOdeme);
+            $puantajToplamiForDahil = 0;
+            foreach ($ekOdemeDetaylari as $ek) {
+                if (strpos($ek['aciklama'], '[Puantaj]') === 0) {
+                    $puantajToplamiForDahil += floatval($ek['tutar']);
+                }
+            }
+            $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi($kayit, floatval($asgariNetNominal), $maasHesapGunu, $fiiliGunSayisi, $puantajToplamiForDahil);
+            $yemekTutari = floatval($dahilDagilim['yemek_toplam'] ?? 0);
+            $asgariYatacak = round(($asgariNetNominal / 30) * $maasHesapGunu, 2);
+            
+            $netMaas = round($asgariYatacak + $yemekTutari, 2);
+            $bankaOdemesi = $netMaas;
+            
+            // Add other non-puantaj extras
+            foreach ($ekOdemeDetaylari as $ek) {
+                if (strpos($ek['aciklama'], '[Puantaj]') !== 0 && strpos($ek['aciklama'], 'Yuvarlama') === false) {
+                    $netMaas += floatval($ek['tutar']);
+                }
+            }
+            
+            $toplamEkOdeme = round($netMaas - $asgariYatacak, 2);
+            $brutMaas = $asgariYatacak;
+            
+            $hesaplamaDetay['matrahlar']['brut_maas'] = $brutMaas;
+            $hesaplamaDetay['odeme_dagilimi']['banka_net'] = $bankaOdemesi;
+            $hesaplamaDetay['ozet']['dahil_yemek_yardimi'] = $yemekTutari;
+            $hesaplamaDetay['ozet']['dahil_toplam_yardim'] = $yemekTutari;
             $hesaplananYemekToplam = floatval($dahilDagilim['yemek_toplam'] ?? 0);
             $hesaplananEsToplam = floatval($dahilDagilim['es_toplam'] ?? 0);
             $toplamDahilYardim = floatval($dahilDagilim['toplam'] ?? 0);
@@ -3788,11 +3827,11 @@ class BordroPersonelModel extends Model
                     ];
                 }
             }
-            $hesaplamaDet['ozet']['dahil_yemek_yardimi'] = $hesaplananYemekToplam;
-            $hesaplamaDet['ozet']['dahil_yemek_gun'] = intval($dahilDagilim['fiili_gun'] ?? $fiiliGunSayisi);
-            $hesaplamaDet['ozet']['dahil_yemek_gunluk'] = floatval($dahilDagilim['yemek_gunluk'] ?? 0);
-            $hesaplamaDet['ozet']['dahil_es_yardimi'] = $hesaplananEsToplam;
-            $hesaplamaDet['ozet']['dahil_toplam_yardim'] = $toplamDahilYardim;
+            $hesaplamaDetay['ozet']['dahil_yemek_yardimi'] = $hesaplananYemekToplam;
+            $hesaplamaDetay['ozet']['dahil_yemek_gun'] = intval($dahilDagilim['fiili_gun'] ?? $fiiliGunSayisi);
+            $hesaplamaDetay['ozet']['dahil_yemek_gunluk'] = floatval($dahilDagilim['yemek_gunluk'] ?? 0);
+            $hesaplamaDetay['ozet']['dahil_es_yardimi'] = $hesaplananEsToplam;
+            $hesaplamaDetay['ozet']['dahil_toplam_yardim'] = $toplamDahilYardim;
         }
 
         if ($this->hasMaasaDahilSosyalYardim($kayit) && !$isPrimUsulu) {
