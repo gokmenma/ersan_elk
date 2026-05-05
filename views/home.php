@@ -30,32 +30,33 @@ if (Gate::allows("ana_sayfa")) {
 
     $bugun = date('Y-m-d');
     
-    // Lazy-load edilecekler boş kalsın
-    $nobetciler = [];
-    $gec_kalan_sayisi = 0;
-    $yaklasan_gorevler = [];
-    $istatistik = (object)['aktif_personel' => 0];
-    $extraStats = (object)['sahadaki_personel' => 0, 'izinli_personel' => 0];
-    $toplam_aktif_arac = 0;
-    $saha_arac = 0;
-    $servisteki_arac = 0;
-    $bosta_arac = 0;
-    $aktif_a_yuzde = 0;
-    $servis_a_yuzde = 0;
-    $bosta_a_yuzde = 0;
-    $personel_talep_sayisi = 0;
-    $recent_logs = [];
-    // Not: Ağır istatistikler AJAX (load-widget) ile yüklenecek.
+    // DB'den ayarları çek (Cookie'den önce kontrol et)
+    $settingsModel = new \App\Model\SettingsModel();
+    $userId = $_SESSION['user_id'] ?? 0;
+    $firmaId = $_SESSION['firma_id'] ?? 0;
 
-    // Operasyonel istatistikler mevcut AJAX endpoint'i ile istemci tarafında doldurulur.
-    $dailyWorkStats = (object) ['muhurleme' => 0, 'kesme_acma' => 0, 'sayac_degisimi' => 0];
-    $dailyReadingTotal = 0;
-    $monthlyWorkStats = (object) ['muhurleme' => 0, 'kesme_acma' => 0, 'sayac_degisimi' => 0];
-    $monthlyReadingTotal = 0;
-    $kacakDailyTotal = (object) ['toplam' => 0];
-    $kacakMonthlyTotal = (object) ['toplam' => 0];
+    $dbSettingsJson = $settingsModel->getSettingByUser('dashboard_settings', $userId, $firmaId);
+    $dbOrderJson = $settingsModel->getSettingByUser('dashboard_order', $userId, $firmaId);
+    $dbFreeLayout = $settingsModel->getSettingByUser('switch_free_layout', $userId, $firmaId);
 
-    $saved_settings = isset($_COOKIE['dashboard_settings']) ? json_decode($_COOKIE['dashboard_settings'], true) : [];
+    if ($dbSettingsJson) {
+        $saved_settings = json_decode($dbSettingsJson, true) ?: [];
+    } else {
+        $saved_settings = isset($_COOKIE['dashboard_settings']) ? json_decode($_COOKIE['dashboard_settings'], true) : [];
+    }
+
+    if ($dbOrderJson) {
+        $render_order = json_decode($dbOrderJson, true) ?: [];
+        $_COOKIE['dashboard_order'] = $dbOrderJson; // Mevcut istekte de geçerli olsun
+    } else {
+        $render_order = isset($_COOKIE['dashboard_order']) ? json_decode($_COOKIE['dashboard_order'], true) : [];
+    }
+
+    if ($dbFreeLayout !== null) {
+        $dashboard_is_free = $dbFreeLayout === 'true';
+    } else {
+        $dashboard_is_free = ($_COOKIE['switch_free_layout'] ?? 'false') === 'true';
+    }
 
     // Operasyonel istatistikler ve son güncelleme bilgileri
     $last_update_endeks = $last_update_isler = $last_update_sayac = null;
@@ -1375,7 +1376,7 @@ if (Gate::allows("ana_sayfa")) {
                     </div>
                 </div>
 
-                <div class="row" id="dashboard-widgets" style="position: relative; min-height: 800px;">
+                <div class="<?php echo $dashboard_is_free ? 'd-block free-layout-active' : 'row'; ?>" id="dashboard-widgets" style="position: relative; min-height: 800px;">
                     <?php
                     foreach ($render_order as $widget_id) {
                         if (isset($widgets[$widget_id])) {
@@ -3401,52 +3402,77 @@ if (Gate::allows("ana_sayfa")) {
                 }
 
                 let saveConfigTimeout = null;
-                function saveDashboardConfig() {
-                    clearTimeout(saveConfigTimeout);
-                    saveConfigTimeout = setTimeout(function() {
-                        const order = [];
-                        const settings = {};
-                        $('#dashboard-widgets .widget-item').each(function () {
-                            const id = $(this).attr('id');
-                            if (!id || id === 'widget-row-break') return;
-                            order.push(id);
+                function saveDashboardConfig(immediate = true) {
+                    const order = [];
+                    const settings = {};
+                    $('#dashboard-widgets .widget-item').each(function () {
+                        const id = $(this).attr('id');
+                        if (!id || id === 'widget-row-break') return;
+                        order.push(id);
 
-                            const s = {};
-                            const isHidden = $(this).hasClass('widget-hidden');
-                            if (isHidden) {
-                                s.hidden = 'true';
+                        const s = {};
+                        const isHidden = $(this).hasClass('widget-hidden');
+                        if (isHidden) {
+                            s.hidden = 'true';
+                        }
+                        let positionVal = $(this).css('position');
+                        if (positionVal === 'absolute') {
+                            s.left = $(this).css('left');
+                            s.top = $(this).css('top');
+                            let zVal = parseInt($(this).css('z-index'), 10);
+                            if (Number.isFinite(zVal)) {
+                                s.zIndex = zVal;
                             }
-                            let positionVal = $(this).css('position');
-                            if (positionVal === 'absolute') {
-                                s.left = $(this).css('left');
-                                s.top = $(this).css('top');
-                                let zVal = parseInt($(this).css('z-index'), 10);
-                                if (Number.isFinite(zVal)) {
-                                    s.zIndex = zVal;
-                                }
-                            }
-                            
-                            // Width/Height logic
-                            if ($(this).attr('data-resized') === 'true') {
-                                s.width = $(this).css('width');
-                                s.height = $(this).css('height');
-                            }
+                        }
+                        
+                        if ($(this).attr('data-resized') === 'true') {
+                            s.width = $(this).css('width');
+                            s.height = $(this).css('height');
+                        }
 
-                            if (id && Object.keys(s).length > 0) {
-                                settings[id] = s;
+                        if (id && Object.keys(s).length > 0) {
+                            settings[id] = s;
+                        }
+                    });
+
+                    const settingsStr = JSON.stringify(settings);
+                    const orderStr = JSON.stringify(order);
+                    localStorage.setItem('dashboard_widget_settings', settingsStr);
+                    localStorage.setItem('dashboard_order', orderStr);
+
+                    const cookieOptions = "; path=/; max-age=" + (60 * 60 * 24 * 30);
+                    document.cookie = "dashboard_settings=" + encodeURIComponent(settingsStr) + cookieOptions;
+                    document.cookie = "dashboard_order=" + encodeURIComponent(orderStr) + cookieOptions;
+
+                    // Background sync to server if it's a real change (immediate=true)
+                    if (immediate) {
+                        $.ajax({
+                            url: 'views/home/api.php',
+                            type: 'POST',
+                            data: {
+                                action: 'save-dashboard-settings',
+                                settings: settingsStr,
+                                order: orderStr,
+                                is_free: $('#switch-free-layout').is(':checked') ? 'true' : 'false'
                             }
                         });
-
-                        const cookieOptions = "; path=/; max-age=" + (60 * 60 * 24 * 30);
-                        document.cookie = "dashboard_order=" + JSON.stringify(order) + cookieOptions;
-                        document.cookie = "dashboard_settings=" + JSON.stringify(settings) + cookieOptions;
-                        localStorage.setItem('dashboard_widget_settings', JSON.stringify(settings));
-                    }, 500);
+                    }
                 }
 
                 function applyWidgetSettings() {
-                    const settings = JSON.parse(localStorage.getItem('dashboard_widget_settings') || '{}');
+                    let settings = {};
+                    try {
+                        settings = localStorage.getItem('dashboard_widget_settings') || '{}';
+                        if (typeof settings === 'string') settings = JSON.parse(settings);
+                        // Double parse in case it was double stringified previously
+                        if (typeof settings === 'string') settings = JSON.parse(settings);
+                    } catch(e) {
+                        console.error("Dashboard settings parse error:", e);
+                        settings = {};
+                    }
                     const isFreeLayout = $('#switch-free-layout').is(':checked');
+
+                    let maxBottom = 1000;
 
                     Object.keys(settings).forEach(id => {
                         const widget = $('#' + id);
@@ -3477,15 +3503,23 @@ if (Gate::allows("ana_sayfa")) {
                                 }
                                 if (s.left && s.top) {
                                     css.position = 'absolute';
-                                    css.left = s.left;
-                                    css.top = s.top;
-                                    css.zIndex = 100;
+                                    css.left = s.left + ' ' + (s.left.indexOf('!important') === -1 ? '!important' : '');
+                                    css.top = s.top + ' ' + (s.top.indexOf('!important') === -1 ? '!important' : '');
+                                    css.zIndex = s.zIndex || 100;
+                                    
+                                    // Calculate max height for scroll
+                                    const bottom = parseFloat(s.top) + parseFloat(s.height || widget.outerHeight());
+                                    if (bottom > maxBottom) maxBottom = bottom;
                                 }
                                 widget.css(css);
                             }
                         });
+                        
+                        // Set container height based on maxBottom
+                        $('#dashboard-widgets').css('min-height', (maxBottom + 100) + 'px');
                     } else {
                         // Clear manual styles if free layout is not active
+                        $('#dashboard-widgets').css('min-height', '1000px');
                         $('#dashboard-widgets .widget-item').css({
                             position: '',
                             left: '',
@@ -3503,6 +3537,31 @@ if (Gate::allows("ana_sayfa")) {
                         });
                     }
                 }
+
+                // Auto-apply settings when DOM changes (Lazy Loading Robustness)
+                const dashboardObserver = new MutationObserver(function(mutations) {
+                    let shouldReapply = false;
+                    mutations.forEach(function(mutation) {
+                        if (mutation.addedNodes.length) {
+                            $(mutation.addedNodes).each(function() {
+                                if ($(this).hasClass('widget-item') || $(this).find('.widget-item').length || (this.nodeType === 1 && this.id && this.id.startsWith('widget-'))) {
+                                    shouldReapply = true;
+                                }
+                            });
+                        }
+                    });
+                    if (shouldReapply) {
+                        applyWidgetSettings();
+                        if (typeof initResizableWidgets === 'function') initResizableWidgets();
+                    }
+                });
+
+                $(document).ready(function() {
+                    const dashboardNode = document.getElementById('dashboard-widgets');
+                    if (dashboardNode) {
+                        dashboardObserver.observe(dashboardNode, { childList: true, subtree: true });
+                    }
+                });
 
                 let gridSortable = null;
 
@@ -3563,12 +3622,12 @@ if (Gate::allows("ana_sayfa")) {
                     document.cookie = "switch_free_layout=" + (active ? 'true' : 'false') + "; path=/; max-age=" + (60 * 60 * 24 * 30);
                     if (active) {
                         destroyGridSortable();
-                        $('#dashboard-widgets').addClass('free-layout-active');
+                        $('#dashboard-widgets').removeClass('row').addClass('d-block free-layout-active');
                         applyWidgetSettings();
                         if (typeof initResizableWidgets === 'function') initResizableWidgets();
                     } else {
                         initGridSortable();
-                        $('#dashboard-widgets').removeClass('free-layout-active');
+                        $('#dashboard-widgets').removeClass('d-block free-layout-active').addClass('row');
                         $('#dashboard-widgets .widget-item').removeClass('resizable-widget').css({
                             position: '',
                             left: '',
@@ -4115,6 +4174,7 @@ if (Gate::allows("ana_sayfa")) {
                                     const $el = $('#' + id);
                                     if ($el.length && $el.hasClass('lazy-widget')) $el.replaceWith(data.results[id]);
                                 });
+                                if (typeof applyWidgetSettings === 'function') applyWidgetSettings();
                                 if (typeof initResizableWidgets === 'function') initResizableWidgets();
                             }
                             // Cache exists, show content IMMEDIATELY
@@ -4766,8 +4826,24 @@ if (Gate::allows("ana_sayfa")) {
                 })();
                 // ========== /ENDEKS KARŞILAŞTIRMA KART LOGIC ==========
 
-                // Combined into initDashboard()
+                // DB'den gelen ayarları localStorage'a işle (Sayfa yüklendiğinde bir kez)
+                (function() {
+                    <?php if ($dbSettingsJson): ?>
+                        localStorage.setItem('dashboard_widget_settings', <?php echo json_encode($dbSettingsJson); ?>);
+                    <?php endif; ?>
+                    <?php if ($dbOrderJson): ?>
+                        localStorage.setItem('dashboard_order', <?php echo json_encode($dbOrderJson); ?>);
+                    <?php endif; ?>
+                    <?php if ($dbFreeLayout !== null): ?>
+                        localStorage.setItem('switch_free_layout', <?php echo json_encode($dbFreeLayout); ?>);
+                    <?php endif; ?>
+                })();
 
+                // Initialize everything on load
+                $(document).ready(function() {
+                    applyWidgetSettings();
+                    if (typeof initMacControls === 'function') initMacControls();
+                });
             });
         </script>
         <?php

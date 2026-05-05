@@ -334,48 +334,8 @@ class BordroPersonelModel extends Model
         $isPrimUsulu = (stripos($maasDurumu, 'Prim') !== false);
         $isInclusive = $this->hasMaasaDahilSosyalYardim($p);
 
-        // Prim usulu + maasa dahil yardim senaryosunda saklanan net_maas/toplam
-        // degerleri eski mantikla olusmus olabildigi icin burada erken return
-        // yapmiyoruz; canli puantaj toplamindan yeniden hesapliyoruz.
-        if (!empty($p->hesaplama_detay) && $isInclusive && !$isPrimUsulu && floatval($p->net_maas ?? 0) > 0) {
-            $detay = json_decode((string) $p->hesaplama_detay, true);
-            $ekOdemeler = $detay['ek_odemeler'] ?? [];
-            $mealAllowanceDeduction = 0.0;
-            $spouseAllowanceDeduction = 0.0;
-            $includedAllowanceDeduction = 0.0;
-            $fiiliGunSayisi = intval($detay['matrahlar']['fiili_calisma_gunu'] ?? 0);
-            foreach ($ekOdemeler as $ekOdeme) {
-                if (($ekOdeme['kod'] ?? '') === 'yemek_yardimi_dengeleme') {
-                    $mealAllowanceDeduction += floatval($ekOdeme['tutar'] ?? 0);
-                    $includedAllowanceDeduction += floatval($ekOdeme['tutar'] ?? 0);
-                }
-                if (($ekOdeme['kod'] ?? '') === 'es_yardimi_dengeleme') {
-                    $spouseAllowanceDeduction += floatval($ekOdeme['tutar'] ?? 0);
-                    $includedAllowanceDeduction += floatval($ekOdeme['tutar'] ?? 0);
-                }
-            }
-
-            return [
-                'maasDurumu' => $maasDurumu,
-                'maasTutari' => $maasTutari,
-                'rawEkOdeme' => floatval($p->guncel_toplam_ek_odeme ?? 0),
-                'ucretsizIzinGunu' => intval($p->hd_ucretsiz_izin_gunu ?? ($detay['matrahlar']['ucretsiz_izin_gunu'] ?? 0)),
-                'calismaGunu' => intval($p->hd_maas_hesap_gunu ?? ($detay['matrahlar']['maas_hesap_gunu'] ?? ($p->calisan_gun ?? 0))),
-                'kesintiHaricIcra' => max(0, $toplamKesinti - $icraKesintisi),
-                'icraKesintisi' => $icraKesintisi,
-                'toplamAlacagi' => floatval($p->net_maas ?? 0) + $toplamKesinti,
-                'netAlacagi' => floatval($p->net_maas ?? 0),
-                'netMaasGercek' => floatval($p->net_maas ?? 0),
-                'bankaOdemesi' => floatval($p->banka_odemesi ?? 0),
-                'sodexoOdemesi' => floatval($p->sodexo_odemesi ?? 0),
-                'digerOdeme' => floatval($p->diger_odeme ?? 0),
-                'eldenOdeme' => floatval($p->elden_odeme ?? 0),
-                'mealAllowanceDeduction' => $mealAllowanceDeduction,
-                'spouseAllowanceDeduction' => $spouseAllowanceDeduction,
-                'includedAllowanceDeduction' => $includedAllowanceDeduction,
-                'includedAllowanceFiiliGun' => $fiiliGunSayisi,
-            ];
-        }
+        // Maasa dahil sosyal yardimlarda eski hesaplama_detay degerleri yerine
+        // canli dagilim hesabi kullanilir.
 
         if ($this->ekOdemelerCache !== null) {
             $ekOdemelerList = $this->ekOdemelerCache[$p->personel_id] ?? [];
@@ -473,6 +433,9 @@ class BordroPersonelModel extends Model
             $asgariTaban = ($asgariUcretNet / 30) * $calismaGunu;
             $nonPuantajEkOdeme = max(0, $rawEkOdeme - $primUsuluPuantajHedefToplami - $includedAllowanceDeduction);
             $toplamAlacagi = max($primUsuluPuantajHedefToplami, $asgariTaban + $includedAllowanceDeduction) + $nonPuantajEkOdeme;
+        } elseif ($isInclusive) {
+            // Maasa dahil sosyal yardimlar toplam alacaga ikinci kez eklenmez;
+            // yukarida hesaplanan asgari + tavanli yardim dagilimi esas alinir.
         } elseif ($isPrimUsulu) {
             $toplamAlacagi = $hesaplamayaEsasMaas + $rawEkOdeme;
         } elseif ($isNet || $isBrut) {

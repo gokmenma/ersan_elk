@@ -624,6 +624,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $mealDeduction = floatval($hesap['mealAllowanceDeduction'] ?? 0);
                 $spouseDeduction = floatval($hesap['spouseAllowanceDeduction'] ?? 0);
                 $includedDeduction = floatval($hesap['includedAllowanceDeduction'] ?? 0);
+                $includedAllowanceFiiliGun = intval($hesap['includedAllowanceFiiliGun'] ?? 0);
                 $guncelEkOdeme = floatval($hesap['rawEkOdeme']);
 
                 $maasDurumuGosterim = $hesap['maasDurumu'] ?: ($personel->maas_durumu ?? '-');
@@ -753,18 +754,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $nonPuantajExtras = floatval($bp->prim_tutar ?? 0);
                 }
                 
-                $toplamYuvarlamaFarki = round($toplamAlacak - $contractHakedisForRounding - $nonPuantajExtras - $mealDeduction - $spouseDeduction, 2);
-                if ($toplamYuvarlamaFarki < 0.01) $toplamYuvarlamaFarki = 0;
+                $displayMealDeduction = $mealDeduction;
+                if ($displayMealDeduction <= 0 && !empty($bp->yemek_yardimi_dahil)) {
+                    $displayMealDeduction = max(0, $includedDeduction - $spouseDeduction);
+                }
+                $asgariHakedisModal = round(($asgariUcretNet / 30) * $calismaGunu, 2);
+                if (!empty($bp->yemek_yardimi_dahil)) {
+                    $mealFiiliGun = $includedAllowanceFiiliGun > 0 ? $includedAllowanceFiiliGun : $calismaGunu;
+                    $mealFark = max(0, round($contractHakedisForRounding - $asgariHakedisModal - $spouseDeduction, 2));
+                    $calculatedMealDeduction = $mealFiiliGun > 0 ? round(ceil($mealFark / $mealFiiliGun) * $mealFiiliGun, 2) : 0;
+                    if ($calculatedMealDeduction > 0) {
+                        $displayMealDeduction = $calculatedMealDeduction;
+                    }
+                }
+                $toplamYuvarlamaFarki = round(($contractHakedisForRounding + $nonPuantajExtras) - $asgariHakedisModal - $displayMealDeduction - $spouseDeduction, 2);
+                if (abs($toplamYuvarlamaFarki) < 0.01) $toplamYuvarlamaFarki = 0;
 
                 if ($includedDeduction > 0 || !empty($bp->yemek_yardimi_dahil) || !empty($bp->es_yardimi_dahil)) {
-                    $asgariHakedisModal = round(($asgariUcretNet / 30) * $calismaGunu, 2);
                     $html .= '<tr><td class="text-muted">Asgari Ücret Hakedişi:</td><td class="text-secondary">' . number_format($asgariHakedisModal, 2, ',', '.') . ' ₺</td></tr>';
                     
-                    if ($mealDeduction > 0) {
-                        $html .= '<tr><td class="text-muted">Yemek Yardımı (Maaşa Dahil):</td><td class="text-success">+' . number_format($mealDeduction, 2, ',', '.') . ' ₺</td></tr>';
+                    if ($displayMealDeduction > 0) {
+                        $html .= '<tr><td class="text-muted">Yemek Yardımı (Maaşa Dahil):</td><td class="text-success">+' . number_format($displayMealDeduction, 2, ',', '.') . ' ₺</td></tr>';
                     }
-                    if ($toplamYuvarlamaFarki > 0) {
-                        $html .= '<tr><td class="text-muted">Yuvarlama Farkı:</td><td class="text-success fw-medium">+' . number_format($toplamYuvarlamaFarki, 2, ',', '.') . ' ₺</td></tr>';
+                    if ($toplamYuvarlamaFarki != 0) {
+                        $yuvarlamaClass = $toplamYuvarlamaFarki > 0 ? 'text-success' : 'text-danger';
+                        $yuvarlamaPrefix = $toplamYuvarlamaFarki > 0 ? '+' : '';
+                        $html .= '<tr><td class="text-muted">Yuvarlama Farkı:</td><td class="' . $yuvarlamaClass . ' fw-medium">' . $yuvarlamaPrefix . number_format($toplamYuvarlamaFarki, 2, ',', '.') . ' ₺</td></tr>';
                     }
                     if (false) { // Skip old line
                         $html .= '<tr><td class="text-muted">Yemek Yardımı (Maaşa Dahil):</td><td class="text-success">+' . number_format($mealDeduction, 2, ',', '.') . ' ₺</td></tr>';
@@ -962,38 +977,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $tumEkOdemeler = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
 
                 $detayData = json_decode($bp->hesaplama_detay ?? '', true);
-                $eklerFromJSON = $detayData['ek_odemeler'] ?? [];
-                $hasYuvarlamaJSON = false;
-                foreach ($eklerFromJSON as $ekItem) {
-                    if (($ekItem['tur'] ?? '') === 'yuvarlama_farki' || ($ekItem['aciklama'] ?? '') === 'Yuvarlama Farkı') {
-                        $hasYuvarlamaJSON = true;
-                        $tumEkOdemeler[] = (object) [
-                            'id' => 0,
-                            'tur' => 'yuvarlama_farki',
-                            'tutar' => floatval($ekItem['tutar']),
-                            'aciklama' => $ekItem['aciklama'] ?? 'Yuvarlama Farkı',
-                            'durum' => 'onaylandi'
-                        ];
-                    }
-                }
-                if (!$hasYuvarlamaJSON) {
-                    $contractHakedis = ($nominalMaas / 30) * $calismaGunu;
-                    if (intval($bp->personel_id ?? 0) === 77 && ($donemBilgi->baslangic_tarihi ?? '') === '2026-04-01') {
-                        $contractHakedis = (33000 / 30) * 13;
-                    }
-                    if ($toplamAlacak > ($contractHakedis + $guncelEkOdeme) && $contractHakedis > 0) {
-                        $yuvarlamaFarki = round($toplamAlacak - $contractHakedis - floatval($guncelEkOdeme), 2);
-                        if ($yuvarlamaFarki > 0.01) {
-                            $tumEkOdemeler[] = (object) [
-                                'id' => 0,
-                                'tur' => 'yuvarlama_farki',
-                                'tutar' => floatval($yuvarlamaFarki),
-                                'aciklama' => 'Yuvarlama Farkı',
-                                'durum' => 'onaylandi'
-                            ];
-                        }
-                    }
-                }
 
                 foreach ($tumEkOdemeler as $odeme) {
                     // Adet bilgisini açıklamadan çek (Örn: (30 Adet x 40,00 ₺))
@@ -1003,6 +986,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
 
                     $aciklama = (string)($odeme->aciklama ?? '');
+                    if (($odeme->tur ?? '') === 'yuvarlama_farki' || $aciklama === 'Yuvarlama Farkı') {
+                        continue;
+                    }
                     if (strpos($aciklama, '[Nöbet]') === 0) {
                         $nobetOdemeler[] = $odeme;
                     } elseif (strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Sayaç]') === 0 || strpos($aciklama, '[Kaçak Kontrol]') === 0) {
