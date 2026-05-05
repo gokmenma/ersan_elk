@@ -685,7 +685,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $ekOdemelerListe = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
                     foreach ($ekOdemelerListe as $ek) {
                         $aciklama = (string)($ek->aciklama ?? '');
-                        if (strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Sayaç]') === 0 || strpos($aciklama, '[Kaçak Kontrol]') === 0 || strpos($aciklama, '[Nöbet]') === 0) {
+                        if (strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Sayaç]') === 0 || strpos($aciklama, '[Kaçak Kontrol]') === 0) {
                             $puantajToplami += floatval($ek->tutar);
                         }
                     }
@@ -695,7 +695,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $nonPuantajExtras = 0;
                     foreach ($ekOdemelerListe as $ek) {
                         $aciklama = (string)($ek->aciklama ?? '');
-                        if (strpos($aciklama, '[Puantaj]') !== 0 && strpos($aciklama, '[Sayaç]') !== 0 && strpos($aciklama, '[Kaçak Kontrol]') !== 0 && strpos($aciklama, '[Nöbet]') !== 0 && strpos($aciklama, 'Yuvarlama') === false) {
+                        if (strpos($aciklama, '[Puantaj]') !== 0 && strpos($aciklama, '[Sayaç]') !== 0 && strpos($aciklama, '[Kaçak Kontrol]') !== 0 && strpos($aciklama, 'Yuvarlama') === false) {
                             $nonPuantajExtras += floatval($ek->tutar);
                         }
                     }
@@ -721,7 +721,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $ekOdemelerListe = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
                     foreach ($ekOdemelerListe as $ek) {
                         $aciklama = (string)($ek->aciklama ?? '');
-                        if (strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Sayaç]') === 0 || strpos($aciklama, '[Kaçak Kontrol]') === 0 || strpos($aciklama, '[Nöbet]') === 0) {
+                        if (strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Sayaç]') === 0 || strpos($aciklama, '[Kaçak Kontrol]') === 0) {
                             $puantajToplami += floatval($ek->tutar);
                         }
                     }
@@ -731,7 +731,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $nonPuantajExtras = 0;
                     foreach ($ekOdemelerListe as $ek) {
                         $aciklama = (string)($ek->aciklama ?? '');
-                        if (strpos($aciklama, '[Puantaj]') !== 0 && strpos($aciklama, '[Sayaç]') !== 0 && strpos($aciklama, '[Kaçak Kontrol]') !== 0 && strpos($aciklama, '[Nöbet]') !== 0 && strpos($aciklama, 'Yuvarlama') === false) {
+                        if (strpos($aciklama, '[Puantaj]') !== 0 && strpos($aciklama, '[Sayaç]') !== 0 && strpos($aciklama, '[Kaçak Kontrol]') !== 0 && strpos($aciklama, 'Yuvarlama') === false) {
                             $eoTur = mb_strtolower((string)($ek->tur ?? ''), 'UTF-8');
                             if (strpos($eoTur, 'yemek') === false && strpos($eoTur, 'yy') === false && strpos($eoTur, 'es_yardimi') === false && strpos($eoTur, 'aile') === false) {
                                 $nonPuantajExtras += floatval($ek->tutar);
@@ -956,6 +956,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $ekOdemelerNonPuantaj = [];
                 $puantajOdemeler = [];
                 $kacakKontrolOdemeler = [];
+                $nobetOdemeler = [];
 
                 // Tüm ek ödemeleri (listeli) al
                 $tumEkOdemeler = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
@@ -1002,7 +1003,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
 
                     $aciklama = (string)($odeme->aciklama ?? '');
-                    if (strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Sayaç]') === 0 || strpos($aciklama, '[Kaçak Kontrol]') === 0 || strpos($aciklama, '[Nöbet]') === 0) {
+                    if (strpos($aciklama, '[Nöbet]') === 0) {
+                        $nobetOdemeler[] = $odeme;
+                    } elseif (strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Sayaç]') === 0 || strpos($aciklama, '[Kaçak Kontrol]') === 0) {
                         // Puantaj ödemesi - ayrı göster
                         $puantajOdemeler[] = $odeme;
                     } elseif (strpos($odeme->aciklama ?? '', '[Kaçak Kontrol]') === 0) {
@@ -1042,7 +1045,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
 
-                if (empty($ekOdemelerNonPuantaj) && empty($puantajOdemeler) && empty($kacakKontrolOdemeler)) {
+                if (empty($ekOdemelerNonPuantaj) && empty($nobetOdemeler) && empty($puantajOdemeler) && empty($kacakKontrolOdemeler)) {
                     $html .= '<tr><td class="text-center text-muted py-3" colspan="2"><i class="bx bx-info-circle me-1"></i>Ek ödeme yok</td></tr>';
                 } else {
                     // Önce normal ek ödemeleri göster
@@ -1080,6 +1083,52 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             } else {
                                 $html .= '<tr class="' . $collapseId . ' collapse"><td class="ps-4 py-2 small">' . $tarih . ' - ' . htmlspecialchars($itemAciklama) . '</td><td class="text-end pe-3 text-success align-middle">+' . number_format($item->tutar, 2, ',', '.') . ' ₺</td></tr>';
                             }
+                        }
+                    }
+
+                    // Nöbet ödemelerini puantajdan ayrı, üst grup olarak göster
+                    if (!empty($nobetOdemeler)) {
+                        $toplamNobetTutar = 0;
+                        $toplamNobetAdet = 0;
+                        foreach ($nobetOdemeler as $nobet) {
+                            $toplamNobetTutar += floatval($nobet->tutar);
+                            if (preg_match('/(\d+)\s*Adet/i', $nobet->aciklama ?? '', $adetMatch)) {
+                                $toplamNobetAdet += intval($adetMatch[1]);
+                            }
+                        }
+
+                        $adetSubText = $toplamNobetAdet > 0 ? '<div class="text-muted fw-normal" style="font-size: 10px;">(Toplam ' . number_format($toplamNobetAdet, 0, ',', '.') . ' Adet)</div>' : '';
+                        $nobetSectionClass = 'nobet-section-' . $bp->id;
+
+                        $html .= '<tr class="cursor-pointer bg-light" data-bs-toggle="collapse" data-bs-target=".' . $nobetSectionClass . '" aria-expanded="false" style="border-top: 1px solid #e9ecef !important; border-bottom: 1px solid #e9ecef !important;">
+                                    <td class="ps-3 pt-2 pb-2">
+                                        <div class="d-flex align-items-center">
+                                            <i class="bx bx-time-five me-2 text-primary fs-5"></i>
+                                            <div>
+                                                <div class="text-primary fw-bold" style="line-height: 1.1; font-size: 12px;">Nöbet Ödemeleri</div>
+                                                ' . $adetSubText . '
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="text-end pe-3 align-middle">
+                                        <div class="d-flex justify-content-end align-items-center gap-2">
+                                            <span class="text-success fw-bold">+' . number_format($toplamNobetTutar, 2, ',', '.') . ' ₺</span>
+                                            <i class="bx bx-chevron-down text-primary fs-5 transition-icon"></i>
+                                        </div>
+                                    </td>
+                                  </tr>';
+
+                        foreach ($nobetOdemeler as $nobet) {
+                            $aciklama = str_replace('[Nöbet] ', '', $nobet->aciklama ?? '');
+                            $anaMetin = trim($aciklama);
+                            $detayMetin = '';
+                            if (preg_match('/^(.*?)\s*\((.*?)\)$/', $aciklama, $matches)) {
+                                $anaMetin = trim($matches[1]);
+                                $detayMetin = trim($matches[2]);
+                            }
+
+                            $detayText = $detayMetin !== '' ? '<small class="text-muted">' . htmlspecialchars($detayMetin) . '</small>' : '';
+                            $html .= '<tr class="collapse ' . $nobetSectionClass . '"><td class="ps-4 py-2"><div class="fw-medium">' . htmlspecialchars($anaMetin) . '</div>' . $detayText . '</td><td class="text-end pe-3 text-success align-middle">+' . number_format($nobet->tutar, 2, ',', '.') . ' ₺</td></tr>';
                         }
                     }
 
@@ -1263,6 +1312,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $displayedEkOdemelerSum += $data['toplam'];
                 }
                 $displayedEkOdemelerSum += ($toplamKacakTutar ?? 0);
+                $displayedEkOdemelerSum += ($toplamNobetTutar ?? 0);
                 $displayedEkOdemelerSum += ($toplamPuantajTutar ?? 0);
                 $html .= '<tr class="table-light"><td class="ps-3 fw-bold">Toplam</td><td class="text-end pe-3 fw-bold text-success">+' . number_format($displayedEkOdemelerSum, 2, ',', '.') . ' ₺</td></tr>';
                 $html .= '</tbody>';

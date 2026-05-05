@@ -5,12 +5,36 @@ use App\Helper\Helper;
 use App\Helper\Security;
 use App\Model\DemirbasZimmetModel;
 use App\Model\DemirbasModel;
+use App\Model\AracZimmetModel;
 
 $ZimmetModel = new DemirbasZimmetModel();
 $DemirbasModel = new DemirbasModel();
+$AracZimmetModel = new AracZimmetModel();
 
 // Personelin zimmetlerini getir
 $zimmetler = $ZimmetModel->getByPersonel($id);
+$aracZimmetler = $AracZimmetModel->getHistoryByPersonel($id);
+
+// Araçları zimmetler listesine ekle (normalize ederek)
+foreach ($aracZimmetler as $az) {
+    $zimmetler[] = (object) [
+        'id' => $az->id,
+        'demirbas_id' => $az->arac_id,
+        'personel_id' => $az->personel_id,
+        'teslim_tarihi' => $az->zimmet_tarihi,
+        'teslim_miktar' => 1,
+        'durum' => ($az->durum === 'aktif' ? 'teslim' : ($az->durum === 'iade_edildi' ? 'iade' : $az->durum)),
+        'aciklama' => $az->notlar ?? '',
+        'demirbas_no' => $az->plaka,
+        'demirbas_adi' => 'ARAÇ: ' . $az->plaka,
+        'marka' => $az->marka,
+        'model' => $az->model,
+        'kategori_adi' => 'Araçlar',
+        'iade_tarihi' => $az->iade_tarihi ?? null,
+        'is_arac' => true
+    ];
+}
+
 $demirbaslar = $DemirbasModel->getInStock();
 
 // İstatistikler ve Kategoriler
@@ -274,7 +298,7 @@ sort($kategoriler);
                                                                 <?php endif; ?>
                                                             </td>
                                                             <td class="text-center text-nowrap">
-                                                                <?php if ($zimmet->durum === 'teslim'): ?>
+                                                                <?php if ($zimmet->durum === 'teslim' && !($zimmet->is_arac ?? false)): ?>
                                                                     <button type="button"
                                                                         class="btn btn-sm btn-info btn-personel-zimmet-iade"
                                                                         data-id="<?= $enc_id ?>"
@@ -284,16 +308,23 @@ sort($kategoriler);
                                                                         <i data-feather="rotate-ccw" class="icon-xs"></i>
                                                                     </button>
                                                                 <?php endif; ?>
-                                                                <button type="button"
-                                                                    class="btn btn-sm btn-secondary btn-personel-zimmet-detay"
-                                                                    data-id="<?= $enc_id ?>" title="Detay">
-                                                                    <i class="bx bx-list-ul"></i>
-                                                                </button>
-                                                                <button type="button"
-                                                                    class="btn btn-sm btn-danger btn-personel-zimmet-sil"
-                                                                    data-id="<?= $enc_id ?>" title="Sil">
-                                                                    <i data-feather="trash-2" class="icon-xs"></i>
-                                                                </button>
+                                                                <?php if (!($zimmet->is_arac ?? false)): ?>
+                                                                    <button type="button"
+                                                                        class="btn btn-sm btn-secondary btn-personel-zimmet-detay"
+                                                                        data-id="<?= $enc_id ?>" title="Detay">
+                                                                        <i class="bx bx-list-ul"></i>
+                                                                    </button>
+                                                                    <button type="button"
+                                                                        class="btn btn-sm btn-danger btn-personel-zimmet-sil"
+                                                                        data-id="<?= $enc_id ?>" title="Sil">
+                                                                        <i data-feather="trash-2" class="icon-xs"></i>
+                                                                    </button>
+                                                                <?php else: ?>
+                                                                    <a href="index.php?p=arac-takip/list" 
+                                                                       class="btn btn-sm btn-soft-primary" title="Araç Listesi">
+                                                                        <i class="bx bx-right-arrow-alt"></i>
+                                                                    </a>
+                                                                <?php endif; ?>
                                                             </td>
                                                         </tr>
                                                     <?php endforeach; ?>
@@ -356,7 +387,7 @@ sort($kategoriler);
                                             <?php endif; ?>
                                         </td>
                                         <td class="text-center text-nowrap">
-                                            <?php if ($zimmet->durum === 'teslim'): ?>
+                                            <?php if ($zimmet->durum === 'teslim' && !($zimmet->is_arac ?? false)): ?>
                                                 <button type="button" class="btn btn-sm btn-info btn-personel-zimmet-iade"
                                                     data-id="<?= $enc_id ?>"
                                                     data-demirbas="<?= htmlspecialchars($zimmet->demirbas_adi ?? '') ?>"
@@ -364,14 +395,21 @@ sort($kategoriler);
                                                     <i data-feather="rotate-ccw" class="icon-xs"></i>
                                                 </button>
                                             <?php endif; ?>
-                                            <button type="button" class="btn btn-sm btn-secondary btn-personel-zimmet-detay"
-                                                data-id="<?= $enc_id ?>" title="Detay">
-                                                <i class="bx bx-list-ul"></i>
-                                            </button>
-                                            <button type="button" class="btn btn-sm btn-danger btn-personel-zimmet-sil"
-                                                data-id="<?= $enc_id ?>" title="Sil">
-                                                <i data-feather="trash-2" class="icon-xs"></i>
-                                            </button>
+                                            <?php if (!($zimmet->is_arac ?? false)): ?>
+                                                <button type="button" class="btn btn-sm btn-secondary btn-personel-zimmet-detay"
+                                                    data-id="<?= $enc_id ?>" title="Detay">
+                                                    <i class="bx bx-list-ul"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-danger btn-personel-zimmet-sil"
+                                                    data-id="<?= $enc_id ?>" title="Sil">
+                                                    <i data-feather="trash-2" class="icon-xs"></i>
+                                                </button>
+                                            <?php else: ?>
+                                                <a href="index.php?p=arac-takip/list" 
+                                                   class="btn btn-sm btn-soft-primary" title="Araç Listesi">
+                                                    <i class="bx bx-right-arrow-alt"></i>
+                                                </a>
+                                            <?php endif; ?>
                                         </td>
                                     </tr>
                                 <?php endforeach; ?>

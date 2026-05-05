@@ -22,7 +22,16 @@ class AracYakitModel extends Model
     {
         $sql = "
             SELECT y.*, 
-                   a.plaka, a.marka, a.model
+                   a.plaka, a.marka, a.model,
+                   (SELECT p2.adi_soyadi 
+                    FROM arac_zimmetleri az2 
+                    INNER JOIN personel p2 ON az2.personel_id = p2.id
+                    WHERE az2.arac_id = y.arac_id 
+                    AND az2.zimmet_tarihi <= y.tarih 
+                    AND (az2.iade_tarihi IS NULL OR az2.iade_tarihi >= y.tarih)
+                    AND az2.durum != 'iptal'
+                    AND az2.silinme_tarihi IS NULL
+                    ORDER BY az2.id DESC LIMIT 1) as zimmetli_personel
             FROM {$this->table} y
             INNER JOIN araclar a ON y.arac_id = a.id
             WHERE y.firma_id = :firma_id
@@ -46,7 +55,16 @@ class AracYakitModel extends Model
     {
         $sql = "
             SELECT y.*, 
-                   a.plaka, a.marka, a.model
+                   a.plaka, a.marka, a.model,
+                   (SELECT p2.adi_soyadi 
+                    FROM arac_zimmetleri az2 
+                    INNER JOIN personel p2 ON az2.personel_id = p2.id
+                    WHERE az2.arac_id = y.arac_id 
+                    AND az2.zimmet_tarihi <= y.tarih 
+                    AND (az2.iade_tarihi IS NULL OR az2.iade_tarihi >= y.tarih)
+                    AND az2.durum != 'iptal'
+                    AND az2.silinme_tarihi IS NULL
+                    ORDER BY az2.id DESC LIMIT 1) as zimmetli_personel
             FROM {$this->table} y
             INNER JOIN araclar a ON y.arac_id = a.id
             WHERE y.arac_id = :arac_id
@@ -80,7 +98,16 @@ class AracYakitModel extends Model
     {
         $sql = "
             SELECT y.*, 
-                   a.plaka, a.marka, a.model
+                   a.plaka, a.marka, a.model,
+                   (SELECT p2.adi_soyadi 
+                    FROM arac_zimmetleri az2 
+                    INNER JOIN personel p2 ON az2.personel_id = p2.id
+                    WHERE az2.arac_id = y.arac_id 
+                    AND az2.zimmet_tarihi <= y.tarih 
+                    AND (az2.iade_tarihi IS NULL OR az2.iade_tarihi >= y.tarih)
+                    AND az2.durum != 'iptal'
+                    AND az2.silinme_tarihi IS NULL
+                    ORDER BY az2.id DESC LIMIT 1) as zimmetli_personel
             FROM {$this->table} y
             INNER JOIN araclar a ON y.arac_id = a.id
             WHERE y.firma_id = :firma_id

@@ -785,6 +785,7 @@ if ($filter === 'muayene') {
                                         <tr>
                                             <th class="text-center" style="width:5%">Sıra</th>
                                             <th style="width:12%" data-filter="string">Plaka</th>
+                                            <th style="width:12%" data-filter="string">Zimmetli Personel</th>
                                             <th style="width:10%" data-filter="date">Tarih</th>
                                             <th style="width:10%" class="text-end" data-filter="number">KM</th>
                                             <th style="width:10%" class="text-end" data-filter="number">Miktar (L)</th>
@@ -798,7 +799,7 @@ if ($filter === 'muayene') {
                                     </thead>
                                     <tbody id="yakitTableBody">
                                         <tr>
-                                            <td colspan="9" class="text-center text-muted py-4">
+                                            <td colspan="12" class="text-center text-muted py-4">
                                                 Yükleniyor...
                                             </td>
                                         </tr>

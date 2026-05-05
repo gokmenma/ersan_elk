@@ -167,6 +167,27 @@ class AracZimmetModel extends Model
     }
 
     /**
+     * Personele ait tüm zimmet geçmişi
+     */
+    public function getHistoryByPersonel($personelId)
+    {
+        $sql = $this->db->prepare("
+            SELECT az.*, 
+                   a.plaka, a.marka, a.model
+            FROM {$this->table} az
+            INNER JOIN araclar a ON az.arac_id = a.id
+            WHERE az.personel_id = :personel_id
+            AND az.firma_id = :firma_id
+            ORDER BY az.zimmet_tarihi DESC
+        ");
+        $sql->execute([
+            'personel_id' => $personelId,
+            'firma_id' => $_SESSION['firma_id']
+        ]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
      * Zimmet iade et
      */
     public function iadeEt($id, $iadeKm = null, $notlar = null, $iadeTarihi = null)

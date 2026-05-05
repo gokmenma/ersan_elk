@@ -406,7 +406,7 @@ class BordroPersonelModel extends Model
             }
             $tutar = floatval($eo->tutar);
             $aciklama = (string) ($eo->aciklama ?? '');
-            $isPuantajOdeme = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Kaçak') === 0 || strpos($aciklama, '[Nöbet]') === 0;
+            $isPuantajOdeme = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Kaçak') === 0;
             if ($isInclusive && $isPrimUsulu && $isPuantajOdeme) {
                 $primUsuluPuantajHedefToplami += $tutar;
             }
@@ -440,7 +440,7 @@ class BordroPersonelModel extends Model
             $toplamAlacagi = $asgariTabanVal + $includedAllowanceDeduction;
             foreach ($ekOdemelerList as $eo) {
                 $aciklama = (string)($eo->aciklama ?? '');
-                $isPuantaj = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Kaçak') === 0 || strpos($aciklama, '[Nöbet]') === 0;
+                $isPuantaj = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Kaçak') === 0;
                 if (!$isPuantaj && stripos($aciklama, 'Yuvarlama') === false) {
                     $toplamAlacagi += floatval($eo->tutar);
                 }
@@ -3557,7 +3557,7 @@ class BordroPersonelModel extends Model
             // dağılımda direkt bu tutar baz alınır.
             $ekOdemeTutari = isset($toplamTutar) ? $toplamTutar : $tutar;
             $aciklama = (string) ($odeme->aciklama ?? '');
-            $isPuantajOdeme = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Kaçak') === 0 || strpos($aciklama, '[Nöbet]') === 0;
+            $isPuantajOdeme = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Kaçak') === 0;
 
             if ($isPrimUsuluDahilYardim && $isPuantajOdeme) {
                 $primUsuluPuantajHedefToplami += $ekOdemeTutari;
@@ -3790,7 +3790,7 @@ class BordroPersonelModel extends Model
             $puantajToplamiForDahil = 0;
             foreach ($ekOdemeDetaylari as $ek) {
                 $aciklama = (string)($ek['aciklama'] ?? '');
-                if (strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Kaçak') === 0 || strpos($aciklama, '[Nöbet]') === 0) {
+                if (strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Kaçak') === 0) {
                     $puantajToplamiForDahil += floatval($ek['tutar']);
                 }
             }
@@ -3804,7 +3804,7 @@ class BordroPersonelModel extends Model
             // Add other non-puantaj extras
             foreach ($ekOdemeDetaylari as $ek) {
                 $aciklama = (string)($ek['aciklama'] ?? '');
-                if (strpos($aciklama, '[Puantaj]') !== 0 && strpos($aciklama, '[Sayaç]') !== 0 && strpos($aciklama, '[Kaçak Kontrol]') !== 0 && strpos($aciklama, '[Nöbet]') !== 0 && strpos($aciklama, 'Yuvarlama') === false) {
+                if (strpos($aciklama, '[Puantaj]') !== 0 && strpos($aciklama, '[Sayaç]') !== 0 && strpos($aciklama, '[Kaçak Kontrol]') !== 0 && strpos($aciklama, 'Yuvarlama') === false) {
                     $netMaas += floatval($ek['tutar']);
                 }
             }

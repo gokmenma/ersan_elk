@@ -833,6 +833,7 @@ const AracTakip = {
             html += `<tr>
                             <td class="text-center">${index + 1}</td>
                             <td><strong>${y.plaka}</strong></td>
+                            <td><small>${y.zimmetli_personel || '<span class="text-muted">Boşta</span>'}</small></td>
                             <td>${self.formatDate(y.tarih)}</td>
                             <td class="text-end"><a href="arac-puantaj?arac_id=${y.arac_id}" class="text-primary fw-bold" title="Puantajda Görüntüle">${self.formatNumber(y.km)} km</a></td>
                             <td class="text-end">${self.formatNumber(y.yakit_miktari)} L</td>
