@@ -325,11 +325,7 @@ if (Gate::allows("ana_sayfa")) {
     if (!empty($slider_notifications)) {
         ob_start(); ?>
         <div class="col-md-6 col-xl-4 widget-item" id="widget-ana-slider" style="margin-bottom: 1.5rem; position: relative;">
-            <!-- Drag Handle (Separated from Carousel to avoid event blocking) -->
-            <div class="drag-handle shadow-sm"
-                style="position: absolute; top: 12px; left: 20px; z-index: 1000; cursor: move; background: rgba(0,0,0,0.2); border-radius: 4px; padding: 2px; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(4px); border: 1px solid rgba(255,255,255,0.1);">
-                <i class='bx bx-grid-vertical text-white' style="font-size: 1.2rem; opacity: 0.8;"></i>
-            </div>
+            <!-- Mac title bar will be injected here automatically -->
 
             <div id="dashboardCarousel" class="carousel slide animate-card bordro-summary-card h-100" data-bs-ride="carousel"
                 style="--delay: 0s; cursor: grab;">
@@ -865,63 +861,34 @@ if (Gate::allows("ana_sayfa")) {
         <div class="container-fluid">
 
             <style id="dashboard-skeleton-critical">
-                .mac-controls {
-                    display: flex !important;
-                    gap: 6px !important;
-                    align-items: center !important;
-                    cursor: default !important;
-                    margin-right: 12px !important;
-                }
-                .mac-control {
-                    width: 12px !important;
-                    height: 12px !important;
-                    border-radius: 50% !important;
-                    display: inline-block !important;
-                    cursor: pointer !important;
-                    transition: filter 0.15s ease, transform 0.1s ease !important;
-                }
-                .mac-control:hover {
-                    filter: brightness(0.8) !important;
-                    transform: scale(1.1) !important;
-                }
-                .mac-close {
-                    background-color: #ff5f56 !important;
-                    border: 1px solid #e0443e !important;
-                }
-                .mac-minimize {
-                    background-color: #ffbd2e !important;
-                    border: 1px solid #dfa123 !important;
-                }
-                .mac-maximize {
-                    background-color: #27c93f !important;
-                    border: 1px solid #1aab29 !important;
-                }
-                #dashboard-widgets.free-layout-active .drag-handle,
-                #dashboard-widgets.free-layout-active .bx-grid-vertical,
-                #dashboard-widgets.free-layout-active .drag-handle-indicator {
-                    display: none !important;
-                }
-                #dashboard-widgets.free-layout-active {
-                    position: relative !important;
-                    min-height: 1000px;
-                }
+                /* Widget visibility */
                 .widget-hidden {
                     display: none !important;
                 }
-                #dashboard-widgets .widget-collapsed .card-body {
+
+                /* Widget collapsed state */
+                #dashboard-widgets .widget-collapsed .card > *:not(.mac-title-bar) {
                     display: none !important;
                 }
                 #dashboard-widgets .widget-collapsed {
-                    height: 34px !important;
-                    min-height: 34px !important;
+                    height: 42px !important;
+                    min-height: 42px !important;
                     overflow: hidden !important;
                 }
                 #dashboard-widgets .widget-collapsed .card,
                 #dashboard-widgets .widget-collapsed .carousel {
-                    height: 34px !important;
-                    min-height: 34px !important;
+                    height: 42px !important;
+                    min-height: 42px !important;
                     overflow: hidden !important;
                 }
+
+                /* Free layout */
+                #dashboard-widgets.free-layout-active {
+                    position: relative !important;
+                    min-height: 1000px;
+                }
+
+                /* Resizable widget */
                 #dashboard-widgets .resizable-widget {
                     position: relative;
                     overflow: visible !important;
@@ -930,109 +897,16 @@ if (Gate::allows("ana_sayfa")) {
                     min-width: 180px;
                     min-height: 120px;
                 }
-                #dashboard-widgets .card,
-                #dashboard-widgets .carousel,
-                #dashboard-widgets .carousel-inner,
-                #dashboard-widgets .card-body {
-                    border: 2px solid #334155 !important;
-                    border-radius: 12px !important;
-                    box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12) !important;
-                    overflow: visible !important;
-                    background: #ffffff !important;
-                    transition: border-color 0.2s ease, box-shadow 0.2s ease !important;
-                }
-                #dashboard-widgets .card:hover {
-                    border-color: #2563eb !important;
-                    box-shadow: 0 12px 36px rgba(0, 0, 0, 0.16) !important;
-                }
                 #dashboard-widgets .resizable-widget .card {
                     height: 100% !important;
                     position: relative !important;
                     z-index: 1;
                 }
-                #dashboard-widgets .resizable-widget::-webkit-resizer {
-                    background: linear-gradient(135deg, transparent 0 45%, #2563eb 45% 100%);
+                #dashboard-widgets .dashboard-resizing {
+                    user-select: none !important;
                 }
-                #dashboard-widgets .custom-resize-handle {
-                    display: none !important;
-                }
-                #dashboard-widgets .custom-resize-handle:hover {
-                    background: rgba(29, 78, 216, 0.95) !important;
-                    opacity: 1;
-                }
-                #dashboard-widgets .custom-resize-handle.handle-se {
-                    width: 32px !important;
-                    height: 32px !important;
-                    right: -6px !important;
-                    bottom: -6px !important;
-                    background: #2563eb !important;
-                    border: 3px solid #ffffff !important;
-                    border-radius: 50% !important;
-                    cursor: se-resize !important;
-                    display: flex !important;
-                    align-items: center !important;
-                    justify-content: center !important;
-                    box-shadow: 0 4px 14px rgba(37,99,235,0.45) !important;
-                }
-                #dashboard-widgets .custom-resize-handle.handle-se::after {
-                    content: "" !important;
-                    width: 8px !important;
-                    height: 8px !important;
-                    border-right: 2.5px solid #ffffff !important;
-                    border-bottom: 2.5px solid #ffffff !important;
-                    display: block !important;
-                    margin-right: 2px !important;
-                    margin-bottom: 2px !important;
-                }
-                #dashboard-widgets .custom-resize-handle.handle-se:hover {
-                    transform: scale(1.15) !important;
-                    box-shadow: 0 6px 18px rgba(29,78,216,0.5) !important;
-                }
-                #dashboard-widgets .custom-resize-handle,
-                #dashboard-widgets .custom-resize-handle.handle-se,
-                #dashboard-widgets .custom-resize-handle.handle-e,
-                #dashboard-widgets .custom-resize-handle.handle-s,
-                #dashboard-widgets .custom-resize-handle.handle-w,
-                #dashboard-widgets .custom-resize-handle.handle-n {
-                    display: none !important;
-                    pointer-events: none !important;
-                }
-                #dashboard-widgets .custom-resize-handle.handle-e,
-                #dashboard-widgets .custom-resize-handle.handle-w {
-                    top: 14px !important;
-                    bottom: 14px !important;
-                    width: 10px !important;
-                    border-radius: 999px !important;
-                    background: rgba(37, 99, 235, 0.28) !important;
-                }
-                #dashboard-widgets .custom-resize-handle.handle-e {
-                    right: -5px !important;
-                    cursor: e-resize !important;
-                }
-                #dashboard-widgets .custom-resize-handle.handle-w {
-                    left: -5px !important;
-                    cursor: w-resize !important;
-                }
-                #dashboard-widgets .custom-resize-handle.handle-n,
-                #dashboard-widgets .custom-resize-handle.handle-s {
-                    left: 14px !important;
-                    right: 14px !important;
-                    height: 10px !important;
-                    border-radius: 999px !important;
-                    background: rgba(37, 99, 235, 0.28) !important;
-                }
-                #dashboard-widgets .custom-resize-handle.handle-n {
-                    top: -5px !important;
-                    cursor: n-resize !important;
-                }
-                #dashboard-widgets .custom-resize-handle.handle-s {
-                    bottom: -5px !important;
-                    cursor: s-resize !important;
-                }
-                #dashboard-widgets .ui-resizable-handle {
-                    position: absolute !important;
-                    z-index: 10002 !important;
-                }
+
+                /* Resize grips */
                 #dashboard-widgets .dashboard-resize-grip {
                     position: absolute !important;
                     right: -7px !important;
@@ -1059,38 +933,163 @@ if (Gate::allows("ana_sayfa")) {
                     border-bottom: 2px solid #fff !important;
                     display: block !important;
                 }
-                #dashboard-widgets .dashboard-resizing {
+            </style>
+            <style>
+                /* ===================================================
+                   macOS / iOS Style Widget Title Bars
+                   Premium Design - Enterprise Dashboard
+                   =================================================== */
+                
+                /* Card border-radius global */
+                #dashboard-widgets .card,
+                #dashboard-widgets .carousel {
+                    border-radius: 14px !important;
+                    overflow: hidden !important;
+                    border: 1px solid rgba(203, 213, 225, 0.6) !important;
+                    box-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04) !important;
+                }
+
+                /* MAC TITLE BAR — authentic macOS window chrome */
+                .mac-title-bar {
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: space-between !important;
+                    height: 42px !important;
+                    min-height: 42px !important;
+                    padding: 0 12px 0 14px !important;
+                    background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important;
+                    border-bottom: 1px solid #e2e8f0 !important;
+                    border-top-left-radius: 14px !important;
+                    border-top-right-radius: 14px !important;
+                    cursor: grab !important;
                     user-select: none !important;
+                    position: relative !important;
+                    z-index: 10 !important;
+                    flex-shrink: 0 !important;
+                    transition: background 0.15s ease !important;
                 }
-                #dashboard-widgets .ui-resizable-se {
-                    width: 32px !important;
-                    height: 32px !important;
-                    right: -6px !important;
-                    bottom: -6px !important;
-                    background: #2563eb !important;
-                    border: 3px solid #ffffff !important;
+                .mac-title-bar:active {
+                    cursor: grabbing !important;
+                }
+                .widget-item:hover .mac-title-bar {
+                    background: linear-gradient(180deg, #f1f5f9 0%, #e8eef5 100%) !important;
+                }
+
+                /* Traffic-light control group */
+                .mac-controls {
+                    display: flex !important;
+                    align-items: center !important;
+                    gap: 7px !important;
+                    flex-shrink: 0 !important;
+                    width: 52px !important;
+                }
+
+                /* Individual traffic-light button */
+                .mac-control {
+                    width: 13px !important;
+                    height: 13px !important;
                     border-radius: 50% !important;
-                    cursor: se-resize !important;
-                    box-shadow: 0 4px 14px rgba(37,99,235,0.45) !important;
+                    cursor: pointer !important;
+                    position: relative !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    justify-content: center !important;
+                    transition: filter 0.12s ease, transform 0.1s ease !important;
+                    flex-shrink: 0 !important;
                 }
-                #dashboard-widgets .ui-resizable-se::after {
-                    content: "" !important;
+                .mac-control:hover {
+                    filter: brightness(0.88) !important;
+                    transform: scale(1.15) !important;
+                }
+                .mac-control:active {
+                    transform: scale(0.92) !important;
+                    filter: brightness(0.75) !important;
+                }
+
+                /* Hover icon reveal on traffic lights */
+                .mac-control::after {
+                    content: '' !important;
                     position: absolute !important;
-                    right: 8px !important;
-                    bottom: 8px !important;
-                    width: 8px !important;
-                    height: 8px !important;
-                    border-right: 2.5px solid #ffffff !important;
-                    border-bottom: 2.5px solid #ffffff !important;
+                    opacity: 0 !important;
+                    transition: opacity 0.1s ease !important;
+                    font-size: 8px !important;
+                    font-weight: 900 !important;
+                    line-height: 1 !important;
+                    color: rgba(0,0,0,0.45) !important;
+                    pointer-events: none !important;
                 }
-                #dashboard-widgets .ui-resizable-e {
-                    top: 14px !important;
-                    bottom: 14px !important;
-                    right: -5px !important;
-                    width: 10px !important;
-                    border-radius: 999px !important;
-                    background: rgba(37, 99, 235, 0.28) !important;
-                    cursor: e-resize !important;
+                .mac-controls:hover .mac-control::after {
+                    opacity: 1 !important;
+                }
+                .mac-close::after  { content: '✕' !important; }
+                .mac-minimize::after { content: '−' !important; }
+                .mac-maximize::after { content: '+' !important; }
+
+                /* Traffic light colors — authentic macOS */
+                .mac-close {
+                    background: #ff5f57 !important;
+                    box-shadow: 0 0 0 0.5px #e0443e !important;
+                }
+                .mac-minimize {
+                    background: #febc2e !important;
+                    box-shadow: 0 0 0 0.5px #d9a11c !important;
+                }
+                .mac-maximize {
+                    background: #28c840 !important;
+                    box-shadow: 0 0 0 0.5px #1aab29 !important;
+                }
+
+                /* Title text — centered, bold, professional */
+                .mac-title-text {
+                    flex: 1 !important;
+                    text-align: center !important;
+                    font-size: 0.8rem !important;
+                    font-weight: 600 !important;
+                    color: #334155 !important;
+                    letter-spacing: 0.04em !important;
+                    text-transform: uppercase !important;
+                    white-space: nowrap !important;
+                    overflow: hidden !important;
+                    text-overflow: ellipsis !important;
+                    padding: 0 8px !important;
+                    pointer-events: none !important;
+                }
+
+                /* Drag indicator (right side) */
+                .drag-handle-indicator {
+                    width: 52px !important;
+                    display: flex !important;
+                    justify-content: flex-end !important;
+                    align-items: center !important;
+                    color: #94a3b8 !important;
+                    font-size: 1.15rem !important;
+                    opacity: 0.55 !important;
+                    cursor: grab !important;
+                    flex-shrink: 0 !important;
+                    transition: opacity 0.15s ease !important;
+                }
+                .widget-item:hover .drag-handle-indicator {
+                    opacity: 0.85 !important;
+                }
+
+                /* Free layout window shadow */
+                #dashboard-widgets.free-layout-active .widget-item {
+                    box-shadow: 0 10px 30px -6px rgba(0, 0, 0, 0.12),
+                                0 4px 10px -2px rgba(0, 0, 0, 0.07) !important;
+                    border-radius: 14px !important;
+                }
+
+                /* Collapsed state */
+                .widget-collapsed .card > *:not(.mac-title-bar) {
+                    display: none !important;
+                }
+
+                /* Suppress original card headers & duplicate drag handles */
+                .widget-item .card-header:not(.mac-title-bar-wrapper),
+                .widget-item .drag-handle:not(.mac-title-bar .drag-handle),
+                .widget-item i.bx-grid-vertical:not(.mac-title-bar i),
+                .widget-item i.bx-grid-horizontal:not(.mac-title-bar i) {
+                    display: none !important;
                 }
                 #dashboard-widgets .ui-resizable-s {
                     left: 14px !important;
@@ -3416,9 +3415,12 @@ if (Gate::allows("ana_sayfa")) {
                             s.hidden = 'true';
                         }
                         let positionVal = $(this).css('position');
-                        if (positionVal === 'absolute') {
-                            s.left = $(this).css('left');
-                            s.top = $(this).css('top');
+                        const isFree = $('#switch-free-layout').is(':checked');
+                        
+                        if (positionVal === 'absolute' || isFree) {
+                            const offset = $(this).position();
+                            s.left = $(this).css('left') !== 'auto' ? $(this).css('left') : offset.left + 'px';
+                            s.top = $(this).css('top') !== 'auto' ? $(this).css('top') : offset.top + 'px';
                             let zVal = parseInt($(this).css('z-index'), 10);
                             if (Number.isFinite(zVal)) {
                                 s.zIndex = zVal;
@@ -3503,13 +3505,17 @@ if (Gate::allows("ana_sayfa")) {
                                 }
                                 if (s.left && s.top) {
                                     css.position = 'absolute';
-                                    css.left = s.left + ' ' + (s.left.indexOf('!important') === -1 ? '!important' : '');
-                                    css.top = s.top + ' ' + (s.top.indexOf('!important') === -1 ? '!important' : '');
+                                    css.left = s.left + (s.left.indexOf('!important') === -1 ? ' !important' : '');
+                                    css.top = s.top + (s.top.indexOf('!important') === -1 ? ' !important' : '');
                                     css.zIndex = s.zIndex || 100;
                                     
                                     // Calculate max height for scroll
-                                    const bottom = parseFloat(s.top) + parseFloat(s.height || widget.outerHeight());
-                                    if (bottom > maxBottom) maxBottom = bottom;
+                                    const topVal = parseFloat(s.top);
+                                    const hVal = parseFloat(s.height || widget.outerHeight());
+                                    if (!isNaN(topVal) && !isNaN(hVal)) {
+                                        const bottom = topVal + hVal;
+                                        if (bottom > maxBottom) maxBottom = bottom;
+                                    }
                                 }
                                 widget.css(css);
                             }
@@ -3519,22 +3525,30 @@ if (Gate::allows("ana_sayfa")) {
                         $('#dashboard-widgets').css('min-height', (maxBottom + 100) + 'px');
                     } else {
                         // Clear manual styles if free layout is not active
-                        $('#dashboard-widgets').css('min-height', '1000px');
-                        $('#dashboard-widgets .widget-item').css({
-                            position: '',
-                            left: '',
-                            top: '',
-                            width: '',
-                            height: '',
-                            flex: '',
-                            maxWidth: '',
-                            zIndex: ''
+                        $('#dashboard-widgets').css('min-height', '');
+                        $('#dashboard-widgets .widget-item').each(function() {
+                            $(this).removeAttr('style').css({
+                                position: '',
+                                left: '',
+                                top: '',
+                                width: '',
+                                height: '',
+                                flex: '',
+                                maxWidth: '',
+                                zIndex: '',
+                                overflow: ''
+                            });
                         });
                         $('.card, .carousel', '#dashboard-widgets').css({
                             height: '',
                             minHeight: '',
                             maxHeight: ''
                         });
+                    }
+                    
+                    // Always initialize Mac controls after applying settings
+                    if (typeof initMacControls === 'function') {
+                        initMacControls();
                     }
                 }
 
@@ -3571,8 +3585,8 @@ if (Gate::allows("ana_sayfa")) {
                         if (container && !gridSortable) {
                             gridSortable = new Sortable(container, {
                                 animation: 150,
-                                handle: '.drag-handle, .card-header, .stat-card, .card',
-                                filter: '.mac-title-bar, .btn, a, input, select, textarea, .custom-resize-handle, .dashboard-resize-grip, .mac-controls',
+                                handle: '.mac-title-bar, .drag-handle, .card-header, .stat-card, .card',
+                                filter: '.mac-control, .btn, a, input, select, textarea, .custom-resize-handle, .dashboard-resize-grip, .mac-controls',
                                 preventOnFilter: true,
                                 ghostClass: 'bg-light',
                                 onEnd: function () {
@@ -3645,6 +3659,7 @@ if (Gate::allows("ana_sayfa")) {
                         });
                         $('.dashboard-resize-edge-e, .dashboard-resize-edge-s, .dashboard-resize-grip').remove();
                         // Redraw standard layout
+                        initMacControls();
                         setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 100);
                     }
                 });
@@ -3712,145 +3727,154 @@ if (Gate::allows("ana_sayfa")) {
                     });
                 });
 
-                // Apple/Mac Style Controls Logic
+                // Apple/Mac Style Controls Logic — Premium iOS/macOS Design
                 function initMacControls() {
-                    if (!$('#switch-free-layout').is(':checked')) return;
                     $('#dashboard-widgets .widget-item').each(function() {
-                        let card = $(this).find('.card');
-                        if (card.length === 0) {
-                            card = $(this).find('.carousel').first();
-                        }
-                        if (card.length && card.find('.mac-title-bar').length === 0) {
-                            const existingHeader = card.children('.card-header').first();
-                            // Clear hardcoded mapping + dynamic selector fallback
-                            const titles = {
-                                'widget-ana-slider': 'Duyurular',
-                                'widget-bekleyen-talepler': 'Bekleyen Talepler',
-                                'widget-gec-kalanlar': 'Geç Kalanlar',
-                                'widget-nobetciler': 'Nöbetçiler',
-                                'widget-gunluk-muhurleme': 'Mühürleme',
-                                'widget-gunluk-kesme-acma': 'Kesme Açma',
-                                'widget-gunluk-endeks-okuma': 'Endeks Okuma',
-                                'widget-gunluk-sayac-degisimi': 'Sayaç Değişimi',
-                                'widget-gunluk-kacak': 'Kaçak Kontrolü',
-                                'widget-izinliler': 'İzinliler',
-                                'widget-yaklasan-gorevler': 'Yaklaşan Görevler'
-                            };
-                            let titleText = titles[$(this).attr('id')] || card.find('h1, h2, h3, h4, h5, h6, strong, .stat-label, p.fw-bold, .card-title').first().text().replace('drag_handle', '').trim();
-                            if ($(this).attr('id') === 'widget-ana-slider' || card.hasClass('carousel')) {
-                                titleText = 'Duyurular';
-                            }
-                            if (!titleText || titleText.length < 2) {
-                                titleText = 'Bilgi Kartı';
-                            }
-                            // strip out boxicon names if extracted
-                            if (titleText.startsWith('bx-')) {
-                                titleText = titleText.replace(/^bx-[a-z0-9-]+/i, '').trim();
-                            }
-                            if (!existingHeader.length) {
-                                card.find('h5, h6, strong').first().hide();
-                            }
+                        const widgetItem = $(this);
+                        if (widgetItem.hasClass('widget-hidden') || widgetItem.attr('id') === 'widget-row-break') return;
 
-                            const controls = $(`
-                                <div class="mac-title-bar d-flex justify-content-between align-items-center" style="background: #e2e8f0; padding: 6px 12px; border-bottom: 2px solid #cbd5e1; border-top-left-radius: 10px; border-top-right-radius: 10px; cursor: move; user-select: none; position: relative; z-index: 1001; height: 34px;">
-                                    <div class="mac-controls d-flex align-items-center" style="gap: 6px;">
-                                        <span class="mac-control mac-close" title="Kapat" style="width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: #ff5f56; border: 1px solid #e0443e; cursor: pointer;"></span>
-                                        <span class="mac-control mac-minimize" title="Küçült" style="width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: #ffbd2e; border: 1px solid #dfa123; cursor: pointer;"></span>
-                                        <span class="mac-control mac-maximize" title="Tam Ekran" style="width: 10px; height: 10px; border-radius: 50%; display: inline-block; background: #27c93f; border: 1px solid #1aab29; cursor: pointer;"></span>
-                                    </div>
-                                    <div class="mac-title-text fw-bold" style="font-size: 11.5px; text-align: center; flex: 1; margin: 0 8px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; color: #1e293b;"></div>
-                                    <div class="drag-handle-indicator text-muted d-flex align-items-center" style="font-size: 14px; opacity: 0.5; width: 32px; justify-content: flex-end;">
-                                        <i class="bx bx-grid-horizontal" style="font-size: 20px;"></i>
-                                    </div>
-                                </div>
-                            `);
-                            controls.find('.mac-title-text').text(titleText);
+                        // Target the first card or carousel inside the widget
+                        let card = widgetItem.children('.card').first();
+                        if (!card.length) card = widgetItem.find('.card').first();
+                        if (!card.length) card = widgetItem.find('.carousel').first();
+                        if (!card.length) return;
 
-                            controls.find('.mac-close').on('click', function (e) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                const widget = $(this).closest('.widget-item');
-                                const widgetId = widget.attr('id');
-                                setWidgetVisibility(widgetId, false, { syncCheckbox: false });
-                                $(`.widget-toggle[data-widget="${widgetId}"]`).prop('checked', false).trigger('change');
-                                saveDashboardConfig();
-                            });
+                        // Remove any existing mac-title-bar first (for idempotent re-init)
+                        card.find('.mac-title-bar').remove();
 
-                            controls.find('.mac-minimize').on('click', function (e) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                const widget = $(this).closest('.widget-item');
-                                widget.toggleClass('widget-collapsed');
-                                $(this).toggleClass('is-collapsed', widget.hasClass('widget-collapsed'));
-                                
-                                if (widget.hasClass('widget-collapsed')) {
-                                    widget.data('old-height-before-collapse', widget[0].style.height || widget.css('height'));
-                                    widget.css({
-                                        'height': '34px',
-                                        'min-height': '34px'
-                                    });
-                                } else {
-                                    const oldH = widget.data('old-height-before-collapse');
-                                    widget.css({
-                                        'height': (oldH && oldH !== '34px') ? oldH : 'auto',
-                                        'min-height': ''
-                                    });
-                                }
-                            });
+                        // ── Title resolution ──────────────────────────────────────
+                        const titleMap = {
+                            'widget-ana-slider'              : 'Haberler & Duyurular',
+                            'widget-personel-ozeti'          : 'Personel Durumu',
+                            'widget-personel-ozet'           : 'Personel Durumu',
+                            'widget-arac-ozeti'              : 'Araç Durumu',
+                            'widget-arac-ozet'               : 'Araç Durumu',
+                            'widget-bekleyen-talepler'       : 'Bekleyen Talepler',
+                            'widget-gec-kalanlar'            : 'Geç Kalanlar',
+                            'widget-nobetciler'              : 'Bugünkü Nöbetçiler',
+                            'widget-gunluk-muhurleme'        : 'Günlük Mühürleme',
+                            'widget-gunluk-kesme-acma'       : 'Günlük Kesme/Açma',
+                            'widget-gunluk-endeks-okuma'     : 'Endeks Okuma',
+                            'widget-gunluk-sayac-degisimi'   : 'Sayaç Değişimi',
+                            'widget-gunluk-kacak'            : 'Kaçak Kontrolü',
+                            'widget-kacak-sayisi'            : 'Kaçak Sayısı',
+                            'widget-izinliler'               : 'İzinli Personeller',
+                            'widget-izindekiler'             : 'İzinde Olanlar',
+                            'widget-bildirimler'             : 'Görev & Bildirimler',
+                            'widget-talepler'                : 'Talep Yönetimi',
+                            'widget-yaklasan-gorevler'       : 'Yaklaşan Görevler',
+                            'widget-endeks-karsilastirma'    : 'Endeks Karşılaştırma',
+                            'widget-is-turu-istatistikleri'  : 'İş Türü İstatistikleri',
+                            'widget-is-emri-sonucu-istatistikleri': 'İş Emri Sonuçları'
+                        };
 
-                            controls.find('.mac-maximize').on('click', function (e) {
-                                e.preventDefault();
-                                e.stopPropagation();
-                                const widget = $(this).closest('.widget-item');
-                                if (widget.data('maximized')) {
-                                    widget.css({
-                                        'position': widget.data('old-pos') || 'absolute',
-                                        'left': widget.data('old-left') || '',
-                                        'top': widget.data('old-top') || '',
-                                        'width': widget.data('old-width') || '',
-                                        'height': widget.data('old-height') || '',
-                                        'z-index': widget.data('old-z') || '100'
-                                    });
-                                    widget.data('maximized', false);
-                                } else {
-                                    widget.data('old-pos', widget.css('position'));
-                                    widget.data('old-left', widget.css('left'));
-                                    widget.data('old-top', widget.css('top'));
-                                    widget.data('old-width', widget.css('width'));
-                                    widget.data('old-height', widget.css('height'));
-                                    widget.data('old-z', widget.css('z-index'));
-                                    widget.css({
-                                        'position': 'absolute',
-                                        'left': '0px',
-                                        'top': '0px',
-                                        'width': '100%',
-                                        'height': '100%',
-                                        'z-index': 9999
-                                    });
-                                    widget.data('maximized', true);
-                                }
-                            });
+                        const wId = widgetItem.attr('id') || '';
+                        const existingHeader = card.children('.card-header').first();
+                        let titleText = titleMap[wId];
 
-                            card.prepend(controls);
+                        if (!titleText) {
+                            // Try to pull from card header or first heading
                             if (existingHeader.length) {
-                                const insertedTitleBar = card.children('.mac-title-bar').first();
-                                existingHeader.addClass('mac-title-bar').css({
-                                    background: '#e2e8f0',
-                                    borderBottom: '2px solid #cbd5e1',
-                                    cursor: 'move',
-                                    userSelect: 'none',
-                                    position: 'relative',
-                                    zIndex: 1001,
-                                    minHeight: '34px',
-                                    paddingTop: '6px',
-                                    paddingBottom: '6px'
-                                });
-                                existingHeader.find('h5, h6, strong, .card-title').first().show();
-                                insertedTitleBar.find('.mac-controls').prependTo(existingHeader);
-                                insertedTitleBar.find('.drag-handle-indicator').appendTo(existingHeader);
-                                insertedTitleBar.remove();
+                                titleText = existingHeader.find('h1,h2,h3,h4,h5,h6,strong,.card-title').first().text();
+                            }
+                            if (!titleText || titleText.trim() === '') {
+                                titleText = card.find('h1,h2,h3,h4,h5,h6,strong,.stat-label,.card-title').first().text();
                             }
                         }
+
+                        // Sanitise
+                        titleText = (titleText || 'Bilgi Kartı')
+                            .replace(/drag_handle/gi, '')
+                            .replace(/^bx-[a-z0-9-]+/i, '')
+                            .trim();
+                        if (!titleText) titleText = 'Bilgi Kartı';
+
+                        // ── Build the Mac title bar ───────────────────────────────
+                        const $bar = $(`
+                            <div class="mac-title-bar">
+                                <div class="mac-controls">
+                                    <div class="mac-control mac-close"    title="Kapat"></div>
+                                    <div class="mac-control mac-minimize" title="Küçült"></div>
+                                    <div class="mac-control mac-maximize" title="Tam Ekran"></div>
+                                </div>
+                                <span class="mac-title-text">${titleText}</span>
+                                <div class="drag-handle-indicator">
+                                    <i class="bx bx-grid-vertical"></i>
+                                </div>
+                            </div>
+                        `);
+
+                        // ── Button handlers ───────────────────────────────────────
+                        // Close (hide widget)
+                        $bar.find('.mac-close').on('click', function(e) {
+                            e.preventDefault(); e.stopPropagation();
+                            if (typeof setWidgetVisibility === 'function') {
+                                setWidgetVisibility(wId, false, { syncCheckbox: true });
+                            }
+                            if (typeof saveDashboardConfig === 'function') saveDashboardConfig();
+                        });
+
+                        // Minimize (collapse card body)
+                        $bar.find('.mac-minimize').on('click', function(e) {
+                            e.preventDefault(); e.stopPropagation();
+                            const collapsed = widgetItem.toggleClass('widget-collapsed').hasClass('widget-collapsed');
+                            if (collapsed) {
+                                widgetItem.data('restore-h', widgetItem.css('height'));
+                                widgetItem.css({ height: '42px', minHeight: '42px', overflow: 'hidden' });
+                            } else {
+                                const rh = widgetItem.data('restore-h');
+                                widgetItem.css({ height: (rh && rh !== '42px') ? rh : '', minHeight: '', overflow: '' });
+                            }
+                        });
+
+                        // Maximize (fullscreen overlay)
+                        $bar.find('.mac-maximize').on('click', function(e) {
+                            e.preventDefault(); e.stopPropagation();
+                            const isMax = widgetItem.data('is-maximized');
+                            if (isMax) {
+                                widgetItem.css({
+                                    position : widgetItem.data('mx-pos')    || '',
+                                    left     : widgetItem.data('mx-left')   || '',
+                                    top      : widgetItem.data('mx-top')    || '',
+                                    width    : widgetItem.data('mx-width')  || '',
+                                    height   : widgetItem.data('mx-height') || '',
+                                    zIndex   : widgetItem.data('mx-z')      || ''
+                                });
+                                widgetItem.data('is-maximized', false);
+                                widgetItem.removeClass('widget-maximized');
+                            } else {
+                                widgetItem.data('mx-pos',    widgetItem.css('position'));
+                                widgetItem.data('mx-left',   widgetItem.css('left'));
+                                widgetItem.data('mx-top',    widgetItem.css('top'));
+                                widgetItem.data('mx-width',  widgetItem.css('width'));
+                                widgetItem.data('mx-height', widgetItem.css('height'));
+                                widgetItem.data('mx-z',      widgetItem.css('z-index'));
+                                widgetItem.css({
+                                    position: 'fixed',
+                                    left: '0', top: '0',
+                                    width: '100vw', height: '100vh',
+                                    zIndex: 99999
+                                });
+                                widgetItem.data('is-maximized', true);
+                                widgetItem.addClass('widget-maximized');
+                                setTimeout(() => window.dispatchEvent(new Event('resize')), 100);
+                            }
+                        });
+
+                        // ── Inject & clean up ─────────────────────────────────────
+                        // Prepend bar to card
+                        card.prepend($bar);
+
+                        // Hide original card-header and inner headings
+                        if (existingHeader.length) existingHeader.hide();
+
+                        // Hide all headings and drag icons NOT inside the new bar
+                        card.find(
+                            'h1, h2, h3, h4, h5, h6, .card-title, .drag-handle, ' +
+                            '.card-header, [class*="drag_handle"]'
+                        ).filter(function() {
+                            return $(this).closest('.mac-title-bar').length === 0;
+                        }).hide();
                     });
                 }
 
@@ -4037,14 +4061,15 @@ if (Gate::allows("ana_sayfa")) {
                 $('#switch-free-layout').prop('checked', isFreeLayoutActive);
                 if (isFreeLayoutActive) {
                     destroyGridSortable();
-                    $('#dashboard-widgets').addClass('free-layout-active');
+                    $('#dashboard-widgets').addClass('free-layout-active').removeClass('row').addClass('d-block');
                     applyWidgetSettings();
                     initResizableWidgets();
                     setTimeout(initResizableWidgets, 300);
                 } else {
                     initGridSortable();
-                    $('#dashboard-widgets').removeClass('free-layout-active');
+                    $('#dashboard-widgets').removeClass('free-layout-active').addClass('row').removeClass('d-block');
                     applyWidgetSettings();
+                    // Mac controls are called inside applyWidgetSettings
                 }
 
 
@@ -4061,13 +4086,33 @@ if (Gate::allows("ana_sayfa")) {
                         cancelButtonText: 'İptal'
                     }).then((result) => {
                         if (result.isConfirmed) {
-                            document.cookie = "dashboard_order=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
-                            document.cookie = "dashboard_settings=; path=/; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
-                            localStorage.removeItem('dashboard_widget_visibility');
+                            // Clear cookies
+                            const cookieOptions = "; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 UTC;";
+                            document.cookie = "dashboard_order=" + cookieOptions;
+                            document.cookie = "dashboard_settings=" + cookieOptions;
+                            document.cookie = "switch_free_layout=" + cookieOptions;
+                            
+                            // Clear localStorage
                             localStorage.removeItem('dashboard_widget_settings');
+                            localStorage.removeItem('dashboard_order');
                             localStorage.removeItem('dashboard_container_height');
                             localStorage.removeItem('switch_free_layout');
-                            location.reload();
+                            localStorage.removeItem('dashboard_widget_visibility');
+                            
+                            // Notify server to reset database settings
+                            $.ajax({
+                                url: 'views/home/api.php',
+                                type: 'POST',
+                                data: {
+                                    action: 'save-dashboard-settings',
+                                    settings: '{}',
+                                    order: '[]',
+                                    is_free: 'false'
+                                },
+                                complete: function() {
+                                    location.reload();
+                                }
+                            });
                         }
                     });
                 });
@@ -4176,9 +4221,15 @@ if (Gate::allows("ana_sayfa")) {
                                 });
                                 if (typeof applyWidgetSettings === 'function') applyWidgetSettings();
                                 if (typeof initResizableWidgets === 'function') initResizableWidgets();
+                                // MUST call initMacControls after widgets are in DOM
+                                if (typeof initMacControls === 'function') initMacControls();
                             }
                             // Cache exists, show content IMMEDIATELY
                             showContent();
+                            // Final pass after paint
+                            setTimeout(function() {
+                                if (typeof initMacControls === 'function') initMacControls();
+                            }, 250);
                         } catch(e) { console.error("Cache render error", e); }
                     }
 
@@ -4241,8 +4292,13 @@ if (Gate::allows("ana_sayfa")) {
                                     if (window.feather) feather.replace();
                                     if (typeof applyWidgetSettings === 'function') applyWidgetSettings();
                                     if (typeof initResizableWidgets === 'function') initResizableWidgets();
+                                    if (typeof initMacControls === 'function') initMacControls();
                                     // Data loaded, ensure content is shown
                                     showContent();
+                                    // Extra delayed pass in case of slow render
+                                    setTimeout(function() {
+                                        if (typeof initMacControls === 'function') initMacControls();
+                                    }, 400);
                                 }, 150);
                             }
                         } catch (err) { console.error('Dashboard init error:', err); }
@@ -4843,6 +4899,15 @@ if (Gate::allows("ana_sayfa")) {
                 $(document).ready(function() {
                     applyWidgetSettings();
                     if (typeof initMacControls === 'function') initMacControls();
+                    
+                    // If free layout is active but no settings exist in localStorage, 
+                    // capture current positions and save them so refresh doesn't break layout.
+                    if ($('#switch-free-layout').is(':checked')) {
+                        const existingSettings = localStorage.getItem('dashboard_widget_settings');
+                        if (!existingSettings || existingSettings === '{}') {
+                            setTimeout(() => { saveDashboardConfig(true); }, 500);
+                        }
+                    }
                 });
             });
         </script>
