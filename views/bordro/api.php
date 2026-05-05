@@ -684,7 +684,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $puantajToplami = 0;
                     $ekOdemelerListe = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
                     foreach ($ekOdemelerListe as $ek) {
-                        if (strpos($ek->aciklama, '[Puantaj]') === 0) {
+                        $aciklama = (string)($ek->aciklama ?? '');
+                        if (strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Sayaç]') === 0 || strpos($aciklama, '[Kaçak Kontrol]') === 0 || strpos($aciklama, '[Nöbet]') === 0) {
                             $puantajToplami += floatval($ek->tutar);
                         }
                     }
@@ -693,7 +694,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     
                     $nonPuantajExtras = 0;
                     foreach ($ekOdemelerListe as $ek) {
-                        if (strpos($ek->aciklama, '[Puantaj]') !== 0 && strpos($ek->aciklama, 'Yuvarlama') === false) {
+                        $aciklama = (string)($ek->aciklama ?? '');
+                        if (strpos($aciklama, '[Puantaj]') !== 0 && strpos($aciklama, '[Sayaç]') !== 0 && strpos($aciklama, '[Kaçak Kontrol]') !== 0 && strpos($aciklama, '[Nöbet]') !== 0 && strpos($aciklama, 'Yuvarlama') === false) {
                             $nonPuantajExtras += floatval($ek->tutar);
                         }
                     }
@@ -704,7 +706,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $nonPuantajExtras = floatval($bp->prim_tutar ?? 0);
                 }
                 
-                $toplamYuvarlamaFarki = round($toplamAlacak - $contractHakedisForRounding - $nonPuantajExtras, 2);
+                $toplamYuvarlamaFarki = round($toplamAlacak - $contractHakedisForRounding - $nonPuantajExtras - $mealDeduction - $spouseDeduction, 2);
                 if ($toplamYuvarlamaFarki < 0.01) $toplamYuvarlamaFarki = 0;
 
                 // Calculate Yuvarlama Farkı early for display
@@ -718,7 +720,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $puantajToplami = 0;
                     $ekOdemelerListe = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
                     foreach ($ekOdemelerListe as $ek) {
-                        if (strpos($ek->aciklama, '[Puantaj]') === 0) {
+                        $aciklama = (string)($ek->aciklama ?? '');
+                        if (strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Sayaç]') === 0 || strpos($aciklama, '[Kaçak Kontrol]') === 0 || strpos($aciklama, '[Nöbet]') === 0) {
                             $puantajToplami += floatval($ek->tutar);
                         }
                     }
@@ -727,8 +730,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     
                     $nonPuantajExtras = 0;
                     foreach ($ekOdemelerListe as $ek) {
-                        if (strpos($ek->aciklama, '[Puantaj]') !== 0 && strpos($ek->aciklama, 'Yuvarlama') === false) {
-                            $nonPuantajExtras += floatval($ek->tutar);
+                        $aciklama = (string)($ek->aciklama ?? '');
+                        if (strpos($aciklama, '[Puantaj]') !== 0 && strpos($aciklama, '[Sayaç]') !== 0 && strpos($aciklama, '[Kaçak Kontrol]') !== 0 && strpos($aciklama, '[Nöbet]') !== 0 && strpos($aciklama, 'Yuvarlama') === false) {
+                            $eoTur = mb_strtolower((string)($ek->tur ?? ''), 'UTF-8');
+                            if (strpos($eoTur, 'yemek') === false && strpos($eoTur, 'yy') === false && strpos($eoTur, 'es_yardimi') === false && strpos($eoTur, 'aile') === false) {
+                                $nonPuantajExtras += floatval($ek->tutar);
+                            }
                         }
                     }
                 } else {
@@ -746,7 +753,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $nonPuantajExtras = floatval($bp->prim_tutar ?? 0);
                 }
                 
-                $toplamYuvarlamaFarki = round($toplamAlacak - $contractHakedisForRounding - $nonPuantajExtras, 2);
+                $toplamYuvarlamaFarki = round($toplamAlacak - $contractHakedisForRounding - $nonPuantajExtras - $mealDeduction - $spouseDeduction, 2);
                 if ($toplamYuvarlamaFarki < 0.01) $toplamYuvarlamaFarki = 0;
 
                 if ($includedDeduction > 0 || !empty($bp->yemek_yardimi_dahil) || !empty($bp->es_yardimi_dahil)) {
@@ -754,7 +761,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $html .= '<tr><td class="text-muted">Asgari Ücret Hakedişi:</td><td class="text-secondary">' . number_format($asgariHakedisModal, 2, ',', '.') . ' ₺</td></tr>';
                     
                     if ($mealDeduction > 0) {
-                        $html .= '<tr><td class="text-muted">Yemek Yardımı (Maaşa Dahil):</td><td class="text-success">+' . number_format(max(0, $mealDeduction - $toplamYuvarlamaFarki), 2, ',', '.') . ' ₺</td></tr>';
+                        $html .= '<tr><td class="text-muted">Yemek Yardımı (Maaşa Dahil):</td><td class="text-success">+' . number_format($mealDeduction, 2, ',', '.') . ' ₺</td></tr>';
                     }
                     if ($toplamYuvarlamaFarki > 0) {
                         $html .= '<tr><td class="text-muted">Yuvarlama Farkı:</td><td class="text-success fw-medium">+' . number_format($toplamYuvarlamaFarki, 2, ',', '.') . ' ₺</td></tr>';
@@ -994,7 +1001,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $parsedAdet = intval($adetMatch[1]);
                     }
 
-                    if (strpos($odeme->aciklama ?? '', '[Puantaj]') === 0) {
+                    $aciklama = (string)($odeme->aciklama ?? '');
+                    if (strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Sayaç]') === 0 || strpos($aciklama, '[Kaçak Kontrol]') === 0 || strpos($aciklama, '[Nöbet]') === 0) {
                         // Puantaj ödemesi - ayrı göster
                         $puantajOdemeler[] = $odeme;
                     } elseif (strpos($odeme->aciklama ?? '', '[Kaçak Kontrol]') === 0) {

@@ -20,11 +20,31 @@ class SettingsModel extends Model
      */
     public function getSettings(string $set_name): ?string
     {
-        $stmt = $this->db->prepare("SELECT set_value FROM {$this->table} WHERE set_name = :set_name");
+        $stmt = $this->db->prepare("SELECT set_value FROM {$this->table} WHERE set_name = :set_name AND firma_id IS NULL AND user_id IS NULL");
         $stmt->bindParam(':set_name', $set_name, PDO::PARAM_STR);
         $stmt->execute();
         $result = $stmt->fetch(PDO::FETCH_OBJ);
         return $result ? $result->set_value : null;
+    }
+
+    /**
+     * Kullanıcı bazlı ayarı döndürür.
+     */
+    public function getSettingByUser(string $set_name, $userId, $firmaId = null): ?string
+    {
+        $sql = "SELECT set_value FROM {$this->table} WHERE set_name = :set_name AND user_id = :user_id";
+        $params = ['set_name' => $set_name, 'user_id' => $userId];
+        
+        if ($firmaId !== null) {
+            $sql .= " AND (firma_id = :firma_id OR firma_id IS NULL)";
+            $params['firma_id'] = $firmaId;
+        }
+
+        $sql .= " ORDER BY firma_id DESC LIMIT 1"; // Firma bazlı olan öncelikli
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchColumn() ?: null;
     }
 
     /**

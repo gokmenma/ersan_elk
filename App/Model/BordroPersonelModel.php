@@ -218,6 +218,7 @@ class BordroPersonelModel extends Model
         // Kalan Hakediş = Hedef Net Hakediş
         $maasDurumu = $kayit->maas_durumu ?? 'Net';
         $isPrimUsulu = (stripos($maasDurumu, 'Prim') !== false);
+        $isInclusive = $this->hasMaasaDahilSosyalYardim($kayit);
         $targetHakedis = $sonuc['hedef_net_hakedis'];
         if ($isPrimUsulu || $puantajToplami > $targetHakedis) {
             $targetHakedis = max($targetHakedis, $puantajToplami);
@@ -331,8 +332,12 @@ class BordroPersonelModel extends Model
         $isNet = (stripos($maasDurumu, 'Net') !== false);
         $isBrut = (stripos($maasDurumu, 'Brüt') !== false || stripos($maasDurumu, 'Brut') !== false);
         $isPrimUsulu = (stripos($maasDurumu, 'Prim') !== false);
+        $isInclusive = $this->hasMaasaDahilSosyalYardim($p);
 
-        if (!empty($p->hesaplama_detay) && $isInclusive && $isPrimUsulu && floatval($p->net_maas ?? 0) > 0) {
+        // Prim usulu + maasa dahil yardim senaryosunda saklanan net_maas/toplam
+        // degerleri eski mantikla olusmus olabildigi icin burada erken return
+        // yapmiyoruz; canli puantaj toplamindan yeniden hesapliyoruz.
+        if (!empty($p->hesaplama_detay) && $isInclusive && !$isPrimUsulu && floatval($p->net_maas ?? 0) > 0) {
             $detay = json_decode((string) $p->hesaplama_detay, true);
             $ekOdemeler = $detay['ek_odemeler'] ?? [];
             $mealAllowanceDeduction = 0.0;
@@ -387,6 +392,9 @@ class BordroPersonelModel extends Model
         $includedAllowanceDeduction = 0;
         $fiiliGunSayisi = 0;
         $primUsuluPuantajHedefToplami = 0.0;
+        $includedAllowanceDeduction = 0.0;
+        $mealAllowanceDeduction = 0.0;
+        $spouseAllowanceDeduction = 0.0;
 
         foreach ($ekOdemelerList as $eo) {
             if (stripos($eo->aciklama ?? '', 'Maaşa Dahil Dengeleme') !== false) continue;
@@ -397,7 +405,8 @@ class BordroPersonelModel extends Model
                 // if ($isDahilYemek || $isDahilEs) continue;
             }
             $tutar = floatval($eo->tutar);
-            $isPuantajOdeme = strpos((string) ($eo->aciklama ?? ''), '[Puantaj]') === 0;
+            $aciklama = (string) ($eo->aciklama ?? '');
+            $isPuantajOdeme = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Kaçak') === 0 || strpos($aciklama, '[Nöbet]') === 0;
             if ($isInclusive && $isPrimUsulu && $isPuantajOdeme) {
                 $primUsuluPuantajHedefToplami += $tutar;
             }
@@ -430,7 +439,9 @@ class BordroPersonelModel extends Model
             $asgariTabanVal = round(($asgariUcretNet / 30) * $calismaGunu, 2);
             $toplamAlacagi = $asgariTabanVal + $includedAllowanceDeduction;
             foreach ($ekOdemelerList as $eo) {
-                if (strpos((string)$eo->aciklama, '[Puantaj]') !== 0 && stripos((string)$eo->aciklama, 'Yuvarlama') === false) {
+                $aciklama = (string)($eo->aciklama ?? '');
+                $isPuantaj = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Kaçak') === 0 || strpos($aciklama, '[Nöbet]') === 0;
+                if (!$isPuantaj && stripos($aciklama, 'Yuvarlama') === false) {
                     $toplamAlacagi += floatval($eo->tutar);
                 }
             }
@@ -460,7 +471,7 @@ class BordroPersonelModel extends Model
             ];
         } elseif ($isPrimUsulu && $isInclusive) {
             $asgariTaban = ($asgariUcretNet / 30) * $calismaGunu;
-            $nonPuantajEkOdeme = max(0, $rawEkOdeme - $primUsuluPuantajHedefToplami);
+            $nonPuantajEkOdeme = max(0, $rawEkOdeme - $primUsuluPuantajHedefToplami - $includedAllowanceDeduction);
             $toplamAlacagi = max($primUsuluPuantajHedefToplami, $asgariTaban + $includedAllowanceDeduction) + $nonPuantajEkOdeme;
         } elseif ($isPrimUsulu) {
             $toplamAlacagi = $hesaplamayaEsasMaas + $rawEkOdeme;
@@ -3252,6 +3263,9 @@ class BordroPersonelModel extends Model
         $kesintiDetaylari = [];
         $mealAllowanceDeduction = 0; // USER REQ: Maaşa dahil yemek yardımını ana hakedişten düşmek için
         $primUsuluPuantajHedefToplami = 0.0;
+        $includedAllowanceDeduction = 0.0;
+        $mealAllowanceDeduction = 0.0;
+        $spouseAllowanceDeduction = 0.0;
         $isPrimUsuluDahilYardim = $isPrimUsulu && $this->hasMaasaDahilSosyalYardim($kayit);
 
         // Her ek ödemeyi parametresine göre işle
@@ -3542,7 +3556,8 @@ class BordroPersonelModel extends Model
             // kullanıcı bu tutarın şu kanaldan ödenmesini istediği için 
             // dağılımda direkt bu tutar baz alınır.
             $ekOdemeTutari = isset($toplamTutar) ? $toplamTutar : $tutar;
-            $isPuantajOdeme = strpos((string) ($odeme->aciklama ?? ''), '[Puantaj]') === 0;
+            $aciklama = (string) ($odeme->aciklama ?? '');
+            $isPuantajOdeme = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Kaçak') === 0 || strpos($aciklama, '[Nöbet]') === 0;
 
             if ($isPrimUsuluDahilYardim && $isPuantajOdeme) {
                 $primUsuluPuantajHedefToplami += $ekOdemeTutari;
@@ -3774,7 +3789,8 @@ class BordroPersonelModel extends Model
             $totalDeductions = $toplamKesinti + $sodexoOdemesi + floatval($kayit->diger_odeme ?? 0);
             $puantajToplamiForDahil = 0;
             foreach ($ekOdemeDetaylari as $ek) {
-                if (strpos($ek['aciklama'], '[Puantaj]') === 0) {
+                $aciklama = (string)($ek['aciklama'] ?? '');
+                if (strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Kaçak') === 0 || strpos($aciklama, '[Nöbet]') === 0) {
                     $puantajToplamiForDahil += floatval($ek['tutar']);
                 }
             }
@@ -3787,7 +3803,8 @@ class BordroPersonelModel extends Model
             
             // Add other non-puantaj extras
             foreach ($ekOdemeDetaylari as $ek) {
-                if (strpos($ek['aciklama'], '[Puantaj]') !== 0 && strpos($ek['aciklama'], 'Yuvarlama') === false) {
+                $aciklama = (string)($ek['aciklama'] ?? '');
+                if (strpos($aciklama, '[Puantaj]') !== 0 && strpos($aciklama, '[Sayaç]') !== 0 && strpos($aciklama, '[Kaçak Kontrol]') !== 0 && strpos($aciklama, '[Nöbet]') !== 0 && strpos($aciklama, 'Yuvarlama') === false) {
                     $netMaas += floatval($ek['tutar']);
                 }
             }

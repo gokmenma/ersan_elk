@@ -58,6 +58,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     try {
         switch ($action) {
+            case 'save-dashboard-settings':
+                $settings = $_POST['settings'] ?? '{}';
+                $order = $_POST['order'] ?? '[]';
+                $isFree = $_POST['is_free'] ?? 'false';
+                
+                $settingsModel = new \App\Model\SettingsModel();
+                $ok = $settingsModel->upsertMultipleSettings([
+                    'dashboard_settings' => $settings,
+                    'dashboard_order' => $order,
+                    'switch_free_layout' => $isFree
+                ], $firmaId, $userId);
+                
+                echo json_encode(['status' => $ok ? 'success' : 'error']);
+                exit;
+
             case 'batch-load-all':
                 $widgetIds = $_POST['widgets'] ?? [];
                 $widths = $_POST['widths'] ?? [];

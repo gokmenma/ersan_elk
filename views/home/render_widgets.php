@@ -11,8 +11,8 @@ $saved_settings = isset($_COOKIE['dashboard_settings']) ? json_decode($_COOKIE['
 
 if (!function_exists('getWidgetWidthClass')) {
     function getWidgetWidthClass($id, $defaultClass) {
-        global $saved_settings;
-        $is_free = ($_COOKIE['switch_free_layout'] ?? 'false') === 'true';
+        global $saved_settings, $dashboard_is_free;
+        $is_free = $dashboard_is_free ?? ($_COOKIE['switch_free_layout'] ?? 'false') === 'true';
         if (!$is_free) return $defaultClass;
         
         $w = $saved_settings[$id]['width'] ?? '';
@@ -25,8 +25,8 @@ if (!function_exists('getWidgetWidthClass')) {
 
 if (!function_exists('getWidgetWidth')) {
     function getWidgetWidth($id, $default) {
-        global $saved_settings;
-        $is_free = ($_COOKIE['switch_free_layout'] ?? 'false') === 'true';
+        global $saved_settings, $dashboard_is_free;
+        $is_free = $dashboard_is_free ?? ($_COOKIE['switch_free_layout'] ?? 'false') === 'true';
         if (!$is_free) return $default;
         return $saved_settings[$id]['width'] ?? $default;
     }
@@ -34,8 +34,8 @@ if (!function_exists('getWidgetWidth')) {
 
 if (!function_exists('getWidgetHeight')) {
     function getWidgetHeight($id, $default) {
-        global $saved_settings;
-        $is_free = ($_COOKIE['switch_free_layout'] ?? 'false') === 'true';
+        global $saved_settings, $dashboard_is_free;
+        $is_free = $dashboard_is_free ?? ($_COOKIE['switch_free_layout'] ?? 'false') === 'true';
         if (!$is_free) return $default;
         return $saved_settings[$id]['height'] ?? $default;
     }
@@ -43,8 +43,8 @@ if (!function_exists('getWidgetHeight')) {
 
 if (!function_exists('getWidgetStyle')) {
     function getWidgetStyle($id) {
-        global $saved_settings;
-        $is_free = ($_COOKIE['switch_free_layout'] ?? 'false') === 'true';
+        global $saved_settings, $dashboard_is_free;
+        $is_free = $dashboard_is_free ?? ($_COOKIE['switch_free_layout'] ?? 'false') === 'true';
         
         $w = $saved_settings[$id]['width'] ?? '';
         $h = $saved_settings[$id]['height'] ?? '';
@@ -540,8 +540,8 @@ function renderWidget(string $widgetId, array $data = []) {
 }
 
 function renderSkeleton(string $widgetId, string $width = 'col-md-6', string $height = '200px') {
-    global $saved_settings;
-    $is_free = ($_COOKIE['switch_free_layout'] ?? 'false') === 'true';
+    global $saved_settings, $dashboard_is_free;
+    $is_free = $dashboard_is_free ?? ($_COOKIE['switch_free_layout'] ?? 'false') === 'true';
 
     $w = $saved_settings[$widgetId]['width'] ?? '';
     $h = $saved_settings[$widgetId]['height'] ?? '';
