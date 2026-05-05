@@ -871,14 +871,14 @@ if (Gate::allows("ana_sayfa")) {
                     display: none !important;
                 }
                 #dashboard-widgets .widget-collapsed {
-                    height: 42px !important;
-                    min-height: 42px !important;
+                    height: 36px !important;
+                    min-height: 36px !important;
                     overflow: hidden !important;
                 }
                 #dashboard-widgets .widget-collapsed .card,
                 #dashboard-widgets .widget-collapsed .carousel {
-                    height: 42px !important;
-                    min-height: 42px !important;
+                    height: 36px !important;
+                    min-height: 36px !important;
                     overflow: hidden !important;
                 }
 
@@ -954,9 +954,9 @@ if (Gate::allows("ana_sayfa")) {
                     display: flex !important;
                     align-items: center !important;
                     justify-content: space-between !important;
-                    height: 42px !important;
-                    min-height: 42px !important;
-                    padding: 0 12px 0 14px !important;
+                    height: 36px !important;
+                    min-height: 36px !important;
+                    padding: 0 10px 0 12px !important;
                     background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important;
                     border-bottom: 1px solid #e2e8f0 !important;
                     border-top-left-radius: 14px !important;
@@ -3414,10 +3414,10 @@ if (Gate::allows("ana_sayfa")) {
                         if (isHidden) {
                             s.hidden = 'true';
                         }
-                        let positionVal = $(this).css('position');
+                        // Only save absolute position data when truly in free-layout mode
                         const isFree = $('#switch-free-layout').is(':checked');
-                        
-                        if (positionVal === 'absolute' || isFree) {
+                        const positionVal = $(this).css('position');
+                        if (isFree && positionVal === 'absolute') {
                             const offset = $(this).position();
                             s.left = $(this).css('left') !== 'auto' ? $(this).css('left') : offset.left + 'px';
                             s.top = $(this).css('top') !== 'auto' ? $(this).css('top') : offset.top + 'px';
@@ -3464,13 +3464,22 @@ if (Gate::allows("ana_sayfa")) {
                 function applyWidgetSettings() {
                     let settings = {};
                     try {
-                        settings = localStorage.getItem('dashboard_widget_settings') || '{}';
-                        if (typeof settings === 'string') settings = JSON.parse(settings);
+                        let rawSettings = localStorage.getItem('dashboard_widget_settings') || '{}';
+                        if (typeof rawSettings === 'string') settings = JSON.parse(rawSettings);
                         // Double parse in case it was double stringified previously
                         if (typeof settings === 'string') settings = JSON.parse(settings);
                     } catch(e) {
-                        console.error("Dashboard settings parse error:", e);
+                        console.warn("Dashboard settings corrupted, resetting:", e.message);
                         settings = {};
+                        // Clear corrupted data to prevent infinite error loops
+                        localStorage.removeItem('dashboard_widget_settings');
+                        localStorage.removeItem('dashboard_order');
+                        document.cookie = "dashboard_settings=; path=/; max-age=0";
+                        document.cookie = "dashboard_order=; path=/; max-age=0";
+                        // Also clear dashboard cache to force fresh load
+                        Object.keys(localStorage).forEach(function(key) {
+                            if (key.startsWith('dashboard_cache_')) localStorage.removeItem(key);
+                        });
                     }
                     const isFreeLayout = $('#switch-free-layout').is(':checked');
 
@@ -3820,10 +3829,10 @@ if (Gate::allows("ana_sayfa")) {
                             const collapsed = widgetItem.toggleClass('widget-collapsed').hasClass('widget-collapsed');
                             if (collapsed) {
                                 widgetItem.data('restore-h', widgetItem.css('height'));
-                                widgetItem.css({ height: '42px', minHeight: '42px', overflow: 'hidden' });
+                                widgetItem.css({ height: '36px', minHeight: '36px', overflow: 'hidden' });
                             } else {
                                 const rh = widgetItem.data('restore-h');
-                                widgetItem.css({ height: (rh && rh !== '42px') ? rh : '', minHeight: '', overflow: '' });
+                                widgetItem.css({ height: (rh && rh !== '36px') ? rh : '', minHeight: '', overflow: '' });
                             }
                         });
 
@@ -3865,12 +3874,14 @@ if (Gate::allows("ana_sayfa")) {
                         // Prepend bar to card
                         card.prepend($bar);
 
-                        // Hide original card-header and inner headings
+                        // Hide original card-header only.
+                        // Widget data values also use h4/h6 tags, so hiding all headings
+                        // makes numeric content disappear after lazy rendering.
                         if (existingHeader.length) existingHeader.hide();
 
-                        // Hide all headings and drag icons NOT inside the new bar
+                        // Hide drag indicators/header elements that are not inside the new bar.
                         card.find(
-                            'h1, h2, h3, h4, h5, h6, .card-title, .drag-handle, ' +
+                            '.card-title, .drag-handle, ' +
                             '.card-header, [class*="drag_handle"]'
                         ).filter(function() {
                             return $(this).closest('.mac-title-bar').length === 0;
@@ -4207,7 +4218,7 @@ if (Gate::allows("ana_sayfa")) {
 
                     // 1. Client-Side Cache (Instant Feel)
                     const isFreeLayout = $('#switch-free-layout').is(':checked');
-                    const cacheKey = 'dashboard_cache_<?php echo $_SESSION['user_id']; ?>' + (isFreeLayout ? '_free' : '_grid');
+                    const cacheKey = 'dashboard_cache_v2_<?php echo $_SESSION['user_id']; ?>' + (isFreeLayout ? '_free' : '_grid');
                     const cachedData = localStorage.getItem(cacheKey);
                     
                     if (cachedData && !force) {

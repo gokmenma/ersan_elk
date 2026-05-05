@@ -13,6 +13,23 @@ use App\Service\SayacDegisimService;
 ini_set('display_errors', '0');
 header('Content-Type: application/json; charset=utf-8');
 
+if (!function_exists('safeJsonEncode')) {
+    function safeJsonEncode($data): string
+    {
+        $flags = JSON_UNESCAPED_UNICODE | JSON_INVALID_UTF8_SUBSTITUTE;
+        $json = json_encode($data, $flags);
+
+        if ($json === false) {
+            $json = json_encode(
+                ['status' => 'error', 'message' => 'JSON encode failed: ' . json_last_error_msg()],
+                $flags
+            );
+        }
+
+        return $json === false ? '{"status":"error","message":"JSON encode failed"}' : $json;
+    }
+}
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     // PERF: Session değişkenlerini oku ve session lock'ı hemen serbest bırak.
     $firmaId = $_SESSION['firma_id'] ?? 0;
@@ -53,7 +70,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         $dir = dirname(__DIR__, 2) . "/cache/dashboard";
         if (!is_dir($dir)) mkdir($dir, 0777, true);
         $cachePath = "$dir/data_{$firmaId}_{$key}.json";
-        file_put_contents($cachePath, json_encode($data));
+        file_put_contents($cachePath, safeJsonEncode($data));
     };
 
     try {
@@ -70,7 +87,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'switch_free_layout' => $isFree
                 ], $firmaId, $userId);
                 
-                echo json_encode(['status' => $ok ? 'success' : 'error']);
+                echo safeJsonEncode(['status' => $ok ? 'success' : 'error']);
                 exit;
 
             case 'batch-load-all':
@@ -257,7 +274,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $response['results'][$widgetId] = $html;
                     } catch (Throwable $we) { $response['results'][$widgetId] = '<div class="alert alert-danger small p-2">Widget Error: ' . $we->getMessage() . '</div>'; }
                 }
-                echo json_encode($response, JSON_UNESCAPED_UNICODE);
+                echo safeJsonEncode($response);
                 break;
 
             case 'get-work-type-stats':
@@ -276,7 +293,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     else for ($i = 1; $i <= 12; $i++) $data[] = $formattedData[$type][$i] ?? 0;
                     $series[] = ['name' => $type, 'data' => $data];
                 }
-                echo json_encode(['status' => 'success', 'data' => ['series' => $series, 'categories' => $month ? [$aylarUzun[$month - 1]] : $aylar]]);
+                echo safeJsonEncode(['status' => 'success', 'data' => ['series' => $series, 'categories' => $month ? [$aylarUzun[$month - 1]] : $aylar]]);
                 break;
 
             case 'get-work-result-stats':
@@ -289,12 +306,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $categories[] = $sonuc;
                     $seriesData[] = intval($row->toplam);
                 }
-                echo json_encode(['status' => 'success', 'data' => ['series' => [['name' => 'İş Adeti', 'data' => $seriesData]], 'categories' => $categories, 'selected_month' => $aylarUzun[$month - 1]]]);
+                echo safeJsonEncode(['status' => 'success', 'data' => ['series' => [['name' => 'İş Adeti', 'data' => $seriesData]], 'categories' => $categories, 'selected_month' => $aylarUzun[$month - 1]]]);
                 break;
 
             case 'get-endeks-comparison':
                 $endeksModel = new EndeksOkumaModel();
-                echo json_encode(['status' => 'success', 'data' => $endeksModel->getMonthlyComparisonByDay()], JSON_UNESCAPED_UNICODE);
+                echo safeJsonEncode(['status' => 'success', 'data' => $endeksModel->getMonthlyComparisonByDay()]);
                 break;
 
             case 'get-dashboard-operational-stats':
@@ -309,7 +326,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $sayacMonthlyStats = $sayacService->getMonthlyStats();
                 $kacakDailyTotal = $puantajModel->getKacakDailyStats();
                 $kacakMonthlyTotal = $puantajModel->getKacakMonthlyStats();
-                echo json_encode(['status' => 'success', 'data' => ['daily' => ['muhurleme' => (int)($dailyWorkStats->muhurleme ?? 0), 'kesme_acma' => (int)($dailyWorkStats->kesme_acma ?? 0), 'endeks_okuma' => (int)($dailyReadingTotal ?? 0), 'sayac_degisimi' => (int)($sayacDailyStats->sayac_degisimi ?? 0), 'kacak' => (int)($kacakDailyTotal->toplam ?? 0)], 'monthly' => ['muhurleme' => (int)($monthlyWorkStats->muhurleme ?? 0), 'kesme_acma' => (int)($monthlyWorkStats->kesme_acma ?? 0), 'endeks_okuma' => (int)($monthlyReadingTotal ?? 0), 'sayac_degisimi' => (int)($sayacMonthlyStats->sayac_degisimi ?? 0), 'kacak' => (int)($kacakMonthlyTotal->toplam ?? 0)]]], JSON_UNESCAPED_UNICODE);
+                echo safeJsonEncode(['status' => 'success', 'data' => ['daily' => ['muhurleme' => (int)($dailyWorkStats->muhurleme ?? 0), 'kesme_acma' => (int)($dailyWorkStats->kesme_acma ?? 0), 'endeks_okuma' => (int)($dailyReadingTotal ?? 0), 'sayac_degisimi' => (int)($sayacDailyStats->sayac_degisimi ?? 0), 'kacak' => (int)($kacakDailyTotal->toplam ?? 0)], 'monthly' => ['muhurleme' => (int)($monthlyWorkStats->muhurleme ?? 0), 'kesme_acma' => (int)($monthlyWorkStats->kesme_acma ?? 0), 'endeks_okuma' => (int)($monthlyReadingTotal ?? 0), 'sayac_degisimi' => (int)($sayacMonthlyStats->sayac_degisimi ?? 0), 'kacak' => (int)($kacakMonthlyTotal->toplam ?? 0)]]]);
                 break;
 
             case 'batch-load-widgets':
@@ -317,19 +334,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $widgetIds = $_POST['widgets'] ?? [];
                 $results = [];
                 foreach ($widgetIds as $id) { $results[$id] = renderWidget($id, []); }
-                echo json_encode(['status' => 'success', 'results' => $results]);
+                echo safeJsonEncode(['status' => 'success', 'results' => $results]);
                 break;
 
             case 'get-arac-evrak-stats':
                 $aracModel = new \App\Model\AracModel();
                 $expiredCounts = $aracModel->getAracEvrakStats();
-                echo json_encode(['status' => 'success', 'data' => ['has_expired' => ($expiredCounts->muayene_biten > 0 || $expiredCounts->sigorta_biten > 0 || $expiredCounts->kasko_biten > 0), 'counts' => $expiredCounts]], JSON_UNESCAPED_UNICODE);
+                echo safeJsonEncode(['status' => 'success', 'data' => ['has_expired' => ($expiredCounts->muayene_biten > 0 || $expiredCounts->sigorta_biten > 0 || $expiredCounts->kasko_biten > 0), 'counts' => $expiredCounts]]);
                 break;
 
             default:
                 throw new Exception('Geçersiz işlem.');
         }
     } catch (Exception $e) {
-        echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        echo safeJsonEncode(['status' => 'error', 'message' => $e->getMessage()]);
     }
 }
