@@ -160,7 +160,7 @@ function renderWidget(string $widgetId, array $data = []) {
 
         case 'widget-bekleyen-talepler':
             ?>
-            <div class="col-6 col-md-2 widget-item" id="widget-bekleyen-talepler">
+            <div class="<?php echo getWidgetWidthClass($widgetDomId, 'col-6 col-md-2'); ?> widget-item" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
                 <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card stat-card" style="--card-color: #f6c23e; border-bottom: 3px solid var(--card-color) !important; --delay: 0.6s">
                     <div class="card-body p-3 pb-2">
                         <div class="icon-label-container"><div class="icon-box" style="background: rgba(246, 194, 62, 0.1);"><i class="bx bx-time-five fs-4" style="color: #f6c23e;"></i></div><span class="text-muted small fw-bold" style="font-size: 0.65rem;">TALEP</span></div>
@@ -176,7 +176,7 @@ function renderWidget(string $widgetId, array $data = []) {
 
         case 'widget-nobetciler':
             ?>
-            <div class="col-6 col-md-2 widget-item" id="widget-nobetciler">
+            <div class="<?php echo getWidgetWidthClass($widgetDomId, 'col-6 col-md-2'); ?> widget-item" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
                 <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card stat-card" style="--card-color: #556ee6; border-bottom: 3px solid var(--card-color) !important; --delay: 0.75s">
                     <div class="card-body p-3">
                         <div class="icon-label-container"><div class="icon-box" style="background: rgba(85, 110, 230, 0.1);"><i class="bx bx-calendar-star fs-4" style="color: #556ee6;"></i></div><span class="text-muted small fw-bold" style="font-size: 0.65rem;">NÖBET</span></div>
@@ -207,7 +207,7 @@ function renderWidget(string $widgetId, array $data = []) {
         case 'widget-gorevler':
         case 'widget-yaklasan-gorevler':
             ?>
-            <div class="<?php echo ($width ?? 'col-md-6'); ?> widget-item" id="<?php echo $widgetDomId; ?>">
+            <div class="<?php echo getWidgetWidthClass($widgetDomId, ($width ?? 'col-md-6')); ?> widget-item" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
                 <div class="card summary-card" style="background: linear-gradient(145deg, rgba(255,255,255,0.98), rgba(248,250,252,0.99)); border: 1px solid rgba(226,232,240,0.8); border-radius: 12px; box-shadow: 0 4px 15px -3px rgba(0,0,0,0.05), 0 2px 5px -2px rgba(0,0,0,0.02);">
                     <div class="card-header align-items-center d-flex flex-wrap gap-2" style="border-bottom: 1px solid rgba(226,232,240,0.6); padding-bottom: 12px;">
                         <h5 class="card-title mb-0 d-flex align-items-center gap-2" style="font-family: 'Outfit', sans-serif;"><i class='bx bx-grid-vertical drag-handle' style="cursor: move;"></i><i class='bx bx-task' style="color: #6366f1;"></i> Yaklaşan Görevler <?php if (!empty($yaklasan_gorevler)): ?><span class="badge bg-light text-muted ms-1" style="font-size: 0.75rem; border: 1px solid var(--bs-border-color);"><?php echo count($yaklasan_gorevler); ?></span><?php endif; ?></h5>
@@ -247,7 +247,7 @@ function renderWidget(string $widgetId, array $data = []) {
 
         case 'widget-bildirimler':
             ?>
-            <div class="<?php echo ($width ?? 'col-12'); ?> widget-item" id="widget-bildirimler">
+            <div class="<?php echo getWidgetWidthClass($widgetDomId, ($width ?? 'col-12')); ?> widget-item" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
                 <div class="card summary-card" style="background: linear-gradient(145deg, rgba(255,255,255,0.98), rgba(248,250,252,0.99)); border: 1px solid rgba(226,232,240,0.8); border-radius: 12px; box-shadow: 0 4px 15px -3px rgba(0,0,0,0.05), 0 2px 5px -2px rgba(0,0,0,0.02);">
                     <div class="card-body p-0" style="min-height: <?php echo ($height ?? 'auto'); ?>;">
                         <div class="finder-tabs-shell px-3 pt-3 pb-2" style="display: none; border-bottom: 1px solid rgba(226,232,240,0.9); background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);">
@@ -345,7 +345,7 @@ function renderWidget(string $widgetId, array $data = []) {
 
         case 'widget-gec-kalanlar':
             ?>
-            <div class="col-6 col-md-2 widget-item" id="widget-gec-kalanlar">
+            <div class="<?php echo getWidgetWidthClass($widgetDomId, 'col-6 col-md-2'); ?> widget-item" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
                 <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card stat-card"
                     style="--card-color: #f46a6a; border-bottom: 3px solid var(--card-color) !important; --delay: 0.9s">
                     <div class="card-body p-3 pb-2">
@@ -497,7 +497,7 @@ function renderWidget(string $widgetId, array $data = []) {
 
         case 'widget-is-turu-istatistikleri':
             ?>
-            <div class="<?php echo ($width ?? 'col-md-6'); ?> widget-item" id="widget-is-turu-istatistikleri">
+            <div class="<?php echo getWidgetWidthClass($widgetDomId, ($width ?? 'col-md-6')); ?> widget-item" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
                 <div class="card summary-card" style="border-radius: 12px; overflow: hidden;">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> İş Türü İstatistikleri</h5>
@@ -524,7 +524,7 @@ function renderWidget(string $widgetId, array $data = []) {
 
         case 'widget-is-emri-sonucu-istatistikleri':
             ?>
-            <div class="<?php echo ($width ?? 'col-md-6'); ?> widget-item" id="widget-is-emri-sonucu-istatistikleri">
+            <div class="<?php echo getWidgetWidthClass($widgetDomId, ($width ?? 'col-md-6')); ?> widget-item" id="<?php echo $widgetDomId; ?>" style="<?php echo getWidgetStyle($widgetDomId); ?>">
                 <div class="card summary-card" style="border-radius: 12px; overflow: hidden;">
                     <div class="card-header d-flex justify-content-between align-items-center">
                         <h5 class="mb-0"><i class='bx bx-grid-vertical drag-handle me-1'></i> İş Emri Sonuç İstatistikleri</h5>

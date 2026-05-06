@@ -1046,15 +1046,15 @@ if (Gate::allows("ana_sayfa")) {
                     display: block !important;
                     min-width: 0 !important;
                     text-align: center !important;
-                    font-size: 0.72rem !important;
+                    font-size: 0.68rem !important;
                     font-weight: 600 !important;
                     color: #334155 !important;
-                    letter-spacing: 0.03em !important;
+                    letter-spacing: 0.01em !important;
                     text-transform: uppercase !important;
                     white-space: nowrap !important;
                     overflow: hidden !important;
                     text-overflow: ellipsis !important;
-                    padding: 0 6px !important;
+                    padding: 0 4px !important;
                     pointer-events: none !important;
                 }
                 .mac-title-text:empty::before {
@@ -3622,13 +3622,87 @@ if (Gate::allows("ana_sayfa")) {
                     dashboardMutationGuard = false;
                 }
 
+                function getSavedDashboardSettings() {
+                    try {
+                        let settings = JSON.parse(localStorage.getItem('dashboard_widget_settings') || '{}');
+                        if (typeof settings === 'string') {
+                            settings = JSON.parse(settings);
+                        }
+                        return settings && typeof settings === 'object' ? settings : {};
+                    } catch (e) {
+                        return {};
+                    }
+                }
+
+                function cleanDashboardCssValue(value, allowZero = false) {
+                    if (typeof value !== 'string') return '';
+                    const cleaned = value.replace(/!important/g, '').trim();
+                    if (!cleaned || cleaned === 'auto') return '';
+                    if (!allowZero && cleaned === '0px') return '';
+                    return cleaned;
+                }
+
+                function restoreFreeLayoutSettings() {
+                    if (!$('#switch-free-layout').is(':checked')) return;
+
+                    const settings = getSavedDashboardSettings();
+                    const container = $('#dashboard-widgets');
+                    let maxBottom = 1000;
+
+                    dashboardMutationGuard = true;
+                    try {
+                        Object.keys(settings).forEach(function(id) {
+                            const widget = $('#' + id);
+                            const s = settings[id] || {};
+                            if (!widget.length || widget.hasClass('widget-hidden')) return;
+                            const savedLeft = cleanDashboardCssValue(s.left, true);
+                            const savedTop = cleanDashboardCssValue(s.top, true);
+                            if (!savedLeft || !savedTop) return;
+
+                            const savedWidth = (s.width && s.width.indexOf('col-') === -1) ? cleanDashboardCssValue(s.width) : '';
+                            const savedHeight = cleanDashboardCssValue(s.height);
+                            const css = {
+                                position: 'absolute',
+                                left: savedLeft,
+                                top: savedTop,
+                                flex: 'none',
+                                maxWidth: 'none',
+                                overflow: 'visible'
+                            };
+
+                            if (savedWidth) {
+                                css.width = savedWidth;
+                            }
+                            if (savedHeight) {
+                                css.height = savedHeight;
+                            }
+                            if (s.zIndex) {
+                                css.zIndex = s.zIndex;
+                            }
+
+                            widget.addClass('resizable-widget').css(css);
+                            widget.find('.card, .carousel, .carousel-inner, .card-body, .tab-content').css({
+                                height: savedHeight ? '100%' : '',
+                                minHeight: '0',
+                                maxHeight: 'none'
+                            });
+
+                            const bottom = parseFloat(savedTop) + parseFloat(savedHeight || widget.outerHeight());
+                            if (Number.isFinite(bottom)) {
+                                maxBottom = Math.max(maxBottom, bottom);
+                            }
+                        });
+
+                        container.css('min-height', (maxBottom + 100) + 'px');
+                    } finally {
+                        dashboardMutationGuard = false;
+                    }
+                }
+
                 function applyWidgetSettings() {
                     let settings = {};
                     try {
-                        let rawSettings = localStorage.getItem('dashboard_widget_settings') || '{}';
-                        if (typeof rawSettings === 'string') settings = JSON.parse(rawSettings);
-                        // Double parse in case it was double stringified previously
-                        if (typeof settings === 'string') settings = JSON.parse(settings);
+                        settings = getSavedDashboardSettings();
                     } catch(e) {
                         console.warn("Dashboard settings corrupted, resetting:", e.message);
                         settings = {};
@@ -3691,28 +3765,33 @@ if (Gate::allows("ana_sayfa")) {
                             if (widget.length && settings[id]) {
                                 const s = settings[id];
                                 const css = {};
-                                if (s.width && s.width !== '0px' && s.width.indexOf('col-') === -1) {
-                                    css.width = s.width;
+                                const savedWidth = (s.width && s.width.indexOf('col-') === -1) ? cleanDashboardCssValue(s.width) : '';
+                                const savedHeight = cleanDashboardCssValue(s.height);
+                                const savedLeft = cleanDashboardCssValue(s.left, true);
+                                const savedTop = cleanDashboardCssValue(s.top, true);
+
+                                if (savedWidth) {
+                                    css.width = savedWidth;
                                     css.flex = 'none';
                                     css.maxWidth = 'none';
                                 }
-                                if (s.height && s.height !== 'auto' && s.height !== '0px') {
-                                    css.height = s.height;
+                                if (savedHeight) {
+                                    css.height = savedHeight;
                                     widget.find('.card, .carousel').css({
                                         'height': '100%',
                                         'min-height': '0',
                                         'max-height': 'none'
                                     });
                                 }
-                                if (s.left && s.top) {
+                                if (savedLeft && savedTop) {
                                     css.position = 'absolute';
-                                    css.left = s.left + (s.left.indexOf('!important') === -1 ? ' !important' : '');
-                                    css.top = s.top + (s.top.indexOf('!important') === -1 ? ' !important' : '');
+                                    css.left = savedLeft;
+                                    css.top = savedTop;
                                     css.zIndex = s.zIndex || 100;
                                     
                                     // Calculate max height for scroll
-                                    const topVal = parseFloat(s.top);
-                                    const hVal = parseFloat(s.height || widget.outerHeight());
+                                    const topVal = parseFloat(savedTop);
+                                    const hVal = parseFloat(savedHeight || widget.outerHeight());
                                     if (!isNaN(topVal) && !isNaN(hVal)) {
                                         const bottom = topVal + hVal;
                                         if (bottom > maxBottom) maxBottom = bottom;
@@ -3751,6 +3830,10 @@ if (Gate::allows("ana_sayfa")) {
                     if (typeof initMacControls === 'function') {
                         initMacControls();
                     }
+
+                    if (isFreeLayout) {
+                        restoreFreeLayoutSettings();
+                    }
                 }
 
                 // Auto-apply settings when DOM changes (Lazy Loading Robustness)
@@ -3761,6 +3844,8 @@ if (Gate::allows("ana_sayfa")) {
                         if (mutation.addedNodes.length) {
                             $(mutation.addedNodes).each(function() {
                                 if (
+                                    $(this).hasClass('widget-item') ||
+                                    $(this).find('.widget-item').length ||
                                     $(this).hasClass('lazy-widget') ||
                                     $(this).find('.lazy-widget').length ||
                                     (this.nodeType === 1 && this.hasAttribute && this.hasAttribute('data-lazy-load'))
@@ -4249,6 +4334,7 @@ if (Gate::allows("ana_sayfa")) {
                     if (!$('#switch-free-layout').is(':checked')) return;
                     
                     const pageContent = $('#dashboard-page-content');
+                    const savedSettings = getSavedDashboardSettings();
 
                     if (pageContent.length && pageContent.css('display') === 'none') {
                         pageContent.show();
@@ -4262,18 +4348,24 @@ if (Gate::allows("ana_sayfa")) {
                         if (!id || id === 'widget-row-break' || widget.hasClass('widget-hidden')) return;
                         if (!widget.is(':visible') || widget.outerWidth() <= 0 || widget.outerHeight() <= 0) return;
 
+                        const saved = savedSettings[id] || {};
                         const position = widget.position();
                         const currentLeft = parseFloat(widget.css('left'));
                         const currentTop = parseFloat(widget.css('top'));
                         const currentWidth = widget[0].style.width;
                         const currentHeight = widget[0].style.height;
+                        const savedLeft = cleanDashboardCssValue(saved.left, true);
+                        const savedTop = cleanDashboardCssValue(saved.top, true);
+                        const savedWidth = (saved.width && saved.width.indexOf('col-') === -1) ? cleanDashboardCssValue(saved.width) : '';
+                        const savedHeight = cleanDashboardCssValue(saved.height);
 
                         widget.addClass('resizable-widget').css({
                             position: 'absolute',
-                            left: Number.isFinite(currentLeft) ? currentLeft + 'px' : position.left + 'px',
-                            top: Number.isFinite(currentTop) ? currentTop + 'px' : position.top + 'px',
-                            width: currentWidth && currentWidth !== '0px' ? currentWidth : widget.outerWidth() + 'px',
-                            height: currentHeight && currentHeight !== '0px' && currentHeight !== 'auto' ? currentHeight : 'auto',
+                            left: savedLeft || (Number.isFinite(currentLeft) ? currentLeft + 'px' : position.left + 'px'),
+                            top: savedTop || (Number.isFinite(currentTop) ? currentTop + 'px' : position.top + 'px'),
+                            width: savedWidth || (currentWidth && currentWidth !== '0px' ? currentWidth : widget.outerWidth() + 'px'),
+                            height: savedHeight || (currentHeight && currentHeight !== '0px' && currentHeight !== 'auto' ? currentHeight : 'auto'),
+                            zIndex: saved.zIndex || widget.css('z-index') || 100,
                             flex: 'none',
                             maxWidth: 'none',
                             overflow: 'visible'
@@ -4295,6 +4387,8 @@ if (Gate::allows("ana_sayfa")) {
                             widget.append('<div class="dashboard-resize-grip" style="position: absolute; width: 14px; height: 14px; bottom: -3px; right: -3px; cursor: se-resize; z-index: 1051; background: transparent; pointer-events: auto !important;" title="Çapraz Boyutlandır"></div>');
                         }
                     });
+
+                    restoreFreeLayoutSettings();
 
                     $(document)
                         .off('mousedown.widgetResize touchstart.widgetResize', '.dashboard-resize-grip, .dashboard-resize-edge-e, .dashboard-resize-edge-s')
@@ -4539,6 +4633,7 @@ if (Gate::allows("ana_sayfa")) {
                             // Final pass after paint
                             setTimeout(function() {
                                 if (typeof initMacControls === 'function') initMacControls();
+                                if (typeof restoreFreeLayoutSettings === 'function') restoreFreeLayoutSettings();
                             }, 250);
                         } catch(e) { console.error("Cache render error", e); }
                     }
@@ -4608,6 +4703,7 @@ if (Gate::allows("ana_sayfa")) {
                                     // Extra delayed pass in case of slow render
                                     setTimeout(function() {
                                         if (typeof initMacControls === 'function') initMacControls();
+                                        if (typeof restoreFreeLayoutSettings === 'function') restoreFreeLayoutSettings();
                                     }, 400);
                                 }, 150);
                             }
