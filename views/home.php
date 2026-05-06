@@ -41,6 +41,7 @@ if (Gate::allows("ana_sayfa")) {
 
     if ($dbSettingsJson) {
         $saved_settings = json_decode($dbSettingsJson, true) ?: [];
+        $_COOKIE['dashboard_settings'] = $dbSettingsJson;
     } else {
         $saved_settings = isset($_COOKIE['dashboard_settings']) ? json_decode($_COOKIE['dashboard_settings'], true) : [];
     }
@@ -54,6 +55,7 @@ if (Gate::allows("ana_sayfa")) {
 
     if ($dbFreeLayout !== null) {
         $dashboard_is_free = $dbFreeLayout === 'true';
+        $_COOKIE['switch_free_layout'] = $dbFreeLayout;
     } else {
         $dashboard_is_free = ($_COOKIE['switch_free_layout'] ?? 'false') === 'true';
     }
@@ -324,7 +326,7 @@ if (Gate::allows("ana_sayfa")) {
 
     if (!empty($slider_notifications)) {
         ob_start(); ?>
-        <div class="col-md-6 col-xl-4 widget-item" id="widget-ana-slider" style="margin-bottom: 1.5rem; position: relative;">
+        <div class="col-md-4 col-xl-4 widget-item" id="widget-ana-slider" style="margin-bottom: 1.5rem; position: relative;">
             <!-- Mac title bar will be injected here automatically -->
 
             <div id="dashboardCarousel" class="carousel slide animate-card bordro-summary-card h-100" data-bs-ride="carousel"
@@ -848,9 +850,8 @@ if (Gate::allows("ana_sayfa")) {
     </div> -->
         <?php //$widgets['widget-istatistikler'] = ob_get_clean();
         
-            // Sıralamayı Çerezden Oku
-            $saved_order = isset($_COOKIE['dashboard_order']) ? json_decode($_COOKIE['dashboard_order'], true) : null;
-            $render_order = $saved_order ?: array_keys($widgets);
+            // Sıralamayı DB öncelikli, çerez yedekli akıştan kullan
+            $render_order = !empty($render_order) ? $render_order : array_keys($widgets);
 
             // Slider her zaman üstte olmalı
             if (!in_array('widget-ana-slider', $render_order) && isset($widgets['widget-ana-slider'])) {
@@ -871,14 +872,14 @@ if (Gate::allows("ana_sayfa")) {
                     display: none !important;
                 }
                 #dashboard-widgets .widget-collapsed {
-                    height: 36px !important;
-                    min-height: 36px !important;
+                    height: 32px !important;
+                    min-height: 32px !important;
                     overflow: hidden !important;
                 }
                 #dashboard-widgets .widget-collapsed .card,
                 #dashboard-widgets .widget-collapsed .carousel {
-                    height: 36px !important;
-                    min-height: 36px !important;
+                    height: 32px !important;
+                    min-height: 32px !important;
                     overflow: hidden !important;
                 }
 
@@ -893,7 +894,7 @@ if (Gate::allows("ana_sayfa")) {
                     position: relative;
                     overflow: visible !important;
                     resize: none !important;
-                    margin-bottom: 24px;
+                    margin-bottom: 0;
                     min-width: 180px;
                     min-height: 120px;
                 }
@@ -954,9 +955,9 @@ if (Gate::allows("ana_sayfa")) {
                     display: flex !important;
                     align-items: center !important;
                     justify-content: space-between !important;
-                    height: 36px !important;
-                    min-height: 36px !important;
-                    padding: 0 10px 0 12px !important;
+                    height: 32px !important;
+                    min-height: 32px !important;
+                    padding: 0 8px 0 10px !important;
                     background: linear-gradient(180deg, #f8fafc 0%, #f1f5f9 100%) !important;
                     border-bottom: 1px solid #e2e8f0 !important;
                     border-top-left-radius: 14px !important;
@@ -979,15 +980,15 @@ if (Gate::allows("ana_sayfa")) {
                 .mac-controls {
                     display: flex !important;
                     align-items: center !important;
-                    gap: 7px !important;
+                    gap: 5px !important;
                     flex-shrink: 0 !important;
-                    width: 52px !important;
+                    width: 34px !important;
                 }
 
                 /* Individual traffic-light button */
                 .mac-control {
-                    width: 13px !important;
-                    height: 13px !important;
+                    width: 9px !important;
+                    height: 9px !important;
                     border-radius: 50% !important;
                     cursor: pointer !important;
                     position: relative !important;
@@ -1012,7 +1013,7 @@ if (Gate::allows("ana_sayfa")) {
                     position: absolute !important;
                     opacity: 0 !important;
                     transition: opacity 0.1s ease !important;
-                    font-size: 8px !important;
+                    font-size: 6px !important;
                     font-weight: 900 !important;
                     line-height: 1 !important;
                     color: rgba(0,0,0,0.45) !important;
@@ -1042,27 +1043,32 @@ if (Gate::allows("ana_sayfa")) {
                 /* Title text — centered, bold, professional */
                 .mac-title-text {
                     flex: 1 !important;
+                    display: block !important;
+                    min-width: 0 !important;
                     text-align: center !important;
-                    font-size: 0.8rem !important;
+                    font-size: 0.72rem !important;
                     font-weight: 600 !important;
                     color: #334155 !important;
-                    letter-spacing: 0.04em !important;
+                    letter-spacing: 0.03em !important;
                     text-transform: uppercase !important;
                     white-space: nowrap !important;
                     overflow: hidden !important;
                     text-overflow: ellipsis !important;
-                    padding: 0 8px !important;
+                    padding: 0 6px !important;
                     pointer-events: none !important;
+                }
+                .mac-title-text:empty::before {
+                    content: attr(data-fallback) !important;
                 }
 
                 /* Drag indicator (right side) */
                 .drag-handle-indicator {
-                    width: 52px !important;
+                    width: 42px !important;
                     display: flex !important;
                     justify-content: flex-end !important;
                     align-items: center !important;
                     color: #94a3b8 !important;
-                    font-size: 1.15rem !important;
+                    font-size: 1rem !important;
                     opacity: 0.55 !important;
                     cursor: grab !important;
                     flex-shrink: 0 !important;
@@ -1072,11 +1078,86 @@ if (Gate::allows("ana_sayfa")) {
                     opacity: 0.85 !important;
                 }
 
+                .finder-tabs-nav .nav-link {
+                    transition: all 0.18s ease !important;
+                }
+                .finder-tabs-nav .nav-link.active {
+                    background: linear-gradient(180deg, #ffffff 0%, #f8fafc 100%) !important;
+                    color: #0f172a !important;
+                    border-color: rgba(148,163,184,0.32) !important;
+                    box-shadow: 0 8px 20px -14px rgba(15,23,42,0.45), inset 0 1px 0 rgba(255,255,255,0.95) !important;
+                }
+                .finder-tabs-nav .nav-link:not(.active):hover {
+                    background: rgba(255,255,255,0.78) !important;
+                    color: #1e293b !important;
+                }
+                .mac-toolbar-slot {
+                    display: flex !important;
+                    align-items: center !important;
+                    min-width: 0 !important;
+                    margin-left: 12px !important;
+                    flex: 0 1 auto !important;
+                }
+                .finder-tabs-shell-inbar {
+                    display: block !important;
+                    padding: 0 !important;
+                    border-bottom: 0 !important;
+                    background: transparent !important;
+                }
+                .finder-tabs-shell-inbar .d-flex {
+                    gap: 0.5rem !important;
+                    flex-wrap: nowrap !important;
+                }
+                .finder-tabs-shell-inbar .flex-grow-1 {
+                    flex: 0 1 auto !important;
+                }
+                .finder-tabs-shell-inbar .finder-tabs-nav {
+                    flex-wrap: nowrap !important;
+                }
+                .finder-tabs-shell-inbar .finder-tabs-nav .nav-link {
+                    padding: 0.34rem 0.72rem !important;
+                    font-size: 0.72rem !important;
+                }
+                .finder-tabs-shell-inbar .btn {
+                    padding: 0.34rem 0.72rem !important;
+                    font-size: 0.72rem !important;
+                    white-space: nowrap !important;
+                }
+                .widget-item#widget-bildirimler .mac-title-text {
+                    display: none !important;
+                }
+                .widget-item#widget-bildirimler .mac-title-bar {
+                    justify-content: flex-start !important;
+                    gap: 12px !important;
+                    height: 54px !important;
+                    min-height: 54px !important;
+                    padding-top: 6px !important;
+                    padding-bottom: 6px !important;
+                }
+                .widget-item#widget-bildirimler .drag-handle-indicator {
+                    margin-left: auto !important;
+                    align-self: center !important;
+                }
+                .widget-item#widget-bildirimler .mac-toolbar-slot {
+                    align-self: stretch !important;
+                    display: flex !important;
+                    align-items: center !important;
+                    overflow: visible !important;
+                }
+                .widget-item#widget-bildirimler .finder-tabs-shell-inbar .finder-tabs-nav,
+                .widget-item#widget-bildirimler .finder-tabs-shell-inbar .d-flex {
+                    align-items: center !important;
+                }
+                .widget-item#widget-bildirimler .finder-tabs-shell-inbar .finder-tabs-nav .nav-link {
+                    min-height: 34px !important;
+                }
+
                 /* Free layout window shadow */
                 #dashboard-widgets.free-layout-active .widget-item {
                     box-shadow: 0 10px 30px -6px rgba(0, 0, 0, 0.12),
                                 0 4px 10px -2px rgba(0, 0, 0, 0.07) !important;
                     border-radius: 14px !important;
+                    margin-bottom: 0 !important;
                 }
 
                 /* Collapsed state */
@@ -1248,6 +1329,11 @@ if (Gate::allows("ana_sayfa")) {
                                         <input class="form-check-input cursor-pointer m-0" type="checkbox" id="switch-free-layout" style="width: 36px; height: 18px;">
                                     </div>
                                     <div class="small text-muted mt-1" style="font-size: 10px; line-height: 1.2;">Kartları istediğiniz yere taşıyabilir ve boyutlandırabilirsiniz.</div>
+                                </li>
+                                <li class="px-3 mb-2" id="random-layout-row" style="display:none;">
+                                    <button type="button" class="btn btn-soft-primary btn-sm w-100 d-flex align-items-center justify-content-center gap-2" id="btn-random-layout" style="border-radius: 10px; font-weight: 600;">
+                                        <i class="bx bx-shuffle"></i> Rastgele Yerleşim
+                                    </button>
                                 </li>
                                 <li><hr class="dropdown-divider"></li>
                                 <li class="px-3 py-1">
@@ -3401,9 +3487,31 @@ if (Gate::allows("ana_sayfa")) {
                 }
 
                 let saveConfigTimeout = null;
+                const defaultWidgetWidthClasses = {
+                    'widget-ana-slider': 'col-md-4 col-xl-4',
+                    'widget-personel-ozet': 'col-md-4 col-xl-4',
+                    'widget-personel-ozeti': 'col-md-4 col-xl-4',
+                    'widget-arac-ozet': 'col-md-4 col-xl-4',
+                    'widget-arac-ozeti': 'col-md-4 col-xl-4',
+                    'widget-bekleyen-talepler': 'col-6 col-md-2',
+                    'widget-gec-kalanlar': 'col-6 col-md-2',
+                    'widget-nobetciler': 'col-6 col-md-2',
+                    'widget-gunluk-muhurleme': 'col-6 col-md-2',
+                    'widget-gunluk-kesme-acma': 'col-6 col-md-2',
+                    'widget-gunluk-endeks-okuma': 'col-6 col-md-2',
+                    'widget-gunluk-sayac-degisimi': 'col-6 col-md-2',
+                    'widget-kacak-sayisi': 'col-6 col-md-2'
+                };
+
                 function saveDashboardConfig(immediate = true) {
                     const order = [];
                     const settings = {};
+                    let visibility = {};
+                    try {
+                        visibility = JSON.parse(localStorage.getItem('dashboard_widget_visibility') || '{}') || {};
+                    } catch (e) {
+                        visibility = {};
+                    }
                     $('#dashboard-widgets .widget-item').each(function () {
                         const id = $(this).attr('id');
                         if (!id || id === 'widget-row-break') return;
@@ -3411,11 +3519,32 @@ if (Gate::allows("ana_sayfa")) {
 
                         const s = {};
                         const isHidden = $(this).hasClass('widget-hidden');
+                        visibility[id] = !isHidden;
                         if (isHidden) {
                             s.hidden = 'true';
                         }
-                        // Only save absolute position data when truly in free-layout mode
+
                         const isFree = $('#switch-free-layout').is(':checked');
+
+                        if (isFree) {
+                            s.width = $(this).outerWidth() + 'px';
+                            s.height = $(this).outerHeight() + 'px';
+                        } else {
+                            const widthClasses = ($(this).attr('class') || '')
+                                .split(' ')
+                                .filter(cls => /^col(-[a-z]+)?-\d+$/.test(cls));
+                            if (widthClasses.length) {
+                                s.width = widthClasses.join(' ');
+                            }
+
+                            const cardBody = $(this).find('.card-body').first();
+                            const bodyHeight = cardBody.length ? cardBody[0].style.height : '';
+                            if (bodyHeight && bodyHeight !== '0px') {
+                                s.height = bodyHeight;
+                            }
+                        }
+
+                        // Only save absolute position data when truly in free-layout mode
                         const positionVal = $(this).css('position');
                         if (isFree && positionVal === 'absolute') {
                             const offset = $(this).position();
@@ -3427,7 +3556,7 @@ if (Gate::allows("ana_sayfa")) {
                             }
                         }
                         
-                        if ($(this).attr('data-resized') === 'true') {
+                        if (isFree || $(this).attr('data-resized') === 'true') {
                             s.width = $(this).css('width');
                             s.height = $(this).css('height');
                         }
@@ -3439,8 +3568,10 @@ if (Gate::allows("ana_sayfa")) {
 
                     const settingsStr = JSON.stringify(settings);
                     const orderStr = JSON.stringify(order);
+                    const visibilityStr = JSON.stringify(visibility);
                     localStorage.setItem('dashboard_widget_settings', settingsStr);
                     localStorage.setItem('dashboard_order', orderStr);
+                    localStorage.setItem('dashboard_widget_visibility', visibilityStr);
 
                     const cookieOptions = "; path=/; max-age=" + (60 * 60 * 24 * 30);
                     document.cookie = "dashboard_settings=" + encodeURIComponent(settingsStr) + cookieOptions;
@@ -3459,6 +3590,36 @@ if (Gate::allows("ana_sayfa")) {
                             }
                         });
                     }
+                }
+
+                let dashboardMutationGuard = false;
+
+                function applySavedWidgetOrder() {
+                    if (dashboardMutationGuard) return;
+                    let savedOrder = [];
+                    try {
+                        const rawOrder = localStorage.getItem('dashboard_order') || '[]';
+                        savedOrder = JSON.parse(rawOrder);
+                        if (!Array.isArray(savedOrder)) {
+                            savedOrder = [];
+                        }
+                    } catch (e) {
+                        savedOrder = [];
+                    }
+
+                    if (!savedOrder.length) return;
+
+                    const container = document.getElementById('dashboard-widgets');
+                    if (!container) return;
+
+                    dashboardMutationGuard = true;
+                    savedOrder.forEach(function(widgetId) {
+                        const widget = document.getElementById(widgetId);
+                        if (widget && widget.parentNode === container) {
+                            container.appendChild(widget);
+                        }
+                    });
+                    dashboardMutationGuard = false;
                 }
 
                 function applyWidgetSettings() {
@@ -3490,8 +3651,39 @@ if (Gate::allows("ana_sayfa")) {
                         if (widget.length && settings[id]) {
                             const s = settings[id];
                             setWidgetVisibility(id, s.hidden !== 'true', { syncCheckbox: true });
+
+                            if (s.width && s.width.indexOf('col-') === 0) {
+                                const classes = (widget.attr('class') || '').split(' ').filter(Boolean);
+                                const newClasses = classes.filter(cls => !/^col(-[a-z]+)?-\d+$/.test(cls));
+                                const savedWidthClasses = s.width.split(' ').filter(cls => /^col(-[a-z]+)?-\d+$/.test(cls));
+                                const fallbackWidth = defaultWidgetWidthClasses[id] ? defaultWidgetWidthClasses[id].split(' ') : [];
+                                const resolvedWidthClasses = (
+                                    savedWidthClasses.length === 1 &&
+                                    fallbackWidth.length > 1 &&
+                                    fallbackWidth.includes(savedWidthClasses[0])
+                                ) ? fallbackWidth : savedWidthClasses;
+                                newClasses.push(...resolvedWidthClasses);
+                                widget.attr('class', newClasses.join(' '));
+                            }
+
+                            if (s.height && s.height !== 'auto' && s.height.indexOf('col-') === -1) {
+                                widget.find('.card-body').first().css('height', s.height);
+                            }
                         }
                     });
+
+                    if (!isFreeLayout) {
+                        ['widget-ana-slider', 'widget-personel-ozet', 'widget-arac-ozet'].forEach(function (id) {
+                            const widget = $('#' + id);
+                            const fallbackWidth = defaultWidgetWidthClasses[id];
+                            if (!widget.length || !fallbackWidth) return;
+
+                            const classes = (widget.attr('class') || '').split(' ').filter(Boolean);
+                            const newClasses = classes.filter(cls => !/^col(-[a-z]+)?-\d+$/.test(cls));
+                            newClasses.push(...fallbackWidth.split(' '));
+                            widget.attr('class', newClasses.join(' '));
+                        });
+                    }
 
                     if (isFreeLayout) {
                         Object.keys(settings).forEach(id => {
@@ -3563,26 +3755,36 @@ if (Gate::allows("ana_sayfa")) {
 
                 // Auto-apply settings when DOM changes (Lazy Loading Robustness)
                 const dashboardObserver = new MutationObserver(function(mutations) {
+                    if (dashboardMutationGuard) return;
                     let shouldReapply = false;
                     mutations.forEach(function(mutation) {
                         if (mutation.addedNodes.length) {
                             $(mutation.addedNodes).each(function() {
-                                if ($(this).hasClass('widget-item') || $(this).find('.widget-item').length || (this.nodeType === 1 && this.id && this.id.startsWith('widget-'))) {
+                                if (
+                                    $(this).hasClass('lazy-widget') ||
+                                    $(this).find('.lazy-widget').length ||
+                                    (this.nodeType === 1 && this.hasAttribute && this.hasAttribute('data-lazy-load'))
+                                ) {
                                     shouldReapply = true;
                                 }
                             });
                         }
                     });
                     if (shouldReapply) {
-                        applyWidgetSettings();
-                        if (typeof initResizableWidgets === 'function') initResizableWidgets();
+                        dashboardMutationGuard = true;
+                        try {
+                            applyWidgetSettings();
+                            if (typeof initResizableWidgets === 'function') initResizableWidgets();
+                        } finally {
+                            dashboardMutationGuard = false;
+                        }
                     }
                 });
 
                 $(document).ready(function() {
                     const dashboardNode = document.getElementById('dashboard-widgets');
                     if (dashboardNode) {
-                        dashboardObserver.observe(dashboardNode, { childList: true, subtree: true });
+                        dashboardObserver.observe(dashboardNode, { childList: true, subtree: false });
                     }
                 });
 
@@ -3614,6 +3816,7 @@ if (Gate::allows("ana_sayfa")) {
                 }
 
                 applyWidgetSettings();
+                applySavedWidgetOrder();
 
                 if (typeof Sortable === 'undefined') {
                     const s = document.createElement('script');
@@ -3643,11 +3846,22 @@ if (Gate::allows("ana_sayfa")) {
                     const active = this.checked;
                     localStorage.setItem('switch_free_layout', active ? 'true' : 'false');
                     document.cookie = "switch_free_layout=" + (active ? 'true' : 'false') + "; path=/; max-age=" + (60 * 60 * 24 * 30);
+                    updateRandomLayoutButtonVisibility();
                     if (active) {
                         destroyGridSortable();
                         $('#dashboard-widgets').removeClass('row').addClass('d-block free-layout-active');
                         applyWidgetSettings();
                         if (typeof initResizableWidgets === 'function') initResizableWidgets();
+                        $('#dashboard-widgets .widget-item').each(function () {
+                            const widget = $(this);
+                            if (!widget.hasClass('widget-hidden') && widget.is(':visible')) {
+                                widget.css({
+                                    width: widget.outerWidth() + 'px',
+                                    height: widget.outerHeight() + 'px'
+                                });
+                            }
+                        });
+                        saveDashboardConfig(true);
                     } else {
                         initGridSortable();
                         $('#dashboard-widgets').removeClass('d-block free-layout-active').addClass('row');
@@ -3669,8 +3883,13 @@ if (Gate::allows("ana_sayfa")) {
                         $('.dashboard-resize-edge-e, .dashboard-resize-edge-s, .dashboard-resize-grip').remove();
                         // Redraw standard layout
                         initMacControls();
+                        saveDashboardConfig(true);
                         setTimeout(() => { window.dispatchEvent(new Event('resize')); }, 100);
                     }
+                });
+
+                $(document).on('click', '#btn-random-layout', function () {
+                    arrangeWidgetsRandomly();
                 });
 
                 let maxZIndex = 1100;
@@ -3779,6 +3998,10 @@ if (Gate::allows("ana_sayfa")) {
 
                         const wId = widgetItem.attr('id') || '';
                         const existingHeader = card.children('.card-header').first();
+                        const existingFinderShell = card.find('> .mac-title-bar .finder-tabs-shell').first();
+                        if (existingFinderShell.length && wId !== 'widget-bildirimler') {
+                            card.children('.card-body').first().prepend(existingFinderShell.removeClass('finder-tabs-shell-inbar'));
+                        }
                         let titleText = titleMap[wId];
 
                         if (!titleText) {
@@ -3806,7 +4029,7 @@ if (Gate::allows("ana_sayfa")) {
                                     <div class="mac-control mac-minimize" title="Küçült"></div>
                                     <div class="mac-control mac-maximize" title="Tam Ekran"></div>
                                 </div>
-                                <span class="mac-title-text">${titleText}</span>
+                                <span class="mac-title-text" data-fallback="${titleText}">${titleText}</span>
                                 <div class="drag-handle-indicator">
                                     <i class="bx bx-grid-vertical"></i>
                                 </div>
@@ -3820,6 +4043,9 @@ if (Gate::allows("ana_sayfa")) {
                             if (typeof setWidgetVisibility === 'function') {
                                 setWidgetVisibility(wId, false, { syncCheckbox: true });
                             }
+                            if (typeof saveWidgetVisibility === 'function') {
+                                saveWidgetVisibility();
+                            }
                             if (typeof saveDashboardConfig === 'function') saveDashboardConfig();
                         });
 
@@ -3829,10 +4055,10 @@ if (Gate::allows("ana_sayfa")) {
                             const collapsed = widgetItem.toggleClass('widget-collapsed').hasClass('widget-collapsed');
                             if (collapsed) {
                                 widgetItem.data('restore-h', widgetItem.css('height'));
-                                widgetItem.css({ height: '36px', minHeight: '36px', overflow: 'hidden' });
+                                widgetItem.css({ height: '32px', minHeight: '32px', overflow: 'hidden' });
                             } else {
                                 const rh = widgetItem.data('restore-h');
-                                widgetItem.css({ height: (rh && rh !== '36px') ? rh : '', minHeight: '', overflow: '' });
+                                widgetItem.css({ height: (rh && rh !== '32px') ? rh : '', minHeight: '', overflow: '' });
                             }
                         });
 
@@ -3873,6 +4099,17 @@ if (Gate::allows("ana_sayfa")) {
                         // ── Inject & clean up ─────────────────────────────────────
                         // Prepend bar to card
                         card.prepend($bar);
+
+                        if (wId === 'widget-bildirimler') {
+                            const toolbarShell = card.find('.finder-tabs-shell').first();
+                            if (toolbarShell.length) {
+                                const toolbarSlot = $('<div class="mac-toolbar-slot"></div>');
+                                const toolbarClone = toolbarShell.clone(true, true);
+                                toolbarClone.removeAttr('style').addClass('finder-tabs-shell-inbar');
+                                toolbarSlot.append(toolbarClone);
+                                $bar.find('.mac-controls').after(toolbarSlot);
+                            }
+                        }
 
                         // Hide original card-header only.
                         // Widget data values also use h4/h6 tags, so hiding all headings
@@ -3946,6 +4183,65 @@ if (Gate::allows("ana_sayfa")) {
                             maxWidth: 'none'
                         });
                     }
+                }
+
+                function updateRandomLayoutButtonVisibility() {
+                    $('#random-layout-row').toggle($('#switch-free-layout').is(':checked'));
+                }
+
+                function arrangeWidgetsRandomly() {
+                    if (!$('#switch-free-layout').is(':checked')) return;
+
+                    const container = $('#dashboard-widgets');
+                    const visibleWidgets = container.find('.widget-item:visible').not('.widget-hidden, #widget-row-break').toArray();
+                    if (!visibleWidgets.length) return;
+
+                    const shuffled = visibleWidgets
+                        .map(widget => ({ widget, sort: Math.random() }))
+                        .sort((a, b) => a.sort - b.sort)
+                        .map(item => item.widget);
+
+                    const gap = 24;
+                    const containerWidth = Math.max(container.innerWidth() || 0, 960);
+                    let x = 0;
+                    let y = 0;
+                    let rowHeight = 0;
+                    let localMaxZ = maxZIndex;
+
+                    shuffled.forEach(function(element) {
+                        const widget = $(element);
+                        if (!widget.length) return;
+
+                        ensureAbsoluteWidgetPosition(widget);
+
+                        const width = Math.ceil(widget.outerWidth());
+                        const height = Math.ceil(widget.outerHeight());
+
+                        if (x > 0 && (x + width) > containerWidth) {
+                            x = 0;
+                            y += rowHeight + gap;
+                            rowHeight = 0;
+                        }
+
+                        localMaxZ += 1;
+                        widget.css({
+                            position: 'absolute',
+                            left: x + 'px',
+                            top: y + 'px',
+                            zIndex: localMaxZ,
+                            flex: 'none',
+                            maxWidth: 'none'
+                        });
+
+                        x += width + gap;
+                        rowHeight = Math.max(rowHeight, height);
+                    });
+
+                    maxZIndex = localMaxZ;
+                    container.css('min-height', (y + rowHeight + 120) + 'px');
+                    localStorage.setItem('dashboard_container_height', (y + rowHeight + 120) + 'px');
+                    saveDashboardConfig(true);
+                    setTimeout(function () { window.dispatchEvent(new Event('resize')); }, 100);
                 }
 
                 // Rebuilt resize layer with pure JavaScript to ensure it always works without any UI plugin dependencies
@@ -4070,16 +4366,19 @@ if (Gate::allows("ana_sayfa")) {
                 document.cookie = "switch_free_layout=" + savedFreeLayout + "; path=/; max-age=" + (60 * 60 * 24 * 30);
                 const isFreeLayoutActive = savedFreeLayout === 'true';
                 $('#switch-free-layout').prop('checked', isFreeLayoutActive);
+                updateRandomLayoutButtonVisibility();
                 if (isFreeLayoutActive) {
                     destroyGridSortable();
                     $('#dashboard-widgets').addClass('free-layout-active').removeClass('row').addClass('d-block');
                     applyWidgetSettings();
+                    applySavedWidgetOrder();
                     initResizableWidgets();
                     setTimeout(initResizableWidgets, 300);
                 } else {
                     initGridSortable();
                     $('#dashboard-widgets').removeClass('free-layout-active').addClass('row').removeClass('d-block');
                     applyWidgetSettings();
+                    applySavedWidgetOrder();
                     // Mac controls are called inside applyWidgetSettings
                 }
 
@@ -4261,7 +4560,7 @@ if (Gate::allows("ana_sayfa")) {
                         if (!isVisible) return; // Kapalı olan kartların verilerini getirmesin
 
                         const widthStr = $(widget).attr('class') || '';
-                        const width = widthStr.split(' ').find(c => c.startsWith('col-')) || 'col-md-6';
+                        const width = widthStr.split(' ').filter(c => /^col(-[a-z]+)?-\d+$/.test(c)).join(' ') || 'col-md-6';
                         widgetIds.push(widget.id);
                         widths.push(width);
                     });
@@ -4896,19 +5195,26 @@ if (Gate::allows("ana_sayfa")) {
                 // DB'den gelen ayarları localStorage'a işle (Sayfa yüklendiğinde bir kez)
                 (function() {
                     <?php if ($dbSettingsJson): ?>
-                        localStorage.setItem('dashboard_widget_settings', <?php echo json_encode($dbSettingsJson); ?>);
+                        if (!localStorage.getItem('dashboard_widget_settings')) {
+                            localStorage.setItem('dashboard_widget_settings', <?php echo json_encode($dbSettingsJson); ?>);
+                        }
                     <?php endif; ?>
                     <?php if ($dbOrderJson): ?>
-                        localStorage.setItem('dashboard_order', <?php echo json_encode($dbOrderJson); ?>);
+                        if (!localStorage.getItem('dashboard_order')) {
+                            localStorage.setItem('dashboard_order', <?php echo json_encode($dbOrderJson); ?>);
+                        }
                     <?php endif; ?>
                     <?php if ($dbFreeLayout !== null): ?>
-                        localStorage.setItem('switch_free_layout', <?php echo json_encode($dbFreeLayout); ?>);
+                        if (localStorage.getItem('switch_free_layout') === null) {
+                            localStorage.setItem('switch_free_layout', <?php echo json_encode($dbFreeLayout); ?>);
+                        }
                     <?php endif; ?>
                 })();
 
                 // Initialize everything on load
                 $(document).ready(function() {
                     applyWidgetSettings();
+                    applySavedWidgetOrder();
                     if (typeof initMacControls === 'function') initMacControls();
                     
                     // If free layout is active but no settings exist in localStorage, 

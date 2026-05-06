@@ -7,7 +7,9 @@
 use App\Helper\Security;
 use App\Service\Gate;
 
-$saved_settings = isset($_COOKIE['dashboard_settings']) ? json_decode($_COOKIE['dashboard_settings'], true) : [];
+if (!isset($saved_settings) || !is_array($saved_settings)) {
+    $saved_settings = isset($_COOKIE['dashboard_settings']) ? json_decode($_COOKIE['dashboard_settings'], true) : [];
+}
 
 if (!function_exists('getWidgetWidthClass')) {
     function getWidgetWidthClass($id, $defaultClass) {
@@ -247,18 +249,41 @@ function renderWidget(string $widgetId, array $data = []) {
             ?>
             <div class="<?php echo ($width ?? 'col-12'); ?> widget-item" id="widget-bildirimler">
                 <div class="card summary-card" style="background: linear-gradient(145deg, rgba(255,255,255,0.98), rgba(248,250,252,0.99)); border: 1px solid rgba(226,232,240,0.8); border-radius: 12px; box-shadow: 0 4px 15px -3px rgba(0,0,0,0.05), 0 2px 5px -2px rgba(0,0,0,0.02);">
-                    <div class="card-header align-items-center d-flex flex-wrap gap-2">
-                        <h5 class="card-title mb-0 d-flex align-items-center gap-2"><i class='bx bx-grid-vertical drag-handle'></i></h5>
-                        <div class="flex-shrink-0 flex-grow-1" style="align-self: flex-end;">
-                            <ul class="nav nav-tabs card-header-tabs m-0" role="tablist">
-                                <li class="nav-item"><a class="nav-link active" data-bs-toggle="tab" href="#gorev-tab" role="tab">Görev ve Bildirimler <?php if (!empty($recent_logs)): ?><span class="badge bg-light text-muted ms-1" style="font-size: 0.75rem; border: 1px solid var(--bs-border-color);"><?php echo count($recent_logs); ?></span><?php endif; ?></a></li>
-                                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#personel-giris-tab" role="tab">Personel Girişleri <?php if (!empty($personelLogs)): ?><span class="badge bg-light text-muted ms-1" style="font-size: 0.75rem; border: 1px solid var(--bs-border-color);"><?php echo count($personelLogs); ?></span><?php endif; ?></a></li>
-                                <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#kullanici-giris-tab" role="tab">Yönetici Girişleri <?php if (!empty($kullaniciLogs)): ?><span class="badge bg-light text-muted ms-1" style="font-size: 0.75rem; border: 1px solid var(--bs-border-color);"><?php echo count($kullaniciLogs); ?></span><?php endif; ?></a></li>
-                            </ul>
+                    <div class="card-body p-0" style="min-height: <?php echo ($height ?? 'auto'); ?>;">
+                        <div class="finder-tabs-shell px-3 pt-3 pb-2" style="display: none; border-bottom: 1px solid rgba(226,232,240,0.9); background: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);">
+                            <div class="d-flex align-items-center gap-3 flex-wrap">
+                                <div class="flex-grow-1">
+                                    <ul class="nav nav-pills finder-tabs-nav gap-2 m-0" role="tablist">
+                                        <li class="nav-item" role="presentation">
+                                            <a class="nav-link active d-flex align-items-center gap-2" data-bs-toggle="tab" href="#gorev-tab" role="tab" style="border-radius: 10px; padding: 0.5rem 0.85rem; background: rgba(255,255,255,0.72); border: 1px solid rgba(148,163,184,0.22); color: #334155; font-size: 0.78rem; font-weight: 600; box-shadow: inset 0 1px 0 rgba(255,255,255,0.65);">
+                                                <i class="bx bx-bell" style="font-size: 1rem;"></i>
+                                                <span>Görev ve Bildirimler</span>
+                                                <?php if (!empty($recent_logs)): ?><span class="badge rounded-pill" style="background: #e2e8f0; color: #334155; font-size: 0.68rem;"><?php echo count($recent_logs); ?></span><?php endif; ?>
+                                            </a>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <a class="nav-link d-flex align-items-center gap-2" data-bs-toggle="tab" href="#personel-giris-tab" role="tab" style="border-radius: 10px; padding: 0.5rem 0.85rem; background: rgba(255,255,255,0.52); border: 1px solid rgba(148,163,184,0.18); color: #475569; font-size: 0.78rem; font-weight: 600;">
+                                                <i class="bx bx-id-card" style="font-size: 1rem;"></i>
+                                                <span>Personel Girişleri</span>
+                                                <?php if (!empty($personelLogs)): ?><span class="badge rounded-pill" style="background: #e2e8f0; color: #334155; font-size: 0.68rem;"><?php echo count($personelLogs); ?></span><?php endif; ?>
+                                            </a>
+                                        </li>
+                                        <li class="nav-item" role="presentation">
+                                            <a class="nav-link d-flex align-items-center gap-2" data-bs-toggle="tab" href="#kullanici-giris-tab" role="tab" style="border-radius: 10px; padding: 0.5rem 0.85rem; background: rgba(255,255,255,0.52); border: 1px solid rgba(148,163,184,0.18); color: #475569; font-size: 0.78rem; font-weight: 600;">
+                                                <i class="bx bx-shield-quarter" style="font-size: 1rem;"></i>
+                                                <span>Yönetici Girişleri</span>
+                                                <?php if (!empty($kullaniciLogs)): ?><span class="badge rounded-pill" style="background: #e2e8f0; color: #334155; font-size: 0.68rem;"><?php echo count($kullaniciLogs); ?></span><?php endif; ?>
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                                <div class="flex-shrink-0 ms-auto">
+                                    <a href="index.php?p=logs/list" class="btn btn-sm rounded-pill" style="background: rgba(255,255,255,0.8); border: 1px solid rgba(148,163,184,0.22); color: #334155; font-weight: 600; padding: 0.45rem 0.9rem;">
+                                        <i class="bx bx-list-ul me-1"></i> Tümünü Gör
+                                    </a>
+                                </div>
+                            </div>
                         </div>
-                        <div class="d-flex align-items-center gap-2 ms-auto"><a href="index.php?p=logs/list" class="btn btn-sm btn-soft-primary rounded-pill"><i class="bx bx-list-ul me-1"></i> Tümünü Gör</a></div>
-                    </div>
-                    <div class="card-body" style="padding: 0; min-height: <?php echo ($height ?? 'auto'); ?>;">
                         <div class="tab-content" style="height: <?php echo ($height ?? 'auto'); ?>; overflow-y: auto;">
                             <div class="tab-pane active" id="gorev-tab" role="tabpanel">
                                 <div class="notification-list p-3">
@@ -545,6 +570,8 @@ function renderSkeleton(string $widgetId, string $width = 'col-md-6', string $he
 
     $w = $saved_settings[$widgetId]['width'] ?? '';
     $h = $saved_settings[$widgetId]['height'] ?? '';
+    $left = $saved_settings[$widgetId]['left'] ?? '';
+    $top = $saved_settings[$widgetId]['top'] ?? '';
     $hidden = $saved_settings[$widgetId]['hidden'] ?? '';
     $style = '';
     $class = $width;
@@ -562,6 +589,10 @@ function renderSkeleton(string $widgetId, string $width = 'col-md-6', string $he
             $style .= "height: {$h} !important; ";
         } else {
             $style .= "min-height: {$height}; ";
+        }
+
+        if ($left !== '' && $top !== '') {
+            $style .= "position: absolute !important; left: {$left} !important; top: {$top} !important; ";
         }
     } else {
         $style .= "min-height: {$height}; ";

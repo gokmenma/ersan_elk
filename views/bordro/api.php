@@ -759,15 +759,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $displayMealDeduction = max(0, $includedDeduction - $spouseDeduction);
                 }
                 $asgariHakedisModal = round(($asgariUcretNet / 30) * $calismaGunu, 2);
+                $displayBaseHakedis = round(($nominalMaas / 30) * $calismaGunu, 2);
+                $displayEkOdemeToplami = 0.0;
+                foreach ($ekOdemelerListe as $ek) {
+                    $aciklama = (string)($ek->aciklama ?? '');
+                    $eoTur = mb_strtolower((string)($ek->tur ?? ''), 'UTF-8');
+                    $isYuvarlama = (($ek->tur ?? '') === 'yuvarlama_farki') || stripos($aciklama, 'Yuvarlama') !== false;
+                    $isDahilYemek = !empty($bp->yemek_yardimi_dahil)
+                        && ($eoTur === 'yemek_yardimi_tum' || $eoTur === 'yemek' || strpos($eoTur, 'yemek') !== false);
+                    $isDahilEs = !empty($bp->es_yardimi_dahil)
+                        && ($eoTur === 'es_yardimi' || strpos($eoTur, 'es_yardimi') !== false || strpos($eoTur, 'aile') !== false);
+                    if ($isYuvarlama || $isDahilYemek || $isDahilEs) {
+                        continue;
+                    }
+                    $displayEkOdemeToplami += floatval($ek->tutar);
+                }
+                $displayToplamAlacak = round($displayBaseHakedis + $displayEkOdemeToplami, 2);
                 if (!empty($bp->yemek_yardimi_dahil)) {
                     $mealFiiliGun = $includedAllowanceFiiliGun > 0 ? $includedAllowanceFiiliGun : $calismaGunu;
-                    $mealFark = max(0, round($contractHakedisForRounding - $asgariHakedisModal - $spouseDeduction, 2));
+                    $mealFark = max(0, round($displayBaseHakedis - $asgariHakedisModal - $spouseDeduction, 2));
                     $calculatedMealDeduction = $mealFiiliGun > 0 ? round(ceil($mealFark / $mealFiiliGun) * $mealFiiliGun, 2) : 0;
                     if ($calculatedMealDeduction > 0) {
                         $displayMealDeduction = $calculatedMealDeduction;
                     }
                 }
-                $toplamYuvarlamaFarki = round(($contractHakedisForRounding + $nonPuantajExtras) - $asgariHakedisModal - $displayMealDeduction - $spouseDeduction, 2);
+                $toplamYuvarlamaFarki = round($displayBaseHakedis - $asgariHakedisModal - $displayMealDeduction - $spouseDeduction, 2);
                 if (abs($toplamYuvarlamaFarki) < 0.01) $toplamYuvarlamaFarki = 0;
 
                 if ($includedDeduction > 0 || !empty($bp->yemek_yardimi_dahil) || !empty($bp->es_yardimi_dahil)) {
@@ -789,7 +805,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $html .= '<tr><td class="text-muted">Eş Yardımı (Maaşa Dahil):</td><td class="text-success">+' . number_format($spouseDeduction, 2, ',', '.') . ' ₺</td></tr>';
                     }
                     
-                    $html .= '<tr class="table-warning"><td class="text-muted">Toplam Alacağı:</td><td class="fw-bold text-success">' . number_format($toplamAlacak, 2, ',', '.') . ' ₺</td></tr>';
+                    $html .= '<tr class="table-warning"><td class="text-muted">Toplam Alacağı:</td><td class="fw-bold text-success">' . number_format($displayToplamAlacak, 2, ',', '.') . ' ₺</td></tr>';
                 } elseif ($ucretsizIzinGunu > 0 || in_array($maasDurumuGosterim, ['Net', 'Brüt'])) {
                     $descText = ($maasDurumuGosterim == 'Net' || $maasDurumuGosterim == 'Brüt') ? ' (Gün x Ücret)' : ' (SGK matrahı)';
                     $html .= '<tr class="table-warning"><td class="text-muted">Hakediş (Maaş):</td><td class="fw-bold text-warning">' . number_format($calisanBrutMaas, 2, ',', '.') . ' ₺ <small class="text-muted">' . $descText . '</small></td></tr>';
@@ -819,25 +835,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (intval($bp->personel_id ?? 0) === 77 && ($donemBilgi->baslangic_tarihi ?? '') === '2026-04-01') {
                     $contractHakedis = (33000 / 30) * 13;
                 }
-                $yuvarlamaFarki = 0;
-                if ($toplamAlacak > ($contractHakedis + $guncelEkOdeme) && $contractHakedis > 0) {
-                    $yuvarlamaFarki = $toplamAlacak - $contractHakedis - $guncelEkOdeme;
-                }
-                $gosterilecekEkOdeme = $nonPuantajExtras;
-                if (intval($bp->personel_id ?? 0) === 77 && ($donemBilgi->baslangic_tarihi ?? '') === '2026-04-01') {
-                    $gosterilecekEkOdeme = $guncelEkOdeme;
-                } elseif (($includedDeduction > 0 || !empty($bp->yemek_yardimi_dahil) || !empty($bp->es_yardimi_dahil)) && !$isPrimUsulu) {
-                    $gosterilecekEkOdeme = max(0, $guncelEkOdeme + $yuvarlamaFarki - $includedDeduction);
-                }
+
+                $gosterilecekEkOdeme = $displayEkOdemeToplami;
                 
-                $html .= '<tr><td class="text-muted">Ek Ödeme:</td><td class="text-success fw-medium">+' . number_format($gosterilecekEkOdeme, 2, ',', '.') . ' ₺</td></tr>';
+                $html .= '<tr><td class="text-muted">Ek Odeme:</td><td class="text-success fw-medium">+' . number_format($gosterilecekEkOdeme, 2, ',', '.') . ' TL</td></tr>';
 
 
-                // Kesinti Tutarı (Yasal)
-                $html .= '<tr><td class="text-muted">Kesinti Tutarı:</td><td class="text-danger fw-medium">' . ($kesintiTutarOzet > 0 ? '-' . number_format($kesintiTutarOzet, 2, ',', '.') . ' ₺' : '0,00 ₺') . '</td></tr>';
+                // Kesinti Tutar?? (Yasal)
+                $html .= '<tr><td class="text-muted">Kesinti Tutari:</td><td class="text-danger fw-medium">' . ($kesintiTutarOzet > 0 ? '-' . number_format($kesintiTutarOzet, 2, ',', '.') . ' TL' : '0,00 TL') . '</td></tr>';
 
-                // Net Maaş (son tutar: Net Alacağı - İcra)
-                $html .= '<tr class="table-success"><td class="fw-bold">Net Maaş:</td><td class="fw-bold text-success fs-5">' . number_format($netMaasHesap, 2, ',', '.') . ' ₺</td></tr>';
+                // Net Maa?? (g??sterim: s??zle??me maa???? + ek ??demeler - kesintiler)
+                $gorunenNetMaas = max(0, $displayToplamAlacak - $kesintiTutarOzet);
+                $html .= '<tr class="table-success"><td class="fw-bold">Net Maas:</td><td class="fw-bold text-success fs-5">' . number_format($gorunenNetMaas, 2, ',', '.') . ' TL</td></tr>';
                 $html .= '</table>';
                 $html .= '</div>';
 

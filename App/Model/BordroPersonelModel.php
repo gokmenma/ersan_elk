@@ -397,11 +397,17 @@ class BordroPersonelModel extends Model
             $spouseAllowanceDeduction = floatval($dahilDagilim['es_toplam'] ?? 0);
             $includedAllowanceDeduction = floatval($dahilDagilim['toplam'] ?? 0);
             $asgariTabanVal = round(($asgariUcretNet / 30) * $calismaGunu, 2);
-            $toplamAlacagi = $asgariTabanVal + $includedAllowanceDeduction;
+            $sozlesmeHakedisi = round(($maasTutari / 30) * $calismaGunu, 2);
+            $toplamAlacagi = max($sozlesmeHakedisi, $asgariTabanVal + $includedAllowanceDeduction);
             foreach ($ekOdemelerList as $eo) {
                 $aciklama = (string)($eo->aciklama ?? '');
                 $isPuantaj = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Kaçak') === 0;
-                if (!$isPuantaj && stripos($aciklama, 'Yuvarlama') === false) {
+                $eoTurLower = mb_strtolower((string) ($eo->tur ?? ''), 'UTF-8');
+                $isDahilYemek = intval($p->yemek_yardimi_dahil ?? 0) === 1
+                    && ($eoTurLower === 'yemek_yardimi_tum' || $eoTurLower === 'yemek' || strpos($eoTurLower, 'yemek') !== false);
+                $isDahilEs = intval($p->es_yardimi_dahil ?? 0) === 1
+                    && ($eoTurLower === 'es_yardimi' || strpos($eoTurLower, 'es_yardimi') !== false || strpos($eoTurLower, 'aile') !== false);
+                if (!$isPuantaj && stripos($aciklama, 'Yuvarlama') === false && !$isDahilYemek && !$isDahilEs) {
                     $toplamAlacagi += floatval($eo->tutar);
                 }
             }
@@ -411,12 +417,10 @@ class BordroPersonelModel extends Model
             $baseHakedis = round((33000 / 30) * 13, 2);
             $toplamGirdi = $baseHakedis + $rawEkOdeme;
             $asgariYatacak = round(($asgariUcretNet / 30) * $calismaGunu, 2);
-            
             $yemekFarki = max(0, round($toplamGirdi - $asgariYatacak, 2));
             $calcFiiliGun = 25; // As per Excel
             $gunlukYemek = ceil($yemekFarki / $calcFiiliGun);
             $yemekTutari = round($gunlukYemek * $calcFiiliGun, 2);
-            
             $netAlacagi = round($asgariYatacak + $yemekTutari, 2);
             $netMaasGercek = $netAlacagi;
             

@@ -37,6 +37,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $firmaKodu = $_SESSION['firma_kodu'] ?? 17;
     session_write_close();
 
+    $settingsModel = new \App\Model\SettingsModel();
+    $dbSettingsJson = $settingsModel->getSettingByUser('dashboard_settings', $userId, $firmaId);
+    $dbFreeLayout = $settingsModel->getSettingByUser('switch_free_layout', $userId, $firmaId);
+    $saved_settings = $dbSettingsJson ? (json_decode($dbSettingsJson, true) ?: []) : [];
+    $dashboard_is_free = $dbFreeLayout === 'true';
+
     $action = $_POST['action'] ?? '';
     $puantajModel = new PuantajModel();
     $aylar = ['Oca', 'Şub', 'Mar', 'Nis', 'May', 'Haz', 'Tem', 'Ağu', 'Eyl', 'Eki', 'Kas', 'Ara'];
