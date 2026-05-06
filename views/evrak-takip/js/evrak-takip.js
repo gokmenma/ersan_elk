@@ -83,6 +83,55 @@ $(document).ready(function () {
     }
     checkBildirimVisibility();
     checkCevapVisibility();
+    checkTrafficFineVisibility();
+  }
+
+  function checkTrafficFineVisibility() {
+    const konu = ($("#konu").val() || '').toLowerCase();
+    if (konu.includes('trafik') || konu.includes('ceza')) {
+      $("#trafficFineSection").removeClass("d-none").hide().slideDown(300);
+    } else {
+      $("#trafficFineSection").slideUp(300, function() {
+        $(this).addClass("d-none");
+        $("#plaka").val("");
+        $("#tutar").val("");
+        $("#plakaFeedback").hide().html("");
+      });
+    }
+  }
+
+  function queryAracZimmet() {
+    const plaka = $("#plaka").val() || '';
+    const tarih = $("input[name='tarih']").val() || '';
+    
+    if (plaka.length >= 5 && tarih !== '') {
+      $("#plakaFeedback").show().html('<span class="text-muted"><span class="spinner-border spinner-border-sm me-1" role="status"></span>Sorgulanıyor...</span>');
+      
+      $.post(api_url, {
+        action: "arac-zimmet-sorgula",
+        plaka: plaka,
+        tarih: tarih
+      }, function(response) {
+        if (response.status === "success" && response.personel_id) {
+          $("#ilgili_personel_id").val(response.personel_id).trigger("change");
+          $("#plakaFeedback").html(`<span class="text-success"><i data-feather="check-circle" style="width:12px; height:12px;" class="me-1"></i>✓ Bu tarihte plakaya zimmetli personel otomatik seçildi: <strong>${response.personel_adi}</strong></span>`);
+          if (typeof feather !== 'undefined') feather.replace();
+          
+          const selectContainer = $("#ilgili_personel_id").next('.select2-container');
+          selectContainer.addClass('border border-success rounded-3');
+          setTimeout(() => {
+            selectContainer.removeClass('border border-success');
+          }, 2000);
+        } else {
+          $("#plakaFeedback").html(`<span class="text-warning"><i data-feather="alert-triangle" style="width:12px; height:12px;" class="me-1"></i>⚠ Bu tarihte zimmetli personel bulunamadı.</span>`);
+          if (typeof feather !== 'undefined') feather.replace();
+        }
+      }, "json").fail(function() {
+        $("#plakaFeedback").html(`<span class="text-danger">Sorgulama başarısız oldu.</span>`);
+      });
+    } else {
+      $("#plakaFeedback").hide().html('');
+    }
   }
 
   function checkBildirimVisibility() {
@@ -107,6 +156,18 @@ $(document).ready(function () {
   // Events
   $(document).on("change", "#ilgili_personel_id", checkBildirimVisibility);
   $(document).on("change", "#cevap_verildi", checkCevapVisibility);
+  $(document).on("keyup change", "#plaka", queryAracZimmet);
+  $(document).on("change", "input[name='tarih']", queryAracZimmet);
+  $(document).on("change", "#konu", checkTrafficFineVisibility);
+  $(document).on("keyup change", "#ceza_tutari", function() {
+    const val = parseFloat($(this).val()) || 0;
+    if (val > 0) {
+      const discounted = (val * 0.75).toFixed(2);
+      $("#tutar").val(discounted);
+    } else {
+      $("#tutar").val("");
+    }
+  });
   $(document).on("change", 'input[name="evrak_tipi"]', function () {
     const tip = $(this).val();
     if (tip === "gelen") getNextEvrakNo("gelen");
@@ -224,6 +285,10 @@ $(document).ready(function () {
             const d2 = data.cevap_tarihi.split("-");
             $('input[name="cevap_tarihi"]').val(d2[2] + "." + d2[1] + "." + d2[0]);
         }
+
+        $("#plaka").val(data.plaka || "").trigger("change");
+        $("#ceza_tutari").val(data.ceza_tutari || "");
+        $("#tutar").val(data.tutar || "");
 
         checkSectionVisibility();
         

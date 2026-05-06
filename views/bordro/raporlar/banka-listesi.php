@@ -25,6 +25,9 @@ if ($selectedDonemId) {
 
         // Toplam banka ödemesini hesapla
         foreach ($personeller as $personel) {
+            if (stripos((string)($personel->sgk_yapilan_firma ?? ''), 'Sigortal') !== false) {
+                continue;
+            }
             $toplamBankaOdemesi += floatval($personel->banka_odemesi ?? 0);
         }
     }
@@ -218,7 +221,8 @@ foreach ($donemler as $donem) {
                                     <?php
                                     $sira = 1;
                                     foreach ($personeller as $personel):
-                                        $bankaOdemesi = floatval($personel->banka_odemesi ?? 0);
+                                        $disaridanSigortali = stripos((string)($personel->sgk_yapilan_firma ?? ''), 'Sigortal') !== false;
+                                        $bankaOdemesi = $disaridanSigortali ? 0 : floatval($personel->banka_odemesi ?? 0);
                                         $ibanDolu = !empty($personel->iban_numarasi);
                                         ?>
                                         <tr class="<?= !$ibanDolu && $bankaOdemesi > 0 ? 'table-warning' : '' ?>">

@@ -236,6 +236,10 @@ try {
         $pNetMaasGercek = max(0, $pNetAlacagi - $pIcra);
         $digerP = floatval($personel->diger_odeme ?? 0);
         $eldenP = max(0, $pNetMaasGercek - $bankaP - $sodexoP - $digerP);
+        if (stripos((string)($personel->sgk_yapilan_firma ?? ''), 'Sigortal') !== false && $bankaP > 0) {
+            $eldenP += $bankaP;
+            $bankaP = 0;
+        }
 
         // Birim Kodu
         $deptName = $personel->departman ?? '-';

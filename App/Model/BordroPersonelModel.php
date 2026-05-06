@@ -491,6 +491,11 @@ class BordroPersonelModel extends Model
             $eldenOdeme = max(0, $netMaasGercek - $bankaOdemesi - $sodexoOdemesi - $digerOdeme);
         }
 
+        if (stripos((string) ($p->sgk_yapilan_firma ?? ''), 'Sigortal') !== false && $bankaOdemesi > 0) {
+            $eldenOdeme += $bankaOdemesi;
+            $bankaOdemesi = 0;
+        }
+
         return [
             'maasDurumu' => $maasDurumu, 'maasTutari' => $maasTutari, 'rawEkOdeme' => $rawEkOdeme,
             'ucretsizIzinGunu' => $ucretsizIzinGunu, 'calismaGunu' => $calismaGunu,
@@ -3875,6 +3880,11 @@ class BordroPersonelModel extends Model
                 if (($kayit->sgk_yapilan_firma ?? '') === 'İŞKUR') $bankaOdemesi = 0;
                 $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
             }
+        }
+
+        if (stripos((string) ($kayit->sgk_yapilan_firma ?? ''), 'Sigortal') !== false && $bankaOdemesi > 0) {
+            $eldenOdeme += $bankaOdemesi;
+            $bankaOdemesi = 0;
         }
 
         if ($bankaOdemesi > $netMaas) {

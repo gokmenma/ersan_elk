@@ -12,6 +12,25 @@ class EvrakTakipModel extends Model
     public function __construct()
     {
         parent::__construct($this->table);
+        $this->checkSchema();
+    }
+
+    private function checkSchema()
+    {
+        try {
+            $cols = $this->db->query("SHOW COLUMNS FROM {$this->table}")->fetchAll(PDO::FETCH_COLUMN);
+            if (!in_array('tutar', $cols)) {
+                $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN tutar decimal(10,2) DEFAULT NULL AFTER ilgili_personel_id");
+            }
+            if (!in_array('plaka', $cols)) {
+                $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN plaka varchar(50) DEFAULT NULL AFTER tutar");
+            }
+            if (!in_array('ceza_tutari', $cols)) {
+                $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN ceza_tutari decimal(10,2) DEFAULT NULL AFTER tutar");
+            }
+        } catch (\Exception $e) {
+            // Silent catch to prevent errors on strict environments
+        }
     }
 
     /**

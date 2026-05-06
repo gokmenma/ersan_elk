@@ -1,4 +1,8 @@
-<?php use App\Helper\Form; ?>
+<?php 
+use App\Helper\Form; 
+$db_conn = new App\Core\Db();
+$araclar_list = $db_conn->db->query("SELECT id, plaka, marka, model FROM araclar WHERE silinme_tarihi IS NULL AND firma_id = " . intval($_SESSION['firma_id']) . " ORDER BY plaka ASC")->fetchAll(PDO::FETCH_OBJ);
+?>
 
 <div class="modal fade" id="evrakModal" tabindex="-1" aria-labelledby="evrakModalLabel" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered">
@@ -122,6 +126,36 @@
                                     <i data-feather="check-square" style="width: 14px; height: 14px;"></i>
                                 </span>
                                 <h6 class="mb-0 fw-bold">İşlem & Cevap</h6>
+                            </div>
+
+                            <!-- Trafik Cezası Bilgileri (Dinamik) -->
+                            <div id="trafficFineSection" class="d-none border border-dashed border-primary rounded-3 p-3 mb-3" style="background-color: rgba(var(--bs-primary-rgb), 0.04);">
+                                <div class="d-flex align-items-center mb-3 text-primary">
+                                    <span class="badge bg-primary text-white p-1 rounded-pill me-2">
+                                        <i data-feather="alert-circle" style="width: 14px; height: 14px;"></i>
+                                    </span>
+                                    <h6 class="mb-0 fw-bold">Trafik Cezası Detayları</h6>
+                                </div>
+                                <div class="row g-2">
+                                    <div class="col-md-12 mb-2">
+                                        <?php 
+                                        $arac_options = ['' => 'Plaka Seçiniz...'];
+                                        foreach ($araclar_list as $ar) {
+                                            $label_ar = $ar->plaka . " - " . $ar->marka . " " . $ar->model;
+                                            $arac_options[$ar->plaka] = $label_ar;
+                                        }
+                                        echo Form::FormSelect2('plaka', $arac_options, '', 'Araç Plakası', 'truck', 'key', '', 'form-select select2'); 
+                                        ?>
+                                        <div id="plakaFeedback" class="small mt-1 px-1 fw-bold" style="display:none; font-size: 11px;"></div>
+                                    </div>
+                                    <div class="col-md-6 mb-0">
+                                        <?php echo Form::FormFloatInput('number', 'ceza_tutari', '', 'Ceza Tutarı (TL)', 'Ceza Tutarı', 'credit-card', 'form-control'); ?>
+                                    </div>
+                                    <div class="col-md-6 mb-0">
+                                        <?php echo Form::FormFloatInput('number', 'tutar', '', 'Kesilecek Tutar (TL)', 'Kesilecek Tutar', 'dollar-sign', 'form-control'); ?>
+                                        <div class="small mt-1 px-1 text-muted" style="font-size: 10px;">Boş bırakılırsa Ceza Tutarı geçerli olur.</div>
+                                    </div>
+                                </div>
                             </div>
 
                             <!-- Gelen Evrak için Cevap Alanı -->
