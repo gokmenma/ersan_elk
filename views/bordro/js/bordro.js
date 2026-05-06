@@ -33,6 +33,15 @@ const monthMap = {
 };
 
 $(document).ready(function () {
+  // Flatpickr Başlat
+  if (typeof flatpickr !== "undefined" || $.fn.flatpickr) {
+    $(".flatpickr").flatpickr({
+      dateFormat: "Y-m-d",
+      locale: "tr",
+      allowInput: true
+    });
+  }
+
   // Bordro Tablosunu Başlat
   var bordroOpts = getDatatableOptions();
   var originalInitComplete = bordroOpts.initComplete;
@@ -1264,9 +1273,14 @@ $(document).ready(function () {
     $("#formPersonelGelirEkle select[name='ek_odeme_tur']")
       .val(tur)
       .trigger("change");
-    $("#formPersonelGelirEkle input[name='tutar']").val(tutar);
+    $("#formPersonelGelirEkle input[name='gelir_tutar']").val(tutar);
     $("#formPersonelGelirEkle input[name='aciklama']").val(aciklama);
-    $("#formPersonelGelirEkle input[name='tarih']").val(tarih || "");
+    const gelirTarihInput = document.getElementById("gelir_tarih");
+    if (gelirTarihInput && gelirTarihInput._flatpickr) {
+      gelirTarihInput._flatpickr.setDate(tarih || "", true);
+    } else {
+      $("#formPersonelGelirEkle input[name='tarih']").val(tarih || "");
+    }
 
     $("#formPersonelGelirEkle button[type='submit']").html(
       '<i class="bx bx-check-circle me-1"></i>Güncelle',
@@ -1296,9 +1310,14 @@ $(document).ready(function () {
     $("#formPersonelKesintiEkle select[name='kesinti_tur']")
       .val(tur)
       .trigger("change");
-    $("#formPersonelKesintiEkle input[name='tutar']").val(tutar);
+    $("#formPersonelKesintiEkle input[name='kesinti_tutar']").val(tutar);
     $("#formPersonelKesintiEkle input[name='aciklama']").val(aciklama);
-    $("#formPersonelKesintiEkle input[name='tarih']").val(tarih || "");
+    const kesintiTarihInput = document.getElementById("kesinti_tarih");
+    if (kesintiTarihInput && kesintiTarihInput._flatpickr) {
+      kesintiTarihInput._flatpickr.setDate(tarih || "", true);
+    } else {
+      $("#formPersonelKesintiEkle input[name='tarih']").val(tarih || "");
+    }
 
     $("#formPersonelKesintiEkle button[type='submit']").html(
       '<i class="bx bx-check-circle me-1"></i>Güncelle',
@@ -1758,7 +1777,7 @@ function loadGelirListesi(personelId, donemId) {
                             data-id="${item.id}" 
                             data-tur="${item.tur}" 
                             data-tutar="${item.tutar}" 
-                            data-tarih="${item.tarih || ""}" 
+                            data-tarih="${dateStr || ""}" 
                             data-aciklama="${item.aciklama || ""}">
                             <i class="bx bx-edit"></i>
                         </button>
@@ -1863,7 +1882,7 @@ function loadKesintiListesi(personelId, donemId) {
                             data-id="${item.id}" 
                             data-tur="${item.tur}" 
                             data-tutar="${item.tutar}" 
-                            data-tarih="${item.tarih || ""}" 
+                            data-tarih="${dateStr || ""}" 
                             data-aciklama="${item.aciklama || ""}">
                             <i class="bx bx-edit"></i>
                         </button>

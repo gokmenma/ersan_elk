@@ -1610,7 +1610,7 @@ if (!empty($dbGelirler)) {
                                             </div>
 
                                             <div class="mb-3">
-                                                <?= Form::FormFloatInput("date", "tarih", date('Y-m-d'), "", "Tarih", "calendar", "form-control", true, null, "off", false, 'id="gelir_tarih"') ?>
+                                                <?= Form::FormFloatInput("text", "tarih", date('Y-m-d'), "", "Tarih", "calendar", "form-control flatpickr", true, null, "off", false, 'id="gelir_tarih"') ?>
                                             </div>
 
                                             <div class="mb-3">
@@ -1714,7 +1714,7 @@ if (!empty($dbGelirler)) {
                                             </div>
 
                                             <div class="mb-3">
-                                                <?= Form::FormFloatInput("date", "tarih", date('Y-m-d'), "", "Tarih", "calendar", "form-control", true, null, "off", false, 'id="kesinti_tarih"') ?>
+                                                <?= Form::FormFloatInput("text", "tarih", date('Y-m-d'), "", "Tarih", "calendar", "form-control flatpickr", true, null, "off", false, 'id="kesinti_tarih"') ?>
                                             </div>
 
                                             <div class="mb-3">
