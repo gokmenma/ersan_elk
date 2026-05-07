@@ -778,12 +778,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (!empty($bp->yemek_yardimi_dahil)) {
                     $mealFiiliGun = $includedAllowanceFiiliGun > 0 ? $includedAllowanceFiiliGun : $calismaGunu;
                     $mealFark = max(0, round($displayBaseHakedis - $asgariHakedisModal - $spouseDeduction, 2));
-                    $calculatedMealDeduction = $mealFiiliGun > 0 ? round(ceil($mealFark / $mealFiiliGun) * $mealFiiliGun, 2) : 0;
+                    $yemekGunlukLimit = floatval($bp->yemek_yardimi_tutari ?? 0);
+                    if ($yemekGunlukLimit <= 0 && !empty($bp->yemek_yardimi_parametre_id)) {
+                        $paramYemek = $BordroParametre->find($bp->yemek_yardimi_parametre_id);
+                        $yemekGunlukLimit = floatval($paramYemek->varsayilan_tutar ?? 0);
+                    }
+                    if ($yemekGunlukLimit <= 0) {
+                        $paramYemek = $BordroParametre->getByKod('yemek_yardimi_tum') ?: $BordroParametre->getByKod('yemek');
+                        $yemekGunlukLimit = floatval($paramYemek->varsayilan_tutar ?? 0);
+                    }
+                    if ($yemekGunlukLimit <= 0) {
+                        $yemekGunlukLimit = 300;
+                    }
+                    $rawMealDaily = $mealFiiliGun > 0 ? ($mealFark / $mealFiiliGun) : 0;
+                    $roundedMealDaily = $mealFiiliGun > 0 ? ceil($rawMealDaily) : 0;
+                    $isMealLimitApplied = $yemekGunlukLimit > 0 && $roundedMealDaily > $yemekGunlukLimit;
+                    $calculatedMealDeduction = $mealFiiliGun > 0 ? round(($isMealLimitApplied ? $yemekGunlukLimit : $roundedMealDaily) * $mealFiiliGun, 2) : 0;
                     if ($calculatedMealDeduction > 0) {
                         $displayMealDeduction = $calculatedMealDeduction;
                     }
                 }
                 $toplamYuvarlamaFarki = round($displayBaseHakedis - $asgariHakedisModal - $displayMealDeduction - $spouseDeduction, 2);
+                if (!empty($isMealLimitApplied)) {
+                    $toplamYuvarlamaFarki = 0;
+                }
                 if (abs($toplamYuvarlamaFarki) < 0.01) $toplamYuvarlamaFarki = 0;
 
                 if ($includedDeduction > 0 || !empty($bp->yemek_yardimi_dahil) || !empty($bp->es_yardimi_dahil)) {

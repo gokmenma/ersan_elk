@@ -233,7 +233,7 @@ class BordroPersonelModel extends Model
             $calcFiiliGun = $fiiliGun > 0 ? $fiiliGun : 26;
             $sonuc['yemek_gunluk_ham'] = $kalanFark / $calcFiiliGun;
             $gunlukYemek = ceil($sonuc['yemek_gunluk_ham']);
-            $yemekLimit = 300;
+            $yemekLimit = $this->getYemekYardimiGunlukLimit($kayit);
 
             if ($yemekLimit > 0 && $gunlukYemek > $yemekLimit) {
                 $gunlukYemek = $yemekLimit;
