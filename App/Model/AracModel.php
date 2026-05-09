@@ -202,6 +202,7 @@ class AracModel extends Model
         $sql = $this->db->prepare("
             SELECT a.*, 
                    az.id as zimmet_id,
+                   az.personel_id as zimmetli_personel_id,
                    p.adi_soyadi as zimmetli_personel_adi,
                    (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
@@ -261,6 +262,7 @@ class AracModel extends Model
     {
         $sql = $this->db->prepare("
             SELECT a.*, 
+                   NULL as zimmetli_personel_id,
                    NULL as zimmetli_personel_adi,
                    (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
@@ -428,6 +430,7 @@ class AracModel extends Model
         $sql = $this->db->prepare("
             SELECT a.*, 
                    az.id as zimmet_id,
+                   az.personel_id as zimmetli_personel_id,
                    p.adi_soyadi as zimmetli_personel_adi,
                    (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
@@ -452,6 +455,7 @@ class AracModel extends Model
         $sql = $this->db->prepare("
             SELECT a.*, 
                    az.id as zimmet_id,
+                   az.personel_id as zimmetli_personel_id,
                    p.adi_soyadi as zimmetli_personel_adi,
                    (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
@@ -476,6 +480,7 @@ class AracModel extends Model
         $sql = $this->db->prepare("
             SELECT a.*, 
                    az.id as zimmet_id,
+                   az.personel_id as zimmetli_personel_id,
                    p.adi_soyadi as zimmetli_personel_adi,
                    (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
@@ -500,6 +505,7 @@ class AracModel extends Model
         $sql = $this->db->prepare("
             SELECT a.*, 
                    az.id as zimmet_id,
+                   az.personel_id as zimmetli_personel_id,
                    p.adi_soyadi as zimmetli_personel_adi,
                    (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
@@ -523,6 +529,7 @@ class AracModel extends Model
         $sql = $this->db->prepare("
             SELECT a.*, 
                    az.id as zimmet_id,
+                   az.personel_id as zimmetli_personel_id,
                    p.adi_soyadi as zimmetli_personel_adi,
                    (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
@@ -546,6 +553,7 @@ class AracModel extends Model
         $sql = $this->db->prepare("
             SELECT a.*, 
                    az.id as zimmet_id,
+                   az.personel_id as zimmetli_personel_id,
                    p.adi_soyadi as zimmetli_personel_adi,
                    (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a

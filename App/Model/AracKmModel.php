@@ -518,7 +518,7 @@ class AracKmModel extends Model
             LEFT JOIN users u ON k.olusturan_kullanici_id = u.id
             WHERE a.firma_id = :firma_id
             AND a.silinme_tarihi IS NULL
-            AND a.aktif_mi = 1
+            AND (a.aktif_mi = 1 OR k.id IS NOT NULL)
         ";
 
         $params = [

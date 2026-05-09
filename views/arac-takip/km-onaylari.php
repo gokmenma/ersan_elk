@@ -5,6 +5,7 @@ require_once dirname(__DIR__, 2) . '/Autoloader.php';
 use App\Helper\Helper;
 use App\Helper\Security;
 use App\Model\AracKmBildirimModel;
+use App\Service\Gate;
 
 $KmBildirim = new AracKmBildirimModel();
 $pendingReports = $KmBildirim->getPendingReports();
@@ -252,7 +253,7 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                             <th style="width:10%">Tür</th>
                                             <th style="width:10%" class="text-end">Onaylanan KM</th>
                                             <th style="width:15%">Onaylayan / Tarih</th>
-                                            <th style="width:10%" class="text-center">Resim</th>
+                                            <th style="width:10%" class="text-center">Resim / İşlem</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -293,13 +294,27 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                                     <small class="text-muted"><?= date('d.m.Y H:i', strtotime($report->onay_tarihi)) ?></small>
                                                 </td>
                                                 <td class="text-center">
-                                                    <button type="button" class="btn btn-sm btn-soft-info btn-view-km-img" 
-                                                        data-img="<?= Helper::base_url($report->resim_yolu) ?>"
-                                                        data-plaka="<?= $report->plaka ?>"
-                                                        data-date="<?= date('d.m.Y', strtotime($report->tarih)) ?>"
-                                                        data-tur="<?= ucfirst($report->tur) ?>">
-                                                        <i class="bx bx-image-alt"></i>
-                                                    </button>
+                                                    <div class="d-flex justify-content-center gap-1">
+                                                        <button type="button" class="btn btn-sm btn-soft-info btn-view-km-img" 
+                                                            data-img="<?= Helper::base_url($report->resim_yolu) ?>"
+                                                            data-plaka="<?= $report->plaka ?>"
+                                                            data-date="<?= date('d.m.Y', strtotime($report->tarih)) ?>"
+                                                            data-tur="<?= ucfirst($report->tur) ?>">
+                                                            <i class="bx bx-image-alt"></i>
+                                                        </button>
+                                                        <?php if (Gate::allows('onaylikm_duzenle') || Gate::isSuperAdmin()): ?>
+                                                            <button type="button" class="btn btn-sm btn-soft-warning btn-edit-approved-km" 
+                                                                data-id="<?= $report->id ?>"
+                                                                data-arac-id="<?= $report->arac_id ?>"
+                                                                data-plaka="<?= $report->plaka ?>"
+                                                                data-date="<?= date('d.m.Y', strtotime($report->tarih)) ?>"
+                                                                data-date-raw="<?= $report->tarih ?>"
+                                                                data-tur="<?= $report->tur ?>"
+                                                                data-km="<?= $report->bitis_km ?>">
+                                                                <i class="bx bx-edit"></i>
+                                                            </button>
+                                                        <?php endif; ?>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         <?php endforeach; ?>
@@ -473,6 +488,62 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
             <div class="modal-body p-0">
                 <img src="" id="modalViewImg" class="img-fluid w-100" alt="KM Bildirim Resmi" style="max-height: 85vh; object-fit: contain;">
             </div>
+        </div>
+    </div>
+</div>
+
+<!-- Onaylı KM Düzenleme Modalı -->
+<div class="modal fade no-upgrade" id="editApprovedKmModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+            <div class="modal-header bg-warning py-3 px-4 border-0" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-xs me-2">
+                        <span class="avatar-title rounded-circle bg-white text-warning">
+                            <i class="bx bx-edit"></i>
+                        </span>
+                    </div>
+                    <div>
+                        <h6 class="modal-title mb-0 text-white fw-bold">Onaylı KM Düzenle</h6>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="editApprovedKmForm">
+                <input type="hidden" id="edit_approved_id" name="id">
+                <input type="hidden" id="edit_approved_arac_id" name="arac_id">
+                
+                <div class="modal-body p-4">
+                    <div class="p-3 border rounded bg-light mb-3" style="font-size: 0.9rem; border-left: 4px solid #ffbb44 !important;">
+                        <div class="mb-1"><span class="fw-bold text-muted">Araç Plaka:</span> <span id="lbl_edit_plaka" class="fw-bold text-dark"></span></div>
+                    </div>
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-6">
+                            <label for="edit_approved_date" class="form-label fw-bold text-dark">Tarih</label>
+                            <input type="date" class="form-control" id="edit_approved_date" name="tarih" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="edit_approved_tur" class="form-label fw-bold text-dark">Tür</label>
+                            <select class="form-select" id="edit_approved_tur" name="tur" required>
+                                <option value="sabah">Sabah</option>
+                                <option value="aksam">Akşam</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group mb-0">
+                        <label for="edit_approved_km_value" class="form-label fw-bold text-dark">Yeni KM Değeri</label>
+                        <input type="number" class="form-control" id="edit_approved_km_value" name="km" min="0" required>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light p-3 border-0" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-warning text-white fw-bold" id="btnSubmitEditApprovedKm">
+                        <i class="bx bx-save me-1"></i>Güncelle
+                    </button>
+                </div>
+            </form>
         </div>
     </div>
 </div>
@@ -876,6 +947,59 @@ $(document).ready(function() {
         } else if (selectedIds.length > 0) {
             AracTakip.kmTopluOnayla(selectedIds);
         }
+    });
+
+    // Onaylı KM Düzenleme modalını aç
+    $(document).on('click', '.btn-edit-approved-km', function() {
+        const btn = $(this);
+        const id = btn.data('id');
+        const aracId = btn.data('arac-id');
+        const plaka = btn.data('plaka');
+        const tarihRaw = btn.data('date-raw');
+        const tur = btn.data('tur');
+        const km = btn.data('km');
+
+        $('#edit_approved_id').val(id);
+        $('#edit_approved_arac_id').val(aracId);
+        $('#lbl_edit_plaka').text(plaka);
+        $('#edit_approved_date').val(tarihRaw);
+        $('#edit_approved_tur').val(tur);
+        $('#edit_approved_km_value').val(km);
+
+        $('#editApprovedKmModal').modal('show');
+    });
+
+    // Onaylı KM Düzenleme formunu gönder
+    $('#editApprovedKmForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const form = $(this);
+        const btnSubmit = $('#btnSubmitEditApprovedKm');
+        const oldBtnHtml = btnSubmit.html();
+        
+        btnSubmit.prop('disabled', true).html('<i class="bx bx-loader bx-spin me-1"></i> Güncelleniyor...');
+
+        const formData = form.serialize() + '&action=onayli-km-guncelle';
+
+        $.post('views/arac-takip/api.php', formData, function(res) {
+            if (res.status === 'success') {
+                $('#editApprovedKmModal').modal('hide');
+                Swal.fire({
+                    title: 'Başarılı',
+                    text: 'KM kaydı başarıyla güncellendi.',
+                    icon: 'success',
+                    confirmButtonText: 'Tamam'
+                }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                Swal.fire('Hata', res.message, 'error');
+                btnSubmit.prop('disabled', false).html(oldBtnHtml);
+            }
+        }, 'json').fail(function() {
+            Swal.fire('Hata', 'İşlem sırasında bir bağlantı hatası oluştu.', 'error');
+            btnSubmit.prop('disabled', false).html(oldBtnHtml);
+        });
     });
 });
 </script>

@@ -229,7 +229,7 @@ try {
         $bankaBaz = min($bankaBaz, $bankaMax);
         $bankaP = max(0, $bankaBaz - $pIcra);
 
-        if (($personel->sgk_yapilan_firma ?? '') === 'İŞKUR') {
+        if (stripos((string)($personel->sgk_yapilan_firma ?? ""), "KUR") !== false) {
             $bankaP = 0;
         }
 

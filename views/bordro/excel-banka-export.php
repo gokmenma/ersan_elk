@@ -86,7 +86,7 @@ try {
     // Verileri hesapla
     $toplamBankaOdemesi = 0;
     foreach ($personeller as $p) {
-        if (($p->sgk_yapilan_firma ?? '') === 'İŞKUR' || stripos((string)($p->sgk_yapilan_firma ?? ''), 'Sigortal') !== false) continue;
+        if (stripos((string)($p->sgk_yapilan_firma ?? ""), "KUR") !== false || stripos((string)($p->sgk_yapilan_firma ?? ''), 'Sigortal') !== false) continue;
         $toplamBankaOdemesi += (float) ($p->banka_odemesi ?? 0);
     }
 
@@ -116,7 +116,7 @@ try {
         $bankaOdemesi = (float) ($personel->banka_odemesi ?? 0);
 
         // Eğer banka ödemesi 0 ise veya bankadan ödenmeyecek personel ise listeye ekleme
-        if ($bankaOdemesi <= 0 || ($personel->sgk_yapilan_firma ?? '') === 'İŞKUR' || stripos((string)($personel->sgk_yapilan_firma ?? ''), 'Sigortal') !== false) continue; 
+        if ($bankaOdemesi <= 0 || stripos((string)($personel->sgk_yapilan_firma ?? ""), "KUR") !== false || stripos((string)($personel->sgk_yapilan_firma ?? ''), 'Sigortal') !== false) continue; 
 
         $sheet->setCellValue('A' . $satir, 'M');
         $sheet->setCellValue('B' . $satir, $odemeTarihiExcel);

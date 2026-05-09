@@ -3018,6 +3018,117 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 echo json_encode(['status' => 'success', 'message' => 'Hatırlatma başarıyla gönderildi.']);
                 break;
 
+            case 'onayli-km-guncelle':
+                if (!\App\Service\Gate::allows('onaylikm_duzenle') && !\App\Service\Gate::isSuperAdmin()) {
+                    throw new Exception("Bu işlemi yapmaya yetkiniz yoktur.");
+                }
+
+                $id = intval($_POST['id'] ?? 0);
+                $newKm = intval($_POST['km'] ?? 0);
+                $arac_id = intval($_POST['arac_id'] ?? 0);
+                $newTarih = trim($_POST['tarih'] ?? '');
+                $newTur = trim($_POST['tur'] ?? '');
+
+                if ($id <= 0) throw new Exception("Geçersiz bildirim ID.");
+                if ($newKm < 0) throw new Exception("KM değeri negatif olamaz.");
+                if (empty($newTarih)) throw new Exception("Tarih alanı zorunludur.");
+                if ($newTur !== 'sabah' && $newTur !== 'aksam') throw new Exception("Geçersiz tür.");
+
+                $bildirim = $KmBildirim->find($id);
+                if (!$bildirim) throw new Exception("Bildirim bulunamadı.");
+
+                $eskiTarih = $bildirim->tarih;
+                $eskiTur = $bildirim->tur;
+
+                // Mükerrer kontrolü
+                if ($KmBildirim->checkDuplicate($arac_id, $newTarih, $newTur, $id)) {
+                    throw new Exception("Seçtiğiniz tarihte ({$newTarih}) ve türde ({$newTur}) bu araç için zaten aktif bir kayıt mevcuttur.");
+                }
+
+                // 1. Bildirimi Güncelle
+                $KmBildirim->saveWithAttr([
+                    'id' => $id,
+                    'tarih' => $newTarih,
+                    'tur' => $newTur,
+                    'bitis_km' => $newKm,
+                    'guncelleme_tarihi' => date('Y-m-d H:i:s')
+                ]);
+
+                // 2. KM Kayıtlarını Güncelle
+                if ($eskiTarih !== $newTarih || $eskiTur !== $newTur) {
+                    // Eski tarihteki kaydı bul ve eski türün KM değerini sıfırla veya kaydı tamamen sil (eğer her iki tür de boşaldıysa)
+                    $eskiKmKaydi = $Km->kayitVarMi($arac_id, $eskiTarih, null, true);
+                    if ($eskiKmKaydi) {
+                        if ($eskiTur === 'sabah') {
+                            $yeniBaslangic = 0;
+                            $yeniBitis = $eskiKmKaydi->bitis_km;
+                        } else {
+                            $yeniBaslangic = $eskiKmKaydi->baslangic_km;
+                            $yeniBitis = 0;
+                        }
+
+                        if ($yeniBaslangic == 0 && $yeniBitis == 0) {
+                            $Km->delete($eskiKmKaydi->id);
+                        } else {
+                            $yapilan_km = ($yeniBitis > $yeniBaslangic && $yeniBaslangic > 0) ? ($yeniBitis - $yeniBaslangic) : 0;
+                            $Km->saveWithAttr([
+                                'id' => $eskiKmKaydi->id,
+                                'baslangic_km' => $yeniBaslangic,
+                                'bitis_km' => $yeniBitis,
+                                'yapilan_km' => $yapilan_km
+                            ]);
+                        }
+                    }
+                }
+
+                // Yeni tarihte ve türde KM kaydı oluştur veya güncelle
+                $yeniKmKaydi = $Km->kayitVarMi($arac_id, $newTarih, null, true);
+                if ($yeniKmKaydi) {
+                    if ($newTur === 'sabah') {
+                        $baslangic_km = $newKm;
+                        $bitis_km = $yeniKmKaydi->bitis_km;
+                    } else {
+                        $baslangic_km = $yeniKmKaydi->baslangic_km;
+                        $bitis_km = $newKm;
+                    }
+
+                    $yapilan_km = ($bitis_km > $baslangic_km && $baslangic_km > 0) ? ($bitis_km - $baslangic_km) : 0;
+
+                    $Km->saveWithAttr([
+                        'id' => $yeniKmKaydi->id,
+                        'baslangic_km' => $baslangic_km,
+                        'bitis_km' => $bitis_km,
+                        'yapilan_km' => $yapilan_km
+                    ]);
+                } else {
+                    // Yeni kayıt oluştur
+                    if ($newTur === 'sabah') {
+                        $baslangic_km = $newKm;
+                        $bitis_km = 0;
+                    } else {
+                        $baslangic_km = 0;
+                        $bitis_km = $newKm;
+                    }
+
+                    $yapilan_km = ($bitis_km > $baslangic_km && $baslangic_km > 0) ? ($bitis_km - $baslangic_km) : 0;
+
+                    $Km->saveWithAttr([
+                        'firma_id' => $_SESSION['firma_id'],
+                        'arac_id' => $arac_id,
+                        'tarih' => $newTarih,
+                        'baslangic_km' => $baslangic_km,
+                        'bitis_km' => $bitis_km,
+                        'yapilan_km' => $yapilan_km,
+                        'ekleyen_id' => $_SESSION['user_id']
+                    ]);
+                }
+
+                // 3. Aracın güncel KM değerini güncelle
+                $Arac->updateKm($arac_id, $newKm);
+
+                echo json_encode(['status' => 'success', 'message' => 'Onaylı KM kaydı ve sistem kayıtları başarıyla güncellendi.']);
+                break;
+
             case 'km-onay-ver':
                 $id = intval($_POST['id'] ?? 0);
                 if ($id <= 0) throw new Exception("Geçersiz bildirim ID.");
@@ -3063,7 +3174,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     'bitis_km' => $bitis_km,
                     'yapilan_km' => ($bitis_km > $baslangic_km && $baslangic_km > 0) ? ($bitis_km - $baslangic_km) : 0,
                     'aciklama' => $bildirim->aciklama,
-                    'olusturan_kullanici_id' => $_SESSION['user_id'] ?? null
+                    'olusturan_kullanici_id' => $_SESSION['user_id'] ?? null,
+                    'silinme_tarihi' => null
                 ];
 
                 if ($mevcutKmKaydi) {
@@ -3157,7 +3269,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                             'bitis_km' => $bitis_km,
                             'yapilan_km' => ($bitis_km > $baslangic_km && $baslangic_km > 0) ? ($bitis_km - $baslangic_km) : 0,
                             'aciklama' => $bildirim->aciklama,
-                            'olusturan_kullanici_id' => $userId
+                            'olusturan_kullanici_id' => $userId,
+                            'silinme_tarihi' => null
                         ];
 
                         if ($mevcutKmKaydi) {

@@ -468,7 +468,7 @@ class BordroPersonelModel extends Model
             $sodexoOdemesi = floatval($p->sodexo_odemesi ?? 0) + $yontemliSodexoEki;
             $digerOdeme = floatval($p->diger_odeme ?? 0);
             $asgariUcretYatacak = ($calismaGunu >= 30) ? $asgariUcretNet : (($asgariUcretNet / 30) * $calismaGunu);
-            if (($p->sgk_yapilan_firma ?? "") === "��KUR") $asgariUcretYatacak = 0;
+            if (stripos((string)($p->sgk_yapilan_firma ?? ""), "KUR") !== false) $asgariUcretYatacak = 0;
             if ($isNet || $isInclusive) {
                 $bankaBaz = max(0, $netAlacagi - $sodexoOdemesi);
             } elseif ($isPrimUsulu) {
@@ -491,7 +491,7 @@ class BordroPersonelModel extends Model
             $eldenOdeme = max(0, $netMaasGercek - $bankaOdemesi - $sodexoOdemesi - $digerOdeme);
         }
 
-        if (stripos((string) ($p->sgk_yapilan_firma ?? ''), 'Sigortal') !== false && $bankaOdemesi > 0) {
+        if ((stripos((string) ($p->sgk_yapilan_firma ?? ""), "Sigortal") !== false || stripos((string) ($p->sgk_yapilan_firma ?? ""), "KUR") !== false) && $bankaOdemesi > 0) {
             $eldenOdeme += $bankaOdemesi;
             $bankaOdemesi = 0;
         }
@@ -3867,22 +3867,22 @@ class BordroPersonelModel extends Model
                 $bankaYatacakMinimum = ($fiiliCalismaGunu >= 30) ? $asgariUcretNet : (($asgariUcretNet / 30) * $fiiliCalismaGunu);
                 $bankaBaz = min($bankaYatacakMinimum + floatval($yontemliOdemeler['banka'] ?? 0), max(0, $toplamPrim - $sodexoOdemesi));
                 $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
-                if (($kayit->sgk_yapilan_firma ?? '') === 'İŞKUR') $bankaOdemesi = 0;
+                if (stripos((string)($kayit->sgk_yapilan_firma ?? ""), "KUR") !== false) $bankaOdemesi = 0;
                 $eldenOdeme = max(0, $toplamPrim - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
             } elseif ($isNetMaas) {
                 $bankaBaz = max(0, $netMaas - $sodexoOdemesi);
                 $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
-                if (($kayit->sgk_yapilan_firma ?? '') === 'İŞKUR') $bankaOdemesi = 0;
+                if (stripos((string)($kayit->sgk_yapilan_firma ?? ""), "KUR") !== false) $bankaOdemesi = 0;
                 $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
             } else {
                 $bankaBaz = max(0, $netMaas - $sodexoOdemesi);
                 $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
-                if (($kayit->sgk_yapilan_firma ?? '') === 'İŞKUR') $bankaOdemesi = 0;
+                if (stripos((string)($kayit->sgk_yapilan_firma ?? ""), "KUR") !== false) $bankaOdemesi = 0;
                 $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
             }
         }
 
-        if (stripos((string) ($kayit->sgk_yapilan_firma ?? ''), 'Sigortal') !== false && $bankaOdemesi > 0) {
+        if ((stripos((string) ($kayit->sgk_yapilan_firma ?? ""), "Sigortal") !== false || stripos((string) ($kayit->sgk_yapilan_firma ?? ""), "KUR") !== false) && $bankaOdemesi > 0) {
             $eldenOdeme += $bankaOdemesi;
             $bankaOdemesi = 0;
         }
