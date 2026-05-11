@@ -1666,12 +1666,6 @@ function hesaplaEldenOdeme() {
         .replace(/[^\d,]/g, "")
         .replace(",", "."),
     ) || 0;
-  const icra =
-    parseFloat(
-      $(".btn-odeme[data-id='" + $("#odeme_bordro_id").val() + "']").data(
-        "icra",
-      ),
-    ) || 0;
   const banka = parseFloat($("#banka_odemesi").val()) || 0;
   const sodexo = parseFloat($("#sodexo_odemesi").val()) || 0;
   const diger = parseFloat($("#diger_odeme").val()) || 0;
@@ -1698,7 +1692,7 @@ function hesaplaEldenOdeme() {
     $("#sodexo_limit_warning").remove();
   }
 
-  const elden = net - banka - sodexo - diger - icra;
+  const elden = net - banka - sodexo - diger;
   $("#elden_odeme_goster").text(formatMoney(elden >= 0 ? elden : 0) + " ₺");
 
   if (elden < 0) {

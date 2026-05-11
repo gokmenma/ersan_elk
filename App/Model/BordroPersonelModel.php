@@ -3855,6 +3855,10 @@ class BordroPersonelModel extends Model
             $sodexoOdemesi = floatval($kayit->sodexo_odemesi ?? 0);
             $bankaOdemesi = floatval($kayit->banka_odemesi ?? 0);
             $eldenOdeme = floatval($kayit->elden_odeme ?? 0);
+            // Manuel modda elden ödeme Net - Banka - Sodexo - Diger olmalı (Eğer elden_odeme kolonu güncel değilse)
+            // Ancak genellikle api.php elden_odeme'yi hesaplayıp kaydeder. 
+            // Yine de diger_odeme'yi hesaba katalım.
+            $digerOdeme = floatval($kayit->diger_odeme ?? 0);
         } else {
             if (isset($kayit->sodexo_manuel) && $kayit->sodexo_manuel == 1) {
                 $sodexoOdemesi = floatval($kayit->sodexo_odemesi ?? 0);
@@ -3955,7 +3959,8 @@ class BordroPersonelModel extends Model
             'sgk_isveren' => round($sgkIsveren, 2), 'issizlik_isveren' => round($issizlikIsveren, 2), 'toplam_maliyet' => round($toplamMaliyet, 2),
             'toplam_kesinti' => round($toplamKesinti, 2), 'toplam_ek_odeme' => round($toplamEkOdeme, 2), 'fazla_mesai_tutar' => round($toplamMesaiTutar, 2),
             'calisan_gun' => $maasHesapGunu, 'sodexo_odemesi' => round($sodexoOdemesi, 2), 'banka_odemesi' => round($bankaOdemesi, 2),
-            'elden_odeme' => round($eldenOdeme, 2), 'kumulatif_matrah' => round($yeniKumulatifMatrah, 2), 'hesaplayan_id' => $hesaplayan_id,
+            'elden_odeme' => round($eldenOdeme, 2), 'diger_odeme' => round($kayit->diger_odeme ?? 0, 2),
+            'kumulatif_matrah' => round($yeniKumulatifMatrah, 2), 'hesaplayan_id' => $hesaplayan_id,
             'hesaplayan_ad_soyad' => $hesaplayan_ad_soyad, 'hesaplama_detay' => json_encode($hesaplamaDetay, JSON_UNESCAPED_UNICODE)
         ]);
     }
