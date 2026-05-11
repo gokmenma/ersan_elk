@@ -491,7 +491,7 @@ class BordroPersonelModel extends Model
             $eldenOdeme = max(0, $netMaasGercek - $bankaOdemesi - $sodexoOdemesi - $digerOdeme);
         }
 
-        if ((stripos((string) ($p->sgk_yapilan_firma ?? ""), "Sigortal") !== false || stripos((string) ($p->sgk_yapilan_firma ?? ""), "KUR") !== false) && $bankaOdemesi > 0) {
+        if (stripos((string) ($p->sgk_yapilan_firma ?? ""), "KUR") !== false && $bankaOdemesi > 0) {
             $eldenOdeme += $bankaOdemesi;
             $bankaOdemesi = 0;
         }
@@ -3882,7 +3882,7 @@ class BordroPersonelModel extends Model
             }
         }
 
-        if ((stripos((string) ($kayit->sgk_yapilan_firma ?? ""), "Sigortal") !== false || stripos((string) ($kayit->sgk_yapilan_firma ?? ""), "KUR") !== false) && $bankaOdemesi > 0) {
+        if (stripos((string) ($kayit->sgk_yapilan_firma ?? ""), "KUR") !== false && $bankaOdemesi > 0) {
             $eldenOdeme += $bankaOdemesi;
             $bankaOdemesi = 0;
         }
