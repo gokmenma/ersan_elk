@@ -90,7 +90,7 @@ class PersonelIzinleriModel extends Model
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            WHERE pi.onay_durumu = 'beklemede' AND pi.silinme_tarihi IS NULL AND p.firma_id = ? 
+            WHERE (LOWER(pi.onay_durumu) = 'beklemede') AND pi.silinme_tarihi IS NULL AND p.firma_id = ? 
             $extra_where
             AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
         ";
@@ -121,7 +121,7 @@ class PersonelIzinleriModel extends Model
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            WHERE pi.onay_durumu = 'beklemede' AND pi.silinme_tarihi IS NULL AND p.firma_id = ? 
+            WHERE (LOWER(pi.onay_durumu) = 'beklemede') AND pi.silinme_tarihi IS NULL AND p.firma_id = ? 
             $extra_where
             AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
             ORDER BY pi.talep_tarihi DESC
@@ -185,7 +185,7 @@ class PersonelIzinleriModel extends Model
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            WHERE pi.onay_durumu = 'beklemede' AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
+            WHERE (LOWER(pi.onay_durumu) = 'beklemede') AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
             AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
             ORDER BY pi.talep_tarihi DESC

@@ -90,7 +90,7 @@ class AvansModel extends Model
             SELECT COUNT(*) as count 
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
-            WHERE pa.durum = 'beklemede' AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
+            WHERE (LOWER(pa.durum) = 'beklemede') AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
         ";
         $query = $this->db->prepare($sql);
@@ -132,15 +132,26 @@ class AvansModel extends Model
      */
     public function getButunBekleyenAvanslar()
     {
-        $sql = $this->db->prepare("
+        $restricted_dept = $this->getRestrictedDept();
+        $is_restricted = ($restricted_dept !== null);
+        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
+
+        $bindParams = [$_SESSION['firma_id']];
+        if ($is_restricted) {
+            $bindParams[] = $restricted_dept;
+        }
+
+        $sql = "
             SELECT pa.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
-            WHERE pa.durum = 'beklemede' AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
+            WHERE (LOWER(pa.durum) = 'beklemede') AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
+            $extra_where
             ORDER BY pa.talep_tarihi DESC
-        ");
-        $sql->execute([$_SESSION['firma_id']]);
-        return $sql->fetchAll(PDO::FETCH_OBJ);
+        ";
+        $query = $this->db->prepare($sql);
+        $query->execute($bindParams);
+        return $query->fetchAll(PDO::FETCH_OBJ);
     }
 
     /**

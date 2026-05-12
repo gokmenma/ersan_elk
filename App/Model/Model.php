@@ -247,8 +247,8 @@ class Model extends Db
         $user = $stmt->fetch(PDO::FETCH_OBJ);
 
         $dept = isset($user->yonetilen_departman) ? trim($user->yonetilen_departman) : '';
-        // Remove spaces after commas for FIND_IN_SET compatibility
-        $dept = str_replace(', ', ',', $dept);
+        // Remove all spaces around commas for FIND_IN_SET compatibility
+        $dept = implode(',', array_map('trim', explode(',', $dept)));
         return ($dept !== '') ? $dept : null;
     }
 }
