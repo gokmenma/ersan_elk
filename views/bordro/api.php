@@ -701,25 +701,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $asgariHakedisModal = round(($asgariUcretNet / 30) * $calismaGunu, 2);
                 $displayBaseHakedis = round(($nominalMaas / 30) * $calismaGunu, 2);
                 $displayEkOdemeToplami = 0.0;
+                $matchingTableItemsSum = 0.0;
                 foreach ($ekOdemelerListe as $ek) {
                     $aciklama = (string)($ek->aciklama ?? '');
                     $eoTur = mb_strtolower((string)($ek->tur ?? ''), 'UTF-8');
                     $isYuvarlama = (($ek->tur ?? '') === 'yuvarlama_farki') || stripos($aciklama, 'Yuvarlama') !== false;
+                    if ($isYuvarlama) continue;
+
                     $isDahilYemek = !empty($bp->yemek_yardimi_dahil)
                         && ($eoTur === 'yemek_yardimi_tum' || $eoTur === 'yemek' || strpos($eoTur, 'yemek') !== false);
-                    $isDahilEs = !empty($bp->es_yardimi_dahil)
-                        && ($eoTur === 'es_yardimi' || strpos($eoTur, 'es_yardimi') !== false || strpos($eoTur, 'aile') !== false);
-                    if ($isYuvarlama || $isDahilYemek || $isDahilEs) {
-                        continue;
+                    
+                    if ($isDahilYemek) { 
+                        $matchingTableItemsSum += floatval($ek->tutar);
+                    } else {
+                        $displayEkOdemeToplami += floatval($ek->tutar);
                     }
-                    $displayEkOdemeToplami += floatval($ek->tutar);
                 }
+                $displayEkOdemeToplami += max(0, $matchingTableItemsSum - floatval($hesap['mealAllowanceDeduction'] ?? 0));
                 if (!empty($bp->yemek_yardimi_dahil)) {
-                    $displayMealDeduction = max(0, round($displayBaseHakedis - floatval($hesap['kesintiHaricIcra'] ?? 0) - $asgariHakedisModal - $spouseDeduction, 2));
+                    $displayMealDeduction = max(0, round($displayBaseHakedis - $asgariHakedisModal - $spouseDeduction, 2));
                     $mealDeduction = $displayMealDeduction;
                     $includedDeduction = round($displayMealDeduction + $spouseDeduction, 2);
                 } elseif ($displayMealDeduction <= 0 && !empty($bp->yemek_yardimi_dahil)) {
-                    $displayMealDeduction = max(0, round($netMaasHesap - $asgariHakedisModal - $spouseDeduction, 2));
+                    $displayMealDeduction = max(0, round($displayBaseHakedis - $asgariHakedisModal - $spouseDeduction, 2));
                     $mealDeduction = $displayMealDeduction;
                     $includedDeduction = round($displayMealDeduction + $spouseDeduction, 2);
                 }
@@ -727,8 +731,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (!empty($bp->yemek_yardimi_dahil) && $displayMealDeduction > 0) {
                     $mealCalcGun = max(1, $includedAllowanceFiiliGun > 0 ? $includedAllowanceFiiliGun : $calismaGunu);
                     $roundedMealForPayment = round(ceil($displayMealDeduction / $mealCalcGun) * $mealCalcGun, 2);
-                    $bankaOdemeModal = round($asgariHakedisModal + $roundedMealForPayment + $spouseDeduction, 2);
-                    $eldenOdemeModal = max(0, round($netMaasHesap - $bankaOdemeModal - $sodexoOdemeModal - $digerOdemeModal, 2));
+                    $bankaOdemeModal = round($asgariHakedisModal + $roundedMealForPayment + $spouseDeduction - ($sodexoOdemeModal ?? 0) - ($digerOdemeModal ?? 0), 2);
+                    // Banka ödemesi net hakedişi aşamaz
+                    $bankaOdemeModal = min($netMaasHesap, $bankaOdemeModal);
+                    $eldenOdemeModal = max(0, round($netMaasHesap - $bankaOdemeModal - ($sodexoOdemeModal ?? 0) - ($digerOdemeModal ?? 0), 2));
                 }
                 $displayToplamAlacak = $toplamAlacak;
                 // (Yemek yardımı limiti ve fark hesabı motor tarafında yapıldığı için UI'da tekrar yapılmaz)
@@ -833,8 +839,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
                 
-                $kesintiTutarOzet = max(0, $toplamAlacak - $netAlacak);
-                $gorunenNetMaas = max(0, $displayToplamAlacak - $kesintiTutarOzet);
+                $modalBaseRowValue = $displayBaseHakedis;
+                if ($displayMealDeduction > 0 || $spouseDeduction > 0) {
+                    $modalBaseRowValue = round($displayBaseHakedis - $displayMealDeduction - $spouseDeduction, 2);
+                }
+
+                $modalEkOdemeToplami = $toplamPuantajTutar + $toplamNobetTutar + $toplamKacakTutar;
+                foreach ($ekOdemelerNonPuantaj as $edata) {
+                    $modalEkOdemeToplami += floatval($edata['toplam'] ?? 0);
+                }
+
+                $displayToplamAlacak = round(
+                    $modalBaseRowValue
+                    + $displayMealDeduction
+                    + $spouseDeduction
+                    + $modalEkOdemeToplami
+                    + $toplamYuvarlamaFarki,
+                    2
+                );
+                $kesintiTutarOzet = round($toplamYasalKesinti + $guncelKesintiGosterim, 2);
+                $gorunenNetMaas = max(0, round($displayToplamAlacak - $kesintiTutarOzet, 2));
                 
                 $puantajGruplu = [];
                 foreach ($puantajOdemeler as $puantaj) {
@@ -904,6 +928,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                           </div>';
                 $html .= '<div class="d-flex gap-2 mt-2 mt-md-0">
                             <div class="badge bg-light text-dark border py-2 px-3 d-flex flex-column align-items-end">
+                                <small class="text-muted opacity-75" style="font-size: 10px;">GÜNLÜK ÜCRET</small>
+                                <span class="fw-bold text-primary">' . number_format($gunlukUcret, 2, ',', '.') . ' ₺</span>
+                            </div>
+                            <div class="badge bg-light text-dark border py-2 px-3 d-flex flex-column align-items-end">
                                 <small class="text-muted opacity-75" style="font-size: 10px;">MAAŞ TİPİ</small>
                                 <span class="fw-bold text-uppercase">' . htmlspecialchars($personel->maas_durumu ?? '-') . '</span>
                             </div>
@@ -917,6 +945,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // 2. MAIN ROW: 2 COLS
                 $html .= '<div class="row g-4">';
 
+                                // SAFE VARS
+                $displayMealDeduction = isset($displayMealDeduction) ? $displayMealDeduction : 0;
+                $spouseDeduction = isset($spouseDeduction) ? $spouseDeduction : 0;
+                $displayBaseHakedis = isset($displayBaseHakedis) ? $displayBaseHakedis : 0;
+
+                $topRowValue = $displayBaseHakedis;
+                $topRowLabel = "Maaş Hakedişi";
+                if ($displayMealDeduction > 0 || $spouseDeduction > 0) {
+                    $topRowValue = round($displayBaseHakedis - $displayMealDeduction - $spouseDeduction, 2);
+                    $topRowLabel = "Asgari Ücret Hakedişi";
+                }
+
                 // --- COLUMN 1: HAKEDİŞLER ---
                 $html .= '<div class="col-md-6">';
                 $html .= '<div class="main-card bg-white">';
@@ -929,15 +969,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // Hakediş Item 1: Base hakedis
                 $collBaseId = "cBaseHakedis_" . $bp->id;
                 $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collBaseId . '" aria-expanded="false">
-                            <td><div class="d-flex align-items-center"><i class="bx bx-receipt me-2 text-muted opacity-75"></i><span>Maaş Hakedişi</span><span class="badge bg-light text-dark fw-normal ms-2">' . $calismaGunu . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
-                            <td class="text-end fw-bold text-dark">' . number_format($displayBaseHakedis, 2, ',', '.') . ' ₺</td>
+                            <td><div class="d-flex align-items-center"><i class="bx bx-receipt me-2 text-muted opacity-75"></i><span>' . $topRowLabel . '</span><span class="badge bg-light text-dark fw-normal ms-2">' . $calismaGunu . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
+                            <td class="text-end fw-bold text-dark">' . number_format($topRowValue, 2, ',', '.') . ' ₺</td>
                           </tr>';
                 
-                // Base Hakedis Child Rows (Details)
-                $html .= '<tr class="child-row collapse ' . $collBaseId . '">
-                            <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Günlük Ücret <small class="text-muted">(' . $maasDurumuGosterim . ' / 30)</small></td>
-                            <td class="text-end pe-4">' . number_format($gunlukUcret, 2, ',', '.') . ' ₺</td>
-                          </tr>';
+                // Günlük Ücret moved to header';
                 
                 if ($ucretsizIzinGunu > 0) {
                      $html .= '<tr class="child-row collapse ' . $collBaseId . '">
@@ -946,12 +982,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                               </tr>';
                 }
                 
-                if ($includedDeduction > 0 || !empty($bp->yemek_yardimi_dahil) || !empty($bp->es_yardimi_dahil)) {
-                     $html .= '<tr class="child-row collapse ' . $collBaseId . '">
-                                <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Asgari Ücret Hakedişi</td>
-                                <td class="text-end pe-4">' . number_format($asgariHakedisModal, 2, ',', '.') . ' ₺</td>
-                              </tr>';
-                }
+                // Removed redundant asgari sub-row
 
                 // Yemek / Eş
                 if (!empty($bp->yemek_yardimi_dahil) && $displayMealDeduction > 0) {
@@ -1130,7 +1161,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $html .= '<div class="col-6 col-sm-3">
                                     <div class="dist-badge">
                                         <i class="bx ' . $b['i'] . ' mb-1" style="color:' . $b['c'] . '; font-size:1.4rem;"></i>
-                                        <div class="fw-bold" style="font-size:1.05rem; line-height:1;">' . number_format($b['v'], 0, ',', '.') . ' ₺</div>
+                                        <div class="fw-bold" style="font-size:1.05rem; line-height:1;">' . number_format($b['v'], 2, ',', '.') . ' ₺</div>
                                         <div class="text-white-50 small" style="font-size:0.7rem; margin-top:4px;">' . $b['l'] . '</div>
                                     </div>
                                   </div>';

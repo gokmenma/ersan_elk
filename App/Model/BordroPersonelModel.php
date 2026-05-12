@@ -208,7 +208,7 @@ class BordroPersonelModel extends Model
 
         // USER REQ: Yemek yardımı (dengeleme), (Hedef Net - Kesintiler) ile (Asgari Net) arasındaki farktır.
         // Bu sayede "Maaş - Kesinti" kalanına ulaşmak için gereken net fark bulunur.
-        $yemekHesapMatrahi = max(0, round(($targetHakedis - $toplamKesinti) - $sonuc['asgari_hakedis'], 2));
+        $yemekHesapMatrahi = max(0, round($targetHakedis - $sonuc['asgari_hakedis'], 2));
         
         $calcFiiliGun = max(1, $fiiliGunSayisi);
         $sonuc['yemek_gunluk_ham'] = $yemekHesapMatrahi / $calcFiiliGun;
@@ -286,7 +286,7 @@ class BordroPersonelModel extends Model
             $icraKesintisi = floatval($p->hd_icra_kesintisi ?? 0);
         }
 
-        $kesintiHaricIcra = $toplamKesinti - $icraKesintisi;
+        $kesintiHaricIcra = max(0, $toplamKesinti - $icraKesintisi);
 
         $ucretsizIzinGunu = 0;
         if (isset($p->hd_ucretsiz_izin_gunu) && $p->hd_ucretsiz_izin_gunu !== null) {
@@ -396,6 +396,7 @@ class BordroPersonelModel extends Model
             $sozlesmeHakedisi = round(($maasTutari / 30) * $calismaGunu, 2);
             
             $toplamAlacagi = max($sozlesmeHakedisi, $asgariTabanVal + $includedAllowanceDeduction);
+            $matchingTableItemsSum = 0.0;
             foreach ($ekOdemelerList as $eo) {
                 $aciklama = (string)($eo->aciklama ?? '');
                 $isPuantaj = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Kaçak') === 0;
@@ -404,10 +405,15 @@ class BordroPersonelModel extends Model
                     && ($eoTurLower === 'yemek_yardimi_tum' || $eoTurLower === 'yemek' || strpos($eoTurLower, 'yemek') !== false);
                 $isDahilEs = intval($p->es_yardimi_dahil ?? 0) === 1
                     && ($eoTurLower === 'es_yardimi' || strpos($eoTurLower, 'es_yardimi') !== false || strpos($eoTurLower, 'aile') !== false);
-                if (stripos($aciklama, 'Yuvarlama') === false && !$isDahilYemek && !$isDahilEs) {
-                    $toplamAlacagi += floatval($eo->tutar);
+                if (stripos($aciklama, 'Yuvarlama') === false) {
+                    if ($isDahilYemek) { // Eş Yardımı farklı ödeme sayıldığından dengeleme havuzuna girmez, doğrudan alacağa eklenir.
+                        $matchingTableItemsSum += floatval($eo->tutar);
+                    } else {
+                        $toplamAlacagi += floatval($eo->tutar);
+                    }
                 }
             }
+            $toplamAlacagi += max(0, $matchingTableItemsSum - $mealAllowanceDeduction);
         }
 
         if (intval($p->personel_id ?? 0) === 77 && $donemBaslangic === '2026-04-01' && !(isset($p->dagitim_manuel) && intval($p->dagitim_manuel) === 1)) {
@@ -468,7 +474,7 @@ class BordroPersonelModel extends Model
             }
             $kalanNetHakedis = max(0, $toplamAlacagi - $toplamKesinti);
             $bankaOdemesi = ($kalanNetHakedis >= $asgariYatacak)
-                ? max(0, $asgariYatacak + $roundedMealForPayment + $spouseAllowanceDeduction)
+                ? min($kalanNetHakedis, $asgariYatacak + $roundedMealForPayment + $spouseAllowanceDeduction)
                 : $kalanNetHakedis;
             $sodexoOdemesi = 0;
             $digerOdeme = 0;
@@ -510,11 +516,15 @@ class BordroPersonelModel extends Model
             }
         }
 
+        // Icra ayri bir kolon/odeme kalemi olarak gosterildigi icin toplam alacak
+        // gosteriminde sadece icra harici kesintiler nete geri eklenir.
+        $gosterimToplamAlacagi = round($netAlacagi + $kesintiHaricIcra, 2);
+
         return [
             'maasDurumu' => $maasDurumu, 'maasTutari' => $maasTutari, 'rawEkOdeme' => $rawEkOdeme,
             'ucretsizIzinGunu' => $ucretsizIzinGunu, 'calismaGunu' => $calismaGunu,
             'kesintiHaricIcra' => $kesintiHaricIcra, 'icraKesintisi' => $icraKesintisi,
-            'toplamAlacagi' => $toplamAlacagi, 'netAlacagi' => $netAlacagi, 'netMaasGercek' => $netMaasGercek,
+            'toplamAlacagi' => $gosterimToplamAlacagi, 'netAlacagi' => $netAlacagi, 'netMaasGercek' => $netMaasGercek,
             'bankaOdemesi' => $bankaOdemesi, 'sodexoOdemesi' => $sodexoOdemesi, 'digerOdeme' => $digerOdeme, 'eldenOdeme' => $eldenOdeme,
             'mealAllowanceDeduction' => $mealAllowanceDeduction, 'spouseAllowanceDeduction' => $spouseAllowanceDeduction, 'includedAllowanceDeduction' => $includedAllowanceDeduction,
             'includedAllowanceFiiliGun' => $fiiliGunSayisi, 'calismaGunu' => $calismaGunu

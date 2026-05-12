@@ -1183,7 +1183,7 @@ if (!empty($dbGelirler)) {
                                                                 data-banka="<?= number_format($bankaOdemesi, 2, '.', '') ?>"
                                                                 data-diger="<?= number_format($personel->diger_odeme ?? 0, 2, '.', '') ?>"
                                                                 data-icra="<?= number_format($icraKesintisi, 2, '.', '') ?>"
-                                                                data-toplam_alacak="<?= number_format($toplamAlacagi, 2, '.', '') ?>"
+                                                                data-toplam_alacak="<?= number_format($toplamAlacagiPersonel, 2, '.', '') ?>"
                                                                 data-current-val="<?= $sodexoOdemesi ?>"
                                                                 value="<?= Helper::formattedMoney($sodexoOdemesi) ?>">
                                                             <a href="javascript:void(0);" class="btn-edit-sodexo-inline text-muted"
@@ -1211,7 +1211,7 @@ if (!empty($dbGelirler)) {
                                                                         data-sodexo="<?= $sodexoOdemesi ?>"
                                                                         data-diger="<?= $personel->diger_odeme ?? 0 ?>"
                                                                         data-icra="<?= $icraKesintisi ?>"
-                                                                        data-toplam_alacak="<?= $toplamAlacagi ?>"
+                                                                        data-toplam_alacak="<?= $toplamAlacagiPersonel ?>"
                                                                         data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>">
                                                                         <i class="mdi mdi-wallet-outline me-2 text-primary"></i>
                                                                         Ödeme
