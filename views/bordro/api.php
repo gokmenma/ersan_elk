@@ -759,6 +759,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $displayMealDeduction = max(0, $includedDeduction - $spouseDeduction);
                 }
                 $asgariHakedisModal = round(($asgariUcretNet / 30) * $calismaGunu, 2);
+                if ($displayMealDeduction <= 0 && !empty($bp->yemek_yardimi_dahil)) {
+                    $displayMealDeduction = max(0, round($netMaasHesap - $asgariHakedisModal - $spouseDeduction, 2));
+                    $mealDeduction = $displayMealDeduction;
+                    $includedDeduction = round($displayMealDeduction + $spouseDeduction, 2);
+                }
+                $roundedMealForPayment = $displayMealDeduction;
+                if (!empty($bp->yemek_yardimi_dahil) && $displayMealDeduction > 0) {
+                    $mealCalcGun = max(1, $includedAllowanceFiiliGun > 0 ? $includedAllowanceFiiliGun : $calismaGunu);
+                    $roundedMealForPayment = round(ceil($displayMealDeduction / $mealCalcGun) * $mealCalcGun, 2);
+                    $bankaOdemeModal = max($bankaOdemeModal, round($asgariHakedisModal + $roundedMealForPayment + $spouseDeduction, 2));
+                    $eldenOdemeModal = max(0, round($netMaasHesap - $bankaOdemeModal - $sodexoOdemeModal - $digerOdemeModal, 2));
+                }
                 $displayBaseHakedis = round(($nominalMaas / 30) * $calismaGunu, 2);
                 $displayEkOdemeToplami = 0.0;
                 foreach ($ekOdemelerListe as $ek) {
@@ -775,33 +787,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $displayEkOdemeToplami += floatval($ek->tutar);
                 }
                 $displayToplamAlacak = round($displayBaseHakedis + $displayEkOdemeToplami, 2);
-                if (!empty($bp->yemek_yardimi_dahil)) {
-                    $mealFiiliGun = $includedAllowanceFiiliGun > 0 ? $includedAllowanceFiiliGun : $calismaGunu;
-                    $mealFark = max(0, round($displayBaseHakedis - $asgariHakedisModal - $spouseDeduction, 2));
-                    $yemekGunlukLimit = floatval($bp->yemek_yardimi_tutari ?? 0);
-                    if ($yemekGunlukLimit <= 0 && !empty($bp->yemek_yardimi_parametre_id)) {
-                        $paramYemek = $BordroParametre->find($bp->yemek_yardimi_parametre_id);
-                        $yemekGunlukLimit = floatval($paramYemek->varsayilan_tutar ?? 0);
-                    }
-                    if ($yemekGunlukLimit <= 0) {
-                        $paramYemek = $BordroParametre->getByKod('yemek_yardimi_tum') ?: $BordroParametre->getByKod('yemek');
-                        $yemekGunlukLimit = floatval($paramYemek->varsayilan_tutar ?? 0);
-                    }
-                    if ($yemekGunlukLimit <= 0) {
-                        $yemekGunlukLimit = 300;
-                    }
-                    $rawMealDaily = $mealFiiliGun > 0 ? ($mealFark / $mealFiiliGun) : 0;
-                    $roundedMealDaily = $mealFiiliGun > 0 ? ceil($rawMealDaily) : 0;
-                    $isMealLimitApplied = $yemekGunlukLimit > 0 && $roundedMealDaily > $yemekGunlukLimit;
-                    $calculatedMealDeduction = $mealFiiliGun > 0 ? round(($isMealLimitApplied ? $yemekGunlukLimit : $roundedMealDaily) * $mealFiiliGun, 2) : 0;
-                    if ($calculatedMealDeduction > 0) {
-                        $displayMealDeduction = $calculatedMealDeduction;
-                    }
-                }
-                $toplamYuvarlamaFarki = round($displayBaseHakedis - $asgariHakedisModal - $displayMealDeduction - $spouseDeduction, 2);
-                if (!empty($isMealLimitApplied)) {
-                    $toplamYuvarlamaFarki = 0;
-                }
+                // (Yemek yardımı limiti ve fark hesabı motor tarafında yapıldığı için UI'da tekrar yapılmaz)
+                $toplamYuvarlamaFarki = !empty($bp->yemek_yardimi_dahil)
+                    ? round($roundedMealForPayment - $displayMealDeduction, 2)
+                    : round($displayBaseHakedis - $asgariHakedisModal - $displayMealDeduction - $spouseDeduction, 2);
                 if (abs($toplamYuvarlamaFarki) < 0.01) $toplamYuvarlamaFarki = 0;
 
                 if ($includedDeduction > 0 || !empty($bp->yemek_yardimi_dahil) || !empty($bp->es_yardimi_dahil)) {
@@ -1063,7 +1052,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 } else {
                     // Önce normal ek ödemeleri göster
                     foreach ($ekOdemelerNonPuantaj as $tur => $data) {
-                        $turEtiket = $ekOdemeTurEtiketleri[$tur] ?? ucfirst($tur);
+                        $turEtiket = ($tur === 'yemek_maasa_dahil')
+                            ? 'Yemek Yardimi (Maasa Dahil)'
+                            : ($ekOdemeTurEtiketleri[$tur] ?? ucfirst($tur));
                         $count = $data['adet'] > 0 ? $data['adet'] : ($data['kayit_sayisi'] > 0 ? $data['kayit_sayisi'] : 0);
                         $adetSubText = $count > 0 ? '<div class="text-muted fw-normal" style="font-size: 10px;">(Toplam ' . $count . ' Adet)</div>' : '';
                         $collapseId = "collapse-" . $tur;

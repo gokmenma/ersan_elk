@@ -671,6 +671,21 @@ if (!empty($dbGelirler)) {
                             $sodexoP = $hesap['sodexoOdemesi'];
                             $eldenP = $hesap['eldenOdeme'];
 
+                            if (!empty($p->yemek_yardimi_dahil)) {
+                                $asgariHakedisListe = round((floatval($asgariUcretNet) / 30) * intval($hesap['calismaGunu']), 2);
+                                $mealFarkListe = floatval($hesap['mealAllowanceDeduction'] ?? 0);
+                                if ($mealFarkListe <= 0) {
+                                    $mealFarkListe = max(0, round(floatval($hesap['netMaasGercek'] ?? $pNetAlacagi) - $asgariHakedisListe - floatval($hesap['spouseAllowanceDeduction'] ?? 0), 2));
+                                }
+                                if ($mealFarkListe > 0) {
+                                    $mealGunListe = max(1, intval($hesap['includedAllowanceFiiliGun'] ?? $hesap['calismaGunu']));
+                                    $roundedMealListe = round(ceil($mealFarkListe / $mealGunListe) * $mealGunListe, 2);
+                                    $bankaP = round($asgariHakedisListe + $roundedMealListe + floatval($hesap['spouseAllowanceDeduction'] ?? 0), 2);
+                                    $sodexoP = 0;
+                                    $eldenP = max(0, round(floatval($hesap['netMaasGercek'] ?? $pNetAlacagi) - $bankaP - $sodexoP - floatval($p->diger_odeme ?? 0), 2));
+                                }
+                            }
+
                             // Toplamları güncelle
                             $toplamAlacagi += $pToplamAlacagi;
                             $toplamKesintiHaricIcra += $pKesintiHaricIcra;

@@ -1842,6 +1842,7 @@ function loadKesintiListesi(personelId, donemId) {
                 <tbody>`;
 
           response.data.forEach((item) => {
+            if (item.tur === 'icra' || item.tur === 'İCRA' || item.tur === 'ICRA') return;
             const turLabel = item.parametre_adi || kesintiMap[item.tur] || item.tur.replace(/_/g, " ");
             const statusBadge = item.durum === 'beklemede' ? ' <span class="badge bg-warning small ms-1" style="font-size:10px;">Beklemede</span>' : '';
             const fullDate = item.tarih || item.olusturma_tarihi || "";
