@@ -269,7 +269,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $all = array_merge($avanslar, $izinler, $talepler, $nobet_all);
                             usort($all, fn($a, $b) => strtotime($b->tarih) - strtotime($a->tarih));
                             $data['recent_requests'] = array_slice($all, 0, 10);
-                            $pIds = array_unique(array_column($data['recent_requests'], 'personel_id'));
+                            $pIds = array_values(array_filter(array_unique(array_column($data['recent_requests'], 'personel_id'))));
                             $data['personel_map'] = [];
                             if (!empty($pIds)) { $personeller = $personelModel->whereIn('id', $pIds); foreach ($personeller as $p) $data['personel_map'][$p->id] = $p; }
                         } elseif ($widgetId == 'widget-izindekiler') {

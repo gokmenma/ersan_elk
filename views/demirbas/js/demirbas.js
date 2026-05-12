@@ -2711,11 +2711,72 @@ $(document).on("click", "#btnUploadExcel", function () {
 
 // Excel Export
 $(document).on("click", "#exportExcel", function () {
+  // SAYAÇ DEPOSU DESTEĞİ
+  if ($("#sayacDepoTab").length > 0) {
+    let activeTab = $("#sayacDepoTab button.active").attr("id");
+    let tabMap = {
+      "kaski-tab": "sayac_kaski",
+      "depo-tab": "sayac_bizim_depo",
+      "personel-tab": "sayac_personel",
+      "hareket-tab": "sayac_hareket",
+    };
+    let tabName = tabMap[activeTab] || "sayac_kaski";
+
+    let currentTable = null;
+    if (activeTab === "kaski-tab")
+      currentTable = typeof kaskiTarihTable !== "undefined" ? kaskiTarihTable : null;
+    else if (activeTab === "depo-tab")
+      currentTable = typeof depoSayacTable !== "undefined" ? depoSayacTable : null;
+    else if (activeTab === "personel-tab")
+      currentTable = typeof personelTable !== "undefined" ? personelTable : null;
+    else if (activeTab === "hareket-tab")
+      currentTable = typeof hareketTable !== "undefined" ? hareketTable : null;
+
+    let searchTerm = currentTable && typeof currentTable.search === "function" ? currentTable.search() : "";
+    let url = "views/demirbas/export-excel.php";
+    let params = new URLSearchParams();
+
+    params.append("tab", tabName);
+    if (searchTerm) {
+      params.append("search", searchTerm);
+    }
+
+    // Sayaca Özel Filtre Parametreleri
+    if (activeTab === "depo-tab") {
+      let statusVal = $('input[name="sayac-status-filter"]:checked').val() || "";
+      params.append("status_filter", statusVal);
+    } else if (activeTab === "hareket-tab") {
+      let statusVal = $('input[name="hareket-status-filter"]:checked').val() || "";
+      let viewMode = $('input[name="hareket-view-mode"]:checked').val() || "list";
+      params.append("status_filter", statusVal);
+      params.append("view_mode", viewMode);
+    }
+
+    window.location.href = url + "?" + params.toString();
+    return;
+  }
+
+  // STANDART DEMİRBAŞ/ZİMMET DESTEĞİ
   let activeTab = $("#demirbasTab button.active").attr("id");
   let tabName = activeTab === "zimmet-tab" ? "zimmet" : "demirbas";
-  let currentTable = tabName === "zimmet" ? zimmetTable : demirbasTable;
+  let currentTable = null;
 
-  let searchTerm = currentTable.search();
+  if (tabName === "zimmet" && typeof zimmetTable !== "undefined") {
+    currentTable = zimmetTable;
+  } else if (tabName === "demirbas" && typeof demirbasTable !== "undefined") {
+    currentTable = demirbasTable;
+  }
+
+  if (!currentTable) {
+    console.warn("Aktif tablo nesnesi bulunamadı, varsayılan export başlatılıyor.");
+    let url = "views/demirbas/export-excel.php";
+    let params = new URLSearchParams();
+    params.append("tab", tabName);
+    window.location.href = url + "?" + params.toString();
+    return;
+  }
+
+  let searchTerm = typeof currentTable.search === "function" ? currentTable.search() : "";
   let url = "views/demirbas/export-excel.php";
   let params = new URLSearchParams();
 

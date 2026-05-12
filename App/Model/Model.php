@@ -223,7 +223,7 @@ class Model extends Db
         $placeholders = implode(',', array_fill(0, count($values), '?'));
         $sql = "SELECT * FROM $this->table WHERE $column IN ($placeholders)";
         $stmt = $this->db->prepare($sql);
-        $stmt->execute($values);
+        $stmt->execute(array_values($values));
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 

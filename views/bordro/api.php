@@ -759,18 +759,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $displayMealDeduction = max(0, $includedDeduction - $spouseDeduction);
                 }
                 $asgariHakedisModal = round(($asgariUcretNet / 30) * $calismaGunu, 2);
-                if ($displayMealDeduction <= 0 && !empty($bp->yemek_yardimi_dahil)) {
-                    $displayMealDeduction = max(0, round($netMaasHesap - $asgariHakedisModal - $spouseDeduction, 2));
-                    $mealDeduction = $displayMealDeduction;
-                    $includedDeduction = round($displayMealDeduction + $spouseDeduction, 2);
-                }
-                $roundedMealForPayment = $displayMealDeduction;
-                if (!empty($bp->yemek_yardimi_dahil) && $displayMealDeduction > 0) {
-                    $mealCalcGun = max(1, $includedAllowanceFiiliGun > 0 ? $includedAllowanceFiiliGun : $calismaGunu);
-                    $roundedMealForPayment = round(ceil($displayMealDeduction / $mealCalcGun) * $mealCalcGun, 2);
-                    $bankaOdemeModal = max($bankaOdemeModal, round($asgariHakedisModal + $roundedMealForPayment + $spouseDeduction, 2));
-                    $eldenOdemeModal = max(0, round($netMaasHesap - $bankaOdemeModal - $sodexoOdemeModal - $digerOdemeModal, 2));
-                }
                 $displayBaseHakedis = round(($nominalMaas / 30) * $calismaGunu, 2);
                 $displayEkOdemeToplami = 0.0;
                 foreach ($ekOdemelerListe as $ek) {
@@ -786,11 +774,31 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                     $displayEkOdemeToplami += floatval($ek->tutar);
                 }
-                $displayToplamAlacak = round($displayBaseHakedis + $displayEkOdemeToplami, 2);
+                if (!empty($bp->yemek_yardimi_dahil)) {
+                    $displayMealDeduction = max(0, round($displayBaseHakedis - floatval($hesap['kesintiHaricIcra'] ?? 0) - $asgariHakedisModal - $spouseDeduction, 2));
+                    $mealDeduction = $displayMealDeduction;
+                    $includedDeduction = round($displayMealDeduction + $spouseDeduction, 2);
+                } elseif ($displayMealDeduction <= 0 && !empty($bp->yemek_yardimi_dahil)) {
+                    $displayMealDeduction = max(0, round($netMaasHesap - $asgariHakedisModal - $spouseDeduction, 2));
+                    $mealDeduction = $displayMealDeduction;
+                    $includedDeduction = round($displayMealDeduction + $spouseDeduction, 2);
+                }
+                $roundedMealForPayment = $displayMealDeduction;
+                if (!empty($bp->yemek_yardimi_dahil) && $displayMealDeduction > 0) {
+                    $mealCalcGun = max(1, $includedAllowanceFiiliGun > 0 ? $includedAllowanceFiiliGun : $calismaGunu);
+                    $roundedMealForPayment = round(ceil($displayMealDeduction / $mealCalcGun) * $mealCalcGun, 2);
+                    $bankaOdemeModal = round($asgariHakedisModal + $roundedMealForPayment + $spouseDeduction, 2);
+                    $eldenOdemeModal = max(0, round($netMaasHesap - $bankaOdemeModal - $sodexoOdemeModal - $digerOdemeModal, 2));
+                }
+                $displayToplamAlacak = $toplamAlacak;
                 // (Yemek yardımı limiti ve fark hesabı motor tarafında yapıldığı için UI'da tekrar yapılmaz)
-                $toplamYuvarlamaFarki = !empty($bp->yemek_yardimi_dahil)
-                    ? round($roundedMealForPayment - $displayMealDeduction, 2)
-                    : round($displayBaseHakedis - $asgariHakedisModal - $displayMealDeduction - $spouseDeduction, 2);
+                $toplamYuvarlamaFarki = round($toplamAlacak - ($displayBaseHakedis + $displayEkOdemeToplami), 2);
+                if (!empty($bp->yemek_yardimi_dahil)) {
+                    $toplamYuvarlamaFarki = round($roundedMealForPayment - $displayMealDeduction, 2);
+                    if ($toplamYuvarlamaFarki > 0) {
+                        $displayToplamAlacak = round($displayToplamAlacak + $toplamYuvarlamaFarki, 2);
+                    }
+                }
                 if (abs($toplamYuvarlamaFarki) < 0.01) $toplamYuvarlamaFarki = 0;
 
                 if ($includedDeduction > 0 || !empty($bp->yemek_yardimi_dahil) || !empty($bp->es_yardimi_dahil)) {
@@ -1002,6 +1010,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
 
                     $aciklama = (string)($odeme->aciklama ?? '');
+                    $odemeTurLower = mb_strtolower((string)($odeme->tur ?? ''), 'UTF-8');
+                    if (!empty($bp->yemek_yardimi_dahil)
+                        && ($odemeTurLower === 'yemek_yardimi_tum' || $odemeTurLower === 'yemek' || strpos($odemeTurLower, 'yemek') !== false)
+                    ) {
+                        continue;
+                    }
                     if (($odeme->tur ?? '') === 'yuvarlama_farki' || $aciklama === 'Yuvarlama Farkı') {
                         continue;
                     }
@@ -1523,6 +1537,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception('Sodexo tutarı toplam alacağın %25\'ini geçemez!');
                 }
 
+                $maxBanka = max(0, $net - $sodexo - $icra - $diger);
+                if ($banka > $maxBanka) {
+                    $banka = $maxBanka;
+                }
                 $elden = max(0, $net - $banka - $sodexo - $icra - $diger);
 
                 // Güncelle
@@ -1556,6 +1574,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 // Maaşı tekrar hesapla (Varsayılan dağılım mantığı çalışacak)
                 $BordroPersonel->hesaplaMaas($id);
+
+                $sqlDefault = $BordroPersonel->getDb()->prepare("
+                    SELECT bp.*, bd.baslangic_tarihi, bd.bitis_tarihi
+                    FROM bordro_personel bp
+                    LEFT JOIN bordro_donemi bd ON bd.id = bp.donem_id
+                    WHERE bp.id = ?
+                ");
+                $sqlDefault->execute([$id]);
+                $defaultRow = $sqlDefault->fetch(PDO::FETCH_OBJ);
+                $defaultBanka = 0;
+                $defaultSodexo = 0;
+                $defaultDiger = 0;
+                $defaultElden = 0;
+                if ($defaultRow) {
+                    $donemObj = (object) [
+                        'baslangic_tarihi' => $defaultRow->baslangic_tarihi ?? date('Y-m-01'),
+                        'bitis_tarihi' => $defaultRow->bitis_tarihi ?? date('Y-m-t'),
+                    ];
+                    $asgariNetDefault = floatval($BordroParametre->getGenelAyar('asgari_ucret_net', $donemObj->baslangic_tarihi) ?? 0);
+                    $defaultHesap = $BordroPersonel->hesaplaOrtakGosterimDegerleri($defaultRow, $donemObj, $asgariNetDefault);
+                    $defaultBanka = round(floatval($defaultHesap['bankaOdemesi'] ?? 0), 2);
+                    $defaultSodexo = round(floatval($defaultHesap['sodexoOdemesi'] ?? 0), 2);
+                    $defaultDiger = round(floatval($defaultHesap['digerOdeme'] ?? 0), 2);
+                    $defaultElden = round(floatval($defaultHesap['eldenOdeme'] ?? 0), 2);
+
+                    $sqlWriteDefault = $BordroPersonel->getDb()->prepare("
+                        UPDATE bordro_personel
+                        SET banka_odemesi = ?, sodexo_odemesi = ?, diger_odeme = ?, elden_odeme = ?
+                        WHERE id = ?
+                    ");
+                    $sqlWriteDefault->execute([$defaultBanka, $defaultSodexo, $defaultDiger, $defaultElden, $id]);
+                }
 
                 echo json_encode([
                     'status' => 'success',

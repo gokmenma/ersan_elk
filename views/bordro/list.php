@@ -671,12 +671,13 @@ if (!empty($dbGelirler)) {
                             $sodexoP = $hesap['sodexoOdemesi'];
                             $eldenP = $hesap['eldenOdeme'];
 
-                            if (!empty($p->yemek_yardimi_dahil)) {
+                            $hasCustomOdemeDagitimi = intval($p->dagitim_manuel ?? 0) === 1
+                                && (floatval($sodexoP) > 0 || floatval($p->diger_odeme ?? 0) > 0);
+
+                            if (!empty($p->yemek_yardimi_dahil) && !$hasCustomOdemeDagitimi) {
                                 $asgariHakedisListe = round((floatval($asgariUcretNet) / 30) * intval($hesap['calismaGunu']), 2);
-                                $mealFarkListe = floatval($hesap['mealAllowanceDeduction'] ?? 0);
-                                if ($mealFarkListe <= 0) {
-                                    $mealFarkListe = max(0, round(floatval($hesap['netMaasGercek'] ?? $pNetAlacagi) - $asgariHakedisListe - floatval($hesap['spouseAllowanceDeduction'] ?? 0), 2));
-                                }
+                                $sozlesmeHakedisListe = round((floatval($hesap['maasTutari'] ?? 0) / 30) * intval($hesap['calismaGunu']), 2);
+                                $mealFarkListe = max(0, round($sozlesmeHakedisListe - floatval($hesap['kesintiHaricIcra'] ?? 0) - $asgariHakedisListe - floatval($hesap['spouseAllowanceDeduction'] ?? 0), 2));
                                 if ($mealFarkListe > 0) {
                                     $mealGunListe = max(1, intval($hesap['includedAllowanceFiiliGun'] ?? $hesap['calismaGunu']));
                                     $roundedMealListe = round(ceil($mealFarkListe / $mealGunListe) * $mealGunListe, 2);
@@ -687,6 +688,13 @@ if (!empty($dbGelirler)) {
                             }
 
                             // Toplamları güncelle
+                            $odemeDagitimToplami = round($bankaP + $sodexoP + floatval($p->diger_odeme ?? 0) + $eldenP, 2);
+                            if ($odemeDagitimToplami > $pNetAlacagi) {
+                                $yuvarlamaFarkiListe = round($odemeDagitimToplami - $pNetAlacagi, 2);
+                                $pNetAlacagi = $odemeDagitimToplami;
+                                $pToplamAlacagi = round($pToplamAlacagi + $yuvarlamaFarkiListe, 2);
+                            }
+
                             $toplamAlacagi += $pToplamAlacagi;
                             $toplamKesintiHaricIcra += $pKesintiHaricIcra;
                             $toplamNetAlacagi += $pNetAlacagi;

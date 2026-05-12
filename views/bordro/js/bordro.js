@@ -1666,7 +1666,7 @@ function hesaplaEldenOdeme() {
         .replace(/[^\d,]/g, "")
         .replace(",", "."),
     ) || 0;
-  const banka = parseFloat($("#banka_odemesi").val()) || 0;
+  let banka = parseFloat($("#banka_odemesi").val()) || 0;
   const sodexo = parseFloat($("#sodexo_odemesi").val()) || 0;
   const diger = parseFloat($("#diger_odeme").val()) || 0;
   const toplam_alacak =
@@ -1690,6 +1690,12 @@ function hesaplaEldenOdeme() {
   } else {
     $("#sodexo_odemesi").removeClass("is-invalid");
     $("#sodexo_limit_warning").remove();
+  }
+
+  const maxBanka = Math.max(0, net - sodexo - diger);
+  if (banka > maxBanka) {
+    banka = maxBanka;
+    $("#banka_odemesi").val(Number.isInteger(banka) ? banka : banka.toFixed(2));
   }
 
   const elden = net - banka - sodexo - diger;

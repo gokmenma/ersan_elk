@@ -354,7 +354,7 @@ class BordroPersonelModel extends Model
                 $eoTurLower = mb_strtolower((string) ($eo->tur ?? ''), 'UTF-8');
                 $isDahilYemek = intval($p->yemek_yardimi_dahil ?? 0) === 1 && (strpos($eoTurLower, 'yemek') !== false);
                 $isDahilEs = intval($p->es_yardimi_dahil ?? 0) === 1 && (strpos($eoTurLower, 'es_yardimi') !== false || strpos($eoTurLower, 'aile') !== false);
-                // if ($isDahilYemek || $isDahilEs) continue;
+                if ($isDahilYemek || $isDahilEs) continue;
             }
             $tutar = floatval($eo->tutar);
             $aciklama = (string) ($eo->aciklama ?? '');
@@ -404,7 +404,7 @@ class BordroPersonelModel extends Model
                     && ($eoTurLower === 'yemek_yardimi_tum' || $eoTurLower === 'yemek' || strpos($eoTurLower, 'yemek') !== false);
                 $isDahilEs = intval($p->es_yardimi_dahil ?? 0) === 1
                     && ($eoTurLower === 'es_yardimi' || strpos($eoTurLower, 'es_yardimi') !== false || strpos($eoTurLower, 'aile') !== false);
-                if (!$isPuantaj && stripos($aciklama, 'Yuvarlama') === false && !$isDahilYemek && !$isDahilEs) {
+                if (stripos($aciklama, 'Yuvarlama') === false && !$isDahilYemek && !$isDahilEs) {
                     $toplamAlacagi += floatval($eo->tutar);
                 }
             }
@@ -492,7 +492,9 @@ class BordroPersonelModel extends Model
         }
 
         // Manuel dağıtımda otomatik düzelme mantığını bypass ederek kullanıcının girdiği değerleri koru
-        if (!(isset($p->dagitim_manuel) && intval($p->dagitim_manuel) === 1)) {
+        $manualDagitim = isset($p->dagitim_manuel) && intval($p->dagitim_manuel) === 1;
+        $hasCustomDagitim = $manualDagitim && (floatval($sodexoOdemesi) > 0 || floatval($digerOdeme) > 0);
+        if (!$manualDagitim || ($isInclusive && !$hasCustomDagitim)) {
             if ($bankaOdemesi > $netAlacagi) {
                 $fark = $bankaOdemesi - $netAlacagi;
                 $netAlacagi += $fark;
@@ -3713,10 +3715,7 @@ class BordroPersonelModel extends Model
             $icraBazTutar = $bankaYatacakBaz;
             if ($firstHTip === 'asgari_oran_net' || $firstHTip === 'oran_net') {
                 $oranKullan = ($firstOran > 0) ? $firstOran : 25;
-                // USER REQ: İcra baz tutarı minimum ücret üzerinden değil, gerçek hakediş üzerinden 1/4 oranında hesaplanmalıdır.
-                // Ancak hakediş asgari ücretten büyükse asgari ücretin 1/4'ü kadar bir limit kontrolü gerekebilir (User formülüne göre).
-                // User formülü: (28075,50 / 30 * 29 / 4) = 6784,91. Bu değer 1/4 oranına denk geliyor.
-                $toplamIcraBudget = round($icraMatrahi * ($oranKullan / 100), 2);
+                $toplamIcraBudget = round($icraBazTutar * ($oranKullan / 100), 2);
             } else {
                 $sabitToplam = 0;
                 foreach ($icraDetaylar as $d) $sabitToplam += floatval($d['icraData']->aylik_kesinti_tutari);
