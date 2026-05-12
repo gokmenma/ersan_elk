@@ -84,7 +84,7 @@ class TalepModel extends Model
     {
         $restricted_dept = $this->getRestrictedDept();
         $is_restricted = ($restricted_dept !== null);
-        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
+        $extra_where = $is_restricted ? " AND (FIND_IN_SET(TRIM(p.departman), ?) OR TRIM(p.departman) = '' OR p.departman IS NULL) AND p.disardan_sigortali = 0" : "";
 
         $bindParams = [$_SESSION['firma_id']];
         if ($is_restricted) {
@@ -95,7 +95,7 @@ class TalepModel extends Model
             SELECT COUNT(*) as count 
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
-            WHERE pt.durum NOT IN ('cozuldu', 'reddedildi', 'iptal_edildi') AND pt.silinme_tarihi IS NULL AND p.firma_id = ? AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
+            WHERE (LOWER(pt.durum) NOT IN ('cozuldu', 'reddedildi', 'iptal_edildi')) AND pt.silinme_tarihi IS NULL AND p.firma_id = ? AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
             $extra_where
         ";
         $query = $this->db->prepare($sql);
@@ -110,7 +110,7 @@ class TalepModel extends Model
     {
         $restricted_dept = $this->getRestrictedDept();
         $is_restricted = ($restricted_dept !== null);
-        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
+        $extra_where = $is_restricted ? " AND (FIND_IN_SET(TRIM(p.departman), ?) OR TRIM(p.departman) = '' OR p.departman IS NULL) AND p.disardan_sigortali = 0" : "";
 
         $bindParams = [$_SESSION['firma_id']];
         if ($is_restricted) {
@@ -122,7 +122,7 @@ class TalepModel extends Model
             SELECT 'Talep' as tip, pt.id, pt.personel_id, pt.olusturma_tarihi as tarih, pt.durum, pt.baslik as detay 
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
-            WHERE pt.durum NOT IN ('cozuldu', 'reddedildi', 'iptal_edildi') AND pt.silinme_tarihi IS NULL AND p.firma_id = ? AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
+            WHERE (LOWER(pt.durum) NOT IN ('cozuldu', 'reddedildi', 'iptal_edildi')) AND pt.silinme_tarihi IS NULL AND p.firma_id = ? AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
             $extra_where
             ORDER BY pt.olusturma_tarihi DESC
             LIMIT {$limit}
@@ -139,7 +139,7 @@ class TalepModel extends Model
     {
         $restricted_dept = $this->getRestrictedDept();
         $is_restricted = ($restricted_dept !== null);
-        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
+        $extra_where = $is_restricted ? " AND (FIND_IN_SET(TRIM(p.departman), ?) OR TRIM(p.departman) = '' OR p.departman IS NULL) AND p.disardan_sigortali = 0" : "";
 
         $bindParams = [$_SESSION['firma_id']];
         if ($is_restricted) {
@@ -150,7 +150,7 @@ class TalepModel extends Model
             SELECT pt.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
-            WHERE pt.durum NOT IN ('cozuldu', 'reddedildi', 'iptal_edildi') AND pt.silinme_tarihi IS NULL AND p.firma_id = ? AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
+            WHERE (LOWER(pt.durum) NOT IN ('cozuldu', 'reddedildi', 'iptal_edildi')) AND pt.silinme_tarihi IS NULL AND p.firma_id = ? AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
             $extra_where
             ORDER BY pt.olusturma_tarihi DESC
         ";

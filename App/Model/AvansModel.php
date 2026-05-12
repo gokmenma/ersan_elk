@@ -79,7 +79,7 @@ class AvansModel extends Model
     {
         $restricted_dept = $this->getRestrictedDept();
         $is_restricted = ($restricted_dept !== null);
-        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
+        $extra_where = $is_restricted ? " AND (FIND_IN_SET(TRIM(p.departman), ?) OR TRIM(p.departman) = '' OR p.departman IS NULL) AND p.disardan_sigortali = 0" : "";
 
         $bindParams = [$_SESSION['firma_id']];
         if ($is_restricted) {
@@ -105,7 +105,7 @@ class AvansModel extends Model
     {
         $restricted_dept = $this->getRestrictedDept();
         $is_restricted = ($restricted_dept !== null);
-        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
+        $extra_where = $is_restricted ? " AND (FIND_IN_SET(TRIM(p.departman), ?) OR TRIM(p.departman) = '' OR p.departman IS NULL) AND p.disardan_sigortali = 0" : "";
 
         $bindParams = [$_SESSION['firma_id']];
         if ($is_restricted) {
@@ -117,7 +117,7 @@ class AvansModel extends Model
             SELECT 'Avans' as tip, pa.id, pa.personel_id, pa.talep_tarihi as tarih, pa.durum, pa.tutar as detay
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
-            WHERE pa.durum = 'beklemede' AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
+            WHERE (LOWER(pa.durum) = 'beklemede') AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
             ORDER BY pa.talep_tarihi DESC
             LIMIT {$limit}
@@ -134,7 +134,7 @@ class AvansModel extends Model
     {
         $restricted_dept = $this->getRestrictedDept();
         $is_restricted = ($restricted_dept !== null);
-        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
+        $extra_where = $is_restricted ? " AND (FIND_IN_SET(TRIM(p.departman), ?) OR TRIM(p.departman) = '' OR p.departman IS NULL) AND p.disardan_sigortali = 0" : "";
 
         $bindParams = [$_SESSION['firma_id']];
         if ($is_restricted) {

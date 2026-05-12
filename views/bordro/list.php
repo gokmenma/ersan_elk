@@ -835,16 +835,16 @@ if (!empty($dbGelirler)) {
                                                 style="font-size: 0.65rem;">KESİNTİ</span>
                                         </div>
                                         <p class="text-muted mb-1 small fw-bold"
-                                            style="letter-spacing: 0.5px; opacity: 0.7;">KESİNTİ TUTARI (HARİÇ İCRA)</p>
+                                            style="letter-spacing: 0.5px; opacity: 0.7;">KESİNTİ TUTARI</p>
                                         <h4 class="mb-0 fw-bold bordro-text-heading">
-                                            <?= number_format($toplamKesintiHaricIcra, 2, ',', '.') ?> <span
+                                            <?= number_format($toplamAlacagi - $toplamNetAlacagi, 2, ',', '.') ?> <span
                                                 style="font-size: 0.85rem; font-weight: 600;">₺</span>
                                         </h4>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Net Alacağı -->
+                            <!-- Net Maaş -->
                             <div class="col-xl col-md-4">
                                 <div class="card border-0 shadow-sm h-100 bordro-summary-card"
                                     style="--card-color: #2a9d8f; border-bottom: 3px solid var(--card-color) !important;">
@@ -856,7 +856,7 @@ if (!empty($dbGelirler)) {
                                             <span class="text-muted small fw-bold" style="font-size: 0.65rem;">NET</span>
                                         </div>
                                         <p class="text-muted mb-1 small fw-bold"
-                                            style="letter-spacing: 0.5px; opacity: 0.7;">NET ALACAĞI</p>
+                                            style="letter-spacing: 0.5px; opacity: 0.7;">NET MAAŞ</p>
                                         <h4 class="mb-0 fw-bold bordro-text-heading">
                                             <?= number_format($toplamNetAlacagi, 2, ',', '.') ?> <span
                                                 style="font-size: 0.85rem; font-weight: 600;">₺</span>
@@ -978,7 +978,7 @@ if (!empty($dbGelirler)) {
                                             <th class="text-center" data-filter="number">Gün</th>
                                             <th class="text-end" data-filter="number">Toplam Alacağı</th>
                                             <th class="text-end" data-filter="number">Kesinti Tutarı</th>
-                                            <th class="text-end" data-filter="number">Net Alacağı</th>
+                                            <th class="text-end" data-filter="number">Net Maaş</th>
                                             <th class="text-end" data-filter="number">İcra Kesintisi</th>
                                             <th class="text-end" data-filter="number">Banka</th>
                                             <th class="text-end" data-filter="number">Sodexo</th>
@@ -1148,7 +1148,7 @@ if (!empty($dbGelirler)) {
                                                             data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>"
                                                             data-maas="<?= floatval($personel->maas_tutari ?? 0) ?>"
                                                             data-maas-durumu="<?= $personel->maas_durumu ?? '' ?>">
-                                                            <?= number_format($kesintiHaricIcra, 2, ',', '.') ?> ₺
+                                                            <?= number_format($toplamAlacagiPersonel - $netAlacagi, 2, ',', '.') ?> ₺
                                                         </span>
                                                     </td>
                                                     <td class="text-end text-success fw-bold">
