@@ -719,11 +719,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
                 $displayEkOdemeToplami += max(0, $matchingTableItemsSum - floatval($hesap['mealAllowanceDeduction'] ?? 0));
                 if (!empty($bp->yemek_yardimi_dahil)) {
-                    $displayMealDeduction = max(0, round($displayBaseHakedis - $asgariHakedisModal - $spouseDeduction, 2));
+                    $displayMealDeduction = max(0, round($mealDeduction, 2));
                     $mealDeduction = $displayMealDeduction;
                     $includedDeduction = round($displayMealDeduction + $spouseDeduction, 2);
                 } elseif ($displayMealDeduction <= 0 && !empty($bp->yemek_yardimi_dahil)) {
-                    $displayMealDeduction = max(0, round($displayBaseHakedis - $asgariHakedisModal - $spouseDeduction, 2));
+                    $displayMealDeduction = max(0, round($mealDeduction, 2));
                     $mealDeduction = $displayMealDeduction;
                     $includedDeduction = round($displayMealDeduction + $spouseDeduction, 2);
                 }
@@ -967,7 +967,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $topRowLabel = "Maaş Hakedişi";
                 if ($displayMealDeduction > 0 || $spouseDeduction > 0) {
                     $topRowValue = round($displayBaseHakedis - $displayMealDeduction - $spouseDeduction, 2);
-                    $topRowLabel = "Asgari Ücret Hakedişi";
+                    $topRowLabel = "Maaş Hakedişi";
                 }
 
                 // --- COLUMN 1: HAKEDİŞLER ---
