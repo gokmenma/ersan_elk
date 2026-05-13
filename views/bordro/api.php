@@ -608,6 +608,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'hafta_sonu_nobet' => 'Hafta Sonu Nöbet',
                     'resmi_tatil_nobet' => 'Resmi Tatil Nöbeti',
                     'nobet_grubu' => 'Nöbet Ödemeleri',
+                    'yemek_yardimi_dengeleme' => 'Yemek Yardımı (Maaşa Dahil)',
                     'diger' => 'Diğer Ek Ödeme'
                 ];
 
@@ -787,13 +788,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $tumEkOdemeler = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
                 $detayData = json_decode($bp->hesaplama_detay ?? '', true);
 
+
                 foreach ($tumEkOdemeler as $odeme) {
                     $parsedAdet = 0;
                     if (preg_match('/\((\d+)\s*Adet/i', $odeme->aciklama ?? '', $adetMatch)) { $parsedAdet = intval($adetMatch[1]); }
                     $aciklama = (string)($odeme->aciklama ?? '');
                     $odemeTurLower = mb_strtolower((string)($odeme->tur ?? ''), 'UTF-8');
                     
-                    if (!empty($bp->yemek_yardimi_dahil) && ($odemeTurLower === 'yemek_yardimi_tum' || $odemeTurLower === 'yemek' || strpos($odemeTurLower, 'yemek') !== false)) { continue; }
+                    // Prim Usülü değilse ve Yemek yardımı maaşa dahilse filtrelenmeli (Sözleşme hakedişinde zaten görünüyor)
+                    // Ancak Prim Usulünde veya sanal dengeleme kaleminde filtre uygulanmamalı.
+                    if (!$isPrimUsulu && !empty($bp->yemek_yardimi_dahil) && ($odemeTurLower === 'yemek_yardimi_tum' || $odemeTurLower === 'yemek' || strpos($odemeTurLower, 'yemek') !== false) && $odemeTurLower !== 'yemek_yardimi_dengeleme') { continue; }
                     if (($odemeTurLower === 'es_yardimi' || strpos($odemeTurLower, 'es_yardimi') !== false || strpos($odemeTurLower, 'aile') !== false)) { continue; }
                     if (($odeme->tur ?? '') === 'yuvarlama_farki' || $aciklama === 'Yuvarlama Farkı') { continue; }
                     
@@ -1058,13 +1062,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
 
                     // Yemek / Eş (for non-inclusive or Prim personnel with these allowances)
-                    if (!$isPrimUsulu && !empty($bp->yemek_yardimi_dahil) && $displayMealDeduction > 0) {
+                    if (!empty($bp->yemek_yardimi_dahil) && $displayMealDeduction > 0) {
                         $html .= '<tr class="parent-row">
                                     <td><i class="bx bx-restaurant me-2 text-muted opacity-75"></i>Yemek Yardımı <small class="text-muted">(Maaşa Dahil)</small></td>
                                     <td class="text-end text-success">+' . number_format($displayMealDeduction, 2, ',', '.') . ' ₺</td>
                                   </tr>';
                     }
-                    if (!$isPrimUsulu && $spouseDeduction > 0) {
+                    if ($spouseDeduction > 0) {
                         $html .= '<tr class="parent-row">
                                     <td><i class="bx bx-group me-2 text-muted opacity-75"></i>Eş Yardımı <small class="text-muted">(Maaşa Dahil)</small></td>
                                     <td class="text-end text-success">+' . number_format($spouseDeduction, 2, ',', '.') . ' ₺</td>

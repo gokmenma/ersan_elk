@@ -3737,7 +3737,7 @@ class BordroPersonelModel extends Model
             }
             
             $sodexoOdemesi = 0;
-            $eldenOdeme = max(0, $netMaas - $bankaOdemesi);
+            $eldenOdeme = max(0, $kalanNetAlacagi - $bankaOdemesi);
         } else {
             if (isset($kayit->sodexo_manuel) && $kayit->sodexo_manuel == 1) {
                 $sodexoOdemesi = floatval($kayit->sodexo_odemesi ?? 0);

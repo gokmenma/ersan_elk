@@ -206,7 +206,7 @@ class TalepModel extends Model
     {
         $restricted_dept = $this->getRestrictedDept();
         $is_restricted = ($restricted_dept !== null);
-        $extra_where = $is_restricted ? " AND FIND_IN_SET(p.departman, ?)" : "";
+        $extra_where = $is_restricted ? " AND (FIND_IN_SET(TRIM(p.departman), ?) OR TRIM(p.departman) = '' OR p.departman IS NULL) AND p.disardan_sigortali = 0" : "";
 
         $bindParams = [$_SESSION['firma_id']];
         if ($is_restricted) {

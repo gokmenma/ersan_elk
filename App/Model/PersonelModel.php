@@ -325,7 +325,7 @@ class PersonelModel extends Model
         $restricted_dept = $this->getRestrictedDept();
         $is_restricted = ($restricted_dept !== null);
 
-        $extra_where = $is_restricted ? " AND FIND_IN_SET(departman, :restricted_dept)" : "";
+        $extra_where = $is_restricted ? " AND (FIND_IN_SET(departman, :restricted_dept) OR TRIM(departman) = '' OR departman IS NULL)" : "";
         
         $where = "WHERE firma_id = :firma_id AND silinme_tarihi IS NULL AND (disardan_sigortali = 0 OR FIND_IN_SET(:modul, gorunum_modulleri)) $extra_where";
         $params = ['firma_id' => $_SESSION['firma_id'], 'modul' => $modul];
@@ -1184,9 +1184,9 @@ class PersonelModel extends Model
 
         $restricted_dept = $this->getRestrictedDept();
         $is_restricted = ($restricted_dept !== null);
-        $extra_where_p = $is_restricted ? " AND FIND_IN_SET(p.departman, :restricted_dept)" : "";
-        $extra_where_p1 = $is_restricted ? " AND FIND_IN_SET(p.departman, :restricted_dept1)" : "";
-        $extra_where_p2 = $is_restricted ? " AND FIND_IN_SET(p.departman, :restricted_dept2)" : "";
+        $extra_where_p = $is_restricted ? " AND (FIND_IN_SET(p.departman, :restricted_dept) OR TRIM(p.departman) = '' OR p.departman IS NULL)" : "";
+        $extra_where_p1 = $is_restricted ? " AND (FIND_IN_SET(p.departman, :restricted_dept1) OR TRIM(p.departman) = '' OR p.departman IS NULL)" : "";
+        $extra_where_p2 = $is_restricted ? " AND (FIND_IN_SET(p.departman, :restricted_dept2) OR TRIM(p.departman) = '' OR p.departman IS NULL)" : "";
 
         // Sahadaki Personel Sayısı (Bugün iş yapmış olanlar)
         $sqlSahadaki = "SELECT COUNT(DISTINCT p_id) as sahadaki FROM (
@@ -1259,9 +1259,9 @@ class PersonelModel extends Model
 
         $restricted_dept = $this->getRestrictedDept();
         $is_restricted = ($restricted_dept !== null);
-        $extra_where_p = $is_restricted ? " AND FIND_IN_SET(p.departman, :restricted_dept)" : "";
-        $extra_where_p1 = $is_restricted ? " AND FIND_IN_SET(p.departman, :restricted_dept1)" : "";
-        $extra_where_p2 = $is_restricted ? " AND FIND_IN_SET(p.departman, :restricted_dept2)" : "";
+        $extra_where_p = $is_restricted ? " AND (FIND_IN_SET(p.departman, :restricted_dept) OR TRIM(p.departman) = '' OR p.departman IS NULL)" : "";
+        $extra_where_p1 = $is_restricted ? " AND (FIND_IN_SET(p.departman, :restricted_dept1) OR TRIM(p.departman) = '' OR p.departman IS NULL)" : "";
+        $extra_where_p2 = $is_restricted ? " AND (FIND_IN_SET(p.departman, :restricted_dept2) OR TRIM(p.departman) = '' OR p.departman IS NULL)" : "";
 
         // Sahadaki Personel Sayısı (Bu ay iş yapmış olan benzersiz personeller)
         $sqlSahadaki = "SELECT COUNT(DISTINCT p_id) as sahadaki FROM (

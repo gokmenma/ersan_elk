@@ -159,19 +159,30 @@ class AvansModel extends Model
      */
     public function getIslenmisAvanslar($limit = 50)
     {
+        $restricted_dept = $this->getRestrictedDept();
+        $is_restricted = ($restricted_dept !== null);
+        $extra_where = $is_restricted ? " AND (FIND_IN_SET(TRIM(p.departman), ?) OR TRIM(p.departman) = '' OR p.departman IS NULL) AND p.disardan_sigortali = 0" : "";
+
+        $bindParams = [$_SESSION['firma_id']];
+        if ($is_restricted) {
+            $bindParams[] = $restricted_dept;
+        }
+
         $limit = (int) $limit;
-        $sql = $this->db->prepare("
+        $sql = "
             SELECT pa.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev,
                    u.adi_soyadi as solver_name
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
             LEFT JOIN users u ON pa.onaylayan_id = u.id
             WHERE pa.durum IN ('onaylandi', 'reddedildi') AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
+            $extra_where
             ORDER BY pa.talep_tarihi DESC
             LIMIT {$limit}
-        ");
-        $sql->execute([$_SESSION['firma_id']]);
-        return $sql->fetchAll(PDO::FETCH_OBJ);
+        ";
+        $query = $this->db->prepare($sql);
+        $query->execute($bindParams);
+        return $query->fetchAll(PDO::FETCH_OBJ);
     }
 
     /**
