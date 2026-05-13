@@ -1128,8 +1128,8 @@ if (!empty($dbGelirler)) {
                                                             <?= number_format($kesintiHaricIcra, 2, ',', '.') ?> ₺
                                                         </span>
                                                     </td>
-                                                    <td class="text-end text-success fw-bold">
-                                                        <span class="cursor-pointer btn-detail text-success"
+                                                    <td class="text-end fw-bold <?= ($toplamAlacagiPersonel - $kesintiHaricIcra) < 0 ? 'text-danger' : 'text-success' ?>">
+                                                        <span class="cursor-pointer btn-detail <?= ($toplamAlacagiPersonel - $kesintiHaricIcra) < 0 ? 'text-danger' : 'text-success' ?>"
                                                             data-id="<?= $personel->id ?>">
                                                             <?= number_format($toplamAlacagiPersonel - $kesintiHaricIcra, 2, ',', '.') ?> ₺
                                                         </span>
@@ -1169,8 +1169,8 @@ if (!empty($dbGelirler)) {
                                                             </a>
                                                         </div>
                                                     </td>
-                                                    <td class="text-end text-warning fw-bold td-elden">
-                                                        <?= $eldenOdeme > 0 ? number_format($eldenOdeme, 2, ',', '.') . ' ₺' : '-' ?>
+                                                    <td class="text-end fw-bold td-elden <?= $eldenOdeme < 0 ? 'text-danger' : 'text-warning' ?>">
+                                                        <?= $eldenOdeme != 0 ? number_format($eldenOdeme, 2, ',', '.') . ' ₺' : '-' ?>
                                                     </td>
                                                     <td class="text-center">
                                                         <div class="dropdown">
