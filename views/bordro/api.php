@@ -19,6 +19,7 @@ use App\Helper\Security;
 header('Content-Type: application/json; charset=utf-8');
 
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
+
     $action = $_POST['action'] ?? '';
 
     $BordroDonem = new BordroDonemModel();
@@ -575,14 +576,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 // Dönem bilgilerini al (çalışma günü hesabı için)
-                $donemBilgi = $BordroDonem->getDonemById($bp->donem_id);
+                $donemBilgi = $BordroDonem->getDonemById($bp->donem_id) ?: null;
 
                 // Liste ile birebir aynı veri setini kullan (görev geçmişi + JSON_EXTRACT alanları dahil)
                 $detayRows = $BordroPersonel->getPersonellerByDonem($bp->donem_id, [$bp->id]);
                 if (!empty($detayRows)) {
                     $bp = $detayRows[0];
                 }
-
+                
                 $Personel = new PersonelModel();
                 $personel = $Personel->find($bp->personel_id);
 
@@ -623,8 +624,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $hesap = $BordroPersonel->hesaplaOrtakGosterimDegerleri($bp, $donemBilgi, floatval($asgariUcretNet));
                 $mealDeduction = floatval($hesap['mealAllowanceDeduction'] ?? 0);
                 $spouseDeduction = floatval($hesap['spouseAllowanceDeduction'] ?? 0);
+                $isInclusive = (intval($bp->yemek_yardimi_dahil ?? 0) === 1 || intval($bp->es_yardimi_dahil ?? 0) === 1);
                 $includedDeduction = floatval($hesap['includedAllowanceDeduction'] ?? 0);
+
                 $includedAllowanceFiiliGun = intval($hesap['includedAllowanceFiiliGun'] ?? 0);
+                $asgariHakedisModal = floatval($hesap['asgariHakedis'] ?? 0);
                 $guncelEkOdeme = floatval($hesap['rawEkOdeme']);
 
                 $maasDurumuGosterim = $hesap['maasDurumu'] ?: ($personel->maas_durumu ?? '-');
@@ -646,6 +650,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $sodexoOdemeModal = floatval($hesap['sodexoOdemesi']);
                 $digerOdemeModal = floatval($hesap['digerOdeme']);
                 $eldenOdemeModal = floatval($hesap['eldenOdeme']);
+                $yuvarlamaFarki = floatval($hesap['yuvarlamaFarki'] ?? 0);
 
                 // Ücretsiz izin veya net/brüt maaş ise, çalışılan brüt/net maaşı göster
                 $calisanBrutMaas = $toplamAlacak - floatval($hesap['rawEkOdeme']);
@@ -727,24 +732,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $mealDeduction = $displayMealDeduction;
                     $includedDeduction = round($displayMealDeduction + $spouseDeduction, 2);
                 }
-                $roundedMealForPayment = $displayMealDeduction;
-                if (!empty($bp->yemek_yardimi_dahil) && $displayMealDeduction > 0) {
-                    $mealCalcGun = max(1, $includedAllowanceFiiliGun > 0 ? $includedAllowanceFiiliGun : $calismaGunu);
-                    $roundedMealForPayment = round(ceil($displayMealDeduction / $mealCalcGun) * $mealCalcGun, 2);
-                    $bankaOdemeModal = round($asgariHakedisModal + $roundedMealForPayment + $spouseDeduction - ($sodexoOdemeModal ?? 0) - ($digerOdemeModal ?? 0), 2);
-                    // Banka ödemesi net hakedişi aşamaz
-                    $bankaOdemeModal = min($netMaasHesap, $bankaOdemeModal);
-                    $eldenOdemeModal = max(0, round($netMaasHesap - $bankaOdemeModal - ($sodexoOdemeModal ?? 0) - ($digerOdemeModal ?? 0), 2));
-                }
                 $displayToplamAlacak = $toplamAlacak;
                 // (Yemek yardımı limiti ve fark hesabı motor tarafında yapıldığı için UI'da tekrar yapılmaz)
-                $toplamYuvarlamaFarki = round($toplamAlacak - ($displayBaseHakedis + $displayEkOdemeToplami), 2);
-                if (!empty($bp->yemek_yardimi_dahil)) {
-                    $toplamYuvarlamaFarki = round($roundedMealForPayment - $displayMealDeduction, 2);
-                    if ($toplamYuvarlamaFarki > 0) {
-                        $displayToplamAlacak = round($displayToplamAlacak + $toplamYuvarlamaFarki, 2);
-                    }
-                }
+                $toplamYuvarlamaFarki = round($yuvarlamaFarki, 2);
                 if (abs($toplamYuvarlamaFarki) < 0.01) $toplamYuvarlamaFarki = 0;
 
                 // PREPARE KESINTILER DATA FOR COLUMN 3
@@ -839,9 +829,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
                 
-                $modalBaseRowValue = $displayBaseHakedis;
-                if ($displayMealDeduction > 0 || $spouseDeduction > 0) {
-                    $modalBaseRowValue = round($displayBaseHakedis - $displayMealDeduction - $spouseDeduction, 2);
+                $modalBaseRowValue = $isPrimUsulu ? 0 : $asgariHakedisModal;
+                $modalMaasFarkiGosterim = 0;
+                
+                if (!$isPrimUsulu) {
+                    $totalDahilYardim = $displayMealDeduction + $spouseDeduction;
+                    $sozlesmeHakedisTotal = round(($nominalMaas / 30) * $calismaGunu, 2);
+                    $contractTarget = max($sozlesmeHakedisTotal, $asgariHakedisModal + $totalDahilYardim);
+                    $modalMaasFarkiGosterim = max(0, round($contractTarget - $asgariHakedisModal - $totalDahilYardim, 2));
                 }
 
                 $modalEkOdemeToplami = $toplamPuantajTutar + $toplamNobetTutar + $toplamKacakTutar;
@@ -851,8 +846,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $displayToplamAlacak = round(
                     $modalBaseRowValue
-                    + $displayMealDeduction
-                    + $spouseDeduction
+                    + ($isPrimUsulu ? 0 : ($displayMealDeduction + $spouseDeduction + $modalMaasFarkiGosterim))
                     + $modalEkOdemeToplami
                     + $toplamYuvarlamaFarki,
                     2
@@ -939,7 +933,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 <span class="text-primary fw-bold"><i class="bx bx-calendar me-1"></i>' . ($donemBilgi->donem_adi ?? 'Dönem Bilgisi Yok') . '</span>
                             </div>
                           </div>';
-                $html .= '<div class="d-flex gap-2 mt-2 mt-md-0">
+                $html .= '<div class="d-flex flex-wrap gap-2 mt-2 mt-md-0">
                             <div class="badge bg-light text-dark border py-2 px-3 d-flex flex-column align-items-end">
                                 <small class="text-muted opacity-75" style="font-size: 10px;">GÜNLÜK ÜCRET</small>
                                 <span class="fw-bold text-primary">' . number_format($gunlukUcret, 2, ',', '.') . ' ₺</span>
@@ -952,6 +946,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 <small class="text-muted opacity-75" style="font-size: 10px;">SÖZLEŞME MAAŞI</small>
                                 <span class="fw-bold">' . ($nominalMaas ? number_format($nominalMaas, 2, ',', '.') . ' ₺' : '-') . '</span>
                             </div>
+                            <div class="badge bg-light text-dark border py-2 px-3 d-flex flex-column align-items-end">
+                                <small class="text-muted opacity-75" style="font-size: 10px;">SÖZLEŞME HAKEDİŞİ</small>
+                                <span class="fw-bold text-primary">' . number_format($contractHakedisForRounding, 2, ',', '.') . ' ₺</span>
+                            </div>
                           </div>';
                 $html .= '</div>';
 
@@ -963,12 +961,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $spouseDeduction = isset($spouseDeduction) ? $spouseDeduction : 0;
                 $displayBaseHakedis = isset($displayBaseHakedis) ? $displayBaseHakedis : 0;
 
-                $topRowValue = $displayBaseHakedis;
-                $topRowLabel = "Maaş Hakedişi";
-                if ($displayMealDeduction > 0 || $spouseDeduction > 0) {
-                    $topRowValue = round($displayBaseHakedis - $displayMealDeduction - $spouseDeduction, 2);
-                    $topRowLabel = "Maaş Hakedişi";
-                }
+                $topRowValue = $modalBaseRowValue;
+                $topRowLabel = "Asgari Ücret Hakedişi";
 
                 // --- COLUMN 1: HAKEDİŞLER ---
                 $html .= '<div class="col-md-6">';
@@ -979,36 +973,103 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                           </div>';
                 $html .= '<table class="unified-table"><tbody>';
                 
-                // Hakediş Item 1: Base hakedis
                 $collBaseId = "cBaseHakedis_" . $bp->id;
-                $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collBaseId . '" aria-expanded="false">
-                            <td><div class="d-flex align-items-center"><i class="bx bx-receipt me-2 text-muted opacity-75"></i><span>' . $topRowLabel . '</span><span class="badge bg-light text-dark fw-normal ms-2">' . $calismaGunu . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
-                            <td class="text-end fw-bold text-dark">' . number_format($topRowValue, 2, ',', '.') . ' ₺</td>
-                          </tr>';
-                
-                // Günlük Ücret moved to header';
-                
-                if ($ucretsizIzinGunu > 0) {
-                     $html .= '<tr class="child-row collapse ' . $collBaseId . '">
-                                <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Ücretsiz İzin</td>
-                                <td class="text-end pe-4 text-warning">-' . $ucretsizIzinGunu . ' Gün</td>
-                              </tr>';
-                }
-                
-                // Removed redundant asgari sub-row
 
-                // Yemek / Eş
-                if (!empty($bp->yemek_yardimi_dahil) && $displayMealDeduction > 0) {
-                    $html .= '<tr class="parent-row">
-                                <td><i class="bx bx-restaurant me-2 text-muted opacity-75"></i>Yemek Yardımı <small class="text-muted">(Maaşa Dahil)</small></td>
-                                <td class="text-end text-success">+' . number_format($displayMealDeduction, 2, ',', '.') . ' ₺</td>
-                              </tr>';
-                }
-                if ($spouseDeduction > 0) {
-                    $html .= '<tr class="parent-row">
-                                <td><i class="bx bx-group me-2 text-muted opacity-75"></i>Eş Yardımı <small class="text-muted">(Maaşa Dahil)</small></td>
-                                <td class="text-end text-success">+' . number_format($spouseDeduction, 2, ',', '.') . ' ₺</td>
-                              </tr>';
+                // For Maaşa Dahil (inclusive) non-Prim personel: show a single "Sözleşme Hakedişi" parent row
+                // that expands to reveal Asgari Ücret, Maaş Farkı, Yemek Yardımı sub-items
+                if (!$isPrimUsulu && $isInclusive) {
+                    // Calculate the total contract hakediş (sum of all inclusive components)
+                    $sozlesmeHakedisToplamGosterim = $modalBaseRowValue 
+                        + $modalMaasFarkiGosterim 
+                        + $displayMealDeduction 
+                        + $spouseDeduction;
+
+                    if ($sozlesmeHakedisToplamGosterim > 0) {
+                        $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collBaseId . '" aria-expanded="false">
+                                    <td><div class="d-flex align-items-center"><i class="bx bx-file me-2 text-dark opacity-75"></i><span>Sözleşme Hakedişi</span><span class="badge bg-light text-dark fw-normal ms-2">' . $calismaGunu . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
+                                    <td class="text-end fw-bold text-dark">' . number_format($sozlesmeHakedisToplamGosterim, 2, ',', '.') . ' ₺</td>
+                                  </tr>';
+
+                        // Sub-item: Asgari Ücret Tabanı
+                        if ($modalBaseRowValue > 0) {
+                            $html .= '<tr class="child-row collapse ' . $collBaseId . '">
+                                        <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Asgari Ücret Tabanı</td>
+                                        <td class="text-end pe-4">' . number_format($modalBaseRowValue, 2, ',', '.') . ' ₺</td>
+                                      </tr>';
+                        }
+
+                        // Sub-item: Maaş Farkı
+                        if ($modalMaasFarkiGosterim > 0) {
+                            $html .= '<tr class="child-row collapse ' . $collBaseId . '">
+                                        <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Maaş Farkı</td>
+                                        <td class="text-end pe-4">' . number_format($modalMaasFarkiGosterim, 2, ',', '.') . ' ₺</td>
+                                      </tr>';
+                        }
+
+                        // Sub-item: Yemek Yardımı (Dahil)
+                        if ($displayMealDeduction > 0) {
+                            $html .= '<tr class="child-row collapse ' . $collBaseId . '">
+                                        <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Yemek Yardımı <small class="text-muted">(Dahil)</small></td>
+                                        <td class="text-end pe-4">' . number_format($displayMealDeduction, 2, ',', '.') . ' ₺</td>
+                                      </tr>';
+                        }
+
+                        // Sub-item: Eş Yardımı (Dahil)
+                        if ($spouseDeduction > 0) {
+                            $html .= '<tr class="child-row collapse ' . $collBaseId . '">
+                                        <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Eş Yardımı <small class="text-muted">(Dahil)</small></td>
+                                        <td class="text-end pe-4">' . number_format($spouseDeduction, 2, ',', '.') . ' ₺</td>
+                                      </tr>';
+                        }
+
+                        // Sub-item: Ücretsiz İzin (varsa)
+                        if ($ucretsizIzinGunu > 0) {
+                            $html .= '<tr class="child-row collapse ' . $collBaseId . '">
+                                        <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Ücretsiz İzin</td>
+                                        <td class="text-end pe-4 text-warning">-' . $ucretsizIzinGunu . ' Gün</td>
+                                      </tr>';
+                        }
+                    }
+                } else {
+                    // Non-inclusive or Prim Usulü: keep existing behavior
+                    // Hakediş Item 1: Base hakedis
+                    if ($modalBaseRowValue > 0) {
+                        $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collBaseId . '" aria-expanded="false">
+                                    <td><div class="d-flex align-items-center"><i class="bx bx-receipt me-2 text-muted opacity-75"></i><span>' . $topRowLabel . '</span><span class="badge bg-light text-dark fw-normal ms-2">' . $calismaGunu . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
+                                    <td class="text-end fw-bold text-dark">' . number_format($topRowValue, 2, ',', '.') . ' ₺</td>
+                                  </tr>';
+                    }
+
+                    if (!$isPrimUsulu && $modalMaasFarkiGosterim > 0) {
+                        $farkEtiketi = "Maaş Farkı";
+                        $farkIkonu = "bx-trending-up text-primary";
+
+                        $html .= '<tr class="parent-row">
+                                    <td><div class="d-flex align-items-center ps-2"><i class="bx ' . $farkIkonu . ' me-2 opacity-75" style="font-size: 14px;"></i><span>' . $farkEtiketi . '</span></div></td>
+                                    <td class="text-end fw-medium text-primary">' . number_format($modalMaasFarkiGosterim, 2, ',', '.') . ' ₺</td>
+                                  </tr>';
+                    }
+                
+                    if ($ucretsizIzinGunu > 0) {
+                         $html .= '<tr class="child-row collapse ' . $collBaseId . '">
+                                    <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Ücretsiz İzin</td>
+                                    <td class="text-end pe-4 text-warning">-' . $ucretsizIzinGunu . ' Gün</td>
+                                  </tr>';
+                    }
+
+                    // Yemek / Eş (for non-inclusive or Prim personnel with these allowances)
+                    if (!$isPrimUsulu && !empty($bp->yemek_yardimi_dahil) && $displayMealDeduction > 0) {
+                        $html .= '<tr class="parent-row">
+                                    <td><i class="bx bx-restaurant me-2 text-muted opacity-75"></i>Yemek Yardımı <small class="text-muted">(Maaşa Dahil)</small></td>
+                                    <td class="text-end text-success">+' . number_format($displayMealDeduction, 2, ',', '.') . ' ₺</td>
+                                  </tr>';
+                    }
+                    if (!$isPrimUsulu && $spouseDeduction > 0) {
+                        $html .= '<tr class="parent-row">
+                                    <td><i class="bx bx-group me-2 text-muted opacity-75"></i>Eş Yardımı <small class="text-muted">(Maaşa Dahil)</small></td>
+                                    <td class="text-end text-success">+' . number_format($spouseDeduction, 2, ',', '.') . ' ₺</td>
+                                  </tr>';
+                    }
                 }
 
                 // Puantaj
@@ -1211,6 +1272,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'html' => $html
                 ]);
                 break;
+
+
 
             // Dönemi Kapat
             case 'donem-kapat':

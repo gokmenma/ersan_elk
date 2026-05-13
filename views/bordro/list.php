@@ -671,30 +671,7 @@ if (!empty($dbGelirler)) {
                             $sodexoP = $hesap['sodexoOdemesi'];
                             $eldenP = $hesap['eldenOdeme'];
 
-                            $hasCustomOdemeDagitimi = intval($p->dagitim_manuel ?? 0) === 1
-                                && (floatval($sodexoP) > 0 || floatval($p->diger_odeme ?? 0) > 0);
-
-                            if (!empty($p->yemek_yardimi_dahil) && !$hasCustomOdemeDagitimi) {
-                                $asgariHakedisListe = round((floatval($asgariUcretNet) / 30) * intval($hesap['calismaGunu']), 2);
-                                $sozlesmeHakedisListe = round((floatval($hesap['maasTutari'] ?? 0) / 30) * intval($hesap['calismaGunu']), 2);
-                                $mealFarkListe = max(0, round($sozlesmeHakedisListe - floatval($hesap['kesintiHaricIcra'] ?? 0) - $asgariHakedisListe - floatval($hesap['spouseAllowanceDeduction'] ?? 0), 2));
-                                if ($mealFarkListe > 0) {
-                                    $mealGunListe = max(1, intval($hesap['includedAllowanceFiiliGun'] ?? $hesap['calismaGunu']));
-                                    $roundedMealListe = round(ceil($mealFarkListe / $mealGunListe) * $mealGunListe, 2);
-                                    $bankaP = round($asgariHakedisListe + $roundedMealListe + floatval($hesap['spouseAllowanceDeduction'] ?? 0), 2);
-                                    $sodexoP = 0;
-                                    $eldenP = max(0, round(floatval($hesap['netMaasGercek'] ?? $pNetAlacagi) - $bankaP - $sodexoP - floatval($p->diger_odeme ?? 0), 2));
-                                }
-                            }
-
-                            // Toplamları güncelle
-                            $odemeDagitimToplami = round($bankaP + $sodexoP + floatval($p->diger_odeme ?? 0) + $eldenP, 2);
-                            if ($odemeDagitimToplami > $pNetAlacagi) {
-                                $yuvarlamaFarkiListe = round($odemeDagitimToplami - $pNetAlacagi, 2);
-                                $pNetAlacagi = $odemeDagitimToplami;
-                                $pToplamAlacagi = round($pToplamAlacagi + $yuvarlamaFarkiListe, 2);
-                            }
-
+                            // Tutarları direkt motor hesaplamasından al (Tutarlılık için)
                             $toplamAlacagi += $pToplamAlacagi;
                             $toplamKesintiHaricIcra += $pKesintiHaricIcra;
                             $toplamNetAlacagi += $pNetAlacagi;
@@ -1148,13 +1125,13 @@ if (!empty($dbGelirler)) {
                                                             data-ad="<?= htmlspecialchars($personel->adi_soyadi) ?>"
                                                             data-maas="<?= floatval($personel->maas_tutari ?? 0) ?>"
                                                             data-maas-durumu="<?= $personel->maas_durumu ?? '' ?>">
-                                                            <?= number_format($toplamAlacagiPersonel - $netAlacagi, 2, ',', '.') ?> ₺
+                                                            <?= number_format($kesintiHaricIcra, 2, ',', '.') ?> ₺
                                                         </span>
                                                     </td>
                                                     <td class="text-end text-success fw-bold">
                                                         <span class="cursor-pointer btn-detail text-success"
                                                             data-id="<?= $personel->id ?>">
-                                                            <?= number_format($netAlacagi, 2, ',', '.') ?> ₺
+                                                            <?= number_format($toplamAlacagiPersonel - $kesintiHaricIcra, 2, ',', '.') ?> ₺
                                                         </span>
                                                     </td>
                                                     <td class="text-end text-danger fw-medium">

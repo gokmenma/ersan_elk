@@ -6,7 +6,9 @@
     "doc": "docs",
     "test": "test"
   },
-  "scripts": {},
+  "scripts": {
+    "check:bordro-rules": "powershell -ExecutionPolicy Bypass -File scripts/check-bordro-hesaplama-rules.ps1"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/gokmenma/ersan_elk.git"
