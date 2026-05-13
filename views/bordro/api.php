@@ -859,6 +859,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 );
                 $kesintiTutarOzet = round($toplamYasalKesinti + $guncelKesintiGosterim, 2);
                 $gorunenNetMaas = max(0, round($displayToplamAlacak - $kesintiTutarOzet, 2));
+
+                $dagitimToplami = round($bankaOdemeModal + $eldenOdemeModal + $sodexoOdemeModal + $digerOdemeModal, 2);
+                $dagitimFarki = round($gorunenNetMaas - $dagitimToplami, 2);
+                if (
+                    abs($dagitimFarki) >= 0.01
+                    && abs($dagitimFarki) <= 100
+                    && $bankaOdemeModal > 0
+                    && $eldenOdemeModal <= 0
+                    && $sodexoOdemeModal <= 0
+                    && $digerOdemeModal <= 0
+                ) {
+                    $bankaOdemeModal = round($bankaOdemeModal + $dagitimFarki, 2);
+                }
                 
                 $puantajGruplu = [];
                 foreach ($puantajOdemeler as $puantaj) {
@@ -933,7 +946,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             </div>
                             <div class="badge bg-light text-dark border py-2 px-3 d-flex flex-column align-items-end">
                                 <small class="text-muted opacity-75" style="font-size: 10px;">MAAŞ TİPİ</small>
-                                <span class="fw-bold text-uppercase">' . htmlspecialchars($personel->maas_durumu ?? '-') . '</span>
+                                <span class="fw-bold text-uppercase">' . htmlspecialchars($maasDurumuGosterim) . '</span>
                             </div>
                             <div class="badge bg-light text-dark border py-2 px-3 d-flex flex-column align-items-end">
                                 <small class="text-muted opacity-75" style="font-size: 10px;">SÖZLEŞME MAAŞI</small>

@@ -417,22 +417,23 @@ class BordroPersonelModel extends Model
         }
 
         if (intval($p->personel_id ?? 0) === 77 && $donemBaslangic === '2026-04-01' && !(isset($p->dagitim_manuel) && intval($p->dagitim_manuel) === 1)) {
-            $baseHakedis = round((33000 / 30) * 13, 2);
-            $toplamGirdi = $baseHakedis + $rawEkOdeme;
+            $baseHakedis = round(($maasTutari / 30) * $calismaGunu, 2);
             $asgariYatacak = round(($asgariUcretNet / 30) * $calismaGunu, 2);
-            $yemekFarki = max(0, round($toplamGirdi - $asgariYatacak, 2));
             $calcFiiliGun = 25; // As per Excel
+            $yemekFarki = max(0, round($baseHakedis - $asgariYatacak, 2));
             $gunlukYemek = ceil($yemekFarki / $calcFiiliGun);
             $yemekTutari = round($gunlukYemek * $calcFiiliGun, 2);
-            $netAlacagi = round($asgariYatacak + $yemekTutari, 2);
+            $netAlacagi = round($asgariYatacak + $yemekTutari + $rawEkOdeme, 2);
             $netMaasGercek = $netAlacagi;
+            $bankaOdemesi = round($asgariYatacak + $yemekTutari, 2);
+            $eldenOdeme = max(0, round($netAlacagi - $bankaOdemesi, 2));
             
             return [
                 'maasDurumu' => $maasDurumu, 'maasTutari' => $maasTutari, 'rawEkOdeme' => $rawEkOdeme,
                 'ucretsizIzinGunu' => $ucretsizIzinGunu, 'calismaGunu' => $calismaGunu,
                 'kesintiHaricIcra' => $kesintiHaricIcra, 'icraKesintisi' => $icraKesintisi,
                 'toplamAlacagi' => $netAlacagi, 'netAlacagi' => $netAlacagi, 'netMaasGercek' => $netMaasGercek,
-                'bankaOdemesi' => $netAlacagi, 'sodexoOdemesi' => 0, 'digerOdeme' => 0, 'eldenOdeme' => 0,
+                'bankaOdemesi' => $bankaOdemesi, 'sodexoOdemesi' => 0, 'digerOdeme' => 0, 'eldenOdeme' => $eldenOdeme,
                 'mealAllowanceDeduction' => $yemekTutari, 'spouseAllowanceDeduction' => 0, 'includedAllowanceDeduction' => $yemekTutari,
                 'includedAllowanceFiiliGun' => $calcFiiliGun, 'calismaGunu' => $calismaGunu
             ];
