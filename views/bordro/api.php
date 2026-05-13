@@ -660,7 +660,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 
                 $isPrimUsulu = (stripos($maasDurumuGosterim, 'Prim') !== false);
                 $ekOdemelerListe = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
-                $contractHakedisForRounding = ($nominalMaas / 30) * $calismaGunu;
+                $contractHakedisForRounding = floatval($hesap['sozlesmeHakedisi'] ?? 0);
+                if ($contractHakedisForRounding <= 0) {
+                    $contractHakedisForRounding = ($nominalMaas / 30) * $calismaGunu;
+                }
                 $nonPuantajExtras = floatval($bp->prim_tutar ?? 0);
                 
                 if ($isPrimUsulu) {
@@ -848,15 +851,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $modalEkOdemeToplami += floatval($edata['toplam'] ?? 0);
                 }
 
-                $displayToplamAlacak = round(
-                    $modalBaseRowValue
-                    + ($isPrimUsulu ? 0 : ($displayMealDeduction + $spouseDeduction + $modalMaasFarkiGosterim))
-                    + $modalEkOdemeToplami,
-                    2
-                );
-                if ($toplamYuvarlamaFarki != 0) {
-                    $displayToplamAlacak = round($displayToplamAlacak + $toplamYuvarlamaFarki, 2);
-                }
+                $displayToplamAlacak = round($toplamAlacak, 2);
                 $kesintiTutarOzet = round($toplamYasalKesinti + $guncelKesintiGosterim, 2);
                 $gorunenNetMaas = max(0, round($displayToplamAlacak - $kesintiTutarOzet, 2));
 
@@ -985,10 +980,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // that expands to reveal Asgari Ücret, Maaş Farkı, Yemek Yardımı sub-items
                 if ($isInclusive) {
                     // Calculate the total contract hakediş (sum of all inclusive components)
-                    $sozlesmeHakedisToplamGosterim = $isPrimUsulu
-                        ? $displayToplamAlacak
-                        : ($modalBaseRowValue + $modalMaasFarkiGosterim + $displayMealDeduction + $spouseDeduction);
-                    $sozlesmeTabanGosterim = $isPrimUsulu ? min($asgariHakedisModal, $sozlesmeHakedisToplamGosterim) : $modalBaseRowValue;
+                    $sozlesmeHakedisToplamGosterim = $contractHakedisForRounding > 0
+                        ? round($contractHakedisForRounding, 2)
+                        : ($isPrimUsulu
+                            ? $displayToplamAlacak
+                            : ($modalBaseRowValue + $modalMaasFarkiGosterim + $displayMealDeduction + $spouseDeduction));
+                    $sozlesmeTabanGosterim = min($modalBaseRowValue, $sozlesmeHakedisToplamGosterim);
                     $sozlesmeMaasFarkiGosterim = $isPrimUsulu
                         ? max(0, round($sozlesmeHakedisToplamGosterim - $sozlesmeTabanGosterim - $displayMealDeduction - $spouseDeduction, 2))
                         : $modalMaasFarkiGosterim;
