@@ -175,9 +175,40 @@ class AvansModel extends Model
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
             LEFT JOIN users u ON pa.onaylayan_id = u.id
-            WHERE pa.durum IN ('onaylandi', 'reddedildi') AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
+            WHERE pa.durum IN ('onaylandi', 'reddedildi', 'iptal edildi', 'İptal Edildi') AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
             ORDER BY pa.talep_tarihi DESC
+            LIMIT {$limit}
+        ";
+        $query = $this->db->prepare($sql);
+        $query->execute($bindParams);
+        return $query->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Silinmiş avans taleplerini getirir
+     */
+    public function getSilinmisAvanslar($limit = 50)
+    {
+        $restricted_dept = $this->getRestrictedDept();
+        $is_restricted = ($restricted_dept !== null);
+        $extra_where = $is_restricted ? " AND (FIND_IN_SET(TRIM(p.departman), ?) OR TRIM(p.departman) = '' OR p.departman IS NULL) AND p.disardan_sigortali = 0" : "";
+
+        $bindParams = [$_SESSION['firma_id']];
+        if ($is_restricted) {
+            $bindParams[] = $restricted_dept;
+        }
+
+        $limit = (int) $limit;
+        $sql = "
+            SELECT pa.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev,
+                   u.adi_soyadi as solver_name, pa.silinme_tarihi as islem_tarihi
+            FROM {$this->table} pa 
+            JOIN personel p ON pa.personel_id = p.id 
+            LEFT JOIN users u ON pa.onaylayan_id = u.id 
+            WHERE pa.silinme_tarihi IS NOT NULL AND p.firma_id = ?
+            $extra_where
+            ORDER BY pa.silinme_tarihi DESC
             LIMIT {$limit}
         ";
         $query = $this->db->prepare($sql);

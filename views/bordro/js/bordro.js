@@ -36,7 +36,7 @@ $(document).ready(function () {
   // Flatpickr Başlat
   if (typeof flatpickr !== "undefined" || $.fn.flatpickr) {
     $(".flatpickr").flatpickr({
-      dateFormat: "Y-m-d",
+      dateFormat: "d.m.Y",
       locale: "tr",
       allowInput: true
     });
@@ -1159,7 +1159,7 @@ $(document).ready(function () {
     if (form.length > 0) {
       form.trigger("reset");
       // Bugünün tarihini varsayılan yap
-      const today = new Date().toISOString().split("T")[0];
+      const today = moment().format("DD.MM.YYYY");
       form.find("input[name='tarih']").val(today);
       form
         .find("button[type='submit']")
@@ -1221,7 +1221,7 @@ $(document).ready(function () {
       if (form.length > 0) {
         form.trigger("reset");
         // Bugünün tarihini varsayılan yap
-        const today = new Date().toISOString().split("T")[0];
+        const today = moment().format("DD.MM.YYYY");
         form.find("input[name='tarih']").val(today);
         form
           .find("button[type='submit']")
@@ -1238,7 +1238,7 @@ $(document).ready(function () {
 
       // Kart vurgusunu kaldır
       $(".card.border-danger").removeClass(
-        "border-danger bg-danger bg-opacity-10",
+        "border-danger bg-danger bg-danger bg-opacity-10",
       );
 
       // Listeyi getir
@@ -1277,7 +1277,7 @@ $(document).ready(function () {
     $("#formPersonelGelirEkle input[name='aciklama']").val(aciklama);
     const gelirTarihInput = document.getElementById("gelir_tarih");
     if (gelirTarihInput && gelirTarihInput._flatpickr) {
-      gelirTarihInput._flatpickr.setDate(tarih || "", true);
+      gelirTarihInput._flatpickr.setDate(tarih || moment().format("DD.MM.YYYY"), true);
     } else {
       $("#formPersonelGelirEkle input[name='tarih']").val(tarih || "");
     }
@@ -1314,7 +1314,7 @@ $(document).ready(function () {
     $("#formPersonelKesintiEkle input[name='aciklama']").val(aciklama);
     const kesintiTarihInput = document.getElementById("kesinti_tarih");
     if (kesintiTarihInput && kesintiTarihInput._flatpickr) {
-      kesintiTarihInput._flatpickr.setDate(tarih || "", true);
+      kesintiTarihInput._flatpickr.setDate(tarih || moment().format("DD.MM.YYYY"), true);
     } else {
       $("#formPersonelKesintiEkle input[name='tarih']").val(tarih || "");
     }

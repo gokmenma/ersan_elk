@@ -851,10 +851,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $displayToplamAlacak = round(
                     $modalBaseRowValue
                     + ($isPrimUsulu ? 0 : ($displayMealDeduction + $spouseDeduction + $modalMaasFarkiGosterim))
-                    + $modalEkOdemeToplami
-                    + $toplamYuvarlamaFarki,
+                    + $modalEkOdemeToplami,
                     2
                 );
+                if ($toplamYuvarlamaFarki != 0) {
+                    $displayToplamAlacak = round($displayToplamAlacak + $toplamYuvarlamaFarki, 2);
+                }
                 $kesintiTutarOzet = round($toplamYasalKesinti + $guncelKesintiGosterim, 2);
                 $gorunenNetMaas = max(0, round($displayToplamAlacak - $kesintiTutarOzet, 2));
 
@@ -939,19 +941,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                           </div>';
                 $html .= '<div class="d-flex flex-wrap gap-2 mt-2 mt-md-0">
                             <div class="badge bg-light text-dark border py-2 px-3 d-flex flex-column align-items-end">
-                                <small class="text-muted opacity-75" style="font-size: 10px;">GÜNLÜK ÜCRET</small>
+                                <small class="text-muted opacity-75" style="font-size: 10px;">G&#220;NL&#220;K &#220;CRET</small>
                                 <span class="fw-bold text-primary">' . number_format($gunlukUcret, 2, ',', '.') . ' ₺</span>
                             </div>
                             <div class="badge bg-light text-dark border py-2 px-3 d-flex flex-column align-items-end">
-                                <small class="text-muted opacity-75" style="font-size: 10px;">MAAŞ TİPİ</small>
+                                <small class="text-muted opacity-75" style="font-size: 10px;">MAA&#350; T&#304;P&#304;</small>
                                 <span class="fw-bold text-uppercase">' . htmlspecialchars($maasDurumuGosterim) . '</span>
                             </div>
                             <div class="badge bg-light text-dark border py-2 px-3 d-flex flex-column align-items-end">
-                                <small class="text-muted opacity-75" style="font-size: 10px;">SÖZLEŞME MAAŞI</small>
+                                <small class="text-muted opacity-75" style="font-size: 10px;">S&#214;ZLE&#350;ME MAA&#350;I</small>
                                 <span class="fw-bold">' . ($nominalMaas ? number_format($nominalMaas, 2, ',', '.') . ' ₺' : '-') . '</span>
                             </div>
                             <div class="badge bg-light text-dark border py-2 px-3 d-flex flex-column align-items-end">
-                                <small class="text-muted opacity-75" style="font-size: 10px;">SÖZLEŞME HAKEDİŞİ</small>
+                                <small class="text-muted opacity-75" style="font-size: 10px;">S&#214;ZLE&#350;ME HAKED&#304;&#350;&#304;</small>
                                 <span class="fw-bold text-primary">' . number_format($contractHakedisForRounding, 2, ',', '.') . ' ₺</span>
                             </div>
                           </div>';
@@ -968,11 +970,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $topRowValue = $modalBaseRowValue;
                 $topRowLabel = "Asgari Ücret Hakedişi";
 
-                // --- COLUMN 1: HAKEDİŞLER ---
+                // --- COLUMN 1: HAKEDISLER ---
                 $html .= '<div class="col-md-6">';
                 $html .= '<div class="main-card bg-white">';
                 $html .= '<div class="card-header-tint tint-hakedis">
-                            <span><i class="bx bx-plus-circle me-2"></i>HAKEDİŞLER (ARTTIRICILAR)</span>
+                            <span><i class="bx bx-plus-circle me-2"></i>HAKED&#304;&#350;LER (ARTTIRICILAR)</span>
                             <span class="badge rounded-pill bg-success">' . number_format($displayToplamAlacak, 2, ',', '.') . ' ₺</span>
                           </div>';
                 $html .= '<table class="unified-table"><tbody>';
@@ -981,12 +983,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 // For Maaşa Dahil (inclusive) non-Prim personel: show a single "Sözleşme Hakedişi" parent row
                 // that expands to reveal Asgari Ücret, Maaş Farkı, Yemek Yardımı sub-items
-                if (!$isPrimUsulu && $isInclusive) {
+                if ($isInclusive) {
                     // Calculate the total contract hakediş (sum of all inclusive components)
-                    $sozlesmeHakedisToplamGosterim = $modalBaseRowValue 
-                        + $modalMaasFarkiGosterim 
-                        + $displayMealDeduction 
-                        + $spouseDeduction;
+                    $sozlesmeHakedisToplamGosterim = $isPrimUsulu
+                        ? $displayToplamAlacak
+                        : ($modalBaseRowValue + $modalMaasFarkiGosterim + $displayMealDeduction + $spouseDeduction);
+                    $sozlesmeTabanGosterim = $isPrimUsulu ? min($asgariHakedisModal, $sozlesmeHakedisToplamGosterim) : $modalBaseRowValue;
+                    $sozlesmeMaasFarkiGosterim = $isPrimUsulu
+                        ? max(0, round($sozlesmeHakedisToplamGosterim - $sozlesmeTabanGosterim - $displayMealDeduction - $spouseDeduction, 2))
+                        : $modalMaasFarkiGosterim;
 
                     if ($sozlesmeHakedisToplamGosterim > 0) {
                         $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collBaseId . '" aria-expanded="false">
@@ -995,18 +1000,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                   </tr>';
 
                         // Sub-item: Asgari Ücret Tabanı
-                        if ($modalBaseRowValue > 0) {
+                        if ($sozlesmeTabanGosterim > 0) {
                             $html .= '<tr class="child-row collapse ' . $collBaseId . '">
                                         <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Asgari Ücret Tabanı</td>
-                                        <td class="text-end pe-4">' . number_format($modalBaseRowValue, 2, ',', '.') . ' ₺</td>
+                                        <td class="text-end pe-4">' . number_format($sozlesmeTabanGosterim, 2, ',', '.') . ' ₺</td>
                                       </tr>';
                         }
 
                         // Sub-item: Maaş Farkı
-                        if ($modalMaasFarkiGosterim > 0) {
+                        if ($sozlesmeMaasFarkiGosterim > 0) {
                             $html .= '<tr class="child-row collapse ' . $collBaseId . '">
                                         <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Maaş Farkı</td>
-                                        <td class="text-end pe-4">' . number_format($modalMaasFarkiGosterim, 2, ',', '.') . ' ₺</td>
+                                        <td class="text-end pe-4">' . number_format($sozlesmeMaasFarkiGosterim, 2, ',', '.') . ' ₺</td>
                                       </tr>';
                         }
 
@@ -1033,6 +1038,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                         <td class="text-end pe-4 text-warning">-' . $ucretsizIzinGunu . ' Gün</td>
                                       </tr>';
                         }
+                        if ($isPrimUsulu && !empty($puantajGruplu)) {
+                            $html .= '<tr class="child-row collapse ' . $collBaseId . '">
+                                        <td class="ps-4 fw-semibold text-success"><i class="bx bx-briefcase me-1 opacity-75"></i>Puantaj Hakedi&#351;leri</td>
+                                        <td class="text-end pe-4 fw-semibold text-success">' . number_format($toplamPuantajTutar, 2, ',', '.') . ' &#8378;</td>
+                                      </tr>';
+                            foreach ($puantajGruplu as $grup) {
+                                $detStr = $grup['adet'] > 0 ? $grup['adet'] . ' Adet' : '';
+                                $fyt = array_keys($grup['birim_fiyatlar']);
+                                $birim = (count($fyt) === 1) ? ' x ' . $fyt[0] . ' &#8378;' : '';
+                                $html .= '<tr class="child-row collapse ' . $collBaseId . '">
+                                            <td class="ps-5"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars($grup['ana']) . ' <small class="text-muted">' . $detStr . $birim . '</small></td>
+                                            <td class="text-end pe-4">' . number_format($grup['tutar'], 2, ',', '.') . ' &#8378;</td>
+                                          </tr>';
+                            }
+                        }
                     }
                 } else {
                     // Non-inclusive or Prim Usulü: keep existing behavior
@@ -1050,7 +1070,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                         $html .= '<tr class="parent-row">
                                     <td><div class="d-flex align-items-center ps-2"><i class="bx ' . $farkIkonu . ' me-2 opacity-75" style="font-size: 14px;"></i><span>' . $farkEtiketi . '</span></div></td>
-                                    <td class="text-end fw-medium text-primary">' . number_format($modalMaasFarkiGosterim, 2, ',', '.') . ' ₺</td>
+                                    <td class="text-end fw-medium text-primary">' . number_format($sozlesmeMaasFarkiGosterim, 2, ',', '.') . ' ₺</td>
                                   </tr>';
                     }
                 
@@ -1077,7 +1097,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 // Puantaj
-                if (!empty($puantajOdemeler)) {
+                if (!empty($puantajOdemeler) && !($isPrimUsulu && $isInclusive)) {
                     $collId = "colPuantaj_" . $bp->id;
                     $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collId . '" aria-expanded="false">
                                 <td><div class="d-flex align-items-center"><i class="bx bx-briefcase me-2 text-success"></i><span>Puantaj Ödemeleri</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
@@ -1150,7 +1170,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 // Hakediş Total Footer
                 $html .= '<tr class="footer-row">
-                            <td class="text-success fw-bold">TOPLAM HAKEDİŞ</td>
+                            <td class="text-success fw-bold">TOPLAM HAKED&#304;&#350;</td>
                             <td class="text-end text-success fw-bolder">' . number_format($displayToplamAlacak, 2, ',', '.') . ' ₺</td>
                           </tr>';
                 $html .= '</tbody></table></div></div>';
@@ -1160,7 +1180,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="col-md-6">';
                 $html .= '<div class="main-card bg-white">';
                 $html .= '<div class="card-header-tint tint-kesinti">
-                            <span><i class="bx bx-minus-circle me-2"></i>KESİNTİLER (DÜŞÜRÜCÜLER)</span>
+                            <span><i class="bx bx-minus-circle me-2"></i>KES&#304;NT&#304;LER (D&#220;&#350;&#220;R&#220;C&#220;LER)</span>
                             <span class="badge rounded-pill bg-danger">' . ($kesintiTutarOzet > 0 ? '-' . number_format($kesintiTutarOzet, 2, ',', '.') : '0,00') . ' ₺</span>
                           </div>';
                 $html .= '<table class="unified-table"><tbody>';
@@ -1217,7 +1237,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 
                 // Bottom Left: Mega Net Val
                 $html .= '<div class="col-md-5 border-end border-secondary border-opacity-25 mb-4 mb-md-0 text-center text-md-start">';
-                $html .= '<div class="text-white-50 text-uppercase fw-bold small mb-1" style="letter-spacing:1.5px;">ÖDENECEK NET MAAŞ</div>';
+                $html .= '<div class="text-white-50 text-uppercase fw-bold small mb-1" style="letter-spacing:1.5px;">&#214;DENECEK NET MAA&#350;</div>';
                 $html .= '<div class="net-value-xl">' . number_format($gorunenNetMaas, 2, ',', '.') . ' <span style="font-size: 1.6rem;">₺</span></div>';
                 $html .= '</div>';
 
@@ -1256,7 +1276,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // Employer Cost Footer
                 if (($personel->maas_durumu ?? '') == 'Brüt') {
                     $html .= '<div class="mt-4 p-3 bg-light rounded-3 border d-flex flex-wrap justify-content-between align-items-center small text-muted">
-                                <div class="fw-bold text-secondary"><i class="bx bx-buildings me-1"></i>İŞVEREN MALİYETLERİ</div>
+                                <div class="fw-bold text-secondary"><i class="bx bx-buildings me-1"></i>&#304;&#350;VEREN MAL&#304;YETLER&#304;</div>
                                 <div class="d-flex gap-4">
                                     <span>SGK İşveren: <strong class="text-dark">' . ($bp->sgk_isveren ? number_format($bp->sgk_isveren, 2, ',', '.') . ' ₺' : '-') . '</strong></span>
                                     <span>İşsizlik İşveren: <strong class="text-dark">' . ($bp->issizlik_isveren ? number_format($bp->issizlik_isveren, 2, ',', '.') . ' ₺' : '-') . '</strong></span>
@@ -1519,7 +1539,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $aciklama = trim($_POST['aciklama'] ?? '');
                 $tutar = floatval($_POST['gelir_tutar'] ?? 0);
                 $tur = trim($_POST['ek_odeme_tur'] ?? 'diger');
-                $tarih = !empty($_POST['tarih']) ? $_POST['tarih'] : date('Y-m-d');
+                $tarih = !empty($_POST['tarih']) ? Date::dttoeng($_POST['tarih']) : date('Y-m-d');
 
                 if ($personel_id <= 0 || $donem_id <= 0) {
                     throw new Exception('Geçersiz personel veya dönem.');
@@ -1577,7 +1597,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $aciklama = trim($_POST['aciklama'] ?? '');
                 $tutar = floatval($_POST['kesinti_tutar'] ?? 0);
                 $tur = trim($_POST['kesinti_tur'] ?? 'diger');
-                $tarih = !empty($_POST['tarih']) ? $_POST['tarih'] : date('Y-m-d');
+                $tarih = !empty($_POST['tarih']) ? Date::dttoeng($_POST['tarih']) : date('Y-m-d');
 
                 if ($personel_id <= 0 || $donem_id <= 0) {
                     throw new Exception('Geçersiz personel veya dönem.');

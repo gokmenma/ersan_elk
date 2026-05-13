@@ -124,6 +124,16 @@ class BordroPersonelModel extends Model
             || intval($kayit->es_yardimi_dahil ?? 0) === 1;
     }
 
+    private function getParametreGunlukTutar(object $parametre): float
+    {
+        $gunlukTutar = floatval($parametre->gunluk_tutar ?? 0);
+        if ($gunlukTutar > 0) {
+            return $gunlukTutar;
+        }
+
+        return floatval($parametre->varsayilan_tutar ?? 0);
+    }
+
     private function getYemekYardimiGunlukLimit(object $kayit): float
     {
         $personelLimit = floatval($kayit->yemek_yardimi_tutari ?? 0);
@@ -133,22 +143,34 @@ class BordroPersonelModel extends Model
             $this->cachedParametreModel = new BordroParametreModel();
         }
 
+        $parametreTarihi = $kayit->baslangic_tarihi ?? $kayit->donem_baslangic_tarihi ?? null;
+        $globalYemekLimit = 0.0;
+        $globalYemek = $this->cachedParametreModel->getByKod('yemek', $parametreTarihi);
+        if ($globalYemek) {
+            $globalYemekLimit = $this->getParametreGunlukTutar($globalYemek);
+        }
+        $vergiIstisnaLimit = floatval($this->cachedParametreModel->getGenelAyar('yemek_yardimi_gunluk_istisna', $parametreTarihi) ?? 0);
+
         if (!empty($kayit->yemek_yardimi_parametre_id)) {
             $paramYemek = $this->cachedParametreModel->find($kayit->yemek_yardimi_parametre_id);
             if ($paramYemek) {
-                $paramLimit = floatval($paramYemek->varsayilan_tutar ?? 0);
+                $paramLimit = $this->getParametreGunlukTutar($paramYemek);
+                if (
+                    ($paramYemek->kod ?? '') === 'yemek_yardimi_tum'
+                    && $vergiIstisnaLimit > 0
+                    && abs($paramLimit - $vergiIstisnaLimit) < 0.01
+                ) {
+                    $paramLimit = 0.0;
+                }
             }
         }
 
         // Eğer personel kartında özel bir parametre seçilmemişse, global olarak "yemek_yardimi_tum" veya "yemek" kodlu parametreyi alalım
         if ($paramLimit <= 0) {
-            $paramYemek = $this->cachedParametreModel->getByKod('yemek_yardimi_tum') ?: $this->cachedParametreModel->getByKod('yemek');
-            if ($paramYemek) {
-                $paramLimit = floatval($paramYemek->varsayilan_tutar ?? 0);
-            }
+            $paramLimit = $globalYemekLimit;
         }
 
-        $res = (float) max($personelLimit, $paramLimit);
+        $res = (float) max($personelLimit, $paramLimit, $globalYemekLimit);
         if ($res <= 0) $res = 300.0;
         return $res;
     }
@@ -377,13 +399,15 @@ class BordroPersonelModel extends Model
                 $p->hedef_net_maas_tutari = ($calismaGunu > 0)
                     ? (($primUsuluPuantajHedefToplami / $calismaGunu) * 30)
                     : 0;
+            } elseif ($maasTutari > 0) {
+                $p->hedef_net_maas_tutari = $maasTutari;
             }
 
             $sodexoLocal = floatval($p->sodexo_odemesi ?? 0) + $yontemliSodexoEki;
             $totalDeductionsForDahil = $kesintiHaricIcra + $sodexoLocal + floatval($p->diger_odeme ?? 0);
             $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi($p, $asgariUcretNet, $calismaGunu, $fiiliGunSayisi, $primUsuluPuantajHedefToplami, $totalDeductionsForDahil);
             
-            $mealAllowanceDeduction = floatval($dahilDagilim['yemek_toplam'] ?? 0) - floatval($dahilDagilim['yuvarlama_farki'] ?? 0);
+            $mealAllowanceDeduction = floatval($dahilDagilim['yemek_toplam'] ?? 0);
             $spouseAllowanceDeduction = floatval($dahilDagilim['es_toplam'] ?? 0);
             $includedAllowanceDeduction = floatval($dahilDagilim['toplam'] ?? 0);
             $yuvarlamaFarki = floatval($dahilDagilim['yuvarlama_farki'] ?? 0);
@@ -423,7 +447,7 @@ class BordroPersonelModel extends Model
             
             // USER REQ: Excel mantığında banka ödemesi Asgari + Yemek (Yuvarlanmış) + Eş şeklindedir.
             $bankaOdemesi = ($kalanNetHakedis >= $asgariYatacak)
-                ? min($kalanNetHakedis, $asgariYatacak + $mealAllowanceDeduction + $spouseAllowanceDeduction + $yuvarlamaFarki)
+                ? min($kalanNetHakedis, $asgariYatacak + $mealAllowanceDeduction + $spouseAllowanceDeduction)
                 : $kalanNetHakedis;
             
             $sodexoOdemesi = 0;

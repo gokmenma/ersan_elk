@@ -1238,8 +1238,13 @@ try {
             $avans = $AvansModel->find($id);
 
             if ($avans && $avans->personel_id == $personel_id && $avans->durum == 'beklemede') {
-                $AvansModel->softDelete($id);
-                response(true, null, 'Avans talebi silindi');
+                $yeni_aciklama = $avans->aciklama . ' (Personel tarafından iptal edildi)';
+                $AvansModel->saveWithAttr([
+                    'id' => $id,
+                    'durum' => 'iptal edildi',
+                    'aciklama' => trim($yeni_aciklama)
+                ]);
+                response(true, null, 'Avans talebi iptal edildi');
             } else {
                 response(false, null, 'İşlem yapılamaz');
             }
@@ -1653,14 +1658,21 @@ try {
             $durum = mb_strtolower($izin->onay_durumu ?? '', 'UTF-8');
 
             if ($izin && $izin->personel_id == $personel_id && $durum == 'beklemede') {
-                $IzinModel->softDelete($id);
-                /**onay_durumunu iptal edildi yap */
+                $yeni_aciklama = $izin->aciklama . ' (Personel tarafından iptal edildi)';
                 $IzinModel->saveWithAttr(
                     [
                         'id' => $id,
-                        'onay_durumu' => 'iptal edildi'
+                        'onay_durumu' => 'iptal edildi',
+                        'aciklama' => trim($yeni_aciklama)
                     ]
                 );
+                
+                // İptal durumunu onay_onaylari tablosuna da ekle
+                $IzinModel->getDb()->prepare("
+                    INSERT INTO izin_onaylari (izin_id, onaylayan_id, onay_durumu, onay_tarihi, aciklama, seviye_no)
+                    VALUES (?, ?, 'İptal Edildi', NOW(), 'Personel tarafından iptal edildi', 1)
+                ")->execute([$id, $personel_id]);
+
                 response(true, null, 'İzin talebi iptal edildi');
             } else {
                 // Debug için detaylı hata mesajı (geliştirme aşamasında)
@@ -2015,26 +2027,19 @@ try {
                 response(false, null, 'Talep bulunamadı.');
             }
 
-            // Eğer fotoğraf varsa dosyayı sil
-            if (!empty($talep->foto)) {
-                $file_path = dirname(dirname(__DIR__)) . '/' . $talep->foto;
-                if (file_exists($file_path)) {
-                    @unlink($file_path);
-                }
-            }
-
+            // Artık fotoğrafı silmiyoruz ve soft delete yapmıyoruz, iptal edildi olarak işaretliyoruz
             $delete = $TalepModel->getDb()->prepare("
                 UPDATE personel_talepleri 
-                SET silinme_tarihi = NOW()
+                SET durum = 'iptal edildi', cozum_aciklama = 'Personel tarafından iptal edildi'
                 WHERE id = ? AND personel_id = ? AND durum = 'beklemede' AND silinme_tarihi IS NULL
             ");
             $delete->execute([$id, $personel_id]);
 
             if ($delete->rowCount() === 0) {
-                response(false, null, 'Talep silinemedi (sadece beklemede olan talepler silinebilir).');
+                response(false, null, 'Talep iptal edilemedi (sadece beklemede olan talepler iptal edilebilir).');
             }
 
-            response(true, ['id' => $id], 'Talep ve ilgili dosyalar silindi.');
+            response(true, ['id' => $id], 'Talep başarıyla iptal edildi.');
             break;
 
         // ===== Profil İşlemleri =====

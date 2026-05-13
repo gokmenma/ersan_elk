@@ -39,6 +39,7 @@ $izinModel = new PersonelIzinleriModel();
 
 // URL parametresi ile görünüm tipi
 $showApproved = isset($_GET['show']) && $_GET['show'] === 'approved';
+$showDeleted = isset($_GET['show']) && $_GET['show'] === 'deleted';
 
 // Bekleyen talep sayıları
 $avansCount = $avansModel->getBekleyenAvansSayisi();
@@ -55,7 +56,6 @@ if ($canAvans) $toplamCount += $avansCount;
 if ($canIzin) $toplamCount += $izinCount;
 if ($canAriza) $toplamCount += $talepCount;
 
-// Talepleri getir - bekleyen veya işlem yapılmış
 if ($showApproved) {
     $avanslar = $avansModel->getIslenmisAvanslar(50);
     try {
@@ -64,6 +64,14 @@ if ($showApproved) {
         $izinler = [];
     }
     $talepler = $talepModel->getCozulmusTalepler(50);
+} elseif ($showDeleted) {
+    $avanslar = $avansModel->getSilinmisAvanslar(50);
+    try {
+        $izinler = $izinModel->getSilinmisIzinler(50);
+    } catch (\Exception $e) {
+        $izinler = [];
+    }
+    $talepler = $talepModel->getSilinmisTalepler(50);
 } else {
     $avanslar = $avansModel->getButunBekleyenAvanslar();
     try {
@@ -215,6 +223,7 @@ $izinTurleri = [
             $currentTabForUrl = $currentTab;
             $pendingUrl = "index?p=talepler/list&tab=" . $currentTabForUrl;
             $approvedUrl = "index?p=talepler/list&show=approved&tab=" . $currentTabForUrl;
+            $deletedUrl = "index?p=talepler/list&show=deleted&tab=" . $currentTabForUrl;
             ?>
             <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 mb-2">
                 <a href="<?= $pendingUrl ?>" id="btnShowPending"
@@ -227,17 +236,27 @@ $izinTurleri = [
                     <i class="bx bx-check-circle me-1"></i>İşlem Yapılanlar
                 </a>
                 <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+                <a href="<?= $deletedUrl ?>" id="btnShowDeleted"
+                    class="btn btn-sm px-3 rounded-pill <?= $showDeleted ? 'btn-danger text-white shadow-sm fw-bold' : 'btn-link text-muted text-decoration-none' ?>">
+                    <i class="bx bx-trash me-1"></i>Silinenler
+                </a>
+                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
                 <button type="button" class="btn btn-sm btn-outline-success px-3 rounded-pill" id="btnExportExcel">
                     <i class="bx bx-file me-1"></i>Excel e Aktar
                 </button>
             </div>
         </div>
         <div class="card-body">
-            <?php if ($showApproved): ?>
+            <?php if ($showApproved || $showDeleted): ?>
                 <div class="alert alert-success mb-3">
                     <i class="bx bx-check-circle me-1"></i>
                     <strong>İşlem Yapılmış Talepler</strong> (Onaylanan & Reddedilen) görüntüleniyor. Son 50 kayıt
                     listelenmektedir.
+                </div>
+            <?php elseif ($showDeleted): ?>
+                <div class="alert alert-danger mb-3">
+                    <i class="bx bx-trash me-1"></i>
+                    <strong>Silinmiş Kayıtlar</strong> görüntüleniyor. Son 50 kayıt listelenmektedir.
                 </div>
             <?php endif; ?>
 
@@ -256,7 +275,7 @@ $izinTurleri = [
                                     <th data-filter="date">Talep Tarihi</th>
                                     <th data-filter="select">Durum</th>
                                     <th>Açıklama</th>
-                                    <?php if ($showApproved): ?>
+                                    <?php if ($showApproved || $showDeleted): ?>
                                         <th>İşlem Yapan</th>
                                         <th>Sonuç Açıklaması</th>
                                     <?php endif; ?>
@@ -306,6 +325,10 @@ $izinTurleri = [
                                                 $durumType = 'danger';
                                                 $durumText = 'Reddedildi';
                                             }
+                                            if ($avans->durum == 'iptal edildi' || $avans->durum == 'İptal Edildi') {
+                                                $durumType = 'secondary';
+                                                $durumText = 'İptal Edildi';
+                                            }
                                             ?>
                                             <span class="badge bg-<?= $durumType ?>">
                                                 <i
@@ -316,7 +339,7 @@ $izinTurleri = [
                                         <td>
                                             <?= htmlspecialchars($avans->aciklama ?? '-') ?>
                                         </td>
-                                        <?php if ($showApproved): ?>
+                                        <?php if ($showApproved || $showDeleted): ?>
                                             <td>
                                                 <?= htmlspecialchars($avans->solver_name ?? '-') ?>
                                             </td>
@@ -326,27 +349,29 @@ $izinTurleri = [
                                         <?php endif; ?>
                                         <td class="text-center">
                                             <div class="d-flex align-items-center justify-content-center gap-1">
-                                                <?php if ($avans->durum != 'onaylandi'): ?>
-                                                    <button class="btn btn-sm btn-soft-success btn-avans-onayla" type="button"
-                                                        data-id="<?= $avans->id ?>"
-                                                        data-personel="<?= htmlspecialchars($avans->requester_name ?? '') ?>"
-                                                        data-tutar="<?= $avans->tutar ?>" title="Onayla">
-                                                        <i class="bx bx-check"></i>
-                                                    </button>
-                                                <?php endif; ?>
-                                                <?php if ($avans->durum != 'reddedildi'): ?>
-                                                    <button class="btn btn-sm btn-soft-danger btn-avans-reddet" type="button"
-                                                        data-id="<?= $avans->id ?>"
-                                                        data-personel="<?= htmlspecialchars($avans->requester_name ?? '') ?>"
-                                                        title="Reddet">
-                                                        <i class="bx bx-x"></i>
-                                                    </button>
+                                                <?php if (!$showDeleted): ?>
+                                                    <?php if ($avans->durum != 'onaylandi'): ?>
+                                                        <button class="btn btn-sm btn-soft-success btn-avans-onayla" type="button"
+                                                            data-id="<?= $avans->id ?>"
+                                                            data-personel="<?= htmlspecialchars($avans->requester_name ?? '') ?>"
+                                                            data-tutar="<?= $avans->tutar ?>" title="Onayla">
+                                                            <i class="bx bx-check"></i>
+                                                        </button>
+                                                    <?php endif; ?>
+                                                    <?php if ($avans->durum != 'reddedildi'): ?>
+                                                        <button class="btn btn-sm btn-soft-danger btn-avans-reddet" type="button"
+                                                            data-id="<?= $avans->id ?>"
+                                                            data-personel="<?= htmlspecialchars($avans->requester_name ?? '') ?>"
+                                                            title="Reddet">
+                                                            <i class="bx bx-x"></i>
+                                                        </button>
+                                                    <?php endif; ?>
                                                 <?php endif; ?>
                                                 <button class="btn btn-sm btn-soft-info btn-avans-detay" type="button"
                                                     data-id="<?= $avans->id ?>" title="Detay">
                                                     <i class="bx bx-show"></i>
                                                 </button>
-                                                <?php if ($avans->durum != 'onaylandi'): ?>
+                                                <?php if (!$showDeleted && $avans->durum != 'onaylandi'): ?>
                                                     <button class="btn btn-sm btn-soft-danger btn-sil" type="button"
                                                         data-id="<?= $avans->id ?>" data-tip="avans" title="Sil">
                                                         <i class="bx bx-trash"></i>
@@ -391,7 +416,7 @@ $izinTurleri = [
                                                 <span class="badge bg-<?= $durumType ?>"><i class="bx bx-<?= $durumType == 'success' ? 'check-circle' : ($durumType == 'danger' ? 'x-circle' : 'time-five') ?>"></i> <?= $durumText ?></span>
                                             </div>
                                             
-                                            <?php if ($showApproved): ?>
+                                            <?php if ($showApproved || $showDeleted): ?>
                                             <div class="mb-3 bg-light p-2 rounded small">
                                                 <div class="d-flex justify-content-between mb-1">
                                                     <span class="text-muted"><i class="bx bx-user me-1"></i>İşlem Yapan:</span>
@@ -440,7 +465,7 @@ $izinTurleri = [
                                     <th>Gün Sayısı</th>
                                     <th>Durum</th>
                                     <th>Açıklama</th>
-                                    <?php if ($showApproved): ?>
+                                    <?php if ($showApproved || $showDeleted): ?>
                                         <th>İşlem Yapan</th>
                                         <th>Sonuç Açıklaması</th>
                                     <?php endif; ?>
@@ -496,6 +521,10 @@ $izinTurleri = [
                                             if ($izin->onay_durumu == 'Reddedildi') {
                                                 $durumType = 'danger';
                                             }
+                                            if ($izin->onay_durumu == 'iptal edildi' || $izin->onay_durumu == 'İptal Edildi') {
+                                                $durumType = 'secondary';
+                                                $durumText = 'İptal Edildi';
+                                            }
                                             ?>
                                             <span class="badge bg-<?= $durumType ?>">
                                                 <i
@@ -506,7 +535,7 @@ $izinTurleri = [
                                         <td>
                                             <?= htmlspecialchars($izin->aciklama ?? '-') ?>
                                         </td>
-                                        <?php if ($showApproved): ?>
+                                        <?php if ($showApproved || $showDeleted): ?>
                                             <td>
                                                 <?= htmlspecialchars($izin->solver_name ?? '-') ?>
                                             </td>
@@ -516,30 +545,32 @@ $izinTurleri = [
                                         <?php endif; ?>
                                         <td class="text-center">
                                             <div class="d-flex align-items-center justify-content-center gap-1">
-                                                <?php if ($izin->onay_durumu != 'Onaylandı'): ?>
-                                                    <button class="btn btn-sm btn-soft-success btn-izin-onayla" type="button"
-                                                        data-id="<?= $izin->id ?>"
-                                                        data-personel="<?= htmlspecialchars($izin->requester_name ?? '') ?>"
-                                                        data-tur="<?= $izinTuruLabel ?>" data-gun="<?= $gunSayisi ?>"
-                                                        data-baslangic="<?= $izin->baslangic_tarihi ?>"
-                                                        data-bitis="<?= $izin->bitis_tarihi ?>"
-                                                        title="Onayla">
-                                                        <i class="bx bx-check"></i>
-                                                    </button>
-                                                <?php endif; ?>
-                                                <?php if ($izin->onay_durumu != 'Reddedildi'): ?>
-                                                    <button class="btn btn-sm btn-soft-danger btn-izin-reddet" type="button"
-                                                        data-id="<?= $izin->id ?>"
-                                                        data-personel="<?= htmlspecialchars($izin->requester_name ?? '') ?>"
-                                                        title="Reddet">
-                                                        <i class="bx bx-x"></i>
-                                                    </button>
+                                                <?php if (!$showDeleted): ?>
+                                                    <?php if ($izin->onay_durumu != 'Onaylandı'): ?>
+                                                        <button class="btn btn-sm btn-soft-success btn-izin-onayla" type="button"
+                                                            data-id="<?= $izin->id ?>"
+                                                            data-personel="<?= htmlspecialchars($izin->requester_name ?? '') ?>"
+                                                            data-tur="<?= $izinTuruLabel ?>" data-gun="<?= $gunSayisi ?>"
+                                                            data-baslangic="<?= $izin->baslangic_tarihi ?>"
+                                                            data-bitis="<?= $izin->bitis_tarihi ?>"
+                                                            title="Onayla">
+                                                            <i class="bx bx-check"></i>
+                                                        </button>
+                                                    <?php endif; ?>
+                                                    <?php if ($izin->onay_durumu != 'Reddedildi'): ?>
+                                                        <button class="btn btn-sm btn-soft-danger btn-izin-reddet" type="button"
+                                                            data-id="<?= $izin->id ?>"
+                                                            data-personel="<?= htmlspecialchars($izin->requester_name ?? '') ?>"
+                                                            title="Reddet">
+                                                            <i class="bx bx-x"></i>
+                                                        </button>
+                                                    <?php endif; ?>
                                                 <?php endif; ?>
                                                 <button class="btn btn-sm btn-soft-info btn-izin-detay" type="button"
                                                     data-id="<?= $izin->id ?>" title="Detay">
                                                     <i class="bx bx-show"></i>
                                                 </button>
-                                                <?php if ($izin->onay_durumu != 'Onaylandı'): ?>
+                                                <?php if (!$showDeleted && $izin->onay_durumu != 'Onaylandı'): ?>
                                                     <button class="btn btn-sm btn-soft-danger btn-sil" type="button"
                                                         data-id="<?= $izin->id ?>" data-tip="izin" title="Sil">
                                                         <i class="bx bx-trash"></i>
@@ -586,7 +617,7 @@ $izinTurleri = [
                                                 <span class="badge bg-<?= $durumType ?>"><i class="bx bx-<?= $durumType == 'success' ? 'check-circle' : ($durumType == 'danger' ? 'x-circle' : 'time-five') ?>"></i> <?= $durumText ?></span>
                                             </div>
                                             
-                                            <?php if ($showApproved): ?>
+                                            <?php if ($showApproved || $showDeleted): ?>
                                             <div class="mb-3 bg-light p-2 rounded small">
                                                 <div class="d-flex justify-content-between mb-1">
                                                     <span class="text-muted"><i class="bx bx-user me-1"></i>İşlem Yapan:</span>
@@ -641,7 +672,7 @@ $izinTurleri = [
                                     <th>Öncelik</th>
                                     <th>Tarih</th>
                                     <th>Açıklama</th>
-                                    <?php if ($showApproved): ?>
+                                    <?php if ($showApproved || $showDeleted): ?>
                                         <th>İşlem Yapan</th>
                                         <th>Sonuç</th>
                                     <?php else: ?>
@@ -657,8 +688,10 @@ $izinTurleri = [
                                         $durumType = 'info';
                                     if ($talep->durum == 'cozuldu' || $talep->durum == 'onaylandi')
                                         $durumType = 'success';
-                                    if ($talep->durum == 'reddedildi' || $talep->durum == 'iptal_edildi')
+                                    if ($talep->durum == 'reddedildi')
                                         $durumType = 'danger';
+                                    if ($talep->durum == 'iptal_edildi' || $talep->durum == 'iptal edildi' || $talep->durum == 'İptal Edildi')
+                                        $durumType = 'secondary';
 
                                     $oncelikType = 'secondary';
                                     if (isset($talep->oncelik)) {
@@ -701,7 +734,7 @@ $izinTurleri = [
                                                 $durumText = 'Onaylandı';
                                             if ($talep->durum == 'reddedildi')
                                                 $durumText = 'Reddedildi';
-                                            if ($talep->durum == 'iptal_edildi')
+                                            if ($talep->durum == 'iptal_edildi' || $talep->durum == 'iptal edildi' || $talep->durum == 'İptal Edildi')
                                                 $durumText = 'İptal Edildi';
                                             if ($talep->durum == 'islemde')
                                                 $durumText = 'İşlemde';
@@ -727,7 +760,7 @@ $izinTurleri = [
                                         <td>
                                             <?= htmlspecialchars($talep->aciklama ?? '-') ?>
                                         </td>
-                                        <?php if ($showApproved): ?>
+                                        <?php if ($showApproved || $showDeleted): ?>
                                             <td>
                                                 <?= htmlspecialchars($talep->solver_name ?? '-') ?>
                                             </td>
@@ -737,26 +770,28 @@ $izinTurleri = [
                                         </td>
                                         <td class="text-center">
                                             <div class="d-flex align-items-center justify-content-center gap-1">
-                                                <?php if ($talep->durum != 'islemde' && $talep->durum != 'cozuldu' && $talep->durum != 'onaylandi'): ?>
-                                                    <button class="btn btn-sm btn-soft-warning btn-talep-isleme" type="button"
-                                                        data-id="<?= $talep->id ?>" title="İşleme Al">
-                                                        <i class="bx bx-play"></i>
-                                                    </button>
-                                                <?php endif; ?>
-                                                <?php if ($talep->durum != 'cozuldu' && $talep->durum != 'onaylandi'): ?>
-                                                    <button class="btn btn-sm btn-soft-success btn-talep-cozuldu" type="button"
-                                                        data-id="<?= $talep->id ?>"
-                                                        data-personel="<?= htmlspecialchars($talep->requester_name ?? '') ?>"
-                                                        data-baslik="<?= htmlspecialchars($talep->baslik ?? '') ?>"
-                                                        title="Çözüldü">
-                                                        <i class="bx bx-check"></i>
-                                                    </button>
+                                                <?php if (!$showDeleted): ?>
+                                                    <?php if ($talep->durum != 'islemde' && $talep->durum != 'cozuldu' && $talep->durum != 'onaylandi'): ?>
+                                                        <button class="btn btn-sm btn-soft-warning btn-talep-isleme" type="button"
+                                                            data-id="<?= $talep->id ?>" title="İşleme Al">
+                                                            <i class="bx bx-play"></i>
+                                                        </button>
+                                                    <?php endif; ?>
+                                                    <?php if ($talep->durum != 'cozuldu' && $talep->durum != 'onaylandi'): ?>
+                                                        <button class="btn btn-sm btn-soft-success btn-talep-cozuldu" type="button"
+                                                            data-id="<?= $talep->id ?>"
+                                                            data-personel="<?= htmlspecialchars($talep->requester_name ?? '') ?>"
+                                                            data-baslik="<?= htmlspecialchars($talep->baslik ?? '') ?>"
+                                                            title="Çözüldü">
+                                                            <i class="bx bx-check"></i>
+                                                        </button>
+                                                    <?php endif; ?>
                                                 <?php endif; ?>
                                                 <button class="btn btn-sm btn-soft-info btn-talep-detay" type="button"
                                                     data-id="<?= $talep->id ?>" title="Detay">
                                                     <i class="bx bx-show"></i>
                                                 </button>
-                                                <?php if ($talep->durum == 'beklemede' || $talep->durum == 'reddedildi' || $talep->durum == 'iptal_edildi'): ?>
+                                                <?php if (!$showDeleted && ($talep->durum == 'beklemede' || $talep->durum == 'reddedildi' || $talep->durum == 'iptal_edildi')): ?>
                                                     <button class="btn btn-sm btn-soft-danger btn-sil" type="button"
                                                         data-id="<?= $talep->id ?>" data-tip="talep" title="Sil">
                                                         <i class="bx bx-trash"></i>
@@ -816,7 +851,7 @@ $izinTurleri = [
                                                 <span class="badge bg-<?= $durumType ?>"><i class="bx bx-<?= $durumType == 'success' ? 'check-circle' : ($durumType == 'info' ? 'play-circle' : ($durumType == 'danger' ? 'x-circle' : 'time-five')) ?>"></i> <?= $durumText ?></span>
                                             </div>
 
-                                            <?php if ($showApproved): ?>
+                                            <?php if ($showApproved || $showDeleted): ?>
                                             <div class="mb-3 bg-light p-2 rounded small">
                                                 <div class="d-flex justify-content-between mb-1">
                                                     <span class="text-muted"><i class="bx bx-user me-1"></i>İşlem Yapan:</span>

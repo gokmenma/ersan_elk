@@ -190,7 +190,7 @@ class PersonelIzinleriModel extends Model
             WHERE (LOWER(pi.onay_durumu) = 'beklemede') AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
             AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
-            ORDER BY pi.talep_tarihi DESC
+            ORDER BY pi.baslangic_tarihi DESC
         ";
         
         $query = $this->db->prepare($sql);
@@ -227,7 +227,7 @@ class PersonelIzinleriModel extends Model
                 ) io2 ON io1.id = io2.max_id
             ) io ON io.izin_id = pi.id
             LEFT JOIN users u ON io.onaylayan_id = u.id
-            WHERE pi.onay_durumu IN ('Onaylandı', 'Reddedildi') AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
+            WHERE pi.onay_durumu IN ('Onaylandı', 'Reddedildi', 'iptal edildi', 'İptal Edildi') AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
             AND pi.id NOT IN (
                 SELECT izin_id FROM izin_onaylari 
@@ -236,7 +236,7 @@ class PersonelIzinleriModel extends Model
                 OR aciklama LIKE 'Otomatik onaylandı%'
             )
             AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
-            ORDER BY pi.talep_tarihi DESC
+            ORDER BY pi.baslangic_tarihi DESC
             LIMIT {$limit}
         ";
         
@@ -268,7 +268,40 @@ class PersonelIzinleriModel extends Model
             WHERE pi.onay_durumu = 'Reddedildi' AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
             AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
-            ORDER BY pi.talep_tarihi DESC
+            ORDER BY pi.baslangic_tarihi DESC
+            LIMIT {$limit}
+        ";
+        
+        $query = $this->db->prepare($sql);
+        $query->execute($bindParams);
+        return $query->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Silinmiş izin taleplerini getirir
+     */
+    public function getSilinmisIzinler($limit = 50)
+    {
+        $restricted_dept = $this->getRestrictedDept();
+        $is_restricted = ($restricted_dept !== null);
+
+        $extra_where = $is_restricted ? " AND (FIND_IN_SET(TRIM(p.departman), ?) OR TRIM(p.departman) = '' OR p.departman IS NULL) AND p.disardan_sigortali = 0" : "";
+        $bindParams = [$_SESSION['firma_id']];
+        if ($is_restricted) {
+            $bindParams[] = $restricted_dept;
+        }
+
+        $limit = (int) $limit;
+        $sql = "
+            SELECT pi.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi,
+                   u.adi_soyadi as solver_name, pi.silinme_tarihi as islem_tarihi
+            FROM {$this->table} pi 
+            JOIN personel p ON pi.personel_id = p.id 
+            LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
+            LEFT JOIN users u ON pi.personel_id = u.id -- Basitlik için silen kişi bilgisi yerine personel bilgisini aldık (veya silen id tutuluyorsa o eklenebilir)
+            WHERE pi.silinme_tarihi IS NOT NULL AND p.firma_id = ?
+            $extra_where
+            ORDER BY pi.silinme_tarihi DESC
             LIMIT {$limit}
         ";
         

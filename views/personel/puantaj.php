@@ -14,7 +14,7 @@ use App\Service\Gate;
     <!-- start page title -->
     <?php
     $maintitle = "Personel Yönetimi";
-    $title = "Puantaj ve İzin Yönetimi";
+    $title = "Puantaj ve İzin Yönetimi" ;
     ?>
     <?php include 'layouts/breadcrumb.php'; ?>
     <!-- end page title -->
@@ -792,6 +792,7 @@ use App\Service\Gate;
                                     foreach ($aylar as $i => $ay) {
                                         $aylar_list[str_pad($i + 1, 2, '0', STR_PAD_LEFT)] = $ay;
                                     }
+                                    
                                     echo Form::FormSelect2("select-ay", $aylar_list, date('m'), "Ay", "calendar", 'key', '', "form-control select2");
                                     ?>
                                 </div>

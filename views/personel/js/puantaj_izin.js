@@ -16,7 +16,8 @@ $(document).ready(function () {
   const savedYil = localStorage.getItem("puantaj_yil");
   const savedFilter = localStorage.getItem("puantaj_filter") || "";
 
-  if (savedAy) $("#select-ay").val(savedAy);
+  if (savedAy) $("#select-ay").val(savedAy).trigger("change");
+
   if (savedYil) $("#select-yil").val(savedYil);
   if (savedFilter) $("#personel-filter").val(savedFilter);
 
