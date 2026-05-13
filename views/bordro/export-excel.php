@@ -77,9 +77,10 @@ try {
         'L' => 'İcra Kesintisi',
         'M' => 'Yemek Ücreti',
         'N' => 'Eş yardımı',
-        'O' => 'Banka',
-        'P' => 'Sodexo',
-        'Q' => 'Elden'
+        'O' => 'Resmi Alacağı',
+        'P' => 'Banka',
+        'Q' => 'Sodexo',
+        'R' => 'Elden'
     ];
 
     // Başlık stili
@@ -111,7 +112,7 @@ try {
     }
 
     // Başlık satırına stil uygula (A1:Q1)
-    $sheet->getStyle('A1:Q1')->applyFromArray($baslikStyle);
+    $sheet->getStyle('A1:R1')->applyFromArray($baslikStyle);
 
     // Veri stili
     $dataStyle = [
@@ -290,18 +291,19 @@ try {
         $sheet->setCellValue('L' . $satir, $ortak['icraKesintisi']);
         $sheet->setCellValue('M' . $satir, $ortak['mealAllowanceDeduction']);
         $sheet->setCellValue('N' . $satir, $ortak['spouseAllowanceDeduction']);
-        $sheet->setCellValue('O' . $satir, $ortak['bankaOdemesi']);
-        $sheet->setCellValue('P' . $satir, $ortak['sodexoOdemesi']);
-        $sheet->setCellValue('Q' . $satir, $ortak['eldenOdeme']);
+        $sheet->setCellValue('O' . $satir, $ortak['resmiAlacagi'] ?? 0);
+        $sheet->setCellValue('P' . $satir, $ortak['bankaOdemesi']);
+        $sheet->setCellValue('Q' . $satir, $ortak['sodexoOdemesi']);
+        $sheet->setCellValue('R' . $satir, $ortak['eldenOdeme']);
 
         // Sayı formatları (G:Q)
-        $sheet->getStyle('G' . $satir . ':Q' . $satir)->getNumberFormat()->setFormatCode('#,##0.00');
+        $sheet->getStyle('G' . $satir . ':R' . $satir)->getNumberFormat()->setFormatCode('#,##0.00');
 
         $satir++;
     }
 
     // Tüm tabloya stil uygula
-    $sheet->getStyle('A1:Q' . ($satir - 1))->applyFromArray($dataStyle);
+    $sheet->getStyle('A1:R' . ($satir - 1))->applyFromArray($dataStyle);
 
     // Dosya adı
     $donemAdiSlug = preg_replace('/[^a-zA-Z0-9]/', '_', $donem->donem_adi);

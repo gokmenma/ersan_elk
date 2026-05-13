@@ -634,9 +634,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $maasDurumuGosterim = $hesap['maasDurumu'] ?: ($personel->maas_durumu ?? '-');
                 $nominalMaas = floatval($hesap['maasTutari']);
-                
-                // USER REQ: Üst kısımdaki 'Net Maaş' ve 'Günlük Ücret' personelin kendi sözleşme maaşı (Örn: 33.000) üzerinden görünmelidir.
-                // Alt kısımdaki 'Asgari Ücret Hakedişi' ise yine yasal tabanı koruyacaktır.
+                if ($nominalMaas <= 0) {
+                    $nominalMaas = floatval($personel->maas_tutari ?? 0);
+                }
                 
                 $gunlukUcret = $nominalMaas / 30;
                 $ucretsizIzinGunu = intval($hesap['ucretsizIzinGunu']);
@@ -655,8 +655,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 // Ücretsiz izin veya net/brüt maaş ise, çalışılan brüt/net maaşı göster
                 $calisanBrutMaas = $toplamAlacak - floatval($hesap['rawEkOdeme']);
-                
-                // USER REQ: Maaşa Dahil Yemek Yardımı Detay Gösterimi (19.04.2026 Hassas)
                 
                 $isPrimUsulu = (stripos($maasDurumuGosterim, 'Prim') !== false);
                 $ekOdemelerListe = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
@@ -737,7 +735,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $includedDeduction = round($displayMealDeduction + $spouseDeduction, 2);
                 }
                 $displayToplamAlacak = $toplamAlacak;
-                // (Yemek yardımı limiti ve fark hesabı motor tarafında yapıldığı için UI'da tekrar yapılmaz)
                 $toplamYuvarlamaFarki = round($yuvarlamaFarki, 2);
                 if (abs($toplamYuvarlamaFarki) < 0.01) $toplamYuvarlamaFarki = 0;
 
@@ -775,11 +772,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if ($bp->gelir_vergisi > 0) $toplamYasalKesinti += floatval($bp->gelir_vergisi);
                 if ($bp->damga_vergisi > 0) $toplamYasalKesinti += floatval($bp->damga_vergisi);
 
-                // ============================================================
-                // DATA PREPARATION COMPLETE - START MODERN HTML
-                // ============================================================
                 // DATA PREPARATION PART 2: GROUP & SUM EXTRAS & PUANTAJ
-                // ============================================================
                 $ekOdemelerNonPuantaj = [];
                 $puantajOdemeler = [];
                 $kacakKontrolOdemeler = [];
@@ -791,15 +784,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $tumEkOdemeler = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
                 $detayData = json_decode($bp->hesaplama_detay ?? '', true);
 
-
                 foreach ($tumEkOdemeler as $odeme) {
                     $parsedAdet = 0;
                     if (preg_match('/\((\d+)\s*Adet/i', $odeme->aciklama ?? '', $adetMatch)) { $parsedAdet = intval($adetMatch[1]); }
                     $aciklama = (string)($odeme->aciklama ?? '');
                     $odemeTurLower = mb_strtolower((string)($odeme->tur ?? ''), 'UTF-8');
                     
-                    // Prim Usülü değilse ve Yemek yardımı maaşa dahilse filtrelenmeli (Sözleşme hakedişinde zaten görünüyor)
-                    // Ancak Prim Usulünde veya sanal dengeleme kaleminde filtre uygulanmamalı.
                     if (!$isPrimUsulu && !empty($bp->yemek_yardimi_dahil) && ($odemeTurLower === 'yemek_yardimi_tum' || $odemeTurLower === 'yemek' || strpos($odemeTurLower, 'yemek') !== false) && $odemeTurLower !== 'yemek_yardimi_dengeleme') { continue; }
                     if (($odemeTurLower === 'es_yardimi' || strpos($odemeTurLower, 'es_yardimi') !== false || strpos($odemeTurLower, 'aile') !== false)) { continue; }
                     if (($odeme->tur ?? '') === 'yuvarlama_farki' || $aciklama === 'Yuvarlama Farkı') { continue; }
@@ -868,25 +858,63 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $bankaOdemeModal = round($bankaOdemeModal + $dagitimFarki, 2);
                 }
                 
-                $puantajGruplu = [];
-                foreach ($puantajOdemeler as $puantaj) {
-                    $aciklama = str_replace(['[Puantaj] ', '[Sayaç] '], '', $puantaj->aciklama ?? '');
-                    $anaMetin = trim($aciklama);
-                    $detayMetin = '';
-                    if (preg_match('/^(.*?)\s*\((.*?)\)$/', $aciklama, $matches)) { $anaMetin = trim($matches[1]); $detayMetin = trim($matches[2]); }
-                    $adet = 0; $birimFiyat = '';
-                    if (preg_match('/(\d+)\s*Adet\s*x\s*([0-9\.,]+)\s*₺?/iu', $detayMetin, $detayMatch)) {
-                        $adet = intval($detayMatch[1]); $birimFiyat = trim($detayMatch[2]);
-                    } elseif (preg_match('/(\d+)\s*Adet/iu', $aciklama, $adetMatch)) { $adet = intval($adetMatch[1]); }
-                    $groupKey = mb_strtolower($anaMetin, 'UTF-8');
-                    if (!isset($puantajGruplu[$groupKey])) { $puantajGruplu[$groupKey] = ['ana' => $anaMetin, 'adet' => 0, 'tutar' => 0, 'kayit_sayisi' => 0, 'birim_fiyatlar' => [], 'fiyat_kirilim' => []]; }
-                    $puantajGruplu[$groupKey]['adet'] += $adet; $puantajGruplu[$groupKey]['tutar'] += floatval($puantaj->tutar); $puantajGruplu[$groupKey]['kayit_sayisi']++;
-                    if ($birimFiyat !== '') { $puantajGruplu[$groupKey]['birim_fiyatlar'][$birimFiyat] = true; }
-                    $fiyatKey = $birimFiyat !== '' ? $birimFiyat : '__unknown__';
-                    if (!isset($puantajGruplu[$groupKey]['fiyat_kirilim'][$fiyatKey])) { $puantajGruplu[$groupKey]['fiyat_kirilim'][$fiyatKey] = ['birim_fiyat' => $birimFiyat, 'adet' => 0, 'tutar' => 0, 'kayit_sayisi' => 0]; }
-                    $puantajGruplu[$groupKey]['fiyat_kirilim'][$fiyatKey]['adet'] += $adet; $puantajGruplu[$groupKey]['fiyat_kirilim'][$fiyatKey]['tutar'] += floatval($puantaj->tutar); $puantajGruplu[$groupKey]['fiyat_kirilim'][$fiyatKey]['kayit_sayisi']++;
+                // Helper closure for grouping and parsing supplemental earnings (Quantity x Unit Price)
+                $groupAndParse = function($odemeler, $prefixesToRemove) {
+                    $gruplanmis = [];
+                    foreach ($odemeler as $odeme) {
+                        $aciklama = $odeme->aciklama ?? '';
+                        foreach ($prefixesToRemove as $prefix) {
+                            $aciklama = str_replace($prefix, '', $aciklama);
+                        }
+                        $anaMetin = trim($aciklama);
+                        $detayMetin = '';
+                        if (preg_match('/^(.*?)\s*\((.*?)\)$/', $aciklama, $matches)) {
+                            $anaMetin = trim($matches[1]);
+                            $detayMetin = trim($matches[2]);
+                        }
+                        
+                        $adet = 0; $birimFiyat = '';
+                        if (preg_match('/(\d+)\s*Adet\s*x\s*([0-9\.,]+)\s*₺?/iu', $detayMetin, $detayMatch)) {
+                            $adet = intval($detayMatch[1]); 
+                            $birimFiyat = trim($detayMatch[2]);
+                        } elseif (preg_match('/(\d+)\s*Adet/iu', $aciklama, $adetMatch)) {
+                            $adet = intval($adetMatch[1]);
+                        }
+                        
+                        $groupKey = mb_strtolower($anaMetin, 'UTF-8');
+                        if (!isset($gruplanmis[$groupKey])) {
+                            $gruplanmis[$groupKey] = [
+                                'ana' => $anaMetin,
+                                'adet' => 0,
+                                'tutar' => 0,
+                                'fiyat_kirilim' => []
+                            ];
+                        }
+                        
+                        $gruplanmis[$groupKey]['adet'] += $adet;
+                        $gruplanmis[$groupKey]['tutar'] += floatval($odeme->tutar);
+                        
+                        $fiyatKey = $birimFiyat !== '' ? $birimFiyat : '__unknown__';
+                        if (!isset($gruplanmis[$groupKey]['fiyat_kirilim'][$fiyatKey])) {
+                            $gruplanmis[$groupKey]['fiyat_kirilim'][$fiyatKey] = ['birim_fiyat' => $birimFiyat, 'adet' => 0, 'tutar' => 0];
+                        }
+                        $gruplanmis[$groupKey]['fiyat_kirilim'][$fiyatKey]['adet'] += $adet;
+                        $gruplanmis[$groupKey]['fiyat_kirilim'][$fiyatKey]['tutar'] += floatval($odeme->tutar);
+                    }
+                    uasort($gruplanmis, function ($a, $b) { return $b['tutar'] <=> $a['tutar']; });
+                    return $gruplanmis;
+                };
+
+                $puantajGruplu = $groupAndParse($puantajOdemeler, ['[Puantaj] ', '[Sayaç] ']);
+                $nobetGruplu = $groupAndParse($nobetOdemeler, ['[Nöbet] ']);
+                $kacakGruplu = $groupAndParse($kacakKontrolOdemeler, ['[Kaçak Kontrol] ']);
+                $puantajToplamIslemSayisi = 0;
+                foreach ($puantajGruplu as $grup) {
+                    $puantajToplamIslemSayisi += intval($grup['adet'] ?? 0);
                 }
-                uasort($puantajGruplu, function ($a, $b) { return $b['tutar'] <=> $a['tutar']; });
+                $puantajBaslikDetay = $puantajToplamIslemSayisi > 0
+                    ? ' <small class="text-muted fw-normal">' . $puantajToplamIslemSayisi . ' Adet</small>'
+                    : '';
 
                 // ============================================================
                 // HTML GENERATION: UNIFIED 2-COLUMN VIEW
@@ -936,19 +964,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                           </div>';
                 $html .= '<div class="d-flex flex-wrap gap-2 mt-2 mt-md-0">
                             <div class="badge bg-light text-dark border py-2 px-3 d-flex flex-column align-items-end">
-                                <small class="text-muted opacity-75" style="font-size: 10px;">G&#220;NL&#220;K &#220;CRET</small>
+                                <small class="text-muted opacity-75" style="font-size: 10px;">GÜNLÜK ÜCRET</small>
                                 <span class="fw-bold text-primary">' . number_format($gunlukUcret, 2, ',', '.') . ' ₺</span>
                             </div>
                             <div class="badge bg-light text-dark border py-2 px-3 d-flex flex-column align-items-end">
-                                <small class="text-muted opacity-75" style="font-size: 10px;">MAA&#350; T&#304;P&#304;</small>
+                                <small class="text-muted opacity-75" style="font-size: 10px;">MAAŞ TİPİ</small>
                                 <span class="fw-bold text-uppercase">' . htmlspecialchars($maasDurumuGosterim) . '</span>
                             </div>
                             <div class="badge bg-light text-dark border py-2 px-3 d-flex flex-column align-items-end">
-                                <small class="text-muted opacity-75" style="font-size: 10px;">S&#214;ZLE&#350;ME MAA&#350;I</small>
+                                <small class="text-muted opacity-75" style="font-size: 10px;">SÖZLEŞME MAAŞI</small>
                                 <span class="fw-bold">' . ($nominalMaas ? number_format($nominalMaas, 2, ',', '.') . ' ₺' : '-') . '</span>
                             </div>
                             <div class="badge bg-light text-dark border py-2 px-3 d-flex flex-column align-items-end">
-                                <small class="text-muted opacity-75" style="font-size: 10px;">S&#214;ZLE&#350;ME HAKED&#304;&#350;&#304;</small>
+                                <small class="text-muted opacity-75" style="font-size: 10px;">SÖZLEŞME HAKEDİŞİ</small>
                                 <span class="fw-bold text-primary">' . number_format($contractHakedisForRounding, 2, ',', '.') . ' ₺</span>
                             </div>
                           </div>';
@@ -957,11 +985,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // 2. MAIN ROW: 2 COLS
                 $html .= '<div class="row g-4">';
 
-                                // SAFE VARS
-                $displayMealDeduction = isset($displayMealDeduction) ? $displayMealDeduction : 0;
-                $spouseDeduction = isset($spouseDeduction) ? $spouseDeduction : 0;
-                $displayBaseHakedis = isset($displayBaseHakedis) ? $displayBaseHakedis : 0;
-
                 $topRowValue = $modalBaseRowValue;
                 $topRowLabel = "Asgari Ücret Hakedişi";
 
@@ -969,26 +992,25 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="col-md-6">';
                 $html .= '<div class="main-card bg-white">';
                 $html .= '<div class="card-header-tint tint-hakedis">
-                            <span><i class="bx bx-plus-circle me-2"></i>HAKED&#304;&#350;LER (ARTTIRICILAR)</span>
+                            <span><i class="bx bx-plus-circle me-2"></i>HAKEDİŞLER (ARTTIRICILAR)</span>
                             <span class="badge rounded-pill bg-success">' . number_format($displayToplamAlacak, 2, ',', '.') . ' ₺</span>
                           </div>';
                 $html .= '<table class="unified-table"><tbody>';
                 
                 $collBaseId = "cBaseHakedis_" . $bp->id;
 
-                // For Maaşa Dahil (inclusive) non-Prim personel: show a single "Sözleşme Hakedişi" parent row
-                // that expands to reveal Asgari Ücret, Maaş Farkı, Yemek Yardımı sub-items
                 if ($isInclusive) {
-                    // Calculate the total contract hakediş (sum of all inclusive components)
                     $sozlesmeHakedisToplamGosterim = $contractHakedisForRounding > 0
                         ? round($contractHakedisForRounding, 2)
                         : ($isPrimUsulu
                             ? $displayToplamAlacak
                             : ($modalBaseRowValue + $modalMaasFarkiGosterim + $displayMealDeduction + $spouseDeduction));
-                    $sozlesmeTabanGosterim = min($modalBaseRowValue, $sozlesmeHakedisToplamGosterim);
+                    $resmiTabanGosterim = $isPrimUsulu ? $asgariHakedisModal : $modalBaseRowValue;
+                    $sozlesmeTabanGosterim = min($resmiTabanGosterim, $sozlesmeHakedisToplamGosterim);
                     $sozlesmeMaasFarkiGosterim = $isPrimUsulu
                         ? max(0, round($sozlesmeHakedisToplamGosterim - $sozlesmeTabanGosterim - $displayMealDeduction - $spouseDeduction, 2))
                         : $modalMaasFarkiGosterim;
+                    $resmiAlacakGosterim = round($sozlesmeTabanGosterim + $displayMealDeduction + $spouseDeduction, 2);
 
                     if ($sozlesmeHakedisToplamGosterim > 0) {
                         $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collBaseId . '" aria-expanded="false">
@@ -996,39 +1018,36 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     <td class="text-end fw-bold text-dark">' . number_format($sozlesmeHakedisToplamGosterim, 2, ',', '.') . ' ₺</td>
                                   </tr>';
 
-                        // Sub-item: Asgari Ücret Tabanı
                         if ($sozlesmeTabanGosterim > 0) {
                             $html .= '<tr class="child-row collapse ' . $collBaseId . '">
                                         <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Asgari Ücret Tabanı</td>
                                         <td class="text-end pe-4">' . number_format($sozlesmeTabanGosterim, 2, ',', '.') . ' ₺</td>
                                       </tr>';
                         }
-
-                        // Sub-item: Maaş Farkı
                         if ($sozlesmeMaasFarkiGosterim > 0) {
                             $html .= '<tr class="child-row collapse ' . $collBaseId . '">
                                         <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Maaş Farkı</td>
                                         <td class="text-end pe-4">' . number_format($sozlesmeMaasFarkiGosterim, 2, ',', '.') . ' ₺</td>
                                       </tr>';
                         }
-
-                        // Sub-item: Yemek Yardımı (Dahil)
                         if ($displayMealDeduction > 0) {
                             $html .= '<tr class="child-row collapse ' . $collBaseId . '">
                                         <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Yemek Yardımı <small class="text-muted">(Dahil)</small></td>
                                         <td class="text-end pe-4">' . number_format($displayMealDeduction, 2, ',', '.') . ' ₺</td>
                                       </tr>';
                         }
-
-                        // Sub-item: Eş Yardımı (Dahil)
                         if ($spouseDeduction > 0) {
                             $html .= '<tr class="child-row collapse ' . $collBaseId . '">
                                         <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Eş Yardımı <small class="text-muted">(Dahil)</small></td>
                                         <td class="text-end pe-4">' . number_format($spouseDeduction, 2, ',', '.') . ' ₺</td>
                                       </tr>';
                         }
-
-                        // Sub-item: Ücretsiz İzin (varsa)
+                        if ($resmiAlacakGosterim > 0) {
+                            $html .= '<tr class="child-row collapse ' . $collBaseId . '">
+                                        <td class="ps-4 fw-semibold"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Resmi Alacağı</td>
+                                        <td class="text-end pe-4 fw-semibold">' . number_format($resmiAlacakGosterim, 2, ',', '.') . ' ₺</td>
+                                      </tr>';
+                        }
                         if ($ucretsizIzinGunu > 0) {
                             $html .= '<tr class="child-row collapse ' . $collBaseId . '">
                                         <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Ücretsiz İzin</td>
@@ -1036,49 +1055,42 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                       </tr>';
                         }
                         if ($isPrimUsulu && !empty($puantajGruplu)) {
-                            $html .= '<tr class="child-row collapse ' . $collBaseId . '">
-                                        <td class="ps-4 fw-semibold text-success"><i class="bx bx-briefcase me-1 opacity-75"></i>Puantaj Hakedi&#351;leri</td>
-                                        <td class="text-end pe-4 fw-semibold text-success">' . number_format($toplamPuantajTutar, 2, ',', '.') . ' &#8378;</td>
+                            $collPuantajBaseId = "cPuantajBase_" . $bp->id;
+                            $html .= '<tr class="child-row collapse ' . $collBaseId . '" data-bs-toggle="collapse" data-bs-target=".' . $collPuantajBaseId . '" aria-expanded="false">
+                                        <td class="ps-4 fw-semibold text-success"><i class="bx bx-briefcase me-1 opacity-75"></i>Puantaj Hakedişleri' . $puantajBaslikDetay . '<i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></td>
+                                        <td class="text-end pe-4 fw-semibold text-success">' . number_format($toplamPuantajTutar, 2, ',', '.') . ' ₺</td>
                                       </tr>';
                             foreach ($puantajGruplu as $grup) {
-                                $detStr = $grup['adet'] > 0 ? $grup['adet'] . ' Adet' : '';
-                                $fyt = array_keys($grup['birim_fiyatlar']);
-                                $birim = (count($fyt) === 1) ? ' x ' . $fyt[0] . ' &#8378;' : '';
-                                $html .= '<tr class="child-row collapse ' . $collBaseId . '">
-                                            <td class="ps-5"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars($grup['ana']) . ' <small class="text-muted">' . $detStr . $birim . '</small></td>
-                                            <td class="text-end pe-4">' . number_format($grup['tutar'], 2, ',', '.') . ' &#8378;</td>
-                                          </tr>';
+                                foreach ($grup['fiyat_kirilim'] as $kirilim) {
+                                    $detStr = $kirilim['adet'] > 0 ? $kirilim['adet'] . ' Adet' : '';
+                                    $birim = $kirilim['birim_fiyat'] !== '' ? ' x ' . $kirilim['birim_fiyat'] . ' ₺' : '';
+                                    $html .= '<tr class="child-row collapse ' . $collPuantajBaseId . '">
+                                                <td class="ps-5"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars($grup['ana']) . ' <small class="text-muted">' . $detStr . $birim . '</small></td>
+                                                <td class="text-end pe-4">' . number_format($kirilim['tutar'], 2, ',', '.') . ' ₺</td>
+                                              </tr>';
+                                }
                             }
                         }
                     }
                 } else {
-                    // Non-inclusive or Prim Usulü: keep existing behavior
-                    // Hakediş Item 1: Base hakedis
                     if ($modalBaseRowValue > 0) {
                         $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collBaseId . '" aria-expanded="false">
                                     <td><div class="d-flex align-items-center"><i class="bx bx-receipt me-2 text-muted opacity-75"></i><span>' . $topRowLabel . '</span><span class="badge bg-light text-dark fw-normal ms-2">' . $calismaGunu . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
                                     <td class="text-end fw-bold text-dark">' . number_format($topRowValue, 2, ',', '.') . ' ₺</td>
                                   </tr>';
                     }
-
                     if (!$isPrimUsulu && $modalMaasFarkiGosterim > 0) {
-                        $farkEtiketi = "Maaş Farkı";
-                        $farkIkonu = "bx-trending-up text-primary";
-
                         $html .= '<tr class="parent-row">
-                                    <td><div class="d-flex align-items-center ps-2"><i class="bx ' . $farkIkonu . ' me-2 opacity-75" style="font-size: 14px;"></i><span>' . $farkEtiketi . '</span></div></td>
-                                    <td class="text-end fw-medium text-primary">' . number_format($sozlesmeMaasFarkiGosterim, 2, ',', '.') . ' ₺</td>
+                                    <td><div class="d-flex align-items-center ps-2"><i class="bx bx-trending-up text-primary me-2 opacity-75" style="font-size: 14px;"></i><span>Maaş Farkı</span></div></td>
+                                    <td class="text-end fw-medium text-primary">' . number_format($modalMaasFarkiGosterim, 2, ',', '.') . ' ₺</td>
                                   </tr>';
                     }
-                
                     if ($ucretsizIzinGunu > 0) {
                          $html .= '<tr class="child-row collapse ' . $collBaseId . '">
                                     <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Ücretsiz İzin</td>
                                     <td class="text-end pe-4 text-warning">-' . $ucretsizIzinGunu . ' Gün</td>
                                   </tr>';
                     }
-
-                    // Yemek / Eş (for non-inclusive or Prim personnel with these allowances)
                     if (!empty($bp->yemek_yardimi_dahil) && $displayMealDeduction > 0) {
                         $html .= '<tr class="parent-row">
                                     <td><i class="bx bx-restaurant me-2 text-muted opacity-75"></i>Yemek Yardımı <small class="text-muted">(Maaşa Dahil)</small></td>
@@ -1093,51 +1105,57 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
 
-                // Puantaj
                 if (!empty($puantajOdemeler) && !($isPrimUsulu && $isInclusive)) {
                     $collId = "colPuantaj_" . $bp->id;
                     $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collId . '" aria-expanded="false">
-                                <td><div class="d-flex align-items-center"><i class="bx bx-briefcase me-2 text-success"></i><span>Puantaj Ödemeleri</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
+                                <td><div class="d-flex align-items-center"><i class="bx bx-briefcase me-2 text-success"></i><span>Puantaj Hakedişleri</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
                                 <td class="text-end text-success fw-bold">+' . number_format($toplamPuantajTutar, 2, ',', '.') . ' ₺</td>
                               </tr>';
                     foreach ($puantajGruplu as $grup) {
-                        $detStr = $grup['adet'] > 0 ? $grup['adet'] . ' Adet' : '';
-                        $fyt = array_keys($grup['birim_fiyatlar']);
-                        $birim = (count($fyt) === 1) ? ' x ' . $fyt[0] . ' ₺' : '';
-                        $html .= '<tr class="child-row collapse ' . $collId . '">
-                                    <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars($grup['ana']) . ' <small class="text-muted">' . $detStr . $birim . '</small></td>
-                                    <td class="text-end pe-4">+' . number_format($grup['tutar'], 2, ',', '.') . ' ₺</td>
-                                  </tr>';
+                        foreach ($grup['fiyat_kirilim'] as $kirilim) {
+                            $detStr = $kirilim['adet'] > 0 ? $kirilim['adet'] . ' Adet' : '';
+                            $birim = $kirilim['birim_fiyat'] !== '' ? ' x ' . $kirilim['birim_fiyat'] . ' ₺' : '';
+                            $html .= '<tr class="child-row collapse ' . $collId . '">
+                                        <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars($grup['ana']) . ' <small class="text-muted">' . $detStr . $birim . '</small></td>
+                                        <td class="text-end pe-4">+' . number_format($kirilim['tutar'], 2, ',', '.') . ' ₺</td>
+                                      </tr>';
+                        }
                     }
                 }
 
-                // Nöbetler
                 if (!empty($nobetOdemeler)) {
                     $collId = "colNobet_" . $bp->id;
                     $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collId . '" aria-expanded="false">
                                 <td><div class="d-flex align-items-center"><i class="bx bx-time-five me-2 text-success"></i><span>Nöbet Ödemeleri</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
                                 <td class="text-end text-success fw-bold">+' . number_format($toplamNobetTutar, 2, ',', '.') . ' ₺</td>
                               </tr>';
-                    foreach ($nobetOdemeler as $nb) {
-                        $html .= '<tr class="child-row collapse ' . $collId . '">
-                                    <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars(str_replace('[Nöbet] ', '', $nb->aciklama)) . '</td>
-                                    <td class="text-end pe-4">+' . number_format($nb->tutar, 2, ',', '.') . ' ₺</td>
-                                  </tr>';
+                    foreach ($nobetGruplu as $grup) {
+                        foreach ($grup['fiyat_kirilim'] as $kirilim) {
+                            $detStr = $kirilim['adet'] > 0 ? $kirilim['adet'] . ' Adet' : '';
+                            $birim = $kirilim['birim_fiyat'] !== '' ? ' x ' . $kirilim['birim_fiyat'] . ' ₺' : '';
+                            $html .= '<tr class="child-row collapse ' . $collId . '">
+                                        <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars($grup['ana']) . ' <small class="text-muted">' . $detStr . $birim . '</small></td>
+                                        <td class="text-end pe-4">+' . number_format($kirilim['tutar'], 2, ',', '.') . ' ₺</td>
+                                      </tr>';
+                        }
                     }
                 }
 
-                // Kaçak Kontrol
                 if (!empty($kacakKontrolOdemeler)) {
                     $collId = "colKacak_" . $bp->id;
                     $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collId . '" aria-expanded="false">
                                 <td><div class="d-flex align-items-center"><i class="bx bx-search-alt me-2 text-success"></i><span>Kaçak Kontrol Primleri</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
                                 <td class="text-end text-success fw-bold">+' . number_format($toplamKacakTutar, 2, ',', '.') . ' ₺</td>
                               </tr>';
-                    foreach ($kacakKontrolOdemeler as $kac) {
-                        $html .= '<tr class="child-row collapse ' . $collId . '">
-                                    <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars(str_replace('[Kaçak Kontrol] ', '', $kac->aciklama)) . '</td>
-                                    <td class="text-end pe-4">+' . number_format($kac->tutar, 2, ',', '.') . ' ₺</td>
-                                  </tr>';
+                    foreach ($kacakGruplu as $grup) {
+                        foreach ($grup['fiyat_kirilim'] as $kirilim) {
+                            $detStr = $kirilim['adet'] > 0 ? $kirilim['adet'] . ' Adet' : '';
+                            $birim = $kirilim['birim_fiyat'] !== '' ? ' x ' . $kirilim['birim_fiyat'] . ' ₺' : '';
+                            $html .= '<tr class="child-row collapse ' . $collId . '">
+                                        <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars($grup['ana']) . ' <small class="text-muted">' . $detStr . $birim . '</small></td>
+                                        <td class="text-end pe-4">+' . number_format($kirilim['tutar'], 2, ',', '.') . ' ₺</td>
+                                      </tr>';
+                        }
                     }
                 }
 
@@ -1157,7 +1175,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
 
-                // Yuvarlama
                 if ($toplamYuvarlamaFarki != 0) {
                     $html .= '<tr class="parent-row">
                                 <td><i class="bx bx-infinite me-2 text-muted opacity-75"></i>Yuvarlama Farkı</td>
@@ -1165,9 +1182,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                               </tr>';
                 }
 
-                // Hakediş Total Footer
                 $html .= '<tr class="footer-row">
-                            <td class="text-success fw-bold">TOPLAM HAKED&#304;&#350;</td>
+                            <td class="text-success fw-bold">TOPLAM HAKEDİŞ</td>
                             <td class="text-end text-success fw-bolder">' . number_format($displayToplamAlacak, 2, ',', '.') . ' ₺</td>
                           </tr>';
                 $html .= '</tbody></table></div></div>';
@@ -1177,12 +1193,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="col-md-6">';
                 $html .= '<div class="main-card bg-white">';
                 $html .= '<div class="card-header-tint tint-kesinti">
-                            <span><i class="bx bx-minus-circle me-2"></i>KES&#304;NT&#304;LER (D&#220;&#350;&#220;R&#220;C&#220;LER)</span>
+                            <span><i class="bx bx-minus-circle me-2"></i>KESİNTİLER (DÜŞÜRÜCÜLER)</span>
                             <span class="badge rounded-pill bg-danger">' . ($kesintiTutarOzet > 0 ? '-' . number_format($kesintiTutarOzet, 2, ',', '.') : '0,00') . ' ₺</span>
                           </div>';
                 $html .= '<table class="unified-table"><tbody>';
 
-                // Yasal Kesintiler Group
                 if ($toplamYasalKesinti > 0) {
                     $collId = "cLegal_" . $bp->id;
                     $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collId . '" aria-expanded="false">
@@ -1195,7 +1210,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if ($bp->damga_vergisi > 0) { $html .= '<tr class="child-row collapse ' . $collId . '"><td class="ps-4">Damga Vergisi</td><td class="text-end pe-4">-' . number_format($bp->damga_vergisi, 2, ',', '.') . ' ₺</td></tr>'; }
                 }
 
-                // Diğer Kesintiler Group (Avans, İcra vb)
                 if (!empty($kesintilerGruplanmis)) {
                     foreach ($kesintilerGruplanmis as $kes) {
                         $cId = "cOth_" . md5($kes->etiket);
@@ -1218,7 +1232,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $html .= '<tr><td colspan="2" class="text-center py-4 text-muted"><i class="bx bx-smile fs-4 d-block mb-1 opacity-50"></i>Kesinti bulunmuyor.</td></tr>';
                 }
 
-                // Kesinti Footer
                 $html .= '<tr class="footer-row">
                             <td class="text-danger fw-bold">TOPLAM KESİNTİ</td>
                             <td class="text-end text-danger fw-bolder">' . ($kesintiTutarOzet > 0 ? '-' . number_format($kesintiTutarOzet, 2, ',', '.') : '0,00') . ' ₺</td>
@@ -1232,13 +1245,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="net-bottom-banner">';
                 $html .= '<div class="row align-items-center">';
                 
-                // Bottom Left: Mega Net Val
                 $html .= '<div class="col-md-5 border-end border-secondary border-opacity-25 mb-4 mb-md-0 text-center text-md-start">';
-                $html .= '<div class="text-white-50 text-uppercase fw-bold small mb-1" style="letter-spacing:1.5px;">&#214;DENECEK NET MAA&#350;</div>';
+                $html .= '<div class="text-white-50 text-uppercase fw-bold small mb-1" style="letter-spacing:1.5px;">ÖDENECEK NET MAAŞ</div>';
                 $html .= '<div class="net-value-xl">' . number_format($gorunenNetMaas, 2, ',', '.') . ' <span style="font-size: 1.6rem;">₺</span></div>';
                 $html .= '</div>';
 
-                // Bottom Right: Distribution Grid
                 $html .= '<div class="col-md-7 ps-md-4">';
                 $html .= '<div class="row g-2 justify-content-center justify-content-md-start">';
                 
@@ -1270,10 +1281,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '</div></div>'; // Close Grid + Col-md-7
                 $html .= '</div></div>'; // Close Row + Banner
 
-                // Employer Cost Footer
                 if (($personel->maas_durumu ?? '') == 'Brüt') {
                     $html .= '<div class="mt-4 p-3 bg-light rounded-3 border d-flex flex-wrap justify-content-between align-items-center small text-muted">
-                                <div class="fw-bold text-secondary"><i class="bx bx-buildings me-1"></i>&#304;&#350;VEREN MAL&#304;YETLER&#304;</div>
+                                <div class="fw-bold text-secondary"><i class="bx bx-buildings me-1"></i>İŞVEREN MALİYETLERİ</div>
                                 <div class="d-flex gap-4">
                                     <span>SGK İşveren: <strong class="text-dark">' . ($bp->sgk_isveren ? number_format($bp->sgk_isveren, 2, ',', '.') . ' ₺' : '-') . '</strong></span>
                                     <span>İşsizlik İşveren: <strong class="text-dark">' . ($bp->issizlik_isveren ? number_format($bp->issizlik_isveren, 2, ',', '.') . ' ₺' : '-') . '</strong></span>
@@ -1294,9 +1304,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 ]);
                 break;
 
-
-
-            // Dönemi Kapat
             case 'donem-kapat':
                 $donem_id = intval($_POST['donem_id'] ?? 0);
 
