@@ -114,8 +114,13 @@ use App\Helper\Helper;
                                                 $BordroParametreModel = new \App\Model\BordroParametreModel();
                                                 $yemekParams = $BordroParametreModel->where('aktif', 1);
                                                 $yemekOptions = [];
+                                                $today = date('Y-m-d');
                                                 foreach ($yemekParams as $yp) {
                                                     if (stripos($yp->kod, 'yemek') !== false) {
+                                                        // Bitiş tarihi geçmişse listede gösterme
+                                                        if (!empty($yp->gecerlilik_bitis) && $yp->gecerlilik_bitis < $today) {
+                                                            continue;
+                                                        }
                                                         $yemekOptions[$yp->id] = $yp->etiket . " (" . $yp->kod . ")";
                                                     }
                                                 }
@@ -163,6 +168,10 @@ use App\Helper\Helper;
                                         $esOptions = [];
                                         foreach ($esParams as $ep) {
                                             if (stripos($ep->kod, 'es_yardimi') !== false || stripos($ep->kod, 'aile') !== false) {
+                                                // Bitiş tarihi geçmişse listede gösterme
+                                                if (!empty($ep->gecerlilik_bitis) && $ep->gecerlilik_bitis < $today) {
+                                                    continue;
+                                                }
                                                 $esOptions[$ep->id] = $ep->etiket . " (" . $ep->kod . ")";
                                             }
                                         }

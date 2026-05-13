@@ -3644,6 +3644,9 @@ class BordroPersonelModel extends Model
             $hakedisNet = $hakedisNetBeforeKesinti - $digerKesintiler;
         }
 
+        // Initialize $netMaas for cases where the Maaşa Dahil block is skipped
+        $netMaas = $hakedisNetBeforeKesinti;
+
         $fiiliCalismaGunu = $normGun; 
         if ($fiiliCalismaGunu <= 0) $fiiliCalismaGunu = $maasHesapGunu;
 
@@ -3785,23 +3788,19 @@ class BordroPersonelModel extends Model
                 $sodexoOdemesi = ((floatval($kayit->sodexo ?? 0) / 30) * $fiiliCalismaGunu) + ($yontemliOdemeler['sodexo'] ?? 0);
             }
 
+            // Kalan net alacağı (tüm kesintiler düştükten sonra)
+            $netAlacagi = max(0, $netMaas - $toplamKesinti);
+
             if ($isPrimUsulu) {
-                $toplamPrim = $netMaas;
                 $bankaYatacakMinimum = ($fiiliCalismaGunu >= 30) ? $asgariUcretNet : (($asgariUcretNet / 30) * $fiiliCalismaGunu);
-                $bankaBaz = min($bankaYatacakMinimum + floatval($yontemliOdemeler['banka'] ?? 0), max(0, $toplamPrim - $sodexoOdemesi));
-                $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
+                $bankaBaz = min($bankaYatacakMinimum + floatval($yontemliOdemeler['banka'] ?? 0), $netAlacagi);
+                $bankaOdemesi = $bankaBaz;
                 if (stripos((string)($kayit->sgk_yapilan_firma ?? ""), "KUR") !== false) $bankaOdemesi = 0;
-                $eldenOdeme = max(0, $toplamPrim - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
-            } elseif ($isNetMaas) {
-                $bankaBaz = max(0, $netMaas - $sodexoOdemesi);
-                $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
-                if (stripos((string)($kayit->sgk_yapilan_firma ?? ""), "KUR") !== false) $bankaOdemesi = 0;
-                $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
+                $eldenOdeme = max(0, $netAlacagi - $bankaOdemesi - $sodexoOdemesi - ($kayit->diger_odeme ?? 0));
             } else {
-                $bankaBaz = max(0, $netMaas - $sodexoOdemesi);
-                $bankaOdemesi = max(0, $bankaBaz - $icraKesintisi);
+                $bankaOdemesi = max(0, $netAlacagi - $sodexoOdemesi);
                 if (stripos((string)($kayit->sgk_yapilan_firma ?? ""), "KUR") !== false) $bankaOdemesi = 0;
-                $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
+                $eldenOdeme = max(0, $netAlacagi - $bankaOdemesi - $sodexoOdemesi - ($kayit->diger_odeme ?? 0));
             }
         }
 
