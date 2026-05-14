@@ -841,6 +841,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $modalEkOdemeToplami += floatval($edata['toplam'] ?? 0);
                 }
 
+                if ($isInclusive) {
+                    $anaHakedisGosterim = $contractHakedisForRounding > 0
+                        ? round($contractHakedisForRounding, 2)
+                        : round($modalBaseRowValue + $modalMaasFarkiGosterim + $displayMealDeduction + $spouseDeduction, 2);
+                    $bagimsizEkOdemeGosterim = $modalEkOdemeToplami;
+                    if ($isPrimUsulu) {
+                        $bagimsizEkOdemeGosterim = max(0, $bagimsizEkOdemeGosterim - $toplamPuantajTutar);
+                    }
+                    $gosterimYuvarlamaFarki = round($displayToplamAlacak - $anaHakedisGosterim - $bagimsizEkOdemeGosterim, 2);
+                    if (abs($gosterimYuvarlamaFarki) >= 0.01) {
+                        $toplamYuvarlamaFarki = $gosterimYuvarlamaFarki;
+                    }
+                }
+
                 $displayToplamAlacak = round($toplamAlacak, 2);
                 $kesintiTutarOzet = round($toplamYasalKesinti + $guncelKesintiGosterim, 2);
                 $gorunenNetMaas = max(0, round($displayToplamAlacak - $kesintiTutarOzet, 2));

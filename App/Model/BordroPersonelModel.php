@@ -212,17 +212,27 @@ class BordroPersonelModel extends Model
             return null;
         }
 
-        $toplam = 0.0;
+        $limitGruplari = [];
         $fiiliGun = 0;
         $cur = strtotime($baslangic);
         $end = strtotime($bitis);
+        $sonLimitKey = null;
 
         while ($cur !== false && $cur <= $end) {
             $tarih = date('Y-m-d', $cur);
             $gunCalisti = $this->getPuantajXGunSayisi($personelId, $tarih, $tarih) > 0;
             if ($gunCalisti) {
                 $limit = $this->getYemekYardimiGunlukLimitForDate($kayit, $tarih);
-                $toplam += $limit;
+                $limitKey = number_format($limit, 4, '.', '');
+                if ($sonLimitKey === null || $sonLimitKey !== $limitKey) {
+                    $limitGruplari[] = [
+                        'limit' => $limit,
+                        'gun' => 0,
+                    ];
+                    $sonLimitKey = $limitKey;
+                }
+                $lastIndex = count($limitGruplari) - 1;
+                $limitGruplari[$lastIndex]['gun']++;
                 $fiiliGun++;
             }
             $cur = strtotime('+1 day', $cur);
@@ -232,12 +242,43 @@ class BordroPersonelModel extends Model
             return null;
         }
 
-        $hamToplam = round(min($toplam, max(0, $maksimumToplam)), 2);
-        $yuvarlanmisToplam = $hamToplam > 0 ? ceil($hamToplam) : 0.0;
+        $kalanIhtiyac = max(0, $maksimumToplam);
+        $hamToplam = 0.0;
+        $yuvarlanmisToplam = 0.0;
+
+        foreach ($limitGruplari as $grup) {
+            if ($kalanIhtiyac <= 0) {
+                break;
+            }
+
+            $gunSayisi = max(1, intval($grup['gun'] ?? 0));
+            $gunlukLimit = max(0, floatval($grup['limit'] ?? 0));
+            $grupKapasite = round($gunlukLimit * $gunSayisi, 2);
+
+            if ($grupKapasite <= 0) {
+                continue;
+            }
+
+            if ($kalanIhtiyac >= $grupKapasite) {
+                $hamToplam += $grupKapasite;
+                $yuvarlanmisToplam += $grupKapasite;
+                $kalanIhtiyac = round($kalanIhtiyac - $grupKapasite, 2);
+                continue;
+            }
+
+            $grupHam = min(ceil($kalanIhtiyac), $grupKapasite);
+            $gunlukYuvarlanmis = ceil($grupHam / $gunSayisi);
+            $gunlukYuvarlanmis = $gunlukLimit > 0 ? min($gunlukYuvarlanmis, $gunlukLimit) : $gunlukYuvarlanmis;
+            $grupYuvarlanmis = round($gunlukYuvarlanmis * $gunSayisi, 2);
+
+            $hamToplam += $grupHam;
+            $yuvarlanmisToplam += $grupYuvarlanmis;
+            $kalanIhtiyac = 0;
+        }
 
         return [
             'toplam' => round($yuvarlanmisToplam, 2),
-            'ham_toplam' => $hamToplam,
+            'ham_toplam' => round($hamToplam, 2),
             'fiili_gun' => $fiiliGun,
             'gunluk_ortalama' => round($yuvarlanmisToplam / max(1, $fiiliGun), 2),
         ];
@@ -3324,7 +3365,7 @@ class BordroPersonelModel extends Model
                     && ($odemeTurLower === 'es_yardimi' || strpos($odemeTurLower, 'es_yardimi') !== false || strpos($odemeTurLower, 'aile') !== false);
 
                 if ($isDahilYemek || $isDahilEs) {
-                    // continue;
+                    continue;
                 }
             }
 
@@ -3973,7 +4014,13 @@ class BordroPersonelModel extends Model
             'ek_odemeler' => $ekOdemeDetaylari, 'kesintiler' => $kesintiDetaylari,
             'ozet' => [
                 'brut_ek_odemeler' => round($brutEkOdemeler, 2), 'net_ek_odemeler' => round($netEkOdemeler, 2),
-                'sgk_matrah_ekleri' => round($sgkMatrahEkleri, 2), 'vergili_matrah_ekleri' => round($vergiliMatrahEkleri, 2)
+                'sgk_matrah_ekleri' => round($sgkMatrahEkleri, 2), 'vergili_matrah_ekleri' => round($vergiliMatrahEkleri, 2),
+                'dahil_yemek_yardimi' => round($hesaplananYemekToplam, 2),
+                'dahil_es_yardimi' => round($hesaplananEsToplam, 2),
+                'dahil_toplam_yardim' => round($toplamDahilYardim, 2),
+                'yuvarlama_farki' => round($yuvarlamaFarki, 2),
+                'dahil_yemek_gun' => intval($dahilDagilim['fiili_gun'] ?? $fiiliGunSayisi),
+                'dahil_yemek_gunluk' => round(floatval($dahilDagilim['yemek_gunluk'] ?? 0), 2)
             ]
         ];
 
