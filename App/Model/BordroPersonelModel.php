@@ -530,7 +530,7 @@ class BordroPersonelModel extends Model
 
         $manualDagitimVar = isset($p->dagitim_manuel) && intval($p->dagitim_manuel) === 1;
         
-        if ($manualDagitimVar && !$isInclusive) {
+        if ($manualDagitimVar) {
             $bankaOdemesi = floatval($p->banka_odemesi ?? 0);
             $sodexoOdemesi = floatval($p->sodexo_odemesi ?? 0);
             $digerOdeme = floatval($p->diger_odeme ?? 0);
@@ -3925,7 +3925,7 @@ class BordroPersonelModel extends Model
         $sodexoOdemesi = floatval($sodexoOdemesi ?? 0);
         $eldenOdeme = floatval($eldenOdeme ?? 0);
 
-        if (isset($kayit->dagitim_manuel) && intval($kayit->dagitim_manuel) === 1 && !$this->hasMaasaDahilSosyalYardim($kayit)) {
+        if (isset($kayit->dagitim_manuel) && intval($kayit->dagitim_manuel) === 1) {
             $bankaOdemesi = floatval($kayit->banka_odemesi ?? 0);
             $sodexoOdemesi = floatval($kayit->sodexo_odemesi ?? 0);
             $diger_odeme = floatval($kayit->diger_odeme ?? 0); 
