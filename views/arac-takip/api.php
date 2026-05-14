@@ -18,7 +18,7 @@ use App\Helper\Date;
 
 header('Content-Type: application/json; charset=utf-8');
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array($_GET['action'], ['get-arac-puantaj-table', 'get-arac-ozel-puantaj', 'arac-performans', 'arac-excel-aktar', 'get-arac-analiz', 'arac-karsilastirma', 'get-km-onay-yapmayanlar']))) {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array($_GET['action'], ['get-arac-puantaj-table', 'get-arac-ozel-puantaj', 'arac-performans', 'arac-excel-aktar', 'get-arac-analiz', 'arac-karsilastirma', 'get-km-onay-yapmayanlar', 'get-yakit-personelleri']))) {
     $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
     $Arac = new AracModel();
@@ -538,6 +538,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
                 $arac_id = isset($_POST['arac_id']) && $_POST['arac_id'] !== '' ? intval($_POST['arac_id']) : null;
                 $departman = isset($_POST['departman']) && $_POST['departman'] !== '' ? $_POST['departman'] : null;
+                $personel_id = isset($_POST['personel_id']) && $_POST['personel_id'] !== '' ? intval($_POST['personel_id']) : null;
+
                 $baslangic = null;
                 if (!empty($_POST['baslangic'])) {
                     $d = DateTime::createFromFormat('d.m.Y', $_POST['baslangic']);
@@ -558,20 +560,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     if (!$bitis)
                         $bitis = date('Y-m-t');
 
-                    $kayitlar = $Yakit->getByDateRange($baslangic, $bitis, $arac_id, $departman);
-                    $stats = $Yakit->getStats(null, null, $baslangic, $bitis, $arac_id, $departman);
+                    $kayitlar = $Yakit->getByDateRange($baslangic, $bitis, $arac_id, $departman, $personel_id);
+                    $stats = $Yakit->getStats(null, null, $baslangic, $bitis, $arac_id, $departman, $personel_id);
                 } elseif ($arac_id) {
                     $kayitlar = $Yakit->getByArac($arac_id, null, $departman);
-                    $stats = $Yakit->getStats(null, null, null, null, $arac_id, $departman);
-                } elseif ($departman) {
-                    $kayitlar = $Yakit->all($departman);
-                    $stats = $Yakit->getStats(date('Y'), date('m'), null, null, null, $departman); // Varsayılan aylık
+                    $stats = $Yakit->getStats(null, null, null, null, $arac_id, $departman, $personel_id);
+                } elseif ($departman || $personel_id) {
+                    $kayitlar = $Yakit->getByDateRange(date('Y-m-01'), date('Y-m-t'), $arac_id, $departman, $personel_id);
+                    $stats = $Yakit->getStats(date('Y'), date('m'), null, null, null, $departman, $personel_id);
                 } else {
                     $kayitlar = $Yakit->all();
                     $stats = $Yakit->getStats(date('Y'), date('m')); // Varsayılan aylık
                 }
 
                 echo json_encode(['status' => 'success', 'data' => $kayitlar, 'stats' => $stats]);
+                break;
+
+            case 'get-yakit-personelleri':
+                $departman = $_GET['departman'] ?? null;
+                $personeller = $Yakit->getYakitPersonelleri($departman);
+                echo json_encode(['status' => 'success', 'data' => $personeller]);
                 break;
 
             case 'yakit-detay':

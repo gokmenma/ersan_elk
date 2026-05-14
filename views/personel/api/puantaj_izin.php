@@ -905,8 +905,23 @@ try {
         $endDate = "$yil-$ay-$daysCount";
 
         $personeller = $Personel->db->prepare("
-            SELECT p.id, p.adi_soyadi, p.tc_kimlik_no, p.isten_cikis_tarihi, p.ise_giris_tarihi
+            SELECT p.id, p.adi_soyadi, p.tc_kimlik_no, p.isten_cikis_tarihi, p.ise_giris_tarihi,
+                   CASE WHEN gg.personel_id IS NOT NULL THEN 1 ELSE 0 END as gorev_gecmisi_var,
+                   COALESCE(gg_days.toplam_gun, 0) as gg_toplam_gun
             FROM personel p
+            LEFT JOIN (
+                SELECT DISTINCT pgg.personel_id
+                FROM personel_gorev_gecmisi pgg
+                WHERE pgg.baslangic_tarihi <= ?
+                  AND (pgg.bitis_tarihi IS NULL OR pgg.bitis_tarihi >= ?)
+            ) gg ON p.id = gg.personel_id
+            LEFT JOIN (
+                SELECT pgg.personel_id, 
+                       SUM(DATEDIFF(LEAST(COALESCE(pgg.bitis_tarihi, ?), ?), GREATEST(pgg.baslangic_tarihi, ?)) + 1) as toplam_gun
+                FROM personel_gorev_gecmisi pgg
+                WHERE pgg.baslangic_tarihi <= ? AND (pgg.bitis_tarihi IS NULL OR pgg.bitis_tarihi >= ?)
+                GROUP BY pgg.personel_id
+            ) gg_days ON p.id = gg_days.personel_id
             WHERE p.firma_id = ? 
             AND p.silinme_tarihi IS NULL 
             AND (p.aktif_mi = 1 OR (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi >= ?))
@@ -922,7 +937,7 @@ try {
             )
             ORDER BY p.adi_soyadi ASC
         ");
-        $personeller->execute([$firma_id, $startDate, $startDate, $endDate, $endDate, $startDate]);
+        $personeller->execute([$endDate, $startDate, $endDate, $endDate, $startDate, $endDate, $startDate, $firma_id, $startDate, $startDate, $endDate, $endDate, $startDate]);
         $personel_list = $personeller->fetchAll(PDO::FETCH_OBJ);
 
         $varsayilan_X = $Tanimlamalar->db->prepare("SELECT id, tur_adi, kisa_kod, renk FROM tanimlamalar WHERE grup = 'izin_turu' AND (kisa_kod = 'X' OR kisa_kod = 'x' OR tur_adi LIKE '%Çalışılan Gün%') AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL LIMIT 1");
@@ -933,10 +948,13 @@ try {
         $varsayilan_HT->execute([$firma_id]);
         $ht_tanim = $varsayilan_HT->fetch(PDO::FETCH_OBJ);
 
-        // Ücretsiz izin türlerini getir
-        $ucretsizIdsStmt = $Tanimlamalar->db->prepare("SELECT id FROM tanimlamalar WHERE grup = 'izin_turu' AND (ucretli_mi = 0 OR ucretli_mi IS NULL) AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL");
-        $ucretsizIdsStmt->execute([$firma_id]);
-        $ucretsizIds = $ucretsizIdsStmt->fetchAll(PDO::FETCH_COLUMN);
+        // Ücretli izin türlerini getir (Web arayüzü ile aynı mantık)
+        $ucretliIdsStmt = $Tanimlamalar->db->prepare("SELECT id FROM tanimlamalar WHERE grup = 'izin_turu' AND ucretli_mi = 1 AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL");
+        $ucretliIdsStmt->execute([$firma_id]);
+        $ucretliIds = $ucretliIdsStmt->fetchAll(PDO::FETCH_COLUMN);
+        $ucretliIds[] = $x_tanim ? $x_tanim->id : 0;
+        $ucretliIds[] = $ht_tanim ? $ht_tanim->id : 0;
+        $ucretliIds = array_unique(array_filter($ucretliIds));
 
         // PHPSpreadsheet
         $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
@@ -995,9 +1013,11 @@ try {
                 FROM personel_izinleri pi
                 JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
                 WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL AND pi.onay_durumu != 'Reddedildi'
-                AND ((pi.baslangic_tarihi BETWEEN ? AND ?) OR (pi.bitis_tarihi BETWEEN ? AND ?))
+                AND (
+                    (pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ?)
+                )
             ");
-            $izin_stmt->execute([$p->id, $startDate, $endDate, $startDate, $endDate]);
+            $izin_stmt->execute([$p->id, $endDate, $startDate]);
             $izinler = $izin_stmt->fetchAll(PDO::FETCH_OBJ);
 
             $dayData = [];
@@ -1008,9 +1028,8 @@ try {
                 while ($cur <= $end) {
                     $date_str = date('Y-m-d', $cur);
                     if ($date_str >= $startDate && $date_str <= $endDate) {
-                        // Tailwind/Bootstrap sınıflarını Hex koduna dönüştür
                         $rawColor = $izin->renk ?: 'bg-success/10';
-                        $hexColor = '34C38F'; // Varsayılan yeşil
+                        $hexColor = '34C38F'; 
 
                         if (strpos($rawColor, 'bg-primary') !== false)
                             $hexColor = 'D1E4FF';
@@ -1047,20 +1066,20 @@ try {
             while ($cur <= $end) {
                 $date_str = date('Y-m-d', $cur);
                 $d = (int)date('j', $cur);
-                $isWeekend = date('w', $cur) == 0; // Sadece Pazar
+                $isWeekend = date('w', $cur) == 0; 
 
                 if (!isset($mevcut_gunler[$date_str]) && $cur >= $p_giris && $cur <= $p_cikis) {
                     if ($isWeekend && $ht_tanim) {
                         $dayData[$d] = [
                             'code' => $ht_tanim->kisa_kod,
-                            'color' => 'F46A6A', // Default red
+                            'color' => 'F46A6A', 
                             'tip_id' => $ht_tanim->id,
                             'is_default' => true
                         ];
                     } elseif (!$isWeekend && $x_tanim) {
                         $dayData[$d] = [
                             'code' => $x_tanim->kisa_kod,
-                            'color' => '556EE6', // Default blue
+                            'color' => '556EE6', 
                             'tip_id' => $x_tanim->id,
                             'is_default' => true
                         ];
@@ -1069,11 +1088,13 @@ try {
                 $cur = strtotime("+1 day", $cur);
             }
 
+            $paidCount = 0;
+            $fiiliCount = 0;
+
             for ($d = 1; $d <= $daysCount; $d++) {
                 $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(2 + $d);
                 $cell = $col . $row;
 
-                // Her hücre için yeni bir stil dizisi oluştur (hizalama ve kesikli kenarlık)
                 $currentStyle = [
                     'alignment' => [
                         'horizontal' => \PhpOffice\PhpSpreadsheet\Style\Alignment::HORIZONTAL_CENTER,
@@ -1091,7 +1112,6 @@ try {
                     $sheet->setCellValue($cell, $dayData[$d]['code']);
                     $color = trim($dayData[$d]['color']);
 
-                    // Renk hex formatında değilse (örn. names) veya hatalıysa varsayılan kullan
                     if (strlen($color) !== 6) {
                         $color = '34C385';
                     }
@@ -1104,50 +1124,27 @@ try {
                         'fillType' => \PhpOffice\PhpSpreadsheet\Style\Fill::FILL_SOLID,
                         'startColor' => ['argb' => 'FF' . strtoupper($color)]
                     ];
+
+                    // Hesaplamalar (Web Arayüzü ile Uyumlu)
+                    if (in_array($dayData[$d]['tip_id'], $ucretliIds)) {
+                        $paidCount++;
+                    }
+                    if ($dayData[$d]['is_default'] && $dayData[$d]['code'] !== 'HT') {
+                        $fiiliCount++;
+                    }
                 }
 
                 $sheet->getStyle($cell)->applyFromArray($currentStyle);
             }
 
-            // Totals
-            $disabledDaysCount = 0;
-            for ($d = 1; $d <= $daysCount; $d++) {
-                $dateObj = new DateTime(sprintf("%s-%s-%02d", $yil, $ay, $d));
-                $isDisabled = false;
-
-                if (!empty($p->isten_cikis_tarihi) && $p->isten_cikis_tarihi != '0000-00-00') {
-                    $cikisDate = new DateTime($p->isten_cikis_tarihi);
-                    if ($dateObj > $cikisDate)
-                        $isDisabled = true;
-                }
-
-                if (!empty($p->ise_giris_tarihi) && $p->ise_giris_tarihi != '0000-00-00') {
-                    $baslamaDate = new DateTime($p->ise_giris_tarihi);
-                    if ($dateObj < $baslamaDate)
-                        $isDisabled = true;
-                }
-
-                if ($isDisabled)
-                    $disabledDaysCount++;
+            // Görev Geçmişi Kısıtlaması (Web Arayüzü ile Uyumlu)
+            if ($p->gorev_gecmisi_var && $p->gg_toplam_gun > 0) {
+                $paidCount = min($paidCount, (int)$p->gg_toplam_gun);
+                $fiiliCount = min($fiiliCount, (int)$p->gg_toplam_gun);
             }
 
-            $unpaidCount = 0;
-            $allEntriesCount = 0;
-            foreach ($dayData as $dEntry) {
-                if (in_array($dEntry['tip_id'], $ucretsizIds)) {
-                    $unpaidCount++;
-                }
-                if (empty($dEntry['is_default'])) {
-                    $allEntriesCount++;
-                }
-            }
-
-            $calisilmasiGerekenGun = max(0, $daysCount - $disabledDaysCount);
-            $toplamCalismaGunu = max(0, $calisilmasiGerekenGun - $unpaidCount);
-            $fiiliCalismaGunu = max(0, $calisilmasiGerekenGun - $allEntriesCount);
-
-            $sheet->setCellValue($toplamCol . $row, $toplamCalismaGunu);
-            $sheet->setCellValue($fiiliCol . $row, $fiiliCalismaGunu);
+            $sheet->setCellValue($toplamCol . $row, max(0, $paidCount));
+            $sheet->setCellValue($fiiliCol . $row, max(0, $fiiliCount));
 
             // Center totals
             $sheet->getStyle($toplamCol . $row . ':' . $fiiliCol . $row)->applyFromArray([

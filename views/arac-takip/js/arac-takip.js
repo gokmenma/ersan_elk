@@ -811,7 +811,7 @@ const AracTakip = {
       }
     });
   },
-  yakitListesiYukle: function (aracId = null, baslangic = null, bitis = null, departman = null) {
+  yakitListesiYukle: function (aracId = null, baslangic = null, bitis = null, departman = null, personelId = null) {
     const self = this;
     if ($.fn.DataTable.isDataTable("#yakitTable")) {
       $("#yakitTable").DataTable().clear().destroy();
@@ -824,6 +824,7 @@ const AracTakip = {
     if (baslangic) data.baslangic = baslangic;
     if (bitis) data.bitis = bitis;
     if (departman) data.departman = departman;
+    if (personelId) data.personel_id = personelId;
 
     $.post(this.apiUrl, data, function (response) {
       if (response.status === "success") {
@@ -1178,6 +1179,26 @@ const AracTakip = {
         }
       }
     );
+  },
+
+  getYakitPersonelleri: function (departman = null) {
+    const self = this;
+    const personelSelect = $("#yakit-filtre-personel");
+    if (!personelSelect.length) return;
+
+    $.post(this.apiUrl, { action: "get-yakit-personelleri", departman: departman }, function (response) {
+      if (response.status === "success") {
+        const currentVal = personelSelect.val();
+        personelSelect.empty().append('<option value="">Tüm Personeller</option>');
+        response.data.forEach(function (p) {
+          personelSelect.append(`<option value="${p.id}">${p.adi_soyadi}</option>`);
+        });
+        if (currentVal && personelSelect.find(`option[value="${currentVal}"]`).length) {
+          personelSelect.val(currentVal);
+        }
+        personelSelect.trigger("change.select2");
+      }
+    });
   },
 
   initListContextMenu: function () {
@@ -2663,7 +2684,8 @@ $(document).ready(function () {
         $("#yakit-filtre-arac").val(),
         dateRange.baslangic,
         dateRange.bitis,
-        $("#yakit-filtre-departman").val()
+        $("#yakit-filtre-departman").val(),
+        $("#yakit-filtre-personel").val()
       );
     } else if (type === "km") {
       AracTakip.kmListesiYukle(
@@ -3178,6 +3200,7 @@ $(document).ready(function () {
           baslangic: $(`#${type}-filtre-baslangic`).val(),
           bitis: $(`#${type}-filtre-bitis`).val(),
           arac_id: $(`#${type}-filtre-arac`).val(),
+          personel_id: $(`#${type}-filtre-personel`).val(),
         },
         (html) => $("#istatistikModalBody").html(html),
       ).fail(() =>
@@ -3273,6 +3296,17 @@ $(document).ready(function () {
         window.location.href = AracTakip.apiUrl + "?action=zimmet-gecmisi-excel&arac_id=" + aracId;
     }
   });
+
+  // Yakıt Filtreleri
+  $(document).on("change", "#yakit-filtre-departman", function() {
+    const dept = $(this).val();
+    AracTakip.getYakitPersonelleri(dept);
+  });
+
+  // Başlangıçta personelleri yükle
+  if ($("#yakit-filtre-personel").length) {
+    AracTakip.getYakitPersonelleri($("#yakit-filtre-departman").val());
+  }
 
   // Context Menüleri Başlat
   AracTakip.initPuantajContextMenu();

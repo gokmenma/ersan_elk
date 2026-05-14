@@ -94,7 +94,7 @@ class AracYakitModel extends Model
     /**
      * Tarih aralığına göre yakıt kayıtları
      */
-    public function getByDateRange($baslangic, $bitis, $aracId = null, $departman = null)
+    public function getByDateRange($baslangic, $bitis, $aracId = null, $departman = null, $personelId = null)
     {
         $sql = "
             SELECT y.*, 
@@ -128,6 +128,18 @@ class AracYakitModel extends Model
         if ($departman) {
             $sql .= " AND a.departmani = :departman";
             $params['departman'] = $departman;
+        }
+        if ($personelId) {
+            $sql .= " AND EXISTS (
+                SELECT 1 FROM arac_zimmetleri az3
+                WHERE az3.arac_id = y.arac_id
+                AND az3.personel_id = :personel_id
+                AND az3.zimmet_tarihi <= y.tarih
+                AND (az3.iade_tarihi IS NULL OR az3.iade_tarihi >= y.tarih)
+                AND az3.durum != 'iptal'
+                AND az3.silinme_tarihi IS NULL
+            )";
+            $params['personel_id'] = $personelId;
         }
 
         $sql .= " ORDER BY y.tarih DESC, y.id DESC";
@@ -284,7 +296,7 @@ class AracYakitModel extends Model
     /**
      * Genel istatistikler
      */
-    public function getStats($yil = null, $ay = null, $baslangic = null, $bitis = null, $aracId = null, $departman = null)
+    public function getStats($yil = null, $ay = null, $baslangic = null, $bitis = null, $aracId = null, $departman = null, $personelId = null)
     {
         $sql = "
             SELECT 
@@ -327,9 +339,55 @@ class AracYakitModel extends Model
             $params['departman'] = $departman;
         }
 
+        if ($personelId) {
+            $sql .= " AND EXISTS (
+                SELECT 1 FROM arac_zimmetleri az3
+                WHERE az3.arac_id = y.arac_id
+                AND az3.personel_id = :personel_id
+                AND az3.zimmet_tarihi <= y.tarih
+                AND (az3.iade_tarihi IS NULL OR az3.iade_tarihi >= y.tarih)
+                AND az3.durum != 'iptal'
+                AND az3.silinme_tarihi IS NULL
+            )";
+            $params['personel_id'] = $personelId;
+        }
+
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         return $stmt->fetch(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Yakıt kaydı bulunan personelleri getirir
+     */
+    public function getYakitPersonelleri($departman = null)
+    {
+        $sql = "
+            SELECT DISTINCT p.id, p.adi_soyadi
+            FROM personel p
+            WHERE p.firma_id = :firma_id
+            AND p.silinme_tarihi IS NULL
+            AND EXISTS (
+                SELECT 1 FROM yakit y
+                INNER JOIN arac_zimmetleri az ON y.arac_id = az.arac_id
+                WHERE az.personel_id = p.id
+                AND az.zimmet_tarihi <= y.tarih 
+                AND (az.iade_tarihi IS NULL OR az.iade_tarihi >= y.tarih)
+                AND y.silinme_tarihi IS NULL
+                AND az.silinme_tarihi IS NULL
+                AND az.durum != 'iptal'
+            )
+        ";
+        $params = ['firma_id' => $_SESSION['firma_id']];
+        if (!empty($departman)) {
+            $sql .= " AND p.departman = :departman";
+            $params['departman'] = $departman;
+        }
+        $sql .= " ORDER BY p.adi_soyadi ASC";
+        
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
     /**

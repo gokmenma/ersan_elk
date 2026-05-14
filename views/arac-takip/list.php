@@ -246,7 +246,6 @@ if ($filter === 'muayene') {
                         <div class="tab-pane fade <?php echo $activeTab === 'arac' ? 'show active' : ''; ?>"
                             id="aracContent" role="tabpanel">
 
-                            <!-- Araç Evrak Özet Kartları -->
                             <div class="row g-3 mb-4">
                                 <div class="col-md-3">
                                     <div class="card border-0 shadow-sm h-100 bordro-summary-card evrak-stat-card <?php echo (!$filter) ? 'active' : ''; ?>"
@@ -763,6 +762,12 @@ if ($filter === 'muayene') {
                                                 $departmanOptions[$departman] = $departman;
                                             }
                                             echo App\Helper\Form::FormSelect2('yakit-filtre-departman', $departmanOptions, '', 'Departman', 'codepen', 'key', '', 'form-select select2');
+                                            ?>
+                                        </div>
+                                        <div class="col-xl-2 col-md-4">
+                                            <?php
+                                            $personelOptions = ['' => 'Tüm Personeller'];
+                                            echo App\Helper\Form::FormSelect2('yakit-filtre-personel', $personelOptions, '', 'Personel', 'user', 'key', '', 'form-select select2');
                                             ?>
                                         </div>
                                         <div class="col-xl-2 col-md-12 d-flex align-items-center gap-2">

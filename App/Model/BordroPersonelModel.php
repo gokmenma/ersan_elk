@@ -194,7 +194,7 @@ class BordroPersonelModel extends Model
         return $this->getYemekYardimiGunlukLimitForDate($kayit);
     }
 
-    private function hesaplaTarihliYemekYardimiToplami(object $kayit, float $gunlukIhtiyac, int $varsayilanFiiliGun): ?array
+    private function hesaplaTarihliYemekYardimiToplami(object $kayit, float $maksimumToplam, int $varsayilanFiiliGun): ?array
     {
         $personelId = intval($kayit->personel_id ?? $kayit->id ?? 0);
         $baslangic = $kayit->baslangic_tarihi ?? $kayit->donem_baslangic_tarihi ?? null;
@@ -214,7 +214,7 @@ class BordroPersonelModel extends Model
             $gunCalisti = $this->getPuantajXGunSayisi($personelId, $tarih, $tarih) > 0;
             if ($gunCalisti) {
                 $limit = $this->getYemekYardimiGunlukLimitForDate($kayit, $tarih);
-                $toplam += min($gunlukIhtiyac, $limit);
+                $toplam += $limit;
                 $fiiliGun++;
             }
             $cur = strtotime('+1 day', $cur);
@@ -225,9 +225,9 @@ class BordroPersonelModel extends Model
         }
 
         return [
-            'toplam' => round($toplam, 2),
+            'toplam' => round(min($toplam, $maksimumToplam), 2),
             'fiili_gun' => $fiiliGun,
-            'gunluk_ortalama' => round($toplam / max(1, $fiiliGun), 2),
+            'gunluk_ortalama' => round(min($toplam, $maksimumToplam) / max(1, $fiiliGun), 2),
         ];
     }
 
@@ -297,7 +297,7 @@ class BordroPersonelModel extends Model
             
             // USER REQ: Yemek yardımı günlük tutarı yukarı yuvarlanır (Excel mantığı)
             $yemekGunluk = ceil($sonuc['yemek_gunluk_ham']);
-            $tarihliYemek = $this->hesaplaTarihliYemekYardimiToplami($kayit, $yemekGunluk, $calcFiiliGun);
+            $tarihliYemek = $this->hesaplaTarihliYemekYardimiToplami($kayit, $yemekHesapMatrahi, $calcFiiliGun);
             if ($tarihliYemek !== null) {
                 $yemekTutari = floatval($tarihliYemek['toplam']);
                 $calcFiiliGun = intval($tarihliYemek['fiili_gun']);
@@ -310,8 +310,9 @@ class BordroPersonelModel extends Model
                 $yemekGunluk = min($yemekGunluk, $yemekLimit);
             }
 
-            $yemekTutari = round($yemekGunluk * $calcFiiliGun, 2);
-            $sonuc['yemek_gunluk'] = round($yemekGunluk, 2);
+                $yemekKapasitesi = $yemekLimit > 0 ? ($yemekLimit * $calcFiiliGun) : $yemekHesapMatrahi;
+                $yemekTutari = round(min($yemekHesapMatrahi, $yemekKapasitesi), 2);
+                $sonuc['yemek_gunluk'] = round($yemekTutari / max(1, $calcFiiliGun), 2);
             }
             $sonuc['yemek_toplam'] = round($yemekTutari, 2);
             
