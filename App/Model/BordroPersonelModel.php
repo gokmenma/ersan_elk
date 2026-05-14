@@ -185,7 +185,11 @@ class BordroPersonelModel extends Model
             $paramLimit = $globalYemekLimit;
         }
 
-        if ($personelLimit > 0) {
+        if ($personelLimit > 0 && $paramLimit > 0) {
+            $res = min($personelLimit, $paramLimit);
+        } elseif ($personelLimit > 0 && $globalYemekLimit > 0) {
+            $res = min($personelLimit, $globalYemekLimit);
+        } elseif ($personelLimit > 0) {
             $res = $personelLimit;
         } elseif ($paramLimit > 0) {
             $res = $paramLimit;
@@ -266,7 +270,7 @@ class BordroPersonelModel extends Model
                 continue;
             }
 
-            $grupHam = min(ceil($kalanIhtiyac), $grupKapasite);
+            $grupHam = round(min($kalanIhtiyac, $grupKapasite), 2);
             $gunlukYuvarlanmis = ceil($grupHam / $gunSayisi);
             $gunlukYuvarlanmis = $gunlukLimit > 0 ? min($gunlukYuvarlanmis, $gunlukLimit) : $gunlukYuvarlanmis;
             $grupYuvarlanmis = round($gunlukYuvarlanmis * $gunSayisi, 2);

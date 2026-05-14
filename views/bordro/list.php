@@ -1970,13 +1970,23 @@ if (!empty($dbGelirler)) {
     <div class="modal fade" id="modalIzinTakvim" tabindex="-1" aria-hidden="true">
         <div class="modal-dialog modal-lg modal-dialog-centered">
             <div class="modal-content">
-                <div class="modal-header">
-                    <h5 class="modal-title mb-0 d-flex align-items-center gap-2">
-                        <i class="bx bx-calendar-event fs-3 text-primary"></i>
-                        <span><strong id="takvim_personel_ad"></strong> <span class="text-muted fw-normal mx-1">/</span> <span id="takvim_yil_gosterge" class="fw-semibold"></span></span>
-                    </h5>
+                <div class="modal-header premium-modal-header modal-header-primary">
+                    <div class="modal-title-section">
+                        <div class="modal-icon-box">
+                            <i class="bx bx-layer"></i>
+                        </div>
+                        <div class="modal-title-group">
+                            <h5 class="modal-title">
+                                <strong id="takvim_personel_ad"></strong> 
+                                <span class="text-muted fw-normal mx-1">/</span> 
+                                <span id="takvim_yil_gosterge" class="fw-semibold"></span>
+                            </h5>
+                            <p class="modal-subtitle">Lütfen formu eksiksiz doldurun.</p>
+                        </div>
+                    </div>
                     <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
                 </div>
+
                 <div class="modal-body">
                     <div class="row g-3 justify-content-center" id="modalTakvimContainer">
                         <!-- JS ile doldurulacak -->
