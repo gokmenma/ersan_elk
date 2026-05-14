@@ -3303,6 +3303,28 @@ $(document).ready(function () {
     AracTakip.getYakitPersonelleri(dept);
   });
 
+  $(document).on("click", "#btnYakitTemizle", function() {
+    // Tarihleri bu ayın başına ve sonuna çek
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+    const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+    
+    const formatDate = (date) => {
+      let d = date.getDate();
+      let m = date.getMonth() + 1;
+      let y = date.getFullYear();
+      return (d < 10 ? '0' + d : d) + '.' + (m < 10 ? '0' + m : m) + '.' + y;
+    };
+
+    $("#yakit-filtre-baslangic").val(formatDate(firstDay));
+    $("#yakit-filtre-bitis").val(formatDate(lastDay));
+    $("#yakit-filtre-arac").val("").trigger("change");
+    $("#yakit-filtre-departman").val("").trigger("change");
+    $("#yakit-filtre-personel").val("").trigger("change");
+    
+    AracTakip.yakitListesiYukle(null, formatDate(firstDay), formatDate(lastDay), null, null);
+  });
+
   // Başlangıçta personelleri yükle
   if ($("#yakit-filtre-personel").length) {
     AracTakip.getYakitPersonelleri($("#yakit-filtre-departman").val());

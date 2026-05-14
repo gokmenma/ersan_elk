@@ -368,7 +368,7 @@ class AracYakitModel extends Model
             WHERE p.firma_id = :firma_id
             AND p.silinme_tarihi IS NULL
             AND EXISTS (
-                SELECT 1 FROM yakit y
+                SELECT 1 FROM {$this->table} y
                 INNER JOIN arac_zimmetleri az ON y.arac_id = az.arac_id
                 WHERE az.personel_id = p.id
                 AND az.zimmet_tarihi <= y.tarih 

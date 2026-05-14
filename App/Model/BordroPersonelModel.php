@@ -145,9 +145,9 @@ class BordroPersonelModel extends Model
 
         $parametreTarihi = $parametreTarihi ?? $kayit->baslangic_tarihi ?? $kayit->donem_baslangic_tarihi ?? null;
         $globalYemekLimit = 0.0;
-        $globalYemek = $this->cachedParametreModel->getByKod('yemek', $parametreTarihi);
+        $globalYemek = $this->cachedParametreModel->getByKod('yemek_yardimi_tum', $parametreTarihi);
         if (!$globalYemek) {
-            $globalYemek = $this->cachedParametreModel->getByKod('yemek_yardimi_tum', $parametreTarihi);
+            $globalYemek = $this->cachedParametreModel->getByKod('yemek', $parametreTarihi);
         }
         if ($globalYemek) {
             $globalYemekLimit = $this->getParametreGunlukTutar($globalYemek);
@@ -163,9 +163,17 @@ class BordroPersonelModel extends Model
                     || ((empty($paramBaslangic) || $paramBaslangic <= $parametreTarihi)
                         && (empty($paramBitis) || $paramBitis >= $parametreTarihi));
 
+                if (!$paramTarihGecerli || intval($paramYemek->aktif ?? 1) !== 1) {
+                    $aktifAyniKod = $this->cachedParametreModel->getByKod($paramYemek->kod ?? '', $parametreTarihi);
+                    if ($aktifAyniKod) {
+                        $paramYemek = $aktifAyniKod;
+                        $paramTarihGecerli = true;
+                    }
+                }
+
                 if ($paramTarihGecerli && intval($paramYemek->aktif ?? 1) === 1) {
                     $paramLimit = $this->getParametreGunlukTutar($paramYemek);
-                    if ($vergiIstisnaLimit > 0 && abs($paramLimit - $vergiIstisnaLimit) < 0.01) {
+                    if (($paramYemek->kod ?? '') === 'yemek' && $vergiIstisnaLimit > 0 && abs($paramLimit - $vergiIstisnaLimit) < 0.01) {
                         $paramLimit = 0.0;
                     }
                 }
@@ -224,10 +232,14 @@ class BordroPersonelModel extends Model
             return null;
         }
 
+        $hamToplam = round(min($toplam, max(0, $maksimumToplam)), 2);
+        $yuvarlanmisToplam = $hamToplam > 0 ? ceil($hamToplam) : 0.0;
+
         return [
-            'toplam' => round(min($toplam, $maksimumToplam), 2),
+            'toplam' => round($yuvarlanmisToplam, 2),
+            'ham_toplam' => $hamToplam,
             'fiili_gun' => $fiiliGun,
-            'gunluk_ortalama' => round(min($toplam, $maksimumToplam) / max(1, $fiiliGun), 2),
+            'gunluk_ortalama' => round($yuvarlanmisToplam / max(1, $fiiliGun), 2),
         ];
     }
 
@@ -257,7 +269,7 @@ class BordroPersonelModel extends Model
         return max($personelLimit, $paramLimit);
     }
 
-    private function hesaplaMaasaDahilYardimDagilimi(object $kayit, float $asgariUcretNet, int $maasHesapGunu, int $fiiliGunSayisi, float $puantajToplami = 0.0, float $toplamKesinti = 0.0): array
+    private function hesaplaMaasaDahilYardimDagilimi(object $kayit, float $asgariUcretNet, int $maasHesapGunu, int $fiiliGunSayisi, float $puantajToplami = 0.0, float $toplamKesinti = 0.0, float $bankayaTasinabilirEkOdeme = 0.0): array
     {
         $sonuc = [
             'aktif' => false,
@@ -283,7 +295,7 @@ class BordroPersonelModel extends Model
 
         // Hedef Maaşın Dönemlik (Pro-rated) Neti
         $hedefMaasTutari = floatval($kayit->hedef_net_maas_tutari ?? $kayit->guncel_maas ?? $kayit->maas_tutari ?? 0);
-        $targetHakedis = round(($hedefMaasTutari / 30) * $maasHesapGunu, 2);
+        $targetHakedis = round((($hedefMaasTutari / 30) * $maasHesapGunu) + max(0, $bankayaTasinabilirEkOdeme), 2);
 
         // USER REQ: Yemek yardımı (dengeleme), (Hedef Net - Kesintiler) ile (Asgari Net) arasındaki farktır.
         $yemekHesapMatrahi = max(0, round($targetHakedis - $sonuc['asgari_hakedis'], 2));
@@ -297,9 +309,11 @@ class BordroPersonelModel extends Model
             
             // USER REQ: Yemek yardımı günlük tutarı yukarı yuvarlanır (Excel mantığı)
             $yemekGunluk = ceil($sonuc['yemek_gunluk_ham']);
+            $yemekHamTutari = 0.0;
             $tarihliYemek = $this->hesaplaTarihliYemekYardimiToplami($kayit, $yemekHesapMatrahi, $calcFiiliGun);
             if ($tarihliYemek !== null) {
                 $yemekTutari = floatval($tarihliYemek['toplam']);
+                $yemekHamTutari = floatval($tarihliYemek['ham_toplam'] ?? $tarihliYemek['toplam']);
                 $calcFiiliGun = intval($tarihliYemek['fiili_gun']);
                 $sonuc['fiili_gun'] = $calcFiiliGun;
                 $sonuc['yemek_gunluk'] = floatval($tarihliYemek['gunluk_ortalama']);
@@ -311,13 +325,14 @@ class BordroPersonelModel extends Model
             }
 
                 $yemekKapasitesi = $yemekLimit > 0 ? ($yemekLimit * $calcFiiliGun) : $yemekHesapMatrahi;
-                $yemekTutari = round(min($yemekHesapMatrahi, $yemekKapasitesi), 2);
+                $yemekHamTutari = round(min($yemekHesapMatrahi, $yemekKapasitesi), 2);
+                $yemekTutari = $yemekHamTutari > 0 ? ceil($yemekHamTutari) : 0.0;
                 $sonuc['yemek_gunluk'] = round($yemekTutari / max(1, $calcFiiliGun), 2);
             }
             $sonuc['yemek_toplam'] = round($yemekTutari, 2);
             
             // USER REQ: Yuvarlama farkı = (Yukarı Yuvarlanmış Toplam) - (Ham Fark Matrahı)
-            $sonuc['yuvarlama_farki'] = max(0, round($sonuc['yemek_toplam'] - $yemekHesapMatrahi, 2));
+            $sonuc['yuvarlama_farki'] = max(0, round($sonuc['yemek_toplam'] - $yemekHamTutari, 2));
             
             $kalanFark = max(0, round($kalanFark - min($kalanFark, $sonuc['yemek_toplam']), 2));
         }
@@ -472,33 +487,29 @@ class BordroPersonelModel extends Model
                 $p->hedef_net_maas_tutari = $maasTutari;
             }
 
+            $sozlesmeHakedisi = round(($maasTutari / 30) * $calismaGunu, 2);
+            $hariciEkOdeme = max(0, $rawEkOdeme - $primUsuluPuantajHedefToplami);
             $sodexoLocal = floatval($p->sodexo_odemesi ?? 0) + $yontemliSodexoEki;
             $totalDeductionsForDahil = $kesintiHaricIcra + $sodexoLocal + floatval($p->diger_odeme ?? 0);
-            $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi($p, $asgariUcretNet, $calismaGunu, $fiiliGunSayisi, $primUsuluPuantajHedefToplami, $totalDeductionsForDahil);
+            $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi($p, $asgariUcretNet, $calismaGunu, $fiiliGunSayisi, $primUsuluPuantajHedefToplami, $totalDeductionsForDahil, $hariciEkOdeme);
             
             $mealAllowanceDeduction = floatval($dahilDagilim['yemek_toplam'] ?? 0);
             $spouseAllowanceDeduction = floatval($dahilDagilim['es_toplam'] ?? 0);
             $includedAllowanceDeduction = floatval($dahilDagilim['toplam'] ?? 0);
             $yuvarlamaFarki = floatval($dahilDagilim['yuvarlama_farki'] ?? 0);
             
-            $sozlesmeHakedisi = round(($maasTutari / 30) * $calismaGunu, 2);
-
             if (intval($p->personel_id ?? 0) === 77 && $donemBaslangic === '2026-04-01') {
                 $sozlesmeHakedisi = round((33000 / 30) * 13, 2);
                 $sozlesmeHakedisiOverride = true;
             }
-            
-            $hariciEkOdeme = max(0, $rawEkOdeme - $primUsuluPuantajHedefToplami);
 
             if ($sozlesmeHakedisiOverride && !$isPrimUsulu) {
                 $toplamAlacagi = $sozlesmeHakedisi + $hariciEkOdeme + $yuvarlamaFarki;
             } else {
-                $toplamAlacagi = ($isPrimUsulu)
-                ? max($primUsuluPuantajHedefToplami, $asgariTabanVal + $includedAllowanceDeduction)
-                : max($sozlesmeHakedisi, $asgariTabanVal + $includedAllowanceDeduction);
+                $temelHakedis = $isPrimUsulu ? $primUsuluPuantajHedefToplami : $sozlesmeHakedisi;
+                $toplamAlacagi = max($temelHakedis + $hariciEkOdeme, $asgariTabanVal + $includedAllowanceDeduction);
             
             // Diğer (Dahil olmayan) ek ödemeleri ekle
-                $toplamAlacagi += $hariciEkOdeme;
             }
         } else {
             $sozlesmeHakedisi = round(($maasTutari / 30) * $calismaGunu, 2);
@@ -3794,15 +3805,27 @@ class BordroPersonelModel extends Model
         $hesaplananEsToplam = 0;
         $toplamDahilYardim = 0;
         $yuvarlamaFarki = 0;
+        $bankayaTasinabilirEkOdeme = 0.0;
 
         if ($this->hasMaasaDahilSosyalYardim($kayit)) {
+            foreach ($ekOdemeDetaylari as $ek) {
+                $aciklama = (string)($ek['aciklama'] ?? '');
+                $kod = mb_strtolower((string)($ek['kod'] ?? ''), 'UTF-8');
+                $isPuantajEk = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Ka') === 0;
+                $isDahilYardimEk = strpos($kod, 'yemek') !== false || strpos($kod, 'es_yardimi') !== false || strpos($kod, 'aile') !== false || $kod === 'yuvarlama_farki';
+                if (!$isPuantajEk && !$isDahilYardimEk) {
+                    $bankayaTasinabilirEkOdeme += floatval($ek['hesaplanan_tutar'] ?? $ek['tutar'] ?? 0);
+                }
+            }
+
             $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi(
                 $kayit,
                 $asgariNetNominal,
                 $maasHesapGunu,
                 $fiiliCalismaGunu,
                 $primUsuluPuantajHedefToplami,
-                0
+                0,
+                $bankayaTasinabilirEkOdeme
             );
             $hesaplananYemekToplam = floatval($dahilDagilim['yemek_toplam'] ?? 0);
             $hesaplananEsToplam = floatval($dahilDagilim['es_toplam'] ?? 0);
@@ -3814,14 +3837,13 @@ class BordroPersonelModel extends Model
             $asgariYatacak = round(($asgariNetNominal / 30) * $maasHesapGunu, 2);
             
             // USER REQ: Net Maaş (Hakediş) = Asgari + Dahil Yardımlar + Diğer Ek Ödemeler
-            $baseHakedis = ($isPrimUsuluDahilYardim)
-                ? max($primUsuluPuantajHedefToplami, $asgariYatacak + $toplamDahilYardim)
-                : max($targetNetHakedis, $asgariYatacak + $toplamDahilYardim);
+            $hedefHakedisDahilEk = ($isPrimUsuluDahilYardim ? $primUsuluPuantajHedefToplami : $targetNetHakedis) + $bankayaTasinabilirEkOdeme;
+            $baseHakedis = max($hedefHakedisDahilEk, $asgariYatacak + $toplamDahilYardim);
             
             $netMaas = $baseHakedis;
             
             // Diğer (Dahil olmayan) ek ödemeleri ekle
-            foreach ($ekOdemeDetaylari as $ek) {
+            foreach ([] as $ek) {
                 $aciklama = (string)($ek['aciklama'] ?? '');
                 if (strpos($aciklama, '[Puantaj]') !== 0 && strpos($aciklama, '[Sayaç]') !== 0 && strpos($aciklama, '[Kaçak Kontrol]') !== 0 && strpos($aciklama, 'Maaşa Dahil') === false) {
                     $netMaas += floatval($ek['tutar']);

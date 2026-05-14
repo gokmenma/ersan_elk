@@ -770,14 +770,17 @@ if ($filter === 'muayene') {
                                             echo App\Helper\Form::FormSelect2('yakit-filtre-personel', $personelOptions, '', 'Personel', 'user', 'key', '', 'form-select select2');
                                             ?>
                                         </div>
-                                        <div class="col-xl-2 col-md-12 d-flex align-items-center gap-2">
-                                            <button type="button" class="btn btn-primary w-100" id="btnYakitFiltrele">
+                                        <div class="col-12 d-flex align-items-center justify-content-end gap-2 mt-2">
+                                            <button type="button" class="btn btn-dark" id="btnYakitFiltrele">
                                                 <i class="bx bx-filter-alt me-1"></i> Filtrele
                                             </button>
-                                            <button type="button" class="btn btn-info w-100" id="btnYakitIstatistik"
+                                            <button type="button" class="btn btn-info text-white" id="btnYakitIstatistik"
                                                 data-bs-toggle="modal" data-bs-target="#istatistikModal"
                                                 data-type="yakit">
                                                 <i class="bx bx-stats me-1"></i> İstatistikler
+                                            </button>
+                                            <button type="button" class="btn btn-light border" id="btnYakitTemizle">
+                                                <i class="bx bx-reset me-1"></i> Temizle
                                             </button>
                                         </div>
                                     </div>
