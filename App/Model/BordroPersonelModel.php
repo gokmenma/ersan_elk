@@ -295,7 +295,9 @@ class BordroPersonelModel extends Model
 
         // Hedef Maaşın Dönemlik (Pro-rated) Neti
         $hedefMaasTutari = floatval($kayit->hedef_net_maas_tutari ?? $kayit->guncel_maas ?? $kayit->maas_tutari ?? 0);
-        $targetHakedis = round((($hedefMaasTutari / 30) * $maasHesapGunu) + max(0, $bankayaTasinabilirEkOdeme), 2);
+        $targetHakedis = $puantajToplami > 0
+            ? round($puantajToplami + max(0, $bankayaTasinabilirEkOdeme), 2)
+            : round((($hedefMaasTutari / 30) * $maasHesapGunu) + max(0, $bankayaTasinabilirEkOdeme), 2);
 
         // USER REQ: Yemek yardımı (dengeleme), (Hedef Net - Kesintiler) ile (Asgari Net) arasındaki farktır.
         $yemekHesapMatrahi = max(0, round($targetHakedis - $sonuc['asgari_hakedis'], 2));
