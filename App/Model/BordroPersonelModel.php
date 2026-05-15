@@ -450,6 +450,11 @@ class BordroPersonelModel extends Model
             $icraKesintisi = floatval($p->hd_icra_kesintisi ?? 0);
         }
 
+        // USER REQ: Eğer hesaplama yapılmamışsa veya manuel müdahale varsa, personel_kesintileri tablosundaki güncel tutarı getir
+        if (isset($p->guncel_icra_kesinti) && floatval($p->guncel_icra_kesinti) > 0) {
+            $icraKesintisi = floatval($p->guncel_icra_kesinti);
+        }
+
         $kesintiHaricIcra = max(0, $toplamKesinti - $icraKesintisi);
 
         $ucretsizIzinGunu = 0;
@@ -711,6 +716,7 @@ class BordroPersonelModel extends Model
                    gg_days.toplam_gun as gg_toplam_gun,
                    CASE WHEN gg.personel_id IS NOT NULL THEN 1 ELSE 0 END as gorev_gecmisi_var,
                    COALESCE(pk_agg.toplam_kesinti, 0) as guncel_toplam_kesinti,
+                   COALESCE(pk_agg.guncel_icra_kesinti, 0) as guncel_icra_kesinti,
                    COALESCE(eo_agg.toplam_ek_odeme, 0) as guncel_toplam_ek_odeme,
                    JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.odeme_dagilimi.icra_kesintisi')) as hd_icra_kesintisi,
                    JSON_UNQUOTE(JSON_EXTRACT(bp.hesaplama_detay, '$.matrahlar.fiili_calisma_gunu')) as hd_fiili_calisma_gunu,
@@ -739,7 +745,12 @@ class BordroPersonelModel extends Model
                 WHERE pgg.baslangic_tarihi <= ? AND (pgg.bitis_tarihi IS NULL OR pgg.bitis_tarihi >= ?) GROUP BY pgg.personel_id
             ) gg_days ON p.id = gg_days.personel_id
             LEFT JOIN (
-                SELECT personel_id, SUM(tutar) as toplam_kesinti FROM personel_kesintileri WHERE donem_id = ? AND silinme_tarihi IS NULL GROUP BY personel_id
+                SELECT personel_id, 
+                       SUM(tutar) as toplam_kesinti,
+                       SUM(CASE WHEN tur = 'icra' THEN tutar ELSE 0 END) as guncel_icra_kesinti
+                FROM personel_kesintileri 
+                WHERE donem_id = ? AND silinme_tarihi IS NULL 
+                GROUP BY personel_id
             ) pk_agg ON bp.personel_id = pk_agg.personel_id
             LEFT JOIN (
                 SELECT personel_id, SUM(tutar) as toplam_ek_odeme FROM personel_ek_odemeler WHERE donem_id = ? AND silinme_tarihi IS NULL AND tekrar_tipi = 'tek_sefer' GROUP BY personel_id
@@ -2947,7 +2958,7 @@ class BordroPersonelModel extends Model
 
         // Bordro kaydını ve personel detaylarını çek
         $sql = $this->db->prepare("
-            SELECT bp.*, p.maas_tutari, p.maas_durumu, p.bes_kesintisi_varmi, p.sodexo, p.sgk_yapilan_firma, p.ise_giris_tarihi, p.isten_cikis_tarihi, 
+            SELECT bp.*, p.adi_soyadi, p.maas_tutari, p.maas_durumu, p.bes_kesintisi_varmi, p.sodexo, p.sgk_yapilan_firma, p.ise_giris_tarihi, p.isten_cikis_tarihi, 
                    p.yemek_yardimi_dahil, p.yemek_yardimi_tutari, p.yemek_yardimi_parametre_id,
                    p.es_yardimi_dahil, p.es_yardimi_tutari, p.es_yardimi_parametre_id,
                    bd.baslangic_tarihi, bd.bitis_tarihi
@@ -3879,7 +3890,7 @@ class BordroPersonelModel extends Model
                     $maasHesapGunu,
                     $fiiliCalismaGunu,
                     ($isPrimUsulu ? $primUsuluPuantajHedefToplami : ($toplamMesaiTutar + $toplamEkOdeme)),
-                    $toplamKesinti + $digerKesintiler,
+                    0, // USER REQ: Dahil yardımların icra matrahı hesabı kesintilerden önce yapılmalıdır
                     $bankayaTasinabilirEkOdeme,
                     $sozlesmeHakedisi
                 );
