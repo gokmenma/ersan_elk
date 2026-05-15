@@ -2034,8 +2034,8 @@ class BordroPersonelModel extends Model
                     $this->db->prepare("
                         INSERT INTO personel_ek_odemeler 
                         (personel_id, donem_id, tur, parametre_id, aciklama, tutar, tekrar_tipi, durum, aktif, created_at)
-                        VALUES (?, ?, 'yemek_yardimi', ?, ?, ?, 'tek_sefer', 'onaylandi', 1, NOW())
-                    ")->execute([$personel_id, $donem_id, $param->id, $aciklama, round($tutar, 2)]);
+                        VALUES (?, ?, ?, ?, ?, ?, 'tek_sefer', 'onaylandi', 1, NOW())
+                    ")->execute([$personel_id, $donem_id, $param->kod, $param->id, $aciklama, round($tutar, 2)]);
                 }
             }
         }
@@ -2894,7 +2894,9 @@ class BordroPersonelModel extends Model
                 OR aciklama LIKE '[Sayaç]%'
                 OR aciklama LIKE '[Nöbet]%'
                 OR aciklama LIKE '[Kaçak Kontrol]%'
-                OR tur IN ('yemek_yardimi', 'es_yardimi', 'YY', 'EY')
+                OR tur IN ('yemek_yardimi', 'es_yardimi', 'YY', 'EY', 'yemek_yardimi_tum', 'es_yardimi_tum')
+                OR tur LIKE '%yemek%'
+                OR tur LIKE '%yardimi%'
                 OR aciklama LIKE '[Yemek Yardımı]%'
                 OR aciklama LIKE '[Eş Yardımı]%'
                 OR tekrar_tipi = 'profil_bazli'
@@ -3126,6 +3128,7 @@ class BordroPersonelModel extends Model
                 OR aciklama LIKE '[Nöbet]%'
                 OR aciklama LIKE '[Kaçak Kontrol]%'
                 OR tur LIKE '%yemek%'
+                OR tur LIKE '%yardimi%'
                 OR tur LIKE '%YY%'
                 OR tur = 'yemek_yardimi_tum'
                 OR aciklama LIKE '[Yemek Yardımı]%'
@@ -3353,6 +3356,7 @@ class BordroPersonelModel extends Model
         $sgkMatrahEkleri = 0;      // SGK matrahına eklenecek
         $toplamMesaiTutar = 0;     // Özel olarak mesai tutarını ayır
         $toplamKesinti = 0;        // Net'ten düşülecek kesintiler
+        $icraMatrahEkleri = 0;     // İcra matrahına eklenecek ek gelirler
         $sodexoOdemesi = 0;
         $sgkIsveren = 0;
         $issizlikIsveren = 0;
@@ -3373,11 +3377,24 @@ class BordroPersonelModel extends Model
         $mealAllowanceDeduction = 0.0;
         $spouseAllowanceDeduction = 0.0;
         $isPrimUsuluDahilYardim = $isPrimUsulu && $this->hasMaasaDahilSosyalYardim($kayit);
+        
+        $bankayaTasinabilirEkOdeme = 0.0;
+        $sozlesmeHakedisi = 0.0;
 
         // Her ek ödemeyi parametresine göre işle
         foreach ($ekOdemeler as $odeme) {
             $tutar = floatval($odeme->tutar);
             $parametre = $parametrelerMap[$odeme->tur] ?? null;
+
+            // FALLBACK: Eğer kod ile bulunamadıysa (mismatch durumunda), parametre_id ile cache üzerinden bulmaya çalış
+            if (!$parametre && !empty($odeme->parametre_id)) {
+                foreach ($parametrelerMap as $pCached) {
+                    if (intval($pCached->id) === intval($odeme->parametre_id)) {
+                        $parametre = $pCached;
+                        break;
+                    }
+                }
+            }
 
             if ($this->hasMaasaDahilSosyalYardim($kayit)) {
                 $odemeTurLower = mb_strtolower((string) ($odeme->tur ?? ''), 'UTF-8');
@@ -3387,6 +3404,7 @@ class BordroPersonelModel extends Model
                     && ($odemeTurLower === 'es_yardimi' || strpos($odemeTurLower, 'es_yardimi') !== false || strpos($odemeTurLower, 'aile') !== false);
 
                 if ($isDahilYemek || $isDahilEs) {
+                    // USER REQ: Maaşa dahil yardımlar için matrah eklemesini icra bloğu öncesinde balanslı tutarlar üzerinden yapacağız.
                     continue;
                 }
             }
@@ -3703,6 +3721,11 @@ class BordroPersonelModel extends Model
 
             unset($toplamTutar); // Bir sonraki döngü için temizle
 
+            // İcra matrahına dahil mi?
+            if ($parametre && !empty($parametre->icra_pirim_dahil) && $parametre->icra_pirim_dahil == 1) {
+                $icraMatrahEkleri += floatval($detay['net_etki'] ?? 0);
+            }
+
             $ekOdemeDetaylari[] = $detay;
         }
 
@@ -3833,7 +3856,51 @@ class BordroPersonelModel extends Model
             $firstOran = floatval($firstKesinti->oran ?? 0);
             $icraBazGunu = $this->getMaasHesapGunu($aktifTakvimGun, $aydakiGunSayisi, $ucretsizIzinGunu);
             $bankaYatacakBaz = ($asgariUcretNet / 30) * $icraBazGunu;
-            $icraBazTutar = $bankaYatacakBaz;
+
+            // USER REQ: Maaşa dahil yardımlar için balanslı matrah eklemesi
+            if ($this->hasMaasaDahilSosyalYardim($kayit)) {
+                // Bankaya taşınabilir ek ödemeleri (mesai vb.) hesapla
+                $bankayaTasinabilirEkOdeme = 0.0;
+                foreach ($ekOdemeDetaylari as $ek) {
+                    $aciklama = (string)($ek['aciklama'] ?? '');
+                    $kod = mb_strtolower((string)($ek['kod'] ?? ''), 'UTF-8');
+                    $isPuantajEk = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Ka') === 0;
+                    $isDahilYardimEk = strpos($kod, 'yemek') !== false || strpos($kod, 'es_yardimi') !== false || strpos($kod, 'aile') !== false || $kod === 'yuvarlama_farki';
+                    if (!$isPuantajEk && !$isDahilYardimEk) {
+                        $bankayaTasinabilirEkOdeme += floatval($ek['hesaplanan_tutar'] ?? $ek['tutar'] ?? 0);
+                    }
+                }
+
+                $sozlesmeHakedisi = $this->getSozlesmeHakedisi($kayit->personel_id ?? $kayit->id, $nominalBrutMaas, $maasHesapGunu, $donemBaslangicTarihi ?? $donemTarihi ?? date('Y-m-01'));
+
+                $dahilDagilimPreIcra = $this->hesaplaMaasaDahilYardimDagilimi(
+                    $kayit,
+                    $asgariUcretNet,
+                    $maasHesapGunu,
+                    $fiiliCalismaGunu,
+                    $toplamMesaiTutar + $toplamEkOdeme,
+                    $toplamKesinti + $digerKesintiler,
+                    $bankayaTasinabilirEkOdeme,
+                    $sozlesmeHakedisi
+                );
+
+                // Yemek Yardımı İcraya Dahil mi?
+                if (!empty($kayit->yemek_yardimi_parametre_id)) {
+                    $pYemek = $parametreModel->find($kayit->yemek_yardimi_parametre_id);
+                    if ($pYemek && !empty($pYemek->icra_pirim_dahil) && $pYemek->icra_pirim_dahil == 1) {
+                        $icraMatrahEkleri += floatval($dahilDagilimPreIcra['yemek_toplam'] ?? 0);
+                    }
+                }
+                // Eş Yardımı İcraya Dahil mi?
+                if (!empty($kayit->es_yardimi_parametre_id)) {
+                    $pEs = $parametreModel->find($kayit->es_yardimi_parametre_id);
+                    if ($pEs && !empty($pEs->icra_pirim_dahil) && $pEs->icra_pirim_dahil == 1) {
+                        $icraMatrahEkleri += floatval($dahilDagilimPreIcra['es_toplam'] ?? 0);
+                    }
+                }
+            }
+
+            $icraBazTutar = $bankaYatacakBaz + $icraMatrahEkleri;
             if ($firstHTip === 'asgari_oran_net' || $firstHTip === 'oran_net') {
                 $oranKullan = ($firstOran > 0) ? $firstOran : 25;
                 $toplamIcraBudget = round($icraBazTutar * ($oranKullan / 100), 2);
@@ -4214,7 +4281,7 @@ class BordroPersonelModel extends Model
         // bu dönem için halihazırda oluşturulmuş olan (aligned) kayıtları çekmeliyiz.
         // Böylece master kayıtlar (rate) güncel kalır, period kayıtları (amount) hesaplanır.
         $sql = $this->db->prepare("
-            SELECT peo.*, bp.etiket as parametre_adi, bp.kod as parametre_kodu
+            SELECT peo.*, bp.etiket as parametre_adi, bp.kod as parametre_kodu, bp.icra_pirim_dahil
             FROM personel_ek_odemeler peo
             LEFT JOIN bordro_parametreleri bp ON peo.parametre_id = bp.id
             WHERE peo.personel_id = ? 

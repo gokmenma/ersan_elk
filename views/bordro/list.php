@@ -598,9 +598,15 @@ if (!empty($dbGelirler)) {
                                         </li>
                                         <li>
                                             <a class="dropdown-item py-2 <?= $donemKapali ? 'disabled' : '' ?>"
+                                                href="javascript:void(0);" id="btnBulkOdemeReset">
+                                                <i class="mdi mdi-refresh me-2 text-warning fs-5"></i> Tüm Ödeme Dağıtımlarını Sıfırla
+                                            </a>
+                                        </li>
+                                        <li>
+                                            <a class="dropdown-item py-2 <?= $donemKapali ? 'disabled' : '' ?>"
                                                 href="javascript:void(0);" data-bs-toggle="modal"
                                                 data-bs-target="#odemeEkleModal">
-                                                <i class="mdi mdi-wallet me-2 text-info fs-5"></i> Ödeme Dağıt (Excel)
+                                                <i class="mdi mdi-cash-multiple me-2 text-success fs-5"></i> Ödeme Dağıt (Excel)
                                             </a>
                                         </li>
                                         <li>

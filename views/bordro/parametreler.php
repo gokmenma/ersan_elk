@@ -650,6 +650,21 @@ for ($y = date('Y') + 1; $y >= 2020; $y--) {
                             </div>
                         </div>
 
+                        <div class="bg-light rounded p-3 mb-3 border border-dashed" id="icraDahilAyarlari">
+                            <label class="form-label d-block text-muted small fw-bold text-uppercase mb-2">İcra
+                                Hesaplama</label>
+                            <div class="d-flex flex-wrap gap-4">
+                                <div class="form-check custom-checkbox">
+                                    <input class="form-check-input" type="checkbox" id="icra_pirim_dahil"
+                                        name="icra_pirim_dahil" value="1">
+                                    <label class="form-check-label fw-medium" for="icra_pirim_dahil">İcra Matrahına
+                                        Dahil</label>
+                                    <div class="text-muted" style="font-size: 11px;">İşaretlenirse bu gelir, icra
+                                        kesintisi matrahına eklenir</div>
+                                </div>
+                            </div>
+                        </div>
+
                         <div class="row g-3">
                             <div class="col-md-6" id="divTutar">
                                 <?= Form::FormFloatInput("text", "varsayilan_tutar", "0", "0.00", "Varsayılan Tutar", "dollar-sign", "form-control money", false, null, "off", false) ?>
@@ -1042,6 +1057,8 @@ for ($y = date('Y') + 1; $y >= 2020; $y--) {
             $('#sgk_matrahi_dahil').prop('checked', param.sgk_matrahi_dahil == 1);
             $('#gelir_vergisi_dahil').prop('checked', param.gelir_vergisi_dahil == 1);
             $('#damga_vergisi_dahil').prop('checked', param.damga_vergisi_dahil == 1);
+            $('#icra_pirim_dahil').prop('checked', param.icra_pirim_dahil == 1);
+            $('#icraDahilAyarlari').toggle(param.kategori === 'gelir');
 
             $('input[name="gunluk_tutar"]').val(param.gunluk_tutar || 0);
             $('input[name="varsayilan_gun_sayisi"]').val(param.varsayilan_gun_sayisi || 26);
@@ -1088,6 +1105,8 @@ for ($y = date('Y') + 1; $y >= 2020; $y--) {
             $('#sgk_matrahi_dahil').prop('checked', param.sgk_matrahi_dahil == 1);
             $('#gelir_vergisi_dahil').prop('checked', param.gelir_vergisi_dahil == 1);
             $('#damga_vergisi_dahil').prop('checked', param.damga_vergisi_dahil == 1);
+            $('#icra_pirim_dahil').prop('checked', param.icra_pirim_dahil == 1);
+            $('#icraDahilAyarlari').toggle(param.kategori === 'gelir');
 
             $('input[name="gunluk_tutar"]').val(param.gunluk_tutar || 0);
             $('input[name="varsayilan_gun_sayisi"]').val(param.varsayilan_gun_sayisi || 26);
@@ -1119,6 +1138,7 @@ for ($y = date('Y') + 1; $y >= 2020; $y--) {
             formData.set('sgk_matrahi_dahil', $('#sgk_matrahi_dahil').is(':checked') ? 1 : 0);
             formData.set('gelir_vergisi_dahil', $('#gelir_vergisi_dahil').is(':checked') ? 1 : 0);
             formData.set('damga_vergisi_dahil', $('#damga_vergisi_dahil').is(':checked') ? 1 : 0);
+            formData.set('icra_pirim_dahil', $('#icra_pirim_dahil').is(':checked') ? 1 : 0);
 
             $.ajax({
                 url: 'views/bordro/api.php',

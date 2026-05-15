@@ -1444,28 +1444,35 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception('Geçersiz personel.');
                 }
 
-                // Net maaşı al
-                $sql = $BordroPersonel->getDb()->prepare("SELECT net_maas, kesinti_tutar FROM bordro_personel WHERE id = ?");
-                $sql->execute([$id]);
-                $data = $sql->fetch(PDO::FETCH_OBJ);
+                // Bordro kaydını detaylı al (hesaplama için)
+                $stmt = $BordroPersonel->getDb()->prepare("
+                    SELECT bp.*, bd.baslangic_tarihi, bd.bitis_tarihi,
+                           p.maas_tutari, p.maas_durumu, p.yemek_yardimi_dahil, p.es_yardimi_dahil,
+                           p.yemek_yardimi_tutari, p.es_yardimi_tutari, p.ise_giris_tarihi, p.isten_cikis_tarihi,
+                           p.bes_kesintisi_varmi, p.sodexo, p.sgk_yapilan_firma
+                    FROM bordro_personel bp
+                    JOIN bordro_donemi bd ON bp.donem_id = bd.id
+                    JOIN personel p ON bp.personel_id = p.id
+                    WHERE bp.id = ?
+                ");
+                $stmt->execute([$id]);
+                $p = $stmt->fetch(PDO::FETCH_OBJ);
 
-                if (!$data) {
+                if (!$p) {
                     throw new Exception('Bordro kaydı bulunamadı.');
                 }
 
-                $net = floatval($data->net_maas ?? 0);
-                $kesinti_tutar = floatval($data->kesinti_tutar ?? 0);
-                $toplam_alacak = $net + $kesinti_tutar;
+                $donemObj = (object) [
+                    'baslangic_tarihi' => $p->baslangic_tarihi,
+                    'bitis_tarihi' => $p->bitis_tarihi
+                ];
+                
+                $asgariUcretNet = $BordroParametre->getGenelAyar('asgari_ucret_net', $p->baslangic_tarihi) ?? 17002.12;
 
-                // İcra kesintisini JSON'dan al
-                $icra = 0;
-                $sqlDetay = $BordroPersonel->getDb()->prepare("SELECT hesaplama_detay FROM bordro_personel WHERE id = ?");
-                $sqlDetay->execute([$id]);
-                $detayRow = $sqlDetay->fetch(PDO::FETCH_OBJ);
-                if ($detayRow && !empty($detayRow->hesaplama_detay)) {
-                    $detayJson = json_decode($detayRow->hesaplama_detay, true);
-                    $icra = floatval($detayJson['odeme_dagilimi']['icra_kesintisi'] ?? 0);
-                }
+                $hesap = $BordroPersonel->hesaplaOrtakGosterimDegerleri($p, $donemObj, floatval($asgariUcretNet));
+                $net = $hesap['netAlacagi'];
+                $toplam_alacak = $hesap['toplamAlacagi'];
+                $icra = $hesap['icraKesintisi'];
 
                 // Üst sınır kontrolü (%25)
                 $maxSodexo = $toplam_alacak * 0.25;
@@ -1474,7 +1481,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 $maxBanka = max(0, $net - $sodexo - $icra - $diger);
-                if ($banka > $maxBanka) {
+                if ($banka > $maxBanka + 0.01) {
                     $banka = $maxBanka;
                 }
                 $elden = max(0, $net - $banka - $sodexo - $icra - $diger);
@@ -1547,6 +1554,49 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'status' => 'success',
                     'message' => 'Ödeme dağılımı varsayılana döndürüldü.'
                 ]);
+                break;
+
+            // Tüm Ödeme Dağıtımlarını Sıfırla
+            case 'odeme-reset-all':
+                $donem_id = intval($_POST['donem_id'] ?? 0);
+                if ($donem_id <= 0) {
+                    throw new Exception('Geçersiz dönem.');
+                }
+
+                $donem = $BordroDonem->getDonemById($donem_id);
+                if (!$donem) {
+                    throw new Exception('Dönem bulunamadı.');
+                }
+
+                if ($donem->kapali_mi) {
+                    throw new Exception('Kapalı dönemlerde bu işlem yapılamaz.');
+                }
+
+                // Tüm personeller için manuel dağıtımları sıfırla
+                $sql = $BordroPersonel->getDb()->prepare("
+                    UPDATE bordro_personel 
+                    SET dagitim_manuel = 0, sodexo_manuel = 0, banka_odemesi = 0, sodexo_odemesi = 0, diger_odeme = 0, elden_odeme = 0
+                    WHERE donem_id = ? AND silinme_tarihi IS NULL
+                ");
+                $sql->execute([$donem_id]);
+
+                // Tüm personellerin maaşını tekrar hesapla (Varsayılan dağılım mantığı çalışacak)
+                $sqlIds = $BordroPersonel->getDb()->prepare("SELECT id FROM bordro_personel WHERE donem_id = ? AND silinme_tarihi IS NULL");
+                $sqlIds->execute([$donem_id]);
+                $ids = $sqlIds->fetchAll(PDO::FETCH_COLUMN);
+
+                $hesaplayanId = $_SESSION['user_id'] ?? 0;
+                $hesaplayanAdSoyad = $_SESSION['user_full_name'] ?? 'Sistem';
+
+                foreach ($ids as $id) {
+                    $BordroPersonel->hesaplaMaas($id, $hesaplayanId, $hesaplayanAdSoyad);
+                }
+
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Tüm personellerin ödeme dağılımları varsayılana döndürüldü ve maaşlar tekrar hesaplandı.'
+                ]);
+                $SystemLog->logAction($userId, 'Bordro Toplu Ödeme Reset', "$donem->donem_adi dönemi için tüm ödeme dağılımları sıfırlandı.", SystemLogModel::LEVEL_IMPORTANT);
                 break;
 
             // Personel Gelir Ekle / Güncelle

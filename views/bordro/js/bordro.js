@@ -992,6 +992,61 @@ $(document).ready(function () {
     });
   });
 
+  // Tüm Ödeme Dağıtımlarını Sıfırla (Toplu)
+  $("#btnBulkOdemeReset").on("click", function () {
+    const donemId = $("#donemSelect").val();
+    if (!donemId) return;
+
+    Swal.fire({
+      title: "Tüm Ödeme Dağıtımları Sıfırlansın mı?",
+      text: "Bu dönemdeki TÜM personellerin manuel ödeme dağılımları silinecek ve sistem varsayılanlarına dönülecektir. Bu işlem biraz zaman alabilir.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonColor: "#f1b44c",
+      confirmButtonText: "Evet, Tümünü Sıfırla",
+      cancelButtonText: "İptal",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        $.ajax({
+          url: "views/bordro/api.php",
+          type: "POST",
+          data: {
+            action: "odeme-reset-all",
+            donem_id: donemId,
+          },
+          dataType: "json",
+          beforeSend: function () {
+            Swal.fire({
+              title: "Sıfırlanıyor...",
+              text: "Tüm dağıtımlar sıfırlanıyor ve maaşlar tekrar hesaplanıyor. Lütfen bekleyin...",
+              allowOutsideClick: false,
+              didOpen: () => {
+                Swal.showLoading();
+              },
+            });
+          },
+          success: function (response) {
+            if (response.status === "success") {
+              Swal.fire({
+                icon: "success",
+                title: "Başarılı!",
+                text: response.message,
+                confirmButtonText: "Tamam",
+              }).then(() => {
+                location.reload();
+              });
+            } else {
+              Swal.fire("Hata", response.message, "error");
+            }
+          },
+          error: function () {
+            Swal.fire("Hata", "Bir hata oluştu.", "error");
+          },
+        });
+      }
+    });
+  });
+
   // Satırda Sodexo Düzenleme İkonu
   $(document).on("click", ".btn-edit-sodexo-inline", function () {
     const parent = $(this).closest(".sodexo-wrapper");

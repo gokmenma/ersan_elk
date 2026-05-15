@@ -120,6 +120,8 @@ $(document).ready(function () {
     $("#sgk_matrahi_dahil").prop("checked", param.sgk_matrahi_dahil == 1);
     $("#gelir_vergisi_dahil").prop("checked", param.gelir_vergisi_dahil == 1);
     $("#damga_vergisi_dahil").prop("checked", param.damga_vergisi_dahil == 1);
+    $("#icra_pirim_dahil").prop("checked", param.icra_pirim_dahil == 1);
+    $("#icraDahilAyarlari").toggle(param.kategori === "gelir");
 
     $('input[name="gunluk_tutar"]').val(param.gunluk_tutar || 0);
     $('input[name="varsayilan_gun_sayisi"]').val(
@@ -175,6 +177,8 @@ $(document).ready(function () {
     $("#sgk_matrahi_dahil").prop("checked", param.sgk_matrahi_dahil == 1);
     $("#gelir_vergisi_dahil").prop("checked", param.gelir_vergisi_dahil == 1);
     $("#damga_vergisi_dahil").prop("checked", param.damga_vergisi_dahil == 1);
+    $("#icra_pirim_dahil").prop("checked", param.icra_pirim_dahil == 1);
+    $("#icraDahilAyarlari").toggle(param.kategori === "gelir");
 
     $('input[name="gunluk_tutar"]').val(param.gunluk_tutar || 0);
     $('input[name="varsayilan_gun_sayisi"]').val(
@@ -212,6 +216,10 @@ $(document).ready(function () {
     formData.set(
       "damga_vergisi_dahil",
       $("#damga_vergisi_dahil").is(":checked") ? 1 : 0,
+    );
+    formData.set(
+      "icra_pirim_dahil",
+      $("#icra_pirim_dahil").is(":checked") ? 1 : 0,
     );
 
     $.ajax({
