@@ -357,8 +357,9 @@ class BordroPersonelModel extends Model
         
         $targetHakedis = round($sozlesmeHakedisi + $puantajToplami + max(0, $bankayaTasinabilirEkOdeme), 2);
 
-        // USER REQ: Yemek yardımı (dengeleme), (Hedef Net - Kesintiler) ile (Asgari Net) arasındaki farktır.
-        $yemekHesapMatrahi = max(0, round($targetHakedis - $toplamKesinti - $sonuc['asgari_hakedis'], 2));
+        // USER REQ: Maksimum banka ödemesi için kesintiler düşülmeden önceki matrahı baz al (Kesinti mahsup etme)
+        // Böylece yemek yardımı tavanı artar ve banka ödemesi maksimize edilir.
+        $yemekHesapMatrahi = max(0, round($targetHakedis - $sonuc['asgari_hakedis'], 2));
         
         $calcFiiliGun = max(1, $fiiliGunSayisi);
         $sonuc['yemek_gunluk_ham'] = $yemekHesapMatrahi / $calcFiiliGun;
