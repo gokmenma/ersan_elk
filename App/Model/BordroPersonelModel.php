@@ -636,8 +636,7 @@ class BordroPersonelModel extends Model
             }
         }
 
-        $bankayaYatmayacak = stripos((string) ($p->sgk_yapilan_firma ?? ''), 'KUR') !== false
-            || stripos((string) ($p->sgk_yapilan_firma ?? ''), 'Sigortal') !== false;
+        $bankayaYatmayacak = stripos((string) ($p->sgk_yapilan_firma ?? ''), 'KUR') !== false;
         if ($bankayaYatmayacak && $bankaOdemesi > 0) {
             $eldenOdeme += $bankaOdemesi;
             $bankaOdemesi = 0;
