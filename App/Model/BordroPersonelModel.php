@@ -504,7 +504,7 @@ class BordroPersonelModel extends Model
         if ($this->ekOdemelerCache !== null) {
             $ekOdemelerList = $this->ekOdemelerCache[$p->personel_id] ?? [];
         } else {
-            $ekOdemelerQuery = $this->db->prepare("SELECT tur, tutar, aciklama FROM personel_ek_odemeler WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL AND durum = 'onaylandi'");
+            $ekOdemelerQuery = $this->db->prepare("SELECT tur, tutar, aciklama FROM personel_ek_odemeler WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL");
             $ekOdemelerQuery->execute([$p->personel_id, $p->donem_id]);
             $ekOdemelerList = $ekOdemelerQuery->fetchAll(PDO::FETCH_OBJ);
         }
@@ -683,7 +683,7 @@ class BordroPersonelModel extends Model
 
         if ($this->ekOdemelerCache === null) {
             $this->ekOdemelerCache = [];
-            $eoQuery = $this->db->prepare("SELECT personel_id, tur, tutar, aciklama FROM personel_ek_odemeler WHERE donem_id = ? AND silinme_tarihi IS NULL AND durum = 'onaylandi'");
+            $eoQuery = $this->db->prepare("SELECT personel_id, tur, tutar, aciklama FROM personel_ek_odemeler WHERE donem_id = ? AND silinme_tarihi IS NULL");
             $eoQuery->execute([$donem_id]);
             $eoRows = $eoQuery->fetchAll(PDO::FETCH_OBJ);
             foreach ($eoRows as $row) $this->ekOdemelerCache[$row->personel_id][] = $row;
@@ -753,7 +753,7 @@ class BordroPersonelModel extends Model
                 GROUP BY personel_id
             ) pk_agg ON bp.personel_id = pk_agg.personel_id
             LEFT JOIN (
-                SELECT personel_id, SUM(tutar) as toplam_ek_odeme FROM personel_ek_odemeler WHERE donem_id = ? AND silinme_tarihi IS NULL AND tekrar_tipi = 'tek_sefer' GROUP BY personel_id
+                SELECT personel_id, SUM(tutar) as toplam_ek_odeme FROM personel_ek_odemeler WHERE donem_id = ? AND silinme_tarihi IS NULL GROUP BY personel_id
             ) eo_agg ON bp.personel_id = eo_agg.personel_id
             WHERE bp.donem_id = ? AND bp.silinme_tarihi IS NULL $idFilter
             ORDER BY p.adi_soyadi ASC
