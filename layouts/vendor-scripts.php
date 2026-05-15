@@ -252,4 +252,4 @@ if ($page == "hakedisler/hakedis-detay") {
     <script src="views/gorevler/js/gorevler.js?v=<?php echo time(); ?>"></script>
 <?php } ?>
 
-<?php include_once __DIR__ . '/destek-chat.php'; ?>yemek yardımı 
+<?php include_once __DIR__ . '/destek-chat.php'; ?>

@@ -626,6 +626,13 @@ class BordroPersonelModel extends Model
             }
         }
 
+        $bankayaYatmayacak = stripos((string) ($p->sgk_yapilan_firma ?? ''), 'KUR') !== false
+            || stripos((string) ($p->sgk_yapilan_firma ?? ''), 'Sigortal') !== false;
+        if ($bankayaYatmayacak && $bankaOdemesi > 0) {
+            $eldenOdeme += $bankaOdemesi;
+            $bankaOdemesi = 0;
+        }
+
         $gosterimToplamAlacagi = round($toplamAlacagi, 2);
         $resmiAlacagi = round($asgariTabanVal + $mealAllowanceDeduction + $spouseAllowanceDeduction, 2);
 
@@ -682,7 +689,7 @@ class BordroPersonelModel extends Model
                    bp.calisan_gun, bp.aciklama, bp.hesaplama_detay,
                    bp.sgk_isci, bp.issizlik_isci, bp.gelir_vergisi, bp.damga_vergisi,
                    bp.sgk_isveren, bp.issizlik_isveren, bp.toplam_maliyet,
-                   p.adi_soyadi, p.tc_kimlik_no, p.departman, p.gorev, 
+                   p.adi_soyadi, p.tc_kimlik_no, p.iban_numarasi, p.departman, p.gorev, 
                    p.ise_giris_tarihi, p.isten_cikis_tarihi, p.maas_tutari, p.maas_durumu,
                    p.cep_telefonu, p.resim_yolu, p.sgk_yapilan_firma, 
                    p.yemek_yardimi_dahil, p.yemek_yardimi_tutari, p.yemek_yardimi_parametre_id,

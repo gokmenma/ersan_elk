@@ -6,10 +6,12 @@
 
 use App\Model\BordroDonemModel;
 use App\Model\BordroPersonelModel;
+use App\Model\BordroParametreModel;
 use App\Helper\Form;
 
 $BordroDonem = new BordroDonemModel();
 $BordroPersonel = new BordroPersonelModel();
+$BordroParametre = new BordroParametreModel();
 
 // Seçili dönem
 $selectedDonemId = $_GET['donem'] ?? $_SESSION['selectedDonemId'] ?? null;
@@ -17,18 +19,26 @@ $selectedDonemId = $_GET['donem'] ?? $_SESSION['selectedDonemId'] ?? null;
 $selectedDonem = null;
 $personeller = [];
 $toplamBankaOdemesi = 0;
+$bankaOdemeleri = [];
 
 if ($selectedDonemId) {
     $selectedDonem = $BordroDonem->getDonemById($selectedDonemId);
     if ($selectedDonem) {
-        $personeller = $BordroPersonel->getPersonellerByDonemDetayli($selectedDonemId);
+        $personeller = $BordroPersonel->getPersonellerByDonem($selectedDonemId);
 
         // Toplam banka ödemesini hesapla
+        $asgariUcretNet = $BordroParametre->getGenelAyar('asgari_ucret_net', $selectedDonem->baslangic_tarihi) ?? 17002.12;
+
         foreach ($personeller as $personel) {
+            $ortak = $BordroPersonel->hesaplaOrtakGosterimDegerleri($personel, $selectedDonem, floatval($asgariUcretNet));
+            $bankaOdemesi = floatval($ortak['bankaOdemesi'] ?? 0);
+
             if (stripos((string)($personel->sgk_yapilan_firma ?? ''), 'Sigortal') !== false || stripos((string)($personel->sgk_yapilan_firma ?? ''), 'KUR') !== false) {
-                continue;
+                $bankaOdemesi = 0;
             }
-            $toplamBankaOdemesi += floatval($personel->banka_odemesi ?? 0);
+
+            $bankaOdemeleri[$personel->id] = $bankaOdemesi;
+            $toplamBankaOdemesi += $bankaOdemesi;
         }
     }
 }
@@ -190,7 +200,7 @@ foreach ($donemler as $donem) {
                         <?php
                         $ibanEksikSayisi = 0;
                         foreach ($personeller as $p) {
-                            if (floatval($p->banka_odemesi ?? 0) > 0 && empty($p->iban_numarasi)) {
+                            if (floatval($bankaOdemeleri[$p->id] ?? 0) > 0 && empty($p->iban_numarasi)) {
                                 $ibanEksikSayisi++;
                             }
                         }
@@ -222,7 +232,7 @@ foreach ($donemler as $donem) {
                                     $sira = 1;
                                     foreach ($personeller as $personel):
                                         $disaridanSigortali = (stripos((string)($personel->sgk_yapilan_firma ?? ''), 'Sigortal') !== false || stripos((string)($personel->sgk_yapilan_firma ?? ''), 'KUR') !== false);
-                                        $bankaOdemesi = $disaridanSigortali ? 0 : floatval($personel->banka_odemesi ?? 0);
+                                        $bankaOdemesi = $disaridanSigortali ? 0 : floatval($bankaOdemeleri[$personel->id] ?? 0);
                                         $ibanDolu = !empty($personel->iban_numarasi);
                                         ?>
                                         <tr class="<?= !$ibanDolu && $bankaOdemesi > 0 ? 'table-warning' : '' ?>">

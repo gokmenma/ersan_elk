@@ -12,6 +12,7 @@ require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Model\BordroPersonelModel;
 use App\Model\BordroDonemModel;
+use App\Model\BordroParametreModel;
 use App\Model\PersonelModel;
 use App\Model\FirmaModel;
 use App\Helper\Helper;
@@ -25,7 +26,7 @@ use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
 use PhpOffice\PhpSpreadsheet\Style\NumberFormat;
 
 $donemId = $_GET['donem_id'] ?? null;
-$ids = $_GET['ids'] ?? null;
+$ids = null;
 $idArray = [];
 if ($ids) {
     $idArray = explode(',', $ids);
@@ -40,6 +41,7 @@ if (!$donemId) {
 try {
     $BordroPersonel = new BordroPersonelModel();
     $BordroDonem = new BordroDonemModel();
+    $BordroParametre = new BordroParametreModel();
     $Firma = new FirmaModel();
 
     // Dönem bilgisini al
@@ -55,13 +57,16 @@ try {
     }
 
     // Dönemdeki personelleri getir (detaylı bilgiler dahil)
-    $personeller = $BordroPersonel->getPersonellerByDonemDetayli($donemId, $idArray);
+    $personeller = $BordroPersonel->getPersonellerByDonem($donemId, $idArray);
 
     if (empty($personeller)) {
         die('Bu dönemde kriterlere uygun personel bulunmamaktadır.');
     }
 
     // Yeni Excel dosyası oluştur
+    $asgariUcretNet = $BordroParametre->getGenelAyar('asgari_ucret_net', $donem->baslangic_tarihi) ?? 17002.12;
+    $bankaOdemeleri = [];
+
     $spreadsheet = new Spreadsheet();
     $sheet = $spreadsheet->getActiveSheet();
     $sheet->setTitle('Banka Listesi');
@@ -86,8 +91,15 @@ try {
     // Verileri hesapla
     $toplamBankaOdemesi = 0;
     foreach ($personeller as $p) {
-        if (stripos((string)($p->sgk_yapilan_firma ?? ""), "KUR") !== false || stripos((string)($p->sgk_yapilan_firma ?? ''), 'Sigortal') !== false) continue;
-        $toplamBankaOdemesi += (float) ($p->banka_odemesi ?? 0);
+        $ortak = $BordroPersonel->hesaplaOrtakGosterimDegerleri($p, $donem, floatval($asgariUcretNet));
+        $bankaOdemesi = (float) ($ortak['bankaOdemesi'] ?? 0);
+
+        if (stripos((string)($p->sgk_yapilan_firma ?? ""), "KUR") !== false || stripos((string)($p->sgk_yapilan_firma ?? ''), 'Sigortal') !== false) {
+            $bankaOdemesi = 0;
+        }
+
+        $bankaOdemeleri[$p->id] = $bankaOdemesi;
+        $toplamBankaOdemesi += $bankaOdemesi;
     }
 
     $odemeTarihiExcel = ExcelDate::PHPToExcel(time()); // Bugünün tarihini Excel Timestamp'ine çeviriyoruz (isteğe bağlı dönem sonu olabilir)
@@ -113,7 +125,7 @@ try {
 
     $satir = 5;
     foreach ($personeller as $personel) {
-        $bankaOdemesi = (float) ($personel->banka_odemesi ?? 0);
+        $bankaOdemesi = (float) ($bankaOdemeleri[$personel->id] ?? 0);
 
         // Eğer banka ödemesi 0 ise veya bankadan ödenmeyecek personel ise listeye ekleme
         if ($bankaOdemesi <= 0 || stripos((string)($personel->sgk_yapilan_firma ?? ""), "KUR") !== false || stripos((string)($personel->sgk_yapilan_firma ?? ''), 'Sigortal') !== false) continue; 
