@@ -583,6 +583,16 @@ class BordroPersonelModel extends Model
         $netAlacagi = $toplamAlacagi - $toplamKesinti;
         $netMaasGercek = max(0, $netAlacagi);
 
+        if ($isInclusive) {
+            $izinVerilenDahilYardim = max(0, round($netMaasGercek - $asgariTabanVal, 2));
+            if ($mealAllowanceDeduction + $spouseAllowanceDeduction > $izinVerilenDahilYardim) {
+                $mealAllowanceDeduction = min($mealAllowanceDeduction, $izinVerilenDahilYardim);
+                $spouseAllowanceDeduction = min($spouseAllowanceDeduction, max(0, $izinVerilenDahilYardim - $mealAllowanceDeduction));
+                $includedAllowanceDeduction = round($mealAllowanceDeduction + $spouseAllowanceDeduction, 2);
+                $yuvarlamaFarki = 0;
+            }
+        }
+
         $manualDagitimVar = isset($p->dagitim_manuel) && intval($p->dagitim_manuel) === 1;
         
         if ($manualDagitimVar) {
@@ -595,7 +605,7 @@ class BordroPersonelModel extends Model
             $kalanNetHakedis = max(0, $toplamAlacagi - $toplamKesinti);
             
             // USER REQ: Excel mantığında banka ödemesi Asgari + Yemek (Yuvarlanmış) + Eş şeklindedir.
-            $bankaMatrahi = min($toplamAlacagi, $asgariYatacak + $mealAllowanceDeduction + $spouseAllowanceDeduction);
+            $bankaMatrahi = min($kalanNetHakedis, $toplamAlacagi, $asgariYatacak + $mealAllowanceDeduction + $spouseAllowanceDeduction);
             $eldenBrut = max(0, $toplamAlacagi - $bankaMatrahi);
             $bankaOncelikliKesinti = 0.0;
             $kesintiSatirlari = $this->getDonemKesintileriListe($p->personel_id, $p->donem_id);
@@ -621,7 +631,7 @@ class BordroPersonelModel extends Model
             $sodexoOdemesi = floatval($p->sodexo_odemesi ?? 0) + $yontemliSodexoEki;
             $digerOdeme = floatval($p->diger_odeme ?? 0);
             $asgariUcretYatacak = ($calismaGunu >= 30) ? $asgariUcretNet : (($asgariUcretNet / 30) * $calismaGunu);
-            if (stripos((string)($p->sgk_yapilan_firma ?? ""), "KUR") !== false) $asgariUcretYatacak = 0;
+            if (mb_stripos((string)($p->sgk_yapilan_firma ?? ""), "KUR", 0, "UTF-8") !== false) $asgariUcretYatacak = 0;
             
             $bankaBaz = ($isNet) ? max(0, $netAlacagi - $sodexoOdemesi) : ($asgariUcretYatacak + $yontemliBankaEki);
             $bankaMax = max(0, $netAlacagi - $sodexoOdemesi);
@@ -636,8 +646,14 @@ class BordroPersonelModel extends Model
             }
         }
 
-        $bankayaYatmayacak = stripos((string) ($p->sgk_yapilan_firma ?? ''), 'KUR') !== false;
-        if ($bankayaYatmayacak && $bankaOdemesi > 0) {
+        $sgkYapilanFirma = (string) ($p->sgk_yapilan_firma ?? '');
+        $iskurPersonel = mb_stripos($sgkYapilanFirma, 'KUR', 0, 'UTF-8') !== false;
+        $disaridanSigortali = (mb_stripos($sgkYapilanFirma, 'Sigortal', 0, 'UTF-8') !== false || 
+                              mb_stripos($sgkYapilanFirma, 'Dışarıdan', 0, 'UTF-8') !== false || 
+                              mb_stripos($sgkYapilanFirma, 'Disaridan', 0, 'UTF-8') !== false);
+
+        if ($iskurPersonel && $bankaOdemesi > 0) {
+            // İŞKUR personeli ise banka ödemesi eldene aktarılır ve banka sıfırlanır
             $eldenOdeme += $bankaOdemesi;
             $bankaOdemesi = 0;
         }
@@ -3835,6 +3851,8 @@ class BordroPersonelModel extends Model
         // İcra matrahı diğer kesintiler (avans, özel kesinti vb.) düşülmeden önceki net hakediş olmalıdır.
         $icraMatrahi = max(0, $hakedisNetBeforeKesinti);
         $asgariUcretNet = floatval($genelAyarlarMap['asgari_ucret_net'] ?? 17002.12);
+        $kesintilerIcraHaric = $toplamKesinti; // SNAPSHOT: İcra girmeden önceki kesintiler (avans vb.)
+
 
         if (!empty($oranliKesintiler)) {
             $icraDetaylar = [];
@@ -3878,37 +3896,46 @@ class BordroPersonelModel extends Model
                     $asgariUcretNet,
                     $maasHesapGunu,
                     $fiiliCalismaGunu,
-                    $toplamMesaiTutar + $toplamEkOdeme,
-                    $toplamKesinti + $digerKesintiler,
+                    $primUsuluPuantajHedefToplami,
+                    0, // USER REQ: İcra matrahı hesabında avans düşülmez
                     $bankayaTasinabilirEkOdeme,
                     $sozlesmeHakedisi
                 );
+            }
 
-                // Yemek Yardımı İcraya Dahil mi?
+            // 1. Matrah Bazını Belirle (Her zaman doğru tabandan başla)
+            $finalIcraBazTutar = $bankaYatacakBaz + $toplamMesaiTutar;
+            
+            // 2. Eğer Dahil Personel ise Sadece Balanslı Yardımları Ekle
+            if ($this->hasMaasaDahilSosyalYardim($kayit)) {
+                $dahilMatrahEk = 0;
                 if (!empty($kayit->yemek_yardimi_parametre_id)) {
                     $pYemek = $parametreModel->find($kayit->yemek_yardimi_parametre_id);
                     if ($pYemek && !empty($pYemek->icra_pirim_dahil) && $pYemek->icra_pirim_dahil == 1) {
-                        $icraMatrahEkleri += floatval($dahilDagilimPreIcra['yemek_toplam'] ?? 0);
+                        $dahilMatrahEk += floatval($dahilDagilimPreIcra['yemek_toplam'] ?? 0);
                     }
                 }
-                // Eş Yardımı İcraya Dahil mi?
                 if (!empty($kayit->es_yardimi_parametre_id)) {
                     $pEs = $parametreModel->find($kayit->es_yardimi_parametre_id);
                     if ($pEs && !empty($pEs->icra_pirim_dahil) && $pEs->icra_pirim_dahil == 1) {
-                        $icraMatrahEkleri += floatval($dahilDagilimPreIcra['es_toplam'] ?? 0);
+                        $dahilMatrahEk += floatval($dahilDagilimPreIcra['es_toplam'] ?? 0);
                     }
                 }
+                $finalIcraBazTutar += $dahilMatrahEk;
+            } else {
+                // Standart personel: Diğer ek ödemeleri (icraya dahil işaretli olanlar) ekle
+                $finalIcraBazTutar += $icraMatrahEkleri;
             }
 
-            $icraBazTutar = $bankaYatacakBaz + $icraMatrahEkleri;
             if ($firstHTip === 'asgari_oran_net' || $firstHTip === 'oran_net') {
                 $oranKullan = ($firstOran > 0) ? $firstOran : 25;
-                $toplamIcraBudget = round($icraBazTutar * ($oranKullan / 100), 2);
+                $toplamIcraBudget = round($finalIcraBazTutar * ($oranKullan / 100), 2);
             } else {
                 $sabitToplam = 0;
                 foreach ($icraDetaylar as $d) $sabitToplam += floatval($d['icraData']->aylik_kesinti_tutari);
                 $toplamIcraBudget = $sabitToplam;
             }
+
             if ($toplamIcraBudget > $icraMatrahi) $toplamIcraBudget = $icraMatrahi;
             $kalanBudget = $toplamIcraBudget;
             foreach ($icraDetaylar as $detay) {
@@ -3957,7 +3984,7 @@ class BordroPersonelModel extends Model
                 $maasHesapGunu,
                 $fiiliCalismaGunu,
                 $primUsuluPuantajHedefToplami,
-                0,
+                $kesintilerIcraHaric,
                 $bankayaTasinabilirEkOdeme,
                 $sozlesmeHakedisiCalc
             );
@@ -4043,11 +4070,11 @@ class BordroPersonelModel extends Model
                 $bankaYatacakMinimum = ($fiiliCalismaGunu >= 30) ? $asgariUcretNet : (($asgariUcretNet / 30) * $fiiliCalismaGunu);
                 $bankaBaz = min($bankaYatacakMinimum + floatval($yontemliOdemeler['banka'] ?? 0), $netAlacagi);
                 $bankaOdemesi = $bankaBaz;
-                if (stripos((string)($kayit->sgk_yapilan_firma ?? ""), "KUR") !== false) $bankaOdemesi = 0;
+                if (mb_stripos((string)($kayit->sgk_yapilan_firma ?? ""), "KUR", 0, "UTF-8") !== false) $bankaOdemesi = 0;
                 $eldenOdeme = max(0, $netAlacagi - $bankaOdemesi - $sodexoOdemesi - ($kayit->diger_odeme ?? 0));
             } else {
                 $bankaOdemesi = max(0, $netAlacagi - $sodexoOdemesi);
-                if (stripos((string)($kayit->sgk_yapilan_firma ?? ""), "KUR") !== false) $bankaOdemesi = 0;
+                if (mb_stripos((string)($kayit->sgk_yapilan_firma ?? ""), "KUR", 0, "UTF-8") !== false) $bankaOdemesi = 0;
                 $eldenOdeme = max(0, $netAlacagi - $bankaOdemesi - $sodexoOdemesi - ($kayit->diger_odeme ?? 0));
             }
         }
@@ -4064,7 +4091,13 @@ class BordroPersonelModel extends Model
             $netAlacagi = max(0, $netMaas - $toplamKesinti);
             $eldenOdeme = $netAlacagi - $bankaOdemesi - $sodexoOdemesi - $diger_odeme;
         } else {
-            if (stripos((string) ($kayit->sgk_yapilan_firma ?? ""), "KUR") !== false && $bankaOdemesi > 0) {
+            $sgkYapilanFirma = (string) ($kayit->sgk_yapilan_firma ?? '');
+            $iskurPersonel = mb_stripos($sgkYapilanFirma, 'KUR', 0, 'UTF-8') !== false;
+            $disaridanSigortali = (mb_stripos($sgkYapilanFirma, 'Sigortal', 0, 'UTF-8') !== false || 
+                                  mb_stripos($sgkYapilanFirma, 'Dışarıdan', 0, 'UTF-8') !== false || 
+                                  mb_stripos($sgkYapilanFirma, 'Disaridan', 0, 'UTF-8') !== false);
+
+            if ($iskurPersonel && $bankaOdemesi > 0) {
                 $eldenOdeme += $bankaOdemesi;
                 $bankaOdemesi = 0;
             }

@@ -162,13 +162,17 @@ eldenOdeme = max(0, netMaas - bankaOdemesi - sodexoOdemesi - icraKesintisi - dig
 
 Manuel dagilimda otomatik banka/Sodexo duzeltmesi yapilmaz.
 
-## KUR / Bankaya Yatmayacak Personel Kurali
+## Bankaya Yatmayacak Personel Kurali
 
 `sgk_yapilan_firma` alaninda `KUR` geciyorsa otomatik dagilimda banka odemesi sifirlanir ve tutar elden odemeye aktarilir.
+`sgk_yapilan_firma` alaninda `Sigortal` geciyorsa banka odemesi sifirlanir, ancak elden odemeye aktarilmaz.
 
 ```text
 if sgk_yapilan_firma contains "KUR":
     eldenOdeme += bankaOdemesi
+    bankaOdemesi = 0
+
+if sgk_yapilan_firma contains "Sigortal":
     bankaOdemesi = 0
 ```
 

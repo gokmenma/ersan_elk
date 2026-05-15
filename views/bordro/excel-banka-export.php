@@ -94,7 +94,7 @@ try {
         $ortak = $BordroPersonel->hesaplaOrtakGosterimDegerleri($p, $donem, floatval($asgariUcretNet));
         $bankaOdemesi = (float) ($ortak['bankaOdemesi'] ?? 0);
 
-        if (stripos((string)($p->sgk_yapilan_firma ?? ""), "KUR") !== false || stripos((string)($p->sgk_yapilan_firma ?? ''), 'Sigortal') !== false) {
+        if (mb_stripos((string)($p->sgk_yapilan_firma ?? ""), "KUR", 0, "UTF-8") !== false) {
             $bankaOdemesi = 0;
         }
 
@@ -128,7 +128,8 @@ try {
         $bankaOdemesi = (float) ($bankaOdemeleri[$personel->id] ?? 0);
 
         // Eğer banka ödemesi 0 ise veya bankadan ödenmeyecek personel ise listeye ekleme
-        if ($bankaOdemesi <= 0 || stripos((string)($personel->sgk_yapilan_firma ?? ""), "KUR") !== false || stripos((string)($personel->sgk_yapilan_firma ?? ''), 'Sigortal') !== false) continue; 
+        if ($bankaOdemesi <= 0 || 
+            mb_stripos((string)($personel->sgk_yapilan_firma ?? ""), "KUR", 0, "UTF-8") !== false) continue; 
 
         $sheet->setCellValue('A' . $satir, 'M');
         $sheet->setCellValue('B' . $satir, $odemeTarihiExcel);

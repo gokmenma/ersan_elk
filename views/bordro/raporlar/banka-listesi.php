@@ -33,7 +33,7 @@ if ($selectedDonemId) {
             $ortak = $BordroPersonel->hesaplaOrtakGosterimDegerleri($personel, $selectedDonem, floatval($asgariUcretNet));
             $bankaOdemesi = floatval($ortak['bankaOdemesi'] ?? 0);
 
-            if (stripos((string)($personel->sgk_yapilan_firma ?? ''), 'Sigortal') !== false || stripos((string)($personel->sgk_yapilan_firma ?? ''), 'KUR') !== false) {
+            if (mb_stripos((string)($personel->sgk_yapilan_firma ?? ''), 'KUR', 0, 'UTF-8') !== false) {
                 $bankaOdemesi = 0;
             }
 
