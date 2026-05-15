@@ -1020,7 +1020,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             ? $displayToplamAlacak
                             : ($modalBaseRowValue + $modalMaasFarkiGosterim + $displayMealDeduction + $spouseDeduction));
                     $resmiTabanGosterim = $isPrimUsulu ? $asgariHakedisModal : $modalBaseRowValue;
-                    $sozlesmeTabanGosterim = min($resmiTabanGosterim, $sozlesmeHakedisToplamGosterim);
+                    $sozlesmeTabanGosterim = $resmiTabanGosterim;
                     $sozlesmeMaasFarkiGosterim = $isPrimUsulu
                         ? max(0, round($sozlesmeHakedisToplamGosterim - $sozlesmeTabanGosterim - $displayMealDeduction - $spouseDeduction, 2))
                         : $modalMaasFarkiGosterim;

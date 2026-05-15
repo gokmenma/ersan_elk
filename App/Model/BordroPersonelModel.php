@@ -314,7 +314,17 @@ class BordroPersonelModel extends Model
         return max($personelLimit, $paramLimit);
     }
 
-    private function hesaplaMaasaDahilYardimDagilimi(object $kayit, float $asgariUcretNet, int $maasHesapGunu, int $fiiliGunSayisi, float $puantajToplami = 0.0, float $toplamKesinti = 0.0, float $bankayaTasinabilirEkOdeme = 0.0): array
+    private function getSozlesmeHakedisi($personelId, $maasTutari, $calismaGunu, $donemBaslangic)
+    {
+        $hakedis = round(($maasTutari / 30) * $calismaGunu, 2);
+        // Ahmet Alaaddin Özel Kuralı: Nisan 2026'da sadece 13 günlük Net maaş alıyor (primden nete geçiş dönemi)
+        if (intval($personelId) === 77 && $donemBaslangic === '2026-04-01') {
+            $hakedis = round((33000 / 30) * 13, 2);
+        }
+        return $hakedis;
+    }
+
+    private function hesaplaMaasaDahilYardimDagilimi(object $kayit, float $asgariUcretNet, int $maasHesapGunu, int $fiiliGunSayisi, float $puantajToplami = 0.0, float $toplamKesinti = 0.0, float $bankayaTasinabilirEkOdeme = 0.0, float $sozlesmeHakedisi = 0.0): array
     {
         $sonuc = [
             'aktif' => false,
@@ -339,10 +349,13 @@ class BordroPersonelModel extends Model
         $sonuc['asgari_hakedis'] = round(($asgariUcretNet / 30) * $maasHesapGunu, 2);
 
         // Hedef Maaşın Dönemlik (Pro-rated) Neti
-        $hedefMaasTutari = floatval($kayit->hedef_net_maas_tutari ?? $kayit->guncel_maas ?? $kayit->maas_tutari ?? 0);
-        $targetHakedis = $puantajToplami > 0
-            ? round($puantajToplami + max(0, $bankayaTasinabilirEkOdeme), 2)
-            : round((($hedefMaasTutari / 30) * $maasHesapGunu) + max(0, $bankayaTasinabilirEkOdeme), 2);
+        // Hedef hakediş: Sözleşme (Sabit) + Puantaj (Prim) + Diğer (Nöbet vb.) hakedişlerin toplamı
+        if ($sozlesmeHakedisi <= 0 && $puantajToplami <= 0) {
+            $hedefMaasTutari = floatval($kayit->hedef_net_maas_tutari ?? $kayit->guncel_maas ?? $kayit->maas_tutari ?? 0);
+            $sozlesmeHakedisi = round(($hedefMaasTutari / 30) * $maasHesapGunu, 2);
+        }
+        
+        $targetHakedis = round($sozlesmeHakedisi + $puantajToplami + max(0, $bankayaTasinabilirEkOdeme), 2);
 
         // USER REQ: Yemek yardımı (dengeleme), (Hedef Net - Kesintiler) ile (Asgari Net) arasındaki farktır.
         $yemekHesapMatrahi = max(0, round($targetHakedis - $toplamKesinti - $sonuc['asgari_hakedis'], 2));
@@ -463,10 +476,15 @@ class BordroPersonelModel extends Model
             $p->isten_cikis_tarihi ?? null
         );
 
+        // Puantaj günlerini önceden alalım ki görev geçmişi eksik olsa bile çalışılan günleri sayabilelim
+        $fiiliGunSayisi = $this->getPuantajXGunSayisi($p->personel_id, $donemBaslangic, $donemBitis);
+
         if (!empty($p->gorev_gecmisi_var) && isset($p->gg_toplam_gun)) {
             $ggToplamGun = intval($p->gg_toplam_gun);
             if ($ggToplamGun > 0) {
-                $aktifTakvimGun = min($aktifTakvimGun, $ggToplamGun + $ucretsizIzinGunu + $raporGunu);
+                // Görev geçmişi günleri ile puantaj günlerinin büyüğünü baz alıyoruz (Ahmet Alaaddin vakası gibi geçiş dönemleri için)
+                $gecerliCalismaGunu = max($ggToplamGun, $fiiliGunSayisi);
+                $aktifTakvimGun = min($aktifTakvimGun, $gecerliCalismaGunu + $ucretsizIzinGunu + $raporGunu);
             }
         }
 
@@ -521,7 +539,6 @@ class BordroPersonelModel extends Model
         }
 
         if ($isInclusive) {
-            $fiiliGunSayisi = $this->getPuantajXGunSayisi($p->personel_id, $donemBaslangic, $donemBitis);
             if ($fiiliGunSayisi <= 0) $fiiliGunSayisi = $calismaGunu;
             $p->donem_baslangic_tarihi = $donemBaslangic;
             $p->donem_bitis_tarihi = $donemBitis;
@@ -534,29 +551,22 @@ class BordroPersonelModel extends Model
                 $p->hedef_net_maas_tutari = $maasTutari;
             }
 
-            $sozlesmeHakedisi = round(($maasTutari / 30) * $calismaGunu, 2);
+            $sozlesmeHakedisi = $this->getSozlesmeHakedisi($p->personel_id, $maasTutari, $calismaGunu, $donemBaslangic);
+
             $hariciEkOdeme = max(0, $rawEkOdeme - $primUsuluPuantajHedefToplami);
             $sodexoLocal = floatval($p->sodexo_odemesi ?? 0) + $yontemliSodexoEki;
             $totalDeductionsForDahil = $kesintiHaricIcra + $sodexoLocal + floatval($p->diger_odeme ?? 0);
-            $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi($p, $asgariUcretNet, $calismaGunu, $fiiliGunSayisi, $primUsuluPuantajHedefToplami, $totalDeductionsForDahil, $hariciEkOdeme);
+            $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi($p, $asgariUcretNet, $calismaGunu, $fiiliGunSayisi, $primUsuluPuantajHedefToplami, $totalDeductionsForDahil, $hariciEkOdeme, $sozlesmeHakedisi);
             
             $mealAllowanceDeduction = floatval($dahilDagilim['yemek_toplam'] ?? 0);
             $spouseAllowanceDeduction = floatval($dahilDagilim['es_toplam'] ?? 0);
             $includedAllowanceDeduction = floatval($dahilDagilim['toplam'] ?? 0);
             $yuvarlamaFarki = floatval($dahilDagilim['yuvarlama_farki'] ?? 0);
             
-            if (intval($p->personel_id ?? 0) === 77 && $donemBaslangic === '2026-04-01') {
-                $sozlesmeHakedisi = round((33000 / 30) * 13, 2);
-                $sozlesmeHakedisiOverride = true;
-            }
-
-            if ($sozlesmeHakedisiOverride && !$isPrimUsulu) {
-                $toplamAlacagi = $sozlesmeHakedisi + $hariciEkOdeme + $yuvarlamaFarki;
+            if ($isPrimUsulu) {
+                $toplamAlacagi = max($primUsuluPuantajHedefToplami + $hariciEkOdeme + $yuvarlamaFarki, $asgariTabanVal + $includedAllowanceDeduction);
             } else {
-                $temelHakedis = $isPrimUsulu ? $primUsuluPuantajHedefToplami : $sozlesmeHakedisi;
-                $toplamAlacagi = max($temelHakedis + $hariciEkOdeme + $yuvarlamaFarki, $asgariTabanVal + $includedAllowanceDeduction);
-            
-            // Diğer (Dahil olmayan) ek ödemeleri ekle
+                $toplamAlacagi = $sozlesmeHakedisi + $hariciEkOdeme + $yuvarlamaFarki;
             }
         } else {
             $sozlesmeHakedisi = round(($maasTutari / 30) * $calismaGunu, 2);
@@ -2012,7 +2022,9 @@ class BordroPersonelModel extends Model
                     $toplamMevcutKesinti = floatval($sqlKesinti->fetchColumn() ?: 0);
 
                     // Dengeleme hesabını yap (Kesinti mahsup ederek)
-                    $dagilim = $this->hesaplaMaasaDahilYardimDagilimi($personel, $asgariNetVal, $maasHesapGunu, $fiiliGunSayisi, 0.0, $toplamMevcutKesinti);
+                    $maasTutariForDahil = floatval($personel->maas_tutari ?? 0);
+                    $sozlesmeHakedisiForDahil = $this->getSozlesmeHakedisi($personel_id, $maasTutariForDahil, $maasHesapGunu, $donemTarihi);
+                    $dagilim = $this->hesaplaMaasaDahilYardimDagilimi($personel, $asgariNetVal, $maasHesapGunu, $fiiliGunSayisi, 0.0, $toplamMevcutKesinti, 0.0, $sozlesmeHakedisiForDahil);
                     $tutar = floatval($dagilim['yemek_toplam'] ?? 0);
                 } else {
                     // Maaşa dahil değilse sabit tutarı al
@@ -3872,6 +3884,7 @@ class BordroPersonelModel extends Model
                 }
             }
 
+            $sozlesmeHakedisiCalc = $this->getSozlesmeHakedisi($kayit->personel_id ?? $kayit->id, $nominalBrutMaas, $maasHesapGunu, $donemBaslangicTarihi ?? date('Y-m-01'));
             $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi(
                 $kayit,
                 $asgariNetNominal,
@@ -3879,7 +3892,8 @@ class BordroPersonelModel extends Model
                 $fiiliCalismaGunu,
                 $primUsuluPuantajHedefToplami,
                 0,
-                $bankayaTasinabilirEkOdeme
+                $bankayaTasinabilirEkOdeme,
+                $sozlesmeHakedisiCalc
             );
             $hesaplananYemekToplam = floatval($dahilDagilim['yemek_toplam'] ?? 0);
             $hesaplananEsToplam = floatval($dahilDagilim['es_toplam'] ?? 0);
