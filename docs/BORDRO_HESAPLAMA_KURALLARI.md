@@ -241,6 +241,7 @@ Degisiklikten sonra en az su kontrol calistirilir:
 
 ```powershell
 powershell -ExecutionPolicy Bypass -File scripts/check-bordro-hesaplama-rules.ps1
+powershell -ExecutionPolicy Bypass -File scripts/check-bordro-banka-export-consistency.ps1
 php -l app/Model/BordroPersonelModel.php
 php -l views/bordro/api.php
 ```

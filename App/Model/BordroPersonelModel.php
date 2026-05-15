@@ -345,7 +345,7 @@ class BordroPersonelModel extends Model
             : round((($hedefMaasTutari / 30) * $maasHesapGunu) + max(0, $bankayaTasinabilirEkOdeme), 2);
 
         // USER REQ: Yemek yardımı (dengeleme), (Hedef Net - Kesintiler) ile (Asgari Net) arasındaki farktır.
-        $yemekHesapMatrahi = max(0, round($targetHakedis - $sonuc['asgari_hakedis'], 2));
+        $yemekHesapMatrahi = max(0, round($targetHakedis - $toplamKesinti - $sonuc['asgari_hakedis'], 2));
         
         $calcFiiliGun = max(1, $fiiliGunSayisi);
         $sonuc['yemek_gunluk_ham'] = $yemekHesapMatrahi / $calcFiiliGun;
@@ -554,7 +554,7 @@ class BordroPersonelModel extends Model
                 $toplamAlacagi = $sozlesmeHakedisi + $hariciEkOdeme + $yuvarlamaFarki;
             } else {
                 $temelHakedis = $isPrimUsulu ? $primUsuluPuantajHedefToplami : $sozlesmeHakedisi;
-                $toplamAlacagi = max($temelHakedis + $hariciEkOdeme, $asgariTabanVal + $includedAllowanceDeduction);
+                $toplamAlacagi = max($temelHakedis + $hariciEkOdeme + $yuvarlamaFarki, $asgariTabanVal + $includedAllowanceDeduction);
             
             // Diğer (Dahil olmayan) ek ödemeleri ekle
             }
