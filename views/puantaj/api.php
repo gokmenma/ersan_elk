@@ -1178,11 +1178,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         } else {
             $data = $Puantaj->getWorkResults();
         }
-    } elseif ($column === 'defter' || $column === 'bolge' || $column === 'sayac_durum') {
+    } elseif ($column === 'defter' || $column === 'bolge' || $column === 'sayac_durum' || $column === 'mahalle') {
         if ($column === 'defter') {
             $data = $EndeksOkuma->getDistinctDefters();
         } elseif ($column === 'bolge') {
             $data = $EndeksOkuma->getDistinctBolges();
+        } elseif ($column === 'mahalle') {
+            $data = $EndeksOkuma->getDistinctMahalles();
         } else {
             $data = $EndeksOkuma->getDistinctSayacDurums();
         }

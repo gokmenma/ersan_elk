@@ -177,7 +177,7 @@ class EndeksOkumaModel extends Model
         // 2. Create temporary table for optimized joining of defter_mahalle
         $this->db->exec("DROP TEMPORARY TABLE IF EXISTS temp_defter_mahalle");
         $this->db->exec("CREATE TEMPORARY TABLE temp_defter_mahalle AS
-            SELECT tur_adi, defter_bolge, firma_id, MAX(defter_mahalle) as defter_mahalle
+            SELECT tur_adi, defter_bolge, firma_id, MAX(TRIM(defter_mahalle)) as defter_mahalle
             FROM tanimlamalar
             WHERE grup = 'defter_kodu' AND silinme_tarihi IS NULL
             GROUP BY tur_adi, defter_bolge, firma_id");
@@ -753,6 +753,23 @@ class EndeksOkumaModel extends Model
         $stmt->execute([$firmaId]);
         // Bazen küçük harf/büyük harf karışıklığı olabiliyor, normalize edebiliriz ama 
         // kullanıcı veriyi olduğu gibi görmek isteyebilir. Yine de TRIM önemli.
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
+
+    public function getDistinctMahalles()
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $sql = "SELECT DISTINCT TRIM(tm.defter_mahalle) as mahalle 
+                FROM $this->table t 
+                JOIN tanimlamalar tm ON t.defter = tm.tur_adi 
+                    AND t.bolge = tm.defter_bolge 
+                    AND tm.firma_id = t.firma_id
+                WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL 
+                AND tm.grup = 'defter_kodu' AND tm.silinme_tarihi IS NULL
+                AND tm.defter_mahalle IS NOT NULL AND tm.defter_mahalle != '' 
+                ORDER BY mahalle ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$firmaId]);
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
