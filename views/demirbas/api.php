@@ -1298,6 +1298,9 @@ if ($action == "demirbas-listesi") {
 
                 // Durum badge (İsimde 'hurda' geçiyorsa otomatik hurda say)
                 $durumText = $d->durum ?? 'aktif';
+                if (strtolower($durumText) === 'aktif' && $kalan <= 0) {
+                    $durumText = 'personelde';
+                }
                 $isSayacTab = ($tab === 'sayac');
                 $isIsimHurda = str_contains(mb_strtolower($d->demirbas_adi, 'UTF-8'), 'hurda');
                 

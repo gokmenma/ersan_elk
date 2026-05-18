@@ -20,205 +20,113 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
 <div class="row">
     <!-- Sol Kolon: Pozisyon ve Durum -->
     <div class="col-md-12 mb-3">
-        <div class="card border h-100 mb-2">
-            <div class="card-header bg-transparent border-bottom">
-                <h5 class="card-title mb-0 text-primary"><i class="bx bx-briefcase me-2"></i>Pozisyon & Durum</h5>
+        <div class="card border h-100 mb-2 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+            <div class="card-header bg-soft-primary border-bottom d-flex align-items-center justify-content-between py-3">
+                <h5 class="card-title mb-0 text-primary fw-bold"><i class="bx bx-briefcase me-2"></i>Aktif Çalışma Bilgileri</h5>
+                <span class="badge bg-primary text-uppercase px-3 py-2" style="font-size: 0.75rem; letter-spacing: 0.5px;">Güncel Dönem</span>
             </div>
-            <div class="card-body">
-                <div class="row">
-                    <div class="col-md-2">
-                        <?php echo Form::FormFloatInput("text", "ise_giris_tarihi", Date::dmY($personel->ise_giris_tarihi ?? Date::today()), "İşe Giriş", "İşe Giriş Tarihi", "calendar", "form-control flatpickr"); ?>
+            <div class="card-body bg-light-soft p-4">
+                <div class="alert alert-info border-0 shadow-none d-flex align-items-center mb-4" style="background: rgba(80, 165, 241, 0.08); border-radius: 10px;">
+                    <i class="bx bx-info-circle text-primary fs-3 me-3"></i>
+                    <div class="small text-dark">
+                        Bu alanlar personelin **Çalışma Bilgileri Geçmişi** tablosundan otomatik olarak belirlenir. Değişiklik yapmak veya yeni bir çalışma dönemi eklemek için lütfen sayfanın altındaki geçmiş tablosunu kullanın.
                     </div>
-                    <div class="col-md-2 mb-2">
-                        <?php echo Form::FormFloatInput("text", "isten_cikis_tarihi", Date::dmY($personel->isten_cikis_tarihi ?? null), "İşten Çıkış", "İşten Çıkış Tarihi", "calendar", "form-control flatpickr"); ?>
-                    </div>
+                </div>
 
-                    <div class="col-md-2 mb-2" id="isten_ayrilis_belge_container" style="display:none;">
-                        <div class="d-flex align-items-center gap-1">
-                            <div class="flex-grow-1">
-                                <?php echo Form::FormFileInput("isten_ayrilis_belge_yolu", "İşten Ayrılış Belgesi", "file", "form-control"); ?>
-                            </div>
-                            <?php if (!empty($personel->isten_ayrilis_belge_yolu)): ?>
-                                <a href="<?= htmlspecialchars($personel->isten_ayrilis_belge_yolu) ?>" target="_blank" class="btn btn-outline-primary p-0" title="Mevcut Belgeyi Görüntüle" style="height: 58px; width: 58px; display: flex; align-items: center; justify-content: center; flex-shrink: 0;">
-                                    <i class="bx bx-download fs-4"></i>
-                                </a>
-                            <?php endif; ?>
+                <!-- Hidden inputs to preserve parent form submission -->
+                <input type="hidden" name="ise_giris_tarihi" value="<?= Date::dmY($personel->ise_giris_tarihi ?? Date::today()) ?>">
+                <input type="hidden" name="isten_cikis_tarihi" value="<?= Date::dmY($personel->isten_cikis_tarihi ?? null) ?>">
+                <input type="hidden" name="personel_sinifi" id="personel_sinifi" value="<?= htmlspecialchars($personel->personel_sinifi ?? 'Beyaz Yaka') ?>">
+                <input type="hidden" name="saha_takibi" id="saha_takibi" value="<?= htmlspecialchars($personel->saha_takibi ?? '0') ?>">
+                <input type="hidden" name="arac_kullanim" id="arac_kullanim" value="<?= htmlspecialchars($personel->arac_kullanim ?? 'Yok') ?>">
+                <input type="hidden" name="sgk_yapilan_firma" id="sgk_yapilan_firma" value="<?= htmlspecialchars($personel->sgk_yapilan_firma ?? 'Yok') ?>">
+                <input type="hidden" name="gorunum_modulleri" id="gorunum_modulleri" value="<?= htmlspecialchars($personel->gorunum_modulleri ?? 'bordro,personel') ?>">
+
+                <div class="row g-3">
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded bg-white shadow-none h-100 d-flex flex-column justify-content-between">
+                            <div class="text-muted small mb-1"><i class="bx bx-calendar me-1 text-primary"></i>İşe Giriş Tarihi</div>
+                            <h5 class="fw-bold text-dark mb-0" id="display_ise_giris_tarihi"><?= Date::dmY($personel->ise_giris_tarihi ?? Date::today()) ?></h5>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded bg-white shadow-none h-100 d-flex flex-column justify-content-between">
+                            <div class="text-muted small mb-1"><i class="bx bx-calendar-x me-1 text-danger"></i>İşten Çıkış Tarihi</div>
+                            <h5 class="fw-bold text-dark mb-0" id="display_isten_cikis_tarihi">
+                                <?= $personel->isten_cikis_tarihi ? Date::dmY($personel->isten_cikis_tarihi) : '<span class="badge bg-soft-success text-success">Devam Ediyor</span>' ?>
+                            </h5>
                         </div>
                     </div>
 
-                    <div class="col-md-2 mb-2">
-                        <?php echo Form::FormSelect2("personel_sinifi", ['Beyaz Yaka' => 'Beyaz Yaka', 'Mavi Yaka' => 'Mavi Yaka'], $personel->personel_sinifi ?? '', "Sınıf", "users"); ?>
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded bg-white shadow-none h-100 d-flex flex-column justify-content-between">
+                            <div class="text-muted small mb-1"><i class="bx bx-users me-1 text-info"></i>Personel Sınıfı</div>
+                            <h5 class="fw-bold text-dark mb-0" id="display_personel_sinifi"><?= htmlspecialchars($personel->personel_sinifi ?? 'Beyaz Yaka') ?></h5>
+                        </div>
                     </div>
-                    <div class="col-md-2 mb-2">
-                        <?php echo Form::FormSelect2("saha_takibi", ['1' => 'Evet', '0' => 'Hayır'], $personel->saha_takibi ?? '0', "Saha Takibi", "map-pin"); ?>
+
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded bg-white shadow-none h-100 d-flex flex-column justify-content-between">
+                            <div class="text-muted small mb-1"><i class="bx bx-map-pin me-1 text-warning"></i>Saha Takibi</div>
+                            <h5 class="fw-bold text-dark mb-0" id="display_saha_takibi">
+                                <?= ($personel->saha_takibi ?? 0) == 1 ? '<span class="badge bg-soft-success text-success">Evet</span>' : '<span class="badge bg-soft-danger text-danger">Hayır</span>' ?>
+                            </h5>
+                        </div>
                     </div>
-                    <div class="col-md-2 mb-2">
-                        <?php echo Form::FormSelect2("arac_kullanim", ['Yok' => 'Yok', 'Kendi Aracı' => 'Kendi Aracı', 'Şirket aracı' => 'Şirket aracı'], $personel->arac_kullanim ?? 'Yok', "Araç Kullanım", "truck"); ?>
+
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded bg-white shadow-none h-100 d-flex flex-column justify-content-between">
+                            <div class="text-muted small mb-1"><i class="bx bx-car me-1 text-primary"></i>Araç Kullanımı</div>
+                            <h5 class="fw-bold text-dark mb-0" id="display_arac_kullanim"><?= htmlspecialchars($personel->arac_kullanim ?? 'Yok') ?></h5>
+                        </div>
                     </div>
-                    <div class="col-md-2 mb-2">
-                        <?php
-                        if (!isset($FirmaModel)) {
-                            $FirmaModel = new \App\Model\FirmaModel();
-                        }
-                        $firma = $FirmaModel->find($_SESSION['firma_id']);
-                        $firma_adi = $firma->firma_adi ?? 'Firma Bulunamadı';
 
-                        $firma_option = [
-                            $firma_adi => $firma_adi,
-                            "İŞKUR" => "İŞKUR",
-                            "Dışarıdan Sigortalı" => "Dışarıdan Sigortalı"
-                        ];
-
-
-                        echo Form::FormSelect2("sgk_yapilan_firma", $firma_option, $personel->sgk_yapilan_firma ?? 'Yok', "SGK Yapılan Firma", "book-open"); ?>
-
+                    <div class="col-md-4">
+                        <div class="p-3 border rounded bg-white shadow-none h-100 d-flex flex-column justify-content-between">
+                            <div class="text-muted small mb-1"><i class="bx bx-book-open me-1 text-purple"></i>SGK Yapılan Firma</div>
+                            <h5 class="fw-bold text-dark mb-0" id="display_display_sgk_yapilan_firma">
+                                <span class="badge bg-soft-purple text-purple px-2 py-1" id="display_sgk_yapilan_firma"><?= htmlspecialchars($personel->sgk_yapilan_firma ?? 'Yok') ?></span>
+                            </h5>
+                        </div>
                     </div>
-                </div>
 
-                <div class="row mt-2" id="gorunum_modulleri_row"
-                    style="<?= ($personel->sgk_yapilan_firma ?? '') === 'Dışarıdan Sigortalı' ? '' : 'display:none;' ?>">
-                    <div class="col-md-12 mb-2">
-                        <?php
-                        $modul_options = [
-                            'bordro' => 'Bordro',
-                            'personel' => 'Personel Listesi',
-                            'puantaj' => 'Puantaj',
-                            'nobet' => 'Nöbet',
-                            'demirbas' => 'Demirbaş',
-                            'arac' => 'Araç Takip',
-                            'evrak' => 'Evrak Takip',
-                            'mail' => 'Mail/SMS',
-                            'takip' => 'Personel Takip',
-                            'dashboard' => 'Dashboard'
-                        ];
-                        // Varsayılan olarak ikisi her zaman olsun
-                        $selected_modules = !empty($personel->gorunum_modulleri) ? explode(',', $personel->gorunum_modulleri) : ['bordro', 'personel'];
-                        if (!in_array('bordro', $selected_modules))
-                            $selected_modules[] = 'bordro';
-                        if (!in_array('personel', $selected_modules))
-                            $selected_modules[] = 'personel';
-
-                        echo Form::FormMultipleSelect2("gorunum_modulleri", $modul_options, $selected_modules, "Dışarıdan Sigortalı Olduğu İçin Görüneceği Modüller", "eye");
-                        ?>
-                        <small class="text-muted"><i class="bx bx-info-circle"></i> SGK yapılan firma ana firma değilse
-                            personelin hangi modüllerde görüneceğini seçebilirsiniz. <strong class="text-danger">Bordro
-                                ve Personel Listesi görünümü zorunludur.</strong></small>
+                    <!-- Ayrılış Detayları (Eğer çıkış tarihi varsa görüntülenir) -->
+                    <div class="col-md-12" id="display_ayrilis_nedeni_wrapper" style="<?= empty($personel->isten_cikis_tarihi) ? 'display:none;' : '' ?>">
+                        <div class="p-3 border rounded bg-soft-danger-light shadow-none" style="background: rgba(244, 106, 106, 0.05); border-color: rgba(244, 106, 106, 0.2); border-radius: 8px;">
+                            <div class="text-danger small fw-bold mb-2"><i class="bx bx-info-circle me-1"></i> İşten Ayrılış Bilgileri</div>
+                            <div class="row g-2 align-items-center">
+                                <div class="col-md-10">
+                                    <div class="text-dark small"><strong>Ayrılış Nedeni:</strong> <span id="display_isten_ayrilis_nedeni"><?= htmlspecialchars($personel->isten_ayrilis_nedeni ?? 'Nedeni belirtilmedi') ?></span></div>
+                                </div>
+                                <div class="col-md-2 text-md-end" id="display_ayrilis_belge_wrapper" style="<?= empty($personel->isten_ayrilis_belge_yolu) ? 'display:none;' : '' ?>">
+                                    <a id="display_btn_ayrilis_belge" href="<?= htmlspecialchars($personel->isten_ayrilis_belge_yolu ?? '#') ?>" target="_blank" class="btn btn-sm btn-danger px-3 shadow-none">
+                                        <i class="bx bx-download me-1"></i> Ayrılış Belgesi
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
-
-                <script>
-                    document.addEventListener('DOMContentLoaded', function () {
-                        var sgkSelect = document.getElementById('sgk_yapilan_firma');
-                        var wrapper = document.getElementById('gorunum_modulleri_row');
-                        var firmaAdi = "<?= addslashes($firma_adi) ?>";
-
-                        function toggleGorunum() {
-                            var val = sgkSelect.value;
-                            if (val === 'Dışarıdan Sigortalı') {
-                                wrapper.style.display = '';
-                            } else {
-                                wrapper.style.display = 'none';
-                            }
-                        }
-
-                        if (sgkSelect) {
-                            sgkSelect.addEventListener('change', toggleGorunum);
-                            if (typeof $ !== 'undefined' && $(sgkSelect).data('select2')) {
-                                $(sgkSelect).on('select2:select', toggleGorunum);
-                                $(sgkSelect).on('select2:unselect', toggleGorunum);
-                            }
-                        }
-
-                        // İşten çıkış tarihi kontrolü
-                        var txtIstenCikis = document.getElementById('isten_cikis_tarihi');
-                        var containerBelge = document.getElementById('isten_ayrilis_belge_container');
-                        var inputFile = document.getElementById('isten_ayrilis_belge_yolu');
-                        var hasExistingFile = <?= !empty($personel->isten_ayrilis_belge_yolu) ? 'true' : 'false' ?>;
-
-                        function checkIstenCikis() {
-                            if (!txtIstenCikis) return;
-                            
-                            if (txtIstenCikis.value.trim() !== '') {
-                                // Tarih dolu
-                                containerBelge.style.display = '';
-                                if (!hasExistingFile && inputFile) {
-                                    inputFile.setAttribute('required', 'required');
-                                } else if (inputFile) {
-                                    inputFile.removeAttribute('required');
-                                }
-                            } else {
-                                // Tarih boş
-                                containerBelge.style.display = 'none';
-                                if (inputFile) {
-                                    inputFile.removeAttribute('required');
-                                    inputFile.value = ''; // Seçili dosyayı temizle
-                                }
-                            }
-                        }
-
-                        if (txtIstenCikis) {
-                            txtIstenCikis.addEventListener('change', checkIstenCikis);
-                            txtIstenCikis.addEventListener('keyup', checkIstenCikis);
-                            txtIstenCikis.addEventListener('input', checkIstenCikis);
-                            
-                            // Flatpickr initialize edilmişse eventlerine ekle
-                            setTimeout(function() {
-                                if (txtIstenCikis._flatpickr) {
-                                    if (!Array.isArray(txtIstenCikis._flatpickr.config.onChange)) {
-                                        txtIstenCikis._flatpickr.config.onChange = [];
-                                    }
-                                    if (!Array.isArray(txtIstenCikis._flatpickr.config.onClear)) {
-                                        txtIstenCikis._flatpickr.config.onClear = [];
-                                    }
-                                    txtIstenCikis._flatpickr.config.onChange.push(checkIstenCikis);
-                                    txtIstenCikis._flatpickr.config.onClear.push(checkIstenCikis);
-                                }
-                            }, 1000);
-                            
-                            // Duruma göre garantiye almak için periyodik kontrol kullanabiliriz
-                            setInterval(checkIstenCikis, 500);
-                            
-                            // İlk yükleme çalıştır
-                            checkIstenCikis();
-                        }
-
-                        // Select2'de 'bordro' ve 'personel' seçimlerini zorunlu yap
-                        setTimeout(function () {
-                            var $gm = $('#gorunum_modulleri');
-                            if ($gm.length) {
-                                $gm.on('select2:unselecting', function (e) {
-                                    if (e.params.args.data.id === 'bordro' || e.params.args.data.id === 'personel') {
-                                        e.preventDefault();
-                                        toastr.warning(e.params.args.data.text + ' modülünde görünüm zorunludur.', 'Uyarı');
-                                    }
-                                });
-                            }
-                        }, 500);
-
-                    });
-                </script>
-
-
-
             </div>
         </div>
     </div>
 
     <!-- Sağ Kolon: Ekip Bilgileri -->
     <div class="col-md-12">
-        <div class="card border h-100">
-            <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center">
-                <h5 class="card-title mb-0 text-primary"><i class="bx bx-group me-2"></i>Ekip Kodu İşlemleri</h5>
+        <div class="card border h-100 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+            <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3">
+                <h5 class="card-title mb-0 text-primary fw-bold"><i class="bx bx-group me-2"></i>Ekip Kodu İşlemleri</h5>
                 <?php if ($id > 0): ?>
-                    <button type="button" class="btn btn-sm btn-primary" id="btnOpenEkipGecmisiModal">
-                        <i class="bx bx-plus"></i> Yeni Ekip Tanımla
+                    <button type="button" class="btn btn-sm btn-primary px-3 shadow-none" id="btnOpenEkipGecmisiModal">
+                        <i class="bx bx-plus me-1"></i> Yeni Ekip Tanımla
                     </button>
                 <?php endif; ?>
             </div>
             <div class="card-body p-0">
                 <?php if ($id > 0): ?>
                     <div class="table-responsive">
-                        <table id="tblEkipGecmisi" class="table table-hover mb-0 w-100">
+                        <table id="tblEkipGecmisi" class="table table-hover align-middle mb-0 w-100">
                             <thead class="table-light">
                                 <tr>
                                     <th>Ekip Adı / Kodu</th>
@@ -272,6 +180,99 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
                     <div class="p-4 text-center text-muted">
                         <i class="bx bx-info-circle fs-2 mb-2 d-block"></i>
                         Yeni personel eklerken önce personeli kaydedin, ardından ekip tanımlaması yapabilirsiniz.
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sağ Kolon altı: Çalışma Bilgileri Geçmişi -->
+    <div class="col-md-12 mt-3">
+        <div class="card border h-100 shadow-sm" style="border-radius: 12px; overflow: hidden;">
+            <div class="card-header bg-transparent border-bottom d-flex justify-content-between align-items-center py-3">
+                <h5 class="card-title mb-0 text-primary fw-bold"><i class="bx bx-book-open me-2"></i>Çalışma Bilgileri Geçmişi</h5>
+                <?php if ($id > 0): ?>
+                    <button type="button" class="btn btn-sm btn-primary px-3 shadow-none" id="btnOpenCalismaGecmisiModal">
+                        <i class="bx bx-plus me-1"></i> Yeni Çalışma Dönemi Ekle
+                    </button>
+                <?php endif; ?>
+            </div>
+            <div class="card-body p-0">
+                <?php if ($id > 0): ?>
+                    <?php
+                    $calismaGecmisi = $PersonelModel->getCalismaGecmisi($id);
+                    ?>
+                    <div class="table-responsive">
+                        <table id="tblCalismaGecmisi" class="table table-hover align-middle mb-0 w-100">
+                            <thead class="table-light">
+                                <tr>
+                                    <th style="display:none">ID</th>
+                                    <th>SGK Yapılan Firma</th>
+                                    <th>İşe Giriş Tarihi</th>
+                                    <th>İşten Çıkış Tarihi</th>
+                                    <th>Sınıf</th>
+                                    <th>Saha Takibi</th>
+                                    <th>Araç Kullanım</th>
+                                    <th>Durum</th>
+                                    <th class="text-center">İşlem</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php if (!empty($calismaGecmisi)): ?>
+                                    <?php
+                                    $bugun = date('Y-m-d');
+                                    foreach ($calismaGecmisi as $c):
+                                        $iseGiris = $c->ise_giris_tarihi;
+                                        $istenCikis = $c->isten_cikis_tarihi ? $c->isten_cikis_tarihi : null;
+                                        $isAktif = ($iseGiris <= $bugun && ($istenCikis === null || $istenCikis >= $bugun));
+                                    ?>
+                                        <tr>
+                                            <td style="display:none"><?= $c->id ?></td>
+                                            <td><span class="fw-bold text-dark"><?= htmlspecialchars($c->sgk_yapilan_firma ?? '') ?></span></td>
+                                            <td><?= date('d.m.Y', strtotime($iseGiris)) ?></td>
+                                            <td><?= $istenCikis ? date('d.m.Y', strtotime($istenCikis)) : '<span class="badge bg-soft-success text-success">Devam Ediyor</span>' ?></td>
+                                            <td>
+                                                <?= $c->personel_sinifi === 'Beyaz Yaka' 
+                                                    ? '<span class="badge bg-soft-info text-info"><i class="bx bx-user me-1"></i>Beyaz Yaka</span>' 
+                                                    : '<span class="badge bg-soft-warning text-warning"><i class="bx bx-wrench me-1"></i>Mavi Yaka</span>' ?>
+                                            </td>
+                                            <td>
+                                                <?= $c->saha_takibi == 1 
+                                                    ? '<span class="badge bg-soft-success text-success"><i class="bx bx-check-circle me-1"></i>Evet</span>' 
+                                                    : '<span class="badge bg-soft-danger text-danger"><i class="bx bx-x-circle me-1"></i>Hayır</span>' ?>
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-soft-primary text-primary"><i class="bx bx-car me-1"></i><?= htmlspecialchars($c->arac_kullanim) ?></span>
+                                            </td>
+                                            <td>
+                                                <?= $isAktif ? '<span class="badge bg-success">Aktif</span>' : '<span class="badge bg-secondary">Pasif</span>' ?>
+                                            </td>
+                                            <td class="text-center text-nowrap">
+                                                <?php if (!empty($c->isten_ayrilis_belge_yolu)): ?>
+                                                    <a href="<?= htmlspecialchars($c->isten_ayrilis_belge_yolu) ?>" target="_blank" class="btn btn-sm btn-soft-danger me-1" title="Ayrılış Belgesi">
+                                                        <i class="bx bx-file"></i>
+                                                    </a>
+                                                <?php endif; ?>
+                                                <button type="button"
+                                                    class="btn btn-sm btn-soft-primary btn-calisma-gecmisi-duzenle me-1"
+                                                    data-id="<?= $c->id ?>" title="Düzenle">
+                                                    <i class="bx bx-edit-alt"></i>
+                                                </button>
+                                                <button type="button" class="btn btn-sm btn-soft-danger btn-calisma-gecmisi-sil"
+                                                    data-id="<?= $c->id ?>" title="Sil">
+                                                    <i class="bx bx-trash"></i>
+                                                </button>
+                                            </td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                <?php endif; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php else: ?>
+                    <div class="p-4 text-center text-muted">
+                        <i class="bx bx-info-circle fs-2 mb-2 d-block"></i>
+                        Yeni personel eklerken önce personeli kaydedin, ardından çalışma bilgileri tanımlaması yapabilirsiniz.
                     </div>
                 <?php endif; ?>
             </div>

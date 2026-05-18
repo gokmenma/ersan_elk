@@ -1425,6 +1425,233 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
+    } elseif ($action == 'get-calisma-gecmisi') {
+        try {
+            $personel_id = $_POST['personel_id'] ?? 0;
+            $gecmis = $Personel->getCalismaGecmisi($personel_id);
+            // Format dates for display
+            foreach ($gecmis as $item) {
+                $item->ise_giris_tarihi = Date::dmY($item->ise_giris_tarihi);
+                if ($item->isten_cikis_tarihi) {
+                    $item->isten_cikis_tarihi = Date::dmY($item->isten_cikis_tarihi);
+                }
+            }
+            echo json_encode(['status' => 'success', 'data' => $gecmis]);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'calisma-gecmisi-ekle') {
+        try {
+            $data = $_POST;
+            
+            // Dışarıdan Sigortalı modül izinleri
+            if ($data['sgk_yapilan_firma'] === 'Dışarıdan Sigortalı') {
+                $data['disardan_sigortali'] = 1;
+                $modules = $data['gorunum_modulleri'] ?? [];
+                if (!in_array('bordro', $modules)) $modules[] = 'bordro';
+                if (!in_array('personel', $modules)) $modules[] = 'personel';
+                $data['gorunum_modulleri'] = implode(',', $modules);
+            } else {
+                $data['disardan_sigortali'] = 0;
+                $data['gorunum_modulleri'] = null;
+            }
+
+            $ise_giris_tarihi = Date::Ymd($data['ise_giris_tarihi'] ?? '', 'Y-m-d');
+            $isten_cikis_tarihi = !empty($data['isten_cikis_tarihi']) ? Date::Ymd($data['isten_cikis_tarihi'], 'Y-m-d') : null;
+
+            // Eğer yeni eklenen kaydın çıkış tarihi yoksa (ucu açıksa) ve mevcut ucu açık bir kayıt varsa engelleyelim
+            if (empty($isten_cikis_tarihi)) {
+                $sqlCheck = "SELECT COUNT(*) FROM personel_calisma_gecmisi WHERE personel_id = ? AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00')";
+                $stmtCheck = $Personel->getDb()->prepare($sqlCheck);
+                $stmtCheck->execute([$data['personel_id']]);
+                if ($stmtCheck->fetchColumn() > 0) {
+                    throw new Exception("Personelin halihazırda ucu açık (devam eden) bir çalışma dönemi bulunmaktadır. Yeni bir çalışma dönemi eklemeden önce mevcut aktif döneme işten çıkış tarihi tanımlamalısınız.");
+                }
+            }
+
+            // Tarih Çakışması Kontrolü
+            if ($Personel->hasCalismaOverlap($data['personel_id'], $ise_giris_tarihi, $isten_cikis_tarihi)) {
+                // Devam eden ucu açık bir dönem var mı kontrol edelim
+                $sqlCheck = "SELECT ise_giris_tarihi FROM personel_calisma_gecmisi WHERE personel_id = ? AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00') LIMIT 1";
+                $stmtCheck = $Personel->getDb()->prepare($sqlCheck);
+                $stmtCheck->execute([$data['personel_id']]);
+                $ongoing = $stmtCheck->fetch(PDO::FETCH_OBJ);
+                
+                if ($ongoing) {
+                    throw new Exception("Personelin halihazırda ucu açık (devam eden) bir çalışma dönemi bulunmaktadır. Yeni bir çalışma dönemi ekleyebilmek için mevcut aktif dönemi düzenleyerek işten çıkış tarihi tanımlamalısınız.");
+                }
+                throw new Exception("Seçilen tarih aralığı bu personel için mevcut bir çalışma bilgileri kaydıyla çakışıyor. Lütfen tarihleri kontrol edin.");
+            }
+
+            $documentPath = null;
+            if (isset($_FILES['isten_ayrilis_belge_yolu']) && $_FILES['isten_ayrilis_belge_yolu']['error'] == 0) {
+                $baseDir = dirname(__DIR__, 2);
+                $uploadDir = $baseDir . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'belgeler' . DIRECTORY_SEPARATOR . 'personel_ayrilis' . DIRECTORY_SEPARATOR;
+                if (!file_exists($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+                $fileExtension = pathinfo($_FILES['isten_ayrilis_belge_yolu']['name'], PATHINFO_EXTENSION);
+                $fileName = uniqid('ayrilis_') . '.' . $fileExtension;
+                if (move_uploaded_file($_FILES['isten_ayrilis_belge_yolu']['tmp_name'], $uploadDir . $fileName)) {
+                    $documentPath = 'assets/belgeler/personel_ayrilis/' . $fileName;
+                }
+            }
+
+            $saveData = [
+                'personel_id' => $data['personel_id'],
+                'ise_giris_tarihi' => $ise_giris_tarihi,
+                'isten_cikis_tarihi' => $isten_cikis_tarihi,
+                'personel_sinifi' => $data['personel_sinifi'] ?? 'Beyaz Yaka',
+                'saha_takibi' => $data['saha_takibi'] ?? '0',
+                'arac_kullanim' => $data['arac_kullanim'] ?? 'Yok',
+                'sgk_yapilan_firma' => $data['sgk_yapilan_firma'] ?? 'Yok',
+                'disardan_sigortali' => $data['disardan_sigortali'],
+                'gorunum_modulleri' => $data['gorunum_modulleri'],
+                'isten_ayrilis_nedeni' => !empty($data['isten_ayrilis_nedeni']) ? $data['isten_ayrilis_nedeni'] : null,
+                'isten_ayrilis_belge_yolu' => $documentPath
+            ];
+
+            $Personel->addCalismaGecmisi($saveData);
+            $Personel->syncPersonelFromCalismaGecmisi($data['personel_id']);
+
+            echo json_encode(['status' => 'success', 'message' => 'Çalışma bilgileri geçmişi başarıyla eklendi.']);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'calisma-gecmisi-get') {
+        try {
+            $id = $_POST['id'];
+            $data = $Personel->getSingleCalismaGecmisi($id);
+            if ($data) {
+                $data->ise_giris_tarihi = Date::dmY($data->ise_giris_tarihi);
+                if ($data->isten_cikis_tarihi) {
+                    $data->isten_cikis_tarihi = Date::dmY($data->isten_cikis_tarihi);
+                }
+                echo json_encode(['status' => 'success', 'data' => $data]);
+            } else {
+                echo json_encode(['status' => 'error', 'message' => 'Kayıt bulunamadı.']);
+            }
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'calisma-gecmisi-guncelle') {
+        try {
+            $data = $_POST;
+
+            // Dışarıdan Sigortalı modül izinleri
+            if ($data['sgk_yapilan_firma'] === 'Dışarıdan Sigortalı') {
+                $data['disardan_sigortali'] = 1;
+                $modules = $data['gorunum_modulleri'] ?? [];
+                if (!in_array('bordro', $modules)) $modules[] = 'bordro';
+                if (!in_array('personel', $modules)) $modules[] = 'personel';
+                $data['gorunum_modulleri'] = implode(',', $modules);
+            } else {
+                $data['disardan_sigortali'] = 0;
+                $data['gorunum_modulleri'] = null;
+            }
+
+            $ise_giris_tarihi = Date::Ymd($data['ise_giris_tarihi'] ?? '', 'Y-m-d');
+            $isten_cikis_tarihi = !empty($data['isten_cikis_tarihi']) ? Date::Ymd($data['isten_cikis_tarihi'], 'Y-m-d') : null;
+
+            // Mevcut kaydı bul (personel_id için)
+            $oldGecmis = $Personel->getSingleCalismaGecmisi($data['id']);
+            if (!$oldGecmis) {
+                throw new Exception("Kayıt bulunamadı.");
+            }
+
+            // Eğer çıkış tarihi boşaltılıyorsa (ucu açık yapılıyorsa) ve başka bir ucu açık kayıt varsa engelleyelim
+            if (empty($isten_cikis_tarihi)) {
+                $sqlCheck = "SELECT COUNT(*) FROM personel_calisma_gecmisi WHERE personel_id = ? AND id != ? AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00')";
+                $stmtCheck = $Personel->getDb()->prepare($sqlCheck);
+                $stmtCheck->execute([$oldGecmis->personel_id, $data['id']]);
+                if ($stmtCheck->fetchColumn() > 0) {
+                    throw new Exception("Personelin halihazırda ucu açık (devam eden) başka bir çalışma dönemi bulunmaktadır. Bu dönemi ucu açık yapabilmek için diğer aktif dönemi sonlandırmalısınız.");
+                }
+            }
+
+            // Tarih Çakışması Kontrolü
+            if ($Personel->hasCalismaOverlap($oldGecmis->personel_id, $ise_giris_tarihi, $isten_cikis_tarihi, $data['id'])) {
+                // Devam eden ucu açık başka bir dönem var mı kontrol edelim
+                $sqlCheck = "SELECT ise_giris_tarihi FROM personel_calisma_gecmisi WHERE personel_id = ? AND id != ? AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00') LIMIT 1";
+                $stmtCheck = $Personel->getDb()->prepare($sqlCheck);
+                $stmtCheck->execute([$oldGecmis->personel_id, $data['id']]);
+                $ongoing = $stmtCheck->fetch(PDO::FETCH_OBJ);
+                
+                if ($ongoing) {
+                    throw new Exception("Personelin ucu açık (devam eden) başka bir çalışma dönemi bulunmaktadır. Çakışmayı gidermek için o döneme işten çıkış tarihi tanımlamalı veya bu kaydın tarihlerini düzenlemelisiniz.");
+                }
+                throw new Exception("Seçilen tarih aralığı bu personel için mevcut bir çalışma bilgileri kaydıyla çakışıyor. Lütfen tarihleri kontrol edin.");
+            }
+
+            $documentPath = $oldGecmis->isten_ayrilis_belge_yolu;
+            if (isset($_FILES['isten_ayrilis_belge_yolu']) && $_FILES['isten_ayrilis_belge_yolu']['error'] == 0) {
+                $baseDir = dirname(__DIR__, 2);
+                $uploadDir = $baseDir . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'belgeler' . DIRECTORY_SEPARATOR . 'personel_ayrilis' . DIRECTORY_SEPARATOR;
+                if (!file_exists($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+                $fileExtension = pathinfo($_FILES['isten_ayrilis_belge_yolu']['name'], PATHINFO_EXTENSION);
+                $fileName = uniqid('ayrilis_') . '.' . $fileExtension;
+                if (move_uploaded_file($_FILES['isten_ayrilis_belge_yolu']['tmp_name'], $uploadDir . $fileName)) {
+                    $documentPath = 'assets/belgeler/personel_ayrilis/' . $fileName;
+                    // Eski belge varsa sil
+                    if ($oldGecmis->isten_ayrilis_belge_yolu) {
+                        $oldFilePath = $baseDir . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $oldGecmis->isten_ayrilis_belge_yolu);
+                        if (file_exists($oldFilePath)) {
+                            @unlink($oldFilePath);
+                        }
+                    }
+                }
+            }
+
+            $saveData = [
+                'id' => $data['id'],
+                'ise_giris_tarihi' => $ise_giris_tarihi,
+                'isten_cikis_tarihi' => $isten_cikis_tarihi,
+                'personel_sinifi' => $data['personel_sinifi'] ?? 'Beyaz Yaka',
+                'saha_takibi' => $data['saha_takibi'] ?? '0',
+                'arac_kullanim' => $data['arac_kullanim'] ?? 'Yok',
+                'sgk_yapilan_firma' => $data['sgk_yapilan_firma'] ?? 'Yok',
+                'disardan_sigortali' => $data['disardan_sigortali'],
+                'gorunum_modulleri' => $data['gorunum_modulleri'],
+                'isten_ayrilis_nedeni' => !empty($data['isten_ayrilis_nedeni']) ? $data['isten_ayrilis_nedeni'] : null,
+                'isten_ayrilis_belge_yolu' => $documentPath
+            ];
+
+            $Personel->updateCalismaGecmisi($saveData);
+            $Personel->syncPersonelFromCalismaGecmisi($oldGecmis->personel_id);
+
+            echo json_encode(['status' => 'success', 'message' => 'Çalışma bilgileri geçmişi başarıyla güncellendi.']);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
+    } elseif ($action == 'calisma-gecmisi-sil') {
+        try {
+            $id = $_POST['id'];
+            // Silinmeden önce personel_id ve belgeyi al
+            $gecmisKayit = $Personel->getSingleCalismaGecmisi($id);
+            if (!$gecmisKayit) {
+                throw new Exception("Kayıt bulunamadı.");
+            }
+            $personel_id = $gecmisKayit->personel_id;
+
+            $Personel->deleteCalismaGecmisi($id);
+
+            // Belgeyi sil
+            if ($gecmisKayit->isten_ayrilis_belge_yolu) {
+                $baseDir = dirname(__DIR__, 2);
+                $oldFilePath = $baseDir . DIRECTORY_SEPARATOR . str_replace('/', DIRECTORY_SEPARATOR, $gecmisKayit->isten_ayrilis_belge_yolu);
+                if (file_exists($oldFilePath)) {
+                    @unlink($oldFilePath);
+                }
+            }
+
+            $Personel->syncPersonelFromCalismaGecmisi($personel_id);
+
+            echo json_encode(['status' => 'success', 'message' => 'Çalışma bilgileri geçmişi kaydı silindi.']);
+        } catch (Exception $e) {
+            echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+        }
     } else {
         echo json_encode(['status' => 'error', 'message' => 'Geçersiz işlem.']);
     }

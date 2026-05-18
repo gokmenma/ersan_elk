@@ -196,11 +196,16 @@ class DemirbasModel extends Model
 
         // Durum badge
         $durumText = $data->durum ?? 'aktif';
+        if (strtolower($durumText) === 'aktif' && $kalan <= 0) {
+            $durumText = 'personelde';
+        }
         $durumMap = [
             'aktif' => '<span class="badge bg-soft-success text-success">Aktif</span>',
             'pasif' => '<span class="badge bg-soft-secondary text-secondary">Pasif</span>',
             'arizali' => '<span class="badge bg-soft-warning text-warning">Arızalı</span>',
             'hurda' => '<span class="badge bg-soft-danger text-danger">Hurda</span>',
+            'personelde' => '<span class="badge bg-soft-warning text-warning">Personelde</span>',
+            'kaskiye teslim edildi' => '<span class="badge bg-soft-info text-info">KASKİ\'ye İade Edildi</span>',
         ];
         $durumBadge = $durumMap[strtolower($durumText)] ?? '<span class="badge bg-soft-secondary text-secondary">' . $durumText . '</span>';
 
@@ -528,10 +533,10 @@ class DemirbasModel extends Model
         $statusFilter = $request['status_filter'] ?? null;
         if (!empty($statusFilter)) {
             if ($statusFilter === 'bosta' || $statusFilter === 'yeni') {
-                $searchWhere .= " AND LOWER(TRIM(COALESCE(d.durum, ''))) NOT LIKE '%hurda%' 
+                $searchWhere .= " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0)) > 0 
+                    AND LOWER(TRIM(COALESCE(d.durum, ''))) NOT LIKE '%hurda%' 
                     AND LOWER(TRIM(COALESCE(d.demirbas_adi, ''))) NOT LIKE '%hurda%'
-                    AND LOWER(TRIM(COALESCE(d.durum, ''))) NOT LIKE 'kaskiye%' 
-                    AND NOT EXISTS (SELECT 1 FROM demirbas_zimmet z2 WHERE z2.demirbas_id = d.id AND z2.durum = 'teslim' AND z2.silinme_tarihi IS NULL)";
+                    AND LOWER(TRIM(COALESCE(d.durum, ''))) NOT LIKE 'kaskiye%'";
             } elseif ($statusFilter === 'zimmetli') {
                 $searchWhere .= " AND (COALESCE(d.miktar, 1) - COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'zimmet' AND h2.silinme_tarihi IS NULL), 0) + COALESCE((SELECT SUM(h2.miktar) FROM demirbas_hareketler h2 WHERE h2.demirbas_id = d.id AND h2.hareket_tipi = 'iade' AND (h2.aciklama LIKE '[DEPO_IADE]%' OR h2.aciklama LIKE '[IADE]%' OR h2.aciklama IS NULL OR h2.aciklama = '') AND h2.silinme_tarihi IS NULL), 0)) < COALESCE(d.miktar, 1) 
                     AND LOWER(TRIM(COALESCE(d.durum, ''))) NOT LIKE '%hurda%' 

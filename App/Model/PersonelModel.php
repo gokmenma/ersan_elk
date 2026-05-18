@@ -1177,6 +1177,214 @@ class PersonelModel extends Model
         return $aktifKayit;
     }
 
+    /**
+     * Personelin çalışma geçmişini getirir
+     */
+    public function getCalismaGecmisi($personel_id)
+    {
+        $sql = "SELECT * 
+                FROM personel_calisma_gecmisi 
+                WHERE personel_id = ? 
+                ORDER BY ise_giris_tarihi DESC, id DESC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$personel_id]);
+        return $stmt->fetchAll(\PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Çalışma geçmişi ekler
+     */
+    public function addCalismaGecmisi($data)
+    {
+        $sql = "INSERT INTO personel_calisma_gecmisi 
+                (personel_id, ise_giris_tarihi, isten_cikis_tarihi, personel_sinifi, saha_takibi, arac_kullanim, sgk_yapilan_firma, disardan_sigortali, gorunum_modulleri, isten_ayrilis_nedeni, isten_ayrilis_belge_yolu) 
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([
+            $data['personel_id'],
+            $data['ise_giris_tarihi'],
+            !empty($data['isten_cikis_tarihi']) ? $data['isten_cikis_tarihi'] : null,
+            $data['personel_sinifi'] ?? 'Beyaz Yaka',
+            $data['saha_takibi'] ?? '0',
+            $data['arac_kullanim'] ?? 'Yok',
+            $data['sgk_yapilan_firma'] ?? 'Yok',
+            $data['disardan_sigortali'] ?? 0,
+            $data['gorunum_modulleri'] ?? null,
+            $data['isten_ayrilis_nedeni'] ?? null,
+            $data['isten_ayrilis_belge_yolu'] ?? null
+        ]);
+    }
+
+    /**
+     * Tek bir çalışma geçmişi kaydını getirir
+     */
+    public function getSingleCalismaGecmisi($id)
+    {
+        $sql = "SELECT * 
+                FROM personel_calisma_gecmisi 
+                WHERE id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$id]);
+        return $stmt->fetch(\PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Çalışma geçmişini günceller
+     */
+    public function updateCalismaGecmisi($data)
+    {
+        $sql = "UPDATE personel_calisma_gecmisi SET 
+                ise_giris_tarihi = ?,
+                isten_cikis_tarihi = ?, 
+                personel_sinifi = ?, 
+                saha_takibi = ?, 
+                arac_kullanim = ?,
+                sgk_yapilan_firma = ?,
+                disardan_sigortali = ?,
+                gorunum_modulleri = ?,
+                isten_ayrilis_nedeni = ?,
+                isten_ayrilis_belge_yolu = ?
+                WHERE id = ?";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([
+            $data['ise_giris_tarihi'],
+            !empty($data['isten_cikis_tarihi']) ? $data['isten_cikis_tarihi'] : null,
+            $data['personel_sinifi'] ?? 'Beyaz Yaka',
+            $data['saha_takibi'] ?? '0',
+            $data['arac_kullanim'] ?? 'Yok',
+            $data['sgk_yapilan_firma'] ?? 'Yok',
+            $data['disardan_sigortali'] ?? 0,
+            $data['gorunum_modulleri'] ?? null,
+            $data['isten_ayrilis_nedeni'] ?? null,
+            $data['isten_ayrilis_belge_yolu'] ?? null,
+            $data['id']
+        ]);
+    }
+
+    /**
+     * Çalışma geçmişini siler
+     */
+    public function deleteCalismaGecmisi($id)
+    {
+        $sql = "DELETE FROM personel_calisma_gecmisi WHERE id = ?";
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute([$id]);
+    }
+
+    /**
+     * Personelin aktif çalışma geçmişi kaydını getirir (bugün geçerli olan)
+     */
+    public function getAktifCalismaGecmisi($personel_id)
+    {
+        $bugun = date('Y-m-d');
+        $sql = "SELECT * FROM personel_calisma_gecmisi 
+                WHERE personel_id = ? 
+                AND ise_giris_tarihi <= ?
+                AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi >= ?)
+                ORDER BY ise_giris_tarihi DESC, id DESC 
+                LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$personel_id, $bugun, $bugun]);
+        return $stmt->fetch(\PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Tarih Çakışması Kontrolü
+     */
+    public function hasCalismaOverlap($personel_id, $baslangic, $bitis, $exclude_id = null)
+    {
+        $params = [$personel_id];
+        $excludeSql = "";
+        if ($exclude_id !== null) {
+            $excludeSql = " AND id != ? ";
+            $params[] = $exclude_id;
+        }
+
+        // Bitiş tarihi boşsa (sonsuz devam ediyor)
+        if (empty($bitis)) {
+            $sql = "SELECT COUNT(*) FROM personel_calisma_gecmisi 
+                    WHERE personel_id = ? 
+                    $excludeSql
+                    AND (
+                        (ise_giris_tarihi <= ? AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi >= ?))
+                        OR (ise_giris_tarihi >= ?)
+                    )";
+            $params[] = $baslangic;
+            $params[] = $baslangic;
+            $params[] = $baslangic;
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchColumn() > 0;
+        } else {
+            // Hem başlangıç hem bitiş tarihi doluysa
+            $sql = "SELECT COUNT(*) FROM personel_calisma_gecmisi 
+                    WHERE personel_id = ? 
+                    $excludeSql
+                    AND (
+                        (ise_giris_tarihi <= ? AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi >= ?))
+                        OR (ise_giris_tarihi <= ? AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi >= ?))
+                        OR (ise_giris_tarihi >= ? AND isten_cikis_tarihi <= ?)
+                    )";
+            $params[] = $baslangic;
+            $params[] = $baslangic;
+            $params[] = $bitis;
+            $params[] = $bitis;
+            $params[] = $baslangic;
+            $params[] = $bitis;
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            return $stmt->fetchColumn() > 0;
+        }
+    }
+
+    /**
+     * Personel tablosunu aktif çalışma geçmişi kaydına göre senkronize eder
+     */
+    public function syncPersonelFromCalismaGecmisi($personel_id)
+    {
+        $aktifKayit = $this->getAktifCalismaGecmisi($personel_id);
+
+        // Eğer şu an aktif bir kayıt yoksa, en son eklenen/başlayacak olan kaydı baz al
+        if (!$aktifKayit) {
+            $sql = "SELECT * FROM personel_calisma_gecmisi 
+                    WHERE personel_id = ? 
+                    ORDER BY ise_giris_tarihi DESC, id DESC 
+                    LIMIT 1";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([$personel_id]);
+            $aktifKayit = $stmt->fetch(\PDO::FETCH_OBJ);
+        }
+
+        if ($aktifKayit) {
+            $sql = "UPDATE {$this->table} SET 
+                    ise_giris_tarihi = ?,
+                    isten_cikis_tarihi = ?,
+                    personel_sinifi = ?,
+                    saha_takibi = ?,
+                    arac_kullanim = ?,
+                    sgk_yapilan_firma = ?, 
+                    disardan_sigortali = ?, 
+                    gorunum_modulleri = ?,
+                    isten_ayrilis_belge_yolu = ?
+                    WHERE id = ?";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute([
+                $aktifKayit->ise_giris_tarihi,
+                $aktifKayit->isten_cikis_tarihi,
+                $aktifKayit->personel_sinifi,
+                ($aktifKayit->saha_takibi == '1' || $aktifKayit->saha_takibi === 1) ? 1 : 0,
+                $aktifKayit->arac_kullanim,
+                $aktifKayit->sgk_yapilan_firma,
+                $aktifKayit->disardan_sigortali,
+                $aktifKayit->gorunum_modulleri,
+                $aktifKayit->isten_ayrilis_belge_yolu,
+                $personel_id
+            ]);
+        }
+
+        return $aktifKayit;
+    }
+
     public function getAdvancedDashboardStats()
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
