@@ -1628,6 +1628,13 @@ $(document).on("change", "#koliExcelFile", function (e) {
 
       let addedCount = 0;
       let skippedCount = 0;
+      let duplicateCount = 0;
+      let addedSerials = new Set();
+      // Mevcut listedeki serileri de ekle
+      $(".koli-basla").each(function() {
+        let existingSeri = $(this).text().trim();
+        if (existingSeri) addedSerials.add(existingSeri);
+      });
       // İlk satır başlık kabul edilerek i=1 'den başlıyoruz.
       for (let i = 1; i < jsonData.length; i++) {
         let row = jsonData[i];
@@ -1683,6 +1690,13 @@ $(document).on("change", "#koliExcelFile", function (e) {
             continue; 
           }
 
+          // Mükerrer seri kontrolü
+          if (addedSerials.has(sSeri)) {
+            duplicateCount++;
+            continue;
+          }
+          addedSerials.add(sSeri);
+
           koliEkle(sSeri, formattedTarih, koliAdedi);
           addedCount++;
         }
@@ -1692,6 +1706,9 @@ $(document).on("change", "#koliExcelFile", function (e) {
         let msg = addedCount + " adet seri numarası eklendi.";
         if (skippedCount > 0) {
             msg += `<br><small class="text-warning">${skippedCount} adet sonu 1 ile bitmeyen ara seri numarası atlandı.</small>`;
+        }
+        if (duplicateCount > 0) {
+            msg += `<br><small class="text-info">${duplicateCount} adet mükerrer seri numarası atlandı.</small>`;
         }
         Swal.fire({
             icon: "success",

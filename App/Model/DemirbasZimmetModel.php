@@ -241,6 +241,23 @@ class DemirbasZimmetModel extends Model
 
             $teslim_miktar = $data['teslim_miktar'] ?? 1;
 
+            // Mükerrer zimmet kontrolü: Aynı demirbaşa, aynı personele, aynı tarihte aktif zimmet var mı?
+            $dupCheck = $this->db->prepare("
+                SELECT id FROM {$this->table} 
+                WHERE demirbas_id = ? AND personel_id = ? AND teslim_tarihi = ? AND durum = 'teslim' AND silinme_tarihi IS NULL
+                LIMIT 1
+            ");
+            $dupCheck->execute([$data['demirbas_id'], $data['personel_id'], $data['teslim_tarihi']]);
+            $existingZimmet = $dupCheck->fetch(PDO::FETCH_OBJ);
+
+            if ($existingZimmet) {
+                // Miktar 1 olan demirbaşlar (sayaç vb.) için tamamen engelle
+                if ((int)($demirbasData->miktar ?? 1) <= 1) {
+                    throw new \Exception("Bu demirbaş için aynı personele aynı tarihte zaten aktif bir zimmet kaydı bulunmaktadır. (Zimmet ID: {$existingZimmet->id})");
+                }
+                // Miktar > 1 olanlar (aparat vb.) için uyarı verme, stok kontrolü yeterli
+            }
+
             if ($demirbasData->kalan_miktar < $teslim_miktar) {
                 throw new \Exception("Yeterli stok bulunmuyor. Mevcut: {$demirbasData->kalan_miktar}");
             }

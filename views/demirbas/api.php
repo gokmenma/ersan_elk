@@ -577,6 +577,13 @@ if ($action == "zimmet-ver") {
             foreach ($secilenIds as $enc_id) {
                 $id = intval(Security::decrypt($enc_id));
                 if ($id > 0) {
+                    // Mükerrer zimmet kontrolü
+                    $dupCheck = $Demirbas->db->prepare("SELECT id FROM demirbas_zimmet WHERE demirbas_id = ? AND personel_id = ? AND teslim_tarihi = ? AND durum = 'teslim' AND silinme_tarihi IS NULL LIMIT 1");
+                    $dupCheck->execute([$id, $personel_id, $tarih]);
+                    if ($dupCheck->fetch()) {
+                        continue; // Zaten aktif zimmet var, atla
+                    }
+
                     $Zimmet->saveWithAttr([
                         "id" => 0,
                         "demirbas_id" => $id,
@@ -605,6 +612,15 @@ if ($action == "zimmet-ver") {
             // Tekli
             $id = intval($_POST['demirbas_id']);
             if ($id > 0) {
+                // Mükerrer zimmet kontrolü
+                $dupCheck = $Demirbas->db->prepare("SELECT id FROM demirbas_zimmet WHERE demirbas_id = ? AND personel_id = ? AND teslim_tarihi = ? AND durum = 'teslim' AND silinme_tarihi IS NULL LIMIT 1");
+                $dupCheck->execute([$id, $personel_id, $tarih]);
+                $existingDup = $dupCheck->fetch();
+                if ($existingDup) {
+                    $Demirbas->db->commit();
+                    jsonResponse("error", "Bu demirbaş için aynı personele aynı tarihte zaten aktif bir zimmet kaydı bulunmaktadır.");
+                }
+
                 $Zimmet->saveWithAttr([
                     "id" => 0,
                     "demirbas_id" => $id,
