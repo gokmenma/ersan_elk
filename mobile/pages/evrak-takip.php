@@ -291,6 +291,21 @@ function openNewEvrak() {
     const form = document.getElementById('evrakForm');
     form.reset();
     form.id.value = '';
+    
+    // Reset subject select & input
+    document.getElementById('evrak_konu_select').value = '';
+    document.getElementById('konu_manuel_container').classList.add('hidden');
+    document.getElementById('konu_manuel').value = '';
+    document.getElementById('form_konu').value = '';
+    
+    // Reset traffic fine details
+    document.getElementById('trafficFineSection').classList.add('hidden');
+    document.getElementById('plaka').value = '';
+    document.getElementById('ceza_tutari').value = '';
+    document.getElementById('tutar').value = '';
+    document.getElementById('plakaFeedback').style.display = 'none';
+    document.getElementById('plakaFeedback').innerHTML = '';
+    
     document.getElementById('bs-title').innerText = 'Yeni Evrak Kaydı';
     openSheet('evrak');
 }
@@ -314,7 +329,30 @@ function editEvrak(id) {
             form.id.value = data.id;
             form.tarih.value = data.tarih;
             form.evrak_no.value = data.evrak_no;
-            form.konu.value = data.konu;
+            
+            // Populate konu select & input
+            const predefinedKonular = ['İcra Yazısı', 'Haciz Kaldırma Yazısı', 'Maaş Haczi', 'Sigorta Giriş/Çıkış', 'Resmi Yazışma', 'Trafik Cezası'];
+            if (data.konu && predefinedKonular.includes(data.konu)) {
+                document.getElementById('evrak_konu_select').value = data.konu;
+                document.getElementById('konu_manuel_container').classList.add('hidden');
+                document.getElementById('konu_manuel').value = '';
+            } else if (data.konu) {
+                document.getElementById('evrak_konu_select').value = 'manuel';
+                document.getElementById('konu_manuel_container').classList.remove('hidden');
+                document.getElementById('konu_manuel').value = data.konu;
+            } else {
+                document.getElementById('evrak_konu_select').value = '';
+                document.getElementById('konu_manuel_container').classList.add('hidden');
+                document.getElementById('konu_manuel').value = '';
+            }
+            form.konu.value = data.konu || '';
+            checkTrafficFineVisibility(data.konu || '');
+            
+            // Populate traffic fine details
+            if (form.plaka) form.plaka.value = data.plaka || '';
+            if (form.ceza_tutari) form.ceza_tutari.value = data.ceza_tutari || '';
+            if (form.tutar) form.tutar.value = data.tutar || '';
+            
             form.kurum_adi.value = data.kurum_adi;
             form.personel_id.value = data.personel_id;
             form.ilgili_personel_id.value = data.ilgili_personel_id;

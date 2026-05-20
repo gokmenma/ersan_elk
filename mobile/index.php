@@ -115,6 +115,19 @@ foreach ($all_mobile_menus as $pKey => $mData) {
         }
     }
 
+    // Fallback Gate checks for personel, arac, talepler, gorevler
+    if (!$hasAccess) {
+        if ($pKey === 'personel' && \App\Service\Gate::allows('personel_listesi')) {
+            $hasAccess = true;
+        } elseif ($pKey === 'arac' && \App\Service\Gate::allows('arac_takip_yonetim')) {
+            $hasAccess = true;
+        } elseif ($pKey === 'talepler' && \App\Service\Gate::allows('talepler')) {
+            $hasAccess = true;
+        } elseif ($pKey === 'gorevler' && \App\Service\Gate::allows('gorevler')) {
+            $hasAccess = true;
+        }
+    }
+
     if ($hasAccess) {
         $user_mobile_menus[$pKey] = $mData;
     }
