@@ -1036,6 +1036,20 @@ class PersonelModel extends Model
     }
 
     /**
+     * Personelin en eski çalışma geçmişi (işe giriş) tarihini getirir
+     */
+    public function getEarliestCalismaGecmisiDate($personel_id)
+    {
+        $sql = "SELECT MIN(ise_giris_tarihi) as earliest_date 
+                FROM personel_calisma_gecmisi 
+                WHERE personel_id = ?";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$personel_id]);
+        $res = $stmt->fetch(PDO::FETCH_OBJ);
+        return $res ? $res->earliest_date : null;
+    }
+
+    /**
      * Personelin görev (maaş) geçmişini getirir
      */
     public function getGorevGecmisi($personel_id)

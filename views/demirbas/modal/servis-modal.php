@@ -52,7 +52,7 @@ foreach ($personeller as $p) {
 
 
                         <div class="col-md-12">
-                            <?php echo Form::FormSelect2('teslim_eden_personel_id', $personelOptions, null, 'Servise Teslim Eden Personel *', 'user', 'form-control select2', true); ?>
+                            <?php echo Form::FormSelect2('teslim_eden_personel_id', $personelOptions, null, 'Servise Teslim Eden Personel *', 'user', 'key', '', 'form-control select2', true); ?>
                         </div>
 
                         <div class="col-md-12">
