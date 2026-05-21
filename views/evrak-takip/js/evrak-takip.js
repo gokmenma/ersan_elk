@@ -135,8 +135,9 @@ $(document).ready(function () {
   }
 
   function checkBildirimVisibility() {
-    const val = $("#ilgili_personel_id").val();
-    if (val && val !== "" && val != "0") {
+    const personel = $("#personel_id").val();
+    const ilgili = $("#ilgili_personel_id").val();
+    if ((personel && personel !== "" && personel != "0") || (ilgili && ilgili !== "" && ilgili != "0")) {
       $("#bildirimContainer").removeClass("d-none").addClass("d-flex");
     } else {
       $("#bildirimContainer").addClass("d-none").removeClass("d-flex");
@@ -154,7 +155,7 @@ $(document).ready(function () {
   }
 
   // Events
-  $(document).on("change", "#ilgili_personel_id", checkBildirimVisibility);
+  $(document).on("change", "#ilgili_personel_id, #personel_id", checkBildirimVisibility);
   $(document).on("change", "#cevap_verildi", checkCevapVisibility);
   $(document).on("keyup change", "#plaka", queryAracZimmet);
   $(document).on("change", "input[name='tarih']", queryAracZimmet);

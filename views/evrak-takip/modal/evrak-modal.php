@@ -112,7 +112,7 @@ $araclar_list = $db_conn->db->query("SELECT id, plaka, marka, model FROM araclar
                             <div id="bildirimContainer" class="mb-3 px-3 d-none align-items-center justify-content-between bg-light rounded-3 py-2 border border-dashed">
                                 <div class="d-flex align-items-center">
                                     <i data-feather="bell" class="text-warning me-2" style="width: 18px;"></i>
-                                    <span class="small fw-bold text-muted">İlgili Personele Bildir</span>
+                                    <span class="small fw-bold text-muted">Personele Bildirim Gönder</span>
                                 </div>
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" name="personel_bildirim_durumu" value="1" id="personel_bildir">

@@ -64,7 +64,7 @@ $araclar_list = $db_conn->db->query("SELECT id, plaka, marka, model FROM araclar
         <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 space-y-4">
             <div>
                 <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">Zimmetli Personel (Ofis)</label>
-                <select name="personel_id" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-sky-500 outline-none transition-all dark:text-white">
+                <select name="personel_id" id="personel_id" onchange="checkBildirimVisibility()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-sky-500 outline-none transition-all dark:text-white">
                     <option value="">Seçiniz...</option>
                     <?php foreach ($ofisPersoneller as $p): ?>
                         <option value="<?= $p->id ?>"><?= htmlspecialchars($p->adi_soyadi) ?></option>
@@ -73,12 +73,24 @@ $araclar_list = $db_conn->db->query("SELECT id, plaka, marka, model FROM araclar
             </div>
             <div>
                 <label class="block text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">İlgili Personel</label>
-                <select name="ilgili_personel_id" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-sky-500 outline-none transition-all dark:text-white">
+                <select name="ilgili_personel_id" id="ilgili_personel_id" onchange="checkBildirimVisibility()" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-sky-500 outline-none transition-all dark:text-white">
                     <option value="">Seçiniz...</option>
                     <?php foreach ($personeller as $p): ?>
                         <option value="<?= $p->id ?>"><?= htmlspecialchars($p->adi_soyadi) ?></option>
                     <?php endforeach; ?>
                 </select>
+            </div>
+
+            <!-- Personele Bildirim Gönder Switch -->
+            <div id="bildirimContainer" class="hidden items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700">
+                <div class="flex items-center gap-2">
+                    <span class="material-symbols-outlined text-amber-500 text-lg">notifications</span>
+                    <span class="text-xs font-bold text-slate-600 dark:text-slate-300">Personele Bildirim Gönder</span>
+                </div>
+                <label class="relative inline-flex items-center cursor-pointer">
+                    <input type="checkbox" name="personel_bildirim_durumu" id="personel_bildir" value="1" class="sr-only peer">
+                    <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-amber-500"></div>
+                </label>
             </div>
         </div>
 
@@ -289,5 +301,21 @@ function saveEvrak() {
         }
     })
     .catch(() => MobileSwal.fire('Hata', 'Sunucu hatası', 'error'));
+}
+
+function checkBildirimVisibility() {
+    const personel = document.querySelector('select[name="personel_id"]').value;
+    const ilgili = document.querySelector('select[name="ilgili_personel_id"]').value;
+    const container = document.getElementById('bildirimContainer');
+    const checkbox = document.getElementById('personel_bildir');
+    
+    if ((personel && personel !== '' && personel !== '0') || (ilgili && ilgili !== '' && ilgili !== '0')) {
+        container.classList.remove('hidden');
+        container.classList.add('flex');
+    } else {
+        container.classList.add('hidden');
+        container.classList.remove('flex');
+        checkbox.checked = false;
+    }
 }
 </script>

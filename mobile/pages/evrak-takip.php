@@ -306,6 +306,11 @@ function openNewEvrak() {
     document.getElementById('plakaFeedback').style.display = 'none';
     document.getElementById('plakaFeedback').innerHTML = '';
     
+    // Reset notification state
+    if (typeof checkBildirimVisibility === 'function') {
+        checkBildirimVisibility();
+    }
+    
     document.getElementById('bs-title').innerText = 'Yeni Evrak Kaydı';
     openSheet('evrak');
 }
@@ -370,6 +375,14 @@ function editEvrak(id) {
                 form.cevap_tarihi.value = data.cevap_tarihi;
             } else {
                 form.ilgili_evrak_id.value = data.ilgili_evrak_id;
+            }
+            
+            // Set notification checkbox and visibility
+            if (form.personel_bildirim_durumu) {
+                form.personel_bildirim_durumu.checked = data.personel_bildirim_durumu == 1;
+            }
+            if (typeof checkBildirimVisibility === 'function') {
+                checkBildirimVisibility();
             }
             
             document.getElementById('bs-title').innerText = 'Evrak Düzenle';
