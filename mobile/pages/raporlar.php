@@ -283,6 +283,7 @@ document.addEventListener('DOMContentLoaded', () => {
         dateFormat: "Y-m-d",
         locale: "tr",
         maxDate: "today",
+        disableMobile: true,
         onClose: function(selectedDates, dateStr, instance) {
             if (selectedDates.length > 0) {
                 const start = instance.formatDate(selectedDates[0], "Y-m-d");
@@ -304,6 +305,7 @@ document.addEventListener('DOMContentLoaded', () => {
         ],
         locale: "tr",
         maxDate: "today",
+        disableMobile: true,
         onClose: function(selectedDates, dateStr, instance) {
             if (selectedDates.length > 0) {
                 const date = selectedDates[0];
