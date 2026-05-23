@@ -443,7 +443,7 @@ foreach ($cards as $c) {
                     
                     $clickId = $c['is_kacak'] ? $c['compositeKey'] : $c['pId'];
                 ?>
-                    <div class="bg-slate-50 dark:bg-card-dark rounded-xl p-3 flex flex-col active:scale-[0.98] transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700 group" onclick="window.openPersonelMonthlyDetails('<?= htmlspecialchars($clickId, ENT_QUOTES) ?>', '<?= htmlspecialchars($c['name'], ENT_QUOTES) ?>', '<?= $activeTab ?>')">
+                    <div class="bg-slate-50 dark:bg-card-dark rounded-xl p-3 flex flex-col active:scale-[0.98] transition-all cursor-pointer border border-transparent hover:border-slate-200 dark:hover:border-slate-700 group" onclick="window.openPersonelMonthlyDetails('<?= htmlspecialchars($clickId, ENT_QUOTES) ?>', '<?= htmlspecialchars($c['name'], ENT_QUOTES) ?>', '<?= $activeTab ?>', '<?= htmlspecialchars($c['compositeKey'] ?? '', ENT_QUOTES) ?>')">
                         <div class="flex items-center gap-3">
                             <div class="w-12 h-12 shrink-0 bg-primary/10 rounded-xl flex flex-col items-center justify-center text-primary font-black shadow-inner shadow-primary/10">
                                 <span class="text-[18px] leading-none mb-0.5"><?= $operationCount ?></span>

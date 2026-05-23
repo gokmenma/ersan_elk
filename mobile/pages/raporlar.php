@@ -244,7 +244,7 @@ document.querySelectorAll('.rapor-tab').forEach(btn => {
     });
 });
 
-window.openPersonelMonthlyDetails = function(pId, pName, activeTabParam) {
+window.openPersonelMonthlyDetails = function(pId, pName, activeTabParam, compositeKey) {
     document.getElementById('pd_name').innerText = pName;
     document.getElementById('filterModalOverlay').classList.remove('pointer-events-none', 'opacity-0');
     document.getElementById('personelDetailModal').classList.remove('translate-y-full');
@@ -264,6 +264,10 @@ window.openPersonelMonthlyDetails = function(pId, pName, activeTabParam) {
         start_date: currentStartDate,
         end_date: currentEndDate
     });
+    
+    if (compositeKey) {
+        uParams.append('composite_key', compositeKey);
+    }
     
     fetch('../views/puantaj/api.php?' + uParams.toString())
         .then(response => response.text())

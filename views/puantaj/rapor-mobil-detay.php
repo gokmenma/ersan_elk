@@ -15,6 +15,7 @@ $pId = $_GET['pId'] ?? 0;
 $activeTab = $_GET['tab'] ?? 'okuma';
 $startDateStr = $_GET['start_date'] ?? null;
 $endDateStr = $_GET['end_date'] ?? null;
+$compositeKeyFilter = $_GET['composite_key'] ?? null;
 
 if (!$startDateStr) {
     $year = $_GET['year'] ?? date('Y');
@@ -57,6 +58,9 @@ if (isset($summary[$pId])) {
     if ($activeTab === 'okuma') {
         // Okuma summary is [pId][compKey][day]
         foreach($summary[$pId] as $compKey => $dayDataArray) {
+            if ($compositeKeyFilter !== null && $compKey !== $compositeKeyFilter) {
+                continue;
+            }
             foreach($dayDataArray as $day => $val) {
                 if(!isset($personelData[$day])) $personelData[$day] = [];
                 $personelData[$day]['Okunan Abone'] = ($personelData[$day]['Okunan Abone'] ?? 0) + (int)$val;
@@ -71,6 +75,9 @@ if (isset($summary[$pId])) {
     } else {
         // Determine the compositeKey, we might have multiple teams for the same person
         foreach($summary[$pId] as $compKey => $dayDataArray) {
+            if ($compositeKeyFilter !== null && $compKey !== $compositeKeyFilter) {
+                continue;
+            }
             // Collect by day
             foreach($dayDataArray as $day => $vals) {
                 if(!isset($personelData[$day])) $personelData[$day] = [];
