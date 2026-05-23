@@ -1,2 +1,0 @@
-
-Warning: Undefined variable $isInclusive in C:\xampp\htdocs\ersan_elk\views\bordro\api.php on line 991

@@ -318,8 +318,10 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
         $stmtAllHist = $EndeksOkuma->db->prepare("SELECT ekip_kodu_id, personel_id, baslangic_tarihi, bitis_tarihi FROM personel_ekip_gecmisi");
         $stmtAllHist->execute();
         $ekipGecmisi = [];
+        $personelGecmisi = [];
         while ($h = $stmtAllHist->fetch(PDO::FETCH_ASSOC)) {
             $ekipGecmisi[$h['ekip_kodu_id']][] = $h;
+            $personelGecmisi[$h['personel_id']][] = $h;
         }
 
         // 2. Sorgulanan tarihteki mevcut kayıtları soft-delete et (Transaction içinde çalışacak şekilde SQL hazırla)
@@ -372,7 +374,23 @@ function sorgulamaEndeks($ilkFirma, $sonFirma, $tarih, $firmaId, $Settings)
 
             if (isset($personelByName[$okuyucuAdi])) {
                 $pId = $personelByName[$okuyucuAdi]['id'];
-                $ekipKoduId = $personelByName[$okuyucuAdi]['ekip_no'];
+                
+                // Ekip geçmişinden o tarihteki ekibini bulmaya çalış
+                $foundTeamFromHist = false;
+                if (isset($personelGecmisi[$pId])) {
+                    foreach ($personelGecmisi[$pId] as $hist) {
+                        if ($hist['baslangic_tarihi'] <= $normDate && ($hist['bitis_tarihi'] === null || $hist['bitis_tarihi'] >= $normDate)) {
+                            $ekipKoduId = $hist['ekip_kodu_id'];
+                            $foundTeamFromHist = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!$foundTeamFromHist) {
+                    $ekipKoduId = $personelByName[$okuyucuAdi]['ekip_no'];
+                }
+                
                 $personelMatches[] = $pId;
             } else {
                 if (preg_match('/EK[İI\?]?P-?\s?(\d+)/ui', $okuyucuAdi, $m)) {

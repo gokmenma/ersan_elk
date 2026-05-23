@@ -2345,8 +2345,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $stmtAllHist = $EndeksOkuma->db->prepare("SELECT ekip_kodu_id, personel_id, baslangic_tarihi, bitis_tarihi FROM personel_ekip_gecmisi");
         $stmtAllHist->execute();
         $ekipGecmisi = [];
+        $personelGecmisi = [];
         while ($h = $stmtAllHist->fetch(PDO::FETCH_ASSOC)) {
             $ekipGecmisi[$h['ekip_kodu_id']][] = $h;
+            $personelGecmisi[$h['personel_id']][] = $h;
         }
 
         // 2. Sorgulanan tarih aralığındaki mevcut kayıtları soft-delete et (SQL'i hazırlıyoruz, transaction içinde işlenecek)
@@ -2385,7 +2387,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
             if (isset($personelByName[$okuyucuAdi])) {
                 $personelId = $personelByName[$okuyucuAdi]['id'];
-                $ekipKoduId = $personelByName[$okuyucuAdi]['ekip_no'];
+                
+                // Ekip geçmişinden o tarihteki ekibini bulmaya çalış
+                $foundTeamFromHist = false;
+                if (isset($personelGecmisi[$personelId])) {
+                    foreach ($personelGecmisi[$personelId] as $hist) {
+                        if ($hist['baslangic_tarihi'] <= $normDate && ($hist['bitis_tarihi'] === null || $hist['bitis_tarihi'] >= $normDate)) {
+                            $ekipKoduId = $hist['ekip_kodu_id'];
+                            $foundTeamFromHist = true;
+                            break;
+                        }
+                    }
+                }
+                
+                if (!$foundTeamFromHist) {
+                    $ekipKoduId = $personelByName[$okuyucuAdi]['ekip_no'];
+                }
             } else {
                 $ekipNo = \App\Helper\EkipHelper::extractTeamNo($veri['OKUYUCUADI'] ?? '');
                 if ($ekipNo > 0) {
