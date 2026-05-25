@@ -16,11 +16,10 @@ $ilceTipi = $_GET['ilce_tipi'] ?? '';
 $bolge = $_GET['bolge'] ?? '';
 $defter = $_GET['defter'] ?? '';
 
-// Bölge ve Defter listelerini endeks_okuma tablosundan çek
+// Bölge ve Defter listelerini central modelden çek
 $firmaId = $_SESSION['firma_id'] ?? 0;
-$bolgeListStmt = $EndeksOkuma->db->prepare("SELECT DISTINCT defter_bolge FROM tanimlamalar WHERE firma_id = ? AND grup = 'defter_kodu' AND silinme_tarihi IS NULL AND defter_bolge IS NOT NULL AND defter_bolge != '' ORDER BY defter_bolge");
-$bolgeListStmt->execute([$firmaId]);
-$bolgeListRaw = $bolgeListStmt->fetchAll(PDO::FETCH_COLUMN);
+$Tanimlar = new \App\Model\TanimlamalarModel();
+$bolgeListRaw = $Tanimlar->getFilteredEkipBolgeleri();
 $bolgeOptions = ['' => 'Seçiniz...'];
 foreach ($bolgeListRaw as $b) {
     $bolgeOptions[$b] = $b;
@@ -2660,6 +2659,25 @@ padding-bottom:  10px !important;
             oran: true,
             degisim: false
         };
+        try {
+            const savedCols = localStorage.getItem('defter_bazli_rapor_visible_columns');
+            if (savedCols) {
+                const parsed = JSON.parse(savedCols);
+                if (parsed && typeof parsed === 'object') {
+                    _visibleColumns = { ..._visibleColumns, ...parsed };
+                }
+            }
+        } catch (e) {
+            console.error('Failed to load columns from localStorage', e);
+        }
+
+        // Set initial checkbox states based on loaded _visibleColumns
+        $('.col-toggle').each(function() {
+            const col = $(this).data('col');
+            if (col in _visibleColumns) {
+                $(this).prop('checked', _visibleColumns[col]);
+            }
+        });
         let _columnOrder = null; // Will store the array of period strings
         let _viewMode = 'period'; // 'period' (Dönem Bazlı) or 'type' (Tür Bazlı)
         let _typeOrder = ['abone', 'okunan', 'degisim', 'oran'];
@@ -3632,6 +3650,12 @@ padding-bottom:  10px !important;
             const col = $(this).data('col');
             const isVisible = $(this).is(':checked');
             _visibleColumns[col] = isVisible;
+
+            try {
+                localStorage.setItem('defter_bazli_rapor_visible_columns', JSON.stringify(_visibleColumns));
+            } catch (e) {
+                console.error('Failed to save columns to localStorage', e);
+            }
 
             if (_tableData && _tableData.length > 0) {
                 renderTable(_tableData, _tableDonemler, true);

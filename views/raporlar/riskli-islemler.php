@@ -15,7 +15,7 @@ $calcType = $_GET['calc_type'] ?? 'normal'; // 'total' or 'normal'
 $thresholdInput = $_GET['threshold'] ?? 60; // Default %60
 $threshold = (float)$thresholdInput / 100;
 
-$regionList = $Tanimlar->getEkipBolgeleri();
+$regionList = $Tanimlar->getFilteredEkipBolgeleri();
 $regionOptions = ['' => 'Tüm Bölgeler'];
 foreach ($regionList as $r) {
     $regionOptions[$r] = $r;

@@ -45,7 +45,7 @@ foreach ($workResults as $wr) {
 }
 
 $Tanimlar = new \App\Model\TanimlamalarModel();
-$regionList = $Tanimlar->getEkipBolgeleri();
+$regionList = $Tanimlar->getFilteredEkipBolgeleri();
 $regionOptions = ['' => 'Tüm Bölgeler'];
 foreach ($regionList as $r) {
     $regionOptions[$r] = $r;

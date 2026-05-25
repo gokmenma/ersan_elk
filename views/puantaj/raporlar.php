@@ -41,7 +41,7 @@ foreach ($personelList as $p) {
     $personelOptions[$p->id] = $p->adi_soyadi;
 }
 
-$regionList = $Tanimlamalar->getEkipBolgeleri();
+$regionList = $Tanimlamalar->getFilteredEkipBolgeleri();
 $regionOptions = ['' => 'Tüm Bölgeler'];
 foreach ($regionList as $r) {
     $regionOptions[$r] = $r;

@@ -9,7 +9,7 @@ $gecmis = $id > 0 ? $PersonelModel->getEkipGecmisi($id) : [];
 $ekip_kodlari_raw = $TanimlamalarModel->getMusaitEkipKodlari();
 
 /** Ekip Bölgeleri */
-$ekip_bolgeleri_raw = $TanimlamalarModel->getEkipBolgeleri();
+$ekip_bolgeleri_raw = $TanimlamalarModel->getFilteredEkipBolgeleri();
 $ekip_bolge_options = ['' => 'Tüm Bölgeler'];
 foreach ($ekip_bolgeleri_raw as $bolge) {
     if ($bolge)

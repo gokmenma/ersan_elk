@@ -515,6 +515,23 @@ class TanimlamalarModel extends Model
     }
 
     /**
+     * Filtrelenmiş ekip bölgelerini getirir ("Tüm ilçeler", "Tüm i̇lçeler", "Merkez" hariç)
+     * @return array Filtrelenmiş bölgeler listesi
+     */
+    public function getFilteredEkipBolgeleri()
+    {
+        $regionList = $this->getEkipBolgeleri();
+        $filtered = [];
+        foreach ($regionList as $r) {
+            $trimmedLower = trim(mb_strtolower($r, 'UTF-8'));
+            if ($r && $trimmedLower !== 'tüm ilçeler' && $trimmedLower !== 'tüm i̇lçeler' && $trimmedLower !== 'merkez') {
+                $filtered[] = $r;
+            }
+        }
+        return $filtered;
+    }
+
+    /**
      * Defter kodlarını getirir
      * @return array Defter kodları listesi
      */

@@ -13,7 +13,7 @@ $allPersonnelRaw = $Personel->all(true, 'puantaj');
 $allPersonnel = array_merge([(object)['id' => '', 'adi_soyadi' => 'Tüm Personeller']], $allPersonnelRaw);
 
 $Tanimlar = new \App\Model\TanimlamalarModel();
-$regionList = $Tanimlar->getEkipBolgeleri();
+$regionList = $Tanimlar->getFilteredEkipBolgeleri();
 $regionOptions = ['' => 'Tüm Bölgeler'];
 foreach ($regionList as $r) {
     $regionOptions[$r] = $r;
@@ -92,7 +92,12 @@ for ($i = 0; $i < 24; $i++) {
 
 <div class="row">
     <div class="col-12">
-        <h6 class="text-primary mb-3"><i data-feather="bar-chart-2" class="me-1"></i> Aylık Karşılaştırma</h6>
+        <div class="d-flex align-items-center justify-content-between mb-3">
+            <h6 class="text-primary mb-0"><i data-feather="bar-chart-2" class="me-1"></i> Aylık Karşılaştırma</h6>
+            <div id="chartTotalBadge" class="badge bg-primary-subtle text-primary fs-12 py-2 px-3 rounded-pill fw-bold shadow-sm d-none">
+                <i class="bx bx-check-double me-1 align-middle fs-14"></i> Toplam Okuma: <span id="chartTotalVal" class="fs-13 fw-extrabold ms-1">0</span>
+            </div>
+        </div>
         
         <!-- Chart Container -->
         <div id="view-chart" class="view-container">
@@ -166,6 +171,7 @@ for ($i = 0; $i < 24; $i++) {
                     $('#compHeaderRows').html('');
                     $('#compBodyRows').html('');
                     $('#compFooterRows').html('');
+                    $('#chartTotalBadge').addClass('d-none');
                     return;
                 }
 
@@ -197,6 +203,7 @@ for ($i = 0; $i < 24; $i++) {
                     
                     series.push({
                         name: type,
+                        type: 'column',
                         data: typeData
                     });
                 });
@@ -225,34 +232,157 @@ for ($i = 0; $i < 24; $i++) {
                 footerHtml += `<td class="text-center bg-light fw-bold">${grandTotal.toLocaleString('tr-TR')}</td></tr>`;
                 $('#compFooterRows').html(footerHtml);
 
+                // Toplam Badge Güncelle
+                $('#chartTotalVal').text(grandTotal.toLocaleString('tr-TR'));
+                $('#chartTotalBadge').removeClass('d-none').hide().fadeIn(300);
+
+                // Calculate period totals for Toplam line
+                const periodTotals = data.periods.map(p => {
+                    let total = 0;
+                    data.types.forEach(type => {
+                        const val = (data.matrix[type] && data.matrix[type][p]) ? data.matrix[type][p] : 0;
+                        total += val;
+                    });
+                    return total;
+                });
+
+                series.push({
+                    name: 'Toplam Okuma',
+                    type: 'line',
+                    data: periodTotals
+                });
+
                 // Grafiği Oluştur
                 if (comparisonChart) comparisonChart.destroy();
                 
+                const colors = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#06B6D4', '#6366F1', '#EC4899', '#8B5CF6', '#14B8A6', '#F43F5E', '#84CC16', '#A855F7', '#FF7A00'];
+                const chartColors = colors.slice(0, data.types.length);
+                chartColors.push('#4F46E5'); // Indigo for Total Line
+                
+                const strokeWidths = data.types.map(() => 2);
+                strokeWidths.push(4); // Thicker Toplam line
+                
+                const strokeDashArrays = data.types.map(() => 0);
+                strokeDashArrays.push(0);
+
                 const options = {
                     series: series,
                     chart: {
-                        type: 'bar',
-                        height: 400,
-                        stacked: false,
-                        toolbar: { show: true }
+                        type: 'line',
+                        height: 420,
+                        toolbar: { show: true },
+                        zoom: { enabled: false },
+                        dropShadow: {
+                            enabled: true,
+                            enabledOnSeries: [data.types.length], // Glow/shadow only on the Toplam line
+                            top: 4,
+                            left: 1,
+                            blur: 4,
+                            color: '#4F46E5',
+                            opacity: 0.35
+                        },
+                        fontFamily: 'Inter, sans-serif'
+                    },
+                    stroke: {
+                        width: strokeWidths,
+                        curve: 'smooth',
+                        dashArray: strokeDashArrays
                     },
                     plotOptions: {
                         bar: {
                             horizontal: false,
                             columnWidth: '55%',
-                            endingShape: 'rounded',
+                            borderRadius: 6,
+                            borderRadiusApplication: 'end',
                             dataLabels: { position: 'top' }
                         },
                     },
                     dataLabels: {
                         enabled: true,
-                        offsetY: -20,
-                        style: { fontSize: '12px', colors: ["#304758"] }
+                        enabledOnSeries: [...data.types.keys(), data.types.length],
+                        offsetY: -15,
+                        style: { fontSize: '11px', fontWeight: 600, colors: ["#334155"] },
+                        background: {
+                            enabled: true,
+                            foreColor: '#ffffff',
+                            padding: 4,
+                            borderRadius: 4,
+                            borderWidth: 1,
+                            borderColor: '#ffffff',
+                            opacity: 0.9,
+                            dropShadow: { enabled: false }
+                        },
+                        formatter: function (val) {
+                            return val.toLocaleString('tr-TR');
+                        }
                     },
-                    xaxis: { categories: data.periods },
-                    legend: { position: 'bottom' },
-                    fill: { opacity: 1 },
-                    colors: ['#34c38f', '#556ee6', '#f1b44c', '#f46a6a', '#50a5f1', '#74788d', '#343a40', '#927fbf', '#e83e8c', '#2ab57d']
+                    markers: {
+                        size: data.types.map(() => 0).concat([6]), // Only marker for Toplam
+                        colors: ['#ffffff'],
+                        strokeColors: '#4F46E5',
+                        strokeWidth: 3,
+                        hover: { size: 8 }
+                    },
+                    xaxis: { 
+                        categories: data.periods,
+                        axisBorder: { show: false },
+                        axisTicks: { show: false },
+                        labels: {
+                            style: { colors: '#64748b', fontSize: '11px', fontWeight: 500 }
+                        }
+                    },
+                    yaxis: [
+                        {
+                            title: {
+                                text: 'Okuma Sayısı (Durum Bazlı)',
+                                style: { color: '#64748b', fontSize: '12px', fontWeight: 600 }
+                            },
+                            labels: {
+                                style: { colors: '#64748b', fontSize: '11px' },
+                                formatter: function(val) { return Math.round(val).toLocaleString('tr-TR'); }
+                            }
+                        },
+                        {
+                            opposite: true,
+                            title: {
+                                text: 'Toplam Okuma Sayısı',
+                                style: { color: '#4F46E5', fontSize: '12px', fontWeight: 600 }
+                            },
+                            labels: {
+                                style: { colors: '#4F46E5', fontSize: '11px', fontWeight: 500 },
+                                formatter: function(val) { return Math.round(val).toLocaleString('tr-TR'); }
+                            }
+                        }
+                    ],
+                    legend: { 
+                        position: 'bottom',
+                        horizontalAlign: 'center',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        labels: { colors: '#334155' },
+                        markers: { radius: 12 },
+                        itemMargin: { horizontal: 10, vertical: 5 }
+                    },
+                    fill: { 
+                        opacity: data.types.map(() => 0.85).concat([1]),
+                    },
+                    colors: chartColors,
+                    tooltip: {
+                        shared: true,
+                        intersect: false,
+                        y: {
+                            formatter: function (y) {
+                                if (typeof y !== "undefined") {
+                                    return y.toLocaleString('tr-TR') + " adet";
+                                }
+                                return y;
+                            }
+                        }
+                    },
+                    grid: {
+                        borderColor: '#f1f5f9',
+                        padding: { top: 10, bottom: 5 }
+                    }
                 };
 
                 $('#okumaComparisonChart').html('');

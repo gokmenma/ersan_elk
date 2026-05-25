@@ -104,7 +104,7 @@ if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma', 'kacakkontrol'])) {
     }
 }
 
-$regions = $Tanimlamalar->getEkipBolgeleri();
+$regions = $Tanimlamalar->getFilteredEkipBolgeleri();
 
 if ($filterRegion) {
     $regions = array_filter($regions, function ($r) use ($filterRegion) {
