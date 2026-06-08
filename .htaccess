@@ -1,4 +1,3 @@
-<IfModule mod_rewrite.c>
 RewriteEngine on 
 
 # Eğer dizin değilse ve dosya varsa
@@ -10,8 +9,7 @@ RewriteRule ^(.*)$ $1.php [L]
 RewriteRule ^evrak.pdf$ goruntule.php [QSA,L]
 
 # Belirli bir desenle eşleşen URL'leri .php dosyasına yönlendir
-RewriteRule ^([a-z]+)\/?$ $1.php [NC,L]  
-</IfModule>
+RewriteRule ^([a-z]+)\/?$ $1.php [NC,L]
 
 
 # RewriteCond %{HTTPS} !=on

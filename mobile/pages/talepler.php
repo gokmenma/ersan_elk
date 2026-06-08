@@ -121,6 +121,47 @@ function formatDateOnlyMobile($dateStr) {
         </a>
     </div>
 
+    <!-- Filtre ve Sıralama Barı -->
+    <div class="bg-white dark:bg-card-dark border border-slate-200/60 dark:border-slate-800 rounded-xl p-3 shadow-sm flex gap-3 items-center mt-3">
+        <!-- Durum Filtresi Dropdown -->
+        <div class="flex-1 relative" id="filter-dropdown-container">
+            <label class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1 ml-1">DURUM FİLTRESİ</label>
+            <div class="relative">
+                <button type="button" onclick="toggleDropdown('filter')" id="filter-dropdown-btn" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg py-2 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between focus:outline-none">
+                    <span id="filter-selected-text">Tüm Durumlar</span>
+                    <span class="material-symbols-outlined text-sm text-slate-400">expand_more</span>
+                </button>
+                <div id="filter-dropdown-menu" class="hidden absolute left-0 right-0 mt-1 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-50 max-h-48 overflow-y-auto py-1">
+                    <!-- Options populated dynamically -->
+                </div>
+            </div>
+        </div>
+        <!-- Sıralama Dropdown -->
+        <div class="flex-1 relative" id="sort-dropdown-container">
+            <label class="block text-[9px] font-bold text-slate-400 dark:text-slate-500 uppercase tracking-wider mb-1 ml-1">SIRALAMA</label>
+            <div class="relative">
+                <button type="button" onclick="toggleDropdown('sort')" id="sort-dropdown-btn" class="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg py-2 px-3 text-xs font-bold text-slate-700 dark:text-slate-200 flex items-center justify-between focus:outline-none">
+                    <span id="sort-selected-text">En Yeni (Önce)</span>
+                    <span class="material-symbols-outlined text-sm text-slate-400">expand_more</span>
+                </button>
+                <div id="sort-dropdown-menu" class="hidden absolute left-0 right-0 mt-1 bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-50 py-1">
+                    <button type="button" onclick="selectSortOption('newest', 'En Yeni (Önce)')" class="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
+                        En Yeni (Önce)
+                    </button>
+                    <button type="button" onclick="selectSortOption('oldest', 'En Eski (Önce)')" class="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
+                        En Eski (Önce)
+                    </button>
+                    <button type="button" onclick="selectSortOption('name_asc', 'İsim (A-Z)')" class="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
+                        İsim (A-Z)
+                    </button>
+                    <button type="button" onclick="selectSortOption('name_desc', 'İsim (Z-A)')" class="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800">
+                        İsim (Z-A)
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- AVANSLAR -->
     <div id="tab-content-avans" class="tab-content block space-y-3 mt-3">
         <?php if (empty($avanslar)): ?>
@@ -141,6 +182,7 @@ function formatDateOnlyMobile($dateStr) {
                     'departman' => $avans->departman ?? '',
                     'tutar' => formatMoneyMobile($avans->tutar),
                     'tarih' => formatDateMobile($avans->talep_tarihi),
+                    'timestamp' => strtotime($avans->talep_tarihi),
                     'aciklama' => $avans->aciklama ?? '',
                     'durum' => $avans->durum ?? 'beklemede',
                     'onay_tarihi' => !empty($avans->onay_tarihi) ? formatDateMobile($avans->onay_tarihi) : '',
@@ -223,6 +265,13 @@ function formatDateOnlyMobile($dateStr) {
                 </div>
             <?php endforeach; ?>
         <?php endif; ?>
+        <div id="no-filter-match-avans" class="hidden bg-white dark:bg-card-dark rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-800 shadow-sm">
+            <div class="w-12 h-12 bg-slate-100 text-slate-400 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                <span class="material-symbols-outlined text-2xl">info</span>
+            </div>
+            <h3 class="font-bold text-slate-800 dark:text-white">Sonuç Bulunamadı</h3>
+            <p class="text-xs text-slate-500 mt-1">Seçtiğiniz filtreye uygun avans talebi bulunmuyor.</p>
+        </div>
     </div>
 
     <!-- İZİNLER -->
@@ -249,6 +298,7 @@ function formatDateOnlyMobile($dateStr) {
                     'izin_turu' => $izinTuruLabel,
                     'gun' => $gunSayisi,
                     'tarih' => formatDateMobile($izin->talep_tarihi),
+                    'timestamp' => strtotime($izin->talep_tarihi),
                     'baslangic' => formatDateOnlyMobile($izin->baslangic_tarihi),
                     'bitis' => formatDateOnlyMobile($izin->bitis_tarihi),
                     'aciklama' => $izin->aciklama ?? '',
@@ -345,6 +395,13 @@ function formatDateOnlyMobile($dateStr) {
                 </div>
             <?php endforeach; ?>
         <?php endif; ?>
+        <div id="no-filter-match-izin" class="hidden bg-white dark:bg-card-dark rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-800 shadow-sm">
+            <div class="w-12 h-12 bg-slate-100 text-slate-400 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                <span class="material-symbols-outlined text-2xl">info</span>
+            </div>
+            <h3 class="font-bold text-slate-800 dark:text-white">Sonuç Bulunamadı</h3>
+            <p class="text-xs text-slate-500 mt-1">Seçtiğiniz filtreye uygun izin talebi bulunmuyor.</p>
+        </div>
     </div>
 
     <!-- GENEL TALEPLER -->
@@ -365,6 +422,7 @@ function formatDateOnlyMobile($dateStr) {
                     'adi_soyadi' => $talep->requester_name ?? 'Bilinmeyen',
                     'departman' => $talep->departman ?? '',
                     'tarih' => formatDateMobile($talep->olusturma_tarihi),
+                    'timestamp' => strtotime($talep->olusturma_tarihi),
                     'oncelik' => ucfirst($talep->oncelik ?? 'Normal'),
                     'oncelikType' => $talep->oncelik ?? '',
                     'baslik' => $talep->baslik ?? '',
@@ -462,6 +520,13 @@ function formatDateOnlyMobile($dateStr) {
                 </div>
             <?php endforeach; ?>
         <?php endif; ?>
+        <div id="no-filter-match-talep" class="hidden bg-white dark:bg-card-dark rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-800 shadow-sm">
+            <div class="w-12 h-12 bg-slate-100 text-slate-400 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-3">
+                <span class="material-symbols-outlined text-2xl">info</span>
+            </div>
+            <h3 class="font-bold text-slate-800 dark:text-white">Sonuç Bulunamadı</h3>
+            <p class="text-xs text-slate-500 mt-1">Seçtiğiniz filtreye uygun genel talep bulunmuyor.</p>
+        </div>
     </div>
 </div>
 
@@ -747,6 +812,10 @@ function formatDateOnlyMobile($dateStr) {
 
         document.getElementById('val-izin-farkli-baslangic')?.addEventListener('change', updateIzinMobileOtoMsg);
         document.getElementById('val-izin-farkli-bitis')?.addEventListener('change', updateIzinMobileOtoMsg);
+
+        // Initialize and apply filters on load
+        updateFilterOptions();
+        applyFilters();
     });
 
     function switchTab(tabId) {
@@ -774,6 +843,195 @@ function formatDateOnlyMobile($dateStr) {
             activeBtn.className = "flex-1 py-2 px-3 rounded-lg text-sm font-bold flex items-center justify-center gap-1.5 transition-all bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
         } else if (tabId === 'talep') {
             activeBtn.className = "flex-1 py-2 px-3 rounded-lg text-sm font-bold flex items-center justify-center gap-1.5 transition-all bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400";
+        }
+
+        // Filtre ve sıralama ayarlarını güncelle
+        updateFilterOptions();
+        applyFilters();
+    }
+
+    let selectedFilter = 'all';
+    let selectedSort = 'newest';
+
+    function toggleDropdown(type) {
+        const filterMenu = document.getElementById('filter-dropdown-menu');
+        const sortMenu = document.getElementById('sort-dropdown-menu');
+        if (!filterMenu || !sortMenu) return;
+        
+        if (type === 'filter') {
+            filterMenu.classList.toggle('hidden');
+            sortMenu.classList.add('hidden');
+        } else {
+            sortMenu.classList.toggle('hidden');
+            filterMenu.classList.add('hidden');
+        }
+    }
+
+    function selectFilterOption(val, text) {
+        selectedFilter = val;
+        const textEl = document.getElementById('filter-selected-text');
+        if (textEl) textEl.textContent = text;
+        const menu = document.getElementById('filter-dropdown-menu');
+        if (menu) menu.classList.add('hidden');
+        applyFilters();
+    }
+
+    function selectSortOption(val, text) {
+        selectedSort = val;
+        const textEl = document.getElementById('sort-selected-text');
+        if (textEl) textEl.textContent = text;
+        const menu = document.getElementById('sort-dropdown-menu');
+        if (menu) menu.classList.add('hidden');
+        applyFilters();
+    }
+
+    // Tıklama dışı kaldığında dropdown'ları kapat
+    document.addEventListener('click', function(e) {
+        if (!document.getElementById('filter-dropdown-container')?.contains(e.target)) {
+            document.getElementById('filter-dropdown-menu')?.classList.add('hidden');
+        }
+        if (!document.getElementById('sort-dropdown-container')?.contains(e.target)) {
+            document.getElementById('sort-dropdown-menu')?.classList.add('hidden');
+        }
+    });
+
+    function getActiveTab() {
+        if (document.getElementById('tab-content-avans') && !document.getElementById('tab-content-avans').classList.contains('hidden')) return 'avans';
+        if (document.getElementById('tab-content-izin') && !document.getElementById('tab-content-izin').classList.contains('hidden')) return 'izin';
+        return 'talep';
+    }
+
+    function updateFilterOptions() {
+        const tab = getActiveTab();
+        const menu = document.getElementById('filter-dropdown-menu');
+        if (!menu) return;
+        
+        const showApproved = <?= $showApproved ? 'true' : 'false' ?>;
+        let options = [{val: 'all', text: 'Tüm Durumlar'}];
+        
+        if (!showApproved) {
+            if (tab === 'talep') {
+                options.push({val: 'beklemede', text: 'Beklemede'});
+                options.push({val: 'islemde', text: 'İşlemde'});
+            } else {
+                options.push({val: 'beklemede', text: 'Beklemede'});
+            }
+        } else {
+            if (tab === 'avans' || tab === 'izin') {
+                options.push({val: 'onaylandi', text: 'Onaylandı'});
+                options.push({val: 'reddedildi', text: 'Reddedildi'});
+                options.push({val: 'iptal', text: 'İptal Edildi'});
+            } else if (tab === 'talep') {
+                options.push({val: 'cozuldu', text: 'Çözüldü'});
+                options.push({val: 'reddedildi', text: 'Reddedildi'});
+                options.push({val: 'iptal_edildi', text: 'İptal Edildi'});
+            }
+        }
+        
+        menu.innerHTML = options.map(opt => `
+            <button type="button" onclick="selectFilterOption('${opt.val}', '${opt.text}')" class="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
+                ${opt.text}
+            </button>
+        `).join('');
+        
+        // Seçili değer geçerli mi kontrol et
+        if (!options.some(opt => opt.val === selectedFilter)) {
+            selectedFilter = 'all';
+            const textEl = document.getElementById('filter-selected-text');
+            if (textEl) textEl.textContent = 'Tüm Durumlar';
+        } else {
+            const currentOpt = options.find(opt => opt.val === selectedFilter);
+            const textEl = document.getElementById('filter-selected-text');
+            if (textEl && currentOpt) textEl.textContent = currentOpt.text;
+        }
+    }
+
+    function applyFilters() {
+        const tab = getActiveTab();
+        const container = document.getElementById('tab-content-' + tab);
+        if (!container) return;
+        
+        const cards = Array.from(container.children).filter(el => 
+            el.hasAttribute('data-avans') || 
+            el.hasAttribute('data-izin') || 
+            el.hasAttribute('data-talep')
+        );
+        
+        let visibleCount = 0;
+        
+        cards.forEach(card => {
+            const dataStr = card.dataset.avans || card.dataset.izin || card.dataset.talep;
+            if (!dataStr) return;
+            const data = JSON.parse(dataStr);
+            
+            let match = false;
+            if (selectedFilter === 'all') {
+                match = true;
+            } else {
+                const itemDurum = (data.durum || '').toLowerCase();
+                const filterLower = selectedFilter.toLowerCase();
+                
+                if (filterLower === 'onaylandi') {
+                    match = itemDurum === 'onaylandi' || itemDurum === 'onaylandı' || itemDurum === 'onay';
+                } else if (filterLower === 'reddedildi') {
+                    match = itemDurum === 'reddedildi' || itemDurum === 'ret' || itemDurum === 'red';
+                } else if (filterLower === 'iptal') {
+                    match = itemDurum.includes('iptal');
+                } else if (filterLower === 'iptal_edildi') {
+                    match = itemDurum === 'iptal_edildi' || itemDurum === 'iptal edildi' || itemDurum.includes('iptal');
+                } else if (filterLower === 'cozuldu') {
+                    match = itemDurum === 'cozuldu' || itemDurum === 'çözüldü';
+                } else if (filterLower === 'islemde') {
+                    match = itemDurum === 'islemde' || itemDurum === 'işlemde';
+                } else if (filterLower === 'beklemede') {
+                    match = itemDurum === 'beklemede';
+                } else {
+                    match = itemDurum === filterLower;
+                }
+            }
+            
+            if (match) {
+                card.style.display = '';
+                visibleCount++;
+            } else {
+                card.style.display = 'none';
+            }
+        });
+        
+        const noMatchEl = document.getElementById('no-filter-match-' + tab);
+        if (noMatchEl) {
+            if (visibleCount === 0 && cards.length > 0) {
+                noMatchEl.classList.remove('hidden');
+                noMatchEl.classList.add('block');
+            } else {
+                noMatchEl.classList.remove('block');
+                noMatchEl.classList.add('hidden');
+            }
+        }
+        
+        if (cards.length > 0) {
+            cards.sort((a, b) => {
+                const dataA = JSON.parse(a.dataset.avans || a.dataset.izin || a.dataset.talep);
+                const dataB = JSON.parse(b.dataset.avans || b.dataset.izin || b.dataset.talep);
+                
+                if (selectedSort === 'newest') {
+                    return (dataB.timestamp || 0) - (dataA.timestamp || 0);
+                } else if (selectedSort === 'oldest') {
+                    return (dataA.timestamp || 0) - (dataB.timestamp || 0);
+                } else if (selectedSort === 'name_asc') {
+                    return (dataA.adi_soyadi || '').localeCompare(dataB.adi_soyadi || '', 'tr');
+                } else if (selectedSort === 'name_desc') {
+                    return (dataB.adi_soyadi || '').localeCompare(dataA.adi_soyadi || '', 'tr');
+                }
+                return 0;
+            });
+            
+            cards.forEach(card => {
+                container.appendChild(card);
+            });
+            if (noMatchEl) {
+                container.appendChild(noMatchEl);
+            }
         }
     }
 

@@ -171,55 +171,94 @@ for ($i = 0; $i <= 6; $i++) {
                 let bodyHtml = '';
                 const series = [];
                 
+                // Tablo satırlarını doldur
                 data.types.forEach(type => {
                     let rowHtml = `<td class="fw-medium text-nowrap">${type}</td>`;
-                    const typeData = [];
                     let typeTotal = 0;
                     
                     data.periods.forEach(p => {
                         const val = (data.matrix[type] && data.matrix[type][p]) ? data.matrix[type][p] : 0;
                         rowHtml += `<td class="text-center">${val.toLocaleString('tr-TR')}</td>`;
-                        typeData.push(val);
                         typeTotal += val;
                     });
                     
                     rowHtml += `<td class="text-center fw-bold bg-light">${typeTotal.toLocaleString('tr-TR')}</td>`;
                     bodyHtml += `<tr>${rowHtml}</tr>`;
-                    
-                    series.push({
-                        name: type,
-                        data: typeData
-                    });
                 });
                 $('#puBodyRows').html(bodyHtml);
 
+                // Grafik Serilerini Transpoze Et (Dönemler seri, iş türleri kategori)
+                data.periods.forEach(p => {
+                    const pData = [];
+                    data.types.forEach(type => {
+                        const val = (data.matrix[type] && data.matrix[type][p]) ? data.matrix[type][p] : 0;
+                        pData.push(val);
+                    });
+                    series.push({
+                        name: p,
+                        data: pData
+                    });
+                });
+
                 if (puantajComparisonChart) puantajComparisonChart.destroy();
                 
+                // Dinamik yükseklik hesaplama (Kategori başına 35px + 100px padding)
+                const dynamicHeight = Math.max(450, data.types.length * 35 + 100);
+
                 const options = {
                     series: series,
                     chart: {
                         type: 'bar',
-                        height: 400,
-                        stacked: false,
-                        toolbar: { show: true }
+                        height: dynamicHeight,
+                        toolbar: { show: true },
+                        fontFamily: 'Inter, sans-serif'
                     },
                     plotOptions: {
                         bar: {
-                            horizontal: false,
-                            columnWidth: '55%',
-                            endingShape: 'rounded',
-                            dataLabels: { position: 'top' }
+                            horizontal: true,
+                            barHeight: '75%',
+                            borderRadius: 5,
+                            borderRadiusApplication: 'end',
+                            dataLabels: { position: 'right' }
                         },
                     },
                     dataLabels: {
                         enabled: true,
-                        offsetY: -20,
-                        style: { fontSize: '12px', colors: ["#304758"] }
+                        offsetX: 8,
+                        style: { 
+                            fontSize: '11px', 
+                            fontWeight: 600,
+                            colors: ["#475569"] 
+                        },
+                        formatter: function(val) {
+                            return val > 0 ? val.toLocaleString('tr-TR') : '';
+                        }
                     },
-                    xaxis: { categories: data.periods },
-                    legend: { position: 'bottom' },
-                    fill: { opacity: 1 },
-                    colors: ['#34c38f', '#556ee6', '#f1b44c', '#f46a6a', '#50a5f1', '#343a40', '#927fbf', '#e83e8c', '#2ab57d', '#4ba3ff']
+                    xaxis: { 
+                        categories: data.types,
+                        labels: {
+                            style: { colors: '#94a3b8', fontSize: '11px' }
+                        },
+                        axisBorder: { show: false },
+                        axisTicks: { show: false }
+                    },
+                    yaxis: {
+                        labels: {
+                            style: { colors: '#475569', fontSize: '11px', fontWeight: 500 }
+                        }
+                    },
+                    grid: {
+                        borderColor: '#f1f5f9',
+                        padding: { right: 40 }
+                    },
+                    legend: { 
+                        position: 'top',
+                        horizontalAlign: 'left',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        itemMargin: { horizontal: 10, vertical: 5 }
+                    },
+                    colors: ['#38bdf8', '#34d399', '#fbbf24', '#f87171', '#a78bfa', '#fb7185', '#2dd4bf', '#818cf8', '#f472b6', '#a3e635']
                 };
 
                 $('#puantajComparisonChart').html('');

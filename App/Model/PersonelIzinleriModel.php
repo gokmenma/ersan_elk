@@ -190,7 +190,7 @@ class PersonelIzinleriModel extends Model
             WHERE (LOWER(pi.onay_durumu) = 'beklemede') AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
             AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
-            ORDER BY pi.baslangic_tarihi DESC
+            ORDER BY pi.talep_tarihi DESC, pi.id DESC
         ";
         
         $query = $this->db->prepare($sql);
@@ -236,7 +236,7 @@ class PersonelIzinleriModel extends Model
                 OR aciklama LIKE 'Otomatik onaylandı%'
             )
             AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
-            ORDER BY pi.baslangic_tarihi DESC
+            ORDER BY io.onay_tarihi DESC, pi.id DESC
             LIMIT {$limit}
         ";
         

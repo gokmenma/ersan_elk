@@ -1,0 +1,20 @@
+<IfModule mod_rewrite.c>
+RewriteEngine on 
+
+# Eğer dizin değilse ve dosya varsa
+RewriteCond %{REQUEST_FILENAME} !-d 
+RewriteCond %{REQUEST_FILENAME}.php -f 
+
+# .php uzantısını gizle
+RewriteRule ^(.*)$ $1.php [L]
+RewriteRule ^evrak.pdf$ goruntule.php [QSA,L]
+
+# Belirli bir desenle eşleşen URL'leri .php dosyasına yönlendir
+RewriteRule ^([a-z]+)\/?$ $1.php [NC,L]  
+</IfModule>
+
+
+# RewriteCond %{HTTPS} !=on
+# RewriteCond %{REQUEST_URI} !^/.well-known/acme-challenge/.+$
+# RewriteCond %{REQUEST_URI} !^/.well-known/acme-challenge/[0-9a-zA-Z_-]+$
+# RewriteRule (.*) https://www.admin.cansagliksen.org.tr/index/$1 [R=301,L]

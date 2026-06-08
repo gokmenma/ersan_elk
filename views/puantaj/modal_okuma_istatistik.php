@@ -186,26 +186,19 @@ for ($i = 0; $i < 24; $i++) {
                 let bodyHtml = '';
                 const series = [];
                 
+                // Tablo satırlarını doldur
                 data.types.forEach(type => {
                     let rowHtml = `<td class="fw-medium text-nowrap">${type}</td>`;
-                    const typeData = [];
                     let typeTotal = 0;
                     
                     data.periods.forEach(p => {
                         const val = (data.matrix[type] && data.matrix[type][p]) ? data.matrix[type][p] : 0;
                         rowHtml += `<td class="text-center">${val.toLocaleString('tr-TR')}</td>`;
-                        typeData.push(val);
                         typeTotal += val;
                     });
                     
                     rowHtml += `<td class="text-center fw-bold bg-light">${typeTotal.toLocaleString('tr-TR')}</td>`;
                     bodyHtml += `<tr>${rowHtml}</tr>`;
-                    
-                    series.push({
-                        name: type,
-                        type: 'column',
-                        data: typeData
-                    });
                 });
                 $('#compBodyRows').html(bodyHtml);
 
@@ -236,153 +229,78 @@ for ($i = 0; $i < 24; $i++) {
                 $('#chartTotalVal').text(grandTotal.toLocaleString('tr-TR'));
                 $('#chartTotalBadge').removeClass('d-none').hide().fadeIn(300);
 
-                // Calculate period totals for Toplam line
-                const periodTotals = data.periods.map(p => {
-                    let total = 0;
+                // Grafik Serilerini Transpoze Et (Dönemler seri, iş türleri kategori)
+                data.periods.forEach(p => {
+                    const pData = [];
                     data.types.forEach(type => {
                         const val = (data.matrix[type] && data.matrix[type][p]) ? data.matrix[type][p] : 0;
-                        total += val;
+                        pData.push(val);
                     });
-                    return total;
-                });
-
-                series.push({
-                    name: 'Toplam Okuma',
-                    type: 'line',
-                    data: periodTotals
+                    series.push({
+                        name: p,
+                        data: pData
+                    });
                 });
 
                 // Grafiği Oluştur
                 if (comparisonChart) comparisonChart.destroy();
                 
-                const colors = ['#10B981', '#3B82F6', '#F59E0B', '#EF4444', '#06B6D4', '#6366F1', '#EC4899', '#8B5CF6', '#14B8A6', '#F43F5E', '#84CC16', '#A855F7', '#FF7A00'];
-                const chartColors = colors.slice(0, data.types.length);
-                chartColors.push('#4F46E5'); // Indigo for Total Line
-                
-                const strokeWidths = data.types.map(() => 2);
-                strokeWidths.push(4); // Thicker Toplam line
-                
-                const strokeDashArrays = data.types.map(() => 0);
-                strokeDashArrays.push(0);
+                const dynamicHeight = Math.max(450, data.types.length * 35 + 100);
 
                 const options = {
                     series: series,
                     chart: {
-                        type: 'line',
-                        height: 420,
+                        type: 'bar',
+                        height: dynamicHeight,
                         toolbar: { show: true },
-                        zoom: { enabled: false },
-                        dropShadow: {
-                            enabled: true,
-                            enabledOnSeries: [data.types.length], // Glow/shadow only on the Toplam line
-                            top: 4,
-                            left: 1,
-                            blur: 4,
-                            color: '#4F46E5',
-                            opacity: 0.35
-                        },
                         fontFamily: 'Inter, sans-serif'
-                    },
-                    stroke: {
-                        width: strokeWidths,
-                        curve: 'smooth',
-                        dashArray: strokeDashArrays
                     },
                     plotOptions: {
                         bar: {
-                            horizontal: false,
-                            columnWidth: '55%',
-                            borderRadius: 6,
+                            horizontal: true,
+                            barHeight: '75%',
+                            borderRadius: 5,
                             borderRadiusApplication: 'end',
-                            dataLabels: { position: 'top' }
+                            dataLabels: { position: 'right' }
                         },
                     },
                     dataLabels: {
                         enabled: true,
-                        enabledOnSeries: [...data.types.keys(), data.types.length],
-                        offsetY: -15,
-                        style: { fontSize: '11px', fontWeight: 600, colors: ["#334155"] },
-                        background: {
-                            enabled: true,
-                            foreColor: '#ffffff',
-                            padding: 4,
-                            borderRadius: 4,
-                            borderWidth: 1,
-                            borderColor: '#ffffff',
-                            opacity: 0.9,
-                            dropShadow: { enabled: false }
+                        offsetX: 8,
+                        style: { 
+                            fontSize: '11px', 
+                            fontWeight: 600,
+                            colors: ["#475569"] 
                         },
-                        formatter: function (val) {
-                            return val.toLocaleString('tr-TR');
+                        formatter: function(val) {
+                            return val > 0 ? val.toLocaleString('tr-TR') : '';
                         }
-                    },
-                    markers: {
-                        size: data.types.map(() => 0).concat([6]), // Only marker for Toplam
-                        colors: ['#ffffff'],
-                        strokeColors: '#4F46E5',
-                        strokeWidth: 3,
-                        hover: { size: 8 }
                     },
                     xaxis: { 
-                        categories: data.periods,
-                        axisBorder: { show: false },
-                        axisTicks: { show: false },
+                        categories: data.types,
                         labels: {
-                            style: { colors: '#64748b', fontSize: '11px', fontWeight: 500 }
-                        }
-                    },
-                    yaxis: [
-                        {
-                            title: {
-                                text: 'Okuma Sayısı (Durum Bazlı)',
-                                style: { color: '#64748b', fontSize: '12px', fontWeight: 600 }
-                            },
-                            labels: {
-                                style: { colors: '#64748b', fontSize: '11px' },
-                                formatter: function(val) { return Math.round(val).toLocaleString('tr-TR'); }
-                            }
+                            style: { colors: '#94a3b8', fontSize: '11px' }
                         },
-                        {
-                            opposite: true,
-                            title: {
-                                text: 'Toplam Okuma Sayısı',
-                                style: { color: '#4F46E5', fontSize: '12px', fontWeight: 600 }
-                            },
-                            labels: {
-                                style: { colors: '#4F46E5', fontSize: '11px', fontWeight: 500 },
-                                formatter: function(val) { return Math.round(val).toLocaleString('tr-TR'); }
-                            }
-                        }
-                    ],
-                    legend: { 
-                        position: 'bottom',
-                        horizontalAlign: 'center',
-                        fontSize: '12px',
-                        fontWeight: 500,
-                        labels: { colors: '#334155' },
-                        markers: { radius: 12 },
-                        itemMargin: { horizontal: 10, vertical: 5 }
+                        axisBorder: { show: false },
+                        axisTicks: { show: false }
                     },
-                    fill: { 
-                        opacity: data.types.map(() => 0.85).concat([1]),
-                    },
-                    colors: chartColors,
-                    tooltip: {
-                        shared: true,
-                        intersect: false,
-                        y: {
-                            formatter: function (y) {
-                                if (typeof y !== "undefined") {
-                                    return y.toLocaleString('tr-TR') + " adet";
-                                }
-                                return y;
-                            }
+                    yaxis: {
+                        labels: {
+                            style: { colors: '#475569', fontSize: '11px', fontWeight: 500 }
                         }
                     },
                     grid: {
                         borderColor: '#f1f5f9',
-                        padding: { top: 10, bottom: 5 }
-                    }
+                        padding: { right: 40 }
+                    },
+                    legend: { 
+                        position: 'top',
+                        horizontalAlign: 'left',
+                        fontSize: '12px',
+                        fontWeight: 500,
+                        itemMargin: { horizontal: 10, vertical: 5 }
+                    },
+                    colors: ['#38bdf8', '#34d399', '#fbbf24', '#f87171', '#a78bfa', '#fb7185', '#2dd4bf', '#818cf8', '#f472b6', '#a3e635']
                 };
 
                 $('#okumaComparisonChart').html('');
