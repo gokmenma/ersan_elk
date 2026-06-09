@@ -1,116 +1,19 @@
-name: Ersan Elektrik Turbo CI/CD
+name: Ersan Elektrik Otomatik Yukle
 
 on:
   push:
     branches: [ "master", "main" ]
-  pull_request:
-    branches: [ "master", "main" ]
-# env silindi çünkü Node 24 artık varsayılan oldu veya zorlanması uyarılara sebep oluyor
-jobs:
-  test-and-deploy:
-    name: Test ve Otomatik Yukle
-    runs-on: ubuntu-latest
 
-    services:
-      mysql:
-        image: mysql:8.0
-        env:
-          MYSQL_ROOT_PASSWORD: root
-          MYSQL_DATABASE: ersantrc_personel
-        ports:
-          - 3306:3306
-        options: >-
-          --health-cmd="mysqladmin ping"
-          --health-interval=10s
-          --health-timeout=5s
-          --health-retries=3
+jobs:
+  deploy:
+    name: FTP ile Yukle
+    runs-on: ubuntu-latest
 
     steps:
     - name: Kodu Klonla (Checkout)
       uses: actions/checkout@v4
 
-    # --- ÖNBELLEKLEME (CACHE) ADIMLARI ---
-    - name: PHP 8.2 Ortamini Kur
-      uses: shivammathur/setup-php@v2
-      with:
-        php-version: '8.2'
-        extensions: mbstring, xml, pdo, pdo_mysql, curl, zip
-        coverage: none
-
-    - name: Önbelleklenmis Composer Paketlerini Getir
-      uses: actions/cache@v4
-      with:
-        path: vendor
-        key: ${{ runner.os }}-php-${{ hashFiles('**/composer.lock') }}
-
-    - name: Node.js Ortamini Kur
-      uses: actions/setup-node@v4
-      with:
-        node-version: 24
-
-    - name: Playwright Tarayicilarini Cache'den Getir
-      id: playwright-cache
-      uses: actions/cache@v4
-      with:
-        path: ~/.cache/ms-playwright
-        key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
-
-    # --- KURULUM ---
-    - name: Bagimliliklari Hizlica Kur
-      run: |
-        composer install -q --no-ansi --no-interaction --no-scripts --no-progress --prefer-dist
-        npm install
-
-    - name: Playwright Kur (Eger Cache Yoksa)
-      if: steps.playwright-cache.outputs.cache-hit != 'true'
-      run: npx playwright install --with-deps chromium
-
-    - name: CI iCİN ENV HAZIRLA
-      run: |
-        touch .env
-        echo "APP_ENV=testing" >> .env
-        echo "DB_HOST=127.0.0.1" >> .env
-        echo "DB_NAME=ersantrc_personel" >> .env
-        echo "DB_USER=root" >> .env
-        echo "DB_PASS=root" >> .env
- 
-    - name: Veritabanı Şemasını Yükle
-      run: |
-        # Ana şemayı yükle (Localdan yeni aldığımız export)
-        if [ -f "database/schema.sql" ]; then
-          echo "Ana şema yükleniyor..."
-          (echo "SET FOREIGN_KEY_CHECKS=0;"; cat "database/schema.sql") | mysql -h 127.0.0.1 -u root -proot --binary-mode=1 ersantrc_personel
-        fi
-        
-        # Ek olarak yeni migrationları veya SQL dosyalarını yükle (Üzerine yazma veya eksikleri tamamlama)
-        load_sql() {
-          for f in $1; do
-            if [ -f "$f" ] && [ "$f" != "database/schema.sql" ]; then
-              echo "Yükleniyor: $f"
-              # -f (force) kullanarak "kolon zaten var" gibi hataları görmezden geliyoruz
-              (echo "SET FOREIGN_KEY_CHECKS=0;"; cat "$f") | mysql -h 127.0.0.1 -u root -proot --binary-mode=1 -f ersantrc_personel
-            fi
-          done
-        }
-        
-        load_sql "database/migrations/*.sql"
-        load_sql "sql/*.sql"
-    # --- TESTLER (Hizli Gecme Mantigi Eklenebilir) ---
-    - name: Backend Testlerini Kos (Pest)
-      run: vendor/bin/pest
-
-    - name: E2E UI Testlerini Kos
-      # Eger commit mesajinda [skip tests] varsa bu adimi atlar
-      if: "!contains(github.event.head_commit.message, '[skip tests]')"
-      env:
-        PLAYWRIGHT_BASE_URL: "http://localhost:8000"
-      run: |
-        php -S localhost:8000 -t ./ &
-        npx playwright test tests/e2e/e2e.spec.ts --project=chromium --reporter=list
-
-    # --- DEPLOY (HIZLI VE GUVENLI YONTEM) ---
     - name: FTP ile Dosya Temizligi ve Yukleme
-      if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
       with:
         server: ${{ secrets.FTP_SERVER }}
@@ -124,12 +27,3 @@ jobs:
           **/test-results/**
           **/playwright-report/**
           **/vendor/**
-
-    - name: Git Reset (deploy.php) Tetikle
-      if: github.ref == 'refs/heads/master' || github.ref == 'refs/heads/main'
-      run: |
-        # deploy.php'ye boş POST atarak sunucunun kendini GitHub ile senkron etmesini sağlıyoruz
-        # Signature: a9f3cE7QmL2R6XKZ8N4VwH0JYbP5DStU (Secret) ile boş string HMAC-SHA256
-        curl -X POST "https://app.ersantr.com/deploy.php" \
-             -H "X-Hub-Signature-256: sha256=6e6129524ecfb7a0525b6a7183e8783e743da003cb43952f44747ebc793ff865" \
-             -d ""
