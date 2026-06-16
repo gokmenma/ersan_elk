@@ -188,7 +188,8 @@ $(document).ready(function () {
               var h_tipi = response.hesaplama_tipi || 'sabit';
               if (h_tipi === 'sabit') {
                 $("#ek_hesaplama_sabit").prop("checked", true);
-                $("#formPersonelEkOdemeEkle input[name='ek_odeme_tutar']").val(response.tutar);
+                $("#formPersonelEkOdemeEkle input[name='ek_odeme_tutar']").val(response.tutar || 0);
+                $("#formPersonelEkOdemeEkle input[name='ek_odeme_resmi_tutar']").val(response.resmi_tutar || 0);
               } else if (h_tipi === 'oran_net') {
                 $("#ek_hesaplama_oran_net").prop("checked", true);
                 $("#formPersonelEkOdemeEkle input[name='oran']").val(response.oran);
@@ -257,11 +258,13 @@ $(document).ready(function () {
 
     if (hesaplamaTipi === "sabit") {
       $("#ek_div_tutar").removeClass("d-none").show();
+      $("#ek_div_resmi_tutar").removeClass("d-none").show();
       $("#ek_div_oran").addClass("d-none").hide();
-      $("#ek_odeme_tutar").prop("required", true);
+      $("#ek_odeme_tutar").prop("required", false);
       $("#ek_odeme_oran").prop("required", false);
     } else {
       $("#ek_div_tutar").addClass("d-none").hide();
+      $("#ek_div_resmi_tutar").addClass("d-none").hide();
       $("#ek_div_oran").removeClass("d-none").show();
       $("#ek_odeme_tutar").prop("required", false);
       $("#ek_odeme_oran").prop("required", true);
@@ -358,11 +361,12 @@ $(document).ready(function () {
       }
     }
 
-    // Sabit tutarda tutar zorunlu
+    // Oran bazlı ise oran zorunlu; sabit tutarda en az bir alan dolu olmalı
     if (hesaplamaTipi === "sabit") {
-      var tutar = $("#formPersonelEkOdemeEkle input[name='ek_odeme_tutar']").val();
-      if (!tutar || parseFloat(tutar) <= 0) {
-        Swal.fire("Hata", "Lütfen geçerli bir tutar giriniz.", "error");
+      var tutar = parseFloat($("#formPersonelEkOdemeEkle input[name='ek_odeme_tutar']").val()) || 0;
+      var resmiTutar = parseFloat($("#formPersonelEkOdemeEkle input[name='ek_odeme_resmi_tutar']").val()) || 0;
+      if (tutar <= 0 && resmiTutar <= 0) {
+        Swal.fire("Hata", "Lütfen en az bir tutar giriniz (Maaşa Ek Tutar veya Resmi Alacağa Dahil Tutar).", "error");
         return;
       }
     } else {
@@ -392,7 +396,11 @@ $(document).ready(function () {
       hesaplama_tipi: hesaplamaTipi,
       tutar:
         hesaplamaTipi === "sabit"
-          ? $("#formPersonelEkOdemeEkle input[name='ek_odeme_tutar']").val()
+          ? parseFloat($("#formPersonelEkOdemeEkle input[name='ek_odeme_tutar']").val()) || 0
+          : 0,
+      resmi_tutar:
+        hesaplamaTipi === "sabit"
+          ? parseFloat($("#formPersonelEkOdemeEkle input[name='ek_odeme_resmi_tutar']").val()) || 0
           : 0,
       oran:
         hesaplamaTipi !== "sabit"

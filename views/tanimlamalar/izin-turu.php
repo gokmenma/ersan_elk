@@ -322,6 +322,34 @@ $izinTurleri = $Tanimlamalar->getIzinTurleri();
                             </div>
                         </div>
                         <div class="col-md-6">
+                            <div class="card border border-warning mb-0 h-100 shadow-none">
+                                <div class="card-body p-3">
+                                    <div class="form-check form-switch form-switch-md mb-2">
+                                        <input class="form-check-input" type="checkbox" id="resmi_tatil_calismasi"
+                                            name="resmi_tatil_calismasi">
+                                        <label class="form-check-label fw-medium d-flex align-items-center" for="resmi_tatil_calismasi">
+                                            <i class="bx bx-star text-warning fs-5 me-2"></i>Resmi Tatil Çalışması
+                                        </label>
+                                    </div>
+                                    <small class="text-muted d-block ps-5">Bordoda resmi alacağı artırır (asgari/30 × gün)</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="card border border-purple mb-0 h-100 shadow-none" style="border-color: #9333ea !important;">
+                                <div class="card-body p-3">
+                                    <div class="form-check form-switch form-switch-md mb-2">
+                                        <input class="form-check-input" type="checkbox" id="hafta_tatili_calismasi"
+                                            name="hafta_tatili_calismasi">
+                                        <label class="form-check-label fw-medium d-flex align-items-center" for="hafta_tatili_calismasi">
+                                            <i class="bx bx-work-alt fs-5 me-2" style="color:#9333ea"></i>Hafta Tatili Çalışması
+                                        </label>
+                                    </div>
+                                    <small class="text-muted d-block ps-5">Resmi alacağı artırır + maaşa ek ödeme (maaş/30 × gün)</small>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
                             <div class="card border mb-0 h-100 shadow-none">
                                 <div class="card-body p-3">
                                     <div class="form-check form-switch form-switch-md mb-2">

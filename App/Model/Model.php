@@ -105,8 +105,28 @@ class Model extends Db
         }
     }
 
+    protected function sanitizeAttributes()
+    {
+        foreach ($this->attributes as $key => &$value) {
+            if ($value === '' || $value === '0000-00-00' || $value === '0000-00-00 00:00:00') {
+                $lowerKey = strtolower($key);
+                if (
+                    strpos($lowerKey, 'tarih') !== false ||
+                    strpos($lowerKey, 'date') !== false ||
+                    strpos($lowerKey, 'time') !== false ||
+                    $lowerKey === 'created_at' ||
+                    $lowerKey === 'updated_at'
+                ) {
+                    $value = null;
+                }
+            }
+        }
+        unset($value);
+    }
+
     protected function insert()
     {
+        $this->sanitizeAttributes();
         $columns = implode(', ', array_keys($this->attributes));
         $values = ':' . implode(', :', array_keys($this->attributes));
         $sql = $this->db->prepare("INSERT INTO $this->table ($columns) VALUES ($values)");
@@ -125,6 +145,7 @@ class Model extends Db
 
     protected function update()
     {
+        $this->sanitizeAttributes();
         $setClause = '';
 
         if (!$this->find($this->attributes[$this->primaryKey])) {
@@ -152,10 +173,6 @@ class Model extends Db
         }
 
         $sql->execute();
-
-        // if ($sql->rowCount() === 0) {
-        //     throw new Exception("Kayıt güncellenemedi.");
-        // }
     }
 
     public function reload()

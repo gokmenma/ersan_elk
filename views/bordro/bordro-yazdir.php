@@ -346,6 +346,30 @@ foreach ($bordroListesi as $bordro) {
         }
     }
 
+    // RTÇ / HTÇ satırları
+    $rtcGunYazdir = intval($hesap['rtcGun'] ?? 0);
+    $htcGunYazdir = intval($hesap['htcGun'] ?? 0);
+    if ($rtcGunYazdir > 0) {
+        $rtcResmiTutar = round($asgariUcretNet / 30 * $rtcGunYazdir, 2);
+        $groupedEkOdemeler[] = [
+            'aciklama' => 'Resmi Tatil Çalışma',
+            'toplam' => $rtcResmiTutar,
+            'adet' => $rtcGunYazdir,
+            'detay' => $rtcGunYazdir . ' gün × asgari ücret/30 — resmi alacağa dahil',
+        ];
+    }
+    if ($htcGunYazdir > 0) {
+        $nominalMaasYazdir = floatval($hesap['maasTutari'] ?? $bordro->maas_tutari ?? 0);
+        $htcEldenTutar = round($nominalMaasYazdir / 30 * $htcGunYazdir, 2);
+        $htcResmiTutar = round($asgariUcretNet / 30 * $htcGunYazdir, 2);
+        $groupedEkOdemeler[] = [
+            'aciklama' => 'Hafta Tatili Çalışma',
+            'toplam' => $htcEldenTutar,
+            'adet' => $htcGunYazdir,
+            'detay' => $htcGunYazdir . ' gün × brüt maaş/30 (banka) + ' . number_format($htcResmiTutar, 2, ',', '.') . ' ₺ resmi alacağa dahil',
+        ];
+    }
+
     $toplamOzelKesinti = 0.0;
     foreach ($groupedKesintiler as $kesintiGrubu) {
         $toplamOzelKesinti += floatval($kesintiGrubu['toplam']);

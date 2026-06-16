@@ -10,6 +10,8 @@ $(document).on("click", "#actionEkle", function () {
   // Varsayılan değerler
   $("#ucretli_mi").prop("checked", true);
   $("#normal_mesai_sayilir").prop("checked", false);
+  $("#resmi_tatil_calismasi").prop("checked", false);
+  $("#hafta_tatili_calismasi").prop("checked", false);
   $("#personel_gorebilir").prop("checked", true);
   $("#yetkili_onayina_tabi").prop("checked", false);
   $("#renk").val("bg-primary/10 text-primary");
@@ -55,6 +57,8 @@ $(document).on("click", "#actionKaydet", function () {
   // Checkbox değerlerini manuel ekle (unchecked ise 0 gitmesi için)
   formData.set("ucretli_mi", $("#ucretli_mi").is(":checked") ? 1 : 0);
   formData.set("normal_mesai_sayilir", $("#normal_mesai_sayilir").is(":checked") ? 1 : 0);
+  formData.set("resmi_tatil_calismasi", $("#resmi_tatil_calismasi").is(":checked") ? 1 : 0);
+  formData.set("hafta_tatili_calismasi", $("#hafta_tatili_calismasi").is(":checked") ? 1 : 0);
   formData.set(
     "personel_gorebilir",
     $("#personel_gorebilir").is(":checked") ? 1 : 0,
@@ -122,6 +126,8 @@ $(document).on("click", ".duzenle", function (e) {
         // Checkboxları ayarla
         $("#ucretli_mi").prop("checked", data.data.ucretli_mi == 1);
         $("#normal_mesai_sayilir").prop("checked", data.data.normal_mesai_sayilir == 1);
+        $("#resmi_tatil_calismasi").prop("checked", data.data.resmi_tatil_calismasi == 1);
+        $("#hafta_tatili_calismasi").prop("checked", data.data.hafta_tatili_calismasi == 1);
         $("#personel_gorebilir").prop(
           "checked",
           data.data.personel_gorebilir == 1,

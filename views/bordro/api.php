@@ -631,6 +631,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $includedAllowanceFiiliGun = intval($hesap['includedAllowanceFiiliGun'] ?? 0);
                 $asgariHakedisModal = floatval($hesap['asgariHakedis'] ?? 0);
                 $guncelEkOdeme = floatval($hesap['rawEkOdeme']);
+                $rtcGunModal = intval($hesap['rtcGun'] ?? 0);
+                $htcGunModal = intval($hesap['htcGun'] ?? 0);
 
                 $maasDurumuGosterim = $hesap['maasDurumu'] ?: ($personel->maas_durumu ?? '-');
                 $nominalMaas = floatval($hesap['maasTutari']);
@@ -1189,6 +1191,37 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
 
+                // RTÇ / HTÇ satırları
+                if ($rtcGunModal > 0) {
+                    $rtcResmiTutar = round(floatval($asgariUcretNet) / 30 * $rtcGunModal, 2);
+                    $collRtc = "cRTC_" . $bp->id;
+                    $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collRtc . '" aria-expanded="false">
+                                <td><div class="d-flex align-items-center"><i class="bx bx-calendar-check me-2 text-warning"></i><span>Resmi Tatil Çalışma</span><span class="badge bg-warning text-dark fw-normal ms-2">' . $rtcGunModal . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
+                                <td class="text-end fw-semibold text-warning">' . number_format($rtcResmiTutar, 2, ',', '.') . ' ₺</td>
+                              </tr>
+                              <tr class="child-row collapse ' . $collRtc . '">
+                                <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Resmi alacağa dahil <small class="text-muted">(asgari ücret/30 × ' . $rtcGunModal . ' gün)</small></td>
+                                <td class="text-end pe-4 text-warning">' . number_format($rtcResmiTutar, 2, ',', '.') . ' ₺</td>
+                              </tr>';
+                }
+                if ($htcGunModal > 0) {
+                    $htcResmiTutar = round(floatval($asgariUcretNet) / 30 * $htcGunModal, 2);
+                    $htcEldenTutar = round($nominalMaas / 30 * $htcGunModal, 2);
+                    $collHtc = "cHTC_" . $bp->id;
+                    $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collHtc . '" aria-expanded="false">
+                                <td><div class="d-flex align-items-center"><i class="bx bx-calendar-x me-2 text-purple" style="color:#7367f0"></i><span>Hafta Tatili Çalışma</span><span class="badge fw-normal ms-2" style="background:#7367f0;color:#fff">' . $htcGunModal . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
+                                <td class="text-end fw-semibold" style="color:#7367f0">+' . number_format($htcEldenTutar, 2, ',', '.') . ' ₺</td>
+                              </tr>
+                              <tr class="child-row collapse ' . $collHtc . '">
+                                <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Maaş Farkı <small class="text-muted">(Banka — brüt maaş/30 × ' . $htcGunModal . ' gün)</small></td>
+                                <td class="text-end pe-4 text-success">+' . number_format($htcEldenTutar, 2, ',', '.') . ' ₺</td>
+                              </tr>
+                              <tr class="child-row collapse ' . $collHtc . '">
+                                <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Resmi alacağa dahil <small class="text-muted">(asgari ücret/30 × ' . $htcGunModal . ' gün)</small></td>
+                                <td class="text-end pe-4 text-warning">' . number_format($htcResmiTutar, 2, ',', '.') . ' ₺</td>
+                              </tr>';
+                }
+
                 if ($toplamYuvarlamaFarki != 0) {
                     $html .= '<tr class="parent-row">
                                 <td><i class="bx bx-infinite me-2 text-muted opacity-75"></i>Yuvarlama Farkı</td>
@@ -1745,6 +1778,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'gelir_vergisi_dahil' => intval($_POST['gelir_vergisi_dahil'] ?? 1),
                     'damga_vergisi_dahil' => intval($_POST['damga_vergisi_dahil'] ?? 0),
                     'icra_pirim_dahil' => intval($_POST['icra_pirim_dahil'] ?? 0),
+                    'resmi_alacagina_dahil' => intval($_POST['resmi_alacagina_dahil'] ?? 0),
                     'gecerlilik_baslangic' => !empty($_POST['gecerlilik_baslangic']) ? $_POST['gecerlilik_baslangic'] : null,
                     'gecerlilik_bitis' => !empty($_POST['gecerlilik_bitis']) ? $_POST['gecerlilik_bitis'] : null,
                     'varsayilan_tutar' => Helper::formattedMoneyToNumber($_POST['varsayilan_tutar'] ?? 0),
@@ -1793,6 +1827,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'gelir_vergisi_dahil' => intval($_POST['gelir_vergisi_dahil'] ?? 1),
                     'damga_vergisi_dahil' => intval($_POST['damga_vergisi_dahil'] ?? 0),
                     'icra_pirim_dahil' => intval($_POST['icra_pirim_dahil'] ?? 0),
+                    'resmi_alacagina_dahil' => intval($_POST['resmi_alacagina_dahil'] ?? 0),
                     'gecerlilik_baslangic' => !empty($_POST['gecerlilik_baslangic']) ? $_POST['gecerlilik_baslangic'] : null,
                     'gecerlilik_bitis' => !empty($_POST['gecerlilik_bitis']) ? $_POST['gecerlilik_bitis'] : null,
                     'varsayilan_tutar' => Helper::formattedMoneyToNumber($_POST['varsayilan_tutar'] ?? 0),

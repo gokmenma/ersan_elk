@@ -362,11 +362,18 @@ foreach ($ek_odemeler as $k) {
                                                             </td>
                                                             <td class="fw-bold">
                                                                  <?php if (($k->hesaplama_tipi ?? 'sabit') == 'sabit'): ?>
-                                                                     <?= number_format($toplam_tutar, 2, ',', '.') ?> TL
+                                                                     <?php if ($toplam_tutar > 0): ?>
+                                                                         <div><?= number_format($toplam_tutar, 2, ',', '.') ?> TL <span class="text-muted small">ek</span></div>
+                                                                     <?php endif; ?>
+                                                                     <?php if (($k->resmi_tutar ?? 0) > 0): ?>
+                                                                         <div class="text-info small"><i class="bx bx-shield-check"></i> <?= number_format(($k->resmi_tutar ?? 0) * $adet, 2, ',', '.') ?> TL resmi</div>
+                                                                     <?php endif; ?>
+                                                                     <?php if ($toplam_tutar <= 0 && ($k->resmi_tutar ?? 0) <= 0): ?>
+                                                                         0,00 TL
+                                                                     <?php endif; ?>
                                                                      <?php if ($adet > 1): ?>
                                                                          <div class="small text-muted mt-1">
                                                                              <span class="badge bg-light text-dark border"><?= $adet ?> Adet</span>
-                                                                             <!-- <span class="ms-1">(Adet: <?= number_format($k->tutar ?? 0, 2, ',', '.') ?> TL)</span> -->
                                                                          </div>
                                                                      <?php endif; ?>
                                                                  <?php else: ?>
@@ -494,7 +501,15 @@ foreach ($ek_odemeler as $k) {
                                     </td>
                                     <td class="fw-bold">
                                         <?php if (($k->hesaplama_tipi ?? 'sabit') == 'sabit'): ?>
-                                            <?= number_format($k->tutar ?? 0, 2, ',', '.') ?> TL
+                                            <?php if (($k->tutar ?? 0) > 0): ?>
+                                                <div><?= number_format($k->tutar ?? 0, 2, ',', '.') ?> TL <span class="text-muted small">ek</span></div>
+                                            <?php endif; ?>
+                                            <?php if (($k->resmi_tutar ?? 0) > 0): ?>
+                                                <div class="text-info small"><i class="bx bx-shield-check"></i> <?= number_format($k->resmi_tutar ?? 0, 2, ',', '.') ?> TL resmi</div>
+                                            <?php endif; ?>
+                                            <?php if (($k->tutar ?? 0) <= 0 && ($k->resmi_tutar ?? 0) <= 0): ?>
+                                                0,00 TL
+                                            <?php endif; ?>
                                         <?php else: ?>
                                             %<?= number_format($k->oran ?? 0, 2, ',', '.') ?>
                                         <?php endif; ?>
@@ -737,7 +752,12 @@ foreach ($ek_odemeler as $k) {
 
                         <!-- Değer & Kayıt Tarihi -->
                         <div class="col-md-6" id="ek_div_tutar">
-                            <?= Form::FormFloatInput("number", "ek_odeme_tutar", "", "0.00", "Ödenecek Tutar (TL)", "bx bx-wallet", "form-control", true, null, "off", false, 'step="0.01" id="ek_odeme_tutar" min="0"') ?>
+                            <?= Form::FormFloatInput("number", "ek_odeme_tutar", "", "0.00", "Maaşa Ek Tutar (TL)", "bx bx-wallet", "form-control", false, null, "off", false, 'step="0.01" id="ek_odeme_tutar" min="0"') ?>
+                            <div class="text-muted mt-1" style="font-size: 11px;">Nakden ödenecek ek tutar (0 ise boş bırakın)</div>
+                        </div>
+                        <div class="col-md-6" id="ek_div_resmi_tutar">
+                            <?= Form::FormFloatInput("number", "ek_odeme_resmi_tutar", "", "0.00", "Resmi Alacağa Dahil Tutar (TL)", "bx bx-shield-check", "form-control", false, null, "off", false, 'step="0.01" id="ek_odeme_resmi_tutar" min="0"') ?>
+                            <div class="text-muted mt-1" style="font-size: 11px;">Yemek bedelinden düşülerek resmi alacağa eklenir</div>
                         </div>
                         <div class="col-md-6 d-none" id="ek_div_oran">
                             <?= Form::FormFloatInput("number", "oran", "", "0", "Hesaplama Oranı (%)", "bx bx-percent", "form-control", false, null, "off", false, 'step="0.01" id="ek_odeme_oran" min="0" max="100"') ?>

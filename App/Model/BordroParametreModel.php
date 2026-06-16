@@ -122,12 +122,12 @@ class BordroParametreModel extends Model
     public function addParametre($data)
     {
         $sql = $this->db->prepare("
-            INSERT INTO {$this->table} 
-            (kod, etiket, kategori, hesaplama_tipi, odeme_yontemi, gunluk_muaf_limit, aylik_muaf_limit, muaf_limit_tipi, 
-             sgk_matrahi_dahil, gelir_vergisi_dahil, damga_vergisi_dahil, icra_pirim_dahil,
-             gecerlilik_baslangic, gecerlilik_bitis, varsayilan_tutar, gunluk_tutar, gun_sayisi_otomatik, 
+            INSERT INTO {$this->table}
+            (kod, etiket, kategori, hesaplama_tipi, odeme_yontemi, gunluk_muaf_limit, aylik_muaf_limit, muaf_limit_tipi,
+             sgk_matrahi_dahil, gelir_vergisi_dahil, damga_vergisi_dahil, icra_pirim_dahil, resmi_alacagina_dahil,
+             gecerlilik_baslangic, gecerlilik_bitis, varsayilan_tutar, gunluk_tutar, gun_sayisi_otomatik,
              varsayilan_gun_sayisi, aciklama, sira, aktif)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
 
         return $sql->execute([
@@ -143,6 +143,7 @@ class BordroParametreModel extends Model
             $data['gelir_vergisi_dahil'] ?? 1,
             $data['damga_vergisi_dahil'] ?? 0,
             $data['icra_pirim_dahil'] ?? 0,
+            $data['resmi_alacagina_dahil'] ?? 0,
             $data['gecerlilik_baslangic'] ?? null,
             $data['gecerlilik_bitis'] ?? null,
             $data['varsayilan_tutar'] ?? 0,
@@ -176,6 +177,7 @@ class BordroParametreModel extends Model
             'gelir_vergisi_dahil',
             'damga_vergisi_dahil',
             'icra_pirim_dahil',
+            'resmi_alacagina_dahil',
             'gecerlilik_baslangic',
             'gecerlilik_bitis',
             'varsayilan_tutar',

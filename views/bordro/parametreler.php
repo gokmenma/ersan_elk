@@ -662,6 +662,12 @@ for ($y = date('Y') + 1; $y >= 2020; $y--) {
                                     <div class="text-muted" style="font-size: 11px;">İşaretlenirse bu gelir, icra
                                         kesintisi matrahına eklenir</div>
                                 </div>
+                                <div class="form-check custom-checkbox">
+                                    <input class="form-check-input" type="checkbox" id="resmi_alacagina_dahil"
+                                        name="resmi_alacagina_dahil" value="1">
+                                    <label class="form-check-label fw-medium" for="resmi_alacagina_dahil">Resmi Alacağa Dahil</label>
+                                    <div class="text-muted" style="font-size: 11px;">İşaretlenirse bu ek ödeme resmi alacağa eklenir ve yemek bedeli buna göre yeniden hesaplanır</div>
+                                </div>
                             </div>
                         </div>
 
@@ -1058,6 +1064,7 @@ for ($y = date('Y') + 1; $y >= 2020; $y--) {
             $('#gelir_vergisi_dahil').prop('checked', param.gelir_vergisi_dahil == 1);
             $('#damga_vergisi_dahil').prop('checked', param.damga_vergisi_dahil == 1);
             $('#icra_pirim_dahil').prop('checked', param.icra_pirim_dahil == 1);
+            $('#resmi_alacagina_dahil').prop('checked', param.resmi_alacagina_dahil == 1);
             $('#icraDahilAyarlari').toggle(param.kategori === 'gelir');
 
             $('input[name="gunluk_tutar"]').val(param.gunluk_tutar || 0);
@@ -1106,6 +1113,7 @@ for ($y = date('Y') + 1; $y >= 2020; $y--) {
             $('#gelir_vergisi_dahil').prop('checked', param.gelir_vergisi_dahil == 1);
             $('#damga_vergisi_dahil').prop('checked', param.damga_vergisi_dahil == 1);
             $('#icra_pirim_dahil').prop('checked', param.icra_pirim_dahil == 1);
+            $('#resmi_alacagina_dahil').prop('checked', param.resmi_alacagina_dahil == 1);
             $('#icraDahilAyarlari').toggle(param.kategori === 'gelir');
 
             $('input[name="gunluk_tutar"]').val(param.gunluk_tutar || 0);
