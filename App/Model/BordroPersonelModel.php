@@ -601,6 +601,9 @@ class BordroPersonelModel extends Model
         if ($rtcGun > 0 || $htcGun > 0) {
             $gunlukAsgari = round($asgariUcretNet / 30, 4);
             $resmiDahilEkToplam += $gunlukAsgari * ($rtcGun + $htcGun);
+            if ($rtcGun > 0) {
+                $yontemliBankaEki += $gunlukAsgari * $rtcGun;
+            }
             if ($htcGun > 0) {
                 $htcEkOdemeGosterim = round($maasTutari / 30, 4) * $htcGun;
                 $rawEkOdeme += $htcEkOdemeGosterim;
@@ -3906,6 +3909,9 @@ class BordroPersonelModel extends Model
         if ($rtcGunHesap > 0 || $htcGunHesap > 0) {
             $gunlukAsgariHesap = round(floatval($genelAyarlarMap['asgari_ucret_net'] ?? 17002.12) / 30, 4);
             $resmiDahilEkToplam += $gunlukAsgariHesap * ($rtcGunHesap + $htcGunHesap);
+            if ($rtcGunHesap > 0) {
+                $yontemliOdemeler['banka'] += $gunlukAsgariHesap * $rtcGunHesap;
+            }
         }
         if ($htcGunHesap > 0) {
             $htcEkOdeme = round($nominalBrutMaas / 30, 4) * $htcGunHesap;
