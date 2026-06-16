@@ -21,8 +21,10 @@ jobs:
         password: ${{ secrets.FTP_PASSWORD }}
         server-dir: /repositories/ersan_elk/
         # Büyük ve gereksiz klasörleri hariç tutuyoruz (Timeout engellemek için)
+        # NOT: .env hariç tutulur -> sunucudaki mevcut .env SiLiNMEZ ve üzerine yazılmaz
         exclude: |
           **/.git*
+          **/.env
           **/node_modules/**
           **/test-results/**
           **/playwright-report/**

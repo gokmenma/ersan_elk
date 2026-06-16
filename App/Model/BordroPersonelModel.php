@@ -860,40 +860,53 @@ class BordroPersonelModel extends Model
         UPDATE {$this->table} bp
         INNER JOIN personel p ON bp.personel_id = p.id
         SET bp.silinme_tarihi = NOW()
-        WHERE bp.donem_id = ? 
+        WHERE bp.donem_id = ?
         AND bp.silinme_tarihi IS NULL
         AND (
-            p.aktif_mi = 2 
+            p.aktif_mi = 2
             OR p.maas_durumu = 'Maaş Hesaplanmayan'
             OR (p.ise_giris_tarihi IS NOT NULL AND p.ise_giris_tarihi != '0000-00-00' AND p.ise_giris_tarihi > ?)
             OR (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi != '' AND p.isten_cikis_tarihi != '0000-00-00' AND p.isten_cikis_tarihi < ?)
             OR (p.aktif_mi = 0 AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00'))
         )
+        AND NOT EXISTS (
+            SELECT 1 FROM personel_calisma_gecmisi pcg
+            WHERE pcg.personel_id = p.id
+            AND pcg.ise_giris_tarihi <= ?
+            AND (pcg.isten_cikis_tarihi IS NULL OR pcg.isten_cikis_tarihi >= ?)
+        )
     ");
-        $sqlRemove->execute([$donem_id, $bitis_tarihi, $baslangic_tarihi]);
+        $sqlRemove->execute([$donem_id, $bitis_tarihi, $baslangic_tarihi, $bitis_tarihi, $baslangic_tarihi]);
 
         // Uygun personelleri bul (aktif_mi = 1 olanlar veya çıkış tarihi döneme uyan aktif_mi = 0 olanlar)
         // İşten çıkış tarihi: NULL, '0000-00-00', boş string veya dönem başlangıcından büyük/eşit olanlar
         $sql = $this->db->prepare("
         SELECT id, adi_soyadi, ise_giris_tarihi, isten_cikis_tarihi, aktif_mi
-        FROM personel 
+        FROM personel
         WHERE firma_id = :firma_id
         AND aktif_mi != 2
         AND (maas_durumu IS NULL OR maas_durumu != 'Maaş Hesaplanmayan')
         AND (
-            ise_giris_tarihi IS NULL 
-            OR ise_giris_tarihi = ''
-            OR ise_giris_tarihi = '0000-00-00'
-            OR ise_giris_tarihi <= :bitis_tarihi
-        )
-        AND (
-            (aktif_mi = 1 AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '' OR isten_cikis_tarihi = '0000-00-00' OR isten_cikis_tarihi >= :baslangic_tarihi))
-            OR
-            (aktif_mi = 0 AND isten_cikis_tarihi IS NOT NULL AND isten_cikis_tarihi != '' AND isten_cikis_tarihi != '0000-00-00' AND isten_cikis_tarihi >= :baslangic_tarihi)
+            (
+                (ise_giris_tarihi IS NULL OR ise_giris_tarihi = '' OR ise_giris_tarihi = '0000-00-00' OR ise_giris_tarihi <= :bitis_tarihi)
+                AND (
+                    (aktif_mi = 1 AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '' OR isten_cikis_tarihi = '0000-00-00' OR isten_cikis_tarihi >= :baslangic_tarihi))
+                    OR
+                    (aktif_mi = 0 AND isten_cikis_tarihi IS NOT NULL AND isten_cikis_tarihi != '' AND isten_cikis_tarihi != '0000-00-00' AND isten_cikis_tarihi >= :baslangic_tarihi)
+                )
+            )
+            OR EXISTS (
+                SELECT 1 FROM personel_calisma_gecmisi pcg
+                WHERE pcg.personel_id = personel.id
+                AND pcg.ise_giris_tarihi <= :bitis_tarihi2
+                AND (pcg.isten_cikis_tarihi IS NULL OR pcg.isten_cikis_tarihi >= :baslangic_tarihi2)
+            )
         )
     ");
         $sql->bindParam(':baslangic_tarihi', $baslangic_tarihi);
         $sql->bindParam(':bitis_tarihi', $bitis_tarihi);
+        $sql->bindParam(':baslangic_tarihi2', $baslangic_tarihi);
+        $sql->bindParam(':bitis_tarihi2', $bitis_tarihi);
         $sql->bindParam(':firma_id', $firma_id);
 
         $sql->execute();
