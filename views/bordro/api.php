@@ -835,7 +835,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $totalDahilYardim = $displayMealDeduction + $spouseDeduction;
                     $sozlesmeHakedisTotal = round(($nominalMaas / 30) * $calismaGunu, 2);
                     $contractTarget = max($sozlesmeHakedisTotal, $asgariHakedisModal + $totalDahilYardim);
-                    $modalMaasFarkiGosterim = max(0, round($contractTarget - $asgariHakedisModal - $totalDahilYardim, 2));
+                    $rtcResmiPayModal = round(floatval($asgariUcretNet) / 30 * $rtcGunModal, 2);
+                    $htcResmiPayModal = round(floatval($asgariUcretNet) / 30 * $htcGunModal, 2);
+                    $modalMaasFarkiGosterim = max(0, round($contractTarget - $asgariHakedisModal - $totalDahilYardim - $rtcResmiPayModal - $htcResmiPayModal, 2));
                 }
 
                 $modalEkOdemeToplami = $toplamPuantajTutar + $toplamNobetTutar + $toplamKacakTutar;
