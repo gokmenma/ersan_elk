@@ -853,7 +853,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if ($isPrimUsulu) {
                         $bagimsizEkOdemeGosterim = max(0, $bagimsizEkOdemeGosterim - $toplamPuantajTutar);
                     }
-                    $gosterimYuvarlamaFarki = round($displayToplamAlacak - $anaHakedisGosterim - $bagimsizEkOdemeGosterim, 2);
+                    $htcGosterimEkOdeme = $htcGunModal > 0 ? round($nominalMaas / 30 * $htcGunModal, 2) : 0.0;
+                    $gosterimYuvarlamaFarki = round($displayToplamAlacak - $anaHakedisGosterim - $bagimsizEkOdemeGosterim - $htcGosterimEkOdeme, 2);
                     if (abs($gosterimYuvarlamaFarki) >= 0.01) {
                         $toplamYuvarlamaFarki = $gosterimYuvarlamaFarki;
                     }

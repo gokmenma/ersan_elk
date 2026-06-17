@@ -376,9 +376,12 @@ class BordroPersonelModel extends Model
             $gunlukYemekLimit = $this->getYemekYardimiGunlukLimitForDate($kayit, $parametreTarihi);
             $yemekKapasitesi = $gunlukYemekLimit > 0 ? ($gunlukYemekLimit * $calcFiiliGun) : $yemekHesapMatrahi;
             $yemekHamTutari = min($yemekHesapMatrahi, $yemekKapasitesi);
-            $yemekTutari = ceil($yemekHamTutari);
+            // Günlük bazlı yuvarlama: ham günlüğü yukarı yuvarla, günle çarp
+            $gunlukHam = $yemekHamTutari / max(1, $calcFiiliGun);
+            $gunlukYuvarlanan = ceil($gunlukHam);
+            $yemekTutari = $gunlukYuvarlanan * $calcFiiliGun;
             $sonuc['yemek_toplam'] = round($yemekTutari, 2);
-            $sonuc['yemek_gunluk'] = $gunlukYemekLimit > 0 ? $gunlukYemekLimit : round($yemekTutari / max(1, $calcFiiliGun), 2);
+            $sonuc['yemek_gunluk'] = $gunlukYuvarlanan;
             $sonuc['yuvarlama_farki'] = max(0, round($yemekTutari - $yemekHamTutari, 2));
             $kalanFark = max(0, round($yemekHesapMatrahi - $yemekTutari, 2));
         }
@@ -630,7 +633,12 @@ class BordroPersonelModel extends Model
             $hariciEkOdeme = max(0, $rawEkOdeme - $primUsuluPuantajHedefToplami);
             $sodexoLocal = floatval($p->sodexo_odemesi ?? 0) + $yontemliSodexoEki;
             $totalDeductionsForDahil = $kesintiHaricIcra + $sodexoLocal + floatval($p->diger_odeme ?? 0);
-            $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi($p, $asgariUcretNet, $calismaGunu, $fiiliGunSayisi, $primUsuluPuantajHedefToplami, $totalDeductionsForDahil, $hariciEkOdeme, $sozlesmeHakedisi, $resmiDahilEkToplam);
+            // HTÇ sözleşme dışı ek ödeme — yemek matrahını etkilememeli
+            $htcResmiTutarDagilim = $htcGun > 0 ? round($asgariUcretNet / 30, 4) * $htcGun : 0.0;
+            $htcEkOdemeTutarDagilim = $htcGun > 0 ? round($maasTutari / 30, 4) * $htcGun : 0.0;
+            $resmiDahilForDahil = max(0.0, $resmiDahilEkToplam - $htcResmiTutarDagilim);
+            $hariciEkOdemeForDahil = max(0.0, $hariciEkOdeme - $htcEkOdemeTutarDagilim);
+            $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi($p, $asgariUcretNet, $calismaGunu, $fiiliGunSayisi, $primUsuluPuantajHedefToplami, $totalDeductionsForDahil, $hariciEkOdemeForDahil, $sozlesmeHakedisi, $resmiDahilForDahil);
             
             $mealAllowanceDeduction = floatval($dahilDagilim['yemek_toplam'] ?? 0);
             $spouseAllowanceDeduction = floatval($dahilDagilim['es_toplam'] ?? 0);
@@ -4065,6 +4073,9 @@ class BordroPersonelModel extends Model
 
                 $sozlesmeHakedisi = $this->getSozlesmeHakedisi($kayit->personel_id ?? $kayit->id, $nominalBrutMaas, $maasHesapGunu, $donemBaslangicTarihi ?? $donemTarihi ?? date('Y-m-01'));
 
+                // HTÇ resmi yemek matrahını etkilememeli — yalnızca RTÇ yemek kapasitesini azaltır
+                $htcResmiTutarHesapDagilim = $htcGunHesap > 0 ? round($asgariUcretNet / 30, 4) * $htcGunHesap : 0.0;
+                $resmiDahilForDagilimHesap = max(0.0, $resmiDahilEkToplam - $htcResmiTutarHesapDagilim);
                 $dahilDagilimPreIcra = $this->hesaplaMaasaDahilYardimDagilimi(
                     $kayit,
                     $asgariUcretNet,
@@ -4074,7 +4085,7 @@ class BordroPersonelModel extends Model
                     0, // USER REQ: Dahil yardımların icra matrahı hesabı kesintilerden önce yapılmalıdır
                     $bankayaTasinabilirEkOdeme,
                     $sozlesmeHakedisi,
-                    $resmiDahilEkToplam
+                    $resmiDahilForDagilimHesap
                 );
 
                 // Yemek Yardımı İcraya Dahil mi?
@@ -4148,6 +4159,8 @@ class BordroPersonelModel extends Model
             }
 
             $sozlesmeHakedisiCalc = $this->getSozlesmeHakedisi($kayit->personel_id ?? $kayit->id, $nominalBrutMaas, $maasHesapGunu, $donemBaslangicTarihi ?? date('Y-m-01'));
+            $htcResmiTutarHesapDagilim2 = $htcGunHesap > 0 ? round($asgariUcretNet / 30, 4) * $htcGunHesap : 0.0;
+            $resmiDahilForDagilimHesap2 = max(0.0, $resmiDahilEkToplam - $htcResmiTutarHesapDagilim2);
             $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi(
                 $kayit,
                 $asgariNetNominal,
@@ -4157,7 +4170,7 @@ class BordroPersonelModel extends Model
                 0,
                 $bankayaTasinabilirEkOdeme,
                 $sozlesmeHakedisiCalc,
-                $resmiDahilEkToplam
+                $resmiDahilForDagilimHesap2
             );
             $hesaplananYemekToplam = floatval($dahilDagilim['yemek_toplam'] ?? 0);
             $hesaplananEsToplam = floatval($dahilDagilim['es_toplam'] ?? 0);
