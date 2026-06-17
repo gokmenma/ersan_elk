@@ -326,7 +326,7 @@ class BordroPersonelModel extends Model
         return $hakedis;
     }
 
-    private function hesaplaMaasaDahilYardimDagilimi(object $kayit, float $asgariUcretNet, int $maasHesapGunu, int $fiiliGunSayisi, float $puantajToplami = 0.0, float $toplamKesinti = 0.0, float $bankayaTasinabilirEkOdeme = 0.0, float $sozlesmeHakedisi = 0.0, float $resmiDahilEkToplam = 0.0): array
+    private function hesaplaMaasaDahilYardimDagilimi(object $kayit, float $asgariUcretNet, int $maasHesapGunu, int $fiiliGunSayisi, float $puantajToplami = 0.0, float $toplamKesinti = 0.0, float $bankayaTasinabilirEkOdeme = 0.0, float $sozlesmeHakedisi = 0.0, float $resmiDahilEkToplam = 0.0, float $htcNetFazla = 0.0): array
     {
         $sonuc = [
             'aktif' => false,
@@ -361,7 +361,8 @@ class BordroPersonelModel extends Model
 
         // USER REQ: Maksimum banka ödemesi için kesintiler düşülmeden önceki matrahı baz al (Kesinti mahsup etme)
         // Böylece yemek yardımı tavanı artar ve banka ödemesi maksimize edilir.
-        $yemekHesapMatrahi = max(0, round($targetHakedis - $sonuc['asgari_hakedis'], 2));
+        // HTÇ net fazla (brüt/30 - asgari/30) × gün — yemek havuzuna dahil, kapasiteyi aşarsa elden gider
+        $yemekHesapMatrahi = max(0, round($targetHakedis - $sonuc['asgari_hakedis'] + $htcNetFazla, 2));
         
         $calcFiiliGun = max(1, $fiiliGunSayisi);
         $sonuc['yemek_gunluk_ham'] = $yemekHesapMatrahi / $calcFiiliGun;
@@ -611,9 +612,11 @@ class BordroPersonelModel extends Model
             if ($htcGun > 0) {
                 $htcEkOdemeGosterim = round($maasTutari / 30, 4) * $htcGun;
                 $rawEkOdeme += $htcEkOdemeGosterim;
-                $yontemliBankaEki += $htcEkOdemeGosterim;
+                // HTÇ net fazla (brüt - asgari) yemek havuzuna taşınıyor; yalnızca resmi kısım bankaya
+                $yontemliBankaEki += $gunlukAsgari * $htcGun;
             }
         }
+        $htcNetFazlaGosterim = $htcGun > 0 ? (round($maasTutari / 30, 4) - round($asgariUcretNet / 30, 4)) * $htcGun : 0.0;
 
         if ($isInclusive) {
             if ($fiiliGunSayisi <= 0) $fiiliGunSayisi = $puantajFiiliGun > 0 ? $puantajFiiliGun : $calismaGunu;
@@ -638,7 +641,7 @@ class BordroPersonelModel extends Model
             $htcEkOdemeTutarDagilim = $htcGun > 0 ? round($maasTutari / 30, 4) * $htcGun : 0.0;
             $resmiDahilForDahil = max(0.0, $resmiDahilEkToplam - $htcResmiTutarDagilim);
             $hariciEkOdemeForDahil = max(0.0, $hariciEkOdeme - $htcEkOdemeTutarDagilim);
-            $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi($p, $asgariUcretNet, $calismaGunu, $fiiliGunSayisi, $primUsuluPuantajHedefToplami, $totalDeductionsForDahil, $hariciEkOdemeForDahil, $sozlesmeHakedisi, $resmiDahilForDahil);
+            $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi($p, $asgariUcretNet, $calismaGunu, $fiiliGunSayisi, $primUsuluPuantajHedefToplami, $totalDeductionsForDahil, $hariciEkOdemeForDahil, $sozlesmeHakedisi, $resmiDahilForDahil, $htcNetFazlaGosterim);
             
             $mealAllowanceDeduction = floatval($dahilDagilim['yemek_toplam'] ?? 0);
             $spouseAllowanceDeduction = floatval($dahilDagilim['es_toplam'] ?? 0);
@@ -3922,10 +3925,13 @@ class BordroPersonelModel extends Model
                 $yontemliOdemeler['banka'] += $gunlukAsgariHesap * $rtcGunHesap;
             }
         }
+        $htcNetFazlaHesap = 0.0;
         if ($htcGunHesap > 0) {
             $htcEkOdeme = round($nominalBrutMaas / 30, 4) * $htcGunHesap;
+            $htcNetFazlaHesap = $htcEkOdeme - $gunlukAsgariHesap * $htcGunHesap;
             $netEkOdemeler += $htcEkOdeme;
-            $yontemliOdemeler['banka'] += $htcEkOdeme;
+            // HTÇ net fazla yemek havuzuna taşınıyor; yalnızca resmi kısım bankaya
+            $yontemliOdemeler['banka'] += $gunlukAsgariHesap * $htcGunHesap;
             $icraMatrahEkleri += $htcEkOdeme;
         }
 
@@ -4085,7 +4091,8 @@ class BordroPersonelModel extends Model
                     0, // USER REQ: Dahil yardımların icra matrahı hesabı kesintilerden önce yapılmalıdır
                     $bankayaTasinabilirEkOdeme,
                     $sozlesmeHakedisi,
-                    $resmiDahilForDagilimHesap
+                    $resmiDahilForDagilimHesap,
+                    $htcNetFazlaHesap
                 );
 
                 // Yemek Yardımı İcraya Dahil mi?
@@ -4170,7 +4177,8 @@ class BordroPersonelModel extends Model
                 0,
                 $bankayaTasinabilirEkOdeme,
                 $sozlesmeHakedisiCalc,
-                $resmiDahilForDagilimHesap2
+                $resmiDahilForDagilimHesap2,
+                $htcNetFazlaHesap
             );
             $hesaplananYemekToplam = floatval($dahilDagilim['yemek_toplam'] ?? 0);
             $hesaplananEsToplam = floatval($dahilDagilim['es_toplam'] ?? 0);

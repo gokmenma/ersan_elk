@@ -739,7 +739,7 @@ foreach ($kesintiler as $k) {
 
                         <!-- Taksit Sayısı (Dinamik) -->
                         <div class="col-12 d-none" id="div_taksit_sayisi">
-                            <?= Form::FormFloatInput("number", "taksit_sayisi", "1", "Taksit Sayısı", "Taksit Sayısı", "bx bx-list-ol", "form-control", true, null, "off", false, 'id="kesinti_taksit_sayisi" min="1" max="60"') ?>
+                            <?= Form::FormFloatInput("number", "kesinti_taksit_sayisi", "1", "Taksit Sayısı", "Taksit Sayısı", "bx bx-list-ol", "form-control", true, null, "off", false, 'min="1" max="60"') ?>
                         </div>
 
                         <!-- Dinamik Dönem/Tarih Alanları -->
@@ -755,31 +755,31 @@ foreach ($kesintiler as $k) {
                         </div>
 
                         <div class="col-md-6 d-none" id="div_surekli_donem_baslangic">
-                            <?= Form::FormFloatInput("text", "baslangic_donemi", date('01.m.Y'), "GG.AA.YYYY", "Başlangıç Tarihi", "calendar", "form-control flatpickr", true, null, "off", false, 'id="baslangic_donemi"') ?>
+                            <?= Form::FormFloatInput("text", "baslangic_donemi", date('01.m.Y'), "GG.AA.YYYY", "Başlangıç Tarihi", "calendar", "form-control flatpickr", true, null, "off", false) ?>
                         </div>
                         <div class="col-md-6 d-none" id="div_surekli_donem_bitis">
-                            <?= Form::FormFloatInput("text", "bitis_donemi", "", "GG.AA.YYYY", "Bitiş Tarihi (Opsiyonel)", "calendar", "form-control flatpickr", false, null, "off", false, 'id="bitis_donemi"') ?>
+                            <?= Form::FormFloatInput("text", "bitis_donemi", "", "GG.AA.YYYY", "Bitiş Tarihi (Opsiyonel)", "calendar", "form-control flatpickr", false, null, "off", false) ?>
                         </div>
 
                         <!-- Değer Alanları -->
                         <div class="col-md-6 d-none" id="div_kesinti_gun">
-                            <?= Form::FormFloatInput("number", "gun_sayisi", "", "0", "Kesilecek Gün Sayısı", "bx bx-calendar", "form-control", false, null, "off", false, 'step="0.5" id="kesinti_gun_sayisi" min="0"') ?>
+                            <?= Form::FormFloatInput("number", "kesinti_gun_sayisi", "", "0", "Kesilecek Gün Sayısı", "bx bx-calendar", "form-control", false, null, "off", false, 'step="0.5" min="0"') ?>
                         </div>
 
                         <div class="col-md-6" id="div_tutar">
-                            <?= Form::FormFloatInput("number", "kesinti_tutar", "", "0.00", "Kesinti Tutarı (TL)", "bx bx-wallet", "form-control", true, null, "off", false, 'step="0.01" id="kesinti_tutar" min="0"') ?>
+                            <?= Form::FormFloatInput("number", "kesinti_tutar", "", "0.00", "Kesinti Tutarı (TL)", "bx bx-wallet", "form-control", true, null, "off", false, 'step="0.01" min="0"') ?>
                         </div>
                         <div class="col-md-6 d-none" id="div_oran">
-                            <?= Form::FormFloatInput("number", "oran", "", "0", "Hesaplama Oranı (%)", "bx bx-percent", "form-control", false, null, "off", false, 'step="0.01" id="kesinti_oran" min="0" max="100"') ?>
+                            <?= Form::FormFloatInput("number", "oran", "", "0", "Hesaplama Oranı (%)", "bx bx-percent", "form-control", false, null, "off", false, 'step="0.01" min="0" max="100"') ?>
                         </div>
 
                         <div class="col-md-6">
-                            <?= Form::FormFloatInput("text", "kesinti_tarih", Date::today(), "GG.AA.YYYY", "İşlem Tarihi", "calendar", "form-control flatpickr", true, null, "off", false, 'id="kesinti_tarih"') ?>
+                            <?= Form::FormFloatInput("text", "kesinti_tarih", Date::today(), "GG.AA.YYYY", "İşlem Tarihi", "calendar", "form-control flatpickr", true, null, "off", false) ?>
                         </div>
 
                         <!-- Açıklama -->
                         <div class="col-12">
-                            <?= Form::FormFloatInput("text", "aciklama", "", "Kısa bir açıklama belirtin...", "Açıklama / Not", "bx bx-message-square-detail", "form-control", false, null, "off", false, 'id="kesinti_aciklama"') ?>
+                            <?= Form::FormFloatInput("text", "aciklama", "", "Kısa bir açıklama belirtin...", "Açıklama / Not", "bx bx-message-square-detail", "form-control", false, null, "off", false) ?>
                         </div>
                     </div>
                 </div>
