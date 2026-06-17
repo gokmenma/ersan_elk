@@ -107,16 +107,15 @@ try {
     $sheet->setCellValue('A2', 'M');
     $sheet->setCellValue('B2', $odemeTarihiExcel);
     $sheet->setCellValueExplicit('C2', $firma->firma_iban ?? '', DataType::TYPE_STRING);
-    $sheet->setCellValue('D2', $toplamBankaOdemesi);
+    $sheet->setCellValue('D2', 0); // Geçici olarak 0, döngü sonunda formülle güncellenecek
     $sheet->setCellValue('E2', $firma->firma_unvan ?? $firma->firma_adi ?? '');
 
     // Tarih ve Tutar formatları
     $sheet->getStyle('B2')->getNumberFormat()->setFormatCode('dd/mm/yyyy');
     $sheet->getStyle('D2')->getNumberFormat()->setFormatCode('#,##0.00');
 
-    // --- BÖLÜM 2: PERSONEL LİSTESİ ---
     $sheet->setCellValue('A4', 'Ödeme Tipi');
-    $sheet->setCellValue('B4', 'ödeme Tarihi');
+    $sheet->setCellValue('B4', 'Ödeme Tarihi');
     $sheet->setCellValue('C4', 'Personel IBAN');
     $sheet->setCellValue('D4', 'Tutar');
     $sheet->setCellValue('E4', 'Personel Ad\Soyad');
@@ -143,6 +142,14 @@ try {
         $sheet->getStyle('D' . $satir)->getNumberFormat()->setFormatCode('#,##0.00');
 
         $satir++;
+    }
+
+    // Toplam tutar hücresini otomatik SUM formülü ile güncelle
+    $sonSatir = $satir - 1;
+    if ($sonSatir >= 5) {
+        $sheet->setCellValue('D2', "=SUM(D5:D{$sonSatir})");
+    } else {
+        $sheet->setCellValue('D2', 0);
     }
 
     // Sütun genişliklerini ayarla

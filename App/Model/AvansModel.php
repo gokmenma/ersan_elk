@@ -296,7 +296,9 @@ class AvansModel extends Model
             : date('Y-m', strtotime($talepTarihi));
 
         $odemeSekli = strtolower(trim((string) ($avans->odeme_sekli ?? 'tek')));
-        if ($odemeSekli === '3') {
+        if (is_numeric($odemeSekli) && intval($odemeSekli) > 0) {
+            $taksitSayisi = intval($odemeSekli);
+        } elseif ($odemeSekli === '3') {
             $taksitSayisi = 3;
         } elseif ($odemeSekli === '2' || $odemeSekli === 'taksit') {
             $taksitSayisi = 2;

@@ -154,6 +154,26 @@ try {
                 $data['bitis_donemi'] = !empty($_POST['bitis_donemi']) ? $_POST['bitis_donemi'] : null;
             }
 
+            $mevcutKesinti = $kesintiModel->getKesinti($id);
+            if ($mevcutKesinti && ($mevcutKesinti->tur === 'avans' || preg_match('/^\[Avans\]\s*#(\d+)/i', $mevcutKesinti->aciklama, $matches))) {
+                if (empty($matches)) {
+                    preg_match('/^\[Avans\]\s*#(\d+)/i', $mevcutKesinti->aciklama, $matches);
+                }
+                if (!empty($matches)) {
+                    $avansId = intval($matches[1]);
+                    $taksitSayisi = ($tekrarTipi === 'taksitli') ? intval($_POST['taksit_sayisi'] ?? 1) : 1;
+                    $odemeSekli = 'tek';
+                    if ($taksitSayisi > 1) {
+                        $odemeSekli = strval($taksitSayisi);
+                    }
+                    $tutar = floatval($_POST['tutar'] ?? 0);
+                    
+                    $db = $kesintiModel->getDb();
+                    $stmt = $db->prepare("UPDATE personel_avanslari SET odeme_sekli = ?, tutar = ? WHERE id = ?");
+                    $stmt->execute([$odemeSekli, $tutar, $avansId]);
+                }
+            }
+
             $result = $kesintiModel->updateKesinti($id, $data);
             echo json_encode(['success' => $result]);
             break;
