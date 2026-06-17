@@ -368,17 +368,17 @@ class BordroPersonelModel extends Model
         $kalanFark = $yemekHesapMatrahi;
 
         if ($kalanFark > 0) {
-            // Vergi istisna limiti kadar yemek, üstü maaş farkı (vergiye tabi)
             $parametreTarihi = $kayit->baslangic_tarihi ?? $kayit->donem_baslangic_tarihi ?? null;
             if ($this->cachedParametreModel === null) {
                 $this->cachedParametreModel = new \App\Model\BordroParametreModel();
             }
-            $gunlukIstisna = floatval($this->cachedParametreModel->getGenelAyar('yemek_yardimi_gunluk_istisna', $parametreTarihi) ?? 0);
-            $yemekKapasitesi = $gunlukIstisna > 0 ? ($gunlukIstisna * $calcFiiliGun) : $yemekHesapMatrahi;
+            // Personelin kendi parametresi → global yemek parametresi → 300 ₺ fallback
+            $gunlukYemekLimit = $this->getYemekYardimiGunlukLimitForDate($kayit, $parametreTarihi);
+            $yemekKapasitesi = $gunlukYemekLimit > 0 ? ($gunlukYemekLimit * $calcFiiliGun) : $yemekHesapMatrahi;
             $yemekHamTutari = min($yemekHesapMatrahi, $yemekKapasitesi);
             $yemekTutari = ceil($yemekHamTutari);
             $sonuc['yemek_toplam'] = round($yemekTutari, 2);
-            $sonuc['yemek_gunluk'] = $gunlukIstisna > 0 ? $gunlukIstisna : round($yemekTutari / max(1, $calcFiiliGun), 2);
+            $sonuc['yemek_gunluk'] = $gunlukYemekLimit > 0 ? $gunlukYemekLimit : round($yemekTutari / max(1, $calcFiiliGun), 2);
             $sonuc['yuvarlama_farki'] = max(0, round($yemekTutari - $yemekHamTutari, 2));
             $kalanFark = max(0, round($yemekHesapMatrahi - $yemekTutari, 2));
         }
@@ -527,6 +527,7 @@ class BordroPersonelModel extends Model
 
         // Puantaj günlerini önceden alalım ki görev geçmişi eksik olsa bile çalışılan günleri sayabilelim
         $fiiliGunSayisi = $this->getPuantajXGunSayisi($p->personel_id, $donemBaslangic, $donemBitis);
+        $puantajFiiliGun = $fiiliGunSayisi; // yemek kapasitesi için sakla (aşağıda sıfırlanıyor)
 
         if (!empty($p->gorev_gecmisi_var) && isset($p->gg_toplam_gun)) {
             $ggToplamGun = intval($p->gg_toplam_gun);
@@ -612,7 +613,7 @@ class BordroPersonelModel extends Model
         }
 
         if ($isInclusive) {
-            if ($fiiliGunSayisi <= 0) $fiiliGunSayisi = $calismaGunu;
+            if ($fiiliGunSayisi <= 0) $fiiliGunSayisi = $puantajFiiliGun > 0 ? $puantajFiiliGun : $calismaGunu;
             $p->donem_baslangic_tarihi = $donemBaslangic;
             $p->donem_bitis_tarihi = $donemBitis;
 
