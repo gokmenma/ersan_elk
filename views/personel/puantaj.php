@@ -799,6 +799,12 @@ use App\Service\Gate;
                                 <div style="width: 250px;">
                                     <?php echo Form::FormFloatInput('text', 'personel-filter', '', 'Personel Ara...', 'Personel Ara', 'search'); ?>
                                 </div>
+                                <div style="width: 180px;">
+                                    <?php echo Form::FormSelect2("select-departman", ["" => "Tüm Departmanlar"], "", "Departman", "briefcase", 'key', '', "form-control select2"); ?>
+                                </div>
+                                <div style="width: 180px;">
+                                    <?php echo Form::FormSelect2("select-bolge", ["" => "Tüm Bölgeler"], "", "Bölge", "map-pin", 'key', '', "form-control select2"); ?>
+                                </div>
                             </div>
                         </div>
 

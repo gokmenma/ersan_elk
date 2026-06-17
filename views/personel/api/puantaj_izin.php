@@ -35,22 +35,46 @@ try {
         $ucretsiz->execute([$firma_id]);
         $ucretsiz_list = $ucretsiz->fetchAll(PDO::FETCH_OBJ);
 
+        // Departmanlar (Görev geçmişinden)
+        $dep_stmt = $Personel->db->prepare("
+            SELECT DISTINCT pgg.departman 
+            FROM personel_gorev_gecmisi pgg 
+            INNER JOIN personel p ON pgg.personel_id = p.id 
+            WHERE p.firma_id = ? AND pgg.departman IS NOT NULL AND pgg.departman != '' 
+            ORDER BY pgg.departman ASC
+        ");
+        $dep_stmt->execute([$firma_id]);
+        $departmanlar = $dep_stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        // Bölgeler (Tanimlamalar ekip_kodu grubundan)
+        $bolge_stmt = $Tanimlamalar->db->prepare("
+            SELECT DISTINCT ekip_bolge 
+            FROM tanimlamalar 
+            WHERE grup = 'ekip_kodu' AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL AND ekip_bolge IS NOT NULL AND ekip_bolge != '' 
+            ORDER BY ekip_bolge ASC
+        ");
+        $bolge_stmt->execute([$firma_id]);
+        $bolgeler = $bolge_stmt->fetchAll(PDO::FETCH_COLUMN);
+
         echo json_encode([
             'status' => 'success',
             'data' => [
                 'ucretli' => $ucretli_list,
-                'ucretsiz' => $ucretsiz_list
+                'ucretsiz' => $ucretsiz_list,
+                'departmanlar' => $departmanlar,
+                'bolgeler' => $bolgeler
             ]
         ]);
     } elseif ($action === 'get-calendar-data') {
         $ay = $_POST['ay'] ?? date('m');
         $yil = $_POST['yil'] ?? date('Y');
+        $departman = $_POST['departman'] ?? '';
+        $bolge = $_POST['bolge'] ?? '';
 
         $startDate = "$yil-$ay-01";
         $endDate = date("Y-m-t", strtotime($startDate));
 
-        // Aktif personelleri ve o ay veya sonrasında işten çıkanları getir
-        $personeller = $Personel->db->prepare("
+        $sql = "
             SELECT p.id, p.adi_soyadi, p.resim_yolu, p.ekip_no, p.tc_kimlik_no, p.isten_cikis_tarihi, p.ise_giris_tarihi,
                    CASE WHEN gg.personel_id IS NOT NULL THEN 1 ELSE 0 END as gorev_gecmisi_var,
                    COALESCE(gg_days.toplam_gun, 0) as gg_toplam_gun
@@ -58,32 +82,80 @@ try {
             LEFT JOIN (
                 SELECT DISTINCT pgg.personel_id
                 FROM personel_gorev_gecmisi pgg
-                WHERE pgg.baslangic_tarihi <= ?
-                  AND (pgg.bitis_tarihi IS NULL OR pgg.bitis_tarihi >= ?)
+                WHERE pgg.baslangic_tarihi <= :end_date1
+                  AND (pgg.bitis_tarihi IS NULL OR pgg.bitis_tarihi >= :start_date1)
             ) gg ON p.id = gg.personel_id
             LEFT JOIN (
                 SELECT pgg.personel_id, 
-                       SUM(DATEDIFF(LEAST(COALESCE(pgg.bitis_tarihi, ?), ?), GREATEST(pgg.baslangic_tarihi, ?)) + 1) as toplam_gun
+                       SUM(DATEDIFF(LEAST(COALESCE(pgg.bitis_tarihi, :end_date2), :end_date3), GREATEST(pgg.baslangic_tarihi, :start_date2)) + 1) as toplam_gun
                 FROM personel_gorev_gecmisi pgg
-                WHERE pgg.baslangic_tarihi <= ? AND (pgg.bitis_tarihi IS NULL OR pgg.bitis_tarihi >= ?)
+                WHERE pgg.baslangic_tarihi <= :end_date4 AND (pgg.bitis_tarihi IS NULL OR pgg.bitis_tarihi >= :start_date3)
                 GROUP BY pgg.personel_id
             ) gg_days ON p.id = gg_days.personel_id
-            WHERE p.firma_id = ? 
+            LEFT JOIN (
+                SELECT pgg_dep.personel_id, pgg_dep.departman 
+                FROM personel_gorev_gecmisi pgg_dep
+                INNER JOIN (
+                    SELECT personel_id, MAX(baslangic_tarihi) AS latest_start 
+                    FROM personel_gorev_gecmisi 
+                    WHERE baslangic_tarihi <= :end_date_dep AND (bitis_tarihi IS NULL OR bitis_tarihi >= :start_date_dep) 
+                    GROUP BY personel_id
+                ) gg_latest ON pgg_dep.personel_id = gg_latest.personel_id AND pgg_dep.baslangic_tarihi = gg_latest.latest_start
+            ) gg_dep ON p.id = gg_dep.personel_id
+            LEFT JOIN tanimlamalar t_ekip ON p.ekip_no = t_ekip.id AND t_ekip.grup = 'ekip_kodu' AND t_ekip.silinme_tarihi IS NULL
+            WHERE p.firma_id = :firma_id 
             AND p.silinme_tarihi IS NULL 
-            AND (p.aktif_mi = 1 OR (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi >= ?))
-            AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00' OR p.isten_cikis_tarihi >= ?)
+            AND (p.aktif_mi = 1 OR (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi >= :start_date5))
+            AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00' OR p.isten_cikis_tarihi >= :start_date6)
             AND (p.disardan_sigortali = 0 OR FIND_IN_SET('puantaj', p.gorunum_modulleri))
-            AND (p.ise_giris_tarihi IS NULL OR p.ise_giris_tarihi = '' OR p.ise_giris_tarihi <= ?)
+            AND (p.ise_giris_tarihi IS NULL OR p.ise_giris_tarihi = '' OR p.ise_giris_tarihi <= :end_date5)
             AND NOT EXISTS (
-                SELECT 1 FROM personel_gorev_gecmisi pgg
-                WHERE pgg.personel_id = p.id
-                AND pgg.baslangic_tarihi <= ?
-                AND (pgg.bitis_tarihi IS NULL OR pgg.bitis_tarihi >= ?)
-                AND (pgg.maas_durumu = 'Maaş Hesaplanmayan')
+                SELECT 1 FROM personel_gorev_gecmisi pgg_not
+                WHERE pgg_not.personel_id = p.id
+                AND pgg_not.baslangic_tarihi <= :end_date6
+                AND (pgg_not.bitis_tarihi IS NULL OR pgg_not.bitis_tarihi >= :start_date7)
+                AND (pgg_not.maas_durumu = 'Maaş Hesaplanmayan')
             )
-            ORDER BY p.adi_soyadi ASC
-        ");
-        $personeller->execute([$endDate, $startDate, $endDate, $endDate, $startDate, $endDate, $startDate, $firma_id, $startDate, $startDate, $endDate, $endDate, $startDate]);
+        ";
+
+        if ($departman !== '') {
+            $sql .= " AND gg_dep.departman = :departman ";
+        }
+
+        if ($bolge !== '') {
+            $sql .= " AND t_ekip.ekip_bolge = :bolge ";
+        }
+
+        $sql .= " ORDER BY p.adi_soyadi ASC ";
+
+        $personeller = $Personel->db->prepare($sql);
+        
+        $params = [
+            ':end_date1' => $endDate,
+            ':start_date1' => $startDate,
+            ':end_date2' => $endDate,
+            ':end_date3' => $endDate,
+            ':start_date2' => $startDate,
+            ':end_date4' => $endDate,
+            ':start_date3' => $startDate,
+            ':end_date_dep' => $endDate,
+            ':start_date_dep' => $startDate,
+            ':firma_id' => $firma_id,
+            ':start_date5' => $startDate,
+            ':start_date6' => $startDate,
+            ':end_date5' => $endDate,
+            ':end_date6' => $endDate,
+            ':start_date7' => $startDate
+        ];
+
+        if ($departman !== '') {
+            $params[':departman'] = $departman;
+        }
+        if ($bolge !== '') {
+            $params[':bolge'] = $bolge;
+        }
+
+        $personeller->execute($params);
         $personel_list = $personeller->fetchAll(PDO::FETCH_OBJ);
 
         // Varsayılan tanımlamaları al
@@ -899,12 +971,14 @@ try {
     } elseif ($action === 'export-excel') {
         $ay = $_GET['ay'] ?? date('m');
         $yil = $_GET['yil'] ?? date('Y');
+        $departman = $_GET['departman'] ?? '';
+        $bolge = $_GET['bolge'] ?? '';
 
         $startDate = "$yil-$ay-01";
         $daysCount = date('t', strtotime($startDate));
         $endDate = "$yil-$ay-$daysCount";
 
-        $personeller = $Personel->db->prepare("
+        $sql = "
             SELECT p.id, p.adi_soyadi, p.tc_kimlik_no, p.isten_cikis_tarihi, p.ise_giris_tarihi,
                    CASE WHEN gg.personel_id IS NOT NULL THEN 1 ELSE 0 END as gorev_gecmisi_var,
                    COALESCE(gg_days.toplam_gun, 0) as gg_toplam_gun
@@ -912,32 +986,80 @@ try {
             LEFT JOIN (
                 SELECT DISTINCT pgg.personel_id
                 FROM personel_gorev_gecmisi pgg
-                WHERE pgg.baslangic_tarihi <= ?
-                  AND (pgg.bitis_tarihi IS NULL OR pgg.bitis_tarihi >= ?)
+                WHERE pgg.baslangic_tarihi <= :end_date1
+                  AND (pgg.bitis_tarihi IS NULL OR pgg.bitis_tarihi >= :start_date1)
             ) gg ON p.id = gg.personel_id
             LEFT JOIN (
                 SELECT pgg.personel_id, 
-                       SUM(DATEDIFF(LEAST(COALESCE(pgg.bitis_tarihi, ?), ?), GREATEST(pgg.baslangic_tarihi, ?)) + 1) as toplam_gun
+                       SUM(DATEDIFF(LEAST(COALESCE(pgg.bitis_tarihi, :end_date2), :end_date3), GREATEST(pgg.baslangic_tarihi, :start_date2)) + 1) as toplam_gun
                 FROM personel_gorev_gecmisi pgg
-                WHERE pgg.baslangic_tarihi <= ? AND (pgg.bitis_tarihi IS NULL OR pgg.bitis_tarihi >= ?)
+                WHERE pgg.baslangic_tarihi <= :end_date4 AND (pgg.bitis_tarihi IS NULL OR pgg.bitis_tarihi >= :start_date3)
                 GROUP BY pgg.personel_id
             ) gg_days ON p.id = gg_days.personel_id
-            WHERE p.firma_id = ? 
+            LEFT JOIN (
+                SELECT pgg_dep.personel_id, pgg_dep.departman 
+                FROM personel_gorev_gecmisi pgg_dep
+                INNER JOIN (
+                    SELECT personel_id, MAX(baslangic_tarihi) AS latest_start 
+                    FROM personel_gorev_gecmisi 
+                    WHERE baslangic_tarihi <= :end_date_dep AND (bitis_tarihi IS NULL OR bitis_tarihi >= :start_date_dep) 
+                    GROUP BY personel_id
+                ) gg_latest ON pgg_dep.personel_id = gg_latest.personel_id AND pgg_dep.baslangic_tarihi = gg_latest.latest_start
+            ) gg_dep ON p.id = gg_dep.personel_id
+            LEFT JOIN tanimlamalar t_ekip ON p.ekip_no = t_ekip.id AND t_ekip.grup = 'ekip_kodu' AND t_ekip.silinme_tarihi IS NULL
+            WHERE p.firma_id = :firma_id 
             AND p.silinme_tarihi IS NULL 
-            AND (p.aktif_mi = 1 OR (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi >= ?))
-            AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00' OR p.isten_cikis_tarihi >= ?)
+            AND (p.aktif_mi = 1 OR (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi >= :start_date5))
+            AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00' OR p.isten_cikis_tarihi >= :start_date6)
             AND (p.disardan_sigortali = 0 OR FIND_IN_SET('puantaj', p.gorunum_modulleri))
-            AND (p.ise_giris_tarihi IS NULL OR p.ise_giris_tarihi = '' OR p.ise_giris_tarihi <= ?)
+            AND (p.ise_giris_tarihi IS NULL OR p.ise_giris_tarihi = '' OR p.ise_giris_tarihi <= :end_date5)
             AND NOT EXISTS (
-                SELECT 1 FROM personel_gorev_gecmisi pgg
-                WHERE pgg.personel_id = p.id
-                AND pgg.baslangic_tarihi <= ?
-                AND (pgg.bitis_tarihi IS NULL OR pgg.bitis_tarihi >= ?)
-                AND (pgg.maas_durumu = 'Maaş Hesaplanmayan')
+                SELECT 1 FROM personel_gorev_gecmisi pgg_not
+                WHERE pgg_not.personel_id = p.id
+                AND pgg_not.baslangic_tarihi <= :end_date6
+                AND (pgg_not.bitis_tarihi IS NULL OR pgg_not.bitis_tarihi >= :start_date7)
+                AND (pgg_not.maas_durumu = 'Maaş Hesaplanmayan')
             )
-            ORDER BY p.adi_soyadi ASC
-        ");
-        $personeller->execute([$endDate, $startDate, $endDate, $endDate, $startDate, $endDate, $startDate, $firma_id, $startDate, $startDate, $endDate, $endDate, $startDate]);
+        ";
+
+        if ($departman !== '') {
+            $sql .= " AND gg_dep.departman = :departman ";
+        }
+
+        if ($bolge !== '') {
+            $sql .= " AND t_ekip.ekip_bolge = :bolge ";
+        }
+
+        $sql .= " ORDER BY p.adi_soyadi ASC ";
+
+        $personeller = $Personel->db->prepare($sql);
+        
+        $params = [
+            ':end_date1' => $endDate,
+            ':start_date1' => $startDate,
+            ':end_date2' => $endDate,
+            ':end_date3' => $endDate,
+            ':start_date2' => $startDate,
+            ':end_date4' => $endDate,
+            ':start_date3' => $startDate,
+            ':end_date_dep' => $endDate,
+            ':start_date_dep' => $startDate,
+            ':firma_id' => $firma_id,
+            ':start_date5' => $startDate,
+            ':start_date6' => $startDate,
+            ':end_date5' => $endDate,
+            ':end_date6' => $endDate,
+            ':start_date7' => $startDate
+        ];
+
+        if ($departman !== '') {
+            $params[':departman'] = $departman;
+        }
+        if ($bolge !== '') {
+            $params[':bolge'] = $bolge;
+        }
+
+        $personeller->execute($params);
         $personel_list = $personeller->fetchAll(PDO::FETCH_OBJ);
 
         $varsayilan_X = $Tanimlamalar->db->prepare("SELECT id, tur_adi, kisa_kod, renk FROM tanimlamalar WHERE grup = 'izin_turu' AND (kisa_kod = 'X' OR kisa_kod = 'x' OR tur_adi LIKE '%Çalışılan Gün%') AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL LIMIT 1");

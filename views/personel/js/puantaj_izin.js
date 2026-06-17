@@ -15,6 +15,8 @@ $(document).ready(function () {
   const savedAy = localStorage.getItem("puantaj_ay");
   const savedYil = localStorage.getItem("puantaj_yil");
   const savedFilter = localStorage.getItem("puantaj_filter") || "";
+  const savedDepartman = localStorage.getItem("puantaj_departman") || "";
+  const savedBolge = localStorage.getItem("puantaj_bolge") || "";
 
   if (savedAy) $("#select-ay").val(savedAy).trigger("change");
 
@@ -48,6 +50,16 @@ $(document).ready(function () {
 
   $("#select-yil").on("change", function () {
     localStorage.setItem("puantaj_yil", $(this).val());
+    renderTable();
+  });
+
+  $("#select-departman").on("change", function () {
+    localStorage.setItem("puantaj_departman", $(this).val());
+    renderTable();
+  });
+
+  $("#select-bolge").on("change", function () {
+    localStorage.setItem("puantaj_bolge", $(this).val());
     renderTable();
   });
 
@@ -219,6 +231,34 @@ $(document).ready(function () {
           render(res.data.ucretsiz, "ucretsiz-list", true);
         }
 
+        // Departmanlar
+        let depHtml = '<option value="">Tüm Departmanlar</option>';
+        if (res.data.departmanlar && Array.isArray(res.data.departmanlar)) {
+          res.data.departmanlar.forEach(dep => {
+            if (dep) {
+              depHtml += `<option value="${dep}">${dep}</option>`;
+            }
+          });
+        }
+        $("#select-departman").html(depHtml);
+        if (savedDepartman) {
+          $("#select-departman").val(savedDepartman).trigger("change.select2");
+        }
+
+        // Bölgeler
+        let bolgeHtml = '<option value="">Tüm Bölgeler</option>';
+        if (res.data.bolgeler && Array.isArray(res.data.bolgeler)) {
+          res.data.bolgeler.forEach(b => {
+            if (b) {
+              bolgeHtml += `<option value="${b}">${b}</option>`;
+            }
+          });
+        }
+        $("#select-bolge").html(bolgeHtml);
+        if (savedBolge) {
+          $("#select-bolge").val(savedBolge).trigger("change.select2");
+        }
+
         // İzin türleri yüklendikten sonra sticky yüksekliği güncelle
         setTimeout(updateStickyHeights, 100);
         if (callback) callback();
@@ -230,6 +270,8 @@ $(document).ready(function () {
   function renderTable() {
     const ay = $("#select-ay").val();
     const yil = $("#select-yil").val();
+    const departman = $("#select-departman").val() || "";
+    const bolge = $("#select-bolge").val() || "";
     const daysCount = getDaysInMonth(ay, yil);
 
     // Tabloyu temizle ve yükleniyor göster
@@ -258,7 +300,7 @@ $(document).ready(function () {
     // Body with data
     $.post(
       API_URL,
-      { action: "get-calendar-data", ay, yil },
+      { action: "get-calendar-data", ay, yil, departman, bolge },
       function (res) {
         if (res.status === "success") {
           try {
@@ -1573,9 +1615,11 @@ $(document).ready(function () {
   $("#btn-download-template-modal, #btn-export-excel").on("click", function () {
     const ay = $("#select-ay").val();
     const yil = $("#select-yil").val();
+    const departman = $("#select-departman").val() || "";
+    const bolge = $("#select-bolge").val() || "";
 
     // Sunucu tarafında PHPSpreadsheet ile oluşturup indir
-    window.location.href = `${API_URL}?action=export-excel&ay=${ay}&yil=${yil}`;
+    window.location.href = `${API_URL}?action=export-excel&ay=${ay}&yil=${yil}&departman=${encodeURIComponent(departman)}&bolge=${encodeURIComponent(bolge)}`;
   });
 
   // Modal içindeki Yükle Butonu (Dosya seçimi ve okuma aynı kalabilir veya o da taşınabilir ama şimdilik export isteniyor)
