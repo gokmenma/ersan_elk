@@ -373,6 +373,38 @@ class BordroParametreModel extends Model
     }
 
     /**
+     * Vergi dilimi günceller
+     */
+    public function updateVergiDilimi($id, $yil, $dilim_no, $alt_limit, $ust_limit, $vergi_orani, $aciklama = null)
+    {
+        $sql = $this->db->prepare("
+            UPDATE bordro_vergi_dilimleri 
+            SET yil = ?, dilim_no = ?, alt_limit = ?, ust_limit = ?, vergi_orani = ?, aciklama = ?
+            WHERE id = ?
+        ");
+        return $sql->execute([$yil, $dilim_no, $alt_limit, $ust_limit, $vergi_orani, $aciklama, $id]);
+    }
+
+    /**
+     * Vergi dilimi siler
+     */
+    public function deleteVergiDilimi($id)
+    {
+        $sql = $this->db->prepare("DELETE FROM bordro_vergi_dilimleri WHERE id = ?");
+        return $sql->execute([$id]);
+    }
+
+    /**
+     * Vergi dilimini ID'ye göre getirir
+     */
+    public function getVergiDilimiById($id)
+    {
+        $sql = $this->db->prepare("SELECT * FROM bordro_vergi_dilimleri WHERE id = ?");
+        $sql->execute([$id]);
+        return $sql->fetch(PDO::FETCH_OBJ);
+    }
+
+    /**
      * Kümülatif gelir vergisi hesaplar
      * @param float $kumulatifMatrah Yılbaşından bu aya kadar toplam matrah
      * @param float $aylikMatrah Bu ayki matrah

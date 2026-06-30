@@ -19,7 +19,7 @@ class AracKmBildirimModel extends Model
             SELECT akb.*, 
                    a.plaka, a.marka, a.model,
                    p.adi_soyadi as personel_adi, p.resim_yolu as personel_resim,
-                   (SELECT bitis_km FROM {$this->table} b2 
+                   (SELECT COALESCE(b2.onaylanan_km, b2.bitis_km) FROM {$this->table} b2 
                     WHERE b2.arac_id = akb.arac_id 
                     AND b2.tarih = akb.tarih 
                     AND b2.tur = 'sabah' 
@@ -43,7 +43,7 @@ class AracKmBildirimModel extends Model
                    a.plaka, a.marka, a.model,
                    p.adi_soyadi as personel_adi, p.resim_yolu as personel_resim,
                    u.adi_soyadi as onaylayan_adi,
-                   (SELECT bitis_km FROM {$this->table} b2 
+                   (SELECT COALESCE(b2.onaylanan_km, b2.bitis_km) FROM {$this->table} b2 
                     WHERE b2.arac_id = akb.arac_id 
                     AND b2.tarih = akb.tarih 
                     AND b2.tur = 'sabah' 
@@ -226,5 +226,124 @@ class AracKmBildirimModel extends Model
             }
         }
         return $count;
+    }
+
+    /**
+     * Server-side DataTables verilerini getirir
+     */
+    public function getServerSideReports($status, $params)
+    {
+        $draw = intval($params['draw'] ?? 0);
+        $start = intval($params['start'] ?? 0);
+        $length = intval($params['length'] ?? 10);
+        $searchVal = trim($params['search']['value'] ?? '');
+        $orderColumn = intval($params['order'][0]['column'] ?? 0);
+        $orderDir = $params['order'][0]['dir'] ?? 'desc';
+        $columns = $params['columns'] ?? [];
+
+        // Determine ordering column
+        $orderColName = 'akb.olusturma_tarihi'; // Default
+        if ($orderColumn >= 0 && isset($columns[$orderColumn]['data'])) {
+            $colData = $columns[$orderColumn]['data'];
+            switch ($colData) {
+                case 'personel':
+                    $orderColName = 'p.adi_soyadi';
+                    break;
+                case 'arac':
+                    $orderColName = 'a.plaka';
+                    break;
+                case 'tarih':
+                    $orderColName = 'akb.tarih';
+                    break;
+                case 'olusturma_tarihi':
+                    $orderColName = 'akb.olusturma_tarihi';
+                    break;
+                case 'onay_tarihi':
+                    $orderColName = 'akb.onay_tarihi';
+                    break;
+                case 'bitis_km':
+                    $orderColName = 'akb.bitis_km';
+                    break;
+                case 'onaylanan_km':
+                    $orderColName = 'akb.onaylanan_km';
+                    break;
+            }
+        }
+
+        // Build WHERE clause
+        $whereSql = "WHERE akb.firma_id = :firma_id AND akb.durum = :status AND akb.silinme_tarihi IS NULL";
+        $sqlParams = [
+            'firma_id' => $_SESSION['firma_id'],
+            'status' => $status
+        ];
+
+        // Search filter
+        if ($searchVal !== '') {
+            $whereSql .= " AND (
+                p.adi_soyadi LIKE :search 
+                OR a.plaka LIKE :search 
+                OR a.marka LIKE :search 
+                OR a.model LIKE :search
+                OR akb.aciklama LIKE :search
+            )";
+            $sqlParams['search'] = '%' . $searchVal . '%';
+        }
+
+        // Total Count (without search filter)
+        $totalSql = "
+            SELECT COUNT(*) 
+            FROM {$this->table} akb
+            WHERE akb.firma_id = :firma_id AND akb.durum = :status AND akb.silinme_tarihi IS NULL
+        ";
+        $totalStmt = $this->db->prepare($totalSql);
+        $totalStmt->execute([
+            'firma_id' => $_SESSION['firma_id'],
+            'status' => $status
+        ]);
+        $totalRecords = intval($totalStmt->fetchColumn());
+
+        // Filtered Count (with search filter)
+        $filteredSql = "
+            SELECT COUNT(*) 
+            FROM {$this->table} akb
+            INNER JOIN araclar a ON akb.arac_id = a.id
+            INNER JOIN personel p ON akb.personel_id = p.id
+            $whereSql
+        ";
+        $filteredStmt = $this->db->prepare($filteredSql);
+        $filteredStmt->execute($sqlParams);
+        $totalFiltered = intval($filteredStmt->fetchColumn());
+
+        // Fetch Data
+        $dataSql = "
+            SELECT akb.*, 
+                   a.plaka, a.marka, a.model,
+                   p.adi_soyadi as personel_adi, p.resim_yolu as personel_resim,
+                   u.adi_soyadi as onaylayan_adi,
+                   (SELECT COALESCE(b2.onaylanan_km, b2.bitis_km) FROM {$this->table} b2 
+                    WHERE b2.arac_id = akb.arac_id 
+                    AND b2.tarih = akb.tarih 
+                    AND b2.tur = 'sabah' 
+                    AND b2.durum != 'reddedildi' 
+                    LIMIT 1) as sabah_km
+            FROM {$this->table} akb
+            INNER JOIN araclar a ON akb.arac_id = a.id
+            INNER JOIN personel p ON akb.personel_id = p.id
+            LEFT JOIN users u ON akb.onaylayan_id = u.id
+            $whereSql
+            ORDER BY $orderColName $orderDir
+            LIMIT $start, $length
+        ";
+        
+        $dataStmt = $this->db->prepare($dataSql);
+        $dataStmt->execute($sqlParams);
+        $dataRows = $dataStmt->fetchAll(PDO::FETCH_OBJ);
+
+        return [
+            "draw" => $draw,
+            "recordsTotal" => $totalRecords,
+            "recordsFiltered" => $totalFiltered,
+            "data" => $dataRows
+        ];
     }
 }

@@ -143,21 +143,21 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                         <!-- Onay Bekleyenler -->
                         <div class="tab-pane active" id="pending" role="tabpanel">
                             <div class="table-responsive">
-                                <table class="table table-hover table-bordered nowrap w-100 datatable">
+                                <table class="table table-hover table-bordered nowrap w-100" id="tablePending">
                                     <thead class="table-light">
                                         <tr>
                                             <th class="text-center" style="width:3%">
                                                 <div class="form-check font-size-16">
-                                                    <input class="form-check-input" type="checkbox" id="checkAllKm">
-                                                    <label class="form-check-label" for="checkAllKm"></label>
+                                                     <input class="form-check-input" type="checkbox" id="checkAllKm">
+                                                     <label class="form-check-label" for="checkAllKm"></label>
                                                 </div>
                                             </th>
                                             <th class="text-center" style="width:5%">Sıra</th>
-                                            <th style="width:15%" data-filter="text">Personel</th>
-                                            <th style="width:15%" data-filter="text">Araç</th>
-                                            <th style="width:10%" data-filter="date">Tarih</th>
-                                            <th style="width:10%" data-filter="text">Kayıt Tarihi</th>
-                                            <th style="width:10%" data-filter="select">Tür</th>
+                                            <th style="width:15%">Personel</th>
+                                            <th style="width:15%">Araç</th>
+                                            <th style="width:10%">Tarih</th>
+                                            <th style="width:10%">Kayıt Tarihi</th>
+                                            <th style="width:10%">Tür</th>
                                             <th style="width:10%" class="text-end">Bildirilen KM</th>
                                             <th style="width:15%">Açıklama</th>
                                             <th style="width:10%" class="text-center">Resim</th>
@@ -165,75 +165,6 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php foreach ($pendingReports as $index => $report): ?>
-                                            <tr>
-                                                <td class="text-center">
-                                                    <div class="form-check font-size-16">
-                                                        <input class="form-check-input km-checkbox" type="checkbox" 
-                                                            data-id="<?= $report->id ?>"
-                                                            data-tur="<?= $report->tur ?>"
-                                                            data-tarih="<?= $report->tarih ?>">
-                                                        <label class="form-check-label"></label>
-                                                    </div>
-                                                </td>
-                                                <td class="text-center"><?= $index + 1 ?></td>
-                                                <td><span class="fw-bold"><?= $report->personel_adi ?></span></td>
-                                                <td>
-                                                    <span class="badge bg-light text-dark border"><?= $report->plaka ?></span>
-                                                    <small class="d-block text-muted"><?= $report->marka . ' ' . $report->model ?></small>
-                                                </td>
-                                                <td><?= date('d.m.Y', strtotime($report->tarih)) ?></td>
-                                                <td><small class="fw-bold"><?= date('d.m.Y H:i', strtotime($report->olusturma_tarihi)) ?></small></td>
-                                                <td>
-                                                    <?php if ($report->tur === 'sabah'): ?>
-                                                        <span class="badge bg-soft-warning text-warning"><i class="bx bx-sun me-1"></i> Sabah</span>
-                                                    <?php else: ?>
-                                                        <span class="badge bg-soft-info text-info"><i class="bx bx-moon me-1"></i> Akşam</span>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td class="text-end fw-bold text-primary">
-                                                    <?= number_format($report->bitis_km, 0, ',', '.') ?> KM
-                                                    <?php if ($report->tur === 'aksam'): ?>
-                                                        <br>
-                                                        <small class="text-muted">
-                                                            (<?php 
-                                                                if ($report->sabah_km > 0) {
-                                                                    echo number_format($report->bitis_km - $report->sabah_km, 0, ',', '.') . ' KM Bugün';
-                                                                } else {
-                                                                    echo '<span class="text-danger">0 KM Bugün</span>';
-                                                                }
-                                                            ?>)
-                                                        </small>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td><small><?= $report->aciklama ?: '-' ?></small></td>
-                                                <td class="text-center">
-                                                    <button type="button" class="btn btn-sm btn-soft-info btn-view-km-img" 
-                                                        data-img="<?= Helper::base_url($report->resim_yolu) ?>"
-                                                        data-plaka="<?= $report->plaka ?>"
-                                                        data-date="<?= date('d.m.Y', strtotime($report->tarih)) ?>"
-                                                        data-tur="<?= ucfirst($report->tur) ?>">
-                                                        <i class="bx bx-image-alt"></i>
-                                                    </button>
-                                                </td>
-                                                <td class="text-center">
-                                                    <div class="btn-group">
-                                                        <button type="button" class="btn btn-sm btn-success btn-km-onayla" 
-                                                            data-id="<?= $report->id ?>" 
-                                                            data-arac-id="<?= $report->arac_id ?>"
-                                                            data-km="<?= $report->bitis_km ?>"
-                                                            data-plaka="<?= $report->plaka ?>"
-                                                            data-tur="<?= $report->tur ?>"
-                                                            data-tarih="<?= $report->tarih ?>">
-                                                            <i class="bx bx-check"></i>
-                                                        </button>
-                                                        <button type="button" class="btn btn-sm btn-danger btn-km-reddet" data-id="<?= $report->id ?>">
-                                                            <i class="bx bx-x"></i>
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
                                     </tbody>
                                 </table>
                             </div>
@@ -242,7 +173,7 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                         <!-- Onaylananlar -->
                         <div class="tab-pane" id="approved" role="tabpanel">
                             <div class="table-responsive">
-                                <table class="table table-hover table-bordered nowrap w-100 datatable">
+                                <table class="table table-hover table-bordered nowrap w-100" id="tableApproved">
                                     <thead class="table-light">
                                         <tr>
                                             <th class="text-center" style="width:5%">Sıra</th>
@@ -251,73 +182,13 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                             <th style="width:10%">Tarih</th>
                                             <th style="width:10%">Kayıt Tarihi</th>
                                             <th style="width:10%">Tür</th>
+                                            <th style="width:10%" class="text-end">Bildirilen KM</th>
                                             <th style="width:10%" class="text-end">Onaylanan KM</th>
                                             <th style="width:15%">Onaylayan / Tarih</th>
                                             <th style="width:10%" class="text-center">Resim / İşlem</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php foreach ($approvedReports as $index => $report): ?>
-                                            <tr>
-                                                <td class="text-center"><?= $index + 1 ?></td>
-                                                <td><span class="fw-bold"><?= $report->personel_adi ?></span></td>
-                                                <td>
-                                                    <span class="badge bg-light text-dark border"><?= $report->plaka ?></span>
-                                                    <small class="d-block text-muted"><?= $report->marka . ' ' . $report->model ?></small>
-                                                </td>
-                                                <td><?= date('d.m.Y', strtotime($report->tarih)) ?></td>
-                                                <td><small class="fw-bold"><?= date('d.m.Y H:i', strtotime($report->olusturma_tarihi)) ?></small></td>
-                                                <td>
-                                                    <?php if ($report->tur === 'sabah'): ?>
-                                                        <span class="badge bg-soft-warning text-warning"><i class="bx bx-sun me-1"></i> Sabah</span>
-                                                    <?php else: ?>
-                                                        <span class="badge bg-soft-info text-info"><i class="bx bx-moon me-1"></i> Akşam</span>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td class="text-end fw-bold text-success">
-                                                    <?= number_format($report->bitis_km, 0, ',', '.') ?> KM
-                                                    <?php if ($report->tur === 'aksam'): ?>
-                                                        <br>
-                                                        <small class="text-muted">
-                                                            (<?php 
-                                                                if ($report->sabah_km > 0) {
-                                                                    echo number_format($report->bitis_km - $report->sabah_km, 0, ',', '.') . ' KM Bugün';
-                                                                } else {
-                                                                    echo '<span class="text-danger">0 KM Bugün</span>';
-                                                                }
-                                                            ?>)
-                                                        </small>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td>
-                                                    <span class="d-block"><?= $report->onaylayan_adi ?></span>
-                                                    <small class="text-muted"><?= date('d.m.Y H:i', strtotime($report->onay_tarihi)) ?></small>
-                                                </td>
-                                                <td class="text-center">
-                                                    <div class="d-flex justify-content-center gap-1">
-                                                        <button type="button" class="btn btn-sm btn-soft-info btn-view-km-img" 
-                                                            data-img="<?= Helper::base_url($report->resim_yolu) ?>"
-                                                            data-plaka="<?= $report->plaka ?>"
-                                                            data-date="<?= date('d.m.Y', strtotime($report->tarih)) ?>"
-                                                            data-tur="<?= ucfirst($report->tur) ?>">
-                                                            <i class="bx bx-image-alt"></i>
-                                                        </button>
-                                                        <?php if (Gate::allows('onaylikm_duzenle') || Gate::isSuperAdmin()): ?>
-                                                            <button type="button" class="btn btn-sm btn-soft-warning btn-edit-approved-km" 
-                                                                data-id="<?= $report->id ?>"
-                                                                data-arac-id="<?= $report->arac_id ?>"
-                                                                data-plaka="<?= $report->plaka ?>"
-                                                                data-date="<?= date('d.m.Y', strtotime($report->tarih)) ?>"
-                                                                data-date-raw="<?= $report->tarih ?>"
-                                                                data-tur="<?= $report->tur ?>"
-                                                                data-km="<?= $report->bitis_km ?>">
-                                                                <i class="bx bx-edit"></i>
-                                                            </button>
-                                                        <?php endif; ?>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
                                     </tbody>
                                 </table>
                             </div>
@@ -326,7 +197,7 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                         <!-- Reddedilenler -->
                         <div class="tab-pane" id="rejected" role="tabpanel">
                             <div class="table-responsive">
-                                <table class="table table-hover table-bordered nowrap w-100 datatable">
+                                <table class="table table-hover table-bordered nowrap w-100" id="tableRejected">
                                     <thead class="table-light">
                                         <tr>
                                             <th class="text-center" style="width:5%">Sıra</th>
@@ -337,57 +208,10 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                                             <th style="width:10%">Tür</th>
                                             <th style="width:10%" class="text-end">Bildirilen KM</th>
                                             <th style="width:15%">Red Nedeni</th>
-                                            <th style="width:10%" class="text-center">Resim</th>
+                                            <th style="width:10%" class="text-center">Resim / İşlem</th>
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php foreach ($rejectedReports as $index => $report): ?>
-                                            <tr>
-                                                <td class="text-center"><?= $index + 1 ?></td>
-                                                <td><span class="fw-bold"><?= $report->personel_adi ?></span></td>
-                                                <td>
-                                                    <span class="badge bg-light text-dark border"><?= $report->plaka ?></span>
-                                                    <small class="d-block text-muted"><?= $report->marka . ' ' . $report->model ?></small>
-                                                </td>
-                                                <td><?= date('d.m.Y', strtotime($report->tarih)) ?></td>
-                                                <td><small class="fw-bold"><?= date('d.m.Y H:i', strtotime($report->olusturma_tarihi)) ?></small></td>
-                                                <td>
-                                                    <?php if ($report->tur === 'sabah'): ?>
-                                                        <span class="badge bg-soft-warning text-warning"><i class="bx bx-sun me-1"></i> Sabah</span>
-                                                    <?php else: ?>
-                                                        <span class="badge bg-soft-info text-info"><i class="bx bx-moon me-1"></i> Akşam</span>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td class="text-end fw-bold text-danger">
-                                                    <?= number_format($report->bitis_km, 0, ',', '.') ?> KM
-                                                    <?php if ($report->tur === 'aksam'): ?>
-                                                        <br>
-                                                        <small class="text-muted">
-                                                            (<?php 
-                                                                if ($report->sabah_km > 0) {
-                                                                    echo number_format($report->bitis_km - $report->sabah_km, 0, ',', '.') . ' KM Bugün';
-                                                                } else {
-                                                                    echo '<span class="text-danger">0 KM Bugün</span>';
-                                                                }
-                                                            ?>)
-                                                        </small>
-                                                    <?php endif; ?>
-                                                </td>
-                                                <td>
-                                                    <span class="text-danger"><?= $report->red_nedeni ?: 'Neden belirtilmedi' ?></span>
-                                                    <small class="d-block text-muted mt-1">Reddeden: <?= $report->onaylayan_adi ?></small>
-                                                </td>
-                                                <td class="text-center">
-                                                    <button type="button" class="btn btn-sm btn-soft-info btn-view-km-img" 
-                                                        data-img="<?= Helper::base_url($report->resim_yolu) ?>"
-                                                        data-plaka="<?= $report->plaka ?>"
-                                                        data-date="<?= date('d.m.Y', strtotime($report->tarih)) ?>"
-                                                        data-tur="<?= ucfirst($report->tur) ?>">
-                                                        <i class="bx bx-image-alt"></i>
-                                                    </button>
-                                                </td>
-                                            </tr>
-                                        <?php endforeach; ?>
                                     </tbody>
                                 </table>
                             </div>
@@ -532,15 +356,69 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                         </div>
                     </div>
 
-                    <div class="form-group mb-0">
+                    <div class="form-group mb-3">
                         <label for="edit_approved_km_value" class="form-label fw-bold text-dark">Yeni KM Değeri</label>
                         <input type="number" class="form-control" id="edit_approved_km_value" name="km" min="0" required>
+                    </div>
+
+                    <div class="form-group mb-0">
+                        <label for="edit_approved_aciklama" class="form-label fw-bold text-dark">Açıklama (İsteğe Bağlı)</label>
+                        <textarea class="form-control" id="edit_approved_aciklama" name="aciklama" rows="3" placeholder="KM düzeltme nedeni veya açıklama girin..."></textarea>
                     </div>
                 </div>
                 <div class="modal-footer bg-light p-3 border-0" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
                     <button type="submit" class="btn btn-warning text-white fw-bold" id="btnSubmitEditApprovedKm">
                         <i class="bx bx-save me-1"></i>Güncelle
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- KM Düzelt ve Onayla Modalı -->
+<div class="modal fade no-upgrade" id="kmDuzeltOnaylaModal" tabindex="-1" role="dialog" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+            <div class="modal-header bg-warning py-3 px-4 border-0" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-xs me-2">
+                        <span class="avatar-title rounded-circle bg-white text-warning">
+                            <i class="bx bx-check-shield"></i>
+                        </span>
+                    </div>
+                    <div>
+                        <h6 class="modal-title mb-0 text-white fw-bold">KM Düzelt ve Onayla</h6>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="kmDuzeltOnaylaForm">
+                <input type="hidden" id="duzelt_onay_id" name="id">
+                
+                <div class="modal-body p-4">
+                    <div class="p-3 border rounded bg-light mb-3" style="font-size: 0.9rem; border-left: 4px solid #ffbb44 !important;">
+                        <div class="mb-1"><span class="fw-bold text-muted">Personel:</span> <span id="lbl_duzelt_personel" class="fw-bold text-dark"></span></div>
+                        <div class="mb-1"><span class="fw-bold text-muted">Araç Plaka:</span> <span id="lbl_duzelt_plaka" class="fw-bold text-dark"></span></div>
+                        <div class="mb-1"><span class="fw-bold text-muted">Tarih / Tür:</span> <span id="lbl_duzelt_tarih_tur" class="fw-bold text-dark"></span></div>
+                        <div class="mb-0"><span class="fw-bold text-muted">Bildirilen KM:</span> <span id="lbl_duzelt_bildirilen_km" class="fw-bold text-danger"></span></div>
+                    </div>
+
+                    <div class="form-group mb-3">
+                        <label for="duzelt_onay_km_value" class="form-label fw-bold text-dark">Doğru KM Değeri</label>
+                        <input type="number" class="form-control" id="duzelt_onay_km_value" name="km" min="0" required>
+                    </div>
+
+                    <div class="form-group mb-0">
+                        <label for="duzelt_onay_aciklama" class="form-label fw-bold text-dark">Açıklama (İsteğe Bağlı)</label>
+                        <textarea class="form-control" id="duzelt_onay_aciklama" name="aciklama" rows="3" placeholder="KM düzeltme nedeni veya açıklama girin..."></textarea>
+                    </div>
+                </div>
+                <div class="modal-footer bg-light p-3 border-0" style="border-bottom-left-radius: 12px; border-bottom-right-radius: 12px;">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">İptal</button>
+                    <button type="submit" class="btn btn-warning text-white fw-bold" id="btnSubmitKmDuzeltOnayla">
+                        <i class="bx bx-check me-1"></i>Güncelle ve Onayla
                     </button>
                 </div>
             </form>
@@ -556,10 +434,118 @@ $(document).ready(function() {
         AracTakip.initDataTable(this);
     });
 
+    const pendingColumns = [
+        { 
+            data: 'checkbox', 
+            orderable: false, 
+            searchable: false, 
+            className: 'text-center' 
+        },
+        { 
+            data: null, 
+            orderable: false, 
+            searchable: false, 
+            className: 'text-center',
+            render: function (data, type, row, meta) { 
+                return meta.row + meta.settings._iDisplayStart + 1; 
+            } 
+        },
+        { data: 'personel', name: 'personel' },
+        { data: 'arac', name: 'arac' },
+        { data: 'tarih', name: 'tarih', className: 'text-center' },
+        { data: 'olusturma_tarihi', name: 'olusturma_tarihi', className: 'text-center' },
+        { data: 'tur', name: 'tur', className: 'text-center' },
+        { data: 'bitis_km', name: 'bitis_km', className: 'text-end fw-bold text-primary' },
+        { data: 'aciklama', name: 'aciklama' },
+        { data: 'resim', orderable: false, searchable: false, className: 'text-center' },
+        { data: 'islem', orderable: false, searchable: false, className: 'text-center' }
+    ];
+
+    const approvedColumns = [
+        { 
+            data: null, 
+            orderable: false, 
+            searchable: false, 
+            className: 'text-center',
+            render: function (data, type, row, meta) { 
+                return meta.row + meta.settings._iDisplayStart + 1; 
+            } 
+        },
+        { data: 'personel', name: 'personel' },
+        { data: 'arac', name: 'arac' },
+        { data: 'tarih', name: 'tarih', className: 'text-center' },
+        { data: 'olusturma_tarihi', name: 'olusturma_tarihi', className: 'text-center' },
+        { data: 'tur', name: 'tur', className: 'text-center' },
+        { data: 'bitis_km', name: 'bitis_km', className: 'text-end fw-bold text-primary' },
+        { data: 'onaylanan_km', name: 'onaylanan_km', className: 'text-end fw-bold text-success' },
+        { data: 'onaylayan_tarih', name: 'onaylayan_tarih' },
+        { data: 'islem', orderable: false, searchable: false, className: 'text-center' }
+    ];
+
+    const rejectedColumns = [
+        { 
+            data: null, 
+            orderable: false, 
+            searchable: false, 
+            className: 'text-center',
+            render: function (data, type, row, meta) { 
+                return meta.row + meta.settings._iDisplayStart + 1; 
+            } 
+        },
+        { data: 'personel', name: 'personel' },
+        { data: 'arac', name: 'arac' },
+        { data: 'tarih', name: 'tarih', className: 'text-center' },
+        { data: 'olusturma_tarihi', name: 'olusturma_tarihi', className: 'text-center' },
+        { data: 'tur', name: 'tur', className: 'text-center' },
+        { data: 'bitis_km', name: 'bitis_km', className: 'text-end fw-bold text-danger' },
+        { data: 'red_nedeni', name: 'red_nedeni' },
+        { data: 'islem', orderable: false, searchable: false, className: 'text-center' }
+    ];
+
+    function initServerSideDataTable(selector, status, columnsConfig, defaultOrder) {
+        if (!$(selector).length) return null;
+        
+        let options = typeof getDatatableOptions === "function" ? getDatatableOptions() : {
+            language: { url: "//cdn.datatables.net/plug-ins/1.13.7/i18n/tr.json" },
+            pageLength: 10
+        };
+
+        options.processing = true;
+        options.serverSide = true;
+        options.ajax = {
+            url: "views/arac-takip/api.php",
+            type: "POST",
+            data: function (d) {
+                d.action = "get-km-onay-list-server-side";
+                d.status = status;
+            }
+        };
+        options.columns = columnsConfig;
+        options.order = defaultOrder || [[0, "desc"]];
+        options.dom = "Bfrtip";
+        options.buttons = [
+            {
+                extend: "excelHtml5",
+                className: "d-none",
+                text: "Excel",
+                exportOptions: {
+                    columns: ":visible:not(:last-child)"
+                }
+            }
+        ];
+
+        return $(selector).DataTable(options);
+    }
+
+    // Initialize Server-Side Tables
+    initServerSideDataTable('#tablePending', 'beklemede', pendingColumns, [[5, 'desc']]);
+    initServerSideDataTable('#tableApproved', 'onaylandi', approvedColumns, [[4, 'desc']]);
+    initServerSideDataTable('#tableRejected', 'reddedildi', rejectedColumns, [[4, 'desc']]);
+
     // Excel Export Handler
     $('#exportExcelKm').on('click', function() {
         // Get the active tab's table
-        var activeTable = $('.tab-pane.active table.datatable').DataTable();
+        var activeTable = $('.tab-pane.active table').DataTable();
         if (activeTable) {
             activeTable.button('.buttons-excel').trigger();
         }
@@ -958,6 +944,7 @@ $(document).ready(function() {
         const tarihRaw = btn.data('date-raw');
         const tur = btn.data('tur');
         const km = btn.data('km');
+        const aciklama = btn.data('aciklama');
 
         $('#edit_approved_id').val(id);
         $('#edit_approved_arac_id').val(aracId);
@@ -965,6 +952,7 @@ $(document).ready(function() {
         $('#edit_approved_date').val(tarihRaw);
         $('#edit_approved_tur').val(tur);
         $('#edit_approved_km_value').val(km);
+        $('#edit_approved_aciklama').val(aciklama || '');
 
         $('#editApprovedKmModal').modal('show');
     });
@@ -987,6 +975,64 @@ $(document).ready(function() {
                 Swal.fire({
                     title: 'Başarılı',
                     text: 'KM kaydı başarıyla güncellendi.',
+                    icon: 'success',
+                    confirmButtonText: 'Tamam'
+                }).then(() => {
+                    window.location.reload();
+                });
+            } else {
+                Swal.fire('Hata', res.message, 'error');
+                btnSubmit.prop('disabled', false).html(oldBtnHtml);
+            }
+        }, 'json').fail(function() {
+            Swal.fire('Hata', 'İşlem sırasında bir bağlantı hatası oluştu.', 'error');
+            btnSubmit.prop('disabled', false).html(oldBtnHtml);
+        });
+    });
+
+    // KM Düzelt ve Onayla modalını aç
+    $(document).on('click', '.btn-km-duzelt-onayla', function() {
+        const btn = $(this);
+        const id = btn.data('id');
+        const aracId = btn.data('arac-id');
+        const plaka = btn.data('plaka');
+        const personel = btn.data('personel');
+        const tarihRaw = btn.data('tarih');
+        const tur = btn.data('tur');
+        const km = btn.data('km');
+
+        $('#duzelt_onay_id').val(id);
+        $('#lbl_duzelt_personel').text(personel);
+        $('#lbl_duzelt_plaka').text(plaka);
+        
+        const turFmt = tur === 'sabah' ? 'Sabah' : 'Akşam';
+        const dateFmt = tarihRaw.split('-').reverse().join('.');
+        $('#lbl_duzelt_tarih_tur').text(dateFmt + ' / ' + turFmt);
+        $('#lbl_duzelt_bildirilen_km').text(new Intl.NumberFormat("tr-TR").format(km) + ' KM');
+        $('#duzelt_onay_km_value').val(km);
+        $('#duzelt_onay_aciklama').val('');
+
+        $('#kmDuzeltOnaylaModal').modal('show');
+    });
+
+    // KM Düzelt ve Onayla formunu gönder
+    $('#kmDuzeltOnaylaForm').on('submit', function(e) {
+        e.preventDefault();
+        
+        const form = $(this);
+        const btnSubmit = $('#btnSubmitKmDuzeltOnayla');
+        const oldBtnHtml = btnSubmit.html();
+        
+        btnSubmit.prop('disabled', true).html('<i class="bx bx-loader bx-spin me-1"></i> Güncelleniyor...');
+
+        const formData = form.serialize() + '&action=km-onay-duzelt-onayla';
+
+        $.post('views/arac-takip/api.php', formData, function(res) {
+            if (res.status === 'success') {
+                $('#kmDuzeltOnaylaModal').modal('hide');
+                Swal.fire({
+                    title: 'Başarılı',
+                    text: 'KM kaydı düzeltilerek onaylandı.',
                     icon: 'success',
                     confirmButtonText: 'Tamam'
                 }).then(() => {

@@ -18,6 +18,50 @@ use App\Helper\Security;
 
 header('Content-Type: application/json; charset=utf-8');
 
+/**
+ * Para birimi formatını temizleyip float olarak döndürür
+ */
+function cleanMoneyInput($val) {
+    if ($val === null || $val === '') {
+        return 0.0;
+    }
+    // Para birimi sembolü (₺) ve her türlü boşluğu (normal boşluk, nbsp vb.) temizle
+    $val = str_replace(['₺', '$', '€', 'TL', 'try', 'TRY'], '', $val);
+    $val = preg_replace('/[^\d.,-]/u', '', $val);
+    
+    // Virgül varsa Türkçe/Avrupa formatıdır (binlik ayırıcı nokta, ondalık virgül)
+    if (strpos($val, ',') !== false) {
+        $val = str_replace('.', '', $val);
+        $val = str_replace(',', '.', $val);
+    } else {
+        // Virgül yoksa, tek bir nokta binlik ayırıcı mı yoksa ondalık ayırıcı mı?
+        $dotCount = substr_count($val, '.');
+        if ($dotCount === 1) {
+            $parts = explode('.', $val);
+            $lastPart = end($parts);
+            if (strlen($lastPart) === 3) {
+                // "330.000" gibi -> binlik ayırıcıdır, noktayı kaldırıyoruz
+                $val = str_replace('.', '', $val);
+            }
+        } elseif ($dotCount > 1) {
+            // "1.200.000" gibi -> binlik ayırıcıdır, tüm noktaları kaldırıyoruz
+            $val = str_replace('.', '', $val);
+        }
+    }
+    
+    return floatval($val);
+}
+
+/**
+ * Boş veya Sınırsız durumunda null dönebilen temizleme fonksiyonu
+ */
+function cleanMoneyInputNullable($val) {
+    if ($val === null || trim($val) === '' || mb_strtolower(trim($val), 'UTF-8') === 'sınırsız') {
+        return null;
+    }
+    return cleanMoneyInput($val);
+}
+
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
     $action = $_POST['action'] ?? '';
@@ -27,6 +71,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $BordroParametre = new BordroParametreModel();
     $SystemLog = new SystemLogModel();
     $userId = $_SESSION['user_id'] ?? 0;
+
+    // Yetki Kontrolü
+    if ($userId <= 0) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'Yetkisiz erişim. Lütfen giriş yapın.']);
+        exit;
+    }
+
+    $MenuModel = new \App\Model\MenuModel();
+    $hasBordroAccess = $MenuModel->userCanAccessMenuLink($userId, 'bordro/parametreler')
+        || $MenuModel->userCanAccessMenuLink($userId, 'bordro/list')
+        || $MenuModel->userCanAccessMenuLink($userId, 'bordro/raporlar');
+
+    if (!$hasBordroAccess) {
+        http_response_code(403);
+        echo json_encode(['status' => 'error', 'message' => 'Bu işlemi gerçekleştirmek için yetkiniz bulunmamaktadır.']);
+        exit;
+    }
 
     try {
         switch ($action) {
@@ -1344,8 +1406,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $html .= '</div>'; // End Wrapper
 
-                if ($bp->hesaplama_tarihi) {
-                    $html .= '<div class="text-muted small mt-3 text-end"><i class="bx bx-time me-1"></i>Son Hesaplama: ' . date('d.m.Y H:i', strtotime($bp->hesaplama_tarihi)) . '</div>';
+                if (floatval($bp->kumulatif_matrah ?? 0) > 0 || $bp->hesaplama_tarihi) {
+                    $html .= '<div class="text-muted small mt-3 text-end">';
+                    if (floatval($bp->kumulatif_matrah ?? 0) > 0) {
+                        $html .= '<span class="me-3"><i class="bx bx-trending-up me-1"></i>Kümülatif Vergi Matrahı (Yıl Başından İtibaren): ' . number_format($bp->kumulatif_matrah, 2, ',', '.') . ' ₺</span>';
+                    }
+                    if ($bp->hesaplama_tarihi) {
+                        $html .= '<i class="bx bx-time me-1"></i>Son Hesaplama: ' . date('d.m.Y H:i', strtotime($bp->hesaplama_tarihi));
+                    }
+                    $html .= '</div>';
                 }
 
                 echo json_encode([
@@ -2025,9 +2094,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $yil = intval($_POST['dilim_yili'] ?? date('Y'));
                 $dilim_no = intval($_POST['dilim_no'] ?? 0);
-                $alt_limit = floatval(str_replace(['.', ','], ['', '.'], $_POST['alt_limit'] ?? '0'));
-                $ust_limit_raw = trim($_POST['ust_limit'] ?? '');
-                $ust_limit = $ust_limit_raw !== '' ? floatval(str_replace(['.', ','], ['', '.'], $ust_limit_raw)) : null;
+                $alt_limit = cleanMoneyInput($_POST['alt_limit'] ?? '0');
+                $ust_limit = cleanMoneyInputNullable($_POST['ust_limit'] ?? '');
                 $vergi_orani = floatval($_POST['vergi_orani'] ?? 0);
                 $aciklama = trim($_POST['dilim_aciklama'] ?? '');
 
@@ -2040,6 +2108,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 if ($BordroParametre->addVergiDilimi($yil, $dilim_no, $alt_limit, $ust_limit, $vergi_orani, $aciklama)) {
+                    $SystemLog->logAction($userId, 'Vergi Dilimi Ekleme', "Yeni vergi dilimi eklendi: Yıl: $yil, Dilim No: $dilim_no, Alt Limit: $alt_limit, Üst Limit: " . ($ust_limit ?? 'Sınırsız') . ", Oran: %$vergi_orani", SystemLogModel::LEVEL_IMPORTANT);
                     echo json_encode([
                         'status' => 'success',
                         'message' => 'Vergi dilimi başarıyla eklendi.'
@@ -2060,19 +2129,23 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $yil = intval($_POST['dilim_yili'] ?? date('Y'));
                 $dilim_no = intval($_POST['dilim_no'] ?? 0);
-                $alt_limit = floatval(str_replace(['.', ','], ['', '.'], $_POST['alt_limit'] ?? '0'));
-                $ust_limit_raw = trim($_POST['ust_limit'] ?? '');
-                $ust_limit = $ust_limit_raw !== '' ? floatval(str_replace(['.', ','], ['', '.'], $ust_limit_raw)) : null;
+                $alt_limit = cleanMoneyInput($_POST['alt_limit'] ?? '0');
+                $ust_limit = cleanMoneyInputNullable($_POST['ust_limit'] ?? '');
                 $vergi_orani = floatval($_POST['vergi_orani'] ?? 0);
                 $aciklama = trim($_POST['dilim_aciklama'] ?? '');
 
-                $sql = $BordroParametre->getDb()->prepare("
-                    UPDATE bordro_vergi_dilimleri 
-                    SET yil = ?, dilim_no = ?, alt_limit = ?, ust_limit = ?, vergi_orani = ?, aciklama = ?
-                    WHERE id = ?
-                ");
+                $oldDilim = $BordroParametre->getVergiDilimiById($id);
+                if (!$oldDilim) {
+                    throw new Exception('Güncellenecek vergi dilimi bulunamadı.');
+                }
 
-                if ($sql->execute([$yil, $dilim_no, $alt_limit, $ust_limit, $vergi_orani, $aciklama, $id])) {
+                if ($BordroParametre->updateVergiDilimi($id, $yil, $dilim_no, $alt_limit, $ust_limit, $vergi_orani, $aciklama)) {
+                    $SystemLog->logAction(
+                        $userId,
+                        'Vergi Dilimi Güncelleme',
+                        "Dilim ID: $id ($dilim_no. Dilim). Önceki -> Alt: $oldDilim->alt_limit, Üst: " . ($oldDilim->ust_limit ?? 'Sınırsız') . ", Oran: %$oldDilim->vergi_orani. Yeni -> Alt: $alt_limit, Üst: " . ($ust_limit ?? 'Sınırsız') . ", Oran: %$vergi_orani",
+                        SystemLogModel::LEVEL_IMPORTANT
+                    );
                     echo json_encode([
                         'status' => 'success',
                         'message' => 'Vergi dilimi başarıyla güncellendi.'
@@ -2091,9 +2164,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception('Geçersiz dilim ID.');
                 }
 
-                $sql = $BordroParametre->getDb()->prepare("DELETE FROM bordro_vergi_dilimleri WHERE id = ?");
+                $oldDilim = $BordroParametre->getVergiDilimiById($id);
+                if (!$oldDilim) {
+                    throw new Exception('Silinecek vergi dilimi bulunamadı.');
+                }
 
-                if ($sql->execute([$id])) {
+                if ($BordroParametre->deleteVergiDilimi($id)) {
+                    $SystemLog->logAction(
+                        $userId,
+                        'Vergi Dilimi Silme',
+                        "$oldDilim->yil Yılı $oldDilim->dilim_no. Dilimi silindi. (Alt: $oldDilim->alt_limit, Üst: " . ($oldDilim->ust_limit ?? 'Sınırsız') . ")",
+                        SystemLogModel::LEVEL_IMPORTANT
+                    );
                     echo json_encode([
                         'status' => 'success',
                         'message' => 'Vergi dilimi başarıyla silindi.'

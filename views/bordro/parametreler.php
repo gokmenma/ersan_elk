@@ -1438,6 +1438,10 @@ for ($y = date('Y') + 1; $y >= 2020; $y--) {
             const formData = new FormData(this);
             formData.append('action', $('#dilim_id').val() ? 'update-vergi-dilimi' : 'add-vergi-dilimi');
 
+            // Money alanlarını temizle ve sayısal değere çevir
+            formData.set('alt_limit', parseMoney($('input[name="alt_limit"]').val()));
+            formData.set('ust_limit', parseMoney($('input[name="ust_limit"]').val()));
+
             $.ajax({
                 url: 'views/bordro/api.php',
                 type: 'POST',
@@ -1469,8 +1473,26 @@ for ($y = date('Y') + 1; $y >= 2020; $y--) {
             $('#dilim_id').val(dilim.id);
             $('select[name="dilim_yili"]').val(dilim.yil);
             $('input[name="dilim_no"]').val(dilim.dilim_no);
-            $('input[name="alt_limit"]').val(dilim.alt_limit);
-            $('input[name="ust_limit"]').val(dilim.ust_limit || '');
+            
+            // IMask ile uyumlu değer atama (typedValue float değer kabul eder)
+            const altLimitInput = $('input[name="alt_limit"]')[0];
+            if (altLimitInput && altLimitInput.imask) {
+                altLimitInput.imask.typedValue = parseFloat(dilim.alt_limit || 0);
+            } else {
+                $('input[name="alt_limit"]').val(dilim.alt_limit);
+            }
+
+            const ustLimitInput = $('input[name="ust_limit"]')[0];
+            if (ustLimitInput && ustLimitInput.imask) {
+                if (dilim.ust_limit) {
+                    ustLimitInput.imask.typedValue = parseFloat(dilim.ust_limit);
+                } else {
+                    ustLimitInput.imask.value = '';
+                }
+            } else {
+                $('input[name="ust_limit"]').val(dilim.ust_limit || '');
+            }
+
             $('input[name="vergi_orani"]').val(dilim.vergi_orani);
             $('input[name="dilim_aciklama"]').val(dilim.aciklama || '');
             $('#modalVergiDilimiEkle .modal-title').html('<i class="bx bx-edit me-2"></i>Vergi Dilimi Düzenle');

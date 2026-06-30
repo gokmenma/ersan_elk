@@ -45,7 +45,7 @@ $(document).ready(function () {
   // Bordro Tablosunu Başlat
   var bordroOpts = getDatatableOptions();
   var originalInitComplete = bordroOpts.initComplete;
-  bordroOpts.columnDefs = [{ orderable: false, targets: [0, 10] }];
+  bordroOpts.columnDefs = [{ orderable: false, targets: [0, 15] }];
   bordroOpts.order = [[1, "asc"]];
   bordroOpts.pageLength = 25;
   bordroOpts.initComplete = function (settings, json) {

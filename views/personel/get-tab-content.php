@@ -184,6 +184,11 @@ switch ($tab) {
         $icralar = $PersonelIcralariModel->getPersonelIcralariWithKesintiler($id);
         include_once __DIR__ . "/icerik/icralar.php";
         break;
+    case 'vergi_matrahlari':
+        $BordroPersonelModel = new BordroPersonelModel();
+        $vergiMatrahlari = $BordroPersonelModel->getVergiMatrahGecmisi($id);
+        include_once __DIR__ . "/icerik/vergi_matrahlari.php";
+        break;
 
     case 'puantaj':
         include_once __DIR__ . "/icerik/puantaj.php";

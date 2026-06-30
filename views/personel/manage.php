@@ -71,6 +71,7 @@ if ($id > 0) {
         'kesintiler' => ['label' => 'Kesintiler', 'icon' => 'bx bx-minus-circle'],
         'ek_odemeler' => ['label' => 'Ek Ödemeler', 'icon' => 'bx bx-plus-circle'],
         'icralar' => ['label' => 'İcralar', 'icon' => 'bx bx-gavel'],
+        'vergi_matrahlari' => ['label' => 'Vergi Matrahları', 'icon' => 'bx bx-trending-up'],
         'finansal_islemler' => ['label' => 'Hesap Hareketleri', 'icon' => 'bx bx-lira'],
         'evraklar' => ['label' => 'Evraklar', 'icon' => 'bx bx-file'],
         'puantaj' => ['label' => 'İş Takip', 'icon' => 'bx bx-time-five'],
@@ -490,6 +491,15 @@ if ($id > 0) {
                         <div class="tab-pane <?php echo $activeTab === 'icralar' ? 'active show' : ''; ?>" id="icralar"
                             role="tabpanel" data-loaded="false"
                             data-url="views/personel/get-tab-content.php?tab=icralar&id=<?php echo $id; ?>">
+                            <div class="text-center p-5">
+                                <div class="spinner-border text-primary" role="status">
+                                    <span class="visually-hidden">Yükleniyor...</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="tab-pane <?php echo $activeTab === 'vergi_matrahlari' ? 'active show' : ''; ?>"
+                            id="vergi_matrahlari" role="tabpanel" data-loaded="false"
+                            data-url="views/personel/get-tab-content.php?tab=vergi_matrahlari&id=<?php echo $id; ?>">
                             <div class="text-center p-5">
                                 <div class="spinner-border text-primary" role="status">
                                     <span class="visually-hidden">Yükleniyor...</span>

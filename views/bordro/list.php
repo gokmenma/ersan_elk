@@ -645,6 +645,7 @@ if (!empty($dbGelirler)) {
                         $toplamBanka = 0;
                         $toplamSodexo = 0;
                         $toplamElden = 0;
+                        $toplamSgkVergi = 0;
                         $latestCalculation = null;
                         $preCalc = []; // Hesaplanmış değerleri sakla
                     
@@ -676,6 +677,7 @@ if (!empty($dbGelirler)) {
                             $bankaP = $hesap['bankaOdemesi'];
                             $sodexoP = $hesap['sodexoOdemesi'];
                             $eldenP = $hesap['eldenOdeme'];
+                            $sgkVergiKesintisiP = floatval($p->sgk_isci ?? 0) + floatval($p->issizlik_isci ?? 0) + floatval($p->gelir_vergisi ?? 0) + floatval($p->damga_vergisi ?? 0);
 
                             // Tutarları direkt motor hesaplamasından al (Tutarlılık için)
                             $toplamAlacagi += $pToplamAlacagi;
@@ -685,6 +687,7 @@ if (!empty($dbGelirler)) {
                             $toplamBanka += $bankaP;
                             $toplamSodexo += $sodexoP;
                             $toplamElden += $eldenP;
+                            $toplamSgkVergi += $sgkVergiKesintisiP;
 
                             // En son hesaplama tarihi
                             if ($p->hesaplama_tarihi && (!$latestCalculation || $p->hesaplama_tarihi > $latestCalculation)) {
@@ -698,6 +701,7 @@ if (!empty($dbGelirler)) {
                                 'kesintiHaricIcra' => $pKesintiHaricIcra,
                                 'netAlacagi' => $pNetAlacagi,
                                 'icraKesintisi' => $pIcra,
+                                'sgkVergiKesintisi' => $sgkVergiKesintisiP,
                                 'calismaGunu' => $pCalismaGunu,
                                 'eldenOdeme' => $eldenP,
                                 'bankaOdemesi' => $bankaP,
@@ -963,6 +967,7 @@ if (!empty($dbGelirler)) {
                                             <th class="text-end" data-filter="number">Kesinti Tutarı</th>
                                             <th class="text-end" data-filter="number">Net Maaş</th>
                                             <th class="text-end" data-filter="number">İcra Kesintisi</th>
+                                            <th class="text-end" data-filter="number">SGK/Vergi Kesintisi</th>
                                             <th class="text-end" data-filter="number">Banka</th>
                                             <th class="text-end" data-filter="number">Sodexo</th>
                                             <th class="text-end" data-filter="number">Elden</th>
@@ -972,7 +977,7 @@ if (!empty($dbGelirler)) {
                                     <tbody>
                                         <?php if (empty($personeller)): ?>
                                             <tr>
-                                                <td colspan="12" class="text-center text-muted py-4">
+                                                <td colspan="13" class="text-center text-muted py-4">
                                                     <i class="bx bx-user-x fs-1 d-block mb-2"></i>
                                                     Bu döneme henüz personel eklenmemiş.<br>
                                                     <small>"Personelleri Güncelle" butonuna tıklayarak personelleri
@@ -989,6 +994,7 @@ if (!empty($dbGelirler)) {
                                                 $kesintiHaricIcra = $pc['kesintiHaricIcra'];
                                                 $netAlacagi = $pc['netAlacagi'];
                                                 $icraKesintisi = $pc['icraKesintisi'];
+                                                $sgkVergiKesintisi = $pc['sgkVergiKesintisi'];
                                                 $calismaGunu = $pc['calismaGunu'];
                                                 $eldenOdeme = $pc['eldenOdeme'];
                                                 $bankaOdemesi = $pc['bankaOdemesi'];
@@ -1149,6 +1155,9 @@ if (!empty($dbGelirler)) {
                                                         <?php else: ?>
                                                             -
                                                         <?php endif; ?>
+                                                    </td>
+                                                    <td class="text-end text-warning fw-medium">
+                                                        <?= $sgkVergiKesintisi > 0 ? number_format($sgkVergiKesintisi, 2, ',', '.') . ' ₺' : '-' ?>
                                                     </td>
                                                     <td class="text-end text-primary">
                                                         <?= $bankaOdemesi > 0 ? number_format($bankaOdemesi, 2, ',', '.') . ' ₺' : '-' ?>

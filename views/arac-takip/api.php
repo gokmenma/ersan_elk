@@ -3053,12 +3053,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     throw new Exception("Seçtiğiniz tarihte ({$newTarih}) ve türde ({$newTur}) bu araç için zaten aktif bir kayıt mevcuttur.");
                 }
 
+                $inputAciklama = trim($_POST['aciklama'] ?? '');
+                $finalAciklama = $inputAciklama !== '' ? $inputAciklama : $bildirim->aciklama;
+
                 // 1. Bildirimi Güncelle
                 $KmBildirim->saveWithAttr([
                     'id' => $id,
                     'tarih' => $newTarih,
                     'tur' => $newTur,
-                    'bitis_km' => $newKm,
+                    'onaylanan_km' => $newKm,
+                    'aciklama' => $finalAciklama,
+                    'durum' => 'onaylandi',
+                    'onaylayan_id' => $_SESSION['user_id'] ?? null,
+                    'onay_tarihi' => date('Y-m-d H:i:s'),
                     'guncelleme_tarihi' => date('Y-m-d H:i:s')
                 ]);
 
@@ -3082,8 +3089,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                             $Km->saveWithAttr([
                                 'id' => $eskiKmKaydi->id,
                                 'baslangic_km' => $yeniBaslangic,
-                                'bitis_km' => $yeniBitis,
-                                'yapilan_km' => $yapilan_km
+                                'bitis_km' => $yeniBitis
                             ]);
                         }
                     }
@@ -3106,7 +3112,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         'id' => $yeniKmKaydi->id,
                         'baslangic_km' => $baslangic_km,
                         'bitis_km' => $bitis_km,
-                        'yapilan_km' => $yapilan_km
+                        'aciklama' => $finalAciklama
                     ]);
                 } else {
                     // Yeni kayıt oluştur
@@ -3126,15 +3132,219 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         'tarih' => $newTarih,
                         'baslangic_km' => $baslangic_km,
                         'bitis_km' => $bitis_km,
-                        'yapilan_km' => $yapilan_km,
-                        'ekleyen_id' => $_SESSION['user_id']
+                        'aciklama' => $finalAciklama,
+                        'olusturan_kullanici_id' => $_SESSION['user_id']
                     ]);
                 }
 
                 // 3. Aracın güncel KM değerini güncelle
                 $Arac->updateKm($arac_id, $newKm);
 
+                $SystemLog = new \App\Model\SystemLogModel();
+                $SystemLog->logAction($_SESSION['user_id'] ?? null, 'KM Bildirim Düzenleme', "KM Bildirim ID: {$id}, Araç ID: {$arac_id}, Yeni KM: {$newKm} olarak güncellendi.", \App\Model\SystemLogModel::LEVEL_IMPORTANT);
+
                 echo json_encode(['status' => 'success', 'message' => 'Onaylı KM kaydı ve sistem kayıtları başarıyla güncellendi.']);
+                break;
+
+            case 'get-km-onay-list-server-side':
+                $status = $_POST['status'] ?? 'beklemede';
+                if (!in_array($status, ['beklemede', 'onaylandi', 'reddedildi'])) {
+                    throw new Exception("Geçersiz durum.");
+                }
+
+                $res = $KmBildirim->getServerSideReports($status, $_POST);
+                
+                $data = [];
+                $userId = $_SESSION['user_id'] ?? null;
+                $hasEditPermission = \App\Service\Gate::allows('onaylikm_duzenle') || \App\Service\Gate::isSuperAdmin();
+
+                foreach ($res['data'] as $report) {
+                    $nested = [];
+                    $nested['id'] = $report->id;
+                    $nested['tarih'] = date('d.m.Y', strtotime($report->tarih));
+                    $nested['olusturma_tarihi'] = date('d.m.Y H:i', strtotime($report->olusturma_tarihi));
+                    $nested['tur'] = $report->tur === 'sabah' 
+                        ? '<span class="badge bg-soft-warning text-warning"><i class="bx bx-sun me-1"></i> Sabah</span>'
+                        : '<span class="badge bg-soft-info text-info"><i class="bx bx-moon me-1"></i> Akşam</span>';
+                    
+                    // Personel formatting
+                    $personelResim = $report->personel_resim ? \App\Helper\Helper::base_url($report->personel_resim) : 'assets/images/users/avatar-blank.png';
+                    $nested['personel'] = '
+                        <div class="d-flex align-items-center">
+                            <img src="' . $personelResim . '" class="avatar-xs rounded-circle me-2" alt="avatar" style="object-fit: cover;">
+                            <div class="flex-grow-1">
+                                <h6 class="font-size-14 mb-0 fw-bold text-dark">' . htmlspecialchars($report->personel_adi) . '</h6>
+                            </div>
+                        </div>';
+
+                    // Arac formatting
+                    $nested['arac'] = '
+                        <div>
+                            <span class="badge bg-light text-dark font-size-12 border border-secondary border-opacity-25 px-2 py-1 mb-1">' . htmlspecialchars($report->plaka) . '</span>
+                            <small class="d-block text-muted">' . htmlspecialchars($report->marka . ' ' . $report->model) . '</small>
+                        </div>';
+
+                    // KM columns
+                    $baslangic_km = floatval($report->sabah_km);
+                    $bitis_km_val = floatval($report->bitis_km);
+                    $today_km_text = '';
+                    if ($report->tur === 'aksam') {
+                        if ($baslangic_km > 0) {
+                            $today_km_text = '<br><small class="text-muted">(' . number_format($bitis_km_val - $baslangic_km, 0, ',', '.') . ' KM Bugün)</small>';
+                        } else {
+                            $today_km_text = '<br><small class="text-danger">(0 KM Bugün)</small>';
+                        }
+                    }
+                    $nested['bitis_km'] = number_format($report->bitis_km, 0, ',', '.') . ' KM' . $today_km_text;
+
+                    $nested['onaylanan_km'] = '';
+                    if ($status === 'onaylandi') {
+                        $onaylanan_km_val = floatval($report->onaylanan_km ?: $report->bitis_km);
+                        $today_onay_km_text = '';
+                        if ($report->tur === 'aksam') {
+                            if ($baslangic_km > 0) {
+                                $today_onay_km_text = '<br><small class="text-muted">(' . number_format($onaylanan_km_val - $baslangic_km, 0, ',', '.') . ' KM Bugün)</small>';
+                            } else {
+                                $today_onay_km_text = '<br><small class="text-danger">(0 KM Bugün)</small>';
+                            }
+                        }
+                        $nested['onaylanan_km'] = number_format($onaylanan_km_val, 0, ',', '.') . ' KM' . $today_onay_km_text;
+                    }
+                    
+                    $nested['aciklama'] = htmlspecialchars($report->aciklama ?: '-');
+                    
+                    // Resim button
+                    $resimBtn = '-';
+                    if ($report->resim_yolu) {
+                        $resimBtn = '
+                            <button type="button" class="btn btn-sm btn-soft-info btn-view-km-img" 
+                                    data-img="' . \App\Helper\Helper::base_url($report->resim_yolu) . '"
+                                    data-plaka="' . htmlspecialchars($report->plaka) . '"
+                                    data-date="' . date('d.m.Y', strtotime($report->tarih)) . '"
+                                    data-tur="' . ucfirst($report->tur) . '">
+                                <i class="bx bx-image-alt"></i>
+                            </button>';
+                    }
+                    $nested['resim'] = $resimBtn;
+
+                    // Actions formatting based on status
+                    if ($status === 'beklemede') {
+                        $nested['islem'] = '
+                            <div class="btn-group">
+                                <button type="button" class="btn btn-sm btn-success btn-km-onayla" 
+                                        data-id="' . $report->id . '" 
+                                        data-arac-id="' . $report->arac_id . '"
+                                        data-km="' . $report->bitis_km . '"
+                                        data-plaka="' . htmlspecialchars($report->plaka) . '"
+                                        data-tur="' . $report->tur . '"
+                                        data-tarih="' . $report->tarih . '">
+                                    <i class="bx bx-check"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-warning btn-km-duzelt-onayla text-white" 
+                                        data-id="' . $report->id . '" 
+                                        data-arac-id="' . $report->arac_id . '"
+                                        data-km="' . $report->bitis_km . '"
+                                        data-plaka="' . htmlspecialchars($report->plaka) . '"
+                                        data-personel="' . htmlspecialchars($report->personel_adi) . '"
+                                        data-tur="' . $report->tur . '"
+                                        data-tarih="' . $report->tarih . '"
+                                        title="Düzelt ve Onayla">
+                                    <i class="bx bx-edit-alt"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-danger btn-km-reddet" data-id="' . $report->id . '">
+                                    <i class="bx bx-x"></i>
+                                </button>
+                            </div>';
+                    } else if ($status === 'onaylandi') {
+                        $actionHtml = '<div class="d-flex justify-content-center gap-1">';
+                        if ($report->resim_yolu) {
+                            $actionHtml .= '
+                                <button type="button" class="btn btn-sm btn-soft-info btn-view-km-img" 
+                                        data-img="' . \App\Helper\Helper::base_url($report->resim_yolu) . '"
+                                        data-plaka="' . htmlspecialchars($report->plaka) . '"
+                                        data-date="' . date('d.m.Y', strtotime($report->tarih)) . '"
+                                        data-tur="' . ucfirst($report->tur) . '">
+                                    <i class="bx bx-image-alt"></i>
+                                </button>';
+                        }
+                        if ($hasEditPermission) {
+                            $actionHtml .= '
+                                <button type="button" class="btn btn-sm btn-soft-warning btn-edit-approved-km" 
+                                        data-id="' . $report->id . '"
+                                        data-arac-id="' . $report->arac_id . '"
+                                        data-plaka="' . htmlspecialchars($report->plaka) . '"
+                                        data-date="' . date('d.m.Y', strtotime($report->tarih)) . '"
+                                        data-date-raw="' . $report->tarih . '"
+                                        data-tur="' . $report->tur . '"
+                                        data-km="' . ($report->onaylanan_km ?: $report->bitis_km) . '"
+                                        data-aciklama="' . htmlspecialchars($report->aciklama ?: '') . '">
+                                    <i class="bx bx-edit"></i>
+                                </button>';
+                        }
+                        $actionHtml .= '</div>';
+                        $nested['islem'] = $actionHtml;
+                    } else if ($status === 'reddedildi') {
+                        $actionHtml = '<div class="d-flex justify-content-center gap-1">';
+                        if ($report->resim_yolu) {
+                            $actionHtml .= '
+                                <button type="button" class="btn btn-sm btn-soft-info btn-view-km-img" 
+                                        data-img="' . \App\Helper\Helper::base_url($report->resim_yolu) . '"
+                                        data-plaka="' . htmlspecialchars($report->plaka) . '"
+                                        data-date="' . date('d.m.Y', strtotime($report->tarih)) . '"
+                                        data-tur="' . ucfirst($report->tur) . '">
+                                    <i class="bx bx-image-alt"></i>
+                                </button>';
+                        }
+                        if ($hasEditPermission) {
+                            $actionHtml .= '
+                                <button type="button" class="btn btn-sm btn-soft-warning btn-edit-approved-km" 
+                                        data-id="' . $report->id . '"
+                                        data-arac-id="' . $report->arac_id . '"
+                                        data-plaka="' . htmlspecialchars($report->plaka) . '"
+                                        data-date="' . date('d.m.Y', strtotime($report->tarih)) . '"
+                                        data-date-raw="' . $report->tarih . '"
+                                        data-tur="' . $report->tur . '"
+                                        data-km="' . ($report->onaylanan_km ?: $report->bitis_km) . '"
+                                        data-aciklama="' . htmlspecialchars($report->aciklama ?: '') . '">
+                                    <i class="bx bx-edit"></i>
+                                </button>';
+                        }
+                        $actionHtml .= '</div>';
+                        $nested['islem'] = $actionHtml;
+                    }
+
+                    // Extra fields for Rejected tab
+                    if ($status === 'reddedildi') {
+                        $nested['red_nedeni'] = '
+                            <span class="text-danger">' . htmlspecialchars($report->red_nedeni ?: 'Neden belirtilmedi') . '</span>
+                            <small class="d-block text-muted mt-1">Reddeden: ' . htmlspecialchars($report->onaylayan_adi ?: '') . '</small>';
+                    }
+
+                    // Extra fields for Approved tab
+                    if ($status === 'onaylandi') {
+                        $nested['onaylayan_tarih'] = '
+                            <span class="d-block">' . htmlspecialchars($report->onaylayan_adi ?: '') . '</span>
+                            <small class="text-muted">' . ($report->onay_tarihi ? date('d.m.Y H:i', strtotime($report->onay_tarihi)) : '-') . '</small>';
+                    }
+
+                    // Extra checkbox for Pending tab
+                    if ($status === 'beklemede') {
+                        $nested['checkbox'] = '
+                            <div class="form-check font-size-16">
+                                <input class="form-check-input km-checkbox" type="checkbox" data-id="' . $report->id . '" data-tur="' . $report->tur . '" data-tarih="' . $report->tarih . '">
+                                <label class="form-check-label"></label>
+                            </div>';
+                    }
+
+                    $data[] = $nested;
+                }
+
+                echo json_encode([
+                    "draw" => intval($res['draw']),
+                    "recordsTotal" => intval($res['recordsTotal']),
+                    "recordsFiltered" => intval($res['recordsFiltered']),
+                    "data" => $data
+                ]);
                 break;
 
             case 'km-onay-ver':
@@ -3180,7 +3390,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     'tarih' => $tarih,
                     'baslangic_km' => $baslangic_km,
                     'bitis_km' => $bitis_km,
-                    'yapilan_km' => ($bitis_km > $baslangic_km && $baslangic_km > 0) ? ($bitis_km - $baslangic_km) : 0,
                     'aciklama' => $bildirim->aciklama,
                     'olusturan_kullanici_id' => $_SESSION['user_id'] ?? null,
                     'silinme_tarihi' => null
@@ -3199,11 +3408,97 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 $KmBildirim->saveWithAttr([
                     'id' => $id,
                     'durum' => 'onaylandi',
+                    'onaylanan_km' => $deger_km,
                     'onaylayan_id' => $_SESSION['user_id'] ?? null,
                     'onay_tarihi' => date('Y-m-d H:i:s')
                 ]);
 
+                $SystemLog = new \App\Model\SystemLogModel();
+                $SystemLog->logAction($_SESSION['user_id'] ?? null, 'KM Bildirim Onay', "KM Bildirim ID: {$id}, Araç ID: {$arac_id}, KM: {$deger_km} onaylandı.", \App\Model\SystemLogModel::LEVEL_INFO);
+
                 echo json_encode(['status' => 'success', 'message' => 'KM bildirimi onaylandı ve sisteme işlendi.']);
+                break;
+
+            case 'km-onay-duzelt-onayla':
+                if (!\App\Service\Gate::allows('onaylikm_duzenle') && !\App\Service\Gate::isSuperAdmin()) {
+                    throw new Exception("Bu işlemi yapmaya yetkiniz yoktur.");
+                }
+
+                $id = intval($_POST['id'] ?? 0);
+                $newKm = intval($_POST['km'] ?? 0);
+                
+                if ($id <= 0) throw new Exception("Geçersiz bildirim ID.");
+                if ($newKm < 0) throw new Exception("KM değeri negatif olamaz.");
+
+                $bildirim = $KmBildirim->find($id);
+                if (!$bildirim) throw new Exception("Bildirim bulunamadı.");
+
+                if ($bildirim->durum !== 'beklemede') {
+                    $statusText = $bildirim->durum === 'onaylandi' ? 'onaylanmış' : 'reddedilmiş';
+                    throw new Exception("Bu bildirim daha önce zaten {$statusText}. Sayfa yenileniyor...");
+                }
+
+                $tarih = $bildirim->tarih;
+                $arac_id = $bildirim->arac_id;
+                $tur = $bildirim->tur;
+
+                // Mevcut kaydı bul
+                $mevcutKmKaydi = $Km->kayitVarMi($arac_id, $tarih, null, true);
+                
+                if ($tur === 'sabah') {
+                    // SABAH (BAŞLANGIÇ) BİLDİRİMİ
+                    $baslangic_km = $newKm;
+                    $bitis_km = $mevcutKmKaydi ? $mevcutKmKaydi->bitis_km : 0;
+                } else {
+                    // AKŞAM (BİTİŞ) BİLDİRİMİ
+                    if ($mevcutKmKaydi) {
+                        $baslangic_km = $mevcutKmKaydi->baslangic_km;
+                    } else {
+                        // Önceki kaydın bitiş KM'sini al
+                        $sql = $Km->getDb()->prepare("SELECT bitis_km FROM arac_km_kayitlari WHERE arac_id = ? AND tarih <= ? AND silinme_tarihi IS NULL ORDER BY tarih DESC, id DESC LIMIT 1");
+                        $sql->execute([$arac_id, $tarih]);
+                        $baslangic_km = $sql->fetchColumn() ?: 0;
+                    }
+                    $bitis_km = $newKm;
+                }
+
+                $inputAciklama = trim($_POST['aciklama'] ?? '');
+                $finalAciklama = $inputAciklama !== '' ? $inputAciklama : $bildirim->aciklama;
+
+                $saveData = [
+                    'firma_id' => $bildirim->firma_id,
+                    'arac_id' => $arac_id,
+                    'tarih' => $tarih,
+                    'baslangic_km' => $baslangic_km,
+                    'bitis_km' => $bitis_km,
+                    'aciklama' => $finalAciklama,
+                    'olusturan_kullanici_id' => $_SESSION['user_id'] ?? null,
+                    'silinme_tarihi' => null
+                ];
+
+                if ($mevcutKmKaydi) {
+                    $saveData['id'] = $mevcutKmKaydi->id;
+                }
+
+                $Km->saveWithAttr($saveData);
+
+                // 2. Araç Tablosunu Güncelle
+                $Arac->updateKm($arac_id, $newKm);
+
+                // 3. Bildirimi Düzelt & Onayla
+                $KmBildirim->saveWithAttr([
+                    'id' => $id,
+                    'durum' => 'onaylandi',
+                    'onaylanan_km' => $newKm,
+                    'aciklama' => $finalAciklama,
+                    'onaylayan_id' => $_SESSION['user_id'] ?? null,
+                    'onay_tarihi' => date('Y-m-d H:i:s')
+                ]);
+
+                $SystemLog = new \App\Model\SystemLogModel();
+                $SystemLog->logAction($_SESSION['user_id'] ?? null, 'KM Bildirim Düzelt ve Onay', "KM Bildirim ID: {$id}, Araç ID: {$arac_id}, Bildirilen: {$bildirim->bitis_km}, Düzeltilen/Onaylanan: {$newKm} olarak onaylandı.", \App\Model\SystemLogModel::LEVEL_INFO);
+
+                echo json_encode(['status' => 'success', 'message' => 'KM bildirimi düzeltilerek onaylandı ve sisteme işlendi.']);
                 break;
 
             case 'km-onay-reddet':
@@ -3227,6 +3522,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     'onaylayan_id' => $_SESSION['user_id'] ?? null,
                     'onay_tarihi' => date('Y-m-d H:i:s')
                 ]);
+
+                $SystemLog = new \App\Model\SystemLogModel();
+                $SystemLog->logAction($_SESSION['user_id'] ?? null, 'KM Bildirim Red', "KM Bildirim ID: {$id}, Red Nedeni: {$neden} reddedildi.", \App\Model\SystemLogModel::LEVEL_INFO);
 
                 echo json_encode(['status' => 'success', 'message' => 'KM bildirimi reddedildi.']);
                 break;
@@ -3275,7 +3573,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                             'tarih' => $tarih,
                             'baslangic_km' => $baslangic_km,
                             'bitis_km' => $bitis_km,
-                            'yapilan_km' => ($bitis_km > $baslangic_km && $baslangic_km > 0) ? ($bitis_km - $baslangic_km) : 0,
                             'aciklama' => $bildirim->aciklama,
                             'olusturan_kullanici_id' => $userId,
                             'silinme_tarihi' => null
@@ -3291,6 +3588,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         $KmBildirim->saveWithAttr([
                             'id' => $id,
                             'durum' => 'onaylandi',
+                            'onaylanan_km' => $deger_km,
                             'onaylayan_id' => $userId,
                             'onay_tarihi' => $now
                         ]);
@@ -3300,6 +3598,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         $errorCount++;
                     }
                 }
+
+                $SystemLog = new \App\Model\SystemLogModel();
+                $SystemLog->logAction($userId, 'Toplu KM Bildirim Onay', "{$successCount} adet KM bildirimi toplu olarak onaylandı. Hatalı: {$errorCount}.", \App\Model\SystemLogModel::LEVEL_IMPORTANT);
 
                 echo json_encode([
                     'status' => 'success', 
