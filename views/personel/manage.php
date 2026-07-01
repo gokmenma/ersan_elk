@@ -742,11 +742,11 @@ if ($id > 0) {
         }
     });
 </script>
-<script src="views/personel/js/zimmet.js"></script>
-<script src="views/personel/js/kesinti.js"></script>
-<script src="views/personel/js/ek_odeme.js"></script>
-<script src="views/personel/js/icra.js"></script>
-<script src="views/personel/js/evrak.js"></script>
+<script src="views/personel/js/zimmet.js?v=<?= filemtime(__DIR__ . '/js/zimmet.js') ?>"></script>
+<script src="views/personel/js/kesinti.js?v=<?= filemtime(__DIR__ . '/js/kesinti.js') ?>"></script>
+<script src="views/personel/js/ek_odeme.js?v=<?= filemtime(__DIR__ . '/js/ek_odeme.js') ?>"></script>
+<script src="views/personel/js/icra.js?v=<?= filemtime(__DIR__ . '/js/icra.js') ?>"></script>
+<script src="views/personel/js/evrak.js?v=<?= filemtime(__DIR__ . '/js/evrak.js') ?>"></script>
 <script>
     window.personelData = {
         maas_tutari: <?= floatval($personel->maas_tutari ?? 0) ?>,

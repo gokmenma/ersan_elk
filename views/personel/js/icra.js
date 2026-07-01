@@ -23,11 +23,12 @@ $(document).ready(function () {
     $("#formPersonelIcraEkle")[0].reset();
     $("#icra_id_hidden").val("");
     $("#icra_sira").val(nextSira);
-    $("#icra_durum").val("devam_ediyor");
-    $("#icra_kesinti_tipi").val("tutar");
+    $("#icra_durum").val("devam_ediyor").trigger("change");
+    $("#icra_kesinti_tipi").val("tutar").trigger("change");
     $("#icra_kesinti_orani").val("25");
     $("#icra_iban").val("");
     $("#icra_hesap_bilgileri").val("");
+    $("#icra_dairesi").val("").trigger("change", true);
     if ($("#icra_baslangic")[0] && $("#icra_baslangic")[0]._flatpickr) {
         $("#icra_baslangic")[0]._flatpickr.clear();
     } else {
@@ -101,7 +102,17 @@ $(document).ready(function () {
           $("#icra_id_hidden").val(response.id);
           // Helper'ın oluşturduğu id'leri (input name ile aynı) kullanıyoruz
           $("#icra_sira").val(response.sira);
-          $("#icra_dairesi").val(response.icra_dairesi).trigger("change", true);
+          var optionValue = response.icra_dairesi;
+          if (optionValue) {
+              if ($("#icra_dairesi").find("option[value='" + optionValue + "']").length === 0) {
+                  var newOption = new Option(optionValue, optionValue, true, true);
+                  $("#icra_dairesi").append(newOption).trigger("change", true);
+              } else {
+                  $("#icra_dairesi").val(optionValue).trigger("change", true);
+              }
+          } else {
+              $("#icra_dairesi").val("").trigger("change", true);
+          }
           $("#icra_dosya_no").val(response.dosya_no);
           $("#icra_toplam_borc").val(response.toplam_borc);
           $("#icra_kesinti_tipi")

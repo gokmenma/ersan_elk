@@ -12,6 +12,7 @@ use App\Model\PersonelKesintileriModel;
 use App\Model\PersonelIcralariModel;
 use App\Model\BordroDonemModel;
 use App\Helper\Date;
+use App\Model\SystemLogModel;
 
 $action = $_REQUEST['action'] ?? '';
 $personel_id = $_REQUEST['personel_id'] ?? 0;
@@ -30,6 +31,8 @@ error_reporting(E_ALL);
 ini_set('display_errors', 0);
 
 try {
+    $systemLog = new SystemLogModel();
+    $userId = $_SESSION['id'] ?? 0;
     switch ($action) {
         case 'get_icralar':
             $icralar = $icraModel->getDevamEdenIcralar($personel_id);
@@ -231,6 +234,7 @@ try {
                 'aciklama' => $_POST['icra_aciklama'] ?? ''
             ];
             $icraModel->saveWithAttr($data);
+            $systemLog->logAction($userId, 'İcra Dosyası Ekleme', "Personel ID: $personel_id, İcra Dairesi: {$data['icra_dairesi']}, Dosya No: {$data['dosya_no']}, Toplam Borç: {$data['toplam_borc']}", SystemLogModel::LEVEL_IMPORTANT);
             echo json_encode(['success' => true]);
             break;
 
@@ -257,6 +261,7 @@ try {
                 'aciklama' => $_POST['icra_aciklama'] ?? ''
             ];
             $icraModel->saveWithAttr($data);
+            $systemLog->logAction($userId, 'İcra Dosyası Güncelleme', "İcra ID: $id, İcra Dairesi: {$data['icra_dairesi']}, Dosya No: {$data['dosya_no']}, Toplam Borç: {$data['toplam_borc']}, Durum: {$data['durum']}", SystemLogModel::LEVEL_IMPORTANT);
             echo json_encode(['success' => true]);
             break;
 
@@ -298,6 +303,7 @@ try {
         case 'delete_icra':
             $id = $_POST['id'];
             $icraModel->softDelete($id);
+            $systemLog->logAction($userId, 'İcra Dosyası Silme', "İcra ID: $id", SystemLogModel::LEVEL_IMPORTANT);
             echo json_encode(['success' => true]);
             break;
 
@@ -504,5 +510,6 @@ try {
             break;
     }
 } catch (\Throwable $e) {
-    echo json_encode(['error' => $e->getMessage(), 'file' => $e->getFile(), 'line' => $e->getLine()]);
+    error_log("Error in kesinti-islemleri.php: " . $e->getMessage() . " in " . $e->getFile() . " on line " . $e->getLine());
+    echo json_encode(['error' => 'İşlem sırasında sistemsel bir hata oluştu.']);
 }

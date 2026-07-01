@@ -2421,11 +2421,9 @@ class BordroPersonelModel extends Model
 
     public function olusturIcraKesintileri($personel_id, $donem_id, $baslangic_tarihi, $bitis_tarihi)
     {
-        // İcra parametresini bul
         $param = $this->getParametreCached('icra', $bitis_tarihi);
         $paramId = $param ? $param->id : null;
 
-        // Hesaplama tipi ve oran bilgisini al
         $hTip = $param ? $param->hesaplama_tipi : 'sabit';
         if ($hTip === 'oran_bazli_net' || $hTip === 'oran_net')
             $hTip = 'asgari_oran_net';
@@ -2433,11 +2431,10 @@ class BordroPersonelModel extends Model
             $hTip = 'oran_brut';
         $oran = $param ? floatval($param->oran ?? 0) : 0;
 
-        // Aktif icra dosyalarını SIRA NUMARASINA GÖRE getir (devam_ediyor olanlar)
         $sql = $this->db->prepare("
             SELECT id, icra_dairesi, dosya_no, aylik_kesinti_tutari, baslangic_tarihi, toplam_borc, sira, kesinti_tipi, kesinti_orani
             FROM personel_icralari
-            WHERE personel_id = ? 
+            WHERE personel_id = ?
             AND durum = 'devam_ediyor'
             AND silinme_tarihi IS NULL
             AND (baslangic_tarihi IS NULL OR baslangic_tarihi <= ?)
@@ -2445,20 +2442,22 @@ class BordroPersonelModel extends Model
             ORDER BY sira ASC, id ASC
         ");
         $sql->execute([$personel_id, $bitis_tarihi, $baslangic_tarihi]);
-        $icralar = $sql->fetchAll(PDO::FETCH_OBJ);
+        $processQueue = $sql->fetchAll(PDO::FETCH_OBJ);
 
-        if (empty($icralar)) {
+        if (empty($processQueue)) {
             return 0;
         }
 
         $olusturulanSayisi = 0;
+        $idx = 0;
 
-        // Her icra için kalan borç bilgisini hesapla
-        $icraKalanBorclar = [];
-        foreach ($icralar as $icra) {
+        while ($idx < count($processQueue)) {
+            $icra = $processQueue[$idx];
+            $idx++;
+
             $sqlKesilen = $this->db->prepare("
-                SELECT SUM(tutar) as toplam 
-                FROM personel_kesintileri 
+                SELECT SUM(tutar) as toplam
+                FROM personel_kesintileri
                 WHERE icra_id = ? AND donem_id != ? AND silinme_tarihi IS NULL AND durum = 'onaylandi'
             ");
             $sqlKesilen->execute([$icra->id, $donem_id]);
@@ -2466,20 +2465,20 @@ class BordroPersonelModel extends Model
             $oncekiKesilen = $resKesilen ? floatval($resKesilen->toplam ?? 0) : 0;
             $kalanBorc = max(0, floatval($icra->toplam_borc) - $oncekiKesilen);
 
-            $icraKalanBorclar[$icra->id] = $kalanBorc;
-        }
-
-        foreach ($icralar as $icra) {
-            $kalanBorc = $icraKalanBorclar[$icra->id];
-
-            // Borç bitmişse icrayı atla ve varsa bu dönem kaydını temizle
             if ($kalanBorc <= 0) {
                 $this->db->prepare("UPDATE personel_kesintileri SET silinme_tarihi = NOW() WHERE personel_id = ? AND donem_id = ? AND icra_id = ? AND silinme_tarihi IS NULL")
                     ->execute([$personel_id, $donem_id, $icra->id]);
+
+                $this->db->prepare("UPDATE personel_icralari SET durum = 'kesinti_bitti', updated_at = NOW() WHERE id = ?")
+                    ->execute([$icra->id]);
+
+                $nextIcra = $this->baslaSiradakiBekleyenIcra($personel_id);
+                if ($nextIcra) {
+                    $processQueue[] = $nextIcra;
+                }
                 continue;
             }
 
-            // Bireysel ayarlar var mı?
             $bizHTip = $icra->kesinti_tipi ?? 'tutar';
             $bizOran = floatval($icra->kesinti_orani ?? 0);
 
@@ -2494,24 +2493,21 @@ class BordroPersonelModel extends Model
                 $finalOran = 0;
             }
 
-            // Sabit tutarlı kesintilerde başlangıç tutarı
             $tutar = floatval($icra->aylik_kesinti_tutari);
+            $sonOdeme = false;
 
             if ($finalHTip === 'oran_net' || $finalHTip === 'asgari_oran_net') {
-                $tutar = 0; // Placeholder, hesaplaMaas içinde güncellenecek
+                $tutar = 0;
             } else {
-                // Sabit tutarlı kesintilerde kalan borç kontrolü yap
-                if ($tutar <= 0)
-                    continue;
-
+                if ($tutar <= 0) continue;
                 if ($tutar > $kalanBorc) {
                     $tutar = $kalanBorc;
+                    $sonOdeme = true;
                 }
             }
 
             $aciklama = "[İcra] " . $icra->icra_dairesi . " (" . $icra->dosya_no . ")";
 
-            // Bu icra dosyası için bu dönemde zaten bir kesinti var mı kontrol et
             $mevcutKontrol = $this->db->prepare("
                 SELECT id, durum FROM personel_kesintileri
                 WHERE personel_id = ? AND donem_id = ? AND tur = 'icra' AND icra_id = ? AND silinme_tarihi IS NULL
@@ -2520,11 +2516,9 @@ class BordroPersonelModel extends Model
             $mevcut = $mevcutKontrol->fetch(PDO::FETCH_OBJ);
 
             if ($mevcut) {
-                // Kayıt var, tutarı ve açıklamasını güncelle
                 $this->db->prepare("UPDATE personel_kesintileri SET tutar = ?, aciklama = ?, durum = 'onaylandi', parametre_id = ?, hesaplama_tipi = ?, oran = ?, updated_at = NOW() WHERE id = ?")
                     ->execute([$tutar, $aciklama, $paramId, $finalHTip, $finalOran, $mevcut->id]);
             } else {
-                // Kayıt yok, oluştur
                 $sqlAdd = $this->db->prepare("
                     INSERT INTO personel_kesintileri (personel_id, donem_id, aciklama, tutar, tur, durum, icra_id, parametre_id, hesaplama_tipi, oran, olusturma_tarihi)
                     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, NOW())
@@ -2532,9 +2526,41 @@ class BordroPersonelModel extends Model
                 $sqlAdd->execute([$personel_id, $donem_id, $aciklama, $tutar, 'icra', 'onaylandi', $icra->id, $paramId, $finalHTip, $finalOran]);
                 $olusturulanSayisi++;
             }
+
+            if ($sonOdeme) {
+                $this->db->prepare("UPDATE personel_icralari SET durum = 'kesinti_bitti', updated_at = NOW() WHERE id = ?")
+                    ->execute([$icra->id]);
+
+                $nextIcra = $this->baslaSiradakiBekleyenIcra($personel_id);
+                if ($nextIcra) {
+                    $processQueue[] = $nextIcra;
+                }
+            }
         }
 
         return $olusturulanSayisi;
+    }
+
+    private function baslaSiradakiBekleyenIcra($personel_id)
+    {
+        $sqlNext = $this->db->prepare("
+            SELECT id, icra_dairesi, dosya_no, aylik_kesinti_tutari, baslangic_tarihi, toplam_borc, sira, kesinti_tipi, kesinti_orani
+            FROM personel_icralari
+            WHERE personel_id = ?
+            AND durum = 'bekliyor'
+            AND silinme_tarihi IS NULL
+            ORDER BY sira ASC, id ASC
+            LIMIT 1
+        ");
+        $sqlNext->execute([$personel_id]);
+        $nextIcra = $sqlNext->fetch(PDO::FETCH_OBJ);
+
+        if ($nextIcra) {
+            $this->db->prepare("UPDATE personel_icralari SET durum = 'devam_ediyor', updated_at = NOW() WHERE id = ?")
+                ->execute([$nextIcra->id]);
+        }
+
+        return $nextIcra ?: null;
     }
 
     /**
