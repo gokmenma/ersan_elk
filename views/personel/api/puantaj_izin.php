@@ -156,7 +156,7 @@ try {
         }
 
         $personeller->execute($params);
-        $personel_list = $personeller->fetchAll(PDO::FETCH_OBJ);
+        $personel_list = array_map(fn($r) => $Personel->decryptFields($r), $personeller->fetchAll(PDO::FETCH_OBJ));
 
         // Varsayılan tanımlamaları al
         $varsayilan_X = $Tanimlamalar->db->prepare("SELECT id, tur_adi, kisa_kod, renk FROM tanimlamalar WHERE grup = 'izin_turu' AND (kisa_kod = 'X' OR kisa_kod = 'x' OR tur_adi LIKE '%Çalışılan Gün%') AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL LIMIT 1");
@@ -611,15 +611,15 @@ try {
         $raporlar = $sgkService->onayliRaporlariGetir($tarih1, $tarih2);
 
         // Personel listesini getir (TC Kimlik No eşleştirmesi için)
-        $personelStmt = $Personel->db->prepare("SELECT id, adi_soyadi, tc_kimlik_no FROM personel WHERE firma_id = ? AND aktif_mi = 1 AND silinme_tarihi IS NULL AND (disardan_sigortali = 0 OR FIND_IN_SET('puantaj', gorunum_modulleri))");
+        $personelStmt = $Personel->db->prepare("SELECT id, adi_soyadi, tc_hash FROM personel WHERE firma_id = ? AND aktif_mi = 1 AND silinme_tarihi IS NULL AND (disardan_sigortali = 0 OR FIND_IN_SET('puantaj', gorunum_modulleri))");
         $personelStmt->execute([$firma_id]);
         $personelList = $personelStmt->fetchAll(PDO::FETCH_OBJ);
 
-        // TC -> Personel ID eşleşmesi
+        // TC hash -> Personel ID eşleşmesi
         $tcToPersonel = [];
         foreach ($personelList as $p) {
-            if (!empty($p->tc_kimlik_no)) {
-                $tcToPersonel[$p->tc_kimlik_no] = [
+            if (!empty($p->tc_hash)) {
+                $tcToPersonel[$p->tc_hash] = [
                     'id' => $p->id,
                     'adi_soyadi' => $p->adi_soyadi
                 ];
@@ -630,7 +630,7 @@ try {
         $islenecekRaporlar = [];
         foreach ($raporlar as $rapor) {
             $tc = $rapor['TCKIMLIKNO'] ?? '';
-            $personelData = $tcToPersonel[$tc] ?? null;
+            $personelData = $tc ? ($tcToPersonel[hash('sha256', $tc)] ?? null) : null;
 
             // Tarihleri yakala - Tüm olası alanları hiyerarşik olarak tara
             $baslangicRaw = '';
@@ -746,15 +746,15 @@ try {
         $raporlar = $sgkService->raporlariGetir($tarih, false); // arsiv=false -> sadece aktif raporlar
 
         // Personel listesini getir (TC Kimlik No eşleştirmesi için)
-        $personelStmt = $Personel->db->prepare("SELECT id, adi_soyadi, tc_kimlik_no FROM personel WHERE firma_id = ? AND aktif_mi = 1 AND silinme_tarihi IS NULL AND (disardan_sigortali = 0 OR FIND_IN_SET('puantaj', gorunum_modulleri))");
+        $personelStmt = $Personel->db->prepare("SELECT id, adi_soyadi, tc_hash FROM personel WHERE firma_id = ? AND aktif_mi = 1 AND silinme_tarihi IS NULL AND (disardan_sigortali = 0 OR FIND_IN_SET('puantaj', gorunum_modulleri))");
         $personelStmt->execute([$firma_id]);
         $personelList = $personelStmt->fetchAll(PDO::FETCH_OBJ);
 
-        // TC -> Personel ID eşleşmesi
+        // TC hash -> Personel ID eşleşmesi
         $tcToPersonel = [];
         foreach ($personelList as $p) {
-            if (!empty($p->tc_kimlik_no)) {
-                $tcToPersonel[$p->tc_kimlik_no] = [
+            if (!empty($p->tc_hash)) {
+                $tcToPersonel[$p->tc_hash] = [
                     'id' => $p->id,
                     'adi_soyadi' => $p->adi_soyadi
                 ];
@@ -769,7 +769,7 @@ try {
         $islenecekRaporlar = [];
         foreach ($raporlar as $rapor) {
             $tc = $rapor['TCKIMLIKNO'] ?? '';
-            $personelData = $tcToPersonel[$tc] ?? null;
+            $personelData = $tc ? ($tcToPersonel[hash('sha256', $tc)] ?? null) : null;
 
             // Tarihleri yakala
             $baslangicRaw = $rapor['POLIKLINIKTAR'] ?? '';
@@ -1060,7 +1060,7 @@ try {
         }
 
         $personeller->execute($params);
-        $personel_list = $personeller->fetchAll(PDO::FETCH_OBJ);
+        $personel_list = array_map(fn($r) => $Personel->decryptFields($r), $personeller->fetchAll(PDO::FETCH_OBJ));
 
         $varsayilan_X = $Tanimlamalar->db->prepare("SELECT id, tur_adi, kisa_kod, renk FROM tanimlamalar WHERE grup = 'izin_turu' AND (kisa_kod = 'X' OR kisa_kod = 'x' OR tur_adi LIKE '%Çalışılan Gün%') AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL LIMIT 1");
         $varsayilan_X->execute([$firma_id]);

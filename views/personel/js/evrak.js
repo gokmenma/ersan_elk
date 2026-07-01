@@ -171,11 +171,12 @@
       .off("click.evrak", ".btn-evrak-goruntule")
       .on("click.evrak", ".btn-evrak-goruntule", function () {
         var dosya = $(this).data("dosya");
+        var indir = $(this).data("indir") || dosya;
         var tip = $(this).data("tip");
         var ad = $(this).data("ad");
 
         $("#evrakGoruntuleBaslik").text(ad);
-        $("#evrakIndirLink").attr("href", dosya);
+        $("#evrakIndirLink").attr("href", indir).removeAttr("download");
 
         var icerik = $("#evrakIcerik");
         icerik.empty();

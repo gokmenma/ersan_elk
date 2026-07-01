@@ -20,27 +20,22 @@ if (isset($_SESSION["id"]) && !empty($_SESSION["id"])) {
         $FirmaModel = new \App\Model\FirmaModel();
         $FirmaModel->setDefault($_GET["firma_id"]);
 
-        setcookie(
-            'varsayilan_firma_id',
-            $_GET["firma_id"],
-            time() + (30 * 24 * 60 * 60), // 30 gün
-            '/',
-            '',
-            false, // Secure - HTTPS için true yapılabilir
-            true   // HttpOnly
-        );
+        setcookie('varsayilan_firma_id', $_GET["firma_id"], [
+            'expires'  => time() + (30 * 24 * 60 * 60),
+            'path'     => '/',
+            'secure'   => true,
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ]);
 
-        // Firma kodunu da cookie'ye yaz (fallback olarak id cookie'si zaten var)
         if (isset($_GET["firma_kodu"]) && !empty($_GET["firma_kodu"])) {
-            setcookie(
-                'varsayilan_firma_kodu',
-                $_GET["firma_kodu"],
-                time() + (30 * 24 * 60 * 60), // 30 gün
-                '/',
-                '',
-                false,
-                true
-            );
+            setcookie('varsayilan_firma_kodu', $_GET["firma_kodu"], [
+                'expires'  => time() + (30 * 24 * 60 * 60),
+                'path'     => '/',
+                'secure'   => true,
+                'httponly' => true,
+                'samesite' => 'Lax',
+            ]);
         }
     }
 

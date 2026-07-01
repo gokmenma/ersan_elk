@@ -3,6 +3,16 @@ use App\Model\TalepModel;
 use App\Model\AvansModel;
 use App\Model\PersonelIzinleriModel;
 use App\Helper\Security;
+use App\Service\Gate;
+
+$canAvans = Gate::allows('avans_talepleri');
+$canIzin = Gate::allows('izin_talepleri');
+$canAriza = Gate::allows('ariza_talepleri');
+
+// Eğer hiçbir yetki yoksa (güvenlik için)
+if (!$canAvans && !$canIzin && !$canAriza) {
+    Gate::authorizeOrDie('talepler');
+}
 
 $talepModel = new TalepModel();
 $avansModel = new AvansModel();
@@ -12,32 +22,60 @@ $izinModel = new PersonelIzinleriModel();
 $showApproved = isset($_GET['show']) && $_GET['show'] === 'approved';
 
 // Her zaman bekleyenlerin sayısını saymak için
-$bekleyenAvanslar = $avansModel->getButunBekleyenAvanslar();
-try {
-    $bekleyenIzinler = $izinModel->getButunBekleyenIzinler();
-} catch (\Exception $e) {
-    $bekleyenIzinler = [];
+$bekleyenAvanslar = [];
+if ($canAvans) {
+    $bekleyenAvanslar = $avansModel->getButunBekleyenAvanslar();
 }
-$bekleyenTalepler = $talepModel->getButunBekleyenTalepler();
+
+$bekleyenIzinler = [];
+if ($canIzin) {
+    try {
+        $bekleyenIzinler = $izinModel->getButunBekleyenIzinler();
+    } catch (\Exception $e) {
+        $bekleyenIzinler = [];
+    }
+}
+
+$bekleyenTalepler = [];
+if ($canAriza) {
+    $bekleyenTalepler = $talepModel->getButunBekleyenTalepler();
+}
 
 $avansCount = count($bekleyenAvanslar);
 $izinCount = count($bekleyenIzinler);
 $talepCount = count($bekleyenTalepler);
-$toplamCount = $avansCount + $izinCount + $talepCount;
+$toplamCount = 0;
+if ($canAvans) $toplamCount += $avansCount;
+if ($canIzin) $toplamCount += $izinCount;
+if ($canAriza) $toplamCount += $talepCount;
 
 if ($showApproved) {
-    $avanslar = $avansModel->getIslenmisAvanslar(30);
-    try {
-        $izinler = $izinModel->getIslenmisIzinler(30);
-    } catch (\Exception $e) {
-        $izinler = [];
+    $avanslar = $canAvans ? $avansModel->getIslenmisAvanslar(30) : [];
+    $izinler = [];
+    if ($canIzin) {
+        try {
+            $izinler = $izinModel->getIslenmisIzinler(30);
+        } catch (\Exception $e) {
+            $izinler = [];
+        }
     }
-    $talepler = $talepModel->getCozulmusTalepler(30);
+    $talepler = $canAriza ? $talepModel->getCozulmusTalepler(30) : [];
 } else {
     $avanslar = $bekleyenAvanslar;
     $izinler = $bekleyenIzinler;
     $talepler = $bekleyenTalepler;
 }
+
+// Hangi tabın aktif olacağını yetkilere göre belirle
+$activeTab = '';
+if ($canAvans) {
+    $activeTab = 'avans';
+} elseif ($canIzin) {
+    $activeTab = 'izin';
+} elseif ($canAriza) {
+    $activeTab = 'talep';
+}
+
 
 // Format helper
 function formatMoneyMobile($amount) {
@@ -91,21 +129,27 @@ function formatDateOnlyMobile($dateStr) {
 
     <!-- Tab Buttons -->
     <div class="flex gap-2 p-1 bg-white dark:bg-card-dark rounded-xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-x-auto no-scrollbar">
-        <button onclick="switchTab('avans')" id="btn-tab-avans" class="flex-1 py-2 px-3 rounded-lg text-sm font-bold flex items-center justify-center gap-1.5 transition-all bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400">
+        <?php if ($canAvans): ?>
+        <button onclick="switchTab('avans')" id="btn-tab-avans" class="flex-1 py-2 px-3 rounded-lg text-sm font-bold flex items-center justify-center gap-1.5 transition-all <?= $activeTab === 'avans' ? 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800' ?>">
             <span class="material-symbols-outlined text-[18px]">payments</span>
             Avans
             <?php if($avansCount > 0): ?><span class="bg-orange-500 text-white text-[10px] px-1.5 py-0.5 rounded-full ml-1"><?= $avansCount ?></span><?php endif; ?>
         </button>
-        <button onclick="switchTab('izin')" id="btn-tab-izin" class="flex-1 py-2 px-3 rounded-lg text-sm font-bold flex items-center justify-center gap-1.5 transition-all text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800">
+        <?php endif; ?>
+        <?php if ($canIzin): ?>
+        <button onclick="switchTab('izin')" id="btn-tab-izin" class="flex-1 py-2 px-3 rounded-lg text-sm font-bold flex items-center justify-center gap-1.5 transition-all <?= $activeTab === 'izin' ? 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800' ?>">
             <span class="material-symbols-outlined text-[18px]">event_note</span>
             İzin
             <?php if($izinCount > 0): ?><span class="bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300 text-[10px] px-1.5 py-0.5 rounded-full ml-1"><?= $izinCount ?></span><?php endif; ?>
         </button>
-        <button onclick="switchTab('talep')" id="btn-tab-talep" class="flex-1 py-2 px-3 rounded-lg text-sm font-bold flex items-center justify-center gap-1.5 transition-all text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800">
+        <?php endif; ?>
+        <?php if ($canAriza): ?>
+        <button onclick="switchTab('talep')" id="btn-tab-talep" class="flex-1 py-2 px-3 rounded-lg text-sm font-bold flex items-center justify-center gap-1.5 transition-all <?= $activeTab === 'talep' ? 'bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400' : 'text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800' ?>">
             <span class="material-symbols-outlined text-[18px]">support_agent</span>
             Genel
             <?php if($talepCount > 0): ?><span class="bg-slate-200 text-slate-600 dark:bg-slate-700 dark:text-slate-300 text-[10px] px-1.5 py-0.5 rounded-full ml-1"><?= $talepCount ?></span><?php endif; ?>
         </button>
+        <?php endif; ?>
     </div>
 
     <!-- Filter Buttons -->
@@ -163,7 +207,8 @@ function formatDateOnlyMobile($dateStr) {
     </div>
 
     <!-- AVANSLAR -->
-    <div id="tab-content-avans" class="tab-content block space-y-3 mt-3">
+    <?php if ($canAvans): ?>
+    <div id="tab-content-avans" class="tab-content <?= $activeTab === 'avans' ? 'block' : 'hidden' ?> space-y-3 mt-3">
         <?php if (empty($avanslar)): ?>
             <div class="bg-white dark:bg-card-dark rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-800 shadow-sm">
                 <div class="w-12 h-12 <?= !$showApproved ? 'bg-orange-50 text-orange-400 dark:bg-orange-900/20' : 'bg-slate-100 text-slate-400 dark:bg-slate-800' ?> rounded-full flex items-center justify-center mx-auto mb-3">
@@ -273,9 +318,11 @@ function formatDateOnlyMobile($dateStr) {
             <p class="text-xs text-slate-500 mt-1">Seçtiğiniz filtreye uygun avans talebi bulunmuyor.</p>
         </div>
     </div>
+    <?php endif; ?>
 
     <!-- İZİNLER -->
-    <div id="tab-content-izin" class="tab-content hidden space-y-3 mt-3">
+    <?php if ($canIzin): ?>
+    <div id="tab-content-izin" class="tab-content <?= $activeTab === 'izin' ? 'block' : 'hidden' ?> space-y-3 mt-3">
         <?php if (empty($izinler)): ?>
             <div class="bg-white dark:bg-card-dark rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-800 shadow-sm">
                 <div class="w-12 h-12 <?= !$showApproved ? 'bg-blue-50 text-blue-400 dark:bg-blue-900/20' : 'bg-slate-100 text-slate-400 dark:bg-slate-800' ?> rounded-full flex items-center justify-center mx-auto mb-3">
@@ -403,9 +450,11 @@ function formatDateOnlyMobile($dateStr) {
             <p class="text-xs text-slate-500 mt-1">Seçtiğiniz filtreye uygun izin talebi bulunmuyor.</p>
         </div>
     </div>
+    <?php endif; ?>
 
     <!-- GENEL TALEPLER -->
-    <div id="tab-content-talep" class="tab-content hidden space-y-3 mt-3">
+    <?php if ($canAriza): ?>
+    <div id="tab-content-talep" class="tab-content <?= $activeTab === 'talep' ? 'block' : 'hidden' ?> space-y-3 mt-3">
         <?php if (empty($talepler)): ?>
             <div class="bg-white dark:bg-card-dark rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-800 shadow-sm">
                 <div class="w-12 h-12 <?= !$showApproved ? 'bg-indigo-50 text-indigo-400 dark:bg-indigo-900/20' : 'bg-slate-100 text-slate-400 dark:bg-slate-800' ?> rounded-full flex items-center justify-center mx-auto mb-3">
@@ -528,6 +577,7 @@ function formatDateOnlyMobile($dateStr) {
             <p class="text-xs text-slate-500 mt-1">Seçtiğiniz filtreye uygun genel talep bulunmuyor.</p>
         </div>
     </div>
+    <?php endif; ?>
 </div>
 
 <!-- MODALS DIALOGS OVELAY -->
@@ -831,18 +881,22 @@ function formatDateOnlyMobile($dateStr) {
         });
         
         // Show active tab
-        document.getElementById('tab-content-' + tabId).classList.remove('hidden');
-        document.getElementById('tab-content-' + tabId).classList.add('block');
+        const activeContent = document.getElementById('tab-content-' + tabId);
+        if (activeContent) {
+            activeContent.classList.remove('hidden');
+            activeContent.classList.add('block');
+        }
         
         // Activate button style
         const activeBtn = document.getElementById('btn-tab-' + tabId);
-        
-        if (tabId === 'avans') {
-            activeBtn.className = "flex-1 py-2 px-3 rounded-lg text-sm font-bold flex items-center justify-center gap-1.5 transition-all bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400";
-        } else if (tabId === 'izin') {
-            activeBtn.className = "flex-1 py-2 px-3 rounded-lg text-sm font-bold flex items-center justify-center gap-1.5 transition-all bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
-        } else if (tabId === 'talep') {
-            activeBtn.className = "flex-1 py-2 px-3 rounded-lg text-sm font-bold flex items-center justify-center gap-1.5 transition-all bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400";
+        if (activeBtn) {
+            if (tabId === 'avans') {
+                activeBtn.className = "flex-1 py-2 px-3 rounded-lg text-sm font-bold flex items-center justify-center gap-1.5 transition-all bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400";
+            } else if (tabId === 'izin') {
+                activeBtn.className = "flex-1 py-2 px-3 rounded-lg text-sm font-bold flex items-center justify-center gap-1.5 transition-all bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400";
+            } else if (tabId === 'talep') {
+                activeBtn.className = "flex-1 py-2 px-3 rounded-lg text-sm font-bold flex items-center justify-center gap-1.5 transition-all bg-indigo-100 text-indigo-700 dark:bg-indigo-900/30 dark:text-indigo-400";
+            }
         }
 
         // Filtre ve sıralama ayarlarını güncelle
@@ -898,7 +952,8 @@ function formatDateOnlyMobile($dateStr) {
     function getActiveTab() {
         if (document.getElementById('tab-content-avans') && !document.getElementById('tab-content-avans').classList.contains('hidden')) return 'avans';
         if (document.getElementById('tab-content-izin') && !document.getElementById('tab-content-izin').classList.contains('hidden')) return 'izin';
-        return 'talep';
+        if (document.getElementById('tab-content-talep') && !document.getElementById('tab-content-talep').classList.contains('hidden')) return 'talep';
+        return '';
     }
 
     function updateFilterOptions() {

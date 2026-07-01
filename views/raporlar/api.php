@@ -7,6 +7,7 @@ require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Model\PersonelIzinleriModel;
 use App\Model\PersonelModel;
+use App\Helper\Security;
 
 // header('Content-Type: application/json; charset=utf-8'); // Set conditionally later
 
@@ -120,8 +121,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $params = [$firmaId, $end_date, $start_date];
 
                     if (!empty($searchValue)) {
-                        $whereClause .= " AND (p.adi_soyadi LIKE ? OR p.tc_kimlik_no LIKE ? OR p.departman LIKE ? OR t.tur_adi LIKE ? OR pi.onay_durumu LIKE ?)";
-                        $params = array_merge($params, ["%$searchValue%", "%$searchValue%", "%$searchValue%", "%$searchValue%", "%$searchValue%"]);
+                        $whereClause .= " AND (p.adi_soyadi LIKE ? OR p.departman LIKE ? OR t.tur_adi LIKE ? OR pi.onay_durumu LIKE ?)";
+                        $params = array_merge($params, ["%$searchValue%", "%$searchValue%", "%$searchValue%", "%$searchValue%"]);
                     }
 
                     // Sütun Bazlı Arama
@@ -165,7 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $data[] = [
                             'id' => $row->id,
                             'personel' => $row->adi_soyadi ?? '-',
-                            'tc_no' => $row->tc_kimlik_no ?? '-',
+                            'tc_no' => $row->tc_kimlik_no ? (Security::decrypt($row->tc_kimlik_no) ?: '-') : '-',
                             'departman' => $row->departman ?? '-',
                             'izin_turu' => $row->izin_turu ?? '-',
                             'baslangic_tarihi' => date('d.m.Y', strtotime($row->baslangic_tarihi)),
@@ -233,7 +234,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $paramsFiltered = [':firmaId' => $firmaId, ':startDate' => $start_date_full, ':endDate' => $end_date_full];
 
                     if (!empty($searchValue)) {
-                        $whereClause .= " AND (adi_soyadi LIKE :search OR tc_kimlik_no LIKE :search OR departman LIKE :search OR islem_tipi LIKE :search OR detay_turu LIKE :search OR durum LIKE :search)";
+                        $whereClause .= " AND (adi_soyadi LIKE :search OR departman LIKE :search OR islem_tipi LIKE :search OR detay_turu LIKE :search OR durum LIKE :search)";
                         $paramsFiltered[':search'] = "%$searchValue%";
                     }
 
@@ -281,7 +282,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $data[] = [
                             'id' => $row->id,
                             'personel' => $row->adi_soyadi,
-                            'tc_no' => $row->tc_kimlik_no,
+                            'tc_no' => $row->tc_kimlik_no ? (Security::decrypt($row->tc_kimlik_no) ?: '-') : '-',
                             'departman' => $row->departman,
                             'islem_tipi' => $row->islem_tipi,
                             'tur' => $row->detay_turu,
@@ -316,8 +317,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $params = [$firmaId, $start_date_full, $end_date_full];
 
                     if (!empty($searchValue)) {
-                        $whereClause .= " AND (p.adi_soyadi LIKE ? OR p.tc_kimlik_no LIKE ? OR p.departman LIKE ? OR pt.kategori LIKE ? OR pt.baslik LIKE ? OR pt.durum LIKE ?)";
-                        $params = array_merge($params, ["%$searchValue%", "%$searchValue%", "%$searchValue%", "%$searchValue%", "%$searchValue%", "%$searchValue%"]);
+                        $whereClause .= " AND (p.adi_soyadi LIKE ? OR p.departman LIKE ? OR pt.kategori LIKE ? OR pt.baslik LIKE ? OR pt.durum LIKE ?)";
+                        $params = array_merge($params, ["%$searchValue%", "%$searchValue%", "%$searchValue%", "%$searchValue%", "%$searchValue%"]);
                     }
 
                     // Sütun Bazlı Arama
@@ -359,7 +360,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $data[] = [
                             'id' => $row->id,
                             'personel' => $row->adi_soyadi,
-                            'tc_no' => $row->tc_kimlik_no,
+                            'tc_no' => $row->tc_kimlik_no ? (Security::decrypt($row->tc_kimlik_no) ?: '-') : '-',
                             'departman' => $row->departman,
                             'baslik' => $row->baslik ?? '-',
                             'kategori' => $row->kategori ?? '-',
@@ -395,8 +396,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $params = [$firmaId, $start_date_full, $end_date_full];
 
                     if (!empty($searchValue)) {
-                        $whereClause .= " AND (p.adi_soyadi LIKE ? OR p.tc_kimlik_no LIKE ? OR p.departman LIKE ? OR pi.icra_dairesi LIKE ? OR pi.dosya_no LIKE ? OR pi.durum LIKE ?)";
-                        $params = array_merge($params, ["%$searchValue%", "%$searchValue%", "%$searchValue%", "%$searchValue%", "%$searchValue%", "%$searchValue%"]);
+                        $whereClause .= " AND (p.adi_soyadi LIKE ? OR p.departman LIKE ? OR pi.icra_dairesi LIKE ? OR pi.dosya_no LIKE ? OR pi.durum LIKE ?)";
+                        $params = array_merge($params, ["%$searchValue%", "%$searchValue%", "%$searchValue%", "%$searchValue%", "%$searchValue%"]);
                     }
 
                     // Sütun Bazlı Arama
@@ -441,7 +442,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $data[] = [
                             'id' => $row->id,
                             'personel' => $row->adi_soyadi,
-                            'tc_no' => $row->tc_kimlik_no,
+                            'tc_no' => $row->tc_kimlik_no ? (Security::decrypt($row->tc_kimlik_no) ?: '-') : '-',
                             'departman' => $row->departman,
                             'icra_dairesi' => $row->icra_dairesi ?? '-',
                             'dosya_no' => $row->dosya_no ?? '-',

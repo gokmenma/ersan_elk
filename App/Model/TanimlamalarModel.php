@@ -160,6 +160,7 @@ class TanimlamalarModel extends Model
             <td class="text-center">' . $data->defter_bolge . '</td>
             <td class="text-center">' . $data->defter_mahalle . '</td>
             <td class="text-center">' . $data->defter_abone_sayisi . '</td>
+            <td class="text-center">' . ($data->defter_api_abone_sayisi ?? '-') . '</td>
             <td class="text-center">' . $baslangic_tarihi . '</td>
             <td class="text-center">' . $bitis_tarihi . '</td>
             <td class="text-center">' . $data->aciklama . '</td>
@@ -818,7 +819,7 @@ class TanimlamalarModel extends Model
         // Sıralama
         $orderColName = $columns[$orderColumn]['data'] ?? 'id';
         // Güvenlik için sütun adını kontrol et
-        $allowedColumns = ['id', 'tur_adi', 'defter_bolge', 'defter_mahalle', 'defter_abone_sayisi', 'baslangic_tarihi', 'bitis_tarihi', 'aciklama'];
+        $allowedColumns = ['id', 'tur_adi', 'defter_bolge', 'defter_mahalle', 'defter_abone_sayisi', 'defter_api_abone_sayisi', 'baslangic_tarihi', 'bitis_tarihi', 'aciklama'];
         if (!in_array($orderColName, $allowedColumns)) {
             $orderColName = 'id';
         }
@@ -885,7 +886,7 @@ class TanimlamalarModel extends Model
             if (!empty($searchVal)) {
                 $colName = $column['data'] ?? '';
                 // Güvenlik için sütun adını doğrula
-                $allowedSearchColumns = ['id', 'tur_adi', 'defter_bolge', 'defter_mahalle', 'defter_abone_sayisi', 'baslangic_tarihi', 'bitis_tarihi', 'aciklama'];
+                $allowedSearchColumns = ['id', 'tur_adi', 'defter_bolge', 'defter_mahalle', 'defter_abone_sayisi', 'defter_api_abone_sayisi', 'baslangic_tarihi', 'bitis_tarihi', 'aciklama'];
                 if (in_array($colName, $allowedSearchColumns)) {
                     if (strpos($searchVal, ':') !== false) {
                         list($mode, $pureVal) = explode(':', $searchVal, 2);

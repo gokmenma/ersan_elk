@@ -7,11 +7,11 @@ session_start();
 
 // Varsayılan firma cookie'sini sıfırla
 if (isset($_COOKIE['varsayilan_firma_id'])) {
-    setcookie('varsayilan_firma_id', '', time() - 3600, '/');
+    setcookie('varsayilan_firma_id', '', ['expires' => time() - 3600, 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax']);
 }
 
 if (isset($_COOKIE['varsayilan_firma_kodu'])) {
-    setcookie('varsayilan_firma_kodu', '', time() - 3600, '/');
+    setcookie('varsayilan_firma_kodu', '', ['expires' => time() - 3600, 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax']);
 }
 
 // Mevcut firma session'ını temizle

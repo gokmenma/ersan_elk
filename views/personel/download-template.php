@@ -33,8 +33,10 @@ try {
         session_start();
     }
 
-    if (!isset($_SESSION['firma_id'])) {
-        throw new Exception("Oturum bilgisi bulunamadı. Lütfen tekrar giriş yapın.");
+    if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true || !isset($_SESSION['firma_id'])) {
+        ob_end_clean();
+        http_response_code(403);
+        exit('Yetkisiz erişim.');
     }
 
     $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
@@ -59,9 +61,6 @@ try {
         'Ehliyet Sınıfı' => 'ehliyet_sinifi',
         'Kan Grubu' => 'kan_grubu',
         'Cep Telefonu' => 'cep_telefonu',
-        'Program Şifre' => 'sifre',
-        'Kaski Kullanıcı Adı' => 'kaski_kullanici_adi',
-        'Kaski Şifre' => 'kaski_sifre',
         '2. Cep Telefonu' => 'cep_telefonu_2',
         'E-posta Adresi' => 'email_adresi',
         'Ayakkabı No' => 'ayakkabi_numarasi',
@@ -165,6 +164,14 @@ try {
     } catch (Exception $e) {
         error_log("Personel listesi çekilemedi: " . $e->getMessage());
     }
+
+    $logModel = new \App\Model\SystemLogModel();
+    $logModel->logAction(
+        $_SESSION['id'] ?? $_SESSION['user_id'] ?? 0,
+        'Excel Export',
+        'Personel import şablonu indirildi. ' . count($personeller) . ' kayıt.',
+        \App\Model\SystemLogModel::LEVEL_IMPORTANT
+    );
 
     // Personel verilerini Excel'e yaz
     $currentRow = 2;

@@ -11,6 +11,12 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
+    ob_end_clean();
+    http_response_code(403);
+    exit('Yetkisiz erişim.');
+}
+
 try {
     // Autoloader'ı dahil et
     $autoloaderPath = dirname(__DIR__, 2) . '/Autoloader.php';
@@ -44,8 +50,13 @@ try {
 
     $personeller = $PersonelModel->filter($term, $colSearches);
 
-
-
+    $logModel = new \App\Model\SystemLogModel();
+    $logModel->logAction(
+        $_SESSION['id'] ?? $_SESSION['user_id'] ?? 0,
+        'Excel Export',
+        'Personel listesi Excel olarak indirildi. (' . count($personeller) . ' kayıt)',
+        \App\Model\SystemLogModel::LEVEL_IMPORTANT
+    );
 
     $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
     $sheet = $spreadsheet->getActiveSheet();
@@ -69,9 +80,6 @@ try {
         'Ehliyet Sınıfı' => 'ehliyet_sinifi',
         'Kan Grubu' => 'kan_grubu',
         'Cep Telefonu' => 'cep_telefonu',
-        'Program Şifre' => 'sifre',
-        'Kaski Kullanıcı Adı' => 'kaski_kullanici_adi',
-        'Kaski Şifre' => 'kaski_sifre',
         '2. Cep Telefonu' => 'cep_telefonu_2',
         'E-posta Adresi' => 'email_adresi',
         'Ayakkabı No' => 'ayakkabi_numarasi',

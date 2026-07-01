@@ -7,6 +7,11 @@ if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
+if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
+    http_response_code(403);
+    exit('Yetkisiz erişim.');
+}
+
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Model\BordroPersonelModel;
@@ -46,6 +51,14 @@ try {
     if (empty($personeller)) {
         die('Bu dönemde kriterlere uygun personel bulunmamaktadır.');
     }
+
+    $logModel = new \App\Model\SystemLogModel();
+    $logModel->logAction(
+        $_SESSION['id'] ?? $_SESSION['user_id'] ?? 0,
+        'Excel Export',
+        'SGK bildirge Excel olarak indirildi. Dönem ID: ' . (int)$donemId . ', ' . count($personeller) . ' kayıt.',
+        \App\Model\SystemLogModel::LEVEL_IMPORTANT
+    );
 
     // Yeni Excel dosyası oluştur
     $spreadsheet = new Spreadsheet();

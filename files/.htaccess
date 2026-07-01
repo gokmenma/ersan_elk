@@ -1,0 +1,7 @@
+# Doğrudan web erişimini engelle
+Options -Indexes
+Deny from all
+
+<FilesMatch "\.(php|php3|php4|php5|phtml|pl|py|cgi|sh)$">
+    Deny from all
+</FilesMatch>

@@ -28,6 +28,7 @@ if (isset($_COOKIE["remember_me"])) {
     if ($decrypted_id) {
         $user = $User->find($decrypted_id);
         if ($user && ($user->durum ?? 'Aktif') !== 'Pasif') {
+            session_regenerate_id(true);
             $_SESSION["loggedin"] = true;
             $_SESSION["user"] = $user;
             $_SESSION["user_id"] = $user->id;
@@ -65,21 +66,37 @@ if (isset($_COOKIE["remember_me"])) {
 // Include config file
 //require_once "layouts/config.php";
 
-// Define variables and initialize with empty values
 $username = $password = "";
 $username_err = $password_err = "";
 
-// Check if user was kicked out for being passive
 if (isset($_GET["status"]) && $_GET["status"] === "inactive") {
     $username_err = "Hesabınız pasif duruma getirildiği için oturumunuz sonlandırıldı.";
 }
 
+define('LOGIN_MAX_ATTEMPTS', 5);
+define('LOGIN_LOCKOUT_SECONDS', 900);
 
+$ip = $_SERVER['REMOTE_ADDR'] ?? '0.0.0.0';
+$lockKey = 'login_attempts_' . md5($ip);
 
-// Processing form data when form is submitted
-if ($_SERVER["REQUEST_METHOD"] == "POST") {
+if (!isset($_SESSION[$lockKey])) {
+    $_SESSION[$lockKey] = ['count' => 0, 'first_attempt' => time()];
+}
 
-    // Check if username is empty
+$attemptData = &$_SESSION[$lockKey];
+
+if ($attemptData['count'] >= LOGIN_MAX_ATTEMPTS) {
+    $elapsed = time() - $attemptData['first_attempt'];
+    if ($elapsed < LOGIN_LOCKOUT_SECONDS) {
+        $remaining = ceil((LOGIN_LOCKOUT_SECONDS - $elapsed) / 60);
+        $username_err = "Çok fazla başarısız giriş denemesi. {$remaining} dakika sonra tekrar deneyin.";
+    } else {
+        $attemptData = ['count' => 0, 'first_attempt' => time()];
+    }
+}
+
+if ($_SERVER["REQUEST_METHOD"] == "POST" && empty($username_err)) {
+
     if (empty(trim($_POST["username"]))) {
         $username_err = "Kullanıcı adı giriniz.";
     } else {
@@ -108,8 +125,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                 $hashed_password = $user->password;
 
                 if (password_verify($password, $hashed_password)) {
-                    // Password is correct, so start a new session
-                    // Store data in session variables
+                    unset($_SESSION[$lockKey]);
+                    session_regenerate_id(true);
                     $_SESSION["loggedin"] = true;
                     $_SESSION["user"] = $user;
                     $_SESSION["user_id"] = $user->id;
@@ -123,7 +140,13 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     // Remember Me
                     if (isset($_POST["remember"])) {
                         $encrypted_user_id = Security::encrypt($user->id);
-                        setcookie("remember_me", $encrypted_user_id, time() + (30 * 24 * 60 * 60), "/"); // 30 days
+                        setcookie("remember_me", $encrypted_user_id, [
+                            'expires'  => time() + (30 * 24 * 60 * 60),
+                            'path'     => '/',
+                            'secure'   => true,
+                            'httponly' => true,
+                            'samesite' => 'Lax',
+                        ]);
                     }
 
                     // Redirect user to welcome page
@@ -143,6 +166,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                     exit;
                 } else {
                     $password_err = "Hatalı şifre girdiniz.";
+                    $attemptData['count']++;
+                    if ($attemptData['count'] === 1) {
+                        $attemptData['first_attempt'] = time();
+                    }
 
                     // Başarısız giriş denemesini logla
                     try {
@@ -160,6 +187,10 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
             }
         } else {
             $username_err = "Kullanıcı bulunamadı";
+            $attemptData['count']++;
+            if ($attemptData['count'] === 1) {
+                $attemptData['first_attempt'] = time();
+            }
 
             // Bulunamayan kullanıcı denemesini logla
             try {
@@ -263,6 +294,9 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
                                     <div class="mb-3">
                                         <button class="btn btn-primary w-100 waves-effect waves-light"
                                             type="submit" id="btnLogin">Giriş Yap</button>
+                                    </div>
+                                    <div class="text-center font-size-12 text-muted mt-2">
+                                        Giriş yaparak <a href="javascript:void(0)" data-bs-toggle="modal" data-bs-target="#kvkkModal" class="text-primary">KVKK Aydınlatma Metni</a>'ni okuduğunuzu kabul etmiş olursunuz.
                                     </div>
                                 </form>
 
@@ -376,6 +410,48 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
         <!-- end row -->
     </div>
     <!-- end container fluid -->
+</div>
+
+<!-- KVKK Aydınlatma Metni Modal -->
+<div class="modal fade" id="kvkkModal" tabindex="-1" aria-labelledby="kvkkModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="kvkkModalLabel">Kişisel Verilerin Korunması Kanunu (KVKK) Aydınlatma Metni</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body font-size-14">
+                <p><strong>Veri Sorumlusu:</strong> Ersan Elektrik</p>
+
+                <h6 class="fw-semibold mt-3">1. Kişisel Verilerinizin İşlenme Amacı</h6>
+                <p>Bu sistem yalnızca yetkili çalışanların kullanımına açık kurumsal bir yönetim uygulamasıdır. Sisteme giriş yaparak aşağıdaki amaçlarla kişisel verileriniz işlenecektir:</p>
+                <ul>
+                    <li>Personel özlük ve bordro işlemlerinin yürütülmesi</li>
+                    <li>İzin, avans ve talep yönetiminin sağlanması</li>
+                    <li>Güvenlik, oturum ve erişim kontrollerinin gerçekleştirilmesi</li>
+                    <li>Yasal yükümlülüklerin (SGK, vergi) yerine getirilmesi</li>
+                </ul>
+
+                <h6 class="fw-semibold mt-3">2. İşlenen Kişisel Veriler</h6>
+                <p>Kimlik (ad-soyad, TC kimlik no), iletişim (telefon, e-posta, adres), finansal (IBAN, maaş bilgileri), SGK ve özlük bilgileri işlenmektedir. Kan grubu gibi sağlık verileri özel nitelikli kişisel veri olup yalnızca zorunluluk halinde tutulmaktadır.</p>
+
+                <h6 class="fw-semibold mt-3">3. Hukuki Dayanak</h6>
+                <p>Verileriniz; iş sözleşmesinin ifası (KVKK Md.5/2-c), kanuni yükümlülüklerin yerine getirilmesi (Md.5/2-ç) ve meşru menfaat (Md.5/2-f) kapsamında işlenmektedir.</p>
+
+                <h6 class="fw-semibold mt-3">4. Veri Güvenliği</h6>
+                <p>Verileriniz şifreli bağlantı (HTTPS), erişim yetkilendirmesi, oturum yönetimi ve AES-256 şifreleme gibi teknik tedbirlerle korunmaktadır. Giriş denemeleri kayıt altına alınmaktadır.</p>
+
+                <h6 class="fw-semibold mt-3">5. Haklarınız (KVKK Madde 11)</h6>
+                <p>Veri sorumlusuna başvurarak; verilerinize erişim, düzeltme, silme veya işlenmesine itiraz talebinde bulunabilirsiniz. Talepleriniz için sistem yöneticisi ile iletişime geçiniz.</p>
+
+                <h6 class="fw-semibold mt-3">6. Veri Saklama Süresi</h6>
+                <p>Personel verileri, yasal yükümlülükler (İş Kanunu, SGK mevzuatı) gereği iş akdinin sona ermesinden itibaren 10 yıl süreyle saklanmaktadır.</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-primary" data-bs-dismiss="modal">Anladım, Kapat</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <!-- Forgot Password Modal -->

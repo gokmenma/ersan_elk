@@ -1,8 +1,22 @@
-RewriteEngine on 
+RewriteEngine on
+
+# Hassas dosyalara doğrudan erişimi engelle
+<Files ".env">
+    Require all denied
+</Files>
+<Files "*.log">
+    Require all denied
+</Files>
+<Files "*.bak">
+    Require all denied
+</Files>
+<FilesMatch "^(composer\.(json|lock)|package\.json|yarn\.lock)$">
+    Require all denied
+</FilesMatch>
 
 # Eğer dizin değilse ve dosya varsa
-RewriteCond %{REQUEST_FILENAME} !-d 
-RewriteCond %{REQUEST_FILENAME}.php -f 
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteCond %{REQUEST_FILENAME}.php -f
 
 # .php uzantısını gizle
 RewriteRule ^(.*)$ $1.php [L]
@@ -11,8 +25,14 @@ RewriteRule ^evrak.pdf$ goruntule.php [QSA,L]
 # Belirli bir desenle eşleşen URL'leri .php dosyasına yönlendir
 RewriteRule ^([a-z]+)\/?$ $1.php [NC,L]
 
+# Güvenlik Header'ları
+# <IfModule mod_headers.c>
+#     Header always set X-Frame-Options "DENY"
+#     Header always set X-Content-Type-Options "nosniff"
+#     Header always set Referrer-Policy "strict-origin-when-cross-origin"
+#     Header always set Permissions-Policy "geolocation=(), camera=(), microphone=()"
+#     Header always set X-XSS-Protection "1; mode=block"
+# </IfModule>
 
-# RewriteCond %{HTTPS} !=on
-# RewriteCond %{REQUEST_URI} !^/.well-known/acme-challenge/.+$
-# RewriteCond %{REQUEST_URI} !^/.well-known/acme-challenge/[0-9a-zA-Z_-]+$
-# RewriteRule (.*) https://www.admin.cansagliksen.org.tr/index/$1 [R=301,L]
+# Server imzasını gizle
+ServerSignature Off

@@ -3,7 +3,7 @@
 <?php
 session_destroy();
 if (isset($_COOKIE['remember_me'])) {
-    setcookie('remember_me', '', time() - 3600, '/');
+    setcookie('remember_me', '', ['expires' => time() - 3600, 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax']);
 }
 $status = isset($_GET['status']) ? '?status=' . $_GET['status'] : '';
 header("Location: login.php" . $status);

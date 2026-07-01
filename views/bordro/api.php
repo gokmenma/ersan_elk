@@ -2298,7 +2298,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             continue;
 
                         // Personeli bul
-                        $personelData = $Personel->where('tc_kimlik_no', $tcNo);
+                        $personelData = $Personel->findByTc($tcNo);
                         if (empty($personelData))
                             continue;
                         $personel_id = $personelData[0]->id;
@@ -2396,7 +2396,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             continue;
 
                         // Personeli bul
-                        $personelData = $Personel->where('tc_kimlik_no', $tcNo);
+                        $personelData = $Personel->findByTc($tcNo);
                         if (empty($personelData))
                             continue;
                         $personel_id = $personelData[0]->id;
@@ -2482,7 +2482,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             continue;
 
                         // Personeli bul
-                        $personelData = $Personel->where('tc_kimlik_no', $tcNo);
+                        $personelData = $Personel->findByTc($tcNo);
                         if (empty($personelData))
                             continue;
                         $personel_id = $personelData[0]->id;

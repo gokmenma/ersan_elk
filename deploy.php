@@ -1,5 +1,15 @@
 <?php
-$secret = 'a9f3cE7QmL2R6XKZ8N4VwH0JYbP5DStU';
+$dotenv = dirname(__FILE__) . '/.env';
+if (file_exists($dotenv)) {
+    foreach (file($dotenv, FILE_IGNORE_NEW_LINES | FILE_SKIP_EMPTY_LINES) as $line) {
+        if (strpos(trim($line), '#') === 0) continue;
+        if (strpos($line, '=') !== false) {
+            [$k, $v] = explode('=', $line, 2);
+            $_ENV[trim($k)] = trim($v, " \t\n\r\0\x0B\"'");
+        }
+    }
+}
+$secret = $_ENV['DEPLOY_SECRET'] ?? '';
 
 $signature = 'sha256=' . hash_hmac(
     'sha256',

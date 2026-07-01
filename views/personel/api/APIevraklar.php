@@ -1,11 +1,11 @@
 <?php
+require_once dirname(__DIR__, 3) . '/layouts/session.php';
 require_once dirname(__DIR__, 3) . '/Autoloader.php';
 
 use App\Model\PersonelEvrakModel;
 use App\Helper\Security;
 use App\Core\Db;
 
-// Set content type to JSON
 header('Content-Type: application/json; charset=utf-8');
 
 // Uploads dizini
@@ -100,8 +100,6 @@ try {
             throw new Exception('Dosya kaydedilemedi.');
         }
         
-        // Kullanıcı ID'sini al (session'dan)
-        session_start();
         $yukleyen_id = $_SESSION['user_id'] ?? null;
         
         // Veritabanına kaydet

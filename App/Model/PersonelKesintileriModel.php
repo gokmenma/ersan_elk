@@ -307,6 +307,8 @@ class PersonelKesintileriModel extends Model
         ");
 
         $sql->execute($params);
-        return $sql->fetchAll(PDO::FETCH_OBJ);
+        $results = $sql->fetchAll(PDO::FETCH_OBJ);
+        $pm = new PersonelModel();
+        return array_map(fn($r) => $pm->decryptFields($r), $results);
     }
 }

@@ -14,6 +14,13 @@ use App\Helper\Helper;
 
 header('Content-Type: application/json; charset=utf-8');
 
+if (!isset($_SESSION['loggedin']) || $_SESSION['loggedin'] !== true) {
+    ob_end_clean();
+    http_response_code(403);
+    echo json_encode(['status' => 'error', 'message' => 'Yetkisiz erişim.'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 // GET ile açılırsa (tarayıcıda direkt açma vb.) boş sayfa yerine anlamlı JSON dön.
 if (($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'GET') {
     echo json_encode([

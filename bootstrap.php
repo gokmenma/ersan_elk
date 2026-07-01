@@ -4,7 +4,8 @@ ob_start();
 //require_once __DIR__ . '/session-config.php';
 
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 define("ROOT", __DIR__);
 date_default_timezone_set('Europe/Istanbul');
 // Gerekli sınıfları dahil et
@@ -38,8 +39,20 @@ if (isset($_ENV['SENTRY_DSN']) && !empty($_ENV['SENTRY_DSN'])) {
     \Sentry\init([
         'dsn' => $_ENV['SENTRY_DSN'],
         'traces_sample_rate' => 1.0,
-        // Ortam bilgisi eklenebilir
         'environment' => $_ENV['APP_ENV'] ?? 'production',
+        'before_send' => function (\Sentry\Event $event): ?\Sentry\Event {
+            $sensitivePattern = '/\b(TR\d{2}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{4}\s?\d{2}|\d{11}|password|sifre|kaski_sifre|iban)/i';
+            $extra = $event->getExtra();
+            if (!empty($extra)) {
+                array_walk_recursive($extra, function (&$val) use ($sensitivePattern) {
+                    if (is_string($val) && preg_match($sensitivePattern, $val)) {
+                        $val = '[FILTERED]';
+                    }
+                });
+                $event->setExtra($extra);
+            }
+            return $event;
+        },
     ]);
 }
 

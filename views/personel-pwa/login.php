@@ -4,7 +4,8 @@
  */
 
 error_reporting(E_ALL);
-ini_set('display_errors', 1);
+ini_set('display_errors', 0);
+ini_set('log_errors', 1);
 
 session_start();
 
@@ -125,7 +126,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $response = ['status' => 'error', 'message' => 'Bu telefon numarası ile kayıtlı personel bulunamadı.'];
         }
     } catch (Exception $e) {
-        $response = ['status' => 'error', 'message' => 'Sistem hatası: ' . $e->getMessage()];
+        error_log('PWA reset_password hatası: ' . $e->getMessage());
+        $response = ['status' => 'error', 'message' => 'Bir sistem hatası oluştu. Lütfen tekrar deneyin.'];
     }
 
     echo json_encode($response);
@@ -141,6 +143,14 @@ if (isset($_GET['status']) && $_GET['status'] === 'inactive') {
 
 // Form gönderilmişse
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+    $pwaIp = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+    $pwaLockKey = 'pwa_locked_until_' . md5($pwaIp);
+    $pwaAttemptsKey = 'pwa_attempts_' . md5($pwaIp);
+
+    if (isset($_SESSION[$pwaLockKey]) && $_SESSION[$pwaLockKey] > time()) {
+        $wait = ceil(($_SESSION[$pwaLockKey] - time()) / 60);
+        $error = "Çok fazla başarısız deneme. $wait dakika sonra tekrar deneyin.";
+    } else {
     $login_input = $_POST['login_input'] ?? '';
     $password = $_POST['password'] ?? '';
 
@@ -158,9 +168,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
 
         $db = $PersonelModel->getDb();
-        $stmt = $db->prepare("SELECT * FROM personel WHERE tc_kimlik_no = :input OR cep_telefonu = :telefon OR cep_telefonu = :telefon_with_zero");
-        $stmt->execute(['input' => $login_input, 'telefon' => $phone, 'telefon_with_zero' => '0' . $phone]);
+        $tcHash = hash('sha256', $login_input);
+        $stmt = $db->prepare("SELECT * FROM personel WHERE tc_hash = :tc_hash OR cep_telefonu = :telefon OR cep_telefonu = :telefon_with_zero");
+        $stmt->execute(['tc_hash' => $tcHash, 'telefon' => $phone, 'telefon_with_zero' => '0' . $phone]);
         $personel = $stmt->fetch(PDO::FETCH_OBJ);
+        if ($personel) {
+            $personel = $PersonelModel->decryptFields($personel);
+        }
 
         if ($personel) {
             // Durum Kontrolü (İşten çıkış tarihi varsa pasiftir)
@@ -176,6 +190,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 if (empty($dbPassword)) {
                     $error = 'Bu hesap için henüz şifre belirlenmemiş. Lütfen yöneticinizle iletişime geçin.';
                 } elseif (password_verify($password, $dbPassword)) {
+                    unset($_SESSION[$pwaAttemptsKey], $_SESSION[$pwaLockKey]);
                     $_SESSION['personel_id'] = $personel->id;
                     $_SESSION['personel_tc'] = $personel->tc_kimlik_no;
                     $_SESSION['personel_adi'] = $personel->adi_soyadi;
@@ -192,19 +207,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
                     // Beni Hatırla
                     if (isset($_POST['remember'])) {
-                        $token = base64_encode($personel->id . ':' . hash_hmac('sha256', $personel->id . $personel->sifre, 'ErsanElektrikPWASecretKey'));
-                        setcookie('remember_token', $token, time() + (86400 * 30), "/");
+                        $pwaSecret = $_ENV['PWA_HMAC_SECRET'] ?? '';
+                        if (empty($pwaSecret)) {
+                            error_log('PWA_HMAC_SECRET .env dosyasında tanımlı değil, Beni Hatırla devre dışı.');
+                        }
+                        $token = base64_encode($personel->id . ':' . hash_hmac('sha256', $personel->id . $personel->sifre, $pwaSecret));
+                        setcookie('remember_token', $token, ['expires' => time() + (86400 * 30), 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax']);
                     }
 
                     header("Location: index.php");
                     exit();
                 } else {
+                    $_SESSION[$pwaAttemptsKey] = ($_SESSION[$pwaAttemptsKey] ?? 0) + 1;
+                    if ($_SESSION[$pwaAttemptsKey] >= 5) {
+                        $_SESSION[$pwaLockKey] = time() + 900;
+                        unset($_SESSION[$pwaAttemptsKey]);
+                    }
                     $error = 'Şifre hatalı.';
                 }
             }
         } else {
+            $_SESSION[$pwaAttemptsKey] = ($_SESSION[$pwaAttemptsKey] ?? 0) + 1;
+            if ($_SESSION[$pwaAttemptsKey] >= 5) {
+                $_SESSION[$pwaLockKey] = time() + 900;
+                unset($_SESSION[$pwaAttemptsKey]);
+            }
             $error = 'Bu bilgilerle kayıtlı personel bulunamadı.';
         }
+    }
     }
 }
 ?>

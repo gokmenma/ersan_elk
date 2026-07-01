@@ -91,6 +91,7 @@ $(document).ready(function () {
     $.ajax({
       url: "views/personel/ajax/kesinti-islemleri.php",
       type: "GET",
+      cache: false,
       data: {
         action: "get_icra",
         id: id,
@@ -247,6 +248,7 @@ $(document).ready(function () {
     $.ajax({
       url: "views/personel/ajax/kesinti-islemleri.php",
       type: "GET",
+      cache: false,
       data: {
         action: "get_icra_kesintileri",
         icra_id: icraId,
@@ -526,7 +528,8 @@ $(document).ready(function () {
     var target = $("#icralar");
     var url = target.attr("data-url");
     if (url) {
-      $.get(url, function (html) {
+      var timestampUrl = url + (url.indexOf('?') >= 0 ? '&' : '?') + '_=' + new Date().getTime();
+      $.get(timestampUrl, function (html) {
         target.html(html);
         if (typeof initPlugins === "function") {
           initPlugins(target[0]);

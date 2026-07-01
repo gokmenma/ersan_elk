@@ -453,7 +453,7 @@ if (!empty($icralar)) {
                                         "kesinti_bitti" => "Kesinti Bitti",
                                         "bitti" => "Tamamlandı",
                                         "durduruldu" => "Durduruldu"
-                                    ], "bekliyor", "Dosya Durumu", "info", "key", "", "form-select select2 shadow-none", true, 'width:100%') ?>
+                                    ], "devam_ediyor", "Dosya Durumu", "info", "key", "", "form-select select2 shadow-none", true, 'width:100%') ?>
                                 </div>
                                 <div class="col-md-3 mb-3">
                                     <?= Form::FormFloatInput("number", "icra_toplam_borc", "", "Toplam Borç", "Borç (TL)", "dollar-sign", "form-control shadow-none", true, null, "off", false, 'step="0.01"') ?>

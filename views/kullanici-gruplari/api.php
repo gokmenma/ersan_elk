@@ -6,7 +6,7 @@ use App\Model\UserModel;
 use App\Model\UserRolesModel;
 use App\Model\PermissionsModel;
 use App\Model\UserRolePermissionsModel;
-
+use App\Model\SystemLogModel;
 use App\Helper\Security;
 
 $Menus = new MenuModel();
@@ -87,12 +87,21 @@ if ($_POST['action'] == 'savePermissions') {
         //Menu cache'yi temizle
         $Menus->clearMenuCacheForRole($roleID);
 
+        $logModel = new SystemLogModel();
+        $logModel->logAction(
+            $_SESSION['id'] ?? $_SESSION['user_id'] ?? 0,
+            'Yetki Grubu İzin Değişimi',
+            "Yetki grubu izinleri güncellendi. Grup: {$role->role_name} (ID: $roleID), " . count($validPermissionsToSync) . " izin atandı.",
+            SystemLogModel::LEVEL_CRITICAL
+        );
+
         $status = 'success';
         $message = 'Yetki Grubu izinleri başarıyla güncellendi.';
 
     } catch (Exception $e) {
+        error_log('savePermissions hatası: ' . $e->getMessage());
         $status = "error";
-        $message = 'Bir hata oluştu: ' . $e->getMessage();
+        $message = 'İzin güncelleme sırasında bir hata oluştu.';
     }
 
     $res = [
@@ -127,9 +136,18 @@ if ($_POST['action'] == 'saveGroup') {
 
     try {
         $res = $UserRoles->saveWithAttr($data);
+        $logModel = new SystemLogModel();
+        $isNew = ($id == 0);
+        $logModel->logAction(
+            $_SESSION['id'] ?? $_SESSION['user_id'] ?? 0,
+            $isNew ? 'Yetki Grubu Eklendi' : 'Yetki Grubu Güncellendi',
+            ($isNew ? 'Yeni yetki grubu eklendi' : 'Yetki grubu güncellendi') . ': ' . ($_POST['role_name'] ?? ''),
+            SystemLogModel::LEVEL_CRITICAL
+        );
         echo json_encode(['status' => 'success', 'message' => 'Yetki grubu başarıyla kaydedildi.', 'id' => $res]);
     } catch (Exception $e) {
-        echo json_encode(['status' => 'error', 'message' => 'Hata: ' . $e->getMessage()]);
+        error_log('saveGroup hatası: ' . $e->getMessage());
+        echo json_encode(['status' => 'error', 'message' => 'Kayıt sırasında bir hata oluştu.']);
     }
 }
 
@@ -151,9 +169,16 @@ if ($_POST['action'] == 'deleteGroup') {
     $result = $UserRoles->delete($id);
 
     if ($result === true) {
+        $logModel = new SystemLogModel();
+        $logModel->logAction(
+            $_SESSION['id'] ?? $_SESSION['user_id'] ?? 0,
+            'Yetki Grubu Silindi',
+            "Yetki grubu silindi. ID: $id",
+            SystemLogModel::LEVEL_CRITICAL
+        );
         echo json_encode(['status' => 'success', 'message' => 'Yetki grubu başarıyla silindi.']);
     } else {
-        echo json_encode(['status' => 'error', 'message' => 'Hata: ' . $result->getMessage()]);
+        echo json_encode(['status' => 'error', 'message' => 'Silme işlemi başarısız oldu.']);
     }
 }
 

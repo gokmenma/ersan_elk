@@ -74,7 +74,8 @@ function formatFileSize($bytes)
                                 $enc_id = Security::encrypt($evrak->id);
                                 $yuklemeTarihi = date('d.m.Y H:i', strtotime($evrak->yukleme_tarihi));
                                 $icon = getFileIcon($evrak->dosya_tipi);
-                                $dosyaYolu = 'uploads/personel_evraklar/' . $id . '/' . $evrak->dosya_adi;
+                                $dosyaYolu = 'views/personel/evrak-indir.php?id=' . urlencode($enc_id) . '&inline=1';
+                                $dosyaIndirYolu = 'views/personel/evrak-indir.php?id=' . urlencode($enc_id);
                                 ?>
                                 <tr data-id="<?= $enc_id ?>">
                                     <td>
@@ -105,13 +106,13 @@ function formatFileSize($bytes)
                                         <!-- Görüntüle -->
                                         <button type="button" class="btn btn-sm btn-info btn-evrak-goruntule"
                                             data-id="<?= $enc_id ?>" data-dosya="<?= $dosyaYolu ?>"
+                                            data-indir="<?= $dosyaIndirYolu ?>"
                                             data-tip="<?= $evrak->dosya_tipi ?>"
                                             data-ad="<?= htmlspecialchars($evrak->evrak_adi) ?>" title="Görüntüle">
                                             <i data-feather="eye" class="icon-xs"></i>
                                         </button>
                                         <!-- İndir -->
-                                        <a href="<?= $dosyaYolu ?>" class="btn btn-sm btn-success"
-                                            download="<?= htmlspecialchars($evrak->orijinal_dosya_adi) ?>" title="İndir">
+                                        <a href="<?= $dosyaIndirYolu ?>" class="btn btn-sm btn-success" title="İndir">
                                             <i data-feather="download" class="icon-xs"></i>
                                         </a>
                                         <!-- Sil -->

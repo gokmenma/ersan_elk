@@ -44,6 +44,10 @@ $defterKodlari = $Tanimlamalar->getByGrup('defter_kodu');
                             <i class="bx bx-upload label-icon"></i>Excelden Yükle
                         </button>
 
+                        <button type="button" id="btnApiSorgula" class="btn btn-warning waves-effect btn-label waves-light">
+                            <i class="bx bx-refresh label-icon"></i>Api'den Sorgula
+                        </button>
+
                         <button type="button" id="actionEkle" class="btn btn-primary waves-effect btn-label waves-light"
                             data-bs-toggle="modal" data-bs-target="#actionModal">
                             <i class="bx bx-save label-icon"></i>Yeni Ekle
@@ -61,6 +65,7 @@ $defterKodlari = $Tanimlamalar->getByGrup('defter_kodu');
                                 <th class="text-center" data-filter="string" data-data="defter_bolge">Bölge</th>
                                 <th class="text-center" data-filter="string" data-data="defter_mahalle">Mahalle</th>
                                 <th class="text-center" data-filter="number" data-data="defter_abone_sayisi">Abone Sayısı</th>
+                                <th class="text-center" data-filter="number" data-data="defter_api_abone_sayisi">Api Abone Sayısı</th>
                                 <th class="text-center" data-filter="date" data-data="baslangic_tarihi">Başlangıç Tarihi</th>
                                 <th class="text-center" data-filter="date" data-data="bitis_tarihi">Bitiş Tarihi</th>
                                 <th class="text-center" data-data="aciklama">Açıklama</th>
@@ -118,7 +123,7 @@ $defterKodlari = $Tanimlamalar->getByGrup('defter_kodu');
                     </div>
 
                     <div class="row mb-3">
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <?php echo
                                 Form::FormFloatInput(
                                     "text",
@@ -130,7 +135,7 @@ $defterKodlari = $Tanimlamalar->getByGrup('defter_kodu');
                                     "form-control"
                                 ); ?>
                         </div>
-                        <div class="col-md-6">
+                        <div class="col-md-4">
                             <?php echo
                                 Form::FormFloatInput(
                                     "text",
@@ -140,6 +145,22 @@ $defterKodlari = $Tanimlamalar->getByGrup('defter_kodu');
                                     "Abone Sayısı",
                                     "users",
                                     "form-control"
+                                ); ?>
+                        </div>
+                        <div class="col-md-4">
+                            <?php echo
+                                Form::FormFloatInput(
+                                    "text",
+                                    "defter_api_abone_sayisi",
+                                    "",
+                                    "API Abone Sayısı",
+                                    "API Abone Sayısı",
+                                    "users",
+                                    "form-control",
+                                    false,
+                                    null,
+                                    "on",
+                                    true
                                 ); ?>
                         </div>
                     </div>
@@ -259,4 +280,4 @@ $defterKodlari = $Tanimlamalar->getByGrup('defter_kodu');
     </div>
 </div>
 
-<script src="views/tanimlamalar/js/defter-kodu.js"></script>
+<script src="views/tanimlamalar/js/defter-kodu.js?v=<?= time() ?>"></script>

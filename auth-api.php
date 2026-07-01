@@ -1,4 +1,8 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
+
 use App\Model\UserModel;
 use App\Service\MailGonderService;
 
@@ -10,6 +14,16 @@ try {
     $action = $_POST['action'] ?? '';
 
     if ($action === 'forgot-password') {
+        $ip = $_SERVER['REMOTE_ADDR'] ?? 'unknown';
+        $rateLimitKey = 'fp_attempts_' . md5($ip);
+        $rateLimitExpKey = 'fp_locked_until_' . md5($ip);
+
+        if (isset($_SESSION[$rateLimitExpKey]) && $_SESSION[$rateLimitExpKey] > time()) {
+            $wait = ceil(($_SESSION[$rateLimitExpKey] - time()) / 60);
+            echo json_encode(['status' => 'error', 'message' => "Çok fazla deneme. $wait dakika sonra tekrar deneyin."]);
+            exit;
+        }
+
         $identifier = trim($_POST['identifier'] ?? '');
 
         if (empty($identifier)) {
@@ -21,6 +35,11 @@ try {
         $user = $User->checkUser($identifier);
 
         if (!$user) {
+            $_SESSION[$rateLimitKey] = ($_SESSION[$rateLimitKey] ?? 0) + 1;
+            if ($_SESSION[$rateLimitKey] >= 5) {
+                $_SESSION[$rateLimitExpKey] = time() + 900;
+                unset($_SESSION[$rateLimitKey]);
+            }
             echo json_encode(['status' => 'error', 'message' => 'Belirttiğiniz bilgilere uygun kullanıcı bulunamadı.']);
             exit;
         }
@@ -63,12 +82,14 @@ try {
 
             try {
                 $firmaId = (int)$user->owner_id;
-                if ($firmaId === 0) $firmaId = 1; // Superadminler için varsayılan firma 1 (Ersan Elektrik) ayarlarını kullan
+                if ($firmaId === 0) $firmaId = 1;
 
                 MailGonderService::gonder([$user->email_adresi], $konu, $icerik, [], [], [], null, $firmaId);
+                unset($_SESSION[$rateLimitKey], $_SESSION[$rateLimitExpKey]);
                 echo json_encode(['status' => 'success', 'message' => 'Şifre sıfırlama bağlantısı e-posta adresinize gönderildi.']);
             } catch (\Exception $e) {
-                echo json_encode(['status' => 'error', 'message' => 'E-posta gönderimi sırasında bir hata oluştu: ' . $e->getMessage()]);
+                error_log('Şifre sıfırlama mail hatası: ' . $e->getMessage());
+                echo json_encode(['status' => 'error', 'message' => 'E-posta gönderimi sırasında bir hata oluştu. Lütfen tekrar deneyin.']);
             }
         } else {
             echo json_encode(['status' => 'error', 'message' => 'İşlem sırasında bir veritabanı hatası oluştu.']);
@@ -78,9 +99,7 @@ try {
 
     echo json_encode(['status' => 'error', 'message' => 'Geçersiz işlem.']);
 } catch (\Throwable $e) {
+    error_log('auth-api.php sistem hatası: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
     http_response_code(500);
-    echo json_encode([
-        'status' => 'error',
-        'message' => 'Sistem hatası: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine()
-    ]);
+    echo json_encode(['status' => 'error', 'message' => 'Bir sistem hatası oluştu.']);
 }

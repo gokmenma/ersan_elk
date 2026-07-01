@@ -4,6 +4,7 @@ namespace App\Model;
 
 use App\Model\Model;
 use App\Model\BordroParametreModel;
+use App\Model\PersonelModel;
 use PDO;
 
 class BordroPersonelModel extends Model
@@ -988,7 +989,9 @@ class BordroPersonelModel extends Model
         $sqlParams = [$firma_id, $donemBitis, $donemBaslangic, $donemBitis, $donemBitis, $donemBaslangic, $donemBitis, $donemBaslangic, $donem_id, $donem_id, $donem_id];
         if (!empty($ids)) $sqlParams = array_merge($sqlParams, $ids);
         $sql->execute($sqlParams);
-        return $sql->fetchAll(PDO::FETCH_OBJ);
+        $results = $sql->fetchAll(PDO::FETCH_OBJ);
+        $pm = new PersonelModel();
+        return array_map(fn($r) => $pm->decryptFields($r), $results);
     }
 
     /**
@@ -4837,6 +4840,8 @@ class BordroPersonelModel extends Model
             ORDER BY p.adi_soyadi ASC
         ");
         $sql->execute($params);
-        return $sql->fetchAll(PDO::FETCH_OBJ);
+        $results = $sql->fetchAll(PDO::FETCH_OBJ);
+        $pm = new PersonelModel();
+        return array_map(fn($r) => $pm->decryptFields($r), $results);
     }
 }

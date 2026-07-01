@@ -19,6 +19,11 @@ use App\Model\AracZimmetModel;
 
 // Oturum kontrolü öncesi beni hatırla kontrolü
 if (!isset($_SESSION['personel_id']) && isset($_COOKIE['remember_token'])) {
+    $pwaSecret = $_ENV['PWA_HMAC_SECRET'] ?? '';
+    if (empty($pwaSecret)) {
+        setcookie('remember_token', '', ['expires' => time() - 3600, 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax']);
+        error_log('PWA_HMAC_SECRET .env dosyasında tanımlı değil, remember_token cookie temizlendi.');
+    } else {
     $token = $_COOKIE['remember_token'];
     $parts = explode(':', base64_decode($token));
 
@@ -30,7 +35,7 @@ if (!isset($_SESSION['personel_id']) && isset($_COOKIE['remember_token'])) {
         $personel = $PersonelModel->find($p_id);
 
         if ($personel) {
-            $checkHash = hash_hmac('sha256', $personel->id . $personel->sifre, 'ErsanElektrikPWASecretKey');
+            $checkHash = hash_hmac('sha256', $personel->id . $personel->sifre, $pwaSecret);
             if ($hash === $checkHash) {
                 $_SESSION['personel_id'] = $personel->id;
                 $_SESSION['personel_tc'] = $personel->tc_kimlik_no;
@@ -50,9 +55,10 @@ if (!isset($_SESSION['personel_id']) && isset($_COOKIE['remember_token'])) {
                 }
 
                 // Cookie süresini uzat
-                setcookie('remember_token', $token, time() + (86400 * 30), "/");
+                setcookie('remember_token', $token, ['expires' => time() + (86400 * 30), 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax']);
             }
         }
+    }
     }
 }
 

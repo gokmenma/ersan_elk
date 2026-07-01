@@ -2158,6 +2158,7 @@ CREATE TABLE `tanimlamalar` (
   `silinme_tarihi` datetime DEFAULT NULL,
   `defter_bolge` varchar(50) DEFAULT NULL,
   `defter_abone_sayisi` int(11) DEFAULT NULL,
+  `defter_api_abone_sayisi` int(11) DEFAULT NULL,
   `defter_mahalle` varchar(50) DEFAULT NULL,
   `baslangic_tarihi` date DEFAULT NULL,
   `bitis_tarihi` date DEFAULT NULL,

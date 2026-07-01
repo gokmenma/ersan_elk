@@ -40,6 +40,15 @@ class Security
         return password_verify($password, $hash);
     }
 
+    private static function getKey(): string
+    {
+        $raw = $_ENV['ENCRYPTION_KEY'] ?? '';
+        if (empty($raw)) {
+            throw new \RuntimeException('ENCRYPTION_KEY .env dosyasında tanımlı değil.');
+        }
+        return hex2bin($raw);
+    }
+
     public static function encrypt($data)
     {
         if ($data === null || $data === '') {
@@ -47,7 +56,7 @@ class Security
         }
 
         $method = "AES-256-CBC";
-        $key = hash('sha256', 'mysecretkey', true); // Gerçek projelerde bu anahtar .env dosyasında olmalıdır
+        $key = self::getKey();
         $iv = openssl_random_pseudo_bytes(16);
 
         $encrypted = openssl_encrypt((string) $data, $method, $key, OPENSSL_RAW_DATA, $iv);
@@ -65,13 +74,12 @@ class Security
 
     public static function decrypt($data)
     {
-        // 0, null ve boş değer kontrolü
         if ($data === '0' || $data === 0 || empty($data)) {
             return 0;
         }
 
         $method = "AES-256-CBC";
-        $key = hash('sha256', 'mysecretkey', true);
+        $key = self::getKey();
 
         // JS çift encode yapabildiği için rawurldecode kullanmamız KESİNLİKLE kritik
         $decoded = base64_decode(rawurldecode($data));

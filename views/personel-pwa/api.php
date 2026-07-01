@@ -495,7 +495,7 @@ try {
 
         case 'logout':
             session_destroy();
-            setcookie('remember_token', '', time() - 3600, "/");
+            setcookie('remember_token', '', ['expires' => time() - 3600, 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax']);
             response(true, null, 'Oturum kapatıldı');
             break;
 

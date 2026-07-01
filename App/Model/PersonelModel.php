@@ -3,6 +3,7 @@
 namespace App\Model;
 
 use App\Model\Model;
+use App\Helper\Security;
 use PDO;
 
 
@@ -10,9 +11,54 @@ class PersonelModel extends Model
 {
     protected $table = 'personel';
 
+    private const ENCRYPTED_FIELDS = ['kaski_sifre', 'kaski_kullanici_adi', 'iban_numarasi', 'ek_odeme_iban_numarasi', 'kan_grubu', 'tc_kimlik_no'];
+
     public function __construct()
     {
         parent::__construct($this->table);
+    }
+
+    private function encryptFields(array $data): array
+    {
+        if (isset($data['tc_kimlik_no']) && $data['tc_kimlik_no'] !== '' && $data['tc_kimlik_no'] !== null) {
+            $data['tc_hash'] = hash('sha256', $data['tc_kimlik_no']);
+        }
+        foreach (self::ENCRYPTED_FIELDS as $field) {
+            if (isset($data[$field]) && $data[$field] !== '' && $data[$field] !== null) {
+                $data[$field] = Security::encrypt($data[$field]);
+            }
+        }
+        return $data;
+    }
+
+    public function decryptFields(object $record): object
+    {
+        foreach (self::ENCRYPTED_FIELDS as $field) {
+            if (isset($record->$field) && $record->$field !== '' && $record->$field !== null) {
+                $record->$field = Security::decrypt($record->$field) ?: $record->$field;
+            }
+        }
+        return $record;
+    }
+
+    public function saveWithAttr($data)
+    {
+        return parent::saveWithAttr($this->encryptFields($data));
+    }
+
+    public function find($id)
+    {
+        $record = parent::find($id);
+        return $record ? $this->decryptFields($record) : null;
+    }
+
+    public function findByTc(string $tc): array
+    {
+        $hash = hash('sha256', $tc);
+        $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE tc_hash = ? AND firma_id = ? AND silinme_tarihi IS NULL");
+        $stmt->execute([$hash, $_SESSION['firma_id']]);
+        $results = $stmt->fetchAll(PDO::FETCH_OBJ);
+        return array_map(fn($r) => $this->decryptFields($r), $results);
     }
 
     /**
@@ -110,7 +156,8 @@ class PersonelModel extends Model
         $query->execute([
             'id' => $id,
         ]);
-        return $query->fetch(PDO::FETCH_OBJ);
+        $record = $query->fetch(PDO::FETCH_OBJ);
+        return $record ? $this->decryptFields($record) : null;
     }
 
     /**Tüm aktif personelleri getirir 
@@ -134,7 +181,8 @@ class PersonelModel extends Model
             if ($modul === 'all_with_external') {
                 // Do not restrict by external SSK status at all
             } else {
-                $sql .= " AND (p.disardan_sigortali = 0 OR FIND_IN_SET('" . addslashes($modul) . "', p.gorunum_modulleri))";
+                $sql .= " AND (p.disardan_sigortali = 0 OR FIND_IN_SET(:modul, p.gorunum_modulleri))";
+                $params['modul'] = $modul;
             }
         } else {
             $sql .= " AND p.disardan_sigortali = 0";
@@ -164,16 +212,16 @@ class PersonelModel extends Model
                 WHERE p.firma_id = :firma_id 
                 AND p.silinme_tarihi IS NULL
                 AND (p.disardan_sigortali = 0 OR FIND_IN_SET('demirbas', p.gorunum_modulleri) OR FIND_IN_SET('arac', p.gorunum_modulleri))
-                AND (p.adi_soyadi LIKE :term OR p.tc_kimlik_no LIKE :term OR p.cep_telefonu LIKE :term)";
+                AND (p.adi_soyadi LIKE :term OR p.cep_telefonu LIKE :term)";
 
         if ($type === 'kesme_acma') {
             $sql = "SELECT p.id, p.adi_soyadi, p.cep_telefonu, p.gorev
-                    FROM {$this->table} p 
-                    WHERE p.firma_id = :firma_id 
+                    FROM {$this->table} p
+                    WHERE p.firma_id = :firma_id
                     AND p.silinme_tarihi IS NULL
                     AND (p.disardan_sigortali = 0 OR FIND_IN_SET('demirbas', p.gorunum_modulleri) OR FIND_IN_SET('arac', p.gorunum_modulleri))
                     AND (p.departman LIKE '%Kesme%' OR p.departman LIKE '%Açma%')
-                    AND (p.adi_soyadi LIKE :term OR p.tc_kimlik_no LIKE :term OR p.cep_telefonu LIKE :term)";
+                    AND (p.adi_soyadi LIKE :term OR p.cep_telefonu LIKE :term)";
         }
 
         $sql .= " GROUP BY p.id ORDER BY p.adi_soyadi ASC LIMIT 50";
@@ -210,7 +258,6 @@ class PersonelModel extends Model
                 WHERE p.firma_id = :firma_id
                 AND (p.disardan_sigortali = 0 OR FIND_IN_SET('personel', p.gorunum_modulleri))
                 AND (
-                    p.tc_kimlik_no LIKE :term OR
                     p.adi_soyadi LIKE :term OR
                     p.cep_telefonu LIKE :term OR
                     p.email_adresi LIKE :term OR
@@ -246,7 +293,6 @@ class PersonelModel extends Model
         if (!empty($term)) {
             $term = "%$term%";
             $sql .= " AND (
-                p.tc_kimlik_no LIKE :term OR
                 p.adi_soyadi LIKE :term OR
                 p.cep_telefonu LIKE :term OR
                 p.email_adresi LIKE :term OR
@@ -290,6 +336,9 @@ class PersonelModel extends Model
                         $val = "%$val%";
                         $sql .= " AND (t.tur_adi LIKE :$paramName OR t.ekip_bolge LIKE :$paramName OR p.ekip_bolge LIKE :$paramName)";
                         $params[$paramName] = $val;
+                    } elseif ($idx == 2) { // TC Kimlik (şifreli - hash ile ara)
+                        $sql .= " AND p.tc_hash = SHA2(:$paramName, 256)";
+                        $params[$paramName] = preg_replace('/[^0-9]/', '', $val);
                     } elseif ($idx == 5 || $idx == 6) { // Tarih
                         $val = "%$val%";
                         $sql .= " AND DATE_FORMAT($field, '%d.%m.%Y') LIKE :$paramName";
@@ -307,7 +356,8 @@ class PersonelModel extends Model
 
         $query = $this->db->prepare($sql);
         $query->execute($params);
-        return $query->fetchAll(PDO::FETCH_OBJ);
+        $results = $query->fetchAll(PDO::FETCH_OBJ);
+        return array_map(fn($r) => $this->decryptFields($r), $results);
     }
 
     public function where($column, $value = null, $operant = '=')
@@ -455,7 +505,6 @@ class PersonelModel extends Model
         if (!empty($request['search']['value'])) {
             $searchValue = "%" . $request['search']['value'] . "%";
             $filterSql .= " AND (
-                p.tc_kimlik_no LIKE :search OR
                 p.adi_soyadi LIKE :search OR
                 p.cep_telefonu LIKE :search OR
                 p.email_adresi LIKE :search OR
@@ -489,6 +538,12 @@ class PersonelModel extends Model
                     $field = $colMap[$i];
                     $searchValue = $column['search']['value'];
                     $paramName = "col_" . $i;
+
+                    if ($i == 2) { // TC Kimlik (şifreli - hash ile ara)
+                        $filterSql .= " AND p.tc_hash = SHA2(:$paramName, 256)";
+                        $params[$paramName] = preg_replace('/[^0-9]/', '', $searchValue);
+                        continue;
+                    }
 
                     // Gelişmiş Filtre Ayrıştırıcı (mode:value)
                     if (strpos($searchValue, ':') !== false) {
@@ -707,6 +762,7 @@ class PersonelModel extends Model
 
         $query->execute();
         $data = $query->fetchAll(PDO::FETCH_OBJ);
+        $data = array_map(fn($r) => $this->decryptFields($r), $data);
 
         return [
             "draw" => isset($request['draw']) ? intval($request['draw']) : 0,
@@ -1635,6 +1691,12 @@ class PersonelModel extends Model
                     $field = $colMap[$i];
                     $searchValue = $columnData['search']['value'];
                     $paramName = "u_col_" . $i;
+
+                    if ($i == 2) { // TC Kimlik (şifreli - hash ile ara)
+                        $filterSql .= " AND p.tc_hash = SHA2(:$paramName, 256)";
+                        $params[$paramName] = preg_replace('/[^0-9]/', '', $searchValue);
+                        continue;
+                    }
 
                     if (strpos($searchValue, ':') !== false) {
                         list($mode, $val) = explode(':', $searchValue, 2);

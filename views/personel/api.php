@@ -10,6 +10,7 @@ use App\Model\PersonelModel;
 use App\Helper\Security;
 use App\Helper\Helper;
 use App\Helper\Date;
+use App\Helper\Validator;
 use App\Model\TanimlamalarModel;
 use App\Model\SystemLogModel;
 
@@ -59,8 +60,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $logContent .= "FILES: " . print_r($_FILES, true) . "\n";
 
                 if ($_FILES['resim_yolu']['error'] == 0) {
+                    $allowedImageMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+                    $finfo = new finfo(FILEINFO_MIME_TYPE);
+                    $detectedMime = $finfo->file($_FILES['resim_yolu']['tmp_name']);
+                    if (!in_array($detectedMime, $allowedImageMimes)) {
+                        throw new Exception("Geçersiz dosya türü. Sadece JPEG, PNG, WebP veya GIF yüklenebilir.");
+                    }
+
                     // Mutlak yol tanımlaması
-                    $baseDir = dirname(__DIR__, 2); // c:\xampp\htdocs\ersan_elk
+                    $baseDir = dirname(__DIR__, 2);
 
                     // Yol ayırıcılarını sisteme uygun hale getir
                     $uploadDir = $baseDir . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR . 'users' . DIRECTORY_SEPARATOR;
@@ -76,7 +84,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         }
                     }
 
-                    $fileExtension = pathinfo($_FILES['resim_yolu']['name'], PATHINFO_EXTENSION);
+                    $mimeToExt = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'image/gif' => 'gif'];
+                    $fileExtension = $mimeToExt[$detectedMime];
                     $fileName = uniqid('personel_') . '.' . $fileExtension;
                     $uploadPath = $uploadDir . $fileName;
 
@@ -105,6 +114,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // İşten Ayrılış Belgesi Yükleme İşlemi
             if (isset($_FILES['isten_ayrilis_belge_yolu'])) {
                 if ($_FILES['isten_ayrilis_belge_yolu']['error'] == 0) {
+                    $allowedBelgeMimes = ['application/pdf', 'image/jpeg', 'image/png'];
+                    $finfo = new finfo(FILEINFO_MIME_TYPE);
+                    $detectedBelgeMime = $finfo->file($_FILES['isten_ayrilis_belge_yolu']['tmp_name']);
+                    if (!in_array($detectedBelgeMime, $allowedBelgeMimes)) {
+                        throw new Exception("Geçersiz belge türü. Sadece PDF, JPEG veya PNG yüklenebilir.");
+                    }
+
                     $baseDir = dirname(__DIR__, 2);
                     $uploadDir = $baseDir . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'belgeler' . DIRECTORY_SEPARATOR . 'personel_ayrilis' . DIRECTORY_SEPARATOR;
 
@@ -114,7 +130,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         }
                     }
 
-                    $fileExtension = pathinfo($_FILES['isten_ayrilis_belge_yolu']['name'], PATHINFO_EXTENSION);
+                    $belgeMimeToExt = ['application/pdf' => 'pdf', 'image/jpeg' => 'jpg', 'image/png' => 'png'];
+                    $fileExtension = $belgeMimeToExt[$detectedBelgeMime];
                     $fileName = uniqid('ayrilis_') . '.' . $fileExtension;
                     $uploadPath = $uploadDir . $fileName;
 
@@ -152,6 +169,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
                 $data['isten_ayrilis_belge_yolu'] = null; // Veritabanından temizlemek null gönderelim
+            }
+
+            // TC Kimlik No doğrulaması
+            $tcKimlik = $data['tc_kimlik_no'] ?? '';
+            if (!empty($tcKimlik) && !Validator::tcKimlik($tcKimlik)) {
+                echo json_encode(['status' => 'error', 'message' => 'Geçersiz TC Kimlik No. Lütfen kontrol ediniz.']);
+                exit;
+            }
+
+            // IBAN doğrulaması
+            foreach (['iban_numarasi', 'ek_odeme_iban_numarasi'] as $ibanField) {
+                $ibanVal = $data[$ibanField] ?? '';
+                if (!empty($ibanVal) && !Validator::iban($ibanVal)) {
+                    echo json_encode(['status' => 'error', 'message' => "'$ibanField' alanı geçersiz bir IBAN değeri içeriyor."]);
+                    exit;
+                }
             }
 
             // Action alanını veritabanına kaydetmemek için çıkar
@@ -353,7 +386,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if ($oldData) {
                     foreach ($data as $key => $value) {
                         // Bazı alanları loglamaya gerek yok veya özel karşılaştırma lazım
-                        if (in_array($key, ['id', 'firma_id', 'guncelleme_tarihi', 'sifre']))
+                        if (in_array($key, ['id', 'firma_id', 'guncelleme_tarihi', 'sifre', 'kaski_sifre', 'iban_numarasi', 'ek_odeme_iban_numarasi', 'tc_kimlik_no']))
                             continue;
 
                         $oldValue = $oldData->$key ?? null;
@@ -400,16 +433,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
                 $changesStr = !empty($changes) ? implode(', ', $changes) : 'Değişiklik yok';
-                $tcNo = $data['tc_kimlik_no'] ?? ($oldData->tc_kimlik_no ?? 'Bilinmeyen');
                 $adiSoyadi = $data['adi_soyadi'] ?? ($oldData->adi_soyadi ?? '');
-                $SystemLog->logAction($userId, 'Personel Güncelleme', "$tcNo kimlik numaralı $adiSoyadi isimli personelin verileri güncellendi (Güncellenen veriler: { $changesStr })", SystemLogModel::LEVEL_IMPORTANT);
+                $SystemLog->logAction($userId, 'Personel Güncelleme', "$adiSoyadi (ID: $personel_id) isimli personelin verileri güncellendi (Güncellenen veriler: { $changesStr })", SystemLogModel::LEVEL_IMPORTANT);
 
                 $message = "Personel başarıyla güncellendi.";
             } else {
                 // Yeni Kayıt Logu
-                $tcNo = $data['tc_kimlik_no'] ?? 'Bilinmeyen';
                 $adiSoyadi = $data['adi_soyadi'] ?? '';
-                $SystemLog->logAction($userId, 'Personel Kayıt', "Yeni personel eklendi: $tcNo - $adiSoyadi", SystemLogModel::LEVEL_IMPORTANT);
+                $SystemLog->logAction($userId, 'Personel Kayıt', "Yeni personel eklendi: $adiSoyadi", SystemLogModel::LEVEL_IMPORTANT);
 
                 $message = "Personel başarıyla kaydedildi.";
             }
@@ -433,10 +464,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             }
 
             $personel = $Personel->find($id);
-            $tcNo = $personel->tc_kimlik_no ?? 'Bilinmeyen';
             $adiSoyadi = $personel->adi_soyadi ?? 'Bilinmeyen';
             $Personel->delete($id, false); // false: decrypt işlemi yapılmasın (id direkt geliyorsa)
-            $SystemLog->logAction($userId, 'Personel Silme', "$tcNo kimlik numaralı $adiSoyadi isimli personel silindi.", SystemLogModel::LEVEL_IMPORTANT);
+            $SystemLog->logAction($userId, 'Personel Silme', "$adiSoyadi (ID: $id) isimli personel silindi.", SystemLogModel::LEVEL_IMPORTANT);
             echo json_encode(['status' => 'success', 'message' => 'Personel başarıyla silindi.']);
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
@@ -721,6 +751,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $skippedCount = 0;
             $errorDetails = [];
 
+            $pdo = $Personel->getDb();
+            $pdo->beginTransaction();
+
             // Verileri işle (2. satırdan başla)
             for ($i = 1; $i < count($rows); $i++) {
                 $row = $rows[$i];
@@ -738,7 +771,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     continue;
 
                 // TC Kimlik kontrolü (Veritabanında var mı?)
-                $existing = $Personel->where('tc_kimlik_no', $tcNo);
+                $existing = $Personel->findByTc($tcNo);
                 $isUpdate = false;
                 $existingId = null;
 
@@ -906,27 +939,34 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $addedCount++;
                     }
                 } catch (Exception $e) {
-                    $errorDetails[] = "Satır $rowNum ($name): Kayıt " . ($isUpdate ? "güncellenirken" : "eklenirken") . " hata oluştu - " . $e->getMessage();
+                    $errorDetails[] = "Satır $rowNum ($name): Kayıt " . ($isUpdate ? "güncellenirken" : "eklenirken") . " hata oluştu.";
+                    error_log("Excel import satır $rowNum hatası: " . $e->getMessage());
                 }
             }
 
-            $responseMessage = "İşlem tamamlandı.\nBaşarıyla Eklenen: $addedCount\nBaşarıyla Güncellenen: $updatedCount";
-            if ($skippedCount > 0 || count($errorDetails) > 0) {
-                $totalErrors = count($errorDetails);
-                $responseMessage .= "\nAtlanan/Hatalı: " . $totalErrors;
+            if (!empty($errorDetails)) {
+                $pdo->rollBack();
+                echo json_encode([
+                    'status' => 'error',
+                    'message' => "İşlem hatalar nedeniyle geri alındı. Hiçbir kayıt kaydedilmedi.",
+                    'errors' => $errorDetails
+                ]);
+            } else {
+                $pdo->commit();
+                $responseMessage = "İşlem tamamlandı.\nBaşarıyla Eklenen: $addedCount\nBaşarıyla Güncellenen: $updatedCount";
+                $SystemLog->logAction($userId, 'Personel Excel Yükleme', "Excel'den {$addedCount} personel eklendi, {$updatedCount} güncellendi.", SystemLogModel::LEVEL_IMPORTANT);
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => $responseMessage,
+                    'errors' => []
+                ]);
             }
 
-            // Personel Excel yükleme logla
-            $SystemLog->logAction($userId, 'Personel Excel Yükleme', "Excel'den {$addedCount} personel eklendi, {$updatedCount} güncellendi.", SystemLogModel::LEVEL_IMPORTANT);
-
-            // Hata detaylarını da gönder
-            echo json_encode([
-                'status' => 'success',
-                'message' => $responseMessage,
-                'errors' => $errorDetails
-            ]);
-
         } catch (Exception $e) {
+            if (isset($pdo) && $pdo->inTransaction()) {
+                $pdo->rollBack();
+            }
+            error_log('Excel import hatası: ' . $e->getMessage());
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
     } elseif ($action == 'update-login-info') {

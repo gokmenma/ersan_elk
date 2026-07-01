@@ -40,6 +40,7 @@ $(document).ready(function () {
             { data: "defter_bolge", className: "text-center" },
             { data: "defter_mahalle", className: "text-center" },
             { data: "defter_abone_sayisi", className: "text-center" },
+            { data: "defter_api_abone_sayisi", className: "text-center" },
             { data: "baslangic_tarihi", className: "text-center" },
             { data: "bitis_tarihi", className: "text-center" },
             { data: "aciklama", className: "text-center" },
@@ -51,7 +52,7 @@ $(document).ready(function () {
                 extend: "excelHtml5",
                 title: "Defter Kodları Listesi",
                 exportOptions: {
-                    columns: [0, 1, 2, 3, 4, 5, 6, 7],
+                    columns: [0, 1, 2, 3, 4, 5, 6, 7, 8],
                 },
             },
         ],
@@ -182,6 +183,7 @@ $(document).on("click", ".duzenle", function (e) {
         $("#defter_bolge").val(data.data.defter_bolge);
         $("#defter_mahalle").val(data.data.defter_mahalle);
         $("#defter_abone_sayisi").val(data.data.defter_abone_sayisi);
+        $("#defter_api_abone_sayisi").val(data.data.defter_api_abone_sayisi);
 
         if (data.data.baslangic_tarihi) {
           document
@@ -393,3 +395,52 @@ $(document).on("click", ".icmal-bolge-filter", function () {
     timer: 2000,
   });
 });
+
+// API'den sorgula butonu tetikleyici
+$(document).on("click", "#btnApiSorgula", function () {
+  swal.fire({
+    title: "Emin misiniz?",
+    text: "Defter kodlarının abone sayıları API üzerinden güncellenecektir. Bu işlem birkaç saniye sürebilir.",
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonColor: "#3085d6",
+    cancelButtonColor: "#d33",
+    confirmButtonText: "Evet, sorgula!",
+    cancelButtonText: "İptal",
+  }).then((result) => {
+    if (result.isConfirmed) {
+      Swal.fire({
+        title: "Sorgulanıyor...",
+        text: "API verileri çekiliyor ve defter kodları güncelleniyor, lütfen bekleyin.",
+        allowOutsideClick: false,
+        allowEscapeKey: false,
+        didOpen: () => {
+          Swal.showLoading();
+        },
+      });
+
+      $.ajax({
+        url: url,
+        type: "POST",
+        data: {
+          action: "defter-kodu-api-sorgula"
+        },
+        dataType: "json",
+        success: function (data) {
+          Swal.close();
+          if (data.status === "success") {
+            actionTable.ajax.reload(null, false);
+            swal.fire("Başarılı!", data.message, "success");
+          } else {
+            swal.fire("Hata", data.message, "error");
+          }
+        },
+        error: function (xhr, status, error) {
+          Swal.close();
+          swal.fire("Hata", "Sorgulama sırasında bir hata oluştu: " + error, "error");
+        }
+      });
+    }
+  });
+});
+

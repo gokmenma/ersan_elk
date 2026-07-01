@@ -10,6 +10,8 @@ use App\Model\AvansModel;
 use App\Model\PersonelIzinleriModel;
 use App\Model\PersonelModel;
 use App\Model\BildirimModel;
+use App\Model\SystemLogModel;
+use App\Service\Gate;
 use App\Service\PushNotificationService;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -21,9 +23,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $avansModel = new AvansModel();
     $izinModel = new PersonelIzinleriModel();
     $bildirimModel = new BildirimModel();
+    $systemLogModel = new SystemLogModel();
     $currentUserId = intval($_SESSION['user_id'] ?? 0);
 
     try {
+        if ($currentUserId <= 0) {
+            throw new Exception('Oturum sonlanmış veya geçersiz.');
+        }
+
         switch ($action) {
 
             // Tüm bekleyen talepleri getir (Avans + İzin + Genel Talepler)
@@ -34,11 +41,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $izinler = [];
                 $talepler = [];
 
-                if ($tip == 'all' || $tip == 'avans') {
+                if (($tip == 'all' || $tip == 'avans') && Gate::allows('avans_talepleri')) {
                     $avanslar = $avansModel->getButunBekleyenAvanslar();
                 }
 
-                if ($tip == 'all' || $tip == 'izin') {
+                if (($tip == 'all' || $tip == 'izin') && Gate::allows('izin_talepleri')) {
                     try {
                         $izinler = $izinModel->getButunBekleyenIzinler();
                     } catch (\Exception $e) {
@@ -46,7 +53,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
 
-                if ($tip == 'all' || $tip == 'talep') {
+                if (($tip == 'all' || $tip == 'talep') && Gate::allows('ariza_talepleri')) {
                     $talepler = $talepModel->getButunBekleyenTalepler();
                 }
 
@@ -70,11 +77,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $izinler = [];
                 $talepler = [];
 
-                if ($tip == 'all' || $tip == 'avans') {
+                if (($tip == 'all' || $tip == 'avans') && Gate::allows('avans_talepleri')) {
                     $avanslar = $avansModel->getIslenmisAvanslar($limit);
                 }
 
-                if ($tip == 'all' || $tip == 'izin') {
+                if (($tip == 'all' || $tip == 'izin') && Gate::allows('izin_talepleri')) {
                     try {
                         $izinler = $izinModel->getIslenmisIzinler($limit);
                     } catch (\Exception $e) {
@@ -82,7 +89,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
 
-                if ($tip == 'all' || $tip == 'talep') {
+                if (($tip == 'all' || $tip == 'talep') && Gate::allows('ariza_talepleri')) {
                     $talepler = $talepModel->getCozulmusTalepler($limit);
                 }
 
@@ -99,6 +106,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             // Avans Detayı Getir
             case 'get-avans-detay':
+                if (!Gate::allows('avans_talepleri')) {
+                    throw new Exception('Bu işlem için gerekli yetkiye sahip değilsiniz.');
+                }
+
                 $id = intval($_POST['id'] ?? 0);
 
                 if ($id <= 0) {
@@ -119,6 +130,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             // İzin Detayı Getir
             case 'get-izin-detay':
+                if (!Gate::allows('izin_talepleri')) {
+                    throw new Exception('Bu işlem için gerekli yetkiye sahip değilsiniz.');
+                }
+
                 $id = intval($_POST['id'] ?? 0);
 
                 if ($id <= 0) {
@@ -142,6 +157,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             // Talep Detayı Getir
             case 'get-talep-detay':
+                if (!Gate::allows('ariza_talepleri')) {
+                    throw new Exception('Bu işlem için gerekli yetkiye sahip değilsiniz.');
+                }
+
                 $id = intval($_POST['id'] ?? 0);
 
                 if ($id <= 0) {
@@ -162,6 +181,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             // Avans Onayla
             case 'avans-onayla':
+                if (!Gate::allows('avans_talepleri')) {
+                    throw new Exception('Bu işlem için gerekli yetkiye sahip değilsiniz.');
+                }
+
                 $id = intval($_POST['id'] ?? 0);
                 $aciklama = trim($_POST['aciklama'] ?? '');
                 $hesaba_isle = isset($_POST['hesaba_isle']) && $_POST['hesaba_isle'] == '1';
@@ -194,6 +217,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $avansModel->avansHesabaIsle($id);
                     }
 
+                    // Log yaz
+                    $systemLogModel->logAction(
+                        $currentUserId,
+                        'Avans Onaylama',
+                        "Avans talebi onaylandı. ID: $id" . ($onaylanan_tutar ? ", Onaylanan Tutar: $onaylanan_tutar TL" : "") . ($aciklama ? ", Açıklama: $aciklama" : ""),
+                        SystemLogModel::LEVEL_IMPORTANT
+                    );
+
                     // Push Bildirim Gönder
                     try {
                         $avans = $avansModel->find($id);
@@ -221,6 +252,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             // Avans Reddet
             case 'avans-reddet':
+                if (!Gate::allows('avans_talepleri')) {
+                    throw new Exception('Bu işlem için gerekli yetkiye sahip değilsiniz.');
+                }
+
                 $id = intval($_POST['id'] ?? 0);
                 $aciklama = trim($_POST['aciklama'] ?? '');
 
@@ -236,6 +271,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if ($currentUserId > 0) {
                         $bildirimModel->markRequestNotificationAsRead($currentUserId, 'avans', $id);
                     }
+
+                    // Log yaz
+                    $systemLogModel->logAction(
+                        $currentUserId,
+                        'Avans Reddetme',
+                        "Avans talebi reddedildi. ID: $id, Açıklama: $aciklama",
+                        SystemLogModel::LEVEL_IMPORTANT
+                    );
 
                     // Push Bildirim Gönder
                     try {
@@ -263,6 +306,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             // İzin Onayla
             case 'izin-onayla':
+                if (!Gate::allows('izin_talepleri')) {
+                    throw new Exception('Bu işlem için gerekli yetkiye sahip değilsiniz.');
+                }
+
                 $id = intval($_POST['id'] ?? 0);
                 $aciklama = trim($_POST['aciklama'] ?? '');
                 
@@ -291,6 +338,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $bildirimModel->markRequestNotificationAsRead($currentUserId, 'izin', $id);
                     }
 
+                    // Log yaz
+                    $systemLogModel->logAction(
+                        $currentUserId,
+                        'İzin Onaylama',
+                        "İzin talebi onaylandı. ID: $id" . ($farkli_baslangic ? ", Tarih: $farkli_baslangic / $farkli_bitis" : "") . ($aciklama ? ", Açıklama: $aciklama" : ""),
+                        SystemLogModel::LEVEL_IMPORTANT
+                    );
+
                     // Push Bildirim Gönder
                     try {
                         $izin = $izinModel->find($id);
@@ -317,6 +372,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             // İzin Reddet
             case 'izin-reddet':
+                if (!Gate::allows('izin_talepleri')) {
+                    throw new Exception('Bu işlem için gerekli yetkiye sahip değilsiniz.');
+                }
+
                 $id = intval($_POST['id'] ?? 0);
                 $aciklama = trim($_POST['aciklama'] ?? '');
 
@@ -332,6 +391,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if ($currentUserId > 0) {
                         $bildirimModel->markRequestNotificationAsRead($currentUserId, 'izin', $id);
                     }
+
+                    // Log yaz
+                    $systemLogModel->logAction(
+                        $currentUserId,
+                        'İzin Reddetme',
+                        "İzin talebi reddedildi. ID: $id, Açıklama: $aciklama",
+                        SystemLogModel::LEVEL_IMPORTANT
+                    );
 
                     // Push Bildirim Gönder
                     try {
@@ -360,6 +427,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             // Talep Çözüldü İşaretle
             case 'talep-cozuldu':
+                if (!Gate::allows('ariza_talepleri')) {
+                    throw new Exception('Bu işlem için gerekli yetkiye sahip değilsiniz.');
+                }
+
                 $id = intval($_POST['id'] ?? 0);
                 $aciklama = trim($_POST['aciklama'] ?? '');
 
@@ -371,6 +442,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if ($currentUserId > 0) {
                         $bildirimModel->markRequestNotificationAsRead($currentUserId, 'talep', $id);
                     }
+
+                    // Log yaz
+                    $systemLogModel->logAction(
+                        $currentUserId,
+                        'Talep Çözüldü İşaretleme',
+                        "Talep çözüldü olarak işaretlendi. ID: $id, Açıklama: $aciklama",
+                        SystemLogModel::LEVEL_IMPORTANT
+                    );
 
                     // Push Bildirim Gönder
                     try {
@@ -398,6 +477,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             // Talep İşleme Al
             case 'talep-isleme-al':
+                if (!Gate::allows('ariza_talepleri')) {
+                    throw new Exception('Bu işlem için gerekli yetkiye sahip değilsiniz.');
+                }
+
                 $id = intval($_POST['id'] ?? 0);
 
                 if ($id <= 0) {
@@ -408,6 +491,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if ($currentUserId > 0) {
                         $bildirimModel->markRequestNotificationAsRead($currentUserId, 'talep', $id);
                     }
+
+                    // Log yaz
+                    $systemLogModel->logAction(
+                        $currentUserId,
+                        'Talep İşleme Alma',
+                        "Talep işleme alındı. ID: $id",
+                        SystemLogModel::LEVEL_IMPORTANT
+                    );
 
                     // Push Bildirim Gönder
                     try {
@@ -437,15 +528,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             case 'get-dashboard-summary':
                 $limit = intval($_POST['limit'] ?? 10);
 
-                $avanslar = $avansModel->getBekleyenAvanslarForDashboard($limit);
-
-                try {
-                    $izinler = $izinModel->getBekleyenIzinlerForDashboard($limit);
-                } catch (\Exception $e) {
-                    $izinler = [];
+                $avanslar = [];
+                if (Gate::allows('avans_talepleri')) {
+                    $avanslar = $avansModel->getBekleyenAvanslarForDashboard($limit);
                 }
 
-                $talepler = $talepModel->getBekleyenTaleplerForDashboard($limit);
+                $izinler = [];
+                if (Gate::allows('izin_talepleri')) {
+                    try {
+                        $izinler = $izinModel->getBekleyenIzinlerForDashboard($limit);
+                    } catch (\Exception $e) {
+                        $izinler = [];
+                    }
+                }
+
+                $talepler = [];
+                if (Gate::allows('ariza_talepleri')) {
+                    $talepler = $talepModel->getBekleyenTaleplerForDashboard($limit);
+                }
 
                 // Personel bilgilerini çek
                 $personelModel = new PersonelModel();
@@ -482,6 +582,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             // Avans Sil
             case 'avans-sil':
+                if (!Gate::allows('avans_talepleri')) {
+                    throw new Exception('Bu işlem için gerekli yetkiye sahip değilsiniz.');
+                }
+
                 $id = intval($_POST['id'] ?? 0);
                 $aciklama = trim($_POST['aciklama'] ?? '');
 
@@ -513,6 +617,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $stmt = $db->prepare("UPDATE personel_avanslari SET silinme_tarihi = NOW(), silen_kullanici = ?, silinme_aciklama = ? WHERE id = ?");
                     $stmt->execute([$currentUserId, $aciklama, $id]);
                     
+                    // Log yaz
+                    $systemLogModel->logAction(
+                        $currentUserId,
+                        'Avans Silme',
+                        "Avans talebi silindi. ID: $id, Açıklama: $aciklama",
+                        SystemLogModel::LEVEL_IMPORTANT
+                    );
+                    
                     echo json_encode([
                         'status' => 'success',
                         'message' => 'Avans talebi başarıyla silindi.'
@@ -524,6 +636,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             // İzin Sil
             case 'izin-sil':
+                if (!Gate::allows('izin_talepleri')) {
+                    throw new Exception('Bu işlem için gerekli yetkiye sahip değilsiniz.');
+                }
+
                 $id = intval($_POST['id'] ?? 0);
                 $aciklama = trim($_POST['aciklama'] ?? '');
 
@@ -555,6 +671,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $stmt = $db->prepare("UPDATE personel_izinleri SET silinme_tarihi = NOW(), silen_kullanici = ?, silinme_aciklama = ? WHERE id = ?");
                     $stmt->execute([$currentUserId, $aciklama, $id]);
                     
+                    // Log yaz
+                    $systemLogModel->logAction(
+                        $currentUserId,
+                        'İzin Silme',
+                        "İzin talebi silindi. ID: $id, Açıklama: $aciklama",
+                        SystemLogModel::LEVEL_IMPORTANT
+                    );
+                    
                     echo json_encode([
                         'status' => 'success',
                         'message' => 'İzin talebi başarıyla silindi.'
@@ -566,6 +690,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             // Talep Sil
             case 'talep-sil':
+                if (!Gate::allows('ariza_talepleri')) {
+                    throw new Exception('Bu işlem için gerekli yetkiye sahip değilsiniz.');
+                }
+
                 $id = intval($_POST['id'] ?? 0);
                 $aciklama = trim($_POST['aciklama'] ?? '');
 
@@ -596,6 +724,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $db = $talepModel->getDb();
                     $stmt = $db->prepare("UPDATE personel_talepleri SET silinme_tarihi = NOW(), silen_kullanici = ?, silinme_aciklama = ? WHERE id = ?");
                     $stmt->execute([$currentUserId, $aciklama, $id]);
+                    
+                    // Log yaz
+                    $systemLogModel->logAction(
+                        $currentUserId,
+                        'Talep Silme',
+                        "Talep silindi. ID: $id, Açıklama: $aciklama",
+                        SystemLogModel::LEVEL_IMPORTANT
+                    );
                     
                     echo json_encode([
                         'status' => 'success',

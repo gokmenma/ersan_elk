@@ -8,6 +8,8 @@ use App\Helper\Security;
 use App\Service\Gate;
 use App\Model\TanimlamalarModel;
 use App\Model\SettingsModel;
+use App\Model\MenuModel;
+use App\Model\SystemLogModel;
 
 $Tanimlamalar = new TanimlamalarModel();
 $Settings = new SettingsModel();
@@ -929,6 +931,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "defter-kodu-kaydet") {
             "defter_bolge" => $_POST["defter_bolge"],
             "defter_mahalle" => $_POST["defter_mahalle"] ?? "",
             "defter_abone_sayisi" => $_POST["defter_abone_sayisi"] ?? null,
+            "defter_api_abone_sayisi" => isset($_POST["defter_api_abone_sayisi"]) && $_POST["defter_api_abone_sayisi"] !== "" ? intval($_POST["defter_api_abone_sayisi"]) : null,
             "baslangic_tarihi" => !empty($_POST["baslangic_tarihi"]) ? date("Y-m-d", strtotime($_POST["baslangic_tarihi"])) : null,
             "bitis_tarihi" => !empty($_POST["bitis_tarihi"]) ? date("Y-m-d", strtotime($_POST["bitis_tarihi"])) : null,
             "aciklama" => $_POST["aciklama"] ?? ""
@@ -1178,6 +1181,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "defter-kodu-liste") {
         $nestedData['defter_bolge'] = $row->defter_bolge;
         $nestedData['defter_mahalle'] = $row->defter_mahalle;
         $nestedData['defter_abone_sayisi'] = $row->defter_abone_sayisi;
+        $nestedData['defter_api_abone_sayisi'] = $row->defter_api_abone_sayisi ?? '-';
         $nestedData['baslangic_tarihi'] = $row->baslangic_tarihi ? date('d.m.Y', strtotime($row->baslangic_tarihi)) : '';
         $nestedData['bitis_tarihi'] = $row->bitis_tarihi ? date('d.m.Y', strtotime($row->bitis_tarihi)) : '';
         $nestedData['aciklama'] = $row->aciklama;
@@ -1206,3 +1210,176 @@ if (isset($_POST["action"]) && $_POST["action"] == "defter-kodu-liste") {
     echo json_encode($result);
     exit;
 }
+
+// Defter Kodu API'den Sorgula ve Güncelle
+if (isset($_POST["action"]) && $_POST["action"] == "defter-kodu-api-sorgula") {
+    $Menu = new MenuModel();
+    $userId = intval($_SESSION["id"] ?? 0);
+    if ($userId <= 0 || !$Menu->userCanAccessMenuLink($userId, 'tanimlamalar/defter-kodu')) {
+        echo json_encode(["status" => "error", "message" => "Bu işlemi gerçekleştirmek için yetkiniz yok."]);
+        exit;
+    }
+
+    try {
+        $apiKey = 'sk_live_DSOSTjHN195B4NUpEaB9NdYtW7xQ8EVjZD2p2ssW';
+        $allSettings = $Settings->getAllSettingsAsKeyValue();
+        $apiKey = $allSettings['api_sayac_degisim_sifre'] ?? $allSettings['api_endeks_sifre'] ?? $apiKey;
+
+        // Son 3 dönemi tarayarak güncel abone sayılarını alalım
+        $baslangic = date('Ym', strtotime('-2 months'));
+        $bitis = date('Ym');
+
+        $apiUrl = 'https://yonetim.maraskaski.gov.tr/api/api_donem_istatistik_secure.php?action=getDonemStats';
+        $postData = [
+            'baslangic_donem' => $baslangic,
+            'bitis_donem' => $bitis
+        ];
+
+        $ch = curl_init($apiUrl);
+        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        curl_setopt($ch, CURLOPT_POST, true);
+        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($postData));
+        curl_setopt($ch, CURLOPT_HTTPHEADER, [
+            'Content-Type: application/json',
+            'Authorization: Bearer ' . trim($apiKey)
+        ]);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
+        curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+
+        $response = curl_exec($ch);
+        $curlError = curl_error($ch);
+        curl_close($ch);
+
+        if ($curlError || empty($response)) {
+            // Native PHP curl failed/timed out. Fallback to system curl via shell_exec
+            $escapedApiKey = escapeshellarg(trim($apiKey));
+            $escapedPostData = escapeshellarg(json_encode($postData));
+            $escapedApiUrl = escapeshellarg($apiUrl);
+            $cmd = "curl -s -X POST -H 'Content-Type: application/json' -H 'Authorization: Bearer {$escapedApiKey}' -d {$escapedPostData} {$escapedApiUrl}";
+            $response = shell_exec($cmd);
+        }
+
+        $decodedResponse = json_decode($response, true);
+        if (json_last_error() !== JSON_ERROR_NONE || !is_array($decodedResponse)) {
+            throw new \Exception('API geçersiz yanıt döndürdü.');
+        }
+
+        $items = $decodedResponse['data']['data'] ?? $decodedResponse['data'] ?? $decodedResponse;
+        if (!is_array($items)) {
+            throw new \Exception('API yanıtından istatistik verileri alınamadı.');
+        }
+
+        // Döneme göre artan sırala. En yeni dönem en son işleneceği için onun toplam abonesi güncel kalır.
+        usort($items, function($a, $b) {
+            return strcmp($a['DONEM'] ?? '', $b['DONEM'] ?? '');
+        });
+
+        // Veritabanındaki aktif defter kodlarını çekelim
+        $db = $Tanimlamalar->getDb();
+        $defterKodlari = $db->query("SELECT id, tur_adi, defter_bolge, defter_mahalle FROM tanimlamalar WHERE grup = 'defter_kodu' AND silinme_tarihi IS NULL AND firma_id = " . intval($firma_id))->fetchAll(PDO::FETCH_ASSOC);
+
+        // Mahalle adı normalizasyon closure'ı
+        $normalizeMahalle = function(string $name) {
+            $name = trim($name);
+            $search = ['ı', 'i', 'ğ', 'ü', 'ş', 'ö', 'ç'];
+            $replace = ['I', 'İ', 'Ğ', 'Ü', 'Ş', 'Ö', 'Ç'];
+            $name = str_replace($search, $replace, $name);
+            $name = mb_strtoupper($name, 'UTF-8');
+            
+            // Parantez içindeki ifadeleri kaldır
+            $name = preg_replace('/\s*\(.*?\)/u', '', $name);
+            
+            // Yaygın mahalle eklerini kaldır
+            $name = preg_replace('/\s+(MAHALLESİ|MAHALLESI|MAHALLE|MAH\.|MAH|MH\.|MH)$/u', '', $name);
+            
+            // Alfanumerik olmayan tüm karakterleri kaldır
+            $name = preg_replace('/[^A-ZÇĞİÖŞÜ0-9]/u', '', $name);
+            
+            // Karakter benzeşmesi için İngilizce harflere çevir
+            $searchAcc = ['Ç', 'Ğ', 'İ', 'I', 'Ö', 'Ş', 'Ü'];
+            $replaceAcc = ['C', 'G', 'I', 'I', 'O', 'S', 'U'];
+            $name = str_replace($searchAcc, $replaceAcc, $name);
+            
+            // Yaygın yazım farklılıklarını düzelt
+            $name = str_replace(
+                ['MAGRA', 'CANBAZ', 'EFSESTURAN', 'BOZHOYUK', 'KARADUT', 'SOGULCAK'],
+                ['MAGARA', 'CAMBAZ', 'EFSUSTURAN', 'BOZHUYUK', 'KARATUT', 'SOGUCAK'],
+                $name
+            );
+            
+            return $name;
+        };
+
+        // API verilerini Bölge + Defter No + Mahalle bazlı eşleştirelim
+        $apiExact = [];
+        $apiGroup = [];
+        foreach ($items as $item) {
+            $defNo = trim($item['DEFTER_NO'] ?? '');
+            $bolge = trim($item['BOLGE_ADI'] ?? '');
+            $mahalle = trim($item['MAHALLE_ADI'] ?? '');
+            if ($defNo !== '' && $bolge !== '') {
+                $normMahalle = $normalizeMahalle($mahalle);
+                $apiExact["{$bolge}_{$defNo}_{$normMahalle}"] = intval($item['TOPLAM_ABONE'] ?? 0);
+                $apiGroup["{$bolge}_{$defNo}"][] = [
+                    'norm' => $normMahalle,
+                    'abone' => intval($item['TOPLAM_ABONE'] ?? 0)
+                ];
+            }
+        }
+
+        $updateCount = 0;
+        $stmtUpdate = $db->prepare("UPDATE tanimlamalar SET defter_api_abone_sayisi = ? WHERE id = ?");
+
+        foreach ($defterKodlari as $defter) {
+            $defterNo = trim($defter['tur_adi']);
+            $bolge = trim($defter['defter_bolge']);
+            $mahalle = trim($defter['defter_mahalle'] ?? '');
+            
+            $normMahalle = $normalizeMahalle($mahalle);
+            $exactKey = "{$bolge}_{$defterNo}_{$normMahalle}";
+            $groupKey = "{$bolge}_{$defterNo}";
+            
+            $aboneSayisi = null;
+            if ($mahalle !== '' && isset($apiExact[$exactKey])) {
+                $aboneSayisi = $apiExact[$exactKey];
+            } else {
+                // Fuzzy/Önek eşleştirmesi dene
+                if ($mahalle !== '' && isset($apiGroup[$groupKey])) {
+                    foreach ($apiGroup[$groupKey] as $apiAlt) {
+                        $apiNorm = $apiAlt['norm'];
+                        if (strlen($normMahalle) >= 5 && strlen($apiNorm) >= 5) {
+                            if (strpos($normMahalle, $apiNorm) === 0 || strpos($apiNorm, $normMahalle) === 0) {
+                                $aboneSayisi = $apiAlt['abone'];
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+            
+            if ($aboneSayisi !== null) {
+                $stmtUpdate->execute([$aboneSayisi, $defter['id']]);
+                $updateCount++;
+            }
+        }
+
+        // Log kaydet
+        $SystemLog = new SystemLogModel();
+        $SystemLog->logAction($userId, 'Defter API Sorgulama', "API üzerinden sorgulama yapıldı. Toplam {$updateCount} defter kodu güncellendi.", SystemLogModel::LEVEL_IMPORTANT);
+
+        echo json_encode([
+            "status" => "success",
+            "message" => "API sorgulaması tamamlandı. {$updateCount} adet defter kodunun abone sayısı güncellendi.",
+            "updated_count" => $updateCount
+        ]);
+
+    } catch (\Throwable $ex) {
+        echo json_encode([
+            "status" => "error",
+            "message" => "API hatası: " . $ex->getMessage()
+        ]);
+    }
+    exit;
+}
+
