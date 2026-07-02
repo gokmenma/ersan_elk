@@ -7,6 +7,7 @@ require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Model\AracModel;
 use App\Model\AracZimmetModel;
+use App\Model\AracZimmetFotoModel;
 use App\Model\AracYakitModel;
 use App\Model\AracKmModel;
 use App\Model\AracServisModel;
@@ -23,10 +24,64 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
     $Arac = new AracModel();
     $Zimmet = new AracZimmetModel();
+    $ZimmetFoto = new AracZimmetFotoModel();
     $Yakit = new AracYakitModel();
     $Km = new AracKmModel();
     $Servis = new AracServisModel();
     $KmBildirim = new AracKmBildirimModel();
+
+    // Zimmet teslim/iade fotoğraflarını şifreleyerek diske yazan ve meta bilgisini kaydeden yardımcı
+    $zimmetFotoIsle = function ($zimmetId, $fileKey, $tur) use ($ZimmetFoto) {
+        if (empty($_FILES[$fileKey]) || !is_array($_FILES[$fileKey]['name'])) {
+            return 0;
+        }
+
+        $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
+        $maxSize = 8 * 1024 * 1024;
+        $yukleyenId = $_SESSION['user_id'] ?? null;
+        $dir = dirname(__DIR__, 2) . '/files/arac_zimmet_foto/' . $zimmetId . '/';
+        $kaydedilen = 0;
+
+        $names = $_FILES[$fileKey]['name'];
+        foreach ($names as $i => $orijinalAd) {
+            if (($_FILES[$fileKey]['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                continue;
+            }
+
+            $tmpName = $_FILES[$fileKey]['tmp_name'][$i];
+            $boyut = $_FILES[$fileKey]['size'][$i];
+
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $mimeType = finfo_file($finfo, $tmpName);
+            finfo_close($finfo);
+
+            if (!in_array($mimeType, $allowedTypes)) {
+                throw new Exception('Desteklenmeyen dosya türü. Sadece JPG, PNG, WEBP, PDF yüklenebilir.');
+            }
+            if ($boyut > $maxSize) {
+                throw new Exception('Her dosya en fazla 8MB olabilir.');
+            }
+
+            if (!is_dir($dir)) {
+                mkdir($dir, 0755, true);
+            }
+
+            $binaryData = file_get_contents($tmpName);
+            if ($binaryData === false) {
+                throw new Exception('Dosya okunamadı.');
+            }
+
+            $yeniDosyaAdi = bin2hex(random_bytes(16)) . '.enc';
+            if (file_put_contents($dir . $yeniDosyaAdi, Security::encryptFile($binaryData)) === false) {
+                throw new Exception('Şifreli dosya kaydedilemedi.');
+            }
+
+            $ZimmetFoto->addFoto($zimmetId, $tur, $yeniDosyaAdi, $orijinalAd, $mimeType, $boyut, $yukleyenId);
+            $kaydedilen++;
+        }
+
+        return $kaydedilen;
+    };
 
     try {
         switch ($action) {
@@ -163,12 +218,125 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $arac->muayene_bitis_tarihi = Date::dmY($arac->muayene_bitis_tarihi);
                     $arac->sigorta_bitis_tarihi = Date::dmY($arac->sigorta_bitis_tarihi);
                     $arac->kasko_bitis_tarihi = Date::dmY($arac->kasko_bitis_tarihi);
-
-                    // Debug Log
-                    file_put_contents(dirname(__DIR__, 2) . '/debug_arac_detay.txt', "ID: $id | Muayene: $arac->muayene_bitis_tarihi | Sigorta: $arac->sigorta_bitis_tarihi | Kasko: $arac->kasko_bitis_tarihi\n", FILE_APPEND);
+                    $arac->ruhsat_var = !empty($arac->ruhsat_dosya_adi);
+                    $arac->ruhsat_gorsel_id = Security::encrypt($arac->id);
                 }
 
                 echo json_encode(['status' => 'success', 'data' => $arac]);
+                break;
+
+            case 'arac-ruhsat-yukle':
+                $aracId = intval($_POST['arac_id'] ?? 0);
+                if ($aracId <= 0) {
+                    throw new Exception("Geçersiz araç. Lütfen önce aracı kaydedin.");
+                }
+
+                $mevcutArac = $Arac->getRuhsatSahibiArac($aracId);
+                if (!$mevcutArac) {
+                    throw new Exception("Araç bulunamadı veya bu işlem için yetkiniz yok.");
+                }
+
+                if (!isset($_FILES['ruhsat_dosyasi']) || $_FILES['ruhsat_dosyasi']['error'] !== UPLOAD_ERR_OK) {
+                    $uploadErrors = [
+                        UPLOAD_ERR_INI_SIZE => 'Dosya boyutu sunucu limitini aşıyor.',
+                        UPLOAD_ERR_FORM_SIZE => 'Dosya boyutu form limitini aşıyor.',
+                        UPLOAD_ERR_PARTIAL => 'Dosya kısmen yüklendi.',
+                        UPLOAD_ERR_NO_FILE => 'Dosya seçilmedi.',
+                        UPLOAD_ERR_NO_TMP_DIR => 'Geçici klasör bulunamadı.',
+                        UPLOAD_ERR_CANT_WRITE => 'Dosya yazılamadı.',
+                        UPLOAD_ERR_EXTENSION => 'Dosya uzantısı engellendi.'
+                    ];
+                    $errorCode = $_FILES['ruhsat_dosyasi']['error'] ?? UPLOAD_ERR_NO_FILE;
+                    throw new Exception($uploadErrors[$errorCode] ?? 'Dosya yükleme hatası.');
+                }
+
+                $file = $_FILES['ruhsat_dosyasi'];
+
+                $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mimeType = finfo_file($finfo, $file['tmp_name']);
+                finfo_close($finfo);
+
+                if (!in_array($mimeType, $allowedTypes)) {
+                    throw new Exception('Bu dosya türü desteklenmiyor. Desteklenen türler: JPG, PNG, WEBP, PDF.');
+                }
+
+                $maxSize = 8 * 1024 * 1024;
+                if ($file['size'] > $maxSize) {
+                    throw new Exception('Dosya boyutu 8MB\'ı geçemez.');
+                }
+
+                $ruhsatDir = dirname(__DIR__, 2) . '/files/arac_ruhsat/' . $aracId . '/';
+                if (!is_dir($ruhsatDir)) {
+                    mkdir($ruhsatDir, 0755, true);
+                }
+
+                $binaryData = file_get_contents($file['tmp_name']);
+                if ($binaryData === false) {
+                    throw new Exception('Dosya okunamadı.');
+                }
+
+                $sifreliVeri = Security::encryptFile($binaryData);
+                $yeniDosyaAdi = bin2hex(random_bytes(16)) . '.enc';
+                $hedefYol = $ruhsatDir . $yeniDosyaAdi;
+
+                if (file_put_contents($hedefYol, $sifreliVeri) === false) {
+                    throw new Exception('Şifreli dosya kaydedilemedi.');
+                }
+
+                // Eski ruhsat dosyasını temizle
+                if (!empty($mevcutArac->ruhsat_dosya_adi)) {
+                    $eskiYol = $ruhsatDir . $mevcutArac->ruhsat_dosya_adi;
+                    if (is_file($eskiYol)) {
+                        unlink($eskiYol);
+                    }
+                }
+
+                $yukleyenId = $_SESSION['user_id'] ?? null;
+                $Arac->updateRuhsatBilgisi($aracId, $yeniDosyaAdi, $file['name'], $mimeType, $file['size'], $yukleyenId);
+
+                $SystemLog = new SystemLogModel();
+                $SystemLog->logAction($yukleyenId ?? 0, 'Araç Ruhsat Yükleme', "{$mevcutArac->plaka} plakalı araç için ruhsat görseli yüklendi.", SystemLogModel::LEVEL_IMPORTANT);
+
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Ruhsat görseli şifrelenerek kaydedildi.',
+                    'data' => [
+                        'ruhsat_orijinal_ad' => $file['name'],
+                        'ruhsat_mime_tipi' => $mimeType,
+                        'ruhsat_boyutu' => $file['size'],
+                        'ruhsat_gorsel_id' => Security::encrypt($aracId)
+                    ]
+                ]);
+                break;
+
+            case 'arac-ruhsat-sil':
+                $aracId = intval($_POST['arac_id'] ?? 0);
+                if ($aracId <= 0) {
+                    throw new Exception("Geçersiz araç.");
+                }
+
+                $mevcutArac = $Arac->getRuhsatSahibiArac($aracId);
+                if (!$mevcutArac) {
+                    throw new Exception("Araç bulunamadı veya bu işlem için yetkiniz yok.");
+                }
+
+                if (empty($mevcutArac->ruhsat_dosya_adi)) {
+                    throw new Exception("Kayıtlı bir ruhsat görseli bulunamadı.");
+                }
+
+                $ruhsatYolu = dirname(__DIR__, 2) . '/files/arac_ruhsat/' . $aracId . '/' . $mevcutArac->ruhsat_dosya_adi;
+                if (is_file($ruhsatYolu)) {
+                    unlink($ruhsatYolu);
+                }
+
+                $Arac->clearRuhsatBilgisi($aracId);
+
+                $kullaniciId = $_SESSION['user_id'] ?? 0;
+                $SystemLog = new SystemLogModel();
+                $SystemLog->logAction($kullaniciId, 'Araç Ruhsat Silme', "{$mevcutArac->plaka} plakalı araca ait ruhsat görseli silindi.", SystemLogModel::LEVEL_IMPORTANT);
+
+                echo json_encode(['status' => 'success', 'message' => 'Ruhsat görseli silindi.']);
                 break;
 
             case 'arac-listesi':
@@ -333,14 +501,26 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $data['firma_id'] = $_SESSION['firma_id'] ?? 0;
                 }
 
-                $Zimmet->saveWithAttr($data);
+                $encZimmetId = $Zimmet->saveWithAttr($data);
+                $yeniZimmetId = (int) Security::decrypt($encZimmetId);
 
                 // Araç KM güncelle
                 if ($teslim_km > 0) {
                     $Arac->updateKm($arac_id, $teslim_km);
                 }
 
-                echo json_encode(['status' => 'success', 'message' => 'Araç başarıyla zimmetlendi.']);
+                // Teslim fotoğraflarını şifreleyerek kaydet
+                $fotoSayisi = 0;
+                if ($yeniZimmetId > 0) {
+                    $fotoSayisi = $zimmetFotoIsle($yeniZimmetId, 'teslim_fotograflari', 'teslim');
+                }
+
+                $mesaj = 'Araç başarıyla zimmetlendi.';
+                if ($fotoSayisi > 0) {
+                    $mesaj .= " {$fotoSayisi} teslim fotoğrafı şifreli olarak kaydedildi.";
+                }
+
+                echo json_encode(['status' => 'success', 'message' => $mesaj]);
                 break;
 
             case 'zimmet-iade':
@@ -355,8 +535,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
                 $iade_tarihi = Date::Ymd($iade_tarihi);
 
+                // Firma bazlı yetki kontrolü
+                $zimmetSahiplik = $Zimmet->find($zimmet_id);
+                if (!$zimmetSahiplik || (int) $zimmetSahiplik->firma_id !== (int) ($_SESSION['firma_id'] ?? 0)) {
+                    throw new Exception("Zimmet bulunamadı veya bu işlem için yetkiniz yok.");
+                }
+
                 // Zimmet iade işlemini yap
                 $Zimmet->iadeEt($zimmet_id, $iade_km, $notlar, $iade_tarihi);
+
+                // İade fotoğraflarını şifreleyerek kaydet
+                $iadeFotoSayisi = $zimmetFotoIsle($zimmet_id, 'iade_fotograflari', 'iade');
 
                 // Araç KM güncelle ve Mülkiyet Kontrolü
                 $zimmetBilgi = $Zimmet->find($zimmet_id);
@@ -375,7 +564,62 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     }
                 }
 
-                echo json_encode(['status' => 'success', 'message' => 'Araç iadesi başarıyla tamamlandı.']);
+                $iadeMesaj = 'Araç iadesi başarıyla tamamlandı.';
+                if ($iadeFotoSayisi > 0) {
+                    $iadeMesaj .= " {$iadeFotoSayisi} iade fotoğrafı şifreli olarak kaydedildi.";
+                }
+
+                echo json_encode(['status' => 'success', 'message' => $iadeMesaj]);
+                break;
+
+            case 'zimmet-foto-listele':
+                $zimmet_id = intval($_POST['zimmet_id'] ?? 0);
+                if ($zimmet_id <= 0) {
+                    throw new Exception("Geçersiz zimmet ID.");
+                }
+
+                $fotolar = $ZimmetFoto->getByZimmet($zimmet_id);
+                $data = [];
+                foreach ($fotolar as $foto) {
+                    $data[] = [
+                        'id' => Security::encrypt($foto->id),
+                        'foto_turu' => $foto->foto_turu,
+                        'orijinal_ad' => $foto->orijinal_ad,
+                        'mime_tipi' => $foto->mime_tipi,
+                        'boyutu' => $foto->boyutu,
+                        'is_pdf' => ($foto->mime_tipi === 'application/pdf')
+                    ];
+                }
+
+                echo json_encode(['status' => 'success', 'data' => $data]);
+                break;
+
+            case 'zimmet-foto-sil':
+                $fotoId = $_POST['id'] ?? '';
+                if (!is_numeric($fotoId)) {
+                    $fotoId = Security::decrypt($fotoId);
+                }
+                $fotoId = (int) $fotoId;
+                if ($fotoId <= 0) {
+                    throw new Exception("Geçersiz fotoğraf ID.");
+                }
+
+                $foto = $ZimmetFoto->getById($fotoId);
+                if (!$foto) {
+                    throw new Exception("Fotoğraf bulunamadı veya bu işlem için yetkiniz yok.");
+                }
+
+                $fotoYolu = dirname(__DIR__, 2) . '/files/arac_zimmet_foto/' . $foto->zimmet_id . '/' . $foto->dosya_adi;
+                if (is_file($fotoYolu)) {
+                    unlink($fotoYolu);
+                }
+
+                $ZimmetFoto->softDeleteFoto($fotoId);
+
+                $SystemLog = new SystemLogModel();
+                $SystemLog->logAction($_SESSION['user_id'] ?? 0, 'Zimmet Fotoğraf Silme', "Zimmet (#{$foto->zimmet_id}) için bir {$foto->foto_turu} fotoğrafı silindi.", SystemLogModel::LEVEL_IMPORTANT);
+
+                echo json_encode(['status' => 'success', 'message' => 'Fotoğraf silindi.']);
                 break;
 
             case 'zimmet-listesi':
@@ -394,6 +638,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $g->zimmet_tarihi_fmt = Date::dmY($g->zimmet_tarihi);
                     $g->iade_tarihi_fmt = $g->iade_tarihi ? Date::dmY($g->iade_tarihi) : '-';
                     $g->olusturma_tarihi_fmt = isset($g->olusturma_tarihi) ? date('d.m.Y H:i', strtotime($g->olusturma_tarihi)) : '-';
+                    $g->foto_sayisi = count($ZimmetFoto->getByZimmet($g->id));
                 }
                 echo json_encode(['status' => 'success', 'data' => $gecmis]);
                 break;
@@ -1039,7 +1284,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 if ($arac_id <= 0) {
                     throw new Exception("Araç seçimi zorunludur.");
                 }
-
+                
                 // ID yoksa tarihten bulmayı dene
                 if ($km_id <= 0) {
                     $mevcutKayit = $Km->kayitVarMi($arac_id, $tarih, null, true);
@@ -3370,6 +3615,214 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     "recordsFiltered" => intval($res['recordsFiltered']),
                     "data" => $data
                 ]);
+                break;
+
+            case 'get-km-image-cleanup-count':
+                $dateRange = $_POST['date_range'] ?? '';
+                $startDate = '';
+                $endDate = '';
+
+                if (!empty($dateRange)) {
+                    $separator = '';
+                    if (strpos($dateRange, ' - ') !== false) {
+                        $separator = ' - ';
+                    } else if (strpos($dateRange, ' to ') !== false) {
+                        $separator = ' to ';
+                    }
+
+                    if (!empty($separator)) {
+                        $parts = explode($separator, $dateRange);
+                        $startParts = explode('.', trim($parts[0]));
+                        if (count($startParts) === 3) {
+                            $startDate = $startParts[2] . '-' . $startParts[1] . '-' . $startParts[0];
+                        }
+                        $endParts = explode('.', trim($parts[1]));
+                        if (count($endParts) === 3) {
+                            $endDate = $endParts[2] . '-' . $endParts[1] . '-' . $endParts[0];
+                        }
+                    } else {
+                        $parts = explode('.', trim($dateRange));
+                        if (count($parts) === 3) {
+                            $startDate = $parts[2] . '-' . $parts[1] . '-' . $parts[0];
+                            $endDate = $startDate;
+                        }
+                    }
+                }
+
+                $dbObj = new \App\Core\Db();
+                $db = $dbObj->getConnection();
+                
+                $sql = "SELECT COUNT(*) FROM arac_km_bildirimleri WHERE resim_yolu IS NOT NULL AND resim_yolu != '' AND silinme_tarihi IS NULL";
+                $params = [];
+                if (!empty($startDate) && !empty($endDate)) {
+                    $sql .= " AND tarih BETWEEN :start AND :end";
+                    $params['start'] = $startDate;
+                    $params['end'] = $endDate;
+                } else {
+                    echo json_encode(['status' => 'success', 'count' => 0]);
+                    break;
+                }
+                
+                $stmt = $db->prepare($sql);
+                $stmt->execute($params);
+                $count = intval($stmt->fetchColumn());
+                
+                echo json_encode(['status' => 'success', 'count' => $count]);
+                break;
+
+            case 'start-km-image-cleanup':
+                $dateRange = $_POST['date_range'] ?? '';
+                $startDate = '';
+                $endDate = '';
+
+                if (!empty($dateRange)) {
+                    $separator = '';
+                    if (strpos($dateRange, ' - ') !== false) {
+                        $separator = ' - ';
+                    } else if (strpos($dateRange, ' to ') !== false) {
+                        $separator = ' to ';
+                    }
+
+                    if (!empty($separator)) {
+                        $parts = explode($separator, $dateRange);
+                        $startParts = explode('.', trim($parts[0]));
+                        if (count($startParts) === 3) {
+                            $startDate = $startParts[2] . '-' . $startParts[1] . '-' . $startParts[0];
+                        }
+                        $endParts = explode('.', trim($parts[1]));
+                        if (count($endParts) === 3) {
+                            $endDate = $endParts[2] . '-' . $endParts[1] . '-' . $endParts[0];
+                        }
+                    } else {
+                        $parts = explode('.', trim($dateRange));
+                        if (count($parts) === 3) {
+                            $startDate = $parts[2] . '-' . $parts[1] . '-' . $parts[0];
+                            $endDate = $startDate;
+                        }
+                    }
+                }
+
+                $dbObj = new \App\Core\Db();
+                $db = $dbObj->getConnection();
+
+                $sql = "
+                    SELECT akb.id, akb.resim_yolu, a.plaka 
+                    FROM arac_km_bildirimleri akb
+                    INNER JOIN araclar a ON akb.arac_id = a.id
+                    WHERE akb.resim_yolu IS NOT NULL 
+                      AND akb.resim_yolu != ''
+                      AND akb.silinme_tarihi IS NULL
+                ";
+                $params = [];
+                if (!empty($startDate) && !empty($endDate)) {
+                    $sql .= " AND akb.tarih BETWEEN :start AND :end";
+                    $params['start'] = $startDate;
+                    $params['end'] = $endDate;
+                } else {
+                    echo json_encode(['status' => 'error', 'message' => 'Geçersiz tarih aralığı.']);
+                    break;
+                }
+
+                $stmt = $db->prepare($sql);
+                $stmt->execute($params);
+                $records = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+                $archiveDir = dirname(dirname(__DIR__)) . '/uploads/temp_archive';
+                $zipPath = dirname(dirname(__DIR__)) . '/uploads/km_resimleri_arsiv.zip';
+                $zipUrl = 'uploads/km_resimleri_arsiv.zip';
+
+                if (!is_dir($archiveDir)) {
+                    mkdir($archiveDir, 0755, true);
+                }
+
+                $copiedCount = 0;
+                $filesToDelete = [];
+                $recordIdsToUpdate = [];
+
+                foreach ($records as $r) {
+                    $sourceFile = dirname(dirname(__DIR__)) . '/' . $r->resim_yolu;
+                    if (file_exists($sourceFile) && is_file($sourceFile)) {
+                        $plakaDirName = preg_replace('/[^A-Za-z0-9]/', '_', $r->plaka);
+                        $targetSubdir = $archiveDir . '/' . $plakaDirName;
+                        if (!is_dir($targetSubdir)) {
+                            mkdir($targetSubdir, 0755, true);
+                        }
+                        
+                        $filename = basename($r->resim_yolu);
+                        $targetFile = $targetSubdir . '/' . $filename;
+                        
+                        if (copy($sourceFile, $targetFile)) {
+                            $copiedCount++;
+                            $filesToDelete[] = $sourceFile;
+                            $recordIdsToUpdate[] = $r->id;
+                        }
+                    } else {
+                        $recordIdsToUpdate[] = $r->id;
+                    }
+                }
+
+                if ($copiedCount > 0) {
+                    $zip = new ZipArchive();
+                    if ($zip->open($zipPath, ZipArchive::CREATE | ZipArchive::OVERWRITE) === TRUE) {
+                        $files = new RecursiveIteratorIterator(
+                            new RecursiveDirectoryIterator($archiveDir),
+                            RecursiveIteratorIterator::LEAVES_ONLY
+                        );
+
+                        foreach ($files as $name => $file) {
+                            if (!$file->isDir()) {
+                                $filePath = $file->getRealPath();
+                                $relativePath = substr($filePath, strlen($archiveDir) + 1);
+                                $zip->addFile($filePath, $relativePath);
+                            }
+                        }
+                        $zip->close();
+
+                        // ZIP created. Delete original files.
+                        foreach ($filesToDelete as $f) {
+                            if (file_exists($f)) {
+                                unlink($f);
+                            }
+                        }
+
+                        // Update database records
+                        if (!empty($recordIdsToUpdate)) {
+                            $placeholders = implode(',', array_fill(0, count($recordIdsToUpdate), '?'));
+                            $stmtUpdate = $db->prepare("UPDATE arac_km_bildirimleri SET resim_yolu = NULL WHERE id IN ($placeholders)");
+                            $stmtUpdate->execute($recordIdsToUpdate);
+                        }
+
+                        // Clean up temp archive directory
+                        if (is_dir($archiveDir)) {
+                            $it = new RecursiveIteratorIterator(
+                                new RecursiveDirectoryIterator($archiveDir, RecursiveDirectoryIterator::SKIP_DOTS),
+                                RecursiveIteratorIterator::CHILD_FIRST
+                            );
+                            foreach($it as $file) {
+                                if ($file->isDir()){
+                                    rmdir($file->getRealPath());
+                                } else {
+                                    unlink($file->getRealPath());
+                                }
+                            }
+                            rmdir($archiveDir);
+                        }
+
+                        echo json_encode(['status' => 'success', 'copied_count' => $copiedCount, 'zip_url' => $zipUrl]);
+                    } else {
+                        echo json_encode(['status' => 'error', 'message' => 'ZIP dosyası oluşturulurken bir hata oluştu.']);
+                    }
+                } else {
+                    echo json_encode(['status' => 'error', 'message' => 'Arşivlenecek resim dosyası bulunamadı veya resimler zaten silinmiş.']);
+                }
+                break;
+
+            case 'delete-km-archive-zip':
+                $zipPath = dirname(dirname(__DIR__)) . '/uploads/km_resimleri_arsiv.zip';
+                if (file_exists($zipPath)) {
+                    unlink($zipPath);
+                }
+                echo json_encode(['status' => 'success']);
                 break;
 
             case 'km-onay-ver':

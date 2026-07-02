@@ -434,10 +434,126 @@ const AracTakip = {
           });
         });
 
+        AracTakip.ruhsatAlaniniGuncelle(data);
+
         $("#aracModal").modal("show");
       } else {
         Swal.fire("Hata", response.message, "error");
       }
+    });
+  },
+
+  // =============================================
+  // RUHSAT GÖRSELİ İŞLEMLERİ (Şifreli Saklama)
+  // =============================================
+  ruhsatAlaniniGuncelle: function (data) {
+    const aracId = data.id || "";
+    $("#aracForm input[name='id']").val(aracId);
+
+    $("#ruhsatYeniAracUyari, #ruhsatMevcutAlani, #ruhsatYuklemeAlani").addClass("d-none");
+
+    if (!aracId) {
+      $("#ruhsatYeniAracUyari").removeClass("d-none");
+      return;
+    }
+
+    if (data.ruhsat_var) {
+      const boyutKb = data.ruhsat_boyutu ? Math.round(data.ruhsat_boyutu / 1024) : 0;
+      const icon = data.ruhsat_mime_tipi === "application/pdf" ? "bx-file-blank" : "bx-image";
+      $("#ruhsatDosyaIkon").attr("class", "bx " + icon + " fs-3 text-primary");
+      $("#ruhsatDosyaAdi").text(data.ruhsat_orijinal_ad || "Ruhsat Görseli");
+      $("#ruhsatDosyaMeta").text(boyutKb + " KB");
+      $("#btnRuhsatGoruntule").data("id", data.ruhsat_gorsel_id);
+      $("#ruhsatMevcutAlani").removeClass("d-none");
+    } else {
+      $("#ruhsatYuklemeAlani").removeClass("d-none");
+    }
+  },
+
+  ruhsatYukle: function (aracId, file) {
+    const formData = new FormData();
+    formData.append("action", "arac-ruhsat-yukle");
+    formData.append("arac_id", aracId);
+    formData.append("ruhsat_dosyasi", file);
+
+    const progress = $("#ruhsatUploadProgress");
+    progress.removeClass("d-none").find(".progress-bar").css("width", "0%");
+
+    $.ajax({
+      url: this.apiUrl,
+      type: "POST",
+      data: formData,
+      processData: false,
+      contentType: false,
+      xhr: function () {
+        const xhr = $.ajaxSettings.xhr();
+        if (xhr.upload) {
+          xhr.upload.addEventListener("progress", function (e) {
+            if (e.lengthComputable) {
+              const pct = Math.round((e.loaded / e.total) * 100);
+              progress.find(".progress-bar").css("width", pct + "%");
+            }
+          });
+        }
+        return xhr;
+      },
+      success: function (response) {
+        if (response.status === "success") {
+          Swal.fire({
+            icon: "success",
+            title: "Başarılı",
+            text: response.message,
+            timer: 1500,
+            showConfirmButton: false,
+          });
+          AracTakip.ruhsatAlaniniGuncelle({
+            id: aracId,
+            ruhsat_var: true,
+            ruhsat_orijinal_ad: response.data.ruhsat_orijinal_ad,
+            ruhsat_mime_tipi: response.data.ruhsat_mime_tipi,
+            ruhsat_boyutu: response.data.ruhsat_boyutu,
+            ruhsat_gorsel_id: response.data.ruhsat_gorsel_id,
+          });
+        } else {
+          Swal.fire("Hata", response.message, "error");
+        }
+      },
+      error: function () {
+        Swal.fire("Hata", "Ruhsat yüklenirken bir hata oluştu.", "error");
+      },
+      complete: function () {
+        progress.addClass("d-none");
+        $("#ruhsatDosyaInput").val("");
+      },
+    });
+  },
+
+  ruhsatSil: function (aracId) {
+    Swal.fire({
+      title: "Emin misiniz?",
+      text: "Ruhsat görseli kalıcı olarak silinecek.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Evet, Sil",
+      cancelButtonText: "Vazgeç",
+      confirmButtonColor: "#f46a6a",
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+
+      $.post(this.apiUrl, { action: "arac-ruhsat-sil", arac_id: aracId }, function (response) {
+        if (response.status === "success") {
+          Swal.fire({
+            icon: "success",
+            title: "Silindi",
+            text: response.message,
+            timer: 1500,
+            showConfirmButton: false,
+          });
+          AracTakip.ruhsatAlaniniGuncelle({ id: aracId, ruhsat_var: false });
+        } else {
+          Swal.fire("Hata", response.message, "error");
+        }
+      });
     });
   },
 
@@ -633,6 +749,12 @@ const AracTakip = {
                         ? '<span class="badge bg-success">Aktif</span>' 
                         : '<span class="badge bg-secondary">İade Edildi</span>';
                     
+                    const fotoBtn = z.foto_sayisi > 0
+                        ? `<button type="button" class="btn btn-sm btn-soft-info zimmet-foto-goster" data-id="${z.id}">
+                               <i class="bx bx-camera me-1"></i>${z.foto_sayisi}
+                           </button>`
+                        : '<span class="text-muted">-</span>';
+
                     html += `<tr>
                         <td class="text-center">${index + 1}</td>
                         <td><strong>${z.personel_adi || 'Bilinmiyor'}</strong></td>
@@ -644,19 +766,90 @@ const AracTakip = {
                             <small class="d-block fw-bold">${z.olusturan_kullanici_adi || '-'}</small>
                             <small class="text-muted" style="font-size: 0.7rem;">${z.olusturma_tarihi_fmt || '-'}</small>
                         </td>
+                        <td class="text-center">${fotoBtn}</td>
                         <td class="text-center">${durumBadge}</td>
                     </tr>`;
                 });
             } else {
-                html = '<tr><td colspan="8" class="text-center text-muted p-4">Bu araca ait zimmet geçmişi bulunmamaktadır.</td></tr>';
+                html = '<tr><td colspan="9" class="text-center text-muted p-4">Bu araca ait zimmet geçmişi bulunmamaktadır.</td></tr>';
             }
             tbody.html(html);
         } else {
-            tbody.html(`<tr><td colspan="8" class="text-center text-danger p-4">Hata: ${response.message}</td></tr>`);
+            tbody.html(`<tr><td colspan="9" class="text-center text-danger p-4">Hata: ${response.message}</td></tr>`);
         }
     }).fail((xhr) => {
         console.error("API Hatası:", xhr);
-        tbody.html('<tr><td colspan="8" class="text-center text-danger p-4">Sunucu hatası oluştu.</td></tr>');
+        tbody.html('<tr><td colspan="9" class="text-center text-danger p-4">Sunucu hatası oluştu.</td></tr>');
+    });
+  },
+
+  zimmetFotolariGoster: function (zimmetId) {
+    const body = $("#zimmetFotoModalBody");
+    body.html('<div class="text-center p-4 text-muted"><div class="spinner-border spinner-border-sm text-primary" role="status"></div> Yükleniyor...</div>');
+
+    const modalEl = document.getElementById("zimmetFotoModal");
+    const m = (typeof bootstrap !== "undefined" && bootstrap.Modal)
+      ? (bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl))
+      : null;
+    if (m) m.show(); else $(modalEl).modal("show");
+
+    $.post(this.apiUrl, { action: "zimmet-foto-listele", zimmet_id: zimmetId }, (response) => {
+      if (response.status !== "success") {
+        body.html(`<div class="text-center text-danger p-4">${response.message || "Fotoğraflar yüklenemedi."}</div>`);
+        return;
+      }
+      if (!response.data || response.data.length === 0) {
+        body.html('<div class="text-center text-muted p-4">Bu zimmet için fotoğraf bulunmuyor.</div>');
+        return;
+      }
+
+      const gruplar = { teslim: [], iade: [] };
+      response.data.forEach((f) => (gruplar[f.foto_turu] || gruplar.teslim).push(f));
+
+      let html = "";
+      const bolum = (baslik, liste) => {
+        if (liste.length === 0) return "";
+        let cards = liste.map((f) => {
+          const url = "views/arac-takip/zimmet-foto-goruntule.php?id=" + encodeURIComponent(f.id);
+          const onizleme = f.is_pdf
+            ? `<a href="${url}" target="_blank" class="d-flex align-items-center justify-content-center bg-light rounded" style="height:120px;"><i class="bx bxs-file-pdf text-danger" style="font-size:3rem;"></i></a>`
+            : `<a href="${url}" target="_blank"><img src="${url}" class="img-fluid rounded" style="height:120px;width:100%;object-fit:cover;"></a>`;
+          return `<div class="col-6 col-md-3 mb-3">
+                    <div class="border rounded p-1 position-relative">
+                      ${onizleme}
+                      <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 py-0 px-1 zimmet-foto-sil" data-id="${f.id}" title="Sil"><i class="bx bx-x"></i></button>
+                    </div>
+                  </div>`;
+        }).join("");
+        return `<h6 class="fw-bold text-muted mb-2">${baslik}</h6><div class="row">${cards}</div>`;
+      };
+
+      html += bolum('<i class="bx bx-log-in-circle me-1"></i>Teslim Fotoğrafları', gruplar.teslim);
+      html += bolum('<i class="bx bx-log-out-circle me-1 mt-2"></i>İade Fotoğrafları', gruplar.iade);
+      body.html(html);
+    }).fail(() => {
+      body.html('<div class="text-center text-danger p-4">Sunucu hatası oluştu.</div>');
+    });
+  },
+
+  zimmetFotoSil: function (fotoId, btnEl) {
+    Swal.fire({
+      title: "Emin misiniz?",
+      text: "Fotoğraf kalıcı olarak silinecek.",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Evet, Sil",
+      cancelButtonText: "Vazgeç",
+      confirmButtonColor: "#f46a6a",
+    }).then((result) => {
+      if (!result.isConfirmed) return;
+      $.post(this.apiUrl, { action: "zimmet-foto-sil", id: fotoId }, (response) => {
+        if (response.status === "success") {
+          $(btnEl).closest(".col-6").remove();
+        } else {
+          Swal.fire("Hata", response.message, "error");
+        }
+      });
     });
   },
 
@@ -2027,6 +2220,10 @@ const AracTakip = {
     $("#aracModal")
       .find(".modal-title")
       .html('<i class="bx bx-car me-2"></i>Yeni Araç Ekle');
+    $("#ruhsatMevcutAlani, #ruhsatYuklemeAlani").addClass("d-none");
+    $("#ruhsatYeniAracUyari").removeClass("d-none");
+    $("#ruhsatDosyaInput").val("");
+    $("#btnRuhsatGoruntule").removeData("id");
   },
 
   resetZimmetModal: function () {
@@ -2819,6 +3016,26 @@ $(document).ready(function () {
     const plaka = $(this).data("plaka");
     if (id) AracTakip.aracSil(id, plaka);
   });
+  $(document).on("change", "#ruhsatDosyaInput", function () {
+    const file = this.files[0];
+    const aracId = $("#aracForm input[name='id']").val();
+    if (file && aracId) {
+      AracTakip.ruhsatYukle(aracId, file);
+    }
+  });
+  $(document).on("click", "#btnRuhsatDegistir", function () {
+    $("#ruhsatYuklemeAlani").removeClass("d-none");
+  });
+  $(document).on("click", "#btnRuhsatGoruntule", function () {
+    const encId = $(this).data("id");
+    if (encId) {
+      window.open("views/arac-takip/ruhsat-goruntule.php?id=" + encodeURIComponent(encId), "_blank");
+    }
+  });
+  $(document).on("click", "#btnRuhsatSil", function () {
+    const aracId = $("#aracForm input[name='id']").val();
+    if (aracId) AracTakip.ruhsatSil(aracId);
+  });
   $(document).on("click", ".arac-zimmet-gecmisi", function (e) {
     e.preventDefault();
     const id = $(this).data("id");
@@ -2846,6 +3063,14 @@ $(document).ready(function () {
   $(document).on("click", "#btnZimmetIadeKaydet", (e) => {
     e.preventDefault();
     AracTakip.zimmetIadeKaydet();
+  });
+  $(document).on("click", ".zimmet-foto-goster", function (e) {
+    e.preventDefault();
+    AracTakip.zimmetFotolariGoster($(this).data("id"));
+  });
+  $(document).on("click", ".zimmet-foto-sil", function (e) {
+    e.preventDefault();
+    AracTakip.zimmetFotoSil($(this).data("id"), this);
   });
   $(document).on("click", ".zimmet-hizli", function (e) {
     e.preventDefault();

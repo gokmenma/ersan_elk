@@ -22,17 +22,40 @@
                                 <th class="text-center">Teslim KM</th>
                                 <th class="text-center">İade KM</th>
                                 <th class="text-center">İşlem Yapan</th>
+                                <th class="text-center">Fotoğraf</th>
                                 <th class="text-center">Durum</th>
                             </tr>
                         </thead>
                         <tbody id="zimmetGecmisiTableBody">
                             <tr>
-                                <td colspan="8" class="text-center p-4 text-muted">
+                                <td colspan="9" class="text-center p-4 text-muted">
                                     <div class="spinner-border spinner-border-sm text-primary" role="status"></div> Yükleniyor...
                                 </td>
                             </tr>
                         </tbody>
                     </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Zimmet Fotoğraf Görüntüleme Modal -->
+<div class="modal fade" id="zimmetFotoModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title mb-0"><i class="bx bx-camera me-2"></i>Zimmet Fotoğrafları
+                    <span class="badge bg-success bg-opacity-10 text-success border border-success ms-1"><i class="bx bx-lock-alt"></i> Şifreli</span>
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body" id="zimmetFotoModalBody">
+                <div class="text-center p-4 text-muted">
+                    <div class="spinner-border spinner-border-sm text-primary" role="status"></div> Yükleniyor...
                 </div>
             </div>
             <div class="modal-footer">

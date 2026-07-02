@@ -40,6 +40,19 @@
                         <div class="col-12">
                             <?php echo \App\Helper\Form::FormFloatTextarea('notlar', '', 'İade notları (opsiyonel)', 'İade Notu', 'edit-3', 'form-control', false, '80px'); ?>
                         </div>
+
+                        <div class="col-12">
+                            <div class="p-3 border rounded bg-white">
+                                <div class="d-flex align-items-center mb-2">
+                                    <span class="text-muted small fw-semibold"><i class="bx bx-camera me-1"></i>İade Fotoğrafları</span>
+                                    <span class="badge bg-success bg-opacity-10 text-success border border-success ms-2">
+                                        <i class="bx bx-lock-alt"></i> Şifreli Saklanır
+                                    </span>
+                                </div>
+                                <input type="file" class="form-control form-control-sm" name="iade_fotograflari[]" multiple accept="image/jpeg,image/png,image/webp,application/pdf">
+                                <small class="text-muted d-block mt-1">Aracın iade anındaki durumunu belgeleyin. Birden fazla dosya seçebilirsiniz (maks. 8MB).</small>
+                            </div>
+                        </div>
                     </div>
                 </form>
             </div>

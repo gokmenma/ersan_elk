@@ -136,6 +136,10 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                             <button type="button" id="exportExcelKm" class="btn btn-link btn-sm text-success text-decoration-none px-2 d-flex align-items-center" title="Excel'e Aktar">
                                 <i class="bx bx-spreadsheet fs-5 me-1"></i> <span class="d-none d-xl-inline">Excel'e Aktar</span>
                             </button>
+                            <div class="vr" style="height: 20px; align-self: center;"></div>
+                            <button type="button" data-bs-toggle="modal" data-bs-target="#imageCleanupModal" class="btn btn-link btn-sm text-danger text-decoration-none px-2 d-flex align-items-center" title="Eski Resimleri Temizle">
+                                <i class="bx bx-trash fs-5 me-1"></i> <span class="d-none d-xl-inline">Eski Resimleri Temizle</span>
+                            </button>
                         </div>
                     </div>
 
@@ -311,6 +315,67 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
             </div>
             <div class="modal-body p-0">
                 <img src="" id="modalViewImg" class="img-fluid w-100" alt="KM Bildirim Resmi" style="max-height: 85vh; object-fit: contain;">
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- KM Resim Arşivleme ve Temizlik Modalı -->
+<div class="modal fade" id="imageCleanupModal" tabindex="-1" role="dialog" aria-labelledby="imageCleanupModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+            <div class="modal-header bg-danger py-3 px-4 border-0" style="border-top-left-radius: 12px; border-top-right-radius: 12px;">
+                <div class="d-flex align-items-center">
+                    <div class="avatar-xs me-2">
+                        <span class="avatar-title rounded-circle bg-white text-danger">
+                            <i class="bx bx-trash"></i>
+                        </span>
+                    </div>
+                    <div>
+                        <h6 class="modal-title mb-0 text-white fw-bold">KM Resimlerini Arşivle & Temizle</h6>
+                    </div>
+                </div>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body p-4">
+                <div class="p-3 border rounded bg-light mb-3" style="font-size: 0.85rem; border-left: 4px solid #f46a6a !important;">
+                    Belirttiğiniz dönemdeki KM bildirim resimleri araç bazında klasörlenerek ZIP olarak indirilebilir hale getirilecek ve sunucudan kalıcı olarak silinecektir.
+                </div>
+                
+                <div id="cleanupFormSection">
+                    <div class="mb-3">
+                        <?php echo \App\Helper\Form::FormDateRange('cleanup_date_range', '', 'Tarih Aralığı Seçin', 'calendar'); ?>
+                    </div>
+                    
+                    <button type="button" id="btnCheckCleanupCount" class="btn btn-secondary w-100 mb-3 fw-bold">
+                        <i class="bx bx-search me-1"></i> Resim Adedini Sorgula
+                    </button>
+                    
+                    <div class="alert alert-info text-center py-2 d-none" id="cleanupCountFeedback">
+                        Sorgulanıyor...
+                    </div>
+                    
+                    <button type="button" id="btnStartCleanup" class="btn btn-danger w-100 fw-bold d-none">
+                        <i class="bx bx-archive-in me-1"></i> Arşivle ve Sunucudan Sil
+                    </button>
+                </div>
+                
+                <div id="cleanupLoadingSection" class="text-center py-4 d-none">
+                    <div class="spinner-border text-danger mb-3" role="status"></div>
+                    <h6 class="fw-bold">Arşiv Hazırlanıyor ve Temizlik Yapılıyor...</h6>
+                    <p class="text-muted small">Lütfen bu pencereyi kapatmayın.</p>
+                </div>
+                
+                <div id="cleanupResultSection" class="text-center py-3 d-none">
+                    <i class="bx bx-check-circle text-success" style="font-size: 4rem;"></i>
+                    <h5 class="mt-3 mb-4 fw-bold">İşlem Tamamlandı!</h5>
+                    <a href="" id="btnDownloadCleanupZip" class="btn btn-success w-100 mb-3 fw-bold" target="_blank">
+                        <i class="bx bx-download me-2"></i>Arşivi İndir (ZIP)
+                    </a>
+                    <button type="button" id="btnDeleteServerZip" class="btn btn-outline-danger w-100 fw-bold">
+                        <i class="bx bx-trash me-2"></i>Arşiv Dosyasını Sunucudan Sil
+                    </button>
+                </div>
             </div>
         </div>
     </div>
@@ -1045,6 +1110,132 @@ $(document).ready(function() {
         }, 'json').fail(function() {
             Swal.fire('Hata', 'İşlem sırasında bir bağlantı hatası oluştu.', 'error');
             btnSubmit.prop('disabled', false).html(oldBtnHtml);
+        });
+    });
+
+    // KM Resim Temizleme ve Arşivleme Modalı Olayları
+    $('#imageCleanupModal').on('show.bs.modal', function () {
+        // Reset modal state
+        $('#cleanupFormSection').removeClass('d-none');
+        $('#cleanupLoadingSection').addClass('d-none');
+        $('#cleanupResultSection').addClass('d-none');
+        $('#cleanupCountFeedback').addClass('d-none').text('');
+        $('#btnStartCleanup').addClass('d-none');
+        
+        // Initialize flatpickr on the date range input
+        $('#cleanup_date_range').val('').flatpickr({
+            mode: 'range',
+            locale: 'tr',
+            dateFormat: 'd.m.Y'
+        });
+
+        // Ensure feather icons are rendered inside the modal
+        if (typeof feather !== "undefined") {
+            setTimeout(function() {
+                feather.replace();
+            }, 100);
+        }
+    });
+
+    $('#btnCheckCleanupCount').on('click', function () {
+        const dateRange = $('#cleanup_date_range').val();
+        if (!dateRange) {
+            Swal.fire('Uyarı', 'Lütfen bir tarih aralığı seçin.', 'warning');
+            return;
+        }
+
+        const btn = $(this);
+        const oldHtml = btn.html();
+
+        btn.prop('disabled', true).html('<i class="bx bx-loader bx-spin me-1"></i> Sorgulanıyor...');
+        $('#cleanupCountFeedback').addClass('d-none');
+        $('#btnStartCleanup').addClass('d-none');
+
+        $.post('views/arac-takip/api.php', {
+            action: 'get-km-image-cleanup-count',
+            date_range: dateRange
+        }, function (res) {
+            btn.prop('disabled', false).html(oldHtml);
+            if (res.status === 'success') {
+                const count = res.count;
+                $('#cleanupCountFeedback')
+                    .removeClass('d-none alert-danger alert-info alert-warning')
+                    .addClass(count > 0 ? 'alert-info' : 'alert-warning')
+                    .html(`Seçilen tarih aralığında <b>${count}</b> adet resim dosyası bulundu.`);
+                
+                if (count > 0) {
+                    $('#btnStartCleanup').removeClass('d-none');
+                }
+            } else {
+                $('#cleanupCountFeedback')
+                    .removeClass('d-none alert-info alert-warning')
+                    .addClass('alert-danger')
+                    .text(res.message || 'Sorgulama sırasında hata oluştu.');
+            }
+        }, 'json').fail(function () {
+            btn.prop('disabled', false).html(oldHtml);
+            Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
+        });
+    });
+
+    $('#btnStartCleanup').on('click', function () {
+        const dateRange = $('#cleanup_date_range').val();
+        if (!dateRange) {
+            Swal.fire('Uyarı', 'Lütfen bir tarih aralığı seçin.', 'warning');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Emin misiniz?',
+            text: "Bu işlem belirtilen tarih aralığındaki tüm resimleri arşivleyip sunucudan kalıcı olarak silecektir!",
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#f46a6a',
+            confirmButtonText: 'Evet, Arşivle ve Sil',
+            cancelButtonText: 'Vazgeç'
+        }).then((result) => {
+            if (result.isConfirmed) {
+                $('#cleanupFormSection').addClass('d-none');
+                $('#cleanupLoadingSection').removeClass('d-none');
+
+                $.post('views/arac-takip/api.php', {
+                    action: 'start-km-image-cleanup',
+                    date_range: dateRange
+                }, function (res) {
+                    $('#cleanupLoadingSection').addClass('d-none');
+                    if (res.status === 'success') {
+                        $('#btnDownloadCleanupZip').attr('href', res.zip_url);
+                        $('#cleanupResultSection').removeClass('d-none');
+                    } else {
+                        $('#cleanupFormSection').removeClass('d-none');
+                        Swal.fire('Hata', res.message, 'error');
+                    }
+                }, 'json').fail(function () {
+                    $('#cleanupLoadingSection').addClass('d-none');
+                    $('#cleanupFormSection').removeClass('d-none');
+                    Swal.fire('Hata', 'İşlem sırasında bağlantı hatası oluştu.', 'error');
+                });
+            }
+        });
+    });
+
+    $('#btnDeleteServerZip').on('click', function () {
+        const btn = $(this);
+        btn.prop('disabled', true).html('<i class="bx bx-loader bx-spin me-1"></i> Siliniyor...');
+        
+        $.post('views/arac-takip/api.php', {
+            action: 'delete-km-archive-zip'
+        }, function (res) {
+            btn.prop('disabled', false).html('<i class="bx bx-trash me-2"></i>Arşiv Dosyasını Sunucudan Sil');
+            if (res.status === 'success') {
+                $('#imageCleanupModal').modal('hide');
+                Swal.fire('Başarılı', 'Arşiv dosyası sunucudan başarıyla silindi.', 'success');
+            } else {
+                Swal.fire('Hata', 'Arşiv silinirken hata oluştu.', 'error');
+            }
+        }, 'json').fail(function () {
+            btn.prop('disabled', false).html('<i class="bx bx-trash me-2"></i>Arşiv Dosyasını Sunucudan Sil');
+            Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
         });
     });
 });

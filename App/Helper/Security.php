@@ -96,4 +96,41 @@ class Security
 
         return ($decrypted !== false) ? $decrypted : 0;
     }
+
+    // Dosya (binary) şifreleme - diske ham (IV + ciphertext) olarak yazılır
+    public static function encryptFile(string $binaryData): string
+    {
+        $method = "AES-256-CBC";
+        $key = self::getKey();
+        $iv = openssl_random_pseudo_bytes(16);
+
+        $encrypted = openssl_encrypt($binaryData, $method, $key, OPENSSL_RAW_DATA, $iv);
+
+        if ($encrypted === false) {
+            throw new \RuntimeException('Dosya şifrelenemedi.');
+        }
+
+        return $iv . $encrypted;
+    }
+
+    public static function decryptFile(string $encryptedData): string
+    {
+        $method = "AES-256-CBC";
+        $key = self::getKey();
+
+        if (strlen($encryptedData) <= 16) {
+            throw new \RuntimeException('Şifreli dosya geçersiz.');
+        }
+
+        $iv = substr($encryptedData, 0, 16);
+        $encrypted = substr($encryptedData, 16);
+
+        $decrypted = openssl_decrypt($encrypted, $method, $key, OPENSSL_RAW_DATA, $iv);
+
+        if ($decrypted === false) {
+            throw new \RuntimeException('Dosya çözülemedi.');
+        }
+
+        return $decrypted;
+    }
 }

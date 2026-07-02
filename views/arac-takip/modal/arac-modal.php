@@ -166,6 +166,50 @@
                                         <div class="col-12 mt-3">
                                             <?php echo Form::FormFloatTextarea('notlar', null, 'Araç hakkında notlar...', 'Kayda Ait Notlar', 'file-text', 'form-control', false, '150px'); ?>
                                         </div>
+
+                                        <div class="col-12 mt-3">
+                                            <div class="p-3 border rounded bg-light bg-opacity-50" id="ruhsatGorselAlani">
+                                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                                    <div class="text-muted small fw-semibold">
+                                                        <i class="bx bx-id-card me-1"></i>Ruhsat Görseli
+                                                        <span class="badge bg-success bg-opacity-10 text-success border border-success ms-1">
+                                                            <i class="bx bx-lock-alt"></i> Şifreli Saklanır
+                                                        </span>
+                                                    </div>
+                                                </div>
+
+                                                <div id="ruhsatYeniAracUyari" class="text-muted small d-none">
+                                                    <i class="bx bx-info-circle me-1"></i>Ruhsat görseli yükleyebilmek için önce aracı kaydedin.
+                                                </div>
+
+                                                <div id="ruhsatMevcutAlani" class="d-none">
+                                                    <div class="d-flex align-items-center gap-2 mb-2">
+                                                        <i class="bx bx-file-blank fs-3 text-primary" id="ruhsatDosyaIkon"></i>
+                                                        <div class="flex-grow-1">
+                                                            <div class="fw-medium text-truncate" id="ruhsatDosyaAdi">-</div>
+                                                            <div class="text-muted small" id="ruhsatDosyaMeta">-</div>
+                                                        </div>
+                                                    </div>
+                                                    <button type="button" class="btn btn-sm btn-outline-primary" id="btnRuhsatGoruntule">
+                                                        <i class="bx bx-show me-1"></i>Görüntüle
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary" id="btnRuhsatDegistir">
+                                                        <i class="bx bx-refresh me-1"></i>Değiştir
+                                                    </button>
+                                                    <button type="button" class="btn btn-sm btn-outline-danger" id="btnRuhsatSil">
+                                                        <i class="bx bx-trash me-1"></i>Kaldır
+                                                    </button>
+                                                </div>
+
+                                                <div id="ruhsatYuklemeAlani" class="d-none">
+                                                    <input type="file" class="form-control form-control-sm" id="ruhsatDosyaInput" accept="image/jpeg,image/png,image/webp,application/pdf">
+                                                    <small class="text-muted d-block mt-1">JPG, PNG, WEBP veya PDF - Maks. 8MB.</small>
+                                                    <div class="progress d-none mt-2" id="ruhsatUploadProgress" style="height: 6px;">
+                                                        <div class="progress-bar" role="progressbar" style="width: 0%"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
                                     </div>
                                 </div>
                             </div>

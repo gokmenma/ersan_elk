@@ -357,6 +357,70 @@ class AracModel extends Model
     }
 
     /**
+     * Ruhsat dosyası meta bilgisiyle birlikte aracı getirir (firma bazlı yetki kontrolü dahil)
+     */
+    public function getRuhsatSahibiArac($aracId)
+    {
+        $sql = $this->db->prepare("
+            SELECT id, firma_id, plaka, ruhsat_dosya_adi, ruhsat_orijinal_ad, ruhsat_mime_tipi, ruhsat_boyutu, ruhsat_yukleme_tarihi
+            FROM {$this->table}
+            WHERE id = :id AND firma_id = :firma_id AND silinme_tarihi IS NULL
+        ");
+        $sql->execute([
+            'id' => $aracId,
+            'firma_id' => $_SESSION['firma_id']
+        ]);
+        return $sql->fetch(PDO::FETCH_OBJ) ?: null;
+    }
+
+    /**
+     * Ruhsat dosyası meta bilgilerini kaydeder
+     */
+    public function updateRuhsatBilgisi($aracId, $dosyaAdi, $orijinalAd, $mimeTipi, $boyut, $yukleyenId)
+    {
+        $sql = $this->db->prepare("
+            UPDATE {$this->table}
+            SET ruhsat_dosya_adi = :dosya_adi,
+                ruhsat_orijinal_ad = :orijinal_ad,
+                ruhsat_mime_tipi = :mime_tipi,
+                ruhsat_boyutu = :boyut,
+                ruhsat_yukleme_tarihi = NOW(),
+                ruhsat_yukleyen_id = :yukleyen_id
+            WHERE id = :id AND firma_id = :firma_id
+        ");
+        return $sql->execute([
+            'dosya_adi' => $dosyaAdi,
+            'orijinal_ad' => $orijinalAd,
+            'mime_tipi' => $mimeTipi,
+            'boyut' => $boyut,
+            'yukleyen_id' => $yukleyenId,
+            'id' => $aracId,
+            'firma_id' => $_SESSION['firma_id']
+        ]);
+    }
+
+    /**
+     * Ruhsat dosyası meta bilgilerini temizler (dosyanın kendisi çağıran tarafından silinir)
+     */
+    public function clearRuhsatBilgisi($aracId)
+    {
+        $sql = $this->db->prepare("
+            UPDATE {$this->table}
+            SET ruhsat_dosya_adi = NULL,
+                ruhsat_orijinal_ad = NULL,
+                ruhsat_mime_tipi = NULL,
+                ruhsat_boyutu = NULL,
+                ruhsat_yukleme_tarihi = NULL,
+                ruhsat_yukleyen_id = NULL
+            WHERE id = :id AND firma_id = :firma_id
+        ");
+        return $sql->execute([
+            'id' => $aracId,
+            'firma_id' => $_SESSION['firma_id']
+        ]);
+    }
+
+    /**
      * Yaklaşan muayene/sigorta tarihleri
      */
     public function getYaklasanTarihler($gunSayisi = 30)

@@ -83,14 +83,47 @@ class AracKmBildirimModel extends Model
      */
     public function getLastKm($aracId, $tarih, $tur, $excludeId = 0)
     {
-        // $tarih ve $tur mevcut bildirimimiz.
-        // Biz bundan önceki en son kaydedilmiş (reddedilmemiş) KM değerini istiyoruz.
+        // En son onaylanmış/düzeltilmiş resmi kayıtlardan (arac_km_kayitlari) en güncel KM'yi alalım
+        $approvedKm = 0;
         
+        // Eğer akşam kaydı giriliyorsa, aynı günün sabahı (başlangıcı) onaylanmış olabilir:
+        if ($tur === 'aksam') {
+            $stmt = $this->db->prepare("
+                SELECT baslangic_km 
+                FROM arac_km_kayitlari 
+                WHERE arac_id = :aid AND tarih = :tarih AND silinme_tarihi IS NULL
+            ");
+            $stmt->execute(['aid' => $aracId, 'tarih' => $tarih]);
+            $resApp = $stmt->fetch(PDO::FETCH_OBJ);
+            if ($resApp && (int)$resApp->baslangic_km > 0) {
+                $approvedKm = (int)$resApp->baslangic_km;
+            }
+        }
+        
+        // Yoksa önceki günlerin en son bitiş (veya başlangıç) KM'sini al:
+        if ($approvedKm === 0) {
+            $stmt = $this->db->prepare("
+                SELECT bitis_km, baslangic_km 
+                FROM arac_km_kayitlari 
+                WHERE arac_id = :aid 
+                AND tarih < :tarih 
+                AND silinme_tarihi IS NULL 
+                ORDER BY tarih DESC, id DESC LIMIT 1
+            ");
+            $stmt->execute(['aid' => $aracId, 'tarih' => $tarih]);
+            $resApp = $stmt->fetch(PDO::FETCH_OBJ);
+            if ($resApp) {
+                $approvedKm = (int)$resApp->bitis_km > 0 ? (int)$resApp->bitis_km : (int)$resApp->baslangic_km;
+            }
+        }
+
+        // Beklemedeki (henüz onaylanmamış) bildirimlerden en güncel KM'yi alalım
+        $pendingKm = 0;
         $sqlStr = "
             SELECT bitis_km 
             FROM {$this->table} 
             WHERE arac_id = :aid 
-            AND durum != 'reddedildi'
+            AND durum = 'beklemede'
             AND (
                 tarih < :tarih 
                 OR (tarih = :tarih AND :tur = 'aksam' AND tur = 'sabah')
@@ -103,8 +136,7 @@ class AracKmBildirimModel extends Model
 
         $sqlStr .= " ORDER BY tarih DESC, (CASE WHEN tur = 'aksam' THEN 2 ELSE 1 END) DESC, bitis_km DESC, id DESC LIMIT 1 ";
         
-        $sql = $this->db->prepare($sqlStr);
-        
+        $stmtPend = $this->db->prepare($sqlStr);
         $params = [
             'aid' => $aracId,
             'tarih' => $tarih,
@@ -115,10 +147,21 @@ class AracKmBildirimModel extends Model
             $params['exid'] = $excludeId;
         }
         
-        $sql->execute($params);
+        $stmtPend->execute($params);
+        $resPend = $stmtPend->fetch(PDO::FETCH_OBJ);
+        if ($resPend) {
+            $pendingKm = (int)$resPend->bitis_km;
+        }
+
+        // Eğer resmi kayıt ve beklemede kayıt yoksa, araç ilk başlangıç KM'sini kullanalım
+        if ($approvedKm === 0 && $pendingKm === 0) {
+            $stmtArac = $this->db->prepare("SELECT baslangic_km FROM araclar WHERE id = :aid");
+            $stmtArac->execute(['aid' => $aracId]);
+            $resArac = $stmtArac->fetch(PDO::FETCH_OBJ);
+            $approvedKm = $resArac ? (int)$resArac->baslangic_km : 0;
+        }
         
-        $res = $sql->fetch(PDO::FETCH_OBJ);
-        return $res ? (int)$res->bitis_km : 0;
+        return max($approvedKm, $pendingKm);
     }
 
     /**
@@ -287,6 +330,57 @@ class AracKmBildirimModel extends Model
                 OR akb.aciklama LIKE :search
             )";
             $sqlParams['search'] = '%' . $searchVal . '%';
+        }
+
+        // Column-specific search filter
+        foreach ($columns as $idx => $column) {
+            $colSearch = trim($column['search']['value'] ?? '');
+            if ($colSearch !== '') {
+                $colName = $column['name'] ?? $column['data'] ?? '';
+                if (empty($colName)) continue;
+                
+                // Map to database column
+                $dbCol = '';
+                switch ($colName) {
+                    case 'personel':
+                        $dbCol = 'p.adi_soyadi';
+                        break;
+                    case 'arac':
+                        $whereSql .= " AND (a.plaka LIKE :col_search_{$idx} OR a.marka LIKE :col_search_{$idx} OR a.model LIKE :col_search_{$idx})";
+                        $sqlParams["col_search_{$idx}"] = '%' . $colSearch . '%';
+                        continue 2;
+                    case 'tarih':
+                        if (preg_match('/^\d{2}\.\d{2}\.\d{4}$/', $colSearch)) {
+                            $parts = explode('.', $colSearch);
+                            $colSearch = $parts[2] . '-' . $parts[1] . '-' . $parts[0];
+                        }
+                        $dbCol = 'akb.tarih';
+                        break;
+                    case 'olusturma_tarihi':
+                        $dbCol = 'akb.olusturma_tarihi';
+                        break;
+                    case 'tur':
+                        $dbCol = 'akb.tur';
+                        break;
+                    case 'bitis_km':
+                        $dbCol = 'akb.bitis_km';
+                        break;
+                    case 'onaylanan_km':
+                        $dbCol = 'akb.onaylanan_km';
+                        break;
+                    case 'aciklama':
+                        $dbCol = 'akb.aciklama';
+                        break;
+                    case 'red_nedeni':
+                        $dbCol = 'akb.red_nedeni';
+                        break;
+                }
+                
+                if ($dbCol !== '') {
+                    $whereSql .= " AND {$dbCol} LIKE :col_search_{$idx}";
+                    $sqlParams["col_search_{$idx}"] = '%' . $colSearch . '%';
+                }
+            }
         }
 
         // Total Count (without search filter)
