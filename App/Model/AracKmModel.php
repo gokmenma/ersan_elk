@@ -424,9 +424,6 @@ class AracKmModel extends Model
         return $stmt->fetch(PDO::FETCH_OBJ);
     }
 
-    /**
-     * Bir KM kaydının başlangıç KM'sini günceller ve yapılan KM'yi yeniden hesaplar
-     */
     public function zincirlemeGuncelle($kayitId, $yeniBaslangicKm)
     {
         // Önce mevcut kaydı al
@@ -434,16 +431,12 @@ class AracKmModel extends Model
         if (!$kayit)
             return false;
 
-        $bitisKm = intval($kayit->bitis_km);
-        $yapilanKm = ($bitisKm > 0 && $yeniBaslangicKm > 0 && $bitisKm > $yeniBaslangicKm) ? ($bitisKm - $yeniBaslangicKm) : 0;
-
         $sql = "UPDATE {$this->table} 
-                SET baslangic_km = :baslangic_km, yapilan_km = :yapilan_km 
+                SET baslangic_km = :baslangic_km 
                 WHERE id = :id";
         $stmt = $this->db->prepare($sql);
         return $stmt->execute([
             'baslangic_km' => $yeniBaslangicKm,
-            'yapilan_km' => $yapilanKm,
             'id' => $kayitId
         ]);
     }
@@ -552,11 +545,15 @@ class AracKmModel extends Model
                 ];
             }
             if ($row->gun) {
+                $yapilan_km = $row->yapilan_km;
+                if ((float)$row->baslangic_km == 0 || (float)$row->bitis_km == 0) {
+                    $yapilan_km = 0;
+                }
                 $data[$row->arac_id]['gunler'][$row->gun] = [
                     'id' => $row->id,
                     'baslangic' => $row->baslangic_km,
                     'bitis' => $row->bitis_km,
-                    'yapilan' => $row->yapilan_km,
+                    'yapilan' => $yapilan_km,
                     'giren_kullanici' => $row->giren_kullanici,
                     'created_at' => $row->created_at
                 ];
@@ -621,11 +618,15 @@ class AracKmModel extends Model
 
         $gunler = [];
         foreach ($kmData as $row) {
+            $yapilan_km = $row->yapilan_km;
+            if ((float)$row->baslangic_km == 0 || (float)$row->bitis_km == 0) {
+                $yapilan_km = 0;
+            }
             $gunler[$row->gun] = [
                 'id' => $row->id,
                 'baslangic' => $row->baslangic_km,
                 'bitis' => $row->bitis_km,
-                'yapilan' => $row->yapilan_km,
+                'yapilan' => $yapilan_km,
                 'giren_kullanici' => $row->giren_kullanici,
                 'created_at' => $row->created_at
             ];

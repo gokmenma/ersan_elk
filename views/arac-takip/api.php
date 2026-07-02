@@ -1060,13 +1060,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     break;
                 }
 
+                $yapilan_km_response = ($bitis_km > 0 && $baslangic_km > 0 && $bitis_km > $baslangic_km) ? ($bitis_km - $baslangic_km) : 0;
+                if ($baslangic_km == 0 || $bitis_km == 0) {
+                    $yapilan_km_response = 0;
+                }
+
                 $saveData = [
                     'firma_id' => $_SESSION['firma_id'],
                     'arac_id' => $arac_id,
                     'tarih' => $tarih,
                     'baslangic_km' => $baslangic_km,
                     'bitis_km' => $bitis_km,
-                    'yapilan_km' => ($bitis_km > 0 && $baslangic_km > 0 && $bitis_km > $baslangic_km) ? ($bitis_km - $baslangic_km) : 0,
                     'olusturan_kullanici_id' => $_SESSION['user_id'] ?? null,
                     'silinme_tarihi' => null // Geri yükleme ihtimaline karşı
                 ];
@@ -1092,7 +1096,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $Arac->updateKm($arac_id, $bitis_km);
                 }
 
-                echo json_encode(['status' => 'success', 'message' => 'KM güncellendi.', 'yapilan' => $saveData['yapilan_km'], 'id' => $numericId]);
+                echo json_encode(['status' => 'success', 'message' => 'KM güncellendi.', 'yapilan' => $yapilan_km_response, 'id' => $numericId]);
                 break;
 
             // =============================================
@@ -1990,15 +1994,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                                                 $kisiStr = !empty($gunData['giren_kullanici']) ? htmlspecialchars($gunData['giren_kullanici'], ENT_QUOTES, 'UTF-8') : '-';
                                                 $tooltip = 'data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="<div class=\'text-center\'><span class=\'fw-bold\'>' . $kisiStr . '</span><br><small class=\'opacity-75\'>' . $tarihStr . '</small></div>"';
                                             }
+                                            
+                                            $baslangicIsZero = $gunData && isset($gunData['baslangic']) && (float)$gunData['baslangic'] == 0;
+                                            $bitisIsZero = $gunData && isset($gunData['bitis']) && (float)$gunData['bitis'] == 0;
                                             ?>
-                                            <td class="text-center km-col km-start-col d-none bg-light <?= $cellClass ?> km-ctx-target"
+                                            <td class="text-center km-col km-start-col d-none bg-light <?= $cellClass ?> km-ctx-target <?= $baslangicIsZero ? 'km-cell-zero' : '' ?>"
                                                 data-arac-id="<?= Security::encrypt($arac_id) ?>" 
                                                 data-km-id="<?= $gunData && isset($gunData['id']) ? Security::encrypt($gunData['id']) : '' ?>"
                                                 data-day="<?= $i ?>" data-type="baslangic"
                                                 <?= $tooltip ?>>
                                                 <?= $gunData ? number_format($gunData['baslangic'], 0, ',', '.') : '-' ?>
                                             </td>
-                                            <td class="text-center km-col km-end-col d-none bg-light <?= $cellClass ?> km-ctx-target"
+                                            <td class="text-center km-col km-end-col d-none bg-light <?= $cellClass ?> km-ctx-target <?= $bitisIsZero ? 'km-cell-zero' : '' ?>"
                                                 data-arac-id="<?= Security::encrypt($arac_id) ?>" 
                                                 data-km-id="<?= $gunData && isset($gunData['id']) ? Security::encrypt($gunData['id']) : '' ?>"
                                                 data-day="<?= $i ?>" data-type="bitis" <?= $tooltip ?>>
@@ -2218,6 +2225,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     [data-bs-theme="dark"] .weekend-cell {
                         background-color: #352626 !important;
                     }
+                    .km-cell-zero {
+                        background-color: rgba(220, 53, 69, 0.15) !important;
+                        color: #dc3545 !important;
+                        font-weight: bold !important;
+                    }
                 </style>
                 <?php
                 $html = ob_get_clean();
@@ -2291,8 +2303,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                             for ($i = 1; $i <= $data['gunSayisi']; $i++) {
                                 $gunData = $data['gunler'][$i] ?? null;
 
-                                // Eğer o gün kayıt varsa, o günün başlangıcını kullan
-                                if ($gunData && (float) $gunData['baslangic'] > 0) {
+                                // Eğer o gün kayıt varsa ve başlangıç null değilse
+                                if ($gunData && $gunData['baslangic'] !== null) {
                                     $baslangicGoster = (float) $gunData['baslangic'];
                                 } else {
                                     // Kayıt yoksa bir önceki günün bitişini göster
@@ -2316,16 +2328,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                                     $kisiStr = !empty($gunData['giren_kullanici']) ? htmlspecialchars($gunData['giren_kullanici'], ENT_QUOTES, 'UTF-8') : '-';
                                     $tooltip = 'data-bs-toggle="tooltip" data-bs-html="true" data-bs-placement="top" title="<div class=\'text-center\'><span class=\'fw-bold\'>' . $kisiStr . '</span><br><small class=\'opacity-75\'>' . $tarihStr . '</small></div>"';
                                 }
+
+                                $baslangicIsZero = $gunData && isset($gunData['baslangic']) && (float)$gunData['baslangic'] == 0 && $gunData['baslangic'] !== null;
+                                $bitisIsZero = $gunData && isset($gunData['bitis']) && (float)$gunData['bitis'] == 0 && $gunData['bitis'] !== null;
                                 ?>
                                 <tr class="km-quick-row" data-date="<?= $tarih ?>" data-arac-id="<?= $arac_id ?>"
                                     data-arac-encrypt="<?= Security::encrypt($arac_id) ?>" data-day="<?= $i ?>"
                                     data-id="<?= $gunData['id'] ?? '' ?>" <?= $tooltip ?>>
                                     <td class="text-center fw-bold"><?= $tarih ?></td>
-                                    <td class="text-center km-editable" data-type="baslangic" data-day="<?= $i ?>" contenteditable="true">
-                                        <?= $baslangicGoster > 0 ? (int) $baslangicGoster : '' ?>
+                                    <td class="text-center km-editable <?= $baslangicIsZero ? 'km-cell-zero' : '' ?>" data-type="baslangic" data-day="<?= $i ?>" contenteditable="true">
+                                        <?= ($gunData && $gunData['baslangic'] !== null && (float)$gunData['baslangic'] == 0) ? '0' : ($baslangicGoster > 0 ? (int) $baslangicGoster : '') ?>
                                     </td>
-                                    <td class="text-center km-editable" data-type="bitis" data-day="<?= $i ?>" contenteditable="true">
-                                        <?= $bitisGoster > 0 ? (int) $bitisGoster : '' ?>
+                                    <td class="text-center km-editable <?= $bitisIsZero ? 'km-cell-zero' : '' ?>" data-type="bitis" data-day="<?= $i ?>" contenteditable="true">
+                                        <?= ($gunData && $gunData['bitis'] !== null && (float)$gunData['bitis'] == 0) ? '0' : ($bitisGoster > 0 ? (int) $bitisGoster : '') ?>
                                     </td>
                                     <td class="text-center fw-bold yapilan-km <?= $yapilan > 0 ? 'text-primary' : '' ?>"
                                         data-day="<?= $i ?>">
@@ -2438,6 +2453,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
                     .km-editable:hover {
                         background-color: #fff8e1 !important;
+                    }
+
+                    .bg-soft-danger {
+                        background-color: #f8d7da !important;
+                    }
+
+                    .km-cell-zero {
+                        background-color: rgba(220, 53, 69, 0.15) !important;
+                        color: #dc3545 !important;
+                        font-weight: bold !important;
                     }
 
                     .km-editable:focus {

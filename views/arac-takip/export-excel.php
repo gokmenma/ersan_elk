@@ -79,6 +79,11 @@ try {
     ];
     $sheet->getStyle('A1:' . $lastColStr . '2')->applyFromArray($baslikStyle);
 
+    $redStyle = [
+        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F8D7DA']],
+        'font' => ['color' => ['rgb' => '721C24'], 'bold' => true]
+    ];
+
     // Verileri Yaz
     $rowIdx = 3;
     $sira = 1;
@@ -97,9 +102,19 @@ try {
 
             if ($showKm) {
                 if ($gunData) {
-                    $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($dataColIdx) . $rowIdx, $gunData['baslangic']);
-                    $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($dataColIdx + 1) . $rowIdx, $gunData['bitis']);
+                    $basCell = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($dataColIdx) . $rowIdx;
+                    $bitCell = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($dataColIdx + 1) . $rowIdx;
+
+                    $sheet->setCellValue($basCell, $gunData['baslangic']);
+                    $sheet->setCellValue($bitCell, $gunData['bitis']);
                     $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($dataColIdx + 2) . $rowIdx, $yapilan);
+
+                    if (isset($gunData['baslangic']) && (float)$gunData['baslangic'] == 0 && $gunData['baslangic'] !== null) {
+                        $sheet->getStyle($basCell)->applyFromArray($redStyle);
+                    }
+                    if (isset($gunData['bitis']) && (float)$gunData['bitis'] == 0 && $gunData['bitis'] !== null) {
+                        $sheet->getStyle($bitCell)->applyFromArray($redStyle);
+                    }
                 } else {
                     $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($dataColIdx) . $rowIdx, '-');
                     $sheet->setCellValue(\PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($dataColIdx + 1) . $rowIdx, '-');

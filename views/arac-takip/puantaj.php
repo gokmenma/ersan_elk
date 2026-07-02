@@ -397,11 +397,29 @@ for ($m = 1; $m <= 12; $m++) {
             }
         };
 
-        $('#filterForm').on('submit', function (e) {
+         $('#filterForm').on('submit', function (e) {
             e.preventDefault();
             currentYear = $('select[name="year"]').val();
             currentMonth = $('select[name="month"]').val();
             currentAracId = $('select[name="arac_id"]').val();
+
+            // Save parameters to localStorage
+            localStorage.setItem('arac_puantaj_year', currentYear);
+            localStorage.setItem('arac_puantaj_month', currentMonth);
+            localStorage.setItem('arac_puantaj_arac_id', currentAracId);
+
+            // Update browser URL
+            const urlParams = new URLSearchParams(window.location.search);
+            urlParams.set('year', currentYear);
+            urlParams.set('month', currentMonth);
+            if (currentAracId) {
+                urlParams.set('arac_id', currentAracId);
+            } else {
+                urlParams.delete('arac_id');
+            }
+            const newUrl = window.location.pathname + '?' + urlParams.toString();
+            window.history.pushState({ path: newUrl }, '', newUrl);
+
             loadReport();
             const collapseEl = document.getElementById('collapseOne');
             if (collapseEl) {
@@ -507,7 +525,42 @@ for ($m = 1; $m <= 12; $m++) {
             });
         });
 
-        // Initial load
+        // Initial load check
+        const urlParams = new URLSearchParams(window.location.search);
+        let hasParams = urlParams.has('year') && urlParams.has('month');
+
+        if (!hasParams) {
+            const savedYear = localStorage.getItem('arac_puantaj_year');
+            const savedMonth = localStorage.getItem('arac_puantaj_month');
+            const savedAracId = localStorage.getItem('arac_puantaj_arac_id');
+
+            if (savedYear && savedMonth) {
+                currentYear = savedYear;
+                currentMonth = savedMonth;
+                currentAracId = savedAracId || '';
+
+                $('select[name="year"]').val(currentYear).trigger('change');
+                $('select[name="month"]').val(currentMonth).trigger('change');
+                $('select[name="arac_id"]').val(currentAracId).trigger('change');
+
+                // Update URL to match
+                urlParams.set('year', currentYear);
+                urlParams.set('month', currentMonth);
+                if (currentAracId) {
+                    urlParams.set('arac_id', currentAracId);
+                } else {
+                    urlParams.delete('arac_id');
+                }
+                const newUrl = window.location.pathname + '?' + urlParams.toString();
+                window.history.replaceState({ path: newUrl }, '', newUrl);
+            }
+        } else {
+            // Save current URL parameters to localStorage
+            localStorage.setItem('arac_puantaj_year', currentYear);
+            localStorage.setItem('arac_puantaj_month', currentMonth);
+            localStorage.setItem('arac_puantaj_arac_id', currentAracId);
+        }
+
         loadReport();
     });
 </script>

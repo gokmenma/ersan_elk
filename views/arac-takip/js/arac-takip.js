@@ -3026,6 +3026,17 @@ $(document).ready(function () {
     }
   });
 
+  $(document).on("input blur", ".km-editable", function () {
+    const td = $(this);
+    const valText = td.text().trim();
+    const val = parseInt(valText.replace(/\D/g, "")) || 0;
+    if (valText !== "" && val === 0) {
+      td.addClass("km-cell-zero");
+    } else {
+      td.removeClass("km-cell-zero");
+    }
+  });
+
   $(document).on("blur", ".km-editable", function () {
     const td = $(this);
     const tr = td.closest("tr");
@@ -3079,6 +3090,21 @@ $(document).ready(function () {
           setTimeout(() => td.removeClass("bg-soft-success"), 1000);
           td.data("old-val", currentValRaw);
 
+          // Success notification
+          if (window.toastr) {
+            toastr.success(response.message || "KM güncellendi.");
+          } else if (window.Swal) {
+            Swal.fire({
+              icon: "success",
+              title: "Başarılı",
+              text: response.message || "KM güncellendi.",
+              toast: true,
+              position: "top-end",
+              showConfirmButton: false,
+              timer: 2000,
+            });
+          }
+
           // Modal kapandığında tabloyu yenilemek için flag
           window._kmModalChanged = true;
 
@@ -3099,6 +3125,12 @@ $(document).ready(function () {
             );
             if (backgroundCell.length) {
               backgroundCell.text(formattedVal).addClass("bg-soft-success");
+              const valInt = parseInt(currentValRaw) || 0;
+              if (currentValRaw !== "" && valInt === 0) {
+                backgroundCell.addClass("km-cell-zero");
+              } else {
+                backgroundCell.removeClass("km-cell-zero");
+              }
               setTimeout(
                 () => backgroundCell.removeClass("bg-soft-success"),
                 1000,

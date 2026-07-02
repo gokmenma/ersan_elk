@@ -77,6 +77,11 @@ try {
     ];
     $sheet->getStyle('A6:E6')->applyFromArray($headerStyle);
 
+    $redStyle = [
+        'fill' => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => 'F8D7DA']],
+        'font' => ['color' => ['rgb' => '721C24'], 'bold' => true]
+    ];
+
     // Veriler
     $rowCount++;
     $genelToplam = 0;
@@ -87,14 +92,24 @@ try {
         $genelToplam += $yapilan;
         $tarih = str_pad($i, 2, '0', STR_PAD_LEFT) . '.' . $month . '.' . $year;
 
+        $basValue = $gunData ? $gunData['baslangic'] : '-';
+        $bitValue = $gunData ? $gunData['bitis'] : '-';
+
         $sheet->setCellValue('A' . $rowCount, $tarih);
-        $sheet->setCellValue('B' . $rowCount, $gunData ? $gunData['baslangic'] : '-');
-        $sheet->setCellValue('C' . $rowCount, $gunData ? $gunData['bitis'] : '-');
+        $sheet->setCellValue('B' . $rowCount, $basValue);
+        $sheet->setCellValue('C' . $rowCount, $bitValue);
         $sheet->setCellValue('D' . $rowCount, $yapilan > 0 ? $yapilan : '-');
         $sheet->setCellValue('E' . $rowCount, '');
 
         $sheet->getStyle('A' . $rowCount . ':E' . $rowCount)->getBorders()->getAllBorders()->setBorderStyle(Border::BORDER_THIN);
         $sheet->getStyle('A' . $rowCount . ':D' . $rowCount)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+
+        if ($gunData && isset($gunData['baslangic']) && (float)$gunData['baslangic'] == 0 && $gunData['baslangic'] !== null) {
+            $sheet->getStyle('B' . $rowCount)->applyFromArray($redStyle);
+        }
+        if ($gunData && isset($gunData['bitis']) && (float)$gunData['bitis'] == 0 && $gunData['bitis'] !== null) {
+            $sheet->getStyle('C' . $rowCount)->applyFromArray($redStyle);
+        }
 
         if ($yapilan > 0) {
             $sheet->getStyle('D' . $rowCount)->getFont()->setBold(true)->getColor()->setRGB('0062CC');

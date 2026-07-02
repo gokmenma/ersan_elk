@@ -299,7 +299,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 }
 
                 .mm-active > .has-arrow:after {
-                    transform: translateY(-30%) rotate(45deg) !important; /* Point up when open */
+                    transform: translateY(-30%) rotate(-45deg) !important; /* Point down when open */
                 }
 
                 /* Sidebar Icons Refresh */
