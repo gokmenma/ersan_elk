@@ -141,6 +141,17 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1);
     }
 
+    .stat-mini-card.active {
+        background-color: rgba(0, 0, 0, 0.04) !important;
+        border-color: rgba(0, 0, 0, 0.25) !important;
+        transform: translateY(-2px);
+        box-shadow: 0 8px 20px rgba(0, 0, 0, 0.1) !important;
+    }
+    [data-bs-theme="dark"] .stat-mini-card.active {
+        background-color: rgba(255, 255, 255, 0.08) !important;
+        border-color: rgba(255, 255, 255, 0.25) !important;
+    }
+
     .stat-mini-card.stat-primary { border-left-color: #5156be; }
     .stat-mini-card.stat-success { border-left-color: #2ab57d; }
     .stat-mini-card.stat-info { border-left-color: #4ba6ef; }
@@ -1956,6 +1967,71 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             }
         });
 
+        // Üst grup filtre kartlarına tıklama olayı
+        $(document).on('click', '.stat-filter-card', function() {
+            var group = $(this).data('filter-group');
+            var table = endeksDataTable;
+            var colIdx = 7; // Sayaç Durumu
+            
+            if (!table) return;
+            
+            if (group === 'all') {
+                $(table.table().node()).trigger('dtf:set-filter', [colIdx, '']);
+                return;
+            }
+            
+            let activeSummary = window.unfilteredEndeksSummary || [];
+            let noStatuses = [
+                'SAYAÇ NORMAL', 'SARFİYAT YOK', 'SAYAÇ BOZUK', 'KULLANILMIYOR', 
+                'SAYAÇ PATLAK', 'SAYAÇ OKUNAMIYOR(KİRLİ)', 'SAYAÇ OKUNAMIYOR (KİRLİ)', 
+                'SAYAÇ YOK', 'SAYACIN CAMI KIRIK', 'GOTURU SARFİYAT', 'GÖTÜRÜ SARFİYAT', 
+                'SAYAÇ TERS', 'TERS DEVİR', 'TERS DEVIR', 'SAYAÇ KİRLİ', 'SAYAC KIRLI'
+            ];
+            let koStatuses = [
+                'EVDE YOK'
+            ];
+            
+            let otherStatuses = [];
+            activeSummary.forEach(function(item) {
+                let grp = getStatusGroup(item.sayac_durum);
+                if (grp !== 'NO' && grp !== 'KO') {
+                    if (otherStatuses.indexOf(item.sayac_durum) === -1) {
+                        otherStatuses.push(item.sayac_durum);
+                    }
+                }
+            });
+            
+            var targetStatuses = [];
+            if (group === 'NO') {
+                activeSummary.forEach(function(item) {
+                    let grp = getStatusGroup(item.sayac_durum);
+                    if (grp === 'NO') {
+                        targetStatuses.push(item.sayac_durum);
+                    }
+                });
+                if (targetStatuses.length === 0) targetStatuses = noStatuses;
+            } else if (group === 'KO') {
+                activeSummary.forEach(function(item) {
+                    let grp = getStatusGroup(item.sayac_durum);
+                    if (grp === 'KO') {
+                        targetStatuses.push(item.sayac_durum);
+                    }
+                });
+                if (targetStatuses.length === 0) targetStatuses = koStatuses;
+            } else if (group === 'OTHER') {
+                targetStatuses = otherStatuses;
+            }
+            
+            var filterValue = "multi:" + targetStatuses.join('|');
+            var currentSearch = table.column(colIdx).search();
+            
+            if (currentSearch === filterValue) {
+                $(table.table().node()).trigger('dtf:set-filter', [colIdx, '']);
+            } else {
+                $(table.table().node()).trigger('dtf:set-filter', [colIdx, targetStatuses, 'multi']);
+            }
+        });
+
         // Önceki fonksiyonu buna yönlendir (Geriye dönük uyumluluk için)
         function renderSayacDurumSummary(summary) {
             renderGenericSummary(summary, {
@@ -2076,9 +2152,41 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         }
 
                         if (json.recordsFiltered !== undefined) {
+                            let currentSearch = endeksDataTable ? endeksDataTable.column(7).search() : '';
+                            
+                            // Arama filtresi boşken gelen veriyi genel durum listesi olarak kaydet
+                            if (!currentSearch && json.summary) {
+                                window.unfilteredEndeksSummary = json.summary;
+                            }
+                            
+                            let activeSummary = window.unfilteredEndeksSummary || json.summary || [];
+                            
+                            let noStatuses = [
+                                'SAYAÇ NORMAL', 'SARFİYAT YOK', 'SAYAÇ BOZUK', 'KULLANILMIYOR', 
+                                'SAYAÇ PATLAK', 'SAYAÇ OKUNAMIYOR(KİRLİ)', 'SAYAÇ OKUNAMIYOR (KİRLİ)', 
+                                'SAYAÇ YOK', 'SAYACIN CAMI KIRIK', 'GOTURU SARFİYAT', 'GÖTÜRÜ SARFİYAT', 
+                                'SAYAÇ TERS', 'TERS DEVİR', 'TERS DEVIR', 'SAYAÇ KİRLİ', 'SAYAC KIRLI'
+                            ];
+                            let koStatuses = [
+                                'EVDE YOK'
+                            ];
+                            
+                            // Diğer durumları filtre dışı bırakarak dinamik topla
+                            let otherStatuses = [];
+                            activeSummary.forEach(function(item) {
+                                let grp = getStatusGroup(item.sayac_durum);
+                                if (grp !== 'NO' && grp !== 'KO') {
+                                    if (otherStatuses.indexOf(item.sayac_durum) === -1) {
+                                        otherStatuses.push(item.sayac_durum);
+                                    }
+                                }
+                            });
+                            
                             let totalAbone = 0;
                             let totalNormalOkuma = 0;
                             let totalKiyasOkuma = 0;
+                            let totalDigerOkuma = 0;
+                            
                             if (json.summary) {
                                 json.summary.forEach(function(item) {
                                     let count = parseInt(item.toplam_abone || 0);
@@ -2089,30 +2197,64 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                         totalNormalOkuma += count;
                                     } else if (grp === 'KO') {
                                         totalKiyasOkuma += count;
+                                    } else {
+                                        totalDigerOkuma += count;
                                     }
                                 });
                             }
                             
+                            // Aktif durum sınıfını belirle
+                            let activeClassAll = (!currentSearch) ? 'active' : '';
+                            
+                            let targetNoStatuses = [];
+                            activeSummary.forEach(function(item) {
+                                let grp = getStatusGroup(item.sayac_durum);
+                                if (grp === 'NO') {
+                                    targetNoStatuses.push(item.sayac_durum);
+                                }
+                            });
+                            if (targetNoStatuses.length === 0) targetNoStatuses = noStatuses;
+                            let activeClassNO = (currentSearch === 'multi:' + targetNoStatuses.join('|')) ? 'active' : '';
+                            
+                            let targetKoStatuses = [];
+                            activeSummary.forEach(function(item) {
+                                let grp = getStatusGroup(item.sayac_durum);
+                                if (grp === 'KO') {
+                                    targetKoStatuses.push(item.sayac_durum);
+                                }
+                            });
+                            if (targetKoStatuses.length === 0) targetKoStatuses = koStatuses;
+                            let activeClassKO = (currentSearch === 'multi:' + targetKoStatuses.join('|')) ? 'active' : '';
+                            
+                            let activeClassOther = (otherStatuses.length > 0 && currentSearch === 'multi:' + otherStatuses.join('|')) ? 'active' : '';
+                            
                             let html = `Endeks Okuma Raporu 
-                                <div class="stat-mini-card stat-success ms-3 count-animate">
+                                <div class="stat-mini-card stat-success ms-3 count-animate stat-filter-card ${activeClassAll}" data-filter-group="all" style="cursor: pointer;">
                                     <div class="icon-wrap"><i class="bx bx-group"></i></div>
-                                    <div>
-                                        <span class="value">${totalAbone.toLocaleString('tr-TR')}</span>
-                                        <span class="label">Abone</span>
+                                    <div class="d-flex flex-column align-items-start">
+                                        <span class="value" style="line-height: 1.1;">${totalAbone.toLocaleString('tr-TR')}</span>
+                                        <span class="label" style="line-height: 1.1; margin-left: 0; white-space: nowrap;">Abone</span>
                                     </div>
                                 </div>
-                                <div class="stat-mini-card stat-primary ms-3 count-animate">
+                                <div class="stat-mini-card stat-primary ms-3 count-animate stat-filter-card ${activeClassNO}" data-filter-group="NO" style="cursor: pointer;">
                                     <div class="icon-wrap"><i class="bx bx-check-circle"></i></div>
-                                    <div>
-                                        <span class="value">${totalNormalOkuma.toLocaleString('tr-TR')}</span>
-                                        <span class="label">Normal Okuma</span>
+                                    <div class="d-flex flex-column align-items-start">
+                                        <span class="value" style="line-height: 1.1;">${totalNormalOkuma.toLocaleString('tr-TR')}</span>
+                                        <span class="label" style="line-height: 1.1; margin-left: 0; white-space: nowrap;">Normal Okuma</span>
                                     </div>
                                 </div>
-                                <div class="stat-mini-card stat-warning ms-3 count-animate">
+                                <div class="stat-mini-card stat-warning ms-3 count-animate stat-filter-card ${activeClassKO}" data-filter-group="KO" style="cursor: pointer;">
                                     <div class="icon-wrap"><i class="bx bx-git-compare"></i></div>
-                                    <div>
-                                        <span class="value">${totalKiyasOkuma.toLocaleString('tr-TR')}</span>
-                                        <span class="label">Kıyas Okuma</span>
+                                    <div class="d-flex flex-column align-items-start">
+                                        <span class="value" style="line-height: 1.1;">${totalKiyasOkuma.toLocaleString('tr-TR')}</span>
+                                        <span class="label" style="line-height: 1.1; margin-left: 0; white-space: nowrap;">Kıyas Okuma</span>
+                                    </div>
+                                </div>
+                                <div class="stat-mini-card stat-secondary ms-3 count-animate stat-filter-card ${activeClassOther}" data-filter-group="OTHER" style="cursor: pointer;">
+                                    <div class="icon-wrap"><i class="bx bx-dots-horizontal-rounded"></i></div>
+                                    <div class="d-flex flex-column align-items-start">
+                                        <span class="value" style="line-height: 1.1;">${totalDigerOkuma.toLocaleString('tr-TR')}</span>
+                                        <span class="label" style="line-height: 1.1; margin-left: 0; white-space: nowrap;">Diğer</span>
                                     </div>
                                 </div>`;
                             $('#endeksTableTitle').html(html);
@@ -2495,6 +2637,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         // Filter form submit - server-side DataTable'ları yeniden yükle
         $('#filterForm').on('submit', function (e) {
             e.preventDefault();
+            window.unfilteredEndeksSummary = null; // Genel durum listesini temizle
             var activeTab = $('#puantajTabs .nav-link.active').data('tab-name');
             loadTabContent(activeTab);
 
