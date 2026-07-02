@@ -1822,7 +1822,9 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 'sayac patlak',
                 'sayac ters',
                 'sayac yok',
-                'ters devir'
+                'ters devir',
+                'okuma kapali(ok)',
+                'okuma kapali (ok)'
             ];
             
             var koPatterns = [
@@ -1985,7 +1987,8 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 'SAYAÇ NORMAL', 'SARFİYAT YOK', 'SAYAÇ BOZUK', 'KULLANILMIYOR', 
                 'SAYAÇ PATLAK', 'SAYAÇ OKUNAMIYOR(KİRLİ)', 'SAYAÇ OKUNAMIYOR (KİRLİ)', 
                 'SAYAÇ YOK', 'SAYACIN CAMI KIRIK', 'GOTURU SARFİYAT', 'GÖTÜRÜ SARFİYAT', 
-                'SAYAÇ TERS', 'TERS DEVİR', 'TERS DEVIR', 'SAYAÇ KİRLİ', 'SAYAC KIRLI'
+                'SAYAÇ TERS', 'TERS DEVİR', 'TERS DEVIR', 'SAYAÇ KİRLİ', 'SAYAC KIRLI',
+                'OKUMA KAPALI(OK)', 'OKUMA KAPALI (OK)', 'OKUMA KAPALI'
             ];
             let koStatuses = [
                 'EVDE YOK'
@@ -2165,7 +2168,8 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 'SAYAÇ NORMAL', 'SARFİYAT YOK', 'SAYAÇ BOZUK', 'KULLANILMIYOR', 
                                 'SAYAÇ PATLAK', 'SAYAÇ OKUNAMIYOR(KİRLİ)', 'SAYAÇ OKUNAMIYOR (KİRLİ)', 
                                 'SAYAÇ YOK', 'SAYACIN CAMI KIRIK', 'GOTURU SARFİYAT', 'GÖTÜRÜ SARFİYAT', 
-                                'SAYAÇ TERS', 'TERS DEVİR', 'TERS DEVIR', 'SAYAÇ KİRLİ', 'SAYAC KIRLI'
+                                'SAYAÇ TERS', 'TERS DEVİR', 'TERS DEVIR', 'SAYAÇ KİRLİ', 'SAYAC KIRLI',
+                                'OKUMA KAPALI(OK)', 'OKUMA KAPALI (OK)', 'OKUMA KAPALI'
                             ];
                             let koStatuses = [
                                 'EVDE YOK'
