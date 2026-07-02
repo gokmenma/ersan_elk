@@ -55,7 +55,7 @@ class AvansModel extends Model
             return 0;
 
         $maas = $personel->maas_tutari ?? 0;
-        $limit = $maas * 0.5; // Maaşın yarısı
+        $limit = min(10000, $maas * 0.5); // Maaşın yarısı, en fazla 10.000 TL
 
         // Kullanılan avansları düş
         $sql = $this->db->prepare("

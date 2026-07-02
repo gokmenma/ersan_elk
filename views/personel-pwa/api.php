@@ -1123,11 +1123,17 @@ try {
             break;
 
         case 'createAvansTalebi':
-            $tutar = $_POST['tutar'] ?? 0;
+            $tutar = floatval($_POST['tutar'] ?? 0);
             $odeme_sekli = $_POST['odeme_sekli'] ?? 'tek';
             $aciklama = $_POST['aciklama'] ?? '';
 
             $AvansModel = new AvansModel();
+            $limit = $AvansModel->getAvansLimiti($personel_id);
+            if ($tutar > $limit) {
+                response(false, null, 'Talep edilen tutar avans limitinizi (' . number_format($limit, 2, ',', '.') . ' TL) aşamaz.');
+                break;
+            }
+
             $AvansModel->saveWithAttr([
                 'personel_id' => $personel_id,
                 'tutar' => $tutar,
@@ -1212,7 +1218,7 @@ try {
 
         case 'updateAvansTalebi':
             $id = $_POST['id'] ?? 0;
-            $tutar = $_POST['tutar'] ?? 0;
+            $tutar = floatval($_POST['tutar'] ?? 0);
             $odeme_sekli = $_POST['odeme_sekli'] ?? 'tek';
             $aciklama = $_POST['aciklama'] ?? '';
 
@@ -1220,6 +1226,13 @@ try {
             $avans = $AvansModel->find($id);
 
             if ($avans && $avans->personel_id == $personel_id && $avans->durum == 'beklemede') {
+                $limit = $AvansModel->getAvansLimiti($personel_id);
+                $available_limit = $limit + floatval($avans->tutar);
+                if ($tutar > $available_limit) {
+                    response(false, null, 'Talep edilen tutar avans limitinizi (' . number_format($available_limit, 2, ',', '.') . ' TL) aşamaz.');
+                    break;
+                }
+
                 $AvansModel->saveWithAttr([
                     'id' => $id,
                     'tutar' => $tutar,
@@ -1508,6 +1521,21 @@ try {
             // Gün sayısını hesapla
             $diff = strtotime($bitis) - strtotime($baslangic);
             $toplam_gun = round($diff / (60 * 60 * 24)) + 1;
+
+            // İzin talep limit denetimleri
+            if ($toplam_gun > 3) {
+                $bugun = strtotime(date('Y-m-d'));
+                $baslangic_zaman = strtotime($baslangic);
+                $gun_farki = floor(($baslangic_zaman - $bugun) / (60 * 60 * 24));
+
+                if ($gun_farki < 14) {
+                    response(false, null, '3 günden fazla olan izinlerin en az iki hafta önceden bildirilmesi gerekir.');
+                }
+
+                if ($toplam_gun > 20) {
+                    response(false, null, 'İki haftadan uzun süre öncesinden yapılan izin talepleri en fazla 20 gün olabilir.');
+                }
+            }
 
             // $IzinModel zaten yukarıda tanımlandı
 

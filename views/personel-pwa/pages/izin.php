@@ -984,6 +984,23 @@
             return;
         }
 
+        // İzin talep limit denetimleri
+        if (toplamGun > 3) {
+            const bugun = new Date();
+            bugun.setHours(0, 0, 0, 0);
+            const gunFarki = Math.floor((baslangicD - bugun) / (1000 * 60 * 60 * 24));
+            
+            if (gunFarki < 14) {
+                Toast.show('3 günden fazla olan izinlerin en az iki hafta önceden bildirilmesi gerekir.', 'error');
+                return;
+            }
+            
+            if (toplamGun > 20) {
+                Toast.show('İki haftadan uzun süre öncesinden yapılan izin talepleri en fazla 20 gün olabilir.', 'error');
+                return;
+            }
+        }
+
         // Kalan izin kontrolü(izin tipi yıllık izin ise)
         if (formData.izin_tipi === 'yillik' && hakedisData && toplamGun > hakedisData.kalan_izin) {
             Toast.show(

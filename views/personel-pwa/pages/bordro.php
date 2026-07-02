@@ -218,6 +218,9 @@
 </style>
 
 <script>
+    let currentAdvanceLimit = 0;
+    let currentEditingAvans = null;
+
     document.addEventListener('DOMContentLoaded', function () {
         //Müşteri şimdiilik bordrolar görünmesin dedi
         //loadBordrolar();
@@ -253,6 +256,7 @@
                 document.getElementById('advance-limit').textContent = Format.currency(response.data.advance_limit || 0);
                 document.getElementById('pending-requests').textContent = response.data.pending_requests || 0;
                 document.getElementById('max-limit').textContent = Format.currency(response.data.advance_limit || 0);
+                currentAdvanceLimit = parseFloat(response.data.advance_limit || 0);
             }
         } catch (error) {
             console.error('Stats load error:', error);
@@ -433,13 +437,19 @@
     }
 
     function openNewAvansModal() {
+        currentEditingAvans = null;
         document.getElementById('avans-form').reset();
         document.getElementById('avans-id').value = '';
         document.getElementById('avans-submit-btn').textContent = 'Talebi Gönder';
+        
+        // Modal açıldığında limit bilgisini gösterelim
+        document.getElementById('max-limit').textContent = Format.currency(currentAdvanceLimit);
+        
         Modal.open('avans-modal');
     }
 
     function editAvans(avans) {
+        currentEditingAvans = avans;
         const form = document.getElementById('avans-form');
         form.reset();
 
@@ -448,6 +458,10 @@
         form.querySelector('[name="odeme_sekli"]').value = avans.odeme_sekli || 'tek';
         form.querySelector('[name="aciklama"]').value = avans.aciklama || '';
         form.querySelector('[name="onay"]').checked = true;
+
+        // Düzenlerken limit: (kalan limit + bu avansın eski tutarı)
+        const limitForEdit = currentAdvanceLimit + parseFloat(avans.tutar || 0);
+        document.getElementById('max-limit').textContent = Format.currency(limitForEdit);
 
         document.getElementById('avans-submit-btn').textContent = 'Güncelle';
         Modal.open('avans-modal');
@@ -485,6 +499,17 @@
 
         if (!Form.validate(form)) {
             Toast.show('Lütfen gerekli alanları doldurun', 'error');
+            return;
+        }
+
+        const requestedTutar = parseFloat(formData.tutar || 0);
+        let limit = currentAdvanceLimit;
+        if (isUpdate && currentEditingAvans) {
+            limit += parseFloat(currentEditingAvans.tutar || 0);
+        }
+
+        if (requestedTutar > limit) {
+            Toast.show(`Talep edilen tutar avans limitinizi (${Format.currency(limit)}) aşamaz.`, 'error');
             return;
         }
 
