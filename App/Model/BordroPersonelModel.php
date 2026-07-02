@@ -628,7 +628,7 @@ class BordroPersonelModel extends Model
         // yalnızca resmi (asgari bazlı) tutar kullanılır.
         $htcVergiBazliGosterim = $isInclusive ? $htcResmiBrutGosterim : $htcBrutGosterim;
 
-        // RTÇ/HTÇ brüt ek ödemesi: ilgili parametrenin (resmi_tatil/pazar_resmi) SGK/Gelir Vergisi/Damga Vergisi
+        // RTÇ/HTÇ brüt ek ödemesi: ilgili parametrenin (resmi_tatil_calisma/hafta_tatili_calisma) SGK/Gelir Vergisi/Damga Vergisi
         // "dahil mi" işaretine göre kesinti uygulanır; kalan net tutar bankaya yansır.
         $rtcHtcBrutGosterimToplam = round($rtcBrutGosterim + $htcVergiBazliGosterim, 2);
         $rtcHtcKesintiToplamGosterim = 0.0;
@@ -637,8 +637,8 @@ class BordroPersonelModel extends Model
             if ($this->cachedParametreModel === null) {
                 $this->cachedParametreModel = new \App\Model\BordroParametreModel();
             }
-            $rtcParametreGosterim = $this->cachedParametreModel->getByKod('resmi_tatil');
-            $htcParametreGosterim = $this->cachedParametreModel->getByKod('pazar_resmi');
+            $rtcParametreGosterim = $this->cachedParametreModel->getByKod('resmi_tatil_calisma');
+            $htcParametreGosterim = $this->cachedParametreModel->getByKod('hafta_tatili_calisma');
             $rtcSgkDahilGosterim = $rtcParametreGosterim ? (bool) $rtcParametreGosterim->sgk_matrahi_dahil : true;
             $rtcGvDahilGosterim = $rtcParametreGosterim ? (bool) $rtcParametreGosterim->gelir_vergisi_dahil : true;
             $rtcDamgaDahilGosterim = $rtcParametreGosterim ? (bool) ($rtcParametreGosterim->damga_vergisi_dahil ?? 1) : true;
@@ -4119,10 +4119,10 @@ class BordroPersonelModel extends Model
         $htcVergiBazli = $this->hasMaasaDahilSosyalYardim($kayit) ? $htcResmiBrutHesap : $htcBrutHesap;
         $rtcHtcBrutToplam = round($rtcBrutHesap + $htcVergiBazli, 2);
 
-        // İlgili parametrenin (resmi_tatil/pazar_resmi) SGK/Gelir Vergisi/Damga Vergisi "dahil mi" işaretleri
+        // İlgili parametrenin (resmi_tatil_calisma/hafta_tatili_calisma) SGK/Gelir Vergisi/Damga Vergisi "dahil mi" işaretleri
         // okunur; parametre tanımlı değilse güvenli taraf olarak dahil sayılır.
-        $rtcParametre = $parametrelerMap['resmi_tatil'] ?? null;
-        $htcParametre = $parametrelerMap['pazar_resmi'] ?? null;
+        $rtcParametre = $parametrelerMap['resmi_tatil_calisma'] ?? null;
+        $htcParametre = $parametrelerMap['hafta_tatili_calisma'] ?? null;
         $rtcSgkDahil = $rtcParametre ? (bool) $rtcParametre->sgk_matrahi_dahil : true;
         $rtcGvDahil = $rtcParametre ? (bool) $rtcParametre->gelir_vergisi_dahil : true;
         $rtcDamgaDahil = $rtcParametre ? (bool) ($rtcParametre->damga_vergisi_dahil ?? 1) : true;
@@ -4220,7 +4220,7 @@ class BordroPersonelModel extends Model
         }
 
         // NET maaş / Prim usulü personellerde ana sözleşme vergisiz kabul edilir, ama RTÇ/HTÇ brüt ek ödemesi
-        // ilgili parametrenin (resmi_tatil/pazar_resmi) SGK/Gelir Vergisi/Damga Vergisi "dahil mi" işaretine göre
+        // ilgili parametrenin (resmi_tatil_calisma/hafta_tatili_calisma) SGK/Gelir Vergisi/Damga Vergisi "dahil mi" işaretine göre
         // vergilendirilir. Ana maaş matrahı ile RTÇ/HTÇ dahil matrahın vergi farkı (marjinal dilim payı) RTÇ/HTÇ'nin
         // kendi kesintisi olarak izole edilip net ödemeden düşülür.
         $rtcHtcDamgaVergisi = 0.0;
