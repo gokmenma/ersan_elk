@@ -1785,9 +1785,52 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             $('#tab-loader').fadeOut(200);
         }
 
-        /**
-         * Sayaç durumu özetlerini ekrana basar
-         */
+        function getStatusGroup(statusText) {
+            if (!statusText) return null;
+            var norm = statusText.toLowerCase()
+                .replace(/i̇/g, 'i')
+                .replace(/ı/g, 'i')
+                .replace(/ğ/g, 'g')
+                .replace(/ü/g, 'u')
+                .replace(/ş/g, 's')
+                .replace(/ö/g, 'o')
+                .replace(/ç/g, 'c')
+                .trim();
+            
+            var noPatterns = [
+                'goturu sarfiyat',
+                'kullanilmiyor',
+                'normal devir',
+                'sayac kirli',
+                'sayac okunamiyor(kirli)',
+                'sayac okunamiyor (kirli)',
+                'sarfiyat yok',
+                'sayacin cami kirik',
+                'sayac bozuk',
+                'sayac normal',
+                'sayac patlak',
+                'sayac ters',
+                'sayac yok',
+                'ters devir'
+            ];
+            
+            var koPatterns = [
+                'evde yok'
+            ];
+            
+            for (var i = 0; i < noPatterns.length; i++) {
+                if (norm === noPatterns[i] || norm.indexOf(noPatterns[i]) !== -1) {
+                    return 'NO';
+                }
+            }
+            for (var i = 0; i < koPatterns.length; i++) {
+                if (norm === koPatterns[i] || norm.indexOf(koPatterns[i]) !== -1) {
+                    return 'KO';
+                }
+            }
+            return null;
+        }
+
         // Genel Özet Render Fonksiyonu
         function renderGenericSummary(summary, config) {
             var container = $(config.container);
@@ -1825,6 +1868,16 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 var label = config.label || 'Abone';
                 var subLabel = config.subLabel || 'Kayıt';
 
+                var badgeHtml = '';
+                if (config.wrapper === '#sayacDurumSummary') {
+                    var grp = getStatusGroup(statusText);
+                    if (grp === 'NO') {
+                        badgeHtml = '<span class="badge bg-success-subtle text-success fs-11 px-2 py-1 rounded ms-auto">NO</span>';
+                    } else if (grp === 'KO') {
+                        badgeHtml = '<span class="badge bg-warning-subtle text-warning fs-11 px-2 py-1 rounded ms-auto">KO</span>';
+                    }
+                }
+
                 var html = `
                     <div class="col summary-card-item" data-status="${statusText}" data-target-wrapper="${config.wrapper}" style="cursor: pointer;">
                         <div class="card shadow-sm border-start border-start-width-3 border-${variant} mb-0 h-100">
@@ -1836,6 +1889,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                         </span>
                                     </div>
                                     <h6 class="text-muted text-truncate mb-0 fs-11 fw-bold text-uppercase flex-grow-1 status-label" title="${status}">${status}</h6>
+                                    ${badgeHtml}
                                 </div>
                                 <div class="d-flex align-items-center justify-content-between">
                                     <h4 class="mb-0 fw-extrabold main-value">
@@ -2023,9 +2077,19 @@ $activeTab = $_GET['tab'] ?? 'okuma';
 
                         if (json.recordsFiltered !== undefined) {
                             let totalAbone = 0;
+                            let totalNormalOkuma = 0;
+                            let totalKiyasOkuma = 0;
                             if (json.summary) {
                                 json.summary.forEach(function(item) {
-                                    totalAbone += parseInt(item.toplam_abone || 0);
+                                    let count = parseInt(item.toplam_abone || 0);
+                                    totalAbone += count;
+                                    
+                                    let grp = getStatusGroup(item.sayac_durum);
+                                    if (grp === 'NO') {
+                                        totalNormalOkuma += count;
+                                    } else if (grp === 'KO') {
+                                        totalKiyasOkuma += count;
+                                    }
                                 });
                             }
                             
@@ -2035,6 +2099,20 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                     <div>
                                         <span class="value">${totalAbone.toLocaleString('tr-TR')}</span>
                                         <span class="label">Abone</span>
+                                    </div>
+                                </div>
+                                <div class="stat-mini-card stat-primary ms-3 count-animate">
+                                    <div class="icon-wrap"><i class="bx bx-check-circle"></i></div>
+                                    <div>
+                                        <span class="value">${totalNormalOkuma.toLocaleString('tr-TR')}</span>
+                                        <span class="label">Normal Okuma</span>
+                                    </div>
+                                </div>
+                                <div class="stat-mini-card stat-warning ms-3 count-animate">
+                                    <div class="icon-wrap"><i class="bx bx-git-compare"></i></div>
+                                    <div>
+                                        <span class="value">${totalKiyasOkuma.toLocaleString('tr-TR')}</span>
+                                        <span class="label">Kıyas Okuma</span>
                                     </div>
                                 </div>`;
                             $('#endeksTableTitle').html(html);
