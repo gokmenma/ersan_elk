@@ -773,9 +773,9 @@ use App\Service\Gate;
             <div class="col-12">
                 <div class="card mb-2 puantaj-table-header">
                     <div
-                        class="card-header d-flex justify-content-between align-items-center bg-transparent border-bottom">
-                        <div class="d-flex align-items-center">
-                            <div class="d-flex align-items-center gap-2">
+                        class="card-header d-flex flex-wrap justify-content-between align-items-center bg-transparent border-bottom gap-2">
+                        <div class="d-flex align-items-center flex-wrap">
+                            <div class="d-flex align-items-center flex-wrap gap-2">
                                 <div style="width: 130px;">
                                     <?php
                                     $yillar = [];
@@ -809,8 +809,8 @@ use App\Service\Gate;
                         </div>
 
                         <!-- Sağ Taraf: Arama ve Aksiyon Butonları -->
-                        <div class="col-lg-6 col-md-12 mt-lg-0 mt-3">
-                            <div class="d-flex align-items-center justify-content-lg-end gap-2">
+                        <div class="mt-lg-0 mt-2 ms-auto">
+                            <div class="d-flex align-items-center justify-content-end gap-2">
 
                                 <div
                                     class="action-button-container d-flex align-items-center border rounded shadow-sm p-1 gap-1">
