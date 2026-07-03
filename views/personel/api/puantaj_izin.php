@@ -173,7 +173,7 @@ try {
             SELECT pi.personel_id, pi.id, pi.baslangic_tarihi, pi.bitis_tarihi, pi.izin_tipi_id, t.tur_adi, t.kisa_kod, t.renk 
             FROM personel_izinleri pi
             JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            WHERE pi.silinme_tarihi IS NULL AND pi.onay_durumu != 'Reddedildi'
+            WHERE pi.silinme_tarihi IS NULL AND pi.onay_durumu = 'Onaylandı'
             AND pi.personel_id IN (SELECT id FROM personel WHERE firma_id = ? AND silinme_tarihi IS NULL)
             AND (
                 (pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ?)
@@ -296,7 +296,7 @@ try {
             SELECT pi.id, pi.baslangic_tarihi, pi.bitis_tarihi, pi.izin_tipi_id, t.tur_adi, t.kisa_kod, t.renk 
             FROM personel_izinleri pi
             JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL AND pi.onay_durumu != 'Reddedildi'
+            WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL AND pi.onay_durumu = 'Onaylandı'
             AND (
                 (pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ?)
             )
@@ -381,7 +381,7 @@ try {
             SELECT pi.id, pi.baslangic_tarihi, pi.bitis_tarihi, pi.izin_tipi_id, t.tur_adi, t.kisa_kod, t.renk 
             FROM personel_izinleri pi
             JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL AND pi.onay_durumu != 'Reddedildi'
+            WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL AND pi.onay_durumu = 'Onaylandı'
             AND t.kisa_kod NOT IN ('X', 'x')
             AND (
                 (pi.baslangic_tarihi BETWEEN ? AND ?) 
@@ -1134,7 +1134,7 @@ try {
                 SELECT pi.baslangic_tarihi, pi.bitis_tarihi, pi.izin_tipi_id, t.kisa_kod, t.renk 
                 FROM personel_izinleri pi
                 JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-                WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL AND pi.onay_durumu != 'Reddedildi'
+                WHERE pi.personel_id = ? AND pi.silinme_tarihi IS NULL AND pi.onay_durumu = 'Onaylandı'
                 AND (
                     (pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ?)
                 )

@@ -247,7 +247,7 @@ $izinTurleri = [
             </div>
         </div>
         <div class="card-body">
-            <?php if ($showApproved || $showDeleted): ?>
+            <?php if ($showApproved): ?>
                 <div class="alert alert-success mb-3">
                     <i class="bx bx-check-circle me-1"></i>
                     <strong>İşlem Yapılmış Talepler</strong> (Onaylanan & Reddedilen) görüntüleniyor. Son 50 kayıt

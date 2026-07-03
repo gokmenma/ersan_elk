@@ -250,7 +250,7 @@ class TalepModel extends Model
                    u.adi_soyadi as solver_name, pt.silinme_tarihi as islem_tarihi
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
-            LEFT JOIN users u ON pt.islem_yapan_id = u.id
+            LEFT JOIN users u ON pt.silen_kullanici = u.id
             WHERE pt.silinme_tarihi IS NOT NULL AND p.firma_id = ?
             $extra_where
             ORDER BY pt.silinme_tarihi DESC

@@ -1,4 +1,7 @@
 <?php
+if (session_status() === PHP_SESSION_NONE) {
+    session_start();
+}
 require_once dirname(__DIR__, 3) . '/Autoloader.php';
 
 use App\Model\PersonelIzinleriModel;
@@ -145,13 +148,10 @@ try {
 
         $db->beginTransaction();
         try {
-            // Onayları sil
-            $stmt = $db->prepare("DELETE FROM izin_onaylari WHERE izin_id = :izin_id");
-            $stmt->execute([':izin_id' => $id]);
-
-            // İzni sil
-            $stmt = $db->prepare("DELETE FROM personel_izinleri WHERE id = :id");
-            $stmt->execute([':id' => $id]);
+            // İzni silmek yerine soft delete (silinme_tarihi = NOW()) yapıyoruz
+            $silen_kullanici = $_SESSION['user_id'] ?? $_SESSION['personel_id'] ?? 0;
+            $stmt = $db->prepare("UPDATE personel_izinleri SET silinme_tarihi = NOW(), silen_kullanici = ?, silinme_aciklama = 'Personel tarafından silindi' WHERE id = ?");
+            $stmt->execute([$silen_kullanici, $id]);
 
             $db->commit();
             echo json_encode(['status' => 'success', 'message' => 'İzin kaydı başarıyla silindi.']);

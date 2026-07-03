@@ -205,7 +205,7 @@ class AvansModel extends Model
                    u.adi_soyadi as solver_name, pa.silinme_tarihi as islem_tarihi
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
-            LEFT JOIN users u ON pa.onaylayan_id = u.id 
+            LEFT JOIN users u ON pa.silen_kullanici = u.id 
             WHERE pa.silinme_tarihi IS NOT NULL AND p.firma_id = ?
             $extra_where
             ORDER BY pa.silinme_tarihi DESC

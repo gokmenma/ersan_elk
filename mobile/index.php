@@ -432,8 +432,34 @@ try {
                         htmlContainer: "swal-custom-content", actions: "swal-custom-actions",
                         confirmButton: "swal-custom-confirm swal-confirm-primary swal-confirm-full",
                         cancelButton: "swal-custom-cancel",
+            },
+            async prompt(title, text, confirmText = "Tamam", placeholder = "", cancelText = "Vazgeç") {
+                const result = await Swal.fire({
+                    title: title,
+                    text: text,
+                    input: 'text',
+                    inputPlaceholder: placeholder,
+                    showCancelButton: true,
+                    confirmButtonText: confirmText,
+                    cancelButtonText: cancelText,
+                    buttonsStyling: false,
+                    reverseButtons: true,
+                    width: 320,
+                    padding: 0,
+                    customClass: {
+                        popup: "swal-custom-popup",
+                        title: "swal-custom-title",
+                        htmlContainer: "swal-custom-content",
+                        input: "swal-custom-input sw-input-border mx-4 my-2 px-3 py-2 border border-slate-200 dark:border-slate-700 rounded-xl text-sm w-[calc(100%-2rem)] bg-transparent dark:text-white focus:outline-none focus:border-cyan-500",
+                        actions: "swal-custom-actions swal-actions-two",
+                        confirmButton: "swal-custom-confirm swal-confirm-primary",
+                        cancelButton: "swal-custom-cancel",
                     },
                 });
+                if (result.isConfirmed) {
+                    return result.value;
+                }
+                return false;
             }
         };
 

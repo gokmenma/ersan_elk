@@ -298,7 +298,7 @@ class PersonelIzinleriModel extends Model
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            LEFT JOIN users u ON pi.personel_id = u.id -- Basitlik için silen kişi bilgisi yerine personel bilgisini aldık (veya silen id tutuluyorsa o eklenebilir)
+            LEFT JOIN users u ON pi.silen_kullanici = u.id -- Silen kullanıcı bilgisini aldık
             WHERE pi.silinme_tarihi IS NOT NULL AND p.firma_id = ?
             $extra_where
             ORDER BY pi.silinme_tarihi DESC
