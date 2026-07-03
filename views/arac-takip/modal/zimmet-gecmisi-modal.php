@@ -64,3 +64,17 @@
         </div>
     </div>
 </div>
+
+<!-- Resim Önizleme Modal -->
+<div class="modal fade" id="zimmetGecmisFotoOnizlemeModal" tabindex="-1" aria-hidden="true" style="z-index: 1065;">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content bg-transparent border-0 shadow-none">
+            <div class="modal-header border-0 p-0 position-relative">
+                <button type="button" class="btn-close btn-close-white position-absolute top-0 end-0 m-3 shadow-none text-white bg-dark border-0 rounded-circle p-2" data-bs-dismiss="modal" aria-label="Close" style="z-index: 10; opacity: 0.8; width: 35px; height: 35px;"></button>
+            </div>
+            <div class="modal-body p-0 text-center">
+                <img id="gecmisFotoOnizlemeImg" src="" class="img-fluid rounded shadow" style="max-height: 85vh; max-width: 100%; object-fit: contain; background: rgba(0,0,0,0.2);">
+            </div>
+        </div>
+    </div>
+</div>

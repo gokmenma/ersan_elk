@@ -638,7 +638,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $g->zimmet_tarihi_fmt = Date::dmY($g->zimmet_tarihi);
                     $g->iade_tarihi_fmt = $g->iade_tarihi ? Date::dmY($g->iade_tarihi) : '-';
                     $g->olusturma_tarihi_fmt = isset($g->olusturma_tarihi) ? date('d.m.Y H:i', strtotime($g->olusturma_tarihi)) : '-';
-                    $g->foto_sayisi = count($ZimmetFoto->getByZimmet($g->id));
+                    
+                    $fotolar = $ZimmetFoto->getByZimmet($g->id);
+                    $g->fotolar = [];
+                    foreach ($fotolar as $foto) {
+                        $g->fotolar[] = [
+                            'id' => Security::encrypt($foto->id),
+                            'foto_turu' => $foto->foto_turu,
+                            'orijinal_ad' => $foto->orijinal_ad,
+                            'mime_tipi' => $foto->mime_tipi,
+                            'is_pdf' => ($foto->mime_tipi === 'application/pdf')
+                        ];
+                    }
+                    $g->foto_sayisi = count($g->fotolar);
                 }
                 echo json_encode(['status' => 'success', 'data' => $gecmis]);
                 break;

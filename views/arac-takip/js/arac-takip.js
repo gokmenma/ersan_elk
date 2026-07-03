@@ -749,11 +749,39 @@ const AracTakip = {
                         ? '<span class="badge bg-success">Aktif</span>' 
                         : '<span class="badge bg-secondary">İade Edildi</span>';
                     
-                    const fotoBtn = z.foto_sayisi > 0
-                        ? `<button type="button" class="btn btn-sm btn-soft-info zimmet-foto-goster" data-id="${z.id}">
-                               <i class="bx bx-camera me-1"></i>${z.foto_sayisi}
-                           </button>`
-                        : '<span class="text-muted">-</span>';
+                    let fotoHtml = '';
+                    const teslimFotolar = (z.fotolar || []).filter(f => f.foto_turu === 'teslim');
+                    const iadeFotolar = (z.fotolar || []).filter(f => f.foto_turu === 'iade');
+
+                    if (teslimFotolar.length > 0) {
+                        fotoHtml += '<div class="d-flex align-items-center mb-1"><span class="badge bg-light text-dark py-1 px-2 me-1" style="font-size: 0.65rem; min-width: 50px;">Teslim:</span>';
+                        teslimFotolar.forEach(f => {
+                            const url = "views/arac-takip/zimmet-foto-goruntule.php?id=" + encodeURIComponent(f.id);
+                            if (f.is_pdf) {
+                                fotoHtml += `<a href="${url}" target="_blank" class="btn btn-xs btn-outline-danger p-0 px-1 me-1" title="${f.orijinal_ad}" style="font-size: 0.75rem;"><i class="bx bxs-file-pdf"></i> PDF</a>`;
+                            } else {
+                                fotoHtml += `<img src="${url}" class="rounded border me-1 zimmet-gecmis-thumb" data-url="${url}" style="width: 32px; height: 32px; object-fit: cover; cursor: pointer;" title="${f.orijinal_ad}">`;
+                            }
+                        });
+                        fotoHtml += '</div>';
+                    }
+
+                    if (iadeFotolar.length > 0) {
+                        fotoHtml += '<div class="d-flex align-items-center"><span class="badge bg-light text-dark py-1 px-2 me-1" style="font-size: 0.65rem; min-width: 50px;">İade:</span>';
+                        iadeFotolar.forEach(f => {
+                            const url = "views/arac-takip/zimmet-foto-goruntule.php?id=" + encodeURIComponent(f.id);
+                            if (f.is_pdf) {
+                                fotoHtml += `<a href="${url}" target="_blank" class="btn btn-xs btn-outline-danger p-0 px-1 me-1" title="${f.orijinal_ad}" style="font-size: 0.75rem;"><i class="bx bxs-file-pdf"></i> PDF</a>`;
+                            } else {
+                                fotoHtml += `<img src="${url}" class="rounded border me-1 zimmet-gecmis-thumb" data-url="${url}" style="width: 32px; height: 32px; object-fit: cover; cursor: pointer;" title="${f.orijinal_ad}">`;
+                            }
+                        });
+                        fotoHtml += '</div>';
+                    }
+
+                    if (!fotoHtml) {
+                        fotoHtml = '<span class="text-muted">-</span>';
+                    }
 
                     html += `<tr>
                         <td class="text-center">${index + 1}</td>
@@ -766,7 +794,7 @@ const AracTakip = {
                             <small class="d-block fw-bold">${z.olusturan_kullanici_adi || '-'}</small>
                             <small class="text-muted" style="font-size: 0.7rem;">${z.olusturma_tarihi_fmt || '-'}</small>
                         </td>
-                        <td class="text-center">${fotoBtn}</td>
+                        <td class="text-center">${fotoHtml}</td>
                         <td class="text-center">${durumBadge}</td>
                     </tr>`;
                 });
@@ -3067,6 +3095,20 @@ $(document).ready(function () {
   $(document).on("click", ".zimmet-foto-goster", function (e) {
     e.preventDefault();
     AracTakip.zimmetFotolariGoster($(this).data("id"));
+  });
+  $(document).on("click", ".zimmet-gecmis-thumb", function (e) {
+    e.preventDefault();
+    const url = $(this).attr("data-url");
+    $("#gecmisFotoOnizlemeImg").attr("src", url);
+    const modalEl = document.getElementById('zimmetGecmisFotoOnizlemeModal');
+    if (modalEl) {
+        if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+            const m = bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl);
+            m.show();
+        } else {
+            $(modalEl).modal("show");
+        }
+    }
   });
   $(document).on("click", ".zimmet-foto-sil", function (e) {
     e.preventDefault();
