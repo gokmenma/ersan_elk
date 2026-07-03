@@ -220,7 +220,7 @@ class TalepModel extends Model
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
             LEFT JOIN users u ON pt.islem_yapan_id = u.id
-            WHERE pt.durum IN ('cozuldu', 'reddedildi', 'iptal_edildi', 'iptal edildi', 'İptal Edildi') AND pt.silinme_tarihi IS NULL AND p.firma_id = ?
+            WHERE pt.durum IN ('cozuldu', 'reddedildi') AND pt.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
             ORDER BY pt.cozum_tarihi DESC
             LIMIT {$limit}
@@ -251,9 +251,9 @@ class TalepModel extends Model
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
             LEFT JOIN users u ON pt.silen_kullanici = u.id
-            WHERE pt.silinme_tarihi IS NOT NULL AND p.firma_id = ?
+            WHERE (pt.silinme_tarihi IS NOT NULL OR pt.durum IN ('iptal_edildi', 'iptal edildi', 'İptal Edildi')) AND p.firma_id = ?
             $extra_where
-            ORDER BY pt.silinme_tarihi DESC
+            ORDER BY pt.id DESC
             LIMIT {$limit}
         ";
         $query = $this->db->prepare($sql);

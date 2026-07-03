@@ -20,6 +20,8 @@ $izinModel = new PersonelIzinleriModel();
 
 // $currentUserId is populated in mobile/index.php
 $showApproved = isset($_GET['show']) && $_GET['show'] === 'approved';
+$showDeleted = isset($_GET['show']) && $_GET['show'] === 'deleted';
+$isActionDone = $showApproved || $showDeleted;
 
 // Her zaman bekleyenlerin sayısını saymak için
 $bekleyenAvanslar = [];
@@ -60,6 +62,17 @@ if ($showApproved) {
         }
     }
     $talepler = $canAriza ? $talepModel->getCozulmusTalepler(30) : [];
+} elseif ($showDeleted) {
+    $avanslar = $canAvans ? $avansModel->getSilinmisAvanslar(30) : [];
+    $izinler = [];
+    if ($canIzin) {
+        try {
+            $izinler = $izinModel->getSilinmisIzinler(30);
+        } catch (\Exception $e) {
+            $izinler = [];
+        }
+    }
+    $talepler = $canAriza ? $talepModel->getSilinmisTalepler(30) : [];
 } else {
     $avanslar = $bekleyenAvanslar;
     $izinler = $bekleyenIzinler;
@@ -154,7 +167,7 @@ function formatDateOnlyMobile($dateStr) {
 
     <!-- Filter Buttons -->
     <div class="flex items-center bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 rounded-lg p-1 shadow-sm mt-3">
-        <a href="?p=talepler" class="toggle-link <?= !$showApproved ? 'bg-[#ffca58] text-slate-800 shadow-sm pointer-events-none' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400' ?> flex-1 py-1.5 flex items-center justify-center gap-1.5 text-xs font-bold rounded-md transition-colors">
+        <a href="?p=talepler" class="toggle-link <?= !$showApproved && !$showDeleted ? 'bg-[#ffca58] text-slate-800 shadow-sm pointer-events-none' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400' ?> flex-1 py-1.5 flex items-center justify-center gap-1.5 text-xs font-bold rounded-md transition-colors">
             <span class="material-symbols-outlined text-[16px]">schedule</span>
             Bekleyenler
         </a>
@@ -162,6 +175,11 @@ function formatDateOnlyMobile($dateStr) {
         <a href="?p=talepler&show=approved" class="toggle-link <?= $showApproved ? 'bg-slate-100 dark:bg-slate-800 text-slate-800 dark:text-white shadow-sm pointer-events-none' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400' ?> flex-1 py-1.5 flex items-center justify-center gap-1.5 text-xs font-bold rounded-md transition-colors">
             <span class="material-symbols-outlined text-[16px]">task_alt</span>
             İşlem Yapılanlar
+        </a>
+        <div class="w-px h-4 bg-slate-200 dark:bg-slate-700 mx-1"></div>
+        <a href="?p=talepler&show=deleted" class="toggle-link <?= $showDeleted ? 'bg-red-100 dark:bg-red-950/30 text-red-700 dark:text-red-400 shadow-sm pointer-events-none' : 'text-slate-500 hover:text-slate-700 dark:text-slate-400' ?> flex-1 py-1.5 flex items-center justify-center gap-1.5 text-xs font-bold rounded-md transition-colors">
+            <span class="material-symbols-outlined text-[16px]">delete</span>
+            Silinenler
         </a>
     </div>
 
@@ -211,11 +229,11 @@ function formatDateOnlyMobile($dateStr) {
     <div id="tab-content-avans" class="tab-content <?= $activeTab === 'avans' ? 'block' : 'hidden' ?> space-y-3 mt-3">
         <?php if (empty($avanslar)): ?>
             <div class="bg-white dark:bg-card-dark rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-800 shadow-sm">
-                <div class="w-12 h-12 <?= !$showApproved ? 'bg-orange-50 text-orange-400 dark:bg-orange-900/20' : 'bg-slate-100 text-slate-400 dark:bg-slate-800' ?> rounded-full flex items-center justify-center mx-auto mb-3">
-                    <span class="material-symbols-outlined text-2xl"><?= !$showApproved ? 'check_circle' : 'info' ?></span>
+                <div class="w-12 h-12 <?= !$isActionDone ? 'bg-orange-50 text-orange-400 dark:bg-orange-900/20' : 'bg-slate-100 text-slate-400 dark:bg-slate-800' ?> rounded-full flex items-center justify-center mx-auto mb-3">
+                    <span class="material-symbols-outlined text-2xl"><?= !$isActionDone ? 'check_circle' : 'info' ?></span>
                 </div>
-                <h3 class="font-bold text-slate-800 dark:text-white"><?= !$showApproved ? 'Bekleyen Avans Yok' : 'İşlem Gören Kayıt Yok' ?></h3>
-                <p class="text-xs text-slate-500 mt-1"><?= !$showApproved ? 'Bekleyen tüm avans talepleri yanıtlandı.' : 'Henüz işlem görmüş avans kaydı bulunmuyor.' ?></p>
+                <h3 class="font-bold text-slate-800 dark:text-white"><?= !$isActionDone ? 'Bekleyen Avans Yok' : ($showDeleted ? 'Silinen Kayıt Yok' : 'İşlem Gören Kayıt Yok') ?></h3>
+                <p class="text-xs text-slate-500 mt-1"><?= !$isActionDone ? 'Bekleyen tüm avans talepleri yanıtlandı.' : ($showDeleted ? 'Henüz silinmiş avans kaydı bulunmuyor.' : 'Henüz işlem görmüş avans kaydı bulunmuyor.') ?></p>
             </div>
         <?php else: ?>
             <?php foreach ($avanslar as $avans): 
@@ -233,7 +251,7 @@ function formatDateOnlyMobile($dateStr) {
                     'onay_tarihi' => !empty($avans->onay_tarihi) ? formatDateMobile($avans->onay_tarihi) : '',
                     'onay_aciklama' => $avans->onay_aciklama ?? '',
                     'islem_yapan' => $avans->solver_name ?? '',
-                    'showApproved' => $showApproved
+                    'showApproved' => $isActionDone
                 ];
                 $avansJson = htmlspecialchars(json_encode($avansData), ENT_QUOTES, 'UTF-8');
             ?>
@@ -254,7 +272,7 @@ function formatDateOnlyMobile($dateStr) {
                             <span class="inline-flex items-center gap-1 bg-green-50 text-green-600 font-bold px-2 py-1 rounded-lg text-sm border border-green-100 dark:bg-green-900/20 dark:border-green-800">
                                 <?= formatMoneyMobile($avans->tutar) ?>
                             </span>
-                            <?php if (!$showApproved): ?>
+                            <?php if (!$isActionDone): ?>
                                 <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 dark:bg-slate-800">Beklemede</span>
                             <?php endif; ?>
                         </div>
@@ -270,7 +288,7 @@ function formatDateOnlyMobile($dateStr) {
                             </div>
                         <?php endif; ?>
                     </div>
-                    <?php if (!$showApproved): ?>
+                    <?php if (!$isActionDone): ?>
                     <div class="flex gap-2" onclick="event.stopPropagation();">
                         <button onclick="openModal('avansRed', <?= $avans->id ?>, '<?= htmlspecialchars(addslashes($avans->requester_name)) ?>')" class="flex-1 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5">
                             <span class="material-symbols-outlined text-[16px]">close</span> Reddet
@@ -299,9 +317,13 @@ function formatDateOnlyMobile($dateStr) {
                                 <span class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400 rounded text-[10px] font-bold border border-green-100 dark:border-green-800/30">
                                     <span class="material-symbols-outlined text-[14px]">check_circle</span> Onaylandı
                                 </span>
-                            <?php else: ?>
+                            <?php elseif ($avans->durum == 'reddedildi'): ?>
                                 <span class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 rounded text-[10px] font-bold border border-red-100 dark:border-red-800/30">
                                     <span class="material-symbols-outlined text-[14px]">cancel</span> Reddedildi
+                                </span>
+                            <?php else: ?>
+                                <span class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 rounded text-[10px] font-bold border border-slate-200 dark:border-slate-700">
+                                    <span class="material-symbols-outlined text-[14px]">history</span> İptal Edildi
                                 </span>
                             <?php endif; ?>
                         </div>
@@ -325,11 +347,11 @@ function formatDateOnlyMobile($dateStr) {
     <div id="tab-content-izin" class="tab-content <?= $activeTab === 'izin' ? 'block' : 'hidden' ?> space-y-3 mt-3">
         <?php if (empty($izinler)): ?>
             <div class="bg-white dark:bg-card-dark rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-800 shadow-sm">
-                <div class="w-12 h-12 <?= !$showApproved ? 'bg-blue-50 text-blue-400 dark:bg-blue-900/20' : 'bg-slate-100 text-slate-400 dark:bg-slate-800' ?> rounded-full flex items-center justify-center mx-auto mb-3">
-                    <span class="material-symbols-outlined text-2xl"><?= !$showApproved ? 'check_circle' : 'info' ?></span>
+                <div class="w-12 h-12 <?= !$isActionDone ? 'bg-blue-50 text-blue-400 dark:bg-blue-900/20' : 'bg-slate-100 text-slate-400 dark:bg-slate-800' ?> rounded-full flex items-center justify-center mx-auto mb-3">
+                    <span class="material-symbols-outlined text-2xl"><?= !$isActionDone ? 'check_circle' : 'info' ?></span>
                 </div>
-                <h3 class="font-bold text-slate-800 dark:text-white"><?= !$showApproved ? 'Bekleyen İzin Yok' : 'İşlem Gören Kayıt Yok' ?></h3>
-                <p class="text-xs text-slate-500 mt-1"><?= !$showApproved ? 'Bekleyen tüm izin talepleri yanıtlandı.' : 'Henüz işlem görmüş izin kaydı bulunmuyor.' ?></p>
+                <h3 class="font-bold text-slate-800 dark:text-white"><?= !$isActionDone ? 'Bekleyen İzin Yok' : ($showDeleted ? 'Silinen Kayıt Yok' : 'İşlem Gören Kayıt Yok') ?></h3>
+                <p class="text-xs text-slate-500 mt-1"><?= !$isActionDone ? 'Bekleyen tüm izin talepleri yanıtlandı.' : ($showDeleted ? 'Henüz silinmiş izin kaydı bulunmuyor.' : 'Henüz işlem görmüş izin kaydı bulunmuyor.') ?></p>
             </div>
         <?php else: ?>
             <?php foreach ($izinler as $izin): 
@@ -353,7 +375,7 @@ function formatDateOnlyMobile($dateStr) {
                     'islem_tarihi' => !empty($izin->islem_tarihi) ? formatDateMobile($izin->islem_tarihi) : '',
                     'islem_yapan' => $izin->solver_name ?? '',
                     'onay_aciklama' => $izin->onay_aciklama ?? '',
-                    'showApproved' => $showApproved
+                    'showApproved' => $isActionDone
                 ];
                 $izinJson = htmlspecialchars(json_encode($izinData), ENT_QUOTES, 'UTF-8');
             ?>
@@ -377,19 +399,25 @@ function formatDateOnlyMobile($dateStr) {
                                 </div>
                             </div>
                         </div>
-                        <?php if (!$showApproved): ?>
+                        <?php if (!$isActionDone): ?>
                             <div class="flex-shrink-0">
                                 <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-slate-100 text-slate-500 dark:bg-slate-800 border border-slate-200 dark:border-slate-700">Beklemede</span>
                             </div>
                         <?php else: ?>
                             <div class="flex-shrink-0">
-                                <?php if (strtolower($izin->onay_durumu ?? '') == 'onaylandı' || strtolower($izin->onay_durumu ?? '') == 'onaylandi'): ?>
+                                <?php 
+                                $onay_durumu_lower = strtolower($izin->onay_durumu ?? '');
+                                if ($onay_durumu_lower == 'onaylandı' || $onay_durumu_lower == 'onaylandi'): ?>
                                     <span class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400 rounded text-[10px] font-bold border border-green-100 dark:border-green-900/30">
                                         <span class="material-symbols-outlined text-[13px]">check_circle</span> Onaylandı
                                     </span>
-                                <?php else: ?>
+                                <?php elseif ($onay_durumu_lower == 'reddedildi'): ?>
                                     <span class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 rounded text-[10px] font-bold border border-red-100 dark:border-red-900/30">
                                         <span class="material-symbols-outlined text-[13px]">cancel</span> Reddedildi
+                                    </span>
+                                <?php else: ?>
+                                    <span class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 rounded text-[10px] font-bold border border-slate-200 dark:border-slate-700">
+                                        <span class="material-symbols-outlined text-[13px]">history</span> İptal Edildi
                                     </span>
                                 <?php endif; ?>
                             </div>
@@ -414,7 +442,7 @@ function formatDateOnlyMobile($dateStr) {
                             </div>
                         <?php endif; ?>
 
-                        <?php if ($showApproved): ?>
+                        <?php if ($isActionDone): ?>
                             <div class="mt-3 pt-2.5 border-t border-slate-100 dark:border-slate-800/60 flex items-center gap-3">
                                 <div class="flex items-center gap-1 text-[10px] text-slate-400">
                                     <span class="material-symbols-outlined text-[14px]">person</span>
@@ -429,7 +457,7 @@ function formatDateOnlyMobile($dateStr) {
                             </div>
                         <?php endif; ?>
                     </div>
-                    <?php if (!$showApproved): ?>
+                    <?php if (!$isActionDone): ?>
                     <div class="flex gap-2" onclick="event.stopPropagation();">
                         <button onclick="openModal('izinRed', <?= $izin->id ?>, '<?= htmlspecialchars(addslashes($izin->requester_name)) ?>')" class="flex-1 px-3 py-2 bg-red-50 hover:bg-red-100 text-red-600 dark:bg-red-900/20 dark:text-red-400 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5">
                             <span class="material-symbols-outlined text-[16px]">close</span> Reddet
@@ -457,11 +485,11 @@ function formatDateOnlyMobile($dateStr) {
     <div id="tab-content-talep" class="tab-content <?= $activeTab === 'talep' ? 'block' : 'hidden' ?> space-y-3 mt-3">
         <?php if (empty($talepler)): ?>
             <div class="bg-white dark:bg-card-dark rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-800 shadow-sm">
-                <div class="w-12 h-12 <?= !$showApproved ? 'bg-indigo-50 text-indigo-400 dark:bg-indigo-900/20' : 'bg-slate-100 text-slate-400 dark:bg-slate-800' ?> rounded-full flex items-center justify-center mx-auto mb-3">
-                    <span class="material-symbols-outlined text-2xl"><?= !$showApproved ? 'check_circle' : 'info' ?></span>
+                <div class="w-12 h-12 <?= !$isActionDone ? 'bg-indigo-50 text-indigo-400 dark:bg-indigo-900/20' : 'bg-slate-100 text-slate-400 dark:bg-slate-800' ?> rounded-full flex items-center justify-center mx-auto mb-3">
+                    <span class="material-symbols-outlined text-2xl"><?= !$isActionDone ? 'check_circle' : 'info' ?></span>
                 </div>
-                <h3 class="font-bold text-slate-800 dark:text-white"><?= !$showApproved ? 'Bekleyen Talep Yok' : 'İşlem Gören Kayıt Yok' ?></h3>
-                <p class="text-xs text-slate-500 mt-1"><?= !$showApproved ? 'Bekleyen tüm genel talepler yanıtlandı.' : 'Henüz işlem görmüş talep kaydı bulunmuyor.' ?></p>
+                <h3 class="font-bold text-slate-800 dark:text-white"><?= !$isActionDone ? 'Bekleyen Talep Yok' : ($showDeleted ? 'Silinen Kayıt Yok' : 'İşlem Gören Kayıt Yok') ?></h3>
+                <p class="text-xs text-slate-500 mt-1"><?= !$isActionDone ? 'Bekleyen tüm genel talepler yanıtlandı.' : ($showDeleted ? 'Henüz silinmiş talep kaydı bulunmuyor.' : 'Henüz işlem görmüş talep kaydı bulunmuyor.') ?></p>
             </div>
         <?php else: ?>
             <?php foreach ($talepler as $talep): 
@@ -481,7 +509,7 @@ function formatDateOnlyMobile($dateStr) {
                     'foto' => !empty($talep->foto) ? '../' . $talep->foto : '',
                     'islem_yapan' => $talep->solver_name ?? '',
                     'islem_tarihi' => !empty($talep->cozum_tarihi) ? formatDateMobile($talep->cozum_tarihi) : '',
-                    'showApproved' => $showApproved
+                    'showApproved' => $isActionDone
                 ];
                 $talepJson = htmlspecialchars(json_encode($talepData), ENT_QUOTES, 'UTF-8');
             ?>
@@ -509,7 +537,7 @@ function formatDateOnlyMobile($dateStr) {
                         <?php endif; ?>
                     </div>
                     
-                    <div class="flex items-center justify-between border-t border-slate-100 dark:border-slate-800/60 pt-3 <?= !$showApproved ? 'mb-3' : '' ?>">
+                    <div class="flex items-center justify-between border-t border-slate-100 dark:border-slate-800/60 pt-3 <?= !$isActionDone ? 'mb-3' : '' ?>">
                         <?php
                             $oncelikType = 'bg-slate-100 text-slate-600';
                             if ($talep->oncelik == 'yuksek') $oncelikType = 'bg-red-50 text-red-600 dark:bg-red-900/20 border border-red-100 dark:border-red-900/30';
@@ -520,7 +548,7 @@ function formatDateOnlyMobile($dateStr) {
                             <?= ucfirst($talep->oncelik ?? 'Normal') ?>
                         </span>
 
-                        <?php if (!$showApproved): ?>
+                        <?php if (!$isActionDone): ?>
                             <?php if ($talep->durum == 'islemde'): ?>
                                 <span class="inline-flex items-center gap-1.5 px-2.5 py-1 bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400 rounded-lg text-xs font-bold"><span class="material-symbols-outlined text-[16px]">sync</span> İşlemde</span>
                             <?php else: ?>
@@ -541,11 +569,11 @@ function formatDateOnlyMobile($dateStr) {
                                     <?php endif; ?>
                                 </div>
                                 
-                                <div class="flex justify-end">
+                                <div class="flex justify-end ml-2">
                                     <?php if ($talep->durum == 'cozuldu'): ?>
                                         <span class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400 rounded text-[10px] font-bold border border-green-100 dark:border-green-800/30"><span class="material-symbols-outlined text-[12px]">check_circle</span> Çözüldü</span>
-                                    <?php elseif ($talep->durum == 'iptal_edildi'): ?>
-                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-red-50 text-red-600 dark:bg-red-900/20 dark:text-red-400 rounded text-[10px] font-bold border border-red-100 dark:border-red-800/30"><span class="material-symbols-outlined text-[12px]">cancel</span> İptal Edildi</span>
+                                    <?php elseif ($talep->durum == 'iptal_edildi' || $talep->durum == 'iptal edildi' || $talep->durum == 'İptal Edildi'): ?>
+                                        <span class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 rounded text-[10px] font-bold border border-slate-200 dark:border-slate-700"><span class="material-symbols-outlined text-[12px]">history</span> İptal Edildi</span>
                                     <?php else: ?>
                                         <span class="inline-flex items-center gap-1 px-1.5 py-0.5 bg-indigo-50 text-indigo-600 dark:bg-indigo-900/20 dark:text-indigo-400 rounded text-[10px] font-bold border border-indigo-100 dark:border-indigo-800/30"><span class="material-symbols-outlined text-[12px]">info</span> <?= ucfirst($talep->durum) ?></span>
                                     <?php endif; ?>
@@ -554,7 +582,7 @@ function formatDateOnlyMobile($dateStr) {
                         <?php endif; ?>
                     </div>
 
-                    <?php if (!$showApproved): ?>
+                    <?php if (!$isActionDone): ?>
                     <div class="flex gap-2 relative z-10" onclick="event.stopPropagation();">
                         <?php if ($talep->durum != 'islemde'): ?>
                         <button onclick="talepIslemeAl(<?= $talep->id ?>)" class="flex-1 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:text-slate-300 dark:hover:bg-slate-700 rounded-xl text-xs font-bold transition-colors flex items-center justify-center gap-1.5">

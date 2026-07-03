@@ -175,7 +175,7 @@ class AvansModel extends Model
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
             LEFT JOIN users u ON pa.onaylayan_id = u.id
-            WHERE pa.durum IN ('onaylandi', 'reddedildi', 'iptal edildi', 'İptal Edildi') AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
+            WHERE pa.durum IN ('onaylandi', 'reddedildi') AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
             ORDER BY pa.talep_tarihi DESC
             LIMIT {$limit}
@@ -206,9 +206,9 @@ class AvansModel extends Model
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
             LEFT JOIN users u ON pa.silen_kullanici = u.id 
-            WHERE pa.silinme_tarihi IS NOT NULL AND p.firma_id = ?
+            WHERE (pa.silinme_tarihi IS NOT NULL OR pa.durum IN ('iptal edildi', 'İptal Edildi')) AND p.firma_id = ?
             $extra_where
-            ORDER BY pa.silinme_tarihi DESC
+            ORDER BY pa.id DESC
             LIMIT {$limit}
         ";
         $query = $this->db->prepare($sql);

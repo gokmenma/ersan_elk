@@ -176,11 +176,14 @@ $rejectedCount = count($KmBildirim->getReportsByStatus('reddedildi'));
 
                         <?php if ($show === 'pending'): ?>
                             <div class="flex gap-2">
-                                <button onclick="rejectKm(<?= $report->id ?>)" class="flex-1 h-10 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5">
-                                    <span class="material-symbols-outlined text-[18px]">close</span> Reddet
+                                <button onclick="rejectKm(<?= $report->id ?>)" class="flex-1 h-10 bg-rose-50 hover:bg-rose-100 text-rose-600 dark:bg-rose-900/20 dark:text-rose-400 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1">
+                                    <span class="material-symbols-outlined text-[16px]">close</span> Red
                                 </button>
-                                <button onclick="approveKm(<?= $report->id ?>)" class="flex-[2] h-10 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl text-xs font-bold shadow-sm shadow-cyan-500/20 transition-all flex items-center justify-center gap-1.5">
-                                    <span class="material-symbols-outlined text-[18px] filled">check_circle</span> Onayla
+                                <button onclick="editAndApproveKm(<?= $report->id ?>, <?= $report->bitis_km ?>)" class="flex-1 h-10 bg-amber-50 hover:bg-amber-100 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1">
+                                    <span class="material-symbols-outlined text-[16px]">edit</span> Düzelt
+                                </button>
+                                <button onclick="approveKm(<?= $report->id ?>)" class="flex-[1.5] h-10 bg-cyan-500 hover:bg-cyan-600 text-white rounded-xl text-[11px] font-bold shadow-sm shadow-cyan-500/20 transition-all flex items-center justify-center gap-1">
+                                    <span class="material-symbols-outlined text-[16px] filled">check_circle</span> Onayla
                                 </button>
                             </div>
                         <?php else: ?>
@@ -216,7 +219,84 @@ $rejectedCount = count($KmBildirim->getReportsByStatus('reddedildi'));
     </div>
 </div>
 
+<!-- KM Düzelt ve Onayla Modalı -->
+<div id="km-edit-modal" class="fixed inset-0 z-[200] bg-slate-900/60 backdrop-blur-sm hidden opacity-0 transition-opacity flex items-center justify-center p-4">
+    <div class="bg-white dark:bg-card-dark rounded-3xl w-full max-w-sm overflow-hidden shadow-2xl transform scale-95 transition-transform duration-300">
+        <!-- Başlık -->
+        <div class="px-5 py-4 border-b border-slate-100 dark:border-slate-800 flex justify-between items-center bg-slate-50 dark:bg-slate-900/50">
+            <h3 class="font-black text-sm text-slate-800 dark:text-slate-100 flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-amber-500 text-lg">edit_note</span> KM Düzelt ve Onayla
+            </h3>
+            <button onclick="closeKmEditModal()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 flex items-center justify-center active:scale-90 transition-transform">
+                <span class="material-symbols-outlined text-base">close</span>
+            </button>
+        </div>
+        <!-- İçerik -->
+        <div class="p-5">
+            <form id="km-edit-form" onsubmit="submitKmEdit(event)">
+                <input type="hidden" id="edit_km_id" name="id">
+                
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Yeni KM Değeri</label>
+                        <input type="number" id="edit_km_value" name="km" required 
+                            class="w-full h-11 px-3 border border-slate-200 dark:border-slate-800 rounded-xl text-sm font-bold bg-transparent dark:text-white focus:outline-none focus:border-cyan-500">
+                    </div>
+                    <div>
+                        <label class="block text-[11px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">Açıklama / Not</label>
+                        <textarea id="edit_km_aciklama" name="aciklama" placeholder="Değişiklik nedenini yazabilirsiniz..." rows="3"
+                            class="w-full p-3 border border-slate-200 dark:border-slate-800 rounded-xl text-sm bg-transparent dark:text-white focus:outline-none focus:border-cyan-500 resize-none"></textarea>
+                    </div>
+                </div>
+                
+                <div class="flex gap-2.5 mt-6">
+                    <button type="button" onclick="closeKmEditModal()" 
+                        class="flex-1 h-11 bg-slate-100 hover:bg-slate-200 text-slate-700 dark:bg-slate-800 dark:hover:bg-slate-700 dark:text-slate-300 rounded-xl text-xs font-bold transition-all">
+                        Vazgeç
+                    </button>
+                    <button type="submit" 
+                        class="flex-[2] h-11 bg-amber-500 hover:bg-amber-600 text-white rounded-xl text-xs font-bold shadow-sm shadow-amber-500/20 transition-all flex items-center justify-center gap-1.5">
+                        <span class="material-symbols-outlined text-[18px] filled">check_circle</span> Onayla
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
 <script>
+function editAndApproveKm(id, currentKm) {
+    document.getElementById('edit_km_id').value = id;
+    document.getElementById('edit_km_value').value = currentKm;
+    document.getElementById('edit_km_aciklama').value = '';
+    
+    const modal = document.getElementById('km-edit-modal');
+    modal.classList.remove('hidden');
+    setTimeout(() => {
+        modal.classList.remove('opacity-0');
+        modal.querySelector('.transform').classList.remove('scale-95');
+        modal.querySelector('.transform').classList.add('scale-100');
+    }, 10);
+}
+
+function closeKmEditModal() {
+    const modal = document.getElementById('km-edit-modal');
+    modal.classList.add('opacity-0');
+    modal.querySelector('.transform').classList.remove('scale-100');
+    modal.querySelector('.transform').classList.add('scale-95');
+    setTimeout(() => modal.classList.add('hidden'), 300);
+}
+
+function submitKmEdit(e) {
+    e.preventDefault();
+    const id = document.getElementById('edit_km_id').value;
+    const km = document.getElementById('edit_km_value').value;
+    const aciklama = document.getElementById('edit_km_aciklama').value;
+    
+    closeKmEditModal();
+    performKmAction('km-onay-duzelt-onayla', { id: id, km: km, aciklama: aciklama });
+}
+
 function viewKmImage(url, title) {
     const modal = document.getElementById('km-img-modal');
     const img = document.getElementById('km-modal-img');

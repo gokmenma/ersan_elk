@@ -227,7 +227,7 @@ class PersonelIzinleriModel extends Model
                 ) io2 ON io1.id = io2.max_id
             ) io ON io.izin_id = pi.id
             LEFT JOIN users u ON io.onaylayan_id = u.id
-            WHERE pi.onay_durumu IN ('Onaylandı', 'Reddedildi', 'iptal edildi', 'İptal Edildi') AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
+            WHERE pi.onay_durumu IN ('Onaylandı', 'Reddedildi') AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
             AND pi.id NOT IN (
                 SELECT izin_id FROM izin_onaylari 
@@ -299,9 +299,15 @@ class PersonelIzinleriModel extends Model
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             LEFT JOIN users u ON pi.silen_kullanici = u.id -- Silen kullanıcı bilgisini aldık
-            WHERE pi.silinme_tarihi IS NOT NULL AND p.firma_id = ?
+            WHERE (pi.silinme_tarihi IS NOT NULL OR pi.onay_durumu IN ('iptal edildi', 'İptal Edildi')) AND p.firma_id = ?
             $extra_where
-            ORDER BY pi.silinme_tarihi DESC
+            AND pi.id NOT IN (
+                SELECT izin_id FROM izin_onaylari 
+                WHERE aciklama LIKE 'Puantaj üzerinden%' 
+                OR aciklama LIKE 'SGK Vizite%'
+                OR aciklama LIKE 'Otomatik onaylandı%'
+            )
+            ORDER BY pi.id DESC
             LIMIT {$limit}
         ";
         
