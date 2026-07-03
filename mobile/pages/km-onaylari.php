@@ -3,7 +3,6 @@
  * Mobil KM Onay Sayfası
  */
 
-require_once dirname(__DIR__, 1) . '/index.php'; // Helperlar için (zaten include ediliyor ama IDE için)
 use App\Model\AracKmBildirimModel;
 use App\Helper\Helper;
 

@@ -358,12 +358,12 @@ try {
         })();
 
         // ===== PWA UI Helpers (Alert & Loading) =====
-        const Loading = {
+        window.Loading = {
             show() { document.body.classList.add('loading-active'); },
             hide() { document.body.classList.remove('loading-active'); }
         };
 
-        const Alert = {
+        window.Alert = {
             async confirm(title, text, confirmText = "Evet", cancelText = "Vazgeç") {
                 const result = await Swal.fire({
                     title: title, text: text, icon: "question", showCancelButton: true,
@@ -432,6 +432,8 @@ try {
                         htmlContainer: "swal-custom-content", actions: "swal-custom-actions",
                         confirmButton: "swal-custom-confirm swal-confirm-primary swal-confirm-full",
                         cancelButton: "swal-custom-cancel",
+                    },
+                });
             },
             async prompt(title, text, confirmText = "Tamam", placeholder = "", cancelText = "Vazgeç") {
                 const result = await Swal.fire({
@@ -463,7 +465,7 @@ try {
             }
         };
 
-        const Toast = {
+        window.Toast = {
             container: null,
             init() {
                 this.container = document.getElementById("toast-container");
