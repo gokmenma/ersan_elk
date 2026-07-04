@@ -47,15 +47,14 @@ class AvansModel extends Model
      */
     public function getAvansLimiti($personel_id)
     {
-        // Personel maaşını al
+        // Personel varlığını kontrol et
         $personelModel = new PersonelModel();
         $personel = $personelModel->find($personel_id);
 
         if (!$personel)
             return 0;
 
-        $maas = $personel->maas_tutari ?? 0;
-        $limit = min(10000, $maas * 0.5); // Maaşın yarısı, en fazla 10.000 TL
+        $limit = 10000; // Her halükarda 10.000 TL limit olsun, maaş kontrolü yapılmasın
 
         // Kullanılan avansları düş
         $sql = $this->db->prepare("
