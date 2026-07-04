@@ -8,6 +8,12 @@
 use App\Helper\Security;
 use App\Model\UserRolesModel;
 use App\Model\UserModel;
+use App\Service\Gate;
+
+if (!Gate::allows("yetki_gruplari")) {
+    echo '<div class="p-5"><div class="alert alert-danger">Bu yetki grubunu düzenleme yetkiniz bulunmamaktadır.</div></div>';
+    exit;
+}
 
 $UserRoles = new UserRolesModel();
 $UserModel = new UserModel();

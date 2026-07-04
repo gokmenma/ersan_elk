@@ -36,11 +36,17 @@ function hasRoleGroupAccess($role) {
 }
 
 
-/**
- * Yetkileri ve Yetki Gruplarını döndürür.
- * * @return json
- * 
- */
+use App\Service\Gate;
+
+// Yetki koruması: Yazma/Düzenleme işlemleri için yetki_gruplari yetkisi gerekir
+if (isset($_POST['action']) && in_array($_POST['action'], ['saveGroup', 'savePermissions', 'deleteGroup', 'copyPermissions'])) {
+    if (!Gate::allows("yetki_gruplari")) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'error', 'message' => 'Bu işlemi gerçekleştirmek için yetkiniz bulunmamaktadır.']);
+        exit;
+    }
+}
+
 if ($_POST['action'] == 'getPermissions') {
 
     $id = Security::decrypt($_POST['id']);

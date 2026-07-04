@@ -13,7 +13,7 @@ $UserGroups = new UserRolesModel();
 
 $usergroups = $UserGroups->getUserGroups();
 
-if (Gate::allows("yetki_gruplari")) { ?>
+if (Gate::allows("yetki_gruplari") || Gate::allows("yetki_gruplari_izleme")) { ?>
     <style>
         .select2-results__option[aria-disabled=true] {
             display: none !important;
@@ -46,10 +46,11 @@ if (Gate::allows("yetki_gruplari")) { ?>
                         </div>
 
                         <div class="col-md-4">
-
-                            <a href="#" type="button" id="groupAddBtn" data-bs-toggle="modal" data-bs-target="#groupModal"
-                                class="btn btn-success waves-effect btn-label waves-light float-end"><i
-                                    class="bx bx-plus label-icon"></i> Yeni Ekle</a>
+                            <?php if (Gate::allows("yetki_gruplari")) { ?>
+                                <a href="#" type="button" id="groupAddBtn" data-bs-toggle="modal" data-bs-target="#groupModal"
+                                    class="btn btn-success waves-effect btn-label waves-light float-end"><i
+                                        class="bx bx-plus label-icon"></i> Yeni Ekle</a>
+                            <?php } ?>
                         </div>
 
                     </div>
@@ -63,7 +64,9 @@ if (Gate::allows("yetki_gruplari")) { ?>
                                     <th style="width:25%">Yetki Adı</th>
                                     <th>Yetki Açıklaması</th>
                                     <th>Kayıt Tarihi</th>
-                                    <th style="width:5%" class="no-sort">İşlem</th>
+                                    <?php if (Gate::allows("yetki_gruplari")) { ?>
+                                        <th style="width:5%" class="no-sort">İşlem</th>
+                                    <?php } ?>
                                 </tr>
                             </thead>
 
@@ -93,38 +96,40 @@ if (Gate::allows("yetki_gruplari")) { ?>
                                         <td><?php echo $group->description; ?></td>
                                         <td><?php echo $group->kayit_tarihi; ?></td>
 
-                                        <td class="text-center" style="width:5%">
-                                            <div class="flex-shrink-0">
-                                                <div class="dropdown align-self-start icon-demo-content">
-                                                    <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
-                                                        aria-haspopup="true" aria-expanded="false">
-                                                        <i class="bx bx-list-ul font-size-24 text-dark"></i>
+                                        <?php if (Gate::allows("yetki_gruplari")) { ?>
+                                            <td class="text-center" style="width:5%">
+                                                <div class="flex-shrink-0">
+                                                    <div class="dropdown align-self-start icon-demo-content">
+                                                        <a class="dropdown-toggle" href="#" role="button" data-bs-toggle="dropdown"
+                                                            aria-haspopup="true" aria-expanded="false">
+                                                            <i class="bx bx-list-ul font-size-24 text-dark"></i>
 
-                                                    </a>
-                                                    <div class="dropdown-menu">
-                                                        <a href="index?p=kullanici-gruplari/duzenle&id=<?php echo $enc_id; ?>"
-                                                            data-id="<?php echo $enc_id; ?>" class="dropdown-item"><span
-                                                                class="mdi mdi-account-edit font-size-18"></span>
-                                                            Yetkileri Düzenle</a>
-                                                        <a href="javascript:void(0)" data-id="<?php echo $enc_id; ?>"
-                                                            class="dropdown-item kullanici-duzenle"><span
-                                                                class="mdi mdi-account-edit font-size-18"></span>
-                                                            Düzenle</a>
-                                                        <a href="javascript:void(0)" data-id="<?php echo $enc_id; ?>"
-                                                            data-raw-id="<?php echo $group->id; ?>"
-                                                            data-name="<?php echo $group->role_name; ?>"
-                                                            class="dropdown-item yetki-kopyala">
-                                                            <span class="mdi mdi-content-copy font-size-18"></span>
-                                                            Yetkileri Kopyala</a>
-                                                        <a href="#" class="dropdown-item kullanici-sil"
-                                                            data-id="<?php echo $enc_id; ?>"
-                                                            data-name="<?php echo $group->role_name; ?>">
-                                                            <span class="mdi mdi-delete font-size-18"></span>
-                                                            Sil</a>
+                                                        </a>
+                                                        <div class="dropdown-menu">
+                                                            <a href="index?p=kullanici-gruplari/duzenle&id=<?php echo $enc_id; ?>"
+                                                                data-id="<?php echo $enc_id; ?>" class="dropdown-item"><span
+                                                                    class="mdi mdi-account-edit font-size-18"></span>
+                                                                Yetkileri Düzenle</a>
+                                                            <a href="javascript:void(0)" data-id="<?php echo $enc_id; ?>"
+                                                                class="dropdown-item kullanici-duzenle"><span
+                                                                    class="mdi mdi-account-edit font-size-18"></span>
+                                                                Düzenle</a>
+                                                            <a href="javascript:void(0)" data-id="<?php echo $enc_id; ?>"
+                                                                data-raw-id="<?php echo $group->id; ?>"
+                                                                data-name="<?php echo $group->role_name; ?>"
+                                                                class="dropdown-item yetki-kopyala">
+                                                                <span class="mdi mdi-content-copy font-size-18"></span>
+                                                                Yetkileri Kopyala</a>
+                                                            <a href="#" class="dropdown-item kullanici-sil"
+                                                                data-id="<?php echo $enc_id; ?>"
+                                                                data-name="<?php echo $group->role_name; ?>">
+                                                                <span class="mdi mdi-delete font-size-18"></span>
+                                                                Sil</a>
+                                                        </div>
                                                     </div>
                                                 </div>
-                                            </div>
-                                        </td>
+                                            </td>
+                                        <?php } ?>
                                     </tr>
                                 <?php } ?>
                             </tbody>

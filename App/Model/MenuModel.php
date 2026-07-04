@@ -169,13 +169,13 @@ class MenuModel extends Model
                         FROM permissions p
                         INNER JOIN user_role_permissions urp ON urp.permission_id = p.id
                         WHERE urp.role_id IN ({$rolePlaceholders})
-                          AND (p.id = m.id OR p.name = m.menu_link OR p.auth_name = m.menu_link)
+                          AND (p.id = m.id OR p.name = m.menu_link OR p.auth_name = m.menu_link OR (m.menu_link = 'kullanici-gruplari/list' AND p.auth_name = 'yetki_gruplari_izleme'))
                     )
                     OR (
                         NOT EXISTS (
                             SELECT 1
                             FROM permissions p0
-                            WHERE p0.id = m.id OR p0.name = m.menu_link OR p0.auth_name = m.menu_link
+                            WHERE p0.id = m.id OR p0.name = m.menu_link OR p0.auth_name = m.menu_link OR (m.menu_link = 'kullanici-gruplari/list' AND p0.auth_name = 'yetki_gruplari_izleme')
                         )
                         AND EXISTS (
                             SELECT 1
@@ -388,13 +388,13 @@ class MenuModel extends Model
                                                 FROM permissions p
                                                 INNER JOIN user_role_permissions urp ON urp.permission_id = p.id
                                                 WHERE urp.role_id IN ({$placeholders})
-                                                    AND (p.id = m.id OR p.name = m.menu_link OR p.auth_name = m.menu_link)
+                                                    AND (p.id = m.id OR p.name = m.menu_link OR p.auth_name = m.menu_link OR (m.menu_link = 'kullanici-gruplari/list' AND p.auth_name = 'yetki_gruplari_izleme'))
                                         )
                                         OR (
                                                 NOT EXISTS (
                                                         SELECT 1
                                                         FROM permissions p0
-                                                        WHERE p0.id = m.id OR p0.name = m.menu_link OR p0.auth_name = m.menu_link
+                                                        WHERE p0.id = m.id OR p0.name = m.menu_link OR p0.auth_name = m.menu_link OR (m.menu_link = 'kullanici-gruplari/list' AND p0.auth_name = 'yetki_gruplari_izleme')
                                                 )
                                                 AND EXISTS (
                                                         SELECT 1
