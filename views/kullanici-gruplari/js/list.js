@@ -202,4 +202,62 @@ $(document).ready(function () {
       }
     });
   });
+
+  // Yetki Özetini Modalda Göster
+  $(document).on("click", ".role-summary-trigger", function () {
+    var id = $(this).data("id");
+    var name = $(this).data("name");
+
+    $("#roleSummaryModalLabel").text('"' + name + '" Yetki Grubu Yetkileri');
+    $("#roleSummaryModalDescription").hide().text("");
+    $("#roleSummaryContent").html(
+      '<div class="text-center py-4"><div class="spinner-border text-primary" role="status"><span class="visually-hidden">Yükleniyor...</span></div></div>'
+    );
+    $("#roleSummaryModal").modal("show");
+
+    $.ajax({
+      url: "views/kullanici-gruplari/api.php",
+      type: "POST",
+      data: { action: "getPermissionsSummary", id: id },
+      dataType: "json",
+      success: function (res) {
+        if (res.status === "success") {
+          if (res.description) {
+            $("#roleSummaryModalDescription").text(res.description).show();
+          } else {
+            $("#roleSummaryModalDescription").hide();
+          }
+          var html = "";
+          var hasPermissions = false;
+
+          for (var group in res.data) {
+            hasPermissions = true;
+            html += '<div class="mb-4">';
+            html += '<h6 class="fw-bold border-bottom pb-2 text-primary" style="font-size: 14px;"><i class="mdi mdi-circle-double font-size-12 me-1"></i> ' + group + '</h6>';
+            html += '<div class="d-flex flex-wrap gap-2 ps-2">';
+            
+            res.data[group].forEach(function (perm) {
+              html += '<span class="badge bg-light text-dark border p-2" style="font-size: 11.5px; font-weight: normal;" title="' + (perm.description || '') + '">' + perm.name + '</span>';
+            });
+
+            html += '</div></div>';
+          }
+
+          if (!hasPermissions) {
+            html = '<div class="text-center py-4 text-muted"><i class="mdi mdi-alert-circle-outline font-size-24 d-block mb-2"></i>Bu gruba atanmış herhangi bir yetki bulunmamaktadır.</div>';
+          }
+
+          $("#roleSummaryContent").html(html);
+        } else {
+          $("#roleSummaryModal").modal("hide");
+          Swal.fire("Hata", res.message, "error");
+        }
+      },
+      error: function () {
+        $("#roleSummaryContent").html(
+          '<div class="alert alert-danger mb-0">Sunucu hatası nedeniyle yetkiler yüklenemedi.</div>'
+        );
+      }
+    });
+  });
 });

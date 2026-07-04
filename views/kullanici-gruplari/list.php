@@ -81,9 +81,15 @@ if (Gate::allows("yetki_gruplari")) { ?>
                                             <?php echo $i ?>
                                         </td>
 
-                                        <td><span
-                                                class="badge bg-<?php echo $group->role_color ?? 'secondary'; ?>"><?php echo $group->role_name; ?></span>
-                                        </td>
+                                        <td>
+                                             <span class="badge bg-<?php echo $group->role_color ?? 'secondary'; ?> role-summary-trigger" 
+                                                   data-id="<?php echo $enc_id; ?>" 
+                                                   data-name="<?php echo $group->role_name; ?>" 
+                                                   style="cursor: pointer;" 
+                                                   title="Yetki Özetini Görüntüle">
+                                                 <?php echo $group->role_name; ?>
+                                             </span>
+                                         </td>
                                         <td><?php echo $group->description; ?></td>
                                         <td><?php echo $group->kayit_tarihi; ?></td>
 
@@ -180,6 +186,29 @@ if (Gate::allows("yetki_gruplari")) { ?>
                 <div class="modal-footer">
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
                     <button type="button" id="btnCopyPermissions" class="btn btn-primary">Kopyala</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Yetki Özet Modalı -->
+    <div class="modal fade" id="roleSummaryModal" tabindex="-1" aria-labelledby="roleSummaryModalLabel" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered modal-lg">
+            <div class="modal-content">
+                <div class="modal-header bg-primary text-white d-block">
+                    <div class="d-flex justify-content-between align-items-center w-100">
+                        <h5 class="modal-title text-white" id="roleSummaryModalLabel">Yetki Grubu Yetkileri</h5>
+                        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <p class="text-white-50 small mb-0 mt-2" id="roleSummaryModalDescription" style="display: none; font-size: 12.5px;"></p>
+                </div>
+                <div class="modal-body overflow-auto" style="max-height: 70vh;">
+                    <div id="roleSummaryContent">
+                        <!-- Yetkiler dinamik yüklenecek -->
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
                 </div>
             </div>
         </div>

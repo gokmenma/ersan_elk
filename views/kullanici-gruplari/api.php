@@ -270,3 +270,57 @@ if ($_POST['action'] == 'copyPermissions') {
         echo json_encode(['status' => 'error', 'message' => 'Hata: ' . $e->getMessage()]);
     }
 }
+
+// Yetki Grubu İzin Özetini Getir
+if ($_POST['action'] == 'getPermissionsSummary') {
+    $id = Security::decrypt($_POST['id']);
+    
+    // Check if superadmin role and user is not superadmin
+    $checkRole = $UserRoles->find($id);
+    if ($checkRole && $checkRole->superadmin == 1 && !$User->isSuperAdmin()) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'error', 'message' => 'Bu yetki grubu üzerinde işlem yapma yetkiniz yok.']);
+        exit;
+    }
+
+    // Bu yetki grubunun sahip olduğu izinlerin id listesini al
+    $userPermissions = $UserPermissions->getUserPermissions($id);
+
+    if (empty($userPermissions)) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'success', 'data' => []]);
+        exit;
+    }
+
+    // İzin id listesine göre izin detaylarını al (sadece active olanlar)
+    $placeholders = implode(',', array_fill(0, count($userPermissions), '?'));
+    
+    // Güvenlik: Eğer giriş yapan kullanıcı superadmin değilse, sorguya 'AND superadmin = 0' ekle
+    $superadminQuery = "";
+    if (!$User->isSuperAdmin()) {
+        $superadminQuery = " AND superadmin = 0";
+    }
+
+    $db = (new \App\Model\Model())->db;
+    $stmt = $db->prepare("SELECT name, description, group_name FROM permissions WHERE is_active = 1 $superadminQuery AND id IN ($placeholders) ORDER BY group_name, name");
+    $stmt->execute($userPermissions);
+    $permissions = $stmt->fetchAll(PDO::FETCH_OBJ);
+
+    // Gruplara göre eşleştir
+    $grouped = [];
+    foreach ($permissions as $p) {
+        $grouped[$p->group_name][] = [
+            'name' => $p->name,
+            'description' => $p->description
+        ];
+    }
+
+    header('Content-Type: application/json; charset=utf-8');
+    echo json_encode([
+        'status' => 'success',
+        'role_name' => $checkRole->role_name,
+        'description' => $checkRole->description,
+        'data' => $grouped
+    ]);
+    exit;
+}
