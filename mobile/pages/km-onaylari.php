@@ -5,10 +5,13 @@
 
 use App\Model\AracKmBildirimModel;
 use App\Helper\Helper;
+use App\Service\Gate;
 
 $KmBildirim = new AracKmBildirimModel();
 
 $show = $_GET['show'] ?? 'pending';
+
+$hasEditPermission = Gate::allows('onaylikm_duzenle') || Gate::isSuperAdmin();
 
 if ($show === 'approved') {
     $reports = $KmBildirim->getReportsByStatus('onaylandi');

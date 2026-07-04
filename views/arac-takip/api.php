@@ -3910,10 +3910,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 break;
 
             case 'km-onay-duzelt-onayla':
-                if (!\App\Service\Gate::allows('onaylikm_duzenle') && !\App\Service\Gate::isSuperAdmin()) {
-                    throw new Exception("Bu işlemi yapmaya yetkiniz yoktur.");
-                }
-
                 $id = intval($_POST['id'] ?? 0);
                 $newKm = intval($_POST['km'] ?? 0);
                 

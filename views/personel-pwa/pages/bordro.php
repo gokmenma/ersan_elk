@@ -252,10 +252,18 @@
         try {
             const response = await API.request('getBordroStats');
             if (response.success) {
-                document.getElementById('yearly-net').textContent = Format.currency(response.data.yearly_net || 0);
-                document.getElementById('advance-limit').textContent = Format.currency(response.data.advance_limit || 0);
-                document.getElementById('pending-requests').textContent = response.data.pending_requests || 0;
-                document.getElementById('max-limit').textContent = Format.currency(response.data.advance_limit || 0);
+                const yearlyNetEl = document.getElementById('yearly-net');
+                if (yearlyNetEl) yearlyNetEl.textContent = Format.currency(response.data.yearly_net || 0);
+
+                const advanceLimitEl = document.getElementById('advance-limit');
+                if (advanceLimitEl) advanceLimitEl.textContent = Format.currency(response.data.advance_limit || 0);
+
+                const pendingRequestsEl = document.getElementById('pending-requests');
+                if (pendingRequestsEl) pendingRequestsEl.textContent = response.data.pending_requests || 0;
+
+                const maxLimitEl = document.getElementById('max-limit');
+                if (maxLimitEl) maxLimitEl.textContent = Format.currency(response.data.advance_limit || 0);
+
                 currentAdvanceLimit = parseFloat(response.data.advance_limit || 0);
             }
         } catch (error) {
