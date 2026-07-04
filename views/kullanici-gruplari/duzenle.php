@@ -7,14 +7,18 @@
 
 use App\Helper\Security;
 use App\Model\UserRolesModel;
+use App\Model\UserModel;
 
 $UserRoles = new UserRolesModel();
-
+$UserModel = new UserModel();
 
 $role_id = Security::decrypt($_GET['id']) ?? 0;
 $role = $UserRoles->find($role_id);
 
-
+if ($role && $role->superadmin == 1 && !$UserModel->isSuperAdmin()) {
+    echo '<div class="p-5"><div class="alert alert-danger">Bu yetki grubunu düzenleme yetkiniz bulunmamaktadır.</div></div>';
+    exit;
+}
 ?>
 
 

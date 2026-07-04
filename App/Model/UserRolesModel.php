@@ -26,10 +26,16 @@ class UserRolesModel extends Model
     public function getUserGroups(): array
     {
         $ownerID = $_SESSION["owner_id"];
+        $UserModel = new UserModel();
+
+        $superadminQuery = "";
+        if (!$UserModel->isSuperAdmin()) {
+            $superadminQuery = " AND superadmin = 0";
+        }
 
         $sql = $this->db->prepare("SELECT * 
                                    FROM $this->table 
-                                   WHERE owner_id = :owner_id 
+                                   WHERE owner_id = :owner_id $superadminQuery 
                                    ORDER BY id DESC");
         $sql->execute([
             'owner_id' => $ownerID

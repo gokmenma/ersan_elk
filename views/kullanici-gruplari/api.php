@@ -24,6 +24,13 @@ $UserPermissions = new UserRolePermissionsModel();
 if ($_POST['action'] == 'getPermissions') {
 
     $id = Security::decrypt($_POST['id']);
+    
+    $checkRole = $UserRoles->find($id);
+    if ($checkRole && $checkRole->superadmin == 1 && !$User->isSuperAdmin()) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'error', 'message' => 'Bu yetki grubu üzerinde işlem yapma yetkiniz yok.']);
+        exit;
+    }
 
     // Tüm izinleri gruplanmış olarak al
     $permissionGroups = $Permissions->getGroupedPermissions();
@@ -53,6 +60,13 @@ if ($_POST['action'] == 'savePermissions') {
 
     // Gelen verileri al
     $roleID = Security::decrypt($_POST['id']);
+    
+    $checkRole = $UserRoles->find($roleID);
+    if ($checkRole && $checkRole->superadmin == 1 && !$User->isSuperAdmin()) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'error', 'message' => 'Bu yetki grubu üzerinde işlem yapma yetkiniz yok.']);
+        exit;
+    }
     $submittedPermissions = json_decode($_POST['permissions']) ?? [];
 
     // Gelen izinlerin bir dizi olduğundan emin ol
@@ -61,6 +75,14 @@ if ($_POST['action'] == 'savePermissions') {
     }
     // Gelen değerlerin integer olduğundan emin ol
     $submittedPermissions = array_map('intval', $submittedPermissions);
+
+    // Eğer giriş yapan kullanıcı superadmin değilse, superadmin yetkilerini temizle
+    if (!$User->isSuperAdmin()) {
+        $db = (new \App\Model\Model())->db;
+        $stmt = $db->query("SELECT id FROM permissions WHERE superadmin = 1");
+        $superadminPermIds = $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $submittedPermissions = array_diff($submittedPermissions, $superadminPermIds);
+    }
 
     try {
         if ($roleID === 0) {
@@ -120,6 +142,15 @@ if ($_POST['action'] == 'savePermissions') {
 // Yetki Grubu Kaydet/Güncelle
 if ($_POST['action'] == 'saveGroup') {
     $id = $_POST['id'] != "0" ? Security::decrypt($_POST['id']) : 0;
+    
+    if ($id > 0) {
+        $checkRole = $UserRoles->find($id);
+        if ($checkRole && $checkRole->superadmin == 1 && !$User->isSuperAdmin()) {
+            header('Content-Type: application/json; charset=utf-8');
+            echo json_encode(['status' => 'error', 'message' => 'Bu yetki grubu üzerinde işlem yapma yetkiniz yok.']);
+            exit;
+        }
+    }
 
     $data = [
         'role_name' => $_POST['role_name'],
@@ -154,6 +185,13 @@ if ($_POST['action'] == 'saveGroup') {
 // Yetki Grubu Getir
 if ($_POST['action'] == 'getGroup') {
     $id = Security::decrypt($_POST['id']);
+    
+    $checkRole = $UserRoles->find($id);
+    if ($checkRole && $checkRole->superadmin == 1 && !$User->isSuperAdmin()) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'error', 'message' => 'Bu yetki grubu üzerinde işlem yapma yetkiniz yok.']);
+        exit;
+    }
     $group = $UserRoles->find($id);
 
     if ($group) {
@@ -166,6 +204,14 @@ if ($_POST['action'] == 'getGroup') {
 // Yetki Grubu Sil
 if ($_POST['action'] == 'deleteGroup') {
     $id = $_POST['id'];
+    
+    $decryptedId = Security::decrypt($id);
+    $checkRole = $UserRoles->find($decryptedId);
+    if ($checkRole && $checkRole->superadmin == 1 && !$User->isSuperAdmin()) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'error', 'message' => 'Bu yetki grubu üzerinde işlem yapma yetkiniz yok.']);
+        exit;
+    }
     $result = $UserRoles->delete($id);
 
     if ($result === true) {
@@ -186,6 +232,20 @@ if ($_POST['action'] == 'deleteGroup') {
 if ($_POST['action'] == 'copyPermissions') {
     $targetRoleID = Security::decrypt($_POST['target_role_id']);
     $sourceRoleID = Security::decrypt($_POST['source_role_id']);
+    
+    $targetRole = $UserRoles->find($targetRoleID);
+    if ($targetRole && $targetRole->superadmin == 1 && !$User->isSuperAdmin()) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'error', 'message' => 'Hedef yetki grubu üzerinde işlem yapma yetkiniz yok.']);
+        exit;
+    }
+    
+    $sourceRole = $UserRoles->find($sourceRoleID);
+    if ($sourceRole && $sourceRole->superadmin == 1 && !$User->isSuperAdmin()) {
+        header('Content-Type: application/json; charset=utf-8');
+        echo json_encode(['status' => 'error', 'message' => 'Kaynak yetki grubu üzerinde işlem yapma yetkiniz yok.']);
+        exit;
+    }
 
     try {
         if (!$targetRoleID || !$sourceRoleID) {

@@ -87,9 +87,15 @@ class PermissionsModel extends Model
      */
     private function fetchAllPermissionsFromDb(): array
     {
-        $sql = "SELECT id, name, description, group_name, permission_level, is_required
+        $UserModel = new UserModel();
+        $superadminQuery = "";
+        if (!$UserModel->isSuperAdmin()) {
+            $superadminQuery = " AND superadmin = 0";
+        }
+
+        $sql = "SELECT id, name, description, group_name, permission_level, is_required, superadmin
                 FROM {$this->table} 
-                WHERE is_active = ?
+                WHERE is_active = ? $superadminQuery
                 ORDER BY group_name, id";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([1]);
