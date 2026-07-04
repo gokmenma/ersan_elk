@@ -273,17 +273,18 @@ class UserModel extends Model
     /**Giriş Yapan kullanıcı superadmin mi */
     public function isSuperAdmin(): bool
     {
+        $user = \App\Controllers\AuthController::user();
+        if ($user && isset($user->role)) {
+            return $user->role === 'superadmin';
+        }
+
         $query = $this->db->prepare(
-            "SELECT COUNT(*) as count
-         FROM $this->table u
-         JOIN user_roles ur ON FIND_IN_SET(ur.id, u.roles)
-         WHERE u.id = ? AND ur.superadmin = 1"
+            "SELECT role FROM $this->table WHERE id = ?"
         );
+        $query->execute([$_SESSION["user_id"] ?? 0]);
+        $role = $query->fetchColumn();
 
-        $query->execute([$_SESSION["user_id"]]);
-        $result = $query->fetch(PDO::FETCH_OBJ);
-
-        return $result && (int) $result->count > 0;
+        return $role === 'superadmin';
     }
 
     /**

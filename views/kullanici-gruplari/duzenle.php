@@ -15,9 +15,24 @@ $UserModel = new UserModel();
 $role_id = Security::decrypt($_GET['id']) ?? 0;
 $role = $UserRoles->find($role_id);
 
-if ($role && $role->superadmin == 1 && !$UserModel->isSuperAdmin()) {
-    echo '<div class="p-5"><div class="alert alert-danger">Bu yetki grubunu düzenleme yetkiniz bulunmamaktadır.</div></div>';
-    exit;
+$currentUser = \App\Controllers\AuthController::user();
+$currentUserRole = $currentUser->role ?? 'user';
+
+if ($role) {
+    $targetRoleType = $role->role_type ?? 'user';
+    $hasAccess = false;
+    if ($currentUserRole === 'superadmin') {
+        $hasAccess = true;
+    } elseif ($currentUserRole === 'admin') {
+        $hasAccess = ($targetRoleType !== 'superadmin');
+    } elseif ($currentUserRole === 'user') {
+        $hasAccess = ($targetRoleType === 'user');
+    }
+
+    if (!$hasAccess) {
+        echo '<div class="p-5"><div class="alert alert-danger">Bu yetki grubunu düzenleme yetkiniz bulunmamaktadır.</div></div>';
+        exit;
+    }
 }
 ?>
 

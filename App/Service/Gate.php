@@ -204,69 +204,15 @@ class Gate
 
 
     /**
-     * Süper admin kontrolü,roles alanı birden fazla id içerir
+     * Süper admin kontrolü
      */
     public static function isSuperAdmin(): bool
     {
-        if (self::$requestSuperAdminCache !== null) {
-            return self::$requestSuperAdminCache;
-        }
-
         $user = AuthController::user();
-        
-        // Kullanıcının roles alanını alalım (uyumluluk için role_id'ye de bakıyoruz)
-        $rolesStr = $user->roles ?? $user->role_id ?? null;
-
-        if (!$user || empty($rolesStr)) {
-            self::$requestSuperAdminCache = false;
-            return false;
+        if ($user && isset($user->role)) {
+            return $user->role === 'superadmin';
         }
-
-        $userId = (int) ($user->id ?? 0);
-        $sessionCache = $_SESSION['is_super_admin_cache'][$userId] ?? null;
-        if (is_array($sessionCache)
-            && !empty($sessionCache['expires_at'])
-            && ($sessionCache['expires_at'] > time())
-            && isset($sessionCache['value'])
-        ) {
-            self::$requestSuperAdminCache = (bool) $sessionCache['value'];
-            return self::$requestSuperAdminCache;
-        }
-
-        // Virgülle ayrılmış id'leri diziye çevirelim
-        $rolesArray = array_filter(array_map('trim', explode(',', (string)$rolesStr)));
-        if (empty($rolesArray)) {
-            self::$requestSuperAdminCache = false;
-            return false;
-        }
-
-        // Veritabanı bağlantısı almak için Model sınıfından yararlanalım
-        $db = (new \App\Model\Model())->db;
-        
-        $placeholders = implode(',', array_fill(0, count($rolesArray), '?'));
-        
-        // Kullanıcının roles alanındaki id'lerden herhangi biri superadmin=1 olarak işaretlenmiş mi kontrol et
-        $sql = "SELECT COUNT(*) FROM user_roles WHERE superadmin = 1 AND id IN ($placeholders)";
-        $isSuperAdmin = RequestPerformanceProfiler::measure(
-            'gate.superadmin_check',
-            function () use ($db, $sql, $rolesArray) {
-                $stmt = $db->prepare($sql);
-                $stmt->execute($rolesArray);
-                return $stmt->fetchColumn() > 0;
-            },
-            1
-        );
-
-        self::$requestSuperAdminCache = (bool) $isSuperAdmin;
-
-        if ($userId > 0) {
-            $_SESSION['is_super_admin_cache'][$userId] = [
-                'expires_at' => time() + 300,
-                'value' => self::$requestSuperAdminCache
-            ];
-        }
-
-        return self::$requestSuperAdminCache;
+        return false;
     }
 
 

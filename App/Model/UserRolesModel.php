@@ -26,16 +26,20 @@ class UserRolesModel extends Model
     public function getUserGroups(): array
     {
         $ownerID = $_SESSION["owner_id"];
-        $UserModel = new UserModel();
+        
+        $currentUser = \App\Controllers\AuthController::user();
+        $currentUserRole = $currentUser->role ?? 'user';
 
-        $superadminQuery = "";
-        if (!$UserModel->isSuperAdmin()) {
-            $superadminQuery = " AND superadmin = 0";
+        $roleTypeFilter = "";
+        if ($currentUserRole === 'admin') {
+            $roleTypeFilter = " AND role_type != 'superadmin'";
+        } elseif ($currentUserRole === 'user') {
+            $roleTypeFilter = " AND role_type = 'user'";
         }
 
         $sql = $this->db->prepare("SELECT * 
                                    FROM $this->table 
-                                   WHERE owner_id = :owner_id $superadminQuery 
+                                   WHERE owner_id = :owner_id $roleTypeFilter 
                                    ORDER BY id DESC");
         $sql->execute([
             'owner_id' => $ownerID

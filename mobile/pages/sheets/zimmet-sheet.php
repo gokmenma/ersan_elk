@@ -52,6 +52,18 @@
                     <label class="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">Notlar</label>
                     <textarea name="notlar" rows="3" class="w-full bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl px-3 py-2.5 text-sm focus:ring-2 focus:ring-amber-500 outline-none transition-all dark:text-white" placeholder="Aksesuar durumu, hasar kaydı vb."></textarea>
                 </div>
+
+                <div>
+                    <label class="flex items-center gap-1.5 text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-1">
+                        Teslim Fotoğrafları
+                        <span class="inline-flex items-center gap-0.5 text-[9px] text-green-600 dark:text-green-400 normal-case font-bold bg-green-50 dark:bg-green-900/20 px-1.5 py-0.5 rounded">
+                            <span class="material-symbols-outlined text-[11px]">lock</span> Şifreli
+                        </span>
+                    </label>
+                    <input type="file" name="teslim_fotograflari[]" multiple accept="image/jpeg,image/png,image/webp,application/pdf"
+                        class="w-full text-xs text-slate-500 file:mr-3 file:py-2 file:px-3 file:rounded-lg file:border-0 file:text-xs file:font-bold file:bg-amber-50 file:text-amber-600 dark:file:bg-amber-900/20 dark:file:text-amber-400">
+                    <p class="text-[10px] text-slate-400 mt-1">Aracın teslim durumunu belgeleyin. Birden fazla dosya seçebilirsiniz (maks. 8MB).</p>
+                </div>
             </div>
         </div>
         

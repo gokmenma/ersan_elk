@@ -415,6 +415,12 @@ if (!function_exists('formatKmMobile')) {
                             <span class="font-bold text-slate-700 dark:text-slate-300"><?= formatDateMobile($zimmet->iade_tarihi) ?></span>
                         </div>
                     </div>
+                    <?php if ($zimmet->durum == 'aktif'): ?>
+                        <button type="button" onclick="openIadeSheet('<?= (int)$zimmet->id ?>', '<?= htmlspecialchars($zimmet->plaka, ENT_QUOTES) ?>', '<?= htmlspecialchars($zimmet->personel_adi, ENT_QUOTES) ?>')"
+                            class="w-full mt-3 py-2.5 bg-rose-50 dark:bg-rose-900/20 hover:bg-rose-100 active:scale-95 text-rose-600 dark:text-rose-400 font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs">
+                            <span class="material-symbols-outlined text-base">assignment_return</span> İade Al
+                        </button>
+                    <?php endif; ?>
                 </div>
             <?php endforeach; ?>
         <?php endif; ?>
@@ -584,6 +590,7 @@ if (!function_exists('formatKmMobile')) {
             <!-- Includes are injected or rendered here via JS toggling -->
             <?php include 'sheets/arac-sheet.php'; ?>
             <?php include 'sheets/zimmet-sheet.php'; ?>
+            <?php include 'sheets/iade-sheet.php'; ?>
             <?php include 'sheets/yakit-sheet.php'; ?>
             <?php include 'sheets/km-sheet.php'; ?>
             <?php include 'sheets/servis-sheet.php'; ?>
@@ -844,6 +851,10 @@ if (!function_exists('formatKmMobile')) {
                 form.sase_no.value = data.sase_no || '';
                 form.ruhsat_no.value = data.ruhsat_no || '';
                 
+                if (typeof ruhsatAlaniniGuncelle === 'function') {
+                    ruhsatAlaniniGuncelle(data);
+                }
+                
                 openSheet('arac');
             } else {
                 MobileSwal.fire('Hata', res.message, 'error');
@@ -859,6 +870,11 @@ if (!function_exists('formatKmMobile')) {
                 formObj.reset();
                 if(formObj.arac_id && formObj.arac_id.type === 'hidden') formObj.arac_id.value = '';
                 else if(formObj.id) formObj.id.value = '';
+            }
+            if (id === 'arac') {
+                if (typeof ruhsatAlaniniGuncelle === 'function') {
+                    ruhsatAlaniniGuncelle({ id: '' });
+                }
             }
         }
 
@@ -879,6 +895,9 @@ if (!function_exists('formatKmMobile')) {
         } else if (id === 'zimmet') {
             titleText = "Zimmet Formu";
             iconHtml = '<span class="material-symbols-outlined text-amber-500">swap_horiz</span>';
+        } else if (id === 'iade') {
+            titleText = "Araç İadesi";
+            iconHtml = '<span class="material-symbols-outlined text-rose-500">assignment_return</span>';
         } else if (id === 'yakit') {
             titleText = "Yakıt Fişi İşlemi";
             iconHtml = '<span class="material-symbols-outlined text-emerald-500">local_gas_station</span>';
