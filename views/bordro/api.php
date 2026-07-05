@@ -1272,10 +1272,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if ($htcGunModal > 0) {
                     $htcResmiTutar = round(floatval($asgariUcretNet) / 30 * $htcGunModal, 2);
                     $htcEldenTutar = round($nominalMaas / 30 * $htcGunModal, 2);
+                    $htcToplamTutar = round($htcEldenTutar + $htcResmiTutar, 2);
                     $collHtc = "cHTC_" . $bp->id;
                     $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collHtc . '" aria-expanded="false">
                                 <td><div class="d-flex align-items-center"><i class="bx bx-calendar-x me-2 text-purple" style="color:#7367f0"></i><span>Hafta Tatili Çalışma</span><span class="badge fw-normal ms-2" style="background:#7367f0;color:#fff">' . $htcGunModal . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
-                                <td class="text-end fw-semibold" style="color:#7367f0">+' . number_format($htcEldenTutar, 2, ',', '.') . ' ₺</td>
+                                <td class="text-end fw-semibold" style="color:#7367f0">+' . number_format($htcToplamTutar, 2, ',', '.') . ' ₺</td>
                               </tr>
                               <tr class="child-row collapse ' . $collHtc . '">
                                 <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Maaş Farkı <small class="text-muted">(Banka — brüt maaş/30 × ' . $htcGunModal . ' gün)</small></td>

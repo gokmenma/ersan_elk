@@ -2782,11 +2782,15 @@ class BordroPersonelModel extends Model
         }
 
         // Ücretli izin türlerini bul (tanimlamalar tablosundan ucretli_mi = 1 olanlar)
+        // RTÇ/HTÇ (resmi_tatil_calismasi / hafta_tatili_calismasi) günleri normGun/haftaTatiliGunu
+        // kovalarında zaten sayıldığı için burada tekrar "ücretli izin" olarak sayılmamalı (çift sayım).
         $izinTurleriSql = $this->db->prepare("
-            SELECT id FROM tanimlamalar 
-            WHERE grup = 'izin_turu' 
-            AND ucretli_mi = 1 
+            SELECT id FROM tanimlamalar
+            WHERE grup = 'izin_turu'
+            AND ucretli_mi = 1
             AND kisa_kod NOT IN ('X', 'HT', 'GT')
+            AND resmi_tatil_calismasi = 0
+            AND hafta_tatili_calismasi = 0
             AND silinme_tarihi IS NULL
         ");
         $izinTurleriSql->execute();
@@ -2862,7 +2866,7 @@ class BordroPersonelModel extends Model
         }
 
         $sql = $this->db->prepare("
-            SELECT pi.baslangic_tarihi, pi.bitis_tarihi, t.kisa_kod
+            SELECT pi.baslangic_tarihi, pi.bitis_tarihi, t.kisa_kod, t.normal_mesai_sayilir
             FROM personel_izinleri pi
             JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             WHERE pi.personel_id = ?
@@ -2881,7 +2885,10 @@ class BordroPersonelModel extends Model
             while ($cur <= $end) {
                 $d = date('Y-m-d', $cur);
                 if ($d >= $aktifBaslangic && $d <= $aktifBitis) {
-                    $gunluk_durum[$d] = strtoupper($k->kisa_kod ?? '');
+                    $gunluk_durum[$d] = [
+                        'kod' => strtoupper($k->kisa_kod ?? ''),
+                        'calisiyor' => (int) ($k->normal_mesai_sayilir ?? 0),
+                    ];
                 }
                 $cur = strtotime('+1 day', $cur);
             }
@@ -2896,7 +2903,8 @@ class BordroPersonelModel extends Model
             $isSunday = date('w', $cur) == 0;
 
             if (isset($gunluk_durum[$d])) {
-                if ($gunluk_durum[$d] === 'X') {
+                // 'X' (Çalışılan Gün) veya "çalışıyor say" (RTÇ/HTÇ) işaretli günler fiili sayılır
+                if ($gunluk_durum[$d]['kod'] === 'X' || $gunluk_durum[$d]['calisiyor'] === 1) {
                     $x_sayisi++;
                 }
             } elseif (!$isSunday) {
@@ -3564,7 +3572,7 @@ class BordroPersonelModel extends Model
         $puantajGunSayisiRaw = $this->getCalismaGunuSayisi($kayit->personel_id, $donemTarihi, $donemBitis);
         $normGun = $puantajGunSayisiRaw;
 
-        // USER REQ: Hak edilen hafta tatili (6 güne 1 gün) eklenmelidir. 
+        // USER REQ: Hak edilen hafta tatili (6 güne 1 gün) eklenmelidir.
         // Ama kullanıcı "HT olanları say" diyor. Önce puantajdaki gerçek kayıtları sayalım.
         $haftaTatiliGunu = $this->getGunSayisiByKisaKod($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi, 'HT')
             + $this->getOzelCalismaGunSayisi($kayit->personel_id, $kayit->baslangic_tarihi, $kayit->bitis_tarihi, 'hafta_tatili_calismasi');

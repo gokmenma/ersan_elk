@@ -415,12 +415,18 @@ if (!function_exists('formatKmMobile')) {
                             <span class="font-bold text-slate-700 dark:text-slate-300"><?= formatDateMobile($zimmet->iade_tarihi) ?></span>
                         </div>
                     </div>
-                    <?php if ($zimmet->durum == 'aktif'): ?>
-                        <button type="button" onclick="openIadeSheet('<?= (int)$zimmet->id ?>', '<?= htmlspecialchars($zimmet->plaka, ENT_QUOTES) ?>', '<?= htmlspecialchars($zimmet->personel_adi, ENT_QUOTES) ?>')"
-                            class="w-full mt-3 py-2.5 bg-rose-50 dark:bg-rose-900/20 hover:bg-rose-100 active:scale-95 text-rose-600 dark:text-rose-400 font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs">
-                            <span class="material-symbols-outlined text-base">assignment_return</span> İade Al
+                    <div class="flex gap-2 mt-3">
+                        <button type="button" onclick="openZimmetGecmisi('<?= (int)$zimmet->arac_id ?>', '<?= htmlspecialchars($zimmet->plaka, ENT_QUOTES) ?>')"
+                            class="flex-1 py-2.5 bg-teal-50 dark:bg-teal-900/20 hover:bg-teal-100 active:scale-95 text-teal-600 dark:text-teal-400 font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs">
+                            <span class="material-symbols-outlined text-base">history</span> Geçmişi Gör
                         </button>
-                    <?php endif; ?>
+                        <?php if ($zimmet->durum == 'aktif'): ?>
+                            <button type="button" onclick="openIadeSheet('<?= (int)$zimmet->id ?>', '<?= htmlspecialchars($zimmet->plaka, ENT_QUOTES) ?>', '<?= htmlspecialchars($zimmet->personel_adi, ENT_QUOTES) ?>')"
+                                class="flex-1 py-2.5 bg-rose-50 dark:bg-rose-900/20 hover:bg-rose-100 active:scale-95 text-rose-600 dark:text-rose-400 font-bold rounded-xl transition-all flex items-center justify-center gap-1.5 text-xs">
+                                <span class="material-symbols-outlined text-base">assignment_return</span> İade Al
+                            </button>
+                        <?php endif; ?>
+                    </div>
                 </div>
             <?php endforeach; ?>
         <?php endif; ?>
@@ -527,7 +533,8 @@ if (!function_exists('formatKmMobile')) {
             </div>
         <?php else: ?>
             <?php foreach ($servisler as $srv): ?>
-                <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4">
+                <div onclick="openServisDetay(<?= (int)$srv->id ?>, '<?= htmlspecialchars($srv->plaka, ENT_QUOTES) ?>')" 
+                    class="cursor-pointer bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 transition-all hover:bg-slate-50 dark:hover:bg-slate-800/50 active:scale-[0.99]">
                     <div class="flex items-start justify-between mb-2 border-b border-slate-100 dark:border-slate-800/60 pb-2">
                         <div class="flex items-center gap-2">
                              <div class="w-8 h-8 rounded-lg bg-red-50 text-red-600 dark:bg-red-900/30 flex items-center justify-center">
@@ -587,13 +594,14 @@ if (!function_exists('formatKmMobile')) {
 
         <!-- Sheet Body (Scrollable) -->
         <div id="bs-body" class="p-4 overflow-y-auto w-full grow flex flex-col space-y-4 pb-28 relative">
-            <!-- Includes are injected or rendered here via JS toggling -->
             <?php include 'sheets/arac-sheet.php'; ?>
             <?php include 'sheets/zimmet-sheet.php'; ?>
             <?php include 'sheets/iade-sheet.php'; ?>
             <?php include 'sheets/yakit-sheet.php'; ?>
             <?php include 'sheets/km-sheet.php'; ?>
             <?php include 'sheets/servis-sheet.php'; ?>
+            <?php include 'sheets/zimmet-gecmisi-sheet.php'; ?>
+            <?php include 'sheets/servis-detay-sheet.php'; ?>
         </div>
         
     </div>
@@ -907,6 +915,12 @@ if (!function_exists('formatKmMobile')) {
         } else if (id === 'servis') {
             titleText = "Servis İşlemi";
             iconHtml = '<span class="material-symbols-outlined text-indigo-500">build</span>';
+        } else if (id === 'zimmet-gecmisi') {
+            titleText = "Zimmet Geçmişi";
+            iconHtml = '<span class="material-symbols-outlined text-teal-500">history</span>';
+        } else if (id === 'servis-detay') {
+            titleText = "Servis Detayı";
+            iconHtml = '<span class="material-symbols-outlined text-indigo-500">handyman</span>';
         }
         titleEl.innerHTML = iconHtml + ' ' + titleText;
 
@@ -943,5 +957,301 @@ if (!function_exists('formatKmMobile')) {
             container.classList.remove('flex');
             currentOpenSheetId = null;
         }, 300);
+    }
+
+    function openZimmetGecmisi(aracId, plaka) {
+        // 1. Önce sheet'i açalım
+        openSheet('zimmet-gecmisi');
+        
+        // Title güncelleyelim
+        const titleEl = document.getElementById('bs-title');
+        titleEl.innerHTML = `<span class="material-symbols-outlined text-teal-500">history</span> Zimmet Geçmişi: <span class="text-teal-650 font-black">${plaka}</span>`;
+        
+        const container = document.getElementById('zimmetGecmisiList');
+        container.innerHTML = `
+            <div class="text-center p-8 text-slate-400">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-teal-500 border-t-transparent mb-2"></div>
+                <p class="text-xs">Zimmet geçmişi yükleniyor...</p>
+            </div>
+        `;
+
+        // 2. Fetch data
+        const formData = new URLSearchParams();
+        formData.append("action", "zimmet-gecmisi");
+        formData.append("arac_id", aracId);
+
+        fetch('../views/arac-takip/api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: formData.toString()
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.status === 'success' && res.data) {
+                if (res.data.length === 0) {
+                    container.innerHTML = `
+                        <div class="bg-white dark:bg-card-dark rounded-2xl p-6 text-center border border-slate-100 dark:border-slate-800 shadow-sm">
+                            <span class="material-symbols-outlined text-slate-400 text-3xl mb-2">info</span>
+                            <p class="text-xs text-slate-500">Bu araca ait zimmet geçmişi bulunmamaktadır.</p>
+                        </div>
+                    `;
+                    return;
+                }
+
+                let html = '';
+                res.data.forEach(z => {
+                    const isAktif = z.durum === 'aktif';
+                    const statusBadge = isAktif 
+                        ? '<span class="inline-flex items-center bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400 text-[10px] px-1.5 py-0.5 rounded font-bold">Aktif</span>' 
+                        : '<span class="inline-flex items-center bg-slate-100 text-slate-600 dark:bg-slate-850 dark:text-slate-400 text-[10px] px-1.5 py-0.5 rounded font-bold">İade Edildi</span>';
+
+                    // Fotoları listele
+                    let fotoHtml = '';
+                    const teslimFotolar = (z.fotolar || []).filter(f => f.foto_turu === 'teslim');
+                    const iadeFotolar = (z.fotolar || []).filter(f => f.foto_turu === 'iade');
+
+                    if (teslimFotolar.length > 0 || iadeFotolar.length > 0) {
+                        fotoHtml += `<div class="mt-3 pt-3 border-t border-slate-150 dark:border-slate-800/60 space-y-2">`;
+                        
+                        if (teslimFotolar.length > 0) {
+                            fotoHtml += `<div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider min-w-[45px]">Teslim:</span>`;
+                            teslimFotolar.forEach(f => {
+                                const url = "../views/arac-takip/zimmet-foto-goruntule.php?id=" + encodeURIComponent(f.id);
+                                if (f.is_pdf || f.mime_tipi === 'application/pdf') {
+                                    fotoHtml += `<a href="${url}" target="_blank" class="inline-flex items-center gap-0.5 bg-red-50 text-red-650 hover:bg-red-100 px-2 py-1 rounded-lg text-[10px] font-bold transition-all"><span class="material-symbols-outlined text-[12px]">picture_as_pdf</span> PDF</a>`;
+                                } else {
+                                    fotoHtml += `<img src="${url}" onclick="window.open('${url}', '_blank')" class="w-10 h-10 rounded-lg object-cover border border-slate-100 dark:border-slate-800 cursor-pointer hover:opacity-80 transition-opacity" title="${f.orijinal_ad}">`;
+                                }
+                            });
+                            fotoHtml += `</div>`;
+                        }
+
+                        if (iadeFotolar.length > 0) {
+                            fotoHtml += `<div class="flex items-center gap-1.5 flex-wrap">
+                                <span class="text-[9px] font-bold text-slate-400 uppercase tracking-wider min-w-[45px]">İade:</span>`;
+                            iadeFotolar.forEach(f => {
+                                const url = "../views/arac-takip/zimmet-foto-goruntule.php?id=" + encodeURIComponent(f.id);
+                                if (f.is_pdf || f.mime_tipi === 'application/pdf') {
+                                    fotoHtml += `<a href="${url}" target="_blank" class="inline-flex items-center gap-0.5 bg-red-50 text-red-650 hover:bg-red-100 px-2 py-1 rounded-lg text-[10px] font-bold transition-all"><span class="material-symbols-outlined text-[12px]">picture_as_pdf</span> PDF</a>`;
+                                } else {
+                                    fotoHtml += `<img src="${url}" onclick="window.open('${url}', '_blank')" class="w-10 h-10 rounded-lg object-cover border border-slate-100 dark:border-slate-800 cursor-pointer hover:opacity-80 transition-opacity" title="${f.orijinal_ad}">`;
+                                }
+                            });
+                            fotoHtml += `</div>`;
+                        }
+
+                        fotoHtml += `</div>`;
+                    }
+
+                    html += `
+                    <div class="bg-white dark:bg-card-dark rounded-2xl p-4 border border-slate-100 dark:border-slate-800 shadow-sm space-y-3">
+                        <div class="flex justify-between items-start">
+                            <div>
+                                <h4 class="font-bold text-slate-800 dark:text-white text-sm">${z.personel_adi || 'Bilinmiyor'}</h4>
+                                <span class="text-[9px] text-slate-400 dark:text-slate-500">İşlem Yapan: ${z.olusturan_kullanici_adi || '-'} (${z.olusturma_tarihi_fmt || '-'})</span>
+                            </div>
+                            ${statusBadge}
+                        </div>
+                        
+                        <div class="grid grid-cols-2 gap-2 text-xs">
+                            <div class="bg-slate-50 dark:bg-slate-800/40 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/40">
+                                <span class="text-slate-400 block text-[9px] uppercase font-bold mb-0.5">Zimmet Tarihi & KM</span>
+                                <span class="font-bold text-slate-700 dark:text-slate-350 block mb-0.5">${z.zimmet_tarihi_fmt || '-'}</span>
+                                <span class="text-indigo-500 dark:text-indigo-400 font-bold block text-[11px]">${z.teslim_km ? Number(z.teslim_km).toLocaleString('tr-TR') + ' km' : '-'}</span>
+                            </div>
+                            <div class="bg-slate-50 dark:bg-slate-800/40 p-2.5 rounded-xl border border-slate-100 dark:border-slate-800/40">
+                                <span class="text-slate-400 block text-[9px] uppercase font-bold mb-0.5">İade Tarihi & KM</span>
+                                <span class="font-bold text-slate-700 dark:text-slate-350 block mb-0.5">${z.iade_tarihi_fmt || '-'}</span>
+                                <span class="text-indigo-500 dark:text-indigo-400 font-bold block text-[11px]">${z.iade_km ? Number(z.iade_km).toLocaleString('tr-TR') + ' km' : '-'}</span>
+                            </div>
+                        </div>
+                        
+                        ${fotoHtml}
+                    </div>
+                    `;
+                });
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = `
+                    <div class="bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 p-4 rounded-xl text-xs text-center border border-rose-100 dark:border-rose-900/40">
+                        Hata: ${res.message || 'Zimmet geçmişi yüklenirken hata oluştu.'}
+                    </div>
+                `;
+            }
+        })
+        .catch(() => {
+            container.innerHTML = `
+                <div class="bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 p-4 rounded-xl text-xs text-center border border-rose-100 dark:border-rose-900/40">
+                    Bağlantı hatası oluştu.
+                </div>
+            `;
+        });
+    }
+
+    function openServisDetay(id, plaka) {
+        // 1. Önce sheet'i açalım
+        openSheet('servis-detay');
+        
+        // Title güncelleyelim
+        const titleEl = document.getElementById('bs-title');
+        titleEl.innerHTML = `<span class="material-symbols-outlined text-indigo-500">handyman</span> Servis Detayı: <span class="text-indigo-650 dark:text-indigo-400 font-black">${plaka}</span>`;
+        
+        const container = document.getElementById('servisDetayContent');
+        container.innerHTML = `
+            <div class="text-center p-8 text-slate-400">
+                <div class="inline-block animate-spin rounded-full h-8 w-8 border-4 border-indigo-500 border-t-transparent mb-2"></div>
+                <p class="text-xs">Servis detayı yükleniyor...</p>
+            </div>
+        `;
+
+        // 2. Fetch data
+        const formData = new URLSearchParams();
+        formData.append("action", "servis-detay");
+        formData.append("id", id);
+
+        fetch('../views/arac-takip/api.php', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            body: formData.toString()
+        })
+        .then(r => r.json())
+        .then(res => {
+            if (res.status === 'success' && res.data) {
+                const s = res.data;
+                const formatMoney = (amount) => Number(amount || 0).toLocaleString('tr-TR', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' ₺';
+                const formatKm = (km) => km ? Number(km).toLocaleString('tr-TR') + ' km' : '-';
+                
+                const statusHtml = s.iade_tarihi 
+                    ? '<span class="inline-flex items-center bg-green-50 text-green-600 dark:bg-green-900/20 dark:text-green-400 text-[10px] px-2 py-0.5 rounded-full font-bold">Tamamlandı</span>' 
+                    : '<span class="inline-flex items-center bg-amber-50 text-amber-600 dark:bg-amber-900/20 dark:text-amber-400 text-[10px] px-2 py-0.5 rounded-full font-bold">Devam Ediyor</span>';
+
+                let html = `
+                <div class="space-y-4">
+                    <!-- Durum & Tutar Kartı -->
+                    <div class="bg-gradient-to-br from-indigo-500 to-indigo-600 rounded-2xl p-4 text-white shadow-md flex justify-between items-center">
+                        <div>
+                            <span class="text-[10px] uppercase font-bold opacity-80 block mb-0.5 tracking-wider">Maliyet / Tutar</span>
+                            <h4 class="text-xl font-black">${formatMoney(s.tutar)}</h4>
+                        </div>
+                        <div class="bg-white/10 backdrop-blur-sm border border-white/20 rounded-xl px-3 py-1.5 flex flex-col items-center">
+                            <span class="text-[9px] uppercase font-bold text-white/80 block mb-0.5">Durum</span>
+                            ${statusHtml}
+                        </div>
+                    </div>
+
+                    <!-- Giriş Bilgileri -->
+                    <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+                        <div class="bg-slate-50 dark:bg-slate-800/50 p-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-indigo-500 text-lg align-middle">login</span>
+                            <span class="font-bold text-sm text-slate-700 dark:text-slate-300">Giriş Bilgileri</span>
+                        </div>
+                        <div class="p-4 space-y-3">
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                    <span class="text-slate-400 block text-[9px] uppercase font-bold mb-0.5">Giriş Tarihi</span>
+                                    <span class="font-bold text-slate-700 dark:text-slate-300">${s.servis_tarihi || '-'}</span>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 block text-[9px] uppercase font-bold mb-0.5">Giriş KM</span>
+                                    <span class="font-bold text-slate-700 dark:text-slate-300">${formatKm(s.giris_km)}</span>
+                                </div>
+                            </div>
+                            <div class="pt-2 border-t border-slate-100 dark:border-slate-800/50">
+                                <span class="text-slate-400 block text-[9px] uppercase font-bold mb-0.5">Servis Noktası</span>
+                                <span class="font-semibold text-slate-700 dark:text-slate-300 text-xs">${s.servis_adi || '-'}</span>
+                            </div>
+                            <div class="pt-2 border-t border-slate-100 dark:border-slate-800/50">
+                                <span class="text-slate-400 block text-[9px] uppercase font-bold mb-0.5">Şikayet / Neden</span>
+                                <span class="text-slate-600 dark:text-slate-400 text-xs block leading-relaxed">${s.servis_nedeni || '-'}</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Çıkış Bilgileri -->
+                    <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+                        <div class="bg-slate-50 dark:bg-slate-800/50 p-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-green-500 text-lg align-middle">logout</span>
+                            <span class="font-bold text-sm text-slate-700 dark:text-slate-300">Çıkış Bilgileri</span>
+                        </div>
+                        <div class="p-4 space-y-3">
+                            <div class="grid grid-cols-2 gap-2 text-xs">
+                                <div>
+                                    <span class="text-slate-400 block text-[9px] uppercase font-bold mb-0.5">Çıkış Tarihi</span>
+                                    <span class="font-bold text-slate-700 dark:text-slate-300">${s.iade_tarihi || '-'}</span>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 block text-[9px] uppercase font-bold mb-0.5">Çıkış KM</span>
+                                    <span class="font-bold text-slate-700 dark:text-slate-300">${formatKm(s.cikis_km)}</span>
+                                </div>
+                            </div>
+                            <div class="pt-2 border-t border-slate-100 dark:border-slate-800/50">
+                                <span class="text-slate-400 block text-[9px] uppercase font-bold mb-0.5">Fatura No</span>
+                                <span class="font-semibold text-slate-700 dark:text-slate-300 text-xs">${s.fatura_no || '-'}</span>
+                            </div>
+                            <div class="pt-2 border-t border-slate-100 dark:border-slate-800/50">
+                                <span class="text-slate-400 block text-[9px] uppercase font-bold mb-0.5">Yapılan İşlemler</span>
+                                <span class="text-slate-600 dark:text-slate-400 text-xs block leading-relaxed font-semibold">${s.yapilan_islemler || '-'}</span>
+                            </div>
+                        </div>
+                    </div>
+                `;
+
+                // İkame Araç Bilgileri varsa ekle
+                if (s.ikame_plaka) {
+                    html += `
+                    <!-- İkame Araç Bilgileri -->
+                    <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 overflow-hidden">
+                        <div class="bg-slate-50 dark:bg-slate-800/50 p-3 border-b border-slate-100 dark:border-slate-800 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-amber-500 text-lg align-middle">car_rental</span>
+                            <span class="font-bold text-sm text-slate-700 dark:text-slate-300">İkame Araç Bilgileri</span>
+                        </div>
+                        <div class="p-4 space-y-3">
+                            <div class="flex items-center justify-between">
+                                <div>
+                                    <span class="text-slate-400 block text-[9px] uppercase font-bold mb-0.5">İkame Plaka</span>
+                                    <span class="font-black text-amber-600 dark:text-amber-400 text-sm">${s.ikame_plaka}</span>
+                                </div>
+                                <div class="text-right">
+                                    <span class="text-slate-400 block text-[9px] uppercase font-bold mb-0.5">Marka / Model</span>
+                                    <span class="font-bold text-slate-700 dark:text-slate-300 text-xs">${s.ikame_marka || '-'} ${s.ikame_model || ''}</span>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-2 text-xs pt-2 border-t border-slate-100 dark:border-slate-800/50">
+                                <div>
+                                    <span class="text-slate-400 block text-[9px] uppercase font-bold mb-0.5">Alış Tarihi</span>
+                                    <span class="font-bold text-slate-700 dark:text-slate-300">${s.ikame_alis_tarihi || '-'}</span>
+                                </div>
+                                <div>
+                                    <span class="text-slate-400 block text-[9px] uppercase font-bold mb-0.5">Teslim KM</span>
+                                    <span class="font-bold text-slate-700 dark:text-slate-300">${formatKm(s.ikame_teslim_km)}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    `;
+                }
+
+                html += '</div>';
+                container.innerHTML = html;
+            } else {
+                container.innerHTML = `
+                    <div class="bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 p-4 rounded-xl text-xs text-center border border-rose-100 dark:border-rose-900/40">
+                        Hata: ${res.message || 'Servis detayı yüklenirken hata oluştu.'}
+                    </div>
+                `;
+            }
+        })
+        .catch(() => {
+            container.innerHTML = `
+                <div class="bg-rose-50 dark:bg-rose-900/20 text-rose-600 dark:text-rose-400 p-4 rounded-xl text-xs text-center border border-rose-100 dark:border-rose-900/40">
+                    Bağlantı hatası oluştu.
+                </div>
+            `;
+        });
     }
 </script>
