@@ -288,59 +288,108 @@ if (!empty($dbGelirler)) {
         }
 
         #modalIzinTakvim .modal-dialog {
-            max-width: 820px;
+            max-width: 780px;
         }
 
         #modalIzinTakvim .modal-content {
             border: 0;
-            border-radius: 20px;
+            border-radius: 16px;
             overflow: hidden;
-            box-shadow: 0 15px 40px rgba(0,0,0,0.12);
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.12);
         }
 
         #modalIzinTakvim .modal-header {
-            background: #fff !important;
+            background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%) !important;
             color: #0f172a !important;
-            border-bottom: 1px solid #f1f5f9;
-            padding: 1.2rem 1.5rem;
+            border-bottom: 1px solid #e2e8f0;
+            padding: 0.85rem 1.25rem;
         }
 
         #modalIzinTakvim .btn-close {
-            filter: none;
-            opacity: 0.7;
-            transition: all 0.2s;
+            background-color: #ffffff;
+            border: 1px solid #cbd5e1;
+            border-radius: 50%;
+            padding: 0.4rem;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            transition: all 0.2s ease;
         }
 
         #modalIzinTakvim .btn-close:hover {
-            opacity: 1;
+            background-color: #f1f5f9;
+            transform: rotate(90deg);
         }
 
         #modalIzinTakvim .modal-body {
-            background: #fff !important;
-            padding: 1.25rem 1.5rem;
+            background: #ffffff !important;
+            padding: 1rem 1.25rem;
         }
 
         #modalIzinTakvim .modal-footer {
             border-top: 1px solid #f1f5f9;
-            background: #fcfcfc;
-            padding: 1rem 1.5rem;
+            background: #f8fafc;
+            padding: 0.85rem 1.25rem;
+        }
+
+        /* Premium Summary Cards */
+        .premium-summary-card {
+            background: #ffffff;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            padding: 0.75rem 1rem;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
+        }
+        .premium-summary-card:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.05);
+            border-color: #cbd5e1;
+        }
+        .premium-summary-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+        }
+        .premium-summary-card.card-total::before {
+            background: linear-gradient(90deg, #3b82f6, #60a5fa);
+        }
+        .premium-summary-card.card-ucretli::before {
+            background: linear-gradient(90deg, #10b981, #34d399);
+        }
+        .premium-summary-card.card-ucretsiz::before {
+            background: linear-gradient(90deg, #f43f5e, #fb7185);
+        }
+        .premium-summary-card .icon-box {
+            width: 28px;
+            height: 28px;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
         }
 
         .year-calendar-month {
             border: 1px solid #e2e8f0;
-            border-radius: 16px;
+            border-radius: 14px;
             overflow: hidden;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03) !important;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.02) !important;
+            background: #ffffff;
         }
 
         .year-calendar-header {
             text-align: center;
-            letter-spacing: 0.05em;
-            font-size: 1.05rem !important;
-            background: #fafafa !important;
-            color: #334155;
+            font-weight: 700;
+            letter-spacing: 0.02em;
+            font-size: 0.95rem !important;
+            background: linear-gradient(to right, #f8fafc, #ffffff) !important;
+            color: #1e293b;
             margin-bottom: 0 !important;
-            padding: 0.85rem 1rem !important;
+            padding: 0.6rem 1rem !important;
             border-bottom: 1px solid #f1f5f9;
         }
 
@@ -354,9 +403,9 @@ if (!empty($dbGelirler)) {
         .year-calendar-table th {
             text-align: center;
             color: #64748b;
-            font-size: 0.72rem;
-            font-weight: 500;
-            padding: 0.35rem 0;
+            font-size: 0.7rem;
+            font-weight: 600;
+            padding: 0.3rem 0;
             background: transparent !important;
             border: 0 !important;
             text-transform: uppercase;
@@ -364,10 +413,10 @@ if (!empty($dbGelirler)) {
         }
 
         .year-calendar-table td {
-            height: 56px;
-            vertical-align: middle;
+            height: 72px;
+            vertical-align: top;
             background: #f8fafc !important;
-            border: 1px solid #f1f5f9 !important;
+            border: 1px solid #e2e8f0 !important;
             border-radius: 12px !important;
             padding: 0.35rem;
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
@@ -375,8 +424,9 @@ if (!empty($dbGelirler)) {
 
         .year-calendar-table td:hover {
             background-color: #f1f5f9 !important;
-            border-color: #e2e8f0 !important;
+            border-color: #cbd5e1 !important;
             transform: translateY(-1px);
+            box-shadow: 0 2px 4px rgba(0, 0, 0, 0.03);
         }
 
         .year-calendar-table td.is-filled {
@@ -384,17 +434,20 @@ if (!empty($dbGelirler)) {
         }
 
         .year-calendar-table td.is-filled:hover {
-            filter: brightness(0.97);
+            filter: brightness(0.96);
+            transform: translateY(-1px);
+            box-shadow: 0 2px 6px rgba(0,0,0,0.04);
         }
 
         .year-calendar-table td.today {
             background-color: #eff6ff !important;
-            border: 1px solid #3b82f6 !important;
+            border: 2px solid #3b82f6 !important;
         }
 
         .year-calendar-table td.passive-date {
-            opacity: 0.35;
-            background: #f8fafc !important;
+            opacity: 0.3;
+            background: #f1f5f9 !important;
+            pointer-events: none;
         }
 
         .year-calendar-day {
@@ -407,11 +460,12 @@ if (!empty($dbGelirler)) {
         }
 
         .year-calendar-day-number {
-            font-size: 0.78rem;
-            font-weight: 500;
+            font-size: 0.72rem;
+            font-weight: 700;
             line-height: 1;
-            color: #64748b;
+            color: #475569;
             align-self: flex-start;
+            margin-bottom: 2px;
         }
 
         .year-calendar-day-code {
@@ -419,15 +473,33 @@ if (!empty($dbGelirler)) {
             align-items: center;
             justify-content: center;
             min-width: 24px;
-            height: 18px;
-            border-radius: 6px;
-            font-size: 0.65rem;
-            font-weight: 700;
-            padding: 0.1rem 0.35rem;
+            height: 17px;
+            border-radius: 4px;
+            font-size: 0.62rem;
+            font-weight: 800;
+            padding: 0.05rem 0.35rem;
             width: auto;
             max-width: 100%;
-            box-shadow: none;
-            border: 1px solid rgba(255,255,255,0.25);
+            box-shadow: 0 1px 2px rgba(0,0,0,0.05);
+            border: 1px solid rgba(255,255,255,0.2);
+        }
+
+        .year-calendar-day-desc {
+            font-size: 0.58rem;
+            font-weight: 600;
+            line-height: 1;
+            text-align: center;
+            margin-top: 2px;
+            color: inherit;
+            opacity: 0.9;
+            display: -webkit-box;
+            -webkit-line-clamp: 2;
+            -webkit-box-orient: vertical;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: normal;
+            width: 100%;
+            word-break: break-word;
         }
 
         .takvim-legend {
@@ -2116,39 +2188,45 @@ if (!empty($dbGelirler)) {
         html += `<div class="col-12">`;
         
         // Özet Kartları
-        html += `<div class="row g-2 mb-3">
+        html += `<div class="row g-2 mb-2">
             <div class="col-md-4">
-                <div class="p-3 bg-light rounded-4 border border-light-subtle h-100 d-flex flex-column justify-content-between" style="min-height: 100px;">
+                <div class="premium-summary-card card-total h-100 d-flex flex-column justify-content-between" style="min-height: 80px;">
                     <div class="d-flex align-items-center justify-content-between mb-1">
-                        <span class="text-muted small fw-medium">Toplam Gün</span>
-                        <i class="bx bx-calendar fs-4 text-secondary"></i>
+                        <span class="text-muted small fw-semibold text-uppercase tracking-wider" style="font-size: 0.65rem;">Toplam Gün</span>
+                        <div class="icon-box" style="background-color: #f1f5f9; color: #475569;">
+                            <i class="bx bx-calendar"></i>
+                        </div>
                     </div>
-                    <h3 class="mb-0 fw-bold text-dark">${summary.toplamGun} <small class="text-muted fs-6 fw-normal">Gün</small></h3>
+                    <h3 class="mb-0 fw-bold text-dark" style="font-size: 1.3rem;">${summary.toplamGun} <small class="text-muted fs-6 fw-normal">Gün</small></h3>
                 </div>
             </div>
             
             <div class="col-md-4">
-                <div class="p-3 bg-light rounded-4 border border-light-subtle h-100 d-flex flex-column justify-content-between" style="min-height: 100px;">
+                <div class="premium-summary-card card-ucretli h-100 d-flex flex-column justify-content-between" style="min-height: 80px;">
                     <div class="d-flex align-items-center justify-content-between mb-1">
-                        <span class="text-muted small fw-medium">Ücretli Günler</span>
-                        <i class="bx bx-check-circle fs-4 text-success"></i>
+                        <span class="text-muted small fw-semibold text-uppercase tracking-wider" style="font-size: 0.65rem;">Ücretli Günler</span>
+                        <div class="icon-box" style="background-color: #ecfdf5; color: #059669;">
+                            <i class="bx bx-check-circle"></i>
+                        </div>
                     </div>
-                    <h3 class="mb-1 fw-bold text-success">${summary.ucretliToplam} <small class="text-muted fs-6 fw-normal">Gün</small></h3>
+                    <h3 class="mb-0 fw-bold text-success" style="font-size: 1.3rem;">${summary.ucretliToplam} <small class="text-muted fs-6 fw-normal">Gün</small></h3>
                     <div class="d-flex flex-wrap gap-1 mt-1">
-                        ${summary.ucretliList.map(item => `<span class="badge bg-white text-dark border px-2 py-1" style="font-size:10px; font-weight:600;">${item.kisa_kod}: ${item.count}</span>`).join('')}
+                        ${summary.ucretliList.map(item => `<span class="badge bg-light text-dark border px-1.5 py-0.5" style="font-size:9px; font-weight:600; border-radius: 4px;">${item.kisa_kod}: ${item.count}</span>`).join('')}
                     </div>
                 </div>
             </div>
 
             <div class="col-md-4">
-                <div class="p-3 bg-light rounded-4 border border-light-subtle h-100 d-flex flex-column justify-content-between" style="min-height: 100px;">
+                <div class="premium-summary-card card-ucretsiz h-100 d-flex flex-column justify-content-between" style="min-height: 80px;">
                     <div class="d-flex align-items-center justify-content-between mb-1">
-                        <span class="text-muted small fw-medium">Ücretsiz Günler</span>
-                        <i class="bx bx-x-circle fs-4 text-danger"></i>
+                        <span class="text-muted small fw-semibold text-uppercase tracking-wider" style="font-size: 0.65rem;">Ücretsiz Günler</span>
+                        <div class="icon-box" style="background-color: #fff1f2; color: #e11d48;">
+                            <i class="bx bx-x-circle"></i>
+                        </div>
                     </div>
-                    <h3 class="mb-1 fw-bold text-danger">${summary.ucretsizToplam} <small class="text-muted fs-6 fw-normal">Gün</small></h3>
+                    <h3 class="mb-0 fw-bold text-danger" style="font-size: 1.3rem;">${summary.ucretsizToplam} <small class="text-muted fs-6 fw-normal">Gün</small></h3>
                     <div class="d-flex flex-wrap gap-1 mt-1">
-                        ${summary.ucretsizList.map(item => `<span class="badge bg-white text-dark border px-2 py-1" style="font-size:10px; font-weight:600;">${item.kisa_kod}: ${item.count}</span>`).join('')}
+                        ${summary.ucretsizList.map(item => `<span class="badge bg-light text-dark border px-1.5 py-0.5" style="font-size:9px; font-weight:600; border-radius: 4px;">${item.kisa_kod}: ${item.count}</span>`).join('')}
                     </div>
                 </div>
             </div>
@@ -2156,7 +2234,7 @@ if (!empty($dbGelirler)) {
 
         html += `<div class="year-calendar-month">
                 <div class="year-calendar-header">${window.ayIsimleriModal[month]}</div>
-                <div class="p-2">
+                <div class="p-3">
                     <table class="year-calendar-table">
                         <thead>
                             <tr>${window.gunIsimleriModal.map(g => `<th>${g}</th>`).join('')}</tr>
@@ -2218,10 +2296,11 @@ if (!empty($dbGelirler)) {
                     if (dayEvents.length > 0) {
                         const event = dayEvents[0];
                         const eventStyle = getStyleFromTailwindProxyModal(event.color);
-                        style = `background-color: ${eventStyle.bg} !important; color: ${eventStyle.color} !important; border-radius: 12px; font-weight: bold;`;
+                        style = `background-color: ${eventStyle.bg} !important; color: ${eventStyle.color} !important; border-radius: 16px; font-weight: bold;`;
                         cellContent = `<div class="year-calendar-day" data-bs-toggle="tooltip" title="${event.kisa_kod} : ${event.name}">
                             <span class="year-calendar-day-number">${day}</span>
                             <span class="year-calendar-day-code" style="background-color:${eventStyle.color}; color:#fff;">${event.kisa_kod}</span>
+                            <span class="year-calendar-day-desc">${event.name}</span>
                         </div>`;
                         filledClass = 'is-filled';
                     }
