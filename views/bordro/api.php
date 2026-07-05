@@ -1457,8 +1457,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $yemekPop .= '</div>';
                 }
 
+                $yemekLabelText = 'Yemek Yardımı';
+                $dahilYemekGun = intval($ozetDetay['dahil_yemek_gun'] ?? 0);
+                $dahilYemekGunluk = floatval($ozetDetay['dahil_yemek_gunluk'] ?? 0);
+                if ($dahilYemekGun > 0 && $dahilYemekGunluk > 0) {
+                    $yemekLabelText .= ' <small class="text-muted" style="font-size:0.75rem; font-weight:normal; letter-spacing:0px;">( ' . $dahilYemekGun . ' x ' . number_format($dahilYemekGunluk, 2, ',', '.') . ' TL )</small>';
+                }
+
                 $html .= '<div class="ref-card-item"><span class="label">Yol Yardımı</span><span class="value">' . $fmt($yolYardimi) . '</span></div>';
-                $html .= '<div class="ref-card-item' . (!empty($yemekPop) ? ' hover-popover-trigger' : '') . '"><span class="label">Yemek Yardımı' . (!empty($yemekPop) ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($yemekYardimi) . '</span>' . $yemekPop . '</div>';
+                $html .= '<div class="ref-card-item' . (!empty($yemekPop) ? ' hover-popover-trigger' : '') . '"><span class="label">' . $yemekLabelText . (!empty($yemekPop) ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($yemekYardimi) . '</span>' . $yemekPop . '</div>';
                 $html .= '<div class="ref-card-item"><span class="label">Eş Yardımı</span><span class="value">' . $fmt($esYardimi) . '</span></div>';
                 $html .= '<div class="ref-card-item"><span class="label">Diger Sosyal Yardım</span><span class="value">' . $fmt($digerSosyalYardim) . '</span></div>';
                 $html .= '</div>';

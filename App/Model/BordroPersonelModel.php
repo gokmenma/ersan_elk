@@ -4316,8 +4316,8 @@ class BordroPersonelModel extends Model
         // Initialize $netMaas for cases where the Maaşa Dahil block is skipped
         $netMaas = $hakedisNetBeforeKesinti;
 
-        $fiiliCalismaGunu = $normGun; 
-        if ($fiiliCalismaGunu <= 0) $fiiliCalismaGunu = $maasHesapGunu;
+        $fiiliCalismaGunu = $this->getPuantajXGunSayisi($kayit->personel_id, $donemTarihi, $donemBitis); 
+        if ($fiiliCalismaGunu <= 0) $fiiliCalismaGunu = $normGun > 0 ? $normGun : $maasHesapGunu;
 
         // İcra matrahı diğer kesintiler (avans, özel kesinti vb.) düşülmeden önceki net hakediş olmalıdır.
         $icraMatrahi = max(0, $hakedisNetBeforeKesinti);
