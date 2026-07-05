@@ -1270,13 +1270,20 @@ class BordroPersonelModel extends Model
             WHERE bp.personel_id = ?
             AND bp.silinme_tarihi IS NULL
             AND bp.hesaplama_tarihi IS NOT NULL
-            ORDER BY bd.baslangic_tarihi ASC, bp.id ASC
+            ORDER BY bd.baslangic_tarihi ASC, bp.id DESC
         ");
         $sql->execute([$personel_id]);
         $rows = $sql->fetchAll(PDO::FETCH_OBJ);
 
         $sonuc = [];
+        $processedMonths = [];
         foreach ($rows as $row) {
+            $monthKey = date('Y-m', strtotime($row->baslangic_tarihi));
+            if (isset($processedMonths[$monthKey])) {
+                continue;
+            }
+            $processedMonths[$monthKey] = true;
+
             $detay = !empty($row->hesaplama_detay) ? json_decode($row->hesaplama_detay, true) : [];
             $matrahlar = $detay['matrahlar'] ?? [];
             $sonuc[] = [
@@ -4662,7 +4669,7 @@ class BordroPersonelModel extends Model
 
         // Bu yılın Ocak'tan önceki aya kadar toplam gelir vergisi matrahı
         $sql = $this->db->prepare("
-            SELECT bp.hesaplama_detay, bp.brut_maas, bp.sgk_isci, bp.issizlik_isci
+            SELECT bp.hesaplama_detay, bp.brut_maas, bp.sgk_isci, bp.issizlik_isci, bd.baslangic_tarihi
             FROM {$this->table} bp
             INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
             WHERE bp.personel_id = ?
@@ -4670,11 +4677,19 @@ class BordroPersonelModel extends Model
             AND MONTH(bd.baslangic_tarihi) < ?
             AND bp.hesaplama_tarihi IS NOT NULL
             AND bp.silinme_tarihi IS NULL
+            ORDER BY bd.baslangic_tarihi ASC, bp.id DESC
         ");
         $sql->execute([$personel_id, $yil, $ay]);
         $rows = $sql->fetchAll(PDO::FETCH_OBJ);
 
+        $processedMonths = [];
         foreach ($rows as $row) {
+            $monthKey = date('Y-m', strtotime($row->baslangic_tarihi));
+            if (isset($processedMonths[$monthKey])) {
+                continue;
+            }
+            $processedMonths[$monthKey] = true;
+
             $detay = !empty($row->hesaplama_detay) ? json_decode($row->hesaplama_detay, true) : null;
             if (is_array($detay) && isset($detay['matrahlar']['gelir_vergisi_matrahi'])) {
                 $toplamMatrah += floatval($detay['matrahlar']['gelir_vergisi_matrahi']);

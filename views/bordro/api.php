@@ -110,9 +110,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     // Get payroll records for 2026 (Jan to May)
                     $stmtBp = $db->prepare("
                         SELECT bp.id, bp.donem_id, bp.brut_maas, bp.sgk_isci, bp.issizlik_isci, 
-                               bp.hesaplama_detay, bd.baslangic_tarihi, bd.donem_adi, bd.bitis_tarihi
+                               bp.hesaplama_detay, bd.baslangic_tarihi, bd.donem_adi, bd.bitis_tarihi,
+                               p.maas_durumu, p.yemek_yardimi_dahil, p.es_yardimi_dahil
                         FROM bordro_personel bp
                         JOIN bordro_donemi bd ON bp.donem_id = bd.id
+                        JOIN personel p ON bp.personel_id = p.id
                         WHERE bp.personel_id = ?
                         AND YEAR(bd.baslangic_tarihi) = 2026
                         AND MONTH(bd.baslangic_tarihi) < 6
@@ -125,7 +127,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     
                     if (empty($records)) continue;
                     
+                    $processedMonths = [];
                     foreach ($records as $r) {
+                        $monthKey = date('Y-m', strtotime($r->baslangic_tarihi));
+                        if (isset($processedMonths[$monthKey])) {
+                            continue; // Skip duplicate records for the same month
+                        }
+                        $processedMonths[$monthKey] = true;
+
                         $detay = json_decode($r->hesaplama_detay ?? '', true);
                         if (empty($detay)) continue;
                         
@@ -162,7 +171,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $rtcGun = $BordroPersonel->getOzelCalismaGunSayisi((int)$p->id, $r->baslangic_tarihi, $r->bitis_tarihi, 'resmi_tatil_calismasi');
                         $htcGun = $BordroPersonel->getOzelCalismaGunSayisi((int)$p->id, $r->baslangic_tarihi, $r->bitis_tarihi, 'hafta_tatili_calismasi');
                         
-                        $asgariNet = 28075.50; // default for 2026
+                        $asgariNet = floatval($BordroParametre->getGenelAyar('asgari_ucret_net', $r->baslangic_tarihi) ?? 28075.50);
                         $gunlukAsgari = round($asgariNet / 30, 4);
                         
                         $rtcResmiTutar = $rtcGun > 0 ? round($gunlukAsgari * $rtcGun, 2) : 0.0;
@@ -179,8 +188,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         
                         $otMatrahContrib = $rtcMatrahKatkisi + $htcMatrahKatkisi;
                         
-                        // Total correct income tax matrah for this month
-                        $correctGvMatrah = $baseMatrah + $ekMatrahContrib + $otMatrahContrib;
+                        // Check if we should use net-based matrah
+                        $maasDurumu = $detay['maas_durumu'] ?? $r->maas_durumu ?? '';
+                        $isNetMaas = !empty($detay['is_net_maas']);
+                        $isPrimUsulu = !empty($detay['is_prim_usulu']);
+                        $yemekYardimiDahil = !empty($r->yemek_yardimi_dahil);
+                        $esYardimiDahil = !empty($r->es_yardimi_dahil);
+                        
+                        $asgariMatrarhGoster = $yemekYardimiDahil || $esYardimiDahil || $isPrimUsulu || $isNetMaas || (is_string($maasDurumu) && stripos($maasDurumu, 'Net') !== false);
+                        
+                        if ($asgariMatrarhGoster) {
+                            $sskGun = intval($detay['matrahlar']['ssk_gunu'] ?? 30);
+                            $asgariHakedisYazdir = round(($asgariNet / 30) * $sskGun, 2);
+                            
+                            $sgkMatrah = $asgariHakedisYazdir + floatval($detay['ozet']['sgk_matrah_ekleri'] ?? 0) + $rtcResmiTutar + $htcResmiTutar;
+                            
+                            // Net personellerde SGK işçi kesintisi 0 gösterilir/düşülür
+                            $sgkIsci = 0.0;
+                            $issizlikIsci = 0.0;
+                            
+                            $correctGvMatrah = max(0.0, $sgkMatrah - $sgkIsci - $issizlikIsci + floatval($detay['ozet']['vergili_matrah_ekleri'] ?? 0));
+                        } else {
+                            $correctGvMatrah = $baseMatrah + $ekMatrahContrib + $otMatrahContrib;
+                        }
                         
                         $oncekiKumulatif = $cumulative;
                         $yeniKumulatif = $cumulative + $correctGvMatrah;
@@ -1216,7 +1246,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // Group Kesintiler
                 $kesintiKayitlari = $BordroPersonel->getDonemKesintileriListe($bp->personel_id, $bp->donem_id);
                 $sendikaTutar = 0.0;
-                $icraTutar = $icraKesinti;
+                $icraTutar = 0.0;
                 $avansTutar = 0.0;
                 $digerKesintiTutar = 0.0;
 
