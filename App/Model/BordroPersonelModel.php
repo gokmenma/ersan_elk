@@ -590,13 +590,8 @@ class BordroPersonelModel extends Model
             $param = $this->getParametreCached($eo->tur, $donemBaslangic);
             if ($param) {
                 $yontem = $param->odeme_yontemi ?? ($isPrimUsulu ? 'elden' : 'banka');
-                if ($yontem === 'elden') {
-                    // elden
-                } elseif ($yontem === 'sodexo') {
-                    $yontemliSodexoEki += $tutar;
-                } else {
-                    $yontemliBankaEki += $tutar;
-                }
+                if ($yontem === 'banka') $yontemliBankaEki += $tutar;
+                elseif ($yontem === 'sodexo') $yontemliSodexoEki += $tutar;
             }
         }
 
