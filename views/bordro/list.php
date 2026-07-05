@@ -524,6 +524,11 @@ if (!empty($dbGelirler)) {
                                 data-bs-toggle="modal" data-bs-target="#yeniDonemModal" title="Yeni Dönem">
                                 <i class="mdi mdi-plus-circle fs-5"></i>
                             </button>
+                            <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+                            <button type="button" class="btn btn-link btn-sm text-warning text-decoration-none px-2"
+                                id="btnFixMatrah2026" title="Kümülatif Vergi Matrahlarını Düzelt (2026 Ocak-Mayıs)">
+                                <i class="mdi mdi-calculator-variant fs-5"></i>
+                            </button>
                             <?php if ($selectedDonem && !$donemKapali): ?>
                                 <!-- <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
                                 <button type="button" class="btn btn-link btn-sm text-primary text-decoration-none px-2"
@@ -1760,7 +1765,7 @@ if (!empty($dbGelirler)) {
 
      <!-- Bordro Detay Modal -->
      <div class="modal fade" id="bordroDetailModal" tabindex="-1" aria-hidden="true">
-         <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style="max-width: 90%;">
+        <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable" style="max-width: 80%;">
             <div class="modal-content">
                 <div class="modal-header bg-info text-white">
                     <h5 class="modal-title"><i class="bx bx-show me-2"></i>Bordro Detayı</h5>
@@ -2059,6 +2064,48 @@ if (!empty($dbGelirler)) {
 
         $('#checkOnlyErrors').on('change', function() {
             renderHataliIslemlerTable();
+        });
+
+        $('#btnFixMatrah2026').on('click', function() {
+            Swal.fire({
+                title: 'Matrah Düzeltme',
+                text: '2026 Ocak-Mayıs dönemlerindeki tüm personellerin kümülatif vergi matrahı geçmişi puantaj kurallarına göre yeniden hesaplanacaktır. Onaylıyor musunuz?',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonColor: '#ffc107',
+                cancelButtonColor: '#6c757d',
+                confirmButtonText: 'Evet, Düzelt',
+                cancelButtonText: 'Vazgeç'
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    Swal.fire({
+                        title: 'Hesaplanıyor...',
+                        text: 'Lütfen bekleyiniz, matrahlar düzeltiliyor.',
+                        allowOutsideClick: false,
+                        didOpen: () => {
+                            Swal.showLoading();
+                        }
+                    });
+                    $.ajax({
+                        url: 'views/bordro/api.php',
+                        type: 'POST',
+                        data: { action: 'fix-kumulatif-matrah-2026' },
+                        dataType: 'json',
+                        success: function(response) {
+                            if (response.status === 'success') {
+                                Swal.fire('Başarılı', response.message, 'success').then(() => {
+                                    location.reload();
+                                });
+                            } else {
+                                Swal.fire('Hata', response.message || 'Bir hata oluştu.', 'error');
+                            }
+                        },
+                        error: function() {
+                            Swal.fire('Hata', 'Sunucu hatası oluştu.', 'error');
+                        }
+                    });
+                }
+            });
         });
     });
 

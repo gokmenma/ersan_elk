@@ -93,6 +93,125 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     try {
         switch ($action) {
 
+            // Toplu Kümülatif Matrah Düzeltme Betiği (2026 Ocak-Mayıs)
+            case 'fix-kumulatif-matrah-2026':
+                $db = getDbConnection();
+                
+                // Get all active personnel
+                $stmt = $db->prepare("SELECT id, adi_soyadi, kumulatif_matrah_devir FROM personel WHERE silinme_tarihi IS NULL");
+                $stmt->execute();
+                $personeller = $stmt->fetchAll(PDO::FETCH_OBJ);
+                
+                $parametrelerMap = $BordroParametre->getAllParametrelerMap(date('Y-m-d'));
+                
+                foreach ($personeller as $p) {
+                    $cumulative = floatval($p->kumulatif_matrah_devir ?? 0.0);
+                    
+                    // Get payroll records for 2026 (Jan to May)
+                    $stmtBp = $db->prepare("
+                        SELECT bp.id, bp.donem_id, bp.brut_maas, bp.sgk_isci, bp.issizlik_isci, 
+                               bp.hesaplama_detay, bd.baslangic_tarihi, bd.donem_adi, bd.bitis_tarihi
+                        FROM bordro_personel bp
+                        JOIN bordro_donemi bd ON bp.donem_id = bd.id
+                        WHERE bp.personel_id = ?
+                        AND YEAR(bd.baslangic_tarihi) = 2026
+                        AND MONTH(bd.baslangic_tarihi) < 6
+                        AND bp.hesaplama_tarihi IS NOT NULL
+                        AND bp.silinme_tarihi IS NULL
+                        ORDER BY bd.baslangic_tarihi ASC
+                    ");
+                    $stmtBp->execute([$p->id]);
+                    $records = $stmtBp->fetchAll(PDO::FETCH_OBJ);
+                    
+                    if (empty($records)) continue;
+                    
+                    foreach ($records as $r) {
+                        $detay = json_decode($r->hesaplama_detay ?? '', true);
+                        if (empty($detay)) continue;
+                        
+                        // 1. Calculate Base Matrah
+                        $brutBase = floatval($r->brut_maas);
+                        $sgkIsci = floatval($r->sgk_isci);
+                        $issizlikIsci = floatval($r->issizlik_isci);
+                        $baseMatrah = max(0, $brutBase - $sgkIsci - $issizlikIsci);
+                        
+                        // 2. Calculate Non-Puantaj Ek Ödemeler taxable contributions
+                        $stmtEk = $db->prepare("
+                            SELECT tur, tutar, aciklama 
+                            FROM personel_ek_odemeler 
+                            WHERE personel_id = ? 
+                            AND donem_id = ? 
+                            AND silinme_tarihi IS NULL
+                        ");
+                        $stmtEk->execute([$p->id, $r->donem_id]);
+                        $eks = $stmtEk->fetchAll(PDO::FETCH_OBJ);
+                        
+                        $ekMatrahContrib = 0.0;
+                        foreach ($eks as $ek) {
+                            $aciklama = (string)($ek->aciklama ?? '');
+                            $isPuantaj = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Kaçak') === 0;
+                            if ($isPuantaj) continue;
+                            
+                            $param = $parametrelerMap[$ek->tur] ?? null;
+                            if ($param && $param->gelir_vergisi_dahil == 1) {
+                                $ekMatrahContrib += floatval($ek->tutar);
+                            }
+                        }
+                        
+                        // 3. Overtime (RTÇ/HTÇ) taxable contributions
+                        $rtcGun = $BordroPersonel->getOzelCalismaGunSayisi((int)$p->id, $r->baslangic_tarihi, $r->bitis_tarihi, 'resmi_tatil_calismasi');
+                        $htcGun = $BordroPersonel->getOzelCalismaGunSayisi((int)$p->id, $r->baslangic_tarihi, $r->bitis_tarihi, 'hafta_tatili_calismasi');
+                        
+                        $asgariNet = 28075.50; // default for 2026
+                        $gunlukAsgari = round($asgariNet / 30, 4);
+                        
+                        $rtcResmiTutar = $rtcGun > 0 ? round($gunlukAsgari * $rtcGun, 2) : 0.0;
+                        $htcResmiTutar = $htcGun > 0 ? round($gunlukAsgari * $htcGun, 2) : 0.0;
+                        
+                        $rtcParam = $parametrelerMap['resmi_tatil_calisma'] ?? null;
+                        $htcParam = $parametrelerMap['hafta_tatili_calisma'] ?? null;
+                        
+                        $rtcGvDahil = $rtcParam ? (bool)$rtcParam->gelir_vergisi_dahil : true;
+                        $htcGvDahil = $htcParam ? (bool)$htcParam->gelir_vergisi_dahil : true;
+                        
+                        $rtcMatrahKatkisi = $rtcGvDahil ? $rtcResmiTutar : 0.0;
+                        $htcMatrahKatkisi = $htcGvDahil ? $htcResmiTutar : 0.0;
+                        
+                        $otMatrahContrib = $rtcMatrahKatkisi + $htcMatrahKatkisi;
+                        
+                        // Total correct income tax matrah for this month
+                        $correctGvMatrah = $baseMatrah + $ekMatrahContrib + $otMatrahContrib;
+                        
+                        $oncekiKumulatif = $cumulative;
+                        $yeniKumulatif = $cumulative + $correctGvMatrah;
+                        
+                        // Update JSON
+                        $detay['matrahlar']['gelir_vergisi_matrahi'] = $correctGvMatrah;
+                        $detay['matrahlar']['onceki_kumulatif'] = $oncekiKumulatif;
+                        $detay['matrahlar']['yeni_kumulatif'] = $yeniKumulatif;
+                        
+                        $newDetayJson = json_encode($detay);
+                        
+                        // Save back to database
+                        $stmtUpdate = $db->prepare("
+                            UPDATE bordro_personel 
+                            SET hesaplama_detay = ?, kumulatif_matrah = ? 
+                            WHERE id = ?
+                        ");
+                        $stmtUpdate->execute([$newDetayJson, $oncekiKumulatif, $r->id]);
+                        
+                        $cumulative = $yeniKumulatif;
+                    }
+                }
+                
+                $SystemLog->logAction($userId, 'Bordro', 'Bordro Kümülatif Vergi Matrahları Düzeltme İşlemi Koşturuldu (2026 Ocak-Mayıs)', 0);
+                
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Tüm personellerin Ocak-Mayıs 2026 dönemlerine ait kümülatif vergi matrahları başarıyla güncellenmiştir.'
+                ]);
+                break;
+
             // Yeni Dönem Oluştur
             case 'donem-ekle':
                 $donem_adi = trim($_POST['donem_adi'] ?? '');

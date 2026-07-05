@@ -71,6 +71,9 @@ use App\Helper\Helper;
                         <div class="col-md-3 mb-2">
                             <?php echo Form::FormFloatInput("text", "ek_odeme_iban_numarasi", $personel->ek_odeme_iban_numarasi ?? "", "Ek Ödeme IBAN", "Ek Ödeme IBAN", "credit-card"); ?>
                         </div>
+                        <div class="col-md-3 mb-2">
+                            <?php echo Form::FormFloatInput("text", "kumulatif_matrah_devir", Helper::formattedMoney($personel->kumulatif_matrah_devir ?? 0), "Küm. Vergi Matrahı Devri", "Devir Kümülatif Matrah", "trending-up", "form-control money"); ?>
+                        </div>
                     </div>
                 </div>
 

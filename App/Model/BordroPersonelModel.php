@@ -2984,7 +2984,7 @@ class BordroPersonelModel extends Model
     /**
      * resmi_tatil_calismasi veya hafta_tatili_calismasi flag'ine göre puantaj günü sayar
      */
-    private function getOzelCalismaGunSayisi(int $personel_id, string $donem_baslangic, string $donem_bitis, string $flagKolonu): int
+    public function getOzelCalismaGunSayisi(int $personel_id, string $donem_baslangic, string $donem_bitis, string $flagKolonu): int
     {
         $sql = $this->db->prepare("
             SELECT pi.baslangic_tarihi, pi.bitis_tarihi
@@ -4053,26 +4053,40 @@ class BordroPersonelModel extends Model
             $aciklama = (string) ($odeme->aciklama ?? '');
             $isPuantajOdeme = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Kaçak') === 0;
 
-            if ($isPrimUsuluDahilYardim && $isPuantajOdeme) {
-                $primUsuluPuantajHedefToplami += $ekOdemeTutari;
-
-                $odemeHesaplamaTipi = mb_strtolower((string) ($parametre->hesaplama_tipi ?? $odeme->hesaplama_tipi ?? ''), 'UTF-8');
-                if (strpos($odemeHesaplamaTipi, 'brut') !== false) {
-                    $brutEkOdemeler -= $ekOdemeTutari;
-                    if ($parametre && $parametre->sgk_matrahi_dahil) {
-                        $sgkMatrahEkleri -= $ekOdemeTutari;
+            if ($isPuantajOdeme) {
+                if ($isPrimUsuluDahilYardim) {
+                    $primUsuluPuantajHedefToplami += $ekOdemeTutari;
+                    $odemeHesaplamaTipi = mb_strtolower((string) ($parametre->hesaplama_tipi ?? $odeme->hesaplama_tipi ?? ''), 'UTF-8');
+                    if (strpos($odemeHesaplamaTipi, 'brut') !== false) {
+                        $brutEkOdemeler -= $ekOdemeTutari;
+                        if ($parametre && $parametre->sgk_matrahi_dahil) {
+                            $sgkMatrahEkleri -= $ekOdemeTutari;
+                        }
+                        if ($parametre && $parametre->gelir_vergisi_dahil) {
+                            $vergiliMatrahEkleri -= $ekOdemeTutari;
+                        }
+                    } else {
+                        $netEkOdemeler -= $ekOdemeTutari;
                     }
-                    if ($parametre && $parametre->gelir_vergisi_dahil) {
-                        $vergiliMatrahEkleri -= $ekOdemeTutari;
-                    }
+                    $detay['hedef_net_adayi'] = round($ekOdemeTutari, 2);
+                    $detay['donem_hedef_toplami'] = round($primUsuluPuantajHedefToplami, 2);
+                    $detay['net_etki'] = 0;
+                    $ekOdemeDetaylari[] = $detay;
                 } else {
-                    $netEkOdemeler -= $ekOdemeTutari;
+                    $netEkOdemeler += $ekOdemeTutari;
+                    $defaultYontem = $isPrimUsulu ? 'elden' : 'banka';
+                    $yontem = ($parametre && isset($parametre->odeme_yontemi)) ? $parametre->odeme_yontemi : $defaultYontem;
+                    if (isset($yontemliOdemeler[$yontem])) {
+                        $yontemliOdemeler[$yontem] += $ekOdemeTutari;
+                        if ($yontem === 'sodexo') {
+                            $sodexoOdemesi += $ekOdemeTutari;
+                        }
+                    } else {
+                        $yontemliOdemeler['banka'] += $ekOdemeTutari;
+                    }
+                    $detay['net_etki'] = $ekOdemeTutari;
+                    $ekOdemeDetaylari[] = $detay;
                 }
-
-                $detay['hedef_net_adayi'] = round($ekOdemeTutari, 2);
-                $detay['donem_hedef_toplami'] = round($primUsuluPuantajHedefToplami, 2);
-                $detay['net_etki'] = 0;
-                $ekOdemeDetaylari[] = $detay;
                 unset($toplamTutar);
                 continue;
             }
@@ -4640,20 +4654,36 @@ class BordroPersonelModel extends Model
      */
     private function getKumulatifMatrah($personel_id, $yil, $ay)
     {
+        // Query the cumulative matrah transfer YTD starting value
+        $stmt = $this->db->prepare("SELECT kumulatif_matrah_devir FROM personel WHERE id = ?");
+        $stmt->execute([$personel_id]);
+        $p = $stmt->fetch(PDO::FETCH_OBJ);
+        $toplamMatrah = floatval($p->kumulatif_matrah_devir ?? 0.0);
+
         // Bu yılın Ocak'tan önceki aya kadar toplam gelir vergisi matrahı
         $sql = $this->db->prepare("
-            SELECT COALESCE(SUM(bp.brut_maas - bp.sgk_isci - bp.issizlik_isci), 0) as toplam_matrah
+            SELECT bp.hesaplama_detay, bp.brut_maas, bp.sgk_isci, bp.issizlik_isci
             FROM {$this->table} bp
             INNER JOIN bordro_donemi bd ON bp.donem_id = bd.id
             WHERE bp.personel_id = ?
             AND YEAR(bd.baslangic_tarihi) = ?
             AND MONTH(bd.baslangic_tarihi) < ?
             AND bp.hesaplama_tarihi IS NOT NULL
+            AND bp.silinme_tarihi IS NULL
         ");
         $sql->execute([$personel_id, $yil, $ay]);
-        $result = $sql->fetch(PDO::FETCH_OBJ);
+        $rows = $sql->fetchAll(PDO::FETCH_OBJ);
 
-        return floatval($result->toplam_matrah ?? 0);
+        foreach ($rows as $row) {
+            $detay = !empty($row->hesaplama_detay) ? json_decode($row->hesaplama_detay, true) : null;
+            if (is_array($detay) && isset($detay['matrahlar']['gelir_vergisi_matrahi'])) {
+                $toplamMatrah += floatval($detay['matrahlar']['gelir_vergisi_matrahi']);
+            } else {
+                $toplamMatrah += floatval($row->brut_maas) - floatval($row->sgk_isci) - floatval($row->issizlik_isci);
+            }
+        }
+
+        return $toplamMatrah;
     }
 
     /**
