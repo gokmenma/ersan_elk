@@ -1147,8 +1147,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
                 $haftaTatili = max(0, $totalSundays - $htcGunModal);
 
-                $normalGun = intval($matrahlar['normal_gun'] ?? 0);
                 $sskGun = intval($matrahlar['ssk_gunu'] ?? ($bp->calisan_gun ?? $hesap['calismaGunu'] ?? 30));
+                $normalGun = max(0, $sskGun - $haftaTatili - $ucretliIzin - $genelTatil);
                 $calisanBrutMaas = floatval($matrahlar['calisan_brut_maas'] ?? ($bp->brut_maas ?? 0));
 
                 // Calculate overtime (RTC / HTÇ) parameters beforehand
@@ -1447,8 +1447,18 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="col"><div class="ref-card">';
                 $html .= '<div class="ref-card-title">3. SOSYAL YARDIMLAR</div>';
                 $html .= '<div class="ref-card-list">';
+                $yuvarlamaFarki = floatval($ozetDetay['yuvarlama_farki'] ?? 0);
+                $yemekPop = '';
+                if ($yuvarlamaFarki != 0) {
+                    $yemekHesaplanan = $yemekYardimi - $yuvarlamaFarki;
+                    $yemekPop = '<div class="ref-popover-content">';
+                    $yemekPop .= '<div style="display:flex; justify-content:space-between; gap:20px; margin-bottom:6px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 4px;"><span style="color:#cbd5e1;">Hesaplanan</span><span style="color:#ffffff; font-weight:bold;">' . number_format($yemekHesaplanan, 2, ',', '.') . ' ₺</span></div>';
+                    $yemekPop .= '<div style="display:flex; justify-content:space-between; gap:20px;"><span style="color:#cbd5e1;">Yuvarlama Farkı</span><span style="color:#ffc107; font-weight:bold;">+' . number_format($yuvarlamaFarki, 2, ',', '.') . ' ₺</span></div>';
+                    $yemekPop .= '</div>';
+                }
+
                 $html .= '<div class="ref-card-item"><span class="label">Yol Yardımı</span><span class="value">' . $fmt($yolYardimi) . '</span></div>';
-                $html .= '<div class="ref-card-item"><span class="label">Yemek Yardımı</span><span class="value">' . $fmt($yemekYardimi) . '</span></div>';
+                $html .= '<div class="ref-card-item' . (!empty($yemekPop) ? ' hover-popover-trigger' : '') . '"><span class="label">Yemek Yardımı' . (!empty($yemekPop) ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($yemekYardimi) . '</span>' . $yemekPop . '</div>';
                 $html .= '<div class="ref-card-item"><span class="label">Eş Yardımı</span><span class="value">' . $fmt($esYardimi) . '</span></div>';
                 $html .= '<div class="ref-card-item"><span class="label">Diger Sosyal Yardım</span><span class="value">' . $fmt($digerSosyalYardim) . '</span></div>';
                 $html .= '</div>';
