@@ -1203,7 +1203,7 @@ if (!empty($dbGelirler)) {
                                                     </td>
 
                                                     <td class="text-end text-dark fw-bold">
-                                                        <span class="cursor-pointer btn-detail text-primary"
+                                                        <span class="cursor-pointer btn-detail-old text-primary"
                                                             data-id="<?= $personel->id ?>" title="Bordro Detayını Gör">
                                                             <?= number_format($toplamAlacagiPersonel, 2, ',', '.') ?> ₺
                                                         </span>
@@ -1846,7 +1846,8 @@ if (!empty($dbGelirler)) {
                 <div class="modal-body" id="bordroDetailContent">
                     <!-- İçerik AJAX ile yüklenecek -->
                 </div>
-                <div class="modal-footer">
+                <div class="modal-footer d-flex justify-content-between align-items-center flex-wrap">
+                    <div id="bordroDetailFooterSummary" class="d-flex flex-wrap align-items-center gap-2 text-start"></div>
                     <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
                 </div>
             </div>
