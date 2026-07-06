@@ -2062,11 +2062,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if ($asgariMatrarhGoster) {
                     $asgariHakedisYazdir = round(($asgariUcretNet / 30) * $sskGun, 2);
                     $calisanBrutMaas = $asgariHakedisYazdir;
-                    // Add RTÇ and HTÇ taxable overtime to official matrahs
-                    $sgkMatrah = $asgariHakedisYazdir + floatval($ozetDetay['sgk_matrah_ekleri'] ?? 0) + $rtcResmiTutar + $htcResmiTutar;
-                    $rtcHtcSgkIsciTotal = ($rtcResmiTutar + $htcResmiTutar) * 0.15;
-                    $gelirVergisiMatrah = max(0, $sgkMatrah - $sgkIsci - $issizlikIsci - $rtcHtcSgkIsciTotal + (floatval($ozetDetay['vergili_matrah_ekleri'] ?? 0) - floatval($ozetDetay['sgk_matrah_ekleri'] ?? 0)));
-                    $yilIciToplam = $oncekiAyMatrah + $gelirVergisiMatrah;
+                    $sgkMatrah = floatval($matrahlar['sgk_matrahi'] ?? 0);
+                    $gelirVergisiMatrah = floatval($matrahlar['gelir_vergisi_matrahi'] ?? 0);
+                    $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? 0);
                 }
 
                 $istisnaGV = floatval($indirimler['asgari_ucret_istisna_gv'] ?? 0);
@@ -2134,7 +2132,22 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $esYardimi = $spouseDeduction;
                 $digerSosyalYardim = 0.0;
 
-                $fazlaMesaiTutar = floatval($bp->fazla_mesai_tutar ?? 0);
+                $nobetResmiBrutToplam = 0.0;
+                $nobetResmiSaatToplam = 0.0;
+                if (!empty($ekOdemelerListe)) {
+                    foreach ($ekOdemelerListe as $eo) {
+                        if ($eo->tur === 'hafta_ici_nobet' || $eo->tur === 'hafta_sonu_nobet') {
+                            $nobetResmiBrutToplam += floatval($eo->resmi_tutar ?? 0);
+                        }
+                        if ($eo->tur === 'hafta_ici_nobet') {
+                            if (preg_match('/(\d+)\s*Gün\s*x\s*(\d+)\s*Saat/i', $eo->aciklama, $m)) {
+                                $nobetResmiSaatToplam += intval($m[1]) * intval($m[2]);
+                            }
+                        }
+                    }
+                }
+                $fazlaMesaiTutar = floatval($bp->fazla_mesai_tutar ?? 0) + $nobetResmiBrutToplam;
+                $displayFazlaMesaiSaat = floatval($bp->fazla_mesai_saat ?? 0) + $nobetResmiSaatToplam;
 
                 // Start primTutar from 0.0 to prevent double-counting of toplam_ek_odeme
                 $primTutar = 0.0;
@@ -2333,7 +2346,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="ref-card-list">';
                 $html .= '<div class="ref-card-item' . ($rtcGunModal > 0 ? ' hover-popover-trigger' : '') . '"><span class="label">Resmi Tatil Çalışma' . ($rtcGunModal > 0 ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . ($rtcGunModal > 0 ? '<span class="subval">' . $rtcGunModal . ' Gün</span>' : '') . $fmt($rtcResmiTutar) . '</span>' . ($rtcGunModal > 0 ? $rtcPopoverHtml : '') . '</div>';
                 $html .= '<div class="ref-card-item' . ($htcGunModal > 0 ? ' hover-popover-trigger' : '') . '"><span class="label">Hafta Tatili Çalışma' . ($htcGunModal > 0 ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . ($htcGunModal > 0 ? '<span class="subval">' . $htcGunModal . ' Gün</span>' : '') . $fmt($htcToplamTutar) . '</span>' . ($htcGunModal > 0 ? $htcPopoverHtml : '') . '</div>';
-                $html .= '<div class="ref-card-item"><span class="label">Fazla Mesai Ücreti</span><span class="value">' . (floatval($bp->fazla_mesai_saat ?? 0) > 0 ? '<span class="subval">' . number_format($bp->fazla_mesai_saat, 2, ',', '.') . ' Saat</span>' : '') . $fmt($fazlaMesaiTutar) . '</span></div>';
+                $html .= '<div class="ref-card-item"><span class="label">Fazla Mesai Ücreti</span><span class="value">' . ($displayFazlaMesaiSaat > 0 ? '<span class="subval">' . number_format($displayFazlaMesaiSaat, 2, ',', '.') . ' Saat</span>' : '') . $fmt($fazlaMesaiTutar) . '</span></div>';
                 $html .= '</div>';
                 $html .= '<div class="ref-card-item total-row"><span class="label">Toplam</span><span class="value">' . $fmt($fazlaCalismaToplam) . '</span></div>';
                 $html .= '</div></div>';

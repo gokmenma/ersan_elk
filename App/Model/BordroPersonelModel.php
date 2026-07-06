@@ -610,9 +610,10 @@ class BordroPersonelModel extends Model
                     }
                 } else {
                     $rTutar = floatval($eo->resmi_tutar ?? 0);
-                    $rSgk = $rTutar * 0.15;
-                    $rGv = ($rTutar - $rSgk) * 0.15;
-                    $rDv = $rTutar * 0.00759;
+                    $rSgk = ($param && !empty($param->sgk_matrahi_dahil)) ? ($rTutar * 0.15) : 0.0;
+                    $rGvMatrah = $rTutar - $rSgk;
+                    $rGv = ($param && !empty($param->gelir_vergisi_dahil)) ? ($rGvMatrah * 0.15) : 0.0;
+                    $rDv = ($param && !empty($param->damga_vergisi_dahil)) ? ($rTutar * 0.00759) : 0.0;
                     $rNet = round($rTutar - $rSgk - $rGv - $rDv, 2);
                     $yontemliBankaEki += $rNet;
                     if ($rNet > 0) {
@@ -711,8 +712,8 @@ class BordroPersonelModel extends Model
             $rtcHtcSgkKesintiGosterim = round($rtcSgkTutarGosterim + $htcSgkTutarGosterim, 2);
             $rtcHtcDamgaKesintiGosterim = round($rtcDamgaTutarGosterim + $htcDamgaTutarGosterim, 2);
 
-            $rtcGvMatrahGosterim = $rtcGvDahilGosterim ? max(0, round($rtcBrutGosterim - $rtcSgkTutarGosterim - $rtcIssizlikTutarGosterim, 2)) : 0.0;
-            $htcGvMatrahGosterim = $htcGvDahilGosterim ? max(0, round($htcVergiBazliGosterim - $htcSgkTutarGosterim - $htcIssizlikTutarGosterim, 2)) : 0.0;
+            $rtcGvMatrahGosterim = $rtcGvDahilGosterim ? $rtcBrutGosterim : 0.0;
+            $htcGvMatrahGosterim = $htcGvDahilGosterim ? $htcVergiBazliGosterim : 0.0;
             $rtcHtcMatrahKatkisiGosterim = round($rtcGvMatrahGosterim + $htcGvMatrahGosterim, 2);
 
             $rtcHtcGelirVergisiKesintiGosterim = 0.0;
@@ -3881,11 +3882,10 @@ class BordroPersonelModel extends Model
 
             // MÜKERRER HESAPLAMA KONTROLÜ: Eğer açıklama içinde zaten hesaplanmış bir tutar deseni varsa (örn: "30 Gün x 700 TL"),
             // bir sonraki hesaplamada compounding (katlanma) olmaması için baz ücreti açıklamadan geri kazanıyoruz.
-            if (!empty($odeme->aciklama) && preg_match('/\((?:[\d.,]+) (?:Fiili )?Gün x ([\d.,]+)/u', $odeme->aciklama, $matches)) {
+            if (!empty($odeme->aciklama) && strpos($odeme->aciklama, '[Nöbet]') === false && preg_match('/\((?:[\d.,]+) (?:Fiili )?Gün x ([\d.,]+)/u', $odeme->aciklama, $matches)) {
                 $baseFromLabel = \App\Helper\Helper::formattedMoneyToNumber($matches[1]);
                 if ($baseFromLabel > 0) {
                     $tutar = floatval($baseFromLabel);
-                    // use log if needed
                 }
             }
 
@@ -4191,8 +4191,12 @@ class BordroPersonelModel extends Model
                         }
                     }
                     if ($rTutar > 0) {
-                        $sgkMatrahEkleri += $rTutar;
-                        $vergiliMatrahEkleri += $rTutar;
+                        if ($parametre && !empty($parametre->sgk_matrahi_dahil)) {
+                            $sgkMatrahEkleri += $rTutar;
+                        }
+                        if ($parametre && !empty($parametre->gelir_vergisi_dahil)) {
+                            $vergiliMatrahEkleri += $rTutar;
+                        }
                     }
                     $detay['net_etki'] = $ekOdemeTutari;
                     $ekOdemeDetaylari[] = $detay;
@@ -4227,8 +4231,12 @@ class BordroPersonelModel extends Model
                 }
             }
             if ($rTutar > 0) {
-                $sgkMatrahEkleri += $rTutar;
-                $vergiliMatrahEkleri += $rTutar;
+                if ($parametre && !empty($parametre->sgk_matrahi_dahil)) {
+                    $sgkMatrahEkleri += $rTutar;
+                }
+                if ($parametre && !empty($parametre->gelir_vergisi_dahil)) {
+                    $vergiliMatrahEkleri += $rTutar;
+                }
             }
 
             unset($toplamTutar); // Bir sonraki döngü için temizle
@@ -4252,14 +4260,15 @@ class BordroPersonelModel extends Model
         $htcNetFazlaHesap = 0.0;
         if ($rtcGunHesap > 0 || $htcGunHesap > 0) {
             $gunlukAsgariHesap = round(floatval($genelAyarlarMap['asgari_ucret_net'] ?? 17002.12) / 30, 4);
+            $gunlukAsgariBrutHesap = round(floatval($genelAyarlarMap['asgari_ucret_brut'] ?? 33030.00) / 30, 4);
             $resmiDahilEkToplam += $gunlukAsgariHesap * ($rtcGunHesap + $htcGunHesap);
             if ($rtcGunHesap > 0) {
-                $rtcBrutHesap = round($gunlukAsgariHesap * $rtcGunHesap, 2);
+                $rtcBrutHesap = round($gunlukAsgariBrutHesap * $rtcGunHesap, 2);
             }
         }
         if ($htcGunHesap > 0) {
             $htcEkOdeme = round($nominalBrutMaas / 30, 4) * $htcGunHesap;
-            $htcResmiBrutHesap = round($gunlukAsgariHesap * $htcGunHesap, 2);
+            $htcResmiBrutHesap = round($gunlukAsgariBrutHesap * $htcGunHesap, 2);
             $htcNetFazlaHesap = $htcEkOdeme - $gunlukAsgariHesap * $htcGunHesap;
             $htcBrutHesap = round($htcEkOdeme, 2);
         }
@@ -4357,7 +4366,11 @@ class BordroPersonelModel extends Model
         $sgkIsci = $sgkMatrahi * $sgkIsciOrani;
         $issizlikIsci = $sgkMatrahi * $issizlikIsciOrani;
 
-        $gelirVergisiMatrahi = ($calisanBrutMaas - $sgkIsci - $issizlikIsci) + $vergiliMatrahEkleri;
+        if ($isNetMaas || $isPrimUsulu) {
+            $gelirVergisiMatrahi = $calisanBrutMaas + $vergiliMatrahEkleri;
+        } else {
+            $gelirVergisiMatrahi = ($calisanBrutMaas - $sgkIsci - $issizlikIsci) + $vergiliMatrahEkleri;
+        }
         if ($gelirVergisiMatrahi < 0) $gelirVergisiMatrahi = 0;
 
         $kumulatifMatrah = $this->getKumulatifMatrah($kayit->personel_id, $donemYil, $donemAy);
@@ -4393,8 +4406,8 @@ class BordroPersonelModel extends Model
             $rtcHtcIssizlikIsci = round($rtcIssizlikIsciTutar + $htcIssizlikIsciTutar, 2);
             $rtcHtcDamgaVergisi = round($rtcDamgaTutar + $htcDamgaTutar, 2);
 
-            $rtcGvMatrah = $rtcGvDahil ? max(0, round($rtcBrutHesap - $rtcSgkIsciTutar - $rtcIssizlikIsciTutar, 2)) : 0.0;
-            $htcGvMatrah = $htcGvDahil ? max(0, round($htcVergiBazli - $htcSgkIsciTutar - $htcIssizlikIsciTutar, 2)) : 0.0;
+            $rtcGvMatrah = $rtcGvDahil ? $rtcBrutHesap : 0.0;
+            $htcGvMatrah = $htcGvDahil ? $htcVergiBazli : 0.0;
             $rtcHtcMatrahKatkisi = round($rtcGvMatrah + $htcGvMatrah, 2);
 
             $gelirVergisiMatrahiRtcHtcDahil = $gelirVergisiMatrahi + $rtcHtcMatrahKatkisi;
