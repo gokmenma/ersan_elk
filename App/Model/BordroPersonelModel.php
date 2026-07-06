@@ -594,18 +594,40 @@ class BordroPersonelModel extends Model
                 if ($yontem === 'banka') {
                     $yontemliBankaEki += $tutar;
                     if ($tutar > 0) {
+                        $label = $param->etiket ?? $eo->tur;
+                        if ($eo->aciklama && strpos($eo->aciklama, '[Nöbet]') === 0) {
+                            if (preg_match('/\(([^)]+)\)/', $eo->aciklama, $matches)) {
+                                $parts = explode('x', $matches[1]);
+                                if (count($parts) >= 2) {
+                                    $label .= ' (' . trim($parts[0]) . ' x ' . trim($parts[1]) . ')';
+                                }
+                            }
+                        }
                         $bankaEkOdemeDetaylari[] = [
-                            'etiket' => $param->etiket ?? $eo->tur,
+                            'etiket' => $label,
                             'tutar' => $tutar
                         ];
                     }
                 } else {
                     $rTutar = floatval($eo->resmi_tutar ?? 0);
-                    $yontemliBankaEki += $rTutar;
-                    if ($rTutar > 0) {
+                    $rSgk = $rTutar * 0.15;
+                    $rGv = ($rTutar - $rSgk) * 0.15;
+                    $rDv = $rTutar * 0.00759;
+                    $rNet = round($rTutar - $rSgk - $rGv - $rDv, 2);
+                    $yontemliBankaEki += $rNet;
+                    if ($rNet > 0) {
+                        $label = $param->etiket ?? $eo->tur;
+                        if ($eo->aciklama && strpos($eo->aciklama, '[Nöbet]') === 0) {
+                            if (preg_match('/\(([^)]+)\)/', $eo->aciklama, $matches)) {
+                                $parts = explode('x', $matches[1]);
+                                if (count($parts) >= 2) {
+                                    $label .= ' (' . trim($parts[0]) . ' x ' . trim($parts[1]) . ')';
+                                }
+                            }
+                        }
                         $bankaEkOdemeDetaylari[] = [
-                            'etiket' => ($param->etiket ?? $eo->tur),
-                            'tutar' => $rTutar
+                            'etiket' => $label,
+                            'tutar' => $rNet
                         ];
                     }
                     if ($yontem === 'sodexo') {
@@ -882,7 +904,7 @@ class BordroPersonelModel extends Model
         }
 
         $gosterimToplamAlacagi = round($toplamAlacagi, 2);
-        $resmiAlacagi = round($asgariTabanVal + $resmiDahilEkToplam + $mealAllowanceDeduction + $spouseAllowanceDeduction, 2);
+        $resmiAlacagi = $bankaOdemesi;
 
         return [
             'maasDurumu' => $maasDurumu, 'maasTutari' => $maasTutari, 'rawEkOdeme' => $rawEkOdeme,
@@ -2123,7 +2145,11 @@ class BordroPersonelModel extends Model
                     default => 'Nöbet'
                 };
 
-                $aciklama = "[Nöbet] $tipEtiketi ($adet Adet x " . number_format($birimUcret, 2, ',', '.') . " ₺)";
+                if ($tip === 'standart') {
+                    $aciklama = "[Nöbet] $tipEtiketi ($adet Gün x 4 Saat x " . number_format($birimUcret, 2, ',', '.') . " ₺)";
+                } else {
+                    $aciklama = "[Nöbet] $tipEtiketi ($adet Adet x " . number_format($birimUcret, 2, ',', '.') . " ₺)";
+                }
 
                 $paramId = ($tip === 'standart') ? ($haftaIciParam->id ?? null) : ($haftaSonuParam->id ?? null);
                 $paramKod = ($tip === 'standart') ? 'hafta_ici_nobet' : 'hafta_sonu_nobet';
@@ -4177,17 +4203,25 @@ class BordroPersonelModel extends Model
             $defaultYontem = $isPrimUsulu ? 'elden' : 'banka';
             $yontem = $parametre->odeme_yontemi ?? $defaultYontem;
             $rTutar = floatval($odeme->resmi_tutar ?? 0);
+            $rNet = 0.0;
+            if ($rTutar > 0) {
+                $rSgk = $rTutar * 0.15;
+                $rGv = ($rTutar - $rSgk) * 0.15;
+                $rDv = $rTutar * 0.00759;
+                $rNet = round($rTutar - $rSgk - $rGv - $rDv, 2);
+            }
             if ($yontem === 'banka') {
                 $yontemliOdemeler['banka'] += $ekOdemeTutari;
             } else {
-                $yontemliOdemeler['banka'] += $rTutar;
+                $bankaPay = ($isPrimUsulu || $isNetMaas) ? $rNet : $rTutar;
+                $yontemliOdemeler['banka'] += $bankaPay;
                 if (isset($yontemliOdemeler[$yontem])) {
-                    $yontemliOdemeler[$yontem] += ($ekOdemeTutari - $rTutar);
+                    $yontemliOdemeler[$yontem] += ($ekOdemeTutari - $bankaPay);
                     if ($yontem === 'sodexo') {
-                        $sodexoOdemesi += ($ekOdemeTutari - $rTutar);
+                        $sodexoOdemesi += ($ekOdemeTutari - $bankaPay);
                     }
                 } else {
-                    $yontemliOdemeler['banka'] += ($ekOdemeTutari - $rTutar);
+                    $yontemliOdemeler['banka'] += ($ekOdemeTutari - $bankaPay);
                 }
             }
             if ($rTutar > 0) {

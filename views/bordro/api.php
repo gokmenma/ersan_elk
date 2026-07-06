@@ -1247,7 +1247,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $sozlesmeMaasFarkiGosterim = $isPrimUsulu
                         ? max(0, round($sozlesmeHakedisToplamGosterim - $sozlesmeTabanGosterim - $displayMealDeduction - $spouseDeduction, 2))
                         : $modalMaasFarkiGosterim;
-                    $resmiAlacakGosterim = round($sozlesmeTabanGosterim + $displayMealDeduction + $spouseDeduction, 2);
+                    $resmiAlacakGosterim = $bankaOdemeModal;
+                    $asgariMatrarhGoster = !empty($bp->yemek_yardimi_dahil)
+                        || !empty($bp->es_yardimi_dahil)
+                        || stripos($maasDurumuGosterim, 'Net') !== false
+                        || $isPrimUsulu;
 
                     if ($sozlesmeHakedisToplamGosterim > 0) {
                         $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collBaseId . '" aria-expanded="false">
@@ -1255,7 +1259,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                     <td class="text-end fw-bold text-dark">' . number_format($sozlesmeHakedisToplamGosterim, 2, ',', '.') . ' ₺</td>
                                   </tr>';
 
-                        if ($sozlesmeTabanGosterim > 0) {
+                        if ($sozlesmeTabanGosterim > 0 && !$asgariMatrarhGoster) {
                             $html .= '<tr class="child-row collapse ' . $collBaseId . '">
                                         <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Asgari Ücret Tabanı</td>
                                         <td class="text-end pe-4">' . number_format($sozlesmeTabanGosterim, 2, ',', '.') . ' ₺</td>
@@ -1267,23 +1271,49 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                         <td class="text-end pe-4">' . number_format($sozlesmeMaasFarkiGosterim, 2, ',', '.') . ' ₺</td>
                                       </tr>';
                         }
-                        if ($displayMealDeduction > 0) {
+                        if ($displayMealDeduction > 0 && !$asgariMatrarhGoster) {
                             $html .= '<tr class="child-row collapse ' . $collBaseId . '">
                                         <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Yemek Yardımı <small class="text-muted">(Dahil)</small></td>
                                         <td class="text-end pe-4">' . number_format($displayMealDeduction, 2, ',', '.') . ' ₺</td>
                                       </tr>';
                         }
-                        if ($spouseDeduction > 0) {
+                        if ($spouseDeduction > 0 && !$asgariMatrarhGoster) {
                             $html .= '<tr class="child-row collapse ' . $collBaseId . '">
                                         <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Eş Yardımı <small class="text-muted">(Dahil)</small></td>
                                         <td class="text-end pe-4">' . number_format($spouseDeduction, 2, ',', '.') . ' ₺</td>
                                       </tr>';
                         }
                         if ($resmiAlacakGosterim > 0) {
-                            $html .= '<tr class="child-row collapse ' . $collBaseId . '">
-                                        <td class="ps-4 fw-semibold"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Resmi Alacağı</td>
-                                        <td class="text-end pe-4 fw-semibold">' . number_format($resmiAlacakGosterim, 2, ',', '.') . ' ₺</td>
+                            $collResmiDetailsId = "cResmiDetails_" . $bp->id;
+                            $html .= '<tr class="child-row collapse ' . $collBaseId . '" data-bs-toggle="collapse" data-bs-target=".' . $collResmiDetailsId . '" aria-expanded="false" style="cursor: pointer;">
+                                        <td class="ps-4 fw-semibold text-primary"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Resmi Alacağı <i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></td>
+                                        <td class="text-end pe-4 fw-semibold text-primary">' . number_format($resmiAlacakGosterim, 2, ',', '.') . ' ₺</td>
                                       </tr>';
+                            
+                            $html .= '<tr class="child-row collapse ' . $collResmiDetailsId . '">
+                                        <td class="ps-5 text-muted" style="font-size: 0.85rem;"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Asgari Ücret (Net)</td>
+                                        <td class="text-end pe-5 text-muted" style="font-size: 0.85rem;">' . number_format($sozlesmeTabanGosterim, 2, ',', '.') . ' ₺</td>
+                                      </tr>';
+                            if ($displayMealDeduction > 0) {
+                                $html .= '<tr class="child-row collapse ' . $collResmiDetailsId . '">
+                                            <td class="ps-5 text-muted" style="font-size: 0.85rem;"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Yemek Yardımı (Resmi)</td>
+                                            <td class="text-end pe-5 text-muted" style="font-size: 0.85rem;">+' . number_format($displayMealDeduction, 2, ',', '.') . ' ₺</td>
+                                          </tr>';
+                            }
+                            if ($spouseDeduction > 0) {
+                                $html .= '<tr class="child-row collapse ' . $collResmiDetailsId . '">
+                                            <td class="ps-5 text-muted" style="font-size: 0.85rem;"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Eş Yardımı (Resmi)</td>
+                                            <td class="text-end pe-5 text-muted" style="font-size: 0.85rem;">+' . number_format($spouseDeduction, 2, ',', '.') . ' ₺</td>
+                                          </tr>';
+                            }
+                            if (!empty($hesap['bankaEkOdemeDetaylari'])) {
+                                foreach ($hesap['bankaEkOdemeDetaylari'] as $bed) {
+                                    $html .= '<tr class="child-row collapse ' . $collResmiDetailsId . '">
+                                                <td class="ps-5 text-muted" style="font-size: 0.85rem;"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars($bed['etiket']) . '</td>
+                                                <td class="text-end pe-5 text-muted" style="font-size: 0.85rem;">+' . number_format($bed['tutar'], 2, ',', '.') . ' ₺</td>
+                                              </tr>';
+                                }
+                            }
                         }
                         if ($ucretsizIzinGunu > 0) {
                             $html .= '<tr class="child-row collapse ' . $collBaseId . '">
@@ -2212,7 +2242,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     .bordro-ref-view .red-text { color: #ef4444 !important; font-weight: 600; }
                     
                     /* Hover Popover Styles */
-                    .bordro-ref-view .hover-popover-trigger { cursor: help; }
+                    .bordro-ref-view .hover-popover-trigger { cursor: help; position: relative; }
                     .bordro-ref-view .ref-popover-content {
                         display: none;
                         position: absolute;
