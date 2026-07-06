@@ -401,6 +401,91 @@ class BordroPersonelModel extends Model
         return $sonuc;
     }
 
+    /**
+     * RTÇ (Resmi Tatil Çalışması) ve HTÇ (Hafta Tatili Çalışması) için SGK işçi payı +
+     * İşsizlik işçi payı + Gelir Vergisi (kümülatif dilime göre) + Damga Vergisi kesintilerini
+     * uygular. RTÇ her zaman asgari ücretin günlük NET tutarını garanti eden bir hedeftir
+     * (brüte tamamlanır/gross-up). HTÇ ise "Maaşa Dahil" personelde aynı şekilde asgari net
+     * hedeflidir; "Maaşa Dahil" olmayan personelde ise zaten çalışanın kendi brüt maaş oranına
+     * dayalı gerçek bir brüt tutardır (gross-up YAPILMAZ, doğrudan üzerinden kesinti uygulanır).
+     *
+     * hesaplaMaas() ve hesaplaOrtakGosterimDegerleri() tarafından ortak kullanılır ki bu iki
+     * hesaplama yolu birbirinden sapmasın.
+     */
+    private function hesaplaRtcHtcKesinti(
+        float $rtcHedefNet,
+        float $htcTaban,
+        bool $htcNetHedefMi,
+        bool $rtcSgkDahil,
+        bool $rtcGvDahil,
+        bool $rtcDamgaDahil,
+        bool $htcSgkDahil,
+        bool $htcGvDahil,
+        bool $htcDamgaDahil,
+        float $sgkOrani,
+        float $issizlikOrani,
+        float $damgaOrani,
+        float $kumulatifMatrahOncesi,
+        int $donemYil
+    ): array {
+        if ($this->cachedParametreModel === null) {
+            $this->cachedParametreModel = new \App\Model\BordroParametreModel();
+        }
+        $pm = $this->cachedParametreModel;
+        $bos = ['brut' => 0.0, 'sgk' => 0.0, 'issizlik' => 0.0, 'gelir_vergisi' => 0.0, 'damga' => 0.0, 'matrah' => 0.0, 'net' => 0.0];
+
+        $rtcSonuc = $rtcHedefNet > 0
+            ? $pm->bruteUpForNetTarget(
+                $rtcHedefNet,
+                $kumulatifMatrahOncesi,
+                $rtcSgkDahil ? $sgkOrani : 0.0,
+                $rtcSgkDahil ? $issizlikOrani : 0.0,
+                $rtcDamgaDahil ? $damgaOrani : 0.0,
+                $donemYil,
+                $rtcGvDahil
+            )
+            : $bos;
+
+        // HTÇ'nin marjinal dilim payı RTÇ'den sonra izole edilsin diye kümülatif tabana
+        // RTÇ'nin (gv dahilse) matrah katkısı da eklenir.
+        $kumulatifTabanHtc = $kumulatifMatrahOncesi + ($rtcGvDahil ? $rtcSonuc['matrah'] : 0.0);
+
+        if ($htcTaban <= 0) {
+            $htcSonuc = $bos;
+        } elseif ($htcNetHedefMi) {
+            $htcSonuc = $pm->bruteUpForNetTarget(
+                $htcTaban,
+                $kumulatifTabanHtc,
+                $htcSgkDahil ? $sgkOrani : 0.0,
+                $htcSgkDahil ? $issizlikOrani : 0.0,
+                $htcDamgaDahil ? $damgaOrani : 0.0,
+                $donemYil,
+                $htcGvDahil
+            );
+        } else {
+            // Zaten brüt (çalışanın kendi maaş oranına dayalı HTÇ): doğrudan kesinti uygula
+            $sgk = $htcSgkDahil ? round($htcTaban * $sgkOrani, 2) : 0.0;
+            $issizlik = $htcSgkDahil ? round($htcTaban * $issizlikOrani, 2) : 0.0;
+            $matrah = $htcGvDahil ? max(0, round($htcTaban - $sgk - $issizlik, 2)) : 0.0;
+            $gv = $htcGvDahil ? $pm->hesaplaGelirVergisi($kumulatifTabanHtc + $matrah, $matrah, $donemYil) : 0.0;
+            $damga = $htcDamgaDahil ? round($htcTaban * $damgaOrani, 2) : 0.0;
+            $net = round($htcTaban - $sgk - $issizlik - $gv - $damga, 2);
+            $htcSonuc = ['brut' => $htcTaban, 'sgk' => $sgk, 'issizlik' => $issizlik, 'gelir_vergisi' => $gv, 'damga' => $damga, 'matrah' => $matrah, 'net' => $net];
+        }
+
+        return [
+            'rtc' => $rtcSonuc,
+            'htc' => $htcSonuc,
+            'toplam_brut' => round($rtcSonuc['brut'] + $htcSonuc['brut'], 2),
+            'toplam_net' => round($rtcSonuc['net'] + $htcSonuc['net'], 2),
+            'toplam_sgk' => round($rtcSonuc['sgk'] + $htcSonuc['sgk'], 2),
+            'toplam_issizlik' => round($rtcSonuc['issizlik'] + $htcSonuc['issizlik'], 2),
+            'toplam_gv' => round($rtcSonuc['gelir_vergisi'] + $htcSonuc['gelir_vergisi'], 2),
+            'toplam_damga' => round($rtcSonuc['damga'] + $htcSonuc['damga'], 2),
+            'toplam_matrah_katkisi' => round(($rtcGvDahil ? $rtcSonuc['matrah'] : 0.0) + ($htcGvDahil ? $htcSonuc['matrah'] : 0.0), 2),
+        ];
+    }
+
     public function getSgkFirmaDagilimi($personel_id, $baslangic, $bitis, $defaultFirma = 'Yok')
     {
         $sql = "SELECT ise_giris_tarihi, isten_cikis_tarihi, sgk_yapilan_firma 
@@ -658,8 +743,7 @@ class BordroPersonelModel extends Model
         $asgariUcretBrut = floatval($this->cachedParametreModel->getGenelAyar('asgari_ucret_brut', $donemBaslangic) ?? 33030.00);
         if ($rtcGun > 0 || $htcGun > 0) {
             $gunlukAsgari = round($asgariUcretNet / 30, 4);
-            $gunlukAsgariBrut = round($asgariUcretBrut / 30, 4);
-            $resmiDahilEkToplam += ($gunlukAsgari * $rtcGun) + ($gunlukAsgariBrut * $htcGun);
+            $resmiDahilEkToplam += $gunlukAsgari * ($rtcGun + $htcGun);
             if ($rtcGun > 0) {
                 $rtcBrutGosterim = round($gunlukAsgari * $rtcGun, 2);
             }
@@ -668,7 +752,8 @@ class BordroPersonelModel extends Model
                 $rawEkOdeme += $htcEkOdemeGosterim;
                 // HTÇ net fazla (brüt - asgari) yemek havuzuna taşınıyor; yalnızca resmi kısım bankaya
                 $htcBrutGosterim = round($htcEkOdemeGosterim, 2);
-                $htcResmiBrutGosterim = round($gunlukAsgariBrut * $htcGun, 2);
+                // HTÇ (Maaşa Dahil) günü için garanti edilen "ele geçen" hedef: asgari ücretin günlük neti
+                $htcResmiBrutGosterim = round($gunlukAsgari * $htcGun, 2);
             }
         }
         $htcNetFazlaGosterim = $htcGun > 0 ? (round($maasTutari / 30, 4) - round($asgariUcretBrut / 30, 4)) * $htcGun : 0.0;
@@ -678,8 +763,9 @@ class BordroPersonelModel extends Model
         // yalnızca resmi (asgari bazlı) tutar kullanılır.
         $htcVergiBazliGosterim = $isInclusive ? $htcResmiBrutGosterim : $htcBrutGosterim;
 
-        // RTÇ/HTÇ brüt ek ödemesi: ilgili parametrenin (resmi_tatil_calisma/hafta_tatili_calisma) SGK/Gelir Vergisi/Damga Vergisi
-        // "dahil mi" işaretine göre kesinti uygulanır; kalan net tutar bankaya yansır.
+        // RTÇ/HTÇ: RTÇ her zaman, HTÇ ise "Maaşa Dahil" personelde asgari ücretin günlük net tutarını
+        // garanti eden bir hedeftir (brüte tamamlanır/gross-up). "Maaşa Dahil" olmayan personelde HTÇ
+        // zaten çalışanın kendi brüt maaş oranına dayalı gerçek bir brüt tutardır (gross-up yapılmaz).
         $rtcHtcBrutGosterimToplam = round($rtcBrutGosterim + $htcVergiBazliGosterim, 2);
         $rtcHtcKesintiToplamGosterim = 0.0;
         $rtcHtcMatrahKatkisiGosterim = 0.0;
@@ -701,59 +787,41 @@ class BordroPersonelModel extends Model
             $issizlikOraniGosterim = floatval($this->cachedParametreModel->getGenelAyar('issizlik_isci_orani', $tarihVergiGosterim) ?? 1) / 100;
             $damgaOraniGosterim = floatval($this->cachedParametreModel->getGenelAyar('damga_vergisi_orani', $tarihVergiGosterim) ?? 0.759) / 100;
 
-            $rtcSgkTutarGosterim = $rtcSgkDahilGosterim ? round($rtcBrutGosterim * $sgkOraniGosterim, 2) : 0.0;
-            $rtcIssizlikTutarGosterim = $rtcSgkDahilGosterim ? round($rtcBrutGosterim * $issizlikOraniGosterim, 2) : 0.0;
-            $rtcDamgaTutarGosterim = $rtcDamgaDahilGosterim ? round($rtcBrutGosterim * $damgaOraniGosterim, 2) : 0.0;
+            $donemYilGosterim = (int) date('Y', strtotime($donemBaslangic));
+            $donemAyGosterim = (int) date('n', strtotime($donemBaslangic));
+            $kumulatifMatrahGosterim = $this->getKumulatifMatrah($p->personel_id, $donemYilGosterim, $donemAyGosterim);
+            $anaMaasMatrahGosterim = $isInclusive ? round(($asgariUcretNet / 30) * $calismaGunu, 2) : 0.0;
 
-            $htcSgkTutarGosterim = $htcSgkDahilGosterim ? round($htcVergiBazliGosterim * $sgkOraniGosterim, 2) : 0.0;
-            $htcIssizlikTutarGosterim = $htcSgkDahilGosterim ? round($htcVergiBazliGosterim * $issizlikOraniGosterim, 2) : 0.0;
-            $htcDamgaTutarGosterim = $htcDamgaDahilGosterim ? round($htcVergiBazliGosterim * $damgaOraniGosterim, 2) : 0.0;
+            $rtcHtcSonucGosterim = $this->hesaplaRtcHtcKesinti(
+                $rtcBrutGosterim,
+                $htcVergiBazliGosterim,
+                $isInclusive,
+                $rtcSgkDahilGosterim, $rtcGvDahilGosterim, $rtcDamgaDahilGosterim,
+                $htcSgkDahilGosterim, $htcGvDahilGosterim, $htcDamgaDahilGosterim,
+                $sgkOraniGosterim, $issizlikOraniGosterim, $damgaOraniGosterim,
+                $kumulatifMatrahGosterim + $anaMaasMatrahGosterim,
+                $donemYilGosterim
+            );
 
-            $rtcHtcSgkKesintiGosterim = round($rtcSgkTutarGosterim + $htcSgkTutarGosterim, 2);
-            $rtcHtcDamgaKesintiGosterim = round($rtcDamgaTutarGosterim + $htcDamgaTutarGosterim, 2);
+            $rtcHtcMatrahKatkisiGosterim = $rtcHtcSonucGosterim['toplam_matrah_katkisi'];
+            $rtcHtcNetOdemeGosterim = $rtcHtcSonucGosterim['toplam_net'];
+            $rtcHtcKesintiToplamGosterim = round($rtcHtcSonucGosterim['toplam_brut'] - $rtcHtcNetOdemeGosterim, 2);
 
-            $rtcGvMatrahGosterim = $rtcGvDahilGosterim ? $rtcBrutGosterim : 0.0;
-            $htcGvMatrahGosterim = $htcGvDahilGosterim ? $htcVergiBazliGosterim : 0.0;
-            $rtcHtcMatrahKatkisiGosterim = round($rtcGvMatrahGosterim + $htcGvMatrahGosterim, 2);
-
-            $rtcHtcGelirVergisiKesintiGosterim = 0.0;
-            if ($rtcHtcMatrahKatkisiGosterim > 0) {
-                $donemYilGosterim = (int) date('Y', strtotime($donemBaslangic));
-                $donemAyGosterim = (int) date('n', strtotime($donemBaslangic));
-                $kumulatifMatrahGosterim = $this->getKumulatifMatrah($p->personel_id, $donemYilGosterim, $donemAyGosterim);
-                // Ana maaşın bu ayki matrah katkısı da kümülatif tabana dahil edilmeli ki RTÇ/HTÇ'nin marjinal dilim payı
-                // hesaplaMaas() ile aynı sonucu versin (aksi halde dilim sınırına yakın aylarda eksik vergi hesaplanır)
-                $anaMaasMatrahGosterim = $isInclusive ? round(($asgariUcretNet / 30) * $calismaGunu, 2) : 0.0;
-                $gelirVergisiAnaMaasIzoleGosterim = $this->cachedParametreModel->hesaplaGelirVergisi($kumulatifMatrahGosterim + $anaMaasMatrahGosterim, $anaMaasMatrahGosterim, $donemYilGosterim);
-                $gelirVergisiToplamIzoleGosterim = $this->cachedParametreModel->hesaplaGelirVergisi($kumulatifMatrahGosterim + $anaMaasMatrahGosterim + $rtcHtcMatrahKatkisiGosterim, $anaMaasMatrahGosterim + $rtcHtcMatrahKatkisiGosterim, $donemYilGosterim);
-                $rtcHtcGelirVergisiKesintiGosterim = max(0, round($gelirVergisiToplamIzoleGosterim - $gelirVergisiAnaMaasIzoleGosterim, 2));
-            }
-
-            $rtcHtcNetOdemeGosterim = max(0, round($rtcHtcBrutGosterimToplam - $rtcHtcSgkKesintiGosterim - $rtcHtcDamgaKesintiGosterim - $rtcHtcGelirVergisiKesintiGosterim, 2));
-            $rtcHtcKesintiToplamGosterim = round($rtcHtcBrutGosterimToplam - $rtcHtcNetOdemeGosterim, 2);
-
-            if ($rtcBrutGosterim > 0 && $htcVergiBazliGosterim > 0) {
-                $rtcPayGosterim = round($rtcHtcNetOdemeGosterim * ($rtcBrutGosterim / $rtcHtcBrutGosterimToplam), 2);
+            $rtcPayGosterim = $rtcHtcSonucGosterim['rtc']['net'];
+            if ($rtcPayGosterim > 0) {
                 $yontemliBankaEki += $rtcPayGosterim;
                 $bankaEkOdemeDetaylari[] = [
                     'etiket' => 'Resmi Tatil Çalışması (Net)',
                     'tutar' => $rtcPayGosterim
                 ];
-                $htcPayGosterim = round($rtcHtcNetOdemeGosterim - $rtcPayGosterim, 2);
+            }
+            $htcPayGosterim = $rtcHtcSonucGosterim['htc']['net'];
+            if ($htcPayGosterim > 0) {
                 $yontemliBankaEki += $htcPayGosterim;
                 $bankaEkOdemeDetaylari[] = [
                     'etiket' => 'Hafta Tatili Çalışması (Net)',
                     'tutar' => $htcPayGosterim
                 ];
-            } else {
-                $yontemliBankaEki += $rtcHtcNetOdemeGosterim;
-                if ($rtcHtcNetOdemeGosterim > 0) {
-                    $etiket = $rtcBrutGosterim > 0 ? 'Resmi Tatil Çalışması (Net)' : 'Hafta Tatili Çalışması (Net)';
-                    $bankaEkOdemeDetaylari[] = [
-                        'etiket' => $etiket,
-                        'tutar' => $rtcHtcNetOdemeGosterim
-                    ];
-                }
             }
         }
 
@@ -854,9 +922,11 @@ class BordroPersonelModel extends Model
             $asgariYatacak = ($calismaGunu >= 30) ? $asgariUcretNet : (($asgariUcretNet / 30) * $calismaGunu);
             $asgariYatacak = round($asgariYatacak * $nonKurRatio, 2);
             $kalanNetHakedis = max(0, $toplamAlacagi - $toplamKesinti);
-            // RTÇ/HTÇ brüt ek ödemesinin SGK/Gelir Vergisi/Damga Vergisi kesintisi: TOPLAM HAKEDİŞ (brüt) gösterimini
-            // etkilemez, ama banka/elden dağıtımının kaynağı olan tutarı küçültür (kesinti gerçekten ödenmemiş olur)
-            $toplamAlacagiNet = max(0, round($toplamAlacagi - $rtcHtcKesintiToplamGosterim, 2));
+            // NOT: RTÇ/HTÇ'nin kendi SGK/Gelir Vergisi/Damga Vergisi kesintisi zaten brüte tamamlama
+            // (gross-up) ile kendi içinde absorbe edilip yontemliBankaEki'ne sadece NET tutar olarak
+            // eklenmişti; $toplamAlacagi bu NET tutarı zaten içeriyor. Burada bir daha düşülürse
+            // banka+elden toplamı toplamAlacagi'dan az çıkar (çifte kesinti).
+            $toplamAlacagiNet = $toplamAlacagi;
 
             // Banka: Asgari + Yemek (istisna limiti) + Eş + Banka ek ödemeler; üstü elden
             $bankaMatrahi = min($toplamAlacagiNet, $asgariYatacak + $mealAllowanceDeduction + $spouseAllowanceDeduction + $yontemliBankaEki);
@@ -2138,6 +2208,44 @@ class BordroPersonelModel extends Model
             $adet = intval($nobet->adet);
             $birimUcret = floatval($nobetUcretleri[$tip] ?? 0);
 
+            // Hafta İçi (standart) nöbet: kişinin kendi eline geçen tutar parametredeki (varsayılan_tutar)
+            // sabit ücrettir; asıl ödenen tutarı ARTIRMAZ. "resmi_tutar" (banka/resmi alacağa dahil edilen
+            // kısım) ise asgari ücretin saatlik NET tutarının %50 fazlasının (fazla mesai) SGK işçi payı +
+            // İşsizlik işçi payı + Gelir Vergisi (dilime göre) + Damga Vergisi kesintilerinden SONRA tam
+            // olarak bu net hedefe ulaşacak şekilde brüte tamamlanmasıyla (gross-up) hesaplanır.
+            $resmiTutar = 0.0;
+            if ($tip === 'standart') {
+                if ($this->cachedParametreModel === null) {
+                    $this->cachedParametreModel = new BordroParametreModel();
+                }
+                $asgariUcretNetNobet = floatval($this->cachedParametreModel->getGenelAyar('asgari_ucret_net', $baslangic_tarihi) ?? 28075.50);
+                $sgkOraniNobet = floatval($this->cachedParametreModel->getGenelAyar('sgk_isci_orani', $baslangic_tarihi) ?? 14) / 100;
+                $issizlikOraniNobet = floatval($this->cachedParametreModel->getGenelAyar('issizlik_isci_orani', $baslangic_tarihi) ?? 1) / 100;
+                $damgaOraniNobet = floatval($this->cachedParametreModel->getGenelAyar('damga_vergisi_orani', $baslangic_tarihi) ?? 0.759) / 100;
+                $donemYilNobet = (int) date('Y', strtotime($baslangic_tarihi));
+                $donemAyNobet = (int) date('n', strtotime($baslangic_tarihi));
+                $kumulatifMatrahNobet = $this->getKumulatifMatrah($personel_id, $donemYilNobet, $donemAyNobet);
+
+                // "Dahil mi" bayrakları RTÇ/HTÇ'deki gibi okunur; GV matrahı SGK/İşsizlik düşüldükten
+                // sonraki tutar üzerinden hesaplanır (RTÇ/HTÇ ile aynı kademeli yöntem).
+                $nobetSgkDahil = !empty($haftaIciParam->sgk_matrahi_dahil ?? 0);
+                $nobetGvDahil = !empty($haftaIciParam->gelir_vergisi_dahil ?? 1);
+                $nobetDamgaDahil = !empty($haftaIciParam->damga_vergisi_dahil ?? 1);
+
+                $saatlikNetHedef = ($asgariUcretNetNobet / 225) * 1.5;
+                $toplamNetHedef = round($saatlikNetHedef * 4 * $adet, 2);
+                $grossUp = $this->cachedParametreModel->bruteUpForNetTarget(
+                    $toplamNetHedef,
+                    $kumulatifMatrahNobet,
+                    $nobetSgkDahil ? $sgkOraniNobet : 0.0,
+                    $nobetSgkDahil ? $issizlikOraniNobet : 0.0,
+                    $nobetDamgaDahil ? $damgaOraniNobet : 0.0,
+                    $donemYilNobet,
+                    $nobetGvDahil
+                );
+                $resmiTutar = $grossUp['brut'];
+            }
+
             if ($adet > 0 && $birimUcret > 0) {
                 $toplamTutar = round($adet * $birimUcret, 2);
                 $tipEtiketi = match ($tip) {
@@ -2156,16 +2264,6 @@ class BordroPersonelModel extends Model
 
                 $paramId = ($tip === 'standart') ? ($haftaIciParam->id ?? null) : ($haftaSonuParam->id ?? null);
                 $paramKod = ($tip === 'standart') ? 'hafta_ici_nobet' : 'hafta_sonu_nobet';
-
-                $resmiTutar = 0.0;
-                if ($tip === 'standart') {
-                    if ($this->cachedParametreModel === null) {
-                        $this->cachedParametreModel = new BordroParametreModel();
-                    }
-                    $asgariUcretBrut = floatval($this->cachedParametreModel->getGenelAyar('asgari_ucret_brut', $baslangic_tarihi) ?? 33030.00);
-                    $resmiBirimUcret = ($asgariUcretBrut / 225) * 1.5 * 4;
-                    $resmiTutar = round($resmiBirimUcret * $adet, 2);
-                }
 
                 // Aynı DB bağlantısı ($this->db) üzerinden doğrudan INSERT yap
                 // PersonelEkOdemelerModel ayrı bağlantı kullandığı için hesaplama sırasında
@@ -3823,6 +3921,7 @@ class BordroPersonelModel extends Model
         $netEkOdemeler = 0;        // Direct net'e eklenecek
         $vergiliMatrahEkleri = 0;  // Sadece gelir vergisi matrahına eklenecek
         $sgkMatrahEkleri = 0;      // SGK matrahına eklenecek
+        $damgaMatrahEkleri = 0;    // Damga vergisi matrahına eklenecek
         $toplamMesaiTutar = 0;     // Özel olarak mesai tutarını ayır
         $toplamKesinti = 0;        // Net'ten düşülecek kesintiler
         $icraMatrahEkleri = 0;     // İcra matrahına eklenecek ek gelirler
@@ -4197,6 +4296,9 @@ class BordroPersonelModel extends Model
                         if ($parametre && !empty($parametre->gelir_vergisi_dahil)) {
                             $vergiliMatrahEkleri += $rTutar;
                         }
+                        if ($parametre && !empty($parametre->damga_vergisi_dahil)) {
+                            $damgaMatrahEkleri += $rTutar;
+                        }
                     }
                     $detay['net_etki'] = $ekOdemeTutari;
                     $ekOdemeDetaylari[] = $detay;
@@ -4231,11 +4333,23 @@ class BordroPersonelModel extends Model
                 }
             }
             if ($rTutar > 0) {
-                if ($parametre && !empty($parametre->sgk_matrahi_dahil)) {
+                $rTutarSgkDahil = $parametre && !empty($parametre->sgk_matrahi_dahil);
+                if ($rTutarSgkDahil) {
                     $sgkMatrahEkleri += $rTutar;
                 }
                 if ($parametre && !empty($parametre->gelir_vergisi_dahil)) {
-                    $vergiliMatrahEkleri += $rTutar;
+                    // SGK dahilse GV matrahına SGK/İşsizlik düşüldükten sonraki tutar eklenir
+                    // (RTÇ/HTÇ'deki kademeli SGK-sonra-GV yöntemiyle tutarlı olsun diye).
+                    if ($rTutarSgkDahil) {
+                        $rTutarSgkOrani = ($genelAyarlarMap['sgk_isci_orani'] ?? 14) / 100;
+                        $rTutarIssizlikOrani = ($genelAyarlarMap['issizlik_isci_orani'] ?? 1) / 100;
+                        $vergiliMatrahEkleri += max(0, round($rTutar - ($rTutar * $rTutarSgkOrani) - ($rTutar * $rTutarIssizlikOrani), 2));
+                    } else {
+                        $vergiliMatrahEkleri += $rTutar;
+                    }
+                }
+                if ($parametre && !empty($parametre->damga_vergisi_dahil)) {
+                    $damgaMatrahEkleri += $rTutar;
                 }
             }
 
@@ -4258,17 +4372,23 @@ class BordroPersonelModel extends Model
         $htcBrutHesap = 0.0;
         $htcResmiBrutHesap = 0.0;
         $htcNetFazlaHesap = 0.0;
+        $rtcHedefNetHesap = 0.0;
+        $htcResmiHedefNetHesap = 0.0;
         if ($rtcGunHesap > 0 || $htcGunHesap > 0) {
             $gunlukAsgariHesap = round(floatval($genelAyarlarMap['asgari_ucret_net'] ?? 17002.12) / 30, 4);
             $gunlukAsgariBrutHesap = round(floatval($genelAyarlarMap['asgari_ucret_brut'] ?? 33030.00) / 30, 4);
             $resmiDahilEkToplam += $gunlukAsgariHesap * ($rtcGunHesap + $htcGunHesap);
             if ($rtcGunHesap > 0) {
                 $rtcBrutHesap = round($gunlukAsgariBrutHesap * $rtcGunHesap, 2);
+                // RTÇ günü için garanti edilen "ele geçen" hedef: asgari ücretin günlük neti (gross-up bazı)
+                $rtcHedefNetHesap = round($gunlukAsgariHesap * $rtcGunHesap, 2);
             }
         }
         if ($htcGunHesap > 0) {
             $htcEkOdeme = round($nominalBrutMaas / 30, 4) * $htcGunHesap;
             $htcResmiBrutHesap = round($gunlukAsgariBrutHesap * $htcGunHesap, 2);
+            // HTÇ (Maaşa Dahil) günü için garanti edilen "ele geçen" hedef: asgari ücretin günlük neti
+            $htcResmiHedefNetHesap = round($gunlukAsgariHesap * $htcGunHesap, 2);
             $htcNetFazlaHesap = $htcEkOdeme - $gunlukAsgariHesap * $htcGunHesap;
             $htcBrutHesap = round($htcEkOdeme, 2);
         }
@@ -4394,31 +4514,29 @@ class BordroPersonelModel extends Model
             $rtcHtcIssizlikOrani = ($genelAyarlarMap['issizlik_isci_orani'] ?? 1) / 100;
             $rtcHtcDamgaOrani = ($genelAyarlarMap['damga_vergisi_orani'] ?? 0.759) / 100;
 
-            $rtcSgkIsciTutar = $rtcSgkDahil ? round($rtcBrutHesap * $rtcHtcSgkOrani, 2) : 0.0;
-            $rtcIssizlikIsciTutar = $rtcSgkDahil ? round($rtcBrutHesap * $rtcHtcIssizlikOrani, 2) : 0.0;
-            $rtcDamgaTutar = $rtcDamgaDahil ? round($rtcBrutHesap * $rtcHtcDamgaOrani, 2) : 0.0;
+            $isHtcNetHedefMi = $this->hasMaasaDahilSosyalYardim($kayit);
+            $rtcHtcSonuc = $this->hesaplaRtcHtcKesinti(
+                $rtcHedefNetHesap,
+                $isHtcNetHedefMi ? $htcResmiHedefNetHesap : $htcVergiBazli,
+                $isHtcNetHedefMi,
+                $rtcSgkDahil, $rtcGvDahil, $rtcDamgaDahil,
+                $htcSgkDahil, $htcGvDahil, $htcDamgaDahil,
+                $rtcHtcSgkOrani, $rtcHtcIssizlikOrani, $rtcHtcDamgaOrani,
+                $kumulatifMatrah + $gelirVergisiMatrahi,
+                $donemYil
+            );
 
-            $htcSgkIsciTutar = $htcSgkDahil ? round($htcVergiBazli * $rtcHtcSgkOrani, 2) : 0.0;
-            $htcIssizlikIsciTutar = $htcSgkDahil ? round($htcVergiBazli * $rtcHtcIssizlikOrani, 2) : 0.0;
-            $htcDamgaTutar = $htcDamgaDahil ? round($htcVergiBazli * $rtcHtcDamgaOrani, 2) : 0.0;
-
-            $rtcHtcSgkIsci = round($rtcSgkIsciTutar + $htcSgkIsciTutar, 2);
-            $rtcHtcIssizlikIsci = round($rtcIssizlikIsciTutar + $htcIssizlikIsciTutar, 2);
-            $rtcHtcDamgaVergisi = round($rtcDamgaTutar + $htcDamgaTutar, 2);
-
-            $rtcGvMatrah = $rtcGvDahil ? $rtcBrutHesap : 0.0;
-            $htcGvMatrah = $htcGvDahil ? $htcVergiBazli : 0.0;
-            $rtcHtcMatrahKatkisi = round($rtcGvMatrah + $htcGvMatrah, 2);
+            $rtcHtcSgkIsci = $rtcHtcSonuc['toplam_sgk'];
+            $rtcHtcIssizlikIsci = $rtcHtcSonuc['toplam_issizlik'];
+            $rtcHtcDamgaVergisi = $rtcHtcSonuc['toplam_damga'];
+            $rtcHtcGelirVergisi = $rtcHtcSonuc['toplam_gv'];
+            $rtcHtcMatrahKatkisi = $rtcHtcSonuc['toplam_matrah_katkisi'];
+            $rtcHtcBrutToplamGercek = $rtcHtcSonuc['toplam_brut'];
+            $rtcHtcNetOdeme = $rtcHtcSonuc['toplam_net'];
+            $rtcHtcKesintiToplam = round($rtcHtcBrutToplamGercek - $rtcHtcNetOdeme, 2);
 
             $gelirVergisiMatrahiRtcHtcDahil = $gelirVergisiMatrahi + $rtcHtcMatrahKatkisi;
             $yeniKumulatifMatrahRtcHtcDahil = $kumulatifMatrah + $gelirVergisiMatrahiRtcHtcDahil;
-
-            $gelirVergisiAnaMaasIzole = $parametreModel->hesaplaGelirVergisi($yeniKumulatifMatrah, $gelirVergisiMatrahi, $donemYil);
-            $gelirVergisiToplamIzole = $parametreModel->hesaplaGelirVergisi($yeniKumulatifMatrahRtcHtcDahil, $gelirVergisiMatrahiRtcHtcDahil, $donemYil);
-            $rtcHtcGelirVergisi = max(0, round($gelirVergisiToplamIzole - $gelirVergisiAnaMaasIzole, 2));
-
-            $rtcHtcNetOdeme = max(0, round($rtcHtcBrutToplam - $rtcHtcSgkIsci - $rtcHtcIssizlikIsci - $rtcHtcDamgaVergisi - $rtcHtcGelirVergisi, 2));
-            $rtcHtcKesintiToplam = round($rtcHtcBrutToplam - $rtcHtcNetOdeme, 2);
 
             // Raporlama ve gelecek ayların dilim hesabı için matrah/kümülatif/kesinti toplamlarına dahil et
             $gelirVergisiMatrahi = $gelirVergisiMatrahiRtcHtcDahil;
@@ -4429,17 +4547,19 @@ class BordroPersonelModel extends Model
 
             $netEkOdemeler += $rtcHtcNetOdeme;
             $icraMatrahEkleri += $rtcHtcNetOdeme;
-            if ($rtcBrutHesap > 0 && $htcVergiBazli > 0) {
-                $rtcPay = round($rtcHtcNetOdeme * ($rtcBrutHesap / $rtcHtcBrutToplam), 2);
-                $yontemliOdemeler['banka'] += $rtcPay;
-                $yontemliOdemeler['banka'] += round($rtcHtcNetOdeme - $rtcPay, 2);
-            } else {
-                $yontemliOdemeler['banka'] += $rtcHtcNetOdeme;
-            }
+            $yontemliOdemeler['banka'] += $rtcHtcSonuc['rtc']['net'];
+            $yontemliOdemeler['banka'] += $rtcHtcSonuc['htc']['net'];
         }
 
-        $damgaVergisiMatrahi = $calisanBrutMaas + $brutEkOdemeler;
-        $damgaVergisi = $damgaVergisiMatrahi * $damgaVergisiOrani + $rtcHtcDamgaVergisi;
+        $actualDamgaVergisiOrani = ($genelAyarlarMap['damga_vergisi_orani'] ?? 0.759) / 100;
+        $damgaVergisiMatrahi = $calisanBrutMaas + $brutEkOdemeler + $damgaMatrahEkleri;
+        if ($isNetMaas || $isPrimUsulu) {
+            $rtcHtcDamgaMatrahKatkisi = ($rtcDamgaDahil ? ($rtcHtcSonuc['rtc']['brut'] ?? 0.0) : 0.0) + ($htcDamgaDahil ? ($rtcHtcSonuc['htc']['brut'] ?? 0.0) : 0.0);
+            $damgaVergisiMatrahi += $rtcHtcDamgaMatrahKatkisi;
+            $damgaVergisi = $rtcHtcDamgaVergisi + ($damgaMatrahEkleri * $actualDamgaVergisiOrani);
+        } else {
+            $damgaVergisi = $damgaVergisiMatrahi * $damgaVergisiOrani + $rtcHtcDamgaVergisi;
+        }
 
         $sgkIsveren = $sgkMatrahi * $sgkIsverenOrani;
         $issizlikIsveren = $sgkMatrahi * $issizlikIsverenOrani;
@@ -4648,9 +4768,11 @@ class BordroPersonelModel extends Model
             
             // Banka: Asgari + Yemek (istisna limiti) + Eş + Banka ek ödemeler; üstü elden
             $netMaas = floatval($netMaas ?? $hakedisNetBeforeKesinti ?? 0);
-            // RTÇ/HTÇ brüt ek ödemesinin SGK/Gelir Vergisi/Damga Vergisi kesintisi banka/elden dağıtımının
-            // kaynağı olan tutardan düşülür (TOPLAM HAKEDİŞ gösterimini etkilemez)
-            $netMaasIcinDagitim = max(0, round($netMaas - $rtcHtcKesintiToplam, 2));
+            // NOT: RTÇ/HTÇ'nin kendi SGK/Gelir Vergisi/Damga Vergisi kesintisi zaten brüte tamamlama
+            // (gross-up) ile kendi içinde absorbe edilip netEkOdemeler'e sadece NET tutar olarak
+            // eklenmişti (bkz. yukarıdaki RTÇ/HTÇ bloğu); $netMaas bu NET tutarı zaten içeriyor.
+            // Burada bir daha düşülürse banka+elden toplamı net_maas'tan az çıkar (çifte kesinti).
+            $netMaasIcinDagitim = $netMaas;
             $bankaMatrahi = min($netMaasIcinDagitim, $asgariYatacak + $hesaplananYemekToplam + $hesaplananEsToplam + floatval($yontemliOdemeler['banka'] ?? 0));
             $eldenBrut = max(0.0, $netMaasIcinDagitim - $bankaMatrahi);
             $bankaOncelikliKesinti = 0.0;
@@ -4770,6 +4892,7 @@ class BordroPersonelModel extends Model
             'ozet' => [
                 'brut_ek_odemeler' => round($brutEkOdemeler, 2), 'net_ek_odemeler' => round($netEkOdemeler, 2),
                 'sgk_matrah_ekleri' => round($sgkMatrahEkleri, 2), 'vergili_matrah_ekleri' => round($vergiliMatrahEkleri, 2),
+                'damga_matrah_ekleri' => round($damgaMatrahEkleri, 2),
                 'dahil_yemek_yardimi' => round($hesaplananYemekToplam, 2),
                 'dahil_es_yardimi' => round($hesaplananEsToplam, 2),
                 'dahil_toplam_yardim' => round($toplamDahilYardim, 2),

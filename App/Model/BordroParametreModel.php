@@ -444,4 +444,74 @@ class BordroParametreModel extends Model
 
         return round($toplamVergi, 2);
     }
+
+    /**
+     * Bir hedef NET tutara ulaşmak için gereken BRÜT tutarı hesaplar (gross-up).
+     * SGK işçi payı + İşsizlik işçi payı + Gelir Vergisi (kümülatif dilime göre) + Damga Vergisi
+     * kesintilerinden SONRA çalışanın eline geçen net tutar tam olarak $hedefNet olacak şekilde
+     * brüt tutarı orantısal iterasyonla bulur. Gelir vergisi hesaplaGelirVergisi() üzerinden
+     * gerçek dilim mantığıyla hesaplandığı için dilim sınırına yakın aylarda da doğru sonuç verir.
+     *
+     * Bir oran 0 verilirse (ör. "dahil değil" parametresi kapalıysa) ilgili kesinti devre dışı kalır.
+     *
+     * $gvMatrahBrutMu: Gelir Vergisi matrahının SGK/İşsizlik düşüldükten sonraki tutar üzerinden mi
+     * (varsayılan, RTÇ/HTÇ'de kullanılan doğru kademeli yöntem), yoksa tam brüt üzerinden mi (bazı
+     * ek ödeme türlerinde — ör. nöbet — mevcut genel muhasebe akışı resmi_tutarı SGK'dan bağımsız
+     * olarak doğrudan GV matrahına eklediği için, brüte tamamlarken de bu davranışla tutarlı kalınması
+     * gerekir) hesaplanacağını belirler.
+     */
+    public function bruteUpForNetTarget(
+        float $hedefNet,
+        float $kumulatifMatrahOncesi,
+        float $sgkOrani,
+        float $issizlikOrani,
+        float $damgaOrani,
+        ?int $yil = null,
+        bool $gvDahil = true,
+        bool $gvMatrahBrutMu = false
+    ): array {
+        $yil = $yil ?? (int) date('Y');
+
+        if ($hedefNet <= 0) {
+            return ['brut' => 0.0, 'sgk' => 0.0, 'issizlik' => 0.0, 'gelir_vergisi' => 0.0, 'damga' => 0.0, 'matrah' => 0.0, 'net' => 0.0];
+        }
+
+        $sabitOranToplam = $sgkOrani + $issizlikOrani + $damgaOrani;
+        $brut = $hedefNet / max(0.01, 1 - $sabitOranToplam);
+
+        for ($i = 0; $i < 15; $i++) {
+            $sgk = $brut * $sgkOrani;
+            $issizlik = $brut * $issizlikOrani;
+            $matrah = max(0, $brut - $sgk - $issizlik);
+            $gvMatrah = $gvMatrahBrutMu ? $brut : $matrah;
+            $gv = $gvDahil ? $this->hesaplaGelirVergisi($kumulatifMatrahOncesi + $gvMatrah, $gvMatrah, $yil) : 0.0;
+            $damga = $brut * $damgaOrani;
+            $net = $brut - $sgk - $issizlik - $gv - $damga;
+
+            $fark = $hedefNet - $net;
+            if (abs($fark) < 0.01) {
+                break;
+            }
+            $brut *= $hedefNet / max(0.01, $net);
+        }
+
+        $brut = round($brut, 2);
+        $sgk = round($brut * $sgkOrani, 2);
+        $issizlik = round($brut * $issizlikOrani, 2);
+        $matrah = max(0, round($brut - $sgk - $issizlik, 2));
+        $gvMatrah = $gvMatrahBrutMu ? $brut : $matrah;
+        $gv = $gvDahil ? $this->hesaplaGelirVergisi($kumulatifMatrahOncesi + $gvMatrah, $gvMatrah, $yil) : 0.0;
+        $damga = round($brut * $damgaOrani, 2);
+        $net = round($brut - $sgk - $issizlik - $gv - $damga, 2);
+
+        return [
+            'brut' => $brut,
+            'sgk' => $sgk,
+            'issizlik' => $issizlik,
+            'gelir_vergisi' => $gv,
+            'damga' => $damga,
+            'matrah' => $matrah,
+            'net' => $net,
+        ];
+    }
 }

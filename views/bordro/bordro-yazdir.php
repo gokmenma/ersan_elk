@@ -362,11 +362,11 @@ foreach ($bordroListesi as $bordro) {
     if ($htcGunYazdir > 0) {
         $nominalMaasYazdir = floatval($hesap['maasTutari'] ?? $bordro->maas_tutari ?? 0);
         $isInclusiveYazdir = (!empty($bordro->yemek_yardimi_dahil) && intval($bordro->yemek_yardimi_dahil) === 1) || (!empty($bordro->es_yardimi_dahil) && intval($bordro->es_yardimi_dahil) === 1);
-        $htcEldenTutar = $isInclusiveYazdir ? 0.0 : round(($nominalMaasYazdir - $asgariUcretBrut) / 30 * $htcGunYazdir, 2);
-        $htcResmiTutar = round($asgariUcretBrut / 30 * $htcGunYazdir, 2);
+        $htcEldenTutar = $isInclusiveYazdir ? 0.0 : round(($nominalMaasYazdir - $asgariUcretNet) / 30 * $htcGunYazdir, 2);
+        $htcResmiTutar = round($asgariUcretNet / 30 * $htcGunYazdir, 2);
         $groupedEkOdemeler[] = [
             'aciklama' => 'Hafta Tatili Çalışma',
-            'toplam' => $htcEldenTutar,
+            'toplam' => round($htcEldenTutar + $htcResmiTutar, 2),
             'adet' => $htcGunYazdir,
             'detay' => $htcGunYazdir . ' gün × brüt maaş/30 (banka) + ' . number_format($htcResmiTutar, 2, ',', '.') . ' ₺ resmi alacağa dahil',
         ];

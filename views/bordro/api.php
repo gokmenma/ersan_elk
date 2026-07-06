@@ -874,6 +874,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $calisanBrutMaas = $toplamAlacak - floatval($hesap['rawEkOdeme']);
                 
                 $isPrimUsulu = (stripos($maasDurumuGosterim, 'Prim') !== false);
+                $isNetMaas = (stripos($maasDurumuGosterim, 'Net') !== false);
                 $ekOdemelerListe = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
                 $contractHakedisForRounding = floatval($hesap['sozlesmeHakedisi'] ?? 0);
                 if ($contractHakedisForRounding <= 0) {
@@ -1051,7 +1052,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $sozlesmeHakedisTotal = round(($nominalMaas / 30) * $calismaGunu, 2);
                     $contractTarget = max($sozlesmeHakedisTotal, $asgariHakedisModal + $totalDahilYardim);
                     $rtcResmiPayModal = round(floatval($asgariUcretNet) / 30 * $rtcGunModal, 2);
-                    $htcResmiPayModal = round(floatval($asgariUcretBrut) / 30 * $htcGunModal, 2);
+                    $htcResmiPayModal = round(floatval($asgariUcretNet) / 30 * $htcGunModal, 2);
                     $modalMaasFarkiGosterim = max(0, round($contractTarget - $asgariHakedisModal - $totalDahilYardim - $rtcResmiPayModal - $htcResmiPayModal, 2));
                 }
 
@@ -1077,7 +1078,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $displayToplamAlacak = round($toplamAlacak, 2);
                 $kesintiTutarOzet = round($toplamYasalKesinti + $guncelKesintiGosterim, 2);
-                $gorunenNetMaas = max(0, round($displayToplamAlacak - $kesintiTutarOzet, 2));
+                // Net Maaş / Prim Usülü personelde RTÇ/HTÇ/nöbet gibi kalemlerin SGK/Gelir Vergisi/Damga
+                // Vergisi kesintileri zaten brüte tamamlama (gross-up) ile kendi içinde absorbe edildiğinden
+                // (Toplam Hakediş baştan net hedefi garanti eder), bu "yasal kesintiler" toplamdan BİR DAHA
+                // düşülmemeli — aksi halde çifte kesinti olur. Sadece icra/avans gibi diğer kesintiler düşülür.
+                $gorunenNetMaas = ($isNetMaas || $isPrimUsulu)
+                    ? max(0, round($displayToplamAlacak - $guncelKesintiGosterim, 2))
+                    : max(0, round($displayToplamAlacak - $kesintiTutarOzet, 2));
 
                 $dagitimToplami = round($bankaOdemeModal + $eldenOdemeModal + $sodexoOdemeModal + $digerOdemeModal, 2);
                 $dagitimFarki = round($gorunenNetMaas - $dagitimToplami, 2);
@@ -1443,7 +1450,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 // RTÇ / HTÇ satırları
-                if ($rtcGunModal > 0) {
+                if ($rtcGunModal > 0 && !$asgariMatrarhGoster) {
                     $rtcResmiTutar = round(floatval($asgariUcretNet) / 30 * $rtcGunModal, 2);
                     $collRtc = "cRTC_" . $bp->id;
                     $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collRtc . '" aria-expanded="false">
@@ -1455,8 +1462,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 <td class="text-end pe-4 text-warning">' . number_format($rtcResmiTutar, 2, ',', '.') . ' ₺</td>
                               </tr>';
                 }
-                if ($htcGunModal > 0) {
-                    $htcResmiTutar = round(floatval($asgariUcretBrut) / 30 * $htcGunModal, 2);
+                if ($htcGunModal > 0 && !$asgariMatrarhGoster) {
+                    $htcResmiTutar = round(floatval($asgariUcretNet) / 30 * $htcGunModal, 2);
                     $htcEldenTutar = $isInclusive ? 0.0 : round($nominalMaas / 30 * $htcGunModal, 2);
                     $htcToplamTutar = round($htcEldenTutar + $htcResmiTutar, 2);
                     $collHtc = "cHTC_" . $bp->id;
@@ -1719,6 +1726,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $calisanBrutMaas = $toplamAlacak - floatval($hesap['rawEkOdeme']);
                 
                 $isPrimUsulu = (stripos($maasDurumuGosterim, 'Prim') !== false);
+                $isNetMaas = (stripos($maasDurumuGosterim, 'Net') !== false);
                 $ekOdemelerListe = $BordroPersonel->getDonemEkOdemeleriListe($bp->personel_id, $bp->donem_id);
                 $contractHakedisForRounding = floatval($hesap['sozlesmeHakedisi'] ?? 0);
                 if ($contractHakedisForRounding <= 0) {
@@ -1896,7 +1904,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $sozlesmeHakedisTotal = round(($nominalMaas / 30) * $calismaGunu, 2);
                     $contractTarget = max($sozlesmeHakedisTotal, $asgariHakedisModal + $totalDahilYardim);
                     $rtcResmiPayModal = round(floatval($asgariUcretNet) / 30 * $rtcGunModal, 2);
-                    $htcResmiPayModal = round(floatval($asgariUcretBrut) / 30 * $htcGunModal, 2);
+                    $htcResmiPayModal = round(floatval($asgariUcretNet) / 30 * $htcGunModal, 2);
                     $modalMaasFarkiGosterim = max(0, round($contractTarget - $asgariHakedisModal - $totalDahilYardim - $rtcResmiPayModal - $htcResmiPayModal, 2));
                 }
 
@@ -1922,7 +1930,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $displayToplamAlacak = round($toplamAlacak, 2);
                 $kesintiTutarOzet = round($toplamYasalKesinti + $guncelKesintiGosterim, 2);
-                $gorunenNetMaas = max(0, round($displayToplamAlacak - $kesintiTutarOzet, 2));
+                // Net Maaş / Prim Usülü personelde RTÇ/HTÇ/nöbet gibi kalemlerin SGK/Gelir Vergisi/Damga
+                // Vergisi kesintileri zaten brüte tamamlama (gross-up) ile kendi içinde absorbe edildiğinden
+                // (Toplam Hakediş baştan net hedefi garanti eder), bu "yasal kesintiler" toplamdan BİR DAHA
+                // düşülmemeli — aksi halde çifte kesinti olur. Sadece icra/avans gibi diğer kesintiler düşülür.
+                $gorunenNetMaas = ($isNetMaas || $isPrimUsulu)
+                    ? max(0, round($displayToplamAlacak - $guncelKesintiGosterim, 2))
+                    : max(0, round($displayToplamAlacak - $kesintiTutarOzet, 2));
 
                 $dagitimToplami = round($bankaOdemeModal + $eldenOdemeModal + $sodexoOdemeModal + $digerOdemeModal, 2);
                 $dagitimFarki = round($gorunenNetMaas - $dagitimToplami, 2);
@@ -2036,14 +2050,38 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $normalGun = max(0, $sskGun - $haftaTatili - $ucretliIzin - $genelTatil);
                 $calisanBrutMaas = floatval($matrahlar['calisan_brut_maas'] ?? ($bp->brut_maas ?? 0));
 
-                // Calculate overtime (RTC / HTÇ) parameters beforehand
-                $rtcResmiTutar = $rtcGunModal > 0 ? round(floatval($asgariUcretNet) / 30 * $rtcGunModal, 2) : 0.0;
-                $htcResmiTutar = $htcGunModal > 0 ? round(floatval($asgariUcretBrut) / 30 * $htcGunModal, 2) : 0.0;
-                $htcEldenTutar = ($htcGunModal > 0) ? ($isInclusive ? 0.0 : round(($nominalMaas - $asgariUcretBrut) / 30 * $htcGunModal, 2)) : 0.0;
+                // Calculate overtime (RTC / HTÇ) parameters beforehand — BRÜT gösterim (gross-up sonrası)
+                // Asgari ücretin günlük net hedefi SGK+İşsizlik+Gelir Vergisi+Damga Vergisi kesintilerinden
+                // SONRA tam olarak bu hedefe ulaşacak şekilde brüte tamamlanır (bruteUpForNetTarget).
+                $rtcHedefNetModal = $rtcGunModal > 0 ? round(floatval($asgariUcretNet) / 30 * $rtcGunModal, 2) : 0.0;
+                $htcHedefNetModal = $htcGunModal > 0 ? round(floatval($asgariUcretNet) / 30 * $htcGunModal, 2) : 0.0;
+                $htcEldenTutar = ($htcGunModal > 0) ? ($isInclusive ? 0.0 : round(($nominalMaas - floatval($asgariUcretNet)) / 30 * $htcGunModal, 2)) : 0.0;
+
+                $rtcResmiTutar = 0.0;
+                $htcResmiTutar = 0.0;
+                if ($rtcHedefNetModal > 0 || $htcHedefNetModal > 0) {
+                    $donemYilModal2 = (int) date('Y', strtotime($donemBaslangic));
+                    $kumulatifMatrahModal2 = floatval($matrahlar['onceki_kumulatif'] ?? 0);
+                    $sgkOraniModal2 = floatval($BordroParametre->getGenelAyar('sgk_isci_orani', $donemBaslangic) ?? 14) / 100;
+                    $issizlikOraniModal2 = floatval($BordroParametre->getGenelAyar('issizlik_isci_orani', $donemBaslangic) ?? 1) / 100;
+                    $damgaOraniModal2 = floatval($BordroParametre->getGenelAyar('damga_vergisi_orani', $donemBaslangic) ?? 0.759) / 100;
+
+                    $rtcMatrahModal2 = 0.0;
+                    if ($rtcHedefNetModal > 0) {
+                        $rtcGrossModal = $BordroParametre->bruteUpForNetTarget($rtcHedefNetModal, $kumulatifMatrahModal2, $sgkOraniModal2, $issizlikOraniModal2, $damgaOraniModal2, $donemYilModal2);
+                        $rtcResmiTutar = $rtcGrossModal['brut'];
+                        $rtcMatrahModal2 = $rtcGrossModal['matrah'];
+                    }
+                    if ($htcHedefNetModal > 0) {
+                        $htcGrossModal = $BordroParametre->bruteUpForNetTarget($htcHedefNetModal, $kumulatifMatrahModal2 + $rtcMatrahModal2, $sgkOraniModal2, $issizlikOraniModal2, $damgaOraniModal2, $donemYilModal2);
+                        $htcResmiTutar = $htcGrossModal['brut'];
+                    }
+                }
                 $htcToplamTutar = round($htcEldenTutar + $htcResmiTutar, 2);
 
                 // Calculate SGK and Gelir Vergisi matrahs correctly including taxable overtime
                 $sgkMatrah = floatval($matrahlar['sgk_matrahi'] ?? (floatval($bp->brut_maas ?? 0) + floatval($ozetDetay['sgk_matrah_ekleri'] ?? 0)));
+                $damgaVergisiMatrah = floatval($matrahlar['damga_vergisi_matrahi'] ?? (floatval($bp->brut_maas ?? 0) + floatval($ozetDetay['damga_matrah_ekleri'] ?? $ozetDetay['sgk_matrah_ekleri'] ?? 0)));
                 $gelirVergisiMatrah = floatval($matrahlar['gelir_vergisi_matrahi'] ?? 0);
                 $oncekiAyMatrah = floatval($matrahlar['onceki_kumulatif'] ?? 0);
                 $yilIciToplam = floatval($matrahlar['yeni_kumulatif'] ?? ($gelirVergisiMatrah + $oncekiAyMatrah));
@@ -2445,7 +2483,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="col"><div class="ref-card">';
                 $html .= '<div class="ref-card-title">3. DAMGA VERGİSİ</div>';
                 $html .= '<div class="ref-card-list">';
-                $html .= '<div class="ref-card-item"><span class="label">Damga Vergisi Matrahı</span><span class="value">' . $fmt($sgkMatrah) . '</span></div>';
+                $html .= '<div class="ref-card-item"><span class="label">Damga Vergisi Matrahı</span><span class="value">' . $fmt($damgaVergisiMatrah) . '</span></div>';
                 $html .= '<div class="ref-card-item"><span class="label">Damga V. Asgari İstisnası</span><span class="value">' . $fmt($istisnaDV, true, false, true) . '</span></div>';
                 $html .= '<div class="ref-card-item"><span class="label">Hesaplanan Damga Vergisi</span><span class="value">' . $fmt($damgaVergisi + $istisnaDV) . '</span></div>';
                 $html .= '</div>';
