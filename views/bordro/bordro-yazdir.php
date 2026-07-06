@@ -360,7 +360,8 @@ foreach ($bordroListesi as $bordro) {
     }
     if ($htcGunYazdir > 0) {
         $nominalMaasYazdir = floatval($hesap['maasTutari'] ?? $bordro->maas_tutari ?? 0);
-        $htcEldenTutar = round($nominalMaasYazdir / 30 * $htcGunYazdir, 2);
+        $isInclusiveYazdir = (!empty($bordro->yemek_yardimi_dahil) && intval($bordro->yemek_yardimi_dahil) === 1) || (!empty($bordro->es_yardimi_dahil) && intval($bordro->es_yardimi_dahil) === 1);
+        $htcEldenTutar = $isInclusiveYazdir ? 0.0 : round(($nominalMaasYazdir - $asgariUcretNet) / 30 * $htcGunYazdir, 2);
         $htcResmiTutar = round($asgariUcretNet / 30 * $htcGunYazdir, 2);
         $groupedEkOdemeler[] = [
             'aciklama' => 'Hafta Tatili Çalışma',

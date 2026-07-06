@@ -1422,18 +1422,20 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
                 if ($htcGunModal > 0) {
                     $htcResmiTutar = round(floatval($asgariUcretNet) / 30 * $htcGunModal, 2);
-                    $htcEldenTutar = round($nominalMaas / 30 * $htcGunModal, 2);
+                    $htcEldenTutar = $isInclusive ? 0.0 : round($nominalMaas / 30 * $htcGunModal, 2);
                     $htcToplamTutar = round($htcEldenTutar + $htcResmiTutar, 2);
                     $collHtc = "cHTC_" . $bp->id;
                     $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collHtc . '" aria-expanded="false">
                                 <td><div class="d-flex align-items-center"><i class="bx bx-calendar-x me-2 text-purple" style="color:#7367f0"></i><span>Hafta Tatili Çalışma</span><span class="badge fw-normal ms-2" style="background:#7367f0;color:#fff">' . $htcGunModal . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
                                 <td class="text-end fw-semibold" style="color:#7367f0">+' . number_format($htcToplamTutar, 2, ',', '.') . ' ₺</td>
-                              </tr>
-                              <tr class="child-row collapse ' . $collHtc . '">
-                                <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Maaş Farkı <small class="text-muted">(Banka — brüt maaş/30 × ' . $htcGunModal . ' gün)</small></td>
-                                <td class="text-end pe-4 text-success">+' . number_format($htcEldenTutar, 2, ',', '.') . ' ₺</td>
-                              </tr>
-                              <tr class="child-row collapse ' . $collHtc . '">
+                              </tr>';
+                    if ($htcEldenTutar > 0) {
+                        $html .= '<tr class="child-row collapse ' . $collHtc . '">
+                                    <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Maaş Farkı <small class="text-muted">(Banka — brüt maaş/30 × ' . $htcGunModal . ' gün)</small></td>
+                                    <td class="text-end pe-4 text-success">+' . number_format($htcEldenTutar, 2, ',', '.') . ' ₺</td>
+                                  </tr>';
+                    }
+                    $html .= '<tr class="child-row collapse ' . $collHtc . '">
                                 <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>Resmi alacağa dahil <small class="text-muted">(asgari ücret/30 × ' . $htcGunModal . ' gün)</small></td>
                                 <td class="text-end pe-4 text-warning">' . number_format($htcResmiTutar, 2, ',', '.') . ' ₺</td>
                               </tr>';
@@ -2001,7 +2003,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // Calculate overtime (RTC / HTÇ) parameters beforehand
                 $rtcResmiTutar = $rtcGunModal > 0 ? round(floatval($asgariUcretNet) / 30 * $rtcGunModal, 2) : 0.0;
                 $htcResmiTutar = $htcGunModal > 0 ? round(floatval($asgariUcretNet) / 30 * $htcGunModal, 2) : 0.0;
-                $htcEldenTutar = $htcGunModal > 0 ? round($nominalMaas / 30 * $htcGunModal, 2) : 0.0;
+                $htcEldenTutar = ($htcGunModal > 0) ? ($isInclusive ? 0.0 : round(($nominalMaas - $asgariUcretNet) / 30 * $htcGunModal, 2)) : 0.0;
                 $htcToplamTutar = round($htcEldenTutar + $htcResmiTutar, 2);
 
                 // Calculate SGK and Gelir Vergisi matrahs correctly including taxable overtime
@@ -2166,7 +2168,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 };
 
                 $htcPopoverHtml = '<div class="ref-popover-content">';
-                $htcPopoverHtml .= '<div style="display:flex; justify-content:space-between; gap:20px; margin-bottom:6px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 4px;"><span style="color:#cbd5e1;">Maaş Farkı <small style="color:#94a3b8;">(Banka)</small></span><span style="color:#10b981; font-weight:bold;">+' . number_format($htcEldenTutar, 2, ',', '.') . ' ₺</span></div>';
+                if ($htcEldenTutar > 0) {
+                    $htcPopoverHtml .= '<div style="display:flex; justify-content:space-between; gap:20px; margin-bottom:6px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 4px;"><span style="color:#cbd5e1;">Maaş Farkı <small style="color:#94a3b8;">(Banka)</small></span><span style="color:#10b981; font-weight:bold;">+' . number_format($htcEldenTutar, 2, ',', '.') . ' ₺</span></div>';
+                }
                 $htcPopoverHtml .= '<div style="display:flex; justify-content:space-between; gap:20px;"><span style="color:#cbd5e1;">Resmi alacağa dahil <small style="color:#94a3b8;">(Asgari Ücret)</small></span><span style="color:#10b981; font-weight:bold;">+' . number_format($htcResmiTutar, 2, ',', '.') . ' ₺</span></div>';
                 $htcPopoverHtml .= '</div>';
 

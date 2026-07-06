@@ -104,7 +104,8 @@ try {
         $htcGun = intval($hesap['htcGun'] ?? 0);
         $htcResmiTutar = $htcGun > 0 ? round(floatval($asgariUcretNet) / 30 * $htcGun, 2) : 0.0;
         $nominalMaas = floatval($hesap['maasTutari'] ?? 0);
-        $htcEldenTutar = $htcGun > 0 ? round($nominalMaas / 30 * $htcGun, 2) : 0.0;
+        $isInclusive = (intval($p->yemek_yardimi_dahil ?? 0) === 1 || intval($p->es_yardimi_dahil ?? 0) === 1);
+        $htcEldenTutar = $htcGun > 0 ? ($isInclusive ? 0.0 : round(($nominalMaas - $asgariUcretNet) / 30 * $htcGun, 2)) : 0.0;
         $htcToplamTutar = round($htcEldenTutar + $htcResmiTutar, 2);
 
         $toplamAlacak = floatval($hesap['toplamAlacagi'] ?? 0);
