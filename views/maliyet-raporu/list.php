@@ -476,7 +476,7 @@ $ayIsimleri = [1=>'Oca',2=>'Şub',3=>'Mar',4=>'Nis',5=>'May',6=>'Haz',7=>'Tem',8
 </div>
 
 <!-- JS -->
-<script src="views/maliyet-raporu/js/maliyet-raporu.js"></script>
+<script src="<?php echo \App\Helper\Helper::assetVersion('views/maliyet-raporu/js/maliyet-raporu.js'); ?>"></script>
 
 <script>
 $(document).ready(function () {

@@ -204,6 +204,21 @@ $personelOptions = [];
                         </div>
                     </div>
 
+                    <div class="row" id="teslimFotoAlani">
+                        <div class="col-md-12 mb-3">
+                            <div class="p-3 border rounded bg-white">
+                                <div class="d-flex align-items-center mb-2">
+                                    <span class="text-muted small fw-semibold"><i class="bx bx-camera me-1"></i>Teslim Fotoğrafları</span>
+                                    <span class="badge bg-success bg-opacity-10 text-success border border-success ms-2">
+                                        <i class="bx bx-lock-alt"></i> Şifreli Saklanır
+                                    </span>
+                                </div>
+                                <input type="file" class="form-control form-control-sm" name="teslim_fotograflari[]" multiple accept="image/jpeg,image/png,image/webp,application/pdf">
+                                <small class="text-muted d-block mt-1">Zimmetin teslim anındaki durumunu belgeleyin. Birden fazla dosya seçebilirsiniz (JPG, PNG, WEBP, PDF - her biri maks. 8MB).</small>
+                            </div>
+                        </div>
+                    </div>
+
                     <div class="row">
                         <div class="col-md-12 mb-3">
                             <?php echo Form::FormFloatTextarea('aciklama', null, 'Zimmet ile ilgili notlar...', 'Açıklama', 'file-text'); ?>

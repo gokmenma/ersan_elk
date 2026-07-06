@@ -79,6 +79,7 @@ for ($i = 0; $i < 24; $i++) {
                         <tr id="sayacHeaderRows"></tr>
                     </thead>
                     <tbody id="sayacBodyRows"></tbody>
+                    <tfoot class="table-light fw-bold" id="sayacFooterRows"></tfoot>
                 </table>
             </div>
         </div>
@@ -129,6 +130,7 @@ for ($i = 0; $i < 24; $i++) {
                     $('#sayacComparisonChart').html('<div class="text-center p-5 text-muted">Seçilen dönem(ler) için veri bulunamadı.</div>');
                     $('#sayacHeaderRows').html('');
                     $('#sayacBodyRows').html('');
+                    $('#sayacFooterRows').html('');
                     return;
                 }
 
@@ -157,6 +159,29 @@ for ($i = 0; $i < 24; $i++) {
                     bodyHtml += `<tr>${rowHtml}</tr>`;
                 });
                 $('#sayacBodyRows').html(bodyHtml);
+
+                // Calculate and build footer totals
+                let footerHtml = '<tr class="table-light fw-bold"><td>Toplam</td>';
+                let grandTotal = 0;
+                const columnTotals = {};
+                
+                data.periods.forEach(p => {
+                    columnTotals[p] = 0;
+                });
+
+                data.types.forEach(type => {
+                    data.periods.forEach(p => {
+                        const val = (data.matrix[type] && data.matrix[type][p]) ? data.matrix[type][p] : 0;
+                        columnTotals[p] += val;
+                        grandTotal += val;
+                    });
+                });
+
+                data.periods.forEach(p => {
+                    footerHtml += `<td class="text-center">${columnTotals[p].toLocaleString('tr-TR')}</td>`;
+                });
+                footerHtml += `<td class="text-center bg-light fw-bold">${grandTotal.toLocaleString('tr-TR')}</td></tr>`;
+                $('#sayacFooterRows').html(footerHtml);
 
                 // Grafik Serilerini Transpoze Et (Dönemler seri, iş türleri kategori)
                 data.periods.forEach(p => {

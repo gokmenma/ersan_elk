@@ -255,4 +255,4 @@ $unvanUcretler = $Tanimlamalar->getByGrup('unvan_ucret');
     </div>
 </div>
 
-<script src="views/tanimlamalar/js/unvan-ucret.js"></script>
+<script src="<?php echo \App\Helper\Helper::assetVersion('views/tanimlamalar/js/unvan-ucret.js'); ?>"></script>

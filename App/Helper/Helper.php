@@ -358,4 +358,14 @@ class Helper
         $str = preg_replace('/[\p{Z}\p{C}]+/u', ' ', $str);
         return trim($str);
     }
+
+    public static function assetVersion($filePath)
+    {
+        $cleanPath = ltrim($filePath, '/');
+        $fullPath = dirname(dirname(__DIR__)) . '/' . $cleanPath;
+        if (file_exists($fullPath)) {
+            return $filePath . '?v=' . filemtime($fullPath);
+        }
+        return $filePath . '?v=' . time();
+    }
 }

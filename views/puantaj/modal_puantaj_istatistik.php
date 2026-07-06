@@ -108,6 +108,9 @@ for ($i = 0; $i <= 6; $i++) {
                     <tbody id="puBodyRows">
                         <!-- JS ile dolacak -->
                     </tbody>
+                    <tfoot class="table-light fw-bold" id="puFooterRows">
+                        <!-- JS ile dolacak -->
+                    </tfoot>
                 </table>
             </div>
         </div>
@@ -158,6 +161,7 @@ for ($i = 0; $i <= 6; $i++) {
                     $('#puantajComparisonChart').html('<div class="text-center p-5 text-muted">Seçilen dönem(ler) için veri bulunamadı.</div>');
                     $('#puHeaderRows').html('');
                     $('#puBodyRows').html('');
+                    $('#puFooterRows').html('');
                     return;
                 }
 
@@ -186,6 +190,29 @@ for ($i = 0; $i <= 6; $i++) {
                     bodyHtml += `<tr>${rowHtml}</tr>`;
                 });
                 $('#puBodyRows').html(bodyHtml);
+
+                // Calculate and build footer totals
+                let footerHtml = '<tr class="table-light fw-bold"><td>Toplam</td>';
+                let grandTotal = 0;
+                const columnTotals = {};
+                
+                data.periods.forEach(p => {
+                    columnTotals[p] = 0;
+                });
+
+                data.types.forEach(type => {
+                    data.periods.forEach(p => {
+                        const val = (data.matrix[type] && data.matrix[type][p]) ? data.matrix[type][p] : 0;
+                        columnTotals[p] += val;
+                        grandTotal += val;
+                    });
+                });
+
+                data.periods.forEach(p => {
+                    footerHtml += `<td class="text-center">${columnTotals[p].toLocaleString('tr-TR')}</td>`;
+                });
+                footerHtml += `<td class="text-center bg-light fw-bold">${grandTotal.toLocaleString('tr-TR')}</td></tr>`;
+                $('#puFooterRows').html(footerHtml);
 
                 // Grafik Serilerini Transpoze Et (Dönemler seri, iş türleri kategori)
                 data.periods.forEach(p => {

@@ -340,4 +340,4 @@ $gelen_evraklar = $Evrak->getGelenEvraklar();
 
 <?php include_once "modal/evrak-modal.php"; ?>
 
-<script src="views/evrak-takip/js/evrak-takip.js"></script>
+<script src="<?php echo \App\Helper\Helper::assetVersion('views/evrak-takip/js/evrak-takip.js'); ?>"></script>

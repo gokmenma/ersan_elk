@@ -301,4 +301,4 @@ $logs = $MesajLogModel->getLogs($filters);
     }
 </style>
 
-<script src="views/mail-sms/js/list.js"></script>
+<script src="<?php echo \App\Helper\Helper::assetVersion('views/mail-sms/js/list.js'); ?>"></script>

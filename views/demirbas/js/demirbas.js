@@ -1432,9 +1432,11 @@ function filterZimmetOptions(type) {
   if (type === "sayac" || type === "aparat") {
     $("#koliModuWrapper").removeClass("d-none");
     $("#personelTuruWrapper").removeClass("d-none");
+    $("#teslimFotoAlani").addClass("d-none");
   } else {
     $("#koliModuWrapper").addClass("d-none");
     $("#personelTuruWrapper").addClass("d-none");
+    $("#teslimFotoAlani").removeClass("d-none");
 
     // Filtreyi sıfırla (Tüm Personeller)
     $("#personelTuruTum").prop("checked", true).trigger("change");
@@ -2037,7 +2039,11 @@ $(document).on("click", ".zimmet-iade", function (e) {
   let personel = $(this).data("personel");
   let miktar = $(this).data("miktar");
   let isAparat = parseInt($(this).data("is-aparat") || 0, 10) === 1;
+  let isSayac = parseInt($(this).data("is-sayac") || 0, 10) === 1;
   let islemTuru = ($(this).data("islem-turu") || (isAparat ? "tuketim" : "iade")).toString();
+
+  // Formu sıfırla ve yeni değerleri set et
+  $("#iadeForm")[0].reset();
 
   $("#iade_zimmet_id").val(id);
   $("#iade_is_aparat").val(isAparat ? "1" : "0");
@@ -2046,6 +2052,13 @@ $(document).on("click", ".zimmet-iade", function (e) {
   $("#iade_personel_adi").text(personel);
   $("#iade_teslim_miktar").text(miktar);
   $("#iade_miktar").val(miktar).attr("max", miktar);
+
+  // Fotoğraf yükleme alanını göster/gizle
+  if (isAparat || isSayac) {
+    $("#iadeFotoAlani").addClass("d-none");
+  } else {
+    $("#iadeFotoAlani").removeClass("d-none");
+  }
 
   if (isAparat && islemTuru === "tuketim") {
     $("#iadeModalTitle").html(
@@ -2369,8 +2382,55 @@ $(document).on("click", ".zimmet-detay, .zimmet-detay-ac", function (e) {
         $("#checkAllZimmetHareket").prop("checked", false);
         applyZimmetDetayKartFiltre("all");
 
-        // 2. GEÇMİŞ TABLOSUNU DOLDUR
-        
+        // Fotoğraflar Galerisini Yükle
+        const isSayac = parseInt(d.is_sayac || 0, 10) === 1;
+        if (!isAparat && !isSayac) {
+          $("#detayFotoAlani").removeClass("d-none");
+
+          let teslimGaleri = $("#detayTeslimFotoGaleri");
+          let iadeGaleri = $("#detayIadeFotoGaleri");
+          teslimGaleri.empty();
+          iadeGaleri.empty();
+
+          if (d.fotolar && d.fotolar.length > 0) {
+            d.fotolar.forEach((foto) => {
+              let viewUrl = `zimmet-foto-goruntule.php?id=${foto.id}`;
+              let cardHtml = `
+                <div class="col-6 col-sm-4 text-center mb-2" id="foto-card-${foto.id}">
+                  <div class="position-relative border rounded p-1 bg-light">
+                    ${foto.is_pdf ? `
+                      <a href="${viewUrl}" target="_blank" class="d-block py-3 text-danger">
+                        <i class="bx bxs-file-pdf font-size-36 animate__animated animate__fadeIn"></i>
+                        <div class="text-truncate small px-1">${foto.orijinal_ad}</div>
+                      </a>
+                    ` : `
+                      <a href="${viewUrl}" target="_blank" class="d-block">
+                        <img src="${viewUrl}" class="img-fluid rounded animate__animated animate__fadeIn" style="max-height: 80px; object-fit: cover;">
+                      </a>
+                    `}
+                    <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 p-0 rounded-circle d-flex align-items-center justify-content-center sil-detay-foto" data-id="${foto.id}" style="width: 20px; height: 20px;" title="Fotoğrafı Sil">
+                      <i class="bx bx-x font-size-14"></i>
+                    </button>
+                  </div>
+                </div>
+              `;
+              if (foto.foto_turu === 'teslim') {
+                teslimGaleri.append(cardHtml);
+              } else {
+                iadeGaleri.append(cardHtml);
+              }
+            });
+          }
+
+          if (teslimGaleri.children().length === 0) {
+            teslimGaleri.html('<div class="col-12 text-center text-muted small py-3 italic">Fotoğraf eklenmemiş.</div>');
+          }
+          if (iadeGaleri.children().length === 0) {
+            iadeGaleri.html('<div class="col-12 text-center text-muted small py-3 italic">Fotoğraf eklenmemiş.</div>');
+          }
+        } else {
+          $("#detayFotoAlani").addClass("d-none");
+        }
 
         if (typeof feather !== "undefined") {
           setTimeout(() => feather.replace(), 10);
@@ -4623,4 +4683,54 @@ $("#hurdaIadeModal").on("hidden.bs.modal", function () {
   if ($("#hurda_personel_id").hasClass("select2-hidden-accessible")) {
     $("#hurda_personel_id").val(null).trigger("change");
   }
+});
+
+// Zimmet Detay Fotoğraf Silme
+$(document).on("click", ".sil-detay-foto", function (e) {
+  e.preventDefault();
+  let id = $(this).data("id");
+  let btn = $(this);
+
+  Swal.fire({
+    title: "Emin misiniz?",
+    text: "Bu zimmet fotoğrafı kalıcı olarak silinecektir.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonColor: "#d33",
+    cancelButtonColor: "#3085d6",
+    confirmButtonText: "Evet, Sil",
+    cancelButtonText: "Vazgeç"
+  }).then((result) => {
+    if (result.isConfirmed) {
+      let formData = new FormData();
+      formData.append("action", "zimmet-foto-sil");
+      formData.append("id", id);
+
+      fetch(zimmetUrl, {
+        method: "POST",
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.status === "success") {
+          Swal.fire("Silindi!", data.message, "success");
+          $(`#foto-card-${id}`).remove();
+          
+          // Eğer galeri boşaldıysa "Fotoğraf eklenmemiş" yaz
+          if ($("#detayTeslimFotoGaleri").children().length === 0) {
+            $("#detayTeslimFotoGaleri").html('<div class="col-12 text-center text-muted small py-3 italic">Fotoğraf eklenmemiş.</div>');
+          }
+          if ($("#detayIadeFotoGaleri").children().length === 0) {
+            $("#detayIadeFotoGaleri").html('<div class="col-12 text-center text-muted small py-3 italic">Fotoğraf eklenmemiş.</div>');
+          }
+        } else {
+          Swal.fire("Hata!", data.message, "error");
+        }
+      })
+      .catch(err => {
+        console.error(err);
+        Swal.fire("Hata!", "Bir hata oluştu.", "error");
+      });
+    }
+  });
 });

@@ -449,4 +449,4 @@ $canManageIsTuruUcret = Gate::allows('is_turu_ucret_tanimla');
     </div>
 </div>
 
-<script src="views/tanimlamalar/js/is-turu.js"></script>
+<script src="<?php echo \App\Helper\Helper::assetVersion('views/tanimlamalar/js/is-turu.js'); ?>"></script>

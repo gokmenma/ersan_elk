@@ -432,4 +432,4 @@ $canManageRules = Gate::allows('ekip_kodu_kurallari');
     </div>
 </div>
 
-<script src="views/tanimlamalar/js/ekip-kodu.js"></script>
+<script src="<?php echo \App\Helper\Helper::assetVersion('views/tanimlamalar/js/ekip-kodu.js'); ?>"></script>

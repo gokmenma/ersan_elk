@@ -124,6 +124,16 @@ try {
         $kesintiTutarOzet = round($toplamYasalKesinti + $guncelKesintiGosterim, 2);
         $gorunenNetMaas = max(0, round($toplamAlacak - $kesintiTutarOzet, 2));
 
+        $bankaOdeme = floatval($hesap['bankaOdemesi'] ?? 0);
+        $eldenOdeme = floatval($hesap['eldenOdeme'] ?? 0);
+        $sodexoOdeme = floatval($hesap['sodexoOdemesi'] ?? 0);
+        $digerOdeme = floatval($hesap['digerOdeme'] ?? 0);
+        $dagitimToplami = round($bankaOdeme + $eldenOdeme + $sodexoOdeme + $digerOdeme, 2);
+        $dagitimFarki = round($gorunenNetMaas - $dagitimToplami, 2);
+        if (abs($dagitimFarki) >= 0.01 && $eldenOdeme <= 0 && $sodexoOdeme <= 0 && $digerOdeme <= 0 && $bankaOdeme > 0 && abs($dagitimFarki) <= 100) {
+            $bankaOdeme = round($bankaOdeme + $dagitimFarki, 2);
+        }
+
         $yemekVerileri[] = [
             'tc_kimlik' => $p->tc_kimlik_no ?? '-',
             'adi_soyadi' => $p->adi_soyadi ?? '-',
@@ -140,7 +150,7 @@ try {
             'fazla_mesai' => floatval($p->fazla_mesai_tutar ?? 0),
             'resmi_alacak_toplam' => floatval($hesap['resmiAlacagi'] ?? 0),
             'gelir_vergisi' => floatval($p->gelir_vergisi ?? 0),
-            'net_maas' => $gorunenNetMaas
+            'net_maas' => $bankaOdeme
         ];
     }
 
@@ -165,10 +175,10 @@ try {
         'H' => 'EŞ YARDIMI',
         'I' => 'AVANS',
         'J' => 'İCRA',
-        'K' => 'RESMİ ALACAK (ASGARİ ÜCRET)',
+        'K' => 'ALACAK (ASGARİ ÜCRET)',
         'L' => 'HAFTA TATİLİ ÇALIŞMASI',
         'M' => 'FAZLA MESAİ',
-        'N' => 'RESMİ ALACAK TOPLAMI',
+        'N' => 'ALACAK TOPLAMI',
         'O' => 'GELİR VERGİSİ KESİNTİSİ',
         'P' => 'ÖDENECEK NET MAAŞ'
     ];

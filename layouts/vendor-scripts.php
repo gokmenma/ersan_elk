@@ -29,36 +29,36 @@ $page = $_GET['p'] ?? 'home';
 
 
 <?php if ($page == 'personel/list') { ?>
-    <script src="views/personel/js/list.js"></script>
+    <script src="<?php echo Helper::assetVersion('views/personel/js/list.js'); ?>"></script>
 <?php } ?>
 
 <?php if ($page == 'personel/manage') { ?>
-    <script src="views/personel/js/manage.js?v=<?php echo time(); ?>"></script>
-    <script src="views/personel/js/izin.js?v=<?php echo time(); ?>"></script>
+    <script src="<?php echo Helper::assetVersion('views/personel/js/manage.js'); ?>"></script>
+    <script src="<?php echo Helper::assetVersion('views/personel/js/izin.js'); ?>"></script>
 <?php } ?>
 
 <?php if ($page == 'demirbas/list' || $page == 'demirbas/sayac-deposu' || $page == 'demirbas/aparat-deposu' || $page == 'demirbas/servis' || $page == 'demirbas/zimmet') { ?>
-    <script src="views/demirbas/js/demirbas.js?v=<?php echo time(); ?>"></script>
+    <script src="<?php echo Helper::assetVersion('views/demirbas/js/demirbas.js'); ?>"></script>
 <?php } ?>
 
 <?php if ($page == 'demirbas/list') { ?>
-    <script src="views/demirbas/js/list.js?v=<?php echo time(); ?>"></script>
+    <script src="<?php echo Helper::assetVersion('views/demirbas/js/list.js'); ?>"></script>
 <?php } ?>
 
 <?php if ($page == 'demirbas/sayac-deposu') { ?>
-    <script src="views/demirbas/js/sayac-deposu.js?v=<?php echo time(); ?>"></script>
+    <script src="<?php echo Helper::assetVersion('views/demirbas/js/sayac-deposu.js'); ?>"></script>
 <?php } ?>
 
 <?php if ($page == 'demirbas/aparat-deposu') { ?>
-    <script src="views/demirbas/js/aparat-deposu.js?v=<?php echo time(); ?>"></script>
+    <script src="<?php echo Helper::assetVersion('views/demirbas/js/aparat-deposu.js'); ?>"></script>
 <?php } ?>
 
 <?php if ($page == 'demirbas/servis') { ?>
-    <script src="views/demirbas/js/servis.js?v=<?php echo time(); ?>"></script>
+    <script src="<?php echo Helper::assetVersion('views/demirbas/js/servis.js'); ?>"></script>
 <?php } ?>
 
 <?php if ($page == 'demirbas/zimmet') { ?>
-    <script src="views/demirbas/js/zimmet.js?v=<?php echo time(); ?>"></script>
+    <script src="<?php echo Helper::assetVersion('views/demirbas/js/zimmet.js'); ?>"></script>
 <?php } ?>
 
 

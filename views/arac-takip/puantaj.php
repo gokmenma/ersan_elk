@@ -565,4 +565,4 @@ for ($m = 1; $m <= 12; $m++) {
     });
 </script>
 
-<script src="views/arac-takip/js/arac-takip.js"></script>
+<script src="<?php echo \App\Helper\Helper::assetVersion('views/arac-takip/js/arac-takip.js'); ?>"></script>

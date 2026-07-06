@@ -14,6 +14,7 @@ use App\Model\DemirbasHareketModel;
 use App\Model\SystemLogModel;
 use App\Model\PersonelModel;
 use App\Service\Gate;
+use App\Model\DemirbasZimmetFotoModel;
 
 $Demirbas = new DemirbasModel();
 $Servis = new DemirbasServisModel();
@@ -22,6 +23,61 @@ $Tanimlamalar = new TanimlamalarModel();
 $Hareket = new DemirbasHareketModel();
 $SystemLog = new SystemLogModel();
 $Personel = new PersonelModel();
+$ZimmetFoto = new DemirbasZimmetFotoModel();
+
+// Zimmet teslim/iade fotoğraflarını şifreleyerek diske yazan ve meta bilgisini kaydeden yardımcı
+$zimmetFotoIsle = function ($zimmetId, $fileKey, $tur) use ($ZimmetFoto) {
+    if (empty($_FILES[$fileKey]) || !is_array($_FILES[$fileKey]['name'])) {
+        return 0;
+    }
+
+    $allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp', 'application/pdf'];
+    $maxSize = 8 * 1024 * 1024;
+    $yukleyenId = $_SESSION['user_id'] ?? null;
+    $dir = dirname(__DIR__, 2) . '/files/demirbas_zimmet_foto/' . $zimmetId . '/';
+    $kaydedilen = 0;
+
+    $names = $_FILES[$fileKey]['name'];
+    foreach ($names as $i => $orijinalAd) {
+        if (($_FILES[$fileKey]['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            continue;
+        }
+
+        $tmpName = $_FILES[$fileKey]['tmp_name'][$i];
+        $boyut = $_FILES[$fileKey]['size'][$i];
+
+        $finfo = finfo_open(FILEINFO_MIME_TYPE);
+        $mimeType = finfo_file($finfo, $tmpName);
+        finfo_close($finfo);
+
+        if (!in_array($mimeType, $allowedTypes)) {
+            throw new Exception('Desteklenmeyen dosya türü. Sadece JPG, PNG, WEBP, PDF yüklenebilir.');
+        }
+        if ($boyut > $maxSize) {
+            throw new Exception('Her dosya en fazla 8MB olabilir.');
+        }
+
+        if (!is_dir($dir)) {
+            mkdir($dir, 0755, true);
+        }
+
+        $binaryData = file_get_contents($tmpName);
+        if ($binaryData === false) {
+            throw new Exception('Dosya okunamadı.');
+        }
+
+        $yeniDosyaAdi = bin2hex(random_bytes(16)) . '.enc';
+        if (file_put_contents($dir . $yeniDosyaAdi, Security::encryptFile($binaryData)) === false) {
+            throw new Exception('Şifreli dosya kaydedilemedi.');
+        }
+
+        $ZimmetFoto->addFoto($zimmetId, $tur, $yeniDosyaAdi, $orijinalAd, $mimeType, $boyut, $yukleyenId);
+        $kaydedilen++;
+    }
+
+    return $kaydedilen;
+};
+
 
 
 $action = $_POST["action"] ?? $_GET["action"] ?? null;
@@ -1590,18 +1646,21 @@ if ($action == "zimmet-listesi") {
             }
             $durumBadge = $durumBadges[$effectiveDurum] ?? '<span class="badge bg-info">Bilinmiyor</span>';
 
+            // Sayaç kategorisi kontrolü
+            $isSayac = str_contains($katAdiLower, 'sayaç') || str_contains($katAdiLower, 'sayac');
+
             $iadeButton = '';
             if ($effectiveDurum === 'teslim') {
                 if ($isAparat) {
                     $iadeButton = '
-                        <a href="#" data-id="' . $enc_id . '" data-demirbas="' . htmlspecialchars($z->demirbas_adi) . '" data-personel="' . htmlspecialchars($z->personel_adi) . '" data-miktar="' . $z->teslim_miktar . '" data-is-aparat="1" data-islem-turu="tuketim" class="dropdown-item zimmet-iade">
+                        <a href="#" data-id="' . $enc_id . '" data-demirbas="' . htmlspecialchars($z->demirbas_adi) . '" data-personel="' . htmlspecialchars($z->personel_adi) . '" data-miktar="' . $z->teslim_miktar . '" data-is-aparat="1" data-is-sayac="0" data-islem-turu="tuketim" class="dropdown-item zimmet-iade">
                             <span class="mdi mdi-minus-circle font-size-18 text-info me-1"></span> Tüketildi İşaretle
                         </a>
-                        <a href="#" data-id="' . $enc_id . '" data-demirbas="' . htmlspecialchars($z->demirbas_adi) . '" data-personel="' . htmlspecialchars($z->personel_adi) . '" data-miktar="' . $z->teslim_miktar . '" data-is-aparat="1" data-islem-turu="depo_iade" class="dropdown-item zimmet-iade">
+                        <a href="#" data-id="' . $enc_id . '" data-demirbas="' . htmlspecialchars($z->demirbas_adi) . '" data-personel="' . htmlspecialchars($z->personel_adi) . '" data-miktar="' . $z->teslim_miktar . '" data-is-aparat="1" data-is-sayac="0" data-islem-turu="depo_iade" class="dropdown-item zimmet-iade">
                             <span class="mdi mdi-warehouse font-size-18 text-success me-1"></span> Depoya İade Al
                         </a>';
                 } else {
-                    $iadeButton = '<a href="#" data-id="' . $enc_id . '" data-demirbas="' . htmlspecialchars($z->demirbas_adi) . '" data-personel="' . htmlspecialchars($z->personel_adi) . '" data-miktar="' . $z->teslim_miktar . '" data-is-aparat="0" data-islem-turu="iade" class="dropdown-item zimmet-iade">
+                    $iadeButton = '<a href="#" data-id="' . $enc_id . '" data-demirbas="' . htmlspecialchars($z->demirbas_adi) . '" data-personel="' . htmlspecialchars($z->personel_adi) . '" data-miktar="' . $z->teslim_miktar . '" data-is-aparat="0" data-is-sayac="' . ($isSayac ? '1' : '0') . '" data-islem-turu="iade" class="dropdown-item zimmet-iade">
                         <span class="mdi mdi-undo font-size-18 text-success me-1"></span> İade Al
                     </a>';
                 }
@@ -1660,8 +1719,9 @@ if ($action == "zimmet-listesi") {
 // Zimmet Ver (Yeni zimmet kaydı)
 if ($action == "zimmet-kaydet") {
     try {
+        $demirbas_id = intval($_POST["demirbas_id"]);
         $data = [
-            "demirbas_id" => intval($_POST["demirbas_id"]),
+            "demirbas_id" => $demirbas_id,
             "personel_id" => intval($_POST["personel_id"]),
             "teslim_tarihi" => Date::Ymd($_POST["teslim_tarihi"], 'Y-m-d'),
             "teslim_miktar" => intval($_POST["teslim_miktar"] ?? 1),
@@ -1670,9 +1730,32 @@ if ($action == "zimmet-kaydet") {
         ];
 
         $lastId = $Zimmet->zimmetVer($data);
-        $son_kayit = $Zimmet->getTableRow(Security::decrypt($lastId));
+        $decryptedZimmetId = (int) Security::decrypt($lastId);
+        $son_kayit = $Zimmet->getTableRow($decryptedZimmetId);
 
-        jsonResponse("success", "Zimmet işlemi başarıyla tamamlandı. Stok güncellendi.", ["son_kayit" => $son_kayit]);
+        // Kategori Kontrolü (Sayaç ve Aparat olmasın)
+        $d = $Demirbas->find($demirbas_id);
+        $isSayac = false;
+        $isAparat = false;
+        if ($d && $d->kategori_id) {
+            $katSql = $Zimmet->getDb()->prepare("SELECT tur_adi FROM tanimlamalar WHERE id = ? AND grup = 'demirbas_kategorisi' LIMIT 1");
+            $katSql->execute([$d->kategori_id]);
+            $katResult = $katSql->fetch(PDO::FETCH_OBJ);
+            $katAdi = $katResult->tur_adi ?? '';
+            $katAdiLower = mb_strtolower($katAdi, 'UTF-8');
+            $isSayac = str_contains($katAdiLower, 'sayaç') || str_contains($katAdiLower, 'sayac');
+            $isAparat = str_contains($katAdiLower, 'aparat');
+        }
+
+        $fotoMesaj = "";
+        if (!$isSayac && !$isAparat && isset($_FILES['teslim_fotograflari'])) {
+            $fotoSayisi = $zimmetFotoIsle($decryptedZimmetId, 'teslim_fotograflari', 'teslim');
+            if ($fotoSayisi > 0) {
+                $fotoMesaj = " {$fotoSayisi} adet teslim fotoğrafı şifreli olarak kaydedildi.";
+            }
+        }
+
+        jsonResponse("success", "Zimmet işlemi başarıyla tamamlandı. Stok güncellendi." . $fotoMesaj, ["son_kayit" => $son_kayit]);
     } catch (Exception $ex) {
         jsonResponse("error", $ex->getMessage());
     }
@@ -1995,7 +2078,18 @@ if ($action == "zimmet-iade") {
             if ($isAparat) {
                 jsonResponse("success", "Tüketim işlemi başarıyla tamamlandı. Personel zimmeti güncellendi.");
             }
-            jsonResponse("success", "İade işlemi başarıyla tamamlandı. Stok güncellendi.");
+
+            // Demirbaş iade fotoğraflarını işle (Sayaç değilse)
+            $isSayac = str_contains(mb_strtolower($kategoriAdi, 'UTF-8'), 'sayaç') || str_contains(mb_strtolower($kategoriAdi, 'UTF-8'), 'sayac');
+            $fotoMesaj = "";
+            if (!$isSayac && isset($_FILES['iade_fotograflari'])) {
+                $fotoSayisi = $zimmetFotoIsle($zimmet_id, 'iade_fotograflari', 'iade');
+                if ($fotoSayisi > 0) {
+                    $fotoMesaj = " {$fotoSayisi} adet iade fotoğrafı şifreli olarak kaydedildi.";
+                }
+            }
+
+            jsonResponse("success", "İade işlemi başarıyla tamamlandı. Stok güncellendi." . $fotoMesaj);
         } else {
             jsonResponse("error", "İşlem başarısız.");
         }
@@ -2619,6 +2713,24 @@ if ($action == "zimmet-detay") {
             $zimmet->teslim_tarihi_format = date('d.m.Y', strtotime($zimmet->teslim_tarihi));
             $zimmet->is_aparat = $isDetayAparat ? 1 : 0;
 
+            // Sayaç kontrolü
+            $isDetaySayac = str_contains(mb_strtolower($detayKatAdi, 'UTF-8'), 'sayaç') || str_contains(mb_strtolower($detayKatAdi, 'UTF-8'), 'sayac');
+            $zimmet->is_sayac = $isDetaySayac ? 1 : 0;
+
+            // Fotoğrafları getir
+            $fotolar = $ZimmetFoto->getByZimmet($zimmet->id);
+            $zimmet->fotolar = [];
+            foreach ($fotolar as $foto) {
+                $zimmet->fotolar[] = [
+                    'id' => Security::encrypt($foto->id),
+                    'foto_turu' => $foto->foto_turu,
+                    'orijinal_ad' => $foto->orijinal_ad,
+                    'mime_tipi' => $foto->mime_tipi,
+                    'boyutu' => $foto->boyutu,
+                    'is_pdf' => ($foto->mime_tipi === 'application/pdf')
+                ];
+            }
+
             // Demirbaş bilgilerini al
             $demirbas = $Demirbas->find($zimmet->demirbas_id);
             $zimmet->demirbas_detay = $demirbas;
@@ -2632,6 +2744,40 @@ if ($action == "zimmet-detay") {
         } else {
             jsonResponse("error", "Zimmet bulunamadı.");
         }
+    } catch (Exception $ex) {
+        jsonResponse("error", $ex->getMessage());
+    }
+}
+
+
+// Zimmet Fotoğrafı Sil
+if ($action == "zimmet-foto-sil") {
+    $fotoId = $_POST['id'] ?? '';
+    if (!is_numeric($fotoId)) {
+        $fotoId = Security::decrypt($fotoId);
+    }
+    $fotoId = (int) $fotoId;
+
+    try {
+        if ($fotoId <= 0) {
+            throw new Exception("Geçersiz fotoğraf ID.");
+        }
+
+        $foto = $ZimmetFoto->getById($fotoId);
+        if (!$foto) {
+            throw new Exception("Fotoğraf bulunamadı veya yetkiniz yok.");
+        }
+
+        $fotoYolu = dirname(__DIR__, 2) . '/files/demirbas_zimmet_foto/' . $foto->zimmet_id . '/' . $foto->dosya_adi;
+        if (is_file($fotoYolu)) {
+            unlink($fotoYolu);
+        }
+
+        $ZimmetFoto->softDeleteFoto($fotoId);
+
+        $SystemLog->logAction($_SESSION['user_id'] ?? 0, 'Demirbaş Zimmet Fotoğraf Silme', "Zimmet (#{$foto->zimmet_id}) için bir {$foto->foto_turu} fotoğrafı silindi.", SystemLogModel::LEVEL_IMPORTANT);
+
+        jsonResponse("success", "Fotoğraf başarıyla silindi.");
     } catch (Exception $ex) {
         jsonResponse("error", $ex->getMessage());
     }

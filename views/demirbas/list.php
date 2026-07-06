@@ -1471,4 +1471,4 @@ if (!empty($aparatKatIds)) {
     var sayacKatIds = <?php echo json_encode($sayacKatIds); ?>;
     var aparatKatIds = <?php echo json_encode($aparatKatIds); ?>;
 </script>
-<script src="views/demirbas/js/demirbas.js?v=<?php echo time(); ?>"></script>
+<script src="<?php echo \App\Helper\Helper::assetVersion('views/demirbas/js/demirbas.js'); ?>"></script>

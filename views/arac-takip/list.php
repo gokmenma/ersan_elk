@@ -1338,4 +1338,4 @@ if ($filter === 'muayene') {
     </div>
 </div>
 
-<script src="views/arac-takip/js/arac-takip.js?v=<?=time()?>"></script>
+<script src="<?php echo \App\Helper\Helper::assetVersion('views/arac-takip/js/arac-takip.js'); ?>"></script>
