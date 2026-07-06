@@ -170,7 +170,7 @@ class AvansModel extends Model
         $limit = (int) $limit;
         $sql = "
             SELECT pa.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev,
-                   u.adi_soyadi as solver_name
+                   u.adi_soyadi as solver_name, pa.onay_tarihi as islem_tarihi
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
             LEFT JOIN users u ON pa.onaylayan_id = u.id
@@ -241,9 +241,10 @@ class AvansModel extends Model
     {
         $onay_tarihi = in_array($durum, ['onaylandi', 'reddedildi']) ? date('Y-m-d H:i:s') : null;
         $onaylayan_id = $_SESSION['user_id'] ?? null;
+        $onay_ip = in_array($durum, ['onaylandi', 'reddedildi']) ? ($_SERVER['REMOTE_ADDR'] ?? null) : null;
 
-        $sql_parts = ["durum = ?", "onay_aciklama = ?", "onay_tarihi = ?", "onaylayan_id = ?"];
-        $params = [$durum, $aciklama, $onay_tarihi, $onaylayan_id];
+        $sql_parts = ["durum = ?", "onay_aciklama = ?", "onay_tarihi = ?", "onaylayan_id = ?", "onay_ip = ?"];
+        $params = [$durum, $aciklama, $onay_tarihi, $onaylayan_id, $onay_ip];
 
         if ($tutar !== null && $durum === 'onaylandi') {
             $sql_parts[] = "tutar = ?";
@@ -263,7 +264,7 @@ class AvansModel extends Model
     public function getAvansDetay($id)
     {
         $sql = $this->db->prepare("
-            SELECT pa.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, p.maas_tutari, u.adi_soyadi as solver_name
+            SELECT pa.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, p.maas_tutari, u.adi_soyadi as solver_name, pa.onay_tarihi as islem_tarihi
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
             LEFT JOIN users u ON pa.onaylayan_id = u.id

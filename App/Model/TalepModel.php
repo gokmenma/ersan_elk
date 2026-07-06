@@ -174,13 +174,14 @@ class TalepModel extends Model
     {
         $cozum_tarihi = ($durum == 'cozuldu' || $durum == 'iptal_edildi' || $durum == 'reddedildi') ? date('Y-m-d H:i:s') : null;
         $islem_yapan_id = $_SESSION['user_id'] ?? null;
+        $onay_ip = ($durum == 'cozuldu' || $durum == 'iptal_edildi' || $durum == 'reddedildi') ? ($_SERVER['REMOTE_ADDR'] ?? null) : null;
 
         $sql = $this->db->prepare("
             UPDATE {$this->table} 
-            SET durum = ?, cozum_aciklama = ?, cozum_tarihi = ?, islem_yapan_id = ?
+            SET durum = ?, cozum_aciklama = ?, cozum_tarihi = ?, islem_yapan_id = ?, onay_ip = ?
             WHERE id = ?
         ");
-        return $sql->execute([$durum, $cozum_aciklama, $cozum_tarihi, $islem_yapan_id, $id]);
+        return $sql->execute([$durum, $cozum_aciklama, $cozum_tarihi, $islem_yapan_id, $onay_ip, $id]);
     }
 
     /**
@@ -189,7 +190,7 @@ class TalepModel extends Model
     public function getTalepDetay($id)
     {
         $sql = $this->db->prepare("
-            SELECT pt.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, u.adi_soyadi as solver_name
+            SELECT pt.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, u.adi_soyadi as solver_name, pt.cozum_tarihi as islem_tarihi
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
             LEFT JOIN users u ON pt.islem_yapan_id = u.id
@@ -216,7 +217,7 @@ class TalepModel extends Model
         $limit = (int) $limit;
         $sql = "
             SELECT pt.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev,
-                   u.adi_soyadi as solver_name
+                   u.adi_soyadi as solver_name, pt.cozum_tarihi as islem_tarihi
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
             LEFT JOIN users u ON pt.islem_yapan_id = u.id

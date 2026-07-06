@@ -358,11 +358,12 @@ class PersonelIzinleriModel extends Model
         $row = $check->fetch(PDO::FETCH_OBJ);
         $next_seviye = ($row->max_seviye ?? 0) + 1;
 
+        $onay_ip = $_SERVER['REMOTE_ADDR'] ?? null;
         $sql = $this->db->prepare("
-            INSERT INTO izin_onaylari (izin_id, onaylayan_id, onay_durumu, onay_tarihi, aciklama, seviye_no)
-            VALUES (?, ?, ?, NOW(), ?, ?)
+            INSERT INTO izin_onaylari (izin_id, onaylayan_id, onay_durumu, onay_tarihi, aciklama, seviye_no, onay_ip)
+            VALUES (?, ?, ?, NOW(), ?, ?, ?)
         ");
-        return $sql->execute([$izin_id, $onaylayan_id, $durum, $aciklama, $next_seviye]);
+        return $sql->execute([$izin_id, $onaylayan_id, $durum, $aciklama, $next_seviye, $onay_ip]);
     }
 
     /**
@@ -372,12 +373,12 @@ class PersonelIzinleriModel extends Model
     {
         $sql = $this->db->prepare("
             SELECT pi.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi,
-                   u.adi_soyadi as solver_name, io.aciklama as onay_aciklama
+                   u.adi_soyadi as solver_name, io.onay_tarihi as islem_tarihi, io.onay_ip, io.aciklama as onay_aciklama
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             LEFT JOIN (
-                SELECT io1.izin_id, io1.onaylayan_id, io1.aciklama
+                SELECT io1.izin_id, io1.onaylayan_id, io1.onay_tarihi, io1.onay_ip, io1.aciklama
                 FROM izin_onaylari io1
                 INNER JOIN (
                     SELECT MAX(id) as max_id FROM izin_onaylari GROUP BY izin_id

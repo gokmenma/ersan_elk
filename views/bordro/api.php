@@ -146,7 +146,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         
                         // 2. Calculate Non-Puantaj Ek Ödemeler taxable contributions
                         $stmtEk = $db->prepare("
-                            SELECT tur, tutar, aciklama 
+                            SELECT tur, tutar, aciklama, resmi_tutar 
                             FROM personel_ek_odemeler 
                             WHERE personel_id = ? 
                             AND donem_id = ? 
@@ -156,6 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $eks = $stmtEk->fetchAll(PDO::FETCH_OBJ);
                         
                         $ekMatrahContrib = 0.0;
+                        $resmiEkMatrahContrib = 0.0;
                         foreach ($eks as $ek) {
                             $aciklama = (string)($ek->aciklama ?? '');
                             $isPuantaj = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Kaçak') === 0;
@@ -165,6 +166,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             if ($param && $param->gelir_vergisi_dahil == 1) {
                                 $ekMatrahContrib += floatval($ek->tutar);
                             }
+                            $resmiEkMatrahContrib += floatval($ek->resmi_tutar ?? 0);
                         }
                         
                         // 3. Overtime (RTÇ/HTÇ) taxable contributions
@@ -173,9 +175,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         
                         $asgariNet = floatval($BordroParametre->getGenelAyar('asgari_ucret_net', $r->baslangic_tarihi) ?? 28075.50);
                         $gunlukAsgari = round($asgariNet / 30, 4);
+                        $asgariBrut = floatval($BordroParametre->getGenelAyar('asgari_ucret_brut', $r->baslangic_tarihi) ?? 33030.00);
+                        $gunlukAsgariBrut = round($asgariBrut / 30, 4);
                         
                         $rtcResmiTutar = $rtcGun > 0 ? round($gunlukAsgari * $rtcGun, 2) : 0.0;
-                        $htcResmiTutar = $htcGun > 0 ? round($gunlukAsgari * $htcGun, 2) : 0.0;
+                        $htcResmiTutar = $htcGun > 0 ? round($gunlukAsgariBrut * $htcGun, 2) : 0.0;
                         
                         $rtcParam = $parametrelerMap['resmi_tatil_calisma'] ?? null;
                         $htcParam = $parametrelerMap['hafta_tatili_calisma'] ?? null;
@@ -190,8 +194,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         
                         // Check if we should use net-based matrah
                         $maasDurumu = $detay['maas_durumu'] ?? $r->maas_durumu ?? '';
-                        $isNetMaas = !empty($detay['is_net_maas']);
-                        $isPrimUsulu = !empty($detay['is_prim_usulu']);
+                        $isNetMaas = !empty($detay['is_net_maas']) || (is_string($maasDurumu) && stripos($maasDurumu, 'Net') !== false);
+                        $isPrimUsulu = !empty($detay['is_prim_usulu']) || (is_string($maasDurumu) && stripos($maasDurumu, 'Prim') !== false);
                         $yemekYardimiDahil = !empty($r->yemek_yardimi_dahil);
                         $esYardimiDahil = !empty($r->es_yardimi_dahil);
                         
@@ -201,13 +205,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $sskGun = intval($detay['matrahlar']['ssk_gunu'] ?? 30);
                             $asgariHakedisYazdir = round(($asgariNet / 30) * $sskGun, 2);
                             
-                            $sgkMatrah = $asgariHakedisYazdir + floatval($detay['ozet']['sgk_matrah_ekleri'] ?? 0) + $rtcResmiTutar + $htcResmiTutar;
+                            $sgkMatrah = $asgariHakedisYazdir + $resmiEkMatrahContrib + $rtcResmiTutar + $htcResmiTutar;
                             
                             // Net personellerde SGK işçi kesintisi 0 gösterilir/düşülür
                             $sgkIsci = 0.0;
                             $issizlikIsci = 0.0;
                             
-                            $correctGvMatrah = max(0.0, $sgkMatrah - $sgkIsci - $issizlikIsci + floatval($detay['ozet']['vergili_matrah_ekleri'] ?? 0));
+                            $correctGvMatrah = max(0.0, $sgkMatrah - $sgkIsci - $issizlikIsci);
                         } else {
                             $correctGvMatrah = $baseMatrah + $ekMatrahContrib + $otMatrahContrib;
                         }
@@ -832,6 +836,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // Liste ve detayda aynı hesap fonksiyonunu kullan
                 $donemBaslangicTarihi = $donemBilgi?->baslangic_tarihi ?? date('Y-m-01');
                 $asgariUcretNet = $BordroParametre->getGenelAyar('asgari_ucret_net', $donemBaslangicTarihi) ?? 17002.12;
+                $asgariUcretBrut = $BordroParametre->getGenelAyar('asgari_ucret_brut', $donemBaslangicTarihi) ?? 33030.00;
                 $hesap = $BordroPersonel->hesaplaOrtakGosterimDegerleri($bp, $donemBilgi, floatval($asgariUcretNet));
                 $mealDeduction = floatval($hesap['mealAllowanceDeduction'] ?? 0);
                 $spouseDeduction = floatval($hesap['spouseAllowanceDeduction'] ?? 0);
@@ -1046,7 +1051,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $sozlesmeHakedisTotal = round(($nominalMaas / 30) * $calismaGunu, 2);
                     $contractTarget = max($sozlesmeHakedisTotal, $asgariHakedisModal + $totalDahilYardim);
                     $rtcResmiPayModal = round(floatval($asgariUcretNet) / 30 * $rtcGunModal, 2);
-                    $htcResmiPayModal = round(floatval($asgariUcretNet) / 30 * $htcGunModal, 2);
+                    $htcResmiPayModal = round(floatval($asgariUcretBrut) / 30 * $htcGunModal, 2);
                     $modalMaasFarkiGosterim = max(0, round($contractTarget - $asgariHakedisModal - $totalDahilYardim - $rtcResmiPayModal - $htcResmiPayModal, 2));
                 }
 
@@ -1421,7 +1426,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                               </tr>';
                 }
                 if ($htcGunModal > 0) {
-                    $htcResmiTutar = round(floatval($asgariUcretNet) / 30 * $htcGunModal, 2);
+                    $htcResmiTutar = round(floatval($asgariUcretBrut) / 30 * $htcGunModal, 2);
                     $htcEldenTutar = $isInclusive ? 0.0 : round($nominalMaas / 30 * $htcGunModal, 2);
                     $htcToplamTutar = round($htcEldenTutar + $htcResmiTutar, 2);
                     $collHtc = "cHTC_" . $bp->id;
@@ -1646,6 +1651,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // Liste ve detayda aynı hesap fonksiyonunu kullan
                 $donemBaslangicTarihi = $donemBilgi?->baslangic_tarihi ?? date('Y-m-01');
                 $asgariUcretNet = $BordroParametre->getGenelAyar('asgari_ucret_net', $donemBaslangicTarihi) ?? 17002.12;
+                $asgariUcretBrut = $BordroParametre->getGenelAyar('asgari_ucret_brut', $donemBaslangicTarihi) ?? 33030.00;
                 $hesap = $BordroPersonel->hesaplaOrtakGosterimDegerleri($bp, $donemBilgi, floatval($asgariUcretNet));
                 $mealDeduction = floatval($hesap['mealAllowanceDeduction'] ?? 0);
                 $spouseDeduction = floatval($hesap['spouseAllowanceDeduction'] ?? 0);
@@ -1860,7 +1866,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $sozlesmeHakedisTotal = round(($nominalMaas / 30) * $calismaGunu, 2);
                     $contractTarget = max($sozlesmeHakedisTotal, $asgariHakedisModal + $totalDahilYardim);
                     $rtcResmiPayModal = round(floatval($asgariUcretNet) / 30 * $rtcGunModal, 2);
-                    $htcResmiPayModal = round(floatval($asgariUcretNet) / 30 * $htcGunModal, 2);
+                    $htcResmiPayModal = round(floatval($asgariUcretBrut) / 30 * $htcGunModal, 2);
                     $modalMaasFarkiGosterim = max(0, round($contractTarget - $asgariHakedisModal - $totalDahilYardim - $rtcResmiPayModal - $htcResmiPayModal, 2));
                 }
 
@@ -2002,8 +2008,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 // Calculate overtime (RTC / HTÇ) parameters beforehand
                 $rtcResmiTutar = $rtcGunModal > 0 ? round(floatval($asgariUcretNet) / 30 * $rtcGunModal, 2) : 0.0;
-                $htcResmiTutar = $htcGunModal > 0 ? round(floatval($asgariUcretNet) / 30 * $htcGunModal, 2) : 0.0;
-                $htcEldenTutar = ($htcGunModal > 0) ? ($isInclusive ? 0.0 : round(($nominalMaas - $asgariUcretNet) / 30 * $htcGunModal, 2)) : 0.0;
+                $htcResmiTutar = $htcGunModal > 0 ? round(floatval($asgariUcretBrut) / 30 * $htcGunModal, 2) : 0.0;
+                $htcEldenTutar = ($htcGunModal > 0) ? ($isInclusive ? 0.0 : round(($nominalMaas - $asgariUcretBrut) / 30 * $htcGunModal, 2)) : 0.0;
                 $htcToplamTutar = round($htcEldenTutar + $htcResmiTutar, 2);
 
                 // Calculate SGK and Gelir Vergisi matrahs correctly including taxable overtime
@@ -2028,12 +2034,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $calisanBrutMaas = $asgariHakedisYazdir;
                     // Add RTÇ and HTÇ taxable overtime to official matrahs
                     $sgkMatrah = $asgariHakedisYazdir + floatval($ozetDetay['sgk_matrah_ekleri'] ?? 0) + $rtcResmiTutar + $htcResmiTutar;
-                    $gelirVergisiMatrah = max(0, $sgkMatrah - $sgkIsci - $issizlikIsci + floatval($ozetDetay['vergili_matrah_ekleri'] ?? 0));
+                    $rtcHtcSgkIsciTotal = ($rtcResmiTutar + $htcResmiTutar) * 0.15;
+                    $gelirVergisiMatrah = max(0, $sgkMatrah - $sgkIsci - $issizlikIsci - $rtcHtcSgkIsciTotal + (floatval($ozetDetay['vergili_matrah_ekleri'] ?? 0) - floatval($ozetDetay['sgk_matrah_ekleri'] ?? 0)));
                     $yilIciToplam = $oncekiAyMatrah + $gelirVergisiMatrah;
                 }
 
                 $istisnaGV = floatval($indirimler['asgari_ucret_istisna_gv'] ?? 0);
+                if ($istisnaGV <= 0) {
+                    $asgariUcretGvMatrahi = round(($asgariUcretNet / 0.85) * 0.85 / 30 * $sskGun, 2);
+                    $istisnaGV = $BordroParametre->hesaplaGelirVergisi($oncekiAyMatrah + $asgariUcretGvMatrahi, $asgariUcretGvMatrahi, date('Y', strtotime($donemBaslangic)));
+                }
                 $istisnaDV = floatval($indirimler['asgari_ucret_istisna_dv'] ?? 0);
+                if ($istisnaDV <= 0) {
+                    $asgariBrutYazdir = round((floatval($BordroParametre->getGenelAyar('asgari_ucret_brut', $donemBaslangic) ?? 33030.00) / 30) * $sskGun, 2);
+                    $istisnaDV = round($asgariBrutYazdir * 0.00759, 2);
+                }
 
                 // Helper formatting function
                 $fmt = function($val, $showMinus = false, $showPlus = false, $greenText = false, $redText = false) {
@@ -2468,6 +2483,54 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $html .= '</div>';
                 }
 
+                $bankaDetayHtml = '';
+                if ($hesap['manualDagitimVar']) {
+                    $bankaDetayHtml = '<div class="small p-1"><strong>Manuel Dağıtım</strong><br>Bu tutar kullanıcı tarafından elle düzenlenmiştir.</div>';
+                } elseif ($hesap['nonKurRatio'] <= 0) {
+                    $bankaDetayHtml = '<div class="small p-1 text-danger"><i class="bx bx-error-circle"></i> Personel banka dışı / KUR kapsamında olduğu için banka ödemesi yapılmaz.</div>';
+                } else {
+                    $bankaDetayHtml = '<div class="p-2" style="min-width: 250px; font-size: 0.8rem;">';
+                    $bankaDetayHtml .= '<h6 class="fw-bold mb-2 pb-1 border-bottom" style="font-size: 0.85rem;"><i class="bx bxs-bank text-primary me-1"></i> Banka Ödemesi Detayı</h6>';
+                    $bankaDetayHtml .= '<div class="d-flex flex-column gap-1.5">';
+                    
+                    if ($hesap['isInclusive']) {
+                        $bankaDetayHtml .= '<div class="d-flex justify-content-between"><span>Asgari Ücret (Net):</span><span class="fw-bold">' . number_format($hesap['asgariYatacak'], 2, ',', '.') . ' ₺</span></div>';
+                        if ($hesap['mealAllowanceDeduction'] > 0) {
+                            $bankaDetayHtml .= '<div class="d-flex justify-content-between"><span>Yemek Yardımı:</span><span class="fw-bold text-success">+' . number_format($hesap['mealAllowanceDeduction'], 2, ',', '.') . ' ₺</span></div>';
+                        }
+                        if ($hesap['spouseAllowanceDeduction'] > 0) {
+                            $bankaDetayHtml .= '<div class="d-flex justify-content-between"><span>Eş Yardımı:</span><span class="fw-bold text-success">+' . number_format($hesap['spouseAllowanceDeduction'], 2, ',', '.') . ' ₺</span></div>';
+                        }
+                        if (!empty($hesap['bankaEkOdemeDetaylari'])) {
+                            foreach ($hesap['bankaEkOdemeDetaylari'] as $bed) {
+                                if ($bed['tutar'] > 0) {
+                                    $bankaDetayHtml .= '<div class="d-flex justify-content-between"><span>' . htmlspecialchars($bed['etiket']) . ':</span><span class="fw-bold text-success">+' . number_format($bed['tutar'], 2, ',', '.') . ' ₺</span></div>';
+                                }
+                            }
+                        }
+                        
+                        $bankaMatrahiToplam = $hesap['asgariYatacak'] + $hesap['mealAllowanceDeduction'] + $hesap['spouseAllowanceDeduction'] + $hesap['yontemliBankaEki'];
+                        $bankaDetayHtml .= '<div class="d-flex justify-content-between border-top pt-1 mt-1"><span>Banka Limit Matrahı:</span><span class="fw-bold text-primary">' . number_format($bankaMatrahiToplam, 2, ',', '.') . ' ₺</span></div>';
+                        
+                        $toplamKesintiBanka = $hesap['bankaOncelikliKesinti'] + $hesap['bankaAktarilanKesinti'];
+                        if ($toplamKesintiBanka > 0) {
+                            $bankaDetayHtml .= '<div class="d-flex justify-content-between text-danger"><span>Düşülen Kesintiler:</span><span class="fw-bold">-' . number_format($toplamKesintiBanka, 2, ',', '.') . ' ₺</span></div>';
+                        }
+                    } else {
+                        $bankaDetayHtml .= '<div class="d-flex justify-content-between"><span>Net Hakediş (Net - Sodexo):</span><span class="fw-bold">' . number_format(max(0, $hesap['netAlacagi'] - $hesap['sodexoOdemesi'] - $hesap['digerOdeme']), 2, ',', '.') . ' ₺</span></div>';
+                        if ($hesap['nonKurRatio'] < 1.0) {
+                            $bankaDetayHtml .= '<div class="d-flex justify-content-between"><span>Banka Dağıtım Oranı:</span><span class="fw-bold text-info">%' . ($hesap['nonKurRatio'] * 100) . '</span></div>';
+                        }
+                        $bankaDetayHtml .= '<div class="d-flex justify-content-between border-top pt-1 mt-1"><span>Banka Matrahı:</span><span class="fw-bold text-primary">' . number_format($hesap['bankaMatrahi'], 2, ',', '.') . ' ₺</span></div>';
+                        if ($hesap['icraKesintisi'] > 0) {
+                            $bankaDetayHtml .= '<div class="d-flex justify-content-between text-danger"><span>Düşülen Kesinti (İcra vb.):</span><span class="fw-bold">-' . number_format($hesap['icraKesintisi'], 2, ',', '.') . ' ₺</span></div>';
+                        }
+                    }
+                    
+                    $bankaDetayHtml .= '<div class="d-flex justify-content-between border-top border-secondary pt-1 mt-1 fw-bold text-primary"><span>Net Banka Ödemesi:</span><span>' . number_format($hesap['bankaOdemesi'], 2, ',', '.') . ' ₺</span></div>';
+                    $bankaDetayHtml .= '</div></div>';
+                }
+
                 echo json_encode([
                     'status' => 'success',
                     'html' => $html,
@@ -2479,6 +2542,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'elden' => $eldenOdemeModal > 0 ? '₺' . number_format($eldenOdemeModal, 2, ',', '.') : null,
                         'sodexo' => $sodexoOdemeModal > 0 ? '₺' . number_format($sodexoOdemeModal, 2, ',', '.') : null,
                         'diger' => $digerOdemeModal > 0 ? '₺' . number_format($digerOdemeModal, 2, ',', '.') : null,
+                        'banka_detay' => $bankaDetayHtml,
                     ]
                 ]);
                 break;

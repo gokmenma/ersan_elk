@@ -317,7 +317,7 @@ class BordroParametreModel extends Model
             WHERE aktif = 1
             AND gecerlilik_baslangic <= ?
             AND (gecerlilik_bitis IS NULL OR gecerlilik_bitis >= ?)
-            ORDER BY parametre_kodu
+            ORDER BY parametre_kodu ASC, gecerlilik_baslangic ASC
         ");
         $sql->execute([$tarih, $tarih]);
         return $sql->fetchAll(PDO::FETCH_OBJ);

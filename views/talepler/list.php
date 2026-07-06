@@ -341,7 +341,12 @@ $izinTurleri = [
                                         </td>
                                         <?php if ($showApproved || $showDeleted): ?>
                                             <td>
-                                                <?= htmlspecialchars($avans->solver_name ?? '-') ?>
+                                                <div><?= htmlspecialchars($avans->solver_name ?? '-') ?></div>
+                                                <?php if (!empty($avans->islem_tarihi)): ?>
+                                                    <small class="text-muted d-block mt-1" style="font-size: 11px;">
+                                                        <i class="bx bx-time-five me-1"></i><?= date('d.m.Y H:i', strtotime($avans->islem_tarihi)) ?>
+                                                    </small>
+                                                <?php endif; ?>
                                             </td>
                                             <td>
                                                 <?= htmlspecialchars($avans->onay_aciklama ?? '-') ?>
@@ -422,6 +427,12 @@ $izinTurleri = [
                                                     <span class="text-muted"><i class="bx bx-user me-1"></i>İşlem Yapan:</span>
                                                     <span class="fw-medium"><?= htmlspecialchars($avans->solver_name ?? '-') ?></span>
                                                 </div>
+                                                <?php if (!empty($avans->islem_tarihi)): ?>
+                                                <div class="d-flex justify-content-between mb-1">
+                                                    <span class="text-muted"><i class="bx bx-time-five me-1"></i>İşlem Tarihi:</span>
+                                                    <span class="fw-medium text-muted"><?= date('d.m.Y H:i', strtotime($avans->islem_tarihi)) ?></span>
+                                                </div>
+                                                <?php endif; ?>
                                                 <div class="d-flex flex-column">
                                                     <span class="text-muted"><i class="bx bx-comment-detail me-1"></i>Açıklama:</span>
                                                     <span class="text-break mt-1"><?= htmlspecialchars($avans->onay_aciklama ?? '-') ?></span>
@@ -537,7 +548,12 @@ $izinTurleri = [
                                         </td>
                                         <?php if ($showApproved || $showDeleted): ?>
                                             <td>
-                                                <?= htmlspecialchars($izin->solver_name ?? '-') ?>
+                                                <div><?= htmlspecialchars($izin->solver_name ?? '-') ?></div>
+                                                <?php if (!empty($izin->islem_tarihi)): ?>
+                                                    <small class="text-muted d-block mt-1" style="font-size: 11px;">
+                                                        <i class="bx bx-time-five me-1"></i><?= date('d.m.Y H:i', strtotime($izin->islem_tarihi)) ?>
+                                                    </small>
+                                                <?php endif; ?>
                                             </td>
                                             <td>
                                                 <?= htmlspecialchars($izin->onay_aciklama ?? '-') ?>
@@ -623,6 +639,12 @@ $izinTurleri = [
                                                     <span class="text-muted"><i class="bx bx-user me-1"></i>İşlem Yapan:</span>
                                                     <span class="fw-medium"><?= htmlspecialchars($izin->solver_name ?? '-') ?></span>
                                                 </div>
+                                                <?php if (!empty($izin->islem_tarihi)): ?>
+                                                <div class="d-flex justify-content-between mb-1">
+                                                    <span class="text-muted"><i class="bx bx-time-five me-1"></i>İşlem Tarihi:</span>
+                                                    <span class="fw-medium text-muted"><?= date('d.m.Y H:i', strtotime($izin->islem_tarihi)) ?></span>
+                                                </div>
+                                                <?php endif; ?>
                                                 <div class="d-flex flex-column">
                                                     <span class="text-muted"><i class="bx bx-comment-detail me-1"></i>Açıklama:</span>
                                                     <span class="text-break mt-1"><?= htmlspecialchars($izin->onay_aciklama ?? '-') ?></span>
@@ -762,7 +784,12 @@ $izinTurleri = [
                                         </td>
                                         <?php if ($showApproved || $showDeleted): ?>
                                             <td>
-                                                <?= htmlspecialchars($talep->solver_name ?? '-') ?>
+                                                <div><?= htmlspecialchars($talep->solver_name ?? '-') ?></div>
+                                                <?php if (!empty($talep->islem_tarihi)): ?>
+                                                    <small class="text-muted d-block mt-1" style="font-size: 11px;">
+                                                        <i class="bx bx-time-five me-1"></i><?= date('d.m.Y H:i', strtotime($talep->islem_tarihi)) ?>
+                                                    </small>
+                                                <?php endif; ?>
                                             </td>
                                         <?php endif; ?>
                                         <td>
@@ -857,6 +884,12 @@ $izinTurleri = [
                                                     <span class="text-muted"><i class="bx bx-user me-1"></i>İşlem Yapan:</span>
                                                     <span class="fw-medium"><?= htmlspecialchars($talep->solver_name ?? '-') ?></span>
                                                 </div>
+                                                <?php if (!empty($talep->islem_tarihi)): ?>
+                                                <div class="d-flex justify-content-between mb-1">
+                                                    <span class="text-muted"><i class="bx bx-time-five me-1"></i>İşlem Tarihi:</span>
+                                                    <span class="fw-medium text-muted"><?= date('d.m.Y H:i', strtotime($talep->islem_tarihi)) ?></span>
+                                                </div>
+                                                <?php endif; ?>
                                                 <div class="d-flex flex-column">
                                                     <span class="text-muted"><i class="bx bx-comment-detail me-1"></i>Sonuç:</span>
                                                     <span class="text-break mt-1"><?= htmlspecialchars($talep->cozum_aciklama ?? '-') ?></span>
@@ -1663,6 +1696,12 @@ $izinTurleri = [
                 if (data.solver_name) {
                     html += '<tr><td class="text-muted">İşlem Yapan:</td><td>' + data.solver_name + '</td></tr>';
                 }
+                if (data.islem_tarihi || data.onay_tarihi) {
+                    html += '<tr><td class="text-muted">İşlem Tarihi:</td><td>' + formatDate(data.islem_tarihi || data.onay_tarihi) + '</td></tr>';
+                }
+                if (data.onay_ip) {
+                    html += '<tr><td class="text-muted">Onay IP:</td><td>' + data.onay_ip + '</td></tr>';
+                }
                 if (data.onay_aciklama) {
                     html += '<tr><td class="text-muted">Sonuç Açıklaması:</td><td>' + data.onay_aciklama + '</td></tr>';
                 }
@@ -1679,6 +1718,12 @@ $izinTurleri = [
                 }
                 if (data.solver_name) {
                     html += '<tr><td class="text-muted">İşlem Yapan:</td><td>' + data.solver_name + '</td></tr>';
+                }
+                if (data.islem_tarihi) {
+                    html += '<tr><td class="text-muted">İşlem Tarihi:</td><td>' + formatDate(data.islem_tarihi) + '</td></tr>';
+                }
+                if (data.onay_ip) {
+                    html += '<tr><td class="text-muted">Onay IP:</td><td>' + data.onay_ip + '</td></tr>';
                 }
                 if (data.onay_aciklama) {
                     html += '<tr><td class="text-muted">Sonuç Açıklaması:</td><td>' + data.onay_aciklama + '</td></tr>';
@@ -1697,6 +1742,12 @@ $izinTurleri = [
                 }
                 if (data.solver_name) {
                     html += '<tr><td class="text-muted">İşlem Yapan:</td><td>' + data.solver_name + '</td></tr>';
+                }
+                if (data.islem_tarihi || data.cozum_tarihi) {
+                    html += '<tr><td class="text-muted">İşlem Tarihi:</td><td>' + formatDate(data.islem_tarihi || data.cozum_tarihi) + '</td></tr>';
+                }
+                if (data.onay_ip) {
+                    html += '<tr><td class="text-muted">Onay IP:</td><td>' + data.onay_ip + '</td></tr>';
                 }
                 if (data.foto) {
                     html += '<tr><td class="text-muted">Fotoğraf:</td><td><img src="' + data.foto + '" class="img-fluid rounded mt-2" style="max-height:200px;cursor:pointer;" onclick="window.open(\'' + data.foto + '\', \'_blank\')" onerror="this.style.display=\'none\'"></td></tr>';

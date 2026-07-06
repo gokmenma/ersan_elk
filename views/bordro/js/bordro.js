@@ -63,7 +63,13 @@ function renderBordroDetailFooterSummary(summary) {
     // Banka
     if (summary.banka) {
       footerHtml += `
-        <div class="d-flex flex-column bg-light border rounded px-3 py-2 text-center" style="border-radius:6px; border: 1px solid #e2e8f0; background-color:#f8fafc; min-width: 120px;">
+        <div class="d-flex flex-column bg-light border rounded px-3 py-2 text-center" 
+             style="border-radius:6px; border: 1px solid #e2e8f0; background-color:#f8fafc; min-width: 120px; cursor: pointer;"
+             data-bs-toggle="popover" 
+             data-bs-trigger="hover" 
+             data-bs-html="true" 
+             data-bs-placement="top" 
+             data-bs-content="${(summary.banka_detay || '').replace(/"/g, '&quot;')}">
           <div class="small text-muted mb-1" style="font-size: 0.68rem; text-transform: uppercase; font-weight: 700; color:#64748b; letter-spacing: 0.5px;">Banka Ödemesi</div>
           <div class="fw-bold text-primary" style="font-size: 0.95rem; color:#3b82f6;">${summary.banka}</div>
         </div>
@@ -642,6 +648,15 @@ $(document).ready(function () {
         if (response.status === "success") {
           $("#bordroDetailContent").html(response.html);
           renderBordroDetailFooterSummary(response.summary);
+
+          // Initialize popovers in the footer summary
+          var popoverTriggerList = [].slice.call(document.querySelectorAll('#bordroDetailFooterSummary [data-bs-toggle="popover"]'));
+          popoverTriggerList.map(function (popoverTriggerEl) {
+              return new bootstrap.Popover(popoverTriggerEl, {
+                  container: '#bordroDetailModal'
+              });
+          });
+
           showModal("bordroDetailModal");
         } else {
           Swal.fire({

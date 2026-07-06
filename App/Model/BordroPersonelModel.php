@@ -561,6 +561,7 @@ class BordroPersonelModel extends Model
 
         $yontemliBankaEki = 0;
         $yontemliSodexoEki = 0;
+        $bankaEkOdemeDetaylari = [];
         $mealAllowanceDeduction = 0;
         $spouseAllowanceDeduction = 0;
         $includedAllowanceDeduction = 0;
@@ -590,8 +591,27 @@ class BordroPersonelModel extends Model
             $param = $this->getParametreCached($eo->tur, $donemBaslangic);
             if ($param) {
                 $yontem = $param->odeme_yontemi ?? ($isPrimUsulu ? 'elden' : 'banka');
-                if ($yontem === 'banka') $yontemliBankaEki += $tutar;
-                elseif ($yontem === 'sodexo') $yontemliSodexoEki += $tutar;
+                if ($yontem === 'banka') {
+                    $yontemliBankaEki += $tutar;
+                    if ($tutar > 0) {
+                        $bankaEkOdemeDetaylari[] = [
+                            'etiket' => $param->etiket ?? $eo->tur,
+                            'tutar' => $tutar
+                        ];
+                    }
+                } else {
+                    $rTutar = floatval($eo->resmi_tutar ?? 0);
+                    $yontemliBankaEki += $rTutar;
+                    if ($rTutar > 0) {
+                        $bankaEkOdemeDetaylari[] = [
+                            'etiket' => ($param->etiket ?? $eo->tur),
+                            'tutar' => $rTutar
+                        ];
+                    }
+                    if ($yontem === 'sodexo') {
+                        $yontemliSodexoEki += ($tutar - $rTutar);
+                    }
+                }
             }
         }
 
@@ -607,9 +627,14 @@ class BordroPersonelModel extends Model
         $rtcBrutGosterim = 0.0;
         $htcBrutGosterim = 0.0;
         $htcResmiBrutGosterim = 0.0;
+        if ($this->cachedParametreModel === null) {
+            $this->cachedParametreModel = new \App\Model\BordroParametreModel();
+        }
+        $asgariUcretBrut = floatval($this->cachedParametreModel->getGenelAyar('asgari_ucret_brut', $donemBaslangic) ?? 33030.00);
         if ($rtcGun > 0 || $htcGun > 0) {
             $gunlukAsgari = round($asgariUcretNet / 30, 4);
-            $resmiDahilEkToplam += $gunlukAsgari * ($rtcGun + $htcGun);
+            $gunlukAsgariBrut = round($asgariUcretBrut / 30, 4);
+            $resmiDahilEkToplam += ($gunlukAsgari * $rtcGun) + ($gunlukAsgariBrut * $htcGun);
             if ($rtcGun > 0) {
                 $rtcBrutGosterim = round($gunlukAsgari * $rtcGun, 2);
             }
@@ -618,10 +643,10 @@ class BordroPersonelModel extends Model
                 $rawEkOdeme += $htcEkOdemeGosterim;
                 // HTÇ net fazla (brüt - asgari) yemek havuzuna taşınıyor; yalnızca resmi kısım bankaya
                 $htcBrutGosterim = round($htcEkOdemeGosterim, 2);
-                $htcResmiBrutGosterim = round($gunlukAsgari * $htcGun, 2);
+                $htcResmiBrutGosterim = round($gunlukAsgariBrut * $htcGun, 2);
             }
         }
-        $htcNetFazlaGosterim = $htcGun > 0 ? (round($maasTutari / 30, 4) - round($asgariUcretNet / 30, 4)) * $htcGun : 0.0;
+        $htcNetFazlaGosterim = $htcGun > 0 ? (round($maasTutari / 30, 4) - round($asgariUcretBrut / 30, 4)) * $htcGun : 0.0;
 
         // "Maaşa Dahil" personelde HTÇ'nin asgariyi aşan net fazlası yemek havuzuna yönlendiriliyor (htcNetFazlaGosterim);
         // bu kısmı vergi/ödeme hesabına da katmak çifte sayım olur. Bu yüzden vergi/ödeme hesabında HTÇ için
@@ -685,9 +710,25 @@ class BordroPersonelModel extends Model
             if ($rtcBrutGosterim > 0 && $htcVergiBazliGosterim > 0) {
                 $rtcPayGosterim = round($rtcHtcNetOdemeGosterim * ($rtcBrutGosterim / $rtcHtcBrutGosterimToplam), 2);
                 $yontemliBankaEki += $rtcPayGosterim;
-                $yontemliBankaEki += round($rtcHtcNetOdemeGosterim - $rtcPayGosterim, 2);
+                $bankaEkOdemeDetaylari[] = [
+                    'etiket' => 'Resmi Tatil Çalışması (Net)',
+                    'tutar' => $rtcPayGosterim
+                ];
+                $htcPayGosterim = round($rtcHtcNetOdemeGosterim - $rtcPayGosterim, 2);
+                $yontemliBankaEki += $htcPayGosterim;
+                $bankaEkOdemeDetaylari[] = [
+                    'etiket' => 'Hafta Tatili Çalışması (Net)',
+                    'tutar' => $htcPayGosterim
+                ];
             } else {
                 $yontemliBankaEki += $rtcHtcNetOdemeGosterim;
+                if ($rtcHtcNetOdemeGosterim > 0) {
+                    $etiket = $rtcBrutGosterim > 0 ? 'Resmi Tatil Çalışması (Net)' : 'Hafta Tatili Çalışması (Net)';
+                    $bankaEkOdemeDetaylari[] = [
+                        'etiket' => $etiket,
+                        'tutar' => $rtcHtcNetOdemeGosterim
+                    ];
+                }
             }
         }
 
@@ -710,7 +751,7 @@ class BordroPersonelModel extends Model
             $sodexoLocal = floatval($p->sodexo_odemesi ?? 0) + $yontemliSodexoEki;
             $totalDeductionsForDahil = $kesintiHaricIcra + $sodexoLocal + floatval($p->diger_odeme ?? 0);
             // HTÇ sözleşme dışı ek ödeme — yemek matrahını etkilememeli
-            $htcResmiTutarDagilim = $htcGun > 0 ? round($asgariUcretNet / 30, 4) * $htcGun : 0.0;
+            $htcResmiTutarDagilim = $htcGun > 0 ? round($asgariUcretBrut / 30, 4) * $htcGun : 0.0;
             $htcEkOdemeTutarDagilim = $htcGun > 0 ? round($maasTutari / 30, 4) * $htcGun : 0.0;
             $resmiDahilForDahil = max(0.0, $resmiDahilEkToplam - $htcResmiTutarDagilim);
             $hariciEkOdemeForDahil = max(0.0, $hariciEkOdeme - $htcEkOdemeTutarDagilim);
@@ -774,6 +815,11 @@ class BordroPersonelModel extends Model
         $dagilim = $this->getSgkFirmaDagilimi($p->personel_id, $donemBaslangic, $donemBitis, $p->sgk_yapilan_firma ?? 'Yok');
         $nonKurRatio = $dagilim['non_kur_ratio'];
         
+        $asgariYatacak = 0.0;
+        $bankaMatrahi = 0.0;
+        $bankaOncelikliKesinti = 0.0;
+        $bankaAktarilanKesinti = 0.0;
+
         if ($manualDagitimVar) {
             $bankaOdemesi = floatval($p->banka_odemesi ?? 0);
             $sodexoOdemesi = floatval($p->sodexo_odemesi ?? 0);
@@ -851,6 +897,15 @@ class BordroPersonelModel extends Model
             'asgariHakedis' => round($asgariTabanVal, 2),
             'rtcGun' => $rtcGun ?? 0,
             'htcGun' => $htcGun ?? 0,
+            'yontemliBankaEki' => $yontemliBankaEki,
+            'nonKurRatio' => $nonKurRatio,
+            'isInclusive' => $isInclusive,
+            'manualDagitimVar' => $manualDagitimVar,
+            'asgariYatacak' => $asgariYatacak,
+            'bankaMatrahi' => $bankaMatrahi,
+            'bankaOncelikliKesinti' => $bankaOncelikliKesinti,
+            'bankaAktarilanKesinti' => $bankaAktarilanKesinti,
+            'bankaEkOdemeDetaylari' => $bankaEkOdemeDetaylari,
         ];
     }
 
@@ -2073,15 +2128,25 @@ class BordroPersonelModel extends Model
                 $paramId = ($tip === 'standart') ? ($haftaIciParam->id ?? null) : ($haftaSonuParam->id ?? null);
                 $paramKod = ($tip === 'standart') ? 'hafta_ici_nobet' : 'hafta_sonu_nobet';
 
+                $resmiTutar = 0.0;
+                if ($tip === 'standart') {
+                    if ($this->cachedParametreModel === null) {
+                        $this->cachedParametreModel = new BordroParametreModel();
+                    }
+                    $asgariUcretBrut = floatval($this->cachedParametreModel->getGenelAyar('asgari_ucret_brut', $baslangic_tarihi) ?? 33030.00);
+                    $resmiBirimUcret = ($asgariUcretBrut / 225) * 1.5 * 4;
+                    $resmiTutar = round($resmiBirimUcret * $adet, 2);
+                }
+
                 // Aynı DB bağlantısı ($this->db) üzerinden doğrudan INSERT yap
                 // PersonelEkOdemelerModel ayrı bağlantı kullandığı için hesaplama sırasında
                 // kayıtlar görünemeyebiliyordu
                 $insertSql = $this->db->prepare("
                     INSERT INTO personel_ek_odemeler 
-                    (personel_id, donem_id, tur, parametre_id, aciklama, tutar, tekrar_tipi, durum, aktif, created_at)
-                    VALUES (?, ?, ?, ?, ?, ?, 'tek_sefer', 'onaylandi', 1, NOW())
+                    (personel_id, donem_id, tur, parametre_id, aciklama, tutar, resmi_tutar, tekrar_tipi, durum, aktif, created_at)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, 'tek_sefer', 'onaylandi', 1, NOW())
                 ");
-                $insertSql->execute([$personel_id, $donem_id, $paramKod, $paramId, $aciklama, $toplamTutar]);
+                $insertSql->execute([$personel_id, $donem_id, $paramKod, $paramId, $aciklama, $toplamTutar, $resmiTutar]);
             }
         }
     }
@@ -4083,13 +4148,23 @@ class BordroPersonelModel extends Model
                     $netEkOdemeler += $ekOdemeTutari;
                     $defaultYontem = $isPrimUsulu ? 'elden' : 'banka';
                     $yontem = ($parametre && isset($parametre->odeme_yontemi)) ? $parametre->odeme_yontemi : $defaultYontem;
-                    if (isset($yontemliOdemeler[$yontem])) {
-                        $yontemliOdemeler[$yontem] += $ekOdemeTutari;
-                        if ($yontem === 'sodexo') {
-                            $sodexoOdemesi += $ekOdemeTutari;
-                        }
-                    } else {
+                    $rTutar = floatval($odeme->resmi_tutar ?? 0);
+                    if ($yontem === 'banka') {
                         $yontemliOdemeler['banka'] += $ekOdemeTutari;
+                    } else {
+                        $yontemliOdemeler['banka'] += $rTutar;
+                        if (isset($yontemliOdemeler[$yontem])) {
+                            $yontemliOdemeler[$yontem] += ($ekOdemeTutari - $rTutar);
+                            if ($yontem === 'sodexo') {
+                                $sodexoOdemesi += ($ekOdemeTutari - $rTutar);
+                            }
+                        } else {
+                            $yontemliOdemeler['banka'] += ($ekOdemeTutari - $rTutar);
+                        }
+                    }
+                    if ($rTutar > 0) {
+                        $sgkMatrahEkleri += $rTutar;
+                        $vergiliMatrahEkleri += $rTutar;
                     }
                     $detay['net_etki'] = $ekOdemeTutari;
                     $ekOdemeDetaylari[] = $detay;
@@ -4101,13 +4176,23 @@ class BordroPersonelModel extends Model
             // USER REQ: Prim usulü personelde ek ödemeler varsayılan olarak Elden (Cash) kabul edilmelidir.
             $defaultYontem = $isPrimUsulu ? 'elden' : 'banka';
             $yontem = $parametre->odeme_yontemi ?? $defaultYontem;
-            if (isset($yontemliOdemeler[$yontem])) {
-                $yontemliOdemeler[$yontem] += $ekOdemeTutari;
-                if ($yontem === 'sodexo') {
-                    $sodexoOdemesi += $ekOdemeTutari;
-                }
-            } else {
+            $rTutar = floatval($odeme->resmi_tutar ?? 0);
+            if ($yontem === 'banka') {
                 $yontemliOdemeler['banka'] += $ekOdemeTutari;
+            } else {
+                $yontemliOdemeler['banka'] += $rTutar;
+                if (isset($yontemliOdemeler[$yontem])) {
+                    $yontemliOdemeler[$yontem] += ($ekOdemeTutari - $rTutar);
+                    if ($yontem === 'sodexo') {
+                        $sodexoOdemesi += ($ekOdemeTutari - $rTutar);
+                    }
+                } else {
+                    $yontemliOdemeler['banka'] += ($ekOdemeTutari - $rTutar);
+                }
+            }
+            if ($rTutar > 0) {
+                $sgkMatrahEkleri += $rTutar;
+                $vergiliMatrahEkleri += $rTutar;
             }
 
             unset($toplamTutar); // Bir sonraki döngü için temizle
@@ -4242,10 +4327,11 @@ class BordroPersonelModel extends Model
         $kumulatifMatrah = $this->getKumulatifMatrah($kayit->personel_id, $donemYil, $donemAy);
         $yeniKumulatifMatrah = $kumulatifMatrah + $gelirVergisiMatrahi;
 
+        $gelirVergisi = $parametreModel->hesaplaGelirVergisi($yeniKumulatifMatrah, $gelirVergisiMatrahi, $donemYil);
         if ($isNetMaas || $isPrimUsulu) {
-            $gelirVergisi = 0;
-        } else {
-            $gelirVergisi = $parametreModel->hesaplaGelirVergisi($yeniKumulatifMatrah, $gelirVergisiMatrahi, $donemYil);
+            $asgariGvMatrah = round((floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50) / 30) * $maasHesapGunu, 2);
+            $istisnaGV = $parametreModel->hesaplaGelirVergisi($kumulatifMatrah + $asgariGvMatrah, $asgariGvMatrah, $donemYil);
+            $gelirVergisi = max(0.0, $gelirVergisi - $istisnaGV);
         }
 
         // NET maaş / Prim usulü personellerde ana sözleşme vergisiz kabul edilir, ama RTÇ/HTÇ brüt ek ödemesi
@@ -4368,7 +4454,7 @@ class BordroPersonelModel extends Model
                 $sozlesmeHakedisi = $this->getSozlesmeHakedisi($kayit->personel_id ?? $kayit->id, $nominalBrutMaas, $maasHesapGunu, $donemBaslangicTarihi ?? $donemTarihi ?? date('Y-m-01'));
 
                 // HTÇ resmi yemek matrahını etkilememeli — yalnızca RTÇ yemek kapasitesini azaltır
-                $htcResmiTutarHesapDagilim = $htcGunHesap > 0 ? round($asgariUcretNet / 30, 4) * $htcGunHesap : 0.0;
+                $htcResmiTutarHesapDagilim = $htcGunHesap > 0 ? round(($genelAyarlarMap['asgari_ucret_brut'] ?? 33030.00) / 30, 4) * $htcGunHesap : 0.0;
                 $resmiDahilForDagilimHesap = max(0.0, $resmiDahilEkToplam - $htcResmiTutarHesapDagilim);
                 $dahilDagilimPreIcra = $this->hesaplaMaasaDahilYardimDagilimi(
                     $kayit,
@@ -4454,7 +4540,7 @@ class BordroPersonelModel extends Model
             }
 
             $sozlesmeHakedisiCalc = $this->getSozlesmeHakedisi($kayit->personel_id ?? $kayit->id, $nominalBrutMaas, $maasHesapGunu, $donemBaslangicTarihi ?? date('Y-m-01'));
-            $htcResmiTutarHesapDagilim2 = $htcGunHesap > 0 ? round($asgariUcretNet / 30, 4) * $htcGunHesap : 0.0;
+            $htcResmiTutarHesapDagilim2 = $htcGunHesap > 0 ? round(($genelAyarlarMap['asgari_ucret_brut'] ?? 33030.00) / 30, 4) * $htcGunHesap : 0.0;
             $resmiDahilForDagilimHesap2 = max(0.0, $resmiDahilEkToplam - $htcResmiTutarHesapDagilim2);
             $dahilDagilim = $this->hesaplaMaasaDahilYardimDagilimi(
                 $kayit,
