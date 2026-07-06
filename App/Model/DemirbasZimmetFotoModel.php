@@ -14,17 +14,18 @@ class DemirbasZimmetFotoModel extends Model
         parent::__construct($this->table);
     }
 
-    public function addFoto($zimmetId, $foto_turu, $dosyaAdi, $orijinalAd, $mimeTipi, $boyut, $yukleyenId)
+    public function addFoto($zimmetId, $hareketId, $foto_turu, $dosyaAdi, $orijinalAd, $mimeTipi, $boyut, $yukleyenId)
     {
         $sql = $this->db->prepare("
             INSERT INTO {$this->table}
-                (firma_id, zimmet_id, foto_turu, dosya_adi, orijinal_ad, mime_tipi, boyutu, yukleyen_id)
+                (firma_id, zimmet_id, hareket_id, foto_turu, dosya_adi, orijinal_ad, mime_tipi, boyutu, yukleyen_id)
             VALUES
-                (:firma_id, :zimmet_id, :foto_turu, :dosya_adi, :orijinal_ad, :mime_tipi, :boyutu, :yukleyen_id)
+                (:firma_id, :zimmet_id, :hareket_id, :foto_turu, :dosya_adi, :orijinal_ad, :mime_tipi, :boyutu, :yukleyen_id)
         ");
         $sql->execute([
             'firma_id' => $_SESSION['firma_id'],
             'zimmet_id' => $zimmetId,
+            'hareket_id' => $hareketId,
             'foto_turu' => $foto_turu,
             'dosya_adi' => $dosyaAdi,
             'orijinal_ad' => $orijinalAd,
@@ -38,7 +39,7 @@ class DemirbasZimmetFotoModel extends Model
     public function getByZimmet($zimmetId)
     {
         $sql = $this->db->prepare("
-            SELECT id, zimmet_id, foto_turu, orijinal_ad, mime_tipi, boyutu, olusturma_tarihi
+            SELECT id, zimmet_id, hareket_id, foto_turu, orijinal_ad, mime_tipi, boyutu, olusturma_tarihi
             FROM {$this->table}
             WHERE zimmet_id = :zimmet_id
             AND firma_id = :firma_id

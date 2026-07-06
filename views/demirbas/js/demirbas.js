@@ -2327,15 +2327,6 @@ $(document).on("click", ".zimmet-detay, .zimmet-detay-ac", function (e) {
           let ilkZimmetAtlandi = false;
 
           hareketler.forEach((h) => {
-            // İlk "zimmet" hareketini atla
-            if (
-              !ilkZimmetAtlandi &&
-              (h.hareket_tipi === "zimmet" || h.hareket_tipi === "Zimmet")
-            ) {
-              ilkZimmetAtlandi = true;
-              return;
-            }
-
             let checkbox = "";
             let trClass = "";
             let trStyle = "";
@@ -2353,6 +2344,32 @@ $(document).on("click", ".zimmet-detay, .zimmet-detay-ac", function (e) {
               trStyle = "cursor: pointer;";
             }
 
+            // Fotoğrafları bu harekete göre listele
+            let fotoHtml = "";
+            if (h.fotolar && h.fotolar.length > 0) {
+              h.fotolar.forEach((foto) => {
+                let viewUrl = `zimmet-foto-goruntule.php?id=${foto.id}`;
+                fotoHtml += `
+                  <div class="position-relative d-inline-block border rounded p-1 bg-light me-1 mb-1 text-center" id="foto-card-${foto.id}" style="width: 45px; height: 45px; vertical-align: top;">
+                    ${foto.is_pdf ? `
+                      <a href="${viewUrl}" target="_blank" class="text-danger d-block lh-1" title="${foto.orijinal_ad}">
+                        <i class="bx bxs-file-pdf font-size-22 animate__animated animate__fadeIn" style="margin-top: 3px;"></i>
+                      </a>
+                    ` : `
+                      <a href="${viewUrl}" target="_blank" class="d-block">
+                        <img src="${viewUrl}" class="rounded animate__animated animate__fadeIn" style="width: 35px; height: 35px; object-fit: cover;">
+                      </a>
+                    `}
+                    <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 p-0 rounded-circle d-flex align-items-center justify-content-center sil-detay-foto" data-id="${foto.id}" style="width: 14px; height: 14px; margin-top: -4px; margin-right: -4px;" title="Fotoğrafı Sil">
+                      <i class="bx bx-x font-size-10"></i>
+                    </button>
+                  </div>
+                `;
+              });
+            } else {
+              fotoHtml = '<span class="text-muted small italic">-</span>';
+            }
+
             let row = `
               <tr class="${trClass}" style="${trStyle}" data-hareket-tip="${hareketFilterTip}">
                 <td class="text-center" width="40">${checkbox}</td>
@@ -2360,19 +2377,14 @@ $(document).on("click", ".zimmet-detay, .zimmet-detay-ac", function (e) {
                 <td class="text-center fw-bold">${h.miktar}</td>
                 <td>${h.tarih_format}</td>
                 <td class="small">${h.aciklama || ""}</td>
+                <td>${fotoHtml}</td>
               </tr>
             `;
             hBody.append(row);
           });
-
-          if (hBody.children().length === 0) {
-            hBody.append(
-              '<tr><td colspan="5" class="text-center text-muted border-0 py-3 italic">Başka bir hareket bulunmuyor.</td></tr>',
-            );
-          }
         } else {
           hBody.append(
-            '<tr><td colspan="5" class="text-center text-muted py-3">Hareket kaydı bulunamadı.</td></tr>',
+            '<tr><td colspan="6" class="text-center text-muted py-3">Hareket kaydı bulunamadı.</td></tr>',
           );
         }
 
@@ -2381,56 +2393,6 @@ $(document).on("click", ".zimmet-detay, .zimmet-detay-ac", function (e) {
         $("#seciliHareketSayisi").text("0");
         $("#checkAllZimmetHareket").prop("checked", false);
         applyZimmetDetayKartFiltre("all");
-
-        // Fotoğraflar Galerisini Yükle
-        const isSayac = parseInt(d.is_sayac || 0, 10) === 1;
-        if (!isAparat && !isSayac) {
-          $("#detayFotoAlani").removeClass("d-none");
-
-          let teslimGaleri = $("#detayTeslimFotoGaleri");
-          let iadeGaleri = $("#detayIadeFotoGaleri");
-          teslimGaleri.empty();
-          iadeGaleri.empty();
-
-          if (d.fotolar && d.fotolar.length > 0) {
-            d.fotolar.forEach((foto) => {
-              let viewUrl = `zimmet-foto-goruntule.php?id=${foto.id}`;
-              let cardHtml = `
-                <div class="col-6 col-sm-4 text-center mb-2" id="foto-card-${foto.id}">
-                  <div class="position-relative border rounded p-1 bg-light">
-                    ${foto.is_pdf ? `
-                      <a href="${viewUrl}" target="_blank" class="d-block py-3 text-danger">
-                        <i class="bx bxs-file-pdf font-size-36 animate__animated animate__fadeIn"></i>
-                        <div class="text-truncate small px-1">${foto.orijinal_ad}</div>
-                      </a>
-                    ` : `
-                      <a href="${viewUrl}" target="_blank" class="d-block">
-                        <img src="${viewUrl}" class="img-fluid rounded animate__animated animate__fadeIn" style="max-height: 80px; object-fit: cover;">
-                      </a>
-                    `}
-                    <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 p-0 rounded-circle d-flex align-items-center justify-content-center sil-detay-foto" data-id="${foto.id}" style="width: 20px; height: 20px;" title="Fotoğrafı Sil">
-                      <i class="bx bx-x font-size-14"></i>
-                    </button>
-                  </div>
-                </div>
-              `;
-              if (foto.foto_turu === 'teslim') {
-                teslimGaleri.append(cardHtml);
-              } else {
-                iadeGaleri.append(cardHtml);
-              }
-            });
-          }
-
-          if (teslimGaleri.children().length === 0) {
-            teslimGaleri.html('<div class="col-12 text-center text-muted small py-3 italic">Fotoğraf eklenmemiş.</div>');
-          }
-          if (iadeGaleri.children().length === 0) {
-            iadeGaleri.html('<div class="col-12 text-center text-muted small py-3 italic">Fotoğraf eklenmemiş.</div>');
-          }
-        } else {
-          $("#detayFotoAlani").addClass("d-none");
-        }
 
         if (typeof feather !== "undefined") {
           setTimeout(() => feather.replace(), 10);

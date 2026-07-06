@@ -26,7 +26,7 @@ $Personel = new PersonelModel();
 $ZimmetFoto = new DemirbasZimmetFotoModel();
 
 // Zimmet teslim/iade fotoğraflarını şifreleyerek diske yazan ve meta bilgisini kaydeden yardımcı
-$zimmetFotoIsle = function ($zimmetId, $fileKey, $tur) use ($ZimmetFoto) {
+$zimmetFotoIsle = function ($zimmetId, $hareketId, $fileKey, $tur) use ($ZimmetFoto) {
     if (empty($_FILES[$fileKey]) || !is_array($_FILES[$fileKey]['name'])) {
         return 0;
     }
@@ -71,7 +71,7 @@ $zimmetFotoIsle = function ($zimmetId, $fileKey, $tur) use ($ZimmetFoto) {
             throw new Exception('Şifreli dosya kaydedilemedi.');
         }
 
-        $ZimmetFoto->addFoto($zimmetId, $tur, $yeniDosyaAdi, $orijinalAd, $mimeType, $boyut, $yukleyenId);
+        $ZimmetFoto->addFoto($zimmetId, $hareketId, $tur, $yeniDosyaAdi, $orijinalAd, $mimeType, $boyut, $yukleyenId);
         $kaydedilen++;
     }
 
@@ -1749,7 +1749,12 @@ if ($action == "zimmet-kaydet") {
 
         $fotoMesaj = "";
         if (!$isSayac && !$isAparat && isset($_FILES['teslim_fotograflari'])) {
-            $fotoSayisi = $zimmetFotoIsle($decryptedZimmetId, 'teslim_fotograflari', 'teslim');
+            // Son oluşturulan hareket_id değerini al
+            $stmtHareket = $Zimmet->getDb()->prepare("SELECT id FROM demirbas_hareketler WHERE zimmet_id = ? AND hareket_tipi = 'zimmet' ORDER BY id DESC LIMIT 1");
+            $stmtHareket->execute([$decryptedZimmetId]);
+            $hareketId = (int) $stmtHareket->fetchColumn();
+
+            $fotoSayisi = $zimmetFotoIsle($decryptedZimmetId, $hareketId, 'teslim_fotograflari', 'teslim');
             if ($fotoSayisi > 0) {
                 $fotoMesaj = " {$fotoSayisi} adet teslim fotoğrafı şifreli olarak kaydedildi.";
             }
@@ -2083,7 +2088,12 @@ if ($action == "zimmet-iade") {
             $isSayac = str_contains(mb_strtolower($kategoriAdi, 'UTF-8'), 'sayaç') || str_contains(mb_strtolower($kategoriAdi, 'UTF-8'), 'sayac');
             $fotoMesaj = "";
             if (!$isSayac && isset($_FILES['iade_fotograflari'])) {
-                $fotoSayisi = $zimmetFotoIsle($zimmet_id, 'iade_fotograflari', 'iade');
+                // Son oluşturulan iade hareket_id değerini al
+                $stmtHareket = $Zimmet->getDb()->prepare("SELECT id FROM demirbas_hareketler WHERE zimmet_id = ? AND hareket_tipi = 'iade' ORDER BY id DESC LIMIT 1");
+                $stmtHareket->execute([$zimmet_id]);
+                $hareketId = (int) $stmtHareket->fetchColumn();
+
+                $fotoSayisi = $zimmetFotoIsle($zimmet_id, $hareketId, 'iade_fotograflari', 'iade');
                 if ($fotoSayisi > 0) {
                     $fotoMesaj = " {$fotoSayisi} adet iade fotoğrafı şifreli olarak kaydedildi.";
                 }
@@ -2641,6 +2651,9 @@ if ($action == "zimmet-detay") {
             // Bu zimmet kaydına ait özel hareket geçmişini al
             $hareketler = $Hareket->getZimmetHareketleri($id);
 
+            // Bu zimmet kaydına ait tüm fotoğrafları al
+            $fotolar = $ZimmetFoto->getByZimmet($zimmet->id);
+
             // Hareket verilerini formatla
             $toplamIade = 0;
             $toplamDepoIade = 0;
@@ -2656,6 +2669,21 @@ if ($action == "zimmet-detay") {
                 }
                 if ($h->hareket_tipi === 'sarf' || $h->hareket_tipi === 'kayip') {
                     $toplamSarf += (int) ($h->miktar ?? 0);
+                }
+
+                // Fotoğrafları bu harekete göre filtrele
+                $h->fotolar = [];
+                foreach ($fotolar as $foto) {
+                    if ((int)$foto->hareket_id === (int)$h->id) {
+                        $h->fotolar[] = [
+                            'id' => Security::encrypt($foto->id),
+                            'foto_turu' => $foto->foto_turu,
+                            'orijinal_ad' => $foto->orijinal_ad,
+                            'mime_tipi' => $foto->mime_tipi,
+                            'boyutu' => $foto->boyutu,
+                            'is_pdf' => ($foto->mime_tipi === 'application/pdf')
+                        ];
+                    }
                 }
 
                 $h->id = Security::encrypt($h->id);
@@ -2717,19 +2745,6 @@ if ($action == "zimmet-detay") {
             $isDetaySayac = str_contains(mb_strtolower($detayKatAdi, 'UTF-8'), 'sayaç') || str_contains(mb_strtolower($detayKatAdi, 'UTF-8'), 'sayac');
             $zimmet->is_sayac = $isDetaySayac ? 1 : 0;
 
-            // Fotoğrafları getir
-            $fotolar = $ZimmetFoto->getByZimmet($zimmet->id);
-            $zimmet->fotolar = [];
-            foreach ($fotolar as $foto) {
-                $zimmet->fotolar[] = [
-                    'id' => Security::encrypt($foto->id),
-                    'foto_turu' => $foto->foto_turu,
-                    'orijinal_ad' => $foto->orijinal_ad,
-                    'mime_tipi' => $foto->mime_tipi,
-                    'boyutu' => $foto->boyutu,
-                    'is_pdf' => ($foto->mime_tipi === 'application/pdf')
-                ];
-            }
 
             // Demirbaş bilgilerini al
             $demirbas = $Demirbas->find($zimmet->demirbas_id);

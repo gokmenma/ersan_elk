@@ -137,46 +137,13 @@
                                 <th class="text-center">Miktar</th>
                                 <th>Tarih</th>
                                 <th>Açıklama / İş Emri</th>
+                                <th style="width: 180px;">Fotoğraflar</th>
                             </tr>
                         </thead>
                         <tbody id="zimmetHareketBody">
                             <!-- JS ile doldurulacak -->
                         </tbody>
-                </div>
-
-                <!-- Fotoğraflar Galerisi (Sadece Demirbaşlar için) -->
-                <div id="detayFotoAlani" class="d-none mt-4">
-                    <h6 class="text-primary border-bottom pb-2 mb-3"><i data-feather="image" class="me-1"></i> Zimmet Durum Fotoğrafları</h6>
-                    
-                    <div class="row">
-                        <!-- Teslim Fotoğrafları -->
-                        <div class="col-md-6 mb-3">
-                            <div class="card border-0 bg-light">
-                                <div class="card-header bg-warning bg-opacity-10 py-2 border-start border-4 border-warning">
-                                    <span class="fw-semibold small text-warning"><i class="bx bx-upload me-1"></i>Teslim Fotoğrafları</span>
-                                </div>
-                                <div class="card-body p-2 bg-white border border-top-0 rounded-bottom">
-                                    <div class="row g-2" id="detayTeslimFotoGaleri">
-                                        <!-- JS ile dolacak -->
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                        
-                        <!-- İade Fotoğrafları -->
-                        <div class="col-md-6 mb-3">
-                            <div class="card border-0 bg-light">
-                                <div class="card-header bg-success bg-opacity-10 py-2 border-start border-4 border-success">
-                                    <span class="fw-semibold small text-success"><i class="bx bx-download me-1"></i>İade Fotoğrafları</span>
-                                </div>
-                                <div class="card-body p-2 bg-white border border-top-0 rounded-bottom">
-                                    <div class="row g-2" id="detayIadeFotoGaleri">
-                                        <!-- JS ile dolacak -->
-                                    </div>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    </table>
                 </div>
 
             </div>
