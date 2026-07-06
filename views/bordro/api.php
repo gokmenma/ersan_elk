@@ -1953,6 +1953,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $nobetGruplu = $groupAndParse($nobetOdemeler, ['[Nöbet] ']);
                 $kacakGruplu = $groupAndParse($kacakKontrolOdemeler, ['[Kaçak Kontrol] ']);
                 $puantajToplamIslemSayisi = 0;
+                foreach ($puantajGruplu as $grup) {
+                    $puantajToplamIslemSayisi += intval($grup['adet'] ?? 0);
+                }
                     // ============================================================
                 // HTML GENERATION: REF-IMAGE BASED PAYROLL DETAIL VIEW
                 // ============================================================
@@ -2327,7 +2330,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="ref-card-list">';
                 $html .= '<div class="ref-card-item' . (!empty($nobetPop) ? ' hover-popover-trigger' : '') . '"><span class="label">Nöbet Ödemesi' . (!empty($nobetPop) ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($nobetTutar) . '</span>' . $nobetPop . '</div>';
                 $html .= '<div class="ref-card-item' . (!empty($kacakPop) ? ' hover-popover-trigger' : '') . '"><span class="label">Kaçak Kontrol Primi' . (!empty($kacakPop) ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($kacakTutar) . '</span>' . $kacakPop . '</div>';
-                $html .= '<div class="ref-card-item' . (!empty($puantajPop) ? ' hover-popover-trigger' : '') . '"><span class="label">Puantaj Hakedişi' . (!empty($puantajPop) ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($puantajTutar) . '</span>' . $puantajPop . '</div>';
+                $puantajBaslikDetay = $puantajToplamIslemSayisi > 0 ? ' <small class="text-muted fw-normal">( <strong>' . $puantajToplamIslemSayisi . ' Adet</strong> )</small>' : '';
+                $html .= '<div class="ref-card-item' . (!empty($puantajPop) ? ' hover-popover-trigger' : '') . '"><span class="label">Puantaj Hakedişi' . $puantajBaslikDetay . (!empty($puantajPop) ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($puantajTutar) . '</span>' . $puantajPop . '</div>';
                 $html .= '<div class="ref-card-item"><span class="label">Prim / İkramiye</span><span class="value">' . $fmt($primTutar) . '</span></div>';
                 $html .= '<div class="ref-card-item"><span class="label">Diğer Ek Ödemeler</span><span class="value">' . $fmt($digerKazancTutar) . '</span></div>';
                 $html .= '</div>';

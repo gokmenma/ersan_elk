@@ -653,7 +653,7 @@ if (!empty($dbGelirler)) {
                                         <li>
                                             <a class="dropdown-item py-2" href="javascript:void(0);"
                                                 id="btnExportExcelYemek">
-                                                <i class="mdi mdi-silverware-fork-knife me-2 text-warning fs-5"></i> Yemek/Eş Yardımı Listesi (Excel)
+                                                <i class="mdi mdi-file-excel me-2 text-success fs-5"></i> Excel'e İndir (Muhasebe)
                                             </a>
                                         </li>
                                         <li>
