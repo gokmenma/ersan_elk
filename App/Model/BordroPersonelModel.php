@@ -621,7 +621,9 @@ class BordroPersonelModel extends Model
                             if (preg_match('/\(([^)]+)\)/', $eo->aciklama, $matches)) {
                                 $parts = explode('x', $matches[1]);
                                 if (count($parts) >= 2) {
-                                    $label .= ' (' . trim($parts[0]) . ' x ' . trim($parts[1]) . ')';
+                                    $days = intval(trim($parts[0]));
+                                    $unitBrut = $days > 0 ? round($rTutar / $days, 2) : 0;
+                                    $label .= ' (' . trim($parts[0]) . ' x ' . trim($parts[1]) . ' x ' . number_format($unitBrut, 2, ',', '.') . ' ₺)';
                                 }
                             }
                         }
