@@ -101,13 +101,6 @@ try {
         $icra = $hesap['icraKesintisi'] ?? 0;
         $toplamGun = $hesap['calismaGunu'] ?? 0;
 
-        $htcGun = intval($hesap['htcGun'] ?? 0);
-        $htcResmiTutar = $htcGun > 0 ? round(floatval($asgariUcretNet) / 30 * $htcGun, 2) : 0.0;
-        $nominalMaas = floatval($hesap['maasTutari'] ?? 0);
-        $isInclusive = (intval($p->yemek_yardimi_dahil ?? 0) === 1 || intval($p->es_yardimi_dahil ?? 0) === 1);
-        $htcEldenTutar = $htcGun > 0 ? ($isInclusive ? 0.0 : round(($nominalMaas - $asgariUcretNet) / 30 * $htcGun, 2)) : 0.0;
-        $htcToplamTutar = round($htcEldenTutar + $htcResmiTutar, 2);
-
         $toplamAlacak = floatval($hesap['toplamAlacagi'] ?? 0);
         $toplamYasalKesinti = 0;
         if ($p->sgk_isci > 0) $toplamYasalKesinti += floatval($p->sgk_isci);
@@ -152,6 +145,43 @@ try {
         $yeniKumulatif = floatval($matrahlar['yeni_kumulatif'] ?? $p->kumulatif_matrah ?? 0);
         $oncekiKumulatif = floatval($matrahlar['kumulatif_matrah'] ?? ($yeniKumulatif - $aylikMatrah));
 
+        // Hafta Tatili Çalışması Net ve Brüt Hesabı
+        $htcGun = intval($hesap['htcGun'] ?? 0);
+        $htcNet = 0.0;
+        $htcBrut = 0.0;
+        if ($htcGun > 0) {
+            $htcHedefNet = round(floatval($asgariUcretNet) / 30 * $htcGun, 2);
+            $nominalMaas = floatval($hesap['maasTutari'] ?? 0);
+            $isInclusive = (intval($p->yemek_yardimi_dahil ?? 0) === 1 || intval($p->es_yardimi_dahil ?? 0) === 1);
+            $htcEldenTutar = $isInclusive ? 0.0 : round(($nominalMaas - floatval($asgariUcretNet)) / 30 * $htcGun, 2);
+            $htcNet = round($htcEldenTutar + $htcHedefNet, 2);
+
+            // Brüt hesabı (popover ile aynı gross-up mantığı)
+            $donemYil = (int) date('Y', strtotime($donem->baslangic_tarihi));
+            $sgkOrani = floatval($BordroParametre->getGenelAyar('sgk_isci_orani', $donem->baslangic_tarihi) ?? 14) / 100;
+            $issizlikOrani = floatval($BordroParametre->getGenelAyar('issizlik_isci_orani', $donem->baslangic_tarihi) ?? 1) / 100;
+            $damgaOrani = floatval($BordroParametre->getGenelAyar('damga_vergisi_orani', $donem->baslangic_tarihi) ?? 0.759) / 100;
+
+            $htcGross = $BordroParametre->bruteUpForNetTarget($htcHedefNet, $oncekiKumulatif, $sgkOrani, $issizlikOrani, $damgaOrani, $donemYil, true);
+            $htcBrut = round(floatval($htcGross['brut'] ?? 0) + $htcEldenTutar, 2);
+        }
+
+        // Fazla Mesai Net ve Brüt Hesabı (Nöbet ve Mesai ek ödemelerini toplar)
+        $fmBrut = 0.0;
+        $fmNet = 0.0;
+        $ekOdemeler = $BordroPersonel->getDonemEkOdemeleriListe($p->personel_id, $donemId);
+        foreach ($ekOdemeler as $eo) {
+            $eoTur = mb_strtolower((string)($eo->tur ?? ''), 'UTF-8');
+            if ($eo->tur === 'hafta_ici_nobet' || $eo->tur === 'hafta_sonu_nobet' || $eo->tur === 'mesai' || strpos($eoTur, 'nobet') !== false) {
+                $fmBrut += floatval($eo->resmi_tutar ?? 0);
+                $fmNet += floatval($eo->tutar ?? 0);
+            }
+        }
+        if ($fmBrut <= 0 && $fmNet <= 0 && floatval($p->fazla_mesai_tutar ?? 0) > 0) {
+            $fmNet = floatval($p->fazla_mesai_tutar);
+            $fmBrut = $fmNet;
+        }
+
         $yemekVerileri[] = [
             'tc_kimlik' => $p->tc_kimlik_no ?? '-',
             'adi_soyadi' => $p->adi_soyadi ?? '-',
@@ -164,8 +194,10 @@ try {
             'avans' => $avansToplam,
             'icra' => $icra,
             'resmi_alacak_asgari' => floatval($hesap['asgariHakedis'] ?? 0),
-            'htc_calisma' => $htcToplamTutar,
-            'fazla_mesai' => floatval($p->fazla_mesai_tutar ?? 0),
+            'htc_brut' => $htcBrut,
+            'htc_net' => $htcNet,
+            'fm_brut' => $fmBrut,
+            'fm_net' => $fmNet,
             'resmi_alacak_toplam' => floatval($hesap['resmiAlacagi'] ?? 0),
             'gelir_vergisi' => floatval($p->gelir_vergisi ?? 0),
             'net_maas' => $bankaOdeme,
@@ -209,13 +241,15 @@ try {
         'I' => 'AVANS',
         'J' => 'İCRA',
         'K' => 'ALACAK (ASGARİ ÜCRET)',
-        'L' => 'HAFTA TATİLİ ÇALIŞMASI',
-        'M' => 'FAZLA MESAİ',
-        'N' => 'ALACAK TOPLAMI',
-        'O' => 'GELİR VERGİSİ KESİNTİSİ',
-        'P' => 'ÖDENECEK NET MAAŞ',
-        'Q' => 'KÜMÜLATİF VERGİ MATRAHI (BU AY HARİÇ)',
-        'R' => 'AYLIK VERGİ MATRAHI (BU AY)'
+        'L' => 'HAFTA TATİLİ ÇALIŞMASI (BRÜT)',
+        'M' => 'HAFTA TATİLİ ÇALIŞMASI (NET)',
+        'N' => 'FAZLA MESAİ (BRÜT)',
+        'O' => 'FAZLA MESAİ (NET)',
+        'P' => 'ALACAK TOPLAMI',
+        'Q' => 'GELİR VERGİSİ KESİNTİSİ',
+        'R' => 'ÖDENECEK NET MAAŞ',
+        'S' => 'KÜMÜLATİF VERGİ MATRAHI (BU AY HARİÇ)',
+        'T' => 'AYLIK VERGİ MATRAHI (BU AY)'
     ];
 
     // Başlık stili
@@ -247,7 +281,7 @@ try {
     }
 
     // Başlık satırına stil uygula
-    $sheet->getStyle('A1:R1')->applyFromArray($baslikStyle);
+    $sheet->getStyle('A1:T1')->applyFromArray($baslikStyle);
     $sheet->getRowDimension(1)->setRowHeight(25);
 
     // Veri stili
@@ -277,13 +311,15 @@ try {
         $sheet->setCellValue('I' . $satir, $veri['avans']);
         $sheet->setCellValue('J' . $satir, $veri['icra']);
         $sheet->setCellValue('K' . $satir, $veri['resmi_alacak_asgari']);
-        $sheet->setCellValue('L' . $satir, $veri['htc_calisma']);
-        $sheet->setCellValue('M' . $satir, $veri['fazla_mesai']);
-        $sheet->setCellValue('N' . $satir, $veri['resmi_alacak_toplam']);
-        $sheet->setCellValue('O' . $satir, $veri['gelir_vergisi']);
-        $sheet->setCellValue('P' . $satir, $veri['net_maas']);
-        $sheet->setCellValue('Q' . $satir, $veri['onceki_kumulatif']);
-        $sheet->setCellValue('R' . $satir, $veri['aylik_matrah']);
+        $sheet->setCellValue('L' . $satir, $veri['htc_brut']);
+        $sheet->setCellValue('M' . $satir, $veri['htc_net']);
+        $sheet->setCellValue('N' . $satir, $veri['fm_brut']);
+        $sheet->setCellValue('O' . $satir, $veri['fm_net']);
+        $sheet->setCellValue('P' . $satir, $veri['resmi_alacak_toplam']);
+        $sheet->setCellValue('Q' . $satir, $veri['gelir_vergisi']);
+        $sheet->setCellValue('R' . $satir, $veri['net_maas']);
+        $sheet->setCellValue('S' . $satir, $veri['onceki_kumulatif']);
+        $sheet->setCellValue('T' . $satir, $veri['aylik_matrah']);
 
         // Formatlar
         $sheet->getStyle('C' . $satir)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
@@ -302,8 +338,10 @@ try {
         $sheet->getStyle('P' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         $sheet->getStyle('Q' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         $sheet->getStyle('R' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+        $sheet->getStyle('S' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+        $sheet->getStyle('T' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         
-        $sheet->getStyle("A{$satir}:R{$satir}")->applyFromArray($dataStyle);
+        $sheet->getStyle("A{$satir}:T{$satir}")->applyFromArray($dataStyle);
         
         $satir++;
     }
@@ -324,8 +362,10 @@ try {
     $sheet->setCellValue('P' . $toplamSatir, '=SUM(P2:P' . ($satir - 1) . ')');
     $sheet->setCellValue('Q' . $toplamSatir, '=SUM(Q2:Q' . ($satir - 1) . ')');
     $sheet->setCellValue('R' . $toplamSatir, '=SUM(R2:R' . ($satir - 1) . ')');
+    $sheet->setCellValue('S' . $toplamSatir, '=SUM(S2:S' . ($satir - 1) . ')');
+    $sheet->setCellValue('T' . $toplamSatir, '=SUM(T2:T' . ($satir - 1) . ')');
     
-    $sheet->getStyle('A' . $toplamSatir . ':R' . $toplamSatir)->getFont()->setBold(true);
+    $sheet->getStyle('A' . $toplamSatir . ':T' . $toplamSatir)->getFont()->setBold(true);
     $sheet->getStyle('F' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
     $sheet->getStyle('G' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
     $sheet->getStyle('H' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
@@ -339,8 +379,10 @@ try {
     $sheet->getStyle('P' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
     $sheet->getStyle('Q' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
     $sheet->getStyle('R' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+    $sheet->getStyle('S' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+    $sheet->getStyle('T' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
     
-    $sheet->getStyle('A' . $toplamSatir . ':R' . $toplamSatir)->applyFromArray([
+    $sheet->getStyle('A' . $toplamSatir . ':T' . $toplamSatir)->applyFromArray([
         'fill' => [
             'fillType' => Fill::FILL_SOLID,
             'startColor' => ['rgb' => 'F3F4F6']
@@ -349,17 +391,17 @@ try {
             'top' => ['borderStyle' => Border::BORDER_MEDIUM]
         ]
     ]);
-
+    
     // Dosya adı
     $donemAdiSlug = preg_replace('/[^a-zA-Z0-9]/', '_', $donem->donem_adi);
     $dosyaAdi = 'muhasebe_listesi_' . $donemAdiSlug . '_' . date('Y-m-d') . '.xlsx';
-
+    
     // HTTP başlıkları
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
     header('Content-Disposition: attachment; filename="' . $dosyaAdi . '"');
     header('Cache-Control: max-age=0');
     header('Pragma: public');
-
+    
     // Excel dosyasını oluştur ve indir
     $writer = new Xlsx($spreadsheet);
     $writer->save('php://output');
