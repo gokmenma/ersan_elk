@@ -1079,6 +1079,7 @@ class BordroPersonelModel extends Model
                    bp.banka_odemesi, bp.sodexo_odemesi, bp.diger_odeme, bp.elden_odeme, bp.dagitim_manuel,
                    bp.calisan_gun, bp.aciklama, bp.hesaplama_detay,
                    bp.sgk_isci, bp.issizlik_isci, bp.gelir_vergisi, bp.damga_vergisi,
+                   bp.fazla_mesai_saat, bp.fazla_mesai_tutar,
                    bp.sgk_isveren, bp.issizlik_isveren, bp.toplam_maliyet, bp.kumulatif_matrah,
                    p.adi_soyadi, p.tc_kimlik_no, p.iban_numarasi, p.departman, p.gorev, 
                    p.ise_giris_tarihi, p.isten_cikis_tarihi, p.maas_tutari, p.maas_durumu,

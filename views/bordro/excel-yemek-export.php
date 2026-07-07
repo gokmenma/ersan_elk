@@ -135,6 +135,23 @@ try {
             $bankaOdeme = round($bankaOdeme + $dagitimFarki, 2);
         }
 
+        // Günlük yemek bedeli hesabı
+        $gunlukNakit = 0;
+        if ($nakitYemek > 0 && $fiiliGun > 0) {
+            $gunlukNakit = $nakitYemek / $fiiliGun;
+        } elseif ($sodexoYemek > 0 && $fiiliGun > 0) {
+            $gunlukNakit = $sodexoYemek / $fiiliGun;
+        } elseif (isset($p->yemek_yardimi_tutari) && floatval($p->yemek_yardimi_tutari) > 0) {
+            $gunlukNakit = floatval($p->yemek_yardimi_tutari);
+        }
+
+        // Vergi Matrahları
+        $detay = !empty($p->hesaplama_detay) ? json_decode($p->hesaplama_detay, true) : [];
+        $matrahlar = $detay['matrahlar'] ?? [];
+        $aylikMatrah = floatval($matrahlar['gelir_vergisi_matrahi'] ?? 0);
+        $yeniKumulatif = floatval($matrahlar['yeni_kumulatif'] ?? $p->kumulatif_matrah ?? 0);
+        $oncekiKumulatif = floatval($matrahlar['kumulatif_matrah'] ?? ($yeniKumulatif - $aylikMatrah));
+
         $yemekVerileri[] = [
             'tc_kimlik' => $p->tc_kimlik_no ?? '-',
             'adi_soyadi' => $p->adi_soyadi ?? '-',
@@ -151,12 +168,27 @@ try {
             'fazla_mesai' => floatval($p->fazla_mesai_tutar ?? 0),
             'resmi_alacak_toplam' => floatval($hesap['resmiAlacagi'] ?? 0),
             'gelir_vergisi' => floatval($p->gelir_vergisi ?? 0),
-            'net_maas' => $bankaOdeme
+            'net_maas' => $bankaOdeme,
+            'onceki_kumulatif' => $oncekiKumulatif,
+            'aylik_matrah' => $aylikMatrah
         ];
     }
 
     if (empty($yemekVerileri)) {
         die('Bu dönemde veri bulunan personel bulunmamaktadır.');
+    }
+
+    // İşlem için log kaydı oluşturulması
+    try {
+        $SystemLog = new \App\Model\SystemLogModel();
+        $SystemLog->logAction(
+            $_SESSION['user_id'] ?? 0,
+            'Muhasebe Listesi Excel İndirme',
+            $donem->donem_adi . ' dönemi için muhasebe listesi Excel dosyası indirildi. Kriter sayısı: ' . count($yemekVerileri),
+            \App\Model\SystemLogModel::LEVEL_IMPORTANT
+        );
+    } catch (Exception $logEx) {
+        error_log("Muhasebe Listesi Excel Loglama Hatası: " . $logEx->getMessage());
     }
 
     // Yeni Excel dosyası oluştur
@@ -181,7 +213,9 @@ try {
         'M' => 'FAZLA MESAİ',
         'N' => 'ALACAK TOPLAMI',
         'O' => 'GELİR VERGİSİ KESİNTİSİ',
-        'P' => 'ÖDENECEK NET MAAŞ'
+        'P' => 'ÖDENECEK NET MAAŞ',
+        'Q' => 'KÜMÜLATİF VERGİ MATRAHI (BU AY HARİÇ)',
+        'R' => 'AYLIK VERGİ MATRAHI (BU AY)'
     ];
 
     // Başlık stili
@@ -213,7 +247,7 @@ try {
     }
 
     // Başlık satırına stil uygula
-    $sheet->getStyle('A1:P1')->applyFromArray($baslikStyle);
+    $sheet->getStyle('A1:R1')->applyFromArray($baslikStyle);
     $sheet->getRowDimension(1)->setRowHeight(25);
 
     // Veri stili
@@ -248,6 +282,8 @@ try {
         $sheet->setCellValue('N' . $satir, $veri['resmi_alacak_toplam']);
         $sheet->setCellValue('O' . $satir, $veri['gelir_vergisi']);
         $sheet->setCellValue('P' . $satir, $veri['net_maas']);
+        $sheet->setCellValue('Q' . $satir, $veri['onceki_kumulatif']);
+        $sheet->setCellValue('R' . $satir, $veri['aylik_matrah']);
 
         // Formatlar
         $sheet->getStyle('C' . $satir)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
@@ -264,8 +300,10 @@ try {
         $sheet->getStyle('N' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         $sheet->getStyle('O' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         $sheet->getStyle('P' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+        $sheet->getStyle('Q' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+        $sheet->getStyle('R' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         
-        $sheet->getStyle("A{$satir}:P{$satir}")->applyFromArray($dataStyle);
+        $sheet->getStyle("A{$satir}:R{$satir}")->applyFromArray($dataStyle);
         
         $satir++;
     }
@@ -284,8 +322,10 @@ try {
     $sheet->setCellValue('N' . $toplamSatir, '=SUM(N2:N' . ($satir - 1) . ')');
     $sheet->setCellValue('O' . $toplamSatir, '=SUM(O2:O' . ($satir - 1) . ')');
     $sheet->setCellValue('P' . $toplamSatir, '=SUM(P2:P' . ($satir - 1) . ')');
+    $sheet->setCellValue('Q' . $toplamSatir, '=SUM(Q2:Q' . ($satir - 1) . ')');
+    $sheet->setCellValue('R' . $toplamSatir, '=SUM(R2:R' . ($satir - 1) . ')');
     
-    $sheet->getStyle('A' . $toplamSatir . ':P' . $toplamSatir)->getFont()->setBold(true);
+    $sheet->getStyle('A' . $toplamSatir . ':R' . $toplamSatir)->getFont()->setBold(true);
     $sheet->getStyle('F' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
     $sheet->getStyle('G' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
     $sheet->getStyle('H' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
@@ -297,8 +337,10 @@ try {
     $sheet->getStyle('N' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
     $sheet->getStyle('O' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
     $sheet->getStyle('P' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+    $sheet->getStyle('Q' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+    $sheet->getStyle('R' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
     
-    $sheet->getStyle('A' . $toplamSatir . ':P' . $toplamSatir)->applyFromArray([
+    $sheet->getStyle('A' . $toplamSatir . ':R' . $toplamSatir)->applyFromArray([
         'fill' => [
             'fillType' => Fill::FILL_SOLID,
             'startColor' => ['rgb' => 'F3F4F6']

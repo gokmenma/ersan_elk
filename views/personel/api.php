@@ -235,7 +235,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             foreach ($data as $key => $value) {
                 /**Parasal tutarlar için money formatını kaldır */
                 // NOT: maas_durumu alanı 'maas' içerdiği için para dönüşümüne giriyor, onu hariç tut
-                if ($key !== 'maas_durumu' && (strpos($key, 'tutar') !== false || strpos($key, 'ucret') !== false || strpos($key, 'maas') !== false || strpos($key, 'sodexo') !== false)) {
+                if ($key !== 'maas_durumu' && (strpos($key, 'tutar') !== false || strpos($key, 'ucret') !== false || strpos($key, 'maas') !== false || strpos($key, 'sodexo') !== false || strpos($key, 'matrah') !== false)) {
                     $data[$key] = Helper::formattedMoneyToNumber($value);
                 }
 
@@ -422,7 +422,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                 $displayNew = ($normNew !== '') ? Date::dmY($newValue) : 'Boş';
                             } elseif (is_numeric($normOld) && is_numeric($normNew)) {
                                 // Tutar veya ücret ise formatla, değilse (id vb) olduğu gibi bırak
-                                if (strpos($key, 'tutar') !== false || strpos($key, 'ucret') !== false || strpos($key, 'maas') !== false) {
+                                if (strpos($key, 'tutar') !== false || strpos($key, 'ucret') !== false || strpos($key, 'maas') !== false || strpos($key, 'matrah') !== false) {
                                     $displayOld = number_format(floatval($oldValue), 2, ',', '.') . ' ₺';
                                     $displayNew = number_format(floatval($newValue), 2, ',', '.') . ' ₺';
                                 }
