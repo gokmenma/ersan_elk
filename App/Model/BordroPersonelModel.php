@@ -4413,7 +4413,10 @@ class BordroPersonelModel extends Model
 
             // İcra matrahına dahil mi?
             if ($parametre && !empty($parametre->icra_pirim_dahil) && $parametre->icra_pirim_dahil == 1) {
-                $icraMatrahEkleri += floatval($detay['net_etki'] ?? 0);
+                $isAbsorbed = $this->hasMaasaDahilSosyalYardim($kayit) && ($parametre->odeme_yontemi ?? 'banka') === 'banka';
+                if (!$isAbsorbed) {
+                    $icraMatrahEkleri += floatval($detay['net_etki'] ?? 0);
+                }
             }
 
             $ekOdemeDetaylari[] = $detay;
@@ -4706,7 +4709,7 @@ class BordroPersonelModel extends Model
                     $asgariUcretNet,
                     $maasHesapGunu,
                     $fiiliCalismaGunu,
-                    ($isPrimUsulu ? $primUsuluPuantajHedefToplami : ($toplamMesaiTutar + $toplamEkOdeme)),
+                    $primUsuluPuantajHedefToplami,
                     0, // USER REQ: Dahil yardımların icra matrahı hesabı kesintilerden önce yapılmalıdır
                     $bankayaTasinabilirEkOdeme,
                     $sozlesmeHakedisi,
