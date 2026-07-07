@@ -4431,6 +4431,8 @@ class BordroPersonelModel extends Model
             $brutEkOdemeler += $rtcHtcBrutToplam;
         }
 
+        $rtcHtcBrutToplamGercek = 0.0;
+
         // Her kesintiyi işle
         // NOT: Ücretsiz izin kesintisi artık burada yok, doğrudan brüt maaştan düşüldü
         $digerKesintiler = 0;
@@ -4598,7 +4600,11 @@ class BordroPersonelModel extends Model
 
         $sgkIsveren = $sgkMatrahi * $sgkIsverenOrani;
         $issizlikIsveren = $sgkMatrahi * $issizlikIsverenOrani;
-        $toplamMaliyet = $brutMaas + $sgkIsveren + $issizlikIsveren + $brutEkOdemeler;
+        if ($isNetMaas || $isPrimUsulu) {
+            $toplamMaliyet = $calisanBrutMaas + $sgkIsveren + $issizlikIsveren + $brutEkOdemeler + $rtcHtcBrutToplamGercek;
+        } else {
+            $toplamMaliyet = $brutMaas + $sgkIsveren + $issizlikIsveren + $brutEkOdemeler;
+        }
 
         $toplamEkOdeme = $brutEkOdemeler + $netEkOdemeler;
 

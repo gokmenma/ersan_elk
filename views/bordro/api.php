@@ -2595,7 +2595,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="panel-card">';
                 $html .= '<div class="panel-card-title">İŞVEREN TOPLAM MALİYET ANALİZİ</div>';
                 $html .= '<div class="ref-card-list">';
-                $html .= '<div class="ref-card-item"><span class="label">Brüt Toplam Kazançlar</span><span class="value">' . $fmt($displayToplamAlacak) . '</span></div>';
+                $maliyetBrutToplam = (stripos($maasDurumuGosterim, 'Net') !== false || stripos($maasDurumuGosterim, 'Prim') !== false) ? $sgkMatrah : $displayToplamAlacak;
+                $html .= '<div class="ref-card-item"><span class="label">Brüt Toplam Kazançlar</span><span class="value">' . $fmt($maliyetBrutToplam) . '</span></div>';
                 $html .= '<div class="ref-card-item"><span class="label">SGK İşveren Katkısı</span><span class="value">' . $fmt($sgkIsveren) . '</span></div>';
                 $html .= '<div class="ref-card-item"><span class="label">İşsizlik İşveren Katkısı</span><span class="value">' . $fmt($issizlikIsveren) . '</span></div>';
                 $html .= '</div>';
