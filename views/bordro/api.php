@@ -1347,7 +1347,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         }
                     }
                 } else {
-                    if ($modalBaseRowValue > 0) {
+                    if ($isPrimUsulu && $contractHakedisForRounding > 0) {
+                        $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collBaseId . '" aria-expanded="false">
+                                    <td><div class="d-flex align-items-center"><i class="bx bx-file me-2 text-dark opacity-75"></i><span>Sözleşme Hakedişi</span><span class="badge bg-light text-dark fw-normal ms-2">' . $calismaGunu . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
+                                    <td class="text-end fw-bold text-dark">' . number_format($contractHakedisForRounding, 2, ',', '.') . ' ₺</td>
+                                  </tr>';
+                    } else if ($modalBaseRowValue > 0) {
                         $html .= '<tr class="parent-row" data-bs-toggle="collapse" data-bs-target=".' . $collBaseId . '" aria-expanded="false">
                                     <td><div class="d-flex align-items-center"><i class="bx bx-receipt me-2 text-muted opacity-75"></i><span>' . $topRowLabel . '</span><span class="badge bg-light text-dark fw-normal ms-2">' . $calismaGunu . ' Gün</span><i class="bx bx-chevron-down ms-1 text-muted rotate-icon"></i></div></td>
                                     <td class="text-end fw-bold text-dark">' . number_format($topRowValue, 2, ',', '.') . ' ₺</td>

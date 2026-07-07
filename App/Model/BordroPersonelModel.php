@@ -354,7 +354,7 @@ class BordroPersonelModel extends Model
         // Hedef Maaşın Dönemlik (Pro-rated) Neti
         // Hedef hakediş: Sözleşme (Sabit) + Puantaj (Prim) + Diğer (Nöbet vb.) hakedişlerin toplamı
         if ($sozlesmeHakedisi <= 0 && $puantajToplami <= 0) {
-            $hedefMaasTutari = floatval($kayit->hedef_net_maas_tutari ?? $kayit->guncel_maas ?? $kayit->maas_tutari ?? 0);
+            $hedefMaasTutari = floatval(($kayit->hedef_net_maas_tutari ?? 0) > 0 ? $kayit->hedef_net_maas_tutari : ($kayit->guncel_maas ?? $kayit->maas_tutari ?? 0));
             $sozlesmeHakedisi = round(($hedefMaasTutari / 30) * $maasHesapGunu, 2);
         }
         
@@ -886,7 +886,7 @@ class BordroPersonelModel extends Model
             $sozlesmeHakedisi = round(($maasTutari / 30) * $calismaGunu, 2);
 
             if ($isPrimUsulu) {
-                $toplamAlacagi = $hesaplamayaEsasMaas + $rawEkOdeme;
+                $toplamAlacagi = $sozlesmeHakedisi + $rawEkOdeme;
             } elseif ($isNet || $isBrut) {
                 $toplamAlacagi = (($hesaplamayaEsasMaas / 30) * $calismaGunu) + $rawEkOdeme;
             } else {
@@ -4756,7 +4756,7 @@ class BordroPersonelModel extends Model
         $icraKesintisi = 0;
         foreach ($kesintiDetaylari as $kd) if ($kd['kod'] === 'icra') $icraKesintisi += floatval($kd['tutar']);
 
-        $hedefNetMaasTutari = floatval($kayit->hedef_net_maas_tutari ?? $nominalBrutMaas ?? 0);
+        $hedefNetMaasTutari = floatval(($kayit->hedef_net_maas_tutari ?? 0) > 0 ? $kayit->hedef_net_maas_tutari : ($nominalBrutMaas ?? 0));
         $targetNetHakedis = round(($hedefNetMaasTutari / 30) * $maasHesapGunu, 2);
         $dahilDagilim = [
             'yemek_toplam' => 0,
