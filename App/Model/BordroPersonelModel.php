@@ -2165,6 +2165,42 @@ class BordroPersonelModel extends Model
      * - resmi_tatil: Resmi Tatil
      * - ozel: Özel
      */
+    /**
+     * Ana maaşın bu dönemki matrah tabanını (calisanBrutMaas ile aynı formülle) tahmin eder.
+     * hesaplaMaas() içindeki asıl hesaplama çok daha sonra yapıldığından (ek ödemeler, dolayısıyla
+     * nöbet, ondan önce işlenir), nöbetin brüte tamamlama (gross-up) hesabının kümülatif matrah
+     * tabanı ana maaşı görmeden hesaplanır. RTÇ/HTÇ ile aynı sıralı zincire (önce ana maaş, üstüne
+     * eklenen kalemler) girebilmesi için bu tahmin kullanılır.
+     */
+    private function estimateAnaMaasMatrahi(int $personel_id, string $baslangic_tarihi, string $bitis_tarihi): float
+    {
+        if ($this->personelModelCache === null) {
+            $this->personelModelCache = new \App\Model\PersonelModel();
+        }
+        $personel = $this->personelModelCache->find($personel_id);
+        if (!$personel) {
+            return 0.0;
+        }
+
+        $ucretsizIzinGunu = $this->getUcretsizIzinGunuDirekt($personel_id, $baslangic_tarihi, $bitis_tarihi);
+        $raporGunu = $this->getGunSayisiByKisaKod($personel_id, $baslangic_tarihi, $bitis_tarihi, 'RP');
+        $aktifTakvimGun = $this->getAktifTakvimGunSayisi($baslangic_tarihi, $bitis_tarihi, $personel->ise_giris_tarihi ?? null, $personel->isten_cikis_tarihi ?? null);
+        $aydakiGunSayisi = (int) round((strtotime($bitis_tarihi) - strtotime($baslangic_tarihi)) / 86400) + 1;
+        $maasHesapGunu = $this->getMaasHesapGunu($aktifTakvimGun, $aydakiGunSayisi, $ucretsizIzinGunu + $raporGunu);
+
+        if ($this->cachedParametreModel === null) {
+            $this->cachedParametreModel = new BordroParametreModel();
+        }
+
+        if ($this->hasMaasaDahilSosyalYardim($personel)) {
+            $asgariNet = floatval($this->cachedParametreModel->getGenelAyar('asgari_ucret_net', $baslangic_tarihi) ?? 28075.50);
+            return round(($asgariNet / 30) * $maasHesapGunu, 2);
+        }
+
+        $nominalMaas = floatval($personel->maas_tutari ?? 0);
+        return round(($nominalMaas / 30) * $maasHesapGunu, 2);
+    }
+
     public function olusturNobetOdemeleri($personel_id, $donem_id, $baslangic_tarihi, $bitis_tarihi)
     {
         // 1. Önceki nöbet kaynaklı ek ödemeleri temizle (duplicate önlemek için)
@@ -2224,7 +2260,11 @@ class BordroPersonelModel extends Model
                 $damgaOraniNobet = floatval($this->cachedParametreModel->getGenelAyar('damga_vergisi_orani', $baslangic_tarihi) ?? 0.759) / 100;
                 $donemYilNobet = (int) date('Y', strtotime($baslangic_tarihi));
                 $donemAyNobet = (int) date('n', strtotime($baslangic_tarihi));
-                $kumulatifMatrahNobet = $this->getKumulatifMatrah($personel_id, $donemYilNobet, $donemAyNobet);
+                // Önceki dönemin kapanış kümülatifinin üstüne, bu ayki ana maaşın matrah tabanı da
+                // eklenir — RTÇ/HTÇ zincirinde ana maaş her zaman ilk sırada hesaplandığından, nöbet de
+                // aynı sıralı zincire (ana maaş → nöbet → RTÇ → HTÇ) girmiş olur.
+                $kumulatifMatrahNobet = $this->getKumulatifMatrah($personel_id, $donemYilNobet, $donemAyNobet)
+                    + $this->estimateAnaMaasMatrahi($personel_id, $baslangic_tarihi, $bitis_tarihi);
 
                 // "Dahil mi" bayrakları RTÇ/HTÇ'deki gibi okunur; GV matrahı SGK/İşsizlik düşüldükten
                 // sonraki tutar üzerinden hesaplanır (RTÇ/HTÇ ile aynı kademeli yöntem).
@@ -3901,8 +3941,8 @@ class BordroPersonelModel extends Model
             // Net ve Prim Usülü için vergi/SGK yok
             $sgkIsciOrani = 0;
             $issizlikIsciOrani = 0;
-            $sgkIsverenOrani = ($genelAyarlarMap['sgk_isveren_orani'] ?? 21.75) / 100;
-            $issizlikIsverenOrani = ($genelAyarlarMap['issizlik_isveren_orani'] ?? 1.00) / 100;
+            $sgkIsverenOrani = 0;
+            $issizlikIsverenOrani = 0;
             $damgaVergisiOrani = 0;
         } else {
             $sgkIsciOrani = ($genelAyarlarMap['sgk_isci_orani'] ?? 14) / 100;
@@ -4431,8 +4471,6 @@ class BordroPersonelModel extends Model
             $brutEkOdemeler += $rtcHtcBrutToplam;
         }
 
-        $rtcHtcBrutToplamGercek = 0.0;
-
         // Her kesintiyi işle
         // NOT: Ücretsiz izin kesintisi artık burada yok, doğrudan brüt maaştan düşüldü
         $digerKesintiler = 0;
@@ -4495,10 +4533,6 @@ class BordroPersonelModel extends Model
 
         // ========== HESAPLAMALAR ==========
         $calisanBrutMaas = $brutMaas;
-        if ($this->hasMaasaDahilSosyalYardim($kayit)) {
-            $asgariBrutNominal = floatval($genelAyarlarMap['asgari_ucret_brut'] ?? 33030.00);
-            $calisanBrutMaas = round(($asgariBrutNominal / 30) * $maasHesapGunu, 2);
-        }
         if ($calisanBrutMaas < 0) $calisanBrutMaas = 0;
 
         $sgkMatrahi = $calisanBrutMaas + $sgkMatrahEkleri;
@@ -4512,12 +4546,7 @@ class BordroPersonelModel extends Model
         }
 
         if ($isNetMaas || $isPrimUsulu) {
-            if ($this->hasMaasaDahilSosyalYardim($kayit)) {
-                $baseSgkUnemployment = round($calisanBrutMaas * 0.15, 2);
-                $gelirVergisiMatrahi = ($calisanBrutMaas - $baseSgkUnemployment) + $vergiliMatrahEkleri;
-            } else {
-                $gelirVergisiMatrahi = $calisanBrutMaas + $vergiliMatrahEkleri;
-            }
+            $gelirVergisiMatrahi = $calisanBrutMaas + $vergiliMatrahEkleri;
         } else {
             $gelirVergisiMatrahi = ($calisanBrutMaas - $sgkIsci - $issizlikIsci) + $vergiliMatrahEkleri;
         }
@@ -4600,11 +4629,7 @@ class BordroPersonelModel extends Model
 
         $sgkIsveren = $sgkMatrahi * $sgkIsverenOrani;
         $issizlikIsveren = $sgkMatrahi * $issizlikIsverenOrani;
-        if ($isNetMaas || $isPrimUsulu) {
-            $toplamMaliyet = $calisanBrutMaas + $sgkIsveren + $issizlikIsveren + $brutEkOdemeler + $rtcHtcBrutToplamGercek;
-        } else {
-            $toplamMaliyet = $brutMaas + $sgkIsveren + $issizlikIsveren + $brutEkOdemeler;
-        }
+        $toplamMaliyet = $brutMaas + $sgkIsveren + $issizlikIsveren + $brutEkOdemeler;
 
         $toplamEkOdeme = $brutEkOdemeler + $netEkOdemeler;
 

@@ -2093,9 +2093,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $gelirVergisi = floatval($bp->gelir_vergisi ?? 0);
                 $damgaVergisi = floatval($bp->damga_vergisi ?? 0);
 
-                $sgkIsverenOraniYazdir = floatval($BordroParametre->getGenelAyar('sgk_isveren_orani', $donemBaslangic) ?? 20.5);
-                $issizlikIsverenOraniYazdir = floatval($BordroParametre->getGenelAyar('issizlik_isveren_orani', $donemBaslangic) ?? 2.0);
-
                 $asgariMatrarhGoster = !empty($bp->yemek_yardimi_dahil)
                     || !empty($bp->es_yardimi_dahil)
                     || stripos($maasDurumuGosterim, 'Net') !== false;
@@ -2585,8 +2582,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="panel-card">';
                 $html .= '<div class="panel-card-title">5. SGK İŞVEREN PAYI</div>';
                 $html .= '<div class="ref-card-list">';
-                $html .= '<div class="ref-card-item"><span class="label">SGK İşveren Payı (%' . number_format($sgkIsverenOraniYazdir, 2, ',', '.') . ')</span><span class="value">' . $fmt($sgkIsveren) . '</span></div>';
-                $html .= '<div class="ref-card-item"><span class="label">İşsizlik İşveren Payı (%' . number_format($issizlikIsverenOraniYazdir, 2, ',', '.') . ')</span><span class="value">' . $fmt($issizlikIsveren) . '</span></div>';
+                $html .= '<div class="ref-card-item"><span class="label">SGK İşveren Payı (%20.5)</span><span class="value">' . $fmt($sgkIsveren) . '</span></div>';
+                $html .= '<div class="ref-card-item"><span class="label">İşsizlik İşveren Payı (%2.0)</span><span class="value">' . $fmt($issizlikIsveren) . '</span></div>';
                 $html .= '</div>';
                 $html .= '<div class="ref-card-item total-row" style="border-top: 1px solid #e2e8f0; padding-top: 8px;"><span class="label">Toplam İşveren SGK</span><span class="value">' . $fmt($sgkIsveren + $issizlikIsveren) . '</span></div>';
                 $html .= '</div>';
@@ -2595,8 +2592,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="panel-card">';
                 $html .= '<div class="panel-card-title">İŞVEREN TOPLAM MALİYET ANALİZİ</div>';
                 $html .= '<div class="ref-card-list">';
-                $maliyetBrutToplam = (stripos($maasDurumuGosterim, 'Net') !== false || stripos($maasDurumuGosterim, 'Prim') !== false) ? $sgkMatrah : $displayToplamAlacak;
-                $html .= '<div class="ref-card-item"><span class="label">Brüt Toplam Kazançlar</span><span class="value">' . $fmt($maliyetBrutToplam) . '</span></div>';
+                $html .= '<div class="ref-card-item"><span class="label">Brüt Toplam Kazançlar</span><span class="value">' . $fmt($displayToplamAlacak) . '</span></div>';
                 $html .= '<div class="ref-card-item"><span class="label">SGK İşveren Katkısı</span><span class="value">' . $fmt($sgkIsveren) . '</span></div>';
                 $html .= '<div class="ref-card-item"><span class="label">İşsizlik İşveren Katkısı</span><span class="value">' . $fmt($issizlikIsveren) . '</span></div>';
                 $html .= '</div>';
