@@ -1129,7 +1129,7 @@ class BordroPersonelModel extends Model
                        SUM(tutar) as toplam_kesinti,
                        SUM(CASE WHEN tur = 'icra' THEN tutar ELSE 0 END) as guncel_icra_kesinti
                 FROM personel_kesintileri 
-                WHERE donem_id = ? AND silinme_tarihi IS NULL 
+                WHERE donem_id = ? AND silinme_tarihi IS NULL AND tekrar_tipi = 'tek_sefer'
                 GROUP BY personel_id
             ) pk_agg ON bp.personel_id = pk_agg.personel_id
             LEFT JOIN (
@@ -2556,7 +2556,7 @@ class BordroPersonelModel extends Model
 
                     // O döneme ait MEVCUT KESİNTİLERİ (Avans, İcra vb.) DB'den topla
                     // Bu noktada avans ve icra kayıtları çoktan oluşturulmuş olmalı (hesaplaMaas akışı gereği)
-                    $sqlKesinti = $this->db->prepare("SELECT SUM(tutar) FROM personel_kesintileri WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL");
+                    $sqlKesinti = $this->db->prepare("SELECT SUM(tutar) FROM personel_kesintileri WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL AND tekrar_tipi = 'tek_sefer'");
                     $sqlKesinti->execute([$personel_id, $donem_id]);
                     $toplamMevcutKesinti = floatval($sqlKesinti->fetchColumn() ?: 0);
 
@@ -5066,7 +5066,7 @@ class BordroPersonelModel extends Model
         $sql = $this->db->prepare("
             SELECT tur, SUM(tutar) as toplam_tutar, COUNT(*) as adet
             FROM personel_kesintileri 
-            WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL
+            WHERE personel_id = ? AND donem_id = ? AND silinme_tarihi IS NULL AND tekrar_tipi = 'tek_sefer'
             GROUP BY tur
             ORDER BY toplam_tutar DESC
         ");
@@ -5120,6 +5120,7 @@ class BordroPersonelModel extends Model
             WHERE personel_id = ? AND donem_id = ? 
               AND silinme_tarihi IS NULL
               AND durum = 'beklemede'
+              AND tekrar_tipi = 'tek_sefer'
         ");
         $sql->execute([$personel_id, $donem_id]);
         return $sql->fetch(PDO::FETCH_OBJ);
@@ -5147,7 +5148,7 @@ class BordroPersonelModel extends Model
             LEFT JOIN (
                 SELECT personel_id, COUNT(*) AS adet, SUM(tutar) AS toplam_tutar
                 FROM personel_kesintileri
-                WHERE donem_id = ? AND silinme_tarihi IS NULL AND durum = 'beklemede'
+                WHERE donem_id = ? AND silinme_tarihi IS NULL AND durum = 'beklemede' AND tekrar_tipi = 'tek_sefer'
                 GROUP BY personel_id
             ) pk ON bp.personel_id = pk.personel_id
             WHERE bp.id IN ($placeholders)

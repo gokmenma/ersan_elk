@@ -212,7 +212,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         FROM personel_kesintileri pk
                         JOIN personel p ON pk.personel_id = p.id
                         LEFT JOIN personel_icralari pi ON pk.icra_id = pi.id
-                        WHERE pk.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = :firmaId AND pk.olusturma_tarihi BETWEEN :startDate AND :endDate
+                        WHERE pk.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = :firmaId AND pk.olusturma_tarihi BETWEEN :startDate AND :endDate AND pk.tekrar_tipi = 'tek_sefer'
                         UNION ALL
                         SELECT pe.id, 
                                CONVERT(p.adi_soyadi USING utf8mb4) as adi_soyadi, 

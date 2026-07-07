@@ -1528,9 +1528,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         foreach ($kesintiKayitlari as $kk) {
                             $kkLabel = $kesintiTurEtiketleri[$kk->tur] ?? ucfirst($kk->tur);
                             if ($kkLabel === $kes->etiket && $kk->tur !== 'izin_kesinti') {
-                                $dtStr = !empty($kk->tarih) ? date('d.m.Y', strtotime($kk->tarih)) : '-';
                                 $html .= '<tr class="child-row collapse ' . $cId . '">
-                                            <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . $dtStr . ' - ' . htmlspecialchars($kk->aciklama ?: '-') . '</td>
+                                            <td class="ps-4"><i class="bx bx-subdirectory-right me-1 opacity-50"></i>' . htmlspecialchars($kk->aciklama ?: '-') . '</td>
                                             <td class="text-end pe-4">-' . number_format($kk->tutar, 2, ',', '.') . ' ₺</td>
                                           </tr>';
                             }
@@ -2019,6 +2018,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 // Fetch day counts from DB/puantaj using model helper methods to ensure accuracy
                 $donemBaslangic = $donemBilgi->baslangic_tarihi;
+                $parametrelerMap = $BordroParametre->getAllParametrelerMap($donemBaslangic);
                 $donemBitis = $donemBilgi->bitis_tarihi;
                 $personelId = $bp->personel_id;
 
@@ -2564,7 +2564,111 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="col"><div class="ref-card">';
                 $html .= '<div class="ref-card-title">4. DİĞER KESİNTİLER</div>';
                 $html .= '<div class="ref-card-list">';
-                $html .= '<div class="ref-card-item"><span class="label">İcra Kesintisi</span><span class="value">' . $fmt($icraTutar, true) . '</span></div>';
+                $icraMatrahDetaylari = [];
+                $bankaYatacakBazModal = round(($asgariUcretNet / 30) * $sskGun, 2);
+                $icraMatrahDetaylari[] = [
+                    'label' => 'Net Asgari Ücret (' . $sskGun . ' Gün)',
+                    'value' => number_format($bankaYatacakBazModal, 2, ',', '.') . ' ₺',
+                    'renk' => '#ffffff'
+                ];
+
+                $yemekParam = $parametrelerMap['yemek_yardimi_tum'] ?? $parametrelerMap['yemek'] ?? null;
+                $yemekIcraDahil = $yemekParam ? (bool)$yemekParam->icra_pirim_dahil : true;
+                $yemekDahilTutar = floatval($ozetDetay['dahil_yemek_yardimi'] ?? 0);
+                if ($yemekIcraDahil && $yemekDahilTutar > 0) {
+                    $icraMatrahDetaylari[] = [
+                        'label' => 'Yemek Yardımı (Maaşa Dahil)',
+                        'value' => '+' . number_format($yemekDahilTutar, 2, ',', '.') . ' ₺',
+                        'renk' => '#10b981'
+                    ];
+                }
+
+                $esParam = $parametrelerMap['es_yardimi'] ?? $parametrelerMap['aile_yardimi'] ?? null;
+                $esIcraDahil = $esParam ? (bool)$esParam->icra_pirim_dahil : true;
+                $esDahilTutar = floatval($ozetDetay['dahil_es_yardimi'] ?? 0);
+                if ($esIcraDahil && $esDahilTutar > 0) {
+                    $icraMatrahDetaylari[] = [
+                        'label' => 'Eş Yardımı (Maaşa Dahil)',
+                        'value' => '+' . number_format($esDahilTutar, 2, ',', '.') . ' ₺',
+                        'renk' => '#10b981'
+                    ];
+                }
+
+                $rtcParam = $parametrelerMap['resmi_tatil_calisma'] ?? null;
+                $htcParam = $parametrelerMap['hafta_tatili_calisma'] ?? null;
+                $rtcIcraDahil = $rtcParam ? (bool)$rtcParam->icra_pirim_dahil : true;
+                $htcIcraDahil = $htcParam ? (bool)$htcParam->icra_pirim_dahil : true;
+
+                $rtcNetEtki = 0.0;
+                $htcNetEtki = 0.0;
+                if ($rtcResmiTutar > 0 && $rtcIcraDahil) {
+                    $rtcNetEtki = $rtcHedefNetModal;
+                    $icraMatrahDetaylari[] = [
+                        'label' => 'Resmi Tatil Çalışma Net',
+                        'value' => '+' . number_format($rtcNetEtki, 2, ',', '.') . ' ₺',
+                        'renk' => '#10b981'
+                    ];
+                }
+                if ($htcResmiTutar > 0 && $htcIcraDahil) {
+                    $htcNetEtki = $htcHedefNetModal;
+                    $icraMatrahDetaylari[] = [
+                        'label' => 'Hafta Tatili Çalışma Net',
+                        'value' => '+' . number_format($htcNetEtki, 2, ',', '.') . ' ₺',
+                        'renk' => '#10b981'
+                    ];
+                }
+
+                $ekOdemelerDetayList = $detayData['ek_odemeler'] ?? [];
+                foreach ($ekOdemelerDetayList as $ek) {
+                    $ekKod = $ek['kod'] ?? '';
+                    $ekTutar = floatval($ek['net_etki'] ?? $ek['tutar'] ?? 0);
+                    if ($ekTutar <= 0) continue;
+                    if (strpos($ekKod, 'yemek') !== false || strpos($ekKod, 'es_yardimi') !== false || strpos($ekKod, 'aile') !== false || $ekKod === 'yuvarlama_farki' || $ekKod === 'yemek_yardimi_dengeleme') {
+                        continue;
+                    }
+                    $ekParam = $parametrelerMap[$ekKod] ?? null;
+                    if ($ekParam && !empty($ekParam->icra_pirim_dahil) && $ekParam->icra_pirim_dahil == 1) {
+                        $isAbsorbed = !empty($bp->yemek_yardimi_dahil) && ($ekParam->odeme_yontemi ?? 'banka') === 'banka';
+                        if (!$isAbsorbed) {
+                            $icraMatrahDetaylari[] = [
+                                'label' => htmlspecialchars($ek['etiket'] ?? $ekKod, ENT_QUOTES, 'UTF-8'),
+                                'value' => '+' . number_format($ekTutar, 2, ',', '.') . ' ₺',
+                                'renk' => '#10b981'
+                            ];
+                        }
+                    }
+                }
+
+                $icraMatrahToplami = $bankaYatacakBazModal;
+                if ($yemekIcraDahil) $icraMatrahToplami += $yemekDahilTutar;
+                if ($esIcraDahil) $icraMatrahToplami += $esDahilTutar;
+                if ($rtcIcraDahil) $icraMatrahToplami += $rtcNetEtki;
+                if ($htcIcraDahil) $icraMatrahToplami += $htcNetEtki;
+                foreach ($ekOdemelerDetayList as $ek) {
+                    $ekKod = $ek['kod'] ?? '';
+                    $ekTutar = floatval($ek['net_etki'] ?? $ek['tutar'] ?? 0);
+                    if ($ekTutar <= 0) continue;
+                    if (strpos($ekKod, 'yemek') !== false || strpos($ekKod, 'es_yardimi') !== false || strpos($ekKod, 'aile') !== false || $ekKod === 'yuvarlama_farki' || $ekKod === 'yemek_yardimi_dengeleme') {
+                        continue;
+                    }
+                    $ekParam = $parametrelerMap[$ekKod] ?? null;
+                    if ($ekParam && !empty($ekParam->icra_pirim_dahil) && $ekParam->icra_pirim_dahil == 1) {
+                        $isAbsorbed = !empty($bp->yemek_yardimi_dahil) && ($ekParam->odeme_yontemi ?? 'banka') === 'banka';
+                        if (!$isAbsorbed) {
+                            $icraMatrahToplami += $ekTutar;
+                        }
+                    }
+                }
+
+                $icraMatrahDetaylari[] = [
+                    'label' => 'Toplam İcra Matrahı',
+                    'value' => number_format($icraMatrahToplami, 2, ',', '.') . ' ₺',
+                    'renk' => '#38bdf8'
+                ];
+
+                $icraPopoverHtml = $buildHesapDetayPopover($icraMatrahDetaylari, 'İcra Matrahı Detayları (Kesintiye Dahil Kalemler)');
+
+                $html .= '<div class="ref-card-item' . ($icraTutar > 0 ? ' hover-popover-trigger' : '') . '"><span class="label">İcra Kesintisi' . ($icraTutar > 0 ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($icraTutar, true) . '</span>' . ($icraTutar > 0 ? $icraPopoverHtml : '') . '</div>';
                 $html .= '<div class="ref-card-item"><span class="label">Avans Mahsubu</span><span class="value">' . $fmt($avansTutar, true) . '</span></div>';
                 $html .= '<div class="ref-card-item"><span class="label">Sendika Aidatı</span><span class="value">' . $fmt($sendikaTutar, true) . '</span></div>';
                 $html .= '<div class="ref-card-item"><span class="label">Diğer Özel Kesintiler</span><span class="value">' . $fmt($digerKesintiTutar, true) . '</span></div>';
