@@ -2464,7 +2464,6 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="col"><div class="ref-card">';
                 $html .= '<div class="ref-card-title">3. SOSYAL YARDIMLAR</div>';
                 $html .= '<div class="ref-card-list">';
-                $yuvarlamaFarki = floatval($ozetDetay['yuvarlama_farki'] ?? 0);
                 $yemekPop = '';
                 if ($yuvarlamaFarki != 0) {
                     $yemekHesaplanan = $yemekYardimi - $yuvarlamaFarki;
@@ -2475,8 +2474,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 $yemekLabelText = 'Yemek Yardımı';
-                $dahilYemekGun = intval($ozetDetay['dahil_yemek_gun'] ?? 0);
-                $dahilYemekGunluk = floatval($ozetDetay['dahil_yemek_gunluk'] ?? 0);
+                $dahilYemekGun = intval($includedAllowanceFiiliGun ?? 0);
+                $dahilYemekGunluk = $dahilYemekGun > 0 ? round($yemekYardimi / $dahilYemekGun, 2) : 0.0;
                 if ($dahilYemekGun > 0 && $dahilYemekGunluk > 0) {
                     $yemekLabelText .= ' <small class="text-muted" style="font-size:0.75rem; font-weight:normal; letter-spacing:0px;">( ' . $dahilYemekGun . ' x ' . number_format($dahilYemekGunluk, 2, ',', '.') . ' TL )</small>';
                 }

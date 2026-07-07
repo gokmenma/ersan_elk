@@ -750,13 +750,15 @@ class BordroPersonelModel extends Model
             if ($htcGun > 0) {
                 $htcEkOdemeGosterim = round($maasTutari / 30, 4) * $htcGun;
                 $rawEkOdeme += $htcEkOdemeGosterim;
-                // HTÇ net fazla (brüt - asgari) yemek havuzuna taşınıyor; yalnızca resmi kısım bankaya
+                // HTÇ net fazla (ham - resmi net) yemek havuzuna taşınıyor; yalnızca resmi kısım bankaya
                 $htcBrutGosterim = round($htcEkOdemeGosterim, 2);
                 // HTÇ (Maaşa Dahil) günü için garanti edilen "ele geçen" hedef: asgari ücretin günlük neti
                 $htcResmiBrutGosterim = round($gunlukAsgari * $htcGun, 2);
             }
         }
-        $htcNetFazlaGosterim = $htcGun > 0 ? (round($maasTutari / 30, 4) - round($asgariUcretBrut / 30, 4)) * $htcGun : 0.0;
+        // HTÇ'nin ham/brüt karşılığı ile bankaya resmi olarak yatan net karşılığı arasındaki fark
+        // (elden'e gitmesi yerine) yemek havuzuna yönlendirilir; günlük yemek istisna limitini aşarsa kalan yine elden'e gider.
+        $htcNetFazlaGosterim = $htcGun > 0 ? round($htcEkOdemeGosterim - $htcResmiBrutGosterim, 2) : 0.0;
 
         // "Maaşa Dahil" personelde HTÇ'nin asgariyi aşan net fazlası yemek havuzuna yönlendiriliyor (htcNetFazlaGosterim);
         // bu kısmı vergi/ödeme hesabına da katmak çifte sayım olur. Bu yüzden vergi/ödeme hesabında HTÇ için
@@ -4428,6 +4430,7 @@ class BordroPersonelModel extends Model
         $htcNetFazlaHesap = 0.0;
         $rtcHedefNetHesap = 0.0;
         $htcResmiHedefNetHesap = 0.0;
+        $htcEkOdeme = 0.0;
         if ($rtcGunHesap > 0 || $htcGunHesap > 0) {
             $gunlukAsgariHesap = round(floatval($genelAyarlarMap['asgari_ucret_net'] ?? 17002.12) / 30, 4);
             $gunlukAsgariBrutHesap = round(floatval($genelAyarlarMap['asgari_ucret_brut'] ?? 33030.00) / 30, 4);
@@ -4443,7 +4446,6 @@ class BordroPersonelModel extends Model
             $htcResmiBrutHesap = round($gunlukAsgariBrutHesap * $htcGunHesap, 2);
             // HTÇ (Maaşa Dahil) günü için garanti edilen "ele geçen" hedef: asgari ücretin günlük neti
             $htcResmiHedefNetHesap = round($gunlukAsgariHesap * $htcGunHesap, 2);
-            $htcNetFazlaHesap = $htcEkOdeme - $gunlukAsgariHesap * $htcGunHesap;
             $htcBrutHesap = round($htcEkOdeme, 2);
         }
         // "Maaşa Dahil" personelde HTÇ'nin asgariyi aşan net fazlası zaten yemek havuzuna (htcNetFazlaHesap)
@@ -4616,6 +4618,13 @@ class BordroPersonelModel extends Model
             $icraMatrahEkleri += $rtcHtcNetOdeme;
             $yontemliOdemeler['banka'] += $rtcHtcSonuc['rtc']['net'];
             $yontemliOdemeler['banka'] += $rtcHtcSonuc['htc']['net'];
+
+            // HTÇ'nin ham/brüt karşılığı ile bankaya GERÇEKTEN yatan net karşılığı (gross-up sonrası,
+            // basit asgari-net formülünden değil) arasındaki fark yemek havuzuna yönlendirilir.
+            // Gerçek gross-up sonucu kullanılır ki kuruş bazında banka toplamıyla tam örtüşsün.
+            if ($htcGunHesap > 0) {
+                $htcNetFazlaHesap = round($htcEkOdeme - floatval($rtcHtcSonuc['htc']['net']), 2);
+            }
         }
 
         $actualDamgaVergisiOrani = ($genelAyarlarMap['damga_vergisi_orani'] ?? 0.759) / 100;
@@ -4820,7 +4829,10 @@ class BordroPersonelModel extends Model
             $asgariYatacak = round($asgariYatacak * $nonKurRatio, 2);
             
             // USER REQ: Net Maaş (Hakediş) = Asgari + Dahil Yardımlar + Diğer Ek Ödemeler
-            $hedefHakedisDahilEk = ($isPrimUsuluDahilYardim ? $primUsuluPuantajHedefToplami : $targetNetHakedis) + $bankayaTasinabilirEkOdeme;
+            // HTÇ'nin ham/brüt karşılığı (htcEkOdeme) yemek havuzunu şişirmesin diye $bankayaTasinabilirEkOdeme'den
+            // hariç tutulmuştu (yukarıdaki hesaplaMaasaDahilYardimDagilimi çağrısı); kişi bu tutarı yine de hak
+            // ettiğinden toplam hakedişe burada eklenir (hesaplaOrtakGosterimDegerleri ile aynı mantık).
+            $hedefHakedisDahilEk = ($isPrimUsuluDahilYardim ? $primUsuluPuantajHedefToplami : $targetNetHakedis) + $bankayaTasinabilirEkOdeme + $htcEkOdeme + $yuvarlamaFarki;
             $baseHakedis = max($hedefHakedisDahilEk, $asgariYatacak + $toplamDahilYardim);
             
             $netMaas = $baseHakedis;

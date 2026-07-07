@@ -504,6 +504,15 @@ class BordroParametreModel extends Model
         $damga = round($brut * $damgaOrani, 2);
         $net = round($brut - $sgk - $issizlik - $gv - $damga, 2);
 
+        // Yakınsama toleransı (0.01) ve brütün küsürata yuvarlanması, hedef net tutarı kuruş bazında
+        // ıskalayabilir. Hedef net "garanti edilen" tutar olduğundan, kalan kuruş farkı brüte eklenerek
+        // net tam olarak hedefe eşitlenir.
+        $fark = round($hedefNet - $net, 2);
+        if ($fark != 0.0) {
+            $brut = round($brut + $fark, 2);
+            $net = round($hedefNet, 2);
+        }
+
         return [
             'brut' => $brut,
             'sgk' => $sgk,
