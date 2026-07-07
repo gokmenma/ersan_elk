@@ -3901,8 +3901,8 @@ class BordroPersonelModel extends Model
             // Net ve Prim Usülü için vergi/SGK yok
             $sgkIsciOrani = 0;
             $issizlikIsciOrani = 0;
-            $sgkIsverenOrani = 0;
-            $issizlikIsverenOrani = 0;
+            $sgkIsverenOrani = ($genelAyarlarMap['sgk_isveren_orani'] ?? 21.75) / 100;
+            $issizlikIsverenOrani = ($genelAyarlarMap['issizlik_isveren_orani'] ?? 1.00) / 100;
             $damgaVergisiOrani = 0;
         } else {
             $sgkIsciOrani = ($genelAyarlarMap['sgk_isci_orani'] ?? 14) / 100;
@@ -3922,6 +3922,12 @@ class BordroPersonelModel extends Model
         $vergiliMatrahEkleri = 0;  // Sadece gelir vergisi matrahına eklenecek
         $sgkMatrahEkleri = 0;      // SGK matrahına eklenecek
         $damgaMatrahEkleri = 0;    // Damga vergisi matrahına eklenecek
+        // Prim Usülü/Net Maaşta SGK işçi oranı (sgkIsciOrani) sıfırlandığı için sgkMatrahEkleri'nin
+        // İşçi SGK Payı'na yansıması engellenir; bu yüzden "sgk_matrahi_dahil" işaretli, resmi_tutarlı
+        // ek ödemelerin (ör. nöbet) gerçek SGK/İşsizlik payı RTÇ/HTÇ'deki gibi ayrıca biriktirilip
+        // sgkIsci/issizlikIsci'ye doğrudan eklenir.
+        $primUsuluGercekSgkEkleri = 0;
+        $primUsuluGercekIssizlikEkleri = 0;
         $toplamMesaiTutar = 0;     // Özel olarak mesai tutarını ayır
         $toplamKesinti = 0;        // Net'ten düşülecek kesintiler
         $icraMatrahEkleri = 0;     // İcra matrahına eklenecek ek gelirler
@@ -4334,15 +4340,22 @@ class BordroPersonelModel extends Model
             }
             if ($rTutar > 0) {
                 $rTutarSgkDahil = $parametre && !empty($parametre->sgk_matrahi_dahil);
+                $rTutarSgkOrani = ($genelAyarlarMap['sgk_isci_orani'] ?? 14) / 100;
+                $rTutarIssizlikOrani = ($genelAyarlarMap['issizlik_isci_orani'] ?? 1) / 100;
                 if ($rTutarSgkDahil) {
                     $sgkMatrahEkleri += $rTutar;
+                    // Prim Usülü/Net Maaşta genel SGK oranı sıfırlandığı için sgkMatrahEkleri İşçi SGK
+                    // Payı'na yansımaz; RTÇ/HTÇ'deki gibi gerçek SGK/İşsizlik payını burada ayrıca
+                    // biriktirip sgkIsci/issizlikIsci'ye doğrudan ekleriz (aşağıda kullanılır).
+                    if ($isNetMaas || $isPrimUsulu) {
+                        $primUsuluGercekSgkEkleri += round($rTutar * $rTutarSgkOrani, 2);
+                        $primUsuluGercekIssizlikEkleri += round($rTutar * $rTutarIssizlikOrani, 2);
+                    }
                 }
                 if ($parametre && !empty($parametre->gelir_vergisi_dahil)) {
                     // SGK dahilse GV matrahına SGK/İşsizlik düşüldükten sonraki tutar eklenir
                     // (RTÇ/HTÇ'deki kademeli SGK-sonra-GV yöntemiyle tutarlı olsun diye).
                     if ($rTutarSgkDahil) {
-                        $rTutarSgkOrani = ($genelAyarlarMap['sgk_isci_orani'] ?? 14) / 100;
-                        $rTutarIssizlikOrani = ($genelAyarlarMap['issizlik_isci_orani'] ?? 1) / 100;
                         $vergiliMatrahEkleri += max(0, round($rTutar - ($rTutar * $rTutarSgkOrani) - ($rTutar * $rTutarIssizlikOrani), 2));
                     } else {
                         $vergiliMatrahEkleri += $rTutar;
@@ -4480,14 +4493,29 @@ class BordroPersonelModel extends Model
 
         // ========== HESAPLAMALAR ==========
         $calisanBrutMaas = $brutMaas;
+        if ($this->hasMaasaDahilSosyalYardim($kayit)) {
+            $asgariBrutNominal = floatval($genelAyarlarMap['asgari_ucret_brut'] ?? 33030.00);
+            $calisanBrutMaas = round(($asgariBrutNominal / 30) * $maasHesapGunu, 2);
+        }
         if ($calisanBrutMaas < 0) $calisanBrutMaas = 0;
 
         $sgkMatrahi = $calisanBrutMaas + $sgkMatrahEkleri;
         $sgkIsci = $sgkMatrahi * $sgkIsciOrani;
         $issizlikIsci = $sgkMatrahi * $issizlikIsciOrani;
+        if ($isNetMaas || $isPrimUsulu) {
+            // Genel SGK oranı bu personel tipinde sıfır olduğundan, "sgk_matrahi_dahil" işaretli
+            // resmi_tutarlı ek ödemelerin (ör. nöbet) gerçek SGK/İşsizlik payı burada eklenir.
+            $sgkIsci += $primUsuluGercekSgkEkleri;
+            $issizlikIsci += $primUsuluGercekIssizlikEkleri;
+        }
 
         if ($isNetMaas || $isPrimUsulu) {
-            $gelirVergisiMatrahi = $calisanBrutMaas + $vergiliMatrahEkleri;
+            if ($this->hasMaasaDahilSosyalYardim($kayit)) {
+                $baseSgkUnemployment = round($calisanBrutMaas * 0.15, 2);
+                $gelirVergisiMatrahi = ($calisanBrutMaas - $baseSgkUnemployment) + $vergiliMatrahEkleri;
+            } else {
+                $gelirVergisiMatrahi = $calisanBrutMaas + $vergiliMatrahEkleri;
+            }
         } else {
             $gelirVergisiMatrahi = ($calisanBrutMaas - $sgkIsci - $issizlikIsci) + $vergiliMatrahEkleri;
         }
@@ -4544,6 +4572,13 @@ class BordroPersonelModel extends Model
             $sgkIsci += $rtcHtcSgkIsci;
             $issizlikIsci += $rtcHtcIssizlikIsci;
             $gelirVergisi += $rtcHtcGelirVergisi;
+
+            // Damga Vergisi Matrahı gibi, SGK Matrahı da RTÇ/HTÇ'nin (dahil işaretli) brüt tutarını
+            // içermeli — bu sadece raporlama/bildirge amaçlı; gerçek SGK/İşsizlik kesintisi zaten
+            // yukarıda $rtcHtcSgkIsci/$rtcHtcIssizlikIsci ile ayrıca eklendi.
+            $rtcHtcSgkMatrahKatkisi = ($rtcSgkDahil ? $rtcHtcSonuc['rtc']['brut'] : 0.0) + ($htcSgkDahil ? $rtcHtcSonuc['htc']['brut'] : 0.0);
+            $sgkMatrahEkleri += $rtcHtcSgkMatrahKatkisi;
+            $sgkMatrahi += $rtcHtcSgkMatrahKatkisi;
 
             $netEkOdemeler += $rtcHtcNetOdeme;
             $icraMatrahEkleri += $rtcHtcNetOdeme;

@@ -1254,7 +1254,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $sozlesmeMaasFarkiGosterim = $isPrimUsulu
                         ? max(0, round($sozlesmeHakedisToplamGosterim - $sozlesmeTabanGosterim - $displayMealDeduction - $spouseDeduction, 2))
                         : $modalMaasFarkiGosterim;
-                    $resmiAlacakGosterim = $bankaOdemeModal;
+                    $resmiAlacakGosterim = floatval($hesap['bankaMatrahi'] ?? 0);
                     $asgariMatrarhGoster = !empty($bp->yemek_yardimi_dahil)
                         || !empty($bp->es_yardimi_dahil)
                         || stripos($maasDurumuGosterim, 'Net') !== false
@@ -2093,6 +2093,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $gelirVergisi = floatval($bp->gelir_vergisi ?? 0);
                 $damgaVergisi = floatval($bp->damga_vergisi ?? 0);
 
+                $sgkIsverenOraniYazdir = floatval($BordroParametre->getGenelAyar('sgk_isveren_orani', $donemBaslangic) ?? 20.5);
+                $issizlikIsverenOraniYazdir = floatval($BordroParametre->getGenelAyar('issizlik_isveren_orani', $donemBaslangic) ?? 2.0);
+
                 $asgariMatrarhGoster = !empty($bp->yemek_yardimi_dahil)
                     || !empty($bp->es_yardimi_dahil)
                     || stripos($maasDurumuGosterim, 'Net') !== false;
@@ -2263,16 +2266,86 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     return $popHtml;
                 };
 
-                $htcPopoverHtml = '<div class="ref-popover-content">';
-                if ($htcEldenTutar > 0) {
-                    $htcPopoverHtml .= '<div style="display:flex; justify-content:space-between; gap:20px; margin-bottom:6px; border-bottom: 1px dashed rgba(255,255,255,0.1); padding-bottom: 4px;"><span style="color:#cbd5e1;">Maaş Farkı <small style="color:#94a3b8;">(Banka)</small></span><span style="color:#10b981; font-weight:bold;">+' . number_format($htcEldenTutar, 2, ',', '.') . ' ₺</span></div>';
-                }
-                $htcPopoverHtml .= '<div style="display:flex; justify-content:space-between; gap:20px;"><span style="color:#cbd5e1;">Resmi alacağa dahil <small style="color:#94a3b8;">(Asgari Ücret)</small></span><span style="color:#10b981; font-weight:bold;">+' . number_format($htcResmiTutar, 2, ',', '.') . ' ₺</span></div>';
-                $htcPopoverHtml .= '</div>';
+                // Hesaplama detayını (hedef net, SGK, İşsizlik, GV, Damga, Brüt) elle uğraşmadan
+                // popover'da gösteren yardımcı — manuel hesaplama yapmak isteyen kullanıcı da tüm
+                // ara verileri burada hazır bulur.
+                $buildHesapDetayPopover = function (array $satirlar, string $ustBilgi = '') {
+                    $h = '<div class="ref-popover-content" style="min-width:230px;">';
+                    if ($ustBilgi !== '') {
+                        $h .= '<div style="color:#94a3b8; font-size:0.72rem; margin-bottom:6px; border-bottom:1px dashed rgba(255,255,255,0.15); padding-bottom:5px;">' . $ustBilgi . '</div>';
+                    }
+                    foreach ($satirlar as $i => $s) {
+                        $son = ($i === array_key_last($satirlar));
+                        $stil = $son ? 'margin-top:5px; padding-top:5px; border-top:1px solid rgba(255,255,255,0.15); font-weight:bold;' : 'margin-bottom:4px;';
+                        $renk = $s['renk'] ?? '#e2e8f0';
+                        $h .= '<div style="display:flex; justify-content:space-between; gap:20px; ' . $stil . '"><span style="color:#cbd5e1;">' . $s['label'] . '</span><span style="color:' . $renk . ';">' . $s['value'] . '</span></div>';
+                    }
+                    $h .= '</div>';
+                    return $h;
+                };
 
-                $rtcPopoverHtml = '<div class="ref-popover-content">';
-                $rtcPopoverHtml .= '<div style="display:flex; justify-content:space-between; gap:20px;"><span style="color:#cbd5e1;">Resmi alacağa dahil <small style="color:#94a3b8;">(Asgari Ücret)</small></span><span style="color:#10b981; font-weight:bold;">+' . number_format($rtcResmiTutar, 2, ',', '.') . ' ₺</span></div>';
-                $rtcPopoverHtml .= '</div>';
+                $htcPopoverSatirlar = [];
+                if ($htcEldenTutar > 0) {
+                    $htcPopoverSatirlar[] = ['label' => 'Maaş Farkı <small style="color:#94a3b8;">(Banka)</small>', 'value' => '+' . number_format($htcEldenTutar, 2, ',', '.') . ' ₺', 'renk' => '#10b981'];
+                }
+                if (isset($htcGrossModal)) {
+                    $htcPopoverSatirlar[] = ['label' => 'Hedef Net <small style="color:#94a3b8;">(asgari ücret/30 × gün)</small>', 'value' => number_format($htcHedefNetModal, 2, ',', '.') . ' ₺'];
+                    $htcPopoverSatirlar[] = ['label' => 'SGK İşçi Payı (%14)', 'value' => '-' . number_format($htcGrossModal['sgk'], 2, ',', '.') . ' ₺', 'renk' => '#f87171'];
+                    $htcPopoverSatirlar[] = ['label' => 'İşsizlik Primi (%1)', 'value' => '-' . number_format($htcGrossModal['issizlik'], 2, ',', '.') . ' ₺', 'renk' => '#f87171'];
+                    $htcPopoverSatirlar[] = ['label' => 'Gelir Vergisi', 'value' => '-' . number_format($htcGrossModal['gelir_vergisi'], 2, ',', '.') . ' ₺', 'renk' => '#f87171'];
+                    $htcPopoverSatirlar[] = ['label' => 'Damga Vergisi', 'value' => '-' . number_format($htcGrossModal['damga'], 2, ',', '.') . ' ₺', 'renk' => '#f87171'];
+                    $htcPopoverSatirlar[] = ['label' => 'Brüt (Resmi alacağa dahil)', 'value' => '+' . number_format($htcResmiTutar, 2, ',', '.') . ' ₺', 'renk' => '#10b981'];
+                } else {
+                    $htcPopoverSatirlar[] = ['label' => 'Resmi alacağa dahil <small style="color:#94a3b8;">(Asgari Ücret)</small>', 'value' => '+' . number_format($htcResmiTutar, 2, ',', '.') . ' ₺', 'renk' => '#10b981'];
+                }
+                $htcPopoverHtml = $buildHesapDetayPopover($htcPopoverSatirlar, 'Net hedef, SGK/GV/Damga eklenerek brüte tamamlanır');
+
+                $rtcPopoverSatirlar = [];
+                if (isset($rtcGrossModal)) {
+                    $rtcPopoverSatirlar[] = ['label' => 'Hedef Net <small style="color:#94a3b8;">(asgari ücret/30 × gün)</small>', 'value' => number_format($rtcHedefNetModal, 2, ',', '.') . ' ₺'];
+                    $rtcPopoverSatirlar[] = ['label' => 'SGK İşçi Payı (%14)', 'value' => '-' . number_format($rtcGrossModal['sgk'], 2, ',', '.') . ' ₺', 'renk' => '#f87171'];
+                    $rtcPopoverSatirlar[] = ['label' => 'İşsizlik Primi (%1)', 'value' => '-' . number_format($rtcGrossModal['issizlik'], 2, ',', '.') . ' ₺', 'renk' => '#f87171'];
+                    $rtcPopoverSatirlar[] = ['label' => 'Gelir Vergisi', 'value' => '-' . number_format($rtcGrossModal['gelir_vergisi'], 2, ',', '.') . ' ₺', 'renk' => '#f87171'];
+                    $rtcPopoverSatirlar[] = ['label' => 'Damga Vergisi', 'value' => '-' . number_format($rtcGrossModal['damga'], 2, ',', '.') . ' ₺', 'renk' => '#f87171'];
+                    $rtcPopoverSatirlar[] = ['label' => 'Brüt (Resmi alacağa dahil)', 'value' => '+' . number_format($rtcResmiTutar, 2, ',', '.') . ' ₺', 'renk' => '#10b981'];
+                } else {
+                    $rtcPopoverSatirlar[] = ['label' => 'Resmi alacağa dahil <small style="color:#94a3b8;">(Asgari Ücret)</small>', 'value' => '+' . number_format($rtcResmiTutar, 2, ',', '.') . ' ₺', 'renk' => '#10b981'];
+                }
+                $rtcPopoverHtml = $buildHesapDetayPopover($rtcPopoverSatirlar, 'Net hedef, SGK/GV/Damga eklenerek brüte tamamlanır');
+
+                // Fazla Mesai Ücreti (Hafta İçi Nöbet resmi tutarı) hesaplama detayı
+                $nobetGrossModal = null;
+                if ($nobetResmiBrutToplam > 0 && $nobetResmiSaatToplam > 0) {
+                    $nobetParam = $BordroParametre->getByKod('hafta_ici_nobet');
+                    $nobetSgkDahilModal = $nobetParam ? !empty($nobetParam->sgk_matrahi_dahil) : true;
+                    $nobetGvDahilModal = $nobetParam ? !empty($nobetParam->gelir_vergisi_dahil) : true;
+                    $nobetDamgaDahilModal = $nobetParam ? !empty($nobetParam->damga_vergisi_dahil) : true;
+                    $nobetSaatlikNetHedef = (floatval($asgariUcretNet) / 225) * 1.5;
+                    $nobetHedefNetModal = round($nobetSaatlikNetHedef * $nobetResmiSaatToplam, 2);
+                    $kumulatifMatrahNobetModal = floatval($matrahlar['onceki_kumulatif'] ?? 0);
+                    $sgkOraniNobetModal = floatval($BordroParametre->getGenelAyar('sgk_isci_orani', $donemBaslangic) ?? 14) / 100;
+                    $issizlikOraniNobetModal = floatval($BordroParametre->getGenelAyar('issizlik_isci_orani', $donemBaslangic) ?? 1) / 100;
+                    $damgaOraniNobetModal = floatval($BordroParametre->getGenelAyar('damga_vergisi_orani', $donemBaslangic) ?? 0.759) / 100;
+                    $nobetGrossModal = $BordroParametre->bruteUpForNetTarget(
+                        $nobetHedefNetModal,
+                        $kumulatifMatrahNobetModal,
+                        $nobetSgkDahilModal ? $sgkOraniNobetModal : 0.0,
+                        $nobetSgkDahilModal ? $issizlikOraniNobetModal : 0.0,
+                        $nobetDamgaDahilModal ? $damgaOraniNobetModal : 0.0,
+                        (int) date('Y', strtotime($donemBaslangic)),
+                        $nobetGvDahilModal
+                    );
+                    $nobetPopoverSatirlar = [
+                        ['label' => 'Hedef Net <small style="color:#94a3b8;">(asgari saatlik net × 1,5 × saat)</small>', 'value' => number_format($nobetHedefNetModal, 2, ',', '.') . ' ₺'],
+                        ['label' => 'SGK İşçi Payı (%14)', 'value' => '-' . number_format($nobetGrossModal['sgk'], 2, ',', '.') . ' ₺', 'renk' => '#f87171'],
+                        ['label' => 'İşsizlik Primi (%1)', 'value' => '-' . number_format($nobetGrossModal['issizlik'], 2, ',', '.') . ' ₺', 'renk' => '#f87171'],
+                        ['label' => 'Gelir Vergisi', 'value' => '-' . number_format($nobetGrossModal['gelir_vergisi'], 2, ',', '.') . ' ₺', 'renk' => '#f87171'],
+                        ['label' => 'Damga Vergisi', 'value' => '-' . number_format($nobetGrossModal['damga'], 2, ',', '.') . ' ₺', 'renk' => '#f87171'],
+                        ['label' => 'Brüt (Fazla Mesai Ücreti)', 'value' => '+' . number_format($nobetResmiBrutToplam, 2, ',', '.') . ' ₺', 'renk' => '#10b981'],
+                        ['label' => 'Kişinin kendi alacağı <small style="color:#94a3b8;">(net, değişmez)</small>', 'value' => number_format($toplamNobetTutar ?? 0, 2, ',', '.') . ' ₺'],
+                    ];
+                    $nobetPopoverHtml = $buildHesapDetayPopover($nobetPopoverSatirlar, 'Sadece resmi/banka alacağı payı — asıl net ödemeyi artırmaz');
+                }
 
                 $html = '<style>
                     .bordro-ref-view { font-family: inherit; color: #1e293b; background-color: #f8fafc; padding: 20px; border-radius: 12px; }
@@ -2384,7 +2457,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="ref-card-list">';
                 $html .= '<div class="ref-card-item' . ($rtcGunModal > 0 ? ' hover-popover-trigger' : '') . '"><span class="label">Resmi Tatil Çalışma' . ($rtcGunModal > 0 ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . ($rtcGunModal > 0 ? '<span class="subval">' . $rtcGunModal . ' Gün</span>' : '') . $fmt($rtcResmiTutar) . '</span>' . ($rtcGunModal > 0 ? $rtcPopoverHtml : '') . '</div>';
                 $html .= '<div class="ref-card-item' . ($htcGunModal > 0 ? ' hover-popover-trigger' : '') . '"><span class="label">Hafta Tatili Çalışma' . ($htcGunModal > 0 ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . ($htcGunModal > 0 ? '<span class="subval">' . $htcGunModal . ' Gün</span>' : '') . $fmt($htcToplamTutar) . '</span>' . ($htcGunModal > 0 ? $htcPopoverHtml : '') . '</div>';
-                $html .= '<div class="ref-card-item"><span class="label">Fazla Mesai Ücreti</span><span class="value">' . ($displayFazlaMesaiSaat > 0 ? '<span class="subval">' . number_format($displayFazlaMesaiSaat, 2, ',', '.') . ' Saat</span>' : '') . $fmt($fazlaMesaiTutar) . '</span></div>';
+                $html .= '<div class="ref-card-item' . ($nobetGrossModal ? ' hover-popover-trigger' : '') . '"><span class="label">Fazla Mesai Ücreti' . ($nobetGrossModal ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . ($displayFazlaMesaiSaat > 0 ? '<span class="subval">' . number_format($displayFazlaMesaiSaat, 2, ',', '.') . ' Saat</span>' : '') . $fmt($fazlaMesaiTutar) . '</span>' . ($nobetGrossModal ? $nobetPopoverHtml : '') . '</div>';
                 $html .= '</div>';
                 $html .= '<div class="ref-card-item total-row"><span class="label">Toplam</span><span class="value">' . $fmt($fazlaCalismaToplam) . '</span></div>';
                 $html .= '</div></div>';
@@ -2512,8 +2585,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="panel-card">';
                 $html .= '<div class="panel-card-title">5. SGK İŞVEREN PAYI</div>';
                 $html .= '<div class="ref-card-list">';
-                $html .= '<div class="ref-card-item"><span class="label">SGK İşveren Payı (%20.5)</span><span class="value">' . $fmt($sgkIsveren) . '</span></div>';
-                $html .= '<div class="ref-card-item"><span class="label">İşsizlik İşveren Payı (%2.0)</span><span class="value">' . $fmt($issizlikIsveren) . '</span></div>';
+                $html .= '<div class="ref-card-item"><span class="label">SGK İşveren Payı (%' . number_format($sgkIsverenOraniYazdir, 2, ',', '.') . ')</span><span class="value">' . $fmt($sgkIsveren) . '</span></div>';
+                $html .= '<div class="ref-card-item"><span class="label">İşsizlik İşveren Payı (%' . number_format($issizlikIsverenOraniYazdir, 2, ',', '.') . ')</span><span class="value">' . $fmt($issizlikIsveren) . '</span></div>';
                 $html .= '</div>';
                 $html .= '<div class="ref-card-item total-row" style="border-top: 1px solid #e2e8f0; padding-top: 8px;"><span class="label">Toplam İşveren SGK</span><span class="value">' . $fmt($sgkIsveren + $issizlikIsveren) . '</span></div>';
                 $html .= '</div>';
