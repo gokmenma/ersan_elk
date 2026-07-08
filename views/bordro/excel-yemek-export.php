@@ -217,11 +217,15 @@ try {
                 $digerKesintiToplam = 0;
                 $kesintiKayitlari = $BordroPersonel->getDonemKesintileriListe($p->personel_id, $donemId);
                 foreach ($kesintiKayitlari as $kk) {
-                    $tur = $kk->tur;
-                    if ($tur === 'icra' || $tur === 'avans' || $tur === 'izin_kesinti') {
+                    $tur = mb_strtolower((string)($kk->tur ?? ''), 'UTF-8');
+                    $hTipi = mb_strtolower((string)($kk->hesaplama_tipi ?? ''), 'UTF-8');
+                    if ($tur === 'icra' || strpos($tur, 'avans') !== false || $tur === 'izin_kesinti') {
                         continue;
                     }
                     if (strpos($tur, 'sendika') !== false || strpos(mb_strtolower($kk->aciklama ?? '', 'UTF-8'), 'sendika') !== false) {
+                        continue;
+                    }
+                    if (strpos($tur, 'elden') !== false || $hTipi === 'elden_tutardan') {
                         continue;
                     }
                     $digerKesintiToplam += floatval($kk->tutar);

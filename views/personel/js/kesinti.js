@@ -422,6 +422,8 @@ $(document).ready(function () {
   // Kesinti Kaydet
   $(document).on("click", "#btnPersonelKesintiKaydet", function () {
     var form = $("#formPersonelKesintiEkle");
+    var submitBtn = $(this);
+    var originalHtml = submitBtn.html();
 
     // Manuel validasyon
     var parametreId = $("#kesinti_parametre_id").val();
@@ -516,6 +518,9 @@ $(document).ready(function () {
       data.bitis_donemi = $("#bitis_donemi").val() || null;
     }
 
+    // Disable button and show spinner to prevent multiple submissions
+    submitBtn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>Kaydediliyor...');
+
     $.ajax({
       url: "views/personel/ajax/kesinti-islemleri.php",
       type: "POST",
@@ -528,10 +533,12 @@ $(document).ready(function () {
           Swal.fire("Başarılı", "Kesinti kaydedildi.", "success");
         } else {
           Swal.fire("Hata", response.error || "Bir hata oluştu", "error");
+          submitBtn.prop("disabled", false).html(originalHtml);
         }
       },
       error: function () {
         Swal.fire("Hata", "Bir hata oluştu.", "error");
+        submitBtn.prop("disabled", false).html(originalHtml);
       },
     });
   });

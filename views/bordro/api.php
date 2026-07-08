@@ -2673,10 +2673,39 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $icraPopoverHtml = $buildHesapDetayPopover($icraMatrahDetaylari, 'İcra Matrahı Detayları (Kesintiye Dahil Kalemler)');
 
+                $digerKesintiDetaylari = [];
+                foreach ($kesintiKayitlari as $kk) {
+                    $tur = $kk->tur;
+                    if ($tur === 'icra' || $tur === 'avans') {
+                        continue;
+                    }
+                    if (strpos($tur, 'sendika') !== false || strpos(mb_strtolower($kk->aciklama ?? '', 'UTF-8'), 'sendika') !== false) {
+                        continue;
+                    }
+                    if ($tur === 'izin_kesinti') {
+                        continue;
+                    }
+                    
+                    $label = $kk->parametre_adi ?? ($kesintiTurEtiketleri[$tur] ?? str_replace('_', ' ', $tur));
+                    if (!empty($kk->aciklama) && mb_strtolower(trim($kk->aciklama), 'UTF-8') !== mb_strtolower(trim($label), 'UTF-8')) {
+                        $label .= ' <small style="color:#94a3b8;">(' . htmlspecialchars($kk->aciklama) . ')</small>';
+                    }
+                    $digerKesintiDetaylari[] = [
+                        'label' => $label,
+                        'value' => '-' . number_format(floatval($kk->tutar), 2, ',', '.') . ' ₺',
+                        'renk' => '#f87171'
+                    ];
+                }
+                
+                $digerKesintiPopoverHtml = '';
+                if (!empty($digerKesintiDetaylari)) {
+                    $digerKesintiPopoverHtml = $buildHesapDetayPopover($digerKesintiDetaylari, 'Diğer Özel Kesinti Detayları');
+                }
+
                 $html .= '<div class="ref-card-item' . ($icraTutar > 0 ? ' hover-popover-trigger' : '') . '"><span class="label">İcra Kesintisi' . ($icraTutar > 0 ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($icraTutar, true) . '</span>' . ($icraTutar > 0 ? $icraPopoverHtml : '') . '</div>';
                 $html .= '<div class="ref-card-item"><span class="label">Avans Mahsubu</span><span class="value">' . $fmt($avansTutar, true) . '</span></div>';
                 $html .= '<div class="ref-card-item"><span class="label">Sendika Aidatı</span><span class="value">' . $fmt($sendikaTutar, true) . '</span></div>';
-                $html .= '<div class="ref-card-item"><span class="label">Diğer Özel Kesintiler</span><span class="value">' . $fmt($digerKesintiTutar, true) . '</span></div>';
+                $html .= '<div class="ref-card-item' . ($digerKesintiTutar > 0 ? ' hover-popover-trigger' : '') . '"><span class="label">Diğer Özel Kesintiler' . ($digerKesintiTutar > 0 ? ' <i class="bx bx-info-circle text-muted" style="font-size:0.75rem;"></i>' : '') . '</span><span class="value">' . $fmt($digerKesintiTutar, true) . '</span>' . ($digerKesintiTutar > 0 ? $digerKesintiPopoverHtml : '') . '</div>';
                 $html .= '</div>';
                 $html .= '<div class="ref-card-item total-row"><span class="label">Toplam Kesinti</span><span class="value">' . $fmt($digerKesintiToplam, true, false, false, true) . '</span></div>';
                 $html .= '</div></div>';

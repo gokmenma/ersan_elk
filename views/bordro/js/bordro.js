@@ -1671,6 +1671,13 @@ $(document).ready(function () {
   // Personel Kesinti Ekle Form Submit
   $("#formPersonelKesintiEkle").on("submit", function (e) {
     e.preventDefault();
+    const form = $(this);
+    const submitBtn = form.find("button[type='submit']");
+    const originalHtml = submitBtn.html();
+
+    // Disable button and show spinner to prevent multiple submissions
+    submitBtn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>İşlem yapılıyor...');
+
     const formData = new FormData(this);
     formData.append("action", "personel-kesinti-ekle");
 
@@ -1698,6 +1705,7 @@ $(document).ready(function () {
             title: "Hata!",
             text: response.message,
           });
+          submitBtn.prop("disabled", false).html(originalHtml);
         }
       },
       error: function () {
@@ -1706,6 +1714,7 @@ $(document).ready(function () {
           title: "Hata!",
           text: "Bir hata oluştu.",
         });
+        submitBtn.prop("disabled", false).html(originalHtml);
       },
     });
   });

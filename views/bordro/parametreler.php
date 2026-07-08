@@ -99,7 +99,8 @@ $hesaplamaTipleriKesinti = [
     'oran_bazli_sgk' => 'Oran (SGK Matrahı)',
     'oran_bazli_net' => 'Oran (Net)',
     'gunluk_kesinti' => 'Günlük Kesinti',
-    'aylik_gun_kesinti' => 'Aylık (Çalışılan Gün) Kesinti'
+    'aylik_gun_kesinti' => 'Aylık (Çalışılan Gün) Kesinti',
+    'elden_tutardan' => 'Elden Tutardan Kesinti'
 ];
 
 $hesaplamaTipleri = array_merge($hesaplamaTipleriGelir, $hesaplamaTipleriKesinti);
@@ -256,6 +257,7 @@ for ($y = date('Y') + 1; $y >= 2020; $y--) {
                                                 'oran_bazli_vergi' => 'bg-info',
                                                 'oran_bazli_sgk' => 'bg-primary',
                                                 'oran_bazli_net' => 'bg-dark',
+                                                'elden_tutardan' => 'bg-warning text-dark',
                                                 default => 'bg-secondary'
                                             };
                                             ?>

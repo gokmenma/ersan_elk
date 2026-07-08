@@ -574,6 +574,26 @@ class BordroPersonelModel extends Model
 
         $toplamKesinti = floatval($p->guncel_toplam_kesinti ?? $p->kesinti_tutar ?? 0);
         
+        $eldenKesintisiToplam = 0.0;
+        $kesintiSatirlari = $this->getDonemKesintileriListe($p->personel_id, $p->donem_id);
+        if (!empty($kesintiSatirlari)) {
+            if ($this->parametrelerCache === null) {
+                if ($this->cachedParametreModel === null) {
+                    $this->cachedParametreModel = new BordroParametreModel();
+                }
+                $this->parametrelerCache = $this->cachedParametreModel->getAllParametrelerMap($donemBaslangic);
+            }
+            $parametrelerMap = $this->parametrelerCache;
+            foreach ($kesintiSatirlari as $kesintiSatiri) {
+                $param = $parametrelerMap[$kesintiSatiri->tur] ?? null;
+                $hTipi = $kesintiSatiri->hesaplama_tipi ?? 'sabit';
+                if (($param && $param->hesaplama_tipi === 'elden_tutardan') || $hTipi === 'elden_tutardan') {
+                    $eldenKesintisiToplam += floatval($kesintiSatiri->tutar);
+                }
+            }
+        }
+        $toplamKesintiClean = max(0.0, $toplamKesinti - $eldenKesintisiToplam);
+        
         $icraKesintisi = 0;
         if (isset($p->hesaplama_detay) && !empty($p->hesaplama_detay)) {
             $detay = is_string($p->hesaplama_detay) ? json_decode($p->hesaplama_detay, true) : (array)$p->hesaplama_detay;
@@ -901,7 +921,7 @@ class BordroPersonelModel extends Model
             $toplamKesinti += $rtcHtcKesintiToplamGosterim;
         }
 
-        $netAlacagi = $toplamAlacagi - $toplamKesinti;
+        $netAlacagi = $toplamAlacagi - $toplamKesintiClean;
         $netMaasGercek = max(0, $netAlacagi);
 
         $manualDagitimVar = isset($p->dagitim_manuel) && intval($p->dagitim_manuel) === 1;
@@ -923,7 +943,7 @@ class BordroPersonelModel extends Model
         } elseif ($isInclusive) {
             $asgariYatacak = ($calismaGunu >= 30) ? $asgariUcretNet : (($asgariUcretNet / 30) * $calismaGunu);
             $asgariYatacak = round($asgariYatacak * $nonKurRatio, 2);
-            $kalanNetHakedis = max(0, $toplamAlacagi - $toplamKesinti);
+            $kalanNetHakedis = max(0, $toplamAlacagi - $toplamKesintiClean);
             // NOT: RTÇ/HTÇ'nin kendi SGK/Gelir Vergisi/Damga Vergisi kesintisi zaten brüte tamamlama
             // (gross-up) ile kendi içinde absorbe edilip yontemliBankaEki'ne sadece NET tutar olarak
             // eklenmişti; $toplamAlacagi bu NET tutarı zaten içeriyor. Burada bir daha düşülürse
@@ -944,8 +964,8 @@ class BordroPersonelModel extends Model
             if ($bankaOncelikliKesinti <= 0 && $icraKesintisi > 0) {
                 $bankaOncelikliKesinti = $icraKesintisi;
             }
-            $bankaOncelikliKesinti = min($toplamKesinti, $bankaOncelikliKesinti);
-            $eldenOncelikliKesinti = max(0, $toplamKesinti - $bankaOncelikliKesinti);
+            $bankaOncelikliKesinti = min($toplamKesintiClean, $bankaOncelikliKesinti);
+            $eldenOncelikliKesinti = max(0, $toplamKesintiClean - $bankaOncelikliKesinti);
             $eldenDusulenKesinti = min($eldenBrut, $eldenOncelikliKesinti);
             $bankaAktarilanKesinti = max(0, $eldenOncelikliKesinti - $eldenDusulenKesinti);
             $bankaOdemesi = max(0, $bankaMatrahi - $bankaOncelikliKesinti - $bankaAktarilanKesinti);
@@ -977,6 +997,11 @@ class BordroPersonelModel extends Model
             $eldenOdeme += $bankaOdemesi;
             $bankaOdemesi = 0;
         }
+
+        $toplamEldenKesintisiUygulanan = min($eldenOdeme, $eldenKesintisiToplam);
+        $eldenOdeme = max(0.0, $eldenOdeme - $toplamEldenKesintisiUygulanan);
+        $netAlacagi = max(0.0, $netAlacagi - $toplamEldenKesintisiUygulanan);
+        $netMaasGercek = max(0.0, $netMaasGercek - $toplamEldenKesintisiUygulanan);
 
         $gosterimToplamAlacagi = round($toplamAlacagi, 2);
         $resmiAlacagi = $bankaOdemesi;
@@ -4490,6 +4515,7 @@ class BordroPersonelModel extends Model
         $digerKesintiler = 0;
         $toplamKesinti = 0;
         $oranliKesintiler = []; // Net üzerinden oranlı kesintiler (İcra vb.)
+        $eldenKesintiMapping = []; // kesinti_id => detay_index
 
         foreach ($kesintiler as $kesinti) {
             $tutar = floatval($kesinti->tutar);
@@ -4504,6 +4530,15 @@ class BordroPersonelModel extends Model
                 'hesaplama_tipi' => $hesaplamaTipi,
                 'oran' => floatval($kesinti->oran ?? 0)
             ];
+
+            // Elden Tutardan Kesinti kontrolü
+            $isEldenKesinti = ($parametre && $parametre->hesaplama_tipi === 'elden_tutardan') || $hesaplamaTipi === 'elden_tutardan';
+
+            if ($isEldenKesinti) {
+                $eldenKesintiMapping[$kesinti->id] = count($kesintiDetaylari);
+                $kesintiDetaylari[] = $detay;
+                continue;
+            }
 
             // İcra veya oran bazlı kesinti ise şimdilik hakedişi bekleyeceğiz (Sıralı dağıtım için)
             if ($kesinti->tur === 'icra' || $hesaplamaTipi === 'oran_net' || $hesaplamaTipi === 'asgari_oran_net') {
@@ -4958,6 +4993,36 @@ class BordroPersonelModel extends Model
                 $eldenOdeme = max(0, $netMaas - $bankaOdemesi - $sodexoOdemesi - $icraKesintisi - ($kayit->diger_odeme ?? 0));
             }
         }
+
+        // Elden tutardan yapılacak kesintileri uygula
+        $kalanElden = $eldenOdeme;
+        $toplamEldenKesintisiUygulanan = 0.0;
+        
+        foreach ($kesintiler as $kesinti) {
+            if (isset($eldenKesintiMapping[$kesinti->id])) {
+                $index = $eldenKesintiMapping[$kesinti->id];
+                $originalTutar = floatval($kesinti->tutar);
+                $uygulananTutar = min($kalanElden, $originalTutar);
+                $uygulananTutar = round($uygulananTutar, 2);
+                
+                $kalanElden -= $uygulananTutar;
+                $toplamEldenKesintisiUygulanan += $uygulananTutar;
+                
+                // Update $kesintiDetaylari
+                $kesintiDetaylari[$index]['tutar'] = $uygulananTutar;
+                
+                // Update database record
+                $this->db->prepare("UPDATE personel_kesintileri SET tutar = ?, updated_at = NOW() WHERE id = ?")
+                         ->execute([$uygulananTutar, $kesinti->id]);
+            }
+        }
+        
+        // Subtract from eldenOdeme
+        $eldenOdeme = max(0.0, $eldenOdeme - $toplamEldenKesintisiUygulanan);
+        
+        // Update final net_maas and toplam_kesinti to include the applied elden deduction
+        $netMaas = max(0.0, $netMaas - $toplamEldenKesintisiUygulanan);
+        $toplamKesinti += $toplamEldenKesintisiUygulanan;
 
         $hesaplamaDetay = [
             'hesaplama_tarihi' => date('Y-m-d H:i:s'),
