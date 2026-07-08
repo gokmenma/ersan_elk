@@ -757,6 +757,7 @@ if (!empty($dbGelirler)) {
                         $toplamElden = 0;
                         $toplamSgkVergi = 0;
                         $latestCalculation = null;
+                        $latestCalculator = null;
                         $preCalc = []; // Hesaplanmış değerleri sakla
                     
                         // Dönem tarihlerini döngü dışında bir kez hesapla
@@ -764,10 +765,13 @@ if (!empty($dbGelirler)) {
                         $donemBitTs = $selectedDonem ? strtotime($selectedDonem->bitis_tarihi) : 0;
                         $aydakiGunSayisi = $selectedDonem ? date('t', $donemBasTs) : 30;
 
+                        // Dönem başına tüm genel ayarları tek sorguda çek (döngü içinde tekrar tekrar getGenelAyar() çağırmamak için)
+                        $genelAyarlarMap = $selectedDonem ? $BordroParametre->getAllGenelAyarlarMap($selectedDonem->baslangic_tarihi) : [];
+
                         // Asgari ücreti çek
                         $asgariUcretNet = 0;
                         if ($selectedDonem) {
-                            $asgariUcretNet = $BordroParametre->getGenelAyar('asgari_ucret_net', $selectedDonem->baslangic_tarihi) ?? 17002.12;
+                            $asgariUcretNet = $genelAyarlarMap['asgari_ucret_net'] ?? 17002.12;
                         }
 
                         $parametrelerMap = $selectedDonem ? $BordroParametre->getAllParametrelerMap($selectedDonem->baslangic_tarihi) : [];
@@ -816,9 +820,10 @@ if (!empty($dbGelirler)) {
                             $toplamElden += $eldenP;
                             $toplamSgkVergi += $sgkVergiKesintisiP;
 
-                            // En son hesaplama tarihi
+                            // En son hesaplama tarihi ve hesaplayan bilgisi
                             if ($p->hesaplama_tarihi && (!$latestCalculation || $p->hesaplama_tarihi > $latestCalculation)) {
                                 $latestCalculation = $p->hesaplama_tarihi;
+                                $latestCalculator = $p->hesaplayan_ad_soyad ?? null;
                             }
 
                             // İcra Popover Hazırlığı
@@ -861,8 +866,8 @@ if (!empty($dbGelirler)) {
                                 }
 
                                 // OTOMATİK MESAJ/HOLIDAY NET HESAPLARI
-                                $rtcGunModal = $BordroPersonel->getOzelCalismaGunSayisi($p->personel_id, $selectedDonem->baslangic_tarihi, $selectedDonem->bitis_tarihi, 'resmi_tatil_calismasi');
-                                $htcGunModal = $BordroPersonel->getOzelCalismaGunSayisi($p->personel_id, $selectedDonem->baslangic_tarihi, $selectedDonem->bitis_tarihi, 'hafta_tatili_calismasi');
+                                $rtcGunModal = $BordroPersonel->getOzelCalismaGunSayisiCached($p->personel_id, $selectedDonem->baslangic_tarihi, $selectedDonem->bitis_tarihi, 'resmi_tatil_calismasi');
+                                $htcGunModal = $BordroPersonel->getOzelCalismaGunSayisiCached($p->personel_id, $selectedDonem->baslangic_tarihi, $selectedDonem->bitis_tarihi, 'hafta_tatili_calismasi');
                                 
                                 $rtcHedefNetModal = $rtcGunModal > 0 ? round(floatval($asgariUcretNet) / 30 * $rtcGunModal, 2) : 0.0;
                                 $htcHedefNetModal = $htcGunModal > 0 ? round(floatval($asgariUcretNet) / 30 * $htcGunModal, 2) : 0.0;
@@ -872,9 +877,9 @@ if (!empty($dbGelirler)) {
                                 if ($rtcHedefNetModal > 0 || $htcHedefNetModal > 0) {
                                     $donemYilModal2 = (int) date('Y', strtotime($selectedDonem->baslangic_tarihi));
                                     $kumulatifMatrahModal2 = floatval($matrahlar['onceki_kumulatif'] ?? 0);
-                                    $sgkOraniModal2 = floatval($BordroParametre->getGenelAyar('sgk_isci_orani', $selectedDonem->baslangic_tarihi) ?? 14) / 100;
-                                    $issizlikOraniModal2 = floatval($BordroParametre->getGenelAyar('issizlik_isci_orani', $selectedDonem->baslangic_tarihi) ?? 1) / 100;
-                                    $damgaOraniModal2 = floatval($BordroParametre->getGenelAyar('damga_vergisi_orani', $selectedDonem->baslangic_tarihi) ?? 0.759) / 100;
+                                    $sgkOraniModal2 = floatval($genelAyarlarMap['sgk_isci_orani'] ?? 14) / 100;
+                                    $issizlikOraniModal2 = floatval($genelAyarlarMap['issizlik_isci_orani'] ?? 1) / 100;
+                                    $damgaOraniModal2 = floatval($genelAyarlarMap['damga_vergisi_orani'] ?? 0.759) / 100;
 
                                     $rtcMatrahModal2 = 0.0;
                                     if ($rtcHedefNetModal > 0) {
@@ -1036,7 +1041,7 @@ if (!empty($dbGelirler)) {
                                                 <div class="text-muted mt-1"
                                                     style="font-size: 9px; font-weight: 600; opacity: 0.8;">
                                                     <i
-                                                        class="bx bx-check-double me-1"></i><?= date('d.m.Y H:i', strtotime($latestCalculation)) ?>
+                                                        class="bx bx-check-double me-1"></i><?= date('d.m.Y H:i', strtotime($latestCalculation)) ?><?= !empty($latestCalculator) ? ' | ' . htmlspecialchars($latestCalculator, ENT_QUOTES, 'UTF-8') : '' ?>
                                                 </div>
                                             </div>
                                         <?php endif; ?>
@@ -1348,10 +1353,10 @@ if (!empty($dbGelirler)) {
                                                     <td>
                                                         <div class="d-flex align-items-center">
                                                         <div class="personel-img-zoom-container">
-                                                            <img src="<?= !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>"
+                                                            <img src="<?= (!empty($personel->resim_yolu) && is_file($personel->resim_yolu)) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>"
                                                                 alt="" class="rounded-circle avatar-sm me-2 personel-img-zoom cursor-pointer" loading="lazy">
                                                             <div class="img-preview-tooltip">
-                                                                <img src="<?= !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>" alt="" loading="lazy">
+                                                                <img src="<?= (!empty($personel->resim_yolu) && is_file($personel->resim_yolu)) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>" alt="" loading="lazy">
                                                             </div>
                                                         </div>
                                                             <div>

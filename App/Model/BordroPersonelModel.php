@@ -3259,6 +3259,20 @@ class BordroPersonelModel extends Model
     }
 
     /**
+     * getOzelCalismaGunSayisi'nin döngü-içi tekrar sorgu atmasını önlemek için
+     * getPersonellerByDonem() içinde toplu doldurulan ozelCalismaCache'ten okur;
+     * cache boşsa (ör. getPersonellerByDonem hiç çağrılmamışsa) sorguya düşer.
+     */
+    public function getOzelCalismaGunSayisiCached(int $personel_id, string $donem_baslangic, string $donem_bitis, string $flagKolonu): int
+    {
+        $cache = $this->ozelCalismaCache[$personel_id] ?? null;
+        if ($cache !== null) {
+            return $flagKolonu === 'resmi_tatil_calismasi' ? $cache['rtc'] : $cache['htc'];
+        }
+        return $this->getOzelCalismaGunSayisi($personel_id, $donem_baslangic, $donem_bitis, $flagKolonu);
+    }
+
+    /**
      * Personelin ücretsiz izin günlerini dönem için doğrudan hesaplar
      */
     public function getUcretsizIzinGunuDirekt($personel_id, $donem_baslangic, $donem_bitis)
@@ -4071,6 +4085,57 @@ class BordroPersonelModel extends Model
                 continue;
             }
 
+            // --- PUANTAJ ÖDEMELERİ KONTROLÜ (Öncelikli olarak vergilendirme/matrah switch'i öncesi) ---
+            $aciklama = (string) ($odeme->aciklama ?? '');
+            $isPuantajOdeme = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Kaçak') === 0;
+
+            if ($isPuantajOdeme) {
+                $detay['etiket'] = $parametre->etiket;
+                $detay['hesaplama_tipi'] = $parametre->hesaplama_tipi;
+                $detay['sgk_dahil'] = (bool) $parametre->sgk_matrahi_dahil;
+                $detay['gv_dahil'] = (bool) $parametre->gelir_vergisi_dahil;
+
+                if ($isPrimUsuluDahilYardim) {
+                    $primUsuluPuantajHedefToplami += $tutar;
+                    $detay['hedef_net_adayi'] = round($tutar, 2);
+                    $detay['donem_hedef_toplami'] = round($primUsuluPuantajHedefToplami, 2);
+                    $detay['net_etki'] = 0;
+                    $ekOdemeDetaylari[] = $detay;
+                } else {
+                    $netEkOdemeler += $tutar;
+                    $defaultYontem = $isPrimUsulu ? 'elden' : 'banka';
+                    $yontem = ($parametre && isset($parametre->odeme_yontemi)) ? $parametre->odeme_yontemi : $defaultYontem;
+                    $rTutar = floatval($odeme->resmi_tutar ?? 0);
+                    if ($yontem === 'banka') {
+                        $yontemliOdemeler['banka'] += $tutar;
+                    } else {
+                        $yontemliOdemeler['banka'] += $rTutar;
+                        if (isset($yontemliOdemeler[$yontem])) {
+                            $yontemliOdemeler[$yontem] += ($tutar - $rTutar);
+                            if ($yontem === 'sodexo') {
+                                $sodexoOdemesi += ($tutar - $rTutar);
+                            }
+                        } else {
+                            $yontemliOdemeler['banka'] += ($tutar - $rTutar);
+                        }
+                    }
+                    if ($rTutar > 0) {
+                        if ($parametre && !empty($parametre->sgk_matrahi_dahil)) {
+                            $sgkMatrahEkleri += $rTutar;
+                        }
+                        if ($parametre && !empty($parametre->gelir_vergisi_dahil)) {
+                            $vergiliMatrahEkleri += $rTutar;
+                        }
+                        if ($parametre && !empty($parametre->damga_vergisi_dahil)) {
+                            $damgaMatrahEkleri += $rTutar;
+                        }
+                    }
+                    $detay['net_etki'] = $tutar;
+                    $ekOdemeDetaylari[] = $detay;
+                }
+                continue;
+            }
+
             $detay['etiket'] = $parametre->etiket;
             $detay['hesaplama_tipi'] = $parametre->hesaplama_tipi;
             $detay['sgk_dahil'] = (bool) $parametre->sgk_matrahi_dahil;
@@ -4298,63 +4363,6 @@ class BordroPersonelModel extends Model
             // kullanıcı bu tutarın şu kanaldan ödenmesini istediği için 
             // dağılımda direkt bu tutar baz alınır.
             $ekOdemeTutari = isset($toplamTutar) ? $toplamTutar : $tutar;
-            $aciklama = (string) ($odeme->aciklama ?? '');
-            $isPuantajOdeme = strpos($aciklama, '[Puantaj]') === 0 || strpos($aciklama, '[Saya') === 0 || strpos($aciklama, '[Kaçak') === 0;
-
-            if ($isPuantajOdeme) {
-                if ($isPrimUsuluDahilYardim) {
-                    $primUsuluPuantajHedefToplami += $ekOdemeTutari;
-                    $odemeHesaplamaTipi = mb_strtolower((string) ($parametre->hesaplama_tipi ?? $odeme->hesaplama_tipi ?? ''), 'UTF-8');
-                    if (strpos($odemeHesaplamaTipi, 'brut') !== false) {
-                        $brutEkOdemeler -= $ekOdemeTutari;
-                        if ($parametre && $parametre->sgk_matrahi_dahil) {
-                            $sgkMatrahEkleri -= $ekOdemeTutari;
-                        }
-                        if ($parametre && $parametre->gelir_vergisi_dahil) {
-                            $vergiliMatrahEkleri -= $ekOdemeTutari;
-                        }
-                    } else {
-                        $netEkOdemeler -= $ekOdemeTutari;
-                    }
-                    $detay['hedef_net_adayi'] = round($ekOdemeTutari, 2);
-                    $detay['donem_hedef_toplami'] = round($primUsuluPuantajHedefToplami, 2);
-                    $detay['net_etki'] = 0;
-                    $ekOdemeDetaylari[] = $detay;
-                } else {
-                    $netEkOdemeler += $ekOdemeTutari;
-                    $defaultYontem = $isPrimUsulu ? 'elden' : 'banka';
-                    $yontem = ($parametre && isset($parametre->odeme_yontemi)) ? $parametre->odeme_yontemi : $defaultYontem;
-                    $rTutar = floatval($odeme->resmi_tutar ?? 0);
-                    if ($yontem === 'banka') {
-                        $yontemliOdemeler['banka'] += $ekOdemeTutari;
-                    } else {
-                        $yontemliOdemeler['banka'] += $rTutar;
-                        if (isset($yontemliOdemeler[$yontem])) {
-                            $yontemliOdemeler[$yontem] += ($ekOdemeTutari - $rTutar);
-                            if ($yontem === 'sodexo') {
-                                $sodexoOdemesi += ($ekOdemeTutari - $rTutar);
-                            }
-                        } else {
-                            $yontemliOdemeler['banka'] += ($ekOdemeTutari - $rTutar);
-                        }
-                    }
-                    if ($rTutar > 0) {
-                        if ($parametre && !empty($parametre->sgk_matrahi_dahil)) {
-                            $sgkMatrahEkleri += $rTutar;
-                        }
-                        if ($parametre && !empty($parametre->gelir_vergisi_dahil)) {
-                            $vergiliMatrahEkleri += $rTutar;
-                        }
-                        if ($parametre && !empty($parametre->damga_vergisi_dahil)) {
-                            $damgaMatrahEkleri += $rTutar;
-                        }
-                    }
-                    $detay['net_etki'] = $ekOdemeTutari;
-                    $ekOdemeDetaylari[] = $detay;
-                }
-                unset($toplamTutar);
-                continue;
-            }
 
             // USER REQ: Prim usulü personelde ek ödemeler varsayılan olarak Elden (Cash) kabul edilmelidir.
             $defaultYontem = $isPrimUsulu ? 'elden' : 'banka';

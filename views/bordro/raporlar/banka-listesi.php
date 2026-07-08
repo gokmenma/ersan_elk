@@ -239,7 +239,7 @@ foreach ($donemler as $donem) {
                                             <td class="text-center"><?= $sira++ ?></td>
                                             <td>
                                                 <div class="d-flex align-items-center">
-                                                    <img src="<?= !empty($personel->resim_yolu) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>"
+                                                    <img src="<?= (!empty($personel->resim_yolu) && is_file($personel->resim_yolu)) ? $personel->resim_yolu : 'assets/images/users/user-dummy-img.jpg' ?>"
                                                         alt="" class="rounded-circle avatar-xs me-2">
                                                     <span
                                                         class="fw-medium"><?= htmlspecialchars($personel->adi_soyadi) ?></span>

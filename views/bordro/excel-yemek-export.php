@@ -173,8 +173,18 @@ try {
         foreach ($ekOdemeler as $eo) {
             $eoTur = mb_strtolower((string)($eo->tur ?? ''), 'UTF-8');
             if ($eo->tur === 'hafta_ici_nobet' || $eo->tur === 'hafta_sonu_nobet' || $eo->tur === 'mesai' || strpos($eoTur, 'nobet') !== false) {
-                $fmBrut += floatval($eo->resmi_tutar ?? 0);
-                $fmNet += floatval($eo->tutar ?? 0);
+                $rTutar = floatval($eo->resmi_tutar ?? 0);
+                $fmBrut += $rTutar;
+                
+                // Resmi banka netini hesapla (SGK ve Vergiler düşülmüş net)
+                $rNet = 0.0;
+                if ($rTutar > 0) {
+                    $rSgk = $rTutar * 0.15;
+                    $rGv = ($rTutar - $rSgk) * 0.15;
+                    $rDv = $rTutar * 0.00759;
+                    $rNet = round($rTutar - $rSgk - $rGv - $rDv, 2);
+                }
+                $fmNet += $rNet;
             }
         }
         if ($fmBrut <= 0 && $fmNet <= 0 && floatval($p->fazla_mesai_tutar ?? 0) > 0) {
