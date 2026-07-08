@@ -212,7 +212,22 @@ try {
             'gelir_vergisi' => floatval($p->gelir_vergisi ?? 0),
             'net_maas' => $bankaOdeme,
             'onceki_kumulatif' => $oncekiKumulatif,
-            'aylik_matrah' => $aylikMatrah
+            'aylik_matrah' => $aylikMatrah,
+            'diger_kesintiler' => (function() use ($BordroPersonel, $p, $donemId) {
+                $digerKesintiToplam = 0;
+                $kesintiKayitlari = $BordroPersonel->getDonemKesintileriListe($p->personel_id, $donemId);
+                foreach ($kesintiKayitlari as $kk) {
+                    $tur = $kk->tur;
+                    if ($tur === 'icra' || $tur === 'avans' || $tur === 'izin_kesinti') {
+                        continue;
+                    }
+                    if (strpos($tur, 'sendika') !== false || strpos(mb_strtolower($kk->aciklama ?? '', 'UTF-8'), 'sendika') !== false) {
+                        continue;
+                    }
+                    $digerKesintiToplam += floatval($kk->tutar);
+                }
+                return $digerKesintiToplam;
+            })()
         ];
     }
 
@@ -259,7 +274,8 @@ try {
         'Q' => 'GELİR VERGİSİ KESİNTİSİ',
         'R' => 'ÖDENECEK NET MAAŞ',
         'S' => 'KÜMÜLATİF VERGİ MATRAHI (BU AY HARİÇ)',
-        'T' => 'AYLIK VERGİ MATRAHI (BU AY)'
+        'T' => 'AYLIK VERGİ MATRAHI (BU AY)',
+        'U' => 'DİĞER KESİNTİLER'
     ];
 
     // Başlık stili
@@ -291,7 +307,7 @@ try {
     }
 
     // Başlık satırına stil uygula
-    $sheet->getStyle('A1:T1')->applyFromArray($baslikStyle);
+    $sheet->getStyle('A1:U1')->applyFromArray($baslikStyle);
     $sheet->getRowDimension(1)->setRowHeight(25);
 
     // Veri stili
@@ -330,7 +346,8 @@ try {
         $sheet->setCellValue('R' . $satir, $veri['net_maas']);
         $sheet->setCellValue('S' . $satir, $veri['onceki_kumulatif']);
         $sheet->setCellValue('T' . $satir, $veri['aylik_matrah']);
-
+        $sheet->setCellValue('U' . $satir, $veri['diger_kesintiler']);
+ 
         // Formatlar
         $sheet->getStyle('C' . $satir)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $sheet->getStyle('D' . $satir)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
@@ -350,8 +367,8 @@ try {
         $sheet->getStyle('R' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         $sheet->getStyle('S' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         $sheet->getStyle('T' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
-        
-        $sheet->getStyle("A{$satir}:T{$satir}")->applyFromArray($dataStyle);
+        $sheet->getStyle('U' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+        $sheet->getStyle("A{$satir}:U{$satir}")->applyFromArray($dataStyle);
         
         $satir++;
     }
@@ -374,8 +391,9 @@ try {
     $sheet->setCellValue('R' . $toplamSatir, '=SUM(R2:R' . ($satir - 1) . ')');
     $sheet->setCellValue('S' . $toplamSatir, '=SUM(S2:S' . ($satir - 1) . ')');
     $sheet->setCellValue('T' . $toplamSatir, '=SUM(T2:T' . ($satir - 1) . ')');
+    $sheet->setCellValue('U' . $toplamSatir, '=SUM(U2:U' . ($satir - 1) . ')');
     
-    $sheet->getStyle('A' . $toplamSatir . ':T' . $toplamSatir)->getFont()->setBold(true);
+    $sheet->getStyle('A' . $toplamSatir . ':U' . $toplamSatir)->getFont()->setBold(true);
     $sheet->getStyle('F' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
     $sheet->getStyle('G' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
     $sheet->getStyle('H' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
@@ -391,8 +409,9 @@ try {
     $sheet->getStyle('R' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
     $sheet->getStyle('S' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
     $sheet->getStyle('T' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+    $sheet->getStyle('U' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
     
-    $sheet->getStyle('A' . $toplamSatir . ':T' . $toplamSatir)->applyFromArray([
+    $sheet->getStyle('A' . $toplamSatir . ':U' . $toplamSatir)->applyFromArray([
         'fill' => [
             'fillType' => Fill::FILL_SOLID,
             'startColor' => ['rgb' => 'F3F4F6']
