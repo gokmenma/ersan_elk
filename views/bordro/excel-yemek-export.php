@@ -192,10 +192,13 @@ try {
             $fmBrut = $fmNet;
         }
 
+        $raporGun = $BordroPersonel->getGunSayisiByKisaKod($p->personel_id, $donem->baslangic_tarihi, $donem->bitis_tarihi, 'RP');
+
         $yemekVerileri[] = [
             'tc_kimlik' => $p->tc_kimlik_no ?? '-',
             'adi_soyadi' => $p->adi_soyadi ?? '-',
             'toplam_gun' => $toplamGun,
+            'rapor_gun' => $raporGun,
             'fiili_gun' => $fiiliGun,
             'gunluk_nakit' => round($gunlukNakit, 2),
             'nakit_yemek' => $nakitYemek,
@@ -231,7 +234,8 @@ try {
                     $digerKesintiToplam += floatval($kk->tutar);
                 }
                 return $digerKesintiToplam;
-            })()
+            })(),
+            'diger_odeme' => $digerOdeme
         ];
     }
 
@@ -259,27 +263,28 @@ try {
 
     // Başlıklar
     $basliklar = [
-        'A' => 'TC KİMLİK NO',
-        'B' => 'ADI SOYADI',
+        'A' => 'ADI SOYADI',
+        'B' => 'RAPOR (GÜN)',
         'C' => 'TOPLAM GÜN',
-        'D' => 'FİİLİ GÜN',
-        'E' => 'GÜNLÜK YEMEK (NAKİT)',
-        'F' => 'YEMEK (NAKİT/BANKA)',
-        'G' => 'SODEXO / KART',
-        'H' => 'EŞ YARDIMI',
-        'I' => 'AVANS',
-        'J' => 'İCRA',
-        'K' => 'ALACAK (ASGARİ ÜCRET)',
-        'L' => 'HAFTA TATİLİ ÇALIŞMASI (BRÜT)',
-        'M' => 'HAFTA TATİLİ ÇALIŞMASI (NET)',
-        'N' => 'FAZLA MESAİ (BRÜT)',
-        'O' => 'FAZLA MESAİ (NET)',
-        'P' => 'ALACAK TOPLAMI',
-        'Q' => 'GELİR VERGİSİ KESİNTİSİ',
-        'R' => 'ÖDENECEK NET MAAŞ',
-        'S' => 'KÜMÜLATİF VERGİ MATRAHI (BU AY HARİÇ)',
-        'T' => 'AYLIK VERGİ MATRAHI (BU AY)',
-        'U' => 'DİĞER KESİNTİLER'
+        'D' => 'YEMEK',
+        'E' => 'EŞ YARDIMI',
+        'F' => 'AVANS',
+        'G' => 'İCRA',
+        'H' => 'H.T. ÇALIŞMASI (NET)',
+        'I' => 'FAZLA MESAİ (NET)',
+        'J' => 'ÖDENECEK NET MAAŞ',
+        'K' => 'DİĞER KESİNTİLER',
+        'L' => 'TC KİMLİK NO',
+        'M' => 'FİİLİ GÜN',
+        'N' => 'GÜNLÜK YEMEK (NAKİT)',
+        'O' => 'SODEXO / KART',
+        'P' => 'ALACAK (ASGARİ ÜCRET)',
+        'Q' => 'HAFTA TATİLİ ÇALIŞMASI (BRÜT)',
+        'R' => 'FAZLA MESAİ (BRÜT)',
+        'S' => 'ALACAK TOPLAMI',
+        'T' => 'GELİR VERGİSİ KESİNTİSİ',
+        'U' => 'KÜMÜLATİF VERGİ MATRAHI (BU AY HARİÇ)',
+        'V' => 'AYLIK VERGİ MATRAHI (BU AY)'
     ];
 
     // Başlık stili
@@ -311,7 +316,7 @@ try {
     }
 
     // Başlık satırına stil uygula
-    $sheet->getStyle('A1:U1')->applyFromArray($baslikStyle);
+    $sheet->getStyle('A1:V1')->applyFromArray($baslikStyle);
     $sheet->getRowDimension(1)->setRowHeight(25);
 
     // Veri stili
@@ -330,31 +335,33 @@ try {
     // Verileri ekle
     $satir = 2;
     foreach ($yemekVerileri as $veri) {
-        $sheet->setCellValueExplicit('A' . $satir, $veri['tc_kimlik'], DataType::TYPE_STRING);
-        $sheet->setCellValue('B' . $satir, $veri['adi_soyadi']);
+        $sheet->setCellValue('A' . $satir, $veri['adi_soyadi']);
+        $sheet->setCellValue('B' . $satir, $veri['rapor_gun']);
         $sheet->setCellValue('C' . $satir, $veri['toplam_gun']);
-        $sheet->setCellValue('D' . $satir, $veri['fiili_gun']);
-        $sheet->setCellValue('E' . $satir, $veri['gunluk_nakit']);
-        $sheet->setCellValue('F' . $satir, $veri['nakit_yemek']);
-        $sheet->setCellValue('G' . $satir, $veri['sodexo_yemek']);
-        $sheet->setCellValue('H' . $satir, $veri['es_yardimi']);
-        $sheet->setCellValue('I' . $satir, $veri['avans']);
-        $sheet->setCellValue('J' . $satir, $veri['icra']);
-        $sheet->setCellValue('K' . $satir, $veri['resmi_alacak_asgari']);
-        $sheet->setCellValue('L' . $satir, $veri['htc_brut']);
-        $sheet->setCellValue('M' . $satir, $veri['htc_net']);
-        $sheet->setCellValue('N' . $satir, $veri['fm_brut']);
-        $sheet->setCellValue('O' . $satir, $veri['fm_net']);
-        $sheet->setCellValue('P' . $satir, $veri['resmi_alacak_toplam']);
-        $sheet->setCellValue('Q' . $satir, $veri['gelir_vergisi']);
-        $sheet->setCellValue('R' . $satir, $veri['net_maas']);
-        $sheet->setCellValue('S' . $satir, $veri['onceki_kumulatif']);
-        $sheet->setCellValue('T' . $satir, $veri['aylik_matrah']);
-        $sheet->setCellValue('U' . $satir, $veri['diger_kesintiler']);
+        $sheet->setCellValue('D' . $satir, $veri['nakit_yemek']);
+        $sheet->setCellValue('E' . $satir, $veri['es_yardimi']);
+        $sheet->setCellValue('F' . $satir, $veri['avans']);
+        $sheet->setCellValue('G' . $satir, $veri['icra']);
+        $sheet->setCellValue('H' . $satir, $veri['htc_net']);
+        $sheet->setCellValue('I' . $satir, $veri['fm_net']);
+        $sheet->setCellValue('J' . $satir, $veri['net_maas']);
+        $sheet->setCellValue('K' . $satir, $veri['diger_kesintiler']);
+        $sheet->setCellValueExplicit('L' . $satir, $veri['tc_kimlik'], DataType::TYPE_STRING);
+        $sheet->setCellValue('M' . $satir, $veri['fiili_gun']);
+        $sheet->setCellValue('N' . $satir, $veri['gunluk_nakit']);
+        $sheet->setCellValue('O' . $satir, $veri['sodexo_yemek']);
+        $sheet->setCellValue('P' . $satir, $veri['resmi_alacak_asgari']);
+        $sheet->setCellValue('Q' . $satir, $veri['htc_brut']);
+        $sheet->setCellValue('R' . $satir, $veri['fm_brut']);
+        $sheet->setCellValue('S' . $satir, $veri['resmi_alacak_toplam']);
+        $sheet->setCellValue('T' . $satir, $veri['gelir_vergisi']);
+        $sheet->setCellValue('U' . $satir, $veri['onceki_kumulatif']);
+        $sheet->setCellValue('V' . $satir, $veri['aylik_matrah']);
  
         // Formatlar
+        $sheet->getStyle('B' . $satir)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $sheet->getStyle('C' . $satir)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-        $sheet->getStyle('D' . $satir)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('D' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         $sheet->getStyle('E' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         $sheet->getStyle('F' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         $sheet->getStyle('G' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
@@ -362,8 +369,8 @@ try {
         $sheet->getStyle('I' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         $sheet->getStyle('J' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         $sheet->getStyle('K' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
-        $sheet->getStyle('L' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
-        $sheet->getStyle('M' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+        $sheet->getStyle('L' . $satir)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $sheet->getStyle('M' . $satir)->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
         $sheet->getStyle('N' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         $sheet->getStyle('O' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         $sheet->getStyle('P' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
@@ -372,23 +379,26 @@ try {
         $sheet->getStyle('S' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         $sheet->getStyle('T' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
         $sheet->getStyle('U' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
-        $sheet->getStyle("A{$satir}:U{$satir}")->applyFromArray($dataStyle);
+        $sheet->getStyle('V' . $satir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+        $sheet->getStyle("A{$satir}:V{$satir}")->applyFromArray($dataStyle);
         
         $satir++;
     }
 
     // Toplam satırı ekle
     $toplamSatir = $satir;
-    $sheet->setCellValue('B' . $toplamSatir, 'TOPLAM');
+    $sheet->setCellValue('A' . $toplamSatir, 'TOPLAM');
+    $sheet->setCellValue('B' . $toplamSatir, '=SUM(B2:B' . ($satir - 1) . ')');
+    $sheet->setCellValue('C' . $toplamSatir, '=SUM(C2:C' . ($satir - 1) . ')');
+    $sheet->setCellValue('D' . $toplamSatir, '=SUM(D2:D' . ($satir - 1) . ')');
+    $sheet->setCellValue('E' . $toplamSatir, '=SUM(E2:E' . ($satir - 1) . ')');
     $sheet->setCellValue('F' . $toplamSatir, '=SUM(F2:F' . ($satir - 1) . ')');
     $sheet->setCellValue('G' . $toplamSatir, '=SUM(G2:G' . ($satir - 1) . ')');
     $sheet->setCellValue('H' . $toplamSatir, '=SUM(H2:H' . ($satir - 1) . ')');
     $sheet->setCellValue('I' . $toplamSatir, '=SUM(I2:I' . ($satir - 1) . ')');
     $sheet->setCellValue('J' . $toplamSatir, '=SUM(J2:J' . ($satir - 1) . ')');
     $sheet->setCellValue('K' . $toplamSatir, '=SUM(K2:K' . ($satir - 1) . ')');
-    $sheet->setCellValue('L' . $toplamSatir, '=SUM(L2:L' . ($satir - 1) . ')');
     $sheet->setCellValue('M' . $toplamSatir, '=SUM(M2:M' . ($satir - 1) . ')');
-    $sheet->setCellValue('N' . $toplamSatir, '=SUM(N2:N' . ($satir - 1) . ')');
     $sheet->setCellValue('O' . $toplamSatir, '=SUM(O2:O' . ($satir - 1) . ')');
     $sheet->setCellValue('P' . $toplamSatir, '=SUM(P2:P' . ($satir - 1) . ')');
     $sheet->setCellValue('Q' . $toplamSatir, '=SUM(Q2:Q' . ($satir - 1) . ')');
@@ -396,26 +406,16 @@ try {
     $sheet->setCellValue('S' . $toplamSatir, '=SUM(S2:S' . ($satir - 1) . ')');
     $sheet->setCellValue('T' . $toplamSatir, '=SUM(T2:T' . ($satir - 1) . ')');
     $sheet->setCellValue('U' . $toplamSatir, '=SUM(U2:U' . ($satir - 1) . ')');
+    $sheet->setCellValue('V' . $toplamSatir, '=SUM(V2:V' . ($satir - 1) . ')');
     
-    $sheet->getStyle('A' . $toplamSatir . ':U' . $toplamSatir)->getFont()->setBold(true);
-    $sheet->getStyle('F' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
-    $sheet->getStyle('G' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
-    $sheet->getStyle('H' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
-    $sheet->getStyle('I' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
-    $sheet->getStyle('J' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
-    $sheet->getStyle('K' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
-    $sheet->getStyle('L' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
-    $sheet->getStyle('M' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
-    $sheet->getStyle('N' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
-    $sheet->getStyle('O' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
-    $sheet->getStyle('P' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
-    $sheet->getStyle('Q' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
-    $sheet->getStyle('R' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
-    $sheet->getStyle('S' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
-    $sheet->getStyle('T' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
-    $sheet->getStyle('U' . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+    $sheet->getStyle('A' . $toplamSatir . ':V' . $toplamSatir)->getFont()->setBold(true);
     
-    $sheet->getStyle('A' . $toplamSatir . ':U' . $toplamSatir)->applyFromArray([
+    $currencyCols = ['D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'N', 'O', 'P', 'Q', 'R', 'S', 'T', 'U', 'V'];
+    foreach ($currencyCols as $col) {
+        $sheet->getStyle($col . $toplamSatir)->getNumberFormat()->setFormatCode('#,##0.00 "₺"');
+    }
+    
+    $sheet->getStyle('A' . $toplamSatir . ':V' . $toplamSatir)->applyFromArray([
         'fill' => [
             'fillType' => Fill::FILL_SOLID,
             'startColor' => ['rgb' => 'F3F4F6']

@@ -975,6 +975,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'personel_adi' => $record->personel_adi ?: '<span class="text-muted">' . htmlspecialchars($record->kullanici_adi) . '</span>',
             'okunan_abone_sayisi' => $record->okunan_abone_sayisi,
             'sayac_durum' => $record->sayac_durum ?? '-',
+            'abone_no' => $record->abone_no ?? '-',
+            'is_emri_no' => $record->is_emri_no ?? '-',
             'sarfiyat' => number_format($record->sarfiyat, 2, ',', '.'),
             'ort_sarfiyat_gunluk' => number_format($record->ort_sarfiyat_gunluk, 2, ',', '.'),
             'tahakkuk' => number_format($record->tahakkuk, 2, ',', '.'),
@@ -1029,6 +1031,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             'personel_adi' => $record->personel_adi ?: '<span class="text-muted">' . htmlspecialchars($record->ekip_kodu ?? '') . '</span>',
             'is_emri_tipi' => $record->is_emri_tipi ?? '',
             'is_emri_sonucu' => $record->is_emri_sonucu ?? '',
+            'abone_no' => $record->abone_no ?? '-',
+            'is_emri_no' => $record->is_emri_no ?? '-',
             'sonuclanmis' => $record->sonuclanmis ?? 0,
             'acik_olanlar' => $record->acik_olanlar ?? 0,
             'id' => $record->id
@@ -2119,7 +2123,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 $isEmriSonucuId = \App\Helper\Security::decrypt($encryptedId);
             }
 
-            $insertBatch[] = [$islemId, $personelId, $defId, $firmaId, $isEmriSonucuId, $isEmriTipi, $ekipKoduStr, $isEmriSonucu, $sonuclanmis, $acikOlanlar, $normDate];
+            $aboneNo = !empty($veri['ABONE_NO']) ? trim($veri['ABONE_NO']) : (!empty($veri['ABONENO']) ? trim($veri['ABONENO']) : (!empty($veri['abone_no']) ? trim($veri['abone_no']) : null));
+            $isemriNo = !empty($veri['ISEMRI_NO']) ? trim($veri['ISEMRI_NO']) : (!empty($veri['ISEMRINO']) ? trim($veri['ISEMRINO']) : (!empty($veri['is_emri_no']) ? trim($veri['is_emri_no']) : null));
+
+            $insertBatch[] = [$islemId, $personelId, $defId, $firmaId, $isEmriSonucuId, $isEmriTipi, $ekipKoduStr, $isEmriSonucu, $aboneNo, $isemriNo, $sonuclanmis, $acikOlanlar, $normDate];
             $yeniKayit++;
 
             // Demirbaş işlemi (zimmet, iade ve düşme - 3 aşamalı)
@@ -2155,8 +2162,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         if (!empty($insertBatch)) {
             $chunks = array_chunk($insertBatch, 500);
             foreach ($chunks as $chunk) {
-                $placeholders = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?)'));
-                $sql = "INSERT INTO yapilan_isler (islem_id, personel_id, ekip_kodu_id, firma_id, is_emri_sonucu_id, is_emri_tipi, ekip_kodu, is_emri_sonucu, sonuclanmis, acik_olanlar, tarih) VALUES $placeholders";
+                $placeholders = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?,?,?)'));
+                $sql = "INSERT INTO yapilan_isler (islem_id, personel_id, ekip_kodu_id, firma_id, is_emri_sonucu_id, is_emri_tipi, ekip_kodu, is_emri_sonucu, abone_no, is_emri_no, sonuclanmis, acik_olanlar, tarih) VALUES $placeholders";
                 $stmt = $Puantaj->db->prepare($sql);
                 $flatParams = [];
                 foreach ($chunk as $row) {
@@ -2450,6 +2457,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 }
             }
 
+            $aboneNo = !empty($veri['ABONE_NO']) ? trim($veri['ABONE_NO']) : (!empty($veri['ABONENO']) ? trim($veri['ABONENO']) : (!empty($veri['abone_no']) ? trim($veri['abone_no']) : null));
+            $isemriNo = !empty($veri['ISEMRI_NO']) ? trim($veri['ISEMRI_NO']) : (!empty($veri['ISEMRINO']) ? trim($veri['ISEMRINO']) : (!empty($veri['is_emri_no']) ? trim($veri['is_emri_no']) : null));
+
             $insertBatch[] = [
                 $islemId,
                 $personelId,
@@ -2467,7 +2477,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                 100,
                 $normDate,
                 $defter,
-                $sayacDurum
+                $sayacDurum,
+                $aboneNo,
+                $isemriNo
             ];
             $yeniKayit++;
         }
@@ -2482,8 +2494,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         if (!empty($insertBatch)) {
             $insertChunks = array_chunk($insertBatch, 500);
             foreach ($insertChunks as $chunk) {
-                $valuesPart = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'));
-                $sql = "INSERT INTO endeks_okuma (islem_id, personel_id, ekip_kodu_id, firma_id, bolge, kullanici_adi, sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk, okunan_gun_sayisi, okunan_abone_sayisi, ort_okunan_abone_sayisi_gunluk, okuma_performansi, tarih, defter, sayac_durum) VALUES $valuesPart";
+                $valuesPart = implode(',', array_fill(0, count($chunk), '(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)'));
+                $sql = "INSERT INTO endeks_okuma (islem_id, personel_id, ekip_kodu_id, firma_id, bolge, kullanici_adi, sarfiyat, ort_sarfiyat_gunluk, tahakkuk, ort_tahakkuk_gunluk, okunan_gun_sayisi, okunan_abone_sayisi, ort_okunan_abone_sayisi_gunluk, okuma_performansi, tarih, defter, sayac_durum, abone_no, is_emri_no) VALUES $valuesPart";
                 $params = [];
                 foreach ($chunk as $row) {
                     $params = array_merge($params, $row);

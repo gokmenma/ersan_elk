@@ -587,6 +587,8 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                     <th data-filter="string">Personel</th>
                                     <th data-filter="number">Abone Sayısı</th>
                                     <th data-filter="select">Sayaç Durumu</th>
+                                    <th data-filter="string">Abone No</th>
+                                    <th data-filter="string">İş Emri No</th>
                                     <th>İşlem</th>
                                 </tr>
                             </thead>
@@ -664,6 +666,8 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                     <th data-filter="string">Personel</th>
                                     <th data-filter="select">İş Emri Tipi</th>
                                     <th data-filter="select">İş Emri Sonucu</th>
+                                    <th data-filter="string">Abone No</th>
+                                    <th data-filter="string">İş Emri No</th>
                                     <th data-filter="number">Sonuçlanmış</th>
                                     <th data-filter="number">Açık Olanlar</th>
                                     <th>İşlem</th>
@@ -2275,6 +2279,8 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     { data: 'personel_adi' },
                     { data: 'okunan_abone_sayisi' },
                     { data: 'sayac_durum' },
+                    { data: 'abone_no', defaultContent: '-' },
+                    { data: 'is_emri_no', defaultContent: '-' },
                     {
                         data: 'id',
                         render: function (data, type, row) {
@@ -2354,6 +2360,8 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     { data: 'personel_adi' },
                     { data: 'is_emri_tipi' },
                     { data: 'is_emri_sonucu' },
+                    { data: 'abone_no', defaultContent: '-' },
+                    { data: 'is_emri_no', defaultContent: '-' },
                     { data: 'sonuclanmis' },
                     { data: 'acik_olanlar' },
                     {

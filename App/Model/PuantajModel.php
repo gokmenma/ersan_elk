@@ -381,23 +381,39 @@ class PuantajModel extends Model
                 ek.tur_adi LIKE :search OR
                 COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu) LIKE :search OR
                 (CASE WHEN tn.is_turu_ucret > 0 THEN 'Ücretli' ELSE 'Ücretsiz' END) LIKE :search OR
+                t.abone_no LIKE :search OR
+                t.is_emri_no LIKE :search OR
                 p.adi_soyadi LIKE :search OR
                 DATE_FORMAT(t.tarih, '%d.%m.%Y') LIKE :search
             )";
             $params['search'] = $searchValue;
         }
 
-        // Sütun bazlı arama (yeni sıralama: [0:Checkbox], 1:Tarih, 2:Ekip Kodu, 3:Personel, 4:İş Emri Tipi, 5:İş Emri Sonucu, 6:Ücret Durumu, 7:Sonuçlanmış, 8:Açık Olanlar)
-        $colSearchMap = [
-            1 => 'DATE_FORMAT(t.tarih, "%d.%m.%Y")',
-            2 => 'ek.tur_adi',
-            3 => 'p.adi_soyadi',
-            4 => 'COALESCE(tn.tur_adi, t.is_emri_tipi)',
-            5 => 'COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)',
-            6 => 'CASE WHEN tn.is_turu_ucret > 0 THEN \'Ücretli\' ELSE \'Ücretsiz\' END',
-            7 => 't.sonuclanmis',
-            8 => 't.acik_olanlar'
-        ];
+        // Sütun bazlı arama (yeni sıralama: [0:Checkbox], 1:Tarih, 2:Ekip Kodu, 3:Personel, 4:İş Emri Tipi, 5:İş Emri Sonucu, 6:Abone No/Ücret Durumu, 7:İş Emri No/Sonuçlanmış, 8:Açık Olanlar)
+        if ($sorguTuru === 'KESME_ACMA') {
+            $colSearchMap = [
+                1 => 'DATE_FORMAT(t.tarih, "%d.%m.%Y")',
+                2 => 'ek.tur_adi',
+                3 => 'p.adi_soyadi',
+                4 => 'COALESCE(tn.tur_adi, t.is_emri_tipi)',
+                5 => 'COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)',
+                6 => 't.abone_no',
+                7 => 't.is_emri_no',
+                8 => 't.sonuclanmis',
+                9 => 't.acik_olanlar'
+            ];
+        } else {
+            $colSearchMap = [
+                1 => 'DATE_FORMAT(t.tarih, "%d.%m.%Y")',
+                2 => 'ek.tur_adi',
+                3 => 'p.adi_soyadi',
+                4 => 'COALESCE(tn.tur_adi, t.is_emri_tipi)',
+                5 => 'COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)',
+                6 => 'CASE WHEN tn.is_turu_ucret > 0 THEN \'Ücretli\' ELSE \'Ücretsiz\' END',
+                7 => 't.sonuclanmis',
+                8 => 't.acik_olanlar'
+            ];
+        }
 
 
         if (isset($request['columns']) && is_array($request['columns'])) {
@@ -545,16 +561,30 @@ class PuantajModel extends Model
         // Sıralama
         $orderColumn = 't.tarih';
         $orderDir = 'DESC';
-        $colMap = [
-            1 => 't.tarih',
-            2 => 'ek.tur_adi',
-            3 => 'p.adi_soyadi',
-            4 => 'COALESCE(tn.tur_adi, t.is_emri_tipi)',
-            5 => 'COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)',
-            6 => 'tn.is_turu_ucret',
-            7 => 't.sonuclanmis',
-            8 => 't.acik_olanlar'
-        ];
+        if ($sorguTuru === 'KESME_ACMA') {
+            $colMap = [
+                1 => 't.tarih',
+                2 => 'ek.tur_adi',
+                3 => 'p.adi_soyadi',
+                4 => 'COALESCE(tn.tur_adi, t.is_emri_tipi)',
+                5 => 'COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)',
+                6 => 't.abone_no',
+                7 => 't.is_emri_no',
+                8 => 't.sonuclanmis',
+                9 => 't.acik_olanlar'
+            ];
+        } else {
+            $colMap = [
+                1 => 't.tarih',
+                2 => 'ek.tur_adi',
+                3 => 'p.adi_soyadi',
+                4 => 'COALESCE(tn.tur_adi, t.is_emri_tipi)',
+                5 => 'COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)',
+                6 => 'tn.is_turu_ucret',
+                7 => 't.sonuclanmis',
+                8 => 't.acik_olanlar'
+            ];
+        }
         if (isset($request['order'][0])) {
             $orderColIdx = $request['order'][0]['column'];
             $orderDir = strtoupper($request['order'][0]['dir']) === 'ASC' ? 'ASC' : 'DESC';

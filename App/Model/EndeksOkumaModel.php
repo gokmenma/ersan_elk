@@ -228,6 +228,8 @@ class EndeksOkumaModel extends Model
                 t.defter LIKE :search OR
                 tm.defter_mahalle LIKE :search OR
                 t.sayac_durum LIKE :search OR
+                t.abone_no LIKE :search OR
+                t.is_emri_no LIKE :search OR
                 DATE_FORMAT(t.tarih, '%d.%m.%Y') LIKE :search
             )";
             $params['search'] = $searchValue;
@@ -242,7 +244,9 @@ class EndeksOkumaModel extends Model
             4 => 'def.tur_adi', // Ekip No
             5 => 'p.adi_soyadi',
             6 => 't.okunan_abone_sayisi',
-            7 => 't.sayac_durum'
+            7 => 't.sayac_durum',
+            8 => 't.abone_no',
+            9 => 't.is_emri_no'
         ];
 
         if (isset($request['columns']) && is_array($request['columns'])) {
@@ -397,7 +401,9 @@ class EndeksOkumaModel extends Model
             4 => 'def.tur_adi',
             5 => 'p.adi_soyadi',
             6 => 't.okunan_abone_sayisi',
-            7 => 't.sayac_durum'
+            7 => 't.sayac_durum',
+            8 => 't.abone_no',
+            9 => 't.is_emri_no'
         ];
         if (isset($request['order'][0])) {
             $orderColIdx = $request['order'][0]['column'];
