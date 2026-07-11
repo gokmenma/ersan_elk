@@ -784,6 +784,9 @@ function initSelect2() {
     if (!activeTab) {
       activeTab = $(".nav-link.active[data-bs-toggle='tab']").attr("id");
     }
+    if (!activeTab && window.location.href.indexOf('aparat-deposu') !== -1) {
+      activeTab = "aparat-tab";
+    }
 
     const $kategoriSelect = $("#kategori_id");
     const demirbasId = $("#demirbas_id").val();
@@ -1133,6 +1136,9 @@ $(document).on("click", "#demirbasKaydet", function () {
       if (result.isConfirmed) {
         // Toplu kaydet
         var formData = new FormData(form[0]);
+        if ($("#kategori_id").prop("disabled")) {
+          formData.append("kategori_id", $("#kategori_id").val());
+        }
         formData.append("action", "demirbas-toplu-kaydet");
         formData.append("seri_listesi", JSON.stringify(seriler));
 
@@ -1186,6 +1192,9 @@ $(document).on("click", "#demirbasKaydet", function () {
   var formData = new FormData(form[0]);
   if ($("#durum").prop("disabled")) {
     formData.append("durum", $("#durum").val());
+  }
+  if ($("#kategori_id").prop("disabled")) {
+    formData.append("kategori_id", $("#kategori_id").val());
   }
   formData.append("action", "demirbas-kaydet");
 
@@ -1355,7 +1364,7 @@ $(document).on("click", ".demirbas-sil", function (e) {
 function resetDemirbasForm() {
   $("#demirbasForm")[0].reset();
   $("#demirbas_id").val(0);
-  $("#kategori_id").val("").trigger("change");
+  $("#kategori_id").prop("disabled", false).val("").trigger("change");
   $("#durum").prop("disabled", false).val("aktif").trigger("change");
   $("#miktar").val(1);
   $("#minimun_stok_uyari_miktari").val(0);
@@ -1387,6 +1396,22 @@ $(document).on("click", "#btnYeniSayac", function () {
       .first();
     if (sayacOpt.length > 0) {
       $("#kategori_id").val(sayacOpt.val()).trigger("change");
+    }
+  }, 100);
+});
+
+// Yeni Aparat butonuna tıklandığında kategori "Aparat" olarak pre-select edilsin ve kilitlensin
+$(document).on("click", "#btnYeniAparat", function () {
+  resetDemirbasForm();
+  setTimeout(() => {
+    let aparatOpt = $("#kategori_id option")
+      .filter(function () {
+        let txt = $(this).text().toLowerCase();
+        return txt.includes("aparat");
+      })
+      .first();
+    if (aparatOpt.length > 0) {
+      $("#kategori_id").val(aparatOpt.val()).trigger("change").prop("disabled", true);
     }
   }, 100);
 });

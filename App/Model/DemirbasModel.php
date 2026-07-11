@@ -376,6 +376,8 @@ class DemirbasModel extends Model
                 }
                 $params['lokasyon'] = $request['lokasyon'];
             }
+        } elseif ($tab === 'aparat') {
+            $whereSql .= " AND " . $aparatCondition;
         } else {
             $whereSql .= " AND NOT " . $sayacCondition . " AND NOT " . $aparatCondition;
         }

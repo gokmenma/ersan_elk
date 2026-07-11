@@ -7,6 +7,18 @@ use App\Model\TanimlamalarModel;
 $Tanimlamalar = new TanimlamalarModel();
 $kategoriler = $Tanimlamalar->getDemirbasKategorileri();
 
+$sayacKatIds = [];
+$aparatKatIds = [];
+foreach ($kategoriler as $kat) {
+    $katAdiLower = mb_strtolower($kat->tur_adi, 'UTF-8');
+    if (str_contains($katAdiLower, 'sayaç') || str_contains($katAdiLower, 'sayac')) {
+        $sayacKatIds[] = (string) $kat->id;
+    }
+    if (str_contains($katAdiLower, 'aparat') || $kat->id == 645) {
+        $aparatKatIds[] = (string) $kat->id;
+    }
+}
+
 // İş emri sonuçlarını al (otomatik zimmet ayarları için)
 $isEmriSonuclariList = $Tanimlamalar->getIsEmriSonuclariWithId();
 
@@ -307,3 +319,11 @@ foreach ($isEmriSonuclariList as $sonuc) {
         </div>
     </div>
 </div>
+<script>
+    if (typeof sayacKatIds === 'undefined') {
+        var sayacKatIds = <?php echo json_encode($sayacKatIds); ?>;
+    }
+    if (typeof aparatKatIds === 'undefined') {
+        var aparatKatIds = <?php echo json_encode($aparatKatIds); ?>;
+    }
+</script>
