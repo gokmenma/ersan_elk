@@ -2021,6 +2021,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $acikOlanlar = $veri['ACIK'] ?? 0;
             $tarihRaw = $veri['TARIH'];
 
+
             // 1. İş Emri Sonucu / Ücretli iş kontrolü (USER: Sadece ücretli iş türlerini ver)
             if (!empty($filterArray) && !in_array($isEmriSonucu, $filterArray)) {
                 $uniqKey = "FILTER|" . $isEmriSonucu;

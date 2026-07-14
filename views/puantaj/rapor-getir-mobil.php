@@ -145,7 +145,7 @@ if (!empty($summary)) {
                 }
 
                 if ($teamNo > 0) {
-                    if (!\App\Helper\EkipHelper::isTeamInTabRange($teamNo, $activeTab, $Settings)) continue;
+                    if (!$hasRelevantData && !\App\Helper\EkipHelper::isTeamInTabRange($teamNo, $activeTab, $Settings)) continue;
                 } else if (!$hasRelevantData) {
                     continue;
                 }
@@ -235,7 +235,14 @@ foreach ($validPairs as $pair) {
         ];
     } else {
         $p = $personelById[$pId] ?? null;
-        if(!$p) continue;
+        if (!$p) {
+            $displayText = $team->tur_adi ?? $pair['ekipKodu'] ?? '-';
+            $p = (object) [
+                'id' => 0,
+                'adi_soyadi' => 'Eşleşmeyen Ekip: ' . $displayText,
+                'fotograf_url' => 'assets/images/users/default_user.png'
+            ];
+        }
         
         $cards[] = [
             'pId' => $pId,

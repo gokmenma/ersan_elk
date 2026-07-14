@@ -3097,6 +3097,10 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             var formData = $(this).serialize();
             formData += '&action=online-puantaj-sorgula';
 
+            var activeTabName = $('#puantajTabs .nav-link.active').data('tab-name');
+            var sendTab = (activeTabName === 'muhurleme') ? 'muhurleme' : 'kesme';
+            formData += '&active_tab=' + sendTab;
+
             $('#onlinePuantajSpinner').show();
             $('#onlinePuantajResult').hide();
             $('#btnOnlinePuantajSorgula').prop('disabled', true);
@@ -3258,6 +3262,17 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         });  // Modal kapanınca sonuç alanlarını temizle
         $('#importOnlinePuantajModal').on('hidden.bs.modal', function () {
             $('#onlinePuantajResult').hide().html('');
+        });
+        $('#importOnlinePuantajModal').on('show.bs.modal', function () {
+            var activeTabName = $('#puantajTabs .nav-link.active').data('tab-name');
+            var modal = $(this);
+            if (activeTabName === 'muhurleme') {
+                modal.find('.modal-title').text('Online Mühürleme İşlemleri Sorgula');
+                modal.find('.alert-info').html('<i class="bx bx-info-circle me-2"></i>Mühürleme işlemleri için online sorgulama yapılacaktır.');
+            } else {
+                modal.find('.modal-title').text('Online Kesme/Açma İşlemleri Sorgula');
+                modal.find('.alert-info').html('<i class="bx bx-info-circle me-2"></i>Ekip İş Emri Sonuç Raporu (Sonuç Tarihine Göre Sorgular) - KESME İŞEMRİ türünde online sorgulama yapılacaktır.');
+            }
         });
         $('#importOnlineIcmalRaporuModal').on('hidden.bs.modal', function () {
             $('#onlineIcmalResult').hide().html('');
