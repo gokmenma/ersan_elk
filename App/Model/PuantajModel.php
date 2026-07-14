@@ -349,6 +349,8 @@ class PuantajModel extends Model
             $baseWhere .= " AND t.is_emri_tipi = 'Sayaç Değişimi'";
         } elseif ($sorguTuru === 'KESME_ACMA') {
             $baseWhere .= " AND t.is_emri_tipi NOT IN ('Endeks Okuma', 'Sayaç Değişimi')";
+        } elseif ($sorguTuru === 'MUHURLEME') {
+            $baseWhere .= " AND tn.rapor_sekmesi = 'muhurleme'";
         }
 
         if ($region) {

@@ -44,9 +44,11 @@ if ($tab === 'okuma') {
     $colFields = ['tarih', 'defter', 'bolge', 'ekip_kodu_adi', 'personel_adi', 'okunan_abone_sayisi', 'sayac_durum'];
 } elseif ($tab === 'yapilan_isler' || $tab === 'muhurleme') {
     $Model = new PuantajModel();
-    // For muhurleme tab, we might need to filter by workType if not already in request
-    $actualWorkResult = ($tab === 'muhurleme') ? 'MÜHÜRLEME' : $workResult;
-    $result = $Model->getDataTable($request, $startDate, $endDate, $ekipKodu, $workType, $actualWorkResult);
+    if ($tab === 'muhurleme') {
+        $result = $Model->getDataTable($request, $startDate, $endDate, $ekipKodu, '', '', 'MUHURLEME');
+    } else {
+        $result = $Model->getDataTable($request, $startDate, $endDate, $ekipKodu, $workType, $workResult);
+    }
     $data = $result['data'];
     $title = ($tab === 'muhurleme') ? "Mühürleme Listesi" : "Yapılan İşler Listesi";
     $headers = ['TARİH', 'EKİP KODU', 'İSİM SOYİSİM', 'İŞ EMRİ TİPİ', 'İŞ EMRİ SONUCU', 'SONUÇLANMIŞ', 'AÇIK OLANLAR'];

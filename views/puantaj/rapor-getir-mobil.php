@@ -126,11 +126,6 @@ if (!empty($summary)) {
                     $hasRelevantData = false;
                     foreach ($data as $day => $workTypeCounts) {
                         foreach ($workTypeCounts as $workTypeName => $count) {
-                            if ($activeTab === 'muhurleme' && $count > 0) {
-                                $hasRelevantData = true;
-                                break 2;
-                            }
-                            
                             foreach ($workTypeCols as $wtCol) {
                                 if ($wtCol['name'] === $workTypeName && $count > 0) {
                                     $hasRelevantData = true;
@@ -301,8 +296,8 @@ foreach ($cards as &$card) {
         $totalSayi = 0;
         if (isset($summary[$pId][$compKey])) {
             foreach ($summary[$pId][$compKey] as $dayData) {
-                foreach($dayData as $vItem) {
-                    $totalSayi += (int)$vItem;
+                foreach ($workTypeCols as $wt) {
+                    $totalSayi += (int)($dayData[$wt['name']] ?? 0);
                 }
             }
         }

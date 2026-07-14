@@ -1140,7 +1140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
     // Tek bir iş tipi olarak birleştir (ilk bulunan)
     $workTypeFilter = !empty($muhurlemeTypeNames) ? $muhurlemeTypeNames[0] : 'MÜHÜRLEME';
 
-    $result = $Puantaj->getDataTable($_GET, $startDate, $endDate, $ekipKodu, $workTypeFilter, '', '', $region, $defter);
+    $result = $Puantaj->getDataTable($_GET, $startDate, $endDate, $ekipKodu, '', '', 'MUHURLEME', $region, $defter);
 
     // Veriyi DataTable formatına dönüştür
     $formattedData = [];
