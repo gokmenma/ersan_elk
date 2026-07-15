@@ -291,8 +291,21 @@ try {
         $startDate = "$yil-$ay-01";
         $endDate = date("Y-m-t", strtotime($startDate));
 
-        $personel_stmt = $Personel->db->prepare("SELECT id, ise_giris_tarihi, isten_cikis_tarihi FROM personel WHERE id = ?");
-        $personel_stmt->execute([$personel_id]);
+        $personel_stmt = $Personel->db->prepare("
+            SELECT p.id, 
+                   COALESCE(pcg.ise_giris_tarihi, p.ise_giris_tarihi) as ise_giris_tarihi, 
+                   COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) as isten_cikis_tarihi
+            FROM personel p
+            LEFT JOIN personel_calisma_gecmisi pcg ON p.id = pcg.personel_id
+                AND pcg.ise_giris_tarihi <= :end_date
+                AND (pcg.isten_cikis_tarihi IS NULL OR pcg.isten_cikis_tarihi >= :start_date)
+            WHERE p.id = :personel_id
+        ");
+        $personel_stmt->execute([
+            ':end_date' => $endDate,
+            ':start_date' => $startDate,
+            ':personel_id' => $personel_id
+        ]);
         $p = $personel_stmt->fetch(PDO::FETCH_OBJ);
 
         if (!$p) {
