@@ -202,7 +202,7 @@ if ($activeTab !== 'okuma' && !empty($workTypes)) {
 $subColCount = count($workTypeCols) ?: 1;
 
 // Personel mapping for easy access
-$allPersonel = $Personel->all(false, 'puantaj');
+$allPersonel = $Personel->all(false, 'puantaj', $endDateStr);
 $personelById = [];
 foreach ($allPersonel as $p) {
     $personelById[$p->id] = $p;

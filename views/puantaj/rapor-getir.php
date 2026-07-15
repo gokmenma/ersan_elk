@@ -203,7 +203,7 @@ $hasSubCols = !empty($workTypeCols);
 $headerRowspan = ($activeTab !== 'okuma' && $activeTab !== 'kacakkontrol') && $hasSubCols ? 3 : 2;
 
 // Personel mapping for easy access
-$allPersonel = $Personel->all(false, 'puantaj');
+$allPersonel = $Personel->all(false, 'puantaj', $endDateStr);
 $personelById = [];
 foreach ($allPersonel as $p) {
     $personelById[$p->id] = $p;

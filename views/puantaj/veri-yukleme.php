@@ -22,7 +22,7 @@ $mahalle = $_GET['mahalle'] ?? '';
 //Helper::dd([$startDate, $endDate, $ekipKodu, $workType]);
 
 // $records = $Puantaj->getFiltered($startDate, $endDate, $ekipKodu, $workType);
-$personeller = $Personel->all(false, 'puantaj');
+$personeller = $Personel->all(false, 'puantaj', $endDate);
 $personelOptions = ['' => 'Seçiniz'];
 $personelOptionsMultiple = []; // Kaçak kontrol multiple select için boş değer olmadan
 foreach ($personeller as $p) {

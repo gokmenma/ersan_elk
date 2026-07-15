@@ -70,15 +70,21 @@ try {
         $yil = $_POST['yil'] ?? date('Y');
         $departman = $_POST['departman'] ?? '';
         $bolge = $_POST['bolge'] ?? '';
+        $iskur_dahil = isset($_POST['iskur_dahil']) ? intval($_POST['iskur_dahil']) : 1;
 
         $startDate = "$yil-$ay-01";
         $endDate = date("Y-m-t", strtotime($startDate));
 
         $sql = "
-            SELECT p.id, p.adi_soyadi, p.resim_yolu, p.ekip_no, p.tc_kimlik_no, p.isten_cikis_tarihi, p.ise_giris_tarihi,
+            SELECT p.id, p.adi_soyadi, p.resim_yolu, p.ekip_no, p.tc_kimlik_no, 
+                   COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) as isten_cikis_tarihi, 
+                   COALESCE(pcg.ise_giris_tarihi, p.ise_giris_tarihi) as ise_giris_tarihi,
                    CASE WHEN gg.personel_id IS NOT NULL THEN 1 ELSE 0 END as gorev_gecmisi_var,
                    COALESCE(gg_days.toplam_gun, 0) as gg_toplam_gun
             FROM personel p
+            LEFT JOIN personel_calisma_gecmisi pcg ON p.id = pcg.personel_id 
+                AND pcg.ise_giris_tarihi <= :end_date_cal 
+                AND (pcg.isten_cikis_tarihi IS NULL OR pcg.isten_cikis_tarihi >= :start_date_cal)
             LEFT JOIN (
                 SELECT DISTINCT pgg.personel_id
                 FROM personel_gorev_gecmisi pgg
@@ -105,10 +111,10 @@ try {
             LEFT JOIN tanimlamalar t_ekip ON p.ekip_no = t_ekip.id AND t_ekip.grup = 'ekip_kodu' AND t_ekip.silinme_tarihi IS NULL
             WHERE p.firma_id = :firma_id 
             AND p.silinme_tarihi IS NULL 
-            AND (p.aktif_mi = 1 OR (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi >= :start_date5))
-            AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00' OR p.isten_cikis_tarihi >= :start_date6)
-            AND (p.disardan_sigortali = 0 OR FIND_IN_SET('puantaj', p.gorunum_modulleri))
-            AND (p.ise_giris_tarihi IS NULL OR p.ise_giris_tarihi = '' OR p.ise_giris_tarihi <= :end_date5)
+            AND (p.aktif_mi = 1 OR (COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) IS NOT NULL AND COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) >= :start_date5))
+            AND (COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) IS NULL OR COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) = '' OR COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) = '0000-00-00' OR COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) >= :start_date6)
+            AND (COALESCE(pcg.disardan_sigortali, p.disardan_sigortali) = 0 OR FIND_IN_SET('puantaj', COALESCE(pcg.gorunum_modulleri, p.gorunum_modulleri)))
+            AND (COALESCE(pcg.ise_giris_tarihi, p.ise_giris_tarihi) IS NULL OR COALESCE(pcg.ise_giris_tarihi, p.ise_giris_tarihi) = '' OR COALESCE(pcg.ise_giris_tarihi, p.ise_giris_tarihi) <= :end_date5)
             AND NOT EXISTS (
                 SELECT 1 FROM personel_gorev_gecmisi pgg_not
                 WHERE pgg_not.personel_id = p.id
@@ -117,6 +123,14 @@ try {
                 AND (pgg_not.maas_durumu = 'Maaş Hesaplanmayan')
             )
         ";
+
+        if ($iskur_dahil === 0) {
+            $sql .= " AND NOT (
+                COALESCE(pcg.sgk_yapilan_firma, p.sgk_yapilan_firma) LIKE '%İŞKUR%'
+                OR COALESCE(pcg.sgk_yapilan_firma, p.sgk_yapilan_firma) LIKE '%ISKUR%'
+                OR COALESCE(pcg.sgk_yapilan_firma, p.sgk_yapilan_firma) LIKE '%KUR%'
+            ) ";
+        }
 
         if ($departman !== '') {
             $sql .= " AND gg_dep.departman = :departman ";
@@ -131,6 +145,8 @@ try {
         $personeller = $Personel->db->prepare($sql);
         
         $params = [
+            ':end_date_cal' => $endDate,
+            ':start_date_cal' => $startDate,
             ':end_date1' => $endDate,
             ':start_date1' => $startDate,
             ':end_date2' => $endDate,
@@ -973,16 +989,22 @@ try {
         $yil = $_GET['yil'] ?? date('Y');
         $departman = $_GET['departman'] ?? '';
         $bolge = $_GET['bolge'] ?? '';
+        $iskur_dahil = isset($_GET['iskur_dahil']) ? intval($_GET['iskur_dahil']) : 1;
 
         $startDate = "$yil-$ay-01";
         $daysCount = date('t', strtotime($startDate));
         $endDate = "$yil-$ay-$daysCount";
 
         $sql = "
-            SELECT p.id, p.adi_soyadi, p.tc_kimlik_no, p.isten_cikis_tarihi, p.ise_giris_tarihi,
+            SELECT p.id, p.adi_soyadi, p.tc_kimlik_no, 
+                   COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) as isten_cikis_tarihi, 
+                   COALESCE(pcg.ise_giris_tarihi, p.ise_giris_tarihi) as ise_giris_tarihi,
                    CASE WHEN gg.personel_id IS NOT NULL THEN 1 ELSE 0 END as gorev_gecmisi_var,
                    COALESCE(gg_days.toplam_gun, 0) as gg_toplam_gun
             FROM personel p
+            LEFT JOIN personel_calisma_gecmisi pcg ON p.id = pcg.personel_id 
+                AND pcg.ise_giris_tarihi <= :end_date_cal 
+                AND (pcg.isten_cikis_tarihi IS NULL OR pcg.isten_cikis_tarihi >= :start_date_cal)
             LEFT JOIN (
                 SELECT DISTINCT pgg.personel_id
                 FROM personel_gorev_gecmisi pgg
@@ -1009,10 +1031,10 @@ try {
             LEFT JOIN tanimlamalar t_ekip ON p.ekip_no = t_ekip.id AND t_ekip.grup = 'ekip_kodu' AND t_ekip.silinme_tarihi IS NULL
             WHERE p.firma_id = :firma_id 
             AND p.silinme_tarihi IS NULL 
-            AND (p.aktif_mi = 1 OR (p.isten_cikis_tarihi IS NOT NULL AND p.isten_cikis_tarihi >= :start_date5))
-            AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '' OR p.isten_cikis_tarihi = '0000-00-00' OR p.isten_cikis_tarihi >= :start_date6)
-            AND (p.disardan_sigortali = 0 OR FIND_IN_SET('puantaj', p.gorunum_modulleri))
-            AND (p.ise_giris_tarihi IS NULL OR p.ise_giris_tarihi = '' OR p.ise_giris_tarihi <= :end_date5)
+            AND (p.aktif_mi = 1 OR (COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) IS NOT NULL AND COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) >= :start_date5))
+            AND (COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) IS NULL OR COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) = '' OR COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) = '0000-00-00' OR COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) >= :start_date6)
+            AND (COALESCE(pcg.disardan_sigortali, p.disardan_sigortali) = 0 OR FIND_IN_SET('puantaj', COALESCE(pcg.gorunum_modulleri, p.gorunum_modulleri)))
+            AND (COALESCE(pcg.ise_giris_tarihi, p.ise_giris_tarihi) IS NULL OR COALESCE(pcg.ise_giris_tarihi, p.ise_giris_tarihi) = '' OR COALESCE(pcg.ise_giris_tarihi, p.ise_giris_tarihi) <= :end_date5)
             AND NOT EXISTS (
                 SELECT 1 FROM personel_gorev_gecmisi pgg_not
                 WHERE pgg_not.personel_id = p.id
@@ -1021,6 +1043,14 @@ try {
                 AND (pgg_not.maas_durumu = 'Maaş Hesaplanmayan')
             )
         ";
+
+        if ($iskur_dahil === 0) {
+            $sql .= " AND NOT (
+                COALESCE(pcg.sgk_yapilan_firma, p.sgk_yapilan_firma) LIKE '%İŞKUR%'
+                OR COALESCE(pcg.sgk_yapilan_firma, p.sgk_yapilan_firma) LIKE '%ISKUR%'
+                OR COALESCE(pcg.sgk_yapilan_firma, p.sgk_yapilan_firma) LIKE '%KUR%'
+            ) ";
+        }
 
         if ($departman !== '') {
             $sql .= " AND gg_dep.departman = :departman ";
@@ -1035,6 +1065,8 @@ try {
         $personeller = $Personel->db->prepare($sql);
         
         $params = [
+            ':end_date_cal' => $endDate,
+            ':start_date_cal' => $startDate,
             ':end_date1' => $endDate,
             ':start_date1' => $startDate,
             ':end_date2' => $endDate,

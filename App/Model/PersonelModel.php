@@ -164,32 +164,50 @@ class PersonelModel extends Model
      * @param bool $activeOnly Sadece aktif personelleri getir
      * @param string|null $modul Modül kodu (dışarıdan sigortalı filtresi için: bordro,puantaj,nobet,demirbas,arac,evrak,mail,takip,personel,dashboard)
      */
-    public function all($activeOnly = false, $modul = null)
+    public function all($activeOnly = false, $modul = null, $date = null)
     {
+        $targetDate = $date ?: date('Y-m-d');
+
         $sql = "SELECT p.*, t.tur_adi as ekip_adi, f.firma_adi,
-                CASE WHEN ps.id IS NOT NULL THEN 1 ELSE 0 END as bildirim_abonesi
+                CASE WHEN ps.id IS NOT NULL THEN 1 ELSE 0 END as bildirim_abonesi,
+                COALESCE(pcg.ise_giris_tarihi, p.ise_giris_tarihi) as ise_giris_tarihi,
+                COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) as isten_cikis_tarihi,
+                COALESCE(pcg.personel_sinifi, p.personel_sinifi) as personel_sinifi,
+                COALESCE(pcg.saha_takibi, p.saha_takibi) as saha_takibi,
+                COALESCE(pcg.arac_kullanim, p.arac_kullanim) as arac_kullanim,
+                COALESCE(pcg.sgk_yapilan_firma, p.sgk_yapilan_firma) as sgk_yapilan_firma,
+                COALESCE(pcg.disardan_sigortali, p.disardan_sigortali) as disardan_sigortali,
+                COALESCE(pcg.gorunum_modulleri, p.gorunum_modulleri) as gorunum_modulleri
                 FROM {$this->table} p 
                 LEFT JOIN push_subscriptions ps ON p.id = ps.personel_id
                 LEFT JOIN tanimlamalar t ON p.ekip_no = t.id
                 LEFT JOIN firmalar f ON p.firma_id = f.id
+                LEFT JOIN personel_calisma_gecmisi pcg ON p.id = pcg.personel_id 
+                    AND pcg.ise_giris_tarihi <= :target_date 
+                    AND (pcg.isten_cikis_tarihi IS NULL OR pcg.isten_cikis_tarihi >= :target_date)
                 WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL";
 
-        $params = ['firma_id' => $_SESSION['firma_id']];
+        $params = [
+            'firma_id' => $_SESSION['firma_id'],
+            'target_date' => $targetDate
+        ];
 
         // Dışarıdan sigortalı filtresi
         if ($modul) {
             if ($modul === 'all_with_external') {
                 // Do not restrict by external SSK status at all
             } else {
-                $sql .= " AND (p.disardan_sigortali = 0 OR FIND_IN_SET(:modul, p.gorunum_modulleri))";
+                $sql .= " AND (COALESCE(pcg.disardan_sigortali, p.disardan_sigortali) = 0 
+                               OR FIND_IN_SET(:modul, COALESCE(pcg.gorunum_modulleri, p.gorunum_modulleri)))";
                 $params['modul'] = $modul;
             }
         } else {
-            $sql .= " AND p.disardan_sigortali = 0";
+            $sql .= " AND COALESCE(pcg.disardan_sigortali, p.disardan_sigortali) = 0";
         }
 
         if ($activeOnly) {
-            $sql .= " AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '0000-00-00')";
+            $sql .= " AND (COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) IS NULL 
+                           OR COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) = '0000-00-00')";
         }
 
         $sql .= " GROUP BY p.id";

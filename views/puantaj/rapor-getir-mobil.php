@@ -71,7 +71,7 @@ if ($activeTab !== 'okuma' && !empty($workTypes)) {
     }
 }
 
-$allPersonel = $Personel->all(false, 'puantaj');
+$allPersonel = $Personel->all(false, 'puantaj', $endDateStr);
 $personelById = [];
 foreach ($allPersonel as $p) {
     // Profil fotoğrafını kontrol et, yoksa default_user.png

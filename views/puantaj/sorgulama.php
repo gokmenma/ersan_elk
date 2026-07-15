@@ -11,7 +11,7 @@ $startDate = $_GET['start_date'] ?? Date::firstDayOfThisMonth();
 $endDate = $_GET['end_date'] ?? Date::today();
 $dateRangeValue = $startDate . ' - ' . $endDate;
 
-$personeller = $Personel->all(false, 'puantaj');
+$personeller = $Personel->all(false, 'puantaj', $endDate);
 $personelOptions = ['' => 'Tüm Personeller'];
 foreach ($personeller as $p) {
     $personelOptions[$p->id] = $p->adi_soyadi;

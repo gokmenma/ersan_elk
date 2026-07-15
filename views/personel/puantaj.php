@@ -805,6 +805,12 @@ use App\Service\Gate;
                                 <div style="width: 180px;">
                                     <?php echo Form::FormSelect2("select-bolge", ["" => "Tüm Bölgeler"], "", "Bölge", "map-pin", 'key', '', "form-control select2"); ?>
                                 </div>
+                                <div class="d-flex align-items-center ms-2" style="height: 38px;">
+                                    <div class="form-check form-switch form-switch-md mb-0">
+                                        <input class="form-check-input" type="checkbox" id="check-iskur-dahil" checked>
+                                        <label class="form-check-label fw-semibold text-muted ms-1" style="font-size: 12px; cursor: pointer;" for="check-iskur-dahil">İŞKUR Dahil</label>
+                                    </div>
+                                </div>
                             </div>
                         </div>
 

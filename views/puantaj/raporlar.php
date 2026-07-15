@@ -35,7 +35,16 @@ for ($m = 1; $m <= 12; $m++) {
     $monthOptions[$m_val] = Date::monthName($m_val);
 }
 
-$personelList = $Personel->all(false, 'puantaj');
+$targetDate = date('Y-m-d');
+if (isset($filterType)) {
+    if ($filterType === 'range' && !empty($endDate)) {
+        $targetDate = date('Y-m-d', strtotime($endDate));
+    } elseif ($filterType === 'period' && !empty($month) && !empty($year)) {
+        $m_val = str_pad($month, 2, '0', STR_PAD_LEFT);
+        $targetDate = date('Y-m-t', strtotime("$year-$m_val-01"));
+    }
+}
+$personelList = $Personel->all(false, 'puantaj', $targetDate);
 $personelOptions = ['' => 'Tüm Personeller'];
 foreach ($personelList as $p) {
     $personelOptions[$p->id] = $p->adi_soyadi;

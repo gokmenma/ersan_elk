@@ -23,6 +23,9 @@ $(document).ready(function () {
   if (savedYil) $("#select-yil").val(savedYil);
   if (savedFilter) $("#personel-filter").val(savedFilter);
 
+  const savedIskurDahil = localStorage.getItem("puantaj_iskur_dahil") !== "0";
+  $("#check-iskur-dahil").prop("checked", savedIskurDahil);
+
   // Initialize Bootstrap Tooltips and Popovers ONCE using delegation on the container
   // This is MUCH faster for large tables (delegation vs thousands of instances)
   const tooltipInstance = new bootstrap.Tooltip(document.getElementById('puantaj-full-container'), {
@@ -60,6 +63,11 @@ $(document).ready(function () {
 
   $("#select-bolge").on("change", function () {
     localStorage.setItem("puantaj_bolge", $(this).val());
+    renderTable();
+  });
+
+  $("#check-iskur-dahil").on("change", function () {
+    localStorage.setItem("puantaj_iskur_dahil", $(this).is(":checked") ? "1" : "0");
     renderTable();
   });
 
@@ -272,6 +280,7 @@ $(document).ready(function () {
     const yil = $("#select-yil").val();
     const departman = $("#select-departman").val() || "";
     const bolge = $("#select-bolge").val() || "";
+    const iskur_dahil = $("#check-iskur-dahil").is(":checked") ? 1 : 0;
     const daysCount = getDaysInMonth(ay, yil);
 
     // Tabloyu temizle ve yükleniyor göster
@@ -300,7 +309,7 @@ $(document).ready(function () {
     // Body with data
     $.post(
       API_URL,
-      { action: "get-calendar-data", ay, yil, departman, bolge },
+      { action: "get-calendar-data", ay, yil, departman, bolge, iskur_dahil },
       function (res) {
         if (res.status === "success") {
           try {
@@ -1617,9 +1626,10 @@ $(document).ready(function () {
     const yil = $("#select-yil").val();
     const departman = $("#select-departman").val() || "";
     const bolge = $("#select-bolge").val() || "";
+    const iskur_dahil = $("#check-iskur-dahil").is(":checked") ? 1 : 0;
 
     // Sunucu tarafında PHPSpreadsheet ile oluşturup indir
-    window.location.href = `${API_URL}?action=export-excel&ay=${ay}&yil=${yil}&departman=${encodeURIComponent(departman)}&bolge=${encodeURIComponent(bolge)}`;
+    window.location.href = `${API_URL}?action=export-excel&ay=${ay}&yil=${yil}&departman=${encodeURIComponent(departman)}&bolge=${encodeURIComponent(bolge)}&iskur_dahil=${iskur_dahil}`;
   });
 
   // Modal içindeki Yükle Butonu (Dosya seçimi ve okuma aynı kalabilir veya o da taşınabilir ama şimdilik export isteniyor)
