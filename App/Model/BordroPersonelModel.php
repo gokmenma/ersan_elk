@@ -1168,6 +1168,11 @@ class BordroPersonelModel extends Model
         if (!empty($ids)) $sqlParams = array_merge($sqlParams, $ids);
         $sql->execute($sqlParams);
         $results = $sql->fetchAll(PDO::FETCH_OBJ);
+        
+        foreach ($results as &$r) {
+            $this->overrideWithHistoricalCalismaGecmisi($r, $donemBaslangic, $donemBitis);
+        }
+
         $pm = new PersonelModel();
         return array_map(fn($r) => $pm->decryptFields($r), $results);
     }
@@ -2634,6 +2639,7 @@ class BordroPersonelModel extends Model
 
         $personel = $PersonelModel->find($personel_id);
         if (!$personel) return 0;
+        $personel = $this->overrideWithHistoricalCalismaGecmisi($personel, $baslangic_tarihi, $bitis_tarihi);
 
         $p_giris = strtotime($personel->ise_giris_tarihi ?: '1970-01-01');
         $p_cikis = strtotime($personel->isten_cikis_tarihi ?: '2099-12-31');
@@ -3024,9 +3030,12 @@ class BordroPersonelModel extends Model
     public function getUcretliIzinGunu($personel_id, $donem_baslangic, $donem_bitis)
     {
         // 1. Determine actual employment period in the month
-        $personel = $this->db->prepare("SELECT ise_giris_tarihi, isten_cikis_tarihi FROM personel WHERE id = ?");
+        $personel = $this->db->prepare("SELECT id, ise_giris_tarihi, isten_cikis_tarihi FROM personel WHERE id = ?");
         $personel->execute([$personel_id]);
         $p = $personel->fetch(PDO::FETCH_OBJ);
+        if ($p) {
+            $p = $this->overrideWithHistoricalCalismaGecmisi($p, $donem_baslangic, $donem_bitis);
+        }
 
         $aktifBaslangic = $donem_baslangic;
         $aktifBitis = $donem_bitis;
@@ -3187,9 +3196,12 @@ class BordroPersonelModel extends Model
     public function getGunSayisiByKisaKod($personel_id, $donem_baslangic, $donem_bitis, $kisa_kod)
     {
         // 1. Determine actual employment period in the month
-        $personel = $this->db->prepare("SELECT ise_giris_tarihi, isten_cikis_tarihi FROM personel WHERE id = ?");
+        $personel = $this->db->prepare("SELECT id, ise_giris_tarihi, isten_cikis_tarihi FROM personel WHERE id = ?");
         $personel->execute([$personel_id]);
         $p = $personel->fetch(PDO::FETCH_OBJ);
+        if ($p) {
+            $p = $this->overrideWithHistoricalCalismaGecmisi($p, $donem_baslangic, $donem_bitis);
+        }
 
         $aktifBaslangic = $donem_baslangic;
         $aktifBitis = $donem_bitis;
@@ -3303,9 +3315,12 @@ class BordroPersonelModel extends Model
     public function getUcretsizIzinGunuDirekt($personel_id, $donem_baslangic, $donem_bitis)
     {
         // 1. Determine actual employment period in the month
-        $personel = $this->db->prepare("SELECT ise_giris_tarihi, isten_cikis_tarihi FROM personel WHERE id = ?");
+        $personel = $this->db->prepare("SELECT id, ise_giris_tarihi, isten_cikis_tarihi FROM personel WHERE id = ?");
         $personel->execute([$personel_id]);
         $p = $personel->fetch(PDO::FETCH_OBJ);
+        if ($p) {
+            $p = $this->overrideWithHistoricalCalismaGecmisi($p, $donem_baslangic, $donem_bitis);
+        }
 
         $aktifBaslangic = $donem_baslangic;
         $aktifBitis = $donem_bitis;
@@ -3609,6 +3624,8 @@ class BordroPersonelModel extends Model
 
         if (!$kayit)
             return false;
+
+        $kayit = $this->overrideWithHistoricalCalismaGecmisi($kayit, $kayit->baslangic_tarihi, $kayit->bitis_tarihi);
 
         // Dönem tarihi - parametreleri bu tarihe göre çek
         $donemTarihi = $kayit->baslangic_tarihi ?? date('Y-m-d');
@@ -5308,7 +5325,65 @@ class BordroPersonelModel extends Model
         ");
         $sql->execute($params);
         $results = $sql->fetchAll(PDO::FETCH_OBJ);
+        
+        $donemSql = $this->db->prepare("SELECT baslangic_tarihi, bitis_tarihi FROM bordro_donemi WHERE id = ?");
+        $donemSql->execute([$donem_id]);
+        $donemDates = $donemSql->fetch(PDO::FETCH_OBJ);
+        $donemBitis = $donemDates->bitis_tarihi ?? date('Y-m-t');
+        $donemBaslangic = $donemDates->baslangic_tarihi ?? date('Y-m-01');
+
+        foreach ($results as &$r) {
+            $this->overrideWithHistoricalCalismaGecmisi($r, $donemBaslangic, $donemBitis);
+        }
+
         $pm = new PersonelModel();
         return array_map(fn($r) => $pm->decryptFields($r), $results);
+    }
+
+    public function getHistoricalCalismaGecmisi($personel_id, $baslangic, $bitis)
+    {
+        $sql = "SELECT * FROM personel_calisma_gecmisi 
+                WHERE personel_id = ? 
+                AND ise_giris_tarihi <= ?
+                AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi >= ?)
+                ORDER BY ise_giris_tarihi DESC, id DESC 
+                LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$personel_id, $bitis, $baslangic]);
+        return $stmt->fetch(PDO::FETCH_OBJ);
+    }
+
+    public function overrideWithHistoricalCalismaGecmisi($record, $baslangic, $bitis)
+    {
+        if (is_object($record)) {
+            $personel_id = $record->personel_id ?? $record->id ?? null;
+            if (!$personel_id) return $record;
+            $hist = $this->getHistoricalCalismaGecmisi($personel_id, $baslangic, $bitis);
+            if ($hist) {
+                $record->ise_giris_tarihi = $hist->ise_giris_tarihi;
+                $record->isten_cikis_tarihi = $hist->isten_cikis_tarihi;
+                if (property_exists($record, 'personel_sinifi')) $record->personel_sinifi = $hist->personel_sinifi;
+                if (property_exists($record, 'saha_takibi')) $record->saha_takibi = $hist->saha_takibi;
+                if (property_exists($record, 'arac_kullanim')) $record->arac_kullanim = $hist->arac_kullanim;
+                if (property_exists($record, 'sgk_yapilan_firma')) $record->sgk_yapilan_firma = $hist->sgk_yapilan_firma;
+                if (property_exists($record, 'disardan_sigortali')) $record->disardan_sigortali = $hist->disardan_sigortali;
+                if (property_exists($record, 'gorunum_modulleri')) $record->gorunum_modulleri = $hist->gorunum_modulleri;
+            }
+        } elseif (is_array($record)) {
+            $personel_id = $record['personel_id'] ?? $record['id'] ?? null;
+            if (!$personel_id) return $record;
+            $hist = $this->getHistoricalCalismaGecmisi($personel_id, $baslangic, $bitis);
+            if ($hist) {
+                $record['ise_giris_tarihi'] = $hist->ise_giris_tarihi;
+                $record['isten_cikis_tarihi'] = $hist->isten_cikis_tarihi;
+                if (array_key_exists('personel_sinifi', $record)) $record['personel_sinifi'] = $hist->personel_sinifi;
+                if (array_key_exists('saha_takibi', $record)) $record['saha_takibi'] = $hist->saha_takibi;
+                if (array_key_exists('arac_kullanim', $record)) $record['arac_kullanim'] = $hist->arac_kullanim;
+                if (array_key_exists('sgk_yapilan_firma', $record)) $record['sgk_yapilan_firma'] = $hist->sgk_yapilan_firma;
+                if (array_key_exists('disardan_sigortali', $record)) $record['disardan_sigortali'] = $hist->disardan_sigortali;
+                if (array_key_exists('gorunum_modulleri', $record)) $record['gorunum_modulleri'] = $hist->gorunum_modulleri;
+            }
+        }
+        return $record;
     }
 }

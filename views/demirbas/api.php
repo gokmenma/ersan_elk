@@ -352,6 +352,54 @@ if ($action == "demirbas-kaydet") {
             }
         }
 
+        $resimYolu = null;
+        if ($id > 0) {
+            $existing = $Demirbas->find($id);
+            if ($existing) {
+                $resimYolu = $existing->resim_yolu;
+            }
+        }
+
+        // Dosya Yükleme İşlemi
+        if (isset($_FILES['resim_yolu']) && $_FILES['resim_yolu']['error'] == 0) {
+            $allowedImageMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            $detectedMime = finfo_file($finfo, $_FILES['resim_yolu']['tmp_name']);
+            finfo_close($finfo);
+
+            if (!in_array($detectedMime, $allowedImageMimes)) {
+                throw new Exception("Geçersiz dosya türü. Sadece JPEG, PNG, WebP veya GIF yüklenebilir.");
+            }
+
+            if ($_FILES['resim_yolu']['size'] > 5 * 1024 * 1024) {
+                throw new Exception("Her dosya en fazla 5MB olabilir.");
+            }
+
+            $baseDir = dirname(__DIR__, 2);
+            $uploadDir = $baseDir . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR . 'demirbas' . DIRECTORY_SEPARATOR;
+
+            if (!file_exists($uploadDir)) {
+                if (!mkdir($uploadDir, 0777, true)) {
+                    throw new Exception("Klasör oluşturulamadı: " . $uploadDir);
+                }
+            }
+
+            $mimeToExt = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'image/gif' => 'gif'];
+            $fileExtension = $mimeToExt[$detectedMime];
+            $fileName = uniqid('demirbas_') . '.' . $fileExtension;
+            $uploadPath = $uploadDir . $fileName;
+
+            if (move_uploaded_file($_FILES['resim_yolu']['tmp_name'], $uploadPath)) {
+                if ($resimYolu && file_exists($baseDir . '/' . $resimYolu)) {
+                    @unlink($baseDir . '/' . $resimYolu);
+                }
+                $resimYolu = 'assets/images/demirbas/' . $fileName;
+            } else {
+                $error = error_get_last();
+                throw new Exception("Dosya yüklenemedi: " . ($error['message'] ?? 'Bilinmeyen hata'));
+            }
+        }
+
         $miktar = intval($_POST["miktar"] ?? 1);
 
         $data = [
@@ -370,6 +418,7 @@ if ($action == "demirbas-kaydet") {
             "durum" => $_POST["durum"] ?? 'aktif',
             "aciklama" => $_POST["aciklama"] ?? null,
             "lokasyon" => $_POST["lokasyon"] ?? 'bizim_depo',
+            "resim_yolu" => $resimYolu,
             "otomatik_zimmet_is_emri_ids" => !empty($_POST["otomatik_zimmet_is_emri_ids"]) ? implode(',', $_POST["otomatik_zimmet_is_emri_ids"]) : null,
             "otomatik_iade_is_emri_ids" => !empty($_POST["otomatik_iade_is_emri_ids"]) ? implode(',', $_POST["otomatik_iade_is_emri_ids"]) : null,
             "otomatik_zimmetten_dus_is_emri_ids" => !empty($_POST["otomatik_zimmetten_dus_is_emri_ids"]) ? implode(',', $_POST["otomatik_zimmetten_dus_is_emri_ids"]) : null,
@@ -392,6 +441,12 @@ if ($action == "demirbas-kaydet") {
         }
 
         $lastInsertId = $Demirbas->saveWithAttr($data) ?? $_POST["demirbas_id"];
+
+        // Log action
+        $logAction = ($id > 0) ? "Demirbaş Düzenleme" : "Demirbaş Ekleme";
+        $logDesc = $_POST["demirbas_adi"] . " isimli demirbaş kaydedildi. ID: " . Security::decrypt($lastInsertId);
+        $SystemLog->logAction($_SESSION['id'] ?? 0, $logAction, $logDesc, SystemLogModel::LEVEL_IMPORTANT);
+
         $son_kayit = $Demirbas->getTableRow(Security::decrypt($lastInsertId));
 
         jsonResponse("success", "Demirbaş başarıyla kaydedildi.", ["son_kayit" => $son_kayit]);
@@ -1462,7 +1517,14 @@ if ($action == "demirbas-listesi") {
                 }
 
                 $markaHtml = '<div>' . ($d->marka ?? '-') . ' ' . ($d->model ?? '') . '</div><small class="text-muted">' . ($d->seri_no ? 'SN: ' . $d->seri_no : ($isAbone ? 'Abone: ' . $displaySeriNo : '')) . '</small>';
-                $demirbasAdiHtml = '<a href="#" data-id="' . $enc_id . '" class="text-dark duzenle fw-medium">' . htmlspecialchars($displayDemirbasAdi) . '</a>';
+                
+                $imgHtml = '';
+                if (!empty($d->resim_yolu) && file_exists(dirname(__DIR__, 2) . '/' . $d->resim_yolu)) {
+                    $imgHtml = '<img src="' . htmlspecialchars($d->resim_yolu) . '" class="demirbas-img-thumb" alt="">';
+                } else {
+                    $imgHtml = '<div class="d-flex align-items-center justify-content-center bg-light text-secondary rounded border" style="width: 38px; height: 38px; min-width: 38px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);"><i class="bx bx-package fs-4"></i></div>';
+                }
+                $demirbasAdiHtml = '<div class="demirbas-info-box">' . $imgHtml . '<div class="ms-2"><a href="#" data-id="' . $enc_id . '" class="text-dark duzenle fw-medium">' . htmlspecialchars($displayDemirbasAdi) . '</a></div></div>';
 
                 $data[] = [
                     "DT_RowId" => "row-" . $enc_id,

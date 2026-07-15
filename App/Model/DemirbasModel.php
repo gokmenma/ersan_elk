@@ -250,8 +250,15 @@ class DemirbasModel extends Model
             <td class="text-center">' . ($data->demirbas_no ?? '-') . '</td>
             <td><span class="badge bg-soft-primary text-primary">' . ($data->kategori_adi ?? 'Kategorisiz') . '</span></td>
             <td>
-                <a href="#" data-id="' . $enc_id . '" class="text-dark duzenle fw-medium">
-                    ' . $data->demirbas_adi . '</a>
+                <div class="demirbas-info-box">
+                    ' . (!empty($data->resim_yolu) && file_exists(dirname(__DIR__, 2) . '/' . $data->resim_yolu) 
+                        ? '<img src="' . htmlspecialchars($data->resim_yolu) . '" class="demirbas-img-thumb" alt="">' 
+                        : '<div class="d-flex align-items-center justify-content-center bg-light text-secondary rounded border" style="width: 38px; height: 38px; min-width: 38px; box-shadow: 0 2px 4px rgba(0,0,0,0.05);"><i class="bx bx-package fs-4"></i></div>') . '
+                    <div class="demirbas-details ms-2">
+                        <a href="#" data-id="' . $enc_id . '" class="text-dark duzenle fw-medium">
+                            ' . htmlspecialchars($data->demirbas_adi) . '</a>
+                    </div>
+                </div>
             </td>
             <td>
                 <div>' . ($data->marka ?? '-') . ' ' . ($data->model ?? '') . '</div>

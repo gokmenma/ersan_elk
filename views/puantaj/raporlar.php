@@ -1005,9 +1005,84 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
             loadReport();
         }
 
+        var regionListJson = <?= json_encode($regionList) ?>;
+
+        function addKacakRow(data = null) {
+            var rowId = 'kacak_row_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+            
+            var ilceOptionsHtml = '<option value="">İlçe Seçiniz</option>';
+            regionListJson.forEach(function(r) {
+                var selected = (data && data.ilce === r) ? 'selected' : '';
+                ilceOptionsHtml += '<option value="' + r + '" ' + selected + '>' + r + '</option>';
+            });
+
+            var turOptionsHtml = `
+                <option value="">Tür Seçiniz</option>
+                <option value="Kaçak" ${(!data || data.tur === 'Kaçak') ? 'selected' : ''}>Kaçak</option>
+                <option value="Abonesiz" ${(data && data.tur === 'Abonesiz') ? 'selected' : ''}>Abonesiz</option>
+            `;
+
+            var rowHtml = `
+                <div class="row g-2 align-items-center mb-2 kacak-repeater-row" id="${rowId}">
+                    <div class="col-md-3">
+                        <select name="ilce[]" class="form-select select2-ilce" required>
+                            ${ilceOptionsHtml}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select name="tur[]" class="form-select select2-tur" required>
+                            ${turOptionsHtml}
+                        </select>
+                    </div>
+                    <div class="col-md-1">
+                        <input type="number" name="sayi[]" class="form-control px-1 text-center" placeholder="Sayı" value="${data ? data.sayi : ''}" required min="1">
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" name="aciklama[]" class="form-control" placeholder="Açıklama giriniz..." value="${data ? data.aciklama : ''}">
+                    </div>
+                    <div class="col-md-1 text-end">
+                        <button type="button" class="btn btn-soft-danger btn-sm btnRemoveKacakRow">
+                            <i class="bx bx-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            $('#kacakRowsContainer').append(rowHtml);
+            
+            // Initialize select2-ilce
+            $('#' + rowId + ' .select2-ilce').select2({
+                dropdownParent: $('#kacakModal'),
+                placeholder: 'İlçe Seçiniz',
+                allowClear: true,
+                width: '100%'
+            });
+
+            // Initialize select2-tur
+            $('#' + rowId + ' .select2-tur').select2({
+                dropdownParent: $('#kacakModal'),
+                placeholder: 'Tür Seçiniz',
+                allowClear: true,
+                width: '100%'
+            });
+        }
+
+        $('#btnAddKacakRow').on('click', function() {
+            addKacakRow();
+        });
+
+        $(document).on('click', '.btnRemoveKacakRow', function() {
+            if ($('.kacak-repeater-row').length > 1) {
+                $(this).closest('.kacak-repeater-row').remove();
+            } else {
+                Swal.fire('Hata', 'En az bir satır bulunmalıdır.', 'warning');
+            }
+        });
+
         window.openKacakModal = function (tarih, pIds, sayi, ekipAdi) {
             $('#kacakManualForm input[name="id"]').val(0);
             $('#kacakManualForm')[0].reset();
+            $('#kacakRowsContainer').empty();
 
             $('#kacakModalTitle').text('Hızlı Kaçak Kontrol Kaydı');
 
@@ -1046,21 +1121,21 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                 }
             }
 
-            // Set Sayi (number)
-            $('#kacakManualForm input[name="sayi"]').val(sayi > 0 ? sayi : '');
-
             // Set Ekip Adi
             $('#kacakManualForm input[name="ekip_adi"]').val(ekipAdi || '');
 
             // Initialize Select2 with pre-selected values
             initPersonelSelect2(pIdsArr);
 
-            $('#kacakModal').modal('show');
-
-            // Focus on sayi input after modal is shown
-            $('#kacakModal').one('shown.bs.modal', function () {
-                $('#kacakManualForm input[name="sayi"]').focus().select();
+            // Add initial row with default values if any
+            addKacakRow({
+                ilce: '',
+                tur: 'Kaçak',
+                sayi: sayi > 0 ? sayi : '',
+                aciklama: ''
             });
+
+            $('#kacakModal').modal('show');
         }
 
         const initPersonelSelect2 = function (selectedValues) {
@@ -1104,14 +1179,14 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                             Swal.fire({
                                 icon: 'success',
                                 title: 'Başarılı',
-                                text: 'Kayıt başarıyla kaydedildi.',
+                                text: 'Kayıtlar başarıyla kaydedildi.',
                                 timer: 1500,
                                 showConfirmButton: false
                             });
                             $('#kacakModal').modal('hide');
                             loadReport();
                         } else {
-                            Swal.fire('Hata', 'Kayıt sırasında bir hata oluştu.', 'error');
+                            Swal.fire('Hata', res.message || 'Kayıt sırasında bir hata oluştu.', 'error');
                         }
                     } catch (err) {
                         Swal.fire('Hata', 'Sunucudan geçersiz yanıt alındı.', 'error');
@@ -1641,7 +1716,7 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
 
 <!-- Kaçak Kontrol Manuel Modal -->
 <div class="modal fade" id="kacakModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="kacakModalTitle">Manuel Kaçak Kontrol Kaydı</h5>
@@ -1677,27 +1752,18 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                             required: true
                         ); ?>
                     </div>
-                    <div class="mb-3">
-                        <?php echo Form::FormFloatInput(
-                            type: 'number',
-                            name: 'sayi',
-                            value: '',
-                            placeholder: '',
-                            label: "Sayı",
-                            icon: "hash",
-                            required: true
-                        ); ?>
                     </div>
-                    <div class="mb-3">
-                        <?php echo Form::FormFloatInput(
-                            type: 'text',
-                            name: 'aciklama',
-                            value: '',
-                            placeholder: '',
-                            label: "Açıklama",
-                            icon: "file-text",
-                            required: false
-                        ); ?>
+                    
+                    <div class="border rounded p-3 bg-light mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0 fw-bold text-primary"><i class="bx bx-list-plus me-1"></i> Giriş Detayları</h6>
+                            <button type="button" class="btn btn-sm btn-soft-success" id="btnAddKacakRow">
+                                <i class="bx bx-plus me-1"></i> Satır Ekle
+                            </button>
+                        </div>
+                        <div id="kacakRowsContainer">
+                            <!-- JS ile doldurulacak -->
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">

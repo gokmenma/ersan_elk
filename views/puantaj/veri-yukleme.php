@@ -717,6 +717,8 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 <tr class="table-light">
                                     <th data-filter="date">Tarih</th>
                                     <th data-filter="string">Ekip (Personel)</th>
+                                    <th data-filter="select">İlçe</th>
+                                    <th data-filter="select">Tür</th>
                                     <th data-filter="number">Sayı</th>
                                     <th data-filter="string">Açıklama</th>
                                     <th>İşlem</th>
@@ -1082,7 +1084,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
 
 <!-- Kaçak Kontrol Manuel Modal -->
 <div class="modal fade" id="kacakModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
+    <div class="modal-dialog modal-lg">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title" id="kacakModalTitle">Manuel Kaçak Kontrol Kaydı</h5>
@@ -1117,27 +1119,17 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                             required: true
                         ); ?>
                     </div>
-                    <div class="mb-3">
-                        <?php echo Form::FormFloatInput(
-                            type: 'number',
-                            name: 'sayi',
-                            value: '',
-                            placeholder: '',
-                            label: "Sayı",
-                            icon: "hash",
-                            required: true
-                        ); ?>
-                    </div>
-                    <div class="mb-3">
-                        <?php echo \App\Helper\Form::FormFloatInput(
-                            type: 'text',
-                            name: 'aciklama',
-                            value: '',
-                            placeholder: '',
-                            label: "Açıklama",
-                            icon: "file-text",
-                            required: false
-                        ); ?>
+                    
+                    <div class="border rounded p-3 bg-light mb-3">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <h6 class="mb-0 fw-bold text-primary"><i class="bx bx-list-plus me-1"></i> Giriş Detayları</h6>
+                            <button type="button" class="btn btn-sm btn-soft-success" id="btnAddKacakRow">
+                                <i class="bx bx-plus me-1"></i> Satır Ekle
+                            </button>
+                        </div>
+                        <div id="kacakRowsContainer">
+                            <!-- JS ile doldurulacak -->
+                        </div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -2942,13 +2934,93 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             });
         });
 
+        var regionListJson = <?= json_encode($regionList) ?>;
+
+        function addKacakRow(data = null) {
+            var rowId = 'kacak_row_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
+            
+            var ilceOptionsHtml = '<option value="">İlçe Seçiniz</option>';
+            regionListJson.forEach(function(r) {
+                var selected = (data && data.ilce === r) ? 'selected' : '';
+                ilceOptionsHtml += '<option value="' + r + '" ' + selected + '>' + r + '</option>';
+            });
+
+            var turOptionsHtml = `
+                <option value="">Tür Seçiniz</option>
+                <option value="Kaçak" ${(!data || data.tur === 'Kaçak') ? 'selected' : ''}>Kaçak</option>
+                <option value="Abonesiz" ${(data && data.tur === 'Abonesiz') ? 'selected' : ''}>Abonesiz</option>
+            `;
+
+            var rowHtml = `
+                <div class="row g-2 align-items-center mb-2 kacak-repeater-row" id="${rowId}">
+                    <div class="col-md-3">
+                        <select name="ilce[]" class="form-select select2-ilce" required>
+                            ${ilceOptionsHtml}
+                        </select>
+                    </div>
+                    <div class="col-md-3">
+                        <select name="tur[]" class="form-select select2-tur" required>
+                            ${turOptionsHtml}
+                        </select>
+                    </div>
+                    <div class="col-md-1">
+                        <input type="number" name="sayi[]" class="form-control px-1 text-center" placeholder="Sayı" value="${data ? data.sayi : ''}" required min="1">
+                    </div>
+                    <div class="col-md-4">
+                        <input type="text" name="aciklama[]" class="form-control" placeholder="Açıklama giriniz..." value="${data ? data.aciklama : ''}">
+                    </div>
+                    <div class="col-md-1 text-end">
+                        <button type="button" class="btn btn-soft-danger btn-sm btnRemoveKacakRow">
+                            <i class="bx bx-trash"></i>
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            $('#kacakRowsContainer').append(rowHtml);
+            
+            // Initialize select2-ilce
+            $('#' + rowId + ' .select2-ilce').select2({
+                dropdownParent: $('#kacakModal'),
+                placeholder: 'İlçe Seçiniz',
+                allowClear: true,
+                width: '100%'
+            });
+
+            // Initialize select2-tur
+            $('#' + rowId + ' .select2-tur').select2({
+                dropdownParent: $('#kacakModal'),
+                placeholder: 'Tür Seçiniz',
+                allowClear: true,
+                width: '100%'
+            });
+        }
+
+        $('#btnAddKacakRow').on('click', function() {
+            addKacakRow();
+        });
+
+        $(document).on('click', '.btnRemoveKacakRow', function() {
+            if ($('.kacak-repeater-row').length > 1) {
+                $(this).closest('.kacak-repeater-row').remove();
+            } else {
+                Swal.fire('Hata', 'En az bir satır bulunmalıdır.', 'warning');
+            }
+        });
+
         $('#btnNewKacak').on('click', function () {
             $('#kacakManualForm input[name="id"]').val(0);
             $('#kacakManualForm')[0].reset();
+            $('#kacakRowsContainer').empty();
             // Multiple select'i sıfırla
             $('#kacak_personel_ids').val([]).trigger('change');
             $('#kacakModalTitle').text('Yeni Kaçak Kontrol Kaydı');
             initPersonelSelect2();
+            
+            // Add initial row
+            addKacakRow();
+            
+            // Show hide delete button based on row count
             $('#kacakModal').modal('show');
         });
 
@@ -2974,11 +3046,11 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             $.post('views/puantaj/api.php', formData, function (response) {
                 var res = typeof response === 'object' ? response : JSON.parse(response);
                 if (res.status === 'success') {
-                    Swal.fire('Başarılı', 'Kayıt kaydedildi.', 'success');
+                    Swal.fire('Başarılı', 'Kayıtlar kaydedildi.', 'success');
                     $('#kacakModal').modal('hide');
                     loadTabContent('kacak_kontrol');
                 } else {
-                    Swal.fire('Hata', 'Kayıt edilemedi.', 'error');
+                    Swal.fire('Hata', res.message || 'Kayıt edilemedi.', 'error');
                 }
             });
         });
@@ -2989,8 +3061,6 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 var record = typeof response === 'object' ? response : JSON.parse(response);
                 $('#kacakManualForm input[name="id"]').val(record.id);
                 $('#kacakManualForm input[name="tarih"]').val(record.tarih_formatted);
-                $('#kacakManualForm input[name="sayi"]').val(record.sayi);
-                $('#kacakManualForm input[name="aciklama"]').val(record.aciklama);
                 $('#kacakModalTitle').text('Kaydı Düzenle');
 
                 // Multiple select'i başlat ve seçili personelleri ayarla
@@ -3000,6 +3070,14 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 } else {
                     $('#kacak_personel_ids').val([]).trigger('change');
                 }
+
+                $('#kacakRowsContainer').empty();
+                addKacakRow({
+                    ilce: record.ilce,
+                    tur: record.tur,
+                    sayi: record.sayi,
+                    aciklama: record.aciklama
+                });
 
                 $('#kacakModal').modal('show');
             });

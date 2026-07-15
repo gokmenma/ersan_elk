@@ -225,6 +225,25 @@ if (!empty($aparatKatIds)) {
                         </div>
 
                         <style>
+                            .demirbas-info-box {
+                                display: flex;
+                                align-items: center;
+                                gap: 10px;
+                            }
+                            .demirbas-img-thumb {
+                                width: 38px;
+                                height: 38px;
+                                object-fit: cover;
+                                border-radius: 6px;
+                                border: 2px solid #fff;
+                                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                                transition: transform 0.2s ease-in-out;
+                                cursor: pointer;
+                            }
+                            .demirbas-img-thumb:hover {
+                                transform: scale(1.1);
+                            }
+
                             .status-filter-group {
                                 background: #f8f9fa;
                                 padding: 4px;

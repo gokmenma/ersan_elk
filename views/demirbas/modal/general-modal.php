@@ -41,7 +41,7 @@ foreach ($isEmriSonuclariList as $sonuc) {
                 <h5 class="modal-title"><i data-feather="package" class="me-2"></i>Demirbaş Ekle/Düzenle</h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
             </div>
-            <form id="demirbasForm">
+            <form id="demirbasForm" enctype="multipart/form-data">
                 <input type="hidden" name="demirbas_id" id="demirbas_id" value="0">
                 <div class="modal-body">
                     <!-- Tab Navigation -->
@@ -181,6 +181,27 @@ foreach ($isEmriSonuclariList as $sonuc) {
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <?php echo Form::FormFloatInput('text', 'edinme_tutari', null, '0,00', 'Edinme Tutarı', 'dollar-sign', 'form-control money'); ?>
+                                </div>
+                            </div>
+
+                            <div class="row mb-3 align-items-center">
+                                <div class="col-md-3 text-center">
+                                    <div class="position-relative d-inline-block">
+                                        <img id="demirbasResimOnizleme" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23f8f9fa'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='12' fill='%236c757d'>Görsel Yok</text></svg>" 
+                                             class="rounded border shadow-sm" 
+                                             style="width: 100px; height: 100px; object-fit: cover; cursor: pointer;"
+                                             onclick="$('#demirbasResimInput').click();">
+                                        <div class="position-absolute bottom-0 end-0 bg-success text-white rounded-circle p-1 shadow-sm" 
+                                             style="cursor: pointer; width: 28px; height: 28px; display: flex; align-items: center; justify-content: center;"
+                                             onclick="$('#demirbasResimInput').click();">
+                                            <i class="bx bx-camera fs-6"></i>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-md-9">
+                                    <label class="form-label fw-bold">Demirbaş Görseli</label>
+                                    <input type="file" id="demirbasResimInput" name="resim_yolu" accept="image/*" class="form-control">
+                                    <small class="text-muted d-block mt-1">Sadece JPG, PNG, WEBP veya GIF formatında görsel yükleyebilirsiniz. Maksimum 5MB.</small>
                                 </div>
                             </div>
 

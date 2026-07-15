@@ -1311,6 +1311,12 @@ $(document).on("click", ".duzenle", function (e) {
                     .val(null)
                     .trigger("change");
                 }
+              } else if (key === "resim_yolu") {
+                if (d[key]) {
+                  $("#demirbasResimOnizleme").attr("src", d[key]);
+                } else {
+                  $("#demirbasResimOnizleme").attr("src", "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23f8f9fa'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='12' fill='%236c757d'>Görsel Yok</text></svg>");
+                }
               } else {
                 $("#" + key).val(d[key]);
               }
@@ -1364,6 +1370,8 @@ $(document).on("click", ".demirbas-sil", function (e) {
 function resetDemirbasForm() {
   $("#demirbasForm")[0].reset();
   $("#demirbas_id").val(0);
+  $("#demirbasResimInput").val("");
+  $("#demirbasResimOnizleme").attr("src", "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='100' height='100' viewBox='0 0 100 100'><rect width='100' height='100' fill='%23f8f9fa'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='12' fill='%236c757d'>Görsel Yok</text></svg>");
   $("#kategori_id").prop("disabled", false).val("").trigger("change");
   $("#durum").prop("disabled", false).val("aktif").trigger("change");
   $("#miktar").val(1);
@@ -4720,4 +4728,16 @@ $(document).on("click", ".sil-detay-foto", function (e) {
       });
     }
   });
+});
+
+// Demirbaş resim önizleme değiştiğinde
+$(document).on("change", "#demirbasResimInput", function() {
+  var file = this.files[0];
+  if (file) {
+    var reader = new FileReader();
+    reader.onload = function(e) {
+      $("#demirbasResimOnizleme").attr("src", e.target.result);
+    }
+    reader.readAsDataURL(file);
+  }
 });

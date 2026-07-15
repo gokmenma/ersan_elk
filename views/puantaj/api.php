@@ -899,25 +899,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             }
         }
 
-        if ($id == 0) {
-            // Aynı gün ve aynı personel(ler) için kayıt var mı kontrol et (Hızlı düzenleme için)
-            $stmt = $Puantaj->db->prepare("SELECT id FROM kacak_kontrol WHERE firma_id = ? AND tarih = ? AND personel_ids = ? AND silinme_tarihi IS NULL LIMIT 1");
-            $stmt->execute([$firmaId, $dbTarih, $personelIdsStr]);
-            $existing = $stmt->fetch(PDO::FETCH_ASSOC);
-            if ($existing) {
-                $id = $existing['id'];
-            }
-        }
+        $ilceArr = $_POST['ilce'] ?? [];
+        $turArr = $_POST['tur'] ?? [];
+        $sayiArr = $_POST['sayi'] ?? [];
+        $aciklamaArr = $_POST['aciklama'] ?? [];
 
         if ($id > 0) {
-            // Explicit update or found existing
-            $stmt = $Puantaj->db->prepare("UPDATE kacak_kontrol SET tarih = ?, personel_ids = ?, ekip_adi = ?, sayi = ?, aciklama = ? WHERE id = ?");
-            $result = $stmt->execute([$dbTarih, $personelIdsStr, $ekipAdi, $sayi, $aciklama, $id]);
+            // Explicit update or found existing - single row mode
+            $ilce = is_array($ilceArr) ? ($ilceArr[0] ?? null) : $ilceArr;
+            $tur = is_array($turArr) ? ($turArr[0] ?? 'Kaçak') : $turArr;
+            $sayi = is_array($sayiArr) ? ($sayiArr[0] ?? 0) : $sayiArr;
+            $aciklama = is_array($aciklamaArr) ? ($aciklamaArr[0] ?? '') : $aciklamaArr;
+
+            $stmt = $Puantaj->db->prepare("UPDATE kacak_kontrol SET tarih = ?, personel_ids = ?, ekip_adi = ?, ilce = ?, tur = ?, sayi = ?, aciklama = ? WHERE id = ?");
+            $result = $stmt->execute([$dbTarih, $personelIdsStr, $ekipAdi, $ilce, $tur, $sayi, $aciklama, $id]);
         } else {
-            // Insert new record
-            $islemId = md5($dbTarih . '|' . $personelIdsStr . '|' . $sayi . '|' . $aciklama . '|' . microtime());
-            $stmt = $Puantaj->db->prepare("INSERT INTO kacak_kontrol (firma_id, personel_ids, tarih, ekip_adi, sayi, aciklama, islem_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $result = $stmt->execute([$firmaId, $personelIdsStr, $dbTarih, $ekipAdi, $sayi, $aciklama, $islemId]);
+            // Insert new records - support multiple rows from repeater
+            $result = true;
+            if (is_array($ilceArr) && count($ilceArr) > 0) {
+                $Puantaj->db->beginTransaction();
+                try {
+                    for ($k = 0; $k < count($ilceArr); $k++) {
+                        $ilce = $ilceArr[$k] ?? null;
+                        $tur = $turArr[$k] ?? 'Kaçak';
+                        $sayi = (int) ($sayiArr[$k] ?? 0);
+                        $aciklama = $aciklamaArr[$k] ?? '';
+
+                        if (empty($ilce) || $sayi <= 0) {
+                            continue; // Skip invalid rows
+                        }
+
+                        $islemId = md5($dbTarih . '|' . $personelIdsStr . '|' . $ilce . '|' . $tur . '|' . $sayi . '|' . $aciklama . '|' . microtime() . '|' . $k);
+                        $stmt = $Puantaj->db->prepare("INSERT INTO kacak_kontrol (firma_id, personel_ids, tarih, ekip_adi, ilce, tur, sayi, aciklama, islem_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                        $stmt->execute([$firmaId, $personelIdsStr, $dbTarih, $ekipAdi, $ilce, $tur, $sayi, $aciklama, $islemId]);
+                    }
+                    $Puantaj->db->commit();
+                } catch (Exception $e) {
+                    $Puantaj->db->rollBack();
+                    throw $e;
+                }
+            } else {
+                $result = false;
+            }
         }
         $response = ['status' => $result ? 'success' : 'error'];
     } catch (Exception $e) {
@@ -1670,8 +1693,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
             <tr>
                 <td><?= \App\Helper\Date::dmY($record->tarih) ?></td>
                 <td><?= $record->ekip_adi ?: '<span class="text-muted">-</span>' ?></td>
+                <td><?= htmlspecialchars($record->ilce ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
+                <td>
+                    <?php if (($record->tur ?? 'Kaçak') === 'Abonesiz'): ?>
+                        <span class="badge bg-warning text-dark">Abonesiz</span>
+                    <?php else: ?>
+                        <span class="badge bg-danger">Kaçak</span>
+                    <?php endif; ?>
+                </td>
                 <td><?= $record->sayi ?></td>
-                <td><?= $record->aciklama ?></td>
+                <td><?= htmlspecialchars($record->aciklama ?? '', ENT_QUOTES, 'UTF-8') ?></td>
                 <td>
                     <button class="btn btn-sm btn-soft-primary edit-kacak" data-id="<?= $record->id ?>"><i
                             class="bx bx-edit"></i></button>
