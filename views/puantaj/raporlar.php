@@ -1136,13 +1136,51 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
             // Initialize Select2 with pre-selected values
             initPersonelSelect2(pIdsArr);
 
-            // Add initial row with default values if any
-            addKacakRow({
-                ilce: '',
-                tur: 'Kaçak',
-                sayi: sayi > 0 ? sayi : '',
-                aciklama: ''
-            });
+            // If sayi > 0, fetch existing records for this day and team to edit them instead of duplicating
+            if (sayi > 0) {
+                $.get('views/puantaj/api.php', {
+                    action: 'get-kacak-cell-records',
+                    tarih: tarih,
+                    ekip_adi: ekipAdi,
+                    personel_ids: pIds
+                }, function (response) {
+                    try {
+                        var records = typeof response === 'object' ? response : JSON.parse(response);
+                        if (records && records.length > 0) {
+                            records.forEach(function(rec) {
+                                addKacakRow({
+                                    ilce: rec.ilce,
+                                    tur: rec.tur,
+                                    sayi: rec.sayi,
+                                    aciklama: rec.aciklama
+                                });
+                            });
+                        } else {
+                            addKacakRow({
+                                ilce: '',
+                                tur: 'Kaçak',
+                                sayi: sayi,
+                                aciklama: ''
+                            });
+                        }
+                    } catch (e) {
+                        addKacakRow({
+                            ilce: '',
+                            tur: 'Kaçak',
+                            sayi: sayi,
+                            aciklama: ''
+                        });
+                    }
+                });
+            } else {
+                // Add initial row with default values if new
+                addKacakRow({
+                    ilce: '',
+                    tur: 'Kaçak',
+                    sayi: '',
+                    aciklama: ''
+                });
+            }
 
             $('#kacakModal').modal('show');
         }
@@ -1645,8 +1683,6 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                 var record = typeof response === 'object' ? response : JSON.parse(response);
                 $('#kacakManualForm input[name="id"]').val(record.id);
                 $('#kacakManualForm input[name="tarih"]').val(record.tarih_formatted);
-                $('#kacakManualForm input[name="sayi"]').val(record.sayi);
-                $('#kacakManualForm input[name="aciklama"]').val(record.aciklama);
                 $('#kacakModalTitle').text('Kaydı Düzenle');
 
                 var $el = $('#kacak_personel_ids');
@@ -1666,6 +1702,14 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                 } else {
                     $el.val([]).trigger('change');
                 }
+
+                $('#kacakRowsContainer').empty();
+                addKacakRow({
+                    ilce: record.ilce,
+                    tur: record.tur,
+                    sayi: record.sayi,
+                    aciklama: record.aciklama
+                });
 
                 $('#kacakModal').modal('show');
             });
@@ -1760,7 +1804,6 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                             class: 'form-select select2',
                             required: true
                         ); ?>
-                    </div>
                     </div>
                     
                     <div class="border rounded p-3 bg-light mb-3">

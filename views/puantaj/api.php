@@ -919,6 +919,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             if (is_array($ilceArr) && count($ilceArr) > 0) {
                 $Puantaj->db->beginTransaction();
                 try {
+                    // İlk olarak bu gün, bu ekip ve bu personel için var olan eski kayıtları "Silindi" işaretle (Mükerrer eklemeyi engellemek için)
+                    $stmtDelete = $Puantaj->db->prepare("UPDATE kacak_kontrol SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih = ? AND (ekip_adi = ? OR personel_ids = ?) AND silinme_tarihi IS NULL");
+                    $stmtDelete->execute([$firmaId, $dbTarih, $ekipAdi, $personelIdsStr]);
+
                     for ($k = 0; $k < count($ilceArr); $k++) {
                         $ilce = $ilceArr[$k] ?? null;
                         $tur = $turArr[$k] ?? 'Kaçak';
@@ -947,6 +951,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $response['message'] = $e->getMessage();
     }
     echo json_encode($response);
+    exit;
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['action'] === 'get-kacak-cell-records') {
+    $tarih = $_GET['tarih'] ?? '';
+    $ekipAdi = $_GET['ekip_adi'] ?? '';
+    $personelIds = $_GET['personel_ids'] ?? '';
+    $firmaId = $_SESSION['firma_id'] ?? 0;
+
+    $dbTarih = \App\Helper\Date::convertExcelDate($tarih, 'Y-m-d') ?: $tarih;
+
+    $Puantaj = new PuantajModel();
+    $stmt = $Puantaj->db->prepare("SELECT * FROM kacak_kontrol WHERE firma_id = ? AND tarih = ? AND (ekip_adi = ? OR personel_ids = ?) AND silinme_tarihi IS NULL");
+    $stmt->execute([$firmaId, $dbTarih, $ekipAdi, $personelIds]);
+    $records = $stmt->fetchAll(PDO::FETCH_ASSOC);
+    echo json_encode($records);
     exit;
 }
 
