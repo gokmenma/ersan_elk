@@ -137,6 +137,17 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         padding: 2px 5px;
     }
 
+    /* Kaçak Kontrol Repeater Row Theme Support */
+    .kacak-repeater-row {
+        background-color: #fcfcfd !important;
+        border-color: #e2e8f0 !important;
+        transition: all 0.2s ease;
+    }
+    [data-bs-theme="dark"] .kacak-repeater-row {
+        background-color: #2e3548 !important;
+        border-color: #3b445e !important;
+    }
+
     /* Premium Stat Styles */
     /* Premium Mini-Card Stat Styles */
     .stat-mini-card {
@@ -3055,7 +3066,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             `;
 
             var rowHtml = `
-                <div class="border p-2 rounded mb-2 kacak-repeater-row" id="${rowId}" style="background-color: #fcfcfd;">
+                <div class="border p-2 rounded mb-2 kacak-repeater-row" id="${rowId}">
                     <div class="row g-2 align-items-center">
                         <div class="col-md-2">
                             <label class="small text-muted mb-0">İlçe ${aiConfBadgeHtml(guven, 'ilce')}</label>

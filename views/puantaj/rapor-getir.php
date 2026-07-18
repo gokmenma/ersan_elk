@@ -866,6 +866,42 @@ $currentTabName = $tabNames[$activeTab] ?? 'Rapor';
         border-color: #32394e !important;
         background: #191e22 !important;
     }
+
+    /* Dark Mode Table Cells Transparency and Overrides */
+    [data-bs-theme="dark"] #raporTable tbody td:not(.sticky-col-1):not(.sticky-col-2):not(.sticky-col-3):not(.kacakkontrol-name-col):not(.sunday-cell):not(.table-light):not(.table-info):not(.table-danger):not(.table-success):not(.table-warning) {
+        background-color: transparent !important;
+        color: #eff2f7 !important;
+    }
+    [data-bs-theme="dark"] #raporTable .table-light,
+    [data-bs-theme="dark"] #raporTable td.table-light {
+        background-color: #2e3548 !important;
+        color: #adb5bd !important;
+    }
+    [data-bs-theme="dark"] #raporTable .table-info,
+    [data-bs-theme="dark"] #raporTable td.table-info {
+        background-color: rgba(85, 110, 230, 0.15) !important;
+        color: #74788d !important;
+    }
+    [data-bs-theme="dark"] #raporTable .table-danger,
+    [data-bs-theme="dark"] #raporTable td.table-danger {
+        background-color: rgba(244, 106, 106, 0.15) !important;
+        color: #f46a6a !important;
+    }
+    [data-bs-theme="dark"] #raporTable .table-success,
+    [data-bs-theme="dark"] #raporTable td.table-success {
+        background-color: rgba(52, 195, 143, 0.15) !important;
+        color: #34c38f !important;
+    }
+    [data-bs-theme="dark"] #raporTable .table-warning,
+    [data-bs-theme="dark"] #raporTable td.table-warning {
+        background-color: rgba(241, 180, 76, 0.15) !important;
+        color: #f1b44c !important;
+    }
+    [data-bs-theme="dark"] .column-search {
+        background-color: #282f36 !important;
+        border-color: #3b445e !important;
+        color: #eff2f7 !important;
+    }
 </style>
 
 <?php
@@ -985,16 +1021,16 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
             <?php
             // Renk paletini tanımlayıp bölgelere atayalım
             $regionColorPalette = [
-                'rgb(227, 242, 253)', // light blue
-                'rgb(243, 229, 245)', // light purple
-                'rgb(232, 245, 233)', // light green
-                'rgb(255, 243, 224)', // light orange
-                'rgb(255, 235, 238)', // light red
-                'rgb(224, 247, 250)', // light cyan
-                'rgb(252, 228, 236)', // light pink
-                'rgb(241, 248, 233)', // light lime
-                'rgb(255, 248, 225)', // light amber
-                'rgb(237, 231, 246)'  // deep purple light
+                'var(--reg-color-0)',
+                'var(--reg-color-1)',
+                'var(--reg-color-2)',
+                'var(--reg-color-3)',
+                'var(--reg-color-4)',
+                'var(--reg-color-5)',
+                'var(--reg-color-6)',
+                'var(--reg-color-7)',
+                'var(--reg-color-8)',
+                'var(--reg-color-9)'
             ];
             $regionColorsMap = [];
             $colorIndex = 0;

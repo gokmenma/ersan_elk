@@ -75,6 +75,42 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
 
 ?>
 <style>
+    :root {
+        --reg-color-0: rgb(227, 242, 253);
+        --reg-color-1: rgb(243, 229, 245);
+        --reg-color-2: rgb(232, 245, 233);
+        --reg-color-3: rgb(255, 243, 224);
+        --reg-color-4: rgb(255, 235, 238);
+        --reg-color-5: rgb(224, 247, 250);
+        --reg-color-6: rgb(252, 228, 236);
+        --reg-color-7: rgb(241, 248, 233);
+        --reg-color-8: rgb(255, 248, 225);
+        --reg-color-9: rgb(237, 231, 246);
+    }
+    [data-bs-theme="dark"] {
+        --reg-color-0: rgba(30, 41, 59, 0.4);
+        --reg-color-1: rgba(88, 28, 135, 0.2);
+        --reg-color-2: rgba(20, 83, 45, 0.2);
+        --reg-color-3: rgba(120, 53, 4, 0.2);
+        --reg-color-4: rgba(153, 27, 27, 0.2);
+        --reg-color-5: rgba(21, 94, 117, 0.2);
+        --reg-color-6: rgba(131, 24, 67, 0.2);
+        --reg-color-7: rgba(101, 163, 13, 0.2);
+        --reg-color-8: rgba(146, 64, 14, 0.2);
+        --reg-color-9: rgba(107, 33, 168, 0.2);
+    }
+
+    /* Kaçak Kontrol Repeater Row Theme Support */
+    .kacak-repeater-row {
+        background-color: #fcfcfd !important;
+        border-color: #e2e8f0 !important;
+        transition: all 0.2s ease;
+    }
+    [data-bs-theme="dark"] .kacak-repeater-row {
+        background-color: #2e3548 !important;
+        border-color: #3b445e !important;
+    }
+
     .accordion-button.collapsed~.only-show-open {
         display: none !important;
     }
@@ -1018,7 +1054,8 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
 
         function addKacakRow(data = null) {
             var rowId = 'kacak_row_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-            
+            var guven = data && data.guven ? data.guven : null;
+
             var ilceOptionsHtml = '<option value="">İlçe Seçiniz</option>';
             regionListJson.forEach(function(r) {
                 var selected = (data && data.ilce === r) ? 'selected' : '';
@@ -1031,41 +1068,82 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                 <option value="Abonesiz" ${(data && data.tur === 'Abonesiz') ? 'selected' : ''}>Abonesiz</option>
             `;
 
+            var aiConfClass = function (guven, field) {
+                if (!guven) return '';
+                var g = guven[field];
+                if (g === undefined) return '';
+                if (g >= 0.8) return 'border-success bg-success-subtle text-success';
+                if (g >= 0.4) return 'border-warning bg-warning-subtle text-warning';
+                return 'border-danger bg-danger-subtle text-danger';
+            };
+
+            var aiConfBadgeHtml = function (guven, field) {
+                if (!guven) return '';
+                var g = guven[field];
+                if (g === undefined) return '';
+                var pct = Math.round(g * 100);
+                if (g >= 0.8) return '<span class="badge bg-success-subtle text-success ai-conf-badge px-1 py-0.5 ms-1" style="font-size: 8px;" title="AI Güven Skoru: %' + pct + '"><i class="bx bx-check-shield"></i> %' + pct + '</span>';
+                if (g >= 0.4) return '<span class="badge bg-warning-subtle text-warning ai-conf-badge px-1 py-0.5 ms-1" style="font-size: 8px;" title="AI Güven Skoru: %' + pct + '"><i class="bx bx-info-circle"></i> %' + pct + '</span>';
+                return '<span class="badge bg-danger-subtle text-danger ai-conf-badge px-1 py-0.5 ms-1" style="font-size: 8px;" title="AI Güven Skoru: %' + pct + '"><i class="bx bx-error"></i> %' + pct + '</span>';
+            };
+
             var rowHtml = `
-                <div class="row g-2 align-items-center mb-2 kacak-repeater-row" id="${rowId}">
-                    <div class="col-md-3">
-                        <select name="ilce[]" class="form-select select2-ilce" required>
-                            ${ilceOptionsHtml}
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <select name="tur[]" class="form-select select2-tur" required>
-                            ${turOptionsHtml}
-                        </select>
-                    </div>
-                    <div class="col-md-1">
-                        <input type="number" name="sayi[]" class="form-control px-1 text-center" placeholder="Sayı" value="${data ? data.sayi : ''}" required min="1">
-                    </div>
-                    <div class="col-md-4">
-                        <input type="text" name="aciklama[]" class="form-control" placeholder="Açıklama giriniz..." value="${data ? data.aciklama : ''}">
-                    </div>
-                    <div class="col-md-1 text-end">
-                        <button type="button" class="btn btn-soft-danger btn-sm btnRemoveKacakRow">
-                            <i class="bx bx-trash"></i>
-                        </button>
+                <div class="border p-2 rounded mb-2 kacak-repeater-row" id="${rowId}">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-2">
+                            <label class="small text-muted mb-0">İlçe ${aiConfBadgeHtml(guven, 'ilce')}</label>
+                            <select name="ilce[]" class="form-select select2-ilce" required>
+                                ${ilceOptionsHtml}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="small text-muted mb-0">Tür ${aiConfBadgeHtml(guven, 'tur')}</label>
+                            <select name="tur[]" class="form-select select2-tur" required>
+                                ${turOptionsHtml}
+                            </select>
+                        </div>
+                        <div class="col-md-1">
+                            <label class="small text-muted mb-0">Tutanak No ${aiConfBadgeHtml(guven, 'tutanak_no')}</label>
+                            <input type="text" name="tutanak_no[]" class="form-control ai-field ${aiConfClass(guven, 'tutanak_no')}" placeholder="No" value="${data && data.tutanak_no ? data.tutanak_no : ''}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="small text-muted mb-0">Abone İsim Soyisim ${aiConfBadgeHtml(guven, 'abone_adi')}</label>
+                            <input type="text" name="abone_adi[]" class="form-control ai-field ${aiConfClass(guven, 'abone_adi')}" placeholder="Abone Adı Soyadı" value="${data && data.abone_adi ? data.abone_adi : ''}">
+                        </div>
+                        <div class="col-md-1">
+                            <label class="small text-muted mb-0">Sayaç No ${aiConfBadgeHtml(guven, 'sayac_no')}</label>
+                            <input type="text" name="sayac_no[]" class="form-control ai-field ${aiConfClass(guven, 'sayac_no')}" placeholder="Sayaç No" value="${data && data.sayac_no ? data.sayac_no : ''}">
+                        </div>
+                        <div class="col-md-1">
+                            <label class="small text-muted mb-0">Endeks ${aiConfBadgeHtml(guven, 'endeks')}</label>
+                            <input type="text" name="endeks[]" class="form-control ai-field ${aiConfClass(guven, 'endeks')}" placeholder="Endeks" value="${data && data.endeks ? data.endeks : ''}">
+                        </div>
+                        <div class="col-md-1">
+                            <label class="small text-muted mb-0">Sayı ${aiConfBadgeHtml(guven, 'sayi')}</label>
+                            <input type="number" name="sayi[]" class="form-control ai-field px-1 text-center ${aiConfClass(guven, 'sayi')}" placeholder="Sayı" value="${data ? data.sayi : '1'}" required min="1">
+                        </div>
+                        <div class="col-md-1">
+                            <label class="small text-muted mb-0">Açıklama ${aiConfBadgeHtml(guven, 'aciklama')}</label>
+                            <input type="text" name="aciklama[]" class="form-control ai-field ${aiConfClass(guven, 'aciklama')}" placeholder="Açıklama" value="${data ? data.aciklama : ''}">
+                        </div>
+                        <div class="col-md-1 text-end mt-3">
+                            <button type="button" class="btn btn-soft-danger btn-sm btnRemoveKacakRow">
+                                <i class="bx bx-trash"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             `;
 
             $('#kacakRowsContainer').append(rowHtml);
-            
+
             // Initialize select2-ilce
             $('#' + rowId + ' .select2-ilce').select2({
                 dropdownParent: $('#kacakModal'),
                 placeholder: 'İlçe Seçiniz',
                 allowClear: true,
                 width: '100%'
-            });
+            }).next('.select2-container').find('.select2-selection').addClass(aiConfClass(guven, 'ilce'));
 
             // Initialize select2-tur
             $('#' + rowId + ' .select2-tur').select2({
@@ -1073,8 +1151,28 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                 placeholder: 'Tür Seçiniz',
                 allowClear: true,
                 width: '100%'
-            });
+            }).next('.select2-container').find('.select2-selection').addClass(aiConfClass(guven, 'tur'));
         }
+
+        function markFieldAsConfirmed($el) {
+            $el.removeClass('border-warning bg-warning-subtle text-warning border-danger bg-danger-subtle text-danger')
+               .addClass('border-success bg-success-subtle text-success');
+            // Remove confidence percentage badge
+            $el.closest('div').find('.ai-conf-badge').fadeOut(300, function() { $(this).remove(); });
+        }
+
+        $(document).on('input', '#kacakRowsContainer input.ai-field', function () {
+            markFieldAsConfirmed($(this));
+        });
+        $(document).on('change', '#kacakRowsContainer .select2-ilce, #kacakRowsContainer .select2-tur', function () {
+            markFieldAsConfirmed($(this).next('.select2-container').find('.select2-selection'));
+        });
+        $(document).on('input change', '#kacakManualForm input[name="tarih"]', function () {
+            markFieldAsConfirmed($(this));
+        });
+        $(document).on('change', '#kacak_personel_ids', function () {
+            markFieldAsConfirmed($(this).next('.select2-container').find('.select2-selection'));
+        });
 
         $('#btnAddKacakRow').on('click', function() {
             addKacakRow();
@@ -1151,6 +1249,10 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                                 addKacakRow({
                                     ilce: rec.ilce,
                                     tur: rec.tur,
+                                    tutanak_no: rec.tutanak_no,
+                                    abone_adi: rec.abone_adi,
+                                    sayac_no: rec.sayac_no,
+                                    endeks: rec.endeks,
                                     sayi: rec.sayi,
                                     aciklama: rec.aciklama
                                 });
@@ -1159,6 +1261,10 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                             addKacakRow({
                                 ilce: '',
                                 tur: 'Kaçak',
+                                tutanak_no: '',
+                                abone_adi: '',
+                                sayac_no: '',
+                                endeks: '',
                                 sayi: sayi,
                                 aciklama: ''
                             });
@@ -1167,6 +1273,10 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                         addKacakRow({
                             ilce: '',
                             tur: 'Kaçak',
+                            tutanak_no: '',
+                            abone_adi: '',
+                            sayac_no: '',
+                            endeks: '',
                             sayi: sayi,
                             aciklama: ''
                         });
@@ -1177,6 +1287,10 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                 addKacakRow({
                     ilce: '',
                     tur: 'Kaçak',
+                    tutanak_no: '',
+                    abone_adi: '',
+                    sayac_no: '',
+                    endeks: '',
                     sayi: '',
                     aciklama: ''
                 });
@@ -1651,6 +1765,117 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
             });
         });
 
+        $(document).on('click', '#btnKacakAnalizEt', function() {
+            var fileInput = $('#kacakManualForm input[name="excel_file"]')[0];
+            if (!fileInput.files || fileInput.files.length === 0) {
+                Swal.fire('Uyarı', 'Lütfen önce analiz edilecek tutanak dosyasını (Görsel, PDF veya Excel) seçin.', 'warning');
+                return;
+            }
+
+            var formData = new FormData();
+            formData.append('action', 'kacak-excel-kaydet');
+            formData.append('use_openai', '1');
+            formData.append('excel_file', fileInput.files[0]);
+            
+            // Tarih bilgisini de analize gönder (Varsayılan tarih ataması için)
+            var uploadDate = $('#kacakManualForm input[name="tarih"]').val();
+            formData.append('upload_date', uploadDate);
+
+            // Seçilen personelleri OpenAI endpoint'inin beklediği isimle ekleyelim
+            var selectedPersonels = $('#kacak_personel_ids').val();
+            if (selectedPersonels && selectedPersonels.length > 0) {
+                selectedPersonels.forEach(function(pid) {
+                    formData.append('kacak_api_personel_ids[]', pid);
+                });
+            }
+
+            // AI'ın döndüreceği ID'lerin ekrandaki dropdown ile birebir eşleşmesi için
+            // dropdown'da gerçekten seçilebilir olan personel listesini de gönderelim
+            var personelOptionsList = [];
+            $('#kacak_personel_ids option').each(function () {
+                var val = $(this).val();
+                if (val) {
+                    personelOptionsList.push({ id: parseInt(val, 10), name: $(this).text().trim() });
+                }
+            });
+            formData.append('kacak_personel_list', JSON.stringify(personelOptionsList));
+
+            $('#kacakManualSpinner').show();
+            $('#btnKacakAnalizEt').prop('disabled', true);
+
+            $.ajax({
+                url: 'views/puantaj/api.php',
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (response) {
+                    $('#kacakManualSpinner').hide();
+                    $('#btnKacakAnalizEt').prop('disabled', false);
+                    try {
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
+                        if (res.status === 'success') {
+                            Swal.fire({
+                                title: 'Analiz Başarılı',
+                                text: res.message,
+                                icon: 'success',
+                                confirmButtonText: 'Verileri Kontrol Et'
+                            }).then(() => {
+                                // Formu temizle ve repeater satırlarını boşalt
+                                $('#kacakRowsContainer').empty();
+                                
+                                // AI verilerini tek tek ekle
+                                if (res.extracted_data && res.extracted_data.length > 0) {
+                                    res.extracted_data.forEach(function(item) {
+                                        addKacakRow({
+                                            ilce: item.ilçe || item.ilce || '',
+                                            tur: item.tur || 'Kaçak',
+                                            tutanak_no: item.tutanak_no || '',
+                                            abone_adi: item.abone_adi || '',
+                                            sayac_no: item.sayac_no || '',
+                                            endeks: item.endeks || '',
+                                            sayi: item.sayi || 1,
+                                            aciklama: item.aciklama || '',
+                                            guven: item.guven || null
+                                        });
+                                    });
+
+                                    // Tarih bilgisini al ve güncelle
+                                    var firstItem = res.extracted_data[0];
+                                    if (firstItem.tarih) {
+                                        var formattedDate = '';
+                                        if (firstItem.tarih.indexOf('-') !== -1) {
+                                            var parts = firstItem.tarih.split('-');
+                                            if (parts.length === 3) {
+                                                formattedDate = parts[2] + '.' + parts[1] + '.' + parts[0];
+                                            }
+                                        } else if (firstItem.tarih.indexOf('.') !== -1) {
+                                            formattedDate = firstItem.tarih;
+                                        }
+                                        if (formattedDate) {
+                                            $('#kacakManualForm input[name="tarih"]').val(formattedDate);
+                                            if ($('#kacakManualForm input[name="tarih"]')[0]._flatpickr) {
+                                                $('#kacakManualForm input[name="tarih"]')[0]._flatpickr.setDate(formattedDate);
+                                            }
+                                        }
+                                    }
+                                }
+                            });
+                        } else {
+                            Swal.fire('Hata', res.message, 'error');
+                        }
+                    } catch (err) {
+                        Swal.fire('Hata', 'Sunucudan geçersiz yanıt alındı.', 'error');
+                    }
+                },
+                error: function () {
+                    $('#kacakManualSpinner').hide();
+                    $('#btnKacakAnalizEt').prop('disabled', false);
+                    Swal.fire('Hata', 'Analiz sırasında bağlantı hatası oluştu.', 'error');
+                }
+            });
+        });
+
         $(document).on('click', '.delete-kacak', function () {
             var id = $(this).data('id');
             Swal.fire({
@@ -1707,6 +1932,10 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                 addKacakRow({
                     ilce: record.ilce,
                     tur: record.tur,
+                    tutanak_no: record.tutanak_no,
+                    abone_adi: record.abone_adi,
+                    sayac_no: record.sayac_no,
+                    endeks: record.endeks,
                     sayi: record.sayi,
                     aciklama: record.aciklama
                 });
@@ -1769,44 +1998,76 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
 
 <!-- Kaçak Kontrol Manuel Modal -->
 <div class="modal fade" id="kacakModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="kacakModalTitle">Manuel Kaçak Kontrol Kaydı</h5>
+                <h5 class="modal-title" id="kacakModalTitle">Kaçak Kontrol Kaydı</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="kacakManualForm">
+            <form id="kacakManualForm" enctype="multipart/form-data">
                 <input type="hidden" name="id" id="kacak_id" value="0">
                 <input type="hidden" name="ekip_adi" id="kacak_ekip_adi" value="">
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <?php echo Form::FormFloatInput(
-                            type: 'text',
-                            name: 'tarih',
-                            value: date('d.m.Y'),
-                            placeholder: '',
-                            label: "Tarih",
-                            icon: "calendar",
-                            required: true,
-                            class: "form-control flatpickr"
-                        ); ?>
-                    </div>
-                    <div class="mb-3">
-                        <label for="kacak_personel_ids">Personel Seçimi (En Fazla 2 Personel)</label>
-                        <?php echo Form::FormMultipleSelect2(
-                            name: 'kacak_personel_ids',
-                            options: $personelList,
-                            selectedValues: [],
-                            label: 'Personel Seçiniz (En Fazla 2)',
-                            icon: 'users',
-                            valueField: 'id',
-                            textField: 'adi_soyadi',
-                            class: 'form-select select2',
-                            required: true
-                        ); ?>
-                    </div>
                     
-                    <div class="border rounded p-3 bg-light mb-3">
+                    <!-- 1. Tutanak Dosyası ve Analiz Butonu (En Üstte) -->
+                    <div class="mb-3 border p-3 rounded bg-light">
+                        <h6 class="fw-bold text-primary mb-2"><i class="bx bx-bot me-1"></i> Yapay Zeka ile Tutanak Oku</h6>
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-9">
+                                <?php echo \App\Helper\Form::FormFileInput(
+                                    name: 'excel_file',
+                                    label: "Tutanak Belgesi (Görsel, PDF veya Excel)",
+                                    icon: "upload",
+                                    required: false,
+                                    class: "form-control"
+                                ); ?>
+                            </div>
+                            <div class="col-md-3">
+                                <button type="button" id="btnKacakAnalizEt" class="btn btn-warning w-100 d-flex align-items-center justify-content-center fw-bold" style="height: 38px;">
+                                    <i class="bx bx-play me-1 fs-5"></i> Analiz Et
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-text text-muted">Dosyayı seçtikten sonra "Analiz Et" butonuna basarak verileri otomatik çıkartabilirsiniz.</div>
+                        
+                        <div id="kacakManualSpinner" class="text-center p-2 mt-3" style="display: none;">
+                            <div class="spinner-border text-warning" role="status"></div>
+                            <p class="mt-2 text-warning fw-bold" id="kacakManualSpinnerText">OpenAI tutanağı analiz ediyor, lütfen bekleyin...</p>
+                        </div>
+                    </div>
+
+                    <!-- 2. Tarih ve Personel Seçimi (Orta Bölüm) -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <?php echo Form::FormFloatInput(
+                                type: 'text',
+                                name: 'tarih',
+                                value: date('d.m.Y'),
+                                placeholder: '',
+                                label: "Tarih",
+                                icon: "calendar",
+                                required: true,
+                                class: "form-control flatpickr"
+                            ); ?>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="kacak_personel_ids" class="form-label mb-1">Personel Seçimi (En Fazla 2 Personel)</label>
+                            <?php echo Form::FormMultipleSelect2(
+                                name: 'kacak_personel_ids',
+                                options: $personelList,
+                                selectedValues: [],
+                                label: 'Personel',
+                                icon: 'users',
+                                valueField: 'id',
+                                textField: 'adi_soyadi',
+                                class: 'form-select select2',
+                                required: true
+                            ); ?>
+                        </div>
+                    </div>
+
+                    <!-- 3. Giriş Detayları / Analiz Sonuçları (En Altta) -->
+                    <div class="border rounded p-3 bg-light mb-3" id="kacak_manual_rows_section">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <h6 class="mb-0 fw-bold text-primary"><i class="bx bx-list-plus me-1"></i> Giriş Detayları</h6>
                             <button type="button" class="btn btn-sm btn-soft-success" id="btnAddKacakRow">
@@ -1814,7 +2075,7 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                             </button>
                         </div>
                         <div id="kacakRowsContainer">
-                            <!-- JS ile doldurulacak -->
+                            <!-- JS veya AI ile doldurulacak -->
                         </div>
                     </div>
                 </div>
