@@ -692,11 +692,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         if ($useOpenai) {
             // OpenAI ile analiz etme mantığı
-            $Settings = new \App\Model\SettingsModel();
             $openaiKey = $Settings->getSettings('openai_api_key');
             if (empty($openaiKey)) {
-                // Alternatif olarak fallback hardcoded api key
-                $openaiKey = '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';
+                throw new Exception("Lütfen Ayarlar sayfasından OpenAI API Anahtarınızı girin.");
             }
 
             $fileName = $_FILES['excel_file']['name'];
