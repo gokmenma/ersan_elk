@@ -125,8 +125,19 @@ foreach ($all_mobile_menus as $pKey => $mData) {
             $hasAccess = true;
         } elseif ($pKey === 'gorevler' && \App\Service\Gate::allows('gorevler')) {
             $hasAccess = true;
-        } elseif ($pKey === 'raporlar' && (\App\Service\Gate::allows('puantaj_raporlama') || \App\Service\Gate::allows('puantaj_yonetim') || \App\Service\Gate::allows('puantaj/raporlar'))) {
-            $hasAccess = true;
+        } elseif ($pKey === 'raporlar') {
+            $db = (new \App\Core\Db())->getConnection();
+            $userRoles = !empty($_SESSION['user']->roles) ? explode(',', $_SESSION['user']->roles) : [];
+            $hasReportPermission = false;
+            if (!empty($userRoles)) {
+                $placeholders = implode(',', array_fill(0, count($userRoles), '?'));
+                $stmt = $db->prepare("SELECT COUNT(*) FROM user_role_permissions WHERE role_id IN ($placeholders) AND permission_id = 61");
+                $stmt->execute($userRoles);
+                $hasReportPermission = ((int)$stmt->fetchColumn()) > 0;
+            }
+            if ($hasReportPermission || \App\Service\Gate::allows('puantaj_raporlama') || \App\Service\Gate::allows('puantaj_yonetim') || \App\Service\Gate::allows('puantaj/raporlar')) {
+                $hasAccess = true;
+            }
         }
     }
 

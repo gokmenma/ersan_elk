@@ -5,8 +5,20 @@ use App\Model\PersonelModel;
 use App\Service\Gate;
 
 // Raporlar sayfasına erişebilmek için yetki doğrulaması yapıyoruz.
-// Masaüstü menüsündeki yetki linki 'puantaj/raporlar' olduğu için bu linki yetki kontrolüyle denetliyoruz.
-if (!Gate::allows("puantaj_raporlama") && !Gate::allows("puantaj_yonetim") && !Gate::allows("puantaj/raporlar")) {
+// Raporlar modülünün veritabanındaki ID'si 61'dir ve auth_name kolonu boştur. 
+// Bu yüzden yetki kontrolünü ID 61 üzerinden de güvenceye alıyoruz.
+$db = (new \App\Core\Db())->getConnection();
+$userRoles = !empty($_SESSION['user']->roles) ? explode(',', $_SESSION['user']->roles) : [];
+$hasReportPermission = false;
+
+if (!empty($userRoles)) {
+    $placeholders = implode(',', array_fill(0, count($userRoles), '?'));
+    $stmt = $db->prepare("SELECT COUNT(*) FROM user_role_permissions WHERE role_id IN ($placeholders) AND permission_id = 61");
+    $stmt->execute($userRoles);
+    $hasReportPermission = ((int)$stmt->fetchColumn()) > 0;
+}
+
+if (!$hasReportPermission && !Gate::allows("puantaj_raporlama") && !Gate::allows("puantaj_yonetim") && !Gate::allows("puantaj/raporlar")) {
     echo '<div class="px-4 py-8 text-center"><div class="inline-flex w-16 h-16 rounded-full bg-rose-50 dark:bg-rose-900/20 text-rose-500 items-center justify-center mb-4"><span class="material-symbols-outlined text-3xl">gpp_maybe</span></div><h3 class="font-bold text-slate-800 dark:text-slate-200 text-base mb-1">Yetkisiz Erişim</h3><p class="text-xs text-slate-500 leading-relaxed max-w-xs mx-auto">Raporlar sayfasını görüntülemek için yetkiniz bulunmamaktadır. Lütfen sistem yöneticinizle irtibata geçin.</p><a href="?p=home" class="mt-5 inline-flex items-center justify-center px-4 py-2 text-xs font-bold text-white bg-primary rounded-xl active:scale-95 transition-transform shadow-sm shadow-primary/20">Ana Sayfaya Dön</a></div>';
     return;
 }

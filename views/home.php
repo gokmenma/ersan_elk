@@ -1103,6 +1103,80 @@ if (Gate::allows("ana_sayfa")) {
                     color: #ffffff !important;
                 }
 
+                /* Home Page Widgets Dark Mode Compatibility Overrides */
+                [data-bs-theme="dark"] .card.summary-card,
+                [data-bs-theme="dark"] .widget-item .card.summary-card,
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma .card {
+                    background: #2a3042 !important;
+                    border-color: #32394e !important;
+                    box-shadow: 0 4px 15px -3px rgba(0,0,0,0.3) !important;
+                }
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma .card-body,
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma .table-responsive {
+                    background-color: #2a3042 !important;
+                }
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma table {
+                    background-color: #2a3042 !important;
+                    color: #a6b0cf !important;
+                }
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma table td {
+                    color: #a6b0cf !important;
+                    border-bottom-color: #32394e !important;
+                }
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma table td span {
+                    color: #ffffff !important;
+                }
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma table tr:hover td {
+                    background-color: #32394e !important;
+                }
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma table thead tr {
+                    background: linear-gradient(135deg, #181d29 0%, #202636 100%) !important;
+                }
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma table tbody tr.bolge-row:hover,
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma table tbody tr.bolge-row {
+                    border-bottom: 1px solid #32394e !important;
+                }
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma .d-flex.flex-wrap.gap-2.px-3.py-3 {
+                    background: linear-gradient(135deg, #222736 0%, #1d222e 100%) !important;
+                    border-bottom-color: #32394e !important;
+                }
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma .d-flex.flex-wrap.gap-2.px-3.py-3 span {
+                    color: #e5e7eb !important;
+                }
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma .d-flex.flex-wrap.gap-2.px-3.py-3 div[style*="background: rgba(239,68,68"] {
+                    background-color: rgba(239, 68, 68, 0.15) !important;
+                    border-color: rgba(239, 68, 68, 0.3) !important;
+                }
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma .d-flex.flex-wrap.gap-2.px-3.py-3 div[style*="background: rgba(16,185,129"] {
+                    background-color: rgba(16, 185, 129, 0.15) !important;
+                    border-color: rgba(16, 185, 129, 0.3) !important;
+                }
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma .d-flex.flex-wrap.gap-2.px-3.py-3 div[style*="background: rgba(239,68,68"] span,
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma .d-flex.flex-wrap.gap-2.px-3.py-3 div[style*="background: rgba(16,185,129"] span {
+                    color: #ffffff !important;
+                }
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma .px-3.py-2.d-flex {
+                    background: linear-gradient(135deg, #222736 0%, #1d222e 100%) !important;
+                    border-top-color: #32394e !important;
+                }
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma table tr[style*="background: linear-gradient(135deg, #eef2ff"] {
+                    background: linear-gradient(135deg, #1b202e 0%, #161a26 100%) !important;
+                    border-top-color: #3b82f6 !important;
+                }
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma table tr[style*="background: linear-gradient(135deg, #eef2ff"] td {
+                    color: #6366f1 !important;
+                }
+                [data-bs-theme="dark"] .widget-item .gorev-card {
+                    background-color: #2e3548 !important;
+                    border-color: #32394e !important;
+                }
+                [data-bs-theme="dark"] .widget-item .gorev-card:hover {
+                    background-color: #32394e !important;
+                }
+                [data-bs-theme="dark"] .widget-item .gorev-card h6 {
+                    color: #ffffff !important;
+                }
+
                 .finder-tabs-nav .nav-link {
                     transition: all 0.18s ease !important;
                 }

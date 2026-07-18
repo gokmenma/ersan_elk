@@ -951,6 +951,18 @@ Alanlar:
                             $colMap['sayi'] = $colIndex;
                         elseif (mb_stripos($cellValue, 'Açıklama', 0, 'UTF-8') !== false || mb_stripos($cellValue, 'Aciklama', 0, 'UTF-8') !== false)
                             $colMap['aciklama'] = $colIndex;
+                        elseif (mb_stripos($cellValue, 'İlçe', 0, 'UTF-8') !== false || mb_stripos($cellValue, 'Ilce', 0, 'UTF-8') !== false)
+                            $colMap['ilce'] = $colIndex;
+                        elseif (mb_stripos($cellValue, 'Tür', 0, 'UTF-8') !== false || mb_stripos($cellValue, 'Tur', 0, 'UTF-8') !== false)
+                            $colMap['tur'] = $colIndex;
+                        elseif (mb_stripos($cellValue, 'Tutanak No', 0, 'UTF-8') !== false || mb_stripos($cellValue, 'TutanakNo', 0, 'UTF-8') !== false)
+                            $colMap['tutanak_no'] = $colIndex;
+                        elseif (mb_stripos($cellValue, 'Abone', 0, 'UTF-8') !== false || mb_stripos($cellValue, 'Müşteri', 0, 'UTF-8') !== false)
+                            $colMap['abone_adi'] = $colIndex;
+                        elseif (mb_stripos($cellValue, 'Sayaç No', 0, 'UTF-8') !== false || mb_stripos($cellValue, 'SayacNo', 0, 'UTF-8') !== false || mb_stripos($cellValue, 'Seri No', 0, 'UTF-8') !== false)
+                            $colMap['sayac_no'] = $colIndex;
+                        elseif (mb_stripos($cellValue, 'Endeks', 0, 'UTF-8') !== false)
+                            $colMap['endeks'] = $colIndex;
                     }
                     break;
                 }
@@ -968,8 +980,14 @@ Alanlar:
                 $row = $rows[$i];
                 $excelRowNum = $i + 1;
                 $ekipStr = isset($colMap['ekip']) ? trim($row[$colMap['ekip']]) : '';
-                $sayi = isset($colMap['sayi']) ? (int) trim($row[$colMap['sayi']]) : 0;
+                $sayi = isset($colMap['sayi']) ? (int) trim($row[$colMap['sayi']]) : 1;
                 $aciklama = isset($colMap['aciklama']) ? trim($row[$colMap['aciklama']]) : '';
+                $ilce = isset($colMap['ilce']) ? trim($row[$colMap['ilce']]) : '';
+                $tur = isset($colMap['tur']) ? trim($row[$colMap['tur']]) : 'Kaçak';
+                $tutanak_no = isset($colMap['tutanak_no']) ? trim($row[$colMap['tutanak_no']]) : '';
+                $abone_adi = isset($colMap['abone_adi']) ? trim($row[$colMap['abone_adi']]) : '';
+                $sayac_no = isset($colMap['sayac_no']) ? trim($row[$colMap['sayac_no']]) : '';
+                $endeks = isset($colMap['endeks']) ? trim($row[$colMap['endeks']]) : '';
 
                 if (empty($ekipStr))
                     continue;
@@ -1002,7 +1020,7 @@ Alanlar:
                 }
 
                 $personelIdsStr = implode(',', $personelIds);
-                $islemId = md5($uploadDate . '|' . $ekipStr . '|' . $sayi . '|' . $aciklama);
+                $islemId = md5($uploadDate . '|' . $ekipStr . '|' . $ilce . '|' . $tur . '|' . $tutanak_no . '|' . $abone_adi . '|' . $sayac_no . '|' . $endeks . '|' . $sayi . '|' . $aciklama);
 
                 $exists = $Puantaj->db->prepare("SELECT COUNT(*) FROM kacak_kontrol WHERE islem_id = ? AND silinme_tarihi IS NULL");
                 $exists->execute([$islemId]);
@@ -1016,8 +1034,8 @@ Alanlar:
                     continue;
                 }
 
-                $stmt = $Puantaj->db->prepare("INSERT INTO kacak_kontrol (firma_id, personel_ids, tarih, ekip_adi, sayi, aciklama, islem_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-                $result = $stmt->execute([$firmaId, $personelIdsStr, $uploadDate, $ekipStr, $sayi, $aciklama, $islemId]);
+                $stmt = $Puantaj->db->prepare("INSERT INTO kacak_kontrol (firma_id, personel_ids, tarih, ekip_adi, ilce, tur, tutanak_no, abone_adi, sayac_no, endeks, sayi, aciklama, islem_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                $result = $stmt->execute([$firmaId, $personelIdsStr, $uploadDate, $ekipStr, $ilce, $tur, $tutanak_no, $abone_adi, $sayac_no, $endeks, $sayi, $aciklama, $islemId]);
                 if ($result)
                     $insertedCount++;
             }

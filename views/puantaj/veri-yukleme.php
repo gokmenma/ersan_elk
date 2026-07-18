@@ -1005,10 +1005,9 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <form id="kacakUploadForm" enctype="multipart/form-data">
-                <div class="modal-body">
                     <div class="alert alert-info">
                         <i class="bx bx-info-circle me-2"></i>
-                        Excel dosyasında "Ekip", "Sayı" ve "Açıklama" sütunları bulunmalıdır. OpenAI modunda dosya içeriği taranarak otomatik veri çıkartılacaktır.
+                        Excel dosyasında "Ekip", "Sayı" ve "Açıklama" sütunları bulunmalıdır.
                     </div>
                     <div class="mb-3">
                         <?php echo \App\Helper\Form::FormFloatInput(
@@ -1021,30 +1020,6 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                             required: true,
                             class: "form-control flatpickr"
                         ); ?>
-                    </div>
-                    
-                    <div class="mb-3 border p-3 rounded bg-light">
-                        <div class="form-check form-switch mb-3">
-                            <input class="form-check-input" type="checkbox" id="use_openai" name="use_openai" value="1">
-                            <label class="form-check-label fw-bold text-primary" for="use_openai">
-                                <i class="bx bx-bot me-1"></i> OpenAI Entegrasyonu ile Oku (Kaski Tutanağı)
-                            </label>
-                        </div>
-                        <div id="openai_personnel_container" style="display: none;">
-                            <label class="form-label text-warning fw-bold"><i class="bx bx-user-plus me-1"></i> İşlem Yapan Personeller (En fazla 2)</label>
-                            <?php echo Form::FormMultipleSelect2(
-                                name: 'kacak_api_personel_ids',
-                                options: $personeller,
-                                selectedValues: [],
-                                label: 'Manuel Personel Seçimi',
-                                icon: 'users',
-                                valueField: 'id',
-                                textField: 'adi_soyadi',
-                                class: 'form-select select2-kacak-api',
-                                required: false
-                            ); ?>
-                            <div class="form-text">Seçtiğiniz personeller Kaski tutanağından çıkartılan kayıtlara atanacaktır.</div>
-                        </div>
                     </div>
 
                     <div class="mb-3">
@@ -2964,38 +2939,12 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             });
         });
 
-        // OpenAI Switch state change listener
-        $('#use_openai').on('change', function() {
-            var $pContainer = $('#openai_personnel_container');
-            var $pSelect = $('#kacak_api_personel_ids');
-            if ($(this).is(':checked')) {
-                $pContainer.slideDown();
-                // Initialize select2 if not done
-                if (!$pSelect.hasClass('select2-hidden-accessible')) {
-                    $pSelect.select2({
-                        dropdownParent: $('#importKacakModal'),
-                        placeholder: 'İşlem yapan personelleri seçin (En fazla 2)',
-                        allowClear: true,
-                        maximumSelectionLength: 2,
-                        width: '100%'
-                    });
-                }
-            } else {
-                $pContainer.slideUp();
-            }
-        });
-
         $('#kacakUploadForm').on('submit', function (e) {
             e.preventDefault();
             var formData = new FormData(this);
             formData.append('action', 'kacak-excel-kaydet');
 
-            if ($('#use_openai').is(':checked')) {
-                $('#kacakSpinnerText').text('OpenAI ile analiz ediliyor, lütfen bekleyiniz...');
-            } else {
-                $('#kacakSpinnerText').text('Yükleniyor...');
-            }
-
+            $('#kacakSpinnerText').text('Yükleniyor...');
             $('#kacakSpinner').show();
             $('#btnKacakUpload').prop('disabled', true);
 
@@ -3028,7 +2977,6 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                             }).then(() => {
                                 $('#importKacakModal').modal('hide');
                                 $('#kacakUploadForm')[0].reset();
-                                $('#use_openai').prop('checked', false).trigger('change');
                                 loadTabContent('kacak_kontrol');
                             });
                         } else {

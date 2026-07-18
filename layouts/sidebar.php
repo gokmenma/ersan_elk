@@ -42,13 +42,13 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 }
 
                 [data-bs-theme="dark"] {
-                    --sidebar-bg: #111827;
-                    --sidebar-border: #1f2937;
-                    --sidebar-item-hover: #1f2937;
-                    --sidebar-item-active: #1f2937;
-                    --sidebar-foreground: #e5e7eb;
-                    --sidebar-muted: #9ca3af;
-                    --sidebar-accent: #f9fafb;
+                    --sidebar-bg: #191e22;
+                    --sidebar-border: #22292f;
+                    --sidebar-item-hover: #242b31;
+                    --sidebar-item-active: #242b31;
+                    --sidebar-foreground: #adb5bd;
+                    --sidebar-muted: #74788d;
+                    --sidebar-accent: #1c84ee;
                 }
 
                 .vertical-menu {
@@ -68,6 +68,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 #page-topbar {
                     left: 250px !important; /* Standard sidebar width */
                     background-color: var(--sidebar-bg) !important;
+                    background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)) !important;
                     border-bottom: 1px solid var(--sidebar-border) !important;
                     box-shadow: none !important;
                 }
@@ -117,7 +118,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 body[data-sidebar="cyan"] .sidebar-sticky-top { background-color: #06b6d4 !important; }
                 body[data-sidebar="default"] .sidebar-sticky-top { background-color: #1c84ee !important; }
                 body[data-sidebar="brand"] .sidebar-sticky-top { background-color: var(--bs-primary) !important; }
-                body[data-sidebar="dark"] .sidebar-sticky-top { background-color: #282f36 !important; }
+                 body[data-sidebar="dark"] .sidebar-sticky-top { background-color: var(--sidebar-bg) !important; }
                 body[data-sidebar="light"] .sidebar-sticky-top { background-color: #ffffff !important; }
 
                 /* Themed Search Input Styling */
@@ -177,12 +178,12 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 .brand-logo {
                     width: 32px;
                     height: 32px;
-                    background-color: var(--sidebar-accent);
+                    background-color: var(--bs-primary) !important;
                     border-radius: 8px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    color: #fff;
+                    color: #fff !important;
                     flex-shrink: 0;
                 }
 
@@ -206,6 +207,37 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 .brand-sub {
                     font-size: 11px;
                     color: var(--sidebar-muted);
+                }
+
+                /* Dark/Colored sidebar themes brand text compatibility override */
+                body[data-sidebar="dark"] .brand-name,
+                body[data-sidebar="brand"] .brand-name,
+                body[data-sidebar="default"] .brand-name,
+                body[data-sidebar="cyan"] .brand-name,
+                body[data-sidebar="teal"] .brand-name,
+                body[data-sidebar="ersan"] .brand-name,
+                body[data-sidebar="rose"] .brand-name,
+                body[data-sidebar="orange"] .brand-name,
+                body[data-sidebar="emerald"] .brand-name,
+                body[data-sidebar="slate"] .brand-name,
+                body[data-sidebar="purple"] .brand-name,
+                body[data-sidebar="red"] .brand-name {
+                    color: #ffffff !important;
+                }
+
+                body[data-sidebar="dark"] .brand-sub,
+                body[data-sidebar="brand"] .brand-sub,
+                body[data-sidebar="default"] .brand-sub,
+                body[data-sidebar="cyan"] .brand-sub,
+                body[data-sidebar="teal"] .brand-sub,
+                body[data-sidebar="ersan"] .brand-sub,
+                body[data-sidebar="rose"] .brand-sub,
+                body[data-sidebar="orange"] .brand-sub,
+                body[data-sidebar="emerald"] .brand-sub,
+                body[data-sidebar="slate"] .brand-sub,
+                body[data-sidebar="purple"] .brand-sub,
+                body[data-sidebar="red"] .brand-sub {
+                    color: rgba(255, 255, 255, 0.6) !important;
                 }
 
                 /* Sidebar Search */
