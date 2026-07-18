@@ -777,7 +777,9 @@ File: Main Js File
       $(
         "<style id='custom-sidebar-style'>body .vertical-menu { background-color: " +
           color +
-          " !important; } body #sidebar-menu ul li a { color: rgba(255, 255, 255, 0.7) !important; } body #sidebar-menu ul li a i { color: rgba(255, 255, 255, 0.7) !important; } body #sidebar-menu ul li a:hover, body #sidebar-menu ul li a.active, body #sidebar-menu ul li.mm-active > a { color: #fff !important; } body #sidebar-menu .menu-title { color: rgba(255, 255, 255, 0.4) !important; } body .vertical-menu .logo-dark { display: none !important; } body .vertical-menu .logo-light { display: block !important; }</style>",
+          " !important; } body .sidebar-sticky-top { background-color: " +
+          color +
+          " !important; } body .sidebar-search { background-color: rgba(255, 255, 255, 0.12) !important; border-color: rgba(255, 255, 255, 0.15) !important; color: #ffffff !important; } body .sidebar-search::placeholder { color: rgba(255, 255, 255, 0.5) !important; } body #sidebar-menu ul li a { color: rgba(255, 255, 255, 0.7) !important; } body #sidebar-menu ul li a i { color: rgba(255, 255, 255, 0.7) !important; } body #sidebar-menu ul li a:hover, body #sidebar-menu ul li a.active, body #sidebar-menu ul li.mm-active > a { color: #fff !important; } body #sidebar-menu .menu-title { color: rgba(255, 255, 255, 0.4) !important; } body .vertical-menu .logo-dark { display: none !important; } body .vertical-menu .logo-light { display: block !important; }</style>",
       ).appendTo("head");
     }
 

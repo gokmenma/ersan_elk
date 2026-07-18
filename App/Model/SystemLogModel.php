@@ -60,6 +60,21 @@ class SystemLogModel extends Model
     }
 
     /**
+     * Belirli bir IP'den, verilen action_type için son X dakikada kaydedilmiş
+     * başarısız kimlik doğrulama denemesi sayısını döndürür (basit rate-limit kontrolü).
+     * Başarısız girişler description alanına "AUTH_FAIL | IP: x.x.x.x | ..." formatında yazılmalıdır.
+     */
+    public function countRecentFailedApiAttempts(string $ip, string $actionType, int $minutes = 15): int
+    {
+        $sql = "SELECT COUNT(*) as total FROM {$this->table}
+                WHERE action_type = ? AND description LIKE 'AUTH_FAIL%' AND description LIKE ?
+                AND created_at >= (NOW() - INTERVAL ? MINUTE)";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$actionType, '%IP: ' . $ip . '%', $minutes]);
+        return (int) $stmt->fetch(PDO::FETCH_OBJ)->total;
+    }
+
+    /**
      * Get recent logs with user details
      * @param int $limit Limit
      * @param int|null $minLevel Minimum log seviyesi (null = tüm loglar)

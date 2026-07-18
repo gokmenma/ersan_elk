@@ -683,137 +683,375 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         }
 
         $uploadDateRaw = $_POST['upload_date'] ?? date('Y-m-d');
-        // Ensure date is in Y-m-d format
         $uploadDate = \App\Helper\Date::convertExcelDate($uploadDateRaw, 'Y-m-d') ?: date('Y-m-d');
-
         $fileTmpPath = $_FILES['excel_file']['tmp_name'];
-        $spreadsheet = IOFactory::load($fileTmpPath);
-        $sheet = $spreadsheet->getActiveSheet();
-        $rows = $sheet->toArray();
-
-        // Find header row
-        $headerRowIndex = null;
-        $colMap = [];
-        foreach ($rows as $index => $row) {
-            $rowStr = implode(' ', array_map('strval', $row));
-            // Expecting: Ekip Adı, Sayı, Açıklama (Using mb_stripos for Turkish characters)
-            if (mb_stripos($rowStr, 'Ekip', 0, 'UTF-8') !== false && (mb_stripos($rowStr, 'Sayı', 0, 'UTF-8') !== false || mb_stripos($rowStr, 'Sayi', 0, 'UTF-8') !== false)) {
-                $headerRowIndex = $index;
-                foreach ($row as $colIndex => $cellValue) {
-                    $cellValue = trim($cellValue);
-                    if (mb_stripos($cellValue, 'Ekip', 0, 'UTF-8') !== false)
-                        $colMap['ekip'] = $colIndex;
-                    elseif (mb_stripos($cellValue, 'Sayı', 0, 'UTF-8') !== false || mb_stripos($cellValue, 'Sayi', 0, 'UTF-8') !== false)
-                        $colMap['sayi'] = $colIndex;
-                    elseif (mb_stripos($cellValue, 'Açıklama', 0, 'UTF-8') !== false || mb_stripos($cellValue, 'Aciklama', 0, 'UTF-8') !== false)
-                        $colMap['aciklama'] = $colIndex;
-                }
-                break;
-            }
-        }
-
-        if ($headerRowIndex === null) {
-            throw new Exception("Excel formatı geçersiz. Başlık satırı (Ekip, Sayı...) bulunamadı.");
-        }
-
-        $insertedCount = 0;
-        $skippedCount = 0;
-        $unmatchedPersonnel = []; // Eşleşmeyen personeller
+        
+        $useOpenai = isset($_POST['use_openai']) && $_POST['use_openai'] === '1';
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $Personel = new PersonelModel();
-        $unmatchedRows = []; // Eşleşmeyen satırlar (satır no, ekip adı, eşleşmeyen isimler)
+        $Puantaj = new PuantajModel();
 
-        for ($i = $headerRowIndex + 1; $i < count($rows); $i++) {
-            $row = $rows[$i];
-            $excelRowNum = $i + 1; // Excel satır numarası (1-indexed, header dahil)
-            $ekipStr = isset($colMap['ekip']) ? trim($row[$colMap['ekip']]) : '';
-            $sayi = isset($colMap['sayi']) ? (int) trim($row[$colMap['sayi']]) : 0;
-            $aciklama = isset($colMap['aciklama']) ? trim($row[$colMap['aciklama']]) : '';
+        if ($useOpenai) {
+            // OpenAI ile analiz etme mantığı
+            $Settings = new \App\Model\SettingsModel();
+            $openaiKey = $Settings->getSettings('openai_api_key');
+            if (empty($openaiKey)) {
+                // Alternatif olarak fallback hardcoded api key
+                $openaiKey = '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';
+            }
 
-            if (empty($ekipStr))
-                continue;
+            $fileName = $_FILES['excel_file']['name'];
+            $fileExtension = strtolower(pathinfo($fileName, PATHINFO_EXTENSION));
 
-            // Ekip adındaki virgülle veya tire ile ayrılmış isimleri personel tablosunda ara
-            $personelIds = [];
-            $unmatchedInRow = []; // Bu satırdaki eşleşmeyen isimler
-            $isimler = array_map('trim', preg_split('/[,-]/', $ekipStr));
+            $documentText = '';
+            $base64Image = null;
+            $mimeType = '';
 
-            foreach ($isimler as $isim) {
-                if (empty($isim))
-                    continue;
-                // Personel tablosunda isimle birebir eşleşme ara
-                $stmtPers = $Puantaj->db->prepare("SELECT id FROM personel WHERE adi_soyadi = ? AND silinme_tarihi IS NULL LIMIT 1");
-                $stmtPers->execute([$isim]);
-                $persId = $stmtPers->fetchColumn();
-                if ($persId) {
-                    $personelIds[] = $persId;
-                } else {
-                    $unmatchedInRow[] = $isim;
+            if (in_array($fileExtension, ['png', 'jpg', 'jpeg'])) {
+                // Resim okuma (Vision API için base64'e çevir)
+                $imageData = file_get_contents($fileTmpPath);
+                $base64Image = base64_encode($imageData);
+                $mimeType = 'image/' . ($fileExtension === 'jpg' ? 'jpeg' : $fileExtension);
+            } elseif ($fileExtension === 'pdf') {
+                // PDF okuma
+                try {
+                    $parser = new \Smalot\PdfParser\Parser();
+                    $pdf = $parser->parseFile($fileTmpPath);
+                    $documentText = $pdf->getText();
+                } catch (Exception $pdfEx) {
+                    throw new Exception("PDF dosyası okunamadı: " . $pdfEx->getMessage());
+                }
+                if (empty(trim($documentText))) {
+                    throw new Exception("PDF dosyasından metin çıkartılamadı (belge taranmış görsel olabilir, lütfen resim formatında yükleyin).");
+                }
+            } else {
+                // Excel dosyası okuma (Varsayılan)
+                $spreadsheet = IOFactory::load($fileTmpPath);
+                $sheet = $spreadsheet->getActiveSheet();
+                $rows = $sheet->toArray();
+                
+                $textRows = [];
+                foreach ($rows as $idx => $r) {
+                    $filtered = array_filter(array_map('trim', $r));
+                    if (!empty($filtered)) {
+                        $textRows[] = "Satır " . ($idx + 1) . ": " . implode(" | ", $filtered);
+                    }
+                }
+                if (empty($textRows)) {
+                    throw new Exception("Yüklenen dosya içeriği boş.");
+                }
+                $documentText = implode("\n", $textRows);
+            }
+
+            // İşlem yapan manuel personelleri al
+            $personelIdsArr = $_POST['kacak_api_personel_ids'] ?? [];
+            if (!is_array($personelIdsArr)) {
+                $personelIdsArr = !empty($personelIdsArr) ? explode(',', $personelIdsArr) : [];
+            }
+            
+            $personelIdsStr = implode(',', $personelIdsArr);
+            $ekipAdi = '';
+            if (!empty($personelIdsArr)) {
+                $Personel = new PersonelModel();
+                $isimler = [];
+                foreach ($personelIdsArr as $pId) {
+                    $p = $Personel->find($pId);
+                    if ($p) {
+                        $isimler[] = $p->adi_soyadi;
+                    }
+                }
+                if (!empty($isimler)) {
+                    $ekipAdi = implode(', ', $isimler);
                 }
             }
 
-            // Eğer herhangi bir personel eşleşmediyse bu satırı atla
-            if (!empty($unmatchedInRow)) {
-                $unmatchedRows[] = [
-                    'satir' => $excelRowNum,
-                    'ekip' => $ekipStr,
-                    'eslesmeyen' => $unmatchedInRow
-                ];
-                $skippedCount++;
-                continue;
+            // OpenAI'a gönderilecek personel listesi, ekrandaki "Personel Seçimi" dropdown'ında
+            // gerçekten seçilebilir olan personellerle birebir aynı olmalı. Aksi halde AI'ın
+            // döndürdüğü ID dropdown'da bulunmadığı için seçim ekranda hiç görünmez (eşleşmeme sorunu).
+            $personelListRaw = $_POST['kacak_personel_list'] ?? '';
+            $dropdownPersonelArr = [];
+            if (!empty($personelListRaw)) {
+                $decodedPersonelList = json_decode($personelListRaw, true);
+                if (is_array($decodedPersonelList)) {
+                    foreach ($decodedPersonelList as $dp) {
+                        if (!empty($dp['id']) && !empty($dp['name'])) {
+                            $dropdownPersonelArr[(int) $dp['id']] = trim($dp['name']);
+                        }
+                    }
+                }
+            }
+            if (empty($dropdownPersonelArr)) {
+                // Fallback: dropdown listesi gönderilmediyse tutanak tarihinde aktif olan personelleri çek
+                $Personel = new PersonelModel();
+                $tumPersoneller = $Personel->all(false, 'puantaj', $uploadDate);
+                foreach ($tumPersoneller as $tp) {
+                    $dropdownPersonelArr[(int) $tp->id] = trim($tp->adi_soyadi);
+                }
             }
 
-            $personelIdsStr = implode(',', $personelIds);
-
-            // Unique ID for idempotency
-            $islemId = md5($uploadDate . '|' . $ekipStr . '|' . $sayi . '|' . $aciklama);
-
-            $exists = $Puantaj->db->prepare("SELECT COUNT(*) FROM kacak_kontrol WHERE islem_id = ? AND silinme_tarihi IS NULL");
-            $exists->execute([$islemId]);
-            if ($exists->fetchColumn() > 0) {
-                $skippedCount++;
-                $unmatchedRows[] = [
-                    'satir' => $excelRowNum,
-                    'ekip' => $ekipStr,
-                    'neden' => 'Bu kayıt daha önce yüklenmiş (duplicate)'
-                ];
-                continue;
+            // Daha az ve daha isabetli veri için adayları, bu firmada daha önce kaçak kontrol
+            // tutanaklarında fiilen görev almış personelle (fiili "kaçak ekibi") sınırlandıralım.
+            // Yeterli geçmiş yoksa (ör. ilk kullanım) dropdown'daki tam listeye geri dönülür.
+            $kacakEkibiIds = [];
+            $stmtGecmis = $Puantaj->db->prepare("SELECT DISTINCT personel_ids FROM kacak_kontrol WHERE firma_id = ? AND personel_ids IS NOT NULL AND personel_ids != '' AND silinme_tarihi IS NULL");
+            $stmtGecmis->execute([$firmaId]);
+            foreach ($stmtGecmis->fetchAll(PDO::FETCH_COLUMN) as $idsStr) {
+                foreach (explode(',', $idsStr) as $pid) {
+                    $pid = (int) trim($pid);
+                    if ($pid > 0) {
+                        $kacakEkibiIds[$pid] = true;
+                    }
+                }
             }
 
-            $stmt = $Puantaj->db->prepare("INSERT INTO kacak_kontrol (firma_id, personel_ids, tarih, ekip_adi, sayi, aciklama, islem_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
-            $result = $stmt->execute([$firmaId, $personelIdsStr, $uploadDate, $ekipStr, $sayi, $aciklama, $islemId]);
-            if ($result)
-                $insertedCount++;
-        }
+            $adayIds = array_keys($dropdownPersonelArr);
+            if (count($kacakEkibiIds) >= 2) {
+                $kesisim = array_values(array_intersect($adayIds, array_keys($kacakEkibiIds)));
+                if (count($kesisim) >= 2) {
+                    $adayIds = $kesisim;
+                }
+            }
 
-        $response['status'] = 'success';
-        $response['inserted_count'] = $insertedCount;
-        $response['skipped_count'] = $skippedCount;
+            // İmza pozisyonu ipucu için rol bilgisini (Şef/Memur) de ekleyelim
+            $unvanMap = [];
+            if (!empty($adayIds)) {
+                $placeholders = implode(',', array_fill(0, count($adayIds), '?'));
+                $stmtUnvan = $Puantaj->db->prepare("SELECT id, gorev FROM personel WHERE id IN ($placeholders)");
+                $stmtUnvan->execute($adayIds);
+                foreach ($stmtUnvan->fetchAll(PDO::FETCH_ASSOC) as $row) {
+                    $unvanMap[(int) $row['id']] = trim($row['gorev'] ?? '');
+                }
+            }
 
-        // skipped_rows formatını standartlaştır
-        $skippedRows = [];
-        foreach ($unmatchedRows as $ur) {
-            if (isset($ur['eslesmeyen'])) {
-                $skippedRows[] = [
-                    'satir' => $ur['satir'],
-                    'ekip' => $ur['ekip'],
-                    'neden' => 'Personel eşleşmedi: ' . implode(', ', $ur['eslesmeyen'])
+            $personelPromptArr = [];
+            foreach ($adayIds as $pid) {
+                if (!isset($dropdownPersonelArr[$pid])) {
+                    continue;
+                }
+                $unvan = $unvanMap[$pid] ?? '';
+                $personelPromptArr[] = [
+                    'id' => $pid,
+                    'name' => $dropdownPersonelArr[$pid],
+                    'unvan' => $unvan,
+                    'sef_mi' => (stripos($unvan, 'Şef') !== false)
+                ];
+            }
+            $personelListJson = json_encode($personelPromptArr, JSON_UNESCAPED_UNICODE);
+
+            // OpenAI API çağrısı
+            $prompt = "Aşağıdaki " . ($base64Image ? "görseldeki" : "metindeki") . " KASKİ kaçak/abonesiz tutanak verilerinden tarih, ilçe, tür (Kaçak veya Abonesiz), sayı, açıklama ve görevli personel verilerini ayıklamanı istiyorum.
+Verileri bana kesinlikle aşağıdaki formatta geçerli bir JSON dizisi (Array) olarak dön. Ek açıklama, markdown veya kod blokları (```json gibi) ekleme. Doğrudan geçerli JSON string döneceksin.
+
+Aşağıda sistemde kayıtlı olan ve bu ekranda seçilebilir olan personel listesi bulunmaktadır (SADECE buradaki ID'leri kullanmalısın, listede olmayan bir ID asla üretme). 'unvan' alanı kişinin görevini, 'sef_mi' alanı ekip şefi olup olmadığını gösterir:
+{$personelListJson}
+
+Kritik Kurallar ve Kontroller:
+1. Tarih: Tutanaktaki fiili tespit/düzenleme tarihini çok dikkatli oku. Tutanak altındaki 'MEMNU İŞİ YAPAN' (veya imza atan görevliler) alanının hemen üstündeki/yanındaki el yazısı tarihi öncelikle oku (örn: 17.07.2026). Eski tarihleri veya doğum/abone tarihleri gibi yılları tarih olarak alma. Bulduğun tarihi YYYY-MM-DD formatına dönüştür. Eğer tutanakta hiçbir şekilde tespit tarihi okunmuyorsa varsayılan olarak şu tarihi kullan: {$uploadDate} ve bu durumda 'guven.tarih' değerine düşük bir yüzde (örn. 30) ver.
+2. İlçe: 'İlçesi' yazan kutucuktaki el yazısını çok dikkatli oku. Örneğin 'Onikişubat', 'Dulkadiroğlu', 'Göksun', 'Elbistan', 'Pazarcık' vb. yazabilir. Görseldeki yazıyı tam okuyarak doğru eşleştir, yanlış ilçe eşleştirmekten kesinlikle kaçın (Örn: Görselde 'Onikişubat' yazıyorsa 'Dulkadiroğlu' yapma). El yazısı net değilse en yakın tahminini yaz ama 'guven.ilce' değerine düşük bir yüzde ver.
+3. Personel Eşleştirme (Çok Sıkı Kontrol, ASLA Varsayım/Ezber Yapma):
+   - Tutanakta (genellikle en altta imza/parafların yanında, 'KONTROL EDENLER' veya 'Tutanak Düzenleyen Memurlar' alanında el yazısıyla atılmış veya kaşelenmiş) görevli personellerin baş harflerini veya isimlerini tespit et.
+   - Genellikle ekip şefleri ('sef_mi' true olanlar) imzayı sol altta, diğer personel ise ortada/sağda atar; bunu sadece bir ipucu olarak kullan, kesin kural sayma.
+   - Bu imzaların/parafların baş harflerini veya isimlerini SADECE yukarıdaki personel listesindeki isimlerle karşılaştır. Listede olmayan birine benzetme yapma; önceki tutanaklarda gördüğün isimleri hatırlayıp otomatik eşleştirme yapma, sadece bu tutanaktaki el yazısına bak.
+   - Baş harfler/parafların birden fazla personelle eşleşme ihtimali varsa veya el yazısı okunaksızsa, o kişiyi 'personel_ids' dizisine EKLEME ve 'guven.personel_ids' değerine düşük bir yüzde ver.
+   - Sadece net ve tekil bir eşleşme olduğunda personeli 'personel_ids' dizisine ekle ve bu durumda 'guven.personel_ids' değerine yüksek bir yüzde (85-100) ver.
+   - Tespit edilen en fazla 2 personelin ID'sini 'personel_ids' dizisine ekle. Eşleşmeyen ya da tutanakta ismi/parafı hiç geçmeyen kişileri kesinlikle dahil etme; emin değilsen boş dizi [] dön ve düşük bir yüzde ver.
+
+Alanlar:
+- tarih (YYYY-MM-DD formatında tutanaktan okunan tarih. Örn: 2026-07-17)
+- ilçe (Tutanaktaki 'İlçesi' kutusundan okunan Kahramanmaraş ilçesi. Örn: 'Onikişubat')
+- tur (Tutanakta Kaçak, kaçak tespiti, kaçak kullanma geçiyorsa 'Kaçak' yaz. Abonesiz, abonesiz kullanım geçiyorsa 'Abonesiz' yaz.)
+- tutanak_no (Tutanakta el yazısı ile veya basılı şekilde geçen 'SERİ / A Sıra No' kutucuklarındaki 'No' alanını, yani tutanak numarasını oku. Örn: 42697)
+- abone_adi (Tutanakta el yazısı ile 'Adı Soyadı' kutucuğunda yazan kişiyi oku. Örn: Hüseyin Ertanrıdağ)
+- sayac_no (Tutanakta el yazısı ile 'Sayaç Seri No.' kutusunda yazan seri numarasını oku. Örn: 2590726)
+- endeks (Tutanakta el yazısı ile 'Sayaç Endeksi' kutusunda yazan değeri oku. Örn: 78)
+- sayi (Tutanaktaki işlem/kayıt sayısı, tamsayı olarak. Eğer satırda sayı yoksa 1 kabul et.)
+- aciklama (Tutanaktaki açıklama alanı veya durum detayı)
+- personel_ids (Tutanaktan tespit edilen ve yukarıdaki listedeki ad soyad / baş harf eşleşmesinden bulunan görevli personellerin ID dizisi (örn: [12, 15] gibi sayısal ID'ler). Eşleşme yoksa boş dizi [] dön.)
+- guven (Her alan için 0 ile 100 arasında bir GÜVEN YÜZDESİ, tam sayı olarak. El yazısı okunaksızsa, birden fazla olası okuma/eşleşme varsa veya varsayılan bir değer kullandıysan ilgili alana düşük bir yüzde (örn. 20-50), net ve emin olduğun alanlara yüksek bir yüzde (örn. 85-100) ver. Şu anahtarları içermeli: tarih, ilce, tur, tutanak_no, abone_adi, sayac_no, endeks, sayi, aciklama, personel_ids. Örn: {\"tarih\":95,\"ilce\":40,\"tur\":90,\"tutanak_no\":85,\"abone_adi\":35,\"sayac_no\":90,\"endeks\":90,\"sayi\":100,\"aciklama\":80,\"personel_ids\":45})
+
+" . ($base64Image ? "Görsel analiz edilerek bu alanlar çıkartılmalıdır." : "Belge Metni:\n" . $documentText);
+
+            $userMessageContent = [];
+            if ($base64Image) {
+                $userMessageContent = [
+                    [
+                        "type" => "text",
+                        "text" => $prompt
+                    ],
+                    [
+                        "type" => "image_url",
+                        "image_url" => [
+                            "url" => "data:" . $mimeType . ";base64," . $base64Image
+                        ]
+                    ]
                 ];
             } else {
-                $skippedRows[] = $ur;
+                $userMessageContent = $prompt;
             }
-        }
-        $response['skipped_rows'] = $skippedRows;
 
-        $message = "$insertedCount kayıt eklendi.";
-        if ($skippedCount > 0) {
-            $message .= " $skippedCount kayıt atlandı.";
-        }
-        $response['message'] = $message;
+            $ch = curl_init("https://api.openai.com/v1/chat/completions");
+            curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+            curl_setopt($ch, CURLOPT_POST, true);
+            curl_setopt($ch, CURLOPT_HTTPHEADER, [
+                "Content-Type: application/json",
+                "Authorization: Bearer " . $openaiKey
+            ]);
+            curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode([
+                "model" => "gpt-4o",
+                "messages" => [
+                    ["role" => "system", "content" => "Sen Kaski tutanaklarından veri çıkartan profesyonel bir veri analisti asistanısın. Sadece saf JSON dizi formatında çıktı üretirsin."],
+                    ["role" => "user", "content" => $userMessageContent]
+                ],
+                "temperature" => 0.1
+            ]));
 
-        $SystemLog = new SystemLogModel();
-        $userId = $_SESSION['user_id'] ?? 0;
-        $SystemLog->logAction($userId, 'Kaçak Kontrol Yükleme', "Excel'den $insertedCount adet kaçak kontrol kaydı yüklendi.", SystemLogModel::LEVEL_IMPORTANT);
+            $apiResult = curl_exec($ch);
+            if (curl_errno($ch)) {
+                throw new Exception("OpenAI API bağlantı hatası: " . curl_error($ch));
+            }
+            curl_close($ch);
+
+            $apiJson = json_decode($apiResult, true);
+            $content = $apiJson['choices'][0]['message']['content'] ?? '';
+            
+            // Eğer markdown blockları varsa temizle
+            $content = trim($content);
+            if (strpos($content, '```') === 0) {
+                $content = preg_replace('/^```(?:json)?|```$/m', '', $content);
+                $content = trim($content);
+            }
+
+            $extractedData = json_decode($content, true);
+            if (!is_array($extractedData)) {
+                error_log("OpenAI raw output: " . $content);
+                throw new Exception("OpenAI veriyi ayıklayamadı veya geçersiz JSON döndürdü. Hata logu kaydedildi.");
+            }
+
+            $response['status'] = 'success';
+            $response['is_ai_extracted'] = true;
+            $response['extracted_data'] = $extractedData;
+            $response['message'] = "Dosya başarıyla analiz edildi. Lütfen aşağıdaki bilgileri kontrol edip kaydedin.";
+            echo json_encode($response);
+            exit;
+        } else {
+            // Standart Excel yükleme mantığı
+            $spreadsheet = IOFactory::load($fileTmpPath);
+            $sheet = $spreadsheet->getActiveSheet();
+            $rows = $sheet->toArray();
+
+            // Find header row
+            $headerRowIndex = null;
+            $colMap = [];
+            foreach ($rows as $index => $row) {
+                $rowStr = implode(' ', array_map('strval', $row));
+                if (mb_stripos($rowStr, 'Ekip', 0, 'UTF-8') !== false && (mb_stripos($rowStr, 'Sayı', 0, 'UTF-8') !== false || mb_stripos($rowStr, 'Sayi', 0, 'UTF-8') !== false)) {
+                    $headerRowIndex = $index;
+                    foreach ($row as $colIndex => $cellValue) {
+                        $cellValue = trim($cellValue);
+                        if (mb_stripos($cellValue, 'Ekip', 0, 'UTF-8') !== false)
+                            $colMap['ekip'] = $colIndex;
+                        elseif (mb_stripos($cellValue, 'Sayı', 0, 'UTF-8') !== false || mb_stripos($cellValue, 'Sayi', 0, 'UTF-8') !== false)
+                            $colMap['sayi'] = $colIndex;
+                        elseif (mb_stripos($cellValue, 'Açıklama', 0, 'UTF-8') !== false || mb_stripos($cellValue, 'Aciklama', 0, 'UTF-8') !== false)
+                            $colMap['aciklama'] = $colIndex;
+                    }
+                    break;
+                }
+            }
+
+            if ($headerRowIndex === null) {
+                throw new Exception("Excel formatı geçersiz. Başlık satırı (Ekip, Sayı...) bulunamadı.");
+            }
+
+            $insertedCount = 0;
+            $skippedCount = 0;
+            $unmatchedRows = [];
+
+            for ($i = $headerRowIndex + 1; $i < count($rows); $i++) {
+                $row = $rows[$i];
+                $excelRowNum = $i + 1;
+                $ekipStr = isset($colMap['ekip']) ? trim($row[$colMap['ekip']]) : '';
+                $sayi = isset($colMap['sayi']) ? (int) trim($row[$colMap['sayi']]) : 0;
+                $aciklama = isset($colMap['aciklama']) ? trim($row[$colMap['aciklama']]) : '';
+
+                if (empty($ekipStr))
+                    continue;
+
+                $personelIds = [];
+                $unmatchedInRow = [];
+                $isimler = array_map('trim', preg_split('/[,-]/', $ekipStr));
+
+                foreach ($isimler as $isim) {
+                    if (empty($isim))
+                        continue;
+                    $stmtPers = $Puantaj->db->prepare("SELECT id FROM personel WHERE adi_soyadi = ? AND silinme_tarihi IS NULL LIMIT 1");
+                    $stmtPers->execute([$isim]);
+                    $persId = $stmtPers->fetchColumn();
+                    if ($persId) {
+                        $personelIds[] = $persId;
+                    } else {
+                        $unmatchedInRow[] = $isim;
+                    }
+                }
+
+                if (!empty($unmatchedInRow)) {
+                    $unmatchedRows[] = [
+                        'satir' => $excelRowNum,
+                        'ekip' => $ekipStr,
+                        'eslesmeyen' => $unmatchedInRow
+                    ];
+                    $skippedCount++;
+                    continue;
+                }
+
+                $personelIdsStr = implode(',', $personelIds);
+                $islemId = md5($uploadDate . '|' . $ekipStr . '|' . $sayi . '|' . $aciklama);
+
+                $exists = $Puantaj->db->prepare("SELECT COUNT(*) FROM kacak_kontrol WHERE islem_id = ? AND silinme_tarihi IS NULL");
+                $exists->execute([$islemId]);
+                if ($exists->fetchColumn() > 0) {
+                    $skippedCount++;
+                    $unmatchedRows[] = [
+                        'satir' => $excelRowNum,
+                        'ekip' => $ekipStr,
+                        'neden' => 'Bu kayıt daha önce yüklenmiş (duplicate)'
+                    ];
+                    continue;
+                }
+
+                $stmt = $Puantaj->db->prepare("INSERT INTO kacak_kontrol (firma_id, personel_ids, tarih, ekip_adi, sayi, aciklama, islem_id) VALUES (?, ?, ?, ?, ?, ?, ?)");
+                $result = $stmt->execute([$firmaId, $personelIdsStr, $uploadDate, $ekipStr, $sayi, $aciklama, $islemId]);
+                if ($result)
+                    $insertedCount++;
+            }
+
+            $response['status'] = 'success';
+            $response['inserted_count'] = $insertedCount;
+            $response['skipped_count'] = $skippedCount;
+
+            $skippedRows = [];
+            foreach ($unmatchedRows as $ur) {
+                if (isset($ur['eslesmeyen'])) {
+                    $skippedRows[] = [
+                        'satir' => $ur['satir'],
+                        'ekip' => $ur['ekip'],
+                        'neden' => 'Personel eşleşmedi: ' . implode(', ', $ur['eslesmeyen'])
+                    ];
+                } else {
+                    $skippedRows[] = $ur;
+                }
+            }
+            $response['skipped_rows'] = $skippedRows;
+
+            $message = "$insertedCount kayıt eklendi.";
+            if ($skippedCount > 0) {
+                $message .= " $skippedCount kayıt atlandı.";
+            }
+            $response['message'] = $message;
+
+            $SystemLog = new SystemLogModel();
+            $userId = $_SESSION['user_id'] ?? 0;
+            $SystemLog->logAction($userId, 'Kaçak Kontrol Yükleme', "Excel'den $insertedCount adet kaçak kontrol kaydı yüklendi.", SystemLogModel::LEVEL_IMPORTANT);
+        }
 
     } catch (Exception $e) {
         $response['message'] = $e->getMessage();
@@ -901,6 +1139,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
         $ilceArr = $_POST['ilce'] ?? [];
         $turArr = $_POST['tur'] ?? [];
+        $tutanakNoArr = $_POST['tutanak_no'] ?? [];
+        $aboneAdiArr = $_POST['abone_adi'] ?? [];
+        $sayacNoArr = $_POST['sayac_no'] ?? [];
+        $endeksArr = $_POST['endeks'] ?? [];
         $sayiArr = $_POST['sayi'] ?? [];
         $aciklamaArr = $_POST['aciklama'] ?? [];
 
@@ -908,11 +1150,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             // Explicit update or found existing - single row mode
             $ilce = is_array($ilceArr) ? ($ilceArr[0] ?? null) : $ilceArr;
             $tur = is_array($turArr) ? ($turArr[0] ?? 'Kaçak') : $turArr;
+            $tutanak_no = is_array($tutanakNoArr) ? ($tutanakNoArr[0] ?? null) : $tutanakNoArr;
+            $abone_adi = is_array($aboneAdiArr) ? ($aboneAdiArr[0] ?? null) : $aboneAdiArr;
+            $sayac_no = is_array($sayacNoArr) ? ($sayacNoArr[0] ?? null) : $sayacNoArr;
+            $endeks = is_array($endeksArr) ? ($endeksArr[0] ?? null) : $endeksArr;
             $sayi = is_array($sayiArr) ? ($sayiArr[0] ?? 0) : $sayiArr;
             $aciklama = is_array($aciklamaArr) ? ($aciklamaArr[0] ?? '') : $aciklamaArr;
 
-            $stmt = $Puantaj->db->prepare("UPDATE kacak_kontrol SET tarih = ?, personel_ids = ?, ekip_adi = ?, ilce = ?, tur = ?, sayi = ?, aciklama = ? WHERE id = ?");
-            $result = $stmt->execute([$dbTarih, $personelIdsStr, $ekipAdi, $ilce, $tur, $sayi, $aciklama, $id]);
+            $stmt = $Puantaj->db->prepare("UPDATE kacak_kontrol SET tarih = ?, personel_ids = ?, ekip_adi = ?, ilce = ?, tur = ?, tutanak_no = ?, abone_adi = ?, sayac_no = ?, endeks = ?, sayi = ?, aciklama = ? WHERE id = ?");
+            $result = $stmt->execute([$dbTarih, $personelIdsStr, $ekipAdi, $ilce, $tur, $tutanak_no, $abone_adi, $sayac_no, $endeks, $sayi, $aciklama, $id]);
         } else {
             // Insert new records - support multiple rows from repeater
             $result = true;
@@ -926,6 +1172,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                     for ($k = 0; $k < count($ilceArr); $k++) {
                         $ilce = $ilceArr[$k] ?? null;
                         $tur = $turArr[$k] ?? 'Kaçak';
+                        $tutanak_no = $tutanakNoArr[$k] ?? null;
+                        $abone_adi = $aboneAdiArr[$k] ?? null;
+                        $sayac_no = $sayacNoArr[$k] ?? null;
+                        $endeks = $endeksArr[$k] ?? null;
                         $sayi = (int) ($sayiArr[$k] ?? 0);
                         $aciklama = $aciklamaArr[$k] ?? '';
 
@@ -933,9 +1183,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                             continue; // Skip invalid rows
                         }
 
-                        $islemId = md5($dbTarih . '|' . $personelIdsStr . '|' . $ilce . '|' . $tur . '|' . $sayi . '|' . $aciklama . '|' . microtime() . '|' . $k);
-                        $stmt = $Puantaj->db->prepare("INSERT INTO kacak_kontrol (firma_id, personel_ids, tarih, ekip_adi, ilce, tur, sayi, aciklama, islem_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
-                        $stmt->execute([$firmaId, $personelIdsStr, $dbTarih, $ekipAdi, $ilce, $tur, $sayi, $aciklama, $islemId]);
+                        $islemId = md5($dbTarih . '|' . $personelIdsStr . '|' . $ilce . '|' . $tur . '|' . $tutanak_no . '|' . $abone_adi . '|' . $sayac_no . '|' . $endeks . '|' . $sayi . '|' . $aciklama . '|' . microtime() . '|' . $k);
+                        $stmt = $Puantaj->db->prepare("INSERT INTO kacak_kontrol (firma_id, personel_ids, tarih, ekip_adi, ilce, tur, tutanak_no, abone_adi, sayac_no, endeks, sayi, aciklama, islem_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+                        $stmt->execute([$firmaId, $personelIdsStr, $dbTarih, $ekipAdi, $ilce, $tur, $tutanak_no, $abone_adi, $sayac_no, $endeks, $sayi, $aciklama, $islemId]);
                     }
                     $Puantaj->db->commit();
                 } catch (Exception $e) {
@@ -1721,6 +1971,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
                         <span class="badge bg-danger">Kaçak</span>
                     <?php endif; ?>
                 </td>
+                <td><?= htmlspecialchars($record->tutanak_no ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
+                <td><?= htmlspecialchars($record->abone_adi ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
+                <td><?= htmlspecialchars($record->sayac_no ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
+                <td><?= htmlspecialchars($record->endeks ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
                 <td><?= $record->sayi ?></td>
                 <td><?= htmlspecialchars($record->aciklama ?? '', ENT_QUOTES, 'UTF-8') ?></td>
                 <td>

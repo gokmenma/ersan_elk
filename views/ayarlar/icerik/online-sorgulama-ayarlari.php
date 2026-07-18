@@ -237,6 +237,33 @@ for ($saat = 0; $saat < 24; $saat++) {
         </div>
     </div>
 
+    <!-- OPENAI API AYARLARI -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0 text-primary"><i data-feather="cpu" class="me-2"></i>OpenAI API Ayarları</h5>
+        </div>
+        <div class="card-body p-4">
+            <div class="row">
+                <div class="col-md-12 mb-3">
+                    <?php 
+                    $openai_api_key = $allSettings['openai_api_key'] ?? '';
+                    echo Form::FormFloatInput(
+                        "password",
+                        "openai_api_key_yeni",
+                        "",
+                        "",
+                        "OpenAI API Key (Değiştirmek için doldurun)",
+                        "key",
+                        "form-control"
+                    ); 
+                    if (!empty($openai_api_key)): ?>
+                        <div class="form-text text-success"><i data-feather="check-circle" class="me-1" style="width:14px;height:14px"></i> OpenAI API Key kayıtlı (Aktif).</div>
+                    <?php endif; ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- ENDEKS API AYARLARI -->
     <div class="card shadow-sm mb-4">
         <div class="card-header bg-light">

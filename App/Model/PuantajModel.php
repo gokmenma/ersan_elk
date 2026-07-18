@@ -272,6 +272,55 @@ class PuantajModel extends Model
     }
 
     /**
+     * Harici entegrasyon API'sinden gelen bir kaçak kontrol tutanağını kaydeder.
+     * tutanak_no + tarih üzerinden aynı kaydın tekrar gönderilmesini engeller (idempotent).
+     */
+    public function insertKacakKontrolExternal(array $data): array
+    {
+        $firmaId = (int) $data['firma_id'];
+        $tarih = $data['tarih'];
+        $tutanakNo = trim((string) $data['tutanak_no']);
+
+        $islemId = md5('harici_api|' . $firmaId . '|' . $tarih . '|' . $tutanakNo);
+
+        $stmtVarMi = $this->db->prepare("SELECT id FROM kacak_kontrol WHERE islem_id = ? AND silinme_tarihi IS NULL LIMIT 1");
+        $stmtVarMi->execute([$islemId]);
+        $mevcutId = $stmtVarMi->fetchColumn();
+        if ($mevcutId) {
+            return ['success' => false, 'duplicate' => true, 'id' => (int) $mevcutId];
+        }
+
+        $stmt = $this->db->prepare("INSERT INTO kacak_kontrol
+            (firma_id, personel_ids, tarih, ekip_adi, ilce, tur, tutanak_no, abone_adi, sayac_no, endeks, sayi, aciklama, islem_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        try {
+            $stmt->execute([
+                $firmaId,
+                $data['personel_ids'],
+                $tarih,
+                $data['ekip_adi'],
+                $data['ilce'],
+                $data['tur'],
+                $tutanakNo,
+                $data['abone_adi'],
+                $data['sayac_no'],
+                $data['endeks'],
+                $data['sayi'],
+                $data['aciklama'],
+                $islemId
+            ]);
+        } catch (\PDOException $e) {
+            // islem_id üzerinde UNIQUE KEY var; yarış durumunda (aynı anda iki istek) burada yakalanır.
+            if ($e->getCode() === '23000') {
+                return ['success' => false, 'duplicate' => true, 'id' => 0];
+            }
+            throw $e;
+        }
+
+        return ['success' => true, 'duplicate' => false, 'id' => (int) $this->db->lastInsertId()];
+    }
+
+    /**
      * Get mapping of ekip_adi to personel_ids for quick entry feature
      */
     public function getKacakPersonelMapping()

@@ -61,6 +61,13 @@ class PersonelModel extends Model
         return array_map(fn($r) => $this->decryptFields($r), $results);
     }
 
+    public function findByAdiSoyadi(string $adiSoyadi)
+    {
+        $stmt = $this->db->prepare("SELECT id, adi_soyadi FROM {$this->table} WHERE adi_soyadi = ? AND firma_id = ? AND silinme_tarihi IS NULL LIMIT 1");
+        $stmt->execute([trim($adiSoyadi), $_SESSION['firma_id']]);
+        return $stmt->fetch(PDO::FETCH_OBJ) ?: null;
+    }
+
     /**
      * Get pending advance requests
      */

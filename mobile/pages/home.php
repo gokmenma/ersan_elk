@@ -417,6 +417,11 @@ try {
             <p class="text-white/60 text-xs mt-0.5"><?= date('d.m.Y') ?> – Yönetim Paneli</p>
         </div>
         <div class="flex items-center gap-2">
+            <?php if (\App\Service\Gate::allows("puantaj_raporlama") || \App\Service\Gate::allows("puantaj_yonetim")): ?>
+                <a href="../index.php?p=puantaj/veri-yukleme" class="relative w-10 h-10 rounded-xl bg-amber-500/20 backdrop-blur-md flex items-center justify-center text-amber-300 active:scale-95 transition-transform border border-amber-500/30" title="Kaçak Tutanak Yükle">
+                    <span class="material-symbols-outlined text-[22px]">center_focus_strong</span>
+                </a>
+            <?php endif; ?>
             <a href="?p=profil" class="relative w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center text-white active:scale-95 transition-transform border border-white/10">
                 <span class="material-symbols-outlined text-[22px]">person</span>
             </a>

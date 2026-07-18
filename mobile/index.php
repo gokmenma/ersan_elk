@@ -125,6 +125,8 @@ foreach ($all_mobile_menus as $pKey => $mData) {
             $hasAccess = true;
         } elseif ($pKey === 'gorevler' && \App\Service\Gate::allows('gorevler')) {
             $hasAccess = true;
+        } elseif ($pKey === 'raporlar' && (\App\Service\Gate::allows('puantaj_raporlama') || \App\Service\Gate::allows('puantaj_yonetim') || \App\Service\Gate::allows('puantaj/raporlar'))) {
+            $hasAccess = true;
         }
     }
 

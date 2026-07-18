@@ -53,6 +53,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
 
                 .vertical-menu {
                     background-color: var(--sidebar-bg) !important;
+                    background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)) !important;
                     border-right: 1px solid var(--sidebar-border) !important;
                     box-shadow: none !important;
                     font-family: var(--sidebar-font);
@@ -89,6 +90,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
 
                 #sidebar-menu {
                     padding: 8px;
+                    min-height: 100%;
                 }
 
                 /* Sticky Sidebar Header (Brand + Search) */
@@ -97,10 +99,58 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     top: 0;
                     z-index: 100;
                     background-color: var(--sidebar-bg);
+                    background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)) !important;
                     padding: 12px 8px 16px 8px;
                     margin: -8px -8px 0 -8px;
                     border-bottom: 1px solid transparent;
                     transition: all 0.2s ease;
+                }
+
+                body[data-sidebar="red"] .sidebar-sticky-top { background-color: #f46a6a !important; }
+                body[data-sidebar="purple"] .sidebar-sticky-top { background-color: #5156be !important; }
+                body[data-sidebar="slate"] .sidebar-sticky-top { background-color: #252526 !important; }
+                body[data-sidebar="emerald"] .sidebar-sticky-top { background-color: #10b981 !important; }
+                body[data-sidebar="orange"] .sidebar-sticky-top { background-color: #f97316 !important; }
+                body[data-sidebar="rose"] .sidebar-sticky-top { background-color: #ec003f !important; }
+                body[data-sidebar="ersan"] .sidebar-sticky-top { background-color: #e2bd61 !important; }
+                body[data-sidebar="teal"] .sidebar-sticky-top { background-color: #0d9488 !important; }
+                body[data-sidebar="cyan"] .sidebar-sticky-top { background-color: #06b6d4 !important; }
+                body[data-sidebar="default"] .sidebar-sticky-top { background-color: #1c84ee !important; }
+                body[data-sidebar="brand"] .sidebar-sticky-top { background-color: var(--bs-primary) !important; }
+                body[data-sidebar="dark"] .sidebar-sticky-top { background-color: #282f36 !important; }
+                body[data-sidebar="light"] .sidebar-sticky-top { background-color: #ffffff !important; }
+
+                /* Themed Search Input Styling */
+                body[data-sidebar="red"] .sidebar-search,
+                body[data-sidebar="purple"] .sidebar-search,
+                body[data-sidebar="slate"] .sidebar-search,
+                body[data-sidebar="emerald"] .sidebar-search,
+                body[data-sidebar="orange"] .sidebar-search,
+                body[data-sidebar="rose"] .sidebar-search,
+                body[data-sidebar="ersan"] .sidebar-search,
+                body[data-sidebar="teal"] .sidebar-search,
+                body[data-sidebar="cyan"] .sidebar-search,
+                body[data-sidebar="default"] .sidebar-search,
+                body[data-sidebar="brand"] .sidebar-search,
+                body[data-sidebar="dark"] .sidebar-search {
+                    background-color: rgba(255, 255, 255, 0.12) !important;
+                    border-color: rgba(255, 255, 255, 0.15) !important;
+                    color: #ffffff !important;
+                }
+
+                body[data-sidebar="red"] .sidebar-search::placeholder,
+                body[data-sidebar="purple"] .sidebar-search::placeholder,
+                body[data-sidebar="slate"] .sidebar-search::placeholder,
+                body[data-sidebar="emerald"] .sidebar-search::placeholder,
+                body[data-sidebar="orange"] .sidebar-search::placeholder,
+                body[data-sidebar="rose"] .sidebar-search::placeholder,
+                body[data-sidebar="ersan"] .sidebar-search::placeholder,
+                body[data-sidebar="teal"] .sidebar-search::placeholder,
+                body[data-sidebar="cyan"] .sidebar-search::placeholder,
+                body[data-sidebar="default"] .sidebar-search::placeholder,
+                body[data-sidebar="brand"] .sidebar-search::placeholder,
+                body[data-sidebar="dark"] .sidebar-search::placeholder {
+                    color: rgba(255, 255, 255, 0.5) !important;
                 }
 
                 /* Hide brand logo on small sidebar */

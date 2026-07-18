@@ -1078,6 +1078,31 @@ if (Gate::allows("ana_sayfa")) {
                     opacity: 0.85 !important;
                 }
 
+                /* Dark mode compatibility for macOS Widget Title Bars */
+                [data-bs-theme="dark"] .mac-title-bar {
+                    background: linear-gradient(180deg, #2e3548 0%, #222736 100%) !important;
+                    border-bottom: 1px solid #2e3548 !important;
+                }
+                [data-bs-theme="dark"] .widget-item:hover .mac-title-bar {
+                    background: linear-gradient(180deg, #32394e 0%, #272d3f 100%) !important;
+                }
+                [data-bs-theme="dark"] .mac-title-text {
+                    color: #a6b0cf !important;
+                }
+                [data-bs-theme="dark"] .drag-handle-indicator {
+                    color: #74788d !important;
+                }
+                [data-bs-theme="dark"] .finder-tabs-nav .nav-link.active {
+                    background: linear-gradient(180deg, #2e3548 0%, #222736 100%) !important;
+                    color: #f6f6f6 !important;
+                    border-color: rgba(255,255,255,0.1) !important;
+                    box-shadow: none !important;
+                }
+                [data-bs-theme="dark"] .finder-tabs-nav .nav-link:not(.active):hover {
+                    background: rgba(255,255,255,0.05) !important;
+                    color: #ffffff !important;
+                }
+
                 .finder-tabs-nav .nav-link {
                     transition: all 0.18s ease !important;
                 }

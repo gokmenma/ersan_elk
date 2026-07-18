@@ -115,6 +115,28 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         pointer-events: none;
     }
 
+    /* Yapay Zeka Analiz Güven Göstergeleri */
+    /* Not: Bu class'lar select2 kutularında SADECE .select2-selection üzerine, düz
+       inputlarda ise doğrudan input üzerine uygulanır. Aynı anda hem dış container'a
+       hem iç kutuya uygulanmaz; aksi halde iç içe çift kenarlık görünür. */
+    .ai-field-uncertain {
+        border: 2px solid #f1963c !important;
+        background-color: rgba(241, 150, 60, 0.08) !important;
+    }
+
+    .ai-field-confident {
+        border: 2px solid #34c38f !important;
+        background-color: rgba(52, 195, 143, 0.06) !important;
+    }
+
+    .ai-conf-badge {
+        font-size: 9px;
+        font-weight: 600;
+        vertical-align: middle;
+        margin-left: 4px;
+        padding: 2px 5px;
+    }
+
     /* Premium Stat Styles */
     /* Premium Mini-Card Stat Styles */
     .stat-mini-card {
@@ -719,6 +741,10 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                     <th data-filter="string">Ekip (Personel)</th>
                                     <th data-filter="select">İlçe</th>
                                     <th data-filter="select">Tür</th>
+                                    <th data-filter="string">Tutanak No</th>
+                                    <th data-filter="string">Abone Adı</th>
+                                    <th data-filter="string">Sayaç No</th>
+                                    <th data-filter="string">Endeks</th>
                                     <th data-filter="number">Sayı</th>
                                     <th data-filter="string">Açıklama</th>
                                     <th>İşlem</th>
@@ -982,8 +1008,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 <div class="modal-body">
                     <div class="alert alert-info">
                         <i class="bx bx-info-circle me-2"></i>
-                        Excel dosyasında "Ekip", "Sayı" ve "Açıklama" sütunları bulunmalıdır. Tarih alanını aşağıdan
-                        seçiniz.
+                        Excel dosyasında "Ekip", "Sayı" ve "Açıklama" sütunları bulunmalıdır. OpenAI modunda dosya içeriği taranarak otomatik veri çıkartılacaktır.
                     </div>
                     <div class="mb-3">
                         <?php echo \App\Helper\Form::FormFloatInput(
@@ -997,18 +1022,44 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                             class: "form-control flatpickr"
                         ); ?>
                     </div>
+                    
+                    <div class="mb-3 border p-3 rounded bg-light">
+                        <div class="form-check form-switch mb-3">
+                            <input class="form-check-input" type="checkbox" id="use_openai" name="use_openai" value="1">
+                            <label class="form-check-label fw-bold text-primary" for="use_openai">
+                                <i class="bx bx-bot me-1"></i> OpenAI Entegrasyonu ile Oku (Kaski Tutanağı)
+                            </label>
+                        </div>
+                        <div id="openai_personnel_container" style="display: none;">
+                            <label class="form-label text-warning fw-bold"><i class="bx bx-user-plus me-1"></i> İşlem Yapan Personeller (En fazla 2)</label>
+                            <?php echo Form::FormMultipleSelect2(
+                                name: 'kacak_api_personel_ids',
+                                options: $personeller,
+                                selectedValues: [],
+                                label: 'Manuel Personel Seçimi',
+                                icon: 'users',
+                                valueField: 'id',
+                                textField: 'adi_soyadi',
+                                class: 'form-select select2-kacak-api',
+                                required: false
+                            ); ?>
+                            <div class="form-text">Seçtiğiniz personeller Kaski tutanağından çıkartılan kayıtlara atanacaktır.</div>
+                        </div>
+                    </div>
+
                     <div class="mb-3">
                         <?php echo \App\Helper\Form::FormFileInput(
                             name: 'excel_file',
-                            label: "Excel Dosyası (.xlsx, .xls)",
+                            label: "Tutanak Belgesi (Excel, PDF veya Resim)",
                             icon: "file",
                             required: true,
                             class: "form-control"
                         ); ?>
+                        <div class="form-text">Excel (.xlsx, .xls), PDF (.pdf) veya Resim (.png, .jpg, .jpeg) dosyalarını yükleyebilirsiniz.</div>
                     </div>
                     <div id="kacakSpinner" class="text-center p-2" style="display: none;">
                         <div class="spinner-border text-primary" role="status"></div>
-                        <p class="mt-2">Yükleniyor...</p>
+                        <p class="mt-2" id="kacakSpinnerText">Yükleniyor...</p>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -1084,43 +1135,75 @@ $activeTab = $_GET['tab'] ?? 'okuma';
 
 <!-- Kaçak Kontrol Manuel Modal -->
 <div class="modal fade" id="kacakModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-xl">
         <div class="modal-content">
             <div class="modal-header">
-                <h5 class="modal-title" id="kacakModalTitle">Manuel Kaçak Kontrol Kaydı</h5>
+                <h5 class="modal-title" id="kacakModalTitle">Kaçak Kontrol Kaydı</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
-            <form id="kacakManualForm">
+            <form id="kacakManualForm" enctype="multipart/form-data">
                 <input type="hidden" name="id" id="kacak_id" value="0">
                 <div class="modal-body">
-                    <div class="mb-3">
-                        <?php echo Form::FormFloatInput(
-                            type: 'text',
-                            name: 'tarih',
-                            value: Date::today(),
-                            placeholder: '',
-                            label: "Tarih",
-                            icon: "calendar",
-                            required: true,
-                            class: "form-control flatpickr"
-                        ); ?>
-                    </div>
-                    <div class="mb-3">
-                        <label for="kacak_personel_ids">Personel Seçimi(En Fazla 2 Personel)</label>
-                        <?php echo Form::FormMultipleSelect2(
-                            name: 'kacak_personel_ids',
-                            options: $personeller,
-                            selectedValues: [],
-                            label: 'Personel',
-                            icon: 'users',
-                            valueField: 'id',
-                            textField: 'adi_soyadi',
-                            class: 'form-select select2',
-                            required: true
-                        ); ?>
-                    </div>
                     
-                    <div class="border rounded p-3 bg-light mb-3">
+                    <!-- 1. Tutanak Dosyası ve Analiz Butonu (En Üstte) -->
+                    <div class="mb-3 border p-3 rounded bg-light">
+                        <h6 class="fw-bold text-primary mb-2"><i class="bx bx-bot me-1"></i> Yapay Zeka ile Tutanak Oku</h6>
+                        <div class="row g-2 align-items-end">
+                            <div class="col-md-9">
+                                <?php echo \App\Helper\Form::FormFileInput(
+                                    name: 'excel_file',
+                                    label: "Tutanak Belgesi (Görsel, PDF veya Excel)",
+                                    icon: "upload",
+                                    required: false,
+                                    class: "form-control"
+                                ); ?>
+                            </div>
+                            <div class="col-md-3">
+                                <button type="button" id="btnKacakAnalizEt" class="btn btn-warning w-100 d-flex align-items-center justify-content-center fw-bold" style="height: 38px;">
+                                    <i class="bx bx-play me-1 fs-5"></i> Analiz Et
+                                </button>
+                            </div>
+                        </div>
+                        <div class="form-text text-muted">Dosyayı seçtikten sonra "Analiz Et" butonuna basarak verileri otomatik çıkartabilirsiniz.</div>
+                        
+                        <div id="kacakManualSpinner" class="text-center p-2 mt-3" style="display: none;">
+                            <div class="spinner-border text-warning" role="status"></div>
+                            <p class="mt-2 text-warning fw-bold" id="kacakManualSpinnerText">OpenAI tutanağı analiz ediyor, lütfen bekleyin...</p>
+                        </div>
+                    </div>
+
+                    <!-- 2. Tarih ve Personel Seçimi (Orta Bölüm) -->
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <?php echo Form::FormFloatInput(
+                                type: 'text',
+                                name: 'tarih',
+                                value: Date::today(),
+                                placeholder: '',
+                                label: "Tarih",
+                                icon: "calendar",
+                                required: true,
+                                class: "form-control flatpickr"
+                            ); ?>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label for="kacak_personel_ids" class="form-label mb-1">Personel Seçimi (En Fazla 2 Personel)</label>
+                            <?php echo Form::FormMultipleSelect2(
+                                name: 'kacak_personel_ids',
+                                options: $personeller,
+                                selectedValues: [],
+                                label: 'Personel',
+                                icon: 'users',
+                                valueField: 'id',
+                                textField: 'adi_soyadi',
+                                class: 'form-select select2',
+                                required: true
+                            ); ?>
+                        </div>
+                    </div>
+
+                    <!-- 3. Giriş Detayları / Analiz Sonuçları (En Altta) -->
+                    <div class="border rounded p-3 bg-light mb-3" id="kacak_manual_rows_section">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <h6 class="mb-0 fw-bold text-primary"><i class="bx bx-list-plus me-1"></i> Giriş Detayları</h6>
                             <button type="button" class="btn btn-sm btn-soft-success" id="btnAddKacakRow">
@@ -1128,7 +1211,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                             </button>
                         </div>
                         <div id="kacakRowsContainer">
-                            <!-- JS ile doldurulacak -->
+                            <!-- JS veya AI ile doldurulacak -->
                         </div>
                     </div>
                 </div>
@@ -2379,7 +2462,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 ekip_kodu: $('select[name="ekip_kodu"]').val()
             };
 
-            $('#kacakKontrolBody').html('<tr><td colspan="5" class="text-center"><div class="spinner-border text-primary" role="status"></div></td></tr>');
+            $('#kacakKontrolBody').html('<tr><td colspan="11" class="text-center"><div class="spinner-border text-primary" role="status"></div></td></tr>');
 
             $.ajax({
                 url: 'views/puantaj/api.php',
@@ -2881,10 +2964,37 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             });
         });
 
+        // OpenAI Switch state change listener
+        $('#use_openai').on('change', function() {
+            var $pContainer = $('#openai_personnel_container');
+            var $pSelect = $('#kacak_api_personel_ids');
+            if ($(this).is(':checked')) {
+                $pContainer.slideDown();
+                // Initialize select2 if not done
+                if (!$pSelect.hasClass('select2-hidden-accessible')) {
+                    $pSelect.select2({
+                        dropdownParent: $('#importKacakModal'),
+                        placeholder: 'İşlem yapan personelleri seçin (En fazla 2)',
+                        allowClear: true,
+                        maximumSelectionLength: 2,
+                        width: '100%'
+                    });
+                }
+            } else {
+                $pContainer.slideUp();
+            }
+        });
+
         $('#kacakUploadForm').on('submit', function (e) {
             e.preventDefault();
             var formData = new FormData(this);
             formData.append('action', 'kacak-excel-kaydet');
+
+            if ($('#use_openai').is(':checked')) {
+                $('#kacakSpinnerText').text('OpenAI ile analiz ediliyor, lütfen bekleyiniz...');
+            } else {
+                $('#kacakSpinnerText').text('Yükleniyor...');
+            }
 
             $('#kacakSpinner').show();
             $('#btnKacakUpload').prop('disabled', true);
@@ -2910,13 +3020,15 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 });
                                 htmlMessage += '</ul></div>';
                             }
-                            Swal.fire({
+                             Swal.fire({
                                 title: 'Başarılı',
                                 html: htmlMessage,
                                 icon: 'success',
                                 width: res.skipped_rows && res.skipped_rows.length > 0 ? '600px' : '400px'
                             }).then(() => {
                                 $('#importKacakModal').modal('hide');
+                                $('#kacakUploadForm')[0].reset();
+                                $('#use_openai').prop('checked', false).trigger('change');
                                 loadTabContent('kacak_kontrol');
                             });
                         } else {
@@ -2936,9 +3048,52 @@ $activeTab = $_GET['tab'] ?? 'okuma';
 
         var regionListJson = <?= json_encode($regionList) ?>;
 
+        // Yapay zeka analiz sonucundaki alan bazlı güven yüzdesini (0-100) okur.
+        // guven yoksa (manuel eklenen satır) null döner ve hiçbir renklendirme yapılmaz.
+        function aiConfValue(guven, field) {
+            if (!guven || guven[field] === undefined || guven[field] === null || guven[field] === '') {
+                return null;
+            }
+            var v = parseInt(guven[field], 10);
+            return isNaN(v) ? null : v;
+        }
+
+        function aiConfClass(guven, field) {
+            var v = aiConfValue(guven, field);
+            if (v === null) {
+                return '';
+            }
+            return v < 70 ? 'ai-field-uncertain' : 'ai-field-confident';
+        }
+
+        // Etiketin yanına eklenecek küçük "%XX" güven rozeti
+        function aiConfBadgeHtml(guven, field) {
+            var v = aiConfValue(guven, field);
+            if (v === null) {
+                return '';
+            }
+            var cls = v < 70 ? 'bg-warning-subtle text-warning-emphasis' : 'bg-success-subtle text-success-emphasis';
+            return '<span class="badge ai-conf-badge ' + cls + '">%' + v + '</span>';
+        }
+
+        // Kullanıcı bir alanı elle düzenlediğinde/onayladığında güven rengini yeşile çevirir.
+        function markFieldAsConfirmed($el) {
+            $el.removeClass('ai-field-uncertain').addClass('ai-field-confident');
+        }
+
+        // PHP tarafında statik render edilen (repeater dışı) alanların etiketine güven rozeti ekler/günceller.
+        function setLabelBadge($label, guven, field) {
+            $label.find('.ai-conf-badge').remove();
+            var badge = aiConfBadgeHtml(guven, field);
+            if (badge) {
+                $label.append(' ' + badge);
+            }
+        }
+
         function addKacakRow(data = null) {
             var rowId = 'kacak_row_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-            
+            var guven = data && data.guven ? data.guven : null;
+
             var ilceOptionsHtml = '<option value="">İlçe Seçiniz</option>';
             regionListJson.forEach(function(r) {
                 var selected = (data && data.ilce === r) ? 'selected' : '';
@@ -2952,40 +3107,62 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             `;
 
             var rowHtml = `
-                <div class="row g-2 align-items-center mb-2 kacak-repeater-row" id="${rowId}">
-                    <div class="col-md-3">
-                        <select name="ilce[]" class="form-select select2-ilce" required>
-                            ${ilceOptionsHtml}
-                        </select>
-                    </div>
-                    <div class="col-md-3">
-                        <select name="tur[]" class="form-select select2-tur" required>
-                            ${turOptionsHtml}
-                        </select>
-                    </div>
-                    <div class="col-md-1">
-                        <input type="number" name="sayi[]" class="form-control px-1 text-center" placeholder="Sayı" value="${data ? data.sayi : ''}" required min="1">
-                    </div>
-                    <div class="col-md-4">
-                        <input type="text" name="aciklama[]" class="form-control" placeholder="Açıklama giriniz..." value="${data ? data.aciklama : ''}">
-                    </div>
-                    <div class="col-md-1 text-end">
-                        <button type="button" class="btn btn-soft-danger btn-sm btnRemoveKacakRow">
-                            <i class="bx bx-trash"></i>
-                        </button>
+                <div class="border p-2 rounded mb-2 kacak-repeater-row" id="${rowId}" style="background-color: #fcfcfd;">
+                    <div class="row g-2 align-items-center">
+                        <div class="col-md-2">
+                            <label class="small text-muted mb-0">İlçe ${aiConfBadgeHtml(guven, 'ilce')}</label>
+                            <select name="ilce[]" class="form-select select2-ilce" required>
+                                ${ilceOptionsHtml}
+                            </select>
+                        </div>
+                        <div class="col-md-2">
+                            <label class="small text-muted mb-0">Tür ${aiConfBadgeHtml(guven, 'tur')}</label>
+                            <select name="tur[]" class="form-select select2-tur" required>
+                                ${turOptionsHtml}
+                            </select>
+                        </div>
+                        <div class="col-md-1">
+                            <label class="small text-muted mb-0">Tutanak No ${aiConfBadgeHtml(guven, 'tutanak_no')}</label>
+                            <input type="text" name="tutanak_no[]" class="form-control ai-field ${aiConfClass(guven, 'tutanak_no')}" placeholder="No" value="${data && data.tutanak_no ? data.tutanak_no : ''}">
+                        </div>
+                        <div class="col-md-2">
+                            <label class="small text-muted mb-0">Abone İsim Soyisim ${aiConfBadgeHtml(guven, 'abone_adi')}</label>
+                            <input type="text" name="abone_adi[]" class="form-control ai-field ${aiConfClass(guven, 'abone_adi')}" placeholder="Abone Adı Soyadı" value="${data && data.abone_adi ? data.abone_adi : ''}">
+                        </div>
+                        <div class="col-md-1">
+                            <label class="small text-muted mb-0">Sayaç No ${aiConfBadgeHtml(guven, 'sayac_no')}</label>
+                            <input type="text" name="sayac_no[]" class="form-control ai-field ${aiConfClass(guven, 'sayac_no')}" placeholder="Sayaç No" value="${data && data.sayac_no ? data.sayac_no : ''}">
+                        </div>
+                        <div class="col-md-1">
+                            <label class="small text-muted mb-0">Endeks ${aiConfBadgeHtml(guven, 'endeks')}</label>
+                            <input type="text" name="endeks[]" class="form-control ai-field ${aiConfClass(guven, 'endeks')}" placeholder="Endeks" value="${data && data.endeks ? data.endeks : ''}">
+                        </div>
+                        <div class="col-md-1">
+                            <label class="small text-muted mb-0">Sayı ${aiConfBadgeHtml(guven, 'sayi')}</label>
+                            <input type="number" name="sayi[]" class="form-control ai-field px-1 text-center ${aiConfClass(guven, 'sayi')}" placeholder="Sayı" value="${data ? data.sayi : '1'}" required min="1">
+                        </div>
+                        <div class="col-md-1">
+                            <label class="small text-muted mb-0">Açıklama ${aiConfBadgeHtml(guven, 'aciklama')}</label>
+                            <input type="text" name="aciklama[]" class="form-control ai-field ${aiConfClass(guven, 'aciklama')}" placeholder="Açıklama" value="${data ? data.aciklama : ''}">
+                        </div>
+                        <div class="col-md-1 text-end mt-3">
+                            <button type="button" class="btn btn-soft-danger btn-sm btnRemoveKacakRow">
+                                <i class="bx bx-trash"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             `;
 
             $('#kacakRowsContainer').append(rowHtml);
-            
-            // Initialize select2-ilce
+
+            // Initialize select2-ilce (renk sadece iç .select2-selection kutusuna uygulanır, dış container'a değil)
             $('#' + rowId + ' .select2-ilce').select2({
                 dropdownParent: $('#kacakModal'),
                 placeholder: 'İlçe Seçiniz',
                 allowClear: true,
                 width: '100%'
-            });
+            }).next('.select2-container').find('.select2-selection').addClass(aiConfClass(guven, 'ilce'));
 
             // Initialize select2-tur
             $('#' + rowId + ' .select2-tur').select2({
@@ -2993,8 +3170,22 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 placeholder: 'Tür Seçiniz',
                 allowClear: true,
                 width: '100%'
-            });
+            }).next('.select2-container').find('.select2-selection').addClass(aiConfClass(guven, 'tur'));
         }
+
+        // Alanlardan biri elle düzenlenirse AI'ın belirsiz işaretini kaldırıp onaylanmış (yeşil) yapalım
+        $(document).on('input', '#kacakRowsContainer input.ai-field', function () {
+            markFieldAsConfirmed($(this));
+        });
+        $(document).on('change', '#kacakRowsContainer .select2-ilce, #kacakRowsContainer .select2-tur', function () {
+            markFieldAsConfirmed($(this).next('.select2-container').find('.select2-selection'));
+        });
+        $(document).on('input change', '#kacakManualForm input[name="tarih"]', function () {
+            markFieldAsConfirmed($(this));
+        });
+        $(document).on('change', '#kacak_personel_ids', function () {
+            markFieldAsConfirmed($(this).next('.select2-container').find('.select2-selection'));
+        });
 
         $('#btnAddKacakRow').on('click', function() {
             addKacakRow();
@@ -3014,16 +3205,152 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             $('#kacakRowsContainer').empty();
             // Multiple select'i sıfırla
             $('#kacak_personel_ids').val([]).trigger('change');
-            $('#kacakModalTitle').text('Yeni Kaçak Kontrol Kaydı');
+        });
+        $(document).on('click', '#btnKacakAnalizEt', function() {
+            var fileInput = $('#kacakManualForm input[name="excel_file"]')[0];
+            if (!fileInput.files || fileInput.files.length === 0) {
+                Swal.fire('Uyarı', 'Lütfen önce analiz edilecek tutanak dosyasını (Görsel, PDF veya Excel) seçin.', 'warning');
+                return;
+            }
+
+            var formData = new FormData();
+            formData.append('action', 'kacak-excel-kaydet');
+            formData.append('use_openai', '1');
+            formData.append('excel_file', fileInput.files[0]);
+            
+            // Tarih bilgisini de analize gönder (Varsayılan tarih ataması için)
+            var uploadDate = $('#kacakManualForm input[name="tarih"]').val();
+            formData.append('upload_date', uploadDate);
+
+            // Seçilen personelleri OpenAI endpoint'inin beklediği isimle ekleyelim
+            var selectedPersonels = $('#kacak_personel_ids').val();
+            if (selectedPersonels && selectedPersonels.length > 0) {
+                selectedPersonels.forEach(function(pid) {
+                    formData.append('kacak_api_personel_ids[]', pid);
+                });
+            }
+
+            // AI'ın döndüreceği ID'lerin ekrandaki dropdown ile birebir eşleşmesi için
+            // dropdown'da gerçekten seçilebilir olan personel listesini de gönderelim
+            var personelOptionsList = [];
+            $('#kacak_personel_ids option').each(function () {
+                var val = $(this).val();
+                if (val) {
+                    personelOptionsList.push({ id: parseInt(val, 10), name: $(this).text().trim() });
+                }
+            });
+            formData.append('kacak_personel_list', JSON.stringify(personelOptionsList));
+
+            $('#kacakManualSpinner').show();
+            $('#btnKacakAnalizEt').prop('disabled', true);
+
+            $.ajax({
+                url: 'views/puantaj/api.php',
+                type: 'POST',
+                data: formData,
+                contentType: false,
+                processData: false,
+                success: function (response) {
+                    $('#kacakManualSpinner').hide();
+                    $('#btnKacakAnalizEt').prop('disabled', false);
+                    try {
+                        var res = typeof response === 'object' ? response : JSON.parse(response);
+                        if (res.status === 'success') {
+                            Swal.fire({
+                                title: 'Analiz Başarılı',
+                                text: res.message,
+                                icon: 'success',
+                                confirmButtonText: 'Verileri Kontrol Et'
+                            }).then(() => {
+                                // Formu temizle ve repeater satırlarını boşalt
+                                $('#kacakRowsContainer').empty();
+                                
+                                // AI verilerini tek tek ekle
+                                if (res.extracted_data && res.extracted_data.length > 0) {
+                                    res.extracted_data.forEach(function(item) {
+                                        addKacakRow({
+                                            ilce: item.ilçe || item.ilce || '',
+                                            tur: item.tur || 'Kaçak',
+                                            tutanak_no: item.tutanak_no || '',
+                                            abone_adi: item.abone_adi || '',
+                                            sayac_no: item.sayac_no || '',
+                                            endeks: item.endeks || '',
+                                            sayi: item.sayi || 1,
+                                            aciklama: item.aciklama || '',
+                                            guven: item.guven || null
+                                        });
+                                    });
+
+                                    // Tarih bilgisini al ve güncelle (AI hem YYYY-MM-DD hem de DD.MM.YYYY dönebilir)
+                                    var firstItem = res.extracted_data[0];
+                                    var firstGuven = firstItem.guven || null;
+                                    if (firstItem.tarih) {
+                                        var formattedDate = '';
+                                        if (firstItem.tarih.indexOf('-') !== -1) {
+                                            var parts = firstItem.tarih.split('-');
+                                            if (parts.length === 3) {
+                                                formattedDate = parts[2] + '.' + parts[1] + '.' + parts[0];
+                                            }
+                                        } else if (firstItem.tarih.indexOf('.') !== -1) {
+                                            formattedDate = firstItem.tarih;
+                                        }
+                                        if (formattedDate) {
+                                            $('#kacakManualForm input[name="tarih"]').val(formattedDate);
+                                            if ($('#kacakManualForm input[name="tarih"]')[0]._flatpickr) {
+                                                $('#kacakManualForm input[name="tarih"]')[0]._flatpickr.setDate(formattedDate);
+                                            }
+                                        }
+                                    }
+                                    $('#kacakManualForm input[name="tarih"]').removeClass('ai-field-uncertain ai-field-confident')
+                                        .addClass(aiConfClass(firstGuven, 'tarih'));
+                                    setLabelBadge($('#kacakManualForm label[for="tarih"]'), firstGuven, 'tarih');
+
+                                    // Personel bilgilerini al ve select2 alanında seçili yap
+                                    var matchedIds = [];
+                                    if (firstItem.personel_ids && Array.isArray(firstItem.personel_ids) && firstItem.personel_ids.length > 0) {
+                                        matchedIds = firstItem.personel_ids.map(function(id) { return String(id); });
+                                    }
+                                    $('#kacak_personel_ids').val(matchedIds).trigger('change');
+                                    var personelGuvenClass = matchedIds.length > 0 ? aiConfClass(firstGuven, 'personel_ids') : 'ai-field-uncertain';
+                                    $('#kacak_personel_ids').next('.select2-container').find('.select2-selection')
+                                        .removeClass('ai-field-uncertain ai-field-confident').addClass(personelGuvenClass);
+                                    setLabelBadge($('label[for="kacak_personel_ids"]'), firstGuven, 'personel_ids');
+                                } else {
+                                    addKacakRow();
+                                    Swal.fire('Bilgi', 'Tutanaktan geçerli bir veri çıkartılamadı. Lütfen dosyayı kontrol edin veya manuel giriş yapın.', 'info');
+                                }
+                                // Dosya alanını temizle
+                                $('#kacakManualForm input[name="excel_file"]').val('');
+                            });
+                        } else {
+                            Swal.fire('Hata', res.message || 'Dosya analiz edilemedi.', 'error');
+                        }
+                    } catch (err) {
+                        Swal.fire('Hata', 'Sunucudan geçersiz yanıt alındı.', 'error');
+                    }
+                },
+                error: function () {
+                    $('#kacakManualSpinner').hide();
+                    $('#btnKacakAnalizEt').prop('disabled', false);
+                    Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
+                }
+            });
+        });
+
+        // Yeni Ekle butonu tıklandığında formu sıfırla
+        $('#btnNewKacak').on('click', function () {
+            $('#kacak_id').val('0');
+            $('#kacakManualForm')[0].reset();
+            $('#kacakManualForm input[name="tarih"]').removeClass('ai-field-uncertain ai-field-confident');
+            $('#kacakManualForm label[for="tarih"], label[for="kacak_personel_ids"]').find('.ai-conf-badge').remove();
+            $('#kacakModalTitle').text('Kaçak Kontrol Kaydı');
+            $('#kacakRowsContainer').empty();
             initPersonelSelect2();
-            
-            // Add initial row
             addKacakRow();
-            
-            // Show hide delete button based on row count
             $('#kacakModal').modal('show');
         });
 
+        // Form Gönderme Olayı (Yalnızca manuel satırlardaki verileri kaydeder)
         function initPersonelSelect2() {
             var $el = $('#kacak_personel_ids');
             if ($el.hasClass('select2-hidden-accessible')) {
@@ -3038,29 +3365,54 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             });
         }
 
+        // Form Gönderme Olayı (Yalnızca manuel satırlardaki verileri kaydeder)
         $('#kacakManualForm').on('submit', function (e) {
             e.preventDefault();
-            var formData = $(this).serialize();
+            
+            // Eğer dosya seçildiyse ama analiz edilmediyse uyaralım
+            var fileInput = $('#kacakManualForm input[name="excel_file"]')[0];
+            if (fileInput.files && fileInput.files.length > 0) {
+                Swal.fire({
+                    title: 'Uyarı',
+                    text: "Seçili bir tutanak dosyası var fakat analiz edilmemiş. Analiz etmeden kaydetmek istiyor musunuz?",
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Evet, Kaydet',
+                    cancelButtonText: 'İptal'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        saveKacakManualData();
+                    }
+                });
+            } else {
+                saveKacakManualData();
+            }
+        });
+
+        function saveKacakManualData() {
+            var formData = $('#kacakManualForm').serialize();
             formData += '&action=kacak-kaydet';
 
             $.post('views/puantaj/api.php', formData, function (response) {
                 var res = typeof response === 'object' ? response : JSON.parse(response);
                 if (res.status === 'success') {
-                    Swal.fire('Başarılı', 'Kayıtlar kaydedildi.', 'success');
+                    Swal.fire('Başarılı', 'Kayıtlar başarıyla kaydedildi.', 'success');
                     $('#kacakModal').modal('hide');
                     loadTabContent('kacak_kontrol');
                 } else {
                     Swal.fire('Hata', res.message || 'Kayıt edilemedi.', 'error');
                 }
             });
-        });
+        }
 
         $(document).on('click', '.edit-kacak', function () {
             var id = $(this).data('id');
             $.get('views/puantaj/api.php', { action: 'get-kacak-record', id: id }, function (response) {
                 var record = typeof response === 'object' ? response : JSON.parse(response);
                 $('#kacakManualForm input[name="id"]').val(record.id);
-                $('#kacakManualForm input[name="tarih"]').val(record.tarih_formatted);
+                $('#kacakManualForm input[name="tarih"]').val(record.tarih_formatted)
+                    .removeClass('ai-field-uncertain ai-field-confident');
+                $('#kacakManualForm label[for="tarih"], label[for="kacak_personel_ids"]').find('.ai-conf-badge').remove();
                 $('#kacakModalTitle').text('Kaydı Düzenle');
 
                 // Multiple select'i başlat ve seçili personelleri ayarla
@@ -3072,9 +3424,13 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 }
 
                 $('#kacakRowsContainer').empty();
-                addKacakRow({
+                 addKacakRow({
                     ilce: record.ilce,
                     tur: record.tur,
+                    tutanak_no: record.tutanak_no,
+                    abone_adi: record.abone_adi,
+                    sayac_no: record.sayac_no,
+                    endeks: record.endeks,
                     sayi: record.sayi,
                     aciklama: record.aciklama
                 });

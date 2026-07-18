@@ -47,7 +47,8 @@ switch ($action) {
             'online_sorgulama_api_sifre_yeni' => 'online_sorgulama_api_sifre',
             'api_endeks_sifre_yeni' => 'api_endeks_sifre',
             'api_puantaj_sifre_yeni' => 'api_puantaj_sifre',
-            'api_sayac_degisim_sifre_yeni' => 'api_sayac_degisim_sifre'
+            'api_sayac_degisim_sifre_yeni' => 'api_sayac_degisim_sifre',
+            'openai_api_key_yeni' => 'openai_api_key'
         ];
         foreach ($passwordKeys as $passKey => $dbKey) {
             if (isset($settingsToUpdate[$passKey])) {
