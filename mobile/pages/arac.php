@@ -4,6 +4,7 @@ use App\Model\AracZimmetModel;
 use App\Model\AracYakitModel;
 use App\Model\AracKmModel;
 use App\Model\AracServisModel;
+use App\Model\PersonelModel;
 ?>
 <?php
 
@@ -12,6 +13,8 @@ $Zimmet = new AracZimmetModel();
 $Yakit = new AracYakitModel();
 $Km = new AracKmModel();
 $Servis = new AracServisModel();
+$Personel = new PersonelModel();
+$personeller = $Personel->all(false, 'arac');
 
 $aracStats = $Arac->getStats();
 $evrakStats = $Arac->getAracEvrakStats(30);
