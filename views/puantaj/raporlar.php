@@ -87,7 +87,10 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
         --reg-color-8: rgb(255, 248, 225);
         --reg-color-9: rgb(237, 231, 246);
     }
-    [data-bs-theme="dark"] {
+    html[data-bs-theme="dark"],
+    html[data-theme-mode="dark"],
+    [data-bs-theme="dark"],
+    [data-theme-mode="dark"] {
         --reg-color-0: rgba(30, 41, 59, 0.4);
         --reg-color-1: rgba(88, 28, 135, 0.2);
         --reg-color-2: rgba(20, 83, 45, 0.2);
