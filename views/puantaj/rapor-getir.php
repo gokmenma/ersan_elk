@@ -637,6 +637,7 @@ $currentTabName = $tabNames[$activeTab] ?? 'Rapor';
         table-layout: auto;
         background-color: var(--bs-card-bg, #fff);
         color: var(--bs-body-color, #333);
+        --total-row-bg: #f8f9fa;
     }
 
     #raporTable th,
@@ -806,6 +807,7 @@ $currentTabName = $tabNames[$activeTab] ?? 'Rapor';
     [data-theme-mode="dark"] #raporTable {
         background-color: #191e22 !important;
         color: #eff2f7 !important;
+        --total-row-bg: #2e3548;
     }
 
     html[data-bs-theme="dark"] #raporTable th,
@@ -1127,16 +1129,17 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                     // Bölge ID'si olarak bölge adının hash'i kullanılıyor
                     $regionId = md5($item['region']);
                     $rColor = $regionColorsMap[$item['region']] ?? 'transparent';
+                    $rBgStyle = ($rColor && $rColor !== 'transparent') ? "background-image: linear-gradient($rColor, $rColor) !important;" : "";
                     ?>
                     <tr data-region-id="<?= $regionId ?>" style="background-color: <?= $rColor ?>;">
-                        <td class="sticky-col-1" style="background-color: <?= $rColor ?> !important;"><?= $sira++ ?></td>
+                        <td class="sticky-col-1" style="<?= $rBgStyle ?>"><?= $sira++ ?></td>
                         <?php if ($activeTab !== 'kacakkontrol'): ?>
-                            <td class="sticky-col-2" style="background-color: <?= $rColor ?> !important;">
+                            <td class="sticky-col-2" style="<?= $rBgStyle ?>">
                                 <?= shortenTeamName($team->tur_adi, $firmaAdi) ?>
                             </td>
                         <?php endif; ?>
                         <td class="<?= ($activeTab === 'kacakkontrol') ? 'kacakkontrol-name-col' : 'sticky-col-3' ?> text-start"
-                            style="background-color: <?= $rColor ?> !important;">
+                            style="<?= $rBgStyle ?>">
                             <?php if ($activeTab === 'kacakkontrol'): ?>
                                 <?php
                                 $pIdsStr = $kacakPersonelMapping[$team->tur_adi] ?? '';
@@ -1281,11 +1284,11 @@ if ($activeTab === 'kesme' || $activeTab === 'sokme_takma' || $activeTab === 'mu
                 <?php endforeach; ?>
                 <!-- Bölge Toplam Satırı -->
                 <tr class="region-total-row table-light fw-bold" data-region-id="<?= $regionId ?>" style="display: none;">
-                    <td class="sticky-col-1" style="background-color: #f8f9fa !important;"><?= $sira - 1 ?>.T</td>
+                    <td class="sticky-col-1" style="background-color: var(--total-row-bg, #f8f9fa) !important;"><?= $sira - 1 ?>.T</td>
                     <?php if ($activeTab !== 'kacakkontrol'): ?>
-                        <td class="sticky-col-2" style="background-color: #f8f9fa !important;">TOPLAM</td>
+                        <td class="sticky-col-2" style="background-color: var(--total-row-bg, #f8f9fa) !important;">TOPLAM</td>
                     <?php endif; ?>
-                    <td class="<?= ($activeTab === 'kacakkontrol') ? 'kacakkontrol-name-col' : 'sticky-col-3' ?> text-end" style="background-color: #f8f9fa !important; font-size: 11px;">
+                    <td class="<?= ($activeTab === 'kacakkontrol') ? 'kacakkontrol-name-col' : 'sticky-col-3' ?> text-end" style="background-color: var(--total-row-bg, #f8f9fa) !important; font-size: 11px;">
                         <?= $item['region'] ?> BÖLGE TOPLAMI
                     </td>
 
