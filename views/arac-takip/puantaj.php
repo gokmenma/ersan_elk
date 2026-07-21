@@ -205,16 +205,58 @@ for ($m = 1; $m <= 12; $m++) {
         cursor: pointer;
     }
 
+    /* Fullscreen Mode Styling */
     .fullscreen-mode {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        z-index: 9999;
-        background: white;
-        padding: 20px;
-        overflow-y: auto;
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 100vw !important;
+        height: 100vh !important;
+        z-index: 99999 !important;
+        background: #f8f9fa !important;
+        padding: 12px !important;
+        margin: 0 !important;
+        overflow: hidden !important;
+    }
+
+    [data-bs-theme="dark"] .fullscreen-mode,
+    body[data-bs-theme="dark"] .fullscreen-mode {
+        background: #1a1d21 !important;
+    }
+
+    .fullscreen-mode .col-12 {
+        height: 100% !important;
+        width: 100% !important;
+        max-width: 100% !important;
+        padding: 0 !important;
+    }
+
+    .fullscreen-mode .card {
+        height: 100% !important;
+        width: 100% !important;
+        margin: 0 !important;
+        border-radius: 8px !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+    }
+
+    .fullscreen-mode .card-body,
+    .fullscreen-mode #reportContent {
+        height: 100% !important;
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+        overflow: hidden !important;
+        padding: 0 !important;
+    }
+
+    .fullscreen-mode .table-responsive {
+        max-height: none !important;
+        height: 100% !important;
+        width: 100% !important;
+        flex: 1 1 auto !important;
+        overflow: auto !important;
     }
 
     /* KM Columns Toggle */
@@ -434,15 +476,30 @@ for ($m = 1; $m <= 12; $m++) {
 
         $('#btnFullScreen').on('click', function () {
             const elem = document.getElementById('reportCardRow');
-            if (!document.fullscreenElement) {
-                elem.requestFullscreen().catch(err => {
-                    alert(`Hata: ${err.message}`);
-                });
-                $(this).html('<i class="mdi mdi-fullscreen-exit fs-5 me-1"></i> Küçült');
+            if (!document.fullscreenElement && !document.webkitFullscreenElement && !document.msFullscreenElement) {
+                if (elem.requestFullscreen) {
+                    elem.requestFullscreen().catch(err => alert(`Hata: ${err.message}`));
+                } else if (elem.webkitRequestFullscreen) {
+                    elem.webkitRequestFullscreen();
+                } else if (elem.msRequestFullscreen) {
+                    elem.msRequestFullscreen();
+                }
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) {
+                    document.webkitExitFullscreen();
+                }
+            }
+        });
+
+        $(document).on('fullscreenchange webkitfullscreenchange mozfullscreenchange MSFullscreenChange', function () {
+            const elem = document.getElementById('reportCardRow');
+            if (document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement) {
+                $('#btnFullScreen').html('<i class="mdi mdi-fullscreen-exit fs-5 me-1"></i> Küçült');
                 $(elem).addClass('fullscreen-mode');
             } else {
-                document.exitFullscreen();
-                $(this).html('<i class="mdi mdi-fullscreen fs-5 me-1"></i> Tam Ekran');
+                $('#btnFullScreen').html('<i class="mdi mdi-fullscreen fs-5 me-1"></i> Tam Ekran');
                 $(elem).removeClass('fullscreen-mode');
             }
         });
