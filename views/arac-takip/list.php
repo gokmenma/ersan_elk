@@ -90,6 +90,76 @@ if ($filter === 'muayene') {
     // let's use getAktifAraclar)
     $araclar = $Arac->getAktifAraclar();
 }
+
+if (!function_exists('getInitials')) {
+    function getInitials($name) {
+        $name = trim((string)$name);
+        if (empty($name)) return '';
+        $parts = preg_split('/\s+/', $name);
+        $first = mb_substr($parts[0], 0, 1, 'UTF-8');
+        $last = count($parts) > 1 ? mb_substr(end($parts), 0, 1, 'UTF-8') : '';
+        return mb_strtoupper($first . $last, 'UTF-8');
+    }
+}
+
+if (!function_exists('getAvatarColor')) {
+    function getAvatarColor($key) {
+        $colors = [
+            '#556ee6', '#34c38f', '#50a5f1', '#f1b44c', 
+            '#e83e8c', '#6f42c1', '#20c997', '#00b4d8', 
+            '#3a86ff', '#8338ec', '#ff006e', '#fd7e14'
+        ];
+        $hash = abs(crc32((string)$key));
+        return $colors[$hash % count($colors)];
+    }
+}
+
+if (!function_exists('getEvrakBadgeStatus')) {
+    function getEvrakBadgeStatus(?string $dateStr): array {
+        if (empty($dateStr) || $dateStr === '0000-00-00') {
+            return [
+                'class' => 'evrak-badge-muted',
+                'date_formatted' => '—',
+                'kalan_gun' => null
+            ];
+        }
+
+        try {
+            $today = new DateTime('today');
+            $targetDate = new DateTime($dateStr);
+            $interval = $today->diff($targetDate);
+            $diff = (int)$interval->format('%r%a');
+
+            $dateFormatted = $targetDate->format('d.m.y');
+
+            if ($diff < 0) {
+                return [
+                    'class' => 'evrak-badge-danger',
+                    'date_formatted' => $dateFormatted,
+                    'kalan_gun' => $diff
+                ];
+            } elseif ($diff <= 30) {
+                return [
+                    'class' => 'evrak-badge-warning',
+                    'date_formatted' => $dateFormatted,
+                    'kalan_gun' => $diff
+                ];
+            } else {
+                return [
+                    'class' => 'evrak-badge-success',
+                    'date_formatted' => $dateFormatted,
+                    'kalan_gun' => $diff
+                ];
+            }
+        } catch (\Exception $e) {
+            return [
+                'class' => 'evrak-badge-muted',
+                'date_formatted' => '—',
+                'kalan_gun' => null
+            ];
+        }
+    }
+}
 ?>
 
 <style>
@@ -146,6 +216,191 @@ if ($filter === 'muayene') {
         font-size: 11px;
         color: #666;
         display: block;
+    }
+
+    /* Zimmetli Personel Column Styling */
+    .zimmetli-personel-container {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+
+    .zimmetli-avatar-circle {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-weight: 700;
+        font-size: 12px;
+        color: #ffffff;
+        flex-shrink: 0;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .zimmetli-avatar-img {
+        width: 36px;
+        height: 36px;
+        border-radius: 50%;
+        object-fit: cover;
+        flex-shrink: 0;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    }
+
+    .zimmetli-info {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        line-height: 1.2;
+    }
+
+    .zimmetli-name {
+        font-size: 13px;
+        font-weight: 700;
+        color: var(--bs-body-color, #212529);
+        text-decoration: none;
+        transition: color 0.2s ease;
+    }
+
+    .zimmetli-name:hover {
+        color: var(--bs-primary, #556ee6);
+    }
+
+    .zimmetli-dept {
+        font-size: 11px;
+        color: #858d98;
+        margin-top: 1px;
+    }
+
+    /* Evrak Badges (Muayene, Kasko, Sigorta) Column Styling */
+    .evrak-badges-wrapper {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+    }
+
+    .evrak-badge-box {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        padding: 5px 9px;
+        border-radius: 6px;
+        min-width: 68px;
+        border: 1px solid transparent;
+        transition: all 0.2s ease;
+    }
+
+    .evrak-badge-box .evrak-badge-title {
+        font-size: 9px;
+        font-weight: 800;
+        letter-spacing: 0.5px;
+        text-transform: uppercase;
+        line-height: 1;
+        margin-bottom: 3px;
+        opacity: 0.85;
+    }
+
+    .evrak-badge-box .evrak-badge-date {
+        font-size: 11px;
+        font-weight: 700;
+        line-height: 1;
+    }
+
+    /* Evrak Badge Light Mode Colors */
+    .evrak-badge-success {
+        background-color: rgba(32, 201, 151, 0.12);
+        border-color: rgba(32, 201, 151, 0.3);
+        color: #107c41;
+    }
+    .evrak-badge-success .evrak-badge-title,
+    .evrak-badge-success .evrak-badge-date {
+        color: #107c41;
+    }
+
+    .evrak-badge-warning {
+        background-color: rgba(246, 194, 62, 0.15);
+        border-color: rgba(246, 194, 62, 0.4);
+        color: #b78103;
+    }
+    .evrak-badge-warning .evrak-badge-title,
+    .evrak-badge-warning .evrak-badge-date {
+        color: #b78103;
+    }
+
+    .evrak-badge-danger {
+        background-color: rgba(244, 106, 106, 0.15);
+        border-color: rgba(244, 106, 106, 0.4);
+        color: #e63946;
+    }
+    .evrak-badge-danger .evrak-badge-title,
+    .evrak-badge-danger .evrak-badge-date {
+        color: #e63946;
+    }
+
+    .evrak-badge-muted {
+        background-color: rgba(108, 117, 125, 0.08);
+        border-color: rgba(108, 117, 125, 0.2);
+        color: #6c757d;
+    }
+    .evrak-badge-muted .evrak-badge-title,
+    .evrak-badge-muted .evrak-badge-date {
+        color: #6c757d;
+    }
+
+    /* Dark Mode Overrides for Evrak Badges */
+    [data-bs-theme="dark"] .evrak-badge-success,
+    body[data-bs-theme="dark"] .evrak-badge-success,
+    [data-topbar="dark"] .evrak-badge-success {
+        background-color: rgba(32, 201, 151, 0.15);
+        border-color: rgba(32, 201, 151, 0.35);
+    }
+    [data-bs-theme="dark"] .evrak-badge-success .evrak-badge-title,
+    [data-bs-theme="dark"] .evrak-badge-success .evrak-badge-date,
+    body[data-bs-theme="dark"] .evrak-badge-success .evrak-badge-title,
+    body[data-bs-theme="dark"] .evrak-badge-success .evrak-badge-date {
+        color: #20c997;
+    }
+
+    [data-bs-theme="dark"] .evrak-badge-warning,
+    body[data-bs-theme="dark"] .evrak-badge-warning,
+    [data-topbar="dark"] .evrak-badge-warning {
+        background-color: rgba(246, 194, 62, 0.15);
+        border-color: rgba(246, 194, 62, 0.35);
+    }
+    [data-bs-theme="dark"] .evrak-badge-warning .evrak-badge-title,
+    [data-bs-theme="dark"] .evrak-badge-warning .evrak-badge-date,
+    body[data-bs-theme="dark"] .evrak-badge-warning .evrak-badge-title,
+    body[data-bs-theme="dark"] .evrak-badge-warning .evrak-badge-date {
+        color: #f6c23e;
+    }
+
+    [data-bs-theme="dark"] .evrak-badge-danger,
+    body[data-bs-theme="dark"] .evrak-badge-danger,
+    [data-topbar="dark"] .evrak-badge-danger {
+        background-color: rgba(244, 106, 106, 0.15);
+        border-color: rgba(244, 106, 106, 0.35);
+    }
+    [data-bs-theme="dark"] .evrak-badge-danger .evrak-badge-title,
+    [data-bs-theme="dark"] .evrak-badge-danger .evrak-badge-date,
+    body[data-bs-theme="dark"] .evrak-badge-danger .evrak-badge-title,
+    body[data-bs-theme="dark"] .evrak-badge-danger .evrak-badge-date {
+        color: #f46a6a;
+    }
+
+    [data-bs-theme="dark"] .evrak-badge-muted,
+    body[data-bs-theme="dark"] .evrak-badge-muted,
+    [data-topbar="dark"] .evrak-badge-muted {
+        background-color: rgba(255, 255, 255, 0.05);
+        border-color: rgba(255, 255, 255, 0.1);
+    }
+    [data-bs-theme="dark"] .evrak-badge-muted .evrak-badge-title,
+    [data-bs-theme="dark"] .evrak-badge-muted .evrak-badge-date,
+    body[data-bs-theme="dark"] .evrak-badge-muted .evrak-badge-title,
+    body[data-bs-theme="dark"] .evrak-badge-muted .evrak-badge-date {
+        color: #74788d;
     }
 </style>
 
@@ -440,19 +695,20 @@ if ($filter === 'muayene') {
                                 <table id="aracTable" class="table table-hover table-bordered nowrap w-100">
                                     <thead class="table-light">
                                         <tr>
-                                            <th class="text-center" style="width:5%">Sıra</th>
-                                            <th style="width:8%" class="text-center" data-filter="string">Tip</th>
-                                            <th style="width:15%" data-filter="string">Plaka / Araç</th>
-                                            <th style="width:10%" data-filter="string">Departman</th>
-                                            <th style="width:8%" data-filter="string">Mülkiyet</th>
-                                            <th style="width:12%" data-filter="string">Zimmetli Personel</th>
-                                            <th style="width:8%" class="text-center" data-filter="string">Durum</th>
-                                            <th style="width:7%" class="text-center" data-filter="string">Yakıt</th>
-                                            <th style="width:8%" class="text-end" data-filter="number">KM</th>
-                                            <th style="width:9%" class="text-center" data-filter="date">Muayene Bitiş</th>
-                                            <th style="width:9%" class="text-center" data-filter="date">Sigorta Bitiş</th>
-                                            <th style="width:9%" class="text-center" data-filter="date">Kasko Bitiş</th>
-                                            <th style="width:10%" class="text-center">İşlemler</th>
+                                            <th class="text-center" style="width:3%">Sıra</th>
+                                            <th style="width:6%" class="text-center" data-filter="string">Tip</th>
+                                            <th style="width:13%" data-filter="string">Plaka / Araç</th>
+                                            <th style="width:9%" data-filter="string">Departman</th>
+                                            <th style="width:7%" data-filter="string">Mülkiyet</th>
+                                            <th style="width:14%" data-filter="string">Zimmetli Personel</th>
+                                            <th style="width:10%" class="text-center" data-filter="date">Zimmet Tarihi</th>
+                                            <th style="width:6%" class="text-center" data-filter="string">Durum</th>
+                                            <th style="width:6%" class="text-center" data-filter="string">Yakıt</th>
+                                            <th style="width:7%" class="text-end" data-filter="number">KM</th>
+                                            <th style="width:7%" class="text-center" data-filter="date">Muayene Bitiş</th>
+                                            <th style="width:7%" class="text-center" data-filter="date">Sigorta Bitiş</th>
+                                            <th style="width:7%" class="text-center" data-filter="date">Kasko Bitiş</th>
+                                            <th style="width:5%" class="text-center">İşlemler</th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -508,27 +764,69 @@ if ($filter === 'muayene') {
                                                     <span class="small"><?php echo $arac->mulkiyet ?: '-'; ?></span>
                                                 </td>
                                                 <td>
-                                                     <div class="d-flex align-items-center">
-                                                         <?php if ($arac->zimmetli_personel_id): ?>
-                                                             <span class="small fw-bold text-dark">
-                                                                 <a href="javascript:void(0);" class="zimmet-iade text-dark" 
+                                                    <?php if (!empty($arac->zimmetli_personel_id)): ?>
+                                                        <?php
+                                                        $pAdi = $arac->zimmetli_personel_adi ?? '';
+                                                        $pDept = $arac->zimmetli_personel_departman ?? '';
+                                                        $pResim = !empty($arac->zimmetli_personel_resim_yolu) ? $arac->zimmetli_personel_resim_yolu : ($arac->zimmetli_personel_resim ?? '');
+                                                        $rootPath = dirname(__DIR__, 2) . '/';
+                                                        $hasImage = !empty($pResim) && file_exists($rootPath . ltrim($pResim, '/'));
+                                                        $initials = getInitials($pAdi);
+                                                        $bgColor = getAvatarColor($arac->zimmetli_personel_id);
+                                                        ?>
+                                                        <div class="zimmetli-personel-container">
+                                                            <?php if ($hasImage): ?>
+                                                                <img src="<?php echo htmlspecialchars($pResim, ENT_QUOTES, 'UTF-8'); ?>" class="zimmetli-avatar-img" alt="<?php echo htmlspecialchars($pAdi, ENT_QUOTES, 'UTF-8'); ?>">
+                                                            <?php else: ?>
+                                                                <div class="zimmetli-avatar-circle" style="background-color: <?php echo $bgColor; ?>;">
+                                                                    <?php echo htmlspecialchars($initials, ENT_QUOTES, 'UTF-8'); ?>
+                                                                </div>
+                                                            <?php endif; ?>
+                                                            <div class="zimmetli-info">
+                                                                <a href="javascript:void(0);" class="zimmetli-name zimmet-iade" 
+                                                                   data-id="<?php echo $arac->zimmet_id; ?>" 
+                                                                   data-plaka="<?php echo htmlspecialchars($arac->plaka, ENT_QUOTES, 'UTF-8'); ?>"
+                                                                   title="Zimmeti İade Al">
+                                                                    <?php echo htmlspecialchars($pAdi, ENT_QUOTES, 'UTF-8'); ?>
+                                                                </a>
+                                                                <span class="zimmetli-dept"><?php echo htmlspecialchars($pDept ?: '—', ENT_QUOTES, 'UTF-8'); ?></span>
+                                                            </div>
+                                                        </div>
+                                                    <?php else: ?>
+                                                        <div class="text-center text-muted fw-bold" style="font-size: 1.1rem;">—</div>
+                                                    <?php endif; ?>
+                                                </td>
+                                                <td class="text-center align-middle">
+                                                    <?php if (!empty($arac->zimmetli_personel_id)): ?>
+                                                        <?php $zimmetTarihiFormatted = (!empty($arac->zimmet_tarihi) && $arac->zimmet_tarihi !== '0000-00-00') ? date('d.m.Y', strtotime($arac->zimmet_tarihi)) : null; ?>
+                                                        <div class="d-flex flex-column align-items-center justify-content-center gap-1">
+                                                            <?php if ($zimmetTarihiFormatted): ?>
+                                                                <span class="fw-semibold text-dark small" style="font-size: 0.82rem;">
+                                                                    <i class="bx bx-calendar me-1 text-primary"></i><?php echo $zimmetTarihiFormatted; ?>
+                                                                </span>
+                                                            <?php else: ?>
+                                                                <span class="text-muted small">—</span>
+                                                            <?php endif; ?>
+                                                            <button type="button" class="btn btn-sm btn-soft-danger zimmet-iade py-0 px-2 border-0" 
                                                                     data-id="<?php echo $arac->zimmet_id; ?>" 
-                                                                    data-plaka="<?php echo $arac->plaka; ?>"
+                                                                    data-plaka="<?php echo htmlspecialchars($arac->plaka, ENT_QUOTES, 'UTF-8'); ?>" 
+                                                                    style="font-size: 0.7rem; height: 20px; line-height: 18px;" 
                                                                     title="Zimmeti İade Al">
-                                                                     <i class="bx bx-user me-1 text-primary"></i><?php echo $arac->zimmetli_personel_adi; ?>
-                                                                 </a>
-                                                             </span>
-                                                         <?php else: ?>
-                                                             <span class="badge bg-light text-muted me-2 fw-normal">Boşta</span>
-                                                             <button class="btn btn-sm btn-soft-warning zimmet-hizli py-1 px-2 border-0" 
-                                                                     data-id="<?php echo $arac->id; ?>" 
-                                                                     data-plaka="<?php echo $arac->plaka; ?>" 
-                                                                     data-km="<?php echo $arac->guncel_km; ?>"
-                                                                     style="font-size: 0.75rem;">
-                                                                 <i class="bx bx-plus-circle me-1"></i>Zimmet Ver
-                                                             </button>
-                                                         <?php endif; ?>
-                                                     </div>
+                                                                <i class="bx bx-undo me-1"></i>İade Al
+                                                            </button>
+                                                        </div>
+                                                    <?php else: ?>
+                                                        <div class="d-flex flex-column align-items-center justify-content-center gap-1">
+                                                            <span class="text-muted small">—</span>
+                                                            <button type="button" class="btn btn-sm btn-soft-warning zimmet-hizli py-1 px-2 border-0" 
+                                                                    data-id="<?php echo $arac->id; ?>" 
+                                                                    data-plaka="<?php echo htmlspecialchars($arac->plaka, ENT_QUOTES, 'UTF-8'); ?>" 
+                                                                    data-km="<?php echo $arac->guncel_km; ?>" 
+                                                                    style="font-size: 0.72rem;">
+                                                                <i class="bx bx-plus-circle me-1"></i>Zimmet Ver
+                                                            </button>
+                                                        </div>
+                                                    <?php endif; ?>
                                                 </td>
                                                 <td class="text-center">
                                                     <?php
@@ -545,20 +843,26 @@ if ($filter === 'muayene') {
                                                 <td class="text-end fw-bold">
                                                     <?php echo number_format($arac->guncel_km ?? 0, 0, ',', '.'); ?>
                                                 </td>
-                                                <td
-                                                    class="text-center <?php echo (strtotime($arac->muayene_bitis_tarihi) < time() && $arac->muayene_bitis_tarihi) ? 'text-danger fw-bold' : ''; ?>">
-                                                    <span
-                                                        class="small"><?php echo $arac->muayene_bitis_tarihi ? date('d.m.Y', strtotime($arac->muayene_bitis_tarihi)) : '-'; ?></span>
+                                                <td class="text-center align-middle">
+                                                    <?php $muayeneStatus = getEvrakBadgeStatus($arac->muayene_bitis_tarihi); ?>
+                                                    <div class="evrak-badge-box <?php echo $muayeneStatus['class']; ?>" title="Muayene Bitiş: <?php echo $arac->muayene_bitis_tarihi ? date('d.m.Y', strtotime($arac->muayene_bitis_tarihi)) : 'Yok'; ?>">
+                                                        <span class="evrak-badge-title">MUAYENE</span>
+                                                        <span class="evrak-badge-date"><?php echo $muayeneStatus['date_formatted']; ?></span>
+                                                    </div>
                                                 </td>
-                                                <td
-                                                    class="text-center <?php echo (strtotime($arac->sigorta_bitis_tarihi) < time() && $arac->sigorta_bitis_tarihi) ? 'text-danger fw-bold' : ''; ?>">
-                                                    <span
-                                                        class="small"><?php echo $arac->sigorta_bitis_tarihi ? date('d.m.Y', strtotime($arac->sigorta_bitis_tarihi)) : '-'; ?></span>
+                                                <td class="text-center align-middle">
+                                                    <?php $sigortaStatus = getEvrakBadgeStatus($arac->sigorta_bitis_tarihi); ?>
+                                                    <div class="evrak-badge-box <?php echo $sigortaStatus['class']; ?>" title="Sigorta Bitiş: <?php echo $arac->sigorta_bitis_tarihi ? date('d.m.Y', strtotime($arac->sigorta_bitis_tarihi)) : 'Yok'; ?>">
+                                                        <span class="evrak-badge-title">SİGORTA</span>
+                                                        <span class="evrak-badge-date"><?php echo $sigortaStatus['date_formatted']; ?></span>
+                                                    </div>
                                                 </td>
-                                                <td
-                                                    class="text-center <?php echo (strtotime($arac->kasko_bitis_tarihi) < time() && $arac->kasko_bitis_tarihi) ? 'text-danger fw-bold' : ''; ?>">
-                                                    <span
-                                                        class="small"><?php echo $arac->kasko_bitis_tarihi ? date('d.m.Y', strtotime($arac->kasko_bitis_tarihi)) : '-'; ?></span>
+                                                <td class="text-center align-middle">
+                                                    <?php $kaskoStatus = getEvrakBadgeStatus($arac->kasko_bitis_tarihi); ?>
+                                                    <div class="evrak-badge-box <?php echo $kaskoStatus['class']; ?>" title="Kasko Bitiş: <?php echo $arac->kasko_bitis_tarihi ? date('d.m.Y', strtotime($arac->kasko_bitis_tarihi)) : 'Yok'; ?>">
+                                                        <span class="evrak-badge-title">KASKO</span>
+                                                        <span class="evrak-badge-date"><?php echo $kaskoStatus['date_formatted']; ?></span>
+                                                    </div>
                                                 </td>
                                                 <td class="text-center">
                                                     <div class="dropdown">
@@ -568,13 +872,24 @@ if ($filter === 'muayene') {
                                                         <ul class="dropdown-menu dropdown-menu-end">
                                                             <?php if (empty($arac->zimmetli_personel_id)): ?>
                                                                 <li>
-                                                                    <a class="dropdown-item text-warning zimmet-hizli" href="javascript:void(0);" data-id="<?php echo $arac->id; ?>" data-plaka="<?php echo $arac->plaka; ?>" data-km="<?php echo $arac->guncel_km; ?>">
+                                                                    <a class="dropdown-item text-warning zimmet-hizli" href="javascript:void(0);" data-id="<?php echo $arac->id; ?>" data-plaka="<?php echo htmlspecialchars($arac->plaka, ENT_QUOTES, 'UTF-8'); ?>" data-km="<?php echo $arac->guncel_km; ?>">
                                                                         <i class="bx bx-transfer me-2"></i> Zimmet Ver
+                                                                    </a>
+                                                                </li>
+                                                            <?php else: ?>
+                                                                <li>
+                                                                    <a class="dropdown-item text-danger zimmet-iade" href="javascript:void(0);" data-id="<?php echo $arac->zimmet_id; ?>" data-plaka="<?php echo htmlspecialchars($arac->plaka, ENT_QUOTES, 'UTF-8'); ?>">
+                                                                        <i class="bx bx-undo me-2"></i> Zimmeti İade Al
+                                                                    </a>
+                                                                </li>
+                                                                <li>
+                                                                    <a class="dropdown-item text-warning zimmet-hizli" href="javascript:void(0);" data-id="<?php echo $arac->id; ?>" data-plaka="<?php echo htmlspecialchars($arac->plaka, ENT_QUOTES, 'UTF-8'); ?>" data-km="<?php echo $arac->guncel_km; ?>">
+                                                                        <i class="bx bx-transfer me-2"></i> Yeniden Zimmetle
                                                                     </a>
                                                                 </li>
                                                             <?php endif; ?>
                                                             <li>
-                                                                <a class="dropdown-item text-info arac-zimmet-gecmisi" href="javascript:void(0);" data-id="<?php echo $arac->id; ?>" data-plaka="<?php echo $arac->plaka; ?>">
+                                                                <a class="dropdown-item text-info arac-zimmet-gecmisi" href="javascript:void(0);" data-id="<?php echo $arac->id; ?>" data-plaka="<?php echo htmlspecialchars($arac->plaka, ENT_QUOTES, 'UTF-8'); ?>">
                                                                     <i class="bx bx-history me-2"></i> Zimmet Geçmişi
                                                                 </a>
                                                             </li>
@@ -585,7 +900,7 @@ if ($filter === 'muayene') {
                                                             </li>
                                                             <li><hr class="dropdown-divider"></li>
                                                             <li>
-                                                                <a class="dropdown-item text-danger arac-sil" href="javascript:void(0);" data-id="<?php echo $arac->id; ?>" data-plaka="<?php echo $arac->plaka; ?>">
+                                                                <a class="dropdown-item text-danger arac-sil" href="javascript:void(0);" data-id="<?php echo $arac->id; ?>" data-plaka="<?php echo htmlspecialchars($arac->plaka, ENT_QUOTES, 'UTF-8'); ?>">
                                                                     <i class="bx bx-trash me-2"></i> Sil
                                                                 </a>
                                                             </li>

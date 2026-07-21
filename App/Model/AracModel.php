@@ -25,8 +25,12 @@ class AracModel extends Model
             SELECT a.*, 
                    a.ikame_mi,
                    az.id as zimmet_id,
+                   az.zimmet_tarihi as zimmet_tarihi,
                    az.personel_id as zimmetli_personel_id,
                    p.adi_soyadi as zimmetli_personel_adi,
+                   p.departman as zimmetli_personel_departman,
+                   p.resim_yolu as zimmetli_personel_resim,
+                   p.personel_resim_yolu as zimmetli_personel_resim_yolu,
                    (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             LEFT JOIN (
@@ -53,8 +57,12 @@ class AracModel extends Model
         $sql = $this->db->prepare("
             SELECT a.*, 
                    az.id as zimmet_id,
+                   az.zimmet_tarihi as zimmet_tarihi,
                    az.personel_id as zimmetli_personel_id,
                    p.adi_soyadi as zimmetli_personel_adi,
+                   p.departman as zimmetli_personel_departman,
+                   p.resim_yolu as zimmetli_personel_resim,
+                   p.personel_resim_yolu as zimmetli_personel_resim_yolu,
                    1 as serviste_mi
             FROM {$this->table} a
             INNER JOIN arac_servis_kayitlari s ON a.id = s.arac_id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL
@@ -100,8 +108,12 @@ class AracModel extends Model
         $sql = $this->db->prepare("
             SELECT a.*, 
                    az.id as zimmet_id,
+                   az.zimmet_tarihi as zimmet_tarihi,
                    az.personel_id as zimmetli_personel_id,
                    p.adi_soyadi as zimmetli_personel_adi,
+                   p.departman as zimmetli_personel_departman,
+                   p.resim_yolu as zimmetli_personel_resim,
+                   p.personel_resim_yolu as zimmetli_personel_resim_yolu,
                    (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
@@ -126,6 +138,9 @@ class AracModel extends Model
                    az.personel_id as zimmetli_personel_id,
                    az.id as aktif_zimmet_id,
                    p.adi_soyadi as zimmetli_personel_adi,
+                   p.departman as zimmetli_personel_departman,
+                   p.resim_yolu as zimmetli_personel_resim,
+                   p.personel_resim_yolu as zimmetli_personel_resim_yolu,
                    (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
@@ -202,8 +217,12 @@ class AracModel extends Model
         $sql = $this->db->prepare("
             SELECT a.*, 
                    az.id as zimmet_id,
+                   az.zimmet_tarihi as zimmet_tarihi,
                    az.personel_id as zimmetli_personel_id,
                    p.adi_soyadi as zimmetli_personel_adi,
+                   p.departman as zimmetli_personel_departman,
+                   p.resim_yolu as zimmetli_personel_resim,
+                   p.personel_resim_yolu as zimmetli_personel_resim_yolu,
                    (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             INNER JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
@@ -225,8 +244,12 @@ class AracModel extends Model
             SELECT a.*, 
                    a.ikame_mi,
                    az.id as zimmet_id,
+                   az.zimmet_tarihi as zimmet_tarihi,
                    az.personel_id as zimmetli_personel_id,
                    p.adi_soyadi as zimmetli_personel_adi,
+                   p.departman as zimmetli_personel_departman,
+                   p.resim_yolu as zimmetli_personel_resim,
+                   p.personel_resim_yolu as zimmetli_personel_resim_yolu,
                    (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             LEFT JOIN (
@@ -264,6 +287,9 @@ class AracModel extends Model
             SELECT a.*, 
                    NULL as zimmetli_personel_id,
                    NULL as zimmetli_personel_adi,
+                   NULL as zimmetli_personel_departman,
+                   NULL as zimmetli_personel_resim,
+                   NULL as zimmetli_personel_resim_yolu,
                    (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
@@ -494,8 +520,12 @@ class AracModel extends Model
         $sql = $this->db->prepare("
             SELECT a.*, 
                    az.id as zimmet_id,
+                   az.zimmet_tarihi as zimmet_tarihi,
                    az.personel_id as zimmetli_personel_id,
                    p.adi_soyadi as zimmetli_personel_adi,
+                   p.departman as zimmetli_personel_departman,
+                   p.resim_yolu as zimmetli_personel_resim,
+                   p.personel_resim_yolu as zimmetli_personel_resim_yolu,
                    (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
@@ -519,8 +549,12 @@ class AracModel extends Model
         $sql = $this->db->prepare("
             SELECT a.*, 
                    az.id as zimmet_id,
+                   az.zimmet_tarihi as zimmet_tarihi,
                    az.personel_id as zimmetli_personel_id,
                    p.adi_soyadi as zimmetli_personel_adi,
+                   p.departman as zimmetli_personel_departman,
+                   p.resim_yolu as zimmetli_personel_resim,
+                   p.personel_resim_yolu as zimmetli_personel_resim_yolu,
                    (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
@@ -544,8 +578,12 @@ class AracModel extends Model
         $sql = $this->db->prepare("
             SELECT a.*, 
                    az.id as zimmet_id,
+                   az.zimmet_tarihi as zimmet_tarihi,
                    az.personel_id as zimmetli_personel_id,
                    p.adi_soyadi as zimmetli_personel_adi,
+                   p.departman as zimmetli_personel_departman,
+                   p.resim_yolu as zimmetli_personel_resim,
+                   p.personel_resim_yolu as zimmetli_personel_resim_yolu,
                    (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
@@ -569,8 +607,12 @@ class AracModel extends Model
         $sql = $this->db->prepare("
             SELECT a.*, 
                    az.id as zimmet_id,
+                   az.zimmet_tarihi as zimmet_tarihi,
                    az.personel_id as zimmetli_personel_id,
                    p.adi_soyadi as zimmetli_personel_adi,
+                   p.departman as zimmetli_personel_departman,
+                   p.resim_yolu as zimmetli_personel_resim,
+                   p.personel_resim_yolu as zimmetli_personel_resim_yolu,
                    (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
@@ -593,8 +635,12 @@ class AracModel extends Model
         $sql = $this->db->prepare("
             SELECT a.*, 
                    az.id as zimmet_id,
+                   az.zimmet_tarihi as zimmet_tarihi,
                    az.personel_id as zimmetli_personel_id,
                    p.adi_soyadi as zimmetli_personel_adi,
+                   p.departman as zimmetli_personel_departman,
+                   p.resim_yolu as zimmetli_personel_resim,
+                   p.personel_resim_yolu as zimmetli_personel_resim_yolu,
                    (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
@@ -617,8 +663,12 @@ class AracModel extends Model
         $sql = $this->db->prepare("
             SELECT a.*, 
                    az.id as zimmet_id,
+                   az.zimmet_tarihi as zimmet_tarihi,
                    az.personel_id as zimmetli_personel_id,
                    p.adi_soyadi as zimmetli_personel_adi,
+                   p.departman as zimmetli_personel_departman,
+                   p.resim_yolu as zimmetli_personel_resim,
+                   p.personel_resim_yolu as zimmetli_personel_resim_yolu,
                    (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
@@ -640,8 +690,12 @@ class AracModel extends Model
         $sql = $this->db->prepare("
             SELECT a.*, 
                    az.id as zimmet_id,
+                   az.zimmet_tarihi as zimmet_tarihi,
                    az.personel_id as zimmetli_personel_id,
                    p.adi_soyadi as zimmetli_personel_adi,
+                   p.departman as zimmetli_personel_departman,
+                   p.resim_yolu as zimmetli_personel_resim,
+                   p.personel_resim_yolu as zimmetli_personel_resim_yolu,
                    (SELECT COUNT(*) FROM arac_servis_kayitlari s WHERE s.arac_id = a.id AND s.iade_tarihi IS NULL AND s.silinme_tarihi IS NULL) as serviste_mi
             FROM {$this->table} a
             LEFT JOIN arac_zimmetleri az ON a.id = az.arac_id AND az.durum = 'aktif'
