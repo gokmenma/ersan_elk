@@ -122,18 +122,11 @@ class PushNotificationService
 
                 $results = $this->webPush->flush();
 
-                $successCount = 0;
-                foreach ($results as $report) {
-                    if ($report->isSuccess()) {
-                        $successCount++;
-                    } else {
-                        $endpoint = $report->getRequest()->getUri()->__toString();
-                        error_log("Push Notification Error for {$endpoint}: " . $report->getReason());
-                        if ($report->isSubscriptionExpired()) {
-                            $this->subscriptionModel->deleteByEndpoint($endpoint);
-                        }
-                    }
+                if ($successCount > 0) {
+                    $pushSent = true;
                 }
+            }
+        }
 
         if ($pushSent) {
             try {
