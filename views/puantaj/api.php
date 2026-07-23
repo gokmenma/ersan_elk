@@ -1977,7 +1977,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $records = $stmt->fetchAll(PDO::FETCH_OBJ);
         foreach ($records as $record): ?>
             <tr>
-                <td><?= \App\Helper\Date::dmY($record->tarih) ?></td>
+                <td data-order="<?= htmlspecialchars($record->tarih, ENT_QUOTES, 'UTF-8') ?>"><?= \App\Helper\Date::dmY($record->tarih) ?></td>
                 <td><?= $record->ekip_adi ?: '<span class="text-muted">-</span>' ?></td>
                 <td><?= htmlspecialchars($record->ilce ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
                 <td>

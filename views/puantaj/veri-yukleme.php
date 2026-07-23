@@ -2461,6 +2461,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     }
                     $('#kacakKontrolBody').html(html);
                     kacakDataTable = $('#kacakTable').DataTable($.extend(true, {}, getDatatableOptions(), {
+                        order: [[0, 'desc']],
                         drawCallback: function() {
                             let total = 0;
                             this.api().rows({filter: 'applied'}).data().each(function(row) {
