@@ -88,16 +88,34 @@
 
   function parseDateDMY(str) {
     if (!str) return null;
-    const parts = str.trim().split(/[\s]+/)[0].split(".");
-    if (parts.length === 3) {
-      return new Date(
-        parseInt(parts[2], 10),
-        parseInt(parts[1], 10) - 1,
-        parseInt(parts[0], 10),
-      );
+    const cleanStr = str.toString().trim();
+
+    // 1. Try DD.MM.YYYY or DD/MM/YYYY or DD-MM-YYYY
+    const dmyMatch = cleanStr.match(/^(\d{1,2})[-/.](\d{1,2})[-/.](\d{4})/);
+    if (dmyMatch) {
+      const d = parseInt(dmyMatch[1], 10);
+      const m = parseInt(dmyMatch[2], 10);
+      const y = parseInt(dmyMatch[3], 10);
+      if (d > 0 && m > 0 && m <= 12 && y > 1000) {
+        return new Date(y, m - 1, d);
+      }
     }
-    const d = new Date(str);
-    return isNaN(d.getTime()) ? null : d;
+
+    // 2. Try YYYY-MM-DD or YYYY/MM/DD or YYYY.MM.DD
+    const ymdMatch = cleanStr.match(/^(\d{4})[-/.](\d{1,2})[-/.](\d{1,2})/);
+    if (ymdMatch) {
+      const y = parseInt(ymdMatch[1], 10);
+      const m = parseInt(ymdMatch[2], 10);
+      const d = parseInt(ymdMatch[3], 10);
+      if (d > 0 && m > 0 && m <= 12 && y > 1000) {
+        return new Date(y, m - 1, d);
+      }
+    }
+
+    // 3. Fallback: Parse year, month, day in local time
+    const d = new Date(cleanStr);
+    if (isNaN(d.getTime())) return null;
+    return new Date(d.getFullYear(), d.getMonth(), d.getDate());
   }
 
   function parseNumTR(val) {
@@ -136,12 +154,10 @@
   }
 
   function extractTextWithSpaces(html) {
-    if (!html) return "";
+    if (html === null || html === undefined) return "";
     if (typeof html !== "string") return html.toString();
-    // Wrap to parse easily, replace tag junctions with space
-    const cleanedHtml = html.toString().replace(/>\s*</g, "> <");
-    const $tmp = $("<div>").html(cleanedHtml);
-    return $tmp.text().replace(/\s+/g, " ").trim();
+    // Fast and safe regex tag stripping (avoids DOM parser stripping <td> elements)
+    return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
   }
 
   // --- Filter Engine ---
@@ -219,28 +235,34 @@
       if (mode === "null") return !cellText || cellText.trim() === "";
       if (mode === "not_null") return !!cellText && cellText.trim() !== "";
 
-      if (!cellDate || !filterDate) return true;
+      if (!val || val.toString().trim() === "") return true;
 
-      cellDate.setHours(0, 0, 0, 0);
-      filterDate.setHours(0, 0, 0, 0);
+      if (cellDate && filterDate) {
+        cellDate.setHours(0, 0, 0, 0);
+        filterDate.setHours(0, 0, 0, 0);
 
-      switch (mode) {
-        case "equals":
-          return cellDate.getTime() === filterDate.getTime();
-        case "before":
-          return cellDate.getTime() <= filterDate.getTime();
-        case "after":
-          return cellDate.getTime() >= filterDate.getTime();
-        case "between":
-          if (!filterDate2) return true;
-          filterDate2.setHours(0, 0, 0, 0);
-          return (
-            cellDate.getTime() >= filterDate.getTime() &&
-            cellDate.getTime() <= filterDate2.getTime()
-          );
-        default:
-          return true;
+        switch (mode) {
+          case "equals":
+            return cellDate.getTime() === filterDate.getTime();
+          case "before":
+            return cellDate.getTime() <= filterDate.getTime();
+          case "after":
+            return cellDate.getTime() >= filterDate.getTime();
+          case "between":
+            if (!filterDate2) return true;
+            filterDate2.setHours(0, 0, 0, 0);
+            return (
+              cellDate.getTime() >= filterDate.getTime() &&
+              cellDate.getTime() <= filterDate2.getTime()
+            );
+          default:
+            return cellDate.getTime() === filterDate.getTime();
+        }
       }
+
+      const nCell = normalizeTR(cellText);
+      const nFilter = normalizeTR(val);
+      return nCell.indexOf(nFilter) !== -1;
     }
 
     if (cell.type === "number") {
@@ -666,10 +688,42 @@
                 applyFilters();
               }
             },
+            onClose: (sel, str) => {
+              const val = $input.val().trim();
+              if (cellInfo.mode !== "between" && val && cellInfo.value !== val) {
+                cellInfo.value = val;
+                applyFilters();
+              }
+            }
           });
         };
         initFp();
         cellInfo.reinitDate = initFp;
+
+        let dateTimeout;
+        $input.on("input change keyup", function () {
+          const val = $(this).val().trim();
+          clearTimeout(dateTimeout);
+          dateTimeout = setTimeout(() => {
+            if (cellInfo.mode === "between") {
+              const parts = val.split(" - ");
+              if (parts.length === 2) {
+                cellInfo.value = parts[0];
+                cellInfo.value2 = parts[1];
+                applyFilters();
+              } else if (val === "") {
+                cellInfo.value = "";
+                cellInfo.value2 = "";
+                applyFilters();
+              }
+            } else {
+              if (cellInfo.value !== val) {
+                cellInfo.value = val;
+                applyFilters();
+              }
+            }
+          }, 300);
+        });
       } else {
         const $input = $(
           '<input type="text" class="dt-filter-control text-control" autocomplete="off">',
@@ -789,18 +843,21 @@
       $filterBar.html(html);
     }
 
-    $.fn.dataTable.ext.search.push(
-      function (s, searchData, dataIndex, rowData) {
-        if (s.sTableId !== tableId) return true;
-        // Use original rowData or searchData if not available
-        const dataToMatch = rowData || searchData;
-        for (let i = 0; i < filterCells.length; i++) {
-          const cell = filterCells[i];
-          if (!matchFilter(cell, dataToMatch[cell.colIdx])) return false;
-        }
-        return true;
-      },
+    $.fn.dataTable.ext.search = $.fn.dataTable.ext.search.filter(
+      (fn) => !fn._tableId || fn._tableId !== tableId
     );
+
+    const searchFn = function (s, searchData, dataIndex, rowData) {
+      if (s.sTableId !== tableId) return true;
+      const dataToMatch = (searchData && searchData.length > 0) ? searchData : (rowData || []);
+      for (let i = 0; i < filterCells.length; i++) {
+        const cell = filterCells[i];
+        if (!matchFilter(cell, dataToMatch[cell.colIdx])) return false;
+      }
+      return true;
+    };
+    searchFn._tableId = tableId;
+    $.fn.dataTable.ext.search.push(searchFn);
 
     const ns = ".dtf_" + tableId;
     $(document)
