@@ -168,7 +168,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $hareketModel = new \App\Model\PersonelHareketleriModel();
 
                 foreach ($widgetIds as $index => $widgetId) {
-                    $cacheHtml = $force ? null : $getWidgetCache($widgetId);
+                    $cacheHtml = ($force || $widgetId === 'widget-bildirimler') ? null : $getWidgetCache($widgetId);
                     if ($cacheHtml) { $response['results'][$widgetId] = $cacheHtml; continue; }
 
                     $data = []; $data['width'] = $widths[$index] ?? null;
@@ -213,6 +213,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             $data['recent_logs'] = $systemLogModel->getRecentLogs(10, 0);
                             $data['personelLogs'] = $systemLogModel->getPersonelLoginLogs(10);
                             $data['kullaniciLogs'] = $systemLogModel->getUserLoginLogs(10);
+                            if (\App\Service\Gate::allows('ai_is_ajani_arac_takip')) {
+                                $data['aiAgentLogs'] = $systemLogModel->getAiAgentLogs(10);
+                            }
                         } elseif ($widgetId == 'widget-gec-kalanlar') {
                             $data['gec_kalan_sayisi'] = $hareketModel->getGecKalanlarCount($firmaId);
                         } elseif ($widgetId == 'widget-talepler') {

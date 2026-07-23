@@ -153,16 +153,56 @@ class MailGonderService
             }
 
             if ($mail->send()) {
-                // Başarılı olsa bile loglara kaydet (opsiyonel, debug için)
-                // error_log("E-posta başarıyla gönderildi. Log: " . $debugOutput);
+                self::logEmailAttempt($firma_id, $fromEmail, $kime, $cc, $bcc, $konu, $icerik, $ekler, 'success');
                 return true;
             } else {
+                self::logEmailAttempt($firma_id, $fromEmail, $kime, $cc, $bcc, $konu, $icerik, $ekler, 'failed');
                 throw new \Exception("E-posta gönderilemedi. SMTP Log: " . $debugOutput);
             }
         } catch (Exception $e) {
             $msg = $e->getMessage();
             error_log("Mail Gönderim Hatası: " . $msg);
+            self::logEmailAttempt($firma_id ?? 0, $fromEmail ?? null, $kime, $cc ?? [], $bcc ?? [], $konu, $icerik, $ekler ?? [], 'failed');
             throw new \Exception($msg);
+        }
+    }
+
+    private static function logEmailAttempt($firma_id, $fromEmail, $kime, $cc, $bcc, $konu, $icerik, $ekler, $status)
+    {
+        try {
+            $MesajLogModel = new \App\Model\MesajLogModel();
+            $recipients = [];
+            if (is_array($kime)) {
+                $recipients = array_values(array_unique(array_filter(array_map('trim', $kime))));
+            } elseif (!empty($kime)) {
+                $recipients[] = trim($kime);
+            }
+            if (!empty($cc)) {
+                $ccList = is_array($cc) ? $cc : [$cc];
+                foreach ($ccList as $c) {
+                    if (!empty($c)) $recipients[] = trim($c);
+                }
+            }
+            if (!empty($bcc)) {
+                $bccList = is_array($bcc) ? $bcc : [$bcc];
+                foreach ($bccList as $b) {
+                    if (!empty($b)) $recipients[] = trim($b);
+                }
+            }
+            $recipients = array_values(array_unique($recipients));
+            $senderStr = !empty($fromEmail) ? $fromEmail : ($_SESSION['user_name'] ?? 'Sistem');
+
+            $MesajLogModel->logEmail(
+                $firma_id ?: 0,
+                $senderStr,
+                $recipients,
+                $konu,
+                $icerik,
+                $ekler,
+                $status
+            );
+        } catch (\Throwable $e) {
+            error_log('MesajLogModel email logging failed: ' . $e->getMessage());
         }
     }
 }

@@ -86,6 +86,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
     try {
         switch ($action) {
             // =============================================
+            // YAPAY ZEKA İŞ AJANI
+            // =============================================
+            case 'ai_agent_query':
+                if (!\App\Service\Gate::allows('ai_is_ajani_arac_takip')) {
+                    throw new Exception("Bu işlemi gerçekleştirmek için 'Araç Takip Yapay Zeka İş Ajanı' yetkiniz bulunmamaktadır.");
+                }
+
+                $prompt = trim($_POST['prompt'] ?? '');
+                $firmaId = (int)($_SESSION['firma_id'] ?? 0);
+                $userId = (int)($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
+
+                if ($firmaId <= 0 || $userId <= 0) {
+                    throw new Exception("Geçersiz oturum.");
+                }
+
+                $aiService = new \App\Service\AiAgentService();
+                $result = $aiService->processQuery($firmaId, $userId, 'arac-takip', $prompt);
+
+                echo json_encode($result, JSON_UNESCAPED_UNICODE);
+                exit;
+
+            // =============================================
             // ARAÇ İŞLEMLERİ
             // =============================================
             case 'arac-kaydet':

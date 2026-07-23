@@ -73,9 +73,10 @@ if ($tab === 'okuma') {
     $search = $_GET['search']['value'] ?? '';
     if ($startDate) { $sql .= " AND t.tarih >= ?"; $params[] = Date::Ymd($startDate) ?: $startDate; }
     if ($endDate) { $sql .= " AND t.tarih <= ?"; $params[] = Date::Ymd($endDate) ?: $endDate; }
-    if ($ekipKodu) { $sql .= " AND t.ekip_adi = ?"; $params[] = $ekipKodu; }
+    if ($ekipKodu) { $sql .= " AND (FIND_IN_SET(?, t.personel_ids) OR t.ekip_adi = ?)"; $params[] = $ekipKodu; $params[] = $ekipKodu; }
+    if (!empty($region)) { $sql .= " AND t.ilce = ?"; $params[] = $region; }
     if ($search) {
-        $sql .= " AND (t.bolge LIKE ? OR t.ekip_adi LIKE ? OR t.aciklama LIKE ? OR p.adi_soyadi LIKE ?)";
+        $sql .= " AND (t.ilce LIKE ? OR t.ekip_adi LIKE ? OR t.aciklama LIKE ? OR p.adi_soyadi LIKE ?)";
         $params[] = "%$search%";
         $params[] = "%$search%";
         $params[] = "%$search%";

@@ -135,9 +135,41 @@ class PushNotificationService
                     }
                 }
 
-                if ($successCount > 0) {
-                    $pushSent = true;
-                }
+        if ($pushSent) {
+            try {
+                $MesajLogModel = new \App\Model\MesajLogModel();
+                $firmaId = $_SESSION['firma_id'] ?? $_SESSION['site_id'] ?? 0;
+                $title = $payload['title'] ?? 'Push Bildirim';
+                $body = $payload['body'] ?? '';
+                $recipients = [$type . ':' . $id];
+                $MesajLogModel->logPush(
+                    $firmaId,
+                    $title,
+                    $body,
+                    $recipients,
+                    $payload,
+                    'success'
+                );
+            } catch (\Throwable $logEx) {
+                error_log('MesajLogModel push logging failed: ' . $logEx->getMessage());
+            }
+        } else {
+            try {
+                $MesajLogModel = new \App\Model\MesajLogModel();
+                $firmaId = $_SESSION['firma_id'] ?? $_SESSION['site_id'] ?? 0;
+                $title = $payload['title'] ?? 'Push Bildirim';
+                $body = $payload['body'] ?? '';
+                $recipients = [$type . ':' . $id];
+                $MesajLogModel->logPush(
+                    $firmaId,
+                    $title,
+                    $body,
+                    $recipients,
+                    $payload,
+                    'failed'
+                );
+            } catch (\Throwable $logEx) {
+                error_log('MesajLogModel push logging failed: ' . $logEx->getMessage());
             }
         }
 

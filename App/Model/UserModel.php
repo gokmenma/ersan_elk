@@ -195,7 +195,62 @@ class UserModel extends Model
     }
 
     /** 
-     * Belirli bir talep türü için mail bildirimlerini açık olan kullanıcıları getirir
+     * Bir kullanıcının belirli bir yetkiye veya Süper Admin rolüne sahip olup olmadığını kontrol eder.
+     * @param int|object $user Kullanıcı ID'si veya Nesnesi
+     * @param string $permissionName Yetki adı (örn: 'izin_talepleri')
+     * @return bool
+     */
+    public function hasUserPermission($user, string $permissionName): bool
+    {
+        if (is_numeric($user)) {
+            $userObj = $this->find((int) $user);
+        } else {
+            $userObj = (object) $user;
+        }
+
+        if (!$userObj || empty($userObj->id) || (isset($userObj->durum) && $userObj->durum !== 'Aktif')) {
+            return false;
+        }
+
+        // 1. Superadmin kontrolü (role alanı veya roles içindeki superadmin yetki grubu)
+        $roleIdsStr = $userObj->roles ?? '';
+        $userRoleName = $userObj->role ?? '';
+
+        if ($userRoleName === 'superadmin') {
+            return true;
+        }
+
+        if (!empty($roleIdsStr)) {
+            $roleIds = array_filter(array_map('intval', explode(',', $roleIdsStr)));
+            if (!empty($roleIds)) {
+                $placeholders = implode(',', array_fill(0, count($roleIds), '?'));
+                $stmtSuper = $this->db->prepare("SELECT COUNT(*) FROM user_roles WHERE id IN ($placeholders) AND superadmin = 1");
+                $stmtSuper->execute($roleIds);
+                if ((int) $stmtSuper->fetchColumn() > 0) {
+                    return true;
+                }
+
+                // 2. Yetki tablosundan yetki adı kontrolü
+                $stmtPerm = $this->db->prepare("
+                    SELECT COUNT(*) 
+                    FROM user_role_permissions urp
+                    JOIN permissions p ON urp.permission_id = p.id
+                    WHERE urp.role_id IN ($placeholders) 
+                      AND (p.auth_name = ? OR p.name = ?)
+                ");
+                $params = array_merge($roleIds, [$permissionName, $permissionName]);
+                $stmtPerm->execute($params);
+                if ((int) $stmtPerm->fetchColumn() > 0) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /** 
+     * Belirli bir talep türü için mail bildirimlerini açık olan ve İLGİLİ SAYFAYA YETKİSİ BULUNAN kullanıcıları getirir
      * @param string $talepTuru 'avans', 'izin', 'genel', 'ariza'
      * @return array Kullanıcı listesi
      */
@@ -203,9 +258,15 @@ class UserModel extends Model
     {
         $column_map = [
             'avans' => 'mail_avans_talep',
-            'izin' => 'mail_izin_talep',
+            'izin'  => 'mail_izin_talep',
             'genel' => 'mail_genel_talep',
             'ariza' => 'mail_ariza_talep'
+        ];
+        $permission_map = [
+            'avans' => 'avans_talepleri',
+            'izin'  => 'izin_talepleri',
+            'genel' => 'talepler',
+            'ariza' => 'ariza_talepleri'
         ];
 
         if (!isset($column_map[$talepTuru])) {
@@ -213,13 +274,23 @@ class UserModel extends Model
         }
 
         $column = $column_map[$talepTuru];
+        $permName = $permission_map[$talepTuru] ?? null;
+
         $query = $this->db->prepare("SELECT * FROM $this->table WHERE $column = ? AND durum = 'Aktif' AND email_adresi IS NOT NULL AND email_adresi != ''");
         $query->execute(['Evet']);
-        return $query->fetchAll(PDO::FETCH_OBJ);
+        $users = $query->fetchAll(PDO::FETCH_OBJ);
+
+        if (!$permName) {
+            return $users;
+        }
+
+        return array_values(array_filter($users, function($u) use ($permName) {
+            return $this->hasUserPermission($u, $permName);
+        }));
     }
 
     /** 
-     * Belirli bir talep türü için uygulama içi bildirimleri açık olan kullanıcıları getirir
+     * Belirli bir talep türü için uygulama içi bildirimleri açık olan ve İLGİLİ SAYFAYA YETKİSİ BULUNAN kullanıcıları getirir
      * @param string $talepTuru 'avans', 'izin', 'genel', 'ariza'
      * @return array Kullanıcı listesi
      */
@@ -227,9 +298,15 @@ class UserModel extends Model
     {
         $column_map = [
             'avans' => 'mail_avans_talep',
-            'izin' => 'mail_izin_talep',
+            'izin'  => 'mail_izin_talep',
             'genel' => 'mail_genel_talep',
             'ariza' => 'mail_ariza_talep'
+        ];
+        $permission_map = [
+            'avans' => 'avans_talepleri',
+            'izin'  => 'izin_talepleri',
+            'genel' => 'talepler',
+            'ariza' => 'ariza_talepleri'
         ];
 
         if (!isset($column_map[$talepTuru])) {
@@ -237,14 +314,24 @@ class UserModel extends Model
         }
 
         $column = $column_map[$talepTuru];
+        $permName = $permission_map[$talepTuru] ?? null;
+
         // Email adresi zorunluluğu yok
         $query = $this->db->prepare("SELECT * FROM $this->table WHERE $column = ? AND durum = 'Aktif'");
         $query->execute(['Evet']);
-        return $query->fetchAll(PDO::FETCH_OBJ);
+        $users = $query->fetchAll(PDO::FETCH_OBJ);
+
+        if (!$permName) {
+            return $users;
+        }
+
+        return array_values(array_filter($users, function($u) use ($permName) {
+            return $this->hasUserPermission($u, $permName);
+        }));
     }
 
     /**
-     * Belirli bir kullanıcının belirli bir talep türü için mail alıp almadığını kontrol eder
+     * Belirli bir kullanıcının belirli bir talep türü için mail alıp almadığını ve yetkisi olup olmadığını kontrol eder
      * @param int $userId Kullanıcı ID'si
      * @param string $talepTuru 'avans', 'izin', 'genel', 'ariza'
      * @return bool True ise mail alır, false ise almaz
@@ -253,9 +340,15 @@ class UserModel extends Model
     {
         $column_map = [
             'avans' => 'mail_avans_talep',
-            'izin' => 'mail_izin_talep',
+            'izin'  => 'mail_izin_talep',
             'genel' => 'mail_genel_talep',
             'ariza' => 'mail_ariza_talep'
+        ];
+        $permission_map = [
+            'avans' => 'avans_talepleri',
+            'izin'  => 'izin_talepleri',
+            'genel' => 'talepler',
+            'ariza' => 'ariza_talepleri'
         ];
 
         if (!isset($column_map[$talepTuru])) {
@@ -263,11 +356,21 @@ class UserModel extends Model
         }
 
         $column = $column_map[$talepTuru];
-        $query = $this->db->prepare("SELECT $column, durum FROM $this->table WHERE id = ?");
-        $query->execute([$userId]);
-        $result = $query->fetch(PDO::FETCH_OBJ);
+        $permName = $permission_map[$talepTuru] ?? null;
 
-        return $result && $result->$column == 'Evet' && $result->durum == 'Aktif';
+        $query = $this->db->prepare("SELECT * FROM $this->table WHERE id = ?");
+        $query->execute([$userId]);
+        $user = $query->fetch(PDO::FETCH_OBJ);
+
+        if (!$user || $user->$column !== 'Evet' || $user->durum !== 'Aktif') {
+            return false;
+        }
+
+        if ($permName && !$this->hasUserPermission($user, $permName)) {
+            return false;
+        }
+
+        return true;
     }
 
     /**Giriş Yapan kullanıcı superadmin mi */

@@ -1586,7 +1586,7 @@ try {
                 $izin_onayi_yapacak_personel = $UserModel->getIzinOnayPersonel();
 
                 $recipients = [];
-                if ($izin_onayi_yapacak_personel) {
+                if ($izin_onayi_yapacak_personel && $UserModel->hasUserPermission($izin_onayi_yapacak_personel, 'izin_talepleri')) {
                     $recipients[$izin_onayi_yapacak_personel->id] = $izin_onayi_yapacak_personel;
                 }
                 foreach ($bildirimKullanicilari as $k) {
@@ -1627,7 +1627,7 @@ try {
                 $mailKullanicilari = $UserModel->getMailBildirimKullanicilari('izin');
                 $emails = [];
                 
-                if ($izin_onayi_yapacak_personel && !empty($izin_onayi_yapacak_personel->email_adresi)) {
+                if ($izin_onayi_yapacak_personel && !empty($izin_onayi_yapacak_personel->email_adresi) && $UserModel->hasUserPermission($izin_onayi_yapacak_personel, 'izin_talepleri')) {
                     $emails[] = trim($izin_onayi_yapacak_personel->email_adresi);
                 }
                 

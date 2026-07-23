@@ -237,14 +237,47 @@ for ($saat = 0; $saat < 24; $saat++) {
         </div>
     </div>
 
-    <!-- OPENAI API AYARLARI -->
-    <div class="card shadow-sm mb-4">
-        <div class="card-header bg-light">
-            <h5 class="mb-0 text-primary"><i data-feather="cpu" class="me-2"></i>OpenAI API Ayarları</h5>
+    <!-- YAPAY ZEKA İŞ AJANI (AI AGENT) AYARLARI -->
+    <div class="card shadow-sm mb-4 border-primary border-opacity-25">
+        <div class="card-header bg-primary bg-opacity-10 d-flex align-items-center justify-content-between">
+            <h5 class="mb-0 text-primary d-flex align-items-center gap-2">
+                <i data-feather="cpu" class="me-1"></i>🤖 Yapay Zeka İş Ajanı (AI Agent) Ayarları
+            </h5>
+            <span class="badge bg-primary text-white px-2 py-1">Akıllı Analiz Motoru</span>
         </div>
         <div class="card-body p-4">
             <div class="row">
-                <div class="col-md-12 mb-3">
+                <!-- Servis Sağlayıcısı -->
+                <div class="col-md-6 mb-3">
+                    <label class="form-label font-weight-bold">Yapay Zeka Servis Sağlayıcısı (Provider)</label>
+                    <?php 
+                    $currentProvider = $allSettings['ai_agent_provider'] ?? 'openai';
+                    ?>
+                    <select name="ai_agent_provider" class="form-select">
+                        <option value="openai" <?php echo ($currentProvider === 'openai') ? 'selected' : ''; ?>>OpenAI (ChatGPT - GPT-4o / GPT-4o-mini)</option>
+                        <option value="gemini" <?php echo ($currentProvider === 'gemini') ? 'selected' : ''; ?>>Google Gemini (Gemini 1.5 Flash)</option>
+                        <option value="deepseek" <?php echo ($currentProvider === 'deepseek') ? 'selected' : ''; ?>>DeepSeek AI (DeepSeek V3 / R1)</option>
+                    </select>
+                    <div class="form-text">Tercih ettiğiniz AI model altyapısını seçebilirsiniz.</div>
+                </div>
+
+                <!-- Model Seçimi -->
+                <div class="col-md-6 mb-3">
+                    <label class="form-label font-weight-bold">Yapay Zeka Modeli (Model)</label>
+                    <?php 
+                    $currentModel = $allSettings['ai_agent_model'] ?? 'gpt-4o-mini';
+                    ?>
+                    <select name="ai_agent_model" class="form-select">
+                        <option value="gpt-4o-mini" <?php echo ($currentModel === 'gpt-4o-mini') ? 'selected' : ''; ?>>GPT-4o Mini (OpenAI - Hızlı, Akıllı & Ekonomik)</option>
+                        <option value="gpt-4o" <?php echo ($currentModel === 'gpt-4o') ? 'selected' : ''; ?>>GPT-4o (OpenAI - En Üst Düzey Zeka)</option>
+                        <option value="gemini-1.5-flash" <?php echo ($currentModel === 'gemini-1.5-flash') ? 'selected' : ''; ?>>Gemini 1.5 Flash (Google)</option>
+                        <option value="deepseek-chat" <?php echo ($currentModel === 'deepseek-chat') ? 'selected' : ''; ?>>DeepSeek V3 (DeepSeek)</option>
+                    </select>
+                    <div class="form-text">Varsayılan önerilen model: <strong>GPT-4o Mini</strong>.</div>
+                </div>
+
+                <!-- API Key Girişi -->
+                <div class="col-md-12 mb-2">
                     <?php 
                     $openai_api_key = $allSettings['openai_api_key'] ?? '';
                     echo Form::FormFloatInput(
@@ -252,13 +285,90 @@ for ($saat = 0; $saat < 24; $saat++) {
                         "openai_api_key_yeni",
                         "",
                         "",
-                        "OpenAI API Key (Değiştirmek için doldurun)",
+                        "OpenAI / AI Agent API Key (Değiştirmek veya güncellemek için yazın)",
                         "key",
                         "form-control"
                     ); 
-                    if (!empty($openai_api_key)): ?>
-                        <div class="form-text text-success"><i data-feather="check-circle" class="me-1" style="width:14px;height:14px"></i> OpenAI API Key kayıtlı (Aktif).</div>
+                    if (!empty($openai_api_key)): 
+                        $keyMasked = substr($openai_api_key, 0, 10) . '...' . substr($openai_api_key, -4);
+                    ?>
+                        <div class="form-text text-success d-flex align-items-center gap-1 mt-2">
+                            <i data-feather="check-circle" class="me-1" style="width:16px;height:16px"></i>
+                            <strong>API Key Kayıtlı & Aktif:</strong> <code><?php echo htmlspecialchars($keyMasked, ENT_QUOTES, 'UTF-8'); ?></code>
+                        </div>
+                    <?php else: ?>
+                        <div class="form-text text-warning mt-2">
+                            <i data-feather="alert-triangle" class="me-1" style="width:16px;height:16px"></i>
+                            Henüz API Key girilmedi. OpenAI / Gemini API Key girilene kadar <strong>Hızlı Yerel Analiz Motoru (12ms)</strong> aktiftir.
+                        </div>
                     <?php endif; ?>
+                </div>
+            </div>
+
+            <!-- YAPAY ZEKA GÜVENLİK VE KÖTÜYE KULLANIM LOGLARI -->
+            <?php 
+            $stmtAiLogs = $Settings->db->prepare("
+                SELECT l.id, l.user_id, COALESCE(u.adi_soyadi, u.user_name, CONCAT('Kullanıcı #', l.user_id)) as kullanici_adi, 
+                       l.prompt, l.response, l.model_used, l.status, l.execution_time_ms, l.created_at 
+                FROM ai_agent_logs l 
+                LEFT JOIN users u ON l.user_id = u.id 
+                WHERE l.firma_id = ?
+                ORDER BY l.id DESC 
+                LIMIT 20
+            ");
+            $stmtAiLogs->execute([$firma_id]);
+            $aiLogsList = $stmtAiLogs->fetchAll(PDO::FETCH_ASSOC) ?: [];
+            ?>
+
+            <div class="mt-4 border-top pt-3">
+                <div class="d-flex align-items-center justify-content-between mb-3">
+                    <h6 class="text-primary font-weight-bold mb-0 d-flex align-items-center gap-1">
+                        <i data-feather="shield" class="me-1"></i>🛡️ Yapay Zeka Kullanım ve Güvenlik Logları (Kötüye Kullanım Takibi)
+                    </h6>
+                    <span class="badge bg-secondary font-size-11">Son 20 İşlem Logu</span>
+                </div>
+                <div class="table-responsive rounded-2 border">
+                    <table class="table table-bordered table-hover align-middle table-sm font-size-13 mb-0">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 140px;">Tarih & Saat</th>
+                                <th style="width: 160px;">Kullanıcı</th>
+                                <th>Girilen Prompt (Sorgu)</th>
+                                <th style="width: 110px;">Model</th>
+                                <th style="width: 90px;">Süre</th>
+                                <th style="width: 90px;">Durum</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (!empty($aiLogsList)): ?>
+                                <?php foreach ($aiLogsList as $log): ?>
+                                    <tr>
+                                        <td><code><?php echo date('d.m.Y H:i:s', strtotime($log['created_at'])); ?></code></td>
+                                        <td><strong><?php echo htmlspecialchars($log['kullanici_adi'], ENT_QUOTES, 'UTF-8'); ?></strong></td>
+                                        <td class="text-break">
+                                            <span class="fw-semibold text-dark"><?php echo htmlspecialchars($log['prompt'], ENT_QUOTES, 'UTF-8'); ?></span>
+                                        </td>
+                                        <td><span class="badge bg-soft-info text-info font-size-11"><?php echo htmlspecialchars($log['model_used'] ?? 'gpt-4o-mini', ENT_QUOTES, 'UTF-8'); ?></span></td>
+                                        <td><code><?php echo (int) $log['execution_time_ms']; ?> ms</code></td>
+                                        <td>
+                                            <?php if ($log['status'] === 'success'): ?>
+                                                <span class="badge bg-soft-success text-success">Başarılı</span>
+                                            <?php else: ?>
+                                                <span class="badge bg-soft-danger text-danger">Hata</span>
+                                            <?php endif; ?>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            <?php else: ?>
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-3">Henüz kaydedilmiş yapay zeka işlem kaydı bulunmamaktadır.</td>
+                                </tr>
+                            <?php endif; ?>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="form-text mt-2 ps-1">
+                    <i data-feather="lock" style="width: 13px; height: 13px;"></i> Sistemdeki tüm yapay zeka sorguları, yazan kullanıcı, tam metin, tarih/saat ve işlem süresi ile birlikte güvenlik denetimi (audit trail) amacıyla otomatik olarak veritabanında saklanır.
                 </div>
             </div>
         </div>

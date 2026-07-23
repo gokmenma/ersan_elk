@@ -275,6 +275,21 @@ function renderWidget(string $widgetId, array $data = []) {
                                                 <?php if (!empty($kullaniciLogs)): ?><span class="badge rounded-pill" style="background: #e2e8f0; color: #334155; font-size: 0.68rem;"><?php echo count($kullaniciLogs); ?></span><?php endif; ?>
                                             </a>
                                         </li>
+                                        <?php if (\App\Service\Gate::allows('ai_is_ajani_arac_takip')): ?>
+                                            <?php 
+                                            if (!isset($aiAgentLogs)) {
+                                                $systemLogModel = new \App\Model\SystemLogModel();
+                                                $aiAgentLogs = $systemLogModel->getAiAgentLogs(10);
+                                            }
+                                            ?>
+                                            <li class="nav-item" role="presentation">
+                                                <a class="nav-link d-flex align-items-center gap-2" data-bs-toggle="tab" href="#ai-agent-tab" role="tab" style="border-radius: 10px; padding: 0.5rem 0.85rem; background: rgba(255,255,255,0.52); border: 1px solid rgba(148,163,184,0.18); color: #475569; font-size: 0.78rem; font-weight: 600;">
+                                                    <i class="bx bx-bot" style="font-size: 1rem;"></i>
+                                                    <span>Yapay Zeka Sorguları</span>
+                                                    <?php if (!empty($aiAgentLogs)): ?><span class="badge rounded-pill" style="background: #e2e8f0; color: #334155; font-size: 0.68rem;"><?php echo count($aiAgentLogs); ?></span><?php endif; ?>
+                                                </a>
+                                            </li>
+                                        <?php endif; ?>
                                     </ul>
                                 </div>
                                 <div class="flex-shrink-0 ms-auto">
@@ -311,14 +326,13 @@ function renderWidget(string $widgetId, array $data = []) {
                                     <?php endif; ?>
                                 </div>
                             </div>
-                            <!-- Personel and Kullanici Giriş tabs... (Simplified for brevity or keep full if needed) -->
                              <div class="tab-pane" id="personel-giris-tab" role="tabpanel">
                                 <div class="table-responsive">
                                     <table class="table table-borderless table-nowrap align-middle mb-0">
                                         <thead style="background: rgba(248,250,252,0.8); position: sticky; top: 0; z-index: 10;"><tr style="border-bottom: 2px solid #f1f5f9;"><th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">Ad Soyad</th><th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">Tarih</th><th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">Tarayıcı</th><th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">IP</th></tr></thead>
                                         <tbody>
                                             <?php if (empty($personelLogs)): ?><tr><td colspan="4" class="text-center py-4">Kayıt bulunamadı.</td></tr><?php else: foreach ($personelLogs as $ll): ?>
-                                                <tr><td><div class="d-flex align-items-center"><div class="avatar-sm me-3"><span class="avatar-title rounded-circle" style="background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%); color: #4f46e5;"><?php echo mb_substr($ll->adi_soyadi, 0, 1, 'UTF-8'); ?></span></div><div><h5 class="font-size-14 mb-0"><?php echo htmlspecialchars($ll->adi_soyadi); ?></h5></div></div></td><td><?php echo date('d.m.Y H:i', strtotime($ll->tarih)); ?></td><td><?php echo htmlspecialchars($ll->tarayici); ?></td><td><?php echo htmlspecialchars($ll->ip_adresi); ?></td></tr>
+                                                <tr><td><div class="d-flex align-items-center"><div class="avatar-sm me-3"><span class="avatar-title rounded-circle" style="background: linear-gradient(135deg, #e0f2fe 0%, #bae6fd 100%); color: #0284c7;"><?php echo mb_substr($ll->adi_soyadi, 0, 1, 'UTF-8'); ?></span></div><div><h5 class="font-size-14 mb-0"><?php echo htmlspecialchars($ll->adi_soyadi); ?></h5></div></div></td><td><?php echo date('d.m.Y H:i', strtotime($ll->tarih)); ?></td><td><?php echo htmlspecialchars($ll->tarayici); ?></td><td><?php echo htmlspecialchars($ll->ip_adresi); ?></td></tr>
                                             <?php endforeach; endif; ?>
                                         </tbody>
                                     </table>
@@ -336,6 +350,40 @@ function renderWidget(string $widgetId, array $data = []) {
                                     </table>
                                 </div>
                              </div>
+                             <?php if (\App\Service\Gate::allows('ai_is_ajani_arac_takip')): ?>
+                             <div class="tab-pane" id="ai-agent-tab" role="tabpanel">
+                                <div class="table-responsive">
+                                    <table class="table table-borderless align-middle mb-0">
+                                        <thead style="background: rgba(248,250,252,0.8);"><tr style="border-bottom: 2px solid #f1f5f9;"><th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600; padding: 0.75rem 1rem; width: 180px;">Kullanıcı</th><th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600; padding: 0.75rem 1rem;">Sorgu (Prompt)</th><th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600; padding: 0.75rem 1rem; width: 110px;">Model</th><th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600; padding: 0.75rem 1rem; width: 120px;">Tarih</th></tr></thead>
+                                        <tbody>
+                                            <?php if (empty($aiAgentLogs)): ?><tr><td colspan="4" class="text-center py-4">Sorgu kaydı bulunamadı.</td></tr><?php else: foreach ($aiAgentLogs as $ail): ?>
+                                                <tr>
+                                                    <td>
+                                                        <div class="d-flex align-items-center">
+                                                            <div class="avatar-sm me-3 flex-shrink-0">
+                                                                <span class="avatar-title rounded-circle" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #d97706;">
+                                                                    <?php echo mb_substr($ail->adi_soyadi, 0, 1, 'UTF-8'); ?>
+                                                                </span>
+                                                            </div>
+                                                            <div>
+                                                                <h5 class="font-size-14 mb-0"><?php echo htmlspecialchars($ail->adi_soyadi); ?></h5>
+                                                            </div>
+                                                        </div>
+                                                    </td>
+                                                    <td style="white-space: normal !important; word-break: break-word !important;">
+                                                        <span class="fw-semibold text-dark font-size-13" style="line-height: 1.5; display: block;">
+                                                            <?php echo htmlspecialchars($ail->prompt); ?>
+                                                        </span>
+                                                    </td>
+                                                    <td><span class="badge bg-light text-primary border px-2 py-1"><?php echo htmlspecialchars($ail->model_used ?? 'gpt-4o-mini'); ?></span></td>
+                                                    <td style="white-space: nowrap;"><?php echo date('d.m.Y H:i', strtotime($ail->created_at)); ?></td>
+                                                </tr>
+                                            <?php endforeach; endif; ?>
+                                        </tbody>
+                                    </table>
+                                </div>
+                             </div>
+                             <?php endif; ?>
                         </div>
                     </div>
                 </div>

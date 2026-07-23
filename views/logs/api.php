@@ -199,6 +199,66 @@ try {
             ]);
             break;
 
+        case 'get-ai-agent-logs':
+            if (!\App\Service\Gate::allows('ai_is_ajani_arac_takip')) {
+                echo json_encode(["draw" => 1, "recordsTotal" => 0, "recordsFiltered" => 0, "data" => []]);
+                break;
+            }
+
+            $draw = intval($_POST['draw'] ?? 1);
+            $start = intval($_POST['start'] ?? 0);
+            $length = intval($_POST['length'] ?? 10);
+            $search = $_POST['search']['value'] ?? '';
+
+            $logs = $systemLogModel->getAiAgentLogs($length, $start, $search);
+            $totalRecords = $systemLogModel->getAiAgentLogsCount();
+            $filteredRecords = $systemLogModel->getAiAgentLogsCount($search);
+
+            $data = [];
+            foreach ($logs as $ll) {
+                $avatar = mb_substr($ll->adi_soyadi, 0, 1, 'UTF-8');
+                $userHtml = '
+                    <div class="d-flex align-items-center">
+                        <div class="avatar-sm me-3">
+                            <span class="avatar-title rounded-circle" style="background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%); color: #d97706; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.05);">
+                                '.$avatar.'
+                            </span>
+                        </div>
+                        <div>
+                            <h5 class="font-size-14 mb-0" style="color: #334155; font-weight: 600;">
+                                '.htmlspecialchars($ll->adi_soyadi ?? '').'
+                            </h5>
+                            <span class="badge bg-soft-warning text-warning font-size-11" style="border-radius: 4px;">AI Kullanıcısı</span>
+                        </div>
+                    </div>';
+
+                $dateHtml = '
+                    <div class="d-flex flex-column" data-sort="'.date('YmdHis', strtotime($ll->created_at)).'">
+                        <span style="color: #334155; font-weight: 600;">'.date('d.m.Y', strtotime($ll->created_at)).'</span>
+                        <span style="color: #64748b; font-size: 0.75rem;">'.date('H:i:s', strtotime($ll->created_at)).'</span>
+                    </div>';
+
+                $promptHtml = '<span class="fw-semibold text-dark text-break">'.htmlspecialchars($ll->prompt).'</span>';
+                $modelHtml = '<span class="badge bg-soft-info text-info">'.htmlspecialchars($ll->model_used ?? 'gpt-4o-mini').'</span>';
+                $statusHtml = ($ll->status === 'success') ? '<span class="badge bg-soft-success text-success">Başarılı</span>' : '<span class="badge bg-soft-danger text-danger">Hata</span>';
+
+                $data[] = [
+                    $userHtml,
+                    $promptHtml,
+                    $modelHtml,
+                    $dateHtml,
+                    $statusHtml
+                ];
+            }
+
+            echo json_encode([
+                "draw" => $draw,
+                "recordsTotal" => $totalRecords,
+                "recordsFiltered" => $filteredRecords,
+                "data" => $data
+            ]);
+            break;
+
         case 'get-page-view-logs':
             $draw = intval($_POST['draw'] ?? 1);
             $start = intval($_POST['start'] ?? 0);

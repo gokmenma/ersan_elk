@@ -246,7 +246,8 @@ class PuantajModel extends Model
         $params = [$firmaId, $startDate, $endDate];
 
         if ($region) {
-            $sql .= " AND ek.ekip_bolge = ?";
+            $sql .= " AND (k.ilce = ? OR ek.ekip_bolge = ?)";
+            $params[] = $region;
             $params[] = $region;
         }
 

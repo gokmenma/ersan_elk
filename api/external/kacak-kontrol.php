@@ -59,9 +59,14 @@ if (!empty($raw)) {
     }
 }
 
-// --- Kimlik doğrulama: API key (header) + kullanıcı adı/şifre (gövde) ---
-$headers = function_exists('getallheaders') ? getallheaders() : [];
-$apiKey = $headers['X-Api-Key'] ?? $headers['X-API-Key'] ?? ($_SERVER['HTTP_X_API_KEY'] ?? '');
+// --- Kimlik doğrulama: API key (header/gövde) + kullanıcı adı/şifre (gövde) ---
+$rawHeaders = function_exists('getallheaders') ? getallheaders() : [];
+$headers = is_array($rawHeaders) ? array_change_key_case($rawHeaders, CASE_LOWER) : [];
+
+$apiKey = $headers['x-api-key'] 
+    ?? ($_SERVER['HTTP_X_API_KEY'] ?? '') 
+    ?: ($body['api_key'] ?? ($body['x_api_key'] ?? ($body['x-api-key'] ?? ($_GET['api_key'] ?? ''))));
+
 $username = trim((string) ($body['username'] ?? ''));
 $password = (string) ($body['password'] ?? '');
 
@@ -117,25 +122,40 @@ try {
         respond(400, ['status' => 'error', 'message' => 'Gönderilen veri eksik veya hatalı.', 'hatalar' => $hatalar]);
     }
 
-    // --- Personel eşleştirme: ID listesi ya da isim listesi ile gönderilebilir ---
+    // --- Personel eşleştirme: ID listesi, isim listesi ya da ekip_adi/ekip ile gönderilebilir (dizi veya virgülle ayrılmış string) ---
     $Personel = new PersonelModel();
     $personelIds = [];
     $eslesmeyenIsimler = [];
 
-    if (!empty($body['personel_ids']) && is_array($body['personel_ids'])) {
-        foreach ($body['personel_ids'] as $pid) {
-            $p = $Personel->find((int) $pid);
-            if ($p && empty($p->silinme_tarihi) && (int) $p->firma_id === $firmaId) {
-                $personelIds[] = (int) $p->id;
+    $rawIds = $body['personel_ids'] ?? [];
+    if (is_string($rawIds)) {
+        $rawIds = array_filter(array_map('trim', explode(',', $rawIds)));
+    }
+
+    $rawIsimler = $body['personel_isimleri'] ?? ($body['ekip_adi'] ?? ($body['ekip'] ?? []));
+    if (is_string($rawIsimler)) {
+        $rawIsimler = array_filter(array_map('trim', preg_split('/[,-]/', $rawIsimler)));
+    }
+
+    if (!empty($rawIds) && is_array($rawIds)) {
+        foreach ($rawIds as $pid) {
+            $pidInt = (int) trim((string) $pid);
+            if ($pidInt > 0) {
+                $p = $Personel->find($pidInt);
+                if ($p && empty($p->silinme_tarihi) && (int) $p->firma_id === $firmaId) {
+                    $personelIds[] = (int) $p->id;
+                }
             }
         }
-    } elseif (!empty($body['personel_isimleri']) && is_array($body['personel_isimleri'])) {
-        foreach ($body['personel_isimleri'] as $isim) {
-            $p = $Personel->findByAdiSoyadi((string) $isim);
+    } elseif (!empty($rawIsimler) && is_array($rawIsimler)) {
+        foreach ($rawIsimler as $isim) {
+            $isimStr = trim((string) $isim);
+            if (empty($isimStr)) continue;
+            $p = $Personel->findByAdiSoyadi($isimStr);
             if ($p) {
                 $personelIds[] = (int) $p->id;
             } else {
-                $eslesmeyenIsimler[] = $isim;
+                $eslesmeyenIsimler[] = $isimStr;
             }
         }
     }

@@ -77,30 +77,8 @@ try {
 
     $result = MailGonderService::gonder($recipients, $subject, $message, $ekler);
     if ($result) {
-        // Loglama işlemi
-        if (class_exists('App\Model\MesajLogModel')) {
-            try {
-                $LogModel = new \App\Model\MesajLogModel();
-                $firmaId = $_SESSION['firma_id'] ?? 0;
-                $sender = $_SESSION['user_email'] ?? 'noreply@ersantr.com';
-
-                $LogModel->logEmail(
-                    $firmaId,
-                    $sender,
-                    $recipients,
-                    $subject,
-                    $message,
-                    $ekler,
-                    'iletildi'
-                );
-            } catch (\Throwable $th) {
-                // Loglama hatası mail gönderimini etkilememeli
-                error_log("Mail loglama hatası: " . $th->getMessage());
-            }
-        }
-
-        $apiResponse['status'] = true;
-        $apiResponse['message'] = count($recipients) . ' alıcıya e-posta başarıyla gönderildi.';
+        $apiResponse['status'] = 'success';
+        $apiResponse['message'] = count($recipients) . ' alıcıya email başarıyla gönderildi.';
     } else {
         throw new Exception("E-posta gönderimi başarısız oldu. Lütfen ayarları kontrol edin.");
     }

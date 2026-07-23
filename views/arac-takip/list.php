@@ -415,6 +415,11 @@ if (!function_exists('getEvrakBadgeStatus')) {
     <?php include 'layouts/breadcrumb.php'; ?>
     <!-- end page title -->
 
+    <!-- Yapay Zeka İş Ajanı Widget -->
+    <?php if (\App\Service\Gate::allows('ai_is_ajani_arac_takip')): ?>
+        <?php include dirname(__DIR__, 2) . '/views/layouts/components/ai_agent_widget.php'; ?>
+    <?php endif; ?>
+
     <div class="row">
         <div class="col-12">
             <div class="card">
@@ -1654,3 +1659,4 @@ if (!function_exists('getEvrakBadgeStatus')) {
 </div>
 
 <script src="<?php echo \App\Helper\Helper::assetVersion('views/arac-takip/js/arac-takip.js'); ?>"></script>
+<script src="<?php echo \App\Helper\Helper::assetVersion('views/arac-takip/js/ai-agent.js'); ?>"></script>

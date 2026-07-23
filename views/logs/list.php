@@ -44,6 +44,13 @@ if (Gate::allows("log_kayitlari")) {
                                     <i class="bx bx-search-alt me-1"></i> Sayfa Görüntülemeleri
                                 </a>
                             </li>
+                            <?php if (\App\Service\Gate::allows('ai_is_ajani_arac_takip')): ?>
+                            <li class="nav-item">
+                                <a class="nav-link" data-bs-toggle="tab" href="#ai-agent-logs-tab" role="tab">
+                                    <i class="bx bx-bot me-1"></i> Yapay Zeka Sorguları
+                                </a>
+                            </li>
+                            <?php endif; ?>
                         </ul>
                     </div>
                     <div class="card-body">
@@ -119,6 +126,27 @@ if (Gate::allows("log_kayitlari")) {
                                     </table>
                                 </div>
                             </div>
+
+                            <!-- Yapay Zeka Sorguları Tab'ı -->
+                            <?php if (\App\Service\Gate::allows('ai_is_ajani_arac_takip')): ?>
+                            <div class="tab-pane" id="ai-agent-logs-tab" role="tabpanel">
+                                <div class="table-responsive">
+                                    <table class="table table-centered table-nowrap table-hover mb-0 align-middle w-100" id="aiAgentLogsTable">
+                                        <thead style="background: rgba(248,250,252,0.8);">
+                                            <tr>
+                                                <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Kullanıcı</th>
+                                                <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Sorgu (Prompt)</th>
+                                                <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Model</th>
+                                                <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Tarih</th>
+                                                <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Durum</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                            <?php endif; ?>
                         </div> <!-- end tab-content -->
                     </div>
                 </div>
@@ -321,6 +349,24 @@ if (Gate::allows("log_kayitlari")) {
                         { data: 'actions', orderable: false }
                     ],
                     order: [[2, 'desc']]
+                }));
+
+                $('#aiAgentLogsTable').DataTable($.extend({}, dtOptions, {
+                    processing: true,
+                    serverSide: true,
+                    ajax: {
+                        url: 'views/logs/api.php',
+                        type: 'POST',
+                        data: { action: 'get-ai-agent-logs' }
+                    },
+                    columns: [
+                        { data: 0 },
+                        { data: 1 },
+                        { data: 2 },
+                        { data: 3 },
+                        { data: 4 }
+                    ],
+                    order: [[3, 'desc']]
                 }));
             }
 

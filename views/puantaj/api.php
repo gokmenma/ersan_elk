@@ -941,7 +941,7 @@ Alanlar:
             $colMap = [];
             foreach ($rows as $index => $row) {
                 $rowStr = implode(' ', array_map('strval', $row));
-                if (mb_stripos($rowStr, 'Ekip', 0, 'UTF-8') !== false && (mb_stripos($rowStr, 'Sayı', 0, 'UTF-8') !== false || mb_stripos($rowStr, 'Sayi', 0, 'UTF-8') !== false)) {
+                if (mb_stripos($rowStr, 'Ekip', 0, 'UTF-8') !== false || mb_stripos($rowStr, 'Personel', 0, 'UTF-8') !== false || mb_stripos($rowStr, 'Tutanak', 0, 'UTF-8') !== false || mb_stripos($rowStr, 'İlçe', 0, 'UTF-8') !== false || mb_stripos($rowStr, 'Ilce', 0, 'UTF-8') !== false) {
                     $headerRowIndex = $index;
                     foreach ($row as $colIndex => $cellValue) {
                         $cellValue = trim($cellValue);
@@ -1181,9 +1181,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             if (is_array($ilceArr) && count($ilceArr) > 0) {
                 $Puantaj->db->beginTransaction();
                 try {
-                    // İlk olarak bu gün, bu ekip ve bu personel için var olan eski kayıtları "Silindi" işaretle (Mükerrer eklemeyi engellemek için)
-                    $stmtDelete = $Puantaj->db->prepare("UPDATE kacak_kontrol SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih = ? AND (ekip_adi = ? OR personel_ids = ?) AND silinme_tarihi IS NULL");
-                    $stmtDelete->execute([$firmaId, $dbTarih, $ekipAdi, $personelIdsStr]);
+
 
                     for ($k = 0; $k < count($ilceArr); $k++) {
                         $ilce = $ilceArr[$k] ?? null;
@@ -1961,13 +1959,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && isset($_GET['action']) && $_GET['act
         $params = [$dbStartDate, $dbEndDate, $firmaId];
 
         if (!empty($region)) {
-            $sql .= " AND ek.ekip_bolge = ?";
+            $sql .= " AND (k.ilce = ? OR ek.ekip_bolge = ?)";
+            $params[] = $region;
             $params[] = $region;
         }
 
-        // Personel filtresi - personel_ids içinde aranan ID var mı kontrol et
+        // Personel filtresi - personel_ids içinde aranan ID veya ekip_adi var mı kontrol et
         if (!empty($ekipKodu)) {
-            $sql .= " AND FIND_IN_SET(?, k.personel_ids)";
+            $sql .= " AND (FIND_IN_SET(?, k.personel_ids) OR k.ekip_adi = ?)";
+            $params[] = $ekipKodu;
             $params[] = $ekipKodu;
         }
 

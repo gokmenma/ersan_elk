@@ -63,9 +63,29 @@ class PersonelModel extends Model
 
     public function findByAdiSoyadi(string $adiSoyadi)
     {
+        $cleanName = trim($adiSoyadi);
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+
         $stmt = $this->db->prepare("SELECT id, adi_soyadi FROM {$this->table} WHERE adi_soyadi = ? AND firma_id = ? AND silinme_tarihi IS NULL LIMIT 1");
-        $stmt->execute([trim($adiSoyadi), $_SESSION['firma_id']]);
-        return $stmt->fetch(PDO::FETCH_OBJ) ?: null;
+        $stmt->execute([$cleanName, $firmaId]);
+        $found = $stmt->fetch(PDO::FETCH_OBJ);
+        if ($found) {
+            return $found;
+        }
+
+        // Fallback 1: Türkçe büyük harfe çevirerek dene
+        $trUpper = mb_strtoupper($cleanName, 'UTF-8');
+        $stmt->execute([$trUpper, $firmaId]);
+        $found = $stmt->fetch(PDO::FETCH_OBJ);
+        if ($found) {
+            return $found;
+        }
+
+        // Fallback 2: Çift boşlukları temizleyerek esnek eşleştir
+        $normalized = preg_replace('/\s+/', ' ', $cleanName);
+        $stmtLike = $this->db->prepare("SELECT id, adi_soyadi FROM {$this->table} WHERE (adi_soyadi LIKE ? OR adi_soyadi LIKE ?) AND firma_id = ? AND silinme_tarihi IS NULL LIMIT 1");
+        $stmtLike->execute([$normalized, mb_strtoupper($normalized, 'UTF-8'), $firmaId]);
+        return $stmtLike->fetch(PDO::FETCH_OBJ) ?: null;
     }
 
     /**

@@ -361,6 +361,61 @@ class SystemLogModel extends Model
     }
 
     /**
+     * Get AI Agent query logs for dashboard and log lists
+     */
+    public function getAiAgentLogs($limit = 10, $offset = 0, $search = '')
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 1;
+        $where = "l.firma_id = :firma_id";
+        $params = [':firma_id' => $firmaId];
+
+        if (!empty($search)) {
+            $where .= " AND (u.adi_soyadi LIKE :search OR u.user_name LIKE :search OR l.prompt LIKE :search OR l.response LIKE :search)";
+            $params[':search'] = '%' . $search . '%';
+        }
+
+        $sql = "SELECT l.id, l.user_id, COALESCE(u.adi_soyadi, u.user_name, CONCAT('Kullanıcı #', l.user_id)) as adi_soyadi, 
+                       l.prompt, l.response, l.model_used, l.status, l.execution_time_ms, l.created_at
+                FROM ai_agent_logs l 
+                LEFT JOIN users u ON u.id = l.user_id
+                WHERE {$where}
+                ORDER BY l.created_at DESC LIMIT :limit OFFSET :offset";
+
+        $stmt = $this->db->prepare($sql);
+        foreach ($params as $key => $val) {
+            $stmt->bindValue($key, $val);
+        }
+        $stmt->bindValue(':limit', intval($limit), PDO::PARAM_INT);
+        $stmt->bindValue(':offset', intval($offset), PDO::PARAM_INT);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function getAiAgentLogsCount($search = '')
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 1;
+        $where = "l.firma_id = :firma_id";
+        $params = [':firma_id' => $firmaId];
+
+        if (!empty($search)) {
+            $where .= " AND (u.adi_soyadi LIKE :search OR u.user_name LIKE :search OR l.prompt LIKE :search OR l.response LIKE :search)";
+            $params[':search'] = '%' . $search . '%';
+        }
+
+        $sql = "SELECT COUNT(*) as total
+                FROM ai_agent_logs l 
+                LEFT JOIN users u ON u.id = l.user_id
+                WHERE {$where}";
+
+        $stmt = $this->db->prepare($sql);
+        foreach ($params as $key => $val) {
+            $stmt->bindValue($key, $val);
+        }
+        $stmt->execute();
+        return $stmt->fetch(PDO::FETCH_OBJ)->total;
+    }
+
+    /**
      * Get page view logs
      */
     public function getPageViewLogs($limit = 1000, $offset = 0, $search = '')

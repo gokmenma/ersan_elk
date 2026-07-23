@@ -114,18 +114,32 @@ class SmsGonderService
 
             if (isset($netgsmResult['code']) && $netgsmResult['code'] == '00') {
                 $logger->info(count($alicilar) . " alıcıya başarıyla SMS gönderildi.");
+                self::logSmsAttempt($msgheader, $alicilar, $mesaj, 'success');
                 return true;
             } else {
+                self::logSmsAttempt($msgheader, $alicilar, $mesaj, 'failed');
                 throw new Exception('Netgsm API Hatası: ' . ($netgsmResult['description'] ?? 'Bilinmeyen hata.'));
             }
 
         } catch (Exception $e) {
             $logger->error("SMS gönderim hatası: " . $e->getMessage());
+            self::logSmsAttempt($msgheader ?? 'YONAPP', $alicilar, $mesaj, 'failed');
             return false;
         } finally {
             if (isset($ch) && is_resource($ch)) {
                 curl_close($ch);
             }
+        }
+    }
+
+    private static function logSmsAttempt($sender, $alicilar, $mesaj, $status)
+    {
+        try {
+            $MesajLogModel = new \App\Model\MesajLogModel();
+            $firmaId = $_SESSION['firma_id'] ?? $_SESSION['site_id'] ?? 0;
+            $MesajLogModel->logSms($firmaId, $sender, $alicilar, $mesaj, $status);
+        } catch (\Throwable $e) {
+            error_log('MesajLogModel SMS logging failed: ' . $e->getMessage());
         }
     }
 }

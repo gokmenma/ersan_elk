@@ -48,6 +48,7 @@ class PermissionsModel extends Model
             'Mail & Sms Yönetimi' => 'send',
             'Rehber Yönetimi' => 'book',
             'Ayarlar' => 'settings',
+            'Yapay Zeka & Analiz' => 'cpu',
             'default' => 'layout'
         ];
 
