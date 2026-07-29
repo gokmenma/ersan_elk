@@ -30,3 +30,6 @@ jobs:
           **/test-results/**
           **/playwright-report/**
           **/vendor/**
+          uploads/**
+          cache/**
+          .agent/**
