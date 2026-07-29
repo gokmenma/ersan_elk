@@ -10,8 +10,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Kodu Klonla (Checkout)
-      uses: actions/checkout@v4
+    # - name: Kodu Klonla (Checkout)
+    #   uses: actions/checkout@v4
 
     - name: FTP ile Dosya Temizligi ve Yukleme
       uses: SamKirkland/FTP-Deploy-Action@v4.3.4
