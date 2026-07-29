@@ -133,7 +133,7 @@ $hasIcra = count($devamEdenIcralar) > 0;
 
 // Sayfa yönlendirmesi
 $page = $_GET['page'] ?? 'ana-sayfa';
-$allowed_pages = ['ana-sayfa', 'bordro', 'izin', 'talep', 'profil', 'puantaj', 'etkinlikler', 'zimmetler', 'icralar', 'yardim', 'yardim-detay', 'km-bildirimleri'];
+$allowed_pages = ['ana-sayfa', 'bordro', 'izin', 'talep', 'profil', 'puantaj', 'etkinlikler', 'zimmetler', 'icralar', 'yardim', 'yardim-detay', 'km-bildirimleri', 'ihbar'];
 
 if ($isEndeksOkuma && $isEkipSefi) {
     $allowed_pages[] = 'ekip-takibi';
@@ -180,9 +180,6 @@ try {
     <link
         href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block"
         rel="stylesheet">
-
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
 
     <!-- Theme & Dark Mode Pre-init -->
     <script>
@@ -239,37 +236,8 @@ try {
         })();
     </script>
 
-    <!-- Custom Tailwind Config -->
-    <script>
-        tailwind.config = {
-            darkMode: "class",
-            theme: {
-                extend: {
-                    colors: {
-                        "primary": "var(--primary)",
-                        "primary-dark": "var(--primary-dark)",
-                        "background-light": "#f6f6f8",
-                        "background-dark": "#121212",
-                        "card-dark": "#1e1e1e",
-                    },
-                    fontFamily: {
-                        "display": ["Roboto Condensed", "sans-serif"]
-                    },
-                    borderRadius: {
-                        "DEFAULT": "0.25rem",
-                        "lg": "0.5rem",
-                        "xl": "0.75rem",
-                        "2xl": "1rem",
-                        "3xl": "1.5rem",
-                        "full": "9999px"
-                    },
-                },
-            },
-        }
-    </script>
-
     <!-- Custom Styles -->
-    <link rel="stylesheet" href="assets/css/pwa-style.css?v=<?= time() ?>">
+    <link rel="stylesheet" href="assets/css/pwa-style.css?v=<?= filemtime(__DIR__ . '/assets/css/pwa-style.css') ?>">
     <?php
     // Canlı destek ayar kontrolü
     $_pwaSettingsModel = new \App\Model\SettingsModel();
@@ -285,9 +253,14 @@ try {
     }
 
     if ($_pwaCanliDestekAktif): ?>
-        <link rel="stylesheet" href="assets/css/pwa-chat.css?v=<?= time() ?>">
+        <link rel="stylesheet" href="assets/css/pwa-chat.css?v=<?= filemtime(__DIR__ . '/assets/css/pwa-chat.css') ?>">
     <?php endif; ?>
-    <link rel="canonical" href="https://www.personel.ersantr.com/index.php" />  
+
+    <!-- Tailwind CSS (derlenmiş statik build - rebuild-tailwind.sh) -->
+    <!-- pwa-style.css/pwa-chat.css'ten SONRA yüklenmeli: aynı özgüllükteki .quick-action, .neon-* vb.
+         özel class'ları Tailwind utility'lerinin ezmemesi için (CDN'in eski davranışıyla aynı sıra). -->
+    <link rel="stylesheet" href="assets/css/tailwind-build.css?v=<?= filemtime(__DIR__ . '/assets/css/tailwind-build.css') ?>">
+    <link rel="canonical" href="https://www.personel.ersantr.com/index.php" />
 
 </head>
 
@@ -349,7 +322,7 @@ try {
             <span class="text-[10px] font-semibold">Talepler</span>
         </a>
         <?php
-        $moreActivePages = ['profil', 'etkinlikler', 'bordro', 'izin', 'km-bildirimleri'];
+        $moreActivePages = ['profil', 'etkinlikler', 'bordro', 'izin', 'km-bildirimleri', 'ihbar'];
         $isZimmetInBottomNav = !(($isEndeksOkuma && $isEkipSefi) || $isKesmeAcma);
         // Zimmetler zaten bottom nav'da gösteriliyorsa diğer menüde highlight etme
         if (!$isZimmetInBottomNav) {
@@ -419,6 +392,14 @@ try {
                         <span class="material-symbols-outlined text-indigo-600 text-lg">support_agent</span>
                     </div>
                     <span class="font-medium text-slate-900 dark:text-white text-sm">Yardım & Destek</span>
+                    <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
+                </a>
+                <a href="?page=ihbar"
+                    class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'ihbar' ? 'bg-primary/10' : ''; ?>">
+                    <div class="w-9 h-9 rounded-lg bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                        <span class="material-symbols-outlined text-red-600 text-lg">campaign</span>
+                    </div>
+                    <span class="font-medium text-slate-900 dark:text-white text-sm">İhbar Yönetimi</span>
                     <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
                 </a>
 
@@ -620,10 +601,10 @@ try {
     <!-- Scripts -->
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-    <script src="assets/js/pwa-app.js?v=<?= time() ?>"></script>
+    <script src="assets/js/pwa-app.js?v=<?= filemtime(__DIR__ . '/assets/js/pwa-app.js') ?>"></script>
     <script src="assets/js/notification-helper.js"></script>
     <?php if ($_pwaCanliDestekAktif): ?>
-        <script src="assets/js/pwa-chat.js?v=<?= time() ?>"></script>
+        <script src="assets/js/pwa-chat.js?v=<?= filemtime(__DIR__ . '/assets/js/pwa-chat.js') ?>"></script>
     <?php endif; ?>
 
     <!-- More Menu Scripts -->
@@ -755,6 +736,7 @@ try {
             modal.classList.add('translate-y-full');
             setTimeout(() => {
                 modal.style.display = 'none';
+                modal.classList.remove('ihbar-form-modal');
                 document.getElementById('pwa-full-modal-content').innerHTML = ''; // memory clean
             }, 300);
         }

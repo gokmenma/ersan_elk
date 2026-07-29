@@ -401,6 +401,22 @@ use App\Helper\Helper;
                     <span class="material-symbols-outlined text-5xl text-white">inventory_2</span>
                 </div>
             </a>
+
+            <a href="?page=ihbar"
+                class="quick-action group border-2 neon-red bg-gradient-to-br from-red-500 to-red-700 p-4 transition-all active:scale-95 w-[140px] flex-shrink-0 snap-start">
+                <div
+                    class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-2.5 shadow-inner">
+                    <span class="material-symbols-outlined text-white text-xl filled">campaign</span>
+                </div>
+                <div>
+                    <h3 class="font-bold text-[13px] text-white">İhbar Yap</h3>
+                    <p class="text-[9px] text-red-100/80 font-medium">Kaçak Elektrik İhbarı</p>
+                </div>
+                <div
+                    class="absolute -right-3 -bottom-3 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+                    <span class="material-symbols-outlined text-5xl text-white">campaign</span>
+                </div>
+            </a>
         </div>
     </section>
 

@@ -265,12 +265,21 @@ class Form
     }
 
     //Type File
-    public static function FormFileInput($name, $label = null, $icon = 'file', $class = "form-control", $required = false)
+    public static function FormFileInput(
+        $name,
+        $label = null,
+        $icon = 'file',
+        $class = "form-control",
+        $required = false,
+        $attributes = '',
+        $id = null
+    )
     {
+        $elementId = $id ?? $name;
         return '
     <div class="form-floating form-floating-custom">
-        <input type="file" class="' . htmlspecialchars($class) . '" id="' . htmlspecialchars($name) . '" name="' . htmlspecialchars($name) . '" ' . ($required ? 'required' : '') . '>
-        <label for="' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
+        <input type="file" class="' . htmlspecialchars($class) . '" id="' . htmlspecialchars($elementId) . '" name="' . htmlspecialchars($name) . '" ' . ($required ? 'required' : '') . ' ' . $attributes . '>
+        <label for="' . htmlspecialchars($elementId) . '">' . htmlspecialchars($label ?? '') . '</label>
         <div class="form-floating-icon">
             ' . (!empty($icon) ? ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') : '') . '
         </div>

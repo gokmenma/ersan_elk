@@ -1,0 +1,10 @@
+# Build araçlarına ve kaynak dosyalarına doğrudan HTTP erişimini engelle
+<Files "tailwind.config.js">
+    Require all denied
+</Files>
+<Files "rebuild-tailwind.sh">
+    Require all denied
+</Files>
+<Files "tailwindcss">
+    Require all denied
+</Files>

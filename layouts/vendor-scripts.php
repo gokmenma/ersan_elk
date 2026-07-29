@@ -25,6 +25,10 @@ $page = $_GET['p'] ?? 'home';
     <?php } ?>
 <?php } ?>
 
+<?php if ($page == 'ihbar/list') { ?>
+    <script src="assets/libs/apexcharts/apexcharts.min.js"></script>
+<?php } ?>
+
 
 
 
@@ -176,7 +180,8 @@ if ($page == "hakedisler/hakedis-detay") {
     $page == "formlar/list" || $page == "formlar/manage" ||
     $page == "yardim/list" || $page == "yardim/user-list" ||
     $page == "bildirim/list" ||
-    $page == "raporlar/riskli-islemler"
+    $page == "raporlar/riskli-islemler" ||
+    $page == "ihbar/list"
 
 
 ) { ?>

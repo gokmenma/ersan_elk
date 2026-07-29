@@ -54,16 +54,25 @@ if ($personel_id > 0) {
         $_SESSION['firma_id'] = $personel->firma_id;
     }
 
-    // Okuma Ekip Şefi mi? (Kısıtlama için)
-    $isOkumaSefi = false;
-    if (isset($personel) && stripos($personel->departman ?? '', 'Endeks Okuma') !== false) {
-        $ekipGecmisi = $PersonelModel->getEkipGecmisi($personel_id);
-        foreach ($ekipGecmisi as $g) {
-            if (($g->ekip_sefi_mi ?? 0) == 1 && (empty($g->bitis_tarihi) || $g->bitis_tarihi >= date('Y-m-d'))) {
-                $isOkumaSefi = true;
-                break;
+    // Okuma Ekip Şefi mi? (Kısıtlama için) - sadece ihtiyaç duyulunca hesaplanır
+    function isOkumaSefiMi(PersonelModel $PersonelModel, $personel, int $personel_id): bool
+    {
+        static $cached = null;
+        if ($cached !== null) {
+            return $cached;
+        }
+
+        $cached = false;
+        if (isset($personel) && stripos($personel->departman ?? '', 'Endeks Okuma') !== false) {
+            $ekipGecmisi = $PersonelModel->getEkipGecmisi($personel_id);
+            foreach ($ekipGecmisi as $g) {
+                if (($g->ekip_sefi_mi ?? 0) == 1 && (empty($g->bitis_tarihi) || $g->bitis_tarihi >= date('Y-m-d'))) {
+                    $cached = true;
+                    break;
+                }
             }
         }
+        return $cached;
     }
 }
 
@@ -588,7 +597,7 @@ try {
             // Okuma Şefleri için 1 Nisan 2026 öncesi kesme açma işlerini gizleyelim
             $cutoffDate = '2026-04-01';
             $cutoffFilter = "";
-            if ($isOkumaSefi) {
+            if (isOkumaSefiMi($PersonelModel, $personel, $personel_id)) {
                 $cutoffFilter = " AND (tn.rapor_sekmesi != 'kesme' OR t.tarih >= '$cutoffDate')";
             }
 
@@ -2529,7 +2538,7 @@ try {
             $raporSekmesi = $_POST['rapor_sekmesi'] ?? '';
 
             // Okuma Şefleri için 1 Nisan 2026 kısıtlaması (Kesme-Açma İşleri için)
-            if ($isOkumaSefi && $raporSekmesi === 'kesme') {
+            if (isOkumaSefiMi($PersonelModel, $personel, $personel_id) && $raporSekmesi === 'kesme') {
                 $cutoffDate = '2026-04-01';
                 if (empty($startDate) || $startDate < $cutoffDate) {
                     $startDate = $cutoffDate;
@@ -4385,6 +4394,278 @@ try {
                 'last_km' => $lastKm,
                 'exists' => $alreadyExists
             ]);
+            break;
+
+        // ===== İhbar İşlemleri =====
+        case 'ihbarFoto':
+            $fotoId = (int) ($_GET['foto_id'] ?? 0);
+            $IhbarModel = new App\Model\IhbarModel();
+            $stmt = $IhbarModel->getDb()->prepare(
+                "SELECT f.dosya_yolu
+                 FROM ihbar_fotograflari f
+                 INNER JOIN ihbarlar i ON i.id = f.ihbar_id
+                 LEFT JOIN ihbar_atamalar a ON a.ihbar_id = i.id AND a.personel_id = ?
+                 WHERE f.id = ?
+                   AND i.silinme_tarihi IS NULL
+                   AND (i.bildiren_personel_id = ? OR a.personel_id IS NOT NULL)
+                 LIMIT 1"
+            );
+            $stmt->execute([(int) $personel_id, $fotoId, (int) $personel_id]);
+            $dosyaYolu = $stmt->fetchColumn();
+            $uploadRoot = realpath(dirname(dirname(__DIR__)) . '/uploads/ihbar');
+            $dosya = $dosyaYolu
+                ? realpath(dirname(dirname(__DIR__)) . '/' . ltrim($dosyaYolu, '/'))
+                : false;
+
+            if (!$uploadRoot || !$dosya || strpos($dosya, $uploadRoot . DIRECTORY_SEPARATOR) !== 0 || !is_file($dosya)) {
+                http_response_code(404);
+                exit;
+            }
+
+            header_remove('Content-Type');
+            header('Content-Type: ' . (mime_content_type($dosya) ?: 'application/octet-stream'));
+            header('Content-Length: ' . filesize($dosya));
+            header('Cache-Control: private, max-age=86400');
+            readfile($dosya);
+            exit;
+
+        case 'createIhbar':
+            $IhbarModel = new App\Model\IhbarModel();
+
+            $aciklama = trim($_POST['aciklama'] ?? '');
+            if ($aciklama === '') {
+                throw new Exception('Açıklama zorunludur.');
+            }
+
+            $ihbarId = $IhbarModel->create([
+                'ilce' => trim($_POST['ilce'] ?? '') ?: null,
+                'mahalle' => trim($_POST['mahalle'] ?? '') ?: null,
+                'telefon' => trim($_POST['telefon'] ?? '') ?: null,
+                'aciklama' => $aciklama,
+                'bildiren_personel_id' => $personel_id,
+            ]);
+
+            // Fotoğraf yükleme (en fazla 4 adet)
+            if (!empty($_FILES['fotograflar']) && !empty($_FILES['fotograflar']['name'][0])) {
+                $uploadDir = dirname(dirname(__DIR__)) . '/uploads/ihbar/';
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+
+                $allowedExt = ['jpg', 'jpeg', 'png', 'webp'];
+                $maxFiles = min(count($_FILES['fotograflar']['name']), 4);
+
+                for ($i = 0; $i < $maxFiles; $i++) {
+                    if (($_FILES['fotograflar']['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                        continue;
+                    }
+
+                    $ext = strtolower(pathinfo($_FILES['fotograflar']['name'][$i], PATHINFO_EXTENSION));
+                    if (!in_array($ext, $allowedExt, true)) {
+                        continue;
+                    }
+
+                    $newName = 'ihbar_' . uniqid() . '_' . $i . '.' . $ext;
+                    if (move_uploaded_file($_FILES['fotograflar']['tmp_name'][$i], $uploadDir . $newName)) {
+                        $IhbarModel->addFotograf($ihbarId, 'uploads/ihbar/' . $newName);
+                    }
+                }
+            }
+
+            // Bildirim: "İhbar Yönetimi" yetkisine sahip kullanıcılara (Kaçak Kontrol Sorumlusu vb.)
+            try {
+                $sorumlular = pwaGetUsersByPermissionName('ihbar/list');
+                $personelAdi = $personel->adi_soyadi ?? 'Personel';
+
+                foreach ($sorumlular as $sorumlu) {
+                    $bildirimModel = new BildirimModel();
+                    $bildirimModel->createNotification(
+                        (int) $sorumlu->id,
+                        '📣 Yeni İhbar',
+                        $personelAdi . ' tarafından yeni bir ihbar bildirildi.',
+                        'index.php?p=ihbar/list',
+                        'alert-triangle',
+                        'danger'
+                    );
+
+                    try {
+                        $pushService = new PushNotificationService();
+                        $pushService->sendToUser((int) $sorumlu->id, [
+                            'title' => '📣 Yeni İhbar',
+                            'body' => $personelAdi . ' tarafından yeni bir ihbar bildirildi.',
+                            'url' => 'index.php?p=ihbar/list'
+                        ], true);
+                    } catch (Exception $e) {
+                        error_log('İhbar push bildirim hatası: ' . $e->getMessage());
+                    }
+                }
+            } catch (Exception $e) {
+                error_log('İhbar bildirim süreci hatası: ' . $e->getMessage());
+            }
+
+            response(true, ['id' => $ihbarId], 'İhbarınız başarıyla kaydedildi.');
+            break;
+
+        case 'listIhbarlarim':
+            $IhbarModel = new App\Model\IhbarModel();
+            $rows = $IhbarModel->getPersonelinIhbarlari($personel_id);
+
+            $data = array_map(function ($item) {
+                return [
+                    'id' => (int) $item->id,
+                    'ilce' => $item->ilce,
+                    'mahalle' => $item->mahalle,
+                    'telefon' => $item->telefon,
+                    'aciklama' => $item->aciklama,
+                    'durum' => $item->durum,
+                    'atanan_ekip_adi' => $item->atanan_ekip_adi,
+                    'tarih' => date('d.m.Y H:i', strtotime($item->created_at)),
+                ];
+            }, $rows);
+
+            response(true, $data);
+            break;
+
+        case 'updateIhbar':
+            $IhbarModel = new App\Model\IhbarModel();
+            $id = (int) ($_POST['id'] ?? 0);
+            $aciklama = trim($_POST['aciklama'] ?? '');
+
+            if ($aciklama === '') {
+                throw new Exception('Açıklama zorunludur.');
+            }
+
+            $IhbarModel->updateByBildiren($id, (int) $personel_id, [
+                'ilce' => trim($_POST['ilce'] ?? '') ?: null,
+                'mahalle' => trim($_POST['mahalle'] ?? '') ?: null,
+                'telefon' => trim($_POST['telefon'] ?? '') ?: null,
+                'aciklama' => $aciklama,
+            ]);
+
+            // Fotoğraf ekleme (toplamda en fazla 4 adet olacak şekilde)
+            if (!empty($_FILES['fotograflar']) && !empty($_FILES['fotograflar']['name'][0])) {
+                $mevcutFotoSayisi = count($IhbarModel->getFotograflar($id));
+                $kalanKota = max(0, 4 - $mevcutFotoSayisi);
+
+                if ($kalanKota > 0) {
+                    $uploadDir = dirname(dirname(__DIR__)) . '/uploads/ihbar/';
+                    if (!is_dir($uploadDir)) {
+                        mkdir($uploadDir, 0755, true);
+                    }
+
+                    $allowedExt = ['jpg', 'jpeg', 'png', 'webp'];
+                    $maxFiles = min(count($_FILES['fotograflar']['name']), $kalanKota);
+
+                    for ($i = 0; $i < $maxFiles; $i++) {
+                        if (($_FILES['fotograflar']['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                            continue;
+                        }
+
+                        $ext = strtolower(pathinfo($_FILES['fotograflar']['name'][$i], PATHINFO_EXTENSION));
+                        if (!in_array($ext, $allowedExt, true)) {
+                            continue;
+                        }
+
+                        $newName = 'ihbar_' . uniqid() . '_' . $i . '.' . $ext;
+                        if (move_uploaded_file($_FILES['fotograflar']['tmp_name'][$i], $uploadDir . $newName)) {
+                            $IhbarModel->addFotograf($id, 'uploads/ihbar/' . $newName);
+                        }
+                    }
+                }
+            }
+
+            response(true, ['id' => $id], 'İhbarınız güncellendi.');
+            break;
+
+        case 'listGelenIhbarlar':
+            $IhbarModel = new App\Model\IhbarModel();
+            $rows = $IhbarModel->getPersoneleAtananIhbarlar($personel_id);
+
+            $data = array_map(function ($item) {
+                return [
+                    'id' => (int) $item->id,
+                    'ilce' => $item->ilce,
+                    'mahalle' => $item->mahalle,
+                    'aciklama' => $item->aciklama,
+                    'durum' => $item->durum,
+                    'atanan_ekip_adi' => null,
+                    'tarih' => date('d.m.Y H:i', strtotime($item->created_at)),
+                ];
+            }, $rows);
+
+            response(true, $data);
+            break;
+
+        case 'ihbarDetay':
+            $IhbarModel = new App\Model\IhbarModel();
+            $id = (int) ($_POST['id'] ?? 0);
+            $ihbar = $IhbarModel->getById($id);
+
+            if (!$ihbar) {
+                throw new Exception('Kayıt bulunamadı.');
+            }
+
+            $fotograflar = array_map(function ($f) {
+                return [
+                    'id' => (int) $f->id,
+                    'url' => 'api.php?action=ihbarFoto&foto_id=' . (int) $f->id,
+                ];
+            }, $ihbar->fotograflar);
+
+            $tarihce = array_map(function ($t) {
+                return [
+                    'aciklama' => $t->aciklama,
+                    'ekleyen_adi' => $t->ekleyen_adi,
+                    'tarih' => date('d.m.Y H:i', strtotime($t->created_at)),
+                ];
+            }, $ihbar->tarihce);
+
+            response(true, [
+                'id' => (int) $ihbar->id,
+                'ilce' => $ihbar->ilce,
+                'mahalle' => $ihbar->mahalle,
+                'telefon' => $ihbar->telefon,
+                'aciklama' => $ihbar->aciklama,
+                'durum' => $ihbar->durum,
+                'tutanak_no' => $ihbar->tutanak_no,
+                'olumsuz_sebep' => $ihbar->olumsuz_sebep,
+                'fotograflar' => $fotograflar,
+                'tarihce' => $tarihce,
+            ]);
+            break;
+
+        case 'ihbarNotEkle':
+            $IhbarModel = new App\Model\IhbarModel();
+            $id = (int) ($_POST['id'] ?? 0);
+            $aciklama = trim($_POST['aciklama'] ?? '');
+
+            if ($aciklama === '') {
+                throw new Exception('Not boş olamaz.');
+            }
+
+            $atananIds = $IhbarModel->getAtananPersonelIds($id);
+            if (!in_array((int) $personel_id, $atananIds, true)) {
+                throw new Exception('Bu ihbara not ekleme yetkiniz yok.');
+            }
+
+            $IhbarModel->addNote($id, $aciklama, 'personel', (int) $personel_id);
+            response(true, null, 'Not eklendi.');
+            break;
+
+        case 'ihbarSonuclandir':
+            $IhbarModel = new App\Model\IhbarModel();
+            $id = (int) ($_POST['id'] ?? 0);
+            $durum = $_POST['durum'] ?? '';
+            $tutanakNo = trim($_POST['tutanak_no'] ?? '') ?: null;
+            $sebep = trim($_POST['sebep'] ?? '') ?: null;
+
+            $atananIds = $IhbarModel->getAtananPersonelIds($id);
+            if (!in_array((int) $personel_id, $atananIds, true)) {
+                throw new Exception('Bu ihbarı sonuçlandırma yetkiniz yok.');
+            }
+
+            $IhbarModel->closeSonuc($id, $durum, $tutanakNo, $sebep, 'personel', (int) $personel_id);
+            response(true, null, 'İhbar sonuçlandırıldı.');
             break;
 
         default:

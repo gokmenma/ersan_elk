@@ -3,12 +3,13 @@
  * Offline desteği ve önbellekleme
  */
 
-const CACHE_NAME = "personel-pwa-v6";
+const CACHE_NAME = "personel-pwa-v7";
 const OFFLINE_URL = "offline.html";
 
 // Önbelleğe alınacak dosyalar
 const PRECACHE_ASSETS = [
   "./assets/css/pwa-style.css",
+  "./assets/css/tailwind-build.css",
   "./assets/js/pwa-app.js",
   "./manifest.json",
   "./offline.html",
