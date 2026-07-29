@@ -1,7 +1,7 @@
 <?php
 /**
  * Personel PWA - İhbar Sayfası
- * Kaçak elektrik ihbarı bildirimi ve takibi
+ * Kaçak Su ihbarı bildirimi ve takibi
  */
 ?>
 
@@ -13,7 +13,7 @@
             <div>
                 <span class="bg-white/20 backdrop-blur-md border border-white/10 text-white rounded-lg px-3 py-1 text-[11px] font-semibold tracking-wide shadow-sm">KAÇAK KONTROL</span>
                 <h1 class="text-white text-xl font-black tracking-tight mt-2">İhbarlar</h1>
-                <p class="text-red-100/80 text-xs font-medium mt-0.5">Kaçak elektrik ihbarlarını takip edin</p>
+                <p class="text-red-100/80 text-xs font-medium mt-0.5">Kaçak Su ihbarlarını takip edin</p>
             </div>
             <button onclick="openYeniIhbarModal()"
                 class="flex-shrink-0 flex items-center gap-1.5 px-4 py-2.5 text-sm font-bold rounded-2xl bg-white text-red-700 shadow-lg active:scale-95 transition-transform">
@@ -254,7 +254,7 @@
             html: `
                 <div class="px-5 pt-8 pb-8">
                     <h1 class="text-xl font-black text-slate-900 dark:text-white">${editData ? 'İhbarı Güncelle' : 'İhbar Bildir'}</h1>
-                    <p class="text-sm text-slate-500 mt-1 mb-6">${editData ? 'Herhangi bir işlem yapılmadan önce bilgileri düzenleyebilirsiniz.' : 'Kaçak elektrik kullanımı ihbarınızı bildirin.'}</p>
+                    <p class="text-sm text-slate-500 mt-1 mb-6">${editData ? 'Herhangi bir işlem yapılmadan önce bilgileri düzenleyebilirsiniz.' : 'Kaçak Su kullanımı ihbarınızı bildirin.'}</p>
 
                     <form id="ihbar-form" class="space-y-4">
                         <div>

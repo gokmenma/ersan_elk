@@ -410,7 +410,7 @@ use App\Helper\Helper;
                 </div>
                 <div>
                     <h3 class="font-bold text-[13px] text-white">İhbar Yap</h3>
-                    <p class="text-[9px] text-red-100/80 font-medium">Kaçak Elektrik İhbarı</p>
+                    <p class="text-[9px] text-red-100/80 font-medium">Kaçak Su İhbarı</p>
                 </div>
                 <div
                     class="absolute -right-3 -bottom-3 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">

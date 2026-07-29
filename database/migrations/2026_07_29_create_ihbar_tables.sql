@@ -1,4 +1,4 @@
--- İhbar Sistemi (Kaçak Elektrik/Su İhbarı) - Tablo Oluşturma
+-- İhbar Sistemi (Kaçak Su/Su İhbarı) - Tablo Oluşturma
 -- Bu betiği veritabanında çalıştırarak ihbar sistemine ait tabloları oluşturun.
 
 CREATE TABLE IF NOT EXISTS `ihbarlar` (

@@ -3,7 +3,7 @@
 
 -- 1) Yetki (permission) kaydı - menu_link ile aynı auth_name kullanılır (MenuModel eşleşmesi için)
 INSERT INTO permissions (name, description, auth_name, group_name, permission_level, is_required, is_active)
-SELECT 'İhbar Yönetimi', 'Kaçak elektrik ihbarlarını görüntüleme ve yönetme yetkisi', 'ihbar/list', 'İş Takip Yönetim', 1, 0, 1
+SELECT 'İhbar Yönetimi', 'Kaçak Su ihbarlarını görüntüleme ve yönetme yetkisi', 'ihbar/list', 'İş Takip Yönetim', 1, 0, 1
 FROM dual
 WHERE NOT EXISTS (
     SELECT 1 FROM permissions WHERE auth_name = 'ihbar/list'
