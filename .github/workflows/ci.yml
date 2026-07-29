@@ -20,6 +20,7 @@ jobs:
         username: ${{ secrets.FTP_USERNAME }}
         password: ${{ secrets.FTP_PASSWORD }}
         server-dir: /repositories/ersan_elk/
+        timeout: 60000 # 30sn yerine 60sn (milisaniye cinsinden)
         # Büyük ve gereksiz klasörleri hariç tutuyoruz (Timeout engellemek için)
         # NOT: .env hariç tutulur -> sunucudaki mevcut .env SiLiNMEZ ve üzerine yazılmaz
         exclude: |
