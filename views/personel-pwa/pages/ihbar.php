@@ -270,6 +270,24 @@
                             <input type="tel" name="telefon" class="form-input" placeholder="05XX XXX XX XX" value="${editData?.telefon ?? ''}">
                         </div>
                         <div>
+                            <label class="form-label">Komşu Abone No</label>
+                            <input type="text" name="komsu_abone_no" class="form-input" placeholder="Abone numarasını yazın" value="${editData?.komsu_abone_no ?? ''}">
+                        </div>
+                        <div>
+                            <label class="form-label">Konum Bilgisi</label>
+                            <input type="hidden" name="konum_lat" id="ihbar-konum-lat" value="${editData?.konum_lat ?? ''}">
+                            <input type="hidden" name="konum_lng" id="ihbar-konum-lng" value="${editData?.konum_lng ?? ''}">
+                            <input type="hidden" name="konum_dogruluk" id="ihbar-konum-dogruluk" value="${editData?.konum_dogruluk ?? ''}">
+                            <button type="button" id="ihbar-konum-btn" onclick="ihbarKonumAl()"
+                                class="w-full min-h-[52px] px-4 rounded-xl border border-primary/30 bg-primary/5 text-primary font-bold text-sm flex items-center justify-center gap-2 active:scale-[.98] transition-transform">
+                                <span class="material-symbols-outlined">my_location</span>
+                                <span id="ihbar-konum-text">${editData?.konum_lat && editData?.konum_lng ? 'Konum eklendi · Yenilemek için dokunun' : 'Mevcut Konumumu Ekle'}</span>
+                            </button>
+                            <p id="ihbar-konum-durum" class="text-xs text-slate-500 mt-2">
+                                ${editData?.konum_lat && editData?.konum_lng ? `${Number(editData.konum_lat).toFixed(6)}, ${Number(editData.konum_lng).toFixed(6)}` : 'Konum izni yalnızca bu ihbar için kullanılacaktır.'}
+                            </p>
+                        </div>
+                        <div>
                             <label class="form-label">Açıklama</label>
                             <textarea name="aciklama" class="form-input min-h-[100px]"
                                 placeholder="İhbar detaylarını yazınız..." required>${editData?.aciklama ?? ''}</textarea>
@@ -362,6 +380,45 @@
         renderIhbarFotoPreview();
     }
 
+    function ihbarKonumAl() {
+        const button = document.getElementById('ihbar-konum-btn');
+        const text = document.getElementById('ihbar-konum-text');
+        const durum = document.getElementById('ihbar-konum-durum');
+
+        if (!navigator.geolocation) {
+            Alert.error('Konum Alınamadı', 'Cihazınız konum paylaşımını desteklemiyor.');
+            return;
+        }
+
+        button.disabled = true;
+        text.textContent = 'Konum alınıyor...';
+        durum.textContent = 'Lütfen konum izni isteğini onaylayın.';
+
+        navigator.geolocation.getCurrentPosition(position => {
+            const { latitude, longitude, accuracy } = position.coords;
+            document.getElementById('ihbar-konum-lat').value = latitude.toFixed(7);
+            document.getElementById('ihbar-konum-lng').value = longitude.toFixed(7);
+            document.getElementById('ihbar-konum-dogruluk').value = accuracy.toFixed(2);
+            text.textContent = 'Konum Eklendi';
+            durum.textContent = `${latitude.toFixed(6)}, ${longitude.toFixed(6)} · Yaklaşık ${Math.round(accuracy)} m doğruluk`;
+            button.disabled = false;
+        }, error => {
+            const messages = {
+                1: 'Konum izni verilmedi. Telefon ayarlarından konum iznini açabilirsiniz.',
+                2: 'Cihaz konumu belirleyemedi. Lütfen tekrar deneyin.',
+                3: 'Konum alınırken zaman aşımı oluştu.'
+            };
+            text.textContent = 'Mevcut Konumumu Ekle';
+            durum.textContent = messages[error.code] || 'Konum alınamadı.';
+            button.disabled = false;
+            Alert.warning('Konum Alınamadı', durum.textContent);
+        }, {
+            enableHighAccuracy: true,
+            timeout: 15000,
+            maximumAge: 30000
+        });
+    }
+
     async function submitYeniIhbar(form) {
         const btn = document.getElementById('ihbar-submit-btn');
         const btnText = document.getElementById('ihbar-submit-text');
@@ -379,25 +436,57 @@
             formData.append('ilce', form.querySelector('[name=ilce]').value);
             formData.append('mahalle', form.querySelector('[name=mahalle]').value);
             formData.append('telefon', form.querySelector('[name=telefon]').value);
+            formData.append('komsu_abone_no', form.querySelector('[name=komsu_abone_no]').value);
             formData.append('aciklama', form.querySelector('[name=aciklama]').value);
+            formData.append('konum_lat', form.querySelector('[name=konum_lat]').value);
+            formData.append('konum_lng', form.querySelector('[name=konum_lng]').value);
+            formData.append('konum_dogruluk', form.querySelector('[name=konum_dogruluk]').value);
 
             ihbarSeciliFotolar.forEach(file => {
                 formData.append('fotograflar[]', file);
             });
 
+            const requestSummary = {
+                action: isEdit ? 'updateIhbar' : 'createIhbar',
+                photoCount: ihbarSeciliFotolar.length,
+                totalPhotoBytes: ihbarSeciliFotolar.reduce((total, file) => total + file.size, 0)
+            };
+            console.info('[İhbar] Gönderim başlatıldı', requestSummary);
+
             const response = await fetch('api.php', { method: 'POST', body: formData });
-            const result = await response.json();
+            const requestId = response.headers.get('X-Request-Id');
+            const responseText = await response.text();
+            let result;
+
+            try {
+                result = JSON.parse(responseText);
+            } catch (parseError) {
+                console.error('[İhbar] API JSON olmayan yanıt döndürdü', {
+                    requestId,
+                    status: response.status,
+                    response: responseText.slice(0, 1000),
+                    request: requestSummary
+                });
+                throw new Error(`Sunucudan geçersiz yanıt alındı${requestId ? ` (Kod: ${requestId})` : ''}`);
+            }
 
             if (result.success) {
+                console.info('[İhbar] Gönderim tamamlandı', { requestId, result });
                 closePwaFullModal();
                 await Alert.success('Başarılı', result.message || (isEdit ? 'İhbarınız güncellendi.' : 'İhbarınız kaydedildi.'));
                 loadIhbarlar();
             } else {
+                console.error('[İhbar] API işlemi reddetti', {
+                    requestId,
+                    status: response.status,
+                    result,
+                    request: requestSummary
+                });
                 Alert.error('Hata', result.message || result.error || 'Bir hata oluştu.');
             }
         } catch (error) {
             console.error('İhbar gönderim hatası:', error);
-            Alert.error('Bağlantı Hatası', 'Sunucuya ulaşılamadı.');
+            Alert.error('Gönderim Hatası', error.message || 'Sunucuya ulaşılamadı.');
         } finally {
             btn.disabled = false;
             btnText.innerText = isEdit ? 'GÜNCELLE' : 'İHBARI GÖNDER';
@@ -446,6 +535,12 @@
                         <p class="text-sm text-slate-700 dark:text-slate-300">${d.aciklama || '-'}</p>
                     </div>
                     ${d.telefon ? `<p class="text-xs text-slate-500">Telefon: <span class="text-slate-800 dark:text-slate-200 font-medium">${d.telefon}</span></p>` : ''}
+                    ${d.komsu_abone_no ? `<p class="text-xs text-slate-500">Komşu Abone No: <span class="text-slate-800 dark:text-slate-200 font-medium">${d.komsu_abone_no}</span></p>` : ''}
+                    ${d.konum_lat && d.konum_lng ? `
+                        <a href="https://www.google.com/maps?q=${d.konum_lat},${d.konum_lng}" target="_blank"
+                            class="w-full p-3 rounded-xl border border-primary/20 bg-primary/5 text-primary text-sm font-semibold flex items-center justify-center gap-2">
+                            <span class="material-symbols-outlined text-lg">map</span>Konumu Haritada Aç
+                        </a>` : ''}
                     <div>
                         <p class="text-xs text-slate-500 mb-2">Fotoğraflar</p>
                         <div class="flex flex-wrap gap-2">${fotoHtml}</div>

@@ -151,7 +151,11 @@ try {
                 'ilce' => trim($_POST['ilce'] ?? '') ?: null,
                 'mahalle' => trim($_POST['mahalle'] ?? '') ?: null,
                 'telefon' => trim($_POST['telefon'] ?? '') ?: null,
+                'komsu_abone_no' => trim($_POST['komsu_abone_no'] ?? '') ?: null,
                 'aciklama' => $aciklama,
+                'konum_lat' => is_numeric($_POST['konum_lat'] ?? null) ? (float) $_POST['konum_lat'] : null,
+                'konum_lng' => is_numeric($_POST['konum_lng'] ?? null) ? (float) $_POST['konum_lng'] : null,
+                'konum_dogruluk' => is_numeric($_POST['konum_dogruluk'] ?? null) ? (float) $_POST['konum_dogruluk'] : null,
                 'olusturan_user_id' => $currentUserId,
             ]);
 
@@ -179,7 +183,11 @@ try {
                 'ilce' => trim($_POST['ilce'] ?? '') ?: null,
                 'mahalle' => trim($_POST['mahalle'] ?? '') ?: null,
                 'telefon' => trim($_POST['telefon'] ?? '') ?: null,
+                'komsu_abone_no' => trim($_POST['komsu_abone_no'] ?? '') ?: null,
                 'aciklama' => $aciklama,
+                'konum_lat' => is_numeric($_POST['konum_lat'] ?? null) ? (float) $_POST['konum_lat'] : null,
+                'konum_lng' => is_numeric($_POST['konum_lng'] ?? null) ? (float) $_POST['konum_lng'] : null,
+                'konum_dogruluk' => is_numeric($_POST['konum_dogruluk'] ?? null) ? (float) $_POST['konum_dogruluk'] : null,
             ], $currentUserId);
 
             ihbarResponse(true, 'İhbar bilgileri güncellendi.', ['id' => $id]);

@@ -21,15 +21,19 @@ class IhbarModel extends Model
     public function create(array $data): int
     {
         $stmt = $this->db->prepare("INSERT INTO ihbarlar
-            (firma_id, ilce, mahalle, telefon, aciklama, durum, bildiren_personel_id, olusturan_user_id, created_at)
-            VALUES (:firma_id, :ilce, :mahalle, :telefon, :aciklama, 'yeni', :bildiren_personel_id, :olusturan_user_id, NOW())");
+            (firma_id, ilce, mahalle, telefon, komsu_abone_no, aciklama, konum_lat, konum_lng, konum_dogruluk, durum, bildiren_personel_id, olusturan_user_id, created_at)
+            VALUES (:firma_id, :ilce, :mahalle, :telefon, :komsu_abone_no, :aciklama, :konum_lat, :konum_lng, :konum_dogruluk, 'yeni', :bildiren_personel_id, :olusturan_user_id, NOW())");
 
         $stmt->execute([
             ':firma_id' => $this->firmaId(),
             ':ilce' => $data['ilce'] ?? null,
             ':mahalle' => $data['mahalle'] ?? null,
             ':telefon' => $data['telefon'] ?? null,
+            ':komsu_abone_no' => $data['komsu_abone_no'] ?? null,
             ':aciklama' => $data['aciklama'] ?? null,
+            ':konum_lat' => $data['konum_lat'] ?? null,
+            ':konum_lng' => $data['konum_lng'] ?? null,
+            ':konum_dogruluk' => $data['konum_dogruluk'] ?? null,
             ':bildiren_personel_id' => $data['bildiren_personel_id'] ?? null,
             ':olusturan_user_id' => $data['olusturan_user_id'] ?? null,
         ]);
@@ -72,12 +76,16 @@ class IhbarModel extends Model
             throw new \Exception('Bu ihbar için işlem başladığından artık güncellenemez.');
         }
 
-        $upd = $this->db->prepare("UPDATE ihbarlar SET ilce = ?, mahalle = ?, telefon = ?, aciklama = ? WHERE id = ?");
+        $upd = $this->db->prepare("UPDATE ihbarlar SET ilce = ?, mahalle = ?, telefon = ?, komsu_abone_no = ?, aciklama = ?, konum_lat = ?, konum_lng = ?, konum_dogruluk = ? WHERE id = ?");
         $upd->execute([
             $data['ilce'] ?? null,
             $data['mahalle'] ?? null,
             $data['telefon'] ?? null,
+            $data['komsu_abone_no'] ?? null,
             $data['aciklama'] ?? null,
+            $data['konum_lat'] ?? null,
+            $data['konum_lng'] ?? null,
+            $data['konum_dogruluk'] ?? null,
             $ihbarId,
         ]);
 
@@ -95,12 +103,16 @@ class IhbarModel extends Model
             throw new \Exception('Kayıt bulunamadı.');
         }
 
-        $upd = $this->db->prepare("UPDATE ihbarlar SET ilce = ?, mahalle = ?, telefon = ?, aciklama = ? WHERE id = ?");
+        $upd = $this->db->prepare("UPDATE ihbarlar SET ilce = ?, mahalle = ?, telefon = ?, komsu_abone_no = ?, aciklama = ?, konum_lat = ?, konum_lng = ?, konum_dogruluk = ? WHERE id = ?");
         $upd->execute([
             $data['ilce'] ?? null,
             $data['mahalle'] ?? null,
             $data['telefon'] ?? null,
+            $data['komsu_abone_no'] ?? null,
             $data['aciklama'] ?? null,
+            $data['konum_lat'] ?? null,
+            $data['konum_lng'] ?? null,
+            $data['konum_dogruluk'] ?? null,
             $ihbarId,
         ]);
 

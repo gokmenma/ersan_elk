@@ -28,6 +28,8 @@ use App\Helper\Security;
 
 // Oturum kontrolü (logout hariç)
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
+$pwaRequestId = bin2hex(random_bytes(6));
+header('X-Request-Id: ' . $pwaRequestId);
 
 $MailGonderService = new MailGonderService();
 
@@ -85,6 +87,65 @@ function response($success, $data = null, $message = '')
         'message' => $message
     ], JSON_UNESCAPED_UNICODE);
     exit;
+}
+
+function pwaIniBytes(string $value): int
+{
+    $value = trim($value);
+    if ($value === '') {
+        return 0;
+    }
+
+    $number = (float) $value;
+    $unit = strtolower(substr($value, -1));
+    return match ($unit) {
+        'g' => (int) ($number * 1024 * 1024 * 1024),
+        'm' => (int) ($number * 1024 * 1024),
+        'k' => (int) ($number * 1024),
+        default => (int) $number,
+    };
+}
+
+function pwaIhbarLog(string $event, array $context = []): void
+{
+    global $pwaRequestId, $action, $personel_id;
+
+    $logDir = dirname(dirname(__DIR__)) . '/logs';
+    if (!is_dir($logDir)) {
+        @mkdir($logDir, 0755, true);
+    }
+
+    $fileInfo = [];
+    foreach (($_FILES['fotograflar']['error'] ?? []) as $index => $error) {
+        $fileInfo[] = [
+            'index' => (int) $index,
+            'error' => (int) $error,
+            'size' => (int) ($_FILES['fotograflar']['size'][$index] ?? 0),
+            'type' => (string) ($_FILES['fotograflar']['type'][$index] ?? ''),
+            'extension' => strtolower(pathinfo((string) ($_FILES['fotograflar']['name'][$index] ?? ''), PATHINFO_EXTENSION)),
+        ];
+    }
+
+    $record = [
+        'time' => date('c'),
+        'request_id' => $pwaRequestId,
+        'event' => $event,
+        'action' => $action,
+        'personel_id' => (int) ($personel_id ?? 0),
+        'method' => $_SERVER['REQUEST_METHOD'] ?? '',
+        'content_length' => (int) ($_SERVER['CONTENT_LENGTH'] ?? 0),
+        'content_type' => $_SERVER['CONTENT_TYPE'] ?? '',
+        'post_max_size' => ini_get('post_max_size'),
+        'upload_max_filesize' => ini_get('upload_max_filesize'),
+        'files' => $fileInfo,
+        'context' => $context,
+    ];
+
+    @file_put_contents(
+        $logDir . '/personel_ihbar.log',
+        json_encode($record, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) . PHP_EOL,
+        FILE_APPEND | LOCK_EX
+    );
 }
 
 /**
@@ -4430,7 +4491,13 @@ try {
             exit;
 
         case 'createIhbar':
+            pwaIhbarLog('create_started', [
+                'post_keys' => array_keys($_POST),
+                'selected_file_count' => count($_FILES['fotograflar']['name'] ?? []),
+            ]);
             $IhbarModel = new App\Model\IhbarModel();
+            $ihbarDb = $IhbarModel->getDb();
+            $ihbarDb->beginTransaction();
 
             $aciklama = trim($_POST['aciklama'] ?? '');
             if ($aciklama === '') {
@@ -4441,11 +4508,17 @@ try {
                 'ilce' => trim($_POST['ilce'] ?? '') ?: null,
                 'mahalle' => trim($_POST['mahalle'] ?? '') ?: null,
                 'telefon' => trim($_POST['telefon'] ?? '') ?: null,
+                'komsu_abone_no' => trim($_POST['komsu_abone_no'] ?? '') ?: null,
                 'aciklama' => $aciklama,
+                'konum_lat' => is_numeric($_POST['konum_lat'] ?? null) ? (float) $_POST['konum_lat'] : null,
+                'konum_lng' => is_numeric($_POST['konum_lng'] ?? null) ? (float) $_POST['konum_lng'] : null,
+                'konum_dogruluk' => is_numeric($_POST['konum_dogruluk'] ?? null) ? (float) $_POST['konum_dogruluk'] : null,
                 'bildiren_personel_id' => $personel_id,
             ]);
 
             // Fotoğraf yükleme (en fazla 4 adet)
+            $uploadedPhotoCount = 0;
+            $selectedPhotoCount = count($_FILES['fotograflar']['name'] ?? []);
             if (!empty($_FILES['fotograflar']) && !empty($_FILES['fotograflar']['name'][0])) {
                 $uploadDir = dirname(dirname(__DIR__)) . '/uploads/ihbar/';
                 if (!is_dir($uploadDir)) {
@@ -4468,9 +4541,17 @@ try {
                     $newName = 'ihbar_' . uniqid() . '_' . $i . '.' . $ext;
                     if (move_uploaded_file($_FILES['fotograflar']['tmp_name'][$i], $uploadDir . $newName)) {
                         $IhbarModel->addFotograf($ihbarId, 'uploads/ihbar/' . $newName);
+                        $uploadedPhotoCount++;
                     }
                 }
             }
+
+            if ($selectedPhotoCount > 0 && $uploadedPhotoCount === 0) {
+                $ihbarDb->rollBack();
+                throw new Exception('Seçilen fotoğraflar yüklenemedi. Desteklenen formatlar: JPG, PNG ve WEBP.');
+            }
+
+            $ihbarDb->commit();
 
             // Bildirim: "İhbar Yönetimi" yetkisine sahip kullanıcılara (Kaçak Kontrol Sorumlusu vb.)
             try {
@@ -4503,7 +4584,12 @@ try {
                 error_log('İhbar bildirim süreci hatası: ' . $e->getMessage());
             }
 
-            response(true, ['id' => $ihbarId], 'İhbarınız başarıyla kaydedildi.');
+            pwaIhbarLog('create_completed', [
+                'ihbar_id' => $ihbarId,
+                'selected_photo_count' => $selectedPhotoCount,
+                'uploaded_photo_count' => $uploadedPhotoCount,
+            ]);
+            response(true, ['id' => $ihbarId, 'request_id' => $pwaRequestId], 'İhbarınız başarıyla kaydedildi.');
             break;
 
         case 'listIhbarlarim':
@@ -4516,7 +4602,11 @@ try {
                     'ilce' => $item->ilce,
                     'mahalle' => $item->mahalle,
                     'telefon' => $item->telefon,
+                    'komsu_abone_no' => $item->komsu_abone_no,
                     'aciklama' => $item->aciklama,
+                    'konum_lat' => $item->konum_lat,
+                    'konum_lng' => $item->konum_lng,
+                    'konum_dogruluk' => $item->konum_dogruluk,
                     'durum' => $item->durum,
                     'atanan_ekip_adi' => $item->atanan_ekip_adi,
                     'tarih' => date('d.m.Y H:i', strtotime($item->created_at)),
@@ -4539,7 +4629,11 @@ try {
                 'ilce' => trim($_POST['ilce'] ?? '') ?: null,
                 'mahalle' => trim($_POST['mahalle'] ?? '') ?: null,
                 'telefon' => trim($_POST['telefon'] ?? '') ?: null,
+                'komsu_abone_no' => trim($_POST['komsu_abone_no'] ?? '') ?: null,
                 'aciklama' => $aciklama,
+                'konum_lat' => is_numeric($_POST['konum_lat'] ?? null) ? (float) $_POST['konum_lat'] : null,
+                'konum_lng' => is_numeric($_POST['konum_lng'] ?? null) ? (float) $_POST['konum_lng'] : null,
+                'konum_dogruluk' => is_numeric($_POST['konum_dogruluk'] ?? null) ? (float) $_POST['konum_dogruluk'] : null,
             ]);
 
             // Fotoğraf ekleme (toplamda en fazla 4 adet olacak şekilde)
@@ -4625,7 +4719,11 @@ try {
                 'ilce' => $ihbar->ilce,
                 'mahalle' => $ihbar->mahalle,
                 'telefon' => $ihbar->telefon,
+                'komsu_abone_no' => $ihbar->komsu_abone_no,
                 'aciklama' => $ihbar->aciklama,
+                'konum_lat' => $ihbar->konum_lat,
+                'konum_lng' => $ihbar->konum_lng,
+                'konum_dogruluk' => $ihbar->konum_dogruluk,
                 'durum' => $ihbar->durum,
                 'tutanak_no' => $ihbar->tutanak_no,
                 'olumsuz_sebep' => $ihbar->olumsuz_sebep,
@@ -4669,8 +4767,37 @@ try {
             break;
 
         default:
-            response(false, null, 'Geçersiz işlem');
+            $contentLength = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+            $postMaxBytes = pwaIniBytes((string) ini_get('post_max_size'));
+            $postLimitExceeded = $contentLength > 0 && $postMaxBytes > 0 && $contentLength > $postMaxBytes;
+
+            pwaIhbarLog('invalid_action', [
+                'post_keys' => array_keys($_POST),
+                'get_keys' => array_keys($_GET),
+                'post_limit_exceeded' => $postLimitExceeded,
+            ]);
+
+            if ($postLimitExceeded) {
+                response(
+                    false,
+                    ['request_id' => $pwaRequestId],
+                    'Fotoğrafların toplam boyutu sunucu yükleme sınırını aşıyor. Daha küçük veya daha az fotoğraf seçiniz.'
+                );
+            }
+
+            response(false, ['request_id' => $pwaRequestId], 'Geçersiz işlem. Hata kodu: ' . $pwaRequestId);
     }
-} catch (Exception $e) {
-    response(false, null, 'Bir hata oluştu: ' . $e->getMessage());
+} catch (Throwable $e) {
+    if (isset($ihbarDb) && $ihbarDb instanceof PDO && $ihbarDb->inTransaction()) {
+        $ihbarDb->rollBack();
+    }
+    if (in_array($action, ['createIhbar', 'updateIhbar'], true)) {
+        pwaIhbarLog('request_exception', [
+            'exception' => get_class($e),
+            'message' => $e->getMessage(),
+            'file' => basename($e->getFile()),
+            'line' => $e->getLine(),
+        ]);
+    }
+    response(false, ['request_id' => $pwaRequestId], 'Bir hata oluştu: ' . $e->getMessage() . ' (Kod: ' . $pwaRequestId . ')');
 }

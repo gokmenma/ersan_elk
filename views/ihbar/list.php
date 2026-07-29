@@ -422,6 +422,18 @@ function ihbarDurumBadge($durum)
                         <?= Form::FormFloatInput('tel', 'telefon', '', '05XX XXX XX XX', 'Komşu / Abone Telefonu', 'bx bx-phone', 'form-control', false, 20, 'tel') ?>
                     </div>
                     <div class="mb-3">
+                        <?= Form::FormFloatInput('text', 'komsu_abone_no', '', 'Abone numarası', 'Komşu Abone No', 'bx bx-id-card', 'form-control', false, 50, 'off') ?>
+                    </div>
+                    <div class="mb-3">
+                        <input type="hidden" name="konum_lat" id="konum_lat">
+                        <input type="hidden" name="konum_lng" id="konum_lng">
+                        <input type="hidden" name="konum_dogruluk" id="konum_dogruluk">
+                        <button type="button" class="btn btn-outline-primary w-100" onclick="ihbarYoneticiKonumAl()">
+                            <i class="bx bx-current-location me-1"></i><span id="yoneticiKonumText">Konumumu Ekle</span>
+                        </button>
+                        <small class="text-muted d-block mt-1" id="yoneticiKonumDurum"></small>
+                    </div>
+                    <div class="mb-3">
                         <?= Form::FormFloatTextarea('aciklama', '', 'İhbar detaylarını yazınız...', 'Açıklama', 'bx bx-align-left', 'form-control', true, '120px', 4) ?>
                     </div>
                     <div class="mb-3" id="ihbarFotoWrapper">
@@ -970,6 +982,8 @@ function ihbarDurumBadge($durum)
         document.querySelector('#modalYeniIhbar .modal-title').innerHTML = '<i class="bx bx-error-circle me-2"></i>Yeni İhbar Ekle';
         document.getElementById('btnIhbarKaydet').innerHTML = '<i class="bx bx-send me-1"></i>Kaydet';
         document.getElementById('ihbarFotoWrapper').classList.remove('d-none');
+        document.getElementById('yoneticiKonumText').textContent = 'Konumumu Ekle';
+        document.getElementById('yoneticiKonumDurum').textContent = '';
         ihbarSeciliFotolar = [];
         document.getElementById('ihbarFotoPreview').innerHTML = '';
         new bootstrap.Modal(document.getElementById('modalYeniIhbar')).show();
@@ -982,7 +996,15 @@ function ihbarDurumBadge($durum)
         form.querySelector('[name=ilce]').value = detay.ilce || '';
         form.querySelector('[name=mahalle]').value = detay.mahalle || '';
         form.querySelector('[name=telefon]').value = detay.telefon || '';
+        form.querySelector('[name=komsu_abone_no]').value = detay.komsu_abone_no || '';
         form.querySelector('[name=aciklama]').value = detay.aciklama || '';
+        form.querySelector('[name=konum_lat]').value = detay.konum_lat || '';
+        form.querySelector('[name=konum_lng]').value = detay.konum_lng || '';
+        form.querySelector('[name=konum_dogruluk]').value = detay.konum_dogruluk || '';
+        document.getElementById('yoneticiKonumText').textContent =
+            detay.konum_lat && detay.konum_lng ? 'Konumu Güncelle' : 'Konumumu Ekle';
+        document.getElementById('yoneticiKonumDurum').textContent =
+            detay.konum_lat && detay.konum_lng ? `${detay.konum_lat}, ${detay.konum_lng}` : '';
 
         document.querySelector('#modalYeniIhbar .modal-title').innerHTML = '<i class="bx bx-edit me-2"></i>İhbarı Düzenle';
         document.getElementById('btnIhbarKaydet').innerHTML = '<i class="bx bx-save me-1"></i>Güncelle';
@@ -1032,6 +1054,28 @@ function ihbarDurumBadge($durum)
                 }
             }).catch(() => Swal.fire('Hata', 'Sunucuya ulaşılamadı.', 'error'));
         });
+    }
+
+    function ihbarYoneticiKonumAl() {
+        if (!navigator.geolocation) {
+            Swal.fire('Hata', 'Tarayıcınız konum paylaşımını desteklemiyor.', 'error');
+            return;
+        }
+
+        const text = document.getElementById('yoneticiKonumText');
+        const durum = document.getElementById('yoneticiKonumDurum');
+        text.textContent = 'Konum alınıyor...';
+
+        navigator.geolocation.getCurrentPosition(position => {
+            document.getElementById('konum_lat').value = position.coords.latitude.toFixed(7);
+            document.getElementById('konum_lng').value = position.coords.longitude.toFixed(7);
+            document.getElementById('konum_dogruluk').value = position.coords.accuracy.toFixed(2);
+            text.textContent = 'Konum Eklendi';
+            durum.textContent = `${position.coords.latitude.toFixed(6)}, ${position.coords.longitude.toFixed(6)} · ${Math.round(position.coords.accuracy)} m`;
+        }, () => {
+            text.textContent = 'Konumumu Ekle';
+            Swal.fire('Konum Alınamadı', 'Konum iznini kontrol edip tekrar deneyiniz.', 'warning');
+        }, { enableHighAccuracy: true, timeout: 15000, maximumAge: 30000 });
     }
 
     function renderIhbarDashboardCharts() {
@@ -1201,6 +1245,12 @@ function ihbarDurumBadge($durum)
                         <span><i class="bx bx-user"></i>${bildirenAdi}</span>
                         <span><i class="bx bx-group"></i>${ekipAdi}</span>
                         <span><i class="bx bx-phone"></i>${d.telefon || 'Telefon belirtilmemiş'}</span>
+                        ${d.komsu_abone_no ? `<span><i class="bx bx-id-card"></i>Abone No: ${d.komsu_abone_no}</span>` : ''}
+                        ${d.konum_lat && d.konum_lng ? `
+                            <a href="https://www.google.com/maps?q=${d.konum_lat},${d.konum_lng}" target="_blank"
+                                class="text-primary fw-semibold">
+                                <i class="bx bx-map"></i>Konumu Haritada Aç
+                            </a>` : ''}
                     </div>
                 </div>
             </div>
