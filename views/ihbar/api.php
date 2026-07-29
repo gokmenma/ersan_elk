@@ -185,6 +185,17 @@ try {
             ihbarResponse(true, 'İhbar bilgileri güncellendi.', ['id' => $id]);
             break;
 
+        case 'delete':
+            Gate::authorizeOrDie('ihbar/list');
+
+            $id = (int) ($_POST['id'] ?? 0);
+            if ($id <= 0 || !$IhbarModel->softDeleteForDashboard($id)) {
+                throw new Exception('İhbar bulunamadı veya daha önce silinmiş.');
+            }
+
+            ihbarResponse(true, 'İhbar başarıyla silindi.');
+            break;
+
         case 'detay':
             Gate::authorizeOrDie('ihbar/list');
 

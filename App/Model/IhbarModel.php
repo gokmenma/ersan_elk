@@ -260,6 +260,17 @@ class IhbarModel extends Model
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
+    public function softDeleteForDashboard(int $id): bool
+    {
+        $stmt = $this->db->prepare(
+            "UPDATE ihbarlar
+             SET silinme_tarihi = NOW()
+             WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL"
+        );
+        $stmt->execute([$id, $this->firmaId()]);
+        return $stmt->rowCount() > 0;
+    }
+
     public function getPersonelinIhbarlari(int $personelId): array
     {
         $stmt = $this->db->prepare("SELECT i.*,

@@ -364,7 +364,7 @@ function ihbarDurumBadge($durum)
                             <th data-filter="string">Bildiren</th>
                             <th data-filter="string">Atanan Ekip</th>
                             <th data-filter="select">Durum</th>
-                            <th class="text-center" style="width:110px">İşlemler</th>
+                            <th class="text-center" style="width:210px">İşlemler</th>
                         </tr>
                     </thead>
                     <tbody>
@@ -378,9 +378,17 @@ function ihbarDurumBadge($durum)
                                 <td><?= htmlspecialchars($ihbar->atanan_ekip_adi ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
                                 <td><?= ihbarDurumBadge($ihbar->durum) ?></td>
                                 <td class="text-center">
-                                    <button type="button" class="btn btn-sm btn-info text-white" onclick="ihbarDetay(<?= (int) $ihbar->id ?>)">
-                                        <i class="bx bx-detail"></i> Detay
-                                    </button>
+                                    <div class="d-inline-flex gap-1">
+                                        <button type="button" class="btn btn-sm btn-info text-white" onclick="ihbarDetay(<?= (int) $ihbar->id ?>)" title="Detay">
+                                            <i class="bx bx-detail"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-primary" onclick="ihbarDuzenle(<?= (int) $ihbar->id ?>)" title="Düzenle">
+                                            <i class="bx bx-edit"></i>
+                                        </button>
+                                        <button type="button" class="btn btn-sm btn-outline-danger" onclick="ihbarSil(<?= (int) $ihbar->id ?>)" title="Sil">
+                                            <i class="bx bx-trash"></i>
+                                        </button>
+                                    </div>
                                 </td>
                             </tr>
                         <?php endforeach; ?>
@@ -967,23 +975,63 @@ function ihbarDurumBadge($durum)
         new bootstrap.Modal(document.getElementById('modalYeniIhbar')).show();
     }
 
-    function ihbarDuzenleAc() {
-        if (!ihbarAktifDetay) return;
-
+    function ihbarDuzenleFormAc(detay) {
         const form = document.getElementById('formYeniIhbar');
         form.reset();
-        document.getElementById('ihbarFormId').value = ihbarAktifDetay.id;
-        form.querySelector('[name=ilce]').value = ihbarAktifDetay.ilce || '';
-        form.querySelector('[name=mahalle]').value = ihbarAktifDetay.mahalle || '';
-        form.querySelector('[name=telefon]').value = ihbarAktifDetay.telefon || '';
-        form.querySelector('[name=aciklama]').value = ihbarAktifDetay.aciklama || '';
+        document.getElementById('ihbarFormId').value = detay.id;
+        form.querySelector('[name=ilce]').value = detay.ilce || '';
+        form.querySelector('[name=mahalle]').value = detay.mahalle || '';
+        form.querySelector('[name=telefon]').value = detay.telefon || '';
+        form.querySelector('[name=aciklama]').value = detay.aciklama || '';
 
         document.querySelector('#modalYeniIhbar .modal-title').innerHTML = '<i class="bx bx-edit me-2"></i>İhbarı Düzenle';
         document.getElementById('btnIhbarKaydet').innerHTML = '<i class="bx bx-save me-1"></i>Güncelle';
         document.getElementById('ihbarFotoWrapper').classList.add('d-none');
 
         bootstrap.Modal.getOrCreateInstance(document.getElementById('modalIhbarDetay')).hide();
-        new bootstrap.Modal(document.getElementById('modalYeniIhbar')).show();
+        bootstrap.Modal.getOrCreateInstance(document.getElementById('modalYeniIhbar')).show();
+    }
+
+    function ihbarDuzenle(id) {
+        fetch(IHBAR_API_URL, {
+            method: 'POST',
+            body: new URLSearchParams({ action: 'detay', id: id })
+        }).then(r => r.json()).then(res => {
+            if (!res.success) {
+                Swal.fire('Hata', res.message || 'Kayıt bulunamadı.', 'error');
+                return;
+            }
+            ihbarAktifDetay = res.data;
+            ihbarDuzenleFormAc(res.data);
+        }).catch(() => Swal.fire('Hata', 'Kayıt bilgileri alınamadı.', 'error'));
+    }
+
+    function ihbarSil(id) {
+        Swal.fire({
+            title: 'İhbar silinsin mi?',
+            text: 'Bu kayıt listelerden kaldırılacaktır.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonColor: '#ef4444',
+            cancelButtonColor: '#64748b',
+            confirmButtonText: 'Evet, Sil',
+            cancelButtonText: 'Vazgeç',
+            reverseButtons: true
+        }).then(result => {
+            if (!result.isConfirmed) return;
+
+            fetch(IHBAR_API_URL, {
+                method: 'POST',
+                body: new URLSearchParams({ action: 'delete', id: id })
+            }).then(r => r.json()).then(res => {
+                if (res.success) {
+                    Swal.fire('Silindi', res.message || 'İhbar silindi.', 'success')
+                        .then(() => location.reload());
+                } else {
+                    Swal.fire('Hata', res.message || 'İhbar silinemedi.', 'error');
+                }
+            }).catch(() => Swal.fire('Hata', 'Sunucuya ulaşılamadı.', 'error'));
+        });
     }
 
     function renderIhbarDashboardCharts() {
@@ -1141,7 +1189,7 @@ function ihbarDurumBadge($durum)
 
         return `
         <div class="ihbar-detail-summary">
-            <div class="d-flex flex-wrap justify-content-between align-items-center gap-3">
+            <div class="d-flex flex-wrap align-items-center gap-3">
                 <div>
                     <div class="d-flex flex-wrap align-items-center gap-2 mb-2">
                         <span class="ihbar-detail-id">#${d.id}</span>
@@ -1155,9 +1203,6 @@ function ihbarDurumBadge($durum)
                         <span><i class="bx bx-phone"></i>${d.telefon || 'Telefon belirtilmemiş'}</span>
                     </div>
                 </div>
-                <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-3" onclick="ihbarDuzenleAc()">
-                    <i class="bx bx-edit me-1"></i>Bilgileri Düzenle
-                </button>
             </div>
         </div>
 
