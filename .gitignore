@@ -3,6 +3,10 @@
 # /**cache klasorunu ekle */
 cache/*
 
+# /**backups klasorunu ekle (yedek dosyalari repoya girmesin) */
+backups/*
+!backups/.htaccess
+
 # /**uploads klasorunu ekle */
 uploads/*
 
