@@ -62,8 +62,9 @@ function addFolderToZip(ZipArchive $zip, string $sourceDir, string $zipRootName)
     foreach ($iterator as $file) {
         if ($file->isDir()) continue;
         $realPath = $file->getRealPath();
-        $relativePath = $zipRootName . '/' . substr($realPath, strlen($sourceDir) + 1);
-        $zip->addFile($realPath, str_replace('\\', '/', $relativePath));
+        $relativePath = str_replace('\\', '/', $zipRootName . '/' . substr($realPath, strlen($sourceDir) + 1));
+        $zip->addFile($realPath, $relativePath);
+        $zip->setCompressionName($relativePath, ZipArchive::CM_STORE);
         $addedCount++;
     }
     return $addedCount;
@@ -124,6 +125,35 @@ foreach ($foldersToBackup as $key => $sourceDir) {
         logMessage($logFile, "HATA ('$key'): " . $e->getMessage());
         error_log("[klasor_yedekleme] " . $e->getMessage());
     }
+}
+
+$dbBackupSourceDir = $baseDir . DIRECTORY_SEPARATOR . 'backups';
+$dbBackupCandidates = array_merge(
+    glob($dbBackupSourceDir . DIRECTORY_SEPARATOR . 'backup_*.sql') ?: [],
+    glob($dbBackupSourceDir . DIRECTORY_SEPARATOR . 'backup_*.zip') ?: []
+);
+
+if (!empty($dbBackupCandidates)) {
+    usort($dbBackupCandidates, function ($a, $b) {
+        return filemtime($b) <=> filemtime($a);
+    });
+    $latestDbBackup = $dbBackupCandidates[0];
+    $destFile = $backupDir . DIRECTORY_SEPARATOR . 'veritabani_' . basename($latestDbBackup);
+
+    foreach (glob($backupDir . DIRECTORY_SEPARATOR . 'veritabani_*') as $old) {
+        if (realpath($old) !== realpath($destFile)) {
+            @unlink($old);
+        }
+    }
+
+    if (copy($latestDbBackup, $destFile)) {
+        $size = round(filesize($destFile) / 1024, 2);
+        logMessage($logFile, "BASARILI: Veritabani yedegi kopyalandi -> " . basename($destFile) . " ({$size} KB)");
+    } else {
+        logMessage($logFile, "HATA: Veritabani yedegi kopyalanamadi: $latestDbBackup");
+    }
+} else {
+    logMessage($logFile, "UYARI: backups/ klasorunde kopyalanacak veritabani yedegi bulunamadi.");
 }
 
 logMessage($logFile, "--- KLASOR YEDEKLEME TAMAMLANDI ---");
