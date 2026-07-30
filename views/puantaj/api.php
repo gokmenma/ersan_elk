@@ -1138,7 +1138,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         // personel_ids'i virgülle ayrılmış string yap
         $personelIdsStr = is_array($personelIdsArr) ? implode(',', $personelIdsArr) : $personelIdsArr;
 
-        // Her zaman en güncel isimleri çekerek ekip adını oluştur (Encoding sorunlarını önlemek için)
+        $ekipAdi = '';
         if (!empty($personelIdsArr) && is_array($personelIdsArr)) {
             $Personel = new PersonelModel();
             $isimler = [];
@@ -1151,6 +1151,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             if (!empty($isimler)) {
                 $ekipAdi = implode(', ', $isimler);
             }
+        }
+        if (empty($ekipAdi)) {
+            $ekipAdi = $passedEkipAdi;
         }
 
         $ilceArr = $_POST['ilce'] ?? [];
@@ -1175,14 +1178,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
 
             $stmt = $Puantaj->db->prepare("UPDATE kacak_kontrol SET tarih = ?, personel_ids = ?, ekip_adi = ?, ilce = ?, tur = ?, tutanak_no = ?, abone_adi = ?, sayac_no = ?, endeks = ?, sayi = ?, aciklama = ? WHERE id = ?");
             $result = $stmt->execute([$dbTarih, $personelIdsStr, $ekipAdi, $ilce, $tur, $tutanak_no, $abone_adi, $sayac_no, $endeks, $sayi, $aciklama, $id]);
+            
+            $userId = $_SESSION['user_id'] ?? 0;
+            $SystemLog = new SystemLogModel();
+            $SystemLog->logAction($userId, 'Kaçak Kontrol Kaydı Güncellendi', "ID: $id, Tarih: $dbTarih, Ekip: $ekipAdi", SystemLogModel::LEVEL_INFO);
         } else {
-            // Insert new records - support multiple rows from repeater
+            // Insert new records / Update cell - support multiple rows from repeater
             $result = true;
-            if (is_array($ilceArr) && count($ilceArr) > 0) {
-                $Puantaj->db->beginTransaction();
-                try {
+            $Puantaj->db->beginTransaction();
+            try {
+                // Hücre/Ekip güncellemesi: Eski aktif kayıtların çiftlenmesini (iki katına çıkmasını) önlemek için önce soft-delete yap
+                if (!empty($dbTarih) && (!empty($ekipAdi) || !empty($personelIdsStr))) {
+                    $stmtDel = $Puantaj->db->prepare("UPDATE kacak_kontrol SET silinme_tarihi = NOW() WHERE firma_id = ? AND tarih = ? AND ((ekip_adi = ? AND ekip_adi != '') OR (personel_ids = ? AND personel_ids != '')) AND silinme_tarihi IS NULL");
+                    $stmtDel->execute([$firmaId, $dbTarih, $ekipAdi, $personelIdsStr]);
+                }
 
-
+                if (is_array($ilceArr) && count($ilceArr) > 0) {
                     for ($k = 0; $k < count($ilceArr); $k++) {
                         $ilce = $ilceArr[$k] ?? null;
                         $tur = $turArr[$k] ?? 'Kaçak';
@@ -1201,13 +1212,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
                         $stmt = $Puantaj->db->prepare("INSERT INTO kacak_kontrol (firma_id, personel_ids, tarih, ekip_adi, ilce, tur, tutanak_no, abone_adi, sayac_no, endeks, sayi, aciklama, islem_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
                         $stmt->execute([$firmaId, $personelIdsStr, $dbTarih, $ekipAdi, $ilce, $tur, $tutanak_no, $abone_adi, $sayac_no, $endeks, $sayi, $aciklama, $islemId]);
                     }
-                    $Puantaj->db->commit();
-                } catch (Exception $e) {
-                    $Puantaj->db->rollBack();
-                    throw $e;
                 }
-            } else {
-                $result = false;
+                $Puantaj->db->commit();
+
+                $userId = $_SESSION['user_id'] ?? 0;
+                $SystemLog = new SystemLogModel();
+                $SystemLog->logAction($userId, 'Kaçak Kontrol Hücre Kaydı Kaydedildi', "Tarih: $dbTarih, Ekip: $ekipAdi, Personel: $personelIdsStr", SystemLogModel::LEVEL_INFO);
+            } catch (Exception $e) {
+                $Puantaj->db->rollBack();
+                throw $e;
             }
         }
         $response = ['status' => $result ? 'success' : 'error'];
