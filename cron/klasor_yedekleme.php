@@ -13,6 +13,8 @@ $baseDir = dirname(__DIR__);
 $foldersToBackup = [
     'personel_evraklar' => $baseDir . DIRECTORY_SEPARATOR . 'uploads' . DIRECTORY_SEPARATOR . 'personel_evraklar',
     'uploads'           => $baseDir . DIRECTORY_SEPARATOR . 'uploads',
+    'files'             => $baseDir . DIRECTORY_SEPARATOR . 'files',
+    'assets_belgeler'   => $baseDir . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'belgeler',
 ];
 
 $envFile = $baseDir . DIRECTORY_SEPARATOR . '.env';
@@ -50,18 +52,32 @@ function logMessage($logFile, $message) {
     echo "[$timestamp] $message" . PHP_EOL;
 }
 
-function addFolderToZip(ZipArchive $zip, string $sourceDir, string $zipRootName) {
+function addFolderToZip(ZipArchive $zip, string $sourceDir, string $zipRootName): int {
     $sourceDir = rtrim($sourceDir, '/\\');
     $iterator = new RecursiveIteratorIterator(
         new RecursiveDirectoryIterator($sourceDir, FilesystemIterator::SKIP_DOTS),
         RecursiveIteratorIterator::LEAVES_ONLY
     );
+    $addedCount = 0;
     foreach ($iterator as $file) {
         if ($file->isDir()) continue;
         $realPath = $file->getRealPath();
         $relativePath = $zipRootName . '/' . substr($realPath, strlen($sourceDir) + 1);
         $zip->addFile($realPath, str_replace('\\', '/', $relativePath));
+        $addedCount++;
     }
+    return $addedCount;
+}
+
+function folderHasFiles(string $dir): bool {
+    $iterator = new RecursiveIteratorIterator(
+        new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
+        RecursiveIteratorIterator::LEAVES_ONLY
+    );
+    foreach ($iterator as $file) {
+        if (!$file->isDir()) return true;
+    }
+    return false;
 }
 
 function rotateOldBackups(string $backupDir, string $key, string $currentFile) {
@@ -80,6 +96,11 @@ $dateStamp = date('Y-m-d_H-i-s');
 foreach ($foldersToBackup as $key => $sourceDir) {
     if (!is_dir($sourceDir)) {
         logMessage($logFile, "UYARI: Kaynak klasor bulunamadi, atlaniyor: $sourceDir");
+        continue;
+    }
+
+    if (!folderHasFiles($sourceDir)) {
+        logMessage($logFile, "UYARI: '$key' klasoru bos, yedek olusturulmadi.");
         continue;
     }
 
