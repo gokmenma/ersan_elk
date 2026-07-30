@@ -52,78 +52,55 @@ function logMessage($logFile, $message) {
     echo "[$timestamp] $message" . PHP_EOL;
 }
 
-function addFolderToZip(ZipArchive $zip, string $sourceDir, string $zipRootName): int {
-    $sourceDir = rtrim($sourceDir, '/\\');
-    $iterator = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($sourceDir, FilesystemIterator::SKIP_DOTS),
-        RecursiveIteratorIterator::LEAVES_ONLY
-    );
-    $addedCount = 0;
-    foreach ($iterator as $file) {
-        if ($file->isDir()) continue;
-        $realPath = $file->getRealPath();
-        $relativePath = str_replace('\\', '/', $zipRootName . '/' . substr($realPath, strlen($sourceDir) + 1));
-        $zip->addFile($realPath, $relativePath);
-        $zip->setCompressionName($relativePath, ZipArchive::CM_STORE);
-        $addedCount++;
-    }
-    return $addedCount;
+function rsyncAvailable(): bool {
+    if (!function_exists('exec')) return false;
+    exec('command -v rsync 2>/dev/null', $output, $returnCode);
+    return $returnCode === 0 && !empty($output);
 }
 
-function folderHasFiles(string $dir): bool {
-    $iterator = new RecursiveIteratorIterator(
-        new RecursiveDirectoryIterator($dir, FilesystemIterator::SKIP_DOTS),
-        RecursiveIteratorIterator::LEAVES_ONLY
-    );
-    foreach ($iterator as $file) {
-        if (!$file->isDir()) return true;
+function rsyncMirror(string $sourceDir, string $destDir, string $logFile): void {
+    if (!is_dir($destDir)) {
+        @mkdir($destDir, 0750, true);
     }
-    return false;
-}
 
-function rotateOldBackups(string $backupDir, string $key, string $currentFile) {
-    $files = glob($backupDir . DIRECTORY_SEPARATOR . $key . '_*.zip');
-    foreach ($files as $file) {
-        if (realpath($file) !== realpath($currentFile)) {
-            @unlink($file);
+    $source = escapeshellarg(rtrim($sourceDir, '/\\') . '/');
+    $dest = escapeshellarg(rtrim($destDir, '/\\') . '/');
+    $cmd = "rsync -a --delete --stats $source $dest 2>&1";
+
+    exec($cmd, $outputLines, $returnCode);
+
+    if ($returnCode !== 0) {
+        logMessage($logFile, "HATA: rsync basarisiz (kod $returnCode): " . implode(' | ', array_slice($outputLines, -5)));
+        return;
+    }
+
+    $transferred = '-';
+    $totalTransferredSize = '-';
+    foreach ($outputLines as $line) {
+        if (stripos($line, 'Number of regular files transferred') !== false) {
+            $transferred = trim(explode(':', $line, 2)[1] ?? '-');
+        }
+        if (stripos($line, 'Total transferred file size') !== false) {
+            $totalTransferredSize = trim(explode(':', $line, 2)[1] ?? '-');
         }
     }
+
+    logMessage($logFile, "BASARILI: senkronize edildi (degisen/yeni dosya: $transferred, aktarilan boyut: $totalTransferredSize).");
 }
 
 logMessage($logFile, "--- KLASOR YEDEKLEME BASLADI (Hedef: $backupDir) ---");
 
-$dateStamp = date('Y-m-d_H-i-s');
-
-foreach ($foldersToBackup as $key => $sourceDir) {
-    if (!is_dir($sourceDir)) {
-        logMessage($logFile, "UYARI: Kaynak klasor bulunamadi, atlaniyor: $sourceDir");
-        continue;
-    }
-
-    if (!folderHasFiles($sourceDir)) {
-        logMessage($logFile, "UYARI: '$key' klasoru bos, yedek olusturulmadi.");
-        continue;
-    }
-
-    $zipFile = $backupDir . DIRECTORY_SEPARATOR . "{$key}_{$dateStamp}.zip";
-
-    try {
-        $zip = new ZipArchive();
-        if ($zip->open($zipFile, ZipArchive::CREATE | ZipArchive::OVERWRITE) !== true) {
-            throw new Exception("ZIP dosyasi acilamadi: $zipFile");
+if (!rsyncAvailable()) {
+    logMessage($logFile, "KRITIK HATA: rsync komutu bulunamadi, klasor senkronizasyonu atlaniyor.");
+} else {
+    foreach ($foldersToBackup as $key => $sourceDir) {
+        if (!is_dir($sourceDir)) {
+            logMessage($logFile, "UYARI: Kaynak klasor bulunamadi, atlaniyor: $sourceDir");
+            continue;
         }
 
-        addFolderToZip($zip, $sourceDir, $key);
-        $zip->close();
-
-        $size = round(filesize($zipFile) / 1024, 2);
-        logMessage($logFile, "BASARILI: '$key' yedeklendi -> " . basename($zipFile) . " ({$size} KB)");
-
-        rotateOldBackups($backupDir, $key, $zipFile);
-        logMessage($logFile, "ROTASYON: '$key' icin onceki yedekler silindi, sadece son yedek tutuluyor.");
-    } catch (Exception $e) {
-        logMessage($logFile, "HATA ('$key'): " . $e->getMessage());
-        error_log("[klasor_yedekleme] " . $e->getMessage());
+        logMessage($logFile, "'$key' senkronize ediliyor...");
+        rsyncMirror($sourceDir, $backupDir . DIRECTORY_SEPARATOR . $key, $logFile);
     }
 }
 
