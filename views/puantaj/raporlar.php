@@ -190,6 +190,39 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
         color: #5156be;
         box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
     }
+
+    /* Puantaj Raporlar Tablo Hücre Kenarlıkları (Hafif Siyah) */
+    #reportContent table th,
+    #reportContent table td,
+    #compareContent table th,
+    #compareContent table td,
+    #raporTable th,
+    #raporTable td,
+    #compareTable th,
+    #compareTable td,
+    .table-responsive table th,
+    .table-responsive table td {
+        border-color: rgba(0, 0, 0, 0.18) !important;
+    }
+
+    [data-bs-theme="dark"] #reportContent table th,
+    [data-bs-theme="dark"] #reportContent table td,
+    [data-bs-theme="dark"] #compareContent table th,
+    [data-bs-theme="dark"] #compareContent table td,
+    [data-bs-theme="dark"] #raporTable th,
+    [data-bs-theme="dark"] #raporTable td,
+    [data-bs-theme="dark"] #compareTable th,
+    [data-bs-theme="dark"] #compareTable td,
+    [data-theme-mode="dark"] #reportContent table th,
+    [data-theme-mode="dark"] #reportContent table td,
+    [data-theme-mode="dark"] #compareContent table th,
+    [data-theme-mode="dark"] #compareContent table td,
+    [data-theme-mode="dark"] #raporTable th,
+    [data-theme-mode="dark"] #raporTable td,
+    [data-theme-mode="dark"] #compareTable th,
+    [data-theme-mode="dark"] #compareTable td {
+        border-color: #32394e !important;
+    }
 </style>
 <div class="container-fluid">
     <?php

@@ -107,6 +107,12 @@ $aylar = [
                             <span class="d-none d-sm-block">4. İş Artış/Azalış İşlemleri</span>
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#sure-uzatim-tab" role="tab">
+                            <span class="d-block d-sm-none"><i class="bx bx-time-five"></i></span>
+                            <span class="d-none d-sm-block">5. Süre Uzatımları</span>
+                        </a>
+                    </li>
                 </ul>
 
                 <!-- Tab panes -->
@@ -422,6 +428,10 @@ $aylar = [
                                             <td colspan="6" class="text-end">TOPLAM BEDEL DEĞİŞİMİ:</td>
                                             <td id="revizyonTutarFarki" class="text-end">0,00 ₺</td>
                                         </tr>
+                                        <tr class="table-light fw-bold">
+                                            <td colspan="6" class="text-end">TOPLAM ARTIŞ / AZALIŞ ORANI:</td>
+                                            <td id="revizyonToplamOrani" class="text-end">%0,00</td>
+                                        </tr>
                                     </tfoot>
                                 </table>
                             </div>
@@ -434,6 +444,58 @@ $aylar = [
 
                             <h6 class="mb-3">İş Artış/Azalış Geçmişi</h6>
                             <div id="revizyonGecmisi"></div>
+                        </div>
+                    </div>
+
+                    <!-- SÜRE UZATIMLARI TAB -->
+                    <div class="tab-pane" id="sure-uzatim-tab" role="tabpanel">
+                        <div id="sureUzatimYeniSozlesmeUyarisi" class="alert alert-warning mb-0">
+                            <i class="bx bx-info-circle me-1"></i>
+                            Süre uzatımı, sözleşme ilk kez kaydedildikten sonra eklenebilir.
+                        </div>
+                        <div id="sureUzatimAlani" class="d-none">
+                            <div class="alert alert-info">
+                                Her süre uzatımı ayrı kaydedilir. Yeni bitiş tarihi mevcut bitiş tarihine uzatım günü eklenerek hesaplanır.
+                            </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">Onay Tarihi <span class="text-danger">*</span></label>
+                                    <input type="text" id="sure_uzatim_tarihi" class="form-control flatpickr" placeholder="GG.AA.YYYY">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Onay / Karar No</label>
+                                    <input type="text" id="sure_uzatim_karar_no" class="form-control" placeholder="Varsa karar veya onay no">
+                                </div>
+                                <div class="col-md-2">
+                                    <label class="form-label">Uzatım (Gün) <span class="text-danger">*</span></label>
+                                    <input type="number" min="1" step="1" id="sure_uzatim_gun" class="form-control" oninput="sureUzatimHesapla()">
+                                </div>
+                                <div class="col-md-4">
+                                    <label class="form-label">Açıklama</label>
+                                    <input type="text" id="sure_uzatim_aciklama" class="form-control" placeholder="Süre uzatımının gerekçesi">
+                                </div>
+                            </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-6">
+                                    <div class="border rounded p-3 bg-light">
+                                        <small class="text-muted d-block">Mevcut Bitiş Tarihi</small>
+                                        <strong id="sureUzatimMevcutBitis">-</strong>
+                                    </div>
+                                </div>
+                                <div class="col-md-6">
+                                    <div class="border rounded p-3 bg-light">
+                                        <small class="text-muted d-block">Yeni Bitiş Tarihi</small>
+                                        <strong id="sureUzatimYeniBitis" class="text-success">-</strong>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="text-end mb-4">
+                                <button type="button" class="btn btn-success" id="sureUzatimKaydetBtn" onclick="sureUzatimKaydet()">
+                                    <i class="bx bx-save me-1"></i> Süre Uzatımını Kaydet
+                                </button>
+                            </div>
+                            <h6 class="mb-3">Süre Uzatım Geçmişi</h6>
+                            <div id="sureUzatimGecmisi"></div>
                         </div>
                     </div>
                 </div>

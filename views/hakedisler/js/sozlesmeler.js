@@ -259,7 +259,13 @@ function editSozlesme(id) {
           });
         }
 
-        revizyonSekmesiniHazirla(data.id, res.kalemler || []);
+        const sureUzatimiVar = parseInt(res.sure_uzatim_sayisi || 0, 10) > 0;
+        $('#yeniSozlesmeForm [name="isin_bitecegi_tarih"], #yeniSozlesmeForm [name="isin_suresi"]')
+          .prop("readonly", sureUzatimiVar)
+          .attr("title", sureUzatimiVar ? "Bu alan süre uzatımları sekmesinden güncellenir." : "");
+
+        revizyonSekmesiniHazirla(data.id, res.kalemler || [], data.sozlesme_bedeli);
+        sureUzatimSekmesiniHazirla(data.id, data.isin_bitecegi_tarih);
 
         // Reset tab
         $('.nav-tabs a[href="#sozlesme-bilgileri-tab"]').tab("show");
@@ -294,8 +300,11 @@ function editSozlesme(id) {
 $(document).on("click", '[data-bs-target="#yeniSozlesmeModal"]', function () {
   $("#yeniSozlesmeForm")[0].reset();
   $("#sozlesme_id").val("");
+  $('#yeniSozlesmeForm [name="isin_bitecegi_tarih"], #yeniSozlesmeForm [name="isin_suresi"]')
+    .prop("readonly", false).attr("title", "");
   $("#birimFiyatBody").empty();
   revizyonSekmesiniSifirla();
+  sureUzatimSekmesiniSifirla();
   hesaplaGenelToplam();
   $('.nav-tabs a[href="#sozlesme-bilgileri-tab"]').tab("show");
 
@@ -360,11 +369,14 @@ function revizyonSekmesiniSifirla() {
   $("#revizyonAlani").addClass("d-none");
   $("#revizyonKalemBody, #revizyonGecmisi").empty();
   $("#revizyonTutarFarki").text("0,00 ₺").removeClass("text-success text-danger");
+  $("#revizyonToplamOrani").text("%0,00").removeClass("text-success text-danger");
 }
 
-function revizyonSekmesiniHazirla(sozlesmeId, kalemler) {
+function revizyonSekmesiniHazirla(sozlesmeId, kalemler, sozlesmeBedeli) {
   $("#revizyonYeniSozlesmeUyarisi").addClass("d-none");
-  $("#revizyonAlani").removeClass("d-none").attr("data-sozlesme-id", sozlesmeId);
+  $("#revizyonAlani").removeClass("d-none")
+    .attr("data-sozlesme-id", sozlesmeId)
+    .attr("data-sozlesme-bedeli", parseFloat(sozlesmeBedeli || 0));
   $("#revizyonKalemBody").empty();
 
   kalemler.forEach(function (k) {
@@ -390,12 +402,14 @@ function revizyonSekmesiniHazirla(sozlesmeId, kalemler) {
 
 function revizyonHesapla() {
   let toplam = 0;
+  let mevcutToplam = 0;
   $("#revizyonKalemBody tr").each(function () {
     const mevcut = parseFloat($(this).data("mevcut")) || 0;
     const fiyat = parseFloat($(this).data("fiyat")) || 0;
     const degisim = parseFloat($(this).find(".revizyon-degisim").val()) || 0;
     const yeni = mevcut + degisim;
     const fark = degisim * fiyat;
+    mevcutToplam += mevcut * fiyat;
     toplam += fark;
     $(this).find(".revizyon-yeni").text(formatMiktar(yeni))
       .toggleClass("text-danger", yeni < 0);
@@ -404,6 +418,12 @@ function revizyonHesapla() {
   $("#revizyonTutarFarki").text(formatPara(toplam))
     .toggleClass("text-success", toplam > 0)
     .toggleClass("text-danger", toplam < 0);
+  const sozlesmeBedeli = parseFloat($("#revizyonAlani").attr("data-sozlesme-bedeli")) || 0;
+  const yeniToplam = mevcutToplam + toplam;
+  const oran = sozlesmeBedeli > 0 ? ((yeniToplam - sozlesmeBedeli) / sozlesmeBedeli) * 100 : 0;
+  $("#revizyonToplamOrani").text(formatYuzde(oran))
+    .toggleClass("text-success", oran > 0)
+    .toggleClass("text-danger", oran < 0);
 }
 
 function revizyonKaydet() {
@@ -475,16 +495,21 @@ function revizyonGecmisiniYukle(sozlesmeId) {
     let html = '<div class="accordion" id="revizyonAccordion">';
     res.data.forEach(function (r, i) {
       const toplam = parseFloat(r.toplam_tutar_farki || 0);
+      const toplamOran = parseFloat(r.toplam_artis_orani || 0);
       html += `<div class="accordion-item">
-        <h2 class="accordion-header">
+        <div class="accordion-header d-flex align-items-stretch">
           <button class="accordion-button ${i ? "collapsed" : ""}" type="button" data-bs-toggle="collapse"
             data-bs-target="#revizyon-${r.id}">
             <span class="fw-bold me-2">${r.revizyon_no}. Revizyon</span>
             <span class="text-muted me-2">${moment(r.revizyon_tarihi).format("DD.MM.YYYY")}</span>
             ${r.karar_no ? `<span class="badge bg-light text-dark me-2">${escapeHtml(r.karar_no)}</span>` : ""}
-            <span class="ms-auto me-3 ${toplam < 0 ? "text-danger" : "text-success"}">${formatPara(toplam)}</span>
+            <span class="ms-auto me-3 ${toplamOran < 0 ? "text-danger" : "text-success"}">
+              ${formatPara(toplam)} <small class="ms-1">(${formatYuzde(toplamOran)})</small>
+            </span>
           </button>
-        </h2>
+          <button type="button" class="btn btn-outline-danger rounded-0 px-3" title="Revizyonu sil"
+            onclick="revizyonSil(${r.id}, ${sozlesmeId})"><i class="bx bx-trash"></i></button>
+        </div>
         <div id="revizyon-${r.id}" class="accordion-collapse collapse ${i ? "" : "show"}"
           data-bs-parent="#revizyonAccordion"><div class="accordion-body">
           ${r.aciklama ? `<p>${escapeHtml(r.aciklama)}</p>` : ""}
@@ -504,12 +529,167 @@ function revizyonGecmisiniYukle(sozlesmeId) {
   }, "json");
 }
 
+function revizyonSil(revizyonId, sozlesmeId) {
+  Swal.fire({
+    title: "Revizyon silinsin mi?",
+    text: "Kalem miktarları bu revizyon geri alınarak yeniden hesaplanacak.",
+    icon: "warning",
+    showCancelButton: true,
+    confirmButtonText: "Evet, Sil",
+    cancelButtonText: "Vazgeç",
+    confirmButtonColor: "#dc3545"
+  }).then(function (result) {
+    if (!result.isConfirmed) return;
+    $.post("views/hakedisler/online-api.php", {
+      type: "deleteIsRevizyonu", revizyon_id: revizyonId, sozlesme_id: sozlesmeId
+    }, function (res) {
+      if (res.status !== "success") {
+        Swal.fire("Hata", res.message || "Revizyon silinemedi.", "error");
+        return;
+      }
+      Swal.fire("Silindi", "Revizyon ve miktar etkisi geri alındı.", "success");
+      editSozlesme(sozlesmeId);
+    }, "json").fail(function () {
+      Swal.fire("Hata", "Sunucu bağlantısında sorun oluştu.", "error");
+    });
+  });
+}
+
 function formatMiktar(value) {
   return Number(value || 0).toLocaleString("tr-TR", { minimumFractionDigits: 0, maximumFractionDigits: 4 });
 }
 
 function formatPara(value) {
   return Number(value || 0).toLocaleString("tr-TR", { style: "currency", currency: "TRY" });
+}
+
+function formatYuzde(value) {
+  const sayi = Number(value || 0);
+  return `%${sayi.toLocaleString("tr-TR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+}
+
+function sureUzatimSekmesiniSifirla() {
+  $("#sureUzatimYeniSozlesmeUyarisi").removeClass("d-none");
+  $("#sureUzatimAlani").addClass("d-none").removeAttr("data-sozlesme-id data-mevcut-bitis");
+  $("#sure_uzatim_tarihi, #sure_uzatim_karar_no, #sure_uzatim_gun, #sure_uzatim_aciklama").val("");
+  $("#sureUzatimMevcutBitis, #sureUzatimYeniBitis").text("-");
+  $("#sureUzatimGecmisi").empty();
+}
+
+function sureUzatimSekmesiniHazirla(sozlesmeId, bitisTarihi) {
+  $("#sureUzatimYeniSozlesmeUyarisi").addClass("d-none");
+  $("#sureUzatimAlani").removeClass("d-none")
+    .attr("data-sozlesme-id", sozlesmeId)
+    .attr("data-mevcut-bitis", bitisTarihi || "");
+  $("#sure_uzatim_tarihi").val(moment().format("DD.MM.YYYY"));
+  $("#sure_uzatim_karar_no, #sure_uzatim_gun, #sure_uzatim_aciklama").val("");
+  $("#sureUzatimMevcutBitis").text(formatTarih(bitisTarihi));
+  sureUzatimHesapla();
+  sureUzatimGecmisiniYukle(sozlesmeId);
+}
+
+function sureUzatimHesapla() {
+  const mevcut = $("#sureUzatimAlani").attr("data-mevcut-bitis");
+  const gun = parseInt($("#sure_uzatim_gun").val(), 10) || 0;
+  if (!mevcut || gun <= 0) {
+    $("#sureUzatimYeniBitis").text("-");
+    return;
+  }
+  $("#sureUzatimYeniBitis").text(moment(mevcut, "YYYY-MM-DD").add(gun, "days").format("DD.MM.YYYY"));
+}
+
+function sureUzatimKaydet() {
+  const sozlesmeId = parseInt($("#sureUzatimAlani").attr("data-sozlesme-id"), 10);
+  const gun = parseInt($("#sure_uzatim_gun").val(), 10) || 0;
+  if (!$("#sure_uzatim_tarihi").val() || gun <= 0) {
+    Swal.fire("Uyarı", "Onay tarihi ve uzatım gününü giriniz.", "warning");
+    return;
+  }
+  Swal.fire({
+    title: "Süre uzatımı kaydedilsin mi?",
+    text: `Sözleşme bitiş tarihi ${gun} gün uzatılacak.`,
+    icon: "question", showCancelButton: true,
+    confirmButtonText: "Evet, Kaydet", cancelButtonText: "Vazgeç"
+  }).then(function (result) {
+    if (!result.isConfirmed) return;
+    $("#sureUzatimKaydetBtn").prop("disabled", true);
+    $.post("views/hakedisler/online-api.php", {
+      type: "saveSureUzatimi", sozlesme_id: sozlesmeId,
+      uzatim_tarihi: $("#sure_uzatim_tarihi").val(),
+      karar_no: $("#sure_uzatim_karar_no").val(),
+      uzatim_gun: gun, aciklama: $("#sure_uzatim_aciklama").val()
+    }, function (res) {
+      if (res.status !== "success") {
+        Swal.fire("Hata", res.message || "Süre uzatımı kaydedilemedi.", "error");
+        return;
+      }
+      Swal.fire("Başarılı", `${res.uzatim_no}. süre uzatımı kaydedildi.`, "success");
+      editSozlesme(sozlesmeId);
+    }, "json").fail(function () {
+      Swal.fire("Hata", "Sunucu bağlantısında sorun oluştu.", "error");
+    }).always(function () {
+      $("#sureUzatimKaydetBtn").prop("disabled", false);
+    });
+  });
+}
+
+function sureUzatimGecmisiniYukle(sozlesmeId) {
+  $("#sureUzatimGecmisi").html('<div class="text-muted">Yükleniyor...</div>');
+  $.post("views/hakedisler/online-api.php", {
+    type: "getSureUzatimlari", sozlesme_id: sozlesmeId
+  }, function (res) {
+    if (res.status !== "success" || !res.data.length) {
+      $("#sureUzatimGecmisi").html('<div class="alert alert-light border">Henüz süre uzatımı bulunmuyor.</div>');
+      return;
+    }
+    let html = '<div class="accordion" id="sureUzatimAccordion">';
+    res.data.forEach(function (u, i) {
+      html += `<div class="accordion-item">
+        <div class="accordion-header d-flex align-items-stretch">
+          <button class="accordion-button ${i ? "collapsed" : ""}" type="button" data-bs-toggle="collapse" data-bs-target="#sure-uzatim-${u.id}">
+            <span class="fw-bold me-2">${u.uzatim_no}. Süre Uzatımı</span>
+            <span class="text-muted me-2">${formatTarih(u.uzatim_tarihi)}</span>
+            ${u.karar_no ? `<span class="badge bg-light text-dark me-2">${escapeHtml(u.karar_no)}</span>` : ""}
+            <span class="ms-auto me-3 text-success">+${u.uzatim_gun} gün</span>
+          </button>
+          <button type="button" class="btn btn-outline-danger rounded-0 px-3" title="Süre uzatımını sil"
+            onclick="sureUzatimSil(${u.id}, ${sozlesmeId})"><i class="bx bx-trash"></i></button>
+        </div>
+        <div id="sure-uzatim-${u.id}" class="accordion-collapse collapse ${i ? "" : "show"}" data-bs-parent="#sureUzatimAccordion">
+          <div class="accordion-body">
+            ${u.aciklama ? `<p>${escapeHtml(u.aciklama)}</p>` : ""}
+            <div class="row"><div class="col-md-6"><small class="text-muted">Önceki Bitiş</small><div class="fw-bold">${formatTarih(u.onceki_bitis_tarihi)}</div></div>
+            <div class="col-md-6"><small class="text-muted">Yeni Bitiş</small><div class="fw-bold text-success">${formatTarih(u.yeni_bitis_tarihi)}</div></div></div>
+          </div>
+        </div></div>`;
+    });
+    $("#sureUzatimGecmisi").html(html + "</div>");
+  }, "json");
+}
+
+function sureUzatimSil(uzatimId, sozlesmeId) {
+  Swal.fire({
+    title: "Süre uzatımı silinsin mi?",
+    text: "Uzatım günü sözleşme süresi ve bitiş tarihinden geri alınacak.",
+    icon: "warning", showCancelButton: true,
+    confirmButtonText: "Evet, Sil", cancelButtonText: "Vazgeç", confirmButtonColor: "#dc3545"
+  }).then(function (result) {
+    if (!result.isConfirmed) return;
+    $.post("views/hakedisler/online-api.php", {
+      type: "deleteSureUzatimi", uzatim_id: uzatimId, sozlesme_id: sozlesmeId
+    }, function (res) {
+      if (res.status !== "success") {
+        Swal.fire("Hata", res.message || "Süre uzatımı silinemedi.", "error");
+        return;
+      }
+      Swal.fire("Silindi", "Süre uzatımı geri alındı.", "success");
+      editSozlesme(sozlesmeId);
+    }, "json");
+  });
+}
+
+function formatTarih(value) {
+  return value ? moment(value, "YYYY-MM-DD").format("DD.MM.YYYY") : "-";
 }
 
 function escapeHtml(value) {

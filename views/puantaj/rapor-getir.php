@@ -644,8 +644,8 @@ $currentTabName = $tabNames[$activeTab] ?? 'Rapor';
     #raporTable td {
         vertical-align: middle !important;
         text-align: center !important;
-        border: 1px solid var(--bs-border-color, #eee) !important;
-        border-bottom: 1px solid var(--bs-border-color, #e0e0e0) !important;
+        border: 1px solid rgba(0, 0, 0, 0.18) !important;
+        border-bottom: 1px solid rgba(0, 0, 0, 0.18) !important;
         padding: 6px 8px !important;
         line-height: normal !important;
         white-space: nowrap;

@@ -191,14 +191,14 @@ $chartBorderColors = array_map(function ($c) {
         position: sticky;
         top: 0;
         z-index: 10;
-        border: 1px solid var(--bs-border-color, #e9ecef) !important;
+        border: 1px solid rgba(0, 0, 0, 0.18) !important;
         padding: 10px 12px !important;
         white-space: nowrap;
     }
 
     #compareTable td {
         padding: 8px 12px !important;
-        border: 1px solid var(--bs-border-color, #eee) !important;
+        border: 1px solid rgba(0, 0, 0, 0.18) !important;
         vertical-align: middle !important;
     }
 

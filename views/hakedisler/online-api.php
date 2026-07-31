@@ -33,6 +33,28 @@ try {
         return $date;
     }
 
+    function ensureSureUzatimTablosu(PDO $db): void
+    {
+        $db->exec("
+            CREATE TABLE IF NOT EXISTS hakedis_sure_uzatimlari (
+                id INT UNSIGNED NOT NULL AUTO_INCREMENT,
+                sozlesme_id INT NOT NULL,
+                uzatim_no INT UNSIGNED NOT NULL,
+                uzatim_tarihi DATE NOT NULL,
+                karar_no VARCHAR(100) DEFAULT NULL,
+                aciklama TEXT DEFAULT NULL,
+                uzatim_gun INT UNSIGNED NOT NULL,
+                onceki_bitis_tarihi DATE NOT NULL,
+                yeni_bitis_tarihi DATE NOT NULL,
+                olusturan_personel_id INT DEFAULT NULL,
+                olusturma_tarihi DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+                PRIMARY KEY (id),
+                UNIQUE KEY uq_hakedis_sure_uzatimi_no (sozlesme_id, uzatim_no),
+                KEY idx_hakedis_sure_uzatimi_sozlesme (sozlesme_id, uzatim_tarihi)
+            ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci
+        ");
+    }
+
     switch ($type) {
         case 'getSozlesmeler':
             $model = new HakedisSozlesmeModel();
@@ -139,6 +161,12 @@ try {
 
             if (isset($_POST['id']) && $_POST['id'] > 0) {
                 // Update
+                ensureSureUzatimTablosu($db);
+                $uzatimKontrol = $db->prepare("SELECT COUNT(*) FROM hakedis_sure_uzatimlari WHERE sozlesme_id = ?");
+                $uzatimKontrol->execute([intval($_POST['id'])]);
+                if (intval($uzatimKontrol->fetchColumn()) > 0) {
+                    unset($data['isin_bitecegi_tarih'], $data['isin_suresi'], $data['son_sure_uzatimi']);
+                }
                 $setParts = [];
                 $params = [':id' => $_POST['id'], ':firma_id' => $firma_id];
                 foreach ($data as $key => $val) {
@@ -211,6 +239,7 @@ try {
             $id = $_POST['id'] ?? 0;
             if ($id) {
                 $db = (new HakedisSozlesmeModel())->getDb();
+                ensureSureUzatimTablosu($db);
                 $stmt = $db->prepare("SELECT * FROM hakedis_sozlesmeler WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL");
                 $stmt->execute([$id, $firma_id]);
                 $sozlesme = $stmt->fetch(PDO::FETCH_ASSOC);
@@ -222,11 +251,15 @@ try {
 
                     $stmtR = $db->prepare("SELECT COUNT(*) FROM hakedis_is_revizyonlari WHERE sozlesme_id = ?");
                     $stmtR->execute([$id]);
+                    $revizyonSayisi = intval($stmtR->fetchColumn());
+                    $stmtU = $db->prepare("SELECT COUNT(*) FROM hakedis_sure_uzatimlari WHERE sozlesme_id = ?");
+                    $stmtU->execute([$id]);
                     echo json_encode([
                         'status' => 'success',
                         'data' => $sozlesme,
                         'kalemler' => $kalemler,
-                        'revizyon_sayisi' => intval($stmtR->fetchColumn())
+                        'revizyon_sayisi' => $revizyonSayisi,
+                        'sure_uzatim_sayisi' => intval($stmtU->fetchColumn())
                     ]);
                 } else {
                     echo json_encode(['status' => 'error', 'message' => 'Sözleşme bulunamadı veya yetkiniz yok.']);
@@ -258,6 +291,13 @@ try {
             $stmt->execute([$sozlesme_id]);
             $revizyonlar = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
+            $bedelStmt = $db->prepare("SELECT sozlesme_bedeli FROM hakedis_sozlesmeler WHERE id = ?");
+            $bedelStmt->execute([$sozlesme_id]);
+            $sozlesmeBedeli = floatval($bedelStmt->fetchColumn());
+            $kumulatifFark = array_sum(array_map(static function ($r) {
+                return floatval($r['toplam_tutar_farki']);
+            }, $revizyonlar));
+
             $detayStmt = $db->prepare("
                 SELECT d.*
                 FROM hakedis_is_revizyon_kalemleri d
@@ -267,9 +307,98 @@ try {
             foreach ($revizyonlar as &$revizyon) {
                 $detayStmt->execute([$revizyon['id']]);
                 $revizyon['kalemler'] = $detayStmt->fetchAll(PDO::FETCH_ASSOC);
+                $revizyon['toplam_artis_orani'] = $sozlesmeBedeli > 0
+                    ? round(($kumulatifFark / $sozlesmeBedeli) * 100, 4)
+                    : 0;
+                $kumulatifFark -= floatval($revizyon['toplam_tutar_farki']);
             }
             unset($revizyon);
             echo json_encode(['status' => 'success', 'data' => $revizyonlar]);
+            break;
+
+        case 'deleteIsRevizyonu':
+            $sozlesme_id = intval($_POST['sozlesme_id'] ?? 0);
+            $revizyon_id = intval($_POST['revizyon_id'] ?? 0);
+            if (!$sozlesme_id || !$revizyon_id) {
+                echo json_encode(['status' => 'error', 'message' => 'Revizyon bilgisi eksik.']);
+                break;
+            }
+
+            $db = (new HakedisSozlesmeModel())->getDb();
+            $db->beginTransaction();
+            try {
+                $yetkiStmt = $db->prepare("
+                    SELECT r.id
+                    FROM hakedis_is_revizyonlari r
+                    INNER JOIN hakedis_sozlesmeler s ON s.id = r.sozlesme_id
+                    WHERE r.id = ? AND r.sozlesme_id = ? AND s.firma_id = ? AND s.silinme_tarihi IS NULL
+                    FOR UPDATE
+                ");
+                $yetkiStmt->execute([$revizyon_id, $sozlesme_id, $firma_id]);
+                if (!$yetkiStmt->fetchColumn()) {
+                    throw new RuntimeException('Revizyon bulunamadı veya yetkiniz yok.');
+                }
+
+                $detayStmt = $db->prepare("SELECT kalem_id, degisim_miktari FROM hakedis_is_revizyon_kalemleri WHERE revizyon_id = ?");
+                $detayStmt->execute([$revizyon_id]);
+                $silinenDetaylar = $detayStmt->fetchAll(PDO::FETCH_ASSOC);
+                $miktarStmt = $db->prepare("UPDATE hakedis_kalemleri SET miktari = miktari - ? WHERE id = ? AND sozlesme_id = ?");
+                foreach ($silinenDetaylar as $detay) {
+                    $miktarStmt->execute([floatval($detay['degisim_miktari']), intval($detay['kalem_id']), $sozlesme_id]);
+                }
+                $db->prepare("DELETE FROM hakedis_is_revizyon_kalemleri WHERE revizyon_id = ?")
+                    ->execute([$revizyon_id]);
+                $db->prepare("DELETE FROM hakedis_is_revizyonlari WHERE id = ? AND sozlesme_id = ?")
+                    ->execute([$revizyon_id, $sozlesme_id]);
+
+                $revStmt = $db->prepare("SELECT id FROM hakedis_is_revizyonlari WHERE sozlesme_id = ? ORDER BY revizyon_no, id");
+                $revStmt->execute([$sozlesme_id]);
+                $kalanRevizyonlar = $revStmt->fetchAll(PDO::FETCH_COLUMN);
+                $noStmt = $db->prepare("UPDATE hakedis_is_revizyonlari SET revizyon_no = ? WHERE id = ?");
+                foreach ($kalanRevizyonlar as $index => $kalanId) {
+                    $noStmt->execute([$index + 1, $kalanId]);
+                }
+
+                // Kalan geçmişin önceki/yeni miktar zincirini yeniden kur.
+                $kalemStmt = $db->prepare("SELECT id, miktari FROM hakedis_kalemleri WHERE sozlesme_id = ? FOR UPDATE");
+                $kalemStmt->execute([$sozlesme_id]);
+                $anlikMiktarlar = [];
+                foreach ($kalemStmt->fetchAll(PDO::FETCH_ASSOC) as $kalem) {
+                    $anlikMiktarlar[intval($kalem['id'])] = floatval($kalem['miktari']);
+                }
+                $toplamStmt = $db->prepare("
+                    SELECT d.kalem_id, SUM(d.degisim_miktari) toplam_degisim
+                    FROM hakedis_is_revizyon_kalemleri d
+                    INNER JOIN hakedis_is_revizyonlari r ON r.id = d.revizyon_id
+                    WHERE r.sozlesme_id = ? GROUP BY d.kalem_id
+                ");
+                $toplamStmt->execute([$sozlesme_id]);
+                foreach ($toplamStmt->fetchAll(PDO::FETCH_ASSOC) as $toplam) {
+                    $kalemId = intval($toplam['kalem_id']);
+                    $anlikMiktarlar[$kalemId] -= floatval($toplam['toplam_degisim']);
+                }
+                $zincirStmt = $db->prepare("
+                    SELECT d.id, d.kalem_id, d.degisim_miktari
+                    FROM hakedis_is_revizyon_kalemleri d
+                    INNER JOIN hakedis_is_revizyonlari r ON r.id = d.revizyon_id
+                    WHERE r.sozlesme_id = ? ORDER BY r.revizyon_no, d.id
+                ");
+                $zincirStmt->execute([$sozlesme_id]);
+                $snapshotStmt = $db->prepare("UPDATE hakedis_is_revizyon_kalemleri SET onceki_miktar = ?, yeni_miktar = ? WHERE id = ?");
+                foreach ($zincirStmt->fetchAll(PDO::FETCH_ASSOC) as $detay) {
+                    $kalemId = intval($detay['kalem_id']);
+                    $onceki = $anlikMiktarlar[$kalemId] ?? 0;
+                    $yeni = $onceki + floatval($detay['degisim_miktari']);
+                    $snapshotStmt->execute([$onceki, $yeni, intval($detay['id'])]);
+                    $anlikMiktarlar[$kalemId] = $yeni;
+                }
+
+                $db->commit();
+                echo json_encode(['status' => 'success']);
+            } catch (Throwable $e) {
+                if ($db->inTransaction()) $db->rollBack();
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            }
             break;
 
         case 'saveIsRevizyonu':
@@ -353,6 +482,127 @@ try {
                 if ($db->inTransaction()) {
                     $db->rollBack();
                 }
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            }
+            break;
+
+        case 'getSureUzatimlari':
+            $sozlesme_id = intval($_POST['sozlesme_id'] ?? 0);
+            $db = (new HakedisSozlesmeModel())->getDb();
+            ensureSureUzatimTablosu($db);
+            $stmt = $db->prepare("
+                SELECT u.* FROM hakedis_sure_uzatimlari u
+                INNER JOIN hakedis_sozlesmeler s ON s.id = u.sozlesme_id
+                WHERE u.sozlesme_id = ? AND s.firma_id = ? AND s.silinme_tarihi IS NULL
+                ORDER BY u.uzatim_no DESC
+            ");
+            $stmt->execute([$sozlesme_id, $firma_id]);
+            echo json_encode(['status' => 'success', 'data' => $stmt->fetchAll(PDO::FETCH_ASSOC)]);
+            break;
+
+        case 'saveSureUzatimi':
+            $sozlesme_id = intval($_POST['sozlesme_id'] ?? 0);
+            $uzatim_tarihi = Date::Ymd($_POST['uzatim_tarihi'] ?? null);
+            $uzatim_gun = intval($_POST['uzatim_gun'] ?? 0);
+            if (!$sozlesme_id || !$uzatim_tarihi || $uzatim_gun <= 0) {
+                echo json_encode(['status' => 'error', 'message' => 'Onay tarihi ve uzatım günü zorunludur.']);
+                break;
+            }
+            $db = (new HakedisSozlesmeModel())->getDb();
+            ensureSureUzatimTablosu($db);
+            $db->beginTransaction();
+            try {
+                $stmt = $db->prepare("
+                    SELECT id, isin_bitecegi_tarih FROM hakedis_sozlesmeler
+                    WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL FOR UPDATE
+                ");
+                $stmt->execute([$sozlesme_id, $firma_id]);
+                $sozlesme = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$sozlesme || empty($sozlesme['isin_bitecegi_tarih'])) {
+                    throw new RuntimeException('Sözleşmenin bitiş tarihi tanımlı olmalıdır.');
+                }
+                $onceki = $sozlesme['isin_bitecegi_tarih'];
+                $yeni = (new DateTimeImmutable($onceki))->modify("+{$uzatim_gun} days")->format('Y-m-d');
+                $noStmt = $db->prepare("SELECT COALESCE(MAX(uzatim_no), 0) + 1 FROM hakedis_sure_uzatimlari WHERE sozlesme_id = ?");
+                $noStmt->execute([$sozlesme_id]);
+                $uzatim_no = intval($noStmt->fetchColumn());
+                $kararNo = trim($_POST['karar_no'] ?? '') ?: null;
+                $aciklama = trim($_POST['aciklama'] ?? '') ?: null;
+                $stmt = $db->prepare("
+                    INSERT INTO hakedis_sure_uzatimlari
+                    (sozlesme_id, uzatim_no, uzatim_tarihi, karar_no, aciklama, uzatim_gun,
+                     onceki_bitis_tarihi, yeni_bitis_tarihi, olusturan_personel_id)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([$sozlesme_id, $uzatim_no, $uzatim_tarihi, $kararNo, $aciklama,
+                    $uzatim_gun, $onceki, $yeni, $_SESSION['id']]);
+                $sonUzatim = date('d.m.Y', strtotime($uzatim_tarihi)) . ($kararNo ? " - {$kararNo}" : '') . " (+{$uzatim_gun} gün)";
+                $stmt = $db->prepare("
+                    UPDATE hakedis_sozlesmeler
+                    SET isin_bitecegi_tarih = ?, isin_suresi = COALESCE(isin_suresi, 0) + ?, son_sure_uzatimi = ?
+                    WHERE id = ? AND firma_id = ?
+                ");
+                $stmt->execute([$yeni, $uzatim_gun, $sonUzatim, $sozlesme_id, $firma_id]);
+                $db->commit();
+                echo json_encode(['status' => 'success', 'uzatim_no' => $uzatim_no, 'yeni_bitis_tarihi' => $yeni]);
+            } catch (Throwable $e) {
+                if ($db->inTransaction()) $db->rollBack();
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
+            }
+            break;
+
+        case 'deleteSureUzatimi':
+            $sozlesme_id = intval($_POST['sozlesme_id'] ?? 0);
+            $uzatim_id = intval($_POST['uzatim_id'] ?? 0);
+            $db = (new HakedisSozlesmeModel())->getDb();
+            ensureSureUzatimTablosu($db);
+            $db->beginTransaction();
+            try {
+                $stmt = $db->prepare("
+                    SELECT u.uzatim_gun, s.isin_bitecegi_tarih
+                    FROM hakedis_sure_uzatimlari u
+                    INNER JOIN hakedis_sozlesmeler s ON s.id = u.sozlesme_id
+                    WHERE u.id = ? AND u.sozlesme_id = ? AND s.firma_id = ? AND s.silinme_tarihi IS NULL
+                    FOR UPDATE
+                ");
+                $stmt->execute([$uzatim_id, $sozlesme_id, $firma_id]);
+                $kayit = $stmt->fetch(PDO::FETCH_ASSOC);
+                if (!$kayit) throw new RuntimeException('Süre uzatımı bulunamadı veya yetkiniz yok.');
+
+                $yeniGuncelBitis = (new DateTimeImmutable($kayit['isin_bitecegi_tarih']))
+                    ->modify('-' . intval($kayit['uzatim_gun']) . ' days')->format('Y-m-d');
+                $db->prepare("DELETE FROM hakedis_sure_uzatimlari WHERE id = ? AND sozlesme_id = ?")
+                    ->execute([$uzatim_id, $sozlesme_id]);
+
+                $stmt = $db->prepare("SELECT * FROM hakedis_sure_uzatimlari WHERE sozlesme_id = ? ORDER BY uzatim_no, id");
+                $stmt->execute([$sozlesme_id]);
+                $kalanlar = $stmt->fetchAll(PDO::FETCH_ASSOC);
+                $toplamGun = array_sum(array_map(static function ($u) { return intval($u['uzatim_gun']); }, $kalanlar));
+                $temelBitis = (new DateTimeImmutable($yeniGuncelBitis))->modify("-{$toplamGun} days");
+                $zincirStmt = $db->prepare("
+                    UPDATE hakedis_sure_uzatimlari
+                    SET uzatim_no = ?, onceki_bitis_tarihi = ?, yeni_bitis_tarihi = ? WHERE id = ?
+                ");
+                $cursor = $temelBitis;
+                foreach ($kalanlar as $index => $uzatim) {
+                    $onceki = $cursor->format('Y-m-d');
+                    $cursor = $cursor->modify('+' . intval($uzatim['uzatim_gun']) . ' days');
+                    $zincirStmt->execute([$index + 1, $onceki, $cursor->format('Y-m-d'), $uzatim['id']]);
+                }
+                $son = $kalanlar ? end($kalanlar) : null;
+                $sonUzatim = $son
+                    ? date('d.m.Y', strtotime($son['uzatim_tarihi'])) . (!empty($son['karar_no']) ? ' - ' . $son['karar_no'] : '') . ' (+' . intval($son['uzatim_gun']) . ' gün)'
+                    : null;
+                $stmt = $db->prepare("
+                    UPDATE hakedis_sozlesmeler
+                    SET isin_bitecegi_tarih = ?, isin_suresi = GREATEST(COALESCE(isin_suresi, 0) - ?, 0), son_sure_uzatimi = ?
+                    WHERE id = ? AND firma_id = ?
+                ");
+                $stmt->execute([$yeniGuncelBitis, intval($kayit['uzatim_gun']), $sonUzatim, $sozlesme_id, $firma_id]);
+                $db->commit();
+                echo json_encode(['status' => 'success', 'yeni_bitis_tarihi' => $yeniGuncelBitis]);
+            } catch (Throwable $e) {
+                if ($db->inTransaction()) $db->rollBack();
                 echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
             }
             break;

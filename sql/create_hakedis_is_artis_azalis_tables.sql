@@ -12,6 +12,23 @@ CREATE TABLE IF NOT EXISTS `hakedis_is_revizyonlari` (
   KEY `idx_hakedis_is_revizyonu_sozlesme` (`sozlesme_id`,`revizyon_tarihi`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
+CREATE TABLE IF NOT EXISTS `hakedis_sure_uzatimlari` (
+  `id` int unsigned NOT NULL AUTO_INCREMENT,
+  `sozlesme_id` int NOT NULL,
+  `uzatim_no` int unsigned NOT NULL,
+  `uzatim_tarihi` date NOT NULL,
+  `karar_no` varchar(100) DEFAULT NULL,
+  `aciklama` text DEFAULT NULL,
+  `uzatim_gun` int unsigned NOT NULL,
+  `onceki_bitis_tarihi` date NOT NULL,
+  `yeni_bitis_tarihi` date NOT NULL,
+  `olusturan_personel_id` int DEFAULT NULL,
+  `olusturma_tarihi` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_hakedis_sure_uzatimi_no` (`sozlesme_id`,`uzatim_no`),
+  KEY `idx_hakedis_sure_uzatimi_sozlesme` (`sozlesme_id`,`uzatim_tarihi`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
 CREATE TABLE IF NOT EXISTS `hakedis_is_revizyon_kalemleri` (
   `id` int unsigned NOT NULL AUTO_INCREMENT,
   `revizyon_id` int unsigned NOT NULL,

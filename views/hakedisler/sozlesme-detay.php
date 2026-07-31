@@ -17,6 +17,46 @@ if (!$sozlesme || $sozlesme->firma_id != $_SESSION['firma_id'] || $sozlesme->sil
     return;
 }
 
+$db = $model->getDb();
+$isRevizyonlari = [];
+$sureUzatimlari = [];
+try {
+    $stmt = $db->prepare("
+        SELECT r.*, COALESCE(SUM(d.degisim_miktari * d.birim_fiyat), 0) AS toplam_tutar_farki
+        FROM hakedis_is_revizyonlari r
+        LEFT JOIN hakedis_is_revizyon_kalemleri d ON d.revizyon_id = r.id
+        WHERE r.sozlesme_id = ?
+        GROUP BY r.id ORDER BY r.revizyon_no DESC
+    ");
+    $stmt->execute([$sozlesmeId]);
+    $isRevizyonlari = $stmt->fetchAll(PDO::FETCH_OBJ);
+    $detayStmt = $db->prepare("
+        SELECT poz_no, kalem_adi, degisim_miktari, birim, birim_fiyat
+        FROM hakedis_is_revizyon_kalemleri WHERE revizyon_id = ? ORDER BY id
+    ");
+    $kumulatifFark = array_sum(array_map(static function ($r) {
+        return floatval($r->toplam_tutar_farki);
+    }, $isRevizyonlari));
+    foreach ($isRevizyonlari as $revizyon) {
+        $revizyon->toplam_artis_orani = floatval($sozlesme->sozlesme_bedeli) > 0
+            ? ($kumulatifFark / floatval($sozlesme->sozlesme_bedeli)) * 100
+            : 0;
+        $kumulatifFark -= floatval($revizyon->toplam_tutar_farki);
+        $detayStmt->execute([$revizyon->id]);
+        $revizyon->kalemler = $detayStmt->fetchAll(PDO::FETCH_OBJ);
+    }
+} catch (Throwable $e) {
+    $isRevizyonlari = [];
+}
+
+try {
+    $stmt = $db->prepare("SELECT * FROM hakedis_sure_uzatimlari WHERE sozlesme_id = ? ORDER BY uzatim_no DESC");
+    $stmt->execute([$sozlesmeId]);
+    $sureUzatimlari = $stmt->fetchAll(PDO::FETCH_OBJ);
+} catch (Throwable $e) {
+    $sureUzatimlari = [];
+}
+
 $aylar = [
     1 => 'Ocak',
     2 => 'Şubat',
@@ -95,6 +135,93 @@ $aylar = [
                             </tr>
                         </tbody>
                     </table>
+                </div>
+
+                <hr class="my-3">
+                <div class="mb-4">
+                    <h6 class="fw-bold mb-2"><i class="bx bx-transfer-alt me-1 text-primary"></i> İş Artış/Azalışları</h6>
+                    <?php if (!$isRevizyonlari): ?>
+                        <div class="text-muted small border rounded p-2">Henüz iş artış/azalış kaydı yok.</div>
+                    <?php else: ?>
+                        <div class="accordion accordion-flush border rounded" id="detayRevizyonAccordion">
+                            <?php foreach ($isRevizyonlari as $index => $revizyon):
+                                $fark = floatval($revizyon->toplam_tutar_farki);
+                                $oran = floatval($revizyon->toplam_artis_orani);
+                            ?>
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button <?= $index ? 'collapsed' : '' ?> px-2 py-2" type="button"
+                                            data-bs-toggle="collapse" data-bs-target="#detay-revizyon-<?= intval($revizyon->id) ?>">
+                                            <span class="small fw-bold"><?= intval($revizyon->revizyon_no) ?>. Revizyon</span>
+                                            <span class="small text-muted ms-2"><?= date('d.m.Y', strtotime($revizyon->revizyon_tarihi)) ?></span>
+                                            <span class="small fw-bold ms-auto me-2 <?= $fark < 0 ? 'text-danger' : 'text-success' ?>">
+                                                <?= number_format($fark, 2, ',', '.') ?> ₺<br>
+                                                <span class="float-end">%<?= number_format($oran, 2, ',', '.') ?></span>
+                                            </span>
+                                        </button>
+                                    </h2>
+                                    <div id="detay-revizyon-<?= intval($revizyon->id) ?>" class="accordion-collapse collapse <?= $index ? '' : 'show' ?>"
+                                        data-bs-parent="#detayRevizyonAccordion">
+                                        <div class="accordion-body px-2 py-2">
+                                            <?php if (!empty($revizyon->aciklama)): ?>
+                                                <div class="small mb-2"><?= htmlspecialchars($revizyon->aciklama) ?></div>
+                                            <?php endif; ?>
+                                            <?php foreach ($revizyon->kalemler as $kalem):
+                                                $degisim = floatval($kalem->degisim_miktari);
+                                            ?>
+                                                <div class="small border-top py-1">
+                                                    <div class="text-truncate" title="<?= htmlspecialchars($kalem->kalem_adi) ?>">
+                                                        <?= htmlspecialchars(($kalem->poz_no ? $kalem->poz_no . ' - ' : '') . $kalem->kalem_adi) ?>
+                                                    </div>
+                                                    <span class="fw-bold <?= $degisim < 0 ? 'text-danger' : 'text-success' ?>">
+                                                        <?= $degisim > 0 ? '+' : '' ?><?= number_format($degisim, 4, ',', '.') ?> <?= htmlspecialchars($kalem->birim ?? '') ?>
+                                                    </span>
+                                                </div>
+                                            <?php endforeach; ?>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
+                </div>
+
+                <div>
+                    <h6 class="fw-bold mb-2"><i class="bx bx-time-five me-1 text-warning"></i> Süre Uzatımları</h6>
+                    <?php if (!$sureUzatimlari): ?>
+                        <div class="text-muted small border rounded p-2">Henüz süre uzatımı kaydı yok.</div>
+                    <?php else: ?>
+                        <div class="accordion accordion-flush border rounded" id="detaySureAccordion">
+                            <?php foreach ($sureUzatimlari as $index => $uzatim): ?>
+                                <div class="accordion-item">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button <?= $index ? 'collapsed' : '' ?> px-2 py-2" type="button"
+                                            data-bs-toggle="collapse" data-bs-target="#detay-sure-<?= intval($uzatim->id) ?>">
+                                            <span class="small fw-bold"><?= intval($uzatim->uzatim_no) ?>. Uzatım</span>
+                                            <span class="small text-muted ms-2"><?= date('d.m.Y', strtotime($uzatim->uzatim_tarihi)) ?></span>
+                                            <span class="small fw-bold text-success ms-auto me-2">+<?= intval($uzatim->uzatim_gun) ?> gün</span>
+                                        </button>
+                                    </h2>
+                                    <div id="detay-sure-<?= intval($uzatim->id) ?>" class="accordion-collapse collapse <?= $index ? '' : 'show' ?>"
+                                        data-bs-parent="#detaySureAccordion">
+                                        <div class="accordion-body px-2 py-2 small">
+                                            <?php if (!empty($uzatim->karar_no)): ?>
+                                                <div><strong>Karar:</strong> <?= htmlspecialchars($uzatim->karar_no) ?></div>
+                                            <?php endif; ?>
+                                            <?php if (!empty($uzatim->aciklama)): ?>
+                                                <div class="mb-1"><?= htmlspecialchars($uzatim->aciklama) ?></div>
+                                            <?php endif; ?>
+                                            <div class="d-flex justify-content-between border-top pt-1 mt-1">
+                                                <span><?= date('d.m.Y', strtotime($uzatim->onceki_bitis_tarihi)) ?></span>
+                                                <i class="bx bx-right-arrow-alt"></i>
+                                                <strong class="text-success"><?= date('d.m.Y', strtotime($uzatim->yeni_bitis_tarihi)) ?></strong>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            <?php endforeach; ?>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
