@@ -1074,14 +1074,14 @@ padding-bottom:  10px !important;
         width: 100%;
         table-layout: auto;
         min-width: 1200px;
-        border: 1px solid var(--bs-border-color, #eee) !important;
+        border: 1px solid rgba(0, 0, 0, 0.18) !important;
     }
 
     #comparisonTable th,
     #comparisonTable td {
         vertical-align: middle !important;
         text-align: center !important;
-        border: 1px solid var(--bs-border-color, #eee) !important;
+        border: 1px solid rgba(0, 0, 0, 0.18) !important;
         padding: 4px 4px !important;
         white-space: nowrap;
     }
@@ -1741,14 +1741,14 @@ padding-bottom:  10px !important;
         width: 100%;
         table-layout: auto;
         min-width: 900px;
-        border: 1px solid var(--bs-border-color, #eee) !important;
+        border: 1px solid rgba(0, 0, 0, 0.18) !important;
     }
 
     #okumaGunTable th,
     #okumaGunTable td {
         vertical-align: middle !important;
         text-align: center !important;
-        border: 1px solid var(--bs-border-color, #eee) !important;
+        border: 1px solid rgba(0, 0, 0, 0.18) !important;
         padding: 5px 6px !important;
         white-space: nowrap;
     }
@@ -1955,14 +1955,14 @@ padding-bottom:  10px !important;
         font-size: 12px;
         width: 100%;
         table-layout: auto;
-        border: 1px solid var(--bs-border-color, #eee) !important;
+        border: 1px solid rgba(0, 0, 0, 0.18) !important;
     }
 
     #defterOzetTable th,
     #defterOzetTable td {
         vertical-align: middle !important;
         text-align: center !important;
-        border: 1px solid var(--bs-border-color, #eee) !important;
+        border: 1px solid rgba(0, 0, 0, 0.18) !important;
         padding: 6px 8px !important;
         white-space: nowrap;
     }
