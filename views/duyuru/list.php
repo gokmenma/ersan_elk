@@ -422,6 +422,27 @@ foreach ($personeller as $p) {
     const personelData = <?= json_encode($personelData) ?>;
     let selectedIds = [];
 
+    function prepareContentForEditor(rawContent) {
+        if (!rawContent) return '';
+        let content = rawContent;
+
+        // Decode HTML entities if present (&lt;p&gt; etc.)
+        if (content.includes('&lt;') || content.includes('&gt;')) {
+            const doc = new DOMParser().parseFromString(content, 'text/html');
+            content = doc.documentElement.textContent || content;
+        }
+
+        // If content does NOT contain HTML tags (<p>, <br>, <div>, <span>, etc.), convert plain text newlines to HTML paragraphs
+        if (!/<[a-z][\s\S]*>/i.test(content)) {
+            content = content
+                .split(/\r?\n\r?\n/)
+                .map(para => '<p>' + para.replace(/\r?\n/g, '<br>') + '</p>')
+                .join('');
+        }
+
+        return content;
+    }
+
     $(document).ready(function () {
         const API_URL = 'views/duyuru/api.php';
         if (typeof feather !== 'undefined') {
@@ -562,8 +583,9 @@ foreach ($personeller as $p) {
                         $('#modalTitle').text('Duyuruyu Düzenle');
                         $('input[name="baslik"]').val(d.baslik);
                         
+                        const formattedContent = prepareContentForEditor(d.icerik);
                         if ($('#icerik').length > 0 && typeof $.fn.summernote !== 'undefined') {
-                            $('#icerik').summernote('code', d.icerik || '');
+                            $('#icerik').summernote('code', formattedContent);
                         } else {
                             $('textarea[name="icerik"]').val(d.icerik || '');
                         }
