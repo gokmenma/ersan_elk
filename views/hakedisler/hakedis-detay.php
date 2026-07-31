@@ -15,6 +15,7 @@ $db = $donemModel->getDb();
 
 // Hakediş ve Sözleşme bilgisini alalım
 $sql = "SELECT d.*, s.idare_adi, s.isin_adi, s.sozlesme_bedeli, s.isin_yuklenicisi,
+               s.isin_bitecegi_tarih as s_bitis_tarihi,
                s.a1_katsayisi as s_a1, s.b1_katsayisi as s_b1, s.b2_katsayisi as s_b2, s.c_katsayisi as s_c,
                s.asgari_ucret_temel as s_asgari, s.motorin_temel as s_motorin, s.ufe_genel_temel as s_ufe, s.makine_ekipman_temel as s_makine,
                s.kdv_orani as s_kdv, s.tevkifat_orani as s_tevkifat,
@@ -25,6 +26,23 @@ $sql = "SELECT d.*, s.idare_adi, s.isin_adi, s.sozlesme_bedeli, s.isin_yuklenici
 $stmt = $db->prepare($sql);
 $stmt->execute([$hakedisId, $_SESSION['firma_id']]);
 $hakedis = $stmt->fetch(PDO::FETCH_OBJ);
+
+$toplamIsArtisTutari = 0;
+if ($hakedis) {
+    try {
+        $artisStmt = $db->prepare("
+            SELECT COALESCE(SUM(d.degisim_miktari * d.birim_fiyat), 0)
+            FROM hakedis_is_revizyon_kalemleri d
+            INNER JOIN hakedis_is_revizyonlari r ON r.id = d.revizyon_id
+            WHERE r.sozlesme_id = ?
+        ");
+        $artisStmt->execute([$hakedis->sozlesme_id]);
+        $toplamIsArtisTutari = floatval($artisStmt->fetchColumn());
+    } catch (Throwable $e) {
+        $toplamIsArtisTutari = 0;
+    }
+}
+$yeniSozlesmeBedeli = $hakedis ? (floatval($hakedis->sozlesme_bedeli) + $toplamIsArtisTutari) : 0;
 
 if ($hakedis) {
     // Sözleşme bazlı varsayılan değerleri bas (Eğer hakedişte henüz girilmemişse)
@@ -97,7 +115,17 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
                                 <?= htmlspecialchars(mb_substr($hakedis->isin_adi, 0, 50)) ?>...
                             </p>
                             <p class="mb-1"><strong>Bedel:</strong>
-                                <?= number_format($hakedis->sozlesme_bedeli, 2, ',', '.') ?> ₺
+                                <?= number_format($yeniSozlesmeBedeli, 2, ',', '.') ?> ₺
+                                <?php if ($toplamIsArtisTutari != 0): ?>
+                                    <span class="d-block text-white-50" style="font-size: 11px;">
+                                        (<?= number_format($hakedis->sozlesme_bedeli, 2, ',', '.') ?> ₺
+                                        <?= $toplamIsArtisTutari > 0 ? '+' : '-' ?>
+                                        <?= number_format(abs($toplamIsArtisTutari), 2, ',', '.') ?> ₺ iş artışı)
+                                    </span>
+                                <?php endif; ?>
+                            </p>
+                            <p class="mb-1"><strong>Bitiş Tarihi:</strong>
+                                <?= $hakedis->s_bitis_tarihi ? date('d.m.Y', strtotime($hakedis->s_bitis_tarihi)) : '-' ?>
                             </p>
                             <p class="mb-1"><strong>Gerçekleşme Oranı:</strong>
                                 <span class="badge bg-soft-success text-success fw-bold p-1 px-2" id="toplamGerceklesmeYuzdesi" style="font-size: 11px;">%0,00</span>
@@ -410,5 +438,5 @@ $donemBaslik = $aylar[$hakedis->hakedis_tarihi_ay] . " " . $hakedis->hakedis_tar
     var currentSozlesmeId = <?= $hakedis->sozlesme_id ?>;
     var currentHakedisAy = <?= $hakedis->hakedis_tarihi_ay ?>;
     var currentHakedisYil = <?= $hakedis->hakedis_tarihi_yil ?>;
-    var sozlesmeBedeli = <?= (float)$hakedis->sozlesme_bedeli ?>;
+    var sozlesmeBedeli = <?= (float)$yeniSozlesmeBedeli ?>;
 </script>

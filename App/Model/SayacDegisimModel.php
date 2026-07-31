@@ -293,10 +293,20 @@ class SayacDegisimModel extends Model
      */
     public function getSummaryByFilters($baseWhere, $searchWhere, $params)
     {
-        $sql = "SELECT t.isemri_sonucu as sonuc, 
-                       COUNT(*) as adet, 
-                       ROUND(SUM(CASE WHEN pay.personel_sayisi > 0 THEN 1.0 / pay.personel_sayisi ELSE 0 END), 4) as toplam_abone
-                FROM {$this->table} t 
+        $sql = "SELECT t.isemri_sonucu as sonuc,
+                       COUNT(*) as adet,
+                       ROUND(SUM(CASE WHEN pay.personel_sayisi > 0 THEN 1.0 / pay.personel_sayisi ELSE 0 END), 4) as toplam_abone,
+                       CASE WHEN EXISTS (
+                           SELECT 1
+                           FROM tanimlamalar def
+                           WHERE def.firma_id = t.firma_id
+                           AND def.grup = 'is_turu'
+                           AND def.rapor_sekmesi = 'sokme_takma'
+                           AND def.is_turu_ucret > 0
+                           AND TRIM(def.is_emri_sonucu) = TRIM(t.isemri_sonucu)
+                           AND def.silinme_tarihi IS NULL
+                       ) THEN 1 ELSE 0 END as is_olumlu
+                FROM {$this->table} t
                 LEFT JOIN personel p ON t.personel_id = p.id 
                 LEFT JOIN tanimlamalar ek ON t.ekip_kodu_id = ek.id
                 JOIN (
@@ -310,7 +320,7 @@ class SayacDegisimModel extends Model
                 ) pay ON pay.tarih = t.tarih
                     AND pay.ortak_islem_id = SUBSTRING_INDEX(t.islem_id, '_', 1)
                 WHERE $baseWhere $searchWhere
-                GROUP BY sonuc
+                GROUP BY t.firma_id, t.isemri_sonucu
                 ORDER BY adet DESC";
 
         $stmt = $this->db->prepare($sql);
@@ -347,7 +357,16 @@ class SayacDegisimModel extends Model
                 ) pay ON pay.tarih = t.tarih
                     AND pay.ortak_islem_id = SUBSTRING_INDEX(t.islem_id, '_', 1)
                 LEFT JOIN tanimlamalar ek ON t.ekip_kodu_id = ek.id
-                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL";
+                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
+                AND EXISTS (
+                    SELECT 1
+                    FROM tanimlamalar def
+                    WHERE def.firma_id = t.firma_id
+                    AND def.grup = 'is_turu'
+                    AND def.rapor_sekmesi = 'sokme_takma'
+                    AND TRIM(def.is_emri_sonucu) = TRIM(t.isemri_sonucu)
+                    AND def.silinme_tarihi IS NULL
+                )";
         $params = [$firmaId, $startDate, $endDate, $firmaId, $startDate, $endDate];
 
         if ($personelId) {
@@ -471,7 +490,16 @@ class SayacDegisimModel extends Model
                 ) pay ON pay.tarih = t.tarih
                     AND pay.ortak_islem_id = SUBSTRING_INDEX(t.islem_id, '_', 1)
                 LEFT JOIN tanimlamalar ek ON t.ekip_kodu_id = ek.id
-                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL";
+                WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
+                AND EXISTS (
+                    SELECT 1
+                    FROM tanimlamalar def
+                    WHERE def.firma_id = t.firma_id
+                    AND def.grup = 'is_turu'
+                    AND def.rapor_sekmesi = 'sokme_takma'
+                    AND TRIM(def.is_emri_sonucu) = TRIM(t.isemri_sonucu)
+                    AND def.silinme_tarihi IS NULL
+                )";
         $params = [$firmaId, $startDate, $endDate, $firmaId, $startDate, $endDate];
 
         if ($personelId) {
@@ -503,14 +531,16 @@ class SayacDegisimModel extends Model
     public function getDistinctWorkTypes()
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
-        $sql = "SELECT t.isemri_sonucu, MAX(def.id) as def_id 
+        $sql = "SELECT t.isemri_sonucu, MAX(def.id) as def_id
                 FROM {$this->table} t
-                JOIN tanimlamalar def ON TRIM(t.isemri_sonucu) = TRIM(def.is_emri_sonucu)
-                WHERE t.firma_id = ? 
-                AND t.silinme_tarihi IS NULL 
-                AND t.isemri_sonucu IS NOT NULL 
+                JOIN tanimlamalar def ON def.firma_id = t.firma_id
+                    AND TRIM(t.isemri_sonucu) = TRIM(def.is_emri_sonucu)
+                WHERE t.firma_id = ?
+                AND t.silinme_tarihi IS NULL
+                AND t.isemri_sonucu IS NOT NULL
                 AND t.isemri_sonucu != ''
                 AND def.grup = 'is_turu'
+                AND def.rapor_sekmesi = 'sokme_takma'
                 AND def.is_turu_ucret > 0
                 AND def.silinme_tarihi IS NULL
                 GROUP BY TRIM(t.isemri_sonucu)";

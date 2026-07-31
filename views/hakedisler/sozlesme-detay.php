@@ -57,6 +57,14 @@ try {
     $sureUzatimlari = [];
 }
 
+$toplamIsArtisTutari = array_sum(array_map(static function ($r) {
+    return floatval($r->toplam_tutar_farki);
+}, $isRevizyonlari));
+$toplamUzatimGunu = array_sum(array_map(static function ($u) {
+    return intval($u->uzatim_gun);
+}, $sureUzatimlari));
+$yeniSozlesmeBedeli = floatval($sozlesme->sozlesme_bedeli) + $toplamIsArtisTutari;
+
 $aylar = [
     1 => 'Ocak',
     2 => 'Şubat',
@@ -143,45 +151,32 @@ $aylar = [
                     <?php if (!$isRevizyonlari): ?>
                         <div class="text-muted small border rounded p-2">Henüz iş artış/azalış kaydı yok.</div>
                     <?php else: ?>
-                        <div class="accordion accordion-flush border rounded" id="detayRevizyonAccordion">
-                            <?php foreach ($isRevizyonlari as $index => $revizyon):
-                                $fark = floatval($revizyon->toplam_tutar_farki);
-                                $oran = floatval($revizyon->toplam_artis_orani);
-                            ?>
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button <?= $index ? 'collapsed' : '' ?> px-2 py-2" type="button"
-                                            data-bs-toggle="collapse" data-bs-target="#detay-revizyon-<?= intval($revizyon->id) ?>">
-                                            <span class="small fw-bold"><?= intval($revizyon->revizyon_no) ?>. Revizyon</span>
-                                            <span class="small text-muted ms-2"><?= date('d.m.Y', strtotime($revizyon->revizyon_tarihi)) ?></span>
-                                            <span class="small fw-bold ms-auto me-2 <?= $fark < 0 ? 'text-danger' : 'text-success' ?>">
-                                                <?= number_format($fark, 2, ',', '.') ?> ₺<br>
-                                                <span class="float-end">%<?= number_format($oran, 2, ',', '.') ?></span>
-                                            </span>
-                                        </button>
-                                    </h2>
-                                    <div id="detay-revizyon-<?= intval($revizyon->id) ?>" class="accordion-collapse collapse <?= $index ? '' : 'show' ?>"
-                                        data-bs-parent="#detayRevizyonAccordion">
-                                        <div class="accordion-body px-2 py-2">
-                                            <?php if (!empty($revizyon->aciklama)): ?>
-                                                <div class="small mb-2"><?= htmlspecialchars($revizyon->aciklama) ?></div>
-                                            <?php endif; ?>
-                                            <?php foreach ($revizyon->kalemler as $kalem):
-                                                $degisim = floatval($kalem->degisim_miktari);
-                                            ?>
-                                                <div class="small border-top py-1">
-                                                    <div class="text-truncate" title="<?= htmlspecialchars($kalem->kalem_adi) ?>">
-                                                        <?= htmlspecialchars(($kalem->poz_no ? $kalem->poz_no . ' - ' : '') . $kalem->kalem_adi) ?>
-                                                    </div>
-                                                    <span class="fw-bold <?= $degisim < 0 ? 'text-danger' : 'text-success' ?>">
-                                                        <?= $degisim > 0 ? '+' : '' ?><?= number_format($degisim, 4, ',', '.') ?> <?= htmlspecialchars($kalem->birim ?? '') ?>
-                                                    </span>
-                                                </div>
-                                            <?php endforeach; ?>
-                                        </div>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
+                        <div class="table-responsive border rounded">
+                            <table class="table table-sm mb-0 align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="small">Revizyon</th>
+                                        <th class="small">İş Artış Tarihi</th>
+                                        <th class="small text-end">İş Artış Tutarı</th>
+                                        <th class="small text-end">Oran</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($isRevizyonlari as $revizyon):
+                                        $fark = floatval($revizyon->toplam_tutar_farki);
+                                        $oran = floatval($revizyon->toplam_artis_orani);
+                                    ?>
+                                        <tr>
+                                            <td class="small fw-bold"><?= intval($revizyon->revizyon_no) ?>. Revizyon</td>
+                                            <td class="small"><?= date('d.m.Y', strtotime($revizyon->revizyon_tarihi)) ?></td>
+                                            <td class="small text-end fw-bold <?= $fark < 0 ? 'text-danger' : 'text-success' ?>">
+                                                <?= $fark > 0 ? '+' : '' ?><?= number_format($fark, 2, ',', '.') ?> ₺
+                                            </td>
+                                            <td class="small text-end">%<?= number_format($oran, 2, ',', '.') ?></td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
                         </div>
                     <?php endif; ?>
                 </div>
@@ -191,38 +186,66 @@ $aylar = [
                     <?php if (!$sureUzatimlari): ?>
                         <div class="text-muted small border rounded p-2">Henüz süre uzatımı kaydı yok.</div>
                     <?php else: ?>
-                        <div class="accordion accordion-flush border rounded" id="detaySureAccordion">
-                            <?php foreach ($sureUzatimlari as $index => $uzatim): ?>
-                                <div class="accordion-item">
-                                    <h2 class="accordion-header">
-                                        <button class="accordion-button <?= $index ? 'collapsed' : '' ?> px-2 py-2" type="button"
-                                            data-bs-toggle="collapse" data-bs-target="#detay-sure-<?= intval($uzatim->id) ?>">
-                                            <span class="small fw-bold"><?= intval($uzatim->uzatim_no) ?>. Uzatım</span>
-                                            <span class="small text-muted ms-2"><?= date('d.m.Y', strtotime($uzatim->uzatim_tarihi)) ?></span>
-                                            <span class="small fw-bold text-success ms-auto me-2">+<?= intval($uzatim->uzatim_gun) ?> gün</span>
-                                        </button>
-                                    </h2>
-                                    <div id="detay-sure-<?= intval($uzatim->id) ?>" class="accordion-collapse collapse <?= $index ? '' : 'show' ?>"
-                                        data-bs-parent="#detaySureAccordion">
-                                        <div class="accordion-body px-2 py-2 small">
-                                            <?php if (!empty($uzatim->karar_no)): ?>
-                                                <div><strong>Karar:</strong> <?= htmlspecialchars($uzatim->karar_no) ?></div>
-                                            <?php endif; ?>
-                                            <?php if (!empty($uzatim->aciklama)): ?>
-                                                <div class="mb-1"><?= htmlspecialchars($uzatim->aciklama) ?></div>
-                                            <?php endif; ?>
-                                            <div class="d-flex justify-content-between border-top pt-1 mt-1">
-                                                <span><?= date('d.m.Y', strtotime($uzatim->onceki_bitis_tarihi)) ?></span>
-                                                <i class="bx bx-right-arrow-alt"></i>
-                                                <strong class="text-success"><?= date('d.m.Y', strtotime($uzatim->yeni_bitis_tarihi)) ?></strong>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            <?php endforeach; ?>
+                        <div class="table-responsive border rounded">
+                            <table class="table table-sm mb-0 align-middle">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th class="small">Uzatım</th>
+                                        <th class="small">Uzatım Tarihi</th>
+                                        <th class="small text-end">Uzatılan Süre</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <?php foreach ($sureUzatimlari as $uzatim): ?>
+                                        <tr>
+                                            <td class="small fw-bold"><?= intval($uzatim->uzatim_no) ?>. Uzatım</td>
+                                            <td class="small"><?= date('d.m.Y', strtotime($uzatim->uzatim_tarihi)) ?></td>
+                                            <td class="small text-end fw-bold text-success">+<?= intval($uzatim->uzatim_gun) ?> gün</td>
+                                        </tr>
+                                    <?php endforeach; ?>
+                                </tbody>
+                            </table>
                         </div>
                     <?php endif; ?>
                 </div>
+
+                <?php if ($isRevizyonlari || $sureUzatimlari): ?>
+                    <hr class="my-3">
+                    <div class="bg-light rounded p-3">
+                        <h6 class="fw-bold mb-2"><i class="bx bx-calculator me-1 text-dark"></i> Genel Toplam (Güncel Durum)</h6>
+                        <table class="table table-sm table-borderless mb-0">
+                            <tbody>
+                                <tr>
+                                    <th class="small">Toplam İş Tutarı :</th>
+                                    <td class="small text-end fw-bold text-primary">
+                                        <?= number_format($yeniSozlesmeBedeli, 2, ',', '.') ?> ₺
+                                        <?php if ($toplamIsArtisTutari != 0): ?>
+                                            <div class="text-muted" style="font-size: 11px;">
+                                                (<?= number_format($sozlesme->sozlesme_bedeli, 2, ',', '.') ?> ₺ +
+                                                <?= number_format($toplamIsArtisTutari, 2, ',', '.') ?> ₺)
+                                            </div>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th class="small">Toplam İş Süresi :</th>
+                                    <td class="small text-end fw-bold">
+                                        <?= htmlspecialchars($sozlesme->isin_suresi ?? '') ?> Gün
+                                        <?php if ($toplamUzatimGunu > 0): ?>
+                                            <span class="text-muted" style="font-size: 11px;">(+<?= $toplamUzatimGunu ?> gün uzatım dahil)</span>
+                                        <?php endif; ?>
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <th class="small">Bitiş Tarihi :</th>
+                                    <td class="small text-end fw-bold text-success">
+                                        <?= $sozlesme->isin_bitecegi_tarih ? date('d.m.Y', strtotime($sozlesme->isin_bitecegi_tarih)) : '-' ?>
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                <?php endif; ?>
             </div>
         </div>
     </div>

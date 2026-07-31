@@ -692,10 +692,11 @@ class PuantajModel extends Model
      */
     public function getSummaryByFilters($baseWhere, $searchWhere, $params)
     {
-        $sql = "SELECT TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)) as sonuc, 
-                       COUNT(*) as adet, 
-                       SUM(t.sonuclanmis) as toplam_abone
-                FROM {$this->table} t 
+        $sql = "SELECT TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)) as sonuc,
+                       COUNT(*) as adet,
+                       SUM(t.sonuclanmis) as toplam_abone,
+                       MAX(CASE WHEN tn.is_turu_ucret > 0 THEN 1 ELSE 0 END) as is_olumlu
+                FROM {$this->table} t
                 LEFT JOIN personel p ON t.personel_id = p.id 
                 LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id 
                 LEFT JOIN firmalar f ON t.firma_id = f.id

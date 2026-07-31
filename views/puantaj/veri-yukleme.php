@@ -357,9 +357,527 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         vertical-align: middle;
         padding-top: 4px;
     }
+
+    /* İş takip ekranı: sade ve kullanıcı odaklı ortak görünüm */
+    .puantaj-workspace {
+        --work-surface: #fff;
+        --work-border: #e7eaf0;
+        --work-muted: #667085;
+        --work-soft: #f7f8fa;
+        --work-primary: #405cf5;
+    }
+
+    .puantaj-workspace > .row > .col-12 > .card {
+        border: 1px solid var(--work-border);
+        border-radius: 14px;
+        box-shadow: 0 4px 16px rgba(16, 24, 40, .05);
+        margin-bottom: 18px;
+    }
+
+    .puantaj-workspace #filterAccordionHeader {
+        min-height: 66px;
+        padding: 10px 14px !important;
+        gap: 16px;
+    }
+
+    .puantaj-workspace #puantajTabs {
+        display: flex;
+        flex-wrap: nowrap;
+        gap: 6px;
+        overflow-x: auto;
+        scrollbar-width: thin;
+        padding: 3px;
+    }
+
+    .puantaj-workspace #filterAccordion .nav-tabs-custom .nav-link {
+        display: inline-flex;
+        align-items: center;
+        gap: 7px;
+        min-height: 40px;
+        padding: 9px 14px;
+        border-radius: 9px;
+        color: #475467;
+        white-space: nowrap;
+    }
+
+    .puantaj-workspace #filterAccordion .nav-tabs-custom .nav-link i {
+        font-size: 17px;
+        opacity: .8;
+    }
+
+    .puantaj-workspace #filterAccordion .nav-tabs-custom .nav-link.active {
+        color: #fff;
+        background: #1f2937;
+        box-shadow: 0 4px 10px rgba(31, 41, 55, .16);
+    }
+
+    .puantaj-workspace #collapseOne .accordion-body {
+        background: var(--work-soft);
+        border-top: 1px solid var(--work-border);
+        padding: 18px;
+    }
+
+    .puantaj-workspace #puantajTabContent > .tab-pane > .card {
+        overflow: hidden;
+        border: 1px solid var(--work-border);
+        border-radius: 14px;
+        box-shadow: 0 5px 20px rgba(16, 24, 40, .05);
+    }
+
+    .puantaj-workspace #puantajTabContent > .tab-pane > .card > .card-header {
+        min-height: 82px;
+        padding: 16px 20px;
+        gap: 14px;
+        flex-wrap: wrap;
+        background: var(--work-surface);
+        border-bottom: 1px solid var(--work-border);
+    }
+
+    .puantaj-workspace .card-title {
+        display: flex;
+        align-items: center;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin: 0;
+        font-size: 16px;
+        font-weight: 700;
+        color: #101828;
+    }
+
+    .puantaj-workspace .stat-mini-card {
+        min-height: 54px;
+        padding: 8px 14px;
+        gap: 10px;
+        border: 1px solid var(--work-border);
+        border-left-width: 3px;
+        border-radius: 10px;
+        box-shadow: none;
+    }
+
+    .puantaj-workspace .stat-mini-card:hover {
+        transform: none;
+        box-shadow: 0 4px 12px rgba(16, 24, 40, .08);
+    }
+
+    .puantaj-workspace .stat-mini-card .value {
+        font-size: 18px;
+        line-height: 1.1;
+    }
+
+    .puantaj-workspace .stat-mini-card .label {
+        display: block;
+        margin: 2px 0 0;
+        font-size: 10px;
+        letter-spacing: .02em;
+    }
+
+    .puantaj-workspace .stat-mini-card .icon-wrap {
+        width: 30px;
+        height: 30px;
+    }
+
+    .puantaj-workspace .mini-donut-card {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        min-height: 54px;
+        padding: 7px 13px 7px 9px;
+        border: 1px solid var(--work-border);
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 3px 10px rgba(16, 24, 40, .04);
+    }
+
+    .puantaj-workspace .mini-donut {
+        position: relative;
+        width: 42px;
+        height: 42px;
+        flex: 0 0 42px;
+        border-radius: 50%;
+        transform: rotate(-90deg);
+    }
+
+    .puantaj-workspace .mini-donut::after {
+        content: '';
+        position: absolute;
+        inset: 7px;
+        border-radius: 50%;
+        background: #fff;
+    }
+
+    .puantaj-workspace .mini-donut-value {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        color: #344054;
+        font-size: 9px;
+        font-weight: 800;
+        transform: rotate(90deg);
+    }
+
+    .puantaj-workspace .mini-donut-content {
+        display: flex;
+        flex-direction: column;
+        gap: 3px;
+    }
+
+    .puantaj-workspace .mini-donut-title {
+        color: #344054;
+        font-size: 11px;
+        font-weight: 800;
+        text-transform: uppercase;
+        white-space: nowrap;
+    }
+
+    .puantaj-workspace .mini-donut-legend {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 3px 8px;
+        max-width: 180px;
+        color: #667085;
+        font-size: 9px;
+        font-weight: 600;
+        line-height: 1.2;
+    }
+
+    .puantaj-workspace .mini-donut-legend span {
+        display: inline-flex;
+        align-items: center;
+        gap: 3px;
+        white-space: nowrap;
+    }
+
+    .puantaj-workspace .mini-donut-legend i {
+        width: 6px;
+        height: 6px;
+        border-radius: 50%;
+    }
+
+    .puantaj-workspace .horizontal-summary-chart {
+        display: inline-grid;
+        grid-template-columns: minmax(92px, auto) minmax(240px, 430px);
+        align-items: center;
+        gap: 5px 14px;
+        min-width: 430px;
+        padding: 4px 0 4px 14px;
+        border-left: 1px solid var(--work-border);
+    }
+
+    .puantaj-workspace .horizontal-chart-total {
+        grid-row: 1 / span 3;
+        align-self: stretch;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        padding-right: 4px;
+    }
+
+    .puantaj-workspace .horizontal-chart-total strong {
+        color: #101828;
+        font-size: 24px;
+        line-height: 1.1;
+    }
+
+    .puantaj-workspace .horizontal-chart-total span {
+        margin-top: 3px;
+        color: #98a2b3;
+        font-size: 10px;
+        font-weight: 800;
+        letter-spacing: .04em;
+        text-transform: uppercase;
+    }
+
+    .puantaj-workspace .horizontal-chart-row {
+        display: grid;
+        grid-template-columns: minmax(105px, 145px) minmax(90px, 1fr) 86px;
+        align-items: center;
+        gap: 8px;
+        min-height: 21px;
+    }
+
+    .puantaj-workspace .horizontal-chart-label {
+        overflow: hidden;
+        color: #667085;
+        font-size: 12px;
+        font-weight: 700;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .puantaj-workspace .horizontal-chart-track {
+        height: 9px;
+        overflow: hidden;
+        border-radius: 10px;
+        background: #eef1f5;
+    }
+
+    .puantaj-workspace .horizontal-chart-bar {
+        height: 100%;
+        min-width: 3px;
+        border-radius: inherit;
+        transform-origin: left center;
+        animation: horizontal-chart-grow .55s ease-out;
+    }
+
+    .puantaj-workspace .horizontal-chart-number {
+        color: #344054;
+        font-size: 12px;
+        font-weight: 800;
+        text-align: right;
+        white-space: nowrap;
+    }
+
+    .puantaj-workspace .horizontal-chart-number small {
+        color: #98a2b3;
+        font-size: 10px;
+        font-weight: 700;
+    }
+
+    @keyframes horizontal-chart-grow {
+        from { transform: scaleX(0); }
+        to { transform: scaleX(1); }
+    }
+
+    .puantaj-workspace .card-header > .d-flex.bg-white {
+        padding: 4px !important;
+        border-color: var(--work-border) !important;
+        border-radius: 10px !important;
+        box-shadow: 0 2px 8px rgba(16, 24, 40, .04) !important;
+    }
+
+    .puantaj-workspace .card-header .btn-link {
+        border-radius: 7px;
+        min-height: 34px;
+    }
+
+    .puantaj-workspace #sayacDurumSummary,
+    .puantaj-workspace #puantajSummary,
+    .puantaj-workspace #sayacDegisimSummary,
+    .puantaj-workspace #muhurlemeSummary {
+        padding: 16px 20px !important;
+        background: #fafbfc !important;
+    }
+
+    .puantaj-workspace .summary-card-item .card {
+        border: 1px solid var(--work-border) !important;
+        border-radius: 10px;
+        box-shadow: 0 2px 6px rgba(16, 24, 40, .04) !important;
+    }
+
+    .puantaj-workspace .summary-card-item:hover .card {
+        transform: translateY(-2px);
+        box-shadow: 0 6px 14px rgba(16, 24, 40, .08) !important;
+    }
+
+    .puantaj-workspace .summary-card-item .card-body {
+        padding: 13px !important;
+    }
+
+    .puantaj-workspace .summary-card-item .main-value {
+        font-size: 19px;
+    }
+
+    .puantaj-workspace #puantajTabContent > .tab-pane > .card > .card-body:last-child {
+        padding: 16px 20px 20px;
+        overflow-x: auto;
+    }
+
+    .puantaj-workspace table.dataTable {
+        border-collapse: separate !important;
+        border-spacing: 0;
+        border: 1px solid var(--work-border) !important;
+        border-radius: 10px;
+        overflow: hidden;
+    }
+
+    .puantaj-workspace table.dataTable thead th {
+        padding: 12px 10px !important;
+        background: #f7f8fa !important;
+        border-color: var(--work-border) !important;
+        color: #344054;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: none;
+    }
+
+    .puantaj-workspace table.dataTable tbody td {
+        padding: 12px 10px !important;
+        border-color: #edf0f4 !important;
+        color: #344054;
+        vertical-align: middle;
+    }
+
+    .puantaj-workspace table.dataTable tbody tr:hover td {
+        background: #f8faff !important;
+    }
+
+    .puantaj-workspace table.dataTable .search-input-row th {
+        padding: 6px 4px !important;
+        background: #fff !important;
+    }
+
+    .puantaj-workspace table.dataTable thead .search-input-row {
+        display: none;
+    }
+
+    .puantaj-workspace table.dataTable.column-filters-open thead .search-input-row {
+        display: table-row;
+    }
+
+    .puantaj-workspace .column-filter-toggle.active {
+        color: #fff !important;
+        background: var(--work-primary) !important;
+    }
+
+    .puantaj-workspace .summary-detail-toggle {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        border: 0;
+        background: transparent;
+        color: #475467;
+        font-size: 12px;
+        font-weight: 700;
+        padding: 3px 0;
+    }
+
+    .puantaj-workspace .summary-detail-toggle i {
+        font-size: 17px;
+        transition: transform .2s ease;
+    }
+
+    .puantaj-workspace .summary-detail-toggle[aria-expanded="true"] i {
+        transform: rotate(180deg);
+    }
+
+    .puantaj-workspace .summary-details-collapsed {
+        padding-top: 11px !important;
+        padding-bottom: 11px !important;
+    }
+
+    .puantaj-workspace .summary-details-collapsed .summary-primary-row,
+    .puantaj-workspace .summary-details-collapsed .summary-secondary-row,
+    .puantaj-workspace .summary-details-collapsed .summary-toggle-btn {
+        display: none !important;
+    }
+
+    .puantaj-workspace .summary-details-collapsed > .d-flex {
+        margin-bottom: 0 !important;
+    }
+
+    .puantaj-workspace #puantajTabContent > .tab-pane > .card > .card-header {
+        background: linear-gradient(135deg, #fff 0%, #fbfcff 100%);
+    }
+
+    .puantaj-workspace .card-title::before {
+        content: '';
+        width: 4px;
+        height: 28px;
+        border-radius: 10px;
+        background: var(--work-primary);
+        flex: 0 0 4px;
+    }
+
+    .puantaj-workspace table.dataTable .search-input-row input,
+    .puantaj-workspace table.dataTable .search-input-row select {
+        min-height: 34px;
+        border: 1px solid #dfe3ea;
+        border-radius: 7px;
+        background: #fff;
+    }
+
+    [data-bs-theme="dark"] .puantaj-workspace {
+        --work-surface: #242b3d;
+        --work-border: #343d52;
+        --work-soft: #202638;
+    }
+
+    [data-bs-theme="dark"] .puantaj-workspace .card-title,
+    [data-bs-theme="dark"] .puantaj-workspace table.dataTable tbody td {
+        color: #e7eaf0;
+    }
+
+    [data-bs-theme="dark"] .puantaj-workspace .mini-donut-card,
+    [data-bs-theme="dark"] .puantaj-workspace .mini-donut::after {
+        background: #242b3d;
+    }
+
+    [data-bs-theme="dark"] .puantaj-workspace .mini-donut-title,
+    [data-bs-theme="dark"] .puantaj-workspace .mini-donut-value {
+        color: #e7eaf0;
+    }
+
+    [data-bs-theme="dark"] .puantaj-workspace .horizontal-chart-total strong,
+    [data-bs-theme="dark"] .puantaj-workspace .horizontal-chart-number {
+        color: #e7eaf0;
+    }
+
+    [data-bs-theme="dark"] .puantaj-workspace .horizontal-chart-track {
+        background: #343d52;
+    }
+
+    [data-bs-theme="dark"] .puantaj-workspace #sayacDurumSummary,
+    [data-bs-theme="dark"] .puantaj-workspace #puantajSummary,
+    [data-bs-theme="dark"] .puantaj-workspace #sayacDegisimSummary,
+    [data-bs-theme="dark"] .puantaj-workspace #muhurlemeSummary,
+    [data-bs-theme="dark"] .puantaj-workspace table.dataTable thead th {
+        background: #202638 !important;
+    }
+
+    @media (max-width: 991.98px) {
+        .puantaj-workspace #filterAccordionHeader {
+            align-items: stretch !important;
+            flex-direction: column;
+        }
+
+        .puantaj-workspace #filterAccordionHeader > .d-flex:first-child {
+            width: 100%;
+        }
+
+        .puantaj-workspace #filterAccordionHeader > .d-flex:last-child {
+            width: 100%;
+            margin: 0 !important;
+            justify-content: space-between;
+        }
+
+        .puantaj-workspace #puantajTabContent > .tab-pane > .card > .card-header {
+            align-items: flex-start !important;
+        }
+    }
+
+    @media (max-width: 575.98px) {
+        .puantaj-workspace #filterAccordion .nav-tabs-custom .nav-link {
+            min-width: 42px;
+            justify-content: center;
+        }
+
+        .puantaj-workspace .card-title {
+            width: 100%;
+        }
+
+        .puantaj-workspace .stat-mini-card {
+            flex: 1 1 calc(50% - 8px);
+            margin-left: 0 !important;
+        }
+
+        .puantaj-workspace .card-header > .d-flex.bg-white {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        .puantaj-workspace .horizontal-summary-chart {
+            grid-template-columns: 70px minmax(210px, 1fr);
+            min-width: 350px;
+            margin-left: 0 !important;
+            padding-left: 8px;
+        }
+    }
 </style>
 
-<div class="container-fluid">
+<div class="container-fluid puantaj-workspace">
     <?php
     $maintitle = "Puantaj";
     $title = "İş Takip Listesi";
@@ -393,36 +911,36 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                             <li class="nav-item">
                                                 <a class="nav-link <?= $activeTab === 'okuma' ? 'active' : '' ?>" data-bs-toggle="tab" href="#okuma"
                                                     role="tab" data-tab-name="okuma" onclick="event.stopPropagation();">
-                                                    <span class="d-block d-sm-none"><i class="fas fa-home"></i></span>
-                                                    <span class="d-none d-sm-block">Okuma İşlemleri</span>
+                                                    <span class="d-block d-sm-none"><i class="bx bx-book-reader"></i></span>
+                                                    <span class="d-none d-sm-flex align-items-center"><i class="bx bx-book-reader"></i>Okuma İşlemleri</span>
                                                 </a>
                                             </li>
                                             <li class="nav-item">
                                                 <a class="nav-link <?= $activeTab === 'yapilan_isler' ? 'active' : '' ?>" data-bs-toggle="tab"
                                                     href="#yapilan_isler" role="tab" data-tab-name="yapilan_isler" onclick="event.stopPropagation();">
-                                                    <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
-                                                    <span class="d-none d-sm-block">Kesme/Açma İşlem.</span>
+                                                    <span class="d-block d-sm-none"><i class="bx bx-power-off"></i></span>
+                                                    <span class="d-none d-sm-flex align-items-center"><i class="bx bx-power-off"></i>Kesme/Açma</span>
                                                 </a>
                                             </li>
                                             <li class="nav-item">
                                                 <a class="nav-link <?= $activeTab === 'sayac_sokme_takma' ? 'active' : '' ?>" data-bs-toggle="tab"
                                                     href="#sayac_sokme_takma" role="tab" data-tab-name="sayac_sokme_takma" onclick="event.stopPropagation();">
-                                                    <span class="d-block d-sm-none"><i class="fas fa-exchange-alt"></i></span>
-                                                    <span class="d-none d-sm-block">Sayaç Sökme Takma</span>
+                                                    <span class="d-block d-sm-none"><i class="bx bx-reset"></i></span>
+                                                    <span class="d-none d-sm-flex align-items-center"><i class="bx bx-reset"></i>Sayaç Sökme Takma</span>
                                                 </a>
                                             </li>
                                             <li class="nav-item">
                                                 <a class="nav-link <?= $activeTab === 'muhurleme' ? 'active' : '' ?>" data-bs-toggle="tab"
                                                     href="#muhurleme" role="tab" data-tab-name="muhurleme" onclick="event.stopPropagation();">
-                                                    <span class="d-block d-sm-none"><i class="fas fa-lock"></i></span>
-                                                    <span class="d-none d-sm-block">Mühürleme</span>
+                                                    <span class="d-block d-sm-none"><i class="bx bx-lock-alt"></i></span>
+                                                    <span class="d-none d-sm-flex align-items-center"><i class="bx bx-lock-alt"></i>Mühürleme</span>
                                                 </a>
                                             </li>
                                             <li class="nav-item">
                                                 <a class="nav-link <?= $activeTab === 'kacak_kontrol' ? 'active' : '' ?>" data-bs-toggle="tab"
                                                     href="#kacak_kontrol" role="tab" data-tab-name="kacak_kontrol" onclick="event.stopPropagation();">
-                                                    <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
-                                                    <span class="d-none d-sm-block">Kaçak Kontrol</span>
+                                                    <span class="d-block d-sm-none"><i class="bx bx-shield-quarter"></i></span>
+                                                    <span class="d-none d-sm-flex align-items-center"><i class="bx bx-shield-quarter"></i>Kaçak Kontrol</span>
                                                 </a>
                                             </li>
                                         </ul>
@@ -605,8 +1123,8 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 <span class="hide-text d-none">Daralt</span>
                             </button>
                         </div>
-                        <div class="row g-2" id="sayacDurumSummaryContainer"></div>
-                        <div class="row g-2 mt-2 d-none" id="sayacDurumOtherSummaryContainer"></div>
+                        <div class="row g-2 summary-primary-row" id="sayacDurumSummaryContainer"></div>
+                        <div class="row g-2 mt-2 d-none summary-secondary-row" id="sayacDurumOtherSummaryContainer"></div>
                     </div>
                     <div class="card-body">
                         <table id="endeksTable" class="table table-bordered dt-responsive nowrap w-100">
@@ -682,8 +1200,8 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 <span class="hide-text d-none">Daralt</span>
                             </button>
                         </div>
-                        <div class="row g-2" id="puantajSummaryContainer"></div>
-                        <div class="row g-2 mt-2 d-none" id="puantajOtherSummaryContainer"></div>
+                        <div class="row g-2 summary-primary-row" id="puantajSummaryContainer"></div>
+                        <div class="row g-2 mt-2 d-none summary-secondary-row" id="puantajOtherSummaryContainer"></div>
                     </div>
                     <div class="card-body">
                         <table id="puantajTable" class="table table-bordered dt-responsive nowrap w-100">
@@ -809,8 +1327,8 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 <span class="hide-text d-none">Daralt</span>
                             </button>
                         </div>
-                        <div class="row g-2" id="sayacDegisimSummaryContainer"></div>
-                        <div class="row g-2 mt-2 d-none" id="sayacDegisimOtherSummaryContainer"></div>
+                        <div class="row g-2 summary-primary-row" id="sayacDegisimSummaryContainer"></div>
+                        <div class="row g-2 mt-2 d-none summary-secondary-row" id="sayacDegisimOtherSummaryContainer"></div>
                     </div>
                     <div class="card-body">
                         <table id="sayacDegisimTable" class="table table-bordered dt-responsive nowrap w-100">
@@ -874,8 +1392,8 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 <span class="hide-text d-none">Daralt</span>
                             </button>
                         </div>
-                        <div class="row g-2" id="muhurlemeSummaryContainer"></div>
-                        <div class="row g-2 mt-2 d-none" id="muhurlemeOtherSummaryContainer"></div>
+                        <div class="row g-2 summary-primary-row" id="muhurlemeSummaryContainer"></div>
+                        <div class="row g-2 mt-2 d-none summary-secondary-row" id="muhurlemeOtherSummaryContainer"></div>
                     </div>
                     <div class="card-body">
                         <table id="muhurlemeTable" class="table table-bordered dt-responsive nowrap w-100">
@@ -1925,6 +2443,21 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             summary.sort((a, b) => parseFloat(b.toplam_abone) - parseFloat(a.toplam_abone));
 
             wrapper.show();
+
+            if (!wrapper.data('summary-detail-ready')) {
+                var heading = wrapper.find('h6').first();
+                var headingText = heading.text().trim();
+                heading.html(`
+                    <button type="button" class="summary-detail-toggle" aria-expanded="false">
+                        <i class="bx bx-chevron-down"></i>
+                        <span>${headingText}</span>
+                        <small class="fw-normal text-muted ms-1">Detayları göster</small>
+                    </button>
+                `);
+                wrapper.addClass('summary-details-collapsed');
+                wrapper.data('summary-detail-ready', true);
+            }
+
             container.empty();
             otherContainer.empty();
             otherContainer.addClass('d-none');
@@ -1988,13 +2521,127 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     </div>
                 `;
 
-                if (index < 6) {
+                if (index < 4) {
                     container.append(html);
                 } else {
                     otherContainer.append(html);
                     toggleBtn.removeClass('d-none');
                 }
             });
+        }
+
+        $(document).on('click', '.summary-detail-toggle', function() {
+            var button = $(this);
+            var wrapper = button.closest('.card-body');
+            var isCollapsed = wrapper.toggleClass('summary-details-collapsed').hasClass('summary-details-collapsed');
+            button.attr('aria-expanded', isCollapsed ? 'false' : 'true');
+            button.find('small').text(isCollapsed ? 'Detayları göster' : 'Detayları gizle');
+        });
+
+        function addColumnFilterToggle(tableSelector) {
+            var table = $(tableSelector);
+            var actions = table.closest('.card').children('.card-header').children('.d-flex').last();
+            if (!actions.length || actions.find('.column-filter-toggle').length) return;
+
+            actions.prepend(`
+                <button type="button" class="btn btn-link btn-sm text-secondary text-decoration-none px-2 column-filter-toggle"
+                    data-table="${tableSelector}" aria-pressed="false">
+                    <i class="bx bx-filter-alt fs-5 me-1"></i> Filtreler
+                </button>
+                <div class="vr column-filter-divider mx-1" style="height: 25px; align-self: center;"></div>
+            `);
+        }
+
+        $(document).on('click', '.column-filter-toggle', function() {
+            var button = $(this);
+            var table = $(button.data('table'));
+            var isOpen = table.toggleClass('column-filters-open').hasClass('column-filters-open');
+            button.toggleClass('active', isOpen).attr('aria-pressed', isOpen ? 'true' : 'false');
+        });
+
+        function normalizeWorkResult(value) {
+            return String(value || '')
+                .trim()
+                .replace(/\s+/g, ' ')
+                .toLocaleLowerCase('tr-TR');
+        }
+
+        function getPositiveOperationTotal(summary, tabName) {
+            if (!Array.isArray(summary)) return 0;
+
+            if (tabName === 'yapilan_isler') {
+                const positiveResults = [
+                    'Aparatla Kesim yapıldı',
+                    'Sayaç Kullanıma Açıldı',
+                    'Ödeme Yaptırıldı',
+                    'aparat kırma ücreti',
+                    'Mühür ve conta',
+                    'Mühür ve tapa'
+                ].map(normalizeWorkResult);
+
+                return summary.reduce(function(total, item) {
+                    return positiveResults.includes(normalizeWorkResult(item.sonuc))
+                        ? total + parseFloat(item.toplam_abone || 0)
+                        : total;
+                }, 0);
+            }
+
+            return summary.reduce(function(total, item) {
+                return parseInt(item.is_olumlu || 0, 10) === 1
+                    ? total + parseFloat(item.toplam_abone || 0)
+                    : total;
+            }, 0);
+        }
+
+        function horizontalSummaryChart(total, unit, segments) {
+            const safeTotal = Math.max(0, parseFloat(total || 0));
+            const maxValue = Math.max(1, ...(segments || []).map(segment => parseFloat(segment.value || 0)));
+            const rows = (segments || []).map(function(segment) {
+                const value = Math.max(0, parseFloat(segment.value || 0));
+                const width = value > 0 ? Math.max(1.5, (value / maxValue) * 100) : 0;
+                const rate = safeTotal > 0 ? Math.round((value / safeTotal) * 100) : 0;
+                return `
+                    <div class="horizontal-chart-row" title="${segment.label}: ${Math.round(value).toLocaleString('tr-TR')} (%${rate})">
+                        <span class="horizontal-chart-label">${segment.label}</span>
+                        <div class="horizontal-chart-track">
+                            <div class="horizontal-chart-bar" style="width:${width.toFixed(2)}%; background:${segment.color}"></div>
+                        </div>
+                        <span class="horizontal-chart-number">${Math.round(value).toLocaleString('tr-TR')} <small>%${rate}</small></span>
+                    </div>`;
+            }).join('');
+
+            return `
+                <div class="horizontal-summary-chart ms-3 count-animate">
+                    <div class="horizontal-chart-total">
+                        <strong>${Math.round(safeTotal).toLocaleString('tr-TR')}</strong>
+                        <span>Toplam ${unit}</span>
+                    </div>
+                    <div>${rows}</div>
+                </div>`;
+        }
+
+        function getKacakChartSummary(dataTableApi) {
+            const typeCounts = {};
+            let total = 0;
+
+            dataTableApi.rows({ filter: 'applied' }).data().each(function(row) {
+                const rawType = Array.isArray(row) ? row[3] : (row.tur || row.type || 'Belirsiz');
+                const type = $('<div>').html(rawType || 'Belirsiz').text().trim() || 'Belirsiz';
+                typeCounts[type] = (typeCounts[type] || 0) + 1;
+                total++;
+            });
+
+            const colors = ['#405cf5', '#22b573', '#f5a524'];
+            const sorted = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
+            const segments = sorted.slice(0, 3).map(function(entry, index) {
+                return { label: entry[0], value: entry[1], color: colors[index] };
+            });
+            const otherTotal = sorted.slice(3).reduce((sum, entry) => sum + entry[1], 0);
+            if (otherTotal > 0) {
+                segments.push({ label: 'Diğer', value: otherTotal, color: '#98a2b3' });
+            }
+
+            return { total: total, segments: segments };
         }
 
         // Kartlara tıklandığında filtreleme yap
@@ -2272,60 +2919,12 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 });
                             }
                             
-                            // Aktif durum sınıfını belirle
-                            let activeClassAll = (!currentSearch) ? 'active' : '';
-                            
-                            let targetNoStatuses = [];
-                            activeSummary.forEach(function(item) {
-                                let grp = getStatusGroup(item.sayac_durum);
-                                if (grp === 'NO') {
-                                    targetNoStatuses.push(item.sayac_durum);
-                                }
-                            });
-                            if (targetNoStatuses.length === 0) targetNoStatuses = noStatuses;
-                            let activeClassNO = (currentSearch === 'multi:' + targetNoStatuses.join('|')) ? 'active' : '';
-                            
-                            let targetKoStatuses = [];
-                            activeSummary.forEach(function(item) {
-                                let grp = getStatusGroup(item.sayac_durum);
-                                if (grp === 'KO') {
-                                    targetKoStatuses.push(item.sayac_durum);
-                                }
-                            });
-                            if (targetKoStatuses.length === 0) targetKoStatuses = koStatuses;
-                            let activeClassKO = (currentSearch === 'multi:' + targetKoStatuses.join('|')) ? 'active' : '';
-                            
-                            let activeClassOther = (otherStatuses.length > 0 && currentSearch === 'multi:' + otherStatuses.join('|')) ? 'active' : '';
-                            
-                            let html = `Endeks Okuma Raporu 
-                                <div class="stat-mini-card stat-success ms-3 count-animate stat-filter-card ${activeClassAll}" data-filter-group="all" style="cursor: pointer;">
-                                    <div class="icon-wrap"><i class="bx bx-group"></i></div>
-                                    <div class="d-flex flex-column align-items-start">
-                                        <span class="value" style="line-height: 1.1;">${totalAbone.toLocaleString('tr-TR')}</span>
-                                        <span class="label" style="line-height: 1.1; margin-left: 0; white-space: nowrap;">Abone</span>
-                                    </div>
-                                </div>
-                                <div class="stat-mini-card stat-primary ms-3 count-animate stat-filter-card ${activeClassNO}" data-filter-group="NO" style="cursor: pointer;">
-                                    <div class="icon-wrap"><i class="bx bx-check-circle"></i></div>
-                                    <div class="d-flex flex-column align-items-start">
-                                        <span class="value" style="line-height: 1.1;">${totalNormalOkuma.toLocaleString('tr-TR')}</span>
-                                        <span class="label" style="line-height: 1.1; margin-left: 0; white-space: nowrap;">Normal Okuma</span>
-                                    </div>
-                                </div>
-                                <div class="stat-mini-card stat-warning ms-3 count-animate stat-filter-card ${activeClassKO}" data-filter-group="KO" style="cursor: pointer;">
-                                    <div class="icon-wrap"><i class="bx bx-git-compare"></i></div>
-                                    <div class="d-flex flex-column align-items-start">
-                                        <span class="value" style="line-height: 1.1;">${totalKiyasOkuma.toLocaleString('tr-TR')}</span>
-                                        <span class="label" style="line-height: 1.1; margin-left: 0; white-space: nowrap;">Kıyas Okuma</span>
-                                    </div>
-                                </div>
-                                <div class="stat-mini-card stat-secondary ms-3 count-animate stat-filter-card ${activeClassOther}" data-filter-group="OTHER" style="cursor: pointer;">
-                                    <div class="icon-wrap"><i class="bx bx-dots-horizontal-rounded"></i></div>
-                                    <div class="d-flex flex-column align-items-start">
-                                        <span class="value" style="line-height: 1.1;">${totalDigerOkuma.toLocaleString('tr-TR')}</span>
-                                        <span class="label" style="line-height: 1.1; margin-left: 0; white-space: nowrap;">Diğer</span>
-                                    </div>
-                                </div>`;
+                            let html = `Endeks Okuma Raporu
+                                ${horizontalSummaryChart(totalAbone, 'abone', [
+                                    { label: 'Normal', value: totalNormalOkuma, color: '#405cf5' },
+                                    { label: 'Kıyas', value: totalKiyasOkuma, color: '#f5a524' },
+                                    { label: 'Diğer', value: totalDigerOkuma, color: '#98a2b3' }
+                                ])}`;
                             $('#endeksTableTitle').html(html);
                         }
                         return json.data;
@@ -2352,6 +2951,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 ],
                 order: [[0, 'desc']]
             }));
+            addColumnFilterToggle('#endeksTable');
         }
 
         // Puantaj (Kesme/Açma) tablosu için Server-Side DataTable
@@ -2395,14 +2995,12 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                     totalIs += parseInt(item.toplam_abone || 0);
                                 });
                             }
-                            $('#puantajTableTitle').html(`İş Listesi 
-                                <div class="stat-mini-card stat-primary ms-3 count-animate">
-                                    <div class="icon-wrap"><i class="bx bx-briefcase"></i></div>
-                                    <div>
-                                        <span class="value">${totalIs.toLocaleString('tr-TR')}</span>
-                                        <span class="label">İş</span>
-                                    </div>
-                                </div>`);
+                            const positiveTotal = getPositiveOperationTotal(json.summary, 'yapilan_isler');
+                            $('#puantajTableTitle').html(`İş Listesi
+                                ${horizontalSummaryChart(totalIs, 'işlem', [
+                                    { label: 'Olumlu', value: positiveTotal, color: '#22b573' },
+                                    { label: 'Diğer', value: Math.max(0, totalIs - positiveTotal), color: '#d0d5dd' }
+                                ])}`);
                         }
                         return json.data;
                     }
@@ -2435,6 +3033,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 ],
                 order: [[1, 'desc']]
             }));
+            addColumnFilterToggle('#puantajTable');
         }
 
         // Kaçak Kontrol tablosu için Client-Side DataTable (az veri olduğu için)
@@ -2463,23 +3062,12 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     kacakDataTable = $('#kacakTable').DataTable($.extend(true, {}, getDatatableOptions(), {
                         order: [[0, 'desc']],
                         drawCallback: function() {
-                            let total = 0;
-                            this.api().rows({filter: 'applied'}).data().each(function(row) {
-                                // Extract number from row'un relevant cell if needed, but summary is better.
-                                // Actually client-side table rows might not have summary easily.
-                                // I'll just use the count of visible rows for Kacak as it's client-side.
-                                total++; 
-                            });
-                            $('#kacakTableTitle').html(`Kaçak Kontrol Listesi 
-                                <div class="stat-mini-card stat-info ms-3 count-animate">
-                                    <div class="icon-wrap"><i class="bx bx-check-shield"></i></div>
-                                    <div>
-                                        <span class="value">${this.api().rows({filter: 'applied'}).count().toLocaleString('tr-TR')}</span>
-                                        <span class="label">İş</span>
-                                    </div>
-                                </div>`);
+                            const chartSummary = getKacakChartSummary(this.api());
+                            $('#kacakTableTitle').html(`Kaçak Kontrol Listesi
+                                ${horizontalSummaryChart(chartSummary.total, 'işlem', chartSummary.segments)}`);
                         }
                     }));
+                    addColumnFilterToggle('#kacakTable');
                 }
             });
         }
@@ -2520,14 +3108,12 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                     totalAdet += parseInt(item.toplam_abone || 0);
                                 });
                             }
-                            $('#sayacTableTitle').html(`Sayaç Sökme Takma Listesi 
-                                <div class="stat-mini-card stat-warning ms-3 count-animate">
-                                    <div class="icon-wrap"><i class="bx bxs-component"></i></div>
-                                    <div>
-                                        <span class="value">${totalAdet.toLocaleString('tr-TR')}</span>
-                                        <span class="label">Adet</span>
-                                    </div>
-                                </div>`);
+                            const positiveTotal = getPositiveOperationTotal(json.summary, 'sayac_sokme_takma');
+                            $('#sayacTableTitle').html(`Sayaç Sökme Takma Listesi
+                                ${horizontalSummaryChart(totalAdet, 'işlem', [
+                                    { label: 'Olumlu', value: positiveTotal, color: '#22b573' },
+                                    { label: 'Diğer', value: Math.max(0, totalAdet - positiveTotal), color: '#d0d5dd' }
+                                ])}`);
                         }
                         return json.data;
                     }
@@ -2551,6 +3137,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 ],
                 order: [[0, 'desc']]
             }));
+            addColumnFilterToggle('#sayacDegisimTable');
         }
 
         // Mühürleme tablosu için Server-Side DataTable (yapilan_isler'den MÜHÜRLEME olanlar)
@@ -2589,14 +3176,12 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                     totalIs += parseInt(item.toplam_abone || 0);
                                 });
                             }
-                            $('#muhurlemeTableTitle').html(`Mühürleme İş Listesi 
-                                <div class="stat-mini-card stat-secondary ms-3 count-animate">
-                                    <div class="icon-wrap"><i class="bx bx-lock-alt"></i></div>
-                                    <div>
-                                        <span class="value">${totalIs.toLocaleString('tr-TR')}</span>
-                                        <span class="label">İş</span>
-                                    </div>
-                                </div>`);
+                            const positiveTotal = getPositiveOperationTotal(json.summary, 'muhurleme');
+                            $('#muhurlemeTableTitle').html(`Mühürleme İş Listesi
+                                ${horizontalSummaryChart(totalIs, 'işlem', [
+                                    { label: 'Olumlu', value: positiveTotal, color: '#22b573' },
+                                    { label: 'Diğer', value: Math.max(0, totalIs - positiveTotal), color: '#d0d5dd' }
+                                ])}`);
                         }
                         return json.data;
                     }
@@ -2627,6 +3212,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 ],
                 order: [[1, 'desc']]
             }));
+            addColumnFilterToggle('#muhurlemeTable');
         }
 
         function loadTabContent(tabName) {
