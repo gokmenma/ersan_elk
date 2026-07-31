@@ -184,8 +184,7 @@ $hasCariPermission = isset($user_mobile_menus['cari-takip']);
 $hasGelirGiderPermission = isset($user_mobile_menus['gelir-gider']);
 
 // Kullanıcının özel sıralamasını al
-$UserModel = new UserModel();
-$userObj = $UserModel->find($currentUserId);
+$userObj = $currentUserStatus;
 $customOrder = (!empty($userObj->mobile_menu_order)) ? explode(',', $userObj->mobile_menu_order) : [];
 
 // Özel başlık düzeltmeleri
@@ -245,17 +244,21 @@ $isMoreActive = in_array($page, $more_pages);
 if ($page === 'personel-duzenle' && in_array('personel', $more_pages)) $isMoreActive = true;
 if ($page === 'hesap-hareketleri' && in_array('cari-takip', $more_pages)) $isMoreActive = true;
 
-// Bildirim Sayısı
+// Bildirim Sayısı (Session bazlı 60 sn önbellekli)
 $unreadNotificationCount = 0;
 try {
-    $db = (new \App\Model\Model())->getDb();
-    $st1 = $db->prepare("SELECT COUNT(*) FROM personel_talepleri WHERE durum != 'cozuldu' AND silinme_tarihi IS NULL AND firma_id = ?");
-    $st1->execute([$_SESSION['firma_id']]);
-    $st2 = $db->prepare("SELECT COUNT(*) FROM personel_avanslari WHERE durum = 'beklemede' AND silinme_tarihi IS NULL");
-    $st2->execute();
-    $st3 = $db->prepare("SELECT COUNT(*) FROM personel_izinleri WHERE durum = 'beklemede' AND silinme_tarihi IS NULL");
-    $st3->execute();
-    $unreadNotificationCount = (int)$st1->fetchColumn() + (int)$st2->fetchColumn() + (int)$st3->fetchColumn();
+    if (!isset($_SESSION['mobile_notif_count']) || (time() - ($_SESSION['mobile_notif_time'] ?? 0)) > 60) {
+        $db = (new \App\Model\Model())->getDb();
+        $st1 = $db->prepare("SELECT COUNT(*) FROM personel_talepleri WHERE durum != 'cozuldu' AND silinme_tarihi IS NULL AND firma_id = ?");
+        $st1->execute([$_SESSION['firma_id']]);
+        $st2 = $db->prepare("SELECT COUNT(*) FROM personel_avanslari WHERE durum = 'beklemede' AND silinme_tarihi IS NULL");
+        $st2->execute();
+        $st3 = $db->prepare("SELECT COUNT(*) FROM personel_izinleri WHERE durum = 'beklemede' AND silinme_tarihi IS NULL");
+        $st3->execute();
+        $_SESSION['mobile_notif_count'] = (int)$st1->fetchColumn() + (int)$st2->fetchColumn() + (int)$st3->fetchColumn();
+        $_SESSION['mobile_notif_time'] = time();
+    }
+    $unreadNotificationCount = $_SESSION['mobile_notif_count'] ?? 0;
 } catch (\Exception $e) {}
 ?>
 <!DOCTYPE html>
@@ -271,11 +274,11 @@ try {
 
     <!-- Google Fonts & Material Symbols -->
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
-    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=block" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/libs/flatpickr/flatpickr.min.css">
 
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <!-- Pre-compiled Static Tailwind CSS -->
+    <link rel="stylesheet" href="../views/personel-pwa/assets/css/tailwind-build.css?v=<?= filemtime(dirname(__DIR__) . '/views/personel-pwa/assets/css/tailwind-build.css') ?>">
     <link rel="stylesheet" href="../assets/libs/flatpickr/plugins/monthSelect/style.css">
 
     <!-- jQuery -->
@@ -505,7 +508,7 @@ try {
     </script>
 
     <!-- PWA stillerini personel-pwa'dan doğrudan yeniden kullan -->
-    <link rel="stylesheet" href="../views/personel-pwa/assets/css/pwa-style.css?v=<?= time() ?>">
+    <link rel="stylesheet" href="../views/personel-pwa/assets/css/pwa-style.css?v=<?= filemtime(dirname(__DIR__) . '/views/personel-pwa/assets/css/pwa-style.css') ?>">
 
     <style>
         :root {
@@ -844,6 +847,6 @@ try {
         }
     </script>
 
-    <script src="assets/js/push-config.js?v=<?= time() ?>"></script>
+    <script src="assets/js/push-config.js?v=<?= filemtime(__DIR__ . '/assets/js/push-config.js') ?>"></script>
 </body>
 </html>
