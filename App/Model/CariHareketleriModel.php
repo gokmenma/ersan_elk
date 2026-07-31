@@ -26,6 +26,76 @@ class CariHareketleriModel extends Model
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 
+    /**
+     * Cariye ait mevcut hareketlerin imzalarını (tarih|borc|alacak|açıklama) adetleriyle döndürür.
+     * PDF içe aktarımında mükerrer kayıt tespiti için kullanılır. Aynı imzadan birden fazla
+     * kayıt olabileceği için adet tutulur.
+     */
+    public function getKayitImzalari($cari_id)
+    {
+        $sql = "SELECT DATE(islem_tarihi) as tarih, borc, alacak, aciklama
+                FROM $this->table
+                WHERE cari_id = :cari_id AND silinme_tarihi IS NULL";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute(['cari_id' => $cari_id]);
+
+        $imzalar = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $row) {
+            $imza = $this->imzaOlustur($row->tarih, $row->borc, $row->alacak, $row->aciklama);
+            $imzalar[$imza] = ($imzalar[$imza] ?? 0) + 1;
+        }
+        return $imzalar;
+    }
+
+    public function imzaOlustur($tarih, $borc, $alacak, $aciklama)
+    {
+        return implode('|', [
+            substr((string) $tarih, 0, 10),
+            number_format((float) $borc, 2, '.', ''),
+            number_format((float) $alacak, 2, '.', ''),
+            mb_strtolower(trim(preg_replace('/\s+/u', ' ', (string) $aciklama)), 'UTF-8')
+        ]);
+    }
+
+    /**
+     * PDF'ten okunan hareketleri tek transaction içinde toplu kaydeder.
+     *
+     * @param int $cari_id
+     * @param array $rows Her satır: ['tarih' => 'Y-m-d', 'aciklama' => string, 'borc' => float, 'alacak' => float, 'belge_no' => string|null]
+     * @return int Eklenen kayıt sayısı
+     */
+    public function topluEkle($cari_id, array $rows)
+    {
+        if (empty($rows)) {
+            return 0;
+        }
+
+        $sql = "INSERT INTO $this->table (cari_id, islem_tarihi, belge_no, aciklama, borc, alacak, kayit_tarihi)
+                VALUES (:cari_id, :islem_tarihi, :belge_no, :aciklama, :borc, :alacak, NOW())";
+
+        $this->db->beginTransaction();
+        try {
+            $stmt = $this->db->prepare($sql);
+            $eklenen = 0;
+            foreach ($rows as $row) {
+                $stmt->execute([
+                    'cari_id' => $cari_id,
+                    'islem_tarihi' => $row['tarih'] . ' 00:00:00',
+                    'belge_no' => $row['belge_no'] ?? null,
+                    'aciklama' => $row['aciklama'],
+                    'borc' => $row['borc'],
+                    'alacak' => $row['alacak']
+                ]);
+                $eklenen++;
+            }
+            $this->db->commit();
+            return $eklenen;
+        } catch (\Throwable $e) {
+            $this->db->rollBack();
+            throw $e;
+        }
+    }
+
     public function ajaxList($params)
     {
         $draw = $params['draw'];

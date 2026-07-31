@@ -8,6 +8,48 @@ use App\Helper\Date;
 
 class PuantajModel extends Model
 {
+    /**
+     * İŞ TAKİP RAPOR SEKME KURALLARI
+     *
+     * Okuma, Sayaç Sökme Takma ve Kaçak Kontrol kendi tablolarını kullanır.
+     * Kesme/Açma ile Mühürleme ise yapilan_isler tablosunu paylaşır. Bu metot,
+     * ortak tablodaki kayıtların iki farklı rapor sekmesine birden düşmesini önleyen
+     * tek yetkili filtre noktasıdır. Sekme sorgularına ayrıca dağınık koşul eklemeyin.
+     */
+    private function getReportTabCondition(string $reportType): string
+    {
+        switch ($reportType) {
+            case 'ENDEKS_OKUMA':
+                return " AND COALESCE(t.is_emri_tipi, '') = 'Endeks Okuma'";
+
+            case 'SAYAC_DEGISIM':
+                return " AND (
+                            tn.rapor_sekmesi = 'sokme_takma'
+                            OR COALESCE(t.is_emri_tipi, '') LIKE '%SÖKME TAKMA%'
+                            OR COALESCE(t.is_emri_tipi, '') LIKE '%Sayaç Değişimi%'
+                        )
+                        AND COALESCE(tn.rapor_sekmesi, '') != 'muhurleme'";
+
+            case 'MUHURLEME':
+                return " AND (
+                            tn.rapor_sekmesi = 'muhurleme'
+                            OR COALESCE(t.is_emri_tipi, '') LIKE '%MÜHÜRLEME%'
+                        )
+                        AND COALESCE(tn.rapor_sekmesi, '') != 'sokme_takma'";
+
+            case 'KESME_ACMA':
+                // Tanımsız kesme sonuçları korunur; diğer raporların kaynakları
+                // hem rapor sekmesi hem iş emri tipi üzerinden kesin dışlanır.
+                return " AND COALESCE(tn.rapor_sekmesi, '') NOT IN ('sokme_takma', 'muhurleme')
+                        AND COALESCE(t.is_emri_tipi, '') NOT LIKE '%SÖKME TAKMA%'
+                        AND COALESCE(t.is_emri_tipi, '') NOT LIKE '%Sayaç Değişimi%'
+                        AND COALESCE(t.is_emri_tipi, '') NOT LIKE '%MÜHÜRLEME%'
+                        AND COALESCE(t.is_emri_tipi, '') != 'Endeks Okuma'";
+        }
+
+        return '';
+    }
+
     public function __construct($tableName = 'yapilan_isler')
     {
         $this->table = $tableName;
@@ -393,23 +435,7 @@ class PuantajModel extends Model
             $params['work_result'] = trim($workResult);
         }
 
-        if ($sorguTuru === 'ENDEKS_OKUMA') {
-            $baseWhere .= " AND t.is_emri_tipi = 'Endeks Okuma'";
-        } elseif ($sorguTuru === 'SAYAC_DEGISIM') {
-            $baseWhere .= " AND t.is_emri_tipi = 'Sayaç Değişimi'";
-        } elseif ($sorguTuru === 'KESME_ACMA') {
-            // KESME/AÇMA SEKME AYRIMI (iş kuralı):
-            // Tanımsız/ücretsiz kesme sonuçları da bu listede kalmalıdır. Bu nedenle
-            // sadece rapor_sekmesi='kesme' filtresi kullanılamaz. Sayaç Sökme Takma
-            // ve Mühürleme kayıtları hem rapor sekmesi hem kaynak iş emri tipiyle
-            // kesin olarak dışarıda tutulur. Yeni tasarım çalışmalarında kaldırmayın.
-            $baseWhere .= " AND COALESCE(tn.rapor_sekmesi, '') NOT IN ('sokme_takma', 'muhurleme')
-                            AND COALESCE(t.is_emri_tipi, '') NOT LIKE '%SÖKME TAKMA%'
-                            AND COALESCE(t.is_emri_tipi, '') NOT LIKE '%Sayaç Değişimi%'
-                            AND COALESCE(t.is_emri_tipi, '') NOT LIKE '%MÜHÜRLEME%'";
-        } elseif ($sorguTuru === 'MUHURLEME') {
-            $baseWhere .= " AND tn.rapor_sekmesi = 'muhurleme'";
-        }
+        $baseWhere .= $this->getReportTabCondition($sorguTuru);
 
         if ($region) {
             $baseWhere .= " AND ek.ekip_bolge = :region";

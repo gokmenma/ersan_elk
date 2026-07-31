@@ -68,6 +68,12 @@ $bakiye = $ozet->bakiye ?? 0;
 
                 <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
 
+                <button type="button" id="btnPdfYukle" class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center">
+                    <i data-feather="upload-cloud" class="me-1" style="width: 18px; height: 18px;"></i> PDF Yükle
+                </button>
+
+                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+
                 <button type="button" onclick="editCariNoteDesktop()" class="btn btn-link btn-sm text-warning text-decoration-none px-2 d-flex align-items-center">
                     <i data-feather="edit-2" class="me-1" style="width: 18px; height: 18px;"></i> Cari Notu
                 </button>
@@ -87,6 +93,10 @@ $bakiye = $ozet->bakiye ?? 0;
             <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 ms-auto d-md-none">
                 <button type="button" class="btn btn-link btn-sm text-success text-decoration-none px-2" id="btnExportExcelMobileTop" title="Excel'e Aktar">
                     <i data-feather="printer"></i>
+                </button>
+                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
+                <button type="button" class="btn btn-link btn-sm text-primary text-decoration-none px-2" id="btnPdfYukleMobile" title="PDF'ten Hareket Yükle">
+                    <i data-feather="upload-cloud"></i>
                 </button>
                 <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
                 <a href="index.php?p=cari/list" class="btn btn-link btn-sm text-secondary text-decoration-none px-3 d-flex align-items-center">
@@ -448,6 +458,107 @@ $bakiye = $ozet->bakiye ?? 0;
                     <button type="submit" class="btn btn-dark px-4" style="background:#212529; color:#fff; border-radius: 10px; border:none; font-weight: 600;">Kaydet</button>
                 </div>
             </form>
+        </div>
+    </div>
+</div>
+
+<!-- PDF'ten Hareket Yükleme Modalı -->
+<div class="modal fade" id="pdfYukleModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered modal-xl modal-fullscreen-md-down">
+        <div class="modal-content border-0 shadow-lg" style="border-radius: 20px;">
+            <div class="modal-header border-bottom-0 pb-0 pt-4 px-4 align-items-start">
+                <div class="d-flex align-items-center">
+                    <div class="rounded-circle d-flex align-items-center justify-content-center me-3" style="width: 48px; height: 48px; background-color: #e0e7ff;">
+                        <i data-feather="upload-cloud" style="width: 24px; height: 24px; color: #135bec;"></i>
+                    </div>
+                    <div>
+                        <h5 class="modal-title fw-bold mb-1" style="color: #1a1a1a;">PDF'ten Hareket Yükle</h5>
+                        <p class="text-muted small mb-0">Ekstre PDF'ini seçin, satırları kontrol edip aktarın.</p>
+                    </div>
+                </div>
+                <button type="button" class="btn-close mt-1" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+
+            <div class="modal-body px-4 pt-4 pb-2">
+                <div id="pdfAdim1">
+                    <div class="border rounded-3 p-3 mb-3" style="border-style: dashed !important; background: #f8fafc;">
+                        <label class="form-label small fw-bold text-muted mb-1">Ekstre PDF Dosyası</label>
+                        <input type="file" id="pdfDosya" class="form-control" accept="application/pdf">
+                        <div class="form-text small">Tarih, açıklama, Verdim ve Aldım sütunları içeren hesap ekstresi PDF'i yükleyin.</div>
+                    </div>
+                    <div class="text-end">
+                        <button type="button" class="btn btn-dark px-4" id="btnPdfAnaliz" style="border-radius: 10px; font-weight: 600;">
+                            <i data-feather="search" class="me-1" style="width: 16px; height: 16px;"></i> Analiz Et
+                        </button>
+                    </div>
+                </div>
+
+                <div id="pdfAdim2" class="d-none">
+                    <div class="row g-2 mb-3">
+                        <div class="col-6 col-md-3">
+                            <div class="border rounded-3 p-2 text-center h-100">
+                                <div class="small text-muted fw-bold">OKUNAN SATIR</div>
+                                <div class="fw-bold" id="pdfSatirSayisi">0</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="border rounded-3 p-2 text-center h-100">
+                                <div class="small text-muted fw-bold">SEÇİLİ</div>
+                                <div class="fw-bold text-primary" id="pdfSecilenSayisi">0</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="border rounded-3 p-2 text-center h-100">
+                                <div class="small text-muted fw-bold">TOP. ALDIM</div>
+                                <div class="fw-bold text-success" id="pdfToplamAldim">0,00</div>
+                            </div>
+                        </div>
+                        <div class="col-6 col-md-3">
+                            <div class="border rounded-3 p-2 text-center h-100">
+                                <div class="small text-muted fw-bold">TOP. VERDİM</div>
+                                <div class="fw-bold text-danger" id="pdfToplamVerdim">0,00</div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="pdfUyarilar"></div>
+
+                    <div class="d-flex flex-wrap align-items-center gap-3 mb-2">
+                        <div class="form-check mb-0">
+                            <input class="form-check-input" type="checkbox" id="pdfTumunuSec" checked>
+                            <label class="form-check-label small fw-bold" for="pdfTumunuSec">Tümünü seç</label>
+                        </div>
+                        <div class="form-check form-switch mb-0">
+                            <input class="form-check-input" type="checkbox" id="pdfMukerrerAtla" checked>
+                            <label class="form-check-label small fw-bold" for="pdfMukerrerAtla">Mükerrer kayıtları atla</label>
+                        </div>
+                        <div class="ms-auto" style="min-width: 200px;">
+                            <input type="text" id="pdfBelgeNo" class="form-control form-control-sm" maxlength="50" placeholder="Belge No (opsiyonel)">
+                        </div>
+                    </div>
+
+                    <div class="table-responsive border rounded-3" style="max-height: 45vh; overflow-y: auto;">
+                        <table class="table table-sm table-hover align-middle mb-0">
+                            <thead class="table-light position-sticky top-0">
+                                <tr>
+                                    <th style="width: 40px;"></th>
+                                    <th style="width: 110px;">Tarih</th>
+                                    <th>Açıklama</th>
+                                    <th class="text-end" style="width: 130px;">Aldım</th>
+                                    <th class="text-end" style="width: 130px;">Verdim</th>
+                                    <th class="text-center" style="width: 100px;">Durum</th>
+                                </tr>
+                            </thead>
+                            <tbody id="pdfSatirlar"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <div class="modal-footer border-top-0 pt-2 pb-4 px-4 justify-content-end">
+                <button type="button" class="btn btn-light px-4" data-bs-dismiss="modal" style="background:#6c757d; color:#fff; border-radius: 10px; border:none; font-weight: 600;">Kapat</button>
+                <button type="button" class="btn btn-dark px-4 d-none" id="btnPdfAktar" style="background:#212529; color:#fff; border-radius: 10px; border:none; font-weight: 600;">İçe Aktar</button>
+            </div>
         </div>
     </div>
 </div>

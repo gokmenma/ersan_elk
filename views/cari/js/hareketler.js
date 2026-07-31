@@ -376,6 +376,209 @@ $(document).ready(function () {
         safeFeatherReplace();
     };
 
+    // ---- PDF'ten Hareket Yükleme ----
+    let pdfSatirlari = [];
+
+    function escapeHtml(str) {
+        return $('<div>').text(str == null ? '' : str).html();
+    }
+
+    function updateBakiyeKartlari(res) {
+        if (res.new_bakiye_raw === undefined) return;
+        const bakiye = parseFloat(res.new_bakiye_raw);
+        const isBorc = bakiye < 0;
+        const statusText = isBorc ? '(Borç)' : (bakiye > 0 ? '(Alacak)' : '');
+        const color = isBorc ? '#f43f5e' : '#2a9d8f';
+        const colorClass = isBorc ? 'text-danger' : 'text-success';
+
+        $('#genel_bakiye_kart').text(res.new_bakiye);
+        $('#bakiye_status_text').text(statusText);
+        $('#bakiye_label_container, #bakiye_icon_color').removeClass('text-danger text-success').addClass(colorClass);
+        $('#mobile_bakiye_title').text(isBorc ? 'GÜNCEL BORÇ' : 'GÜNCEL ALACAK').css('color', color);
+        $('#toplam_borc_kart').text(res.new_borc);
+        $('#toplam_alacak_kart').text(res.new_alacak);
+    }
+
+    $('#btnPdfYukle, #btnPdfYukleMobile').on('click', function () {
+        pdfSatirlari = [];
+        $('#pdfDosya').val('');
+        $('#pdfBelgeNo').val('');
+        $('#pdfSatirlar').empty();
+        $('#pdfUyarilar').empty();
+        $('#pdfAdim1').removeClass('d-none');
+        $('#pdfAdim2').addClass('d-none');
+        $('#btnPdfAktar').addClass('d-none');
+        $('#pdfTumunuSec').prop('checked', true);
+        $('#pdfMukerrerAtla').prop('checked', true);
+        $('#pdfYukleModal').modal('show');
+        safeFeatherReplace();
+    });
+
+    $('#btnPdfAnaliz').on('click', function () {
+        const dosya = $('#pdfDosya')[0].files[0];
+        if (!dosya) {
+            Swal.fire('Uyarı', 'Lütfen bir PDF dosyası seçin.', 'warning');
+            return;
+        }
+
+        const btn = $(this);
+        const eskiHtml = btn.html();
+        btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Analiz ediliyor...');
+
+        const formData = new FormData();
+        formData.append('action', 'hareket-pdf-analiz');
+        formData.append('cari_id', global_cari_id);
+        formData.append('pdf_dosya', dosya);
+
+        $.ajax({
+            url: 'views/cari/api.php',
+            type: 'POST',
+            data: formData,
+            dataType: 'json',
+            processData: false,
+            contentType: false,
+            success: function (res) {
+                if (res.status !== 'success') {
+                    Swal.fire('Hata!', res.message || 'PDF okunamadı.', 'error');
+                    return;
+                }
+
+                pdfSatirlari = res.rows;
+                renderPdfSatirlari(res);
+
+                $('#pdfAdim1').addClass('d-none');
+                $('#pdfAdim2').removeClass('d-none');
+                $('#btnPdfAktar').removeClass('d-none');
+            },
+            error: function () {
+                Swal.fire('Hata!', 'PDF analizi sırasında bir sorun oluştu.', 'error');
+            },
+            complete: function () {
+                btn.prop('disabled', false).html(eskiHtml);
+                safeFeatherReplace();
+            }
+        });
+    });
+
+    function renderPdfSatirlari(res) {
+        const tbody = $('#pdfSatirlar');
+        tbody.empty();
+
+        res.rows.forEach(function (row, i) {
+            const secili = row.mukerrer ? '' : 'checked';
+            const durum = row.mukerrer
+                ? '<span class="badge bg-warning-subtle text-warning fw-bold">Mevcut</span>'
+                : '<span class="badge bg-success-subtle text-success fw-bold">Yeni</span>';
+
+            tbody.append(`
+                <tr class="${row.mukerrer ? 'table-warning' : ''}">
+                    <td class="text-center"><input type="checkbox" class="form-check-input pdf-satir-sec" data-index="${i}" ${secili}></td>
+                    <td>${escapeHtml(row.tarih_gosterim)}</td>
+                    <td>${escapeHtml(row.aciklama)}</td>
+                    <td class="text-end text-success fw-bold">${escapeHtml(row.borc_gosterim)}</td>
+                    <td class="text-end text-danger fw-bold">${escapeHtml(row.alacak_gosterim)}</td>
+                    <td class="text-center">${durum}</td>
+                </tr>
+            `);
+        });
+
+        $('#pdfSatirSayisi').text(res.rows.length);
+        $('#pdfToplamAldim').text(res.toplam_aldim);
+        $('#pdfToplamVerdim').text(res.toplam_verdim);
+
+        const uyarilar = $('#pdfUyarilar');
+        uyarilar.empty();
+        if (res.cari_adi) {
+            uyarilar.append(`<div class="alert alert-info py-2 px-3 small mb-2">PDF'teki cari adı: <strong>${escapeHtml(res.cari_adi)}</strong>. Satırlar bu sayfadaki cariye aktarılacaktır.</div>`);
+        }
+        if (res.mukerrer_sayisi > 0) {
+            uyarilar.append(`<div class="alert alert-warning py-2 px-3 small mb-2">${res.mukerrer_sayisi} satır bu caride zaten kayıtlı görünüyor ve işaretlenmedi.</div>`);
+        }
+        (res.uyarilar || []).forEach(function (u) {
+            uyarilar.append(`<div class="alert alert-warning py-2 px-3 small mb-2">${escapeHtml(u)}</div>`);
+        });
+
+        $('#pdfTumunuSec').prop('checked', res.mukerrer_sayisi === 0);
+        pdfSecimGuncelle();
+    }
+
+    function pdfSecimGuncelle() {
+        $('#pdfSecilenSayisi').text($('.pdf-satir-sec:checked').length);
+    }
+
+    $('#pdfTumunuSec').on('change', function () {
+        $('.pdf-satir-sec').prop('checked', $(this).is(':checked'));
+        pdfSecimGuncelle();
+    });
+
+    $(document).on('change', '.pdf-satir-sec', pdfSecimGuncelle);
+
+    $('#btnPdfAktar').on('click', function () {
+        const secilenler = [];
+        $('.pdf-satir-sec:checked').each(function () {
+            const row = pdfSatirlari[$(this).data('index')];
+            if (row) {
+                secilenler.push({
+                    tarih: row.tarih,
+                    aciklama: row.aciklama,
+                    borc: row.borc,
+                    alacak: row.alacak
+                });
+            }
+        });
+
+        if (secilenler.length === 0) {
+            Swal.fire('Uyarı', 'Aktarılacak satır seçilmedi.', 'warning');
+            return;
+        }
+
+        Swal.fire({
+            title: 'Emin misiniz?',
+            text: `${secilenler.length} hareket bu cariye eklenecek.`,
+            icon: 'question',
+            showCancelButton: true,
+            confirmButtonColor: '#212529',
+            cancelButtonColor: '#6c757d',
+            confirmButtonText: 'Evet, aktar',
+            cancelButtonText: 'İptal'
+        }).then((result) => {
+            if (!result.isConfirmed) return;
+
+            const btn = $('#btnPdfAktar');
+            const eskiHtml = btn.html();
+            btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1"></span> Aktarılıyor...');
+
+            $.ajax({
+                url: 'views/cari/api.php',
+                type: 'POST',
+                data: {
+                    action: 'hareket-pdf-kaydet',
+                    cari_id: global_cari_id,
+                    belge_no: $('#pdfBelgeNo').val(),
+                    mukerrer_atla: $('#pdfMukerrerAtla').is(':checked') ? 1 : 0,
+                    rows: JSON.stringify(secilenler)
+                },
+                dataType: 'json',
+                success: function (res) {
+                    if (res.status === 'success') {
+                        $('#pdfYukleModal').modal('hide');
+                        table.ajax.reload();
+                        updateBakiyeKartlari(res);
+                        showToast(res.message, 'success');
+                    } else {
+                        Swal.fire('Hata!', res.message || 'Aktarım yapılamadı.', 'error');
+                    }
+                },
+                error: function () {
+                    Swal.fire('Hata!', 'Aktarım sırasında bir sorun oluştu.', 'error');
+                },
+                complete: function () {
+                    btn.prop('disabled', false).html(eskiHtml);
+                }
+            });
+        });
+    });
+
     // Cari Notu Kaydet
     $('#cariNotuForm').on('submit', function(e) {
         e.preventDefault();

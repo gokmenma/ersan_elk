@@ -15,6 +15,27 @@ $CariHareket = new CariHareketleriModel();
 
 $action = $_POST["action"] ?? "";
 
+/**
+ * PDF içe aktarma uçları için oturum ve yetki kontrolü. Oturumdaki kullanıcı ID'sini döndürür.
+ */
+$cariPdfYetkiKontrol = function (): int {
+    if (empty($_SESSION["loggedin"]) || $_SESSION["loggedin"] !== true) {
+        throw new Exception("Oturumunuz sonlanmış. Lütfen tekrar giriş yapın.");
+    }
+
+    $kullanici_id = (int) ($_SESSION["id"] ?? $_SESSION["user_id"] ?? ($_SESSION["user"]->id ?? 0));
+    if ($kullanici_id <= 0) {
+        throw new Exception("Oturumunuz sonlanmış. Lütfen tekrar giriş yapın.");
+    }
+
+    $User = new \App\Model\UserModel();
+    if (!$User->hasUserPermission($kullanici_id, 'cari_hesap_hareketleri')) {
+        throw new Exception("Bu işlem için yetkiniz bulunmuyor.");
+    }
+
+    return $kullanici_id;
+};
+
 // Cari Listesi (DataTable)
 if ($action == "cari-ajax-list") {
     try {
@@ -285,6 +306,192 @@ if ($action == "hareket-sil") {
             "new_alacak" => Helper::formattedMoney($ozet->toplam_alacak ?? 0)
         ]);
     } catch (Exception $e) {
+        echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+    }
+    exit;
+}
+
+// PDF Ekstre Analizi (Önizleme - kayıt yapmaz)
+if ($action == "hareket-pdf-analiz") {
+    header('Content-Type: application/json; charset=utf-8');
+    try {
+        $cariPdfYetkiKontrol();
+
+        $cari_id = Security::decrypt($_POST["cari_id"] ?? "");
+        if (!$cari_id) {
+            throw new Exception("Cari bulunamadı.");
+        }
+
+        if (!isset($_FILES['pdf_dosya']) || $_FILES['pdf_dosya']['error'] !== UPLOAD_ERR_OK) {
+            throw new Exception("PDF dosyası yüklenemedi veya seçilmedi.");
+        }
+
+        $ext = strtolower(pathinfo($_FILES['pdf_dosya']['name'], PATHINFO_EXTENSION));
+        $mime = function_exists('mime_content_type') ? mime_content_type($_FILES['pdf_dosya']['tmp_name']) : 'application/pdf';
+        if ($ext !== 'pdf' || strpos($mime, 'pdf') === false) {
+            throw new Exception("Sadece PDF dosyası yükleyebilirsiniz.");
+        }
+
+        try {
+            $parser = new \App\Service\CariPdfImportService();
+            $sonuc = $parser->parseFile($_FILES['pdf_dosya']['tmp_name']);
+        } catch (\Throwable $t) {
+            error_log("Cari PDF okuma hatası: " . $t->getMessage());
+            throw new Exception("PDF okunamadı. Dosya bozuk veya taranmış (resim) bir PDF olabilir.");
+        }
+
+        if (empty($sonuc['rows'])) {
+            throw new Exception("PDF içinde hareket satırı bulunamadı. Dosya formatı desteklenmiyor olabilir.");
+        }
+
+        $imzalar = $CariHareket->getKayitImzalari($cari_id);
+        $sayaclar = [];
+        $mukerrerSayisi = 0;
+        $satirlar = [];
+
+        foreach ($sonuc['rows'] as $row) {
+            // PDF içinde birebir aynı satır birden fazla kez geçebilir; adet bazlı karşılaştırılır.
+            $imza = $CariHareket->imzaOlustur($row['tarih'], $row['borc'], $row['alacak'], $row['aciklama']);
+            $sayaclar[$imza] = ($sayaclar[$imza] ?? 0) + 1;
+            $mukerrer = $sayaclar[$imza] <= ($imzalar[$imza] ?? 0);
+            if ($mukerrer) {
+                $mukerrerSayisi++;
+            }
+
+            $satirlar[] = [
+                "sira" => $row['sira'],
+                "tarih" => $row['tarih'],
+                "tarih_gosterim" => date('d.m.Y', strtotime($row['tarih'])),
+                "aciklama" => $row['aciklama'],
+                "borc" => number_format($row['borc'], 2, '.', ''),
+                "alacak" => number_format($row['alacak'], 2, '.', ''),
+                "borc_gosterim" => $row['borc'] > 0 ? Helper::formattedMoney($row['borc']) : '-',
+                "alacak_gosterim" => $row['alacak'] > 0 ? Helper::formattedMoney($row['alacak']) : '-',
+                "mukerrer" => $mukerrer
+            ];
+        }
+
+        $uyarilar = [];
+        if ($sonuc['beyan_verdim'] !== null && abs($sonuc['beyan_verdim'] - $sonuc['toplam_verdim']) >= 0.01) {
+            $uyarilar[] = "PDF'te yazan Verdim toplamı (" . Helper::formattedMoney($sonuc['beyan_verdim']) .
+                ") okunan satır toplamından (" . Helper::formattedMoney($sonuc['toplam_verdim']) . ") farklı.";
+        }
+        if ($sonuc['beyan_aldim'] !== null && abs($sonuc['beyan_aldim'] - $sonuc['toplam_aldim']) >= 0.01) {
+            $uyarilar[] = "PDF'te yazan Aldım toplamı (" . Helper::formattedMoney($sonuc['beyan_aldim']) .
+                ") okunan satır toplamından (" . Helper::formattedMoney($sonuc['toplam_aldim']) . ") farklı.";
+        }
+        if (!empty($sonuc['baslangic_bakiye'])) {
+            $uyarilar[] = "PDF'te " . Helper::formattedMoney($sonuc['baslangic_bakiye']) .
+                " tutarında başlangıç bakiyesi var; bu tutar hareket olarak aktarılmaz.";
+        }
+        if ($sonuc['atlanan'] > 0) {
+            $uyarilar[] = $sonuc['atlanan'] . " satır okunamadığı için listeye alınmadı.";
+        }
+
+        echo json_encode([
+            "status" => "success",
+            "cari_adi" => $sonuc['cari_adi'],
+            "rows" => $satirlar,
+            "toplam_verdim" => Helper::formattedMoney($sonuc['toplam_verdim']),
+            "toplam_aldim" => Helper::formattedMoney($sonuc['toplam_aldim']),
+            "mukerrer_sayisi" => $mukerrerSayisi,
+            "uyarilar" => $uyarilar
+        ]);
+    } catch (Exception $e) {
+        error_log("Cari PDF analiz hatası: " . $e->getMessage());
+        echo json_encode(["status" => "error", "message" => $e->getMessage()]);
+    }
+    exit;
+}
+
+// PDF Ekstre İçe Aktarma (Seçilen satırları kaydeder)
+if ($action == "hareket-pdf-kaydet") {
+    header('Content-Type: application/json; charset=utf-8');
+    try {
+        $kullanici_id = $cariPdfYetkiKontrol();
+
+        $cari_id = Security::decrypt($_POST["cari_id"] ?? "");
+        if (!$cari_id) {
+            throw new Exception("Cari bulunamadı.");
+        }
+
+        $gelen = json_decode($_POST["rows"] ?? "", true);
+        if (!is_array($gelen) || empty($gelen)) {
+            throw new Exception("Aktarılacak satır seçilmedi.");
+        }
+
+        $belge_no = trim($_POST["belge_no"] ?? "");
+        $mukerrerAtla = ($_POST["mukerrer_atla"] ?? "1") == "1";
+        $imzalar = $CariHareket->getKayitImzalari($cari_id);
+        $sayaclar = [];
+
+        $kayitlar = [];
+        $atlanan = 0;
+        foreach ($gelen as $row) {
+            $tarih = trim($row['tarih'] ?? '');
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $tarih)) {
+                continue;
+            }
+
+            $borc = round((float) ($row['borc'] ?? 0), 2);
+            $alacak = round((float) ($row['alacak'] ?? 0), 2);
+            if ($borc <= 0 && $alacak <= 0) {
+                continue;
+            }
+
+            $aciklama = mb_substr(trim((string) ($row['aciklama'] ?? '')), 0, 500);
+            $imza = $CariHareket->imzaOlustur($tarih, $borc, $alacak, $aciklama);
+            $sayaclar[$imza] = ($sayaclar[$imza] ?? 0) + 1;
+
+            if ($mukerrerAtla && $sayaclar[$imza] <= ($imzalar[$imza] ?? 0)) {
+                $atlanan++;
+                continue;
+            }
+
+            $kayitlar[] = [
+                "tarih" => $tarih,
+                "aciklama" => $aciklama,
+                "borc" => $borc,
+                "alacak" => $alacak,
+                "belge_no" => $belge_no !== '' ? mb_substr($belge_no, 0, 50) : null
+            ];
+        }
+
+        if (empty($kayitlar)) {
+            throw new Exception("Kaydedilecek yeni hareket bulunamadı.");
+        }
+
+        try {
+            $eklenen = $CariHareket->topluEkle($cari_id, $kayitlar);
+        } catch (\Throwable $t) {
+            error_log("Cari PDF toplu kayıt hatası: " . $t->getMessage());
+            throw new Exception("Kayıt sırasında hata oluştu, hiçbir hareket eklenmedi.");
+        }
+
+        $cariBilgi = $Cari->find($cari_id);
+        (new \App\Model\SystemLogModel())->logAction(
+            $kullanici_id,
+            'Cari PDF İçe Aktarma',
+            "'" . ($cariBilgi->CariAdi ?? $cari_id) . "' carisine PDF ekstresinden $eklenen hareket aktarıldı. ($atlanan mükerrer satır atlandı)",
+            \App\Model\SystemLogModel::LEVEL_IMPORTANT
+        );
+
+        $stmt = $Cari->getDb()->prepare("SELECT SUM(borc) as toplam_borc, SUM(alacak) as toplam_alacak, SUM(alacak - borc) as bakiye FROM cari_hareketleri WHERE cari_id = :cari_id AND silinme_tarihi IS NULL");
+        $stmt->execute(['cari_id' => $cari_id]);
+        $ozet = $stmt->fetch(PDO::FETCH_OBJ);
+
+        echo json_encode([
+            "status" => "success",
+            "message" => "$eklenen hareket aktarıldı." . ($atlanan > 0 ? " $atlanan mükerrer satır atlandı." : ""),
+            "eklenen" => $eklenen,
+            "atlanan" => $atlanan,
+            "new_bakiye_raw" => $ozet->bakiye ?? 0,
+            "new_bakiye" => Helper::formattedMoney(abs($ozet->bakiye ?? 0)),
+            "new_borc" => Helper::formattedMoney($ozet->toplam_borc ?? 0),
+            "new_alacak" => Helper::formattedMoney($ozet->toplam_alacak ?? 0)
+        ]);
+    } catch (Exception $e) {
+        error_log("Cari PDF içe aktarma hatası: " . $e->getMessage());
         echo json_encode(["status" => "error", "message" => $e->getMessage()]);
     }
     exit;
