@@ -58,7 +58,20 @@ try {
 }
 
 function getInitial($name) {
-    return mb_strtoupper(mb_substr($name, 0, 1));
+    if (empty($name)) return '?';
+    $name = trim($name);
+    $words = preg_split('/\s+/u', $name, -1, PREG_SPLIT_NO_EMPTY);
+    if (count($words) >= 2) {
+        $first = mb_substr($words[0], 0, 1, 'UTF-8');
+        $last = mb_substr(end($words), 0, 1, 'UTF-8');
+        return mb_strtoupper($first . $last, 'UTF-8');
+    }
+    return mb_strtoupper(mb_substr($name, 0, 2, 'UTF-8'), 'UTF-8');
+}
+
+function renderAvatarHtml($name, $resimYolu = null, $sizeClass = 'w-10 h-10', $textSizeClass = 'text-xs') {
+    $initials = getInitial($name);
+    return '<div class="' . $sizeClass . ' rounded-2xl bg-gradient-to-tr from-rose-500 to-pink-500 text-white flex items-center justify-center font-black ' . $textSizeClass . ' shadow-sm border border-rose-200 dark:border-rose-800 shrink-0">' . $initials . '</div>';
 }
 ?>
 
@@ -184,9 +197,7 @@ function getInitial($name) {
                     <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 nobet-card" data-id="<?= $nobet->id ?>">
                         <div class="flex items-start justify-between mb-3">
                             <div class="flex items-center gap-3">
-                                <div class="w-10 h-10 rounded-full bg-rose-50 text-rose-600 dark:bg-rose-900/20 flex items-center justify-center font-bold text-sm">
-                                    <?= getInitial($nobet->personel_adi) ?>
-                                </div>
+                                <?= renderAvatarHtml($nobet->personel_adi, $nobet->personel_resim ?? null, 'w-10 h-10', 'text-xs') ?>
                                 <div>
                                     <h3 class="font-bold text-slate-800 dark:text-white text-sm"><?= htmlspecialchars($nobet->personel_adi) ?></h3>
                                     <p class="text-[10px] text-slate-400 uppercase font-bold"><?= htmlspecialchars($nobet->departman ?: 'Genel') ?></p>
@@ -227,9 +238,7 @@ function getInitial($name) {
             <div class="space-y-2">
                 <?php foreach ($aylikDagilim as $p): ?>
                     <div onclick="quickAddNobet('<?= Security::encrypt($p->id) ?>', '<?= addslashes($p->adi_soyadi) ?>')" class="flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/50 border border-transparent hover:border-primary/20 transition-all active:scale-[0.98]">
-                        <div class="w-10 h-10 rounded-full bg-white dark:bg-slate-700 flex items-center justify-center text-xs font-black text-primary shadow-sm">
-                            <?= getInitial($p->adi_soyadi) ?>
-                        </div>
+                        <?= renderAvatarHtml($p->adi_soyadi, $p->resim_yolu ?? null, 'w-10 h-10', 'text-xs') ?>
                         <div class="flex-1 min-w-0">
                             <h4 class="text-sm font-bold text-slate-800 dark:text-white truncate"><?= htmlspecialchars($p->adi_soyadi) ?></h4>
                             <p class="text-[10px] text-slate-400 font-bold uppercase"><?= htmlspecialchars($p->departman ?: 'Genel') ?></p>
@@ -274,9 +283,7 @@ function getInitial($name) {
                     <div class="personel-item flex items-center gap-3 p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/40 border-2 border-transparent transition-all active:scale-[0.98] cursor-pointer" 
                          data-id="<?= Security::encrypt($p->id) ?>" 
                          data-name="<?= htmlspecialchars(strtolower($p->adi_soyadi)) ?>">
-                        <div class="w-10 h-10 rounded-full bg-white dark:bg-slate-700 flex items-center justify-center text-xs font-black text-rose-500 shadow-sm border border-slate-100 dark:border-slate-800 shrink-0">
-                            <?= getInitial($p->adi_soyadi) ?>
-                        </div>
+                        <?= renderAvatarHtml($p->adi_soyadi, $p->resim_yolu ?? null, 'w-10 h-10', 'text-xs') ?>
                         <div class="flex-1 min-w-0">
                             <h4 class="text-sm font-black text-slate-700 dark:text-white truncate"><?= htmlspecialchars($p->adi_soyadi) ?></h4>
                             <p class="text-[10px] text-slate-400 font-bold uppercase truncate"><?= htmlspecialchars($p->departman ?: 'Genel') ?></p>
@@ -376,11 +383,11 @@ function initCalendar() {
         },
         eventContent: function(arg) {
             const name = arg.event.title;
-            const initial = name ? name.charAt(0).toUpperCase() : '?';
+            const initial = getInitial(name);
             const bgColor = arg.event.backgroundColor || 'var(--primary)';
             return {
                 html: `<div class="fc-event-main-frame flex items-center justify-center w-full h-full">
-                         <div class="w-5 h-5 rounded-full text-white flex items-center justify-center text-[8px] font-black border border-white shadow-sm" style="background-color: ${bgColor}" title="${name}">
+                         <div class="w-[30px] h-[28px] rounded-xl text-white flex items-center justify-center text-[10.5px] font-black tracking-tight border border-white/40 shadow-sm" style="background-color: ${bgColor}" title="${name}">
                             ${initial}
                          </div>
                        </div>`
@@ -421,9 +428,7 @@ function showDayDetails(dateStr) {
             html += `
                 <div class="bg-white dark:bg-card-dark rounded-2xl p-4 border border-slate-100 dark:border-slate-800 shadow-sm flex items-center justify-between">
                     <div class="flex items-center gap-3">
-                        <div class="w-8 h-8 rounded-full bg-slate-50 text-slate-400 flex items-center justify-center font-bold text-[10px]">
-                            ${getInitial(e.title)}
-                        </div>
+                        ${renderAvatarJs(e.title, e.extendedProps ? e.extendedProps.resim : null, 'w-9 h-9', 'text-[10px]')}
                         <div>
                             <h4 class="text-xs font-bold text-slate-800 dark:text-white">${e.title}</h4>
                             <p class="text-[9px] text-slate-400 font-bold">${e.extendedProps.baslangic_saati.substr(0,5)} - ${e.extendedProps.bitis_saati.substr(0,5)}</p>
@@ -540,7 +545,21 @@ function performAction(action, data) {
 }
 
 function getInitial(name) {
-    return name ? name.charAt(0).toUpperCase() : '?';
+    if (!name) return '?';
+    const cleanName = name.trim();
+    if (!cleanName) return '?';
+    const words = cleanName.split(/\s+/);
+    if (words.length >= 2) {
+        const first = words[0].charAt(0);
+        const last = words[words.length - 1].charAt(0);
+        return (first + last).toUpperCase();
+    }
+    return cleanName.substring(0, 2).toUpperCase();
+}
+
+function renderAvatarJs(name, resimYolu = null, sizeClass = 'w-9 h-9', textSizeClass = 'text-[10px]') {
+    const initials = getInitial(name);
+    return `<div class="${sizeClass} rounded-2xl bg-gradient-to-tr from-rose-500 to-pink-500 text-white flex items-center justify-center font-black ${textSizeClass} shadow-sm border border-rose-200 dark:border-rose-800 shrink-0">${initials}</div>`;
 }
 function changeNobetMonth(offset) {
     let currentAy = <?= $ay ?>;

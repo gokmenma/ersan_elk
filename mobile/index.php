@@ -273,11 +273,15 @@ try {
     <title>Ersan Elektrik | Yönetim</title>
 
     <!-- Google Fonts & Material Symbols -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
     <link href="https://fonts.googleapis.com/css2?family=Roboto+Condensed:wght@400;600;700&display=swap" rel="stylesheet">
     <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="../assets/libs/flatpickr/flatpickr.min.css">
 
-    <!-- Pre-compiled Static Tailwind CSS -->
+    <!-- Tailwind CSS Engine -->
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
     <link rel="stylesheet" href="../views/personel-pwa/assets/css/tailwind-build.css?v=<?= filemtime(dirname(__DIR__) . '/views/personel-pwa/assets/css/tailwind-build.css') ?>">
     <link rel="stylesheet" href="../assets/libs/flatpickr/plugins/monthSelect/style.css">
 

@@ -448,8 +448,9 @@ $activeAnnouncements = $duyuruModel->getAll(true);
     <?php if (!empty($activeAnnouncements)): ?>
         <!-- Duyurular -->
         <div class="space-y-2 mt-8">
-            <?php foreach ($activeAnnouncements as $announcement): ?>
-                <div class="rounded-2xl p-4 relative overflow-hidden text-white shadow-lg" 
+            <?php foreach ($activeAnnouncements as $idx => $announcement): ?>
+                <div class="rounded-2xl p-4 relative overflow-hidden text-white shadow-lg cursor-pointer active:scale-[0.98] transition-transform" 
+                     onclick="openDuyuruDetayByIndex(<?= (int)$idx ?>)"
                      style="background: linear-gradient(160deg, rgba(0,0,0,0.05) 0%, rgba(0,0,0,0.2) 100%), var(--primary); 
                             border: 1.5px solid rgba(255,255,255,0.15);
                             box-shadow: 0 12px 24px -6px rgba(var(--primary-rgb), 0.4);">
@@ -466,10 +467,15 @@ $activeAnnouncements = $duyuruModel->getAll(true);
                                 <span class="text-[9px] font-bold tracking-widest uppercase opacity-80">KURUMSAL DUYURU</span>
                                 <span class="text-[9px] opacity-70 font-medium"><?= date('d.m.Y', strtotime($announcement->tarih)) ?></span>
                             </div>
-                            <h4 class="font-bold text-sm leading-snug drop-shadow-sm"><?= htmlspecialchars($announcement->baslik) ?></h4>
-                            <p class="text-[11px] text-white/90 mt-1.5 leading-relaxed line-clamp-3">
-                                <?= !empty($announcement->icerik) ? htmlspecialchars($announcement->icerik) : 'Detaylar için tıklayın.' ?>
+                            <h4 class="font-bold text-sm leading-snug drop-shadow-sm truncate"><?= htmlspecialchars($announcement->baslik, ENT_QUOTES, 'UTF-8') ?></h4>
+                            <p class="text-[11px] text-white/90 mt-1.5 leading-relaxed line-clamp-2">
+                                <?= !empty($announcement->icerik) ? htmlspecialchars($announcement->icerik, ENT_QUOTES, 'UTF-8') : 'Detaylar için tıklayın.' ?>
                             </p>
+                            <div class="flex items-center gap-1.5 text-[10px] text-white/80 font-semibold mt-2.5 pt-1.5 border-t border-white/10">
+                                <span class="material-symbols-outlined text-[14px]">touch_app</span>
+                                <span>Detayları Görüntüle</span>
+                                <span class="material-symbols-outlined text-[13px] ms-auto">arrow_forward</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -506,9 +512,11 @@ $activeAnnouncements = $duyuruModel->getAll(true);
                         $pResim = !empty($nobet['personel_resim_yolu']) ? $nobet['personel_resim_yolu'] : ($nobet['resim_yolu'] ?? '');
                         if (!empty($pResim) && file_exists($pResim)): ?>
                             <img src="../<?= $pResim ?>" class="w-full h-full object-cover">
-                        <?php else: ?>
-                            <?= mb_substr($nobet['adi_soyadi'], 0, 1) ?>
-                        <?php endif; ?>
+                        <?php else: 
+                            $nWords = preg_split('/\s+/u', trim($nobet['adi_soyadi']), -1, PREG_SPLIT_NO_EMPTY);
+                            $nInitials = count($nWords) >= 2 ? mb_substr($nWords[0], 0, 1, 'UTF-8') . mb_substr(end($nWords), 0, 1, 'UTF-8') : mb_substr($nobet['adi_soyadi'], 0, 2, 'UTF-8');
+                            echo mb_strtoupper($nInitials, 'UTF-8');
+                        endif; ?>
                     </div>
                     <div>
                         <p class="text-sm font-bold text-slate-900 dark:text-white leading-tight"><?= htmlspecialchars($nobet['adi_soyadi']) ?></p>
@@ -719,6 +727,68 @@ $(document).ready(function() {
 });
 </script>
 
+<!-- Kurumsal Duyuru Detay Bottom Sheet -->
+<div id="duyuru-detay-sheet" class="fixed inset-0 z-[75] pointer-events-none">
+    <div id="duyuru-detay-overlay" class="absolute inset-0 bg-slate-900/60 backdrop-blur-sm opacity-0 transition-opacity duration-300" onclick="closeDuyuruDetay()"></div>
+    <div id="duyuru-detay-content" class="absolute bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-3xl transform translate-y-full transition-transform duration-300 shadow-2xl flex flex-col max-h-[90vh]">
+        <!-- Pull Indicator -->
+        <div class="flex justify-center pt-3 pb-1">
+            <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+        </div>
+        
+        <!-- Header -->
+        <div class="px-5 py-3 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between sticky top-0 bg-white dark:bg-card-dark z-10 rounded-t-3xl">
+            <div class="flex items-center gap-3">
+                <div class="w-10 h-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-xl">campaign</span>
+                </div>
+                <div>
+                    <span class="text-[10px] font-bold uppercase tracking-wider text-primary">KURUMSAL DUYURU</span>
+                    <h3 id="duyuru-detay-header-tarih" class="text-[11px] text-slate-400 font-medium"></h3>
+                </div>
+            </div>
+            <button onclick="closeDuyuruDetay()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 hover:text-slate-800 dark:text-slate-400 dark:hover:text-white flex items-center justify-center transition-colors">
+                <span class="material-symbols-outlined text-lg">close</span>
+            </button>
+        </div>
+
+        <!-- Scrollable Content -->
+        <div class="px-5 py-4 overflow-y-auto space-y-4 max-h-[calc(90vh-140px)]">
+            <!-- Image container -->
+            <div id="duyuru-detay-resim-container" class="hidden rounded-2xl overflow-hidden shadow-sm border border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-900 max-h-64">
+                <img id="duyuru-detay-resim" src="" class="w-full h-auto object-cover max-h-64" alt="Duyuru Görseli">
+            </div>
+
+            <!-- Title -->
+            <h2 id="duyuru-detay-baslik" class="text-base font-bold text-slate-900 dark:text-white leading-snug"></h2>
+
+            <!-- Badges -->
+            <div class="flex flex-wrap gap-2 text-xs">
+                <div id="duyuru-detay-yayin-tarih" class="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-medium text-[11px]">
+                    <span class="material-symbols-outlined text-sm text-slate-400">calendar_today</span>
+                    <span id="duyuru-detay-yayin-tarih-val"></span>
+                </div>
+                <div id="duyuru-detay-etkinlik-tarih-container" class="hidden inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-amber-50 dark:bg-amber-900/30 text-amber-700 dark:text-amber-400 font-medium text-[11px] border border-amber-200/50 dark:border-amber-800/50">
+                    <span class="material-symbols-outlined text-sm text-amber-500">event</span>
+                    <span>Etkinlik Tarihi: <strong id="duyuru-detay-etkinlik-tarih-val"></strong></span>
+                </div>
+            </div>
+
+            <!-- Body -->
+            <div class="border-t border-slate-100 dark:border-slate-800/80 pt-3">
+                <div id="duyuru-detay-icerik" class="text-sm text-slate-700 dark:text-slate-300 leading-relaxed break-words whitespace-pre-line space-y-2 font-normal"></div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 rounded-b-3xl">
+            <button onclick="closeDuyuruDetay()" class="w-full py-2.5 px-4 bg-primary text-white hover:bg-primary-dark font-semibold text-sm rounded-xl transition-all shadow-md active:scale-[0.99]">
+                Kapat
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Personel Detay Bottom Sheet -->
 <div id="personel-detay-sheet" class="fixed inset-0 z-[70] pointer-events-none">
     <div id="personel-detay-overlay" class="absolute inset-0 bg-black/50 opacity-0 transition-opacity duration-300" onclick="closePersonelDetay()"></div>
@@ -877,6 +947,76 @@ function openAracDetay(type, title) {
             }
         }
     });
+}
+
+const activeAnnouncementsData = <?= json_encode($activeAnnouncements ?? [], JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP); ?>;
+
+function openDuyuruDetayByIndex(index) {
+    const data = activeAnnouncementsData[index];
+    if (!data) return;
+
+    const sheet = document.getElementById('duyuru-detay-sheet');
+    const overlay = document.getElementById('duyuru-detay-overlay');
+    const content = document.getElementById('duyuru-detay-content');
+
+    if (!sheet) return;
+
+    document.getElementById('duyuru-detay-baslik').innerText = data.baslik || '';
+    document.getElementById('duyuru-detay-icerik').innerText = data.icerik || 'Açıklama bulunmuyor.';
+
+    if (data.tarih) {
+        const d = new Date(data.tarih);
+        const formattedDate = d.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        document.getElementById('duyuru-detay-yayin-tarih-val').innerText = 'Yayın: ' + formattedDate;
+        document.getElementById('duyuru-detay-header-tarih').innerText = formattedDate;
+    } else {
+        document.getElementById('duyuru-detay-yayin-tarih-val').innerText = '-';
+        document.getElementById('duyuru-detay-header-tarih').innerText = '';
+    }
+
+    const meContainer = document.getElementById('duyuru-detay-etkinlik-tarih-container');
+    if (data.etkinlik_tarihi) {
+        const ed = new Date(data.etkinlik_tarihi);
+        const formattedEd = ed.toLocaleDateString('tr-TR', { day: '2-digit', month: '2-digit', year: 'numeric' });
+        document.getElementById('duyuru-detay-etkinlik-tarih-val').innerText = formattedEd;
+        meContainer.classList.remove('hidden');
+        meContainer.classList.add('inline-flex');
+    } else {
+        meContainer.classList.add('hidden');
+        meContainer.classList.remove('inline-flex');
+    }
+
+    const imgContainer = document.getElementById('duyuru-detay-resim-container');
+    const imgEl = document.getElementById('duyuru-detay-resim');
+    if (data.resim && data.resim.trim() !== '') {
+        let imgSrc = data.resim;
+        if (!imgSrc.startsWith('http') && !imgSrc.startsWith('data:') && !imgSrc.startsWith('/')) {
+            imgSrc = '../' + imgSrc;
+        }
+        imgEl.src = imgSrc;
+        imgContainer.classList.remove('hidden');
+    } else {
+        imgContainer.classList.add('hidden');
+        imgEl.src = '';
+    }
+
+    sheet.classList.remove('pointer-events-none');
+    overlay.classList.add('opacity-100');
+    content.classList.remove('translate-y-full');
+}
+
+function closeDuyuruDetay() {
+    const sheet = document.getElementById('duyuru-detay-sheet');
+    const overlay = document.getElementById('duyuru-detay-overlay');
+    const content = document.getElementById('duyuru-detay-content');
+
+    if (!sheet) return;
+
+    overlay.classList.remove('opacity-100');
+    content.classList.add('translate-y-full');
+    setTimeout(() => {
+        sheet.classList.add('pointer-events-none');
+    }, 300);
 }
 </script>
 
