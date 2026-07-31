@@ -398,7 +398,15 @@ class PuantajModel extends Model
         } elseif ($sorguTuru === 'SAYAC_DEGISIM') {
             $baseWhere .= " AND t.is_emri_tipi = 'Sayaç Değişimi'";
         } elseif ($sorguTuru === 'KESME_ACMA') {
-            $baseWhere .= " AND t.is_emri_tipi NOT IN ('Endeks Okuma', 'Sayaç Değişimi')";
+            // KESME/AÇMA SEKME AYRIMI (iş kuralı):
+            // Tanımsız/ücretsiz kesme sonuçları da bu listede kalmalıdır. Bu nedenle
+            // sadece rapor_sekmesi='kesme' filtresi kullanılamaz. Sayaç Sökme Takma
+            // ve Mühürleme kayıtları hem rapor sekmesi hem kaynak iş emri tipiyle
+            // kesin olarak dışarıda tutulur. Yeni tasarım çalışmalarında kaldırmayın.
+            $baseWhere .= " AND COALESCE(tn.rapor_sekmesi, '') NOT IN ('sokme_takma', 'muhurleme')
+                            AND COALESCE(t.is_emri_tipi, '') NOT LIKE '%SÖKME TAKMA%'
+                            AND COALESCE(t.is_emri_tipi, '') NOT LIKE '%Sayaç Değişimi%'
+                            AND COALESCE(t.is_emri_tipi, '') NOT LIKE '%MÜHÜRLEME%'";
         } elseif ($sorguTuru === 'MUHURLEME') {
             $baseWhere .= " AND tn.rapor_sekmesi = 'muhurleme'";
         }
