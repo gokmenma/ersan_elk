@@ -7,6 +7,9 @@ use App\Helper\Helper;
 use App\Model\CariModel;
 use Mpdf\Mpdf;
 
+require_once __DIR__ . '/yetki.php';
+cariExportYetkiKontrol('cari_hesap_hareketleri');
+
 $cari_id_enc = $_GET['id'] ?? '';
 $cari_id = Security::decrypt($cari_id_enc);
 
@@ -150,6 +153,8 @@ try {
     $mpdf->SetTitle('Hesap Ekstresi - ' . $cariData->CariAdi);
     $mpdf->WriteHTML($html);
     $mpdf->Output('Ekstre_' . str_replace(' ', '_', $cariData->CariAdi) . '_' . date('dmY') . '.pdf', 'D');
-} catch (Exception $e) {
-    echo "PDF Hatası: " . $e->getMessage();
+} catch (\Throwable $e) {
+    error_log("Cari ekstre PDF hatası: " . $e->getMessage());
+    http_response_code(500);
+    echo "Ekstre oluşturulamadı. Lütfen daha sonra tekrar deneyin.";
 }

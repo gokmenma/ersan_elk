@@ -9,10 +9,8 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 
-// Oturumu kontrol et
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/yetki.php';
+cariExportYetkiKontrol('cari_takibi');
 
 $Cari = new CariModel();
 

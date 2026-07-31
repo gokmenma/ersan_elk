@@ -7,6 +7,9 @@ use App\Helper\Helper;
 use App\Model\CariModel;
 use Mpdf\Mpdf;
 
+require_once __DIR__ . '/yetki.php';
+cariExportYetkiKontrol('cari_hesap_hareketleri');
+
 $Cari = new CariModel();
 $db = $Cari->getDb();
 

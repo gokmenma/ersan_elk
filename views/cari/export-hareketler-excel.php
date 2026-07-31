@@ -11,9 +11,8 @@ use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
 use PhpOffice\PhpSpreadsheet\Style\Border;
 
-if (session_status() === PHP_SESSION_NONE) {
-    session_start();
-}
+require_once __DIR__ . '/yetki.php';
+cariExportYetkiKontrol('cari_hesap_hareketleri');
 
 $cari_id_enc = $_GET['id'] ?? '';
 $cari_id = Security::decrypt($cari_id_enc);
