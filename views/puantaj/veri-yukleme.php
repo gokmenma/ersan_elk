@@ -577,14 +577,14 @@ $activeTab = $_GET['tab'] ?? 'okuma';
 
     .puantaj-workspace .horizontal-chart-total strong {
         color: #101828;
-        font-size: 24px;
+        font-size: 28px;
         line-height: 1.1;
     }
 
     .puantaj-workspace .horizontal-chart-total span {
         margin-top: 3px;
         color: #98a2b3;
-        font-size: 10px;
+        font-size: 11px;
         font-weight: 800;
         letter-spacing: .04em;
         text-transform: uppercase;
@@ -595,20 +595,21 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         grid-template-columns: minmax(105px, 145px) minmax(90px, 1fr) 86px;
         align-items: center;
         gap: 8px;
-        min-height: 21px;
+        min-height: 25px;
+        cursor: pointer;
     }
 
     .puantaj-workspace .horizontal-chart-label {
         overflow: hidden;
         color: #667085;
-        font-size: 12px;
+        font-size: 14px;
         font-weight: 700;
         text-overflow: ellipsis;
         white-space: nowrap;
     }
 
     .puantaj-workspace .horizontal-chart-track {
-        height: 9px;
+        height: 11px;
         overflow: hidden;
         border-radius: 10px;
         background: #eef1f5;
@@ -624,7 +625,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
 
     .puantaj-workspace .horizontal-chart-number {
         color: #344054;
-        font-size: 12px;
+        font-size: 14px;
         font-weight: 800;
         text-align: right;
         white-space: nowrap;
@@ -632,8 +633,25 @@ $activeTab = $_GET['tab'] ?? 'okuma';
 
     .puantaj-workspace .horizontal-chart-number small {
         color: #98a2b3;
-        font-size: 10px;
+        font-size: 11px;
         font-weight: 700;
+    }
+
+    .puantaj-workspace .horizontal-chart-row:hover .horizontal-chart-label,
+    .puantaj-workspace .horizontal-chart-row:hover .horizontal-chart-number {
+        color: var(--work-primary);
+    }
+
+    .puantaj-workspace .horizontal-chart-row:hover .horizontal-chart-track {
+        box-shadow: 0 0 0 2px rgba(64, 92, 245, .12);
+    }
+
+    .puantaj-workspace .horizontal-chart-total[data-table] {
+        cursor: pointer;
+    }
+
+    .puantaj-workspace .horizontal-chart-total[data-table]:hover strong {
+        color: var(--work-primary);
     }
 
     @keyframes horizontal-chart-grow {
@@ -2562,46 +2580,57 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         function normalizeWorkResult(value) {
             return String(value || '')
                 .trim()
+                // Kaynaktan aynı sonuç bazen sonuna nokta/virgül eklenerek gelebiliyor.
+                // Olumlu işlem eşleşmesi bu biçim farklarından etkilenmemelidir.
+                .replace(/[.,;:!?"'`()\[\]{}]/g, '')
                 .replace(/\s+/g, ' ')
                 .toLocaleLowerCase('tr-TR');
         }
 
+        /*
+         * KESME/AÇMA OLUMLU İŞLEM SONUÇLARI
+         * Bu liste iş kuralıdır; tasarım veya rapor düzenlemesi sırasında
+         * dinamik ücret/renk/başlık kurallarıyla değiştirilmemelidir.
+         * Yeni bir olumlu sonuç ancak iş biriminin açık talebiyle eklenmelidir.
+         */
+        const KESME_ACMA_OLUMLU_SONUCLAR = [
+            'Aparatla Kesim yapıldı',
+            'Sayaç Kullanıma Açıldı',
+            'Ödeme Yaptırıldı',
+            'Aparat kırma ücreti',
+            'Mühür ve conta',
+            'Mühür ve tapa'
+        ].map(normalizeWorkResult);
+
         function getPositiveOperationTotal(summary, tabName) {
             if (!Array.isArray(summary)) return 0;
 
-            if (tabName === 'yapilan_isler') {
-                const positiveResults = [
-                    'Aparatla Kesim yapıldı',
-                    'Sayaç Kullanıma Açıldı',
-                    'Ödeme Yaptırıldı',
-                    'aparat kırma ücreti',
-                    'Mühür ve conta',
-                    'Mühür ve tapa'
-                ].map(normalizeWorkResult);
-
-                return summary.reduce(function(total, item) {
-                    return positiveResults.includes(normalizeWorkResult(item.sonuc))
-                        ? total + parseFloat(item.toplam_abone || 0)
-                        : total;
-                }, 0);
-            }
-
             return summary.reduce(function(total, item) {
-                return parseInt(item.is_olumlu || 0, 10) === 1
+                return isPositiveOperation(item, tabName)
                     ? total + parseFloat(item.toplam_abone || 0)
                     : total;
             }, 0);
         }
 
-        function horizontalSummaryChart(total, unit, segments) {
+        function isPositiveOperation(item, tabName) {
+            if (tabName !== 'yapilan_isler') {
+                return parseInt(item.is_olumlu || 0, 10) === 1;
+            }
+
+            return KESME_ACMA_OLUMLU_SONUCLAR.includes(normalizeWorkResult(item.sonuc));
+        }
+
+        function horizontalSummaryChart(total, unit, segments, tableSelector, columnIndex) {
             const safeTotal = Math.max(0, parseFloat(total || 0));
             const maxValue = Math.max(1, ...(segments || []).map(segment => parseFloat(segment.value || 0)));
             const rows = (segments || []).map(function(segment) {
                 const value = Math.max(0, parseFloat(segment.value || 0));
                 const width = value > 0 ? Math.max(1.5, (value / maxValue) * 100) : 0;
                 const rate = safeTotal > 0 ? Math.round((value / safeTotal) * 100) : 0;
+                const filterValues = encodeURIComponent((segment.filterValues || [segment.label]).join('|'));
                 return `
-                    <div class="horizontal-chart-row" title="${segment.label}: ${Math.round(value).toLocaleString('tr-TR')} (%${rate})">
+                    <div class="horizontal-chart-row" data-table="${tableSelector || ''}" data-column="${columnIndex ?? ''}"
+                        data-filter-values="${filterValues}" title="Filtrele: ${segment.label} — ${Math.round(value).toLocaleString('tr-TR')} (%${rate})">
                         <span class="horizontal-chart-label">${segment.label}</span>
                         <div class="horizontal-chart-track">
                             <div class="horizontal-chart-bar" style="width:${width.toFixed(2)}%; background:${segment.color}"></div>
@@ -2612,13 +2641,34 @@ $activeTab = $_GET['tab'] ?? 'okuma';
 
             return `
                 <div class="horizontal-summary-chart ms-3 count-animate">
-                    <div class="horizontal-chart-total">
+                    <div class="horizontal-chart-total" data-table="${tableSelector || ''}" data-column="${columnIndex ?? ''}" title="Filtreyi temizle">
                         <strong>${Math.round(safeTotal).toLocaleString('tr-TR')}</strong>
                         <span>Toplam ${unit}</span>
                     </div>
                     <div>${rows}</div>
                 </div>`;
         }
+
+        $(document).on('click', '.horizontal-chart-row', function() {
+            const row = $(this);
+            const tableSelector = row.data('table');
+            const columnIndex = parseInt(row.data('column'), 10);
+            if (!tableSelector || Number.isNaN(columnIndex) || !$.fn.DataTable.isDataTable(tableSelector)) return;
+
+            const values = decodeURIComponent(row.attr('data-filter-values') || '').split('|').filter(Boolean);
+            const table = $(tableSelector).DataTable();
+            $(table.table().node()).trigger('dtf:set-filter', [columnIndex, values, 'multi']);
+        });
+
+        $(document).on('click', '.horizontal-chart-total[data-table]', function() {
+            const total = $(this);
+            const tableSelector = total.data('table');
+            const columnIndex = parseInt(total.data('column'), 10);
+            if (!tableSelector || Number.isNaN(columnIndex) || !$.fn.DataTable.isDataTable(tableSelector)) return;
+
+            const table = $(tableSelector).DataTable();
+            $(table.table().node()).trigger('dtf:set-filter', [columnIndex, '']);
+        });
 
         function getKacakChartSummary(dataTableApi) {
             const typeCounts = {};
@@ -2634,11 +2684,16 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             const colors = ['#405cf5', '#22b573', '#f5a524'];
             const sorted = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
             const segments = sorted.slice(0, 3).map(function(entry, index) {
-                return { label: entry[0], value: entry[1], color: colors[index] };
+                return { label: entry[0], value: entry[1], color: colors[index], filterValues: [entry[0]] };
             });
             const otherTotal = sorted.slice(3).reduce((sum, entry) => sum + entry[1], 0);
             if (otherTotal > 0) {
-                segments.push({ label: 'Diğer', value: otherTotal, color: '#98a2b3' });
+                segments.push({
+                    label: 'Diğer',
+                    value: otherTotal,
+                    color: '#98a2b3',
+                    filterValues: sorted.slice(3).map(entry => entry[0])
+                });
             }
 
             return { total: total, segments: segments };
@@ -2919,12 +2974,14 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 });
                             }
                             
+                            const normalStatuses = activeSummary.filter(item => getStatusGroup(item.sayac_durum) === 'NO').map(item => item.sayac_durum);
+                            const kiyasStatuses = activeSummary.filter(item => getStatusGroup(item.sayac_durum) === 'KO').map(item => item.sayac_durum);
                             let html = `Endeks Okuma Raporu
                                 ${horizontalSummaryChart(totalAbone, 'abone', [
-                                    { label: 'Normal', value: totalNormalOkuma, color: '#405cf5' },
-                                    { label: 'Kıyas', value: totalKiyasOkuma, color: '#f5a524' },
-                                    { label: 'Diğer', value: totalDigerOkuma, color: '#98a2b3' }
-                                ])}`;
+                                    { label: 'Normal', value: totalNormalOkuma, color: '#405cf5', filterValues: normalStatuses },
+                                    { label: 'Kıyas', value: totalKiyasOkuma, color: '#f5a524', filterValues: kiyasStatuses },
+                                    { label: 'Diğer', value: totalDigerOkuma, color: '#98a2b3', filterValues: otherStatuses }
+                                ], '#endeksTable', 7)}`;
                             $('#endeksTableTitle').html(html);
                         }
                         return json.data;
@@ -2996,11 +3053,13 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 });
                             }
                             const positiveTotal = getPositiveOperationTotal(json.summary, 'yapilan_isler');
+                            const positiveResults = (json.summary || []).filter(item => isPositiveOperation(item, 'yapilan_isler')).map(item => item.sonuc);
+                            const otherResults = (json.summary || []).filter(item => !isPositiveOperation(item, 'yapilan_isler')).map(item => item.sonuc);
                             $('#puantajTableTitle').html(`İş Listesi
                                 ${horizontalSummaryChart(totalIs, 'işlem', [
-                                    { label: 'Olumlu', value: positiveTotal, color: '#22b573' },
-                                    { label: 'Diğer', value: Math.max(0, totalIs - positiveTotal), color: '#d0d5dd' }
-                                ])}`);
+                                    { label: 'Olumlu', value: positiveTotal, color: '#22b573', filterValues: positiveResults },
+                                    { label: 'Diğer', value: Math.max(0, totalIs - positiveTotal), color: '#d0d5dd', filterValues: otherResults }
+                                ], '#puantajTable', 5)}`);
                         }
                         return json.data;
                     }
@@ -3064,7 +3123,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                         drawCallback: function() {
                             const chartSummary = getKacakChartSummary(this.api());
                             $('#kacakTableTitle').html(`Kaçak Kontrol Listesi
-                                ${horizontalSummaryChart(chartSummary.total, 'işlem', chartSummary.segments)}`);
+                                ${horizontalSummaryChart(chartSummary.total, 'işlem', chartSummary.segments, '#kacakTable', 3)}`);
                         }
                     }));
                     addColumnFilterToggle('#kacakTable');
@@ -3109,11 +3168,13 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 });
                             }
                             const positiveTotal = getPositiveOperationTotal(json.summary, 'sayac_sokme_takma');
+                            const positiveResults = (json.summary || []).filter(item => isPositiveOperation(item, 'sayac_sokme_takma')).map(item => item.sonuc);
+                            const otherResults = (json.summary || []).filter(item => !isPositiveOperation(item, 'sayac_sokme_takma')).map(item => item.sonuc);
                             $('#sayacTableTitle').html(`Sayaç Sökme Takma Listesi
                                 ${horizontalSummaryChart(totalAdet, 'işlem', [
-                                    { label: 'Olumlu', value: positiveTotal, color: '#22b573' },
-                                    { label: 'Diğer', value: Math.max(0, totalAdet - positiveTotal), color: '#d0d5dd' }
-                                ])}`);
+                                    { label: 'Olumlu', value: positiveTotal, color: '#22b573', filterValues: positiveResults },
+                                    { label: 'Diğer', value: Math.max(0, totalAdet - positiveTotal), color: '#d0d5dd', filterValues: otherResults }
+                                ], '#sayacDegisimTable', 5)}`);
                         }
                         return json.data;
                     }
@@ -3177,11 +3238,13 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                 });
                             }
                             const positiveTotal = getPositiveOperationTotal(json.summary, 'muhurleme');
+                            const positiveResults = (json.summary || []).filter(item => isPositiveOperation(item, 'muhurleme')).map(item => item.sonuc);
+                            const otherResults = (json.summary || []).filter(item => !isPositiveOperation(item, 'muhurleme')).map(item => item.sonuc);
                             $('#muhurlemeTableTitle').html(`Mühürleme İş Listesi
                                 ${horizontalSummaryChart(totalIs, 'işlem', [
-                                    { label: 'Olumlu', value: positiveTotal, color: '#22b573' },
-                                    { label: 'Diğer', value: Math.max(0, totalIs - positiveTotal), color: '#d0d5dd' }
-                                ])}`);
+                                    { label: 'Olumlu', value: positiveTotal, color: '#22b573', filterValues: positiveResults },
+                                    { label: 'Diğer', value: Math.max(0, totalIs - positiveTotal), color: '#d0d5dd', filterValues: otherResults }
+                                ], '#muhurlemeTable', 5)}`);
                         }
                         return json.data;
                     }
