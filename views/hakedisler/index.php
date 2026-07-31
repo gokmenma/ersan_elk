@@ -101,6 +101,12 @@ $aylar = [
                             <span class="d-none d-sm-block">3. Fiyat Farkı ve Kesintiler</span>
                         </a>
                     </li>
+                    <li class="nav-item">
+                        <a class="nav-link" data-bs-toggle="tab" href="#is-artis-azalis-tab" role="tab">
+                            <span class="d-block d-sm-none"><i class="bx bx-transfer-alt"></i></span>
+                            <span class="d-none d-sm-block">4. İş Artış/Azalış İşlemleri</span>
+                        </a>
+                    </li>
                 </ul>
 
                 <!-- Tab panes -->
@@ -366,6 +372,68 @@ $aylar = [
                                     <?= Form::FormFloatInput('number', 'makine_ekipman_temel', '', 'Örn: 3319.76', 'Makine-Ekipman Endeksi - Eo', icon: 'tool', attributes: 'step="0.000001"') ?>
                                 </div>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- İŞ ARTIŞ/AZALIŞ İŞLEMLERİ TAB -->
+                    <div class="tab-pane" id="is-artis-azalis-tab" role="tabpanel">
+                        <div id="revizyonYeniSozlesmeUyarisi" class="alert alert-warning mb-0">
+                            <i class="bx bx-info-circle me-1"></i>
+                            İş artış/azalış işlemleri sözleşme ve kalemleri ilk kez kaydedildikten sonra girilebilir.
+                        </div>
+                        <div id="revizyonAlani" class="d-none">
+                            <div class="alert alert-info">
+                                Her işlem ayrı bir revizyon olarak saklanır. Değişim alanına artış için pozitif,
+                                azalış için negatif miktar giriniz. Kaydedilen revizyonlar geçmiş kaydı olarak korunur.
+                            </div>
+                            <div class="row g-3 mb-3">
+                                <div class="col-md-3">
+                                    <label class="form-label">Revizyon Tarihi <span class="text-danger">*</span></label>
+                                    <input type="text" id="revizyon_tarihi" class="form-control flatpickr"
+                                        placeholder="GG.AA.YYYY">
+                                </div>
+                                <div class="col-md-3">
+                                    <label class="form-label">Onay / Karar No</label>
+                                    <input type="text" id="revizyon_karar_no" class="form-control"
+                                        placeholder="Varsa karar veya onay no">
+                                </div>
+                                <div class="col-md-6">
+                                    <label class="form-label">Açıklama</label>
+                                    <input type="text" id="revizyon_aciklama" class="form-control"
+                                        placeholder="Revizyonun kısa açıklaması">
+                                </div>
+                            </div>
+                            <div class="table-responsive">
+                                <table class="table table-bordered table-sm align-middle">
+                                    <thead class="table-light">
+                                        <tr>
+                                            <th>Poz No</th>
+                                            <th>İş Kalemi</th>
+                                            <th>Birim</th>
+                                            <th class="text-end">Mevcut Miktar</th>
+                                            <th style="width:160px">Artış / Azalış</th>
+                                            <th class="text-end">Yeni Miktar</th>
+                                            <th class="text-end">Tutar Farkı</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="revizyonKalemBody"></tbody>
+                                    <tfoot>
+                                        <tr class="table-light fw-bold">
+                                            <td colspan="6" class="text-end">TOPLAM BEDEL DEĞİŞİMİ:</td>
+                                            <td id="revizyonTutarFarki" class="text-end">0,00 ₺</td>
+                                        </tr>
+                                    </tfoot>
+                                </table>
+                            </div>
+                            <div class="text-end mb-4">
+                                <button type="button" class="btn btn-success" id="revizyonKaydetBtn"
+                                    onclick="revizyonKaydet()">
+                                    <i class="bx bx-save me-1"></i> İşlemi Kaydet
+                                </button>
+                            </div>
+
+                            <h6 class="mb-3">İş Artış/Azalış Geçmişi</h6>
+                            <div id="revizyonGecmisi"></div>
                         </div>
                     </div>
                 </div>

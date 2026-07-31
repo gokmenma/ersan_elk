@@ -28,6 +28,12 @@ class EvrakTakipModel extends Model
             if (!in_array('ceza_tutari', $cols)) {
                 $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN ceza_tutari decimal(10,2) DEFAULT NULL AFTER tutar");
             }
+            if (!in_array('ceza_hedef_tipi', $cols)) {
+                $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN ceza_hedef_tipi varchar(20) NOT NULL DEFAULT 'arac' AFTER ceza_tutari");
+            }
+            if (!in_array('ceza_personel_id', $cols)) {
+                $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN ceza_personel_id int DEFAULT NULL AFTER ceza_hedef_tipi");
+            }
         } catch (\Exception $e) {
             // Silent catch to prevent errors on strict environments
         }

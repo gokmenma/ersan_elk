@@ -93,6 +93,24 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $data['tutar'] = $data['ceza_tutari'];
                 }
 
+                $data['ceza_hedef_tipi'] = ($data['ceza_hedef_tipi'] ?? 'arac') === 'personel' ? 'personel' : 'arac';
+                if ($data['ceza_hedef_tipi'] === 'personel') {
+                    $data['plaka'] = null;
+                    $data['ceza_personel_id'] = !empty($data['ceza_personel_id']) ? intval($data['ceza_personel_id']) : null;
+                } else {
+                    $data['ceza_personel_id'] = null;
+                }
+
+                $konu_kontrol = mb_strtolower($data['konu'] ?? '', 'UTF-8');
+                if (mb_strpos($konu_kontrol, 'trafik') !== false || mb_strpos($konu_kontrol, 'ceza') !== false) {
+                    if ($data['ceza_hedef_tipi'] === 'personel' && empty($data['ceza_personel_id'])) {
+                        throw new Exception('Lütfen cezanın yazıldığı personeli seçiniz.');
+                    }
+                    if ($data['ceza_hedef_tipi'] === 'arac' && empty($data['plaka'])) {
+                        throw new Exception('Lütfen cezanın yazıldığı aracı seçiniz.');
+                    }
+                }
+
                 if ($id > 0) {
                     $Model->saveWithAttr($data);
                     $message = "Evrak başarıyla güncellendi.";
@@ -124,7 +142,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 $tutar = !empty($data['tutar']) ? floatval($data['tutar']) : (!empty($data['ceza_tutari']) ? floatval($data['ceza_tutari']) : 0);
-                $personel_id = !empty($data['ilgili_personel_id']) ? intval($data['ilgili_personel_id']) : (!empty($data['personel_id']) ? intval($data['personel_id']) : 0);
+                if (($data['ceza_hedef_tipi'] ?? 'arac') === 'personel') {
+                    $personel_id = !empty($data['ceza_personel_id']) ? intval($data['ceza_personel_id']) : 0;
+                } else {
+                    $personel_id = !empty($data['ilgili_personel_id']) ? intval($data['ilgili_personel_id']) : (!empty($data['personel_id']) ? intval($data['personel_id']) : 0);
+                }
 
                 $log_msg = date('Y-m-d H:i:s') . " - IS_TRAFFIC: " . ($isTrafficFine ? 'TRUE' : 'FALSE') . ", TUTAR: " . $tutar . ", PERSONEL_ID: " . $personel_id . ", DATA: " . json_encode($data) . "\n";
                 file_put_contents(dirname(__DIR__, 2) . '/log_debug.txt', $log_msg, FILE_APPEND);

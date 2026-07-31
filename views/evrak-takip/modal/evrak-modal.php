@@ -5,7 +5,7 @@ $araclar_list = $db_conn->db->query("SELECT id, plaka, marka, model FROM araclar
 ?>
 
 <div class="modal fade" id="evrakModal" tabindex="-1" aria-labelledby="evrakModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-centered">
+    <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0">
             <div class="modal-header bg-dark py-3 px-1">
                 <div class="modal-title-section ps-3">
@@ -137,7 +137,20 @@ $araclar_list = $db_conn->db->query("SELECT id, plaka, marka, model FROM araclar
                                     <h6 class="mb-0 fw-bold">Trafik Cezası Detayları</h6>
                                 </div>
                                 <div class="row g-2">
-                                    <div class="col-md-12 mb-2">
+                                    <div class="col-12 mb-2">
+                                        <label class="ps-1 mb-2 fw-bold text-muted small">Ceza Kime / Neye Yazıldı?</label>
+                                        <div class="d-flex gap-3 p-2 bg-light rounded-3 border">
+                                            <div class="form-check m-0 ps-4">
+                                                <input class="form-check-input" type="radio" name="ceza_hedef_tipi" id="cezaHedefArac" value="arac" checked>
+                                                <label class="form-check-label fw-bold small" for="cezaHedefArac">ARAÇ</label>
+                                            </div>
+                                            <div class="form-check m-0 ps-4">
+                                                <input class="form-check-input" type="radio" name="ceza_hedef_tipi" id="cezaHedefPersonel" value="personel">
+                                                <label class="form-check-label fw-bold small" for="cezaHedefPersonel">PERSONEL</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div id="cezaAracContainer" class="col-md-12 mb-2">
                                         <?php 
                                         $arac_options = ['' => 'Plaka Seçiniz...'];
                                         foreach ($araclar_list as $ar) {
@@ -147,6 +160,11 @@ $araclar_list = $db_conn->db->query("SELECT id, plaka, marka, model FROM araclar
                                         echo Form::FormSelect2('plaka', $arac_options, '', 'Araç Plakası', 'truck', 'key', '', 'form-select select2'); 
                                         ?>
                                         <div id="plakaFeedback" class="small mt-1 px-1 fw-bold" style="display:none; font-size: 11px;"></div>
+                                    </div>
+                                    <div id="cezaPersonelContainer" class="col-md-12 mb-2 d-none">
+                                        <?php
+                                        echo Form::FormSelect2('ceza_personel_id', $per_options_ilgili, '', 'Ceza Yazılan Personel', 'user', 'key', '', 'form-select evrak-select2');
+                                        ?>
                                     </div>
                                     <div class="col-md-6 mb-0">
                                         <?php echo Form::FormFloatInput('number', 'ceza_tutari', '', 'Ceza Tutarı (TL)', 'Ceza Tutarı', 'credit-card', 'form-control'); ?>

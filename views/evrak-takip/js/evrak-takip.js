@@ -89,18 +89,42 @@ $(document).ready(function () {
   function checkTrafficFineVisibility() {
     const konu = ($("#konu").val() || '').toLowerCase();
     if (konu.includes('trafik') || konu.includes('ceza')) {
-      $("#trafficFineSection").removeClass("d-none").hide().slideDown(300);
+      const section = $("#trafficFineSection");
+      section.stop(true, true);
+      if (section.hasClass("d-none")) {
+        section.removeClass("d-none").hide().slideDown(300);
+      } else {
+        section.show();
+      }
     } else {
-      $("#trafficFineSection").slideUp(300, function() {
+      const section = $("#trafficFineSection");
+      if (section.hasClass("d-none")) return;
+      section.stop(true, true).slideUp(300, function() {
         $(this).addClass("d-none");
         $("#plaka").val("");
+        $("#ceza_personel_id").val("").trigger("change");
         $("#tutar").val("");
         $("#plakaFeedback").hide().html("");
       });
     }
   }
 
+  function checkTrafficFineTarget() {
+    const target = $('input[name="ceza_hedef_tipi"]:checked').val() || "arac";
+    if (target === "personel") {
+      $("#cezaAracContainer").addClass("d-none");
+      $("#cezaPersonelContainer").removeClass("d-none");
+      $("#plaka").val("").trigger("change");
+      $("#plakaFeedback").hide().html("");
+    } else {
+      $("#cezaPersonelContainer").addClass("d-none");
+      $("#cezaAracContainer").removeClass("d-none");
+      $("#ceza_personel_id").val("").trigger("change");
+    }
+  }
+
   function queryAracZimmet() {
+    if (($('input[name="ceza_hedef_tipi"]:checked').val() || "arac") !== "arac") return;
     const plaka = $("#plaka").val() || '';
     const tarih = $("input[name='tarih']").val() || '';
     
@@ -160,6 +184,7 @@ $(document).ready(function () {
   $(document).on("keyup change", "#plaka", queryAracZimmet);
   $(document).on("change", "input[name='tarih']", queryAracZimmet);
   $(document).on("change", "#konu", checkTrafficFineVisibility);
+  $(document).on("change", 'input[name="ceza_hedef_tipi"]', checkTrafficFineTarget);
   $(document).on("keyup change", "#ceza_tutari", function() {
     const val = parseFloat($(this).val()) || 0;
     if (val > 0) {
@@ -215,6 +240,8 @@ $(document).ready(function () {
     $(".evrak-select2, .evrak-select2-tags").val("").trigger("change");
     
     $("#personel_bildir, #cevap_verildi").prop("checked", false);
+    $("#cezaHedefArac").prop("checked", true);
+    checkTrafficFineTarget();
     $("#bildirimContainer, #cevapTarihiContainer, #gidenIliskiSection").addClass("d-none");
     $("#gelenCevapSection").removeClass("d-none");
     
@@ -229,6 +256,17 @@ $(document).ready(function () {
   $("#evrakForm").on("submit", function (e) {
     e.preventDefault();
     if (!$(this).valid()) return false;
+    if (!$("#trafficFineSection").hasClass("d-none")) {
+      const target = $('input[name="ceza_hedef_tipi"]:checked').val() || "arac";
+      if (target === "personel" && !$("#ceza_personel_id").val()) {
+        Swal.fire('Eksik Bilgi', 'Lütfen cezanın yazıldığı personeli seçiniz.', 'warning');
+        return false;
+      }
+      if (target === "arac" && !$("#plaka").val()) {
+        Swal.fire('Eksik Bilgi', 'Lütfen cezanın yazıldığı aracı seçiniz.', 'warning');
+        return false;
+      }
+    }
     const formData = new FormData(this);
     const btn = $("#btnEvrakKaydet");
     btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm"></span>');
@@ -287,7 +325,11 @@ $(document).ready(function () {
             $('input[name="cevap_tarihi"]').val(d2[2] + "." + d2[1] + "." + d2[0]);
         }
 
+        const cezaHedefTipi = data.ceza_hedef_tipi || (data.ceza_personel_id ? "personel" : "arac");
+        $(`input[name="ceza_hedef_tipi"][value="${cezaHedefTipi}"]`).prop("checked", true);
+        checkTrafficFineTarget();
         $("#plaka").val(data.plaka || "").trigger("change");
+        $("#ceza_personel_id").val(data.ceza_personel_id || "").trigger("change");
         $("#ceza_tutari").val(data.ceza_tutari || "");
         $("#tutar").val(data.tutar || "");
 

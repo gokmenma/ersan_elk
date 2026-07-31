@@ -169,14 +169,23 @@ try {
                 $sid = $sozlesme_id ?? $_POST['id'];
 
                 if (is_array($kalemler)) {
+                    $revizyonKontrol = $db->prepare("SELECT COUNT(*) FROM hakedis_is_revizyonlari WHERE sozlesme_id = ?");
+                    $revizyonKontrol->execute([$sid]);
+                    $revizyonVar = intval($revizyonKontrol->fetchColumn()) > 0;
                     $islenen_idleri = [];
                     foreach ($kalemler as $k) {
                         $k_id = isset($k['id']) && $k['id'] > 0 ? (int) $k['id'] : 0;
 
                         if ($k_id > 0) {
                             // Güncelle
-                            $stmtExt = $db->prepare("UPDATE hakedis_kalemleri SET poz_no = ?, kalem_adi = ?, birim = ?, miktari = ?, teklif_edilen_birim_fiyat = ? WHERE id = ? AND sozlesme_id = ?");
-                            $stmtExt->execute([$k['poz_no'], $k['kalem_adi'], $k['birim'], floatval($k['miktari']), floatval($k['teklif_edilen_birim_fiyat']), $k_id, $sid]);
+                            $miktarSeti = $revizyonVar ? '' : ', miktari = ?';
+                            $stmtExt = $db->prepare("UPDATE hakedis_kalemleri SET poz_no = ?, kalem_adi = ?, birim = ?{$miktarSeti}, teklif_edilen_birim_fiyat = ? WHERE id = ? AND sozlesme_id = ?");
+                            $degerler = [$k['poz_no'], $k['kalem_adi'], $k['birim']];
+                            if (!$revizyonVar) {
+                                $degerler[] = floatval($k['miktari']);
+                            }
+                            array_push($degerler, floatval($k['teklif_edilen_birim_fiyat']), $k_id, $sid);
+                            $stmtExt->execute($degerler);
                             $islenen_idleri[] = $k_id;
                         } else {
                             // Yeni ekle
@@ -211,12 +220,140 @@ try {
                     $stmtK->execute([$id]);
                     $kalemler = $stmtK->fetchAll(PDO::FETCH_ASSOC);
 
-                    echo json_encode(['status' => 'success', 'data' => $sozlesme, 'kalemler' => $kalemler]);
+                    $stmtR = $db->prepare("SELECT COUNT(*) FROM hakedis_is_revizyonlari WHERE sozlesme_id = ?");
+                    $stmtR->execute([$id]);
+                    echo json_encode([
+                        'status' => 'success',
+                        'data' => $sozlesme,
+                        'kalemler' => $kalemler,
+                        'revizyon_sayisi' => intval($stmtR->fetchColumn())
+                    ]);
                 } else {
                     echo json_encode(['status' => 'error', 'message' => 'Sözleşme bulunamadı veya yetkiniz yok.']);
                 }
             } else {
                 echo json_encode(['status' => 'error', 'message' => 'ID eksik']);
+            }
+            break;
+
+        case 'getIsRevizyonlari':
+            $sozlesme_id = intval($_POST['sozlesme_id'] ?? 0);
+            $db = (new HakedisSozlesmeModel())->getDb();
+            $stmt = $db->prepare("SELECT id FROM hakedis_sozlesmeler WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL");
+            $stmt->execute([$sozlesme_id, $firma_id]);
+            if (!$stmt->fetchColumn()) {
+                echo json_encode(['status' => 'error', 'message' => 'Geçersiz sözleşme.']);
+                break;
+            }
+
+            $stmt = $db->prepare("
+                SELECT r.*,
+                       COALESCE(SUM(d.degisim_miktari * d.birim_fiyat), 0) AS toplam_tutar_farki
+                FROM hakedis_is_revizyonlari r
+                LEFT JOIN hakedis_is_revizyon_kalemleri d ON d.revizyon_id = r.id
+                WHERE r.sozlesme_id = ?
+                GROUP BY r.id
+                ORDER BY r.revizyon_no DESC
+            ");
+            $stmt->execute([$sozlesme_id]);
+            $revizyonlar = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+            $detayStmt = $db->prepare("
+                SELECT d.*
+                FROM hakedis_is_revizyon_kalemleri d
+                WHERE d.revizyon_id = ?
+                ORDER BY d.id
+            ");
+            foreach ($revizyonlar as &$revizyon) {
+                $detayStmt->execute([$revizyon['id']]);
+                $revizyon['kalemler'] = $detayStmt->fetchAll(PDO::FETCH_ASSOC);
+            }
+            unset($revizyon);
+            echo json_encode(['status' => 'success', 'data' => $revizyonlar]);
+            break;
+
+        case 'saveIsRevizyonu':
+            $sozlesme_id = intval($_POST['sozlesme_id'] ?? 0);
+            $revizyon_tarihi = Date::Ymd($_POST['revizyon_tarihi'] ?? null);
+            $kalemler = json_decode($_POST['kalemler'] ?? '[]', true);
+            if (!$sozlesme_id || !$revizyon_tarihi || !is_array($kalemler) || !$kalemler) {
+                echo json_encode(['status' => 'error', 'message' => 'Revizyon tarihi ve en az bir kalem zorunludur.']);
+                break;
+            }
+
+            $db = (new HakedisSozlesmeModel())->getDb();
+            $db->beginTransaction();
+            try {
+                $stmt = $db->prepare("SELECT id FROM hakedis_sozlesmeler WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL FOR UPDATE");
+                $stmt->execute([$sozlesme_id, $firma_id]);
+                if (!$stmt->fetchColumn()) {
+                    throw new RuntimeException('Geçersiz sözleşme.');
+                }
+
+                $stmt = $db->prepare("SELECT COALESCE(MAX(revizyon_no), 0) + 1 FROM hakedis_is_revizyonlari WHERE sozlesme_id = ?");
+                $stmt->execute([$sozlesme_id]);
+                $revizyon_no = intval($stmt->fetchColumn());
+                $stmt = $db->prepare("
+                    INSERT INTO hakedis_is_revizyonlari
+                    (sozlesme_id, revizyon_no, revizyon_tarihi, karar_no, aciklama, olusturan_personel_id)
+                    VALUES (?, ?, ?, ?, ?, ?)
+                ");
+                $stmt->execute([
+                    $sozlesme_id, $revizyon_no, $revizyon_tarihi,
+                    trim($_POST['karar_no'] ?? '') ?: null,
+                    trim($_POST['aciklama'] ?? '') ?: null,
+                    $_SESSION['id']
+                ]);
+                $revizyon_id = $db->lastInsertId();
+
+                $kalemStmt = $db->prepare("
+                    SELECT id, poz_no, kalem_adi, birim, miktari, teklif_edilen_birim_fiyat
+                    FROM hakedis_kalemleri
+                    WHERE id = ? AND sozlesme_id = ?
+                    FOR UPDATE
+                ");
+                $detayStmt = $db->prepare("
+                    INSERT INTO hakedis_is_revizyon_kalemleri
+                    (revizyon_id, kalem_id, poz_no, kalem_adi, birim,
+                     onceki_miktar, degisim_miktari, yeni_miktar, birim_fiyat)
+                    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                ");
+                $guncelleStmt = $db->prepare("UPDATE hakedis_kalemleri SET miktari = ? WHERE id = ? AND sozlesme_id = ?");
+                $islenen = [];
+                foreach ($kalemler as $kalem) {
+                    $kalem_id = intval($kalem['kalem_id'] ?? 0);
+                    $degisim = round(floatval($kalem['degisim_miktari'] ?? 0), 4);
+                    if (!$kalem_id || abs($degisim) < 0.0001 || isset($islenen[$kalem_id])) {
+                        continue;
+                    }
+                    $islenen[$kalem_id] = true;
+                    $kalemStmt->execute([$kalem_id, $sozlesme_id]);
+                    $mevcut = $kalemStmt->fetch(PDO::FETCH_ASSOC);
+                    if (!$mevcut) {
+                        throw new RuntimeException('Revizyondaki iş kalemlerinden biri bulunamadı.');
+                    }
+                    $onceki = round(floatval($mevcut['miktari']), 4);
+                    $yeni = round($onceki + $degisim, 4);
+                    if ($yeni < 0) {
+                        throw new RuntimeException('Bir iş kaleminin yeni miktarı sıfırın altında olamaz.');
+                    }
+                    $detayStmt->execute([
+                        $revizyon_id, $kalem_id, $mevcut['poz_no'], $mevcut['kalem_adi'], $mevcut['birim'],
+                        $onceki, $degisim, $yeni,
+                        floatval($mevcut['teklif_edilen_birim_fiyat'])
+                    ]);
+                    $guncelleStmt->execute([$yeni, $kalem_id, $sozlesme_id]);
+                }
+                if (!$islenen) {
+                    throw new RuntimeException('Geçerli bir artış/azalış miktarı girilmedi.');
+                }
+                $db->commit();
+                echo json_encode(['status' => 'success', 'revizyon_no' => $revizyon_no]);
+            } catch (Throwable $e) {
+                if ($db->inTransaction()) {
+                    $db->rollBack();
+                }
+                echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
             }
             break;
 

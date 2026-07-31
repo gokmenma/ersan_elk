@@ -248,12 +248,18 @@ function editSozlesme(id) {
             tr.find('input[name="kalem_adi[]"]').val(adi);
             tr.find('select[name="kalem_birim[]"]').val(k.birim);
             tr.find('input[name="kalem_miktar[]"]').val(k.miktari);
+            if (parseInt(res.revizyon_sayisi || 0, 10) > 0) {
+              tr.find('input[name="kalem_miktar[]"]').prop("readonly", true)
+                .attr("title", "Miktar, İş Artış/Azalış İşlemleri sekmesinden güncellenir.");
+            }
             tr.find('input[name="kalem_teklif_fiyat[]"]').val(
               parseFloat(k.teklif_edilen_birim_fiyat).toFixed(2),
             );
             hesaplaSatirTutar(tr.find('input[name="kalem_miktar[]"]')[0]);
           });
         }
+
+        revizyonSekmesiniHazirla(data.id, res.kalemler || []);
 
         // Reset tab
         $('.nav-tabs a[href="#sozlesme-bilgileri-tab"]').tab("show");
@@ -289,6 +295,7 @@ $(document).on("click", '[data-bs-target="#yeniSozlesmeModal"]', function () {
   $("#yeniSozlesmeForm")[0].reset();
   $("#sozlesme_id").val("");
   $("#birimFiyatBody").empty();
+  revizyonSekmesiniSifirla();
   hesaplaGenelToplam();
   $('.nav-tabs a[href="#sozlesme-bilgileri-tab"]').tab("show");
 
@@ -346,6 +353,167 @@ function satirEkle() {
 
   $("#birimFiyatBody").append(tr);
   return tr;
+}
+
+function revizyonSekmesiniSifirla() {
+  $("#revizyonYeniSozlesmeUyarisi").removeClass("d-none");
+  $("#revizyonAlani").addClass("d-none");
+  $("#revizyonKalemBody, #revizyonGecmisi").empty();
+  $("#revizyonTutarFarki").text("0,00 ₺").removeClass("text-success text-danger");
+}
+
+function revizyonSekmesiniHazirla(sozlesmeId, kalemler) {
+  $("#revizyonYeniSozlesmeUyarisi").addClass("d-none");
+  $("#revizyonAlani").removeClass("d-none").attr("data-sozlesme-id", sozlesmeId);
+  $("#revizyonKalemBody").empty();
+
+  kalemler.forEach(function (k) {
+    const mevcut = parseFloat(k.miktari || 0);
+    const fiyat = parseFloat(k.teklif_edilen_birim_fiyat || 0);
+    $("#revizyonKalemBody").append(`
+      <tr data-kalem-id="${k.id}" data-mevcut="${mevcut}" data-fiyat="${fiyat}">
+        <td>${escapeHtml(k.poz_no || "-")}</td>
+        <td>${escapeHtml(k.kalem_adi || "")}</td>
+        <td>${escapeHtml(k.birim || "")}</td>
+        <td class="text-end">${formatMiktar(mevcut)}</td>
+        <td><input type="number" step="0.0001" value="0"
+          class="form-control form-control-sm revizyon-degisim" oninput="revizyonHesapla()"></td>
+        <td class="text-end revizyon-yeni">${formatMiktar(mevcut)}</td>
+        <td class="text-end revizyon-fark">0,00 ₺</td>
+      </tr>`);
+  });
+  $("#revizyon_tarihi").val(moment().format("DD.MM.YYYY"));
+  $("#revizyon_karar_no, #revizyon_aciklama").val("");
+  revizyonHesapla();
+  revizyonGecmisiniYukle(sozlesmeId);
+}
+
+function revizyonHesapla() {
+  let toplam = 0;
+  $("#revizyonKalemBody tr").each(function () {
+    const mevcut = parseFloat($(this).data("mevcut")) || 0;
+    const fiyat = parseFloat($(this).data("fiyat")) || 0;
+    const degisim = parseFloat($(this).find(".revizyon-degisim").val()) || 0;
+    const yeni = mevcut + degisim;
+    const fark = degisim * fiyat;
+    toplam += fark;
+    $(this).find(".revizyon-yeni").text(formatMiktar(yeni))
+      .toggleClass("text-danger", yeni < 0);
+    $(this).find(".revizyon-fark").text(formatPara(fark));
+  });
+  $("#revizyonTutarFarki").text(formatPara(toplam))
+    .toggleClass("text-success", toplam > 0)
+    .toggleClass("text-danger", toplam < 0);
+}
+
+function revizyonKaydet() {
+  const sozlesmeId = parseInt($("#revizyonAlani").attr("data-sozlesme-id"), 10);
+  const kalemler = [];
+  let gecersiz = false;
+  $("#revizyonKalemBody tr").each(function () {
+    const mevcut = parseFloat($(this).data("mevcut")) || 0;
+    const degisim = parseFloat($(this).find(".revizyon-degisim").val()) || 0;
+    if (mevcut + degisim < 0) gecersiz = true;
+    if (Math.abs(degisim) > 0.0000001) {
+      kalemler.push({ kalem_id: parseInt($(this).data("kalem-id"), 10), degisim_miktari: degisim });
+    }
+  });
+  if (!$("#revizyon_tarihi").val()) {
+    Swal.fire("Uyarı", "Revizyon tarihini giriniz.", "warning");
+    return;
+  }
+  if (!kalemler.length) {
+    Swal.fire("Uyarı", "En az bir kalemde artış veya azalış miktarı giriniz.", "warning");
+    return;
+  }
+  if (gecersiz) {
+    Swal.fire("Uyarı", "Yeni miktar sıfırın altında olamaz.", "warning");
+    return;
+  }
+
+  Swal.fire({
+    title: "İşlemi kaydetmek istiyor musunuz?",
+    text: "Kalem miktarları güncellenecek ve işlem revizyon geçmişine eklenecek.",
+    icon: "question",
+    showCancelButton: true,
+    confirmButtonText: "Evet, Kaydet",
+    cancelButtonText: "İptal"
+  }).then(function (result) {
+    if (!result.isConfirmed) return;
+    $("#revizyonKaydetBtn").prop("disabled", true);
+    $.post("views/hakedisler/online-api.php", {
+      type: "saveIsRevizyonu",
+      sozlesme_id: sozlesmeId,
+      revizyon_tarihi: $("#revizyon_tarihi").val(),
+      karar_no: $("#revizyon_karar_no").val(),
+      aciklama: $("#revizyon_aciklama").val(),
+      kalemler: JSON.stringify(kalemler)
+    }, function (res) {
+      if (res.status !== "success") {
+        Swal.fire("Hata", res.message || "İşlem kaydedilemedi.", "error");
+        return;
+      }
+      Swal.fire("Başarılı", `${res.revizyon_no}. iş artış/azalış işlemi kaydedildi.`, "success");
+      editSozlesme(sozlesmeId);
+    }, "json").fail(function () {
+      Swal.fire("Hata", "Sunucu bağlantısında sorun oluştu.", "error");
+    }).always(function () {
+      $("#revizyonKaydetBtn").prop("disabled", false);
+    });
+  });
+}
+
+function revizyonGecmisiniYukle(sozlesmeId) {
+  $("#revizyonGecmisi").html('<div class="text-muted">Yükleniyor...</div>');
+  $.post("views/hakedisler/online-api.php", {
+    type: "getIsRevizyonlari", sozlesme_id: sozlesmeId
+  }, function (res) {
+    if (res.status !== "success" || !res.data.length) {
+      $("#revizyonGecmisi").html('<div class="alert alert-light border">Henüz iş artış/azalış işlemi bulunmuyor.</div>');
+      return;
+    }
+    let html = '<div class="accordion" id="revizyonAccordion">';
+    res.data.forEach(function (r, i) {
+      const toplam = parseFloat(r.toplam_tutar_farki || 0);
+      html += `<div class="accordion-item">
+        <h2 class="accordion-header">
+          <button class="accordion-button ${i ? "collapsed" : ""}" type="button" data-bs-toggle="collapse"
+            data-bs-target="#revizyon-${r.id}">
+            <span class="fw-bold me-2">${r.revizyon_no}. Revizyon</span>
+            <span class="text-muted me-2">${moment(r.revizyon_tarihi).format("DD.MM.YYYY")}</span>
+            ${r.karar_no ? `<span class="badge bg-light text-dark me-2">${escapeHtml(r.karar_no)}</span>` : ""}
+            <span class="ms-auto me-3 ${toplam < 0 ? "text-danger" : "text-success"}">${formatPara(toplam)}</span>
+          </button>
+        </h2>
+        <div id="revizyon-${r.id}" class="accordion-collapse collapse ${i ? "" : "show"}"
+          data-bs-parent="#revizyonAccordion"><div class="accordion-body">
+          ${r.aciklama ? `<p>${escapeHtml(r.aciklama)}</p>` : ""}
+          <div class="table-responsive"><table class="table table-sm mb-0">
+          <thead><tr><th>Poz / Kalem</th><th class="text-end">Önceki</th><th class="text-end">Değişim</th><th class="text-end">Yeni</th><th class="text-end">Tutar Farkı</th></tr></thead><tbody>`;
+      r.kalemler.forEach(function (k) {
+        const d = parseFloat(k.degisim_miktari);
+        html += `<tr><td>${escapeHtml((k.poz_no ? k.poz_no + " - " : "") + k.kalem_adi)}</td>
+          <td class="text-end">${formatMiktar(k.onceki_miktar)}</td>
+          <td class="text-end ${d < 0 ? "text-danger" : "text-success"}">${d > 0 ? "+" : ""}${formatMiktar(d)}</td>
+          <td class="text-end">${formatMiktar(k.yeni_miktar)}</td>
+          <td class="text-end">${formatPara(d * parseFloat(k.birim_fiyat))}</td></tr>`;
+      });
+      html += '</tbody></table></div></div></div></div>';
+    });
+    $("#revizyonGecmisi").html(html + "</div>");
+  }, "json");
+}
+
+function formatMiktar(value) {
+  return Number(value || 0).toLocaleString("tr-TR", { minimumFractionDigits: 0, maximumFractionDigits: 4 });
+}
+
+function formatPara(value) {
+  return Number(value || 0).toLocaleString("tr-TR", { style: "currency", currency: "TRY" });
+}
+
+function escapeHtml(value) {
+  return $("<div>").text(value == null ? "" : String(value)).html();
 }
 
 function satirSil(btn) {

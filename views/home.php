@@ -305,8 +305,24 @@ if (Gate::allows("ana_sayfa")) {
             $desc .= '<br><small class="text-warning fw-bold mt-1 d-inline-block"><i class="bx bx-time-five"></i> Son Tarih: ' . date('d.m.Y', strtotime($d['etkinlik_tarihi'])) . '</small>';
         }
 
-        $linkClass = $d['hedef_sayfa'] ? 'cursor-pointer' : '';
-        $onClick = $d['hedef_sayfa'] ? "onclick=\"window.location.href='" . htmlspecialchars($d['hedef_sayfa']) . "'\"" : "";
+        $hasLink = !empty($d['hedef_sayfa']);
+        $linkClass = 'cursor-pointer';
+
+        $duyuruJsonData = json_encode([
+            'id' => $d['id'],
+            'baslik' => $d['baslik'],
+            'icerik' => $d['icerik'],
+            'resim' => $d['resim'],
+            'tarih' => date('d.m.Y', strtotime($d['tarih'])),
+            'etkinlik_tarihi' => $d['etkinlik_tarihi'] ? date('d.m.Y', strtotime($d['etkinlik_tarihi'])) : null,
+            'hedef_sayfa' => $d['hedef_sayfa']
+        ], JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+        if ($hasLink) {
+            $onClick = "onclick=\"window.location.href='" . htmlspecialchars($d['hedef_sayfa'], ENT_QUOTES, 'UTF-8') . "'\"";
+        } else {
+            $onClick = "onclick=\"openHomeDuyuruModal(this)\" data-duyuru='" . htmlspecialchars($duyuruJsonData, ENT_QUOTES, 'UTF-8') . "'";
+        }
 
         $slider_notifications[] = [
             'id' => $d['id'],
@@ -1651,6 +1667,86 @@ if (Gate::allows("ana_sayfa")) {
                 </div>
             </div>
         </div>
+
+        
+        
+
+        
+        <!-- Duyuru Detay Modal - Home Page -->
+        <div class="modal fade no-upgrade" id="modalDuyuruDetay" tabindex="-1" aria-hidden="true" data-modal-subtitle="Kurumsal Bildirim" data-modal-icon="bx bx-news">
+            <div class="modal-dialog modal-dialog-centered modal-lg">
+                <div class="modal-content border-0 shadow-lg" style="border-radius: 16px; overflow: hidden;">
+                    <div class="modal-header py-3 px-4 bg-white border-bottom">
+                        <div class="d-flex align-items-center">
+                            <div class="bg-primary bg-opacity-10 rounded-circle p-2 me-3 d-flex align-items-center justify-content-center" style="width: 40px; height: 40px;">
+                                <i class="bx bx-news text-primary fs-4"></i>
+                            </div>
+                            <div>
+                                <h5 class="modal-title text-dark fw-bold mb-0">Duyuru Detayı</h5>
+                                <small class="text-muted">Kurumsal Bildirim</small>
+                            </div>
+                        </div>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body p-4">
+                        <div id="homeDuyuruModalResimContainer" class="mb-4 text-center d-none">
+                            <img id="homeDuyuruModalResim" src="" class="img-fluid rounded-3 shadow-sm" style="max-height: 280px; width: 100%; object-fit: cover;">
+                        </div>
+                        <div class="d-flex align-items-center justify-content-between mb-3 flex-wrap gap-2 pb-3 border-bottom">
+                            <h4 class="fw-bold text-dark mb-0" id="homeDuyuruModalBaslik"></h4>
+                            <div class="d-flex align-items-center gap-2">
+                                <span class="badge bg-soft-primary text-primary px-3 py-2 rounded-pill" id="homeDuyuruModalTarih" style="font-size: 11px;"></span>
+                                <span class="badge bg-soft-warning text-warning px-3 py-2 rounded-pill d-none" id="homeDuyuruModalEtkinlikTarih" style="font-size: 11px;"></span>
+                            </div>
+                        </div>
+                        <div id="homeDuyuruModalIcerik" class="duyuru-modal-body-content text-secondary leading-relaxed pt-2" style="font-size: 15px; word-break: break-word;">
+                        </div>
+                    </div>
+                    <div class="modal-footer bg-light py-3 border-0">
+                        <button type="button" class="btn btn-secondary px-4 fw-semibold shadow-sm" data-bs-dismiss="modal">Kapat</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <script>
+            function openHomeDuyuruModal(el) {
+                let duyuruData;
+                try {
+                    const raw = typeof el === 'string' ? el : el.getAttribute('data-duyuru');
+                    duyuruData = typeof raw === 'string' ? JSON.parse(raw) : raw;
+                } catch(e) {
+                    console.error('Duyuru verisi okunamadı', e);
+                    return;
+                }
+
+                if (!duyuruData) return;
+
+                $('#homeDuyuruModalBaslik').text(duyuruData.baslik || '');
+                $('#homeDuyuruModalTarih').html('<i class="bx bx-calendar me-1"></i> Yayın: ' + (duyuruData.tarih || ''));
+
+                if (duyuruData.etkinlik_tarihi) {
+                    $('#homeDuyuruModalEtkinlikTarih').html('<i class="bx bx-time-five me-1"></i> Son Tarih: ' + duyuruData.etkinlik_tarihi).removeClass('d-none');
+                } else {
+                    $('#homeDuyuruModalEtkinlikTarih').addClass('d-none');
+                }
+
+                if (duyuruData.resim) {
+                    $('#homeDuyuruModalResim').attr('src', duyuruData.resim);
+                    $('#homeDuyuruModalResimContainer').removeClass('d-none');
+                } else {
+                    $('#homeDuyuruModalResimContainer').addClass('d-none');
+                }
+
+                let icerikHtml = duyuruData.icerik || '';
+                if (!/<[a-z][\s\S]*>/i.test(icerikHtml)) {
+                    icerikHtml = icerikHtml.split(/\r?\n\r?\n/).map(p => '<p>' + p.replace(/\r?\n/g, '<br>') + '</p>').join('');
+                }
+                $('#homeDuyuruModalIcerik').html(icerikHtml);
+
+                $('#modalDuyuruDetay').modal('show');
+            }
+        </script>
 
         <!-- Log Detay Modal - Premium Design -->
         <style>
