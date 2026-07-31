@@ -58,7 +58,14 @@ try {
 }
 
 function getInitial($name) {
-    return mb_strtoupper(mb_substr($name, 0, 1));
+    if (empty($name)) return '?';
+    $words = preg_split('/\s+/', trim($name));
+    if (count($words) === 1) {
+        return mb_strtoupper(mb_substr($words[0], 0, 1, 'UTF-8'), 'UTF-8');
+    }
+    $first = mb_substr($words[0], 0, 1, 'UTF-8');
+    $last = mb_substr(end($words), 0, 1, 'UTF-8');
+    return mb_strtoupper($first . $last, 'UTF-8');
 }
 ?>
 
@@ -376,12 +383,12 @@ function initCalendar() {
         },
         eventContent: function(arg) {
             const name = arg.event.title;
-            const initial = name ? name.charAt(0).toUpperCase() : '?';
+            const initials = getInitial(name);
             const bgColor = arg.event.backgroundColor || 'var(--primary)';
             return {
                 html: `<div class="fc-event-main-frame flex items-center justify-center w-full h-full">
-                         <div class="w-5 h-5 rounded-full text-white flex items-center justify-center text-[8px] font-black border border-white shadow-sm" style="background-color: ${bgColor}" title="${name}">
-                            ${initial}
+                         <div class="w-5.5 h-5.5 px-0.5 rounded-full text-white flex items-center justify-center text-[7.5px] font-black border border-white shadow-sm leading-none tracking-tighter" style="background-color: ${bgColor}" title="${name}">
+                            ${initials}
                          </div>
                        </div>`
             };
@@ -540,7 +547,14 @@ function performAction(action, data) {
 }
 
 function getInitial(name) {
-    return name ? name.charAt(0).toUpperCase() : '?';
+    if (!name || !name.trim()) return '?';
+    const words = name.trim().split(/\s+/);
+    if (words.length === 1) {
+        return words[0].charAt(0).toLocaleUpperCase('tr-TR');
+    }
+    const first = words[0].charAt(0);
+    const last = words[words.length - 1].charAt(0);
+    return (first + last).toLocaleUpperCase('tr-TR');
 }
 function changeNobetMonth(offset) {
     let currentAy = <?= $ay ?>;
