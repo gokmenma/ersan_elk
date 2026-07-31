@@ -161,8 +161,8 @@ foreach ($personeller as $p) {
                                 </td>
                                 <td>
                                     <div class="text-truncate" style="max-width: 250px;"
-                                        title="<?= htmlspecialchars($d->icerik) ?>">
-                                        <?= htmlspecialchars($d->icerik) ?>
+                                        title="<?= htmlspecialchars(strip_tags($d->icerik)) ?>">
+                                        <?= htmlspecialchars(mb_strimwidth(strip_tags($d->icerik), 0, 120, '...')) ?>
                                     </div>
                                 </td>
                                 <td>
@@ -281,7 +281,8 @@ foreach ($personeller as $p) {
                                     <?= Form::FormFloatInput('text', 'baslik', '', 'Duyuru başlığı...', 'Başlık *', 'type', 'form-control', true) ?>
                                 </div>
                                 <div class="col-12">
-                                    <?= Form::FormFloatTextarea('icerik', '', 'Duyuru içeriği...', 'İçerik', 'align-left', 'form-control', false, '120px') ?>
+                                    <label for="icerik" class="form-label text-muted small mb-1 fw-bold">İçerik</label>
+                                    <textarea name="icerik" id="icerik" class="form-control" rows="6" placeholder="Duyuru içeriği..."></textarea>
                                 </div>
                                 <div class="col-md-6">
                                     <?= Form::FormFloatInput('date', 'etkinlik_tarihi', '', '', 'Bitiş Tarihi', 'calendar', 'form-control', false) ?>
@@ -437,6 +438,25 @@ foreach ($personeller as $p) {
             });
         }
 
+        // Summernote Text Editor Başlatma
+        if ($('#icerik').length > 0 && typeof $.fn.summernote !== 'undefined') {
+            $('#icerik').summernote({
+                height: 220,
+                lang: 'tr-TR',
+                placeholder: 'Duyuru içeriğini buraya yazabilirsiniz...',
+                toolbar: [
+                    ['style', ['style', 'bold', 'italic', 'underline', 'clear']],
+                    ['font', ['strikethrough', 'superscript', 'subscript']],
+                    ['fontsize', ['fontsize']],
+                    ['color', ['color']],
+                    ['para', ['ul', 'ol', 'paragraph']],
+                    ['table', ['table']],
+                    ['insert', ['link', 'picture', 'video']],
+                    ['view', ['fullscreen', 'codeview']]
+                ]
+            });
+        }
+
         // Departman Filtresi (Checkbox) Değişimi
         $(document).on('change', '.dept-checkbox', function() {
             updateDeptFilterUI();
@@ -500,6 +520,9 @@ foreach ($personeller as $p) {
 
         $('#duyuruForm').submit(function (e) {
             e.preventDefault();
+            if ($('#icerik').length > 0 && typeof $.fn.summernote !== 'undefined') {
+                $('#icerik').val($('#icerik').summernote('code'));
+            }
             const formData = new FormData(this);
 
             Swal.fire({
@@ -538,7 +561,12 @@ foreach ($personeller as $p) {
                         $('#duyuruId').val(d.id);
                         $('#modalTitle').text('Duyuruyu Düzenle');
                         $('input[name="baslik"]').val(d.baslik);
-                        $('textarea[name="icerik"]').val(d.icerik);
+                        
+                        if ($('#icerik').length > 0 && typeof $.fn.summernote !== 'undefined') {
+                            $('#icerik').summernote('code', d.icerik || '');
+                        } else {
+                            $('textarea[name="icerik"]').val(d.icerik || '');
+                        }
                         
                         if (d.etkinlik_tarihi) {
                             const fp = document.querySelector('input[name="etkinlik_tarihi"]')._flatpickr;
@@ -612,6 +640,10 @@ foreach ($personeller as $p) {
         $('select[name="durum"]').val('Yayında').trigger('change');
         const fp = document.querySelector('input[name="etkinlik_tarihi"]')._flatpickr;
         if (fp) fp.clear();
+        
+        if ($('#icerik').length > 0 && typeof $.fn.summernote !== 'undefined') {
+            $('#icerik').summernote('code', '');
+        }
         
         $('#previewImage').attr('src', '');
         $('#uploadPreview').addClass('d-none');
@@ -943,5 +975,23 @@ foreach ($personeller as $p) {
 
     .modal-content {
         overflow: hidden;
+    }
+
+    /* Summernote Editor Modal Compatibility */
+    .note-editor.note-frame {
+        border-radius: 10px;
+        border: 1px solid #ced4da;
+    }
+    .note-editor .note-toolbar {
+        background: #f8f9fa;
+        border-bottom: 1px solid #e9ecef;
+        border-top-left-radius: 10px;
+        border-top-right-radius: 10px;
+    }
+    .note-popover, .note-modal {
+        z-index: 1060 !important;
+    }
+    .note-modal-backdrop {
+        z-index: 1059 !important;
     }
 </style>

@@ -1,19 +1,14 @@
 <!-- Required Vendor Scripts -->
 
-
 <?php
 
 use App\Helper\Helper;
 
 $page = $_GET['p'] ?? 'home';
 
-
 ?>
 <script src="https://cdn.jsdelivr.net/npm/jquery-validation@1.19.5/dist/jquery.validate.js"></script>
 <script src="assets/libs/imask/imask.min.js"></script>
-
-
-
 
 <!-- Sayfalara Özel Scriptler -->
 <!--***************************************-->
@@ -28,9 +23,6 @@ $page = $_GET['p'] ?? 'home';
 <?php if ($page == 'ihbar/list') { ?>
     <script src="assets/libs/apexcharts/apexcharts.min.js"></script>
 <?php } ?>
-
-
-
 
 <?php if ($page == 'personel/list') { ?>
     <script src="<?php echo Helper::assetVersion('views/personel/js/list.js'); ?>"></script>
@@ -65,33 +57,21 @@ $page = $_GET['p'] ?? 'home';
     <script src="<?php echo Helper::assetVersion('views/demirbas/js/zimmet.js'); ?>"></script>
 <?php } ?>
 
-
-
-
 <?php if ($page == 'gelir-gider/list') { ?>
     <script src="views/gelir-gider/js/gelir-gider.js?v=<?php echo filemtime("views/gelir-gider/js/gelir-gider.js"); ?>"></script>
 <?php } ?>
-
-
-
-
 
 <!-- Gelir gider türü tanımlama -->
 <?php if ($page == 'tanimlamalar/gelir-gider-turu') { ?>
     <script src="views/tanimlamalar/js/gelir-gider-turu.js"></script>
 <?php } ?>
 
-
-<!--***************************************-->
-
-
 <!-- Rehber Listesi -->
 <?php if ($page == 'rehber/list') { ?>
     <script type="module" src="views/rehber/js/rehber.js"></script>
 <?php } ?>
 
-
-<!-- Kullacı Sayfası -->
+<!-- Kullanıcı Sayfası -->
 <?php if ($page == 'kullanici/list') { ?>
     <script src="views/kullanici/js/user.js?v=<?php echo time(); ?>"></script>
 <?php } ?>
@@ -105,20 +85,17 @@ $page = $_GET['p'] ?? 'home';
     <script src="views/kullanici-gruplari/js/duzenle.js"></script>
 <?php } ?>
 
-
 <!-- Sms Gönder -->
 <?php if ($page == 'mail-sms/sms-gonder') { ?>
     <script src="views/mail-sms/js/sms.js"></script>
 <?php } ?>
 
 <?php
-if ($page == "slider/duzenle" || $page == "evrak-takip/giden-evrak" || $page == "mail-sms/mail-gonder") {
-    // echo '<script src="https://cdn.jsdelivr.net/npm/summernote@0.9.0/dist/summernote-lite.min.js"></script>';
+if ($page == "slider/duzenle" || $page == "evrak-takip/giden-evrak" || $page == "mail-sms/mail-gonder" || $page == "duyuru/list") {
     echo '<script src="assets/libs/summernote/summernote-lite.min.js"></script>';
-    echo '<script src="assets/libs//summernote/lang/summernote-tr-TR.min.js"></script>';
+    echo '<script src="assets/libs/summernote/lang/summernote-tr-TR.min.js"></script>';
     echo '<script src="./assets/js/summernote-init.js"></script>';
     echo '<script src="assets/libs/summernote/summernote-table-styles.js"></script>';
-
 }
 
 if ($page == "slider/list" || $page == "slider/duzenle") {
@@ -129,10 +106,6 @@ if ($page == "mail-sms/mail-gonder") {
     echo '<script src="views/mail-sms/js/mail.js"></script>';
 }
 
-
-// parametreler.js artık parametreler.php içinde inline olarak tanımlıdır
-// Harici JS kaldırıldı - çift handler çakışması tutar alanının kaydedilmemesine neden oluyordu
-
 if ($page == "hakedisler/index") {
     echo '<script src="views/hakedisler/js/sozlesmeler.js?v=' . time() . '"></script>';
 }
@@ -142,7 +115,6 @@ if ($page == "hakedisler/sozlesme-detay") {
 if ($page == "hakedisler/hakedis-detay") {
     echo '<script src="views/hakedisler/js/hakedis-detay.js?v=' . time() . '"></script>';
 }
-
 ?>
 
 <!-- Datatable Scripts -->
@@ -182,21 +154,15 @@ if ($page == "hakedisler/hakedis-detay") {
     $page == "bildirim/list" ||
     $page == "raporlar/riskli-islemler" ||
     $page == "ihbar/list"
-
-
 ) { ?>
 
     <!-- Datatable init js -->
     <?php require_once "datatable-scripts.php"; ?>
 <?php } ?>
 
-
-
-
 <!-- Required Vendor Scripts -->
 <script src="assets/libs/moment/min/moment-with-locales.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
-
 
 <!-- Bootstrap Bundle JS -->
 <script src="assets/libs/bootstrap/js/bootstrap.bundle.min.js"></script>
@@ -229,7 +195,6 @@ if ($page == "hakedisler/hakedis-detay") {
 <?php } ?>
 
 <script src="assets/js/jquery.inputmask.js"></script>
-
 
 <!-- App -General js -->
 <script src="assets/js/app_module.js?v=<?php echo filemtime('assets/js/app_module.js'); ?>"></script>

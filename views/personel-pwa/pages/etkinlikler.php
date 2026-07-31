@@ -74,7 +74,7 @@
                         '<span class="badge badge-primary bg-white/20 text-white border-none mb-2 text-[10px]">' + escapeHtml(duyuru.tarih) + '</span>' +
                         (duyuru.gecmis ? '<span class="badge badge-danger bg-red-500/80 text-white border-none mb-2 ml-2 text-[10px]">Geçmiş Etkinlik</span>' : '') +
                         '<h3 class="font-bold text-lg leading-tight mb-2 text-white max-w-[85%]">' + escapeHtml(duyuru.baslik) + '</h3>' +
-                        '<p class="text-xs text-white/80 line-clamp-3 leading-relaxed max-w-[85%]">' + escapeHtml(duyuru.icerik) + '</p>' +
+                        '<p class="text-xs text-white/80 line-clamp-3 leading-relaxed max-w-[85%]">' + escapeHtml(duyuru.icerik ? duyuru.icerik.replace(/<[^>]*>?/gm, '') : '') + '</p>' +
                         '</div>' +
                         '</div>';
                 }).join('');

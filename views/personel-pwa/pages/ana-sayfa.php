@@ -335,92 +335,241 @@ use App\Helper\Helper;
     </section>
 
 
+    <?php
+    $PersonelModelForActions = new \App\Model\PersonelModel();
+    $userSavedActionKeys = $PersonelModelForActions->getHizliIslemler($personel_id);
+
+    $allQuickActionCatalog = [
+        'izin' => [
+            'key' => 'izin',
+            'title' => 'İzin Talebi',
+            'desc' => 'Yeni izin planla',
+            'url' => '?page=izin',
+            'icon' => 'event_busy',
+            'gradient' => 'from-indigo-500 to-indigo-700',
+            'neon' => 'neon-indigo',
+            'text_color' => 'text-indigo-100/80',
+        ],
+        'yardim' => [
+            'key' => 'yardim',
+            'title' => 'Destek Talebi',
+            'desc' => 'Yardım ve Destek',
+            'url' => '?page=yardim',
+            'icon' => 'support_agent',
+            'gradient' => 'from-emerald-500 to-emerald-700',
+            'neon' => 'neon-emerald',
+            'text_color' => 'text-emerald-100/80',
+        ],
+        'bordro' => [
+            'key' => 'bordro',
+            'title' => 'Avanslar',
+            'desc' => 'Avans Talebi Yap',
+            'url' => '?page=bordro',
+            'icon' => 'receipt_long',
+            'gradient' => 'from-orange-500 to-orange-700',
+            'neon' => 'neon-orange',
+            'text_color' => 'text-orange-100/80',
+        ],
+        'zimmetler' => [
+            'key' => 'zimmetler',
+            'title' => 'Zimmetler',
+            'desc' => 'Demirbaş Takibi',
+            'url' => '?page=zimmetler',
+            'icon' => 'inventory_2',
+            'gradient' => 'from-amber-500 to-amber-700',
+            'neon' => 'neon-amber',
+            'text_color' => 'text-amber-100/80',
+        ],
+        'ihbar' => [
+            'key' => 'ihbar',
+            'title' => 'İhbar Yap',
+            'desc' => 'Kaçak Su İhbarı',
+            'url' => '?page=ihbar',
+            'icon' => 'campaign',
+            'gradient' => 'from-red-500 to-red-700',
+            'neon' => 'neon-red',
+            'text_color' => 'text-red-100/80',
+        ],
+        'puantaj' => [
+            'key' => 'puantaj',
+            'title' => 'Puantajım',
+            'desc' => 'Aylık Çalışma Özeti',
+            'url' => '?page=puantaj',
+            'icon' => 'calendar_month',
+            'gradient' => 'from-blue-500 to-blue-700',
+            'neon' => 'neon-blue',
+            'text_color' => 'text-blue-100/80',
+        ],
+        'talep' => [
+            'key' => 'talep',
+            'title' => 'Taleplerim',
+            'desc' => 'Talep ve Görevler',
+            'url' => '?page=talep',
+            'icon' => 'assignment',
+            'gradient' => 'from-violet-500 to-violet-700',
+            'neon' => 'neon-violet',
+            'text_color' => 'text-violet-100/80',
+        ],
+        'km-bildirimleri' => [
+            'key' => 'km-bildirimleri',
+            'title' => 'KM Bildirimi',
+            'desc' => 'Araç KM Girişi',
+            'url' => '?page=km-bildirimleri',
+            'icon' => 'speed',
+            'gradient' => 'from-rose-500 to-rose-700',
+            'neon' => 'neon-rose',
+            'text_color' => 'text-rose-100/80',
+        ],
+        'etkinlikler' => [
+            'key' => 'etkinlikler',
+            'title' => 'Etkinlikler',
+            'desc' => 'Duyuru & Etkinlik',
+            'url' => '?page=etkinlikler',
+            'icon' => 'event',
+            'gradient' => 'from-fuchsia-500 to-fuchsia-700',
+            'neon' => 'neon-fuchsia',
+            'text_color' => 'text-fuchsia-100/80',
+        ],
+        'icralar' => [
+            'key' => 'icralar',
+            'title' => 'İcralarım',
+            'desc' => 'İcra Dosya Takibi',
+            'url' => '?page=icralar',
+            'icon' => 'gavel',
+            'gradient' => 'from-purple-500 to-purple-700',
+            'neon' => 'neon-purple',
+            'text_color' => 'text-purple-100/80',
+            'condition' => $hasIcra ?? false,
+        ],
+        'ekip-takibi' => [
+            'key' => 'ekip-takibi',
+            'title' => 'Ekip Takibi',
+            'desc' => 'Saha Ekip Durumu',
+            'url' => '?page=ekip-takibi',
+            'icon' => 'groups',
+            'gradient' => 'from-cyan-500 to-cyan-700',
+            'neon' => 'neon-cyan',
+            'text_color' => 'text-cyan-100/80',
+            'condition' => ($isEndeksOkuma ?? false) && ($isEkipSefi ?? false),
+        ],
+        'nobet' => [
+            'key' => 'nobet',
+            'title' => 'Nöbet Çizelgesi',
+            'desc' => 'Nöbet Listesi',
+            'url' => '?page=nobet',
+            'icon' => 'nights_stay',
+            'gradient' => 'from-teal-500 to-teal-700',
+            'neon' => 'neon-teal',
+            'text_color' => 'text-teal-100/80',
+            'condition' => $isKesmeAcma ?? false,
+        ],
+    ];
+
+    $availableQuickActions = [];
+    foreach ($allQuickActionCatalog as $key => $action) {
+        if (!isset($action['condition']) || $action['condition'] === true) {
+            $availableQuickActions[$key] = $action;
+        }
+    }
+
+    $activeQuickActions = [];
+    foreach ($userSavedActionKeys as $key) {
+        if (isset($availableQuickActions[$key])) {
+            $activeQuickActions[] = $availableQuickActions[$key];
+        }
+    }
+    ?>
+
     <section class="px-4 mt-6 overflow-hidden">
-        <h2 class="text-lg font-bold text-slate-900 dark:text-white mb-3">Hızlı İşlemler</h2>
+        <div class="flex items-center justify-between mb-3">
+            <h2 class="text-lg font-bold text-slate-900 dark:text-white">Hızlı İşlemler</h2>
+            <button type="button" onclick="openHizliIslemlerModal()" class="text-xs font-semibold text-primary flex items-center gap-1 bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-lg transition-colors active:scale-95">
+                <span class="material-symbols-outlined text-sm">tune</span>
+                <span>Düzenle</span>
+            </button>
+        </div>
         <div class="flex overflow-x-auto hide-scrollbar gap-3 pb-6 snap-x snap-mandatory">
-            <a href="?page=izin"
-                class="quick-action group border-2 neon-indigo bg-gradient-to-br from-indigo-500 to-indigo-700 p-4 transition-all active:scale-95 w-[140px] flex-shrink-0 snap-start">
-                <div
-                    class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-2.5 shadow-inner">
-                    <span class="material-symbols-outlined text-white text-xl filled">event_busy</span>
+            <?php if (empty($activeQuickActions)): ?>
+                <div class="w-full p-4 text-center text-xs text-slate-400 bg-slate-100 dark:bg-slate-800 rounded-2xl">
+                    Henüz eklenmiş bir hızlı işlem yok. "Düzenle" butonundan ekleyebilirsiniz.
                 </div>
-                <div>
-                    <h3 class="font-bold text-[13px] text-white">İzin Talebi</h3>
-                    <p class="text-[9px] text-indigo-100/80 font-medium">Yeni izin planla</p>
-                </div>
-                <div
-                    class="absolute -right-3 -bottom-3 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-                    <span class="material-symbols-outlined text-5xl text-white">event_busy</span>
-                </div>
-            </a>
-
-            <a href="?page=yardim"
-                class="quick-action group border-2 neon-emerald bg-gradient-to-br from-emerald-500 to-emerald-700 p-4 transition-all active:scale-95 w-[140px] flex-shrink-0 snap-start">
-                <div
-                    class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-2.5 shadow-inner">
-                    <span class="material-symbols-outlined text-white text-xl filled">support_agent</span>
-                </div>
-                <div>
-                    <h3 class="font-bold text-[13px] text-white">Destek Talebi</h3>
-                    <p class="text-[9px] text-emerald-100/80 font-medium">Yardım ve Destek</p>
-                </div>
-                <div
-                    class="absolute -right-3 -bottom-3 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-                    <span class="material-symbols-outlined text-5xl text-white">support_agent</span>
-                </div>
-            </a>
-
-            <a href="?page=bordro"
-                class="quick-action group border-2 neon-orange bg-gradient-to-br from-orange-500 to-orange-700 p-4 transition-all active:scale-95 w-[140px] flex-shrink-0 snap-start">
-                <div
-                    class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-2.5 shadow-inner">
-                    <span class="material-symbols-outlined text-white text-xl filled">receipt_long</span>
-                </div>
-                <div>
-                    <h3 class="font-bold text-[13px] text-white">Avanslar</h3>
-                    <p class="text-[9px] text-orange-100/80 font-medium">Avans Talebi Yap</p>
-                </div>
-                <div
-                    class="absolute -right-3 -bottom-3 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-                    <span class="material-symbols-outlined text-5xl text-white">receipt_long</span>
-                </div>
-            </a>
-
-            <a href="?page=zimmetler"
-                class="quick-action group border-2 neon-amber bg-gradient-to-br from-amber-500 to-amber-700 p-4 transition-all active:scale-95 w-[140px] flex-shrink-0 snap-start">
-                <div
-                    class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-2.5 shadow-inner">
-                    <span class="material-symbols-outlined text-white text-xl filled">inventory_2</span>
-                </div>
-                <div>
-                    <h3 class="font-bold text-[13px] text-white">Zimmetler</h3>
-                    <p class="text-[9px] text-amber-100/80 font-medium">Demirbaş Takibi</p>
-                </div>
-                <div
-                    class="absolute -right-3 -bottom-3 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-                    <span class="material-symbols-outlined text-5xl text-white">inventory_2</span>
-                </div>
-            </a>
-
-            <a href="?page=ihbar"
-                class="quick-action group border-2 neon-red bg-gradient-to-br from-red-500 to-red-700 p-4 transition-all active:scale-95 w-[140px] flex-shrink-0 snap-start">
-                <div
-                    class="w-10 h-10 rounded-xl bg-white/20 backdrop-blur-md flex items-center justify-center mb-2.5 shadow-inner">
-                    <span class="material-symbols-outlined text-white text-xl filled">campaign</span>
-                </div>
-                <div>
-                    <h3 class="font-bold text-[13px] text-white">İhbar Yap</h3>
-                    <p class="text-[9px] text-red-100/80 font-medium">Kaçak Su İhbarı</p>
-                </div>
-                <div
-                    class="absolute -right-3 -bottom-3 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
-                    <span class="material-symbols-outlined text-5xl text-white">campaign</span>
-                </div>
-            </a>
+            <?php else: ?>
+                <?php foreach ($activeQuickActions as $action): ?>
+                    <a href="<?php echo htmlspecialchars($action['url'], ENT_QUOTES, 'UTF-8'); ?>"
+                        style="width: 105px !important; min-width: 105px !important; max-width: 105px !important; padding: 10px !important; border-radius: 1rem !important;"
+                        class="quick-action group border-2 <?php echo htmlspecialchars($action['neon'], ENT_QUOTES, 'UTF-8'); ?> bg-gradient-to-br <?php echo htmlspecialchars($action['gradient'], ENT_QUOTES, 'UTF-8'); ?> transition-all active:scale-95 flex-shrink-0 snap-start">
+                        <div
+                            class="w-7 h-7 rounded-lg bg-white/20 backdrop-blur-md flex items-center justify-center mb-1.5 shadow-inner">
+                            <span class="material-symbols-outlined text-white text-base filled"><?php echo htmlspecialchars($action['icon'], ENT_QUOTES, 'UTF-8'); ?></span>
+                        </div>
+                        <div class="w-full">
+                            <h3 class="font-bold text-[11px] text-white leading-tight truncate"><?php echo htmlspecialchars($action['title'], ENT_QUOTES, 'UTF-8'); ?></h3>
+                            <p class="text-[8.5px] <?php echo htmlspecialchars($action['text_color'], ENT_QUOTES, 'UTF-8'); ?> font-medium truncate mt-0.5"><?php echo htmlspecialchars($action['desc'], ENT_QUOTES, 'UTF-8'); ?></p>
+                        </div>
+                        <div
+                            class="absolute -right-2 -bottom-2 opacity-10 group-hover:opacity-20 transition-opacity pointer-events-none">
+                            <span class="material-symbols-outlined text-3xl text-white"><?php echo htmlspecialchars($action['icon'], ENT_QUOTES, 'UTF-8'); ?></span>
+                        </div>
+                    </a>
+                <?php endforeach; ?>
+            <?php endif; ?>
         </div>
     </section>
 
-    <!-- Quick Actions Ends Here -->
+
+    <!-- Hızlı İşlemler Özelleştirme Modalı -->
+    <div id="hizli-islemler-modal" class="modal-overlay">
+        <div class="modal-content p-5 pt-3 max-h-[85vh] flex flex-col">
+            <div class="modal-handle"></div>
+
+            <div class="flex items-center justify-between mb-4 pb-2 border-b border-slate-200 dark:border-slate-700">
+                <div>
+                    <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                        <span class="material-symbols-outlined text-primary">tune</span>
+                        Hızlı İşlemleri Özelleştir
+                    </h3>
+                    <p class="text-[11px] text-slate-500 dark:text-slate-400">Sırasını değiştirin, yeni buton ekleyin veya çıkarın.</p>
+                </div>
+                <button type="button" onclick="Modal.close('hizli-islemler-modal')" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-700 dark:hover:text-slate-300">
+                    <span class="material-symbols-outlined text-lg">close</span>
+                </button>
+            </div>
+
+            <div class="flex-1 overflow-y-auto space-y-5 pr-1 hide-scrollbar" id="hizli-islemler-modal-body">
+                <!-- Aktif (Ekli) Butonlar -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Aktif İşlemler (Sıralanabilir)</span>
+                        <span class="text-[11px] font-semibold text-primary" id="active-count-badge">0 aktif</span>
+                    </div>
+                    <div id="active-actions-list" class="space-y-2">
+                        <!-- Dynamic active items -->
+                    </div>
+                </div>
+
+                <!-- Kullanılabilir (Eklenebilir) Butonlar -->
+                <div>
+                    <div class="flex items-center justify-between mb-2">
+                        <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400">Kullanılabilir İşlemler (Eklenebilir)</span>
+                    </div>
+                    <div id="available-actions-list" class="space-y-2">
+                        <!-- Dynamic available items -->
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-slate-200 dark:border-slate-700 flex items-center gap-2">
+                <button type="button" onclick="resetHizliIslemlerToDefault()" class="px-3 py-2.5 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-600 dark:text-slate-300 text-xs font-semibold flex items-center gap-1 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                    <span class="material-symbols-outlined text-sm">restart_alt</span>
+                    Sıfırla
+                </button>
+                <button type="button" onclick="saveHizliIslemlerConfig()" id="btn-save-hizli-islemler" class="flex-1 bg-primary text-white py-2.5 rounded-xl font-bold text-xs shadow-lg shadow-primary/30 flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+                    <span class="material-symbols-outlined text-base">save</span>
+                    Değişiklikleri Kaydet
+                </button>
+            </div>
+        </div>
+    </div>
 
     <!-- Notification Modal -->
     <div id="notification-modal" class="modal-overlay">
@@ -1166,7 +1315,7 @@ use App\Helper\Helper;
                             '<div class="relative z-10 pr-2">' + // removed large pr-16 padding to let text flow
                             '<span class="badge badge-primary bg-white/20 text-white border-none mb-2 text-[10px]">' + escapeHtml(duyuru.tarih) + '</span>' +
                             '<h3 class="font-bold text-lg leading-tight mb-1 text-white truncate max-w-[85%]">' + escapeHtml(duyuru.baslik) + '</h3>' +
-                            '<p class="text-xs text-white/80 line-clamp-2 max-w-[85%]">' + escapeHtml(duyuru.icerik) + '</p>' +
+                            '<p class="text-xs text-white/80 line-clamp-2 max-w-[85%]">' + escapeHtml(duyuru.icerik ? duyuru.icerik.replace(/<[^>]*>?/gm, '') : '') + '</p>' +
                             '</div>' +
                             '</div>';
                     }).join('');
@@ -1404,22 +1553,246 @@ use App\Helper\Helper;
             }
         }
 
-        async function deleteAllNotifications() {
-            var confirmed = await Alert.confirm('Tüm Bildirimleri Sil', 'Tüm bildirimleri silmek istediğinize emin misiniz?', 'Evet, Tümünü Sil', 'Vazgeç');
-            if (!confirmed) return;
+        // ===== Hızlı İşlemler Özelleştirme Mantığı =====
+        const ALL_ACTION_CATALOG = <?php echo json_encode(array_values($availableQuickActions), JSON_UNESCAPED_UNICODE); ?>;
+        let currentActiveKeys = <?php echo json_encode(array_column($activeQuickActions, 'key'), JSON_UNESCAPED_UNICODE); ?>;
+        const DEFAULT_KEYS = <?php echo json_encode(\App\Model\PersonelModel::DEFAULT_PWA_HIZLI_ISLEMLER, JSON_UNESCAPED_UNICODE); ?>;
+
+        function openHizliIslemlerModal() {
+            renderHizliIslemlerModalLists();
+            Modal.open('hizli-islemler-modal');
+        }
+
+        function renderHizliIslemlerModalLists() {
+            const activeContainer = document.getElementById('active-actions-list');
+            const availableContainer = document.getElementById('available-actions-list');
+            const activeBadge = document.getElementById('active-count-badge');
+
+            if (!activeContainer || !availableContainer) return;
+
+            activeContainer.innerHTML = '';
+            availableContainer.innerHTML = '';
+
+            const catalogMap = {};
+            ALL_ACTION_CATALOG.forEach(function(act) { catalogMap[act.key] = act; });
+
+            const validActiveKeys = currentActiveKeys.filter(function(k) { return catalogMap[k]; });
+            currentActiveKeys = validActiveKeys;
+
+            if (activeBadge) activeBadge.textContent = currentActiveKeys.length + ' aktif';
+
+            if (currentActiveKeys.length === 0) {
+                activeContainer.innerHTML = '<div class="text-center py-4 text-xs text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">Aktif hızlı işlem bulunmuyor. Aşağıdan ekleyebilirsiniz.</div>';
+            } else {
+                currentActiveKeys.forEach(function(key, index) {
+                    const act = catalogMap[key];
+                    const itemEl = document.createElement('div');
+                    itemEl.className = 'quick-action-edit-item flex items-center justify-between p-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700/80 shadow-sm transition-all select-none';
+                    itemEl.setAttribute('draggable', 'true');
+                    itemEl.setAttribute('data-key', key);
+                    itemEl.setAttribute('data-index', index);
+
+                    const isFirst = index === 0;
+                    const isLast = index === currentActiveKeys.length - 1;
+
+                    itemEl.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <span class="drag-handle cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 material-symbols-outlined touch-none">drag_indicator</span>
+                            <div class="w-9 h-9 rounded-xl bg-gradient-to-br ${act.gradient} flex items-center justify-center text-white shadow-sm">
+                                <span class="material-symbols-outlined text-lg filled">${act.icon}</span>
+                            </div>
+                            <div>
+                                <div class="text-xs font-bold text-slate-900 dark:text-white">${escapeHtml(act.title)}</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400">${escapeHtml(act.desc)}</div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-1">
+                            <button type="button" onclick="moveHizliIslemItem(${index}, -1)" ${isFirst ? 'disabled' : ''} class="w-7 h-7 rounded-lg flex items-center justify-center ${isFirst ? 'text-slate-300 dark:text-slate-600' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}">
+                                <span class="material-symbols-outlined text-base">arrow_upward</span>
+                            </button>
+                            <button type="button" onclick="moveHizliIslemItem(${index}, 1)" ${isLast ? 'disabled' : ''} class="w-7 h-7 rounded-lg flex items-center justify-center ${isLast ? 'text-slate-300 dark:text-slate-600' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700'}">
+                                <span class="material-symbols-outlined text-base">arrow_downward</span>
+                            </button>
+                            <button type="button" onclick="removeHizliIslemItem('${key}')" class="w-7 h-7 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-950/30 ml-1" title="Çıkar">
+                                <span class="material-symbols-outlined text-base">remove_circle_outline</span>
+                            </button>
+                        </div>
+                    `;
+
+                    setupDragAndDropEvents(itemEl, index);
+                    activeContainer.appendChild(itemEl);
+                });
+            }
+
+            const availableItems = ALL_ACTION_CATALOG.filter(function(act) { return !currentActiveKeys.includes(act.key); });
+
+            if (availableItems.length === 0) {
+                availableContainer.innerHTML = '<div class="text-center py-3 text-xs text-slate-400">Tüm kullanılabilir hızlı işlemler eklenmiş durumda.</div>';
+            } else {
+                availableItems.forEach(function(act) {
+                    const itemEl = document.createElement('div');
+                    itemEl.className = 'flex items-center justify-between p-3 rounded-xl bg-slate-50/60 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40 transition-all';
+                    itemEl.innerHTML = `
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-xl bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300">
+                                <span class="material-symbols-outlined text-lg">${act.icon}</span>
+                            </div>
+                            <div>
+                                <div class="text-xs font-semibold text-slate-800 dark:text-slate-200">${escapeHtml(act.title)}</div>
+                                <div class="text-[10px] text-slate-500 dark:text-slate-400">${escapeHtml(act.desc)}</div>
+                            </div>
+                        </div>
+                        <button type="button" onclick="addHizliIslemItem('${act.key}')" class="px-2.5 py-1.5 rounded-lg bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold flex items-center gap-1 transition-colors active:scale-95">
+                            <span class="material-symbols-outlined text-sm">add</span>
+                            Ekle
+                        </button>
+                    `;
+                    availableContainer.appendChild(itemEl);
+                });
+            }
+        }
+
+        function moveHizliIslemItem(index, direction) {
+            const targetIndex = index + direction;
+            if (targetIndex < 0 || targetIndex >= currentActiveKeys.length) return;
+            const temp = currentActiveKeys[index];
+            currentActiveKeys[index] = currentActiveKeys[targetIndex];
+            currentActiveKeys[targetIndex] = temp;
+            renderHizliIslemlerModalLists();
+        }
+
+        function addHizliIslemItem(key) {
+            if (!currentActiveKeys.includes(key)) {
+                currentActiveKeys.push(key);
+                renderHizliIslemlerModalLists();
+            }
+        }
+
+        function removeHizliIslemItem(key) {
+            currentActiveKeys = currentActiveKeys.filter(function(k) { return k !== key; });
+            renderHizliIslemlerModalLists();
+        }
+
+        function resetHizliIslemlerToDefault() {
+            currentActiveKeys = Array.from(DEFAULT_KEYS);
+            renderHizliIslemlerModalLists();
+        }
+
+        let draggedIndex = null;
+        function setupDragAndDropEvents(el, index) {
+            el.addEventListener('dragstart', function(e) {
+                draggedIndex = index;
+                el.classList.add('opacity-40', 'scale-95');
+                e.dataTransfer.effectAllowed = 'move';
+                e.dataTransfer.setData('text/plain', index);
+            });
+
+            el.addEventListener('dragend', function() {
+                draggedIndex = null;
+                el.classList.remove('opacity-40', 'scale-95');
+            });
+
+            el.addEventListener('dragover', function(e) {
+                e.preventDefault();
+                e.dataTransfer.dropEffect = 'move';
+            });
+
+            el.addEventListener('drop', function(e) {
+                e.preventDefault();
+                if (draggedIndex === null || draggedIndex === index) return;
+                const movedItem = currentActiveKeys.splice(draggedIndex, 1)[0];
+                currentActiveKeys.splice(index, 0, movedItem);
+                renderHizliIslemlerModalLists();
+            });
+
+            const handle = el.querySelector('.drag-handle');
+            if (handle) {
+                let startY = 0;
+                let initialIndex = index;
+
+                handle.addEventListener('touchstart', function(e) {
+                    if (e.touches && e.touches[0]) {
+                        startY = e.touches[0].clientY;
+                        initialIndex = index;
+                        el.classList.add('bg-primary/10', 'border-primary', 'shadow-md');
+                    }
+                }, { passive: true });
+
+                handle.addEventListener('touchmove', function(e) {
+                    if (!e.touches || !e.touches[0]) return;
+                    const currentY = e.touches[0].clientY;
+                    const diffY = currentY - startY;
+
+                    if (Math.abs(diffY) > 36) {
+                        const step = diffY > 0 ? 1 : -1;
+                        const newIndex = initialIndex + step;
+                        if (newIndex >= 0 && newIndex < currentActiveKeys.length) {
+                            const temp = currentActiveKeys[initialIndex];
+                            currentActiveKeys[initialIndex] = currentActiveKeys[newIndex];
+                            currentActiveKeys[newIndex] = temp;
+                            startY = currentY;
+                            initialIndex = newIndex;
+                            renderHizliIslemlerModalLists();
+                        }
+                    }
+                }, { passive: true });
+
+                handle.addEventListener('touchend', function() {
+                    el.classList.remove('bg-primary/10', 'border-primary', 'shadow-md');
+                });
+            }
+        }
+
+        async function saveHizliIslemlerConfig() {
+            const btn = document.getElementById('btn-save-hizli-islemler');
+            const originalText = btn.innerHTML;
+            btn.disabled = true;
+            btn.innerHTML = '<span class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent"></span> Kaydediliyor...';
 
             try {
-                var response = await API.request('deleteAllNotifications');
-                if (response.success) {
-                    Toast.show('Tüm bildirimler silindi', 'success');
-                    allNotificationsData = [];
-                    loadNotifications();
-                    loadNotificationCount();
+                const formData = new FormData();
+                formData.append('action', 'update_hizli_islemler');
+                formData.append('hizli_islemler', JSON.stringify(currentActiveKeys));
+
+                const response = await fetch('api.php', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                if (data.success) {
+                    if (typeof Toast !== 'undefined' && typeof Toast.show === 'function') {
+                        Toast.show(data.message || 'Hızlı işlemler güncellendi', 'success');
+                    }
+                    Modal.close('hizli-islemler-modal');
+                    setTimeout(function() { window.location.reload(); }, 300);
                 } else {
-                    Toast.show(response.message || 'Bir hata oluştu', 'error');
+                    if (typeof Toast !== 'undefined' && typeof Toast.show === 'function') {
+                        Toast.show(data.message || 'Bir hata oluştu', 'error');
+                    } else {
+                        alert(data.message || 'Bir hata oluştu');
+                    }
                 }
-            } catch (error) {
-                Toast.show('Bir hata oluştu', 'error');
+            } catch (err) {
+                console.error('Save quick actions error:', err);
+                if (typeof Toast !== 'undefined' && typeof Toast.show === 'function') {
+                    Toast.show('Bir sunucu hatası oluştu', 'error');
+                } else {
+                    alert('Bir sunucu hatası oluştu');
+                }
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = originalText;
             }
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return String(str)
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
         }
     </script>

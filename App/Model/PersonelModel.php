@@ -1856,4 +1856,67 @@ class PersonelModel extends Model
 
         return array_unique($cleanResults);
     }
+
+    /**
+     * Personel PWA hızlı işlem butonları varsayılan listesi
+     */
+    public const DEFAULT_PWA_HIZLI_ISLEMLER = ['izin', 'yardim', 'bordro', 'zimmetler', 'ihbar'];
+
+    /**
+     * Kullanılabilir tüm PWA hızlı işlem anahtarları
+     */
+    public const ALL_PWA_HIZLI_ISLEMLER = [
+        'izin', 'yardim', 'bordro', 'zimmetler', 'ihbar',
+        'puantaj', 'talep', 'km-bildirimleri', 'etkinlikler', 'icralar',
+        'ekip-takibi', 'nobet'
+    ];
+
+    /**
+     * Personelin PWA hızlı işlem buton sıralamasını getirir
+     * 
+     * @param int $personelId
+     * @return array
+     */
+    public function getHizliIslemler(int $personelId): array
+    {
+        $stmt = $this->db->prepare("SELECT pwa_hizli_islemler FROM {$this->table} WHERE id = ?");
+        $stmt->execute([$personelId]);
+        $json = $stmt->fetchColumn();
+
+        if (empty($json)) {
+            return self::DEFAULT_PWA_HIZLI_ISLEMLER;
+        }
+
+        $decoded = json_decode($json, true);
+        if (!is_array($decoded)) {
+            return self::DEFAULT_PWA_HIZLI_ISLEMLER;
+        }
+
+        // Geçersiz veya tanımlanmamış anahtarları filtrele
+        $validItems = array_values(array_filter($decoded, function ($item) {
+            return in_array($item, self::ALL_PWA_HIZLI_ISLEMLER, true);
+        }));
+
+        return !empty($validItems) ? $validItems : self::DEFAULT_PWA_HIZLI_ISLEMLER;
+    }
+
+    /**
+     * Personelin PWA hızlı işlem sıralamasını kaydeder
+     * 
+     * @param int $personelId
+     * @param array $items
+     * @return bool
+     */
+    public function saveHizliIslemler(int $personelId, array $items): bool
+    {
+        $validItems = array_values(array_unique(array_filter($items, function ($item) {
+            return in_array($item, self::ALL_PWA_HIZLI_ISLEMLER, true);
+        })));
+
+        $json = json_encode($validItems, JSON_UNESCAPED_UNICODE);
+
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET pwa_hizli_islemler = ? WHERE id = ?");
+        return $stmt->execute([$json, $personelId]);
+    }
 }
+

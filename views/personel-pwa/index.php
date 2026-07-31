@@ -829,7 +829,7 @@ try {
 
                 <div class="px-5 pb-8 flex-1 bg-transparent -mt-5 relative z-20">
                     <div class="bg-white dark:bg-card-dark rounded-[2rem] p-6 shadow-xl shadow-black/5 dark:shadow-black/20 border border-slate-100 dark:border-slate-800">
-                        <p class="text-slate-700 dark:text-slate-300 text-[15px] leading-relaxed whitespace-pre-wrap">${escapeHtml(duyuru.icerik)}</p>
+                        <div class="text-slate-700 dark:text-slate-300 text-[15px] leading-relaxed duyuru-content">${duyuru.icerik || ''}</div>
                         ${fileAttachmentHtml}
                     </div>
                     ${linkHtml}
@@ -839,7 +839,6 @@ try {
             showPwaFullModal({ html: html });
         }
 
-        // Close functions for backward compatibility or simple naming
         function closeEtkinlikFullScreen() { closePwaFullModal(); }
     </script>
 

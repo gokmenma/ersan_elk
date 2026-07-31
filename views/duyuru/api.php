@@ -7,6 +7,7 @@ require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Model\DuyuruModel;
 use App\Model\PersonelModel;
+use App\Model\SystemLogModel;
 use App\Helper\Security;
 
 header('Content-Type: application/json; charset=utf-8');
@@ -17,6 +18,7 @@ error_reporting(E_ALL);
 if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     $action = $_POST['action'] ?? '';
     $model = new DuyuruModel();
+    $logModel = new SystemLogModel();
 
     try {
         switch ($action) {
@@ -60,10 +62,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if ($id) {
                     $model->updateDuyuru($id, $data);
                     $msg = 'Duyuru güncellendi.';
+                    $logModel->logAction($_SESSION['user_id'] ?? 0, 'Duyuru Güncelleme', "Duyuru #{$id} ({$data['baslik']}) güncellendi.", SystemLogModel::LEVEL_INFO);
                 } else {
                     $data['tarih'] = date('Y-m-d H:i:s');
-                    $model->createDuyuru($data);
+                    $newId = $model->createDuyuru($data);
                     $msg = 'Duyuru oluşturuldu.';
+                    $logModel->logAction($_SESSION['user_id'] ?? 0, 'Duyuru Oluşturma', "Yeni duyuru ({$data['baslik']}) oluşturuldu.", SystemLogModel::LEVEL_INFO);
                 }
 
                 echo json_encode(['status' => 'success', 'message' => $msg]);
@@ -73,6 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $id = $_POST['id'] ?? 0;
                 if ($id) {
                     $model->updateDuyuru($id, ['silinme_tarihi' => date('Y-m-d H:i:s')]);
+                    $logModel->logAction($_SESSION['user_id'] ?? 0, 'Duyuru Silme', "Duyuru #{$id} silindi.", SystemLogModel::LEVEL_IMPORTANT);
                     echo json_encode(['status' => 'success', 'message' => 'Duyuru silindi.']);
                 } else {
                     throw new Exception('Geçersiz ID.');

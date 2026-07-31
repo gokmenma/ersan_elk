@@ -419,6 +419,36 @@ try {
             response(true, $p);
             break;
 
+        case 'update_hizli_islemler':
+            $PersonelModel = new PersonelModel();
+            $rawItems = $_POST['hizli_islemler'] ?? [];
+            if (is_string($rawItems)) {
+                $rawItems = json_decode($rawItems, true) ?? [];
+            }
+            if (!is_array($rawItems)) {
+                response(false, null, 'Geçersiz veri biçimi.');
+            }
+
+            $success = $PersonelModel->saveHizliIslemler($personel_id, $rawItems);
+            if ($success) {
+                try {
+                    $LogModel = new \App\Model\SystemLogModel();
+                    $LogModel->logAction(
+                        0,
+                        'PWA Hızlı İşlemler Güncellendi',
+                        "[Personel PWA] " . ($personel->adi_soyadi ?? 'Personel') . " (ID: $personel_id) hızlı işlem butonlarını güncelledi.",
+                        \App\Model\SystemLogModel::LEVEL_INFO
+                    );
+                } catch (\Exception $e) {}
+
+                response(true, [
+                    'hizli_islemler' => $PersonelModel->getHizliIslemler($personel_id)
+                ], 'Hızlı işlemler başarıyla güncellendi.');
+            } else {
+                response(false, null, 'Hızlı işlemler güncellenirken bir hata oluştu.');
+            }
+            break;
+
         // ===== Yardım Bilet İşlemleri =====
         case 'create-ticket':
             $destekBiletModel = new \App\Model\DestekBiletModel();

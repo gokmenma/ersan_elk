@@ -469,7 +469,7 @@ $activeAnnouncements = $duyuruModel->getAll(true);
                             </div>
                             <h4 class="font-bold text-sm leading-snug drop-shadow-sm truncate"><?= htmlspecialchars($announcement->baslik, ENT_QUOTES, 'UTF-8') ?></h4>
                             <p class="text-[11px] text-white/90 mt-1.5 leading-relaxed line-clamp-2">
-                                <?= !empty($announcement->icerik) ? htmlspecialchars($announcement->icerik, ENT_QUOTES, 'UTF-8') : 'Detaylar için tıklayın.' ?>
+                                <?= !empty($announcement->icerik) ? htmlspecialchars(strip_tags($announcement->icerik), ENT_QUOTES, 'UTF-8') : 'Detaylar için tıklayın.' ?>
                             </p>
                             <div class="flex items-center gap-1.5 text-[10px] text-white/80 font-semibold mt-2.5 pt-1.5 border-t border-white/10">
                                 <span class="material-symbols-outlined text-[14px]">touch_app</span>
@@ -962,7 +962,7 @@ function openDuyuruDetayByIndex(index) {
     if (!sheet) return;
 
     document.getElementById('duyuru-detay-baslik').innerText = data.baslik || '';
-    document.getElementById('duyuru-detay-icerik').innerText = data.icerik || 'Açıklama bulunmuyor.';
+    document.getElementById('duyuru-detay-icerik').innerHTML = data.icerik || 'Açıklama bulunmuyor.';
 
     if (data.tarih) {
         const d = new Date(data.tarih);
