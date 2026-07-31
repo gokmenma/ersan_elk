@@ -58,14 +58,7 @@ try {
 }
 
 function getInitial($name) {
-    if (empty($name)) return '?';
-    $words = preg_split('/\s+/', trim($name));
-    if (count($words) === 1) {
-        return mb_strtoupper(mb_substr($words[0], 0, 1, 'UTF-8'), 'UTF-8');
-    }
-    $first = mb_substr($words[0], 0, 1, 'UTF-8');
-    $last = mb_substr(end($words), 0, 1, 'UTF-8');
-    return mb_strtoupper($first . $last, 'UTF-8');
+    return mb_strtoupper(mb_substr($name, 0, 1));
 }
 ?>
 
@@ -383,12 +376,12 @@ function initCalendar() {
         },
         eventContent: function(arg) {
             const name = arg.event.title;
-            const initials = getInitial(name);
+            const initial = name ? name.charAt(0).toUpperCase() : '?';
             const bgColor = arg.event.backgroundColor || 'var(--primary)';
             return {
-                html: `<div class="fc-event-main-frame flex items-center justify-center w-full h-full py-0.5">
-                         <div class="w-7 h-7 rounded-full text-white flex items-center justify-center text-[11px] font-black border border-white/60 shadow-sm leading-none" style="background-color: ${bgColor}" title="${name}">
-                            ${initials}
+                html: `<div class="fc-event-main-frame flex items-center justify-center w-full h-full">
+                         <div class="w-5 h-5 rounded-full text-white flex items-center justify-center text-[8px] font-black border border-white shadow-sm" style="background-color: ${bgColor}" title="${name}">
+                            ${initial}
                          </div>
                        </div>`
             };
@@ -547,14 +540,7 @@ function performAction(action, data) {
 }
 
 function getInitial(name) {
-    if (!name || !name.trim()) return '?';
-    const words = name.trim().split(/\s+/);
-    if (words.length === 1) {
-        return words[0].charAt(0).toLocaleUpperCase('tr-TR');
-    }
-    const first = words[0].charAt(0);
-    const last = words[words.length - 1].charAt(0);
-    return (first + last).toLocaleUpperCase('tr-TR');
+    return name ? name.charAt(0).toUpperCase() : '?';
 }
 function changeNobetMonth(offset) {
     let currentAy = <?= $ay ?>;
@@ -577,8 +563,8 @@ function changeNobetMonth(offset) {
 /* FullCalendar Mobile Tweaks */
 .fc .fc-toolbar { display: none; }
 .fc .fc-view-harness { background: transparent; }
-.fc .fc-daygrid-day-frame { min-height: 56px !important; }
-.fc .fc-daygrid-day-number { font-size: 11px; font-weight: 800; color: #94a3b8; padding: 2px 4px; width: 100%; text-align: center; }
+.fc .fc-daygrid-day-frame { min-height: 50px !important; }
+.fc .fc-daygrid-day-number { font-size: 10px; font-weight: 800; color: #94a3b8; padding: 2px 4px; width: 100%; text-align: center; }
 .fc .fc-day-today { background: rgba(var(--primary-rgb), 0.05) !important; }
 .fc .fc-day-today .fc-daygrid-day-number { color: var(--primary); font-size: 13px; }
 .fc-theme-standard td, .fc-theme-standard th { border: 1px solid rgba(0,0,0,0.03) !important; }
