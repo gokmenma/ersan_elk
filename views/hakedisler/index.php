@@ -388,6 +388,7 @@ $aylar = [
                             İş artış/azalış işlemleri sözleşme ve kalemleri ilk kez kaydedildikten sonra girilebilir.
                         </div>
                         <div id="revizyonAlani" class="d-none">
+                            <div id="revizyonYeniFormu">
                             <div class="alert alert-info">
                                 Her işlem ayrı bir revizyon olarak saklanır. Değişim alanına artış için pozitif,
                                 azalış için negatif miktar giriniz. Kaydedilen revizyonlar geçmiş kaydı olarak korunur.
@@ -436,13 +437,22 @@ $aylar = [
                                 </table>
                             </div>
                             <div class="text-end mb-4">
+                                <button type="button" class="btn btn-light me-1 d-none" id="revizyonFormKapatBtn"
+                                    onclick="revizyonFormunuKapat()">Vazgeç</button>
                                 <button type="button" class="btn btn-success" id="revizyonKaydetBtn"
                                     onclick="revizyonKaydet()">
                                     <i class="bx bx-save me-1"></i> İşlemi Kaydet
                                 </button>
                             </div>
+                            </div>
 
-                            <h6 class="mb-3">İş Artış/Azalış Geçmişi</h6>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="mb-0">İş Artış/Azalış Geçmişi</h6>
+                                <button type="button" id="revizyonYeniBtn" class="btn btn-primary btn-sm d-none"
+                                    onclick="yeniRevizyonFormunuAc()">
+                                    <i class="bx bx-plus me-1"></i> Yeni İş Artış/Azalışı
+                                </button>
+                            </div>
                             <div id="revizyonGecmisi"></div>
                         </div>
                     </div>
@@ -454,6 +464,7 @@ $aylar = [
                             Süre uzatımı, sözleşme ilk kez kaydedildikten sonra eklenebilir.
                         </div>
                         <div id="sureUzatimAlani" class="d-none">
+                            <div id="sureUzatimYeniFormu">
                             <div class="alert alert-info">
                                 Her süre uzatımı ayrı kaydedilir. Yeni bitiş tarihi mevcut bitiş tarihine uzatım günü eklenerek hesaplanır.
                             </div>
@@ -490,11 +501,20 @@ $aylar = [
                                 </div>
                             </div>
                             <div class="text-end mb-4">
+                                <button type="button" class="btn btn-light me-1 d-none" id="sureUzatimFormKapatBtn"
+                                    onclick="sureUzatimFormunuKapat()">Vazgeç</button>
                                 <button type="button" class="btn btn-success" id="sureUzatimKaydetBtn" onclick="sureUzatimKaydet()">
                                     <i class="bx bx-save me-1"></i> Süre Uzatımını Kaydet
                                 </button>
                             </div>
-                            <h6 class="mb-3">Süre Uzatım Geçmişi</h6>
+                            </div>
+                            <div class="d-flex justify-content-between align-items-center mb-3">
+                                <h6 class="mb-0">Süre Uzatım Geçmişi</h6>
+                                <button type="button" id="sureUzatimYeniBtn" class="btn btn-primary btn-sm d-none"
+                                    onclick="yeniSureUzatimFormunuAc()">
+                                    <i class="bx bx-plus me-1"></i> Yeni Süre Uzatımı
+                                </button>
+                            </div>
                             <div id="sureUzatimGecmisi"></div>
                         </div>
                     </div>

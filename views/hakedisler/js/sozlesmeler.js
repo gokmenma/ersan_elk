@@ -264,8 +264,8 @@ function editSozlesme(id) {
           .prop("readonly", sureUzatimiVar)
           .attr("title", sureUzatimiVar ? "Bu alan süre uzatımları sekmesinden güncellenir." : "");
 
-        revizyonSekmesiniHazirla(data.id, res.kalemler || [], data.sozlesme_bedeli);
-        sureUzatimSekmesiniHazirla(data.id, data.isin_bitecegi_tarih);
+        revizyonSekmesiniHazirla(data.id, res.kalemler || [], data.sozlesme_bedeli, res.revizyon_sayisi);
+        sureUzatimSekmesiniHazirla(data.id, data.isin_bitecegi_tarih, res.sure_uzatim_sayisi);
 
         // Reset tab
         $('.nav-tabs a[href="#sozlesme-bilgileri-tab"]').tab("show");
@@ -370,9 +370,12 @@ function revizyonSekmesiniSifirla() {
   $("#revizyonKalemBody, #revizyonGecmisi").empty();
   $("#revizyonTutarFarki").text("0,00 ₺").removeClass("text-success text-danger");
   $("#revizyonToplamOrani").text("%0,00").removeClass("text-success text-danger");
+  $("#revizyonYeniFormu").show();
+  $("#revizyonYeniBtn").addClass("d-none");
+  $("#revizyonFormKapatBtn").addClass("d-none");
 }
 
-function revizyonSekmesiniHazirla(sozlesmeId, kalemler, sozlesmeBedeli) {
+function revizyonSekmesiniHazirla(sozlesmeId, kalemler, sozlesmeBedeli, revizyonSayisi) {
   $("#revizyonYeniSozlesmeUyarisi").addClass("d-none");
   $("#revizyonAlani").removeClass("d-none")
     .attr("data-sozlesme-id", sozlesmeId)
@@ -396,6 +399,10 @@ function revizyonSekmesiniHazirla(sozlesmeId, kalemler, sozlesmeBedeli) {
   });
   $("#revizyon_tarihi").val(moment().format("DD.MM.YYYY"));
   $("#revizyon_karar_no, #revizyon_aciklama").val("");
+  const revizyonVar = parseInt(revizyonSayisi || 0, 10) > 0;
+  $("#revizyonYeniFormu").toggle(!revizyonVar);
+  $("#revizyonYeniBtn").addClass("d-none");
+  $("#revizyonFormKapatBtn").addClass("d-none");
   revizyonHesapla();
   revizyonGecmisiniYukle(sozlesmeId);
 }
@@ -489,9 +496,15 @@ function revizyonGecmisiniYukle(sozlesmeId) {
     type: "getIsRevizyonlari", sozlesme_id: sozlesmeId
   }, function (res) {
     if (res.status !== "success" || !res.data.length) {
+      $("#revizyonYeniFormu").show();
+      $("#revizyonYeniBtn").addClass("d-none");
+      $("#revizyonFormKapatBtn").addClass("d-none");
       $("#revizyonGecmisi").html('<div class="alert alert-light border">Henüz iş artış/azalış işlemi bulunmuyor.</div>');
       return;
     }
+    $("#revizyonYeniFormu").hide();
+    $("#revizyonYeniBtn").removeClass("d-none");
+    $("#revizyonFormKapatBtn").addClass("d-none");
     let html = '<div class="accordion" id="revizyonAccordion">';
     res.data.forEach(function (r, i) {
       const toplam = parseFloat(r.toplam_tutar_farki || 0);
@@ -527,6 +540,19 @@ function revizyonGecmisiniYukle(sozlesmeId) {
     });
     $("#revizyonGecmisi").html(html + "</div>");
   }, "json");
+}
+
+function yeniRevizyonFormunuAc() {
+  $("#revizyonYeniFormu").stop(true, true).slideDown(250);
+  $("#revizyonYeniBtn").addClass("d-none");
+  $("#revizyonFormKapatBtn").removeClass("d-none");
+  $("#revizyon_tarihi").trigger("focus");
+}
+
+function revizyonFormunuKapat() {
+  $("#revizyonYeniFormu").stop(true, true).slideUp(200);
+  $("#revizyonYeniBtn").removeClass("d-none");
+  $("#revizyonFormKapatBtn").addClass("d-none");
 }
 
 function revizyonSil(revizyonId, sozlesmeId) {
@@ -574,9 +600,11 @@ function sureUzatimSekmesiniSifirla() {
   $("#sure_uzatim_tarihi, #sure_uzatim_karar_no, #sure_uzatim_gun, #sure_uzatim_aciklama").val("");
   $("#sureUzatimMevcutBitis, #sureUzatimYeniBitis").text("-");
   $("#sureUzatimGecmisi").empty();
+  $("#sureUzatimYeniFormu").show();
+  $("#sureUzatimYeniBtn, #sureUzatimFormKapatBtn").addClass("d-none");
 }
 
-function sureUzatimSekmesiniHazirla(sozlesmeId, bitisTarihi) {
+function sureUzatimSekmesiniHazirla(sozlesmeId, bitisTarihi, uzatimSayisi) {
   $("#sureUzatimYeniSozlesmeUyarisi").addClass("d-none");
   $("#sureUzatimAlani").removeClass("d-none")
     .attr("data-sozlesme-id", sozlesmeId)
@@ -584,6 +612,9 @@ function sureUzatimSekmesiniHazirla(sozlesmeId, bitisTarihi) {
   $("#sure_uzatim_tarihi").val(moment().format("DD.MM.YYYY"));
   $("#sure_uzatim_karar_no, #sure_uzatim_gun, #sure_uzatim_aciklama").val("");
   $("#sureUzatimMevcutBitis").text(formatTarih(bitisTarihi));
+  const uzatimVar = parseInt(uzatimSayisi || 0, 10) > 0;
+  $("#sureUzatimYeniFormu").toggle(!uzatimVar);
+  $("#sureUzatimYeniBtn, #sureUzatimFormKapatBtn").addClass("d-none");
   sureUzatimHesapla();
   sureUzatimGecmisiniYukle(sozlesmeId);
 }
@@ -639,9 +670,14 @@ function sureUzatimGecmisiniYukle(sozlesmeId) {
     type: "getSureUzatimlari", sozlesme_id: sozlesmeId
   }, function (res) {
     if (res.status !== "success" || !res.data.length) {
+      $("#sureUzatimYeniFormu").show();
+      $("#sureUzatimYeniBtn, #sureUzatimFormKapatBtn").addClass("d-none");
       $("#sureUzatimGecmisi").html('<div class="alert alert-light border">Henüz süre uzatımı bulunmuyor.</div>');
       return;
     }
+    $("#sureUzatimYeniFormu").hide();
+    $("#sureUzatimYeniBtn").removeClass("d-none");
+    $("#sureUzatimFormKapatBtn").addClass("d-none");
     let html = '<div class="accordion" id="sureUzatimAccordion">';
     res.data.forEach(function (u, i) {
       html += `<div class="accordion-item">
@@ -665,6 +701,19 @@ function sureUzatimGecmisiniYukle(sozlesmeId) {
     });
     $("#sureUzatimGecmisi").html(html + "</div>");
   }, "json");
+}
+
+function yeniSureUzatimFormunuAc() {
+  $("#sureUzatimYeniFormu").stop(true, true).slideDown(250);
+  $("#sureUzatimYeniBtn").addClass("d-none");
+  $("#sureUzatimFormKapatBtn").removeClass("d-none");
+  $("#sure_uzatim_tarihi").trigger("focus");
+}
+
+function sureUzatimFormunuKapat() {
+  $("#sureUzatimYeniFormu").stop(true, true).slideUp(200);
+  $("#sureUzatimYeniBtn").removeClass("d-none");
+  $("#sureUzatimFormKapatBtn").addClass("d-none");
 }
 
 function sureUzatimSil(uzatimId, sozlesmeId) {
