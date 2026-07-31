@@ -746,9 +746,9 @@ $(document).ready(function() {
 </script>
 
 <!-- Personel Detay Bottom Sheet -->
-<div id="personel-detay-sheet" class="fixed inset-0 z-[70] pointer-events-none">
-    <div id="personel-detay-overlay" class="absolute inset-0 bg-black/50 opacity-0 transition-opacity duration-300" onclick="closePersonelDetay()"></div>
-    <div id="personel-detay-content" class="absolute bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-3xl transform translate-y-full transition-transform duration-300 shadow-2xl flex flex-col max-h-[85vh]">
+<div id="personel-detay-sheet" class="fixed inset-0 z-[200] pointer-events-none">
+    <div id="personel-detay-overlay" class="absolute inset-0 bg-black/50 opacity-0 transition-opacity duration-300 z-[200]" onclick="closePersonelDetay()"></div>
+    <div id="personel-detay-content" class="absolute bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-3xl transform translate-y-full transition-transform duration-300 shadow-2xl flex flex-col max-h-[85vh] z-[201] safe-area-bottom">
         <div class="flex justify-center pt-3 pb-2">
             <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
         </div>
@@ -767,9 +767,9 @@ $(document).ready(function() {
 </div>
 
 <!-- Duyuru Detay Bottom Sheet -->
-<div id="duyuru-detay-sheet" class="fixed inset-0 z-[80] pointer-events-none transition-all duration-300">
-    <div id="duyuru-detay-overlay" class="absolute inset-0 bg-black/60 backdrop-blur-xs opacity-0 transition-opacity duration-300 pointer-events-auto cursor-pointer" onclick="closeDuyuruDetay()"></div>
-    <div id="duyuru-detay-content" class="absolute bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[2.5rem] transform translate-y-full transition-transform duration-300 ease-out shadow-2xl flex flex-col max-h-[85vh] pointer-events-auto border-t border-slate-100 dark:border-slate-800">
+<div id="duyuru-detay-sheet" class="fixed inset-0 z-[200] pointer-events-none transition-all duration-300">
+    <div id="duyuru-detay-overlay" class="absolute inset-0 bg-black/60 backdrop-blur-xs opacity-0 transition-opacity duration-300 pointer-events-auto cursor-pointer z-[200]" onclick="closeDuyuruDetay()"></div>
+    <div id="duyuru-detay-content" class="absolute bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[2.5rem] transform translate-y-full transition-transform duration-300 ease-out shadow-2xl flex flex-col max-h-[85vh] pointer-events-auto border-t border-slate-100 dark:border-slate-800 z-[201] safe-area-bottom">
         
         <!-- Handle & Header -->
         <div class="flex flex-col items-center pt-3 pb-3 px-5 relative border-b border-slate-100 dark:border-slate-800/80">
