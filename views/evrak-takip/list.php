@@ -334,6 +334,11 @@ $gelen_evraklar = $Evrak->getGelenEvraklar();
         width: 12px;
         height: 12px;
     }
+
+    .btn-delete-konu:hover {
+        color: #ef4444 !important;
+        background-color: rgba(239, 68, 68, 0.15) !important;
+    }
 </style>
 
 

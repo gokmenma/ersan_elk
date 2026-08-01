@@ -4,7 +4,7 @@ $db_conn = new App\Core\Db();
 $araclar_list = $db_conn->db->query("SELECT id, plaka, marka, model FROM araclar WHERE silinme_tarihi IS NULL AND firma_id = " . intval($_SESSION['firma_id']) . " ORDER BY plaka ASC")->fetchAll(PDO::FETCH_OBJ);
 ?>
 
-<div class="modal fade" id="evrakModal" tabindex="-1" aria-labelledby="evrakModalLabel" aria-hidden="true">
+<div class="modal fade" id="evrakModal" tabindex="-1" aria-labelledby="evrakModalLabel" aria-hidden="true" style="z-index: 1060;">
     <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0">
             <div class="modal-header bg-dark py-3 px-1">

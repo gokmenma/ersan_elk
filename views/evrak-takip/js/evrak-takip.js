@@ -1,8 +1,80 @@
 $(document).ready(function () {
   const api_url = "views/evrak-takip/api.php";
 
+  // Modalı body'ye taşı (z-index ve stacking context/backdrop sorununu çözmek için)
+  function ensureModalInBody() {
+    const modalEl = $("#evrakModal");
+    if (modalEl.length > 0 && modalEl.parent().prop("tagName") !== "BODY") {
+      modalEl.appendTo("body");
+    }
+  }
+  ensureModalInBody();
+
   // Feather Icons
   if (typeof feather !== 'undefined') feather.replace();
+
+  // Deleted konular helpers
+  function getDeletedKonular() {
+    try {
+      return JSON.parse(localStorage.getItem("evrak_deleted_konular") || "[]");
+    } catch (e) {
+      return [];
+    }
+  }
+
+  function removeDeletedOptions() {
+    const deleted = getDeletedKonular();
+    if (deleted.length > 0) {
+      $("#konu option").each(function () {
+        const val = $(this).val();
+        if (val && deleted.includes(val)) {
+          $(this).remove();
+        }
+      });
+      if ($("#konu").data('select2')) {
+        $("#konu").trigger('change.select2');
+      }
+    }
+  }
+
+  let isDeletingKonu = false;
+
+  function handleDeleteKonu(konuVal) {
+    if (!konuVal || isDeletingKonu) return;
+    isDeletingKonu = true;
+
+    const previousVal = $("#konu").val();
+    if ($("#konu").data('select2')) {
+      try { $("#konu").select2("close"); } catch (err) {}
+    }
+
+    let deletedKonular = getDeletedKonular();
+    if (!deletedKonular.includes(konuVal)) {
+      deletedKonular.push(konuVal);
+      localStorage.setItem("evrak_deleted_konular", JSON.stringify(deletedKonular));
+    }
+
+    $("#konu option").each(function () {
+      if ($(this).val() === konuVal) {
+        $(this).remove();
+      }
+    });
+
+    if (previousVal === konuVal) {
+      $("#konu").val("").trigger("change");
+    } else {
+      $("#konu").val(previousVal).trigger("change.select2");
+    }
+
+    setTimeout(() => { isDeletingKonu = false; }, 100);
+  }
+
+  $(document).on("select2:selecting", "#konu", function (e) {
+    if (isDeletingKonu) {
+      e.preventDefault();
+      return false;
+    }
+  });
 
   // Select2 Initialization Function
   function initEvrakSelect2() {
@@ -26,10 +98,45 @@ $(document).ready(function () {
                 tags: true,
                 dropdownParent: $("#evrakModal"),
                 width: "100%",
-                placeholder: "Seçiniz veya Yazınız..."
+                placeholder: "Seçiniz veya Yazınız...",
+                templateResult: function (data) {
+                    if (!data.id || data.id === '') {
+                        return data.text;
+                    }
+                    var safeText = $('<div>').text(data.text).html();
+                    var safeId = $('<div>').text(data.id).html();
+                    
+                    var $deleteBtn = $(
+                        '<span class="btn-delete-konu ms-2 rounded-circle d-flex align-items-center justify-content-center" data-konu="' + safeId + '" title="Sil" style="cursor: pointer; width: 20px; height: 20px; color: #94a3b8; transition: all 0.15s ease;">' +
+                            '<i class="bx bx-x" style="font-size: 15px;"></i>' +
+                        '</span>'
+                    );
+
+                    $deleteBtn.on("mousedown mouseup click touchstart touchend", function (e) {
+                        e.preventDefault();
+                        e.stopPropagation();
+                        if (e.stopImmediatePropagation) {
+                            e.stopImmediatePropagation();
+                        }
+                        if (e.type === "click" || e.type === "touchend") {
+                            handleDeleteKonu(data.id);
+                        }
+                        return false;
+                    });
+
+                    var $el = $(
+                        '<div class="d-flex align-items-center justify-content-between w-100 py-0" style="font-size: 12.5px; line-height: 1.3;">' +
+                            '<span>' + safeText + '</span>' +
+                        '</div>'
+                    ).append($deleteBtn);
+
+                    return $el;
+                }
             });
         }
     });
+
+    removeDeletedOptions();
   }
 
   // Handle Select2 in Modals (Bootstrap 5 fix)
@@ -88,7 +195,7 @@ $(document).ready(function () {
 
   function checkTrafficFineVisibility() {
     const konu = ($("#konu").val() || '').toLowerCase();
-    if (konu.includes('trafik') || konu.includes('ceza')) {
+    if (konu.includes('trafik')) {
       const section = $("#trafficFineSection");
       section.stop(true, true);
       if (section.hasClass("d-none")) {
@@ -201,20 +308,40 @@ $(document).ready(function () {
     checkSectionVisibility();
   });
 
+  // Handle option deletion from Evrak Konusu (prevent Select2 option selection on mousedown/mouseup/click)
+  $(document).on("mousedown mouseup click touchstart touchend", ".btn-delete-konu", function (e) {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.stopImmediatePropagation) {
+      e.stopImmediatePropagation();
+    }
+
+    if (e.type === "click" || e.type === "touchend") {
+      const konuVal = $(this).attr("data-konu") || $(this).data("konu");
+      if (konuVal) {
+        handleDeleteKonu(konuVal);
+      }
+    }
+    return false;
+  });
+
   // API Functions
   function loadKonular() {
+    removeDeletedOptions();
     $.post(api_url, { action: "get-konular" }, function (response) {
       if (response.status === "success") {
         const select = $("#konu");
+        const deleted = getDeletedKonular();
         const existingValues = [];
         select.find("option").each(function () {
           if ($(this).val()) existingValues.push($(this).val());
         });
         response.data.forEach((konu) => {
-          if (konu && !existingValues.includes(konu)) {
+          if (konu && !existingValues.includes(konu) && !deleted.includes(konu)) {
             select.append(new Option(konu, konu));
           }
         });
+        removeDeletedOptions();
         if (select.data('select2')) select.trigger('change.select2');
       }
     });
@@ -250,6 +377,7 @@ $(document).ready(function () {
     
     if ($("#tipGelen").is(":checked")) getNextEvrakNo("gelen");
     loadKonular();
+    ensureModalInBody();
     $("#evrakModal").modal("show");
   });
 
@@ -339,6 +467,7 @@ $(document).ready(function () {
         if (data.dosya_yolu) $("#mevcutDosya").show().find("a").attr("href", data.dosya_yolu);
         else $("#mevcutDosya").hide();
 
+        ensureModalInBody();
         $("#evrakModal").modal("show");
       }
     });

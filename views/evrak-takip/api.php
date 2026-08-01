@@ -102,7 +102,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
 
                 $konu_kontrol = mb_strtolower($data['konu'] ?? '', 'UTF-8');
-                if (mb_strpos($konu_kontrol, 'trafik') !== false || mb_strpos($konu_kontrol, 'ceza') !== false) {
+                if (mb_strpos($konu_kontrol, 'trafik') !== false) {
                     if ($data['ceza_hedef_tipi'] === 'personel' && empty($data['ceza_personel_id'])) {
                         throw new Exception('Lütfen cezanın yazıldığı personeli seçiniz.');
                     }
