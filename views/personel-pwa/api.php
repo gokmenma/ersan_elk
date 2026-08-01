@@ -2747,11 +2747,11 @@ try {
             $firmaId = $_SESSION['firma_id'] ?? 0;
 
             $db = (new \App\Model\Model('kacak_kontrol'))->getDb();
-            $sql = "SELECT id, tarih, ekip_adi, sayi, aciklama, olusturma_tarihi 
-                    FROM kacak_kontrol 
+            $sql = "SELECT id, tarih, ekip_adi, sayi, aciklama, olusturma_tarihi
+                    FROM kacak_kontrol
                     WHERE (FIND_IN_SET(?, personel_ids) OR FIND_IN_SET(?, personel_ids))
-                    AND firma_id = ? 
-                    AND silinme_tarihi IS NULL";
+                    AND firma_id = ?
+                    AND " . \App\Model\KacakKontrolModel::hakedisKosulu();
 
             if (!empty($startDate)) {
                 $sql .= " AND tarih >= " . $db->quote($startDate);
@@ -4377,6 +4377,175 @@ try {
 
                 response(true, $data);
             }
+            break;
+
+        // ============ Kaçak İşlemleri ============
+        case 'getKacakBildirimlerim':
+            $KacakModel = new \App\Model\KacakKontrolModel();
+            $kacakBas = $_POST['start_date'] ?? '';
+            $kacakBit = $_POST['end_date'] ?? '';
+            $kayitlar = $KacakModel->getPersonelKayitlari($personel_id, $kacakBas, $kacakBit);
+
+            $liste = [];
+            foreach ($kayitlar as $kayit) {
+                $kayit['tarih_formatted'] = date('d.m.Y', strtotime($kayit['tarih']));
+                $kayit['fotograflar'] = array_map(static function ($foto) {
+                    $etiket = ['tutanak' => 'Tutanak', 'saha' => 'Saha', 'iptal' => 'İptal'];
+                    return [
+                        'id' => (int) $foto['id'],
+                        'tur' => $foto['tur'],
+                        'tur_label' => $etiket[$foto['tur']] ?? $foto['tur'],
+                        'url' => 'kacak-foto.php?id=' . (int) $foto['id'],
+                    ];
+                }, $KacakModel->getPhotos((int) $kayit['id']));
+                $liste[] = $kayit;
+            }
+
+            response(true, [
+                'kayitlar' => $liste,
+                'istatistik' => $KacakModel->getPersonelIstatistik($personel_id, $kacakBas, $kacakBit),
+            ]);
+            break;
+
+        case 'analyzeKacakTutanak':
+            if (empty($_FILES['tutanak_file']['name'])) {
+                response(false, null, 'Lütfen analiz edilecek tutanak dosyasını seçin.');
+            }
+
+            $KacakModel = new \App\Model\KacakKontrolModel();
+            $analizTarihi = !empty($_POST['tarih']) && strtotime($_POST['tarih'])
+                ? date('Y-m-d', strtotime($_POST['tarih']))
+                : date('Y-m-d');
+
+            $adaylar = [['id' => (int) $personel_id, 'name' => $personel->adi_soyadi]];
+            foreach ($KacakModel->getEkipAdaylari($personel_id) as $aday) {
+                $adaylar[] = ['id' => (int) $aday['id'], 'name' => $aday['adi_soyadi']];
+            }
+
+            try {
+                $Analiz = new \App\Service\KacakTutanakAnalizService();
+                $satirlar = $Analiz->analyze(
+                    $_FILES['tutanak_file'],
+                    $analizTarihi,
+                    $Analiz->getPersonelAdaylari($adaylar)
+                );
+                response(true, $satirlar, 'Tutanak analiz edildi.');
+            } catch (\Throwable $e) {
+                error_log('PWA kaçak tutanak analizi hatası: ' . $e->getMessage());
+                response(false, null, $e->getMessage());
+            }
+            break;
+
+        case 'saveKacakBildirim':
+            $KacakModel = new \App\Model\KacakKontrolModel();
+
+            $ekipArkadasiId = (int) ($_POST['ekip_arkadasi_id'] ?? 0);
+            if ($ekipArkadasiId <= 0) {
+                response(false, null, 'Lütfen ekip arkadaşınızı seçin.');
+            }
+            if ($ekipArkadasiId === (int) $personel_id) {
+                response(false, null, 'Ekip arkadaşı olarak kendinizi seçemezsiniz.');
+            }
+
+            $gecerliAday = false;
+            foreach ($KacakModel->getEkipAdaylari($personel_id) as $aday) {
+                if ((int) $aday['id'] === $ekipArkadasiId) {
+                    $gecerliAday = true;
+                    break;
+                }
+            }
+            if (!$gecerliAday) {
+                response(false, null, 'Seçilen personel geçerli değil.');
+            }
+
+            $kacakIlce = trim((string) ($_POST['ilce'] ?? ''));
+            if (!in_array($kacakIlce, \App\Model\KacakKontrolModel::ILCELER, true)) {
+                response(false, null, 'Lütfen geçerli bir ilçe seçin.');
+            }
+
+            if (empty($_FILES['tutanak_foto']['name'])) {
+                response(false, null, 'Tutanak fotoğrafı zorunludur.');
+            }
+
+            $kacakTarih = !empty($_POST['tarih']) && strtotime($_POST['tarih'])
+                ? date('Y-m-d', strtotime($_POST['tarih']))
+                : date('Y-m-d');
+
+            if ($kacakTarih > date('Y-m-d')) {
+                response(false, null, 'İleri tarihli bildirim yapılamaz.');
+            }
+
+            try {
+                $kacakId = $KacakModel->createRecord([
+                    'tarih' => $kacakTarih,
+                    'personel_ids' => [(int) $personel_id, $ekipArkadasiId],
+                    'bildiren_personel_id' => (int) $personel_id,
+                    'kaynak' => 'pwa',
+                    'onay_durumu' => 'beklemede',
+                    'ilce' => $kacakIlce,
+                    'tur' => $_POST['tur'] ?? 'Kaçak',
+                    'tutanak_no' => $_POST['tutanak_no'] ?? null,
+                    'abone_adi' => $_POST['abone_adi'] ?? null,
+                    'sayac_no' => $_POST['sayac_no'] ?? null,
+                    'endeks' => $_POST['endeks'] ?? null,
+                    'sayi' => $_POST['sayi'] ?? 1,
+                    'aciklama' => $_POST['aciklama'] ?? null,
+                ]);
+            } catch (\Throwable $e) {
+                error_log('PWA kaçak bildirimi kaydedilemedi: ' . $e->getMessage());
+                response(false, null, 'Bildirim kaydedilemedi.');
+            }
+
+            // Tutanak fotoğrafı zorunlu: kaydedilemezse bildirim tamamlanmış sayılmaz.
+            try {
+                $yol = $KacakModel->storeUploadedFile($_FILES['tutanak_foto'], $kacakId, 'tutanak');
+                $KacakModel->addPhoto($kacakId, 'tutanak', $yol, $_FILES['tutanak_foto']['name'], (int) $personel_id);
+            } catch (\Throwable $e) {
+                error_log('PWA kaçak tutanak fotoğrafı yüklenemedi: ' . $e->getMessage());
+                $KacakModel->softDeleteRecord($kacakId);
+                response(false, null, 'Tutanak fotoğrafı yüklenemediği için bildirim kaydedilmedi. Lütfen tekrar deneyin.');
+            }
+
+            if (!empty($_FILES['saha_fotolari']) && is_array($_FILES['saha_fotolari']['name'])) {
+                $sahaAdet = 0;
+                foreach ($_FILES['saha_fotolari']['name'] as $i => $ad) {
+                    if ($sahaAdet >= \App\Model\KacakKontrolModel::MAX_SAHA_FOTO) {
+                        break;
+                    }
+                    if (empty($ad) || $_FILES['saha_fotolari']['error'][$i] !== UPLOAD_ERR_OK) {
+                        continue;
+                    }
+                    try {
+                        $yol = $KacakModel->storeUploadedFile([
+                            'name' => $ad,
+                            'tmp_name' => $_FILES['saha_fotolari']['tmp_name'][$i],
+                            'error' => $_FILES['saha_fotolari']['error'][$i],
+                            'size' => $_FILES['saha_fotolari']['size'][$i],
+                        ], $kacakId, 'saha');
+                        $KacakModel->addPhoto($kacakId, 'saha', $yol, $ad, (int) $personel_id);
+                        $sahaAdet++;
+                    } catch (\Throwable $e) {
+                        error_log('PWA kaçak saha fotoğrafı yüklenemedi: ' . $e->getMessage());
+                    }
+                }
+            }
+
+            try {
+                $BildirimModel = new \App\Model\BildirimModel();
+                $BildirimModel->broadcastByPermission(
+                    'kacak/list',
+                    'Yeni Kaçak Bildirimi',
+                    $personel->adi_soyadi . ', ' . date('d.m.Y', strtotime($kacakTarih)) . ' tarihli '
+                    . ($_POST['tur'] ?? 'Kaçak') . ' tutanağı bildirdi (' . $kacakIlce . ').',
+                    'index?p=kacak/list',
+                    'shield',
+                    'info'
+                );
+            } catch (\Throwable $e) {
+                error_log('Kaçak bildirimi yöneticilere iletilemedi: ' . $e->getMessage());
+            }
+
+            response(true, ['id' => $kacakId], 'Bildiriminiz iletildi. Yönetici onayı bekleniyor.');
             break;
 
         // ============ Araç KM Bildirim İşlemleri ============

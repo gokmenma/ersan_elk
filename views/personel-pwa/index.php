@@ -114,6 +114,7 @@ $isSayacSokmeTakma = (stripos($personel->departman ?? '', 'Sayaç Sökme Takma')
 $isBuro = (stripos($personel->departman ?? '', 'BÜRO') !== false || stripos($personel->departman ?? '', 'Büro') !== false);
 $isSef = (stripos($personel->gorev ?? '', 'Şef') !== false);
 $isKesmeAcma = (stripos($personel->departman ?? '', 'Kesme-Açma') !== false || stripos($personel->departman ?? '', 'Kesme Açma') !== false);
+$isKacakKontrol = (stripos($personel->departman ?? '', 'Kaçak') !== false);
 $isEkipSefi = false;
 
 if ($isEndeksOkuma && $isSef) {
@@ -141,6 +142,10 @@ if ($isEndeksOkuma && $isEkipSefi) {
 
 if ($isKesmeAcma) {
     $allowed_pages[] = 'nobet';
+}
+
+if ($isKacakKontrol) {
+    $allowed_pages[] = 'kacak';
 }
 
 if (!in_array($page, $allowed_pages)) {
@@ -322,7 +327,7 @@ try {
             <span class="text-[10px] font-semibold">Talepler</span>
         </a>
         <?php
-        $moreActivePages = ['profil', 'etkinlikler', 'bordro', 'izin', 'km-bildirimleri', 'ihbar'];
+        $moreActivePages = ['profil', 'etkinlikler', 'bordro', 'izin', 'km-bildirimleri', 'ihbar', 'kacak'];
         $isZimmetInBottomNav = !(($isEndeksOkuma && $isEkipSefi) || $isKesmeAcma);
         // Zimmetler zaten bottom nav'da gösteriliyorsa diğer menüde highlight etme
         if (!$isZimmetInBottomNav) {
@@ -402,6 +407,17 @@ try {
                     <span class="font-medium text-slate-900 dark:text-white text-sm">İhbar Yönetimi</span>
                     <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
                 </a>
+
+                <?php if ($isKacakKontrol): ?>
+                    <a href="?page=kacak"
+                        class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'kacak' ? 'bg-primary/10' : ''; ?>">
+                        <div class="w-9 h-9 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-amber-600 text-lg">gpp_maybe</span>
+                        </div>
+                        <span class="font-medium text-slate-900 dark:text-white text-sm">Kaçak İşlemleri</span>
+                        <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
+                    </a>
+                <?php endif; ?>
 
                 <a href="?page=km-bildirimleri"
                     class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'km-bildirimleri' ? 'bg-primary/10' : ''; ?>">

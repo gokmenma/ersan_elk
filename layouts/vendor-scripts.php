@@ -153,7 +153,8 @@ if ($page == "hakedisler/hakedis-detay") {
     $page == "yardim/list" || $page == "yardim/user-list" ||
     $page == "bildirim/list" ||
     $page == "raporlar/riskli-islemler" ||
-    $page == "ihbar/list"
+    $page == "ihbar/list" ||
+    $page == "kacak/list"
 ) { ?>
 
     <!-- Datatable init js -->
@@ -185,7 +186,7 @@ if ($page == "hakedisler/hakedis-detay") {
 <!-- Flatpickr -->
 <script src="assets/libs/flatpickr/flatpickr.min.js"></script>
 <script src="assets/libs/flatpickr/l10n/tr.js"></script>
-<?php if ($page == 'personel/performans-raporu' || $page == 'arac-takip/list' || $page == 'personel/manage' || $page == 'arac-takip/arac-performans' || $page == 'puantaj/veri-yukleme') { ?>
+<?php if ($page == 'personel/performans-raporu' || $page == 'arac-takip/list' || $page == 'personel/manage' || $page == 'arac-takip/arac-performans' || $page == 'puantaj/veri-yukleme' || $page == 'kacak/list') { ?>
 <link rel="stylesheet" href="assets/libs/flatpickr/plugins/monthSelect/style.css">
 <script src="assets/libs/flatpickr/plugins/monthSelect/index.js"></script>
 <?php } ?>

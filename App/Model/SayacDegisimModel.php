@@ -24,8 +24,33 @@ class SayacDegisimModel extends Model
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $params = ['firma_id' => $firmaId];
 
-        // Temel sorgu
-        $baseWhere = "t.firma_id = :firma_id AND t.silinme_tarihi IS NULL";
+        // SAYAÇ SÖKME TAKMA SEKME AYRIMI (iş kuralı):
+        // Sayaç API'si Borçtan Kesme/Ödeme Yaptırıldı gibi başka rapor türlerine
+        // ait kayıtlar da döndürebiliyor. Kaynak tabloya gelmiş olması bu sekmede
+        // gösterilmesi için yeterli değildir; iş emri sonucu mutlaka tanımlamalarda
+        // sokme_takma rapor sekmesine bağlı olmalıdır. Tasarım değişikliklerinde
+        // bu koşulu kaldırmayın; liste, toplam ve filtre özeti aynı baseWhere'i kullanır.
+        $baseWhere = "t.firma_id = :firma_id
+                      AND t.silinme_tarihi IS NULL
+                      AND EXISTS (
+                          SELECT 1
+                          FROM tanimlamalar def
+                          WHERE def.firma_id = t.firma_id
+                          AND def.grup = 'is_turu'
+                          AND def.rapor_sekmesi = 'sokme_takma'
+                          AND TRIM(def.is_emri_sonucu) = TRIM(t.isemri_sonucu)
+                          AND def.silinme_tarihi IS NULL
+                      )
+                      AND NOT EXISTS (
+                          SELECT 1
+                          FROM tanimlamalar conflicting_def
+                          WHERE conflicting_def.firma_id = t.firma_id
+                          AND conflicting_def.grup = 'is_turu'
+                          AND conflicting_def.rapor_sekmesi IS NOT NULL
+                          AND conflicting_def.rapor_sekmesi NOT IN ('', '0', 'sokme_takma')
+                          AND TRIM(conflicting_def.is_emri_sonucu) = TRIM(t.isemri_sonucu)
+                          AND conflicting_def.silinme_tarihi IS NULL
+                      )";
 
         // Tarih filtreleri
         if ($startDate) {

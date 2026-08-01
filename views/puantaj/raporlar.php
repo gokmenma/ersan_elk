@@ -379,13 +379,6 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                         <span class="d-none d-sm-block">Mühürleme</span>
                     </a>
                 </li>
-                <li class="nav-item">
-                    <a class="nav-link <?= $activeTab === 'kacakkontrol' ? 'active' : '' ?>" href="javascript:void(0);"
-                        data-tab="kacakkontrol">
-                        <span class="d-block d-sm-none"><i class="far fa-user"></i></span>
-                        <span class="d-none d-sm-block">Kaçak Kontrol</span>
-                    </a>
-                </li>
             </ul>
             <div class="action-button-container d-flex align-items-center border rounded shadow-sm p-1 gap-1">
                 <button type="button"
@@ -415,13 +408,6 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                     id="btnOnlineSorgulaMuhurleme" data-bs-toggle="modal" data-bs-target="#importOnlineMuhurlemeModal">
                     <i class="mdi mdi-cloud-search-outline fs-5 me-1"></i> Mühürleme Sorgula
                 </button>
-                <div class="vr mx-1 vr-kacak-action <?= $activeTab === 'kacakkontrol' ? '' : 'd-none' ?>"
-                    style="height: 25px; align-self: center;"></div>
-                <button type="button"
-                    class="btn btn-link btn-sm text-primary text-decoration-none px-2 align-items-center btn-kacak-action <?= $activeTab === 'kacakkontrol' ? 'd-flex' : 'd-none' ?>"
-                    id="btnNewKacak">
-                    <i class="mdi mdi-plus-circle fs-5 me-1"></i> Yeni Ekle
-                </button>
 
                 <div class="dropdown ms-2">
                     <button class="btn btn-soft-primary btn-sm px-3 fw-bold dropdown-toggle d-flex align-items-center" type="button" id="islemlerDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 6px 12px;">
@@ -431,11 +417,6 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                         <li>
                             <button class="dropdown-item d-flex align-items-center text-success fw-medium" type="button" id="btnExportExcel">
                                 <i class="mdi mdi-file-excel fs-5 me-2"></i> Excel'e Aktar
-                            </button>
-                        </li>
-                        <li>
-                            <button class="dropdown-item align-items-center text-primary fw-medium btn-kacak-action <?= $activeTab === 'kacakkontrol' ? 'd-flex' : 'd-none' ?>" type="button" data-bs-toggle="modal" data-bs-target="#importKacakModal">
-                                <i class="mdi mdi-upload fs-5 me-2"></i> Excel Yükle
                             </button>
                         </li>
                     </ul>
@@ -538,11 +519,6 @@ if (!isset($kesmeIsTurleriOptions['Ödeme Yaptırıldı'])) {
                 <li class="nav-item">
                     <a class="nav-link" href="javascript:void(0);" data-tab="muhurleme">
                         <span class="d-none d-sm-block">Mühürleme</span>
-                    </a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="javascript:void(0);" data-tab="kacakkontrol">
-                        <span class="d-none d-sm-block">Kaçak Kontrol</span>
                     </a>
                 </li>
             </ul>

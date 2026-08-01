@@ -4057,12 +4057,12 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 // Process Raw Kacak - Attribute to individual personnel
                 $kacakSql = $BordroPersonel->getDb()->prepare("
-                    SELECT id, personel_ids, sayi 
-                    FROM kacak_kontrol 
-                    WHERE tarih BETWEEN ? AND ? 
-                    AND silinme_tarihi IS NULL
+                    SELECT id, personel_ids, sayi
+                    FROM kacak_kontrol
+                    WHERE tarih BETWEEN ? AND ?
                     AND personel_ids IS NOT NULL
                     AND (aciklama != 'Manuel Düşüm' OR aciklama IS NULL)
+                    AND " . \App\Model\KacakKontrolModel::hakedisKosulu() . "
                 ");
                 $kacakSql->execute([$start, $end]);
                 $kacakRows = $kacakSql->fetchAll(PDO::FETCH_ASSOC);

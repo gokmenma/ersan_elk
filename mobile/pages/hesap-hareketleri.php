@@ -161,24 +161,27 @@ if (!function_exists('formatMoneyCariTakip')) {
 
             <div class="bg-white dark:bg-card-dark border border-slate-100 dark:border-slate-800 p-3 flex items-center justify-between transition-transform duration-200 swipe-content cursor-pointer" 
                  onclick="if(Math.abs(parseInt(this.style.transform.replace(/[^\d-]/g, '') || 0)) > 10) { window.closeAllSwipes(); return; } window.viewHareketDetay('<?= Security::encrypt($h->id) ?>')">
-                <div class="flex items-center gap-3">
+                <div class="flex items-center gap-3 min-w-0 flex-1">
                     <div class="w-10 h-10 rounded-[10px] flex items-center justify-center shrink-0 <?= $iconColor ?>">
                         <span class="material-symbols-outlined text-[22px]"><?= $icon ?></span>
                     </div>
-                    <div>
+                    <div class="min-w-0">
                         <div class="flex items-center gap-1.5">
                             <p class="font-bold text-[12px] text-slate-800 dark:text-slate-300 leading-tight mb-0.5"><?= $isBorc ? 'Aldım' : 'Verdim' ?></p>
                             <?php if(!empty($h->dosya)): ?>
                                 <span class="material-symbols-outlined text-[14px] text-primary">attachment</span>
                             <?php endif; ?>
                         </div>
+                        <?php if(!empty($h->aciklama) && $h->aciklama !== '-'): ?>
+                            <p class="text-[11px] text-slate-600 dark:text-slate-400 font-medium leading-tight mb-0.5 truncate"><?= htmlspecialchars($h->aciklama, ENT_QUOTES, 'UTF-8') ?></p>
+                        <?php endif; ?>
                         <div class="flex items-center gap-2 text-[10px] text-slate-500 dark:text-slate-400 font-medium">
                             <span class="flex items-center gap-0.5"><span class="material-symbols-outlined text-[11px]">event</span> <?= $dateFormatted ?> <?= $timeFormatted ?></span>
                         </div>
                     </div>
                 </div>
-                
-                <div class="flex flex-col items-end pl-2">
+
+                <div class="flex flex-col items-end pl-2 shrink-0">
                     <p class="font-bold text-sm <?= $isBorc ? 'text-rose-600 dark:text-rose-400' : 'text-emerald-600 dark:text-emerald-400' ?>">
                         <?= $isBorc ? '-' : '+' ?><?= absMoneyCariTakip($amt) ?>
                     </p>

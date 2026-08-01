@@ -23,28 +23,19 @@ class PuantajModel extends Model
                 return " AND COALESCE(t.is_emri_tipi, '') = 'Endeks Okuma'";
 
             case 'SAYAC_DEGISIM':
-                return " AND (
-                            tn.rapor_sekmesi = 'sokme_takma'
-                            OR COALESCE(t.is_emri_tipi, '') LIKE '%SÖKME TAKMA%'
-                            OR COALESCE(t.is_emri_tipi, '') LIKE '%Sayaç Değişimi%'
-                        )
-                        AND COALESCE(tn.rapor_sekmesi, '') != 'muhurleme'";
+                return " AND tn.rapor_sekmesi = 'sokme_takma'";
 
             case 'MUHURLEME':
-                return " AND (
-                            tn.rapor_sekmesi = 'muhurleme'
-                            OR COALESCE(t.is_emri_tipi, '') LIKE '%MÜHÜRLEME%'
-                        )
-                        AND COALESCE(tn.rapor_sekmesi, '') != 'sokme_takma'";
+                return " AND tn.rapor_sekmesi = 'muhurleme'";
 
             case 'KESME_ACMA':
-                // Tanımsız kesme sonuçları korunur; diğer raporların kaynakları
-                // hem rapor sekmesi hem iş emri tipi üzerinden kesin dışlanır.
-                return " AND COALESCE(tn.rapor_sekmesi, '') NOT IN ('sokme_takma', 'muhurleme')
-                        AND COALESCE(t.is_emri_tipi, '') NOT LIKE '%SÖKME TAKMA%'
-                        AND COALESCE(t.is_emri_tipi, '') NOT LIKE '%Sayaç Değişimi%'
-                        AND COALESCE(t.is_emri_tipi, '') NOT LIKE '%MÜHÜRLEME%'
-                        AND COALESCE(t.is_emri_tipi, '') != 'Endeks Okuma'";
+                return " AND tn.rapor_sekmesi = 'kesme'";
+
+            case 'ESLESMEYEN':
+                // Rapor sekmesi tanımlanmayan kayıtlar hiçbir operasyon raporuna
+                // dahil edilmez; yönetici incelemesi için yalnızca bu alanda görünür.
+                return " AND (tn.id IS NULL OR COALESCE(tn.rapor_sekmesi, '') IN ('', '0'))
+                        AND COALESCE(t.is_emri_tipi, '') != 'Manuel Düşüm'";
         }
 
         return '';
@@ -210,6 +201,63 @@ class PuantajModel extends Model
         self::$cachedWorkResults[$cacheKey] = $stmt->fetchAll(PDO::FETCH_COLUMN);
         return self::$cachedWorkResults[$cacheKey];
     }
+
+    /**
+     * İş Takip DataTable filtre seçeneklerini aktif rapor sekmesiyle aynı kapsamda getirir.
+     * Liste sorgusu ile filtre seçenekleri mutlaka aynı getReportTabCondition() kuralını
+     * kullanmalıdır; aksi halde başka sekmelere ait seçenekler açılır listede görünür.
+     */
+    public function getReportFilterValues(
+        string $column,
+        string $reportType,
+        ?string $startDate = null,
+        ?string $endDate = null,
+        $personelId = null,
+        string $region = ''
+    ): array {
+        $expressions = [
+            'is_emri_tipi' => "TRIM(COALESCE(NULLIF(tn.tur_adi, ''), NULLIF(t.is_emri_tipi, '')))",
+            'is_emri_sonucu' => "TRIM(COALESCE(NULLIF(tn.is_emri_sonucu, ''), NULLIF(t.is_emri_sonucu, '')))"
+        ];
+
+        if (!isset($expressions[$column])) {
+            return [];
+        }
+
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+        $expression = $expressions[$column];
+        $sql = "SELECT DISTINCT $expression AS value
+                FROM {$this->table} t
+                LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                LEFT JOIN tanimlamalar ek ON t.ekip_kodu_id = ek.id
+                WHERE t.firma_id = ?
+                AND t.silinme_tarihi IS NULL";
+        $params = [$firmaId];
+
+        $sql .= $this->getReportTabCondition($reportType);
+
+        if ($startDate) {
+            $sql .= " AND t.tarih >= ?";
+            $params[] = Date::Ymd($startDate) ?: $startDate;
+        }
+        if ($endDate) {
+            $sql .= " AND t.tarih < DATE_ADD(?, INTERVAL 1 DAY)";
+            $params[] = Date::Ymd($endDate) ?: $endDate;
+        }
+        if ($personelId) {
+            $sql .= " AND t.personel_id = ?";
+            $params[] = $personelId;
+        }
+        if ($region !== '') {
+            $sql .= " AND ek.ekip_bolge = ?";
+            $params[] = $region;
+        }
+
+        $sql .= " HAVING value IS NOT NULL AND value != '' ORDER BY value ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+    }
     public function getSummaryByRange($startDate, $endDate, $personelId = '', $region = '')
     {
         $firmaId = $_SESSION['firma_id'] ?? 0;
@@ -284,7 +332,8 @@ class PuantajModel extends Model
                 FROM kacak_kontrol k
                 LEFT JOIN tanimlamalar ek ON k.ekip_adi = ek.tur_adi AND ek.grup = 'ekip_kodu' AND ek.firma_id = k.firma_id
                 WHERE k.firma_id = ? AND k.tarih BETWEEN ? AND ? AND k.silinme_tarihi IS NULL
-                AND (k.aciklama != 'Manuel Düşüm' OR k.aciklama IS NULL)";
+                AND (k.aciklama != 'Manuel Düşüm' OR k.aciklama IS NULL)
+                AND " . \App\Model\KacakKontrolModel::hakedisKosulu('k');
         $params = [$firmaId, $startDate, $endDate];
 
         if ($region) {
@@ -476,7 +525,7 @@ class PuantajModel extends Model
         }
 
         // Sütun bazlı arama (yeni sıralama: [0:Checkbox], 1:Tarih, 2:Ekip Kodu, 3:Personel, 4:İş Emri Tipi, 5:İş Emri Sonucu, 6:Abone No/Ücret Durumu, 7:İş Emri No/Sonuçlanmış, 8:Açık Olanlar)
-        if ($sorguTuru === 'KESME_ACMA') {
+        if (in_array($sorguTuru, ['KESME_ACMA', 'ESLESMEYEN'], true)) {
             $colSearchMap = [
                 1 => 'DATE_FORMAT(t.tarih, "%d.%m.%Y")',
                 2 => 'ek.tur_adi',
@@ -918,7 +967,8 @@ class PuantajModel extends Model
                 WHERE firma_id = ? 
                 AND tarih = ? 
                 AND silinme_tarihi IS NULL
-                AND (aciklama != 'Manuel Düşüm' OR aciklama IS NULL)";
+                AND (aciklama != 'Manuel Düşüm' OR aciklama IS NULL)
+                AND " . \App\Model\KacakKontrolModel::hakedisKosulu();
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$firmaId, $bugun]);
@@ -936,7 +986,8 @@ class PuantajModel extends Model
                 WHERE firma_id = ? 
                 AND tarih >= ? AND tarih <= ?
                 AND silinme_tarihi IS NULL
-                AND (aciklama != 'Manuel Düşüm' OR aciklama IS NULL)";
+                AND (aciklama != 'Manuel Düşüm' OR aciklama IS NULL)
+                AND " . \App\Model\KacakKontrolModel::hakedisKosulu();
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$firmaId, $buAy, $sonGun]);
@@ -1067,7 +1118,8 @@ class PuantajModel extends Model
                     FROM kacak_kontrol k
                     LEFT JOIN tanimlamalar ek ON k.ekip_adi = ek.tur_adi AND ek.grup = 'ekip_kodu' AND ek.firma_id = k.firma_id
                     WHERE k.firma_id = ? AND k.tarih BETWEEN ? AND ? AND k.silinme_tarihi IS NULL
-                    AND (k.aciklama != 'Manuel Düşüm' OR k.aciklama IS NULL)";
+                    AND (k.aciklama != 'Manuel Düşüm' OR k.aciklama IS NULL)
+                AND " . \App\Model\KacakKontrolModel::hakedisKosulu('k');
             $params = [$firmaId, $period['start'], $period['end']];
 
             if ($region) {

@@ -1497,7 +1497,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
     $data = [];
     
     if ($column === 'is_emri_tipi' || $column === 'is_emri_sonucu') {
-        if ($column === 'is_emri_tipi') {
+        $reportType = $_POST['sorgu_turu'] ?? '';
+        if ($reportType !== '') {
+            // Filtre seçenekleri tabloyla aynı merkezi rapor-sekmesi kuralından gelir.
+            // Böylece Sayaç/Mühürleme türleri Kesme/Açma filtresine karışmaz.
+            $data = $Puantaj->getReportFilterValues(
+                $column,
+                $reportType,
+                $_POST['start_date'] ?? null,
+                $_POST['end_date'] ?? null,
+                $_POST['ekip_kodu'] ?? null,
+                $_POST['region'] ?? ''
+            );
+        } elseif ($column === 'is_emri_tipi') {
             $data = $Puantaj->getWorkTypes();
         } else {
             $data = $Puantaj->getWorkResults();
@@ -1618,6 +1630,41 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $ekipGecmisi[$h['ekip_kodu_id']][] = $h;
         }
 
+        // SAYAÇ DEĞİŞİM İÇE AKTARMA KURALI:
+        // API, Borçtan Kesme/Ödeme Yaptırıldı gibi farklı rapor sekmelerine ait
+        // kayıtlar da döndürebilir. Yalnızca tanımlamalarda açıkça sokme_takma
+        // sekmesine bağlı ve başka bir sekmeyle çakışmayan sonuçlar kaydedilir.
+        // Bu kontrolü kaldırmayın; yanlış puantaj ve zimmet hareketini önler.
+        $normalizeResultName = static function ($value) {
+            $value = preg_replace('/[[:punct:]]+/u', '', trim((string) $value));
+            $value = preg_replace('/\s+/u', ' ', $value);
+            return mb_strtolower($value, 'UTF-8');
+        };
+        $stmtResultTabs = $SayacDegisimModel->db->prepare(
+            "SELECT is_emri_sonucu, rapor_sekmesi
+             FROM tanimlamalar
+             WHERE firma_id = ?
+             AND grup = 'is_turu'
+             AND is_emri_sonucu IS NOT NULL
+             AND is_emri_sonucu != ''
+             AND silinme_tarihi IS NULL"
+        );
+        $stmtResultTabs->execute([$firmaId]);
+        $resultTabs = [];
+        while ($definition = $stmtResultTabs->fetch(PDO::FETCH_ASSOC)) {
+            $resultKey = $normalizeResultName($definition['is_emri_sonucu']);
+            $tab = mb_strtolower(trim((string) ($definition['rapor_sekmesi'] ?? '')), 'UTF-8');
+            if ($tab !== '' && $tab !== '0') {
+                $resultTabs[$resultKey][$tab] = true;
+            }
+        }
+        $allowedMeterResults = [];
+        foreach ($resultTabs as $resultKey => $tabs) {
+            if (isset($tabs['sokme_takma']) && count($tabs) === 1) {
+                $allowedMeterResults[$resultKey] = true;
+            }
+        }
+
         // API'den veri çek
         set_time_limit(300);
         $apiResponse = $SayacDegisimSvc->getData($baslangicTarihiAPI, $bitisTarihiAPI, 5000, 0);
@@ -1734,6 +1781,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
             $isemriSonucu = trim($veri['ISEMRI_SONUCU'] ?? '');
             $sonucAciklama = $veri['SONUC_ACIKLAMA'] ?? null;
             $takilanSayacNo = trim($veri['TAKILAN_SAYACNO'] ?? '');
+
+            // Sonuç başka bir rapor sekmesine (ör. kesme) aitse sayaç değişim
+            // tablosuna ve sayaç zimmet akışına kesinlikle dahil etme.
+            if (!isset($allowedMeterResults[$normalizeResultName($isemriSonucu)])) {
+                continue;
+            }
 
             // Kayıt tarihini parse et
             $kayitTarihi = null;

@@ -24,10 +24,8 @@ $mahalle = $_GET['mahalle'] ?? '';
 // $records = $Puantaj->getFiltered($startDate, $endDate, $ekipKodu, $workType);
 $personeller = $Personel->all(false, 'puantaj', $endDate);
 $personelOptions = ['' => 'Seçiniz'];
-$personelOptionsMultiple = []; // Kaçak kontrol multiple select için boş değer olmadan
 foreach ($personeller as $p) {
     $personelOptions[$p->id] = $p->adi_soyadi;
-    $personelOptionsMultiple[$p->id] = $p->adi_soyadi;
 }
 
 $workTypes = $Puantaj->getWorkTypes();
@@ -113,39 +111,6 @@ $activeTab = $_GET['tab'] ?? 'okuma';
     .table-loading #puantajTabContent {
         opacity: 0.6;
         pointer-events: none;
-    }
-
-    /* Yapay Zeka Analiz Güven Göstergeleri */
-    /* Not: Bu class'lar select2 kutularında SADECE .select2-selection üzerine, düz
-       inputlarda ise doğrudan input üzerine uygulanır. Aynı anda hem dış container'a
-       hem iç kutuya uygulanmaz; aksi halde iç içe çift kenarlık görünür. */
-    .ai-field-uncertain {
-        border: 2px solid #f1963c !important;
-        background-color: rgba(241, 150, 60, 0.08) !important;
-    }
-
-    .ai-field-confident {
-        border: 2px solid #34c38f !important;
-        background-color: rgba(52, 195, 143, 0.06) !important;
-    }
-
-    .ai-conf-badge {
-        font-size: 9px;
-        font-weight: 600;
-        vertical-align: middle;
-        margin-left: 4px;
-        padding: 2px 5px;
-    }
-
-    /* Kaçak Kontrol Repeater Row Theme Support */
-    .kacak-repeater-row {
-        background-color: #fcfcfd !important;
-        border-color: #e2e8f0 !important;
-        transition: all 0.2s ease;
-    }
-    [data-bs-theme="dark"] .kacak-repeater-row {
-        background-color: #2e3548 !important;
-        border-color: #3b445e !important;
     }
 
     /* Premium Stat Styles */
@@ -556,107 +521,85 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         border-radius: 50%;
     }
 
-    .puantaj-workspace .horizontal-summary-chart {
-        display: inline-grid;
-        grid-template-columns: minmax(92px, auto) minmax(240px, 430px);
-        align-items: center;
-        gap: 5px 14px;
-        min-width: 430px;
-        padding: 4px 0 4px 14px;
+    .puantaj-workspace .summary-stat-strip {
+        display: inline-flex;
+        align-items: stretch;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-left: 14px;
+        padding-left: 14px;
         border-left: 1px solid var(--work-border);
     }
 
-    .puantaj-workspace .horizontal-chart-total {
-        grid-row: 1 / span 3;
-        align-self: stretch;
+    .puantaj-workspace .summary-stat-item {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        min-width: 138px;
+        min-height: 56px;
+        padding: 8px 13px;
+        border: 1px solid var(--work-border);
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 2px 7px rgba(16, 24, 40, .04);
+        cursor: pointer;
+        transition: border-color .15s ease, box-shadow .15s ease, transform .15s ease;
+    }
+
+    .puantaj-workspace .summary-stat-item:hover {
+        border-color: var(--stat-color, var(--work-primary));
+        box-shadow: 0 5px 13px rgba(16, 24, 40, .09);
+        transform: translateY(-1px);
+    }
+
+    .puantaj-workspace .summary-stat-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 34px;
+        height: 34px;
+        flex: 0 0 34px;
+        border-radius: 50%;
+        color: var(--stat-color, #405cf5);
+        background: color-mix(in srgb, var(--stat-color, #405cf5) 12%, transparent);
+        font-size: 17px;
+    }
+
+    .puantaj-workspace .summary-stat-copy {
         display: flex;
         flex-direction: column;
-        justify-content: center;
-        padding-right: 4px;
+        min-width: 0;
     }
 
-    .puantaj-workspace .horizontal-chart-total strong {
+    .puantaj-workspace .summary-stat-value {
         color: #101828;
-        font-size: 28px;
-        line-height: 1.1;
+        font-size: 20px;
+        font-weight: 800;
+        line-height: 1.05;
     }
 
-    .puantaj-workspace .horizontal-chart-total span {
+    .puantaj-workspace .summary-stat-label {
         margin-top: 3px;
-        color: #98a2b3;
-        font-size: 11px;
-        font-weight: 800;
-        letter-spacing: .04em;
-        text-transform: uppercase;
-    }
-
-    .puantaj-workspace .horizontal-chart-row {
-        display: grid;
-        grid-template-columns: minmax(105px, 145px) minmax(90px, 1fr) 86px;
-        align-items: center;
-        gap: 8px;
-        min-height: 25px;
-        cursor: pointer;
-    }
-
-    .puantaj-workspace .horizontal-chart-label {
-        overflow: hidden;
         color: #667085;
-        font-size: 14px;
-        font-weight: 700;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-    }
-
-    .puantaj-workspace .horizontal-chart-track {
-        height: 11px;
-        overflow: hidden;
-        border-radius: 10px;
-        background: #eef1f5;
-    }
-
-    .puantaj-workspace .horizontal-chart-bar {
-        height: 100%;
-        min-width: 3px;
-        border-radius: inherit;
-        transform-origin: left center;
-        animation: horizontal-chart-grow .55s ease-out;
-    }
-
-    .puantaj-workspace .horizontal-chart-number {
-        color: #344054;
-        font-size: 14px;
+        font-size: 10px;
         font-weight: 800;
-        text-align: right;
+        letter-spacing: .02em;
+        text-transform: uppercase;
         white-space: nowrap;
     }
 
-    .puantaj-workspace .horizontal-chart-number small {
+    .puantaj-workspace .summary-stat-rate {
         color: #98a2b3;
-        font-size: 11px;
+        font-size: 10px;
         font-weight: 700;
     }
 
-    .puantaj-workspace .horizontal-chart-row:hover .horizontal-chart-label,
-    .puantaj-workspace .horizontal-chart-row:hover .horizontal-chart-number {
-        color: var(--work-primary);
+    [data-bs-theme="dark"] .puantaj-workspace .summary-stat-item {
+        background: #242b3d;
     }
 
-    .puantaj-workspace .horizontal-chart-row:hover .horizontal-chart-track {
-        box-shadow: 0 0 0 2px rgba(64, 92, 245, .12);
-    }
-
-    .puantaj-workspace .horizontal-chart-total[data-table] {
-        cursor: pointer;
-    }
-
-    .puantaj-workspace .horizontal-chart-total[data-table]:hover strong {
-        color: var(--work-primary);
-    }
-
-    @keyframes horizontal-chart-grow {
-        from { transform: scaleX(0); }
-        to { transform: scaleX(1); }
+    [data-bs-theme="dark"] .puantaj-workspace .summary-stat-value {
+        color: #e7eaf0;
     }
 
     .puantaj-workspace .card-header > .d-flex.bg-white {
@@ -828,15 +771,6 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         color: #e7eaf0;
     }
 
-    [data-bs-theme="dark"] .puantaj-workspace .horizontal-chart-total strong,
-    [data-bs-theme="dark"] .puantaj-workspace .horizontal-chart-number {
-        color: #e7eaf0;
-    }
-
-    [data-bs-theme="dark"] .puantaj-workspace .horizontal-chart-track {
-        background: #343d52;
-    }
-
     [data-bs-theme="dark"] .puantaj-workspace #sayacDurumSummary,
     [data-bs-theme="dark"] .puantaj-workspace #puantajSummary,
     [data-bs-theme="dark"] .puantaj-workspace #sayacDegisimSummary,
@@ -886,11 +820,17 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             overflow-x: auto;
         }
 
-        .puantaj-workspace .horizontal-summary-chart {
-            grid-template-columns: 70px minmax(210px, 1fr);
-            min-width: 350px;
-            margin-left: 0 !important;
-            padding-left: 8px;
+        .puantaj-workspace .summary-stat-strip {
+            width: 100%;
+            margin-left: 0;
+            padding: 8px 0 0;
+            border-left: 0;
+            border-top: 1px solid var(--work-border);
+        }
+
+        .puantaj-workspace .summary-stat-item {
+            flex: 1 1 calc(50% - 8px);
+            min-width: 125px;
         }
     }
 </style>
@@ -955,10 +895,10 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                                 </a>
                                             </li>
                                             <li class="nav-item">
-                                                <a class="nav-link <?= $activeTab === 'kacak_kontrol' ? 'active' : '' ?>" data-bs-toggle="tab"
-                                                    href="#kacak_kontrol" role="tab" data-tab-name="kacak_kontrol" onclick="event.stopPropagation();">
-                                                    <span class="d-block d-sm-none"><i class="bx bx-shield-quarter"></i></span>
-                                                    <span class="d-none d-sm-flex align-items-center"><i class="bx bx-shield-quarter"></i>Kaçak Kontrol</span>
+                                                <a class="nav-link text-warning <?= $activeTab === 'eslesmeyen' ? 'active' : '' ?>" data-bs-toggle="tab"
+                                                    href="#eslesmeyen" role="tab" data-tab-name="eslesmeyen" onclick="event.stopPropagation();">
+                                                    <span class="d-block d-sm-none"><i class="bx bx-error-circle"></i></span>
+                                                    <span class="d-none d-sm-flex align-items-center"><i class="bx bx-error-circle"></i>Eşleşmeyen <span id="unmatchedTabBadge" class="badge bg-warning-subtle text-warning ms-1 d-none">0</span></span>
                                                 </a>
                                             </li>
                                         </ul>
@@ -1037,7 +977,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                         <?php echo Form::FormSelect2('ekip_kodu', $personelOptions, $ekipKodu, 'Personel', 'user', 'key', '', 'form-select select2'); ?>
                                     </div>
                                     <div class="col-md-2" id="workTypeFilterContainer"
-                                        style="display: <?= $activeTab === 'yapilan_isler' ? 'block' : 'none' ?>;">
+                                        style="display: <?= in_array($activeTab, ['yapilan_isler', 'eslesmeyen'], true) ? 'block' : 'none' ?>;">
                                         <?php echo Form::FormSelect2(
                                             name: 'work_type',
                                             options: $workTypeOptions,
@@ -1049,7 +989,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                         ); ?>
                                     </div>
                                     <div class="col-md-2" id="workResultFilterContainer"
-                                        style="display: <?= $activeTab === 'yapilan_isler' ? 'block' : 'none' ?>;">
+                                        style="display: <?= in_array($activeTab, ['yapilan_isler', 'eslesmeyen'], true) ? 'block' : 'none' ?>;">
                                         <?php echo Form::FormSelect2(
                                             name: 'work_result',
                                             options: $workResultOptions,
@@ -1250,61 +1190,6 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     </div>
                 </div>
             </div>
-            <div class="tab-pane <?= $activeTab === 'kacak_kontrol' ? 'active' : '' ?>" id="kacak_kontrol"
-                role="tabpanel">
-                <div class="card">
-                    <div class="card-header d-flex justify-content-between align-items-center">
-                        <h4 class="card-title" id="kacakTableTitle">Kaçak Kontrol Listesi</h4>
-                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
-                            <button type="button"
-                                class="btn btn-link btn-sm text-primary text-decoration-none px-2 d-flex align-items-center"
-                                id="btnNewKacak">
-                                <i class="mdi mdi-plus-circle fs-5 me-1"></i> Yeni Ekle
-                            </button>
-                            <div class="dropdown ms-2">
-                                <button class="btn btn-soft-primary btn-sm px-3 fw-bold dropdown-toggle d-flex align-items-center" type="button" id="kacakIslemlerDropdown" data-bs-toggle="dropdown" aria-expanded="false" style="padding: 6px 12px;">
-                                    <i class="bx bx-cog fs-5 me-1"></i> İşlemler
-                                </button>
-                                <ul class="dropdown-menu dropdown-menu-end shadow-lg border-0" aria-labelledby="kacakIslemlerDropdown">
-                                    <li>
-                                        <button class="dropdown-item d-flex align-items-center text-success fw-medium" type="button" id="btnExportKacakExcel">
-                                            <i class="mdi mdi-file-excel fs-5 me-2"></i> Excel'e Aktar
-                                        </button>
-                                    </li>
-                                    <li>
-                                        <button class="dropdown-item d-flex align-items-center text-primary fw-medium" type="button" data-bs-toggle="modal" data-bs-target="#importKacakModal">
-                                            <i class="mdi mdi-upload fs-5 me-2"></i> Excel Yükle
-                                        </button>
-                                    </li>
-                                </ul>
-                            </div>
-                        </div>
-                    </div>
-                    <div class="card-body">
-                        <table id="kacakTable" class="table table-bordered dt-responsive nowrap w-100">
-                            <thead>
-                                <tr class="table-light">
-                                    <th data-filter="date">Tarih</th>
-                                    <th data-filter="string">Ekip (Personel)</th>
-                                    <th data-filter="select">İlçe</th>
-                                    <th data-filter="select">Tür</th>
-                                    <th data-filter="string">Tutanak No</th>
-                                    <th data-filter="string">Abone Adı</th>
-                                    <th data-filter="string">Sayaç No</th>
-                                    <th data-filter="string">Endeks</th>
-                                    <th data-filter="number">Sayı</th>
-                                    <th data-filter="string">Açıklama</th>
-                                    <th>İşlem</th>
-                                </tr>
-
-                            </thead>
-                            <tbody id="kacakKontrolBody">
-                                <!-- AJAX Content -->
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
             <div class="tab-pane <?= $activeTab === 'sayac_sokme_takma' ? 'active' : '' ?>" id="sayac_sokme_takma"
                 role="tabpanel">
                 <div class="card">
@@ -1356,8 +1241,8 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                                     <th data-filter="string">Ekip</th>
                                     <th data-filter="string">Personel</th>
                                     <th data-filter="string">Bölge</th>
-                                    <th data-filter="select">İş Emri Sebebi</th>
-                                    <th data-filter="select">İş Emri Sonucu</th>
+                                    <th data-filter="string">İş Emri Sebebi</th>
+                                    <th data-filter="string">İş Emri Sonucu</th>
                                     <th data-filter="string">Abone No</th>
                                     <th data-filter="string">Takılan Sayaç No</th>
                                     <th>İşlem</th>
@@ -1436,6 +1321,44 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                             <tbody id="muhurlemeBody">
                                 <!-- AJAX Content -->
                             </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="tab-pane <?= $activeTab === 'eslesmeyen' ? 'active' : '' ?>" id="eslesmeyen" role="tabpanel">
+                <div class="card border-warning-subtle">
+                    <div class="card-header d-flex justify-content-between align-items-center">
+                        <div>
+                            <h4 class="card-title text-warning mb-1" id="unmatchedTableTitle">Eşleşmeyen Kayıtlar</h4>
+                            <div class="text-muted fs-12 mt-1">Bu kayıtlar hiçbir operasyon raporuna ve toplamına dahil edilmez.</div>
+                        </div>
+                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+                            <a href="index?p=tanimlamalar/is-turu" class="btn btn-soft-warning btn-sm px-3 fw-bold">
+                                <i class="bx bx-cog me-1"></i> Tanımlamalara Git
+                            </a>
+                        </div>
+                    </div>
+                    <div class="alert alert-warning rounded-0 border-0 border-bottom mb-0">
+                        <i class="bx bx-info-circle me-1"></i>
+                        İş emri sonucuna bir <strong>Rapor Sekmesi</strong> atadığınızda kayıt otomatik olarak doğru sekmeye geçer.
+                    </div>
+                    <div class="card-body">
+                        <table id="unmatchedTable" class="table table-bordered dt-responsive nowrap w-100">
+                            <thead>
+                                <tr class="table-light">
+                                    <th style="width:20px;"></th>
+                                    <th data-filter="date">Tarih</th>
+                                    <th data-filter="string">Ekip Kodu</th>
+                                    <th data-filter="string">Personel</th>
+                                    <th data-filter="select">İş Emri Tipi</th>
+                                    <th data-filter="select">İş Emri Sonucu</th>
+                                    <th data-filter="string">Abone No</th>
+                                    <th data-filter="string">İş Emri No</th>
+                                    <th data-filter="number">Sonuçlanmış</th>
+                                    <th data-filter="number">Açık Olanlar</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
                         </table>
                     </div>
                 </div>
@@ -1543,57 +1466,6 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         </div>
     </div>
 </div>
-<!-- Kaçak Kontrol Excel Modal -->
-<div class="modal fade" id="importKacakModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">Kaçak Kontrol Excel Yükle</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="kacakUploadForm" enctype="multipart/form-data">
-                    <div class="alert alert-info">
-                        <i class="bx bx-info-circle me-2"></i>
-                        Excel dosyasında "Ekip", "Sayı" ve "Açıklama" sütunları bulunmalıdır.
-                    </div>
-                    <div class="mb-3">
-                        <?php echo \App\Helper\Form::FormFloatInput(
-                            type: 'text',
-                            name: 'upload_date',
-                            value: Date::today(),
-                            placeholder: '',
-                            label: "Tarih",
-                            icon: "calendar",
-                            required: true,
-                            class: "form-control flatpickr"
-                        ); ?>
-                    </div>
-
-                    <div class="mb-3">
-                        <?php echo \App\Helper\Form::FormFileInput(
-                            name: 'excel_file',
-                            label: "Tutanak Belgesi (Excel, PDF veya Resim)",
-                            icon: "file",
-                            required: true,
-                            class: "form-control"
-                        ); ?>
-                        <div class="form-text">Excel (.xlsx, .xls), PDF (.pdf) veya Resim (.png, .jpg, .jpeg) dosyalarını yükleyebilirsiniz.</div>
-                    </div>
-                    <div id="kacakSpinner" class="text-center p-2" style="display: none;">
-                        <div class="spinner-border text-primary" role="status"></div>
-                        <p class="mt-2" id="kacakSpinnerText">Yükleniyor...</p>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
-                    <button type="submit" class="btn btn-primary" id="btnKacakUpload">Yükle</button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-
 <!-- Online Sayaç Değişim Sorgulama Modal -->
 <div class="modal fade" id="importOnlineSayacDegisimModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog">
@@ -1649,97 +1521,6 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     <button type="submit" class="btn btn-primary" id="btnOnlineSayacDegisimSorgula">
                         <i class="bx bx-search me-1"></i> Sorgula
                     </button>
-                </div>
-            </form>
-        </div>
-    </div>
-</div>
-
-<!-- Kaçak Kontrol Manuel Modal -->
-<div class="modal fade" id="kacakModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-xl">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title" id="kacakModalTitle">Kaçak Kontrol Kaydı</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="kacakManualForm" enctype="multipart/form-data">
-                <input type="hidden" name="id" id="kacak_id" value="0">
-                <div class="modal-body">
-                    
-                    <!-- 1. Tutanak Dosyası ve Analiz Butonu (En Üstte) -->
-                    <div class="mb-3 border p-3 rounded bg-light">
-                        <h6 class="fw-bold text-primary mb-2"><i class="bx bx-bot me-1"></i> Yapay Zeka ile Tutanak Oku</h6>
-                        <div class="row g-2 align-items-end">
-                            <div class="col-md-9">
-                                <?php echo \App\Helper\Form::FormFileInput(
-                                    name: 'excel_file',
-                                    label: "Tutanak Belgesi (Görsel, PDF veya Excel)",
-                                    icon: "upload",
-                                    required: false,
-                                    class: "form-control"
-                                ); ?>
-                            </div>
-                            <div class="col-md-3">
-                                <button type="button" id="btnKacakAnalizEt" class="btn btn-warning w-100 d-flex align-items-center justify-content-center fw-bold" style="height: 38px;">
-                                    <i class="bx bx-play me-1 fs-5"></i> Analiz Et
-                                </button>
-                            </div>
-                        </div>
-                        <div class="form-text text-muted">Dosyayı seçtikten sonra "Analiz Et" butonuna basarak verileri otomatik çıkartabilirsiniz.</div>
-                        
-                        <div id="kacakManualSpinner" class="text-center p-2 mt-3" style="display: none;">
-                            <div class="spinner-border text-warning" role="status"></div>
-                            <p class="mt-2 text-warning fw-bold" id="kacakManualSpinnerText">OpenAI tutanağı analiz ediyor, lütfen bekleyin...</p>
-                        </div>
-                    </div>
-
-                    <!-- 2. Tarih ve Personel Seçimi (Orta Bölüm) -->
-                    <div class="row">
-                        <div class="col-md-6 mb-3">
-                            <?php echo Form::FormFloatInput(
-                                type: 'text',
-                                name: 'tarih',
-                                value: Date::today(),
-                                placeholder: '',
-                                label: "Tarih",
-                                icon: "calendar",
-                                required: true,
-                                class: "form-control flatpickr"
-                            ); ?>
-                        </div>
-                        <div class="col-md-6 mb-3">
-                            <label for="kacak_personel_ids" class="form-label mb-1">Personel Seçimi (En Fazla 2 Personel)</label>
-                            <?php echo Form::FormMultipleSelect2(
-                                name: 'kacak_personel_ids',
-                                options: $personeller,
-                                selectedValues: [],
-                                label: 'Personel',
-                                icon: 'users',
-                                valueField: 'id',
-                                textField: 'adi_soyadi',
-                                class: 'form-select select2',
-                                required: true
-                            ); ?>
-                        </div>
-                    </div>
-
-                    <!-- 3. Giriş Detayları / Analiz Sonuçları (En Altta) -->
-                    <div class="border rounded p-3 bg-light mb-3" id="kacak_manual_rows_section">
-                        <div class="d-flex justify-content-between align-items-center mb-2">
-                            <h6 class="mb-0 fw-bold text-primary"><i class="bx bx-list-plus me-1"></i> Giriş Detayları</h6>
-                            <button type="button" class="btn btn-sm btn-soft-success" id="btnAddKacakRow">
-                                <i class="bx bx-plus me-1"></i> Satır Ekle
-                            </button>
-                        </div>
-                        <div id="kacakRowsContainer">
-                            <!-- JS veya AI ile doldurulacak -->
-                        </div>
-                    </div>
-                </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
-                    <button type="submit" class="btn btn-primary">Kaydet</button>
                 </div>
             </form>
         </div>
@@ -2077,9 +1858,9 @@ $activeTab = $_GET['tab'] ?? 'okuma';
 
         var endeksDataTable = null;
         var puantajDataTable = null;
-        var kacakDataTable = null;
         var sayacDegisimDataTable = null;
         var muhurlemeDataTable = null;
+        var unmatchedDataTable = null;
 
         var tabContentLoading = false;
         var initialTabLoaded = false;
@@ -2307,7 +2088,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             saveFiltersToStorage();
 
             // Filtre panellerini göster/gizle
-            if (tabName === 'yapilan_isler') {
+            if (tabName === 'yapilan_isler' || tabName === 'eslesmeyen') {
                 $('#workTypeFilterContainer').show();
                 $('#workResultFilterContainer').show();
                 $('#defterFilterContainer').hide();
@@ -2620,36 +2401,40 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             return KESME_ACMA_OLUMLU_SONUCLAR.includes(normalizeWorkResult(item.sonuc));
         }
 
-        function horizontalSummaryChart(total, unit, segments, tableSelector, columnIndex) {
+        function renderSummaryStatCards(total, unit, segments, tableSelector, columnIndex) {
             const safeTotal = Math.max(0, parseFloat(total || 0));
-            const maxValue = Math.max(1, ...(segments || []).map(segment => parseFloat(segment.value || 0)));
-            const rows = (segments || []).map(function(segment) {
+            const cards = (segments || []).map(function(segment, index) {
                 const value = Math.max(0, parseFloat(segment.value || 0));
-                const width = value > 0 ? Math.max(1.5, (value / maxValue) * 100) : 0;
                 const rate = safeTotal > 0 ? Math.round((value / safeTotal) * 100) : 0;
                 const filterValues = encodeURIComponent((segment.filterValues || [segment.label]).join('|'));
+                const icon = index === 0 ? 'bx-check-circle' : 'bx-dots-horizontal-rounded';
                 return `
-                    <div class="horizontal-chart-row" data-table="${tableSelector || ''}" data-column="${columnIndex ?? ''}"
+                    <div class="summary-stat-item summary-stat-filter" style="--stat-color:${segment.color}"
+                        data-table="${tableSelector || ''}" data-column="${columnIndex ?? ''}"
                         data-filter-values="${filterValues}" title="Filtrele: ${segment.label} — ${Math.round(value).toLocaleString('tr-TR')} (%${rate})">
-                        <span class="horizontal-chart-label">${segment.label}</span>
-                        <div class="horizontal-chart-track">
-                            <div class="horizontal-chart-bar" style="width:${width.toFixed(2)}%; background:${segment.color}"></div>
+                        <span class="summary-stat-icon"><i class="bx ${icon}"></i></span>
+                        <div class="summary-stat-copy">
+                            <span class="summary-stat-value">${Math.round(value).toLocaleString('tr-TR')}</span>
+                            <span class="summary-stat-label">${segment.label} <small class="summary-stat-rate">%${rate}</small></span>
                         </div>
-                        <span class="horizontal-chart-number">${Math.round(value).toLocaleString('tr-TR')} <small>%${rate}</small></span>
                     </div>`;
             }).join('');
 
             return `
-                <div class="horizontal-summary-chart ms-3 count-animate">
-                    <div class="horizontal-chart-total" data-table="${tableSelector || ''}" data-column="${columnIndex ?? ''}" title="Filtreyi temizle">
-                        <strong>${Math.round(safeTotal).toLocaleString('tr-TR')}</strong>
-                        <span>Toplam ${unit}</span>
+                <div class="summary-stat-strip count-animate">
+                    <div class="summary-stat-item summary-stat-total" style="--stat-color:#405cf5"
+                        data-table="${tableSelector || ''}" data-column="${columnIndex ?? ''}" title="Filtreyi temizle">
+                        <span class="summary-stat-icon"><i class="bx bx-layer"></i></span>
+                        <div class="summary-stat-copy">
+                            <span class="summary-stat-value">${Math.round(safeTotal).toLocaleString('tr-TR')}</span>
+                            <span class="summary-stat-label">Toplam ${unit}</span>
+                        </div>
                     </div>
-                    <div>${rows}</div>
+                    ${cards}
                 </div>`;
         }
 
-        $(document).on('click', '.horizontal-chart-row', function() {
+        $(document).on('click', '.summary-stat-filter', function() {
             const row = $(this);
             const tableSelector = row.data('table');
             const columnIndex = parseInt(row.data('column'), 10);
@@ -2660,7 +2445,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             $(table.table().node()).trigger('dtf:set-filter', [columnIndex, values, 'multi']);
         });
 
-        $(document).on('click', '.horizontal-chart-total[data-table]', function() {
+        $(document).on('click', '.summary-stat-total[data-table]', function() {
             const total = $(this);
             const tableSelector = total.data('table');
             const columnIndex = parseInt(total.data('column'), 10);
@@ -2669,35 +2454,6 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             const table = $(tableSelector).DataTable();
             $(table.table().node()).trigger('dtf:set-filter', [columnIndex, '']);
         });
-
-        function getKacakChartSummary(dataTableApi) {
-            const typeCounts = {};
-            let total = 0;
-
-            dataTableApi.rows({ filter: 'applied' }).data().each(function(row) {
-                const rawType = Array.isArray(row) ? row[3] : (row.tur || row.type || 'Belirsiz');
-                const type = $('<div>').html(rawType || 'Belirsiz').text().trim() || 'Belirsiz';
-                typeCounts[type] = (typeCounts[type] || 0) + 1;
-                total++;
-            });
-
-            const colors = ['#405cf5', '#22b573', '#f5a524'];
-            const sorted = Object.entries(typeCounts).sort((a, b) => b[1] - a[1]);
-            const segments = sorted.slice(0, 3).map(function(entry, index) {
-                return { label: entry[0], value: entry[1], color: colors[index], filterValues: [entry[0]] };
-            });
-            const otherTotal = sorted.slice(3).reduce((sum, entry) => sum + entry[1], 0);
-            if (otherTotal > 0) {
-                segments.push({
-                    label: 'Diğer',
-                    value: otherTotal,
-                    color: '#98a2b3',
-                    filterValues: sorted.slice(3).map(entry => entry[0])
-                });
-            }
-
-            return { total: total, segments: segments };
-        }
 
         // Kartlara tıklandığında filtreleme yap
         $(document).on('click', '.summary-card-item', function() {
@@ -2977,7 +2733,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                             const normalStatuses = activeSummary.filter(item => getStatusGroup(item.sayac_durum) === 'NO').map(item => item.sayac_durum);
                             const kiyasStatuses = activeSummary.filter(item => getStatusGroup(item.sayac_durum) === 'KO').map(item => item.sayac_durum);
                             let html = `Endeks Okuma Raporu
-                                ${horizontalSummaryChart(totalAbone, 'abone', [
+                                ${renderSummaryStatCards(totalAbone, 'abone', [
                                     { label: 'Normal', value: totalNormalOkuma, color: '#405cf5', filterValues: normalStatuses },
                                     { label: 'Kıyas', value: totalKiyasOkuma, color: '#f5a524', filterValues: kiyasStatuses },
                                     { label: 'Diğer', value: totalDigerOkuma, color: '#98a2b3', filterValues: otherStatuses }
@@ -3056,7 +2812,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                             const positiveResults = (json.summary || []).filter(item => isPositiveOperation(item, 'yapilan_isler')).map(item => item.sonuc);
                             const otherResults = (json.summary || []).filter(item => !isPositiveOperation(item, 'yapilan_isler')).map(item => item.sonuc);
                             $('#puantajTableTitle').html(`İş Listesi
-                                ${horizontalSummaryChart(totalIs, 'işlem', [
+                                ${renderSummaryStatCards(totalIs, 'işlem', [
                                     { label: 'Olumlu', value: positiveTotal, color: '#22b573', filterValues: positiveResults },
                                     { label: 'Diğer', value: Math.max(0, totalIs - positiveTotal), color: '#d0d5dd', filterValues: otherResults }
                                 ], '#puantajTable', 5)}`);
@@ -3093,42 +2849,6 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 order: [[1, 'desc']]
             }));
             addColumnFilterToggle('#puantajTable');
-        }
-
-        // Kaçak Kontrol tablosu için Client-Side DataTable (az veri olduğu için)
-        function loadKacakContent() {
-            var formData = {
-                action: 'get-tab-content',
-                tab: 'kacak_kontrol',
-                start_date: $('input[name="start_date"]').val(),
-                end_date: $('input[name="end_date"]').val(),
-                region: $('select[name="region"]').val(),
-                ekip_kodu: $('select[name="ekip_kodu"]').val()
-            };
-
-            $('#kacakKontrolBody').html('<tr><td colspan="11" class="text-center"><div class="spinner-border text-primary" role="status"></div></td></tr>');
-
-            $.ajax({
-                url: 'views/puantaj/api.php',
-                type: 'GET',
-                data: formData,
-                success: function (html) {
-                    if (kacakDataTable) {
-                        kacakDataTable.destroy();
-                        $('#kacakTable').find('thead .search-input-row').remove();
-                    }
-                    $('#kacakKontrolBody').html(html);
-                    kacakDataTable = $('#kacakTable').DataTable($.extend(true, {}, getDatatableOptions(), {
-                        order: [[0, 'desc']],
-                        drawCallback: function() {
-                            const chartSummary = getKacakChartSummary(this.api());
-                            $('#kacakTableTitle').html(`Kaçak Kontrol Listesi
-                                ${horizontalSummaryChart(chartSummary.total, 'işlem', chartSummary.segments, '#kacakTable', 3)}`);
-                        }
-                    }));
-                    addColumnFilterToggle('#kacakTable');
-                }
-            });
         }
 
         // Sayaç Değişim (Sökme Takma) tablosu için Server-Side DataTable
@@ -3171,7 +2891,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                             const positiveResults = (json.summary || []).filter(item => isPositiveOperation(item, 'sayac_sokme_takma')).map(item => item.sonuc);
                             const otherResults = (json.summary || []).filter(item => !isPositiveOperation(item, 'sayac_sokme_takma')).map(item => item.sonuc);
                             $('#sayacTableTitle').html(`Sayaç Sökme Takma Listesi
-                                ${horizontalSummaryChart(totalAdet, 'işlem', [
+                                ${renderSummaryStatCards(totalAdet, 'işlem', [
                                     { label: 'Olumlu', value: positiveTotal, color: '#22b573', filterValues: positiveResults },
                                     { label: 'Diğer', value: Math.max(0, totalAdet - positiveTotal), color: '#d0d5dd', filterValues: otherResults }
                                 ], '#sayacDegisimTable', 5)}`);
@@ -3241,7 +2961,7 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                             const positiveResults = (json.summary || []).filter(item => isPositiveOperation(item, 'muhurleme')).map(item => item.sonuc);
                             const otherResults = (json.summary || []).filter(item => !isPositiveOperation(item, 'muhurleme')).map(item => item.sonuc);
                             $('#muhurlemeTableTitle').html(`Mühürleme İş Listesi
-                                ${horizontalSummaryChart(totalIs, 'işlem', [
+                                ${renderSummaryStatCards(totalIs, 'işlem', [
                                     { label: 'Olumlu', value: positiveTotal, color: '#22b573', filterValues: positiveResults },
                                     { label: 'Diğer', value: Math.max(0, totalIs - positiveTotal), color: '#d0d5dd', filterValues: otherResults }
                                 ], '#muhurlemeTable', 5)}`);
@@ -3278,6 +2998,71 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             addColumnFilterToggle('#muhurlemeTable');
         }
 
+        function updateUnmatchedBadge(count) {
+            const badge = $('#unmatchedTabBadge');
+            const value = parseInt(count || 0, 10);
+            badge.text(value.toLocaleString('tr-TR')).toggleClass('d-none', value === 0);
+        }
+
+        function refreshUnmatchedBadge() {
+            $.getJSON('views/puantaj/api.php', {
+                action: 'puantaj-datatable',
+                sorgu_turu: 'ESLESMEYEN',
+                draw: 1,
+                start: 0,
+                length: 1,
+                start_date: $('input[name="start_date"]').val(),
+                end_date: $('input[name="end_date"]').val(),
+                region: $('select[name="region"]').val(),
+                ekip_kodu: $('select[name="ekip_kodu"]').val()
+            }).done(function(json) {
+                updateUnmatchedBadge(json.recordsFiltered || 0);
+            });
+        }
+
+        function initUnmatchedDataTable() {
+            if (unmatchedDataTable) {
+                unmatchedDataTable.ajax.reload(null, false);
+                return;
+            }
+
+            unmatchedDataTable = $('#unmatchedTable').DataTable(getServerSideOptions({
+                ajax: {
+                    url: 'views/puantaj/api.php',
+                    type: 'GET',
+                    data: function(d) {
+                        d.action = 'puantaj-datatable';
+                        d.sorgu_turu = 'ESLESMEYEN';
+                        d.start_date = $('input[name="start_date"]').val();
+                        d.end_date = $('input[name="end_date"]').val();
+                        d.region = $('select[name="region"]').val();
+                        d.ekip_kodu = $('select[name="ekip_kodu"]').val();
+                        d.work_type = $('select[name="work_type"]').val();
+                        d.work_result = $('select[name="work_result"]').val();
+                    },
+                    dataSrc: function(json) {
+                        updateUnmatchedBadge(json.recordsFiltered || 0);
+                        $('#unmatchedTableTitle').text(`Eşleşmeyen Kayıtlar (${parseInt(json.recordsFiltered || 0, 10).toLocaleString('tr-TR')})`);
+                        return json.data;
+                    }
+                },
+                columns: [
+                    { data: null, defaultContent: '<i class="bx bx-error-circle text-warning"></i>', orderable: false, searchable: false },
+                    { data: 'tarih' },
+                    { data: 'ekip_kodu', defaultContent: '-' },
+                    { data: 'personel_adi' },
+                    { data: 'is_emri_tipi' },
+                    { data: 'is_emri_sonucu' },
+                    { data: 'abone_no', defaultContent: '-' },
+                    { data: 'is_emri_no', defaultContent: '-' },
+                    { data: 'sonuclanmis' },
+                    { data: 'acik_olanlar' }
+                ],
+                order: [[1, 'desc']]
+            }));
+            addColumnFilterToggle('#unmatchedTable');
+        }
+
         function loadTabContent(tabName) {
             initialTabLoaded = true;
             
@@ -3289,13 +3074,15 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                 initEndeksDataTable();
             } else if (tabName === 'yapilan_isler') {
                 initPuantajDataTable();
-            } else if (tabName === 'kacak_kontrol') {
-                loadKacakContent();
             } else if (tabName === 'sayac_sokme_takma') {
                 initSayacDegisimDataTable();
             } else if (tabName === 'muhurleme') {
                 initMuhurlemeDataTable();
+            } else if (tabName === 'eslesmeyen') {
+                initUnmatchedDataTable();
             }
+
+            if (tabName !== 'eslesmeyen') refreshUnmatchedBadge();
         }
 
         // Tarih değiştiğinde file inputunu temizle
@@ -3304,9 +3091,6 @@ $activeTab = $_GET['tab'] ?? 'okuma';
         });
         $('#puantajUploadForm input[name="upload_date"]').on('change', function () {
             $('#puantajUploadForm input[name="excel_file"]').val('');
-        });
-        $('#kacakUploadForm input[name="upload_date"]').on('change', function () {
-            $('#kacakUploadForm input[name="excel_file"]').val('');
         });
 
         $('select[name="region"]').on('change', function() {
@@ -3408,10 +3192,6 @@ $activeTab = $_GET['tab'] ?? 'okuma';
             if (puantajDataTable) {
                 window.location.href = getExportUrl('yapilan_isler', puantajDataTable);
             }
-        });
-
-        $(document).on('click', '#btnExportKacakExcel', function () {
-            window.location.href = getExportUrl('kacak_kontrol', kacakDataTable);
         });
 
         $(document).on('click', '#btnExportSayacExcel', function () {
@@ -3596,480 +3376,6 @@ $activeTab = $_GET['tab'] ?? 'okuma';
                     $('#puantajSpinner').hide();
                     $('#btnPuantajUpload').prop('disabled', false);
                     Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
-                }
-            });
-        });
-
-        $('#kacakUploadForm').on('submit', function (e) {
-            e.preventDefault();
-            var formData = new FormData(this);
-            formData.append('action', 'kacak-excel-kaydet');
-
-            $('#kacakSpinnerText').text('Yükleniyor...');
-            $('#kacakSpinner').show();
-            $('#btnKacakUpload').prop('disabled', true);
-
-            $.ajax({
-                url: 'views/puantaj/api.php',
-                type: 'POST',
-                data: formData,
-                contentType: false,
-                processData: false,
-                success: function (response) {
-                    $('#kacakSpinner').hide();
-                    $('#btnKacakUpload').prop('disabled', false);
-                    try {
-                        var res = typeof response === 'object' ? response : JSON.parse(response);
-                        if (res.status === 'success') {
-                            var htmlMessage = res.message;
-                            // Atlanan satırlar varsa detaylı göster
-                            if (res.skipped_rows && res.skipped_rows.length > 0) {
-                                htmlMessage += '<br><br><div class="alert alert-warning mb-0 mt-2"><strong>⚠️ Atlanan Satırlar (' + res.skipped_rows.length + '):</strong><ul class="mb-0 mt-2" style="max-height: 200px; overflow-y: auto;">';
-                                res.skipped_rows.forEach(function (row) {
-                                    htmlMessage += '<li><strong>Satır ' + row.satir + ':</strong> ' + row.ekip + ' - <em>' + row.neden + '</em></li>';
-                                });
-                                htmlMessage += '</ul></div>';
-                            }
-                             Swal.fire({
-                                title: 'Başarılı',
-                                html: htmlMessage,
-                                icon: 'success',
-                                width: res.skipped_rows && res.skipped_rows.length > 0 ? '600px' : '400px'
-                            }).then(() => {
-                                $('#importKacakModal').modal('hide');
-                                $('#kacakUploadForm')[0].reset();
-                                loadTabContent('kacak_kontrol');
-                            });
-                        } else {
-                            Swal.fire('Hata', res.message, 'error');
-                        }
-                    } catch (err) {
-                        Swal.fire('Hata', 'Sunucudan geçersiz yanıt alındı.', 'error');
-                    }
-                },
-                error: function () {
-                    $('#kacakSpinner').hide();
-                    $('#btnKacakUpload').prop('disabled', false);
-                    Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
-                }
-            });
-        });
-
-        var regionListJson = <?= json_encode($regionList) ?>;
-
-        // Yapay zeka analiz sonucundaki alan bazlı güven yüzdesini (0-100) okur.
-        // guven yoksa (manuel eklenen satır) null döner ve hiçbir renklendirme yapılmaz.
-        function aiConfValue(guven, field) {
-            if (!guven || guven[field] === undefined || guven[field] === null || guven[field] === '') {
-                return null;
-            }
-            var v = parseInt(guven[field], 10);
-            return isNaN(v) ? null : v;
-        }
-
-        function aiConfClass(guven, field) {
-            var v = aiConfValue(guven, field);
-            if (v === null) {
-                return '';
-            }
-            return v < 70 ? 'ai-field-uncertain' : 'ai-field-confident';
-        }
-
-        // Etiketin yanına eklenecek küçük "%XX" güven rozeti
-        function aiConfBadgeHtml(guven, field) {
-            var v = aiConfValue(guven, field);
-            if (v === null) {
-                return '';
-            }
-            var cls = v < 70 ? 'bg-warning-subtle text-warning-emphasis' : 'bg-success-subtle text-success-emphasis';
-            return '<span class="badge ai-conf-badge ' + cls + '">%' + v + '</span>';
-        }
-
-        // Kullanıcı bir alanı elle düzenlediğinde/onayladığında güven rengini yeşile çevirir.
-        function markFieldAsConfirmed($el) {
-            $el.removeClass('ai-field-uncertain').addClass('ai-field-confident');
-        }
-
-        // PHP tarafında statik render edilen (repeater dışı) alanların etiketine güven rozeti ekler/günceller.
-        function setLabelBadge($label, guven, field) {
-            $label.find('.ai-conf-badge').remove();
-            var badge = aiConfBadgeHtml(guven, field);
-            if (badge) {
-                $label.append(' ' + badge);
-            }
-        }
-
-        function addKacakRow(data = null) {
-            var rowId = 'kacak_row_' + Date.now() + '_' + Math.floor(Math.random() * 1000);
-            var guven = data && data.guven ? data.guven : null;
-
-            var ilceOptionsHtml = '<option value="">İlçe Seçiniz</option>';
-            regionListJson.forEach(function(r) {
-                var selected = (data && data.ilce === r) ? 'selected' : '';
-                ilceOptionsHtml += '<option value="' + r + '" ' + selected + '>' + r + '</option>';
-            });
-
-            var turOptionsHtml = `
-                <option value="">Tür Seçiniz</option>
-                <option value="Kaçak" ${(!data || data.tur === 'Kaçak') ? 'selected' : ''}>Kaçak</option>
-                <option value="Abonesiz" ${(data && data.tur === 'Abonesiz') ? 'selected' : ''}>Abonesiz</option>
-            `;
-
-            var rowHtml = `
-                <div class="border p-2 rounded mb-2 kacak-repeater-row" id="${rowId}">
-                    <div class="row g-2 align-items-center">
-                        <div class="col-md-2">
-                            <label class="small text-muted mb-0">İlçe ${aiConfBadgeHtml(guven, 'ilce')}</label>
-                            <select name="ilce[]" class="form-select select2-ilce" required>
-                                ${ilceOptionsHtml}
-                            </select>
-                        </div>
-                        <div class="col-md-2">
-                            <label class="small text-muted mb-0">Tür ${aiConfBadgeHtml(guven, 'tur')}</label>
-                            <select name="tur[]" class="form-select select2-tur" required>
-                                ${turOptionsHtml}
-                            </select>
-                        </div>
-                        <div class="col-md-1">
-                            <label class="small text-muted mb-0">Tutanak No ${aiConfBadgeHtml(guven, 'tutanak_no')}</label>
-                            <input type="text" name="tutanak_no[]" class="form-control ai-field ${aiConfClass(guven, 'tutanak_no')}" placeholder="No" value="${data && data.tutanak_no ? data.tutanak_no : ''}">
-                        </div>
-                        <div class="col-md-2">
-                            <label class="small text-muted mb-0">Abone İsim Soyisim ${aiConfBadgeHtml(guven, 'abone_adi')}</label>
-                            <input type="text" name="abone_adi[]" class="form-control ai-field ${aiConfClass(guven, 'abone_adi')}" placeholder="Abone Adı Soyadı" value="${data && data.abone_adi ? data.abone_adi : ''}">
-                        </div>
-                        <div class="col-md-1">
-                            <label class="small text-muted mb-0">Sayaç No ${aiConfBadgeHtml(guven, 'sayac_no')}</label>
-                            <input type="text" name="sayac_no[]" class="form-control ai-field ${aiConfClass(guven, 'sayac_no')}" placeholder="Sayaç No" value="${data && data.sayac_no ? data.sayac_no : ''}">
-                        </div>
-                        <div class="col-md-1">
-                            <label class="small text-muted mb-0">Endeks ${aiConfBadgeHtml(guven, 'endeks')}</label>
-                            <input type="text" name="endeks[]" class="form-control ai-field ${aiConfClass(guven, 'endeks')}" placeholder="Endeks" value="${data && data.endeks ? data.endeks : ''}">
-                        </div>
-                        <div class="col-md-1">
-                            <label class="small text-muted mb-0">Sayı ${aiConfBadgeHtml(guven, 'sayi')}</label>
-                            <input type="number" name="sayi[]" class="form-control ai-field px-1 text-center ${aiConfClass(guven, 'sayi')}" placeholder="Sayı" value="${data ? data.sayi : '1'}" required min="1">
-                        </div>
-                        <div class="col-md-1">
-                            <label class="small text-muted mb-0">Açıklama ${aiConfBadgeHtml(guven, 'aciklama')}</label>
-                            <input type="text" name="aciklama[]" class="form-control ai-field ${aiConfClass(guven, 'aciklama')}" placeholder="Açıklama" value="${data ? data.aciklama : ''}">
-                        </div>
-                        <div class="col-md-1 text-end mt-3">
-                            <button type="button" class="btn btn-soft-danger btn-sm btnRemoveKacakRow">
-                                <i class="bx bx-trash"></i>
-                            </button>
-                        </div>
-                    </div>
-                </div>
-            `;
-
-            $('#kacakRowsContainer').append(rowHtml);
-
-            // Initialize select2-ilce (renk sadece iç .select2-selection kutusuna uygulanır, dış container'a değil)
-            $('#' + rowId + ' .select2-ilce').select2({
-                dropdownParent: $('#kacakModal'),
-                placeholder: 'İlçe Seçiniz',
-                allowClear: true,
-                width: '100%'
-            }).next('.select2-container').find('.select2-selection').addClass(aiConfClass(guven, 'ilce'));
-
-            // Initialize select2-tur
-            $('#' + rowId + ' .select2-tur').select2({
-                dropdownParent: $('#kacakModal'),
-                placeholder: 'Tür Seçiniz',
-                allowClear: true,
-                width: '100%'
-            }).next('.select2-container').find('.select2-selection').addClass(aiConfClass(guven, 'tur'));
-        }
-
-        // Alanlardan biri elle düzenlenirse AI'ın belirsiz işaretini kaldırıp onaylanmış (yeşil) yapalım
-        $(document).on('input', '#kacakRowsContainer input.ai-field', function () {
-            markFieldAsConfirmed($(this));
-        });
-        $(document).on('change', '#kacakRowsContainer .select2-ilce, #kacakRowsContainer .select2-tur', function () {
-            markFieldAsConfirmed($(this).next('.select2-container').find('.select2-selection'));
-        });
-        $(document).on('input change', '#kacakManualForm input[name="tarih"]', function () {
-            markFieldAsConfirmed($(this));
-        });
-        $(document).on('change', '#kacak_personel_ids', function () {
-            markFieldAsConfirmed($(this).next('.select2-container').find('.select2-selection'));
-        });
-
-        $('#btnAddKacakRow').on('click', function() {
-            addKacakRow();
-        });
-
-        $(document).on('click', '.btnRemoveKacakRow', function() {
-            if ($('.kacak-repeater-row').length > 1) {
-                $(this).closest('.kacak-repeater-row').remove();
-            } else {
-                Swal.fire('Hata', 'En az bir satır bulunmalıdır.', 'warning');
-            }
-        });
-
-        $('#btnNewKacak').on('click', function () {
-            $('#kacakManualForm input[name="id"]').val(0);
-            $('#kacakManualForm')[0].reset();
-            $('#kacakRowsContainer').empty();
-            // Multiple select'i sıfırla
-            $('#kacak_personel_ids').val([]).trigger('change');
-        });
-        $(document).on('click', '#btnKacakAnalizEt', function() {
-            var fileInput = $('#kacakManualForm input[name="excel_file"]')[0];
-            if (!fileInput.files || fileInput.files.length === 0) {
-                Swal.fire('Uyarı', 'Lütfen önce analiz edilecek tutanak dosyasını (Görsel, PDF veya Excel) seçin.', 'warning');
-                return;
-            }
-
-            var formData = new FormData();
-            formData.append('action', 'kacak-excel-kaydet');
-            formData.append('use_openai', '1');
-            formData.append('excel_file', fileInput.files[0]);
-            
-            // Tarih bilgisini de analize gönder (Varsayılan tarih ataması için)
-            var uploadDate = $('#kacakManualForm input[name="tarih"]').val();
-            formData.append('upload_date', uploadDate);
-
-            // Seçilen personelleri OpenAI endpoint'inin beklediği isimle ekleyelim
-            var selectedPersonels = $('#kacak_personel_ids').val();
-            if (selectedPersonels && selectedPersonels.length > 0) {
-                selectedPersonels.forEach(function(pid) {
-                    formData.append('kacak_api_personel_ids[]', pid);
-                });
-            }
-
-            // AI'ın döndüreceği ID'lerin ekrandaki dropdown ile birebir eşleşmesi için
-            // dropdown'da gerçekten seçilebilir olan personel listesini de gönderelim
-            var personelOptionsList = [];
-            $('#kacak_personel_ids option').each(function () {
-                var val = $(this).val();
-                if (val) {
-                    personelOptionsList.push({ id: parseInt(val, 10), name: $(this).text().trim() });
-                }
-            });
-            formData.append('kacak_personel_list', JSON.stringify(personelOptionsList));
-
-            $('#kacakManualSpinner').show();
-            $('#btnKacakAnalizEt').prop('disabled', true);
-
-            $.ajax({
-                url: 'views/puantaj/api.php',
-                type: 'POST',
-                data: formData,
-                contentType: false,
-                processData: false,
-                success: function (response) {
-                    $('#kacakManualSpinner').hide();
-                    $('#btnKacakAnalizEt').prop('disabled', false);
-                    try {
-                        var res = typeof response === 'object' ? response : JSON.parse(response);
-                        if (res.status === 'success') {
-                            Swal.fire({
-                                title: 'Analiz Başarılı',
-                                text: res.message,
-                                icon: 'success',
-                                confirmButtonText: 'Verileri Kontrol Et'
-                            }).then(() => {
-                                // Formu temizle ve repeater satırlarını boşalt
-                                $('#kacakRowsContainer').empty();
-                                
-                                // AI verilerini tek tek ekle
-                                if (res.extracted_data && res.extracted_data.length > 0) {
-                                    res.extracted_data.forEach(function(item) {
-                                        addKacakRow({
-                                            ilce: item.ilçe || item.ilce || '',
-                                            tur: item.tur || 'Kaçak',
-                                            tutanak_no: item.tutanak_no || '',
-                                            abone_adi: item.abone_adi || '',
-                                            sayac_no: item.sayac_no || '',
-                                            endeks: item.endeks || '',
-                                            sayi: item.sayi || 1,
-                                            aciklama: item.aciklama || '',
-                                            guven: item.guven || null
-                                        });
-                                    });
-
-                                    // Tarih bilgisini al ve güncelle (AI hem YYYY-MM-DD hem de DD.MM.YYYY dönebilir)
-                                    var firstItem = res.extracted_data[0];
-                                    var firstGuven = firstItem.guven || null;
-                                    if (firstItem.tarih) {
-                                        var formattedDate = '';
-                                        if (firstItem.tarih.indexOf('-') !== -1) {
-                                            var parts = firstItem.tarih.split('-');
-                                            if (parts.length === 3) {
-                                                formattedDate = parts[2] + '.' + parts[1] + '.' + parts[0];
-                                            }
-                                        } else if (firstItem.tarih.indexOf('.') !== -1) {
-                                            formattedDate = firstItem.tarih;
-                                        }
-                                        if (formattedDate) {
-                                            $('#kacakManualForm input[name="tarih"]').val(formattedDate);
-                                            if ($('#kacakManualForm input[name="tarih"]')[0]._flatpickr) {
-                                                $('#kacakManualForm input[name="tarih"]')[0]._flatpickr.setDate(formattedDate);
-                                            }
-                                        }
-                                    }
-                                    $('#kacakManualForm input[name="tarih"]').removeClass('ai-field-uncertain ai-field-confident')
-                                        .addClass(aiConfClass(firstGuven, 'tarih'));
-                                    setLabelBadge($('#kacakManualForm label[for="tarih"]'), firstGuven, 'tarih');
-
-                                    // Personel bilgilerini al ve select2 alanında seçili yap
-                                    var matchedIds = [];
-                                    if (firstItem.personel_ids && Array.isArray(firstItem.personel_ids) && firstItem.personel_ids.length > 0) {
-                                        matchedIds = firstItem.personel_ids.map(function(id) { return String(id); });
-                                    }
-                                    $('#kacak_personel_ids').val(matchedIds).trigger('change');
-                                    var personelGuvenClass = matchedIds.length > 0 ? aiConfClass(firstGuven, 'personel_ids') : 'ai-field-uncertain';
-                                    $('#kacak_personel_ids').next('.select2-container').find('.select2-selection')
-                                        .removeClass('ai-field-uncertain ai-field-confident').addClass(personelGuvenClass);
-                                    setLabelBadge($('label[for="kacak_personel_ids"]'), firstGuven, 'personel_ids');
-                                } else {
-                                    addKacakRow();
-                                    Swal.fire('Bilgi', 'Tutanaktan geçerli bir veri çıkartılamadı. Lütfen dosyayı kontrol edin veya manuel giriş yapın.', 'info');
-                                }
-                                // Dosya alanını temizle
-                                $('#kacakManualForm input[name="excel_file"]').val('');
-                            });
-                        } else {
-                            Swal.fire('Hata', res.message || 'Dosya analiz edilemedi.', 'error');
-                        }
-                    } catch (err) {
-                        Swal.fire('Hata', 'Sunucudan geçersiz yanıt alındı.', 'error');
-                    }
-                },
-                error: function () {
-                    $('#kacakManualSpinner').hide();
-                    $('#btnKacakAnalizEt').prop('disabled', false);
-                    Swal.fire('Hata', 'Bağlantı hatası oluştu.', 'error');
-                }
-            });
-        });
-
-        // Yeni Ekle butonu tıklandığında formu sıfırla
-        $('#btnNewKacak').on('click', function () {
-            $('#kacak_id').val('0');
-            $('#kacakManualForm')[0].reset();
-            $('#kacakManualForm input[name="tarih"]').removeClass('ai-field-uncertain ai-field-confident');
-            $('#kacakManualForm label[for="tarih"], label[for="kacak_personel_ids"]').find('.ai-conf-badge').remove();
-            $('#kacakModalTitle').text('Kaçak Kontrol Kaydı');
-            $('#kacakRowsContainer').empty();
-            initPersonelSelect2();
-            addKacakRow();
-            $('#kacakModal').modal('show');
-        });
-
-        // Form Gönderme Olayı (Yalnızca manuel satırlardaki verileri kaydeder)
-        function initPersonelSelect2() {
-            var $el = $('#kacak_personel_ids');
-            if ($el.hasClass('select2-hidden-accessible')) {
-                $el.select2('destroy');
-            }
-            $el.select2({
-                dropdownParent: $('#kacakModal'),
-                placeholder: '',
-                allowClear: true,
-                maximumSelectionLength: 2,
-                width: '100%'
-            });
-        }
-
-        // Form Gönderme Olayı (Yalnızca manuel satırlardaki verileri kaydeder)
-        $('#kacakManualForm').on('submit', function (e) {
-            e.preventDefault();
-            
-            // Eğer dosya seçildiyse ama analiz edilmediyse uyaralım
-            var fileInput = $('#kacakManualForm input[name="excel_file"]')[0];
-            if (fileInput.files && fileInput.files.length > 0) {
-                Swal.fire({
-                    title: 'Uyarı',
-                    text: "Seçili bir tutanak dosyası var fakat analiz edilmemiş. Analiz etmeden kaydetmek istiyor musunuz?",
-                    icon: 'warning',
-                    showCancelButton: true,
-                    confirmButtonText: 'Evet, Kaydet',
-                    cancelButtonText: 'İptal'
-                }).then((result) => {
-                    if (result.isConfirmed) {
-                        saveKacakManualData();
-                    }
-                });
-            } else {
-                saveKacakManualData();
-            }
-        });
-
-        function saveKacakManualData() {
-            var formData = $('#kacakManualForm').serialize();
-            formData += '&action=kacak-kaydet';
-
-            $.post('views/puantaj/api.php', formData, function (response) {
-                var res = typeof response === 'object' ? response : JSON.parse(response);
-                if (res.status === 'success') {
-                    Swal.fire('Başarılı', 'Kayıtlar başarıyla kaydedildi.', 'success');
-                    $('#kacakModal').modal('hide');
-                    loadTabContent('kacak_kontrol');
-                } else {
-                    Swal.fire('Hata', res.message || 'Kayıt edilemedi.', 'error');
-                }
-            });
-        }
-
-        $(document).on('click', '.edit-kacak', function () {
-            var id = $(this).data('id');
-            $.get('views/puantaj/api.php', { action: 'get-kacak-record', id: id }, function (response) {
-                var record = typeof response === 'object' ? response : JSON.parse(response);
-                $('#kacakManualForm input[name="id"]').val(record.id);
-                $('#kacakManualForm input[name="tarih"]').val(record.tarih_formatted)
-                    .removeClass('ai-field-uncertain ai-field-confident');
-                $('#kacakManualForm label[for="tarih"], label[for="kacak_personel_ids"]').find('.ai-conf-badge').remove();
-                $('#kacakModalTitle').text('Kaydı Düzenle');
-
-                // Multiple select'i başlat ve seçili personelleri ayarla
-                initPersonelSelect2();
-                if (record.personel_ids_array && record.personel_ids_array.length > 0) {
-                    $('#kacak_personel_ids').val(record.personel_ids_array).trigger('change');
-                } else {
-                    $('#kacak_personel_ids').val([]).trigger('change');
-                }
-
-                $('#kacakRowsContainer').empty();
-                 addKacakRow({
-                    ilce: record.ilce,
-                    tur: record.tur,
-                    tutanak_no: record.tutanak_no,
-                    abone_adi: record.abone_adi,
-                    sayac_no: record.sayac_no,
-                    endeks: record.endeks,
-                    sayi: record.sayi,
-                    aciklama: record.aciklama
-                });
-
-                $('#kacakModal').modal('show');
-            });
-        });
-
-        $(document).on('click', '.delete-kacak', function () {
-            var id = $(this).data('id');
-            Swal.fire({
-                title: 'Emin misiniz?',
-                text: "Bu kayıt silinecektir!",
-                icon: 'warning',
-                showCancelButton: true,
-                confirmButtonColor: '#d33',
-                cancelButtonColor: '#3085d6',
-                confirmButtonText: 'Evet, sil!',
-                cancelButtonText: 'İptal'
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    $.post('views/puantaj/api.php', { action: 'kacak-sil', id: id }, function (response) {
-                        var res = typeof response === 'object' ? response : JSON.parse(response);
-                        if (res.status === 'success') {
-                            Swal.fire('Silindi!', 'Kayıt başarıyla silindi.', 'success');
-                            loadKacakContent();
-                        } else {
-                            Swal.fire('Hata', 'Kayıt silinemedi.', 'error');
-                        }
-                    });
                 }
             });
         });

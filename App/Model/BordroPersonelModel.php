@@ -2398,11 +2398,11 @@ class BordroPersonelModel extends Model
 
         // 4. Personelin dönem içindeki kaçak kontrol işlemlerini hesapla
         $sql = $this->db->prepare("
-            SELECT id, personel_ids, sayi 
-            FROM kacak_kontrol 
-            WHERE tarih BETWEEN ? AND ? 
-            AND silinme_tarihi IS NULL
+            SELECT id, personel_ids, sayi
+            FROM kacak_kontrol
+            WHERE tarih BETWEEN ? AND ?
             AND personel_ids IS NOT NULL
+            AND " . \App\Model\KacakKontrolModel::hakedisKosulu() . "
         ");
         $sql->execute([$baslangic_tarihi, $bitis_tarihi]);
         $kayitlar = $sql->fetchAll(PDO::FETCH_OBJ);

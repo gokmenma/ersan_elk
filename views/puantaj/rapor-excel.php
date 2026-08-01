@@ -79,9 +79,9 @@ if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma', 'kacakkontrol'])) {
         $sqlDusum = "SELECT ekip_adi as ekip_kodu_id, SUM(ABS(sayi)) as total_dusum 
                      FROM kacak_kontrol 
                      WHERE firma_id = ? 
-                     AND aciklama = 'Manuel Düşüm' 
-                     AND tarih BETWEEN ? AND ? 
-                     AND silinme_tarihi IS NULL 
+                     AND aciklama = 'Manuel Düşüm'
+                     AND tarih BETWEEN ? AND ?
+                     AND " . \App\Model\KacakKontrolModel::hakedisKosulu() . "
                      GROUP BY ekip_adi";
         $stmtDusum = $Puantaj->db->prepare($sqlDusum);
         $stmtDusum->execute([$_SESSION['firma_id'], $startDateStr, $endDateStr]);

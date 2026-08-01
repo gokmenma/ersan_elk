@@ -35,7 +35,7 @@ if ($isKacakKontrol) {
     $hasSayac = ($stmt->fetchColumn() > 0);
 
     // Kaçak Kontrol
-    $stmt = $db->prepare("SELECT COUNT(*) FROM kacak_kontrol WHERE FIND_IN_SET(?, personel_ids) AND silinme_tarihi IS NULL");
+    $stmt = $db->prepare("SELECT COUNT(*) FROM kacak_kontrol WHERE FIND_IN_SET(?, personel_ids) AND " . \App\Model\KacakKontrolModel::hakedisKosulu());
     $stmt->execute([$personel->id]);
     $hasKacak = ($stmt->fetchColumn() > 0);
 }
