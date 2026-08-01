@@ -213,11 +213,30 @@ $(document).ready(function () {
   }
 
   /**
-   * Premium Modal Header Auto-Upgrade
-   * Restructures any standard Bootstrap modal header to the premium design.
+   * Premium Modal Header Auto-Upgrade & Global Backdrop/Z-Index Fix
+   * Ensures every modal in the system is moved to <body> to prevent backdrop overlay issues.
    */
   $(document).on("show.bs.modal", ".modal", function () {
     const $modal = $(this);
+
+    // Global Stacking Context Fix: Modalı body etiketinin altına taşı (backdrop z-index çakışmasını önler)
+    if ($modal.length > 0 && $modal.parent().prop("tagName") !== "BODY") {
+      $modal.appendTo("body");
+    }
+
+    // Üst üste açılan modallar (stacked modals) için dinamik z-index ayarı
+    const openModals = $(".modal.show").length;
+    if (openModals > 0) {
+      const baseZIndex = 1055 + openModals * 10;
+      $modal.css("z-index", baseZIndex);
+      setTimeout(function () {
+        $(".modal-backdrop")
+          .not(".modal-stack")
+          .css("z-index", baseZIndex - 5)
+          .addClass("modal-stack");
+      }, 0);
+    }
+
     const $header = $modal.find(".modal-header");
 
     // Skip if already upgraded or specially excluded
