@@ -34,11 +34,12 @@ class SgkTokenModel extends Model
 
     /**
      * Süresi dolmamış ve aynı şifre ile alınmış token'ı döndürür.
-     * @return array{token:string, sunucu_adresi:?string, gecerlilik_bitis:string}|null
+     * Kalan süre, PHP ile veritabanı saat dilimleri farklı olabileceği için SQL tarafında hesaplanır.
+     * @return array{token:string, sunucu_adresi:?string, kalan_saniye:int}|null
      */
     public function gecerliTokenGetir(string $kullaniciAdi, string $isyeriKodu, string $isyeriSifresi): ?array
     {
-        $sql = "SELECT ws_token, sunucu_adresi, gecerlilik_bitis
+        $sql = "SELECT ws_token, sunucu_adresi, TIMESTAMPDIFF(SECOND, NOW(), gecerlilik_bitis) AS kalan_saniye
                 FROM {$this->table}
                 WHERE hesap_anahtari = ? AND sifre_ozeti = ? AND gecerlilik_bitis > NOW()
                 LIMIT 1";
@@ -62,7 +63,7 @@ class SgkTokenModel extends Model
         return [
             'token' => $token,
             'sunucu_adresi' => $row['sunucu_adresi'],
-            'gecerlilik_bitis' => $row['gecerlilik_bitis'],
+            'kalan_saniye' => max(0, (int) $row['kalan_saniye']),
         ];
     }
 

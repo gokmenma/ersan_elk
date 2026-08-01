@@ -292,32 +292,39 @@ body {
 
 /* Dark Mode Adjustments (Dason Style) */
 [data-bs-theme="dark"] {
-  --bs-body-bg: #191e22;
+  --bs-body-bg: #1c2228;
   --bs-body-color: #adb5bd;
-  --bs-border-color: #32394e;
-  --bs-card-bg: #282f36;
-  --bs-card-border-color: #32394e;
+  --bs-border-color: #2b333e;
+  --bs-card-bg: #222830;
+  --bs-card-border-color: #2b333e;
   --bs-primary: #1c84ee;
   --bs-secondary: #74788d;
   --bs-heading-color: #eff2f7;
-  --bs-header-bg: #282f36;
-  --bs-sidebar-bg: #282f36;
+  --bs-header-bg: #1c2228;
+  --bs-sidebar-bg: #1c2228;
 }
 
 [data-theme-mode="slate"][data-bs-theme="dark"] {
-  --bs-body-bg: #191e22;
+  --bs-body-bg: #1c2228;
   --bs-body-color: #adb5bd;
-  --bs-border-color: #32394e;
-  --bs-card-bg: #282f36;
-  --bs-card-border-color: #32394e;
+  --bs-border-color: #2b333e;
+  --bs-card-bg: #222830;
+  --bs-card-border-color: #2b333e;
   --bs-primary: #1c84ee;
 }
 
-/* Sidebar & Topbar Adjustments */
+/* Sidebar, Topbar & Main Content Unified Dark Background */
+[data-bs-theme="dark"] body,
+[data-bs-theme="dark"] .main-content,
+[data-bs-theme="dark"] .page-content {
+  background-color: #1c2228 !important;
+}
+
 [data-bs-theme="dark"] .vertical-menu,
 [data-bs-theme="dark"] #page-topbar,
-[data-bs-theme="dark"] .navbar-brand-box {
-  background-color: #282f36;
+[data-bs-theme="dark"] .navbar-brand-box,
+[data-bs-theme="dark"] .quick-favorites-bar {
+  background-color: #1c2228 !important;
   border: none;
   box-shadow: none;
 }

@@ -22,6 +22,7 @@ $dotenv = Dotenv\Dotenv::createImmutable(dirname(__DIR__));
 $dotenv->load();
 
 use App\Core\Db;
+use App\Model\SgkSorguOnbellekModel;
 use App\Model\SgkTokenModel;
 
 $db = new Db();
@@ -55,6 +56,14 @@ try {
 } catch (Throwable $e) {
     error_log('[data_retention] sgk_ws_tokens temizlenemedi: ' . $e->getMessage());
     $deleted['sgk_ws_tokens'] = 0;
+}
+
+// sgk_sorgu_onbellek: 1 günden eski sorgu cevapları
+try {
+    $deleted['sgk_sorgu_onbellek'] = (new SgkSorguOnbellekModel())->suresiDolanlariTemizle(1);
+} catch (Throwable $e) {
+    error_log('[data_retention] sgk_sorgu_onbellek temizlenemedi: ' . $e->getMessage());
+    $deleted['sgk_sorgu_onbellek'] = 0;
 }
 
 $summary = implode(', ', array_map(fn($k, $v) => "$k: $v satır", array_keys($deleted), $deleted));

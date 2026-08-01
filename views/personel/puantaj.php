@@ -35,6 +35,41 @@ use App\Service\Gate;
             border-left: 5px solid transparent;
         }
 
+        /* Puantaj türleri: yer kaplayan bir satır yerine taşınabilir araç paleti */
+        .izin-palette-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            min-height: 34px;
+        }
+
+        .izin-palette-title {
+            color: #334155;
+            font-size: 12px;
+            font-weight: 700;
+            letter-spacing: .01em;
+        }
+
+        .izin-palette-handle {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            width: 28px;
+            height: 28px;
+            padding: 0;
+            border: 0;
+            border-radius: 7px;
+            color: #94a3b8;
+            background: transparent;
+            cursor: grab;
+            touch-action: none;
+        }
+
+        .izin-palette-handle:hover { color: #556ee6; background: #eef2ff; }
+        .izin-palette-handle:active { cursor: grabbing; }
+        .izin-palette-restore { display: none; }
+
         .izin-type-card:hover {
             transform: scale(1.02);
         }
@@ -54,7 +89,8 @@ use App\Service\Gate;
 
         .table-puantaj {
             border-collapse: separate !important;
-            border-spacing: 4px !important;
+            /* Daha sıkı aralık: aynı ekranda daha fazla gün ve daha az görsel gürültü. */
+            border-spacing: 2px !important;
         }
 
         .table-puantaj th:not(.sticky-col):not(.sticky-col-right-1) {
@@ -73,16 +109,26 @@ use App\Service\Gate;
 
         .table-puantaj .day-cell {
             width: 32px;
-            height: 32px;
+            height: 34px;
             cursor: cell;
             user-select: none;
             position: relative;
             padding: 0 !important;
-            border: 1px solid #cbd5e0 !important;
-            border-radius: 6px;
-            background-color: #edf2f7;
-            box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.06);
+            border: 1px solid #e2e8f0 !important;
+            border-radius: 5px;
+            background-color: #f8fafc;
+            box-shadow: none;
+            transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
         }
+
+        .table-puantaj .day-cell:hover:not(.disabled) {
+            z-index: 3;
+            border-color: rgba(85, 110, 230, .5) !important;
+            box-shadow: 0 4px 12px rgba(85, 110, 230, .14);
+            transform: translateY(-1px);
+        }
+
+        .table-puantaj .day-cell.disabled { opacity: .42; background: #f1f5f9; }
 
         .table-puantaj .is-sunday {
             background-color: #fee2e2 !important;
@@ -224,8 +270,17 @@ use App\Service\Gate;
             width: 100%;
             height: 100%;
             position: relative;
-            border-radius: 6px;
+            /* Aynı türde ardışık kayıtlar birleşmiş görünmesin diye iç ayırıcı çizgi. */
+            border-radius: 5px;
+            box-shadow: inset 0 0 0 1px rgba(71, 85, 105, .18);
             cursor: grab;
+            letter-spacing: .01em;
+            transition: transform .16s ease, box-shadow .16s ease;
+        }
+
+        .table-puantaj .day-cell:hover:not(.disabled) .cell-content {
+            transform: scale(1.04);
+            box-shadow: inset 0 0 0 1px rgba(71, 85, 105, .24), 0 3px 8px rgba(15, 23, 42, .10);
         }
 
         .btn-delete-cell {
@@ -332,6 +387,8 @@ use App\Service\Gate;
         /* Nöbet'ten gelen Pill-Tab Stili */
         .view-buttons {
             display: flex;
+            flex-direction: row !important;
+            flex-wrap: nowrap;
             gap: 4px;
             background: #f4f4f5;
             padding: 4px;
@@ -340,6 +397,9 @@ use App\Service\Gate;
         }
 
         .view-buttons .nav-link {
+            display: block;
+            flex: 0 0 auto;
+            white-space: nowrap;
             padding: 6px 16px;
             font-size: 12px;
             font-weight: 600;
@@ -461,9 +521,42 @@ use App\Service\Gate;
             border-bottom: 1px solid #dee2e6;
         }
 
+        /* Palet taşındığında normal akıştan çıkar; tablo bu boşluğu hemen kullanır. */
+        body.puantaj-palette-floating .card-izin-turleri {
+            position: fixed;
+            /* Sidebar ve üst menüden önde kalmalı; palet çalışma aracıdır. */
+            z-index: 1205;
+            width: min(360px, calc(100vw - 32px));
+            margin: 0 !important;
+            border: 1px solid rgba(85, 110, 230, .18) !important;
+            border-radius: 12px;
+            box-shadow: 0 18px 45px rgba(15, 23, 42, .18) !important;
+            cursor: default;
+        }
+
+        body.puantaj-palette-floating .card-izin-turleri .card-body { padding: 10px !important; }
+        body.puantaj-palette-floating .view-buttons { flex-direction: row !important; flex-wrap: nowrap !important; }
+        body.puantaj-palette-floating .view-buttons .nav-link { width: auto !important; }
+        body.puantaj-palette-floating .izin-palette-restore { display: inline-flex; }
+        body.puantaj-palette-floating .izin-palette-title::after {
+            content: ' • Yüzen palet';
+            color: #94a3b8;
+            font-weight: 500;
+        }
+        body.puantaj-palette-floating .card-izin-turleri .tab-content { max-height: 180px; overflow-y: auto; }
+        body.puantaj-palette-floating .puantaj-table-wrapper { max-height: calc(100vh - 285px); }
+        body.puantaj-palette-dragging .card-izin-turleri { user-select: none; cursor: grabbing; }
+
         /* Fullscreen Modu Stilleri */
         body.puantaj-fullscreen {
             overflow: hidden !important;
+        }
+
+        /* Gerçek çalışma alanı: uygulama navigasyonu ve filtre kartları kapanır. */
+        body.puantaj-fullscreen .vertical-menu,
+        body.puantaj-fullscreen #page-topbar,
+        body.puantaj-fullscreen .quick-favorites-bar {
+            display: none !important;
         }
 
         body.puantaj-fullscreen #puantaj-full-container {
@@ -474,8 +567,40 @@ use App\Service\Gate;
             height: 100vh;
             z-index: 1050;
             background: var(--bs-body-bg, #f3f3f9);
-            padding: 20px;
-            overflow-y: auto;
+            padding: 12px;
+            overflow: hidden;
+        }
+
+        body.puantaj-fullscreen #puantaj-full-container > .row { height: 100%; }
+        body.puantaj-fullscreen #puantaj-full-container > .row > .col-12:first-child,
+        body.puantaj-fullscreen #puantaj-full-container .card-izin-turleri {
+            display: none;
+        }
+
+        /* Palet daha önce yüzdürülmemiş olsa bile tam ekranda her zaman erişilebilir. */
+        body.puantaj-fullscreen:not(.puantaj-palette-floating) #puantaj-full-container .card-izin-turleri {
+            display: block !important;
+            position: fixed;
+            top: 16px !important;
+            left: 50%;
+            z-index: 2140;
+            width: min(420px, calc(100vw - 32px));
+            margin: 0 !important;
+            border: 1px solid rgba(85, 110, 230, .2) !important;
+            border-radius: 12px;
+            box-shadow: 0 16px 40px rgba(15, 23, 42, .22) !important;
+            transform: translateX(-50%);
+        }
+
+        body.puantaj-fullscreen:not(.puantaj-palette-floating) #puantaj-full-container .card-izin-turleri .card-body {
+            padding: 10px !important;
+        }
+
+        /* Kart ve kaydırma alanı ekranın tamamını tabloya ayırır. */
+        body.puantaj-fullscreen #puantaj-full-container > .row > .col-12:last-child,
+        body.puantaj-fullscreen #puantaj-full-container > .row > .col-12:last-child > .card,
+        body.puantaj-fullscreen #puantaj-full-container > .row > .col-12:last-child .card-body {
+            height: 100%;
         }
 
         body.puantaj-fullscreen .puantaj-table-header {
@@ -486,12 +611,63 @@ use App\Service\Gate;
             top: 70px !important;
         }
 
+        body.puantaj-fullscreen.puantaj-palette-floating .card-izin-turleri { top: auto !important; }
+
+        /* Tam ekran, kendi stacking context'ini oluşturur; palet bunun da üstünde kalır. */
+        body.puantaj-fullscreen.puantaj-palette-floating .card-izin-turleri {
+            z-index: 2140 !important;
+        }
+
+        /* Son güvence: tam ekranda palet hiçbir kapsayıcı/katman tarafından gizlenemez. */
+        body.puantaj-fullscreen #izin-turleri-palette,
+        body.puantaj-fullscreen #puantaj-full-container #izin-turleri-palette {
+            display: block !important;
+            position: fixed !important;
+            top: 16px !important;
+            left: 50% !important;
+            z-index: 2147483000 !important;
+            width: min(420px, calc(100vw - 32px)) !important;
+            margin: 0 !important;
+            transform: translateX(-50%) !important;
+            visibility: visible !important;
+            opacity: 1 !important;
+        }
+
+        .puantaj-save-fab { display: none; }
+
+        body.puantaj-fullscreen .puantaj-save-fab {
+            position: fixed;
+            right: 24px;
+            bottom: 24px;
+            z-index: 2145;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            min-height: 46px;
+            padding: 0 18px;
+            border: 0;
+            border-radius: 12px;
+            background: #111827;
+            color: #fff;
+            font-size: 13px;
+            font-weight: 700;
+            box-shadow: 0 12px 28px rgba(15, 23, 42, .28);
+            transition: transform .16s ease, box-shadow .16s ease;
+        }
+
+        body.puantaj-fullscreen .puantaj-save-fab:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 16px 32px rgba(15, 23, 42, .34);
+            color: #fff;
+        }
+
         footer {
             display: none;
         }
 
         body.puantaj-fullscreen .puantaj-table-wrapper {
-            max-height: calc(100vh - 200px) !important;
+            height: calc(100vh - 24px) !important;
+            max-height: calc(100vh - 24px) !important;
         }
 
         .puantaj-table-wrapper {
@@ -892,9 +1068,10 @@ use App\Service\Gate;
 
             <!-- Orta Satır: İzin Türleri (Tabloya Daha Yakın) -->
             <div class="col-12">
-                <div class="card mb-2 card-izin-turleri border-0 shadow-sm">
+                <div class="card mb-2 card-izin-turleri border-0 shadow-sm" id="izin-turleri-palette">
                     <div class="card-body p-2">
-                        <div class="d-flex align-items-center justify-content-center gap-3">
+                        <div class="izin-palette-header">
+                            <span class="izin-palette-title">Puantaj türleri</span>
                             <div class="view-buttons nav" role="tablist">
                                 <a class="nav-link active" data-bs-toggle="tab" href="#ucretli-izinler" role="tab">
                                     Ücretli
@@ -902,6 +1079,14 @@ use App\Service\Gate;
                                 <a class="nav-link" data-bs-toggle="tab" href="#ucretsiz-izinler" role="tab">
                                     Ücretsiz
                                 </a>
+                            </div>
+                            <div class="d-flex align-items-center gap-1">
+                                <button type="button" class="btn btn-sm btn-light izin-palette-restore" id="izin-palette-restore" title="Paleti tabloya sabitle" aria-label="Paleti tabloya sabitle">
+                                    <i class="mdi mdi-pin-outline"></i>
+                                </button>
+                                <button type="button" class="izin-palette-handle" id="izin-palette-handle" title="Puantaj türlerini sürükleyerek yüzen palete dönüştür" aria-label="Puantaj türlerini sürükle">
+                                    <i class="bx bx-grid-vertical fs-5"></i>
+                                </button>
                             </div>
                         </div>
 
@@ -958,6 +1143,12 @@ use App\Service\Gate;
         </div>
     </div>
 </div>
+
+<!-- Tam ekranda üst araç çubuğu yerine sabit hızlı kaydetme eylemi -->
+<button type="button" class="puantaj-save-fab" id="btn-save-floating" aria-label="Puantaj değişikliklerini kaydet">
+    <i class="mdi mdi-content-save-outline fs-5"></i>
+    <span>Kaydet</span>
+</button>
 
 <!-- Excel Import Modal -->
 <div class="modal fade" id="excelImportModal" tabindex="-1" aria-labelledby="excelImportModalLabel" aria-hidden="true">

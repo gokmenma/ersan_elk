@@ -774,7 +774,7 @@ File: Main Js File
     function applyCustomSidebar(color) {
       $("#custom-sidebar-style").remove();
       $(
-        "<style id='custom-sidebar-style'>body .vertical-menu { background-color: " +
+        "<style id='custom-sidebar-style'>body .vertical-menu, [data-bs-theme='dark'] .main-content, [data-bs-theme='dark'] .page-content { background-color: " +
           color +
           " !important; } body .sidebar-sticky-top { background-color: " +
           color +

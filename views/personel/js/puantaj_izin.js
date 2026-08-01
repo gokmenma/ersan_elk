@@ -118,6 +118,37 @@ $(document).ready(function () {
     );
 
     $(this).toggleClass("btn-soft-secondary btn-soft-danger");
+
+    // Tam genişlikte personel sütunundan başlanır; yatay kaydırma konumu şaşırtmaz.
+    if (isFull) {
+      $(".puantaj-table-wrapper").scrollLeft(0);
+    }
+
+    $(document).trigger("puantaj:fullscreen", [isFull]);
+
+    // Destekleyen tarayıcılarda adres çubuğu dahil tüm ekranı çalışma alanına bırak.
+    if (isFull && document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(() => {
+        // Tarayıcı izin vermezse CSS tam ekran düzeni yine kullanılabilir.
+      });
+    } else if (!isFull && document.fullscreenElement && document.exitFullscreen) {
+      document.exitFullscreen();
+    }
+  });
+
+  // Tarayıcının kendi ESC davranışıyla çıkılırsa arayüz durumunu da geri al.
+  $(document).on("fullscreenchange", function () {
+    if (!document.fullscreenElement && $("body").hasClass("puantaj-fullscreen")) {
+      $("body").removeClass("puantaj-fullscreen");
+      $("#btn-fullscreen")
+        .html('<i class="mdi mdi-fullscreen me-1"></i> Tam Ekran')
+        .removeClass("btn-soft-secondary btn-soft-danger");
+    }
+  });
+
+  // Tam ekran hızlı kaydet: mevcut kaydetme mantığını tetikler, ayrı işlem akışı oluşturmaz.
+  $("#btn-save-floating").on("click", function () {
+    $("#btn-save-selected").trigger("click");
   });
 
   // ESC ile Tam Ekrandan Çık
@@ -126,6 +157,131 @@ $(document).ready(function () {
       $("#btn-fullscreen").click();
     }
   });
+
+  // Puantaj türleri paleti: sürükleme tutamacı kartı yüzen bir araç paletine çevirir.
+  // Kart normal akıştan çıktığı için tablo, kaybolan alanı anında kullanır.
+  (function initIzinPalette() {
+    const $palette = $("#izin-turleri-palette");
+    const $handle = $("#izin-palette-handle");
+    const $body = $("body");
+    const storageKey = "puantaj_izin_paleti_konum";
+    if (!$palette.length || !$handle.length) return;
+
+    let pointerStart = null;
+    let paletteStart = null;
+    let isDragging = false;
+    let $palettePlaceholder = null;
+
+    function clampPosition(left, top) {
+      const width = $palette.outerWidth();
+      const height = $palette.outerHeight();
+      return {
+        left: Math.max(8, Math.min(left, window.innerWidth - width - 8)),
+        top: Math.max(8, Math.min(top, window.innerHeight - height - 8)),
+      };
+    }
+
+    function applyPalettePosition(position, width) {
+      const palette = $palette[0];
+      if (width) palette.style.setProperty("width", `${width}px`, "important");
+      palette.style.setProperty("left", `${position.left}px`, "important");
+      palette.style.setProperty("top", `${position.top}px`, "important");
+      // Tam ekranın merkezleme transformunu sürükleme koordinatına karıştırma.
+      palette.style.setProperty("transform", "none", "important");
+    }
+
+    function setFloating(left, top) {
+      const rect = $palette[0].getBoundingClientRect();
+      // Bazı sayfa kapsayıcıları yeni bir stacking context oluşturur. Kartı body'ye
+      // taşıyarak sidebar'ın katmanından tamamen çıkarıyoruz.
+      if ($palette.parent()[0] !== document.body) {
+        $palettePlaceholder = $("<div class=\"izin-palette-placeholder\" aria-hidden=\"true\"></div>");
+        $palette.before($palettePlaceholder);
+        $("body").append($palette);
+      }
+      $body.addClass("puantaj-palette-floating");
+      // Sabit konuma geçerken kartın ekrandaki yeri korunur; zıplama hissi olmaz.
+      const width = Math.min(rect.width, window.innerWidth - 32, 360);
+      $palette.css({ left: left ?? rect.left, top: top ?? rect.top, width });
+      const position = clampPosition(left ?? rect.left, top ?? rect.top);
+      applyPalettePosition(position, width);
+      $(window).trigger("resize");
+    }
+
+    function restorePalette() {
+      $body.removeClass("puantaj-palette-floating puantaj-palette-dragging");
+      const palette = $palette[0];
+      ["left", "top", "width", "transform"].forEach((property) => palette.style.removeProperty(property));
+      if ($palettePlaceholder && $palettePlaceholder.length) {
+        $palette.insertBefore($palettePlaceholder);
+        $palettePlaceholder.remove();
+        $palettePlaceholder = null;
+      }
+      localStorage.removeItem(storageKey);
+      $(window).trigger("resize");
+    }
+
+    // Önceki oturumda palet yüzdürülmüşse aynı tercihi koru.
+    try {
+      const savedPosition = JSON.parse(localStorage.getItem(storageKey));
+      if (savedPosition && Number.isFinite(savedPosition.left) && Number.isFinite(savedPosition.top)) {
+        setFloating(savedPosition.left, savedPosition.top);
+      }
+    } catch (_) {
+      localStorage.removeItem(storageKey);
+    }
+
+    $handle.on("pointerdown", function (event) {
+      if (event.button !== undefined && event.button !== 0) return;
+      pointerStart = { x: event.clientX, y: event.clientY };
+      const rect = $palette[0].getBoundingClientRect();
+      paletteStart = { left: rect.left, top: rect.top };
+      isDragging = false;
+      this.setPointerCapture?.(event.pointerId);
+      event.preventDefault();
+    });
+
+    $handle.on("pointermove", function (event) {
+      if (!pointerStart) return;
+      const deltaX = event.clientX - pointerStart.x;
+      const deltaY = event.clientY - pointerStart.y;
+      if (!isDragging && Math.hypot(deltaX, deltaY) < 5) return;
+
+      if (!isDragging) {
+        setFloating(paletteStart.left, paletteStart.top);
+        isDragging = true;
+        $body.addClass("puantaj-palette-dragging");
+      }
+
+      const position = clampPosition(paletteStart.left + deltaX, paletteStart.top + deltaY);
+      applyPalettePosition(position);
+    });
+
+    $handle.on("pointerup pointercancel", function () {
+      if (isDragging) {
+        const position = { left: parseFloat($palette.css("left")), top: parseFloat($palette.css("top")) };
+        localStorage.setItem(storageKey, JSON.stringify(position));
+      }
+      $body.removeClass("puantaj-palette-dragging");
+      pointerStart = null;
+      paletteStart = null;
+      isDragging = false;
+    });
+
+    $("#izin-palette-restore").on("click", restorePalette);
+    $(document).on("puantaj:fullscreen", function (_event, isFullscreen) {
+      if (!isFullscreen) return;
+
+      // Tam ekran kapsayıcısının stacking context'inden çıkar: palet daima tablonun üstündedir.
+      const paletteWidth = Math.min(360, window.innerWidth - 32);
+      setFloating(Math.max(16, (window.innerWidth - paletteWidth) / 2), 16);
+    });
+    $(window).on("resize.puantajPalette", function () {
+      if (!$body.hasClass("puantaj-palette-floating")) return;
+      const position = clampPosition(parseFloat($palette.css("left")), parseFloat($palette.css("top")));
+      applyPalettePosition(position);
+    });
+  })();
 
   $(document).on("click", ".draggable-izin", function () {
     selectedType = {
@@ -1121,7 +1277,12 @@ $(document).ready(function () {
    */
   function updateStickyHeights() {
     const headerHeight = $(".puantaj-table-header").outerHeight() || 0;
-    const izinTurleriHeight = $(".card-izin-turleri").outerHeight() || 0;
+    const isPaletteFloating = $("body").hasClass("puantaj-palette-floating");
+
+    // Yüzen paletin konumu kullanıcı tarafından belirlenir; sticky hesap bunu ezmemeli.
+    if (isPaletteFloating) {
+      return;
+    }
 
     // Normal modda sticky offsetleri
     if (!$("body").hasClass("puantaj-fullscreen")) {

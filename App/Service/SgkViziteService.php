@@ -3,6 +3,7 @@ require_once __DIR__ . '/../../vendor/autoload.php';
 
 use App\Helper\Security;
 use App\Helper\Helper;
+use App\Model\SgkSorguOnbellekModel;
 use App\Model\SgkTokenModel;
 use App\Model\SystemLogModel;
 
@@ -18,6 +19,7 @@ class SgkViziteService
     private $tokenExpiresAt;
     private $activeUserKey;
     private $tokenDepoNesnesi;
+    private $sorguOnbellekNesnesi;
 
     /**
      * Sınıfı başlatır.
@@ -148,6 +150,93 @@ XML;
         return $this->tokenDepoNesnesi;
     }
 
+    private function sorguOnbellegi(): SgkSorguOnbellekModel
+    {
+        if ($this->sorguOnbellekNesnesi === null) {
+            $this->sorguOnbellekNesnesi = new SgkSorguOnbellekModel();
+        }
+        return $this->sorguOnbellekNesnesi;
+    }
+
+    /**
+     * @return array{cevap:?array, taze:bool, son_sorgu_zamani:?int}|null
+     */
+    private function sorguOnbellegindenGetir(string $metot, array $parametreler): ?array
+    {
+        try {
+            $onbellek = $this->sorguOnbellegi();
+            return $onbellek->kayitGetir(
+                $onbellek->hesapAnahtari($this->kullaniciAdi, $this->isyeriKodu),
+                $onbellek->sorguAnahtari($metot, $parametreler)
+            );
+        } catch (Throwable $e) {
+            error_log('SGK sorgu önbelleği okunamadı: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    private function sorguLimitiAktifMi(string $metot): bool
+    {
+        try {
+            $onbellek = $this->sorguOnbellegi();
+            return $onbellek->sorguLimitiAktifMi(
+                $onbellek->hesapAnahtari($this->kullaniciAdi, $this->isyeriKodu),
+                $metot
+            );
+        } catch (Throwable $e) {
+            error_log('SGK sorgu sınırı kontrol edilemedi: ' . $e->getMessage());
+            return false;
+        }
+    }
+
+    private function sorguZamaniniIsaretle(string $metot, array $parametreler): void
+    {
+        try {
+            $onbellek = $this->sorguOnbellegi();
+            $onbellek->sorguZamaniniIsaretle(
+                $onbellek->hesapAnahtari($this->kullaniciAdi, $this->isyeriKodu),
+                $onbellek->sorguAnahtari($metot, $parametreler),
+                $metot,
+                isset($_SESSION['firma_id']) ? (int) $_SESSION['firma_id'] : null
+            );
+        } catch (Throwable $e) {
+            error_log('SGK sorgu zamanı işaretlenemedi: ' . $e->getMessage());
+        }
+    }
+
+    private function sorguOnbellegeYaz(string $metot, array $parametreler, array $cevap): void
+    {
+        try {
+            $onbellek = $this->sorguOnbellegi();
+            $onbellek->cevapKaydet(
+                $onbellek->hesapAnahtari($this->kullaniciAdi, $this->isyeriKodu),
+                $onbellek->sorguAnahtari($metot, $parametreler),
+                $metot,
+                $cevap,
+                SgkSorguOnbellekModel::VARSAYILAN_OMUR_SANIYE,
+                isset($_SESSION['firma_id']) ? (int) $_SESSION['firma_id'] : null
+            );
+        } catch (Throwable $e) {
+            error_log('SGK sorgu önbelleğine yazılamadı: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * Onay/iptal gibi veriyi değiştiren işlemlerden sonra onaylı rapor önbelleğini bayatlatır.
+     */
+    private function onayliRaporOnbelleginiBayatlat(): void
+    {
+        try {
+            $onbellek = $this->sorguOnbellegi();
+            $onbellek->bayatlat(
+                $onbellek->hesapAnahtari($this->kullaniciAdi, $this->isyeriKodu),
+                'onayliRaporlarTarihile'
+            );
+        } catch (Throwable $e) {
+            error_log('SGK onaylı rapor önbelleği bayatlatılamadı: ' . $e->getMessage());
+        }
+    }
+
     private function tokenReddedildiMi($responseNode, string $methodName): bool
     {
         $returnKey = $methodName . 'Return';
@@ -206,7 +295,7 @@ XML;
         }
 
         $this->wsToken = $kayit['token'];
-        $this->tokenExpiresAt = strtotime($kayit['gecerlilik_bitis']);
+        $this->tokenExpiresAt = time() + $kayit['kalan_saniye'];
         $this->activeUserKey = $this->kullaniciAdi . '|' . $this->isyeriKodu;
 
         return $this->wsToken;
@@ -368,13 +457,39 @@ XML;
     /**
      * METOT 24: OnayliRaporlarTarihile (MANUEL DÖNÜŞÜM VERSİYONU)
      * Belirtilen tarih aralığında onaylanmış raporları getirir.
+     *
+     * SGK bu metotta dakikada 1 sorgu sınırı uygular. Cevap kısa süreli önbelleğe alınır;
+     * sınır içindeyken SGK'ya yeni istek gönderilmez, elde varsa önbellekteki cevap döndürülür.
+     *
      * @param DateTime $tarih1 Başlangıç tarihi
      * @param DateTime $tarih2 Bitiş tarihi
+     * @param bool $onbellekKullan false verilirse sınır kontrolü ve önbellek devre dışı kalır.
      * @return array Her zaman onaylanmış raporların bulunduğu saf bir PHP dizisi döndürür.
      * @throws Exception
      */
-    public function onayliRaporlariGetir(DateTime $tarih1, DateTime $tarih2)
+    public function onayliRaporlariGetir(DateTime $tarih1, DateTime $tarih2, bool $onbellekKullan = true)
     {
+        $sorguParametreleri = [$tarih1->format('Y-m-d'), $tarih2->format('Y-m-d')];
+        $onbellek = null;
+
+        if ($onbellekKullan) {
+            $onbellek = $this->sorguOnbellegindenGetir('onayliRaporlarTarihile', $sorguParametreleri);
+
+            if ($onbellek !== null && $onbellek['taze'] && is_array($onbellek['cevap'])) {
+                return $onbellek['cevap'];
+            }
+
+            if ($this->sorguLimitiAktifMi('onayliRaporlarTarihile')) {
+                if ($onbellek !== null && is_array($onbellek['cevap'])) {
+                    return $onbellek['cevap'];
+                }
+
+                throw new Exception('SGK onaylı rapor sorgusu dakikada yalnızca bir kez yapılabilir. Lütfen bir dakika sonra tekrar deneyin.');
+            }
+
+            $this->sorguZamaniniIsaretle('onayliRaporlarTarihile', $sorguParametreleri);
+        }
+
         $params = [
             'kullaniciAdi' => $this->kullaniciAdi,
             'isyeriKodu' => $this->isyeriKodu,
@@ -442,7 +557,18 @@ XML;
             $hataMesaji = isset($returnNode->sonucAciklama)
                 ? (string)$returnNode->sonucAciklama
                 : 'Bilinmeyen bir hata oluştu.';
+
+            // SGK sınır veya geçici hata döndürdüyse, elde bayat da olsa cevap varsa onu kullan
+            if ($onbellek !== null && is_array($onbellek['cevap'])) {
+                error_log('SGK onaylı rapor sorgusu başarısız, önbellekteki son cevap kullanıldı: ' . $hataMesaji);
+                return $onbellek['cevap'];
+            }
+
             throw new Exception("Onaylı raporlar getirilemedi: " . $hataMesaji);
+        }
+
+        if ($onbellekKullan) {
+            $this->sorguOnbellegeYaz('onayliRaporlarTarihile', $sorguParametreleri, $sonucDizisi);
         }
 
         return $sonucDizisi; // Her zaman doğru yapıda ve sayıda eleman içeren PHP dizisini döndür
@@ -656,6 +782,8 @@ XML;
 
         $response = $this->sendRequest('onaylIptal', $params);
 
+        $this->onayliRaporOnbelleginiBayatlat();
+
         return $response->onaylIptalReturn;
     }
 
@@ -788,6 +916,8 @@ XML;
         ];
 
         $response = $this->sendRequest('raporOnay', $params);
+
+        $this->onayliRaporOnbelleginiBayatlat();
 
         return $response->raporOnayReturn;
     }

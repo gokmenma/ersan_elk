@@ -774,6 +774,24 @@ try {
         $sgkService = new SgkViziteService($kullaniciAdi, $isyeriKodu, $isyeriSifresi);
         $raporlar = $sgkService->raporlariGetir($tarih, false); // arsiv=false -> sadece aktif raporlar
 
+        // SGK'nın raporAramaTarihile metodu, onaylanmış olsa bile RaporOkunduKapat ile kapatılmamış
+        // tüm raporları döndürür. Bu yüzden onaylanmış raporlar bu listeden ayıklanır.
+        // Tarih aralığı, "Onaylanmış Raporlar" ekranıyla birebir aynı tutulur; böylece SGK'nın
+        // dakikada 1 sorgu sınırına takılmadan aynı önbellek kaydı paylaşılır.
+        $onayliRaporIdleri = [];
+        try {
+            $onayliTarih1 = new DateTime("$yil-$ay-01");
+            $onayliTarih2 = new DateTime($onayliTarih1->format('Y-m-t'));
+
+            foreach ($sgkService->onayliRaporlariGetir($onayliTarih1, $onayliTarih2) as $onayliRapor) {
+                if (!empty($onayliRapor['MEDULARAPORID'])) {
+                    $onayliRaporIdleri[(string) $onayliRapor['MEDULARAPORID']] = true;
+                }
+            }
+        } catch (Exception $e) {
+            error_log('SGK onaylı rapor listesi alınamadı, onay bekleyen listesi filtrelenemedi: ' . $e->getMessage());
+        }
+
         // Personel listesini getir (TC Kimlik No eşleştirmesi için)
         $personelStmt = $Personel->db->prepare("SELECT id, adi_soyadi, tc_hash FROM personel WHERE firma_id = ? AND aktif_mi = 1 AND silinme_tarihi IS NULL AND (disardan_sigortali = 0 OR FIND_IN_SET('puantaj', gorunum_modulleri))");
         $personelStmt->execute([$firma_id]);
@@ -796,7 +814,15 @@ try {
 
         // Raporları işle ve eşleşmeleri bul
         $islenecekRaporlar = [];
+        $onaylandigiIcinAtlanan = 0;
+
         foreach ($raporlar as $rapor) {
+            $medulaRaporId = (string) ($rapor['MEDULARAPORID'] ?? '');
+            if ($medulaRaporId !== '' && isset($onayliRaporIdleri[$medulaRaporId])) {
+                $onaylandigiIcinAtlanan++;
+                continue;
+            }
+
             $tc = $rapor['TCKIMLIKNO'] ?? '';
             $personelData = $tc ? ($tcToPersonel[hash('sha256', $tc)] ?? null) : null;
 
@@ -868,7 +894,8 @@ try {
             'status' => 'success',
             'data' => $islenecekRaporlar,
             'toplam' => count($islenecekRaporlar),
-            'eslesen' => count(array_filter($islenecekRaporlar, fn($r) => $r['eslesti']))
+            'eslesen' => count(array_filter($islenecekRaporlar, fn($r) => $r['eslesti'])),
+            'onaylandigi_icin_atlanan' => $onaylandigiIcinAtlanan
         ]);
 
     } elseif ($action === 'sgk-raporlari-isle') {
