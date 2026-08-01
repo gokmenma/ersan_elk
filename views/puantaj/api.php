@@ -690,7 +690,48 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $Puantaj = new PuantajModel();
 
+        // Kaçak tutanak analizinin PWA, Kaçak İşlemleri ve Puantaj ekranlarında
+        // aynı kurallarla çalışması için tek ortak servisi kullan.
         if ($useOpenai) {
+            $dropdownPersonel = [];
+            $personelListRaw = $_POST['kacak_personel_list'] ?? '';
+            $decodedPersonelList = json_decode((string) $personelListRaw, true);
+            if (is_array($decodedPersonelList)) {
+                foreach ($decodedPersonelList as $dp) {
+                    if (!empty($dp['id']) && !empty($dp['name'])) {
+                        $dropdownPersonel[] = [
+                            'id' => (int) $dp['id'],
+                            'name' => trim((string) $dp['name']),
+                        ];
+                    }
+                }
+            }
+
+            if (empty($dropdownPersonel)) {
+                $Personel = new \App\Model\PersonelModel();
+                foreach ($Personel->all(false, 'puantaj', $uploadDate) as $p) {
+                    $dropdownPersonel[] = ['id' => (int) $p->id, 'name' => $p->adi_soyadi];
+                }
+            }
+
+            $Analiz = new \App\Service\KacakTutanakAnalizService();
+            $extractedData = $Analiz->analyze(
+                $_FILES['excel_file'],
+                $uploadDate,
+                $Analiz->getPersonelAdaylari($dropdownPersonel)
+            );
+
+            $response['status'] = 'success';
+            $response['is_ai_extracted'] = true;
+            $response['extracted_data'] = $extractedData;
+            $response['message'] = 'Dosya başarıyla analiz edildi. Lütfen aşağıdaki bilgileri kontrol edip kaydedin.';
+            echo json_encode($response, JSON_UNESCAPED_UNICODE);
+            exit;
+        }
+
+        // Eski ekran-içi analiz kodu geriye dönük referans olarak tutuluyor;
+        // çalışma zamanı yukarıdaki ortak servisten çıkış yapar.
+        if (false && $useOpenai) {
             // OpenAI ile analiz etme mantığı
             $openaiKey = $Settings->getSettings('openai_api_key');
             if (empty($openaiKey)) {

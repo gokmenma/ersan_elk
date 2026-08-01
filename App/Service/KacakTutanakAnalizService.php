@@ -77,7 +77,10 @@ class KacakTutanakAnalizService
         $userContent = $base64Image !== null
             ? [
                 ['type' => 'text', 'text' => $prompt],
-                ['type' => 'image_url', 'image_url' => ['url' => 'data:' . $mimeType . ';base64,' . $base64Image]],
+                ['type' => 'image_url', 'image_url' => [
+                    'url' => 'data:' . $mimeType . ';base64,' . $base64Image,
+                    'detail' => 'high',
+                ]],
             ]
             : $prompt;
 
@@ -172,7 +175,13 @@ Sistemde kayıtlı ve bu ekranda seçilebilir personel listesi aşağıdadır. S
 Geçerli ilçeler (sadece bunlardan birini yaz): {$ilceler}
 
 Kritik Kurallar:
-1. Tarih: Tutanaktaki fiili tespit/düzenleme tarihini dikkatli oku. Tutanak altındaki 'MEMNU İŞİ YAPAN' veya imza atan görevliler alanının yanındaki el yazısı tarihi öncelikli oku. Doğum/abone tarihlerini tespit tarihi sanma. YYYY-MM-DD formatına çevir. Hiç okunmuyorsa {$varsayilanTarih} kullan ve 'guven.tarih' değerine 30 gibi düşük bir yüzde ver.
+1. Tarih (çok önemli, önce bu alanı kontrol et):
+   - Tutanaktaki fiili tespit/düzenleme tarihini oku.
+   - Öncelikle belgenin EN ALT/SAĞ ALT bölümüne bak. 'MEMNU İŞİ YAPAN' yazısının hemen üstündeki veya yanındaki el yazısı tarih, tutanak tarihidir. Örneğin görselde burada '17.07.2026' yazıyorsa sonuç kesinlikle '2026-07-17' olmalıdır.
+   - Üstteki 'A - ABONE BİLGİLERİ' bölümünde, T.C. Kimlik No veya abone bilgilerinin yakınında yazan tarih doğum/abone tarihidir. Örneğin '20.08.1991' gibi bir tarihi tutanak tarihi olarak ASLA kullanma.
+   - Seri numarası, sayaç numarası, telefon numarası veya formun basım tarihini tarih olarak yorumlama.
+   - Birden fazla tarih görürsen konuma göre seçim yap: sağ alttaki 'MEMNU İŞİ YAPAN' tarihi her zaman üstteki abone/doğum tarihinden önceliklidir.
+   - Seçtiğin tarihi YYYY-MM-DD formatına çevir. Sağ alttaki tarih hiç okunamıyorsa {$varsayilanTarih} kullan ve 'guven.tarih' değerini 30 veya daha düşük ver.
 2. İlçe: 'İlçesi' kutucuğundaki el yazısını dikkatli oku ve yukarıdaki geçerli ilçe listesiyle birebir eşleştir. Yanlış ilçe eşleştirmekten kaçın (görselde 'Onikişubat' yazıyorsa 'Dulkadiroğlu' yazma). Net değilse en yakın tahmini yaz ve 'guven.ilce' değerine düşük yüzde ver.
 3. Personel Eşleştirme (çok sıkı, asla varsayım yapma):
    - Tutanağın altında 'KONTROL EDENLER' / 'Tutanak Düzenleyen Memurlar' alanındaki imza veya parafların baş harflerini tespit et.
