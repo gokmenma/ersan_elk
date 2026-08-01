@@ -1553,6 +1553,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     $rowNum = $i + 1;
 
                     $plaka = strtoupper(trim($row[$colIndices['plaka']] ?? ''));
+
+                    // Bazı Excel kaynakları iki haneli il kodunu 001, 034 gibi
+                    // üç haneli gönderiyor. Yalnızca baştaki bu fazladan sıfırı
+                    // kaldır; plakanın diğer rakamlarına dokunma.
+                    $plaka = preg_replace('/^0(?=\d{2}(?:\D|$))/', '', $plaka);
                     if (empty($plaka))
                         continue;
 
