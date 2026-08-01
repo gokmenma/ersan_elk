@@ -487,7 +487,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                             <span class="brand-sub">Yönetim Paneli</span>
                         </div>
                     </div>
-                    <button type="button" class="btn btn-sm p-1 border-0 bg-transparent text-muted" id="sidebar-collapse-btn" style="display: flex; align-items: center; justify-content: center; font-size: 20px; cursor: pointer; z-index: 101; min-width: 32px; min-height: 32px;">
+                    <button type="button" class="btn btn-sm p-1 border-0 bg-transparent text-muted" id="sidebar-collapse-btn" style="display: none !important;">
                         <i data-feather="menu" style="width: 20px; height: 20px;"></i>
                     </button>
                 </div>
