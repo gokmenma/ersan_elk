@@ -49,12 +49,18 @@ class KacakTutanakAnalizService
 
         $uzanti = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
         $base64Image = null;
+        $dateCropDataUrl = null;
         $mimeType = '';
         $belgeMetni = '';
 
         if (in_array($uzanti, ['png', 'jpg', 'jpeg', 'webp'], true)) {
-            $base64Image = base64_encode(file_get_contents($file['tmp_name']));
+            $imageBinary = file_get_contents($file['tmp_name']);
+            if ($imageBinary === false) {
+                throw new Exception('Tutanak görseli okunamadı.');
+            }
+            $base64Image = base64_encode($imageBinary);
             $mimeType = 'image/' . ($uzanti === 'jpg' ? 'jpeg' : $uzanti);
+            $dateCropDataUrl = $this->createDateCropDataUrl($imageBinary);
         } elseif ($uzanti === 'pdf') {
             try {
                 $parser = new \Smalot\PdfParser\Parser();
@@ -75,13 +81,17 @@ class KacakTutanakAnalizService
         $prompt = $this->buildPrompt($varsayilanTarih, $personelAdaylari, $base64Image !== null, $belgeMetni);
 
         $userContent = $base64Image !== null
-            ? [
+            ? array_values(array_filter([
                 ['type' => 'text', 'text' => $prompt],
                 ['type' => 'image_url', 'image_url' => [
                     'url' => 'data:' . $mimeType . ';base64,' . $base64Image,
                     'detail' => 'high',
                 ]],
-            ]
+                $dateCropDataUrl !== null ? ['type' => 'image_url', 'image_url' => [
+                    'url' => $dateCropDataUrl,
+                    'detail' => 'high',
+                ]] : null,
+            ]))
             : $prompt;
 
         $cevap = $this->callOpenAi($apiKey, $model, $userContent);
@@ -178,6 +188,7 @@ Kritik Kurallar:
 1. Tarih (çok önemli, önce bu alanı kontrol et):
    - Tutanaktaki fiili tespit/düzenleme tarihini oku.
    - Öncelikle belgenin EN ALT/SAĞ ALT bölümüne bak. 'MEMNU İŞİ YAPAN' yazısının hemen üstündeki veya yanındaki el yazısı tarih, tutanak tarihidir. Örneğin görselde burada '17.07.2026' yazıyorsa sonuç kesinlikle '2026-07-17' olmalıdır.
+   - Görsel girdisi iki resim içeriyorsa ikinci resim bu sağ-alt tarih alanının büyütülmüş yakın planıdır. Tarihin gün, ay ve özellikle yıl rakamlarını ikinci resimden tek tek doğrula. İkinci resimdeki tarihi tam belgedeki küçük görüntüye tercih et.
    - Üstteki 'A - ABONE BİLGİLERİ' bölümünde, T.C. Kimlik No veya abone bilgilerinin yakınında yazan tarih doğum/abone tarihidir. Örneğin '20.08.1991' gibi bir tarihi tutanak tarihi olarak ASLA kullanma.
    - Seri numarası, sayaç numarası, telefon numarası veya formun basım tarihini tarih olarak yorumlama.
    - Birden fazla tarih görürsen konuma göre seçim yap: sağ alttaki 'MEMNU İŞİ YAPAN' tarihi her zaman üstteki abone/doğum tarihinden önceliklidir.
@@ -206,6 +217,70 @@ Alanlar:
 ";
 
         return $prompt . ($gorselMi ? 'Görsel analiz edilerek bu alanlar çıkartılmalıdır.' : "Belge Metni:\n" . $belgeMetni);
+    }
+
+    /**
+     * Tutanak tarihinin bulunduğu sağ-alt alanı kırpar ve iki kat büyütür.
+     * Tam görsel diğer alanlar için korunurken bu yakın plan tarih OCR'ını
+     * belirgin biçimde daha güvenilir hale getirir.
+     */
+    private function createDateCropDataUrl(string $imageBinary): ?string
+    {
+        if (!function_exists('imagecreatefromstring')) {
+            return null;
+        }
+
+        $source = @imagecreatefromstring($imageBinary);
+        if ($source === false) {
+            return null;
+        }
+
+        $width = imagesx($source);
+        $height = imagesy($source);
+        if ($width < 200 || $height < 200) {
+            imagedestroy($source);
+            return null;
+        }
+
+        // KASKİ formunda tarih, sayfanın sağ-alt kısmında "MEMNU İŞİ YAPAN"
+        // başlığının hemen üzerindedir. Bir miktar çevre metni de OCR'a bağlam sağlar.
+        $cropX = (int) floor($width * 0.58);
+        $cropY = (int) floor($height * 0.75);
+        $cropWidth = (int) floor($width * 0.40);
+        $cropWidth = min($cropWidth, $width - $cropX);
+        $cropHeight = (int) floor($height * 0.18);
+        $cropHeight = min($cropHeight, $height - $cropY);
+
+        $scale = 3;
+        $target = imagecreatetruecolor($cropWidth * $scale, $cropHeight * $scale);
+        $white = imagecolorallocate($target, 255, 255, 255);
+        imagefill($target, 0, 0, $white);
+        imagecopyresampled(
+            $target,
+            $source,
+            0,
+            0,
+            $cropX,
+            $cropY,
+            $cropWidth * $scale,
+            $cropHeight * $scale,
+            $cropWidth,
+            $cropHeight
+        );
+        if (function_exists('imagefilter')) {
+            @imagefilter($target, IMG_FILTER_CONTRAST, -18);
+            @imagefilter($target, IMG_FILTER_MEAN_REMOVAL);
+        }
+
+        ob_start();
+        imagejpeg($target, null, 94);
+        $jpeg = ob_get_clean();
+        imagedestroy($target);
+        imagedestroy($source);
+
+        return is_string($jpeg) && $jpeg !== ''
+            ? 'data:image/jpeg;base64,' . base64_encode($jpeg)
+            : null;
     }
 
     private function callOpenAi(string $apiKey, string $model, $userContent): string

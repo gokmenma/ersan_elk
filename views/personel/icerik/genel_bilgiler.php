@@ -64,7 +64,7 @@ use App\Helper\Date;
                         <?php echo Form::FormFloatInput("text", "ehliyet_sinifi", $personel->ehliyet_sinifi ?? "", "Ehliyet Sınıfı", "Ehliyet Sınıfı", "credit-card"); ?>
                     </div>
                     <div class="col-md-6 mb-2">
-                        <?php echo Form::FormSelect2("seyahat_engeli", ['Var' => 'Var', 'Yok' => 'Yok'], $personel->seyahat_engeli ?? '', "Seyahat Engeli", "truck"); ?>
+                        <?php echo Form::FormSelect2("seyahat_engeli", ['Var' => 'Var', 'Yok' => 'Yok'], $personel->seyahat_engeli ?? 'Yok', "Seyahat Engeli", "truck"); ?>
                     </div>
                 </div>
             </div>
@@ -117,7 +117,7 @@ use App\Helper\Date;
                 </div>
                 <div class="row mb-3">
                     <div class="col-md-6 mb-2">
-                        <?php echo Form::FormSelect2("esi_calisiyor_mu", ['Evet' => 'Evet', 'Hayır' => 'Hayır'], $personel->esi_calisiyor_mu ?? '', "Eşi Çalışıyor Mu?", "briefcase"); ?>
+                        <?php echo Form::FormSelect2("esi_calisiyor_mu", ['Evet' => 'Evet', 'Hayır' => 'Hayır'], $personel->esi_calisiyor_mu ?? 'Hayır', "Eşi Çalışıyor Mu?", "briefcase"); ?>
                     </div>
                     <div class="col-md-6 d-none">
                         <?php echo Form::FormFloatInput("text", "resim_yolu", $personel->resim_yolu ?? "", "Resim Yolu / URL", "Resim Yolu", "image"); ?>

@@ -24,7 +24,7 @@ if ($firma_id == 0 || $firma_id == null) {
 /**
  * İş türü ücret geçmişini günceller.
  */
-function upsertIsTuruUcretGecmisi(PDO $db, int $firmaId, int $isTuruId, float $ucret, float $aracliUcret, string $baslangicTarihi): void
+function upsertIsTuruUcretGecmisi(PDO $db, int $firmaId, int $isTuruId, float $ucret, float $aracliUcret, string $baslangicTarihi, float $okumaUcret = 0): void
 {
     $baslangicDate = date('Y-m-d', strtotime($baslangicTarihi));
     $oncekiGun = date('Y-m-d', strtotime($baslangicDate . ' -1 day'));
@@ -35,14 +35,14 @@ function upsertIsTuruUcretGecmisi(PDO $db, int $firmaId, int $isTuruId, float $u
     $sameStartId = intval($sameStart->fetchColumn() ?: 0);
 
     if ($sameStartId > 0) {
-        $db->prepare("\n            UPDATE is_turu_ucret_gecmisi\n            SET ucret = ?, aracli_ucret = ?, guncelleme_tarihi = NOW()\n            WHERE id = ?\n        ")->execute([$ucret, $aracliUcret, $sameStartId]);
+        $db->prepare("\n            UPDATE is_turu_ucret_gecmisi\n            SET ucret = ?, aracli_ucret = ?, okuma_ucret = ?, guncelleme_tarihi = NOW()\n            WHERE id = ?\n        ")->execute([$ucret, $aracliUcret, $okumaUcret, $sameStartId]);
         return;
     }
 
     // Başlangıçtan önce başlayan açık kaydın bitişini bir gün önceye çek
     $db->prepare("\n        UPDATE is_turu_ucret_gecmisi\n        SET gecerlilik_bitis = ?, guncelleme_tarihi = NOW()\n        WHERE firma_id = ?\n        AND is_turu_id = ?\n        AND silinme_tarihi IS NULL\n        AND gecerlilik_baslangic < ?\n        AND (gecerlilik_bitis IS NULL OR gecerlilik_bitis >= ?)\n    ")->execute([$oncekiGun, $firmaId, $isTuruId, $baslangicDate, $baslangicDate]);
 
-    $db->prepare("\n        INSERT INTO is_turu_ucret_gecmisi\n        (firma_id, is_turu_id, ucret, aracli_ucret, gecerlilik_baslangic, gecerlilik_bitis, olusturma_tarihi)\n        VALUES (?, ?, ?, ?, ?, NULL, NOW())\n    ")->execute([$firmaId, $isTuruId, $ucret, $aracliUcret, $baslangicDate]);
+    $db->prepare("\n        INSERT INTO is_turu_ucret_gecmisi\n        (firma_id, is_turu_id, ucret, aracli_ucret, okuma_ucret, gecerlilik_baslangic, gecerlilik_bitis, olusturma_tarihi)\n        VALUES (?, ?, ?, ?, ?, ?, NULL, NOW())\n    ")->execute([$firmaId, $isTuruId, $ucret, $aracliUcret, $okumaUcret, $baslangicDate]);
 }
 
 /**
@@ -257,6 +257,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-kaydet") {
     try {
         $yeniUcret = floatval(Helper::formattedMoneyToNumber($_POST["is_turu_ucret"] ?? "0"));
         $yeniAracliUcret = floatval(Helper::formattedMoneyToNumber($_POST["aracli_personel_is_turu_ucret"] ?? "0"));
+        $yeniOkumaUcret = floatval(Helper::formattedMoneyToNumber($_POST["okuma_is_turu_ucret"] ?? "0"));
 
         $data = [
             "id" => $id,
@@ -265,6 +266,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-kaydet") {
             "grup" => "is_turu",
             "is_turu_ucret" => $yeniUcret,
             "aracli_personel_is_turu_ucret" => $yeniAracliUcret,
+            "okuma_is_turu_ucret" => $yeniOkumaUcret,
             "is_emri_sonucu" => $_POST["is_emri_sonucu"] ?? "",
             "tur_adi" => $_POST["is_turu"] ?? "",
             "rapor_sekmesi" => $_POST["rapor_sekmesi"] ?? "",
@@ -289,7 +291,10 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-kaydet") {
         if ($eskiKayit) {
             $eskiUcret = floatval(Helper::formattedMoneyToNumber($eskiKayit->is_turu_ucret ?? 0));
             $eskiAracli = floatval(Helper::formattedMoneyToNumber($eskiKayit->aracli_personel_is_turu_ucret ?? 0));
-            $ucretDegisti = (abs($eskiUcret - $yeniUcret) > 0.0001) || (abs($eskiAracli - $yeniAracliUcret) > 0.0001);
+            $eskiOkuma = floatval(Helper::formattedMoneyToNumber($eskiKayit->okuma_is_turu_ucret ?? 0));
+            $ucretDegisti = (abs($eskiUcret - $yeniUcret) > 0.0001)
+                || (abs($eskiAracli - $yeniAracliUcret) > 0.0001)
+                || (abs($eskiOkuma - $yeniOkumaUcret) > 0.0001);
         }
 
         if ($plainId > 0 && ($id == 0 || $ucretDegisti)) {
@@ -299,7 +304,8 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-kaydet") {
                 intval($plainId),
                 $yeniUcret,
                 $yeniAracliUcret,
-                $ucretBaslangic
+                $ucretBaslangic,
+                $yeniOkumaUcret
             );
         }
 
@@ -501,7 +507,16 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-excel-yukle") {
         }
 
         // Beklenen başlıklar
-        $expectedHeaders = ['İş Türü', 'İş Emri Sonucu', 'İş Türü Ücreti', 'Açıklama'];
+        $expectedHeaders = [
+            'ID',
+            'İş Türü',
+            'İş Emri Sonucu',
+            'İş Türü Ücreti',
+            'Araçlı Personel İş Türü Ücreti',
+            'Okuma Personeli İş Türü Ücreti',
+            'Rapor Sekmesi',
+            'Açıklama'
+        ];
         $headerMap = [];
 
         foreach ($expectedHeaders as $expected) {
@@ -524,16 +539,22 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-excel-yukle") {
 
         // Verileri işle (2. satırdan başla - 1. satır başlık)
         for ($rowIndex = 2; $rowIndex <= $highestRow; $rowIndex++) {
-            // Sütun harflerini belirle
-            $colTurAdi = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(($headerMap['İş Türü'] ?? 0) + 1);
-            $colIsEmriSonucu = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(($headerMap['İş Emri Sonucu'] ?? 1) + 1);
-            $colUcret = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(($headerMap['İş Türü Ücreti'] ?? 2) + 1);
-            $colAciklama = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex(($headerMap['Açıklama'] ?? 3) + 1);
+            $getCellValue = static function (string $header, $default = '') use ($worksheet, $headerMap, $rowIndex) {
+                if (!array_key_exists($header, $headerMap)) {
+                    return $default;
+                }
+                $column = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($headerMap[$header] + 1);
+                return $worksheet->getCell($column . $rowIndex)->getCalculatedValue() ?? $default;
+            };
 
-            $turAdi = trim($worksheet->getCell($colTurAdi . $rowIndex)->getValue() ?? '');
-            $isEmriSonucu = trim($worksheet->getCell($colIsEmriSonucu . $rowIndex)->getValue() ?? '');
-            $isTuruUcret = trim($worksheet->getCell($colUcret . $rowIndex)->getValue() ?? '');
-            $aciklama = trim($worksheet->getCell($colAciklama . $rowIndex)->getValue() ?? '');
+            $excelId = intval($getCellValue('ID', 0));
+            $turAdi = trim((string) $getCellValue('İş Türü'));
+            $isEmriSonucu = trim((string) $getCellValue('İş Emri Sonucu'));
+            $isTuruUcret = floatval(Helper::formattedMoneyToNumber($getCellValue('İş Türü Ücreti', 0)));
+            $aracliUcret = floatval(Helper::formattedMoneyToNumber($getCellValue('Araçlı Personel İş Türü Ücreti', 0)));
+            $okumaUcret = floatval(Helper::formattedMoneyToNumber($getCellValue('Okuma Personeli İş Türü Ücreti', 0)));
+            $raporSekmesi = trim((string) $getCellValue('Rapor Sekmesi'));
+            $aciklama = trim((string) $getCellValue('Açıklama'));
 
             // Boş satırları atla
             if (empty($turAdi)) {
@@ -541,38 +562,95 @@ if (isset($_POST["action"]) && $_POST["action"] == "is-turu-excel-yukle") {
             }
 
             try {
-                // Tür adı ve İş Emri Sonucuna göre mevcut kaydı ara
-                $existingRecord = $Tanimlamalar->findByColumns([
-                    'tur_adi' => $turAdi,
-                    'is_emri_sonucu' => $isEmriSonucu
-                ], 'grup = "is_turu" AND silinme_tarihi IS NULL');
+                // Öncelikle Excel'deki ID ile, eski şablonlarda ise ad/sonuç ile kaydı bul.
+                $existingRecord = null;
+                if ($excelId > 0) {
+                    $existingRecord = $Tanimlamalar->findByColumns([
+                        'id' => $excelId,
+                        'firma_id' => $firma_id,
+                        'grup' => 'is_turu'
+                    ], 'silinme_tarihi IS NULL');
+
+                    if (!$existingRecord) {
+                        throw new \Exception("ID $excelId bu firmaya ait aktif bir iş türü değil.");
+                    }
+                } else {
+                    $existingRecord = $Tanimlamalar->findByColumns([
+                        'tur_adi' => $turAdi,
+                        'is_emri_sonucu' => $isEmriSonucu,
+                        'firma_id' => $firma_id
+                    ], 'grup = "is_turu" AND silinme_tarihi IS NULL');
+                }
 
                 if ($existingRecord) {
-                    // Güncelle
+                    // Eski dört kolonlu şablonlar geri yüklenirse dosyada olmayan alanları koru.
+                    if (!array_key_exists('Araçlı Personel İş Türü Ücreti', $headerMap)) {
+                        $aracliUcret = floatval($existingRecord->aracli_personel_is_turu_ucret ?? 0);
+                    }
+                    if (!array_key_exists('Okuma Personeli İş Türü Ücreti', $headerMap)) {
+                        $okumaUcret = floatval($existingRecord->okuma_is_turu_ucret ?? 0);
+                    }
+                    if (!array_key_exists('Rapor Sekmesi', $headerMap)) {
+                        $raporSekmesi = (string) ($existingRecord->rapor_sekmesi ?? '');
+                    }
+
                     $data = [
                         "id" => $existingRecord->id,
+                        "firma_id" => $firma_id,
                         "type" => 0,
                         "grup" => "is_turu",
                         "tur_adi" => $turAdi,
                         "is_emri_sonucu" => $isEmriSonucu,
                         "is_turu_ucret" => $isTuruUcret,
+                        "aracli_personel_is_turu_ucret" => $aracliUcret,
+                        "okuma_is_turu_ucret" => $okumaUcret,
+                        "rapor_sekmesi" => $raporSekmesi,
                         "aciklama" => $aciklama,
                     ];
                     $Tanimlamalar->saveWithAttr($data);
+
+                    $ucretDegisti = abs(floatval($existingRecord->is_turu_ucret ?? 0) - $isTuruUcret) > 0.0001
+                        || abs(floatval($existingRecord->aracli_personel_is_turu_ucret ?? 0) - $aracliUcret) > 0.0001
+                        || abs(floatval($existingRecord->okuma_is_turu_ucret ?? 0) - $okumaUcret) > 0.0001;
+                    if ($ucretDegisti) {
+                        upsertIsTuruUcretGecmisi(
+                            $Tanimlamalar->getDb(),
+                            intval($firma_id),
+                            intval($existingRecord->id),
+                            $isTuruUcret,
+                            $aracliUcret,
+                            date('Y-m-d'),
+                            $okumaUcret
+                        );
+                    }
                     $updateCount++;
                 } else {
-                    // Yeni kayıt ekle
                     $data = [
                         "id" => 0,
+                        "firma_id" => $firma_id,
                         "type" => 0,
                         "grup" => "is_turu",
                         "tur_adi" => $turAdi,
                         "is_emri_sonucu" => $isEmriSonucu,
                         "is_turu_ucret" => $isTuruUcret,
+                        "aracli_personel_is_turu_ucret" => $aracliUcret,
+                        "okuma_is_turu_ucret" => $okumaUcret,
+                        "rapor_sekmesi" => $raporSekmesi,
                         "aciklama" => $aciklama,
                         "kayit_yapan" => $_SESSION["id"] ?? 0,
                     ];
-                    $Tanimlamalar->saveWithAttr($data);
+                    $newId = intval(Security::decrypt($Tanimlamalar->saveWithAttr($data)));
+                    if ($newId > 0) {
+                        upsertIsTuruUcretGecmisi(
+                            $Tanimlamalar->getDb(),
+                            intval($firma_id),
+                            $newId,
+                            $isTuruUcret,
+                            $aracliUcret,
+                            date('Y-m-d'),
+                            $okumaUcret
+                        );
+                    }
                     $insertCount++;
                 }
             } catch (\Exception $e) {

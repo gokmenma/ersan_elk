@@ -179,12 +179,7 @@ $(document).ready(function () {
             icon: "success",
             confirmButtonText: "Tamam",
           }).then((result) => {
-            if (personel_id == 0 || personel_id == "") {
-              $("#personel_id").val(res.id);
-              $btn.prop("disabled", false).html(originalText);
-            } else {
-              location.reload();
-            }
+            window.location.href = "index?p=personel/list";
           });
         } else {
           Swal.fire({

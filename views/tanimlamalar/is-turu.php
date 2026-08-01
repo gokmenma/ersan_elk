@@ -50,6 +50,11 @@ $canManageIsTuruUcret = Gate::allows('is_turu_ucret_tanimla');
                             data-bs-target="#actionModal"><i class="bx bx-save label-icon"></i>Yeni Ekle
                         </button>
 
+                        <a href="views/tanimlamalar/is-turu-excel-sablon.php"
+                            class="btn btn-info waves-effect btn-label waves-light float-end me-2">
+                            <i class="bx bx-download label-icon"></i>Excel'e Aktar
+                        </a>
+
                     </div>
 
                 </div>
@@ -415,7 +420,7 @@ $canManageIsTuruUcret = Gate::allows('is_turu_ucret_tanimla');
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
             <div class="modal-header bg-primary text-white">
-                <h5 class="modal-title" id="excelModalLabel"><i class="bx bx-plus-circle me-2"></i>İş Türü Ekle (Excel)
+                <h5 class="modal-title" id="excelModalLabel"><i class="bx bx-spreadsheet me-2"></i>İş Türlerini Excel'den Güncelle
                 </h5>
                 <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"
                     aria-label="Close"></button>
@@ -427,12 +432,12 @@ $canManageIsTuruUcret = Gate::allows('is_turu_ucret_tanimla');
                         <div class="d-flex align-items-start">
                             <i class="bx bx-download fs-4 me-2 text-success"></i>
                             <div class="flex-grow-1">
-                                <h6 class="mb-1"><strong>Şablon Dosyasını İndirin</strong></h6>
+                                <h6 class="mb-1"><strong>Mevcut İş Türlerini İndirin</strong></h6>
                                 <p class="mb-2 small text-muted">
-                                    Tanımladığınız iş türü parametrelerine göre hazırlanan Excel şablonunu indirin.
+                                    Dosyada değişikliklerinizi yapın; ID sütununu değiştirmeden aynı dosyayı tekrar yükleyin.
                                 </p>
                                 <a href="views/tanimlamalar/is-turu-excel-sablon.php" class="btn btn-sm btn-success">
-                                    <i class="bx bx-download me-1"></i>İş Türü Şablonunu İndir
+                                    <i class="bx bx-download me-1"></i>İş Türlerini Excel'e Aktar
                                 </a>
                             </div>
                         </div>

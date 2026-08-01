@@ -279,6 +279,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
             }
 
+            // Yeni kayıt için calisilan_firma ve calisilan_proje varsayılan değerleri
+            if (!isset($data['calisilan_firma'])) {
+                $data['calisilan_firma'] = null;
+            }
+            if (!isset($data['calisilan_proje'])) {
+                $data['calisilan_proje'] = null;
+            }
+
             // Dizileri virgülle ayrılmış stringe çevir (Örn: departman)
             foreach ($data as $key => $value) {
                 if (is_array($value)) {

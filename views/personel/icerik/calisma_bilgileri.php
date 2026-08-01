@@ -54,7 +54,7 @@ foreach ($ekip_bolgeleri_raw as $bolge) {
                         <div class="p-3 border rounded bg-white shadow-none h-100 d-flex flex-column justify-content-between">
                             <div class="text-muted small mb-1"><i class="bx bx-calendar-x me-1 text-danger"></i>İşten Çıkış Tarihi</div>
                             <h5 class="fw-bold text-dark mb-0" id="display_isten_cikis_tarihi">
-                                <?= $personel->isten_cikis_tarihi ? Date::dmY($personel->isten_cikis_tarihi) : '<span class="badge bg-soft-success text-success">Devam Ediyor</span>' ?>
+                                <?= !empty($personel->isten_cikis_tarihi) ? Date::dmY($personel->isten_cikis_tarihi) : '<span class="badge bg-soft-success text-success">Devam Ediyor</span>' ?>
                             </h5>
                         </div>
                     </div>
