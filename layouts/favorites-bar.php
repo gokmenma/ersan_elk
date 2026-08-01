@@ -78,7 +78,7 @@ if ($userId > 0) {
 .quick-favorites-bar {
     position: fixed;
     top: 70px;
-    left: 270px;
+    left: 250px;
     right: 0;
     height: 42px;
     z-index: 989;
@@ -265,8 +265,8 @@ body[data-sidebar-size="sm"] .quick-favorites-bar {
     white-space: nowrap;
 }
 
-/* Adjust page content padding top to account for quick-favorites-bar */
+/* Adjust page content padding top to account for quick-favorites-bar and provide bottom margin */
 body:has(#quick-favorites-bar) .main-content .page-content {
-    padding-top: 112px !important;
+    padding-top: 132px !important;
 }
 </style>

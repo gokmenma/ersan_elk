@@ -331,13 +331,43 @@ body {
 
 [data-bs-theme="dark"] #sidebar-menu ul li.mm-active > a,
 [data-bs-theme="dark"] #sidebar-menu ul li a.active {
-  background-color: transparent !important;
-  color: var(--bs-primary) !important;
+  background-color: var(--sidebar-item-active, #242b31) !important;
+  color: #ffffff !important;
+  border-radius: 8px !important;
 }
 
 [data-bs-theme="dark"] #sidebar-menu ul li.mm-active > a i,
 [data-bs-theme="dark"] #sidebar-menu ul li a.active i {
-  color: var(--bs-primary) !important;
+  color: #ffffff !important;
+}
+
+/* Sidebar Active & Hover Background Border Radius (High Specificity) */
+body #sidebar-menu ul li a,
+body #sidebar-menu #side-menu li a {
+  border-radius: 8px !important;
+}
+
+body #sidebar-menu ul li a:hover,
+body #sidebar-menu ul li a.active,
+body #sidebar-menu ul li.mm-active > a,
+body #sidebar-menu #side-menu li a:hover,
+body #sidebar-menu #side-menu li a.active,
+body #sidebar-menu #side-menu li.mm-active > a {
+  border-radius: 8px !important;
+}
+
+body #sidebar-menu ul li ul.sub-menu li a,
+body #sidebar-menu #side-menu .sub-menu li a {
+  border-radius: 8px !important;
+}
+
+body #sidebar-menu ul li ul.sub-menu li a:hover,
+body #sidebar-menu ul li ul.sub-menu li a.active,
+body #sidebar-menu ul li ul.sub-menu li.mm-active > a,
+body #sidebar-menu #side-menu .sub-menu li a:hover,
+body #sidebar-menu #side-menu .sub-menu li a.active,
+body #sidebar-menu #side-menu .sub-menu li.mm-active > a {
+  border-radius: 8px !important;
 }
 
 [data-bs-theme="dark"] #sidebar-menu ul li a {
@@ -1247,46 +1277,110 @@ body[data-sidebar="light"] .vertical-menu #sidebar-menu ul li ul.sub-menu li a.a
 
 /* Synchronized Layout Alignment: Sidebar, Topbar, Favorites Bar, Main Content */
 @media (min-width: 992px) {
-  /* Expanded Sidebar Mode (270px) */
+  /* Expanded Sidebar Mode (250px) */
   body:not([data-sidebar-size="sm"]) .vertical-menu {
     top: 0 !important;
-    width: 270px !important;
+    width: 250px !important;
   }
   body:not([data-sidebar-size="sm"]) #page-topbar {
-    left: 270px !important;
-    width: calc(100% - 270px) !important;
+    left: 250px !important;
+    width: calc(100% - 250px) !important;
   }
   body:not([data-sidebar-size="sm"]) .quick-favorites-bar {
-    left: 270px !important;
-    width: calc(100% - 270px) !important;
+    left: 250px !important;
+    width: calc(100% - 250px) !important;
   }
   body:not([data-sidebar-size="sm"]) .main-content {
-    margin-left: 270px !important;
-    width: calc(100% - 270px) !important;
+    margin-left: 250px !important;
+    width: calc(100% - 250px) !important;
   }
 
-  /* Collapsed Sidebar Mode (70px) */
+  /* Collapsed Sidebar Mode (75px) */
   body[data-sidebar-size="sm"] .vertical-menu {
     top: 0 !important;
-    width: 70px !important;
+    width: 75px !important;
   }
   body[data-sidebar-size="sm"] #page-topbar {
-    left: 70px !important;
-    width: calc(100% - 70px) !important;
+    left: 75px !important;
+    width: calc(100% - 75px) !important;
   }
   body[data-sidebar-size="sm"] .quick-favorites-bar {
-    left: 70px !important;
-    width: calc(100% - 70px) !important;
+    left: 75px !important;
+    width: calc(100% - 75px) !important;
   }
   body[data-sidebar-size="sm"] .main-content {
-    margin-left: 70px !important;
-    width: calc(100% - 70px) !important;
+    margin-left: 75px !important;
+    width: calc(100% - 75px) !important;
   }
 
   /* Hide inner topbar brand box on desktop since full-height sidebar owns top-left */
   #page-topbar .navbar-brand-box {
     display: none !important;
   }
+}
+
+/* Hamburger butonu hem açık hem kapalı menü durumunda topbarda her zaman görünsün */
+#page-topbar #vertical-menu-btn,
+body #page-topbar #vertical-menu-btn,
+body:not([data-sidebar-size="sm"]) #page-topbar #vertical-menu-btn,
+body[data-sidebar-size="sm"] #page-topbar #vertical-menu-btn {
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  height: 70px !important;
+  width: 45px !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  color: #495057 !important;
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+}
+
+[data-bs-theme="dark"] #page-topbar #vertical-menu-btn,
+[data-topbar="dark"] #page-topbar #vertical-menu-btn,
+body[data-topbar="dark"] #page-topbar #vertical-menu-btn {
+  color: #e9ecef !important;
+}
+
+/* Collapsed Sidebar İkonlarını Tam Ortala */
+body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu > ul > li > a {
+  padding: 14px 0 !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  text-align: center !important;
+  width: 100% !important;
+}
+
+body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu > ul > li > a i,
+body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu > ul > li > a svg,
+body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu > ul > li > a .bx,
+body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu > ul > li > a .fas,
+body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu > ul > li > a .far {
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+  margin-top: 0 !important;
+  margin-bottom: 0 !important;
+  display: block !important;
+  font-size: 1.35rem !important;
+  width: 100% !important;
+  text-align: center !important;
+}
+
+/* Initial Page Load Transition Lock (Açılış Zıplamasını Önleme) */
+body.preload,
+body.preload *,
+body.preload #page-topbar,
+body.preload .vertical-menu,
+body.preload .main-content,
+body.preload .quick-favorites-bar {
+  -webkit-transition: none !important;
+  -moz-transition: none !important;
+  -o-transition: none !important;
+  transition: none !important;
 }
 
 @media (max-width: 991px) {
@@ -3907,6 +4001,46 @@ html[data-orientation="landscape"] .orientation-toggle-btn {
   width: 100% !important;
   margin-top: auto !important;
   z-index: 10;
+}
+
+/* Sayfa İçi Başlık ve Breadcrumb Alanlarını Gizleme */
+.page-title-box,
+.breadcrumb {
+  display: none !important;
+}
+
+/* Topbar Sayfa Başlığı ve Açıklaması Yüksek Kontrast Stilleri */
+.topbar-page-header,
+.topbar-page-header #topbar-page-title,
+.topbar-page-header #topbar-page-desc {
+  line-height: 1.2;
+  transition: none !important;
+}
+
+.topbar-page-header #topbar-page-title {
+  color: #0f172a !important;
+  font-size: 15px !important;
+  font-weight: 700 !important;
+  letter-spacing: -0.01em;
+}
+
+.topbar-page-header #topbar-page-desc {
+  color: #475569 !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+}
+
+/* Koyu Tema / Koyu Topbar Uyumluluğu */
+[data-bs-theme="dark"] .topbar-page-header #topbar-page-title,
+[data-topbar="dark"] .topbar-page-header #topbar-page-title,
+body[data-topbar="dark"] .topbar-page-header #topbar-page-title {
+  color: #f8fafc !important;
+}
+
+[data-bs-theme="dark"] .topbar-page-header #topbar-page-desc,
+[data-topbar="dark"] .topbar-page-header #topbar-page-desc,
+body[data-topbar="dark"] .topbar-page-header #topbar-page-desc {
+  color: #cbd5e1 !important;
 }
 
 

@@ -298,10 +298,27 @@ class MenuModel extends Model
 
     public function getMenuByLink(string $link): ?object
     {
+        // 1. Tam link eşleşmesi ara
         $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE menu_link = ? LIMIT 1");
         $stmt->execute([$link]);
         $result = $stmt->fetch(PDO::FETCH_OBJ);
-        return $result ?: null;
+        if ($result) {
+            return $result;
+        }
+
+        // 2. Alt rotalar için modül öneki eşleşmesi (örn: personel/manage -> personel/list)
+        $parts = explode('/', $link);
+        if (count($parts) > 1) {
+            $prefix = $parts[0] . '/';
+            $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE menu_link LIKE ? AND is_active = 1 ORDER BY menu_order ASC LIMIT 1");
+            $stmt->execute([$prefix . '%']);
+            $result = $stmt->fetch(PDO::FETCH_OBJ);
+            if ($result) {
+                return $result;
+            }
+        }
+
+        return null;
     }
 
     public function getActiveMenuIds(?object $currentMenu): array

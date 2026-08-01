@@ -380,6 +380,19 @@ File: Main Js File
       html.setAttribute("data-font-family", savedFont);
     }
 
+    // Apply theme mode (data-bs-theme) to html element
+    const savedThemeMode = localStorage.getItem("data-bs-theme");
+    if (savedThemeMode) {
+      html.setAttribute("data-bs-theme", savedThemeMode);
+    }
+
+    // Apply color theme (data-theme-mode) to html & body elements
+    const savedColorTheme = localStorage.getItem("data-theme-mode");
+    if (savedColorTheme) {
+      html.setAttribute("data-theme-mode", savedColorTheme);
+      body.setAttribute("data-theme-mode", savedColorTheme);
+    }
+
     // right side-bar toggle
     $(".right-bar-toggle").on("click", function (e) {
       $("body").toggleClass("right-bar-enabled");
@@ -435,45 +448,12 @@ File: Main Js File
       updateRadio("layout-vertical");
     }
 
-    // (document.documentElement.hasAttribute("data-theme-mode") == "purple") ? updateRadio('theme-purple') : document.documentElement.getAttribute("data-theme-mode") == "red" ? updateRadio('theme-red') : updateRadio('theme-default');
-    document.documentElement.hasAttribute("data-theme-mode") &&
-    document.documentElement.getAttribute("data-theme-mode") == "purple"
-      ? updateRadio("theme-purple")
-      : document.documentElement.hasAttribute("data-theme-mode") &&
-          document.documentElement.getAttribute("data-theme-mode") == "red"
-        ? updateRadio("theme-red")
-        : document.documentElement.hasAttribute("data-theme-mode") &&
-            document.documentElement.getAttribute("data-theme-mode") == "slate"
-          ? updateRadio("theme-slate")
-          : document.documentElement.hasAttribute("data-theme-mode") &&
-              document.documentElement.getAttribute("data-theme-mode") ==
-                "emerald"
-            ? updateRadio("theme-emerald")
-            : document.documentElement.hasAttribute("data-theme-mode") &&
-                document.documentElement.getAttribute("data-theme-mode") ==
-                  "orange"
-              ? updateRadio("theme-orange")
-              : document.documentElement.hasAttribute("data-theme-mode") &&
-                  document.documentElement.getAttribute("data-theme-mode") ==
-                    "rose"
-                ? updateRadio("theme-rose")
-                : document.documentElement.hasAttribute("data-theme-mode") &&
-                    document.documentElement.getAttribute("data-theme-mode") ==
-                      "ersan"
-                  ? updateRadio("theme-ersan")
-                  : document.documentElement.hasAttribute("data-theme-mode") &&
-                      document.documentElement.getAttribute(
-                        "data-theme-mode",
-                      ) == "teal"
-                    ? updateRadio("theme-teal")
-                    : document.documentElement.hasAttribute(
-                          "data-theme-mode",
-                        ) &&
-                        document.documentElement.getAttribute(
-                          "data-theme-mode",
-                        ) == "cyan"
-                      ? updateRadio("theme-cyan")
-                      : updateRadio("theme-default");
+    const activeColorTheme = html.getAttribute("data-theme-mode") || localStorage.getItem("data-theme-mode");
+    if (activeColorTheme) {
+      updateRadio("theme-" + activeColorTheme);
+    } else {
+      updateRadio("theme-default");
+    }
 
     if (html.getAttribute("data-font-family") == "Outfit") {
       updateRadio("font-outfit");
@@ -489,8 +469,9 @@ File: Main Js File
       updateRadio("font-geist");
     }
 
-    html.hasAttribute("data-bs-theme") &&
-    html.getAttribute("data-bs-theme") == "dark"
+    (html.hasAttribute("data-bs-theme") &&
+      html.getAttribute("data-bs-theme") == "dark") ||
+    localStorage.getItem("data-bs-theme") == "dark"
       ? updateRadio("layout-mode-dark")
       : updateRadio("layout-mode-light");
     body.hasAttribute("data-layout-size") &&
@@ -592,6 +573,7 @@ File: Main Js File
     $("input[name='theme-mode']").on("change", function () {
       var val = $(this).val();
       document.documentElement.setAttribute("data-theme-mode", val);
+      document.body.setAttribute("data-theme-mode", val);
       localStorage.setItem("data-theme-mode", val);
       // Clear custom color override when selecting a predefined theme
       localStorage.removeItem("custom-primary-color");

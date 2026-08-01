@@ -10,6 +10,11 @@ use App\Model\SystemLogModel;
 class SgkViziteService
 {
     const TOKEN_GECERSIZ_KODU = '106';
+    const AG_DENEME_SAYISI = 3;
+
+    // Hızlı başarısız olan, yeniden denenmesi anlamlı bağlantı hataları
+    // (7: bağlanılamadı, 35: SSL handshake, 52: boş cevap, 55: gönderim, 56: alım, 92: HTTP/2 akış)
+    const GECICI_AG_HATALARI = [7, 35, 52, 55, 56, 92];
 
     private $serviceUrl = 'https://uyg.sgk.gov.tr/Ws_Vizite/services/ViziteGonder';
     private $kullaniciAdi;
@@ -92,28 +97,7 @@ XML;
         // wsLogin için SOAPAction genellikle boş veya tırnak işaretidir. Diğerleri için metot adını kullanırız.
         $soapAction = ($methodName === 'wsLogin') ? '""' : "\"{$methodName}\"";
 
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $this->serviceUrl);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, $xml_request);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: text/xml; charset=utf-8',
-            'Content-Length: ' . strlen($xml_request),
-            'SOAPAction: ' . $soapAction // Dinamik SOAPAction
-        ]);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
-        curl_setopt($ch, CURLOPT_SSL_VERIFYHOST, false);
-        // Zaman aşımını ayarlamak iyi bir pratiktir
-        curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
-        curl_setopt($ch, CURLOPT_TIMEOUT, 30);
-
-        $responseXml = curl_exec($ch);
-
-        if (curl_errno($ch)) {
-            throw new Exception("cURL Hatası: " . curl_error($ch));
-        }
-        curl_close($ch);
+        $responseXml = $this->httpIstekGonder($xml_request, $soapAction, $methodName);
 
         // Cevap boşsa veya bir HTML hata sayfasıysa
         if (empty($responseXml) || strpos(trim($responseXml), '<') !== 0) {
@@ -140,6 +124,88 @@ XML;
         }
 
         return $responseNode;
+    }
+
+    /**
+     * SOAP isteğini gönderir. SGK sunucusu bağlantıyı yarıda kapatırsa (Axis tabanlı servis
+     * yoğunlukta bunu yapabiliyor) geçici ağ hatalarında isteği yeniden dener.
+     * @throws Exception
+     */
+    private function httpIstekGonder(string $xmlRequest, string $soapAction, string $methodName): string
+    {
+        $sonHataKodu = 0;
+        $sonHataMesaji = '';
+
+        for ($deneme = 1; $deneme <= self::AG_DENEME_SAYISI; $deneme++) {
+            $ch = curl_init();
+            curl_setopt_array($ch, [
+                CURLOPT_URL => $this->serviceUrl,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $xmlRequest,
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: text/xml; charset=utf-8',
+                    'Content-Length: ' . strlen($xmlRequest),
+                    'SOAPAction: ' . $soapAction,
+                    'Connection: close',
+                    'Expect:',
+                ],
+                CURLOPT_FORBID_REUSE => true,
+                CURLOPT_FRESH_CONNECT => $deneme > 1,
+                CURLOPT_SSL_VERIFYPEER => false,
+                CURLOPT_SSL_VERIFYHOST => false,
+                CURLOPT_CONNECTTIMEOUT => 10,
+                CURLOPT_TIMEOUT => $this->istekZamanAsimi($methodName),
+            ]);
+
+            $responseXml = curl_exec($ch);
+            $hataKodu = curl_errno($ch);
+            $hataMesaji = curl_error($ch);
+            curl_close($ch);
+
+            if ($hataKodu === 0 && $responseXml !== false && $responseXml !== '') {
+                if ($deneme > 1) {
+                    error_log("SGK isteği {$deneme}. denemede başarılı oldu ({$methodName}).");
+                }
+                return $responseXml;
+            }
+
+            $sonHataKodu = $hataKodu;
+            $sonHataMesaji = $hataMesaji !== '' ? $hataMesaji : 'Sunucudan boş cevap alındı';
+
+            if (!in_array($hataKodu, self::GECICI_AG_HATALARI, true)) {
+                break;
+            }
+
+            error_log("SGK isteği başarısız ({$methodName}, deneme {$deneme}/" . self::AG_DENEME_SAYISI . ", cURL {$hataKodu}): {$sonHataMesaji}");
+
+            if ($deneme < self::AG_DENEME_SAYISI) {
+                usleep(400000 * $deneme);
+            }
+        }
+
+        throw new Exception(
+            "SGK sunucusuna bağlanılamadı ({$methodName}). SGK bağlantıyı kapattı veya cevap vermedi. "
+            . "Bir süre sonra tekrar deneyin. (cURL {$sonHataKodu}: {$sonHataMesaji})"
+        );
+    }
+
+    /**
+     * Çok sayıda rapor döndürebilen liste metotlarına daha uzun süre tanınır.
+     */
+    private function istekZamanAsimi(string $methodName): int
+    {
+        $agirMetotlar = [
+            'raporAramaTarihile',
+            'raporAramaKimlikNo',
+            'onayliRaporlarTarihile',
+            'mahsuplastirmaOnayListesiSorguTarihle',
+            'mahsuplastirmaOnaylananOdemeListesiSorguTarihle',
+            'isverenPrimBorcunaMahsupEdilenOdemeListesiSorguTarihle',
+        ];
+
+        return in_array($methodName, $agirMetotlar, true) ? 60 : 30;
     }
 
     private function tokenDeposu(): SgkTokenModel

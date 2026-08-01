@@ -66,7 +66,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 }
 
                 #page-topbar {
-                    left: 250px !important; /* Standard sidebar width */
+                    left: 250px !important; /* Standard sidebar width (250px) */
                     background-color: var(--sidebar-bg) !important;
                     background-image: linear-gradient(rgba(255, 255, 255, 0.05), rgba(255, 255, 255, 0.05)) !important;
                     border-bottom: 1px solid var(--sidebar-border) !important;
@@ -74,7 +74,7 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 }
 
                 body[data-sidebar-size="sm"] #page-topbar {
-                    left: 60px !important;
+                    left: 70px !important;
                 }
 
                 @media (max-width: 992px) {
@@ -303,27 +303,33 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     position: relative;
                 }
 
-                #side-menu li a {
+                #sidebar-menu #side-menu li a,
+                #sidebar-menu ul li a {
                     padding: 8px 12px !important;
-                    border-radius: 8px;
+                    border-radius: 8px !important;
                     font-size: 14px;
                     color: var(--sidebar-foreground) !important;
                     display: flex;
                     align-items: center;
                     gap: 8px;
                     transition: background-color 0.2s ease, color 0.2s ease, padding 0.2s ease;
-                    margin: 0 8px 2px 0; /* Menu backgrounds more space from right */
+                    margin: 2px 12px 2px 4px; /* More margin from right and left edges */
                     position: relative;
                 }
 
-                #side-menu li a:hover {
+                #sidebar-menu #side-menu li a:hover,
+                #sidebar-menu ul li a:hover {
                     background-color: var(--sidebar-item-hover) !important;
+                    border-radius: 8px !important;
                 }
 
-                #side-menu li.mm-active > a,
-                #side-menu li a.active {
+                #sidebar-menu #side-menu li.mm-active > a,
+                #sidebar-menu #side-menu li a.active,
+                #sidebar-menu ul li.mm-active > a,
+                #sidebar-menu ul li a.active {
                     background-color: var(--sidebar-item-active) !important;
                     font-weight: 500;
+                    border-radius: 8px !important;
                 }
 
                 #side-menu li a i {
@@ -344,23 +350,30 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 /* Sub-menu Indentation (Shadcn style with requested padding) */
                 .sub-menu {
                     padding: 0 0 0 12px !important; /* Indent text by 12px from the line */
-                    margin: 0 0 0 28px !important; /* Align the line with parent icons (28-12=16 actually? No, 28px is the line) */
+                    margin: 0 0 0 28px !important; /* Align the line with parent icons */
                     list-style: none;
                     border-left: 1px solid var(--sidebar-border) !important;
                     position: relative;
                 }
 
-                .sub-menu li a {
+                #sidebar-menu .sub-menu li a,
+                #sidebar-menu ul li ul.sub-menu li a {
                     font-size: 13px !important;
-                    padding-left: 1rem !important; /* As requested: 1rem */
+                    padding-left: 1rem !important;
                     color: var(--sidebar-foreground) !important;
-                    border-radius: 6px;
-                    margin: 0 12px 2px 0;
-                    white-space: nowrap !important; /* As requested */
+                    border-radius: 8px !important;
+                    margin: 2px 16px 2px 6px; /* Increased right and left spacing for active background */
+                    white-space: nowrap !important;
                 }
 
-                .sub-menu li a:hover {
+                #sidebar-menu .sub-menu li a:hover,
+                #sidebar-menu .sub-menu li.mm-active > a,
+                #sidebar-menu .sub-menu li a.active,
+                #sidebar-menu ul li ul.sub-menu li a:hover,
+                #sidebar-menu ul li ul.sub-menu li.mm-active > a,
+                #sidebar-menu ul li ul.sub-menu li a.active {
                     padding-left: 1.2rem !important; /* As requested: 1.2rem padding on hover */
+                    border-radius: 8px !important;
                 }
 
                 /* Arrow styling (Chevron) - Accurate Shadcn placement */
@@ -470,10 +483,6 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                     padding: 12px;
                     justify-content: center;
                 }
-
-                body[data-sidebar-size="sm"] #sidebar-collapse-btn {
-                    display: none !important;
-                }
             </style>
 
             <div class="sidebar-sticky-top">
@@ -487,9 +496,6 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                             <span class="brand-sub">Yönetim Paneli</span>
                         </div>
                     </div>
-                    <button type="button" class="btn btn-sm p-1 border-0 bg-transparent text-muted" id="sidebar-collapse-btn" style="display: none !important;">
-                        <i data-feather="menu" style="width: 20px; height: 20px;"></i>
-                    </button>
                 </div>
 
                 <div class="sidebar-search-container">
@@ -586,14 +592,6 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
     document.addEventListener('DOMContentLoaded', function () {
         if (typeof feather !== 'undefined') {
             feather.replace();
-        }
-
-        const sidebarCollapseBtn = document.getElementById('sidebar-collapse-btn');
-        if (sidebarCollapseBtn) {
-            sidebarCollapseBtn.addEventListener('click', function (e) {
-                e.preventDefault();
-                document.getElementById('vertical-menu-btn')?.click();
-            });
         }
 
         const searchInput = document.getElementById('menu-search-input');
@@ -1019,4 +1017,4 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
             }
         }
     });
-</script>
+</script>

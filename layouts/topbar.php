@@ -41,11 +41,18 @@ if (!is_array($firma_option)) {
 
 
 ?>
+<?php
+$currentPageKey = $_GET['p'] ?? 'home';
+$topbarMenuModel = new \App\Model\MenuModel();
+$currentMenuObj = $topbarMenuModel->getMenuByLink($currentPageKey);
+$topbarTitle = $currentMenuObj->menu_name ?? ($title ?? 'Ana Sayfa');
+$topbarDesc = $currentMenuObj->page_description ?? '';
+?>
 <header id="page-topbar">
     <div class="navbar-header">
-        <div class="d-flex">
+        <div class="d-flex align-items-center">
             <!-- LOGO -->
-            <div class="navbar-brand-box">
+            <div class="navbar-brand-box d-lg-none">
                 <a href="index.php" class="logo logo-dark">
                     <span class="logo-sm">
                         <img src="<?php echo Helper::base_url("assets/images/logo.png") ?>" alt="" height="30">
@@ -72,13 +79,21 @@ if (!is_array($firma_option)) {
                 <i data-feather="menu" class="icon-lg"></i>
             </button>
 
-            <!-- App Search-->
-            <?php if (count($firma_option) > 1): ?>
+            <!-- Topbar Sayfa Başlığı ve Açıklaması -->
+            <div class="topbar-page-header d-none d-md-flex flex-column justify-content-center">
+                <h5 class="topbar-page-title m-0" id="topbar-page-title">
+                    <?php echo htmlspecialchars($topbarTitle); ?>
+                </h5>
+                <span class="topbar-page-desc mt-1" id="topbar-page-desc" <?php echo empty($topbarDesc) ? 'style="display: none;"' : ''; ?>>
+                    <?php echo htmlspecialchars($topbarDesc); ?>
+                </span>
+            </div>
+
+            <!-- Firma seçimi (Şimdilik gizlendi) -->
+            <?php /* Firma seçimi geçici olarak gizlendi
+            if (count($firma_option) > 1): ?>
             <form class="app-search d-none d-lg-block ms-2 ms-lg-3" style="width: 200px;">
-
-
                 <?php
-
                 echo Form::FormSelect2(
                     name: "firma_id",
                     options: $firma_option,
@@ -90,26 +105,43 @@ if (!is_array($firma_option)) {
                     class: 'form-control select2 w-100 p-1'
                 ); ?>
             </form>
-            <?php endif; ?>
-
-            <?php if (\App\Service\Gate::allows('personel_listesi')): ?>
-            <form class="app-search d-none d-lg-block ms-2 ms-lg-3" style="max-width: 250px; width: 100%;">
-                <?php
-                echo Form::FormSelect2(
-                    name: "topbar_personel_search",
-                    options: ['' => ''],
-                    selectedValue: "",
-                    label: "Personel Ara",
-                    icon: "users",
-                    class: 'form-control w-100 p-1',
-                    id: 'topbar-personel-search'
-                );
-                ?>
-            </form>
-            <?php endif; ?>
+            <?php endif; */ ?>
         </div>
 
-        <div class="d-flex">
+        <div class="d-flex align-items-center">
+
+            <!-- Personel Arama Kutusu (Sağda İkon Buton ile Açılır) -->
+            <?php if (\App\Service\Gate::allows('personel_listesi')): ?>
+            <div class="dropdown d-inline-block me-1">
+                <button type="button" class="btn header-item noti-icon position-relative"
+                    id="page-header-personel-dropdown" data-bs-toggle="dropdown" data-bs-auto-close="outside"
+                    aria-haspopup="true" aria-expanded="false" title="Personel Ara">
+                    <i data-feather="user-check" class="icon-lg"></i>
+                </button>
+                <div class="dropdown-menu dropdown-menu-lg dropdown-menu-end p-3 shadow-lg"
+                    aria-labelledby="page-header-personel-dropdown" style="min-width: 320px; width: 340px;"
+                    id="personel-search-dropdown-menu">
+                    <div class="d-flex align-items-center justify-content-between mb-2 pb-2 border-bottom">
+                        <h6 class="m-0 font-size-13 fw-semibold text-primary">
+                            <i class="bx bx-user-search me-1"></i> Personel Ara
+                        </h6>
+                    </div>
+                    <div class="position-relative mt-2">
+                        <?php
+                        echo Form::FormSelect2(
+                            name: "topbar_personel_search",
+                            options: ['' => ''],
+                            selectedValue: "",
+                            label: "Personel Ara",
+                            icon: "users",
+                            class: 'form-control w-100 p-1',
+                            id: 'topbar-personel-search'
+                        );
+                        ?>
+                    </div>
+                </div>
+            </div>
+            <?php endif; ?>
 
             <div class="dropdown d-inline-block d-lg-none ms-2">
                 <button type="button" class="btn header-item" id="page-header-search-dropdown" data-bs-toggle="dropdown"
@@ -506,11 +538,12 @@ if (!is_array($firma_option)) {
             }, 'json');
         });
 
-        // Personel Arama Kutusu JS Kodları
+        // Personel Arama Kutusu JS Kodları (Açılır Dropdown Yapısı)
         if ($('#topbar-personel-search').length > 0) {
             $('#topbar-personel-search').select2({
                 placeholder: 'Personel Ara...',
                 allowClear: true,
+                dropdownParent: $('#personel-search-dropdown-menu'),
                 ajax: {
                     url: 'views/personel/ajax_search.php',
                     dataType: 'json',
@@ -548,6 +581,13 @@ if (!is_array($firma_option)) {
                 if (data.id) {
                     window.location.href = 'index.php?p=personel/manage&id=' + data.id;
                 }
+            });
+
+            // Dropdown ikonuna tıklandığında Select2'yi otomatik aç ve odaklan
+            $('#page-header-personel-dropdown').on('shown.bs.dropdown', function () {
+                setTimeout(function () {
+                    $('#topbar-personel-search').select2('open');
+                }, 100);
             });
         }
 

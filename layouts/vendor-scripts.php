@@ -81,6 +81,11 @@ $page = $_GET['p'] ?? 'home';
     <script src="views/kullanici-gruplari/js/list.js"></script>
 <?php } ?>
 
+<!-- Menü Yönetimi Sayfası -->
+<?php if ($page == 'menu-yonetimi/list') { ?>
+    <script src="views/menu-yonetimi/js/list.js"></script>
+<?php } ?>
+
 <?php if ($page == 'kullanici-gruplari/duzenle') { ?>
     <script src="views/kullanici-gruplari/js/duzenle.js"></script>
 <?php } ?>
@@ -154,7 +159,8 @@ if ($page == "hakedisler/hakedis-detay") {
     $page == "bildirim/list" ||
     $page == "raporlar/riskli-islemler" ||
     $page == "ihbar/list" ||
-    $page == "kacak/list"
+    $page == "kacak/list" ||
+    $page == "menu-yonetimi/list"
 ) { ?>
 
     <!-- Datatable init js -->

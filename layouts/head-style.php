@@ -51,9 +51,43 @@
             style.id = 'custom-sidebar-style';
             style.innerHTML = `body .vertical-menu, [data-bs-theme="dark"] .main-content, [data-bs-theme="dark"] .page-content { background-color: ${customSidebar} !important; } body .sidebar-sticky-top { background-color: ${customSidebar} !important; } body .sidebar-search { background-color: rgba(255, 255, 255, 0.12) !important; border-color: rgba(255, 255, 255, 0.15) !important; color: #ffffff !important; } body .sidebar-search::placeholder { color: rgba(255, 255, 255, 0.5) !important; } body #sidebar-menu ul li a { color: rgba(255, 255, 255, 0.7) !important; } body #sidebar-menu ul li a i { color: rgba(255, 255, 255, 0.7) !important; } body #sidebar-menu ul li a:hover, body #sidebar-menu ul li a.active, body #sidebar-menu ul li.mm-active > a { color: #fff !important; } body #sidebar-menu .menu-title { color: rgba(255, 255, 255, 0.4) !important; } body .vertical-menu .logo-dark { display: none !important; } body .vertical-menu .logo-light { display: block !important; }`;
             document.head.appendChild(style);
-        }
+        // Synchronously apply critical layout width/left position styles
+        const layoutStyle = document.createElement('style');
+        layoutStyle.id = 'layout-initial-position-style';
+        layoutStyle.innerHTML = `@media (min-width: 992px) { body:not([data-sidebar-size="sm"]) #page-topbar, body:not([data-sidebar-size="sm"]) .quick-favorites-bar { left: 250px !important; width: calc(100% - 250px) !important; } body:not([data-sidebar-size="sm"]) .main-content { margin-left: 250px !important; width: calc(100% - 250px) !important; } body:not([data-sidebar-size="sm"]) .vertical-menu { width: 250px !important; } }`;
+        document.head.appendChild(layoutStyle);
     })();
 </script>
+
+<style>
+@media (min-width: 992px) {
+    body:not([data-sidebar-size="sm"]) #page-topbar,
+    body:not([data-sidebar-size="sm"]) .quick-favorites-bar {
+        left: 250px !important;
+        width: calc(100% - 250px) !important;
+    }
+    body:not([data-sidebar-size="sm"]) .main-content {
+        margin-left: 250px !important;
+        width: calc(100% - 250px) !important;
+    }
+    body:not([data-sidebar-size="sm"]) .vertical-menu {
+        width: 250px !important;
+    }
+
+    body[data-sidebar-size="sm"] #page-topbar,
+    body[data-sidebar-size="sm"] .quick-favorites-bar {
+        left: 75px !important;
+        width: calc(100% - 75px) !important;
+    }
+    body[data-sidebar-size="sm"] .main-content {
+        margin-left: 75px !important;
+        width: calc(100% - 75px) !important;
+    }
+    body[data-sidebar-size="sm"] .vertical-menu {
+        width: 75px !important;
+    }
+}
+</style>
 
 <?php
 
@@ -84,8 +118,8 @@ use App\Helper\Helper;
     type="text/css" />
 
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
-<link href=" <?php echo Helper::base_url('assets/css/style.css?v=' . filemtime("assets/css/style.css")); ?>"
-    id="app-style" rel="stylesheet" type="text/css" />
+<link href="<?php echo Helper::base_url('assets/css/style.css?v=' . filemtime("assets/css/style.css")); ?>"
+    id="custom-style" rel="stylesheet" type="text/css" />
 <!-- jQuery -->
 <script src="<?php echo Helper::base_url('assets/libs/jquery/jquery.3.7.1.min.js'); ?>"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>

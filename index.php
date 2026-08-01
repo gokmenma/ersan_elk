@@ -345,10 +345,10 @@ if (!isset($_SESSION['force_desktop'])) {
         setTimeout(hideEarlyHomeSkeleton, 4500);
     })();
 
-    //Title'ı page-title-box classına dahip div'in textinden al
+    // Document title güncellemesi
     window.addEventListener('DOMContentLoaded', function() {
         if (window.jQuery) {
-            var title = $(".page-title-box>h4").first().text();
+            var title = $("#topbar-page-title").text().trim() || $(".page-title-box>h4").first().text().trim();
             if (title) {
                 document.title = title + " | Ersan Elektrik";
             }
