@@ -64,6 +64,22 @@ textarea {
 }
 
 /* ===== SweetAlert2 Custom Styles ===== */
+#toast-container {
+  /* Alt sayfa modalları z-index 200 kullanıyor; işlem sonucu görünür kalsın. */
+  z-index: 10060 !important;
+}
+
+#kacak-analiz-btn:disabled {
+  cursor: not-allowed !important;
+  opacity: 0.45 !important;
+  filter: grayscale(0.35);
+}
+
+div:where(.swal2-container) {
+  /* PWA alt sayfa modalları ve yükleme perdesinin daima üzerinde kalsın. */
+  z-index: 10050 !important;
+}
+
 div:where(.swal2-container) .swal2-popup,
 div:where(.swal2-container) .swal2-title,
 div:where(.swal2-container) .swal2-html-container,
@@ -1035,6 +1051,8 @@ div:where(.swal2-container) .swal2-cancel {
 
 /* ===== Preloader Styles ===== */
 #loading-overlay {
+  /* Sayfa içi modallar z-index 200 kullanıyor; işlem göstergesi arkada kalmasın. */
+  z-index: 10000 !important;
   transition:
     opacity 0.4s ease,
     visibility 0.4s ease;

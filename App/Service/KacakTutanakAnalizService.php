@@ -29,9 +29,18 @@ class KacakTutanakAnalizService
      */
     public function analyze(array $file, string $varsayilanTarih, array $personelAdaylari = []): array
     {
-        $apiKey = $this->settings->getSettings('openai_api_key');
+        // Ayarlar firma bazında kaydedilebildiği için global anahtarı doğrudan
+        // okumak yerine firma ayarını (yoksa globali) kullan.
+        $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+        $aiSettings = $this->settings->getAllSettingsAsKeyValue($firmaId > 0 ? $firmaId : null);
+        $apiKey = trim((string) ($aiSettings['openai_api_key'] ?? ''));
+        $model = trim((string) ($aiSettings['ai_agent_model'] ?? 'gpt-4o-mini'));
         if (empty($apiKey)) {
             throw new Exception('Lütfen Ayarlar sayfasından OpenAI API anahtarını girin.');
+        }
+
+        if (!str_starts_with($model, 'gpt-')) {
+            $model = 'gpt-4o-mini';
         }
 
         if (!isset($file['tmp_name']) || ($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
@@ -72,7 +81,7 @@ class KacakTutanakAnalizService
             ]
             : $prompt;
 
-        $cevap = $this->callOpenAi($apiKey, $userContent);
+        $cevap = $this->callOpenAi($apiKey, $model, $userContent);
         $satirlar = $this->parseResponse($cevap);
 
         foreach ($satirlar as &$satir) {
@@ -190,7 +199,7 @@ Alanlar:
         return $prompt . ($gorselMi ? 'Görsel analiz edilerek bu alanlar çıkartılmalıdır.' : "Belge Metni:\n" . $belgeMetni);
     }
 
-    private function callOpenAi(string $apiKey, $userContent): string
+    private function callOpenAi(string $apiKey, string $model, $userContent): string
     {
         $ch = curl_init('https://api.openai.com/v1/chat/completions');
         curl_setopt_array($ch, [
@@ -202,7 +211,7 @@ Alanlar:
                 'Authorization: Bearer ' . $apiKey,
             ],
             CURLOPT_POSTFIELDS => json_encode([
-                'model' => 'gpt-4o',
+                'model' => $model,
                 'messages' => [
                     ['role' => 'system', 'content' => 'Sen KASKİ tutanaklarından veri çıkartan profesyonel bir veri analisti asistanısın. Sadece saf JSON dizi formatında çıktı üretirsin.'],
                     ['role' => 'user', 'content' => $userContent],
@@ -218,9 +227,34 @@ Alanlar:
             error_log('Kaçak tutanak OpenAI bağlantı hatası: ' . $hata);
             throw new Exception('Yapay zeka servisine ulaşılamadı, lütfen tekrar deneyin.');
         }
+        $httpStatus = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
         curl_close($ch);
 
         $json = json_decode((string) $sonuc, true);
+        if ($httpStatus >= 400 || isset($json['error'])) {
+            $errorCode = (string) ($json['error']['code'] ?? '');
+            $errorType = (string) ($json['error']['type'] ?? '');
+            error_log(sprintf(
+                'Kaçak tutanak OpenAI API hatası (HTTP %d, kod: %s, tip: %s): %s',
+                $httpStatus,
+                $errorCode ?: '-',
+                $errorType ?: '-',
+                substr((string) ($json['error']['message'] ?? $sonuc), 0, 500)
+            ));
+
+            if ($httpStatus === 401 || $errorCode === 'invalid_api_key') {
+                throw new Exception('OpenAI API anahtarı geçersiz. Lütfen sistem yöneticisinden Ayarlar > Online Sorgulama Ayarları bölümündeki API anahtarını yenilemesini isteyin.');
+            }
+            if ($httpStatus === 429 || $errorCode === 'insufficient_quota') {
+                throw new Exception('OpenAI kullanım kotası veya istek limiti dolmuş. Lütfen sistem yöneticinizle görüşün.');
+            }
+            if ($errorCode === 'model_not_found') {
+                throw new Exception('Yapay zeka modeli kullanılamıyor. Lütfen sistem yöneticinizin model ayarını kontrol etmesini isteyin.');
+            }
+
+            throw new Exception('Yapay zeka servisi isteği kabul etmedi (HTTP ' . $httpStatus . '). Lütfen daha sonra tekrar deneyin.');
+        }
+
         $icerik = $json['choices'][0]['message']['content'] ?? '';
         if ($icerik === '') {
             error_log('Kaçak tutanak OpenAI boş yanıt: ' . substr((string) $sonuc, 0, 500));

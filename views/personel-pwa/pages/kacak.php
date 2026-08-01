@@ -100,7 +100,7 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
                         class="flex-1 py-2 rounded-xl bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold">
                         <span id="kacak-tutanak-label">Fotoğraf Seç</span>
                     </button>
-                    <button type="button" id="kacak-analiz-btn" onclick="analizEtKacak()"
+                    <button type="button" id="kacak-analiz-btn" onclick="analizEtKacak()" disabled
                         class="flex-1 py-2 rounded-xl bg-amber-500 text-white text-xs font-black">
                         Yapay Zeka ile Oku
                     </button>
@@ -378,6 +378,7 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
             document.getElementById('kacak-tutanak-input').value = '';
             document.getElementById('kacak-tutanak-label').textContent = 'Fotoğraf Seç';
             document.getElementById('kacak-tutanak-preview').style.display = 'none';
+            document.getElementById('kacak-analiz-btn').disabled = true;
             document.getElementById('kacak-saha-preview').innerHTML = '';
             sahaDosyalari = [];
             Modal.open('kacak-bildir-modal');
@@ -386,7 +387,13 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
         // ----- Tutanak seçimi -----
         document.getElementById('kacak-tutanak-input').addEventListener('change', function (e) {
             const file = e.target.files[0];
-            if (!file) return;
+            const analizBtn = document.getElementById('kacak-analiz-btn');
+            analizBtn.disabled = !file;
+            if (!file) {
+                document.getElementById('kacak-tutanak-label').textContent = 'Fotoğraf Seç';
+                document.getElementById('kacak-tutanak-preview').style.display = 'none';
+                return;
+            }
 
             document.getElementById('kacak-tutanak-label').textContent = file.name.slice(0, 18);
 
@@ -446,7 +453,16 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
             }
 
             const btn = document.getElementById('kacak-analiz-btn');
+            const btnOriginalHtml = btn.innerHTML;
             btn.disabled = true;
+            btn.setAttribute('aria-busy', 'true');
+            btn.style.opacity = '0.75';
+            btn.style.cursor = 'wait';
+            btn.innerHTML = `
+                <span class="inline-flex items-center justify-center gap-2">
+                    <span class="material-symbols-outlined animate-spin" style="font-size:18px">progress_activity</span>
+                    <span>Analiz ediliyor...</span>
+                </span>`;
 
             const fd = new FormData();
             fd.append('action', 'analyzeKacakTutanak');
@@ -490,7 +506,11 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
                 Alert.error('Bağlantı Hatası', 'Sunucuya ulaşılamadı.');
             } finally {
                 Loading.hide();
-                btn.disabled = false;
+                btn.disabled = !input.files.length;
+                btn.removeAttribute('aria-busy');
+                btn.style.opacity = '';
+                btn.style.cursor = '';
+                btn.innerHTML = btnOriginalHtml;
             }
         };
 
