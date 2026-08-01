@@ -537,8 +537,28 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
                 const res = await (await fetch('api.php', { method: 'POST', body: fd })).json();
                 if (res.success) {
                     Modal.close('kacak-bildir-modal');
+
+                    // Yeni kaydın tarihi mevcut sorgu aralığının dışındaysa liste
+                    // filtrelerini genişlet; ardından yenilemenin bitmesini bekle.
+                    const kayitTarihi = this.querySelector('[name=tarih]').value;
+                    const basInput = document.getElementById('kacak-bas');
+                    const bitInput = document.getElementById('kacak-bit');
+                    if (kayitTarihi && (!basInput.value || kayitTarihi < basInput.value)) {
+                        basInput.value = kayitTarihi;
+                    }
+                    if (kayitTarihi && (!bitInput.value || kayitTarihi > bitInput.value)) {
+                        bitInput.value = kayitTarihi;
+                    }
+
+                    aktifFiltre = 'all';
+                    document.querySelectorAll('.kacak-tab').forEach((tab, index) => {
+                        tab.className = index === 0
+                            ? 'kacak-tab flex-1 py-2 rounded-xl text-xs font-bold text-primary bg-white dark:bg-card-dark'
+                            : 'kacak-tab flex-1 py-2 rounded-xl text-xs font-bold text-slate-500';
+                    });
+
+                    await loadKacakKayitlar();
                     Alert.success('Gönderildi', res.message);
-                    loadKacakKayitlar();
                 } else {
                     Alert.error('Hata', res.message || 'Kayıt gönderilemedi.');
                 }

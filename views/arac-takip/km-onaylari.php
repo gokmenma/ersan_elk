@@ -129,6 +129,10 @@ $rejectedReports = $KmBildirim->getReportsByStatus('reddedildi');
                         </div>
 
                         <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 ms-auto">
+                            <button type="button" id="btnKmAiKontrol" class="btn btn-primary btn-sm text-white px-2 d-flex align-items-center" title="Seçilen fotoğrafları yapay zekâ ile kontrol et" disabled>
+                                <i class="bx bx-bot fs-5 me-1"></i> <span>Yapay Zekâ ile Kontrol (<span id="aiSelectedCount">0</span>)</span>
+                            </button>
+                            <div class="vr" id="btnKmAiKontrolDivider" style="height: 20px; align-self: center;"></div>
                             <button type="button" id="btnTopluOnayla" class="btn btn-success btn-sm text-white shadow-success text-decoration-none px-2 d-none align-items-center" title="Seçilenleri Onayla">
                                 <i class="bx bx-check-double fs-5 me-1"></i> <span>Toplu Onayla (<span id="selectedCount">0</span>)</span>
                             </button>
@@ -949,6 +953,8 @@ $(document).ready(function() {
     function updateBatchButton() {
         const selectedCount = $('.km-checkbox:checked').length;
         $('#selectedCount').text(selectedCount);
+        $('#aiSelectedCount').text(selectedCount);
+        $('#btnKmAiKontrol').prop('disabled', selectedCount === 0);
         if (selectedCount > 0) {
             $('#btnTopluOnayla').removeClass('d-none').addClass('d-flex');
             $('#btnTopluOnaylaDivider').removeClass('d-none');
@@ -957,6 +963,64 @@ $(document).ready(function() {
             $('#btnTopluOnaylaDivider').addClass('d-none');
         }
     }
+
+    $('#btnKmAiKontrol').on('click', function() {
+        const ids = $('.km-checkbox:checked').map(function() {
+            return $(this).data('id');
+        }).get();
+        if (!ids.length) return;
+
+        Swal.fire({
+            icon: 'question',
+            title: 'Yapay Zekâ ile KM Kontrolü',
+            html: `<b>${ids.length}</b> fotoğraf analiz edilecek.<br><small class="text-muted">Yalnızca KM, plaka ve bildirim türü güvenli biçimde eşleşen kayıtlar otomatik onaylanır. Diğerleri beklemede kalır.</small>`,
+            showCancelButton: true,
+            confirmButtonText: 'Analizi Başlat',
+            cancelButtonText: 'Vazgeç',
+            confirmButtonColor: '#556ee6'
+        }).then(function(result) {
+            if (!result.isConfirmed) return;
+
+            Swal.fire({
+                title: 'Fotoğraflar Analiz Ediliyor',
+                html: 'KM, plaka ve bildirim türü karşılaştırılıyor.<br><small>Lütfen pencereyi kapatmayın.</small>',
+                allowOutsideClick: false,
+                allowEscapeKey: false,
+                showConfirmButton: false,
+                didOpen: () => Swal.showLoading()
+            });
+
+            $.ajax({
+                url: 'views/arac-takip/api.php',
+                type: 'POST',
+                dataType: 'json',
+                data: { action: 'km-ai-kontrol-onayla', ids: ids }
+            }).done(function(res) {
+                if (res.status !== 'success') {
+                    return Swal.fire('Hata', res.message || 'Yapay zekâ kontrolü tamamlanamadı.', 'error');
+                }
+
+                const detaylar = (res.data.sonuclar || []).map(function(item) {
+                    const icon = item.durum === 'onaylandi' ? '✅' : (item.durum === 'hata' ? '❌' : '⚠️');
+                    const plaka = item.plaka ? `<b>${item.plaka}</b> – ` : `#${item.id} – `;
+                    return `<div class="text-start border-bottom py-2">${icon} ${plaka}${item.neden}</div>`;
+                }).join('');
+
+                Swal.fire({
+                    icon: res.data.onaylanan > 0 ? 'success' : 'info',
+                    title: 'Yapay Zekâ Kontrolü Tamamlandı',
+                    html: `<p>${res.message}</p><div style="max-height:260px;overflow:auto">${detaylar}</div>`,
+                    confirmButtonText: 'Tamam',
+                    width: 620
+                }).then(() => window.location.reload());
+            }).fail(function(xhr) {
+                const message = xhr.responseJSON && xhr.responseJSON.message
+                    ? xhr.responseJSON.message
+                    : 'Yapay zekâ kontrolü sırasında bağlantı hatası oluştu.';
+                Swal.fire('Hata', message, 'error');
+            });
+        });
+    });
 
     $('#btnTopluOnayla').on('click', function() {
         const selectedIds = [];

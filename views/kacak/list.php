@@ -302,6 +302,8 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
                         <div class="col-md-2 d-flex gap-2">
                             <button class="btn btn-primary flex-grow-1" id="btnFiltrele"><i
                                     class="bx bx-search me-1"></i>Filtrele</button>
+                            <button class="btn btn-outline-success" id="btnKayitlarExcel" title="Excel İndir"><i
+                                    class="bx bx-download"></i></button>
                             <?php if ($yetkiDuzenle): ?>
                                 <button class="btn btn-success" id="btnYeniKacak" title="Yeni Kayıt"><i
                                         class="bx bx-plus"></i></button>
@@ -1781,6 +1783,12 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
         });
 
         $('#btnFiltrele').on('click', kayitlariYukle);
+        $('#btnKayitlarExcel').on('click', function () {
+            const params = kayitFiltreleri();
+            params.tip = 'kayitlar';
+            delete params.action;
+            window.location.href = 'views/kacak/export-haftalik.php?' + $.param(params);
+        });
         $('#btnIptalFiltrele').on('click', iptalleriYukle);
         $('#filtre_arama').on('keypress', e => { if (e.which === 13) kayitlariYukle(); });
 

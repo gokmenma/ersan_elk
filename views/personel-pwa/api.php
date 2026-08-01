@@ -4578,7 +4578,12 @@ try {
             if (isset($_FILES['resim']) && $_FILES['resim']['error'] === UPLOAD_ERR_OK) {
                 // Ana dizini bul (ersan_elk)
                 $uploadDir = dirname(dirname(__DIR__)) . '/uploads/km_bildirim/';
-                if (!is_dir($uploadDir)) mkdir($uploadDir, 0755, true);
+                if (!is_dir($uploadDir) && !mkdir($uploadDir, 0775, true) && !is_dir($uploadDir)) {
+                    throw new Exception('KM fotoğrafı yükleme dizini oluşturulamadı.');
+                }
+                if (!is_writable($uploadDir)) {
+                    throw new Exception('KM fotoğrafı yükleme dizinine yazılamıyor.');
+                }
                 
                 $ext = pathinfo($_FILES['resim']['name'], PATHINFO_EXTENSION);
                 $fileName = 'km_' . $personel_id . '_' . time() . '.' . $ext;
@@ -4586,6 +4591,8 @@ try {
                 
                 if (move_uploaded_file($_FILES['resim']['tmp_name'], $filePath)) {
                     $data['resim_yolu'] = 'uploads/km_bildirim/' . $fileName;
+                } else {
+                    throw new Exception('KM fotoğrafı sunucuya kaydedilemedi. Lütfen tekrar deneyin.');
                 }
             }
             
@@ -4599,27 +4606,45 @@ try {
             }
             
             $result = $KmBildirim->saveWithAttr($data);
-            
+
             if ($result) {
-                // Yetkili tüm yöneticilere bildirim gönder
+                $kayitId = $id > 0 ? $id : (int) \App\Helper\Security::decrypt($result);
+                $aiSonuc = null;
+
+                // Fotoğraf kaydedildikten hemen sonra yapay zekâ kontrolünü çalıştır.
+                // Analiz hatası bildirim kaydını bozmaz; kayıt manuel onayda kalır.
                 try {
-                    $BildirimModel = new \App\Model\BildirimModel();
-                    $tarihFormatli = date('d.m.Y', strtotime($data['tarih']));
-                    $turLabel = $data['tur'] === 'sabah' ? 'Sabah' : 'Akşam';
-                    
-                    $BildirimModel->broadcastByPermission(
-                        'arac-takip/km-onaylari',
-                        'Yeni KM Bildirimi',
-                        $personel->adi_soyadi . ", $tarihFormatli tarihi için $turLabel KM bildirimi yaptı: " . $data['bitis_km'] . " KM",
-                        'index?p=arac-takip/km-onaylari',
-                        'speed',
-                        'info'
-                    );
-                } catch (\Exception $e) {
-                    // Bildirim hatası kritik değil
+                    $aiKontrol = new \App\Service\KmBildirimAiKontrolService();
+                    $aiSonuc = $aiKontrol->kontrolEtVeOnayla([$kayitId], null);
+                } catch (\Throwable $e) {
+                    error_log("PWA KM otomatik AI kontrol hatası (ID {$kayitId}): " . $e->getMessage());
                 }
 
-                response(true, null, 'KM bildiriminiz başarıyla iletildi. Yönetici onayı bekleniyor.');
+                $otomatikOnaylandi = (int) ($aiSonuc['onaylanan'] ?? 0) === 1;
+                if (!$otomatikOnaylandi) {
+                    // Yalnızca manuel onay bekleyen kayıt için yöneticilere bildirim gönder.
+                    try {
+                        $BildirimModel = new \App\Model\BildirimModel();
+                        $tarihFormatli = date('d.m.Y', strtotime($data['tarih']));
+                        $turLabel = $data['tur'] === 'sabah' ? 'Sabah' : 'Akşam';
+
+                        $BildirimModel->broadcastByPermission(
+                            'arac-takip/km-onaylari',
+                            'Yeni KM Bildirimi',
+                            $personel->adi_soyadi . ", $tarihFormatli tarihi için $turLabel KM bildirimi yaptı: " . $data['bitis_km'] . " KM",
+                            'index?p=arac-takip/km-onaylari',
+                            'speed',
+                            'info'
+                        );
+                    } catch (\Exception $e) {
+                        // Bildirim hatası kritik değil
+                    }
+                }
+
+                $mesaj = $otomatikOnaylandi
+                    ? 'KM bildiriminiz fotoğrafla eşleşti ve otomatik olarak onaylandı.'
+                    : 'KM bildiriminiz başarıyla iletildi. Yapay zekâ kurallarından geçmediği için yönetici onayı bekleniyor.';
+                response(true, ['otomatik_onaylandi' => $otomatikOnaylandi], $mesaj);
             } else {
                 response(false, null, 'Bildirim kaydedilemedi.');
             }

@@ -57,17 +57,17 @@ $canManageIsTuruUcret = Gate::allows('is_turu_ucret_tanimla');
                 <div class="card-body overflow-auto">
 
 
-                    <table id="actionTable" class="datatable table table-bordered nowrap w-100">
+                    <table id="actionTable" class="datatable datatable-deferred table table-bordered nowrap w-100">
                         <thead>
                             <tr>
-                                <th class="text-center">Sıra</th>
-                                <th class="text-center">İş Türü</th>
-                                <th class="text-center">İş Emri Sonucu</th>
-                                <th class="text-center">İş Türü Ücreti</th>
-                                <th class="text-center">Araçlı Pers. İş Türü Ücreti</th>
-                                <th class="text-center">Okuma Pers. İş Türü Ücreti</th>
-                                <th class="text-center">Rapor Sekmesi</th>
-                                <th class="text-center">Açıklama</th>
+                                <th class="text-center" data-filter="number">Sıra</th>
+                                <th class="text-center" data-filter="string">İş Türü</th>
+                                <th class="text-center" data-filter="string">İş Emri Sonucu</th>
+                                <th class="text-center" data-filter="number">İş Türü Ücreti</th>
+                                <th class="text-center" data-filter="number">Araçlı Pers. İş Türü Ücreti</th>
+                                <th class="text-center" data-filter="number">Okuma Pers. İş Türü Ücreti</th>
+                                <th class="text-center" data-filter="select">Rapor Sekmesi</th>
+                                <th class="text-center" data-filter="string">Açıklama</th>
                                 <th style="width:5%">İşlem</th>
                             </tr>
                         </thead>
@@ -86,7 +86,11 @@ $canManageIsTuruUcret = Gate::allows('is_turu_ucret_tanimla');
                                         <?php echo $isTuru->id ?>
                                     </td>
                                     <td class="text-center">
-                                        <?php echo $isTuru->tur_adi ?>
+                                        <a href="#" class="duzenle text-dark text-decoration-none"
+                                            data-id="<?php echo $enc_id; ?>"
+                                            title="İş türünü düzenle">
+                                            <?php echo htmlspecialchars($isTuru->tur_adi, ENT_QUOTES, 'UTF-8'); ?>
+                                        </a>
                                     </td>
                                     <td class="text-center">
                                         <?php echo $isTuru->is_emri_sonucu ?>

@@ -72,6 +72,60 @@ if ($tip === 'teslim') {
     }
 
     $dosyaAdi = 'Kacak_Teslim_Alma_Listesi_' . $baslangic . '_' . $bitis . '.xlsx';
+} elseif ($tip === 'kayitlar') {
+    $filters = [
+        'tarih_baslangic' => $baslangic,
+        'tarih_bitis' => $bitis,
+        'ilce' => $_GET['ilce'] ?? '',
+        'tur' => $_GET['tur'] ?? '',
+        'arama' => $_GET['arama'] ?? '',
+        'durum' => $_GET['durum'] ?? 'aktif',
+        'onay_durumu' => $_GET['onay_durumu'] ?? 'onaylandi',
+    ];
+
+    $sheet->setTitle('Kaçak Kontrol Kayıtları');
+    $basliklar = ['TARİH', 'TUTANAK NO', 'ABONE ADI', 'İLÇE', 'TÜR', 'SAYAÇ NO', 'SAYI', 'EKİP', 'KAYNAK', 'FOTO SAYISI', 'DURUM'];
+    $sheet->fromArray($basliklar, null, 'A1');
+    $sheet->getStyle('A1:K1')->applyFromArray($basligStili);
+
+    $records = $Kacak->getRecords($filters);
+    $satir = 2;
+    foreach ($records as $kayit) {
+        $kaynakMap = ['pwa' => 'Mobil', 'masaustu' => 'Masaüstü', 'excel' => 'Excel'];
+        $kaynakLabel = $kaynakMap[$kayit['kaynak']] ?? ($kayit['kaynak'] ?? '-');
+
+        $durumLabel = 'Aktif';
+        if ($kayit['onay_durumu'] === 'beklemede') {
+            $durumLabel = 'Onay Bekliyor';
+        } elseif ($kayit['onay_durumu'] === 'reddedildi') {
+            $durumLabel = 'Reddedildi';
+        } elseif ($kayit['durum'] === 'iptal') {
+            $durumLabel = ($kayit['hakedisten_dus'] == 1) ? 'İptal (Düşüldü)' : 'İptal';
+        }
+
+        $sheet->fromArray([
+            Date::dmY($kayit['tarih']),
+            $kayit['tutanak_no'],
+            $kayit['abone_adi'],
+            $kayit['ilce'],
+            $kayit['tur'],
+            $kayit['sayac_no'],
+            (int) $kayit['sayi'],
+            $kayit['ekip_adi'],
+            $kaynakLabel,
+            (int) ($kayit['foto_sayisi'] ?? 0),
+            $durumLabel
+        ], null, 'A' . $satir);
+        $satir++;
+    }
+
+    $sonSatir = max(1, $satir - 1);
+    $sheet->getStyle('A1:K' . $sonSatir)->applyFromArray($kenarlik);
+    foreach (range('A', 'K') as $sutun) {
+        $sheet->getColumnDimension($sutun)->setAutoSize(true);
+    }
+
+    $dosyaAdi = 'Kacak_Kontrol_Kayitlari_' . $baslangic . '_' . $bitis . '.xlsx';
 } else {
     $sheet->setTitle('Bölge Bazlı Özet');
     $sheet->setCellValue('A1', 'BÖLGE (İLÇE) BAZLI ABONESİZ / KAÇAK / USÜLSÜZ ÖZETİ');

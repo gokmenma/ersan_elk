@@ -1,6 +1,7 @@
 let url = "views/tanimlamalar/api.php";
 let canManageUcretGecmisi = false;
 let shouldReloadAfterUcretGecmisClose = false;
+let isTuruTable = null;
 
 function getTodayTr() {
   const d = new Date();
@@ -191,6 +192,16 @@ $(document).on("click", "#actionEkle", function () {
 });
 
 $(document).ready(function () {
+  // Bu tabloyu burada başlatarak ortak DataTable kolon filtrelerinin
+  // sayfa her yüklendiğinde güvenilir şekilde oluşturulmasını sağla.
+  if (!$.fn.DataTable.isDataTable("#actionTable")) {
+    const options =
+      typeof getDatatableOptions === "function" ? getDatatableOptions() : {};
+    isTuruTable = $("#actionTable").DataTable(options);
+  } else {
+    isTuruTable = $("#actionTable").DataTable();
+  }
+
   canManageUcretGecmisi = $("#ucretGecmisYetki").val() === "1";
 
   $("#is_turu").select2({

@@ -3864,6 +3864,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 echo json_encode(['status' => 'success']);
                 break;
 
+            case 'km-ai-kontrol-onayla':
+                $ids = $_POST['ids'] ?? [];
+                if (!is_array($ids) || empty($ids)) {
+                    throw new Exception('Yapay zekâ ile kontrol edilecek kayıt seçilmedi.');
+                }
+
+                $aiKontrol = new \App\Service\KmBildirimAiKontrolService();
+                $sonuc = $aiKontrol->kontrolEtVeOnayla($ids, $_SESSION['user_id'] ?? null);
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => "{$sonuc['onaylanan']} kayıt otomatik onaylandı; {$sonuc['manuel']} kayıt manuel kontrolde bırakıldı.",
+                    'data' => $sonuc,
+                ], JSON_UNESCAPED_UNICODE);
+                break;
+
             case 'km-onay-ver':
                 $id = intval($_POST['id'] ?? 0);
                 if ($id <= 0) throw new Exception("Geçersiz bildirim ID.");
