@@ -74,7 +74,7 @@ if (!is_array($firma_option)) {
 
             <!-- App Search-->
             <?php if (count($firma_option) > 1): ?>
-            <form class="app-search d-none d-lg-block ms-3 ms-lg-4" style="width: 200px;">
+            <form class="app-search d-none d-lg-block ms-2 ms-lg-3" style="width: 200px;">
 
 
                 <?php

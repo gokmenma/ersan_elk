@@ -1238,23 +1238,57 @@ body[data-sidebar="light"] .vertical-menu #sidebar-menu ul li ul.sub-menu li a.a
   border-radius: 4px;
 }
 
-/* Sidebar Width & Overflow Fix */
+/* Synchronized Layout Alignment: Sidebar, Topbar, Favorites Bar, Main Content */
 @media (min-width: 992px) {
-  body:not([data-sidebar-size="sm"]) .vertical-menu,
-  body:not([data-sidebar-size="sm"]) .navbar-brand-box {
+  /* Expanded Sidebar Mode (270px) */
+  body:not([data-sidebar-size="sm"]) .vertical-menu {
+    top: 0 !important;
     width: 270px !important;
+  }
+  body:not([data-sidebar-size="sm"]) #page-topbar {
+    left: 270px !important;
+    width: calc(100% - 270px) !important;
+  }
+  body:not([data-sidebar-size="sm"]) .quick-favorites-bar {
+    left: 270px !important;
+    width: calc(100% - 270px) !important;
   }
   body:not([data-sidebar-size="sm"]) .main-content {
     margin-left: 270px !important;
     width: calc(100% - 270px) !important;
   }
-  body[data-sidebar-size="sm"] .vertical-menu,
-  body[data-sidebar-size="sm"] .navbar-brand-box {
+
+  /* Collapsed Sidebar Mode (70px) */
+  body[data-sidebar-size="sm"] .vertical-menu {
+    top: 0 !important;
     width: 70px !important;
+  }
+  body[data-sidebar-size="sm"] #page-topbar {
+    left: 70px !important;
+    width: calc(100% - 70px) !important;
+  }
+  body[data-sidebar-size="sm"] .quick-favorites-bar {
+    left: 70px !important;
+    width: calc(100% - 70px) !important;
   }
   body[data-sidebar-size="sm"] .main-content {
     margin-left: 70px !important;
     width: calc(100% - 70px) !important;
+  }
+
+  /* Hide inner topbar brand box on desktop since full-height sidebar owns top-left */
+  #page-topbar .navbar-brand-box {
+    display: none !important;
+  }
+}
+
+@media (max-width: 991px) {
+  #page-topbar {
+    left: 0 !important;
+    width: 100% !important;
+  }
+  #page-topbar .navbar-brand-box {
+    display: block !important;
   }
 }
 
