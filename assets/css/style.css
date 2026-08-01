@@ -3881,3 +3881,25 @@ html[data-orientation="landscape"] .orientation-toggle-btn {
   z-index: 1055 !important;
 }
 
+/* Footer & Main Content Layout Fix */
+.main-content {
+  display: flex !important;
+  flex-direction: column !important;
+  min-height: 100vh !important;
+}
+
+.page-content {
+  flex: 1 0 auto !important;
+}
+
+.footer {
+  position: relative !important;
+  left: 0 !important;
+  right: 0 !important;
+  bottom: 0 !important;
+  width: 100% !important;
+  margin-top: auto !important;
+  z-index: 10;
+}
+
+

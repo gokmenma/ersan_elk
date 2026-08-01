@@ -3631,8 +3631,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
 
                     // Extra fields for Approved tab
                     if ($status === 'onaylandi') {
+                        $onaylayanHtml = !empty($report->ai_onay_mi)
+                            ? '<span class="badge bg-soft-primary text-primary"><i class="bx bx-bot me-1"></i>Yapay Zekâ Otomatik Onay</span>'
+                            : '<span class="d-block">' . htmlspecialchars($report->onaylayan_adi ?: '-') . '</span>';
                         $nested['onaylayan_tarih'] = '
-                            <span class="d-block">' . htmlspecialchars($report->onaylayan_adi ?: '') . '</span>
+                            ' . $onaylayanHtml . '
                             <small class="text-muted">' . ($report->onay_tarihi ? date('d.m.Y H:i', strtotime($report->onay_tarihi)) : '-') . '</small>';
                     }
 
@@ -3942,6 +3945,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     'durum' => 'onaylandi',
                     'onaylanan_km' => $deger_km,
                     'onaylayan_id' => $_SESSION['user_id'] ?? null,
+                    'ai_onay_mi' => 0,
                     'onay_tarihi' => date('Y-m-d H:i:s')
                 ]);
 
@@ -4020,6 +4024,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     'onaylanan_km' => $newKm,
                     'aciklama' => $finalAciklama,
                     'onaylayan_id' => $_SESSION['user_id'] ?? null,
+                    'ai_onay_mi' => 0,
                     'onay_tarihi' => date('Y-m-d H:i:s')
                 ]);
 
@@ -4118,6 +4123,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                             'durum' => 'onaylandi',
                             'onaylanan_km' => $deger_km,
                             'onaylayan_id' => $userId,
+                            'ai_onay_mi' => 0,
                             'onay_tarihi' => $now
                         ]);
 

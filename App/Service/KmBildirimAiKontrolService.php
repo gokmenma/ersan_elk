@@ -276,6 +276,7 @@ class KmBildirimAiKontrolService
             'durum' => 'onaylandi',
             'onaylanan_km' => $km,
             'onaylayan_id' => $onaylayanId,
+            'ai_onay_mi' => 1,
             'onay_tarihi' => date('Y-m-d H:i:s'),
         ]);
 
