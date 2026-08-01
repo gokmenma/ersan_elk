@@ -80,38 +80,37 @@ File: Main Js File
     });
   }
 
+  function triggerLayoutResize() {
+    var startTime = performance.now();
+    function step(currentTime) {
+      window.dispatchEvent(new Event("resize"));
+      if (typeof $.fn.dataTable !== "undefined") {
+        $.fn.dataTable.tables({ visible: true, api: true }).columns.adjust();
+      }
+      if (currentTime - startTime < 300) {
+        requestAnimationFrame(step);
+      }
+    }
+    requestAnimationFrame(step);
+  }
+
   function initLeftMenuCollapse() {
-    var currentSIdebarSize = document.body.getAttribute("data-sidebar-size");
     $(window).on("load", function () {
       $(".switch").on("switch-change", function () {
         toggleWeather();
       });
-
-      if (window.innerWidth >= 1024 && window.innerWidth <= 1366) {
-        document.body.setAttribute("data-sidebar-size", "sm");
-        updateRadio("sidebar-size-small");
-      }
     });
 
     $("#vertical-menu-btn").on("click", function (event) {
       event.preventDefault();
       $("body").toggleClass("sidebar-enable");
       if ($(window).width() >= 992) {
-        if (currentSIdebarSize == null) {
-          document.body.getAttribute("data-sidebar-size") == null ||
-          document.body.getAttribute("data-sidebar-size") == "lg"
-            ? document.body.setAttribute("data-sidebar-size", "sm")
-            : document.body.setAttribute("data-sidebar-size", "lg");
-        } else if (currentSIdebarSize == "md") {
-          document.body.getAttribute("data-sidebar-size") == "md"
-            ? document.body.setAttribute("data-sidebar-size", "sm")
-            : document.body.setAttribute("data-sidebar-size", "md");
-        } else {
-          document.body.getAttribute("data-sidebar-size") == "sm"
-            ? document.body.setAttribute("data-sidebar-size", "lg")
-            : document.body.setAttribute("data-sidebar-size", "sm");
-        }
+        var currentSize = document.body.getAttribute("data-sidebar-size");
+        var newSize = (currentSize === "sm") ? "lg" : "sm";
+        document.body.setAttribute("data-sidebar-size", newSize);
+        localStorage.setItem("data-sidebar-size", newSize);
       }
+      triggerLayoutResize();
     });
   }
 

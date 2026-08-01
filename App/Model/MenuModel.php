@@ -417,26 +417,38 @@ class MenuModel extends Model
      */
     public function getFavoriteMenuIds(int $userId): array
     {
-        $stmt = $this->db->prepare("SELECT menu_id FROM user_favorites WHERE user_id = ?");
+        $stmt = $this->db->prepare("SELECT menu_id FROM user_favorites WHERE user_id = ? ORDER BY sort_order ASC, id ASC");
         $stmt->execute([$userId]);
-        return $stmt->fetchAll(PDO::FETCH_COLUMN) ?: [];
+        return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN) ?: []);
     }
 
     /**
-     * Kullanıcının favori menülerini (hiyerarşik değil, düz liste) döndürür.
+     * Kullanıcının favori menülerini (hiyerarşik değil, düz liste) sıralı olarak döndürür.
      */
     public function getFavoriteMenus(int $userId): array
     {
-        $favoriteIds = $this->getFavoriteMenuIds($userId);
-        if (empty($favoriteIds)) {
+        $sql = "SELECT m.*, uf.sort_order as fav_sort, uf.id as fav_id 
+                FROM {$this->table} m 
+                INNER JOIN user_favorites uf ON uf.menu_id = m.id 
+                WHERE uf.user_id = ? AND m.is_active = 1 
+                ORDER BY uf.sort_order ASC, uf.id ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$userId]);
+        $menus = $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
+
+        if (empty($menus)) {
             return [];
         }
 
-        $placeholders = implode(',', array_fill(0, count($favoriteIds), '?'));
-        $sql = "SELECT * FROM {$this->table} WHERE id IN ({$placeholders}) AND is_active = 1";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute($favoriteIds);
-        return $stmt->fetchAll(PDO::FETCH_OBJ) ?: [];
+        // Kullanıcının erişim izni olan menüleri filtrele
+        $allowedMenus = [];
+        foreach ($menus as $m) {
+            if (empty($m->link) || $this->userCanAccessMenuLink($userId, $m->link)) {
+                $allowedMenus[] = $m;
+            }
+        }
+
+        return $allowedMenus;
     }
 
     /**
@@ -448,12 +460,30 @@ class MenuModel extends Model
         $stmt->execute([$userId, $menuId]);
         $exists = $stmt->fetch();
 
+        $menu = $this->find($menuId);
+        $menuTitle = $menu->title ?? "Menü #{$menuId}";
+
         if ($exists) {
             $stmt = $this->db->prepare("DELETE FROM user_favorites WHERE user_id = ? AND menu_id = ?");
-            return $stmt->execute([$userId, $menuId]);
+            $result = $stmt->execute([$userId, $menuId]);
+            if ($result) {
+                try {
+                    $log = new SystemLogModel();
+                    $log->logAction($userId, 'Favori Menü', "'{$menuTitle}' favorilerden çıkarıldı.");
+                } catch (\Exception $e) {}
+            }
+            return $result;
         } else {
             $stmt = $this->db->prepare("INSERT INTO user_favorites (user_id, menu_id) VALUES (?, ?)");
-            return $stmt->execute([$userId, $menuId]);
+            $result = $stmt->execute([$userId, $menuId]);
+            if ($result) {
+                try {
+                    $log = new SystemLogModel();
+                    $log->logAction($userId, 'Favori Menü', "'{$menuTitle}' favorilere eklendi.");
+                } catch (\Exception $e) {}
+            }
+            return $result;
         }
     }
 }
+

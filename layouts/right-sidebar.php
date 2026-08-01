@@ -16,6 +16,11 @@
         <div class="p-4">
             <h6 class="mb-3">Tema Rengi Seçin</h6>
             <div class="color-selector-group">
+                <div class="color-picker-wrapper" data-bs-toggle="tooltip" data-bs-placement="top"
+                    title="Özel Renk Seç">
+                    <input type="color" id="custom-theme-picker" value="#1c84ee">
+                    <i class="mdi mdi-palette"></i>
+                </div>
                 <input class="color-selector-btn color-default" type="radio" name="theme-mode" id="theme-default"
                     value="default" checked data-bs-toggle="tooltip" data-bs-placement="top" title="Varsayılan">
                 <input class="color-selector-btn color-red" type="radio" name="theme-mode" id="theme-red" value="red"
@@ -36,12 +41,6 @@
                     data-bs-toggle="tooltip" data-bs-placement="top" title="Teal">
                 <input class="color-selector-btn color-cyan" type="radio" name="theme-mode" id="theme-cyan" value="cyan"
                     data-bs-toggle="tooltip" data-bs-placement="top" title="Cyan">
-
-                <div class="color-picker-wrapper" data-bs-toggle="tooltip" data-bs-placement="top"
-                    title="Özel Renk Seç">
-                    <input type="color" id="custom-theme-picker" value="#1c84ee">
-                    <i class="mdi mdi-palette"></i>
-                </div>
             </div>
 
             <h6 class="mt-4 mb-3 pt-2">Yazı Tipi (Font)</h6>
@@ -151,6 +150,11 @@
                 <label class="form-check-label" for="topbar-color-brand">Marka Rengi</label>
             </div>
             <div class="color-selector-group mt-2">
+                <div class="color-picker-wrapper" data-bs-toggle="tooltip" data-bs-placement="top"
+                    title="Özel Üst Bar Rengi">
+                    <input type="color" id="custom-topbar-picker" value="#1c84ee">
+                    <i class="mdi mdi-palette"></i>
+                </div>
                 <input class="color-selector-btn color-default" type="radio" name="topbar-color" id="topbar-default"
                     value="default" data-bs-toggle="tooltip" data-bs-placement="top" title="Varsayılan">
                 <input class="color-selector-btn color-red" type="radio" name="topbar-color" id="topbar-red" value="red"
@@ -171,12 +175,6 @@
                     value="teal" data-bs-toggle="tooltip" data-bs-placement="top" title="Teal">
                 <input class="color-selector-btn color-cyan" type="radio" name="topbar-color" id="topbar-cyan"
                     value="cyan" data-bs-toggle="tooltip" data-bs-placement="top" title="Cyan">
-
-                <div class="color-picker-wrapper" data-bs-toggle="tooltip" data-bs-placement="top"
-                    title="Özel Üst Bar Rengi">
-                    <input type="color" id="custom-topbar-picker" value="#1c84ee">
-                    <i class="mdi mdi-palette"></i>
-                </div>
             </div>
 
             <h6 class="mt-4 mb-3 pt-2 sidebar-setting">Yan Menü Boyutu</h6>
@@ -213,6 +211,11 @@
                 <label class="form-check-label" for="sidebar-color-brand">Marka Rengi</label>
             </div>
             <div class="color-selector-group mt-2 sidebar-setting">
+                <div class="color-picker-wrapper" data-bs-toggle="tooltip" data-bs-placement="top"
+                    title="Özel Yan Menü Rengi">
+                    <input type="color" id="custom-sidebar-picker" value="#1c84ee">
+                    <i class="mdi mdi-palette"></i>
+                </div>
                 <input class="color-selector-btn color-default" type="radio" name="sidebar-color" id="sidebar-default"
                     value="default" data-bs-toggle="tooltip" data-bs-placement="top" title="Varsayılan">
                 <input class="color-selector-btn color-red" type="radio" name="sidebar-color" id="sidebar-red"
@@ -233,12 +236,6 @@
                     value="teal" data-bs-toggle="tooltip" data-bs-placement="top" title="Teal">
                 <input class="color-selector-btn color-cyan" type="radio" name="sidebar-color" id="sidebar-cyan"
                     value="cyan" data-bs-toggle="tooltip" data-bs-placement="top" title="Cyan">
-
-                <div class="color-picker-wrapper" data-bs-toggle="tooltip" data-bs-placement="top"
-                    title="Özel Yan Menü Rengi">
-                    <input type="color" id="custom-sidebar-picker" value="#1c84ee">
-                    <i class="mdi mdi-palette"></i>
-                </div>
             </div>
 
             <h6 class="mt-4 mb-3 pt-2">Yön</h6>

@@ -503,25 +503,6 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
             <!-- Left Menu Start -->
             <ul class="metismenu list-unstyled" id="side-menu">
 
-                <!-- Sık Kullanılanlar Başlığı -->
-                <li class="menu-title fav-title" data-key="t-favorites" style="<?php echo empty($favoriteMenus) ? 'display:none;' : ''; ?>">Favoriler</li>
-                
-                <div id="favorites-container">
-                    <?php foreach ($favoriteMenus as $fav): ?>
-                        <li class="fav-item" data-id="<?php echo $fav->id; ?>">
-                            <a href="<?php echo Route::Link($fav->menu_link); ?>" class="waves-effect">
-                                <?php if (!empty($fav->menu_icon)): ?>
-                                    <i data-feather="<?php echo htmlspecialchars($fav->menu_icon); ?>"></i>
-                                <?php endif; ?>
-                                <span class="menu-name"><?php echo htmlspecialchars($fav->menu_name); ?></span>
-                            </a>
-                            <div class="star-btn active" data-id="<?php echo $fav->id; ?>" title="Favorilerden Kaldır">
-                                <i class="fas fa-star" style="font-size: 11px;"></i>
-                            </div>
-                        </li>
-                    <?php endforeach; ?>
-                </div>
-
                 <?php foreach ($menu_data as $group_name => $menus): ?>
 
                     <li class="menu-title" data-key="t-menu"><?php echo htmlspecialchars($group_name); ?></li>
@@ -669,8 +650,253 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                 title.style.display = hasVisible ? '' : 'none';
             });
         });
+    });
+</script>
 
-        // Favori Yıldız İşlemi (Real-time)
+<!-- Custom Context Menu Markup -->
+<div id="sidebar-context-menu" class="sidebar-context-menu" style="display: none;">
+    <div class="context-menu-item" id="ctx-fav-toggle">
+        <i data-feather="star" class="ctx-icon ctx-star-icon"></i>
+        <span id="ctx-fav-text">Sık Kullanılanlara Ekle</span>
+    </div>
+    <div class="context-menu-divider"></div>
+    <div class="context-menu-item" id="ctx-open-tab">
+        <i data-feather="external-link" class="ctx-icon"></i>
+        <span>Yeni Sekmede Aç</span>
+    </div>
+</div>
+
+<div id="fav-toast-notification" class="fav-toast-notification">
+    <i data-feather="check-circle" style="width:16px;height:16px;"></i>
+    <span id="fav-toast-text">Sık kullanılanlara eklendi</span>
+</div>
+
+<style>
+.sidebar-context-menu {
+    position: fixed;
+    z-index: 99999;
+    background: var(--bs-card-bg, #ffffff);
+    border: 1px solid var(--sidebar-border, #e9ecef);
+    border-radius: 8px;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.2), 0 4px 10px -2px rgba(0, 0, 0, 0.1);
+    padding: 6px;
+    min-width: 190px;
+    backdrop-filter: blur(12px);
+    animation: ctxFadeIn 0.12s ease-out;
+}
+
+[data-bs-theme="dark"] .sidebar-context-menu {
+    background: #1c2228 !important;
+    border-color: #283038 !important;
+    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.5);
+}
+
+@keyframes ctxFadeIn {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+}
+
+.context-menu-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 8px 12px;
+    font-size: 13px;
+    color: var(--bs-body-color, #333);
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+    user-select: none;
+}
+
+[data-bs-theme="dark"] .context-menu-item {
+    color: #ced4da;
+}
+
+.context-menu-item:hover {
+    background: rgba(28, 132, 238, 0.1);
+    color: #1c84ee;
+}
+
+[data-bs-theme="dark"] .context-menu-item:hover {
+    background: rgba(28, 132, 238, 0.2);
+    color: #60a5fa;
+}
+
+.context-menu-item .ctx-icon {
+    width: 15px;
+    height: 15px;
+}
+
+.ctx-star-icon {
+    color: #f1b44c;
+}
+
+.context-menu-divider {
+    height: 1px;
+    background: var(--sidebar-border, #e9ecef);
+    margin: 4px 0;
+}
+
+[data-bs-theme="dark"] .context-menu-divider {
+    background: #283038;
+}
+
+.fav-toast-notification {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    z-index: 100000;
+    background: #10b981;
+    color: #ffffff;
+    padding: 10px 18px;
+    border-radius: 8px;
+    font-size: 13px;
+    font-weight: 500;
+    box-shadow: 0 4px 14px rgba(0, 0, 0, 0.18);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    opacity: 0;
+    transform: translateY(12px);
+    transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    pointer-events: none;
+}
+
+.fav-toast-notification.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+</style>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        const ctxMenu = document.getElementById('sidebar-context-menu');
+        const ctxFavToggle = document.getElementById('ctx-fav-toggle');
+        const ctxFavText = document.getElementById('ctx-fav-text');
+        const ctxOpenTab = document.getElementById('ctx-open-tab');
+        const toast = document.getElementById('fav-toast-notification');
+        const toastText = document.getElementById('fav-toast-text');
+
+        let activeContextTarget = null; // { menuId, isFav, href, title }
+        let toastTimeout = null;
+
+        function showToast(message, isError = false) {
+            if (!toast) return;
+            if (toastTimeout) clearTimeout(toastTimeout);
+            toastText.textContent = message;
+            toast.style.backgroundColor = isError ? '#ef4444' : '#10b981';
+            toast.classList.add('show');
+            toastTimeout = setTimeout(() => {
+                toast.classList.remove('show');
+            }, 3000);
+        }
+
+        function hideContextMenu() {
+            if (ctxMenu) ctxMenu.style.display = 'none';
+            activeContextTarget = null;
+        }
+
+        // 1. Right Click (Context Menu) Handler
+        document.addEventListener('contextmenu', function(e) {
+            const sidebarItem = e.target.closest('#side-menu li[data-menu-id]');
+            const pillItem = e.target.closest('#quick-favorites-bar .quick-fav-pill');
+
+            if (!sidebarItem && !pillItem) {
+                hideContextMenu();
+                return;
+            }
+
+            e.preventDefault();
+
+            let menuId = null;
+            let href = '#';
+            let title = '';
+            let isFav = false;
+
+            if (sidebarItem) {
+                menuId = sidebarItem.getAttribute('data-menu-id');
+                const linkEl = sidebarItem.querySelector('a');
+                href = linkEl ? linkEl.getAttribute('href') : '#';
+                const nameEl = sidebarItem.querySelector('.menu-name');
+                title = nameEl ? nameEl.textContent.trim() : '';
+
+                const starBtn = sidebarItem.querySelector('.star-btn');
+                isFav = starBtn && starBtn.classList.contains('active');
+            } else if (pillItem) {
+                menuId = pillItem.getAttribute('data-menu-id');
+                const linkEl = pillItem.querySelector('a');
+                href = linkEl ? linkEl.getAttribute('href') : '#';
+                const nameEl = pillItem.querySelector('.pill-title');
+                title = nameEl ? nameEl.textContent.trim() : '';
+                isFav = true;
+            }
+
+            if (!menuId || href === 'javascript: void(0);' || href === 'javascript:void(0);') {
+                hideContextMenu();
+                return;
+            }
+
+            activeContextTarget = { menuId, isFav, href, title };
+
+            if (isFav) {
+                ctxFavText.textContent = 'Sık Kullanılanlardan Çıkar';
+            } else {
+                ctxFavText.textContent = 'Sık Kullanılanlara Ekle';
+            }
+
+            const mouseX = e.clientX;
+            const mouseY = e.clientY;
+            const winWidth = window.innerWidth;
+            const winHeight = window.innerHeight;
+
+            ctxMenu.style.display = 'block';
+            const menuWidth = ctxMenu.offsetWidth || 190;
+            const menuHeight = ctxMenu.offsetHeight || 90;
+
+            let posX = mouseX;
+            let posY = mouseY;
+
+            if (mouseX + menuWidth > winWidth) {
+                posX = winWidth - menuWidth - 10;
+            }
+            if (mouseY + menuHeight > winHeight) {
+                posY = winHeight - menuHeight - 10;
+            }
+
+            ctxMenu.style.left = posX + 'px';
+            ctxMenu.style.top = posY + 'px';
+        });
+
+        document.addEventListener('click', function(e) {
+            if (!e.target.closest('#sidebar-context-menu')) {
+                hideContextMenu();
+            }
+        });
+
+        document.addEventListener('scroll', hideContextMenu, true);
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') hideContextMenu();
+        });
+
+        if (ctxFavToggle) {
+            ctxFavToggle.addEventListener('click', function() {
+                if (!activeContextTarget || !activeContextTarget.menuId) return;
+                const menuId = activeContextTarget.menuId;
+                hideContextMenu();
+                toggleFavoriteAPI(menuId);
+            });
+        }
+
+        if (ctxOpenTab) {
+            ctxOpenTab.addEventListener('click', function() {
+                if (!activeContextTarget || !activeContextTarget.href) return;
+                window.open(activeContextTarget.href, '_blank');
+                hideContextMenu();
+            });
+        }
+
+        // 2. Star Button Click Handler in Sidebar
         document.addEventListener('click', function(e) {
             const starBtn = e.target.closest('.star-btn');
             if (!starBtn) return;
@@ -679,11 +905,26 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
             e.stopPropagation();
 
             const menuId = starBtn.getAttribute('data-id');
-            const isActive = starBtn.classList.contains('active');
-            
-            // UI'ı hemen güncelle (Optimistic Update)
-            toggleStarUI(menuId, !isActive);
+            if (menuId) {
+                toggleFavoriteAPI(menuId);
+            }
+        });
 
+        // 3. Remove Button Click Handler in Quick Favorites Bar
+        document.addEventListener('click', function(e) {
+            const removeBtn = e.target.closest('.pill-remove-btn');
+            if (!removeBtn) return;
+
+            e.preventDefault();
+            e.stopPropagation();
+
+            const menuId = removeBtn.getAttribute('data-menu-id');
+            if (menuId) {
+                toggleFavoriteAPI(menuId);
+            }
+        });
+
+        function toggleFavoriteAPI(menuId) {
             fetch('api/menu-favorites.php', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
@@ -691,74 +932,91 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
             })
             .then(response => response.json())
             .then(data => {
-                if (!data.success) {
-                    // Hata olursa geri al
-                    toggleStarUI(menuId, isActive);
-                    alert(data.message);
+                if (data.success) {
+                    syncFavoritesUI(data);
+                    showToast(data.message || 'İşlem başarılı');
+                } else {
+                    showToast(data.message || 'İşlem gerçekleştirilemedi', true);
                 }
             })
             .catch(error => {
-                toggleStarUI(menuId, isActive);
-                console.error('Error:', error);
+                console.error('Error toggling favorite:', error);
+                showToast('Sunucu ile iletişim kurulamadı', true);
             });
-        });
+        }
 
-        function toggleStarUI(menuId, setActive) {
-            const stars = document.querySelectorAll(`.star-btn[data-id="${menuId}"]`);
-            stars.forEach(s => {
-                if (setActive) {
-                    s.classList.add('active');
-                    s.querySelector('i').classList.replace('far', 'fas');
-                    s.setAttribute('title', 'Favorilerden Kaldır');
-                } else {
-                    s.classList.remove('active');
-                    s.querySelector('i').classList.replace('fas', 'far');
-                    s.setAttribute('title', 'Favorilere Ekle');
-                }
-            });
+        function syncFavoritesUI(data) {
+            const favoriteIds = (data.favorite_ids || []).map(id => parseInt(id, 10));
+            const favoritesList = data.favorites || [];
 
-            const favoritesContainer = document.getElementById('favorites-container');
-            const favTitle = document.querySelector('.fav-title');
-
-            if (setActive) {
-                // Sık kullanılanlara ekle
-                if (!document.querySelector(`.fav-item[data-id="${menuId}"]`)) {
-                    // Ana menüdeki öğeyi bulup kopyala
-                    const mainMenuItem = document.querySelector(`li[data-menu-id="${menuId}"]`);
-                    if (mainMenuItem) {
-                        const clone = document.createElement('li');
-                        clone.className = 'fav-item';
-                        clone.setAttribute('data-id', menuId);
-                        
-                        const link = mainMenuItem.querySelector('a').cloneNode(true);
-                        link.classList.remove('has-arrow', 'mm-active', 'active');
-                        link.href = mainMenuItem.querySelector('a').getAttribute('href'); // Re-set because cloneNode might lose some properties depending on browser
-                        
-                        // Icon ve yazı düzeltme (Eğer alt menü ise ikon olmayabilir, ana menü ikonunu alabiliriz)
-                        // Şimdilik sadece mevcut link içeriğini alıyoruz.
-                        
-                        const star = document.createElement('div');
-                        star.className = 'star-btn active';
-                        star.setAttribute('data-id', menuId);
-                        star.innerHTML = '<i class="fas fa-star" style="font-size: 11px;"></i>';
-                        
-                        clone.appendChild(link);
-                        clone.appendChild(star);
-                        favoritesContainer.appendChild(clone);
-                        
-                        // Feather icons refresh
-                        if (typeof feather !== 'undefined') feather.replace();
+            // A. Update Sidebar Stars
+            const allStarBtns = document.querySelectorAll('.star-btn');
+            allStarBtns.forEach(star => {
+                const id = parseInt(star.getAttribute('data-id'), 10);
+                const isFav = favoriteIds.includes(id);
+                if (isFav) {
+                    star.classList.add('active');
+                    const icon = star.querySelector('i');
+                    if (icon) {
+                        icon.classList.remove('far');
+                        icon.classList.add('fas');
                     }
+                    star.setAttribute('title', 'Favorilerden Kaldır');
+                } else {
+                    star.classList.remove('active');
+                    const icon = star.querySelector('i');
+                    if (icon) {
+                        icon.classList.remove('fas');
+                        icon.classList.add('far');
+                    }
+                    star.setAttribute('title', 'Favorilere Ekle');
                 }
-            } else {
-                // Sık kullanılanlardan kaldır
-                const favItem = document.querySelector(`.fav-item[data-id="${menuId}"]`);
-                if (favItem) favItem.remove();
+            });
+
+            // B. Update Top Quick Favorites Bar
+            const quickFavItems = document.getElementById('quick-fav-items');
+            const emptyHint = document.getElementById('quick-fav-empty-hint');
+            const currentUrlParams = new URLSearchParams(window.location.search);
+            const currentPage = currentUrlParams.get('p') || '';
+
+            if (quickFavItems) {
+                const existingPills = quickFavItems.querySelectorAll('.quick-fav-pill');
+                existingPills.forEach(pill => pill.remove());
+
+                favoritesList.forEach(fav => {
+                    const hrefUrl = (fav.link.indexOf('http') === 0 || fav.link.indexOf('javascript:') === 0) ? fav.link : `index.php?p=${fav.link}`;
+                    const isActive = (currentPage !== '' && (currentPage === fav.link || currentPage.indexOf(fav.link + '/') === 0 || fav.link.indexOf(currentPage) !== false));
+                    
+                    const pill = document.createElement('div');
+                    pill.className = `quick-fav-pill ${isActive ? 'active' : ''}`;
+                    pill.setAttribute('data-menu-id', fav.id);
+                    pill.setAttribute('data-link', fav.link);
+
+                    pill.innerHTML = `
+                        <a href="${hrefUrl}" class="quick-fav-link">
+                            <i data-feather="${fav.icon || 'circle'}" class="pill-icon"></i>
+                            <span class="pill-title">${fav.title}</span>
+                        </a>
+                        <button type="button" class="pill-remove-btn" data-menu-id="${fav.id}" title="Sık kullanılanlardan çıkar">
+                            <i data-feather="x" class="pill-remove-icon"></i>
+                        </button>
+                    `;
+
+                    if (emptyHint) {
+                        quickFavItems.insertBefore(pill, emptyHint);
+                    } else {
+                        quickFavItems.appendChild(pill);
+                    }
+                });
+
+                if (emptyHint) {
+                    emptyHint.style.display = favoritesList.length > 0 ? 'none' : '';
+                }
             }
 
-            // Başlığı göster/gizle
-            const hasFavs = favoritesContainer.querySelectorAll('.fav-item').length > 0;
-            favTitle.style.display = hasFavs ? '' : 'none';
+            if (typeof feather !== 'undefined') {
+                feather.replace();
+            }
         }
     });
-</script>
+</script>

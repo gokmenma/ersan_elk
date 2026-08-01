@@ -279,11 +279,18 @@ class KmBildirimAiKontrolService
             'onay_tarihi' => date('Y-m-d H:i:s'),
         ]);
 
-        (new SystemLogModel())->logAction(
-            $onaylayanId,
-            'KM Bildirim Yapay Zeka Onayı',
-            "KM Bildirim ID: {$bildirim->id}, Araç ID: {$aracId}, KM: {$km}; fotoğraf eşleşmesiyle otomatik onaylandı.",
-            SystemLogModel::LEVEL_IMPORTANT
-        );
+        // Otomatik PWA kontrolünde bir yönetici kullanıcı ID'si bulunmaz.
+        // system_logs.user_id NULL kabul etmediği için başarılı onayı log hatasıyla
+        // başarısız gibi göstermeyelim; yönetici başlatmışsa normal sistem loguna yaz.
+        if ($onaylayanId !== null && $onaylayanId > 0) {
+            (new SystemLogModel())->logAction(
+                $onaylayanId,
+                'KM Bildirim Yapay Zeka Onayı',
+                "KM Bildirim ID: {$bildirim->id}, Araç ID: {$aracId}, KM: {$km}; fotoğraf eşleşmesiyle otomatik onaylandı.",
+                SystemLogModel::LEVEL_IMPORTANT
+            );
+        } else {
+            error_log("KM Bildirim AI otomatik onaylandı: ID {$bildirim->id}, Araç ID {$aracId}, KM {$km}");
+        }
     }
 }

@@ -93,7 +93,7 @@ if (!is_array($firma_option)) {
             <?php endif; ?>
 
             <?php if (\App\Service\Gate::allows('personel_listesi')): ?>
-            <form class="app-search d-none d-lg-block ms-2" style="width: 250px;">
+            <form class="app-search d-none d-lg-block ms-2 ms-lg-3" style="max-width: 250px; width: 100%;">
                 <?php
                 echo Form::FormSelect2(
                     name: "topbar_personel_search",

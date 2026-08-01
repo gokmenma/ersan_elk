@@ -275,39 +275,100 @@
 }
 
 /* Dark Mode Support */
-html[data-bs-theme="dark"] .dt-filter-excel-dropdown {
-  background: #2a3042;
-  border-color: #3e4556;
+[data-bs-theme="dark"] .dt-filter-row > th {
+  background-color: #262b3c !important;
+  border-bottom-color: #32394e !important;
 }
 
-html[data-bs-theme="dark"] .dt-filter-excel-dropdown .search-box,
-html[data-bs-theme="dark"] .dt-filter-excel-dropdown .options-list,
-html[data-bs-theme="dark"] .dt-filter-excel-dropdown .dt-filter-footer,
-html[data-bs-theme="dark"] .dt-filter-excel-dropdown .option-item.select-all {
-  background: transparent;
-  border-color: #3e4556;
+[data-bs-theme="dark"] .dt-filter-control {
+  background-color: #191e22 !important;
+  color: #eff2f7 !important;
+  border-color: #32394e !important;
 }
 
-html[data-bs-theme="dark"] .dt-filter-excel-dropdown .option-item {
-  color: #a6b0cf;
-  background: transparent;
+[data-bs-theme="dark"] .dt-filter-control::placeholder {
+  color: #74788d !important;
 }
 
-html[data-bs-theme="dark"]
+[data-bs-theme="dark"] .dt-filter-control[readonly] {
+  background-color: #222736 !important;
+}
+
+[data-bs-theme="dark"] .dt-filter-mode-trigger {
+  background: #2a3042 !important;
+  color: #a6b0cf !important;
+  border-color: #32394e !important;
+}
+
+[data-bs-theme="dark"] .dt-filter-mode-trigger:hover {
+  background: #32394e !important;
+  color: #ffffff !important;
+  border-color: var(--bs-primary, var(--dtf-primary)) !important;
+}
+
+[data-bs-theme="dark"] .dt-filter-mode-dropdown {
+  background: #2a3042 !important;
+  border-color: #3e4556 !important;
+}
+
+[data-bs-theme="dark"] .dt-filter-mode-dropdown .mode-opt {
+  color: #a6b0cf !important;
+}
+
+[data-bs-theme="dark"] .dt-filter-mode-dropdown .mode-opt:hover {
+  background: #32394e !important;
+  color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .dt-filter-excel-dropdown {
+  background: #2a3042 !important;
+  border-color: #3e4556 !important;
+}
+
+[data-bs-theme="dark"] .dt-filter-excel-dropdown .search-box input {
+  background-color: #191e22 !important;
+  color: #eff2f7 !important;
+  border-color: #3e4556 !important;
+}
+
+[data-bs-theme="dark"] .dt-filter-excel-dropdown .search-box,
+[data-bs-theme="dark"] .dt-filter-excel-dropdown .options-list,
+[data-bs-theme="dark"] .dt-filter-excel-dropdown .dt-filter-footer,
+[data-bs-theme="dark"] .dt-filter-excel-dropdown .option-item.select-all {
+  background: transparent !important;
+  border-color: #3e4556 !important;
+}
+
+[data-bs-theme="dark"] .dt-filter-excel-dropdown .option-item {
+  color: #a6b0cf !important;
+  background: transparent !important;
+}
+
+[data-bs-theme="dark"] .dt-filter-excel-dropdown .option-item:hover {
+  background: #32394e !important;
+  color: #ffffff !important;
+}
+
+[data-bs-theme="dark"]
   .dt-filter-excel-dropdown
   .dt-filter-footer
   .btn-cancel {
-  background: #2e3548;
-  color: #a6b0cf;
+  background: #2e3548 !important;
+  color: #a6b0cf !important;
 }
 
-html[data-bs-theme="dark"] .dt-active-filters-bar {
-  background: #2e3548;
-  border-color: #3e4556;
+[data-bs-theme="dark"] .dt-active-filters-bar {
+  background: #2e3548 !important;
+  border-color: #3e4556 !important;
 }
 
-html[data-bs-theme="dark"] .dt-active-filters-bar .badge {
-  background: #2a3042;
-  border-color: #3e4556;
-  color: #a6b0cf;
+[data-bs-theme="dark"] .dt-active-filters-bar .label {
+  color: #94a3b8 !important;
 }
+
+[data-bs-theme="dark"] .dt-active-filters-bar .badge {
+  background: #2a3042 !important;
+  border-color: #3e4556 !important;
+  color: #a6b0cf !important;
+}
+

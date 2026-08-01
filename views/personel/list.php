@@ -181,6 +181,59 @@ if (Gate::canWithMessage("personel_listesi")) {
                             background-color: #FFCDC9 !important;
                         }
 
+                        [data-bs-theme="dark"] #membersTable tbody tr.row-pasif,
+                        [data-bs-theme="dark"] #membersTable tbody tr.row-pasif>td {
+                            background-color: rgba(239, 68, 68, 0.18) !important;
+                            color: #fca5a5 !important;
+                        }
+
+                        /* Dark Mode Overrides for Personel List */
+                        [data-bs-theme="dark"] .status-filter-group {
+                            background: #2a3042 !important;
+                            border-color: #32394e !important;
+                        }
+
+                        [data-bs-theme="dark"] .status-filter-group .btn-check + .btn {
+                            color: #94a3b8 !important;
+                        }
+
+                        [data-bs-theme="dark"] .status-filter-group .btn-check + .btn:hover {
+                            background: rgba(255, 255, 255, 0.08) !important;
+                            color: #f8fafc !important;
+                        }
+
+                        [data-bs-theme="dark"] .status-filter-group .btn-check:not(:checked) + .btn .count-tag {
+                            background: rgba(255, 255, 255, 0.1) !important;
+                            color: #cbd5e1 !important;
+                        }
+
+                        [data-bs-theme="dark"] .personel-action-toolbar {
+                            background-color: #2a3042 !important;
+                            border-color: #32394e !important;
+                        }
+
+                        [data-bs-theme="dark"] .personel-action-toolbar .vr {
+                            background-color: #3e4556 !important;
+                            opacity: 0.8;
+                        }
+
+                        [data-bs-theme="dark"] .personel-tc {
+                            color: #a6b0cf !important;
+                        }
+
+                        [data-bs-theme="dark"] .personel-img-thumb {
+                            border-color: #3e4556 !important;
+                        }
+
+                        [data-bs-theme="dark"] .column-order-item:hover {
+                            background-color: rgba(255, 255, 255, 0.05) !important;
+                        }
+
+                        [data-bs-theme="dark"] .personel-hover-preview {
+                            border-color: #3e4556 !important;
+                            background: #2a3042 !important;
+                        }
+
                         /* Column toggle checkboxes color */
                         .col-toggle-check:checked {
                             background-color: #556ee6 !important;
@@ -319,7 +372,7 @@ if (Gate::canWithMessage("personel_listesi")) {
                                 </div>
 
                             </div>
-                            <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+                            <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 personel-action-toolbar">
                                 <div class="dropdown d-inline-block">
                                     <button type="button"
                                         class="btn btn-link btn-sm text-secondary text-decoration-none px-2 d-flex align-items-center"
