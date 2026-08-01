@@ -22,6 +22,7 @@ $dotenv = Dotenv\Dotenv::createImmutable(dirname(__DIR__));
 $dotenv->load();
 
 use App\Core\Db;
+use App\Model\SgkTokenModel;
 
 $db = new Db();
 $pdo = $db->getConnection();
@@ -47,6 +48,14 @@ $deleted['personel_hareketleri'] = $stmt->rowCount();
 $stmt = $pdo->prepare("DELETE FROM mesaj_log WHERE created_at < DATE_SUB(NOW(), INTERVAL 1 YEAR)");
 $stmt->execute();
 $deleted['mesaj_log'] = $stmt->rowCount();
+
+// sgk_ws_tokens: süresi 7 günden fazla önce dolmuş token kayıtları
+try {
+    $deleted['sgk_ws_tokens'] = (new SgkTokenModel())->suresiDolanlariTemizle(7);
+} catch (Throwable $e) {
+    error_log('[data_retention] sgk_ws_tokens temizlenemedi: ' . $e->getMessage());
+    $deleted['sgk_ws_tokens'] = 0;
+}
 
 $summary = implode(', ', array_map(fn($k, $v) => "$k: $v satır", array_keys($deleted), $deleted));
 error_log("[data_retention] " . date('Y-m-d H:i:s') . " - Temizlendi: $summary");

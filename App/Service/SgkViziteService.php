@@ -3,9 +3,13 @@ require_once __DIR__ . '/../../vendor/autoload.php';
 
 use App\Helper\Security;
 use App\Helper\Helper;
+use App\Model\SgkTokenModel;
+use App\Model\SystemLogModel;
 
 class SgkViziteService
 {
+    const TOKEN_GECERSIZ_KODU = '106';
+
     private $serviceUrl = 'https://uyg.sgk.gov.tr/Ws_Vizite/services/ViziteGonder';
     private $kullaniciAdi;
     private $isyeriKodu;
@@ -13,6 +17,7 @@ class SgkViziteService
     private $wsToken;
     private $tokenExpiresAt;
     private $activeUserKey;
+    private $tokenDepoNesnesi;
 
     /**
      * Sınıfı başlatır.
@@ -64,7 +69,7 @@ class SgkViziteService
     /**
      * Tüm SOAP isteklerini yapan merkezi cURL fonksiyonu. (Geliştirilmiş Versiyon)
      */
-    private function sendRequest($methodName, $params)
+    private function sendRequest($methodName, $params, $tokenYenilendiMi = false)
     {
         $paramXml = '';
         foreach ($params as $key => $value) {
@@ -124,56 +129,206 @@ XML;
 
         $body = $xml->xpath('//soapenvBody')[0];
         $responseNode = $body->children()->children(); // wsLoginReturn, raporAramaTarihileReturn vb.
+
+        // SGK token'ı süresiz saymayıp reddederse (kod 106) önbelleği temizleyip bir kez yeniden dener
+        if (!$tokenYenilendiMi && isset($params['wsToken']) && $this->tokenReddedildiMi($responseNode, $methodName)) {
+            $this->tokenOnbelleginiTemizle();
+            $params['wsToken'] = $this->getValidToken();
+            return $this->sendRequest($methodName, $params, true);
+        }
+
         return $responseNode;
+    }
+
+    private function tokenDeposu(): SgkTokenModel
+    {
+        if ($this->tokenDepoNesnesi === null) {
+            $this->tokenDepoNesnesi = new SgkTokenModel();
+        }
+        return $this->tokenDepoNesnesi;
+    }
+
+    private function tokenReddedildiMi($responseNode, string $methodName): bool
+    {
+        $returnKey = $methodName . 'Return';
+        if (!isset($responseNode->{$returnKey}->sonucKod)) {
+            return false;
+        }
+        return (string) $responseNode->{$returnKey}->sonucKod === self::TOKEN_GECERSIZ_KODU;
+    }
+
+    private function tokenOnbelleginiTemizle(): void
+    {
+        $this->wsToken = null;
+        $this->tokenExpiresAt = 0;
+        $this->activeUserKey = null;
+
+        try {
+            $this->tokenDeposu()->tokenSil($this->kullaniciAdi, $this->isyeriKodu);
+        } catch (Throwable $e) {
+            error_log('SGK token önbelleği temizlenemedi: ' . $e->getMessage());
+        }
     }
 
     private function getValidToken()
     {
         $currentUserKey = $this->kullaniciAdi . '|' . $this->isyeriKodu;
 
-        // Eğer kullanıcı değişmişse token sıfırlansın
+        // Eğer kullanıcı değişmişse bellekteki token sıfırlansın
         if ($this->activeUserKey !== $currentUserKey) {
             $this->wsToken = null;
             $this->tokenExpiresAt = 0;
         }
-        if (!$this->wsToken || time() > $this->tokenExpiresAt) {
-            //echo "Yeni token alınıyor...\n";
-            $params = [
-                'kullaniciAdi' => $this->kullaniciAdi,
-                'isyeriKodu' => $this->isyeriKodu,
-                'isyeriSifresi' => $this->wsSifre, // WSDL'ye göre doğru parametre adı
-            ];
 
-            $response = $this->sendRequest('wsLogin', $params);
-            //var_dump($response); // Gelen ham cevabı kontrol etmek için
-
-            // =============================================================
-            // ===                KRİTİK DÜZELTME BURADA                 ===
-            // =============================================================
-            // Gelen cevabın doğru katmanına erişiyoruz: wsLoginReturn
-            if (isset($response->wsLoginReturn->sonucKod) && $response->wsLoginReturn->sonucKod == '0') {
-                // Token'ı ve açıklamayı da doğru yoldan alıyoruz
-                $this->wsToken = (string) $response->wsLoginReturn->wsToken;
-                $this->tokenExpiresAt = time() + (29 * 60);
-                $this->activeUserKey = $currentUserKey;
-
-                //echo "Token başarıyla alındı: " . $this->wsToken . "\n";
-            } else {
-                // Hata mesajını da doğru yoldan alıyoruz
-                $hataMesaji = isset($response->wsLoginReturn->sonucAciklama)
-                    ? (string) $response->wsLoginReturn->sonucAciklama
-                    : 'Bilinmeyen Hata';
-                throw new Exception("Login başarısız: " . $hataMesaji);
-            }
-            // =============================================================
+        if ($this->wsToken && time() < $this->tokenExpiresAt) {
+            return $this->wsToken;
         }
+
+        $onbellek = $this->onbellektekiTokenIGetir();
+        if ($onbellek !== null) {
+            return $onbellek;
+        }
+
+        return $this->yeniTokenAl();
+    }
+
+    private function onbellektekiTokenIGetir(): ?string
+    {
+        try {
+            $kayit = $this->tokenDeposu()->gecerliTokenGetir($this->kullaniciAdi, $this->isyeriKodu, $this->wsSifre);
+        } catch (Throwable $e) {
+            error_log('SGK token önbelleği okunamadı: ' . $e->getMessage());
+            return null;
+        }
+
+        if (!$kayit) {
+            return null;
+        }
+
+        $this->wsToken = $kayit['token'];
+        $this->tokenExpiresAt = strtotime($kayit['gecerlilik_bitis']);
+        $this->activeUserKey = $this->kullaniciAdi . '|' . $this->isyeriKodu;
+
         return $this->wsToken;
     }
 
     /**
-     * Verilen SGK bilgilerinin geçerli olup olmadığını wsLogin ile test eder.
-     * Sadece doğrulama amaçlıdır, token'ı saklamaz.
-     * @return object Dönen cevap objesi (sonucKod ve sonucAciklama içerir).
+     * SGK'dan yeni wsToken (GUID) alır ve önbelleğe yazar.
+     * Eşzamanlı isteklerin aynı anda wsLogin çağırmasını engellemek için kilit kullanır.
+     * @throws Exception
+     */
+    private function yeniTokenAl(): string
+    {
+        $depo = $this->tokenDeposu();
+        $kilitAlindi = false;
+
+        try {
+            $kilitAlindi = $depo->kilitAl($this->kullaniciAdi, $this->isyeriKodu);
+        } catch (Throwable $e) {
+            error_log('SGK token kilidi alınamadı: ' . $e->getMessage());
+        }
+
+        try {
+            if ($kilitAlindi) {
+                $onbellek = $this->onbellektekiTokenIGetir();
+                if ($onbellek !== null) {
+                    return $onbellek;
+                }
+            }
+
+            $returnNode = $this->loginIstegiGonder();
+
+            if (!isset($returnNode->sonucKod) || (string) $returnNode->sonucKod !== '0') {
+                $hataMesaji = isset($returnNode->sonucAciklama)
+                    ? (string) $returnNode->sonucAciklama
+                    : 'Bilinmeyen Hata';
+
+                $this->logKaydet('SGK Token Hatası', 'wsLogin başarısız. SGK mesajı: ' . $hataMesaji, SystemLogModel::LEVEL_IMPORTANT);
+                throw new Exception(self::hataMesajiniCevir($hataMesaji));
+            }
+
+            $token = (string) $returnNode->wsToken;
+            $this->tokenOnbellegeYaz($token);
+            $this->logKaydet('SGK Token', 'SGK Vizite için yeni wsToken alındı ve önbelleğe yazıldı.', SystemLogModel::LEVEL_INFO);
+
+            return $token;
+        } finally {
+            if ($kilitAlindi) {
+                try {
+                    $depo->kilidiBirak($this->kullaniciAdi, $this->isyeriKodu);
+                } catch (Throwable $e) {
+                    error_log('SGK token kilidi bırakılamadı: ' . $e->getMessage());
+                }
+            }
+        }
+    }
+
+    private function loginIstegiGonder()
+    {
+        $params = [
+            'kullaniciAdi' => $this->kullaniciAdi,
+            'isyeriKodu' => $this->isyeriKodu,
+            'isyeriSifresi' => $this->wsSifre,
+        ];
+
+        $response = $this->sendRequest('wsLogin', $params);
+        return $response->wsLoginReturn;
+    }
+
+    private function tokenOnbellegeYaz(string $token): void
+    {
+        $this->wsToken = $token;
+        $this->tokenExpiresAt = time() + SgkTokenModel::TOKEN_OMUR_SANIYE;
+        $this->activeUserKey = $this->kullaniciAdi . '|' . $this->isyeriKodu;
+
+        try {
+            $this->tokenDeposu()->tokenKaydet(
+                $this->kullaniciAdi,
+                $this->isyeriKodu,
+                $this->wsSifre,
+                $token,
+                SgkTokenModel::TOKEN_OMUR_SANIYE,
+                $_SERVER['SERVER_ADDR'] ?? php_uname('n'),
+                isset($_SESSION['firma_id']) ? (int) $_SESSION['firma_id'] : null
+            );
+        } catch (Throwable $e) {
+            error_log('SGK token önbelleğe yazılamadı: ' . $e->getMessage());
+        }
+    }
+
+    private function logKaydet(string $islemTipi, string $aciklama, int $seviye): void
+    {
+        try {
+            (new SystemLogModel())->logAction($_SESSION['user_id'] ?? 0, $islemTipi, $aciklama, $seviye);
+        } catch (Throwable $e) {
+            error_log('SGK log kaydı oluşturulamadı: ' . $e->getMessage());
+        }
+    }
+
+    /**
+     * SGK'dan dönen ham hata mesajını kullanıcının anlayacağı açıklamaya çevirir.
+     */
+    public static function hataMesajiniCevir(string $sgkMesaji): string
+    {
+        if (stripos($sgkMesaji, 'GUID') !== false) {
+            return 'SGK, bu işveren için başka bir IP adresinden alınmış ve süresi henüz dolmamış bir oturum (GUID) bulunduğunu bildiriyor. '
+                . 'Aynı SGK kullanıcı bilgileri başka bir program, bilgisayar veya sunucudan kullanılıyor olabilir. '
+                . 'Mevcut oturumun süresi dolduğunda (en fazla 30 dakika) tekrar deneyin ya da bu sistem için SGK e-Bildirge üzerinden ayrı bir kullanıcı tanımlayın. '
+                . 'SGK mesajı: ' . $sgkMesaji;
+        }
+
+        if (stripos($sgkMesaji, 'Şifre hatalı') !== false || stripos($sgkMesaji, 'Tekrar deneyin') !== false) {
+            return 'SGK kullanıcı adı, işyeri kodu veya şifre hatalı. Bilgilerinizi kontrol edip tekrar deneyin. SGK mesajı: ' . $sgkMesaji;
+        }
+
+        return 'SGK girişi başarısız: ' . $sgkMesaji;
+    }
+
+    /**
+     * Verilen SGK bilgilerinin geçerli olup olmadığını doğrular.
+     * Aynı bilgilerle alınmış geçerli bir token varsa SGK'ya yeni bir wsLogin isteği gönderilmez;
+     * böylece test butonu her tıklamada GUID talep edip çakışmaya yol açmaz.
+     * @return object sonucKod ve sonucAciklama içeren cevap objesi.
      * @throws Exception
      */
     public function bilgileriDogrula(
@@ -181,22 +336,33 @@ XML;
         string $isyeriKodu,
         string $isyeriSifresi
     ) {
-
-        //Dışarıdan parametre gelirse onları kullan
         $this->kullaniciAdi = $kullaniciAdi;
         $this->isyeriKodu = $isyeriKodu;
         $this->wsSifre = $isyeriSifresi;
+        $this->wsToken = null;
+        $this->tokenExpiresAt = 0;
+        $this->activeUserKey = null;
 
-        $params = [
-            'kullaniciAdi' => $this->kullaniciAdi,
-            'isyeriKodu' => $this->isyeriKodu,
-            'isyeriSifresi' => $this->wsSifre, // WSDL'ye göre doğru parametre adı
-        ];
+        if ($this->onbellektekiTokenIGetir() !== null) {
+            $this->logKaydet('SGK Bağlantı Testi', 'SGK bilgileri aktif oturum üzerinden doğrulandı.', SystemLogModel::LEVEL_INFO);
 
-        $response = $this->sendRequest('wsLogin', $params);
+            return (object) [
+                'sonucKod' => '0',
+                'sonucAciklama' => 'Bilgiler doğrulandı. (Mevcut aktif SGK oturumu kullanıldı)',
+            ];
+        }
 
-        // wsLoginReturn objesini doğrudan döndür
-        return $response->wsLoginReturn;
+        $returnNode = $this->loginIstegiGonder();
+
+        if (isset($returnNode->sonucKod) && (string) $returnNode->sonucKod === '0') {
+            $this->tokenOnbellegeYaz((string) $returnNode->wsToken);
+            $this->logKaydet('SGK Bağlantı Testi', 'SGK bağlantı testi başarılı, yeni wsToken alındı.', SystemLogModel::LEVEL_INFO);
+        } else {
+            $hataMesaji = isset($returnNode->sonucAciklama) ? (string) $returnNode->sonucAciklama : 'Bilinmeyen Hata';
+            $this->logKaydet('SGK Bağlantı Testi', 'SGK bağlantı testi başarısız. SGK mesajı: ' . $hataMesaji, SystemLogModel::LEVEL_IMPORTANT);
+        }
+
+        return $returnNode;
     }
 
     /**

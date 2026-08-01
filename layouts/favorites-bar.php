@@ -1,14 +1,34 @@
 <?php
 use App\Model\MenuModel;
+use App\Model\UserModel;
 use App\Helper\Helper;
 
 $userId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
 $favoriteMenus = [];
 $currentPage = $_GET['p'] ?? '';
+$showFavoritesBar = 1;
 
 if ($userId > 0) {
+    if (isset($_SESSION['show_favorites_bar'])) {
+        $showFavoritesBar = (int) $_SESSION['show_favorites_bar'];
+    } elseif (isset($_SESSION['user']) && is_object($_SESSION['user']) && isset($_SESSION['user']->show_favorites_bar)) {
+        $showFavoritesBar = (int) $_SESSION['user']->show_favorites_bar;
+    } else {
+        $userModel = new UserModel();
+        $currentUser = $userModel->find($userId);
+        $showFavoritesBar = (int) ($currentUser->show_favorites_bar ?? 1);
+        $_SESSION['show_favorites_bar'] = $showFavoritesBar;
+    }
+
+    if ($showFavoritesBar === 0) {
+        echo '<style>body:not(:has(#quick-favorites-bar)) .main-content .page-content { padding-top: 84px !important; }</style>';
+        return;
+    }
+
     $menuModel = new MenuModel();
     $favoriteMenus = $menuModel->getFavoriteMenus($userId);
+} else {
+    return;
 }
 ?>
 
@@ -85,10 +105,6 @@ body[data-sidebar-size="sm"] .quick-favorites-bar {
     .quick-favorites-bar {
         left: 0 !important;
     }
-}
-
-.main-content .page-content {
-    padding-top: 112px !important;
 }
 
 .quick-fav-inner {
@@ -250,7 +266,7 @@ body[data-sidebar-size="sm"] .quick-favorites-bar {
 }
 
 /* Adjust page content padding top to account for quick-favorites-bar */
-body:has(#quick-favorites-bar) .page-content {
-    padding-top: calc(70px + 42px + 12px) !important;
+body:has(#quick-favorites-bar) .main-content .page-content {
+    padding-top: 112px !important;
 }
 </style>

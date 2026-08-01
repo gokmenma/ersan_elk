@@ -248,7 +248,9 @@ $(document).ready(function () {
       return;
     }
 
-    const title = $header.find(".modal-title").text() || "İşlem";
+    const $titleEl = $header.find(".modal-title");
+    const title = $titleEl.text() || "İşlem";
+    const titleId = $titleEl.attr("id");
     const $closeBtn = $header.find(".btn-close").detach();
 
     // Get specific data from modal attributes if they exist
@@ -304,13 +306,15 @@ $(document).ready(function () {
     // Clean up close button
     $closeBtn.removeClass("btn-close-white");
 
+    const titleIdAttr = titleId ? ` id="${titleId}"` : "";
+
     const premiumHeaderHtml = `
             <div class="modal-title-section">
                 <div class="modal-icon-box ${iconClass}">
                     <i class="${icon}"></i>
                 </div>
                 <div class="modal-title-group">
-                    <h5 class="modal-title">${title}</h5>
+                    <h5 class="modal-title"${titleIdAttr}>${title}</h5>
                     <p class="modal-subtitle">${subtitle}</p>
                 </div>
             </div>

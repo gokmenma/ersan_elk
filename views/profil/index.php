@@ -18,6 +18,7 @@ $stmt = $SystemLog->db->prepare($logsQuery);
 $stmt->execute([$userId]);
 $loginLogs = $stmt->fetchAll(PDO::FETCH_OBJ);
 
+$showFavoritesBar = (int) ($currentUser->show_favorites_bar ?? 1);
 ?>
 
 <div class="container-fluid">
@@ -38,6 +39,11 @@ $loginLogs = $stmt->fetchAll(PDO::FETCH_OBJ);
                         <li class="nav-item">
                             <a class="nav-link active" data-bs-toggle="tab" href="#profil-bilgileri" role="tab">
                                 <i data-feather="user" class="icon-sm me-1"></i> Profil Bilgileri
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link" data-bs-toggle="tab" href="#sistem-ayarlari" role="tab">
+                                <i data-feather="settings" class="icon-sm me-1"></i> Ayarlar
                             </a>
                         </li>
                         <li class="nav-item">
@@ -87,6 +93,37 @@ $loginLogs = $stmt->fetchAll(PDO::FETCH_OBJ);
                             </form>
                         </div>
                         
+                        <!-- Ayarlar Tab -->
+                        <div class="tab-pane" id="sistem-ayarlari" role="tabpanel">
+                            <h4 class="card-title">Arayüz ve Sistem Tercihleri</h4>
+                            <p class="card-title-desc">Kişisel arayüz tercihlerinizi ve görünüm seçeneklerinizi buradan özelleştirebilirsiniz.</p>
+
+                            <form id="settingsForm">
+                                <input type="hidden" name="action" value="ayarlari-guncelle">
+
+                                <div class="card border shadow-none mb-3">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div>
+                                                <h5 class="font-size-14 mb-1"><i data-feather="star" class="icon-sm text-warning me-1"></i> Sık Kullanılanlar Çubuğu</h5>
+                                                <p class="text-muted font-size-13 mb-0">Tüm sayfalarda üst kısımda görüntülenen Sık Kullanılanlar çubuğunu açıp kapatabilirsiniz.</p>
+                                            </div>
+                                            <div class="form-check form-switch form-switch-md mb-0">
+                                                <input class="form-check-input" type="checkbox" name="show_favorites_bar" value="1" id="showFavoritesBarSwitch" <?php echo ($showFavoritesBar === 1) ? 'checked' : ''; ?>>
+                                                <label class="form-check-label" for="showFavoritesBarSwitch"></label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="row mt-3">
+                                    <div class="col-12 text-end">
+                                        <button type="submit" class="btn btn-primary waves-effect waves-light"><i class="bx bx-save font-size-16 align-middle me-2"></i> Ayarları Kaydet</button>
+                                    </div>
+                                </div>
+                            </form>
+                        </div>
+
                         <!-- Giriş Kayıtları Tab -->
                         <div class="tab-pane" id="giris-kayitlari" role="tabpanel">
                             <h4 class="card-title">Son Giriş Kayıtlarınız</h4>
@@ -152,7 +189,53 @@ $loginLogs = $stmt->fetchAll(PDO::FETCH_OBJ);
             e.preventDefault();
             var formData = new FormData(this);
             
-            // disable the button to prevent multiple submissions
+            const submitBtn = $(this).find('button[type="submit"]');
+            submitBtn.prop('disabled', true);
+            
+            $.ajax({
+                url: 'views/profil/api.php',
+                type: 'POST',
+                data: formData,
+                processData: false,
+                contentType: false,
+                dataType: 'json',
+                success: function(response) {
+                    if (response.status === 'success') {
+                        Swal.fire({
+                            title: 'Başarılı!',
+                            text: response.message,
+                            icon: 'success',
+                            confirmButtonText: 'Tamam',
+                            timer: 2000
+                        }).then(() => {
+                            location.reload();
+                        });
+                    } else {
+                        Swal.fire({
+                            title: 'Hata!',
+                            text: response.message,
+                            icon: 'error',
+                            confirmButtonText: 'Tamam'
+                        });
+                        submitBtn.prop('disabled', false);
+                    }
+                },
+                error: function() {
+                    Swal.fire({
+                        title: 'Hata!',
+                        text: 'Sunucu ile iletişim kurulamadı.',
+                        icon: 'error',
+                        confirmButtonText: 'Tamam'
+                    });
+                    submitBtn.prop('disabled', false);
+                }
+            });
+        });
+
+        $('#settingsForm').on('submit', function(e) {
+            e.preventDefault();
+            var formData = new FormData(this);
+            
             const submitBtn = $(this).find('button[type="submit"]');
             submitBtn.prop('disabled', true);
             

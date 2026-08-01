@@ -1011,7 +1011,7 @@ use App\Service\Gate;
 </div>
 
 <!-- SGK Rapor Modal -->
-<div class="modal fade" id="sgkRaporModal" tabindex="-1" aria-labelledby="sgkRaporModalLabel" aria-hidden="true">
+<div class="modal fade" id="sgkRaporModal" tabindex="-1" aria-labelledby="sgkRaporModalLabel" aria-hidden="true" data-modal-icon="mdi mdi-hospital-building" data-modal-subtitle="SGK Vizite Servisinden çekilen raporlar.">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
         <div class="modal-content border-0 shadow-lg">
             <div class="modal-header bg-primary text-white">

@@ -295,13 +295,17 @@ switch ($action) {
             $result = $sgkService->bilgileriDogrula($kullaniciAdi, $isyeriKodu, $isyeriSifresi);
 
             if (isset($result->sonucKod) && $result->sonucKod == '0') {
+                $basariMesaji = isset($result->sonucAciklama) && stripos((string) $result->sonucAciklama, 'aktif SGK oturumu') !== false
+                    ? (string) $result->sonucAciklama
+                    : 'SGK bağlantısı başarılı! Bilgileriniz doğrulandı.';
+
                 $response = [
                     'status' => 'success',
-                    'message' => 'SGK bağlantısı başarılı! Bilgileriniz doğrulandı.'
+                    'message' => $basariMesaji
                 ];
             } else {
                 $hataMesaji = isset($result->sonucAciklama) ? (string) $result->sonucAciklama : 'Bilinmeyen hata';
-                throw new \Exception("SGK Doğrulama Hatası: " . $hataMesaji);
+                throw new \Exception(SgkViziteService::hataMesajiniCevir($hataMesaji));
             }
         } catch (\Throwable $e) {
             $response['message'] = $e->getMessage();

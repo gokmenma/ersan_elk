@@ -4,12 +4,15 @@ require_once '../../vendor/autoload.php';
 use App\Helper\Helper;
 use App\Helper\Security;
 use App\Model\UserModel;
+use App\Model\SystemLogModel;
 
 $User = new UserModel();
 
 session_start();
 
-if ($_POST["action"] == "profil-guncelle") {
+$action = $_POST["action"] ?? '';
+
+if ($action == "profil-guncelle") {
     $userId = $_SESSION["user_id"] ?? $_SESSION["id"] ?? 0;
 
     if ($userId == 0) {
@@ -46,6 +49,11 @@ if ($_POST["action"] == "profil-guncelle") {
             $_SESSION["user_full_name"] = $data["adi_soyadi"];
         }
 
+        try {
+            $log = new SystemLogModel();
+            $log->logAction($userId, 'Profil Güncelleme', 'Profil bilgileri güncellendi.');
+        } catch (\Exception $e) {}
+
         echo json_encode([
             'status' => 'success',
             'message' => 'Profil bilgileriniz başarıyla güncellendi.'
@@ -63,9 +71,46 @@ if ($_POST["action"] == "profil-guncelle") {
             'message' => $message
         ]);
     }
+    exit;
 }
 
-if ($_POST["action"] == "save-mobile-menu-order") {
+if ($action == "ayarlari-guncelle") {
+    $userId = $_SESSION["user_id"] ?? $_SESSION["id"] ?? 0;
+
+    if ($userId == 0) {
+        echo json_encode(['status' => 'error', 'message' => 'Oturum bulunamadı.']);
+        exit;
+    }
+
+    try {
+        $showFavoritesBar = isset($_POST['show_favorites_bar']) && ($_POST['show_favorites_bar'] === '1' || $_POST['show_favorites_bar'] === 'on') ? 1 : 0;
+
+        $User->saveWithAttr([
+            'id' => (int)$userId,
+            'show_favorites_bar' => $showFavoritesBar
+        ]);
+
+        if (isset($_SESSION["user"]) && is_object($_SESSION["user"])) {
+            $_SESSION["user"]->show_favorites_bar = $showFavoritesBar;
+        }
+        $_SESSION["show_favorites_bar"] = $showFavoritesBar;
+
+        try {
+            $log = new SystemLogModel();
+            $log->logAction($userId, 'Arayüz Ayarları', 'Sık Kullanılanlar Çubuğu tercihi ' . ($showFavoritesBar ? 'açıldı.' : 'kapatıldı.'));
+        } catch (\Exception $e) {}
+
+        echo json_encode([
+            'status' => 'success',
+            'message' => 'Sistem tercihleriniz başarıyla kaydedildi.'
+        ]);
+    } catch (\Exception $e) {
+        echo json_encode(['status' => 'error', 'message' => 'Ayarlar kaydedilirken hata oluştu: ' . $e->getMessage()]);
+    }
+    exit;
+}
+
+if ($action == "save-mobile-menu-order") {
     $userId = $_SESSION["user_id"] ?? $_SESSION["id"] ?? 0;
     $order = $_POST['order'] ?? '';
 
@@ -84,9 +129,10 @@ if ($_POST["action"] == "save-mobile-menu-order") {
     } catch (\Exception $e) {
         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
     }
+    exit;
 }
 
-if ($_POST["action"] == "reset-mobile-menu-order") {
+if ($action == "reset-mobile-menu-order") {
     $userId = $_SESSION["user_id"] ?? $_SESSION["id"] ?? 0;
 
     if ($userId == 0) {
@@ -104,4 +150,5 @@ if ($_POST["action"] == "reset-mobile-menu-order") {
     } catch (\Exception $e) {
         echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
     }
+    exit;
 }

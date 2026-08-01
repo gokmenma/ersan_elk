@@ -1392,6 +1392,7 @@ $(document).ready(function () {
    */
   function showSgkRaporModal(raporlar, title, toplam, eslesen) {
     $("#sgkRaporModalLabel").text(title);
+    $("#sgkRaporModal .modal-title").text(title);
 
     let tableHtml = `
       <div class="px-4 py-3 bg-soft-primary border-bottom border-light">
