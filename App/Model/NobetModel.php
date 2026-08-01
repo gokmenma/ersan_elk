@@ -38,7 +38,7 @@ class NobetModel extends Model
                 WHERE n.firma_id = :firma_id 
                 AND n.silinme_tarihi IS NULL
                 AND n.nobet_tarihi BETWEEN :baslangic AND :bitis
-                AND (n.durum IS NULL OR n.durum NOT IN ('talep_edildi', 'reddedildi'))
+                AND (n.durum IS NULL OR n.durum NOT IN ('reddedildi', 'iptal'))
                 ORDER BY n.nobet_tarihi ASC, n.baslangic_saati ASC";
 
         $query = $this->db->prepare($sql);
@@ -64,7 +64,7 @@ class NobetModel extends Model
                 WHERE personel_id = :personel_id 
                 AND nobet_tarihi = :tarih 
                 AND silinme_tarihi IS NULL
-                AND (durum IS NULL OR durum != 'reddedildi')";
+                AND (durum IS NULL OR durum NOT IN ('reddedildi', 'iptal'))";
 
         $params = [
             'personel_id' => $personel_id,
@@ -79,6 +79,36 @@ class NobetModel extends Model
         $query = $this->db->prepare($sql);
         $query->execute($params);
         return $query->fetchColumn() > 0;
+    }
+
+    /**
+     * Personelin belirli bir tarihteki mevcut aktif veya talep edilmiş nöbet kaydını getirir
+     * @param int $personel_id Personel ID
+     * @param string $tarih Tarih (Y-m-d)
+     * @param int|null $exclude_id Kontrol dışı bırakılacak nöbet ID
+     * @return object|false
+     */
+    public function getExistingNobetOnDate($personel_id, $tarih, $exclude_id = null)
+    {
+        $sql = "SELECT * FROM {$this->table} 
+                WHERE personel_id = :personel_id 
+                AND nobet_tarihi = :tarih 
+                AND silinme_tarihi IS NULL
+                AND (durum IS NULL OR durum NOT IN ('reddedildi', 'iptal'))";
+
+        $params = [
+            'personel_id' => $personel_id,
+            'tarih' => $tarih
+        ];
+
+        if ($exclude_id) {
+            $sql .= " AND id != :exclude_id";
+            $params['exclude_id'] = $exclude_id;
+        }
+
+        $query = $this->db->prepare($sql);
+        $query->execute($params);
+        return $query->fetch(PDO::FETCH_OBJ);
     }
 
     /**

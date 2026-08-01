@@ -353,7 +353,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $borderColor = '#8b5cf6'; // Mor (Violet-500) çerçeve
                     }
 
-                    $isPending = ($nobet->yonetici_onayi == 0 || $nobet->has_talep > 0);
+                    $isPending = ($nobet->yonetici_onayi == 0 || $nobet->has_talep > 0 || $nobet->durum == 'talep_edildi');
                     $events[] = [
                         'id' => Security::encrypt($nobet->id),
                         'title' => $nobet->adi_soyadi,
@@ -403,10 +403,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'yonetici_onayi' => Gate::allows('yonetici_onayi') ? 1 : 0
                 ];
 
-                // Çakışma kontrolü
-                if ($Nobet->hasNobetOnDate($personel_id, $nobet_tarihi)) {
-                    $personel = $Personel->find($personel_id);
-                    throw new Exception("{$personel->adi_soyadi} isimli personelin {$nobet_tarihi} tarihinde zaten bir nöbeti bulunuyor.");
+                // Çakışma ve talep kontrolü
+                $existing = $Nobet->getExistingNobetOnDate($personel_id, $nobet_tarihi);
+                if ($existing) {
+                    if ($existing->durum === 'talep_edildi') {
+                        // Personelin bekleyen talebi varsa bunu onayla ve nöbeti aktifleştir
+                        $Nobet->onaylaNobetTalebi($existing->id);
+                        $personel = $Personel->find($personel_id);
+                        $SystemLog->logAction($userId, 'Nöbet Talebi Onayı', "{$personel->adi_soyadi} için {$nobet_tarihi} tarihli bekleyen nöbet talebi atama yapılarak onaylandı.");
+
+                        echo json_encode(['success' => true, 'status' => 'success', 'message' => 'Personelin bekleyen nöbet talebi onaylandı ve nöbet atandı.', 'id' => Security::encrypt($existing->id)]);
+                        break;
+                    } else {
+                        $personel = $Personel->find($personel_id);
+                        throw new Exception("{$personel->adi_soyadi} isimli personelin {$nobet_tarihi} tarihinde zaten bir nöbeti bulunuyor.");
+                    }
                 }
 
                 $nobet_id = $Nobet->addNobet($data);
@@ -553,10 +564,30 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'yonetici_onayi' => Gate::allows('yonetici_onayi') ? 1 : 0
                 ];
 
-                // Çakışma kontrolü
-                if ($Nobet->hasNobetOnDate($personel_id, $nobet_tarihi)) {
-                    $personel = $Personel->find($personel_id);
-                    throw new Exception("{$personel->adi_soyadi} isimli personelin {$nobet_tarihi} tarihinde zaten bir nöbeti bulunuyor.");
+                // Çakışma ve talep kontrolü
+                $existing = $Nobet->getExistingNobetOnDate($personel_id, $nobet_tarihi);
+                if ($existing) {
+                    if ($existing->durum === 'talep_edildi') {
+                        // Personelin bekleyen talebi varsa bunu onayla ve nöbeti aktifleştir
+                        $Nobet->onaylaNobetTalebi($existing->id);
+                        $personel = $Personel->find($personel_id);
+                        $SystemLog->logAction($userId, 'Nöbet Talebi Onayı', "{$personel->adi_soyadi} için {$nobet_tarihi} tarihli bekleyen nöbet talebi atama yapılarak onaylandı.");
+
+                        echo json_encode([
+                            'success' => true,
+                            'status' => 'success',
+                            'message' => 'Personelin bekleyen nöbet talebi onaylandı ve nöbet atandı.',
+                            'id' => Security::encrypt($existing->id),
+                            'personel' => [
+                                'adi_soyadi' => $personel->adi_soyadi,
+                                'departman' => $personel->departman
+                            ]
+                        ]);
+                        break;
+                    } else {
+                        $personel = $Personel->find($personel_id);
+                        throw new Exception("{$personel->adi_soyadi} isimli personelin {$nobet_tarihi} tarihinde zaten bir nöbeti bulunuyor.");
+                    }
                 }
 
                 $nobet_id = $Nobet->addNobet($data);

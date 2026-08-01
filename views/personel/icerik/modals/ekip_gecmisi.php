@@ -43,7 +43,7 @@ use App\Helper\Form;
 
                         <div class="row">
                             <div class="col-md-6 mb-3">
-                                <?php echo Form::FormFloatInput("text", "baslangic_tarihi", date('d.m.Y'), "Başlangıç Tarihi", "Başlangıç Tarihi", "calendar", "form-control flatpickr", true); ?>
+                                <?php echo Form::FormFloatInput("text", "baslangic_tarihi", \App\Helper\Date::dmY($personel->ise_giris_tarihi ?? \App\Helper\Date::today()), "Başlangıç Tarihi", "Başlangıç Tarihi", "calendar", "form-control flatpickr", true); ?>
                             </div>
                             <div class="col-md-6 mb-3">
                                 <?php echo Form::FormFloatInput("text", "bitis_tarihi", "", "Bitiş Tarihi", "Bitiş Tarihi", "calendar", "form-control flatpickr"); ?>
@@ -231,6 +231,12 @@ use App\Helper\Form;
                         $('#ekip_gecmisi_action').val('ekip-gecmisi-ekle');
                         $('#modalEkipGecmisiEkle .modal-title').html('<i class="bx bx-group me-2"></i>Yeni Ekip Tanımla');
                         $('#formEkipGecmisiEkle')[0].reset();
+                        var defaultDate = '<?= \App\Helper\Date::dmY($personel->ise_giris_tarihi ?? \App\Helper\Date::today()) ?>';
+                        var $input = $('#formEkipGecmisiEkle input[name="baslangic_tarihi"]');
+                        $input.val(defaultDate);
+                        if ($input[0] && $input[0]._flatpickr) {
+                            $input[0]._flatpickr.setDate(defaultDate);
+                        }
                         $('#modal_ekip_bolge').val('').trigger('change.select2');
                         $('#ekip_sefi_mi').val('0').trigger('change.select2');
                         $('#modalEkipGecmisiEkle').modal('show');

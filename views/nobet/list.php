@@ -1093,7 +1093,7 @@ $title = 'Nöbet Planlama';
 
                 // Durum İkonları (Sol Üst)
                 const props = info.event.extendedProps;
-                if (props.durum === 'mazeret_bildirildi' || props.has_talep) {
+                if (props.durum === 'mazeret_bildirildi' || props.durum === 'talep_edildi' || props.has_talep) {
                     const statusContainer = document.createElement('div');
                     statusContainer.className = 'fc-event-status-icons';
 
@@ -1104,6 +1104,15 @@ $title = 'Nöbet Planlama';
                         mIcon.innerHTML = '<i class="bx bx-error-circle"></i>';
                         mIcon.title = 'Mazeret Bildirildi / İptal Talebi';
                         statusContainer.appendChild(mIcon);
+                    }
+
+                    // Onay Bekleyen Nöbet Talebi İkonu (Saat)
+                    if (props.durum === 'talep_edildi') {
+                        const pIcon = document.createElement('div');
+                        pIcon.className = 'fc-event-status-icon talep';
+                        pIcon.innerHTML = '<i class="bx bx-time-five"></i>';
+                        pIcon.title = 'Onay Bekleyen Nöbet Talebi';
+                        statusContainer.appendChild(pIcon);
                     }
 
                     // Değişim Talebi İkonu (Refresh)
@@ -2067,7 +2076,9 @@ $title = 'Nöbet Planlama';
                 'devir_alindi': 'Devir Alındı',
                 'tamamlandi': 'Tamamlandı',
                 'iptal': 'İptal',
-                'mazeret_bildirildi': 'Mazeret Bildirildi'
+                'mazeret_bildirildi': 'Mazeret Bildirildi',
+                'talep_edildi': 'Nöbet Talebi (Onay Bekliyor)',
+                'onaylandi': 'Onaylandı'
             };
             return texts[durum] || 'Bilinmiyor';
         }

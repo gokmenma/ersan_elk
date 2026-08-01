@@ -108,7 +108,7 @@ use App\Helper\Helper;
                             </div>
 
                             <div class="col-md-6">
-                                <?php echo Form::FormFloatInput("text", "gorev_baslangic", date('d.m.Y'), "Başlangıç Tarihi", "Başlangıç Tarihi", "calendar", "form-control flatpickr", true); ?>
+                                <?php echo Form::FormFloatInput("text", "gorev_baslangic", \App\Helper\Date::dmY($personel->ise_giris_tarihi ?? \App\Helper\Date::today()), "Başlangıç Tarihi", "Başlangıç Tarihi", "calendar", "form-control flatpickr", true); ?>
                             </div>
                             
                             <div class="col-md-6">
@@ -325,6 +325,12 @@ use App\Helper\Helper;
                     $('#modal_header_icon').attr('class', 'bx bx-plus-circle');
                     $('#modal_header_icon_box').css({'background': 'rgba(52, 195, 143, 0.1)', 'color': '#34c38f'});
                     $('#formGorevGecmisiEkle')[0].reset();
+                    var defaultDate = '<?= \App\Helper\Date::dmY($personel->ise_giris_tarihi ?? \App\Helper\Date::today()) ?>';
+                    var $input = $('#formGorevGecmisiEkle input[name="gorev_baslangic"]');
+                    $input.val(defaultDate);
+                    if ($input[0] && $input[0]._flatpickr) {
+                        $input[0]._flatpickr.setDate(defaultDate);
+                    }
                     $('#modalGorevGecmisiEkle .select2').val(null).trigger('change.select2');
                     $('#modalGorevGecmisiEkle').modal('show');
                 });

@@ -1,6 +1,15 @@
 <?php
 
+if (session_status() !== PHP_SESSION_ACTIVE) {
+    session_start();
+}
+
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
+
+if (empty($_SESSION['firma_id'])) {
+    http_response_code(401);
+    exit('Excel aktarımı için lütfen sisteme giriş yapın.');
+}
 
 use App\Model\TanimlamalarModel;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -65,7 +74,8 @@ $headers = [
     'Açıklama'
 ];
 foreach ($headers as $columnIndex => $header) {
-    $sheet->setCellValueByColumnAndRow($columnIndex + 1, 1, $header);
+    $column = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($columnIndex + 1);
+    $sheet->setCellValue($column . '1', $header);
 }
 
 // Başlık stili uygula

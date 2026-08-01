@@ -30,7 +30,7 @@ use App\Helper\Helper;
                     <div class="modal-body p-4">
                         <div class="row g-3">
                             <div class="col-md-6">
-                                <?php echo Form::FormFloatInput("text", "ise_giris_tarihi", date('d.m.Y'), "İşe Giriş Tarihi", "İşe Giriş Tarihi", "calendar", "form-control flatpickr", true); ?>
+                                <?php echo Form::FormFloatInput("text", "ise_giris_tarihi", \App\Helper\Date::dmY($personel->ise_giris_tarihi ?? \App\Helper\Date::today()), "İşe Giriş Tarihi", "İşe Giriş Tarihi", "calendar", "form-control flatpickr", true); ?>
                             </div>
                             
                             <div class="col-md-6">
@@ -302,6 +302,12 @@ use App\Helper\Helper;
                     $('#modal_calisma_header_icon').attr('class', 'bx bx-plus-circle');
                     $('#modal_calisma_header_icon_box').css({'background': 'rgba(52, 195, 143, 0.1)', 'color': '#34c38f'});
                     $('#formCalismaGecmisiEkle')[0].reset();
+                    var defaultDate = '<?= \App\Helper\Date::dmY($personel->ise_giris_tarihi ?? \App\Helper\Date::today()) ?>';
+                    var $input = $('#formCalismaGecmisiEkle input[name="ise_giris_tarihi"]');
+                    $input.val(defaultDate);
+                    if ($input[0] && $input[0]._flatpickr) {
+                        $input[0]._flatpickr.setDate(defaultDate);
+                    }
                     $('#modalCalismaGecmisiEkle .select2').val(null).trigger('change.select2');
                     
                     // Defaults

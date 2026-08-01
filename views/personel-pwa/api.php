@@ -4621,30 +4621,73 @@ try {
                 }
 
                 $otomatikOnaylandi = (int) ($aiSonuc['onaylanan'] ?? 0) === 1;
-                if (!$otomatikOnaylandi) {
-                    // Yalnızca manuel onay bekleyen kayıt için yöneticilere bildirim gönder.
-                    try {
-                        $BildirimModel = new \App\Model\BildirimModel();
-                        $tarihFormatli = date('d.m.Y', strtotime($data['tarih']));
-                        $turLabel = $data['tur'] === 'sabah' ? 'Sabah' : 'Akşam';
+                $aiNedeni = trim((string) ($aiSonuc['sonuclar'][0]['neden'] ?? 'Yapay zekâ doğrulama kuralları karşılanmadı.'));
+                $tarihFormatli = date('d.m.Y', strtotime($data['tarih']));
+                $turLabel = $data['tur'] === 'sabah' ? 'Sabah' : 'Akşam';
+                $bildirimDetayi = "{$tarihFormatli} tarihli {$turLabel} bildirimi: " . $data['bitis_km'] . ' KM.';
 
+                try {
+                    $BildirimModel = new \App\Model\BildirimModel();
+                    $pwaUserId = (int) ($_SESSION['user_id'] ?? 0);
+
+                    if ($otomatikOnaylandi) {
+                        $personelBaslik = 'KM Bildirimi Otomatik Onaylandı';
+                        $personelMesaj = $bildirimDetayi . ' Fotoğraftaki bilgiler gönderdiğiniz kayıtla eşleşti.';
+                        $personelRenk = 'success';
                         $BildirimModel->broadcastByPermission(
                             'arac-takip/km-onaylari',
-                            'Yeni KM Bildirimi',
-                            $personel->adi_soyadi . ", $tarihFormatli tarihi için $turLabel KM bildirimi yaptı: " . $data['bitis_km'] . " KM",
+                            'KM Bildirimi AI ile Otomatik Onaylandı',
+                            $personel->adi_soyadi . ' – ' . $bildirimDetayi . ' Fotoğraf ve gönderilen bilgiler eşleşti.',
                             'index?p=arac-takip/km-onaylari',
-                            'speed',
-                            'info'
+                            'check-circle',
+                            'success'
                         );
-                    } catch (\Exception $e) {
-                        // Bildirim hatası kritik değil
+                    } else {
+                        $personelBaslik = 'KM Bildirimi Otomatik Onaylanmadı';
+                        $personelMesaj = $bildirimDetayi . ' Yönetici onayına gönderildi. Neden: ' . $aiNedeni;
+                        $personelRenk = 'warning';
+                        $BildirimModel->broadcastByPermission(
+                            'arac-takip/km-onaylari',
+                            'KM Bildirimi Otomatik Onaylanmadı',
+                            $personel->adi_soyadi . ' – ' . $bildirimDetayi . ' Manuel onay bekliyor. Neden: ' . $aiNedeni,
+                            'index?p=arac-takip/km-onaylari',
+                            'error-circle',
+                            'warning'
+                        );
                     }
+
+                    if ($pwaUserId > 0) {
+                        $BildirimModel->createNotification(
+                            $pwaUserId,
+                            $personelBaslik,
+                            $personelMesaj,
+                            'index.php?page=ana-sayfa',
+                            $otomatikOnaylandi ? 'check-circle' : 'error-circle',
+                            $personelRenk
+                        );
+
+                        try {
+                            $pushService = new \App\Service\PushNotificationService();
+                            $pushService->sendToUser($pwaUserId, [
+                                'title' => $personelBaslik,
+                                'body' => $personelMesaj,
+                                'url' => 'index.php?page=ana-sayfa',
+                            ], true);
+                        } catch (\Throwable $pushError) {
+                            error_log('KM AI personel push bildirimi gönderilemedi: ' . $pushError->getMessage());
+                        }
+                    }
+                } catch (\Throwable $bildirimError) {
+                    error_log('KM AI sonuç bildirimi oluşturulamadı: ' . $bildirimError->getMessage());
                 }
 
                 $mesaj = $otomatikOnaylandi
                     ? 'KM bildiriminiz fotoğrafla eşleşti ve otomatik olarak onaylandı.'
-                    : 'KM bildiriminiz başarıyla iletildi. Yapay zekâ kurallarından geçmediği için yönetici onayı bekleniyor.';
-                response(true, ['otomatik_onaylandi' => $otomatikOnaylandi], $mesaj);
+                    : 'KM bildiriminiz otomatik onaylanmadı ve yönetici onayına gönderildi. Neden: ' . $aiNedeni;
+                response(true, [
+                    'otomatik_onaylandi' => $otomatikOnaylandi,
+                    'otomatik_onay_nedeni' => $aiNedeni,
+                ], $mesaj);
             } else {
                 response(false, null, 'Bildirim kaydedilemedi.');
             }
