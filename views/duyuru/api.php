@@ -24,6 +24,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         switch ($action) {
             case 'save':
                 $id = $_POST['id'] ?? null;
+                $etkinlikTarihi = null;
+                if (!empty($_POST['etkinlik_tarihi'])) {
+                    $date = DateTime::createFromFormat('Y-m-d', $_POST['etkinlik_tarihi']);
+                    if (!$date) {
+                        $date = DateTime::createFromFormat('d.m.Y', $_POST['etkinlik_tarihi']);
+                    }
+                    if ($date) {
+                        $etkinlikTarihi = $date->format('Y-m-d') . ' 23:59:59';
+                    }
+                }
+
                 $data = [
                     'firma_id' => $_SESSION['firma_id'],
                     'baslik' => trim($_POST['baslik'] ?? ''),
@@ -32,7 +43,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'durum' => $_POST['durum'] ?? 'Yayında',
                     'alici_tipi' => $_POST['alici_tipi'] ?? 'toplu',
                     'alici_ids' => is_array($_POST['personel_ids'] ?? null) ? implode(',', $_POST['personel_ids']) : ($_POST['alici_ids'] ?? ''),
-                    'etkinlik_tarihi' => !empty($_POST['etkinlik_tarihi']) ? $_POST['etkinlik_tarihi'] : null,
+                    'etkinlik_tarihi' => $etkinlikTarihi,
                     'ana_sayfada_goster' => isset($_POST['ana_sayfada_goster']) ? 1 : 0,
                     'pwa_goster' => isset($_POST['pwa_goster']) ? 1 : 0,
                 ];

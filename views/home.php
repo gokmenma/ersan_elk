@@ -264,10 +264,13 @@ if (Gate::allows("ana_sayfa")) {
                           AND ana_sayfada_goster = 1
                           AND firma_id = :firma_id
                           AND durum = 'Yayında'
-                          AND (etkinlik_tarihi IS NULL OR etkinlik_tarihi >= CURDATE())
+                          AND (etkinlik_tarihi IS NULL OR DATE(etkinlik_tarihi) >= :today)
                           ORDER BY id DESC LIMIT 5";
             $stmt = $db->prepare($duyuruSql);
-            $measureDb('home.duyuru_list', fn() => $stmt->execute([':firma_id' => $_SESSION['firma_id']]));
+            $measureDb('home.duyuru_list', fn() => $stmt->execute([
+                ':firma_id' => $_SESSION['firma_id'],
+                ':today' => date('Y-m-d')
+            ]));
             $duyurular = $stmt->fetchAll(PDO::FETCH_ASSOC);
         } catch (\Exception $de) {
             $duyurular = [];

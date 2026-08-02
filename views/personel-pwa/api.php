@@ -3065,9 +3065,11 @@ try {
                             etkinlik_tarihi
                         FROM duyurular
                         WHERE silinme_tarihi IS NULL
+                        AND firma_id = ?
                         AND pwa_goster = 1
+                        AND durum = 'Yayında'
                         AND (alici_tipi = 'toplu' OR FIND_IN_SET(?, alici_ids))
-                        AND (etkinlik_tarihi IS NULL OR etkinlik_tarihi >= CURDATE())
+                        AND (etkinlik_tarihi IS NULL OR DATE(etkinlik_tarihi) >= ?)
                         ORDER BY activity_date DESC
                         LIMIT $limit";
 
@@ -3100,7 +3102,7 @@ try {
 
             // Duyurular
             $stmt = $db->prepare($duyuruSql);
-            $stmt->execute([$personel_id]);
+            $stmt->execute([$_SESSION['firma_id'], $personel_id, date('Y-m-d')]);
             $duyurular = $stmt->fetchAll(PDO::FETCH_ASSOC);
             $activities = array_merge($activities, $duyurular);
 
@@ -3187,14 +3189,15 @@ try {
             $duyuruSql = "SELECT id, baslik, icerik, resim, hedef_sayfa, tarih, etkinlik_tarihi
                         FROM duyurular
                         WHERE silinme_tarihi IS NULL 
+                        AND firma_id = ?
                         AND pwa_goster = 1
                         AND durum = 'Yayında'
                         AND (alici_tipi = 'toplu' OR FIND_IN_SET(?, alici_ids))
-                        AND (etkinlik_tarihi IS NULL OR etkinlik_tarihi >= CURDATE())
+                        AND (etkinlik_tarihi IS NULL OR DATE(etkinlik_tarihi) >= ?)
                         ORDER BY id DESC
                         LIMIT 5";
             $stmt = $db->prepare($duyuruSql);
-            $stmt->execute([$personel_id]);
+            $stmt->execute([$_SESSION['firma_id'], $personel_id, date('Y-m-d')]);
             $duyurular = $stmt->fetchAll(PDO::FETCH_ASSOC);
 
             // Resim URL formatı (varsa) ve içerik kısaltması vb. işlemleri yapabiliriz
