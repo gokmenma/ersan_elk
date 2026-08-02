@@ -972,24 +972,7 @@ $title = "Sayaç Deposu";
 </div>
 
 <!-- Demirbaş İşlem Geçmişi Modal -->
-<div class="modal" id="demirbasGecmisModal" tabindex="-1" aria-hidden="true" style="z-index: 9999 !important;">
-	<div class="modal-dialog modal-dialog-centered modal-xl">
-		<div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
-			<div class="modal-header bg-soft-info border-bottom">
-				<div class="modal-title-section d-flex align-items-center">
-					<div class="avatar-xs me-2 rounded bg-info bg-opacity-10 d-flex align-items-center justify-content-center" style="width: 32px; height: 32px;">
-						<i class="bx bx-history text-info fs-5"></i>
-					</div>
-					<div>
-						<h6 class="modal-title text-info mb-0 fw-bold">Sayaç İşlem Geçmişi</h6>
-						<p class="text-muted small mb-0" id="gecmisDemirbasAdi" style="font-size: 0.7rem;">-</p>
-					</div>
-				</div>
-				<button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-			</div>
-		</div>
-	</div>
-</div>
+<?php include_once __DIR__ . "/modal/gecmis-modal.php"; ?>
 
 <!-- Hurda Sayaç İade Modal (Eksik Modal Eklendi - Kaldırıldı, çünkü yukarıda include ediliyor) -->
 

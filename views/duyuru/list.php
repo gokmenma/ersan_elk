@@ -13,6 +13,27 @@ $aracZimmetModel = new \App\Model\AracZimmetModel();
 
 $duyurular = $duyuruModel->getAll();
 $stats = $duyuruModel->getStats();
+$duyuruCounts = [
+    'all' => count($duyurular),
+    'published' => 0,
+    'draft' => 0,
+    'closed' => 0,
+    'expired' => 0,
+];
+$today = date('Y-m-d');
+foreach ($duyurular as $duyuru) {
+    if ($duyuru->durum === 'Yayında') {
+        $duyuruCounts['published']++;
+    } elseif ($duyuru->durum === 'Taslak') {
+        $duyuruCounts['draft']++;
+    } elseif ($duyuru->durum === 'Kapalı') {
+        $duyuruCounts['closed']++;
+    }
+
+    if (!empty($duyuru->etkinlik_tarihi) && substr($duyuru->etkinlik_tarihi, 0, 10) < $today) {
+        $duyuruCounts['expired']++;
+    }
+}
 
 // Departmanları getir (Personel tablosundan direkt çekiyoruz)
 $db = $personelModel->getDb();
@@ -109,10 +130,28 @@ foreach ($personeller as $p) {
         </div>
     </div>
 
-    <div class="card border-0 shadow-sm" style="border-radius: 15px;">
-        <div class="card-header bg-white border-bottom py-3 d-flex align-items-center justify-content-between">
-            <h5 class="card-title mb-0 fw-bold text-dark">Duyuru Listesi</h5>
-            <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
+    <div class="card border-0 shadow-sm duyuru-list-card">
+        <div class="card-header bg-white border-bottom py-3 d-flex flex-wrap align-items-center justify-content-between gap-3">
+            <div class="status-filter-group d-flex align-items-center" role="group" aria-label="Duyuru durum filtresi">
+                <?php
+                $filters = [
+                    'all' => ['Tümü', 'bx-list-ul'],
+                    'published' => ['Yayında', 'bx-broadcast'],
+                    'draft' => ['Taslak', 'bx-edit'],
+                    'closed' => ['Kapalı', 'bx-lock-alt'],
+                    'expired' => ['Süresi Dolan', 'bx-time-five'],
+                ];
+                foreach ($filters as $filterKey => [$filterLabel, $filterIcon]): ?>
+                    <input type="radio" class="btn-check duyuru-status-filter" name="duyuru_status_filter"
+                        id="duyuru-filter-<?= $filterKey ?>" value="<?= $filterKey ?>" <?= $filterKey === 'all' ? 'checked' : '' ?>>
+                    <label class="btn" for="duyuru-filter-<?= $filterKey ?>">
+                        <i class="bx <?= $filterIcon ?>"></i>
+                        <span><?= $filterLabel ?></span>
+                        <span class="count-tag"><?= $duyuruCounts[$filterKey] ?></span>
+                    </label>
+                <?php endforeach; ?>
+            </div>
+            <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 personel-action-toolbar">
 
                 <button type="button" class="btn btn-link btn-sm text-success text-decoration-none px-2"
                     id="btnExportExcel" title="Excel'e Aktar">
@@ -120,9 +159,9 @@ foreach ($personeller as $p) {
                 </button>
                 <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
 
-                <button type="button" class="btn btn-primary px-3 py-2 fw-semibold shadow-sm text-nowrap"
+                <button type="button" class="btn btn-primary px-3 py-2 fw-semibold text-nowrap"
                     data-bs-toggle="modal" data-bs-target="#duyuruModal" onclick="resetForm()" title="Yeni Duyuru">
-                    <i class="mdi mdi-plus-circle fs-5 me-1"></i> Yeni
+                    <i class="mdi mdi-plus-circle fs-5 me-1"></i> Yeni Duyuru
                 </button>
             </div>
         </div>
@@ -132,31 +171,32 @@ foreach ($personeller as $p) {
                     <thead class="table-light">
                         <tr>
                             <th>#</th>
-                            <th>Başlık</th>
-                            <th>İçerik</th>
-                            <th>Hedef</th>
-                            <th>Kitle</th>
-                            <th>Yayın / Etkinlik Tarihi</th>
-                            <th>Durum</th>
+                            <th data-filter="string">Başlık</th>
+                            <th data-filter="string">İçerik</th>
+                            <th data-filter="select">Hedef</th>
+                            <th data-filter="select">Kitle</th>
+                            <th data-filter="date">Yayın / Bitiş</th>
+                            <th data-filter="select">Durum</th>
                             <th class="text-end">İşlemler</th>
                         </tr>
                     </thead>
                     <tbody>
                         <?php foreach ($duyurular as $idx => $d): ?>
-                            <tr>
+                            <?php $isExpired = !empty($d->etkinlik_tarihi) && substr($d->etkinlik_tarihi, 0, 10) < $today; ?>
+                            <tr data-status="<?= htmlspecialchars(strtolower($d->durum), ENT_QUOTES, 'UTF-8') ?>"
+                                data-expired="<?= $isExpired ? '1' : '0' ?>">
                                 <td><?= $idx + 1 ?></td>
                                 <td>
                                     <div class="d-flex align-items-center">
                                         <?php if ($d->resim): ?>
-                                            <img src="<?= $d->resim ?>" class="rounded me-2"
-                                                style="width: 40px; height: 40px; object-fit: cover;">
+                                            <img src="<?= htmlspecialchars($d->resim, ENT_QUOTES, 'UTF-8') ?>" class="duyuru-thumb me-2" alt="">
                                         <?php else: ?>
                                             <div class="bg-light rounded d-flex align-items-center justify-content-center me-2"
                                                 style="width: 40px; height: 40px;">
                                                 <i class="bx bx-image text-muted"></i>
                                             </div>
                                         <?php endif; ?>
-                                        <div class="fw-bold"><?= htmlspecialchars($d->baslik) ?></div>
+                                        <div class="duyuru-title"><?= htmlspecialchars($d->baslik, ENT_QUOTES, 'UTF-8') ?></div>
                                     </div>
                                 </td>
                                 <td>
@@ -174,6 +214,9 @@ foreach ($personeller as $p) {
                                         <?php if ($d->pwa_goster): ?>
                                             <span class="badge bg-soft-info text-info px-2 py-1"
                                                 style="font-size: 10px;">Personel Ana Sayfa</span>
+                                        <?php endif; ?>
+                                        <?php if (!$d->ana_sayfada_goster && !$d->pwa_goster): ?>
+                                            <span class="text-muted small">Ana sayfada gösterilmiyor</span>
                                         <?php endif; ?>
                                     </div>
                                 </td>
@@ -202,19 +245,17 @@ foreach ($personeller as $p) {
                                         <div class="mb-1"><span class="badge bg-success">Yayında</span></div>
                                     <?php endif; ?>
 
-                                    <?php
-                                    $isExpired = $d->etkinlik_tarihi && $d->etkinlik_tarihi < date('Y-m-d');
-                                    if ($isExpired): ?>
+                                    <?php if ($isExpired): ?>
                                         <span class="badge bg-danger">Süresi Doldu</span>
                                     <?php else: ?>
                                         <span class="badge bg-info">Güncel</span>
                                     <?php endif; ?>
                                 </td>
                                 <td class="text-end">
-                                    <button class="btn btn-soft-primary btn-sm btn-edit" data-id="<?= $d->id ?>">
+                                    <button class="btn btn-soft-primary btn-sm btn-edit" data-id="<?= $d->id ?>" title="Düzenle" aria-label="Duyuruyu düzenle">
                                         <i class="bx bx-edit-alt"></i>
                                     </button>
-                                    <button class="btn btn-soft-danger btn-sm btn-delete" data-id="<?= $d->id ?>">
+                                    <button class="btn btn-soft-danger btn-sm btn-delete" data-id="<?= $d->id ?>" title="Sil" aria-label="Duyuruyu sil">
                                         <i class="bx bx-trash"></i>
                                     </button>
                                 </td>
@@ -230,16 +271,15 @@ foreach ($personeller as $p) {
 <!-- Modal -->
 <div class="modal fade" id="duyuruModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
-        <div class="modal-content border-0 shadow-lg" style="border-radius: 15px;">
-            <div class="modal-header border-bottom py-3">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header duyuru-modal-header border-bottom">
                 <div class="d-flex align-items-center">
-                    <div class="bg-success bg-opacity-10 rounded-circle p-2 me-3 d-flex align-items-center justify-content-center"
-                        style="width: 45px; height: 45px;">
-                        <i data-feather="plus-circle" class="text-success" style="width: 24px; height: 24px;"></i>
+                    <div class="duyuru-modal-icon me-3">
+                        <i class="bx bx-megaphone"></i>
                     </div>
                     <div>
                         <h5 class="modal-title fw-bold mb-0" id="modalTitle">Yeni Duyuru Ekle</h5>
-                        <small class="text-muted">Gerekli bilgileri doldurup hedef kitleyi seçin.</small>
+                        <small class="text-muted">İçerik ve yayın ayarları</small>
                     </div>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
@@ -251,26 +291,32 @@ foreach ($personeller as $p) {
                     <input type="hidden" name="resim_sil" id="resimSil" value="0">
                     <div class="row g-0">
                         <!-- Form Kolonu: Dinamik Genişlik -->
-                        <div class="col-lg-12 p-4 transition-all" id="formColumn" style="transition: all 0.3s ease;">
+                        <div class="col-lg-12 p-4 transition-all duyuru-form-column" id="formColumn" style="transition: all 0.3s ease;">
                             <div class="row g-3">
+                                <div class="col-12">
+                                    <div class="duyuru-section-title">
+                                        <i class="bx bx-edit-alt"></i>
+                                        <span>Duyuru İçeriği</span>
+                                    </div>
+                                </div>
                                 <div class="col-12" id="resimRow">
-                                    <label class="form-label text-muted small mb-1">Duyuru Resmi</label>
+                                    <label class="form-label text-muted small mb-1 fw-semibold">Kapak Görseli</label>
                                     <div id="imageUploadZone"
-                                        class="border-2 border-dashed rounded-3 p-3 text-center position-relative bg-light"
-                                        style="cursor: pointer; transition: all 0.2s; border-color: #dee2e6 !important;">
+                                        class="duyuru-upload-zone border-2 border-dashed text-center position-relative">
                                         <input type="file" name="resim" id="duyuruResim" accept="image/*"
                                             class="position-absolute top-0 start-0 w-100 h-100 opacity-0"
                                             style="cursor:pointer; z-index:2;">
                                         
                                         <div id="uploadPlaceholder">
-                                            <i class="mdi mdi-image-plus text-primary fs-2"></i>
-                                            <p class="fw-semibold mb-0">Görsel Seçin</p>
+                                            <i class="mdi mdi-image-plus text-primary"></i>
+                                            <span class="fw-semibold">Görsel Seçin</span>
+                                            <span class="upload-meta">PNG, JPG veya WEBP</span>
                                         </div>
                                         
                                         <div id="uploadPreview" class="d-none position-relative" style="z-index: 3;">
                                             <div class="position-relative d-inline-block">
-                                                <img id="previewImage" src="" class="rounded shadow-sm" style="max-height: 100px; max-width: 100%;">
-                                                <button type="button" id="btnRemoveImage" class="btn btn-danger btn-sm position-absolute top-0 end-0 translate-middle rounded-circle p-0" style="width: 20px; height: 20px;">
+                                                <img id="previewImage" src="" class="shadow-sm">
+                                                <button type="button" id="btnRemoveImage" class="btn btn-danger btn-sm position-absolute top-0 end-0 translate-middle rounded-circle p-0" title="Görseli kaldır" aria-label="Görseli kaldır">
                                                     <i data-feather="x" style="width: 12px; height: 12px;"></i>
                                                 </button>
                                             </div>
@@ -284,6 +330,12 @@ foreach ($personeller as $p) {
                                     <label for="icerik" class="form-label text-muted small mb-1 fw-bold">İçerik</label>
                                     <textarea name="icerik" id="icerik" class="form-control" rows="6" placeholder="Duyuru içeriği..."></textarea>
                                 </div>
+                                <div class="col-12 mt-4">
+                                    <div class="duyuru-section-title">
+                                        <i class="bx bx-slider-alt"></i>
+                                        <span>Yayın Ayarları</span>
+                                    </div>
+                                </div>
                                 <div class="col-md-6">
                                     <?= Form::FormFloatInput('date', 'etkinlik_tarihi', '', '', 'Bitiş Tarihi', 'calendar', 'form-control', false) ?>
                                 </div>
@@ -293,9 +345,9 @@ foreach ($personeller as $p) {
                                 <div class="col-12">
                                     <?= Form::FormFloatInput('text', 'hedef_sayfa', '', 'URL girin...', 'Hedef URL (Opsiyonel)', 'link', 'form-control') ?>
                                 </div>
-                                <div class="col-12">
+                                <div class="col-md-6">
                                     <div class="p-3 bg-light rounded border">
-                                        <label class="fw-bold mb-2 small text-uppercase">Görünürlük</label>
+                                        <label class="fw-bold mb-3 small">Gösterim Alanları</label>
                                         <div class="d-flex flex-column gap-2">
                                             <div class="form-check form-switch">
                                                 <input class="form-check-input" type="checkbox" name="ana_sayfada_goster" id="ana_sayfada_goster">
@@ -308,10 +360,10 @@ foreach ($personeller as $p) {
                                         </div>
                                     </div>
                                 </div>
-                                <div class="col-12">
+                                <div class="col-md-6">
                                     <div class="p-3 bg-light rounded border">
-                                        <label class="fw-bold mb-2 small text-uppercase">Hedef Kitle</label>
-                                        <div class="d-flex gap-3">
+                                        <label class="fw-bold mb-3 small">Hedef Kitle</label>
+                                        <div class="d-flex flex-wrap gap-3">
                                             <div class="form-check">
                                                 <input class="form-check-input" type="radio" name="alici_tipi" id="tipToplu" value="toplu" checked>
                                                 <label class="form-check-label" for="tipToplu">Herkes</label>
@@ -331,14 +383,14 @@ foreach ($personeller as $p) {
                             <div class="d-flex flex-column h-100">
                                 <!-- Filtreler Paneli (WhatsApp Style) -->
                                 <div class="mb-4">
-                                    <div class="d-flex align-items-center justify-content-between bg-light p-2 rounded-3 border">
+                                    <div class="d-flex align-items-center justify-content-between bg-light p-2 rounded border">
                                         <div class="d-flex align-items-center gap-3 flex-grow-1">
                                             <!-- Departman Dropdown (Checklist) -->
                                             <div class="dropdown" id="deptDropdownContainer">
                                                 <button class="filter-chip dropdown-toggle d-flex align-items-center" type="button" id="deptDropdownBtn" data-bs-toggle="dropdown" data-bs-auto-close="outside" aria-expanded="false" style="padding: 8px 16px;">
                                                     <i class="bx bx-buildings me-1"></i> Departmanlar <span id="deptCountBadge" class="badge bg-primary ms-1 d-none" style="font-size: 10px;">0</span>
                                                 </button>
-                                                <div class="dropdown-menu p-3 shadow-lg border-0" aria-labelledby="deptDropdownBtn" style="min-width: 250px; border-radius: 15px; max-height: 350px; overflow-y: auto;">
+                                                <div class="dropdown-menu p-3 shadow-lg border-0" aria-labelledby="deptDropdownBtn" style="min-width: 250px; border-radius: 8px; max-height: 350px; overflow-y: auto;">
                                                     <div class="d-flex justify-content-between align-items-center mb-2 pb-2 border-bottom">
                                                         <span class="fw-bold small text-muted text-uppercase" style="letter-spacing: 0.5px;">Departman Listesi</span>
                                                         <button type="button" class="btn btn-link btn-sm p-0 text-decoration-none text-danger small" id="btnClearDepts">Temizle</button>
@@ -364,10 +416,10 @@ foreach ($personeller as $p) {
                                         </div>
                                         
                                         <div class="d-flex gap-2 ms-3 border-start ps-3">
-                                            <button type="button" class="btn btn-primary btn-sm rounded-pill d-flex align-items-center px-3" id="btnSelectAll" title="Filtrelenmişleri Ekle">
+                                            <button type="button" class="btn btn-primary btn-sm d-flex align-items-center justify-content-center" id="btnSelectAll" title="Filtrelenmişleri ekle" aria-label="Filtrelenmiş personelleri ekle">
                                                 <i class="bx bx-plus fs-5"></i>
                                             </button>
-                                            <button type="button" class="btn btn-soft-danger btn-sm rounded-pill d-flex align-items-center px-3" id="btnClearSelection" title="Temizle">
+                                            <button type="button" class="btn btn-soft-danger btn-sm d-flex align-items-center justify-content-center" id="btnClearSelection" title="Seçimi temizle" aria-label="Personel seçimini temizle">
                                                 <i class="bx bx-trash-alt fs-5"></i>
                                             </button>
                                         </div>
@@ -408,9 +460,9 @@ foreach ($personeller as $p) {
                     </div>
                 </form>
             </div>
-            <div class="modal-footer border-top bg-light py-3">
-                <button type="button" class="btn btn-vazgec px-4" data-bs-dismiss="modal">Vazgeç</button>
-                <button type="submit" form="duyuruForm" class="btn btn-kaydet px-4 shadow-sm">
+            <div class="modal-footer duyuru-modal-footer border-top py-3">
+                <button type="button" class="btn btn-light border px-4" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="submit" form="duyuruForm" class="btn btn-primary px-4">
                     <i data-feather="save" class="me-1" style="width: 16px; height: 16px;"></i> Kaydet
                 </button>
             </div>
@@ -516,6 +568,30 @@ foreach ($personeller as $p) {
             $('#resimSil').val('1');
         });
 
+        $('#duyuruResim').on('change', function () {
+            const file = this.files && this.files[0];
+            if (!file) return;
+
+            if (!file.type.startsWith('image/')) {
+                this.value = '';
+                Swal.fire('Geçersiz Dosya', 'Lütfen bir görsel dosyası seçin.', 'warning');
+                return;
+            }
+
+            const reader = new FileReader();
+            reader.onload = function (event) {
+                $('#previewImage').attr('src', event.target.result);
+                $('#uploadPlaceholder').addClass('d-none');
+                $('#uploadPreview').removeClass('d-none');
+                $('#resimSil').val('0');
+            };
+            reader.onerror = function () {
+                $('#duyuruResim').val('');
+                Swal.fire('Görsel Okunamadı', 'Seçilen görselin önizlemesi oluşturulamadı.', 'error');
+            };
+            reader.readAsDataURL(file);
+        });
+
         let dtOptions = typeof getDatatableOptions === 'function' ? getDatatableOptions() : {};
         dtOptions.buttons = [
             {
@@ -527,6 +603,28 @@ foreach ($personeller as $p) {
         ];
 
         let localTable = $('#duyuruTable').DataTable(dtOptions);
+
+        $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+            if (settings.nTable.id !== 'duyuruTable') return true;
+
+            const selectedFilter = $('.duyuru-status-filter:checked').val() || 'all';
+            if (selectedFilter === 'all') return true;
+
+            const row = localTable.row(dataIndex).node();
+            if (!row) return true;
+            if (selectedFilter === 'expired') return row.dataset.expired === '1';
+
+            const statusMap = {
+                published: 'yayında',
+                draft: 'taslak',
+                closed: 'kapalı'
+            };
+            return row.dataset.status === statusMap[selectedFilter];
+        });
+
+        $('.duyuru-status-filter').on('change', function () {
+            localTable.draw();
+        });
 
         $('#btnExportExcel').click(function () {
             localTable.button('.buttons-excel').trigger();
@@ -837,6 +935,119 @@ foreach ($personeller as $p) {
 </script>
 
 <style>
+    .duyuru-list-card,
+    #duyuruModal .modal-content {
+        border-radius: 8px !important;
+    }
+
+    .status-filter-group {
+        gap: 3px;
+        padding: 4px;
+        overflow-x: auto;
+        max-width: 100%;
+        background: #f1f5f9;
+        border: 1px solid #e2e8f0;
+        border-radius: 7px;
+    }
+
+    .status-filter-group .btn-check + .btn {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        min-height: 34px;
+        padding: 6px 10px;
+        border: 0;
+        border-radius: 5px;
+        color: #64748b;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+    }
+
+    .status-filter-group .btn-check + .btn:hover {
+        background: rgba(255, 255, 255, 0.8);
+        color: #1e293b;
+    }
+
+    .status-filter-group .btn-check:checked + .btn {
+        color: #fff;
+        background: #475569;
+        box-shadow: 0 1px 3px rgba(15, 23, 42, 0.16);
+    }
+
+    .status-filter-group .btn-check:checked + .btn[for="duyuru-filter-published"] { background: #059669; }
+    .status-filter-group .btn-check:checked + .btn[for="duyuru-filter-draft"] { background: #64748b; }
+    .status-filter-group .btn-check:checked + .btn[for="duyuru-filter-closed"] { background: #334155; }
+    .status-filter-group .btn-check:checked + .btn[for="duyuru-filter-expired"] { background: #dc2626; }
+
+    .status-filter-group .count-tag {
+        min-width: 20px;
+        padding: 1px 5px;
+        border-radius: 4px;
+        text-align: center;
+        background: rgba(100, 116, 139, 0.12);
+        font-size: 10px;
+    }
+
+    .status-filter-group .btn-check:checked + .btn .count-tag {
+        background: rgba(255, 255, 255, 0.2);
+    }
+
+    .duyuru-thumb {
+        width: 42px;
+        height: 42px;
+        flex: 0 0 42px;
+        border-radius: 6px;
+        object-fit: cover;
+        border: 1px solid #e2e8f0;
+    }
+
+    .duyuru-title {
+        max-width: 260px;
+        color: #1e293b;
+        font-size: 13px;
+        font-weight: 700;
+        line-height: 1.35;
+    }
+
+    #duyuruTable tbody td {
+        padding-top: 12px;
+        padding-bottom: 12px;
+        border-color: #edf2f7;
+    }
+
+    #duyuruTable tbody tr:hover {
+        background: #f8fafc;
+    }
+
+    [data-bs-theme="dark"] .status-filter-group {
+        background: #242b31;
+        border-color: #32394e;
+    }
+
+    [data-bs-theme="dark"] .duyuru-title {
+        color: #eff2f7;
+    }
+
+    @media (max-width: 767.98px) {
+        .duyuru-list-card .card-header,
+        .personel-action-toolbar {
+            width: 100%;
+        }
+
+        .status-filter-group {
+            width: 100%;
+        }
+
+        .personel-action-toolbar {
+            justify-content: flex-end;
+        }
+
+        .status-filter-group .btn-check + .btn span:not(.count-tag) {
+            display: none;
+        }
+    }
+
     .bg-soft-info {
         background-color: rgba(13, 202, 240, 0.1);
     }
@@ -970,9 +1181,137 @@ foreach ($personeller as $p) {
     }
 
     /* Özel Buton Stilleri */
+    #duyuruModal .modal-dialog {
+        max-width: 1180px;
+    }
+
+    .duyuru-modal-header {
+        padding: 16px 20px;
+        background: #fff;
+    }
+
+    .duyuru-modal-icon {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        width: 42px;
+        height: 42px;
+        flex: 0 0 42px;
+        border-radius: 7px;
+        color: #fff;
+        background: #2563eb;
+    }
+
+    .duyuru-modal-icon i {
+        font-size: 22px;
+    }
+
+    .duyuru-form-column {
+        background: #fff;
+    }
+
+    #formColumn.col-lg-5 .col-md-6 {
+        width: 100%;
+    }
+
+    .duyuru-section-title {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding-bottom: 9px;
+        color: #334155;
+        border-bottom: 1px solid #e2e8f0;
+        font-size: 12px;
+        font-weight: 700;
+        text-transform: uppercase;
+    }
+
+    .duyuru-section-title i {
+        color: #2563eb;
+        font-size: 17px;
+    }
+
+    .duyuru-upload-zone {
+        min-height: 84px;
+        padding: 16px;
+        cursor: pointer;
+        border-color: #cbd5e1 !important;
+        border-radius: 7px;
+        background: #f8fafc;
+        transition: border-color 0.2s, background-color 0.2s;
+    }
+
+    #uploadPlaceholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 9px;
+        min-height: 50px;
+    }
+
+    #uploadPlaceholder > i {
+        font-size: 27px;
+    }
+
+    #uploadPlaceholder .upload-meta {
+        color: #94a3b8;
+        font-size: 11px;
+    }
+
+    #previewImage {
+        width: auto;
+        max-width: 100%;
+        height: 72px;
+        border-radius: 6px;
+        object-fit: cover;
+    }
+
+    #btnRemoveImage {
+        width: 22px;
+        height: 22px;
+    }
+
+    #btnSelectAll,
+    #btnClearSelection {
+        width: 34px;
+        height: 34px;
+        padding: 0;
+        border-radius: 6px;
+    }
+
     #imageUploadZone:hover {
-        border-color: #556ee6 !important;
-        background-color: rgba(85, 110, 230, 0.05) !important;
+        border-color: #2563eb !important;
+        background-color: #eff6ff !important;
+    }
+
+    #duyuruModal .bg-light.rounded.border {
+        height: 100%;
+        border-color: #e2e8f0 !important;
+        border-radius: 7px !important;
+        background: #f8fafc !important;
+    }
+
+    #duyuruModal .form-switch {
+        display: flex;
+        align-items: center;
+        min-height: 26px;
+        padding-left: 0;
+    }
+
+    #duyuruModal .form-switch .form-check-input {
+        width: 34px;
+        margin: 0 10px 0 0;
+        flex: 0 0 34px;
+    }
+
+    .duyuru-modal-footer {
+        position: sticky;
+        bottom: 0;
+        z-index: 5;
+        padding-left: 20px;
+        padding-right: 20px;
+        background: #fff;
+        box-shadow: 0 -4px 12px rgba(15, 23, 42, 0.04);
     }
 
     .btn-vazgec {
@@ -1009,16 +1348,58 @@ foreach ($personeller as $p) {
         overflow: hidden;
     }
 
+    [data-bs-theme="dark"] .duyuru-modal-header,
+    [data-bs-theme="dark"] .duyuru-form-column,
+    [data-bs-theme="dark"] .duyuru-modal-footer {
+        background: #191e22;
+    }
+
+    [data-bs-theme="dark"] .duyuru-section-title {
+        color: #e2e8f0;
+        border-color: #32394e;
+    }
+
+    [data-bs-theme="dark"] .duyuru-upload-zone,
+    [data-bs-theme="dark"] #duyuruModal .bg-light.rounded.border {
+        background: #242b31 !important;
+        border-color: #3b445e !important;
+    }
+
+    @media (max-width: 767.98px) {
+        #duyuruModal .modal-dialog {
+            margin: 0;
+            min-height: 100%;
+        }
+
+        #duyuruModal .modal-content {
+            min-height: 100vh;
+            border-radius: 0 !important;
+        }
+
+        .duyuru-form-column,
+        #personelSecimContainer {
+            padding: 18px !important;
+        }
+
+        #uploadPlaceholder {
+            flex-wrap: wrap;
+        }
+
+        #uploadPlaceholder .upload-meta {
+            flex-basis: 100%;
+        }
+    }
+
     /* Summernote Editor Modal Compatibility */
     .note-editor.note-frame {
-        border-radius: 10px;
+        border-radius: 7px;
         border: 1px solid #ced4da;
     }
     .note-editor .note-toolbar {
         background: #f8f9fa;
         border-bottom: 1px solid #e9ecef;
-        border-top-left-radius: 10px;
-        border-top-right-radius: 10px;
+        border-top-left-radius: 7px;
+        border-top-right-radius: 7px;
     }
     .note-popover, .note-modal {
         z-index: 1060 !important;

@@ -299,37 +299,7 @@ $title = "Aparat Deposu";
 						</table>
 					</div>
 
-					<div class="card border" id="aparatPersonelDetailCard" style="display:none;">
-						<div class="card-header d-flex justify-content-between align-items-center">
-							<h6 class="mb-0" id="aparatSeciliPersonel">Personel Detayı</h6>
-							<small class="text-muted">Gün gün aparat hareketleri</small>
-						</div>
-						<div class="card-body">
-							<div class="row g-2 mb-3">
-								<div class="col-md-2"><div class="border rounded p-2"><small class="text-muted">Verilen</small><div class="fw-bold" id="ap_verilen">0</div></div></div>
-								<div class="col-md-2"><div class="border rounded p-2"><small class="text-muted">Tüketilen</small><div class="fw-bold" id="ap_tuketilen">0</div></div></div>
-								<div class="col-md-2"><div class="border rounded p-2"><small class="text-muted">Depo İade</small><div class="fw-bold" id="ap_depo_iade">0</div></div></div>
-								<div class="col-md-2"><div class="border rounded p-2"><small class="text-muted">Kayıp</small><div class="fw-bold" id="ap_kayip">0</div></div></div>
-								<div class="col-md-2"><div class="border rounded p-2"><small class="text-muted">Kalan</small><div class="fw-bold" id="ap_kalan">0</div></div></div>
-							</div>
 
-							<div class="table-responsive">
-								<table id="aparatPersonelHistoryTable" class="table table-sm table-bordered align-middle mb-0">
-									<thead class="table-light">
-										<tr>
-											<th>Tarih</th>
-											<th>Verilen</th>
-											<th>Tüketilen</th>
-											<th>Depo İade</th>
-											<th>Kayıp</th>
-											<th>Net</th>
-										</tr>
-									</thead>
-									<tbody></tbody>
-								</table>
-							</div>
-						</div>
-					</div>
 				</div>
 
 				<div class="tab-pane fade" id="aparatHareketPane" role="tabpanel">
@@ -388,5 +358,11 @@ $title = "Aparat Deposu";
 
 <!-- Toplu Aparat Zimmet Modal -->
 <?php include_once "modal/toplu-aparat-zimmet-modal.php" ?>
+
+<!-- Demirbaş İşlem Geçmişi Modal -->
+<?php include_once "modal/gecmis-modal.php" ?>
+
+<!-- Aparat Personel Detay Modal -->
+<?php include_once "modal/aparat-personel-detay-modal.php" ?>
 
 

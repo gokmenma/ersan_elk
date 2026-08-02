@@ -4233,19 +4233,7 @@ body:not(:has(#quick-favorites-bar)) .main-content .page-content {
   margin-left: 0 !important;
   margin-right: 0 !important;
   box-sizing: border-box !important;
-}
-
-.main-content .container-fluid > .row,
-.page-content .container-fluid > .row {
-  margin-left: 0 !important;
-  margin-right: 0 !important;
-}
-
-.main-content .container-fluid > .row > [class*="col-"],
-.page-content .container-fluid > .row > [class*="col-"] {
-  padding-left: 0 !important;
-  padding-right: 0 !important;
-}
+}
 
 .main-content .card {
   margin-bottom: 16px !important;

@@ -343,3 +343,4 @@ $title = 'Zimmet Kayıtları';
 <?php include_once "modal/toplu-iade-modal.php" ?>
 <?php include_once "modal/zimmet-detay-modal.php" ?>
 <?php include_once "modal/aparat-personel-ozet-modal.php" ?>
+<?php include_once "modal/gecmis-modal.php" ?>

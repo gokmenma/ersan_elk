@@ -3174,32 +3174,75 @@ $(document).on("click", ".demirbas-gecmis", function (e) {
   let demirbasId = $(this).data("raw-id");
   let name = $(this).data("name");
 
+  // Modal'ı kontrol et, yoksa dinamik oluşturup body'ye ekle
+  let modalEl = $("#demirbasGecmisModal");
+  if (!modalEl.length) {
+    let modalHtml = `
+    <div class="modal fade" id="demirbasGecmisModal" tabindex="-1" aria-hidden="true" style="z-index: 9999 !important;">
+        <div class="modal-dialog modal-dialog-centered modal-xl">
+            <div class="modal-content border-0 shadow-lg" style="border-radius: 12px;">
+                <div class="modal-header bg-soft-info border-bottom">
+                    <div class="modal-title-section d-flex align-items-center">
+                        <div class="avatar-xs me-2 rounded bg-info bg-opacity-10 d-flex align-items-center justify-content-center"
+                            style="width: 32px; height: 32px;">
+                            <i class="bx bx-history text-info fs-5"></i>
+                        </div>
+                        <div>
+                            <h6 class="modal-title text-info mb-0 fw-bold">Demirbaş İşlem Geçmişi</h6>
+                            <p class="text-muted small mb-0" id="gecmisDemirbasAdi" style="font-size: 0.7rem;">-</p>
+                        </div>
+                    </div>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body p-0">
+                    <div class="table-responsive">
+                        <table id="demirbasGecmisTable"
+                            class="table table-hover table-striped dt-responsive nowrap w-100 mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>İşlem Tipi</th>
+                                    <th class="text-center">Miktar</th>
+                                    <th>Tarih</th>
+                                    <th>İlgili Personel</th>
+                                    <th>Açıklama</th>
+                                    <th class="text-end">İşlem Yapan</th>
+                                </tr>
+                            </thead>
+                            <tbody id="demirbasGecmisBody">
+                                <!-- JS ile doldurulacak -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+                <div class="modal-footer border-top py-2">
+                    <button type="button" class="btn btn-secondary btn-sm fw-bold px-4"
+                        data-bs-dismiss="modal">Kapat</button>
+                </div>
+            </div>
+        </div>
+    </div>`;
+    $("body").append(modalHtml);
+    modalEl = $("#demirbasGecmisModal");
+  } else if (modalEl.parent().prop("tagName") !== "BODY") {
+    // Modal trapped ise body'ye taşı
+    modalEl.appendTo("body");
+  }
+
   $("#gecmisDemirbasAdi").text(name);
   $("#demirbasGecmisBody").html(
     '<tr><td colspan="6" class="text-center py-3"><i class="bx bx-loader-alt bx-spin fs-4"></i> Yükleniyor...</td></tr>',
   );
 
-  // Modal'ı body'ye taşı (eğer değilse) ve aç
-  let modalEl = $("#demirbasGecmisModal");
-  if (modalEl.length) {
-    // Modal trapped ise body'ye taşı
-    if (modalEl.parent().prop("tagName") !== "BODY") {
-      modalEl.appendTo("body");
+  try {
+    modalEl.modal("show");
+  } catch (err) {
+    console.warn("jQuery modal fail, constructor denenecek", err);
+    if (typeof bootstrap !== "undefined" && bootstrap.Modal) {
+      let bModal =
+        bootstrap.Modal.getInstance(modalEl[0]) ||
+        new bootstrap.Modal(modalEl[0]);
+      bModal.show();
     }
-
-    try {
-      modalEl.modal("show");
-    } catch (err) {
-      console.warn("jQuery modal fail, constructor denenecek", err);
-      if (typeof bootstrap !== "undefined" && bootstrap.Modal) {
-        let bModal =
-          bootstrap.Modal.getInstance(modalEl[0]) ||
-          new bootstrap.Modal(modalEl[0]);
-        bModal.show();
-      }
-    }
-  } else {
-    console.error("Hata: demirbasGecmisModal bulunamadı!");
   }
 
   // Eski tabloyu temizle

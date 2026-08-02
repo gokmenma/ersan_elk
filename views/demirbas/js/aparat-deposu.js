@@ -88,7 +88,23 @@ $(function () {
         setText("#ap_depo_iade", s.toplam_depo_iade);
         setText("#ap_kayip", s.toplam_kayip);
         setText("#ap_kalan", s.kalan_miktar);
-        $("#aparatPersonelDetailCard").show();
+
+        let modalEl = $("#aparatPersonelDetailModal");
+        if (modalEl.length) {
+          if (modalEl.parent().prop("tagName") !== "BODY") {
+            modalEl.appendTo("body");
+          }
+          try {
+            modalEl.modal("show");
+          } catch (err) {
+            if (typeof bootstrap !== "undefined" && bootstrap.Modal) {
+              let bModal =
+                bootstrap.Modal.getInstance(modalEl[0]) ||
+                new bootstrap.Modal(modalEl[0]);
+              bModal.show();
+            }
+          }
+        }
       },
       "json",
     );

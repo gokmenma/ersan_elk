@@ -212,3 +212,4 @@ $title = "Servis Kayıtları";
 </div>
 
 <?php include_once "modal/servis-modal.php" ?>
+<?php include_once "modal/gecmis-modal.php" ?>
