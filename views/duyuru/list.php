@@ -426,8 +426,11 @@ foreach ($personeller as $p) {
         if (!rawContent) return '';
         let content = rawContent;
 
-        // Decode HTML entities if present (&lt;p&gt; etc.)
-        if (content.includes('&lt;') || content.includes('&gt;')) {
+        // Yalnızca HTML etiketlerinin tamamı encode edilmişse çöz. Metin içindeki
+        // "Ayarlar &gt; Bildirimler" gibi karakterler mevcut HTML'i bozmamalı.
+        const hasHtmlTags = /<[a-z][\s\S]*>/i.test(content);
+        const hasEncodedHtmlTags = /&lt;\/?[a-z][^&]*&gt;/i.test(content);
+        if (!hasHtmlTags && hasEncodedHtmlTags) {
             const doc = new DOMParser().parseFromString(content, 'text/html');
             content = doc.documentElement.textContent || content;
         }
