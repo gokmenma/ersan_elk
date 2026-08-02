@@ -958,6 +958,63 @@ header#page-topbar .dropdown.show .header-item {
 }
 
 /* Custom topbar and sidebar background support */
+body[data-sidebar="dark"] {
+  --sidebar-bg: #191e22;
+  --sidebar-border: #303840;
+  --sidebar-item-hover: #30373f;
+  --sidebar-item-active: #30373f;
+  --sidebar-foreground: #f8fafc;
+  --sidebar-muted: #cbd5e1;
+  --sidebar-accent: #6d5dfc;
+}
+
+body[data-sidebar="dark"] .vertical-menu,
+body[data-sidebar="dark"] .sidebar-sticky-top {
+  background-color: #191e22 !important;
+  border-color: #22292f !important;
+}
+
+body[data-sidebar="dark"] #sidebar-menu ul li a,
+body[data-sidebar="dark"] #side-menu .menu-title,
+body[data-sidebar="dark"] .brand-name {
+  color: #f8fafc !important;
+}
+
+body[data-sidebar="dark"] .brand-sub,
+body[data-sidebar="dark"] #sidebar-menu ul li ul.sub-menu li a {
+  color: #cbd5e1 !important;
+}
+
+body[data-sidebar="dark"] #sidebar-menu ul li a i,
+body[data-sidebar="dark"] #sidebar-menu ul li a svg,
+body[data-sidebar="dark"] .sidebar-search-container .search-icon {
+  color: #cbd5e1 !important;
+  stroke: #cbd5e1 !important;
+}
+
+body[data-sidebar="dark"] .sidebar-search {
+  background-color: #30373f !important;
+  border-color: #3b4450 !important;
+  color: #f8fafc !important;
+}
+
+body[data-sidebar="dark"] .sidebar-search::placeholder {
+  color: #94a3b8 !important;
+}
+
+body[data-sidebar="dark"] #sidebar-menu ul li a:hover,
+body[data-sidebar="dark"] #sidebar-menu ul li a.active,
+body[data-sidebar="dark"] #sidebar-menu ul li.mm-active > a {
+  background-color: rgba(255, 255, 255, 0.1) !important;
+  color: #ffffff !important;
+}
+
+body[data-topbar="dark"] #page-topbar,
+body[data-topbar="dark"] .navbar-brand-box {
+  background-color: #191e22 !important;
+  border-color: #22292f !important;
+}
+
 body[data-sidebar="red"] .vertical-menu,
 body[data-topbar="red"] #page-topbar,
 body[data-topbar="red"] .navbar-brand-box {
@@ -1035,6 +1092,7 @@ body[data-topbar="rose"] .header-item,
 body[data-topbar="ersan"] .header-item,
 body[data-topbar="teal"] .header-item,
 body[data-topbar="cyan"] .header-item,
+body[data-topbar="dark"] .header-item,
 body[data-topbar="default"] .header-item,
 body[data-topbar="brand"] .header-item {
   color: #e9ecef !important;
@@ -1292,25 +1350,27 @@ body[data-sidebar="light"] .vertical-menu #sidebar-menu ul li ul.sub-menu li a.a
   }
   body:not([data-sidebar-size="sm"]) .main-content {
     margin-left: 250px !important;
+    margin-right: 0 !important;
     width: calc(100% - 250px) !important;
   }
 
-  /* Collapsed Sidebar Mode (75px) */
+  /* Collapsed Sidebar Mode (60px) */
   body[data-sidebar-size="sm"] .vertical-menu {
     top: 0 !important;
-    width: 75px !important;
+    width: 60px !important;
   }
   body[data-sidebar-size="sm"] #page-topbar {
-    left: 75px !important;
-    width: calc(100% - 75px) !important;
+    left: 60px !important;
+    width: calc(100% - 60px) !important;
   }
   body[data-sidebar-size="sm"] .quick-favorites-bar {
-    left: 75px !important;
-    width: calc(100% - 75px) !important;
+    left: 60px !important;
+    width: calc(100% - 60px) !important;
   }
   body[data-sidebar-size="sm"] .main-content {
-    margin-left: 75px !important;
-    width: calc(100% - 75px) !important;
+    margin-left: 60px !important;
+    margin-right: 0 !important;
+    width: calc(100% - 60px) !important;
   }
 
   /* Hide inner topbar brand box on desktop since full-height sidebar owns top-left */
@@ -1430,11 +1490,26 @@ body {
   z-index: 999 !important;
 }
 
+/* Layout Boxed Mode Reset & Full Width Symmetry Enforcement */
+body[data-layout-size="boxed"] #layout-wrapper,
+body[data-layout-size="boxed"] #page-topbar,
+body[data-layout-size="boxed"] .main-content,
+body[data-layout-size="boxed"] .container-fluid,
+body[data-layout-size="boxed"] .footer,
+body[data-layout="horizontal"] .container-fluid,
+#layout-wrapper {
+  max-width: 100% !important;
+  width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
 .main-content {
   z-index: 1 !important;
   position: relative;
   overflow-x: hidden;
-  max-width: 100%;
+  max-width: 100% !important;
+  margin-right: 0 !important;
   box-sizing: border-box;
 }
 
@@ -1446,8 +1521,24 @@ body {
   transition: width 0.2s cubic-bezier(0.4, 0, 0.2, 1), margin-left 0.2s cubic-bezier(0.4, 0, 0.2, 1), left 0.2s cubic-bezier(0.4, 0, 0.2, 1), transform 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
 }
 
-.page-content,
+.page-content {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box;
+}
+
 .main-content .container-fluid,
+.page-content .container-fluid {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding-left: 1.25rem !important;
+  padding-right: 1.25rem !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box !important;
+}
+
 .main-content .row,
 .main-content .card,
 .main-content .card-body {
@@ -4041,6 +4132,123 @@ body[data-topbar="dark"] .topbar-page-header #topbar-page-title {
 [data-topbar="dark"] .topbar-page-header #topbar-page-desc,
 body[data-topbar="dark"] .topbar-page-header #topbar-page-desc {
   color: #cbd5e1 !important;
+}
+
+/* Perfect Symmetrical 16px Layout Gaps (Top, Left, Right) */
+html, body, #layout-wrapper {
+  max-width: 100% !important;
+  width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+body[data-layout-size="boxed"] #layout-wrapper,
+body[data-layout-size="boxed"] #page-topbar,
+body[data-layout-size="boxed"] .main-content,
+body[data-layout-size="boxed"] .container-fluid,
+body[data-layout-size="boxed"] .footer,
+body[data-layout="horizontal"] .container-fluid {
+  max-width: 100% !important;
+  width: 100% !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+#page-topbar .navbar-header {
+  padding-left: 12px !important;
+}
+
+@media (min-width: 992px) {
+  body:not([data-sidebar-size="sm"]) .main-content {
+    margin-left: 250px !important;
+    margin-right: 0 !important;
+    width: calc(100% - 250px) !important;
+  }
+  body:not([data-sidebar-size="sm"]) #page-topbar,
+  body:not([data-sidebar-size="sm"]) .quick-favorites-bar {
+    left: 250px !important;
+    width: calc(100% - 250px) !important;
+  }
+
+  body[data-sidebar-size="sm"] .vertical-menu {
+    width: 60px !important;
+  }
+  body[data-sidebar-size="sm"] .main-content {
+    margin-left: 60px !important;
+    margin-right: 0 !important;
+    width: calc(100% - 60px) !important;
+  }
+  body[data-sidebar-size="sm"] #page-topbar,
+  body[data-sidebar-size="sm"] .quick-favorites-bar {
+    left: 60px !important;
+    width: calc(100% - 60px) !important;
+  }
+}
+
+/* Dar (daraltılmış) menüde ikonları tam ortalama */
+body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu > ul > li > a {
+  padding: 12px 0 !important;
+  text-align: center !important;
+  display: flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+}
+
+body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu > ul > li > a i,
+body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu > ul > li > a svg,
+body[data-sidebar-size="sm"] .vertical-menu #sidebar-menu > ul > li > a [data-feather] {
+  margin: 0 auto !important;
+  display: block !important;
+}
+
+/* Dar (daraltılmış) menüde favori yıldız ikonlarını gizleme */
+body[data-sidebar-size="sm"] .star-btn,
+body[data-sidebar-size="sm"] .vertical-menu .star-btn,
+body[data-sidebar-size="sm"] #side-menu .star-btn,
+body[data-sidebar-size="sm"] #sidebar-menu .star-btn {
+  display: none !important;
+  opacity: 0 !important;
+  visibility: hidden !important;
+}
+
+.page-content {
+  padding-top: 128px !important;
+  padding-bottom: 60px !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+body:not(:has(#quick-favorites-bar)) .main-content .page-content {
+  padding-top: 86px !important;
+}
+
+.main-content .container-fluid,
+.page-content .container-fluid {
+  width: 100% !important;
+  max-width: 100% !important;
+  padding-left: 16px !important;
+  padding-right: 16px !important;
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+  box-sizing: border-box !important;
+}
+
+.main-content .container-fluid > .row,
+.page-content .container-fluid > .row {
+  margin-left: 0 !important;
+  margin-right: 0 !important;
+}
+
+.main-content .container-fluid > .row > [class*="col-"],
+.page-content .container-fluid > .row > [class*="col-"] {
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.main-content .card {
+  margin-bottom: 16px !important;
 }
 
 

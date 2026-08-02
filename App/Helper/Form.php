@@ -18,7 +18,8 @@ class Form
         $autocomplete = "on",
         $readonly = false,
         $attributes = '',
-        $disabled = false
+        $disabled = false,
+        $iconId = null
     ) {
         return '
         <div class="form-floating form-floating-custom">
@@ -32,7 +33,7 @@ class Form
                 ' . $attributes . '
                 >
             <label for="' . htmlspecialchars($name) . '">' . htmlspecialchars($label ?? '') . '</label>
-            <div class="form-floating-icon">
+            <div class="form-floating-icon"' . ($iconId ? ' id="' . htmlspecialchars($iconId) . '"' : '') . '>
                 ' . (!empty($icon) ? ((strpos($icon, 'bx') !== false || strpos($icon, 'fa') !== false) ? '<i class="' . htmlspecialchars($icon) . '"></i>' : '<i data-feather="' . htmlspecialchars($icon) . '"></i>') : '') . '
             </div>
         </div>';

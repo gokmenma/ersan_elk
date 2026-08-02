@@ -7,17 +7,37 @@ $(document).ready(function () {
     let menuTable = null;
     const apiUrl = "views/menu-yonetimi/api.php";
 
+    function safeFeatherReplace() {
+        if (typeof feather !== "undefined") {
+            if (feather.icons) {
+                $('[data-feather]').each(function () {
+                    var iconName = $.trim($(this).attr('data-feather'));
+                    if (iconName && !feather.icons[iconName]) {
+                        $(this).removeAttr('data-feather').addClass('bx bx-' + iconName);
+                    }
+                });
+            }
+            try {
+                feather.replace();
+            } catch (e) {
+                console.warn("Feather replace skipped invalid icon:", e);
+            }
+        }
+    }
+
     // Dynamic icon preview listener in modal
     $("#menu_icon").on("input change", function () {
         const val = $.trim($(this).val());
         if (val) {
-            $("#iconPreview").html(`<i class="feather feather-${val}"></i>`);
-            if (typeof feather !== 'undefined') {
-                feather.replace();
+            if (typeof feather !== 'undefined' && feather.icons && feather.icons[val]) {
+                $("#iconPreview").html(`<i data-feather="${escapeHtml(val)}"></i>`);
+            } else {
+                $("#iconPreview").html(`<i class="bx bx-${escapeHtml(val)}"></i>`);
             }
         } else {
-            $("#iconPreview").html(`<i class="feather feather-help-circle"></i>`);
+            $("#iconPreview").html(`<i data-feather="help-circle"></i>`);
         }
+        safeFeatherReplace();
     });
 
     // Parent Menus dropdown population in modal
@@ -81,9 +101,7 @@ $(document).ready(function () {
                 }
             },
             drawCallback: function () {
-                if (typeof feather !== "undefined") {
-                    feather.replace();
-                }
+                safeFeatherReplace();
             },
             initComplete: function (settings, json) {
                 const defaultStatus = $('input[name="status-filter"]:checked').val() || "Aktif";
@@ -136,7 +154,10 @@ $(document).ready(function () {
                     className: 'text-center',
                     render: function (data) {
                         if (!data) return '<span class="text-muted fs-12">-</span>';
-                        return `<span class="avatar-xs d-inline-flex align-items-center justify-content-center bg-light rounded-circle text-primary me-1 fs-15"><i class="feather feather-${escapeHtml(data)}"></i></span> <small class="text-muted">${escapeHtml(data)}</small>`;
+                        const iconHtml = (typeof feather !== 'undefined' && feather.icons && feather.icons[data])
+                            ? `<i data-feather="${escapeHtml(data)}"></i>`
+                            : `<i class="bx bx-${escapeHtml(data)}"></i>`;
+                        return `<span class="avatar-xs d-inline-flex align-items-center justify-content-center bg-light rounded-circle text-primary me-1 fs-15">${iconHtml}</span> <small class="text-muted">${escapeHtml(data)}</small>`;
                     }
                 },
                 {
@@ -189,7 +210,8 @@ $(document).ready(function () {
         $("#menuForm")[0].reset();
         $("#menu_id").val('');
         $("#menuModalLabel").html('<i class="feather feather-plus-circle me-2"></i>Yeni Menü Ekle');
-        $("#iconPreview").html('<i class="feather feather-help-circle"></i>');
+        $("#iconPreview").html('<i data-feather="help-circle"></i>');
+        safeFeatherReplace();
         loadParentsInModal('');
         $("#menuModal").modal("show");
     });
@@ -216,10 +238,15 @@ $(document).ready(function () {
                 $("#is_authorized").val(m.is_authorized);
 
                 if (m.menu_icon) {
-                    $("#iconPreview").html(`<i class="feather feather-${escapeHtml(m.menu_icon)}"></i>`);
+                    if (typeof feather !== 'undefined' && feather.icons && feather.icons[m.menu_icon]) {
+                        $("#iconPreview").html(`<i data-feather="${escapeHtml(m.menu_icon)}"></i>`);
+                    } else {
+                        $("#iconPreview").html(`<i class="bx bx-${escapeHtml(m.menu_icon)}"></i>`);
+                    }
                 } else {
-                    $("#iconPreview").html('<i class="feather feather-help-circle"></i>');
+                    $("#iconPreview").html('<i data-feather="help-circle"></i>');
                 }
+                safeFeatherReplace();
 
                 loadParentsInModal(encId);
                 setTimeout(function () {

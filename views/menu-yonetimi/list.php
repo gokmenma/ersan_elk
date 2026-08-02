@@ -5,6 +5,7 @@ require_once "vendor/autoload.php";
 use App\Helper\Security;
 use App\Service\Gate;
 use App\Model\MenuManagementModel;
+use App\Helper\Form;
 
 // Strict SuperAdmin Authorization Check
 if (!Gate::isSuperAdmin()) {
@@ -14,6 +15,11 @@ if (!Gate::isSuperAdmin()) {
 $menuModel = new MenuManagementModel();
 $parents = $menuModel->getParentMenus();
 $groups = $menuModel->getGroupNames();
+
+$parentOptions = [0 => 'Ana Menü (Üst Menü Yok)'];
+foreach ($parents as $p) {
+    $parentOptions[$p->id] = $p->menu_name;
+}
 
 $maintitle = "Ana Sayfa";
 $title = "Menü Yönetimi";
@@ -163,31 +169,22 @@ $title = "Menü Yönetimi";
                     <div class="row g-3">
                         <!-- Menü Adı -->
                         <div class="col-md-6">
-                            <label for="menu_name" class="form-label fw-semibold">Menü Adı <span class="text-danger">*</span></label>
-                            <input type="text" class="form-control" id="menu_name" name="menu_name" required placeholder="Örn: Personel İşlemleri">
+                            <?= Form::FormFloatInput("text", "menu_name", "", "Örn: Personel İşlemleri", "Menü Adı", "menu", "form-control", true) ?>
                         </div>
 
                         <!-- Sayfa Açıklaması -->
                         <div class="col-md-6">
-                            <label for="page_description" class="form-label fw-semibold">Sayfa Açıklaması</label>
-                            <input type="text" class="form-control" id="page_description" name="page_description" placeholder="Top-bar altında görünecek açıklama">
+                            <?= Form::FormFloatInput("text", "page_description", "", "Top-bar altında görünecek açıklama", "Sayfa Açıklaması", "file-text") ?>
                         </div>
 
                         <!-- Üst Menü -->
                         <div class="col-md-6">
-                            <label for="parent_id" class="form-label fw-semibold">Üst Menü</label>
-                            <select class="form-select" id="parent_id" name="parent_id">
-                                <option value="0">Ana Menü (Üst Menü Yok)</option>
-                                <?php foreach ($parents as $p): ?>
-                                    <option value="<?php echo (int)$p->id; ?>"><?php echo htmlspecialchars($p->menu_name, ENT_QUOTES, 'UTF-8'); ?></option>
-                                <?php endforeach; ?>
-                            </select>
+                            <?= Form::FormSelect2("parent_id", $parentOptions, 0, "Üst Menü", "corner-down-right", "key", "", "form-select") ?>
                         </div>
 
                         <!-- Grup Adı -->
                         <div class="col-md-6">
-                            <label for="group_name" class="form-label fw-semibold">Grup Adı</label>
-                            <input type="text" class="form-control" id="group_name" name="group_name" list="group_list" placeholder="Örn: Yönetim">
+                            <?= Form::FormFloatInput("text", "group_name", "", "Örn: Yönetim", "Grup Adı", "grid", "form-control", false, null, "on", false, 'list="group_list"') ?>
                             <datalist id="group_list">
                                 <?php foreach ($groups as $g): ?>
                                     <option value="<?php echo htmlspecialchars($g, ENT_QUOTES, 'UTF-8'); ?>"></option>
@@ -197,53 +194,34 @@ $title = "Menü Yönetimi";
 
                         <!-- Sayfa Bağlantısı (Link) -->
                         <div class="col-md-6">
-                            <label for="menu_link" class="form-label fw-semibold">Sayfa Bağlantısı (Link)</label>
-                            <input type="text" class="form-control" id="menu_link" name="menu_link" placeholder="Örn: personel/list">
+                            <?= Form::FormFloatInput("text", "menu_link", "", "Örn: personel/list", "Sayfa Bağlantısı (Link)", "link") ?>
                         </div>
 
                         <!-- İkon -->
                         <div class="col-md-6">
-                            <label for="menu_icon" class="form-label fw-semibold">Feather / BoxIcon İkon Adı</label>
-                            <div class="input-group">
-                                <span class="input-group-text" id="iconPreview"><i class="feather feather-help-circle"></i></span>
-                                <input type="text" class="form-control" id="menu_icon" name="menu_icon" placeholder="Örn: users, settings, sliders">
-                            </div>
+                            <?= Form::FormFloatInput("text", "menu_icon", "", "Örn: users, settings, sliders", "Feather / BoxIcon İkon Adı", "help-circle", "form-control", false, null, "on", false, '', false, 'iconPreview') ?>
                         </div>
 
                         <!-- Menü Sırası & Grup Sırası -->
                         <div class="col-md-3">
-                            <label for="menu_order" class="form-label fw-semibold">Menü Sırası</label>
-                            <input type="number" class="form-control" id="menu_order" name="menu_order" value="1" min="1">
+                            <?= Form::FormFloatInput("number", "menu_order", "1", "1", "Menü Sırası", "hash", "form-control", false, null, "on", false, 'min="1"') ?>
                         </div>
 
                         <div class="col-md-3">
-                            <label for="group_order" class="form-label fw-semibold">Grup Sırası</label>
-                            <input type="number" class="form-control" id="group_order" name="group_order" value="1" min="1">
+                            <?= Form::FormFloatInput("number", "group_order", "1", "1", "Grup Sırası", "hash", "form-control", false, null, "on", false, 'min="1"') ?>
                         </div>
 
                         <!-- Durum & Gösterim Seçenekleri -->
                         <div class="col-md-6">
-                            <label for="is_active" class="form-label fw-semibold">Durum</label>
-                            <select class="form-select" id="is_active" name="is_active">
-                                <option value="1">Aktif</option>
-                                <option value="0">Pasif</option>
-                            </select>
+                            <?= Form::FormSelect2("is_active", [1 => 'Aktif', 0 => 'Pasif'], 1, "Durum", "check-circle", "key", "", "form-select") ?>
                         </div>
 
                         <div class="col-md-6">
-                            <label for="is_menu" class="form-label fw-semibold">Menüde Görünsün mü?</label>
-                            <select class="form-select" id="is_menu" name="is_menu">
-                                <option value="1">Evet</option>
-                                <option value="0">Hayır (Gizli Rota)</option>
-                            </select>
+                            <?= Form::FormSelect2("is_menu", [1 => 'Evet', 0 => 'Hayır (Gizli Rota)'], 1, "Menüde Görünsün mü?", "eye", "key", "", "form-select") ?>
                         </div>
 
                         <div class="col-md-6">
-                            <label for="is_authorized" class="form-label fw-semibold">Yetki Kontrolü Olsun mu?</label>
-                            <select class="form-select" id="is_authorized" name="is_authorized">
-                                <option value="1">Evet (Rol Yetkisi Gerekir)</option>
-                                <option value="0">Hayır (Herkese Açık)</option>
-                            </select>
+                            <?= Form::FormSelect2("is_authorized", [1 => 'Evet (Rol Yetkisi Gerekir)', 0 => 'Hayır (Herkese Açık)'], 1, "Yetki Kontrolü Olsun mu?", "shield", "key", "", "form-select") ?>
                         </div>
                     </div>
                 </div>

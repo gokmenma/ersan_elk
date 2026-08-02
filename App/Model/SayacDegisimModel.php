@@ -16,6 +16,79 @@ class SayacDegisimModel extends Model
         parent::__construct($this->table);
     }
 
+    private static $sekmeSonucCache = [];
+
+    /**
+     * SAYAÇ SÖKME TAKMA SEKME AYRIMI (iş kuralı):
+     * Sayaç API'si Borçtan Kesme/Ödeme Yaptırıldı gibi başka rapor türlerine
+     * ait kayıtlar da döndürebiliyor. Kaynak tabloya gelmiş olması bu sekmede
+     * gösterilmesi için yeterli değildir; iş emri sonucu mutlaka tanımlamalarda
+     * sokme_takma rapor sekmesine bağlı olmalıdır ve başka bir rapor sekmesine
+     * bağlı olmamalıdır. Bu kural eskiden her satır için korelasyonlu
+     * EXISTS/NOT EXISTS ile çalışıyordu; tanımlama listesi küçük olduğu için
+     * tek seferde okunup IN listesine çevriliyor. Kuralın kendisi değişmedi.
+     */
+    private function getSekmeSonuclari($firmaId)
+    {
+        $cacheKey = (string) $firmaId;
+        if (isset(self::$sekmeSonucCache[$cacheKey])) {
+            return self::$sekmeSonucCache[$cacheKey];
+        }
+
+        $stmt = $this->db->prepare("
+            SELECT TRIM(is_emri_sonucu) AS sonuc, rapor_sekmesi, is_turu_ucret
+            FROM tanimlamalar
+            WHERE firma_id = :firma_id
+            AND grup = 'is_turu'
+            AND silinme_tarihi IS NULL
+        ");
+        $stmt->bindValue(':firma_id', $firmaId);
+        $stmt->execute();
+
+        $dahil = [];
+        $haric = [];
+        $ucretli = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $row) {
+            $sonuc = $row->sonuc;
+            if ($sonuc === null || $sonuc === '') continue;
+
+            $sekme = $row->rapor_sekmesi;
+            if ($sekme === 'sokme_takma') {
+                $dahil[$sonuc] = $sonuc;
+                if ((float) $row->is_turu_ucret > 0) {
+                    $ucretli[$sonuc] = $sonuc;
+                }
+            } elseif ($sekme !== null && $sekme !== '' && $sekme !== '0') {
+                $haric[$sonuc] = $sonuc;
+            }
+        }
+
+        $gecerli = array_values(array_diff_key($dahil, $haric));
+
+        self::$sekmeSonucCache[$cacheKey] = [
+            'gecerli' => $gecerli,
+            'ucretli' => array_values(array_intersect($ucretli, $gecerli))
+        ];
+
+        return self::$sekmeSonucCache[$cacheKey];
+    }
+
+    private function buildSonucInClause($sonuclar, $prefix, &$params)
+    {
+        if (empty($sonuclar)) {
+            return "1 = 0";
+        }
+
+        $placeholders = [];
+        foreach (array_values($sonuclar) as $idx => $sonuc) {
+            $key = $prefix . $idx;
+            $placeholders[] = ":$key";
+            $params[$key] = $sonuc;
+        }
+
+        return "TRIM(t.isemri_sonucu) IN (" . implode(', ', $placeholders) . ")";
+    }
+
     /**
      * Server-side DataTable için sayaç değişim verilerini çeker
      */
@@ -24,42 +97,27 @@ class SayacDegisimModel extends Model
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $params = ['firma_id' => $firmaId];
 
-        // SAYAÇ SÖKME TAKMA SEKME AYRIMI (iş kuralı):
-        // Sayaç API'si Borçtan Kesme/Ödeme Yaptırıldı gibi başka rapor türlerine
-        // ait kayıtlar da döndürebiliyor. Kaynak tabloya gelmiş olması bu sekmede
-        // gösterilmesi için yeterli değildir; iş emri sonucu mutlaka tanımlamalarda
-        // sokme_takma rapor sekmesine bağlı olmalıdır. Tasarım değişikliklerinde
-        // bu koşulu kaldırmayın; liste, toplam ve filtre özeti aynı baseWhere'i kullanır.
+        $sekmeSonuclari = $this->getSekmeSonuclari($firmaId);
+        $sekmeWhere = $this->buildSonucInClause($sekmeSonuclari['gecerli'], 'sekme_sonuc_', $params);
+
         $baseWhere = "t.firma_id = :firma_id
                       AND t.silinme_tarihi IS NULL
-                      AND EXISTS (
-                          SELECT 1
-                          FROM tanimlamalar def
-                          WHERE def.firma_id = t.firma_id
-                          AND def.grup = 'is_turu'
-                          AND def.rapor_sekmesi = 'sokme_takma'
-                          AND TRIM(def.is_emri_sonucu) = TRIM(t.isemri_sonucu)
-                          AND def.silinme_tarihi IS NULL
-                      )
-                      AND NOT EXISTS (
-                          SELECT 1
-                          FROM tanimlamalar conflicting_def
-                          WHERE conflicting_def.firma_id = t.firma_id
-                          AND conflicting_def.grup = 'is_turu'
-                          AND conflicting_def.rapor_sekmesi IS NOT NULL
-                          AND conflicting_def.rapor_sekmesi NOT IN ('', '0', 'sokme_takma')
-                          AND TRIM(conflicting_def.is_emri_sonucu) = TRIM(t.isemri_sonucu)
-                          AND conflicting_def.silinme_tarihi IS NULL
-                      )";
+                      AND $sekmeWhere";
 
         // Tarih filtreleri
+        $payWhere = "";
+        $payParams = [];
         if ($startDate) {
             $baseWhere .= " AND t.tarih >= :start_date";
             $params['start_date'] = Date::Ymd($startDate) ?: $startDate;
+            $payWhere .= " AND tarih >= :pay_start_date";
+            $payParams['pay_start_date'] = $params['start_date'];
         }
         if ($endDate) {
             $baseWhere .= " AND t.tarih < DATE_ADD(:end_date, INTERVAL 1 DAY)";
             $params['end_date'] = Date::Ymd($endDate) ?: $endDate;
+            $payWhere .= " AND tarih < DATE_ADD(:pay_end_date, INTERVAL 1 DAY)";
+            $payParams['pay_end_date'] = $params['end_date'];
         }
         if ($ekipKodu) {
             $baseWhere .= " AND t.personel_id = :ekip_kodu";
@@ -70,14 +128,6 @@ class SayacDegisimModel extends Model
             $params['region_t'] = $region;
             $params['region_ek'] = $region;
         }
-
-        // Toplam kayıt sayısı (filtresiz)
-        $totalQuery = $this->db->prepare("SELECT COUNT(*) FROM {$this->table} t LEFT JOIN tanimlamalar ek ON t.ekip_kodu_id = ek.id WHERE $baseWhere");
-        foreach ($params as $key => $val) {
-            $totalQuery->bindValue(":$key", $val);
-        }
-        $totalQuery->execute();
-        $recordsTotal = $totalQuery->fetchColumn();
 
         // Arama filtresi
         $searchWhere = "";
@@ -257,6 +307,29 @@ class SayacDegisimModel extends Model
         $filteredQuery->execute();
         $recordsFiltered = $filteredQuery->fetchColumn();
 
+        // Toplam kayıt sayısı (arama filtresi yokken aynı sonuç; tekrar sorgulanmaz)
+        if ($searchWhere === "") {
+            $recordsTotal = $recordsFiltered;
+        } else {
+            $totalParams = $params;
+            foreach (array_keys($totalParams) as $key) {
+                if (strpos($key, 'col_search_') === 0 || $key === 'search') {
+                    unset($totalParams[$key]);
+                }
+            }
+
+            $totalQuery = $this->db->prepare("
+                SELECT COUNT(*) FROM {$this->table} t
+                LEFT JOIN tanimlamalar ek ON t.ekip_kodu_id = ek.id
+                WHERE $baseWhere
+            ");
+            foreach ($totalParams as $key => $val) {
+                $totalQuery->bindValue(":$key", $val);
+            }
+            $totalQuery->execute();
+            $recordsTotal = $totalQuery->fetchColumn();
+        }
+
         // Sıralama
         $orderColumn = 't.kayit_tarihi';
         $orderDir = 'DESC';
@@ -309,38 +382,57 @@ class SayacDegisimModel extends Model
             "recordsTotal" => intval($recordsTotal),
             "recordsFiltered" => intval($recordsFiltered),
             "data" => $data,
-            "summary" => $this->getSummaryByFilters($baseWhere, $searchWhere, $params)
+            "summary" => $this->getSummaryByFilters($baseWhere, $searchWhere, $params, [
+                'pay_where' => $payWhere,
+                'pay_params' => $payParams,
+                'ucretli_sonuclar' => $sekmeSonuclari['ucretli']
+            ])
         ];
     }
 
     /**
      * Filtrelere göre özet toplamları getirir
      */
-    public function getSummaryByFilters($baseWhere, $searchWhere, $params)
+    public function getSummaryByFilters($baseWhere, $searchWhere, $params, $options = [])
     {
+        $summaryParams = [];
+
+        // pay alt sorgusu t.tarih üzerinden eşleştiği için liste ile aynı tarih
+        // aralığına daraltılır; aksi halde her istekte tüm tablo gruplanıyor.
+        $payWhere = $options['pay_where'] ?? '';
+        foreach (($options['pay_params'] ?? []) as $key => $val) {
+            $summaryParams[$key] = $val;
+        }
+
+        if (array_key_exists('ucretli_sonuclar', $options)) {
+            $olumluClause = $this->buildSonucInClause($options['ucretli_sonuclar'], 'olumlu_sonuc_', $summaryParams);
+        } else {
+            $olumluClause = "EXISTS (
+                                SELECT 1
+                                FROM tanimlamalar def
+                                WHERE def.firma_id = t.firma_id
+                                AND def.grup = 'is_turu'
+                                AND def.rapor_sekmesi = 'sokme_takma'
+                                AND def.is_turu_ucret > 0
+                                AND TRIM(def.is_emri_sonucu) = TRIM(t.isemri_sonucu)
+                                AND def.silinme_tarihi IS NULL
+                            )";
+        }
+
         $sql = "SELECT t.isemri_sonucu as sonuc,
                        COUNT(*) as adet,
                        ROUND(SUM(CASE WHEN pay.personel_sayisi > 0 THEN 1.0 / pay.personel_sayisi ELSE 0 END), 4) as toplam_abone,
-                       CASE WHEN EXISTS (
-                           SELECT 1
-                           FROM tanimlamalar def
-                           WHERE def.firma_id = t.firma_id
-                           AND def.grup = 'is_turu'
-                           AND def.rapor_sekmesi = 'sokme_takma'
-                           AND def.is_turu_ucret > 0
-                           AND TRIM(def.is_emri_sonucu) = TRIM(t.isemri_sonucu)
-                           AND def.silinme_tarihi IS NULL
-                       ) THEN 1 ELSE 0 END as is_olumlu
+                       CASE WHEN $olumluClause THEN 1 ELSE 0 END as is_olumlu
                 FROM {$this->table} t
-                LEFT JOIN personel p ON t.personel_id = p.id 
+                LEFT JOIN personel p ON t.personel_id = p.id
                 LEFT JOIN tanimlamalar ek ON t.ekip_kodu_id = ek.id
                 JOIN (
-                    SELECT 
+                    SELECT
                         tarih,
                         SUBSTRING_INDEX(islem_id, '_', 1) as ortak_islem_id,
                         COUNT(*) as personel_sayisi
                     FROM {$this->table}
-                    WHERE firma_id = :firma_id_sub AND silinme_tarihi IS NULL
+                    WHERE firma_id = :firma_id_sub AND silinme_tarihi IS NULL $payWhere
                     GROUP BY tarih, SUBSTRING_INDEX(islem_id, '_', 1)
                 ) pay ON pay.tarih = t.tarih
                     AND pay.ortak_islem_id = SUBSTRING_INDEX(t.islem_id, '_', 1)
@@ -351,6 +443,9 @@ class SayacDegisimModel extends Model
         $stmt = $this->db->prepare($sql);
         foreach ($params as $key => $val) {
             if ($key === 'start' || $key === 'length') continue;
+            $stmt->bindValue(":$key", $val);
+        }
+        foreach ($summaryParams as $key => $val) {
             $stmt->bindValue(":$key", $val);
         }
         $stmt->bindValue(":firma_id_sub", $params['firma_id']);

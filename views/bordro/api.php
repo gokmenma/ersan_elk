@@ -3414,6 +3414,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 ");
 
                 if ($sql->execute([$parametre_kodu, $parametre_adi, $deger, $gecerlilik_baslangic, $aciklama, $id])) {
+                    BordroParametreModel::clearRequestCache();
                     echo json_encode([
                         'status' => 'success',
                         'message' => 'Ayar başarıyla güncellendi.'
@@ -3438,6 +3439,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 ");
 
                 if ($sql->execute([$id])) {
+                    BordroParametreModel::clearRequestCache();
                     echo json_encode([
                         'status' => 'success',
                         'message' => 'Ayar başarıyla silindi.'
@@ -3494,6 +3496,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                 }
 
+                BordroParametreModel::clearRequestCache();
                 echo json_encode([
                     'status' => 'success',
                     'message' => "$eklenen ayar yeni döneme kopyalandı."

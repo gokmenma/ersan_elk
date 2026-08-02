@@ -24,6 +24,8 @@ class BordroPersonelModel extends Model
     private ?array $ekOdemelerCache = null;
     /** @var array|null RTÇ/HTÇ gün sayısı cache (personel_id => ['rtc'=>int,'htc'=>int]) */
     private ?array $ozelCalismaCache = null;
+    /** @var string|null ozelCalismaCache'in toplu doldurulduğu dönem aralığı (baslangic|bitis) */
+    private ?string $ozelCalismaCacheRange = null;
     private array $isTuruIdMapCache = [];
     private array $isTuruUcretCache = [];
     private array $settingsCache = [];
@@ -158,7 +160,7 @@ class BordroPersonelModel extends Model
         $vergiIstisnaLimit = floatval($this->cachedParametreModel->getGenelAyar('yemek_yardimi_gunluk_istisna', $parametreTarihi) ?? 0);
 
         if (!empty($kayit->yemek_yardimi_parametre_id)) {
-            $paramYemek = $this->cachedParametreModel->find($kayit->yemek_yardimi_parametre_id);
+            $paramYemek = $this->cachedParametreModel->getById($kayit->yemek_yardimi_parametre_id);
             if ($paramYemek) {
                 $paramBaslangic = $paramYemek->gecerlilik_baslangic ?? null;
                 $paramBitis = $paramYemek->gecerlilik_bitis ?? null;
@@ -301,7 +303,7 @@ class BordroPersonelModel extends Model
         }
 
         if (!empty($kayit->es_yardimi_parametre_id)) {
-            $paramEs = $this->cachedParametreModel->find($kayit->es_yardimi_parametre_id);
+            $paramEs = $this->cachedParametreModel->getById($kayit->es_yardimi_parametre_id);
             if ($paramEs) {
                 $paramLimit = floatval($paramEs->varsayilan_tutar ?? 0);
             }
@@ -750,6 +752,9 @@ class BordroPersonelModel extends Model
         if ($ozelCache !== null) {
             $rtcGun = $ozelCache['rtc'];
             $htcGun = $ozelCache['htc'];
+        } elseif ($this->isOzelCalismaCacheComplete($donemBaslangic, $donemBitis)) {
+            $rtcGun = 0;
+            $htcGun = 0;
         } else {
             $rtcGun = $this->getOzelCalismaGunSayisi($p->personel_id, $donemBaslangic, $donemBitis, 'resmi_tatil_calismasi');
             $htcGun = $this->getOzelCalismaGunSayisi($p->personel_id, $donemBaslangic, $donemBitis, 'hafta_tatili_calismasi');
@@ -1091,6 +1096,9 @@ class BordroPersonelModel extends Model
                     }
                 } catch (\Exception $e) {}
             }
+            // Sorgu personel filtresi içermez; bu aralık için cache tamdır.
+            // Cache'te olmayan personelin RTÇ/HTÇ günü sıfırdır, tekrar sorgulanmaz.
+            $this->ozelCalismaCacheRange = $donemBaslangic . '|' . $donemBitis;
         }
 
         $idFilter = "";
@@ -2567,7 +2575,7 @@ class BordroPersonelModel extends Model
         // 1. Yemek Yardımı
         if (!empty($personel->yemek_yardimi_aliyor) && !empty($personel->yemek_yardimi_parametre_id)) {
             $yemekYardimiDahil = intval($personel->yemek_yardimi_dahil ?? 0);
-            $param = $this->cachedParametreModel->find($personel->yemek_yardimi_parametre_id);
+            $param = $this->cachedParametreModel->getById($personel->yemek_yardimi_parametre_id);
             
             if ($param) {
                 $aciklama = "[Yemek Yardımı] " . ($param->etiket ?? 'Yemek Yardımı');
@@ -2612,7 +2620,7 @@ class BordroPersonelModel extends Model
 
         // 2. Eş Yardımı
         if (!empty($personel->es_yardimi_aliyor) && !empty($personel->es_yardimi_parametre_id)) {
-            $param = $this->cachedParametreModel->find($personel->es_yardimi_parametre_id);
+            $param = $this->cachedParametreModel->getById($personel->es_yardimi_parametre_id);
             if ($param) {
                 $tutar = floatval($param->varsayilan_tutar ?? 0);
                 if ($tutar > 0) {
@@ -3306,7 +3314,20 @@ class BordroPersonelModel extends Model
         if ($cache !== null) {
             return $flagKolonu === 'resmi_tatil_calismasi' ? $cache['rtc'] : $cache['htc'];
         }
+        if ($this->isOzelCalismaCacheComplete($donem_baslangic, $donem_bitis)) {
+            return 0;
+        }
         return $this->getOzelCalismaGunSayisi($personel_id, $donem_baslangic, $donem_bitis, $flagKolonu);
+    }
+
+    /**
+     * ozelCalismaCache verilen dönem için toplu doldurulmuş mu?
+     * Doldurulmuşsa cache'te bulunmayan personelin RTÇ/HTÇ günü sıfırdır.
+     */
+    private function isOzelCalismaCacheComplete(string $donem_baslangic, string $donem_bitis): bool
+    {
+        return $this->ozelCalismaCacheRange !== null
+            && $this->ozelCalismaCacheRange === $donem_baslangic . '|' . $donem_bitis;
     }
 
     /**
@@ -4779,14 +4800,14 @@ class BordroPersonelModel extends Model
 
                 // Yemek Yardımı İcraya Dahil mi?
                 if (!empty($kayit->yemek_yardimi_parametre_id)) {
-                    $pYemek = $parametreModel->find($kayit->yemek_yardimi_parametre_id);
+                    $pYemek = $parametreModel->getById($kayit->yemek_yardimi_parametre_id);
                     if ($pYemek && !empty($pYemek->icra_pirim_dahil) && $pYemek->icra_pirim_dahil == 1) {
                         $icraMatrahEkleri += floatval($dahilDagilimPreIcra['yemek_toplam'] ?? 0);
                     }
                 }
                 // Eş Yardımı İcraya Dahil mi?
                 if (!empty($kayit->es_yardimi_parametre_id)) {
-                    $pEs = $parametreModel->find($kayit->es_yardimi_parametre_id);
+                    $pEs = $parametreModel->getById($kayit->es_yardimi_parametre_id);
                     if ($pEs && !empty($pEs->icra_pirim_dahil) && $pEs->icra_pirim_dahil == 1) {
                         $icraMatrahEkleri += floatval($dahilDagilimPreIcra['es_toplam'] ?? 0);
                     }

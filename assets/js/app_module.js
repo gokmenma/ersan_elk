@@ -742,26 +742,55 @@ File: Main Js File
       $("input[name='sidebar-color']").prop("checked", false);
     });
 
+    function getAdaptiveColors(color) {
+      const channels = [1, 3, 5].map(function (start) {
+        const value = parseInt(color.slice(start, start + 2), 16) / 255;
+        return value <= 0.04045
+          ? value / 12.92
+          : Math.pow((value + 0.055) / 1.055, 2.4);
+      });
+      const luminance =
+        0.2126 * channels[0] + 0.7152 * channels[1] + 0.0722 * channels[2];
+      const isDark = luminance < 0.42;
+
+      return {
+        text: isDark ? "#f8fafc" : "#1f2937",
+        muted: isDark ? "#cbd5e1" : "#64748b",
+        subtle: isDark ? "#94a3b8" : "#64748b",
+        surface: isDark ? "rgba(255,255,255,.10)" : "rgba(15,23,42,.07)",
+        border: isDark ? "rgba(255,255,255,.16)" : "rgba(15,23,42,.14)",
+        dark: isDark,
+      };
+    }
+
     function applyCustomTopbar(color) {
+      const contrast = getAdaptiveColors(color);
       $("#custom-topbar-style").remove();
-      $(
-        "<style id='custom-topbar-style'>body #page-topbar, body .navbar-brand-box { background-color: " +
-          color +
-          " !important; border-color: " +
-          color +
-          " !important; } body #page-topbar .header-item, body #page-topbar .logo-txt { color: #fff !important; } body #page-topbar .logo-dark { display: none !important; } body #page-topbar .logo-light { display: block !important; }</style>",
-      ).appendTo("head");
+      $(`<style id="custom-topbar-style">
+        body #page-topbar, body .navbar-brand-box { background-color: ${color} !important; border-color: ${color} !important; }
+        body #page-topbar .header-item, body #page-topbar .logo-txt, body #page-topbar #topbar-page-title { color: ${contrast.text} !important; }
+        body #page-topbar #topbar-page-desc { color: ${contrast.muted} !important; }
+        body #page-topbar .header-item svg { color: ${contrast.text} !important; stroke: currentColor !important; }
+        body #page-topbar .logo-dark { display: ${contrast.dark ? "none" : "block"} !important; }
+        body #page-topbar .logo-light { display: ${contrast.dark ? "block" : "none"} !important; }
+      </style>`).appendTo("head");
     }
 
     function applyCustomSidebar(color) {
+      const contrast = getAdaptiveColors(color);
       $("#custom-sidebar-style").remove();
-      $(
-        "<style id='custom-sidebar-style'>body .vertical-menu, [data-bs-theme='dark'] .main-content, [data-bs-theme='dark'] .page-content { background-color: " +
-          color +
-          " !important; } body .sidebar-sticky-top { background-color: " +
-          color +
-          " !important; } body .sidebar-search { background-color: rgba(255, 255, 255, 0.12) !important; border-color: rgba(255, 255, 255, 0.15) !important; color: #ffffff !important; } body .sidebar-search::placeholder { color: rgba(255, 255, 255, 0.5) !important; } body #sidebar-menu ul li a { color: rgba(255, 255, 255, 0.7) !important; } body #sidebar-menu ul li a i { color: rgba(255, 255, 255, 0.7) !important; } body #sidebar-menu ul li a:hover, body #sidebar-menu ul li a.active, body #sidebar-menu ul li.mm-active > a { color: #fff !important; } body #sidebar-menu .menu-title { color: rgba(255, 255, 255, 0.4) !important; } body .vertical-menu .logo-dark { display: none !important; } body .vertical-menu .logo-light { display: block !important; }</style>",
-      ).appendTo("head");
+      $(`<style id="custom-sidebar-style">
+        body { --sidebar-bg: ${color}; --sidebar-border: ${contrast.border}; --sidebar-item-hover: ${contrast.surface}; --sidebar-item-active: ${contrast.surface}; --sidebar-foreground: ${contrast.text}; --sidebar-muted: ${contrast.muted}; }
+        body .vertical-menu, body .sidebar-sticky-top { background-color: ${color} !important; border-color: ${contrast.border} !important; }
+        body .sidebar-search { background-color: ${contrast.surface} !important; border-color: ${contrast.border} !important; color: ${contrast.text} !important; }
+        body .sidebar-search::placeholder { color: ${contrast.subtle} !important; }
+        body .sidebar-search-container .search-icon, body #sidebar-menu ul li a i, body #sidebar-menu ul li a svg { color: ${contrast.muted} !important; stroke: currentColor !important; }
+        body #sidebar-menu ul li a, body #sidebar-menu ul li ul.sub-menu li a, body .brand-name { color: ${contrast.text} !important; }
+        body #sidebar-menu .menu-title, body .brand-sub { color: ${contrast.muted} !important; }
+        body #sidebar-menu ul li a:hover, body #sidebar-menu ul li a.active, body #sidebar-menu ul li.mm-active > a { background-color: ${contrast.surface} !important; color: ${contrast.text} !important; }
+        body .vertical-menu .logo-dark { display: ${contrast.dark ? "none" : "block"} !important; }
+        body .vertical-menu .logo-light { display: ${contrast.dark ? "block" : "none"} !important; }
+      </style>`).appendTo("head");
     }
 
     // Initialize custom colors

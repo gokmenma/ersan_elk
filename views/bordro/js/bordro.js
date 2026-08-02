@@ -740,7 +740,39 @@ $(document).ready(function () {
     });
   });
 
-  // Dönem Durum Switch'i (Açık/Kapalı)
+  // Dönem Durum Toggle (Açık/Kapalı)
+  $(document).on("click", "#btnDonemDurumToggle", function (e) {
+    e.preventDefault();
+    const status = $(this).data("status");
+    const isClose = status === "acik";
+    const action = isClose ? "donem-kapat" : "donem-ac";
+    const title = isClose
+      ? "Dönemi Kapatmak İstediğinize Emin misiniz?"
+      : "Dönemi Açmak İstediğinize Emin misiniz?";
+    const text = isClose
+      ? "Dönem kapatıldığında hesaplama ve personel değişikliği yapılamaz!"
+      : "Dönem açıldığında hesaplama ve personel değişikliği yapılabilir.";
+    const icon = isClose ? "warning" : "question";
+    const confirmColor = isClose ? "#d33" : "#28a745";
+    const confirmText = isClose ? "Evet, Kapat" : "Evet, Aç";
+
+    Swal.fire({
+      title: title,
+      text: text,
+      icon: icon,
+      showCancelButton: true,
+      confirmButtonColor: confirmColor,
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: confirmText,
+      cancelButtonText: "İptal",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        donemDurumGuncelle(action, isClose, false);
+      }
+    });
+  });
+
+  // Dönem Durum Switch'i (Açık/Kapalı - Geriye dönük uyumluluk)
   $("#switchDonemDurum").on("change", function () {
     const isChecked = $(this).prop("checked");
     const action = isChecked ? "donem-kapat" : "donem-ac";
@@ -767,7 +799,6 @@ $(document).ready(function () {
       if (result.isConfirmed) {
         donemDurumGuncelle(action, isChecked, false);
       } else {
-        // İptal edilirse switch'i önceki haline döndür
         $(this).prop("checked", !isChecked);
       }
     });
@@ -826,7 +857,6 @@ $(document).ready(function () {
               // Zorla kapat
               donemDurumGuncelle(action, isChecked, true);
             } else {
-              // İptal veya Talepleri incele - switch'i geri al
               $("#switchDonemDurum").prop("checked", false);
             }
           });
@@ -836,7 +866,6 @@ $(document).ready(function () {
             title: "Hata!",
             text: response.message,
           });
-          // Hata durumunda switch'i önceki haline döndür
           $("#switchDonemDurum").prop("checked", !isChecked);
         }
       },
@@ -846,59 +875,82 @@ $(document).ready(function () {
           title: "Hata!",
           text: "Bir hata oluştu.",
         });
-        // Hata durumunda switch'i önceki haline döndür
         $("#switchDonemDurum").prop("checked", !isChecked);
       },
     });
   }
 
-  // Personel Görsün Switch'i
-  $("#switchPersonelGorsun").on("change", function () {
-    const isChecked = $(this).prop("checked");
+  // Personel Görsün Toggle (Açılır Menü)
+  $(document).on("click", "#btnPersonelGorsunToggle", function (e) {
+    e.preventDefault();
+    const currentGorsun = $(this).data("gorsun");
+    const newGorsun = currentGorsun == 1 ? 0 : 1;
     const donemId = $("#donemSelect").val();
 
     if (!donemId) return;
 
-    $.ajax({
-      url: "views/bordro/api.php",
-      type: "POST",
-      data: {
-        action: "donem-personel-gorsun-guncelle",
-        donem_id: donemId,
-        personel_gorsun: isChecked ? 1 : 0,
-      },
-      dataType: "json",
-      beforeSend: function () {
-        Swal.fire({
-          title: "Güncelleniyor...",
-          allowOutsideClick: false,
-          didOpen: () => {
-            Swal.showLoading();
+    const actionText = newGorsun == 1
+      ? "Personeller bu dönemin bordrosunu görebilecek."
+      : "Personeller bu dönemin bordrosunu göremeyecek.";
+
+    Swal.fire({
+      title: newGorsun == 1 ? "Personel Görsün mü?" : "Personel Görmesin mi?",
+      text: actionText,
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#3085d6",
+      cancelButtonColor: "#6c757d",
+      confirmButtonText: "Evet",
+      cancelButtonText: "İptal",
+    }).then((result) => {
+      if (result.isConfirmed) {
+        $.ajax({
+          url: "views/bordro/api.php",
+          type: "POST",
+          data: {
+            action: "donem-personel-gorsun-guncelle",
+            donem_id: donemId,
+            personel_gorsun: newGorsun,
+          },
+          dataType: "json",
+          beforeSend: function () {
+            Swal.fire({
+              title: "Güncelleniyor...",
+              allowOutsideClick: false,
+              didOpen: () => {
+                Swal.showLoading();
+              },
+            });
+          },
+          success: function (response) {
+            Swal.close();
+            if (response.status === "success") {
+              Swal.fire({
+                icon: "success",
+                title: "Başarılı!",
+                text: response.message,
+                confirmButtonText: "Tamam",
+              }).then(() => {
+                location.reload();
+              });
+            } else {
+              Swal.fire({
+                icon: "error",
+                title: "Hata!",
+                text: response.message,
+              });
+            }
+          },
+          error: function () {
+            Swal.close();
+            Swal.fire({
+              icon: "error",
+              title: "Hata!",
+              text: "Bir hata oluştu.",
+            });
           },
         });
-      },
-      success: function (response) {
-        Swal.close();
-        if (response.status === "success") {
-          showToast(response.message, "success");
-          // Label metnini ve rengini de güncelleyebilirsiniz (opsiyonel ama şık olur)
-          const label = $("label[for='switchPersonelGorsun']");
-          if (isChecked) {
-            label.removeClass("text-danger").addClass("text-success");
-          } else {
-            label.removeClass("text-success").addClass("text-danger");
-          }
-        } else {
-          showToast(response.message, "error");
-          // Hata durumunda switch'i geri al
-          $("#switchPersonelGorsun").prop("checked", !isChecked);
-        }
-      },
-      error: function () {
-        Swal.close();
-        showToast("Bir hata oluştu.", "error");
-        $("#switchPersonelGorsun").prop("checked", !isChecked);
-      },
+      }
     });
   });
 

@@ -15,6 +15,11 @@
                 }
             });
 
+            // Reset any legacy boxed layout preference to fluid for full-width layout symmetry
+            if (localStorage.getItem('data-layout-size') === 'boxed') {
+                localStorage.setItem('data-layout-size', 'fluid');
+            }
+
             const bodyAttrs = [
                 'data-layout',
                 'data-layout-size',
@@ -25,7 +30,10 @@
                 'data-theme-mode'
             ];
             bodyAttrs.forEach(name => {
-                const value = localStorage.getItem(name);
+                let value = localStorage.getItem(name);
+                if (name === 'data-layout-size' && value === 'boxed') {
+                    value = 'fluid';
+                }
                 if (value) {
                     document.body.setAttribute(name, value);
                 }

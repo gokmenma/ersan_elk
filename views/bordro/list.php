@@ -600,54 +600,65 @@ if (!empty($dbGelirler)) {
                                     class: 'form-control select2'
                                 ); ?>
                             </div>
-                            <?php if ($selectedDonem): ?>
-                                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                                <div class="form-check form-switch px-4">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="switchDonemDurum"
-                                        <?= $donemKapali ? 'checked' : '' ?>>
-                                    <label
-                                        class="form-check-label small <?= $donemKapali ? 'text-danger' : 'text-success' ?> fw-bold"
-                                        for="switchDonemDurum" style="font-size: 11px;">
-                                        <?= $donemKapali ? 'KAPALI' : 'AÇIK' ?>
-                                    </label>
-                                </div>
-                                <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
-                                <div class="form-check form-switch px-4">
-                                    <input class="form-check-input" type="checkbox" role="switch" id="switchPersonelGorsun"
-                                        <?= ($selectedDonem->personel_gorsun == 1) ? 'checked' : '' ?>>
-                                    <label
-                                        class="form-check-label small <?= ($selectedDonem->personel_gorsun == 1) ? 'text-success' : 'text-danger' ?> fw-bold"
-                                        for="switchPersonelGorsun" style="font-size: 11px;">
-                                        PERSONEL GÖRSÜN
-                                    </label>
-                                </div>
-                            <?php endif; ?>
-                        </div>
-
-                        <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1">
-                            <button type="button" class="btn btn-link btn-sm text-success text-decoration-none px-2"
-                                data-bs-toggle="modal" data-bs-target="#yeniDonemModal" title="Yeni Dönem">
-                                <i class="mdi mdi-plus-circle fs-5"></i>
-                            </button>
-                            <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
-                            <button type="button" class="btn btn-link btn-sm text-warning text-decoration-none px-2"
-                                id="btnFixMatrah2026" title="Kümülatif Vergi Matrahlarını Düzelt (2026 Ocak-Mayıs)">
-                                <i class="mdi mdi-calculator-variant fs-5"></i>
-                            </button>
-                            <?php if ($selectedDonem && !$donemKapali): ?>
-                                <!-- <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
-                                <button type="button" class="btn btn-link btn-sm text-primary text-decoration-none px-2"
-                                    id="btnHeaderEditDonem" title="Düzenle">
-                                    <i class="mdi mdi-pencil fs-5"></i>
-                                </button> -->
-                            <?php endif; ?>
-                            <?php if (!$donemKapali) { ?>
-                                <div class="vr mx-1" style="height: 20px; align-self: center;"></div>
-                                <button type="button" id="donemSil"
-                                    class="btn btn-link btn-sm text-danger text-decoration-none px-2" title="Dönemi Sil">
-                                    <i class="mdi mdi-trash-can fs-5"></i>
+                            <div class="vr mx-1" style="height: 25px; align-self: center;"></div>
+                            <div class="dropdown">
+                                <button class="btn btn-link btn-sm px-3 fw-bold dropdown-toggle"
+                                    type="button" data-bs-toggle="dropdown" aria-expanded="false">
+                                    <i class="mdi mdi-menu me-1"></i> İşlemler
+                                    <i class="mdi mdi-chevron-down"></i>
                                 </button>
-                            <?php } ?>
+                                <ul class="dropdown-menu shadow-lg border-0">
+                                    <li>
+                                        <a class="dropdown-item py-2 d-flex align-items-center" href="javascript:void(0);"
+                                            data-bs-toggle="modal" data-bs-target="#yeniDonemModal">
+                                            <i class="mdi mdi-plus-circle text-success fs-5 me-2"></i> Yeni Dönem Ekle
+                                        </a>
+                                    </li>
+                                    <?php if ($selectedDonem): ?>
+                                    <li>
+                                        <a class="dropdown-item py-2 d-flex align-items-center justify-content-between" href="javascript:void(0);"
+                                            id="btnDonemDurumToggle" data-status="<?= $donemKapali ? 'kapali' : 'acik' ?>">
+                                            <span>
+                                                <i class="mdi <?= $donemKapali ? 'mdi-lock-open text-success' : 'mdi-lock text-warning' ?> fs-5 me-2"></i>
+                                                <?= $donemKapali ? 'Dönemi Aç' : 'Dönemi Kapat' ?>
+                                            </span>
+                                            <span class="badge <?= $donemKapali ? 'bg-danger-subtle text-danger' : 'bg-success-subtle text-success' ?> ms-3" style="font-size: 10px;">
+                                                <?= $donemKapali ? 'KAPALI' : 'AÇIK' ?>
+                                            </span>
+                                        </a>
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item py-2 d-flex align-items-center justify-content-between" href="javascript:void(0);"
+                                            id="btnPersonelGorsunToggle" data-gorsun="<?= ($selectedDonem->personel_gorsun == 1) ? '1' : '0' ?>">
+                                            <span>
+                                                <i class="mdi <?= ($selectedDonem->personel_gorsun == 1) ? 'mdi-eye text-info' : 'mdi-eye-off text-secondary' ?> fs-5 me-2"></i>
+                                                Personel Bordroyu Görsün
+                                            </span>
+                                            <span class="badge <?= ($selectedDonem->personel_gorsun == 1) ? 'bg-success-subtle text-success' : 'bg-secondary-subtle text-secondary' ?> ms-3" style="font-size: 10px;">
+                                                <?= ($selectedDonem->personel_gorsun == 1) ? 'GÖRÜYOR' : 'GÖRMÜYOR' ?>
+                                            </span>
+                                        </a>
+                                    </li>
+                                    <?php endif; ?>
+                                    <li>
+                                        <a class="dropdown-item py-2 d-flex align-items-center" href="javascript:void(0);"
+                                            id="btnFixMatrah2026">
+                                            <i class="mdi mdi-calculator-variant text-warning fs-5 me-2"></i> Kümülatif Vergi Matrahlarını Düzelt
+                                        </a>
+                                    </li>
+                                    <?php if ($selectedDonem): ?>
+                                    <li>
+                                        <hr class="dropdown-divider">
+                                    </li>
+                                    <li>
+                                        <a class="dropdown-item py-2 d-flex align-items-center <?= $donemKapali ? 'disabled' : '' ?>"
+                                            href="javascript:void(0);" id="donemSil">
+                                            <i class="mdi mdi-trash-can text-danger fs-5 me-2"></i> Dönemi Sil
+                                        </a>
+                                    </li>
+                                    <?php endif; ?>
+                                </ul>
+                            </div>
                         </div>
 
                         <div class="d-flex align-items-center bg-white border rounded shadow-sm p-1 gap-1 ms-auto">

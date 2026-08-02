@@ -151,8 +151,10 @@ class EndeksOkumaModel extends Model
         // 1. Create date range filtered subset table for fast DataTables
         $this->db->exec("DROP TEMPORARY TABLE IF EXISTS temp_endeks_range");
 
-        $rangeSql = "CREATE TEMPORARY TABLE temp_endeks_range AS
-            SELECT t.* FROM {$this->table} t 
+        // Index CREATE ile birlikte tanımlanır; ayrı ALTER TABLE geçici tabloyu
+        // yeniden oluşturduğu için her istekte gereksiz maliyet çıkarıyordu.
+        $rangeSql = "CREATE TEMPORARY TABLE temp_endeks_range (INDEX idx_range_tarih (tarih)) AS
+            SELECT t.* FROM {$this->table} t
             WHERE t.firma_id = :firma_id AND t.silinme_tarihi IS NULL";
             
         $rangeParams = ['firma_id' => $firmaId];
@@ -171,17 +173,13 @@ class EndeksOkumaModel extends Model
         }
         $rangeStmt->execute();
 
-        // Add index on temp_endeks_range for fast joins and sorting
-        $this->db->exec("ALTER TABLE temp_endeks_range ADD INDEX idx_range_tarih (tarih)");
-
         // 2. Create temporary table for optimized joining of defter_mahalle
         $this->db->exec("DROP TEMPORARY TABLE IF EXISTS temp_defter_mahalle");
-        $this->db->exec("CREATE TEMPORARY TABLE temp_defter_mahalle AS
+        $this->db->exec("CREATE TEMPORARY TABLE temp_defter_mahalle (INDEX idx_tm (tur_adi, defter_bolge, firma_id)) AS
             SELECT tur_adi, defter_bolge, firma_id, MAX(TRIM(defter_mahalle)) as defter_mahalle
             FROM tanimlamalar
             WHERE grup = 'defter_kodu' AND silinme_tarihi IS NULL
             GROUP BY tur_adi, defter_bolge, firma_id");
-        $this->db->exec("ALTER TABLE temp_defter_mahalle ADD INDEX idx_tm (tur_adi, defter_bolge, firma_id)");
 
         // Temel sorgu
         $baseWhere = "1=1";

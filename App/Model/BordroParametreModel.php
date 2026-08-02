@@ -10,9 +10,26 @@ class BordroParametreModel extends Model
     protected $table = 'bordro_parametreleri';
     protected $primaryKey = 'id';
 
+    // Parametre/genel ayar/vergi dilimi okumaları istek boyunca değişmez.
+    // Bordro listesinde bu üç sorgu personel başına tekrar tekrar çalıştığı için
+    // (tek sayfada ~330 sorgu) sonuçlar istek kapsamında önbelleğe alınır.
+    // Yazma metotları önbelleği temizler.
+    private static $genelAyarCache = [];
+    private static $kodCache = [];
+    private static $vergiDilimiCache = [];
+    private static $idCache = [];
+
     public function __construct()
     {
         parent::__construct($this->table);
+    }
+
+    public static function clearRequestCache(): void
+    {
+        self::$genelAyarCache = [];
+        self::$kodCache = [];
+        self::$vergiDilimiCache = [];
+        self::$idCache = [];
     }
 
     /**
@@ -75,9 +92,14 @@ class BordroParametreModel extends Model
     {
         $tarih = $tarih ?? date('Y-m-d');
 
+        $cacheKey = $kod . '|' . $tarih;
+        if (array_key_exists($cacheKey, self::$kodCache)) {
+            return self::$kodCache[$cacheKey];
+        }
+
         $sql = $this->db->prepare("
             SELECT * FROM {$this->table}
-            WHERE kod = ? 
+            WHERE kod = ?
             AND aktif = 1
             AND (gecerlilik_baslangic IS NULL OR gecerlilik_baslangic <= ?)
             AND (gecerlilik_bitis IS NULL OR gecerlilik_bitis >= ?)
@@ -85,7 +107,26 @@ class BordroParametreModel extends Model
             LIMIT 1
         ");
         $sql->execute([$kod, $tarih, $tarih]);
-        return $sql->fetch(PDO::FETCH_OBJ);
+        self::$kodCache[$cacheKey] = $sql->fetch(PDO::FETCH_OBJ);
+
+        return self::$kodCache[$cacheKey];
+    }
+
+    /**
+     * Id'ye göre parametre getirir (istek kapsamında önbellekli)
+     */
+    public function getById($id)
+    {
+        $cacheKey = (string) $id;
+        if (array_key_exists($cacheKey, self::$idCache)) {
+            return self::$idCache[$cacheKey];
+        }
+
+        $sql = $this->db->prepare("SELECT * FROM {$this->table} WHERE id = ?");
+        $sql->execute([$id]);
+        self::$idCache[$cacheKey] = $sql->fetch(PDO::FETCH_OBJ) ?: null;
+
+        return self::$idCache[$cacheKey];
     }
 
     /**
@@ -129,6 +170,8 @@ class BordroParametreModel extends Model
              varsayilan_gun_sayisi, aciklama, sira, aktif)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ");
+
+        self::clearRequestCache();
 
         return $sql->execute([
             $data['kod'],
@@ -204,10 +247,12 @@ class BordroParametreModel extends Model
         $params[] = $id;
 
         $sql = $this->db->prepare("
-            UPDATE {$this->table} 
+            UPDATE {$this->table}
             SET " . implode(', ', $setClause) . "
             WHERE id = ?
         ");
+
+        self::clearRequestCache();
 
         return $sql->execute($params);
     }
@@ -219,13 +264,20 @@ class BordroParametreModel extends Model
     {
         $yil = $yil ?? date('Y');
 
+        $cacheKey = (string) $yil;
+        if (isset(self::$vergiDilimiCache[$cacheKey])) {
+            return self::$vergiDilimiCache[$cacheKey];
+        }
+
         $sql = $this->db->prepare("
             SELECT * FROM bordro_vergi_dilimleri
             WHERE yil = ?
             ORDER BY dilim_no ASC
         ");
         $sql->execute([$yil]);
-        return $sql->fetchAll(PDO::FETCH_OBJ);
+        self::$vergiDilimiCache[$cacheKey] = $sql->fetchAll(PDO::FETCH_OBJ);
+
+        return self::$vergiDilimiCache[$cacheKey];
     }
 
     /**
@@ -234,6 +286,11 @@ class BordroParametreModel extends Model
     public function getGenelAyar($parametre_kodu, $tarih = null)
     {
         $tarih = $tarih ?? date('Y-m-d');
+
+        $cacheKey = $parametre_kodu . '|' . $tarih;
+        if (array_key_exists($cacheKey, self::$genelAyarCache)) {
+            return self::$genelAyarCache[$cacheKey];
+        }
 
         $sql = $this->db->prepare("
             SELECT deger FROM bordro_genel_ayarlar
@@ -246,8 +303,9 @@ class BordroParametreModel extends Model
         ");
         $sql->execute([$parametre_kodu, $tarih, $tarih]);
         $result = $sql->fetch(PDO::FETCH_OBJ);
+        self::$genelAyarCache[$cacheKey] = $result ? floatval($result->deger) : null;
 
-        return $result ? floatval($result->deger) : null;
+        return self::$genelAyarCache[$cacheKey];
     }
 
     /**
@@ -343,6 +401,8 @@ class BordroParametreModel extends Model
             VALUES (?, ?, ?, ?, ?, ?)
         ");
 
+        self::clearRequestCache();
+
         return $sql->execute([
             $parametre_kodu,
             $parametre_adi,
@@ -369,6 +429,8 @@ class BordroParametreModel extends Model
                 aciklama = VALUES(aciklama)
         ");
 
+        self::clearRequestCache();
+
         return $sql->execute([$yil, $dilim_no, $alt_limit, $ust_limit, $vergi_orani, $aciklama]);
     }
 
@@ -382,6 +444,8 @@ class BordroParametreModel extends Model
             SET yil = ?, dilim_no = ?, alt_limit = ?, ust_limit = ?, vergi_orani = ?, aciklama = ?
             WHERE id = ?
         ");
+        self::clearRequestCache();
+
         return $sql->execute([$yil, $dilim_no, $alt_limit, $ust_limit, $vergi_orani, $aciklama, $id]);
     }
 
@@ -391,6 +455,8 @@ class BordroParametreModel extends Model
     public function deleteVergiDilimi($id)
     {
         $sql = $this->db->prepare("DELETE FROM bordro_vergi_dilimleri WHERE id = ?");
+        self::clearRequestCache();
+
         return $sql->execute([$id]);
     }
 
