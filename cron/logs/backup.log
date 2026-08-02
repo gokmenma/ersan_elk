@@ -28,3 +28,27 @@
 [2026-04-22 15:08:21] SUCCESS: Backup compressed to ZIP (11461.7 KB). Save ratio: 89%
 [2026-04-22 15:08:21] Retention: Keep last 7 days. Deleted 0 old files.
 [2026-04-22 15:08:21] --- BACKUP CRON FINISHED ---
+[2026-08-02 11:08:45] [INFO] --- YEDEKLEME BASLADI (tur: tam, vt: ersantrc_personel) ---
+[2026-08-02 11:09:05] [INFO] Yedek olusturuldu: tam_ersantrc_personel_2026-08-02_11-08-45.sql.gz (7.84 MB, 390,591 satir, 20 sn)
+[2026-08-02 11:09:05] [INFO] Rotasyon: 0 eski yedek silindi.
+[2026-08-02 11:09:05] [INFO] --- YEDEKLEME BITTI ---
+[2026-08-02 11:10:14] [INFO] --- YEDEKLEME BASLADI (tur: artimli, vt: ersantrc_personel) ---
+[2026-08-02 11:10:17] [INFO] Yedek olusturuldu: artimli_ersantrc_personel_2026-08-02_11-10-14.sql.gz (1.45 MB, 78,603 satir, 3.1 sn)
+[2026-08-02 11:10:17] [INFO] Rotasyon: 0 eski yedek silindi.
+[2026-08-02 11:10:17] [INFO] --- YEDEKLEME BITTI ---
+[2026-08-02 11:11:20] [INFO] --- YEDEKLEME BASLADI (tur: tam, vt: ersantrc_personel) ---
+[2026-08-02 11:11:33] [INFO] Yedek olusturuldu: tam_ersantrc_personel_2026-08-02_12-11-20.sql.gz (7.84 MB, 390,593 satir, 12.7 sn)
+[2026-08-02 11:11:33] [INFO] Rotasyon: 0 eski yedek silindi.
+[2026-08-02 11:11:33] [INFO] --- YEDEKLEME BITTI ---
+[2026-08-02 11:11:33] [INFO] --- YEDEKLEME BASLADI (tur: artimli, vt: ersantrc_personel) ---
+[2026-08-02 11:11:36] [INFO] Yedek olusturuldu: artimli_ersantrc_personel_2026-08-02_12-11-33.sql.gz (1.45 MB, 78,603 satir, 3.3 sn)
+[2026-08-02 11:11:36] [INFO] Rotasyon: 0 eski yedek silindi.
+[2026-08-02 11:11:36] [INFO] --- YEDEKLEME BITTI ---
+[2026-08-02 11:15:36] [INFO] --- YEDEKLEME BASLADI (tur: artimli, vt: ersantrc_personel) ---
+[2026-08-02 11:15:42] [INFO] Yedek olusturuldu: artimli_ersantrc_personel_2026-08-02_12-15-36.sql.gz (1.45 MB, 78,604 satir, 6.3 sn)
+[2026-08-02 11:15:42] [INFO] Rotasyon: 0 eski yedek silindi.
+[2026-08-02 11:15:42] [INFO] --- YEDEKLEME BITTI ---
+[2026-08-02 11:16:39] [INFO] --- YEDEKLEME BASLADI (tur: tam, vt: ersantrc_personel) ---
+[2026-08-02 11:16:53] [INFO] Yedek olusturuldu: tam_ersantrc_personel_2026-08-02_12-16-39.sql.gz (7.84 MB, 390,597 satir, 13.8 sn)
+[2026-08-02 11:16:53] [INFO] Rotasyon: 0 eski yedek silindi.
+[2026-08-02 11:16:53] [INFO] --- YEDEKLEME BITTI ---

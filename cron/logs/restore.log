@@ -1,0 +1,13 @@
+[2026-08-02 11:11:44] [INFO] --- GERI YUKLEME PLANI (KURU CALISMA) (vt: ersantrc_personel) ---
+[2026-08-02 11:11:45] [INFO] tam | 2026-08-02 12:11:20 | tam_ersantrc_personel_2026-08-02_12-11-20.sql.gz | 507 ifade | dogrulandi
+[2026-08-02 11:11:45] [INFO] artimli | 2026-08-02 12:11:33 | artimli_ersantrc_personel_2026-08-02_12-11-33.sql.gz | 222 ifade | dogrulandi
+[2026-08-02 11:11:45] [INFO] Toplam 729 ifade uygulanacak.
+[2026-08-02 11:11:45] [WARNING] DIKKAT: Tam yedek uygulamasi mevcut tablolari DROP eder.
+[2026-08-02 11:11:45] [INFO] Gercekten calistirmak icin komuta --onayla ekleyin.
+[2026-08-02 11:12:07] [INFO] --- GERI YUKLEME BASLADI (vt: ersantrc_personel) ---
+[2026-08-02 11:12:08] [INFO] tam | 2026-08-02 12:11:20 | tam_ersantrc_personel_2026-08-02_12-11-20.sql.gz | 507 ifade | dogrulandi
+[2026-08-02 11:12:08] [INFO] artimli | 2026-08-02 12:11:33 | artimli_ersantrc_personel_2026-08-02_12-11-33.sql.gz | 222 ifade | dogrulandi
+[2026-08-02 11:12:08] [WARNING] Hedef veritabani degistirildi: yedek_test
+[2026-08-02 11:13:04] [INFO] Uygulandi: tam_ersantrc_personel_2026-08-02_12-11-20.sql.gz (507 ifade, 0 atlandi)
+[2026-08-02 11:13:36] [INFO] Uygulandi: artimli_ersantrc_personel_2026-08-02_12-11-33.sql.gz (222 ifade, 0 atlandi)
+[2026-08-02 11:13:36] [INFO] --- GERI YUKLEME BITTI (729 ifade, 87.2 sn) ---

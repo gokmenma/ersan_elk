@@ -10,11 +10,11 @@ use App\Model\SystemLogModel;
 class SgkViziteService
 {
     const TOKEN_GECERSIZ_KODU = '106';
-    const AG_DENEME_SAYISI = 3;
+    const AG_DENEME_SAYISI = 2;
+    const AKIS_ZAMAN_ASIMI = 180;
 
-    // Hızlı başarısız olan, yeniden denenmesi anlamlı bağlantı hataları
-    // (7: bağlanılamadı, 35: SSL handshake, 52: boş cevap, 55: gönderim, 56: alım, 92: HTTP/2 akış)
-    const GECICI_AG_HATALARI = [7, 35, 52, 55, 56, 92];
+    // Bir denemenin bu süreyi aşması zaman aşımı sayılır ve istek tekrarlanmaz
+    const TEKRAR_DENEME_SURE_SINIRI = 60;
 
     private $serviceUrl = 'https://uyg.sgk.gov.tr/Ws_Vizite/services/ViziteGonder';
     private $kullaniciAdi;
@@ -127,23 +127,133 @@ XML;
     }
 
     /**
-     * SOAP isteğini gönderir. SGK sunucusu bağlantıyı yarıda kapatırsa (Axis tabanlı servis
-     * yoğunlukta bunu yapabiliyor) geçici ağ hatalarında isteği yeniden dener.
+     * SOAP isteğini gönderir.
+     *
+     * SGK sunucusu büyük cevaplarda bağlantıyı protokole uygun kapatmadığı (close_notify
+     * göndermediği) için cURL hata 56 veriyor. file_get_contents bu duruma tolerans gösterdiğinden
+     * birincil yöntem odur; allow_url_fopen kapalıysa cURL'e düşülür.
+     *
      * @throws Exception
      */
     private function httpIstekGonder(string $xmlRequest, string $soapAction, string $methodName): string
     {
+        $akisKullanilabilir = filter_var(ini_get('allow_url_fopen'), FILTER_VALIDATE_BOOLEAN);
+        $sonHataMesaji = 'Bilinmeyen bağlantı hatası';
+
+        for ($deneme = 1; $deneme <= self::AG_DENEME_SAYISI; $deneme++) {
+            $baslangic = microtime(true);
+
+            try {
+                $govde = $akisKullanilabilir
+                    ? $this->akisIleGonder($xmlRequest, $soapAction, $methodName)
+                    : $this->curlIleGonder($xmlRequest, $soapAction, $methodName, $deneme);
+
+                if ($deneme > 1) {
+                    error_log("SGK isteği {$deneme}. denemede başarılı oldu ({$methodName}).");
+                }
+
+                return $govde;
+            } catch (Exception $e) {
+                $sonHataMesaji = $e->getMessage();
+                $gecenSure = microtime(true) - $baslangic;
+
+                error_log(
+                    "SGK isteği başarısız ({$methodName}, deneme {$deneme}/" . self::AG_DENEME_SAYISI
+                    . sprintf(', %.1f sn', $gecenSure) . "): {$sonHataMesaji}"
+                );
+
+                // Zaman aşımına uğrayan istek tekrarlanmaz; toplam süre kontrolden çıkar.
+                if ($gecenSure > self::TEKRAR_DENEME_SURE_SINIRI) {
+                    break;
+                }
+
+                if ($deneme < self::AG_DENEME_SAYISI) {
+                    usleep(400000 * $deneme);
+                }
+            }
+        }
+
+        throw new Exception(
+            "SGK sunucusuna bağlanılamadı ({$methodName}). Bir süre sonra tekrar deneyin. Son hata: {$sonHataMesaji}"
+        );
+    }
+
+    /**
+     * Birincil yöntem: akış (stream) tabanlı istek.
+     * @throws Exception
+     */
+    private function akisIleGonder(string $xmlRequest, string $soapAction, string $methodName): string
+    {
+        $baglam = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => "Content-Type: text/xml; charset=utf-8\r\n"
+                    . "SOAPAction: {$soapAction}\r\n"
+                    . "Connection: close\r\n",
+                'content' => $xmlRequest,
+                'timeout' => self::AKIS_ZAMAN_ASIMI,
+                'ignore_errors' => true,
+            ],
+            'ssl' => [
+                'verify_peer' => true,
+                'verify_peer_name' => true,
+                'allow_self_signed' => false,
+                'crypto_method' => STREAM_CRYPTO_METHOD_TLSv1_2_CLIENT,
+            ],
+        ]);
+
+        $govde = @file_get_contents($this->serviceUrl, false, $baglam);
+        $httpDurumu = $this->httpDurumunuCoz($http_response_header ?? []);
+
+        if ($govde === false) {
+            $sonHata = error_get_last();
+            throw new Exception($sonHata['message'] ?? 'Sunucuya bağlanılamadı');
+        }
+
+        if ($httpDurumu !== null && ($httpDurumu < 200 || $httpDurumu >= 300)) {
+            throw new Exception("SGK HTTP {$httpDurumu} döndürdü");
+        }
+
+        if ($govde === '') {
+            throw new Exception('Sunucudan boş cevap alındı');
+        }
+
+        return $govde;
+    }
+
+    private function httpDurumunuCoz(array $basliklar): ?int
+    {
+        foreach ($basliklar as $baslik) {
+            if (preg_match('#^HTTP/\d(?:\.\d)?\s+(\d{3})#', $baslik, $eslesme)) {
+                $durum = (int) $eslesme[1];
+            }
+        }
+
+        return $durum ?? null;
+    }
+
+    /**
+     * Yedek yöntem: allow_url_fopen kapalıysa cURL kullanılır.
+     * @throws Exception
+     */
+    private function curlIleGonder(string $xmlRequest, string $soapAction, string $methodName, int $deneme): string
+    {
         $sonHataKodu = 0;
         $sonHataMesaji = '';
 
-        for ($deneme = 1; $deneme <= self::AG_DENEME_SAYISI; $deneme++) {
+        for ($i = 0; $i < 1; $i++) {
+            // RETURNTRANSFER kullanıldığında bağlantı yarıda koparsa curl_exec false döner ve
+            // o ana kadar gelen veri kaybolur. Gövdeyi kendimiz biriktirerek eksiksiz gelmiş
+            // ama düzgün kapatılmamış cevapları kurtarabiliyoruz.
+            $govde = '';
+
             $ch = curl_init();
             curl_setopt_array($ch, [
                 CURLOPT_URL => $this->serviceUrl,
                 CURLOPT_POST => true,
                 CURLOPT_POSTFIELDS => $xmlRequest,
-                CURLOPT_RETURNTRANSFER => true,
                 CURLOPT_HTTP_VERSION => CURL_HTTP_VERSION_1_1,
+                CURLOPT_ENCODING => '',
                 CURLOPT_HTTPHEADER => [
                     'Content-Type: text/xml; charset=utf-8',
                     'Content-Length: ' . strlen($xmlRequest),
@@ -151,6 +261,10 @@ XML;
                     'Connection: close',
                     'Expect:',
                 ],
+                CURLOPT_WRITEFUNCTION => function ($kaynak, $parca) use (&$govde) {
+                    $govde .= $parca;
+                    return strlen($parca);
+                },
                 CURLOPT_FORBID_REUSE => true,
                 CURLOPT_FRESH_CONNECT => $deneme > 1,
                 CURLOPT_SSL_VERIFYPEER => false,
@@ -159,36 +273,38 @@ XML;
                 CURLOPT_TIMEOUT => $this->istekZamanAsimi($methodName),
             ]);
 
-            $responseXml = curl_exec($ch);
+            curl_exec($ch);
             $hataKodu = curl_errno($ch);
             $hataMesaji = curl_error($ch);
             curl_close($ch);
 
-            if ($hataKodu === 0 && $responseXml !== false && $responseXml !== '') {
-                if ($deneme > 1) {
-                    error_log("SGK isteği {$deneme}. denemede başarılı oldu ({$methodName}).");
-                }
-                return $responseXml;
+            if ($hataKodu === 0 && $govde !== '') {
+                return $govde;
+            }
+
+            // SGK bağlantıyı close_notify göndermeden kapatabiliyor; cevap eksiksizse kullanılır.
+            if ($govde !== '' && $this->soapCevabiTamMi($govde)) {
+                error_log("SGK bağlantıyı düzgün kapatmadı (cURL {$hataKodu}: {$hataMesaji}) ancak {$methodName} cevabı eksiksiz alındı, kullanılıyor.");
+                return $govde;
             }
 
             $sonHataKodu = $hataKodu;
             $sonHataMesaji = $hataMesaji !== '' ? $hataMesaji : 'Sunucudan boş cevap alındı';
 
-            if (!in_array($hataKodu, self::GECICI_AG_HATALARI, true)) {
-                break;
-            }
-
-            error_log("SGK isteği başarısız ({$methodName}, deneme {$deneme}/" . self::AG_DENEME_SAYISI . ", cURL {$hataKodu}): {$sonHataMesaji}");
-
-            if ($deneme < self::AG_DENEME_SAYISI) {
-                usleep(400000 * $deneme);
+            if ($govde !== '') {
+                $sonHataMesaji .= ' | Yarım gelen cevap: ' . strlen($govde) . ' bayt';
             }
         }
 
-        throw new Exception(
-            "SGK sunucusuna bağlanılamadı ({$methodName}). SGK bağlantıyı kapattı veya cevap vermedi. "
-            . "Bir süre sonra tekrar deneyin. (cURL {$sonHataKodu}: {$sonHataMesaji})"
-        );
+        throw new Exception("cURL {$sonHataKodu}: {$sonHataMesaji}");
+    }
+
+    /**
+     * Gövdenin kapanış SOAP Envelope etiketiyle bitip bitmediğini kontrol eder.
+     */
+    private function soapCevabiTamMi(string $govde): bool
+    {
+        return (bool) preg_match('/<\/[a-z0-9_.\-]*:?Envelope>\s*$/i', rtrim($govde));
     }
 
     /**
