@@ -207,7 +207,14 @@ if (Gate::allows("ana_sayfa")) {
     $cache_key_slider = "home_slider_notifications_cache_" . $firmaId;
     if (isset($_SESSION[$cache_key_slider]) && $_SESSION[$cache_key_slider]['expires'] > time()) {
         $slider_notifications = $_SESSION[$cache_key_slider]['slider_notifications'];
-        $duyurular = $_SESSION[$cache_key_slider]['duyurular'];
+        $today = date('Y-m-d');
+        $duyurular = array_values(array_filter(
+            $_SESSION[$cache_key_slider]['duyurular'],
+            static function (array $duyuru) use ($today): bool {
+                return empty($duyuru['etkinlik_tarihi'])
+                    || substr($duyuru['etkinlik_tarihi'], 0, 10) >= $today;
+            }
+        ));
     } else {
         // Araç Verilerini Çek (Dashboard Hatırlatıcı için)
         $aracModelHome = new \App\Model\AracModel();
