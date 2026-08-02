@@ -444,7 +444,7 @@ foreach ($personeller as $p) {
     }
 
     $(document).ready(function () {
-        const API_URL = 'views/duyuru/api.php';
+        const API_URL = 'views/duyuru/api.php?v=<?= (int) filemtime(__DIR__ . '/api.php') ?>';
         if (typeof feather !== 'undefined') {
             feather.replace();
         }
@@ -554,6 +554,7 @@ foreach ($personeller as $p) {
 
             fetch(API_URL, {
                 method: 'POST',
+                cache: 'no-store',
                 body: formData
             })
                 .then(res => res.json())
@@ -572,6 +573,7 @@ foreach ($personeller as $p) {
 
             fetch(API_URL, {
                 method: 'POST',
+                cache: 'no-store',
                 headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                 body: 'action=get&id=' + id
             })
@@ -584,9 +586,7 @@ foreach ($personeller as $p) {
                         $('input[name="baslik"]').val(d.baslik);
                         
                         const formattedContent = prepareContentForEditor(d.icerik);
-                        if ($('#icerik').length > 0 && typeof $.fn.summernote !== 'undefined') {
-                            $('#icerik').summernote('code', formattedContent);
-                        } else {
+                        if (!($('#icerik').length > 0 && typeof $.fn.summernote !== 'undefined')) {
                             $('textarea[name="icerik"]').val(d.icerik || '');
                         }
                         
@@ -619,7 +619,13 @@ foreach ($personeller as $p) {
                             $('#tipToplu').prop('checked', true).trigger('change');
                         }
 
-                        $('#duyuruModal').modal('show');
+                        $('#duyuruModal')
+                            .one('shown.bs.modal', function () {
+                                if ($('#icerik').length > 0 && typeof $.fn.summernote !== 'undefined') {
+                                    $('#icerik').summernote('code', formattedContent);
+                                }
+                            })
+                            .modal('show');
                     }
                 });
         });
@@ -639,6 +645,7 @@ foreach ($personeller as $p) {
                 if (result.isConfirmed) {
                     fetch(API_URL, {
                         method: 'POST',
+                        cache: 'no-store',
                         headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
                         body: 'action=delete&id=' + id
                     })

@@ -97,10 +97,11 @@ $page = $_GET['p'] ?? 'home';
 
 <?php
 if ($page == "slider/duzenle" || $page == "evrak-takip/giden-evrak" || $page == "mail-sms/mail-gonder" || $page == "duyuru/list") {
-    echo '<script src="assets/libs/summernote/summernote-lite.min.js"></script>';
-    echo '<script src="assets/libs/summernote/lang/summernote-tr-TR.min.js"></script>';
-    echo '<script src="./assets/js/summernote-init.js"></script>';
-    echo '<script src="assets/libs/summernote/summernote-table-styles.js"></script>';
+    $summernoteVersion = filemtime(dirname(__DIR__) . '/assets/libs/summernote/summernote-lite.min.js');
+    echo '<script src="assets/libs/summernote/summernote-lite.min.js?v=' . $summernoteVersion . '"></script>';
+    echo '<script src="assets/libs/summernote/lang/summernote-tr-TR.min.js?v=' . $summernoteVersion . '"></script>';
+    echo '<script src="./assets/js/summernote-init.js?v=' . $summernoteVersion . '"></script>';
+    echo '<script src="assets/libs/summernote/summernote-table-styles.js?v=' . $summernoteVersion . '"></script>';
 }
 
 if ($page == "slider/list" || $page == "slider/duzenle") {
