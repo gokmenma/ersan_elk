@@ -102,10 +102,27 @@ function ihbarHandleFotoUpload(int $ihbarId, IhbarModel $model): void
 }
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
-$currentUserId = (int) ($_SESSION['user_id'] ?? 0);
+$currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
 
 if ($currentUserId <= 0) {
     ihbarResponse(false, 'Oturum sonlanmış veya geçersiz.');
+}
+
+if (!empty($_POST['mobile_token'])) {
+    $csrf = (string) ($_POST['_mobile_csrf'] ?? '');
+    if (empty($_SESSION['csrf_token']) || !hash_equals((string) $_SESSION['csrf_token'], $csrf)) {
+        ihbarResponse(false, 'Güvenlik doğrulaması başarısız. Sayfayı yenileyin.');
+    }
+    $_POST['id'] = (int) Security::decrypt((string) $_POST['mobile_token']);
+    if (!empty($_POST['personel_tokens']) && is_array($_POST['personel_tokens'])) {
+        $_POST['personel_ids'] = array_values(array_filter(array_map(
+            static fn($token) => (int) Security::decrypt((string) $token),
+            $_POST['personel_tokens']
+        )));
+        if (count($_POST['personel_ids']) > 2) {
+            ihbarResponse(false, 'Bir ihbar en fazla iki personele yönlendirilebilir.');
+        }
+    }
 }
 
 try {

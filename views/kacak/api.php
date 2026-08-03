@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 
 use App\Helper\Date;
+use App\Helper\Security;
 use App\Model\KacakKontrolModel;
 use App\Model\PersonelModel;
 use App\Model\SystemLogModel;
@@ -23,7 +24,16 @@ if ($userId <= 0 || empty($_SESSION['firma_id'])) {
     exit;
 }
 
-if (!kacakIzin('kacak_islemleri') && !kacakSuperAdmin()) {
+if (!empty($_POST['mobile_token'])) {
+    $csrf = (string) ($_POST['_mobile_csrf'] ?? '');
+    if (empty($_SESSION['csrf_token']) || !hash_equals((string) $_SESSION['csrf_token'], $csrf)) {
+        echo json_encode(['status' => 'error', 'message' => 'Güvenlik doğrulaması başarısız. Sayfayı yenileyin.'], JSON_UNESCAPED_UNICODE);
+        exit;
+    }
+    $_POST['id'] = (int) Security::decrypt((string) $_POST['mobile_token']);
+}
+
+if (!kacakIzin('kacak_islemleri') && !kacakIzin('kacak/list') && !kacakSuperAdmin()) {
     echo json_encode(['status' => 'error', 'message' => 'Bu işlem için yetkiniz yok.']);
     exit;
 }
@@ -744,4 +754,3 @@ function kacakRecordZipIndir(KacakKontrolModel $Kacak, SystemLogModel $Log, int 
     @unlink($zipYolu);
     exit;
 }
-
