@@ -210,7 +210,8 @@ class AracKmBildirimModel extends Model
                     AND b.tur = :tur
                     AND b.silinme_tarihi IS NULL
                     AND b.durum != 'reddedildi'
-                )";
+                )
+                ORDER BY z.zimmet_tarihi DESC, z.olusturma_tarihi DESC, z.id DESC";
         $stmt = $this->db->prepare($sql);
         $stmt->execute([
             'firma_id' => $_SESSION['firma_id'],

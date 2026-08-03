@@ -34,27 +34,28 @@ class RegisterController
             return false;
         }
 
-        // Session-based reCAPTCHA throttling
         $attempts = $_SESSION['registration_attempts'] ?? 0;
         if ($attempts >= 3) {
-            $recaptchaSecret = $_ENV['RECAPTCHA_SECRET'] ?? '6LdHvNlsAAAAAI_8_P5v-NuLY3cd2rb4OMnOUIHI';
-            $recaptchaResponse = $post['g-recaptcha-response'] ?? '';
-            
-            if (empty($recaptchaResponse)) {
+            $recaptchaSecret = trim((string) ($_ENV['RECAPTCHA_SECRET'] ?? ''));
+            $recaptchaResponse = trim((string) ($post['g-recaptcha-response'] ?? ''));
+
+            if ($recaptchaSecret === '') {
+                error_log('RECAPTCHA_SECRET .env dosyasında tanımlı değil; kayıt doğrulaması reddedildi.');
+                FlashMessageService::add('error', 'Hata!', 'Doğrulama servisi şu anda kullanılamıyor. Lütfen daha sonra tekrar deneyiniz.');
+                return false;
+            }
+
+            if ($recaptchaResponse === '') {
                 FlashMessageService::add('error', 'Hata!', 'Çok fazla deneme yaptınız. Lütfen reCAPTCHA doğrulamasını yapınız.');
                 return false;
             }
 
-            $response = file_get_contents("https://www.google.com/recaptcha/api/siteverify?secret=$recaptchaSecret&response=$recaptchaResponse");
-            $responseKeys = json_decode($response, true);
-            
-            if (intval($responseKeys["success"] ?? 0) !== 1) {
+            if (!self::verifyRecaptcha($recaptchaSecret, $recaptchaResponse)) {
                 $_SESSION['registration_attempts']++;
                 FlashMessageService::add('error', 'Hata!', 'reCAPTCHA doğrulaması başarısız oldu.');
                 return false;
             }
-            
-            // On successful recaptcha, we can reset or just let it pass
+
             $_SESSION['registration_attempts'] = 0;
         }
         try {
@@ -105,13 +106,50 @@ class RegisterController
                     'Bu email adresi ile daha önce kayıt olunmuş.'
                 );
             } else {
+                error_log('Kayıt işlemi başarısız: ' . $e->getMessage());
                 FlashMessageService::add(
                     'error',
                     'Hata!',
-                    'Kayıt işlemi sırasında bir hata oluştu. Lütfen tekrar deneyiniz. Hata Mesajı :' . $e->getMessage()
+                    'Kayıt işlemi sırasında bir hata oluştu. Lütfen tekrar deneyiniz.'
                 );
             }
             return false;
         }
+    }
+
+    private static function verifyRecaptcha(string $secret, string $token): bool
+    {
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => "Content-Type: application/x-www-form-urlencoded\r\n",
+                'content' => http_build_query([
+                    'secret' => $secret,
+                    'response' => $token,
+                    'remoteip' => $_SERVER['REMOTE_ADDR'] ?? '',
+                ]),
+                'timeout' => 8,
+                'ignore_errors' => true,
+            ],
+        ]);
+
+        $yanit = @file_get_contents('https://www.google.com/recaptcha/api/siteverify', false, $context);
+
+        if ($yanit === false) {
+            error_log('reCAPTCHA doğrulama servisine ulaşılamadı.');
+            return false;
+        }
+
+        $sonuc = json_decode($yanit, true);
+
+        if (!is_array($sonuc) || empty($sonuc['success'])) {
+            $hatalar = is_array($sonuc) && !empty($sonuc['error-codes'])
+                ? implode(', ', (array) $sonuc['error-codes'])
+                : 'bilinmeyen';
+            error_log('reCAPTCHA doğrulaması reddedildi: ' . $hatalar);
+            return false;
+        }
+
+        return true;
     }
 }
