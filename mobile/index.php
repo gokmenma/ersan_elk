@@ -264,6 +264,21 @@ try {
     }
     $unreadNotificationCount = $_SESSION['mobile_notif_count'] ?? 0;
 } catch (\Exception $e) {}
+
+// Sayfaya özel başlık kullanan ekranlarda Android/PWA durum çubuğunu
+// başlığın başlangıç rengiyle eşleştir. Diğer ekranlar kullanıcının tema rengini kullanır.
+$pageStatusColors = [
+    'arac' => '#0d9488',
+    'km-onaylari' => '#0891b2',
+    'evrak-takip' => '#0284c7',
+    'yardim' => '#4338ca',
+    'personel' => '#4f46e5',
+    'nobet' => '#e11d48',
+    'talepler' => '#ea580c',
+    'ihbar' => '#ea580c',
+    'kacak' => '#b91c1c',
+];
+$pageStatusColor = $pageStatusColors[$page] ?? null;
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -273,7 +288,7 @@ try {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#135bec">
+    <meta name="theme-color" content="<?= htmlspecialchars($pageStatusColor ?? '#135bec', ENT_QUOTES, 'UTF-8') ?>">
     <title>Ersan Elektrik | Yönetim</title>
 
     <!-- Google Fonts & Material Symbols -->
@@ -335,6 +350,8 @@ try {
             r.style.setProperty('--primary-rgb', `${parseInt(hex.substring(0,2),16)}, ${parseInt(hex.substring(2,4),16)}, ${parseInt(hex.substring(4,6),16)}`);
             const meta = document.querySelector('meta[name="theme-color"]');
             if (meta) meta.setAttribute('content', t.primary);
+            const pageStatusColor = <?= json_encode($pageStatusColor) ?>;
+            if (meta && pageStatusColor) meta.setAttribute('content', pageStatusColor);
             if (localStorage.getItem('darkMode') === 'true') r.classList.add('dark');
         })();
     </script>
@@ -650,7 +667,7 @@ try {
 <body class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white min-h-screen pb-nav">
 
     <!-- iOS Güvenli Alan Boşluğu -->
-    <div class="h-safe-top bg-primary dark:bg-primary-dark"></div>
+    <div class="h-safe-top bg-primary dark:bg-primary-dark"<?= $pageStatusColor ? ' style="background-color:' . htmlspecialchars($pageStatusColor, ENT_QUOTES, 'UTF-8') . ' !important"' : '' ?>></div>
 
     <!-- Üst Başlık (Kullanıcı isteğiyle gizlendi) 
     <header class="sticky top-0 z-40 bg-white dark:bg-card-dark border-b border-slate-100 dark:border-slate-700 shadow-sm">
