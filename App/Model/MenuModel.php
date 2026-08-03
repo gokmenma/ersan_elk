@@ -161,6 +161,10 @@ class MenuModel extends Model
         }
 
         $rolePlaceholders = implode(',', array_fill(0, count($roleIdArray), '?'));
+        $isSuperAdmin = $this->isUserSuperAdmin($user_id);
+        $superadminFilter = $isSuperAdmin ? "" : " AND (p.superadmin IS NULL OR p.superadmin = 0) ";
+        $superadminFilter0 = $isSuperAdmin ? "" : " AND (p0.superadmin IS NULL OR p0.superadmin = 0) ";
+
         $sql = "SELECT DISTINCT m.id
                 FROM {$this->table} m
                 WHERE (
@@ -170,12 +174,14 @@ class MenuModel extends Model
                         INNER JOIN user_role_permissions urp ON urp.permission_id = p.id
                         WHERE urp.role_id IN ({$rolePlaceholders})
                           AND (p.id = m.id OR p.name = m.menu_link OR p.auth_name = m.menu_link OR (m.menu_link = 'kullanici-gruplari/list' AND p.auth_name = 'yetki_gruplari_izleme'))
+                          {$superadminFilter}
                     )
                     OR (
                         NOT EXISTS (
                             SELECT 1
                             FROM permissions p0
-                            WHERE p0.id = m.id OR p0.name = m.menu_link OR p0.auth_name = m.menu_link OR (m.menu_link = 'kullanici-gruplari/list' AND p0.auth_name = 'yetki_gruplari_izleme')
+                            WHERE (p0.id = m.id OR p0.name = m.menu_link OR p0.auth_name = m.menu_link OR (m.menu_link = 'kullanici-gruplari/list' AND p0.auth_name = 'yetki_gruplari_izleme'))
+                              {$superadminFilter0}
                         )
                         AND EXISTS (
                             SELECT 1
@@ -395,6 +401,9 @@ class MenuModel extends Model
         }
 
                 $placeholders = implode(',', array_fill(0, count($roleIdArray), '?'));
+                $isSuperAdmin = $this->isUserSuperAdmin($userId);
+                $superadminFilter = $isSuperAdmin ? "" : " AND (p.superadmin IS NULL OR p.superadmin = 0) ";
+                $superadminFilter0 = $isSuperAdmin ? "" : " AND (p0.superadmin IS NULL OR p0.superadmin = 0) ";
 
                 $sql = "SELECT COUNT(*)
                                 FROM {$this->table} m
@@ -406,12 +415,14 @@ class MenuModel extends Model
                                                 INNER JOIN user_role_permissions urp ON urp.permission_id = p.id
                                                 WHERE urp.role_id IN ({$placeholders})
                                                     AND (p.id = m.id OR p.name = m.menu_link OR p.auth_name = m.menu_link OR (m.menu_link = 'kullanici-gruplari/list' AND p.auth_name = 'yetki_gruplari_izleme'))
+                                                    {$superadminFilter}
                                         )
                                         OR (
                                                 NOT EXISTS (
                                                         SELECT 1
                                                         FROM permissions p0
-                                                        WHERE p0.id = m.id OR p0.name = m.menu_link OR p0.auth_name = m.menu_link OR (m.menu_link = 'kullanici-gruplari/list' AND p0.auth_name = 'yetki_gruplari_izleme')
+                                                        WHERE (p0.id = m.id OR p0.name = m.menu_link OR p0.auth_name = m.menu_link OR (m.menu_link = 'kullanici-gruplari/list' AND p0.auth_name = 'yetki_gruplari_izleme'))
+                                                          {$superadminFilter0}
                                                 )
                                                 AND EXISTS (
                                                         SELECT 1
@@ -427,6 +438,36 @@ class MenuModel extends Model
                 $stmt->execute($params);
 
                 return (int) $stmt->fetchColumn() > 0;
+    }
+
+    private function isUserSuperAdmin(int $userId): bool
+    {
+        $stmt = $this->db->prepare("SELECT role, roles FROM users WHERE id = ? LIMIT 1");
+        $stmt->execute([$userId]);
+        $user = $stmt->fetch(PDO::FETCH_OBJ);
+
+        if (!$user) {
+            return false;
+        }
+
+        if (($user->role ?? '') === 'superadmin') {
+            return true;
+        }
+
+        $roleIdsStr = $user->roles ?? '';
+        if (!empty($roleIdsStr)) {
+            $roleIds = array_filter(array_map('intval', explode(',', $roleIdsStr)));
+            if (!empty($roleIds)) {
+                $placeholders = implode(',', array_fill(0, count($roleIds), '?'));
+                $stmtSuper = $this->db->prepare("SELECT COUNT(*) FROM user_roles WHERE id IN ($placeholders) AND (role_type = 'superadmin' OR role_name = 'Süper Admin')");
+                $stmtSuper->execute($roleIds);
+                if ((int) $stmtSuper->fetchColumn() > 0) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
     }
 
     /**

@@ -16,6 +16,7 @@ header('Content-Type: application/json; charset=utf-8');
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 $userId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
+$userPersonelId = (int) ($_SESSION['personel_id'] ?? 0);
 
 if ($userId <= 0 || empty($_SESSION['firma_id'])) {
     echo json_encode(['status' => 'error', 'message' => 'Oturum süresi doldu.']);
@@ -76,6 +77,11 @@ try {
                 'arama' => $_GET['arama'] ?? '',
             ];
 
+            // Personel tarafında (süper admin veya onay yetkilisi değilse) sadece kendi ekibinin bildirimlerini görebilir
+            if ($userPersonelId > 0 && !Gate::isSuperAdmin() && !Gate::allows('kacak_onay')) {
+                $filters['personel_id'] = $userPersonelId;
+            }
+
             $kayitlar = $Kacak->getRecords($filters);
             foreach ($kayitlar as &$k) {
                 $k['tarih_formatted'] = Date::dmY($k['tarih']);
@@ -85,7 +91,7 @@ try {
 
             kacakYanit(true, '', [
                 'data' => $kayitlar,
-                'ozet' => $Kacak->getOzet($filters['tarih_baslangic'], $filters['tarih_bitis']),
+                'ozet' => $Kacak->getOzet($filters['tarih_baslangic'], $filters['tarih_bitis'], (int) ($filters['personel_id'] ?? 0)),
             ]);
             break;
 
@@ -93,6 +99,12 @@ try {
             $kayit = $Kacak->getRecord((int) ($_GET['id'] ?? 0));
             if (!$kayit) {
                 kacakYanit(false, 'Kayıt bulunamadı.');
+            }
+            if ($userPersonelId > 0 && !Gate::isSuperAdmin() && !Gate::allows('kacak_onay')) {
+                $isEkip = ($kayit['bildiren_personel_id'] == $userPersonelId) || in_array($userPersonelId, $kayit['personel_ids_array'] ?? [], true);
+                if (!$isEkip) {
+                    kacakYanit(false, 'Bu kaydı görüntüleme yetkiniz bulunmuyor.');
+                }
             }
             $kayit['tarih_formatted'] = Date::dmY($kayit['tarih']);
             kacakYanit(true, '', ['data' => $kayit]);

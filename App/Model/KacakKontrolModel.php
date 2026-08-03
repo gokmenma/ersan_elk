@@ -137,8 +137,9 @@ class KacakKontrolModel extends Model
             $params[] = $filters['kaynak'];
         }
         if (!empty($filters['personel_id'])) {
-            $where[] = 'FIND_IN_SET(?, k.personel_ids)';
-            $params[] = (int) $filters['personel_id'];
+            $where[] = '(k.bildiren_personel_id = ? OR FIND_IN_SET(?, k.personel_ids))';
+            $pid = (int) $filters['personel_id'];
+            array_push($params, $pid, $pid);
         }
         if (!empty($filters['arama'])) {
             $where[] = '(k.tutanak_no LIKE ? OR k.abone_adi LIKE ? OR k.sayac_no LIKE ? OR k.ekip_adi LIKE ?)';
@@ -521,8 +522,15 @@ class KacakKontrolModel extends Model
     /**
      * Ekran üstü özet kartları.
      */
-    public function getOzet(string $baslangic, string $bitis): array
+    public function getOzet(string $baslangic, string $bitis, int $personelId = 0): array
     {
+        $wherePersonel = '';
+        $params = [$this->firmaId(), $baslangic, $bitis];
+        if ($personelId > 0) {
+            $wherePersonel = ' AND (bildiren_personel_id = ? OR FIND_IN_SET(?, personel_ids))';
+            array_push($params, $personelId, $personelId);
+        }
+
         $stmt = $this->db->prepare("SELECT
                     SUM(CASE WHEN onay_durumu = 'onaylandi' AND durum = 'aktif' THEN sayi ELSE 0 END) AS aktif,
                     SUM(CASE WHEN onay_durumu = 'onaylandi' AND durum = 'aktif' AND tur = 'Usülsüz' THEN sayi ELSE 0 END) AS usulsuz,
@@ -532,8 +540,8 @@ class KacakKontrolModel extends Model
                     SUM(CASE WHEN durum = 'iptal' AND hakedisten_dus = 1 THEN sayi ELSE 0 END) AS iptal_dusulen,
                     SUM(CASE WHEN onay_durumu = 'beklemede' THEN 1 ELSE 0 END) AS bekleyen
                 FROM kacak_kontrol
-                WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL");
-        $stmt->execute([$this->firmaId(), $baslangic, $bitis]);
+                WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL{$wherePersonel}");
+        $stmt->execute($params);
         $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
         return array_map(static fn($v) => (int) $v, $row);
