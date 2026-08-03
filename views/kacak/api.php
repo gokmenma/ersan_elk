@@ -322,6 +322,14 @@ try {
             kacakYanit(true, '', ['data' => $Kacak->getPhotos($id)]);
             break;
 
+        case 'download-zip':
+            $id = (int) ($_GET['id'] ?? $_POST['id'] ?? 0);
+            if ($id <= 0) {
+                kacakYanit(false, 'Geçersiz kayıt ID.');
+            }
+            kacakRecordZipIndir($Kacak, $Log, $userId, $userPersonelId, $id);
+            break;
+
         case 'upload-photo':
             kacakYetkiKontrol('kacak_duzenle');
             $id = (int) ($_POST['id'] ?? 0);
@@ -579,3 +587,86 @@ function kacakArsivle(KacakKontrolModel $Kacak, SystemLogModel $Log, int $userId
     @unlink($zipYolu);
     exit;
 }
+
+/**
+ * Belirli bir kaçak kaydının fotoğraflarını ZIP olarak indirir.
+ */
+function kacakRecordZipIndir(KacakKontrolModel $Kacak, SystemLogModel $Log, int $userId, int $userPersonelId, int $kacakId): void
+{
+    $kayit = $Kacak->getRecord($kacakId);
+    if (!$kayit) {
+        http_response_code(404);
+        exit('Kayıt bulunamadı.');
+    }
+
+    if ($userPersonelId > 0 && !Gate::isSuperAdmin() && !Gate::allows('kacak_onay')) {
+        $isEkip = ($kayit['bildiren_personel_id'] == $userPersonelId) || in_array($userPersonelId, $kayit['personel_ids_array'] ?? [], true);
+        if (!$isEkip) {
+            http_response_code(403);
+            exit('Bu kaydın fotoğraflarını indirme yetkiniz bulunmuyor.');
+        }
+    }
+
+    $fotolar = $Kacak->getPhotos($kacakId);
+    if (empty($fotolar)) {
+        http_response_code(404);
+        exit('Bu kayda ait indirilebilir foto/belge bulunamadı.');
+    }
+
+    $root = KacakKontrolModel::rootPath();
+    $tutanakNo = !empty($kayit['tutanak_no']) ? preg_replace('/[^\p{L}\p{N}_-]+/u', '_', $kayit['tutanak_no']) : ('kayit_' . $kacakId);
+    $zipAdi = 'kacak_fotolari_' . $tutanakNo . '_' . date('Ymd_His') . '.zip';
+    $zipYolu = sys_get_temp_dir() . '/' . uniqid('kacak_rec_zip_', true) . '.zip';
+
+    $zip = new \ZipArchive();
+    if ($zip->open($zipYolu, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+        http_response_code(500);
+        exit('Arşiv dosyası oluşturulamadı.');
+    }
+
+    $turEtiket = ['tutanak' => 'Tutanak', 'saha' => 'Saha', 'iptal' => 'Iptal_Belgesi'];
+    $eklenenSayisi = 0;
+
+    foreach ($fotolar as $foto) {
+        $kaynak = $root . '/' . ltrim($foto['dosya_yolu'], '/');
+        if (!is_file($kaynak)) {
+            continue;
+        }
+
+        $turKlasor = $turEtiket[$foto['tur']] ?? ucfirst($foto['tur']);
+        $ext = pathinfo($foto['dosya_yolu'], PATHINFO_EXTENSION);
+        $dosyaAdi = sprintf('%s_%s_%d.%s', $tutanakNo, $turKlasor, $foto['id'], $ext);
+
+        $zip->addFile($kaynak, $turKlasor . '/' . $dosyaAdi);
+        $eklenenSayisi++;
+    }
+
+    $zip->close();
+
+    if ($eklenenSayisi === 0 || !is_file($zipYolu)) {
+        @unlink($zipYolu);
+        http_response_code(404);
+        exit('İndirilebilir dosya bulunamadı.');
+    }
+
+    $Log->logAction(
+        $userId,
+        'Kaçak Kaydı Fotoğrafları İndirildi (ZIP)',
+        "Kayıt ID: $kacakId, Tutanak No: " . ($kayit['tutanak_no'] ?? '-') . ", Eklenen Dosya: $eklenenSayisi",
+        SystemLogModel::LEVEL_INFO
+    );
+
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+
+    header('Content-Type: application/zip');
+    header('Content-Disposition: attachment; filename="' . $zipAdi . '"');
+    header('Content-Length: ' . filesize($zipYolu));
+    header('Cache-Control: no-cache, must-revalidate');
+    header('Pragma: no-cache');
+    readfile($zipYolu);
+    @unlink($zipYolu);
+    exit;
+}
+

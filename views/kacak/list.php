@@ -808,6 +808,9 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Kayıt Belgeleri</h5>
+                <a href="#" id="btnFotoModalZip" class="btn btn-sm btn-success ms-auto me-2" title="Tüm Belgeleri ZIP İndir">
+                    <i class="bx bx-download me-1"></i> ZIP İndir
+                </a>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
@@ -914,7 +917,10 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
         function fotoButonu(k) {
             const adet = parseInt(k.foto_sayisi || 0, 10);
             if (adet === 0) return '<span class="text-muted">-</span>';
-            return `<button class="btn btn-sm btn-soft-info btn-foto" data-id="${k.id}"><i class="bx bx-image"></i> ${adet}</button>`;
+            return `<div class="d-flex align-items-center justify-content-center gap-1">
+                <button class="btn btn-sm btn-soft-info btn-foto" data-id="${k.id}" title="Fotoğrafları Görüntüle"><i class="bx bx-image me-1"></i>${adet}</button>
+                <a href="${API}?action=download-zip&id=${k.id}" class="btn btn-sm btn-soft-success btn-foto-zip" title="Fotoğrafları ZIP Olarak İndir"><i class="bx bx-download"></i></a>
+            </div>`;
         }
 
         // ---------- KAYITLAR ----------
@@ -1458,6 +1464,7 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
 
         $(document).on('click', '.btn-foto', function () {
             const id = $(this).data('id');
+            $('#btnFotoModalZip').attr('href', API + '?action=download-zip&id=' + id);
             apiGet({ action: 'get-photos', id: id }).done(function (res) {
                 if (res.status !== 'success') return hataGoster(res);
                 fotolariBas($('#fotoModalIcerik'), res.data, id);
