@@ -152,12 +152,25 @@ if (!in_array($page, $allowed_pages)) {
     $page = 'ana-sayfa';
 }
 
+// Service worker'ın çevrimdışı kullanım için önden çektiği sayfa gerçekten
+// görüntülenmiş sayılmaz; log kirlenmesin.
+$onbellekIcin = isset($_GET['onbellek']);
+
 // Log page view
-try {
-    $LogModel = new \App\Model\SystemLogModel();
-    // Personel olduğu için name parametresi ile ismini saklayacağız (user_id 0 ancak açıklama içinde geçecek)
-    $LogModel->logAction(0, 'Sayfa Görüntüleme', "[Personel PWA] " . ($personel->adi_soyadi ?? 'Bilinmeyen') . " tarafından $page sayfası görüntülendi.", \App\Model\SystemLogModel::LEVEL_PAGE_VIEW);
-} catch (\Exception $e) {}
+if (!$onbellekIcin) {
+    try {
+        $LogModel = new \App\Model\SystemLogModel();
+        // Personel olduğu için name parametresi ile ismini saklayacağız (user_id 0 ancak açıklama içinde geçecek)
+        $LogModel->logAction(0, 'Sayfa Görüntüleme', "[Personel PWA] " . ($personel->adi_soyadi ?? 'Bilinmeyen') . " tarafından $page sayfası görüntülendi.", \App\Model\SystemLogModel::LEVEL_PAGE_VIEW);
+    } catch (\Exception $e) {}
+}
+
+// Bağlantı yokken açılabilmesi için önden önbelleğe alınacak sayfalar.
+// Personelin yetkisi olmayan sayfa listeye girmez.
+$cevrimdisiSayfalar = ['index.php', 'index.php?page=ana-sayfa', 'index.php?page=ihbar'];
+if ($isKacakKontrol) {
+    $cevrimdisiSayfalar[] = 'index.php?page=kacak';
+}
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -676,11 +689,38 @@ try {
                 navigator.serviceWorker.register('./sw.js')
                     .then(registration => {
                         console.log('SW registered:', registration);
+                        cevrimdisiSayfalariHazirla();
                     })
                     .catch(error => {
                         console.log('SW registration failed:', error);
                     });
             });
+        }
+
+        /**
+         * Saha personeli kaçak/ihbar sayfasını çevrimdışıyken de açabilsin diye
+         * sayfalar arka planda önden indirilir. Mobil veriyi tüketmemek için
+         * altı saatte birden sık tekrarlanmaz.
+         */
+        async function cevrimdisiSayfalariHazirla() {
+            const SAYFALAR = <?= json_encode($cevrimdisiSayfalar, JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+            const ARALIK = 6 * 60 * 60 * 1000;
+
+            if (!navigator.onLine) return;
+
+            try {
+                const son = parseInt(localStorage.getItem('cevrimdisiSayfaZamani') || '0', 10);
+                if (Date.now() - son < ARALIK) return;
+
+                const reg = await navigator.serviceWorker.ready;
+                const sw = reg.active || navigator.serviceWorker.controller;
+                if (!sw) return;
+
+                sw.postMessage({ tip: 'sayfalari-onbellekle', sayfalar: SAYFALAR });
+                localStorage.setItem('cevrimdisiSayfaZamani', String(Date.now()));
+            } catch (e) {
+                console.log('Çevrimdışı sayfa hazırlığı atlandı:', e);
+            }
         }
     </script>
     <script>

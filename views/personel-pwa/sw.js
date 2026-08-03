@@ -71,7 +71,7 @@ async function sayfaOnbellegindenBenzer(request) {
     for (const anahtar of await cache.keys()) {
       const sayfa = new URL(anahtar.url).searchParams.get("page") || "ana-sayfa";
       if (sayfa === istenen) {
-        const yanit = await cache.match(anahtar);
+        const yanit = await cache.match(anahtar, { ignoreVary: true });
         if (yanit) return yanit;
       }
     }
@@ -80,6 +80,32 @@ async function sayfaOnbellegindenBenzer(request) {
   }
 
   return caches.match(OFFLINE_URL);
+}
+
+/**
+ * Sayfaları personel o sayfayı hiç açmamış olsa bile önden önbelleğe alır;
+ * aksi halde saha ekibi ilk kez çevrimdışıyken kaçak sayfasına ulaşamaz.
+ * İstek `onbellek=1` ile yapılır (sunucu bunu sayfa görüntüleme olarak
+ * loglamaz) ama önbelleğe temiz adresle yazılır, navigasyon onunla eşleşir.
+ */
+async function sayfalariOnbellekle(sayfalar) {
+  const cache = await caches.open(SAYFA_CACHE);
+
+  for (const yol of sayfalar) {
+    try {
+      const ayirac = yol.indexOf("?") === -1 ? "?" : "&";
+      const yanit = await fetch(yol + ayirac + "onbellek=1", {
+        credentials: "same-origin",
+        cache: "no-store",
+      });
+
+      if (yanit && yanit.ok && !yanit.redirected) {
+        await cache.put(new Request(yol), yanit);
+      }
+    } catch (e) {
+      console.log("Sayfa önden alınamadı:", yol, e);
+    }
+  }
 }
 
 // Fetch event - network first, fallback to cache
@@ -128,9 +154,11 @@ self.addEventListener("fetch", (event) => {
           return response;
         })
         .catch(() => {
-          return caches.match(event.request).then((onbellek) => {
-            return onbellek || sayfaOnbellegindenBenzer(event.request);
-          });
+          return caches
+            .match(event.request, { ignoreVary: true })
+            .then((onbellek) => {
+              return onbellek || sayfaOnbellegindenBenzer(event.request);
+            });
         }),
     );
     return;
@@ -254,6 +282,11 @@ self.addEventListener("message", (event) => {
 
   if (data.tip === "kuyrugu-gonder" && self.OfflineQueue) {
     event.waitUntil(self.OfflineQueue.flush(data.secenekler));
+    return;
+  }
+
+  if (data.tip === "sayfalari-onbellekle" && Array.isArray(data.sayfalar)) {
+    event.waitUntil(sayfalariOnbellekle(data.sayfalar));
     return;
   }
 

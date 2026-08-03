@@ -112,6 +112,42 @@
             color: white;
         }
 
+        .offline-sayfalar {
+            margin-top: 28px;
+            display: none;
+            text-align: left;
+        }
+
+        .offline-sayfalar h2 {
+            font-size: 13px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.08em;
+            color: #64748b;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .offline-link {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 14px 16px;
+            margin-bottom: 8px;
+            background: white;
+            border: 1px solid #e2e8f0;
+            border-radius: 12px;
+            color: #1e293b;
+            font-size: 15px;
+            font-weight: 600;
+            text-decoration: none;
+        }
+
+        .offline-link .material-symbols-outlined {
+            font-size: 22px;
+            color: #135bec;
+        }
+
         .status-bar {
             position: fixed;
             bottom: 0;
@@ -170,6 +206,11 @@
             <span class="material-symbols-outlined">refresh</span>
             Tekrar Dene
         </button>
+
+        <div class="offline-sayfalar" id="offline-sayfalar">
+            <h2>Bağlantısız Kullanılabilir</h2>
+            <div id="offline-sayfa-listesi"></div>
+        </div>
     </div>
 
     <div class="status-bar">
@@ -182,6 +223,55 @@
         window.addEventListener('online', () => {
             location.reload();
         });
+
+        // Önbellekte duran sayfalar bağlantı olmadan da açılabilir; personel
+        // buradan kaçak/ihbar ekranına ulaşabilsin diye listelenir.
+        (async function () {
+            if (!('caches' in window)) return;
+
+            const adlar = {
+                'ana-sayfa': ['Ana Sayfa', 'home'],
+                'kacak': ['Kaçak İşlemleri', 'shield'],
+                'ihbar': ['İhbarlar', 'campaign'],
+                'puantaj': ['Puantaj', 'checklist'],
+                'izin': ['İzinler', 'calendar_today'],
+                'talep': ['Talepler', 'assignment'],
+                'km-bildirimleri': ['KM Bildirimleri', 'speed'],
+                'nobet': ['Nöbet', 'nights_stay'],
+                'zimmetler': ['Zimmetler', 'inventory_2'],
+            };
+
+            const bulunan = new Map();
+
+            try {
+                for (const ad of await caches.keys()) {
+                    const cache = await caches.open(ad);
+                    for (const istek of await cache.keys()) {
+                        if (!istek.url.includes('index.php')) continue;
+                        const sayfa = new URL(istek.url).searchParams.get('page') || 'ana-sayfa';
+                        if (adlar[sayfa] && !bulunan.has(sayfa)) {
+                            bulunan.set(sayfa, istek.url);
+                        }
+                    }
+                }
+            } catch (e) {
+                return;
+            }
+
+            if (bulunan.size === 0) return;
+
+            const sira = Object.keys(adlar).filter(s => bulunan.has(s));
+            document.getElementById('offline-sayfa-listesi').innerHTML = sira.map(sayfa => {
+                const [etiket, ikon] = adlar[sayfa];
+                const adres = sayfa === 'ana-sayfa' ? 'index.php' : 'index.php?page=' + encodeURIComponent(sayfa);
+                return `<a class="offline-link" href="${adres}">
+                            <span class="material-symbols-outlined">${ikon}</span>
+                            <span>${etiket}</span>
+                        </a>`;
+            }).join('');
+
+            document.getElementById('offline-sayfalar').style.display = 'block';
+        })();
     </script>
 </body>
 
