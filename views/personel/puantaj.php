@@ -1023,6 +1023,10 @@ use App\Service\Gate;
                                                         id="btn-sgk-onay-bekleyen-raporlar">
                                                         <i class="mdi mdi-clock-outline text-warning me-2"></i> Bekleyen
                                                         Raporlar</a></li>
+                                                <li><a class="dropdown-item py-2" href="javascript:void(0);"
+                                                        id="btn-sgk-arsivlenmis-raporlar">
+                                                        <i class="mdi mdi-archive-outline text-secondary me-2"></i>
+                                                        Arşivlenmiş Raporlar</a></li>
                                             </ul>
                                         </div>
 

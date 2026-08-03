@@ -12,11 +12,7 @@ $bugun = date('Y-m-d');
 $haftaBasi = date('Y-m-d', strtotime('monday this week'));
 $son30Gun = date('Y-m-d', strtotime('-29 days'));
 
-$personeller = $Personel->all(false, 'puantaj', $bugun);
-$personelOptions = [];
-foreach ($personeller as $p) {
-    $personelOptions[$p->id] = $p->adi_soyadi;
-}
+$personelOptions = $Personel->optionList('puantaj', $bugun);
 
 $ilceler = KacakKontrolModel::ILCELER;
 $bekleyenSayisi = $Kacak->getPendingCount();
@@ -1827,7 +1823,6 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
             }
 
             kayitlariYukle();
-            onaylariYukle();
         });
     })();
 </script>

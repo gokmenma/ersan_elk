@@ -23,9 +23,32 @@ if ($userId <= 0 || empty($_SESSION['firma_id'])) {
     exit;
 }
 
-if (!Gate::allows('kacak_islemleri') && !Gate::isSuperAdmin()) {
+if (!kacakIzin('kacak_islemleri') && !kacakSuperAdmin()) {
     echo json_encode(['status' => 'error', 'message' => 'Bu işlem için yetkiniz yok.']);
     exit;
+}
+
+// Salt okunur isteklerde oturum kilidini bırak; aksi halde aynı sekmeden gelen
+// paralel AJAX çağrıları PHP session dosya kilidi yüzünden sıraya girer.
+// Gate, AuthController::user() üzerinden session_start() çağırdığı için tüm
+// yetki sonuçları kilit bırakılmadan önce önbelleğe alınır.
+$saltOkunurActionlar = [
+    'list',
+    'get-record',
+    'pending-count',
+    'get-photos',
+    'archive-preview',
+    'gunluk-rapor',
+    'haftalik-rapor',
+    'teslim-alma-listesi',
+];
+
+if (in_array($action, $saltOkunurActionlar, true)) {
+    kacakSuperAdmin();
+    foreach (['kacak_onay', 'kacak_duzenle', 'kacak_iptal', 'kacak_arsiv'] as $izin) {
+        kacakIzin($izin);
+    }
+    session_write_close();
 }
 
 $Kacak = new KacakKontrolModel();
@@ -37,9 +60,27 @@ function kacakYanit(bool $ok, string $mesaj = '', array $ek = []): void
     exit;
 }
 
+function kacakSuperAdmin(): bool
+{
+    static $deger = null;
+    if ($deger === null) {
+        $deger = Gate::isSuperAdmin();
+    }
+    return $deger;
+}
+
+function kacakIzin(string $izin): bool
+{
+    static $onbellek = [];
+    if (!array_key_exists($izin, $onbellek)) {
+        $onbellek[$izin] = Gate::allows($izin);
+    }
+    return $onbellek[$izin];
+}
+
 function kacakYetkiKontrol(string $izin): void
 {
-    if (!Gate::allows($izin) && !Gate::isSuperAdmin()) {
+    if (!kacakIzin($izin) && !kacakSuperAdmin()) {
         kacakYanit(false, 'Bu işlem için yetkiniz bulunmuyor.');
     }
 }
@@ -78,7 +119,7 @@ try {
             ];
 
             // Personel tarafında (süper admin veya onay yetkilisi değilse) sadece kendi ekibinin bildirimlerini görebilir
-            if ($userPersonelId > 0 && !Gate::isSuperAdmin() && !Gate::allows('kacak_onay')) {
+            if ($userPersonelId > 0 && !kacakSuperAdmin() && !kacakIzin('kacak_onay')) {
                 $filters['personel_id'] = $userPersonelId;
             }
 
@@ -100,7 +141,7 @@ try {
             if (!$kayit) {
                 kacakYanit(false, 'Kayıt bulunamadı.');
             }
-            if ($userPersonelId > 0 && !Gate::isSuperAdmin() && !Gate::allows('kacak_onay')) {
+            if ($userPersonelId > 0 && !kacakSuperAdmin() && !kacakIzin('kacak_onay')) {
                 $isEkip = ($kayit['bildiren_personel_id'] == $userPersonelId) || in_array($userPersonelId, $kayit['personel_ids_array'] ?? [], true);
                 if (!$isEkip) {
                     kacakYanit(false, 'Bu kaydı görüntüleme yetkiniz bulunmuyor.');
@@ -599,7 +640,7 @@ function kacakRecordZipIndir(KacakKontrolModel $Kacak, SystemLogModel $Log, int 
         exit('Kayıt bulunamadı.');
     }
 
-    if ($userPersonelId > 0 && !Gate::isSuperAdmin() && !Gate::allows('kacak_onay')) {
+    if ($userPersonelId > 0 && !kacakSuperAdmin() && !kacakIzin('kacak_onay')) {
         $isEkip = ($kayit['bildiren_personel_id'] == $userPersonelId) || in_array($userPersonelId, $kayit['personel_ids_array'] ?? [], true);
         if (!$isEkip) {
             http_response_code(403);

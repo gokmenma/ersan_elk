@@ -244,6 +244,54 @@ class PersonelModel extends Model
         return $query->fetchAll(PDO::FETCH_OBJ);
     }
 
+    /**
+     * Dropdown/select için sadece id ve ad çeken hafif sürüm.
+     * Filtre mantığı all() ile aynıdır, ek kolon ve join taşımaz.
+     */
+    public function optionList($modul = null, $date = null, $activeOnly = false): array
+    {
+        $targetDate = $date ?: date('Y-m-d');
+
+        $sql = "SELECT p.id, p.adi_soyadi
+                FROM {$this->table} p
+                LEFT JOIN personel_calisma_gecmisi pcg ON p.id = pcg.personel_id
+                    AND pcg.ise_giris_tarihi <= :target_date
+                    AND (pcg.isten_cikis_tarihi IS NULL OR pcg.isten_cikis_tarihi >= :target_date)
+                WHERE p.firma_id = :firma_id AND p.silinme_tarihi IS NULL";
+
+        $params = [
+            'firma_id' => $_SESSION['firma_id'],
+            'target_date' => $targetDate
+        ];
+
+        if ($modul) {
+            if ($modul !== 'all_with_external') {
+                $sql .= " AND (COALESCE(pcg.disardan_sigortali, p.disardan_sigortali) = 0
+                               OR FIND_IN_SET(:modul, COALESCE(pcg.gorunum_modulleri, p.gorunum_modulleri)))";
+                $params['modul'] = $modul;
+            }
+        } else {
+            $sql .= " AND COALESCE(pcg.disardan_sigortali, p.disardan_sigortali) = 0";
+        }
+
+        if ($activeOnly) {
+            $sql .= " AND (COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) IS NULL
+                           OR COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) = '0000-00-00')";
+        }
+
+        $sql .= " GROUP BY p.id ORDER BY p.adi_soyadi ASC";
+
+        $query = $this->db->prepare($sql);
+        $query->execute($params);
+
+        $options = [];
+        foreach ($query->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $options[(int) $row['id']] = $row['adi_soyadi'];
+        }
+
+        return $options;
+    }
+
     public function searchForZimmet($term, $type = 'all')
     {
         $term = "%$term%";

@@ -1548,6 +1548,63 @@ $(document).ready(function () {
     });
   });
 
+  // Arşivlenmiş (3 günden kısa süreli) Raporları Getir
+  $("#btn-sgk-arsivlenmis-raporlar").on("click", function () {
+    const ay = $("#select-ay").val();
+    const yil = $("#select-yil").val();
+
+    Swal.fire({
+      title: "SGK Raporları Getiriliyor...",
+      html: "Arşivlenmiş raporlar SGK'dan sorgulanıyor...",
+      allowOutsideClick: false,
+      didOpen: () => {
+        Swal.showLoading();
+      },
+    });
+
+    $.post(
+      API_URL,
+      {
+        action: "get-sgk-arsivlenmis-raporlar",
+        ay: ay,
+        yil: yil,
+      },
+      function (res) {
+        Swal.close();
+
+        if (res.status === "success") {
+          if (res.data.length === 0) {
+            Swal.fire({
+              icon: "info",
+              title: "Rapor Bulunamadı",
+              text: "Seçilen dönemde arşivlenmiş SGK raporu bulunamadı.",
+            });
+            return;
+          }
+
+          showSgkRaporModal(
+            res.data,
+            "Arşivlenmiş SGK Raporları",
+            res.toplam,
+            res.eslesen,
+          );
+        } else {
+          Swal.fire({
+            icon: "error",
+            title: "Hata",
+            text: res.message || "SGK raporları getirilemedi.",
+          });
+        }
+      },
+    ).fail(function () {
+      Swal.fire({
+        icon: "error",
+        title: "Bağlantı Hatası",
+        text: "SGK sunucusuna bağlanılamadı.",
+      });
+    });
+  });
+
   /**
    * SGK Rapor Modal - Raporları göster ve işleme al
    */

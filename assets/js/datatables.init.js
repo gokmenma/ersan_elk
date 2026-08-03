@@ -1,6 +1,98 @@
 let table;
 let datatables = {}; // Çoklu tablo desteği için
 
+/**
+ * assets/js/tr.json içeriğinin gömülü kopyası.
+ * language.url kullanıldığında DataTables tabloyu çizmeden önce ayrı bir HTTP
+ * isteği tamamlanmasını bekler; bu da her tablo başlatmasına bir tur ekler.
+ */
+const DT_LANG_TR = {
+  info: "_START_ - _END_ / _TOTAL_ Toplam Kayıt ",
+  infoEmpty: "Kayıt yok",
+  infoFiltered: "(_MAX_ kayıt içerisinden bulunan)",
+  infoThousands: ".",
+  infoPostFix: " ",
+  lengthMenu: "Sayfada _MENU_ kayıt göster",
+  loadingRecords: "Yükleniyor...",
+  processing: "İşleniyor...",
+  search: "Ara:",
+  searchPlaceholder: "Arayın...",
+  zeroRecords: "Eşleşen kayıt bulunamadı",
+  emptyTable: "Tabloda veri bulunmuyor",
+  thousands: ".",
+  decimal: ",",
+  paginate: {
+    first: "İlk",
+    last: "Son",
+    next: "Sonraki",
+    previous: "Önceki",
+  },
+  aria: {
+    sortAscending: ": artan sütun sıralamasını aktifleştir",
+    sortDescending: ": azalan sütun sıralamasını aktifleştir",
+  },
+  select: {
+    rows: { _: "%d kayıt seçildi", 1: "1 kayıt seçildi" },
+    cells: { _: "%d hücre seçildi", 1: "1 hücre seçildi" },
+    columns: { _: "%d sütun seçildi", 1: "1 sütun seçildi" },
+  },
+  buttons: {
+    collection:
+      'Koleksiyon <span class="ui-button-icon-primary ui-icon ui-icon-triangle-1-s"></span>',
+    colvis: "Sütun görünürlüğü",
+    colvisRestore: "Görünürlüğü eski haline getir",
+    copy: "Kopyala",
+    copySuccess: {
+      1: "1 satır panoya kopyalandı",
+      _: "%ds satır panoya kopyalandı",
+    },
+    copyTitle: "Panoya kopyala",
+    copyKeys:
+      "Tablodaki veriyi kopyalamak için CTRL veya u2318 + C tuşlarına basınız. İptal etmek için bu mesaja tıklayın veya escape tuşuna basın.",
+    csv: "CSV",
+    excel: "Excel",
+    pdf: "PDF",
+    print: "Yazdır",
+    pageLength: {
+      "-1": "Bütün Kayıtları göster",
+      _: "%d kayıt göster",
+      1: "1 Kayıt Göster",
+    },
+  },
+  datetime: {
+    amPm: ["öö", "ös"],
+    hours: "Saat",
+    minutes: "Dakika",
+    seconds: "Saniye",
+    next: "Sonraki",
+    previous: "Önceki",
+    unknown: "Bilinmeyen",
+    weekdays: {
+      0: "Pzt",
+      1: "Sal",
+      2: "Çar",
+      3: "Per",
+      4: "Cum",
+      5: "Cmt",
+      6: "Paz",
+    },
+    months: {
+      0: "Ocak",
+      1: "Şubat",
+      2: "Mart",
+      3: "Nisan",
+      4: "Mayıs",
+      5: "Haziran",
+      6: "Temmuz",
+      7: "Ağustos",
+      8: "Eylül",
+      9: "Ekim",
+      10: "Kasım",
+      11: "Aralık",
+    },
+  },
+};
+
 $(document).ready(function () {
   // Manuel başlatılacakları (.datatable-deferred) hariç tut
   $(".datatable").not(".datatable-deferred").each(function() {
@@ -54,13 +146,12 @@ function getDatatableOptions() {
     pageLength: 25,
     orderCellsTop: true,
     dom: 't<"row"<"col-sm-12 col-md-6 d-flex align-items-center justify-content-start"i<"ms-3 text-nowrap"l>><"col-sm-12 col-md-6 d-flex justify-content-end"p>>',
-    language: {
-      url: "assets/js/tr.json",
+    language: $.extend(true, {}, DT_LANG_TR, {
       emptyTable:
         '<div class="text-center py-5"><div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-4" style="width: 100px; height: 100px; background: linear-gradient(135deg, rgba(85,110,230,0.15) 0%, rgba(85,110,230,0.05) 100%); border: 2px dashed rgba(85,110,230,0.3);"><i class="bx bx-folder-open text-primary" style="font-size: 48px;"></i></div><h5 class="text-dark fw-semibold mb-2">Veri Bulunamadı</h5><p class="text-muted mb-0" style="max-width: 280px; margin: 0 auto;">Bu tabloda henüz gösterilecek kayıt bulunmuyor.</p></div>',
       zeroRecords:
         '<div class="text-center py-5"><div class="d-inline-flex align-items-center justify-content-center rounded-circle mb-4" style="width: 100px; height: 100px; background: linear-gradient(135deg, rgba(241,180,76,0.15) 0%, rgba(241,180,76,0.05) 100%); border: 2px dashed rgba(241,180,76,0.3);"><i class="bx bx-search-alt text-warning" style="font-size: 48px;"></i></div><h5 class="text-dark fw-semibold mb-2">Sonuç Bulunamadı</h5><p class="text-muted mb-0" style="max-width: 280px; margin: 0 auto;">Arama kriterlerinize uygun kayıt bulunamadı.</p></div>',
-    },
+    }),
     buttons: ["excel"],
 
     // preDrawCallback: function (settings) {

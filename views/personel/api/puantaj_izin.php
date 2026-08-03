@@ -747,9 +747,11 @@ try {
             'eslesen' => count(array_filter($islenecekRaporlar, fn($r) => $r['eslesti']))
         ]);
 
-    } elseif ($action === 'get-sgk-onay-bekleyen-raporlar') {
-        // SGK Onay Bekleyen Raporları Getir
+    } elseif ($action === 'get-sgk-onay-bekleyen-raporlar' || $action === 'get-sgk-arsivlenmis-raporlar') {
+        // SGK Onay Bekleyen / Arşivlenmiş (3 günden kısa) Raporları Getir
         require_once dirname(__DIR__, 3) . '/App/Service/SgkViziteService.php';
+
+        $arsivModu = ($action === 'get-sgk-arsivlenmis-raporlar');
 
         $ay = $_POST['ay'] ?? date('m');
         $yil = $_POST['yil'] ?? date('Y');
@@ -771,25 +773,30 @@ try {
         }
 
         // SGK Servisinden raporları getir
+        // Arşiv modunda arşivlenmiş kayıtlar da gelmeli, bu yüzden servis tarafında filtre uygulanmaz.
         $sgkService = new SgkViziteService($kullaniciAdi, $isyeriKodu, $isyeriSifresi);
-        $raporlar = $sgkService->raporlariGetir($tarih, false); // arsiv=false -> sadece aktif raporlar
+        $raporlar = $sgkService->raporlariGetir($tarih, $arsivModu);
 
         // SGK'nın raporAramaTarihile metodu, onaylanmış olsa bile RaporOkunduKapat ile kapatılmamış
         // tüm raporları döndürür. Bu yüzden onaylanmış raporlar bu listeden ayıklanır.
         // Tarih aralığı, "Onaylanmış Raporlar" ekranıyla birebir aynı tutulur; böylece SGK'nın
         // dakikada 1 sorgu sınırına takılmadan aynı önbellek kaydı paylaşılır.
+        // Arşivlenmiş raporlara çalışmazlık bildirimi yapılmadığı için onaylı listesinde yer almazlar;
+        // arşiv modunda bu ek sorgu hiç yapılmaz.
         $onayliRaporIdleri = [];
-        try {
-            $onayliTarih1 = new DateTime("$yil-$ay-01");
-            $onayliTarih2 = new DateTime($onayliTarih1->format('Y-m-t'));
+        if (!$arsivModu) {
+            try {
+                $onayliTarih1 = new DateTime("$yil-$ay-01");
+                $onayliTarih2 = new DateTime($onayliTarih1->format('Y-m-t'));
 
-            foreach ($sgkService->onayliRaporlariGetir($onayliTarih1, $onayliTarih2) as $onayliRapor) {
-                if (!empty($onayliRapor['MEDULARAPORID'])) {
-                    $onayliRaporIdleri[(string) $onayliRapor['MEDULARAPORID']] = true;
+                foreach ($sgkService->onayliRaporlariGetir($onayliTarih1, $onayliTarih2) as $onayliRapor) {
+                    if (!empty($onayliRapor['MEDULARAPORID'])) {
+                        $onayliRaporIdleri[(string) $onayliRapor['MEDULARAPORID']] = true;
+                    }
                 }
+            } catch (Exception $e) {
+                error_log('SGK onaylı rapor listesi alınamadı, onay bekleyen listesi filtrelenemedi: ' . $e->getMessage());
             }
-        } catch (Exception $e) {
-            error_log('SGK onaylı rapor listesi alınamadı, onay bekleyen listesi filtrelenemedi: ' . $e->getMessage());
         }
 
         // Personel listesini getir (TC Kimlik No eşleştirmesi için)
@@ -873,6 +880,17 @@ try {
                 }
             }
 
+            // Arşiv ayrımı: SGK'nın ARSIV bayrağı veya 3 günden kısa süre.
+            // İki liste birbirinden ayrık olsun diye aynı ölçüt her iki modda da uygulanır.
+            $arsivMi = ((string) ($rapor['ARSIV'] ?? '') === '1');
+            if (!$arsivMi && $toplam_gun > 0 && $toplam_gun < 3) {
+                $arsivMi = true;
+            }
+
+            if ($arsivMi !== $arsivModu) {
+                continue;
+            }
+
             $islenecekRaporlar[] = [
                 'tc_kimlik' => $tc,
                 'ad_soyad' => $rapor['SIGORTALIADSOYAD'] ?? ($rapor['AD'] . ' ' . $rapor['SOYAD']),
@@ -884,6 +902,7 @@ try {
                 'toplam_gun' => $toplam_gun,
                 'rapor_id' => $rapor['MEDULARAPORID'] ?? '',
                 'rapor_durumu' => $rapor['RAPORDURUMU'] ?? '',
+                'arsiv' => $arsivMi ? '1' : '0',
                 'personel_id' => $personelData ? $personelData['id'] : null,
                 'personel_adi' => $personelData ? $personelData['adi_soyadi'] : null,
                 'eslesti' => $personelData !== null
