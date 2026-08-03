@@ -1,3 +1,6 @@
+<link rel="stylesheet" href="assets/libs/glightbox/css/glightbox.min.css">
+<script src="assets/libs/glightbox/js/glightbox.min.js"></script>
+
 <div class="modal fade" id="zimmetDetayModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered modal-lg">
         <div class="modal-content">

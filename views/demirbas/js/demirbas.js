@@ -2385,11 +2385,11 @@ $(document).on("click", ".zimmet-detay, .zimmet-detay-ac", function (e) {
                 fotoHtml += `
                   <div class="position-relative d-inline-block border rounded p-1 bg-light me-1 mb-1 text-center" style="width: 45px; height: 45px; vertical-align: top;">
                     ${foto.is_pdf ? `
-                      <a href="${viewUrl}" target="_blank" class="text-danger d-block lh-1" title="${foto.orijinal_ad}">
+                      <a href="${viewUrl}" target="_blank" class="text-danger d-block lh-1" title="${foto.orijinal_ad || 'PDF Dosyası'}">
                         <i class="bx bxs-file-pdf font-size-22 animate__animated animate__fadeIn" style="margin-top: 3px;"></i>
                       </a>
                     ` : `
-                      <a href="${viewUrl}" target="_blank" class="d-block">
+                      <a href="${viewUrl}" class="d-block zimmet-foto-lightbox" data-gallery="zimmet-detay-galeri" data-type="image" data-title="${foto.orijinal_ad || 'Zimmet Fotoğrafı'}">
                         <img src="${viewUrl}" class="rounded animate__animated animate__fadeIn" style="width: 35px; height: 35px; object-fit: cover;">
                       </a>
                     `}
@@ -2429,6 +2429,18 @@ $(document).on("click", ".zimmet-detay, .zimmet-detay-ac", function (e) {
 
         if (typeof feather !== "undefined") {
           setTimeout(() => feather.replace(), 10);
+        }
+
+        if (typeof GLightbox !== "undefined") {
+          if (window.zimmetFotoLightbox) {
+            window.zimmetFotoLightbox.destroy();
+          }
+          window.zimmetFotoLightbox = GLightbox({
+            selector: '.zimmet-foto-lightbox',
+            loop: true,
+            touchNavigation: true,
+            zoomable: true
+          });
         }
 
         $("#zimmetDetayModal").modal("show");
