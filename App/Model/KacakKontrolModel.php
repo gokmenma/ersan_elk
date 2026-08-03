@@ -256,6 +256,26 @@ class KacakKontrolModel extends Model
     }
 
     /**
+     * PWA çevrimdışı kuyruğundan gelen kayıtların mükerrer düşmemesi için
+     * istemcide üretilen UUID ile daha önce kaydedilmiş tutanağı arar.
+     */
+    public function findByClientUuid(string $clientUuid): ?array
+    {
+        $clientUuid = trim($clientUuid);
+        if ($clientUuid === '') {
+            return null;
+        }
+
+        $stmt = $this->db->prepare("SELECT * FROM kacak_kontrol
+                                    WHERE firma_id = ? AND client_uuid = ? AND silinme_tarihi IS NULL
+                                    LIMIT 1");
+        $stmt->execute([$this->firmaId(), $clientUuid]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+        return $row ?: null;
+    }
+
+    /**
      * Tek bir kaçak/abonesiz tutanak kaydı oluşturur.
      */
     public function createRecord(array $data): int
@@ -303,19 +323,27 @@ class KacakKontrolModel extends Model
         ]));
 
         $stmt = $this->db->prepare("INSERT INTO kacak_kontrol
-            (firma_id, personel_ids, bildiren_personel_id, kaynak, onay_durumu, onaylayan_id, onay_tarihi,
+            (firma_id, personel_ids, bildiren_personel_id, kaynak, client_uuid, offline_olusturma,
+             onay_durumu, onaylayan_id, onay_tarihi,
              durum, tarih, ekip_adi, ilce, tur, tutanak_no, abone_adi, sayac_no, endeks, sayi, aciklama, islem_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, 'aktif', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'aktif', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         $onayDurumu = $data['onay_durumu'] ?? 'onaylandi';
         $onaylayanId = $onayDurumu === 'onaylandi' ? ($data['onaylayan_id'] ?? ($_SESSION['user_id'] ?? null)) : null;
         $onayTarihi = $onayDurumu === 'onaylandi' ? date('Y-m-d H:i:s') : null;
+
+        $clientUuid = trim((string) ($data['client_uuid'] ?? ''));
+        $offlineOlusturma = !empty($data['offline_olusturma']) && strtotime((string) $data['offline_olusturma'])
+            ? date('Y-m-d H:i:s', strtotime((string) $data['offline_olusturma']))
+            : null;
 
         $stmt->execute([
             $this->firmaId(),
             implode(',', $personelIds),
             !empty($data['bildiren_personel_id']) ? (int) $data['bildiren_personel_id'] : null,
             $data['kaynak'] ?? 'masaustu',
+            $clientUuid !== '' ? $clientUuid : null,
+            $offlineOlusturma,
             $onayDurumu,
             $onaylayanId,
             $onayTarihi,

@@ -3,7 +3,8 @@
  * Offline desteği ve önbellekleme
  */
 
-const CACHE_NAME = "personel-pwa-v7";
+const CACHE_NAME = "personel-pwa-v8";
+const SAYFA_CACHE = "personel-pwa-sayfa-v1";
 const OFFLINE_URL = "offline.html";
 
 // Önbelleğe alınacak dosyalar
@@ -11,11 +12,16 @@ const PRECACHE_ASSETS = [
   "./assets/css/pwa-style.css",
   "./assets/css/tailwind-build.css",
   "./assets/js/pwa-app.js",
+  "./assets/js/pwa-offline-queue.js",
   "./manifest.json",
   "./offline.html",
   "./assets/icons/icon-144-new.png",
   "./assets/icons/icon-192-new.png",
 ];
+
+// Çevrimdışı kuyruk mantığı sayfa ile ortak; uygulama kapalıyken de
+// Background Sync ile buradan gönderilebilmesi için içe aktarılır.
+importScripts("./assets/js/pwa-offline-queue.js");
 
 // Install event - önbellekleme
 self.addEventListener("install", (event) => {
@@ -40,7 +46,7 @@ self.addEventListener("activate", (event) => {
       .then((cacheNames) => {
         return Promise.all(
           cacheNames.map((cacheName) => {
-            if (cacheName !== CACHE_NAME) {
+            if (cacheName !== CACHE_NAME && cacheName !== SAYFA_CACHE) {
               console.log("Deleting old cache:", cacheName);
               return caches.delete(cacheName);
             }
@@ -52,6 +58,29 @@ self.addEventListener("activate", (event) => {
       }),
   );
 });
+
+/**
+ * Tam eşleşme bulunamazsa aynı ?page= değerine sahip başka bir kopyayı,
+ * o da yoksa çevrimdışı sayfasını döndürür.
+ */
+async function sayfaOnbellegindenBenzer(request) {
+  try {
+    const istenen = new URL(request.url).searchParams.get("page") || "ana-sayfa";
+    const cache = await caches.open(SAYFA_CACHE);
+
+    for (const anahtar of await cache.keys()) {
+      const sayfa = new URL(anahtar.url).searchParams.get("page") || "ana-sayfa";
+      if (sayfa === istenen) {
+        const yanit = await cache.match(anahtar);
+        if (yanit) return yanit;
+      }
+    }
+  } catch (e) {
+    console.log("Sayfa önbelleği okunamadı:", e);
+  }
+
+  return caches.match(OFFLINE_URL);
+}
 
 // Fetch event - network first, fallback to cache
 self.addEventListener("fetch", (event) => {
@@ -66,6 +95,7 @@ self.addEventListener("fetch", (event) => {
           return new Response(
             JSON.stringify({
               success: false,
+              offline: true,
               message: "Çevrimdışı modda API erişimi yok",
             }),
             { headers: { "Content-Type": "application/json" } },
@@ -75,12 +105,33 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
-  // Navigasyon istekleri
+  // Navigasyon istekleri: ağdan al, kopyasını sakla; bağlantı yoksa
+  // en son görüntülenen sürümü göster (saha personeli formu açabilsin).
   if (event.request.mode === "navigate") {
     event.respondWith(
-      fetch(event.request).catch(() => {
-        return caches.match(OFFLINE_URL);
-      }),
+      fetch(event.request)
+        .then((response) => {
+          // login.php'ye yönlenmiş bir yanıt sayfa olarak saklanmamalı.
+          // POST ile gelen navigasyonlar önbelleğe yazılamaz.
+          if (
+            response &&
+            response.ok &&
+            !response.redirected &&
+            event.request.method === "GET"
+          ) {
+            const kopya = response.clone();
+            caches
+              .open(SAYFA_CACHE)
+              .then((cache) => cache.put(event.request, kopya))
+              .catch((e) => console.log("Sayfa önbelleğe alınamadı:", e));
+          }
+          return response;
+        })
+        .catch(() => {
+          return caches.match(event.request).then((onbellek) => {
+            return onbellek || sayfaOnbellegindenBenzer(event.request);
+          });
+        }),
     );
     return;
   }
@@ -190,14 +241,25 @@ self.addEventListener("notificationclick", (event) => {
   }
 });
 
-// Background sync
+// Background sync - uygulama kapalıyken bağlantı gelince kuyruğu boşaltır
 self.addEventListener("sync", (event) => {
-  if (event.tag === "sync-requests") {
-    event.waitUntil(syncPendingRequests());
+  if (event.tag === (self.OfflineQueue && self.OfflineQueue.SYNC_ETIKETI)) {
+    event.waitUntil(self.OfflineQueue.flush());
   }
 });
 
-async function syncPendingRequests() {
-  // TODO: IndexedDB'den bekleyen istekleri al ve gönder
-  console.log("Syncing pending requests...");
-}
+// Sayfadan gelen komutlar
+self.addEventListener("message", (event) => {
+  const data = event.data || {};
+
+  if (data.tip === "kuyrugu-gonder" && self.OfflineQueue) {
+    event.waitUntil(self.OfflineQueue.flush(data.secenekler));
+    return;
+  }
+
+  // Çıkışta oturuma ait önbelleklenmiş sayfalar cihazda bırakılmaz.
+  // Kuyruk bilinçli olarak korunur: gönderilmemiş tutanak silinmemelidir.
+  if (data.tip === "oturum-temizle") {
+    event.waitUntil(caches.delete(SAYFA_CACHE));
+  }
+});

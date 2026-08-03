@@ -15,7 +15,7 @@
      * @param {Object|null} editData Düzenleme yapılacak veri varsa gönderilir
      */
     async function watermarkImage(file, lines) {
-        return new Promise((resolve) => {
+        return new Promise((resolve, reject) => {
             const reader = new FileReader();
             reader.onload = (e) => {
                 const img = new Image();
@@ -23,14 +23,15 @@
                     const canvas = document.createElement('canvas');
                     const ctx = canvas.getContext('2d');
                     
-                    // Resim boyutlarını ayarla (Maksimum 1280px genişlik performansı artırır)
-                    const maxW = 1280;
+                    // Rakam okunabilirliğini koruyarak uzun kenarı en fazla 1920px yap.
+                    const maxDimension = 1920;
                     let w = img.width;
                     let h = img.height;
-                    
-                    if (w > maxW) {
-                        h = Math.floor(h * (maxW / w));
-                        w = maxW;
+
+                    if (Math.max(w, h) > maxDimension) {
+                        const scale = maxDimension / Math.max(w, h);
+                        w = Math.round(w * scale);
+                        h = Math.round(h * scale);
                     }
 
                     canvas.width = w;
@@ -70,11 +71,21 @@
                     });
                     
                     canvas.toBlob((blob) => {
-                        resolve(new File([blob], file.name, { type: 'image/jpeg' }));
+                        if (!blob) {
+                            reject(new Error('Resim sıkıştırılamadı.'));
+                            return;
+                        }
+                        const baseName = file.name.replace(/\.[^.]+$/, '') || 'km-fotografi';
+                        resolve(new File([blob], `${baseName}.jpg`, {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        }));
                     }, 'image/jpeg', 0.85);
                 };
+                img.onerror = () => reject(new Error('Bu resim formatı tarayıcı tarafından okunamadı.'));
                 img.src = e.target.result;
             };
+            reader.onerror = () => reject(new Error('Resim okunamadı.'));
             reader.readAsDataURL(file);
         });
     }
@@ -355,7 +366,15 @@
                                 timestamp
                             ];
                             
-                            resimFile = await watermarkImage(resimFile, watermarkLines);
+                            try {
+                                resimFile = await watermarkImage(resimFile, watermarkLines);
+                            } catch (error) {
+                                Alert.error('Resim Hatası', error.message || 'Resim hazırlanamadı.');
+                                btn.disabled = false;
+                                btnText.innerText = editData ? 'DEĞİŞİKLİKLERİ KAYDET' : 'KM GÖNDER';
+                                btn.classList.remove('opacity-70');
+                                return;
+                            }
                         }
 
                         // Verileri hazırla

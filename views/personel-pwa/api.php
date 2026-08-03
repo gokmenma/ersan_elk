@@ -28,6 +28,7 @@ use App\Model\PersonelHareketleriModel;
 use App\Model\PersonelIcralariModel;
 use App\Service\PushNotificationService;
 use App\Helper\Security;
+use App\Service\ImageUploadService;
 
 // Oturum kontrolü (logout hariç)
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
@@ -2227,19 +2228,6 @@ try {
                 response(false, null, 'Lütfen bir resim seçiniz.');
             }
 
-            $file = $_FILES['image'];
-            $allowed = ['jpg', 'jpeg', 'png', 'webp'];
-            $ext = strtolower(pathinfo($file['name'], PATHINFO_EXTENSION));
-
-            if (!in_array($ext, $allowed)) {
-                response(false, null, 'Sadece JPG, PNG ve WEBP formatları desteklenir.');
-            }
-
-            // Dosya boyutu kontrolü (örn: 5MB)
-            if ($file['size'] > 5 * 1024 * 1024) {
-                response(false, null, 'Dosya boyutu 5MB\'dan büyük olamaz.');
-            }
-
             // Hedef klasörler
             $mainAppDir = dirname(dirname(__DIR__));
             $pwaDir = __DIR__;
@@ -2247,33 +2235,27 @@ try {
             $uploadDirMain = $mainAppDir . '/assets/images/users/';
             $uploadDirPwa = $pwaDir . '/assets/images/users/';
 
-            if (!file_exists($uploadDirMain)) {
-                mkdir($uploadDirMain, 0777, true);
-            }
-            if (!file_exists($uploadDirPwa)) {
-                mkdir($uploadDirPwa, 0777, true);
-            }
-
-            $fileName = uniqid('personel_') . '.' . $ext;
-            $targetPathMain = $uploadDirMain . $fileName;
+            $storedImage = (new ImageUploadService())->store(
+                $_FILES['image'],
+                $uploadDirMain,
+                'personel_' . $personel_id,
+                800,
+                82,
+                10 * 1024 * 1024
+            );
+            $fileName = $storedImage['filename'];
+            $targetPathMain = $storedImage['path'];
             $targetPathPwa = $uploadDirPwa . $fileName;
 
             // DB'ye kaydedilecek yol
             $dbPath = 'assets/images/users/' . $fileName;
 
-            // Debug Log
-            $logFile = $mainAppDir . '/debug_image_upload.txt';
-            $logContent = date('Y-m-d H:i:s') . " - Uploading for ID: $personel_id\n";
-            $logContent .= "Target Main: $targetPathMain\n";
-            $logContent .= "Target PWA: $targetPathPwa\n";
-            $logContent .= "DB Path: $dbPath\n";
-
-            if (move_uploaded_file($file['tmp_name'], $targetPathMain)) {
-                // PWA dizinine kopyala
+            if (is_file($targetPathMain)) {
+                if (!is_dir($uploadDirPwa)) {
+                    mkdir($uploadDirPwa, 0775, true);
+                }
                 if (!copy($targetPathMain, $targetPathPwa)) {
-                    $logContent .= "ERROR: Failed to copy to PWA directory: $targetPathPwa\n";
-                } else {
-                    $logContent .= "SUCCESS: Copied to PWA directory.\n";
+                    error_log('PWA profil resmi kopyalanamadı: ' . $targetPathPwa);
                 }
 
                 $PersonelModel = new PersonelModel();
@@ -2283,11 +2265,6 @@ try {
 
                 $stmt = $db->prepare("UPDATE personel SET personel_resim_yolu = ? WHERE id = ?");
                 $result = $stmt->execute([$dbPath, $personel_id]);
-                $rowCount = $stmt->rowCount();
-
-                $logContent .= "Update Result: " . ($result ? 'True' : 'False') . "\n";
-                $logContent .= "Row Count: $rowCount\n";
-                file_put_contents($logFile, $logContent, FILE_APPEND);
 
                 if ($result) {
                     response(true, ['image_url' => $dbPath], 'Profil resmi güncellendi.');
@@ -2297,8 +2274,6 @@ try {
                     response(false, null, 'Veritabanı güncellenemedi.');
                 }
             } else {
-                $logContent .= "Move Uploaded File Failed\n";
-                file_put_contents($logFile, $logContent, FILE_APPEND);
                 response(false, null, 'Dosya yüklenirken bir hata oluştu.');
             }
             break;
@@ -4442,11 +4417,44 @@ try {
             }
             break;
 
+        case 'getKacakReferans':
+            if (stripos($personel->departman ?? '', 'Kaçak') === false) {
+                response(false, null, 'Bu işlem için yetkiniz bulunmuyor.');
+            }
+
+            $KacakModel = new \App\Model\KacakKontrolModel();
+            response(true, [
+                'ekip_adaylari' => $KacakModel->getEkipAdaylari((int) $personel_id),
+                'ilceler' => \App\Model\KacakKontrolModel::ILCELER,
+                'turler' => \App\Model\KacakKontrolModel::TURLER,
+                'max_saha_foto' => \App\Model\KacakKontrolModel::MAX_SAHA_FOTO,
+            ]);
+            break;
+
         case 'saveKacakBildirim':
+            if (stripos($personel->departman ?? '', 'Kaçak') === false) {
+                response(false, null, 'Bu işlem için yetkiniz bulunmuyor.');
+            }
+
             $KacakModel = new \App\Model\KacakKontrolModel();
 
             if (empty($_POST) && !empty($_SERVER['CONTENT_LENGTH'])) {
                 response(false, null, 'Yüklenen fotoğrafların toplam boyutu sunucu yükleme sınırını aşıyor. Lütfen fotoğrafların boyutunu küçültün veya daha az fotoğraf seçin.');
+            }
+
+            // Çevrimdışı kuyruktan gelen kayıt daha önce işlenmişse tekrar açılmaz.
+            // Sunucu kaydı almış ama yanıt sahaya ulaşmamışsa kuyruk aynı UUID ile
+            // yeniden dener; burada mevcut kaydın id'si başarı olarak döner.
+            $kacakClientUuid = trim((string) ($_POST['client_uuid'] ?? ''));
+            if ($kacakClientUuid !== '') {
+                if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $kacakClientUuid)) {
+                    response(false, null, 'Geçersiz kayıt anahtarı.');
+                }
+
+                $mevcutKayit = $KacakModel->findByClientUuid($kacakClientUuid);
+                if ($mevcutKayit) {
+                    response(true, ['id' => (int) $mevcutKayit['id'], 'tekrar' => true], 'Bu bildirim daha önce iletilmişti.');
+                }
             }
 
             $ekipArkadasiId = (int) ($_POST['ekip_arkadasi_id'] ?? 0);
@@ -4514,6 +4522,8 @@ try {
                     'personel_ids' => [(int) $personel_id, $ekipArkadasiId],
                     'bildiren_personel_id' => (int) $personel_id,
                     'kaynak' => 'pwa',
+                    'client_uuid' => $kacakClientUuid,
+                    'offline_olusturma' => $_POST['offline_olusturma'] ?? null,
                     'onay_durumu' => 'beklemede',
                     'ilce' => $kacakIlce,
                     'tur' => $_POST['tur'] ?? 'Kaçak',
@@ -4525,6 +4535,14 @@ try {
                     'aciklama' => $_POST['aciklama'] ?? null,
                 ]);
             } catch (\Throwable $e) {
+                // Aynı kuyruk kaydı iki kez gönderilmişse benzersiz indeks devreye girer;
+                // bu durumda hata değil, önceki kayıt döndürülür.
+                if ($kacakClientUuid !== '') {
+                    $mevcutKayit = $KacakModel->findByClientUuid($kacakClientUuid);
+                    if ($mevcutKayit) {
+                        response(true, ['id' => (int) $mevcutKayit['id'], 'tekrar' => true], 'Bu bildirim daha önce iletilmişti.');
+                    }
+                }
                 error_log('PWA kaçak bildirimi kaydedilemedi: ' . $e->getMessage());
                 response(false, null, 'Bildirim kaydedilemedi.');
             }
@@ -4578,6 +4596,21 @@ try {
                 error_log('Kaçak bildirimi yöneticilere iletilemedi: ' . $e->getMessage());
             }
 
+            try {
+                $kacakLogEk = $kacakClientUuid !== ''
+                    ? ' (çevrimdışı kuyruktan, sahada ' . ($_POST['offline_olusturma'] ?? 'bilinmiyor') . ' tarihinde girildi)'
+                    : '';
+                (new \App\Model\SystemLogModel())->logAction(
+                    0,
+                    'Kaçak Bildirimi',
+                    '[Personel PWA] ' . ($personel->adi_soyadi ?? 'Bilinmeyen') . ' #' . $kacakId
+                    . ' numaralı kaçak tutanağını bildirdi' . $kacakLogEk . '.',
+                    \App\Model\SystemLogModel::LEVEL_INFO
+                );
+            } catch (\Throwable $e) {
+                error_log('Kaçak bildirimi loglanamadı: ' . $e->getMessage());
+            }
+
             response(true, ['id' => $kacakId], 'Bildiriminiz iletildi. Yönetici onayı bekleniyor.');
             break;
 
@@ -4618,15 +4651,15 @@ try {
                     throw new Exception('KM fotoğrafı yükleme dizinine yazılamıyor.');
                 }
                 
-                $ext = pathinfo($_FILES['resim']['name'], PATHINFO_EXTENSION);
-                $fileName = 'km_' . $personel_id . '_' . time() . '.' . $ext;
-                $filePath = $uploadDir . $fileName;
-                
-                if (move_uploaded_file($_FILES['resim']['tmp_name'], $filePath)) {
-                    $data['resim_yolu'] = 'uploads/km_bildirim/' . $fileName;
-                } else {
-                    throw new Exception('KM fotoğrafı sunucuya kaydedilemedi. Lütfen tekrar deneyin.');
-                }
+                $storedImage = (new ImageUploadService())->store(
+                    $_FILES['resim'],
+                    $uploadDir,
+                    'km_' . $personel_id,
+                    1920,
+                    85,
+                    15 * 1024 * 1024
+                );
+                $data['resim_yolu'] = 'uploads/km_bildirim/' . $storedImage['filename'];
             }
             
             $data['personel_id'] = $personel_id;

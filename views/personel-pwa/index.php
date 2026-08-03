@@ -617,6 +617,7 @@ try {
     <!-- Scripts -->
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="assets/js/pwa-offline-queue.js?v=<?= filemtime(__DIR__ . '/assets/js/pwa-offline-queue.js') ?>"></script>
     <script src="assets/js/pwa-app.js?v=<?= filemtime(__DIR__ . '/assets/js/pwa-app.js') ?>"></script>
     <script src="assets/js/notification-helper.js"></script>
     <?php if ($_pwaCanliDestekAktif): ?>
@@ -684,14 +685,34 @@ try {
     </script>
     <script>
         async function logout() {
+            // Gönderilmemiş çevrimdışı kayıt varsa personel çıkmadan önce uyarılır;
+            // kuyruk cihazda kalır ama tekrar giriş yapılmadan gönderilemez.
+            let bekleyenUyarisi = '';
+            try {
+                if (window.OfflineQueue) {
+                    const bekleyen = (await OfflineQueue.listele())
+                        .filter(k => k.durum !== 'hata').length;
+                    if (bekleyen > 0) {
+                        bekleyenUyarisi = `\n\nGönderilmeyi bekleyen ${bekleyen} kaydınız var. `
+                            + 'Bu kayıtlar cihazda kalır, tekrar giriş yaptığınızda gönderilir.';
+                    }
+                }
+            } catch (e) { }
+
             const isConfirmed = await Alert.confirm(
                 'Çıkış Yap',
-                'Çıkış yapmak istediğinize emin misiniz?',
+                'Çıkış yapmak istediğinize emin misiniz?' + bekleyenUyarisi,
                 'Çıkış Yap',
                 'Vazgeç'
             );
 
             if (!isConfirmed) return;
+
+            try {
+                if (navigator.serviceWorker && navigator.serviceWorker.controller) {
+                    navigator.serviceWorker.controller.postMessage({ tip: 'oturum-temizle' });
+                }
+            } catch (e) { }
 
             try {
                 const response = await API.request('logout');

@@ -13,6 +13,7 @@ use App\Helper\Date;
 use App\Helper\Validator;
 use App\Model\TanimlamalarModel;
 use App\Model\SystemLogModel;
+use App\Service\ImageUploadService;
 
 
 
@@ -54,61 +55,21 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             // Dosya Yükleme İşlemi
             if (isset($_FILES['resim_yolu'])) {
-                // HATA AYIKLAMA LOGU
-                $debugLog = dirname(__DIR__, 2) . '/debug_upload.txt';
-                $logContent = "--- Upload Start ---\n";
-                $logContent .= "FILES: " . print_r($_FILES, true) . "\n";
-
                 if ($_FILES['resim_yolu']['error'] == 0) {
-                    $allowedImageMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-                    $finfo = new finfo(FILEINFO_MIME_TYPE);
-                    $detectedMime = $finfo->file($_FILES['resim_yolu']['tmp_name']);
-                    if (!in_array($detectedMime, $allowedImageMimes)) {
-                        throw new Exception("Geçersiz dosya türü. Sadece JPEG, PNG, WebP veya GIF yüklenebilir.");
-                    }
-
-                    // Mutlak yol tanımlaması
                     $baseDir = dirname(__DIR__, 2);
-
-                    // Yol ayırıcılarını sisteme uygun hale getir
                     $uploadDir = $baseDir . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . 'images' . DIRECTORY_SEPARATOR . 'users' . DIRECTORY_SEPARATOR;
-
-                    $logContent .= "Upload Dir: " . $uploadDir . "\n";
-                    $logContent .= "Writable: " . (is_writable($baseDir) ? 'Yes' : 'No') . "\n";
-
-                    if (!file_exists($uploadDir)) {
-                        if (!mkdir($uploadDir, 0777, true)) {
-                            $logContent .= "Mkdir Failed\n";
-                            file_put_contents($debugLog, $logContent, FILE_APPEND);
-                            throw new Exception("Klasör oluşturulamadı: " . $uploadDir);
-                        }
-                    }
-
-                    $mimeToExt = ['image/jpeg' => 'jpg', 'image/png' => 'png', 'image/webp' => 'webp', 'image/gif' => 'gif'];
-                    $fileExtension = $mimeToExt[$detectedMime];
-                    $fileName = uniqid('personel_') . '.' . $fileExtension;
-                    $uploadPath = $uploadDir . $fileName;
-
-                    $logContent .= "Target Path: " . $uploadPath . "\n";
-
-                    if (move_uploaded_file($_FILES['resim_yolu']['tmp_name'], $uploadPath)) {
-                        // Veritabanına kaydedilecek yol (URL formatında olmalı, ters eğik çizgi değil)
-                        $data['resim_yolu'] = 'assets/images/users/' . $fileName;
-                        $logContent .= "Move Success\n";
-                    } else {
-                        $error = error_get_last();
-                        $logContent .= "Move Failed: " . ($error['message'] ?? 'Unknown') . "\n";
-                        file_put_contents($debugLog, $logContent, FILE_APPEND);
-                        throw new Exception("Dosya yüklenemedi. Hedef: " . $uploadPath . " Hata: " . ($error['message'] ?? 'Bilinmeyen hata'));
-                    }
+                    $storedImage = (new ImageUploadService())->store(
+                        $_FILES['resim_yolu'],
+                        $uploadDir,
+                        'personel',
+                        800,
+                        82,
+                        10 * 1024 * 1024
+                    );
+                    $data['resim_yolu'] = 'assets/images/users/' . $storedImage['filename'];
                 } elseif ($_FILES['resim_yolu']['error'] != 4) { // 4 = Dosya seçilmedi hatası (bunu yoksay)
-                    $logContent .= "Upload Error Code: " . $_FILES['resim_yolu']['error'] . "\n";
-                    file_put_contents($debugLog, $logContent, FILE_APPEND);
-                    // Diğer hataları raporla (Örn: boyut sınırı)
                     throw new Exception("Dosya yükleme hatası. Hata Kodu: " . $_FILES['resim_yolu']['error']);
                 }
-
-                file_put_contents($debugLog, $logContent, FILE_APPEND);
             }
 
             // İşten Ayrılış Belgesi Yükleme İşlemi

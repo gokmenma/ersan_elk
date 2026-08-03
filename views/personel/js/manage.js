@@ -122,8 +122,44 @@ $(document).ready(function () {
     },
   });
 
+  function optimizePersonnelImage(file) {
+    return new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const image = new Image();
+        image.onload = () => {
+          const maxDimension = 800;
+          const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+          const width = Math.max(1, Math.round(image.width * scale));
+          const height = Math.max(1, Math.round(image.height * scale));
+          const canvas = document.createElement("canvas");
+          canvas.width = width;
+          canvas.height = height;
+          const context = canvas.getContext("2d");
+          context.fillStyle = "#fff";
+          context.fillRect(0, 0, width, height);
+          context.drawImage(image, 0, 0, width, height);
+          canvas.toBlob((blob) => {
+            if (!blob) {
+              reject(new Error("Resim sıkıştırılamadı."));
+              return;
+            }
+            resolve(new File([blob], "personel.jpg", {
+              type: "image/jpeg",
+              lastModified: Date.now(),
+            }));
+          }, "image/jpeg", 0.82);
+        };
+        image.onerror = () => reject(new Error("Bu resim formatı okunamadı."));
+        image.src = event.target.result;
+      };
+      reader.onerror = () => reject(new Error("Resim okunamadı."));
+      reader.readAsDataURL(file);
+    });
+  }
+
   // Kaydet Butonu Tıklama Olayı
-  $("#saveButton").click(function () {
+  $("#saveButton").click(async function () {
     let form = $("#personelForm");
 
     // Validasyon kontrolü
@@ -144,7 +180,13 @@ $(document).ready(function () {
     // Profil resmi inputu formun dışında olduğu için manuel ekliyoruz
     let fileInput = $("#avatarInput")[0];
     if (fileInput.files && fileInput.files[0]) {
-      formData.append("resim_yolu", fileInput.files[0]);
+      try {
+        const optimizedImage = await optimizePersonnelImage(fileInput.files[0]);
+        formData.append("resim_yolu", optimizedImage);
+      } catch (error) {
+        Swal.fire("Resim Hatası", error.message || "Resim hazırlanamadı.", "error");
+        return;
+      }
     }
 
     formData.append("action", "personel-kaydet");

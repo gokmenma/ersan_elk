@@ -30,6 +30,19 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
         </div>
     </header>
 
+    <!-- Çevrimdışı kuyruk durumu -->
+    <section id="kacak-kuyruk-serit" class="px-4 pt-4" style="display:none">
+        <div
+            class="bg-amber-50 dark:bg-slate-800 border border-amber-200 dark:border-slate-800 rounded-xl p-3 flex items-center justify-between gap-3">
+            <div class="flex-1">
+                <p class="text-xs font-bold text-amber-700 dark:text-amber-400" id="kacak-kuyruk-baslik"></p>
+                <p class="text-xs text-slate-500 mt-1" id="kacak-kuyruk-alt"></p>
+            </div>
+            <button type="button" onclick="kacakKuyrugunuGonder()" id="kacak-kuyruk-btn"
+                class="shrink-0 px-3 py-2 rounded-xl bg-amber-500 text-white text-xs font-bold">Şimdi Gönder</button>
+        </div>
+    </section>
+
     <!-- Dönem -->
     <section class="px-4 pt-4">
         <div class="flex items-center gap-2">
@@ -242,6 +255,12 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
         let kacakKayitlar = [];
         let aktifFiltre = 'all';
         let sahaDosyalari = [];
+        let bekleyenKayitlar = [];
+
+        const REF_ANAHTAR = 'kacak_referans';
+        const LISTE_ANAHTAR = 'kacak_liste';
+
+        const cevrimici = () => navigator.onLine !== false;
 
         function esc(v) {
             if (v === null || v === undefined) return '';
@@ -286,16 +305,132 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
             </div>`;
         }
 
+        function kuyrukKartHtml(k) {
+            const o = k.ozet || {};
+            const hataMi = k.durum === 'hata';
+            const rozet = hataMi
+                ? '<span class="text-xs font-bold text-red-600">Gönderilemedi</span>'
+                : '<span class="text-xs font-bold text-slate-500">Gönderilmeyi bekliyor</span>';
+
+            const hataSatiri = hataMi
+                ? `<p class="text-xs text-red-600 mt-2">${esc(k.hata || 'Sunucu kaydı kabul etmedi.')}</p>`
+                : '';
+
+            const tekrarBtn = hataMi
+                ? `<button type="button" onclick="kacakKuyrukTekrar('${esc(k.uuid)}')"
+                        class="flex-1 py-2 rounded-xl bg-amber-500 text-white text-xs font-bold">Tekrar Dene</button>`
+                : '';
+
+            const fotoSatiri = (o.foto_sayisi || 0) > 0
+                ? `<span class="text-xs text-slate-400">· ${o.foto_sayisi} belge</span>` : '';
+
+            return `
+            <div class="bg-white dark:bg-card-dark p-4 rounded-xl border border-amber-200 dark:border-slate-800">
+                <div class="flex items-center justify-between gap-3">
+                    <span class="text-sm font-black text-slate-500">${esc(o.tur || 'Kaçak')}</span>
+                    ${rozet}
+                </div>
+                <p class="text-sm font-bold text-slate-800 dark:text-white mt-2">${esc(o.abone_adi || 'Abone belirtilmemiş')}</p>
+                <p class="text-xs text-slate-400 mt-1">
+                    ${esc(o.tarih_formatted || '-')} · ${esc(o.ilce || 'İlçe yok')} · No: ${esc(o.tutanak_no || '-')} ${fotoSatiri}
+                </p>
+                ${hataSatiri}
+                <div class="flex items-center gap-2 mt-3">
+                    ${tekrarBtn}
+                    <button type="button" onclick="kacakKuyrukSil('${esc(k.uuid)}')"
+                        class="flex-1 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-bold">Sil</button>
+                </div>
+            </div>`;
+        }
+
         function listeyiCiz() {
             const liste = aktifFiltre === 'all'
                 ? kacakKayitlar
                 : kacakKayitlar.filter(k => k.onay_durumu === aktifFiltre);
 
+            // Henüz sunucuya ulaşmamış kayıtlar en üstte, sadece ilgili sekmelerde.
+            const kuyruk = (aktifFiltre === 'all' || aktifFiltre === 'beklemede') ? bekleyenKayitlar : [];
+
             const el = document.getElementById('kacak-list');
-            el.innerHTML = liste.length === 0
+            el.innerHTML = (liste.length === 0 && kuyruk.length === 0)
                 ? '<div class="text-center py-10 text-sm text-slate-400">Kayıt bulunamadı</div>'
-                : liste.map(kartHtml).join('');
+                : kuyruk.map(kuyrukKartHtml).join('') + liste.map(kartHtml).join('');
         }
+
+        async function kuyrugaBak() {
+            if (!window.OfflineQueue) return;
+
+            const tumu = await OfflineQueue.listele();
+            bekleyenKayitlar = tumu.filter(k => k.action === 'saveKacakBildirim');
+
+            const bekleyen = bekleyenKayitlar.filter(k => k.durum !== 'hata').length;
+            const hatali = bekleyenKayitlar.filter(k => k.durum === 'hata').length;
+
+            const serit = document.getElementById('kacak-kuyruk-serit');
+            const btn = document.getElementById('kacak-kuyruk-btn');
+
+            if (bekleyen === 0 && hatali === 0) {
+                serit.style.display = 'none';
+            } else {
+                serit.style.display = '';
+                const parcalar = [];
+                if (bekleyen > 0) parcalar.push(`${bekleyen} kayıt gönderilmeyi bekliyor`);
+                if (hatali > 0) parcalar.push(`${hatali} kayıt gönderilemedi`);
+
+                document.getElementById('kacak-kuyruk-baslik').textContent = parcalar.join(' · ');
+                document.getElementById('kacak-kuyruk-alt').textContent = cevrimici()
+                    ? 'Bağlantı var, gönderim sürüyor.'
+                    : 'İnternet geldiğinde otomatik gönderilecek.';
+
+                btn.disabled = !cevrimici() || bekleyen === 0;
+                btn.style.opacity = btn.disabled ? '0.5' : '';
+            }
+
+            listeyiCiz();
+        }
+
+        window.kacakKuyrugunuGonder = async function () {
+            if (!cevrimici()) {
+                return Alert.warning('Bağlantı Yok', 'İnternet bağlantısı sağlandığında kayıtlar otomatik gönderilir.');
+            }
+
+            Loading.show();
+            try {
+                const sonuc = await OfflineQueue.flush({ elle: true });
+                await kuyrugaBak();
+                if (sonuc.gonderildi > 0) {
+                    await loadKacakKayitlar();
+                    Toast.show(`${sonuc.gonderildi} kayıt gönderildi`, 'success');
+                } else {
+                    Toast.show('Gönderilebilen kayıt olmadı', 'warning');
+                }
+            } finally {
+                Loading.hide();
+            }
+        };
+
+        window.kacakKuyrukTekrar = async function (uuid) {
+            Loading.show();
+            try {
+                await OfflineQueue.tekrarDene(uuid);
+                await kuyrugaBak();
+                await loadKacakKayitlar();
+            } finally {
+                Loading.hide();
+            }
+        };
+
+        window.kacakKuyrukSil = async function (uuid) {
+            const onay = await Alert.confirm(
+                'Kaydı Sil',
+                'Bu tutanak henüz sunucuya gönderilmedi. Silerseniz fotoğraflarıyla birlikte kaybolur. Silmek istiyor musunuz?',
+                'Sil', 'Vazgeç'
+            );
+            if (!onay) return;
+
+            await OfflineQueue.sil(uuid);
+            await kuyrugaBak();
+        };
 
         window.filterKacak = function (durum, btn) {
             aktifFiltre = durum;
@@ -306,8 +441,35 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
             listeyiCiz();
         };
 
+        function ozetYaz(ist, onEk) {
+            document.getElementById('kacak-ozet-satiri').textContent = (onEk ? onEk + ' · ' : '') +
+                `${ist.toplam || 0} tutanak · ${ist.bekleyen || 0} bekleyen · ${ist.onayli || 0} onaylı`;
+        }
+
+        async function onbellektenCiz() {
+            if (!window.OfflineQueue) return false;
+
+            const saklanan = await OfflineQueue.referansOku(LISTE_ANAHTAR);
+            if (!saklanan) return false;
+
+            kacakKayitlar = saklanan.kayitlar || [];
+            ozetYaz(saklanan.istatistik || {}, 'Çevrimdışı');
+            listeyiCiz();
+            return true;
+        }
+
         window.loadKacakKayitlar = async function () {
             const el = document.getElementById('kacak-list');
+
+            if (!cevrimici()) {
+                if (!(await onbellektenCiz())) {
+                    kacakKayitlar = [];
+                    document.getElementById('kacak-ozet-satiri').textContent = 'Çevrimdışı · kayıtlar görüntülenemiyor';
+                    listeyiCiz();
+                }
+                return;
+            }
+
             el.innerHTML = '<div class="text-center py-10 text-sm text-slate-400">Yükleniyor...</div>';
 
             const res = await API.request('getKacakBildirimlerim', {
@@ -316,17 +478,57 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
             }, false);
 
             if (!res || !res.success) {
-                el.innerHTML = '<div class="text-center py-10 text-sm text-slate-400">Kayıtlar yüklenemedi</div>';
+                if (!(await onbellektenCiz())) {
+                    el.innerHTML = '<div class="text-center py-10 text-sm text-slate-400">Kayıtlar yüklenemedi</div>';
+                }
                 return;
             }
 
             kacakKayitlar = res.data.kayitlar || [];
             const ist = res.data.istatistik || {};
-            document.getElementById('kacak-ozet-satiri').textContent =
-                `${ist.toplam || 0} tutanak · ${ist.bekleyen || 0} bekleyen · ${ist.onayli || 0} onaylı`;
-
+            ozetYaz(ist);
             listeyiCiz();
+
+            // Bağlantı kesildiğinde liste boş kalmasın diye son görüntülenen hali saklanır.
+            if (window.OfflineQueue) {
+                OfflineQueue.referansKaydet(LISTE_ANAHTAR, { kayitlar: kacakKayitlar, istatistik: ist });
+            }
         };
+
+        /**
+         * Ekip arkadaşı / ilçe / tür listeleri sunucuda üretiliyor; sayfa önbellekten
+         * açıldığında güncel kalması için ayrıca IndexedDB'de tutulur.
+         */
+        async function referansTazele() {
+            if (!window.OfflineQueue || !cevrimici()) return;
+
+            const res = await API.request('getKacakReferans', {}, false);
+            if (res && res.success && res.data) {
+                OfflineQueue.referansKaydet(REF_ANAHTAR, res.data);
+            }
+        }
+
+        async function referansUygula() {
+            if (!window.OfflineQueue) return;
+
+            const ref = await OfflineQueue.referansOku(REF_ANAHTAR);
+            if (!ref) return;
+
+            const doldur = (el, degerler, etiketle) => {
+                if (!el || !degerler || !degerler.length) return;
+                const secili = el.value;
+                const bosluk = el.id === 'kacak-tur' ? '' : '<option value="">Seçiniz...</option>';
+                el.innerHTML = bosluk + degerler.map(etiketle).join('');
+                if (secili) el.value = secili;
+            };
+
+            doldur(document.getElementById('kacak-ekip-arkadasi'), ref.ekip_adaylari,
+                a => `<option value="${esc(a.id)}">${esc(a.adi_soyadi)}</option>`);
+            doldur(document.getElementById('kacak-ilce'), ref.ilceler,
+                i => `<option value="${esc(i)}">${esc(i)}</option>`);
+            doldur(document.getElementById('kacak-tur'), ref.turler,
+                t => `<option value="${esc(t)}">${esc(t)}</option>`);
+        }
 
         window.kacakDetayAc = function (id) {
             const k = kacakKayitlar.find(x => parseInt(x.id, 10) === parseInt(id, 10));
@@ -378,7 +580,7 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
             document.getElementById('kacak-tutanak-input').value = '';
             document.getElementById('kacak-tutanak-label').textContent = 'Fotoğraf Seç';
             document.getElementById('kacak-tutanak-preview').style.display = 'none';
-            document.getElementById('kacak-analiz-btn').disabled = true;
+            aiButonGuncelle();
             document.getElementById('kacak-saha-preview').innerHTML = '';
             sahaDosyalari = [];
             Modal.open('kacak-bildir-modal');
@@ -387,8 +589,7 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
         // ----- Tutanak seçimi -----
         document.getElementById('kacak-tutanak-input').addEventListener('change', function (e) {
             const file = e.target.files[0];
-            const analizBtn = document.getElementById('kacak-analiz-btn');
-            analizBtn.disabled = !file;
+            aiButonGuncelle();
             if (!file) {
                 document.getElementById('kacak-tutanak-label').textContent = 'Fotoğraf Seç';
                 document.getElementById('kacak-tutanak-preview').style.display = 'none';
@@ -452,8 +653,11 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
                 return Alert.warning('Dosya Gerekli', 'Lütfen önce tutanak fotoğrafını seçin.');
             }
 
+            if (!cevrimici()) {
+                return Alert.warning('Bağlantı Yok', 'Tutanak okuma sunucuda yapılır, çevrimdışıyken alanları elle doldurun.');
+            }
+
             const btn = document.getElementById('kacak-analiz-btn');
-            const btnOriginalHtml = btn.innerHTML;
             btn.disabled = true;
             btn.setAttribute('aria-busy', 'true');
             btn.style.opacity = '0.75';
@@ -506,15 +710,34 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
                 Alert.error('Bağlantı Hatası', 'Sunucuya ulaşılamadı.');
             } finally {
                 Loading.hide();
-                btn.disabled = !input.files.length;
                 btn.removeAttribute('aria-busy');
-                btn.style.opacity = '';
                 btn.style.cursor = '';
-                btn.innerHTML = btnOriginalHtml;
+                aiButonGuncelle();
             }
         };
 
+        function tarihAraligiGenislet(kayitTarihi) {
+            const basInput = document.getElementById('kacak-bas');
+            const bitInput = document.getElementById('kacak-bit');
+            if (kayitTarihi && (!basInput.value || kayitTarihi < basInput.value)) {
+                basInput.value = kayitTarihi;
+            }
+            if (kayitTarihi && (!bitInput.value || kayitTarihi > bitInput.value)) {
+                bitInput.value = kayitTarihi;
+            }
+
+            aktifFiltre = 'all';
+            document.querySelectorAll('.kacak-tab').forEach((tab, index) => {
+                tab.className = index === 0
+                    ? 'kacak-tab flex-1 py-2 rounded-xl text-xs font-bold text-primary bg-white dark:bg-card-dark'
+                    : 'kacak-tab flex-1 py-2 rounded-xl text-xs font-bold text-slate-500';
+            });
+        }
+
         // ----- Form gönderimi -----
+        // Kayıt her durumda önce cihazdaki kuyruğa yazılır, sonra gönderilmeye çalışılır.
+        // Böylece bağlantı kopsa, sayfa kapansa ya da telefon kilitlense bile
+        // tutanak kaybolmaz; client_uuid sayesinde sunucuya iki kez düşmez.
         document.getElementById('kacak-bildir-form').addEventListener('submit', async function (e) {
             e.preventDefault();
 
@@ -522,58 +745,85 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
             if (!tutanakInput.files.length) {
                 return Alert.warning('Tutanak Zorunlu', 'Lütfen tutanağın fotoğrafını ekleyin.');
             }
+            if (!window.OfflineQueue) {
+                return Alert.error('Hata', 'Uygulama bileşenleri yüklenemedi, sayfayı yenileyin.');
+            }
 
             const btn = document.getElementById('kacak-submit-btn');
             const btnText = document.getElementById('kacak-submit-text');
             btn.disabled = true;
-            btnText.textContent = 'GÖNDERİLİYOR...';
-
-            const fd = new FormData(this);
-            fd.append('action', 'saveKacakBildirim');
-            fd.append('tutanak_foto', tutanakInput.files[0]);
-            sahaDosyalari.forEach(f => fd.append('saha_fotolari[]', f));
+            btnText.textContent = 'HAZIRLANIYOR...';
 
             try {
-                const res = await (await fetch('api.php?action=saveKacakBildirim', { method: 'POST', body: fd })).json();
-                if (res.success) {
-                    Modal.close('kacak-bildir-modal');
+                const alanlar = {};
+                new FormData(this).forEach((deger, ad) => { alanlar[ad] = deger; });
 
-                    // Yeni kaydın tarihi mevcut sorgu aralığının dışındaysa liste
-                    // filtrelerini genişlet; ardından yenilemenin bitmesini bekle.
-                    const kayitTarihi = this.querySelector('[name=tarih]').value;
-                    const basInput = document.getElementById('kacak-bas');
-                    const bitInput = document.getElementById('kacak-bit');
-                    if (kayitTarihi && (!basInput.value || kayitTarihi < basInput.value)) {
-                        basInput.value = kayitTarihi;
-                    }
-                    if (kayitTarihi && (!bitInput.value || kayitTarihi > bitInput.value)) {
-                        bitInput.value = kayitTarihi;
-                    }
+                // Fotoğraflar zayıf bağlantıda gönderilebilsin ve cihazda az yer kaplasın
+                // diye küçültülür; tutanak okunabilirliği için daha yüksek çözünürlük kalır.
+                const tutanak = await OfflineQueue.fotografKucult(tutanakInput.files[0], 2200, 0.82);
+                const dosyalar = [{ alan: 'tutanak_foto', ad: tutanak.ad, tip: tutanak.tip, blob: tutanak.blob }];
 
-                    aktifFiltre = 'all';
-                    document.querySelectorAll('.kacak-tab').forEach((tab, index) => {
-                        tab.className = index === 0
-                            ? 'kacak-tab flex-1 py-2 rounded-xl text-xs font-bold text-primary bg-white dark:bg-card-dark'
-                            : 'kacak-tab flex-1 py-2 rounded-xl text-xs font-bold text-slate-500';
-                    });
-
-                    await loadKacakKayitlar();
-                    Alert.success('Gönderildi', res.message);
-                } else {
-                    Alert.error('Hata', res.message || 'Kayıt gönderilemedi.');
+                for (const dosya of sahaDosyalari) {
+                    const kucuk = await OfflineQueue.fotografKucult(dosya, 1600, 0.7);
+                    dosyalar.push({ alan: 'saha_fotolari[]', ad: kucuk.ad, tip: kucuk.tip, blob: kucuk.blob });
                 }
+
+                const ozet = {
+                    tur: alanlar.tur,
+                    ilce: alanlar.ilce,
+                    tutanak_no: alanlar.tutanak_no,
+                    abone_adi: alanlar.abone_adi,
+                    tarih_formatted: (alanlar.tarih || '').split('-').reverse().join('.'),
+                    foto_sayisi: dosyalar.length,
+                };
+
+                btnText.textContent = 'GÖNDERİLİYOR...';
+                const kayit = await OfflineQueue.ekle('saveKacakBildirim', alanlar, dosyalar, ozet);
+
+                Modal.close('kacak-bildir-modal');
+                tarihAraligiGenislet(alanlar.tarih);
+                await kuyrugaBak();
+
+                if (!cevrimici()) {
+                    return Alert.success('Cihaza Kaydedildi',
+                        'Bağlantı olmadığı için tutanak telefonunuza kaydedildi. İnternet geldiğinde otomatik gönderilecek.');
+                }
+
+                await OfflineQueue.flush();
+                const kalan = await OfflineQueue.oku(kayit.uuid);
+                await kuyrugaBak();
+
+                if (!kalan) {
+                    await loadKacakKayitlar();
+                    return Alert.success('Gönderildi', 'Bildiriminiz iletildi. Yönetici onayı bekleniyor.');
+                }
+                if (kalan.durum === 'hata') {
+                    return Alert.error('Gönderilemedi', kalan.hata || 'Sunucu kaydı kabul etmedi.');
+                }
+                Alert.warning('Bağlantı Sorunu',
+                    'Tutanak telefonunuza kaydedildi ancak gönderilemedi. Bağlantı düzeldiğinde otomatik gönderilecek.');
             } catch (err) {
                 console.error('Kaçak bildirim hatası:', err);
-                Alert.error('Bağlantı Hatası', 'Sunucuya ulaşılamadı.');
+                Alert.error('Hata', 'Kayıt cihaza yazılamadı. Telefon depolama alanınızı kontrol edin.');
             } finally {
                 btn.disabled = false;
                 btnText.textContent = 'BİLDİRİMİ GÖNDER';
             }
         });
 
+        // Yapay zeka okuması sunucuda çalışır, çevrimdışıyken kullanılamaz.
+        function aiButonGuncelle() {
+            const btn = document.getElementById('kacak-analiz-btn');
+            const dosyaVar = document.getElementById('kacak-tutanak-input').files.length > 0;
+
+            btn.disabled = !dosyaVar || !cevrimici();
+            btn.style.opacity = btn.disabled ? '0.5' : '';
+            btn.textContent = cevrimici() ? 'Yapay Zeka ile Oku' : 'Çevrimdışı — Elle Doldurun';
+        }
+
         // pwa-app.js sayfa içeriğinden sonra yüklendiği için API/Alert/Modal
         // ancak DOMContentLoaded anında hazır olur.
-        document.addEventListener('DOMContentLoaded', function () {
+        document.addEventListener('DOMContentLoaded', async function () {
             const bugun = new Date();
             const bas = new Date();
             bas.setDate(bugun.getDate() - 29);
@@ -582,7 +832,31 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
             document.getElementById('kacak-bas').value = iso(bas);
             document.getElementById('kacak-bit').value = iso(bugun);
 
-            loadKacakKayitlar();
+            await referansUygula();
+            aiButonGuncelle();
+            await kuyrugaBak();
+            await loadKacakKayitlar();
+            referansTazele();
+
+            // Kuyruk hem bu sayfadan hem de arka plan senkronizasyonundan değişebilir.
+            window.addEventListener('kuyruk-degisti', async (e) => {
+                await kuyrugaBak();
+                if (e.detail && e.detail.gonderildi > 0) {
+                    await loadKacakKayitlar();
+                }
+            });
+
+            window.addEventListener('online', async () => {
+                aiButonGuncelle();
+                await kuyrugaBak();
+                await loadKacakKayitlar();
+                referansTazele();
+            });
+
+            window.addEventListener('offline', () => {
+                aiButonGuncelle();
+                kuyrugaBak();
+            });
         });
     })();
 </script>

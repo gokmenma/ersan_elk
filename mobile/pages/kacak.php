@@ -10,7 +10,11 @@ if (!Gate::allows('kacak_islemleri') && !Gate::allows('kacak/list') && !Gate::is
 }
 
 $kacakModel = new KacakKontrolModel();
-$kayitlar = $kacakModel->getRecords();
+$tarihDogrula = static function ($deger, string $varsayilan): string { $deger=(string)$deger; $tarih=DateTime::createFromFormat('Y-m-d',$deger); return $tarih&&$tarih->format('Y-m-d')===$deger?$deger:$varsayilan; };
+$bitisTarihi=$tarihDogrula($_GET['bitis']??'',date('Y-m-d'));
+$baslangicTarihi=$tarihDogrula($_GET['baslangic']??'',date('Y-m-d',strtotime('-1 month')));
+if($baslangicTarihi>$bitisTarihi){[$baslangicTarihi,$bitisTarihi]=[$bitisTarihi,$baslangicTarihi];}
+$kayitlar = $kacakModel->getRecords(['tarih_baslangic'=>$baslangicTarihi,'tarih_bitis'=>$bitisTarihi]);
 $ozet = ['toplam' => count($kayitlar), 'beklemede' => 0, 'onaylandi' => 0, 'iptal' => 0];
 $detaylar = [];
 $sifreliKacakIdleri = [];
@@ -48,6 +52,7 @@ function mkOnay(string $durum): array {
         </div>
     </header>
     <div class="px-4 -mt-3 space-y-3">
+        <form method="get" class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-3"><input type="hidden" name="p" value="kacak"><div class="grid grid-cols-2 gap-2"><label class="text-[10px] font-bold text-slate-500">BAŞLANGIÇ<input type="date" name="baslangic" value="<?= mkH($baslangicTarihi) ?>" class="mt-1 w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-sm"></label><label class="text-[10px] font-bold text-slate-500">BİTİŞ<input type="date" name="bitis" value="<?= mkH($bitisTarihi) ?>" class="mt-1 w-full rounded-xl border-slate-200 dark:border-slate-700 dark:bg-slate-800 text-sm"></label></div><button class="mt-2 w-full rounded-xl bg-red-600 py-2.5 text-sm font-bold text-white">Dönemi Uygula</button></form>
         <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-3 space-y-2">
             <div class="relative"><span class="material-symbols-outlined absolute left-3 top-2.5 text-slate-400 text-xl">search</span><input id="kacakSearch" type="search" placeholder="Tutanak, sayaç, abone veya ekip ara..." class="w-full rounded-xl border-0 bg-slate-100 dark:bg-slate-800 py-2.5 pl-10 pr-3 text-sm dark:text-white"></div>
             <div class="flex gap-2 overflow-x-auto no-scrollbar"><?php foreach ([''=>'Tümü','beklemede'=>'Bekleyen','onaylandi'=>'Onaylı','reddedildi'=>'Reddedilen','iptal'=>'İptal'] as $key=>$label): ?><button data-status="<?= mkH($key) ?>" class="kacak-filter shrink-0 px-3 py-1.5 rounded-full text-xs font-bold <?= $key===''?'bg-red-600 text-white':'bg-slate-100 text-slate-500 dark:bg-slate-800' ?>"><?= mkH($label) ?></button><?php endforeach; ?></div>

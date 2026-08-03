@@ -545,7 +545,7 @@ $summary = $GelirGider->summary(['yil' => $selectedYil, 'ay' => $selectedAy, 'ti
                             <div class="flex-grow-1">
                                 <h6 class="mb-1 fw-bold text-success font-size-14">Şablon Dosyasını İndirin</h6>
                                 <p class="mb-2 small text-muted">İşlemleri doğru yüklemek için şablon dosyasını kullanın.</p>
-                                <a href="files/gelir_gider_sablon.xlsx" class="btn btn-sm btn-success rounded-3 px-3">
+                                <a href="views/gelir-gider/excel-sablon.php" class="btn btn-sm btn-success rounded-3 px-3">
                                     <i data-feather="file-text" class="me-1" style="width:14px"></i> Şablonu İndir
                                 </a>
                             </div>

@@ -445,15 +445,50 @@ use App\Helper\Date;
             window.location.href = 'login.php';
         }
     }
+    function optimizeProfileImage(file) {
+        return new Promise((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = event => {
+                const image = new Image();
+                image.onload = () => {
+                    const maxDimension = 800;
+                    const scale = Math.min(1, maxDimension / Math.max(image.width, image.height));
+                    const width = Math.max(1, Math.round(image.width * scale));
+                    const height = Math.max(1, Math.round(image.height * scale));
+                    const canvas = document.createElement('canvas');
+                    canvas.width = width;
+                    canvas.height = height;
+                    const context = canvas.getContext('2d');
+                    context.fillStyle = '#fff';
+                    context.fillRect(0, 0, width, height);
+                    context.drawImage(image, 0, 0, width, height);
+                    canvas.toBlob(blob => {
+                        if (!blob) {
+                            reject(new Error('Resim sıkıştırılamadı.'));
+                            return;
+                        }
+                        resolve(new File([blob], 'profil.jpg', {
+                            type: 'image/jpeg',
+                            lastModified: Date.now()
+                        }));
+                    }, 'image/jpeg', 0.82);
+                };
+                image.onerror = () => reject(new Error('Bu resim formatı okunamadı.'));
+                image.src = event.target.result;
+            };
+            reader.onerror = () => reject(new Error('Resim okunamadı.'));
+            reader.readAsDataURL(file);
+        });
+    }
+
     async function uploadProfileImage(input) {
         if (input.files && input.files[0]) {
-            const file = input.files[0];
-            const formData = new FormData();
-            formData.append('action', 'updateProfileImage');
-            formData.append('image', file);
-
             try {
                 Loading.show();
+                const file = await optimizeProfileImage(input.files[0]);
+                const formData = new FormData();
+                formData.append('action', 'updateProfileImage');
+                formData.append('image', file);
                 // API.request yerine fetch kullanıyoruz çünkü FormData gönderiyoruz
                 const response = await fetch('api.php', {
                     method: 'POST',

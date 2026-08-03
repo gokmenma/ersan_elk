@@ -81,7 +81,7 @@ foreach ($kasalar as $kasa) {
                             Yükle
                         </button>
                     </div>
-                    <span class="text-muted mt-1">Örnek Dosya indirmek için <a href="/files/gelir_gider_yukle.xlsx">
+                    <span class="text-muted mt-1">Örnek Dosya indirmek için <a href="views/gelir-gider/excel-sablon.php">
                             tıklayınız</a></span>
 
                 </div>

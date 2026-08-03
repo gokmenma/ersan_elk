@@ -280,7 +280,7 @@ class IhbarModel extends Model
     /**
      * Masaüstü Dashboard - tüm ihbarları listeler (atanan ekip isimleri dahil)
      */
-    public function getAllForDashboard(): array
+    public function getAllForDashboard(?string $baslangic = null, ?string $bitis = null): array
     {
         $sql = "SELECT i.*,
                 bp.adi_soyadi AS bildiren_personel_adi,
@@ -288,15 +288,28 @@ class IhbarModel extends Model
                 (SELECT GROUP_CONCAT(p.adi_soyadi SEPARATOR ', ')
                     FROM ihbar_atamalar a
                     JOIN personel p ON p.id = a.personel_id
-                    WHERE a.ihbar_id = i.id) AS atanan_ekip_adi
+                    WHERE a.ihbar_id = i.id) AS atanan_ekip_adi,
+                (SELECT COUNT(*) FROM ihbar_fotograflari f WHERE f.ihbar_id = i.id) AS foto_sayisi
             FROM ihbarlar i
             LEFT JOIN personel bp ON bp.id = i.bildiren_personel_id
             LEFT JOIN users ou ON ou.id = i.olusturan_user_id
-            WHERE i.silinme_tarihi IS NULL AND i.firma_id = ?
+            WHERE i.silinme_tarihi IS NULL AND i.firma_id = ?";
+
+        $params = [$this->firmaId()];
+        if ($baslangic !== null && $baslangic !== '') {
+            $sql .= " AND DATE(i.created_at) >= ?";
+            $params[] = $baslangic;
+        }
+        if ($bitis !== null && $bitis !== '') {
+            $sql .= " AND DATE(i.created_at) <= ?";
+            $params[] = $bitis;
+        }
+
+        $sql .= "
             ORDER BY i.created_at DESC";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$this->firmaId()]);
+        $stmt->execute($params);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 

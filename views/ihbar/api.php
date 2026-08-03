@@ -8,6 +8,7 @@ require_once dirname(__DIR__, 2) . '/Autoloader.php';
 use App\Model\IhbarModel;
 use App\Model\UserModel;
 use App\Model\BildirimModel;
+use App\Helper\Security;
 use App\Service\Gate;
 use App\Service\PushNotificationService;
 
@@ -115,7 +116,9 @@ try {
         case 'foto':
             Gate::authorizeOrDie('ihbar/list');
 
-            $fotoId = (int) ($_GET['foto_id'] ?? 0);
+            $fotoId = isset($_GET['token'])
+                ? (int) Security::decrypt((string) $_GET['token'])
+                : (int) ($_GET['foto_id'] ?? 0);
             $stmt = $IhbarModel->getDb()->prepare(
                 "SELECT f.dosya_yolu
                  FROM ihbar_fotograflari f
