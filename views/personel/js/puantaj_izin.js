@@ -1441,7 +1441,7 @@ $(document).ready(function () {
 
     Swal.fire({
       title: "SGK Raporları Getiriliyor...",
-      html: "Onaylanmış raporlar SGK'dan sorgulanıyor...",
+      html: "Onaylı ve arşivlenmiş raporlar SGK'dan sorgulanıyor...",
       allowOutsideClick: false,
       didOpen: () => {
         Swal.showLoading();
@@ -1463,14 +1463,14 @@ $(document).ready(function () {
             Swal.fire({
               icon: "info",
               title: "Rapor Bulunamadı",
-              text: "Seçilen dönemde onaylanmış SGK raporu bulunamadı.",
+              text: "Seçilen dönemde puantaja işlenecek SGK raporu bulunamadı.",
             });
             return;
           }
 
           showSgkRaporModal(
             res.data,
-            "Onaylanmış SGK Raporları",
+            "Puantaja İşlenecek SGK Raporları",
             res.toplam,
             res.eslesen,
           );
@@ -1548,66 +1548,6 @@ $(document).ready(function () {
     });
   });
 
-  // Arşivlenmiş (3 günden kısa süreli) Raporları Getir
-  $("#btn-sgk-arsivlenmis-raporlar").on("click", function () {
-    const ay = $("#select-ay").val();
-    const yil = $("#select-yil").val();
-
-    Swal.fire({
-      title: "SGK Raporları Getiriliyor...",
-      html: "Arşivlenmiş raporlar SGK'dan sorgulanıyor...",
-      allowOutsideClick: false,
-      didOpen: () => {
-        Swal.showLoading();
-      },
-    });
-
-    $.post(
-      API_URL,
-      {
-        action: "get-sgk-arsivlenmis-raporlar",
-        ay: ay,
-        yil: yil,
-      },
-      function (res) {
-        Swal.close();
-
-        if (res.status === "success") {
-          if (res.data.length === 0) {
-            Swal.fire({
-              icon: "info",
-              title: "Rapor Bulunamadı",
-              text: "Seçilen dönemde arşivlenmiş SGK raporu bulunamadı.",
-            });
-            return;
-          }
-
-          showSgkRaporModal(
-            res.data,
-            "Arşivlenmiş SGK Raporları",
-            res.toplam,
-            res.eslesen,
-          );
-        } else {
-          Swal.fire({
-            icon: "error",
-            title: "Hata",
-            text: res.message || "SGK raporları getirilemedi.",
-          });
-        }
-      },
-    ).fail(function () {
-      Swal.fire({
-        icon: "error",
-        title: "Bağlantı Hatası",
-        text: "SGK sunucusuna bağlanılamadı.",
-      });
-    });
-  });
-
-  /**
-   * SGK Rapor Modal - Raporları göster ve işleme al
-   */
   function showSgkRaporModal(raporlar, title, toplam, eslesen) {
     $("#sgkRaporModalLabel").text(title);
     $("#sgkRaporModal .modal-title").text(title);
@@ -1668,6 +1608,14 @@ $(document).ready(function () {
       const baslangicDisplay = rapor.baslangic_raw || rapor.baslangic || "-";
       const bitisDisplay = rapor.bitis_raw || rapor.bitis || "-";
 
+      // Onaylı ve arşivlenmiş raporlar aynı listede geldiği için kaynağı belirtilir
+      const kaynakEtiketi =
+        rapor.kaynak === "arsiv"
+          ? `<span class="badge bg-secondary bg-opacity-25 text-secondary mt-1"><i class="mdi mdi-archive-outline me-1"></i>Arşiv (kısa süreli)</span>`
+          : rapor.kaynak === "onayli"
+            ? `<span class="badge bg-success bg-opacity-25 text-success mt-1"><i class="mdi mdi-check-circle-outline me-1"></i>Onaylı</span>`
+            : "";
+
       tableHtml += `
         <tr class="${rowClass} ${!isEslesti ? "text-muted" : ""}">
           <td class="text-center px-4">
@@ -1690,6 +1638,7 @@ $(document).ready(function () {
           </td>
           <td>
             <div class="fw-medium">${rapor.ad_soyad}</div>
+            ${kaynakEtiketi}
           </td>
           <td>
             <span class="badge badge-info text-white px-2 py-1">

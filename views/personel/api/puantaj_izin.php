@@ -25,6 +25,71 @@ $Personel = new PersonelModel();
 $Puantaj = new PuantajModel();
 $PersonelIzinleri = new PersonelIzinleriModel();
 
+/**
+ * SGK rapor tarihlerini puantaj için normalize eder.
+ * Puantaj bitişi, personel iş başı günü çalıştığı için işbaşı tarihinin bir gün öncesidir.
+ */
+function sgkRaporTarihleriniNormalize($baslangicRaw, $bitisRaw): array
+{
+    $baslangic = '';
+    $bitis = '';
+    $toplam_gun = 0;
+
+    try {
+        if (!empty($baslangicRaw)) {
+            $bDate = (strpos($baslangicRaw, '.') !== false)
+                ? DateTime::createFromFormat('d.m.Y', $baslangicRaw)
+                : new DateTime($baslangicRaw);
+            if ($bDate) {
+                $baslangic = $bDate->format('Y-m-d');
+                $baslangicRaw = $bDate->format('d.m.Y');
+            }
+        }
+
+        if (!empty($bitisRaw)) {
+            $eDate = (strpos($bitisRaw, '.') !== false)
+                ? DateTime::createFromFormat('d.m.Y', $bitisRaw)
+                : new DateTime($bitisRaw);
+            if ($eDate) {
+                $bitisRaw = $eDate->format('d.m.Y');
+                $eDate->modify('-1 day');
+                $bitis = $eDate->format('Y-m-d');
+            }
+        }
+
+        if ($baslangic !== '' && $bitis !== '') {
+            $d1 = new DateTime($baslangic);
+            $d2 = new DateTime($bitis);
+            $toplam_gun = $d1->diff($d2)->days + 1;
+            if ($d1 > $d2) {
+                $toplam_gun = 0;
+            }
+        }
+    } catch (Exception $e) {
+    }
+
+    return [
+        'baslangic' => $baslangic,
+        'baslangic_raw' => (string) $baslangicRaw,
+        'bitis' => $bitis,
+        'bitis_raw' => (string) $bitisRaw,
+        'toplam_gun' => $toplam_gun,
+    ];
+}
+
+/**
+ * SGK'nın ARSIV bayrağı veya 3 günden kısa süre ölçütüyle raporun arşivlenmiş olup olmadığını belirler.
+ * Arşivlenmiş raporlara çalışmazlık bildirimi yapılmaz, bu yüzden onay bekleyen listesinde yer almazlar.
+ */
+function sgkRaporArsivMi(array $rapor, int $toplamGun): bool
+{
+    if ((string) ($rapor['ARSIV'] ?? '') === '1') {
+        return true;
+    }
+
+    return $toplamGun > 0 && $toplamGun < 3;
+}
+
 try {
     if ($action === 'get-definitions') {
         $ucretli = $Tanimlamalar->db->prepare("SELECT id, tur_adi, kisa_kod, renk, ikon FROM tanimlamalar WHERE grup = 'izin_turu' AND ucretli_mi = 1 AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL");
@@ -734,24 +799,80 @@ try {
                 'toplam_gun' => $toplam_gun,
                 'is_basi' => $rapor['ISBASKONTTAR'] ?? '',
                 'rapor_id' => $rapor['MEDULARAPORID'] ?? '',
+                'kaynak' => 'onayli',
                 'personel_id' => $personelData ? $personelData['id'] : null,
                 'personel_adi' => $personelData ? $personelData['adi_soyadi'] : null,
                 'eslesti' => $personelData !== null
             ];
         }
 
+        // Arşivlenmiş (3 günden kısa) raporlar ayrı bir SGK metodundan gelir ve çalışmazlık
+        // bildirimi gerektirmediği için onaylı listesinde yer almaz. Puantaj açısından ikisi de
+        // "işlenecek rapor" olduğundan aynı listede birleştirilir.
+        $onayliRaporIdleri = [];
+        foreach ($islenecekRaporlar as $mevcut) {
+            if (!empty($mevcut['rapor_id'])) {
+                $onayliRaporIdleri[(string) $mevcut['rapor_id']] = true;
+            }
+        }
+
+        $ayBaslangic = $tarih1->format('Y-m-d');
+        $ayBitis = $tarih2->format('Y-m-d');
+
+        try {
+            foreach ($sgkService->raporlariGetir($tarih2, true) as $rapor) {
+                $medulaRaporId = (string) ($rapor['MEDULARAPORID'] ?? '');
+                if ($medulaRaporId !== '' && isset($onayliRaporIdleri[$medulaRaporId])) {
+                    continue;
+                }
+
+                $normal = sgkRaporTarihleriniNormalize($rapor['POLIKLINIKTAR'] ?? '', $rapor['ISBASKONTTAR'] ?? ($rapor['ABITTAR'] ?? ''));
+
+                if (!sgkRaporArsivMi($rapor, $normal['toplam_gun'])) {
+                    continue;
+                }
+
+                if ($normal['baslangic'] !== '' && $normal['bitis'] !== '') {
+                    if (!($normal['baslangic'] <= $ayBitis && $normal['bitis'] >= $ayBaslangic)) {
+                        continue;
+                    }
+                }
+
+                $tc = $rapor['TCKIMLIKNO'] ?? '';
+                $personelData = $tc ? ($tcToPersonel[hash('sha256', $tc)] ?? null) : null;
+
+                $islenecekRaporlar[] = [
+                    'tc_kimlik' => $tc,
+                    'ad_soyad' => $rapor['SIGORTALIADSOYAD'] ?? ($rapor['AD'] . ' ' . $rapor['SOYAD']),
+                    'vaka_adi' => $rapor['VAKAADI'] ?? 'Bilinmiyor',
+                    'baslangic' => $normal['baslangic'],
+                    'baslangic_raw' => $normal['baslangic_raw'],
+                    'bitis' => $normal['bitis'],
+                    'bitis_raw' => $normal['bitis_raw'],
+                    'toplam_gun' => $normal['toplam_gun'],
+                    'is_basi' => $rapor['ISBASKONTTAR'] ?? '',
+                    'rapor_id' => $medulaRaporId,
+                    'kaynak' => 'arsiv',
+                    'personel_id' => $personelData ? $personelData['id'] : null,
+                    'personel_adi' => $personelData ? $personelData['adi_soyadi'] : null,
+                    'eslesti' => $personelData !== null
+                ];
+            }
+        } catch (Exception $e) {
+            error_log('SGK arşivlenmiş rapor listesi alınamadı: ' . $e->getMessage());
+        }
+
         echo json_encode([
             'status' => 'success',
             'data' => $islenecekRaporlar,
             'toplam' => count($islenecekRaporlar),
-            'eslesen' => count(array_filter($islenecekRaporlar, fn($r) => $r['eslesti']))
+            'eslesen' => count(array_filter($islenecekRaporlar, fn($r) => $r['eslesti'])),
+            'arsiv_sayisi' => count(array_filter($islenecekRaporlar, fn($r) => $r['kaynak'] === 'arsiv'))
         ]);
 
-    } elseif ($action === 'get-sgk-onay-bekleyen-raporlar' || $action === 'get-sgk-arsivlenmis-raporlar') {
-        // SGK Onay Bekleyen / Arşivlenmiş (3 günden kısa) Raporları Getir
+    } elseif ($action === 'get-sgk-onay-bekleyen-raporlar') {
+        // SGK Onay Bekleyen Raporları Getir
         require_once dirname(__DIR__, 3) . '/App/Service/SgkViziteService.php';
-
-        $arsivModu = ($action === 'get-sgk-arsivlenmis-raporlar');
 
         $ay = $_POST['ay'] ?? date('m');
         $yil = $_POST['yil'] ?? date('Y');
@@ -773,30 +894,25 @@ try {
         }
 
         // SGK Servisinden raporları getir
-        // Arşiv modunda arşivlenmiş kayıtlar da gelmeli, bu yüzden servis tarafında filtre uygulanmaz.
         $sgkService = new SgkViziteService($kullaniciAdi, $isyeriKodu, $isyeriSifresi);
-        $raporlar = $sgkService->raporlariGetir($tarih, $arsivModu);
+        $raporlar = $sgkService->raporlariGetir($tarih, false); // arsiv=false -> sadece aktif raporlar
 
         // SGK'nın raporAramaTarihile metodu, onaylanmış olsa bile RaporOkunduKapat ile kapatılmamış
         // tüm raporları döndürür. Bu yüzden onaylanmış raporlar bu listeden ayıklanır.
-        // Tarih aralığı, "Onaylanmış Raporlar" ekranıyla birebir aynı tutulur; böylece SGK'nın
+        // Tarih aralığı, "İşlenecek Raporlar" ekranıyla birebir aynı tutulur; böylece SGK'nın
         // dakikada 1 sorgu sınırına takılmadan aynı önbellek kaydı paylaşılır.
-        // Arşivlenmiş raporlara çalışmazlık bildirimi yapılmadığı için onaylı listesinde yer almazlar;
-        // arşiv modunda bu ek sorgu hiç yapılmaz.
         $onayliRaporIdleri = [];
-        if (!$arsivModu) {
-            try {
-                $onayliTarih1 = new DateTime("$yil-$ay-01");
-                $onayliTarih2 = new DateTime($onayliTarih1->format('Y-m-t'));
+        try {
+            $onayliTarih1 = new DateTime("$yil-$ay-01");
+            $onayliTarih2 = new DateTime($onayliTarih1->format('Y-m-t'));
 
-                foreach ($sgkService->onayliRaporlariGetir($onayliTarih1, $onayliTarih2) as $onayliRapor) {
-                    if (!empty($onayliRapor['MEDULARAPORID'])) {
-                        $onayliRaporIdleri[(string) $onayliRapor['MEDULARAPORID']] = true;
-                    }
+            foreach ($sgkService->onayliRaporlariGetir($onayliTarih1, $onayliTarih2) as $onayliRapor) {
+                if (!empty($onayliRapor['MEDULARAPORID'])) {
+                    $onayliRaporIdleri[(string) $onayliRapor['MEDULARAPORID']] = true;
                 }
-            } catch (Exception $e) {
-                error_log('SGK onaylı rapor listesi alınamadı, onay bekleyen listesi filtrelenemedi: ' . $e->getMessage());
             }
+        } catch (Exception $e) {
+            error_log('SGK onaylı rapor listesi alınamadı, onay bekleyen listesi filtrelenemedi: ' . $e->getMessage());
         }
 
         // Personel listesini getir (TC Kimlik No eşleştirmesi için)
@@ -833,45 +949,12 @@ try {
             $tc = $rapor['TCKIMLIKNO'] ?? '';
             $personelData = $tc ? ($tcToPersonel[hash('sha256', $tc)] ?? null) : null;
 
-            // Tarihleri yakala
-            $baslangicRaw = $rapor['POLIKLINIKTAR'] ?? '';
-            $bitisRaw = $rapor['ISBASKONTTAR'] ?? $rapor['ABITTAR'] ?? '';
-
-            $baslangic = '';
-            $bitis = '';
-            $toplam_gun = 0;
-
-            try {
-                if (!empty($baslangicRaw)) {
-                    $bDate = (strpos($baslangicRaw, '.') !== false)
-                        ? DateTime::createFromFormat('d.m.Y', $baslangicRaw)
-                        : new DateTime($baslangicRaw);
-                    if ($bDate) {
-                        $baslangic = $bDate->format('Y-m-d');
-                        $baslangicRaw = $bDate->format('d.m.Y');
-                    }
-                }
-
-                if (!empty($bitisRaw)) {
-                    $eDate = (strpos($bitisRaw, '.') !== false)
-                        ? DateTime::createFromFormat('d.m.Y', $bitisRaw)
-                        : new DateTime($bitisRaw);
-                    if ($eDate) {
-                        $bitisRaw = $eDate->format('d.m.Y');
-                        $eDate->modify('-1 day');
-                        $bitis = $eDate->format('Y-m-d');
-                    }
-                }
-
-                if (!empty($baslangic) && !empty($bitis)) {
-                    $d1 = new DateTime($baslangic);
-                    $d2 = new DateTime($bitis);
-                    $toplam_gun = $d1->diff($d2)->days + 1;
-                    if ($d1 > $d2)
-                        $toplam_gun = 0;
-                }
-            } catch (Exception $e) {
-            }
+            $normal = sgkRaporTarihleriniNormalize($rapor['POLIKLINIKTAR'] ?? '', $rapor['ISBASKONTTAR'] ?? ($rapor['ABITTAR'] ?? ''));
+            $baslangic = $normal['baslangic'];
+            $baslangicRaw = $normal['baslangic_raw'];
+            $bitis = $normal['bitis'];
+            $bitisRaw = $normal['bitis_raw'];
+            $toplam_gun = $normal['toplam_gun'];
 
             // Filtreleme: Ay aralığıyla çakışıyor mu?
             if (!empty($baslangic) && !empty($bitis)) {
@@ -880,14 +963,8 @@ try {
                 }
             }
 
-            // Arşiv ayrımı: SGK'nın ARSIV bayrağı veya 3 günden kısa süre.
-            // İki liste birbirinden ayrık olsun diye aynı ölçüt her iki modda da uygulanır.
-            $arsivMi = ((string) ($rapor['ARSIV'] ?? '') === '1');
-            if (!$arsivMi && $toplam_gun > 0 && $toplam_gun < 3) {
-                $arsivMi = true;
-            }
-
-            if ($arsivMi !== $arsivModu) {
+            // Arşivlenmiş raporlar "İşlenecek Raporlar" ekranında listelendiği için burada elenir.
+            if (sgkRaporArsivMi($rapor, $toplam_gun)) {
                 continue;
             }
 
@@ -902,7 +979,7 @@ try {
                 'toplam_gun' => $toplam_gun,
                 'rapor_id' => $rapor['MEDULARAPORID'] ?? '',
                 'rapor_durumu' => $rapor['RAPORDURUMU'] ?? '',
-                'arsiv' => $arsivMi ? '1' : '0',
+                'kaynak' => 'bekleyen',
                 'personel_id' => $personelData ? $personelData['id'] : null,
                 'personel_adi' => $personelData ? $personelData['adi_soyadi'] : null,
                 'eslesti' => $personelData !== null

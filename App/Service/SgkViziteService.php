@@ -588,8 +588,13 @@ XML;
                 . 'SGK mesajı: ' . $sgkMesaji;
         }
 
-        if (stripos($sgkMesaji, 'Şifre hatalı') !== false || stripos($sgkMesaji, 'Tekrar deneyin') !== false) {
-            return 'SGK kullanıcı adı, işyeri kodu veya şifre hatalı. Bilgilerinizi kontrol edip tekrar deneyin. SGK mesajı: ' . $sgkMesaji;
+        if (stripos($sgkMesaji, 'Şifre') !== false || stripos($sgkMesaji, 'tekrar deneyin') !== false) {
+            return 'SGK kullanıcı adı, işyeri kodu veya şifre hatalı. '
+                . 'Bu bilgiler uyg.sgk.gov.tr/vizite adresindeki üç alanlı giriş formunun bilgileridir; '
+                . 'e-Devlet veya e-SGK portalı giriş bilgilerinden farklı olabilir. '
+                . 'İşyeri kodu en fazla 4 hanelidir. '
+                . 'Arka arkaya hatalı deneme hesabı kilitleyebileceği için önce vizite arayüzünden bilgilerinizi doğrulayın. '
+                . 'SGK mesajı: ' . $sgkMesaji;
         }
 
         return 'SGK girişi başarısız: ' . $sgkMesaji;

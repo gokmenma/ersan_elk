@@ -1017,16 +1017,12 @@ use App\Service\Gate;
                                             <ul class="dropdown-menu dropdown-menu-end shadow border-0">
                                                 <li><a class="dropdown-item py-2" href="javascript:void(0);"
                                                         id="btn-sgk-onaylanmis-raporlar">
-                                                        <i class="mdi mdi-check-circle text-success me-2"></i> Onaylanmış
+                                                        <i class="mdi mdi-check-circle text-success me-2"></i> İşlenecek
                                                         Raporlar</a></li>
                                                 <li><a class="dropdown-item py-2" href="javascript:void(0);"
                                                         id="btn-sgk-onay-bekleyen-raporlar">
                                                         <i class="mdi mdi-clock-outline text-warning me-2"></i> Bekleyen
                                                         Raporlar</a></li>
-                                                <li><a class="dropdown-item py-2" href="javascript:void(0);"
-                                                        id="btn-sgk-arsivlenmis-raporlar">
-                                                        <i class="mdi mdi-archive-outline text-secondary me-2"></i>
-                                                        Arşivlenmiş Raporlar</a></li>
                                             </ul>
                                         </div>
 
