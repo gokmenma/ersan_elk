@@ -55,6 +55,16 @@ function mkOnay(string $durum): array {
     };
 }
 ?>
+<script>
+(() => {
+    const pageColor = '#b91c1c';
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeMeta) themeMeta.setAttribute('content', pageColor);
+    document.querySelectorAll('.h-safe-top').forEach(el => {
+        el.style.backgroundColor = pageColor;
+    });
+})();
+</script>
 <section class="min-h-screen bg-slate-50 dark:bg-background-dark pb-24">
     <header class="bg-gradient-to-br from-red-700 to-rose-500 text-white px-4 pt-5 pb-8 rounded-b-[2rem] shadow-lg">
         <div class="flex items-center justify-between"><div><p class="text-white/70 text-[10px] font-bold uppercase tracking-[.2em]">Saha İşlemleri</p><h1 class="text-xl font-bold">Kaçak Kontrol</h1></div><span class="material-symbols-outlined text-3xl">shield</span></div>

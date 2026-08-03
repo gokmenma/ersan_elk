@@ -74,6 +74,17 @@ $personelOzetMax = max([1, ...array_values($personelOzet)]);
 function miH($value): string { return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'); }
 ?>
 
+<script>
+(() => {
+    const pageColor = '#ea580c';
+    const themeMeta = document.querySelector('meta[name="theme-color"]');
+    if (themeMeta) themeMeta.setAttribute('content', pageColor);
+    document.querySelectorAll('.h-safe-top').forEach(el => {
+        el.style.backgroundColor = pageColor;
+    });
+})();
+</script>
+
 <section class="min-h-screen bg-slate-50 dark:bg-background-dark pb-24">
     <header class="bg-gradient-to-br from-orange-600 to-rose-600 text-white px-4 pt-5 pb-8 rounded-b-[2rem] shadow-lg">
         <div class="flex items-center justify-between">

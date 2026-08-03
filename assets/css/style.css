@@ -2891,7 +2891,7 @@ table thead tr:first-child th {
 }
 
 [data-bs-theme="dark"] .card {
-  background-color: #282f36 !important;
+  /* background-color: #282f36 !important; */
   border-color: #32394e !important;
 }
 
@@ -4233,7 +4233,8 @@ body:not(:has(#quick-favorites-bar)) .main-content .page-content {
   margin-left: 0 !important;
   margin-right: 0 !important;
   box-sizing: border-box !important;
-}
+}
+
 
 .main-content .card {
   margin-bottom: 16px !important;
