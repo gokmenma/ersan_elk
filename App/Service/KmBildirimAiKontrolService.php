@@ -62,7 +62,12 @@ class KmBildirimAiKontrolService
                     continue;
                 }
                 if (empty($bildirim->resim_yolu)) {
-                    $sonuclar[] = ['id' => $id, 'durum' => 'manuel', 'neden' => 'Fotoğraf bulunmuyor.'];
+                    $neden = 'Fotoğraf bulunmuyor.';
+                    $this->bildirimModel->saveWithAttr([
+                        'id' => $id,
+                        'ai_onaylanmama_nedeni' => $neden,
+                    ]);
+                    $sonuclar[] = ['id' => $id, 'durum' => 'manuel', 'neden' => $neden];
                     continue;
                 }
 
@@ -71,11 +76,16 @@ class KmBildirimAiKontrolService
                 $karar = $this->evaluate($analiz, $bildirim);
 
                 if (!$karar['uygun']) {
+                    $neden = implode(' ', $karar['nedenler']);
+                    $this->bildirimModel->saveWithAttr([
+                        'id' => $id,
+                        'ai_onaylanmama_nedeni' => $neden,
+                    ]);
                     $sonuclar[] = [
                         'id' => $id,
                         'plaka' => $bildirim->plaka,
                         'durum' => 'manuel',
-                        'neden' => implode(' ', $karar['nedenler']),
+                        'neden' => $neden,
                         'okunan_km' => $analiz['odometer_km'] ?? null,
                     ];
                     continue;
@@ -92,6 +102,14 @@ class KmBildirimAiKontrolService
                 ];
             } catch (\Throwable $e) {
                 error_log("KM AI kontrol hatası (ID {$id}): " . $e->getMessage());
+                try {
+                    $this->bildirimModel->saveWithAttr([
+                        'id' => $id,
+                        'ai_onaylanmama_nedeni' => $e->getMessage(),
+                    ]);
+                } catch (\Throwable $ex) {
+                    // Ignore DB save error if any
+                }
                 $sonuclar[] = ['id' => $id, 'durum' => 'hata', 'neden' => $e->getMessage()];
             }
         }
@@ -224,7 +242,9 @@ class KmBildirimAiKontrolService
         if ($analiz['odometer_km'] === null || (int) ($analiz['km_confidence'] ?? 0) < 90) {
             $nedenler[] = 'KM değeri yeterli güvenle okunamadı.';
         } elseif ((int) $analiz['odometer_km'] !== (int) $bildirim->bitis_km) {
-            $nedenler[] = 'Okunan KM bildirilen KM ile eşleşmiyor.';
+            $okunanKmFmt = number_format((int) $analiz['odometer_km'], 0, ',', '.');
+            $bildirilenKmFmt = number_format((int) $bildirim->bitis_km, 0, ',', '.');
+            $nedenler[] = "Okunan KM ({$okunanKmFmt} KM) bildirilen KM ({$bildirilenKmFmt} KM) ile eşleşmiyor.";
         }
 
         $okunanPlaka = preg_replace('/[^A-Z0-9]/', '', strtoupper((string) ($analiz['plate_text'] ?? '')));
@@ -277,6 +297,7 @@ class KmBildirimAiKontrolService
             'onaylanan_km' => $km,
             'onaylayan_id' => $onaylayanId,
             'ai_onay_mi' => 1,
+            'ai_onaylanmama_nedeni' => null,
             'onay_tarihi' => date('Y-m-d H:i:s'),
         ]);
 

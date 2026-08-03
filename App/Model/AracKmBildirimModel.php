@@ -328,6 +328,7 @@ class AracKmBildirimModel extends Model
                 OR a.marka LIKE :search 
                 OR a.model LIKE :search
                 OR akb.aciklama LIKE :search
+                OR akb.ai_onaylanmama_nedeni LIKE :search
             )";
             $sqlParams['search'] = '%' . $searchVal . '%';
         }

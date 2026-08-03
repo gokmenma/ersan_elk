@@ -3520,7 +3520,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         $nested['onaylanan_km'] = number_format($onaylanan_km_val, 0, ',', '.') . ' KM' . $today_onay_km_text;
                     }
                     
-                    $nested['aciklama'] = htmlspecialchars($report->aciklama ?: '-');
+                    $aciklamaHtml = htmlspecialchars($report->aciklama ?: '-');
+                    if ($status === 'beklemede' && !empty($report->ai_onaylanmama_nedeni)) {
+                        $aciklamaHtml .= '
+                            <div class="mt-1">
+                                <span class="badge bg-soft-warning text-dark border border-warning-subtle text-wrap text-start w-100 p-2" style="font-size: 0.75rem; font-weight: 500; line-height: 1.35; white-space: normal;">
+                                    <i class="bx bx-bot text-warning me-1 fs-6 align-middle"></i>
+                                    <strong class="text-dark">YZ Onaylamadı:</strong> ' . htmlspecialchars($report->ai_onaylanmama_nedeni) . '
+                                </span>
+                            </div>';
+                    }
+                    $nested['aciklama'] = $aciklamaHtml;
                     
                     // Resim button
                     $resimBtn = '-';
