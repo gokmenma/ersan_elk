@@ -52,6 +52,14 @@ $branchs = $Firma->all();
 
 // Kullanıcının yetkili olduğu firmaları filtrele
 $currentUser = $_SESSION['user'] ?? null;
+if ($currentUser && isset($currentUser->id)) {
+    $freshUser = $User->find($currentUser->id);
+    if ($freshUser) {
+        $_SESSION['user'] = $freshUser;
+        $currentUser = $freshUser;
+    }
+}
+
 if ($currentUser && isset($currentUser->firma_ids)) {
     $rawFirmaIds = trim((string) $currentUser->firma_ids);
     if ($rawFirmaIds !== '') {

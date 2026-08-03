@@ -36,7 +36,7 @@ class AracKmBildirimModel extends Model
         return $sql->fetchAll(PDO::FETCH_OBJ);
     }
 
-    public function getReportsByStatus($status)
+    public function getReportsByStatus($status, $orderBy = 'akb.tarih DESC, akb.olusturma_tarihi DESC, akb.id DESC')
     {
         $sql = $this->db->prepare("
             SELECT akb.*, 
@@ -55,7 +55,7 @@ class AracKmBildirimModel extends Model
             LEFT JOIN users u ON akb.onaylayan_id = u.id
             WHERE akb.firma_id = :firma_id
             AND akb.durum = :status
-            ORDER BY akb.onay_tarihi DESC, akb.olusturma_tarihi DESC
+            ORDER BY {$orderBy}
         ");
         $sql->execute([
             'firma_id' => $_SESSION['firma_id'],

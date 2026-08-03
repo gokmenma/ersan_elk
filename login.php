@@ -15,6 +15,7 @@ session_start();
 
 // Clear any stale permission cache to ensure fresh permissions load
 unset($_SESSION['permission_cache']);
+unset($_SESSION['topbar_firma_option_cache']);
 
 // Check if the user is already logged in, if yes then redirect him to index page
 if (isset($_SESSION["loggedin"]) && $_SESSION["loggedin"] === true) {
@@ -136,6 +137,8 @@ if ($_SERVER["REQUEST_METHOD"] == "POST" && empty($username_err)) {
                     $_SESSION["user_full_name"] = $user->adi_soyadi;
                     $_SESSION["sube_id"] = $user->sube_id;
                     $_SESSION["personel_id"] = $user->personel_id ?? 0;
+                    unset($_SESSION['topbar_firma_option_cache']);
+                    unset($_SESSION['permission_cache']);
 
                     // Remember Me
                     if (isset($_POST["remember"])) {

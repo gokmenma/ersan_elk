@@ -326,8 +326,10 @@ $topbarDesc = $currentMenuObj->page_description ?? '';
                     <a class="dropdown-item" href="auth-lock-screen.php"><i
                             class="mdi mdi-lock font-size-16 align-middle me-1"></i> Kilitle</a>
                     <div class="dropdown-divider"></div>
+                    <?php if (count($firma_option) >= 2): ?>
                     <a class="dropdown-item" href="firma-degistir.php"><i
                             class="mdi mdi-swap-horizontal font-size-16 align-middle me-1"></i> Firma Değiştir</a>
+                    <?php endif; ?>
                     <a class="dropdown-item" href="logout.php"><i
                             class="mdi mdi-logout font-size-16 align-middle me-1"></i> Çıkış Yap</a>
                 </div>

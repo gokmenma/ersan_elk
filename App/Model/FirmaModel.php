@@ -137,16 +137,27 @@ class FirmaModel extends Model
     /**firmaları id ve firma adı olarak option döndürür */
     public function optionByUserPermission()
     {
-        $query = $this->db->prepare("SELECT id, firma_adi 
-                                     FROM $this->table
-                                     WHERE FIND_IN_SET(id, (
-                                        SELECT firma_ids FROM users WHERE id = :user_id
-                                     ))
-                                     AND silinme_tarihi IS NULL");
-        $query->execute([
-            'user_id' => $_SESSION['user']->id
-        ]);
-        return $query->fetchAll(PDO::FETCH_OBJ);
+        $userId = $_SESSION['user']->id ?? 0;
+        if (!$userId) {
+            return [];
+        }
+
+        $userQuery = $this->db->prepare("SELECT firma_ids FROM users WHERE id = :user_id");
+        $userQuery->execute(['user_id' => $userId]);
+        $userRow = $userQuery->fetch(PDO::FETCH_OBJ);
+
+        $rawFirmaIds = trim((string) ($userRow->firma_ids ?? ''));
+        if ($rawFirmaIds !== '') {
+            $allowedFirmaIds = array_map('intval', array_filter(array_map('trim', explode(',', $rawFirmaIds)), 'strlen'));
+            if (!empty($allowedFirmaIds)) {
+                $placeholders = implode(',', array_fill(0, count($allowedFirmaIds), '?'));
+                $query = $this->db->prepare("SELECT id, firma_adi FROM $this->table WHERE id IN ($placeholders) AND silinme_tarihi IS NULL");
+                $query->execute($allowedFirmaIds);
+                return $query->fetchAll(PDO::FETCH_OBJ);
+            }
+        }
+
+        return $this->getFirmaList();
     }
 
     /**Firma Listesi */

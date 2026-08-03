@@ -72,6 +72,7 @@ if ($_POST["action"] == "kullanici-kaydet") {
         }
 
         $lastInsertedId = $User->saveWithAttr($data) ?? $_POST['user_id'];
+        unset($_SESSION['topbar_firma_option_cache']);
 
         $logModel = new SystemLogModel();
         $currentUserId = $_SESSION['id'] ?? $_SESSION['user_id'] ?? 0;
