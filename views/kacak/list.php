@@ -54,6 +54,8 @@ $yetkiIptal = Gate::allows('kacak_iptal') || Gate::isSuperAdmin();
 $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
 ?>
 
+<link rel="stylesheet" href="assets/libs/glightbox/css/glightbox.min.css">
+
 <style>
     .kacak-ozet-serit {
         border-radius: 14px;
@@ -669,7 +671,7 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
                         <div class="col-md-4">
                             <?= Form::FormFileInput(
                                 name: 'saha_fotolari[]',
-                                label: 'Saha Fotoğrafları (en fazla 4)',
+                                label: 'Saha Fotoğrafları (en fazla ' . KacakKontrolModel::MAX_SAHA_FOTO . ')',
                                 icon: 'image',
                                 class: 'form-control',
                                 attributes: 'multiple accept="image/*"',
@@ -844,6 +846,7 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
     </div>
 </div>
 
+<script src="assets/libs/glightbox/js/glightbox.min.js"></script>
 <script>
     (function () {
         const API = 'views/kacak/api.php';
@@ -855,6 +858,7 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
             iptal: <?= $yetkiIptal ? 'true' : 'false' ?>,
             arsiv: <?= $yetkiArsiv ? 'true' : 'false' ?>
         };
+        let kacakFotoLightbox = null;
 
         let kacakTable, onayTable, iptalTable, teslimTable;
 
@@ -1432,6 +1436,10 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
         function fotolariBas($hedef, fotolar, kacakId) {
             $hedef.empty();
             if (!fotolar || fotolar.length === 0) {
+                if (kacakFotoLightbox) {
+                    kacakFotoLightbox.destroy();
+                    kacakFotoLightbox = null;
+                }
                 $hedef.html('<p class="text-muted mb-0">Bu kayıt için yüklü belge bulunmuyor.</p>');
                 return;
             }
@@ -1451,10 +1459,19 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
 
                 $hedef.append(`
                     <div class="kacak-foto-item text-center">
-                        <a href="${url}" target="_blank" rel="noopener">${onizleme}</a>
+                        <a href="${url}" ${pdfMi
+                            ? 'target="_blank" rel="noopener"'
+                            : `class="kacak-foto-lightbox" data-gallery="kacak-${kacakId}" data-type="image" data-title="${esc(turEtiket[f.tur] || f.tur)}"`}>${onizleme}</a>
                         ${silBtn}
                         <div class="small text-muted mt-1">${esc(turEtiket[f.tur] || f.tur)}</div>
                     </div>`);
+            });
+
+            if (kacakFotoLightbox) kacakFotoLightbox.destroy();
+            kacakFotoLightbox = GLightbox({
+                selector: '.kacak-foto-lightbox',
+                loop: true,
+                touchNavigation: true
             });
         }
 
@@ -1464,7 +1481,12 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
             apiGet({ action: 'get-photos', id: id }).done(function (res) {
                 if (res.status !== 'success') return hataGoster(res);
                 fotolariBas($('#fotoModalIcerik'), res.data, id);
-                $('#fotoModal').modal('show');
+                if ($('#fotoModalIcerik .kacak-foto-lightbox').length && kacakFotoLightbox) {
+                    kacakFotoLightbox.open();
+                } else {
+                    // Yalnızca PDF belge varsa indirme/silme işlemleri için belge modalını göster.
+                    $('#fotoModal').modal('show');
+                }
             });
         });
 
@@ -1483,6 +1505,7 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
                 $.post(API, { action: 'delete-photo', foto_id: fotoId }, null, 'json').done(function (res) {
                     if (res.status !== 'success') return hataGoster(res);
                     $item.remove();
+                    if (kacakFotoLightbox) kacakFotoLightbox.reload();
                     kayitlariYukle();
                 });
             });

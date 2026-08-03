@@ -205,17 +205,45 @@ class IhbarModel extends Model
             throw new \Exception('Olumsuz sonuç için işlem sebebi girilmelidir.');
         }
 
+        // Mevcut ihbar durumunu kontrol et
+        $checkStmt = $this->db->prepare("SELECT durum, tutanak_no, olumsuz_sebep FROM ihbarlar WHERE id = ? AND silinme_tarihi IS NULL");
+        $checkStmt->execute([$ihbarId]);
+        $eskiIhbar = $checkStmt->fetch(PDO::FETCH_OBJ);
+
+        if (!$eskiIhbar) {
+            throw new \Exception('İhbar kaydı bulunamadı.');
+        }
+
+        $eskiDurum = $eskiIhbar->durum;
+        $eskiTutanak = $eskiIhbar->tutanak_no;
+        $eskiSebep = $eskiIhbar->olumsuz_sebep;
+
+        $yeniTutanak = $durum === 'olumlu' ? $tutanakNo : null;
+        $yeniSebep = $durum === 'olumsuz' ? $sebep : null;
+
         $stmt = $this->db->prepare("UPDATE ihbarlar SET durum = ?, tutanak_no = ?, olumsuz_sebep = ? WHERE id = ?");
         $stmt->execute([
             $durum,
-            $durum === 'olumlu' ? $tutanakNo : null,
-            $durum === 'olumsuz' ? $sebep : null,
+            $yeniTutanak,
+            $yeniSebep,
             $ihbarId
         ]);
 
-        $aciklama = $durum === 'olumlu'
-            ? "İhbar olumlu olarak sonuçlandırıldı. Tutanak No: {$tutanakNo}"
-            : "İhbar olumsuz olarak sonuçlandırıldı. Sebep: {$sebep}";
+        if (in_array($eskiDurum, ['olumlu', 'olumsuz'], true)) {
+            $eskiEtiket = ($eskiDurum === 'olumlu')
+                ? "Olumlu (Tutanak No: {$eskiTutanak})"
+                : "Olumsuz (Sebep: {$eskiSebep})";
+
+            $yeniEtiket = ($durum === 'olumlu')
+                ? "Olumlu (Tutanak No: {$yeniTutanak})"
+                : "Olumsuz (Sebep: {$yeniSebep})";
+
+            $aciklama = "İhbar sonucu güncellendi. Eski: {$eskiEtiket} ➔ Yeni: {$yeniEtiket}";
+        } else {
+            $aciklama = $durum === 'olumlu'
+                ? "İhbar olumlu olarak sonuçlandırıldı. Tutanak No: {$yeniTutanak}"
+                : "İhbar olumsuz olarak sonuçlandırıldı. Sebep: {$yeniSebep}";
+        }
 
         $this->addTarihce($ihbarId, 'durum_degisti', $aciklama, $ekleyenTip, $ekleyenId);
     }

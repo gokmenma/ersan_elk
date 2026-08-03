@@ -159,6 +159,8 @@ function ihbarDurumBadge($durum)
 }
 ?>
 
+<link rel="stylesheet" href="assets/libs/glightbox/css/glightbox.min.css">
+
 <div class="container-fluid">
     <?php
     $maintitle = "İş Takip";
@@ -437,7 +439,7 @@ function ihbarDurumBadge($durum)
                         <?= Form::FormFloatTextarea('aciklama', '', 'İhbar detaylarını yazınız...', 'Açıklama', 'bx bx-align-left', 'form-control', true, '120px', 4) ?>
                     </div>
                     <div class="mb-3" id="ihbarFotoWrapper">
-                        <?= Form::FormFileInput('fotograflar[]', 'Fotoğraf (en fazla 4 adet)', 'bx bx-image-add', 'form-control', false, 'accept="image/*" multiple', 'ihbarFotoInput') ?>
+                        <?= Form::FormFileInput('fotograflar[]', 'Fotoğraf (en fazla 10 adet)', 'bx bx-image-add', 'form-control', false, 'accept="image/*" multiple', 'ihbarFotoInput') ?>
                         <div id="ihbarFotoPreview" class="d-flex flex-wrap gap-2 mt-2"></div>
                     </div>
                 </div>
@@ -880,6 +882,7 @@ function ihbarDurumBadge($durum)
     }
 </style>
 
+<script src="assets/libs/glightbox/js/glightbox.min.js"></script>
 <script>
     const IHBAR_API_URL = 'views/ihbar/api.php';
     const IHBAR_PERSONEL_LISTESI = <?= json_encode(array_map(fn($p) => ['id' => (int) $p->id, 'adi_soyadi' => $p->adi_soyadi], $yonlendirilecekPersoneller), JSON_UNESCAPED_UNICODE) ?>;
@@ -908,6 +911,7 @@ function ihbarDurumBadge($durum)
     let ihbarSeciliFotolar = [];
     let ihbarAktifId = null;
     let ihbarAktifDetay = null;
+    let ihbarFotoLightbox = null;
 
     document.addEventListener('DOMContentLoaded', function () {
         const ihbarTable = $('#ihbarTable').DataTable($.extend(true, {}, getDatatableOptions(), {
@@ -929,8 +933,8 @@ function ihbarDurumBadge($durum)
         });
 
         document.getElementById('ihbarFotoInput')?.addEventListener('change', function (e) {
-            if (this.files.length > 4) {
-                Swal.fire('Uyarı', 'En fazla 4 fotoğraf seçebilirsiniz.', 'warning');
+            if (this.files.length > 10) {
+                Swal.fire('Uyarı', 'En fazla 10 fotoğraf seçebilirsiniz.', 'warning');
                 this.value = '';
                 document.getElementById('ihbarFotoPreview').innerHTML = '';
                 return;
@@ -1182,7 +1186,28 @@ function ihbarDurumBadge($durum)
             }
             ihbarAktifDetay = res.data;
             content.innerHTML = renderIhbarDetay(res.data);
+            if (ihbarFotoLightbox) ihbarFotoLightbox.destroy();
+            ihbarFotoLightbox = GLightbox({
+                selector: '.ihbar-foto-lightbox',
+                loop: true,
+                touchNavigation: true
+            });
             ihbarDetaySecimleriHazirla((res.data.atanan_ekip || []).map(a => String(a.personel_id)));
+            if (res.data.durum === 'olumlu' || res.data.durum === 'olumsuz') {
+                const sonucSelect = document.getElementById('ihbarSonucDurum');
+                if (sonucSelect) {
+                    sonucSelect.value = res.data.durum;
+                }
+                const tutanakInput = document.getElementById('ihbarTutanakNo');
+                if (tutanakInput) {
+                    tutanakInput.value = res.data.tutanak_no || '';
+                }
+                const sebepInput = document.getElementById('ihbarOlumsuzSebep');
+                if (sebepInput) {
+                    sebepInput.value = res.data.olumsuz_sebep || '';
+                }
+                ihbarSonucAlanGuncelle();
+            }
         }).catch(() => {
             content.innerHTML = '<div class="alert alert-danger">Bir hata oluştu.</div>';
         });
@@ -1208,7 +1233,8 @@ function ihbarDurumBadge($durum)
             : '-';
 
         const fotoHtml = (d.fotograflar || []).map(f =>
-            `<a href="${IHBAR_API_URL}?action=foto&foto_id=${f.id}" target="_blank" title="Fotoğrafı büyüt">
+            `<a href="${IHBAR_API_URL}?action=foto&foto_id=${f.id}" class="ihbar-foto-lightbox"
+                data-gallery="ihbar-${d.id}" data-type="image" data-title="İhbar #${d.id}" title="Fotoğrafı büyüt">
                 <img src="${IHBAR_API_URL}?action=foto&foto_id=${f.id}" class="ihbar-foto-thumb" alt="İhbar fotoğrafı">
             </a>`
         ).join('') || `
@@ -1317,22 +1343,21 @@ function ihbarDurumBadge($durum)
                     </button>
                 </div>
 
-                ${!kapaliMi ? `
                 <div class="ihbar-action-panel">
                     <div class="ihbar-action-panel-title">
                         <i class="bx bx-check-shield" style="background:#ecfdf5;color:#10b981"></i>
                         <div>
-                            <strong>İhbarı Sonuçlandır</strong>
-                            <small>İşlem tamamlandıysa sonucu ve gerekli bilgileri girin.</small>
+                            <strong>${kapaliMi ? 'Sonucu Yeniden Düzenle' : 'İhbarı Sonuçlandır'}</strong>
+                            <small>${kapaliMi ? 'Hatalı sonuçlandıysa sonucu ve bilgileri güncelleyebilirsiniz.' : 'İşlem tamamlandıysa sonucu ve gerekli bilgileri girin.'}</small>
                         </div>
                     </div>
                     ${IHBAR_FORM_HTML.sonuc}
                     <div class="d-none mt-2" id="ihbarTutanakNoWrapper">${IHBAR_FORM_HTML.tutanak}</div>
                     <div class="d-none mt-2" id="ihbarOlumsuzSebepWrapper">${IHBAR_FORM_HTML.olumsuzSebep}</div>
                     <button type="button" class="btn btn-success btn-sm w-100 rounded-pill mt-1" onclick="ihbarSonuclandir()">
-                        <i class="bx bx-check me-1"></i>Sonucu Kaydet
+                        <i class="bx bx-check me-1"></i>${kapaliMi ? 'Sonucu Güncelle' : 'Sonucu Kaydet'}
                     </button>
-                </div>` : ''}
+                </div>
             </aside>
         </div>
         `;

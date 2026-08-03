@@ -179,6 +179,22 @@ try {
             $aciklamaArr = (array) ($_POST['aciklama'] ?? []);
 
             if ($id > 0) {
+                $duplicate = $Kacak->findDuplicateRecord([
+                    'tutanak_no' => $tutanakNoArr[0] ?? null,
+                    'sayac_no' => $sayacNoArr[0] ?? null,
+                    'tarih' => $tarih,
+                ], $id);
+                if ($duplicate) {
+                    $rec = $duplicate['record'];
+                    $tarihFmt = !empty($rec['tarih']) ? date('d.m.Y', strtotime($rec['tarih'])) : '';
+                    if ($duplicate['type'] === 'tutanak_no') {
+                        $msg = "Mükerrer Kayıt: '" . htmlspecialchars($rec['tutanak_no'], ENT_QUOTES, 'UTF-8') . "' numaralı tutanak daha önce sisteme girilmiş. ({$tarihFmt})";
+                    } else {
+                        $msg = "Mükerrer Kayıt: '" . htmlspecialchars($rec['sayac_no'], ENT_QUOTES, 'UTF-8') . "' numaralı sayaç için {$tarihFmt} tarihinde zaten kayıt mevcuttur.";
+                    }
+                    kacakYanit(false, $msg);
+                }
+
                 $ok = $Kacak->updateRecord($id, [
                     'tarih' => $tarih,
                     'personel_ids' => $personelIds,
@@ -213,6 +229,24 @@ try {
                 foreach ($ilceArr as $i => $ilce) {
                     if (trim((string) $ilce) === '') {
                         continue;
+                    }
+                    $tNo = $tutanakNoArr[$i] ?? null;
+                    $sNo = $sayacNoArr[$i] ?? null;
+                    $duplicate = $Kacak->findDuplicateRecord([
+                        'tutanak_no' => $tNo,
+                        'sayac_no' => $sNo,
+                        'tarih' => $tarih,
+                    ]);
+                    if ($duplicate) {
+                        $rec = $duplicate['record'];
+                        $tarihFmt = !empty($rec['tarih']) ? date('d.m.Y', strtotime($rec['tarih'])) : '';
+                        if ($duplicate['type'] === 'tutanak_no') {
+                            $msg = "Mükerrer Kayıt: '" . htmlspecialchars($rec['tutanak_no'], ENT_QUOTES, 'UTF-8') . "' numaralı tutanak daha önce sisteme girilmiş. ({$tarihFmt})";
+                        } else {
+                            $msg = "Mükerrer Kayıt: '" . htmlspecialchars($rec['sayac_no'], ENT_QUOTES, 'UTF-8') . "' numaralı sayaç için {$tarihFmt} tarihinde zaten kayıt mevcuttur.";
+                        }
+                        $db->rollBack();
+                        kacakYanit(false, $msg);
                     }
                     $yeniId = $Kacak->createRecord([
                         'tarih' => $tarih,

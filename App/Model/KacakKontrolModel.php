@@ -27,7 +27,7 @@ class KacakKontrolModel extends Model
 
     const TURLER = ['Kaçak', 'Abonesiz', 'Usülsüz'];
 
-    const MAX_SAHA_FOTO = 4;
+    const MAX_SAHA_FOTO = 10;
 
     const UPLOAD_DIR = 'uploads/kacak_kontrol';
 
@@ -181,6 +181,81 @@ class KacakKontrolModel extends Model
     // =====================================================
 
     /**
+     * Tutanak No veya Sayaç No + Tarih bilgisine göre mükerrer kayıt kontrolü yapar.
+     *
+     * @param array $data ['tutanak_no' => string, 'sayac_no' => string, 'tarih' => string]
+     * @param int|null $excludeId Güncellemede hariç tutulacak kayıt ID
+     * @return array|null Mükerrer kayıt bulunduysa ['type' => string, 'record' => array], yoksa null
+     */
+    public function findDuplicateRecord(array $data, ?int $excludeId = null): ?array
+    {
+        $tutanakNo = trim((string) ($data['tutanak_no'] ?? ''));
+        $sayacNo = trim((string) ($data['sayac_no'] ?? ''));
+        $tarih = trim((string) ($data['tarih'] ?? ''));
+
+        // 1. Tutanak No kontrolü (tutanak_no girilmişse kesin eşleşme aranır)
+        if ($tutanakNo !== '') {
+            $sql = "SELECT k.*, bp.adi_soyadi AS bildiren_adi
+                    FROM kacak_kontrol k
+                    LEFT JOIN personel bp ON bp.id = k.bildiren_personel_id
+                    WHERE k.firma_id = ?
+                      AND k.silinme_tarihi IS NULL
+                      AND k.durum != 'iptal'
+                      AND LOWER(TRIM(k.tutanak_no)) = LOWER(TRIM(?))";
+            $params = [$this->firmaId(), $tutanakNo];
+
+            if ($excludeId !== null && $excludeId > 0) {
+                $sql .= " AND k.id != ?";
+                $params[] = $excludeId;
+            }
+
+            $sql .= " LIMIT 1";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($row) {
+                return [
+                    'type' => 'tutanak_no',
+                    'record' => $row,
+                ];
+            }
+        }
+
+        // 2. Sayaç No + Tarih kontrolü
+        if ($sayacNo !== '' && $tarih !== '') {
+            $sql = "SELECT k.*, bp.adi_soyadi AS bildiren_adi
+                    FROM kacak_kontrol k
+                    LEFT JOIN personel bp ON bp.id = k.bildiren_personel_id
+                    WHERE k.firma_id = ?
+                      AND k.silinme_tarihi IS NULL
+                      AND k.durum != 'iptal'
+                      AND LOWER(TRIM(k.sayac_no)) = LOWER(TRIM(?))
+                      AND k.tarih = ?";
+            $params = [$this->firmaId(), $sayacNo, $tarih];
+
+            if ($excludeId !== null && $excludeId > 0) {
+                $sql .= " AND k.id != ?";
+                $params[] = $excludeId;
+            }
+
+            $sql .= " LIMIT 1";
+            $stmt = $this->db->prepare($sql);
+            $stmt->execute($params);
+            $row = $stmt->fetch(PDO::FETCH_ASSOC);
+
+            if ($row) {
+                return [
+                    'type' => 'sayac_no',
+                    'record' => $row,
+                ];
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Tek bir kaçak/abonesiz tutanak kaydı oluşturur.
      */
     public function createRecord(array $data): int
@@ -192,6 +267,26 @@ class KacakKontrolModel extends Model
         $ilce = $this->normalizeIlce($data['ilce'] ?? '');
         $tur = in_array($data['tur'] ?? '', self::TURLER, true) ? $data['tur'] : 'Kaçak';
         $sayi = max(1, (int) ($data['sayi'] ?? 1));
+
+        $dup = $this->findDuplicateRecord([
+            'tutanak_no' => $data['tutanak_no'] ?? null,
+            'sayac_no' => $data['sayac_no'] ?? null,
+            'tarih' => $tarih,
+        ]);
+
+        if ($dup) {
+            $rec = $dup['record'];
+            $tarihF = !empty($rec['tarih']) ? date('d.m.Y', strtotime($rec['tarih'])) : '';
+            $bildiren = !empty($rec['bildiren_adi']) ? " ({$rec['bildiren_adi']})" : '';
+
+            if ($dup['type'] === 'tutanak_no') {
+                $no = htmlspecialchars($rec['tutanak_no'], ENT_QUOTES, 'UTF-8');
+                throw new \Exception("'{$no}' numaralı tutanak zaten sistemde mevcuttur!{$bildiren} (Tarih: {$tarihF})");
+            } elseif ($dup['type'] === 'sayac_no') {
+                $no = htmlspecialchars($rec['sayac_no'], ENT_QUOTES, 'UTF-8');
+                throw new \Exception("'{$no}' numaralı sayaç için {$tarihF} tarihinde zaten tutanak kaydedilmiş!{$bildiren}");
+            }
+        }
 
         $islemId = md5(implode('|', [
             $tarih,
@@ -245,6 +340,26 @@ class KacakKontrolModel extends Model
         $personelIds = $this->normalizePersonelIds($data['personel_ids'] ?? []);
         $ekipAdi = $this->buildEkipAdi($personelIds);
         $tur = in_array($data['tur'] ?? '', self::TURLER, true) ? $data['tur'] : 'Kaçak';
+
+        $dup = $this->findDuplicateRecord([
+            'tutanak_no' => $data['tutanak_no'] ?? null,
+            'sayac_no' => $data['sayac_no'] ?? null,
+            'tarih' => $data['tarih'] ?? null,
+        ], $id);
+
+        if ($dup) {
+            $rec = $dup['record'];
+            $tarihF = !empty($rec['tarih']) ? date('d.m.Y', strtotime($rec['tarih'])) : '';
+            $bildiren = !empty($rec['bildiren_adi']) ? " ({$rec['bildiren_adi']})" : '';
+
+            if ($dup['type'] === 'tutanak_no') {
+                $no = htmlspecialchars($rec['tutanak_no'], ENT_QUOTES, 'UTF-8');
+                throw new \Exception("'{$no}' numaralı tutanak başka bir kayıtta zaten mevcuttur!{$bildiren} (Tarih: {$tarihF})");
+            } elseif ($dup['type'] === 'sayac_no') {
+                $no = htmlspecialchars($rec['sayac_no'], ENT_QUOTES, 'UTF-8');
+                throw new \Exception("'{$no}' numaralı sayaç için {$tarihF} tarihinde zaten başka bir tutanak kaydedilmiş!{$bildiren}");
+            }
+        }
 
         $stmt = $this->db->prepare("UPDATE kacak_kontrol SET
                 tarih = ?, personel_ids = ?, ekip_adi = ?, ilce = ?, tur = ?,

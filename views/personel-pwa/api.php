@@ -4445,6 +4445,10 @@ try {
         case 'saveKacakBildirim':
             $KacakModel = new \App\Model\KacakKontrolModel();
 
+            if (empty($_POST) && !empty($_SERVER['CONTENT_LENGTH'])) {
+                response(false, null, 'Yüklenen fotoğrafların toplam boyutu sunucu yükleme sınırını aşıyor. Lütfen fotoğrafların boyutunu küçültün veya daha az fotoğraf seçin.');
+            }
+
             $ekipArkadasiId = (int) ($_POST['ekip_arkadasi_id'] ?? 0);
             if ($ekipArkadasiId <= 0) {
                 response(false, null, 'Lütfen ekip arkadaşınızı seçin.');
@@ -4479,6 +4483,29 @@ try {
 
             if ($kacakTarih > date('Y-m-d')) {
                 response(false, null, 'İleri tarihli bildirim yapılamaz.');
+            }
+
+            // Mükerrer kayıt kontrolü (Tutanak No veya Sayaç No + Tarih)
+            $tutanakNo = trim((string) ($_POST['tutanak_no'] ?? ''));
+            $sayacNo = trim((string) ($_POST['sayac_no'] ?? ''));
+
+            $duplicate = $KacakModel->findDuplicateRecord([
+                'tutanak_no' => $tutanakNo,
+                'sayac_no' => $sayacNo,
+                'tarih' => $kacakTarih,
+            ]);
+
+            if ($duplicate) {
+                $rec = $duplicate['record'];
+                $tarihFmt = !empty($rec['tarih']) ? date('d.m.Y', strtotime($rec['tarih'])) : '';
+                if ($duplicate['type'] === 'tutanak_no') {
+                    $aboneStr = !empty($rec['abone_adi']) ? " ('" . htmlspecialchars($rec['abone_adi'], ENT_QUOTES, 'UTF-8') . "')" : "";
+                    $msg = "Mükerrer Kayıt: '{$tutanakNo}' numaralı kaçak tutanağı daha önce{$aboneStr} {$tarihFmt} tarihinde sisteme bildirilmiştir.";
+                } else {
+                    $aboneStr = !empty($rec['abone_adi']) ? " (Abone: " . htmlspecialchars($rec['abone_adi'], ENT_QUOTES, 'UTF-8') . ")" : "";
+                    $msg = "Mükerrer Kayıt: '{$sayacNo}' numaralı sayaç için {$tarihFmt} tarihinde zaten tutanak bildirimi mevcuttur.{$aboneStr}";
+                }
+                response(false, null, $msg);
             }
 
             try {
@@ -5047,7 +5074,15 @@ try {
                 );
             }
 
-            response(false, ['request_id' => $pwaRequestId], 'Geçersiz işlem. Hata kodu: ' . $pwaRequestId);
+            if ($postLimitExceeded || ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_POST) && $contentLength > 0)) {
+                response(
+                    false,
+                    ['request_id' => $pwaRequestId],
+                    'Yüklenen fotoğrafların toplam boyutu sunucu yükleme sınırını aşıyor. Lütfen daha az veya daha küçük fotoğraflar seçiniz.'
+                );
+            }
+
+            response(false, ['request_id' => $pwaRequestId], 'Geçersiz veya tanınmayan işlem talebi. (Hata Kodu: ' . $pwaRequestId . ')');
     }
 } catch (Throwable $e) {
     if (isset($ihbarDb) && $ihbarDb instanceof PDO && $ihbarDb->inTransaction()) {
@@ -5061,5 +5096,6 @@ try {
             'line' => $e->getLine(),
         ]);
     }
-    response(false, ['request_id' => $pwaRequestId], 'Bir hata oluştu: ' . $e->getMessage() . ' (Kod: ' . $pwaRequestId . ')');
+    error_log("PWA API Exception [Action: {$action}, ID: {$pwaRequestId}]: " . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+    response(false, ['request_id' => $pwaRequestId], 'İşlem gerçekleştirilemedi: ' . $e->getMessage());
 }

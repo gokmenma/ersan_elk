@@ -471,7 +471,7 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
 
             Loading.show();
             try {
-                const res = await (await fetch('api.php', { method: 'POST', body: fd })).json();
+                const res = await (await fetch('api.php?action=analyzeKacakTutanak', { method: 'POST', body: fd })).json();
                 if (!res.success) {
                     return Alert.error('Analiz Başarısız', res.message || 'Tutanak okunamadı.');
                 }
@@ -534,7 +534,7 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
             sahaDosyalari.forEach(f => fd.append('saha_fotolari[]', f));
 
             try {
-                const res = await (await fetch('api.php', { method: 'POST', body: fd })).json();
+                const res = await (await fetch('api.php?action=saveKacakBildirim', { method: 'POST', body: fd })).json();
                 if (res.success) {
                     Modal.close('kacak-bildir-modal');
 

@@ -80,7 +80,7 @@ function ihbarHandleFotoUpload(int $ihbarId, IhbarModel $model): void
 
     $allowedExt = ['jpg', 'jpeg', 'png', 'webp'];
     $count = count($_FILES['fotograflar']['name']);
-    $maxFiles = min($count, 4);
+    $maxFiles = min($count, 10);
 
     for ($i = 0; $i < $maxFiles; $i++) {
         if (($_FILES['fotograflar']['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {

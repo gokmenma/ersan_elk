@@ -293,7 +293,7 @@
                                 placeholder="İhbar detaylarını yazınız..." required>${editData?.aciklama ?? ''}</textarea>
                         </div>
                         <div>
-                            <label class="form-label">Fotoğraf Ekle (toplam en fazla 4 adet)</label>
+                            <label class="form-label">Fotoğraf Ekle (toplam en fazla 10 adet)</label>
                             ${editData && ihbarMevcutFotograflar.length > 0 ? `
                             <div class="mb-2">
                                 <p class="text-xs text-slate-500 mb-1">Yüklü fotoğraflar</p>
@@ -331,8 +331,8 @@
                     fotoInput.addEventListener('change', function () {
                         const yeniDosyalar = Array.from(this.files);
                         const toplamMevcut = ihbarMevcutFotograflar.length + ihbarSeciliFotolar.length;
-                        if (toplamMevcut + yeniDosyalar.length > 4) {
-                            Alert.warning('Sınır Aşıldı', 'Toplamda en fazla 4 fotoğraf olabilir.');
+                        if (toplamMevcut + yeniDosyalar.length > 10) {
+                            Alert.warning('Sınır Aşıldı', 'Toplamda en fazla 10 fotoğraf olabilir.');
                             this.value = '';
                             return;
                         }
@@ -548,24 +548,25 @@
                     ${d.durum === 'olumlu' ? `<div class="p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-xl text-sm text-green-700 dark:text-green-300"><strong>Tutanak No:</strong> ${d.tutanak_no || '-'}</div>` : ''}
                     ${d.durum === 'olumsuz' ? `<div class="p-3 bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 rounded-xl text-sm text-red-700 dark:text-red-300"><strong>Olumsuz Sebep:</strong> ${d.olumsuz_sebep || '-'}</div>` : ''}
 
-                    ${buAtandiMi && !kapaliMi ? `
+                    ${buAtandiMi ? `
+                    ${!kapaliMi ? `
                     <div class="border-t border-slate-100 dark:border-slate-800 pt-4">
                         <p class="text-xs text-slate-500 mb-2">Not Ekle (Tutanak vb.)</p>
                         <div class="flex gap-2">
                             <input type="text" id="ihbar-not-input" class="form-input flex-1" placeholder="Not yazın...">
                             <button type="button" onclick="ihbarNotEkle(${d.id}, '${tip}')" class="btn-primary px-4">Ekle</button>
                         </div>
-                    </div>
+                    </div>` : ''}
                     <div class="border-t border-slate-100 dark:border-slate-800 pt-4">
-                        <p class="text-xs text-slate-500 mb-2">Sonuçlandır</p>
+                        <p class="text-xs text-slate-500 mb-2">${kapaliMi ? 'Sonucu Yeniden Düzenle' : 'Sonuçlandır'}</p>
                         <div class="grid grid-cols-2 gap-2 mb-2">
-                            <button type="button" onclick="ihbarSonucSec(this, 'olumlu')" class="ihbar-sonuc-btn py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium">✅ Olumlu</button>
-                            <button type="button" onclick="ihbarSonucSec(this, 'olumsuz')" class="ihbar-sonuc-btn py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium">❌ Olumsuz</button>
+                            <button type="button" onclick="ihbarSonucSec(this, 'olumlu')" class="ihbar-sonuc-btn py-2 rounded-xl border ${d.durum === 'olumlu' ? 'active border-primary text-primary' : 'border-slate-200 dark:border-slate-700'} text-sm font-medium">✅ Olumlu</button>
+                            <button type="button" onclick="ihbarSonucSec(this, 'olumsuz')" class="ihbar-sonuc-btn py-2 rounded-xl border ${d.durum === 'olumsuz' ? 'active border-primary text-primary' : 'border-slate-200 dark:border-slate-700'} text-sm font-medium">❌ Olumsuz</button>
                         </div>
-                        <input type="hidden" id="ihbar-sonuc-durum">
-                        <input type="text" id="ihbar-tutanak-no" class="form-input hidden mb-2" placeholder="Tutanak No">
-                        <textarea id="ihbar-olumsuz-sebep" class="form-input hidden mb-2" placeholder="Olumsuz sebebi"></textarea>
-                        <button type="button" onclick="ihbarSonuclandir(${d.id}, '${tip}')" class="w-full btn-primary py-3">Sonuçlandır</button>
+                        <input type="hidden" id="ihbar-sonuc-durum" value="${d.durum === 'olumlu' || d.durum === 'olumsuz' ? d.durum : ''}">
+                        <input type="text" id="ihbar-tutanak-no" class="form-input ${d.durum === 'olumlu' ? '' : 'hidden'} mb-2" placeholder="Tutanak No" value="${d.tutanak_no || ''}">
+                        <textarea id="ihbar-olumsuz-sebep" class="form-input ${d.durum === 'olumsuz' ? '' : 'hidden'} mb-2" placeholder="Olumsuz sebebi">${d.olumsuz_sebep || ''}</textarea>
+                        <button type="button" onclick="ihbarSonuclandir(${d.id}, '${tip}')" class="w-full btn-primary py-3">${kapaliMi ? 'Sonucu Güncelle' : 'Sonuçlandır'}</button>
                     </div>` : ''}
 
                     <div class="border-t border-slate-100 dark:border-slate-800 pt-4">
