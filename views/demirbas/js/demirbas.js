@@ -2381,9 +2381,9 @@ $(document).on("click", ".zimmet-detay, .zimmet-detay-ac", function (e) {
             let fotoHtml = "";
             if (h.fotolar && h.fotolar.length > 0) {
               h.fotolar.forEach((foto) => {
-                let viewUrl = `zimmet-foto-goruntule.php?id=${foto.id}`;
+                let viewUrl = `views/demirbas/zimmet-foto-goruntule.php?id=${encodeURIComponent(foto.id)}`;
                 fotoHtml += `
-                  <div class="position-relative d-inline-block border rounded p-1 bg-light me-1 mb-1 text-center" id="foto-card-${foto.id}" style="width: 45px; height: 45px; vertical-align: top;">
+                  <div class="position-relative d-inline-block border rounded p-1 bg-light me-1 mb-1 text-center" style="width: 45px; height: 45px; vertical-align: top;">
                     ${foto.is_pdf ? `
                       <a href="${viewUrl}" target="_blank" class="text-danger d-block lh-1" title="${foto.orijinal_ad}">
                         <i class="bx bxs-file-pdf font-size-22 animate__animated animate__fadeIn" style="margin-top: 3px;"></i>
@@ -4752,7 +4752,12 @@ $(document).on("click", ".sil-detay-foto", function (e) {
       .then(data => {
         if (data.status === "success") {
           Swal.fire("Silindi!", data.message, "success");
-          $(`#foto-card-${id}`).remove();
+          let cardEl = btn.closest('.position-relative');
+          let parentTd = cardEl.parent();
+          cardEl.remove();
+          if (parentTd && parentTd.children('.position-relative').length === 0) {
+            parentTd.html('<span class="text-muted small italic">-</span>');
+          }
           
           // Eğer galeri boşaldıysa "Fotoğraf eklenmemiş" yaz
           if ($("#detayTeslimFotoGaleri").children().length === 0) {

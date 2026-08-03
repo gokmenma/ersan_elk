@@ -140,12 +140,12 @@ class GelirGiderModel extends Model
 
     public function ajaxList($params)
     {
-        $draw = $params['draw'];
-        $start = $params['start'];
-        $length = $params['length'];
-        $search = $params['search']['value'];
-        $orders = $params['order'];
-        $columns = $params['columns'];
+        $draw = $params['draw'] ?? 1;
+        $start = $params['start'] ?? 0;
+        $length = $params['length'] ?? 10;
+        $search = $params['search']['value'] ?? '';
+        $orders = $params['order'] ?? [];
+        $columns = $params['columns'] ?? [];
 
         // Filtreler (Yıl, Ay, Tip)
         $yil = $params['yil'] ?? null;

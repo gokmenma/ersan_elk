@@ -56,10 +56,18 @@ class Helper
             return $value;
 
         // Para birimi, boşluklar ve diğer karakterleri temizle
-        $value = str_replace(['₺', ' ', '$', '€', 'TL', 'try', 'TRY'], '', $value);
+        $value = str_replace(['₺', ' ', '$', '€', 'TL', 'try', 'TRY'], '', (string)$value);
 
         // Sadece rakam, nokta, virgül ve eksi kalsın
         $value = preg_replace('/[^\d.,-]/', '', $value);
+
+        // Birden fazla nokta varsa, son nokta haricindeki noktaları kaldır (örn: 4.500.50 -> 4500.50)
+        if (substr_count($value, '.') > 1) {
+            $lastDotPos = strrpos($value, '.');
+            $before = str_replace('.', '', substr($value, 0, $lastDotPos));
+            $after = substr($value, $lastDotPos);
+            $value = $before . $after;
+        }
 
         $dotPos = strrpos($value, '.');
         $commaPos = strrpos($value, ',');
@@ -75,15 +83,13 @@ class Helper
             }
         } elseif ($commaPos !== false) {
             // Sadece virgül var. TR'de bu her zaman decimaldir (örn: 1000,50)
-            // ANCAK bazen binlik ayracı olarak kullanılmış olabilir (örn: 1,000)
             if (preg_match('/^\d{1,3}(,\d{3})+$/', $value)) {
                 $value = str_replace(',', '', $value);
             } else {
                 $value = str_replace(',', '.', $value);
             }
         } elseif ($dotPos !== false) {
-            // Sadece nokta var. TR'de bu binlik ayracıdır (örn: 1.000)
-            // US'de decimaldir (örn: 1000.50)
+            // Sadece nokta var. Noktadan sonra tam 3 basamak varsa binlik ayracıdır (örn: 1.000 -> 1000)
             if (preg_match('/\.\d{3}$/', $value)) {
                 $value = str_replace('.', '', $value);
             }
@@ -94,8 +100,9 @@ class Helper
 
     public static function formattedMoney($value, $currency = 1)
     {
-        $formattedNumber = number_format($value, 2, ',', '.');
-        return self::MONEY_UNIT[$currency] . $formattedNumber;
+        $numericValue = (float) self::formattedMoneyToNumber($value);
+        $formattedNumber = number_format($numericValue, 2, ',', '.');
+        return (self::MONEY_UNIT[$currency] ?? '₺') . $formattedNumber;
     }
 
 

@@ -252,6 +252,28 @@ $(document).ready(function () {
                 return;
               }
 
+              let fotoHtml = "";
+              if (h.fotolar && h.fotolar.length > 0) {
+                h.fotolar.forEach((foto) => {
+                  let viewUrl = `views/demirbas/zimmet-foto-goruntule.php?id=${encodeURIComponent(foto.id)}`;
+                  fotoHtml += `
+                    <div class="position-relative d-inline-block border rounded p-1 bg-light me-1 mb-1 text-center" style="width: 45px; height: 45px; vertical-align: top;">
+                      ${foto.is_pdf ? `
+                        <a href="${viewUrl}" target="_blank" class="text-danger d-block lh-1" title="${foto.orijinal_ad}">
+                          <i class="bx bxs-file-pdf font-size-22 animate__animated animate__fadeIn" style="margin-top: 3px;"></i>
+                        </a>
+                      ` : `
+                        <a href="${viewUrl}" target="_blank" class="d-block">
+                          <img src="${viewUrl}" class="rounded animate__animated animate__fadeIn" style="width: 35px; height: 35px; object-fit: cover;">
+                        </a>
+                      `}
+                    </div>
+                  `;
+                });
+              } else {
+                fotoHtml = '<span class="text-muted small italic">-</span>';
+              }
+
               let deleteBtn = "";
               if (h.hareket_tipi === "iade" || h.hareket_tipi === "sarf") {
                 deleteBtn = `<button class="btn btn-sm btn-outline-danger zimmet-hareket-sil" data-id="${h.id}" data-type="${h.hareket_tipi}" title="Geri Al / Sil"><i class="bx bx-trash"></i></button>`;
@@ -259,11 +281,12 @@ $(document).ready(function () {
 
               let row = `
                 <tr>
+                  <td class="text-center">-</td>
                   <td>${h.hareket_badge}</td>
                   <td class="text-center fw-bold">${h.miktar}</td>
                   <td>${h.tarih_format}</td>
                   <td class="small">${h.aciklama || ""}</td>
-                  <td class="text-center">${deleteBtn}</td>
+                  <td>${fotoHtml}</td>
                 </tr>
               `;
               hBody.append(row);
@@ -271,12 +294,12 @@ $(document).ready(function () {
 
             if (hBody.children().length === 0) {
               hBody.append(
-                '<tr><td colspan="5" class="text-center text-muted border-0 py-3 italic">Başka bir hareket bulunmuyor.</td></tr>',
+                '<tr><td colspan="6" class="text-center text-muted border-0 py-3 italic">Başka bir hareket bulunmuyor.</td></tr>',
               );
             }
           } else {
             hBody.append(
-              '<tr><td colspan="5" class="text-center text-muted py-3">Hareket kaydı bulunamadı.</td></tr>',
+              '<tr><td colspan="6" class="text-center text-muted py-3">Hareket kaydı bulunamadı.</td></tr>',
             );
           }
 

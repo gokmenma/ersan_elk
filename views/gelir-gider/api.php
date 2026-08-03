@@ -134,24 +134,25 @@ if ($_POST["action"] == "gelir-gider-excel-kaydet") {
     
          if (in_array($file_ext, $allowed)) {
             try {
-                //excel dosyasını okuma
+                //excel dosyasını okuma (formatlanmamış ham değerleri almak için 3. parametre false yapıldı)
                 $spreadsheet = IOFactory::load($file_tmp);
-                $sheetData = $spreadsheet->getActiveSheet()->toArray(null, true, true, true);
+                $sheetData = $spreadsheet->getActiveSheet()->toArray(null, true, false, true);
                 $data = [];
                 foreach ($sheetData as $key => $row) {
                     if ($key == 1) {
                         continue;
                     }
 
-                    $tutar = $row["E"];
-                    if($tutar == 0 || $tutar == "" || $tutar == null){
+                    $rawTutar = $row["E"];
+                    if ($rawTutar === null || $rawTutar === "" || $rawTutar === 0) {
                         continue;
                     }
-                    //satırdaki veriyi sayıya çevir
-                    $tutar = str_replace(" ", "", $tutar);
-                    $tutar = str_replace("-", "", $tutar);
                     
-
+                    // Veriyi sayısal tutara dönüştür
+                    $tutar = Helper::formattedMoneyToNumber($rawTutar);
+                    if (empty($tutar) || !is_numeric($tutar)) {
+                        continue;
+                    }
 
                     //B sütunundaki veriyi kontrol et, GELİR ise 1 değilse 2 yap
                     $typeText = trim($row["B"] ?? '');
@@ -225,16 +226,18 @@ if ($_POST["action"] == "gelir-gider-ajax-list") {
                     </div>
                 </div>';
 
+            $typeVal = $row->type ?? $row->TYPE ?? 1;
+
             $formattedData[] = [
                 "id" => $row->id,
                 "kayit_tarihi" => $row->kayit_tarihi,
-                "type" => Helper::getBadge($row->type),
-                "hesap_adi" => $row->hesap_adi ?: '-',
-                "kategori_adi" => $row->kategori_adi ?: '-',
-                "tarih" => $row->tarih ? date('d.m.Y H:i', strtotime($row->tarih)) : '-',
-                "tutar" => Helper::formattedMoney($row->tutar),
+                "type" => Helper::getBadge($typeVal),
+                "hesap_adi" => ($row->hesap_adi ?? $row->HESAP_ADI ?? '-') ?: '-',
+                "kategori_adi" => ($row->kategori_adi ?? $row->KATEGORI_ADI ?? '-') ?: '-',
+                "tarih" => (!empty($row->tarih)) ? date('d.m.Y H:i', strtotime($row->tarih)) : '-',
+                "tutar" => Helper::formattedMoney($row->tutar ?? $row->TUTAR ?? 0),
                 "bakiye" => '<span class="text-' . $color . '">' . Helper::formattedMoney($bakiye) . '</span>',
-                "aciklama" => $row->aciklama ?: '-',
+                "aciklama" => ($row->aciklama ?? $row->ACIKLAMA ?? '-') ?: '-',
                 "actions" => $actions
             ];
         }
