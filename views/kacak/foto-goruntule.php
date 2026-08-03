@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 
 use App\Model\KacakKontrolModel;
+use App\Helper\Security;
 use App\Service\Gate;
 
 $userId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
@@ -15,12 +16,14 @@ if ($userId <= 0 || empty($_SESSION['firma_id'])) {
     exit('Yetkisiz erişim.');
 }
 
-if (!Gate::allows('kacak_islemleri') && !Gate::isSuperAdmin()) {
+if (!Gate::allows('kacak_islemleri') && !Gate::allows('kacak/list') && !Gate::isSuperAdmin()) {
     http_response_code(403);
     exit('Yetkisiz erişim.');
 }
 
-$fotoId = (int) ($_GET['id'] ?? 0);
+$fotoId = isset($_GET['token'])
+    ? (int) Security::decrypt((string) $_GET['token'])
+    : (int) ($_GET['id'] ?? 0); // Masaüstü ekranıyla geriye dönük uyumluluk
 if ($fotoId <= 0) {
     http_response_code(400);
     exit('Geçersiz istek.');

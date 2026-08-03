@@ -87,6 +87,8 @@ $all_mobile_menus = [
     'nobet'       => ['label' => 'Nöbet Onay',  'icon' => 'event_available', 'color_bg' => 'bg-rose-100 dark:bg-rose-900/30', 'color_icon' => 'text-rose-600', 'link_match' => 'nobet/onay-islemleri'],
     'km-onaylari' => ['label' => 'KM Onayları', 'icon' => 'speed', 'color_bg' => 'bg-cyan-100 dark:bg-cyan-900/30', 'color_icon' => 'text-cyan-600', 'link_match' => 'arac-takip/km-onaylari'],
     'yardim'      => ['label' => 'Destek',      'icon' => 'support_agent', 'color_bg' => 'bg-indigo-100 dark:bg-indigo-900/30', 'color_icon' => 'text-indigo-600', 'link_match' => 'yardim/list'],
+    'ihbar'       => ['label' => 'İhbar',        'icon' => 'campaign', 'color_bg' => 'bg-orange-100 dark:bg-orange-900/30', 'color_icon' => 'text-orange-600', 'link_match' => 'ihbar/list'],
+    'kacak'       => ['label' => 'Kaçak Kontrol','icon' => 'shield', 'color_bg' => 'bg-red-100 dark:bg-red-900/30', 'color_icon' => 'text-red-600', 'link_match' => 'kacak/list'],
 ];
 
 $user_mobile_menus = [];
@@ -172,6 +174,8 @@ $page_titles = [
     'km-onaylari' => 'KM Onayları',
     'raporlar'    => 'Raporlar',
     'yardim'      => 'Yardım ve Destek',
+    'ihbar'       => 'İhbar Yönetimi',
+    'kacak'       => 'Kaçak Kontrol',
 ];
 
 $currentTitle = $page_titles[$page] ?? 'Ana Sayfa';
@@ -671,7 +675,7 @@ try {
 
     <?php 
     // Kendi özel (gradient vb.) başlık yapısı olan veya üst bar istenmeyen sayfalar
-    $no_header_pages = ['home', 'hesap-hareketleri', 'arac', 'gorevler', 'talepler', 'personel', 'personel-duzenle', 'yardim', 'evrak-takip', 'km-onaylari', 'nobet'];
+    $no_header_pages = ['home', 'hesap-hareketleri', 'arac', 'gorevler', 'talepler', 'personel', 'personel-duzenle', 'yardim', 'evrak-takip', 'km-onaylari', 'nobet', 'ihbar', 'kacak'];
     if (!in_array($page, $no_header_pages)): 
     ?>
     <!-- Sayfa Başlığı (Gradient) -->
