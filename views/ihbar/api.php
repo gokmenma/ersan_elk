@@ -279,6 +279,47 @@ try {
             ihbarResponse(true, 'İhbar ekibe yönlendirildi.');
             break;
 
+        case 'reassignPreview':
+            Gate::authorizeOrDie('ihbar/list');
+            $rows = $IhbarModel->getReassignmentCandidates();
+            foreach ($rows as $row) {
+                $row->token = Security::encrypt((int) $row->id);
+                $row->onerilen_personel_token = $row->onerilen_personel_id
+                    ? Security::encrypt((int) $row->onerilen_personel_id) : '';
+                unset($row->onerilen_personel_id);
+            }
+            ihbarResponse(true, '', $rows);
+            break;
+
+        case 'bulkReassign':
+            Gate::authorizeOrDie('ihbar/list');
+            $payload = json_decode((string) ($_POST['assignments'] ?? ''), true);
+            if (!is_array($payload) || empty($payload)) {
+                throw new Exception('Yönlendirilecek en az bir ihbar seçmelisiniz.');
+            }
+            $assignments = [];
+            foreach ($payload as $item) {
+                $ihbarId = (int) Security::decrypt((string) ($item['ihbar_token'] ?? ''));
+                $personelId = (int) Security::decrypt((string) ($item['personel_token'] ?? ''));
+                if ($ihbarId <= 0 || $personelId <= 0) throw new Exception('Geçersiz yönlendirme bilgisi.');
+                $assignments[$ihbarId] = $personelId;
+            }
+            $personelIds = $IhbarModel->bulkReassign($assignments, $currentUserId);
+            try {
+                $pushService = new PushNotificationService();
+                foreach (array_unique($personelIds) as $pId) {
+                    $pushService->sendToPersonel((int) $pId, [
+                        'title' => '📣 İhbarlar Yeniden Yönlendirildi',
+                        'body' => 'Bekleyen ihbarlar size yönlendirildi. Detaylar için uygulamayı açın.',
+                        'url' => '?page=ihbar'
+                    ]);
+                }
+            } catch (Exception $e) {
+                error_log('Toplu ihbar yönlendirme push hatası: ' . $e->getMessage());
+            }
+            ihbarResponse(true, count($assignments) . ' ihbar yeniden yönlendirildi.');
+            break;
+
         case 'addNote':
             Gate::authorizeOrDie('ihbar/list');
 

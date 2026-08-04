@@ -3,6 +3,7 @@
 use App\Model\IhbarModel;
 use App\Service\Gate;
 use App\Helper\Form;
+use App\Helper\Security;
 
 Gate::authorizeOrDie('ihbar/list');
 
@@ -107,6 +108,14 @@ $ihbarEkipSelectHtml = Form::FormMultipleSelect2(
     'form-select select2',
     false,
     'ihbarEkipSelect'
+);
+$ihbarTopluPersoneller = array_map(static fn($p) => [
+    'token' => Security::encrypt((int) $p->id),
+    'adi_soyadi' => $p->adi_soyadi,
+], $yonlendirilecekPersoneller);
+$ihbarTopluPersonelSelectHtml = Form::FormSelect2(
+    'toplu_personel', $ihbarTopluPersoneller, '', 'Yönlendirilecek personel', 'bx bx-user',
+    'token', 'adi_soyadi', 'form-select select2', true, 'width:100%', '', 'topluPersonelTemplate'
 );
 $ihbarNotInputHtml = Form::FormFloatInput(
     'text',
@@ -365,6 +374,9 @@ function ihbarDurumBadge($durum)
                 <button type="button" class="btn btn-sm btn-danger px-3 rounded-pill" onclick="ihbarYeniAc()">
                     <i class="bx bx-plus me-1"></i>Yeni İhbar Ekle
                 </button>
+                <button type="button" class="btn btn-sm btn-warning px-3 rounded-pill" onclick="ihbarYenidenYonlendirAc()">
+                    <i class="bx bx-transfer-alt me-1"></i>Yeniden Yönlendir
+                </button>
             </div>
         </div>
         <div class="card-body">
@@ -413,6 +425,25 @@ function ihbarDurumBadge($durum)
             </div>
         </div>
     </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="modalTopluYonlendir" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <div><h5 class="modal-title">İhbarları Yeniden Yönlendir</h5>
+                    <small class="text-muted">Yeni ve yönlendirilmiş ihbarların önerilen personelini kontrol edin.</small></div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body" id="topluYonlendirIcerik"></div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-warning" id="btnTopluYonlendirKaydet" onclick="ihbarTopluYonlendir()">
+                    <i class="bx bx-send me-1"></i>Seçilenleri Yönlendir
+                </button>
+            </div>
         </div>
     </div>
 </div>
@@ -911,6 +942,7 @@ function ihbarDurumBadge($durum)
         'tutanak' => $ihbarTutanakInputHtml,
         'olumsuzSebep' => $ihbarOlumsuzSebepHtml,
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const IHBAR_TOPLU_PERSONEL_HTML = <?= json_encode($ihbarTopluPersonelSelectHtml, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const IHBAR_DASHBOARD_DATA = <?= json_encode([
         'durum' => [
             'labels' => array_keys($durumDagilimi),
@@ -930,6 +962,9 @@ function ihbarDurumBadge($durum)
     let ihbarAktifId = null;
     let ihbarAktifDetay = null;
     let ihbarFotoLightbox = null;
+    const ihbarEscapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({
+        '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;'
+    })[char]);
 
     document.addEventListener('DOMContentLoaded', function () {
         $('#ihbarIlce').select2({
@@ -1016,6 +1051,57 @@ function ihbarDurumBadge($durum)
         ihbarSeciliFotolar = [];
         document.getElementById('ihbarFotoPreview').innerHTML = '';
         new bootstrap.Modal(document.getElementById('modalYeniIhbar')).show();
+    }
+
+    function ihbarYenidenYonlendirAc() {
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTopluYonlendir'));
+        const content = document.getElementById('topluYonlendirIcerik');
+        content.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-warning"></div></div>';
+        modal.show();
+        fetch(IHBAR_API_URL, { method: 'POST', body: new URLSearchParams({ action: 'reassignPreview' }) })
+            .then(r => r.json()).then(res => {
+                if (!res.success) throw new Error(res.message || 'Liste alınamadı.');
+                if (!res.data.length) {
+                    content.innerHTML = '<div class="alert alert-info mb-0">Yeniden yönlendirilebilecek ihbar bulunmuyor.</div>';
+                    return;
+                }
+                content.innerHTML = `<div class="table-responsive"><table class="table align-middle">
+                    <thead><tr><th style="width:45px"></th><th>İhbar</th><th>Mevcut ekip</th><th style="min-width:300px">Yeni personel</th></tr></thead>
+                    <tbody>${res.data.map((row, index) => `<tr>
+                        <td><input class="form-check-input toplu-ihbar-sec" type="checkbox" checked data-index="${index}" data-token="${row.token}"></td>
+                        <td><strong>#${Number(row.id)}</strong><div>${ihbarEscapeHtml(row.ilce || '-')} / ${ihbarEscapeHtml(row.mahalle || '-')}</div></td>
+                        <td>${ihbarEscapeHtml(row.mevcut_ekip || 'Atanmamış')}</td>
+                        <td><div class="toplu-personel-holder" data-index="${index}">${IHBAR_TOPLU_PERSONEL_HTML}</div></td>
+                    </tr>`).join('')}</tbody></table></div>`;
+                content.querySelectorAll('.toplu-personel-holder').forEach((holder, index) => {
+                    const select = holder.querySelector('select');
+                    const row = res.data[index];
+                    select.id = `topluPersonel_${index}`;
+                    select.name = `toplu_personel_${index}`;
+                    $(select).val(row.onerilen_personel_token || '').select2({
+                        dropdownParent: $('#modalTopluYonlendir'), width: '100%', placeholder: 'Personel seçin...'
+                    });
+                });
+            }).catch(err => { content.innerHTML = `<div class="alert alert-danger mb-0">${err.message}</div>`; });
+    }
+
+    function ihbarTopluYonlendir() {
+        const assignments = [];
+        document.querySelectorAll('.toplu-ihbar-sec:checked').forEach(check => {
+            const value = document.getElementById(`topluPersonel_${check.dataset.index}`)?.value;
+            if (value) assignments.push({ ihbar_token: check.dataset.token, personel_token: value });
+        });
+        if (!assignments.length) {
+            Swal.fire('Uyarı', 'En az bir ihbar ve personel seçmelisiniz.', 'warning'); return;
+        }
+        const data = new FormData(); data.append('action', 'bulkReassign');
+        data.append('assignments', JSON.stringify(assignments));
+        const button = document.getElementById('btnTopluYonlendirKaydet'); button.disabled = true;
+        fetch(IHBAR_API_URL, { method: 'POST', body: data }).then(r => r.json()).then(res => {
+            button.disabled = false;
+            if (res.success) Swal.fire('Başarılı', res.message, 'success').then(() => location.reload());
+            else Swal.fire('Hata', res.message || 'Yönlendirme yapılamadı.', 'error');
+        }).catch(() => { button.disabled = false; Swal.fire('Hata', 'Sunucuya ulaşılamadı.', 'error'); });
     }
 
     function ihbarDuzenleFormAc(detay) {

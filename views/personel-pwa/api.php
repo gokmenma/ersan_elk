@@ -4880,7 +4880,7 @@ try {
                 "SELECT f.dosya_yolu
                  FROM ihbar_fotograflari f
                  INNER JOIN ihbarlar i ON i.id = f.ihbar_id
-                 LEFT JOIN ihbar_atamalar a ON a.ihbar_id = i.id AND a.personel_id = ?
+                 LEFT JOIN ihbar_atamalar a ON a.ihbar_id = i.id AND a.personel_id = ? AND a.silinme_tarihi IS NULL
                  WHERE f.id = ?
                    AND i.silinme_tarihi IS NULL
                    AND (i.bildiren_personel_id = ? OR a.personel_id IS NOT NULL)

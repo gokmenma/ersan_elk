@@ -174,6 +174,8 @@ class IhbarModel extends Model
             throw new \Exception('İhbarlar yalnızca aktif Kaçak Kontrol personeline yönlendirilebilir.');
         }
 
+        $pasif = $this->db->prepare("UPDATE ihbar_atamalar SET silinme_tarihi = NOW() WHERE ihbar_id = ? AND silinme_tarihi IS NULL");
+        $pasif->execute([$ihbarId]);
         $stmt = $this->db->prepare("INSERT INTO ihbar_atamalar (ihbar_id, personel_id, atayan_user_id, created_at) VALUES (?, ?, ?, NOW())");
         foreach ($personelIds as $personelId) {
             $stmt->execute([$ihbarId, $personelId, $atayanUserId]);
@@ -248,7 +250,7 @@ class IhbarModel extends Model
 
     public function getAtananPersonelIds(int $ihbarId): array
     {
-        $stmt = $this->db->prepare("SELECT personel_id FROM ihbar_atamalar WHERE ihbar_id = ?");
+        $stmt = $this->db->prepare("SELECT personel_id FROM ihbar_atamalar WHERE ihbar_id = ? AND silinme_tarihi IS NULL");
         $stmt->execute([$ihbarId]);
         return array_map('intval', $stmt->fetchAll(PDO::FETCH_COLUMN));
     }
@@ -331,7 +333,7 @@ class IhbarModel extends Model
             throw new \Exception('Yalnızca sonuçlanmış bir ihbarın sonucu iptal edilebilir.');
         }
 
-        $atama = $this->db->prepare("SELECT COUNT(*) FROM ihbar_atamalar WHERE ihbar_id = ?");
+        $atama = $this->db->prepare("SELECT COUNT(*) FROM ihbar_atamalar WHERE ihbar_id = ? AND silinme_tarihi IS NULL");
         $atama->execute([$ihbarId]);
         $yeniDurum = (int) $atama->fetchColumn() > 0 ? 'yonlendirildi' : 'yeni';
 
@@ -360,7 +362,7 @@ class IhbarModel extends Model
         $atamaStmt = $this->db->prepare("SELECT a.personel_id, p.adi_soyadi
             FROM ihbar_atamalar a
             JOIN personel p ON p.id = a.personel_id
-            WHERE a.ihbar_id = ?
+            WHERE a.ihbar_id = ? AND a.silinme_tarihi IS NULL
             ORDER BY a.created_at ASC");
         $atamaStmt->execute([$id]);
 
@@ -382,7 +384,7 @@ class IhbarModel extends Model
                 (SELECT GROUP_CONCAT(p.adi_soyadi SEPARATOR ', ')
                     FROM ihbar_atamalar a
                     JOIN personel p ON p.id = a.personel_id
-                    WHERE a.ihbar_id = i.id) AS atanan_ekip_adi,
+                    WHERE a.ihbar_id = i.id AND a.silinme_tarihi IS NULL) AS atanan_ekip_adi,
                 (SELECT COUNT(*) FROM ihbar_fotograflari f WHERE f.ihbar_id = i.id) AS foto_sayisi
             FROM ihbarlar i
             LEFT JOIN personel bp ON bp.id = i.bildiren_personel_id
@@ -424,7 +426,7 @@ class IhbarModel extends Model
                 (SELECT GROUP_CONCAT(p.adi_soyadi SEPARATOR ', ')
                     FROM ihbar_atamalar a
                     JOIN personel p ON p.id = a.personel_id
-                    WHERE a.ihbar_id = i.id) AS atanan_ekip_adi
+                    WHERE a.ihbar_id = i.id AND a.silinme_tarihi IS NULL) AS atanan_ekip_adi
             FROM ihbarlar i
             WHERE i.bildiren_personel_id = ? AND i.silinme_tarihi IS NULL
             ORDER BY i.created_at DESC");
@@ -437,7 +439,7 @@ class IhbarModel extends Model
         $stmt = $this->db->prepare("SELECT DISTINCT i.*
             FROM ihbarlar i
             JOIN ihbar_atamalar a ON a.ihbar_id = i.id
-            WHERE a.personel_id = ? AND i.silinme_tarihi IS NULL
+            WHERE a.personel_id = ? AND a.silinme_tarihi IS NULL AND i.silinme_tarihi IS NULL
             ORDER BY i.created_at DESC");
         $stmt->execute([$personelId]);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
@@ -455,5 +457,78 @@ class IhbarModel extends Model
             ORDER BY adi_soyadi ASC");
         $stmt->execute([$this->firmaId(), '%Kaçak%']);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function getReassignmentCandidates(): array
+    {
+        $stmt = $this->db->prepare("SELECT i.id, i.ilce, i.mahalle, i.created_at, i.konum_lat, i.konum_lng,
+                (SELECT GROUP_CONCAT(p.adi_soyadi SEPARATOR ', ')
+                 FROM ihbar_atamalar a JOIN personel p ON p.id = a.personel_id
+                 WHERE a.ihbar_id = i.id AND a.silinme_tarihi IS NULL) AS mevcut_ekip
+            FROM ihbarlar i
+            WHERE i.firma_id = ? AND i.silinme_tarihi IS NULL AND i.durum IN ('yeni', 'yonlendirildi')
+            ORDER BY i.created_at ASC");
+        $stmt->execute([$this->firmaId()]);
+        $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+        foreach ($rows as $row) {
+            $row->onerilen_personel_id = $this->findNearestAvailablePersonel(
+                (float) $row->konum_lat,
+                (float) $row->konum_lng,
+                (int) $row->id
+            );
+        }
+        return $rows;
+    }
+
+    private function findNearestAvailablePersonel(float $lat, float $lng, int $ihbarId): ?int
+    {
+        if ($lat == 0.0 || $lng == 0.0) {
+            return null;
+        }
+        $stmt = $this->db->prepare("SELECT p.id
+            FROM personel p
+            INNER JOIN personel_hareketleri ph ON ph.id = (
+                SELECT ph2.id FROM personel_hareketleri ph2
+                WHERE ph2.personel_id = p.id AND ph2.silinme_tarihi IS NULL
+                ORDER BY ph2.zaman DESC, ph2.id DESC LIMIT 1
+            )
+            WHERE p.firma_id = :firma_id AND p.aktif_mi = 1 AND p.saha_takibi = 1
+              AND p.silinme_tarihi IS NULL AND p.departman LIKE :departman
+              AND ph.islem_tipi = 'BASLA' AND ph.zaman >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+              AND NOT EXISTS (SELECT 1 FROM ihbar_atamalar a WHERE a.ihbar_id = :ihbar_id
+                              AND a.personel_id = p.id AND a.silinme_tarihi IS NULL)
+            ORDER BY (6371 * ACOS(LEAST(1, GREATEST(-1,
+                COS(RADIANS(:lat)) * COS(RADIANS(ph.konum_enlem))
+                * COS(RADIANS(ph.konum_boylam) - RADIANS(:lng))
+                + SIN(RADIANS(:lat2)) * SIN(RADIANS(ph.konum_enlem)))))) ASC LIMIT 1");
+        $stmt->execute([':firma_id' => $this->firmaId(), ':departman' => '%Kaçak%', ':ihbar_id' => $ihbarId,
+            ':lat' => $lat, ':lng' => $lng, ':lat2' => $lat]);
+        $id = (int) ($stmt->fetchColumn() ?: 0);
+        return $id > 0 ? $id : null;
+    }
+
+    public function bulkReassign(array $assignments, int $userId): array
+    {
+        $completed = [];
+        $this->db->beginTransaction();
+        try {
+            foreach ($assignments as $ihbarId => $personelId) {
+                $ihbarId = (int) $ihbarId;
+                $personelId = (int) $personelId;
+                $check = $this->db->prepare("SELECT id FROM ihbarlar WHERE id = ? AND firma_id = ?
+                    AND durum IN ('yeni','yonlendirildi') AND silinme_tarihi IS NULL");
+                $check->execute([$ihbarId, $this->firmaId()]);
+                if ($personelId <= 0 || !$check->fetchColumn()) {
+                    throw new \Exception('Toplu yönlendirme satırlarından biri geçersiz.');
+                }
+                $this->assignTeam($ihbarId, [$personelId], $userId);
+                $completed[] = $personelId;
+            }
+            $this->db->commit();
+            return $completed;
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) $this->db->rollBack();
+            throw $e;
+        }
     }
 }

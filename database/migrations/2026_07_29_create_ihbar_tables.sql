@@ -43,9 +43,11 @@ CREATE TABLE IF NOT EXISTS `ihbar_atamalar` (
   `personel_id` int(11) NOT NULL,
   `atayan_user_id` int(11) DEFAULT NULL,
   `created_at` datetime NOT NULL DEFAULT current_timestamp(),
+  `silinme_tarihi` datetime DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `idx_ihbar` (`ihbar_id`),
   KEY `idx_personel` (`personel_id`),
+  KEY `idx_ihbar_aktif` (`ihbar_id`, `silinme_tarihi`),
   CONSTRAINT `fk_ihbar_atama_ihbar` FOREIGN KEY (`ihbar_id`) REFERENCES `ihbarlar` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
