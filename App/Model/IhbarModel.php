@@ -21,8 +21,8 @@ class IhbarModel extends Model
     public function create(array $data): int
     {
         $stmt = $this->db->prepare("INSERT INTO ihbarlar
-            (firma_id, ilce, mahalle, telefon, komsu_abone_no, aciklama, konum_lat, konum_lng, konum_dogruluk, durum, bildiren_personel_id, olusturan_user_id, created_at)
-            VALUES (:firma_id, :ilce, :mahalle, :telefon, :komsu_abone_no, :aciklama, :konum_lat, :konum_lng, :konum_dogruluk, 'yeni', :bildiren_personel_id, :olusturan_user_id, NOW())");
+            (firma_id, ilce, mahalle, telefon, komsu_abone_no, aciklama, konum_link, konum_lat, konum_lng, konum_dogruluk, durum, bildiren_personel_id, olusturan_user_id, created_at)
+            VALUES (:firma_id, :ilce, :mahalle, :telefon, :komsu_abone_no, :aciklama, :konum_link, :konum_lat, :konum_lng, :konum_dogruluk, 'yeni', :bildiren_personel_id, :olusturan_user_id, NOW())");
 
         $stmt->execute([
             ':firma_id' => $this->firmaId(),
@@ -31,6 +31,7 @@ class IhbarModel extends Model
             ':telefon' => $data['telefon'] ?? null,
             ':komsu_abone_no' => $data['komsu_abone_no'] ?? null,
             ':aciklama' => $data['aciklama'] ?? null,
+            ':konum_link' => $data['konum_link'] ?? null,
             ':konum_lat' => $data['konum_lat'] ?? null,
             ':konum_lng' => $data['konum_lng'] ?? null,
             ':konum_dogruluk' => $data['konum_dogruluk'] ?? null,
@@ -76,13 +77,14 @@ class IhbarModel extends Model
             throw new \Exception('Bu ihbar için işlem başladığından artık güncellenemez.');
         }
 
-        $upd = $this->db->prepare("UPDATE ihbarlar SET ilce = ?, mahalle = ?, telefon = ?, komsu_abone_no = ?, aciklama = ?, konum_lat = ?, konum_lng = ?, konum_dogruluk = ? WHERE id = ?");
+        $upd = $this->db->prepare("UPDATE ihbarlar SET ilce = ?, mahalle = ?, telefon = ?, komsu_abone_no = ?, aciklama = ?, konum_link = ?, konum_lat = ?, konum_lng = ?, konum_dogruluk = ? WHERE id = ?");
         $upd->execute([
             $data['ilce'] ?? null,
             $data['mahalle'] ?? null,
             $data['telefon'] ?? null,
             $data['komsu_abone_no'] ?? null,
             $data['aciklama'] ?? null,
+            $data['konum_link'] ?? null,
             $data['konum_lat'] ?? null,
             $data['konum_lng'] ?? null,
             $data['konum_dogruluk'] ?? null,
@@ -103,13 +105,14 @@ class IhbarModel extends Model
             throw new \Exception('Kayıt bulunamadı.');
         }
 
-        $upd = $this->db->prepare("UPDATE ihbarlar SET ilce = ?, mahalle = ?, telefon = ?, komsu_abone_no = ?, aciklama = ?, konum_lat = ?, konum_lng = ?, konum_dogruluk = ? WHERE id = ?");
+        $upd = $this->db->prepare("UPDATE ihbarlar SET ilce = ?, mahalle = ?, telefon = ?, komsu_abone_no = ?, aciklama = ?, konum_link = ?, konum_lat = ?, konum_lng = ?, konum_dogruluk = ? WHERE id = ?");
         $upd->execute([
             $data['ilce'] ?? null,
             $data['mahalle'] ?? null,
             $data['telefon'] ?? null,
             $data['komsu_abone_no'] ?? null,
             $data['aciklama'] ?? null,
+            $data['konum_link'] ?? null,
             $data['konum_lat'] ?? null,
             $data['konum_lng'] ?? null,
             $data['konum_dogruluk'] ?? null,
@@ -159,6 +162,18 @@ class IhbarModel extends Model
             throw new \Exception('En az bir personel seçmelisiniz.');
         }
 
+        $placeholders = implode(',', array_fill(0, count($personelIds), '?'));
+        $kontrol = $this->db->prepare("SELECT COUNT(*) FROM personel
+            WHERE id IN ({$placeholders})
+              AND firma_id = ?
+              AND aktif_mi = 1
+              AND silinme_tarihi IS NULL
+              AND departman LIKE ?");
+        $kontrol->execute(array_merge($personelIds, [$this->firmaId(), '%Kaçak%']));
+        if ((int) $kontrol->fetchColumn() !== count($personelIds)) {
+            throw new \Exception('İhbarlar yalnızca aktif Kaçak Kontrol personeline yönlendirilebilir.');
+        }
+
         $stmt = $this->db->prepare("INSERT INTO ihbar_atamalar (ihbar_id, personel_id, atayan_user_id, created_at) VALUES (?, ?, ?, NOW())");
         foreach ($personelIds as $personelId) {
             $stmt->execute([$ihbarId, $personelId, $atayanUserId]);
@@ -172,6 +187,63 @@ class IhbarModel extends Model
         $adlar = implode(', ', array_column($isimler->fetchAll(PDO::FETCH_OBJ), 'adi_soyadi'));
 
         $this->addTarihce($ihbarId, 'yonlendirildi', "İhbar şu personele yönlendirildi: {$adlar}", 'user', $atayanUserId);
+    }
+
+    /** Personel ihbarını, aktif saha personellerinin son GPS kaydına göre en yakına yönlendirir. */
+    public function autoAssignNearest(int $ihbarId, float $lat, float $lng, int $bildirenPersonelId): ?int
+    {
+        $sql = "SELECT p.id,
+                    (6371 * ACOS(LEAST(1, GREATEST(-1,
+                        COS(RADIANS(:lat)) * COS(RADIANS(ph.konum_enlem))
+                        * COS(RADIANS(ph.konum_boylam) - RADIANS(:lng))
+                        + SIN(RADIANS(:lat2)) * SIN(RADIANS(ph.konum_enlem))
+                    )))) AS mesafe_km
+                FROM personel p
+                INNER JOIN personel_hareketleri ph ON ph.id = (
+                    SELECT ph2.id FROM personel_hareketleri ph2
+                    WHERE ph2.personel_id = p.id AND ph2.silinme_tarihi IS NULL
+                    ORDER BY ph2.zaman DESC, ph2.id DESC LIMIT 1
+                )
+                WHERE p.firma_id = :firma_id
+                  AND p.aktif_mi = 1
+                  AND p.saha_takibi = 1
+                  AND p.departman LIKE :departman
+                  AND p.silinme_tarihi IS NULL
+                  AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '0000-00-00')
+                  AND ph.islem_tipi = 'BASLA'
+                  AND ph.zaman >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+                  AND p.id <> :bildiren_id
+                ORDER BY mesafe_km ASC
+                LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':lat' => $lat,
+            ':lng' => $lng,
+            ':lat2' => $lat,
+            ':firma_id' => $this->firmaId(),
+            ':bildiren_id' => $bildirenPersonelId,
+            ':departman' => '%Kaçak%',
+        ]);
+        $personelId = (int) ($stmt->fetchColumn() ?: 0);
+        if ($personelId <= 0) {
+            return null;
+        }
+
+        $insert = $this->db->prepare(
+            "INSERT INTO ihbar_atamalar (ihbar_id, personel_id, atayan_user_id, created_at) VALUES (?, ?, NULL, NOW())"
+        );
+        $insert->execute([$ihbarId, $personelId]);
+        $update = $this->db->prepare("UPDATE ihbarlar SET durum = 'yonlendirildi' WHERE id = ? AND durum = 'yeni'");
+        $update->execute([$ihbarId]);
+
+        $this->addTarihce(
+            $ihbarId,
+            'yonlendirildi',
+            'İhbar, güncel saha konumuna göre en yakın personele otomatik yönlendirildi.',
+            'personel',
+            $bildirenPersonelId
+        );
+        return $personelId;
     }
 
     public function getAtananPersonelIds(int $ihbarId): array
@@ -246,6 +318,28 @@ class IhbarModel extends Model
         }
 
         $this->addTarihce($ihbarId, 'durum_degisti', $aciklama, $ekleyenTip, $ekleyenId);
+    }
+
+    public function cancelResult(int $ihbarId, int $userId): void
+    {
+        $check = $this->db->prepare(
+            "SELECT durum FROM ihbarlar WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL"
+        );
+        $check->execute([$ihbarId, $this->firmaId()]);
+        $durum = $check->fetchColumn();
+        if (!in_array($durum, ['olumlu', 'olumsuz'], true)) {
+            throw new \Exception('Yalnızca sonuçlanmış bir ihbarın sonucu iptal edilebilir.');
+        }
+
+        $atama = $this->db->prepare("SELECT COUNT(*) FROM ihbar_atamalar WHERE ihbar_id = ?");
+        $atama->execute([$ihbarId]);
+        $yeniDurum = (int) $atama->fetchColumn() > 0 ? 'yonlendirildi' : 'yeni';
+
+        $update = $this->db->prepare(
+            "UPDATE ihbarlar SET durum = ?, tutanak_no = NULL, olumsuz_sebep = NULL WHERE id = ? AND firma_id = ?"
+        );
+        $update->execute([$yeniDurum, $ihbarId, $this->firmaId()]);
+        $this->addTarihce($ihbarId, 'durum_degisti', 'İhbar sonucu iptal edildi; kayıt yeniden işlem bekliyor.', 'user', $userId);
     }
 
     public function getById(int $id)
@@ -353,10 +447,13 @@ class IhbarModel extends Model
     {
         $stmt = $this->db->prepare("SELECT id, adi_soyadi, departman
             FROM personel
-            WHERE aktif_mi = 1
+            WHERE firma_id = ?
+              AND aktif_mi = 1
+              AND silinme_tarihi IS NULL
+              AND departman LIKE ?
               AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00')
             ORDER BY adi_soyadi ASC");
-        $stmt->execute();
+        $stmt->execute([$this->firmaId(), '%Kaçak%']);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 }

@@ -81,6 +81,20 @@ $olumluOrani = $sonuclananToplam > 0
     ? round(($ihbarOzet['olumlu'] / $sonuclananToplam) * 100)
     : 0;
 $buAyToplam = end($aylikTrend)['toplam'] ?? 0;
+$kahramanmarasIlceleri = [
+    '' => 'İlçe seçin...',
+    'Afşin' => 'Afşin',
+    'Andırın' => 'Andırın',
+    'Çağlayancerit' => 'Çağlayancerit',
+    'Dulkadiroğlu' => 'Dulkadiroğlu',
+    'Ekinözü' => 'Ekinözü',
+    'Elbistan' => 'Elbistan',
+    'Göksun' => 'Göksun',
+    'Nurhak' => 'Nurhak',
+    'Onikişubat' => 'Onikişubat',
+    'Pazarcık' => 'Pazarcık',
+    'Türkoğlu' => 'Türkoğlu',
+];
 
 $ihbarEkipSelectHtml = Form::FormMultipleSelect2(
     'ihbarEkipSelect',
@@ -415,7 +429,7 @@ function ihbarDurumBadge($durum)
                 <input type="hidden" name="id" id="ihbarFormId" value="">
                 <div class="modal-body">
                     <div class="mb-3">
-                        <?= Form::FormFloatInput('text', 'ilce', '', 'İlçe', 'İlçe', 'bx bx-map', 'form-control', false, 100, 'off') ?>
+                        <?= Form::FormSelect2('ilce', $kahramanmarasIlceleri, '', 'İlçe', 'bx bx-map', 'key', '', 'form-select select2', false, 'width:100%', '', 'ihbarIlce') ?>
                     </div>
                     <div class="mb-3">
                         <?= Form::FormFloatInput('text', 'mahalle', '', 'Mahalle', 'Mahalle', 'bx bx-map-pin', 'form-control', false, 150, 'off') ?>
@@ -425,6 +439,10 @@ function ihbarDurumBadge($durum)
                     </div>
                     <div class="mb-3">
                         <?= Form::FormFloatInput('text', 'komsu_abone_no', '', 'Abone numarası', 'Komşu Abone No', 'bx bx-id-card', 'form-control', false, 50, 'off') ?>
+                    </div>
+                    <div class="mb-3">
+                        <?= Form::FormFloatInput('url', 'konum_link', '', 'https://maps.google.com/...', 'Konum Linki', 'bx bx-link-alt', 'form-control', false, 1000, 'url') ?>
+                        <small class="text-muted">Google Maps veya başka bir harita uygulamasından alınan konum bağlantısını yapıştırabilirsiniz.</small>
                     </div>
                     <div class="mb-3">
                         <input type="hidden" name="konum_lat" id="konum_lat">
@@ -914,6 +932,12 @@ function ihbarDurumBadge($durum)
     let ihbarFotoLightbox = null;
 
     document.addEventListener('DOMContentLoaded', function () {
+        $('#ihbarIlce').select2({
+            dropdownParent: $('#modalYeniIhbar'),
+            width: '100%',
+            placeholder: 'İlçe seçin...'
+        });
+
         const ihbarTable = $('#ihbarTable').DataTable($.extend(true, {}, getDatatableOptions(), {
             dom: 'rt' +
                  '<"row mt-3 align-items-center g-2"' +
@@ -982,6 +1006,7 @@ function ihbarDurumBadge($durum)
 
     function ihbarYeniAc() {
         document.getElementById('formYeniIhbar').reset();
+        $('#ihbarIlce').val('').trigger('change');
         document.getElementById('ihbarFormId').value = '';
         document.querySelector('#modalYeniIhbar .modal-title').innerHTML = '<i class="bx bx-error-circle me-2"></i>Yeni İhbar Ekle';
         document.getElementById('btnIhbarKaydet').innerHTML = '<i class="bx bx-send me-1"></i>Kaydet';
@@ -997,11 +1022,12 @@ function ihbarDurumBadge($durum)
         const form = document.getElementById('formYeniIhbar');
         form.reset();
         document.getElementById('ihbarFormId').value = detay.id;
-        form.querySelector('[name=ilce]').value = detay.ilce || '';
+        $('#ihbarIlce').val(detay.ilce || '').trigger('change');
         form.querySelector('[name=mahalle]').value = detay.mahalle || '';
         form.querySelector('[name=telefon]').value = detay.telefon || '';
         form.querySelector('[name=komsu_abone_no]').value = detay.komsu_abone_no || '';
         form.querySelector('[name=aciklama]').value = detay.aciklama || '';
+        form.querySelector('[name=konum_link]').value = detay.konum_link || '';
         form.querySelector('[name=konum_lat]').value = detay.konum_lat || '';
         form.querySelector('[name=konum_lng]').value = detay.konum_lng || '';
         form.querySelector('[name=konum_dogruluk]').value = detay.konum_dogruluk || '';
@@ -1231,6 +1257,16 @@ function ihbarDurumBadge($durum)
         const tarih = d.created_at
             ? new Date(d.created_at.replace(' ', 'T')).toLocaleString('tr-TR', { dateStyle: 'medium', timeStyle: 'short' })
             : '-';
+        let konumUrl = '';
+        if (d.konum_link) {
+            try {
+                const parsedUrl = new URL(d.konum_link);
+                if (['http:', 'https:'].includes(parsedUrl.protocol)) konumUrl = parsedUrl.href;
+            } catch (e) {}
+        }
+        if (!konumUrl && d.konum_lat && d.konum_lng) {
+            konumUrl = `https://www.google.com/maps?q=${encodeURIComponent(d.konum_lat)},${encodeURIComponent(d.konum_lng)}`;
+        }
 
         const fotoHtml = (d.fotograflar || []).map(f =>
             `<a href="${IHBAR_API_URL}?action=foto&foto_id=${f.id}" class="ihbar-foto-lightbox"
@@ -1272,8 +1308,8 @@ function ihbarDurumBadge($durum)
                         <span><i class="bx bx-group"></i>${ekipAdi}</span>
                         <span><i class="bx bx-phone"></i>${d.telefon || 'Telefon belirtilmemiş'}</span>
                         ${d.komsu_abone_no ? `<span><i class="bx bx-id-card"></i>Abone No: ${d.komsu_abone_no}</span>` : ''}
-                        ${d.konum_lat && d.konum_lng ? `
-                            <a href="https://www.google.com/maps?q=${d.konum_lat},${d.konum_lng}" target="_blank"
+                        ${konumUrl ? `
+                            <a href="${konumUrl}" target="_blank" rel="noopener noreferrer"
                                 class="text-primary fw-semibold">
                                 <i class="bx bx-map"></i>Konumu Haritada Aç
                             </a>` : ''}
@@ -1357,6 +1393,10 @@ function ihbarDurumBadge($durum)
                     <button type="button" class="btn btn-success btn-sm w-100 rounded-pill mt-1" onclick="ihbarSonuclandir()">
                         <i class="bx bx-check me-1"></i>${kapaliMi ? 'Sonucu Güncelle' : 'Sonucu Kaydet'}
                     </button>
+                    ${kapaliMi ? `
+                    <button type="button" class="btn btn-outline-danger btn-sm w-100 rounded-pill mt-2" onclick="ihbarSonucIptal()">
+                        <i class="bx bx-undo me-1"></i>Sonuçlanma Durumunu İptal Et
+                    </button>` : ''}
                 </div>
             </aside>
         </div>
@@ -1452,6 +1492,30 @@ function ihbarDurumBadge($durum)
             } else {
                 Swal.fire('Hata', res.message || 'Bir hata oluştu.', 'error');
             }
+        });
+    }
+
+    function ihbarSonucIptal() {
+        Swal.fire({
+            title: 'Sonuçlanma iptal edilsin mi?',
+            text: 'Sonuç bilgileri temizlenecek ve ihbar yeniden işlem bekleyen duruma alınacaktır.',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, İptal Et',
+            cancelButtonText: 'Vazgeç',
+            confirmButtonColor: '#ef4444'
+        }).then(result => {
+            if (!result.isConfirmed) return;
+            fetch(IHBAR_API_URL, {
+                method: 'POST',
+                body: new URLSearchParams({ action: 'cancelResult', id: ihbarAktifId })
+            }).then(r => r.json()).then(res => {
+                if (res.success) {
+                    Swal.fire('Başarılı', res.message, 'success').then(() => location.reload());
+                } else {
+                    Swal.fire('Hata', res.message || 'Sonuç iptal edilemedi.', 'error');
+                }
+            }).catch(() => Swal.fire('Hata', 'Sunucuya ulaşılamadı.', 'error'));
         });
     }
 </script>

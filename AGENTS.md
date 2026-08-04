@@ -24,3 +24,8 @@
 - **Sayfa ve Tablo Yerleşimi**:
   - Sayfa başlığı card header içerisinde **yer almayacak**; `layouts/breadcrumb.php` standart yapısı üzerinden sunulacaktır.
   - Kartın üst kısmında durum filtreleri (`status-filter-group`) ve sağ tarafta aksiyon butonu (`personel-action-toolbar`) kullanılacaktır.
+
+## 4. Form ve Select2 Standartları
+- Masaüstü modüllerde select alanları doğrudan HTML `<select>` etiketi yazılarak oluşturulmayacak; `App\Helper\Form::FormSelect2()` kullanılacaktır.
+- Select2 alanının sınıfında `select2` bulunacak ve JavaScript tarafında `.select2()` ile başlatılacaktır.
+- Modal içerisindeki Select2 alanlarında açılır listenin modal sınırları ve katman sırası içinde kalması için `dropdownParent` ilgili modal olarak tanımlanacaktır.

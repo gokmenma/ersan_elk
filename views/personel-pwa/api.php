@@ -4838,6 +4838,16 @@ try {
                 'bildiren_personel_id' => $personel_id,
             ]);
 
+            $atananPersonelId = null;
+            if (is_numeric($_POST['konum_lat'] ?? null) && is_numeric($_POST['konum_lng'] ?? null)) {
+                $atananPersonelId = $IhbarModel->autoAssignNearest(
+                    $ihbarId,
+                    (float) $_POST['konum_lat'],
+                    (float) $_POST['konum_lng'],
+                    (int) $personel_id
+                );
+            }
+
             // Fotoğraf yükleme (en fazla 4 adet)
             $uploadedPhotoCount = 0;
             $selectedPhotoCount = count($_FILES['fotograflar']['name'] ?? []);
@@ -4874,6 +4884,19 @@ try {
             }
 
             $ihbarDb->commit();
+
+            if ($atananPersonelId) {
+                try {
+                    $pushService = new PushNotificationService();
+                    $pushService->sendToPersonel($atananPersonelId, [
+                        'title' => '📍 Yakınınızdaki İhbar',
+                        'body' => 'Konumunuza en yakın yeni ihbar size otomatik yönlendirildi.',
+                        'url' => '?page=ihbar'
+                    ]);
+                } catch (Exception $e) {
+                    error_log('Otomatik ihbar yönlendirme push hatası: ' . $e->getMessage());
+                }
+            }
 
             // Bildirim: "İhbar Yönetimi" yetkisine sahip kullanıcılara (Kaçak Kontrol Sorumlusu vb.)
             try {

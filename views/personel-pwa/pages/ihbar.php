@@ -259,7 +259,11 @@
                     <form id="ihbar-form" class="space-y-4">
                         <div>
                             <label class="form-label">İlçe</label>
-                            <input type="text" name="ilce" class="form-input" placeholder="İlçe" value="${editData?.ilce ?? ''}">
+                            <select name="ilce" class="form-input">
+                                <option value="">İlçe seçin...</option>
+                                ${['Afşin', 'Andırın', 'Çağlayancerit', 'Dulkadiroğlu', 'Ekinözü', 'Elbistan', 'Göksun', 'Nurhak', 'Onikişubat', 'Pazarcık', 'Türkoğlu']
+                                    .map(ilce => `<option value="${ilce}" ${editData?.ilce === ilce ? 'selected' : ''}>${ilce}</option>`).join('')}
+                            </select>
                         </div>
                         <div>
                             <label class="form-label">Mahalle</label>

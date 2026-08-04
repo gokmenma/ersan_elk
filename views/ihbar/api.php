@@ -20,6 +20,16 @@ function ihbarResponse($success, $message = '', $data = null)
     exit;
 }
 
+function ihbarNormalizeKonumLink(?string $link): ?string
+{
+    $link = trim((string) $link);
+    if ($link === '' || !filter_var($link, FILTER_VALIDATE_URL)) {
+        return null;
+    }
+    $scheme = strtolower((string) parse_url($link, PHP_URL_SCHEME));
+    return in_array($scheme, ['http', 'https'], true) ? $link : null;
+}
+
 /**
  * "İhbar Yönetimi" yetkisine sahip (Kaçak Kontrol Sorumlusu vb.) kullanıcıları döndürür.
  */
@@ -173,6 +183,7 @@ try {
                 'telefon' => trim($_POST['telefon'] ?? '') ?: null,
                 'komsu_abone_no' => trim($_POST['komsu_abone_no'] ?? '') ?: null,
                 'aciklama' => $aciklama,
+                'konum_link' => ihbarNormalizeKonumLink($_POST['konum_link'] ?? null),
                 'konum_lat' => is_numeric($_POST['konum_lat'] ?? null) ? (float) $_POST['konum_lat'] : null,
                 'konum_lng' => is_numeric($_POST['konum_lng'] ?? null) ? (float) $_POST['konum_lng'] : null,
                 'konum_dogruluk' => is_numeric($_POST['konum_dogruluk'] ?? null) ? (float) $_POST['konum_dogruluk'] : null,
@@ -205,6 +216,7 @@ try {
                 'telefon' => trim($_POST['telefon'] ?? '') ?: null,
                 'komsu_abone_no' => trim($_POST['komsu_abone_no'] ?? '') ?: null,
                 'aciklama' => $aciklama,
+                'konum_link' => ihbarNormalizeKonumLink($_POST['konum_link'] ?? null),
                 'konum_lat' => is_numeric($_POST['konum_lat'] ?? null) ? (float) $_POST['konum_lat'] : null,
                 'konum_lng' => is_numeric($_POST['konum_lng'] ?? null) ? (float) $_POST['konum_lng'] : null,
                 'konum_dogruluk' => is_numeric($_POST['konum_dogruluk'] ?? null) ? (float) $_POST['konum_dogruluk'] : null,
@@ -288,6 +300,14 @@ try {
 
             $IhbarModel->closeSonuc($id, $durum, $tutanakNo, $sebep, 'user', $currentUserId);
             ihbarResponse(true, 'İhbar sonuçlandırıldı.');
+            break;
+
+        case 'cancelResult':
+            Gate::authorizeOrDie('ihbar/list');
+
+            $id = (int) ($_POST['id'] ?? 0);
+            $IhbarModel->cancelResult($id, $currentUserId);
+            ihbarResponse(true, 'İhbar sonucu iptal edildi ve kayıt yeniden işlem bekliyor.');
             break;
 
         default:

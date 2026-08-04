@@ -250,7 +250,9 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-body p-2">
             <ul class="nav nav-pills kacak-tabs" id="kacakTabs" role="tablist">
-                <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#pane-kayitlar"
+                <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#pane-ekip-ozet"
+                        type="button"><i class="bx bx-table me-1"></i> Ekip Özeti</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-kayitlar"
                         type="button"><i class="bx bx-list-ul me-1"></i> Kayıtlar</button></li>
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-onaylar"
                         type="button"><i class="bx bx-check-shield me-1"></i> Bekleyen Onaylar
@@ -259,8 +261,6 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
                     </button></li>
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-iptaller"
                         type="button"><i class="bx bx-x-circle me-1"></i> İptaller</button></li>
-                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-ekip-ozet"
-                        type="button"><i class="bx bx-table me-1"></i> Ekip Özeti</button></li>
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-gunluk"
                         type="button"><i class="bx bx-clipboard me-1"></i> Günlük Rapor</button></li>
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-haftalik"
@@ -278,7 +278,7 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
     <div class="tab-content">
 
         <!-- ============ KAYITLAR ============ -->
-        <div class="tab-pane fade show active" id="pane-kayitlar">
+        <div class="tab-pane fade" id="pane-kayitlar">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
                     <div class="row g-2 align-items-end mb-3">
@@ -403,7 +403,7 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
         </div>
 
         <!-- ============ EKİP ÖZETİ (Ekip x Gün pivot) ============ -->
-        <div class="tab-pane fade" id="pane-ekip-ozet">
+        <div class="tab-pane fade show active" id="pane-ekip-ozet">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-transparent border-bottom py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
                     <div>
@@ -1845,7 +1845,7 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
                 feather.replace();
             }
 
-            kayitlariYukle();
+            ekipOzetiYukle();
         });
     })();
 </script>
