@@ -133,7 +133,7 @@ if ($tip === 'hareket') {
 
     $sheet->setTitle('Stok Durumu');
 
-    $basliklar = ['Sahip', 'Bölge'];
+    $basliklar = ['Sahip', 'Ekip Kodu', 'Bölge'];
     foreach ($matris['tipler'] as $t) {
         $basliklar[] = $t['ad'];
     }
@@ -143,7 +143,7 @@ if ($tip === 'hareket') {
 
     $satir = 2;
     foreach ($matris['satirlar'] as $s) {
-        $veri = [$s['baslik'], $s['bolge']];
+        $veri = [$s['baslik'], $s['ekip_kodu'] ?? '', $s['bolge']];
         foreach ($matris['tipler'] as $t) {
             $veri[] = (int) ($s['adetler'][$t['id']] ?? 0);
         }
@@ -152,7 +152,7 @@ if ($tip === 'hareket') {
         $satir++;
     }
 
-    $toplamSatir = ['TOPLAM', ''];
+    $toplamSatir = ['TOPLAM', '', ''];
     foreach ($matris['tipler'] as $t) {
         $toplamSatir[] = (int) ($matris['sutun_toplam'][$t['id']] ?? 0);
     }

@@ -110,21 +110,68 @@ class AparatStokModel extends Model
     }
 
     /**
-     * Personelin bugün geçerli olan ekibi (personel_ekip_gecmisi üzerinden).
+     * Personelin belirtilen tarihte geçerli olan ekibi (varsayılan: bugün).
+     *
+     * Çevrimdışı kayıt günler sonra gönderilebildiği için hareket, kaydın
+     * gönderildiği gün değil işlemin yapıldığı gün geçerli olan ekibe yazılır;
+     * aksi halde ekip değiştiren personelin eski kaydı yanlış ekipten düşer.
      */
-    public function aktifEkip(int $personelId): ?array
+    public function aktifEkip(int $personelId, ?string $tarih = null): ?array
     {
+        $tarih = $tarih ?: date('Y-m-d');
+
         $stmt = $this->db->prepare("SELECT pg.ekip_kodu_id AS id, t.tur_adi, t.ekip_bolge, pg.ekip_sefi_mi
             FROM personel_ekip_gecmisi pg
             INNER JOIN tanimlamalar t ON t.id = pg.ekip_kodu_id
             WHERE pg.personel_id = ? AND pg.firma_id = ?
-              AND pg.baslangic_tarihi <= CURDATE()
-              AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
+              AND pg.baslangic_tarihi <= ?
+              AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= ?)
             ORDER BY pg.baslangic_tarihi DESC
             LIMIT 1");
-        $stmt->execute([$personelId, $this->firmaId()]);
+        $stmt->execute([$personelId, $this->firmaId(), $tarih, $tarih]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
         return $row ?: null;
+    }
+
+    /**
+     * Bir ekibin bugün geçerli üyeleri. Stok ekibe zimmetli olsa da ekranlarda
+     * ekip kodu yerine kimlerin çalıştığı gösterilir.
+     */
+    public function ekipUyeleri(int $ekipId): array
+    {
+        $stmt = $this->db->prepare("SELECT p.id, p.adi_soyadi, pg.ekip_sefi_mi
+            FROM personel_ekip_gecmisi pg
+            INNER JOIN personel p ON p.id = pg.personel_id
+            WHERE pg.ekip_kodu_id = ? AND pg.firma_id = ?
+              AND pg.baslangic_tarihi <= CURDATE()
+              AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
+              AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '0000-00-00')
+            ORDER BY pg.ekip_sefi_mi DESC, p.adi_soyadi ASC");
+        $stmt->execute([$ekipId, $this->firmaId()]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
+    /**
+     * Tüm ekiplerin üye adları: [ekip_id => "Ad Soyad, Ad Soyad"]
+     */
+    public function ekipUyeHaritasi(): array
+    {
+        $stmt = $this->db->prepare("SELECT pg.ekip_kodu_id,
+                   GROUP_CONCAT(p.adi_soyadi ORDER BY pg.ekip_sefi_mi DESC, p.adi_soyadi ASC SEPARATOR ', ') AS uyeler
+            FROM personel_ekip_gecmisi pg
+            INNER JOIN personel p ON p.id = pg.personel_id
+            WHERE pg.firma_id = ?
+              AND pg.baslangic_tarihi <= CURDATE()
+              AND (pg.bitis_tarihi IS NULL OR pg.bitis_tarihi >= CURDATE())
+              AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '0000-00-00')
+            GROUP BY pg.ekip_kodu_id");
+        $stmt->execute([$this->firmaId()]);
+
+        $harita = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $satir) {
+            $harita[(int) $satir['ekip_kodu_id']] = (string) $satir['uyeler'];
+        }
+        return $harita;
     }
 
     public function ekipAdi(int $ekipId): string
@@ -153,6 +200,7 @@ class AparatStokModel extends Model
         $tipler = $tipModel->listele(false);
         $bakiyeler = $this->tumBakiyeler();
         $ekipler = $this->ekipler();
+        $uyeler = $this->ekipUyeHaritasi();
 
         $satirlar = [];
         $sutunToplam = [];
@@ -167,7 +215,9 @@ class AparatStokModel extends Model
             $satir = [
                 'sahip_tipi' => 'ekip',
                 'sahip_id' => $ekipId,
-                'baslik' => $ekip['tur_adi'],
+                'baslik' => $uyeler[$ekipId] ?? $ekip['tur_adi'],
+                'ekip_kodu' => $ekip['tur_adi'],
+                'uyeler' => $uyeler[$ekipId] ?? '',
                 'bolge' => $ekip['ekip_bolge'],
                 'adetler' => [],
                 'toplam' => 0,
@@ -194,6 +244,8 @@ class AparatStokModel extends Model
                 'sahip_tipi' => $havuz,
                 'sahip_id' => 0,
                 'baslik' => AparatHareketModel::HAVUZLAR[$havuz],
+                'ekip_kodu' => '',
+                'uyeler' => '',
                 'bolge' => '',
                 'adetler' => [],
                 'toplam' => 0,

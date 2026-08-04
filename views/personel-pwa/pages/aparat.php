@@ -14,15 +14,151 @@ $AparatTip = new AparatTipiModel();
 $aktifEkip = $AparatStok->aktifEkip((int) $personel_id);
 $aparatTipleri = $AparatTip->listele(true);
 $aparatDurumlari = KesmeAcmaIslemModel::APARAT_DURUMLARI;
+
+$ekipUyeleri = $aktifEkip ? $AparatStok->ekipUyeleri((int) $aktifEkip['id']) : [];
+$uyeAdlari = implode(', ', array_column($ekipUyeleri, 'adi_soyadi'));
 ?>
+
+<style>
+    /* Bu ekranın renk/konum sınıfları statik Tailwind build'ine bağlı kalmasın diye
+       burada tanımlanır; build'de olmayan bir utility sessizce çalışmıyor. */
+    .aparat-fab {
+        position: fixed;
+        right: 1rem;
+        bottom: 5.25rem;
+        z-index: 45;
+        width: 3.5rem;
+        height: 3.5rem;
+        border-radius: 9999px;
+        background: var(--primary);
+        color: #fff;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: none;
+        box-shadow: 0 10px 24px rgba(0, 0, 0, .28);
+    }
+
+    .aparat-fab:active {
+        transform: scale(.94);
+    }
+
+    .aparat-sheet-katman {
+        position: fixed;
+        inset: 0;
+        z-index: 60;
+        background: rgba(15, 23, 42, .55);
+        display: none;
+    }
+
+    .aparat-sheet-katman.acik {
+        display: block;
+    }
+
+    .aparat-sheet {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        max-height: 90vh;
+        overflow-y: auto;
+        background: #fff;
+        border-radius: 1.25rem 1.25rem 0 0;
+        padding: .75rem 1rem calc(2rem + env(safe-area-inset-bottom));
+    }
+
+    .dark .aparat-sheet {
+        background: #1e1e1f;
+    }
+
+    .aparat-sheet-tutamak {
+        width: 2.5rem;
+        height: .25rem;
+        border-radius: 9999px;
+        background: #cbd5e1;
+        margin: 0 auto .75rem;
+    }
+
+    .aparat-segment {
+        padding: 1rem .5rem;
+        border-radius: .75rem;
+        font-weight: 700;
+        font-size: .875rem;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: .25rem;
+        background: #f1f5f9;
+        color: #64748b;
+        border: none;
+    }
+
+    .dark .aparat-segment {
+        background: #27272a;
+        color: #94a3b8;
+    }
+
+    .aparat-segment.aktif-kesme {
+        background: #ef4444;
+        color: #fff;
+    }
+
+    .aparat-segment.aktif-acma {
+        background: #059669;
+        color: #fff;
+    }
+
+    .aparat-secenek {
+        padding: .75rem .5rem;
+        border-radius: .75rem;
+        font-weight: 700;
+        font-size: .75rem;
+        background: #f1f5f9;
+        color: #64748b;
+        border: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: .25rem;
+        width: 100%;
+    }
+
+    .dark .aparat-secenek {
+        background: #27272a;
+        color: #94a3b8;
+    }
+
+    .aparat-secenek.secili {
+        background: var(--primary);
+        color: #fff;
+    }
+
+    .aparat-rozet {
+        position: absolute;
+        top: -.25rem;
+        right: -.25rem;
+        min-width: 1.1rem;
+        height: 1.1rem;
+        padding: 0 .25rem;
+        border-radius: 9999px;
+        background: #ef4444;
+        color: #fff;
+        font-size: .65rem;
+        font-weight: 700;
+        line-height: 1.1rem;
+    }
+</style>
 
 <div class="flex flex-col min-h-screen bg-slate-50 dark:bg-background-dark pb-20">
 
     <header class="bg-white dark:bg-card-dark px-4 pt-4 pb-3 sticky top-0 z-30 border-b border-slate-200 dark:border-slate-800">
         <div class="flex items-center justify-between gap-3">
-            <div>
+            <div class="flex-1">
                 <h1 class="text-lg font-bold text-slate-800 dark:text-white">Aparat Takip</h1>
-                <p class="text-xs text-slate-400 mt-1" id="aparat-ekip-satiri">
+                <p class="text-xs text-slate-500 dark:text-slate-400 mt-1 font-semibold" id="aparat-uye-satiri">
+                    <?= $uyeAdlari !== '' ? htmlspecialchars($uyeAdlari, ENT_QUOTES, 'UTF-8') : 'Personel atanmamış' ?>
+                </p>
+                <p class="text-xs text-slate-400" id="aparat-ekip-satiri">
                     <?= $aktifEkip ? htmlspecialchars($aktifEkip['tur_adi'], ENT_QUOTES, 'UTF-8') : 'Ekip tanımlı değil' ?>
                 </p>
             </div>
@@ -64,125 +200,20 @@ $aparatDurumlari = KesmeAcmaIslemModel::APARAT_DURUMLARI;
 
         <section class="px-4 pt-4 mb-3">
             <div class="flex items-center gap-2 bg-slate-100 dark:bg-slate-800 p-1 rounded-xl">
-                <button onclick="aparatSekme('yeni', this)"
-                    class="aparat-tab flex-1 py-2 rounded-xl text-xs font-bold text-primary bg-white dark:bg-card-dark">Yeni</button>
-                <button onclick="aparatSekme('ekibim', this)"
-                    class="aparat-tab flex-1 py-2 rounded-xl text-xs font-bold text-slate-500">Ekibim</button>
+                <button onclick="aparatSekme('ekibim', this)" id="aparat-tab-ekibim"
+                    class="aparat-tab flex-1 py-2 rounded-xl text-xs font-bold text-primary bg-white dark:bg-card-dark">Ekibim</button>
                 <button onclick="aparatSekme('transfer', this)" id="aparat-tab-transfer"
                     class="aparat-tab flex-1 py-2 rounded-xl text-xs font-bold text-slate-500 relative">
                     Transfer
-                    <span id="aparat-transfer-rozet"
-                        class="absolute top-0 right-0 bg-red-500 text-white text-xs font-bold rounded-full px-1"
-                        style="display:none">0</span>
+                    <span id="aparat-transfer-rozet" class="aparat-rozet" style="display:none">0</span>
                 </button>
-                <button onclick="aparatSekme('gecmis', this)"
+                <button onclick="aparatSekme('gecmis', this)" id="aparat-tab-gecmis"
                     class="aparat-tab flex-1 py-2 rounded-xl text-xs font-bold text-slate-500">Geçmiş</button>
             </div>
         </section>
 
-        <!-- ============ YENİ İŞLEM ============ -->
-        <section id="aparat-pane-yeni" class="px-4 flex-1">
-            <form id="aparat-form" class="space-y-4">
-
-                <div class="grid grid-cols-2 gap-3">
-                    <button type="button" onclick="aparatIslemSec('kesme')" id="aparat-btn-kesme"
-                        class="py-4 rounded-xl font-bold text-sm bg-red-500 text-white flex flex-col items-center gap-1">
-                        <span class="material-symbols-outlined text-2xl">water_drop</span>
-                        KESME
-                    </button>
-                    <button type="button" onclick="aparatIslemSec('acma')" id="aparat-btn-acma"
-                        class="py-4 rounded-xl font-bold text-sm bg-slate-100 dark:bg-slate-800 text-slate-500 flex flex-col items-center gap-1">
-                        <span class="material-symbols-outlined text-2xl">water_full</span>
-                        AÇMA
-                    </button>
-                </div>
-
-                <div class="bg-white dark:bg-card-dark rounded-xl p-4 space-y-3">
-                    <div>
-                        <label class="text-xs font-bold text-slate-500 dark:text-slate-400">Abone No</label>
-                        <input type="text" name="abone_no" id="aparat-abone-no" inputmode="numeric" required
-                            class="w-full mt-1 px-3 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 text-base font-semibold text-slate-800 dark:text-white">
-                    </div>
-                    <div>
-                        <label class="text-xs font-bold text-slate-500 dark:text-slate-400">Sayaç No</label>
-                        <input type="text" name="sayac_no" id="aparat-sayac-no"
-                            class="w-full mt-1 px-3 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 text-base font-semibold text-slate-800 dark:text-white">
-                    </div>
-                </div>
-
-                <div class="bg-white dark:bg-card-dark rounded-xl p-4">
-                    <div class="flex items-center justify-between mb-3">
-                        <label class="text-xs font-bold text-slate-500 dark:text-slate-400">Aparat Tipi</label>
-                        <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
-                            <input type="checkbox" id="aparat-yok" class="rounded" style="width:1rem;height:1rem">
-                            Aparat kullanılmadı
-                        </label>
-                    </div>
-
-                    <div class="grid grid-cols-2 gap-2" id="aparat-tip-listesi">
-                        <?php foreach ($aparatTipleri as $tip): ?>
-                            <button type="button" class="aparat-tip-btn py-3 px-2 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 flex flex-col items-center gap-1"
-                                data-id="<?= (int) $tip['id'] ?>" onclick="aparatTipSec(this)">
-                                <span><?= htmlspecialchars($tip['ad'], ENT_QUOTES, 'UTF-8') ?></span>
-                                <span class="text-xs font-normal aparat-tip-stok" data-stok-id="<?= (int) $tip['id'] ?>">-</span>
-                            </button>
-                        <?php endforeach; ?>
-                    </div>
-
-                    <div class="flex items-center justify-between mt-4" id="aparat-adet-satiri">
-                        <span class="text-xs font-bold text-slate-500 dark:text-slate-400">Adet</span>
-                        <div class="flex items-center gap-3">
-                            <button type="button" onclick="aparatAdet(-1)"
-                                class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold">−</button>
-                            <span class="text-lg font-bold text-slate-800 dark:text-white w-8 text-center" id="aparat-adet">1</span>
-                            <button type="button" onclick="aparatAdet(1)"
-                                class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold">+</button>
-                        </div>
-                    </div>
-                </div>
-
-                <div class="bg-white dark:bg-card-dark rounded-xl p-4" id="aparat-durum-kutusu" style="display:none">
-                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400">Aparat geri alındı mı?</label>
-                    <div class="space-y-2 mt-2">
-                        <?php $ilk = true; foreach ($aparatDurumlari as $anahtar => $etiket): ?>
-                            <button type="button" class="aparat-durum-btn py-3 rounded-xl text-xs font-bold <?= $ilk ? 'bg-primary text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500' ?>"
-                                data-durum="<?= htmlspecialchars($anahtar, ENT_QUOTES, 'UTF-8') ?>" onclick="aparatDurumSec(this)">
-                                <?= htmlspecialchars($etiket, ENT_QUOTES, 'UTF-8') ?>
-                            </button>
-                        <?php $ilk = false; endforeach; ?>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-2 gap-3">
-                    <label class="bg-white dark:bg-card-dark rounded-xl p-4 flex flex-col items-center gap-2 cursor-pointer" id="aparat-sayac-foto-kutu">
-                        <span class="material-symbols-outlined text-3xl text-slate-400">speed</span>
-                        <span class="text-xs font-bold text-slate-500 dark:text-slate-400">Sayaç Fotoğrafı</span>
-                        <span class="text-xs text-slate-400" id="aparat-sayac-foto-durum">Zorunlu</span>
-                        <input type="file" id="aparat-sayac-foto" accept="image/*" capture="environment" class="hidden">
-                    </label>
-                    <label class="bg-white dark:bg-card-dark rounded-xl p-4 flex flex-col items-center gap-2 cursor-pointer" id="aparat-foto-kutu">
-                        <span class="material-symbols-outlined text-3xl text-slate-400">build</span>
-                        <span class="text-xs font-bold text-slate-500 dark:text-slate-400">Aparat Fotoğrafı</span>
-                        <span class="text-xs text-slate-400" id="aparat-foto-durum">Zorunlu</span>
-                        <input type="file" id="aparat-foto" accept="image/*" capture="environment" class="hidden">
-                    </label>
-                </div>
-
-                <div class="bg-white dark:bg-card-dark rounded-xl p-4">
-                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400">Açıklama</label>
-                    <textarea name="aciklama" id="aparat-aciklama" rows="2"
-                        class="w-full mt-1 px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 text-sm text-slate-800 dark:text-white"></textarea>
-                </div>
-
-                <button type="submit" id="aparat-submit-btn"
-                    class="w-full py-4 rounded-xl bg-primary text-white font-bold text-sm">
-                    <span id="aparat-submit-text">KAYDET</span>
-                </button>
-            </form>
-        </section>
-
         <!-- ============ EKİBİM ============ -->
-        <section id="aparat-pane-ekibim" class="px-4 flex-1" style="display:none">
+        <section id="aparat-pane-ekibim" class="px-4 flex-1">
             <div class="space-y-3" id="aparat-stok-listesi">
                 <div class="text-center py-10 text-sm text-slate-400">Yükleniyor...</div>
             </div>
@@ -207,41 +238,161 @@ $aparatDurumlari = KesmeAcmaIslemModel::APARAT_DURUMLARI;
             </div>
         </section>
 
-        <!-- ============ TRANSFER MODALI ============ -->
-        <div id="aparat-transfer-modal" class="fixed inset-0 z-50 bg-black/50 items-end justify-center" style="display:none">
-            <div class="bg-white dark:bg-card-dark w-full rounded-t-xl p-4 space-y-3">
-                <div class="flex items-center justify-between">
+        <button type="button" class="aparat-fab" onclick="aparatSheetAc()" aria-label="Yeni işlem">
+            <span class="material-symbols-outlined text-3xl">add</span>
+        </button>
+
+        <!-- ============ YENİ İŞLEM (bottom sheet) ============ -->
+        <div id="aparat-sheet-katman" class="aparat-sheet-katman">
+            <div class="aparat-sheet">
+                <div class="aparat-sheet-tutamak"></div>
+
+                <div class="flex items-center justify-between mb-3">
+                    <h2 class="text-base font-bold text-slate-800 dark:text-white">Yeni İşlem</h2>
+                    <button type="button" onclick="aparatSheetKapat()" class="text-slate-400">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+
+                <form id="aparat-form" class="space-y-4">
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <button type="button" onclick="aparatIslemSec('kesme')" id="aparat-btn-kesme"
+                            class="aparat-segment aktif-kesme">
+                            <span class="material-symbols-outlined text-2xl">water_drop</span>
+                            KESME
+                        </button>
+                        <button type="button" onclick="aparatIslemSec('acma')" id="aparat-btn-acma"
+                            class="aparat-segment">
+                            <span class="material-symbols-outlined text-2xl">water_full</span>
+                            AÇMA
+                        </button>
+                    </div>
+
+                    <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 space-y-3">
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400">Abone No</label>
+                            <input type="text" name="abone_no" id="aparat-abone-no" inputmode="numeric" required
+                                class="w-full mt-1 px-3 py-3 rounded-xl bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 text-base font-semibold text-slate-800 dark:text-white">
+                        </div>
+                        <div>
+                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400">Sayaç No</label>
+                            <input type="text" name="sayac_no" id="aparat-sayac-no"
+                                class="w-full mt-1 px-3 py-3 rounded-xl bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 text-base font-semibold text-slate-800 dark:text-white">
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
+                        <div class="flex items-center justify-between mb-3">
+                            <label class="text-xs font-bold text-slate-500 dark:text-slate-400">Aparat Tipi</label>
+                            <label class="flex items-center gap-2 text-xs font-bold text-slate-500">
+                                <input type="checkbox" id="aparat-yok" class="rounded" style="width:1rem;height:1rem">
+                                Aparat kullanılmadı
+                            </label>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-2" id="aparat-tip-listesi">
+                            <?php foreach ($aparatTipleri as $tip): ?>
+                                <button type="button" class="aparat-secenek aparat-tip-btn"
+                                    data-id="<?= (int) $tip['id'] ?>" onclick="aparatTipSec(this)">
+                                    <span><?= htmlspecialchars($tip['ad'], ENT_QUOTES, 'UTF-8') ?></span>
+                                    <span class="font-normal aparat-tip-stok" data-stok-id="<?= (int) $tip['id'] ?>">-</span>
+                                </button>
+                            <?php endforeach; ?>
+                        </div>
+
+                        <div class="flex items-center justify-between mt-4" id="aparat-adet-satiri">
+                            <span class="text-xs font-bold text-slate-500 dark:text-slate-400">Adet</span>
+                            <div class="flex items-center gap-3">
+                                <button type="button" onclick="aparatAdet(-1)"
+                                    class="w-9 h-9 rounded-xl bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 font-bold">−</button>
+                                <span class="text-lg font-bold text-slate-800 dark:text-white w-8 text-center" id="aparat-adet">1</span>
+                                <button type="button" onclick="aparatAdet(1)"
+                                    class="w-9 h-9 rounded-xl bg-white dark:bg-card-dark text-slate-600 dark:text-slate-300 font-bold">+</button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4" id="aparat-durum-kutusu" style="display:none">
+                        <label class="text-xs font-bold text-slate-500 dark:text-slate-400">Aparat geri alındı mı?</label>
+                        <div class="space-y-2 mt-2">
+                            <?php $ilk = true; foreach ($aparatDurumlari as $anahtar => $etiket): ?>
+                                <button type="button" class="aparat-secenek aparat-durum-btn<?= $ilk ? ' secili' : '' ?>"
+                                    data-durum="<?= htmlspecialchars($anahtar, ENT_QUOTES, 'UTF-8') ?>" onclick="aparatDurumSec(this)">
+                                    <?= htmlspecialchars($etiket, ENT_QUOTES, 'UTF-8') ?>
+                                </button>
+                            <?php $ilk = false; endforeach; ?>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-3">
+                        <label class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 flex flex-col items-center gap-2 cursor-pointer" id="aparat-sayac-foto-kutu">
+                            <span class="material-symbols-outlined text-3xl text-slate-400">speed</span>
+                            <span class="text-xs font-bold text-slate-500 dark:text-slate-400">Sayaç Fotoğrafı</span>
+                            <span class="text-xs text-slate-400" id="aparat-sayac-foto-durum">Zorunlu</span>
+                            <input type="file" id="aparat-sayac-foto" accept="image/*" capture="environment" class="hidden">
+                        </label>
+                        <label class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 flex flex-col items-center gap-2 cursor-pointer" id="aparat-foto-kutu">
+                            <span class="material-symbols-outlined text-3xl text-slate-400">build</span>
+                            <span class="text-xs font-bold text-slate-500 dark:text-slate-400">Aparat Fotoğrafı</span>
+                            <span class="text-xs text-slate-400" id="aparat-foto-durum">Zorunlu</span>
+                            <input type="file" id="aparat-foto" accept="image/*" capture="environment" class="hidden">
+                        </label>
+                    </div>
+
+                    <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
+                        <label class="text-xs font-bold text-slate-500 dark:text-slate-400">Açıklama</label>
+                        <textarea name="aciklama" id="aparat-aciklama" rows="2"
+                            class="w-full mt-1 px-3 py-2 rounded-xl bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 text-sm text-slate-800 dark:text-white"></textarea>
+                    </div>
+
+                    <button type="submit" id="aparat-submit-btn"
+                        class="w-full py-4 rounded-xl bg-primary text-white font-bold text-sm">
+                        <span id="aparat-submit-text">KAYDET</span>
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- ============ TRANSFER (bottom sheet) ============ -->
+        <div id="aparat-transfer-katman" class="aparat-sheet-katman">
+            <div class="aparat-sheet">
+                <div class="aparat-sheet-tutamak"></div>
+
+                <div class="flex items-center justify-between mb-3">
                     <h2 class="text-base font-bold text-slate-800 dark:text-white">Aparat Gönder</h2>
                     <button type="button" onclick="aparatTransferModalKapat()" class="text-slate-400">
                         <span class="material-symbols-outlined">close</span>
                     </button>
                 </div>
 
-                <div>
-                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400">Alan Ekip</label>
-                    <select id="aparat-transfer-ekip"
-                        class="w-full mt-1 px-3 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 text-sm font-semibold text-slate-800 dark:text-white"></select>
-                </div>
+                <div class="space-y-3">
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 dark:text-slate-400">Alan Ekip</label>
+                        <select id="aparat-transfer-ekip"
+                            class="w-full mt-1 px-3 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 text-sm font-semibold text-slate-800 dark:text-white"></select>
+                    </div>
 
-                <div>
-                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400">Aparat Tipi</label>
-                    <select id="aparat-transfer-tip"
-                        class="w-full mt-1 px-3 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
-                        <?php foreach ($aparatTipleri as $tip): ?>
-                            <option value="<?= (int) $tip['id'] ?>"><?= htmlspecialchars($tip['ad'], ENT_QUOTES, 'UTF-8') ?></option>
-                        <?php endforeach; ?>
-                    </select>
-                </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 dark:text-slate-400">Aparat Tipi</label>
+                        <select id="aparat-transfer-tip"
+                            class="w-full mt-1 px-3 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+                            <?php foreach ($aparatTipleri as $tip): ?>
+                                <option value="<?= (int) $tip['id'] ?>"><?= htmlspecialchars($tip['ad'], ENT_QUOTES, 'UTF-8') ?></option>
+                            <?php endforeach; ?>
+                        </select>
+                    </div>
 
-                <div>
-                    <label class="text-xs font-bold text-slate-500 dark:text-slate-400">Adet</label>
-                    <input type="number" id="aparat-transfer-adet" min="1" value="1"
-                        class="w-full mt-1 px-3 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 text-base font-semibold text-slate-800 dark:text-white">
-                </div>
+                    <div>
+                        <label class="text-xs font-bold text-slate-500 dark:text-slate-400">Adet</label>
+                        <input type="number" id="aparat-transfer-adet" min="1" value="1"
+                            class="w-full mt-1 px-3 py-3 rounded-xl bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-800 text-base font-semibold text-slate-800 dark:text-white">
+                    </div>
 
-                <button type="button" onclick="aparatTransferGonder()" id="aparat-transfer-btn"
-                    class="w-full py-3 rounded-xl bg-primary text-white font-bold text-sm">GÖNDER</button>
-                <p class="text-xs text-slate-400 text-center">Aparatlar karşı ekip onayladığında stoğunuzdan düşer.</p>
+                    <button type="button" onclick="aparatTransferGonder()" id="aparat-transfer-btn"
+                        class="w-full py-3 rounded-xl bg-primary text-white font-bold text-sm">GÖNDER</button>
+                    <p class="text-xs text-slate-400 text-center">Aparatlar karşı ekip onayladığında stoğunuzdan düşer.</p>
+                </div>
             </div>
         </div>
 
@@ -275,7 +426,7 @@ $aparatDurumlari = KesmeAcmaIslemModel::APARAT_DURUMLARI;
 
         // ----- Sekmeler -----
         window.aparatSekme = function (ad, btn) {
-            ['yeni', 'ekibim', 'transfer', 'gecmis'].forEach(function (s) {
+            ['ekibim', 'transfer', 'gecmis'].forEach(function (s) {
                 const el = document.getElementById('aparat-pane-' + s);
                 if (el) el.style.display = s === ad ? '' : 'none';
             });
@@ -292,20 +443,30 @@ $aparatDurumlari = KesmeAcmaIslemModel::APARAT_DURUMLARI;
             if (ad === 'gecmis') aparatGecmisYukle();
         };
 
+        // ----- Bottom sheet -----
+        window.aparatSheetAc = function () {
+            document.getElementById('aparat-sheet-katman').classList.add('acik');
+            document.body.style.overflow = 'hidden';
+            konumAl();
+        };
+
+        window.aparatSheetKapat = function () {
+            document.getElementById('aparat-sheet-katman').classList.remove('acik');
+            document.body.style.overflow = '';
+        };
+
+        document.getElementById('aparat-sheet-katman').addEventListener('click', function (e) {
+            if (e.target === this) aparatSheetKapat();
+        });
+
         // ----- Form durumu -----
         window.aparatIslemSec = function (tip) {
             aparatIslemTipi = tip;
 
-            const kesme = document.getElementById('aparat-btn-kesme');
-            const acma = document.getElementById('aparat-btn-acma');
-            const pasif = 'py-4 rounded-xl font-bold text-sm bg-slate-100 dark:bg-slate-800 text-slate-500 flex flex-col items-center gap-1';
-
-            kesme.className = tip === 'kesme'
-                ? 'py-4 rounded-xl font-bold text-sm bg-red-500 text-white flex flex-col items-center gap-1'
-                : pasif;
-            acma.className = tip === 'acma'
-                ? 'py-4 rounded-xl font-bold text-sm bg-emerald-500 text-white flex flex-col items-center gap-1'
-                : pasif;
+            document.getElementById('aparat-btn-kesme').className =
+                'aparat-segment' + (tip === 'kesme' ? ' aktif-kesme' : '');
+            document.getElementById('aparat-btn-acma').className =
+                'aparat-segment' + (tip === 'acma' ? ' aktif-acma' : '');
 
             aparatDurumKutusu();
         };
@@ -319,20 +480,18 @@ $aparatDurumlari = KesmeAcmaIslemModel::APARAT_DURUMLARI;
             aparatTipId = parseInt(btn.dataset.id, 10);
 
             document.querySelectorAll('.aparat-tip-btn').forEach(function (b) {
-                b.className = 'aparat-tip-btn py-3 px-2 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-500 flex flex-col items-center gap-1';
+                b.classList.remove('secili');
             });
-
-            btn.className = 'aparat-tip-btn py-3 px-2 rounded-xl text-xs font-bold bg-primary text-white flex flex-col items-center gap-1';
+            btn.classList.add('secili');
         };
 
         window.aparatDurumSec = function (btn) {
             aparatDurumu = btn.dataset.durum;
 
             document.querySelectorAll('.aparat-durum-btn').forEach(function (b) {
-                b.className = 'aparat-durum-btn py-3 rounded-xl text-xs font-bold bg-slate-100 dark:bg-slate-800 text-slate-500';
+                b.classList.remove('secili');
             });
-
-            btn.className = 'aparat-durum-btn py-3 rounded-xl text-xs font-bold bg-primary text-white';
+            btn.classList.add('secili');
         };
 
         window.aparatAdet = function (fark) {
@@ -403,6 +562,10 @@ $aparatDurumlari = KesmeAcmaIslemModel::APARAT_DURUMLARI;
                 if (el) el.textContent = t.adet + ' adet';
             });
 
+            if (aparatBilgi.ekip && aparatBilgi.ekip.uye_metni) {
+                document.getElementById('aparat-uye-satiri').textContent = aparatBilgi.ekip.uye_metni;
+            }
+
             const rozet = document.getElementById('aparat-transfer-rozet');
             const bekleyen = aparatBilgi.bekleyen_transfer || 0;
             rozet.textContent = bekleyen;
@@ -427,9 +590,16 @@ $aparatDurumlari = KesmeAcmaIslemModel::APARAT_DURUMLARI;
                 return;
             }
 
+            const uyeler = (aparatBilgi.ekip.uyeler || []);
+            let uyeHtml = '';
+            uyeler.forEach(function (u) {
+                uyeHtml += `<span class="text-xs font-semibold text-slate-600 dark:text-slate-300">${kacir(u.ad)}${u.sef ? ' (şef)' : ''}</span>`;
+            });
+
             let html = `<div class="bg-white dark:bg-card-dark rounded-xl p-4 mb-3">
-                <p class="text-xs text-slate-400">Ekip</p>
-                <p class="text-base font-bold text-slate-800 dark:text-white">${kacir(aparatBilgi.ekip.ad)}</p>
+                <p class="text-xs text-slate-400">Ekipte çalışanlar</p>
+                <div class="flex flex-col gap-1 mt-1">${uyeHtml || '<span class="text-xs text-slate-400">Personel atanmamış</span>'}</div>
+                <p class="text-xs text-slate-400 mt-2">${kacir(aparatBilgi.ekip.ad)}</p>
             </div>`;
 
             (aparatBilgi.tipler || []).forEach(function (t) {
@@ -476,7 +646,7 @@ $aparatDurumlari = KesmeAcmaIslemModel::APARAT_DURUMLARI;
                         : (t.durum === 'onaylandi' ? 'Onaylandı' : (t.durum === 'reddedildi' ? 'Reddedildi' : 'İptal'));
 
                     html += `<div class="bg-white dark:bg-card-dark rounded-xl p-4">
-                        <div class="flex items-center justify-between">
+                        <div class="flex items-center justify-between gap-2">
                             <div>
                                 <p class="text-sm font-bold text-slate-800 dark:text-white">
                                     ${t.yon === 'gelen' ? 'Gelen' : 'Giden'} · ${kacir(t.karsi_ekip)}
@@ -489,7 +659,7 @@ $aparatDurumlari = KesmeAcmaIslemModel::APARAT_DURUMLARI;
                     if (t.onaylanabilir) {
                         html += `<div class="grid grid-cols-2 gap-2 mt-3">
                             <button type="button" onclick="aparatTransferYanit(${t.id}, 'onayla')"
-                                class="py-2 rounded-xl bg-emerald-500 text-white text-xs font-bold">Onayla</button>
+                                class="py-2 rounded-xl bg-primary text-white text-xs font-bold">Onayla</button>
                             <button type="button" onclick="aparatTransferYanit(${t.id}, 'reddet')"
                                 class="py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-bold">Reddet</button>
                         </div>`;
@@ -541,12 +711,18 @@ $aparatDurumlari = KesmeAcmaIslemModel::APARAT_DURUMLARI;
         }
 
         window.aparatTransferModalAc = function () {
-            document.getElementById('aparat-transfer-modal').style.display = 'flex';
+            document.getElementById('aparat-transfer-katman').classList.add('acik');
+            document.body.style.overflow = 'hidden';
         };
 
         window.aparatTransferModalKapat = function () {
-            document.getElementById('aparat-transfer-modal').style.display = 'none';
+            document.getElementById('aparat-transfer-katman').classList.remove('acik');
+            document.body.style.overflow = '';
         };
+
+        document.getElementById('aparat-transfer-katman').addEventListener('click', function (e) {
+            if (e.target === this) aparatTransferModalKapat();
+        });
 
         window.aparatTransferGonder = async function () {
             const ekip = document.getElementById('aparat-transfer-ekip').value;
@@ -718,6 +894,7 @@ $aparatDurumlari = KesmeAcmaIslemModel::APARAT_DURUMLARI;
 
                 const sonuc = await OfflineQueue.flush({ elle: true });
                 aparatFormuSifirla();
+                aparatSheetKapat();
                 await aparatBilgiYukle();
                 await aparatKuyrukDurumu();
 
@@ -747,14 +924,13 @@ $aparatDurumlari = KesmeAcmaIslemModel::APARAT_DURUMLARI;
             aparatDosya = null;
             aparatAdedi = 1;
             document.getElementById('aparat-adet').textContent = '1';
-            konumAl();
         }
 
         // OfflineQueue ve Alert sayfa gövdesinden sonra yükleniyor; ilk çağrılar
         // DOM hazır olduğunda yapılır ki kuyruk şeridi ilk açılışta da dolsun.
         document.addEventListener('DOMContentLoaded', function () {
             konumAl();
-            aparatBilgiYukle();
+            aparatBilgiYukle().then(aparatStokYukle);
             aparatKuyrukDurumu();
         });
     })();

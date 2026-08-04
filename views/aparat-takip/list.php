@@ -23,14 +23,22 @@ $yetkiSayim = Gate::allows('aparat_sayim') || Gate::isSuperAdmin();
 $yetkiTanim = Gate::allows('aparat_tanim') || Gate::isSuperAdmin();
 $yetkiTransfer = Gate::allows('aparat_transfer_yonet') || Gate::isSuperAdmin();
 
-$ekipOptions = ['' => 'Tüm Ekipler'];
-foreach ($ekipler as $ekip) {
-    $ekipOptions[$ekip['id']] = $ekip['tur_adi'];
-}
+// Ekipler listelerde personel adıyla gösterilir; ekip kodu parantez içinde kalır.
+$ekipUyeleri = $Stok->ekipUyeHaritasi();
 
+$ekipEtiketi = function (array $ekip) use ($ekipUyeleri): string {
+    $uyeler = $ekipUyeleri[(int) $ekip['id']] ?? '';
+    return $uyeler !== ''
+        ? $uyeler . ' (' . $ekip['tur_adi'] . ')'
+        : $ekip['tur_adi'];
+};
+
+$ekipOptions = ['' => 'Tüm Ekipler'];
 $ekipSecimOptions = ['' => 'Ekip Seçiniz'];
 foreach ($ekipler as $ekip) {
-    $ekipSecimOptions[$ekip['id']] = $ekip['tur_adi'];
+    $etiket = $ekipEtiketi($ekip);
+    $ekipOptions[$ekip['id']] = $etiket;
+    $ekipSecimOptions[$ekip['id']] = $etiket;
 }
 
 $tipOptions = ['' => 'Tüm Aparatlar'];
@@ -695,7 +703,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                                 <label class="form-label small text-muted">Sayıma dahil ekipler (boş bırakılırsa tümü)</label>
                                 <select class="form-select select2" id="sayim_ekipler" multiple style="width:100%">
                                     <?php foreach ($ekipler as $ekip): ?>
-                                        <option value="<?= (int) $ekip['id'] ?>"><?= htmlspecialchars($ekip['tur_adi'], ENT_QUOTES, 'UTF-8') ?></option>
+                                        <option value="<?= (int) $ekip['id'] ?>"><?= htmlspecialchars($ekipEtiketi($ekip), ENT_QUOTES, 'UTF-8') ?></option>
                                     <?php endforeach; ?>
                                 </select>
                             </div>

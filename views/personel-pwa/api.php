@@ -5435,16 +5435,40 @@ try {
                 ];
             }
 
+            // Ekip kodu yerine sahada kimlerin çalıştığı gösterilir.
+            $uyeHaritasi = $AparatStok->ekipUyeHaritasi();
+
             $ekipListesi = [];
             foreach ($AparatStok->ekipler() as $e) {
                 if ((int) $e['id'] === $ekipId) {
                     continue;
                 }
-                $ekipListesi[] = ['id' => (int) $e['id'], 'ad' => $e['tur_adi']];
+                $digerId = (int) $e['id'];
+                $ekipListesi[] = [
+                    'id' => $digerId,
+                    'ad' => $uyeHaritasi[$digerId] !== null && ($uyeHaritasi[$digerId] ?? '') !== ''
+                        ? $uyeHaritasi[$digerId] . ' (' . $e['tur_adi'] . ')'
+                        : $e['tur_adi'],
+                ];
+            }
+
+            $kendiUyeleri = [];
+            foreach ($AparatStok->ekipUyeleri($ekipId) as $uye) {
+                $kendiUyeleri[] = [
+                    'id' => (int) $uye['id'],
+                    'ad' => $uye['adi_soyadi'],
+                    'sef' => (int) $uye['ekip_sefi_mi'] === 1,
+                ];
             }
 
             response(true, [
-                'ekip' => ['id' => $ekipId, 'ad' => $ekip['tur_adi'], 'bolge' => $ekip['ekip_bolge']],
+                'ekip' => [
+                    'id' => $ekipId,
+                    'ad' => $ekip['tur_adi'],
+                    'bolge' => $ekip['ekip_bolge'],
+                    'uyeler' => $kendiUyeleri,
+                    'uye_metni' => $uyeHaritasi[$ekipId] ?? '',
+                ],
                 'tipler' => $tipler,
                 'ekipler' => $ekipListesi,
                 'bekleyen_transfer' => $AparatTransfer->bekleyenSayisi($ekipId),
@@ -5480,14 +5504,19 @@ try {
                 }
             }
 
-            $ekip = $AparatStok->aktifEkip((int) $personel_id);
-            if (!$ekip) {
-                response(false, null, 'Tanımlı bir ekibiniz bulunmuyor.');
-            }
-
             $aparatsiz = (int) ($_POST['aparatsiz'] ?? 0) === 1;
             $cihazZamani = trim((string) ($_POST['offline_olusturma'] ?? ''));
             $islemTarihi = $cihazZamani !== '' ? substr($cihazZamani, 0, 10) : date('Y-m-d');
+
+            // Ekip, kaydın gönderildiği gün değil işlemin yapıldığı gün üzerinden
+            // çözülür; çevrimdışı bekleyen kayıt ekip değişikliğinden etkilenmez.
+            $ekip = $AparatStok->aktifEkip((int) $personel_id, $islemTarihi);
+            if (!$ekip) {
+                $ekip = $AparatStok->aktifEkip((int) $personel_id);
+            }
+            if (!$ekip) {
+                response(false, null, 'Tanımlı bir ekibiniz bulunmuyor.');
+            }
 
             $Aparatservis = new \App\Service\AparatStokService();
 

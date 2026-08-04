@@ -1,0 +1,14 @@
+[04-Aug-2026 19:57:47 Europe/Istanbul] PHP Warning:  Undefined array key 419 in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 5449
+[04-Aug-2026 19:57:47 Europe/Istanbul] PHP Warning:  Undefined array key 424 in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 5449
+[04-Aug-2026 19:57:47 Europe/Istanbul] PHP Warning:  Undefined array key 487 in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 5449
+[04-Aug-2026 19:57:47 Europe/Istanbul] PHP Warning:  Undefined array key 377 in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 5449
+[04-Aug-2026 19:57:48 Europe/Istanbul] PHP Warning:  Undefined array key 412 in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 5449
+[04-Aug-2026 19:57:48 Europe/Istanbul] PHP Warning:  Undefined array key 485 in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 5449
+[04-Aug-2026 19:57:48 Europe/Istanbul] PHP Warning:  Undefined array key 489 in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 5449
+[04-Aug-2026 19:57:48 Europe/Istanbul] PHP Warning:  Undefined array key 497 in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 5449
+[04-Aug-2026 19:57:48 Europe/Istanbul] PHP Warning:  Undefined array key 498 in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 5449
+[04-Aug-2026 19:57:49 Europe/Istanbul] PHP Warning:  Undefined array key 488 in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 5449
+[04-Aug-2026 19:57:49 Europe/Istanbul] PHP Warning:  Undefined array key 499 in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 5449
+[04-Aug-2026 19:57:49 Europe/Istanbul] PHP Warning:  Undefined array key 486 in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 5449
+[04-Aug-2026 19:57:49 Europe/Istanbul] PHP Warning:  Undefined array key 500 in /opt/lampp/htdocs/ersan_elk/views/personel-pwa/api.php on line 5449
+[04-Aug-2026 20:04:24 Europe/Istanbul] Aparat negatif stok: islem_id=1 ekip_id=403 tip_id=1 personel=113

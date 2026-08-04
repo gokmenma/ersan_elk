@@ -95,12 +95,15 @@
 
                 if (satir.sahip_tipi === 'saha') sahaToplam = satir.toplam;
 
+                // Stok ekibe zimmetli; satır başlığında o ekipte bugün çalışan
+                // personelin adı gösterilir, ekip kodu alt satırda kalır.
                 const etiket = havuzMu
                     ? `<i class="bx bx-box me-1 text-muted"></i><b>${kacir(satir.baslik)}</b>`
-                    : `${kacir(satir.baslik)}${satir.bolge ? ` <small class="text-muted">${kacir(satir.bolge)}</small>` : ''}`;
+                    : `<div class="fw-semibold text-dark">${kacir(satir.uyeler || 'Personel atanmamış')}</div>
+                       <small class="text-muted">${kacir(satir.ekip_kodu)}${satir.bolge ? ' · ' + kacir(satir.bolge) : ''}</small>`;
 
                 govde.append(`<tr class="${havuzMu ? 'havuz-satiri' : ''}">
-                    <td>${etiket}</td>
+                    <td style="white-space:normal;min-width:220px">${etiket}</td>
                     ${hucreler}
                     <td class="adet-hucre">${satir.toplam}</td>
                 </tr>`);

@@ -133,10 +133,12 @@ Ayda bir (veya istenildiğinde) şef sayım başlatır; her ekip elindeki aparat
 
 | Ekran | İçerik |
 |---|---|
-| **Yeni işlem** | 5.1'deki form. Mümkün olduğunca az tıklama; aparat tipi seçimi ikon/renkli buton şeklinde. |
-| **Ekibim** | Kendi ekibimin tip bazında güncel aparat sayıları (5 satırlık basit kart listesi). |
+| **Yeni işlem** | 5.1'deki form. Sağ alttaki **yüzen (+) butonundan** açılan bottom sheet içinde; aparat tipi seçimi büyük butonlarla. |
+| **Ekibim** | Ekipte bugün çalışan personelin adları + tip bazında güncel aparat sayıları. |
 | **Transferler** | Bana gelen transferleri onayla / yeni transfer gönder. |
-| **Son işlemlerim** | Bugün/bu hafta girdiğim kayıtlar, hatalı ise iptal talebi. |
+| **Geçmiş** | Son 7 günde girdiğim kayıtlar. |
+
+> **Görünürlük kuralı:** Stok ekibe zimmetli olsa da tüm ekranlarda (panel stok tablosu, ekip seçim listeleri, telefon başlığı) ekip kodu yerine **o ekipte bugün çalışan personelin adı** gösterilir; ekip kodu ikinci satırda/parantezde kalır. Ekip üyeliği `personel_ekip_gecmisi`'nden tarih geçerliliğine göre okunur.
 
 ### 6.2. Web paneli
 
