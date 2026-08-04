@@ -89,7 +89,7 @@ class AvansModel extends Model
             SELECT COUNT(*) as count 
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
-            WHERE (LOWER(pa.durum) = 'beklemede') AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
+            WHERE (LOWER(pa.durum) = 'beklemede') AND pa.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
         ";
         $query = $this->db->prepare($sql);
@@ -116,7 +116,7 @@ class AvansModel extends Model
             SELECT 'Avans' as tip, pa.id, pa.personel_id, pa.talep_tarihi as tarih, pa.durum, pa.tutar as detay
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
-            WHERE (LOWER(pa.durum) = 'beklemede') AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
+            WHERE (LOWER(pa.durum) = 'beklemede') AND pa.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
             ORDER BY pa.talep_tarihi DESC
             LIMIT {$limit}
@@ -144,7 +144,7 @@ class AvansModel extends Model
             SELECT pa.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
-            WHERE (LOWER(pa.durum) = 'beklemede') AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
+            WHERE (LOWER(pa.durum) = 'beklemede') AND pa.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
             ORDER BY pa.talep_tarihi DESC
         ";
@@ -174,7 +174,7 @@ class AvansModel extends Model
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
             LEFT JOIN users u ON pa.onaylayan_id = u.id
-            WHERE (LOWER(pa.durum) IN ('onaylandi', 'reddedildi', 'iptal', 'iptal_edildi', 'iptal edildi', 'i̇ptal edildi') OR LOWER(pa.durum) LIKE '%iptal%') AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
+            WHERE (LOWER(pa.durum) IN ('onaylandi', 'reddedildi', 'iptal', 'iptal_edildi', 'iptal edildi', 'i̇ptal edildi') OR LOWER(pa.durum) LIKE '%iptal%') AND pa.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
             ORDER BY pa.talep_tarihi DESC
             LIMIT {$limit}
@@ -205,7 +205,7 @@ class AvansModel extends Model
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
             LEFT JOIN users u ON pa.silen_kullanici = u.id 
-            WHERE pa.silinme_tarihi IS NOT NULL AND p.firma_id = ?
+            WHERE pa.silinme_tarihi IS NOT NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
             ORDER BY pa.silinme_tarihi DESC, pa.id DESC
             LIMIT {$limit}
@@ -225,7 +225,7 @@ class AvansModel extends Model
             SELECT pa.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, p.maas_tutari
             FROM {$this->table} pa 
             JOIN personel p ON pa.personel_id = p.id 
-            WHERE pa.durum = 'reddedildi' AND pa.silinme_tarihi IS NULL AND p.firma_id = ?
+            WHERE pa.durum = 'reddedildi' AND pa.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ?
             ORDER BY pa.onay_tarihi DESC
             LIMIT {$limit}
         ");

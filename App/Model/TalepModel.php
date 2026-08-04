@@ -95,7 +95,7 @@ class TalepModel extends Model
             SELECT COUNT(*) as count 
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
-            WHERE (LOWER(pt.durum) NOT IN ('cozuldu', 'onaylandi', 'reddedildi', 'iptal', 'iptal_edildi', 'iptal edildi', 'i̇ptal edildi') AND LOWER(pt.durum) NOT LIKE '%iptal%') AND pt.silinme_tarihi IS NULL AND p.firma_id = ? AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
+            WHERE (LOWER(pt.durum) NOT IN ('cozuldu', 'onaylandi', 'reddedildi', 'iptal', 'iptal_edildi', 'iptal edildi', 'i̇ptal edildi') AND LOWER(pt.durum) NOT LIKE '%iptal%') AND pt.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
             $extra_where
         ";
         $query = $this->db->prepare($sql);
@@ -122,7 +122,7 @@ class TalepModel extends Model
             SELECT 'Talep' as tip, pt.id, pt.personel_id, pt.olusturma_tarihi as tarih, pt.durum, pt.baslik as detay 
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
-            WHERE (LOWER(pt.durum) NOT IN ('cozuldu', 'onaylandi', 'reddedildi', 'iptal', 'iptal_edildi', 'iptal edildi', 'i̇ptal edildi') AND LOWER(pt.durum) NOT LIKE '%iptal%') AND pt.silinme_tarihi IS NULL AND p.firma_id = ? AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
+            WHERE (LOWER(pt.durum) NOT IN ('cozuldu', 'onaylandi', 'reddedildi', 'iptal', 'iptal_edildi', 'iptal edildi', 'i̇ptal edildi') AND LOWER(pt.durum) NOT LIKE '%iptal%') AND pt.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
             $extra_where
             ORDER BY pt.olusturma_tarihi DESC
             LIMIT {$limit}
@@ -150,7 +150,7 @@ class TalepModel extends Model
             SELECT pt.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
-            WHERE (LOWER(pt.durum) NOT IN ('cozuldu', 'onaylandi', 'reddedildi', 'iptal', 'iptal_edildi', 'iptal edildi', 'i̇ptal edildi') AND LOWER(pt.durum) NOT LIKE '%iptal%') AND pt.silinme_tarihi IS NULL AND p.firma_id = ? AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
+            WHERE (LOWER(pt.durum) NOT IN ('cozuldu', 'onaylandi', 'reddedildi', 'iptal', 'iptal_edildi', 'iptal edildi', 'i̇ptal edildi') AND LOWER(pt.durum) NOT LIKE '%iptal%') AND pt.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
             $extra_where
             ORDER BY pt.olusturma_tarihi DESC
         ";
@@ -221,7 +221,7 @@ class TalepModel extends Model
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
             LEFT JOIN users u ON pt.islem_yapan_id = u.id
-            WHERE (LOWER(pt.durum) IN ('cozuldu', 'onaylandi', 'reddedildi', 'iptal', 'iptal_edildi', 'iptal edildi', 'i̇ptal edildi') OR LOWER(pt.durum) LIKE '%iptal%') AND pt.silinme_tarihi IS NULL AND p.firma_id = ? AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
+            WHERE (LOWER(pt.durum) IN ('cozuldu', 'onaylandi', 'reddedildi', 'iptal', 'iptal_edildi', 'iptal edildi', 'i̇ptal edildi') OR LOWER(pt.durum) LIKE '%iptal%') AND pt.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? AND (pt.kategori IS NULL OR pt.kategori != 'nobet_talebi')
             $extra_where
             ORDER BY pt.cozum_tarihi DESC, pt.id DESC
             LIMIT {$limit}
@@ -252,7 +252,7 @@ class TalepModel extends Model
             FROM {$this->table} pt 
             JOIN personel p ON pt.personel_id = p.id 
             LEFT JOIN users u ON pt.silen_kullanici = u.id
-            WHERE pt.silinme_tarihi IS NOT NULL AND p.firma_id = ?
+            WHERE pt.silinme_tarihi IS NOT NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
             ORDER BY pt.silinme_tarihi DESC, pt.id DESC
             LIMIT {$limit}

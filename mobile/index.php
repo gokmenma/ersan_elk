@@ -248,17 +248,89 @@ $isMoreActive = in_array($page, $more_pages);
 if ($page === 'personel-duzenle' && in_array('personel', $more_pages)) $isMoreActive = true;
 if ($page === 'hesap-hareketleri' && in_array('cari-takip', $more_pages)) $isMoreActive = true;
 
+];
+
+$currentTitle = $page_titles[$page] ?? 'Ana Sayfa';
+
+$nav_items = [];
+$more_pages_data = [];
+$more_pages = [];
+
+$hasCariPermission = isset($user_mobile_menus['cari-takip']);
+$hasGelirGiderPermission = isset($user_mobile_menus['gelir-gider']);
+
+// Kullanıcının özel sıralamasını al
+$userObj = $currentUserStatus;
+$customOrder = (!empty($userObj->mobile_menu_order)) ? explode(',', $userObj->mobile_menu_order) : [];
+
+// Özel başlık düzeltmeleri
+if ($hasCariPermission && $hasGelirGiderPermission) {
+    if (isset($user_mobile_menus['gelir-gider'])) {
+        $user_mobile_menus['gelir-gider']['label'] = 'Kasa';
+    }
+}
+
+// Menüleri sırala
+$final_sorted_menus = [];
+
+// Ana sayfa her zaman ilk sırada olmalı
+if (isset($user_mobile_menus['home'])) {
+    $final_sorted_menus['home'] = $user_mobile_menus['home'];
+    unset($user_mobile_menus['home']);
+}
+
+// Önce özel sıralamadaki mevcut menüleri ekle
+foreach ($customOrder as $pKey) {
+    if ($pKey === 'home') continue; // Zaten ekledik
+    if (isset($user_mobile_menus[$pKey])) {
+        $final_sorted_menus[$pKey] = $user_mobile_menus[$pKey];
+        unset($user_mobile_menus[$pKey]);
+    }
+}
+
+// Eğer özel sıralama yoksa varsayılan sıralama (cari ve gelir gider varsa özel bir varsayılan vardı)
+if (empty($customOrder) && $hasCariPermission && $hasGelirGiderPermission) {
+    $default_order = ['cari-takip', 'raporlar', 'gelir-gider'];
+    foreach ($default_order as $pKey) {
+        if (isset($user_mobile_menus[$pKey])) {
+            $final_sorted_menus[$pKey] = $user_mobile_menus[$pKey];
+            unset($user_mobile_menus[$pKey]);
+        }
+    }
+}
+
+// Kalan menüleri sonuna ekle
+foreach ($user_mobile_menus as $pKey => $mData) {
+    $final_sorted_menus[$pKey] = $mData;
+}
+
+// Navigasyon ve "Daha Fazla"yı ayır
+$i = 0;
+foreach ($final_sorted_menus as $pKey => $mData) {
+    if ($i < 4) {
+        $nav_items[] = ['page' => $pKey, 'label' => $mData['label'], 'icon' => $mData['icon']];
+    } else {
+        $more_pages_data[$pKey] = $mData;
+        $more_pages[] = $pKey;
+    }
+    $i++;
+}
+
+$isMoreActive = in_array($page, $more_pages);
+if ($page === 'personel-duzenle' && in_array('personel', $more_pages)) $isMoreActive = true;
+if ($page === 'hesap-hareketleri' && in_array('cari-takip', $more_pages)) $isMoreActive = true;
+
 // Bildirim Sayısı (Session bazlı 60 sn önbellekli)
 $unreadNotificationCount = 0;
 try {
     if (!isset($_SESSION['mobile_notif_count']) || (time() - ($_SESSION['mobile_notif_time'] ?? 0)) > 60) {
         $db = (new \App\Model\Model())->getDb();
-        $st1 = $db->prepare("SELECT COUNT(*) FROM personel_talepleri WHERE durum != 'cozuldu' AND silinme_tarihi IS NULL AND firma_id = ?");
+        $st1 = $db->prepare("SELECT COUNT(*) FROM personel_talepleri pt JOIN personel p ON pt.personel_id = p.id WHERE (LOWER(pt.durum) NOT IN ('cozuldu', 'onaylandi', 'reddedildi', 'iptal', 'iptal_edildi', 'iptal edildi', 'i̇ptal edildi') AND LOWER(pt.durum) NOT LIKE '%iptal%') AND pt.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ?");
         $st1->execute([$_SESSION['firma_id']]);
-        $st2 = $db->prepare("SELECT COUNT(*) FROM personel_avanslari WHERE durum = 'beklemede' AND silinme_tarihi IS NULL");
-        $st2->execute();
-        $st3 = $db->prepare("SELECT COUNT(*) FROM personel_izinleri WHERE durum = 'beklemede' AND silinme_tarihi IS NULL");
-        $st3->execute();
+        $st2 = $db->prepare("SELECT COUNT(*) FROM personel_avanslari pa JOIN personel p ON pa.personel_id = p.id WHERE (LOWER(pa.durum) = 'beklemede') AND pa.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ?");
+        $st2->execute([$_SESSION['firma_id']]);
+        $st3 = $db->prepare("SELECT COUNT(*) FROM personel_izinleri pi JOIN personel p ON pi.personel_id = p.id WHERE (LOWER(pi.onay_durumu) = 'beklemede') AND pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ?");
+        $st3->execute([$_SESSION['firma_id']]);
         $_SESSION['mobile_notif_count'] = (int)$st1->fetchColumn() + (int)$st2->fetchColumn() + (int)$st3->fetchColumn();
         $_SESSION['mobile_notif_time'] = time();
     }

@@ -355,16 +355,16 @@ ob_start(); ?>
 // Bekleyen onaylar
 try {
     $db  = $personelModel->getDb();
-    $st1 = $db->prepare("SELECT COUNT(*) FROM personel_talepleri WHERE durum != 'cozuldu' AND silinme_tarihi IS NULL AND firma_id = ?");
+    $st1 = $db->prepare("SELECT COUNT(*) FROM personel_talepleri pt JOIN personel p ON pt.personel_id = p.id WHERE (LOWER(pt.durum) NOT IN ('cozuldu', 'onaylandi', 'reddedildi', 'iptal', 'iptal_edildi', 'iptal edildi', 'i̇ptal edildi') AND LOWER(pt.durum) NOT LIKE '%iptal%') AND pt.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ?");
     $st1->execute([$_SESSION['firma_id']]);
     $bekleyen_talep = (int) $st1->fetchColumn();
 
-    $st2 = $db->prepare("SELECT COUNT(*) FROM personel_avanslari WHERE durum = 'beklemede' AND silinme_tarihi IS NULL");
-    $st2->execute();
+    $st2 = $db->prepare("SELECT COUNT(*) FROM personel_avanslari pa JOIN personel p ON pa.personel_id = p.id WHERE (LOWER(pa.durum) = 'beklemede') AND pa.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ?");
+    $st2->execute([$_SESSION['firma_id']]);
     $bekleyen_avans = (int) $st2->fetchColumn();
 
-    $st3 = $db->prepare("SELECT COUNT(*) FROM personel_izinleri WHERE durum = 'beklemede' AND silinme_tarihi IS NULL");
-    $st3->execute();
+    $st3 = $db->prepare("SELECT COUNT(*) FROM personel_izinleri pi JOIN personel p ON pi.personel_id = p.id WHERE (LOWER(pi.onay_durumu) = 'beklemede') AND pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ?");
+    $st3->execute([$_SESSION['firma_id']]);
     $bekleyen_izin = (int) $st3->fetchColumn();
 } catch (\Exception $e) {
     $bekleyen_talep = $bekleyen_avans = $bekleyen_izin = 0;

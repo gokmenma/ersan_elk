@@ -218,7 +218,7 @@ class NobetModel extends Model
     {
         $firma_id = $_SESSION['firma_id'] ?? null;
         $params = [':firma_id' => $firma_id];
-        $where = "WHERE n.firma_id = :firma_id AND n.silinme_tarihi IS NULL";
+        $where = "WHERE n.firma_id = :firma_id AND n.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL";
 
         if ($onlyPending) {
             $where .= " AND n.durum = 'talep_edildi'";

@@ -92,7 +92,7 @@ class PersonelIzinleriModel extends Model
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            WHERE (LOWER(pi.onay_durumu) = 'beklemede') AND pi.silinme_tarihi IS NULL AND p.firma_id = ? 
+            WHERE (LOWER(pi.onay_durumu) = 'beklemede') AND pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? 
             $extra_where
             AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
         ";
@@ -123,7 +123,7 @@ class PersonelIzinleriModel extends Model
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            WHERE (LOWER(pi.onay_durumu) = 'beklemede') AND pi.silinme_tarihi IS NULL AND p.firma_id = ? 
+            WHERE (LOWER(pi.onay_durumu) = 'beklemede') AND pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ? 
             $extra_where
             AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
             ORDER BY pi.talep_tarihi DESC
@@ -156,7 +156,7 @@ class PersonelIzinleriModel extends Model
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            WHERE pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ? AND pi.onay_durumu = 'Onaylandı' AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
+            WHERE pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ? AND pi.onay_durumu = 'Onaylandı' AND pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
             AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
             ORDER BY pi.bitis_tarihi ASC
@@ -187,7 +187,7 @@ class PersonelIzinleriModel extends Model
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            WHERE (LOWER(pi.onay_durumu) = 'beklemede') AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
+            WHERE (LOWER(pi.onay_durumu) = 'beklemede') AND pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
             AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
             ORDER BY pi.talep_tarihi DESC, pi.id DESC
@@ -227,7 +227,7 @@ class PersonelIzinleriModel extends Model
                 ) io2 ON io1.id = io2.max_id
             ) io ON io.izin_id = pi.id
             LEFT JOIN users u ON io.onaylayan_id = u.id
-            WHERE (LOWER(pi.onay_durumu) IN ('onaylandı', 'onaylandi', 'reddedildi', 'iptal', 'iptal_edildi', 'iptal edildi', 'i̇ptal edildi') OR LOWER(pi.onay_durumu) LIKE '%iptal%') AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
+            WHERE (LOWER(pi.onay_durumu) IN ('onaylandı', 'onaylandi', 'reddedildi', 'iptal', 'iptal_edildi', 'iptal edildi', 'i̇ptal edildi') OR LOWER(pi.onay_durumu) LIKE '%iptal%') AND pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
             AND pi.id NOT IN (
                 SELECT izin_id FROM izin_onaylari 
@@ -265,7 +265,7 @@ class PersonelIzinleriModel extends Model
             FROM {$this->table} pi 
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
-            WHERE pi.onay_durumu = 'Reddedildi' AND pi.silinme_tarihi IS NULL AND p.firma_id = ?
+            WHERE pi.onay_durumu = 'Reddedildi' AND pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
             AND (t.kisa_kod IS NULL OR (t.kisa_kod NOT IN ('X', 'x') AND (t.normal_mesai_sayilir IS NULL OR t.normal_mesai_sayilir = 0)))
             ORDER BY pi.baslangic_tarihi DESC
@@ -299,7 +299,7 @@ class PersonelIzinleriModel extends Model
             JOIN personel p ON pi.personel_id = p.id 
             LEFT JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
             LEFT JOIN users u ON pi.silen_kullanici = u.id -- Silen kullanıcı bilgisini aldık
-            WHERE pi.silinme_tarihi IS NOT NULL AND p.firma_id = ?
+            WHERE pi.silinme_tarihi IS NOT NULL AND p.silinme_tarihi IS NULL AND p.firma_id = ?
             $extra_where
             AND pi.id NOT IN (
                 SELECT izin_id FROM izin_onaylari 
