@@ -96,6 +96,25 @@ function response($success, $data = null, $message = '')
     exit;
 }
 
+/**
+ * Aparat takip ekranı yalnızca kesme-açma departmanındaki personele açıktır.
+ */
+function aparatYetkiKontrol($personel): void
+{
+    $departman = $personel->departman ?? '';
+    if (stripos($departman, 'Kesme-Açma') === false && stripos($departman, 'Kesme Açma') === false) {
+        response(false, null, 'Bu işlem için yetkiniz bulunmuyor.');
+    }
+}
+
+/**
+ * Yalnızca iş kuralı doğrulamaları kullanıcıya gösterilir; sistem hataları sızmaz.
+ */
+function aparatHataMesaji(Throwable $e, string $varsayilan = 'İşlem gerçekleştirilemedi.'): string
+{
+    return get_class($e) === Exception::class && $e->getMessage() !== '' ? $e->getMessage() : $varsayilan;
+}
+
 function pwaIniBytes(string $value): int
 {
     $value = trim($value);
@@ -5385,6 +5404,351 @@ try {
 
             $IhbarModel->closeSonuc($id, $durum, $tutanakNo, $sebep, 'personel', (int) $personel_id);
             response(true, null, 'İhbar sonuçlandırıldı.');
+            break;
+
+        // =====================================================
+        // APARAT TAKİP (kesme-açma ekipleri)
+        // =====================================================
+        case 'getAparatBilgi':
+            aparatYetkiKontrol($personel);
+
+            $AparatStok = new \App\Model\AparatStokModel();
+            $AparatTip = new \App\Model\AparatTipiModel();
+            $AparatTransfer = new \App\Model\AparatTransferModel();
+
+            $ekip = $AparatStok->aktifEkip((int) $personel_id);
+            if (!$ekip) {
+                response(false, null, 'Tanımlı bir ekibiniz bulunmuyor. Yöneticinizle görüşün.');
+            }
+
+            $ekipId = (int) $ekip['id'];
+            $bakiyeler = $AparatStok->ekipBakiyeleri($ekipId);
+            $tipler = [];
+
+            foreach ($AparatTip->listele(true) as $t) {
+                $tipler[] = [
+                    'id' => (int) $t['id'],
+                    'ad' => $t['ad'],
+                    'kod' => $t['kod'],
+                    'renk' => $t['renk'],
+                    'adet' => (int) ($bakiyeler[(int) $t['id']] ?? 0),
+                ];
+            }
+
+            $ekipListesi = [];
+            foreach ($AparatStok->ekipler() as $e) {
+                if ((int) $e['id'] === $ekipId) {
+                    continue;
+                }
+                $ekipListesi[] = ['id' => (int) $e['id'], 'ad' => $e['tur_adi']];
+            }
+
+            response(true, [
+                'ekip' => ['id' => $ekipId, 'ad' => $ekip['tur_adi'], 'bolge' => $ekip['ekip_bolge']],
+                'tipler' => $tipler,
+                'ekipler' => $ekipListesi,
+                'bekleyen_transfer' => $AparatTransfer->bekleyenSayisi($ekipId),
+                'aparat_durumlari' => \App\Model\KesmeAcmaIslemModel::APARAT_DURUMLARI,
+            ]);
+            break;
+
+        case 'saveAparatIslem':
+            aparatYetkiKontrol($personel);
+
+            if (empty($_POST) && !empty($_SERVER['CONTENT_LENGTH'])) {
+                error_log(sprintf(
+                    'PWA aparat kaydı PHP sınırında düştü: content_length=%s upload_max_filesize=%s personel=%s',
+                    $_SERVER['CONTENT_LENGTH'],
+                    ini_get('upload_max_filesize'),
+                    $personel_id
+                ));
+                response(false, null, 'Fotoğrafın boyutu sunucu yükleme sınırını aşıyor.');
+            }
+
+            $AparatIslem = new \App\Model\KesmeAcmaIslemModel();
+            $AparatStok = new \App\Model\AparatStokModel();
+
+            // Çevrimdışı kuyruk aynı kaydı yeniden gönderebilir; UUID mükerrer açılmayı engeller.
+            $aparatUuid = trim((string) ($_POST['client_uuid'] ?? ''));
+            if ($aparatUuid !== '') {
+                if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $aparatUuid)) {
+                    response(false, null, 'Geçersiz kayıt anahtarı.');
+                }
+                $mevcut = $AparatIslem->clientUuidIleBul($aparatUuid);
+                if ($mevcut) {
+                    response(true, ['id' => (int) $mevcut['id'], 'tekrar' => true], 'Bu kayıt daha önce iletilmişti.');
+                }
+            }
+
+            $ekip = $AparatStok->aktifEkip((int) $personel_id);
+            if (!$ekip) {
+                response(false, null, 'Tanımlı bir ekibiniz bulunmuyor.');
+            }
+
+            $aparatsiz = (int) ($_POST['aparatsiz'] ?? 0) === 1;
+            $cihazZamani = trim((string) ($_POST['offline_olusturma'] ?? ''));
+            $islemTarihi = $cihazZamani !== '' ? substr($cihazZamani, 0, 10) : date('Y-m-d');
+
+            $Aparatservis = new \App\Service\AparatStokService();
+
+            try {
+                $aparatSonuc = $Aparatservis->islemKaydet([
+                    'islem_tipi' => $_POST['islem_tipi'] ?? '',
+                    'ekip_id' => (int) $ekip['id'],
+                    'ekip_adi' => $ekip['tur_adi'],
+                    'personel_id' => (int) $personel_id,
+                    'aparat_tip_id' => (int) ($_POST['aparat_tip_id'] ?? 0),
+                    'adet' => max(1, (int) ($_POST['adet'] ?? 1)),
+                    'aparatsiz' => $aparatsiz ? 1 : 0,
+                    'aparat_durumu' => $_POST['aparat_durumu'] ?? null,
+                    'abone_no' => trim((string) ($_POST['abone_no'] ?? '')),
+                    'sayac_no' => trim((string) ($_POST['sayac_no'] ?? '')),
+                    'ilce' => trim((string) ($_POST['ilce'] ?? '')),
+                    'mahalle' => trim((string) ($_POST['mahalle'] ?? '')),
+                    'enlem' => $_POST['enlem'] ?? null,
+                    'boylam' => $_POST['boylam'] ?? null,
+                    'aciklama' => trim((string) ($_POST['aciklama'] ?? '')),
+                    'kaynak' => 'pwa',
+                    'cihaz_zamani' => $cihazZamani ?: date('Y-m-d H:i:s'),
+                    'offline_olusturma' => $cihazZamani ?: null,
+                    'tarih' => $islemTarihi,
+                    'client_uuid' => $aparatUuid ?: null,
+                    'kaydeden_id' => null,
+                ]);
+            } catch (Throwable $e) {
+                if ($aparatUuid !== '') {
+                    $mevcut = $AparatIslem->clientUuidIleBul($aparatUuid);
+                    if ($mevcut) {
+                        response(true, ['id' => (int) $mevcut['id'], 'tekrar' => true], 'Bu kayıt daha önce iletilmişti.');
+                    }
+                }
+                error_log('PWA aparat kaydı başarısız: ' . $e->getMessage());
+                response(false, null, aparatHataMesaji($e, 'Kayıt oluşturulamadı.'));
+            }
+
+            $aparatIslemId = (int) $aparatSonuc['id'];
+
+            if (!empty($_FILES['sayac_foto']['name'])) {
+                try {
+                    $yol = $AparatIslem->fotografKaydet($_FILES['sayac_foto'], $aparatIslemId, 'sayac');
+                    $AparatIslem->fotografEkle($aparatIslemId, 'sayac', $yol, $_FILES['sayac_foto']['name'], (int) $personel_id);
+                } catch (Throwable $e) {
+                    error_log('PWA aparat sayaç fotoğrafı yüklenemedi: ' . $e->getMessage());
+                }
+            }
+
+            $aparatMesaj = 'İşlem kaydedildi.';
+            if ($aparatSonuc['negatif']) {
+                $aparatMesaj = 'Kayıt alındı. Dikkat: ekip stoğunuz eksiye düştü, şefinizle görüşün.';
+            } elseif ($aparatSonuc['mukerrer']) {
+                $aparatMesaj = 'Kayıt alındı. Bu abonede bugün aynı işlem daha önce de girilmiş.';
+            }
+
+            response(true, [
+                'id' => $aparatIslemId,
+                'bakiye' => $aparatSonuc['bakiye'],
+                'negatif' => $aparatSonuc['negatif'],
+                'mukerrer' => $aparatSonuc['mukerrer'],
+            ], $aparatMesaj);
+            break;
+
+        case 'addAparatFoto':
+            aparatYetkiKontrol($personel);
+
+            if (empty($_POST) && !empty($_SERVER['CONTENT_LENGTH'])) {
+                response(false, null, 'Fotoğrafın boyutu sunucu yükleme sınırını aşıyor.');
+            }
+
+            $AparatIslem = new \App\Model\KesmeAcmaIslemModel();
+
+            $aparatUuid = trim((string) ($_POST['client_uuid'] ?? ''));
+            if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $aparatUuid)) {
+                response(false, null, 'Geçersiz kayıt anahtarı.');
+            }
+
+            $aparatKayit = $AparatIslem->clientUuidIleBul($aparatUuid);
+            if (!$aparatKayit) {
+                response(false, null, 'Fotoğrafın ekleneceği kayıt bulunamadı.');
+            }
+
+            if ((int) $aparatKayit['personel_id'] !== (int) $personel_id) {
+                error_log('PWA aparat fotoğrafı yetkisiz eklenmeye çalışıldı: islem_id=' . $aparatKayit['id'] . ' personel=' . $personel_id);
+                response(false, null, 'Bu kayda fotoğraf ekleme yetkiniz yok.');
+            }
+
+            $aparatIslemId = (int) $aparatKayit['id'];
+
+            if ($AparatIslem->fotografVarMi($aparatIslemId, 'aparat')) {
+                response(true, ['id' => $aparatIslemId, 'tekrar' => true], 'Bu fotoğraf zaten yüklenmişti.');
+            }
+
+            if (empty($_FILES['foto']['name'])) {
+                response(false, null, 'Fotoğraf alınamadı.');
+            }
+
+            try {
+                $yol = $AparatIslem->fotografKaydet($_FILES['foto'], $aparatIslemId, 'aparat');
+                $AparatIslem->fotografEkle($aparatIslemId, 'aparat', $yol, $_FILES['foto']['name'], (int) $personel_id);
+            } catch (Throwable $e) {
+                error_log('PWA aparat fotoğrafı yüklenemedi: ' . $e->getMessage());
+                response(false, null, 'Fotoğraf kaydedilemedi.');
+            }
+
+            response(true, ['id' => $aparatIslemId], 'Fotoğraf yüklendi.');
+            break;
+
+        case 'getAparatSonIslemler':
+            aparatYetkiKontrol($personel);
+
+            $AparatIslem = new \App\Model\KesmeAcmaIslemModel();
+            $gun = max(1, min(30, (int) ($_GET['gun'] ?? 7)));
+
+            $kayitlar = $AparatIslem->listele([
+                'personel_id' => (int) $personel_id,
+                'baslangic' => date('Y-m-d', strtotime('-' . ($gun - 1) . ' days')),
+                'bitis' => date('Y-m-d'),
+            ], 100);
+
+            $liste = [];
+            foreach ($kayitlar as $k) {
+                $liste[] = [
+                    'id' => (int) $k['id'],
+                    'islem_tipi' => $k['islem_tipi'],
+                    'abone_no' => $k['abone_no'],
+                    'sayac_no' => $k['sayac_no'],
+                    'aparat_adi' => (int) $k['aparatsiz'] === 1 ? 'Aparatsız' : $k['aparat_adi'],
+                    'adet' => (int) $k['adet'],
+                    'durum' => $k['durum'],
+                    'negatif_stok' => (int) $k['negatif_stok'],
+                    'foto_sayisi' => (int) $k['foto_sayisi'],
+                    'tarih' => $k['tarih'],
+                    'saat' => $k['cihaz_zamani'] ? substr($k['cihaz_zamani'], 11, 5) : '',
+                ];
+            }
+
+            response(true, ['islemler' => $liste]);
+            break;
+
+        case 'getAparatTransferler':
+            aparatYetkiKontrol($personel);
+
+            $AparatStok = new \App\Model\AparatStokModel();
+            $AparatTransfer = new \App\Model\AparatTransferModel();
+
+            $ekip = $AparatStok->aktifEkip((int) $personel_id);
+            if (!$ekip) {
+                response(false, null, 'Tanımlı bir ekibiniz bulunmuyor.');
+            }
+
+            $ekipId = (int) $ekip['id'];
+            $kayitlar = $AparatTransfer->listele(['ekip_id' => $ekipId], 100);
+
+            $liste = [];
+            foreach ($kayitlar as $t) {
+                $liste[] = [
+                    'id' => (int) $t['id'],
+                    'yon' => (int) $t['alan_ekip_id'] === $ekipId ? 'gelen' : 'giden',
+                    'karsi_ekip' => (int) $t['alan_ekip_id'] === $ekipId ? $t['veren_ekip_adi'] : $t['alan_ekip_adi'],
+                    'aparat_adi' => $t['aparat_adi'],
+                    'adet' => (int) $t['adet'],
+                    'onaylanan_adet' => $t['onaylanan_adet'] !== null ? (int) $t['onaylanan_adet'] : null,
+                    'durum' => $t['durum'],
+                    'red_nedeni' => $t['red_nedeni'],
+                    'tarih' => $t['tarih'],
+                    'onaylanabilir' => (int) $t['alan_ekip_id'] === $ekipId && $t['durum'] === 'beklemede',
+                ];
+            }
+
+            response(true, ['transferler' => $liste, 'ekip_id' => $ekipId]);
+            break;
+
+        case 'saveAparatTransfer':
+            aparatYetkiKontrol($personel);
+
+            $AparatStok = new \App\Model\AparatStokModel();
+            $AparatTransfer = new \App\Model\AparatTransferModel();
+
+            $aparatUuid = trim((string) ($_POST['client_uuid'] ?? ''));
+            if ($aparatUuid !== '') {
+                $mevcut = $AparatTransfer->clientUuidIleBul($aparatUuid);
+                if ($mevcut) {
+                    response(true, ['id' => (int) $mevcut['id'], 'tekrar' => true], 'Bu transfer daha önce iletilmişti.');
+                }
+            }
+
+            $ekip = $AparatStok->aktifEkip((int) $personel_id);
+            if (!$ekip) {
+                response(false, null, 'Tanımlı bir ekibiniz bulunmuyor.');
+            }
+
+            $Aparatservis = new \App\Service\AparatStokService();
+
+            try {
+                $transferId = $Aparatservis->transferOlustur([
+                    'veren_ekip_id' => (int) $ekip['id'],
+                    'alan_ekip_id' => (int) ($_POST['alan_ekip_id'] ?? 0),
+                    'aparat_tip_id' => (int) ($_POST['aparat_tip_id'] ?? 0),
+                    'adet' => (int) ($_POST['adet'] ?? 0),
+                    'aciklama' => trim((string) ($_POST['aciklama'] ?? '')),
+                    'olusturan_personel_id' => (int) $personel_id,
+                    'olusturan_user_id' => null,
+                    'client_uuid' => $aparatUuid ?: null,
+                ]);
+            } catch (Throwable $e) {
+                error_log('PWA aparat transferi oluşturulamadı: ' . $e->getMessage());
+                response(false, null, aparatHataMesaji($e, 'Transfer oluşturulamadı.'));
+            }
+
+            response(true, ['id' => $transferId], 'Transfer gönderildi, karşı ekibin onayı bekleniyor.');
+            break;
+
+        case 'cevaplaAparatTransfer':
+            aparatYetkiKontrol($personel);
+
+            $AparatStok = new \App\Model\AparatStokModel();
+            $AparatTransfer = new \App\Model\AparatTransferModel();
+
+            $ekip = $AparatStok->aktifEkip((int) $personel_id);
+            if (!$ekip) {
+                response(false, null, 'Tanımlı bir ekibiniz bulunmuyor.');
+            }
+
+            $transferId = (int) ($_POST['id'] ?? 0);
+            $transfer = $AparatTransfer->getir($transferId);
+
+            if (!$transfer) {
+                response(false, null, 'Transfer bulunamadı.');
+            }
+            if ((int) $transfer['alan_ekip_id'] !== (int) $ekip['id']) {
+                response(false, null, 'Bu transferi yalnızca alan ekip yanıtlayabilir.');
+            }
+
+            $Aparatservis = new \App\Service\AparatStokService();
+            $karar = $_POST['karar'] ?? '';
+
+            try {
+                if ($karar === 'onayla') {
+                    $onaylanan = isset($_POST['onaylanan_adet']) && $_POST['onaylanan_adet'] !== ''
+                        ? (int) $_POST['onaylanan_adet']
+                        : null;
+                    $Aparatservis->transferOnayla($transferId, $onaylanan, (int) $personel_id, 0);
+                    response(true, null, 'Transfer onaylandı, aparatlar ekibinize eklendi.');
+                }
+
+                if ($karar === 'reddet') {
+                    $neden = trim((string) ($_POST['red_nedeni'] ?? ''));
+                    if ($neden === '') {
+                        response(false, null, 'Red gerekçesi girmelisiniz.');
+                    }
+                    $Aparatservis->transferReddet($transferId, $neden, (int) $personel_id, 0);
+                    response(true, null, 'Transfer reddedildi.');
+                }
+            } catch (Throwable $e) {
+                error_log('PWA aparat transferi yanıtlanamadı: ' . $e->getMessage());
+                response(false, null, aparatHataMesaji($e, 'Transfer yanıtlanamadı.'));
+            }
+
+            response(false, null, 'Geçersiz karar.');
             break;
 
         default:

@@ -4,7 +4,7 @@
 **İş kalemi:** KASKİ — Borçtan su kesme / açma
 **Modül adı (öneri):** Aparat Takip
 **Hazırlanma tarihi:** 04.08.2026
-**Durum:** Taslak — "Netleştirilmesi gereken konular" başlığındaki maddeler yazılımcı ile birlikte kararlaştırılacak
+**Durum:** Kararlaştırıldı ve geliştirildi — Bölüm 10'daki maddeler karara bağlandı, modül `ersan_elk` projesine eklendi (bkz. Bölüm 11)
 
 ---
 
@@ -257,24 +257,56 @@ Tüm raporlar Excel'e aktarılabilmeli.
 
 ---
 
-## 10. Netleştirilmesi gereken konular
+## 10. Karara bağlanan konular
 
-Bu maddeler yazılıma başlamadan önce birlikte karara bağlanmalı:
+| # | Konu | Karar |
+|---|---|---|
+| 1 | Panelde kesme-açma kaydı var mı? | **Var ama abone bazlı değil.** `yapilan_isler` tablosu KASKİ API'sinden cron ile çekilen *ekip × gün × iş emri sonucu × adet* özetini tutuyor; `abone_no` boş geliyor. Bu yüzden abone bazlı yeni tablo (`kesme_acma_islem`) açıldı. API özetindeki "APARATLA KESİM YAPILDI." sonucu, panele girilen kayıtlarla **çapraz doğrulama** için kullanılıyor (Bölüm 9). |
+| 2 | Ekip yapısı | Ekipler `tanimlamalar` tablosunda (`grup='ekip_kodu'`), üyelik `personel_ekip_gecmisi` tablosunda tarih aralıklı tutuluyor; üyeler gün gün değişebiliyor. Bu nedenle **aparat ekibe zimmetlendi**, personele değil. Kesme ekipleri `ekip_aralik_kesme` ayarı (varsayılan 1-40) ile süzülüyor. |
+| 3 | Aparat tiplerinin listesi | Koda gömülmedi; **Tanımlar ekranından** girilecek (Bölüm 13, kurulum adımı 2). |
+| 4 | Başlangıç stoğu | `acilis` hareket türü ile "Açılış Stoğu" olarak girilir (Depo/Havuz Hareketi ekranı). |
+| 5 | Aparatsız kesme | **"Aparat kullanılmadı" seçeneği var.** İşaretlenirse kayıt açılır ama stok hareketi yazılmaz. |
+| 6 | Bir işlemde birden fazla aparat | **Adet alanı kondu, varsayılan 1.** |
+| 7 | Negatif stok | **Uyarılır ama engellenmez.** Kayıt `negatif_stok = 1` işaretlenir, sahada personele uyarı çıkar, panelde kırmızı gösterilir ve `error_log`'a yazılır. Saha kilitlenmez. |
+| 8 | Transfer onayı | **Çift taraflı onay zorunlu.** Veren ekibin beyanı yetmez; stok yalnızca alan ekip onayladığında işlenir. Şef bekleyen transferi yalnızca **iptal** edebilir, onaylayamaz. |
+| 9 | Offline çalışma | **İlk sürüme dahil edildi.** Mevcut `pwa-offline-queue.js` altyapısı kullanıldı; kayıt + sayaç fotoğrafı ana istekte, aparat fotoğrafı ayrı istekte gider. `client_uuid` ile mükerrer kayıt engellenir. |
+| 10 | KASKİ'ye raporlama yükümlülüğü | Netleşmedi. Hareket dökümü ve stok tablosu Excel'e aktarılabildiği için format gerektiğinde uyarlanabilir. |
 
-1. **Panelde hâlihazırda kesme-açma işlem kaydı tutuluyor mu?** Tutuluyorsa yeni tablo açmak yerine aparat alanları mevcut tabloya eklenmeli, veri ikiye bölünmemeli.
-2. **Ekip yapısı:** 12 personel kaç ekibe bölünüyor, ekip tanımı panelde hangi tabloda? Ekip üyeleri gün gün değişiyor mu? Aparat ekibe mi yoksa personele mi zimmetli sayılacak? *(Öneri: ekibe. Personel bazlı takip saha için fazla yük olur.)*
-3. **Aparat tiplerinin tam listesi** ve kodları.
-4. **Başlangıç stoğu:** Modül devreye girdiğinde her ekipte hangi tipten kaç adet var? Bir kereye mahsus "açılış sayımı" ile girilmeli.
-5. **Her kesmede mutlaka aparat kullanılıyor mu?** Aparatsız kesme türü varsa "aparat kullanılmadı" seçeneği gerekir.
-6. **Bir işlemde birden fazla aparat** kullanıldığı oluyor mu? (Öneri: adet alanı konsun, varsayılan 1.)
-7. **Negatif stok** engellensin mi, uyarı ile geçilsin mi? (Bölüm 8.2)
-8. **Transfer onayı** çift taraflı mı olsun, yoksa veren ekibin beyanı yeterli mi?
-9. **Offline çalışma** ilk sürüme dahil edilsin mi, sonraya mı bırakılsın?
-10. **KASKİ'ye raporlama yükümlülüğü** var mı — varsa rapor formatı baştan ona göre kurgulanmalı.
+### Karar notu — hasarlı aparat
+
+Dökümanın 5.1 maddesinde "Hasarlı geldi → stoğa +1 ama hurda işaretli" yazıyordu. Uygulamada **hasarlı aparat ekip stoğuna değil doğrudan hurda havuzuna** yazılıyor; aksi halde kullanılamaz aparat ekip stoğunu şişirir ve kesmede kullanılabilir görünür. Toplam adet yine korunuyor.
 
 ---
 
-## 11. Teknik notlar (mevcut sistem)
+## 11. Kurulum ve teslim durumu
+
+### Eklenen dosyalar
+
+| Katman | Dosya |
+|---|---|
+| Veritabanı | `sql/aparat_takip_modulu.sql` (8 tablo + menü + 6 yetki) |
+| Model | `App/Model/AparatTipiModel.php`, `AparatHareketModel.php`, `AparatStokModel.php`, `KesmeAcmaIslemModel.php`, `AparatTransferModel.php`, `AparatSayimModel.php` |
+| Servis | `App/Service/AparatStokService.php` (tüm hareketlerin tek giriş noktası) |
+| Panel | `views/aparat-takip/` → `list.php`, `api.php`, `js/list.js`, `export-excel.php`, `foto-goruntule.php` |
+| Telefon | `views/personel-pwa/pages/aparat.php` + `views/personel-pwa/api.php` içine 7 yeni aksiyon |
+
+### Kurulum adımları
+
+1. `sql/aparat_takip_modulu.sql` çalıştırılır (tekrar çalıştırmak güvenlidir).
+2. **Aparat Takip → Tanımlar** sekmesinden 5 aparat tipi girilir (ad + kısa kod).
+3. **Depo / Havuz Hareketi → Depo Girişi** ile mevcut aparat mevcudu depoya işlenir.
+4. Her ekip için **Açılış Stoğu** hareketiyle eldeki adetler girilir (bir kereye mahsus).
+5. Kesme-açma personeli telefonda **Hızlı İşlemler → Aparat Takip** ekranından kayda başlar.
+
+### Yetkiler
+
+`aparat_takip` (görüntüleme), `aparat_depo` (depo/havuz hareketleri, manuel saha kaydı), `aparat_iptal` (kayıt iptali), `aparat_sayim`, `aparat_tanim`, `aparat_transfer_yonet`. Script, `kacak_islemleri` yetkisi olan rollere bu yetkileri otomatik verir.
+
+Telefon tarafı ayrıca yetki gerektirmez; personelin departmanı "Kesme-Açma" ise ekran görünür.
+
+---
+
+## 12. Teknik notlar (mevcut sistem)
 
 Modül, `ersan_elk` projesine mevcut yapıya uygun şekilde eklenecek:
 
@@ -288,15 +320,16 @@ Modül, `ersan_elk` projesine mevcut yapıya uygun şekilde eklenecek:
 
 ---
 
-## 12. Kabul kriterleri
+## 13. Kabul kriterleri
 
 Modül şu maddeler sağlandığında tamamlanmış sayılır:
 
-- [ ] Saha personeli telefondan 2 fotoğraf + işlem tipi + aparat tipi ile kayıt girebiliyor.
-- [ ] Kesme kaydında ekip stoğu ilgili tipte 1 azalıyor, açma kaydında 1 artıyor.
-- [ ] Ekip-3'ün kestiği aboneyi ekip-5 açtığında, aparat ekip-5'in stoğuna geçiyor.
-- [ ] Panelde ekip × aparat tipi matrisi anlık ve doğru görüntüleniyor.
-- [ ] Ekipler arası transfer yapılıp onaylandığında her iki ekibin stoğu doğru güncelleniyor.
-- [ ] Her hareket ana defterde iz bırakıyor; hatalı kayıt iptal edilebiliyor.
-- [ ] `Depo + ekipler + sahada takılı + hurda = toplam` eşitliği her tip için tutuyor.
-- [ ] Hareket dökümü ve stok raporu Excel'e aktarılabiliyor.
+- [x] Saha personeli telefondan 2 fotoğraf + işlem tipi + aparat tipi ile kayıt girebiliyor.
+- [x] Kesme kaydında ekip stoğu ilgili tipte 1 azalıyor, açma kaydında 1 artıyor.
+- [x] Ekip-3'ün kestiği aboneyi ekip-5 açtığında, aparat ekip-5'in stoğuna geçiyor.
+- [x] Panelde ekip × aparat tipi matrisi anlık ve doğru görüntüleniyor.
+- [x] Ekipler arası transfer yapılıp onaylandığında her iki ekibin stoğu doğru güncelleniyor.
+- [x] Her hareket ana defterde iz bırakıyor; hatalı kayıt iptal edilebiliyor.
+- [x] `Depo + ekipler + sahada takılı + hurda + kayıp = toplam` eşitliği her tip için tutuyor.
+- [x] Hareket dökümü ve stok raporu Excel'e aktarılabiliyor.
+- [x] Çevrimdışı girilen kayıt bağlantı gelince gönderiliyor, iki kez düşmüyor.

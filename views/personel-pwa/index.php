@@ -142,6 +142,7 @@ if ($isEndeksOkuma && $isEkipSefi) {
 
 if ($isKesmeAcma) {
     $allowed_pages[] = 'nobet';
+    $allowed_pages[] = 'aparat';
 }
 
 if ($isKacakKontrol) {
@@ -171,6 +172,21 @@ $cevrimdisiSayfalar = ['index.php', 'index.php?page=ana-sayfa', 'index.php?page=
 if ($isKacakKontrol) {
     $cevrimdisiSayfalar[] = 'index.php?page=kacak';
 }
+if ($isKesmeAcma) {
+    $cevrimdisiSayfalar[] = 'index.php?page=aparat';
+}
+
+// Durum çubuğu, sayfanın en üstündeki başlık alanıyla aynı renkte olmalı.
+// "primary" tema rengini, "surface" ise açık/koyu arayüz yüzeyini izler.
+$pageStatusMode = in_array($page, [
+    'ana-sayfa', 'puantaj', 'profil', 'ekip-takibi', 'etkinlikler'
+], true) ? 'primary' : 'surface';
+$pageStatusColor = null;
+
+if ($page === 'ihbar') {
+    $pageStatusMode = 'fixed';
+    $pageStatusColor = '#dc2626';
+}
 ?>
 <!DOCTYPE html>
 <html lang="tr">
@@ -180,7 +196,7 @@ if ($isKacakKontrol) {
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
-    <meta name="theme-color" content="#135bec">
+    <meta name="theme-color" content="<?= htmlspecialchars($pageStatusColor ?? ($pageStatusMode === 'surface' ? '#ffffff' : '#135bec'), ENT_QUOTES, 'UTF-8') ?>">
     <meta name="description" content="Ersan Elektrik - Mobil Uygulama">
 
     <title>Ersan Elektrik | Personel Yönetimi</title>
@@ -245,12 +261,29 @@ if ($isKacakKontrol) {
 
             // Update meta theme-color
             const meta = document.querySelector('meta[name="theme-color"]');
-            if (meta) meta.setAttribute('content', t.primary);
+            const pageStatusMode = <?= json_encode($pageStatusMode) ?>;
+            const fixedPageStatusColor = <?= json_encode($pageStatusColor) ?>;
+            window.syncPageStatusBar = function () {
+                const isDark = document.documentElement.classList.contains('dark');
+                const color = pageStatusMode === 'fixed'
+                    ? fixedPageStatusColor
+                    : (pageStatusMode === 'surface'
+                        ? (isDark ? '#1e1e1e' : '#ffffff')
+                        : (getComputedStyle(r).getPropertyValue('--primary').trim() || t.primary));
+                document.documentElement.style.setProperty('--page-status-color', color);
+                if (meta) meta.setAttribute('content', color);
+            };
+            window.syncPageStatusBar();
 
             // Dark mode
             if (localStorage.getItem('darkMode') === 'true') {
                 r.classList.add('dark');
             }
+            window.syncPageStatusBar();
+            new MutationObserver(window.syncPageStatusBar).observe(r, {
+                attributes: true,
+                attributeFilter: ['class']
+            });
         })();
     </script>
 
@@ -286,7 +319,7 @@ if ($isKacakKontrol) {
     class="bg-background-light dark:bg-background-dark font-display text-slate-900 dark:text-white min-h-screen pb-20">
 
     <!-- Status Bar Spacer (iOS) -->
-    <div class="h-safe-top bg-primary"></div>
+    <div class="h-safe-top" style="background-color: var(--page-status-color, var(--primary));"></div>
 
     <!-- Main Content -->
     <main id="main-content" class="min-h-screen">

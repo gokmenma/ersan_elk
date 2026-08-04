@@ -463,6 +463,17 @@ use App\Helper\Helper;
             'text_color' => 'text-teal-100/80',
             'condition' => $isKesmeAcma ?? false,
         ],
+        'aparat' => [
+            'key' => 'aparat',
+            'title' => 'Aparat Takip',
+            'desc' => 'Kesme-Açma Kaydı',
+            'url' => '?page=aparat',
+            'icon' => 'build',
+            'gradient' => 'from-indigo-500 to-indigo-700',
+            'neon' => 'neon-indigo',
+            'text_color' => 'text-indigo-100/80',
+            'condition' => $isKesmeAcma ?? false,
+        ],
     ];
 
     $availableQuickActions = [];

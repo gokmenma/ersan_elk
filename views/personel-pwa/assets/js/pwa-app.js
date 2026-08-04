@@ -173,7 +173,11 @@ const Theme = {
 
     // Update meta theme-color
     const meta = document.querySelector('meta[name="theme-color"]');
-    if (meta) meta.setAttribute("content", color);
+    if (typeof window.syncPageStatusBar === "function") {
+      window.syncPageStatusBar();
+    } else if (meta) {
+      meta.setAttribute("content", color);
+    }
 
     // Update UI active states without reload
     document.querySelectorAll(".theme-swatch").forEach((s) => {
