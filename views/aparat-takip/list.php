@@ -158,6 +158,11 @@ foreach (AparatTipiModel::RENKLER as $renk) {
         color: #0ea5e9;
         box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
     }
+
+    .dataTables_wrapper,
+    table.dataTable {
+        width: 100% !important;
+    }
 </style>
 
 <div class="container-fluid">
@@ -169,34 +174,62 @@ foreach (AparatTipiModel::RENKLER as $renk) {
 
     <div class="row g-3 mb-3" id="aparatOzetSerit">
         <div class="col-6 col-lg-3">
-            <div class="card border-0 shadow-sm mb-0 aparat-ozet-kart" style="border-left-color:#556ee6">
-                <div class="card-body py-3">
-                    <div class="aparat-ozet-etiket">Toplam Aparat</div>
-                    <div class="aparat-ozet-sayi" id="ozetToplam">-</div>
+            <div class="card border-0 shadow-sm h-100 rounded-3" style="border-left: 3px solid #556ee6 !important;">
+                <div class="card-body p-3 d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">Toplam Aparat</div>
+                        <h4 class="mb-0 fw-bold text-dark" id="ozetToplam">-</h4>
+                    </div>
+                    <div class="avatar-sm flex-shrink-0">
+                        <span class="avatar-title rounded-3 fs-4" style="background: rgba(85, 110, 230, 0.1); color: #556ee6;">
+                            <i class="bx bx-package"></i>
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
         <div class="col-6 col-lg-3">
-            <div class="card border-0 shadow-sm mb-0 aparat-ozet-kart" style="border-left-color:#34c38f">
-                <div class="card-body py-3">
-                    <div class="aparat-ozet-etiket">Sahada Takılı</div>
-                    <div class="aparat-ozet-sayi" id="ozetSaha">-</div>
+            <div class="card border-0 shadow-sm h-100 rounded-3" style="border-left: 3px solid #34c38f !important;">
+                <div class="card-body p-3 d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">Sahada Takılı</div>
+                        <h4 class="mb-0 fw-bold text-dark" id="ozetSaha">-</h4>
+                    </div>
+                    <div class="avatar-sm flex-shrink-0">
+                        <span class="avatar-title rounded-3 fs-4" style="background: rgba(52, 195, 143, 0.1); color: #34c38f;">
+                            <i class="bx bx-map-pin"></i>
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
         <div class="col-6 col-lg-3">
-            <div class="card border-0 shadow-sm mb-0 aparat-ozet-kart" style="border-left-color:#f1b44c">
-                <div class="card-body py-3">
-                    <div class="aparat-ozet-etiket">Bekleyen Transfer</div>
-                    <div class="aparat-ozet-sayi" id="ozetTransfer">-</div>
+            <div class="card border-0 shadow-sm h-100 rounded-3" style="border-left: 3px solid #f1b44c !important;">
+                <div class="card-body p-3 d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">Bekleyen Transfer</div>
+                        <h4 class="mb-0 fw-bold text-dark" id="ozetTransfer">-</h4>
+                    </div>
+                    <div class="avatar-sm flex-shrink-0">
+                        <span class="avatar-title rounded-3 fs-4" style="background: rgba(241, 180, 76, 0.1); color: #f1b44c;">
+                            <i class="bx bx-transfer-alt"></i>
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
         <div class="col-6 col-lg-3">
-            <div class="card border-0 shadow-sm mb-0 aparat-ozet-kart" style="border-left-color:#f46a6a">
-                <div class="card-body py-3">
-                    <div class="aparat-ozet-etiket">Negatif Stoklu Kayıt</div>
-                    <div class="aparat-ozet-sayi text-danger" id="ozetNegatif">-</div>
+            <div class="card border-0 shadow-sm h-100 rounded-3" style="border-left: 3px solid #f46a6a !important;">
+                <div class="card-body p-3 d-flex align-items-center justify-content-between">
+                    <div>
+                        <div class="text-muted small fw-semibold text-uppercase mb-1" style="font-size: 0.68rem; letter-spacing: 0.5px;">Negatif Stoklu Kayıt</div>
+                        <h4 class="mb-0 fw-bold text-danger" id="ozetNegatif">-</h4>
+                    </div>
+                    <div class="avatar-sm flex-shrink-0">
+                        <span class="avatar-title rounded-3 fs-4" style="background: rgba(244, 106, 106, 0.1); color: #f46a6a;">
+                            <i class="bx bx-error-circle"></i>
+                        </span>
+                    </div>
                 </div>
             </div>
         </div>
@@ -264,7 +297,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle aparat-matris mb-0" id="tabloStokMatris">
+                        <table class="table table-sm table-hover align-middle aparat-matris mb-0 w-100" id="tabloStokMatris" style="width:100%">
                             <thead class="table-light">
                                 <tr>
                                     <th data-filter="string">Ekip / Personel</th>
@@ -323,7 +356,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0" id="tabloIslemler">
+                        <table class="table table-sm table-hover align-middle mb-0 w-100" id="tabloIslemler" style="width:100%">
                             <thead class="table-light">
                                 <tr>
                                     <th data-filter="date">Tarih</th>
@@ -364,7 +397,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0" id="tabloHareketler">
+                        <table class="table table-sm table-hover align-middle mb-0 w-100" id="tabloHareketler" style="width:100%">
                             <thead class="table-light">
                                 <tr>
                                     <th data-filter="date">Tarih</th>
@@ -407,7 +440,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                 </div>
                 <div class="card-body">
                     <div class="table-responsive">
-                        <table class="table table-sm table-hover align-middle mb-0" id="tabloTransferler">
+                        <table class="table table-sm table-hover align-middle mb-0 w-100" id="tabloTransferler" style="width:100%">
                             <thead class="table-light">
                                 <tr>
                                     <th data-filter="date">Tarih</th>
@@ -477,7 +510,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-sm table-hover align-middle mb-0" id="tabloSahada">
+                                <table class="table table-sm table-hover align-middle mb-0 w-100" id="tabloSahada" style="width:100%">
                                     <thead class="table-light">
                                         <tr>
                                             <th data-filter="date">Kesme Tarihi</th>
@@ -509,7 +542,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                         </div>
                         <div class="card-body">
                             <div class="table-responsive">
-                                <table class="table table-sm align-middle mb-0" id="tabloDonemsel">
+                                <table class="table table-sm align-middle mb-0 w-100" id="tabloDonemsel" style="width:100%">
                                     <thead class="table-light">
                                         <tr>
                                             <th data-filter="select">İşlem</th>
@@ -538,7 +571,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                         </div>
                         <div class="card-body">
                             <div class="table-responsive" style="max-height:420px;overflow:auto">
-                                <table class="table table-sm align-middle mb-0" id="tabloApiKarsilastirma">
+                                <table class="table table-sm align-middle mb-0 w-100" id="tabloApiKarsilastirma" style="width:100%">
                                     <thead class="table-light">
                                         <tr>
                                             <th data-filter="date">Tarih</th>
@@ -570,7 +603,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                     </div>
                     <div class="card-body">
                         <div class="table-responsive">
-                            <table class="table table-sm table-hover align-middle mb-0" id="tabloTipler">
+                            <table class="table table-sm table-hover align-middle mb-0 w-100" id="tabloTipler" style="width:100%">
                                 <thead class="table-light">
                                     <tr>
                                         <th class="text-center" data-filter="number">Sıra</th>

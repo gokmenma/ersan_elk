@@ -57,7 +57,7 @@
         }
 
         const temel = (typeof getDatatableOptions === 'function') ? getDatatableOptions() : {};
-        let secenekler = $.extend(true, {}, temel, ayarlar || {});
+        let secenekler = $.extend(true, { autoWidth: false }, temel, ayarlar || {});
 
         if (typeof applyLengthStateSave === 'function') {
             secenekler = applyLengthStateSave(secenekler);
