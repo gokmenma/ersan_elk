@@ -88,7 +88,7 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
             class="px-6 pt-3 pb-2 bg-white dark:bg-card-dark z-10 border-b border-slate-200 dark:border-slate-800">
             <div class="modal-handle mb-4"></div>
             <div class="flex items-center justify-between">
-                <h3 class="text-lg font-bold text-slate-800 dark:text-white">Kaçak Tutanağı Bildir</h3>
+                <h3 id="kacak-form-title" class="text-lg font-bold text-slate-800 dark:text-white">Kaçak Tutanağı Bildir</h3>
                 <button onclick="Modal.close('kacak-bildir-modal')"
                     class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
                     <span class="material-symbols-outlined text-slate-500">close</span>
@@ -103,7 +103,7 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
             <div class="bg-slate-50 dark:bg-slate-800 rounded-xl p-4">
                 <div class="flex items-center justify-between gap-2 mb-2">
                     <span class="text-xs font-bold text-slate-500 uppercase">Tutanak Fotoğrafı</span>
-                    <span class="text-xs text-slate-400">Zorunlu</span>
+                    <span id="kacak-tutanak-required" class="text-xs text-slate-400">Zorunlu</span>
                 </div>
 
                 <input type="file" id="kacak-tutanak-input" accept="image/*,application/pdf" style="display:none">
@@ -256,6 +256,7 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
         let aktifFiltre = 'all';
         let sahaDosyalari = [];
         let bekleyenKayitlar = [];
+        let kacakEditToken = null;
 
         const REF_ANAHTAR = 'kacak_referans';
         const LISTE_ANAHTAR = 'kacak_liste';
@@ -289,6 +290,9 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
                 ? `<span class="text-xs text-slate-400">· ${k.foto_sayisi} belge</span>` : '';
             const redSatiri = (k.onay_durumu === 'reddedildi' && k.red_nedeni)
                 ? `<p class="text-xs text-red-600 mt-2">Red nedeni: ${esc(k.red_nedeni)}</p>` : '';
+            const duzenleBtn = k.duzenlenebilir
+                ? `<button type="button" onclick="event.stopPropagation(); kacakDuzenle('${esc(k.edit_token)}')"
+                    class="mt-3 w-full py-2 rounded-xl bg-primary/10 text-primary text-xs font-bold flex items-center justify-center gap-1"><span class="material-symbols-outlined text-base">edit</span>Düzenle</button>` : '';
 
             return `
             <div onclick="kacakDetayAc(${k.id})"
@@ -302,6 +306,7 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
                     ${esc(k.tarih_formatted)} · ${esc(k.ilce || 'İlçe yok')} · No: ${esc(k.tutanak_no || '-')} ${fotoSatiri}
                 </p>
                 ${redSatiri}
+                ${duzenleBtn}
             </div>`;
         }
 
@@ -588,15 +593,34 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
             Modal.open('kacak-detay-modal');
         };
 
-        window.openKacakBildirModal = function () {
+        window.openKacakBildirModal = function (editData = null) {
             document.getElementById('kacak-bildir-form').reset();
+            kacakEditToken = editData?.edit_token || null;
+            document.getElementById('kacak-form-title').textContent = editData ? 'Kaçak Tutanağını Düzenle' : 'Kaçak Tutanağı Bildir';
+            document.getElementById('kacak-tutanak-required').textContent = editData ? 'Yeni belge isteğe bağlı' : 'Zorunlu';
+            document.getElementById('kacak-submit-text').textContent = editData ? 'DEĞİŞİKLİKLERİ KAYDET' : 'BİLDİRİMİ GÖNDER';
             document.getElementById('kacak-tutanak-input').value = '';
             document.getElementById('kacak-tutanak-label').textContent = 'Fotoğraf Seç';
             document.getElementById('kacak-tutanak-preview').style.display = 'none';
             aiButonGuncelle();
             document.getElementById('kacak-saha-preview').innerHTML = '';
             sahaDosyalari = [];
+            if (editData) {
+                const form = document.getElementById('kacak-bildir-form');
+                ['tarih','ilce','tur','tutanak_no','abone_adi','sayac_no','endeks','sayi','aciklama'].forEach(ad => {
+                    const alan=form.querySelector(`[name="${ad}"]`); if(alan) alan.value=editData[ad] ?? '';
+                });
+                const ekipIds=String(editData.personel_ids||'').split(',').map(Number);
+                const arkadas=ekipIds.find(id=>id!==BEN);
+                if(arkadas) document.getElementById('kacak-ekip-arkadasi').value=String(arkadas);
+            }
             Modal.open('kacak-bildir-modal');
+        };
+
+        window.kacakDuzenle = function (token) {
+            const kayit = kacakKayitlar.find(k => k.edit_token === token && k.duzenlenebilir);
+            if (!kayit) return Toast.show('Kayıt artık düzenlenemiyor.', 'warning');
+            openKacakBildirModal(kayit);
         };
 
         // ----- Tutanak seçimi -----
@@ -789,7 +813,7 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
             e.preventDefault();
 
             const tutanakInput = document.getElementById('kacak-tutanak-input');
-            if (!tutanakInput.files.length) {
+            if (!kacakEditToken && !tutanakInput.files.length) {
                 return Alert.warning('Tutanak Zorunlu', 'Lütfen tutanağın fotoğrafını ekleyin.');
             }
             if (!window.OfflineQueue) {
@@ -802,6 +826,20 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
             btnText.textContent = 'HAZIRLANIYOR...';
 
             try {
+                if (kacakEditToken) {
+                    if (!cevrimici()) return Alert.warning('Bağlantı Gerekli', 'Kayıt düzenleme işlemi çevrimiçi yapılabilir.');
+                    const fd = new FormData(this);
+                    fd.append('action', 'updateKacakBildirim');
+                    fd.append('edit_token', kacakEditToken);
+                    if (tutanakInput.files[0]) fd.append('tutanak_foto', tutanakInput.files[0]);
+                    sahaDosyalari.forEach(file => fd.append('saha_fotolari[]', file));
+                    btnText.textContent = 'GÜNCELLENİYOR...';
+                    const res = await (await fetch('api.php', {method:'POST', body:fd})).json();
+                    if (!res.success) return Alert.error('Güncellenemedi', res.message || 'İşlem başarısız.');
+                    Modal.close('kacak-bildir-modal');
+                    await loadKacakKayitlar();
+                    return Alert.success('Güncellendi', res.message || 'Kaçak bildirimi güncellendi.');
+                }
                 const alanlar = {};
                 new FormData(this).forEach((deger, ad) => { alanlar[ad] = deger; });
 

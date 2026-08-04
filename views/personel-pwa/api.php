@@ -4460,6 +4460,10 @@ try {
             $liste = [];
             foreach ($kayitlar as $kayit) {
                 $kayit['tarih_formatted'] = date('d.m.Y', strtotime($kayit['tarih']));
+                $kayit['duzenlenebilir'] = (int) $kayit['bildiren_personel_id'] === (int) $personel_id
+                    && $kayit['onay_durumu'] === 'beklemede'
+                    && $kayit['durum'] !== 'iptal';
+                $kayit['edit_token'] = $kayit['duzenlenebilir'] ? Security::encrypt($kayit['id']) : '';
                 $kayit['fotograflar'] = array_map(static function ($foto) {
                     $etiket = ['tutanak' => 'Tutanak', 'saha' => 'Saha', 'iptal' => 'İptal'];
                     return [
@@ -4476,6 +4480,70 @@ try {
                 'kayitlar' => $liste,
                 'istatistik' => $KacakModel->getPersonelIstatistik($personel_id, $kacakBas, $kacakBit),
             ]);
+            break;
+
+        case 'updateKacakBildirim':
+            if (stripos($personel->departman ?? '', 'Kaçak') === false) {
+                response(false, null, 'Bu işlem için yetkiniz bulunmuyor.');
+            }
+            $KacakModel = new \App\Model\KacakKontrolModel();
+            $kacakId = (int) Security::decrypt((string) ($_POST['edit_token'] ?? ''));
+            $kayit = $KacakModel->getRecord($kacakId);
+            if (!$kayit || (int) $kayit['bildiren_personel_id'] !== (int) $personel_id) {
+                response(false, null, 'Bu kaydı düzenleme yetkiniz bulunmuyor.');
+            }
+            if ($kayit['onay_durumu'] !== 'beklemede' || $kayit['durum'] === 'iptal') {
+                response(false, null, 'Yalnızca onay bekleyen aktif kayıtlar düzenlenebilir.');
+            }
+
+            $ekipArkadasiId = (int) ($_POST['ekip_arkadasi_id'] ?? 0);
+            $gecerliAday = false;
+            foreach ($KacakModel->getEkipAdaylari((int) $personel_id) as $aday) {
+                if ((int) $aday['id'] === $ekipArkadasiId) { $gecerliAday = true; break; }
+            }
+            if (!$gecerliAday) response(false, null, 'Geçerli bir ekip arkadaşı seçin.');
+
+            $ilce = trim((string) ($_POST['ilce'] ?? ''));
+            if (!in_array($ilce, \App\Model\KacakKontrolModel::ILCELER, true)) {
+                response(false, null, 'Geçerli bir ilçe seçin.');
+            }
+            $tarih = !empty($_POST['tarih']) && strtotime($_POST['tarih']) ? date('Y-m-d', strtotime($_POST['tarih'])) : date('Y-m-d');
+            if ($tarih > date('Y-m-d')) response(false, null, 'İleri tarihli bildirim yapılamaz.');
+
+            $duplicate = $KacakModel->findDuplicateRecord([
+                'tutanak_no' => trim((string) ($_POST['tutanak_no'] ?? '')),
+                'sayac_no' => trim((string) ($_POST['sayac_no'] ?? '')),
+                'tarih' => $tarih,
+            ], $kacakId);
+            if ($duplicate) response(false, null, 'Tutanak veya sayaç bilgisi başka bir kayıtta zaten bulunuyor.');
+
+            $ok = $KacakModel->updatePendingByReporter($kacakId, (int) $personel_id, [
+                'tarih' => $tarih, 'personel_ids' => [(int) $personel_id, $ekipArkadasiId],
+                'ilce' => $ilce, 'tur' => $_POST['tur'] ?? 'Kaçak',
+                'tutanak_no' => trim((string) ($_POST['tutanak_no'] ?? '')) ?: null,
+                'abone_adi' => trim((string) ($_POST['abone_adi'] ?? '')) ?: null,
+                'sayac_no' => trim((string) ($_POST['sayac_no'] ?? '')) ?: null,
+                'endeks' => trim((string) ($_POST['endeks'] ?? '')) ?: null,
+                'sayi' => max(1, (int) ($_POST['sayi'] ?? 1)),
+                'aciklama' => trim((string) ($_POST['aciklama'] ?? '')) ?: null,
+            ]);
+            if (!$ok) response(false, null, 'Kayıt güncellenemedi; durumu değişmiş olabilir.');
+
+            if (!empty($_FILES['tutanak_foto']['name'])) {
+                $yol = $KacakModel->storeUploadedFile($_FILES['tutanak_foto'], $kacakId, 'tutanak');
+                $KacakModel->addPhoto($kacakId, 'tutanak', $yol, $_FILES['tutanak_foto']['name'], (int) $personel_id);
+            }
+            if (!empty($_FILES['saha_fotolari']['name']) && is_array($_FILES['saha_fotolari']['name'])) {
+                $kalan = max(0, \App\Model\KacakKontrolModel::MAX_SAHA_FOTO - $KacakModel->countPhotos($kacakId, 'saha'));
+                foreach ($_FILES['saha_fotolari']['name'] as $i => $ad) {
+                    if ($kalan-- <= 0) break;
+                    if (empty($ad) || ($_FILES['saha_fotolari']['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) continue;
+                    $dosya = ['name'=>$ad,'tmp_name'=>$_FILES['saha_fotolari']['tmp_name'][$i],'error'=>$_FILES['saha_fotolari']['error'][$i],'size'=>$_FILES['saha_fotolari']['size'][$i]];
+                    $yol = $KacakModel->storeUploadedFile($dosya, $kacakId, 'saha');
+                    $KacakModel->addPhoto($kacakId, 'saha', $yol, $ad, (int) $personel_id);
+                }
+            }
+            response(true, ['id' => $kacakId], 'Kaçak bildirimi güncellendi.');
             break;
 
         case 'analyzeKacakTutanak':
@@ -5147,6 +5215,8 @@ try {
                     'konum_lng' => $item->konum_lng,
                     'konum_dogruluk' => $item->konum_dogruluk,
                     'durum' => $item->durum,
+                    'duzenlenebilir' => !in_array($item->durum, ['olumlu', 'olumsuz'], true),
+                    'edit_token' => !in_array($item->durum, ['olumlu', 'olumsuz'], true) ? Security::encrypt($item->id) : '',
                     'atanan_ekip_adi' => $item->atanan_ekip_adi,
                     'tarih' => date('d.m.Y H:i', strtotime($item->created_at)),
                 ];
@@ -5157,7 +5227,7 @@ try {
 
         case 'updateIhbar':
             $IhbarModel = new App\Model\IhbarModel();
-            $id = (int) ($_POST['id'] ?? 0);
+            $id = (int) Security::decrypt((string) ($_POST['edit_token'] ?? ''));
             $aciklama = trim($_POST['aciklama'] ?? '');
 
             if ($aciklama === '') {

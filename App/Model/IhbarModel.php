@@ -56,9 +56,7 @@ class IhbarModel extends Model
         return $ihbarId;
     }
 
-    /**
-     * Personelin kendi bildirdiği ihbarı, henüz hiçbir işlem yapılmamışsa (durum='yeni') günceller.
-     */
+    /** Personelin kendi bildirdiği ihbarı sonuçlandırılana kadar günceller. */
     public function updateByBildiren(int $ihbarId, int $personelId, array $data): void
     {
         $stmt = $this->db->prepare("SELECT durum, bildiren_personel_id FROM ihbarlar WHERE id = ? AND silinme_tarihi IS NULL");
@@ -73,8 +71,8 @@ class IhbarModel extends Model
             throw new \Exception('Bu ihbarı güncelleme yetkiniz yok.');
         }
 
-        if ($row->durum !== 'yeni') {
-            throw new \Exception('Bu ihbar için işlem başladığından artık güncellenemez.');
+        if (in_array($row->durum, ['olumlu', 'olumsuz'], true)) {
+            throw new \Exception('Sonuçlandırılmış ihbarlar güncellenemez.');
         }
 
         $upd = $this->db->prepare("UPDATE ihbarlar SET ilce = ?, mahalle = ?, telefon = ?, komsu_abone_no = ?, aciklama = ?, konum_link = ?, konum_lat = ?, konum_lng = ?, konum_dogruluk = ? WHERE id = ?");

@@ -411,6 +411,35 @@ class KacakKontrolModel extends Model
         ]);
     }
 
+    /** Personelin kendi oluşturduğu, henüz karara bağlanmamış PWA kaydını günceller. */
+    public function updatePendingByReporter(int $id, int $personelId, array $data): bool
+    {
+        $personelIds = $this->normalizePersonelIds($data['personel_ids'] ?? []);
+        if (count($personelIds) !== 2 || !in_array($personelId, $personelIds, true)) {
+            throw new Exception('Kaçak ekibi iki kişiden oluşmalıdır.');
+        }
+
+        $tur = trim((string) ($data['tur'] ?? 'Kaçak'));
+        if (!in_array($tur, self::TURLER, true)) {
+            throw new Exception('Geçersiz kaçak türü.');
+        }
+
+        $ekipAdi = $this->buildEkipAdi($personelIds);
+        $stmt = $this->db->prepare("UPDATE kacak_kontrol SET
+                tarih = ?, personel_ids = ?, ekip_adi = ?, ilce = ?, tur = ?,
+                tutanak_no = ?, abone_adi = ?, sayac_no = ?, endeks = ?, sayi = ?, aciklama = ?
+            WHERE id = ? AND firma_id = ? AND bildiren_personel_id = ?
+              AND onay_durumu = 'beklemede' AND durum <> 'iptal' AND silinme_tarihi IS NULL");
+        return $stmt->execute([
+            $data['tarih'] ?? date('Y-m-d'), implode(',', $personelIds), $ekipAdi,
+            $this->normalizeIlce($data['ilce'] ?? ''), $tur,
+            $data['tutanak_no'] ?? null, $data['abone_adi'] ?? null,
+            $data['sayac_no'] ?? null, $data['endeks'] ?? null,
+            max(1, (int) ($data['sayi'] ?? 1)), $data['aciklama'] ?? null,
+            $id, $this->firmaId(), $personelId,
+        ]);
+    }
+
     public function softDeleteRecord(int $id): bool
     {
         $stmt = $this->db->prepare("UPDATE kacak_kontrol SET silinme_tarihi = NOW()

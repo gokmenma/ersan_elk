@@ -135,6 +135,7 @@
     let ihbarGelenData = [];
     let ihbarSeciliFotolar = [];
     let ihbarEditId = null;
+    let ihbarEditToken = null;
     let ihbarMevcutFotograflar = [];
 
     document.addEventListener('DOMContentLoaded', function () {
@@ -213,8 +214,8 @@
                 </div>
                 <div class="flex flex-col items-end gap-2 flex-shrink-0">
                     <span class="badge ${ihbarDurumBadge(ihbar.durum)}">${ihbarDurumText(ihbar.durum)}</span>
-                    ${(currentIhbarTab === 'bildirdiklerim' && ihbar.durum === 'yeni') ? `
-                    <button type="button" onclick="event.stopPropagation(); startEditIhbar(${ihbar.id});"
+                    ${(currentIhbarTab === 'bildirdiklerim' && ihbar.duzenlenebilir) ? `
+                    <button type="button" onclick="event.stopPropagation(); startEditIhbar('${ihbar.edit_token}');"
                         class="w-8 h-8 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center border border-slate-200 dark:border-slate-700 hover:bg-primary/10 hover:text-primary hover:border-primary transition-all">
                         <span class="material-symbols-outlined text-[16px]">edit</span>
                     </button>` : ''}
@@ -227,12 +228,12 @@
         </div>`).join('');
     }
 
-    async function startEditIhbar(id) {
-        const ihbar = ihbarBildirdiklerimData.find(i => Number(i.id) === Number(id));
+    async function startEditIhbar(token) {
+        const ihbar = ihbarBildirdiklerimData.find(i => i.edit_token === token && i.duzenlenebilir);
         if (!ihbar) return;
 
         try {
-            const response = await API.request('ihbarDetay', { id: id });
+            const response = await API.request('ihbarDetay', { id: ihbar.id });
             if (response.success) {
                 openYeniIhbarModal({ ...ihbar, ...response.data });
             } else {
@@ -247,6 +248,7 @@
     function openYeniIhbarModal(editData = null) {
         ihbarSeciliFotolar = [];
         ihbarEditId = editData ? Number(editData.id) : null;
+        ihbarEditToken = editData?.edit_token || null;
         ihbarMevcutFotograflar = editData?.fotograflar || [];
         document.getElementById('pwa-full-modal')?.classList.add('ihbar-form-modal');
 
@@ -254,7 +256,7 @@
             html: `
                 <div class="px-5 pt-8 pb-8">
                     <h1 class="text-xl font-black text-slate-900 dark:text-white">${editData ? 'İhbarı Güncelle' : 'İhbar Bildir'}</h1>
-                    <p class="text-sm text-slate-500 mt-1 mb-6">${editData ? 'Herhangi bir işlem yapılmadan önce bilgileri düzenleyebilirsiniz.' : 'Kaçak Su kullanımı ihbarınızı bildirin.'}</p>
+                    <p class="text-sm text-slate-500 mt-1 mb-6">${editData ? 'İhbar sonuçlandırılmadan önce bilgileri düzenleyebilirsiniz.' : 'Kaçak Su kullanımı ihbarınızı bildirin.'}</p>
 
                     <form id="ihbar-form" class="space-y-4">
                         <div>
@@ -435,7 +437,7 @@
             const formData = new FormData();
             formData.append('action', isEdit ? 'updateIhbar' : 'createIhbar');
             if (isEdit) {
-                formData.append('id', ihbarEditId);
+                formData.append('edit_token', ihbarEditToken);
             }
             formData.append('ilce', form.querySelector('[name=ilce]').value);
             formData.append('mahalle', form.querySelector('[name=mahalle]').value);
