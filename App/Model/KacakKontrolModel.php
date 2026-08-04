@@ -440,6 +440,17 @@ class KacakKontrolModel extends Model
         ]);
     }
 
+    /** Personelin kendi onay bekleyen kaydını geri alınabilir biçimde siler. */
+    public function softDeletePendingByReporter(int $id, int $personelId): bool
+    {
+        $stmt = $this->db->prepare("UPDATE kacak_kontrol
+            SET silinme_tarihi = NOW()
+            WHERE id = ? AND firma_id = ? AND bildiren_personel_id = ?
+              AND onay_durumu = 'beklemede' AND durum <> 'iptal' AND silinme_tarihi IS NULL");
+        $stmt->execute([$id, $this->firmaId(), $personelId]);
+        return $stmt->rowCount() > 0;
+    }
+
     public function softDeleteRecord(int $id): bool
     {
         $stmt = $this->db->prepare("UPDATE kacak_kontrol SET silinme_tarihi = NOW()

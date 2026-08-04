@@ -4546,6 +4546,18 @@ try {
             response(true, ['id' => $kacakId], 'Kaçak bildirimi güncellendi.');
             break;
 
+        case 'deleteKacakBildirim':
+            if (stripos($personel->departman ?? '', 'Kaçak') === false) {
+                response(false, null, 'Bu işlem için yetkiniz bulunmuyor.');
+            }
+            $KacakModel = new \App\Model\KacakKontrolModel();
+            $kacakId = (int) Security::decrypt((string) ($_POST['edit_token'] ?? ''));
+            if ($kacakId <= 0 || !$KacakModel->softDeletePendingByReporter($kacakId, (int) $personel_id)) {
+                response(false, null, 'Kayıt silinemedi. Yalnızca size ait onay bekleyen kayıtlar silinebilir.');
+            }
+            response(true, ['id' => $kacakId], 'Kaçak bildirimi silindi.');
+            break;
+
         case 'analyzeKacakTutanak':
             if (empty($_FILES['tutanak_file']['name'])) {
                 response(false, null, 'Lütfen analiz edilecek tutanak dosyasını seçin.');

@@ -16,6 +16,8 @@
     var STORE_REFERANS = "referans";
     var SYNC_ETIKETI = "ersan-kuyruk-sync";
     var API_URL = "api.php";
+    var BEKLEME_TABANI = 30000;
+    var BEKLEME_TAVANI = 1800000;
 
     var pencerede = typeof window !== "undefined" && typeof document !== "undefined";
     var dbSozu = null;
@@ -195,8 +197,10 @@
             }
             return yanit.json().then(function (json) {
                 // Service worker çevrimdışıyken sahte yanıt üretiyor olabilir.
+                // Sunucu isteği almış ama yanıt yolda kopmuş olabilir; bunu
+                // istemciden ayırt etmek mümkün değil, mesaj buna göre yazılır.
                 if (json && json.offline) {
-                    return { sonuc: "bekle", mesaj: "İstek tamamlanamadı [" + etiket + "]" };
+                    return { sonuc: "bekle", mesaj: "Sunucudan yanıt alınamadı [" + etiket + "]" };
                 }
                 if (json && json.success) {
                     return { sonuc: "tamam", veri: json.data };
@@ -291,6 +295,58 @@
     }
 
     /**
+     * Parçalı yükleme öncesinde oluşmuş kayıtlar tüm fotoğrafları tek istekte
+     * taşıyor; o boyutla sahada hiç gönderilemiyorlar. Sıraya girmeden önce
+     * yeni biçime çevrilir, böylece cihazda bekleyen tutanaklar kurtarılır.
+     */
+    function eskiKayitlariDonustur() {
+        return listele().then(function (kayitlar) {
+            var donusecek = kayitlar.filter(function (k) {
+                if (k.ekAction || k.anaGonderildi) return false;
+                return (k.dosyalar || []).some(function (d) { return d.alan === "saha_fotolari[]"; });
+            });
+
+            return Promise.all(donusecek.map(function (k) {
+                var ana = [];
+                var ek = [];
+
+                (k.dosyalar || []).forEach(function (d) {
+                    if (d.alan === "saha_fotolari[]") {
+                        ek.push({ ad: d.ad, tip: d.tip, blob: d.blob });
+                    } else {
+                        ana.push(d);
+                    }
+                });
+
+                k.dosyalar = ana;
+                k.ekAction = "addKacakSahaFoto";
+                k.ekAlan = "foto";
+                k.ekDosyalar = ek;
+                k.ekGonderilen = 0;
+                k.anaGonderildi = false;
+                k.deneme = 0;
+                k.sonDeneme = 0;
+                k.hata = "";
+                // Biçim değiştiği için eski başarısızlık geçersiz; kayıt yeniden sıraya alınır.
+                k.durum = "bekliyor";
+
+                return yaz(k);
+            }));
+        }).catch(function () { return null; });
+    }
+
+    /**
+     * Başarısız kayıt her turda yeniden denenirse mobil veri boşa gider
+     * (sahada 100'ü aşkın denemeyle yüzlerce MB harcandığı görüldü).
+     * Deneme sayısı arttıkça bekleme uzar; "Şimdi Gönder" bunu atlar.
+     */
+    function backoffBekliyor(kayit, elle) {
+        if (elle || !kayit.sonDeneme || !kayit.deneme) return false;
+        var bekleme = Math.min(kayit.deneme * BEKLEME_TABANI, BEKLEME_TAVANI);
+        return (Date.now() - kayit.sonDeneme) < bekleme;
+    }
+
+    /**
      * Bekleyen kayıtları sırayla gönderir. Aynı anda tek gönderim çalışır.
      */
     function flush(secenekler) {
@@ -305,8 +361,12 @@
 
         calisiyor = true;
 
-        return askidaKalanlariKurtar().then(listele).then(function (kayitlar) {
+        return askidaKalanlariKurtar()
+            .then(eskiKayitlariDonustur)
+            .then(listele)
+            .then(function (kayitlar) {
             var sira = kayitlar.filter(function (k) {
+                if (backoffBekliyor(k, secenekler.elle)) return false;
                 if (k.durum === "bekliyor") return true;
                 return secenekler.elle && k.durum === "hata";
             });
@@ -333,6 +393,7 @@
                             }
 
                             kayit.deneme = (kayit.deneme || 0) + 1;
+                            kayit.sonDeneme = Date.now();
                             kayit.hata = cevap.mesaj || "";
 
                             // Ağ ve oturum sorunları süresiz yeniden denenir; kayıt yalnızca

@@ -291,8 +291,8 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
             const redSatiri = (k.onay_durumu === 'reddedildi' && k.red_nedeni)
                 ? `<p class="text-xs text-red-600 mt-2">Red nedeni: ${esc(k.red_nedeni)}</p>` : '';
             const duzenleBtn = k.duzenlenebilir
-                ? `<button type="button" onclick="event.stopPropagation(); kacakDuzenle('${esc(k.edit_token)}')"
-                    class="mt-3 w-full py-2 rounded-xl bg-primary/10 text-primary text-xs font-bold flex items-center justify-center gap-1"><span class="material-symbols-outlined text-base">edit</span>Düzenle</button>` : '';
+                ? `<div class="grid grid-cols-2 gap-2 mt-3"><button type="button" onclick="event.stopPropagation(); kacakDuzenle('${esc(k.edit_token)}')"
+                    class="py-2 rounded-xl bg-primary/10 text-primary text-xs font-bold flex items-center justify-center gap-1"><span class="material-symbols-outlined text-base">edit</span>Düzenle</button><button type="button" onclick="event.stopPropagation(); kacakSil('${esc(k.edit_token)}')" class="py-2 rounded-xl bg-red-50 dark:bg-red-900/20 text-red-600 text-xs font-bold flex items-center justify-center gap-1"><span class="material-symbols-outlined text-base">delete</span>Sil</button></div>` : '';
 
             return `
             <div onclick="kacakDetayAc(${k.id})"
@@ -623,6 +623,26 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
             openKacakBildirModal(kayit);
         };
 
+        window.kacakSil = async function (token) {
+            const kayit = kacakKayitlar.find(k => k.edit_token === token && k.duzenlenebilir);
+            if (!kayit) return Toast.show('Kayıt artık silinemiyor.', 'warning');
+            const onay = await Alert.confirm('Kaçak Bildirimini Sil', 'Onay bekleyen bu bildirim silinecek. Devam edilsin mi?', 'Sil', 'Vazgeç');
+            if (!onay) return;
+            Loading.show();
+            try {
+                const response = await API.request('deleteKacakBildirim', {edit_token: token});
+                if (!response.success) return Alert.error('Silinemedi', response.message || 'İşlem başarısız.');
+                kacakKayitlar = kacakKayitlar.filter(k => k.edit_token !== token);
+                listeyiCiz();
+                await loadKacakKayitlar();
+                Toast.show(response.message || 'Kaçak bildirimi silindi.', 'success');
+            } catch (error) {
+                Alert.error('Silinemedi', error.message || 'Sunucuya ulaşılamadı.');
+            } finally {
+                Loading.hide();
+            }
+        };
+
         // ----- Tutanak seçimi -----
         document.getElementById('kacak-tutanak-input').addEventListener('change', function (e) {
             const file = e.target.files[0];
@@ -920,8 +940,9 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
                 if (kalan.durum === 'hata') {
                     return Alert.error('Gönderilemedi', kalan.hata || 'Sunucu kaydı kabul etmedi.');
                 }
-                Alert.warning('Gönderilemedi',
-                    'Tutanak telefonunuza kaydedildi ancak sunucuya iletilemedi, bağlantı düzeldiğinde otomatik gönderilecek.'
+                Alert.warning('Onay Alınamadı',
+                    'Tutanak telefonunuzda güvende. Sunucuya ulaştıysa birazdan listede görünecek, '
+                    + 'ulaşmadıysa otomatik olarak tekrar gönderilecek — tekrar doldurmanıza gerek yok.'
                     + (kalan.hata ? '\n\nSebep: ' + kalan.hata : ''));
             } catch (err) {
                 console.error('Kaçak bildirim hatası:', err);
