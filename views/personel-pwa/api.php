@@ -23,6 +23,7 @@ use App\Model\AvansModel;
 use App\Service\MailGonderService;
 use App\Model\PushSubscriptionModel;
 use App\Model\BildirimModel;
+use App\Model\UserNotificationPreferenceModel;
 use App\Model\UserModel;
 use App\Model\PersonelHareketleriModel;
 use App\Model\PersonelIcralariModel;
@@ -284,7 +285,8 @@ function pwaNotifyAdminsForNewSupportTicket($ticket, string $ilkMesaj, int $pers
             $personelAdi . ' tarafından yeni destek talebi açıldı. Konu: ' . $ticketKonu,
             pwaBuildTicketRoute($ticketId),
             'message-square',
-            'warning'
+            'warning',
+            UserNotificationPreferenceModel::TYPE_SUPPORT
         );
 
         $email = pwaExtractUserEmail($admin);
@@ -299,7 +301,7 @@ function pwaNotifyAdminsForNewSupportTicket($ticket, string $ilkMesaj, int $pers
                 'title' => 'Yeni Destek Talebi',
                 'body' => $personelAdi . ' tarafından yeni destek talebi açıldı. Konu: ' . $ticketKonu,
                 'url' => pwaBuildTicketRoute($ticketId)
-            ], true);
+            ], true, UserNotificationPreferenceModel::TYPE_SUPPORT);
         } catch (Exception $e) {
             error_log('Push bildirim hatası (PWA New Ticket Admin): ' . $e->getMessage());
         }
@@ -348,7 +350,8 @@ function pwaNotifyApproversForSupportTicket($ticket, string $ilkMesaj, int $pers
             $personelAdi . ' tarafından açılan destek talebi onay bekliyor. Konu: ' . $ticketKonu,
             pwaBuildTicketRoute($ticketId),
             'check-circle',
-            'warning'
+            'warning',
+            UserNotificationPreferenceModel::TYPE_SUPPORT
         );
 
         $email = pwaExtractUserEmail($approver);
@@ -363,7 +366,7 @@ function pwaNotifyApproversForSupportTicket($ticket, string $ilkMesaj, int $pers
                 'title' => 'Destek Talebi Onay Bekliyor',
                 'body' => $personelAdi . ' tarafından açılan destek talebi onay bekliyor. Konu: ' . $ticketKonu,
                 'url' => pwaBuildTicketRoute($ticketId)
-            ], true);
+            ], true, UserNotificationPreferenceModel::TYPE_SUPPORT);
         } catch (Exception $e) {
             error_log('Push bildirim hatası (PWA Ticket Approval Pending): ' . $e->getMessage());
         }
@@ -1274,7 +1277,8 @@ try {
                             ($talep_eden->adi_soyadi ?? 'Personel') . ' ' . number_format($tutar, 2, ',', '.') . ' TL avans talep etti.',
                             'index.php?p=talepler/list&tab=avans&id=' . $newId,
                             'bx-money',
-                            'success'
+                            'success',
+                            \App\Model\UserNotificationPreferenceModel::TYPE_ADVANCE_REQUEST
                         );
                         file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Bildirim oluşturuldu. Kullanıcı: {$kullanici->id}, Sonuç: $res\n", FILE_APPEND);
 
@@ -1285,7 +1289,7 @@ try {
                                 'title' => '💰 Yeni Avans Talebi',
                                 'body' => ($talep_eden->adi_soyadi ?? 'Personel') . ' ' . number_format($tutar, 2, ',', '.') . ' TL avans talep etti.',
                                 'url' => 'mobile/index.php?p=talepler'
-                            ]);
+                            ], false, \App\Model\UserNotificationPreferenceModel::TYPE_ADVANCE_REQUEST);
                         } catch (Exception $e) {
                             file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Push bildirim hatası: " . $e->getMessage() . "\n", FILE_APPEND);
                         }
@@ -1709,7 +1713,8 @@ try {
                             ($talep_eden->adi_soyadi ?? 'Personel') . ' ' . $izin_tipi_text . ' talep etti.',
                             'index.php?p=talepler/list&tab=izin&id=' . $newId,
                             'calendar',
-                            'warning'
+                            'warning',
+                            \App\Model\UserNotificationPreferenceModel::TYPE_LEAVE_REQUEST
                         );
                         file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "İzin bildirimi oluşturuldu. Kullanıcı: {$kullanici->id}, Sonuç: $res\n", FILE_APPEND);
 
@@ -1720,7 +1725,7 @@ try {
                                 'title' => '📅 Yeni İzin Talebi',
                                 'body' => ($talep_eden->adi_soyadi ?? 'Personel') . ' ' . $izin_tipi_text . ' talep etti.',
                                 'url' => 'mobile/index.php?p=talepler'
-                            ], true);
+                            ], true, \App\Model\UserNotificationPreferenceModel::TYPE_LEAVE_REQUEST);
                         } catch (Exception $e) {
                             file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Push bildirim hatası: " . $e->getMessage() . "\n", FILE_APPEND);
                         }
@@ -1955,13 +1960,17 @@ try {
                 foreach ($bildirimKullanicilari as $kullanici) {
                     try {
                         $BildirimModel = new BildirimModel();
+                        $notificationPreferenceType = $bildirim_turu === 'ariza'
+                            ? \App\Model\UserNotificationPreferenceModel::TYPE_FAULT_REQUEST
+                            : \App\Model\UserNotificationPreferenceModel::TYPE_GENERAL_REQUEST;
                         $res = $BildirimModel->createNotification(
                             $kullanici->id,
                             "Yeni {$baslik}",
                             ($talep_eden->adi_soyadi ?? 'Personel') . " yeni bir talep oluşturdu: {$baslik}",
                             'index.php?p=talepler/list&tab=talep&id=' . $newId,
                             'message-square',
-                            'info'
+                            'info',
+                            $notificationPreferenceType
                         );
                         file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Talep bildirimi oluşturuldu. Kullanıcı: {$kullanici->id}, Sonuç: $res\n", FILE_APPEND);
 
@@ -1972,7 +1981,7 @@ try {
                                 'title' => "📣 Yeni {$baslik}",
                                 'body' => ($talep_eden->adi_soyadi ?? 'Personel') . " yeni bir talep oluşturdu.",
                                 'url' => 'mobile/index.php?p=talepler'
-                            ]);
+                            ], false, $notificationPreferenceType);
                         } catch (Exception $e) {
                             file_put_contents($logFile, date('[Y-m-d H:i:s] ') . "Push bildirim hatası: " . $e->getMessage() . "\n", FILE_APPEND);
                         }
@@ -3658,7 +3667,10 @@ try {
                         1, // Admin user_id
                         'Nöbet Değişim Talebi Onayı Bekliyor',
                         $personel->adi_soyadi . " nöbet değişim talebini onayladı. Yönetici onayı bekleniyor.",
-                        'index?p=nobet/list'
+                        'index?p=nobet/list',
+                        'bell',
+                        'primary',
+                        UserNotificationPreferenceModel::TYPE_SHIFT
                     );
                 } catch (Exception $e) {
                 }
@@ -3782,7 +3794,10 @@ try {
                         1, // Admin user_id
                         'Nöbet Mazeret Bildirimi',
                         $personel->adi_soyadi . ", $tarihFormatli tarihli nöbeti için mazeret bildirdi: " . mb_substr($aciklama, 0, 100),
-                        'index?p=nobet/list'
+                        'index?p=nobet/list',
+                        'bell',
+                        'primary',
+                        UserNotificationPreferenceModel::TYPE_SHIFT
                     );
 
                     // Mail gönder - Admin kullanıcıları doğrudan sorgula
@@ -3934,7 +3949,8 @@ try {
                         $mesaj,
                         'index?p=nobet/talepler#talepler',
                         'calendar',
-                        'info'
+                        'info',
+                        UserNotificationPreferenceModel::TYPE_SHIFT
                     );
                 } catch (Exception $e) {
                 }
@@ -4030,7 +4046,8 @@ try {
                     ($personel->adi_soyadi ?? 'Bir personel') . ' canlı destek başlattı.',
                     'index.php?p=home',
                     'chat',
-                    'info'
+                    'info',
+                    UserNotificationPreferenceModel::TYPE_SUPPORT
                 );
             } catch (Exception $e) {
             }
@@ -4663,7 +4680,8 @@ try {
                     . ($_POST['tur'] ?? 'Kaçak') . ' tutanağı bildirdi (' . $kacakIlce . ').',
                     'index?p=kacak/list',
                     'shield',
-                    'info'
+                    'info',
+                    UserNotificationPreferenceModel::TYPE_KACAK_CREATED
                 );
             } catch (\Throwable $e) {
                 error_log('Kaçak bildirimi yöneticilere iletilemedi: ' . $e->getMessage());
@@ -4780,7 +4798,8 @@ try {
                         $personel->adi_soyadi . ' – ' . $bildirimDetayi . ' Manuel onay bekliyor. Neden: ' . $aiNedeni,
                         'index?p=arac-takip/km-onaylari',
                         'error-circle',
-                        'warning'
+                        'warning',
+                        UserNotificationPreferenceModel::TYPE_KM
                     );
 
                         if ($pwaUserId > 0) {
@@ -4790,7 +4809,8 @@ try {
                                 $personelMesaj,
                                 'index.php?page=ana-sayfa',
                                 'error-circle',
-                                'warning'
+                                'warning',
+                                UserNotificationPreferenceModel::TYPE_KM
                             );
 
                             try {
@@ -4799,7 +4819,7 @@ try {
                                     'title' => $personelBaslik,
                                     'body' => $personelMesaj,
                                     'url' => 'index.php?page=ana-sayfa',
-                                ], true);
+                                ], true, UserNotificationPreferenceModel::TYPE_KM);
                             } catch (\Throwable $pushError) {
                                 error_log('KM AI personel push bildirimi gönderilemedi: ' . $pushError->getMessage());
                             }

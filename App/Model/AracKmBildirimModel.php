@@ -313,7 +313,8 @@ class AracKmBildirimModel extends Model
                     $message,
                     'index.php?p=personel-pwa/pages/ana-sayfa',
                     'bell',
-                    'warning'
+                    'warning',
+                    UserNotificationPreferenceModel::TYPE_KM
                 );
 
                 // 2. Push Bildirimi
@@ -323,7 +324,7 @@ class AracKmBildirimModel extends Model
                         'title' => 'KM Bildirim Hatırlatması',
                         'body' => $message,
                         'url' => 'index_pwa.php' 
-                    ], true);
+                    ], true, UserNotificationPreferenceModel::TYPE_KM);
                 } catch (\Exception $e) {
                     // Log but ignore push errors
                 }

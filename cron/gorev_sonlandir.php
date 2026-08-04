@@ -66,7 +66,8 @@ try {
                 "Bugün {$sayisi} adet görev otomatik olarak sonlandırıldı (23:50 kuralı).",
                 'index.php?p=personel-hareketleri/list',
                 'schedule',
-                'info'
+                'info',
+                \App\Model\UserNotificationPreferenceModel::TYPE_TASK
             );
         } catch (Exception $e) {
             writeLog("Bildirim gönderilemedi: " . $e->getMessage(), $logFile);

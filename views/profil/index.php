@@ -21,10 +21,20 @@ $loginLogs = $stmt->fetchAll(PDO::FETCH_OBJ);
 
 $showFavoritesBar = (int) ($currentUser->show_favorites_bar ?? 1);
 $notificationPreferences = new UserNotificationPreferenceModel();
-$ihbarNotificationsEnabled = $notificationPreferences->isEnabled(
-    (int) $userId,
-    UserNotificationPreferenceModel::TYPE_IHBAR_CREATED
-);
+$userNotificationPreferences = $notificationPreferences->getPreferences((int) $userId);
+$notificationOptions = [
+    UserNotificationPreferenceModel::TYPE_KACAK_CREATED => ['Kaçak İşlemleri', 'Yeni kaçak tutanağı bildirildiğinde haber alın.', 'shield', 'text-info'],
+    UserNotificationPreferenceModel::TYPE_IHBAR_CREATED => ['İhbarlar', 'Yeni bir kaçak su ihbarı oluşturulduğunda haber alın.', 'alert-triangle', 'text-danger'],
+    UserNotificationPreferenceModel::TYPE_ADVANCE_REQUEST => ['Avans Talepleri', 'Yeni avans taleplerinden haberdar olun.', 'dollar-sign', 'text-success'],
+    UserNotificationPreferenceModel::TYPE_LEAVE_REQUEST => ['İzin Talepleri', 'Yeni izin taleplerinden haberdar olun.', 'calendar', 'text-warning'],
+    UserNotificationPreferenceModel::TYPE_GENERAL_REQUEST => ['Genel Talepler', 'Öneri, şikâyet, istek ve diğer talepler için bildirim alın.', 'message-square', 'text-primary'],
+    UserNotificationPreferenceModel::TYPE_FAULT_REQUEST => ['Arıza Talepleri', 'Yeni arıza taleplerinden haberdar olun.', 'tool', 'text-danger'],
+    UserNotificationPreferenceModel::TYPE_SUPPORT => ['Destek Talepleri', 'Destek talepleri, yanıtları ve durum değişiklikleri için bildirim alın.', 'help-circle', 'text-info'],
+    UserNotificationPreferenceModel::TYPE_KM => ['KM Bildirimleri', 'KM hatırlatmaları ve manuel onay bildirimlerini alın.', 'truck', 'text-primary'],
+    UserNotificationPreferenceModel::TYPE_TASK => ['Görev Bildirimleri', 'Görev zamanı ve görev süreçleri için bildirim alın.', 'check-square', 'text-warning'],
+    UserNotificationPreferenceModel::TYPE_DOCUMENT => ['Evrak Bildirimleri', 'Tarafınıza evrak zimmetlendiğinde bildirim alın.', 'file-text', 'text-secondary'],
+    UserNotificationPreferenceModel::TYPE_SHIFT => ['Nöbet Bildirimleri', 'Nöbet talebi, değişim ve mazeret bildirimlerini alın.', 'clock', 'text-primary'],
+];
 ?>
 
 <div class="container-fluid">
@@ -125,19 +135,26 @@ $ihbarNotificationsEnabled = $notificationPreferences->isEnabled(
                                 <h5 class="font-size-15 mt-4 mb-1">Bildirim Tercihleri</h5>
                                 <p class="text-muted font-size-13 mb-3">Almak istediğiniz bildirim türlerini kullanıcı hesabınıza özel olarak seçebilirsiniz.</p>
 
-                                <div class="card border shadow-none mb-3">
-                                    <div class="card-body">
-                                        <div class="d-flex align-items-center justify-content-between gap-3">
-                                            <div>
-                                                <h5 class="font-size-14 mb-1"><i data-feather="alert-triangle" class="icon-sm text-danger me-1"></i> Yeni Kaçak İhbarları</h5>
-                                                <p class="text-muted font-size-13 mb-0">Personel tarafından yeni bir kaçak ihbarı oluşturulduğunda uygulama içi ve tarayıcı bildirimi alın.</p>
-                                            </div>
-                                            <div class="form-check form-switch form-switch-md mb-0 flex-shrink-0">
-                                                <input class="form-check-input" type="checkbox" name="notification_ihbar_created" value="1" id="notificationIhbarCreatedSwitch" <?= $ihbarNotificationsEnabled ? 'checked' : ''; ?>>
-                                                <label class="form-check-label" for="notificationIhbarCreatedSwitch"></label>
+                                <div class="row g-3 mb-3">
+                                    <?php foreach ($notificationOptions as $notificationType => [$label, $description, $icon, $iconClass]): ?>
+                                        <?php $inputId = 'notification_' . $notificationType; ?>
+                                        <div class="col-12 col-xl-6">
+                                            <div class="card border shadow-none h-100 mb-0">
+                                                <div class="card-body">
+                                                    <div class="d-flex align-items-center justify-content-between gap-3">
+                                                        <div>
+                                                            <h5 class="font-size-14 mb-1"><i data-feather="<?= htmlspecialchars($icon, ENT_QUOTES, 'UTF-8') ?>" class="icon-sm <?= htmlspecialchars($iconClass, ENT_QUOTES, 'UTF-8') ?> me-1"></i> <?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></h5>
+                                                            <p class="text-muted font-size-13 mb-0"><?= htmlspecialchars($description, ENT_QUOTES, 'UTF-8') ?></p>
+                                                        </div>
+                                                        <div class="form-check form-switch form-switch-md mb-0 flex-shrink-0">
+                                                            <input class="form-check-input" type="checkbox" name="notification_preferences[<?= htmlspecialchars($notificationType, ENT_QUOTES, 'UTF-8') ?>]" value="1" id="<?= htmlspecialchars($inputId, ENT_QUOTES, 'UTF-8') ?>" <?= ($userNotificationPreferences[$notificationType] ?? true) ? 'checked' : '' ?>>
+                                                            <label class="form-check-label" for="<?= htmlspecialchars($inputId, ENT_QUOTES, 'UTF-8') ?>"></label>
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    <?php endforeach; ?>
                                 </div>
 
                                 <div class="row mt-3">

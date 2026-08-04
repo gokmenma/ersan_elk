@@ -3321,7 +3321,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                         $message,
                         'index.php?p=personel-pwa/pages/ana-sayfa', // PWA ana sayfa veya bildirim sayfası
                         'bell',
-                        'warning'
+                        'warning',
+                        \App\Model\UserNotificationPreferenceModel::TYPE_KM
                     );
 
                     // Push
@@ -3331,7 +3332,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                             'title' => 'KM Bildirim Hatırlatması',
                             'body' => $message,
                             'url' => 'index_pwa.php' 
-                        ], true);
+                        ], true, \App\Model\UserNotificationPreferenceModel::TYPE_KM);
                     } catch (\Exception $e) {
                         // Log but ignore
                     }

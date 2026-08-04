@@ -125,7 +125,15 @@ try {
                         webhookLog("  - Personel #{$userId} için bildirim+mail tetikleniyor...");
 
                         // In-app bildirim oluştur
-                        $bildirimModel->createNotification($userId, $title, $body, $link, 'task', 'warning');
+                        $bildirimModel->createNotification(
+                            $userId,
+                            $title,
+                            $body,
+                            $link,
+                            'task',
+                            'warning',
+                            \App\Model\UserNotificationPreferenceModel::TYPE_TASK
+                        );
 
                         // Push ve Mail gönder
                         $payload = [

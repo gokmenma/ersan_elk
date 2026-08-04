@@ -286,7 +286,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                         "Tarafınıza '{$evrak->konu}' konulu bir evrak zimmetlenmiştir.",
                                         "index.php?p=evrak-takip/list",
                                         "file",
-                                        "info"
+                                        "info",
+                                        \App\Model\UserNotificationPreferenceModel::TYPE_DOCUMENT
                                     );
                                 }
                             }
@@ -343,7 +344,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                                         "Tarafınıza '{$evrak->konu}' konulu bir evrak zimmetlenmiştir.",
                                         "index.php?p=evrak-takip/list",
                                         "file",
-                                        "info"
+                                        "info",
+                                        \App\Model\UserNotificationPreferenceModel::TYPE_DOCUMENT
                                     );
                                 }
                             }
@@ -481,7 +483,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             "Tarafınıza '{$evrak->konu}' konulu bir evrak zimmetlenmiştir.",
                             "index.php?p=evrak-takip/list",
                             "file",
-                            "info"
+                            "info",
+                            \App\Model\UserNotificationPreferenceModel::TYPE_DOCUMENT
                         );
                     }
                 }

@@ -85,8 +85,10 @@ if ($action == "ayarlari-guncelle") {
 
     try {
         $showFavoritesBar = isset($_POST['show_favorites_bar']) && ($_POST['show_favorites_bar'] === '1' || $_POST['show_favorites_bar'] === 'on') ? 1 : 0;
-        $ihbarNotificationsEnabled = isset($_POST['notification_ihbar_created'])
-            && ($_POST['notification_ihbar_created'] === '1' || $_POST['notification_ihbar_created'] === 'on');
+        $postedNotificationPreferences = $_POST['notification_preferences'] ?? [];
+        if (!is_array($postedNotificationPreferences)) {
+            $postedNotificationPreferences = [];
+        }
 
         $User->saveWithAttr([
             'id' => (int)$userId,
@@ -94,11 +96,13 @@ if ($action == "ayarlari-guncelle") {
         ]);
 
         $notificationPreferences = new UserNotificationPreferenceModel();
-        $notificationPreferences->setPreference(
-            (int) $userId,
-            UserNotificationPreferenceModel::TYPE_IHBAR_CREATED,
-            $ihbarNotificationsEnabled
-        );
+        foreach (UserNotificationPreferenceModel::TYPES as $notificationType) {
+            $notificationPreferences->setPreference(
+                (int) $userId,
+                $notificationType,
+                isset($postedNotificationPreferences[$notificationType])
+            );
+        }
 
         if (isset($_SESSION["user"]) && is_object($_SESSION["user"])) {
             $_SESSION["user"]->show_favorites_bar = $showFavoritesBar;
@@ -110,8 +114,7 @@ if ($action == "ayarlari-guncelle") {
             $log->logAction(
                 $userId,
                 'Kullanıcı Ayarları',
-                'Sık Kullanılanlar Çubuğu ' . ($showFavoritesBar ? 'açıldı' : 'kapatıldı')
-                . ', yeni kaçak ihbarı bildirimleri ' . ($ihbarNotificationsEnabled ? 'açıldı.' : 'kapatıldı.')
+                'Sık Kullanılanlar Çubuğu ve bildirim tercihleri güncellendi.'
             );
         } catch (\Exception $e) {}
 

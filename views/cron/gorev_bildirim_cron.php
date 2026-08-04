@@ -119,7 +119,8 @@ try {
                         $body,
                         $link,
                         'task',
-                        'warning'
+                        'warning',
+                        \App\Model\UserNotificationPreferenceModel::TYPE_TASK
                     );
 
                     // Push bildirim gönder
@@ -131,7 +132,7 @@ try {
                         'badge' => 'assets/images/logo-sm.png'
                     ];
 
-                    $pushService->sendToUser($userId, $payload);
+                    $pushService->sendToUser($userId, $payload, false, \App\Model\UserNotificationPreferenceModel::TYPE_TASK);
                     cronLog("  ✓ Görev #{$gorev->id} '{$gorev->baslik}' → Kullanıcı #{$userId} bildirim gönderildi.");
                 }
 

@@ -397,7 +397,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     ];
 
                     foreach ($usersToNotify as $targetId) {
-                        $pushService->sendToUser($targetId, $payload);
+                        $pushService->sendToUser($targetId, $payload, false, \App\Model\UserNotificationPreferenceModel::TYPE_TASK);
 
                         // Mail gönderimi için kullanıcı e-postasını al
                         $User = new \App\Model\UserModel();

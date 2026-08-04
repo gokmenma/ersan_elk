@@ -148,7 +148,7 @@ class BildirimModel extends Model
      * Belirli bir yetkiye sahip tüm aktif kullanıcılara bildirim gönder
      * @param string $menuLink Menü linki veya yetki adı (örn: 'arac-takip/km-onaylari')
      */
-    public function broadcastByPermission($menuLink, $title, $message, $link = null, $icon = 'bell', $color = 'primary')
+    public function broadcastByPermission($menuLink, $title, $message, $link = null, $icon = 'bell', $color = 'primary', ?string $notificationType = null)
     {
         // 1. Menü ID'sini bul
         $stmt = $this->db->prepare("SELECT id FROM menus WHERE menu_link = ?");
@@ -189,7 +189,7 @@ class BildirimModel extends Model
 
         // 5. Bildirimleri oluştur
         foreach ($usersToNotify as $userId) {
-            $this->createNotification($userId, $title, $message, $link, $icon, $color);
+            $this->createNotification($userId, $title, $message, $link, $icon, $color, $notificationType);
         }
 
         return count($usersToNotify);

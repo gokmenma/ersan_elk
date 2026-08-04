@@ -13,6 +13,7 @@ use App\Model\DestekBiletModel;
 use App\Model\PersonelModel;
 use App\Model\UserModel;
 use App\Model\BildirimModel;
+use App\Model\UserNotificationPreferenceModel;
 use App\Helper\Security;
 use App\Service\MailGonderService;
 use App\Service\Gate;
@@ -598,7 +599,8 @@ function notifyAdminsForNewSupportTicket($ticket, string $ilkMesaj): void
             $personelAdi . ' tarafından yeni destek talebi açıldı. Konu: ' . ($ticket->konu ?? '-'),
             buildTicketRoute((int) $ticket->id),
             'message-square',
-            'warning'
+            'warning',
+            UserNotificationPreferenceModel::TYPE_SUPPORT
         );
 
         $email = extractUserEmail($admin);
@@ -613,7 +615,7 @@ function notifyAdminsForNewSupportTicket($ticket, string $ilkMesaj): void
                 'title' => 'Yeni Destek Talebi',
                 'body' => $personelAdi . ' tarafından yeni destek talebi açıldı. Konu: ' . ($ticket->konu ?? '-'),
                 'url' => buildTicketRoute((int)$ticket->id)
-            ], true);
+            ], true, UserNotificationPreferenceModel::TYPE_SUPPORT);
         } catch (Exception $e) {
             error_log('Push bildirim hatası (New Ticket Admin): ' . $e->getMessage());
         }
@@ -660,7 +662,8 @@ function notifyApproversForSupportTicket($ticket, string $ilkMesaj): void
             $personelAdi . ' tarafından açılan destek talebi onay bekliyor. Konu: ' . ($ticket->konu ?? '-'),
             buildTicketRoute((int) $ticket->id),
             'check-circle',
-            'warning'
+            'warning',
+            UserNotificationPreferenceModel::TYPE_SUPPORT
         );
 
         $email = extractUserEmail($approver);
@@ -675,7 +678,7 @@ function notifyApproversForSupportTicket($ticket, string $ilkMesaj): void
                 'title' => 'Destek Talebi Onay Bekliyor',
                 'body' => $personelAdi . ' tarafından açılan destek talebi onay bekliyor. Konu: ' . ($ticket->konu ?? '-'),
                 'url' => buildTicketRoute((int)$ticket->id)
-            ], true);
+            ], true, UserNotificationPreferenceModel::TYPE_SUPPORT);
         } catch (Exception $e) {
             error_log('Push bildirim hatası (Ticket Approval Pending): ' . $e->getMessage());
         }
@@ -722,7 +725,8 @@ function notifyTicketOwnerForAdminReply($ticket, string $mesaj): void
             'Talep #' . ($ticket->ref_no ?? $ticketId) . ' için yönetici tarafından yanıt verildi.',
             buildTicketRoute($ticketId),
             'message-square',
-            'info'
+            'info',
+            UserNotificationPreferenceModel::TYPE_SUPPORT
         );
 
         // Push bildirimi
@@ -732,7 +736,7 @@ function notifyTicketOwnerForAdminReply($ticket, string $mesaj): void
                 'title' => 'Destek Talebinize Yanıt Geldi',
                 'body' => 'Talep #' . ($ticket->ref_no ?? $ticketId) . ' için yönetici tarafından yanıt verildi.',
                 'url' => buildTicketRoute($ticketId)
-            ], true);
+            ], true, UserNotificationPreferenceModel::TYPE_SUPPORT);
         } catch (Exception $e) {
             error_log('Push bildirim hatası (Admin Reply): ' . $e->getMessage());
         }
@@ -813,7 +817,8 @@ function notifyTicketOwnerForStatusChange($ticket, string $newStatus): void
             $message,
             buildTicketRoute($ticketId),
             'info-circle',
-            'primary'
+            'primary',
+            UserNotificationPreferenceModel::TYPE_SUPPORT
         );
 
         // Push bildirimi
@@ -823,7 +828,7 @@ function notifyTicketOwnerForStatusChange($ticket, string $newStatus): void
                 'title' => $title,
                 'body' => $message,
                 'url' => buildTicketRoute($ticketId)
-            ], true);
+            ], true, UserNotificationPreferenceModel::TYPE_SUPPORT);
         } catch (Exception $e) {
             error_log('Push bildirim hatası (Status Change): ' . $e->getMessage());
         }
@@ -862,7 +867,8 @@ function notifyTicketOwnerForApprovalResult($ticket, string $onayDurumu, string 
             $description,
             buildTicketRoute($ticketId),
             $isApproved ? 'check-circle' : 'x-circle',
-            $isApproved ? 'success' : 'danger'
+            $isApproved ? 'success' : 'danger',
+            UserNotificationPreferenceModel::TYPE_SUPPORT
         );
 
         // Push bildirimi
@@ -872,7 +878,7 @@ function notifyTicketOwnerForApprovalResult($ticket, string $onayDurumu, string 
                 'title' => $title,
                 'body' => $description,
                 'url' => buildTicketRoute($ticketId)
-            ], true);
+            ], true, UserNotificationPreferenceModel::TYPE_SUPPORT);
         } catch (Exception $e) {
             error_log('Push bildirim hatası (Approval Result): ' . $e->getMessage());
         }
