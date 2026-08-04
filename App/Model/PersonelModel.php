@@ -1916,7 +1916,7 @@ class PersonelModel extends Model
     public const ALL_PWA_HIZLI_ISLEMLER = [
         'izin', 'yardim', 'bordro', 'zimmetler', 'ihbar',
         'puantaj', 'talep', 'km-bildirimleri', 'etkinlikler', 'icralar',
-        'ekip-takibi', 'nobet'
+        'ekip-takibi', 'nobet', 'aparat'
     ];
 
     /**
@@ -1945,7 +1945,8 @@ class PersonelModel extends Model
             return in_array($item, self::ALL_PWA_HIZLI_ISLEMLER, true);
         }));
 
-        return !empty($validItems) ? $validItems : self::DEFAULT_PWA_HIZLI_ISLEMLER;
+        // Bilerek boş kaydedilmiş listeyi varsayılanlarla değiştirme.
+        return $validItems;
     }
 
     /**

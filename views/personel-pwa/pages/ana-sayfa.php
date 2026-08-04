@@ -1802,6 +1802,12 @@ use App\Helper\Helper;
 
                 const data = await response.json();
                 if (data.success) {
+                    const savedKeys = data.data && Array.isArray(data.data.hizli_islemler)
+                        ? data.data.hizli_islemler
+                        : null;
+                    if (!savedKeys || JSON.stringify(savedKeys) !== JSON.stringify(currentActiveKeys)) {
+                        throw new Error('Hızlı işlem sırası sunucuda doğrulanamadı.');
+                    }
                     if (typeof Toast !== 'undefined' && typeof Toast.show === 'function') {
                         Toast.show(data.message || 'Hızlı işlemler güncellendi', 'success');
                     }

@@ -373,7 +373,7 @@ if ($page === 'ihbar') {
             <span class="text-[10px] font-semibold">Talepler</span>
         </a>
         <?php
-        $moreActivePages = ['profil', 'etkinlikler', 'bordro', 'izin', 'km-bildirimleri', 'ihbar', 'kacak'];
+        $moreActivePages = ['profil', 'etkinlikler', 'bordro', 'izin', 'km-bildirimleri', 'ihbar', 'kacak', 'aparat'];
         $isZimmetInBottomNav = !(($isEndeksOkuma && $isEkipSefi) || $isKesmeAcma);
         // Zimmetler zaten bottom nav'da gösteriliyorsa diğer menüde highlight etme
         if (!$isZimmetInBottomNav) {
@@ -417,7 +417,7 @@ if ($page === 'ihbar') {
         <div class="flex justify-center pt-2 pb-1">
             <div class="w-8 h-1 bg-slate-300 dark:bg-slate-600 rounded-full"></div>
         </div>
-        <div class="px-4 pb-4">
+        <div class="px-4 pb-4 max-h-[75vh] overflow-y-auto">
             <div class="flex flex-col gap-1">
                 <a href="javascript:void(0)" onclick="logout()"
                     class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'logout' ? 'bg-primary/10' : ''; ?>">
@@ -461,6 +461,17 @@ if ($page === 'ihbar') {
                             <span class="material-symbols-outlined text-amber-600 text-lg">gpp_maybe</span>
                         </div>
                         <span class="font-medium text-slate-900 dark:text-white text-sm">Kaçak İşlemleri</span>
+                        <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
+                    </a>
+                <?php endif; ?>
+
+                <?php if ($isKesmeAcma): ?>
+                    <a href="?page=aparat"
+                        class="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors <?php echo $page === 'aparat' ? 'bg-primary/10' : ''; ?>">
+                        <div class="w-9 h-9 rounded-lg bg-indigo-100 dark:bg-indigo-900/30 flex items-center justify-center">
+                            <span class="material-symbols-outlined text-indigo-600 text-lg">build</span>
+                        </div>
+                        <span class="font-medium text-slate-900 dark:text-white text-sm">Aparat Takip</span>
                         <span class="material-symbols-outlined text-slate-400 ml-auto text-lg">chevron_right</span>
                     </a>
                 <?php endif; ?>
