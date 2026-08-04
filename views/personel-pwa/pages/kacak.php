@@ -734,6 +734,22 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
             });
         }
 
+        // Kuyruk yazması başarısız olduğunda (cihaz depolaması dolu, IndexedDB
+        // engelli vb.) kullanılan emniyet yolu: kayıt doğrudan sunucuya gönderilir.
+        async function dogrudanGonder(alanlar, dosyalar) {
+            const fd = new FormData();
+            fd.append('action', 'saveKacakBildirim');
+            Object.keys(alanlar).forEach(ad => fd.append(ad, alanlar[ad]));
+            dosyalar.forEach(d => fd.append(d.alan, d.blob, d.ad));
+
+            const yanit = await fetch('api.php?action=saveKacakBildirim', {
+                method: 'POST',
+                body: fd,
+                credentials: 'same-origin',
+            });
+            return await yanit.json();
+        }
+
         // ----- Form gönderimi -----
         // Kayıt her durumda önce cihazdaki kuyruğa yazılır, sonra gönderilmeye çalışılır.
         // Böylece bağlantı kopsa, sayfa kapansa ya da telefon kilitlense bile
@@ -778,7 +794,36 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
                 };
 
                 btnText.textContent = 'GÖNDERİLİYOR...';
-                const kayit = await OfflineQueue.ekle('saveKacakBildirim', alanlar, dosyalar, ozet);
+
+                let kayit;
+                try {
+                    kayit = await OfflineQueue.ekle('saveKacakBildirim', alanlar, dosyalar, ozet);
+                } catch (kuyrukHatasi) {
+                    console.error('Kuyruğa yazılamadı:', kuyrukHatasi);
+
+                    if (!cevrimici()) {
+                        return Alert.error('Kaydedilemedi',
+                            'Tutanak telefona kaydedilemedi ve bağlantı da yok. Telefonunuzda yer açıp tekrar deneyin.');
+                    }
+
+                    let res;
+                    try {
+                        res = await dogrudanGonder(alanlar, dosyalar);
+                    } catch (agHatasi) {
+                        console.error('Doğrudan gönderim hatası:', agHatasi);
+                        return Alert.error('Gönderilemedi',
+                            'Tutanak telefona kaydedilemedi ve sunucuya da ulaşılamadı. Telefonunuzda yer açıp tekrar deneyin.');
+                    }
+
+                    if (res && res.success) {
+                        Modal.close('kacak-bildir-modal');
+                        tarihAraligiGenislet(alanlar.tarih);
+                        await loadKacakKayitlar();
+                        return Alert.success('Gönderildi', res.message || 'Bildiriminiz iletildi. Yönetici onayı bekleniyor.');
+                    }
+
+                    return Alert.error('Gönderilemedi', (res && res.message) || 'Sunucu kaydı kabul etmedi.');
+                }
 
                 Modal.close('kacak-bildir-modal');
                 tarihAraligiGenislet(alanlar.tarih);
@@ -804,7 +849,7 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
                     'Tutanak telefonunuza kaydedildi ancak gönderilemedi. Bağlantı düzeldiğinde otomatik gönderilecek.');
             } catch (err) {
                 console.error('Kaçak bildirim hatası:', err);
-                Alert.error('Hata', 'Kayıt cihaza yazılamadı. Telefon depolama alanınızı kontrol edin.');
+                Alert.error('Hata', 'İşlem tamamlanamadı. Lütfen tekrar deneyin.');
             } finally {
                 btn.disabled = false;
                 btnText.textContent = 'BİLDİRİMİ GÖNDER';

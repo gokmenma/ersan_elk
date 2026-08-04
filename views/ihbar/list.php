@@ -1,6 +1,7 @@
 <?php
 
 use App\Model\IhbarModel;
+use App\Model\SettingsModel;
 use App\Service\Gate;
 use App\Helper\Form;
 use App\Helper\Security;
@@ -10,6 +11,9 @@ Gate::authorizeOrDie('ihbar/list');
 $IhbarModel = new IhbarModel();
 $ihbarlar = $IhbarModel->getAllForDashboard();
 $yonlendirilecekPersoneller = $IhbarModel->getYonlendirilecekPersonelListesi();
+$ihbarSettings = (new SettingsModel())->getAllSettingsAsKeyValue((int) ($_SESSION['firma_id'] ?? 1));
+$ihbarPersonelLimit = max(1, (int) ($ihbarSettings['ihbar_personel_eszamanli_limit'] ?? 5));
+$ihbarAyniBolgeOnceligi = ($ihbarSettings['ihbar_ayni_bolge_onceligi'] ?? '1') === '1';
 
 $ihbarOzet = [
     'toplam' => count($ihbarlar),
@@ -377,6 +381,11 @@ function ihbarDurumBadge($durum)
                 <button type="button" class="btn btn-sm btn-warning px-3 rounded-pill" onclick="ihbarYenidenYonlendirAc()">
                     <i class="bx bx-transfer-alt me-1"></i>Yeniden Yönlendir
                 </button>
+                <?php if (Gate::allows('is_takip_ayarlar') || Gate::isSuperAdmin()): ?>
+                <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-bs-toggle="modal" data-bs-target="#modalIhbarAyarlar" title="İhbar yönlendirme ayarları">
+                    <i class="bx bx-cog"></i>
+                </button>
+                <?php endif; ?>
             </div>
         </div>
         <div class="card-body">
@@ -446,6 +455,26 @@ function ihbarDurumBadge($durum)
             </div>
         </div>
     </div>
+</div>
+
+<div class="modal fade" id="modalIhbarAyarlar" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
+        <form id="formIhbarAyarlar">
+            <div class="modal-header"><div><h5 class="modal-title">İhbar Yönlendirme Ayarları</h5>
+                <small class="text-muted">Otomatik ve toplu yönlendirme kuralları</small></div>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+            <div class="modal-body">
+                <div class="mb-3"><?= Form::FormFloatInput('number', 'ihbar_personel_eszamanli_limit', $ihbarPersonelLimit, 'Örn. 5', 'Personel başına açık ihbar limiti', 'bx bx-list-check', 'form-control', true, 3, 'off', false, 'min="1" max="100"') ?></div>
+                <div class="form-check form-switch">
+                    <input class="form-check-input" type="checkbox" id="ihbarAyniBolgeOnceligi" name="ihbar_ayni_bolge_onceligi" value="1" <?= $ihbarAyniBolgeOnceligi ? 'checked' : '' ?>>
+                    <label class="form-check-label" for="ihbarAyniBolgeOnceligi">Aynı ilçe ve mahalledeki ihbarları aynı personele önceliklendir</label>
+                </div>
+                <div class="alert alert-info small mt-3 mb-0">Personelin limiti dolduğunda sistem sıradaki en yakın görevdeki Kaçak personeline geçer.</div>
+            </div>
+            <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="submit" class="btn btn-primary" id="btnIhbarAyarKaydet">Ayarları Kaydet</button></div>
+        </form>
+    </div></div>
 </div>
 
 <!-- Yeni İhbar Ekle Modal -->
@@ -972,6 +1001,17 @@ function ihbarDurumBadge($durum)
             dropdownParent: $('#modalYeniIhbar'),
             width: '100%',
             placeholder: 'İlçe seçin...'
+        });
+        document.getElementById('formIhbarAyarlar')?.addEventListener('submit', function (event) {
+            event.preventDefault();
+            const data = new FormData(this); data.append('action', 'saveSettings');
+            if (!document.getElementById('ihbarAyniBolgeOnceligi').checked) data.set('ihbar_ayni_bolge_onceligi', '0');
+            const button = document.getElementById('btnIhbarAyarKaydet'); button.disabled = true;
+            fetch(IHBAR_API_URL, { method: 'POST', body: data }).then(r => r.json()).then(res => {
+                button.disabled = false;
+                if (res.success) Swal.fire('Başarılı', res.message, 'success').then(() => location.reload());
+                else Swal.fire('Hata', res.message || 'Ayarlar kaydedilemedi.', 'error');
+            }).catch(() => { button.disabled = false; Swal.fire('Hata', 'Sunucuya ulaşılamadı.', 'error'); });
         });
 
         const ihbarTable = $('#ihbarTable').DataTable($.extend(true, {}, getDatatableOptions(), {

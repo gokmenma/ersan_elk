@@ -194,39 +194,7 @@ class IhbarModel extends Model
     /** Personel ihbarını, aktif saha personellerinin son GPS kaydına göre en yakına yönlendirir. */
     public function autoAssignNearest(int $ihbarId, float $lat, float $lng, int $bildirenPersonelId): ?int
     {
-        $sql = "SELECT p.id,
-                    (6371 * ACOS(LEAST(1, GREATEST(-1,
-                        COS(RADIANS(:lat)) * COS(RADIANS(ph.konum_enlem))
-                        * COS(RADIANS(ph.konum_boylam) - RADIANS(:lng))
-                        + SIN(RADIANS(:lat2)) * SIN(RADIANS(ph.konum_enlem))
-                    )))) AS mesafe_km
-                FROM personel p
-                INNER JOIN personel_hareketleri ph ON ph.id = (
-                    SELECT ph2.id FROM personel_hareketleri ph2
-                    WHERE ph2.personel_id = p.id AND ph2.silinme_tarihi IS NULL
-                    ORDER BY ph2.zaman DESC, ph2.id DESC LIMIT 1
-                )
-                WHERE p.firma_id = :firma_id
-                  AND p.aktif_mi = 1
-                  AND p.saha_takibi = 1
-                  AND p.departman LIKE :departman
-                  AND p.silinme_tarihi IS NULL
-                  AND (p.isten_cikis_tarihi IS NULL OR p.isten_cikis_tarihi = '0000-00-00')
-                  AND ph.islem_tipi = 'BASLA'
-                  AND ph.zaman >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
-                  AND p.id <> :bildiren_id
-                ORDER BY mesafe_km ASC
-                LIMIT 1";
-        $stmt = $this->db->prepare($sql);
-        $stmt->execute([
-            ':lat' => $lat,
-            ':lng' => $lng,
-            ':lat2' => $lat,
-            ':firma_id' => $this->firmaId(),
-            ':bildiren_id' => $bildirenPersonelId,
-            ':departman' => '%Kaçak%',
-        ]);
-        $personelId = (int) ($stmt->fetchColumn() ?: 0);
+        $personelId = (int) ($this->findNearestAvailablePersonel($lat, $lng, $ihbarId, [], $bildirenPersonelId) ?: 0);
         if ($personelId <= 0) {
             return null;
         }
@@ -470,22 +438,42 @@ class IhbarModel extends Model
             ORDER BY i.created_at ASC");
         $stmt->execute([$this->firmaId()]);
         $rows = $stmt->fetchAll(PDO::FETCH_OBJ);
+        $reserved = [];
         foreach ($rows as $row) {
             $row->onerilen_personel_id = $this->findNearestAvailablePersonel(
                 (float) $row->konum_lat,
                 (float) $row->konum_lng,
-                (int) $row->id
+                (int) $row->id,
+                $reserved
             );
+            if ($row->onerilen_personel_id) {
+                $reserved[$row->onerilen_personel_id] = ($reserved[$row->onerilen_personel_id] ?? 0) + 1;
+            }
         }
         return $rows;
     }
 
-    private function findNearestAvailablePersonel(float $lat, float $lng, int $ihbarId): ?int
+    private function findNearestAvailablePersonel(float $lat, float $lng, int $ihbarId, array $reserved = [], int $excludedPersonelId = 0): ?int
     {
         if ($lat == 0.0 || $lng == 0.0) {
             return null;
         }
-        $stmt = $this->db->prepare("SELECT p.id
+        $settings = (new SettingsModel())->getAllSettingsAsKeyValue($this->firmaId());
+        $limit = max(1, (int) ($settings['ihbar_personel_eszamanli_limit'] ?? 5));
+        $bolgeOnceligi = ($settings['ihbar_ayni_bolge_onceligi'] ?? '1') === '1';
+        $ihbarStmt = $this->db->prepare("SELECT ilce, mahalle FROM ihbarlar WHERE id = ? AND firma_id = ?");
+        $ihbarStmt->execute([$ihbarId, $this->firmaId()]);
+        $ihbar = $ihbarStmt->fetch(PDO::FETCH_OBJ);
+        $orderBy = $bolgeOnceligi ? 'ayni_bolge DESC, mesafe ASC' : 'mesafe ASC';
+        $stmt = $this->db->prepare("SELECT p.id,
+              (SELECT COUNT(*) FROM ihbar_atamalar aa JOIN ihbarlar ii ON ii.id = aa.ihbar_id
+               WHERE aa.personel_id = p.id AND aa.silinme_tarihi IS NULL
+                 AND ii.silinme_tarihi IS NULL AND ii.durum IN ('yeni','yonlendirildi','islemde')) AS aktif_ihbar,
+              (SELECT COUNT(*) FROM ihbar_atamalar ab JOIN ihbarlar ib ON ib.id = ab.ihbar_id
+               WHERE ab.personel_id = p.id AND ab.silinme_tarihi IS NULL AND ib.silinme_tarihi IS NULL
+                 AND ib.durum IN ('yeni','yonlendirildi','islemde') AND ib.ilce = :ilce AND ib.mahalle = :mahalle) AS ayni_bolge,
+              (6371 * ACOS(LEAST(1, GREATEST(-1, COS(RADIANS(:lat)) * COS(RADIANS(ph.konum_enlem))
+                * COS(RADIANS(ph.konum_boylam) - RADIANS(:lng)) + SIN(RADIANS(:lat2)) * SIN(RADIANS(ph.konum_enlem)))))) AS mesafe
             FROM personel p
             INNER JOIN personel_hareketleri ph ON ph.id = (
                 SELECT ph2.id FROM personel_hareketleri ph2
@@ -495,31 +483,47 @@ class IhbarModel extends Model
             WHERE p.firma_id = :firma_id AND p.aktif_mi = 1 AND p.saha_takibi = 1
               AND p.silinme_tarihi IS NULL AND p.departman LIKE :departman
               AND ph.islem_tipi = 'BASLA' AND ph.zaman >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+              AND (:excluded_id = 0 OR p.id <> :excluded_id2)
               AND NOT EXISTS (SELECT 1 FROM ihbar_atamalar a WHERE a.ihbar_id = :ihbar_id
                               AND a.personel_id = p.id AND a.silinme_tarihi IS NULL)
-            ORDER BY (6371 * ACOS(LEAST(1, GREATEST(-1,
-                COS(RADIANS(:lat)) * COS(RADIANS(ph.konum_enlem))
-                * COS(RADIANS(ph.konum_boylam) - RADIANS(:lng))
-                + SIN(RADIANS(:lat2)) * SIN(RADIANS(ph.konum_enlem)))))) ASC LIMIT 1");
+            ORDER BY {$orderBy}");
         $stmt->execute([':firma_id' => $this->firmaId(), ':departman' => '%Kaçak%', ':ihbar_id' => $ihbarId,
-            ':lat' => $lat, ':lng' => $lng, ':lat2' => $lat]);
-        $id = (int) ($stmt->fetchColumn() ?: 0);
-        return $id > 0 ? $id : null;
+            ':lat' => $lat, ':lng' => $lng, ':lat2' => $lat, ':ilce' => $ihbar->ilce ?? '', ':mahalle' => $ihbar->mahalle ?? '',
+            ':excluded_id' => $excludedPersonelId, ':excluded_id2' => $excludedPersonelId]);
+        foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $aday) {
+            if ((int) $aday->aktif_ihbar + ($reserved[(int) $aday->id] ?? 0) < $limit) {
+                return (int) $aday->id;
+            }
+        }
+        return null;
     }
 
     public function bulkReassign(array $assignments, int $userId): array
     {
         $completed = [];
+        $settings = (new SettingsModel())->getAllSettingsAsKeyValue($this->firmaId());
+        $limit = max(1, (int) ($settings['ihbar_personel_eszamanli_limit'] ?? 5));
         $this->db->beginTransaction();
         try {
             foreach ($assignments as $ihbarId => $personelId) {
                 $ihbarId = (int) $ihbarId;
                 $personelId = (int) $personelId;
-                $check = $this->db->prepare("SELECT id FROM ihbarlar WHERE id = ? AND firma_id = ?
+                $check = $this->db->prepare("SELECT id, konum_lat, konum_lng FROM ihbarlar WHERE id = ? AND firma_id = ?
                     AND durum IN ('yeni','yonlendirildi') AND silinme_tarihi IS NULL");
                 $check->execute([$ihbarId, $this->firmaId()]);
-                if ($personelId <= 0 || !$check->fetchColumn()) {
+                $ihbar = $check->fetch(PDO::FETCH_OBJ);
+                if ($personelId <= 0 || !$ihbar) {
                     throw new \Exception('Toplu yönlendirme satırlarından biri geçersiz.');
+                }
+                $sayac = $this->db->prepare("SELECT COUNT(*) FROM ihbar_atamalar a JOIN ihbarlar i ON i.id = a.ihbar_id
+                    WHERE a.personel_id = ? AND a.silinme_tarihi IS NULL AND i.silinme_tarihi IS NULL
+                      AND i.durum IN ('yeni','yonlendirildi','islemde') AND i.id <> ?");
+                $sayac->execute([$personelId, $ihbarId]);
+                if ((int) $sayac->fetchColumn() >= $limit) {
+                    $personelId = (int) ($this->findNearestAvailablePersonel(
+                        (float) $ihbar->konum_lat, (float) $ihbar->konum_lng, $ihbarId
+                    ) ?: 0);
+                    if ($personelId <= 0) throw new \Exception('Kapasitesi uygun görevde Kaçak personeli bulunamadı.');
                 }
                 $this->assignTeam($ihbarId, [$personelId], $userId);
                 $completed[] = $personelId;

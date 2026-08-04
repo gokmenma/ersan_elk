@@ -9,6 +9,7 @@ use App\Model\IhbarModel;
 use App\Model\UserModel;
 use App\Model\BildirimModel;
 use App\Model\UserNotificationPreferenceModel;
+use App\Model\SettingsModel;
 use App\Helper\Security;
 use App\Service\Gate;
 use App\Service\PushNotificationService;
@@ -326,6 +327,22 @@ try {
                 error_log('Toplu ihbar yönlendirme push hatası: ' . $e->getMessage());
             }
             ihbarResponse(true, count($assignments) . ' ihbar yeniden yönlendirildi.');
+            break;
+
+        case 'saveSettings':
+            Gate::authorizeOrDie('ihbar/list');
+            if (!Gate::allows('is_takip_ayarlar') && !Gate::isSuperAdmin()) {
+                throw new Exception('İhbar ayarlarını değiştirme yetkiniz bulunmamaktadır.');
+            }
+            $limit = (int) ($_POST['ihbar_personel_eszamanli_limit'] ?? 0);
+            if ($limit < 1 || $limit > 100) throw new Exception('Personel ihbar limiti 1 ile 100 arasında olmalıdır.');
+            $settings = new SettingsModel();
+            $ok = $settings->upsertMultipleSettings([
+                'ihbar_personel_eszamanli_limit' => (string) $limit,
+                'ihbar_ayni_bolge_onceligi' => ($_POST['ihbar_ayni_bolge_onceligi'] ?? '0') === '1' ? '1' : '0',
+            ], (int) ($_SESSION['firma_id'] ?? 1));
+            if (!$ok) throw new Exception('Ayarlar kaydedilemedi.');
+            ihbarResponse(true, 'İhbar yönlendirme ayarları kaydedildi.');
             break;
 
         case 'addNote':
