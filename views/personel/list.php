@@ -83,12 +83,6 @@ if (Gate::canWithMessage("personel_listesi")) {
                             flex-direction: column;
                         }
 
-                        .personel-tc {
-                            font-size: 11px;
-                            color: #74788d;
-                            margin-top: -2px;
-                        }
-
                         .personel-hover-preview {
                             position: fixed;
                             display: none;
@@ -215,10 +209,6 @@ if (Gate::canWithMessage("personel_listesi")) {
                         [data-bs-theme="dark"] .personel-action-toolbar .vr {
                             background-color: #3e4556 !important;
                             opacity: 0.8;
-                        }
-
-                        [data-bs-theme="dark"] .personel-tc {
-                            color: #a6b0cf !important;
                         }
 
                         [data-bs-theme="dark"] .personel-img-thumb {

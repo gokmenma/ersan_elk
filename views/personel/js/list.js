@@ -57,7 +57,6 @@ $(document).ready(function () {
                 <img src="${resim}" class="personel-img-thumb" data-hover-resim="${resim}">
                 <div class="personel-details">
                     <a class="fw-bold" target="_blank" href="index?p=personel/manage&id=${row.id}">${data}</a>
-                    <span class="personel-tc">${row.tc_kimlik_no}</span>
                 </div>
             </div>`;
           },

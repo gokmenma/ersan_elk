@@ -52,6 +52,21 @@ class PersonelModel extends Model
         return $record ? $this->decryptFields($record) : null;
     }
 
+    /**
+     * Personeli ilişkili geçmiş kayıtlarını koruyarak pasife alır.
+     */
+    public function softDeleteForCompany(int $id, int $firmaId): bool
+    {
+        $stmt = $this->db->prepare(
+            "UPDATE {$this->table}
+             SET silinme_tarihi = NOW(), aktif_mi = 0
+             WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL"
+        );
+        $stmt->execute([$id, $firmaId]);
+
+        return $stmt->rowCount() === 1;
+    }
+
     public function findByTc(string $tc): array
     {
         $hash = hash('sha256', $tc);

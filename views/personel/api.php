@@ -14,6 +14,7 @@ use App\Helper\Validator;
 use App\Model\TanimlamalarModel;
 use App\Model\SystemLogModel;
 use App\Service\ImageUploadService;
+use App\Service\Gate;
 
 
 
@@ -425,16 +426,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     } elseif ($action == 'personel-sil') {
         try {
-            $id = Security::decrypt($_POST['id']);
-
-            $dependencyMessage = $Personel->checkDependencies($id);
-            if ($dependencyMessage) {
-                throw new Exception("Bu personel silinemez. " . $dependencyMessage);
+            if (!Gate::allows('personel_duzenle')) {
+                throw new Exception('Bu işlemi gerçekleştirmek için yetkiniz bulunmamaktadır.');
             }
 
-            $personel = $Personel->find($id);
+            $id = Security::decrypt($_POST['id']);
+            if (!$id) {
+                throw new Exception('Geçersiz personel kaydı.');
+            }
+
+            $stmt = $Personel->getDb()->prepare(
+                'SELECT adi_soyadi FROM personel WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL'
+            );
+            $stmt->execute([$id, $firma_id]);
+            $personel = $stmt->fetch(PDO::FETCH_OBJ);
+            if (!$personel) {
+                throw new Exception('Personel bulunamadı veya bu kayıt üzerinde işlem yetkiniz yok.');
+            }
+
             $adiSoyadi = $personel->adi_soyadi ?? 'Bilinmeyen';
-            $Personel->delete($id, false); // false: decrypt işlemi yapılmasın (id direkt geliyorsa)
+            if (!$Personel->softDeleteForCompany((int) $id, (int) $firma_id)) {
+                throw new Exception('Personel silinemedi. Kayıt daha önce silinmiş olabilir.');
+            }
+
             $SystemLog->logAction($userId, 'Personel Silme', "$adiSoyadi (ID: $id) isimli personel silindi.", SystemLogModel::LEVEL_IMPORTANT);
             echo json_encode(['status' => 'success', 'message' => 'Personel başarıyla silindi.']);
         } catch (Exception $e) {

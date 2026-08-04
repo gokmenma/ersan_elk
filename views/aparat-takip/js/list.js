@@ -3,10 +3,11 @@
 
     const API = 'views/aparat-takip/api.php';
     const yetki = window.aparatYetki || {};
-    const tipler = window.aparatTipleri || [];
 
+    const dtOrnekleri = {};
     let aktifSayimId = 0;
     let aktifIslemId = 0;
+    let transferDurum = '';
 
     // ---------- Yardımcılar ----------
 
@@ -15,10 +16,10 @@
     }
 
     function tarihGoster(deger) {
-        if (!deger) return '-';
+        if (!deger) return '';
         const parca = String(deger).split(' ');
         const gun = parca[0].split('-');
-        if (gun.length !== 3) return kacir(deger);
+        if (gun.length !== 3) return String(deger);
         const saat = parca[1] ? ' ' + parca[1].substring(0, 5) : '';
         return `${gun[2]}.${gun[1]}.${gun[0]}${saat}`;
     }
@@ -39,28 +40,54 @@
     }
 
     function istek(veri, tip) {
-        return $.ajax({
-            url: API,
-            type: tip || 'GET',
-            data: veri,
-            dataType: 'json'
-        });
+        return $.ajax({ url: API, type: tip || 'GET', data: veri, dataType: 'json' });
     }
 
-    function bosSatir(kolon, mesaj) {
-        return `<tr><td colspan="${kolon}" class="text-center text-muted py-4">${kacir(mesaj)}</td></tr>`;
+    /**
+     * Projedeki DataTable standardı: applyLengthStateSave({ ...getDatatableOptions(), ... }).
+     * Kolon filtreleri getDatatableOptions() içindeki initComplete tarafından
+     * `data-filter` niteliğine bakılarak başlatılır; tablo yeniden kurulurken
+     * eski filtre satırı temizlenmezse ikinci kez eklenmez.
+     */
+    function dtKur(secici, ayarlar) {
+        if (dtOrnekleri[secici]) {
+            dtOrnekleri[secici].destroy();
+            $(secici).find('thead .dt-filter-row').remove();
+            $(secici).find('tbody').empty();
+        }
+
+        const temel = (typeof getDatatableOptions === 'function') ? getDatatableOptions() : {};
+        let secenekler = $.extend(true, {}, temel, ayarlar || {});
+
+        if (typeof applyLengthStateSave === 'function') {
+            secenekler = applyLengthStateSave(secenekler);
+        }
+
+        dtOrnekleri[secici] = $(secici).DataTable(secenekler);
+        return dtOrnekleri[secici];
     }
 
-    function durumRozeti(durum) {
-        const harita = {
-            aktif: 'success', iptal: 'secondary',
-            beklemede: 'warning', onaylandi: 'success', reddedildi: 'danger'
+    /** Metin verisini görünümde HTML'e sarar; filtre ve sıralama düz metinle çalışır. */
+    function bicim(fn) {
+        return function (veri, tip, satir) {
+            return tip === 'display' ? fn(veri, satir) : (veri === null ? '' : veri);
         };
-        const metin = {
-            aktif: 'Aktif', iptal: 'İptal',
-            beklemede: 'Beklemede', onaylandi: 'Onaylandı', reddedildi: 'Reddedildi'
-        };
-        return `<span class="badge bg-${harita[durum] || 'secondary'}-subtle text-${harita[durum] || 'secondary'}">${metin[durum] || kacir(durum)}</span>`;
+    }
+
+    const ISLEM_ADI = { kesme: 'Kesme', acma: 'Açma' };
+    const DURUM_ADI = {
+        aktif: 'Aktif', iptal: 'İptal',
+        beklemede: 'Beklemede', onaylandi: 'Onaylandı', reddedildi: 'Reddedildi'
+    };
+    const DURUM_RENK = {
+        aktif: 'success', iptal: 'secondary',
+        beklemede: 'warning', onaylandi: 'success', reddedildi: 'danger'
+    };
+
+    function durumRozeti(metin) {
+        const anahtar = Object.keys(DURUM_ADI).find(function (k) { return DURUM_ADI[k] === metin; }) || '';
+        const renk = DURUM_RENK[anahtar] || 'secondary';
+        return `<span class="badge bg-${renk}-subtle text-${renk}">${kacir(metin)}</span>`;
     }
 
     // ---------- Stok matrisi ----------
@@ -70,50 +97,85 @@
             if (res.status !== 'success') return hata(res.message);
 
             const veri = res.data;
-            const govde = $('#tabloStokMatris tbody').empty();
             const altlik = $('#tabloStokMatris tfoot').empty();
-            const kolonSayisi = veri.tipler.length + 2;
 
-            if (!veri.tipler.length) {
-                govde.html(bosSatir(kolonSayisi, 'Aparat tipi tanımlanmamış.'));
-                return;
-            }
+            // Ekip satırları tabloda sıralanabilir kalsın; depo/saha/hurda/kayıp
+            // havuzları ile toplam satırı tfoot'ta sabitlenir.
+            const ekipSatirlari = veri.satirlar.filter(function (s) { return s.sahip_tipi === 'ekip'; });
+            const havuzSatirlari = veri.satirlar.filter(function (s) { return s.sahip_tipi !== 'ekip'; });
 
             let sahaToplam = 0;
+            havuzSatirlari.forEach(function (s) {
+                if (s.sahip_tipi === 'saha') sahaToplam = s.toplam;
+            });
 
-            veri.satirlar.forEach(function (satir) {
-                const havuzMu = satir.sahip_tipi !== 'ekip';
-                let hucreler = '';
+            const kolonlar = [{
+                data: 'baslik',
+                render: bicim(function (deger, satir) {
+                    return `<div class="fw-semibold text-dark">${kacir(satir.uyeler || 'Personel atanmamış')}</div>
+                            <small class="text-muted">${kacir(satir.ekip_kodu)}${satir.bolge ? ' · ' + kacir(satir.bolge) : ''}</small>`;
+                })
+            }];
 
-                veri.tipler.forEach(function (tip) {
-                    const adet = satir.adetler[tip.id] || 0;
-                    let sinif = 'adet-hucre';
-                    if (adet === 0) sinif += ' adet-sifir';
-                    if (adet < 0) sinif += ' adet-negatif';
-                    hucreler += `<td class="${sinif}">${adet}</td>`;
+            veri.tipler.forEach(function (tip) {
+                kolonlar.push({
+                    data: 'adet_' + tip.id,
+                    className: 'adet-hucre',
+                    render: bicim(function (adet) {
+                        if (adet === 0) return '<span class="text-muted fw-normal">0</span>';
+                        if (adet < 0) return `<span class="text-danger">${adet}</span>`;
+                        return String(adet);
+                    })
                 });
+            });
 
-                if (satir.sahip_tipi === 'saha') sahaToplam = satir.toplam;
+            kolonlar.push({ data: 'toplam', className: 'adet-hucre' });
 
-                // Stok ekibe zimmetli; satır başlığında o ekipte bugün çalışan
-                // personelin adı gösterilir, ekip kodu alt satırda kalır.
-                const etiket = havuzMu
-                    ? `<i class="bx bx-box me-1 text-muted"></i><b>${kacir(satir.baslik)}</b>`
-                    : `<div class="fw-semibold text-dark">${kacir(satir.uyeler || 'Personel atanmamış')}</div>
-                       <small class="text-muted">${kacir(satir.ekip_kodu)}${satir.bolge ? ' · ' + kacir(satir.bolge) : ''}</small>`;
+            const satirlar = ekipSatirlari.map(function (s) {
+                const satir = {
+                    baslik: s.uyeler || s.ekip_kodu,
+                    uyeler: s.uyeler,
+                    ekip_kodu: s.ekip_kodu,
+                    bolge: s.bolge,
+                    toplam: s.toplam
+                };
+                veri.tipler.forEach(function (tip) {
+                    satir['adet_' + tip.id] = s.adetler[tip.id] || 0;
+                });
+                return satir;
+            });
 
-                govde.append(`<tr class="${havuzMu ? 'havuz-satiri' : ''}">
-                    <td style="white-space:normal;min-width:220px">${etiket}</td>
+            dtKur('#tabloStokMatris', {
+                data: satirlar,
+                columns: kolonlar,
+                order: [[0, 'asc']],
+                createdRow: function (row, data) {
+                    veri.tipler.forEach(function (tip, i) {
+                        if (data['adet_' + tip.id] < 0) {
+                            $('td', row).eq(i + 1).addClass('adet-negatif');
+                        }
+                    });
+                }
+            });
+
+            havuzSatirlari.forEach(function (s) {
+                let hucreler = '';
+                veri.tipler.forEach(function (tip) {
+                    const adet = s.adetler[tip.id] || 0;
+                    hucreler += `<td class="adet-hucre${adet === 0 ? ' adet-sifir' : ''}${adet < 0 && s.sahip_tipi !== 'kayip' ? ' adet-negatif' : ''}">${adet}</td>`;
+                });
+                altlik.append(`<tr class="havuz-satiri">
+                    <td><i class="bx bx-box me-1 text-muted"></i><b>${kacir(s.baslik)}</b></td>
                     ${hucreler}
-                    <td class="adet-hucre">${satir.toplam}</td>
+                    <td class="adet-hucre">${s.toplam}</td>
                 </tr>`);
             });
 
-            let altHucreler = '';
+            let toplamHucreleri = '';
             veri.tipler.forEach(function (tip) {
-                altHucreler += `<td class="adet-hucre">${veri.sutun_toplam[tip.id] || 0}</td>`;
+                toplamHucreleri += `<td class="adet-hucre">${veri.sutun_toplam[tip.id] || 0}</td>`;
             });
-            altlik.html(`<tr><td>TOPLAM</td>${altHucreler}<td class="adet-hucre">${veri.genel_toplam}</td></tr>`);
+            altlik.append(`<tr><td>TOPLAM</td>${toplamHucreleri}<td class="adet-hucre">${veri.genel_toplam}</td></tr>`);
 
             $('#ozetToplam').text(veri.genel_toplam);
             $('#ozetSaha').text(sahaToplam);
@@ -235,6 +297,8 @@
 
     // ---------- Saha işlemleri ----------
 
+    let islemDurumu = 'aktif';
+
     function islemFiltresi() {
         return {
             action: 'islem-listesi',
@@ -243,54 +307,92 @@
             ekip_id: $('#islem_ekip').val() || 0,
             islem_tipi: $('#islem_tip_filtre').val() || '',
             aparat_tip_id: $('#islem_aparat').val() || 0,
-            durum: $('#islemIptalGoster').is(':checked') ? '' : 'aktif',
-            sadece_negatif: $('#islemSadeceNegatif').is(':checked') ? 1 : 0
+            durum: islemDurumu === 'negatif' ? 'aktif' : islemDurumu,
+            sadece_negatif: islemDurumu === 'negatif' ? 1 : 0
         };
     }
 
     function islemleriYukle() {
-        const govde = $('#tabloIslemler tbody').html(bosSatir(11, 'Yükleniyor...'));
-
         istek(islemFiltresi()).done(function (res) {
             if (res.status !== 'success') return hata(res.message);
-            govde.empty();
 
-            if (!res.data.length) {
-                govde.html(bosSatir(11, 'Kayıt bulunamadı.'));
-                return;
-            }
+            const satirlar = res.data.map(function (k) {
+                return {
+                    id: k.id,
+                    tarih: tarihGoster(k.tarih),
+                    islem: ISLEM_ADI[k.islem_tipi] || k.islem_tipi,
+                    islem_tipi: k.islem_tipi,
+                    ekip: k.ekip_kodu || '',
+                    personel: k.personel_adi || '',
+                    abone_no: k.abone_no || '',
+                    sayac_no: k.sayac_no || '',
+                    aparat: k.aparatsiz == 1 ? 'Aparatsız' : (k.aparat_adi || ''),
+                    adet: parseInt(k.adet, 10),
+                    durum: DURUM_ADI[k.durum] || k.durum,
+                    foto_sayisi: parseInt(k.foto_sayisi, 10),
+                    negatif_stok: k.negatif_stok,
+                    mukerrer_uyari: k.mukerrer_uyari
+                };
+            });
 
-            res.data.forEach(function (k) {
-                const aparat = k.aparatsiz == 1
-                    ? '<span class="text-muted">Aparatsız</span>'
-                    : kacir(k.aparat_adi || '-');
-
-                const uyarilar = (k.negatif_stok == 1 ? '<i class="bx bx-error text-danger ms-1" title="Negatif stok"></i>' : '')
-                    + (k.mukerrer_uyari == 1 ? '<i class="bx bx-copy text-warning ms-1" title="Mükerrer kayıt uyarısı"></i>' : '');
-
-                govde.append(`<tr>
-                    <td>${tarihGoster(k.tarih)}</td>
-                    <td><span class="badge bg-${k.islem_tipi === 'kesme' ? 'danger' : 'success'}-subtle text-${k.islem_tipi === 'kesme' ? 'danger' : 'success'}">${k.islem_tipi === 'kesme' ? 'Kesme' : 'Açma'}</span></td>
-                    <td>${kacir(k.ekip_kodu || k.ekip_adi || '-')}</td>
-                    <td>${kacir(k.personel_adi || '-')}</td>
-                    <td>${kacir(k.abone_no || '-')}${uyarilar}</td>
-                    <td>${kacir(k.sayac_no || '-')}</td>
-                    <td>${aparat}</td>
-                    <td class="text-center">${k.adet}</td>
-                    <td>${durumRozeti(k.durum)}</td>
-                    <td class="text-center">${k.foto_sayisi > 0 ? `<i class="bx bx-image text-primary"></i> ${k.foto_sayisi}` : '<span class="text-muted">-</span>'}</td>
-                    <td class="text-end">
-                        <button class="btn btn-sm btn-outline-primary btn-islem-detay" data-id="${k.id}">
-                            <i class="bx bx-show"></i>
-                        </button>
-                    </td>
-                </tr>`);
+            dtKur('#tabloIslemler', {
+                data: satirlar,
+                order: [[0, 'desc']],
+                columns: [
+                    { data: 'tarih' },
+                    {
+                        data: 'islem',
+                        render: bicim(function (deger, satir) {
+                            const renk = satir.islem_tipi === 'kesme' ? 'danger' : 'success';
+                            return `<span class="badge bg-${renk}-subtle text-${renk}">${kacir(deger)}</span>`;
+                        })
+                    },
+                    { data: 'ekip' },
+                    { data: 'personel' },
+                    {
+                        data: 'abone_no',
+                        render: bicim(function (deger, satir) {
+                            const uyari = (satir.negatif_stok == 1 ? '<i class="bx bx-error text-danger ms-1" title="Negatif stok"></i>' : '')
+                                + (satir.mukerrer_uyari == 1 ? '<i class="bx bx-copy text-warning ms-1" title="Mükerrer kayıt uyarısı"></i>' : '');
+                            return kacir(deger) + uyari;
+                        })
+                    },
+                    { data: 'sayac_no' },
+                    { data: 'aparat' },
+                    { data: 'adet', className: 'text-center' },
+                    { data: 'durum', render: bicim(durumRozeti) },
+                    {
+                        data: 'foto_sayisi',
+                        className: 'text-center',
+                        orderable: false,
+                        render: bicim(function (adet) {
+                            return adet > 0
+                                ? `<i class="bx bx-image text-primary"></i> ${adet}`
+                                : '<span class="text-muted">-</span>';
+                        })
+                    },
+                    {
+                        data: 'id',
+                        className: 'text-end',
+                        orderable: false,
+                        searchable: false,
+                        render: function (id) {
+                            return `<button class="btn btn-sm btn-outline-primary btn-islem-detay" data-id="${id}">
+                                        <i class="bx bx-show"></i>
+                                    </button>`;
+                        }
+                    }
+                ]
             });
         }).fail(() => hata('İşlemler yüklenemedi.'));
     }
 
     $('#btnIslemListele').on('click', islemleriYukle);
-    $('#islemSadeceNegatif, #islemIptalGoster').on('change', islemleriYukle);
+
+    $('#islemDurumFiltre input[name="islem-durum"]').on('change', function () {
+        islemDurumu = $(this).val();
+        islemleriYukle();
+    });
 
     $('#btnIslemExcel').on('click', function (e) {
         e.preventDefault();
@@ -337,7 +439,7 @@
                 <div class="row g-3">
                     <div class="col-md-6">
                         <table class="table table-sm mb-0">
-                            <tr><th style="width:40%">İşlem</th><td>${k.islem_tipi === 'kesme' ? 'Kesme' : 'Açma'} ${durumRozeti(k.durum)}</td></tr>
+                            <tr><th style="width:40%">İşlem</th><td>${ISLEM_ADI[k.islem_tipi] || ''} ${durumRozeti(DURUM_ADI[k.durum] || k.durum)}</td></tr>
                             <tr><th>Tarih</th><td>${tarihGoster(k.tarih)}</td></tr>
                             <tr><th>Ekip</th><td>${kacir(k.ekip_kodu || k.ekip_adi || '-')}</td></tr>
                             <tr><th>Personel</th><td>${kacir(k.personel_adi || '-')}</td></tr>
@@ -408,29 +510,58 @@
         };
     }
 
-    function hareketleriYukle() {
-        const govde = $('#tabloHareketler tbody').html(bosSatir(8, 'Yükleniyor...'));
+    const HAREKET_ADI = {
+        kesme: 'Kesme', acma: 'Açma', transfer: 'Transfer',
+        depo_giris: 'Depo Girişi', depo_cikis: 'Depodan Ekibe Çıkış', depo_iade: 'Depoya İade',
+        hurda: 'Hurda', kayip: 'Kayıp', sayim_duzeltme: 'Sayım Düzeltmesi', acilis: 'Açılış Stoğu'
+    };
+    const HAVUZ_ADI = { ekip: 'Ekip', depo: 'Depo', saha: 'Sahada Takılı', hurda: 'Hurda', kayip: 'Kayıp' };
 
+    function hareketleriYukle() {
         istek(hareketFiltresi()).done(function (res) {
             if (res.status !== 'success') return hata(res.message);
-            govde.empty();
 
-            if (!res.data.length) {
-                govde.html(bosSatir(8, 'Hareket bulunamadı.'));
-                return;
-            }
+            const satirlar = res.data.map(function (h) {
+                return {
+                    tarih: tarihGoster(h.tarih),
+                    hareket: HAREKET_ADI[h.hareket_tipi] || h.hareket_tipi,
+                    havuz: HAVUZ_ADI[h.sahip_tipi] || h.sahip_tipi,
+                    ekip: h.ekip_adi || '',
+                    aparat: h.aparat_adi || '',
+                    adet: parseInt(h.adet, 10),
+                    personel: h.personel_adi || h.kullanici_adi || '',
+                    aciklama: (h.aciklama || '') + (h.iptal_mi == 1 ? ' [iptal]' : ''),
+                    iptal_mi: h.iptal_mi
+                };
+            });
 
-            res.data.forEach(function (h) {
-                govde.append(`<tr class="${h.iptal_mi == 1 ? 'text-muted' : ''}">
-                    <td>${tarihGoster(h.tarih)}</td>
-                    <td>${kacir(h.hareket_tipi)}</td>
-                    <td>${kacir(h.sahip_tipi)}</td>
-                    <td>${kacir(h.ekip_adi || '-')}</td>
-                    <td>${kacir(h.aparat_adi || '-')}</td>
-                    <td class="text-center fw-bold ${h.adet < 0 ? 'text-danger' : 'text-success'}">${h.adet > 0 ? '+' : ''}${h.adet}</td>
-                    <td>${kacir(h.personel_adi || h.kullanici_adi || '-')}</td>
-                    <td class="small">${kacir(h.aciklama || '')}${h.iptal_mi == 1 ? ' <span class="badge bg-secondary-subtle text-secondary">iptal</span>' : ''}</td>
-                </tr>`);
+            dtKur('#tabloHareketler', {
+                data: satirlar,
+                order: [[0, 'desc']],
+                columns: [
+                    { data: 'tarih' },
+                    { data: 'hareket' },
+                    { data: 'havuz' },
+                    { data: 'ekip' },
+                    { data: 'aparat' },
+                    {
+                        data: 'adet',
+                        className: 'text-center fw-bold',
+                        render: bicim(function (adet) {
+                            const renk = adet < 0 ? 'text-danger' : 'text-success';
+                            return `<span class="${renk}">${adet > 0 ? '+' : ''}${adet}</span>`;
+                        })
+                    },
+                    { data: 'personel' },
+                    {
+                        data: 'aciklama',
+                        render: bicim(function (deger, satir) {
+                            return satir.iptal_mi == 1
+                                ? `<span class="text-muted">${kacir(deger)}</span>`
+                                : kacir(deger);
+                        })
+                    }
+                ]
             });
         }).fail(() => hata('Hareketler yüklenemedi.'));
     }
@@ -447,56 +578,71 @@
 
     // ---------- Transferler ----------
 
-    let transferDurum = '';
-
     function transferleriYukle() {
-        const govde = $('#tabloTransferler tbody').html(bosSatir(9, 'Yükleniyor...'));
-
         istek({ action: 'transfer-listesi', durum: transferDurum }).done(function (res) {
             if (res.status !== 'success') return hata(res.message);
-            govde.empty();
 
-            if (!res.data.length) {
-                govde.html(bosSatir(9, 'Transfer kaydı bulunamadı.'));
-                return;
-            }
+            const satirlar = res.data.map(function (t) {
+                return {
+                    id: t.id,
+                    tarih: tarihGoster(t.tarih),
+                    veren: t.veren_ekip_adi || '',
+                    alan: t.alan_ekip_adi || '',
+                    aparat: t.aparat_adi || '',
+                    adet: parseInt(t.adet, 10),
+                    onaylanan_adet: t.onaylanan_adet,
+                    durum: DURUM_ADI[t.durum] || t.durum,
+                    durum_kodu: t.durum,
+                    red_nedeni: t.red_nedeni || '',
+                    olusturan: t.olusturan_adi || '',
+                    onaylayan: t.onaylayan_adi || ''
+                };
+            });
 
-            res.data.forEach(function (t) {
-                const adet = t.durum === 'onaylandi' && t.onaylanan_adet !== null && t.onaylanan_adet != t.adet
-                    ? `${t.onaylanan_adet} <s class="text-muted">${t.adet}</s>`
-                    : t.adet;
-
-                const aksiyon = (yetki.transfer && t.durum === 'beklemede')
-                    ? `<button class="btn btn-sm btn-outline-danger btn-transfer-iptal" data-id="${t.id}"><i class="bx bx-x"></i> İptal</button>`
-                    : '';
-
-                govde.append(`<tr>
-                    <td>${tarihGoster(t.tarih)}</td>
-                    <td>${kacir(t.veren_ekip_adi || '-')}</td>
-                    <td>${kacir(t.alan_ekip_adi || '-')}</td>
-                    <td>${kacir(t.aparat_adi || '-')}</td>
-                    <td class="text-center">${adet}</td>
-                    <td>${durumRozeti(t.durum)}${t.red_nedeni ? `<div class="small text-muted">${kacir(t.red_nedeni)}</div>` : ''}</td>
-                    <td>${kacir(t.olusturan_adi || '-')}</td>
-                    <td>${kacir(t.onaylayan_adi || '-')}</td>
-                    <td class="text-end">${aksiyon}</td>
-                </tr>`);
+            dtKur('#tabloTransferler', {
+                data: satirlar,
+                order: [[0, 'desc']],
+                columns: [
+                    { data: 'tarih' },
+                    { data: 'veren' },
+                    { data: 'alan' },
+                    { data: 'aparat' },
+                    {
+                        data: 'adet',
+                        className: 'text-center',
+                        render: bicim(function (adet, satir) {
+                            return (satir.durum_kodu === 'onaylandi' && satir.onaylanan_adet !== null && satir.onaylanan_adet != adet)
+                                ? `${satir.onaylanan_adet} <s class="text-muted">${adet}</s>`
+                                : String(adet);
+                        })
+                    },
+                    {
+                        data: 'durum',
+                        render: bicim(function (deger, satir) {
+                            return durumRozeti(deger)
+                                + (satir.red_nedeni ? `<div class="small text-muted">${kacir(satir.red_nedeni)}</div>` : '');
+                        })
+                    },
+                    { data: 'olusturan' },
+                    { data: 'onaylayan' },
+                    {
+                        data: 'id',
+                        className: 'text-end',
+                        orderable: false,
+                        searchable: false,
+                        render: function (id, tip, satir) {
+                            return (yetki.transfer && satir.durum_kodu === 'beklemede')
+                                ? `<button class="btn btn-sm btn-outline-danger btn-transfer-iptal" data-id="${id}"><i class="bx bx-x"></i> İptal</button>`
+                                : '';
+                        }
+                    }
+                ]
             });
         }).fail(() => hata('Transferler yüklenemedi.'));
     }
 
-    $('#transferDurumFiltre button').on('click', function () {
-        $('#transferDurumFiltre button').each(function () {
-            const durum = $(this).data('durum');
-            const renk = durum === 'beklemede' ? 'warning' : (durum === 'onaylandi' ? 'success' : (durum === 'reddedildi' ? 'danger' : 'primary'));
-            $(this).removeClass(`btn-${renk}`).addClass(`btn-outline-${renk}`);
-        });
-
-        const durum = $(this).data('durum');
-        const renk = durum === 'beklemede' ? 'warning' : (durum === 'onaylandi' ? 'success' : (durum === 'reddedildi' ? 'danger' : 'primary'));
-        $(this).removeClass(`btn-outline-${renk}`).addClass(`btn-${renk}`);
-
-        transferDurum = durum;
+    $('#transferDurumFiltre input[name="transfer-durum"]').on('change', function () {
+        transferDurum = $(this).val();
         transferleriYukle();
     });
 
@@ -724,125 +870,178 @@
     // ---------- Raporlar ----------
 
     $('#btnSahadaTakili').on('click', function () {
-        const govde = $('#tabloSahada tbody').html(bosSatir(8, 'Yükleniyor...'));
-
         istek({
             action: 'sahada-takili',
             aparat_tip_id: $('#rapor_aparat').val() || 0,
             min_gun: $('#rapor_min_gun').val() || 0
         }).done(function (res) {
             if (res.status !== 'success') return hata(res.message);
-            govde.empty();
 
-            if (!res.data.length) {
-                govde.html(bosSatir(8, 'Sahada takılı aparat bulunamadı.'));
-                return;
-            }
+            const satirlar = res.data.map(function (s) {
+                return {
+                    tarih: tarihGoster(s.tarih),
+                    gun: parseInt(s.gun_sayisi, 10),
+                    abone_no: s.abone_no || '',
+                    sayac_no: s.sayac_no || '',
+                    bolge: [s.ilce, s.mahalle].filter(Boolean).join(' / '),
+                    aparat: s.aparat_adi || '',
+                    adet: parseInt(s.adet, 10),
+                    ekip: s.ekip_adi || ''
+                };
+            });
 
-            res.data.forEach(function (s) {
-                const gun = parseInt(s.gun_sayisi, 10);
-                govde.append(`<tr>
-                    <td>${tarihGoster(s.tarih)}</td>
-                    <td class="text-center"><span class="badge bg-${gun > 90 ? 'danger' : (gun > 30 ? 'warning' : 'secondary')}-subtle text-${gun > 90 ? 'danger' : (gun > 30 ? 'warning' : 'secondary')}">${gun}</span></td>
-                    <td>${kacir(s.abone_no || '-')}</td>
-                    <td>${kacir(s.sayac_no || '-')}</td>
-                    <td>${kacir([s.ilce, s.mahalle].filter(Boolean).join(' / ') || '-')}</td>
-                    <td>${kacir(s.aparat_adi || '-')}</td>
-                    <td class="text-center">${s.adet}</td>
-                    <td>${kacir(s.ekip_adi || '-')}</td>
-                </tr>`);
+            dtKur('#tabloSahada', {
+                data: satirlar,
+                order: [[1, 'desc']],
+                columns: [
+                    { data: 'tarih' },
+                    {
+                        data: 'gun',
+                        className: 'text-center',
+                        render: bicim(function (gun) {
+                            const renk = gun > 90 ? 'danger' : (gun > 30 ? 'warning' : 'secondary');
+                            return `<span class="badge bg-${renk}-subtle text-${renk}">${gun}</span>`;
+                        })
+                    },
+                    { data: 'abone_no' },
+                    { data: 'sayac_no' },
+                    { data: 'bolge' },
+                    { data: 'aparat' },
+                    { data: 'adet', className: 'text-center' },
+                    { data: 'ekip' }
+                ]
             });
         }).fail(() => hata('Rapor yüklenemedi.'));
     });
 
     $('#btnDonemselOzet').on('click', function () {
-        const govde = $('#tabloDonemsel tbody').html(bosSatir(6, 'Yükleniyor...'));
-
         istek({
             action: 'donemsel-ozet',
             start_date: tarihGonder('#ozet_bas'),
             end_date: tarihGonder('#ozet_bit')
         }).done(function (res) {
             if (res.status !== 'success') return hata(res.message);
-            govde.empty();
 
-            if (!res.data.length) {
-                govde.html(bosSatir(6, 'Kayıt bulunamadı.'));
-                return;
-            }
+            const satirlar = res.data.map(function (o) {
+                return {
+                    islem: ISLEM_ADI[o.islem_tipi] || o.islem_tipi,
+                    aparat: o.aparat_adi || 'Aparatsız',
+                    kayit_sayisi: parseInt(o.kayit_sayisi, 10),
+                    aparat_adedi: parseInt(o.aparat_adedi, 10),
+                    hasarli: parseInt(o.hasarli, 10),
+                    kayip: parseInt(o.kayip, 10)
+                };
+            });
 
-            res.data.forEach(function (o) {
-                govde.append(`<tr>
-                    <td>${o.islem_tipi === 'kesme' ? 'Kesme' : 'Açma'}</td>
-                    <td>${kacir(o.aparat_adi || 'Aparatsız')}</td>
-                    <td class="text-center">${o.kayit_sayisi}</td>
-                    <td class="text-center fw-bold">${o.aparat_adedi}</td>
-                    <td class="text-center">${o.hasarli}</td>
-                    <td class="text-center">${o.kayip}</td>
-                </tr>`);
+            dtKur('#tabloDonemsel', {
+                data: satirlar,
+                order: [[0, 'asc']],
+                columns: [
+                    { data: 'islem' },
+                    { data: 'aparat' },
+                    { data: 'kayit_sayisi', className: 'text-center' },
+                    { data: 'aparat_adedi', className: 'text-center fw-bold' },
+                    { data: 'hasarli', className: 'text-center' },
+                    { data: 'kayip', className: 'text-center' }
+                ]
             });
         }).fail(() => hata('Özet yüklenemedi.'));
     });
 
     $('#btnApiKarsilastir').on('click', function () {
-        const govde = $('#tabloApiKarsilastirma tbody').html(bosSatir(5, 'Yükleniyor...'));
-
         istek({
             action: 'api-karsilastirma',
             start_date: tarihGonder('#ozet_bas'),
             end_date: tarihGonder('#ozet_bit')
         }).done(function (res) {
             if (res.status !== 'success') return hata(res.message);
-            govde.empty();
 
-            if (!res.data.length) {
-                govde.html(bosSatir(5, 'Karşılaştırılacak kayıt bulunamadı.'));
-                return;
-            }
+            const satirlar = res.data.map(function (k) {
+                return {
+                    tarih: tarihGoster(k.tarih),
+                    ekip: k.ekip_adi || '',
+                    api_adet: parseInt(k.api_adet, 10),
+                    panel_adet: parseInt(k.panel_adet, 10),
+                    fark: parseInt(k.fark, 10)
+                };
+            });
 
-            res.data.forEach(function (k) {
-                const fark = parseInt(k.fark, 10);
-                govde.append(`<tr>
-                    <td>${tarihGoster(k.tarih)}</td>
-                    <td>${kacir(k.ekip_adi || '-')}</td>
-                    <td class="text-center">${k.api_adet}</td>
-                    <td class="text-center">${k.panel_adet}</td>
-                    <td class="text-center fw-bold ${fark === 0 ? 'text-success' : 'text-danger'}">${fark > 0 ? '+' : ''}${fark}</td>
-                </tr>`);
+            dtKur('#tabloApiKarsilastirma', {
+                data: satirlar,
+                order: [[0, 'desc']],
+                columns: [
+                    { data: 'tarih' },
+                    { data: 'ekip' },
+                    { data: 'api_adet', className: 'text-center' },
+                    { data: 'panel_adet', className: 'text-center' },
+                    {
+                        data: 'fark',
+                        className: 'text-center fw-bold',
+                        render: bicim(function (fark) {
+                            const renk = fark === 0 ? 'text-success' : 'text-danger';
+                            return `<span class="${renk}">${fark > 0 ? '+' : ''}${fark}</span>`;
+                        })
+                    }
+                ]
             });
         }).fail(() => hata('Karşılaştırma yüklenemedi.'));
     });
 
     // ---------- Tanımlar ----------
 
-    function tipleriYukle() {
-        const govde = $('#tabloTipler tbody');
-        if (!govde.length) return;
+    const tipVerileri = {};
 
-        govde.html(bosSatir(7, 'Yükleniyor...'));
+    function tipleriYukle() {
+        if (!$('#tabloTipler').length) return;
 
         istek({ action: 'tip-listesi' }).done(function (res) {
             if (res.status !== 'success') return hata(res.message);
-            govde.empty();
 
-            if (!res.data.length) {
-                govde.html(bosSatir(7, 'Aparat tipi tanımlanmamış.'));
-                return;
-            }
+            const satirlar = res.data.map(function (t) {
+                tipVerileri[t.id] = t;
+                return {
+                    id: t.id,
+                    sira: parseInt(t.sira, 10),
+                    ad: t.ad,
+                    kod: t.kod,
+                    renk: t.renk,
+                    aciklama: t.aciklama || '',
+                    durum: t.is_active == 1 ? 'Aktif' : 'Pasif'
+                };
+            });
 
-            res.data.forEach(function (t) {
-                govde.append(`<tr>
-                    <td class="text-center">${t.sira}</td>
-                    <td><b>${kacir(t.ad)}</b></td>
-                    <td><span class="badge bg-${kacir(t.renk)}-subtle text-${kacir(t.renk)}">${kacir(t.kod)}</span></td>
-                    <td>${kacir(t.renk)}</td>
-                    <td class="small text-muted">${kacir(t.aciklama || '')}</td>
-                    <td>${t.is_active == 1 ? '<span class="badge bg-success-subtle text-success">Aktif</span>' : '<span class="badge bg-secondary-subtle text-secondary">Pasif</span>'}</td>
-                    <td class="text-end">
-                        <button class="btn btn-sm btn-outline-primary btn-tip-duzenle" data-tip='${JSON.stringify(t).replace(/'/g, "&#39;")}'><i class="bx bx-edit"></i></button>
-                        <button class="btn btn-sm btn-outline-danger btn-tip-sil" data-id="${t.id}"><i class="bx bx-trash"></i></button>
-                    </td>
-                </tr>`);
+            dtKur('#tabloTipler', {
+                data: satirlar,
+                order: [[0, 'asc']],
+                columns: [
+                    { data: 'sira', className: 'text-center' },
+                    { data: 'ad', render: bicim(function (deger) { return `<b>${kacir(deger)}</b>`; }) },
+                    {
+                        data: 'kod',
+                        render: bicim(function (deger, satir) {
+                            return `<span class="badge bg-${kacir(satir.renk)}-subtle text-${kacir(satir.renk)}">${kacir(deger)}</span>`;
+                        })
+                    },
+                    { data: 'renk' },
+                    { data: 'aciklama', className: 'small text-muted' },
+                    {
+                        data: 'durum',
+                        render: bicim(function (deger) {
+                            const renk = deger === 'Aktif' ? 'success' : 'secondary';
+                            return `<span class="badge bg-${renk}-subtle text-${renk}">${deger}</span>`;
+                        })
+                    },
+                    {
+                        data: 'id',
+                        className: 'text-end',
+                        orderable: false,
+                        searchable: false,
+                        render: function (id) {
+                            return `<button class="btn btn-sm btn-outline-primary btn-tip-duzenle" data-id="${id}"><i class="bx bx-edit"></i></button>
+                                    <button class="btn btn-sm btn-outline-danger btn-tip-sil" data-id="${id}"><i class="bx bx-trash"></i></button>`;
+                        }
+                    }
+                ]
             });
         }).fail(() => hata('Tipler yüklenemedi.'));
     }
@@ -857,7 +1056,8 @@
     });
 
     $(document).on('click', '.btn-tip-duzenle', function () {
-        const t = $(this).data('tip');
+        const t = tipVerileri[$(this).data('id')];
+        if (!t) return;
         $('#tip_id').val(t.id);
         $('#tip_ad').val(t.ad);
         $('#tip_kod').val(t.kod);
@@ -914,11 +1114,16 @@
     $('a[data-bs-toggle="tab"]').on('shown.bs.tab', function (e) {
         const hedef = $(e.target).attr('href');
 
-        if (hedef === '#pane-islemler' && !$('#tabloIslemler tbody tr').length) islemleriYukle();
-        if (hedef === '#pane-hareketler' && !$('#tabloHareketler tbody tr').length) hareketleriYukle();
-        if (hedef === '#pane-transferler' && !$('#tabloTransferler tbody tr').length) transferleriYukle();
+        if (hedef === '#pane-islemler' && !dtOrnekleri['#tabloIslemler']) islemleriYukle();
+        if (hedef === '#pane-hareketler' && !dtOrnekleri['#tabloHareketler']) hareketleriYukle();
+        if (hedef === '#pane-transferler' && !dtOrnekleri['#tabloTransferler']) transferleriYukle();
         if (hedef === '#pane-sayim') sayimlariYukle();
-        if (hedef === '#pane-tanimlar' && !$('#tabloTipler tbody tr').length) tipleriYukle();
+        if (hedef === '#pane-tanimlar' && !dtOrnekleri['#tabloTipler']) tipleriYukle();
+
+        // Gizliyken kurulan tablolarda kolon genişlikleri şaşar; sekme açılınca düzeltilir.
+        Object.keys(dtOrnekleri).forEach(function (secici) {
+            if ($(secici).is(':visible')) dtOrnekleri[secici].columns.adjust();
+        });
     });
 
     $(function () {

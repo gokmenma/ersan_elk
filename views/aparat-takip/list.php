@@ -127,6 +127,37 @@ foreach (AparatTipiModel::RENKLER as $renk) {
     .sayim-adet-input {
         max-width: 110px;
     }
+
+    .status-filter-group {
+        background: #f8f9fa;
+        padding: 4px;
+        border-radius: 50px;
+        border: 1px solid #e2e8f0;
+        display: inline-flex;
+        align-items: center;
+        gap: 2px;
+    }
+
+    .status-filter-group .btn-check + .btn {
+        margin-bottom: 0 !important;
+        border: none !important;
+        border-radius: 50px !important;
+        font-size: .75rem;
+        font-weight: 600;
+        padding: 6px 16px;
+        color: #64748b;
+        transition: all .2s ease;
+        background: transparent !important;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    .status-filter-group .btn-check:checked + .btn {
+        background: #fff !important;
+        color: #0ea5e9;
+        box-shadow: 0 1px 3px rgba(0, 0, 0, .08);
+    }
 </style>
 
 <div class="container-fluid">
@@ -236,24 +267,20 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                         <table class="table table-sm table-hover align-middle aparat-matris mb-0" id="tabloStokMatris">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Sahip</th>
+                                    <th data-filter="string">Ekip / Personel</th>
                                     <?php foreach ($tipler as $t): ?>
-                                        <th class="text-center<?= (int) $t['is_active'] === 0 ? ' text-muted' : '' ?>">
+                                        <th class="text-center<?= (int) $t['is_active'] === 0 ? ' text-muted' : '' ?>" data-filter="number">
                                             <?= htmlspecialchars($t['ad'], ENT_QUOTES, 'UTF-8') ?>
                                             <?php if ((int) $t['is_active'] === 0): ?>
                                                 <small class="d-block fw-normal">(pasif)</small>
                                             <?php endif; ?>
                                         </th>
                                     <?php endforeach; ?>
-                                    <th class="text-center">Toplam</th>
+                                    <th class="text-center" data-filter="number">Toplam</th>
                                 </tr>
                             </thead>
-                            <tbody>
-                                <tr>
-                                    <td colspan="<?= count($tipler) + 2 ?>" class="text-center text-muted py-4">Yükleniyor...</td>
-                                </tr>
-                            </tbody>
-                            <tfoot></tfoot>
+                            <tbody></tbody>
+                            <tfoot class="table-light"></tfoot>
                         </table>
                     </div>
                     <?php if (empty($tipler)): ?>
@@ -281,14 +308,16 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                             <a class="btn btn-outline-success" id="btnIslemExcel" href="#" title="Excel"><i class="bx bx-download"></i></a>
                         </div>
                     </div>
-                    <div class="d-flex flex-wrap gap-3 mt-2">
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="islemSadeceNegatif">
-                            <label class="form-check-label small" for="islemSadeceNegatif">Sadece negatif stoklu kayıtlar</label>
-                        </div>
-                        <div class="form-check">
-                            <input class="form-check-input" type="checkbox" id="islemIptalGoster">
-                            <label class="form-check-label small" for="islemIptalGoster">İptal edilenleri de göster</label>
+                    <div class="d-flex flex-wrap align-items-center gap-2 mt-3">
+                        <div class="status-filter-group shadow-sm" id="islemDurumFiltre">
+                            <input type="radio" class="btn-check" name="islem-durum" id="is_durum_aktif" value="aktif" checked>
+                            <label class="btn px-3" for="is_durum_aktif"><i class="bx bx-check-circle"></i> Aktif</label>
+
+                            <input type="radio" class="btn-check" name="islem-durum" id="is_durum_tum" value="">
+                            <label class="btn px-3" for="is_durum_tum"><i class="bx bx-check-double"></i> İptaller Dahil</label>
+
+                            <input type="radio" class="btn-check" name="islem-durum" id="is_durum_negatif" value="negatif">
+                            <label class="btn px-3" for="is_durum_negatif"><i class="bx bx-error"></i> Negatif Stoklu</label>
                         </div>
                     </div>
                 </div>
@@ -297,15 +326,15 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                         <table class="table table-sm table-hover align-middle mb-0" id="tabloIslemler">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Tarih</th>
-                                    <th>İşlem</th>
-                                    <th>Ekip</th>
-                                    <th>Personel</th>
-                                    <th>Abone No</th>
-                                    <th>Sayaç No</th>
-                                    <th>Aparat</th>
-                                    <th class="text-center">Adet</th>
-                                    <th>Durum</th>
+                                    <th data-filter="date">Tarih</th>
+                                    <th data-filter="select">İşlem</th>
+                                    <th data-filter="select">Ekip</th>
+                                    <th data-filter="string">Personel</th>
+                                    <th data-filter="string">Abone No</th>
+                                    <th data-filter="string">Sayaç No</th>
+                                    <th data-filter="select">Aparat</th>
+                                    <th class="text-center" data-filter="number">Adet</th>
+                                    <th data-filter="select">Durum</th>
                                     <th class="text-center">Foto</th>
                                     <th class="text-end">İşlem</th>
                                 </tr>
@@ -338,14 +367,14 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                         <table class="table table-sm table-hover align-middle mb-0" id="tabloHareketler">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Tarih</th>
-                                    <th>Hareket</th>
-                                    <th>Havuz</th>
-                                    <th>Ekip</th>
-                                    <th>Aparat</th>
-                                    <th class="text-center">Adet</th>
-                                    <th>Personel / Kullanıcı</th>
-                                    <th>Açıklama</th>
+                                    <th data-filter="date">Tarih</th>
+                                    <th data-filter="select">Hareket</th>
+                                    <th data-filter="select">Havuz</th>
+                                    <th data-filter="select">Ekip</th>
+                                    <th data-filter="select">Aparat</th>
+                                    <th class="text-center" data-filter="number">Adet</th>
+                                    <th data-filter="string">Personel / Kullanıcı</th>
+                                    <th data-filter="string">Açıklama</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -359,11 +388,18 @@ foreach (AparatTipiModel::RENKLER as $renk) {
         <div class="tab-pane fade" id="pane-transferler">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-transparent border-bottom py-3 d-flex flex-wrap align-items-center gap-2">
-                    <div class="d-flex gap-2 flex-wrap" id="transferDurumFiltre">
-                        <button class="btn btn-sm btn-primary" data-durum="">Tümü</button>
-                        <button class="btn btn-sm btn-outline-warning" data-durum="beklemede">Beklemede</button>
-                        <button class="btn btn-sm btn-outline-success" data-durum="onaylandi">Onaylandı</button>
-                        <button class="btn btn-sm btn-outline-danger" data-durum="reddedildi">Reddedildi</button>
+                    <div class="status-filter-group shadow-sm" id="transferDurumFiltre">
+                        <input type="radio" class="btn-check" name="transfer-durum" id="tr_durum_all" value="" checked>
+                        <label class="btn px-3" for="tr_durum_all"><i class="bx bx-check-double"></i> Tümü</label>
+
+                        <input type="radio" class="btn-check" name="transfer-durum" id="tr_durum_bekleyen" value="beklemede">
+                        <label class="btn px-3" for="tr_durum_bekleyen"><i class="bx bx-time-five"></i> Beklemede</label>
+
+                        <input type="radio" class="btn-check" name="transfer-durum" id="tr_durum_onayli" value="onaylandi">
+                        <label class="btn px-3" for="tr_durum_onayli"><i class="bx bx-check-circle"></i> Onaylandı</label>
+
+                        <input type="radio" class="btn-check" name="transfer-durum" id="tr_durum_red" value="reddedildi">
+                        <label class="btn px-3" for="tr_durum_red"><i class="bx bx-x-circle"></i> Reddedildi</label>
                     </div>
                     <div class="ms-auto text-muted small">
                         <i class="bx bx-info-circle"></i> Transferler alan ekibin onayıyla stoğa işlenir.
@@ -374,14 +410,14 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                         <table class="table table-sm table-hover align-middle mb-0" id="tabloTransferler">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Tarih</th>
-                                    <th>Veren Ekip</th>
-                                    <th>Alan Ekip</th>
-                                    <th>Aparat</th>
-                                    <th class="text-center">Adet</th>
-                                    <th>Durum</th>
-                                    <th>Oluşturan</th>
-                                    <th>Onaylayan</th>
+                                    <th data-filter="date">Tarih</th>
+                                    <th data-filter="select">Veren Ekip</th>
+                                    <th data-filter="select">Alan Ekip</th>
+                                    <th data-filter="select">Aparat</th>
+                                    <th class="text-center" data-filter="number">Adet</th>
+                                    <th data-filter="select">Durum</th>
+                                    <th data-filter="string">Oluşturan</th>
+                                    <th data-filter="string">Onaylayan</th>
                                     <th class="text-end">İşlem</th>
                                 </tr>
                             </thead>
@@ -444,19 +480,17 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                                 <table class="table table-sm table-hover align-middle mb-0" id="tabloSahada">
                                     <thead class="table-light">
                                         <tr>
-                                            <th>Kesme Tarihi</th>
-                                            <th class="text-center">Gün</th>
-                                            <th>Abone No</th>
-                                            <th>Sayaç No</th>
-                                            <th>İlçe / Mahalle</th>
-                                            <th>Aparat</th>
-                                            <th class="text-center">Adet</th>
-                                            <th>Kesen Ekip</th>
+                                            <th data-filter="date">Kesme Tarihi</th>
+                                            <th class="text-center" data-filter="number">Gün</th>
+                                            <th data-filter="string">Abone No</th>
+                                            <th data-filter="string">Sayaç No</th>
+                                            <th data-filter="select">İlçe / Mahalle</th>
+                                            <th data-filter="select">Aparat</th>
+                                            <th class="text-center" data-filter="number">Adet</th>
+                                            <th data-filter="select">Kesen Ekip</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        <tr><td colspan="8" class="text-center text-muted py-3">Listelemek için sorgulayın.</td></tr>
-                                    </tbody>
+                                    <tbody></tbody>
                                 </table>
                             </div>
                         </div>
@@ -478,17 +512,15 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                                 <table class="table table-sm align-middle mb-0" id="tabloDonemsel">
                                     <thead class="table-light">
                                         <tr>
-                                            <th>İşlem</th>
-                                            <th>Aparat</th>
-                                            <th class="text-center">Kayıt</th>
-                                            <th class="text-center">Aparat Adedi</th>
-                                            <th class="text-center">Hasarlı</th>
-                                            <th class="text-center">Kayıp</th>
+                                            <th data-filter="select">İşlem</th>
+                                            <th data-filter="select">Aparat</th>
+                                            <th class="text-center" data-filter="number">Kayıt</th>
+                                            <th class="text-center" data-filter="number">Aparat Adedi</th>
+                                            <th class="text-center" data-filter="number">Hasarlı</th>
+                                            <th class="text-center" data-filter="number">Kayıp</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        <tr><td colspan="6" class="text-center text-muted py-3">Sorgulayın.</td></tr>
-                                    </tbody>
+                                    <tbody></tbody>
                                 </table>
                             </div>
                         </div>
@@ -509,16 +541,14 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                                 <table class="table table-sm align-middle mb-0" id="tabloApiKarsilastirma">
                                     <thead class="table-light">
                                         <tr>
-                                            <th>Tarih</th>
-                                            <th>Ekip</th>
-                                            <th class="text-center">API</th>
-                                            <th class="text-center">Panel</th>
-                                            <th class="text-center">Fark</th>
+                                            <th data-filter="date">Tarih</th>
+                                            <th data-filter="select">Ekip</th>
+                                            <th class="text-center" data-filter="number">API</th>
+                                            <th class="text-center" data-filter="number">Panel</th>
+                                            <th class="text-center" data-filter="number">Fark</th>
                                         </tr>
                                     </thead>
-                                    <tbody>
-                                        <tr><td colspan="5" class="text-center text-muted py-3">Dönemsel özet tarihleri kullanılır.</td></tr>
-                                    </tbody>
+                                    <tbody></tbody>
                                 </table>
                             </div>
                         </div>
@@ -543,12 +573,12 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                             <table class="table table-sm table-hover align-middle mb-0" id="tabloTipler">
                                 <thead class="table-light">
                                     <tr>
-                                        <th class="text-center">Sıra</th>
-                                        <th>Ad</th>
-                                        <th>Kod</th>
-                                        <th>Renk</th>
-                                        <th>Açıklama</th>
-                                        <th>Durum</th>
+                                        <th class="text-center" data-filter="number">Sıra</th>
+                                        <th data-filter="string">Ad</th>
+                                        <th data-filter="string">Kod</th>
+                                        <th data-filter="select">Renk</th>
+                                        <th data-filter="string">Açıklama</th>
+                                        <th data-filter="select">Durum</th>
                                         <th class="text-end">İşlem</th>
                                     </tr>
                                 </thead>
