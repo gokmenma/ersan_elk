@@ -487,13 +487,26 @@ class KacakKontrolModel extends Model
         return (int) $stmt->fetchColumn();
     }
 
-    public function addPhoto(int $kacakId, string $tur, string $dosyaYolu, ?string $orijinalAd = null, ?int $personelId = null, ?int $userId = null): int
+    public function addPhoto(int $kacakId, string $tur, string $dosyaYolu, ?string $orijinalAd = null, ?int $personelId = null, ?int $userId = null, ?int $clientSira = null): int
     {
         $stmt = $this->db->prepare("INSERT INTO kacak_kontrol_fotograflari
-            (firma_id, kacak_id, tur, dosya_yolu, orijinal_ad, yukleyen_personel_id, yukleyen_user_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$this->firmaId(), $kacakId, $tur, $dosyaYolu, $orijinalAd, $personelId, $userId]);
+            (firma_id, kacak_id, tur, client_sira, dosya_yolu, orijinal_ad, yukleyen_personel_id, yukleyen_user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([$this->firmaId(), $kacakId, $tur, $clientSira, $dosyaYolu, $orijinalAd, $personelId, $userId]);
         return (int) $this->db->lastInsertId();
+    }
+
+    /**
+     * Parçalı yüklemede aynı sıradaki fotoğrafın tekrar kaydedilmemesi için kullanılır.
+     */
+    public function findPhotoBySira(int $kacakId, string $tur, int $clientSira): ?array
+    {
+        $stmt = $this->db->prepare("SELECT * FROM kacak_kontrol_fotograflari
+                                    WHERE firma_id = ? AND kacak_id = ? AND tur = ? AND client_sira = ?
+                                    LIMIT 1");
+        $stmt->execute([$this->firmaId(), $kacakId, $tur, $clientSira]);
+        $row = $stmt->fetch(PDO::FETCH_ASSOC);
+        return $row ?: null;
     }
 
     public function getPhoto(int $fotoId): ?array

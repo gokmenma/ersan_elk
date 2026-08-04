@@ -308,9 +308,16 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
         function kuyrukKartHtml(k) {
             const o = k.ozet || {};
             const hataMi = k.durum === 'hata';
+            const ekToplam = (k.ekDosyalar || []).length;
             const rozet = hataMi
                 ? '<span class="text-xs font-bold text-red-600">Gönderilemedi</span>'
-                : '<span class="text-xs font-bold text-slate-500">Gönderilmeyi bekliyor</span>';
+                : (k.anaGonderildi
+                    ? `<span class="text-xs font-bold text-amber-700">Fotoğraflar yükleniyor · ${k.ekGonderilen || 0}/${ekToplam}</span>`
+                    : '<span class="text-xs font-bold text-slate-500">Gönderilmeyi bekliyor</span>');
+
+            const ilerlemeSatiri = (k.anaGonderildi && ekToplam > 0)
+                ? `<p class="text-xs text-slate-400 mt-1">Tutanak sunucuya ulaştı, kalan ${ekToplam - (k.ekGonderilen || 0)} fotoğraf gönderilecek.</p>`
+                : '';
 
             const hataSatiri = hataMi
                 ? `<p class="text-xs text-red-600 mt-2">${esc(k.hata || 'Sunucu kaydı kabul etmedi.')}</p>`
@@ -336,6 +343,7 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
                 <p class="text-xs text-slate-400 mt-1">
                     ${esc(o.tarih_formatted || '-')} · ${esc(o.ilce || 'İlçe yok')} · No: ${esc(o.tutanak_no || '-')} ${fotoSatiri}
                 </p>
+                ${ilerlemeSatiri}
                 ${hataSatiri}
                 <div class="flex items-center gap-2 mt-3">
                     ${tekrarBtn}
@@ -423,11 +431,14 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
         };
 
         window.kacakKuyrukSil = async function (uuid) {
-            const onay = await Alert.confirm(
-                'Kaydı Sil',
-                'Bu tutanak henüz sunucuya gönderilmedi. Silerseniz fotoğraflarıyla birlikte kaybolur. Silmek istiyor musunuz?',
-                'Sil', 'Vazgeç'
-            );
+            const kayit = bekleyenKayitlar.find(k => k.uuid === uuid);
+            const kalan = kayit ? (kayit.ekDosyalar || []).length - (kayit.ekGonderilen || 0) : 0;
+
+            const mesaj = (kayit && kayit.anaGonderildi)
+                ? `Bu tutanak sunucuya ulaştı, silmek onu geri almaz. Sadece henüz gönderilmemiş ${kalan} fotoğraf kaybolur. Devam edilsin mi?`
+                : 'Bu tutanak henüz sunucuya gönderilmedi. Silerseniz fotoğraflarıyla birlikte kaybolur. Silmek istiyor musunuz?';
+
+            const onay = await Alert.confirm('Kaydı Sil', mesaj, 'Sil', 'Vazgeç');
             if (!onay) return;
 
             await OfflineQueue.sil(uuid);
@@ -737,19 +748,37 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
         }
 
         // Kuyruk yazması başarısız olduğunda (cihaz depolaması dolu, IndexedDB
-        // engelli vb.) kullanılan emniyet yolu: kayıt doğrudan sunucuya gönderilir.
-        async function dogrudanGonder(alanlar, dosyalar) {
-            const fd = new FormData();
-            fd.append('action', 'saveKacakBildirim');
-            Object.keys(alanlar).forEach(ad => fd.append(ad, alanlar[ad]));
-            dosyalar.forEach(d => fd.append(d.alan, d.blob, d.ad));
+        // engelli vb.) kullanılan emniyet yolu. Kuyruktaki gibi parçalı gönderir:
+        // önce kayıt + tutanak, sonra saha fotoğrafları teker teker.
+        async function dogrudanGonder(alanlar, dosyalar, sahaFotolari) {
+            if (!alanlar.client_uuid) {
+                alanlar.client_uuid = OfflineQueue.uuid();
+            }
 
-            const yanit = await fetch('api.php?action=saveKacakBildirim', {
-                method: 'POST',
-                body: fd,
-                credentials: 'same-origin',
-            });
-            return await yanit.json();
+            const ana = await OfflineQueue.istekGonder('saveKacakBildirim', alanlar, dosyalar, 'kayıt');
+            if (ana.sonuc !== 'tamam') {
+                return { success: false, message: ana.mesaj };
+            }
+
+            let eksik = 0;
+            for (let i = 0; i < sahaFotolari.length; i++) {
+                const f = sahaFotolari[i];
+                const cevap = await OfflineQueue.istekGonder(
+                    'addKacakSahaFoto',
+                    { client_uuid: alanlar.client_uuid, sira: i },
+                    [{ alan: 'foto', ad: f.ad, tip: f.tip, blob: f.blob }],
+                    `fotoğraf ${i + 1}/${sahaFotolari.length}`
+                );
+                if (cevap.sonuc !== 'tamam') eksik++;
+            }
+
+            return {
+                success: true,
+                eksik,
+                message: eksik > 0
+                    ? `Tutanak kaydedildi ancak ${eksik} fotoğraf gönderilemedi.`
+                    : 'Bildiriminiz iletildi. Yönetici onayı bekleniyor.',
+            };
         }
 
         // ----- Form gönderimi -----
@@ -781,9 +810,11 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
                 const tutanak = await OfflineQueue.fotografKucult(tutanakInput.files[0], 2200, 0.82);
                 const dosyalar = [{ alan: 'tutanak_foto', ad: tutanak.ad, tip: tutanak.tip, blob: tutanak.blob }];
 
+                // Saha fotoğrafları ana istekle değil, her biri ayrı istekle gider.
+                const sahaFotolari = [];
                 for (const dosya of sahaDosyalari) {
                     const kucuk = await OfflineQueue.fotografKucult(dosya, 1600, 0.7);
-                    dosyalar.push({ alan: 'saha_fotolari[]', ad: kucuk.ad, tip: kucuk.tip, blob: kucuk.blob });
+                    sahaFotolari.push({ ad: kucuk.ad, tip: kucuk.tip, blob: kucuk.blob });
                 }
 
                 const ozet = {
@@ -792,14 +823,18 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
                     tutanak_no: alanlar.tutanak_no,
                     abone_adi: alanlar.abone_adi,
                     tarih_formatted: (alanlar.tarih || '').split('-').reverse().join('.'),
-                    foto_sayisi: dosyalar.length,
+                    foto_sayisi: dosyalar.length + sahaFotolari.length,
                 };
 
                 btnText.textContent = 'GÖNDERİLİYOR...';
 
                 let kayit;
                 try {
-                    kayit = await OfflineQueue.ekle('saveKacakBildirim', alanlar, dosyalar, ozet);
+                    kayit = await OfflineQueue.ekle('saveKacakBildirim', alanlar, dosyalar, ozet, {
+                        action: 'addKacakSahaFoto',
+                        alan: 'foto',
+                        dosyalar: sahaFotolari,
+                    });
                 } catch (kuyrukHatasi) {
                     console.error('Kuyruğa yazılamadı:', kuyrukHatasi);
 
@@ -810,7 +845,7 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
 
                     let res;
                     try {
-                        res = await dogrudanGonder(alanlar, dosyalar);
+                        res = await dogrudanGonder(alanlar, dosyalar, sahaFotolari);
                     } catch (agHatasi) {
                         console.error('Doğrudan gönderim hatası:', agHatasi);
                         return Alert.error('Gönderilemedi',

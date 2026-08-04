@@ -4521,6 +4521,77 @@ try {
             ]);
             break;
 
+        // Saha fotoğrafları tek tek gönderilir; büyük tek istek zayıf sahada
+        // gövde/zaman limitlerine takılıyordu. Her istek kendi başına idempotenttir.
+        case 'addKacakSahaFoto':
+            if (stripos($personel->departman ?? '', 'Kaçak') === false) {
+                response(false, null, 'Bu işlem için yetkiniz bulunmuyor.');
+            }
+
+            $KacakModel = new \App\Model\KacakKontrolModel();
+
+            if (empty($_POST) && !empty($_SERVER['CONTENT_LENGTH'])) {
+                error_log(sprintf(
+                    'PWA kaçak saha fotoğrafı PHP sınırında düştü: content_length=%s upload_max_filesize=%s personel=%s',
+                    $_SERVER['CONTENT_LENGTH'],
+                    ini_get('upload_max_filesize'),
+                    $personel_id
+                ));
+                response(false, null, 'Fotoğrafın boyutu sunucu yükleme sınırını aşıyor.');
+            }
+
+            $sahaUuid = trim((string) ($_POST['client_uuid'] ?? ''));
+            if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $sahaUuid)) {
+                response(false, null, 'Geçersiz kayıt anahtarı.');
+            }
+
+            $sahaKayit = $KacakModel->findByClientUuid($sahaUuid);
+            if (!$sahaKayit) {
+                response(false, null, 'Fotoğrafın ekleneceği tutanak bulunamadı.');
+            }
+
+            if ((int) $sahaKayit['bildiren_personel_id'] !== (int) $personel_id) {
+                error_log('PWA kaçak saha fotoğrafı yetkisiz eklenmeye çalışıldı: kacak_id=' . $sahaKayit['id'] . ' personel=' . $personel_id);
+                response(false, null, 'Bu tutanağa fotoğraf ekleme yetkiniz yok.');
+            }
+
+            $sahaSira = (int) ($_POST['sira'] ?? -1);
+            if ($sahaSira < 0 || $sahaSira >= \App\Model\KacakKontrolModel::MAX_SAHA_FOTO) {
+                response(false, null, 'Geçersiz fotoğraf sırası.');
+            }
+
+            $sahaKacakId = (int) $sahaKayit['id'];
+
+            if ($KacakModel->findPhotoBySira($sahaKacakId, 'saha', $sahaSira)) {
+                response(true, ['id' => $sahaKacakId, 'tekrar' => true], 'Bu fotoğraf zaten yüklenmişti.');
+            }
+
+            if ($KacakModel->countPhotos($sahaKacakId, 'saha') >= \App\Model\KacakKontrolModel::MAX_SAHA_FOTO) {
+                response(false, null, 'Bu tutanak için fotoğraf sınırına ulaşıldı.');
+            }
+
+            if (empty($_FILES['foto']['name'])) {
+                response(false, null, 'Fotoğraf dosyası gelmedi.');
+            }
+
+            try {
+                $sahaYol = $KacakModel->storeUploadedFile($_FILES['foto'], $sahaKacakId, 'saha');
+                $KacakModel->addPhoto($sahaKacakId, 'saha', $sahaYol, $_FILES['foto']['name'], (int) $personel_id, null, $sahaSira);
+            } catch (\Throwable $e) {
+                if ($KacakModel->findPhotoBySira($sahaKacakId, 'saha', $sahaSira)) {
+                    response(true, ['id' => $sahaKacakId, 'tekrar' => true], 'Bu fotoğraf zaten yüklenmişti.');
+                }
+                error_log('PWA kaçak saha fotoğrafı yüklenemedi (parçalı): kacak_id=' . $sahaKacakId . ' sira=' . $sahaSira . ' hata=' . $e->getMessage());
+                response(false, null, 'Fotoğraf kaydedilemedi.');
+            }
+
+            response(true, [
+                'id' => $sahaKacakId,
+                'sira' => $sahaSira,
+                'toplam' => $KacakModel->countPhotos($sahaKacakId, 'saha'),
+            ], 'Fotoğraf eklendi.');
+            break;
+
         case 'saveKacakBildirim':
             if (stripos($personel->departman ?? '', 'Kaçak') === false) {
                 response(false, null, 'Bu işlem için yetkiniz bulunmuyor.');

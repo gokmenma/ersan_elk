@@ -113,16 +113,25 @@
      * Kuyruğa yeni bir işlem ekler.
      * @param {string} action    api.php action adı
      * @param {object} alanlar   düz metin form alanları
-     * @param {Array}  dosyalar  [{alan, ad, tip, blob}]
+     * @param {Array}  dosyalar  [{alan, ad, tip, blob}] ana istekle giden dosyalar
      * @param {object} ozet      listede gösterim için serbest alanlar
+     * @param {object} ek        {action, alan, dosyalar[]} ana istekten sonra
+     *                           her biri ayrı istekle gönderilecek dosyalar
      */
-    function ekle(action, alanlar, dosyalar, ozet) {
+    function ekle(action, alanlar, dosyalar, ozet, ek) {
+        ek = ek || {};
+
         var kayit = {
             uuid: uuidUret(),
             action: action,
             alanlar: alanlar || {},
             dosyalar: dosyalar || [],
             ozet: ozet || {},
+            ekAction: ek.action || "",
+            ekAlan: ek.alan || "",
+            ekDosyalar: ek.dosyalar || [],
+            anaGonderildi: false,
+            ekGonderilen: 0,
             durum: "bekliyor",
             deneme: 0,
             hata: "",
@@ -161,14 +170,14 @@
      *  - bekle   : ağ/oturum kaynaklı geçici sorun, kayıt kuyrukta kalır
      *  - kalici  : sunucu kaydı reddetti (mükerrer, doğrulama), kullanıcı müdahalesi gerekir
      */
-    function gonder(kayit) {
+    function istekGonder(action, alanlar, dosyalar, etiket) {
         var fd = new FormData();
-        fd.append("action", kayit.action);
+        fd.append("action", action);
 
-        Object.keys(kayit.alanlar || {}).forEach(function (k) {
-            fd.append(k, kayit.alanlar[k]);
+        Object.keys(alanlar || {}).forEach(function (k) {
+            fd.append(k, alanlar[k]);
         });
-        (kayit.dosyalar || []).forEach(function (d) {
+        (dosyalar || []).forEach(function (d) {
             fd.append(d.alan, d.blob, d.ad);
         });
 
@@ -179,15 +188,12 @@
             cache: "no-store",
         }).then(function (yanit) {
             if (!yanit.ok) {
-                return {
-                    sonuc: "bekle",
-                    mesaj: "Sunucu HTTP " + yanit.status + " döndü (" + boyutMetni(kayit) + ")",
-                };
+                return { sonuc: "bekle", mesaj: "Sunucu HTTP " + yanit.status + " döndü [" + etiket + "]" };
             }
             return yanit.json().then(function (json) {
                 // Service worker çevrimdışıyken sahte yanıt üretiyor olabilir.
                 if (json && json.offline) {
-                    return { sonuc: "bekle", mesaj: "İstek tamamlanamadı (" + boyutMetni(kayit) + ")" };
+                    return { sonuc: "bekle", mesaj: "İstek tamamlanamadı [" + etiket + "]" };
                 }
                 if (json && json.success) {
                     return { sonuc: "tamam", veri: json.data };
@@ -195,22 +201,75 @@
 
                 var mesaj = (json && (json.message || json.error)) || "Kayıt gönderilemedi.";
                 var oturumSorunu = (json && json.redirect) || /oturum/i.test(mesaj);
-                return { sonuc: oturumSorunu ? "bekle" : "kalici", mesaj: mesaj };
+                return { sonuc: oturumSorunu ? "bekle" : "kalici", mesaj: mesaj + " [" + etiket + "]" };
             }).catch(function () {
                 // JSON yerine login sayfası gibi bir HTML dönmüşse oturum düşmüştür.
-                return { sonuc: "bekle", mesaj: "Oturum doğrulanamadı" };
+                return { sonuc: "bekle", mesaj: "Oturum doğrulanamadı [" + etiket + "]" };
             });
         }).catch(function (e) {
             var sebep = (e && e.message) || "bilinmeyen";
-            return { sonuc: "bekle", mesaj: "Ağ hatası: " + sebep + " (" + boyutMetni(kayit) + ")" };
+            return { sonuc: "bekle", mesaj: "Ağ hatası: " + sebep + " [" + etiket + "]" };
         });
     }
 
-    function boyutMetni(kayit) {
-        var toplam = (kayit.dosyalar || []).reduce(function (t, d) {
-            return t + ((d.blob && d.blob.size) || 0);
-        }, 0);
-        return (kayit.dosyalar || []).length + " dosya, " + (toplam / 1048576).toFixed(1) + " MB";
+    function mbMetni(blob) {
+        return (((blob && blob.size) || 0) / 1048576).toFixed(1) + " MB";
+    }
+
+    /**
+     * Önce ana istek (kayıt + zorunlu dosya), ardından ek dosyalar teker teker
+     * gönderilir. Tek büyük istek zayıf sahada gövde ve süre limitlerine
+     * takılıyordu; parçalara bölününce her istek küçük kalıyor.
+     *
+     * Her adımın sonucu diske yazıldığı için uygulama kapanırsa kaldığı
+     * fotoğraftan devam edilir, tamamlananlar ikinci kez yüklenmez.
+     */
+    function gonder(kayit) {
+        var ilk = Promise.resolve({ sonuc: "tamam" });
+
+        if (!kayit.anaGonderildi) {
+            var anaBoyut = (kayit.dosyalar || []).reduce(function (t, d) {
+                return t + ((d.blob && d.blob.size) || 0);
+            }, 0);
+
+            ilk = istekGonder(
+                kayit.action,
+                kayit.alanlar,
+                kayit.dosyalar,
+                "kayıt, " + (anaBoyut / 1048576).toFixed(1) + " MB"
+            ).then(function (cevap) {
+                if (cevap.sonuc !== "tamam") return cevap;
+                kayit.anaGonderildi = true;
+                return yaz(kayit).then(function () { return cevap; });
+            });
+        }
+
+        return ilk.then(function (cevap) {
+            if (cevap.sonuc !== "tamam") return cevap;
+            return ekDosyalariGonder(kayit);
+        });
+    }
+
+    function ekDosyalariGonder(kayit) {
+        var toplam = (kayit.ekDosyalar || []).length;
+
+        if (!kayit.ekAction || kayit.ekGonderilen >= toplam) {
+            return Promise.resolve({ sonuc: "tamam" });
+        }
+
+        var sira = kayit.ekGonderilen;
+        var dosya = kayit.ekDosyalar[sira];
+
+        return istekGonder(
+            kayit.ekAction,
+            { client_uuid: kayit.uuid, sira: sira },
+            [{ alan: kayit.ekAlan, ad: dosya.ad, tip: dosya.tip, blob: dosya.blob }],
+            "fotoğraf " + (sira + 1) + "/" + toplam + ", " + mbMetni(dosya.blob)
+        ).then(function (cevap) {
+            if (cevap.sonuc !== "tamam") return cevap;
+            kayit.ekGonderilen = sira + 1;
+            return yaz(kayit).then(function () { return ekDosyalariGonder(kayit); });
+        });
     }
 
     /**
@@ -427,6 +486,8 @@
 
     var Kuyruk = {
         SYNC_ETIKETI: SYNC_ETIKETI,
+        uuid: uuidUret,
+        istekGonder: istekGonder,
         ekle: ekle,
         listele: listele,
         oku: oku,
