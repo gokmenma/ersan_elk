@@ -5402,6 +5402,16 @@ try {
                 );
             }
 
+            error_log(sprintf(
+                'PWA tanınmayan işlem: request_id=%s action=%s post_anahtarlari=%s files=%s content_length=%s personel=%s',
+                $pwaRequestId,
+                $action !== '' ? $action : '(bos)',
+                implode(',', array_keys($_POST)) ?: '(bos)',
+                implode(',', array_keys($_FILES)) ?: '(bos)',
+                $_SERVER['CONTENT_LENGTH'] ?? '0',
+                $personel_id
+            ));
+
             response(false, ['request_id' => $pwaRequestId], 'Geçersiz veya tanınmayan işlem talebi. (Hata Kodu: ' . $pwaRequestId . ')');
     }
 } catch (Throwable $e) {

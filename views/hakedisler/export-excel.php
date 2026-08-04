@@ -52,6 +52,29 @@ try {
 
     $sozlesme_id = $hakedis['sozlesme_id'];
 
+    // Ön kapakta gösterilecek iş artış/azalış ve süre uzatımı bilgileri
+    $stmtRevizyonlar = $db->prepare("
+        SELECT r.revizyon_no, r.revizyon_tarihi, r.karar_no, r.aciklama,
+               COALESCE(SUM(rk.degisim_miktari * rk.birim_fiyat), 0) AS tutar_farki
+        FROM hakedis_is_revizyonlari r
+        LEFT JOIN hakedis_is_revizyon_kalemleri rk ON rk.revizyon_id = r.id
+        WHERE r.sozlesme_id = ?
+        GROUP BY r.id, r.revizyon_no, r.revizyon_tarihi, r.karar_no, r.aciklama
+        ORDER BY r.revizyon_no, r.id
+    ");
+    $stmtRevizyonlar->execute([$sozlesme_id]);
+    $isRevizyonlari = $stmtRevizyonlar->fetchAll(PDO::FETCH_ASSOC);
+
+    $stmtSonSureUzatimi = $db->prepare("
+        SELECT yeni_bitis_tarihi
+        FROM hakedis_sure_uzatimlari
+        WHERE sozlesme_id = ?
+        ORDER BY uzatim_no DESC, id DESC
+        LIMIT 1
+    ");
+    $stmtSonSureUzatimi->execute([$sozlesme_id]);
+    $sonSureUzatimiTarihi = $stmtSonSureUzatimi->fetchColumn() ?: null;
+
     // Önceki hakedişlerin toplamını hesapla (D23 için - shifted)
     $stmtPrevTotal = $db->prepare("
         SELECT SUM(hm.miktar * hk.teklif_edilen_birim_fiyat) as toplam
@@ -421,8 +444,43 @@ try {
              $sheetOnKapak->setCellValue('F29', $st . ' Tarihli Sözleşme');
         }
 
-        $sheetOnKapak->setCellValue('F30', $hakedis['yuzde_yirmi_fazla_is'] ?? '');
-        $sheetOnKapak->setCellValue('D35', $hakedis['son_sure_uzatimi'] ?? '');
+        $toplamIsArtisTutari = 0.0;
+        $onayVeKararlar = [];
+        foreach ($isRevizyonlari as $revizyon) {
+            $toplamIsArtisTutari += floatval($revizyon['tutar_farki']);
+
+            $kararMetni = [];
+            if (!empty($revizyon['revizyon_tarihi'])) {
+                $kararMetni[] = (new \DateTime($revizyon['revizyon_tarihi']))->format('d.m.Y') . ' Tarihli';
+            }
+            if (!empty($revizyon['karar_no'])) {
+                $kararMetni[] = $revizyon['karar_no'] . ' Sayılı';
+            }
+            $kararMetni[] = !empty($revizyon['aciklama']) ? $revizyon['aciklama'] : 'İş Artış/Azalış Kararı';
+            $onayVeKararlar[] = implode(' ', $kararMetni);
+        }
+
+        if ($isRevizyonlari) {
+            $sozlesmeBedeli = floatval($hakedis['sozlesme_bedeli'] ?? 0);
+            $artisOrani = $sozlesmeBedeli > 0 ? abs($toplamIsArtisTutari / $sozlesmeBedeli * 100) : 0;
+            $islemAdi = $toplamIsArtisTutari < 0 ? 'İŞ AZALIŞI' : 'FAZLA İŞ';
+
+            $sheetOnKapak->setCellValue('A30', '% ' . number_format($artisOrani, 2, ',', '.') . ' ' . $islemAdi);
+            $sheetOnKapak->setCellValue('D30', $toplamIsArtisTutari);
+            $sheetOnKapak->setCellValue('F30', implode("\n", $onayVeKararlar));
+            $sheetOnKapak->setCellValue('D31', '=D29+D30');
+            $sheetOnKapak->getStyle('F30')->getAlignment()->setWrapText(true);
+        } else {
+            $sheetOnKapak->setCellValue('A30', '');
+            $sheetOnKapak->setCellValue('D30', '');
+            $sheetOnKapak->setCellValue('F30', '');
+        }
+
+        if ($sonSureUzatimiTarihi) {
+            setExcelDate($sheetOnKapak, 'D35', $sonSureUzatimiTarihi);
+        } else {
+            $sheetOnKapak->setCellValue('D35', '');
+        }
         
         //setExcelDate($sheetOnKapak, 'G41', $hakedis['isin_bitecegi_tarih']);
         setExcelDate($sheetOnKapak, 'G42', $hakedis['gecici_kabul_tarihi']);

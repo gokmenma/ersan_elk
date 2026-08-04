@@ -5,7 +5,7 @@
 
 // pwa-offline-queue.js importScripts ile sürümsüz yükleniyor; o dosya her
 // değiştiğinde service worker'ın yeni kodu alması için bu sürüm artırılmalı.
-const CACHE_NAME = "personel-pwa-v10";
+const CACHE_NAME = "personel-pwa-v11";
 const SAYFA_CACHE = "personel-pwa-sayfa-v1";
 const OFFLINE_URL = "offline.html";
 

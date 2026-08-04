@@ -181,7 +181,10 @@
             fd.append(d.alan, d.blob, d.ad);
         });
 
-        return fetch(API_URL, {
+        // action hem gövdede hem adreste gönderilir: gövde ayrıştırılamazsa
+        // sunucu isteği yine de doğru uca yönlendirebilir, ayrıca erişim
+        // kayıtlarında hangi işlemin denendiği görünür.
+        return fetch(API_URL + "?action=" + encodeURIComponent(action), {
             method: "POST",
             body: fd,
             credentials: "same-origin",
