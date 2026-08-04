@@ -4529,6 +4529,13 @@ try {
             $KacakModel = new \App\Model\KacakKontrolModel();
 
             if (empty($_POST) && !empty($_SERVER['CONTENT_LENGTH'])) {
+                error_log(sprintf(
+                    'PWA kaçak yüklemesi PHP sınırında düştü: content_length=%s post_max_size=%s upload_max_filesize=%s personel=%s',
+                    $_SERVER['CONTENT_LENGTH'],
+                    ini_get('post_max_size'),
+                    ini_get('upload_max_filesize'),
+                    $personel_id
+                ));
                 response(false, null, 'Yüklenen fotoğrafların toplam boyutu sunucu yükleme sınırını aşıyor. Lütfen fotoğrafların boyutunu küçültün veya daha az fotoğraf seçin.');
             }
 
@@ -4647,13 +4654,22 @@ try {
                 response(false, null, 'Tutanak fotoğrafı yüklenemediği için bildirim kaydedilmedi. Lütfen tekrar deneyin.');
             }
 
+            $sahaAdet = 0;
+            $sahaGonderilen = 0;
             if (!empty($_FILES['saha_fotolari']) && is_array($_FILES['saha_fotolari']['name'])) {
-                $sahaAdet = 0;
+                $sahaGonderilen = count($_FILES['saha_fotolari']['name']);
                 foreach ($_FILES['saha_fotolari']['name'] as $i => $ad) {
                     if ($sahaAdet >= \App\Model\KacakKontrolModel::MAX_SAHA_FOTO) {
                         break;
                     }
                     if (empty($ad) || $_FILES['saha_fotolari']['error'][$i] !== UPLOAD_ERR_OK) {
+                        error_log(sprintf(
+                            'PWA kaçak saha fotoğrafı atlandı: kacak_id=%d sira=%d ad=%s upload_error=%s',
+                            $kacakId,
+                            $i,
+                            $ad !== '' ? $ad : '(bos)',
+                            $_FILES['saha_fotolari']['error'][$i] ?? 'yok'
+                        ));
                         continue;
                     }
                     try {
@@ -4702,7 +4718,20 @@ try {
                 error_log('Kaçak bildirimi loglanamadı: ' . $e->getMessage());
             }
 
-            response(true, ['id' => $kacakId], 'Bildiriminiz iletildi. Yönetici onayı bekleniyor.');
+            if ($sahaGonderilen > $sahaAdet) {
+                error_log(sprintf(
+                    'PWA kaçak saha fotoğrafı eksik kaydedildi: kacak_id=%d gonderilen=%d kaydedilen=%d',
+                    $kacakId,
+                    $sahaGonderilen,
+                    $sahaAdet
+                ));
+            }
+
+            response(true, [
+                'id' => $kacakId,
+                'saha_gonderilen' => $sahaGonderilen,
+                'saha_kaydedilen' => $sahaAdet,
+            ], 'Bildiriminiz iletildi. Yönetici onayı bekleniyor.');
             break;
 
         // ============ Araç KM Bildirim İşlemleri ============

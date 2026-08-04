@@ -179,12 +179,15 @@
             cache: "no-store",
         }).then(function (yanit) {
             if (!yanit.ok) {
-                return { sonuc: "bekle", mesaj: "Sunucu yanıtı: " + yanit.status };
+                return {
+                    sonuc: "bekle",
+                    mesaj: "Sunucu HTTP " + yanit.status + " döndü (" + boyutMetni(kayit) + ")",
+                };
             }
             return yanit.json().then(function (json) {
                 // Service worker çevrimdışıyken sahte yanıt üretiyor olabilir.
                 if (json && json.offline) {
-                    return { sonuc: "bekle", mesaj: "Bağlantı yok" };
+                    return { sonuc: "bekle", mesaj: "İstek tamamlanamadı (" + boyutMetni(kayit) + ")" };
                 }
                 if (json && json.success) {
                     return { sonuc: "tamam", veri: json.data };
@@ -198,8 +201,16 @@
                 return { sonuc: "bekle", mesaj: "Oturum doğrulanamadı" };
             });
         }).catch(function (e) {
-            return { sonuc: "bekle", mesaj: (e && e.message) || "Bağlantı hatası" };
+            var sebep = (e && e.message) || "bilinmeyen";
+            return { sonuc: "bekle", mesaj: "Ağ hatası: " + sebep + " (" + boyutMetni(kayit) + ")" };
         });
+    }
+
+    function boyutMetni(kayit) {
+        var toplam = (kayit.dosyalar || []).reduce(function (t, d) {
+            return t + ((d.blob && d.blob.size) || 0);
+        }, 0);
+        return (kayit.dosyalar || []).length + " dosya, " + (toplam / 1048576).toFixed(1) + " MB";
     }
 
     /**

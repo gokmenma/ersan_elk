@@ -3,7 +3,9 @@
  * Offline desteği ve önbellekleme
  */
 
-const CACHE_NAME = "personel-pwa-v8";
+// pwa-offline-queue.js importScripts ile sürümsüz yükleniyor; o dosya her
+// değiştiğinde service worker'ın yeni kodu alması için bu sürüm artırılmalı.
+const CACHE_NAME = "personel-pwa-v9";
 const SAYFA_CACHE = "personel-pwa-sayfa-v1";
 const OFFLINE_URL = "offline.html";
 

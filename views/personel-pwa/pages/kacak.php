@@ -314,7 +314,9 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
 
             const hataSatiri = hataMi
                 ? `<p class="text-xs text-red-600 mt-2">${esc(k.hata || 'Sunucu kaydı kabul etmedi.')}</p>`
-                : '';
+                : (k.hata
+                    ? `<p class="text-xs text-amber-700 mt-2">${esc(k.hata)}${k.deneme ? ` · ${k.deneme}. deneme` : ''}</p>`
+                    : '');
 
             const tekrarBtn = hataMi
                 ? `<button type="button" onclick="kacakKuyrukTekrar('${esc(k.uuid)}')"
@@ -845,8 +847,9 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
                 if (kalan.durum === 'hata') {
                     return Alert.error('Gönderilemedi', kalan.hata || 'Sunucu kaydı kabul etmedi.');
                 }
-                Alert.warning('Bağlantı Sorunu',
-                    'Tutanak telefonunuza kaydedildi ancak gönderilemedi. Bağlantı düzeldiğinde otomatik gönderilecek.');
+                Alert.warning('Gönderilemedi',
+                    'Tutanak telefonunuza kaydedildi ancak sunucuya iletilemedi, bağlantı düzeldiğinde otomatik gönderilecek.'
+                    + (kalan.hata ? '\n\nSebep: ' + kalan.hata : ''));
             } catch (err) {
                 console.error('Kaçak bildirim hatası:', err);
                 Alert.error('Hata', 'İşlem tamamlanamadı. Lütfen tekrar deneyin.');
