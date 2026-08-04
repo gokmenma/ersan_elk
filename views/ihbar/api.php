@@ -8,6 +8,7 @@ require_once dirname(__DIR__, 2) . '/Autoloader.php';
 use App\Model\IhbarModel;
 use App\Model\UserModel;
 use App\Model\BildirimModel;
+use App\Model\UserNotificationPreferenceModel;
 use App\Helper\Security;
 use App\Service\Gate;
 use App\Service\PushNotificationService;
@@ -63,7 +64,8 @@ function ihbarNotifyYeniIhbar(int $ihbarId, string $ozetMetin): void
                 $ozetMetin,
                 'index.php?p=ihbar/list',
                 'alert-triangle',
-                'danger'
+                'danger',
+                UserNotificationPreferenceModel::TYPE_IHBAR_CREATED
             );
 
             $pushService = new PushNotificationService();
@@ -71,7 +73,7 @@ function ihbarNotifyYeniIhbar(int $ihbarId, string $ozetMetin): void
                 'title' => '📣 Yeni İhbar',
                 'body' => $ozetMetin,
                 'url' => 'index.php?p=ihbar/list'
-            ], true);
+            ], true, UserNotificationPreferenceModel::TYPE_IHBAR_CREATED);
         } catch (Exception $e) {
             error_log('İhbar bildirim hatası (sorumlu): ' . $e->getMessage());
         }

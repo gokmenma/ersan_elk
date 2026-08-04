@@ -656,6 +656,9 @@ $(document).ready(function() {
                 }
                 res.data.forEach((r, i) => {
                     const turBadge = r.hedef_tur === 'sabah' ? '<span class="badge bg-soft-warning text-warning"><i class="bx bx-sun"></i> Sabah</span>' : '<span class="badge bg-soft-info text-info"><i class="bx bx-moon"></i> Akşam</span>';
+                    const aksamEksikBadge = Number(r.son_30_gun_aksam_eksik || 0) > 0
+                        ? `<br><span class="badge bg-soft-danger text-danger mt-1">Son 30 gün: ${r.son_30_gun_aksam_eksik} akşam eksik</span>`
+                        : '';
                     const rowId = `row_un_${r.personel_id}_${r.hedef_tarih}_${r.hedef_tur}`;
                     body.append(`
                         <tr>
@@ -669,7 +672,7 @@ $(document).ready(function() {
                                     <label for="${rowId}" class="custom-check mb-0"></label>
                                 </div>
                             </td>
-                            <td><span class="fw-bold">${r.personel_adi}</span></td>
+                            <td><span class="fw-bold">${r.personel_adi}</span>${aksamEksikBadge}</td>
                             <td><span class="badge bg-light text-dark border">${r.plaka}</span></td>
                             <td>${r.hedef_tarih.split('-').reverse().join('.')}</td>
                             <td><span class="fw-bold text-danger">${r.gecikme_turu}</span> <br> ${turBadge}</td>

@@ -944,7 +944,7 @@ use App\Helper\Helper;
                 } else {
                     if (response.data && response.data.requires_morning_km) {
                         Toast.show(response.message, 'warning');
-                        openKmBildirModal(null, true);
+                        openKmBildirModal(null, true, false, response.data.missing_yesterday_evening_km === true);
                     } else {
                         Toast.show(response.message || 'Görev başlatılamadı', 'error');
                     }
@@ -966,7 +966,32 @@ use App\Helper\Helper;
             }
         }
 
-        async function gorevBitir() {
+        async function gorevBitir(kmHatirlatmayiAtla = false) {
+            if (!kmHatirlatmayiAtla) {
+                try {
+                    const kmStatus = await API.request('get-evening-km-status', {}, false);
+                    if (kmStatus.success && kmStatus.data.has_active_vehicle && !kmStatus.data.reported) {
+                        const kmBildir = await Alert.confirm(
+                            'Akşam KM Bildirimi',
+                            `${kmStatus.data.plaka} plakalı aracın akşam KM bildirimi henüz yapılmadı. Şimdi bildirmek ister misiniz?`,
+                            'Akşam KM Bildir',
+                            'Şimdi Değil'
+                        );
+
+                        if (kmBildir) {
+                            openKmBildirModal(null, false, true);
+                            return;
+                        }
+
+                        API.request('log-evening-km-skip', {}, false).catch(function (error) {
+                            console.error('Akşam KM erteleme tercihi kaydedilemedi:', error);
+                        });
+                    }
+                } catch (error) {
+                    console.error('Akşam KM durumu alınamadı:', error);
+                }
+            }
+
             var confirmed = await Alert.confirm(
                 'Görevi Bitir',
                 'Görevinizi bitirmek istediğinize emin misiniz?',

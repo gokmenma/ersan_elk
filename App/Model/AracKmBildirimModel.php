@@ -216,6 +216,41 @@ class AracKmBildirimModel extends Model
         return $sql->fetchColumn() !== false;
     }
 
+    /** Aktif arac zimmeti olan personellerin son N tamamlanmis gundeki aksam eksiklerini getirir. */
+    public function getEveningMissingCounts($days = 30)
+    {
+        $days = max(1, min(90, (int) $days));
+        $sql = $this->db->prepare("SELECT
+                z.personel_id,
+                GREATEST(0,
+                    DATEDIFF(CURDATE(), GREATEST(z.zimmet_tarihi, DATE_SUB(CURDATE(), INTERVAL {$days} DAY)))
+                    - COUNT(DISTINCT b.tarih)
+                ) AS eksik_sayisi
+            FROM arac_zimmetleri z
+            LEFT JOIN {$this->table} b
+                ON b.personel_id = z.personel_id
+                AND b.arac_id = z.arac_id
+                AND b.firma_id = z.firma_id
+                AND b.tur = 'aksam'
+                AND b.durum != 'reddedildi'
+                AND b.silinme_tarihi IS NULL
+                AND b.tarih >= GREATEST(z.zimmet_tarihi, DATE_SUB(CURDATE(), INTERVAL {$days} DAY))
+                AND b.tarih < CURDATE()
+            WHERE z.firma_id = :firma_id
+            AND z.durum = 'aktif'
+            AND z.silinme_tarihi IS NULL
+            AND z.zimmet_tarihi < CURDATE()
+            GROUP BY z.personel_id, z.arac_id, z.zimmet_tarihi");
+        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
+
+        $counts = [];
+        foreach ($sql->fetchAll(PDO::FETCH_OBJ) as $row) {
+            $personelId = (int) $row->personel_id;
+            $counts[$personelId] = ($counts[$personelId] ?? 0) + (int) $row->eksik_sayisi;
+        }
+        return $counts;
+    }
+
     /**
      * Belirli bir tarih ve tür için KM bildirimi yapmayan personelleri getirir
      */

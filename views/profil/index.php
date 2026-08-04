@@ -3,6 +3,7 @@ require_once "vendor/autoload.php";
 use App\Helper\Security;
 use App\Model\UserModel;
 use App\Model\SystemLogModel;
+use App\Model\UserNotificationPreferenceModel;
 use App\Helper\Form;
 
 $User = new UserModel();
@@ -19,6 +20,11 @@ $stmt->execute([$userId]);
 $loginLogs = $stmt->fetchAll(PDO::FETCH_OBJ);
 
 $showFavoritesBar = (int) ($currentUser->show_favorites_bar ?? 1);
+$notificationPreferences = new UserNotificationPreferenceModel();
+$ihbarNotificationsEnabled = $notificationPreferences->isEnabled(
+    (int) $userId,
+    UserNotificationPreferenceModel::TYPE_IHBAR_CREATED
+);
 ?>
 
 <div class="container-fluid">
@@ -111,6 +117,24 @@ $showFavoritesBar = (int) ($currentUser->show_favorites_bar ?? 1);
                                             <div class="form-check form-switch form-switch-md mb-0">
                                                 <input class="form-check-input" type="checkbox" name="show_favorites_bar" value="1" id="showFavoritesBarSwitch" <?php echo ($showFavoritesBar === 1) ? 'checked' : ''; ?>>
                                                 <label class="form-check-label" for="showFavoritesBarSwitch"></label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <h5 class="font-size-15 mt-4 mb-1">Bildirim Tercihleri</h5>
+                                <p class="text-muted font-size-13 mb-3">Almak istediğiniz bildirim türlerini kullanıcı hesabınıza özel olarak seçebilirsiniz.</p>
+
+                                <div class="card border shadow-none mb-3">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center justify-content-between gap-3">
+                                            <div>
+                                                <h5 class="font-size-14 mb-1"><i data-feather="alert-triangle" class="icon-sm text-danger me-1"></i> Yeni Kaçak İhbarları</h5>
+                                                <p class="text-muted font-size-13 mb-0">Personel tarafından yeni bir kaçak ihbarı oluşturulduğunda uygulama içi ve tarayıcı bildirimi alın.</p>
+                                            </div>
+                                            <div class="form-check form-switch form-switch-md mb-0 flex-shrink-0">
+                                                <input class="form-check-input" type="checkbox" name="notification_ihbar_created" value="1" id="notificationIhbarCreatedSwitch" <?= $ihbarNotificationsEnabled ? 'checked' : ''; ?>>
+                                                <label class="form-check-label" for="notificationIhbarCreatedSwitch"></label>
                                             </div>
                                         </div>
                                     </div>

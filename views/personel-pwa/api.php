@@ -3351,11 +3351,19 @@ try {
                 );
 
                 if (!$sabahKmVar) {
+                    $dun = date('Y-m-d', strtotime('-1 day'));
+                    $dunkuAksamKmVar = $KmBildirimModel->hasValidReport(
+                        $personel_id,
+                        $aktifAracZimmeti->arac_id,
+                        $dun,
+                        'aksam'
+                    );
                     response(false, [
                         'requires_morning_km' => true,
                         'arac_id' => $aktifAracZimmeti->arac_id,
                         'plaka' => $aktifAracZimmeti->plaka,
-                        'tarih' => $bugun
+                        'tarih' => $bugun,
+                        'missing_yesterday_evening_km' => $aktifAracZimmeti->zimmet_tarihi <= $dun && !$dunkuAksamKmVar
                     ], $aktifAracZimmeti->plaka . ' plakalı araç için sabah KM bildirimi yapmadan göreve başlayamazsınız.');
                 }
             }
@@ -3390,6 +3398,44 @@ try {
             } else {
                 response(false, null, 'Görev başlatılamadı. Lütfen tekrar deneyin.');
             }
+            break;
+
+        case 'get-evening-km-status':
+            $AracZimmetModel = new AracZimmetModel();
+            $aktifAracZimmeti = $AracZimmetModel->getAktifZimmetByPersonel($personel_id);
+
+            if (!$aktifAracZimmeti) {
+                response(true, [
+                    'has_active_vehicle' => false,
+                    'reported' => true
+                ]);
+            }
+
+            $KmBildirimModel = new AracKmBildirimModel();
+            response(true, [
+                'has_active_vehicle' => true,
+                'reported' => $KmBildirimModel->hasValidReport(
+                    $personel_id,
+                    $aktifAracZimmeti->arac_id,
+                    date('Y-m-d'),
+                    'aksam'
+                ),
+                'plaka' => $aktifAracZimmeti->plaka
+            ]);
+            break;
+
+        case 'log-evening-km-skip':
+            $AracZimmetModel = new AracZimmetModel();
+            $aktifAracZimmeti = $AracZimmetModel->getAktifZimmetByPersonel($personel_id);
+            if ($aktifAracZimmeti) {
+                (new \App\Model\SystemLogModel())->logAction(
+                    (int) ($_SESSION['user_id'] ?? 0),
+                    'Akşam KM Hatırlatması Atlandı',
+                    'Personel #' . $personel_id . ', ' . $aktifAracZimmeti->plaka . ' plakalı araç için akşam KM bildirimini "Şimdi Değil" seçeneğiyle erteledi.',
+                    \App\Model\SystemLogModel::LEVEL_INFO
+                );
+            }
+            response(true, null, 'Tercih kaydedildi.');
             break;
 
         case 'bitirGorev':
@@ -4938,7 +4984,8 @@ try {
                         $personelAdi . ' tarafından yeni bir ihbar bildirildi.',
                         'index.php?p=ihbar/list',
                         'alert-triangle',
-                        'danger'
+                        'danger',
+                        \App\Model\UserNotificationPreferenceModel::TYPE_IHBAR_CREATED
                     );
 
                     try {
@@ -4947,7 +4994,7 @@ try {
                             'title' => '📣 Yeni İhbar',
                             'body' => $personelAdi . ' tarafından yeni bir ihbar bildirildi.',
                             'url' => 'index.php?p=ihbar/list'
-                        ], true);
+                        ], true, \App\Model\UserNotificationPreferenceModel::TYPE_IHBAR_CREATED);
                     } catch (Exception $e) {
                         error_log('İhbar push bildirim hatası: ' . $e->getMessage());
                     }

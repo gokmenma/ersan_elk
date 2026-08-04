@@ -5,6 +5,7 @@ namespace App\Service;
 use Minishlink\WebPush\WebPush;
 use Minishlink\WebPush\Subscription;
 use App\Model\PushSubscriptionModel;
+use App\Model\UserNotificationPreferenceModel;
 
 class PushNotificationService
 {
@@ -65,8 +66,15 @@ class PushNotificationService
      * @param array $payload ['title' => '...', 'body' => '...', 'url' => '...']
      * @return bool
      */
-    public function sendToUser($userId, $payload, $skipEmail = false)
+    public function sendToUser($userId, $payload, $skipEmail = false, ?string $notificationType = null)
     {
+        if ($notificationType !== null) {
+            $preferences = new UserNotificationPreferenceModel();
+            if (!$preferences->isEnabled((int) $userId, $notificationType)) {
+                return false;
+            }
+        }
+
         return $this->sendNotification('user', $userId, $payload, $skipEmail);
     }
 

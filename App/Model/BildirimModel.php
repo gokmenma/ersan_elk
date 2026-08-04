@@ -18,8 +18,15 @@ class BildirimModel extends Model
     /**
      * Kullanıcıya bildirim oluştur
      */
-    public function createNotification($userId, $title, $message, $link = null, $icon = 'bell', $color = 'primary')
+    public function createNotification($userId, $title, $message, $link = null, $icon = 'bell', $color = 'primary', ?string $notificationType = null)
     {
+        if ($notificationType !== null) {
+            $preferences = new UserNotificationPreferenceModel();
+            if (!$preferences->isEnabled((int) $userId, $notificationType)) {
+                return false;
+            }
+        }
+
         $userModel = new \App\Model\UserModel();
         $user = $userModel->find($userId);
 

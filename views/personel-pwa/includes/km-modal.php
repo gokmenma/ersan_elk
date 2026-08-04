@@ -90,7 +90,7 @@
         });
     }
 
-    async function openKmBildirModal(editData = null, zorunluSabah = false) {
+    async function openKmBildirModal(editData = null, zorunluSabah = false, gorevBitirSonrasi = false, oncekiAksamEksik = false) {
         if (!sharedAktifAracId && !editData) {
             Alert.warning('Araç Zimmeti Yok', 'Zimmetinizde aktif bir araç bulunmuyor.');
             return;
@@ -115,6 +115,12 @@
                     <form id="km-bildirim-form" class="space-y-6">
                         <input type="hidden" name="arac_id" value="${aracId}">
                         ${editData ? `<input type="hidden" name="id" value="${editData.id}">` : ''}
+                        ${oncekiAksamEksik ? `
+                            <div class="flex items-start gap-3 rounded-2xl border border-amber-200 bg-amber-50 p-4 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200">
+                                <span class="material-symbols-outlined text-xl">warning</span>
+                                <p class="text-xs font-bold leading-5">Dünkü akşam KM bildiriminiz eksik. Bugünkü başlangıç KM bilginizi eksiksiz giriniz.</p>
+                            </div>
+                        ` : ''}
                         
                         <!-- Bildirim Türü (Side-by-side Switch) -->
                         <div class="flex items-center justify-between gap-4 py-2">
@@ -133,7 +139,7 @@
                                     <span class="material-symbols-outlined text-base">nights_stay</span>
                                     <span class="text-[11px] font-extrabold uppercase tracking-tight">Akşam</span>
                                 </button>
-                                <input type="hidden" name="tur" id="km-tur-input" value="${editData ? editData.tur : 'sabah'}">
+                                <input type="hidden" name="tur" id="km-tur-input" value="${editData ? editData.tur : (gorevBitirSonrasi ? 'aksam' : 'sabah')}">
                             </div>
                         </div>
 
@@ -307,6 +313,8 @@
                 // Edit Modu ise switch ayarla
                 if (editData) {
                     setKmTur(editData.tur);
+                } else if (gorevBitirSonrasi) {
+                    setKmTur('aksam');
                 }
 
                  // Resim önizleme
@@ -413,6 +421,8 @@
 
                                 if (gorevBaslatilacak && typeof gorevBasla === 'function') {
                                     setTimeout(gorevBasla, 350);
+                                } else if (gorevBitirSonrasi && data.tur === 'aksam' && typeof gorevBitir === 'function') {
+                                    setTimeout(() => gorevBitir(true), 350);
                                 }
                             } else {
                                 Alert.error('Hata', response.message || 'Kaydedilirken bir hata oluştu.');

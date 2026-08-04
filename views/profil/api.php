@@ -5,6 +5,7 @@ use App\Helper\Helper;
 use App\Helper\Security;
 use App\Model\UserModel;
 use App\Model\SystemLogModel;
+use App\Model\UserNotificationPreferenceModel;
 
 $User = new UserModel();
 
@@ -84,11 +85,20 @@ if ($action == "ayarlari-guncelle") {
 
     try {
         $showFavoritesBar = isset($_POST['show_favorites_bar']) && ($_POST['show_favorites_bar'] === '1' || $_POST['show_favorites_bar'] === 'on') ? 1 : 0;
+        $ihbarNotificationsEnabled = isset($_POST['notification_ihbar_created'])
+            && ($_POST['notification_ihbar_created'] === '1' || $_POST['notification_ihbar_created'] === 'on');
 
         $User->saveWithAttr([
             'id' => (int)$userId,
             'show_favorites_bar' => $showFavoritesBar
         ]);
+
+        $notificationPreferences = new UserNotificationPreferenceModel();
+        $notificationPreferences->setPreference(
+            (int) $userId,
+            UserNotificationPreferenceModel::TYPE_IHBAR_CREATED,
+            $ihbarNotificationsEnabled
+        );
 
         if (isset($_SESSION["user"]) && is_object($_SESSION["user"])) {
             $_SESSION["user"]->show_favorites_bar = $showFavoritesBar;
@@ -97,7 +107,12 @@ if ($action == "ayarlari-guncelle") {
 
         try {
             $log = new SystemLogModel();
-            $log->logAction($userId, 'Arayüz Ayarları', 'Sık Kullanılanlar Çubuğu tercihi ' . ($showFavoritesBar ? 'açıldı.' : 'kapatıldı.'));
+            $log->logAction(
+                $userId,
+                'Kullanıcı Ayarları',
+                'Sık Kullanılanlar Çubuğu ' . ($showFavoritesBar ? 'açıldı' : 'kapatıldı')
+                . ', yeni kaçak ihbarı bildirimleri ' . ($ihbarNotificationsEnabled ? 'açıldı.' : 'kapatıldı.')
+            );
         } catch (\Exception $e) {}
 
         echo json_encode([

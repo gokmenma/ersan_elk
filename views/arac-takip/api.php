@@ -3285,6 +3285,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     }
                 }
 
+                $aksamEksikSayilari = $KmBildirim->getEveningMissingCounts(30);
+                foreach ($list as $item) {
+                    $item->son_30_gun_aksam_eksik = $aksamEksikSayilari[(int) $item->personel_id] ?? 0;
+                }
+
                 echo json_encode(['status' => 'success', 'data' => $list]);
                 break;
 
