@@ -112,6 +112,9 @@ class AracZimmetModel extends Model
             WHERE az.personel_id = :personel_id
             AND az.durum = 'aktif'
             AND az.firma_id = :firma_id
+            AND az.silinme_tarihi IS NULL
+            AND az.zimmet_tarihi <= CURDATE()
+            ORDER BY az.zimmet_tarihi DESC, az.id DESC
             LIMIT 1
         ");
         $sql->execute([

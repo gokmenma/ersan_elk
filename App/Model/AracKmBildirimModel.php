@@ -190,6 +190,33 @@ class AracKmBildirimModel extends Model
     }
 
     /**
+     * Personelin zimmetli araci icin gecerli bir KM bildirimi olup olmadigini kontrol eder.
+     * Reddedilen ve soft delete uygulanmis bildirimler gecerli sayilmaz.
+     */
+    public function hasValidReport($personelId, $aracId, $tarih, $tur)
+    {
+        $sql = $this->db->prepare("SELECT 1
+            FROM {$this->table}
+            WHERE personel_id = :personel_id
+            AND arac_id = :arac_id
+            AND firma_id = :firma_id
+            AND tarih = :tarih
+            AND tur = :tur
+            AND durum != 'reddedildi'
+            AND silinme_tarihi IS NULL
+            LIMIT 1");
+        $sql->execute([
+            'personel_id' => $personelId,
+            'arac_id' => $aracId,
+            'firma_id' => $_SESSION['firma_id'],
+            'tarih' => $tarih,
+            'tur' => $tur
+        ]);
+
+        return $sql->fetchColumn() !== false;
+    }
+
+    /**
      * Belirli bir tarih ve tür için KM bildirimi yapmayan personelleri getirir
      */
     public function getUnreported($tarih, $tur)

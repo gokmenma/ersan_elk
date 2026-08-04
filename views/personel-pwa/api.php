@@ -26,6 +26,8 @@ use App\Model\BildirimModel;
 use App\Model\UserModel;
 use App\Model\PersonelHareketleriModel;
 use App\Model\PersonelIcralariModel;
+use App\Model\AracZimmetModel;
+use App\Model\AracKmBildirimModel;
 use App\Service\PushNotificationService;
 use App\Helper\Security;
 use App\Service\ImageUploadService;
@@ -3331,6 +3333,31 @@ try {
             // Konum zorunlu
             if (empty($konum_enlem) || empty($konum_boylam)) {
                 response(false, null, 'Konum bilgisi alınamadı. Lütfen konum iznini kontrol edin.');
+            }
+
+            // Aktif arac zimmeti olan personel, bugunun sabah KM bildirimini
+            // tamamlamadan goreve baslayamaz. Beklemedeki/onayli kayit yeterlidir;
+            // reddedilen kayit yeniden girilmelidir.
+            $AracZimmetModel = new AracZimmetModel();
+            $aktifAracZimmeti = $AracZimmetModel->getAktifZimmetByPersonel($personel_id);
+            if ($aktifAracZimmeti) {
+                $KmBildirimModel = new AracKmBildirimModel();
+                $bugun = date('Y-m-d');
+                $sabahKmVar = $KmBildirimModel->hasValidReport(
+                    $personel_id,
+                    $aktifAracZimmeti->arac_id,
+                    $bugun,
+                    'sabah'
+                );
+
+                if (!$sabahKmVar) {
+                    response(false, [
+                        'requires_morning_km' => true,
+                        'arac_id' => $aktifAracZimmeti->arac_id,
+                        'plaka' => $aktifAracZimmeti->plaka,
+                        'tarih' => $bugun
+                    ], $aktifAracZimmeti->plaka . ' plakalı araç için sabah KM bildirimi yapmadan göreve başlayamazsınız.');
+                }
             }
 
             $HareketModel = new PersonelHareketleriModel();

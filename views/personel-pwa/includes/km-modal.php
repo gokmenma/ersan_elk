@@ -90,7 +90,7 @@
         });
     }
 
-    async function openKmBildirModal(editData = null) {
+    async function openKmBildirModal(editData = null, zorunluSabah = false) {
         if (!sharedAktifAracId && !editData) {
             Alert.warning('Araç Zimmeti Yok', 'Zimmetinizde aktif bir araç bulunmuyor.');
             return;
@@ -107,7 +107,7 @@
                         <span class="bg-white/20 backdrop-blur-md border border-white/10 text-white rounded-lg px-3 py-1 text-[11px] font-semibold tracking-wide shadow-sm">ARAÇ TAKİP</span>
                     </div>
                     <h1 class="text-white text-2xl font-black tracking-tight leading-[1.15]" style="text-shadow: 0 4px 8px rgba(0,0,0,0.5);">${editData ? 'Bildirim Düzenle' : 'KM Bildirimi'}</h1>
-                    <p class="text-blue-100/80 text-sm font-medium mt-1">${plaka} plakalı araç için güncel KM bilgisini giriniz.</p>
+                    <p class="text-blue-100/80 text-sm font-medium mt-1">${zorunluSabah ? 'Göreve başlamak için ' : ''}${plaka} plakalı araç için ${zorunluSabah ? 'sabah ' : ''}KM bilgisini giriniz.</p>
                 </div>
 
                 <div class="px-5 pb-8 flex-1 bg-transparent -mt-5 relative z-20">
@@ -128,7 +128,7 @@
                                     <span class="material-symbols-outlined text-base">wb_sunny</span>
                                     <span class="text-[11px] font-extrabold uppercase tracking-tight">Sabah</span>
                                 </button>
-                                <button type="button" onclick="setKmTur('aksam')" 
+                                <button type="button" onclick="setKmTur('aksam')" ${zorunluSabah ? 'disabled' : ''}
                                     class="relative flex-1 h-full flex items-center justify-center gap-1 z-10 transition-colors duration-300 text-slate-500" id="btn-tur-aksam">
                                     <span class="material-symbols-outlined text-base">nights_stay</span>
                                     <span class="text-[11px] font-extrabold uppercase tracking-tight">Akşam</span>
@@ -149,6 +149,7 @@
                                     })()}" 
                                     max="${new Date().toLocaleDateString('en-CA')}"
                                     value="${editData ? editData.tarih : (new Date().toLocaleDateString('en-CA'))}"
+                                    ${zorunluSabah ? 'readonly' : ''}
                                     class="w-full pl-4 pr-10 py-3 bg-slate-100 dark:bg-slate-800/50 border-none rounded-2xl focus:ring-2 focus:ring-primary/20 transition-all font-bold text-xs text-slate-700 dark:text-slate-300">
                                 <div class="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-400">
                                     <span class="material-symbols-outlined text-sm">calendar_month</span>
@@ -266,6 +267,8 @@
 
                 // Switch Kontrolü
                 window.setKmTur = (val) => {
+                    if (zorunluSabah && val !== 'sabah') return;
+
                     const handle = document.getElementById('km-tur-handle');
                     const input = document.getElementById('km-tur-input');
                     const btnSabah = document.getElementById('btn-tur-sabah');
@@ -395,13 +398,21 @@
                             const response = await API.request('save-km-report', data, false);
                             if (response.success) {
                                 Alert.success('Başarılı', response.message);
+
+                                const gorevBaslatilacak = zorunluSabah
+                                    && data.tur === 'sabah'
+                                    && data.tarih === new Date().toLocaleDateString('en-CA');
                                 
                                 // Sayfa yenileme veya modal güncelleme
                                 if (typeof loadAllKmReports === 'function') {
                                     loadAllKmReports();
                                     closePwaFullModal();
                                 } else {
-                                    openKmBildirModal();
+                                    closePwaFullModal();
+                                }
+
+                                if (gorevBaslatilacak && typeof gorevBasla === 'function') {
+                                    setTimeout(gorevBasla, 350);
                                 }
                             } else {
                                 Alert.error('Hata', response.message || 'Kaydedilirken bir hata oluştu.');

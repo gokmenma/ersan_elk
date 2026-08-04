@@ -247,7 +247,7 @@ function editSozlesme(id) {
             tr.find('input[name="kalem_poz_no[]"]').val(pz);
             tr.find('input[name="kalem_adi[]"]').val(adi);
             tr.find('select[name="kalem_birim[]"]').val(k.birim);
-            tr.find('input[name="kalem_miktar[]"]').val(k.miktari);
+            tr.find('input[name="kalem_miktar[]"]').val(k.sozlesme_ilk_miktari);
             if (parseInt(res.revizyon_sayisi || 0, 10) > 0) {
               tr.find('input[name="kalem_miktar[]"]').prop("readonly", true)
                 .attr("title", "Miktar, İş Artış/Azalış İşlemleri sekmesinden güncellenir.");

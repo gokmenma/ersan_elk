@@ -245,7 +245,18 @@ try {
                 $sozlesme = $stmt->fetch(PDO::FETCH_ASSOC);
 
                 if ($sozlesme) {
-                    $stmtK = $db->prepare("SELECT * FROM hakedis_kalemleri WHERE sozlesme_id = ? ORDER BY id ASC");
+                    $stmtK = $db->prepare("
+                        SELECT k.*,
+                               k.miktari - COALESCE((
+                                   SELECT SUM(rk.degisim_miktari)
+                                   FROM hakedis_is_revizyon_kalemleri rk
+                                   INNER JOIN hakedis_is_revizyonlari r ON r.id = rk.revizyon_id
+                                   WHERE rk.kalem_id = k.id AND r.sozlesme_id = k.sozlesme_id
+                               ), 0) AS sozlesme_ilk_miktari
+                        FROM hakedis_kalemleri k
+                        WHERE k.sozlesme_id = ?
+                        ORDER BY k.id ASC
+                    ");
                     $stmtK->execute([$id]);
                     $kalemler = $stmtK->fetchAll(PDO::FETCH_ASSOC);
 

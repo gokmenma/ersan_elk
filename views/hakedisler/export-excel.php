@@ -71,7 +71,18 @@ try {
     $stmtPrev->execute([$sozlesme_id, $hNo]);
     $prevHakedisId = $stmtPrev->fetchColumn();
 
-    $stmtKalem = $db->prepare("SELECT * FROM hakedis_kalemleri WHERE sozlesme_id = :sid ORDER BY id ASC");
+    $stmtKalem = $db->prepare("
+        SELECT k.*,
+               k.miktari - COALESCE((
+                   SELECT SUM(rk.degisim_miktari)
+                   FROM hakedis_is_revizyon_kalemleri rk
+                   INNER JOIN hakedis_is_revizyonlari r ON r.id = rk.revizyon_id
+                   WHERE rk.kalem_id = k.id AND r.sozlesme_id = k.sozlesme_id
+               ), 0) AS sozlesme_ilk_miktari
+        FROM hakedis_kalemleri k
+        WHERE k.sozlesme_id = :sid
+        ORDER BY k.id ASC
+    ");
     $stmtKalem->execute([':sid' => $sozlesme_id]);
     $kalemler = $stmtKalem->fetchAll(PDO::FETCH_ASSOC);
     
@@ -267,7 +278,7 @@ try {
             $row = $rowStart + $i;
             $k = $sonucKalemler[$i];
             
-            $miktari = floatval($k['miktari']);
+            $miktari = floatval($k['sozlesme_ilk_miktari']);
             $b_fiyat = floatval($k['teklif_edilen_birim_fiyat']);
             $tutar = round($miktari * $b_fiyat, 2);
             $genelToplam += $tutar;

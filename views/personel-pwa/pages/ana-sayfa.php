@@ -942,7 +942,12 @@ use App\Helper\Helper;
                         baslangic_zamani: new Date().toISOString()
                     });
                 } else {
-                    Toast.show(response.message || 'Görev başlatılamadı', 'error');
+                    if (response.data && response.data.requires_morning_km) {
+                        Toast.show(response.message, 'warning');
+                        openKmBildirModal(null, true);
+                    } else {
+                        Toast.show(response.message || 'Görev başlatılamadı', 'error');
+                    }
                     btn.disabled = false;
                     btn.innerHTML = originalHtml;
                 }
