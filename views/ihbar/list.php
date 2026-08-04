@@ -943,6 +943,7 @@ function ihbarDurumBadge($durum)
         'olumsuzSebep' => $ihbarOlumsuzSebepHtml,
     ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const IHBAR_TOPLU_PERSONEL_HTML = <?= json_encode($ihbarTopluPersonelSelectHtml, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const IHBAR_TOPLU_PERSONEL_TOKENS = <?= json_encode(array_column($ihbarTopluPersoneller, 'token'), JSON_UNESCAPED_SLASHES) ?>;
     const IHBAR_DASHBOARD_DATA = <?= json_encode([
         'durum' => [
             'labels' => array_keys($durumDagilimi),
@@ -1058,7 +1059,13 @@ function ihbarDurumBadge($durum)
         const content = document.getElementById('topluYonlendirIcerik');
         content.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-warning"></div></div>';
         modal.show();
-        fetch(IHBAR_API_URL, { method: 'POST', body: new URLSearchParams({ action: 'reassignPreview' }) })
+        fetch(IHBAR_API_URL, {
+            method: 'POST',
+            body: new URLSearchParams({
+                action: 'reassignPreview',
+                personel_tokens: JSON.stringify(IHBAR_TOPLU_PERSONEL_TOKENS)
+            })
+        })
             .then(r => r.json()).then(res => {
                 if (!res.success) throw new Error(res.message || 'Liste alınamadı.');
                 if (!res.data.length) {

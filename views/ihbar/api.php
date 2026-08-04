@@ -281,11 +281,19 @@ try {
 
         case 'reassignPreview':
             Gate::authorizeOrDie('ihbar/list');
+            $personelTokenMap = [];
+            $personelTokens = json_decode((string) ($_POST['personel_tokens'] ?? '[]'), true);
+            if (is_array($personelTokens)) {
+                foreach ($personelTokens as $token) {
+                    $personelId = (int) Security::decrypt((string) $token);
+                    if ($personelId > 0) $personelTokenMap[$personelId] = (string) $token;
+                }
+            }
             $rows = $IhbarModel->getReassignmentCandidates();
             foreach ($rows as $row) {
                 $row->token = Security::encrypt((int) $row->id);
                 $row->onerilen_personel_token = $row->onerilen_personel_id
-                    ? Security::encrypt((int) $row->onerilen_personel_id) : '';
+                    ? ($personelTokenMap[(int) $row->onerilen_personel_id] ?? '') : '';
                 unset($row->onerilen_personel_id);
             }
             ihbarResponse(true, '', $rows);
