@@ -218,7 +218,7 @@ if ($record) {
                 <button type="button" id="btnFormuTemizle" class="btn btn-outline-danger px-3" title="Tüm evrak bilgilerini sıfırla"><i data-feather="trash-2" class="icon-xs me-1"></i> Formu Temizle</button>
             </div>
             <div class="d-flex gap-2">
-                <a href="index.php?p=evrak-takip/list" class="btn btn-light px-4">Vazgeç</a>
+                <a href="index?p=evrak-takip/list" class="btn btn-light px-4">Vazgeç</a>
                 <button type="button" id="btnGidenPdfOnizle" class="btn btn-outline-primary px-4"><i data-feather="eye" class="icon-xs me-1"></i> Önizle</button>
                 <button type="submit" id="btnGidenKaydet" class="btn btn-primary px-5"><i data-feather="save" class="icon-xs me-1"></i> Kaydet</button>
             </div>

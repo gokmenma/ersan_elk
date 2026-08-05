@@ -379,7 +379,7 @@ if (!empty($icralar)) {
                                                 </li>
                                                 <li>
                                                     <a class="dropdown-item py-2 d-flex align-items-center"
-                                                        href="index.php?p=evrak-takip/giden-evrak&amp;icra_id=<?= htmlspecialchars(Security::encrypt($i->id), ENT_QUOTES, 'UTF-8') ?>">
+                                                        href="index?p=evrak-takip/giden-evrak&amp;icra_id=<?= htmlspecialchars(Security::encrypt($i->id), ENT_QUOTES, 'UTF-8') ?>">
                                                         <i data-feather="file-plus" class="me-2 text-success"
                                                             style="width: 14px; height: 14px;"></i> Üst Yazı Oluştur
                                                     </a>

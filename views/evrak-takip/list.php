@@ -56,7 +56,7 @@ $gelen_evraklar = $Evrak->getGelenEvraklar();
                                     class="d-none d-md-inline">Yeni Gelen Evrak</span>
                             </button>
 
-                            <a href="index.php?p=evrak-takip/giden-evrak"
+                            <a href="index?p=evrak-takip/giden-evrak"
                                 class="btn btn-warning btn-sm text-white shadow-sm text-decoration-none px-3 d-flex align-items-center fw-bold">
                                 <i data-feather="arrow-up-circle" class="icon-sm me-1"></i> <span
                                     class="d-none d-md-inline">Yeni Giden Evrak</span>
@@ -282,7 +282,7 @@ $gelen_evraklar = $Evrak->getGelenEvraklar();
                                             <td class="text-center">
                                                 <div class="d-flex justify-content-center gap-1">
                                                     <?php if ($evrak->evrak_tipi === 'giden'): ?>
-                                                        <a href="index.php?p=evrak-takip/giden-evrak&amp;id=<?php echo htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-soft-warning btn-sm border-0 p-1 px-2" title="Düzenle">
+                                                        <a href="index?p=evrak-takip/giden-evrak&amp;id=<?php echo htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-soft-warning btn-sm border-0 p-1 px-2" title="Düzenle">
                                                             <i data-feather="edit-2" style="width:14px;"></i>
                                                         </a>
                                                     <?php else: ?>

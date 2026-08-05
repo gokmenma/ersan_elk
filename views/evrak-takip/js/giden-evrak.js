@@ -528,7 +528,7 @@ $(document).ready(function () {
     const button = $("#btnGidenKaydet").prop("disabled", true);
     $.ajax({
       url: "views/evrak-takip/api.php", type: "POST", data: buildFormData(), contentType: false, processData: false,
-      success: response => response.status === "success" ? Swal.fire("Başarılı", response.message, "success").then(() => location.href = "index.php?p=evrak-takip/list") : (button.prop("disabled", false), Swal.fire("Hata", response.message, "error")),
+      success: response => response.status === "success" ? Swal.fire("Başarılı", response.message, "success").then(() => location.href = "index?p=evrak-takip/list") : (button.prop("disabled", false), Swal.fire("Hata", response.message, "error")),
       error: () => { button.prop("disabled", false); Swal.fire("Hata", "Sunucu ile iletişim kurulamadı.", "error"); }
     });
   });
