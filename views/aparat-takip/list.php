@@ -665,6 +665,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                                 <thead class="table-light">
                                     <tr>
                                         <th class="text-center" data-filter="number">Sıra</th>
+                                        <th class="text-center" style="width:60px">Görsel</th>
                                         <th data-filter="string">Ad</th>
                                         <th data-filter="string">Kod</th>
                                         <th data-filter="select">Renk</th>
@@ -887,8 +888,9 @@ foreach (AparatTipiModel::RENKLER as $renk) {
     <div class="modal fade" id="modalTip" tabindex="-1">
         <div class="modal-dialog modal-dialog-centered">
             <div class="modal-content">
-                <form id="formTip">
+                <form id="formTip" enctype="multipart/form-data">
                     <input type="hidden" id="tip_id" value="0">
+                    <input type="hidden" id="tip_resim_sil" value="0">
                     <div class="modal-header">
                         <h5 class="modal-title" id="tipModalBaslik">Yeni Aparat Tipi</h5>
                         <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
@@ -900,6 +902,17 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                             <div class="col-6"><?= Form::FormSelect2('tip_renk', $renkOptions, 'primary', 'Renk', 'bx bx-palette') ?></div>
                             <div class="col-6"><?= Form::FormFloatInput('number', 'tip_sira', '1', '1', 'Sıra', 'bx bx-sort') ?></div>
                             <div class="col-12"><?= Form::FormFloatTextarea('tip_aciklama', '', 'Açıklama', 'Açıklama', 'bx bx-note') ?></div>
+                            <div class="col-12">
+                                <label for="tip_resim" class="form-label fw-semibold small text-muted mb-1"><i class="bx bx-image me-1"></i> Aparat Görseli (İsteğe Bağlı)</label>
+                                <input class="form-control" type="file" id="tip_resim" accept="image/jpeg,image/png,image/webp,image/gif,image/svg+xml">
+                                <div class="form-text text-muted small">Max 5MB (JPG, PNG, WEBP, GIF, SVG). Görsel şifrelenerek saklanır.</div>
+                                <div id="tip_resim_onizleme_kutu" class="d-none mt-2 text-center border rounded p-2 bg-light position-relative">
+                                    <img id="tip_resim_img" src="" class="img-thumbnail" style="max-height: 120px; object-fit: contain;" alt="Aparat Önizleme">
+                                    <div class="mt-2">
+                                        <button type="button" class="btn btn-sm btn-outline-danger" id="btnTipResimSil"><i class="bx bx-trash me-1"></i> Resmi Kaldır</button>
+                                    </div>
+                                </div>
+                            </div>
                             <div class="col-12">
                                 <div class="form-check form-switch">
                                     <input class="form-check-input" type="checkbox" id="tip_aktif" checked>
@@ -917,6 +930,21 @@ foreach (AparatTipiModel::RENKLER as $renk) {
         </div>
     </div>
 <?php endif; ?>
+
+<!-- ============ MODAL: TIP RESİM BÜYÜK ÖNİZLEME ============ -->
+<div class="modal fade" id="modalTipResimOnizleme" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTipResimBaslik">Aparat Görseli</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body text-center p-3">
+                <img id="modalTipResimImg" src="" class="img-fluid rounded shadow-sm" style="max-height: 500px; width: auto;" alt="Aparat Görseli">
+            </div>
+        </div>
+    </div>
+</div>
 
 <!-- ============ MODAL: SAYIM BAŞLAT ============ -->
 <?php if ($yetkiSayim): ?>

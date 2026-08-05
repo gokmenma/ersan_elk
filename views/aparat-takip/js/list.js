@@ -1002,6 +1002,7 @@
                 return {
                     id: t.id,
                     sira: parseInt(t.sira, 10),
+                    resim: t.resim || '',
                     ad: t.ad,
                     kod: t.kod,
                     renk: t.renk,
@@ -1015,6 +1016,23 @@
                 order: [[0, 'asc']],
                 columns: [
                     { data: 'sira', className: 'text-center' },
+                    {
+                        data: 'resim',
+                        className: 'text-center',
+                        orderable: false,
+                        searchable: false,
+                        render: function (resim, type, satir) {
+                            if (resim) {
+                                return `<img src="views/aparat-takip/tip-resim-goruntule.php?id=${satir.id}&v=${Date.now()}" 
+                                             class="img-thumbnail btn-tip-resim-onizle" 
+                                             data-id="${satir.id}" 
+                                             data-ad="${kacir(satir.ad)}" 
+                                             style="width: 38px; height: 38px; object-fit: cover; border-radius: 6px; cursor: pointer;" 
+                                             title="Görseli büyüt">`;
+                            }
+                            return `<span class="badge bg-light text-muted p-2" title="Görsel yok"><i class="bx bx-image-alt fs-5"></i></span>`;
+                        }
+                    },
                     { data: 'ad', render: bicim(function (deger) { return `<b>${kacir(deger)}</b>`; }) },
                     {
                         data: 'kod',
@@ -1049,6 +1067,10 @@
     $('#btnTipEkle').on('click', function () {
         $('#formTip')[0].reset();
         $('#tip_id').val(0);
+        $('#tip_resim_sil').val(0);
+        $('#tip_resim').val('');
+        $('#tip_resim_onizleme_kutu').addClass('d-none');
+        $('#tip_resim_img').attr('src', '');
         $('#tipModalBaslik').text('Yeni Aparat Tipi');
         $('#tip_renk').val('primary').trigger('change');
         $('#tip_aktif').prop('checked', true);
@@ -1065,25 +1087,82 @@
         $('#tip_aciklama').val(t.aciklama || '');
         $('#tip_renk').val(t.renk).trigger('change');
         $('#tip_aktif').prop('checked', t.is_active == 1);
+        $('#tip_resim_sil').val(0);
+        $('#tip_resim').val('');
+
+        if (t.resim) {
+            $('#tip_resim_img').attr('src', `views/aparat-takip/tip-resim-goruntule.php?id=${t.id}&v=${Date.now()}`);
+            $('#tip_resim_onizleme_kutu').removeClass('d-none');
+        } else {
+            $('#tip_resim_onizleme_kutu').addClass('d-none');
+            $('#tip_resim_img').attr('src', '');
+        }
+
         $('#tipModalBaslik').text('Aparat Tipini Düzenle');
         new bootstrap.Modal('#modalTip').show();
+    });
+
+    $('#tip_resim').on('change', function () {
+        const file = this.files[0];
+        if (file) {
+            const reader = new FileReader();
+            reader.onload = function (e) {
+                $('#tip_resim_img').attr('src', e.target.result);
+                $('#tip_resim_onizleme_kutu').removeClass('d-none');
+            };
+            reader.readAsDataURL(file);
+            $('#tip_resim_sil').val(0);
+        }
+    });
+
+    $('#btnTipResimSil').on('click', function () {
+        $('#tip_resim').val('');
+        $('#tip_resim_sil').val(1);
+        $('#tip_resim_onizleme_kutu').addClass('d-none');
+        $('#tip_resim_img').attr('src', '');
+    });
+
+    $(document).on('click', '.btn-tip-resim-onizle', function () {
+        const id = $(this).data('id');
+        const ad = $(this).data('ad');
+        $('#modalTipResimBaslik').text(ad ? `${ad} - Görsel` : 'Aparat Görseli');
+        $('#modalTipResimImg').attr('src', `views/aparat-takip/tip-resim-goruntule.php?id=${id}&v=${Date.now()}`);
+        new bootstrap.Modal('#modalTipResimOnizleme').show();
     });
 
     $('#formTip').on('submit', function (e) {
         e.preventDefault();
 
-        istek({
-            action: 'tip-kaydet',
-            id: $('#tip_id').val(),
-            ad: $('#tip_ad').val(),
-            kod: $('#tip_kod').val(),
-            renk: $('#tip_renk').val(),
-            sira: $('#tip_sira').val(),
-            aciklama: $('#tip_aciklama').val(),
-            is_active: $('#tip_aktif').is(':checked') ? 1 : 0
-        }, 'POST').done(function (res) {
+        const formData = new FormData();
+        formData.append('action', 'tip-kaydet');
+        formData.append('id', $('#tip_id').val());
+        formData.append('ad', $('#tip_ad').val());
+        formData.append('kod', $('#tip_kod').val());
+        formData.append('renk', $('#tip_renk').val());
+        formData.append('sira', $('#tip_sira').val());
+        formData.append('aciklama', $('#tip_aciklama').val());
+        formData.append('is_active', $('#tip_aktif').is(':checked') ? 1 : 0);
+        formData.append('resim_sil', $('#tip_resim_sil').val());
+
+        const fileInput = $('#tip_resim')[0];
+        if (fileInput && fileInput.files[0]) {
+            formData.append('resim', fileInput.files[0]);
+        }
+
+        $.ajax({
+            url: API,
+            type: 'POST',
+            data: formData,
+            processData: false,
+            contentType: false,
+            dataType: 'json'
+        }).done(function (res) {
             if (res.status !== 'success') return hata(res.message);
-            bootstrap.Modal.getInstance(document.getElementById('modalTip')).hide();
+            const modalEl = document.getElementById('modalTip');
+            if (modalEl) {
+                const modalInst = bootstrap.Modal.getInstance(modalEl);
+                if (modalInst) modalInst.hide();
+            }
             basari(res.message);
             tipleriYukle();
         }).fail(() => hata('Aparat tipi kaydedilemedi.'));

@@ -53,8 +53,8 @@ class AparatTipiModel extends Model
     public function ekle(array $veri, int $kullaniciId): int
     {
         $stmt = $this->db->prepare("INSERT INTO {$this->table}
-            (firma_id, ad, kod, renk, sira, aciklama, is_active, olusturan_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
+            (firma_id, ad, kod, renk, sira, aciklama, resim, is_active, olusturan_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $this->firmaId(),
             $veri['ad'],
@@ -62,6 +62,7 @@ class AparatTipiModel extends Model
             $veri['renk'] ?? 'primary',
             (int) ($veri['sira'] ?? 1),
             $veri['aciklama'] ?? null,
+            $veri['resim'] ?? null,
             isset($veri['is_active']) ? (int) $veri['is_active'] : 1,
             $kullaniciId,
         ]);
@@ -70,19 +71,32 @@ class AparatTipiModel extends Model
 
     public function guncelle(int $id, array $veri): bool
     {
-        $stmt = $this->db->prepare("UPDATE {$this->table}
-            SET ad = ?, kod = ?, renk = ?, sira = ?, aciklama = ?, is_active = ?
-            WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL");
-        return $stmt->execute([
+        $resimGuncelle = array_key_exists('resim', $veri);
+        $sql = "UPDATE {$this->table}
+            SET ad = ?, kod = ?, renk = ?, sira = ?, aciklama = ?, is_active = ?";
+        if ($resimGuncelle) {
+            $sql .= ", resim = ?";
+        }
+        $sql .= " WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL";
+
+        $params = [
             $veri['ad'],
             $veri['kod'],
             $veri['renk'] ?? 'primary',
             (int) ($veri['sira'] ?? 1),
             $veri['aciklama'] ?? null,
             isset($veri['is_active']) ? (int) $veri['is_active'] : 1,
-            $id,
-            $this->firmaId(),
-        ]);
+        ];
+
+        if ($resimGuncelle) {
+            $params[] = $veri['resim'];
+        }
+
+        $params[] = $id;
+        $params[] = $this->firmaId();
+
+        $stmt = $this->db->prepare($sql);
+        return $stmt->execute($params);
     }
 
     /**

@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 
 use App\Helper\Date;
+use App\Helper\Security;
 use App\Model\AparatHareketModel;
 use App\Model\AparatSayimModel;
 use App\Model\AparatStokModel;
@@ -151,6 +152,8 @@ try {
                 aparatYanit(false, 'Bu kod ile tanımlı başka bir aparat tipi var.');
             }
 
+            $mevcutTip = $tipId > 0 ? $Tip->getir($tipId) : null;
+
             $veri = [
                 'ad' => $ad,
                 'kod' => $kod,
@@ -159,6 +162,63 @@ try {
                 'aciklama' => trim((string) ($_POST['aciklama'] ?? '')) ?: null,
                 'is_active' => isset($_POST['is_active']) ? (int) $_POST['is_active'] : 1,
             ];
+
+            // Resim yükleme veya silme işlemleri
+            $resimSil = !empty($_POST['resim_sil']);
+            $yeniResimYuklendi = isset($_FILES['resim']) && $_FILES['resim']['error'] === UPLOAD_ERR_OK;
+
+            if ($yeniResimYuklendi) {
+                $file = $_FILES['resim'];
+                $maxSize = 5 * 1024 * 1024; // 5MB
+                if ($file['size'] > $maxSize) {
+                    aparatYanit(false, 'Yüklenen resim boyutu 5MB\'dan büyük olamaz.');
+                }
+
+                $finfo = finfo_open(FILEINFO_MIME_TYPE);
+                $mimeType = finfo_file($finfo, $file['tmp_name']);
+                finfo_close($finfo);
+
+                $allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif', 'image/svg+xml'];
+                if (!in_array($mimeType, $allowedMimes, true)) {
+                    aparatYanit(false, 'Geçersiz resim formatı. Sadece JPG, PNG, WEBP, GIF veya SVG yükleyebilirsiniz.');
+                }
+
+                $targetDir = dirname(__DIR__, 2) . '/files/aparat_tipleri/';
+                if (!is_dir($targetDir)) {
+                    mkdir($targetDir, 0755, true);
+                }
+
+                $binaryData = file_get_contents($file['tmp_name']);
+                if ($binaryData === false) {
+                    aparatYanit(false, 'Dosya okunamadı.');
+                }
+
+                $yeniDosyaAdi = bin2hex(random_bytes(16)) . '.enc';
+                $sifreliVeri = Security::encryptFile($binaryData);
+
+                if (file_put_contents($targetDir . $yeniDosyaAdi, $sifreliVeri) === false) {
+                    aparatYanit(false, 'Resim dosyası kaydedilemedi.');
+                }
+
+                // Eski resmi sil
+                if ($mevcutTip && !empty($mevcutTip['resim'])) {
+                    $eskiYol = $targetDir . $mevcutTip['resim'];
+                    if (is_file($eskiYol)) {
+                        @unlink($eskiYol);
+                    }
+                }
+
+                $veri['resim'] = $yeniDosyaAdi;
+            } elseif ($resimSil) {
+                if ($mevcutTip && !empty($mevcutTip['resim'])) {
+                    $targetDir = dirname(__DIR__, 2) . '/files/aparat_tipleri/';
+                    $eskiYol = $targetDir . $mevcutTip['resim'];
+                    if (is_file($eskiYol)) {
+                        @unlink($eskiYol);
+                    }
+                }
+                $veri['resim'] = null;
+            }
 
             if ($tipId > 0) {
                 $Tip->guncelle($tipId, $veri);
