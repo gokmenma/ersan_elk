@@ -34,7 +34,12 @@ if (!isset($_SESSION['personel_id']) && isset($_COOKIE['remember_token'])) {
         $PersonelModel = new PersonelModel();
         $personel = $PersonelModel->find($p_id);
 
-        if ($personel) {
+        $isActivePersonel = $personel
+            && empty($personel->silinme_tarihi)
+            && (int) ($personel->aktif_mi ?? 0) !== 0
+            && (empty($personel->isten_cikis_tarihi) || $personel->isten_cikis_tarihi === '0000-00-00');
+
+        if ($isActivePersonel) {
             $checkHash = hash_hmac('sha256', $personel->id . $personel->sifre, $pwaSecret);
             if ($hash === $checkHash) {
                 $_SESSION['personel_id'] = $personel->id;
@@ -59,6 +64,10 @@ if (!isset($_SESSION['personel_id']) && isset($_COOKIE['remember_token'])) {
             }
         }
     }
+
+    if (!isset($_SESSION['personel_id'])) {
+        setcookie('remember_token', '', ['expires' => time() - 3600, 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax']);
+    }
     }
 }
 
@@ -73,8 +82,13 @@ $PersonelModel = new PersonelModel();
 $personel = $PersonelModel->find($personel_id);
 
 // Personel bulunamazsa veya pasifse oturumu kapat ve login'e yönlendir
-$isPassive = ($personel && !empty($personel->isten_cikis_tarihi) && $personel->isten_cikis_tarihi !== '0000-00-00');
+$isPassive = $personel && (
+    !empty($personel->silinme_tarihi)
+    || (int) ($personel->aktif_mi ?? 0) === 0
+    || (!empty($personel->isten_cikis_tarihi) && $personel->isten_cikis_tarihi !== '0000-00-00')
+);
 if (!$personel || $isPassive) {
+    setcookie('remember_token', '', ['expires' => time() - 3600, 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax']);
     session_destroy();
     $statusParam = $isPassive ? '?status=inactive' : '';
     header("Location: login.php" . $statusParam);

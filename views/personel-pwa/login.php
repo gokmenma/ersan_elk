@@ -58,7 +58,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['action']) && $_POST['
         $phone = normalizePhone($phone);
 
         // Başında 0 varsa veya yoksa diye kontrol et
-        $stmt = $db->prepare("SELECT * FROM personel WHERE cep_telefonu = :phone OR cep_telefonu = :phone_with_zero");
+        $stmt = $db->prepare(
+            "SELECT * FROM personel
+             WHERE (cep_telefonu = :phone OR cep_telefonu = :phone_with_zero)
+               AND silinme_tarihi IS NULL
+               AND aktif_mi <> 0"
+        );
         $stmt->execute(['phone' => $phone, 'phone_with_zero' => '0' . $phone]); // Son 10 hanesine ve sıfırlı haline bak
         $personel = $stmt->fetch(PDO::FETCH_OBJ);
 
@@ -169,7 +174,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         $db = $PersonelModel->getDb();
         $tcHash = hash('sha256', $login_input);
-        $stmt = $db->prepare("SELECT * FROM personel WHERE tc_hash = :tc_hash OR cep_telefonu = :telefon OR cep_telefonu = :telefon_with_zero");
+        $stmt = $db->prepare(
+            "SELECT * FROM personel
+             WHERE (tc_hash = :tc_hash OR cep_telefonu = :telefon OR cep_telefonu = :telefon_with_zero)
+               AND silinme_tarihi IS NULL
+               AND aktif_mi <> 0"
+        );
         $stmt->execute(['tc_hash' => $tcHash, 'telefon' => $phone, 'telefon_with_zero' => '0' . $phone]);
         $personel = $stmt->fetch(PDO::FETCH_OBJ);
         if ($personel) {

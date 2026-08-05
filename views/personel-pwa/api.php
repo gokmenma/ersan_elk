@@ -50,9 +50,14 @@ $personel_id = $_SESSION['personel_id'] ?? 0;
 if ($personel_id > 0) {
     $PersonelModel = new PersonelModel();
     $personel = $PersonelModel->find($personel_id);
-    $isPassive = ($personel && !empty($personel->isten_cikis_tarihi) && $personel->isten_cikis_tarihi !== '0000-00-00');
+    $isPassive = $personel && (
+        !empty($personel->silinme_tarihi)
+        || (int) ($personel->aktif_mi ?? 0) === 0
+        || (!empty($personel->isten_cikis_tarihi) && $personel->isten_cikis_tarihi !== '0000-00-00')
+    );
 
     if (!$personel || $isPassive) {
+        setcookie('remember_token', '', ['expires' => time() - 3600, 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax']);
         session_destroy();
         $msg = $isPassive ? 'Hesabınız pasif durumdadır.' : 'Oturum süresi doldu';
         echo json_encode(['success' => false, 'error' => $msg, 'redirect' => 'login.php']);
