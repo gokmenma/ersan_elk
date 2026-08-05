@@ -466,6 +466,7 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                                     <th class="text-center" data-filter="number">Adet</th>
                                     <th data-filter="string">Personel / Kullanıcı</th>
                                     <th data-filter="string">Açıklama</th>
+                                    <th class="text-center">İşlem</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>

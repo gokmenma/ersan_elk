@@ -350,6 +350,24 @@ try {
             ]);
             break;
 
+        case 'hareket-iptal':
+            aparatYetkiKontrol('aparat_iptal');
+
+            $hareketId = (int) ($_POST['id'] ?? 0);
+            $aciklama = trim((string) ($_POST['aciklama'] ?? ''));
+
+            if ($aciklama === '') {
+                aparatYanit(false, 'İptal gerekçesi zorunludur.');
+            }
+
+            $Servis = new AparatStokService();
+            $sonuc = $Servis->havuzHareketiIptal($hareketId, $aciklama, $userId);
+
+            aparatYanit(true, $sonuc['negatif']
+                ? 'Hareket geri alındı. Dikkat: ilgili havuz eksiye düştü.'
+                : 'Hareket geri alındı, stok bakiyesi düzeltildi.');
+            break;
+
         // =====================================================
         // HAVUZ HAREKETLERİ (depo / hurda / kayıp / açılış)
         // =====================================================

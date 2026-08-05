@@ -429,20 +429,104 @@ class AparatStokService
             default => throw new Exception('Geçersiz hareket türü.'),
         };
 
-        $sonuc = $this->Hareket->uygula($satirlar, [
-            'hareket_tipi' => $tur === 'acilis' ? 'acilis' : $tur,
-            'ekip_id' => $ekipGerekli ? $ekipId : null,
-            'referans_tipi' => 'manuel',
-            'referans_id' => null,
-            'aciklama' => $aciklama ?: null,
-            'kaydeden_id' => $kullaniciId ?: null,
-        ]);
+        $kendiTransaction = !$this->db()->inTransaction();
+        if ($kendiTransaction) {
+            $this->db()->beginTransaction();
+        }
+
+        try {
+            $sonuc = $this->Hareket->uygula($satirlar, [
+                'hareket_tipi' => $tur === 'acilis' ? 'acilis' : $tur,
+                'ekip_id' => $ekipGerekli ? $ekipId : null,
+                'referans_tipi' => 'manuel',
+                'referans_id' => null,
+                'aciklama' => $aciklama ?: null,
+                'kaydeden_id' => $kullaniciId ?: null,
+            ]);
+
+            // Bir havuz hareketi birden fazla satır yazabilir (ör. depo çıkışı: depo -N, ekip +N).
+            // Grubun tamamını birlikte geri alabilmek için ilk satırın id'sini grup kimliği yap.
+            $this->Hareket->grupKimligiAta($sonuc['hareket_ids']);
+
+            if ($kendiTransaction) {
+                $this->db()->commit();
+            }
+        } catch (Exception $e) {
+            if ($kendiTransaction && $this->db()->inTransaction()) {
+                $this->db()->rollBack();
+            }
+            throw $e;
+        }
 
         $this->logla(
             $kullaniciId,
             'Aparat Havuz Hareketi',
             sprintf('%s: tip #%d, %d adet%s', AparatHareketModel::HAREKET_TIPLERI[$tur === 'acilis' ? 'acilis' : $tur],
                 $tipId, $adet, $ekipGerekli ? ', ekip: ' . $this->Stok->ekipAdi($ekipId) : ''),
+            SystemLogModel::LEVEL_IMPORTANT
+        );
+
+        return $sonuc;
+    }
+
+    /**
+     * Hatalı girilmiş bir havuz hareketini ters kayıtla geri alır.
+     * Defter kaydı silinmez; orijinal satırlar "iptal" işareti alır ve
+     * stok bakiyesini eski hâline getiren ters satırlar yazılır.
+     */
+    public function havuzHareketiIptal(int $hareketId, string $aciklama, int $kullaniciId): array
+    {
+        $aciklama = trim($aciklama);
+        if ($aciklama === '') {
+            throw new Exception('İptal gerekçesi zorunludur.');
+        }
+
+        $grup = $this->Hareket->grubuGetir($hareketId);
+        if (empty($grup)) {
+            throw new Exception('Hareket kaydı bulunamadı.');
+        }
+
+        foreach ($grup as $h) {
+            if ((int) $h['iptal_mi'] === 1) {
+                throw new Exception('Bu hareket zaten iptal edilmiş.');
+            }
+            if (($h['referans_tipi'] ?? '') !== 'manuel') {
+                throw new Exception('Bu hareket bağlı olduğu kaydın (işlem, transfer veya sayım) kendi ekranından iptal edilmelidir.');
+            }
+        }
+
+        $kendiTransaction = !$this->db()->inTransaction();
+        if ($kendiTransaction) {
+            $this->db()->beginTransaction();
+        }
+
+        try {
+            $sonuc = $this->Hareket->hareketleriTersle($grup, [
+                'aciklama' => 'İptal: ' . $aciklama,
+                'kaydeden_id' => $kullaniciId ?: null,
+                'tarih' => date('Y-m-d H:i:s'),
+            ]);
+
+            if ($kendiTransaction) {
+                $this->db()->commit();
+            }
+        } catch (Exception $e) {
+            if ($kendiTransaction && $this->db()->inTransaction()) {
+                $this->db()->rollBack();
+            }
+            throw $e;
+        }
+
+        $this->logla(
+            $kullaniciId,
+            'Aparat Hareket İptali',
+            sprintf(
+                'Hareket #%d (%s, %d satır) geri alındı. Gerekçe: %s',
+                $hareketId,
+                AparatHareketModel::HAREKET_TIPLERI[$grup[0]['hareket_tipi']] ?? $grup[0]['hareket_tipi'],
+                count($grup),
+                $aciklama
+            ),
             SystemLogModel::LEVEL_IMPORTANT
         );
 

@@ -530,8 +530,10 @@
                     aparat: h.aparat_adi || '',
                     adet: parseInt(h.adet, 10),
                     personel: h.personel_adi || h.kullanici_adi || '',
-                    aciklama: (h.aciklama || '') + (h.iptal_mi == 1 ? ' [iptal]' : ''),
-                    iptal_mi: h.iptal_mi
+                    aciklama: h.aciklama || '',
+                    iptal_mi: h.iptal_mi,
+                    id: h.id,
+                    referans_tipi: h.referans_tipi || ''
                 };
             });
 
@@ -556,15 +558,63 @@
                     {
                         data: 'aciklama',
                         render: bicim(function (deger, satir) {
-                            return satir.iptal_mi == 1
-                                ? `<span class="text-muted">${kacir(deger)}</span>`
-                                : kacir(deger);
+                            if (satir.iptal_mi != 1) return kacir(deger);
+                            return `<span class="text-muted text-decoration-line-through">${kacir(deger)}</span>
+                                    <span class="badge bg-secondary ms-1">İptal</span>`;
+                        })
+                    },
+                    {
+                        data: 'id',
+                        orderable: false,
+                        className: 'text-center',
+                        render: bicim(function (id, satir) {
+                            if (satir.iptal_mi == 1) {
+                                return '<span class="text-muted">-</span>';
+                            }
+                            // Bir işleme/transfere/sayıma bağlı hareketler kendi ekranından iptal edilir
+                            if (satir.referans_tipi !== 'manuel') {
+                                return `<span class="text-muted" title="Bu hareket bağlı olduğu kaydın ekranından iptal edilmelidir">
+                                            <i class="bx bx-lock-alt"></i></span>`;
+                            }
+                            return `<button class="btn btn-sm btn-soft-danger btn-hareket-iptal" data-id="${id}"
+                                        title="Hareketi geri al"><i class="bx bx-undo"></i></button>`;
                         })
                     }
                 ]
             });
         }).fail(() => hata('Hareketler yüklenemedi.'));
     }
+
+    // Hatalı veya test amaçlı girilmiş havuz hareketini ters kayıtla geri alır
+    $(document).on('click', '.btn-hareket-iptal', function () {
+        const id = $(this).data('id');
+
+        Swal.fire({
+            title: 'Hareket geri alınsın mı?',
+            html: 'Kayıt defterden silinmez; <b>iptal</b> işareti alır ve stok bakiyesini '
+                + 'eski hâline getiren ters bir hareket yazılır.',
+            input: 'textarea',
+            inputLabel: 'İptal gerekçesi',
+            inputPlaceholder: 'Örn: test kaydı, hatalı adet girildi...',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Geri Al',
+            cancelButtonText: 'Vazgeç',
+            confirmButtonColor: '#f46a6a',
+            inputValidator: v => (!v || !v.trim()) ? 'İptal gerekçesi zorunludur.' : undefined
+        }).then(function (r) {
+            if (!r.isConfirmed) return;
+
+            $.post(API, { action: 'hareket-iptal', id: id, aciklama: r.value }, null, 'json')
+                .done(function (res) {
+                    if (res.status !== 'success') return hata(res.message);
+                    Swal.fire('Geri Alındı', res.message, 'success');
+                    hareketleriYukle();
+                    stokYukle();
+                })
+                .fail(() => hata('Hareket geri alınamadı.'));
+        });
+    });
 
     $('#btnHareketListele').on('click', hareketleriYukle);
 
