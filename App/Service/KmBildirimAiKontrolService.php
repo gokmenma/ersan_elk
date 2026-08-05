@@ -33,9 +33,11 @@ class KmBildirimAiKontrolService
 
         $settings = (new SettingsModel())->getAllSettingsAsKeyValue($this->firmaId ?: null);
         $this->apiKey = trim((string) ($settings['openai_api_key'] ?? ''));
-        $this->model = trim((string) ($settings['ai_agent_model'] ?? 'gpt-4o-mini'));
+        // KM ekranındaki silik yedi-segment haneler küçük modelde sıkça atlandığı
+        // için bu iş yükü genel AI modelinden ayrı yapılandırılabilir.
+        $this->model = trim((string) ($settings['km_ai_model'] ?? 'gpt-4o'));
         if (!str_starts_with($this->model, 'gpt-')) {
-            $this->model = 'gpt-4o-mini';
+            $this->model = 'gpt-4o';
         }
         if ($this->apiKey === '') {
             throw new Exception('OpenAI API anahtarı tanımlı değil.');
@@ -230,9 +232,22 @@ class KmBildirimAiKontrolService
             return $analiz;
         }
 
+        $oncekiKm = $this->bildirimModel->getLastKm(
+            (int) $bildirim->arac_id,
+            (string) $bildirim->tarih,
+            (string) $bildirim->tur,
+            (int) $bildirim->id
+        );
+        $tutarlilikUyarisi = $ilkKm !== null && $oncekiKm > 0 && (int) $ilkKm < $oncekiKm
+            ? ' İlk okuma araç geçmişindeki son KM değerinden düşüktü; odometre geri gitmeyeceği için solda atlanmış silik hane olup olmadığını özellikle kontrol et.'
+            : '';
         $prompt = 'Bu görüntü, araç gösterge panelindeki toplam odometre alanının otomatik büyütülmüş kırpımıdır. '
             . 'Hız, devir, yakıt, saat ve trip değerlerini dikkate alma. Toplam KM değerindeki bütün haneleri soldan sağa tek tek oku; '
-            . 'özellikle sol taraftaki silik veya düşük kontrastlı ilk haneyi atlama. Görüntüde kesin seçilemeyen hane varsa odometer_km=null döndür.';
+            . 'özellikle sol taraftaki silik veya düşük kontrastlı ilk haneyi atlama. İlk görsel genel bağlam, ikinci görsel odometrenin büyütülmüş halidir. '
+            . 'İki görseli birlikte incele ve görünen her rakam hücresini say. Görüntüde kesin seçilemeyen hane varsa odometer_km=null döndür.'
+            . $tutarlilikUyarisi;
+
+        $originalDataUrl = 'data:' . $image['mime'] . ';base64,' . base64_encode((string) file_get_contents($image['path']));
 
         $payload = [
             'model' => $this->model,
@@ -240,6 +255,7 @@ class KmBildirimAiKontrolService
                 'role' => 'user',
                 'content' => [
                     ['type' => 'text', 'text' => $prompt],
+                    ['type' => 'image_url', 'image_url' => ['url' => $originalDataUrl, 'detail' => 'high']],
                     ['type' => 'image_url', 'image_url' => ['url' => $cropDataUrl, 'detail' => 'high']],
                 ],
             ]],
@@ -264,6 +280,16 @@ class KmBildirimAiKontrolService
         ];
 
         $ikinciAnaliz = $this->sendAiRequest($payload);
+        error_log(sprintf(
+            'KM AI yakın okuma: bildirim_id=%d model=%s ilk_km=%s ilk_guven=%d ikinci_km=%s ikinci_guven=%d bbox_guven=%d',
+            (int) $bildirim->id,
+            $this->model,
+            $ilkKm === null ? 'null' : (string) $ilkKm,
+            $ilkGuven,
+            ($ikinciAnaliz['odometer_km'] ?? null) === null ? 'null' : (string) $ikinciAnaliz['odometer_km'],
+            (int) ($ikinciAnaliz['km_confidence'] ?? 0),
+            (int) ($analiz['odometer_bbox_confidence'] ?? 0)
+        ));
         if (($ikinciAnaliz['odometer_km'] ?? null) !== null && (int) ($ikinciAnaliz['km_confidence'] ?? 0) >= 90) {
             $analiz['odometer_km'] = (int) $ikinciAnaliz['odometer_km'];
             $analiz['km_confidence'] = (int) $ikinciAnaliz['km_confidence'];

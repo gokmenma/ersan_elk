@@ -1094,11 +1094,31 @@ function ihbarDurumBadge($durum)
         new bootstrap.Modal(document.getElementById('modalYeniIhbar')).show();
     }
 
-    function ihbarYenidenYonlendirAc() {
+    async function ihbarYenidenYonlendirAc() {
         const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTopluYonlendir'));
         const content = document.getElementById('topluYonlendirIcerik');
         content.innerHTML = '<div class="text-center py-5"><div class="spinner-border text-warning"></div></div>';
         modal.show();
+        try {
+            const requestResponse = await fetch(IHBAR_API_URL, {
+                method: 'POST', body: new URLSearchParams({ action: 'requestFreshLocations' })
+            }).then(r => r.json());
+            let bekleyen = Number(requestResponse.data?.bekleyen || 0);
+            const baslangic = Date.now();
+            while (bekleyen > 0 && Date.now() - baslangic < 30000) {
+                const kalan = Math.max(0, Math.ceil((30000 - (Date.now() - baslangic)) / 1000));
+                content.innerHTML = `<div class="text-center py-5"><div class="spinner-border text-warning mb-3"></div>
+                    <h6>Görevdeki personellerin güncel konumları alınıyor</h6>
+                    <div class="text-muted small">${bekleyen} personel bekleniyor · en fazla ${kalan} saniye</div></div>`;
+                await new Promise(resolve => setTimeout(resolve, 3000));
+                const status = await fetch(IHBAR_API_URL, {
+                    method: 'POST', body: new URLSearchParams({ action: 'freshLocationStatus' })
+                }).then(r => r.json());
+                bekleyen = Number(status.data?.bekleyen || 0);
+            }
+        } catch (error) {
+            console.warn('Güncel konum bekleme işlemi tamamlanamadı:', error);
+        }
         fetch(IHBAR_API_URL, {
             method: 'POST',
             body: new URLSearchParams({

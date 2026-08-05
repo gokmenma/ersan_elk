@@ -19,6 +19,67 @@ class PersonelHareketleriModel extends Model
         parent::__construct();
     }
 
+    public function updateCanliKonum(int $personelId, int $firmaId, float $enlem, float $boylam, ?float $hassasiyet): void
+    {
+        $stmt = $this->db->prepare("INSERT INTO personel_canli_konumlari
+            (personel_id, firma_id, enlem, boylam, hassasiyet, son_guncelleme)
+            VALUES (:personel_id, :firma_id, :enlem, :boylam, :hassasiyet, NOW())
+            ON DUPLICATE KEY UPDATE firma_id = VALUES(firma_id), enlem = VALUES(enlem),
+                boylam = VALUES(boylam), hassasiyet = VALUES(hassasiyet), son_guncelleme = NOW()");
+        $stmt->execute([':personel_id' => $personelId, ':firma_id' => $firmaId, ':enlem' => $enlem,
+            ':boylam' => $boylam, ':hassasiyet' => $hassasiyet]);
+    }
+
+    public function requestKacakPersonelKonumlari(int $firmaId): int
+    {
+        $stmt = $this->db->prepare("SELECT p.id FROM personel p
+            INNER JOIN personel_hareketleri ph ON ph.id = (
+                SELECT ph2.id FROM personel_hareketleri ph2 WHERE ph2.personel_id = p.id
+                  AND ph2.silinme_tarihi IS NULL ORDER BY ph2.zaman DESC, ph2.id DESC LIMIT 1)
+            WHERE p.firma_id = ? AND p.aktif_mi = 1 AND p.saha_takibi = 1 AND p.silinme_tarihi IS NULL
+              AND p.departman LIKE ? AND ph.islem_tipi = 'BASLA'
+              AND NOT EXISTS (SELECT 1 FROM personel_konum_istekleri k WHERE k.personel_id = p.id
+                  AND k.durum = 'BEKLIYOR' AND k.istek_zamani >= DATE_SUB(NOW(), INTERVAL 2 MINUTE))");
+        $stmt->execute([$firmaId, '%Kaçak%']);
+        $insert = $this->db->prepare("INSERT INTO personel_konum_istekleri (personel_id, durum, istek_zamani)
+            VALUES (?, 'BEKLIYOR', NOW())");
+        $count = 0;
+        foreach ($stmt->fetchAll(PDO::FETCH_COLUMN) as $personelId) {
+            $insert->execute([(int) $personelId]);
+            $count++;
+        }
+        return $count;
+    }
+
+    public function getBekleyenKacakKonumIstegiSayisi(int $firmaId): int
+    {
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM personel_konum_istekleri k
+            JOIN personel p ON p.id = k.personel_id
+            WHERE p.firma_id = ? AND p.departman LIKE ? AND k.durum = 'BEKLIYOR'
+              AND k.istek_zamani >= DATE_SUB(NOW(), INTERVAL 2 MINUTE)");
+        $stmt->execute([$firmaId, '%Kaçak%']);
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function getBekleyenKonumIstegi(int $personelId): ?int
+    {
+        $stmt = $this->db->prepare("SELECT id FROM personel_konum_istekleri WHERE personel_id = ?
+            AND durum = 'BEKLIYOR' ORDER BY istek_zamani DESC LIMIT 1");
+        $stmt->execute([$personelId]);
+        $id = (int) ($stmt->fetchColumn() ?: 0);
+        return $id > 0 ? $id : null;
+    }
+
+    public function respondKonumIstegi(int $istekId, int $personelId, int $firmaId, float $lat, float $lng): bool
+    {
+        $stmt = $this->db->prepare("UPDATE personel_konum_istekleri SET enlem = ?, boylam = ?, durum = 'TAMAMLANDI',
+            yanit_zamani = NOW() WHERE id = ? AND personel_id = ? AND durum = 'BEKLIYOR'");
+        $stmt->execute([$lat, $lng, $istekId, $personelId]);
+        if ($stmt->rowCount() === 0) return false;
+        $this->updateCanliKonum($personelId, $firmaId, $lat, $lng, null);
+        return true;
+    }
+
     /**
      * Personelin bugün açık (bitirilmemiş) görevi var mı kontrol eder
      * Eğer görev başlangıç günü geçmişse veya aynı gün 23:50'yi geçmişse otomatik sonlandırır

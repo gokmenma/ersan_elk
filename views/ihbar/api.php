@@ -10,6 +10,7 @@ use App\Model\UserModel;
 use App\Model\BildirimModel;
 use App\Model\UserNotificationPreferenceModel;
 use App\Model\SettingsModel;
+use App\Model\PersonelHareketleriModel;
 use App\Helper\Security;
 use App\Service\Gate;
 use App\Service\PushNotificationService;
@@ -298,6 +299,19 @@ try {
                 unset($row->onerilen_personel_id);
             }
             ihbarResponse(true, '', $rows);
+            break;
+
+        case 'requestFreshLocations':
+            Gate::authorizeOrDie('ihbar/list');
+            $hareketModel = new PersonelHareketleriModel();
+            $hareketModel->requestKacakPersonelKonumlari((int) ($_SESSION['firma_id'] ?? 1));
+            ihbarResponse(true, '', ['bekleyen' => $hareketModel->getBekleyenKacakKonumIstegiSayisi((int) ($_SESSION['firma_id'] ?? 1))]);
+            break;
+
+        case 'freshLocationStatus':
+            Gate::authorizeOrDie('ihbar/list');
+            $hareketModel = new PersonelHareketleriModel();
+            ihbarResponse(true, '', ['bekleyen' => $hareketModel->getBekleyenKacakKonumIstegiSayisi((int) ($_SESSION['firma_id'] ?? 1))]);
             break;
 
         case 'bulkReassign':

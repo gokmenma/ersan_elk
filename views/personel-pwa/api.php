@@ -3323,21 +3323,38 @@ try {
             }
             break;
 
-        case 'checkKonumIstegi':
-            $db = (new \App\Core\Db())->db;
-            $stmt = $db->prepare("SELECT id FROM personel_konum_istekleri WHERE personel_id = :pid AND durum = 'BEKLIYOR' ORDER BY istek_zamani DESC LIMIT 1");
-            $stmt->execute([':pid' => $personel_id]);
-            $istek = $stmt->fetch(PDO::FETCH_OBJ);
+        case 'canliKonumGuncelle':
+            $HareketModel = new PersonelHareketleriModel();
+            if (!$HareketModel->getAcikGorev((int) $personel_id)) {
+                response(false, null, 'Canlı konum yalnızca görev açıkken güncellenebilir.');
+            }
+            $lat = filter_var($_POST['lat'] ?? null, FILTER_VALIDATE_FLOAT);
+            $lng = filter_var($_POST['lng'] ?? null, FILTER_VALIDATE_FLOAT);
+            $hassasiyet = filter_var($_POST['hassasiyet'] ?? null, FILTER_VALIDATE_FLOAT);
+            if ($lat === false || $lng === false || $lat < -90 || $lat > 90 || $lng < -180 || $lng > 180) {
+                response(false, null, 'Geçersiz konum bilgisi.');
+            }
+            $HareketModel->updateCanliKonum(
+                (int) $personel_id,
+                (int) ($_SESSION['firma_id'] ?? $personel->firma_id ?? 0),
+                (float) $lat,
+                (float) $lng,
+                $hassasiyet === false ? null : (float) $hassasiyet
+            );
+            response(true, null, 'Canlı konum güncellendi.');
+            break;
 
-            if ($istek) {
-                response(true, ['istek_id' => $istek->id]);
+        case 'checkKonumIstegi':
+            $HareketModel = new PersonelHareketleriModel();
+            $istekId = $HareketModel->getBekleyenKonumIstegi((int) $personel_id);
+            if ($istekId) {
+                response(true, ['istek_id' => $istekId]);
             } else {
                 response(true, null);
             }
             break;
 
         case 'yanitlaKonumIstegi':
-            $db = (new \App\Core\Db())->db;
             $istek_id = $_POST['istek_id'] ?? null;
             $lat = $_POST['lat'] ?? null;
             $lng = $_POST['lng'] ?? null;
@@ -3346,10 +3363,24 @@ try {
                 response(false, null, 'Eksik veri');
             }
 
-            $stmt = $db->prepare("UPDATE personel_konum_istekleri SET enlem = :lat, boylam = :lng, durum = 'TAMAMLANDI', yanit_zamani = NOW() WHERE id = :id");
-            $result = $stmt->execute([':lat' => $lat, ':lng' => $lng, ':id' => $istek_id]);
+            $HareketModel = new PersonelHareketleriModel();
+            $result = $HareketModel->respondKonumIstegi((int) $istek_id, (int) $personel_id,
+                (int) ($_SESSION['firma_id'] ?? $personel->firma_id ?? 0), (float) $lat, (float) $lng);
 
             if ($result) {
+                try {
+                    $degisenPersoneller = (new \App\Model\IhbarModel())->recalculateRecentAutomaticAssignments();
+                    $pushService = new PushNotificationService();
+                    foreach (array_unique($degisenPersoneller) as $atananPersonelId) {
+                        $pushService->sendToPersonel((int) $atananPersonelId, [
+                            'title' => '📍 Yakınınızdaki İhbar',
+                            'body' => 'Güncel saha konumlarına göre bir ihbar size yönlendirildi.',
+                            'url' => '?page=ihbar'
+                        ]);
+                    }
+                } catch (Exception $e) {
+                    error_log('Güncel konum sonrası ihbar hesaplama hatası: ' . $e->getMessage());
+                }
                 response(true, null, 'Konum iletildi.');
             } else {
                 response(false, null, 'Konum iletilemedi.');
@@ -5134,6 +5165,11 @@ try {
                 'konum_dogruluk' => is_numeric($_POST['konum_dogruluk'] ?? null) ? (float) $_POST['konum_dogruluk'] : null,
                 'bildiren_personel_id' => $personel_id,
             ]);
+
+            // Sonraki yeniden hesaplama/operatör kontrolü için görevdeki Kaçak personellerinden güncel konum iste.
+            (new PersonelHareketleriModel())->requestKacakPersonelKonumlari(
+                (int) ($_SESSION['firma_id'] ?? $personel->firma_id ?? 0)
+            );
 
             $atananPersonelId = null;
             if (is_numeric($_POST['konum_lat'] ?? null) && is_numeric($_POST['konum_lng'] ?? null)) {

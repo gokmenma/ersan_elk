@@ -648,9 +648,13 @@ use App\Helper\Helper;
             loadCalismaStats();
 
             // --- ANLIK KONUM İSTEĞİ KONTROLÜ ---
-            // Uygulama açık olduğu sürece her 2 dakikada bir kontrol et
+            // Yönlendirme ekranındaki 30 saniyelik bekleme penceresine yanıt verebilmek için sık kontrol et.
             checkKonumIstegi();
-            setInterval(checkKonumIstegi, 120000);
+            setInterval(checkKonumIstegi, 10000);
+            setInterval(canliKonumGuncelle, 120000);
+            document.addEventListener('visibilitychange', function () {
+                if (document.visibilityState === 'visible') canliKonumGuncelle();
+            });
         });
 
         async function checkKonumIstegi() {
@@ -673,6 +677,24 @@ use App\Helper\Helper;
                 }
             } catch (error) {
                 console.error('Konum isteği kontrol hatası:', error);
+            }
+        }
+
+        let canliKonumGuncelleniyor = false;
+        async function canliKonumGuncelle() {
+            if (!gorevBaslangicZamani || canliKonumGuncelleniyor || document.visibilityState !== 'visible') return;
+            canliKonumGuncelleniyor = true;
+            try {
+                const konum = await getKonum();
+                await API.request('canliKonumGuncelle', {
+                    lat: konum.enlem,
+                    lng: konum.boylam,
+                    hassasiyet: konum.hassasiyet
+                });
+            } catch (error) {
+                console.warn('Canlı konum güncellenemedi:', error);
+            } finally {
+                canliKonumGuncelleniyor = false;
             }
         }
 
@@ -770,6 +792,7 @@ use App\Helper\Helper;
                 zamanStr = zamanStr.replace(' ', 'T');
             }
             gorevBaslangicZamani = new Date(zamanStr);
+            canliKonumGuncelle();
             updateGecenSure();
             gorevSureInterval = setInterval(updateGecenSure, 60000); // Her dakika güncelle
         }

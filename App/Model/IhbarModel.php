@@ -451,7 +451,7 @@ class IhbarModel extends Model
         return $rows;
     }
 
-    private function findNearestAvailablePersonel(float $lat, float $lng, int $ihbarId, array $reserved = [], int $excludedPersonelId = 0): ?int
+    private function findNearestAvailablePersonel(float $lat, float $lng, int $ihbarId, array $reserved = [], int $excludedPersonelId = 0, bool $excludeCurrentAssignments = true): ?int
     {
         if ($lat == 0.0 || $lng == 0.0) {
             return null;
@@ -466,34 +466,70 @@ class IhbarModel extends Model
         $stmt = $this->db->prepare("SELECT p.id,
               (SELECT COUNT(*) FROM ihbar_atamalar aa JOIN ihbarlar ii ON ii.id = aa.ihbar_id
                WHERE aa.personel_id = p.id AND aa.silinme_tarihi IS NULL
-                 AND ii.silinme_tarihi IS NULL AND ii.durum IN ('yeni','yonlendirildi','islemde')) AS aktif_ihbar,
+                 AND ii.silinme_tarihi IS NULL AND ii.id <> :capacity_ihbar
+                 AND ii.durum IN ('yeni','yonlendirildi','islemde')) AS aktif_ihbar,
               (SELECT COUNT(*) FROM ihbar_atamalar ab JOIN ihbarlar ib ON ib.id = ab.ihbar_id
                WHERE ab.personel_id = p.id AND ab.silinme_tarihi IS NULL AND ib.silinme_tarihi IS NULL
                  AND ib.durum IN ('yeni','yonlendirildi','islemde') AND ib.ilce = :ilce AND ib.mahalle = :mahalle) AS ayni_bolge,
-              (6371 * ACOS(LEAST(1, GREATEST(-1, COS(RADIANS(:lat)) * COS(RADIANS(ph.konum_enlem))
-                * COS(RADIANS(ph.konum_boylam) - RADIANS(:lng)) + SIN(RADIANS(:lat2)) * SIN(RADIANS(ph.konum_enlem)))))) AS mesafe
+              (6371 * ACOS(LEAST(1, GREATEST(-1,
+                COS(RADIANS(:lat)) * COS(RADIANS(CASE WHEN ck.son_guncelleme >= DATE_SUB(NOW(), INTERVAL 10 MINUTE) THEN ck.enlem ELSE ph.konum_enlem END))
+                * COS(RADIANS(CASE WHEN ck.son_guncelleme >= DATE_SUB(NOW(), INTERVAL 10 MINUTE) THEN ck.boylam ELSE ph.konum_boylam END) - RADIANS(:lng))
+                + SIN(RADIANS(:lat2)) * SIN(RADIANS(CASE WHEN ck.son_guncelleme >= DATE_SUB(NOW(), INTERVAL 10 MINUTE) THEN ck.enlem ELSE ph.konum_enlem END)))))) AS mesafe
             FROM personel p
             INNER JOIN personel_hareketleri ph ON ph.id = (
                 SELECT ph2.id FROM personel_hareketleri ph2
                 WHERE ph2.personel_id = p.id AND ph2.silinme_tarihi IS NULL
                 ORDER BY ph2.zaman DESC, ph2.id DESC LIMIT 1
             )
+            LEFT JOIN personel_canli_konumlari ck ON ck.personel_id = p.id
             WHERE p.firma_id = :firma_id AND p.aktif_mi = 1 AND p.saha_takibi = 1
               AND p.silinme_tarihi IS NULL AND p.departman LIKE :departman
               AND ph.islem_tipi = 'BASLA' AND ph.zaman >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
               AND (:excluded_id = 0 OR p.id <> :excluded_id2)
-              AND NOT EXISTS (SELECT 1 FROM ihbar_atamalar a WHERE a.ihbar_id = :ihbar_id
-                              AND a.personel_id = p.id AND a.silinme_tarihi IS NULL)
+              AND (:exclude_current = 0 OR NOT EXISTS (SELECT 1 FROM ihbar_atamalar a WHERE a.ihbar_id = :ihbar_id
+                              AND a.personel_id = p.id AND a.silinme_tarihi IS NULL))
             ORDER BY {$orderBy}");
         $stmt->execute([':firma_id' => $this->firmaId(), ':departman' => '%Kaçak%', ':ihbar_id' => $ihbarId,
             ':lat' => $lat, ':lng' => $lng, ':lat2' => $lat, ':ilce' => $ihbar->ilce ?? '', ':mahalle' => $ihbar->mahalle ?? '',
-            ':excluded_id' => $excludedPersonelId, ':excluded_id2' => $excludedPersonelId]);
+            ':excluded_id' => $excludedPersonelId, ':excluded_id2' => $excludedPersonelId,
+            ':exclude_current' => $excludeCurrentAssignments ? 1 : 0, ':capacity_ihbar' => $ihbarId]);
         foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $aday) {
             if ((int) $aday->aktif_ihbar + ($reserved[(int) $aday->id] ?? 0) < $limit) {
                 return (int) $aday->id;
             }
         }
         return null;
+    }
+
+    public function recalculateRecentAutomaticAssignments(): array
+    {
+        $stmt = $this->db->prepare("SELECT i.id, i.konum_lat, i.konum_lng,
+                (SELECT a.personel_id FROM ihbar_atamalar a WHERE a.ihbar_id = i.id
+                 AND a.silinme_tarihi IS NULL ORDER BY a.id DESC LIMIT 1) AS mevcut_personel
+            FROM ihbarlar i WHERE i.firma_id = ? AND i.silinme_tarihi IS NULL
+              AND i.created_at >= DATE_SUB(NOW(), INTERVAL 2 MINUTE)
+              AND i.durum IN ('yeni','yonlendirildi')
+              AND NOT EXISTS (SELECT 1 FROM ihbar_atamalar ax WHERE ax.ihbar_id = i.id
+                  AND ax.silinme_tarihi IS NULL AND ax.atayan_user_id IS NOT NULL)");
+        $stmt->execute([$this->firmaId()]);
+        $changed = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_OBJ) as $ihbar) {
+            $personelId = $this->findNearestAvailablePersonel((float) $ihbar->konum_lat,
+                (float) $ihbar->konum_lng, (int) $ihbar->id, [], 0, false);
+            if (!$personelId || $personelId === (int) $ihbar->mevcut_personel) continue;
+            $pasif = $this->db->prepare("UPDATE ihbar_atamalar SET silinme_tarihi = NOW()
+                WHERE ihbar_id = ? AND silinme_tarihi IS NULL");
+            $pasif->execute([(int) $ihbar->id]);
+            $insert = $this->db->prepare("INSERT INTO ihbar_atamalar
+                (ihbar_id, personel_id, atayan_user_id, created_at) VALUES (?, ?, NULL, NOW())");
+            $insert->execute([(int) $ihbar->id, $personelId]);
+            $update = $this->db->prepare("UPDATE ihbarlar SET durum = 'yonlendirildi' WHERE id = ?");
+            $update->execute([(int) $ihbar->id]);
+            $this->addTarihce((int) $ihbar->id, 'yonlendirildi',
+                'Güncel konum yanıtlarına göre otomatik yönlendirme yenilendi.', 'personel', $personelId);
+            $changed[] = $personelId;
+        }
+        return $changed;
     }
 
     public function bulkReassign(array $assignments, int $userId): array
