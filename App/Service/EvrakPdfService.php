@@ -81,9 +81,9 @@ final class EvrakPdfService
         $html = '<!doctype html><html lang="tr"><head><meta charset="UTF-8"><style>
             @page{margin-top:5mm;margin-right:15mm;margin-bottom:30mm;margin-left:15mm}
             body{font-family:' . $fontChoice . ';font-size:' . $fontSize . 'pt;color:#000;line-height:1.2;margin:0;padding:0}
-            p{margin:0;padding:0}.letterhead{width:100%;border-collapse:collapse;height:25mm;margin-bottom:9mm}
+            p{margin:0;padding:0}.letterhead{width:100%;border-collapse:collapse;margin-bottom:0;margin-top:3mm}
             .letterhead td{border:0;vertical-align:middle}.logo{width:25%;text-align:left}.heading{width:50%;text-align:center;font-weight:bold;line-height:1.15}.heading div{margin-bottom:2px}.spacer{width:25%}
-            .document-info{width:100%;border-collapse:collapse;margin-bottom:8mm;line-height:1.2}.document-info td{border:0;padding:0;vertical-align:top}
+            .document-info{width:100%;border-collapse:collapse;margin-top:18mm;margin-bottom:6mm;line-height:1.2}.document-info td{border:0;padding:0;vertical-align:top}
             .recipient{text-align:center;font-weight:normal;line-height:1.25;margin:0 8mm 8mm}.recipient-address{font-weight:normal;text-transform:none;font-size:' . max(9, $fontSize - 1) . 'pt;margin-top:1mm}
             .interest,.attachments{width:100%;border-collapse:collapse;margin:0 0 5mm}.interest td,.attachments td{border:0;vertical-align:top;padding:0}.section-label{width:10mm}.separator{width:3mm}.interest-prefix{display:inline-block;width:8mm}
             .content{font-size:' . $fontSize . 'pt;line-height:1.2;text-align:justify}.content p,.content div{line-height:1.2!important;margin:0!important;padding:0!important}.content p{text-indent:12.5mm;text-align:justify}.content ul,.content ol{margin:0 0 0 12mm;padding-top:0;padding-bottom:0}
