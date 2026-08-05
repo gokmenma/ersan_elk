@@ -163,6 +163,57 @@ foreach (AparatTipiModel::RENKLER as $renk) {
     table.dataTable {
         width: 100% !important;
     }
+
+    .nc-adim {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        border-radius: 50%;
+        background: #556ee6;
+        color: #fff;
+        font-size: .72rem;
+        margin-right: 6px;
+    }
+
+    .nc-havuz {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 12px;
+        border-radius: 50px;
+        background: #f8f9fa;
+        border: 1px solid #e2e8f0;
+        font-size: .78rem;
+        font-weight: 600;
+        color: #495057;
+    }
+
+    .nc-formul {
+        background: #f8f9fa;
+        border-left: 3px solid #556ee6;
+        padding: 10px 14px;
+        border-radius: 6px;
+        font-size: .8rem;
+        font-weight: 600;
+        color: #343a40;
+    }
+
+    .nc-kutu {
+        border: 1px solid #e2e8f0;
+        border-radius: 8px;
+        padding: 12px;
+        font-size: .82rem;
+        height: 100%;
+    }
+
+    [data-bs-theme="dark"] .nc-havuz,
+    [data-bs-theme="dark"] .nc-formul {
+        background: #2a3042;
+        border-color: #32394e;
+        color: #c3cbe4;
+    }
 </style>
 
 <div class="container-fluid">
@@ -265,6 +316,13 @@ foreach (AparatTipiModel::RENKLER as $renk) {
             <li class="nav-item"><a class="nav-link" data-bs-toggle="tab" href="#pane-tanimlar" role="tab">
                     <i class="bx bx-cog me-1"></i> Tanımlar</a></li>
         <?php endif; ?>
+
+        <li class="nav-item ms-auto d-flex align-items-center">
+            <button type="button" class="btn btn-sm btn-soft-info d-flex align-items-center gap-1"
+                data-bs-toggle="modal" data-bs-target="#modalNasilCalisir">
+                <i class="bx bx-help-circle fs-5"></i> Nasıl Çalışır?
+            </button>
+        </li>
     </ul>
 
     <div class="tab-content">
@@ -622,6 +680,117 @@ foreach (AparatTipiModel::RENKLER as $renk) {
                 </div>
             </div>
         <?php endif; ?>
+    </div>
+</div>
+
+<!-- ============ MODAL: NASIL ÇALIŞIR ============ -->
+<div class="modal fade" id="modalNasilCalisir" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bx bx-help-circle me-1 text-info"></i> Aparat Takip Nasıl Çalışır?</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+
+                <p class="text-muted">
+                    Aparatlar <b>ekibe</b> zimmetlidir, personele değil. Ekip üyeleri gün gün
+                    değişebildiği için aparat araçta/ekipte kalır; ekranlarda ekip kodu yerine
+                    o ekipte <b>bugün çalışan personelin adı</b> gösterilir.
+                </p>
+
+                <h6 class="fw-bold mt-4"><span class="nc-adim">1</span> Beş havuz</h6>
+                <p class="text-muted small mb-2">Her aparat daima bu beş havuzdan birindedir. Toplam adet asla kendiliğinden değişmez.</p>
+                <div class="d-flex flex-wrap gap-2 mb-2">
+                    <span class="nc-havuz"><i class="bx bx-buildings"></i> Depo</span>
+                    <span class="nc-havuz"><i class="bx bx-group"></i> Ekip Stoğu</span>
+                    <span class="nc-havuz"><i class="bx bx-map-pin"></i> Sahada Takılı</span>
+                    <span class="nc-havuz"><i class="bx bx-trash"></i> Hurda</span>
+                    <span class="nc-havuz"><i class="bx bx-error"></i> Kayıp</span>
+                </div>
+                <div class="nc-formul">Depo + Σ(ekipler) + Sahada takılı + Hurda + Kayıp = Toplam alınan aparat</div>
+                <p class="text-muted small mt-2 mb-0">
+                    Bu eşitlik her aparat tipi için ayrı tutar. <b>Stok Durumu</b> sekmesindeki tablonun
+                    en alt satırı bu toplamı gösterir.
+                </p>
+
+                <h6 class="fw-bold mt-4"><span class="nc-adim">2</span> Saha işlemi: kesme ve açma</h6>
+                <div class="row g-2">
+                    <div class="col-md-6">
+                        <div class="nc-kutu border-danger-subtle">
+                            <div class="fw-bold text-danger mb-1"><i class="bx bx-water"></i> Kesme</div>
+                            Ekip stoğundan <b>−1</b> düşer, aparat <b>Sahada Takılı</b> havuzuna geçer.
+                        </div>
+                    </div>
+                    <div class="col-md-6">
+                        <div class="nc-kutu border-success-subtle">
+                            <div class="fw-bold text-success mb-1"><i class="bx bx-droplet"></i> Açma</div>
+                            Sahada Takılı havuzundan <b>−1</b> düşer; aparatın durumuna göre:
+                            <ul class="mb-0 ps-3 mt-1">
+                                <li><b>Alındı</b> → açan ekibin stoğuna +1</li>
+                                <li><b>Hasarlı geldi</b> → Hurda havuzuna +1</li>
+                                <li><b>Bulunamadı</b> → Kayıp havuzuna +1</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+                <div class="alert alert-info py-2 small mt-2 mb-0">
+                    <b>Modülün çözdüğü asıl problem:</b> Ekip-3'ün kestiği aboneyi günler sonra Ekip-5 açarsa,
+                    aparat kendiliğinden Ekip-5'in stoğuna geçer. Kimin taktığı ile kimin söktüğünün
+                    farklı olması sorun değil, sistemin normal işleyişidir.
+                </div>
+
+                <h6 class="fw-bold mt-4"><span class="nc-adim">3</span> Depo ve havuz hareketleri</h6>
+                <p class="text-muted small mb-2"><b>Stok Durumu → Depo / Havuz Hareketi</b> butonundan yapılır (şef yetkisi ister).</p>
+                <table class="table table-sm mb-0">
+                    <tbody>
+                        <tr><td class="fw-semibold" style="width:38%">Depo Girişi</td><td>Satın alınan aparatlar depoya eklenir. Toplamı artıran tek hareket.</td></tr>
+                        <tr><td class="fw-semibold">Depodan Ekibe Çıkış</td><td>Depo −, ekip + . <b>Ekibin zimmeti budur.</b></td></tr>
+                        <tr><td class="fw-semibold">Ekipten Depoya İade</td><td>Ekip −, depo +</td></tr>
+                        <tr><td class="fw-semibold">Hurdaya Ayır / Kayıp</td><td>Ekip −, hurda veya kayıp + (gerekçe zorunlu)</td></tr>
+                        <tr><td class="fw-semibold">Açılış Stoğu</td><td>Modül devreye girerken ekiplerin elindeki mevcut aparatlar. Bir kereye mahsus.</td></tr>
+                    </tbody>
+                </table>
+
+                <h6 class="fw-bold mt-4"><span class="nc-adim">4</span> Ekipler arası transfer</h6>
+                <p class="text-muted small mb-0">
+                    Veren ekip telefondan gönderir → kayıt <b>Beklemede</b> durumuna düşer →
+                    <b>alan ekip onaylayana kadar stok değişmez</b>. Alan ekip adedi düzelterek de onaylayabilir.
+                    Şef bekleyen bir transferi yalnızca <u>iptal</u> edebilir, onaylayamaz — çift onay
+                    "ben verdim / bana gelmedi" tartışmasında sistemin hakem olabilmesi için vardır.
+                </p>
+
+                <h6 class="fw-bold mt-4"><span class="nc-adim">5</span> Sayım (mutabakat)</h6>
+                <p class="text-muted small mb-0">
+                    Şef sayım başlatır, her ekip için tip bazında satır açılır. Sayılan adet girilir,
+                    sistem farkı hesaplar. <b>Farkları İşle</b> dendiğinde eksik çıkanlar Kayıp havuzuna yazılır,
+                    fazla çıkanlar Kayıp havuzundan düşülür — böylece toplam adet korunur.
+                    Farklı çıkan her satır için açıklama zorunludur.
+                </p>
+
+                <h6 class="fw-bold mt-4"><span class="nc-adim">6</span> Bilinmesi gereken kurallar</h6>
+                <ul class="text-muted small mb-0 ps-3">
+                    <li><b>Ana defter esastır.</b> Stok tablosu yalnızca hızlı okuma içindir ve her hareketle aynı anda güncellenir. Aralarında fark oluşursa sayfanın üstünde kırmızı uyarı çıkar, "Bakiyeyi Onar" ile defterden yeniden hesaplanır.</li>
+                    <li><b>Kayıt silinmez, iptal edilir.</b> İptalde ters hareket yazılır, iz kaybolmaz.</li>
+                    <li><b>Negatif stok engellenmez.</b> Ekipte o tipten aparat yokken kesme girilirse kayıt yine alınır, kırmızı işaretlenir ve şefe raporlanır — saha kilitlenmesin diye.</li>
+                    <li><b>Fotoğraf zorunlu.</b> Her saha kaydında sayaç ve aparat fotoğrafı istenir.</li>
+                    <li><b>Çevrimdışı çalışır.</b> Kapsama dışında girilen kayıt telefonda kuyruğa alınır, bağlantı gelince gönderilir. Hareket, kaydın gönderildiği güne değil <b>işlemin yapıldığı güne</b> ve o gün geçerli olan ekibe yazılır.</li>
+                    <li><b>Mükerrer uyarısı:</b> Aynı abonede aynı gün aynı işlem ikinci kez girilirse kayıt işaretlenir.</li>
+                </ul>
+
+                <h6 class="fw-bold mt-4"><span class="nc-adim">7</span> İlk kurulum sırası</h6>
+                <ol class="text-muted small mb-0 ps-3">
+                    <li><b>Tanımlar</b> sekmesinden aparat tipleri girilir.</li>
+                    <li><b>Depo Girişi</b> ile mevcut aparat mevcudu depoya işlenir.</li>
+                    <li>Her ekip için <b>Açılış Stoğu</b> ya da <b>Depodan Ekibe Çıkış</b> yapılır.</li>
+                    <li>Saha personeli telefonda <b>Hızlı İşlemler → Aparat Takip</b> ekranından kayda başlar.</li>
+                </ol>
+
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-light" data-bs-dismiss="modal">Kapat</button>
+            </div>
+        </div>
     </div>
 </div>
 

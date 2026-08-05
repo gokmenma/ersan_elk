@@ -3,7 +3,7 @@
  * Offline desteği ve önbellekleme
  */
 
-const CACHE_NAME = "yonetici-pwa-v6";
+const CACHE_NAME = "yonetici-pwa-v7";
 const OFFLINE_URL = "offline-admin.html";
 
 // Önbelleğe alınacak dosyalar
@@ -56,6 +56,11 @@ self.addEventListener("activate", (event) => {
 
 // Fetch event - network first, fallback to cache
 self.addEventListener("fetch", (event) => {
+  const requestScheme = new URL(event.request.url).protocol;
+  if (requestScheme !== "http:" && requestScheme !== "https:") {
+    return;
+  }
+
   // API isteklerini her zaman networkten al
   if (event.request.url.includes("api.php")) {
     event.respondWith(
@@ -92,10 +97,14 @@ self.addEventListener("fetch", (event) => {
       const fetchPromise = fetch(event.request)
         .then((networkResponse) => {
           // Başarılı yanıtları önbelleğe al
-          if (networkResponse && networkResponse.status === 200) {
+          if (
+            networkResponse &&
+            networkResponse.status === 200 &&
+            event.request.method === "GET"
+          ) {
             const responseToCache = networkResponse.clone();
             caches.open(CACHE_NAME).then((cache) => {
-              cache.put(event.request, responseToCache);
+              cache.put(event.request, responseToCache).catch(() => {});
             });
           }
           return networkResponse;
