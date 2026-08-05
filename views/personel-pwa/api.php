@@ -4696,6 +4696,13 @@ try {
             }
 
             $sahaKacakId = (int) $sahaKayit['id'];
+            $sahaToplam = max(0, min(
+                \App\Model\KacakKontrolModel::MAX_SAHA_FOTO,
+                (int) ($_POST['toplam'] ?? 0)
+            ));
+            if ($sahaToplam > 0) {
+                $KacakModel->updateExpectedPhotoCount($sahaKacakId, $sahaToplam + 1);
+            }
 
             if ($KacakModel->findPhotoBySira($sahaKacakId, 'saha', $sahaSira)) {
                 response(true, ['id' => $sahaKacakId, 'tekrar' => true], 'Bu fotoğraf zaten yüklenmişti.');
@@ -4827,6 +4834,7 @@ try {
                     'kaynak' => 'pwa',
                     'client_uuid' => $kacakClientUuid,
                     'offline_olusturma' => $_POST['offline_olusturma'] ?? null,
+                    'beklenen_foto_sayisi' => $_POST['beklenen_foto_sayisi'] ?? 1,
                     'onay_durumu' => 'beklemede',
                     'ilce' => $kacakIlce,
                     'tur' => $_POST['tur'] ?? 'Kaçak',

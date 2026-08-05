@@ -419,7 +419,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $message .= $warningMessage;
             }
 
-            echo json_encode(['status' => 'success', 'message' => $message, 'id' => $personel_id]);
+            echo json_encode(['status' => 'success', 'message' => $message, 'id' => $currentPid, 'is_update' => ($personel_id > 0)]);
 
         } catch (Exception $e) {
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);

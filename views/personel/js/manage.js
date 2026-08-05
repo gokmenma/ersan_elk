@@ -221,7 +221,10 @@ $(document).ready(function () {
             icon: "success",
             confirmButtonText: "Tamam",
           }).then((result) => {
-            window.location.href = "index?p=personel/list";
+            let isUpdate = res.is_update !== undefined ? res.is_update : (personel_id && String(personel_id).trim() !== "" && String(personel_id).trim() !== "0");
+            if (!isUpdate) {
+              window.location.href = "index?p=personel/list";
+            }
           });
         } else {
           Swal.fire({

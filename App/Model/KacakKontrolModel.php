@@ -354,10 +354,10 @@ class KacakKontrolModel extends Model
         ]));
 
         $stmt = $this->db->prepare("INSERT INTO kacak_kontrol
-            (firma_id, personel_ids, bildiren_personel_id, kaynak, client_uuid, offline_olusturma,
+            (firma_id, personel_ids, bildiren_personel_id, kaynak, client_uuid, offline_olusturma, beklenen_foto_sayisi,
              onay_durumu, onaylayan_id, onay_tarihi,
              durum, tarih, ekip_adi, ilce, tur, tutanak_no, abone_adi, sayac_no, endeks, sayi, aciklama, islem_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'aktif', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'aktif', ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
 
         $onayDurumu = $data['onay_durumu'] ?? 'onaylandi';
         $onaylayanId = $onayDurumu === 'onaylandi' ? ($data['onaylayan_id'] ?? ($_SESSION['user_id'] ?? null)) : null;
@@ -375,6 +375,7 @@ class KacakKontrolModel extends Model
             $data['kaynak'] ?? 'masaustu',
             $clientUuid !== '' ? $clientUuid : null,
             $offlineOlusturma,
+            max(0, min(self::MAX_SAHA_FOTO + 1, (int) ($data['beklenen_foto_sayisi'] ?? 0))),
             $onayDurumu,
             $onaylayanId,
             $onayTarihi,
@@ -392,6 +393,15 @@ class KacakKontrolModel extends Model
         ]);
 
         return (int) $this->db->lastInsertId();
+    }
+
+    public function updateExpectedPhotoCount(int $id, int $count): bool
+    {
+        $count = max(0, min(self::MAX_SAHA_FOTO + 1, $count));
+        $stmt = $this->db->prepare("UPDATE kacak_kontrol
+                                    SET beklenen_foto_sayisi = GREATEST(beklenen_foto_sayisi, ?)
+                                    WHERE id = ? AND firma_id = ? AND silinme_tarihi IS NULL");
+        return $stmt->execute([$count, $id, $this->firmaId()]);
     }
 
     public function updateRecord(int $id, array $data): bool

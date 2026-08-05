@@ -916,9 +916,21 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
 
         function fotoButonu(k) {
             const adet = parseInt(k.foto_sayisi || 0, 10);
-            if (adet === 0) return '<span class="text-muted">-</span>';
+            const beklenen = parseInt(k.beklenen_foto_sayisi || 0, 10);
+            const eksik = Math.max(0, beklenen - adet);
+            if (adet === 0 && eksik === 0) return '<span class="text-muted">-</span>';
+            if (adet === 0) {
+                return `<span class="badge bg-warning-subtle text-warning" title="Fotoğraf yüklemesi sürüyor">
+                    <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>0/${beklenen}
+                </span>`;
+            }
+            const sayac = beklenen > 0 ? `${adet}/${beklenen}` : adet;
+            const bekleme = eksik > 0
+                ? `<span class="badge bg-warning-subtle text-warning" title="${eksik} fotoğrafın yüklenmesi bekleniyor"><i class="bx bx-time-five me-1"></i>${eksik} bekleniyor</span>`
+                : '';
             return `<div class="d-flex align-items-center justify-content-center gap-1">
-                <button class="btn btn-sm btn-soft-info btn-foto" data-id="${k.id}" title="Fotoğrafları Görüntüle"><i class="bx bx-image me-1"></i>${adet}</button>
+                <button class="btn btn-sm btn-soft-info btn-foto" data-id="${k.id}" data-mevcut="${adet}" data-beklenen="${beklenen}" title="Fotoğrafları Görüntüle"><i class="bx bx-image me-1"></i>${sayac}</button>
+                ${bekleme}
                 <a href="${API}?action=download-zip&id=${k.id}" class="btn btn-sm btn-soft-success btn-foto-zip" title="Fotoğrafları ZIP Olarak İndir"><i class="bx bx-download"></i></a>
             </div>`;
         }
@@ -1495,6 +1507,19 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
 
         $(document).on('click', '.btn-foto', function () {
             const id = $(this).data('id');
+            const mevcut = parseInt($(this).attr('data-mevcut') || '0', 10);
+            const beklenen = parseInt($(this).attr('data-beklenen') || '0', 10);
+            if (beklenen > mevcut) {
+                Swal.fire({
+                    icon: 'info',
+                    title: 'Fotoğraf yüklemesi sürüyor',
+                    text: `${beklenen - mevcut} fotoğrafın daha yüklenmesi bekleniyor. Şu anda gelen ${mevcut} fotoğraf gösterilecek.`,
+                    timer: 2800,
+                    showConfirmButton: false,
+                    toast: true,
+                    position: 'top-end'
+                });
+            }
             $('#btnFotoModalZip').attr('href', API + '?action=download-zip&id=' + id);
             apiGet({ action: 'get-photos', id: id }).done(function (res) {
                 if (res.status !== 'success') return hataGoster(res);

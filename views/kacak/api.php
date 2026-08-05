@@ -157,6 +157,7 @@ try {
             foreach ($kayitlar as &$k) {
                 $k['tarih_formatted'] = Date::dmY($k['tarih']);
                 $k['foto_sayisi'] = (int) $k['foto_sayisi'];
+                $k['beklenen_foto_sayisi'] = (int) ($k['beklenen_foto_sayisi'] ?? 0);
             }
             unset($k);
 

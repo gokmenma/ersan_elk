@@ -798,6 +798,7 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
             if (!alanlar.client_uuid) {
                 alanlar.client_uuid = OfflineQueue.uuid();
             }
+            alanlar.beklenen_foto_sayisi = 1 + sahaFotolari.length;
 
             const ana = await OfflineQueue.istekGonder('saveKacakBildirim', alanlar, dosyalar, 'kayıt');
             if (ana.sonuc !== 'tamam') {
@@ -809,7 +810,7 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
                 const f = sahaFotolari[i];
                 const cevap = await OfflineQueue.istekGonder(
                     'addKacakSahaFoto',
-                    { client_uuid: alanlar.client_uuid, sira: i },
+                    { client_uuid: alanlar.client_uuid, sira: i, toplam: sahaFotolari.length },
                     [{ alan: 'foto', ad: f.ad, tip: f.tip, blob: f.blob }],
                     `fotoğraf ${i + 1}/${sahaFotolari.length}`
                 );
@@ -883,6 +884,7 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
                     tarih_formatted: (alanlar.tarih || '').split('-').reverse().join('.'),
                     foto_sayisi: dosyalar.length + sahaFotolari.length,
                 };
+                alanlar.beklenen_foto_sayisi = dosyalar.length + sahaFotolari.length;
 
                 btnText.textContent = 'GÖNDERİLİYOR...';
 

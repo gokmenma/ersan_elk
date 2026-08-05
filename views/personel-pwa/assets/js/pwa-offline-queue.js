@@ -143,6 +143,9 @@
 
         kayit.alanlar.client_uuid = kayit.uuid;
         kayit.alanlar.offline_olusturma = kayit.olusturmaYerel;
+        if (action === "saveKacakBildirim") {
+            kayit.alanlar.beklenen_foto_sayisi = (kayit.dosyalar || []).length + (kayit.ekDosyalar || []).length;
+        }
 
         return yaz(kayit).then(function () {
             duyur({ sebep: "eklendi", uuid: kayit.uuid });
@@ -269,7 +272,7 @@
 
         return istekGonder(
             kayit.ekAction,
-            { client_uuid: kayit.uuid, sira: sira },
+            { client_uuid: kayit.uuid, sira: sira, toplam: toplam },
             [{ alan: kayit.ekAlan, ad: dosya.ad, tip: dosya.tip, blob: dosya.blob }],
             "fotoğraf " + (sira + 1) + "/" + toplam + ", " + mbMetni(dosya.blob)
         ).then(function (cevap) {
