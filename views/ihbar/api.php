@@ -15,6 +15,8 @@ use App\Helper\Security;
 use App\Service\Gate;
 use App\Service\PushNotificationService;
 
+const IHBAR_MAX_FOTO = IhbarModel::MAX_FOTO;
+
 header('Content-Type: application/json; charset=utf-8');
 
 function ihbarResponse($success, $message = '', $data = null)
@@ -88,29 +90,59 @@ function ihbarHandleFotoUpload(int $ihbarId, IhbarModel $model): void
         return;
     }
 
-    $uploadDir = dirname(__DIR__, 2) . '/uploads/ihbar/';
-    if (!is_dir($uploadDir)) {
-        mkdir($uploadDir, 0777, true);
-    }
-
-    $allowedExt = ['jpg', 'jpeg', 'png', 'webp'];
-    $count = count($_FILES['fotograflar']['name']);
-    $maxFiles = min($count, 10);
+    $maxFiles = min(count($_FILES['fotograflar']['name']), IHBAR_MAX_FOTO);
 
     for ($i = 0; $i < $maxFiles; $i++) {
         if (($_FILES['fotograflar']['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
             continue;
         }
 
-        $originalName = $_FILES['fotograflar']['name'][$i];
-        $ext = strtolower(pathinfo($originalName, PATHINFO_EXTENSION));
-        if (!in_array($ext, $allowedExt, true)) {
+        try {
+            $sonuc = IhbarModel::storeUploadedFoto([
+                'name' => $_FILES['fotograflar']['name'][$i],
+                'tmp_name' => $_FILES['fotograflar']['tmp_name'][$i],
+                'error' => $_FILES['fotograflar']['error'][$i],
+                'size' => $_FILES['fotograflar']['size'][$i],
+            ], $ihbarId);
+
+            $model->addFotograf($ihbarId, $sonuc['yol'], $sonuc['kucuk']);
+        } catch (Throwable $e) {
+            error_log('İhbar fotoğrafı yüklenemedi (ihbar ' . $ihbarId . '): ' . $e->getMessage());
+        }
+    }
+}
+
+function ihbarHandleVideoUpload(int $ihbarId, IhbarModel $model): void
+{
+    if (empty($_FILES['videolar']) || empty($_FILES['videolar']['name'][0])) {
+        return;
+    }
+
+    $sureler = $_POST['video_sureleri'] ?? [];
+    $kapaklar = $_POST['video_kapaklari'] ?? [];
+    $maxFiles = min(count($_FILES['videolar']['name']), IhbarModel::MAX_VIDEO);
+
+    for ($i = 0; $i < $maxFiles; $i++) {
+        if (($_FILES['videolar']['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
             continue;
         }
 
-        $newName = 'ihbar_' . uniqid() . '_' . $i . '.' . $ext;
-        if (move_uploaded_file($_FILES['fotograflar']['tmp_name'][$i], $uploadDir . $newName)) {
-            $model->addFotograf($ihbarId, 'uploads/ihbar/' . $newName);
+        try {
+            $sonuc = $model->storeUploadedVideo(
+                [
+                    'name' => $_FILES['videolar']['name'][$i],
+                    'tmp_name' => $_FILES['videolar']['tmp_name'][$i],
+                    'error' => $_FILES['videolar']['error'][$i],
+                    'size' => $_FILES['videolar']['size'][$i],
+                ],
+                $ihbarId,
+                isset($sureler[$i]) && is_numeric($sureler[$i]) ? (int) ceil((float) $sureler[$i]) : null,
+                isset($kapaklar[$i]) ? (string) $kapaklar[$i] : null
+            );
+
+            $model->addVideo($ihbarId, $sonuc['yol'], $sonuc['kapak'], $sonuc['sure_saniye']);
+        } catch (Throwable $e) {
+            error_log('İhbar videosu yüklenemedi (ihbar ' . $ihbarId . '): ' . $e->getMessage());
         }
     }
 }
@@ -151,15 +183,24 @@ try {
                 ? (int) Security::decrypt((string) $_GET['token'])
                 : (int) ($_GET['foto_id'] ?? 0);
             $stmt = $IhbarModel->getDb()->prepare(
-                "SELECT f.dosya_yolu
+                "SELECT f.dosya_yolu, f.kucuk_yol
                  FROM ihbar_fotograflari f
                  INNER JOIN ihbarlar i ON i.id = f.ihbar_id
                  WHERE f.id = ? AND i.firma_id = ? AND i.silinme_tarihi IS NULL"
             );
             $stmt->execute([$fotoId, (int) ($_SESSION['firma_id'] ?? 1)]);
-            $dosyaYolu = $stmt->fetchColumn();
+            $satir = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+            $dosyaYolu = $satir['dosya_yolu'] ?? '';
+
+            if ($dosyaYolu !== '' && ($_GET['boyut'] ?? '') === 'kucuk' && !empty($satir['kucuk_yol'])) {
+                $kucukTam = realpath(dirname(__DIR__, 2) . '/' . ltrim($satir['kucuk_yol'], '/'));
+                if ($kucukTam && is_file($kucukTam)) {
+                    $dosyaYolu = $satir['kucuk_yol'];
+                }
+            }
+
             $uploadRoot = realpath(dirname(__DIR__, 2) . '/uploads/ihbar');
-            $dosya = $dosyaYolu ? realpath(dirname(__DIR__, 2) . '/' . ltrim($dosyaYolu, '/')) : false;
+            $dosya = $dosyaYolu !== '' ? realpath(dirname(__DIR__, 2) . '/' . ltrim($dosyaYolu, '/')) : false;
 
             if (!$uploadRoot || !$dosya || strpos($dosya, $uploadRoot . DIRECTORY_SEPARATOR) !== 0 || !is_file($dosya)) {
                 http_response_code(404);
@@ -167,10 +208,7 @@ try {
             }
 
             header_remove('Content-Type');
-            header('Content-Type: ' . (mime_content_type($dosya) ?: 'application/octet-stream'));
-            header('Content-Length: ' . filesize($dosya));
-            header('Cache-Control: private, max-age=86400');
-            readfile($dosya);
+            App\Helper\MedyaServis::gonder($dosya, 86400);
             exit;
 
         case 'create':
@@ -195,6 +233,7 @@ try {
             ]);
 
             ihbarHandleFotoUpload($ihbarId, $IhbarModel);
+            ihbarHandleVideoUpload($ihbarId, $IhbarModel);
 
             try {
                 ihbarNotifyYeniIhbar($ihbarId, 'Yeni bir ihbar kaydı oluşturuldu. Detaylar için ihbar yönetimi ekranını kontrol edin.');

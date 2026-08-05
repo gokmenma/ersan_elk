@@ -378,6 +378,13 @@ if (!empty($icralar)) {
                                                     </a>
                                                 </li>
                                                 <li>
+                                                    <a class="dropdown-item py-2 d-flex align-items-center"
+                                                        href="index.php?p=evrak-takip/giden-evrak&amp;icra_id=<?= htmlspecialchars(Security::encrypt($i->id), ENT_QUOTES, 'UTF-8') ?>">
+                                                        <i data-feather="file-plus" class="me-2 text-success"
+                                                            style="width: 14px; height: 14px;"></i> Üst Yazı Oluştur
+                                                    </a>
+                                                </li>
+                                                <li>
                                                     <hr class="dropdown-divider opacity-50">
                                                 </li>
                                                 <li>
@@ -463,6 +470,10 @@ if (!empty($icralar)) {
                                 </div>
                                 <div class="col-md-6 mb-3">
                                     <?= Form::FormFloatInput("text", "icra_dosya_no", "", "Dosya No", "Esas No", "file-text", "form-control shadow-none", true, null, "off", false) ?>
+                                </div>
+                                <div class="col-md-12 mb-3">
+                                    <?= Form::FormFloatInput("text", "icra_alacakli", "", "Alacaklı", "Alacaklı Kurum / Kişi", "briefcase", "form-control shadow-none", false, 255, "off", false) ?>
+                                    <div class="form-text">Resmî üst yazıda "… borcu nedeniyle" cümlesinde kullanılır.</div>
                                 </div>
                             </div>
                         </div>

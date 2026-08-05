@@ -10,6 +10,8 @@ $KacakModel = new KacakKontrolModel();
 $ekipAdaylari = $KacakModel->getEkipAdaylari($personel_id);
 $ilceler = KacakKontrolModel::ILCELER;
 $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
+$maxVideo = KacakKontrolModel::MAX_VIDEO;
+$videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
 ?>
 
 <div class="flex flex-col min-h-screen bg-slate-50 dark:bg-background-dark pb-20">
@@ -215,6 +217,19 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
             </div>
 
             <div>
+                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Video (en fazla
+                    <?= (int) $maxVideo ?> adet, <?= (int) $videoMaxSure ?> sn)</label>
+                <input type="file" id="kacak-video-input" accept="video/*" capture="environment" style="display:none">
+                <button type="button" onclick="document.getElementById('kacak-video-input').click()"
+                    class="w-full py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-bold">
+                    Video Ekle
+                </button>
+                <p class="text-xs text-slate-400 mt-1">En fazla <?= (int) $videoMaxSure ?> saniye ve
+                    <?= (int) round(KacakKontrolModel::VIDEO_MAX_BYTE / 1048576) ?> MB. Videolar çevrimiçiyken gönderilir.</p>
+                <div id="kacak-video-preview" class="grid grid-cols-3 gap-2 mt-3"></div>
+            </div>
+
+            <div>
                 <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Açıklama</label>
                 <textarea name="aciklama" id="kacak-aciklama" rows="2"
                     class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm text-slate-800 dark:text-white"></textarea>
@@ -250,6 +265,10 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
 <script>
     (function () {
         const MAX_SAHA_FOTO = <?= (int) $maxSahaFoto ?>;
+        const MAX_VIDEO = <?= (int) $maxVideo ?>;
+        const VIDEO_MAX_SURE = <?= (int) $videoMaxSure ?>;
+        const VIDEO_MAX_BYTE = <?= (int) KacakKontrolModel::VIDEO_MAX_BYTE ?>;
+        let videoDosyalari = [];
         const BEN = <?= (int) $personel_id ?>;
 
         let kacakKayitlar = [];
@@ -563,12 +582,23 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
                 fotoHtml = `
                 <p class="text-xs font-bold text-slate-400 uppercase mt-4 mb-2">Belgeler</p>
                 <div class="grid grid-cols-3 gap-2">
-                    ${k.fotograflar.map(f => `
-                        <a href="${esc(f.url)}" target="_blank" rel="noopener">
-                            <img src="${esc(f.url)}" class="w-full rounded-xl border border-slate-200"
-                                 style="height:6rem;object-fit:cover">
+                    ${k.fotograflar.map(f => {
+                        const videoMu = f.medya_tipi === 'video';
+                        const gorsel = (videoMu && !f.kucuk_var)
+                            ? `<div class="w-full rounded-xl border border-slate-200 flex items-center justify-center bg-slate-100" style="height:6rem">
+                                   <span class="material-symbols-outlined text-slate-400">movie</span></div>`
+                            : `<img src="${esc(f.kucuk_url || f.url)}" loading="lazy" class="w-full rounded-xl border border-slate-200"
+                                    style="height:6rem;object-fit:cover">`;
+                        const rozet = videoMu
+                            ? `<span class="text-white text-xs rounded" style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.7);padding:1px 4px">${f.sure_saniye ? OfflineQueue.sureBicimle(f.sure_saniye) : '▶'}</span>`
+                            : '';
+                        return `
+                        <a href="${esc(f.url)}" target="_blank" rel="noopener" style="position:relative;display:block">
+                            ${gorsel}
+                            ${rozet}
                             <span class="text-xs text-slate-400 block text-center mt-1">${esc(f.tur_label)}</span>
-                        </a>`).join('')}
+                        </a>`;
+                    }).join('')}
                 </div>`;
             }
 
@@ -605,6 +635,8 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
             aiButonGuncelle();
             document.getElementById('kacak-saha-preview').innerHTML = '';
             sahaDosyalari = [];
+            document.getElementById('kacak-video-preview').innerHTML = '';
+            videoDosyalari = [];
             if (editData) {
                 const form = document.getElementById('kacak-bildir-form');
                 ['tarih','ilce','tur','tutanak_no','abone_adi','sayac_no','endeks','sayi','aciklama'].forEach(ad => {
@@ -678,6 +710,48 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
             e.target.value = '';
             sahaOnizlemeCiz();
         });
+
+        // ----- Videolar -----
+        document.getElementById('kacak-video-input').addEventListener('change', async function (e) {
+            const dosya = e.target.files[0];
+            e.target.value = '';
+            if (!dosya) return;
+
+            if (videoDosyalari.length >= MAX_VIDEO) {
+                return Alert.warning('Limit', `En fazla ${MAX_VIDEO} video ekleyebilirsiniz.`);
+            }
+
+            try {
+                videoDosyalari.push(await OfflineQueue.videoIncele(dosya, VIDEO_MAX_SURE, VIDEO_MAX_BYTE));
+                videoOnizlemeCiz();
+            } catch (hata) {
+                Alert.warning('Video Eklenemedi', hata.message);
+            }
+        });
+
+        function videoOnizlemeCiz() {
+            const box = document.getElementById('kacak-video-preview');
+            box.innerHTML = '';
+            videoDosyalari.forEach((v, i) => {
+                const kapak = v.kapak
+                    ? `<img src="${v.kapak}" class="w-full rounded-xl border border-slate-200" style="height:4.5rem;object-fit:cover">`
+                    : `<div class="w-full rounded-xl border border-slate-200 flex items-center justify-center bg-slate-100" style="height:4.5rem">
+                           <span class="material-symbols-outlined text-slate-400">movie</span></div>`;
+                box.insertAdjacentHTML('beforeend', `
+                <div style="position:relative">
+                    ${kapak}
+                    <span class="text-white text-xs rounded" style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.7);padding:1px 4px">${OfflineQueue.sureBicimle(v.sure)}</span>
+                    <button type="button" onclick="videoSil(${i})"
+                        class="text-white text-xs font-bold rounded-xl"
+                        style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;line-height:1;background:#dc2626">×</button>
+                </div>`);
+            });
+        }
+
+        window.videoSil = function (index) {
+            videoDosyalari.splice(index, 1);
+            videoOnizlemeCiz();
+        };
 
         function sahaOnizlemeCiz() {
             const box = document.getElementById('kacak-saha-preview');
@@ -791,6 +865,33 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
             });
         }
 
+        // Videolar boyutları nedeniyle cihaz kuyruğuna yazılmaz; kayıt sunucuya
+        // ulaştıktan sonra ayrı isteklerle gönderilir. Gönderilemeyen video sayısı döner.
+        async function videolariGonder(clientUuid) {
+            let eksik = 0;
+            for (let i = 0; i < videoDosyalari.length; i++) {
+                const v = videoDosyalari[i];
+                try {
+                    const fd = new FormData();
+                    fd.append('action', 'addKacakVideo');
+                    fd.append('client_uuid', clientUuid);
+                    fd.append('video', v.dosya, v.dosya.name);
+                    if (v.sure) fd.append('sure', v.sure);
+                    if (v.kapak) fd.append('kapak', v.kapak);
+
+                    const res = await (await fetch('api.php', { method: 'POST', body: fd })).json();
+                    if (!res.success) {
+                        eksik++;
+                        console.error('Video gönderilemedi:', res.message);
+                    }
+                } catch (hata) {
+                    eksik++;
+                    console.error('Video gönderim hatası:', hata);
+                }
+            }
+            return eksik;
+        }
+
         // Kuyruk yazması başarısız olduğunda (cihaz depolaması dolu, IndexedDB
         // engelli vb.) kullanılan emniyet yolu. Kuyruktaki gibi parçalı gönderir:
         // önce kayıt + tutanak, sonra saha fotoğrafları teker teker.
@@ -852,8 +953,20 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
                     const fd = new FormData(this);
                     fd.append('action', 'updateKacakBildirim');
                     fd.append('edit_token', kacakEditToken);
-                    if (tutanakInput.files[0]) fd.append('tutanak_foto', tutanakInput.files[0]);
-                    sahaDosyalari.forEach(file => fd.append('saha_fotolari[]', file));
+                    btnText.textContent = 'HAZIRLANIYOR...';
+                    if (tutanakInput.files[0]) {
+                        const tutanakKucuk = await OfflineQueue.fotografKucult(tutanakInput.files[0], 2200, 0.82);
+                        fd.append('tutanak_foto', tutanakKucuk.blob, tutanakKucuk.ad);
+                    }
+                    for (const file of sahaDosyalari) {
+                        const sahaKucuk = await OfflineQueue.fotografKucult(file, 1600, 0.7);
+                        fd.append('saha_fotolari[]', sahaKucuk.blob, sahaKucuk.ad);
+                    }
+                    videoDosyalari.forEach(v => {
+                        fd.append('videolar[]', v.dosya, v.dosya.name);
+                        fd.append('video_sureleri[]', v.sure || '');
+                        fd.append('video_kapaklari[]', v.kapak || '');
+                    });
                     btnText.textContent = 'GÜNCELLENİYOR...';
                     const res = await (await fetch('api.php', {method:'POST', body:fd})).json();
                     if (!res.success) return Alert.error('Güncellenemedi', res.message || 'İşlem başarısız.');
@@ -913,10 +1026,13 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
                     }
 
                     if (res && res.success) {
+                        const eksikVideo = await videolariGonder(alanlar.client_uuid);
                         Modal.close('kacak-bildir-modal');
                         tarihAraligiGenislet(alanlar.tarih);
                         await loadKacakKayitlar();
-                        return Alert.success('Gönderildi', res.message || 'Bildiriminiz iletildi. Yönetici onayı bekleniyor.');
+                        return Alert.success('Gönderildi', eksikVideo > 0
+                            ? `Tutanak iletildi ancak ${eksikVideo} video gönderilemedi.`
+                            : (res.message || 'Bildiriminiz iletildi. Yönetici onayı bekleniyor.'));
                     }
 
                     return Alert.error('Gönderilemedi', (res && res.message) || 'Sunucu kaydı kabul etmedi.');
@@ -927,8 +1043,10 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
                 await kuyrugaBak();
 
                 if (!cevrimici()) {
-                    return Alert.success('Cihaza Kaydedildi',
-                        'Bağlantı olmadığı için tutanak telefonunuza kaydedildi. İnternet geldiğinde otomatik gönderilecek.');
+                    return Alert.success('Cihaza Kaydedildi', videoDosyalari.length > 0
+                        ? 'Bağlantı olmadığı için tutanak telefonunuza kaydedildi ve internet geldiğinde otomatik gönderilecek. '
+                          + 'Videolar cihazda saklanamadığı için kaydı çevrimiçiyken açıp videoları tekrar eklemeniz gerekir.'
+                        : 'Bağlantı olmadığı için tutanak telefonunuza kaydedildi. İnternet geldiğinde otomatik gönderilecek.');
                 }
 
                 await OfflineQueue.flush();
@@ -936,8 +1054,11 @@ $maxSahaFoto = KacakKontrolModel::MAX_SAHA_FOTO;
                 await kuyrugaBak();
 
                 if (!kalan) {
+                    const eksikVideo = await videolariGonder(kayit.uuid);
                     await loadKacakKayitlar();
-                    return Alert.success('Gönderildi', 'Bildiriminiz iletildi. Yönetici onayı bekleniyor.');
+                    return Alert.success('Gönderildi', eksikVideo > 0
+                        ? `Tutanak iletildi ancak ${eksikVideo} video gönderilemedi.`
+                        : 'Bildiriminiz iletildi. Yönetici onayı bekleniyor.');
                 }
                 if (kalan.durum === 'hata') {
                     return Alert.error('Gönderilemedi', kalan.hata || 'Sunucu kaydı kabul etmedi.');

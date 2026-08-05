@@ -21,6 +21,25 @@ if (isset($_GET['action'])) {
         $data['kayit_yapan'] = $_SESSION['user']->id ?? 0;
 
         try {
+            if (isset($_FILES['logo']) && $_FILES['logo']['error'] !== UPLOAD_ERR_NO_FILE) {
+                if ($_FILES['logo']['error'] !== UPLOAD_ERR_OK || $_FILES['logo']['size'] > 2 * 1024 * 1024) {
+                    throw new \Exception('Firma logosu yüklenemedi veya 2 MB sınırını aşıyor.');
+                }
+                $logoMimeMap = ['image/png' => 'png', 'image/jpeg' => 'jpg'];
+                $logoMime = (new finfo(FILEINFO_MIME_TYPE))->file($_FILES['logo']['tmp_name']);
+                if (!isset($logoMimeMap[$logoMime])) {
+                    throw new \Exception('Firma logosu PNG veya JPG olmalıdır.');
+                }
+                $logoDir = __DIR__ . '/uploads/firma-logolari/';
+                if (!is_dir($logoDir) && !mkdir($logoDir, 0775, true) && !is_dir($logoDir)) {
+                    throw new \Exception('Firma logo klasörü oluşturulamadı.');
+                }
+                $logoName = 'firma_' . ((int) ($_POST['id'] ?? 0) ?: 'yeni') . '_' . bin2hex(random_bytes(8)) . '.' . $logoMimeMap[$logoMime];
+                if (!move_uploaded_file($_FILES['logo']['tmp_name'], $logoDir . $logoName)) {
+                    throw new \Exception('Firma logosu kaydedilemedi.');
+                }
+                $data['logo_yolu'] = 'uploads/firma-logolari/' . $logoName;
+            }
             $res = $Firma->saveFirma($data);
             echo json_encode(['status' => 'success', 'message' => 'Firma başarıyla kaydedildi.']);
         } catch (\Exception $e) {
@@ -659,6 +678,11 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
                     <div class="form-group">
                         <?php echo Form::FormFloatInput("text", "firma_unvan", "", "Firma Ünvanı", "Firma Ünvanı", "briefcase"); ?>
                     </div>
+                    <div class="form-group full">
+                        <?php echo Form::FormFileInput("logo", "Firma Logosu", "image", false, 'accept="image/png,image/jpeg"'); ?>
+                        <div class="text-muted mt-1">Resmî yazılarda kullanılır. PNG veya JPG, en fazla 2 MB.</div>
+                        <img id="firma_logo_preview" alt="Firma logosu" style="display:none;max-width:110px;max-height:80px;margin-top:10px;object-fit:contain;">
+                    </div>
                     <div class="form-group">
                         <?php echo Form::FormFloatInput("text", "firma_iban", "", "Firma IBAN", "Firma IBAN", "credit-card"); ?>
                     </div>
@@ -721,6 +745,11 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
             document.getElementById('modalTitle').innerText = 'Yeni Firma Ekle';
             document.getElementById('firmaForm').reset();
             document.getElementById('firma_id').value = '';
+            const logoPreview = document.getElementById('firma_logo_preview');
+            if (logoPreview) {
+                logoPreview.removeAttribute('src');
+                logoPreview.style.display = 'none';
+            }
             document.getElementById('firmaModal').classList.add('show');
         }
 
@@ -753,6 +782,16 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
                     document.getElementById('adres').value = data.adres;
                     if (document.getElementById('firma_unvan')) {
                         document.getElementById('firma_unvan').value = data.firma_unvan ?? '';
+                    }
+                    const logoPreview = document.getElementById('firma_logo_preview');
+                    if (logoPreview) {
+                        if (data.logo_yolu) {
+                            logoPreview.src = data.logo_yolu;
+                            logoPreview.style.display = 'block';
+                        } else {
+                            logoPreview.removeAttribute('src');
+                            logoPreview.style.display = 'none';
+                        }
                     }
                     if (document.getElementById('firma_iban')) {
                         document.getElementById('firma_iban').value = data.firma_iban ?? '';
@@ -798,6 +837,23 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
                     }
                 });
         }
+
+        document.getElementById('logo')?.addEventListener('change', function () {
+            const file = this.files && this.files[0];
+            if (!file) return;
+            if (!['image/png', 'image/jpeg'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+                this.value = '';
+                Swal.fire('Geçersiz Logo', 'Logo PNG veya JPG formatında ve en fazla 2 MB olmalıdır.', 'warning');
+                return;
+            }
+            const reader = new FileReader();
+            reader.onload = event => {
+                const preview = document.getElementById('firma_logo_preview');
+                preview.src = event.target.result;
+                preview.style.display = 'block';
+            };
+            reader.readAsDataURL(file);
+        });
 
         function deleteFirma(id) {
             Swal.fire({

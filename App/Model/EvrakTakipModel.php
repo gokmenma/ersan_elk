@@ -34,6 +34,9 @@ class EvrakTakipModel extends Model
             if (!in_array('ceza_personel_id', $cols)) {
                 $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN ceza_personel_id int DEFAULT NULL AFTER ceza_hedef_tipi");
             }
+            if (!in_array('imza_kimin_adina_json', $cols)) {
+                $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN imza_kimin_adina_json text DEFAULT NULL AFTER imza_kullanici_ids");
+            }
         } catch (\Exception $e) {
             // Silent catch to prevent errors on strict environments
         }
@@ -73,12 +76,189 @@ class EvrakTakipModel extends Model
             LEFT JOIN personel p2 ON et.ilgili_personel_id = p2.id
             WHERE et.id = :id 
             AND et.firma_id = :firma_id
+            AND et.silinme_tarihi IS NULL
         ");
         $sql->execute([
             'id' => $id,
             'firma_id' => $_SESSION['firma_id']
         ]);
         return $sql->fetch(PDO::FETCH_OBJ);
+    }
+
+    public function getPersonelName(int $personelId): string
+    {
+        if ($personelId <= 0) {
+            return '';
+        }
+
+        $sql = $this->db->prepare("
+            SELECT adi_soyadi
+            FROM personel
+            WHERE id = :id
+              AND firma_id = :firma_id
+              AND silinme_tarihi IS NULL
+            LIMIT 1
+        ");
+        $sql->execute([
+            'id' => $personelId,
+            'firma_id' => $_SESSION['firma_id'],
+        ]);
+
+        return (string) ($sql->fetchColumn() ?: '');
+    }
+
+    public function getActiveVehicles(): array
+    {
+        $sql = $this->db->prepare("
+            SELECT id, plaka, marka, model
+            FROM araclar
+            WHERE firma_id = :firma_id
+              AND silinme_tarihi IS NULL
+            ORDER BY plaka ASC
+        ");
+        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function findVehicleAssignment(string $plaka, string $tarih): object|false
+    {
+        $sql = $this->db->prepare("
+            SELECT az.personel_id, p.adi_soyadi
+            FROM arac_zimmetleri az
+            INNER JOIN araclar a ON az.arac_id = a.id
+            INNER JOIN personel p ON az.personel_id = p.id
+            WHERE REPLACE(a.plaka, ' ', '') = REPLACE(:plaka, ' ', '')
+              AND az.firma_id = :firma_id
+              AND az.silinme_tarihi IS NULL
+              AND az.zimmet_tarihi <= :tarih
+              AND (az.iade_tarihi IS NULL OR az.iade_tarihi >= :tarih)
+              AND az.durum != 'iptal'
+            ORDER BY az.id DESC
+            LIMIT 1
+        ");
+        $sql->execute([
+            'plaka' => $plaka,
+            'tarih' => $tarih,
+            'firma_id' => $_SESSION['firma_id'],
+        ]);
+        return $sql->fetch(PDO::FETCH_OBJ);
+    }
+
+    public function getSigningUsers(): array
+    {
+        $sql = $this->db->prepare("
+            SELECT id, adi_soyadi, COALESCE(NULLIF(unvani, ''), gorevi, '') AS imza_unvani, telefon, email_adresi
+            FROM users
+            WHERE silinme_tarihi IS NULL
+              AND durum = 'Aktif'
+              AND owner_id = :owner_id
+              AND (firma_ids IS NULL OR firma_ids = '' OR FIND_IN_SET(:firma_id, REPLACE(firma_ids, ' ', '')) > 0)
+            ORDER BY adi_soyadi ASC
+        ");
+        $sql->execute([
+            'owner_id' => (int) ($_SESSION['owner_id'] ?? 0),
+            'firma_id' => (string) $_SESSION['firma_id'],
+        ]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function getSigningUsersByIds(array $ids): array
+    {
+        $ids = array_values(array_unique(array_filter(array_map('intval', $ids), fn($id) => $id > 0)));
+        $ids = array_slice($ids, 0, 3);
+        if ($ids === []) {
+            return [];
+        }
+
+        $placeholders = implode(',', array_fill(0, count($ids), '?'));
+        $sql = $this->db->prepare("
+            SELECT id, adi_soyadi, COALESCE(NULLIF(unvani, ''), gorevi, '') AS imza_unvani, telefon, email_adresi
+            FROM users
+            WHERE id IN ({$placeholders})
+              AND silinme_tarihi IS NULL
+              AND owner_id = ?
+              AND (firma_ids IS NULL OR firma_ids = '' OR FIND_IN_SET(?, REPLACE(firma_ids, ' ', '')) > 0)
+        ");
+        $sql->execute(array_merge($ids, [
+            (int) ($_SESSION['owner_id'] ?? 0),
+            (string) $_SESSION['firma_id'],
+        ]));
+        $rows = $sql->fetchAll(PDO::FETCH_OBJ);
+        $byId = [];
+        foreach ($rows as $row) {
+            $byId[(int) $row->id] = $row;
+        }
+
+        $ordered = [];
+        foreach ($ids as $id) {
+            if (isset($byId[$id])) {
+                $ordered[] = $byId[$id];
+            }
+        }
+        return $ordered;
+    }
+
+    public function getAttachments(int $evrakId): array
+    {
+        $sql = $this->db->prepare("
+            SELECT id, dosya_adi, dosya_yolu, mime_tipi, dosya_boyutu, sira, olusturma_tarihi
+            FROM evrak_takip_ekleri
+            WHERE evrak_id = :evrak_id
+              AND firma_id = :firma_id
+              AND silinme_tarihi IS NULL
+            ORDER BY sira ASC, id ASC
+        ");
+        $sql->execute(['evrak_id' => $evrakId, 'firma_id' => $_SESSION['firma_id']]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function saveAttachment(int $evrakId, array $attachment): int
+    {
+        if (!$this->getById($evrakId)) {
+            throw new \RuntimeException('Evrak bulunamadı.');
+        }
+        $sql = $this->db->prepare("
+            INSERT INTO evrak_takip_ekleri
+                (evrak_id, firma_id, dosya_adi, dosya_yolu, mime_tipi, dosya_boyutu, sira)
+            VALUES
+                (:evrak_id, :firma_id, :dosya_adi, :dosya_yolu, :mime_tipi, :dosya_boyutu, :sira)
+        ");
+        $sql->execute([
+            'evrak_id' => $evrakId,
+            'firma_id' => $_SESSION['firma_id'],
+            'dosya_adi' => $attachment['dosya_adi'],
+            'dosya_yolu' => $attachment['dosya_yolu'],
+            'mime_tipi' => $attachment['mime_tipi'] ?? null,
+            'dosya_boyutu' => (int) ($attachment['dosya_boyutu'] ?? 0),
+            'sira' => (int) ($attachment['sira'] ?? 0),
+        ]);
+        return (int) $this->db->lastInsertId();
+    }
+
+    public function syncAttachmentState(int $evrakId, array $orderedIds, array $removedIds): void
+    {
+        if (!$this->getById($evrakId)) {
+            throw new \RuntimeException('Evrak bulunamadı.');
+        }
+        $removedIds = array_values(array_unique(array_filter(array_map('intval', $removedIds), fn($id) => $id > 0)));
+        if ($removedIds !== []) {
+            $placeholders = implode(',', array_fill(0, count($removedIds), '?'));
+            $sql = $this->db->prepare("UPDATE evrak_takip_ekleri SET silinme_tarihi = NOW() WHERE id IN ({$placeholders}) AND evrak_id = ? AND firma_id = ?");
+            $sql->execute(array_merge($removedIds, [$evrakId, (int) $_SESSION['firma_id']]));
+        }
+
+        $position = 1;
+        $seen = [];
+        foreach ($orderedIds as $attachmentId) {
+            $attachmentId = (int) $attachmentId;
+            if ($attachmentId <= 0 || isset($seen[$attachmentId])) {
+                $position++;
+                continue;
+            }
+            $seen[$attachmentId] = true;
+            $sql = $this->db->prepare("UPDATE evrak_takip_ekleri SET sira = :sira WHERE id = :id AND evrak_id = :evrak_id AND firma_id = :firma_id AND silinme_tarihi IS NULL");
+            $sql->execute(['sira' => $position++, 'id' => $attachmentId, 'evrak_id' => $evrakId, 'firma_id' => $_SESSION['firma_id']]);
+        }
     }
 
     /**
@@ -106,7 +286,12 @@ class EvrakTakipModel extends Model
     public function getMaxEvrakNo($tip)
     {
         $sql = $this->db->prepare("
-            SELECT MAX(evrak_no) as max_no 
+            SELECT MAX(
+                CASE
+                    WHEN evrak_no REGEXP '^[0-9]+$' THEN CAST(evrak_no AS UNSIGNED)
+                    ELSE 0
+                END
+            ) as max_no
             FROM {$this->table} 
             WHERE firma_id = :firma_id 
             AND evrak_tipi = :evrak_tipi
@@ -117,7 +302,7 @@ class EvrakTakipModel extends Model
             'evrak_tipi' => $tip
         ]);
         $row = $sql->fetch(PDO::FETCH_OBJ);
-        return ($row->max_no ?? 0) + 1;
+        return ((int) ($row->max_no ?? 0)) + 1;
     }
 
     /**

@@ -9,6 +9,58 @@ $(document).ready(function () {
     }
   }
   ensureModalInBody();
+  $("#dosya").attr("accept", ".pdf,.jpg,.jpeg,.png");
+
+  let evrakPdfObjectUrl = null;
+
+  function initEvrakSummernote() {
+    const editor = $("#evrak_aciklama");
+    if (!editor.length || typeof $.fn.summernote === "undefined" || editor.data("summernote")) return;
+    editor.summernote({
+      height: 230,
+      lang: "tr-TR",
+      placeholder: "Evrak içeriğini buraya yazın...",
+      dialogsInBody: true,
+      toolbar: [
+        ["style", ["style", "bold", "italic", "underline", "clear"]],
+        ["font", ["fontsize", "color"]],
+        ["para", ["ul", "ol", "paragraph"]],
+        ["insert", ["link", "table", "hr"]],
+        ["view", ["fullscreen", "codeview"]]
+      ]
+    });
+    updateEditorFont();
+  }
+
+  function updateEditorFont() {
+    const isArial = $("#yazi_tipi").val() === "arial";
+    $("#evrakModal .note-editable").css({
+      "font-family": isArial ? "Arial, sans-serif" : '"Times New Roman", Times, serif',
+      "font-size": isArial ? "11pt" : "12pt"
+    });
+  }
+
+  function setEvrakContent(content) {
+    initEvrakSummernote();
+    if ($("#evrak_aciklama").data("summernote")) {
+      $("#evrak_aciklama").summernote("code", content || "");
+    } else {
+      $("#evrak_aciklama").val(content || "");
+    }
+  }
+
+  function syncEvrakContent() {
+    if ($("#evrak_aciklama").data("summernote")) {
+      $("#evrak_aciklama").val($("#evrak_aciklama").summernote("code"));
+    }
+  }
+
+  function clearPdfObjectUrl() {
+    if (evrakPdfObjectUrl) URL.revokeObjectURL(evrakPdfObjectUrl);
+    evrakPdfObjectUrl = null;
+    $("#evrakPdfFrame").attr("src", "about:blank").hide();
+    $("#evrakPdfYeniSekme").addClass("d-none").attr("href", "#");
+  }
 
   // Feather Icons
   if (typeof feather !== 'undefined') feather.replace();
@@ -91,6 +143,17 @@ $(document).ready(function () {
         }
     });
 
+    $("#evrakModal .evrak-select2-multiple").each(function() {
+      if (!$(this).hasClass("select2-hidden-accessible")) {
+        $(this).select2({
+          dropdownParent: $("#evrakModal"),
+          width: "100%",
+          placeholder: "İmza atacak kullanıcıları seçiniz...",
+          maximumSelectionLength: 3
+        });
+      }
+    });
+
     // Tags Select2 (evrak-select2-tags)
     $("#evrakModal .evrak-select2-tags").each(function() {
         if (!$(this).hasClass('select2-hidden-accessible')) {
@@ -141,6 +204,7 @@ $(document).ready(function () {
 
   // Handle Select2 in Modals (Bootstrap 5 fix)
   $('#evrakModal').on('shown.bs.modal', function () {
+    initEvrakSummernote();
     initEvrakSelect2();
     if (typeof feather !== 'undefined') feather.replace();
     checkSectionVisibility();
@@ -177,7 +241,7 @@ $(document).ready(function () {
 
   // Visibility Controls
   function checkSectionVisibility() {
-    const tip = $('input[name="evrak_tipi"]:checked').val();
+    const tip = $('input[name="evrak_tipi"]').val() || "gelen";
     if (tip === "gelen") {
         $("#gelenCevapSection").removeClass("d-none");
         $("#gidenIliskiSection").addClass("d-none");
@@ -308,6 +372,24 @@ $(document).ready(function () {
     checkSectionVisibility();
   });
 
+  $(document).on("change", "#yazi_tipi", updateEditorFont);
+
+  $(document).on("change", "#firma_logo", function () {
+    const file = this.files && this.files[0];
+    if (!file) return;
+    if (!['image/png', 'image/jpeg'].includes(file.type) || file.size > 2 * 1024 * 1024) {
+      this.value = '';
+      Swal.fire('Geçersiz Logo', 'Logo PNG veya JPG formatında ve en fazla 2 MB olmalıdır.', 'warning');
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = e => {
+      $("#mevcutFirmaLogo").attr("src", e.target.result).show();
+      $("#firmaLogoYok").addClass("d-none");
+    };
+    reader.readAsDataURL(file);
+  });
+
   // Handle option deletion from Evrak Konusu (prevent Select2 option selection on mousedown/mouseup/click)
   $(document).on("mousedown mouseup click touchstart touchend", ".btn-delete-konu", function (e) {
     e.preventDefault();
@@ -358,13 +440,15 @@ $(document).ready(function () {
 
   // Buttons
   $("#btnYeniEvrak").on("click", function () {
-    $("#evrakModalLabel").text('Yeni Evrak Kaydı');
+    $("#evrakModalLabel").text('Yeni Gelen Evrak Kaydı');
     $("#evrakForm")[0].reset();
     $("#evrak_id").val("");
+    setEvrakContent("");
     $("#mevcutDosya").hide();
     
     // Select2 Reset
-    $(".evrak-select2, .evrak-select2-tags").val("").trigger("change");
+    $(".evrak-select2, .evrak-select2-tags, .evrak-select2-multiple").val("").trigger("change");
+    $("#yazi_tipi").val("times_new_roman").trigger("change");
     
     $("#personel_bildir, #cevap_verildi").prop("checked", false);
     $("#cezaHedefArac").prop("checked", true);
@@ -375,7 +459,7 @@ $(document).ready(function () {
     validator.resetForm();
     $(".is-invalid").removeClass("is-invalid");
     
-    if ($("#tipGelen").is(":checked")) getNextEvrakNo("gelen");
+    getNextEvrakNo("gelen");
     loadKonular();
     ensureModalInBody();
     $("#evrakModal").modal("show");
@@ -383,6 +467,7 @@ $(document).ready(function () {
 
   $("#evrakForm").on("submit", function (e) {
     e.preventDefault();
+    syncEvrakContent();
     if (!$(this).valid()) return false;
     if (!$("#trafficFineSection").hasClass("d-none")) {
       const target = $('input[name="ceza_hedef_tipi"]:checked').val() || "arac";
@@ -444,6 +529,12 @@ $(document).ready(function () {
         $("#personel_id").val(data.personel_id).trigger("change");
         $("#ilgili_personel_id").val(data.ilgili_personel_id).trigger("change");
         $("#ilgili_evrak_id").val(data.ilgili_evrak_id).trigger("change");
+        $("#yazi_tipi").val(data.yazi_tipi || "times_new_roman").trigger("change");
+        $("#imza_kullanici_ids").val(data.imza_kullanici_ids || []).trigger("change");
+        $("#muhatap_alt_birim").val(data.muhatap_alt_birim || "");
+        $("#muhatap_adres").val(data.muhatap_adres || "");
+        $("#ilgiler").val(data.ilgiler || "");
+        $("#ekler").val(data.ekler || "");
         
         $("#personel_bildir").prop("checked", data.personel_bildirim_durumu == 1);
         $("#cevap_verildi").prop("checked", data.cevap_verildi_mi == 1);
@@ -463,7 +554,7 @@ $(document).ready(function () {
 
         checkSectionVisibility();
         
-        $('textarea[name="aciklama"]').val(data.aciklama);
+        setEvrakContent(data.aciklama);
         if (data.dosya_yolu) $("#mevcutDosya").show().find("a").attr("href", data.dosya_yolu);
         else $("#mevcutDosya").hide();
 
@@ -551,6 +642,49 @@ $(document).ready(function () {
         }
     });
   });
+
+  function showPdfFromRequest(request) {
+    clearPdfObjectUrl();
+    $("#evrakPdfLoader").removeClass("d-none");
+    $("#evrakPdfModal").appendTo("body").modal("show");
+
+    $.ajax({
+      ...request,
+      url: "views/evrak-takip/pdf.php",
+      xhrFields: { responseType: "blob" },
+      success: function (blob) {
+        if (blob.type !== "application/pdf") {
+          blob.text().then(message => Swal.fire("Hata!", message || "PDF oluşturulamadı.", "error"));
+          $("#evrakPdfModal").modal("hide");
+          return;
+        }
+        evrakPdfObjectUrl = URL.createObjectURL(blob);
+        $("#evrakPdfFrame").attr("src", evrakPdfObjectUrl).show();
+        $("#evrakPdfYeniSekme").attr("href", evrakPdfObjectUrl).removeClass("d-none");
+        $("#evrakPdfLoader").addClass("d-none");
+      },
+      error: function (xhr) {
+        $("#evrakPdfModal").modal("hide");
+        const response = xhr.response;
+        if (response instanceof Blob) {
+          response.text().then(message => Swal.fire("Hata!", message || "PDF oluşturulamadı.", "error"));
+        } else {
+          Swal.fire("Hata!", "PDF oluşturulamadı.", "error");
+        }
+      }
+    });
+  }
+
+  $("#btnPdfOnizle").on("click", function () {
+    syncEvrakContent();
+    showPdfFromRequest({ type: "POST", data: new FormData($("#evrakForm")[0]), contentType: false, processData: false });
+  });
+
+  $(document).on("click", ".evrak-pdf-goruntule", function () {
+    showPdfFromRequest({ type: "GET", data: { id: $(this).data("id") } });
+  });
+
+  $("#evrakPdfModal").on("hidden.bs.modal", clearPdfObjectUrl);
 
   $("#btnRefresh").on("click", function () { location.reload(); });
 });

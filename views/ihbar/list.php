@@ -517,8 +517,13 @@ function ihbarDurumBadge($durum)
                         <?= Form::FormFloatTextarea('aciklama', '', 'İhbar detaylarını yazınız...', 'Açıklama', 'bx bx-align-left', 'form-control', true, '120px', 4) ?>
                     </div>
                     <div class="mb-3" id="ihbarFotoWrapper">
-                        <?= Form::FormFileInput('fotograflar[]', 'Fotoğraf (en fazla 10 adet)', 'bx bx-image-add', 'form-control', false, 'accept="image/*" multiple', 'ihbarFotoInput') ?>
+                        <?= Form::FormFileInput('fotograflar[]', 'Fotoğraf (en fazla ' . IhbarModel::MAX_FOTO . ' adet)', 'bx bx-image-add', 'form-control', false, 'accept="image/*" multiple', 'ihbarFotoInput') ?>
                         <div id="ihbarFotoPreview" class="d-flex flex-wrap gap-2 mt-2"></div>
+                    </div>
+                    <div class="mb-3" id="ihbarVideoWrapper">
+                        <?= Form::FormFileInput('videolar[]', 'Video (en fazla ' . IhbarModel::MAX_VIDEO . ' adet, ' . IhbarModel::VIDEO_MAX_SURE . ' saniye)', 'bx bx-video-plus', 'form-control', false, 'accept="video/*" multiple', 'ihbarVideoInput') ?>
+                        <small class="text-muted d-block mt-1">Her video en fazla <?= IhbarModel::VIDEO_MAX_SURE ?> saniye ve <?= round(IhbarModel::VIDEO_MAX_BYTE / 1048576) ?> MB olabilir.</small>
+                        <div id="ihbarVideoPreview" class="d-flex flex-wrap gap-2 mt-2"></div>
                     </div>
                 </div>
                 <div class="modal-footer">
@@ -988,7 +993,12 @@ function ihbarDurumBadge($durum)
             'values' => array_values($ilceDagilimi),
         ],
     ], JSON_UNESCAPED_UNICODE) ?>;
+    const IHBAR_MAX_FOTO = <?= IhbarModel::MAX_FOTO ?>;
+    const IHBAR_MAX_VIDEO = <?= IhbarModel::MAX_VIDEO ?>;
+    const IHBAR_VIDEO_MAX_SURE = <?= IhbarModel::VIDEO_MAX_SURE ?>;
+    const IHBAR_VIDEO_MAX_BYTE = <?= IhbarModel::VIDEO_MAX_BYTE ?>;
     let ihbarSeciliFotolar = [];
+    let ihbarSeciliVideolar = [];
     let ihbarAktifId = null;
     let ihbarAktifDetay = null;
     let ihbarFotoLightbox = null;
@@ -1032,9 +1042,51 @@ function ihbarDurumBadge($durum)
             ihbarTable.button('.buttons-excel').trigger();
         });
 
+        document.getElementById('ihbarVideoInput')?.addEventListener('change', async function () {
+            const onizleme = document.getElementById('ihbarVideoPreview');
+            onizleme.innerHTML = '';
+            ihbarSeciliVideolar = [];
+
+            if (this.files.length > IHBAR_MAX_VIDEO) {
+                Swal.fire('Uyarı', `En fazla ${IHBAR_MAX_VIDEO} video seçebilirsiniz.`, 'warning');
+                this.value = '';
+                return;
+            }
+
+            onizleme.innerHTML = '<span class="text-muted small">Videolar kontrol ediliyor...</span>';
+            const kabulEdilen = [];
+            const hatalar = [];
+
+            for (const dosya of Array.from(this.files)) {
+                try {
+                    kabulEdilen.push(await VideoKontrol.incele(dosya, IHBAR_VIDEO_MAX_SURE, IHBAR_VIDEO_MAX_BYTE));
+                } catch (hata) {
+                    hatalar.push(`${dosya.name}: ${hata.message}`);
+                }
+            }
+
+            ihbarSeciliVideolar = kabulEdilen;
+            onizleme.innerHTML = '';
+
+            kabulEdilen.forEach(v => {
+                const kutu = document.createElement('div');
+                kutu.className = 'position-relative';
+                kutu.innerHTML = v.kapak
+                    ? `<img src="${v.kapak}" style="width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid #dee2e6">`
+                    : `<div style="width:70px;height:70px;border-radius:8px;border:1px solid #dee2e6" class="d-flex align-items-center justify-content-center bg-light"><i class="bx bx-video fs-3 text-muted"></i></div>`;
+                kutu.innerHTML += `<span class="badge bg-dark position-absolute bottom-0 end-0 m-1" style="font-size:.65rem">${VideoKontrol.sureBicimle(v.sure)}</span>`;
+                onizleme.appendChild(kutu);
+            });
+
+            if (hatalar.length) {
+                Swal.fire('Bazı videolar eklenemedi', hatalar.join('<br>'), 'warning');
+                if (kabulEdilen.length === 0) this.value = '';
+            }
+        });
+
         document.getElementById('ihbarFotoInput')?.addEventListener('change', function (e) {
-            if (this.files.length > 10) {
-                Swal.fire('Uyarı', 'En fazla 10 fotoğraf seçebilirsiniz.', 'warning');
+            if (this.files.length > IHBAR_MAX_FOTO) {
+                Swal.fire('Uyarı', `En fazla ${IHBAR_MAX_FOTO} fotoğraf seçebilirsiniz.`, 'warning');
                 this.value = '';
                 document.getElementById('ihbarFotoPreview').innerHTML = '';
                 return;
@@ -1053,7 +1105,7 @@ function ihbarDurumBadge($durum)
             });
         });
 
-        document.getElementById('formYeniIhbar').addEventListener('submit', function (e) {
+        document.getElementById('formYeniIhbar').addEventListener('submit', async function (e) {
             e.preventDefault();
             const form = e.target;
             const formData = new FormData(form);
@@ -1062,6 +1114,27 @@ function ihbarDurumBadge($durum)
 
             const btn = document.getElementById('btnIhbarKaydet');
             btn.disabled = true;
+
+            // Ham fotoğraflar sunucuya gitmeden önce küçültülür; sıkıştırıcı yüklenemezse
+            // dosyalar olduğu gibi gider ve sunucu tarafındaki optimizasyon devreye girer.
+            const fotoInput = document.getElementById('ihbarFotoInput');
+            if (window.ResimSikistir && fotoInput && fotoInput.files.length) {
+                try {
+                    const kucukler = await window.ResimSikistir.listeyiKucult(fotoInput.files, 1600, 0.75);
+                    formData.delete('fotograflar[]');
+                    kucukler.forEach(dosya => formData.append('fotograflar[]', dosya, dosya.name));
+                } catch (hata) {
+                    console.error('Fotoğraf küçültme başarısız, orijinal dosyalar gönderiliyor:', hata);
+                }
+            }
+
+            // Videolar seçim anında doğrulanmıştı; süre ve kapak karesi yanlarında gider.
+            formData.delete('videolar[]');
+            ihbarSeciliVideolar.forEach(v => {
+                formData.append('videolar[]', v.dosya, v.dosya.name);
+                formData.append('video_sureleri[]', v.sure);
+                formData.append('video_kapaklari[]', v.kapak || '');
+            });
 
             fetch(IHBAR_API_URL, { method: 'POST', body: formData })
                 .then(r => r.json())
@@ -1090,7 +1163,9 @@ function ihbarDurumBadge($durum)
         document.getElementById('yoneticiKonumText').textContent = 'Konumumu Ekle';
         document.getElementById('yoneticiKonumDurum').textContent = '';
         ihbarSeciliFotolar = [];
+        ihbarSeciliVideolar = [];
         document.getElementById('ihbarFotoPreview').innerHTML = '';
+        document.getElementById('ihbarVideoPreview').innerHTML = '';
         new bootstrap.Modal(document.getElementById('modalYeniIhbar')).show();
     }
 
@@ -1421,12 +1496,27 @@ function ihbarDurumBadge($durum)
             konumUrl = `https://www.google.com/maps?q=${encodeURIComponent(d.konum_lat)},${encodeURIComponent(d.konum_lng)}`;
         }
 
-        const fotoHtml = (d.fotograflar || []).map(f =>
-            `<a href="${IHBAR_API_URL}?action=foto&foto_id=${f.id}" class="ihbar-foto-lightbox"
+        const medyalar = d.fotograflar || [];
+        const fotoHtml = medyalar.map(f => {
+            if (f.medya_tipi === 'video') {
+                const sureRozeti = f.sure_saniye
+                    ? `<span class="badge bg-dark position-absolute bottom-0 end-0 m-1" style="font-size:.65rem">${VideoKontrol.sureBicimle(f.sure_saniye)}</span>`
+                    : '';
+                const kapak = f.kucuk_var
+                    ? `<img src="${IHBAR_API_URL}?action=foto&boyut=kucuk&foto_id=${f.id}" class="ihbar-foto-thumb" loading="lazy" alt="İhbar videosu">`
+                    : `<div class="ihbar-foto-thumb d-flex align-items-center justify-content-center bg-light"><i class="bx bx-video fs-3 text-muted"></i></div>`;
+                return `<a href="${IHBAR_API_URL}?action=foto&foto_id=${f.id}" target="_blank" rel="noopener"
+                            class="position-relative d-inline-block" title="Videoyu oynat">
+                            ${kapak}
+                            <span class="position-absolute top-50 start-50 translate-middle badge rounded-circle bg-dark bg-opacity-75 p-2"><i class="bx bx-play fs-5"></i></span>
+                            ${sureRozeti}
+                        </a>`;
+            }
+            return `<a href="${IHBAR_API_URL}?action=foto&foto_id=${f.id}" class="ihbar-foto-lightbox"
                 data-gallery="ihbar-${d.id}" data-type="image" data-title="İhbar #${d.id}" title="Fotoğrafı büyüt">
-                <img src="${IHBAR_API_URL}?action=foto&foto_id=${f.id}" class="ihbar-foto-thumb" alt="İhbar fotoğrafı">
-            </a>`
-        ).join('') || `
+                <img src="${IHBAR_API_URL}?action=foto&boyut=kucuk&foto_id=${f.id}" class="ihbar-foto-thumb" loading="lazy" alt="İhbar fotoğrafı">
+            </a>`;
+        }).join('') || `
             <div class="ihbar-empty-photos w-100">
                 <i class="bx bx-image-alt fs-4"></i>
                 <span>Bu ihbara ait fotoğraf eklenmemiş.</span>
@@ -1483,7 +1573,7 @@ function ihbarDurumBadge($durum)
                 <section class="mb-4">
                     <div class="d-flex justify-content-between align-items-center mb-2">
                         <h6 class="ihbar-section-title mb-0"><i class="bx bx-images me-1"></i>Fotoğraflar</h6>
-                        ${(d.fotograflar || []).length ? `<span class="text-muted small">${d.fotograflar.length} fotoğraf</span>` : ''}
+                        ${medyalar.length ? `<span class="text-muted small">${medyalar.filter(m => m.medya_tipi !== 'video').length} fotoğraf${medyalar.some(m => m.medya_tipi === 'video') ? `, ${medyalar.filter(m => m.medya_tipi === 'video').length} video` : ''}</span>` : ''}
                     </div>
                     <div class="d-flex flex-wrap gap-2">${fotoHtml}</div>
                 </section>

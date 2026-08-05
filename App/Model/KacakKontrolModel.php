@@ -2,6 +2,8 @@
 namespace App\Model;
 
 use App\Model\Model;
+use App\Service\ImageUploadService;
+use App\Service\VideoUploadService;
 use PDO;
 use Exception;
 
@@ -27,9 +29,23 @@ class KacakKontrolModel extends Model
 
     const TURLER = ['Kaçak', 'Abonesiz', 'Usülsüz'];
 
-    const MAX_SAHA_FOTO = 10;
+    const MAX_SAHA_FOTO = 15;
+
+    const MAX_VIDEO = 2;
+
+    const VIDEO_MAX_SURE = 20;
+
+    const VIDEO_MAX_BYTE = 15728640;
+
+    const VIDEO_MIMES = ['video/mp4', 'video/quicktime', 'video/webm', 'video/3gpp'];
 
     const UPLOAD_DIR = 'uploads/kacak_kontrol';
+
+    const TUTANAK_MAX_KENAR = 2200;
+
+    const SAHA_MAX_KENAR = 1600;
+
+    const KUCUK_KENAR = 320;
 
     public function __construct()
     {
@@ -97,7 +113,9 @@ class KacakKontrolModel extends Model
                        u.adi_soyadi  AS onaylayan_adi,
                        ui.adi_soyadi AS iptal_eden_adi,
                        (SELECT COUNT(*) FROM kacak_kontrol_fotograflari f
-                         WHERE f.kacak_id = k.id AND f.silinme_tarihi IS NULL AND f.arsivlendi = 0) AS foto_sayisi
+                         WHERE f.kacak_id = k.id AND f.medya_tipi = 'foto' AND f.silinme_tarihi IS NULL AND f.arsivlendi = 0) AS foto_sayisi,
+                       (SELECT COUNT(*) FROM kacak_kontrol_fotograflari fv
+                         WHERE fv.kacak_id = k.id AND fv.medya_tipi = 'video' AND fv.silinme_tarihi IS NULL AND fv.arsivlendi = 0) AS video_sayisi
                 FROM kacak_kontrol k
                 LEFT JOIN personel bp ON bp.id = k.bildiren_personel_id
                 LEFT JOIN users u     ON u.id = k.onaylayan_id
@@ -563,17 +581,62 @@ class KacakKontrolModel extends Model
     public function countPhotos(int $kacakId, string $tur): int
     {
         $stmt = $this->db->prepare("SELECT COUNT(*) FROM kacak_kontrol_fotograflari
-                                    WHERE kacak_id = ? AND tur = ? AND silinme_tarihi IS NULL AND arsivlendi = 0");
+                                    WHERE kacak_id = ? AND tur = ? AND medya_tipi = 'foto'
+                                      AND silinme_tarihi IS NULL AND arsivlendi = 0");
         $stmt->execute([$kacakId, $tur]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function countVideos(int $kacakId): int
+    {
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM kacak_kontrol_fotograflari
+                                    WHERE kacak_id = ? AND medya_tipi = 'video'
+                                      AND silinme_tarihi IS NULL AND arsivlendi = 0");
+        $stmt->execute([$kacakId]);
         return (int) $stmt->fetchColumn();
     }
 
     public function addPhoto(int $kacakId, string $tur, string $dosyaYolu, ?string $orijinalAd = null, ?int $personelId = null, ?int $userId = null, ?int $clientSira = null): int
     {
         $stmt = $this->db->prepare("INSERT INTO kacak_kontrol_fotograflari
-            (firma_id, kacak_id, tur, client_sira, dosya_yolu, orijinal_ad, yukleyen_personel_id, yukleyen_user_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)");
-        $stmt->execute([$this->firmaId(), $kacakId, $tur, $clientSira, $dosyaYolu, $orijinalAd, $personelId, $userId]);
+            (firma_id, kacak_id, tur, client_sira, dosya_yolu, kucuk_yol, orijinal_ad, yukleyen_personel_id, yukleyen_user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([
+            $this->firmaId(),
+            $kacakId,
+            $tur,
+            $clientSira,
+            $dosyaYolu,
+            self::kucukYolBul($dosyaYolu),
+            $orijinalAd,
+            $personelId,
+            $userId,
+        ]);
+        return (int) $this->db->lastInsertId();
+    }
+
+    public function addVideo(
+        int $kacakId,
+        string $dosyaYolu,
+        ?string $kapakYolu,
+        ?int $sureSaniye,
+        ?string $orijinalAd = null,
+        ?int $personelId = null,
+        ?int $userId = null
+    ): int {
+        $stmt = $this->db->prepare("INSERT INTO kacak_kontrol_fotograflari
+            (firma_id, kacak_id, tur, medya_tipi, dosya_yolu, kucuk_yol, sure_saniye, orijinal_ad, yukleyen_personel_id, yukleyen_user_id)
+            VALUES (?, ?, 'saha', 'video', ?, ?, ?, ?, ?, ?)");
+        $stmt->execute([
+            $this->firmaId(),
+            $kacakId,
+            $dosyaYolu,
+            $kapakYolu,
+            $sureSaniye,
+            $orijinalAd,
+            $personelId,
+            $userId,
+        ]);
         return (int) $this->db->lastInsertId();
     }
 
@@ -608,9 +671,14 @@ class KacakKontrolModel extends Model
         $stmt = $this->db->prepare("UPDATE kacak_kontrol_fotograflari SET silinme_tarihi = NOW() WHERE id = ?");
         $ok = $stmt->execute([$fotoId]);
         if ($ok) {
-            $abs = self::rootPath() . '/' . ltrim($foto['dosya_yolu'], '/');
-            if (is_file($abs)) {
-                @unlink($abs);
+            foreach ([$foto['dosya_yolu'], $foto['kucuk_yol'] ?? null] as $yol) {
+                if (empty($yol)) {
+                    continue;
+                }
+                $abs = self::rootPath() . '/' . ltrim($yol, '/');
+                if (is_file($abs)) {
+                    @unlink($abs);
+                }
             }
         }
         return $ok;
@@ -866,7 +934,9 @@ class KacakKontrolModel extends Model
 
         $stmt = $this->db->prepare("SELECT k.*,
                                            (SELECT COUNT(*) FROM kacak_kontrol_fotograflari f
-                                             WHERE f.kacak_id = k.id AND f.silinme_tarihi IS NULL AND f.arsivlendi = 0) AS foto_sayisi
+                                             WHERE f.kacak_id = k.id AND f.medya_tipi = 'foto' AND f.silinme_tarihi IS NULL AND f.arsivlendi = 0) AS foto_sayisi,
+                       (SELECT COUNT(*) FROM kacak_kontrol_fotograflari fv
+                         WHERE fv.kacak_id = k.id AND fv.medya_tipi = 'video' AND fv.silinme_tarihi IS NULL AND fv.arsivlendi = 0) AS video_sayisi
                                     FROM kacak_kontrol k
                                     WHERE k.silinme_tarihi IS NULL
                                       AND k.firma_id = ?
@@ -926,13 +996,6 @@ class KacakKontrolModel extends Model
             throw new Exception('Dosya boyutu 10 MB üzerinde olamaz.');
         }
 
-        if ($ext !== 'pdf') {
-            $imageInfo = @getimagesize($file['tmp_name']);
-            if ($imageInfo === false) {
-                throw new Exception('Geçersiz görsel dosyası.');
-            }
-        }
-
         $altDizin = self::UPLOAD_DIR . '/' . date('Y/m');
         $hedefDizin = self::rootPath() . '/' . $altDizin;
         if (!is_dir($hedefDizin) && !mkdir($hedefDizin, 0775, true) && !is_dir($hedefDizin)) {
@@ -944,6 +1007,20 @@ class KacakKontrolModel extends Model
             throw new Exception('Yükleme dizinine yazılamıyor.');
         }
 
+        if ($ext !== 'pdf') {
+            $sonuc = (new ImageUploadService())->store(
+                $file,
+                $hedefDizin,
+                $tur . '_' . $kacakId,
+                $tur === 'tutanak' ? self::TUTANAK_MAX_KENAR : self::SAHA_MAX_KENAR,
+                $tur === 'tutanak' ? 82 : 75,
+                10 * 1024 * 1024,
+                self::KUCUK_KENAR
+            );
+
+            return $altDizin . '/' . $sonuc['filename'];
+        }
+
         $dosyaAdi = $tur . '_' . $kacakId . '_' . bin2hex(random_bytes(6)) . '.' . $ext;
         $hedef = $hedefDizin . '/' . $dosyaAdi;
 
@@ -952,5 +1029,52 @@ class KacakKontrolModel extends Model
         }
 
         return $altDizin . '/' . $dosyaAdi;
+    }
+
+    /**
+     * Yüklenen videoyu doğrulayıp diske yazar ve kapak karesini kaydeder.
+     */
+    public function storeUploadedVideo(array $file, int $kacakId, ?int $sureSaniye, ?string $kapakVerisi): array
+    {
+        if ($this->countVideos($kacakId) >= self::MAX_VIDEO) {
+            throw new Exception('Bir kayda en fazla ' . self::MAX_VIDEO . ' video eklenebilir.');
+        }
+
+        $altDizin = self::UPLOAD_DIR . '/' . date('Y/m');
+        $hedefDizin = self::rootPath() . '/' . $altDizin;
+
+        $sonuc = (new VideoUploadService())->store(
+            $file,
+            $hedefDizin,
+            'video_' . $kacakId,
+            self::VIDEO_MIMES,
+            self::VIDEO_MAX_BYTE,
+            self::VIDEO_MAX_SURE,
+            $sureSaniye,
+            $kapakVerisi,
+            self::KUCUK_KENAR
+        );
+
+        return [
+            'yol' => $altDizin . '/' . $sonuc['filename'],
+            'kapak' => $sonuc['kapak_filename'] ? $altDizin . '/' . $sonuc['kapak_filename'] : null,
+            'sure_saniye' => $sonuc['sure_saniye'],
+        ];
+    }
+
+    /**
+     * Optimize edilmiş dosyanın yanına üretilen küçük boyutun göreli yolunu döndürür.
+     * PDF'lerde ve küçük boyut üretilemeyen durumlarda null döner.
+     */
+    public static function kucukYolBul(string $dosyaYolu): ?string
+    {
+        $ext = strtolower(pathinfo($dosyaYolu, PATHINFO_EXTENSION));
+        if ($ext === '' || $ext === 'pdf') {
+            return null;
+        }
+
+        $aday = substr($dosyaYolu, 0, -strlen($ext) - 1) . '_k.' . $ext;
+
+        return is_file(self::rootPath() . '/' . ltrim($aday, '/')) ? $aday : null;
     }
 }

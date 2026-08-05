@@ -1,7 +1,6 @@
 <?php 
-use App\Helper\Form; 
-$db_conn = new App\Core\Db();
-$araclar_list = $db_conn->db->query("SELECT id, plaka, marka, model FROM araclar WHERE silinme_tarihi IS NULL AND firma_id = " . intval($_SESSION['firma_id']) . " ORDER BY plaka ASC")->fetchAll(PDO::FETCH_OBJ);
+use App\Helper\Form;
+$araclar_list = $Evrak->getActiveVehicles();
 ?>
 
 <div class="modal fade" id="evrakModal" tabindex="-1" aria-labelledby="evrakModalLabel" aria-hidden="true" style="z-index: 1060;">
@@ -13,7 +12,7 @@ $araclar_list = $db_conn->db->query("SELECT id, plaka, marka, model FROM araclar
                         <i data-feather="file-text"></i>
                     </div>
                     <div class="modal-title-group">
-                        <h5 class="modal-title text-white fw-bold" id="evrakModalLabel">Yeni Evrak Kaydı</h5>
+                        <h5 class="modal-title text-white fw-bold" id="evrakModalLabel">Yeni Gelen Evrak Kaydı</h5>
                         <p class="modal-subtitle text-white-50">Evrak bilgilerini eksiksiz doldurunuz.</p>
                     </div>
                 </div>
@@ -35,16 +34,9 @@ $araclar_list = $db_conn->db->query("SELECT id, plaka, marka, model FROM araclar
                             </div>
                             
                             <div class="mb-3">
-                                <label class="ps-1 mb-2 fw-bold text-muted small text-uppercase" style="letter-spacing: 0.5px;">Evrak Tipi</label>
-                                <div class="d-flex gap-3 p-2 bg-light rounded-3 border">
-                                    <div class="form-check form-radio-outline form-radio-success m-0 ps-4">
-                                        <input class="form-check-input tip-radio" type="radio" name="evrak_tipi" id="tipGelen" value="gelen" checked>
-                                        <label class="form-check-label fw-bold small" for="tipGelen">GELEN</label>
-                                    </div>
-                                    <div class="form-check form-radio-outline form-radio-danger m-0 ps-4">
-                                        <input class="form-check-input tip-radio" type="radio" name="evrak_tipi" id="tipGiden" value="giden">
-                                        <label class="form-check-label fw-bold small" for="tipGiden">GİDEN</label>
-                                    </div>
+                                <input type="hidden" name="evrak_tipi" id="tipGelen" value="gelen">
+                                <div class="d-flex align-items-center gap-2 p-2 bg-success-subtle text-success rounded-3 border border-success-subtle">
+                                    <i data-feather="download" style="width:16px"></i><span class="fw-bold small">GELEN EVRAK</span>
                                 </div>
                             </div>
 
@@ -200,7 +192,7 @@ $araclar_list = $db_conn->db->query("SELECT id, plaka, marka, model FROM araclar
                                     $gelen_options = ['' => 'Bu cevap hangi evraka ait? (Seçiniz)'];
                                     foreach ($gelen_evraklar as $ge) {
                                         $label_ge = $ge->evrak_no . " - " . $ge->konu . " (" . date('d.m.Y', strtotime($ge->tarih)) . ")";
-                                        $gelen_options[$ge->id] = $label_ge;
+                                        $gelen_options[\App\Helper\Security::encrypt($ge->id)] = $label_ge;
                                     }
                                     echo Form::FormSelect2('ilgili_evrak_id', $gelen_options, '', 'İlişkili Gelen Evrak', 'link', 'key', '', 'form-select evrak-select2'); 
                                     ?>
@@ -218,16 +210,38 @@ $araclar_list = $db_conn->db->query("SELECT id, plaka, marka, model FROM araclar
                         </div>
 
                         <div class="col-12 mt-0">
-                            <?php echo Form::FormFloatTextarea('aciklama', '', 'Açıklama / İçerik', 'Açıklama / İçerik', 'file-text', 'form-control', false, '80px'); ?>
+                            <label for="evrak_aciklama" class="form-label fw-bold text-muted small">EVRAK İÇERİĞİ</label>
+                            <textarea id="evrak_aciklama" name="aciklama" class="form-control evrak-summernote"></textarea>
                         </div>
                     </div>
                 </form>
             </div>
             <div class="modal-footer bg-light border-top-0 p-3 px-4">
                 <button type="button" class="btn btn-link text-muted fw-bold text-decoration-none px-3" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" id="btnPdfOnizle" class="btn btn-outline-primary px-4 fw-bold rounded-pill">
+                    <i data-feather="eye" class="icon-xs me-1"></i> Resmî Yazı Önizle
+                </button>
                 <button type="submit" form="evrakForm" id="btnEvrakKaydet" class="btn btn-dark px-5 shadow-sm fw-bold rounded-pill">
                      Bilgileri Kaydet
                 </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="evrakPdfModal" tabindex="-1" aria-labelledby="evrakPdfModalLabel" aria-hidden="true" style="z-index: 1070;">
+    <div class="modal-dialog modal-xl modal-dialog-centered">
+        <div class="modal-content border-0">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title" id="evrakPdfModalLabel">Resmî Yazı Önizleme</h5>
+                <a id="evrakPdfYeniSekme" href="#" target="_blank" class="btn btn-sm btn-outline-light ms-auto me-2 d-none">Yeni Sekmede Aç</a>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            </div>
+            <div class="modal-body p-0 position-relative" style="min-height: 72vh;">
+                <div id="evrakPdfLoader" class="position-absolute top-0 start-0 w-100 h-100 bg-white d-flex align-items-center justify-content-center" style="z-index:2;">
+                    <div class="spinner-border text-primary" role="status"><span class="visually-hidden">Yükleniyor...</span></div>
+                </div>
+                <iframe id="evrakPdfFrame" title="Evrak PDF Önizleme" class="w-100 border-0" style="height:72vh; display:none;"></iframe>
             </div>
         </div>
     </div>

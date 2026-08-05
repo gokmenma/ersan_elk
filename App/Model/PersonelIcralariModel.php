@@ -57,6 +57,39 @@ class PersonelIcralariModel extends Model
     }
 
     /**
+     * Kayıtlı icra dosyası bulunan personelleri getirir
+     */
+    public function getIcrasiOlanPersoneller($firma_id)
+    {
+        $sql = $this->db->prepare("
+            SELECT p.id, p.adi_soyadi, COUNT(pi.id) AS icra_adedi
+            FROM personel p
+            INNER JOIN {$this->table} pi ON pi.personel_id = p.id AND pi.silinme_tarihi IS NULL
+            WHERE p.silinme_tarihi IS NULL AND (p.firma_id = ? OR p.firma_id = 0)
+            GROUP BY p.id, p.adi_soyadi
+            ORDER BY p.adi_soyadi ASC
+        ");
+        $sql->execute([$firma_id]);
+        return $sql->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Tek bir icra dosyasını personel bilgileriyle birlikte getirir
+     */
+    public function getIcraWithPersonel($icra_id)
+    {
+        $sql = $this->db->prepare("
+            SELECT pi.*, p.adi_soyadi, p.gorev, p.firma_id
+            FROM {$this->table} pi
+            INNER JOIN personel p ON p.id = pi.personel_id
+            WHERE pi.id = ? AND pi.silinme_tarihi IS NULL AND p.silinme_tarihi IS NULL
+            LIMIT 1
+        ");
+        $sql->execute([$icra_id]);
+        return $sql->fetch(PDO::FETCH_OBJ) ?: null;
+    }
+
+    /**
      * Belirli bir icra dosyasına yapılan kesintilerin detayını getirir
      */
     public function getIcraKesintileri($icra_id)

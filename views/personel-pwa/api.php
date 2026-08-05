@@ -137,6 +137,45 @@ function pwaIniBytes(string $value): int
     };
 }
 
+/**
+ * PWA ihbar formundan gelen videoları kaydeder.
+ * Video kaybı kaydın tamamını geçersiz kılmaz; hata loglanıp devam edilir.
+ */
+function pwaIhbarVideoYukle(App\Model\IhbarModel $model, int $ihbarId): void
+{
+    if (empty($_FILES['videolar']) || empty($_FILES['videolar']['name'][0])) {
+        return;
+    }
+
+    $sureler = $_POST['video_sureleri'] ?? [];
+    $kapaklar = $_POST['video_kapaklari'] ?? [];
+    $maxFiles = min(count($_FILES['videolar']['name']), App\Model\IhbarModel::MAX_VIDEO);
+
+    for ($i = 0; $i < $maxFiles; $i++) {
+        if (($_FILES['videolar']['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            continue;
+        }
+
+        try {
+            $sonuc = $model->storeUploadedVideo(
+                [
+                    'name' => $_FILES['videolar']['name'][$i],
+                    'tmp_name' => $_FILES['videolar']['tmp_name'][$i],
+                    'error' => $_FILES['videolar']['error'][$i],
+                    'size' => $_FILES['videolar']['size'][$i],
+                ],
+                $ihbarId,
+                isset($sureler[$i]) && is_numeric($sureler[$i]) ? (int) ceil((float) $sureler[$i]) : null,
+                isset($kapaklar[$i]) ? (string) $kapaklar[$i] : null
+            );
+
+            $model->addVideo($ihbarId, $sonuc['yol'], $sonuc['kapak'], $sonuc['sure_saniye']);
+        } catch (Throwable $e) {
+            error_log('PWA ihbar videosu yüklenemedi (ihbar ' . $ihbarId . '): ' . $e->getMessage());
+        }
+    }
+}
+
 function pwaIhbarLog(string $event, array $context = []): void
 {
     global $pwaRequestId, $action, $personel_id;
@@ -4524,8 +4563,14 @@ try {
                     return [
                         'id' => (int) $foto['id'],
                         'tur' => $foto['tur'],
-                        'tur_label' => $etiket[$foto['tur']] ?? $foto['tur'],
+                        'tur_label' => ($foto['medya_tipi'] ?? 'foto') === 'video'
+                            ? 'Video'
+                            : ($etiket[$foto['tur']] ?? $foto['tur']),
+                        'medya_tipi' => $foto['medya_tipi'] ?? 'foto',
+                        'sure_saniye' => $foto['sure_saniye'] !== null ? (int) $foto['sure_saniye'] : null,
+                        'kucuk_var' => !empty($foto['kucuk_yol']),
                         'url' => 'kacak-foto.php?id=' . (int) $foto['id'],
+                        'kucuk_url' => 'kacak-foto.php?boyut=kucuk&id=' . (int) $foto['id'],
                     ];
                 }, $KacakModel->getPhotos((int) $kayit['id']));
                 $liste[] = $kayit;
@@ -4596,6 +4641,29 @@ try {
                     $dosya = ['name'=>$ad,'tmp_name'=>$_FILES['saha_fotolari']['tmp_name'][$i],'error'=>$_FILES['saha_fotolari']['error'][$i],'size'=>$_FILES['saha_fotolari']['size'][$i]];
                     $yol = $KacakModel->storeUploadedFile($dosya, $kacakId, 'saha');
                     $KacakModel->addPhoto($kacakId, 'saha', $yol, $ad, (int) $personel_id);
+                }
+            }
+            if (!empty($_FILES['videolar']['name']) && is_array($_FILES['videolar']['name'])) {
+                $videoSureleri = $_POST['video_sureleri'] ?? [];
+                $videoKapaklari = $_POST['video_kapaklari'] ?? [];
+                foreach ($_FILES['videolar']['name'] as $i => $ad) {
+                    if (empty($ad) || ($_FILES['videolar']['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) continue;
+                    try {
+                        $videoSonuc = $KacakModel->storeUploadedVideo(
+                            [
+                                'name' => $ad,
+                                'tmp_name' => $_FILES['videolar']['tmp_name'][$i],
+                                'error' => $_FILES['videolar']['error'][$i],
+                                'size' => $_FILES['videolar']['size'][$i],
+                            ],
+                            $kacakId,
+                            isset($videoSureleri[$i]) && is_numeric($videoSureleri[$i]) ? (int) ceil((float) $videoSureleri[$i]) : null,
+                            isset($videoKapaklari[$i]) ? (string) $videoKapaklari[$i] : null
+                        );
+                        $KacakModel->addVideo($kacakId, $videoSonuc['yol'], $videoSonuc['kapak'], $videoSonuc['sure_saniye'], $ad, (int) $personel_id);
+                    } catch (\Throwable $e) {
+                        error_log('PWA kaçak videosu güncellemede yüklenemedi: ' . $e->getMessage());
+                    }
                 }
             }
             response(true, ['id' => $kacakId], 'Kaçak bildirimi güncellendi.');
@@ -4732,6 +4800,60 @@ try {
                 'sira' => $sahaSira,
                 'toplam' => $KacakModel->countPhotos($sahaKacakId, 'saha'),
             ], 'Fotoğraf eklendi.');
+            break;
+
+        case 'addKacakVideo':
+            if (stripos($personel->departman ?? '', 'Kaçak') === false) {
+                response(false, null, 'Bu işlem için yetkiniz bulunmuyor.');
+            }
+
+            $KacakModel = new \App\Model\KacakKontrolModel();
+
+            $videoUuid = trim((string) ($_POST['client_uuid'] ?? ''));
+            if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $videoUuid)) {
+                response(false, null, 'Geçersiz kayıt anahtarı.');
+            }
+
+            $videoKayit = $KacakModel->findByClientUuid($videoUuid);
+            if (!$videoKayit) {
+                response(false, null, 'Videonun ekleneceği tutanak bulunamadı.');
+            }
+
+            if ((int) $videoKayit['bildiren_personel_id'] !== (int) $personel_id) {
+                error_log('PWA kaçak videosu yetkisiz eklenmeye çalışıldı: kacak_id=' . $videoKayit['id'] . ' personel=' . $personel_id);
+                response(false, null, 'Bu tutanağa video ekleme yetkiniz yok.');
+            }
+
+            if (empty($_FILES['video']['name'])) {
+                response(false, null, 'Video dosyası gelmedi.');
+            }
+
+            $videoKacakId = (int) $videoKayit['id'];
+
+            try {
+                $videoSonuc = $KacakModel->storeUploadedVideo(
+                    $_FILES['video'],
+                    $videoKacakId,
+                    is_numeric($_POST['sure'] ?? null) ? (int) ceil((float) $_POST['sure']) : null,
+                    isset($_POST['kapak']) ? (string) $_POST['kapak'] : null
+                );
+                $KacakModel->addVideo(
+                    $videoKacakId,
+                    $videoSonuc['yol'],
+                    $videoSonuc['kapak'],
+                    $videoSonuc['sure_saniye'],
+                    $_FILES['video']['name'],
+                    (int) $personel_id
+                );
+            } catch (\Throwable $e) {
+                error_log('PWA kaçak videosu yüklenemedi: kacak_id=' . $videoKacakId . ' hata=' . $e->getMessage());
+                response(false, null, $e->getMessage() !== '' ? $e->getMessage() : 'Video kaydedilemedi.');
+            }
+
+            response(true, [
+                'id' => $videoKacakId,
+                'toplam' => $KacakModel->countVideos($videoKacakId),
+            ], 'Video eklendi.');
             break;
 
         case 'saveKacakBildirim':
@@ -5120,7 +5242,7 @@ try {
             $fotoId = (int) ($_GET['foto_id'] ?? 0);
             $IhbarModel = new App\Model\IhbarModel();
             $stmt = $IhbarModel->getDb()->prepare(
-                "SELECT f.dosya_yolu
+                "SELECT f.dosya_yolu, f.kucuk_yol
                  FROM ihbar_fotograflari f
                  INNER JOIN ihbarlar i ON i.id = f.ihbar_id
                  LEFT JOIN ihbar_atamalar a ON a.ihbar_id = i.id AND a.personel_id = ? AND a.silinme_tarihi IS NULL
@@ -5130,7 +5252,16 @@ try {
                  LIMIT 1"
             );
             $stmt->execute([(int) $personel_id, $fotoId, (int) $personel_id]);
-            $dosyaYolu = $stmt->fetchColumn();
+            $satir = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
+            $dosyaYolu = $satir['dosya_yolu'] ?? '';
+
+            if ($dosyaYolu !== '' && ($_GET['boyut'] ?? '') === 'kucuk' && !empty($satir['kucuk_yol'])) {
+                $kucukTam = realpath(dirname(dirname(__DIR__)) . '/' . ltrim($satir['kucuk_yol'], '/'));
+                if ($kucukTam && is_file($kucukTam)) {
+                    $dosyaYolu = $satir['kucuk_yol'];
+                }
+            }
+
             $uploadRoot = realpath(dirname(dirname(__DIR__)) . '/uploads/ihbar');
             $dosya = $dosyaYolu
                 ? realpath(dirname(dirname(__DIR__)) . '/' . ltrim($dosyaYolu, '/'))
@@ -5142,10 +5273,7 @@ try {
             }
 
             header_remove('Content-Type');
-            header('Content-Type: ' . (mime_content_type($dosya) ?: 'application/octet-stream'));
-            header('Content-Length: ' . filesize($dosya));
-            header('Cache-Control: private, max-age=86400');
-            readfile($dosya);
+            App\Helper\MedyaServis::gonder($dosya, 86400);
             exit;
 
         case 'createIhbar':
@@ -5189,32 +5317,29 @@ try {
                 );
             }
 
-            // Fotoğraf yükleme (en fazla 4 adet)
+            // Fotoğraf yükleme
             $uploadedPhotoCount = 0;
             $selectedPhotoCount = count($_FILES['fotograflar']['name'] ?? []);
             if (!empty($_FILES['fotograflar']) && !empty($_FILES['fotograflar']['name'][0])) {
-                $uploadDir = dirname(dirname(__DIR__)) . '/uploads/ihbar/';
-                if (!is_dir($uploadDir)) {
-                    mkdir($uploadDir, 0777, true);
-                }
-
-                $allowedExt = ['jpg', 'jpeg', 'png', 'webp'];
-                $maxFiles = min(count($_FILES['fotograflar']['name']), 4);
+                $maxFiles = min(count($_FILES['fotograflar']['name']), App\Model\IhbarModel::MAX_FOTO);
 
                 for ($i = 0; $i < $maxFiles; $i++) {
                     if (($_FILES['fotograflar']['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
                         continue;
                     }
 
-                    $ext = strtolower(pathinfo($_FILES['fotograflar']['name'][$i], PATHINFO_EXTENSION));
-                    if (!in_array($ext, $allowedExt, true)) {
-                        continue;
-                    }
+                    try {
+                        $fotoSonuc = App\Model\IhbarModel::storeUploadedFoto([
+                            'name' => $_FILES['fotograflar']['name'][$i],
+                            'tmp_name' => $_FILES['fotograflar']['tmp_name'][$i],
+                            'error' => $_FILES['fotograflar']['error'][$i],
+                            'size' => $_FILES['fotograflar']['size'][$i],
+                        ], $ihbarId);
 
-                    $newName = 'ihbar_' . uniqid() . '_' . $i . '.' . $ext;
-                    if (move_uploaded_file($_FILES['fotograflar']['tmp_name'][$i], $uploadDir . $newName)) {
-                        $IhbarModel->addFotograf($ihbarId, 'uploads/ihbar/' . $newName);
+                        $IhbarModel->addFotograf($ihbarId, $fotoSonuc['yol'], $fotoSonuc['kucuk']);
                         $uploadedPhotoCount++;
+                    } catch (Throwable $e) {
+                        error_log('PWA ihbar fotoğrafı yüklenemedi (ihbar ' . $ihbarId . '): ' . $e->getMessage());
                     }
                 }
             }
@@ -5223,6 +5348,8 @@ try {
                 $ihbarDb->rollBack();
                 throw new Exception('Seçilen fotoğraflar yüklenemedi. Desteklenen formatlar: JPG, PNG ve WEBP.');
             }
+
+            pwaIhbarVideoYukle($IhbarModel, $ihbarId);
 
             $ihbarDb->commit();
 
@@ -5325,18 +5452,11 @@ try {
                 'konum_dogruluk' => is_numeric($_POST['konum_dogruluk'] ?? null) ? (float) $_POST['konum_dogruluk'] : null,
             ]);
 
-            // Fotoğraf ekleme (toplamda en fazla 4 adet olacak şekilde)
+            // Fotoğraf ekleme (toplam foto sınırını aşmayacak şekilde)
             if (!empty($_FILES['fotograflar']) && !empty($_FILES['fotograflar']['name'][0])) {
-                $mevcutFotoSayisi = count($IhbarModel->getFotograflar($id));
-                $kalanKota = max(0, 4 - $mevcutFotoSayisi);
+                $kalanKota = max(0, App\Model\IhbarModel::MAX_FOTO - $IhbarModel->countFotograflar($id));
 
                 if ($kalanKota > 0) {
-                    $uploadDir = dirname(dirname(__DIR__)) . '/uploads/ihbar/';
-                    if (!is_dir($uploadDir)) {
-                        mkdir($uploadDir, 0755, true);
-                    }
-
-                    $allowedExt = ['jpg', 'jpeg', 'png', 'webp'];
                     $maxFiles = min(count($_FILES['fotograflar']['name']), $kalanKota);
 
                     for ($i = 0; $i < $maxFiles; $i++) {
@@ -5344,18 +5464,23 @@ try {
                             continue;
                         }
 
-                        $ext = strtolower(pathinfo($_FILES['fotograflar']['name'][$i], PATHINFO_EXTENSION));
-                        if (!in_array($ext, $allowedExt, true)) {
-                            continue;
-                        }
+                        try {
+                            $fotoSonuc = App\Model\IhbarModel::storeUploadedFoto([
+                                'name' => $_FILES['fotograflar']['name'][$i],
+                                'tmp_name' => $_FILES['fotograflar']['tmp_name'][$i],
+                                'error' => $_FILES['fotograflar']['error'][$i],
+                                'size' => $_FILES['fotograflar']['size'][$i],
+                            ], $id);
 
-                        $newName = 'ihbar_' . uniqid() . '_' . $i . '.' . $ext;
-                        if (move_uploaded_file($_FILES['fotograflar']['tmp_name'][$i], $uploadDir . $newName)) {
-                            $IhbarModel->addFotograf($id, 'uploads/ihbar/' . $newName);
+                            $IhbarModel->addFotograf($id, $fotoSonuc['yol'], $fotoSonuc['kucuk']);
+                        } catch (Throwable $e) {
+                            error_log('PWA ihbar fotoğrafı güncellemede yüklenemedi (ihbar ' . $id . '): ' . $e->getMessage());
                         }
                     }
                 }
             }
+
+            pwaIhbarVideoYukle($IhbarModel, $id);
 
             response(true, ['id' => $id], 'İhbarınız güncellendi.');
             break;
@@ -5391,7 +5516,11 @@ try {
             $fotograflar = array_map(function ($f) {
                 return [
                     'id' => (int) $f->id,
+                    'medya_tipi' => $f->medya_tipi ?? 'foto',
+                    'sure_saniye' => $f->sure_saniye !== null ? (int) $f->sure_saniye : null,
+                    'kucuk_var' => (bool) ($f->kucuk_var ?? false),
                     'url' => 'api.php?action=ihbarFoto&foto_id=' . (int) $f->id,
+                    'kucuk_url' => 'api.php?action=ihbarFoto&boyut=kucuk&foto_id=' . (int) $f->id,
                 ];
             }, $ihbar->fotograflar);
 

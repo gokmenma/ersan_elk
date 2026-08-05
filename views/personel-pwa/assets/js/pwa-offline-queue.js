@@ -518,6 +518,104 @@
         }).catch(function () { return varsayilan; });
     }
 
+    // Videonun süresini okur ve ilk karesinden kapak görseli üretir.
+    // Süre/boyut sınırı aşılırsa hata döner; sunucu tarafında tekrar doğrulanır.
+    function videoIncele(dosya, maxSure, maxByte) {
+        return new Promise(function (coz, ret) {
+            if (!dosya || !dosya.type || dosya.type.indexOf("video/") !== 0) {
+                return ret(new Error("Yalnızca video dosyası yükleyebilirsiniz."));
+            }
+            if (dosya.size > maxByte) {
+                return ret(new Error(
+                    "Video boyutu en fazla " + Math.round(maxByte / 1048576) + " MB olabilir. Seçtiğiniz dosya " +
+                    (dosya.size / 1048576).toFixed(1) + " MB."
+                ));
+            }
+            if (typeof document === "undefined") return coz({ dosya: dosya, sure: null, kapak: null });
+
+            var url = URL.createObjectURL(dosya);
+            var video = document.createElement("video");
+            var bitti = false;
+
+            function temizle() {
+                URL.revokeObjectURL(url);
+                video.removeAttribute("src");
+                video.load();
+            }
+
+            function basarisiz(mesaj) {
+                if (bitti) return;
+                bitti = true;
+                temizle();
+                ret(new Error(mesaj));
+            }
+
+            var zamanAsimi = setTimeout(function () {
+                basarisiz("Video okunamadı. Farklı bir dosya deneyin.");
+            }, 15000);
+
+            video.preload = "metadata";
+            video.muted = true;
+            video.playsInline = true;
+
+            video.onerror = function () {
+                clearTimeout(zamanAsimi);
+                basarisiz("Video formatı bu cihazda okunamadı. MP4 olarak deneyin.");
+            };
+
+            video.onloadedmetadata = function () {
+                var sure = video.duration;
+                if (!isFinite(sure) || sure <= 0) {
+                    clearTimeout(zamanAsimi);
+                    return basarisiz("Video süresi okunamadı.");
+                }
+                if (sure > maxSure + 0.5) {
+                    clearTimeout(zamanAsimi);
+                    return basarisiz(
+                        "Video en fazla " + maxSure + " saniye olabilir. Seçtiğiniz video " + Math.round(sure) + " saniye."
+                    );
+                }
+
+                video.onseeked = function () {
+                    if (bitti) return;
+                    bitti = true;
+                    clearTimeout(zamanAsimi);
+
+                    var kapak = null;
+                    try {
+                        var oran = Math.min(1, 320 / Math.max(video.videoWidth, video.videoHeight));
+                        var tuval = document.createElement("canvas");
+                        tuval.width = Math.max(1, Math.round(video.videoWidth * oran));
+                        tuval.height = Math.max(1, Math.round(video.videoHeight * oran));
+                        tuval.getContext("2d").drawImage(video, 0, 0, tuval.width, tuval.height);
+                        kapak = tuval.toDataURL("image/jpeg", 0.7);
+                    } catch (e) {
+                        kapak = null;
+                    }
+
+                    temizle();
+                    coz({ dosya: dosya, sure: sure, kapak: kapak });
+                };
+
+                try {
+                    video.currentTime = Math.min(0.1, sure / 2);
+                } catch (e) {
+                    clearTimeout(zamanAsimi);
+                    bitti = true;
+                    temizle();
+                    coz({ dosya: dosya, sure: sure, kapak: null });
+                }
+            };
+
+            video.src = url;
+        });
+    }
+
+    function sureBicimle(saniye) {
+        var s = Math.round(saniye || 0);
+        return Math.floor(s / 60) + ":" + String(s % 60).padStart(2, "0");
+    }
+
     // ---------- Bağlam yardımcıları ----------
 
     function duyur(detay) {
@@ -565,6 +663,8 @@
         referansKaydet: referansKaydet,
         referansOku: referansOku,
         fotografKucult: fotografKucult,
+        videoIncele: videoIncele,
+        sureBicimle: sureBicimle,
         kaliciDepolamaIste: kaliciDepolamaIste,
         syncKaydet: syncKaydet,
         cevrimici: function () { return typeof navigator === "undefined" || navigator.onLine !== false; },

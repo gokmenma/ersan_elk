@@ -2,6 +2,7 @@
 require_once dirname(__DIR__, 2) . '/Autoloader.php';
 
 use App\Helper\Helper;
+use App\Helper\Security;
 use App\Model\EvrakTakipModel;
 use App\Model\PersonelModel;
 
@@ -51,9 +52,15 @@ $gelen_evraklar = $Evrak->getGelenEvraklar();
                             <button type="button"
                                 class="btn btn-primary btn-sm text-white shadow-primary text-decoration-none px-3 d-flex align-items-center fw-bold"
                                 id="btnYeniEvrak">
-                                <i data-feather="plus-circle" class="icon-sm me-1"></i> <span
-                                    class="d-none d-md-inline">Yeni Evrak Ekle</span>
+                                <i data-feather="arrow-down-circle" class="icon-sm me-1"></i> <span
+                                    class="d-none d-md-inline">Yeni Gelen Evrak</span>
                             </button>
+
+                            <a href="index.php?p=evrak-takip/giden-evrak"
+                                class="btn btn-warning btn-sm text-white shadow-sm text-decoration-none px-3 d-flex align-items-center fw-bold">
+                                <i data-feather="arrow-up-circle" class="icon-sm me-1"></i> <span
+                                    class="d-none d-md-inline">Yeni Giden Evrak</span>
+                            </a>
                         </div>
                     </div>
                 </div>
@@ -167,7 +174,9 @@ $gelen_evraklar = $Evrak->getGelenEvraklar();
                                 </thead>
                                 <tbody>
                                     <?php $i = 1;
-                                    foreach ($evraklar as $evrak): ?>
+                                    foreach ($evraklar as $evrak): 
+                                        $encryptedEvrakId = \App\Helper\Security::encrypt($evrak->id);
+                                    ?>
                                         <tr>
                                             <td class="text-center">
                                                 <span class="fw-bold text-muted"><?php echo $i++; ?></span>
@@ -211,7 +220,7 @@ $gelen_evraklar = $Evrak->getGelenEvraklar();
                                                         <span class="small fw-bold text-dark"><?php echo $evrak->personel_adi; ?></span>
 
                                                         <button type="button" class="btn btn-link text-primary p-0 ms-2 evrak-bildir-manuel" 
-                                                            data-id="<?php echo $evrak->id; ?>" 
+                                                            data-id="<?php echo htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" 
                                                             data-personel-id="<?php echo $evrak->personel_id; ?>"
                                                             data-type="personel"
                                                             data-last-notified="<?php echo $evrak->son_bildirim_tarihi_personel; ?>"
@@ -232,7 +241,7 @@ $gelen_evraklar = $Evrak->getGelenEvraklar();
                                                         <span class="small fw-bold text-info"><?php echo $evrak->ilgili_personel_adi; ?></span>
                                                         
                                                         <button type="button" class="btn btn-link text-warning p-0 ms-2 evrak-bildir-manuel" 
-                                                            data-id="<?php echo $evrak->id; ?>" 
+                                                            data-id="<?php echo htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" 
                                                             data-personel-id="<?php echo $evrak->ilgili_personel_id; ?>"
                                                             data-type="ilgili"
                                                             data-last-notified="<?php echo $evrak->son_bildirim_tarihi_ilgili; ?>"
@@ -272,10 +281,16 @@ $gelen_evraklar = $Evrak->getGelenEvraklar();
                                             </td>
                                             <td class="text-center">
                                                 <div class="d-flex justify-content-center gap-1">
-                                                    <button type="button" class="btn btn-soft-primary btn-sm evrak-duzenle border-0 p-1 px-2" data-id="<?php echo $evrak->id; ?>">
-                                                        <i data-feather="edit-2" style="width:14px;"></i>
-                                                    </button>
-                                                    <button type="button" class="btn btn-soft-danger btn-sm evrak-sil border-0 p-1 px-2" data-id="<?php echo $evrak->id; ?>">
+                                                    <?php if ($evrak->evrak_tipi === 'giden'): ?>
+                                                        <a href="index.php?p=evrak-takip/giden-evrak&amp;id=<?php echo htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-soft-warning btn-sm border-0 p-1 px-2" title="Düzenle">
+                                                            <i data-feather="edit-2" style="width:14px;"></i>
+                                                        </a>
+                                                    <?php else: ?>
+                                                        <button type="button" class="btn btn-soft-primary btn-sm evrak-duzenle border-0 p-1 px-2" data-id="<?php echo htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" title="Düzenle">
+                                                            <i data-feather="edit-2" style="width:14px;"></i>
+                                                        </button>
+                                                    <?php endif; ?>
+                                                    <button type="button" class="btn btn-soft-danger btn-sm evrak-sil border-0 p-1 px-2" data-id="<?php echo htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" title="Sil">
                                                         <i data-feather="trash-2" style="width:14px;"></i>
                                                     </button>
                                                 </div>

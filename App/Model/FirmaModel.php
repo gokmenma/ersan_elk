@@ -83,6 +83,9 @@ class FirmaModel extends Model
         $out['mersis_no'] = (string) ($data['mersis_no'] ?? '');
         $out['ticaret_sicil_no'] = (string) ($data['ticaret_sicil_no'] ?? '');
         $out['firma_unvan'] = (string) ($data['firma_unvan'] ?? '');
+        if (isset($data['logo_yolu'])) {
+            $out['logo_yolu'] = (string) $data['logo_yolu'];
+        }
         $out['firma_iban'] = (string) ($data['firma_iban'] ?? '');
 
         if (isset($data['id']) && (int) $data['id'] > 0) {

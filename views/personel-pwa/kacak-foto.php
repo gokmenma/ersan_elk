@@ -52,31 +52,19 @@ if (!$stmt->fetchColumn()) {
     exit('Bu belgeye erişim yetkiniz yok.');
 }
 
-$dosya = KacakKontrolModel::rootPath() . '/' . ltrim($foto['dosya_yolu'], '/');
+$kucukIstendi = ($_GET['boyut'] ?? '') === 'kucuk';
+$secilenYol = ($kucukIstendi && !empty($foto['kucuk_yol'])) ? $foto['kucuk_yol'] : $foto['dosya_yolu'];
+
+$dosya = KacakKontrolModel::rootPath() . '/' . ltrim($secilenYol, '/');
+
+if (!is_file($dosya) && $secilenYol !== $foto['dosya_yolu']) {
+    $dosya = KacakKontrolModel::rootPath() . '/' . ltrim($foto['dosya_yolu'], '/');
+}
 
 if (!is_file($dosya)) {
     http_response_code(404);
     exit($foto['arsivlendi'] ? 'Bu dosya arşivlenmiştir.' : 'Dosya bulunamadı.');
 }
 
-$uzanti = strtolower(pathinfo($dosya, PATHINFO_EXTENSION));
-$mimeMap = [
-    'jpg' => 'image/jpeg',
-    'jpeg' => 'image/jpeg',
-    'png' => 'image/png',
-    'webp' => 'image/webp',
-    'pdf' => 'application/pdf',
-];
-
-while (ob_get_level() > 0) {
-    ob_end_clean();
-}
-
-header('Content-Type: ' . ($mimeMap[$uzanti] ?? 'application/octet-stream'));
-header('Content-Length: ' . filesize($dosya));
-header('Content-Disposition: inline; filename="' . basename($dosya) . '"');
-header('X-Content-Type-Options: nosniff');
-header('Cache-Control: private, max-age=600');
-
-readfile($dosya);
+\App\Helper\MedyaServis::gonder($dosya);
 exit;

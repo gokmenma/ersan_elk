@@ -133,7 +133,12 @@
     let currentIhbarTab = 'gelen';
     let ihbarBildirdiklerimData = [];
     let ihbarGelenData = [];
+    const IHBAR_MAX_FOTO = <?= (int) \App\Model\IhbarModel::MAX_FOTO ?>;
+    const IHBAR_MAX_VIDEO = <?= (int) \App\Model\IhbarModel::MAX_VIDEO ?>;
+    const IHBAR_VIDEO_MAX_SURE = <?= (int) \App\Model\IhbarModel::VIDEO_MAX_SURE ?>;
+    const IHBAR_VIDEO_MAX_BYTE = <?= (int) \App\Model\IhbarModel::VIDEO_MAX_BYTE ?>;
     let ihbarSeciliFotolar = [];
+    let ihbarSeciliVideolar = [];
     let ihbarEditId = null;
     let ihbarEditToken = null;
     let ihbarMevcutFotograflar = [];
@@ -247,6 +252,7 @@
 
     function openYeniIhbarModal(editData = null) {
         ihbarSeciliFotolar = [];
+        ihbarSeciliVideolar = [];
         ihbarEditId = editData ? Number(editData.id) : null;
         ihbarEditToken = editData?.edit_token || null;
         ihbarMevcutFotograflar = editData?.fotograflar || [];
@@ -299,12 +305,14 @@
                                 placeholder="İhbar detaylarını yazınız..." required>${editData?.aciklama ?? ''}</textarea>
                         </div>
                         <div>
-                            <label class="form-label">Fotoğraf Ekle (toplam en fazla 10 adet)</label>
+                            <label class="form-label">Fotoğraf Ekle (toplam en fazla ${IHBAR_MAX_FOTO} adet)</label>
                             ${editData && ihbarMevcutFotograflar.length > 0 ? `
                             <div class="mb-2">
-                                <p class="text-xs text-slate-500 mb-1">Yüklü fotoğraflar</p>
+                                <p class="text-xs text-slate-500 mb-1">Yüklü dosyalar</p>
                                 <div class="flex flex-wrap gap-2">
-                                    ${ihbarMevcutFotograflar.map(f => `<img src="${f.url}" class="w-16 h-16 object-cover rounded-xl border border-slate-200 dark:border-slate-700">`).join('')}
+                                    ${ihbarMevcutFotograflar.map(f => f.medya_tipi === 'video'
+                                        ? `<div class="w-16 h-16 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center bg-slate-100"><span class="material-symbols-outlined text-slate-400">movie</span></div>`
+                                        : `<img src="${f.kucuk_url || f.url}" class="w-16 h-16 object-cover rounded-xl border border-slate-200 dark:border-slate-700">`).join('')}
                                 </div>
                             </div>` : ''}
                             <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary transition-colors"
@@ -314,6 +322,16 @@
                             </div>
                             <input type="file" id="ihbar-foto-input" accept="image/*" multiple class="hidden">
                             <div id="ihbar-foto-preview" class="flex flex-wrap gap-2 mt-2"></div>
+                        </div>
+                        <div>
+                            <label class="form-label">Video Ekle (en fazla ${IHBAR_MAX_VIDEO} adet, ${IHBAR_VIDEO_MAX_SURE} sn)</label>
+                            <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary transition-colors"
+                                onclick="document.getElementById('ihbar-video-input').click()">
+                                <span class="material-symbols-outlined text-3xl text-slate-400">videocam</span>
+                                <p class="text-xs text-slate-500 text-center">Yüklemek için tıklayın</p>
+                            </div>
+                            <input type="file" id="ihbar-video-input" accept="video/*" capture="environment" class="hidden">
+                            <div id="ihbar-video-preview" class="flex flex-wrap gap-2 mt-2"></div>
                         </div>
                     </form>
 
@@ -336,9 +354,10 @@
                 if (fotoInput) {
                     fotoInput.addEventListener('change', function () {
                         const yeniDosyalar = Array.from(this.files);
-                        const toplamMevcut = ihbarMevcutFotograflar.length + ihbarSeciliFotolar.length;
-                        if (toplamMevcut + yeniDosyalar.length > 10) {
-                            Alert.warning('Sınır Aşıldı', 'Toplamda en fazla 10 fotoğraf olabilir.');
+                        const mevcutFoto = ihbarMevcutFotograflar.filter(f => f.medya_tipi !== 'video').length;
+                        const toplamMevcut = mevcutFoto + ihbarSeciliFotolar.length;
+                        if (toplamMevcut + yeniDosyalar.length > IHBAR_MAX_FOTO) {
+                            Alert.warning('Sınır Aşıldı', `Toplamda en fazla ${IHBAR_MAX_FOTO} fotoğraf olabilir.`);
                             this.value = '';
                             return;
                         }
@@ -357,6 +376,29 @@
                     });
                 }
 
+                const videoInput = document.getElementById('ihbar-video-input');
+                if (videoInput) {
+                    videoInput.addEventListener('change', async function () {
+                        const dosya = this.files[0];
+                        this.value = '';
+                        if (!dosya) return;
+
+                        const mevcutVideo = ihbarMevcutFotograflar.filter(f => f.medya_tipi === 'video').length;
+                        if (mevcutVideo + ihbarSeciliVideolar.length >= IHBAR_MAX_VIDEO) {
+                            return Alert.warning('Sınır Aşıldı', `Toplamda en fazla ${IHBAR_MAX_VIDEO} video olabilir.`);
+                        }
+
+                        try {
+                            ihbarSeciliVideolar.push(
+                                await OfflineQueue.videoIncele(dosya, IHBAR_VIDEO_MAX_SURE, IHBAR_VIDEO_MAX_BYTE)
+                            );
+                            renderIhbarVideoPreview();
+                        } catch (hata) {
+                            Alert.warning('Video Eklenemedi', hata.message);
+                        }
+                    });
+                }
+
                 document.getElementById('ihbar-form').addEventListener('submit', async function (e) {
                     e.preventDefault();
                     await submitYeniIhbar(this);
@@ -364,6 +406,31 @@
             }
         });
     }
+
+    function renderIhbarVideoPreview() {
+        const preview = document.getElementById('ihbar-video-preview');
+        if (!preview) return;
+
+        preview.innerHTML = ihbarSeciliVideolar.map((v, idx) => {
+            const kapak = v.kapak
+                ? `<img src="${v.kapak}" class="w-20 h-20 object-cover rounded-xl">`
+                : `<div class="w-20 h-20 rounded-xl bg-slate-100 flex items-center justify-center">
+                       <span class="material-symbols-outlined text-slate-400">movie</span></div>`;
+            return `
+            <div class="relative inline-block">
+                ${kapak}
+                <span class="absolute bottom-1 right-1 text-white text-xs rounded px-1" style="background:rgba(0,0,0,.7)">${OfflineQueue.sureBicimle(v.sure)}</span>
+                <button type="button" onclick="removeIhbarVideo(${idx})" class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center">
+                    <span class="material-symbols-outlined text-sm">close</span>
+                </button>
+            </div>`;
+        }).join('');
+    }
+
+    window.removeIhbarVideo = function (idx) {
+        ihbarSeciliVideolar.splice(idx, 1);
+        renderIhbarVideoPreview();
+    };
 
     function renderIhbarFotoPreview() {
         const preview = document.getElementById('ihbar-foto-preview');
@@ -448,14 +515,27 @@
             formData.append('konum_lng', form.querySelector('[name=konum_lng]').value);
             formData.append('konum_dogruluk', form.querySelector('[name=konum_dogruluk]').value);
 
-            ihbarSeciliFotolar.forEach(file => {
-                formData.append('fotograflar[]', file);
+            // Zayıf bağlantıda gönderilebilsin ve sunucuda az yer kaplasın diye küçültülür.
+            const gonderilecekFotolar = [];
+            for (const file of ihbarSeciliFotolar) {
+                const kucuk = window.OfflineQueue
+                    ? await window.OfflineQueue.fotografKucult(file, 1600, 0.75)
+                    : { blob: file, ad: file.name, tip: file.type };
+                gonderilecekFotolar.push(kucuk);
+                formData.append('fotograflar[]', kucuk.blob, kucuk.ad);
+            }
+
+            // Videolar seçim anında doğrulanmıştı; süre ve kapak karesi yanlarında gider.
+            ihbarSeciliVideolar.forEach(v => {
+                formData.append('videolar[]', v.dosya, v.dosya.name);
+                formData.append('video_sureleri[]', v.sure || '');
+                formData.append('video_kapaklari[]', v.kapak || '');
             });
 
             const requestSummary = {
                 action: isEdit ? 'updateIhbar' : 'createIhbar',
-                photoCount: ihbarSeciliFotolar.length,
-                totalPhotoBytes: ihbarSeciliFotolar.reduce((total, file) => total + file.size, 0)
+                photoCount: gonderilecekFotolar.length,
+                totalPhotoBytes: gonderilecekFotolar.reduce((total, foto) => total + foto.blob.size, 0)
             };
             console.info('[İhbar] Gönderim başlatıldı', requestSummary);
 
@@ -516,7 +596,15 @@
             const buAtandiMi = tip === 'gelen';
 
             const fotoHtml = (d.fotograflar || []).map(f =>
-                `<img src="${f.url}" onclick="window.open('${f.url}', '_blank')" class="w-20 h-20 object-cover rounded-xl cursor-pointer">`
+                f.medya_tipi === 'video'
+                    ? `<div class="relative inline-block cursor-pointer" onclick="window.open('${f.url}', '_blank')">
+                           ${f.kucuk_var
+                               ? `<img src="${f.kucuk_url}" loading="lazy" class="w-20 h-20 object-cover rounded-xl">`
+                               : `<div class="w-20 h-20 rounded-xl bg-slate-100 flex items-center justify-center"><span class="material-symbols-outlined text-slate-400">movie</span></div>`}
+                           <span class="material-symbols-outlined absolute inset-0 m-auto w-fit h-fit text-white" style="text-shadow:0 0 6px rgba(0,0,0,.8)">play_circle</span>
+                           ${f.sure_saniye ? `<span class="absolute bottom-1 right-1 text-white text-xs rounded px-1" style="background:rgba(0,0,0,.7)">${OfflineQueue.sureBicimle(f.sure_saniye)}</span>` : ''}
+                       </div>`
+                    : `<img src="${f.kucuk_url || f.url}" loading="lazy" onclick="window.open('${f.url}', '_blank')" class="w-20 h-20 object-cover rounded-xl cursor-pointer">`
             ).join('') || '<p class="text-xs text-slate-400">Fotoğraf yok</p>';
 
             const tarihceHtml = (d.tarihce || []).map(t => `

@@ -19,7 +19,9 @@ class ImageUploadService
         string $filePrefix,
         int $maxDimension = 1920,
         int $quality = 85,
-        int $maxUploadBytes = 15728640
+        int $maxUploadBytes = 15728640,
+        int $thumbDimension = 0,
+        int $thumbQuality = 72
     ): array {
         $error = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
         if ($error !== UPLOAD_ERR_OK || empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
@@ -58,33 +60,14 @@ class ImageUploadService
             $source = $this->applyExifOrientation($source, $file['tmp_name']);
         }
 
-        $sourceWidth = imagesx($source);
-        $sourceHeight = imagesy($source);
-        $scale = min(1, $maxDimension / max($sourceWidth, $sourceHeight));
-        $targetWidth = max(1, (int) round($sourceWidth * $scale));
-        $targetHeight = max(1, (int) round($sourceHeight * $scale));
-
-        $target = imagecreatetruecolor($targetWidth, $targetHeight);
+        $target = $this->resample($source, $maxDimension);
         if (!$target) {
             imagedestroy($source);
             throw new Exception('Resim için çalışma alanı oluşturulamadı.');
         }
 
-        // JPEG çıktıda PNG şeffaf bölgelerin siyaha dönüşmesini engeller.
-        $white = imagecolorallocate($target, 255, 255, 255);
-        imagefill($target, 0, 0, $white);
-        imagecopyresampled(
-            $target,
-            $source,
-            0,
-            0,
-            0,
-            0,
-            $targetWidth,
-            $targetHeight,
-            $sourceWidth,
-            $sourceHeight
-        );
+        $targetWidth = imagesx($target);
+        $targetHeight = imagesy($target);
 
         $destinationDirectory = rtrim($destinationDirectory, '/\\');
         if (!is_dir($destinationDirectory)
@@ -103,7 +86,8 @@ class ImageUploadService
         $useWebp = function_exists('imagewebp') && ($mime !== 'image/webp' || $source !== false);
         $extension = $useWebp ? 'webp' : 'jpg';
         $safePrefix = preg_replace('/[^a-zA-Z0-9_-]/', '_', $filePrefix) ?: 'image';
-        $fileName = $safePrefix . '_' . bin2hex(random_bytes(10)) . '.' . $extension;
+        $baseName = $safePrefix . '_' . bin2hex(random_bytes(10));
+        $fileName = $baseName . '.' . $extension;
         $destination = $destinationDirectory . DIRECTORY_SEPARATOR . $fileName;
 
         $saved = $useWebp
@@ -111,14 +95,41 @@ class ImageUploadService
             : imagejpeg($target, $destination, $quality);
 
         imagedestroy($source);
-        imagedestroy($target);
 
         if (!$saved || !is_file($destination) || filesize($destination) === 0) {
+            imagedestroy($target);
             @unlink($destination);
             throw new Exception('Optimize edilmiş resim kaydedilemedi.');
         }
 
         @chmod($destination, 0644);
+
+        $thumbName = null;
+        $thumbSize = 0;
+        if ($thumbDimension > 0) {
+            $thumbName = $baseName . '_k.' . $extension;
+            $thumbPath = $destinationDirectory . DIRECTORY_SEPARATOR . $thumbName;
+            $thumb = $this->resample($target, $thumbDimension);
+
+            $thumbSaved = false;
+            if ($thumb) {
+                $thumbSaved = $useWebp
+                    ? imagewebp($thumb, $thumbPath, $thumbQuality)
+                    : imagejpeg($thumb, $thumbPath, $thumbQuality);
+                imagedestroy($thumb);
+            }
+
+            if (!$thumbSaved || !is_file($thumbPath) || filesize($thumbPath) === 0) {
+                @unlink($thumbPath);
+                error_log('Küçük boyut üretilemedi, orijinal kullanılacak: ' . $fileName);
+                $thumbName = null;
+            } else {
+                @chmod($thumbPath, 0644);
+                $thumbSize = (int) filesize($thumbPath);
+            }
+        }
+
+        imagedestroy($target);
 
         return [
             'filename' => $fileName,
@@ -127,7 +138,30 @@ class ImageUploadService
             'width' => $targetWidth,
             'height' => $targetHeight,
             'size' => filesize($destination),
+            'thumb_filename' => $thumbName,
+            'thumb_size' => $thumbSize,
         ];
+    }
+
+    private function resample($source, int $maxDimension)
+    {
+        $sourceWidth = imagesx($source);
+        $sourceHeight = imagesy($source);
+        $scale = min(1, $maxDimension / max($sourceWidth, $sourceHeight));
+        $width = max(1, (int) round($sourceWidth * $scale));
+        $height = max(1, (int) round($sourceHeight * $scale));
+
+        $target = imagecreatetruecolor($width, $height);
+        if (!$target) {
+            return false;
+        }
+
+        // JPEG çıktıda PNG şeffaf bölgelerin siyaha dönüşmesini engeller.
+        $white = imagecolorallocate($target, 255, 255, 255);
+        imagefill($target, 0, 0, $white);
+        imagecopyresampled($target, $source, 0, 0, 0, 0, $width, $height, $sourceWidth, $sourceHeight);
+
+        return $target;
     }
 
     private function applyExifOrientation($image, string $path)

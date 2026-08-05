@@ -573,6 +573,33 @@ function kacakFotoYukle(KacakKontrolModel $Kacak, int $kacakId, int $userId): in
         }
     }
 
+    if (!empty($_FILES['videolar']) && is_array($_FILES['videolar']['name'])) {
+        $sureler = $_POST['video_sureleri'] ?? [];
+        $kapaklar = $_POST['video_kapaklari'] ?? [];
+        foreach ($_FILES['videolar']['name'] as $i => $ad) {
+            if (empty($ad) || ($_FILES['videolar']['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                continue;
+            }
+            try {
+                $sonuc = $Kacak->storeUploadedVideo(
+                    [
+                        'name' => $ad,
+                        'tmp_name' => $_FILES['videolar']['tmp_name'][$i],
+                        'error' => $_FILES['videolar']['error'][$i],
+                        'size' => $_FILES['videolar']['size'][$i],
+                    ],
+                    $kacakId,
+                    isset($sureler[$i]) && is_numeric($sureler[$i]) ? (int) ceil((float) $sureler[$i]) : null,
+                    isset($kapaklar[$i]) ? (string) $kapaklar[$i] : null
+                );
+                $Kacak->addVideo($kacakId, $sonuc['yol'], $sonuc['kapak'], $sonuc['sure_saniye'], $ad, null, $userId);
+                $eklenen++;
+            } catch (\Throwable $e) {
+                error_log('Kaçak videosu yüklenemedi: ' . $e->getMessage());
+            }
+        }
+    }
+
     if (!empty($_FILES['saha_fotolari']) && is_array($_FILES['saha_fotolari']['name'])) {
         $mevcut = $Kacak->countPhotos($kacakId, 'saha');
         foreach ($_FILES['saha_fotolari']['name'] as $i => $ad) {
@@ -658,7 +685,7 @@ function kacakArsivle(KacakKontrolModel $Kacak, SystemLogModel $Log, int $userId
         }
 
         $ilce = preg_replace('/[^\p{L}\p{N}_-]+/u', '_', $foto['ilce'] ?: 'Belirtilmemis');
-        $turKlasor = ucfirst($foto['tur']);
+        $turKlasor = ($foto['medya_tipi'] ?? 'foto') === 'video' ? 'Video' : ucfirst($foto['tur']);
         $dosyaAdi = sprintf(
             '%s_%s_%s.%s',
             date('Y-m-d', strtotime($foto['tarih'])),
@@ -684,9 +711,14 @@ function kacakArsivle(KacakKontrolModel $Kacak, SystemLogModel $Log, int $userId
         if (!in_array((int) $foto['id'], $eklenenIds, true)) {
             continue;
         }
-        $kaynak = $root . '/' . ltrim($foto['dosya_yolu'], '/');
-        if (is_file($kaynak)) {
-            @unlink($kaynak);
+        foreach ([$foto['dosya_yolu'], $foto['kucuk_yol'] ?? null] as $yol) {
+            if (empty($yol)) {
+                continue;
+            }
+            $kaynak = $root . '/' . ltrim($yol, '/');
+            if (is_file($kaynak)) {
+                @unlink($kaynak);
+            }
         }
     }
 

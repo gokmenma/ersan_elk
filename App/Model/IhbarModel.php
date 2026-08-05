@@ -2,11 +2,31 @@
 
 namespace App\Model;
 
+use App\Service\ImageUploadService;
+use App\Service\VideoUploadService;
 use PDO;
 
 class IhbarModel extends Model
 {
     protected $table = 'ihbarlar';
+
+    const UPLOAD_DIR = 'uploads/ihbar';
+
+    const IZINLI_UZANTILAR = ['jpg', 'jpeg', 'png', 'webp'];
+
+    const MAX_KENAR = 1600;
+
+    const KUCUK_KENAR = 320;
+
+    const MAX_FOTO = 15;
+
+    const MAX_VIDEO = 2;
+
+    const VIDEO_MAX_SURE = 20;
+
+    const VIDEO_MAX_BYTE = 15728640;
+
+    const VIDEO_MIMES = ['video/mp4', 'video/quicktime', 'video/webm', 'video/3gpp'];
 
     public function __construct()
     {
@@ -120,15 +140,105 @@ class IhbarModel extends Model
         $this->addTarihce($ihbarId, 'not', 'İhbar bilgileri yönetici tarafından düzenlendi.', 'user', $userId);
     }
 
-    public function addFotograf(int $ihbarId, string $dosyaYolu): void
+    /**
+     * Yüklenen ihbar fotoğrafını optimize edip küçük boyutuyla birlikte diske yazar.
+     * Dönen dizi doğrudan addFotograf() ile kullanılır.
+     */
+    public static function storeUploadedFoto(array $file, int $ihbarId): array
     {
-        $stmt = $this->db->prepare("INSERT INTO ihbar_fotograflari (ihbar_id, dosya_yolu, created_at) VALUES (?, ?, NOW())");
-        $stmt->execute([$ihbarId, $dosyaYolu]);
+        $ext = strtolower(pathinfo($file['name'] ?? '', PATHINFO_EXTENSION));
+        if (!in_array($ext, self::IZINLI_UZANTILAR, true)) {
+            throw new \Exception('Sadece JPG, PNG veya WEBP dosyası yüklenebilir.');
+        }
+
+        $altDizin = self::UPLOAD_DIR . '/' . date('Y/m');
+        $hedefDizin = dirname(__DIR__, 2) . '/' . $altDizin;
+        if (!is_dir($hedefDizin) && !mkdir($hedefDizin, 0775, true) && !is_dir($hedefDizin)) {
+            throw new \Exception('İhbar yükleme dizini oluşturulamadı.');
+        }
+
+        $sonuc = (new ImageUploadService())->store(
+            $file,
+            $hedefDizin,
+            'ihbar_' . $ihbarId,
+            self::MAX_KENAR,
+            75,
+            15 * 1024 * 1024,
+            self::KUCUK_KENAR
+        );
+
+        return [
+            'yol' => $altDizin . '/' . $sonuc['filename'],
+            'kucuk' => $sonuc['thumb_filename'] ? $altDizin . '/' . $sonuc['thumb_filename'] : null,
+        ];
+    }
+
+    /**
+     * Yüklenen ihbar videosunu doğrulayıp diske yazar ve kapak karesini kaydeder.
+     */
+    public function storeUploadedVideo(array $file, int $ihbarId, ?int $sureSaniye, ?string $kapakVerisi): array
+    {
+        if ($this->countVideolar($ihbarId) >= self::MAX_VIDEO) {
+            throw new \Exception('Bir ihbara en fazla ' . self::MAX_VIDEO . ' video eklenebilir.');
+        }
+
+        $altDizin = self::UPLOAD_DIR . '/' . date('Y/m');
+        $hedefDizin = dirname(__DIR__, 2) . '/' . $altDizin;
+
+        $sonuc = (new VideoUploadService())->store(
+            $file,
+            $hedefDizin,
+            'video_' . $ihbarId,
+            self::VIDEO_MIMES,
+            self::VIDEO_MAX_BYTE,
+            self::VIDEO_MAX_SURE,
+            $sureSaniye,
+            $kapakVerisi,
+            self::KUCUK_KENAR
+        );
+
+        return [
+            'yol' => $altDizin . '/' . $sonuc['filename'],
+            'kapak' => $sonuc['kapak_filename'] ? $altDizin . '/' . $sonuc['kapak_filename'] : null,
+            'sure_saniye' => $sonuc['sure_saniye'],
+        ];
+    }
+
+    public function addFotograf(int $ihbarId, string $dosyaYolu, ?string $kucukYol = null): void
+    {
+        $stmt = $this->db->prepare("INSERT INTO ihbar_fotograflari (ihbar_id, medya_tipi, dosya_yolu, kucuk_yol, created_at)
+                                    VALUES (?, 'foto', ?, ?, NOW())");
+        $stmt->execute([$ihbarId, $dosyaYolu, $kucukYol]);
+    }
+
+    public function addVideo(int $ihbarId, string $dosyaYolu, ?string $kapakYolu, ?int $sureSaniye): void
+    {
+        $stmt = $this->db->prepare("INSERT INTO ihbar_fotograflari (ihbar_id, medya_tipi, dosya_yolu, kucuk_yol, sure_saniye, created_at)
+                                    VALUES (?, 'video', ?, ?, ?, NOW())");
+        $stmt->execute([$ihbarId, $dosyaYolu, $kapakYolu, $sureSaniye]);
+    }
+
+    public function countFotograflar(int $ihbarId): int
+    {
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM ihbar_fotograflari WHERE ihbar_id = ? AND medya_tipi = 'foto'");
+        $stmt->execute([$ihbarId]);
+        return (int) $stmt->fetchColumn();
+    }
+
+    public function countVideolar(int $ihbarId): int
+    {
+        $stmt = $this->db->prepare("SELECT COUNT(*) FROM ihbar_fotograflari WHERE ihbar_id = ? AND medya_tipi = 'video'");
+        $stmt->execute([$ihbarId]);
+        return (int) $stmt->fetchColumn();
     }
 
     public function getFotograflar(int $ihbarId): array
     {
-        $stmt = $this->db->prepare("SELECT * FROM ihbar_fotograflari WHERE ihbar_id = ? ORDER BY id ASC");
+        $stmt = $this->db->prepare("SELECT id, ihbar_id, medya_tipi, dosya_yolu, sure_saniye, created_at,
+                                           (kucuk_yol IS NOT NULL) AS kucuk_var
+                                    FROM ihbar_fotograflari
+                                    WHERE ihbar_id = ?
+                                    ORDER BY medya_tipi ASC, id ASC");
         $stmt->execute([$ihbarId]);
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
@@ -351,7 +461,8 @@ class IhbarModel extends Model
                     FROM ihbar_atamalar a
                     JOIN personel p ON p.id = a.personel_id
                     WHERE a.ihbar_id = i.id AND a.silinme_tarihi IS NULL) AS atanan_ekip_adi,
-                (SELECT COUNT(*) FROM ihbar_fotograflari f WHERE f.ihbar_id = i.id) AS foto_sayisi
+                (SELECT COUNT(*) FROM ihbar_fotograflari f WHERE f.ihbar_id = i.id AND f.medya_tipi = 'foto') AS foto_sayisi,
+                (SELECT COUNT(*) FROM ihbar_fotograflari fv WHERE fv.ihbar_id = i.id AND fv.medya_tipi = 'video') AS video_sayisi
             FROM ihbarlar i
             LEFT JOIN personel bp ON bp.id = i.bildiren_personel_id
             LEFT JOIN users ou ON ou.id = i.olusturan_user_id

@@ -680,6 +680,23 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
                         </div>
                     </div>
 
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <?= Form::FormFileInput(
+                                name: 'videolar[]',
+                                label: 'Video (en fazla ' . KacakKontrolModel::MAX_VIDEO . ' adet, ' . KacakKontrolModel::VIDEO_MAX_SURE . ' saniye)',
+                                icon: 'video-plus',
+                                class: 'form-control',
+                                attributes: 'multiple accept="video/*"',
+                                id: 'kacak_videolar'
+                            ) ?>
+                            <small class="text-muted d-block mt-1">Her video en fazla
+                                <?= KacakKontrolModel::VIDEO_MAX_SURE ?> saniye ve
+                                <?= round(KacakKontrolModel::VIDEO_MAX_BYTE / 1048576) ?> MB olabilir.</small>
+                            <div id="kacakVideoPreview" class="d-flex flex-wrap gap-2 mt-2"></div>
+                        </div>
+                    </div>
+
                     <div class="border rounded p-3 bg-light mb-3">
                         <div class="d-flex justify-content-between align-items-center mb-2">
                             <h6 class="mb-0 fw-bold text-primary"><i class="bx bx-list-plus me-1"></i> Giriş Detayları
@@ -852,6 +869,10 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
         const API = 'views/kacak/api.php';
         const ILCELER = <?= json_encode(KacakKontrolModel::ILCELER, JSON_UNESCAPED_UNICODE) ?>;
         const MAX_SAHA_FOTO = <?= KacakKontrolModel::MAX_SAHA_FOTO ?>;
+        const MAX_VIDEO = <?= KacakKontrolModel::MAX_VIDEO ?>;
+        const VIDEO_MAX_SURE = <?= KacakKontrolModel::VIDEO_MAX_SURE ?>;
+        const VIDEO_MAX_BYTE = <?= KacakKontrolModel::VIDEO_MAX_BYTE ?>;
+        let kacakSeciliVideolar = [];
         const YETKI = {
             duzenle: <?= $yetkiDuzenle ? 'true' : 'false' ?>,
             onay: <?= $yetkiOnay ? 'true' : 'false' ?>,
@@ -1235,7 +1256,7 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
             });
         });
 
-        function kacakFormGonder(onaylaSonrasinda) {
+        async function kacakFormGonder(onaylaSonrasinda) {
             const secili = $('#kacak_personel_ids').val() || [];
             if (secili.length === 0) {
                 Swal.fire('Uyarı', 'En az bir personel seçmelisiniz.', 'warning');
@@ -1261,6 +1282,26 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
 
             const $butonlar = $('#kacakForm button[type="submit"], #btnKaydetVeOnayla');
             $butonlar.prop('disabled', true);
+
+            // Ham fotoğraflar sunucuya gitmeden önce küçültülür; sıkıştırıcı yüklenemezse
+            // dosyalar olduğu gibi gider ve sunucu tarafındaki optimizasyon devreye girer.
+            if (window.ResimSikistir && sahaInput && sahaInput.files.length) {
+                try {
+                    const kucukler = await window.ResimSikistir.listeyiKucult(sahaInput.files, 1600, 0.75);
+                    fd.delete('saha_fotolari[]');
+                    kucukler.forEach(dosya => fd.append('saha_fotolari[]', dosya, dosya.name));
+                } catch (hata) {
+                    console.error('Fotoğraf küçültme başarısız, orijinal dosyalar gönderiliyor:', hata);
+                }
+            }
+
+            // Videolar seçim anında doğrulanmıştı; süre ve kapak karesi yanlarında gider.
+            fd.delete('videolar[]');
+            kacakSeciliVideolar.forEach(v => {
+                fd.append('videolar[]', v.dosya, v.dosya.name);
+                fd.append('video_sureleri[]', v.sure);
+                fd.append('video_kapaklari[]', v.kapak || '');
+            });
 
             $.ajax({
                 url: API, type: 'POST', data: fd, processData: false, contentType: false, dataType: 'json'
@@ -1294,6 +1335,46 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
             if (onayTable) onaylariYukle();
             if (ekipOzetYuklendi) ekipOzetiYukle();
         }
+
+        $('#kacak_videolar').on('change', async function () {
+            const onizleme = $('#kacakVideoPreview');
+            onizleme.empty();
+            kacakSeciliVideolar = [];
+
+            if (this.files.length > MAX_VIDEO) {
+                Swal.fire('Uyarı', `En fazla ${MAX_VIDEO} video seçebilirsiniz.`, 'warning');
+                this.value = '';
+                return;
+            }
+
+            onizleme.html('<span class="text-muted small">Videolar kontrol ediliyor...</span>');
+            const kabulEdilen = [];
+            const hatalar = [];
+
+            for (const dosya of Array.from(this.files)) {
+                try {
+                    kabulEdilen.push(await VideoKontrol.incele(dosya, VIDEO_MAX_SURE, VIDEO_MAX_BYTE));
+                } catch (hata) {
+                    hatalar.push(`${esc(dosya.name)}: ${esc(hata.message)}`);
+                }
+            }
+
+            kacakSeciliVideolar = kabulEdilen;
+            onizleme.empty();
+
+            kabulEdilen.forEach(v => {
+                const kapak = v.kapak
+                    ? `<img src="${v.kapak}" style="width:70px;height:70px;object-fit:cover;border-radius:8px;border:1px solid #dee2e6">`
+                    : `<div style="width:70px;height:70px;border-radius:8px;border:1px solid #dee2e6" class="d-flex align-items-center justify-content-center bg-light"><i class="bx bx-video fs-3 text-muted"></i></div>`;
+                onizleme.append(`<div class="position-relative">${kapak}
+                    <span class="badge bg-dark position-absolute bottom-0 end-0 m-1" style="font-size:.65rem">${VideoKontrol.sureBicimle(v.sure)}</span></div>`);
+            });
+
+            if (hatalar.length) {
+                Swal.fire('Bazı videolar eklenemedi', hatalar.join('<br>'), 'warning');
+                if (kabulEdilen.length === 0) this.value = '';
+            }
+        });
 
         $('#kacakForm').on('submit', function (e) {
             e.preventDefault();
@@ -1478,10 +1559,37 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
 
             fotolar.forEach(f => {
                 const url = 'views/kacak/foto-goruntule.php?id=' + f.id;
+                const kucukUrl = url + '&boyut=kucuk';
                 const pdfMi = /\.pdf$/i.test(f.dosya_yolu);
+                const videoMu = f.medya_tipi === 'video';
+
+                if (videoMu) {
+                    const kapak = f.kucuk_yol
+                        ? `<img src="${kucukUrl}" class="kacak-foto-thumb" loading="lazy" alt="Video">`
+                        : `<div class="kacak-foto-thumb d-flex align-items-center justify-content-center bg-light"><i class="bx bx-video fs-1 text-muted"></i></div>`;
+                    const sureRozeti = f.sure_saniye
+                        ? `<span class="badge bg-dark position-absolute bottom-0 end-0 m-1" style="font-size:.65rem">${VideoKontrol.sureBicimle(f.sure_saniye)}</span>`
+                        : '';
+                    const silVideoBtn = YETKI.arsiv
+                        ? `<button type="button" class="btn btn-danger btn-sm btn-foto-sil" data-foto-id="${f.id}" data-kacak-id="${kacakId}" title="Sil"><i class="bx bx-x"></i></button>`
+                        : '';
+
+                    $hedef.append(`
+                        <div class="kacak-foto-item text-center">
+                            <a href="${url}" target="_blank" rel="noopener" class="position-relative d-inline-block" title="Videoyu oynat">
+                                ${kapak}
+                                <span class="position-absolute top-50 start-50 translate-middle badge rounded-circle bg-dark bg-opacity-75 p-2"><i class="bx bx-play fs-5"></i></span>
+                                ${sureRozeti}
+                            </a>
+                            ${silVideoBtn}
+                            <div class="small text-muted mt-1">Video</div>
+                        </div>`);
+                    return;
+                }
+
                 const onizleme = pdfMi
                     ? `<div class="kacak-foto-thumb d-flex align-items-center justify-content-center bg-light"><i class="bx bxs-file-pdf fs-1 text-danger"></i></div>`
-                    : `<img src="${url}" class="kacak-foto-thumb" alt="${esc(turEtiket[f.tur] || f.tur)}">`;
+                    : `<img src="${kucukUrl}" class="kacak-foto-thumb" loading="lazy" alt="${esc(turEtiket[f.tur] || f.tur)}">`;
 
                 const silBtn = YETKI.arsiv
                     ? `<button type="button" class="btn btn-danger btn-sm btn-foto-sil" data-foto-id="${f.id}" data-kacak-id="${kacakId}" title="Sil"><i class="bx bx-x"></i></button>`

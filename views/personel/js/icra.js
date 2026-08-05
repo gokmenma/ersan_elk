@@ -28,6 +28,7 @@ $(document).ready(function () {
     $("#icra_kesinti_orani").val("25");
     $("#icra_iban").val("");
     $("#icra_hesap_bilgileri").val("");
+    $("#icra_alacakli").val("");
     $("#icra_dairesi").val("").trigger("change", true);
     if ($("#icra_baslangic")[0] && $("#icra_baslangic")[0]._flatpickr) {
         $("#icra_baslangic")[0]._flatpickr.clear();
@@ -115,6 +116,7 @@ $(document).ready(function () {
               $("#icra_dairesi").val("").trigger("change", true);
           }
           $("#icra_dosya_no").val(response.dosya_no);
+          $("#icra_alacakli").val(response.alacakli || "");
           $("#icra_toplam_borc").val(response.toplam_borc);
           $("#icra_kesinti_tipi")
             .val(response.kesinti_tipi || "tutar")

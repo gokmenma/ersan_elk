@@ -76,7 +76,10 @@ class AparatStokService
 
         $mukerrer = $this->Islem->mukerrerVarMi($aboneNo, $islemTipi, $tarih, $veri['client_uuid'] ?? null);
 
-        $this->db()->beginTransaction();
+        $kendiTransaction = !$this->db()->inTransaction();
+        if ($kendiTransaction) {
+            $this->db()->beginTransaction();
+        }
 
         try {
             $islemId = $this->Islem->ekle(array_merge($veri, [
@@ -111,9 +114,11 @@ class AparatStokService
                 }
             }
 
-            $this->db()->commit();
+            if ($kendiTransaction) {
+                $this->db()->commit();
+            }
         } catch (Exception $e) {
-            if ($this->db()->inTransaction()) {
+            if ($kendiTransaction && $this->db()->inTransaction()) {
                 $this->db()->rollBack();
             }
             throw $e;
@@ -187,7 +192,10 @@ class AparatStokService
             throw new Exception('Bu kayıt zaten iptal edilmiş.');
         }
 
-        $this->db()->beginTransaction();
+        $kendiTransaction = !$this->db()->inTransaction();
+        if ($kendiTransaction) {
+            $this->db()->beginTransaction();
+        }
 
         try {
             if (!$this->Islem->iptalEt($islemId, $aciklama, $kullaniciId)) {
@@ -201,9 +209,11 @@ class AparatStokService
                 'tarih' => date('Y-m-d H:i:s'),
             ]);
 
-            $this->db()->commit();
+            if ($kendiTransaction) {
+                $this->db()->commit();
+            }
         } catch (Exception $e) {
-            if ($this->db()->inTransaction()) {
+            if ($kendiTransaction && $this->db()->inTransaction()) {
                 $this->db()->rollBack();
             }
             throw $e;
@@ -273,7 +283,10 @@ class AparatStokService
             throw new Exception('Onaylanan adet, gönderilen adetten fazla olamaz.');
         }
 
-        $this->db()->beginTransaction();
+        $kendiTransaction = !$this->db()->inTransaction();
+        if ($kendiTransaction) {
+            $this->db()->beginTransaction();
+        }
 
         try {
             $guncellendi = $this->Transfer->durumGuncelle($transferId, 'onaylandi', [
@@ -309,9 +322,11 @@ class AparatStokService
                 'kaydeden_id' => $kullaniciId ?: null,
             ]);
 
-            $this->db()->commit();
+            if ($kendiTransaction) {
+                $this->db()->commit();
+            }
         } catch (Exception $e) {
-            if ($this->db()->inTransaction()) {
+            if ($kendiTransaction && $this->db()->inTransaction()) {
                 $this->db()->rollBack();
             }
             throw $e;
@@ -565,7 +580,10 @@ class AparatStokService
         $ekipId = (int) $detay['ekip_id'];
         $tipId = (int) $detay['aparat_tip_id'];
 
-        $this->db()->beginTransaction();
+        $kendiTransaction = !$this->db()->inTransaction();
+        if ($kendiTransaction) {
+            $this->db()->beginTransaction();
+        }
 
         try {
             $this->Hareket->uygula([
@@ -583,9 +601,11 @@ class AparatStokService
 
             $Sayim->islendiIsaretle($detayId);
 
-            $this->db()->commit();
+            if ($kendiTransaction) {
+                $this->db()->commit();
+            }
         } catch (Exception $e) {
-            if ($this->db()->inTransaction()) {
+            if ($kendiTransaction && $this->db()->inTransaction()) {
                 $this->db()->rollBack();
             }
             throw $e;
