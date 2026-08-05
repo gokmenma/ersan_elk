@@ -250,9 +250,9 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
     <div class="card border-0 shadow-sm mb-3">
         <div class="card-body p-2">
             <ul class="nav nav-pills kacak-tabs" id="kacakTabs" role="tablist">
-                <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#pane-ekip-ozet"
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-ekip-ozet"
                         type="button"><i class="bx bx-table me-1"></i> Ekip Özeti</button></li>
-                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-kayitlar"
+                <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#pane-kayitlar"
                         type="button"><i class="bx bx-list-ul me-1"></i> Kayıtlar</button></li>
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-onaylar"
                         type="button"><i class="bx bx-check-shield me-1"></i> Bekleyen Onaylar
@@ -278,7 +278,7 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
     <div class="tab-content">
 
         <!-- ============ KAYITLAR ============ -->
-        <div class="tab-pane fade" id="pane-kayitlar">
+        <div class="tab-pane fade show active" id="pane-kayitlar">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
                     <div class="row g-2 align-items-end mb-3">
@@ -403,7 +403,7 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
         </div>
 
         <!-- ============ EKİP ÖZETİ (Ekip x Gün pivot) ============ -->
-        <div class="tab-pane fade show active" id="pane-ekip-ozet">
+        <div class="tab-pane fade" id="pane-ekip-ozet">
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-transparent border-bottom py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
                     <div>
@@ -951,34 +951,52 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
         }
 
         function kayitlariYukle() {
-            apiGet(kayitFiltreleri()).done(function (res) {
-                if (res.status !== 'success') return hataGoster(res);
-                ozetGuncelle(res.ozet);
+            if (kacakTable) {
+                kacakTable.ajax.reload(null, true);
+                return;
+            }
 
-                const rows = res.data.map(k => [
-                    esc(k.tarih_formatted),
-                    esc(k.tutanak_no),
-                    esc(k.abone_adi),
-                    esc(k.ilce),
-                    turBadge(k.tur),
-                    esc(k.sayac_no),
-                    esc(k.sayi),
-                    esc(k.ekip_adi),
-                    kaynakBadge(k.kaynak),
-                    fotoButonu(k),
-                    durumBadge(k),
-                    kayitIslemButonlari(k)
-                ]);
-
-                if (kacakTable) {
-                    kacakTable.clear().rows.add(rows).draw();
-                } else {
-                    kacakTable = $('#kacakTable').DataTable(dtSecenekleri({
-                        data: rows, pageLength: 25, order: [[0, 'desc']],
-                        columnDefs: [{ targets: [11], orderable: false }]
-                    }));
-                }
-            }).fail(() => Swal.fire('Hata', 'Kayıtlar yüklenemedi.', 'error'));
+            const options = dtSecenekleri({
+                processing: true,
+                serverSide: true,
+                pageLength: 25,
+                order: [[0, 'desc']],
+                ajax: {
+                    url: API,
+                    type: 'GET',
+                    data: function (d) {
+                        return $.extend(d, kayitFiltreleri());
+                    },
+                    dataSrc: function (res) {
+                        if (res.status !== 'success') {
+                            hataGoster(res);
+                            return [];
+                        }
+                        ozetGuncelle(res.ozet);
+                        return res.data || [];
+                    },
+                    error: function () {
+                        Swal.fire('Hata', 'Kayıtlar yüklenemedi.', 'error');
+                    }
+                },
+                columns: [
+                    { data: 'tarih_formatted', render: $.fn.dataTable.render.text() },
+                    { data: 'tutanak_no', render: $.fn.dataTable.render.text() },
+                    { data: 'abone_adi', render: $.fn.dataTable.render.text() },
+                    { data: 'ilce', render: $.fn.dataTable.render.text() },
+                    { data: 'tur', render: function (data) { return turBadge(data); } },
+                    { data: 'sayac_no', render: $.fn.dataTable.render.text() },
+                    { data: 'sayi', render: $.fn.dataTable.render.text() },
+                    { data: 'ekip_adi', render: $.fn.dataTable.render.text() },
+                    { data: 'kaynak', render: function (data) { return kaynakBadge(data); } },
+                    { data: null, orderable: false, searchable: false, render: function (data, type, row) { return fotoButonu(row); } },
+                    { data: 'durum', render: function (data, type, row) { return durumBadge(row); } },
+                    { data: null, orderable: false, searchable: false, render: function (data, type, row) { return kayitIslemButonlari(row); } }
+                ]
+            });
+            kacakTable = $('#kacakTable').DataTable(
+                typeof applyLengthStateSave === 'function' ? applyLengthStateSave(options) : options
+            );
         }
 
         function kayitIslemButonlari(k) {
@@ -1820,6 +1838,7 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
 
         $('#kacakTabs button').on('shown.bs.tab', function () {
             const hedef = $(this).data('bs-target');
+            if (hedef === '#pane-kayitlar' && !kacakTable) kayitlariYukle();
             if (hedef === '#pane-onaylar' && !onayTable) onaylariYukle();
             if (hedef === '#pane-iptaller' && !iptalTable) iptalleriYukle();
             if (hedef === '#pane-ekip-ozet' && !ekipOzetYuklendi) ekipOzetiYukle();
@@ -1841,11 +1860,12 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
 
             initOzetDonemPicker();
 
+            kayitlariYukle();
+
             if (typeof feather !== 'undefined') {
                 feather.replace();
             }
 
-            ekipOzetiYukle();
         });
     })();
 </script>

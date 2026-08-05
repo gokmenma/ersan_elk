@@ -68,9 +68,24 @@ class KacakKontrolModel extends Model
     /**
      * @param array $filters tarih_baslangic, tarih_bitis, ilce, tur, durum, onay_durumu, personel_id, kaynak, arama
      */
-    public function getRecords(array $filters = [], int $limit = 0, int $offset = 0): array
+    public function getRecords(array $filters = [], int $limit = 0, int $offset = 0, string $orderColumn = 'tarih', string $orderDirection = 'DESC'): array
     {
         [$where, $params] = $this->buildWhere($filters);
+
+        $allowedOrderColumns = [
+            'tarih' => 'k.tarih',
+            'tutanak_no' => 'k.tutanak_no',
+            'abone_adi' => 'k.abone_adi',
+            'ilce' => 'k.ilce',
+            'tur' => 'k.tur',
+            'sayac_no' => 'k.sayac_no',
+            'sayi' => 'k.sayi',
+            'ekip_adi' => 'k.ekip_adi',
+            'kaynak' => 'k.kaynak',
+            'durum' => 'k.durum',
+        ];
+        $orderSql = $allowedOrderColumns[$orderColumn] ?? 'k.tarih';
+        $directionSql = strtoupper($orderDirection) === 'ASC' ? 'ASC' : 'DESC';
 
         $limitSql = '';
         if ($limit > 0) {
@@ -88,7 +103,7 @@ class KacakKontrolModel extends Model
                 LEFT JOIN users u     ON u.id = k.onaylayan_id
                 LEFT JOIN users ui    ON ui.id = k.iptal_eden
                 WHERE {$where}
-                ORDER BY k.tarih DESC, k.id DESC{$limitSql}";
+                ORDER BY {$orderSql} {$directionSql}, k.id DESC{$limitSql}";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
@@ -145,6 +160,18 @@ class KacakKontrolModel extends Model
             $where[] = '(k.tutanak_no LIKE ? OR k.abone_adi LIKE ? OR k.sayac_no LIKE ? OR k.ekip_adi LIKE ?)';
             $like = '%' . $filters['arama'] . '%';
             array_push($params, $like, $like, $like, $like);
+        }
+
+        foreach (($filters['kolon_aramalari'] ?? []) as $column => $value) {
+            $allowedColumns = [
+                'tarih' => 'k.tarih', 'tutanak_no' => 'k.tutanak_no', 'abone_adi' => 'k.abone_adi',
+                'ilce' => 'k.ilce', 'tur' => 'k.tur', 'sayac_no' => 'k.sayac_no', 'sayi' => 'k.sayi',
+                'ekip_adi' => 'k.ekip_adi', 'kaynak' => 'k.kaynak', 'durum' => 'k.durum',
+            ];
+            if ($value !== '' && isset($allowedColumns[$column])) {
+                $where[] = $allowedColumns[$column] . ' LIKE ?';
+                $params[] = '%' . $value . '%';
+            }
         }
 
         return [implode(' AND ', $where), $params];

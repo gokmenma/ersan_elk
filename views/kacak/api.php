@@ -116,6 +116,8 @@ try {
         // LİSTELEME
         // =====================================================
         case 'list':
+            $dataTableRequest = isset($_GET['draw']);
+            $columnNames = ['tarih', 'tutanak_no', 'abone_adi', 'ilce', 'tur', 'sayac_no', 'sayi', 'ekip_adi', 'kaynak', '', 'durum', ''];
             $filters = [
                 'tarih_baslangic' => kacakTarih($_GET['start_date'] ?? '', date('Y-m-01')),
                 'tarih_bitis' => kacakTarih($_GET['end_date'] ?? '', date('Y-m-d')),
@@ -128,17 +130,48 @@ try {
                 'arama' => $_GET['arama'] ?? '',
             ];
 
+            if ($dataTableRequest) {
+                $globalSearch = trim((string) ($_GET['search']['value'] ?? ''));
+                if ($globalSearch !== '') {
+                    $filters['arama'] = trim($filters['arama'] . ' ' . $globalSearch);
+                }
+                foreach (($_GET['columns'] ?? []) as $index => $column) {
+                    $value = trim((string) ($column['search']['value'] ?? ''));
+                    if ($value !== '' && !empty($columnNames[$index])) {
+                        $filters['kolon_aramalari'][$columnNames[$index]] = $value;
+                    }
+                }
+            }
+
             // Personel tarafında (süper admin veya onay yetkilisi değilse) sadece kendi ekibinin bildirimlerini görebilir
             if ($userPersonelId > 0 && !kacakSuperAdmin() && !kacakIzin('kacak_onay')) {
                 $filters['personel_id'] = $userPersonelId;
             }
 
-            $kayitlar = $Kacak->getRecords($filters);
+            $limit = $dataTableRequest ? max(1, min(100, (int) ($_GET['length'] ?? 25))) : 0;
+            $offset = $dataTableRequest ? max(0, (int) ($_GET['start'] ?? 0)) : 0;
+            $orderIndex = (int) ($_GET['order'][0]['column'] ?? 0);
+            $orderColumn = $columnNames[$orderIndex] ?? 'tarih';
+            $orderDirection = (string) ($_GET['order'][0]['dir'] ?? 'desc');
+            $kayitlar = $Kacak->getRecords($filters, $limit, $offset, $orderColumn, $orderDirection);
             foreach ($kayitlar as &$k) {
                 $k['tarih_formatted'] = Date::dmY($k['tarih']);
                 $k['foto_sayisi'] = (int) $k['foto_sayisi'];
             }
             unset($k);
+
+            if ($dataTableRequest) {
+                $filteredCount = $Kacak->countRecords($filters);
+                $totalFilters = $filters;
+                unset($totalFilters['arama'], $totalFilters['kolon_aramalari']);
+                kacakYanit(true, '', [
+                    'draw' => (int) $_GET['draw'],
+                    'recordsTotal' => $Kacak->countRecords($totalFilters),
+                    'recordsFiltered' => $filteredCount,
+                    'data' => $kayitlar,
+                    'ozet' => $Kacak->getOzet($filters['tarih_baslangic'], $filters['tarih_bitis'], (int) ($filters['personel_id'] ?? 0)),
+                ]);
+            }
 
             kacakYanit(true, '', [
                 'data' => $kayitlar,
@@ -408,7 +441,9 @@ try {
             break;
 
         case 'download-zip':
-            $id = (int) ($_GET['id'] ?? $_POST['id'] ?? 0);
+            $id = !empty($_GET['token'])
+                ? (int) Security::decrypt((string) $_GET['token'])
+                : (int) ($_GET['id'] ?? $_POST['id'] ?? 0);
             if ($id <= 0) {
                 kacakYanit(false, 'Geçersiz kayıt ID.');
             }
