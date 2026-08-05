@@ -209,6 +209,8 @@ class KacakKontrolModel extends Model
 
     /**
      * Tutanak No veya Sayaç No + Tarih bilgisine göre mükerrer kayıt kontrolü yapar.
+     * Reddedilen bildirimler personel tarafından düzeltilip yeniden gönderilebildiği
+     * için mükerrer kabul edilmez.
      *
      * @param array $data ['tutanak_no' => string, 'sayac_no' => string, 'tarih' => string]
      * @param int|null $excludeId Güncellemede hariç tutulacak kayıt ID
@@ -228,6 +230,7 @@ class KacakKontrolModel extends Model
                     WHERE k.firma_id = ?
                       AND k.silinme_tarihi IS NULL
                       AND k.durum != 'iptal'
+                      AND k.onay_durumu != 'reddedildi'
                       AND LOWER(TRIM(k.tutanak_no)) = LOWER(TRIM(?))";
             $params = [$this->firmaId(), $tutanakNo];
 
@@ -257,6 +260,7 @@ class KacakKontrolModel extends Model
                     WHERE k.firma_id = ?
                       AND k.silinme_tarihi IS NULL
                       AND k.durum != 'iptal'
+                      AND k.onay_durumu != 'reddedildi'
                       AND LOWER(TRIM(k.sayac_no)) = LOWER(TRIM(?))
                       AND k.tarih = ?";
             $params = [$this->firmaId(), $sayacNo, $tarih];
