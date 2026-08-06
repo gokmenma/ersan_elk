@@ -308,20 +308,30 @@ class KacakKontrolModel extends Model
      * PWA çevrimdışı kuyruğundan gelen kayıtların mükerrer düşmemesi için
      * istemcide üretilen UUID ile daha önce kaydedilmiş tutanağı arar.
      */
-    public function findByClientUuid(string $clientUuid): ?array
+    public function findByClientUuid(string $clientUuid, bool $includeDeleted = false): ?array
     {
         $clientUuid = trim($clientUuid);
         if ($clientUuid === '') {
             return null;
         }
 
-        $stmt = $this->db->prepare("SELECT * FROM kacak_kontrol
-                                    WHERE firma_id = ? AND client_uuid = ? AND silinme_tarihi IS NULL
-                                    LIMIT 1");
-        $stmt->execute([$this->firmaId(), $clientUuid]);
+        $sql = "SELECT * FROM kacak_kontrol WHERE client_uuid = ?";
+        if (!$includeDeleted) {
+            $sql .= " AND silinme_tarihi IS NULL";
+        }
+        $sql .= " LIMIT 1";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$clientUuid]);
         $row = $stmt->fetch(PDO::FETCH_ASSOC);
 
         return $row ?: null;
+    }
+
+    public function restoreRecord(int $id): bool
+    {
+        $stmt = $this->db->prepare("UPDATE kacak_kontrol SET silinme_tarihi = NULL, onay_durumu = 'beklemede' WHERE id = ?");
+        return $stmt->execute([$id]);
     }
 
     /**

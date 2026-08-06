@@ -39,6 +39,12 @@ class ImageUploadService
             throw new Exception('Sadece JPEG, PNG veya WebP formatında resim yüklenebilir.');
         }
 
+        // GD WebP desteği olmadan derlenmiş olabilir; bu durumda WebP dosya
+        // okunamaz, kullanıcıya anlaşılır bir yönlendirme verilir.
+        if ($mime === 'image/webp' && !function_exists('imagecreatefromwebp')) {
+            throw new Exception('Bu resim WebP formatında ve sunucu WebP açamıyor. Lütfen JPEG veya PNG olarak yükleyin.');
+        }
+
         $info = @getimagesize($file['tmp_name']);
         $width = (int) ($info[0] ?? 0);
         $height = (int) ($info[1] ?? 0);

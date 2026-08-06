@@ -154,6 +154,33 @@
         });
     }
 
+    function guncelle(uuid, alanlar, yeniDosyalar, yeniOzet) {
+        return oku(uuid).then(function (kayit) {
+            if (!kayit) return null;
+            if (alanlar) {
+                Object.keys(alanlar).forEach(function (k) {
+                    kayit.alanlar[k] = alanlar[k];
+                });
+            }
+            if (yeniDosyalar && yeniDosyalar.length > 0) {
+                kayit.dosyalar = yeniDosyalar;
+            }
+            if (yeniOzet) {
+                kayit.ozet = kayit.ozet || {};
+                Object.keys(yeniOzet).forEach(function (k) {
+                    kayit.ozet[k] = yeniOzet[k];
+                });
+            }
+            kayit.durum = "bekliyor";
+            kayit.hata = "";
+            kayit.deneme = 0;
+            return yaz(kayit).then(function () {
+                duyur({ sebep: "guncellendi", uuid: uuid });
+                return flush({ elle: true });
+            });
+        });
+    }
+
     function tekrarDene(uuid) {
         return oku(uuid).then(function (kayit) {
             if (!kayit) return null;
@@ -234,7 +261,50 @@
      * Her adımın sonucu diske yazıldığı için uygulama kapanırsa kaldığı
      * fotoğraftan devam edilir, tamamlananlar ikinci kez yüklenmez.
      */
+    /**
+     * Sunucudaki GD yalnızca JPEG/PNG çözebiliyor. Kuyruğa daha önce WebP
+     * olarak yazılmış görseller gönderimden önce JPEG'e çevrilir; böylece
+     * eski kayıtlar kullanıcı müdahalesi olmadan geçer.
+     */
+    function dosyaNormalize(d) {
+        var blob = d && d.blob;
+        var tip = (blob && blob.type) || d.tip || "";
+        if (!blob || tip.indexOf("image/") !== 0) return Promise.resolve(d);
+        if (tip === "image/jpeg" || tip === "image/png") return Promise.resolve(d);
+
+        return fotografKucult(blob, 2200, 0.82).then(function (yeni) {
+            if (!yeni || !yeni.blob || yeni.blob === blob) return d;
+            return {
+                alan: d.alan,
+                ad: (d.ad || "foto").replace(/\.[^.]+$/, "") + ".jpg",
+                tip: "image/jpeg",
+                blob: yeni.blob,
+            };
+        }).catch(function () { return d; });
+    }
+
+    function kayitDosyalariniNormalize(kayit) {
+        var hedefler = (kayit.dosyalar || []).concat(kayit.ekDosyalar || []);
+        var duzeltilecek = hedefler.some(function (d) {
+            var tip = (d && d.blob && d.blob.type) || (d && d.tip) || "";
+            return tip.indexOf("image/") === 0 && tip !== "image/jpeg" && tip !== "image/png";
+        });
+        if (!duzeltilecek) return Promise.resolve(kayit);
+
+        return Promise.all((kayit.dosyalar || []).map(dosyaNormalize)).then(function (ana) {
+            return Promise.all((kayit.ekDosyalar || []).map(dosyaNormalize)).then(function (ek) {
+                kayit.dosyalar = ana;
+                kayit.ekDosyalar = ek;
+                return yaz(kayit).then(function () { return kayit; });
+            });
+        }).catch(function () { return kayit; });
+    }
+
     function gonder(kayit) {
+        return kayitDosyalariniNormalize(kayit).then(function () { return gonderimeBasla(kayit); });
+    }
+
+    function gonderimeBasla(kayit) {
         var ilk = Promise.resolve({ sonuc: "tamam" });
 
         if (!kayit.anaGonderildi) {
@@ -472,6 +542,9 @@
     /**
      * Saha fotoğraflarını uzun kenarı maxKenar olacak şekilde JPEG'e indirger.
      * Küçültme mümkün değilse dosya olduğu gibi döner.
+     *
+     * Sunucudaki GD yalnızca JPEG/PNG çözebildiği için WebP gibi diğer
+     * biçimler boyutu küçük olsa da her zaman JPEG'e çevrilir.
      */
     function fotografKucult(dosya, maxKenar, kalite) {
         maxKenar = maxKenar || 1600;
@@ -483,6 +556,8 @@
         if (dosya.type === "image/gif") return Promise.resolve(varsayilan);
         if (typeof createImageBitmap !== "function") return Promise.resolve(varsayilan);
 
+        var sunucuDestekli = dosya.type === "image/jpeg" || dosya.type === "image/png";
+
         // imageOrientation desteklenmeyen tarayıcılarda seçeneksiz tekrar denenir,
         // aksi halde telefonla dik çekilen fotoğraflar yan kaydedilir.
         var bitmapSozu = createImageBitmap(dosya, { imageOrientation: "from-image" })
@@ -491,7 +566,7 @@
         return bitmapSozu.then(function (bitmap) {
             var oran = Math.min(1, maxKenar / Math.max(bitmap.width, bitmap.height));
 
-            if (oran >= 1 && dosya.size <= 900 * 1024) {
+            if (sunucuDestekli && oran >= 1 && dosya.size <= 900 * 1024) {
                 if (bitmap.close) bitmap.close();
                 return varsayilan;
             }
@@ -511,7 +586,8 @@
             if (bitmap.close) bitmap.close();
 
             return tuvalBlobu(tuval, kalite).then(function (blob) {
-                if (!blob || blob.size >= dosya.size) return varsayilan;
+                if (!blob) return varsayilan;
+                if (sunucuDestekli && blob.size >= dosya.size) return varsayilan;
                 var ad = (dosya.name || "foto").replace(/\.[^.]+$/, "") + ".jpg";
                 return { blob: blob, ad: ad, tip: "image/jpeg" };
             });
@@ -654,6 +730,7 @@
         uuid: uuidUret,
         istekGonder: istekGonder,
         ekle: ekle,
+        guncelle: guncelle,
         listele: listele,
         oku: oku,
         sil: sil,

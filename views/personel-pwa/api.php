@@ -4922,8 +4922,11 @@ try {
                     response(false, null, 'Geçersiz kayıt anahtarı.');
                 }
 
-                $mevcutKayit = $KacakModel->findByClientUuid($kacakClientUuid);
+                $mevcutKayit = $KacakModel->findByClientUuid($kacakClientUuid, true);
                 if ($mevcutKayit) {
+                    if (!empty($mevcutKayit['silinme_tarihi'])) {
+                        $KacakModel->restoreRecord((int) $mevcutKayit['id']);
+                    }
                     response(true, ['id' => (int) $mevcutKayit['id'], 'tekrar' => true], 'Bu bildirim daha önce iletilmişti.');
                 }
             }
@@ -4953,6 +4956,9 @@ try {
             }
 
             if (empty($_FILES['tutanak_foto']['name'])) {
+                if (empty($_POST) && empty($_FILES) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+                    response(false, null, 'Tutanak fotoğrafının boyutu sunucu yükleme sınırını aşıyor.');
+                }
                 response(false, null, 'Tutanak fotoğrafı zorunludur.');
             }
 
@@ -4987,6 +4993,16 @@ try {
                 response(false, null, $msg);
             }
 
+            if ($kacakClientUuid !== '') {
+                $mevcutKayit = $KacakModel->findByClientUuid($kacakClientUuid, true);
+                if ($mevcutKayit) {
+                    if (!empty($mevcutKayit['silinme_tarihi'])) {
+                        $KacakModel->restoreRecord((int) $mevcutKayit['id']);
+                    }
+                    response(true, ['id' => (int) $mevcutKayit['id'], 'tekrar' => true], 'Bu bildirim daha önce iletilmişti.');
+                }
+            }
+
             try {
                 $kacakId = $KacakModel->createRecord([
                     'tarih' => $kacakTarih,
@@ -5010,8 +5026,11 @@ try {
                 // Aynı kuyruk kaydı iki kez gönderilmişse benzersiz indeks devreye girer;
                 // bu durumda hata değil, önceki kayıt döndürülür.
                 if ($kacakClientUuid !== '') {
-                    $mevcutKayit = $KacakModel->findByClientUuid($kacakClientUuid);
+                    $mevcutKayit = $KacakModel->findByClientUuid($kacakClientUuid, true);
                     if ($mevcutKayit) {
+                        if (!empty($mevcutKayit['silinme_tarihi'])) {
+                            $KacakModel->restoreRecord((int) $mevcutKayit['id']);
+                        }
                         response(true, ['id' => (int) $mevcutKayit['id'], 'tekrar' => true], 'Bu bildirim daha önce iletilmişti.');
                     }
                 }
@@ -5020,13 +5039,22 @@ try {
             }
 
             // Tutanak fotoğrafı zorunlu: kaydedilemezse bildirim tamamlanmış sayılmaz.
+            // Dosya doğrulama mesajları kullanıcıya yol gösterdiği için aynen
+            // iletilir; kayıt/veritabanı hataları genel mesajla döner.
             try {
                 $yol = $KacakModel->storeUploadedFile($_FILES['tutanak_foto'], $kacakId, 'tutanak');
-                $KacakModel->addPhoto($kacakId, 'tutanak', $yol, $_FILES['tutanak_foto']['name'], (int) $personel_id);
             } catch (\Throwable $e) {
                 error_log('PWA kaçak tutanak fotoğrafı yüklenemedi: ' . $e->getMessage());
                 $KacakModel->softDeleteRecord($kacakId);
-                response(false, null, 'Tutanak fotoğrafı yüklenemediği için bildirim kaydedilmedi. Lütfen tekrar deneyin.');
+                response(false, null, 'Tutanak fotoğrafı yüklenemedi: ' . $e->getMessage());
+            }
+
+            try {
+                $KacakModel->addPhoto($kacakId, 'tutanak', $yol, $_FILES['tutanak_foto']['name'], (int) $personel_id);
+            } catch (\Throwable $e) {
+                error_log('PWA kaçak tutanak fotoğrafı kaydedilemedi: ' . $e->getMessage());
+                $KacakModel->softDeleteRecord($kacakId);
+                response(false, null, 'Tutanak fotoğrafı kaydedilemediği için bildirim tamamlanmadı. Lütfen tekrar deneyin.');
             }
 
             $sahaAdet = 0;

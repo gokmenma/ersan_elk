@@ -279,6 +279,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
         let sahaDosyalari = [];
         let bekleyenKayitlar = [];
         let kacakEditToken = null;
+        let kacakKuyrukEditUuid = null;
 
         const REF_ANAHTAR = 'kacak_referans';
         const LISTE_ANAHTAR = 'kacak_liste';
@@ -352,16 +353,21 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                     ? `<p class="text-xs text-amber-700 mt-2">${esc(k.hata)}${k.deneme ? ` · ${k.deneme}. deneme` : ''}</p>`
                     : '');
 
+            const duzenleBtn = `<button type="button" onclick="kacakKuyrukDuzenle('${esc(k.uuid)}')"
+                    class="flex-1 py-2 rounded-xl border border-primary text-primary text-xs font-bold active:scale-95 transition-transform flex items-center justify-center gap-1">
+                    <span class="material-symbols-outlined text-sm">edit</span> Düzenle
+                </button>`;
+
             const tekrarBtn = hataMi
                 ? `<button type="button" onclick="kacakKuyrukTekrar('${esc(k.uuid)}')"
-                        class="flex-1 py-2 rounded-xl bg-amber-500 text-white text-xs font-bold">Tekrar Dene</button>`
+                        class="flex-1 py-2 rounded-xl bg-amber-500 text-white text-xs font-bold active:scale-95 transition-transform">Tekrar Dene</button>`
                 : '';
 
             const fotoSatiri = (o.foto_sayisi || 0) > 0
                 ? `<span class="text-xs text-slate-400">· ${o.foto_sayisi} belge</span>` : '';
 
             return `
-            <div class="bg-white dark:bg-card-dark p-4 rounded-xl border border-amber-200 dark:border-slate-800">
+            <div class="bg-white dark:bg-card-dark p-4 rounded-xl border border-amber-200 dark:border-slate-800 mb-3">
                 <div class="flex items-center justify-between gap-3">
                     <span class="text-sm font-black text-slate-500">${esc(o.tur || 'Kaçak')}</span>
                     ${rozet}
@@ -373,9 +379,10 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 ${ilerlemeSatiri}
                 ${hataSatiri}
                 <div class="flex items-center gap-2 mt-3">
+                    ${duzenleBtn}
                     ${tekrarBtn}
                     <button type="button" onclick="kacakKuyrukSil('${esc(k.uuid)}')"
-                        class="flex-1 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-bold">Sil</button>
+                        class="flex-1 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-bold active:scale-95 transition-transform">Sil</button>
                 </div>
             </div>`;
         }
@@ -454,6 +461,30 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 await loadKacakKayitlar();
             } finally {
                 Loading.hide();
+            }
+        };
+
+        window.kacakKuyrukDuzenle = function (uuid) {
+            const k = bekleyenKayitlar.find(x => x.uuid === uuid);
+            if (!k) return Alert.error('Hata', 'Kayıt bulunamadı.');
+
+            openKacakBildirModal();
+            kacakKuyrukEditUuid = uuid;
+
+            document.getElementById('kacak-form-title').textContent = 'Kuyruktaki Bildirimi Düzenle';
+            document.getElementById('kacak-submit-text').textContent = 'GÜNCELLE VE GÖNDER';
+
+            const alanlar = k.alanlar || {};
+            const form = document.getElementById('kacak-bildir-form');
+            if (form) {
+                ['tarih', 'ilce', 'tur', 'tutanak_no', 'abone_adi', 'sayac_no', 'endeks', 'sayi', 'aciklama'].forEach(ad => {
+                    const alan = form.querySelector(`[name="${ad}"]`);
+                    if (alan && alanlar[ad] !== undefined) alan.value = alanlar[ad];
+                });
+                if (alanlar.ekip_arkadasi_id) {
+                    const sel = document.getElementById('kacak-ekip-arkadasi');
+                    if (sel) sel.value = String(alanlar.ekip_arkadasi_id);
+                }
             }
         };
 
@@ -655,6 +686,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
         window.openKacakBildirModal = function (editData = null) {
             document.getElementById('kacak-bildir-form').reset();
             kacakEditToken = editData?.edit_token || null;
+            kacakKuyrukEditUuid = null;
             document.getElementById('kacak-form-title').textContent = editData ? 'Kaçak Tutanağını Düzenle' : 'Kaçak Tutanağı Bildir';
             document.getElementById('kacak-tutanak-required').textContent = editData ? 'Yeni belge isteğe bağlı' : 'Zorunlu';
             document.getElementById('kacak-submit-text').textContent = editData ? 'DEĞİŞİKLİKLERİ KAYDET' : 'BİLDİRİMİ GÖNDER';
@@ -1129,6 +1161,38 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                     await loadKacakKayitlar();
                     return Alert.success('Güncellendi', res.message || 'Kaçak bildirimi güncellendi.');
                 }
+
+                if (kacakKuyrukEditUuid) {
+                    const alanlar = {};
+                    new FormData(this).forEach((deger, ad) => { alanlar[ad] = deger; });
+                    alanlar.client_uuid = kacakKuyrukEditUuid;
+
+                    let yeniDosyalar = null;
+                    if (tutanakInput.files && tutanakInput.files[0]) {
+                        const tutanak = await OfflineQueue.fotografKucult(tutanakInput.files[0], 2200, 0.82);
+                        yeniDosyalar = [{ alan: 'tutanak_foto', ad: tutanak.ad, tip: tutanak.tip, blob: tutanak.blob }];
+                    }
+
+                    const mevcuttan = bekleyenKayitlar.find(x => x.uuid === kacakKuyrukEditUuid);
+                    const eskiEkAdet = mevcuttan ? (mevcuttan.ekDosyalar || []).length : 0;
+                    const ozet = {
+                        tur: alanlar.tur,
+                        ilce: alanlar.ilce,
+                        tutanak_no: alanlar.tutanak_no,
+                        abone_adi: alanlar.abone_adi,
+                        tarih_formatted: (alanlar.tarih || '').split('-').reverse().join('.'),
+                        foto_sayisi: (yeniDosyalar ? yeniDosyalar.length : (mevcuttan ? (mevcuttan.dosyalar || []).length : 1)) + (sahaDosyalari.length || eskiEkAdet),
+                    };
+
+                    btnText.textContent = 'GÜNCELLENİYOR...';
+                    await OfflineQueue.guncelle(kacakKuyrukEditUuid, alanlar, yeniDosyalar, ozet);
+
+                    Modal.close('kacak-bildir-modal');
+                    kacakKuyrukEditUuid = null;
+                    await kuyrugaBak();
+                    return Alert.success('Güncellendi', 'Kayıt güncellendi ve gönderim başlatıldı.');
+                }
+
                 const alanlar = {};
                 new FormData(this).forEach((deger, ad) => { alanlar[ad] = deger; });
 
