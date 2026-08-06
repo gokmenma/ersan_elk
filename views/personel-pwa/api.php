@@ -4707,8 +4707,22 @@ try {
             break;
 
         case 'analyzeKacakTutanak':
-            if (empty($_FILES['tutanak_file']['name'])) {
+            if (empty($_POST) && empty($_FILES) && (int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0) {
+                response(false, null, 'Görsel boyutu sunucu yükleme sınırını aşıyor. Lütfen dosyayı yeniden seçin.');
+            }
+
+            $file = $_FILES['tutanak_file'] ?? $_FILES['tutanak_foto'] ?? $_FILES['file'] ?? $_FILES['tutanak'] ?? null;
+            if (!$file || empty($file['name'])) {
                 response(false, null, 'Lütfen analiz edilecek tutanak dosyasını seçin.');
+            }
+
+            if (($file['error'] ?? UPLOAD_ERR_OK) !== UPLOAD_ERR_OK) {
+                $err = match ($file['error']) {
+                    UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE => 'Tutanak dosyasının boyutu izin verilen sınırı aşıyor.',
+                    UPLOAD_ERR_PARTIAL => 'Dosya yüklenirken bağlantı kesildi.',
+                    default => 'Tutanak dosyası okunamadı (Kod: ' . $file['error'] . ').'
+                };
+                response(false, null, $err);
             }
 
             $KacakModel = new \App\Model\KacakKontrolModel();
@@ -4724,7 +4738,7 @@ try {
             try {
                 $Analiz = new \App\Service\KacakTutanakAnalizService();
                 $satirlar = $Analiz->analyze(
-                    $_FILES['tutanak_file'],
+                    $file,
                     $analizTarihi,
                     $Analiz->getPersonelAdaylari($adaylar)
                 );

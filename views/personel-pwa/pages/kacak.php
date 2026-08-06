@@ -882,10 +882,55 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             sahaOnizlemeCiz();
         };
 
+        async function compressImageForAi(file, maxDimension = 1600, quality = 0.82) {
+            if (!file || !file.type.startsWith('image/')) return file;
+            if (file.size <= 2 * 1024 * 1024) return file;
+
+            return new Promise((resolve) => {
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    const img = new Image();
+                    img.onload = () => {
+                        let width = img.width;
+                        let height = img.height;
+                        if (width > maxDimension || height > maxDimension) {
+                            if (width > height) {
+                                height = Math.round((height * maxDimension) / width);
+                                width = maxDimension;
+                            } else {
+                                width = Math.round((width * maxDimension) / height);
+                                height = maxDimension;
+                            }
+                        }
+                        const canvas = document.createElement('canvas');
+                        canvas.width = width;
+                        canvas.height = height;
+                        const ctx = canvas.getContext('2d');
+                        ctx.drawImage(img, 0, 0, width, height);
+                        canvas.toBlob((blob) => {
+                            if (blob && blob.size < file.size) {
+                                const newFile = new File([blob], (file.name || 'tutanak.jpg').replace(/\.[^/.]+$/, "") + ".jpg", {
+                                    type: 'image/jpeg',
+                                    lastModified: Date.now()
+                                });
+                                resolve(newFile);
+                            } else {
+                                resolve(file);
+                            }
+                        }, 'image/jpeg', quality);
+                    };
+                    img.onerror = () => resolve(file);
+                    img.src = e.target.result;
+                };
+                reader.onerror = () => resolve(file);
+                reader.readAsDataURL(file);
+            });
+        }
+
         // ----- Yapay zeka analizi -----
         window.analizEtKacak = async function () {
             const input = document.getElementById('kacak-tutanak-input');
-            if (!input.files.length) {
+            if (!input || !input.files.length) {
                 return Alert.warning('Dosya Gerekli', 'Lütfen önce tutanak fotoğrafını seçin.');
             }
 
@@ -904,13 +949,18 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                     <span>Analiz ediliyor...</span>
                 </span>`;
 
-            const fd = new FormData();
-            fd.append('action', 'analyzeKacakTutanak');
-            fd.append('tutanak_file', input.files[0]);
-            fd.append('tarih', document.querySelector('#kacak-bildir-form [name=tarih]').value);
-
             Loading.show();
             try {
+                let fileToSend = input.files[0];
+                if (fileToSend.type.startsWith('image/')) {
+                    fileToSend = await compressImageForAi(fileToSend);
+                }
+
+                const fd = new FormData();
+                fd.append('action', 'analyzeKacakTutanak');
+                fd.append('tutanak_file', fileToSend);
+                fd.append('tarih', document.querySelector('#kacak-bildir-form [name=tarih]')?.value || '');
+
                 const res = await (await fetch('api.php?action=analyzeKacakTutanak', { method: 'POST', body: fd })).json();
                 if (!res.success) {
                     return Alert.error('Analiz Başarısız', res.message || 'Tutanak okunamadı.');
