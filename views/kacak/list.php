@@ -744,9 +744,21 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
                         </template>
                     </div>
 
-                    <div id="mevcutFotolarBolumu" class="d-none">
-                        <h6 class="fw-bold text-primary mb-2"><i class="bx bx-images me-1"></i> Yüklü Belgeler</h6>
-                        <div class="d-flex flex-wrap gap-3" id="mevcutFotolar"></div>
+                    <div id="mevcutFotolarBolumu" class="accordion mt-3 d-none">
+                        <div class="accordion-item border rounded-3 overflow-hidden">
+                            <h2 class="accordion-header" id="headingFotolar">
+                                <button class="accordion-button collapsed py-2 px-3 bg-light fw-semibold text-primary" type="button" data-bs-toggle="collapse" data-bs-target="#collapseFotolar" aria-expanded="false" aria-controls="collapseFotolar">
+                                    <i class="bx bx-images me-2 fs-5"></i>
+                                    <span>Yüklü Belgeler ve Görseller</span>
+                                    <span class="badge bg-primary rounded-pill ms-2" id="fotoSayisiBadge">0</span>
+                                </button>
+                            </h2>
+                            <div id="collapseFotolar" class="accordion-collapse collapse" aria-labelledby="headingFotolar">
+                                <div class="accordion-body p-3">
+                                    <div class="d-flex flex-wrap gap-3" id="mevcutFotolar"></div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
 
                 </div>
@@ -1217,7 +1229,10 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
             $('#kacak_id').val(0);
             $('#kacakSatirlar').empty();
             $('#mevcutFotolarBolumu').addClass('d-none');
-            $('#mevcutFotolar').empty();
+            $('#collapseFotolar').removeClass('show');
+            $('#headingFotolar .accordion-button').addClass('collapsed').attr('aria-expanded', 'false');
+            $('#mevcutFotolar').empty().removeData('fotolar').removeData('kacak-id').removeData('loaded');
+            $('#fotoSayisiBadge').text('0');
             $('#kacak_personel_ids').val(null).trigger('change');
         }
 
@@ -1239,8 +1254,17 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
                 $('#kacakForm input[name="tarih"]').val(k.tarih_formatted);
                 $('#kacak_personel_ids').val(k.personel_ids_array).trigger('change');
                 satirEkle(k);
-                fotolariBas($('#mevcutFotolar'), k.fotograflar, k.id);
-                if ((k.fotograflar || []).length) $('#mevcutFotolarBolumu').removeClass('d-none');
+                const fotolar = k.fotograflar || [];
+                if (fotolar.length > 0) {
+                    $('#mevcutFotolarBolumu').removeClass('d-none');
+                    $('#fotoSayisiBadge').text(fotolar.length);
+                    $('#mevcutFotolar').empty()
+                        .data('fotolar', fotolar)
+                        .data('kacak-id', k.id)
+                        .data('loaded', false);
+                } else {
+                    $('#mevcutFotolarBolumu').addClass('d-none');
+                }
 
                 // Onay bekleyen (mobil) bildirimlerde düzelt-ve-onayla akışı
                 const onayBekliyor = k.onay_durumu === 'beklemede';
@@ -1614,6 +1638,16 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
             });
         }
 
+        $(document).on('show.bs.collapse', '#collapseFotolar', function () {
+            const $target = $('#mevcutFotolar');
+            if (!$target.data('loaded')) {
+                const fotolar = $target.data('fotolar') || [];
+                const kacakId = $target.data('kacak-id') || 0;
+                fotolariBas($target, fotolar, kacakId);
+                $target.data('loaded', true);
+            }
+        });
+
         $(document).on('click', '.btn-foto', function () {
             const id = $(this).data('id');
             const mevcut = parseInt($(this).attr('data-mevcut') || '0', 10);
@@ -1657,6 +1691,11 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
                 $.post(API, { action: 'delete-photo', foto_id: fotoId }, null, 'json').done(function (res) {
                     if (res.status !== 'success') return hataGoster(res);
                     $item.remove();
+                    const kalanAdet = $('#mevcutFotolar .kacak-foto-item').length;
+                    $('#fotoSayisiBadge').text(kalanAdet);
+                    if (kalanAdet === 0) {
+                        $('#mevcutFotolarBolumu').addClass('d-none');
+                    }
                     if (kacakFotoLightbox) kacakFotoLightbox.reload();
                     kayitlariYukle();
                 });
