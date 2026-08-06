@@ -31,7 +31,7 @@ if (isset($_GET['action'])) {
                     throw new \Exception('Firma logosu PNG veya JPG olmalıdır.');
                 }
                 $logoDir = __DIR__ . '/uploads/firma-logolari/';
-                if (!is_dir($logoDir) && !mkdir($logoDir, 0775, true) && !is_dir($logoDir)) {
+                if (!is_dir($logoDir) && !mkdir($logoDir, 0777, true) && !is_dir($logoDir)) {
                     throw new \Exception('Firma logo klasörü oluşturulamadı.');
                 }
                 $logoName = 'firma_' . ((int) ($_POST['id'] ?? 0) ?: 'yeni') . '_' . bin2hex(random_bytes(8)) . '.' . $logoMimeMap[$logoMime];
@@ -470,6 +470,9 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
             background-color: var(--bs-body-bg);
             width: 100%;
             max-width: 600px;
+            max-height: calc(100vh - 40px);
+            display: flex;
+            flex-direction: column;
             border-radius: var(--radius);
             overflow: hidden;
             animation: modalIn 0.3s ease-out;
@@ -497,6 +500,7 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
             justify-content: space-between;
             align-items: center;
             background-color: var(--bs-body-bg);
+            flex-shrink: 0;
         }
 
         .modal-header h2 {
@@ -515,6 +519,8 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
 
         .modal-body {
             padding: 1.5rem;
+            overflow-y: auto;
+            flex: 1;
         }
 
         .form-grid {
@@ -538,6 +544,7 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
             justify-content: flex-end;
             gap: 1rem;
             background-color: var(--bs-body-bg);
+            flex-shrink: 0;
         }
 
         .btn-save {
@@ -604,6 +611,12 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
                             <?php } ?>
                             <?php if ($branch->telefon) { ?>
                                 <p><i class="fa fa-phone" style="width: 1.25rem;"></i> <?php echo $branch->telefon ?></p>
+                            <?php } ?>
+                            <?php if (!empty($branch->web_sitesi)) { ?>
+                                <p><i class="fa fa-globe" style="width: 1.25rem;"></i> <?php echo htmlspecialchars($branch->web_sitesi, ENT_QUOTES, 'UTF-8'); ?></p>
+                            <?php } ?>
+                            <?php if (!empty($branch->kep_adresi)) { ?>
+                                <p><i class="fa fa-envelope" style="width: 1.25rem;"></i> KEP: <?php echo htmlspecialchars($branch->kep_adresi, ENT_QUOTES, 'UTF-8'); ?></p>
                             <?php } ?>
                         </div>
                     </div>
@@ -674,14 +687,21 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
                         <div class="form-group">
                             <?php echo Form::FormFloatInput("text", "telefon", "", "Telefon", "Telefon", "phone"); ?>
                         </div>
+                        <div class="form-group">
+                            <?php echo Form::FormFloatInput("text", "web_sitesi", "", "Web Sitesi", "Web Sitesi", "globe"); ?>
+                        </div>
+                        <div class="form-group">
+                            <?php echo Form::FormFloatInput("text", "kep_adresi", "", "KEP Adresi", "KEP Adresi", "mail"); ?>
+                        </div>
                     </div>
                     <div class="form-group">
                         <?php echo Form::FormFloatInput("text", "firma_unvan", "", "Firma Ünvanı", "Firma Ünvanı", "briefcase"); ?>
                     </div>
                     <div class="form-group full">
-                        <?php echo Form::FormFileInput("logo", "Firma Logosu", "image", false, 'accept="image/png,image/jpeg"'); ?>
-                        <div class="text-muted mt-1">Resmî yazılarda kullanılır. PNG veya JPG, en fazla 2 MB.</div>
-                        <img id="firma_logo_preview" alt="Firma logosu" style="display:none;max-width:110px;max-height:80px;margin-top:10px;object-fit:contain;">
+                        <label for="logo" class="form-label font-weight-bold" style="margin-bottom: 0.5rem; display: block; font-size: 0.875rem; font-weight: 600;">Firma Logosu</label>
+                        <input type="file" class="form-control" id="logo" name="logo" accept="image/png,image/jpeg">
+                        <div class="text-muted mt-1" style="font-size: 0.8rem;">Resmî yazılarda kullanılır. PNG veya JPG, en fazla 2 MB.</div>
+                        <img id="firma_logo_preview" alt="Firma logosu" style="display:none;max-width:120px;max-height:80px;margin-top:10px;object-fit:contain;border-radius:6px;border:1px solid var(--bs-border-color);padding:4px;">
                     </div>
                     <div class="form-group">
                         <?php echo Form::FormFloatInput("text", "firma_iban", "", "Firma IBAN", "Firma IBAN", "credit-card"); ?>
@@ -792,6 +812,12 @@ if (count($branchs) == 1 && !isset($_GET['change'])) {
                             logoPreview.removeAttribute('src');
                             logoPreview.style.display = 'none';
                         }
+                    }
+                    if (document.getElementById('web_sitesi')) {
+                        document.getElementById('web_sitesi').value = data.web_sitesi ?? '';
+                    }
+                    if (document.getElementById('kep_adresi')) {
+                        document.getElementById('kep_adresi').value = data.kep_adresi ?? '';
                     }
                     if (document.getElementById('firma_iban')) {
                         document.getElementById('firma_iban').value = data.firma_iban ?? '';

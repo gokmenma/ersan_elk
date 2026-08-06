@@ -6,11 +6,15 @@ use App\Helper\Security;
 use App\Model\EvrakTakipModel;
 use App\Model\FirmaModel;
 use App\Model\PersonelModel;
+use App\Model\SettingsModel;
 use App\Service\IcraUstYaziService;
 
 $Evrak = new EvrakTakipModel();
 $Personel = new PersonelModel();
-$firma = (new FirmaModel())->find((int) $_SESSION['firma_id']);
+$Settings = new SettingsModel();
+$firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+$firma = (new FirmaModel())->find($firmaId);
+$settings = (object) $Settings->getAllSettingsAsKeyValue($firmaId);
 $personeller = $Personel->all(false, 'all_with_external');
 $gelenEvraklar = $Evrak->getGelenEvraklar();
 $signingUsers = $Evrak->getSigningUsers();
@@ -100,7 +104,34 @@ foreach ($signingUserMap as $user) {
     $signerOptions[$user->enc_id] = trim($user->adi_soyadi . ($user->imza_unvani ? ' — ' . $user->imza_unvani : ''));
 }
 $selectedRelated = !empty($record->ilgili_evrak_id) ? Security::encrypt($record->ilgili_evrak_id) : '';
-$logoPath = (string) ($firma->logo_yolu ?? '');
+$solLogoPath = (string) ($settings->sol_logo_yolu ?? $firma->logo_yolu ?? '');
+$sagLogoPath = (string) ($settings->sag_logo_yolu ?? '');
+$currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
+$onayDurumu = $record->onay_durumu ?? 'taslak';
+$kilitli = $record && $onayDurumu !== 'taslak';
+if ($record && $onayDurumu === 'taslak') {
+    $Evrak->ensureApprovalRowsForDrafts();
+}
+$onayKayitlari = $record ? $Evrak->getApprovalState((int) $record->id) : [];
+$bekleyenImzam = false;
+$onaylananSayisi = 0;
+foreach ($onayKayitlari as $onayKaydi) {
+    if ($onayKaydi['durum'] === 'onaylandi') {
+        $onaylananSayisi++;
+    } elseif ((int) $onayKaydi['kullanici_id'] === $currentUserId) {
+        $bekleyenImzam = true;
+    }
+}
+$siradakiImzaci = $record ? $Evrak->getNextPendingSigner((int) $record->id) : null;
+$siraBende = $siradakiImzaci && (int) $siradakiImzaci->kullanici_id === $currentUserId;
+$geriAlinabilir = $record ? $Evrak->canRevokeApproval($record, $currentUserId) : false;
+$iadeGerekcesi = trim((string) ($record->e_imza_iade_gerekcesi ?? ''));
+$iadeEden = '';
+if ($iadeGerekcesi !== '' && !empty($record->e_imza_iade_kullanici_id)) {
+    $iadeEdenUser = (new \App\Model\UserModel())->find((int) $record->e_imza_iade_kullanici_id);
+    $iadeEden = (string) ($iadeEdenUser->adi_soyadi ?? '');
+}
+
 $existingAttachments = [];
 if ($record) {
     foreach ($Evrak->getAttachments((int) $record->id) as $attachment) {
@@ -118,6 +149,50 @@ if ($record) {
 <div class="container-fluid">
     <?php $maintitle = 'Evrak Takip'; $title = $record ? 'Giden Evrak Düzenle' : 'Yeni Giden Evrak'; include 'layouts/breadcrumb.php'; ?>
 
+    <?php if ($kilitli): ?>
+        <div class="alert <?php echo $onayDurumu === 'onaylandi' ? 'alert-success' : 'alert-warning'; ?> d-flex align-items-start border-0 shadow-sm mb-3">
+            <i data-feather="lock" class="icon-sm me-2 mt-1"></i>
+            <div>
+                <?php if ($onayDurumu === 'onaylandi'): ?>
+                    <div class="fw-bold">Bu evrak elektronik imza ile onaylanmıştır.</div>
+                    <div class="small">
+                        Onay tarihi: <?php echo $record->e_imza_onay_tarihi ? htmlspecialchars(date('d.m.Y H:i', strtotime($record->e_imza_onay_tarihi)), ENT_QUOTES, 'UTF-8') : '-'; ?>
+                        &nbsp;•&nbsp; İmza süreci tamamlandığı için evrak kalıcı olarak kilitlendi; içeriği değiştirilemez ve geri alınamaz. Düzeltme gerekiyorsa yeni bir evrak düzenlenmelidir.
+                    </div>
+                <?php else: ?>
+                    <div class="fw-bold">Evrak elektronik imza onayına sunuldu (<?php echo $onaylananSayisi . '/' . count($onayKayitlari); ?> imza tamamlandı).</div>
+                    <div class="small">
+                        <?php if ($siradakiImzaci): ?>
+                            Sırada <strong><?php echo htmlspecialchars((string) $siradakiImzaci->adi_soyadi, ENT_QUOTES, 'UTF-8'); ?></strong> bulunuyor<?php echo $siraBende ? ' — <strong>imza sırası sizde</strong>' : ''; ?>.
+                        <?php endif; ?>
+                        Süreç tamamlanana kadar evrak içeriği değiştirilemez.
+                        <?php if ($geriAlinabilir): ?>
+                            Düzeltme gerekiyorsa <strong>İşlemler &rsaquo; Evrakı Üzerime Geri Al</strong> ile taslağa döndürebilirsiniz.
+                        <?php else: ?>
+                            Düzeltme gerekiyorsa evrakı oluşturan kullanıcı süreci geri alabilir.
+                        <?php endif; ?>
+                    </div>
+                <?php endif; ?>
+            </div>
+        </div>
+    <?php endif; ?>
+
+    <?php if ($iadeGerekcesi !== ''): ?>
+        <div class="alert alert-danger d-flex align-items-start border-0 shadow-sm mb-3">
+            <i data-feather="corner-up-left" class="icon-sm me-2 mt-1"></i>
+            <div>
+                <div class="fw-bold">
+                    Evrak imzalanmadan iade edildi<?php echo $iadeEden !== '' ? ' — ' . htmlspecialchars($iadeEden, ENT_QUOTES, 'UTF-8') : ''; ?>
+                    <?php if (!empty($record->e_imza_iade_tarihi)): ?>
+                        <span class="fw-normal small">(<?php echo htmlspecialchars(date('d.m.Y H:i', strtotime((string) $record->e_imza_iade_tarihi)), ENT_QUOTES, 'UTF-8'); ?>)</span>
+                    <?php endif; ?>
+                </div>
+                <div class="small"><strong>Gerekçe:</strong> <?php echo nl2br(htmlspecialchars($iadeGerekcesi, ENT_QUOTES, 'UTF-8')); ?></div>
+                <div class="small text-muted mt-1">Gerekli düzeltmeleri yaptıktan sonra evrakı yeniden onaya sunabilirsiniz.</div>
+            </div>
+        </div>
+    <?php endif; ?>
+
     <form id="gidenEvrakForm" enctype="multipart/form-data">
         <input type="hidden" name="action" value="evrak-kaydet">
         <input type="hidden" name="id" value="<?php echo htmlspecialchars($encryptedId, ENT_QUOTES, 'UTF-8'); ?>">
@@ -132,7 +207,8 @@ if ($record) {
                 <div class="d-flex align-items-center gap-2">
                     <button type="button" id="btnIcraUstYaziAc" class="btn btn-outline-success me-2"><i data-feather="file-plus" class="icon-xs me-1"></i> İcra Üst Yazısı</button>
                     <button type="button" id="btnAiTaslakAc" class="btn btn-outline-primary me-2"><i data-feather="zap" class="icon-xs me-1"></i> Yapay Zekâ ile Oluştur</button>
-                    <?php if ($logoPath): ?><img src="<?php echo htmlspecialchars($logoPath, ENT_QUOTES, 'UTF-8'); ?>" alt="Firma logosu" style="max-width:52px;max-height:45px;object-fit:contain"><?php endif; ?>
+                    <?php if ($solLogoPath): ?><img src="<?php echo htmlspecialchars($solLogoPath, ENT_QUOTES, 'UTF-8'); ?>" alt="Sol logo" style="max-width:52px;max-height:45px;object-fit:contain" title="Sol Logo"><?php endif; ?>
+                    <?php if ($sagLogoPath): ?><img src="<?php echo htmlspecialchars($sagLogoPath, ENT_QUOTES, 'UTF-8'); ?>" alt="Sağ logo" style="max-width:52px;max-height:45px;object-fit:contain" title="Sağ Logo"><?php endif; ?>
                 </div>
             </div>
             <div class="card-body p-0">
@@ -164,6 +240,30 @@ if ($record) {
 
                     <div class="col-xl-4 bg-light-subtle">
                         <div class="p-3 d-grid gap-3 giden-meta-panel" style="overflow-y:auto">
+                            <?php if ($onayKayitlari !== []): ?>
+                                <div>
+                                    <div class="small fw-bold text-uppercase text-muted mb-2">E-İmza Durumu</div>
+                                    <div id="imzaDurumListesi" class="border rounded-3 overflow-hidden bg-white">
+                                        <?php foreach ($onayKayitlari as $onayKaydi): ?>
+                                            <?php $buSirada = $siradakiImzaci && (int) $siradakiImzaci->kullanici_id === (int) $onayKaydi['kullanici_id']; ?>
+                                            <div class="d-flex align-items-center justify-content-between px-2 py-2 border-bottom <?php echo $buSirada && $kilitli ? 'bg-warning-subtle' : ''; ?>">
+                                                <span class="small fw-semibold text-dark">
+                                                    <span class="badge bg-light text-muted me-1" style="font-size:9px"><?php echo (int) $onayKaydi['sira']; ?></span>
+                                                    <?php echo htmlspecialchars((string) $onayKaydi['adi_soyadi'], ENT_QUOTES, 'UTF-8'); ?>
+                                                </span>
+                                                <?php if ($onayKaydi['durum'] === 'onaylandi'): ?>
+                                                    <span class="badge bg-success-subtle text-success fw-bold" style="font-size:9px" title="<?php echo $onayKaydi['onay_tarihi'] ? htmlspecialchars(date('d.m.Y H:i', strtotime((string) $onayKaydi['onay_tarihi'])), ENT_QUOTES, 'UTF-8') : ''; ?>">İMZALADI</span>
+                                                <?php elseif ($buSirada && $kilitli): ?>
+                                                    <span class="badge bg-warning text-dark fw-bold" style="font-size:9px">SIRADA</span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-secondary-subtle text-secondary fw-bold" style="font-size:9px">BEKLİYOR</span>
+                                                <?php endif; ?>
+                                            </div>
+                                        <?php endforeach; ?>
+                                    </div>
+                                    <div class="form-text mt-1">İmzalar yukarıdaki sırayla atılır; sırası gelmeyen kullanıcı imzalayamaz.</div>
+                                </div>
+                            <?php endif; ?>
                             <div class="small fw-bold text-uppercase text-muted">Evrak Bilgileri</div>
                             <?php echo Form::FormFloatInput('text', 'tarih', $dateValue, 'Evrak Tarihi', 'Evrak Tarihi', 'calendar', 'form-control flatpickr', true); ?>
                             <?php echo Form::FormFloatInput('text', 'evrak_no', $defaultEvrakNo, 'Sayı', 'Sayı / Evrak No', 'hash', 'form-control', true); ?>
@@ -215,12 +315,75 @@ if ($record) {
 
         <div class="giden-action-bar d-flex align-items-center justify-content-between py-3 px-4 bg-white border-top shadow-lg">
             <div>
-                <button type="button" id="btnFormuTemizle" class="btn btn-outline-danger px-3" title="Tüm evrak bilgilerini sıfırla"><i data-feather="trash-2" class="icon-xs me-1"></i> Formu Temizle</button>
+                <?php if (!$kilitli): ?>
+                    <button type="button" id="btnFormuTemizle" class="btn btn-outline-danger px-3" title="Tüm evrak bilgilerini sıfırla"><i data-feather="trash-2" class="icon-xs me-1"></i> Formu Temizle</button>
+                <?php else: ?>
+                    <span class="small text-muted d-flex align-items-center"><i data-feather="lock" class="icon-xs me-1"></i> Evrak elektronik imza sürecinde kilitli</span>
+                <?php endif; ?>
             </div>
             <div class="d-flex gap-2">
-                <a href="index?p=evrak-takip/list" class="btn btn-light px-4">Vazgeç</a>
+                <a href="index?p=evrak-takip/list" class="btn btn-light px-4"><?php echo $kilitli ? 'Listeye Dön' : 'Vazgeç'; ?></a>
                 <button type="button" id="btnGidenPdfOnizle" class="btn btn-outline-primary px-4"><i data-feather="eye" class="icon-xs me-1"></i> Önizle</button>
-                <button type="submit" id="btnGidenKaydet" class="btn btn-primary px-5"><i data-feather="save" class="icon-xs me-1"></i> Kaydet</button>
+                <?php
+                $imzalayabilir = $onayDurumu === 'onay_bekliyor' && $siraBende;
+                $islemVar = !$kilitli || $imzalayabilir || ($kilitli && $geriAlinabilir);
+                ?>
+                <?php if ($islemVar): ?>
+                    <div class="dropup">
+                        <button type="button" id="btnGidenIslemler" class="btn btn-outline-secondary px-4" data-bs-toggle="dropdown" data-bs-auto-close="true" aria-expanded="false">
+                            <i data-feather="settings" class="icon-xs me-1"></i> İşlemler <i class="bx bx-chevron-up ms-1"></i>
+                        </button>
+                        <ul class="dropdown-menu dropdown-menu-end shadow border-0 py-2" style="min-width:265px">
+                            <?php if (!$kilitli): ?>
+                                <li>
+                                    <button type="button" class="dropdown-item d-flex align-items-start gap-2 py-2" id="btnEImzaOnayaSun">
+                                        <i data-feather="send" class="icon-xs text-primary mt-1"></i>
+                                        <span>
+                                            <span class="d-block fw-semibold">E-İmza ile Onaya Sun</span>
+                                            <span class="d-block small text-muted">Evrak kaydedilir ve imzacılara gönderilir</span>
+                                        </span>
+                                    </button>
+                                </li>
+                            <?php endif; ?>
+                            <?php if ($imzalayabilir): ?>
+                                <li>
+                                    <button type="button" class="dropdown-item d-flex align-items-start gap-2 py-2" id="btnEImzaOnayla" data-id="<?php echo htmlspecialchars($encryptedId, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <i data-feather="check-circle" class="icon-xs text-success mt-1"></i>
+                                        <span>
+                                            <span class="d-block fw-semibold">E-İmza ile Onayla</span>
+                                            <span class="d-block small text-muted">Kendi imzanızı bu evraka ekler</span>
+                                        </span>
+                                    </button>
+                                </li>
+                            <?php endif; ?>
+                            <?php if ($imzalayabilir): ?>
+                                <li>
+                                    <button type="button" class="dropdown-item d-flex align-items-start gap-2 py-2" id="btnEImzaIade" data-id="<?php echo htmlspecialchars($encryptedId, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <i data-feather="corner-up-left" class="icon-xs text-danger mt-1"></i>
+                                        <span>
+                                            <span class="d-block fw-semibold">Düzeltilmek Üzere İade Et</span>
+                                            <span class="d-block small text-muted">İmzalamadan gerekçeyle hazırlayana geri gönderir</span>
+                                        </span>
+                                    </button>
+                                </li>
+                            <?php endif; ?>
+                            <?php if ($kilitli && $geriAlinabilir): ?>
+                                <li>
+                                    <button type="button" class="dropdown-item d-flex align-items-start gap-2 py-2" id="btnEImzaGeriAl" data-id="<?php echo htmlspecialchars($encryptedId, ENT_QUOTES, 'UTF-8'); ?>">
+                                        <i data-feather="rotate-ccw" class="icon-xs text-info mt-1"></i>
+                                        <span>
+                                            <span class="d-block fw-semibold">Evrakı Üzerime Geri Al</span>
+                                            <span class="d-block small text-muted">İmza süreci iptal edilir, evrak taslağa döner</span>
+                                        </span>
+                                    </button>
+                                </li>
+                            <?php endif; ?>
+                        </ul>
+                    </div>
+                <?php endif; ?>
+                <?php if (!$kilitli): ?>
+                    <button type="submit" id="btnGidenKaydet" class="btn btn-primary px-5"><i data-feather="save" class="icon-xs me-1"></i> Kaydet</button>
+                <?php endif; ?>
             </div>
         </div>
     </form>
@@ -229,8 +392,14 @@ if ($record) {
 <style>
 .giden-action-bar{position:fixed;left:250px;right:0;bottom:0;z-index:1020;margin:0}
 #gidenEvrakForm>.card{margin-bottom:0}
+#imzaDurumListesi>div:last-child{border-bottom:0!important}
+#gidenEvrakForm.evrak-kilitli .note-editable{background:#f8f9fa}
+#gidenEvrakForm.evrak-kilitli .select2-container{pointer-events:none;opacity:.85}
 #ekDosyaListesi:empty{display:none}.ek-dosya-satiri{background:#fff;border-bottom:1px solid var(--bs-border-color);padding:14px 16px}.ek-dosya-satiri:last-child{border-bottom:0}
 #gidenPdfLoader.giden-pdf-hidden,#gidenPdfFrame.giden-pdf-hidden{display:none!important}
+#evrakAiContextMenu{position:fixed;z-index:1090;min-width:220px;display:none}
+#evrakAiContextMenu .dropdown-item{cursor:pointer;padding:.65rem .9rem}
+.ai-secim-onizleme{max-height:130px;overflow:auto;white-space:pre-wrap}
 .giden-meta-panel::-webkit-scrollbar,#gidenEklerTab::-webkit-scrollbar,#gidenEvrakForm .note-editable::-webkit-scrollbar{width:6px}
 .giden-meta-panel::-webkit-scrollbar-thumb,#gidenEklerTab::-webkit-scrollbar-thumb,#gidenEvrakForm .note-editable::-webkit-scrollbar-thumb{background-color:rgba(0,0,0,0.15);border-radius:4px}
 .giden-meta-panel::-webkit-scrollbar-thumb:hover,#gidenEklerTab::-webkit-scrollbar-thumb:hover,#gidenEvrakForm .note-editable::-webkit-scrollbar-thumb:hover{background-color:rgba(0,0,0,0.3)}
@@ -239,9 +408,32 @@ if ($record) {
 </style>
 
 <script>
+window.gidenEvrakKilitli = <?php echo $kilitli ? 'true' : 'false'; ?>;
 window.gidenExistingAttachments = <?php echo json_encode($existingAttachments, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 window.gidenGelenEvraklarMap = <?php echo json_encode($gelenEvrakMap, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT); ?>;
 </script>
+
+<div id="evrakAiContextMenu" class="dropdown-menu shadow border-0 p-1">
+    <button type="button" id="btnAiSecimDuzenleAc" class="dropdown-item rounded"><i class="bx bx-magic-wand text-primary me-2"></i>Yapay Zekâ ile Düzenle</button>
+</div>
+
+<div class="modal fade" id="evrakAiSecimModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered"><div class="modal-content border-0 shadow">
+        <div class="modal-header"><div><h5 class="modal-title"><i class="bx bx-magic-wand text-primary me-1"></i> Seçili Metni Düzenle</h5><div class="small text-muted mt-1">Yalnızca seçtiğiniz bölüm değiştirilecektir.</div></div><button type="button" class="btn-close" data-bs-dismiss="modal"></button></div>
+        <div class="modal-body">
+            <label class="form-label small fw-semibold text-muted">Seçili metin</label>
+            <div id="aiSeciliMetinOnizleme" class="ai-secim-onizleme border rounded bg-light p-2 small mb-3"></div>
+            <label for="aiSecimTalimat" class="form-label fw-semibold">Nasıl düzenlensin?</label>
+            <textarea id="aiSecimTalimat" class="form-control" rows="4" maxlength="2000" placeholder="Örnek: Daha resmî ve hukuki bir dille, anlamı ve rakamları değiştirmeden düzenle."></textarea>
+            <div class="d-flex flex-wrap gap-2 mt-2">
+                <button type="button" class="btn btn-sm btn-light ai-hizli-talimat" data-talimat="Anlamı ve tüm somut bilgileri koruyarak daha resmî, akademik ve hukuki bir dille düzenle.">Resmîleştir</button>
+                <button type="button" class="btn btn-sm btn-light ai-hizli-talimat" data-talimat="Anlamı ve tüm somut bilgileri koruyarak daha kısa ve açık hâle getir.">Kısalt</button>
+                <button type="button" class="btn btn-sm btn-light ai-hizli-talimat" data-talimat="Anlamı değiştirmeden anlatım ve dil bilgisi hatalarını düzelt.">Dilbilgisini Düzelt</button>
+            </div>
+        </div>
+        <div class="modal-footer"><button type="button" class="btn btn-light" data-bs-dismiss="modal">Vazgeç</button><button type="button" id="btnAiSecimUygula" class="btn btn-primary px-4"><i class="bx bx-magic-wand me-1"></i>Düzenle ve Uygula</button></div>
+    </div></div>
+</div>
 
 <div class="modal fade" id="icraUstYaziModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-centered"><div class="modal-content border-0 shadow">

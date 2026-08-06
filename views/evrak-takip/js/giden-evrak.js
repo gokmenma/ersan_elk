@@ -192,6 +192,132 @@ $(document).ready(function () {
     $("#giden_evrak_icerik").val($("#giden_evrak_icerik").summernote("code"));
   }
 
+  let aiSelectionRange = null;
+  let aiSelectedText = "";
+  const aiContextMenu = $("#evrakAiContextMenu");
+
+  $(document).on("contextmenu", "#gidenEvrakForm .note-editable", function (event) {
+    if (window.gidenEvrakKilitli) {
+      aiContextMenu.hide();
+      return;
+    }
+    const selection = window.getSelection();
+    if (!selection || selection.rangeCount === 0 || selection.isCollapsed || !selection.toString().trim()) {
+      aiContextMenu.hide();
+      return;
+    }
+    const range = selection.getRangeAt(0);
+    if (!this.contains(range.commonAncestorContainer)) {
+      aiContextMenu.hide();
+      return;
+    }
+    event.preventDefault();
+    aiSelectionRange = range.cloneRange();
+    aiSelectedText = selection.toString().trim();
+    const menuWidth = 230;
+    const menuHeight = 48;
+    aiContextMenu.css({
+      left: Math.min(event.clientX, window.innerWidth - menuWidth - 8) + "px",
+      top: Math.min(event.clientY, window.innerHeight - menuHeight - 8) + "px"
+    }).show();
+  });
+
+  $(document).on("click scroll", function (event) {
+    if (!$(event.target).closest("#evrakAiContextMenu").length) aiContextMenu.hide();
+  });
+  $(document).on("keydown", function (event) {
+    if (event.key === "Escape") aiContextMenu.hide();
+  });
+
+  $("#btnAiSecimDuzenleAc").on("click", function () {
+    aiContextMenu.hide();
+    if (!aiSelectionRange || !aiSelectedText) {
+      Swal.fire("Metin Seçilmedi", "Önce düzenlemek istediğiniz metni seçiniz.", "warning");
+      return;
+    }
+    $("#aiSeciliMetinOnizleme").text(aiSelectedText);
+    $("#aiSecimTalimat").val("");
+    $("#evrakAiSecimModal").modal("show");
+    $("#evrakAiSecimModal").one("shown.bs.modal", function () { $("#aiSecimTalimat").trigger("focus"); });
+  });
+
+  $(".ai-hizli-talimat").on("click", function () {
+    $("#aiSecimTalimat").val($(this).data("talimat")).trigger("focus");
+  });
+
+  function replaceAiSelection(html) {
+    const editable = $("#gidenEvrakForm .note-editable")[0];
+    if (!editable || !aiSelectionRange || !editable.contains(aiSelectionRange.commonAncestorContainer)) {
+      throw new Error("Seçili metnin konumu artık geçerli değil.");
+    }
+    const holder = document.createElement("div");
+    holder.innerHTML = html;
+    const startElement = aiSelectionRange.startContainer.nodeType === Node.ELEMENT_NODE ? aiSelectionRange.startContainer : aiSelectionRange.startContainer.parentElement;
+    const endElement = aiSelectionRange.endContainer.nodeType === Node.ELEMENT_NODE ? aiSelectionRange.endContainer : aiSelectionRange.endContainer.parentElement;
+    const startBlock = $(startElement).closest("p,li")[0];
+    const endBlock = $(endElement).closest("p,li")[0];
+    if (startBlock && startBlock === endBlock && holder.children.length === 1 && holder.firstElementChild.tagName === "P") {
+      holder.innerHTML = holder.firstElementChild.innerHTML;
+    }
+    const fragment = document.createDocumentFragment();
+    let lastNode = null;
+    while (holder.firstChild) {
+      lastNode = fragment.appendChild(holder.firstChild);
+    }
+    aiSelectionRange.deleteContents();
+    aiSelectionRange.insertNode(fragment);
+    if (lastNode) {
+      aiSelectionRange.setStartAfter(lastNode);
+      aiSelectionRange.collapse(true);
+      const selection = window.getSelection();
+      selection.removeAllRanges();
+      selection.addRange(aiSelectionRange);
+    }
+    $(editable).trigger("input");
+    syncContent();
+  }
+
+  $("#btnAiSecimUygula").on("click", function () {
+    const instruction = $("#aiSecimTalimat").val().trim();
+    if (!instruction) {
+      Swal.fire("Eksik Bilgi", "Seçili metnin nasıl düzenleneceğini yazınız.", "warning");
+      return;
+    }
+    const button = $(this);
+    const originalHtml = button.html();
+    button.prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-2"></span>Düzenleniyor...');
+    $.ajax({
+      url: "views/evrak-takip/ai-metin-duzenle.php",
+      type: "POST",
+      dataType: "json",
+      data: {
+        selected_text: aiSelectedText,
+        instruction: instruction,
+        document_context: $("#gidenEvrakForm .note-editable").text()
+      },
+      success: function (response) {
+        if (response.status !== "success" || !response.data || !response.data.html) {
+          Swal.fire("Hata", response.message || "Metin düzenlenemedi.", "error");
+          return;
+        }
+        try {
+          replaceAiSelection(response.data.html);
+          $("#evrakAiSecimModal").modal("hide");
+          Swal.fire("Metin Düzenlendi", "Yapay zekâ sonucu seçili bölümün yerine uygulandı.", "success");
+        } catch (error) {
+          Swal.fire("Seçim Geçersiz", error.message, "warning");
+        }
+      },
+      error: function (xhr) {
+        const message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : "Yapay zekâ servisine ulaşılamadı.";
+        Swal.fire("Hata", message, "error");
+      },
+      complete: function () {
+        button.prop("disabled", false).html(originalHtml);
+      }
+    });
+  });
+
   $("#btnAiTaslakAc").on("click", function () {
     $("#evrakAiModal").modal("show");
   });
@@ -407,6 +533,7 @@ $(document).ready(function () {
       $("<button type='button' class='btn btn-outline-secondary' title='Aşağı'><i class='bx bx-down-arrow-alt'></i></button>").prop("disabled", index === attachments.length - 1).on("click", () => moveAttachment(index, 1)).appendTo(actions);
       if (item.type === "existing" && item.path) $("<a target='_blank' class='btn btn-outline-info' title='Görüntüle'><i class='bx bx-show'></i></a>").attr("href", item.path).appendTo(actions);
       $("<button type='button' class='btn btn-danger' title='Sil'><i class='bx bx-trash'></i></button>").on("click", () => removeAttachment(index)).appendTo(actions);
+      if (window.gidenEvrakKilitli) actions.find("button").prop("disabled", true);
       row.append(info, actions).appendTo(list);
     });
     syncAttachmentFields();
@@ -497,14 +624,12 @@ $(document).ready(function () {
     return true;
   }
 
-  $("#btnGidenPdfOnizle").on("click", function () {
-    syncContent();
-    if (!validateForm()) return;
+  function requestPdf(options) {
     clearPdf();
     $("#gidenPdfLoader").removeClass("giden-pdf-hidden");
     $("#gidenPdfModal").modal("show");
-    $.ajax({
-      url: "views/evrak-takip/pdf.php", type: "POST", data: buildFormData(), contentType: false, processData: false, xhrFields: { responseType: "blob" },
+    $.ajax($.extend({
+      url: "views/evrak-takip/pdf.php", xhrFields: { responseType: "blob" },
       success: function (blob) {
         if (blob.type !== "application/pdf") { blob.text().then(msg => Swal.fire("Hata", msg, "error")); $("#gidenPdfLoader").addClass("giden-pdf-hidden"); $("#gidenPdfModal").modal("hide"); return; }
         pdfObjectUrl = URL.createObjectURL(blob);
@@ -518,7 +643,17 @@ $(document).ready(function () {
         $("#gidenPdfYeniSekme").attr("href", pdfObjectUrl).removeClass("d-none");
       },
       error: function (xhr) { $("#gidenPdfLoader").addClass("giden-pdf-hidden"); $("#gidenPdfModal").modal("hide"); const b = xhr.response; b instanceof Blob ? b.text().then(msg => Swal.fire("Hata", msg, "error")) : Swal.fire("Hata", "PDF oluşturulamadı.", "error"); }
-    });
+    }, options));
+  }
+
+  $("#btnGidenPdfOnizle").on("click", function () {
+    if (window.gidenEvrakKilitli) {
+      requestPdf({ url: "views/evrak-takip/pdf.php?id=" + encodeURIComponent(form.find("input[name=id]").val()), type: "GET" });
+      return;
+    }
+    syncContent();
+    if (!validateForm()) return;
+    requestPdf({ type: "POST", data: buildFormData(), contentType: false, processData: false });
   });
 
   form.on("submit", function (event) {
@@ -583,6 +718,142 @@ $(document).ready(function () {
       "max-height": availableTabContentHeight + "px",
       "overflow-y": "auto"
     });
+  }
+
+  function eImzaIstek(action, options) {
+    Swal.fire({
+      title: options.title,
+      html: options.html,
+      icon: options.icon,
+      showCancelButton: true,
+      confirmButtonColor: options.color,
+      cancelButtonColor: "#64748b",
+      confirmButtonText: options.confirmText,
+      cancelButtonText: "Vazgeç"
+    }).then(result => {
+      if (!result.isConfirmed) return;
+      const button = $(options.buttonSelector).prop("disabled", true);
+      $.post("views/evrak-takip/api.php", { action: action, id: button.data("id") }, response => {
+        if (response.status === "success") {
+          Swal.fire("Başarılı", response.message, "success").then(() => location.reload());
+        } else {
+          button.prop("disabled", false);
+          Swal.fire("Hata", response.message, "error");
+        }
+      }).fail(() => {
+        button.prop("disabled", false);
+        Swal.fire("Hata", "Sunucu ile iletişim kurulamadı.", "error");
+      });
+    });
+  }
+
+  $("#btnEImzaOnayla").on("click", function () {
+    eImzaIstek("evrak-e-imza-onayla", {
+      title: "E-İmza ile Onayla",
+      html: "Evrakı elektronik imza ile onaylıyorsunuz.<br><b>Tüm imzacılar onayladığında evrak elektronik imzalı hâle gelir ve içeriği bir daha değiştirilemez.</b>",
+      icon: "question",
+      color: "#22c55e",
+      confirmText: "Evet, Onayla",
+      buttonSelector: "#btnEImzaOnayla"
+    });
+  });
+
+  $("#btnEImzaGeriAl").on("click", function () {
+    eImzaIstek("evrak-e-imza-geri-al", {
+      title: "Evrakı Üzerime Geri Al",
+      html: "Elektronik imza süreci iptal edilecek ve evrak <b>taslak</b> durumuna dönecek.<br>Alınmış tüm imzalar sıfırlanır ve işlem kayıt altına alınır.",
+      icon: "warning",
+      color: "#0ea5e9",
+      confirmText: "Evet, Geri Al",
+      buttonSelector: "#btnEImzaGeriAl"
+    });
+  });
+
+  $("#btnEImzaIade").on("click", function () {
+    const button = $(this);
+    Swal.fire({
+      title: "Düzeltilmek Üzere İade Et",
+      html: "Evrak imzalanmadan <b>taslak</b> durumuna döndürülecek ve gerekçe evrakı hazırlayan kullanıcıya bildirilecek.",
+      input: "textarea",
+      inputLabel: "İade gerekçesi",
+      inputPlaceholder: "Örnek: İlgi bölümündeki esas numarası hatalı, düzeltilip yeniden gönderilmeli.",
+      inputAttributes: { maxlength: 2000, rows: 4 },
+      showCancelButton: true,
+      confirmButtonColor: "#f43f5e",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "İade Et",
+      cancelButtonText: "Vazgeç",
+      inputValidator: value => (!value || value.trim().length < 5) ? "Gerekçeyi en az 5 karakter olacak şekilde yazınız." : undefined
+    }).then(result => {
+      if (!result.isConfirmed) return;
+      button.prop("disabled", true);
+      $.post("views/evrak-takip/api.php", { action: "evrak-e-imza-iade", id: button.data("id"), gerekce: result.value }, function (response) {
+        if (response.status === "success") {
+          Swal.fire("İade Edildi", response.message, "success").then(() => location.reload());
+        } else {
+          button.prop("disabled", false);
+          Swal.fire("Hata", response.message, "error");
+        }
+      }).fail(() => {
+        button.prop("disabled", false);
+        Swal.fire("Hata", "Sunucu ile iletişim kurulamadı.", "error");
+      });
+    });
+  });
+
+  $("#btnEImzaOnayaSun").on("click", function () {
+    syncContent();
+    if (!validateForm()) return;
+    Swal.fire({
+      title: "E-İmza ile Onaya Sun",
+      html: "Evrak önce kaydedilecek, ardından imzacıların onayına sunulacak.<br>İmza sırasında ilk sırada siz varsanız imzanız otomatik atılır.<br><b>Onaya sunulan evrakın içeriği, imza süreci tamamlanana kadar değiştirilemez.</b>",
+      icon: "question",
+      showCancelButton: true,
+      confirmButtonColor: "#556ee6",
+      cancelButtonColor: "#64748b",
+      confirmButtonText: "Kaydet ve Onaya Sun",
+      cancelButtonText: "Vazgeç"
+    }).then(result => {
+      if (!result.isConfirmed) return;
+      const button = $("#btnEImzaOnayaSun").prop("disabled", true);
+      const serbestBirak = () => button.prop("disabled", false);
+      $.ajax({
+        url: "views/evrak-takip/api.php", type: "POST", data: buildFormData(), contentType: false, processData: false,
+        success: function (kayit) {
+          if (kayit.status !== "success" || !kayit.id) {
+            serbestBirak();
+            Swal.fire("Hata", kayit.message || "Evrak kaydedilemedi.", "error");
+            return;
+          }
+          $.post("views/evrak-takip/api.php", { action: "evrak-e-imza-onaya-sun", id: kayit.id }, function (response) {
+            if (response.status === "success") {
+              Swal.fire("Onaya Sunuldu", response.message, "success")
+                .then(() => location.href = "index?p=evrak-takip/giden-evrak&id=" + encodeURIComponent(kayit.id));
+            } else {
+              serbestBirak();
+              Swal.fire("Evrak Kaydedildi, Onaya Sunulamadı", response.message, "warning")
+                .then(() => location.href = "index?p=evrak-takip/giden-evrak&id=" + encodeURIComponent(kayit.id));
+            }
+          }).fail(() => {
+            serbestBirak();
+            Swal.fire("Hata", "Evrak kaydedildi ancak onaya sunulamadı. Sunucu ile iletişim kurulamadı.", "error");
+          });
+        },
+        error: function () {
+          serbestBirak();
+          Swal.fire("Hata", "Sunucu ile iletişim kurulamadı.", "error");
+        }
+      });
+    });
+  });
+
+  if (window.gidenEvrakKilitli) {
+    form.addClass("evrak-kilitli");
+    form.find("input, select, textarea").not("input[type=hidden]").prop("disabled", true);
+    $("#giden_evrak_icerik").summernote("disable");
+    $("#btnIcraUstYaziAc, #btnAiTaslakAc").addClass("d-none");
+    $("#ek_dosyalari").closest(".border.rounded-3").addClass("d-none");
+    $("#imzaSiraContainer").find("button").prop("disabled", true);
   }
 
   $("#gidenPdfModal").on("hidden.bs.modal", clearPdf);

@@ -15,6 +15,8 @@ use App\Helper\Date;
 use App\Helper\Security;
 use App\Helper\RichTextSanitizer;
 use App\Model\MenuModel;
+use App\Model\SystemLogModel;
+use App\Service\EvrakOnayBildirimService;
 
 header('Content-Type: application/json; charset=utf-8');
 
@@ -46,6 +48,15 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $attachmentOrder = json_decode((string) ($data['ek_duzen_json'] ?? '[]'), true) ?: [];
                 $removedAttachmentIdsEncrypted = json_decode((string) ($data['silinen_ek_ids_json'] ?? '[]'), true) ?: [];
                 $id = !empty($data['id']) ? $decryptId($data['id']) : 0;
+                if ($id > 0) {
+                    $existingDocument = $Model->getById($id);
+                    if (!$existingDocument) {
+                        throw new Exception('Evrak bulunamadı.');
+                    }
+                    if (($existingDocument->onay_durumu ?? 'taslak') !== 'taslak') {
+                        throw new Exception('Elektronik imza onay süreci başlamış evrak değiştirilemez.');
+                    }
+                }
                 unset(
                     $data['action'], 
                     $data['ek_duzen_json'], 
@@ -263,6 +274,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'id' => $real_id,
                     'ekler' => implode("\n", array_map(fn($attachment) => $attachment->dosya_adi, $currentAttachments)),
                 ]);
+                $Model->resetApprovalWorkflow($real_id, array_map(fn($user) => (int) $user->id, $validSigners));
 
                 // Trafik Cezası Otomatik Kesinti Ekleme
                 $isTrafficFine = false;
@@ -532,7 +544,44 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $Model->markAsReplied($data['ilgili_evrak_id'], $data['tarih']);
                 }
 
-                echo json_encode(['status' => 'success', 'message' => $message]);
+                echo json_encode(['status' => 'success', 'message' => $message, 'id' => Security::encrypt($real_id)]);
+                break;
+
+            case 'evrak-e-imza-onaya-sun':
+                $id = $decryptId($_POST['id'] ?? '');
+                if ($id <= 0) {
+                    throw new Exception('Geçersiz evrak ID.');
+                }
+                $submission = $Model->submitForApproval($id, $currentUserId, (string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+                (new SystemLogModel())->logAction(
+                    $currentUserId,
+                    'Evrak E-İmza Onayına Sunma',
+                    "Evrak ID: {$id} elektronik imza onayına sunuldu. İmzacılar: " . implode(', ', $submission['signers'])
+                        . ($submission['otomatik_imza'] ? '. Evrakı oluşturan ilk imzacı olduğu için imzası otomatik atıldı.' : ''),
+                    SystemLogModel::LEVEL_IMPORTANT
+                );
+                $siradaki = $Model->getNextPendingSigner($id);
+                if ($siradaki) {
+                    (new EvrakOnayBildirimService())->imzaSirasiGeldi(
+                        $Model->getById($id),
+                        (int) $siradaki->kullanici_id,
+                        (int) $siradaki->sira,
+                        (int) $submission['total']
+                    );
+                }
+                if ($submission['completed']) {
+                    $message = 'Tek imzacı siz olduğunuz için imzanız otomatik atıldı ve evrak elektronik imzalı hâle geldi.';
+                } elseif ($submission['otomatik_imza']) {
+                    $bekleyen = (int) $submission['total'] - 1;
+                    $message = 'Evrak onaya sunuldu ve ilk imzacı olduğunuz için imzanız otomatik atıldı. ' . $bekleyen . ' imzacının onayı bekleniyor.';
+                } else {
+                    $message = 'Evrak elektronik imza onayına sunuldu. ' . $submission['total'] . ' imzacının onayı bekleniyor. Süreç tamamlanana kadar içerik değiştirilemez.';
+                }
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => $message,
+                    'data' => $submission,
+                ], JSON_UNESCAPED_UNICODE);
                 break;
 
             case 'evrak-sil':
@@ -541,6 +590,13 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     throw new Exception("Geçersiz evrak ID.");
                 }
 
+                $deleteDocument = $Model->getById($id);
+                if (!$deleteDocument) {
+                    throw new Exception('Evrak bulunamadı.');
+                }
+                if (($deleteDocument->onay_durumu ?? 'taslak') !== 'taslak') {
+                    throw new Exception('Elektronik imza onay süreci başlamış evrak silinemez.');
+                }
                 $Model->softDelete($id);
 
                 // Evrak silindiğinde ilişkili trafik cezası kesintisini de otomatik sil (soft delete)
@@ -555,6 +611,82 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 ]);
 
                 echo json_encode(['status' => 'success', 'message' => 'Evrak başarıyla silindi.']);
+                break;
+
+            case 'evrak-e-imza-onayla':
+                $id = $decryptId($_POST['id'] ?? '');
+                if ($id <= 0) {
+                    throw new Exception('Geçersiz evrak ID.');
+                }
+                $approval = $Model->approveWithWorkflow($id, $currentUserId, (string) ($_SERVER['REMOTE_ADDR'] ?? ''));
+                (new SystemLogModel())->logAction(
+                    $currentUserId,
+                    'Evrak E-İmza Onayı',
+                    "Evrak ID: {$id} elektronik imza ile onaylandı ({$approval['approved']}/{$approval['total']} imza).",
+                    SystemLogModel::LEVEL_IMPORTANT
+                );
+                $onayBildirim = new EvrakOnayBildirimService();
+                $onaylananEvrak = $Model->getById($id);
+                if ($approval['completed']) {
+                    $onayBildirim->onayTamamlandi($onaylananEvrak);
+                } else {
+                    $siradaki = $Model->getNextPendingSigner($id);
+                    if ($siradaki) {
+                        $onayBildirim->imzaSirasiGeldi($onaylananEvrak, (int) $siradaki->kullanici_id, (int) $siradaki->sira, (int) $approval['total']);
+                    }
+                }
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => $approval['completed']
+                        ? 'Tüm imzalar tamamlandı. Evrak elektronik onaylı olarak kilitlendi.'
+                        : 'Onayınız kaydedildi. Evrak diğer imzacıların onayını bekliyor.',
+                    'data' => $approval,
+                ], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'evrak-e-imza-iade':
+                $id = $decryptId($_POST['id'] ?? '');
+                if ($id <= 0) {
+                    throw new Exception('Geçersiz evrak ID.');
+                }
+                $iadeEdilenEvrak = $Model->getById($id);
+                if (!$iadeEdilenEvrak) {
+                    throw new Exception('Evrak bulunamadı.');
+                }
+                $iade = $Model->rejectApproval($id, $currentUserId, (string) ($_POST['gerekce'] ?? ''));
+                (new SystemLogModel())->logAction(
+                    $currentUserId,
+                    'Evrak E-İmza İadesi',
+                    "Evrak ID: {$id} imzalanmadan düzeltilmek üzere iade edildi. Gerekçe: " . $iade['gerekce'],
+                    SystemLogModel::LEVEL_IMPORTANT
+                );
+                (new EvrakOnayBildirimService())->evrakIadeEdildi(
+                    $iadeEdilenEvrak,
+                    (string) ($_SESSION['user_full_name'] ?? 'İmzacı'),
+                    $iade['gerekce']
+                );
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Evrak düzeltilmek üzere iade edildi. Evrakı hazırlayan kullanıcı bilgilendirildi.',
+                ], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'evrak-e-imza-geri-al':
+                $id = $decryptId($_POST['id'] ?? '');
+                if ($id <= 0) {
+                    throw new Exception('Geçersiz evrak ID.');
+                }
+                $Model->revokeApproval($id, $currentUserId);
+                (new SystemLogModel())->logAction(
+                    $currentUserId,
+                    'Evrak E-İmza Onayı Geri Alma',
+                    "Evrak ID: {$id} için elektronik imza onayı geri alındı, evrak taslak durumuna döndürüldü.",
+                    SystemLogModel::LEVEL_CRITICAL
+                );
+                echo json_encode([
+                    'status' => 'success',
+                    'message' => 'Onay geri alındı. Evrak yeniden düzenlenebilir durumda.',
+                ], JSON_UNESCAPED_UNICODE);
                 break;
 
             case 'evrak-detay':

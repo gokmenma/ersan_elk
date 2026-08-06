@@ -46,6 +46,15 @@ $settings = (object) $Settings->getAllSettingsAsKeyValue($_SESSION['firma_id'] ?
                                 </a>
                             </li>
                         <?php endif ?>
+                        <?php if (Gate::allows('evrak_bilgileri_sekmesi') || Gate::isSuperAdmin()): ?>
+                            <li class="nav-item" role="presentation">
+                                <a class="nav-link" data-bs-toggle="tab" href="#evrak_bilgileri" role="tab"
+                                    aria-selected="false">
+                                    <span class="d-block d-sm-none"><i class="far fa-file-alt"></i></span>
+                                    <span class="d-none d-sm-block">Evrak Bilgileri</span>
+                                </a>
+                            </li>
+                        <?php endif ?>
                         <?php if (Gate::allows('online_sorgulama_ayarlari_sekmesi')): ?>
                         <li class="nav-item" role="presentation">
                             <a class="nav-link" data-bs-toggle="tab" href="#cron_ayarlari" role="tab"
@@ -81,6 +90,11 @@ $settings = (object) $Settings->getAllSettingsAsKeyValue($_SESSION['firma_id'] ?
                         <div class="tab-pane active show" id="messages" role="tabpanel">
                             <?php if (Gate::allows('mail_sms_ayarlari_sekmesi')): ?>
                             <?php include_once "icerik/mail-sms-ayarlari.php"; ?>
+                            <?php endif ?>
+                        </div>
+                        <div class="tab-pane" id="evrak_bilgileri" role="tabpanel">
+                            <?php if (Gate::allows('evrak_bilgileri_sekmesi') || Gate::isSuperAdmin()): ?>
+                            <?php include_once "icerik/evrak-bilgileri.php"; ?>
                             <?php endif ?>
                         </div>
                         <div class="tab-pane" id="cron_ayarlari" role="tabpanel">

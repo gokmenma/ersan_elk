@@ -129,9 +129,35 @@ try {
         $evrak->ek_dosya_yollari = $ekDosyaYollari;
     }
 
+    $Settings = new \App\Model\SettingsModel();
+    $settings = $Settings->getAllSettingsAsKeyValue((int) $_SESSION['firma_id']);
+
     $firma = (new FirmaModel())->find((int) $_SESSION['firma_id']);
+
+    $evrak->evrak_antet_baslik_1 = trim((string) ($settings['evrak_antet_baslik_1'] ?? ''));
+    $evrak->evrak_antet_baslik_2 = trim((string) ($settings['evrak_antet_baslik_2'] ?? ''));
+    $evrak->evrak_antet_baslik_3 = trim((string) ($settings['evrak_antet_baslik_3'] ?? ''));
+    $evrak->evrak_antet_baslik_4 = trim((string) ($settings['evrak_antet_baslik_4'] ?? ''));
+
+    $evrak->evrak_alt_bilgi_1 = trim((string) ($settings['evrak_alt_bilgi_1'] ?? ''));
+    $evrak->evrak_alt_bilgi_2 = trim((string) ($settings['evrak_alt_bilgi_2'] ?? ''));
+    $evrak->evrak_alt_bilgi_3 = trim((string) ($settings['evrak_alt_bilgi_3'] ?? ''));
+    $evrak->evrak_alt_bilgi_4 = trim((string) ($settings['evrak_alt_bilgi_4'] ?? ''));
+
     $evrak->kurum_basligi = trim((string) ($firma->firma_unvan ?? '')) ?: trim((string) ($firma->firma_adi ?? ''));
     $evrak->firma_adres = (($firma->adres ?? '') === '0') ? '' : (string) ($firma->adres ?? '');
+    $firmaTel = (($firma->telefon ?? '') === '0') ? '' : trim((string) ($firma->telefon ?? ''));
+    $evrak->firma_telefon = $firmaTel;
+    $evrak->firma_web_sitesi = (($firma->web_sitesi ?? '') === '0') ? '' : trim((string) ($firma->web_sitesi ?? ''));
+    $evrak->firma_kep_adresi = (($firma->kep_adresi ?? '') === '0') ? '' : trim((string) ($firma->kep_adresi ?? ''));
+
+    $solLogo = (string) ($settings['sol_logo_yolu'] ?? $firma->logo_yolu ?? '');
+    $sagLogo = (string) ($settings['sag_logo_yolu'] ?? '');
+
+    $evrak->logo_path = $solLogo !== '' ? dirname(__DIR__, 2) . '/' . ltrim($solLogo, '/') : '';
+    $evrak->sol_logo_path = $solLogo !== '' ? dirname(__DIR__, 2) . '/' . ltrim($solLogo, '/') : '';
+    $evrak->sag_logo_path = $sagLogo !== '' ? dirname(__DIR__, 2) . '/' . ltrim($sagLogo, '/') : '';
+
     $signingUsers = $model->getSigningUsersByIds($signerIds);
     $userMap = [];
     foreach ($signingUsers as $u) {

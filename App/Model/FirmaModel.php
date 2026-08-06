@@ -78,6 +78,8 @@ class FirmaModel extends Model
         $out['vergi_no'] = (string) ($data['vergi_no'] ?? '');
         $out['vergi_dairesi'] = (string) ($data['vergi_dairesi'] ?? '');
         $out['telefon'] = (string) ($data['telefon'] ?? '');
+        $out['web_sitesi'] = (string) ($data['web_sitesi'] ?? '');
+        $out['kep_adresi'] = (string) ($data['kep_adresi'] ?? '');
         $out['adres'] = (string) ($data['adres'] ?? '');
         $out['vergi_dairesi_no'] = (string) ($data['vergi_dairesi_no'] ?? '');
         $out['mersis_no'] = (string) ($data['mersis_no'] ?? '');

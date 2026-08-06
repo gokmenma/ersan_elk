@@ -19,7 +19,7 @@ use App\Helper\Date;
 
 header('Content-Type: application/json; charset=utf-8');
 
-if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array($_GET['action'], ['get-arac-puantaj-table', 'get-arac-ozel-puantaj', 'arac-performans', 'arac-excel-aktar', 'get-arac-analiz', 'arac-karsilastirma', 'get-km-onay-yapmayanlar', 'get-yakit-personelleri']))) {
+if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array($_GET['action'], ['get-arac-puantaj-table', 'get-arac-ozel-puantaj', 'arac-performans', 'arac-excel-aktar', 'get-arac-analiz', 'arac-karsilastirma', 'get-km-onay-yapmayanlar', 'get-yakit-personelleri', 'get-mobile-km-onaylari']))) {
     $action = $_POST['action'] ?? $_GET['action'] ?? '';
 
     $Arac = new AracModel();
@@ -3672,6 +3672,28 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                     "recordsTotal" => intval($res['recordsTotal']),
                     "recordsFiltered" => intval($res['recordsFiltered']),
                     "data" => $data
+                ]);
+                break;
+
+            case 'get-mobile-km-onaylari':
+                $status = $_POST['status'] ?? $_GET['show'] ?? $_POST['show'] ?? 'pending';
+                $page = (int)($_POST['page'] ?? $_GET['page'] ?? 1);
+                $perPage = (int)($_POST['perPage'] ?? $_GET['perPage'] ?? 15);
+                $search = trim($_POST['search'] ?? $_GET['search'] ?? '');
+
+                $counts = $KmBildirim->getReportCounts();
+                $result = $KmBildirim->getMobilePaginatedReports($status, $page, $perPage, $search);
+
+                echo json_encode([
+                    'status' => 'success',
+                    'counts' => $counts,
+                    'pagination' => [
+                        'page' => $result['page'],
+                        'perPage' => $result['perPage'],
+                        'total' => $result['total'],
+                        'totalPages' => $result['totalPages']
+                    ],
+                    'reports' => $result['data']
                 ]);
                 break;
 

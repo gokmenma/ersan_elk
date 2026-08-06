@@ -643,6 +643,100 @@ $(document).ready(function () {
     });
   });
 
+  $(document).on("click", ".evrak-e-imza-onayla", function () {
+    const id = $(this).data("id");
+    Swal.fire({
+        title: 'E-İmza ile Onayla',
+        html: "Evrakı elektronik imza ile onaylıyorsunuz.<br><b>Tüm imzacılar onayladığında evrak elektronik imzalı hâle gelir ve içeriği bir daha değiştirilemez.</b>",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonColor: '#22c55e',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Evet, Onayla',
+        cancelButtonText: 'Vazgeç'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.post(api_url, { action: "evrak-e-imza-onayla", id: id }, function (response) {
+                if (response.status === "success") {
+                    Swal.fire('Onaylandı!', response.message, 'success').then(() => location.reload());
+                } else {
+                    Swal.fire('Hata!', response.message, 'error');
+                }
+            }).fail(() => Swal.fire('Hata!', "Sunucu ile iletişim kurulamadı.", 'error'));
+        }
+    });
+  });
+
+  $(document).on("click", ".evrak-e-imza-geri-al", function () {
+    const id = $(this).data("id");
+    Swal.fire({
+        title: 'Evrakı Üzerime Geri Al',
+        html: "Elektronik imza süreci iptal edilecek ve evrak <b>taslak</b> durumuna dönecek.<br>Alınmış tüm imzalar sıfırlanır ve işlem kayıt altına alınır.",
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonColor: '#0ea5e9',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'Evet, Geri Al',
+        cancelButtonText: 'Vazgeç'
+    }).then((result) => {
+        if (result.isConfirmed) {
+            $.post(api_url, { action: "evrak-e-imza-geri-al", id: id }, function (response) {
+                if (response.status === "success") {
+                    Swal.fire('Geri Alındı!', response.message, 'success').then(() => location.reload());
+                } else {
+                    Swal.fire('Hata!', response.message, 'error');
+                }
+            }).fail(() => Swal.fire('Hata!', "Sunucu ile iletişim kurulamadı.", 'error'));
+        }
+    });
+  });
+
+  $(document).on("click", ".evrak-e-imza-iade", function () {
+    const button = $(this);
+    Swal.fire({
+        title: 'Düzeltilmek Üzere İade Et',
+        html: "Evrak imzalanmadan <b>taslak</b> durumuna döndürülecek ve gerekçe evrakı hazırlayan kullanıcıya bildirilecek.",
+        input: 'textarea',
+        inputLabel: 'İade gerekçesi',
+        inputPlaceholder: 'Örnek: İlgi bölümündeki esas numarası hatalı, düzeltilip yeniden gönderilmeli.',
+        inputAttributes: { maxlength: 2000, rows: 4 },
+        showCancelButton: true,
+        confirmButtonColor: '#f43f5e',
+        cancelButtonColor: '#64748b',
+        confirmButtonText: 'İade Et',
+        cancelButtonText: 'Vazgeç',
+        inputValidator: value => (!value || value.trim().length < 5) ? 'Gerekçeyi en az 5 karakter olacak şekilde yazınız.' : undefined
+    }).then((result) => {
+        if (!result.isConfirmed) return;
+        $.post(api_url, { action: "evrak-e-imza-iade", id: button.data("id"), gerekce: result.value }, function (response) {
+            if (response.status === "success") {
+                Swal.fire('İade Edildi', response.message, 'success').then(() => location.reload());
+            } else {
+                Swal.fire('Hata!', response.message, 'error');
+            }
+        }).fail(() => Swal.fire('Hata!', "Sunucu ile iletişim kurulamadı.", 'error'));
+    });
+  });
+
+  let imzaFiltresiAktif = false;
+  $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+    if (!imzaFiltresiAktif || settings.nTable.id !== "evrakTable") return true;
+    return $(settings.aoData[dataIndex].nTr).attr("data-imza-bekliyor") === "1";
+  });
+
+  $("#btnImzaFiltre").on("click", function () {
+    imzaFiltresiAktif = !imzaFiltresiAktif;
+    $(this)
+      .toggleClass("btn-warning btn-outline-dark")
+      .html(imzaFiltresiAktif
+        ? '<i data-feather="x" class="icon-xs me-1"></i> Filtreyi Kaldır'
+        : '<i data-feather="filter" class="icon-xs me-1"></i> Sadece Bunları Göster');
+    if ($.fn.DataTable.isDataTable("#evrakTable")) {
+      $("#evrakTable").DataTable().draw();
+    }
+    if (typeof feather !== "undefined") feather.replace();
+  });
+
   function showPdfFromRequest(request) {
     clearPdfObjectUrl();
     $("#evrakPdfLoader").removeClass("d-none");

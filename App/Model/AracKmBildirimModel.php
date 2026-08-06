@@ -505,4 +505,135 @@ class AracKmBildirimModel extends Model
             "data" => $dataRows
         ];
     }
+
+    /**
+     * Mobil ve özet ekranlar için durum sayılarını hafif SQL ile getirir.
+     */
+    public function getReportCounts()
+    {
+        $sql = $this->db->prepare("
+            SELECT durum, COUNT(*) as count 
+            FROM {$this->table}
+            WHERE firma_id = :firma_id AND silinme_tarihi IS NULL
+            GROUP BY durum
+        ");
+        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
+        $results = $sql->fetchAll(PDO::FETCH_KEY_PAIR);
+        
+        $today = date('Y-m-d');
+        $unreported = $this->getUnreported($today, 'sabah');
+
+        return [
+            'pending' => intval($results['beklemede'] ?? 0),
+            'approved' => intval($results['onaylandi'] ?? 0),
+            'rejected' => intval($results['reddedildi'] ?? 0),
+            'unreported' => count($unreported)
+        ];
+    }
+
+    /**
+     * Mobil KM Onayları için server-side sayfalanmış verileri getirir
+     */
+    public function getMobilePaginatedReports($status = 'pending', $page = 1, $perPage = 15, $search = '')
+    {
+        $page = max(1, (int)$page);
+        $perPage = max(1, min(100, (int)$perPage));
+        $offset = ($page - 1) * $perPage;
+        $search = trim($search);
+
+        if ($status === 'unreported') {
+            $today = date('Y-m-d');
+            $allUnreported = $this->getUnreported($today, 'sabah');
+            
+            if ($search !== '') {
+                $searchLower = mb_strtolower($search, 'UTF-8');
+                $allUnreported = array_values(array_filter($allUnreported, function($item) use ($searchLower) {
+                    return mb_strpos(mb_strtolower($item->personel_adi, 'UTF-8'), $searchLower) !== false
+                        || mb_strpos(mb_strtolower($item->plaka, 'UTF-8'), $searchLower) !== false;
+                }));
+            }
+
+            $total = count($allUnreported);
+            $pagedItems = array_slice($allUnreported, $offset, $perPage);
+            
+            return [
+                'data' => $pagedItems,
+                'total' => $total,
+                'page' => $page,
+                'perPage' => $perPage,
+                'totalPages' => $total > 0 ? (int)ceil($total / $perPage) : 1
+            ];
+        }
+
+        // Standard status values: pending (beklemede), approved (onaylandi), rejected (reddedildi)
+        $dbStatus = 'beklemede';
+        if ($status === 'approved' || $status === 'onaylandi') {
+            $dbStatus = 'onaylandi';
+        } elseif ($status === 'rejected' || $status === 'reddedildi') {
+            $dbStatus = 'reddedildi';
+        }
+
+        $whereSql = "WHERE akb.firma_id = :firma_id AND akb.durum = :status AND akb.silinme_tarihi IS NULL";
+        $params = [
+            'firma_id' => $_SESSION['firma_id'],
+            'status' => $dbStatus
+        ];
+
+        if ($search !== '') {
+            $whereSql .= " AND (
+                p.adi_soyadi LIKE :search 
+                OR a.plaka LIKE :search 
+                OR a.marka LIKE :search 
+                OR a.model LIKE :search
+                OR akb.aciklama LIKE :search
+            )";
+            $params['search'] = '%' . $search . '%';
+        }
+
+        // Count total matching
+        $countSql = "
+            SELECT COUNT(*) 
+            FROM {$this->table} akb
+            INNER JOIN araclar a ON akb.arac_id = a.id
+            INNER JOIN personel p ON akb.personel_id = p.id
+            {$whereSql}
+        ";
+        $countStmt = $this->db->prepare($countSql);
+        $countStmt->execute($params);
+        $total = (int)$countStmt->fetchColumn();
+
+        // Fetch paginated data
+        $dataSql = "
+            SELECT akb.*, 
+                   a.plaka, a.marka, a.model,
+                   p.adi_soyadi as personel_adi, p.resim_yolu as personel_resim,
+                   u.adi_soyadi as onaylayan_adi,
+                   (SELECT COALESCE(b2.onaylanan_km, b2.bitis_km) FROM {$this->table} b2 
+                    WHERE b2.arac_id = akb.arac_id 
+                    AND b2.tarih = akb.tarih 
+                    AND b2.tur = 'sabah' 
+                    AND b2.durum != 'reddedildi' 
+                    LIMIT 1) as sabah_km
+            FROM {$this->table} akb
+            INNER JOIN araclar a ON akb.arac_id = a.id
+            INNER JOIN personel p ON akb.personel_id = p.id
+            LEFT JOIN users u ON akb.onaylayan_id = u.id
+            {$whereSql}
+            ORDER BY akb.tarih DESC, akb.olusturma_tarihi DESC, akb.id DESC
+            LIMIT {$offset}, {$perPage}
+        ";
+        
+        $dataStmt = $this->db->prepare($dataSql);
+        $dataStmt->execute($params);
+        $items = $dataStmt->fetchAll(PDO::FETCH_OBJ);
+
+        return [
+            'data' => $items,
+            'total' => $total,
+            'page' => $page,
+            'perPage' => $perPage,
+            'totalPages' => $total > 0 ? (int)ceil($total / $perPage) : 1
+        ];
+    }
 }
+

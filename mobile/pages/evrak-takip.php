@@ -8,6 +8,16 @@ $Personel = new PersonelModel();
 $stats = $Evrak->getStats();
 $evraklar = $Evrak->all();
 
+$currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
+$Evrak->ensureApprovalRowsForDrafts();
+$onayMap = $Evrak->getApprovalSummaryMap($currentUserId);
+$imzamiBekleyenSayisi = 0;
+foreach ($evraklar as $evrakSayim) {
+    if (($evrakSayim->onay_durumu ?? 'taslak') === 'onay_bekliyor' && !empty($onayMap[(int) $evrakSayim->id]['sira_bende'])) {
+        $imzamiBekleyenSayisi++;
+    }
+}
+
 // Format helper
 if (!function_exists('formatDateEvrak')) {
     function formatDateEvrak($dateStr) {
@@ -57,6 +67,14 @@ if (!function_exists('formatDateEvrak')) {
                     <span class="text-[9px] uppercase font-bold tracking-wider opacity-90 truncate">Bekleyen</span>
                 </div>
             </button>
+            <?php if ($imzamiBekleyenSayisi > 0): ?>
+            <button onclick="filterType('imzam')" class="flex-1 min-w-[65px] text-center filter-btn" data-type="imzam">
+                <div class="bg-amber-400/90 rounded-xl px-2 py-2 backdrop-blur-sm border border-white/20 shadow-sm transition-all text-white">
+                    <span class="block text-lg font-black leading-tight"><?= $imzamiBekleyenSayisi ?></span>
+                    <span class="text-[9px] uppercase font-bold tracking-wider opacity-90 truncate">İmzamda</span>
+                </div>
+            </button>
+            <?php endif; ?>
         </div>
     </div>
 </header>
@@ -78,7 +96,16 @@ if (!function_exists('formatDateEvrak')) {
             $typeLabel = $isGelen ? 'Gelen' : 'Giden';
             
             $searchTags = mb_strtolower($evrak->evrak_no . ' ' . $evrak->konu . ' ' . $evrak->kurum_adi . ' ' . $evrak->personel_adi . ' ' . $evrak->ilgili_personel_adi, 'UTF-8');
-            $filterTags = $evrak->evrak_tipi . ($isBekleyen ? ' bekleyen' : '');
+
+            $encId = \App\Helper\Security::encrypt($evrak->id);
+            $onayDurumu = $evrak->onay_durumu ?? 'taslak';
+            $onayBilgisi = $onayMap[(int) $evrak->id] ?? ['toplam' => 0, 'onaylanan' => 0, 'sira_bende' => false, 'siradaki_kisi' => ''];
+            $kilitli = !$isGelen && $onayDurumu !== 'taslak';
+            $siraBende = $onayDurumu === 'onay_bekliyor' && !empty($onayBilgisi['sira_bende']);
+            $onayaSunulabilir = !$isGelen && $onayDurumu === 'taslak' && ($onayBilgisi['toplam'] ?? 0) > 0;
+            $geriAlinabilir = $kilitli && $Evrak->canRevokeApproval($evrak, $currentUserId);
+
+            $filterTags = $evrak->evrak_tipi . ($isBekleyen ? ' bekleyen' : '') . ($siraBende ? ' imzam' : '');
         ?>
         <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm border border-slate-100 dark:border-slate-800 p-4 relative overflow-hidden evrak-card" 
              data-search="<?= htmlspecialchars($searchTags) ?>"
@@ -101,6 +128,12 @@ if (!function_exists('formatDateEvrak')) {
                 </div>
                 <?php if ($isBekleyen): ?>
                     <span class="bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 text-[9px] px-2 py-1 rounded-lg font-black uppercase shrink-0">Bekliyor</span>
+                <?php elseif ($onayDurumu === 'onaylandi'): ?>
+                    <span class="bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400 text-[9px] px-2 py-1 rounded-lg font-black uppercase shrink-0">E-İmzalı</span>
+                <?php elseif ($onayDurumu === 'onay_bekliyor'): ?>
+                    <span class="<?= $siraBende ? 'bg-amber-400 text-white' : 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' ?> text-[9px] px-2 py-1 rounded-lg font-black uppercase shrink-0">
+                        <?= $siraBende ? 'İmzanızda' : 'Onayda' ?> <?= (int) $onayBilgisi['onaylanan'] ?>/<?= (int) $onayBilgisi['toplam'] ?>
+                    </span>
                 <?php endif; ?>
             </div>
 
@@ -135,12 +168,36 @@ if (!function_exists('formatDateEvrak')) {
                 </div>
                 
                 <div class="flex gap-2">
-                    <button onclick="event.stopPropagation(); editEvrak(<?= $evrak->id ?>)" class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 flex items-center justify-center active:scale-90 transition-transform">
-                        <span class="material-symbols-outlined text-base">edit</span>
-                    </button>
-                    <button onclick="event.stopPropagation(); deleteEvrak(<?= $evrak->id ?>)" class="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 flex items-center justify-center active:scale-90 transition-transform">
-                        <span class="material-symbols-outlined text-base">delete</span>
-                    </button>
+                    <?php if ($siraBende): ?>
+                        <button onclick="event.stopPropagation(); eImzaOnayla('<?= htmlspecialchars($encId, ENT_QUOTES, 'UTF-8') ?>')" class="h-8 px-2 rounded-lg bg-emerald-50 dark:bg-emerald-900/20 text-emerald-600 flex items-center gap-1 text-[11px] font-bold active:scale-90 transition-transform">
+                            <span class="material-symbols-outlined text-base">verified</span> İmzala
+                        </button>
+                        <button onclick="event.stopPropagation(); eImzaIade('<?= htmlspecialchars($encId, ENT_QUOTES, 'UTF-8') ?>')" class="w-8 h-8 rounded-lg bg-amber-50 dark:bg-amber-900/20 text-amber-600 flex items-center justify-center active:scale-90 transition-transform" title="İade et">
+                            <span class="material-symbols-outlined text-base">undo</span>
+                        </button>
+                    <?php endif; ?>
+                    <?php if ($onayaSunulabilir): ?>
+                        <button onclick="event.stopPropagation(); eImzaOnayaSun('<?= htmlspecialchars($encId, ENT_QUOTES, 'UTF-8') ?>')" class="h-8 px-2 rounded-lg bg-sky-50 dark:bg-sky-900/20 text-sky-600 flex items-center gap-1 text-[11px] font-bold active:scale-90 transition-transform">
+                            <span class="material-symbols-outlined text-base">send</span> Onaya Sun
+                        </button>
+                    <?php endif; ?>
+                    <?php if ($geriAlinabilir): ?>
+                        <button onclick="event.stopPropagation(); eImzaGeriAl('<?= htmlspecialchars($encId, ENT_QUOTES, 'UTF-8') ?>')" class="w-8 h-8 rounded-lg bg-sky-50 dark:bg-sky-900/20 text-sky-600 flex items-center justify-center active:scale-90 transition-transform" title="Üzerime geri al">
+                            <span class="material-symbols-outlined text-base">restart_alt</span>
+                        </button>
+                    <?php endif; ?>
+                    <?php if (!$kilitli): ?>
+                        <button onclick="event.stopPropagation(); editEvrak('<?= htmlspecialchars($encId, ENT_QUOTES, 'UTF-8') ?>')" class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 flex items-center justify-center active:scale-90 transition-transform">
+                            <span class="material-symbols-outlined text-base">edit</span>
+                        </button>
+                        <button onclick="event.stopPropagation(); deleteEvrak('<?= htmlspecialchars($encId, ENT_QUOTES, 'UTF-8') ?>')" class="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 flex items-center justify-center active:scale-90 transition-transform">
+                            <span class="material-symbols-outlined text-base">delete</span>
+                        </button>
+                    <?php else: ?>
+                        <span class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-400 flex items-center justify-center" title="Onay sürecindeki evrak düzenlenemez">
+                            <span class="material-symbols-outlined text-base">lock</span>
+                        </span>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>
@@ -429,6 +486,83 @@ function previewFile(url) {
         <span>Dosya Önizleme</span>
     `;
     openSheet('preview');
+}
+
+function eImzaIstek(action, id, extra, basarilarMesaji) {
+    MobileSwal.fire({
+        title: 'İşleniyor...',
+        allowOutsideClick: false,
+        showConfirmButton: false,
+        didOpen: () => Swal.showLoading()
+    });
+    $.post('../views/evrak-takip/api.php', Object.assign({ action: action, id: id }, extra || {}), function(response) {
+        const res = (typeof response === 'object') ? response : JSON.parse(response);
+        MobileSwal.close();
+        if (res.status === 'success') {
+            MobileSwal.fire(basarilarMesaji, res.message, 'success').then(() => window.location.reload());
+        } else {
+            MobileSwal.fire('Hata', res.message || 'İşlem tamamlanamadı.', 'error');
+        }
+    }).fail(() => {
+        MobileSwal.close();
+        MobileSwal.fire('Hata', 'Sunucu ile iletişim kurulamadı.', 'error');
+    });
+}
+
+function eImzaOnayaSun(id) {
+    MobileSwal.fire({
+        title: 'E-İmza ile Onaya Sun',
+        html: 'Evrak imzacıların onayına sunulacak.<br>İmza sırasında ilk sırada siz varsanız imzanız otomatik atılır.<br><b>Süreç tamamlanana kadar içeriği değiştirilemez.</b>',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Onaya Sun',
+        cancelButtonText: 'Vazgeç'
+    }).then(res => {
+        if (res.isConfirmed) eImzaIstek('evrak-e-imza-onaya-sun', id, null, 'Onaya Sunuldu');
+    });
+}
+
+function eImzaOnayla(id) {
+    MobileSwal.fire({
+        title: 'E-İmza ile Onayla',
+        html: 'Evrakı elektronik imza ile onaylıyorsunuz.<br><b>Tüm imzacılar onayladığında evrak kilitlenir.</b>',
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Evet, Onayla',
+        cancelButtonText: 'Vazgeç'
+    }).then(res => {
+        if (res.isConfirmed) eImzaIstek('evrak-e-imza-onayla', id, null, 'Onaylandı');
+    });
+}
+
+function eImzaIade(id) {
+    MobileSwal.fire({
+        title: 'Düzeltilmek Üzere İade Et',
+        html: 'Evrak imzalanmadan taslağa döndürülecek ve gerekçe hazırlayana bildirilecek.',
+        input: 'textarea',
+        inputLabel: 'İade gerekçesi',
+        inputPlaceholder: 'Gerekçeyi yazınız...',
+        inputAttributes: { maxlength: 2000, rows: 4 },
+        showCancelButton: true,
+        confirmButtonText: 'İade Et',
+        cancelButtonText: 'Vazgeç',
+        inputValidator: value => (!value || value.trim().length < 5) ? 'Gerekçeyi en az 5 karakter olacak şekilde yazınız.' : undefined
+    }).then(res => {
+        if (res.isConfirmed) eImzaIstek('evrak-e-imza-iade', id, { gerekce: res.value }, 'İade Edildi');
+    });
+}
+
+function eImzaGeriAl(id) {
+    MobileSwal.fire({
+        title: 'Evrakı Üzerime Geri Al',
+        html: 'İmza süreci iptal edilecek ve evrak <b>taslak</b> durumuna dönecek.',
+        icon: 'warning',
+        showCancelButton: true,
+        confirmButtonText: 'Evet, Geri Al',
+        cancelButtonText: 'Vazgeç'
+    }).then(res => {
+        if (res.isConfirmed) eImzaIstek('evrak-e-imza-geri-al', id, null, 'Geri Alındı');
+    });
 }
 
 function deleteEvrak(id) {

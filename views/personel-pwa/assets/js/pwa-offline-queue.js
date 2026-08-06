@@ -154,7 +154,7 @@
         });
     }
 
-    function guncelle(uuid, alanlar, yeniDosyalar, yeniOzet) {
+    function guncelle(uuid, alanlar, yeniDosyalar, yeniOzet, ekDosyalar) {
         return oku(uuid).then(function (kayit) {
             if (!kayit) return null;
             if (alanlar) {
@@ -164,6 +164,13 @@
             }
             if (yeniDosyalar && yeniDosyalar.length > 0) {
                 kayit.dosyalar = yeniDosyalar;
+            }
+            // Düzenlemede eklenen fotoğraflar sıranın sonuna yazılır; gönderilmiş
+            // olanların sırası kaymadığı için sunucu mükerreri ayırt edebilir.
+            if (ekDosyalar && ekDosyalar.length > 0) {
+                kayit.ekDosyalar = (kayit.ekDosyalar || []).concat(ekDosyalar);
+                kayit.alanlar.beklenen_foto_sayisi =
+                    (kayit.dosyalar || []).length + kayit.ekDosyalar.length;
             }
             if (yeniOzet) {
                 kayit.ozet = kayit.ozet || {};

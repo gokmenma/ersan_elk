@@ -388,12 +388,20 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
         }
 
         function listeyiCiz() {
-            const liste = aktifFiltre === 'all'
-                ? kacakKayitlar
-                : kacakKayitlar.filter(k => k.onay_durumu === aktifFiltre);
-
             // Henüz sunucuya ulaşmamış kayıtlar en üstte, sadece ilgili sekmelerde.
             const kuyruk = (aktifFiltre === 'all' || aktifFiltre === 'beklemede') ? bekleyenKayitlar : [];
+
+            // Tutanak sunucuya ulaşıp fotoğrafları yüklenmeye devam eden kayıt hem
+            // kuyrukta hem sunucu listesinde bulunur; aynı tutanak iki kart olarak
+            // görünmesin diye sunucu kartı kuyruk kartı durana kadar gizlenir.
+            const kuyruktakiUuidler = new Set(
+                kuyruk.map(k => (k.alanlar && k.alanlar.client_uuid) || k.uuid).filter(Boolean)
+            );
+
+            const liste = (aktifFiltre === 'all'
+                ? kacakKayitlar
+                : kacakKayitlar.filter(k => k.onay_durumu === aktifFiltre)
+            ).filter(k => !k.client_uuid || !kuyruktakiUuidler.has(k.client_uuid));
 
             const el = document.getElementById('kacak-list');
             el.innerHTML = (liste.length === 0 && kuyruk.length === 0)
@@ -1175,17 +1183,27 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
 
                     const mevcuttan = bekleyenKayitlar.find(x => x.uuid === kacakKuyrukEditUuid);
                     const eskiEkAdet = mevcuttan ? (mevcuttan.ekDosyalar || []).length : 0;
+
+                    // Düzenleme sırasında seçilen saha fotoğrafları kuyruğa eklenmezse
+                    // beklenen sayı artar ama fotoğraf hiç gitmez; sıraya yazılır.
+                    const yeniEkDosyalar = [];
+                    for (const dosya of sahaDosyalari) {
+                        const kucuk = await OfflineQueue.fotografKucult(dosya, 1600, 0.7);
+                        yeniEkDosyalar.push({ ad: kucuk.ad, tip: kucuk.tip, blob: kucuk.blob });
+                    }
+
+                    const anaAdet = yeniDosyalar ? yeniDosyalar.length : (mevcuttan ? (mevcuttan.dosyalar || []).length : 1);
                     const ozet = {
                         tur: alanlar.tur,
                         ilce: alanlar.ilce,
                         tutanak_no: alanlar.tutanak_no,
                         abone_adi: alanlar.abone_adi,
                         tarih_formatted: (alanlar.tarih || '').split('-').reverse().join('.'),
-                        foto_sayisi: (yeniDosyalar ? yeniDosyalar.length : (mevcuttan ? (mevcuttan.dosyalar || []).length : 1)) + (sahaDosyalari.length || eskiEkAdet),
+                        foto_sayisi: anaAdet + eskiEkAdet + yeniEkDosyalar.length,
                     };
 
                     btnText.textContent = 'GÜNCELLENİYOR...';
-                    await OfflineQueue.guncelle(kacakKuyrukEditUuid, alanlar, yeniDosyalar, ozet);
+                    await OfflineQueue.guncelle(kacakKuyrukEditUuid, alanlar, yeniDosyalar, ozet, yeniEkDosyalar);
 
                     Modal.close('kacak-bildir-modal');
                     kacakKuyrukEditUuid = null;

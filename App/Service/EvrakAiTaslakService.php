@@ -7,6 +7,43 @@ use Exception;
 
 final class EvrakAiTaslakService
 {
+    public function reviseSelection(string $selectedText, string $instruction, string $documentContext = ''): string
+    {
+        $selectedText = trim($selectedText);
+        $instruction = trim($instruction);
+        if ($selectedText === '') {
+            throw new Exception('Düzenlenecek metni seçiniz.');
+        }
+        if ($instruction === '') {
+            throw new Exception('Seçili metnin nasıl düzenleneceğini yazınız.');
+        }
+        if (mb_strlen($selectedText, 'UTF-8') > 12000 || mb_strlen($instruction, 'UTF-8') > 2000) {
+            throw new Exception('Seçili metin veya düzenleme talimatı çok uzun.');
+        }
+
+        $okuyucu = new AiBelgeOkuyucuService();
+        [$apiKey, $model] = $okuyucu->ayarlar();
+        $context = mb_substr(trim(strip_tags($documentContext)), 0, 20000, 'UTF-8');
+        $prompt = "Aşağıdaki seçili resmî yazı bölümünü kullanıcının talimatına göre yeniden düzenle. "
+            . "Yalnızca seçili bölümün yerine konulacak metni üret. Kişi ve kurum adlarını, tarihleri, tutarları, esas ve dosya numaralarını kullanıcı açıkça istemedikçe değiştirme veya uydurma. "
+            . "Metni resmî, akademik, hukuki, açık ve dil bilgisi bakımından doğru hâle getir; belgenin genel bağlamıyla anlam bağlantısını koru. "
+            . "HTML çıktısında yalnızca p, br, strong, b, em, i, u, ul, ol ve li etiketlerini kullan. {\"duzenlenmis_html\":\"...\"} biçiminde JSON döndür.\n\n"
+            . "Kullanıcı talimatı:\n{$instruction}\n\nSeçili metin:\n{$selectedText}"
+            . ($context !== '' ? "\n\nBelgenin genel bağlamı:\n{$context}" : '');
+        $result = $okuyucu->jsonIste(
+            $apiKey,
+            $model,
+            'Sen resmî, akademik ve hukuki Türkçe metinleri düzenleyen uzman bir yazışma editörüsün. Verilen olguları değiştirmez ve yalnızca geçerli JSON üretirsin.',
+            [['type' => 'text', 'text' => $prompt]],
+            0.15
+        );
+        $html = RichTextSanitizer::sanitize((string) ($result['duzenlenmis_html'] ?? ''));
+        if (trim(strip_tags($html)) === '') {
+            throw new Exception('Yapay zekâ düzenlenmiş bir metin döndürmedi.');
+        }
+        return $html;
+    }
+
     public function create(array $file, string $instruction): array
     {
         $instruction = trim($instruction);

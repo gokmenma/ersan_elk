@@ -25,16 +25,86 @@ final class EvrakPdfService
         $signers = array_slice((array) ($data['imza_kisileri'] ?? []), 0, 3);
         $fontChoice = ($data['yazi_tipi'] ?? 'times_new_roman') === 'arial' ? 'arial' : 'timesnewroman';
         $fontSize = $fontChoice === 'arial' ? 11 : 12;
-        $logoPath = (string) ($data['logo_path'] ?? '');
-        $logo = $logoPath !== '' && is_file($logoPath)
-            ? '<img src="' . $escape($logoPath) . '" style="width:22mm;height:22mm;object-fit:contain">'
-            : '';
 
-        $contactParts = array_values(array_filter([
-            trim((string) ($data['firma_adres'] ?? '')),
-            trim((string) ($data['firma_telefon'] ?? '')) !== '' ? 'Tel: ' . trim((string) $data['firma_telefon']) : '',
-        ]));
-        $contact = implode(' &nbsp; | &nbsp; ', array_map($escape, $contactParts));
+        $renderLogoHtml = function (?string $path) use ($escape): string {
+            if ($path === null || $path === '' || !is_file($path)) {
+                return '&nbsp;';
+            }
+            $imageInfo = @getimagesize($path);
+            if ($imageInfo !== false && !empty($imageInfo[0]) && !empty($imageInfo[1])) {
+                $origW = (float) $imageInfo[0];
+                $origH = (float) $imageInfo[1];
+                $maxW = 45.0; // mm (25% of 180mm printable width)
+                $maxH = 20.0; // mm (max header height)
+
+                $ratio = min($maxW / $origW, $maxH / $origH);
+                $calcW = round($origW * $ratio, 2);
+                $calcH = round($origH * $ratio, 2);
+
+                return '<img src="' . $escape($path) . '" style="width:' . $calcW . 'mm;height:' . $calcH . 'mm;">';
+            }
+            return '<img src="' . $escape($path) . '" style="max-height:20mm;max-width:45mm;">';
+        };
+
+        $solLogoPath = (string) ($data['sol_logo_path'] ?? $data['logo_path'] ?? '');
+        $sagLogoPath = (string) ($data['sag_logo_path'] ?? '');
+
+        $solLogoHtml = $renderLogoHtml($solLogoPath);
+        $sagLogoHtml = $renderLogoHtml($sagLogoPath);
+
+        $hasAntetSettings = isset($data['evrak_antet_baslik_1']) || isset($data['evrak_antet_baslik_2']) || isset($data['evrak_antet_baslik_3']) || isset($data['evrak_antet_baslik_4']);
+
+        $headerLines = [];
+        if ($hasAntetSettings) {
+            for ($i = 1; $i <= 4; $i++) {
+                $line = trim((string) ($data["evrak_antet_baslik_{$i}"] ?? ''));
+                $headerLines[] = '<div>' . ($line !== '' ? $escape($line) : '&nbsp;') . '</div>';
+            }
+        } else {
+            $organization = trim((string) ($data['kurum_basligi'] ?? $data['firma_unvan'] ?? $data['firma_adi'] ?? ''));
+            if ($organization !== '') {
+                $headerLines[] = '<div>' . $escape($organization) . '</div>';
+                $headerLines[] = '<div>&nbsp;</div>';
+                $headerLines[] = '<div>&nbsp;</div>';
+                $headerLines[] = '<div>&nbsp;</div>';
+            }
+        }
+        $headingHtml = implode('', $headerLines);
+
+        $footerCustomLines = [];
+        for ($i = 1; $i <= 4; $i++) {
+            $line = trim((string) ($data["evrak_alt_bilgi_{$i}"] ?? ''));
+            if ($line !== '') {
+                $footerCustomLines[] = '<div>' . $escape($line) . '</div>';
+            }
+        }
+
+        if (!empty($footerCustomLines)) {
+            $contact = implode('', $footerCustomLines);
+        } else {
+            $address = trim((string) ($data['firma_adres'] ?? ''));
+            $phone = trim((string) ($data['firma_telefon'] ?? ''));
+            $website = trim((string) ($data['firma_web_sitesi'] ?? ''));
+            $kepAddress = trim((string) ($data['firma_kep_adresi'] ?? ''));
+            $contactLines = [];
+            if ($address !== '' || $phone !== '') {
+                $firstLine = [];
+                if ($address !== '') {
+                    $firstLine[] = $escape($address);
+                }
+                if ($phone !== '') {
+                    $firstLine[] = 'Tel: ' . $escape($phone);
+                }
+                $contactLines[] = implode(' &nbsp; | &nbsp; ', $firstLine);
+            }
+            if ($website !== '') {
+                $contactLines[] = '<strong>Web:</strong> ' . $escape($website);
+            }
+            if ($kepAddress !== '') {
+                $contactLines[] = '<strong>KEP:</strong> ' . $escape($kepAddress);
+            }
+            $contact = implode('<br>', $contactLines);
+        }
 
         $recipientLines = ['<div>' . $escape($recipient) . '</div>'];
         if (!empty($data['muhatap_alt_birim'])) {
@@ -51,7 +121,8 @@ final class EvrakPdfService
             $interestRows = '';
             foreach ($interests as $index => $interest) {
                 $prefix = chr(ord('a') + $index) . ')&nbsp;';
-                $interestRows .= '<div style="margin-bottom:1mm;"><span class="interest-prefix">' . $prefix . '</span>' . $escape($interest) . '</div>';
+                $mb = ($index < count($interests) - 1) ? 'margin-bottom:1mm;' : '';
+                $interestRows .= '<div style="' . $mb . '"><span class="interest-prefix">' . $prefix . '</span>' . $escape($interest) . '</div>';
             }
             $interestHtml = '<table class="interest"><tr><td class="section-label">İlgi</td><td class="separator">:</td><td>' . $interestRows . '</td></tr></table>';
         }
@@ -76,27 +147,37 @@ final class EvrakPdfService
               (!empty($preparer->telefon) ? '<div>' . $escape($preparer->telefon) . '</div>' : '')
             : '';
 
-        $footerHtml = '<div class="footer"><table class="footer-table"><tr><td>' . $contact . '</td><td class="footer-right">' . $contactPersonHtml . '</td></tr></table></div>';
+        $eImzaOnayli = ($data['onay_durumu'] ?? 'taslak') === 'onaylandi';
+        $eImzaNotu = 'Bu belge güvenli elektronik imza ile imzalanmıştır';
+
+        $footerHtml = ($eImzaOnayli ? '<div class="footer-eimza">' . $eImzaNotu . '</div>' : '')
+            . '<div class="footer"><table class="footer-table"><tr><td class="footer-left">' . $contact . '</td><td class="footer-right">' . $contactPersonHtml . '</td></tr></table></div>'
+            . ($eImzaOnayli ? '<div class="footer-eimza-alt">' . $eImzaNotu . '</div>' : '');
+
+        $evrakNoVal = trim((string) ($data['evrak_no'] ?? ''));
+        $recordInfoText = 'Evrak Tarih ve Sayısı: ' . $escape($date) . ($evrakNoVal !== '' ? '-' . $escape($evrakNoVal) : '');
+        $recordInfoHtml = '<div class="record-info">' . $recordInfoText . '</div>';
 
         $html = '<!doctype html><html lang="tr"><head><meta charset="UTF-8"><style>
-            @page{margin-top:5mm;margin-right:15mm;margin-bottom:30mm;margin-left:15mm}
             body{font-family:' . $fontChoice . ';font-size:' . $fontSize . 'pt;color:#000;line-height:1.2;margin:0;padding:0}
             p{margin:0;padding:0}.letterhead{width:100%;border-collapse:collapse;margin-bottom:0;margin-top:3mm}
-            .letterhead td{border:0;vertical-align:middle}.logo{width:25%;text-align:left}.heading{width:50%;text-align:center;font-weight:bold;line-height:1.15}.heading div{margin-bottom:2px}.spacer{width:25%}
-            .document-info{width:100%;border-collapse:collapse;margin-top:18mm;margin-bottom:6mm;line-height:1.2}.document-info td{border:0;padding:0;vertical-align:top}
-            .recipient{text-align:center;font-weight:normal;line-height:1.25;margin:0 8mm 8mm}.recipient-address{font-weight:normal;text-transform:none;font-size:' . max(9, $fontSize - 1) . 'pt;margin-top:1mm}
-            .interest,.attachments{width:100%;border-collapse:collapse;margin:0 0 5mm}.interest td,.attachments td{border:0;vertical-align:top;padding:0}.section-label{width:10mm}.separator{width:3mm}.interest-prefix{display:inline-block;width:8mm}
+            .letterhead td{border:0;vertical-align:middle}.logo{width:25%;text-align:left}.heading{width:50%;text-align:center;font-weight:bold;line-height:1.15}.heading div{margin-bottom:2px}.spacer{width:25%;text-align:right}
+            .document-info{width:100%;border-collapse:collapse;margin-top:18mm;margin-bottom:8.5mm;line-height:1.2}.document-info td{border:0;padding:0;vertical-align:top}
+            .recipient{text-align:center;font-weight:normal;line-height:1.25;margin:0 0 8.5mm 0}.recipient-address{font-weight:normal;text-transform:none;font-size:' . max(9, $fontSize - 1) . 'pt;margin-top:1mm}
+            .interest,.attachments{width:100%;border-collapse:collapse;margin:0 0 4.5mm}.interest td,.attachments td{border:0;vertical-align:top;padding:0}.section-label{width:12mm}.separator{width:3mm}.interest-prefix{display:inline-block;width:8mm}
             .content{font-size:' . $fontSize . 'pt;line-height:1.2;text-align:justify}.content p,.content div{line-height:1.2!important;margin:0!important;padding:0!important}.content p{text-indent:12.5mm;text-align:justify}.content ul,.content ol{margin:0 0 0 12mm;padding-top:0;padding-bottom:0}
             .content table{width:100%;border-collapse:collapse;margin:3mm 0}.content td,.content th{border:0.3mm solid #000;padding:1.5mm;font-size:10pt}
             .content h1,.content h2,.content h3,.content h4{font-size:12pt;margin:3mm 0;font-weight:bold}
             .signatures{width:100%;border-collapse:collapse;margin-top:14mm}.signatures td{border:0;text-align:center;vertical-align:top;line-height:1.25}.signature-name{font-weight:normal}.attachments{margin-top:8mm}
-            .record-info{font-size:10pt;line-height:1.2;margin-bottom:4mm}.footer,.footer td,.footer div,.footer span{font-size:10px!important;line-height:1.2}.footer{border-top:0.3mm solid #000;padding-top:2mm}.footer-table{width:100%;border-collapse:collapse}.footer-table td{border:0;vertical-align:top}.footer-right{text-align:right}
+            .record-info{font-size:10pt;line-height:1.2;margin-bottom:4mm}.footer,.footer td,.footer div,.footer span{font-size:10px!important;line-height:1.2}.footer{border-top:0.2mm solid #e53935;padding-top:1.2mm}
+            .footer-eimza{font-size:8.5px;color:#e53935;text-align:center;line-height:1.2;padding-bottom:1.2mm}
+            .footer-eimza-alt{font-size:12px;color:#a0a0a0;text-align:left;line-height:1.2;padding-top:1.2mm}.footer-table{width:100%;table-layout:fixed;border-collapse:collapse}.footer-table td{width:50%;border:0;vertical-align:top;overflow-wrap:break-word}.footer-left{text-align:left;padding-right:4mm}.footer-right{text-align:right;padding-left:4mm}
         </style></head><body>
-        <div class="record-info">Evrak Tarih ve Sayısı: ' . $escape($date) . '-' . $escape($data['evrak_no'] ?? '') . '</div>
+        ' . $recordInfoHtml . '
         <table class="letterhead"><tr>
-            <td class="logo">' . $logo . '</td>
-            <td class="heading"><div>' . $escape($organization) . '</div></td>
-            <td class="spacer">&nbsp;</td>
+            <td class="logo">' . $solLogoHtml . '</td>
+            <td class="heading">' . $headingHtml . '</td>
+            <td class="spacer" style="text-align:right;">' . $sagLogoHtml . '</td>
         </tr></table>
         <table class="document-info">
             <tr>
@@ -133,6 +214,11 @@ final class EvrakPdfService
         $mpdf = new Mpdf([
             'mode' => 'utf-8',
             'format' => 'A4',
+            'margin_top' => 5,
+            'margin_right' => 15,
+            'margin_bottom' => $eImzaOnayli ? 40 : 30,
+            'margin_left' => 15,
+            'margin_footer' => 5,
             'fontDir' => array_merge($fontDirs, [
                 $projectRoot . '/fonts/times',
                 '/usr/share/fonts/liberation',
@@ -160,7 +246,6 @@ final class EvrakPdfService
         $mpdf->WriteHTML($html);
 
         $ekDosyalari = (array) ($data['ek_dosya_yollari'] ?? []);
-        $mpdf->SetHTMLFooter();
 
         foreach ($ekDosyalari as $ekIndex => $ek) {
             $filePath = is_array($ek) ? ($ek['path'] ?? '') : (string) $ek;

@@ -13,6 +13,16 @@ $evraklar = $Evrak->all();
 $personeller = $Personel->all(false, 'all_with_external');
 $stats = $Evrak->getStats();
 $gelen_evraklar = $Evrak->getGelenEvraklar();
+
+$currentUserId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
+$Evrak->ensureApprovalRowsForDrafts();
+$onayMap = $Evrak->getApprovalSummaryMap($currentUserId);
+$imzamiBekleyenSayisi = 0;
+foreach ($evraklar as $evrakSayim) {
+    if (($evrakSayim->onay_durumu ?? 'taslak') === 'onay_bekliyor' && !empty($onayMap[(int) $evrakSayim->id]['sira_bende'])) {
+        $imzamiBekleyenSayisi++;
+    }
+}
 ?>
 
 <div class="container-fluid">
@@ -152,6 +162,21 @@ $gelen_evraklar = $Evrak->getGelenEvraklar();
                     </div>
                 </div>
 
+                <?php if ($imzamiBekleyenSayisi > 0): ?>
+                    <div class="alert alert-warning d-flex flex-wrap align-items-center justify-content-between gap-2 border-0 shadow-sm mb-3" id="imzaBekleyenUyari">
+                        <div class="d-flex align-items-center">
+                            <i data-feather="edit-3" class="icon-sm me-2"></i>
+                            <span>
+                                <strong>İmzanızı bekleyen <?php echo $imzamiBekleyenSayisi; ?> evrak var.</strong>
+                                <span class="small d-block">Sıra sizde olan giden evrakları imzalayabilir veya düzeltilmek üzere iade edebilirsiniz.</span>
+                            </span>
+                        </div>
+                        <button type="button" id="btnImzaFiltre" class="btn btn-warning btn-sm fw-bold px-3" data-aktif="0">
+                            <i data-feather="filter" class="icon-xs me-1"></i> Sadece Bunları Göster
+                        </button>
+                    </div>
+                <?php endif; ?>
+
                 <div class="card border-0 shadow-sm">
                     <div class="card-body">
                         <div class="table-responsive">
@@ -168,16 +193,22 @@ $gelen_evraklar = $Evrak->getGelenEvraklar();
                                         <th>Zimmetli (Ofis)</th>
                                         <th>İlgili Personel</th>
                                         <th class="text-center" style="width: 90px;">Cevap</th>
+                                        <th class="text-center" style="width: 110px;">E-İmza</th>
                                         <th class="text-center" style="width: 90px;">Dosya</th>
-                                        <th class="text-center" style="width: 110px;">İşlem</th>
+                                        <th class="text-center" style="min-width: 180px; width: 180px;">İşlem</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     <?php $i = 1;
-                                    foreach ($evraklar as $evrak): 
+                                    foreach ($evraklar as $evrak):
                                         $encryptedEvrakId = \App\Helper\Security::encrypt($evrak->id);
+                                        $onayDurumu = $evrak->onay_durumu ?? 'taslak';
+                                        $onayBilgisi = $onayMap[(int) $evrak->id] ?? ['toplam' => 0, 'onaylanan' => 0, 'bekleyen_imzam' => false];
+                                        $kilitli = $onayDurumu !== 'taslak';
+                                        $geriAlinabilir = $Evrak->canRevokeApproval($evrak, $currentUserId);
+                                        $siraBende = $onayDurumu === 'onay_bekliyor' && !empty($onayBilgisi['sira_bende']);
                                     ?>
-                                        <tr>
+                                        <tr data-imza-bekliyor="<?php echo $siraBende ? '1' : '0'; ?>">
                                             <td class="text-center">
                                                 <span class="fw-bold text-muted"><?php echo $i++; ?></span>
                                             </td>
@@ -269,30 +300,65 @@ $gelen_evraklar = $Evrak->getGelenEvraklar();
                                                 <?php endif; ?>
                                             </td>
                                             <td class="text-center">
-                                                <?php if ($evrak->dosya_yolu): ?>
-                                                    <a href="<?php echo $evrak->dosya_yolu; ?>" target="_blank"
-                                                        class="btn btn-sm btn-info btn-soft text-uppercase fw-bold"
-                                                        style="font-size: 10px;">
-                                                        DOSYA
-                                                    </a>
-                                                <?php else: ?>
+                                                <?php if ($evrak->evrak_tipi !== 'giden' || $onayBilgisi['toplam'] === 0): ?>
                                                     <span class="text-muted small">-</span>
+                                                <?php elseif ($onayDurumu === 'onaylandi'): ?>
+                                                    <span class="badge bg-success-subtle text-success p-2 rounded-3 w-100 fw-bold" style="font-size: 10px;" title="Onay Tarihi: <?php echo $evrak->e_imza_onay_tarihi ? date('d.m.Y H:i', strtotime($evrak->e_imza_onay_tarihi)) : '-'; ?>">
+                                                        <i data-feather="lock" class="icon-xs me-1"></i>ONAYLI
+                                                    </span>
+                                                <?php elseif ($onayDurumu === 'onay_bekliyor'): ?>
+                                                    <span class="badge <?php echo $siraBende ? 'bg-warning text-dark' : 'bg-warning-subtle text-warning'; ?> p-2 rounded-3 w-100 fw-bold" style="font-size: 10px;" title="<?php echo $siraBende ? 'İmza sırası sizde' : 'Sırada: ' . htmlspecialchars((string) ($onayBilgisi['siradaki_kisi'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?>">
+                                                        <?php echo $siraBende ? 'İMZANIZDA' : 'ONAYDA'; ?> <?php echo $onayBilgisi['onaylanan'] . '/' . $onayBilgisi['toplam']; ?>
+                                                    </span>
+                                                <?php else: ?>
+                                                    <span class="badge bg-secondary-subtle text-secondary p-2 rounded-3 w-100 fw-bold" style="font-size: 10px;">
+                                                        TASLAK
+                                                    </span>
                                                 <?php endif; ?>
                                             </td>
                                             <td class="text-center">
-                                                <div class="d-flex justify-content-center gap-1">
+                                                 <?php if ($evrak->dosya_yolu): ?>
+                                                     <a href="<?php echo htmlspecialchars($evrak->dosya_yolu, ENT_QUOTES, 'UTF-8'); ?>" target="_blank"
+                                                         class="btn btn-sm btn-info btn-soft text-uppercase fw-bold d-inline-flex align-items-center gap-1"
+                                                         style="font-size: 10px;" title="Dosyayı İndir / Aç">
+                                                         <i data-feather="paperclip" class="icon-xs"></i> DOSYA
+                                                     </a>
+                                                 <?php else: ?>
+                                                     <span class="text-muted small">-</span>
+                                                 <?php endif; ?>
+                                            </td>
+                                            <td class="text-center">
+                                                <div class="d-flex justify-content-center align-items-center gap-1 flex-nowrap">
                                                     <?php if ($evrak->evrak_tipi === 'giden'): ?>
-                                                        <a href="index?p=evrak-takip/giden-evrak&amp;id=<?php echo htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-soft-warning btn-sm border-0 p-1 px-2" title="Düzenle">
-                                                            <i data-feather="edit-2" style="width:14px;"></i>
+                                                        <button type="button" class="btn btn-soft-info btn-action-icon evrak-pdf-goruntule border-0" data-id="<?php echo htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" title="Resmî Yazı PDF Önizleme">
+                                                            <i data-feather="file-text" style="width:14px; height:14px;"></i>
+                                                        </button>
+                                                        <a href="index?p=evrak-takip/giden-evrak&amp;id=<?php echo htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" class="btn btn-action-icon border-0 <?php echo $kilitli ? 'btn-soft-secondary' : 'btn-soft-warning'; ?>" title="<?php echo $kilitli ? 'Görüntüle (onaylı evrak düzenlenemez)' : 'Düzenle'; ?>">
+                                                            <i data-feather="<?php echo $kilitli ? 'eye' : 'edit-2'; ?>" style="width:14px; height:14px;"></i>
                                                         </a>
                                                     <?php else: ?>
-                                                        <button type="button" class="btn btn-soft-primary btn-sm evrak-duzenle border-0 p-1 px-2" data-id="<?php echo htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" title="Düzenle">
-                                                            <i data-feather="edit-2" style="width:14px;"></i>
+                                                        <button type="button" class="btn btn-soft-primary btn-action-icon evrak-duzenle border-0" data-id="<?php echo htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" title="Düzenle">
+                                                            <i data-feather="edit-2" style="width:14px; height:14px;"></i>
                                                         </button>
                                                     <?php endif; ?>
-                                                    <button type="button" class="btn btn-soft-danger btn-sm evrak-sil border-0 p-1 px-2" data-id="<?php echo htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" title="Sil">
-                                                        <i data-feather="trash-2" style="width:14px;"></i>
-                                                    </button>
+                                                    <?php if ($siraBende): ?>
+                                                        <button type="button" class="btn btn-soft-success btn-action-icon evrak-e-imza-onayla border-0" data-id="<?php echo htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" title="E-İmza ile Onayla">
+                                                            <i data-feather="check-circle" style="width:14px; height:14px;"></i>
+                                                        </button>
+                                                        <button type="button" class="btn btn-soft-warning btn-action-icon evrak-e-imza-iade border-0" data-id="<?php echo htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" title="Düzeltilmek Üzere İade Et">
+                                                            <i data-feather="corner-up-left" style="width:14px; height:14px;"></i>
+                                                        </button>
+                                                    <?php endif; ?>
+                                                    <?php if ($kilitli && $geriAlinabilir): ?>
+                                                        <button type="button" class="btn btn-soft-info btn-action-icon evrak-e-imza-geri-al border-0" data-id="<?php echo htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" title="Evrakı Üzerime Geri Al">
+                                                            <i data-feather="rotate-ccw" style="width:14px; height:14px;"></i>
+                                                        </button>
+                                                    <?php endif; ?>
+                                                    <?php if (!$kilitli): ?>
+                                                        <button type="button" class="btn btn-soft-danger btn-action-icon evrak-sil border-0" data-id="<?php echo htmlspecialchars($encryptedEvrakId, ENT_QUOTES, 'UTF-8'); ?>" title="Sil">
+                                                            <i data-feather="trash-2" style="width:14px; height:14px;"></i>
+                                                        </button>
+                                                    <?php endif; ?>
                                                 </div>
                                             </td>
                                         </tr>
@@ -304,10 +370,21 @@ $gelen_evraklar = $Evrak->getGelenEvraklar();
                 </div>
             </div>
         </div>
-    </div>
 </div>
 
 <style>
+    .btn-action-icon {
+        min-width: 32px !important;
+        width: 32px !important;
+        height: 32px !important;
+        padding: 0 !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        border-radius: 8px !important;
+        flex-shrink: 0 !important;
+    }
+
     .btn-soft {
         background-color: rgba(0, 171, 142, 0.1);
         color: #00ab8e;

@@ -186,9 +186,12 @@ switch ($action) {
     case 'remove_logo':
         try {
             $side = $_POST['side'] ?? '';
+            $firma_id = !empty($_POST['firma_id']) ? (int) $_POST['firma_id'] : null;
 
             $uploadDir = dirname(__DIR__, 2) . '/uploads/logos/';
             $publicBase = 'uploads/logos/';
+
+            $allSettings = $Settings->getAllSettingsAsKeyValue($firma_id);
 
             $deleteOldLogoIfExists = function (?string $storedPath) use ($publicBase, $uploadDir): void {
                 if (!$storedPath) {
@@ -209,11 +212,11 @@ switch ($action) {
             };
 
             if ($side === 'sol') {
-                $deleteOldLogoIfExists($Settings->getSettings('sol_logo_yolu'));
-                $Settings->upsertSetting('sol_logo_yolu', '');
+                $deleteOldLogoIfExists($allSettings['sol_logo_yolu'] ?? null);
+                $Settings->upsertMultipleSettings(['sol_logo_yolu' => ''], $firma_id, null);
             } elseif ($side === 'sag') {
-                $deleteOldLogoIfExists($Settings->getSettings('sag_logo_yolu'));
-                $Settings->upsertSetting('sag_logo_yolu', '');
+                $deleteOldLogoIfExists($allSettings['sag_logo_yolu'] ?? null);
+                $Settings->upsertMultipleSettings(['sag_logo_yolu' => ''], $firma_id, null);
             } else {
                 $response['message'] = 'Geçersiz logo tarafı.';
                 break;
@@ -309,6 +312,129 @@ switch ($action) {
             }
         } catch (\Throwable $e) {
             $response['message'] = $e->getMessage();
+        }
+        break;
+
+    case 'save_evrak_ayarlari':
+        try {
+            $firma_id = !empty($_POST['firma_id']) ? (int) $_POST['firma_id'] : null;
+
+            $settingsToUpdate = [];
+
+            $textKeys = [
+                'evrak_antet_baslik_1',
+                'evrak_antet_baslik_2',
+                'evrak_antet_baslik_3',
+                'evrak_antet_baslik_4',
+                'evrak_alt_bilgi_1',
+                'evrak_alt_bilgi_2',
+                'evrak_alt_bilgi_3',
+                'evrak_alt_bilgi_4',
+            ];
+
+            foreach ($textKeys as $key) {
+                if (isset($_POST[$key])) {
+                    $settingsToUpdate[$key] = trim($_POST[$key]);
+                }
+            }
+
+            $uploadDir = dirname(__DIR__, 2) . '/uploads/logos/';
+            $publicBase = 'uploads/logos/';
+
+            if (!is_dir($uploadDir)) {
+                @mkdir($uploadDir, 0777, true);
+            }
+            @chmod($uploadDir, 0777);
+
+            $handleLogoUpload = function (array $fileInfo, string $sidePrefix) use ($uploadDir, $publicBase, $Settings, $firma_id): ?string {
+                if (!isset($fileInfo['error']) || $fileInfo['error'] === UPLOAD_ERR_NO_FILE) {
+                    return null;
+                }
+
+                if ($fileInfo['error'] !== UPLOAD_ERR_OK) {
+                    $uploadErrors = [
+                        UPLOAD_ERR_INI_SIZE => 'Yüklenen logo php.ini upload_max_filesize sınırını aşıyor.',
+                        UPLOAD_ERR_FORM_SIZE => 'Yüklenen logo form MAX_FILE_SIZE sınırını aşıyor.',
+                        UPLOAD_ERR_PARTIAL => 'Logo dosyası sadece kısmen yüklendi.',
+                        UPLOAD_ERR_NO_TMP_DIR => 'Geçici yükleme klasörü bulunamadı.',
+                        UPLOAD_ERR_CANT_WRITE => 'Logo dosyası diske yazılamadı.',
+                        UPLOAD_ERR_EXTENSION => 'PHP eklentisi yüklemeyi durdurdu.'
+                    ];
+                    $errText = $uploadErrors[$fileInfo['error']] ?? ('Dosya yükleme hatası (Kod: ' . $fileInfo['error'] . ')');
+                    throw new \Exception($errText);
+                }
+
+                if (empty($fileInfo['tmp_name']) || !is_uploaded_file($fileInfo['tmp_name'])) {
+                    return null;
+                }
+
+                $allowedExtensions = ['jpg', 'jpeg', 'png', 'webp', 'gif', 'svg'];
+                $ext = strtolower(pathinfo($fileInfo['name'], PATHINFO_EXTENSION));
+                if (!in_array($ext, $allowedExtensions, true)) {
+                    throw new \Exception("Geçersiz dosya formatı ({$ext}). Lütfen görsel dosyası yükleyin.");
+                }
+
+                $mime = mime_content_type($fileInfo['tmp_name']);
+                if (strpos($mime, 'image/') !== 0 && $ext !== 'svg') {
+                    throw new \Exception("Yüklenen dosya bir görsel değil.");
+                }
+
+                // Eski dosyayı sil
+                $allSettings = $Settings->getAllSettingsAsKeyValue($firma_id);
+                $oldPath = $allSettings[$sidePrefix . '_logo_yolu'] ?? null;
+                if ($oldPath && strpos(str_replace('\\', '/', $oldPath), $publicBase) === 0) {
+                    $oldFileName = basename($oldPath);
+                    if ($oldFileName && is_file($uploadDir . $oldFileName)) {
+                        @unlink($uploadDir . $oldFileName);
+                    }
+                }
+
+                $newFileName = $sidePrefix . '_logo_' . ($firma_id ?: 'global') . '_' . time() . '.' . $ext;
+                $targetFile = $uploadDir . $newFileName;
+
+                if (!move_uploaded_file($fileInfo['tmp_name'], $targetFile)) {
+                    throw new \Exception("Logo dosyası kaydedilemedi. Lütfen klasör izinlerini kontrol edin.");
+                }
+
+                @chmod($targetFile, 0666);
+
+                return $publicBase . $newFileName;
+            };
+
+            if (!empty($_FILES['sol_logo']['tmp_name'])) {
+                $solPath = $handleLogoUpload($_FILES['sol_logo'], 'sol');
+                if ($solPath) {
+                    $settingsToUpdate['sol_logo_yolu'] = $solPath;
+                }
+            }
+
+            if (!empty($_FILES['sag_logo']['tmp_name'])) {
+                $sagPath = $handleLogoUpload($_FILES['sag_logo'], 'sag');
+                if ($sagPath) {
+                    $settingsToUpdate['sag_logo_yolu'] = $sagPath;
+                }
+            }
+
+            if ($Settings->upsertMultipleSettings($settingsToUpdate, $firma_id, null)) {
+                $userId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
+                if ($userId > 0 && class_exists('\App\Model\SystemLogModel')) {
+                    (new \App\Model\SystemLogModel())->logAction(
+                        $userId,
+                        'Evrak Ayarları Güncelleme',
+                        'Evrak antet ve alt bilgi ayarları güncellendi.',
+                        \App\Model\SystemLogModel::LEVEL_INFO
+                    );
+                }
+
+                $response = [
+                    'status' => 'success',
+                    'message' => 'Evrak ayarları başarıyla kaydedildi.'
+                ];
+            } else {
+                $response['message'] = 'Ayarlar kaydedilemedi.';
+            }
+        } catch (\Throwable $e) {
+            $response['message'] = 'Hata: ' . $e->getMessage();
         }
         break;
 
