@@ -9,6 +9,7 @@ use App\Model\AracModel;
 use App\Model\PuantajModel;
 use App\Model\EndeksOkumaModel;
 use App\Model\PersonelHareketleriModel;
+use App\Model\UserModel;
 use App\Service\SayacDegisimService;
 
 $personelModel = new PersonelModel();
@@ -16,6 +17,42 @@ $aracModel     = new AracModel();
 $puantajModel  = new PuantajModel();
 $endeksModel   = new EndeksOkumaModel();
 $hareketModel  = new PersonelHareketleriModel();
+$userModel     = new UserModel();
+
+// Kullanıcının kayıtlı mobil hızlı işlem tercihleri
+$savedMobileHizliIslemler = $userModel->getMobileHizliIslemler($currentUserId);
+
+// Kullanılabilir tüm izin verilen mobil menüler (home hariç)
+$availableMobileHizliIslemlerMap = [];
+if (isset($user_mobile_menus) && is_array($user_mobile_menus)) {
+    foreach ($user_mobile_menus as $pKey => $mData) {
+        if ($pKey === 'home') continue;
+        $availableMobileHizliIslemlerMap[$pKey] = [
+            'key'        => $pKey,
+            'label'      => $mData['label'],
+            'icon'       => $mData['icon'],
+            'color_bg'   => $mData['color_bg'] ?? 'bg-slate-100 dark:bg-slate-800',
+            'color_icon' => $mData['color_icon'] ?? 'text-slate-600 dark:text-slate-300',
+            'desc'       => $mData['desc'] ?? ($mData['label'] . ' Modülü'),
+            'url'        => $mData['url'] ?? ('?p=' . $pKey)
+        ];
+
+    }
+}
+
+// Aktif (Seçili ve Sıralanmış) Hızlı İşlemler
+$activeMobileHizliIslemler = [];
+if ($savedMobileHizliIslemler !== null) {
+    foreach ($savedMobileHizliIslemler as $pKey) {
+        if (isset($availableMobileHizliIslemlerMap[$pKey])) {
+            $activeMobileHizliIslemler[] = $availableMobileHizliIslemlerMap[$pKey];
+        }
+    }
+} else {
+    // Varsayılan: Kullanıcının yetkili olduğu tüm mobil menüler
+    $activeMobileHizliIslemler = array_values($availableMobileHizliIslemlerMap);
+}
+
 
 // Personel istatistikleri (Pasif hariç, Total = Aktif + İzinli)
 $istatistik      = $personelModel->personelSayilari('personel');
@@ -604,24 +641,107 @@ $activeAnnouncements = $duyuruModel->getAll(true);
     <?php endif; ?>
 
 
-    <!-- Hızlı Erişim -->
+    <!-- Hızlı İşlemler -->
     <div class="bg-white dark:bg-card-dark rounded-2xl shadow-sm p-4">
-        <h3 class="font-bold text-slate-900 dark:text-white text-sm mb-3">Hızlı Erişim</h3>
-        <div class="grid grid-cols-4 gap-2">
-            <?php 
-            foreach ($user_mobile_menus as $pKey => $mData): 
-                if ($pKey === 'home') continue;
-            ?>
-            <a href="?p=<?= $pKey ?>"
-                class="flex flex-col items-center gap-1.5 p-2 rounded-xl active:scale-95 active:bg-slate-50 dark:active:bg-slate-700 transition-transform">
-                <div class="w-12 h-12 rounded-xl <?= $mData['color_bg'] ?> flex items-center justify-center">
-                    <span class="material-symbols-outlined <?= $mData['color_icon'] ?> text-2xl"><?= $mData['icon'] ?></span>
+        <div class="flex items-center justify-between mb-3">
+            <h3 class="font-bold text-slate-900 dark:text-white text-sm flex items-center gap-1.5">
+                <span class="material-symbols-outlined text-primary text-lg">space_dashboard</span>
+                Hızlı İşlemler
+            </h3>
+            <button type="button" onclick="openHizliIslemlerModal()" class="text-xs font-semibold text-primary flex items-center gap-1 bg-primary/10 hover:bg-primary/20 px-2.5 py-1 rounded-lg transition-colors active:scale-95">
+                <span class="material-symbols-outlined text-sm">tune</span>
+                <span>Düzenle</span>
+            </button>
+        </div>
+
+        <?php if (empty($activeMobileHizliIslemler)): ?>
+            <div class="text-center py-6 text-xs text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700/60">
+                Henüz eklenmiş bir hızlı işlem bulunmuyor.<br>
+                <button type="button" onclick="openHizliIslemlerModal()" class="mt-2 text-primary font-bold hover:underline inline-flex items-center gap-1">
+                    <span class="material-symbols-outlined text-xs">add</span> "Düzenle" butonundan ekleyebilirsiniz.
+                </button>
+            </div>
+        <?php else: ?>
+            <div class="grid grid-cols-4 gap-2.5">
+                <?php foreach ($activeMobileHizliIslemler as $action): ?>
+                <a href="<?= htmlspecialchars($action['url'] ?? ('?p=' . $action['key']), ENT_QUOTES, 'UTF-8') ?>"
+                    class="flex flex-col items-center gap-1.5 p-2 rounded-xl active:scale-95 active:bg-slate-50 dark:active:bg-slate-700/60 transition-all group">
+                    <div class="w-12 h-12 rounded-2xl <?= htmlspecialchars($action['color_bg'], ENT_QUOTES, 'UTF-8') ?> flex items-center justify-center shadow-xs group-hover:scale-105 transition-transform">
+                        <span class="material-symbols-outlined <?= htmlspecialchars($action['color_icon'], ENT_QUOTES, 'UTF-8') ?> text-2xl"><?= htmlspecialchars($action['icon'], ENT_QUOTES, 'UTF-8') ?></span>
+                    </div>
+                    <span class="text-[10.5px] font-semibold text-slate-700 dark:text-slate-200 text-center leading-tight truncate w-full"><?= htmlspecialchars($action['label'], ENT_QUOTES, 'UTF-8') ?></span>
+                </a>
+                <?php endforeach; ?>
+            </div>
+        <?php endif; ?>
+    </div>
+
+    <!-- Hızlı İşlemler Özelleştirme Modalı (Bottom Sheet) -->
+    <div id="hizliIslemlerModalOverlay" class="fixed inset-0 bg-slate-900/60 dark:bg-black/70 z-[70] opacity-0 pointer-events-none transition-opacity duration-300 backdrop-blur-sm" onclick="closeHizliIslemlerModal()"></div>
+    
+    <div id="hizliIslemlerModal" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-3xl z-[71] transform translate-y-full transition-transform duration-300 shadow-2xl safe-area-bottom max-h-[85vh] w-full max-w-lg mx-auto flex flex-col">
+        <!-- Top Drag Handle -->
+        <div class="flex justify-center pt-3 pb-1 shrink-0 cursor-pointer" onclick="closeHizliIslemlerModal()">
+            <div class="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full"></div>
+        </div>
+
+        <!-- Modal Header -->
+        <div class="flex items-center justify-between px-5 py-3 border-b border-slate-100 dark:border-slate-800 shrink-0">
+            <div>
+                <h3 class="text-base font-bold text-slate-900 dark:text-white flex items-center gap-2">
+                    <span class="material-symbols-outlined text-primary text-xl">tune</span>
+                    Hızlı İşlemleri Özelleştir
+                </h3>
+                <p class="text-[11px] text-slate-500 dark:text-slate-400">Sırasını değiştirin, buton ekleyin veya çıkarın.</p>
+            </div>
+            <button type="button" onclick="closeHizliIslemlerModal()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-500 hover:text-slate-700 dark:hover:text-slate-300 transition-colors">
+                <span class="material-symbols-outlined text-lg">close</span>
+            </button>
+        </div>
+
+        <!-- Modal Content (Scrollable) -->
+        <div class="flex-1 overflow-y-auto p-5 space-y-5 hide-scrollbar">
+            <!-- Aktif İşlemler Listesi -->
+            <div>
+                <div class="flex items-center justify-between mb-2.5">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">reorder</span>
+                        Aktif İşlemler (Sıralanabilir)
+                    </span>
+                    <span class="text-[11px] font-bold px-2 py-0.5 rounded-full bg-primary/10 text-primary" id="mobile-active-count-badge">0 aktif</span>
                 </div>
-                <span class="text-[10px] font-semibold text-slate-600 dark:text-slate-300 text-center leading-tight"><?= $mData['label'] ?></span>
-            </a>
-            <?php endforeach; ?>
+                <div id="mobile-active-actions-list" class="space-y-2">
+                    <!-- Dynamic Active Items -->
+                </div>
+            </div>
+
+            <!-- Kullanılabilir İşlemler Listesi -->
+            <div>
+                <div class="flex items-center justify-between mb-2.5">
+                    <span class="text-xs font-bold uppercase tracking-wider text-slate-500 dark:text-slate-400 flex items-center gap-1">
+                        <span class="material-symbols-outlined text-sm">add_circle_outline</span>
+                        Kullanılabilir İşlemler (Eklenebilir)
+                    </span>
+                </div>
+                <div id="mobile-available-actions-list" class="space-y-2">
+                    <!-- Dynamic Available Items -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Modal Footer Actions -->
+        <div class="p-4 border-t border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-900/50 rounded-b-3xl flex items-center gap-3 shrink-0">
+            <button type="button" onclick="resetHizliIslemlerToDefault()" class="px-4 py-3 rounded-2xl bg-slate-200 dark:bg-slate-800 text-slate-700 dark:text-slate-300 font-bold text-xs hover:bg-slate-300 dark:hover:bg-slate-700 transition-colors active:scale-95 flex items-center justify-center gap-1">
+                <span class="material-symbols-outlined text-base">restart_alt</span>
+                Sıfırla
+            </button>
+            <button type="button" id="btn-save-mobile-hizli-islemler" onclick="saveHizliIslemlerConfig()" class="flex-1 py-3 px-4 rounded-2xl bg-primary hover:bg-primary-dark text-white font-bold text-xs shadow-lg shadow-primary/25 transition-all active:scale-95 flex items-center justify-center gap-2">
+                <span class="material-symbols-outlined text-base">check</span>
+                Değişiklikleri Kaydet
+            </button>
         </div>
     </div>
+
 
 </div>
 
@@ -1045,6 +1165,278 @@ function closeDuyuruDetay() {
     }, 300);
 }
 
+// ===== Mobil Hızlı İşlemler Özelleştirme Mantığı =====
+(function() {
+    const ALL_MOBILE_CATALOG = <?php echo json_encode(array_values($availableMobileHizliIslemlerMap), JSON_UNESCAPED_UNICODE); ?>;
+    let currentMobileActiveKeys = <?php echo json_encode(array_column($activeMobileHizliIslemler, 'key'), JSON_UNESCAPED_UNICODE); ?>;
+    const DEFAULT_MOBILE_KEYS = <?php echo json_encode(array_keys($availableMobileHizliIslemlerMap), JSON_UNESCAPED_UNICODE); ?>;
+
+    window.openHizliIslemlerModal = function() {
+        renderHizliIslemlerModalLists();
+        document.getElementById('hizliIslemlerModalOverlay').classList.remove('pointer-events-none', 'opacity-0');
+        document.getElementById('hizliIslemlerModal').classList.remove('translate-y-full');
+    };
+
+    window.closeHizliIslemlerModal = function() {
+        document.getElementById('hizliIslemlerModalOverlay').classList.add('pointer-events-none', 'opacity-0');
+        document.getElementById('hizliIslemlerModal').classList.add('translate-y-full');
+    };
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return String(str)
+            .replace(/&/g, '&amp;')
+            .replace(/</g, '&lt;')
+            .replace(/>/g, '&gt;')
+            .replace(/"/g, '&quot;');
+    }
+
+    function renderHizliIslemlerModalLists() {
+        const activeContainer = document.getElementById('mobile-active-actions-list');
+        const availableContainer = document.getElementById('mobile-available-actions-list');
+        const activeBadge = document.getElementById('mobile-active-count-badge');
+
+        if (!activeContainer || !availableContainer) return;
+
+        activeContainer.innerHTML = '';
+        availableContainer.innerHTML = '';
+
+        const catalogMap = {};
+        ALL_MOBILE_CATALOG.forEach(function(act) { catalogMap[act.key] = act; });
+
+        const validActiveKeys = currentMobileActiveKeys.filter(function(k) { return catalogMap[k]; });
+        currentMobileActiveKeys = validActiveKeys;
+
+        if (activeBadge) activeBadge.textContent = currentMobileActiveKeys.length + ' aktif';
+
+        if (currentMobileActiveKeys.length === 0) {
+            activeContainer.innerHTML = '<div class="text-center py-4 text-xs text-slate-400 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-300 dark:border-slate-700">Aktif hızlı işlem bulunmuyor. Aşağıdan ekleyebilirsiniz.</div>';
+        } else {
+            currentMobileActiveKeys.forEach(function(key, index) {
+                const act = catalogMap[key];
+                const itemEl = document.createElement('div');
+                itemEl.className = 'quick-action-edit-item flex items-center justify-between p-3 rounded-2xl bg-slate-50 dark:bg-slate-800/70 border border-slate-200/80 dark:border-slate-700/80 shadow-xs transition-all select-none';
+                itemEl.setAttribute('draggable', 'true');
+                itemEl.setAttribute('data-key', key);
+                itemEl.setAttribute('data-index', index);
+
+                const isFirst = index === 0;
+                const isLast = index === currentMobileActiveKeys.length - 1;
+
+                itemEl.innerHTML = `
+                    <div class="flex items-center gap-3 min-w-0 flex-1">
+                        <span class="drag-handle cursor-grab active:cursor-grabbing text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 material-symbols-outlined touch-none shrink-0">drag_indicator</span>
+                        <div class="w-10 h-10 rounded-xl ${act.color_bg} flex items-center justify-center shrink-0">
+                            <span class="material-symbols-outlined ${act.color_icon} text-xl">${act.icon}</span>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-xs font-bold text-slate-900 dark:text-white truncate">${escapeHtml(act.label)}</div>
+                            <div class="text-[10px] text-slate-500 dark:text-slate-400 truncate">${escapeHtml(act.desc)}</div>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-1 shrink-0 ml-2">
+                        <button type="button" onclick="moveHizliIslemItem(${index}, -1)" ${isFirst ? 'disabled' : ''} class="w-8 h-8 rounded-lg flex items-center justify-center ${isFirst ? 'text-slate-300 dark:text-slate-600' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95'} transition-all">
+                            <span class="material-symbols-outlined text-base">arrow_upward</span>
+                        </button>
+                        <button type="button" onclick="moveHizliIslemItem(${index}, 1)" ${isLast ? 'disabled' : ''} class="w-8 h-8 rounded-lg flex items-center justify-center ${isLast ? 'text-slate-300 dark:text-slate-600' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700 active:scale-95'} transition-all">
+                            <span class="material-symbols-outlined text-base">arrow_downward</span>
+                        </button>
+                        <button type="button" onclick="removeHizliIslemItem('${key}')" class="w-8 h-8 rounded-lg flex items-center justify-center text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 ml-0.5 active:scale-95 transition-all" title="Çıkar">
+                            <span class="material-symbols-outlined text-lg">remove_circle_outline</span>
+                        </button>
+                    </div>
+                `;
+
+                setupDragAndDropEvents(itemEl, index);
+                activeContainer.appendChild(itemEl);
+            });
+        }
+
+        const availableItems = ALL_MOBILE_CATALOG.filter(function(act) { return !currentMobileActiveKeys.includes(act.key); });
+
+        if (availableItems.length === 0) {
+            availableContainer.innerHTML = '<div class="text-center py-3 text-xs text-slate-400">Tüm kullanılabilir hızlı işlemler eklenmiş durumda.</div>';
+        } else {
+            availableItems.forEach(function(act) {
+                const itemEl = document.createElement('div');
+                itemEl.className = 'flex items-center justify-between p-3 rounded-2xl bg-slate-50/60 dark:bg-slate-800/40 border border-slate-200/60 dark:border-slate-700/40 transition-all';
+                itemEl.innerHTML = `
+                    <div class="flex items-center gap-3 min-w-0 flex-1">
+                        <div class="w-10 h-10 rounded-xl bg-slate-200 dark:bg-slate-700 flex items-center justify-center text-slate-600 dark:text-slate-300 shrink-0">
+                            <span class="material-symbols-outlined text-xl">${act.icon}</span>
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <div class="text-xs font-semibold text-slate-800 dark:text-slate-200 truncate">${escapeHtml(act.label)}</div>
+                            <div class="text-[10px] text-slate-500 dark:text-slate-400 truncate">${escapeHtml(act.desc)}</div>
+                        </div>
+                    </div>
+                    <button type="button" onclick="addHizliIslemItem('${act.key}')" class="px-3 py-1.5 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary text-xs font-bold flex items-center gap-1 transition-colors active:scale-95 shrink-0 ml-2">
+                        <span class="material-symbols-outlined text-sm">add</span>
+                        Ekle
+                    </button>
+                `;
+                availableContainer.appendChild(itemEl);
+            });
+        }
+    }
+
+    window.moveHizliIslemItem = function(index, direction) {
+        const targetIndex = index + direction;
+        if (targetIndex < 0 || targetIndex >= currentMobileActiveKeys.length) return;
+        const temp = currentMobileActiveKeys[index];
+        currentMobileActiveKeys[index] = currentMobileActiveKeys[targetIndex];
+        currentMobileActiveKeys[targetIndex] = temp;
+        renderHizliIslemlerModalLists();
+    };
+
+    window.addHizliIslemItem = function(key) {
+        if (!currentMobileActiveKeys.includes(key)) {
+            currentMobileActiveKeys.push(key);
+            renderHizliIslemlerModalLists();
+        }
+    };
+
+    window.removeHizliIslemItem = function(key) {
+        currentMobileActiveKeys = currentMobileActiveKeys.filter(function(k) { return k !== key; });
+        renderHizliIslemlerModalLists();
+    };
+
+    window.resetHizliIslemlerToDefault = async function() {
+        if (!confirm('Hızlı işlemler varsayılan liste sıralamasına sıfırlansın mı?')) return;
+        
+        try {
+            const formData = new FormData();
+            formData.append('action', 'reset_hizli_islemler');
+
+            const response = await fetch('api/hizli-islemler.php', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                currentMobileActiveKeys = Array.from(DEFAULT_MOBILE_KEYS);
+                renderHizliIslemlerModalLists();
+                if (typeof Toast !== 'undefined' && typeof Toast.show === 'function') {
+                    Toast.show(data.message || 'Varsayılana sıfırlandı', 'success');
+                }
+                closeHizliIslemlerModal();
+                setTimeout(function() { window.location.reload(); }, 300);
+            }
+        } catch (err) {
+            console.error('Reset quick actions error:', err);
+        }
+    };
+
+    let draggedIndex = null;
+    function setupDragAndDropEvents(el, index) {
+        el.addEventListener('dragstart', function(e) {
+            draggedIndex = index;
+            el.classList.add('opacity-40', 'scale-95');
+            e.dataTransfer.effectAllowed = 'move';
+            e.dataTransfer.setData('text/plain', index);
+        });
+
+        el.addEventListener('dragend', function() {
+            draggedIndex = null;
+            el.classList.remove('opacity-40', 'scale-95');
+        });
+
+        el.addEventListener('dragover', function(e) {
+            e.preventDefault();
+            e.dataTransfer.dropEffect = 'move';
+        });
+
+        el.addEventListener('drop', function(e) {
+            e.preventDefault();
+            if (draggedIndex === null || draggedIndex === index) return;
+            const movedItem = currentMobileActiveKeys.splice(draggedIndex, 1)[0];
+            currentMobileActiveKeys.splice(index, 0, movedItem);
+            renderHizliIslemlerModalLists();
+        });
+
+        const handle = el.querySelector('.drag-handle');
+        if (handle) {
+            let startY = 0;
+            let initialIndex = index;
+
+            handle.addEventListener('touchstart', function(e) {
+                if (e.touches && e.touches[0]) {
+                    startY = e.touches[0].clientY;
+                    initialIndex = index;
+                    el.classList.add('bg-primary/10', 'border-primary', 'shadow-md');
+                }
+            }, { passive: true });
+
+            handle.addEventListener('touchmove', function(e) {
+                if (!e.touches || !e.touches[0]) return;
+                const currentY = e.touches[0].clientY;
+                const diffY = currentY - startY;
+
+                if (Math.abs(diffY) > 36) {
+                    const step = diffY > 0 ? 1 : -1;
+                    const newIndex = initialIndex + step;
+                    if (newIndex >= 0 && newIndex < currentMobileActiveKeys.length) {
+                        const temp = currentMobileActiveKeys[initialIndex];
+                        currentMobileActiveKeys[initialIndex] = currentMobileActiveKeys[newIndex];
+                        currentMobileActiveKeys[newIndex] = temp;
+                        startY = currentY;
+                        initialIndex = newIndex;
+                        renderHizliIslemlerModalLists();
+                    }
+                }
+            }, { passive: true });
+
+            handle.addEventListener('touchend', function() {
+                el.classList.remove('bg-primary/10', 'border-primary', 'shadow-md');
+            });
+        }
+    }
+
+    window.saveHizliIslemlerConfig = async function() {
+        const btn = document.getElementById('btn-save-mobile-hizli-islemler');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<span class="animate-spin rounded-full h-4 w-4 border-2 border-white border-t-transparent inline-block"></span> Kaydediliyor...';
+
+        try {
+            const formData = new FormData();
+            formData.append('action', 'update_hizli_islemler');
+            formData.append('hizli_islemler', JSON.stringify(currentMobileActiveKeys));
+
+            const response = await fetch('api/hizli-islemler.php', {
+                method: 'POST',
+                body: formData
+            });
+
+            const data = await response.json();
+            if (data.success) {
+                if (typeof Toast !== 'undefined' && typeof Toast.show === 'function') {
+                    Toast.show(data.message || 'Hızlı işlemler güncellendi', 'success');
+                }
+                closeHizliIslemlerModal();
+                setTimeout(function() { window.location.reload(); }, 300);
+            } else {
+                if (typeof Toast !== 'undefined' && typeof Toast.show === 'function') {
+                    Toast.show(data.message || 'Bir hata oluştu', 'error');
+                } else {
+                    alert(data.message || 'Bir hata oluştu');
+                }
+            }
+        } catch (err) {
+            console.error('Save quick actions error:', err);
+            if (typeof Toast !== 'undefined' && typeof Toast.show === 'function') {
+                Toast.show('Bir sunucu hatası oluştu', 'error');
+            } else {
+                alert('Bir sunucu hatası oluştu');
+            }
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    };
+})();
+
 document.addEventListener('DOMContentLoaded', function () {
     const slider = document.getElementById('duyuru-slider-container');
     const dots = document.querySelectorAll('#duyuru-slider-dots .duyuru-dot');
@@ -1065,6 +1457,7 @@ document.addEventListener('DOMContentLoaded', function () {
         }, { passive: true });
     }
 });
+
 </script>
 
 <style>

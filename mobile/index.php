@@ -75,20 +75,26 @@ foreach ($menu_data as $group => $items) {
 
 // Tüm mobil özellikler (Erişim kontrolü için link anahtar kelimeleriyle)
 $all_mobile_menus = [
-    'home'        => ['label' => 'Ana Sayfa',   'icon' => 'home', 'color_bg' => 'bg-blue-100 dark:bg-blue-900/30', 'color_icon' => 'text-blue-600', 'link_match' => 'home'],
-    'cari-takip'  => ['label' => 'Cari',        'icon' => 'account_balance_wallet', 'color_bg' => 'bg-emerald-100 dark:bg-emerald-900/30', 'color_icon' => 'text-emerald-600', 'link_match' => 'cari/list'],
-    'gelir-gider' => ['label' => 'Gelir Gider', 'icon' => 'account_balance', 'color_bg' => 'bg-amber-100 dark:bg-amber-900/30', 'color_icon' => 'text-amber-600', 'link_match' => 'gelir-gider/list'],
-    'raporlar'    => ['label' => 'Raporlar',    'icon' => 'bar_chart', 'color_bg' => 'bg-purple-100 dark:bg-purple-900/30', 'color_icon' => 'text-purple-600', 'link_match' => 'puantaj/raporlar'],
-    'arac'        => ['label' => 'Araç',        'icon' => 'directions_car', 'color_bg' => 'bg-green-100 dark:bg-green-900/30', 'color_icon' => 'text-green-600', 'link_match' => 'arac-takip/list'],
-    'personel'    => ['label' => 'Personel',    'icon' => 'group', 'color_bg' => 'bg-blue-100 dark:bg-blue-900/30', 'color_icon' => 'text-blue-600', 'link_match' => 'personel/list'],
-    'gorevler'    => ['label' => 'Görevler',    'icon' => 'task_alt', 'color_bg' => 'bg-purple-100 dark:bg-purple-900/30', 'color_icon' => 'text-purple-600', 'link_match' => 'gorevler/list'],
-    'talepler'    => ['label' => 'Talepler',    'icon' => 'assignment', 'color_bg' => 'bg-orange-100 dark:bg-orange-900/30', 'color_icon' => 'text-orange-600', 'link_match' => 'talepler/list'],
-    'evrak-takip' => ['label' => 'Evrak Takip', 'icon' => 'drafts', 'color_bg' => 'bg-sky-100 dark:bg-sky-900/30', 'color_icon' => 'text-sky-600', 'link_match' => 'evrak-takip/list'],
-    'nobet'       => ['label' => 'Nöbet Onay',  'icon' => 'event_available', 'color_bg' => 'bg-rose-100 dark:bg-rose-900/30', 'color_icon' => 'text-rose-600', 'link_match' => 'nobet/onay-islemleri'],
-    'km-onaylari' => ['label' => 'KM Onayları', 'icon' => 'speed', 'color_bg' => 'bg-cyan-100 dark:bg-cyan-900/30', 'color_icon' => 'text-cyan-600', 'link_match' => 'arac-takip/km-onaylari'],
-    'yardim'      => ['label' => 'Destek',      'icon' => 'support_agent', 'color_bg' => 'bg-indigo-100 dark:bg-indigo-900/30', 'color_icon' => 'text-indigo-600', 'link_match' => 'yardim/list'],
-    'ihbar'       => ['label' => 'İhbar',        'icon' => 'campaign', 'color_bg' => 'bg-orange-100 dark:bg-orange-900/30', 'color_icon' => 'text-orange-600', 'link_match' => 'ihbar/list'],
-    'kacak'       => ['label' => 'Kaçak Kontrol','icon' => 'shield', 'color_bg' => 'bg-red-100 dark:bg-red-900/30', 'color_icon' => 'text-red-600', 'link_match' => 'kacak/list'],
+    'home'              => ['label' => 'Ana Sayfa',         'icon' => 'home', 'color_bg' => 'bg-blue-100 dark:bg-blue-900/30', 'color_icon' => 'text-blue-600', 'link_match' => 'home', 'desc' => 'Ana Sayfa ve İstatistikler'],
+    'cari-takip'        => ['label' => 'Cari',              'icon' => 'account_balance_wallet', 'color_bg' => 'bg-emerald-100 dark:bg-emerald-900/30', 'color_icon' => 'text-emerald-600', 'link_match' => 'cari/list', 'desc' => 'Cari ve Alacak/Borç Takibi'],
+    'gelir-gider'       => ['label' => 'Gelir Gider',       'icon' => 'account_balance', 'color_bg' => 'bg-amber-100 dark:bg-amber-900/30', 'color_icon' => 'text-amber-600', 'link_match' => 'gelir-gider/list', 'desc' => 'Kasa ve Gelir/Gider Hareketleri'],
+    'raporlar'          => ['label' => 'Raporlar',          'icon' => 'bar_chart', 'color_bg' => 'bg-purple-100 dark:bg-purple-900/30', 'color_icon' => 'text-purple-600', 'link_match' => 'puantaj/raporlar', 'desc' => 'Puantaj ve Genel Raporlar'],
+    'arac'              => ['label' => 'Araç',              'icon' => 'directions_car', 'color_bg' => 'bg-green-100 dark:bg-green-900/30', 'color_icon' => 'text-green-600', 'link_match' => 'arac-takip/list', 'desc' => 'Araç ve Zimmet Takibi'],
+    'personel'          => ['label' => 'Personel',          'icon' => 'group', 'color_bg' => 'bg-blue-100 dark:bg-blue-900/30', 'color_icon' => 'text-blue-600', 'link_match' => 'personel/list', 'desc' => 'Personel Listesi ve İşlemleri'],
+    'gorevler'          => ['label' => 'Görevler',          'icon' => 'task_alt', 'color_bg' => 'bg-purple-100 dark:bg-purple-900/30', 'color_icon' => 'text-purple-600', 'link_match' => 'gorevler/list', 'desc' => 'Görev ve İş Takibi'],
+    'talepler'          => ['label' => 'Talepler',          'icon' => 'assignment', 'color_bg' => 'bg-orange-100 dark:bg-orange-900/30', 'color_icon' => 'text-orange-600', 'link_match' => 'talepler/list', 'desc' => 'İzin ve Avans Talepleri'],
+    'evrak-takip'       => ['label' => 'Evrak Takip',       'icon' => 'drafts', 'color_bg' => 'bg-sky-100 dark:bg-sky-900/30', 'color_icon' => 'text-sky-600', 'link_match' => 'evrak-takip/list', 'desc' => 'Gelen ve Giden Evraklar'],
+    'nobet'             => ['label' => 'Nöbet Onay',        'icon' => 'event_available', 'color_bg' => 'bg-rose-100 dark:bg-rose-900/30', 'color_icon' => 'text-rose-600', 'link_match' => 'nobet/onay-islemleri', 'desc' => 'Nöbet Listesi ve Onayları'],
+    'km-onaylari'       => ['label' => 'KM Onayları',       'icon' => 'speed', 'color_bg' => 'bg-cyan-100 dark:bg-cyan-900/30', 'color_icon' => 'text-cyan-600', 'link_match' => 'arac-takip/km-onaylari', 'desc' => 'Araç KM Bildirim Onayları'],
+    'yardim'            => ['label' => 'Destek',            'icon' => 'support_agent', 'color_bg' => 'bg-indigo-100 dark:bg-indigo-900/30', 'color_icon' => 'text-indigo-600', 'link_match' => 'yardim/list', 'desc' => 'Yardım ve Destek Talepleri'],
+    'ihbar'             => ['label' => 'İhbar',              'icon' => 'campaign', 'color_bg' => 'bg-orange-100 dark:bg-orange-900/30', 'color_icon' => 'text-orange-600', 'link_match' => 'ihbar/list', 'desc' => 'İhbar Yönetimi ve Takibi'],
+    'kacak'             => ['label' => 'Kaçak Kontrol',     'icon' => 'shield', 'color_bg' => 'bg-red-100 dark:bg-red-900/30', 'color_icon' => 'text-red-600', 'link_match' => 'kacak/list', 'desc' => 'Kaçak Elektrik/Su Kontrolü'],
+    'profil'            => ['label' => 'Profil',            'icon' => 'manage_accounts', 'color_bg' => 'bg-teal-100 dark:bg-teal-900/30', 'color_icon' => 'text-teal-600', 'link_match' => 'profil', 'desc' => 'Profil ve Kullanıcı Ayarları', 'url' => '?p=profil'],
+    'hesap-hareketleri' => ['label' => 'Hesap Hareketleri', 'icon' => 'receipt_long', 'color_bg' => 'bg-indigo-100 dark:bg-indigo-900/30', 'color_icon' => 'text-indigo-600', 'link_match' => 'cari/list', 'desc' => 'Finansal Hesap Hareketleri', 'url' => '?p=hesap-hareketleri'],
+    'tum-hareketler'    => ['label' => 'Tüm Hareketler',    'icon' => 'history', 'color_bg' => 'bg-violet-100 dark:bg-violet-900/30', 'color_icon' => 'text-violet-600', 'link_match' => 'cari/list', 'desc' => 'Tüm İşlem ve Finans Geçmişi', 'url' => '?p=tum-hareketler'],
+    'aparat'            => ['label' => 'Aparat Takip',      'icon' => 'construction', 'color_bg' => 'bg-amber-100 dark:bg-amber-900/30', 'color_icon' => 'text-amber-600', 'link_match' => 'aparat-takip/list', 'desc' => 'Sayaç Aparat Takip Ekranı', 'url' => '../index.php?p=aparat-takip/list'],
+    'puantaj'           => ['label' => 'Puantaj',           'icon' => 'calendar_month', 'color_bg' => 'bg-emerald-100 dark:bg-emerald-900/30', 'color_icon' => 'text-emerald-600', 'link_match' => 'puantaj/list', 'desc' => 'Personel Puantaj İşlemleri', 'url' => '../index.php?p=puantaj/list'],
+    'desktop'           => ['label' => 'Masaüstü Modu',     'icon' => 'desktop_windows', 'color_bg' => 'bg-blue-100 dark:bg-blue-900/30', 'color_icon' => 'text-blue-600', 'link_match' => 'home', 'desc' => 'Masaüstü Görünümüne Geçiş', 'url' => '?force_desktop=1&p=home'],
 ];
 
 $user_mobile_menus = [];
@@ -99,6 +105,12 @@ $user_mobile_menus['home'] = $all_mobile_menus['home'];
 foreach ($all_mobile_menus as $pKey => $mData) {
     if ($pKey === 'home') continue;
     
+    // Her zaman erişilebilir olanlar (profil, desktop)
+    if ($pKey === 'profil' || $pKey === 'desktop') {
+        $user_mobile_menus[$pKey] = $mData;
+        continue;
+    }
+    
     // Normal link kontrolü
     $hasAccess = in_array($mData['link_match'], $permitted_links);
     
@@ -106,7 +118,6 @@ foreach ($all_mobile_menus as $pKey => $mData) {
     if ($pKey === 'yardim' && !$hasAccess) {
         $hasAccess = in_array('yardim/user-list', $permitted_links);
         
-        // Eğer hala yoksa, içinde 'yardim' geçen herhangi bir link var mı bak (daha esnek kontrol)
         if (!$hasAccess) {
             foreach ($permitted_links as $link) {
                 if (strpos($link, 'yardim') !== false) {
@@ -117,7 +128,7 @@ foreach ($all_mobile_menus as $pKey => $mData) {
         }
     }
 
-    // Fallback Gate checks for personel, arac, talepler, gorevler
+    // Fallback Gate checks for personel, arac, talepler, gorevler, puantaj, aparat
     if (!$hasAccess) {
         if ($pKey === 'personel' && \App\Service\Gate::allows('personel_listesi')) {
             $hasAccess = true;
@@ -127,7 +138,9 @@ foreach ($all_mobile_menus as $pKey => $mData) {
             $hasAccess = true;
         } elseif ($pKey === 'gorevler' && \App\Service\Gate::allows('gorevler')) {
             $hasAccess = true;
-        } elseif ($pKey === 'raporlar') {
+        } elseif ($pKey === 'aparat' && (\App\Service\Gate::allows('aparat_takip') || in_array('aparat-takip/list', $permitted_links))) {
+            $hasAccess = true;
+        } elseif (($pKey === 'puantaj' || $pKey === 'raporlar')) {
             $db = (new \App\Core\Db())->getConnection();
             $userRoles = !empty($_SESSION['user']->roles) ? explode(',', $_SESSION['user']->roles) : [];
             $hasReportPermission = false;
@@ -137,7 +150,7 @@ foreach ($all_mobile_menus as $pKey => $mData) {
                 $stmt->execute($userRoles);
                 $hasReportPermission = ((int)$stmt->fetchColumn()) > 0;
             }
-            if ($hasReportPermission || \App\Service\Gate::allows('puantaj_raporlama') || \App\Service\Gate::allows('puantaj_yonetim') || \App\Service\Gate::allows('puantaj/raporlar')) {
+            if ($hasReportPermission || \App\Service\Gate::allows('puantaj_raporlama') || \App\Service\Gate::allows('puantaj_yonetim') || \App\Service\Gate::allows('puantaj/raporlar') || \App\Service\Gate::allows('puantaj/list')) {
                 $hasAccess = true;
             }
         }
@@ -161,22 +174,25 @@ if (!in_array($page, $allowed_pages)) {
 $page_file = __DIR__ . '/pages/' . $page . '.php';
 
 $page_titles = [
-    'home'        => 'Ana Sayfa',
-    'personel'    => 'Personel',
-    'arac'        => 'Araç Takip',
-    'gorevler'    => 'Görevler',
-    'gelir-gider' => 'Gelir Gider Takibi',
-    'cari-takip'  => 'Cari',    
+    'home'              => 'Ana Sayfa',
+    'personel'          => 'Personel',
+    'arac'              => 'Araç Takip',
+    'gorevler'          => 'Görevler',
+    'gelir-gider'       => 'Gelir Gider Takibi',
+    'cari-takip'        => 'Cari',    
     'hesap-hareketleri' => 'Hesap Hareketleri',
-    'talepler'    => 'Talepler',
-    'evrak-takip' => 'Evrak Takip',
-    'nobet'       => 'Nöbet Onay',
-    'km-onaylari' => 'KM Onayları',
-    'raporlar'    => 'Raporlar',
-    'yardim'      => 'Yardım ve Destek',
-    'ihbar'       => 'İhbar Yönetimi',
-    'kacak'       => 'Kaçak Kontrol',
+    'talepler'          => 'Talepler',
+    'evrak-takip'       => 'Evrak Takip',
+    'nobet'             => 'Nöbet Onay',
+    'km-onaylari'       => 'KM Onayları',
+    'raporlar'          => 'Raporlar',
+    'yardim'            => 'Yardım ve Destek',
+    'ihbar'             => 'İhbar Yönetimi',
+    'kacak'             => 'Kaçak Kontrol',
+    'profil'            => 'Profil',
+    'tum-hareketler'    => 'Tüm Hareketler',
 ];
+
 
 $currentTitle = $page_titles[$page] ?? 'Ana Sayfa';
 

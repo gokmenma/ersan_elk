@@ -87,7 +87,7 @@ $page = $_GET['p'] ?? 'home';
 
 <!-- Menü Yönetimi Sayfası -->
 <?php if ($page == 'menu-yonetimi/list') { ?>
-    <script src="views/menu-yonetimi/js/list.js"></script>
+    <script src="views/menu-yonetimi/js/list.js?v=<?php echo filemtime(dirname(__DIR__) . '/views/menu-yonetimi/js/list.js'); ?>"></script>
 <?php } ?>
 
 <?php if ($page == 'kullanici-gruplari/duzenle') { ?>

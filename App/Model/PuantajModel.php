@@ -350,7 +350,11 @@ class PuantajModel extends Model
 
         $summary = [];
         foreach ($results as $row) {
-            $summary[$row->ekip_adi][$row->tarih] = $row->toplam;
+            $normEkip = \App\Model\KacakKontrolModel::normalizeEkipAdi($row->ekip_adi);
+            if (!isset($summary[$normEkip][$row->tarih])) {
+                $summary[$normEkip][$row->tarih] = 0;
+            }
+            $summary[$normEkip][$row->tarih] += (int) $row->toplam;
         }
         return $summary;
     }
@@ -360,7 +364,17 @@ class PuantajModel extends Model
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $stmt = $this->db->prepare("SELECT DISTINCT ekip_adi FROM kacak_kontrol WHERE firma_id = ? AND ekip_adi IS NOT NULL AND ekip_adi != '' AND silinme_tarihi IS NULL ORDER BY ekip_adi ASC");
         $stmt->execute([$firmaId]);
-        return $stmt->fetchAll(PDO::FETCH_COLUMN);
+        $rawTeams = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        $normalizedTeams = [];
+        foreach ($rawTeams as $team) {
+            $norm = \App\Model\KacakKontrolModel::normalizeEkipAdi($team);
+            if (!empty($norm) && !in_array($norm, $normalizedTeams, true)) {
+                $normalizedTeams[] = $norm;
+            }
+        }
+        sort($normalizedTeams, SORT_STRING | SORT_FLAG_CASE);
+        return $normalizedTeams;
     }
 
     /**

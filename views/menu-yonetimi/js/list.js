@@ -137,15 +137,15 @@ $(document).ready(function () {
                     data: 'parent_name',
                     render: function (data, type, row) {
                         if (row.parent_id == 0 || !data) {
-                            return '<span class="badge bg-soft-secondary text-secondary">- Ana Menü -</span>';
+                            return '<span class="badge badge-soft-menu-parent">- Ana Menü -</span>';
                         }
-                        return `<span class="badge bg-soft-info text-info"><i class="feather feather-corner-down-right me-1"></i>${escapeHtml(data)}</span>`;
+                        return `<span class="badge badge-soft-menu-sub"><i class="feather feather-corner-down-right me-1"></i>${escapeHtml(data)}</span>`;
                     }
                 },
                 {
                     data: 'group_name',
                     render: function (data) {
-                        return `<span class="badge bg-soft-primary text-primary">${escapeHtml(data || 'Genel')}</span>`;
+                        return `<span class="badge badge-soft-menu-group">${escapeHtml(data || 'Genel')}</span>`;
                     }
                 },
                 {

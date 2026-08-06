@@ -208,6 +208,16 @@ if (!empty($icralar)) {
         }
     }
 
+    .icra-ai-accordion .accordion-button:not(.collapsed) {
+        background-color: #f8fafc;
+        box-shadow: none;
+    }
+
+    .icra-ai-accordion .accordion-button:focus {
+        box-shadow: none;
+        border-color: transparent;
+    }
+
     .print-header {
         border-bottom: 2px solid #333;
         margin-bottom: 20px;
@@ -445,6 +455,40 @@ if (!empty($icralar)) {
                 <input type="hidden" name="id" id="icra_id_hidden" value="">
                 <div class="modal-body p-4">
                     <div class="row g-3">
+                        <!-- Yapay Zekâ ile Doldurma -->
+                        <div class="col-12">
+                            <div class="accordion icra-ai-accordion" id="icraAiAccordion">
+                                <div class="accordion-item border rounded-3 overflow-hidden">
+                                    <h2 class="accordion-header">
+                                        <button class="accordion-button collapsed bg-light py-3" type="button"
+                                            data-bs-toggle="collapse" data-bs-target="#icraAiPanel"
+                                            aria-expanded="false" aria-controls="icraAiPanel">
+                                            <i data-feather="zap" class="text-warning me-2" style="width: 18px; height: 18px;"></i>
+                                            <span class="fw-bold text-dark">İcra Dairesinden Gelen Yazıyı Yükleyin</span>
+                                            <span class="badge bg-dark-subtle text-dark ms-2 fw-normal">Yapay Zekâ</span>
+                                        </button>
+                                    </h2>
+                                    <div id="icraAiPanel" class="accordion-collapse collapse" data-bs-parent="#icraAiAccordion">
+                                        <div class="accordion-body pt-3">
+                                            <p class="text-muted small mb-3">Belge okunarak aşağıdaki alanlar otomatik doldurulur. Kaydetmeden önce bilgileri kontrol ediniz.</p>
+                                            <div class="row g-2 align-items-center">
+                                                <div class="col-md-8">
+                                                    <input type="file" id="icra_ai_belge" class="form-control shadow-none" accept=".pdf,.jpg,.jpeg,.png,.webp">
+                                                </div>
+                                                <div class="col-md-4 d-grid">
+                                                    <button type="button" class="btn btn-dark fw-bold rounded-pill" id="btnIcraAiDoldur">
+                                                        <i data-feather="zap" class="me-1" style="width: 14px; height: 14px;"></i> Analiz Et
+                                                    </button>
+                                                </div>
+                                            </div>
+                                            <div class="form-text mt-2">PDF, JPG, PNG veya WEBP — en fazla 12 MB</div>
+                                            <div id="icraAiSonuc" class="mt-2 small d-none"></div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
                         <!-- Temel Dosya Bilgileri -->
                         <div class="col-12">
                             <h6 class="fw-bold mb-3 text-primary border-bottom pb-2"><i data-feather="file-text" class="icon-sm me-1"></i> Dosya Bilgileri</h6>

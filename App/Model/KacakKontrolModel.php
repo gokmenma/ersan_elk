@@ -862,11 +862,22 @@ class KacakKontrolModel extends Model
             $ids = $ids === null || $ids === '' ? [] : explode(',', (string) $ids);
         }
         $ids = array_values(array_unique(array_filter(array_map('intval', $ids))));
+        sort($ids, SORT_NUMERIC);
         return array_slice($ids, 0, 2);
+    }
+
+    public static function normalizeEkipAdi(?string $ekipAdi): string
+    {
+        if (empty($ekipAdi)) return '';
+        $parcalar = array_map('trim', explode(',', $ekipAdi));
+        $parcalar = array_values(array_filter($parcalar));
+        sort($parcalar, SORT_STRING | SORT_FLAG_CASE);
+        return implode(', ', $parcalar);
     }
 
     public function buildEkipAdi(array $personelIds): string
     {
+        $personelIds = $this->normalizePersonelIds($personelIds);
         if (empty($personelIds)) {
             return '';
         }
@@ -875,7 +886,7 @@ class KacakKontrolModel extends Model
         $stmt->execute($personelIds);
         $map = [];
         foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $row) {
-            $map[(int) $row['id']] = $row['adi_soyadi'];
+            $map[(int) $row['id']] = trim($row['adi_soyadi']);
         }
         $isimler = [];
         foreach ($personelIds as $pid) {
@@ -883,6 +894,7 @@ class KacakKontrolModel extends Model
                 $isimler[] = $map[$pid];
             }
         }
+        sort($isimler, SORT_STRING | SORT_FLAG_CASE);
         return implode(', ', $isimler);
     }
 

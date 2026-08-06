@@ -91,6 +91,48 @@ $title = "Menü Yönetimi";
                         border-color: #32394e !important;
                     }
 
+                    /* High contrast soft badges for menu table */
+                    .badge-soft-menu-parent {
+                        background-color: #f1f5f9 !important;
+                        color: #475569 !important;
+                        border: 1px solid #cbd5e1 !important;
+                        font-weight: 600;
+                        padding: 4px 10px;
+                        font-size: 11px;
+                    }
+                    .badge-soft-menu-sub {
+                        background-color: #e0f2fe !important;
+                        color: #0369a1 !important;
+                        border: 1px solid #bae6fd !important;
+                        font-weight: 600;
+                        padding: 4px 10px;
+                        font-size: 11px;
+                    }
+                    .badge-soft-menu-group {
+                        background-color: #e0e7ff !important;
+                        color: #3730a3 !important;
+                        border: 1px solid #c7d2fe !important;
+                        font-weight: 600;
+                        padding: 4px 10px;
+                        font-size: 11px;
+                    }
+
+                    [data-bs-theme="dark"] .badge-soft-menu-parent {
+                        background-color: #334155 !important;
+                        color: #cbd5e1 !important;
+                        border-color: #475569 !important;
+                    }
+                    [data-bs-theme="dark"] .badge-soft-menu-sub {
+                        background-color: #075985 !important;
+                        color: #e0f2fe !important;
+                        border-color: #0284c7 !important;
+                    }
+                    [data-bs-theme="dark"] .badge-soft-menu-group {
+                        background-color: #3730a3 !important;
+                        color: #e0e7ff !important;
+                        border-color: #4338ca !important;
+                    }
+
                     #menuTable {
                         opacity: 1;
                     }

@@ -440,4 +440,64 @@ class UserModel extends Model
         $sql = $this->db->prepare("UPDATE $this->table SET password = ?, reset_token = NULL, reset_token_expiry = NULL WHERE id = ?");
         return $sql->execute([$hashedPassword, $userId]);
     }
+
+    /**
+     * Kullanılabilir tüm Mobil hızlı işlem anahtarları
+     */
+    public const ALL_MOBILE_HIZLI_ISLEMLER = [
+        'cari-takip', 'gelir-gider', 'raporlar', 'arac', 'personel',
+        'gorevler', 'talepler', 'evrak-takip', 'nobet', 'km-onaylari',
+        'yardim', 'ihbar', 'kacak', 'profil', 'hesap-hareketleri',
+        'tum-hareketler', 'aparat', 'puantaj', 'desktop'
+    ];
+
+
+    /**
+     * Kullanıcının Mobil Hızlı Erişim / İşlem sıralamasını getirir
+     * 
+     * @param int $userId
+     * @return array|null Null dönerse varsayılan olarak yetkili olunan tüm menüler gösterilir
+     */
+    public function getMobileHizliIslemler(int $userId): ?array
+    {
+        $stmt = $this->db->prepare("SELECT mobile_hizli_islemler FROM {$this->table} WHERE id = ?");
+        $stmt->execute([$userId]);
+        $json = $stmt->fetchColumn();
+
+        if (empty($json)) {
+            return null;
+        }
+
+        $decoded = json_decode($json, true);
+        if (!is_array($decoded)) {
+            return null;
+        }
+
+        $validItems = array_values(array_filter($decoded, function ($item) {
+            return in_array($item, self::ALL_MOBILE_HIZLI_ISLEMLER, true);
+        }));
+
+        return $validItems;
+    }
+
+    /**
+     * Kullanıcının Mobil Hızlı Erişim / İşlem sıralamasını kaydeder
+     * 
+     * @param int $userId
+     * @param array $items
+     * @return bool
+     */
+    public function saveMobileHizliIslemler(int $userId, array $items): bool
+    {
+        $validItems = array_values(array_unique(array_filter($items, function ($item) {
+            return in_array($item, self::ALL_MOBILE_HIZLI_ISLEMLER, true);
+        })));
+
+        $json = json_encode($validItems, JSON_UNESCAPED_UNICODE);
+
+        $stmt = $this->db->prepare("UPDATE {$this->table} SET mobile_hizli_islemler = ? WHERE id = ?");
+        return $stmt->execute([$json, $userId]);
+    }
 }
+
+

@@ -21,6 +21,7 @@ $(document).ready(function () {
       '<i data-feather="plus-circle" class="icon-sm me-2"></i>Yeni İcra Dosyası Ekle',
     );
     $("#formPersonelIcraEkle")[0].reset();
+    icraAiTemizle();
     $("#icra_id_hidden").val("");
     $("#icra_sira").val(nextSira);
     $("#icra_durum").val("devam_ediyor").trigger("change");
@@ -46,6 +47,133 @@ $(document).ready(function () {
     setTimeout(function() {
         syncFeather();
     }, 50);
+  });
+
+  // --- İcra Belgesini Yapay Zekâ ile Okuma ---
+  function icraAiSonucGoster(html, tone) {
+    $("#icraAiSonuc").removeClass("d-none").attr("class", "mt-2 small " + tone).html(html);
+  }
+
+  function icraAiTemizle() {
+    $("#icra_ai_belge").val("");
+    $("#icraAiSonuc").addClass("d-none").empty();
+
+    var panel = document.getElementById("icraAiPanel");
+    if (panel && typeof bootstrap !== "undefined" && bootstrap.Collapse) {
+      bootstrap.Collapse.getOrCreateInstance(panel, { toggle: false }).hide();
+    }
+  }
+
+  $(document).on("click", "#btnIcraAiDoldur", function () {
+    var file = $("#icra_ai_belge")[0].files[0];
+    if (!file) {
+      icraAiSonucGoster("Önce icra dairesinden gelen belgeyi seçiniz.", "text-warning");
+      return;
+    }
+    if (file.size > 12 * 1024 * 1024) {
+      icraAiSonucGoster("Belge en fazla 12 MB olabilir.", "text-danger");
+      return;
+    }
+
+    var button = $(this);
+    var originalHtml = button.html();
+    var data = new FormData();
+    data.append("icra_belgesi", file, file.name);
+    data.append("personel_id", getPersonelId());
+    button.prop("disabled", true).html('<span class="spinner-border spinner-border-sm me-2"></span>Belge okunuyor...');
+    icraAiSonucGoster('<span class="spinner-border spinner-border-sm me-2"></span>Belge yapay zekâ ile inceleniyor...', "text-muted");
+
+    $.ajax({
+      url: "views/personel/ajax/icra-ai-doldur.php",
+      type: "POST",
+      data: data,
+      processData: false,
+      contentType: false,
+      dataType: "json",
+      success: function (response) {
+        if (response.status !== "success" || !response.data) {
+          icraAiSonucGoster(response.message || "Belge okunamadı.", "text-danger");
+          return;
+        }
+
+        var d = response.data;
+        var dolan = [];
+
+        if (d.icra_dairesi) {
+          if ($("#icra_dairesi").find("option[value='" + d.icra_dairesi.replace(/'/g, "\\'") + "']").length === 0) {
+            $("#icra_dairesi").append(new Option(d.icra_dairesi, d.icra_dairesi, true, true));
+          }
+          $("#icra_dairesi").val(d.icra_dairesi).trigger("change");
+          dolan.push("İcra Dairesi");
+        }
+        if (d.dosya_no) {
+          $("#icra_dosya_no").val(d.dosya_no);
+          dolan.push("Dosya No");
+        }
+        if (d.alacakli) {
+          $("#icra_alacakli").val(d.alacakli);
+          dolan.push("Alacaklı");
+        }
+        if (d.toplam_borc) {
+          $("#icra_toplam_borc").val(d.toplam_borc);
+          dolan.push("Toplam Borç");
+        }
+        if (d.kesinti_tipi) {
+          $("#icra_kesinti_tipi").val(d.kesinti_tipi).trigger("change");
+          dolan.push("Kesinti Türü");
+        }
+        if (d.kesinti_orani) {
+          $("#icra_kesinti_orani").val(d.kesinti_orani);
+          dolan.push("Kesinti Oranı");
+        }
+        if (d.aylik_kesinti_tutari) {
+          $("#icra_aylik_kesinti").val(d.aylik_kesinti_tutari);
+          dolan.push("Aylık Kesinti");
+        }
+        if (d.iban) {
+          $("#icra_iban").val(d.iban).trigger("input");
+          dolan.push("IBAN");
+        }
+        if (d.hesap_bilgileri) {
+          $("#icra_hesap_bilgileri").val(d.hesap_bilgileri);
+          dolan.push("Hesap Bilgileri");
+        }
+        if (d.baslangic_tarihi) {
+          if ($("#icra_baslangic")[0] && $("#icra_baslangic")[0]._flatpickr) {
+            $("#icra_baslangic")[0]._flatpickr.setDate(d.baslangic_tarihi, true, "d.m.Y");
+          } else {
+            $("#icra_baslangic").val(d.baslangic_tarihi);
+          }
+          dolan.push("Başlangıç");
+        }
+        if (d.aciklama) {
+          $("#icra_aciklama").val(d.aciklama);
+        }
+
+        if (dolan.length === 0) {
+          icraAiSonucGoster("Belgeden kullanılabilir bilgi çıkarılamadı. Alanları elle doldurunuz.", "text-warning");
+          return;
+        }
+
+        var uyari = "";
+        if (d.borclu) {
+          uyari = '<div class="text-muted mt-1">Belgedeki borçlu: <b>' + $("<span>").text(d.borclu).html() + "</b> — doğru personelde olduğunuzu kontrol ediniz.</div>";
+        }
+        icraAiSonucGoster(
+          '<i class="bx bx-check-circle me-1"></i>Doldurulan alanlar: <b>' + dolan.join(", ") + "</b>" + uyari,
+          "text-success"
+        );
+        setTimeout(syncFeather, 50);
+      },
+      error: function (xhr) {
+        var message = xhr.responseJSON && xhr.responseJSON.message ? xhr.responseJSON.message : "Belge okunamadı.";
+        icraAiSonucGoster(message, "text-danger");
+      },
+      complete: function () {
+        button.prop("disabled", false).html(originalHtml);
+        setTimeout(syncFeather, 50);
+      }
+    });
   });
 
   // Kesinti tipi değiştiğinde alanları göster/gizle (Sadece bir kez bağla)
@@ -88,6 +216,7 @@ $(document).ready(function () {
     $("#icraModalTitle").html(
       '<i data-feather="edit-3" class="icon-sm me-2"></i>İcra Dosyasını Düzenle',
     );
+    icraAiTemizle();
 
     $.ajax({
       url: "views/personel/ajax/kesinti-islemleri.php",
