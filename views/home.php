@@ -24,6 +24,19 @@ if (Gate::allows("ana_sayfa")) {
     $hareketModel = new PersonelHareketleriModel();
     $gorevModel = new GorevModel();
 
+    $puantajModel = new \App\Model\PuantajModel();
+    $endeksModel = new \App\Model\EndeksOkumaModel();
+    $sayacService = new \App\Service\SayacDegisimService();
+
+    $dailyWorkStats = $puantajModel->getDailyStats();
+    $monthlyWorkStats = $puantajModel->getMonthlyStats();
+    $dailyReadingTotal = $endeksModel->getDailyStats();
+    $monthlyReadingTotal = $endeksModel->getMonthlyStats();
+    $sayacDailyStats = $sayacService->getDailyStats();
+    $sayacMonthlyStats = $sayacService->getMonthlyStats();
+    $kacakDailyTotal = $puantajModel->getKacakDailyStats();
+    $kacakMonthlyTotal = $puantajModel->getKacakMonthlyStats();
+
     $measureDb = static function (string $segment, callable $callback, int $dbCount = 1) {
         return RequestPerformanceProfiler::measure($segment, $callback, $dbCount);
     };
