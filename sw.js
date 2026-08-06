@@ -159,30 +159,73 @@ self.addEventListener("push", (event) => {
   event.waitUntil(self.registration.showNotification(title, options));
 });
 
+function bildirimAdresiniCozumle(ham) {
+  const kok = self.registration.scope;
+  let adres = ham || "index.php";
+
+  if (adres.startsWith("?")) {
+    adres = "index.php" + adres;
+  }
+
+  try {
+    const hedef = new URL(adres, kok);
+    return hedef.origin === self.location.origin ? hedef.href : kok;
+  } catch (e) {
+    return kok;
+  }
+}
+
+async function bildirimHedefiniAc(hedefUrl) {
+  const pencereler = await clients.matchAll({
+    type: "window",
+    includeUncontrolled: true,
+  });
+
+  const ayniOrigin = pencereler.filter((c) => {
+    try {
+      return new URL(c.url).origin === self.location.origin;
+    } catch (e) {
+      return false;
+    }
+  });
+
+  const tamEslesen = ayniOrigin.find((c) => c.url === hedefUrl);
+  if (tamEslesen && "focus" in tamEslesen) {
+    return tamEslesen.focus();
+  }
+
+  for (const pencere of ayniOrigin) {
+    if (!("focus" in pencere)) continue;
+    try {
+      const odaklanan = await pencere.focus();
+      if (odaklanan && typeof odaklanan.navigate === "function") {
+        await odaklanan.navigate(hedefUrl);
+        return;
+      }
+    } catch (e) {
+      console.log("Bildirim yonlendirmesi basarisiz:", e);
+    }
+    break;
+  }
+
+  if (clients.openWindow) {
+    return clients.openWindow(hedefUrl);
+  }
+}
+
 // Notification click
 self.addEventListener("notificationclick", (event) => {
   event.notification.close();
 
-  if (event.action === "explore" || !event.action) {
-    const urlToOpen = event.notification.data.url || "index.php";
-
-    event.waitUntil(
-      clients.matchAll({ type: "window" }).then((windowClients) => {
-        // Eğer açık bir pencere varsa ona odaklan
-        for (let i = 0; i < windowClients.length; i++) {
-          const client = windowClients[i];
-          // URL kontrolü tam eşleşme yerine içeriyor mu diye bakabiliriz
-          if ("focus" in client) {
-            return client.focus().then((c) => c.navigate(urlToOpen));
-          }
-        }
-        // Yoksa yeni pencere aç
-        if (clients.openWindow) {
-          return clients.openWindow(urlToOpen);
-        }
-      }),
-    );
+  if (event.action === "close") {
+    return;
   }
+
+  const hedefUrl = bildirimAdresiniCozumle(
+    (event.notification.data && event.notification.data.url) || "",
+  );
+
+  event.waitUntil(bildirimHedefiniAc(hedefUrl));
 });
 
 // Background sync

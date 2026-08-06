@@ -86,6 +86,9 @@ $dailyReadingTotal   = (int) ($endeksModel->getDailyStats() ?? 0);
 $monthlyReadingTotal = (int) ($endeksModel->getMonthlyStats() ?? 0);
 $kacakDailyTotal     = $puantajModel->getKacakDailyStats();
 $kacakMonthlyTotal   = $puantajModel->getKacakMonthlyStats();
+$ihbarModel          = new \App\Model\IhbarModel();
+$ihbarDailyTotal     = $ihbarModel->getDailyStats();
+$ihbarMonthlyTotal   = $ihbarModel->getMonthlyStats();
 
 $sayacDegisimService = new SayacDegisimService();
 $sayacDailyStats     = $sayacDegisimService->getDailyStats();
@@ -139,7 +142,7 @@ if (\App\Service\Gate::allows("personel_listesi")) {
                     <span class="text-sm font-normal text-slate-400">adet Aktif</span>
                 </p>
             </div>
-            <a href="../index.php?p=personel/list"
+            <a href="?p=personel"
                 class="text-primary text-xs font-semibold active:opacity-70 transition-opacity">
                 Personel Listesine Git
             </a>
@@ -190,7 +193,7 @@ if (\App\Service\Gate::allows("arac_takip_yonetim")) {
                     <span class="text-sm font-normal text-slate-400">adet</span>
                 </p>
             </div>
-            <a href="../index.php?p=arac-takip/list"
+            <a href="?p=arac"
                 class="text-primary text-xs font-semibold active:opacity-70 transition-opacity">
                 Araç Listesine Git
             </a>
@@ -312,6 +315,23 @@ $operasyonKartlari = [
         'color_text' => 'text-rose-600',
         'color_border' => 'border-rose-300 dark:border-rose-700/60',
         'btn_class' => 'text-rose-500 border-rose-300',
+        'api_action' => '',
+        'api_tab' => ''
+    ],
+    [
+        'id' => 'widget-ihbar-sayisi',
+        'title' => 'Gunluk Ihbar',
+        'icon' => 'notifications',
+        'daily' => (int) ($ihbarDailyTotal->toplam ?? 0),
+        'monthly' => (int) ($ihbarMonthlyTotal->toplam ?? 0),
+        'sub_daily' => 'Bugun bildirilen & olumlu',
+        'sub_monthly' => 'Bu ay bildirilen & olumlu',
+        'last_update' => null,
+        'link' => '../index.php?p=ihbar/list',
+        'color_bg' => 'bg-amber-50 dark:bg-amber-900/20',
+        'color_text' => 'text-amber-600',
+        'color_border' => 'border-amber-300 dark:border-amber-700/60',
+        'btn_class' => 'text-amber-500 border-amber-300',
         'api_action' => '',
         'api_tab' => ''
     ],
@@ -615,7 +635,7 @@ $activeAnnouncements = $duyuruModel->getAll(true);
 
     <?php if ($toplam_bekleyen > 0 && \App\Service\Gate::allows("talepler")): ?>
     <!-- Bekleyen Onay Uyarı Kartı -->
-    <div class="bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-2xl p-4">
+    <a href="?p=talepler" class="block bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-700/50 rounded-2xl p-4 active:opacity-90 transition-opacity">
         <div class="flex items-center gap-3">
             <div class="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-800/40 flex items-center justify-center flex-shrink-0">
                 <span class="material-symbols-outlined text-amber-600 text-xl">assignment_late</span>
@@ -632,12 +652,11 @@ $activeAnnouncements = $duyuruModel->getAll(true);
                     ?>
                 </p>
             </div>
-            <a href="../index.php?p=personel/list"
-                class="text-amber-600 font-semibold text-xs flex-shrink-0 active:opacity-70">
+            <span class="text-amber-600 font-semibold text-xs flex-shrink-0">
                 Görüntüle
-            </a>
+            </span>
         </div>
-    </div>
+    </a>
     <?php endif; ?>
 
 

@@ -107,6 +107,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (!$stats) {
                     $endeksModel = new EndeksOkumaModel();
                     $sayacService = new SayacDegisimService();
+                    $ihbarModel = new \App\Model\IhbarModel();
                     $dailyWorkStats = $puantajModel->getDailyStats();
                     $monthlyWorkStats = $puantajModel->getMonthlyStats();
                     $dailyReadingTotal = $endeksModel->getDailyStats();
@@ -115,6 +116,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $sayacMonthlyStats = $sayacService->getMonthlyStats();
                     $kacakDailyTotal = $puantajModel->getKacakDailyStats();
                     $kacakMonthlyTotal = $puantajModel->getKacakMonthlyStats();
+                    $ihbarDailyTotal = $ihbarModel->getDailyStats();
+                    $ihbarMonthlyTotal = $ihbarModel->getMonthlyStats();
 
                     $lastUpdateEndeks = null; $lastUpdateIsler = null; $lastUpdateSayac = null;
                     $lastUserEndeks = null; $lastUserIsler = null; $lastUserSayac = null;
@@ -130,13 +133,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         $lastUpdateIsler = $updates['last_update_isler'] ?? null;
                         $lastUpdateSayac = $updates['last_update_sayac'] ?? null;
 
-                        $stmtLogs = $db->prepare("SELECT u.adi_soyadi, l.action_type FROM system_logs l LEFT JOIN users u ON l.user_id = u.id WHERE l.firma_id = ? AND l.created_at >= CURDATE() AND (l.action_type LIKE 'Online%' OR l.action_type LIKE 'Cron%') ORDER BY l.created_at DESC");
+                        $stmtLogs = $db->prepare("SELECT u.adi_soyadi, l.action_type, l.user_id FROM system_logs l LEFT JOIN users u ON l.user_id = u.id WHERE l.firma_id = ? AND l.created_at >= CURDATE() AND (l.action_type LIKE 'Online%' OR l.action_type LIKE 'Cron%') ORDER BY l.created_at DESC");
                         $stmtLogs->execute([$firmaId]);
                         $allLogs = $stmtLogs->fetchAll(PDO::FETCH_ASSOC);
 
                         $findUser = function($types) use ($allLogs) {
                             foreach($allLogs as $log) {
                                 if (in_array($log['action_type'], $types) || stripos($log['action_type'], 'Cron') !== false) {
+                                    if ($log['user_id'] == 0 || stripos($log['action_type'], 'Cron') !== false) return 'Cron';
                                     return $log['adi_soyadi'] ?: 'Sistem';
                                 }
                             }
@@ -148,8 +152,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     } catch (\Exception $e) {}
 
                     $stats = [
-                        'daily' => ['muhurleme' => (int)($dailyWorkStats->muhurleme ?? 0), 'kesme_acma' => (int)($dailyWorkStats->kesme_acma ?? 0), 'endeks_okuma' => (int)($dailyReadingTotal ?? 0), 'sayac_degisimi' => (int)($sayacDailyStats->sayac_degisimi ?? 0), 'kacak' => (int)($kacakDailyTotal->toplam ?? 0), 'kacak_onaylanan' => (int)($kacakDailyTotal->onaylanan ?? 0)],
-                        'monthly' => ['muhurleme' => (int)($monthlyWorkStats->muhurleme ?? 0), 'kesme_acma' => (int)($monthlyWorkStats->kesme_acma ?? 0), 'endeks_okuma' => (int)($monthlyReadingTotal ?? 0), 'sayac_degisimi' => (int)($sayacMonthlyStats->sayac_degisimi ?? 0), 'kacak' => (int)($kacakMonthlyTotal->toplam ?? 0), 'kacak_onaylanan' => (int)($kacakMonthlyTotal->onaylanan ?? 0)],
+                        'daily' => ['muhurleme' => (int)($dailyWorkStats->muhurleme ?? 0), 'kesme_acma' => (int)($dailyWorkStats->kesme_acma ?? 0), 'endeks_okuma' => (int)($dailyReadingTotal ?? 0), 'sayac_degisimi' => (int)($sayacDailyStats->sayac_degisimi ?? 0), 'kacak' => (int)($kacakDailyTotal->toplam ?? 0), 'kacak_onaylanan' => (int)($kacakDailyTotal->onaylanan ?? 0), 'ihbar' => (int)($ihbarDailyTotal->toplam ?? 0), 'ihbar_olumlu' => (int)($ihbarDailyTotal->olumlu ?? 0)],
+                        'monthly' => ['muhurleme' => (int)($monthlyWorkStats->muhurleme ?? 0), 'kesme_acma' => (int)($monthlyWorkStats->kesme_acma ?? 0), 'endeks_okuma' => (int)($monthlyReadingTotal ?? 0), 'sayac_degisimi' => (int)($sayacMonthlyStats->sayac_degisimi ?? 0), 'kacak' => (int)($kacakMonthlyTotal->toplam ?? 0), 'kacak_onaylanan' => (int)($kacakMonthlyTotal->onaylanan ?? 0), 'ihbar' => (int)($ihbarMonthlyTotal->toplam ?? 0), 'ihbar_olumlu' => (int)($ihbarMonthlyTotal->olumlu ?? 0)],
                         'last_update' => ['isler' => $lastUpdateIsler, 'isler_user' => $lastUserIsler, 'endeks' => $lastUpdateEndeks, 'endeks_user' => $lastUserEndeks, 'sayac' => $lastUpdateSayac, 'sayac_user' => $lastUserSayac]
                     ];
                     $setDataCache('operational_stats', $stats);

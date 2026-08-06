@@ -27,6 +27,7 @@ if (Gate::allows("ana_sayfa")) {
     $puantajModel = new \App\Model\PuantajModel();
     $endeksModel = new \App\Model\EndeksOkumaModel();
     $sayacService = new \App\Service\SayacDegisimService();
+    $ihbarModel = new \App\Model\IhbarModel();
 
     $dailyWorkStats = $puantajModel->getDailyStats();
     $monthlyWorkStats = $puantajModel->getMonthlyStats();
@@ -36,6 +37,8 @@ if (Gate::allows("ana_sayfa")) {
     $sayacMonthlyStats = $sayacService->getMonthlyStats();
     $kacakDailyTotal = $puantajModel->getKacakDailyStats();
     $kacakMonthlyTotal = $puantajModel->getKacakMonthlyStats();
+    $ihbarDailyTotal = $ihbarModel->getDailyStats();
+    $ihbarMonthlyTotal = $ihbarModel->getMonthlyStats();
 
     $measureDb = static function (string $segment, callable $callback, int $dbCount = 1) {
         return RequestPerformanceProfiler::measure($segment, $callback, $dbCount);
@@ -731,6 +734,66 @@ if (Gate::allows("ana_sayfa")) {
             </div>
         </div>
         <?php $widgets['widget-kacak-sayisi'] = ob_get_clean();
+
+        ob_start(); ?>
+        <div class="col-6 col-md-2 widget-item" id="widget-ihbar-sayisi">
+            <div class="card border-0 shadow-sm h-100 bordro-summary-card animate-card position-relative stat-card"
+                style="--card-color: #ff9f43; border-bottom: 3px solid var(--card-color) !important; --delay: 1.25s">
+                <div class="card-body p-3 pb-2">
+                    <div class="icon-label-container d-flex justify-content-between align-items-start">
+                        <div class="icon-box" style="background: rgba(255, 159, 67, 0.1);">
+                            <i class="bx bx-bell fs-4" style="color: #ff9f43;"></i>
+                        </div>
+                        <div class="d-flex align-items-center gap-1">
+                            <span class="text-muted small fw-bold" style="font-size: 0.65rem;">İHBAR</span>
+                        </div>
+                    </div>
+                    <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK İHBAR</p>
+                    <h4 class="mb-0 fw-bold bordro-text-heading stat-value d-none"
+                        data-daily="<?php echo (int)($ihbarDailyTotal->toplam ?? 0); ?>"
+                        data-monthly="<?php echo (int)($ihbarMonthlyTotal->toplam ?? 0); ?>" data-label-daily="GÜNLÜK İHBAR"
+                        data-label-monthly="AYLIK İHBAR" data-sub-daily="Bugün bildirilen & olumlu"
+                        data-sub-monthly="Bu ay bildirilen & olumlu">
+                        <?php echo (int)($ihbarDailyTotal->toplam ?? 0); ?>
+                    </h4>
+
+                    <!-- Bildirilen & Olumlu Çift İstatistik Görünümü -->
+                    <div class="d-flex align-items-center justify-content-between my-2 py-1.5 px-2 rounded" style="background: rgba(255, 159, 67, 0.05); border: 1px dashed rgba(255, 159, 67, 0.25);">
+                        <div class="pe-2 border-end text-center flex-fill" style="border-color: rgba(255, 159, 67, 0.25) !important;">
+                            <div class="text-muted fw-bold" style="font-size: 0.6rem; letter-spacing: 0.3px;">BİLDİRİLEN</div>
+                            <span class="fs-5 fw-bold text-dark stat-local-value"
+                                  data-daily="<?php echo (int)($ihbarDailyTotal->toplam ?? 0); ?>"
+                                  data-monthly="<?php echo (int)($ihbarMonthlyTotal->toplam ?? 0); ?>">
+                                <?php echo (int)($ihbarDailyTotal->toplam ?? 0); ?>
+                            </span>
+                        </div>
+                        <div class="ps-2 text-center flex-fill">
+                            <div class="text-success fw-bold" style="font-size: 0.6rem; letter-spacing: 0.3px;"><i class="bx bx-check-circle me-0.5"></i>OLUMLU</div>
+                            <span class="fs-5 fw-bold text-success stat-local-value"
+                                  data-daily="<?php echo (int)($ihbarDailyTotal->olumlu ?? 0); ?>"
+                                  data-monthly="<?php echo (int)($ihbarMonthlyTotal->olumlu ?? 0); ?>">
+                                <?php echo (int)($ihbarDailyTotal->olumlu ?? 0); ?>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="sub-text mt-1 stat-subtext" style="font-size: 10px; color: #858796;">Bugün bildirilen & olumlu</div>
+                    <div class="card-footer-actions mt-2">
+                        <div class="btn-group btn-group-sm stats-local-toggle-group">
+                            <button type="button" class="btn btn-outline-secondary stats-local-btn active"
+                                data-mode="daily">Gün</button>
+                            <button type="button" class="btn btn-outline-secondary stats-local-btn"
+                                data-mode="monthly">Ay</button>
+                        </div>
+                        <a href="index.php?p=ihbar/list"
+                            class="btn btn-xs btn-soft-warning rounded-pill">
+                            <i class="bx bx-right-arrow-alt"></i> Git
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <?php $widgets['widget-ihbar-sayisi'] = ob_get_clean();
 
         ob_start(); ?>
         <div class="<?php echo getWidgetWidthClass('widget-endeks-karsilastirma', 'col-12'); ?> widget-item"
@@ -1597,6 +1660,12 @@ if (Gate::allows("ana_sayfa")) {
                                         <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
                                             <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-kacak-sayisi" checked>
                                             <span style="font-size: 13px;">Kaçak Kontrol</span>
+                                        </label>
+                                    </li>
+                                    <li>
+                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-ihbar-sayisi" checked>
+                                            <span style="font-size: 13px;">İhbar İşlemleri</span>
                                         </label>
                                     </li>
                                     <?php if (Gate::allows("gorevler")): ?>
@@ -3739,7 +3808,8 @@ if (Gate::allows("ana_sayfa")) {
                     'widget-gunluk-kesme-acma': 'col-6 col-md-2',
                     'widget-gunluk-endeks-okuma': 'col-6 col-md-2',
                     'widget-gunluk-sayac-degisimi': 'col-6 col-md-2',
-                    'widget-kacak-sayisi': 'col-6 col-md-2'
+                    'widget-kacak-sayisi': 'col-6 col-md-2',
+                    'widget-ihbar-sayisi': 'col-6 col-md-2'
                 };
 
                 function saveDashboardConfig(immediate = true) {
@@ -4310,6 +4380,7 @@ if (Gate::allows("ana_sayfa")) {
                             'widget-gunluk-sayac-degisimi'   : 'Sayaç Değişimi',
                             'widget-gunluk-kacak'            : 'Kaçak Kontrolü',
                             'widget-kacak-sayisi'            : 'Kaçak Sayısı',
+                            'widget-ihbar-sayisi'            : 'İhbar Sayısı',
                             'widget-izinliler'               : 'İzinli Personeller',
                             'widget-izindekiler'             : 'İzinde Olanlar',
                             'widget-bildirimler'             : 'Görev & Bildirimler',
@@ -4969,6 +5040,7 @@ if (Gate::allows("ana_sayfa")) {
                     updateOperationalWidget('widget-gunluk-endeks-okuma', daily.endeks_okuma, monthly.endeks_okuma, lastUpdate.endeks, lastUpdate.endeks_user);
                     updateOperationalWidget('widget-gunluk-sayac-degisimi', daily.sayac_degisimi, monthly.sayac_degisimi, lastUpdate.sayac, lastUpdate.sayac_user);
                     updateOperationalWidget('widget-kacak-sayisi', daily.kacak, monthly.kacak, null, '-');
+                    updateOperationalWidget('widget-ihbar-sayisi', daily.ihbar, monthly.ihbar, null, '-');
                 }
 
                 function refreshOperationalStats() { return initDashboard(true); }

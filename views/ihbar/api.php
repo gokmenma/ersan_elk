@@ -60,13 +60,14 @@ function ihbarNotifyYeniIhbar(int $ihbarId, string $ozetMetin): void
     }
 
     $bildirimModel = new BildirimModel();
+    $hedefAdres = 'index.php?p=ihbar/list&ihbar_id=' . $ihbarId;
     foreach ($sorumlular as $kullanici) {
         try {
             $bildirimModel->createNotification(
                 (int) $kullanici->id,
                 '📣 Yeni İhbar',
                 $ozetMetin,
-                'index.php?p=ihbar/list',
+                $hedefAdres,
                 'alert-triangle',
                 'danger',
                 UserNotificationPreferenceModel::TYPE_IHBAR_CREATED
@@ -76,7 +77,7 @@ function ihbarNotifyYeniIhbar(int $ihbarId, string $ozetMetin): void
             $pushService->sendToUser((int) $kullanici->id, [
                 'title' => '📣 Yeni İhbar',
                 'body' => $ozetMetin,
-                'url' => 'index.php?p=ihbar/list'
+                'url' => $hedefAdres
             ], true, UserNotificationPreferenceModel::TYPE_IHBAR_CREATED);
         } catch (Exception $e) {
             error_log('İhbar bildirim hatası (sorumlu): ' . $e->getMessage());
@@ -310,7 +311,7 @@ try {
                     $pushService->sendToPersonel($pId, [
                         'title' => '📣 Yeni İhbar Yönlendirildi',
                         'body' => 'Size yeni bir ihbar yönlendirildi. Detayları görmek için uygulamayı açın.',
-                        'url' => '?page=ihbar'
+                        'url' => '?page=ihbar&ihbar_id=' . $id . '&tip=gelen'
                     ]);
                 }
             } catch (Exception $e) {
@@ -366,14 +367,21 @@ try {
                 if ($ihbarId <= 0 || $personelId <= 0) throw new Exception('Geçersiz yönlendirme bilgisi.');
                 $assignments[$ihbarId] = $personelId;
             }
-            $personelIds = $IhbarModel->bulkReassign($assignments, $currentUserId);
+            $yeniAtamalar = $IhbarModel->bulkReassign($assignments, $currentUserId);
             try {
                 $pushService = new PushNotificationService();
-                foreach (array_unique($personelIds) as $pId) {
+                $personelIhbarlari = [];
+                foreach ($yeniAtamalar as $atananIhbarId => $pId) {
+                    $personelIhbarlari[(int) $pId][] = (int) $atananIhbarId;
+                }
+                foreach ($personelIhbarlari as $pId => $ihbarIdleri) {
+                    $hedefAdres = count($ihbarIdleri) === 1
+                        ? '?page=ihbar&ihbar_id=' . $ihbarIdleri[0] . '&tip=gelen'
+                        : '?page=ihbar&tip=gelen';
                     $pushService->sendToPersonel((int) $pId, [
                         'title' => '📣 İhbarlar Yeniden Yönlendirildi',
                         'body' => 'Bekleyen ihbarlar size yönlendirildi. Detaylar için uygulamayı açın.',
-                        'url' => '?page=ihbar'
+                        'url' => $hedefAdres
                     ]);
                 }
             } catch (Exception $e) {

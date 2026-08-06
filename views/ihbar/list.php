@@ -1033,6 +1033,7 @@ function ihbarDurumBadge($durum)
         }));
 
         renderIhbarDashboardCharts();
+        ihbarDerinBaglantiyiAc();
 
         document.getElementById('ihbar-list-tab')?.addEventListener('shown.bs.tab', function () {
             ihbarTable.columns.adjust().responsive.recalc();
@@ -1422,6 +1423,22 @@ function ihbarDurumBadge($durum)
         };
         const [cls, text] = map[durum] || ['secondary', durum];
         return `<span class="badge bg-${cls}">${text}</span>`;
+    }
+
+    function ihbarDerinBaglantiyiAc() {
+        const parametreler = new URLSearchParams(window.location.search);
+        const ihbarId = parseInt(parametreler.get('ihbar_id') || '0', 10);
+        if (!ihbarId) return;
+
+        const listeSekmesi = document.getElementById('ihbar-list-tab');
+        if (listeSekmesi) {
+            bootstrap.Tab.getOrCreateInstance(listeSekmesi).show();
+        }
+        ihbarDetay(ihbarId);
+
+        parametreler.delete('ihbar_id');
+        const kalan = parametreler.toString();
+        history.replaceState(null, '', window.location.pathname + (kalan ? '?' + kalan : ''));
     }
 
     function ihbarDetay(id) {

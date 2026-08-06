@@ -144,8 +144,25 @@
     let ihbarMevcutFotograflar = [];
 
     document.addEventListener('DOMContentLoaded', function () {
-        loadIhbarlar();
+        loadIhbarlar().then(ihbarDerinBaglantiyiAc);
     });
+
+    function ihbarDerinBaglantiyiAc() {
+        const parametreler = new URLSearchParams(window.location.search);
+        const ihbarId = parseInt(parametreler.get('ihbar_id') || '0', 10);
+        if (!ihbarId) return;
+
+        const tip = parametreler.get('tip') === 'bildirdiklerim' ? 'bildirdiklerim' : 'gelen';
+        if (tip !== currentIhbarTab) {
+            changeIhbarTab(tip);
+        }
+        showIhbarDetay(ihbarId, tip);
+
+        parametreler.delete('ihbar_id');
+        parametreler.delete('tip');
+        const kalan = parametreler.toString();
+        history.replaceState(null, '', window.location.pathname + (kalan ? '?' + kalan : ''));
+    }
 
     async function loadIhbarlar() {
         try {

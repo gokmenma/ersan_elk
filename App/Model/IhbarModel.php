@@ -38,6 +38,45 @@ class IhbarModel extends Model
         return (int) ($_SESSION['firma_id'] ?? 1);
     }
 
+    public function getDailyStats()
+    {
+        $firmaId = $this->firmaId();
+        $bugun = date('Y-m-d');
+
+        $sql = "SELECT 
+                    COUNT(id) as toplam,
+                    COALESCE(SUM(CASE WHEN durum = 'olumlu' THEN 1 ELSE 0 END), 0) as olumlu,
+                    COALESCE(SUM(CASE WHEN durum IN ('yeni', 'yonlendirildi', 'islemde') THEN 1 ELSE 0 END), 0) as bekleyen
+                FROM ihbarlar 
+                WHERE firma_id = ? 
+                AND DATE(created_at) = ? 
+                AND silinme_tarihi IS NULL";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$firmaId, $bugun]);
+        return $stmt->fetch(PDO::FETCH_OBJ);
+    }
+
+    public function getMonthlyStats()
+    {
+        $firmaId = $this->firmaId();
+        $buAy = date('Y-m-01');
+        $sonGun = date('Y-m-t');
+
+        $sql = "SELECT 
+                    COUNT(id) as toplam,
+                    COALESCE(SUM(CASE WHEN durum = 'olumlu' THEN 1 ELSE 0 END), 0) as olumlu,
+                    COALESCE(SUM(CASE WHEN durum IN ('yeni', 'yonlendirildi', 'islemde') THEN 1 ELSE 0 END), 0) as bekleyen
+                FROM ihbarlar 
+                WHERE firma_id = ? 
+                AND DATE(created_at) >= ? AND DATE(created_at) <= ?
+                AND silinme_tarihi IS NULL";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([$firmaId, $buAy, $sonGun]);
+        return $stmt->fetch(PDO::FETCH_OBJ);
+    }
+
     public function create(array $data): int
     {
         $stmt = $this->db->prepare("INSERT INTO ihbarlar
@@ -638,7 +677,7 @@ class IhbarModel extends Model
             $update->execute([(int) $ihbar->id]);
             $this->addTarihce((int) $ihbar->id, 'yonlendirildi',
                 'Güncel konum yanıtlarına göre otomatik yönlendirme yenilendi.', 'personel', $personelId);
-            $changed[] = $personelId;
+            $changed[(int) $ihbar->id] = $personelId;
         }
         return $changed;
     }
@@ -671,7 +710,7 @@ class IhbarModel extends Model
                     if ($personelId <= 0) throw new \Exception('Kapasitesi uygun görevde Kaçak personeli bulunamadı.');
                 }
                 $this->assignTeam($ihbarId, [$personelId], $userId);
-                $completed[] = $personelId;
+                $completed[$ihbarId] = $personelId;
             }
             $this->db->commit();
             return $completed;

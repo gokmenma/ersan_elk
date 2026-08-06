@@ -3408,13 +3408,13 @@ try {
 
             if ($result) {
                 try {
-                    $degisenPersoneller = (new \App\Model\IhbarModel())->recalculateRecentAutomaticAssignments();
+                    $degisenAtamalar = (new \App\Model\IhbarModel())->recalculateRecentAutomaticAssignments();
                     $pushService = new PushNotificationService();
-                    foreach (array_unique($degisenPersoneller) as $atananPersonelId) {
+                    foreach ($degisenAtamalar as $atananIhbarId => $atananPersonelId) {
                         $pushService->sendToPersonel((int) $atananPersonelId, [
                             'title' => '📍 Yakınınızdaki İhbar',
                             'body' => 'Güncel saha konumlarına göre bir ihbar size yönlendirildi.',
-                            'url' => '?page=ihbar'
+                            'url' => '?page=ihbar&ihbar_id=' . (int) $atananIhbarId . '&tip=gelen'
                         ]);
                     }
                 } catch (Exception $e) {
@@ -5426,7 +5426,7 @@ try {
                     $pushService->sendToPersonel($atananPersonelId, [
                         'title' => '📍 Yakınınızdaki İhbar',
                         'body' => 'Konumunuza en yakın yeni ihbar size otomatik yönlendirildi.',
-                        'url' => '?page=ihbar'
+                        'url' => '?page=ihbar&ihbar_id=' . (int) $ihbarId . '&tip=gelen'
                     ]);
                 } catch (Exception $e) {
                     error_log('Otomatik ihbar yönlendirme push hatası: ' . $e->getMessage());
@@ -5444,7 +5444,7 @@ try {
                         (int) $sorumlu->id,
                         '📣 Yeni İhbar',
                         $personelAdi . ' tarafından yeni bir ihbar bildirildi.',
-                        'index.php?p=ihbar/list',
+                        'index.php?p=ihbar/list&ihbar_id=' . (int) $ihbarId,
                         'alert-triangle',
                         'danger',
                         \App\Model\UserNotificationPreferenceModel::TYPE_IHBAR_CREATED
@@ -5455,7 +5455,7 @@ try {
                         $pushService->sendToUser((int) $sorumlu->id, [
                             'title' => '📣 Yeni İhbar',
                             'body' => $personelAdi . ' tarafından yeni bir ihbar bildirildi.',
-                            'url' => 'index.php?p=ihbar/list'
+                            'url' => 'index.php?p=ihbar/list&ihbar_id=' . (int) $ihbarId
                         ], true, \App\Model\UserNotificationPreferenceModel::TYPE_IHBAR_CREATED);
                     } catch (Exception $e) {
                         error_log('İhbar push bildirim hatası: ' . $e->getMessage());
