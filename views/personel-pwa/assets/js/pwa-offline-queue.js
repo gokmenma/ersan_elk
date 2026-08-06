@@ -254,14 +254,6 @@
     }
 
     /**
-     * Önce ana istek (kayıt + zorunlu dosya), ardından ek dosyalar teker teker
-     * gönderilir. Tek büyük istek zayıf sahada gövde ve süre limitlerine
-     * takılıyordu; parçalara bölününce her istek küçük kalıyor.
-     *
-     * Her adımın sonucu diske yazıldığı için uygulama kapanırsa kaldığı
-     * fotoğraftan devam edilir, tamamlananlar ikinci kez yüklenmez.
-     */
-    /**
      * Sunucudaki GD yalnızca JPEG/PNG çözebiliyor. Kuyruğa daha önce WebP
      * olarak yazılmış görseller gönderimden önce JPEG'e çevrilir; böylece
      * eski kayıtlar kullanıcı müdahalesi olmadan geçer.
@@ -304,6 +296,14 @@
         return kayitDosyalariniNormalize(kayit).then(function () { return gonderimeBasla(kayit); });
     }
 
+    /**
+     * Önce ana istek (kayıt + zorunlu dosya), ardından ek dosyalar teker teker
+     * gönderilir. Tek büyük istek zayıf sahada gövde ve süre limitlerine
+     * takılıyordu; parçalara bölününce her istek küçük kalıyor.
+     *
+     * Her adımın sonucu diske yazıldığı için uygulama kapanırsa kaldığı
+     * fotoğraftan devam edilir, tamamlananlar ikinci kez yüklenmez.
+     */
     function gonderimeBasla(kayit) {
         var ilk = Promise.resolve({ sonuc: "tamam" });
 
@@ -409,6 +409,33 @@
     }
 
     /**
+     * Sunucunun açamadığı biçimde (WebP) gönderildiği için "hata" durumunda
+     * kalmış kayıtlar artık gönderim öncesi JPEG'e çevriliyor. Kullanıcının
+     * elle "Tekrar Dene" demesini beklememek için bu kayıtlar bir kez
+     * otomatik olarak sıraya geri alınır.
+     */
+    function cevrilebilirHatalariKurtar() {
+        return listele().then(function (kayitlar) {
+            var kurtarilacak = kayitlar.filter(function (k) {
+                if (k.durum !== "hata" || k.bicimKurtarildi) return false;
+                return (k.dosyalar || []).concat(k.ekDosyalar || []).some(function (d) {
+                    var tip = (d && d.blob && d.blob.type) || (d && d.tip) || "";
+                    return tip.indexOf("image/") === 0 && tip !== "image/jpeg" && tip !== "image/png";
+                });
+            });
+
+            return Promise.all(kurtarilacak.map(function (k) {
+                k.bicimKurtarildi = true;
+                k.durum = "bekliyor";
+                k.deneme = 0;
+                k.sonDeneme = 0;
+                k.hata = "";
+                return yaz(k);
+            }));
+        }).catch(function () { return null; });
+    }
+
+    /**
      * Başarısız kayıt her turda yeniden denenirse mobil veri boşa gider
      * (sahada 100'ü aşkın denemeyle yüzlerce MB harcandığı görüldü).
      * Deneme sayısı arttıkça bekleme uzar; "Şimdi Gönder" bunu atlar.
@@ -436,6 +463,7 @@
 
         return askidaKalanlariKurtar()
             .then(eskiKayitlariDonustur)
+            .then(cevrilebilirHatalariKurtar)
             .then(listele)
             .then(function (kayitlar) {
             var sira = kayitlar.filter(function (k) {

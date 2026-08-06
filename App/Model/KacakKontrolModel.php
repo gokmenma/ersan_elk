@@ -432,6 +432,22 @@ class KacakKontrolModel extends Model
         return $stmt->execute([$count, $id, $this->firmaId()]);
     }
 
+    /**
+     * Fotoğraf silindiğinde beklenen sayı olduğu gibi kalırsa listede kalıcı
+     * "N bekleniyor" rozeti çıkar; beklenen sayı mevcut fotoğraf adedine çekilir.
+     */
+    public function syncExpectedPhotoCount(int $kacakId): bool
+    {
+        $stmt = $this->db->prepare("UPDATE kacak_kontrol
+                                    SET beklenen_foto_sayisi = (
+                                        SELECT COUNT(*) FROM kacak_kontrol_fotograflari
+                                        WHERE kacak_id = ? AND medya_tipi = 'foto'
+                                          AND silinme_tarihi IS NULL AND arsivlendi = 0
+                                    )
+                                    WHERE id = ? AND firma_id = ?");
+        return $stmt->execute([$kacakId, $kacakId, $this->firmaId()]);
+    }
+
     public function updateRecord(int $id, array $data): bool
     {
         $personelIds = $this->normalizePersonelIds($data['personel_ids'] ?? []);
@@ -681,6 +697,7 @@ class KacakKontrolModel extends Model
         $stmt = $this->db->prepare("UPDATE kacak_kontrol_fotograflari SET silinme_tarihi = NOW() WHERE id = ?");
         $ok = $stmt->execute([$fotoId]);
         if ($ok) {
+            $this->syncExpectedPhotoCount((int) $foto['kacak_id']);
             foreach ([$foto['dosya_yolu'], $foto['kucuk_yol'] ?? null] as $yol) {
                 if (empty($yol)) {
                     continue;
