@@ -307,7 +307,7 @@ $operasyonKartlari = [
         'sub_daily' => 'Bugun tespit edilen/girilen',
         'sub_monthly' => 'Bu ay tespit edilen/girilen',
         'last_update' => null,
-        'link' => '../index.php?p=puantaj/raporlar&tab=kacakkontrol',
+        'link' => '../index.php?p=kacak/list&tab=pane-ekip-ozet',
         'color_bg' => 'bg-rose-50 dark:bg-rose-900/20',
         'color_text' => 'text-rose-600',
         'color_border' => 'border-rose-300 dark:border-rose-700/60',

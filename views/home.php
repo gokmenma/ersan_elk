@@ -722,7 +722,7 @@ if (Gate::allows("ana_sayfa")) {
                             <button type="button" class="btn btn-outline-secondary stats-local-btn"
                                 data-mode="monthly">Ay</button>
                         </div>
-                        <a href="index.php?p=puantaj/raporlar&tab=kacakkontrol"
+                        <a href="index.php?p=kacak/list&tab=pane-ekip-ozet"
                             class="btn btn-xs btn-soft-danger rounded-pill">
                             <i class="bx bx-right-arrow-alt"></i> Git
                         </a>
