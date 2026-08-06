@@ -336,7 +336,7 @@ function getDatatableOptions() {
       }
 
       if (typeof feather !== "undefined") {
-        feather.replace();
+        try { feather.replace(); } catch (e) { console.warn("feather.replace error:", e); }
       }
 
       // Gelişmiş kolon filtreleri başlat (Sadece bir kez, initComplete sonunda)

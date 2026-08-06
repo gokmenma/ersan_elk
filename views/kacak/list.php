@@ -945,12 +945,15 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
                     <span class="spinner-border spinner-border-sm me-1" aria-hidden="true"></span>0/${beklenen}
                 </span>`;
             }
-            const sayac = beklenen > 0 ? `${adet}/${beklenen}` : adet;
+            const sayac = eksik > 0 ? `${adet}/${beklenen}` : adet;
+            const baslik = eksik > 0
+                ? `Beklenen ${beklenen} belgeden ${adet} tanesi geldi`
+                : `${adet} belge — Fotoğrafları Görüntüle`;
             const bekleme = eksik > 0
                 ? `<span class="badge bg-warning-subtle text-warning" title="${eksik} fotoğrafın yüklenmesi bekleniyor"><i class="bx bx-time-five me-1"></i>${eksik} bekleniyor</span>`
                 : '';
             return `<div class="d-flex align-items-center justify-content-center gap-1">
-                <button class="btn btn-sm btn-soft-info btn-foto" data-id="${k.id}" data-mevcut="${adet}" data-beklenen="${beklenen}" title="Fotoğrafları Görüntüle"><i class="bx bx-image me-1"></i>${sayac}</button>
+                <button class="btn btn-sm btn-soft-info btn-foto" data-id="${k.id}" data-mevcut="${adet}" data-beklenen="${beklenen}" title="${baslik}"><i class="bx bx-image me-1"></i>${sayac}</button>
                 ${bekleme}
                 <a href="${API}?action=download-zip&id=${k.id}" class="btn btn-sm btn-soft-success btn-foto-zip" title="Fotoğrafları ZIP Olarak İndir"><i class="bx bx-download"></i></a>
             </div>`;
@@ -1192,7 +1195,7 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
             });
 
             if (typeof feather !== 'undefined') {
-                feather.replace();
+                try { feather.replace(); } catch (e) { console.warn('feather.replace error:', e); }
             }
         }
 
@@ -1795,7 +1798,9 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
                 // Bölge Toplamı buton durumunu sıfırla
                 $('#btnEkipOzetBolgeTopl').removeClass('active btn-warning').addClass('btn-outline-warning').html('<i class="bx bx-list-check me-1"></i> Bölge Topl. Göster');
 
-                if (typeof feather !== 'undefined') feather.replace();
+                if (typeof feather !== 'undefined') {
+                    try { feather.replace(); } catch (e) { console.warn('feather.replace error:', e); }
+                }
             }).fail(function () {
                 $kutu.html('<div class="alert alert-danger mb-0">Rapor yüklenirken bir hata oluştu.</div>');
             });
@@ -1979,7 +1984,7 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
 
         $(document).on('shown.bs.modal', '.modal', function () {
             if (typeof feather !== 'undefined') {
-                feather.replace();
+                try { feather.replace(); } catch (e) { console.warn('feather.replace error:', e); }
             }
         });
 
@@ -1996,7 +2001,7 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
             kayitlariYukle();
 
             if (typeof feather !== 'undefined') {
-                feather.replace();
+                try { feather.replace(); } catch (e) { console.warn('feather.replace error:', e); }
             }
 
         });

@@ -320,7 +320,9 @@ File: Main Js File
   }
 
   function initFeathericon() {
-    feather.replace();
+    if (typeof feather !== "undefined") {
+      try { feather.replace(); } catch (e) { console.warn("feather.replace error:", e); }
+    }
   }
 
   function initCheckAll() {
