@@ -4681,6 +4681,31 @@ try {
             response(true, ['id' => $kacakId], 'Kaçak bildirimi silindi.');
             break;
 
+        case 'deleteKacakFoto':
+            if (stripos($personel->departman ?? '', 'Kaçak') === false) {
+                response(false, null, 'Bu işlem için yetkiniz bulunmuyor.');
+            }
+            $KacakModel = new \App\Model\KacakKontrolModel();
+            $fotoId = (int) ($_POST['foto_id'] ?? 0);
+            $foto = $KacakModel->getPhoto($fotoId);
+            if (!$foto) {
+                response(false, null, 'Fotoğraf bulunamadı.');
+            }
+            $kacakId = (int) $foto['kacak_id'];
+            $kayit = $KacakModel->getRecord($kacakId);
+            if (!$kayit || (int) $kayit['bildiren_personel_id'] !== (int) $personel_id) {
+                response(false, null, 'Bu fotoğrafı silme yetkiniz bulunmuyor.');
+            }
+            if ($kayit['onay_durumu'] !== 'beklemede' || $kayit['durum'] === 'iptal') {
+                response(false, null, 'Yalnızca onay bekleyen aktif kayıtların fotoğrafları silinebilir.');
+            }
+            if ($KacakModel->deletePhoto($fotoId)) {
+                response(true, ['foto_id' => $fotoId], 'Fotoğraf silindi.');
+            } else {
+                response(false, null, 'Fotoğraf silinemedi.');
+            }
+            break;
+
         case 'analyzeKacakTutanak':
             if (empty($_FILES['tutanak_file']['name'])) {
                 response(false, null, 'Lütfen analiz edilecek tutanak dosyasını seçin.');

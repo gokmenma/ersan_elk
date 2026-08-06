@@ -136,8 +136,8 @@ $title = "Menü Yönetimi";
                                     <th data-filter="select">ÜST MENÜ</th>
                                     <th data-filter="select">GRUP ADI</th>
                                     <th data-filter="string">SAYFA BAĞLANTISI (LİNK)</th>
-                                    <th class="text-center">İKON</th>
-                                    <th class="text-center" style="width: 70px;">SIRA</th>
+                                    <th class="text-center" data-filter="string">İKON</th>
+                                    <th class="text-center" data-filter="number" style="width: 70px;">SIRA</th>
                                     <th class="text-center" data-filter="select" style="width: 100px;">DURUM</th>
                                     <th class="text-center" style="width: 90px;">İŞLEM</th>
                                 </tr>

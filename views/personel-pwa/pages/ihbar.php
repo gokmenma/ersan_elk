@@ -330,7 +330,7 @@
                                 <span class="material-symbols-outlined text-3xl text-slate-400">videocam</span>
                                 <p class="text-xs text-slate-500 text-center">Yüklemek için tıklayın</p>
                             </div>
-                            <input type="file" id="ihbar-video-input" accept="video/*" capture="environment" class="hidden">
+                            <input type="file" id="ihbar-video-input" accept="video/*" class="hidden">
                             <div id="ihbar-video-preview" class="flex flex-wrap gap-2 mt-2"></div>
                         </div>
                     </form>

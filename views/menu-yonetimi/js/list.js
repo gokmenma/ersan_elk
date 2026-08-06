@@ -73,8 +73,11 @@ $(document).ready(function () {
 
     // Personel Listesindeki gibi applyLengthStateSave & getDatatableOptions ile başlat
     function initMenuTable() {
+        var baseOptions = getDatatableOptions();
+        var originalInitComplete = baseOptions.initComplete;
+
         var options = applyLengthStateSave({
-            ...getDatatableOptions(),
+            ...baseOptions,
             serverSide: false,
             responsive: true,
             order: [[6, "asc"]],
@@ -104,6 +107,9 @@ $(document).ready(function () {
                 safeFeatherReplace();
             },
             initComplete: function (settings, json) {
+                if (typeof originalInitComplete === "function") {
+                    originalInitComplete.call(this, settings, json);
+                }
                 const defaultStatus = $('input[name="status-filter"]:checked').val() || "Aktif";
                 if (defaultStatus && this.api) {
                     this.api().column(7).search(defaultStatus).draw();

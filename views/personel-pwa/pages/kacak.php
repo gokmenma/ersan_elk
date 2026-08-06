@@ -125,6 +125,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                     <img class="w-full rounded-xl border border-slate-200" style="max-height:12rem;object-fit:contain"
                         alt="Tutanak">
                 </div>
+                <div id="mevcut-tutanak-container"></div>
             </div>
 
             <div>
@@ -214,12 +215,13 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                     Fotoğraf Ekle
                 </button>
                 <div id="kacak-saha-preview" class="grid grid-cols-3 gap-2 mt-3"></div>
+                <div id="mevcut-saha-container"></div>
             </div>
 
             <div>
                 <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Video (en fazla
                     <?= (int) $maxVideo ?> adet, <?= (int) $videoMaxSure ?> sn)</label>
-                <input type="file" id="kacak-video-input" accept="video/*" capture="environment" style="display:none">
+                <input type="file" id="kacak-video-input" accept="video/*" style="display:none">
                 <button type="button" onclick="document.getElementById('kacak-video-input').click()"
                     class="w-full py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-bold">
                     Video Ekle
@@ -227,6 +229,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 <p class="text-xs text-slate-400 mt-1">En fazla <?= (int) $videoMaxSure ?> saniye ve
                     <?= (int) round(KacakKontrolModel::VIDEO_MAX_BYTE / 1048576) ?> MB. Videolar çevrimiçiyken gönderilir.</p>
                 <div id="kacak-video-preview" class="grid grid-cols-3 gap-2 mt-3"></div>
+                <div id="mevcut-video-container"></div>
             </div>
 
             <div>
@@ -623,6 +626,32 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             Modal.open('kacak-detay-modal');
         };
 
+        window.kacakFotoSilPwa = async function (fotoId, btnEl) {
+            const onay = await Alert.confirm('Fotoğrafı Sil', 'Bu görsel kayıttan kalıcı olarak silinecek. Onaylıyor musunuz?', 'Sil', 'Vazgeç');
+            if (!onay) return;
+            Loading.show();
+            try {
+                const res = await API.request('deleteKacakFoto', { foto_id: fotoId });
+                if (!res.success) {
+                    return Alert.error('Hata', res.message || 'Fotoğraf silinemedi.');
+                }
+                Toast.show('Fotoğraf silindi.', 'success');
+                const container = btnEl.closest('.mevcut-foto-item, #mevcut-tutanak-card');
+                if (container) container.remove();
+                if (kacakEditToken) {
+                    const k = kacakKayitlar.find(x => x.edit_token === kacakEditToken);
+                    if (k && k.fotograflar) {
+                        k.fotograflar = k.fotograflar.filter(f => parseInt(f.id, 10) !== parseInt(fotoId, 10));
+                    }
+                }
+                await loadKacakKayitlar();
+            } catch (e) {
+                Alert.error('Hata', e.message || 'Fotoğraf silinemedi.');
+            } finally {
+                Loading.hide();
+            }
+        };
+
         window.openKacakBildirModal = function (editData = null) {
             document.getElementById('kacak-bildir-form').reset();
             kacakEditToken = editData?.edit_token || null;
@@ -637,6 +666,14 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             sahaDosyalari = [];
             document.getElementById('kacak-video-preview').innerHTML = '';
             videoDosyalari = [];
+
+            const tutanakBox = document.getElementById('mevcut-tutanak-container');
+            const sahaBox = document.getElementById('mevcut-saha-container');
+            const videoBox = document.getElementById('mevcut-video-container');
+            if (tutanakBox) tutanakBox.innerHTML = '';
+            if (sahaBox) sahaBox.innerHTML = '';
+            if (videoBox) videoBox.innerHTML = '';
+
             if (editData) {
                 const form = document.getElementById('kacak-bildir-form');
                 ['tarih','ilce','tur','tutanak_no','abone_adi','sayac_no','endeks','sayi','aciklama'].forEach(ad => {
@@ -645,6 +682,74 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 const ekipIds=String(editData.personel_ids||'').split(',').map(Number);
                 const arkadas=ekipIds.find(id=>id!==BEN);
                 if(arkadas) document.getElementById('kacak-ekip-arkadasi').value=String(arkadas);
+
+                const fotolar = editData.fotograflar || [];
+                const tutanakFoto = fotolar.find(f => f.tur === 'tutanak');
+                if (tutanakFoto && tutanakBox) {
+                    tutanakBox.innerHTML = `
+                        <div id="mevcut-tutanak-card" class="mt-3 p-3 rounded-xl bg-white dark:bg-card-dark border border-emerald-200 dark:border-emerald-800 flex items-center justify-between gap-3 shadow-sm">
+                            <div class="flex items-center gap-3 overflow-hidden">
+                                <img src="${esc(tutanakFoto.kucuk_url || tutanakFoto.url)}" class="w-14 h-14 rounded-lg object-cover border border-slate-200 shrink-0">
+                                <div class="overflow-hidden">
+                                    <div class="flex items-center gap-1">
+                                        <span class="material-symbols-outlined text-emerald-600 text-sm">check_circle</span>
+                                        <span class="text-xs font-bold text-slate-800 dark:text-white">Yüklü Tutanak Fotoğrafı</span>
+                                    </div>
+                                    <a href="${esc(tutanakFoto.url)}" target="_blank" rel="noopener" class="text-xs text-primary font-semibold underline block mt-0.5">Büyüt / Görüntüle</a>
+                                </div>
+                            </div>
+                            <button type="button" onclick="kacakFotoSilPwa(${tutanakFoto.id}, this)" class="w-8 h-8 rounded-xl bg-red-50 dark:bg-red-950/40 text-red-600 flex items-center justify-center shrink-0" title="Sil">
+                                <span class="material-symbols-outlined text-lg">delete</span>
+                            </button>
+                        </div>`;
+                }
+
+                const sahaFotolar = fotolar.filter(f => f.tur === 'saha' && f.medya_tipi !== 'video');
+                if (sahaFotolar.length > 0 && sahaBox) {
+                    sahaBox.innerHTML = `
+                        <div class="mt-3">
+                            <p class="text-xs font-bold text-slate-500 uppercase mb-2">Önceden Yüklenen Saha Fotoğrafları (${sahaFotolar.length})</p>
+                            <div class="grid grid-cols-3 gap-2">
+                                ${sahaFotolar.map(f => `
+                                    <div class="mevcut-foto-item relative group rounded-xl overflow-hidden border border-slate-200 bg-slate-100 dark:bg-slate-800" style="height:6rem">
+                                        <a href="${esc(f.url)}" target="_blank" rel="noopener" class="block w-full h-full">
+                                            <img src="${esc(f.kucuk_url || f.url)}" loading="lazy" class="w-full h-full object-cover">
+                                        </a>
+                                        <button type="button" onclick="kacakFotoSilPwa(${f.id}, this)"
+                                            class="absolute top-1 right-1 w-7 h-7 rounded-full bg-red-600 text-white flex items-center justify-center shadow-md" title="Sil">
+                                            <span class="material-symbols-outlined text-sm">close</span>
+                                        </button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>`;
+                }
+
+                const videolar = fotolar.filter(f => f.medya_tipi === 'video');
+                if (videolar.length > 0 && videoBox) {
+                    videoBox.innerHTML = `
+                        <div class="mt-3">
+                            <p class="text-xs font-bold text-slate-500 uppercase mb-2">Önceden Yüklenen Videolar (${videolar.length})</p>
+                            <div class="grid grid-cols-3 gap-2">
+                                ${videolar.map(f => `
+                                    <div class="mevcut-foto-item relative group rounded-xl overflow-hidden border border-slate-200 bg-slate-100 dark:bg-slate-800" style="height:6rem">
+                                        <a href="${esc(f.url)}" target="_blank" rel="noopener" class="block w-full h-full flex items-center justify-center">
+                                            ${f.kucuk_var
+                                                ? `<img src="${esc(f.kucuk_url || f.url)}" loading="lazy" class="w-full h-full object-cover">`
+                                                : `<span class="material-symbols-outlined text-slate-400 text-3xl">movie</span>`}
+                                            <span class="absolute bottom-1 right-1 text-white text-[10px] rounded bg-black/70 px-1 font-bold">
+                                                ${f.sure_saniye ? OfflineQueue.sureBicimle(f.sure_saniye) : '▶'}
+                                            </span>
+                                        </a>
+                                        <button type="button" onclick="kacakFotoSilPwa(${f.id}, this)"
+                                            class="absolute top-1 right-1 w-7 h-7 rounded-full bg-red-600 text-white flex items-center justify-center shadow-md" title="Sil">
+                                            <span class="material-symbols-outlined text-sm">close</span>
+                                        </button>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        </div>`;
+                }
             }
             Modal.open('kacak-bildir-modal');
         };
