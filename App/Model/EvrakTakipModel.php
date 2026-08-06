@@ -278,12 +278,11 @@ class EvrakTakipModel extends Model
             $count->execute(['evrak_id' => $evrakId, 'firma_id' => $_SESSION['firma_id']]);
             $state = $count->fetch(PDO::FETCH_ASSOC);
             $completed = (int) $state['toplam'] > 0 && (int) $state['toplam'] === (int) $state['onaylanan'];
-            $digest = self::belgeOzeti($evrak);
-            $update = $this->db->prepare("UPDATE {$this->table} SET onay_durumu = :durum, e_imza_onay_tarihi = :tarih, e_imza_belge_ozeti = :ozet WHERE id = :id AND firma_id = :firma_id");
+            $update = $this->db->prepare("UPDATE {$this->table} SET onay_durumu = :durum, e_imza_onay_tarihi = IF(:tamamlandi, NOW(), NULL), e_imza_belge_ozeti = :ozet WHERE id = :id AND firma_id = :firma_id");
             $update->execute([
                 'durum' => $completed ? 'onaylandi' : 'onay_bekliyor',
-                'tarih' => $completed ? date('Y-m-d H:i:s') : null,
-                'ozet' => $digest,
+                'tamamlandi' => $completed ? 1 : 0,
+                'ozet' => self::belgeOzeti($evrak),
                 'id' => $evrakId,
                 'firma_id' => $_SESSION['firma_id'],
             ]);
@@ -407,10 +406,10 @@ class EvrakTakipModel extends Model
                     'kullanici_id' => $userId,
                 ]);
                 $tamamlandi = count($signers) === 1;
-                $tamamla = $this->db->prepare("UPDATE {$this->table} SET onay_durumu = :durum, e_imza_onay_tarihi = :tarih, e_imza_belge_ozeti = :ozet WHERE id = :id AND firma_id = :firma_id");
+                $tamamla = $this->db->prepare("UPDATE {$this->table} SET onay_durumu = :durum, e_imza_onay_tarihi = IF(:tamamlandi, NOW(), NULL), e_imza_belge_ozeti = :ozet WHERE id = :id AND firma_id = :firma_id");
                 $tamamla->execute([
                     'durum' => $tamamlandi ? 'onaylandi' : 'onay_bekliyor',
-                    'tarih' => $tamamlandi ? date('Y-m-d H:i:s') : null,
+                    'tamamlandi' => $tamamlandi ? 1 : 0,
                     'ozet' => self::belgeOzeti($evrak),
                     'id' => $evrakId,
                     'firma_id' => $_SESSION['firma_id'],
@@ -469,6 +468,22 @@ class EvrakTakipModel extends Model
             $this->db->rollBack();
             throw $e;
         }
+    }
+
+    public function getApprovalDetailMap(): array
+    {
+        $sql = $this->db->prepare("SELECT o.evrak_id, o.kullanici_id, o.sira, o.durum, o.onay_tarihi, u.adi_soyadi,
+                COALESCE(NULLIF(u.unvani, ''), u.gorevi, '') AS imza_unvani
+            FROM evrak_takip_onaylari o
+            INNER JOIN users u ON u.id = o.kullanici_id
+            WHERE o.firma_id = :firma_id
+            ORDER BY o.evrak_id ASC, o.sira ASC, o.id ASC");
+        $sql->execute(['firma_id' => $_SESSION['firma_id']]);
+        $map = [];
+        foreach ($sql->fetchAll(PDO::FETCH_ASSOC) as $row) {
+            $map[(int) $row['evrak_id']][] = $row;
+        }
+        return $map;
     }
 
     private static function belgeOzeti(object $evrak): string

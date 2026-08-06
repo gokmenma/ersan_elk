@@ -23,6 +23,56 @@ foreach ($evraklar as $evrakSayim) {
         $imzamiBekleyenSayisi++;
     }
 }
+$onayDetayMap = $Evrak->getApprovalDetailMap();
+
+$onayAkisiIcerigi = static function (array $imzalar, object $evrak): string {
+    $esc = static fn($value): string => htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8');
+    $durum = $evrak->onay_durumu ?? 'taslak';
+    $tarihBicimi = static fn($value): string => !empty($value) ? date('d.m.Y H:i', strtotime((string) $value)) : '';
+
+    $ustBilgi = match ($durum) {
+        'onaylandi' => 'Tüm imzalar tamamlandı, evrak elektronik imzalı.',
+        'onay_bekliyor' => 'Evrak onaya sunuldu, imzalar sırayla atılıyor.',
+        default => 'Evrak henüz onaya sunulmadı. Planlanan imza sırası:',
+    };
+
+    $satirlar = '';
+    $siradakiBulundu = false;
+    foreach ($imzalar as $imza) {
+        $imzalandi = $imza['durum'] === 'onaylandi';
+        if ($imzalandi) {
+            $etiket = '<span class="badge bg-success-subtle text-success">İmzalandı · ' . $esc($tarihBicimi($imza['onay_tarihi'])) . '</span>';
+        } elseif ($durum === 'onay_bekliyor' && !$siradakiBulundu) {
+            $etiket = '<span class="badge bg-warning text-dark">Sırada</span>';
+            $siradakiBulundu = true;
+        } else {
+            $etiket = '<span class="badge bg-secondary-subtle text-secondary">Bekliyor</span>';
+        }
+        $unvan = trim((string) $imza['imza_unvani']) !== ''
+            ? '<span class="d-block text-muted onay-akis-unvan">' . $esc($imza['imza_unvani']) . '</span>'
+            : '';
+        $satirlar .= '<li class="onay-akis-satir">'
+            . '<span class="badge bg-light text-muted me-1">' . (int) $imza['sira'] . '</span>'
+            . '<span class="fw-semibold">' . $esc($imza['adi_soyadi']) . '</span>'
+            . $unvan . $etiket
+            . '</li>';
+    }
+
+    $altBilgi = '';
+    if ($durum === 'onaylandi' && !empty($evrak->e_imza_onay_tarihi)) {
+        $altBilgi = '<div class="onay-akis-alt text-muted">Onay tamamlanma: ' . $esc($tarihBicimi($evrak->e_imza_onay_tarihi));
+        if (!empty($evrak->e_imza_belge_ozeti)) {
+            $altBilgi .= '<br>Doğrulama kodu: ' . $esc(strtoupper(substr((string) $evrak->e_imza_belge_ozeti, 0, 12)));
+        }
+        $altBilgi .= '</div>';
+    } elseif (!empty($evrak->e_imza_iade_gerekcesi)) {
+        $altBilgi = '<div class="onay-akis-alt text-danger">Son iade gerekçesi: ' . $esc($evrak->e_imza_iade_gerekcesi) . '</div>';
+    }
+
+    return '<div class="onay-akis-ust text-muted">' . $esc($ustBilgi) . '</div>'
+        . '<ul class="list-unstyled mb-0">' . $satirlar . '</ul>'
+        . $altBilgi;
+};
 ?>
 
 <div class="container-fluid">
@@ -300,18 +350,26 @@ foreach ($evraklar as $evrakSayim) {
                                                 <?php endif; ?>
                                             </td>
                                             <td class="text-center">
+                                                <?php
+                                                $imzaKayitlari = $onayDetayMap[(int) $evrak->id] ?? [];
+                                                $akisAttr = '';
+                                                if ($evrak->evrak_tipi === 'giden' && $imzaKayitlari !== []) {
+                                                    $akisAttr = ' tabindex="0" role="button" data-onay-akis="'
+                                                        . htmlspecialchars($onayAkisiIcerigi($imzaKayitlari, $evrak), ENT_QUOTES, 'UTF-8') . '"';
+                                                }
+                                                ?>
                                                 <?php if ($evrak->evrak_tipi !== 'giden' || $onayBilgisi['toplam'] === 0): ?>
                                                     <span class="text-muted small">-</span>
                                                 <?php elseif ($onayDurumu === 'onaylandi'): ?>
-                                                    <span class="badge bg-success-subtle text-success p-2 rounded-3 w-100 fw-bold" style="font-size: 10px;" title="Onay Tarihi: <?php echo $evrak->e_imza_onay_tarihi ? date('d.m.Y H:i', strtotime($evrak->e_imza_onay_tarihi)) : '-'; ?>">
+                                                    <span class="badge bg-success-subtle text-success p-2 rounded-3 w-100 fw-bold e-imza-rozet" style="font-size: 10px;"<?php echo $akisAttr; ?>>
                                                         <i data-feather="lock" class="icon-xs me-1"></i>ONAYLI
                                                     </span>
                                                 <?php elseif ($onayDurumu === 'onay_bekliyor'): ?>
-                                                    <span class="badge <?php echo $siraBende ? 'bg-warning text-dark' : 'bg-warning-subtle text-warning'; ?> p-2 rounded-3 w-100 fw-bold" style="font-size: 10px;" title="<?php echo $siraBende ? 'İmza sırası sizde' : 'Sırada: ' . htmlspecialchars((string) ($onayBilgisi['siradaki_kisi'] ?? '-'), ENT_QUOTES, 'UTF-8'); ?>">
+                                                    <span class="badge <?php echo $siraBende ? 'bg-warning text-dark' : 'bg-warning-subtle text-warning'; ?> p-2 rounded-3 w-100 fw-bold e-imza-rozet" style="font-size: 10px;"<?php echo $akisAttr; ?>>
                                                         <?php echo $siraBende ? 'İMZANIZDA' : 'ONAYDA'; ?> <?php echo $onayBilgisi['onaylanan'] . '/' . $onayBilgisi['toplam']; ?>
                                                     </span>
                                                 <?php else: ?>
-                                                    <span class="badge bg-secondary-subtle text-secondary p-2 rounded-3 w-100 fw-bold" style="font-size: 10px;">
+                                                    <span class="badge bg-secondary-subtle text-secondary p-2 rounded-3 w-100 fw-bold e-imza-rozet" style="font-size: 10px;"<?php echo $akisAttr; ?>>
                                                         TASLAK
                                                     </span>
                                                 <?php endif; ?>
@@ -373,6 +431,57 @@ foreach ($evraklar as $evrakSayim) {
 </div>
 
 <style>
+    .e-imza-rozet[data-onay-akis] {
+        cursor: help;
+    }
+
+    .onay-akis-popover {
+        max-width: 340px;
+    }
+
+    .onay-akis-popover .popover-header {
+        font-size: 0.78rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        letter-spacing: 0.4px;
+    }
+
+    .onay-akis-popover .popover-body {
+        font-size: 0.78rem;
+        padding: 0.75rem;
+    }
+
+    .onay-akis-popover .onay-akis-ust {
+        font-size: 0.72rem;
+        margin-bottom: 0.5rem;
+    }
+
+    .onay-akis-popover .onay-akis-satir {
+        padding: 0.35rem 0;
+        border-bottom: 1px dashed var(--bs-border-color);
+    }
+
+    .onay-akis-popover .onay-akis-satir:last-child {
+        border-bottom: 0;
+    }
+
+    .onay-akis-popover .onay-akis-unvan {
+        font-size: 0.7rem;
+        margin: 0 0 0.15rem 1.65rem;
+    }
+
+    .onay-akis-popover .onay-akis-satir .badge:not(.bg-light) {
+        margin-left: 1.65rem;
+        font-size: 0.66rem;
+    }
+
+    .onay-akis-popover .onay-akis-alt {
+        font-size: 0.7rem;
+        margin-top: 0.5rem;
+        padding-top: 0.5rem;
+        border-top: 1px solid var(--bs-border-color);
+    }
+
     .btn-action-icon {
         min-width: 32px !important;
         width: 32px !important;

@@ -718,6 +718,18 @@ $(document).ready(function () {
     });
   });
 
+  document.querySelectorAll("#evrakTable [data-onay-akis]").forEach(function (rozet) {
+    new bootstrap.Popover(rozet, {
+      container: "body",
+      html: true,
+      trigger: "hover focus",
+      placement: "left",
+      customClass: "onay-akis-popover",
+      title: "E-İmza Onay Akışı",
+      content: rozet.getAttribute("data-onay-akis")
+    });
+  });
+
   let imzaFiltresiAktif = false;
   $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
     if (!imzaFiltresiAktif || settings.nTable.id !== "evrakTable") return true;
