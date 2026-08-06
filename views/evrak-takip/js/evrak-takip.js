@@ -778,7 +778,31 @@ $(document).ready(function () {
     showPdfFromRequest({ type: "GET", data: { id: $(this).data("id") } });
   });
 
-  $("#evrakPdfModal").on("hidden.bs.modal", clearPdfObjectUrl);
+  $(document).on("click", "#btnPdfTamEkran", function () {
+    const $dialog = $("#evrakPdfModal .modal-dialog");
+    const $iframe = $("#evrakPdfFrame");
+    const isFullscreen = $dialog.hasClass("modal-fullscreen");
+
+    if (isFullscreen) {
+      $dialog.removeClass("modal-fullscreen").addClass("modal-xl modal-dialog-centered");
+      $iframe.css("height", "72vh");
+      $(this).html('<i class="bx bx-fullscreen me-1"></i>Tam Ekran');
+    } else {
+      $dialog.removeClass("modal-xl modal-dialog-centered").addClass("modal-fullscreen");
+      $iframe.css("height", "calc(100vh - 60px)");
+      $(this).html('<i class="bx bx-exit-fullscreen me-1"></i>Küçült');
+    }
+  });
+
+  function resetPdfModalState() {
+    clearPdfObjectUrl();
+    const $dialog = $("#evrakPdfModal .modal-dialog");
+    $dialog.removeClass("modal-fullscreen").addClass("modal-xl modal-dialog-centered");
+    $("#evrakPdfFrame").css("height", "72vh");
+    $("#btnPdfTamEkran").html('<i class="bx bx-fullscreen me-1"></i>Tam Ekran');
+  }
+
+  $("#evrakPdfModal").on("hidden.bs.modal", resetPdfModalState);
 
   $("#btnRefresh").on("click", function () { location.reload(); });
 });

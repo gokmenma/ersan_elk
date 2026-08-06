@@ -232,10 +232,13 @@ $araclar_list = $Evrak->getActiveVehicles();
 <div class="modal fade" id="evrakPdfModal" tabindex="-1" aria-labelledby="evrakPdfModalLabel" aria-hidden="true" style="z-index: 1070;">
     <div class="modal-dialog modal-xl modal-dialog-centered">
         <div class="modal-content border-0">
-            <div class="modal-header bg-dark text-white">
-                <h5 class="modal-title" id="evrakPdfModalLabel">Resmî Yazı Önizleme</h5>
-                <a id="evrakPdfYeniSekme" href="#" target="_blank" class="btn btn-sm btn-outline-light ms-auto me-2 d-none">Yeni Sekmede Aç</a>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+            <div class="modal-header bg-dark text-white py-2.5 px-3">
+                <h5 class="modal-title text-white fs-6 mb-0 d-flex align-items-center"><i class="bx bx-file-find me-2 text-warning fs-5"></i> Resmî Yazı Önizleme</h5>
+                <div class="ms-auto d-flex align-items-center gap-2">
+                    <button type="button" id="btnPdfTamEkran" class="btn btn-sm btn-outline-light"><i class="bx bx-fullscreen me-1"></i>Tam Ekran</button>
+                    <a id="evrakPdfYeniSekme" href="#" target="_blank" class="btn btn-sm btn-outline-light d-none"><i class="bx bx-open-external me-1"></i>Yeni Sekmede Aç</a>
+                    <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                </div>
             </div>
             <div class="modal-body p-0 position-relative" style="min-height: 72vh;">
                 <div id="evrakPdfLoader" class="position-absolute top-0 start-0 w-100 h-100 bg-white d-flex align-items-center justify-content-center" style="z-index:2;">

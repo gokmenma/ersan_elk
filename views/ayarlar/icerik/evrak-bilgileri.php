@@ -20,6 +20,7 @@ $evrak_alt_bilgi_1 = $allSettings['evrak_alt_bilgi_1'] ?? '';
 $evrak_alt_bilgi_2 = $allSettings['evrak_alt_bilgi_2'] ?? '';
 $evrak_alt_bilgi_3 = $allSettings['evrak_alt_bilgi_3'] ?? '';
 $evrak_alt_bilgi_4 = $allSettings['evrak_alt_bilgi_4'] ?? '';
+$evrak_eimza_goster = $allSettings['evrak_eimza_goster'] ?? '1';
 
 ?>
 
@@ -122,6 +123,24 @@ $evrak_alt_bilgi_4 = $allSettings['evrak_alt_bilgi_4'] ?? '';
                 </div>
                 <div class="col-md-6 mb-2">
                     <?php echo Form::FormFloatInput('text', 'evrak_alt_bilgi_4', $evrak_alt_bilgi_4, 'KEP veya dipnot', 'Alt Bilgi Satır 4 (Dipnot)', 'mail', 'form-control'); ?>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- E-İmza Görünüm Ayarları -->
+    <div class="card shadow-sm mb-4">
+        <div class="card-header bg-light">
+            <h5 class="mb-0 text-primary fw-bold"><i class="ti ti-certificate me-2"></i>E-İmza Görünüm Ayarları</h5>
+        </div>
+        <div class="card-body p-4">
+            <div class="d-flex align-items-center justify-content-between p-3 bg-light rounded-3 border">
+                <div>
+                    <h6 class="mb-1 fw-bold text-dark">Çıktıda E-imza bilgilerini göster</h6>
+                    <p class="text-muted small mb-0">İşaretli olduğunda alt bilgi alanındaki elektronik imza metni çıktıda görünür, işaretli değilse görünmez.</p>
+                </div>
+                <div class="form-check form-switch ms-3">
+                    <input class="form-check-input" type="checkbox" role="switch" name="evrak_eimza_goster" value="1" id="evrak_eimza_goster" style="width: 2.5em; height: 1.25em;" <?php echo ($evrak_eimza_goster !== '0') ? 'checked' : ''; ?>>
                 </div>
             </div>
         </div>

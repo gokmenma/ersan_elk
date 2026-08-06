@@ -143,6 +143,7 @@ try {
     $evrak->evrak_alt_bilgi_2 = trim((string) ($settings['evrak_alt_bilgi_2'] ?? ''));
     $evrak->evrak_alt_bilgi_3 = trim((string) ($settings['evrak_alt_bilgi_3'] ?? ''));
     $evrak->evrak_alt_bilgi_4 = trim((string) ($settings['evrak_alt_bilgi_4'] ?? ''));
+    $evrak->evrak_eimza_goster = (string) ($settings['evrak_eimza_goster'] ?? '1');
 
     $evrak->kurum_basligi = trim((string) ($firma->firma_unvan ?? '')) ?: trim((string) ($firma->firma_adi ?? ''));
     $evrak->firma_adres = (($firma->adres ?? '') === '0') ? '' : (string) ($firma->adres ?? '');

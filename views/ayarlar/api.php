@@ -338,6 +338,8 @@ switch ($action) {
                 }
             }
 
+            $settingsToUpdate['evrak_eimza_goster'] = isset($_POST['evrak_eimza_goster']) ? '1' : '0';
+
             $uploadDir = dirname(__DIR__, 2) . '/uploads/logos/';
             $publicBase = 'uploads/logos/';
 

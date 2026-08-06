@@ -147,7 +147,8 @@ final class EvrakPdfService
               (!empty($preparer->telefon) ? '<div>' . $escape($preparer->telefon) . '</div>' : '')
             : '';
 
-        $eImzaOnayli = ($data['onay_durumu'] ?? 'taslak') === 'onaylandi';
+        $showEimzaInfo = !isset($data['evrak_eimza_goster']) || (string) $data['evrak_eimza_goster'] === '1' || $data['evrak_eimza_goster'] === true || $data['evrak_eimza_goster'] === 1;
+        $eImzaOnayli = (($data['onay_durumu'] ?? 'taslak') === 'onaylandi') && $showEimzaInfo;
         $eImzaNotu = 'Bu belge güvenli elektronik imza ile imzalanmıştır';
 
         $footerHtml = ($eImzaOnayli ? '<div class="footer-eimza">' . $eImzaNotu . '</div>' : '')
@@ -164,7 +165,7 @@ final class EvrakPdfService
             .letterhead td{border:0;vertical-align:middle}.logo{width:25%;text-align:left}.heading{width:50%;text-align:center;font-weight:bold;line-height:1.15}.heading div{margin-bottom:2px}.spacer{width:25%;text-align:right}
             .document-info{width:100%;border-collapse:collapse;margin-top:18mm;margin-bottom:8.5mm;line-height:1.2}.document-info td{border:0;padding:0;vertical-align:top}
             .recipient{text-align:center;font-weight:normal;line-height:1.25;margin:0 0 8.5mm 0}.recipient-address{font-weight:normal;text-transform:none;font-size:' . max(9, $fontSize - 1) . 'pt;margin-top:1mm}
-            .interest,.attachments{width:100%;border-collapse:collapse;margin:0 0 4.5mm}.interest td,.attachments td{border:0;vertical-align:top;padding:0}.section-label{width:12mm}.separator{width:3mm}.interest-prefix{display:inline-block;width:8mm}
+            .interest,.attachments{width:100%;border-collapse:collapse;margin:0 0 8.5mm}.interest td,.attachments td{border:0;vertical-align:top;padding:0}.section-label{width:12mm}.separator{width:3mm}.interest-prefix{display:inline-block;width:8mm}
             .content{font-size:' . $fontSize . 'pt;line-height:1.2;text-align:justify}.content p,.content div{line-height:1.2!important;margin:0!important;padding:0!important}.content p{text-indent:12.5mm;text-align:justify}.content ul,.content ol{margin:0 0 0 12mm;padding-top:0;padding-bottom:0}
             .content table{width:100%;border-collapse:collapse;margin:3mm 0}.content td,.content th{border:0.3mm solid #000;padding:1.5mm;font-size:10pt}
             .content h1,.content h2,.content h3,.content h4{font-size:12pt;margin:3mm 0;font-weight:bold}
