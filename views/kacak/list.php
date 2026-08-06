@@ -602,15 +602,14 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
 <!-- ============ KAYIT MODALI ============ -->
 <div class="modal fade" id="kacakModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-xl modal-dialog-scrollable">
-        <div class="modal-content">
+        <form id="kacakForm" class="modal-content" enctype="multipart/form-data">
             <div class="modal-header">
                 <h5 class="modal-title" id="kacakModalTitle">Kaçak Kontrol Kaydı</h5>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
-            <form id="kacakForm" enctype="multipart/form-data">
-                <input type="hidden" name="action" value="save">
-                <input type="hidden" name="id" id="kacak_id" value="0">
-                <div class="modal-body">
+            <input type="hidden" name="action" value="save">
+            <input type="hidden" name="id" id="kacak_id" value="0">
+            <div class="modal-body">
 
                     <div class="alert alert-info d-flex align-items-center d-none" id="bekleyenBildirimUyarisi">
                         <i class="bx bx-mobile-alt fs-4 me-2"></i>
@@ -758,8 +757,7 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
                         <i class="bx bx-check me-1"></i>Kaydet ve Onayla
                     </button>
                 </div>
-            </form>
-        </div>
+        </form>
     </div>
 </div>
 
@@ -819,7 +817,7 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
 
 <!-- ============ FOTOĞRAF MODALI ============ -->
 <div class="modal fade" id="fotoModal" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg">
+    <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
             <div class="modal-header">
                 <h5 class="modal-title">Kayıt Belgeleri</h5>
