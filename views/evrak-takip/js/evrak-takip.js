@@ -740,6 +740,9 @@ $(document).ready(function () {
   function showPdfFromRequest(request) {
     clearPdfObjectUrl();
     $("#evrakPdfLoader").removeClass("d-none");
+    if ($("body > #evrakPdfModal").length > 1) {
+      $("body > #evrakPdfModal").not(":last").remove();
+    }
     $("#evrakPdfModal").appendTo("body").modal("show");
 
     $.ajax({
@@ -786,11 +789,11 @@ $(document).ready(function () {
     if (isFullscreen) {
       $dialog.removeClass("modal-fullscreen").addClass("modal-xl modal-dialog-centered");
       $iframe.css("height", "72vh");
-      $(this).html('<i class="bx bx-fullscreen me-1"></i>Tam Ekran');
+      $(this).html('<i class="bx bx-fullscreen"></i> <span>Tam Ekran</span>');
     } else {
       $dialog.removeClass("modal-xl modal-dialog-centered").addClass("modal-fullscreen");
       $iframe.css("height", "calc(100vh - 60px)");
-      $(this).html('<i class="bx bx-exit-fullscreen me-1"></i>Küçült');
+      $(this).html('<i class="bx bx-exit-fullscreen"></i> <span>Küçült</span>');
     }
   });
 
@@ -799,10 +802,10 @@ $(document).ready(function () {
     const $dialog = $("#evrakPdfModal .modal-dialog");
     $dialog.removeClass("modal-fullscreen").addClass("modal-xl modal-dialog-centered");
     $("#evrakPdfFrame").css("height", "72vh");
-    $("#btnPdfTamEkran").html('<i class="bx bx-fullscreen me-1"></i>Tam Ekran');
+    $("#btnPdfTamEkran").html('<i class="bx bx-fullscreen"></i> <span>Tam Ekran</span>');
   }
 
-  $("#evrakPdfModal").on("hidden.bs.modal", resetPdfModalState);
+  $(document).on("hidden.bs.modal", "#evrakPdfModal", resetPdfModalState);
 
   $("#btnRefresh").on("click", function () { location.reload(); });
 });
