@@ -148,8 +148,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     } catch (\Exception $e) {}
 
                     $stats = [
-                        'daily' => ['muhurleme' => (int)($dailyWorkStats->muhurleme ?? 0), 'kesme_acma' => (int)($dailyWorkStats->kesme_acma ?? 0), 'endeks_okuma' => (int)($dailyReadingTotal ?? 0), 'sayac_degisimi' => (int)($sayacDailyStats->sayac_degisimi ?? 0), 'kacak' => (int)($kacakDailyTotal->toplam ?? 0)],
-                        'monthly' => ['muhurleme' => (int)($monthlyWorkStats->muhurleme ?? 0), 'kesme_acma' => (int)($monthlyWorkStats->kesme_acma ?? 0), 'endeks_okuma' => (int)($monthlyReadingTotal ?? 0), 'sayac_degisimi' => (int)($sayacMonthlyStats->sayac_degisimi ?? 0), 'kacak' => (int)($kacakMonthlyTotal->toplam ?? 0)],
+                        'daily' => ['muhurleme' => (int)($dailyWorkStats->muhurleme ?? 0), 'kesme_acma' => (int)($dailyWorkStats->kesme_acma ?? 0), 'endeks_okuma' => (int)($dailyReadingTotal ?? 0), 'sayac_degisimi' => (int)($sayacDailyStats->sayac_degisimi ?? 0), 'kacak' => (int)($kacakDailyTotal->toplam ?? 0), 'kacak_onaylanan' => (int)($kacakDailyTotal->onaylanan ?? 0)],
+                        'monthly' => ['muhurleme' => (int)($monthlyWorkStats->muhurleme ?? 0), 'kesme_acma' => (int)($monthlyWorkStats->kesme_acma ?? 0), 'endeks_okuma' => (int)($monthlyReadingTotal ?? 0), 'sayac_degisimi' => (int)($sayacMonthlyStats->sayac_degisimi ?? 0), 'kacak' => (int)($kacakMonthlyTotal->toplam ?? 0), 'kacak_onaylanan' => (int)($kacakMonthlyTotal->onaylanan ?? 0)],
                         'last_update' => ['isler' => $lastUpdateIsler, 'isler_user' => $lastUserIsler, 'endeks' => $lastUpdateEndeks, 'endeks_user' => $lastUserEndeks, 'sayac' => $lastUpdateSayac, 'sayac_user' => $lastUserSayac]
                     ];
                     $setDataCache('operational_stats', $stats);
@@ -335,7 +335,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $sayacMonthlyStats = $sayacService->getMonthlyStats();
                 $kacakDailyTotal = $puantajModel->getKacakDailyStats();
                 $kacakMonthlyTotal = $puantajModel->getKacakMonthlyStats();
-                echo safeJsonEncode(['status' => 'success', 'data' => ['daily' => ['muhurleme' => (int)($dailyWorkStats->muhurleme ?? 0), 'kesme_acma' => (int)($dailyWorkStats->kesme_acma ?? 0), 'endeks_okuma' => (int)($dailyReadingTotal ?? 0), 'sayac_degisimi' => (int)($sayacDailyStats->sayac_degisimi ?? 0), 'kacak' => (int)($kacakDailyTotal->toplam ?? 0)], 'monthly' => ['muhurleme' => (int)($monthlyWorkStats->muhurleme ?? 0), 'kesme_acma' => (int)($monthlyWorkStats->kesme_acma ?? 0), 'endeks_okuma' => (int)($monthlyReadingTotal ?? 0), 'sayac_degisimi' => (int)($sayacMonthlyStats->sayac_degisimi ?? 0), 'kacak' => (int)($kacakMonthlyTotal->toplam ?? 0)]]]);
+                echo safeJsonEncode(['status' => 'success', 'data' => ['daily' => ['muhurleme' => (int)($dailyWorkStats->muhurleme ?? 0), 'kesme_acma' => (int)($dailyWorkStats->kesme_acma ?? 0), 'endeks_okuma' => (int)($dailyReadingTotal ?? 0), 'sayac_degisimi' => (int)($sayacDailyStats->sayac_degisimi ?? 0), 'kacak' => (int)($kacakDailyTotal->toplam ?? 0), 'kacak_onaylanan' => (int)($kacakDailyTotal->onaylanan ?? 0)], 'monthly' => ['muhurleme' => (int)($monthlyWorkStats->muhurleme ?? 0), 'kesme_acma' => (int)($monthlyWorkStats->kesme_acma ?? 0), 'endeks_okuma' => (int)($monthlyReadingTotal ?? 0), 'sayac_degisimi' => (int)($sayacMonthlyStats->sayac_degisimi ?? 0), 'kacak' => (int)($kacakMonthlyTotal->toplam ?? 0), 'kacak_onaylanan' => (int)($kacakMonthlyTotal->onaylanan ?? 0)]]]);
                 break;
 
             case 'batch-load-widgets':

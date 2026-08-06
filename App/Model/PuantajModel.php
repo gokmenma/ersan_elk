@@ -976,13 +976,16 @@ class PuantajModel extends Model
         $firmaId = $_SESSION['firma_id'] ?? 0;
         $bugun = date('Y-m-d');
 
-        $sql = "SELECT SUM(sayi) as toplam 
+        $sql = "SELECT 
+                    COALESCE(SUM(sayi), 0) as toplam,
+                    COALESCE(SUM(CASE WHEN onay_durumu = 'onaylandi' THEN sayi ELSE 0 END), 0) as onaylanan,
+                    COALESCE(SUM(CASE WHEN onay_durumu = 'beklemede' THEN sayi ELSE 0 END), 0) as bekleyen
                 FROM kacak_kontrol 
                 WHERE firma_id = ? 
                 AND tarih = ? 
                 AND silinme_tarihi IS NULL
-                AND (aciklama != 'Manuel Düşüm' OR aciklama IS NULL)
-                AND " . \App\Model\KacakKontrolModel::hakedisKosulu();
+                AND durum != 'iptal'
+                AND (aciklama != 'Manuel Düşüm' OR aciklama IS NULL)";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$firmaId, $bugun]);
@@ -995,13 +998,16 @@ class PuantajModel extends Model
         $buAy = date('Y-m-01');
         $sonGun = date('Y-m-t');
 
-        $sql = "SELECT SUM(sayi) as toplam 
+        $sql = "SELECT 
+                    COALESCE(SUM(sayi), 0) as toplam,
+                    COALESCE(SUM(CASE WHEN onay_durumu = 'onaylandi' THEN sayi ELSE 0 END), 0) as onaylanan,
+                    COALESCE(SUM(CASE WHEN onay_durumu = 'beklemede' THEN sayi ELSE 0 END), 0) as bekleyen
                 FROM kacak_kontrol 
                 WHERE firma_id = ? 
                 AND tarih >= ? AND tarih <= ?
                 AND silinme_tarihi IS NULL
-                AND (aciklama != 'Manuel Düşüm' OR aciklama IS NULL)
-                AND " . \App\Model\KacakKontrolModel::hakedisKosulu();
+                AND durum != 'iptal'
+                AND (aciklama != 'Manuel Düşüm' OR aciklama IS NULL)";
 
         $stmt = $this->db->prepare($sql);
         $stmt->execute([$firmaId, $buAy, $sonGun]);

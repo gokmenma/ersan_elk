@@ -672,14 +672,35 @@ if (Gate::allows("ana_sayfa")) {
                     <p class="text-muted mb-1 small fw-bold stat-label" style="letter-spacing: 0.5px; opacity: 0.7;">GÜNLÜK
                         KAÇAK
                     </p>
-                    <h4 class="mb-0 fw-bold bordro-text-heading stat-value"
+                    <h4 class="mb-0 fw-bold bordro-text-heading stat-value d-none"
                         data-daily="<?php echo (int)($kacakDailyTotal->toplam ?? 0); ?>"
                         data-monthly="<?php echo (int)($kacakMonthlyTotal->toplam ?? 0); ?>" data-label-daily="GÜNLÜK KAÇAK"
-                        data-label-monthly="AYLIK KAÇAK" data-sub-daily="Bugün tespit edilen/girilen"
-                        data-sub-monthly="Bu ay tespit edilen/girilen">
+                        data-label-monthly="AYLIK KAÇAK" data-sub-daily="Bugün tespit edilen & onaylanan"
+                        data-sub-monthly="Bu ay tespit edilen & onaylanan">
                         <?php echo (int)($kacakDailyTotal->toplam ?? 0); ?>
                     </h4>
-                    <div class="sub-text mt-2 stat-subtext" style="font-size: 10px; color: #858796;">Bugün tespit edilen/girilen
+
+                    <!-- Bildirilen & Onaylanan Çift İstatistik Görünümü -->
+                    <div class="d-flex align-items-center justify-content-between my-2 py-1.5 px-2 rounded" style="background: rgba(244, 106, 106, 0.05); border: 1px dashed rgba(244, 106, 106, 0.2);">
+                        <div class="pe-2 border-end text-center flex-fill" style="border-color: rgba(244, 106, 106, 0.2) !important;">
+                            <div class="text-muted fw-bold" style="font-size: 0.6rem; letter-spacing: 0.3px;">BİLDİRİLEN</div>
+                            <span class="fs-5 fw-bold text-dark stat-local-value"
+                                  data-daily="<?php echo (int)($kacakDailyTotal->toplam ?? 0); ?>"
+                                  data-monthly="<?php echo (int)($kacakMonthlyTotal->toplam ?? 0); ?>">
+                                <?php echo (int)($kacakDailyTotal->toplam ?? 0); ?>
+                            </span>
+                        </div>
+                        <div class="ps-2 text-center flex-fill">
+                            <div class="text-success fw-bold" style="font-size: 0.6rem; letter-spacing: 0.3px;"><i class="bx bx-check-circle me-0.5"></i>ONAYLANAN</div>
+                            <span class="fs-5 fw-bold text-success stat-local-value"
+                                  data-daily="<?php echo (int)($kacakDailyTotal->onaylanan ?? 0); ?>"
+                                  data-monthly="<?php echo (int)($kacakMonthlyTotal->onaylanan ?? 0); ?>">
+                                <?php echo (int)($kacakDailyTotal->onaylanan ?? 0); ?>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="sub-text mt-1 stat-subtext" style="font-size: 10px; color: #858796;">Bugün tespit edilen & onaylanan
                     </div>
                     <div class="card-footer-actions mt-2">
                         <div class="btn-group btn-group-sm stats-local-toggle-group">
@@ -4741,10 +4762,17 @@ if (Gate::allows("ana_sayfa")) {
                     const subtext = statValue.data('sub-' + mode);
 
                     cardBody.find('.stat-label').text(label);
-                    cardBody.find('.stat-subtext').text(subtext);
+                    if (statValue.length) {
+                        const oldValue = parseInt(statValue.text().replace(/[^0-9]/g, '')) || 0;
+                        animateValue(statValue[0], oldValue, newValue, 800);
+                    }
 
-                    const oldValue = parseInt(statValue.text().replace(/[^0-9]/g, '')) || 0;
-                    animateValue(statValue[0], oldValue, newValue, 800);
+                    cardBody.find('.stat-local-value').each(function () {
+                        const valEl = $(this);
+                        const valNew = parseInt(valEl.data(mode)) || 0;
+                        const valOld = parseInt(valEl.text().replace(/[^0-9]/g, '')) || 0;
+                        animateValue(valEl[0], valOld, valNew, 800);
+                    });
                 });
 
                 function formatDashboardTimestamp(timestamp) {
