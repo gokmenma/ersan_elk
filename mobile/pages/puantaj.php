@@ -38,82 +38,83 @@ $selectedMonth = date('m');
     <div class="sticky top-0 z-30 bg-slate-50 dark:bg-slate-950 -mx-3 px-3 pt-2 pb-2 space-y-2 shadow-md shadow-slate-200/50 dark:shadow-none">
         
         <!-- Header & Ay/Yıl Gezinme -->
-        <div class="bg-white dark:bg-card-dark rounded-2xl p-3 shadow-sm flex flex-col gap-2.5 border border-slate-100 dark:border-slate-800">
-            <div class="flex items-center justify-between">
+        <div class="bg-gradient-to-br from-emerald-600 via-emerald-600 to-teal-700 text-white rounded-2xl p-3.5 shadow-lg flex flex-col gap-3 border border-emerald-500/40 relative overflow-hidden">
+            <div class="absolute -right-6 -top-6 w-24 h-24 bg-white/10 rounded-full blur-xl pointer-events-none"></div>
+            <div class="flex items-center justify-between relative z-10">
                 <div class="flex items-center gap-2.5">
-                    <div class="w-9 h-9 rounded-xl bg-emerald-500/10 text-emerald-600 dark:bg-emerald-500/20 flex items-center justify-center shrink-0">
+                    <div class="w-9 h-9 rounded-xl bg-white/20 text-white flex items-center justify-center shrink-0 backdrop-blur-md shadow-xs">
                         <span class="material-symbols-outlined text-[22px]">calendar_month</span>
                     </div>
                     <div>
-                        <h1 class="font-bold text-slate-900 dark:text-white text-sm leading-tight">Personel Puantaj</h1>
-                        <p class="text-[10px] text-slate-500 font-semibold tracking-wide">Aylık Puantaj ve İzin Yönetimi</p>
+                        <h1 class="font-extrabold text-white text-sm leading-tight tracking-tight">Personel Puantaj</h1>
+                        <p class="text-[10px] text-emerald-100 font-medium tracking-wide">Aylık Puantaj ve İzin Yönetimi</p>
                     </div>
                 </div>
 
                 <!-- SGK Raporları Butonu (SGK Modalı Bottom Sheet Olarak Açılır) -->
-                <button type="button" onclick="openSgkModal()" class="flex items-center gap-1.5 px-3 py-1.5 bg-rose-50 dark:bg-rose-950/40 text-rose-600 dark:text-rose-400 border border-rose-200 dark:border-rose-800/50 rounded-xl text-[11px] font-bold active:scale-95 transition-transform shadow-2xs">
+                <button type="button" onclick="openSgkModal()" class="flex items-center gap-1.5 px-3 py-1.5 bg-white/20 hover:bg-white/30 text-white border border-white/30 rounded-xl text-[11px] font-bold active:scale-95 transition-all shadow-xs backdrop-blur-md">
                     <span class="material-symbols-outlined text-[16px]">medical_services</span>
                     <span>SGK</span>
                 </button>
             </div>
 
             <!-- Ay Seçici Gezinme Çubuğu -->
-            <div class="flex items-center justify-between gap-1.5 bg-slate-50 dark:bg-slate-800/60 p-1.5 rounded-xl border border-slate-100 dark:border-slate-800">
-                <button type="button" onclick="changeMonth(-1)" class="w-8 h-8 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center shadow-xs active:scale-95 transition-transform">
+            <div class="flex items-center justify-between gap-1.5 bg-black/20 backdrop-blur-md p-1.5 rounded-xl border border-white/20 relative z-10">
+                <button type="button" onclick="changeMonth(-1)" class="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white flex items-center justify-center shadow-xs active:scale-95 transition-transform">
                     <span class="material-symbols-outlined text-lg">chevron_left</span>
                 </button>
                 
                 <div class="relative flex-1 text-center cursor-pointer">
                     <input type="text" id="monthPickerInput" class="absolute inset-0 opacity-0 w-full h-full cursor-pointer z-10">
-                    <span id="currentMonthDisplay" class="font-black text-xs text-slate-800 dark:text-slate-100 uppercase tracking-wide">
+                    <span id="currentMonthDisplay" class="font-black text-xs text-white uppercase tracking-wide">
                         <?= mb_strtoupper(date('F Y'), 'UTF-8') ?>
                     </span>
-                    <span class="material-symbols-outlined text-[14px] text-slate-400 align-middle ml-0.5">arrow_drop_down</span>
+                    <span class="material-symbols-outlined text-[14px] text-emerald-200 align-middle ml-0.5">arrow_drop_down</span>
                 </div>
 
-                <button type="button" onclick="changeMonth(1)" class="w-8 h-8 rounded-lg bg-white dark:bg-slate-700 text-slate-700 dark:text-slate-200 flex items-center justify-center shadow-xs active:scale-95 transition-transform">
+                <button type="button" onclick="changeMonth(1)" class="w-8 h-8 rounded-lg bg-white/20 hover:bg-white/30 text-white flex items-center justify-center shadow-xs active:scale-95 transition-transform">
                     <span class="material-symbols-outlined text-lg">chevron_right</span>
                 </button>
-                <button type="button" onclick="resetToCurrentMonth()" class="px-2.5 py-1.5 rounded-lg bg-emerald-500 text-white text-[10px] font-bold active:scale-95 transition-transform shadow-xs">
+                <button type="button" onclick="resetToCurrentMonth()" class="px-2.5 py-1.5 rounded-lg bg-white text-emerald-800 text-[10px] font-extrabold active:scale-95 transition-transform shadow-sm">
                     BUGÜN
                 </button>
             </div>
 
             <!-- Arama & Filtre Çubuğu -->
-            <div class="space-y-2">
+            <div class="space-y-2 relative z-10">
                 <div class="flex items-center gap-2">
                     <!-- Personel Arama -->
                     <div class="relative flex-1">
-                        <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-400 text-[18px]">search</span>
-                        <input type="text" id="puantajSearchInput" placeholder="Personel ara..." class="w-full pl-9 pr-3 py-2 bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl text-xs text-slate-800 dark:text-slate-200 focus:outline-none focus:ring-1 focus:ring-emerald-500 font-medium">
+                        <span class="absolute left-3 top-1/2 -translate-y-1/2 material-symbols-outlined text-emerald-100/80 text-[18px]">search</span>
+                        <input type="text" id="puantajSearchInput" placeholder="Personel ara..." class="w-full pl-9 pr-3 py-2 bg-white/20 text-white placeholder-emerald-100/70 border border-white/25 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-white/40 font-medium">
                     </div>
 
                     <!-- Filtre Accordion Toggle -->
-                    <button type="button" onclick="toggleFilterDrawer()" class="w-9 h-9 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 flex items-center justify-center shrink-0 active:scale-95 transition-transform border border-slate-200/60 dark:border-slate-700/60">
+                    <button type="button" onclick="toggleFilterDrawer()" class="w-9 h-9 rounded-xl bg-white/20 text-white flex items-center justify-center shrink-0 active:scale-95 transition-transform border border-white/25 backdrop-blur-md">
                         <span class="material-symbols-outlined text-[20px]">tune</span>
                     </button>
                 </div>
 
                 <!-- Detaylı Filtre Paneli (Gizlenebilir) -->
-                <div id="filterDrawer" class="hidden bg-slate-50 dark:bg-slate-900 p-3 rounded-xl border border-slate-200 dark:border-slate-800 space-y-2.5">
+                <div id="filterDrawer" class="hidden bg-black/25 backdrop-blur-md p-3 rounded-xl border border-white/20 space-y-2.5">
                     <div class="grid grid-cols-2 gap-2">
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Departman</label>
-                            <select id="filterDepartman" onchange="loadPuantajData()" class="w-full py-1.5 px-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-200">
+                            <label class="block text-[10px] font-bold text-emerald-100 uppercase mb-1">Departman</label>
+                            <select id="filterDepartman" onchange="loadPuantajData()" class="w-full py-1.5 px-2 bg-white/90 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-white/30 rounded-lg text-xs font-medium">
                                 <option value="">Tüm Departmanlar</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-[10px] font-bold text-slate-500 uppercase mb-1">Bölge</label>
-                            <select id="filterBolge" onchange="loadPuantajData()" class="w-full py-1.5 px-2 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg text-xs font-medium text-slate-700 dark:text-slate-200">
+                            <label class="block text-[10px] font-bold text-emerald-100 uppercase mb-1">Bölge</label>
+                            <select id="filterBolge" onchange="loadPuantajData()" class="w-full py-1.5 px-2 bg-white/90 text-slate-800 dark:bg-slate-800 dark:text-slate-200 border border-white/30 rounded-lg text-xs font-medium">
                                 <option value="">Tüm Bölgeler</option>
                             </select>
                         </div>
                     </div>
                     <div class="flex items-center justify-between pt-1">
                         <label class="flex items-center gap-2 cursor-pointer">
-                            <input type="checkbox" id="filterIskur" checked onchange="loadPuantajData()" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-slate-300">
-                            <span class="text-xs font-semibold text-slate-700 dark:text-slate-300">İŞKUR Personelleri Dahil</span>
+                            <input type="checkbox" id="filterIskur" checked onchange="loadPuantajData()" class="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 border-white/40">
+                            <span class="text-xs font-semibold text-emerald-50">İŞKUR Personelleri Dahil</span>
                         </label>
                     </div>
                 </div>
@@ -122,22 +123,22 @@ $selectedMonth = date('m');
 
         <!-- ÖZET İSTATİSTİK ŞERİDİ -->
         <div class="grid grid-cols-4 gap-1.5">
-            <div class="bg-white dark:bg-card-dark p-2 rounded-xl border border-slate-100 dark:border-slate-800 text-center shadow-xs">
+            <button type="button" id="cardStatPersonel" onclick="toggleCardFilter('all')" class="bg-white dark:bg-card-dark p-2 rounded-xl border border-slate-100 dark:border-slate-800 text-center shadow-xs active:scale-95 transition-all cursor-pointer">
                 <span class="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Personel</span>
                 <span id="statPersonelCount" class="text-sm font-black text-slate-800 dark:text-white">0</span>
-            </div>
-            <div class="bg-white dark:bg-card-dark p-2 rounded-xl border border-slate-100 dark:border-slate-800 text-center shadow-xs">
+            </button>
+            <button type="button" id="cardStatWork" onclick="toggleCardFilter('all')" class="bg-white dark:bg-card-dark p-2 rounded-xl border border-slate-100 dark:border-slate-800 text-center shadow-xs active:scale-95 transition-all cursor-pointer">
                 <span class="block text-[9px] font-bold text-blue-500 uppercase tracking-wider">Çalışılan</span>
                 <span id="statWorkDays" class="text-sm font-black text-blue-600 dark:text-blue-400">0</span>
-            </div>
-            <div class="bg-white dark:bg-card-dark p-2 rounded-xl border border-slate-100 dark:border-slate-800 text-center shadow-xs">
+            </button>
+            <button type="button" id="cardStatLeave" onclick="toggleCardFilter('izinli')" class="bg-white dark:bg-card-dark p-2 rounded-xl border border-slate-100 dark:border-slate-800 text-center shadow-xs active:scale-95 transition-all cursor-pointer relative">
                 <span class="block text-[9px] font-bold text-emerald-500 uppercase tracking-wider">İzinli</span>
                 <span id="statLeaveDays" class="text-sm font-black text-emerald-600 dark:text-emerald-400">0</span>
-            </div>
-            <div class="bg-white dark:bg-card-dark p-2 rounded-xl border border-slate-100 dark:border-slate-800 text-center shadow-xs">
+            </button>
+            <button type="button" id="cardStatSgk" onclick="toggleCardFilter('raporlu')" class="bg-white dark:bg-card-dark p-2 rounded-xl border border-slate-100 dark:border-slate-800 text-center shadow-xs active:scale-95 transition-all cursor-pointer relative">
                 <span class="block text-[9px] font-bold text-rose-500 uppercase tracking-wider">Raporlu</span>
                 <span id="statSgkDays" class="text-sm font-black text-rose-600 dark:text-rose-400">0</span>
-            </div>
+            </button>
         </div>
 
     </div>
@@ -350,8 +351,40 @@ $selectedMonth = date('m');
     
     let unsavedChanges = {}; // Key: "personelId_dateStr", Value: { personel_id, type_id, date, baslangic_tarihi, bitis_tarihi }
     let modalStampActiveType = null; // Type object when Stamp Mode is active inside modal
-    let selectedDetailPersonel = null; // Personel object for detail modal
     let currentPaletteTab = 'ucretli'; // 'ucretli' or 'ucretsiz'
+    let activeCardFilter = null; // null, 'izinli', or 'raporlu'
+
+    window.toggleCardFilter = function(type) {
+        if (type === 'all') {
+            activeCardFilter = null;
+        } else if (activeCardFilter === type) {
+            activeCardFilter = null;
+        } else {
+            activeCardFilter = type;
+        }
+        renderPersonelList();
+    };
+
+    function updateCardFilterStyles() {
+        const cardLeave = document.getElementById('cardStatLeave');
+        const cardSgk = document.getElementById('cardStatSgk');
+
+        if (cardLeave) {
+            if (activeCardFilter === 'izinli') {
+                cardLeave.className = "bg-emerald-50 dark:bg-emerald-950/50 p-2 rounded-xl border-2 border-emerald-500 text-center shadow-md scale-[1.02] transition-all cursor-pointer relative ring-2 ring-emerald-500/30";
+            } else {
+                cardLeave.className = "bg-white dark:bg-card-dark p-2 rounded-xl border border-slate-100 dark:border-slate-800 text-center shadow-xs active:scale-95 transition-all cursor-pointer relative";
+            }
+        }
+
+        if (cardSgk) {
+            if (activeCardFilter === 'raporlu') {
+                cardSgk.className = "bg-rose-50 dark:bg-rose-950/50 p-2 rounded-xl border-2 border-rose-500 text-center shadow-md scale-[1.02] transition-all cursor-pointer relative ring-2 ring-rose-500/30";
+            } else {
+                cardSgk.className = "bg-white dark:bg-card-dark p-2 rounded-xl border border-slate-100 dark:border-slate-800 text-center shadow-xs active:scale-95 transition-all cursor-pointer relative";
+            }
+        }
+    }
 
     const monthNamesTR = [
         'Ocak', 'Şubat', 'Mart', 'Nisan', 'Mayıs', 'Haziran',
@@ -724,30 +757,79 @@ $selectedMonth = date('m');
         const searchTerm = (searchInput.value || '').toLowerCase().trim();
         const daysInMonth = getDaysInMonth(currentYear, currentMonth);
 
-        const filteredData = rawCalendarData.filter(p => {
+        const baseFilteredData = rawCalendarData.filter(p => {
             if (!searchTerm) return true;
             return (p.adi_soyadi || '').toLowerCase().includes(searchTerm) ||
                    (p.tc_kimlik_no || '').includes(searchTerm) ||
                    (p.departman || '').toLowerCase().includes(searchTerm);
         });
 
-        // Update Stat Counters
-        updateStats(filteredData);
+        // Update Stat Counters on base filtered dataset
+        updateStats(baseFilteredData);
+        updateCardFilterStyles();
+
+        // Step 2: Apply card filter (izinli / raporlu)
+        const finalData = baseFilteredData.filter(p => {
+            if (!activeCardFilter) return true;
+
+            let leaveDays = 0;
+            let sgkDays = 0;
+
+            for (let d = 1; d <= daysInMonth; d++) {
+                const dateStr = `${currentYear}-${padZero(currentMonth)}-${padZero(d)}`;
+                const entry = getEffectiveEntry(p.id, dateStr, p.entries[dateStr]);
+                const code = (entry.kisa_kod || 'X').toUpperCase();
+
+                if (code === 'SGK' || code === 'RP') {
+                    sgkDays++;
+                } else if (code !== 'X' && code !== 'HTÇ' && code !== 'RTÇ' && code !== 'HT' && code !== '') {
+                    leaveDays++;
+                }
+            }
+
+            if (activeCardFilter === 'izinli') {
+                return leaveDays > 0;
+            } else if (activeCardFilter === 'raporlu') {
+                return sgkDays > 0;
+            }
+            return true;
+        });
 
         personelListContainer.innerHTML = '';
 
-        if (filteredData.length === 0) {
-            personelListContainer.innerHTML = `
-                <div class="bg-white dark:bg-card-dark p-8 rounded-2xl text-center text-slate-400 border border-slate-100 dark:border-slate-800">
-                    <span class="material-symbols-outlined text-4xl mb-1 text-slate-300">group_off</span>
-                    <p class="text-xs font-bold">Filtreye uygun personel bulunamadı.</p>
-                </div>
+        if (activeCardFilter) {
+            const isLeave = activeCardFilter === 'izinli';
+            const filterBg = isLeave 
+                ? 'bg-emerald-50 dark:bg-emerald-950/40 border-emerald-200 dark:border-emerald-800/50 text-emerald-700 dark:text-emerald-300' 
+                : 'bg-rose-50 dark:bg-rose-950/40 border-rose-200 dark:border-rose-800/50 text-rose-700 dark:text-rose-300';
+            
+            const banner = document.createElement('div');
+            banner.className = `flex items-center justify-between border px-3 py-2 rounded-xl text-xs font-bold ${filterBg} mb-2 shadow-xs`;
+            banner.innerHTML = `
+                <span class="flex items-center gap-1.5">
+                    <span class="material-symbols-outlined text-base">filter_alt</span>
+                    <span>${isLeave ? 'İzinli Personeller Filtrelendi' : 'Raporlu Personeller Filtrelendi'} (${finalData.length} Personel)</span>
+                </span>
+                <button type="button" onclick="toggleCardFilter('all')" class="text-[11px] font-black underline active:scale-95">
+                    Filtreyi Temizle
+                </button>
             `;
+            personelListContainer.appendChild(banner);
+        }
+
+        if (finalData.length === 0) {
+            const emptyMsg = document.createElement('div');
+            emptyMsg.className = 'bg-white dark:bg-card-dark p-8 rounded-2xl text-center text-slate-400 border border-slate-100 dark:border-slate-800';
+            emptyMsg.innerHTML = `
+                <span class="material-symbols-outlined text-4xl mb-1 text-slate-300">group_off</span>
+                <p class="text-xs font-bold">Filtreye uygun personel bulunamadı.</p>
+            `;
+            personelListContainer.appendChild(emptyMsg);
             personelListContainer.classList.remove('hidden');
             return;
         }
 
-        filteredData.forEach(p => {
+        finalData.forEach(p => {
             let workedCount = 0;
             let leaveCount = 0;
             let sgkCount = 0;
