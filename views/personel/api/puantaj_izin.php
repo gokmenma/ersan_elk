@@ -141,7 +141,7 @@ try {
         $endDate = date("Y-m-t", strtotime($startDate));
 
         $sql = "
-            SELECT p.id, p.adi_soyadi, p.resim_yolu, p.ekip_no, p.tc_kimlik_no, 
+            SELECT p.id, p.adi_soyadi, p.resim_yolu, p.personel_resim_yolu, COALESCE(gg_dep.departman, p.departman, '') as departman, p.ekip_no, p.tc_kimlik_no, 
                    COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) as isten_cikis_tarihi, 
                    COALESCE(pcg.ise_giris_tarihi, p.ise_giris_tarihi) as ise_giris_tarihi,
                    CASE WHEN gg.personel_id IS NOT NULL THEN 1 ELSE 0 END as gorev_gecmisi_var,
@@ -266,12 +266,14 @@ try {
         $data = [];
 
         foreach ($personel_list as $p) {
+            $resimPath = !empty($p->personel_resim_yolu) ? $p->personel_resim_yolu : ($p->resim_yolu ?? '');
             $p_info = [
                 'id' => $p->id,
                 'encrypt_id' => Security::encrypt($p->id),
                 'adi_soyadi' => $p->adi_soyadi,
                 'tc_kimlik_no' => $p->tc_kimlik_no ?? '',
-                'resim' => $p->resim_yolu ?: 'assets/images/users/user-dummy-img.jpg',
+                'departman' => $p->departman ?? '',
+                'resim' => $resimPath,
                 'isten_cikis_tarihi' => $p->isten_cikis_tarihi,
                 'ise_giris_tarihi' => $p->ise_giris_tarihi,
                 'gorev_gecmisi_var' => $p->gorev_gecmisi_var,

@@ -181,7 +181,7 @@ $selectedMonth = date('m');
     </div>
 </div>
 
-<!-- PERSONEL AY DETAY MODALI (NATIVE BOTTOM SHEET - BOTTOM-0 TAM OTURAN YAPIDA) -->
+<!-- PERSONEL AY DETAY MODALI (NATIVE BOTTOM SHEET) -->
 <div id="personelDetailModalOverlay" class="fixed inset-0 bg-slate-900/60 dark:bg-black/75 z-[60] opacity-0 pointer-events-none transition-opacity duration-300" onclick="closePersonelDetailModal()"></div>
 
 <div id="personelDetailModal" class="fixed bottom-0 left-0 right-0 bg-white dark:bg-card-dark rounded-t-[32px] z-[61] transform translate-y-full opacity-0 pointer-events-none transition-all duration-300 shadow-2xl max-h-[92vh] h-[92vh] flex flex-col w-full max-w-lg mx-auto border-t border-slate-200/60 dark:border-slate-800">
@@ -204,7 +204,7 @@ $selectedMonth = date('m');
 
     <div class="p-4 overflow-y-auto space-y-4 flex-grow pb-16">
 
-        <!-- 1. HIZLI DAMGA (PUANTAJ TÜRLERİ PALETİ - ÜCRETİLİ / ÜCRETSİZ SEKMELİ) -->
+        <!-- 1. HIZLI DAMGA (PUANTAJ TÜRLERİ PALETİ - ÜCRETLİ / ÜCRETSİZ SEKMELİ) -->
         <div class="bg-slate-50 dark:bg-slate-900/80 p-3 rounded-2xl border border-slate-200 dark:border-slate-800 space-y-2">
             <div class="flex items-center justify-between">
                 <span class="text-[10px] font-black text-slate-500 uppercase tracking-wider">Hızlı Damga (Puantaj Türleri)</span>
@@ -371,6 +371,44 @@ $selectedMonth = date('m');
         },
         buttonsStyling: false
     };
+
+    // Resim Yolu Düzeltici Helper
+    function getPersonelAvatarUrl(resim) {
+        if (!resim || typeof resim !== 'string' || resim.trim() === '' || resim.includes('user-dummy-img')) {
+            return '';
+        }
+        const r = resim.trim();
+        if (r.startsWith('http://') || r.startsWith('https://') || r.startsWith('data:')) {
+            return r;
+        }
+        const cleanPath = r.replace(/^(\.\.\/|\/)+/, '');
+        return '../' + cleanPath;
+    }
+
+    // Departman Renk Paleti ve Resolver'ı
+    const deptColorPalette = [
+        { bg: 'bg-emerald-50 dark:bg-emerald-950/50', text: 'text-emerald-700 dark:text-emerald-300', border: 'border-emerald-200 dark:border-emerald-800/50' },
+        { bg: 'bg-blue-50 dark:bg-blue-950/50',       text: 'text-blue-700 dark:text-blue-300',       border: 'border-blue-200 dark:border-blue-800/50' },
+        { bg: 'bg-purple-50 dark:bg-purple-950/50',   text: 'text-purple-700 dark:text-purple-300',   border: 'border-purple-200 dark:border-purple-800/50' },
+        { bg: 'bg-amber-50 dark:bg-amber-950/50',     text: 'text-amber-700 dark:text-amber-300',     border: 'border-amber-200 dark:border-amber-800/50' },
+        { bg: 'bg-indigo-50 dark:bg-indigo-950/50',   text: 'text-indigo-700 dark:text-indigo-300',   border: 'border-indigo-200 dark:border-indigo-800/50' },
+        { bg: 'bg-rose-50 dark:bg-rose-950/50',       text: 'text-rose-700 dark:text-rose-300',       border: 'border-rose-200 dark:border-rose-800/50' },
+        { bg: 'bg-teal-50 dark:bg-teal-950/50',       text: 'text-teal-700 dark:text-teal-300',       border: 'border-teal-200 dark:border-teal-800/50' },
+        { bg: 'bg-sky-50 dark:bg-sky-950/50',         text: 'text-sky-700 dark:text-sky-300',         border: 'border-sky-200 dark:border-sky-800/50' },
+        { bg: 'bg-violet-50 dark:bg-violet-950/50',   text: 'text-violet-700 dark:text-violet-300',   border: 'border-violet-200 dark:border-violet-800/50' },
+        { bg: 'bg-pink-50 dark:bg-pink-950/50',       text: 'text-pink-700 dark:text-pink-300',       border: 'border-pink-200 dark:border-pink-800/50' },
+    ];
+
+    function getDepartmentBadgeStyle(deptName) {
+        if (!deptName) return 'bg-slate-100 text-slate-600 dark:bg-slate-800 dark:text-slate-400 border-slate-200';
+        let hash = 0;
+        for (let i = 0; i < deptName.length; i++) {
+            hash = deptName.charCodeAt(i) + ((hash << 5) - hash);
+        }
+        const index = Math.abs(hash) % deptColorPalette.length;
+        const c = deptColorPalette[index];
+        return `${c.bg} ${c.text} border ${c.border}`;
+    }
 
     // Masaüstü ve Veritabanındaki Canlı Renk Haritası Resolver'ı
     function resolveColor(code, dbColor) {
@@ -689,7 +727,8 @@ $selectedMonth = date('m');
         const filteredData = rawCalendarData.filter(p => {
             if (!searchTerm) return true;
             return (p.adi_soyadi || '').toLowerCase().includes(searchTerm) ||
-                   (p.tc_kimlik_no || '').includes(searchTerm);
+                   (p.tc_kimlik_no || '').includes(searchTerm) ||
+                   (p.departman || '').toLowerCase().includes(searchTerm);
         });
 
         // Update Stat Counters
@@ -729,6 +768,7 @@ $selectedMonth = date('m');
 
             const pct = Math.round((workedCount / daysInMonth) * 100);
             const initials = getInitials(p.adi_soyadi);
+            const avatarUrl = getPersonelAvatarUrl(p.resim);
 
             const card = document.createElement('div');
             card.className = 'bg-white dark:bg-card-dark p-3.5 rounded-2xl border border-slate-100 dark:border-slate-800 shadow-xs hover:shadow-md transition-all cursor-pointer active:scale-[0.99] flex items-center justify-between gap-3';
@@ -738,8 +778,8 @@ $selectedMonth = date('m');
 
             card.innerHTML = `
                 <div class="flex items-center gap-3 shrink-0 flex-1 min-w-0">
-                    ${p.resim ? `
-                        <img src="${p.resim}" class="w-11 h-11 rounded-full object-cover border-2 border-emerald-500/20 shrink-0" alt="">
+                    ${avatarUrl ? `
+                        <img src="${avatarUrl}" class="w-11 h-11 rounded-full object-cover border-2 border-emerald-500/20 shrink-0" onerror="this.onerror=null; this.outerHTML='<div class=\\'w-11 h-11 rounded-full bg-emerald-500/10 text-emerald-600 font-black text-sm flex items-center justify-center shrink-0 border border-emerald-500/20\\'>${initials}</div>';" alt="">
                     ` : `
                         <div class="w-11 h-11 rounded-full bg-emerald-500/10 text-emerald-600 font-black text-sm flex items-center justify-center shrink-0 border border-emerald-500/20">
                             ${initials}
@@ -747,7 +787,8 @@ $selectedMonth = date('m');
                     `}
                     <div class="min-w-0 flex-1">
                         <h3 class="font-bold text-slate-900 dark:text-white text-xs leading-tight truncate mb-0.5">${escapeHtml(p.adi_soyadi)}</h3>
-                        <div class="flex items-center gap-2 text-[10px] text-slate-400 font-medium truncate">
+                        <div class="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium truncate">
+                            ${p.departman ? `<span class="font-extrabold px-1.5 py-0.2 rounded ${getDepartmentBadgeStyle(p.departman)}">${escapeHtml(p.departman)}</span>` : ''}
                             <span>TC: ${p.tc_kimlik_no ? escapeHtml(p.tc_kimlik_no) : '—'}</span>
                             ${leaveCount > 0 ? `<span class="px-1.5 py-0.2 rounded bg-emerald-50 text-emerald-600 dark:bg-emerald-900/30 font-bold">${leaveCount} İzin</span>` : ''}
                             ${sgkCount > 0 ? `<span class="px-1.5 py-0.2 rounded bg-rose-50 text-rose-600 dark:bg-rose-900/30 font-bold">${sgkCount} Rapor</span>` : ''}
@@ -912,7 +953,7 @@ $selectedMonth = date('m');
         });
     };
 
-    // PERSONEL AY DETAY MODALI LOGIC (NATIVE BOTTOM SHEET - BOTTOM-0 TAM OTURAN)
+    // PERSONEL AY DETAY MODALI LOGIC (NATIVE BOTTOM SHEET)
     window.openPersonelDetailModal = function(personelId) {
         const p = rawCalendarData.find(x => x.id == personelId);
         if (!p) return;
@@ -920,11 +961,16 @@ $selectedMonth = date('m');
         selectedDetailPersonel = p;
 
         document.getElementById('detailPersonelName').textContent = p.adi_soyadi;
-        document.getElementById('detailPersonelDept').textContent = p.tc_kimlik_no ? `TC: ${p.tc_kimlik_no}` : 'Personel Puantaj Kartı';
         
+        const deptBadge = p.departman ? `<span class="font-extrabold px-2 py-0.5 rounded text-[10px] ${getDepartmentBadgeStyle(p.departman)}">${escapeHtml(p.departman)}</span>` : '';
+        const tcStr = p.tc_kimlik_no ? `TC: ${escapeHtml(p.tc_kimlik_no)}` : '';
+        document.getElementById('detailPersonelDept').innerHTML = `${deptBadge} ${tcStr ? '<span class="text-slate-400 font-semibold ml-1.5">• ' + tcStr + '</span>' : ''}`;
+
         const avatarContainer = document.getElementById('detailPersonelAvatarContainer');
-        if (p.resim) {
-            avatarContainer.innerHTML = `<img src="${p.resim}" class="w-10 h-10 rounded-full object-cover border-2 border-emerald-500/30" alt="">`;
+        const avatarUrl = getPersonelAvatarUrl(p.resim);
+
+        if (avatarUrl) {
+            avatarContainer.innerHTML = `<img src="${avatarUrl}" class="w-10 h-10 rounded-full object-cover border-2 border-emerald-500/30" onerror="this.onerror=null; this.parentElement.innerHTML='<div class=\\'w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 font-black text-xs flex items-center justify-center border border-emerald-500/30\\'>${getInitials(p.adi_soyadi)}</div>';" alt="">`;
         } else {
             avatarContainer.innerHTML = `<div class="w-10 h-10 rounded-full bg-emerald-500/10 text-emerald-600 font-black text-xs flex items-center justify-center border border-emerald-500/30">${getInitials(p.adi_soyadi)}</div>`;
         }
