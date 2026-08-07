@@ -527,7 +527,7 @@ function ihbarDurumBadge($durum)
 
             <div class="card border-0 shadow-sm">
                 <div class="card-header bg-transparent d-flex justify-content-between align-items-center flex-wrap gap-2">
-                    <h5 class="mb-0"><i class="bx bx-group me-2 text-primary"></i>Personel Bazlı İhbar Performansı (Okumacılar)</h5>
+                    <h5 class="mb-0"><i class="bx bx-group me-2 text-primary"></i>Personel Bazlı İhbar Performansı</h5>
                     <button type="button" class="btn btn-sm btn-outline-success px-3 rounded-pill" id="ihbarPersonelExportExcel">
                         <i class="bx bx-file me-1"></i>Excel'e Aktar
                     </button>
@@ -537,7 +537,7 @@ function ihbarDurumBadge($durum)
                         <table class="table datatables table-hover table-bordered nowrap align-middle w-100" id="ihbarPersonelTable">
                             <thead class="table-light">
                                 <tr>
-                                    <th data-filter="string">Personel (Okumacı)</th>
+                                    <th data-filter="string">Personel</th>
                                     <th data-filter="string">Toplam İhbar</th>
                                     <th data-filter="string">Olumlu İhbar</th>
                                     <th data-filter="string">Olumsuz İhbar</th>
@@ -554,15 +554,11 @@ function ihbarDurumBadge($durum)
                                 ?>
                                     <tr>
                                         <td>
-                                            <div class="d-flex align-items-center">
-                                                <div class="avatar-xs me-2">
-                                                    <span class="avatar-title rounded-circle bg-primary text-white fw-bold d-inline-flex align-items-center justify-content-center" style="width:32px;height:32px;font-size:12px;">
-                                                        <?= mb_strtoupper(mb_substr($stat->adi_soyadi, 0, 1, 'UTF-8'), 'UTF-8') ?>
-                                                    </span>
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="rounded-circle bg-primary text-white fw-bold d-flex align-items-center justify-content-center flex-shrink-0" style="width:32px; height:32px; min-width:32px; font-size:13px; line-height:1;">
+                                                    <?= mb_strtoupper(mb_substr($stat->adi_soyadi, 0, 1, 'UTF-8'), 'UTF-8') ?>
                                                 </div>
-                                                <div>
-                                                    <strong class="d-block text-dark"><?= htmlspecialchars($stat->adi_soyadi, ENT_QUOTES, 'UTF-8') ?></strong>
-                                                </div>
+                                                <span class="fw-bold text-dark me-1"><?= htmlspecialchars($stat->adi_soyadi, ENT_QUOTES, 'UTF-8') ?></span>
                                             </div>
                                         </td>
                                         <td><span class="badge bg-primary fs-6 px-2 py-1"><?= (int) $stat->toplam_ihbar ?></span></td>

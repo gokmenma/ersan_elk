@@ -180,15 +180,124 @@ class KacakKontrolModel extends Model
             array_push($params, $like, $like, $like, $like);
         }
 
-        foreach (($filters['kolon_aramalari'] ?? []) as $column => $value) {
+        foreach (($filters['kolon_aramalari'] ?? []) as $column => $rawVal) {
             $allowedColumns = [
                 'tarih' => 'k.tarih', 'tutanak_no' => 'k.tutanak_no', 'abone_adi' => 'k.abone_adi',
                 'ilce' => 'k.ilce', 'tur' => 'k.tur', 'sayac_no' => 'k.sayac_no', 'sayi' => 'k.sayi',
                 'ekip_adi' => 'k.ekip_adi', 'kaynak' => 'k.kaynak', 'durum' => 'k.durum',
             ];
-            if ($value !== '' && isset($allowedColumns[$column])) {
-                $where[] = $allowedColumns[$column] . ' LIKE ?';
-                $params[] = '%' . $value . '%';
+            if ($rawVal === '' || !isset($allowedColumns[$column])) {
+                continue;
+            }
+
+            $dbCol = $allowedColumns[$column];
+            $mode = 'contains';
+            $valStr = (string) $rawVal;
+
+            if (strpos($rawVal, ':') !== false) {
+                list($mode, $valStr) = explode(':', $rawVal, 2);
+            }
+
+            $vals = array_values(array_filter(array_map('trim', explode('|', $valStr)), function ($v) {
+                return $v !== '';
+            }));
+
+            if (empty($vals) && !in_array($mode, ['null', 'not_null'], true)) {
+                continue;
+            }
+
+            $firstVal = reset($vals) ?: '';
+            $secondVal = count($vals) > 1 ? $vals[1] : '';
+
+            $isDateCol = ($column === 'tarih');
+            if ($isDateCol) {
+                if ($firstVal && strpos($firstVal, '.') !== false) {
+                    $firstVal = \App\Helper\Date::dttoeng($firstVal);
+                }
+                if ($secondVal && strpos($secondVal, '.') !== false) {
+                    $secondVal = \App\Helper\Date::dttoeng($secondVal);
+                }
+            }
+
+            switch ($mode) {
+                case 'multi':
+                    $orClause = [];
+                    foreach ($vals as $v) {
+                        if ($isDateCol && strpos($v, '.') !== false) {
+                            $v = \App\Helper\Date::dttoeng($v);
+                            $orClause[] = "DATE($dbCol) = ?";
+                            $params[] = $v;
+                        } else {
+                            $orClause[] = "$dbCol LIKE ?";
+                            $params[] = '%' . $v . '%';
+                        }
+                    }
+                    if (!empty($orClause)) {
+                        $where[] = '(' . implode(' OR ', $orClause) . ')';
+                    }
+                    break;
+
+                case 'equals':
+                    if ($isDateCol) {
+                        $where[] = "DATE($dbCol) = ?";
+                        $params[] = $firstVal;
+                    } else {
+                        $where[] = "$dbCol = ?";
+                        $params[] = $firstVal;
+                    }
+                    break;
+
+                case 'not_equals':
+                    $where[] = "$dbCol <> ?";
+                    $params[] = $firstVal;
+                    break;
+
+                case 'starts_with':
+                    $where[] = "$dbCol LIKE ?";
+                    $params[] = $firstVal . '%';
+                    break;
+
+                case 'ends_with':
+                    $where[] = "$dbCol LIKE ?";
+                    $params[] = '%' . $firstVal;
+                    break;
+
+                case 'not_contains':
+                    $where[] = "$dbCol NOT LIKE ?";
+                    $params[] = '%' . $firstVal . '%';
+                    break;
+
+                case 'before':
+                    $where[] = "DATE($dbCol) < ?";
+                    $params[] = $firstVal;
+                    break;
+
+                case 'after':
+                    $where[] = "DATE($dbCol) > ?";
+                    $params[] = $firstVal;
+                    break;
+
+                case 'between':
+                    if ($firstVal && $secondVal) {
+                        $where[] = "DATE($dbCol) BETWEEN ? AND ?";
+                        $params[] = $firstVal;
+                        $params[] = $secondVal;
+                    }
+                    break;
+
+                case 'null':
+                    $where[] = "($dbCol IS NULL OR $dbCol = '')";
+                    break;
+
+                case 'not_null':
+                    $where[] = "($dbCol IS NOT NULL AND $dbCol <> '')";
+                    break;
+
+                case 'contains':
+                default:
+                    $where[] = "$dbCol LIKE ?";
+                    $params[] = '%' . $firstVal . '%';
+                    break;
             }
         }
 
@@ -898,8 +1007,55 @@ class KacakKontrolModel extends Model
         if (empty($ekipAdi)) return '';
         $parcalar = array_map('trim', explode(',', $ekipAdi));
         $parcalar = array_values(array_filter($parcalar));
-        sort($parcalar, SORT_STRING | SORT_FLAG_CASE);
+        if (count($parcalar) <= 1) {
+            return $parcalar[0] ?? '';
+        }
+        usort($parcalar, function ($a, $b) {
+            return mb_strtolower($a, 'UTF-8') <=> mb_strtolower($b, 'UTF-8');
+        });
         return implode(', ', $parcalar);
+    }
+
+    /**
+     * DataTables kolon filtreleri için benzersiz (unique) değerleri döndürür.
+     */
+    public function getUniqueValues(string $column): array
+    {
+        $allowed = [
+            'ilce' => 'ilce',
+            'tur' => 'tur',
+            'ekip_adi' => 'ekip_adi',
+            'kaynak' => 'kaynak',
+            'durum' => 'durum',
+        ];
+
+        if (!isset($allowed[$column])) {
+            return [];
+        }
+
+        $colName = $allowed[$column];
+        $stmt = $this->db->prepare("SELECT DISTINCT {$colName} FROM kacak_kontrol WHERE firma_id = ? AND silinme_tarihi IS NULL AND {$colName} IS NOT NULL AND {$colName} <> '' ORDER BY {$colName} ASC");
+        $stmt->execute([$this->firmaId()]);
+        $rawVals = $stmt->fetchAll(PDO::FETCH_COLUMN);
+
+        $unique = [];
+        foreach ($rawVals as $v) {
+            $vClean = trim((string) $v);
+            if ($vClean === '') continue;
+
+            if ($column === 'ekip_adi') {
+                $vClean = self::normalizeEkipAdi($vClean);
+            }
+            if (!in_array($vClean, $unique, true)) {
+                $unique[] = $vClean;
+            }
+        }
+
+        usort($unique, function ($a, $b) {
+            return mb_strtolower($a, 'UTF-8') <=> mb_strtolower($b, 'UTF-8');
+        });
+
+        return array_values($unique);
     }
 
     public function buildEkipAdi(array $personelIds): string

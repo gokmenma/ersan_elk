@@ -153,15 +153,98 @@ class KacakSicilEksikModel extends Model
             array_push($params, $like, $like, $like, $like);
         }
 
-        foreach (($filters['kolon_aramalari'] ?? []) as $column => $value) {
+        foreach (($filters['kolon_aramalari'] ?? []) as $column => $rawVal) {
             $allowedColumns = [
                 'tutanak_no' => 's.tutanak_no', 'tutanak_tarihi' => 's.tutanak_tarihi',
                 'neden' => 's.neden', 'durum' => 's.durum', 'tur_sira' => 's.tur_sira',
                 'abone_adi' => 'k.abone_adi', 'ekip_adi' => 'k.ekip_adi', 'ilce' => 'k.ilce',
             ];
-            if ($value !== '' && isset($allowedColumns[$column])) {
-                $where[] = $allowedColumns[$column] . ' LIKE ?';
-                $params[] = '%' . $value . '%';
+            if ($rawVal === '' || !isset($allowedColumns[$column])) {
+                continue;
+            }
+
+            $dbCol = $allowedColumns[$column];
+            $mode = 'contains';
+            $valStr = (string) $rawVal;
+
+            if (strpos($rawVal, ':') !== false) {
+                list($mode, $valStr) = explode(':', $rawVal, 2);
+            }
+
+            $vals = array_values(array_filter(array_map('trim', explode('|', $valStr)), function ($v) {
+                return $v !== '';
+            }));
+
+            if (empty($vals) && !in_array($mode, ['null', 'not_null'], true)) {
+                continue;
+            }
+
+            $firstVal = reset($vals) ?: '';
+            $secondVal = count($vals) > 1 ? $vals[1] : '';
+
+            $isDateCol = ($column === 'tutanak_tarihi');
+            if ($isDateCol) {
+                if ($firstVal && strpos($firstVal, '.') !== false) {
+                    $firstVal = \App\Helper\Date::dttoeng($firstVal);
+                }
+                if ($secondVal && strpos($secondVal, '.') !== false) {
+                    $secondVal = \App\Helper\Date::dttoeng($secondVal);
+                }
+            }
+
+            switch ($mode) {
+                case 'multi':
+                    $orClause = [];
+                    foreach ($vals as $v) {
+                        if ($isDateCol && strpos($v, '.') !== false) {
+                            $v = \App\Helper\Date::dttoeng($v);
+                            $orClause[] = "DATE($dbCol) = ?";
+                            $params[] = $v;
+                        } else {
+                            $orClause[] = "$dbCol LIKE ?";
+                            $params[] = '%' . $v . '%';
+                        }
+                    }
+                    if (!empty($orClause)) {
+                        $where[] = '(' . implode(' OR ', $orClause) . ')';
+                    }
+                    break;
+
+                case 'equals':
+                    if ($isDateCol) {
+                        $where[] = "DATE($dbCol) = ?";
+                        $params[] = $firstVal;
+                    } else {
+                        $where[] = "$dbCol = ?";
+                        $params[] = $firstVal;
+                    }
+                    break;
+
+                case 'not_equals':
+                    $where[] = "$dbCol <> ?";
+                    $params[] = $firstVal;
+                    break;
+
+                case 'starts_with':
+                    $where[] = "$dbCol LIKE ?";
+                    $params[] = $firstVal . '%';
+                    break;
+
+                case 'ends_with':
+                    $where[] = "$dbCol LIKE ?";
+                    $params[] = '%' . $firstVal;
+                    break;
+
+                case 'not_contains':
+                    $where[] = "$dbCol NOT LIKE ?";
+                    $params[] = '%' . $firstVal . '%';
+                    break;
+
+                case 'contains':
+                default:
+                    $where[] = "$dbCol LIKE ?";
+                    $params[] = '%' . $firstVal . '%';
+                    break;
             }
         }
 

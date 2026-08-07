@@ -145,6 +145,12 @@ function kacakTarih($deger, string $varsayilan = ''): string
 try {
     switch ($action) {
 
+        case 'get-unique-values':
+            $column = $_POST['column'] ?? $_GET['column'] ?? '';
+            $vals = $Kacak->getUniqueValues($column);
+            echo json_encode(['status' => 'success', 'data' => $vals]);
+            exit;
+
         // =====================================================
         // LİSTELEME
         // =====================================================

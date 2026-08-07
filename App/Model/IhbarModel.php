@@ -729,7 +729,6 @@ class IhbarModel extends Model
         $sql = "SELECT 
                     p.id AS personel_id,
                     p.adi_soyadi,
-                    p.tc,
                     COUNT(i.id) AS toplam_ihbar,
                     COALESCE(SUM(CASE WHEN i.durum = 'olumlu' THEN 1 ELSE 0 END), 0) AS olumlu_sayisi,
                     COALESCE(SUM(CASE WHEN i.durum = 'olumsuz' THEN 1 ELSE 0 END), 0) AS olumsuz_sayisi,
@@ -750,7 +749,7 @@ class IhbarModel extends Model
             $params[] = $bitis;
         }
 
-        $sql .= " GROUP BY p.id, p.adi_soyadi, p.tc
+        $sql .= " GROUP BY p.id, p.adi_soyadi
                   ORDER BY toplam_ihbar DESC, olumlu_sayisi DESC";
 
         $stmt = $this->db->prepare($sql);
