@@ -380,9 +380,13 @@
                         }
 
                         yeniDosyalar.forEach(file => {
-                            const ext = file.name.split('.').pop().toLowerCase();
-                            if (!['jpg', 'jpeg', 'png', 'webp'].includes(ext)) {
-                                Alert.error('Hata', 'Sadece JPG, PNG ve WEBP formatında resim yükleyebilirsiniz.');
+                            const name = file.name || '';
+                            const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+                            const isImageMime = file.type ? file.type.startsWith('image/') : false;
+                            const isSupportedExt = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'jfif'].includes(ext);
+
+                            if (!isImageMime && !isSupportedExt && file.type && !file.type.includes('octet-stream')) {
+                                Alert.error('Hata', 'Sadece görsel dosyası (JPG, PNG, WEBP vb.) yükleyebilirsiniz.');
                                 return;
                             }
                             ihbarSeciliFotolar.push(file);
@@ -437,7 +441,7 @@
             <div class="relative inline-block">
                 ${kapak}
                 <span class="absolute bottom-1 right-1 text-white text-xs rounded px-1" style="background:rgba(0,0,0,.7)">${OfflineQueue.sureBicimle(v.sure)}</span>
-                <button type="button" onclick="removeIhbarVideo(${idx})" class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center">
+                <button type="button" onclick="window.removeIhbarVideo(${idx})" class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center">
                     <span class="material-symbols-outlined text-sm">close</span>
                 </button>
             </div>`;
@@ -457,18 +461,18 @@
             const url = URL.createObjectURL(file);
             return `
             <div class="relative inline-block">
-                <img src="${url}" class="w-20 h-20 object-cover rounded-xl">
-                <button type="button" onclick="removeIhbarFoto(${idx})" class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center">
+                <img src="${url}" class="w-20 h-20 object-cover rounded-xl border border-slate-200 dark:border-slate-700 shadow-sm">
+                <button type="button" onclick="window.removeIhbarFoto(${idx})" class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center shadow-md active:scale-95 transition-transform" title="Sil">
                     <span class="material-symbols-outlined text-sm">close</span>
                 </button>
             </div>`;
         }).join('');
     }
 
-    function removeIhbarFoto(idx) {
+    window.removeIhbarFoto = function (idx) {
         ihbarSeciliFotolar.splice(idx, 1);
         renderIhbarFotoPreview();
-    }
+    };
 
     function ihbarKonumAl() {
         const button = document.getElementById('ihbar-konum-btn');

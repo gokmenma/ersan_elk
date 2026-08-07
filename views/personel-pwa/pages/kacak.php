@@ -832,14 +832,14 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
 
             document.getElementById('kacak-tutanak-label').textContent = file.name.slice(0, 18);
 
-            if (file.type.startsWith('image/')) {
-                const reader = new FileReader();
-                reader.onload = ev => {
-                    const box = document.getElementById('kacak-tutanak-preview');
-                    box.querySelector('img').src = ev.target.result;
-                    box.style.display = '';
-                };
-                reader.readAsDataURL(file);
+            const box = document.getElementById('kacak-tutanak-preview');
+            if (box) {
+                if (file.type === 'application/pdf' || file.name.toLowerCase().endsWith('.pdf')) {
+                    box.querySelector('img').src = 'assets/img/pdf-icon.png';
+                } else {
+                    box.querySelector('img').src = URL.createObjectURL(file);
+                }
+                box.style.display = '';
             }
         });
 
@@ -886,8 +886,8 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 <div style="position:relative">
                     ${kapak}
                     <span class="text-white text-xs rounded" style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.7);padding:1px 4px">${OfflineQueue.sureBicimle(v.sure)}</span>
-                    <button type="button" onclick="videoSil(${i})"
-                        class="text-white text-xs font-bold rounded-xl"
+                    <button type="button" onclick="window.videoSil(${i})"
+                        class="text-white text-xs font-bold rounded-xl flex items-center justify-center"
                         style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;line-height:1;background:#dc2626">×</button>
                 </div>`);
             });
@@ -900,20 +900,18 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
 
         function sahaOnizlemeCiz() {
             const box = document.getElementById('kacak-saha-preview');
+            if (!box) return;
             box.innerHTML = '';
             sahaDosyalari.forEach((file, i) => {
-                const reader = new FileReader();
-                reader.onload = ev => {
-                    box.insertAdjacentHTML('beforeend', `
-                    <div style="position:relative">
-                        <img src="${ev.target.result}" class="w-full rounded-xl border border-slate-200"
-                             style="height:4.5rem;object-fit:cover">
-                        <button type="button" onclick="sahaFotoSil(${i})"
-                            class="text-white text-xs font-bold rounded-xl"
-                            style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;line-height:1;background:#dc2626">×</button>
-                    </div>`);
-                };
-                reader.readAsDataURL(file);
+                const url = URL.createObjectURL(file);
+                box.insertAdjacentHTML('beforeend', `
+                <div style="position:relative">
+                    <img src="${url}" class="w-full rounded-xl border border-slate-200"
+                         style="height:4.5rem;object-fit:cover">
+                    <button type="button" onclick="window.sahaFotoSil(${i})"
+                        class="text-white text-xs font-bold rounded-xl flex items-center justify-center"
+                        style="position:absolute;top:-6px;right:-6px;width:22px;height:22px;line-height:1;background:#dc2626">×</button>
+                </div>`);
             });
         }
 
