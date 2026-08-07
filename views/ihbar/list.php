@@ -13,6 +13,20 @@ $yetkiDuzenle = Gate::allows('ihbar_duzenle') || Gate::isSuperAdmin();
 $IhbarModel = new IhbarModel();
 $ihbarlar = $IhbarModel->getAllForDashboard();
 $yonlendirilecekPersoneller = $IhbarModel->getYonlendirilecekPersonelListesi();
+$personelIhbarStats = $IhbarModel->getPersonelIhbarIstatistikleri();
+$enBasariliPersonel = null;
+$enYuksekBasariOrani = -1;
+foreach ($personelIhbarStats as $pStat) {
+    $sonuclanan = (int) $pStat->olumlu_sayisi + (int) $pStat->olumsuz_sayisi;
+    if ($sonuclanan > 0) {
+        $oran = round(((int) $pStat->olumlu_sayisi / $sonuclanan) * 100);
+        if ($oran > $enYuksekBasariOrani) {
+            $enYuksekBasariOrani = $oran;
+            $enBasariliPersonel = $pStat;
+            $enBasariliPersonel->basari_orani = $oran;
+        }
+    }
+}
 $ihbarSettings = (new SettingsModel())->getAllSettingsAsKeyValue((int) ($_SESSION['firma_id'] ?? 1));
 $ihbarPersonelLimit = max(1, (int) ($ihbarSettings['ihbar_personel_eszamanli_limit'] ?? 5));
 $ihbarAyniBolgeOnceligi = ($ihbarSettings['ihbar_ayni_bolge_onceligi'] ?? '1') === '1';
@@ -211,6 +225,13 @@ function ihbarDurumBadge($durum)
                         data-bs-target="#ihbar-list-pane" type="button" role="tab">
                         <i class="bx bx-list-ul me-2"></i>Gelen İhbarlar
                         <span class="badge rounded-pill ms-2"><?= $ihbarOzet['toplam'] ?></span>
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="ihbar-personel-tab" data-bs-toggle="tab"
+                        data-bs-target="#ihbar-personel-pane" type="button" role="tab">
+                        <i class="bx bx-user-check me-2"></i>Personel Performansı
+                        <span class="badge rounded-pill ms-2"><?= count($personelIhbarStats) ?></span>
                     </button>
                 </li>
             </ul>
@@ -440,6 +461,138 @@ function ihbarDurumBadge($durum)
             </div>
         </div>
     </div>
+        </div>
+
+        <div class="tab-pane fade" id="ihbar-personel-pane" role="tabpanel">
+            <div class="row g-3 mb-4">
+                <div class="col-sm-6 col-xl-3">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body d-flex align-items-center">
+                            <div class="avatar-md bg-light-primary rounded-circle me-3 d-flex align-items-center justify-content-center" style="width:48px;height:48px;background:rgba(99,102,241,.12);">
+                                <i class="bx bx-user-check text-primary fs-3"></i>
+                            </div>
+                            <div>
+                                <span class="text-muted small fw-semibold d-block">Bildirim Yapan Personel</span>
+                                <h4 class="mb-0 fw-bold"><?= count($personelIhbarStats) ?> Personel</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-xl-3">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body d-flex align-items-center">
+                            <div class="avatar-md rounded-circle me-3 d-flex align-items-center justify-content-center" style="width:48px;height:48px;background:rgba(16,185,129,.12);">
+                                <i class="bx bx-trophy text-success fs-3"></i>
+                            </div>
+                            <div style="min-width: 0;">
+                                <span class="text-muted small fw-semibold d-block">En Çok İhbar Gönderen</span>
+                                <h5 class="mb-0 text-truncate fw-bold" title="<?= htmlspecialchars($personelIhbarStats[0]->adi_soyadi ?? 'Henüz Yok', ENT_QUOTES, 'UTF-8') ?>">
+                                    <?= htmlspecialchars($personelIhbarStats[0]->adi_soyadi ?? '-', ENT_QUOTES, 'UTF-8') ?>
+                                </h5>
+                                <small class="text-muted"><?= (int) ($personelIhbarStats[0]->toplam_ihbar ?? 0) ?> İhbar Gönderildi</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-xl-3">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body d-flex align-items-center">
+                            <div class="avatar-md rounded-circle me-3 d-flex align-items-center justify-content-center" style="width:48px;height:48px;background:rgba(14,165,233,.12);">
+                                <i class="bx bx-check-double text-info fs-3"></i>
+                            </div>
+                            <div style="min-width: 0;">
+                                <span class="text-muted small fw-semibold d-block">En Yüksek Olumlu Oranı</span>
+                                <h5 class="mb-0 text-truncate fw-bold" title="<?= htmlspecialchars($enBasariliPersonel->adi_soyadi ?? 'Henüz Yok', ENT_QUOTES, 'UTF-8') ?>">
+                                    <?= htmlspecialchars($enBasariliPersonel->adi_soyadi ?? '-', ENT_QUOTES, 'UTF-8') ?>
+                                </h5>
+                                <small class="text-success fw-semibold">%<?= $enBasariliPersonel->basari_orani ?? 0 ?> Olumlu (<?= (int) ($enBasariliPersonel->olumlu_sayisi ?? 0) ?>/<?= (int) (($enBasariliPersonel->olumlu_sayisi ?? 0) + ($enBasariliPersonel->olumsuz_sayisi ?? 0)) ?>)</small>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-sm-6 col-xl-3">
+                    <div class="card border-0 shadow-sm h-100">
+                        <div class="card-body d-flex align-items-center">
+                            <div class="avatar-md rounded-circle me-3 d-flex align-items-center justify-content-center" style="width:48px;height:48px;background:rgba(245,158,11,.12);">
+                                <i class="bx bx-send text-warning fs-3"></i>
+                            </div>
+                            <div>
+                                <span class="text-muted small fw-semibold d-block">Saha İhbar Toplamı</span>
+                                <h4 class="mb-0 fw-bold"><?= array_sum(array_column($personelIhbarStats, 'toplam_ihbar')) ?> İhbar</h4>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent d-flex justify-content-between align-items-center flex-wrap gap-2">
+                    <h5 class="mb-0"><i class="bx bx-group me-2 text-primary"></i>Personel Bazlı İhbar Performansı (Okumacılar)</h5>
+                    <button type="button" class="btn btn-sm btn-outline-success px-3 rounded-pill" id="ihbarPersonelExportExcel">
+                        <i class="bx bx-file me-1"></i>Excel'e Aktar
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table datatables table-hover table-bordered nowrap align-middle w-100" id="ihbarPersonelTable">
+                            <thead class="table-light">
+                                <tr>
+                                    <th data-filter="string">Personel (Okumacı)</th>
+                                    <th data-filter="string">Toplam İhbar</th>
+                                    <th data-filter="string">Olumlu İhbar</th>
+                                    <th data-filter="string">Olumsuz İhbar</th>
+                                    <th data-filter="string">Devam Eden</th>
+                                    <th data-filter="string">Başarı Oranı</th>
+                                    <th data-filter="date">Son İhbar Tarihi</th>
+                                    <th class="text-center" style="width:130px">İşlemler</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <?php foreach ($personelIhbarStats as $stat): 
+                                    $sonuclanan = (int) $stat->olumlu_sayisi + (int) $stat->olumsuz_sayisi;
+                                    $orani = $sonuclanan > 0 ? round(((int) $stat->olumlu_sayisi / $sonuclanan) * 100) : 0;
+                                ?>
+                                    <tr>
+                                        <td>
+                                            <div class="d-flex align-items-center">
+                                                <div class="avatar-xs me-2">
+                                                    <span class="avatar-title rounded-circle bg-primary text-white fw-bold d-inline-flex align-items-center justify-content-center" style="width:32px;height:32px;font-size:12px;">
+                                                        <?= mb_strtoupper(mb_substr($stat->adi_soyadi, 0, 1, 'UTF-8'), 'UTF-8') ?>
+                                                    </span>
+                                                </div>
+                                                <div>
+                                                    <strong class="d-block text-dark"><?= htmlspecialchars($stat->adi_soyadi, ENT_QUOTES, 'UTF-8') ?></strong>
+                                                </div>
+                                            </div>
+                                        </td>
+                                        <td><span class="badge bg-primary fs-6 px-2 py-1"><?= (int) $stat->toplam_ihbar ?></span></td>
+                                        <td><span class="badge bg-success fs-6 px-2 py-1"><?= (int) $stat->olumlu_sayisi ?></span></td>
+                                        <td><span class="badge bg-danger fs-6 px-2 py-1"><?= (int) $stat->olumsuz_sayisi ?></span></td>
+                                        <td><span class="badge bg-warning text-dark fs-6 px-2 py-1"><?= (int) $stat->bekleyen_sayisi ?></span></td>
+                                        <td style="min-width: 150px;">
+                                            <div class="d-flex align-items-center gap-2">
+                                                <div class="progress flex-grow-1" style="height: 8px;">
+                                                    <div class="progress-bar bg-success" style="width: <?= $orani ?>%"></div>
+                                                </div>
+                                                <span class="fw-bold text-dark small">%<?= $orani ?></span>
+                                            </div>
+                                            <small class="text-muted d-block" style="font-size: 11px;"><?= (int) $stat->olumlu_sayisi ?> olumlu / <?= $sonuclanan ?> sonuçlanan</small>
+                                        </td>
+                                        <td><?= $stat->son_ihbar_tarihi ? date('d.m.Y H:i', strtotime($stat->son_ihbar_tarihi)) : '-' ?></td>
+                                        <td class="text-center">
+                                            <button type="button" class="btn btn-sm btn-outline-primary rounded-pill px-2"
+                                                    onclick="personelIhbarlariniFiltrele('<?= htmlspecialchars(addslashes($stat->adi_soyadi), ENT_QUOTES, 'UTF-8') ?>')"
+                                                    title="Bu personelin ihbarlarını göster">
+                                                <i class="bx bx-search-alt me-1"></i>İhbarları Gör
+                                            </button>
+                                        </td>
+                                    </tr>
+                                <?php endforeach; ?>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -1044,6 +1197,27 @@ function ihbarDurumBadge($durum)
 
         document.getElementById('ihbar-list-tab')?.addEventListener('shown.bs.tab', function () {
             ihbarTable.columns.adjust().responsive.recalc();
+        });
+
+        let ihbarPersonelOptions = $.extend(true, {}, getDatatableOptions(), {
+            dom: 'rt' +
+                 '<"row mt-3 align-items-center g-2"' +
+                    '<"col-12 col-md-7 d-flex flex-wrap align-items-center gap-3"i l>' +
+                    '<"col-12 col-md-5 d-flex justify-content-md-end"p>' +
+                 '>',
+            order: [[1, 'desc']]
+        });
+        if (typeof applyLengthStateSave === 'function') {
+            ihbarPersonelOptions = applyLengthStateSave(ihbarPersonelOptions);
+        }
+        const ihbarPersonelTable = $('#ihbarPersonelTable').DataTable(ihbarPersonelOptions);
+
+        document.getElementById('ihbar-personel-tab')?.addEventListener('shown.bs.tab', function () {
+            ihbarPersonelTable.columns.adjust().responsive.recalc();
+        });
+
+        document.getElementById('ihbarPersonelExportExcel')?.addEventListener('click', function () {
+            ihbarPersonelTable.button('.buttons-excel').trigger();
         });
 
         document.getElementById('ihbarExportExcel')?.addEventListener('click', function () {
@@ -1786,5 +1960,16 @@ function ihbarDurumBadge($durum)
                 }
             }).catch(() => Swal.fire('Hata', 'Sunucuya ulaşılamadı.', 'error'));
         });
+    }
+
+    function personelIhbarlariniFiltrele(personelAdi) {
+        const listTabBtn = document.getElementById('ihbar-list-tab');
+        if (listTabBtn) {
+            const bsTab = new bootstrap.Tab(listTabBtn);
+            bsTab.show();
+        }
+        if (typeof ihbarTable !== 'undefined' && ihbarTable) {
+            ihbarTable.search(personelAdi).draw();
+        }
     }
 </script>

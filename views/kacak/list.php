@@ -327,18 +327,18 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                         <table class="table table-hover align-middle nowrap w-100" id="kacakTable">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Tarih</th>
-                                    <th>Tutanak No</th>
-                                    <th>Abone Adı</th>
-                                    <th>İlçe</th>
-                                    <th>Tür</th>
-                                    <th>Sayaç No</th>
-                                    <th class="text-center">Sayı</th>
-                                    <th>Ekip</th>
-                                    <th>Kaynak</th>
-                                    <th class="text-center">Foto</th>
-                                    <th class="text-center">Durum</th>
-                                    <th class="text-center">İşlem</th>
+                                    <th data-filter="date">Tarih</th>
+                                    <th data-filter="string">Tutanak No</th>
+                                    <th data-filter="string">Abone Adı</th>
+                                    <th data-filter="select">İlçe</th>
+                                    <th data-filter="select">Tür</th>
+                                    <th data-filter="string">Sayaç No</th>
+                                    <th class="text-center" data-filter="number">Sayı</th>
+                                    <th data-filter="select">Ekip</th>
+                                    <th data-filter="select">Kaynak</th>
+                                    <th class="text-center" data-filter="none">Foto</th>
+                                    <th class="text-center" data-filter="select">Durum</th>
+                                    <th class="text-center" data-filter="none">İşlem</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -361,15 +361,15 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                         <table class="table table-hover align-middle nowrap w-100" id="onayTable">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Tarih</th>
-                                    <th>Bildiren</th>
-                                    <th>Ekip</th>
-                                    <th>Tutanak No</th>
-                                    <th>Abone Adı</th>
-                                    <th>İlçe</th>
-                                    <th>Tür</th>
-                                    <th class="text-center">Foto</th>
-                                    <th class="text-center">İşlem</th>
+                                    <th data-filter="date">Tarih</th>
+                                    <th data-filter="string">Bildiren</th>
+                                    <th data-filter="select">Ekip</th>
+                                    <th data-filter="string">Tutanak No</th>
+                                    <th data-filter="string">Abone Adı</th>
+                                    <th data-filter="select">İlçe</th>
+                                    <th data-filter="select">Tür</th>
+                                    <th class="text-center" data-filter="none">Foto</th>
+                                    <th class="text-center" data-filter="none">İşlem</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -396,17 +396,17 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                         <table class="table table-hover align-middle nowrap w-100" id="iptalTable">
                             <thead class="table-light">
                                 <tr>
-                                    <th>Tarih</th>
-                                    <th>Tutanak No</th>
-                                    <th>Abone Adı</th>
-                                    <th>İlçe</th>
-                                    <th>Tür</th>
-                                    <th class="text-center">Sayı</th>
-                                    <th>İptal Açıklaması</th>
-                                    <th class="text-center">Hakedişten Düş</th>
-                                    <th>İptal Eden</th>
-                                    <th class="text-center">Foto</th>
-                                    <th class="text-center">İşlem</th>
+                                    <th data-filter="date">Tarih</th>
+                                    <th data-filter="string">Tutanak No</th>
+                                    <th data-filter="string">Abone Adı</th>
+                                    <th data-filter="select">İlçe</th>
+                                    <th data-filter="select">Tür</th>
+                                    <th class="text-center" data-filter="number">Sayı</th>
+                                    <th data-filter="string">İptal Açıklaması</th>
+                                    <th class="text-center" data-filter="select">Hakedişten Düş</th>
+                                    <th data-filter="string">İptal Eden</th>
+                                    <th class="text-center" data-filter="none">Foto</th>
+                                    <th class="text-center" data-filter="none">İşlem</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -563,14 +563,14 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                         <table class="table table-hover align-middle nowrap w-100" id="teslimTable">
                             <thead class="table-light">
                                 <tr>
-                                    <th>TARİH</th>
-                                    <th>TUTANAK NO</th>
-                                    <th>MÜKELLEF ADI</th>
-                                    <th>İLÇE</th>
-                                    <th>DURUM</th>
-                                    <th>EKİP</th>
-                                    <th>SEBEP</th>
-                                    <th class="text-center">FOTO ÇIKTISI</th>
+                                    <th data-filter="date">TARİH</th>
+                                    <th data-filter="string">TUTANAK NO</th>
+                                    <th data-filter="string">MÜKELLEF ADI</th>
+                                    <th data-filter="select">İLÇE</th>
+                                    <th data-filter="select">DURUM</th>
+                                    <th data-filter="select">EKİP</th>
+                                    <th data-filter="string">SEBEP</th>
+                                    <th class="text-center" data-filter="none">FOTO ÇIKTISI</th>
                                 </tr>
                             </thead>
                             <tbody></tbody>
@@ -636,14 +636,14 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                                         <th data-filter="string">Tutanak No</th>
                                         <th data-filter="date">Tutanak Tarihi</th>
                                         <th data-filter="string">Abone</th>
-                                        <th data-filter="string">Ekip</th>
+                                        <th data-filter="select">Ekip</th>
                                         <th data-filter="select">Neden</th>
-                                        <th>Açıklama</th>
-                                        <th>Bildiren</th>
-                                        <th class="text-center">Bekleme</th>
-                                        <th class="text-center">Tur</th>
-                                        <th class="text-center">Durum</th>
-                                        <th class="text-center">İşlem</th>
+                                        <th data-filter="string">Açıklama</th>
+                                        <th data-filter="string">Bildiren</th>
+                                        <th class="text-center" data-filter="string">Bekleme</th>
+                                        <th class="text-center" data-filter="select">Tur</th>
+                                        <th class="text-center" data-filter="select">Durum</th>
+                                        <th class="text-center" data-filter="none">İşlem</th>
                                     </tr>
                                 </thead>
                                 <tbody></tbody>
@@ -1155,7 +1155,11 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         // Dil ve görünüm ayarları projenin merkezi helper'ından gelir (assets/js/datatables.init.js).
         function dtSecenekleri(ek) {
             var temel = (typeof getDatatableOptions === 'function') ? getDatatableOptions() : {};
-            return $.extend(true, {}, temel, ek || {});
+            var secenekler = $.extend(true, {}, temel, ek || {});
+            if (typeof applyLengthStateSave === 'function') {
+                secenekler = applyLengthStateSave(secenekler);
+            }
+            return secenekler;
         }
 
         function turBadge(tur) {
@@ -1303,13 +1307,25 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             if (YETKI.duzenle) {
                 html += `<button class="btn btn-sm btn-soft-danger btn-sil" data-id="${k.id}" title="Sil"><i class="bx bx-trash"></i></button>`;
             }
+            html += sicilBildirButonu(k);
             return html + '</div>';
+        }
+
+        // Kurum kullanıcısı listeden doğrudan sicil eksik bildirimi açabilsin.
+        function sicilBildirButonu(k) {
+            if (!YETKI.sicilBildir || !k.tutanak_no) return '';
+            if (k.sicil_durumu === 'eksik' || k.sicil_durumu === 'yanitlandi') {
+                return `<button class="btn btn-sm btn-soft-secondary btn-sicil-git" data-id="${k.id}"
+                            title="Bu tutanak için açık sicil kaydı var, sekmeye git"><i class="bx bx-user-x"></i></button>`;
+            }
+            return `<button class="btn btn-sm btn-soft-danger btn-sicil-bildir" data-id="${k.id}"
+                        title="Sicil oluşmadı bildir"><i class="bx bx-user-x"></i></button>`;
         }
 
         // ---------- BEKLEYEN ONAYLAR ----------
         // Sahadan hatalı veri gelebildiği için yönetici onaylamadan önce kaydı düzeltebilir.
         function onayIslemButonlari(k) {
-            if (!YETKI.onay && !YETKI.duzenle) {
+            if (!YETKI.onay && !YETKI.duzenle && !YETKI.sicilBildir) {
                 return '<span class="text-muted">-</span>';
             }
 
@@ -1321,6 +1337,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 html += `<button class="btn btn-sm btn-success btn-onayla" data-id="${k.id}"><i class="bx bx-check"></i> Onayla</button>
                          <button class="btn btn-sm btn-danger btn-reddet" data-id="${k.id}"><i class="bx bx-x"></i> Reddet</button>`;
             }
+            html += sicilBildirButonu(k);
             return html + '</div>';
         }
 
@@ -2403,14 +2420,126 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         $('#sicil_arama').on('keypress', e => { if (e.which === 13) siciliYukle(); });
 
         // --- Yeni bildirim (kurum kullanıcısı) ---
-        $('#btnYeniSicilEksik').on('click', function () {
+        function sicilTutanakOzeti(kayit) {
+            return `<div class="row g-2 small">
+                <div class="col-md-4"><span class="text-muted">Tarih:</span> <strong>${esc(kayit.tarih_formatted || '-')}</strong></div>
+                <div class="col-md-4"><span class="text-muted">Abone:</span> <strong>${esc(kayit.abone_adi || '-')}</strong></div>
+                <div class="col-md-4"><span class="text-muted">İlçe:</span> <strong>${esc(kayit.ilce || '-')}</strong></div>
+                <div class="col-md-4"><span class="text-muted">Ekip:</span> <strong>${esc(kayit.ekip_adi || '-')}</strong></div>
+                <div class="col-md-4"><span class="text-muted">Sayaç:</span> <strong>${esc(kayit.sayac_no || '-')}</strong></div>
+                <div class="col-md-4"><span class="text-muted">TC:</span> <strong>${esc(kayit.abone_tc || '-')}</strong></div>
+            </div>`;
+        }
+
+        // kayit verilirse tutanak alanı kilitli ve dolu açılır, verilmezse boş.
+        function sicilEksikModalAc(kayit) {
+            if (!YETKI.sicilBildir) return;
+
             $('#sicilEksikForm')[0].reset();
-            $('#sicil_kacak_id').val('');
-            $('#sicil_tutanak_no').val(null).trigger('change');
             $('#sicil_neden').val('dogum_tarihi_hatali').trigger('change');
-            $('#sicilTutanakBilgi').addClass('d-none').empty();
+            $('#sicilTutanakBilgi').addClass('d-none').removeClass('alert-warning').addClass('alert-light').empty();
+
+            if (kayit) {
+                $('#sicil_kacak_id').val(kayit.id);
+                $('#sicil_tutanak_no').empty()
+                    .append(new Option(kayit.tutanak_no, kayit.tutanak_no, true, true))
+                    .trigger('change');
+                $('#sicilTutanakBilgi').removeClass('d-none').html(sicilTutanakOzeti(kayit));
+            } else {
+                $('#sicil_kacak_id').val('');
+                $('#sicil_tutanak_no').val(null).trigger('change');
+            }
+
             new bootstrap.Modal('#sicilEksikModal').show();
+        }
+
+        // Kayıtlar / Bekleyen Onaylar sekmesinden gelen bildirim başlatma.
+        function sicilEksikBildirimBaslat(kacakId) {
+            if (!YETKI.sicilBildir) return;
+
+            apiGet({ action: 'get-record', id: kacakId }).done(function (res) {
+                if (res.status !== 'success') return hataGoster(res);
+                const k = res.data;
+
+                if (!k.tutanak_no) {
+                    return Swal.fire('Tutanak Numarası Yok',
+                        'Bu kaydın tutanak numarası girilmemiş. Sicil bildirimi tutanak numarası üzerinden yapılır.', 'warning');
+                }
+                if (k.sicil_durumu === 'eksik' || k.sicil_durumu === 'yanitlandi') {
+                    return Swal.fire('Açık Kayıt Var',
+                        'Bu tutanak için halihazırda açık bir sicil eksik bildirimi var. Sicil Oluşmayanlar sekmesinden takip edin.', 'info');
+                }
+
+                sicilEksikModalAc(k);
+            });
+        }
+
+        $('#btnYeniSicilEksik').on('click', () => sicilEksikModalAc(null));
+
+        $(document).on('click', '.btn-sicil-bildir', function () {
+            sicilEksikBildirimBaslat($(this).data('id'));
         });
+
+        $(document).on('click', '.btn-sicil-git', function () {
+            $('#sicilAltTabs button').removeClass('active');
+            $('#sicilAltTabs button[data-sicil-durum="beklemede"]').addClass('active');
+            sicilAktifDurum = 'beklemede';
+            $('#kacakTabs button[data-bs-target="#pane-sicil"]').tab('show');
+            siciliYukle();
+        });
+
+        // --- Sağ tık menüsü ---
+        let sicilSagTikMenu = null;
+
+        function sicilSagTikKapat() {
+            if (sicilSagTikMenu) {
+                sicilSagTikMenu.remove();
+                sicilSagTikMenu = null;
+            }
+        }
+
+        $(document).on('contextmenu', '#kacakTable tbody tr, #onayTable tbody tr', function (e) {
+            if (!YETKI.sicilBildir) return;
+
+            const $satir = $(this);
+            const id = $satir.find('[data-id]').first().data('id');
+            if (!id) return;
+
+            e.preventDefault();
+            sicilSagTikKapat();
+
+            const acikKayit = $satir.find('.btn-sicil-git').length > 0;
+
+            sicilSagTikMenu = $(`
+                <div class="dropdown-menu show shadow border" style="position:fixed; z-index:1080;">
+                    <h6 class="dropdown-header">Tutanak İşlemi</h6>
+                    <button class="dropdown-item" type="button">
+                        <i class="bx bx-user-x me-1 ${acikKayit ? 'text-secondary' : 'text-danger'}"></i>
+                        ${acikKayit ? 'Sicil Kaydına Git' : 'Sicil Oluşmadı Bildir'}
+                    </button>
+                </div>`).appendTo('body');
+
+            // Menü ekran dışına taşmasın.
+            const genislik = sicilSagTikMenu.outerWidth();
+            const yukseklik = sicilSagTikMenu.outerHeight();
+            sicilSagTikMenu.css({
+                left: Math.min(e.clientX, $(window).width() - genislik - 8) + 'px',
+                top: Math.min(e.clientY, $(window).height() - yukseklik - 8) + 'px'
+            });
+
+            sicilSagTikMenu.find('button').on('click', function () {
+                sicilSagTikKapat();
+                if (acikKayit) {
+                    $satir.find('.btn-sicil-git').trigger('click');
+                } else {
+                    sicilEksikBildirimBaslat(id);
+                }
+            });
+        });
+
+        $(document).on('click', sicilSagTikKapat);
+        $(window).on('scroll resize', sicilSagTikKapat);
+        $(document).on('keydown', e => { if (e.key === 'Escape') sicilSagTikKapat(); });
 
         function sicilTutanakSecimiBaslat() {
             if (!$('#sicil_tutanak_no').length) return;
@@ -2445,6 +2574,13 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     const term = $.trim(params.term);
                     if (!term) return null;
                     return { id: term, text: term + ' (sistemde yok, yine de bildir)', yeni: true };
+                },
+                // Aranan numara sistemde zaten bulunduysa "sistemde yok" seçeneğini gösterme.
+                insertTag: function (data, tag) {
+                    const varOlan = data.some(d => String(d.id) === String(tag.id));
+                    if (!varOlan) {
+                        data.push(tag);
+                    }
                 }
             });
 
@@ -2463,14 +2599,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 $('#sicilTutanakBilgi')
                     .removeClass('d-none alert-warning')
                     .addClass('alert-light')
-                    .html(`<div class="row g-2 small">
-                        <div class="col-md-4"><span class="text-muted">Tarih:</span> <strong>${esc(kayit.tarih_formatted)}</strong></div>
-                        <div class="col-md-4"><span class="text-muted">Abone:</span> <strong>${esc(kayit.abone_adi || '-')}</strong></div>
-                        <div class="col-md-4"><span class="text-muted">İlçe:</span> <strong>${esc(kayit.ilce || '-')}</strong></div>
-                        <div class="col-md-4"><span class="text-muted">Ekip:</span> <strong>${esc(kayit.ekip_adi || '-')}</strong></div>
-                        <div class="col-md-4"><span class="text-muted">Sayaç:</span> <strong>${esc(kayit.sayac_no || '-')}</strong></div>
-                        <div class="col-md-4"><span class="text-muted">TC:</span> <strong>${esc(kayit.abone_tc || '-')}</strong></div>
-                    </div>`);
+                    .html(sicilTutanakOzeti(kayit));
             });
         }
 
@@ -2486,6 +2615,9 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     Swal.fire('Bildirildi', res.message, 'success');
                     siciliYukle();
                     sicilSayaclariYukle();
+                    // Kayıtlar/onaylar sekmesindeki sicil işareti güncellensin.
+                    if (kacakTable) kacakTable.ajax.reload(null, false);
+                    if (onayTable) onaylariYukle();
                 })
                 .always(() => $btn.prop('disabled', false));
         });
@@ -2666,6 +2798,9 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             if (hedef === '#pane-iptaller' && !iptalTable) iptalleriYukle();
             if (hedef === '#pane-ekip-ozet' && !ekipOzetYuklendi) ekipOzetiYukle();
             if (hedef === '#pane-sicil' && !sicilTable) siciliYukle();
+            if (typeof $.fn.dataTable !== 'undefined') {
+                $($.fn.dataTable.tables(true)).DataTable().columns.adjust();
+            }
         });
 
         $(document).on('shown.bs.modal', '.modal', function () {

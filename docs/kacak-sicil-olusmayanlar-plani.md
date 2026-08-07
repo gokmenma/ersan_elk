@@ -317,6 +317,12 @@ Tablo kolonları:
 **4f. Kayıtlar sekmesine sicil rozeti** — ana tabloda `sicil_durumu != 'normal'`
 olan satırlara küçük ikon; kullanıcı listeye bakarken takılan tutanağı görsün.
 
+**4g. Listeden doğrudan bildirim** — Kayıtlar ve Bekleyen Onaylar sekmelerinde
+`kacak_sicil_bildir` yetkisi olanlara işlem butonu **ve satıra sağ tık menüsü**.
+Tutanak zaten açık kayıtlıysa buton "Sicil Kaydına Git"e dönüşür.
+Bu yol `get-record` ile tutanağı çekip modalı önceden doldurur; kurum kullanıcısı
+tutanak numarasını elle aramak zorunda kalmaz.
+
 ---
 
 ### Adım 5 — PWA (ekip tarafı)

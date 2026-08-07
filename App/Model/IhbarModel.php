@@ -719,4 +719,43 @@ class IhbarModel extends Model
             throw $e;
         }
     }
+
+    /**
+     * Personel bazlı ihbar istatistiklerini getirir (Okumacılar / Saha personeli)
+     */
+    public function getPersonelIhbarIstatistikleri(?string $baslangic = null, ?string $bitis = null): array
+    {
+        $firmaId = $this->firmaId();
+        $sql = "SELECT 
+                    p.id AS personel_id,
+                    p.adi_soyadi,
+                    p.tc,
+                    COUNT(i.id) AS toplam_ihbar,
+                    COALESCE(SUM(CASE WHEN i.durum = 'olumlu' THEN 1 ELSE 0 END), 0) AS olumlu_sayisi,
+                    COALESCE(SUM(CASE WHEN i.durum = 'olumsuz' THEN 1 ELSE 0 END), 0) AS olumsuz_sayisi,
+                    COALESCE(SUM(CASE WHEN i.durum IN ('yeni', 'yonlendirildi', 'islemde') THEN 1 ELSE 0 END), 0) AS bekleyen_sayisi,
+                    MAX(i.created_at) AS son_ihbar_tarihi
+                FROM ihbarlar i
+                JOIN personel p ON p.id = i.bildiren_personel_id
+                WHERE i.silinme_tarihi IS NULL 
+                  AND i.firma_id = ?";
+
+        $params = [$firmaId];
+        if ($baslangic !== null && $baslangic !== '') {
+            $sql .= " AND DATE(i.created_at) >= ?";
+            $params[] = $baslangic;
+        }
+        if ($bitis !== null && $bitis !== '') {
+            $sql .= " AND DATE(i.created_at) <= ?";
+            $params[] = $bitis;
+        }
+
+        $sql .= " GROUP BY p.id, p.adi_soyadi, p.tc
+                  ORDER BY toplam_ihbar DESC, olumlu_sayisi DESC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
 }
+

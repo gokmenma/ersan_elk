@@ -218,7 +218,8 @@ try {
             if (!$kayit) {
                 kacakYanit(false, 'Kayıt bulunamadı.');
             }
-            if ($userPersonelId > 0 && !kacakSuperAdmin() && !kacakIzin('kacak_onay')) {
+            // Sicil bildirimi açacak kurum kullanıcısının tutanak detayını görmesi gerekir.
+            if ($userPersonelId > 0 && !kacakSuperAdmin() && !kacakIzin('kacak_onay') && !kacakIzin('kacak_sicil_bildir')) {
                 $isEkip = ($kayit['bildiren_personel_id'] == $userPersonelId) || in_array($userPersonelId, $kayit['personel_ids_array'] ?? [], true);
                 if (!$isEkip) {
                     kacakYanit(false, 'Bu kaydı görüntüleme yetkiniz bulunmuyor.');
