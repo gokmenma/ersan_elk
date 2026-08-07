@@ -73,9 +73,24 @@ foreach ($ihbarlar as $ihbar) {
     $ekipAdi = implode(' & ', $ekipUyeleri);
     $personelOzet[$ekipAdi] = ($personelOzet[$ekipAdi] ?? 0) + 1;
 }
-arsort($personelOzet);
-$personelOzet = array_slice($personelOzet, 0, 10, true);
-$personelOzetMax = max([1, ...array_values($personelOzet)]);
+$personelIhbarStats = $ihbarModel->getPersonelIhbarIstatistikleri($baslangicTarihi, $bitisTarihi);
+$enBasariliPersonel = null;
+$enYuksekBasariOrani = -1;
+foreach ($personelIhbarStats as $pStat) {
+    $sonuclanan = (int) $pStat->olumlu_sayisi + (int) $pStat->olumsuz_sayisi;
+    if ($sonuclanan > 0) {
+        $oran = round(((int) $pStat->olumlu_sayisi / $sonuclanan) * 100);
+        if ($oran > $enYuksekBasariOrani) {
+            $enYuksekBasariOrani = $oran;
+            $enBasariliPersonel = $pStat;
+            $enBasariliPersonel->basari_orani = $oran;
+        }
+    }
+}
+$toplamBildirimYapan = count($personelIhbarStats);
+$enCokGonderenPersonel = $personelIhbarStats[0] ?? null;
+$sahaIhbarToplam = array_sum(array_map(static fn($p) => (int) $p->toplam_ihbar, $personelIhbarStats));
+
 function miH($value): string { return htmlspecialchars((string) $value, ENT_QUOTES, 'UTF-8'); }
 ?>
 
@@ -146,9 +161,159 @@ function miH($value): string { return htmlspecialchars((string) $value, ENT_QUOT
 
 <button type="button" onclick="openIhbarSummary()" class="fixed right-4 bottom-24 z-40 w-14 h-14 rounded-full bg-orange-600 text-white shadow-xl shadow-orange-600/30 flex items-center justify-center active:scale-95"><span class="material-symbols-outlined text-2xl">leaderboard</span></button>
 <div id="ihbarSummaryOverlay" class="fixed inset-0 z-[72] hidden bg-black/50" onclick="closeIhbarSummary()"></div>
-<div id="ihbarSummarySheet" class="fixed bottom-0 inset-x-0 z-[73] translate-y-full transition-transform rounded-t-[2rem] bg-white dark:bg-card-dark max-h-[78vh] overflow-y-auto safe-area-bottom">
- <div class="sticky top-0 bg-white dark:bg-card-dark p-4 border-b dark:border-slate-800"><div class="w-10 h-1 bg-slate-300 rounded-full mx-auto mb-3"></div><div class="flex justify-between items-center"><div><h2 class="font-bold">Ekip Bazında İhbar Özeti</h2><p class="text-[10px] text-slate-400"><?= miH(date('d.m.Y',strtotime($baslangicTarihi)).' – '.date('d.m.Y',strtotime($bitisTarihi))) ?></p></div><button onclick="closeIhbarSummary()"><span class="material-symbols-outlined">close</span></button></div></div>
- <div class="p-5"><?php if(!$personelOzet): ?><p class="text-sm text-center text-slate-400 py-10">Atanmış ihbar bulunamadı.</p><?php else: ?><div class="space-y-4"><?php $renkler=['from-violet-600 to-fuchsia-400','from-orange-500 to-amber-300','from-sky-600 to-cyan-300','from-emerald-600 to-lime-300','from-rose-600 to-pink-300'];$ri=0;foreach($personelOzet as $ad=>$sayi): ?><div><div class="flex justify-between text-xs mb-1.5"><b class="truncate"><?= miH($ad) ?></b><span class="font-black"><?= (int)$sayi ?></span></div><div class="h-3 rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden"><div class="h-full rounded-full bg-gradient-to-r <?= $renkler[$ri++%count($renkler)] ?>" style="width:<?= (int)round($sayi/$personelOzetMax*100) ?>%"></div></div></div><?php endforeach; ?></div><?php endif; ?></div>
+<div id="ihbarSummarySheet" class="fixed bottom-0 inset-x-0 z-[73] translate-y-full transition-transform rounded-t-[2rem] bg-white dark:bg-card-dark max-h-[85vh] flex flex-col safe-area-bottom">
+    <div class="sticky top-0 bg-white dark:bg-card-dark p-4 border-b border-slate-100 dark:border-slate-800 shrink-0 z-10">
+        <div class="w-10 h-1 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-3"></div>
+        <div class="flex items-center justify-between gap-2">
+            <div class="min-w-0">
+                <h2 class="font-bold text-base text-slate-800 dark:text-white flex items-center gap-1.5 truncate">
+                    <span class="material-symbols-outlined text-orange-600 text-xl shrink-0">groups</span>
+                    <span>Personel Performansı</span>
+                    <span class="bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-300 text-xs px-2 py-0.5 rounded-full font-bold shrink-0"><?= $toplamBildirimYapan ?></span>
+                </h2>
+                <p class="text-[11px] text-slate-400 mt-0.5 truncate"><?= miH(date('d.m.Y', strtotime($baslangicTarihi)) . ' – ' . date('d.m.Y', strtotime($bitisTarihi))) ?></p>
+            </div>
+            <div class="flex items-center gap-2 shrink-0">
+                <button type="button" onclick="exportPersonelExcel()" class="flex items-center gap-1 px-3 py-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-300 bg-emerald-50 dark:bg-emerald-900/30 border border-emerald-200 dark:border-emerald-800/50 rounded-xl active:scale-95 transition-transform">
+                    <span class="material-symbols-outlined text-base">file_download</span>
+                    <span>Excel'e Aktar</span>
+                </button>
+                <button type="button" onclick="closeIhbarSummary()" class="w-8 h-8 rounded-full bg-slate-100 dark:bg-slate-800 text-slate-500 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-xl">close</span>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <div class="p-4 overflow-y-auto space-y-4 flex-1">
+        <!-- 4 Adet Üst Özet Kartı -->
+        <div class="grid grid-cols-2 gap-2.5">
+            <!-- 1. Bildirim Yapan Personel -->
+            <div class="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-violet-100 dark:bg-violet-900/40 text-violet-600 dark:text-violet-300 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-lg">person</span>
+                    </div>
+                    <div class="min-w-0">
+                        <span class="block text-[10px] text-slate-400 font-semibold truncate">Bildirim Yapan</span>
+                        <b class="text-xs font-black text-slate-800 dark:text-white"><?= $toplamBildirimYapan ?> Personel</b>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. En Çok İhbar Gönderen -->
+            <div class="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-amber-100 dark:bg-amber-900/40 text-amber-600 dark:text-amber-300 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-lg">military_tech</span>
+                    </div>
+                    <div class="min-w-0">
+                        <span class="block text-[10px] text-slate-400 font-semibold truncate">En Çok Gönderen</span>
+                        <b class="block text-xs font-bold text-slate-800 dark:text-white truncate"><?= miH($enCokGonderenPersonel->adi_soyadi ?? '-') ?></b>
+                        <span class="text-[10px] text-amber-600 dark:text-amber-400 font-medium block truncate"><?= (int)($enCokGonderenPersonel->toplam_ihbar ?? 0) ?> İhbar</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. En Yüksek Olumlu Oranı -->
+            <div class="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-emerald-100 dark:bg-emerald-900/40 text-emerald-600 dark:text-emerald-300 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-lg">verified</span>
+                    </div>
+                    <div class="min-w-0">
+                        <span class="block text-[10px] text-slate-400 font-semibold truncate">En Yüksek Olumlu</span>
+                        <b class="block text-xs font-bold text-slate-800 dark:text-white truncate"><?= miH($enBasariliPersonel->adi_soyadi ?? '-') ?></b>
+                        <span class="text-[10px] text-emerald-600 dark:text-emerald-400 font-medium block truncate">%<?= (int)($enYuksekBasariOrani >= 0 ? $enYuksekBasariOrani : 0) ?> Olumlu</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. Saha İhbar Toplamı -->
+            <div class="bg-slate-50 dark:bg-slate-800/60 p-3 rounded-2xl border border-slate-100 dark:border-slate-800">
+                <div class="flex items-center gap-2">
+                    <div class="w-8 h-8 rounded-xl bg-orange-100 dark:bg-orange-900/40 text-orange-600 dark:text-orange-300 flex items-center justify-center shrink-0">
+                        <span class="material-symbols-outlined text-lg">send</span>
+                    </div>
+                    <div class="min-w-0">
+                        <span class="block text-[10px] text-slate-400 font-semibold truncate">Saha İhbar Toplamı</span>
+                        <b class="text-xs font-black text-slate-800 dark:text-white"><?= $sahaIhbarToplam ?> İhbar</b>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Personel Detay Kartları -->
+        <div class="space-y-3 pt-1">
+            <h3 class="text-xs font-bold text-slate-400 uppercase tracking-wider px-1">Personel Performans Listesi</h3>
+            <?php if (empty($personelIhbarStats)): ?>
+                <p class="text-sm text-center text-slate-400 py-10">Bu dönemde ihbar bildiren personel bulunamadı.</p>
+            <?php else: ?>
+                <?php foreach ($personelIhbarStats as $stat): 
+                    $toplam = (int) $stat->toplam_ihbar;
+                    $olumlu = (int) $stat->olumlu_sayisi;
+                    $olumsuz = (int) $stat->olumsuz_sayisi;
+                    $bekleyen = (int) $stat->bekleyen_sayisi;
+                    $sonuclanan = $olumlu + $olumsuz;
+                    $oran = $sonuclanan > 0 ? round(($olumlu / $sonuclanan) * 100) : 0;
+                    $harf = mb_strtoupper(mb_substr($stat->adi_soyadi, 0, 1, 'UTF-8'), 'UTF-8');
+                ?>
+                <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-100 dark:border-slate-700/60 p-3.5 shadow-sm space-y-3">
+                    <div class="flex items-center justify-between gap-2">
+                        <div class="flex items-center gap-2.5 min-w-0">
+                            <div class="w-9 h-9 rounded-xl bg-orange-600 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-sm shadow-orange-600/20">
+                                <?= miH($harf) ?>
+                            </div>
+                            <div class="min-w-0">
+                                <b class="block text-sm font-bold text-slate-800 dark:text-white truncate"><?= miH($stat->adi_soyadi) ?></b>
+                                <span class="text-[10px] text-slate-400 flex items-center gap-1">
+                                    <span class="material-symbols-outlined text-xs">schedule</span>
+                                    <?= $stat->son_ihbar_tarihi ? date('d.m.Y H:i', strtotime($stat->son_ihbar_tarihi)) : '-' ?>
+                                </span>
+                            </div>
+                        </div>
+                        <button type="button" onclick="filterByPersonel('<?= miH(addslashes($stat->adi_soyadi)) ?>')" class="shrink-0 flex items-center gap-1 px-2.5 py-1.5 text-xs font-semibold text-orange-600 dark:text-orange-400 bg-orange-50 dark:bg-orange-900/30 rounded-xl active:scale-95 transition-transform">
+                            <span class="material-symbols-outlined text-sm">search</span>
+                            <span>İhbarları Gör</span>
+                        </button>
+                    </div>
+
+                    <div class="grid grid-cols-4 gap-1.5 text-center text-[10px]">
+                        <div class="bg-slate-50 dark:bg-slate-900/50 p-1.5 rounded-xl">
+                            <span class="block text-slate-400 font-medium">Toplam</span>
+                            <b class="text-xs text-slate-700 dark:text-slate-200 font-black"><?= $toplam ?></b>
+                        </div>
+                        <div class="bg-emerald-50 dark:bg-emerald-950/40 p-1.5 rounded-xl border border-emerald-100 dark:border-emerald-900/30">
+                            <span class="block text-emerald-600 dark:text-emerald-400 font-medium">Olumlu</span>
+                            <b class="text-xs text-emerald-700 dark:text-emerald-300 font-black"><?= $olumlu ?></b>
+                        </div>
+                        <div class="bg-rose-50 dark:bg-rose-950/40 p-1.5 rounded-xl border border-rose-100 dark:border-rose-900/30">
+                            <span class="block text-rose-600 dark:text-rose-400 font-medium">Olumsuz</span>
+                            <b class="text-xs text-rose-700 dark:text-rose-300 font-black"><?= $olumsuz ?></b>
+                        </div>
+                        <div class="bg-amber-50 dark:bg-amber-950/40 p-1.5 rounded-xl border border-amber-100 dark:border-amber-900/30">
+                            <span class="block text-amber-600 dark:text-amber-400 font-medium">Devam</span>
+                            <b class="text-xs text-amber-700 dark:text-amber-300 font-black"><?= $bekleyen ?></b>
+                        </div>
+                    </div>
+
+                    <div class="space-y-1 pt-0.5">
+                        <div class="flex justify-between items-center text-[11px]">
+                            <span class="text-slate-500 dark:text-slate-400 font-medium">Başarı Oranı</span>
+                            <div class="flex items-center gap-1">
+                                <b class="text-emerald-600 dark:text-emerald-400 font-bold">%<?= $oran ?></b>
+                                <span class="text-[10px] text-slate-400">(<?= $olumlu ?> olumlu / <?= $sonuclanan ?> sonuçlanan)</span>
+                            </div>
+                        </div>
+                        <div class="h-2 rounded-full bg-slate-100 dark:bg-slate-700 overflow-hidden">
+                            <div class="h-full rounded-full bg-gradient-to-r from-emerald-500 to-teal-400" style="width: <?= $oran ?>%"></div>
+                        </div>
+                    </div>
+                </div>
+                <?php endforeach; ?>
+            <?php endif; ?>
+        </div>
+    </div>
 </div>
 
 <div id="ihbarOverlay" class="fixed inset-0 bg-black/50 z-[70] hidden" onclick="closeIhbarDetail()"></div>
@@ -182,6 +347,36 @@ function miH($value): string { return htmlspecialchars((string) $value, ENT_QUOT
  window.closeIhbarDetail=()=>{$('#ihbarSheet').addClass('translate-y-full');setTimeout(()=>$('#ihbarOverlay').addClass('hidden'),250)};
  window.openGallery=async token=>{let body=$('#ihbarGalleryBody');images=[];body.html('<div class="col-span-2 py-20 text-center">Yükleniyor...</div>');$('#ihbarGallery').removeClass('hidden');try{let response=await fetch('api/ihbar-fotograflar.php?token='+encodeURIComponent(token)),result=await response.json();if(!result.success)throw new Error(result.message);images=result.data.map(f=>'../views/ihbar/api.php?action=foto&token='+encodeURIComponent(f.token));$('#ihbarGalleryCount').text(images.length+' fotoğraf');body.html(images.map((u,i)=>`<button onclick="showIhbarPhoto(${i})" class="aspect-square overflow-hidden rounded-2xl"><img src="${u}" class="w-full h-full object-cover"></button>`).join(''))}catch(e){body.html(`<div class="col-span-2 text-red-300">${esc(e.message)}</div>`)}};
  const render=()=>{$('#ihbarLightboxImage').attr('src',images[imageIndex]);$('#ihbarLightboxCounter').text(`${imageIndex+1} / ${images.length}`)};window.showIhbarPhoto=i=>{imageIndex=i;render();$('#ihbarLightbox').removeClass('hidden')};window.stepIhbarLightbox=s=>{imageIndex=(imageIndex+s+images.length)%images.length;render()};window.closeIhbarLightbox=()=>$('#ihbarLightbox').addClass('hidden');window.closeIhbarGallery=()=>$('#ihbarGallery').addClass('hidden');
- window.openIhbarSummary=()=>{$('#ihbarSummaryOverlay').removeClass('hidden');requestAnimationFrame(()=>$('#ihbarSummarySheet').removeClass('translate-y-full'))};window.closeIhbarSummary=()=>{$('#ihbarSummarySheet').addClass('translate-y-full');setTimeout(()=>$('#ihbarSummaryOverlay').addClass('hidden'),250)};
+ const personelStatsData=<?= json_encode(array_map(static function($s){
+      $toplam = (int) $s->toplam_ihbar;
+      $olumlu = (int) $s->olumlu_sayisi;
+      $olumsuz = (int) $s->olumsuz_sayisi;
+      $bekleyen = (int) $s->bekleyen_sayisi;
+      $sonuclanan = $olumlu + $olumsuz;
+      $oran = $sonuclanan > 0 ? round(($olumlu / $sonuclanan) * 100) : 0;
+      return [
+          'name' => $s->adi_soyadi,
+          'toplam' => $toplam,
+          'olumlu' => $olumlu,
+          'olumsuz' => $olumsuz,
+          'devam' => $bekleyen,
+          'oran' => $oran,
+          'sonuclanan' => $sonuclanan,
+          'tarih' => $s->son_ihbar_tarihi ? date('d.m.Y H:i', strtotime($s->son_ihbar_tarihi)) : '-'
+      ];
+  }, $personelIhbarStats), JSON_UNESCAPED_UNICODE|JSON_HEX_TAG|JSON_HEX_AMP|JSON_HEX_APOS|JSON_HEX_QUOT) ?: '[]' ?>;
+
+  window.exportPersonelExcel=()=>{
+      if(!personelStatsData.length){Toast.show('Aktarılacak veri bulunamadı.','warning');return}
+      let tableHTML=`<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40"><head><meta charset="utf-8"><!--[if gte mso 9]><xml><x:ExcelWorkbook><x:ExcelWorksheets><x:ExcelWorksheet><x:Name>Personel Performansi</x:Name><x:WorksheetOptions><x:DisplayGridlines/></x:WorksheetOptions></x:ExcelWorksheet></x:ExcelWorksheets></x:ExcelWorkbook></xml><![endif]--></head><body><table border="1"><thead><tr style="background-color:#ea580c;color:#ffffff;font-weight:bold;"><th>Personel</th><th>Toplam İhbar</th><th>Olumlu İhbar</th><th>Olumsuz İhbar</th><th>Devam Eden</th><th>Başarı Oranı (%)</th><th>Son İhbar Tarihi</th></tr></thead><tbody>`;
+      personelStatsData.forEach(p=>{tableHTML+=`<tr><td>${esc(p.name)}</td><td>${p.toplam}</td><td>${p.olumlu}</td><td>${p.olumsuz}</td><td>${p.devam}</td><td>%${p.oran} (${p.olumlu}/${p.sonuclanan})</td><td>${esc(p.tarih)}</td></tr>`});
+      tableHTML+=`</tbody></table></body></html>`;
+      const blob=new Blob([tableHTML],{type:'application/vnd.ms-excel;charset=utf-8'}),link=document.createElement('a');
+      link.href=URL.createObjectURL(blob);
+      link.download=`Personel_Ihbar_Performansi_${new Date().toISOString().slice(0,10)}.xls`;
+      document.body.appendChild(link);link.click();document.body.removeChild(link);
+  };
+  window.filterByPersonel=name=>{closeIhbarSummary();$('#ihbarSearch').val(name).trigger('input')};
+  window.openIhbarSummary=()=>{$('#ihbarSummaryOverlay').removeClass('hidden');requestAnimationFrame(()=>$('#ihbarSummarySheet').removeClass('translate-y-full'))};window.closeIhbarSummary=()=>{$('#ihbarSummarySheet').addClass('translate-y-full');setTimeout(()=>$('#ihbarSummaryOverlay').addClass('hidden'),250)};
 })();
 </script>
