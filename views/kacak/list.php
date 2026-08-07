@@ -1809,12 +1809,47 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
         });
 
         $('#btnTeslimZip').on('click', function () {
+            const $btn = $(this);
+            const origHtml = $btn.html();
+            $btn.prop('disabled', true).html('<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span> Hazırlanıyor...');
+
             const q = $.param({
                 tip: 'teslim_zip',
                 start_date: toIsoDate($('#teslim_baslangic').val()),
                 end_date: toIsoDate($('#teslim_bitis').val())
             });
-            window.location.href = 'views/kacak/export-haftalik.php?' + q;
+
+            fetch('views/kacak/export-haftalik.php?' + q)
+                .then(async response => {
+                    if (!response.ok) {
+                        const errText = await response.text();
+                        throw new Error(errText || 'ZIP dosyası indirilemedi.');
+                    }
+                    const disposition = response.headers.get('Content-Disposition');
+                    let filename = 'Teslim_Alma_Listesi.zip';
+                    if (disposition) {
+                        const matches = /filename\*=UTF-8''([^;]+)|filename="([^"]+)"/i.exec(disposition);
+                        if (matches) {
+                            filename = decodeURIComponent(matches[1] || matches[2]);
+                        }
+                    }
+                    const blob = await response.blob();
+                    const url = window.URL.createObjectURL(blob);
+                    const a = document.createElement('a');
+                    a.style.display = 'none';
+                    a.href = url;
+                    a.download = filename;
+                    document.body.appendChild(a);
+                    a.click();
+                    window.URL.revokeObjectURL(url);
+                    document.body.removeChild(a);
+                })
+                .catch(err => {
+                    Swal.fire('Hata', err.message || 'İndirme sırasında bir sorun oluştu.', 'error');
+                })
+                .finally(() => {
+                    $btn.prop('disabled', false).html(origHtml);
+                });
         });
 
         // ---------- EKİP ÖZETİ (Özet Raporlar'dan taşındı) ----------
