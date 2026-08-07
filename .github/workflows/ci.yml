@@ -3,6 +3,7 @@ name: Ersan Elektrik Otomatik Yukle
 on:
   push:
     branches: [ "master", "main" ]
+  workflow_dispatch:
 
 jobs:
   deploy:
