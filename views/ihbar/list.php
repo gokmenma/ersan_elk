@@ -8,6 +8,8 @@ use App\Helper\Security;
 
 Gate::authorizeOrDie('ihbar/list');
 
+$yetkiDuzenle = Gate::allows('ihbar_duzenle') || Gate::isSuperAdmin();
+
 $IhbarModel = new IhbarModel();
 $ihbarlar = $IhbarModel->getAllForDashboard();
 $yonlendirilecekPersoneller = $IhbarModel->getYonlendirilecekPersonelListesi();
@@ -375,12 +377,14 @@ function ihbarDurumBadge($durum)
                 <button type="button" class="btn btn-sm btn-outline-success px-3 rounded-pill" id="ihbarExportExcel">
                     <i class="bx bx-file me-1"></i>Excel'e Aktar
                 </button>
+                <?php if ($yetkiDuzenle): ?>
                 <button type="button" class="btn btn-sm btn-danger px-3 rounded-pill" onclick="ihbarYeniAc()">
                     <i class="bx bx-plus me-1"></i>Yeni İhbar Ekle
                 </button>
                 <button type="button" class="btn btn-sm btn-warning px-3 rounded-pill" onclick="ihbarYenidenYonlendirAc()">
                     <i class="bx bx-transfer-alt me-1"></i>Yeniden Yönlendir
                 </button>
+                <?php endif; ?>
                 <?php if (Gate::allows('is_takip_ayarlar') || Gate::isSuperAdmin()): ?>
                 <button type="button" class="btn btn-sm btn-outline-secondary rounded-pill" data-bs-toggle="modal" data-bs-target="#modalIhbarAyarlar" title="İhbar yönlendirme ayarları">
                     <i class="bx bx-cog"></i>
@@ -419,12 +423,14 @@ function ihbarDurumBadge($durum)
                                         <button type="button" class="btn btn-sm btn-info text-white" onclick="ihbarDetay(<?= (int) $ihbar->id ?>)" title="Detay">
                                             <i class="bx bx-detail"></i>
                                         </button>
+                                        <?php if ($yetkiDuzenle): ?>
                                         <button type="button" class="btn btn-sm btn-outline-primary" onclick="ihbarDuzenle(<?= (int) $ihbar->id ?>)" title="Düzenle">
                                             <i class="bx bx-edit"></i>
                                         </button>
                                         <button type="button" class="btn btn-sm btn-outline-danger" onclick="ihbarSil(<?= (int) $ihbar->id ?>)" title="Sil">
                                             <i class="bx bx-trash"></i>
                                         </button>
+                                        <?php endif; ?>
                                     </div>
                                 </td>
                             </tr>
@@ -993,6 +999,7 @@ function ihbarDurumBadge($durum)
             'values' => array_values($ilceDagilimi),
         ],
     ], JSON_UNESCAPED_UNICODE) ?>;
+    const IHBAR_YETKI_DUZENLE = <?= json_encode($yetkiDuzenle) ?>;
     const IHBAR_MAX_FOTO = <?= IhbarModel::MAX_FOTO ?>;
     const IHBAR_MAX_VIDEO = <?= IhbarModel::MAX_VIDEO ?>;
     const IHBAR_VIDEO_MAX_SURE = <?= IhbarModel::VIDEO_MAX_SURE ?>;
@@ -1595,6 +1602,7 @@ function ihbarDurumBadge($durum)
                     <div class="d-flex flex-wrap gap-2">${fotoHtml}</div>
                 </section>
 
+                ${IHBAR_YETKI_DUZENLE ? `
                 <section class="mb-4">
                     <h6 class="ihbar-section-title"><i class="bx bx-message-square-add me-1"></i>Yeni Not</h6>
                     <div class="ihbar-note-composer">
@@ -1603,7 +1611,7 @@ function ihbarDurumBadge($durum)
                             <i class="bx bx-plus me-1"></i>Not Ekle
                         </button>
                     </div>
-                </section>
+                </section>` : ''}
 
                 <section>
                     <h6 class="ihbar-section-title"><i class="bx bx-history me-1"></i>İşlem Geçmişi</h6>
@@ -1613,7 +1621,7 @@ function ihbarDurumBadge($durum)
                 </section>
             </div>
 
-            <aside class="col-lg-4 ihbar-actions-column">
+            <aside class="${IHBAR_YETKI_DUZENLE ? 'col-lg-4' : 'col-lg-4 d-none'} ihbar-actions-column">
                 ${d.durum === 'olumlu' ? `
                     <div class="ihbar-closed-message">
                         <i class="bx bx-check-circle me-1"></i>Olumlu sonuçlandı
@@ -1625,6 +1633,7 @@ function ihbarDurumBadge($durum)
                         <div class="mt-1">${d.olumsuz_sebep || '-'}</div>
                     </div>` : ''}
 
+                ${IHBAR_YETKI_DUZENLE ? `
                 <div class="ihbar-action-panel ${kapaliMi ? 'mt-3' : 'mt-0'}">
                     <div class="ihbar-action-panel-title">
                         <i class="bx bx-transfer-alt"></i>
@@ -1657,7 +1666,7 @@ function ihbarDurumBadge($durum)
                     <button type="button" class="btn btn-outline-danger btn-sm w-100 rounded-pill mt-2" onclick="ihbarSonucIptal()">
                         <i class="bx bx-undo me-1"></i>Sonuçlanma Durumunu İptal Et
                     </button>` : ''}
-                </div>
+                </div>` : ''}
             </aside>
         </div>
         `;

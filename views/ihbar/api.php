@@ -25,6 +25,13 @@ function ihbarResponse($success, $message = '', $data = null)
     exit;
 }
 
+function ihbarYetkiKontrol(string $permission = 'ihbar_duzenle'): void
+{
+    if (!Gate::allows($permission) && !Gate::isSuperAdmin()) {
+        ihbarResponse(false, 'Bu işlem için yetkiniz bulunmuyor.');
+    }
+}
+
 function ihbarNormalizeKonumLink(?string $link): ?string
 {
     $link = trim((string) $link);
@@ -213,7 +220,7 @@ try {
             exit;
 
         case 'create':
-            Gate::authorizeOrDie('ihbar/list');
+            ihbarYetkiKontrol('ihbar_duzenle');
 
             $aciklama = trim($_POST['aciklama'] ?? '');
             if ($aciklama === '') {
@@ -246,7 +253,7 @@ try {
             break;
 
         case 'update':
-            Gate::authorizeOrDie('ihbar/list');
+            ihbarYetkiKontrol('ihbar_duzenle');
 
             $id = (int) ($_POST['id'] ?? 0);
             $aciklama = trim($_POST['aciklama'] ?? '');
@@ -270,7 +277,7 @@ try {
             break;
 
         case 'delete':
-            Gate::authorizeOrDie('ihbar/list');
+            ihbarYetkiKontrol('ihbar_duzenle');
 
             $id = (int) ($_POST['id'] ?? 0);
             if ($id <= 0 || !$IhbarModel->softDeleteForDashboard($id)) {
@@ -292,7 +299,7 @@ try {
             break;
 
         case 'assign':
-            Gate::authorizeOrDie('ihbar/list');
+            ihbarYetkiKontrol('ihbar_duzenle');
 
             $id = (int) ($_POST['id'] ?? 0);
             $personelIds = $_POST['personel_ids'] ?? [];
@@ -355,7 +362,7 @@ try {
             break;
 
         case 'bulkReassign':
-            Gate::authorizeOrDie('ihbar/list');
+            ihbarYetkiKontrol('ihbar_duzenle');
             $payload = json_decode((string) ($_POST['assignments'] ?? ''), true);
             if (!is_array($payload) || empty($payload)) {
                 throw new Exception('Yönlendirilecek en az bir ihbar seçmelisiniz.');
@@ -391,7 +398,7 @@ try {
             break;
 
         case 'saveSettings':
-            Gate::authorizeOrDie('ihbar/list');
+            ihbarYetkiKontrol('ihbar_duzenle');
             if (!Gate::allows('is_takip_ayarlar') && !Gate::isSuperAdmin()) {
                 throw new Exception('İhbar ayarlarını değiştirme yetkiniz bulunmamaktadır.');
             }
@@ -407,7 +414,7 @@ try {
             break;
 
         case 'addNote':
-            Gate::authorizeOrDie('ihbar/list');
+            ihbarYetkiKontrol('ihbar_duzenle');
 
             $id = (int) ($_POST['id'] ?? 0);
             $aciklama = trim($_POST['aciklama'] ?? '');
@@ -420,7 +427,7 @@ try {
             break;
 
         case 'close':
-            Gate::authorizeOrDie('ihbar/list');
+            ihbarYetkiKontrol('ihbar_duzenle');
 
             $id = (int) ($_POST['id'] ?? 0);
             $durum = $_POST['durum'] ?? '';
@@ -432,7 +439,7 @@ try {
             break;
 
         case 'cancelResult':
-            Gate::authorizeOrDie('ihbar/list');
+            ihbarYetkiKontrol('ihbar_duzenle');
 
             $id = (int) ($_POST['id'] ?? 0);
             $IhbarModel->cancelResult($id, $currentUserId);
