@@ -1,5 +1,8 @@
 RewriteEngine on
 
+# Graphify çıktı dizinine web erişimini engelle
+RewriteRule ^graphify-out/ - [F,L]
+
 # Hassas dosyalara doğrudan erişimi engelle
 <Files ".env">
     Require all denied

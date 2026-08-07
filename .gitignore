@@ -16,6 +16,10 @@ uploads/*
 
 debug_date.txt
 
+# Graphify ciktilari ve cache
+graphify-out/
+.graphify/
+
 # Playwright
 node_modules/
 /test-results/

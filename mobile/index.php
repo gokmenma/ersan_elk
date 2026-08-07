@@ -714,7 +714,7 @@ $pageStatusColor = $pageStatusColors[$page] ?? null;
     if (!in_array($page, $no_header_pages)): 
     ?>
     <!-- Sayfa Başlığı (Gradient) -->
-    <header class="bg-gradient-primary text-white px-4 pt-4 pb-5 rounded-b-3xl relative overflow-hidden z-40 shadow-sm shrink-0">
+    <header class="bg-gradient-primary text-white px-4 pt-4 pb-5 rounded-b-3xl relative overflow-hidden z-40 shadow-sm shrink-0"<?= $pageStatusColor ? " style=\"background: linear-gradient(135deg, " . htmlspecialchars($pageStatusColor, ENT_QUOTES, "UTF-8") . " 0%, " . htmlspecialchars($pageStatusColor, ENT_QUOTES, "UTF-8") . "dd 100%) !important\"" : "" ?>>
         <div class="absolute inset-0 opacity-10 pointer-events-none">
             <div class="absolute top-0 right-0 w-32 h-32 bg-white rounded-full -mr-16 -mt-16"></div>
             <div class="absolute bottom-0 left-0 w-24 h-24 bg-white rounded-full -ml-12 -mb-12"></div>

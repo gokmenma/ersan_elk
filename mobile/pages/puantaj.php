@@ -123,21 +123,31 @@ $selectedMonth = date('m');
 
         <!-- ÖZET İSTATİSTİK ŞERİDİ -->
         <div class="grid grid-cols-4 gap-1.5">
+            <!-- 1. Personel -->
             <button type="button" id="cardStatPersonel" onclick="toggleCardFilter('all')" class="bg-white dark:bg-card-dark p-2 rounded-xl border border-slate-100 dark:border-slate-800 text-center shadow-xs active:scale-95 transition-all cursor-pointer">
-                <span class="block text-[9px] font-bold text-slate-400 uppercase tracking-wider">Personel</span>
+                <span class="block text-[9px] font-bold text-slate-400 uppercase tracking-wider mb-0.5">Personel</span>
                 <span id="statPersonelCount" class="text-sm font-black text-slate-800 dark:text-white">0</span>
             </button>
-            <button type="button" id="cardStatWork" onclick="toggleCardFilter('all')" class="bg-white dark:bg-card-dark p-2 rounded-xl border border-slate-100 dark:border-slate-800 text-center shadow-xs active:scale-95 transition-all cursor-pointer">
-                <span class="block text-[9px] font-bold text-blue-500 uppercase tracking-wider">Çalışılan</span>
-                <span id="statWorkDays" class="text-sm font-black text-blue-600 dark:text-blue-400">0</span>
-            </button>
+            <!-- 2. İzinli -->
             <button type="button" id="cardStatLeave" onclick="toggleCardFilter('izinli')" class="bg-white dark:bg-card-dark p-2 rounded-xl border border-slate-100 dark:border-slate-800 text-center shadow-xs active:scale-95 transition-all cursor-pointer relative">
-                <span class="block text-[9px] font-bold text-emerald-500 uppercase tracking-wider">İzinli</span>
-                <span id="statLeaveDays" class="text-sm font-black text-emerald-600 dark:text-emerald-400">0</span>
+                <span class="block text-[9px] font-bold text-emerald-500 uppercase tracking-wider mb-0.5">İzinli</span>
+                <div class="leading-tight">
+                    <span id="statLeavePersons" class="block text-[11px] font-black text-emerald-600 dark:text-emerald-400">0 Personel</span>
+                    <span id="statLeaveDays" class="block text-[9px] font-bold text-emerald-600/80 dark:text-emerald-400/80">0 Gün İzin</span>
+                </div>
             </button>
+            <!-- 3. Raporlu -->
             <button type="button" id="cardStatSgk" onclick="toggleCardFilter('raporlu')" class="bg-white dark:bg-card-dark p-2 rounded-xl border border-slate-100 dark:border-slate-800 text-center shadow-xs active:scale-95 transition-all cursor-pointer relative">
-                <span class="block text-[9px] font-bold text-rose-500 uppercase tracking-wider">Raporlu</span>
-                <span id="statSgkDays" class="text-sm font-black text-rose-600 dark:text-rose-400">0</span>
+                <span class="block text-[9px] font-bold text-rose-500 uppercase tracking-wider mb-0.5">Raporlu</span>
+                <div class="leading-tight">
+                    <span id="statSgkPersons" class="block text-[11px] font-black text-rose-600 dark:text-rose-400">0 Personel</span>
+                    <span id="statSgkDays" class="block text-[9px] font-bold text-rose-600/80 dark:text-rose-400/80">0 Gün Rapor</span>
+                </div>
+            </button>
+            <!-- 4. Toplam Çalışılan -->
+            <button type="button" id="cardStatWork" onclick="toggleCardFilter('all')" class="bg-white dark:bg-card-dark p-2 rounded-xl border border-slate-100 dark:border-slate-800 text-center shadow-xs active:scale-95 transition-all cursor-pointer">
+                <span class="block text-[8px] font-bold text-blue-500 uppercase tracking-wider truncate mb-0.5" title="Toplam Çalışılan">T. Çalışılan</span>
+                <span id="statWorkDays" class="text-xs font-black text-blue-600 dark:text-blue-400">0 Gün</span>
             </button>
         </div>
 
@@ -905,11 +915,16 @@ $selectedMonth = date('m');
 
     function updateStats(data) {
         let totalWorked = 0;
-        let totalLeave = 0;
-        let totalSgk = 0;
+        let totalLeaveDays = 0;
+        let totalSgkDays = 0;
+        let leavePersons = new Set();
+        let sgkPersons = new Set();
         const totalDays = getDaysInMonth(currentYear, currentMonth);
 
         data.forEach(p => {
+            let pLeave = 0;
+            let pSgk = 0;
+
             for (let d = 1; d <= totalDays; d++) {
                 const dateStr = `${currentYear}-${padZero(currentMonth)}-${padZero(d)}`;
                 const entry = getEffectiveEntry(p.id, dateStr, p.entries[dateStr]);
@@ -918,17 +933,30 @@ $selectedMonth = date('m');
                 if (code === 'X' || code === 'HTÇ' || code === 'RTÇ') {
                     totalWorked++;
                 } else if (code === 'SGK' || code === 'RP') {
-                    totalSgk++;
+                    totalSgkDays++;
+                    pSgk++;
                 } else if (code !== 'HT' && code !== '') {
-                    totalLeave++;
+                    totalLeaveDays++;
+                    pLeave++;
                 }
             }
+
+            if (pLeave > 0) leavePersons.add(p.id);
+            if (pSgk > 0) sgkPersons.add(p.id);
         });
 
         document.getElementById('statPersonelCount').textContent = data.length;
-        document.getElementById('statWorkDays').textContent = totalWorked;
-        document.getElementById('statLeaveDays').textContent = totalLeave;
-        document.getElementById('statSgkDays').textContent = totalSgk;
+        document.getElementById('statWorkDays').textContent = `${totalWorked} Gün`;
+        
+        const leavePersEl = document.getElementById('statLeavePersons');
+        const leaveDaysEl = document.getElementById('statLeaveDays');
+        if (leavePersEl) leavePersEl.textContent = `${leavePersons.size} Per.`;
+        if (leaveDaysEl) leaveDaysEl.textContent = `${totalLeaveDays} Gün`;
+
+        const sgkPersEl = document.getElementById('statSgkPersons');
+        const sgkDaysEl = document.getElementById('statSgkDays');
+        if (sgkPersEl) sgkPersEl.textContent = `${sgkPersons.size} Per.`;
+        if (sgkDaysEl) sgkDaysEl.textContent = `${totalSgkDays} Gün`;
     }
 
     function applyStatusToCell(personelId, dateStr, typeId) {
