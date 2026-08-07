@@ -40,8 +40,15 @@ foreach ($kayitlar as $kayit) {
 }
 $personelOzet=[];
 foreach($kayitlar as $kayit){
-    $ekipUyeleri=array_values(array_filter(array_map('trim',explode(',',(string)($kayit['ekip_adi']??'')))));
-    if(!$ekipUyeleri&&!empty($kayit['bildiren_adi'])){$ekipUyeleri[]=$kayit['bildiren_adi'];}
+    $ekipUyeleri=array_values(array_filter(array_map(static function($s){
+        return preg_replace('/\s+/', ' ', trim($s));
+    }, preg_split('/[,&]/', (string)($kayit['ekip_adi']??'')))));
+    if(!$ekipUyeleri&&!empty($kayit['bildiren_adi'])){
+        $ekipUyeleri[]=preg_replace('/\s+/', ' ', trim($kayit['bildiren_adi']));
+    }
+    if($ekipUyeleri){
+        sort($ekipUyeleri, SORT_STRING | SORT_FLAG_CASE);
+    }
     $ekipAdi=$ekipUyeleri?implode(' & ',$ekipUyeleri):'Ekibi Belirtilmemiş';
     $personelOzet[$ekipAdi]=($personelOzet[$ekipAdi]??0)+max(1,(int)($kayit['sayi']??1));
 }
