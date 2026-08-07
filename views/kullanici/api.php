@@ -39,10 +39,12 @@ if ($_POST["action"] == "kullanici-kaydet") {
         $mail_ariza_talep = isset($_POST['mail_ariza_talep']) && $_POST['mail_ariza_talep'] == 'Evet' ? 'Evet' : 'Hayır';
 
         $yonetilen_departman = "";
-        if (isset($_POST['yonetilen_departman']) && is_array($_POST['yonetilen_departman'])) {
-            $yonetilen_departman = implode(',', $_POST['yonetilen_departman']);
-        } else {
-            $yonetilen_departman = $_POST['yonetilen_departman'] ?? "";
+        if (isset($_POST['yonetilen_departman'])) {
+            if (is_array($_POST['yonetilen_departman'])) {
+                $yonetilen_departman = implode('|', array_map('trim', $_POST['yonetilen_departman']));
+            } else {
+                $yonetilen_departman = trim($_POST['yonetilen_departman']);
+            }
         }
 
         $data = [

@@ -170,11 +170,24 @@ $user_firmler = explode(',', $user ? ($user->firma_ids ?? '') : '');
                 while($d = $deptsQuery->fetch(PDO::FETCH_ASSOC)) {
                     $depts[$d['departman']] = $d['departman'];
                 }
+                $rawDept = $user->yonetilen_departman ?? '';
+                $selectedDepts = [];
+                if ($rawDept !== '') {
+                    if (strpos($rawDept, '|') !== false) {
+                        $selectedDepts = explode('|', $rawDept);
+                    } elseif (strpos($rawDept, ';') !== false) {
+                        $selectedDepts = explode(';', $rawDept);
+                    } else {
+                        $selectedDepts = explode(',', $rawDept);
+                    }
+                }
+                $selectedDepts = array_map('trim', $selectedDepts);
+
                 echo Form::FormMultipleSelect2(
                     name: "yonetilen_departman",
                     label: "Yönettiği Departmanlar",
                     options: $depts,
-                    selectedValues: explode(',', $user->yonetilen_departman ?? ''),
+                    selectedValues: $selectedDepts,
                     icon: "users",
                     attributes: 'data-selection-label="departman"'
                 ); ?>

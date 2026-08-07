@@ -82,14 +82,8 @@ class TalepModel extends Model
      */
     public function getBekleyenTalepSayisi()
     {
-        $restricted_dept = $this->getRestrictedDept();
-        $is_restricted = ($restricted_dept !== null);
-        $extra_where = $is_restricted ? " AND (FIND_IN_SET(TRIM(p.departman), ?) OR TRIM(p.departman) = '' OR p.departman IS NULL) AND p.disardan_sigortali = 0" : "";
-
         $bindParams = [$_SESSION['firma_id']];
-        if ($is_restricted) {
-            $bindParams[] = $restricted_dept;
-        }
+        $extra_where = $this->getRestrictedDeptSql('p.departman', $bindParams);
 
         $sql = "
             SELECT COUNT(*) as count 
@@ -108,14 +102,8 @@ class TalepModel extends Model
      */
     public function getBekleyenTaleplerForDashboard($limit = 5)
     {
-        $restricted_dept = $this->getRestrictedDept();
-        $is_restricted = ($restricted_dept !== null);
-        $extra_where = $is_restricted ? " AND (FIND_IN_SET(TRIM(p.departman), ?) OR TRIM(p.departman) = '' OR p.departman IS NULL) AND p.disardan_sigortali = 0" : "";
-
         $bindParams = [$_SESSION['firma_id']];
-        if ($is_restricted) {
-            $bindParams[] = $restricted_dept;
-        }
+        $extra_where = $this->getRestrictedDeptSql('p.departman', $bindParams);
 
         $limit = (int) $limit;
         $sql = "
@@ -137,14 +125,8 @@ class TalepModel extends Model
      */
     public function getButunBekleyenTalepler()
     {
-        $restricted_dept = $this->getRestrictedDept();
-        $is_restricted = ($restricted_dept !== null);
-        $extra_where = $is_restricted ? " AND (FIND_IN_SET(TRIM(p.departman), ?) OR TRIM(p.departman) = '' OR p.departman IS NULL) AND p.disardan_sigortali = 0" : "";
-
         $bindParams = [$_SESSION['firma_id']];
-        if ($is_restricted) {
-            $bindParams[] = $restricted_dept;
-        }
+        $extra_where = $this->getRestrictedDeptSql('p.departman', $bindParams);
 
         $sql = "
             SELECT pt.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev
@@ -205,14 +187,8 @@ class TalepModel extends Model
      */
     public function getCozulmusTalepler($limit = 50)
     {
-        $restricted_dept = $this->getRestrictedDept();
-        $is_restricted = ($restricted_dept !== null);
-        $extra_where = $is_restricted ? " AND (FIND_IN_SET(TRIM(p.departman), ?) OR TRIM(p.departman) = '' OR p.departman IS NULL) AND p.disardan_sigortali = 0" : "";
-
         $bindParams = [$_SESSION['firma_id']];
-        if ($is_restricted) {
-            $bindParams[] = $restricted_dept;
-        }
+        $extra_where = $this->getRestrictedDeptSql('p.departman', $bindParams);
 
         $limit = (int) $limit;
         $sql = "
@@ -236,14 +212,8 @@ class TalepModel extends Model
      */
     public function getSilinmisTalepler($limit = 50)
     {
-        $restricted_dept = $this->getRestrictedDept();
-        $is_restricted = ($restricted_dept !== null);
-        $extra_where = $is_restricted ? " AND (FIND_IN_SET(TRIM(p.departman), ?) OR TRIM(p.departman) = '' OR p.departman IS NULL) AND p.disardan_sigortali = 0" : "";
-
         $bindParams = [$_SESSION['firma_id']];
-        if ($is_restricted) {
-            $bindParams[] = $restricted_dept;
-        }
+        $extra_where = $this->getRestrictedDeptSql('p.departman', $bindParams);
 
         $limit = (int) $limit;
         $sql = "

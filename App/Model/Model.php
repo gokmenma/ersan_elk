@@ -245,16 +245,14 @@ class Model extends Db
     }
 
     /**
-     * Get the department name the current user is allowed to see (Leave/Avans/Talep module only).
+     * Get array of department names the current user is allowed to see (Leave/Avans/Talep module only).
      * Returns null if no restriction.
      */
-    public function getRestrictedDept()
+    public function getRestrictedDeptArray()
     {
         $current_user_id = $_SESSION['user_id'] ?? 0;
         if (!$current_user_id) return null;
 
-        // Note: SuperAdmin check is handled by Gate::isSuperAdmin check inside components that use this model
-        // To be safe, we check it here too if class is available
         if (class_exists('\App\Service\Gate') && \App\Service\Gate::isSuperAdmin()) {
             return null;
         }
@@ -263,9 +261,53 @@ class Model extends Db
         $stmt->execute([$current_user_id]);
         $user = $stmt->fetch(PDO::FETCH_OBJ);
 
-        $dept = isset($user->yonetilen_departman) ? trim($user->yonetilen_departman) : '';
-        // Remove all spaces around commas for FIND_IN_SET compatibility
-        $dept = implode(',', array_map('trim', explode(',', $dept)));
-        return ($dept !== '') ? $dept : null;
+        $raw = isset($user->yonetilen_departman) ? trim($user->yonetilen_departman) : '';
+        if ($raw === '') return null;
+
+        // Support '|', ';', and ',' delimiters
+        if (strpos($raw, '|') !== false) {
+            $depts = explode('|', $raw);
+        } elseif (strpos($raw, ';') !== false) {
+            $depts = explode(';', $raw);
+        } else {
+            $depts = explode(',', $raw);
+        }
+
+        $depts = array_values(array_filter(array_map('trim', $depts), function($v) {
+            return $v !== '';
+        }));
+
+        return !empty($depts) ? $depts : null;
+    }
+
+    /**
+     * Get pipe-separated string representation of restricted departments.
+     * Returns null if no restriction.
+     */
+    public function getRestrictedDept()
+    {
+        $depts = $this->getRestrictedDeptArray();
+        return $depts ? implode('|', $depts) : null;
+    }
+
+    /**
+     * Build SQL fragment and append bind parameters for department restriction.
+     * Uses IN (...) instead of FIND_IN_SET to safely handle department names containing commas.
+     */
+    public function getRestrictedDeptSql($deptColumn = 'p.departman', &$bindParams = [])
+    {
+        $depts = $this->getRestrictedDeptArray();
+        if ($depts === null) {
+            return '';
+        }
+
+        $placeholders = implode(',', array_fill(0, count($depts), '?'));
+        if (is_array($bindParams)) {
+            foreach ($depts as $d) {
+                $bindParams[] = $d;
+            }
+        }
+
+        return " AND (TRIM($deptColumn) IN ($placeholders) OR TRIM($deptColumn) = '' OR $deptColumn IS NULL) AND p.disardan_sigortali = 0";
     }
 }

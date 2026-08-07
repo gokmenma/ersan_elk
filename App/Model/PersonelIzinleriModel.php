@@ -75,17 +75,8 @@ class PersonelIzinleriModel extends Model
      */
     public function getBekleyenIzinSayisi()
     {
-        $restricted_dept = $this->getRestrictedDept();
-        $is_restricted = ($restricted_dept !== null);
-        
         $bindParams = [$_SESSION['firma_id']];
-        $extra_where = "";
-        if ($is_restricted) {
-            $extra_where = " AND (FIND_IN_SET(TRIM(p.departman), ?) OR TRIM(p.departman) = '' OR p.departman IS NULL) AND p.disardan_sigortali = 0";
-            $bindParams[] = $restricted_dept;
-        } else {
-            $extra_where = "";
-        }
+        $extra_where = $this->getRestrictedDeptSql('p.departman', $bindParams);
 
         $sql = "
             SELECT COUNT(*) as count 
@@ -107,14 +98,8 @@ class PersonelIzinleriModel extends Model
      */
     public function getBekleyenIzinlerForDashboard($limit = 5)
     {
-        $restricted_dept = $this->getRestrictedDept();
-        $is_restricted = ($restricted_dept !== null);
-
-        $extra_where = $is_restricted ? " AND (FIND_IN_SET(TRIM(p.departman), ?) OR TRIM(p.departman) = '' OR p.departman IS NULL) AND p.disardan_sigortali = 0" : "";
         $bindParams = [$_SESSION['firma_id']];
-        if ($is_restricted) {
-            $bindParams[] = $restricted_dept;
-        }
+        $extra_where = $this->getRestrictedDeptSql('p.departman', $bindParams);
 
         $limit = (int) $limit;
         $sql = "
@@ -140,15 +125,9 @@ class PersonelIzinleriModel extends Model
      */
     public function getAktifIzinler($limit = 10)
     {
-        $restricted_dept = $this->getRestrictedDept();
-        $is_restricted = ($restricted_dept !== null);
-
-        $extra_where = $is_restricted ? " AND FIND_IN_SET(TRIM(p.departman), ?) AND p.disardan_sigortali = 0" : "";
         $today = date('Y-m-d');
         $bindParams = [$today, $today, $_SESSION['firma_id']];
-        if ($is_restricted) {
-            $bindParams[] = $restricted_dept;
-        }
+        $extra_where = $this->getRestrictedDeptSql('p.departman', $bindParams);
 
         $limit = (int) $limit;
         $sql = "
@@ -173,14 +152,8 @@ class PersonelIzinleriModel extends Model
      */
     public function getButunBekleyenIzinler()
     {
-        $restricted_dept = $this->getRestrictedDept();
-        $is_restricted = ($restricted_dept !== null);
-
-        $extra_where = $is_restricted ? " AND (FIND_IN_SET(TRIM(p.departman), ?) OR TRIM(p.departman) = '' OR p.departman IS NULL) AND p.disardan_sigortali = 0" : "";
         $bindParams = [$_SESSION['firma_id']];
-        if ($is_restricted) {
-            $bindParams[] = $restricted_dept;
-        }
+        $extra_where = $this->getRestrictedDeptSql('p.departman', $bindParams);
 
         $sql = "
             SELECT pi.*, p.adi_soyadi as requester_name, p.resim_yolu, p.personel_resim_yolu, p.departman, p.gorev, t.tur_adi as izin_tipi_adi
@@ -203,14 +176,8 @@ class PersonelIzinleriModel extends Model
      */
     public function getIslenmisIzinler($limit = 50)
     {
-        $restricted_dept = $this->getRestrictedDept();
-        $is_restricted = ($restricted_dept !== null);
-
-        $extra_where = $is_restricted ? " AND (FIND_IN_SET(TRIM(p.departman), ?) OR TRIM(p.departman) = '' OR p.departman IS NULL) AND p.disardan_sigortali = 0" : "";
         $bindParams = [$_SESSION['firma_id']];
-        if ($is_restricted) {
-            $bindParams[] = $restricted_dept;
-        }
+        $extra_where = $this->getRestrictedDeptSql('p.departman', $bindParams);
 
         $limit = (int) $limit;
         $sql = "
@@ -250,14 +217,8 @@ class PersonelIzinleriModel extends Model
      */
     public function getReddedilmisIzinler($limit = 50)
     {
-        $restricted_dept = $this->getRestrictedDept();
-        $is_restricted = ($restricted_dept !== null);
-
-        $extra_where = $is_restricted ? " AND (FIND_IN_SET(TRIM(p.departman), ?) OR TRIM(p.departman) = '' OR p.departman IS NULL) AND p.disardan_sigortali = 0" : "";
         $bindParams = [$_SESSION['firma_id']];
-        if ($is_restricted) {
-            $bindParams[] = $restricted_dept;
-        }
+        $extra_where = $this->getRestrictedDeptSql('p.departman', $bindParams);
 
         $limit = (int) $limit;
         $sql = "
@@ -282,14 +243,8 @@ class PersonelIzinleriModel extends Model
      */
     public function getSilinmisIzinler($limit = 50)
     {
-        $restricted_dept = $this->getRestrictedDept();
-        $is_restricted = ($restricted_dept !== null);
-
-        $extra_where = $is_restricted ? " AND (FIND_IN_SET(TRIM(p.departman), ?) OR TRIM(p.departman) = '' OR p.departman IS NULL) AND p.disardan_sigortali = 0" : "";
         $bindParams = [$_SESSION['firma_id']];
-        if ($is_restricted) {
-            $bindParams[] = $restricted_dept;
-        }
+        $extra_where = $this->getRestrictedDeptSql('p.departman', $bindParams);
 
         $limit = (int) $limit;
         $sql = "
