@@ -31,6 +31,135 @@ $baslangic = Date::convertExcelDate($_GET['start_date'] ?? '', 'Y-m-d') ?: date(
 $bitis = Date::convertExcelDate($_GET['end_date'] ?? '', 'Y-m-d') ?: date('Y-m-d');
 
 $Kacak = new KacakKontrolModel();
+
+if ($tip === 'teslim_zip') {
+    $liste = $Kacak->getTeslimAlmaListesi($baslangic, $bitis);
+    if (empty($liste)) {
+        http_response_code(404);
+        exit('Seçilen tarih aralığında teslim alma listesinde kayıt bulunamadı.');
+    }
+
+    $trMonths = [
+        1 => 'Ocak', 2 => 'Şubat', 3 => 'Mart', 4 => 'Nisan', 5 => 'Mayıs', 6 => 'Haziran',
+        7 => 'Temmuz', 8 => 'Ağustos', 9 => 'Eylül', 10 => 'Ekim', 11 => 'Kasım', 12 => 'Aralık'
+    ];
+
+    $sTime = strtotime($baslangic);
+    $eTime = strtotime($bitis);
+
+    $startDay = (int) date('j', $sTime);
+    $startMonthName = $trMonths[(int) date('n', $sTime)] ?? date('F', $sTime);
+
+    $endDay = (int) date('j', $eTime);
+    $endMonthName = $trMonths[(int) date('n', $eTime)] ?? date('F', $eTime);
+
+    $rootFolder = sprintf('%d %s - %d %s Tarihleri Arasında Yapılan İşlemler', $startDay, $startMonthName, $endDay, $endMonthName);
+
+    $zipYolu = sys_get_temp_dir() . '/' . uniqid('kacak_teslim_zip_', true) . '.zip';
+    $zip = new \ZipArchive();
+
+    if ($zip->open($zipYolu, \ZipArchive::CREATE | \ZipArchive::OVERWRITE) !== true) {
+        http_response_code(500);
+        exit('Arşiv dosyası oluşturulamadı.');
+    }
+
+    $rootDiskPath = KacakKontrolModel::rootPath();
+    $toplamDosyaSayisi = 0;
+
+    foreach ($liste as $kayit) {
+        $kacakId = (int) $kayit['id'];
+        $ilceName = mb_strtoupper(trim((string) ($kayit['ilce'] ?? 'BELİRTİLMEMİŞ')), 'UTF-8');
+
+        $tutanakNo = trim((string) ($kayit['tutanak_no'] ?? ''));
+        $aboneAdi = mb_strtoupper(trim((string) ($kayit['abone_adi'] ?? '')), 'UTF-8');
+        $tur = mb_strtoupper(trim((string) ($kayit['tur'] ?? 'KAÇAK')), 'UTF-8');
+
+        $folderParts = [];
+        if ($tutanakNo !== '') {
+            $folderParts[] = $tutanakNo;
+        } else {
+            $folderParts[] = 'KAYIT_' . $kacakId;
+        }
+        if ($aboneAdi !== '') {
+            $folderParts[] = $aboneAdi;
+        }
+
+        $rawTutanakFolder = implode(' - ', $folderParts) . ' (' . $tur . ')';
+        $tutanakFolder = preg_replace('/[\/\\\\:\*\?"<>\|]/u', '_', trim($rawTutanakFolder));
+
+        $recordPathInZip = $rootFolder . '/' . $ilceName . '/' . $tutanakFolder;
+        $zip->addEmptyDir($recordPathInZip);
+
+        $fotolar = $Kacak->getPhotos($kacakId);
+        $tutanakSeq = 1;
+        $sahaSeq = 1;
+        $iptalSeq = 1;
+        $videoSeq = 1;
+
+        foreach ($fotolar as $foto) {
+            $kaynak = $rootDiskPath . '/' . ltrim($foto['dosya_yolu'], '/');
+            if (!is_file($kaynak)) {
+                continue;
+            }
+
+            $ext = pathinfo($foto['dosya_yolu'], PATHINFO_EXTENSION);
+            if (empty($ext)) {
+                $ext = 'jpg';
+            }
+
+            $fotoTur = strtolower($foto['tur'] ?? 'saha');
+            $medyaTipi = strtolower($foto['medya_tipi'] ?? 'foto');
+
+            if ($fotoTur === 'tutanak') {
+                $prefix = 'tutanak';
+                $seq = $tutanakSeq++;
+            } elseif ($fotoTur === 'iptal') {
+                $prefix = 'iptal';
+                $seq = $iptalSeq++;
+            } elseif ($medyaTipi === 'video') {
+                $prefix = 'video';
+                $seq = $videoSeq++;
+            } else {
+                $prefix = 'saha';
+                $seq = $sahaSeq++;
+            }
+
+            $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNo ?: ('kayit_' . $kacakId), $seq, $ext);
+            $zip->addFile($kaynak, $recordPathInZip . '/' . $dosyaAdi);
+            $toplamDosyaSayisi++;
+        }
+    }
+
+    $zip->close();
+
+    if (!is_file($zipYolu)) {
+        http_response_code(500);
+        exit('ZIP dosyası hazırlanamadı.');
+    }
+
+    $logModel = new App\Model\SystemLogModel();
+    $logModel->logAction(
+        $userId,
+        'Teslim Alma Listesi Toplu İndirme (ZIP)',
+        "Aralık: $baslangic - $bitis, Kayıt Sayısı: " . count($liste) . ", Dosya Sayısı: $toplamDosyaSayisi, Klasör: $rootFolder",
+        App\Model\SystemLogModel::LEVEL_INFO
+    );
+
+    while (ob_get_level() > 0) {
+        ob_end_clean();
+    }
+
+    $zipDownloadName = $rootFolder . '.zip';
+    $encodedZipAdi = rawurlencode($zipDownloadName);
+    header('Content-Type: application/zip');
+    header('Content-Disposition: attachment; filename="' . str_replace('"', '', $zipDownloadName) . '"; filename*=UTF-8\'\'' . $encodedZipAdi);
+    header('Content-Length: ' . filesize($zipYolu));
+    header('Cache-Control: no-cache, must-revalidate');
+    readfile($zipYolu);
+    @unlink($zipYolu);
+    exit;
+}
+
 $spreadsheet = new Spreadsheet();
 $sheet = $spreadsheet->getActiveSheet();
 

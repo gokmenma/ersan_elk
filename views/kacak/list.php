@@ -527,17 +527,21 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
                     </p>
 
                     <div class="row g-2 align-items-end mb-3">
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <?= Form::FormDate('teslim_baslangic', Date::dmY($haftaBasi), 'Başlangıç Tarihi') ?></div>
-                        <div class="col-md-3"><?= Form::FormDate('teslim_bitis', Date::dmY($bugun), 'Bitiş Tarihi') ?>
+                        <div class="col-md-2"><?= Form::FormDate('teslim_bitis', Date::dmY($bugun), 'Bitiş Tarihi') ?>
                         </div>
-                        <div class="col-md-3">
+                        <div class="col-md-2">
                             <button class="btn btn-primary w-100" id="btnTeslimListesi"><i
                                     class="bx bx-refresh me-1"></i>Listeyi Getir</button>
                         </div>
                         <div class="col-md-3">
                             <button class="btn btn-success w-100" id="btnTeslimExcel"><i
                                     class="bx bx-download me-1"></i>Excel İndir</button>
+                        </div>
+                        <div class="col-md-3">
+                            <button class="btn btn-warning w-100 text-dark fw-semibold" id="btnTeslimZip"><i
+                                    class="bx bxs-file-archive me-1"></i>Toplu Evrak İndir (ZIP)</button>
                         </div>
                     </div>
 
@@ -1798,6 +1802,15 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
         $('#btnTeslimExcel').on('click', function () {
             const q = $.param({
                 tip: 'teslim',
+                start_date: toIsoDate($('#teslim_baslangic').val()),
+                end_date: toIsoDate($('#teslim_bitis').val())
+            });
+            window.location.href = 'views/kacak/export-haftalik.php?' + q;
+        });
+
+        $('#btnTeslimZip').on('click', function () {
+            const q = $.param({
+                tip: 'teslim_zip',
                 start_date: toIsoDate($('#teslim_baslangic').val()),
                 end_date: toIsoDate($('#teslim_bitis').val())
             });
