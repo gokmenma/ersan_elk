@@ -2455,6 +2455,125 @@ $(document).on("click", ".zimmet-detay, .zimmet-detay-ac", function (e) {
     });
 });
 
+// Zimmet Düzenle Modal Aç
+$(document).on("click", ".zimmet-duzenle", function (e) {
+  e.preventDefault();
+  let id = $(this).data("id");
+  Pace.start();
+
+  var formData = new FormData();
+  formData.append("action", "zimmet-duzenle-get");
+  formData.append("id", id);
+
+  fetch(zimmetUrl, {
+    method: "POST",
+    body: formData,
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      if (data.status === "success") {
+        let d = data.data || data;
+        $("#duzenle_zimmet_id").val(d.enc_id);
+        $("#duzenle_demirbas_adi").text(d.demirbas_adi || "-");
+        $("#duzenle_personel_adi").text(d.personel_adi || "-");
+        $("#duzenle_durum_badge").html(d.durum_badge);
+        $("#duzenle_teslim_tarihi").val(d.teslim_tarihi_fmt || "");
+        $("#duzenle_teslim_miktar").val(d.zimmet.teslim_miktar || 1);
+        $("#duzenle_aciklama").val(d.zimmet.aciklama || "");
+
+        if (d.is_iade == 1) {
+          $("#duzenle_iade_section").removeClass("d-none");
+          $("#duzenle_iade_tarihi").val(d.iade_tarihi_fmt || "");
+          $("#duzenle_iade_aciklama").val(d.iade_aciklama || "");
+        } else {
+          $("#duzenle_iade_section").addClass("d-none");
+          $("#duzenle_iade_tarihi").val("");
+          $("#duzenle_iade_aciklama").val("");
+        }
+
+        // Mevcut fotoğrafları render et
+        let mevcuttorHtml = "";
+        if (d.fotolar && d.fotolar.length > 0) {
+          d.fotolar.forEach((foto) => {
+            let viewUrl = `views/demirbas/zimmet-foto-goruntule.php?id=${encodeURIComponent(foto.id)}`;
+            mevcuttorHtml += `
+              <div class="position-relative d-inline-block border rounded p-1 bg-white me-2 mb-2 text-center" style="width: 55px; height: 55px; vertical-align: top;" id="foto_box_${foto.raw_id}">
+                ${foto.is_pdf ? `
+                  <a href="${viewUrl}" target="_blank" class="text-danger d-block lh-1" title="${foto.orijinal_ad || 'PDF Dosyası'}">
+                    <i class="bx bxs-file-pdf font-size-26" style="margin-top: 5px;"></i>
+                  </a>
+                ` : `
+                  <a href="${viewUrl}" target="_blank">
+                    <img src="${viewUrl}" class="rounded" style="width: 45px; height: 45px; object-fit: cover;">
+                  </a>
+                `}
+                <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 p-0 rounded-circle d-flex align-items-center justify-content-center sil-detay-foto" data-id="${foto.id}" style="width: 16px; height: 16px; margin-top: -4px; margin-right: -4px;" title="Fotoğrafı Sil">
+                  <i class="bx bx-x font-size-12"></i>
+                </button>
+              </div>
+            `;
+          });
+        } else {
+          mevcuttorHtml = '<span class="text-muted small">Bu zimmete ait henüz yüklenmiş fotoğraf yok.</span>';
+        }
+        $("#duzenle_mevcut_fotolar").html(mevcuttorHtml);
+
+        if (typeof flatpickr !== "undefined") {
+          flatpickr("#duzenle_teslim_tarihi, #duzenle_iade_tarihi", {
+            dateFormat: "d.m.Y",
+            locale: "tr"
+          });
+        }
+
+        $("#zimmetDuzenleModal").modal("show");
+      } else {
+        Swal.fire("Hata!", data.message, "error");
+      }
+    })
+    .catch((err) => {
+      console.error(err);
+      Swal.fire("Hata!", "Sunucu ile iletişim kurulamadı.", "error");
+    });
+});
+
+// Zimmet Düzenleme Formu Gönderimi
+$(document).on("submit", "#zimmetDuzenleForm", function (e) {
+  e.preventDefault();
+  let form = this;
+  let formData = new FormData(form);
+  formData.append("action", "zimmet-duzenle-save");
+
+  let btn = $("#btnZimmetDuzenleKaydet");
+  btn.prop("disabled", true).html('<i class="spinner-border spinner-border-sm me-1"></i> Kaydediliyor...');
+
+  fetch(zimmetUrl, {
+    method: "POST",
+    body: formData,
+  })
+    .then((response) => response.json())
+    .then((data) => {
+      btn.prop("disabled", false).html('<i class="bx bx-save me-1"></i>Değişiklikleri Kaydet');
+      if (data.status === "success") {
+        $("#zimmetDuzenleModal").modal("hide");
+        Swal.fire("Başarılı!", data.message, "success");
+        if (typeof datatable !== "undefined" && datatable) {
+          datatable.ajax.reload(null, false);
+        } else if (typeof table !== "undefined" && table) {
+          table.ajax.reload(null, false);
+        } else {
+          location.reload();
+        }
+      } else {
+        Swal.fire("Hata!", data.message, "error");
+      }
+    })
+    .catch((err) => {
+      btn.prop("disabled", false).html('<i class="bx bx-save me-1"></i>Değişiklikleri Kaydet');
+      console.error(err);
+      Swal.fire("Hata!", "Kayıt sırasında hata oluştu.", "error");
+    });
+});
+
 function applyZimmetDetayKartFiltre(filterType = "all") {
   const rows = $("#zimmetHareketBody tr");
 

@@ -1735,6 +1735,9 @@ if ($action == "zimmet-listesi") {
                             </a>
                             <div class="dropdown-menu dropdown-menu-end">
                                 ' . $iadeButton . '
+                                <a href="#" data-id="' . $enc_id . '" class="dropdown-item zimmet-duzenle">
+                                    <span class="mdi mdi-pencil font-size-18 text-primary me-1"></span> Düzenle
+                                </a>
                                 <a href="#" data-id="' . $enc_id . '" class="dropdown-item zimmet-detay">
                                     <span class="mdi mdi-eye font-size-18 text-info me-1"></span> Detay
                                 </a>
@@ -2855,6 +2858,156 @@ if ($action == "zimmet-foto-sil") {
         $SystemLog->logAction($_SESSION['user_id'] ?? 0, 'Demirbaş Zimmet Fotoğraf Silme', "Zimmet (#{$foto->zimmet_id}) için bir {$foto->foto_turu} fotoğrafı silindi.", SystemLogModel::LEVEL_IMPORTANT);
 
         jsonResponse("success", "Fotoğraf başarıyla silindi.");
+    } catch (Exception $ex) {
+        jsonResponse("error", $ex->getMessage());
+    }
+}
+
+// Zimmet Düzenle - Detay Getir
+if ($action == "zimmet-duzenle-get") {
+    $id = $_POST['id'] ?? '';
+    if (!is_numeric($id)) {
+        $id = Security::decrypt($id);
+    }
+    $id = (int) $id;
+
+    try {
+        if ($id <= 0) {
+            throw new Exception("Geçersiz zimmet ID.");
+        }
+
+        $zimmet = $Zimmet->find($id);
+        if (!$zimmet) {
+            throw new Exception("Zimmet kaydı bulunamadı.");
+        }
+
+        $demirbas = $Demirbas->find($zimmet->demirbas_id);
+        $personel = $Personel->find($zimmet->personel_id);
+        $hareketler = $Hareket->getZimmetHareketleri($id);
+        $fotolar = $ZimmetFoto->getByZimmet($id);
+
+        $fotoList = [];
+        foreach ($fotolar as $foto) {
+            $fotoList[] = [
+                'id' => Security::encrypt($foto->id),
+                'raw_id' => $foto->id,
+                'foto_turu' => $foto->foto_turu,
+                'orijinal_ad' => $foto->orijinal_ad,
+                'mime_tipi' => $foto->mime_tipi,
+                'is_pdf' => ($foto->mime_tipi === 'application/pdf')
+            ];
+        }
+
+        $iadeHareket = null;
+        if (!empty($hareketler)) {
+            foreach ($hareketler as $h) {
+                if (in_array($h->hareket_tipi, ['iade', 'sarf', 'kayip'])) {
+                    $iadeHareket = $h;
+                    break;
+                }
+            }
+        }
+
+        jsonResponse("success", "Zimmet detayları yüklendi.", [
+            'data' => [
+                'zimmet' => $zimmet,
+                'enc_id' => Security::encrypt($id),
+                'teslim_tarihi_fmt' => Date::dmY($zimmet->teslim_tarihi),
+                'iade_tarihi_fmt' => ($iadeHareket && !empty($iadeHareket->tarih)) ? Date::dmY($iadeHareket->tarih) : '',
+                'iade_aciklama' => $iadeHareket ? ($iadeHareket->aciklama ?? '') : '',
+                'demirbas_adi' => $demirbas->demirbas_adi ?? '-',
+                'personel_adi' => $personel->adi_soyadi ?? '-',
+                'durum_badge' => ($zimmet->durum === 'teslim') ? '<span class="badge bg-warning">Zimmetli</span>' : '<span class="badge bg-success">İade Edildi</span>',
+                'is_iade' => ($zimmet->durum !== 'teslim' || $iadeHareket !== null) ? 1 : 0,
+                'fotolar' => $fotoList
+            ]
+        ]);
+    } catch (Exception $ex) {
+        jsonResponse("error", $ex->getMessage());
+    }
+}
+
+// Zimmet Düzenle - Kaydet
+if ($action == "zimmet-duzenle-save") {
+    $id = $_POST['zimmet_id'] ?? '';
+    if (!is_numeric($id)) {
+        $id = Security::decrypt($id);
+    }
+    $id = (int) $id;
+
+    $teslim_tarihi = $_POST['teslim_tarihi'] ?? '';
+    $teslim_miktar = (int) ($_POST['teslim_miktar'] ?? 1);
+    $aciklama = trim($_POST['aciklama'] ?? '');
+    $iade_tarihi = $_POST['iade_tarihi'] ?? '';
+    $iade_aciklama = trim($_POST['iade_aciklama'] ?? '');
+
+    try {
+        if ($id <= 0) {
+            throw new Exception("Geçersiz zimmet ID.");
+        }
+
+        $zimmet = $Zimmet->find($id);
+        if (!$zimmet) {
+            throw new Exception("Zimmet kaydı bulunamadı.");
+        }
+
+        // Zimmet kaydını güncelle
+        $sqlUp = $db->prepare("UPDATE demirbas_zimmet SET teslim_tarihi = :teslim_tarihi, teslim_miktar = :teslim_miktar, aciklama = :aciklama, guncelleme_tarihi = NOW() WHERE id = :id");
+        $sqlUp->execute([
+            'teslim_tarihi' => Date::Ymd($teslim_tarihi),
+            'teslim_miktar' => $teslim_miktar,
+            'aciklama' => $aciklama,
+            'id' => $id
+        ]);
+
+        // Zimmet ve İade hareketlerini güncelle
+        $hareketler = $Hareket->getZimmetHareketleri($id);
+        $zimmetHareketId = 0;
+        $iadeHareketId = 0;
+
+        foreach ($hareketler as $h) {
+            if ($h->hareket_tipi === 'zimmet' || $h->hareket_tipi === 'Zimmet') {
+                $zimmetHareketId = $h->id;
+                $sqlH = $db->prepare("UPDATE demirbas_hareketler SET tarih = :tarih, miktar = :miktar, aciklama = :aciklama WHERE id = :hid");
+                $sqlH->execute([
+                    'tarih' => Date::Ymd($teslim_tarihi),
+                    'miktar' => $teslim_miktar,
+                    'aciklama' => $aciklama,
+                    'hid' => $h->id
+                ]);
+            } elseif (in_array($h->hareket_tipi, ['iade', 'sarf', 'kayip'])) {
+                $iadeHareketId = $h->id;
+                if (!empty($iade_tarihi)) {
+                    $sqlH = $db->prepare("UPDATE demirbas_hareketler SET tarih = :tarih, aciklama = :aciklama WHERE id = :hid");
+                    $sqlH->execute([
+                        'tarih' => Date::Ymd($iade_tarihi),
+                        'aciklama' => $iade_aciklama,
+                        'hid' => $h->id
+                    ]);
+                }
+            }
+        }
+
+        $fotoMesaj = "";
+        // Yeni teslim fotoğraflarını işle
+        if (isset($_FILES['teslim_fotograflari']) && !empty($_FILES['teslim_fotograflari']['name'][0])) {
+            $tSayisi = $zimmetFotoIsle($id, $zimmetHareketId, 'teslim_fotograflari', 'teslim');
+            if ($tSayisi > 0) {
+                $fotoMesaj .= " {$tSayisi} adet teslim fotoğrafı yüklendi.";
+            }
+        }
+
+        // Yeni iade fotoğraflarını işle
+        if (isset($_FILES['iade_fotograflari']) && !empty($_FILES['iade_fotograflari']['name'][0])) {
+            $iSayisi = $zimmetFotoIsle($id, $iadeHareketId, 'iade_fotograflari', 'iade');
+            if ($iSayisi > 0) {
+                $fotoMesaj .= " {$iSayisi} adet iade fotoğrafı yüklendi.";
+            }
+        }
+
+        $SystemLog->logAction($_SESSION['user_id'] ?? 0, 'Demirbaş Zimmet Güncelleme', "Zimmet (#{$id}) bilgileri güncellendi." . $fotoMesaj, SystemLogModel::LEVEL_IMPORTANT);
+
+        jsonResponse("success", "Zimmet kaydı başarıyla güncellendi." . $fotoMesaj);
     } catch (Exception $ex) {
         jsonResponse("error", $ex->getMessage());
     }

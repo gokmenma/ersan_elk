@@ -1574,6 +1574,7 @@ if (!function_exists('getEvrakBadgeStatus')) {
     }
 </style>
 <?php include_once "modal/zimmet-gecmisi-modal.php"; ?>
+<?php include_once "modal/zimmet-duzenle-modal.php"; ?>
 <?php include_once "modal/yakit-modal.php"; ?>
 <?php include_once "modal/km-modal.php"; ?>
 <?php include_once "modal/excel-modal.php"; ?>

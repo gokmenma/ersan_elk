@@ -590,7 +590,10 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                             <div>Kurumun ceza işlemi için sicil oluşturamadığı tutanaklar burada takip edilir. Bildirim
                                 açıldığında tutanağı tutan ekibe mobil bildirim düşer; ekip aboneye ulaşıp doğru bilgiyi
                                 girdiğinde kayıt <strong>Yanıtlandı</strong> sekmesine geçer ve bildirimi açan kullanıcıya
-                                haber verilir. Bu akış tutanağın hakediş durumunu <strong>etkilemez</strong>.</div>
+                                haber verilir. Bu akış tutanağın hakediş durumunu <strong>etkilemez</strong>.
+                                <div class="small mt-2"><i class="bx bx-mouse me-1"></i>Satıra <strong>sağ
+                                        tıklayarak</strong> da işlem yapabilirsiniz.</div>
+                            </div>
                         </div>
 
                         <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
@@ -605,8 +608,10 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                                             class="bx bx-archive me-1"></i> Çözüldü / Arşiv</button></li>
                             </ul>
                             <?php if ($yetkiSicilBildir): ?>
-                                <button class="btn btn-success" id="btnYeniSicilEksik"><i class="bx bx-plus me-1"></i> Sicil
-                                    Oluşmadı Bildir</button>
+                                <button class="btn btn-success" id="btnYeniSicilEksik" data-bs-toggle="tooltip"
+                                    data-bs-placement="top"
+                                    title="Tutanak numarasını arayarak yeni sicil oluşmadı bildirimi aç"><i
+                                        class="bx bx-plus me-1"></i> Yeni Bildirim</button>
                             <?php endif; ?>
                         </div>
 
@@ -1127,6 +1132,9 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
 
         let kacakTable, onayTable, iptalTable, teslimTable, sicilTable;
         let sicilAktifDurum = 'beklemede';
+        let kacakKayitlari = [];
+        let sicilKayitlari = [];
+        let onayKayitlari = [];
 
         function esc(v) {
             if (v === null || v === undefined) return '';
@@ -1149,6 +1157,18 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
 
         function hataGoster(res) {
             Swal.fire('Hata', (res && res.message) || 'İşlem tamamlanamadı.', 'error');
+        }
+
+        // DataTables çizimde satırları yeniden ürettiği için tooltip'ler her
+        // seferinde yeniden bağlanır. container:'body' ile table-responsive
+        // taşma kırpmasından kurtulur; artık kalan balonlar temizlenir.
+        function tooltipleriTazele(kapsayici) {
+            $('.tooltip').remove();
+            $(kapsayici).find('[data-bs-toggle="tooltip"]').each(function () {
+                const mevcut = bootstrap.Tooltip.getInstance(this);
+                if (mevcut) mevcut.dispose();
+                new bootstrap.Tooltip(this, { container: 'body', trigger: 'hover' });
+            });
         }
 
         // ---------- Ortak DataTable ayarları ----------
@@ -1270,6 +1290,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                             return [];
                         }
                         ozetGuncelle(res.ozet);
+                        kacakKayitlari = res.data || [];
                         return res.data || [];
                     },
                     error: function () {
@@ -1289,62 +1310,144 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     { data: null, orderable: false, searchable: false, render: function (data, type, row) { return fotoButonu(row); } },
                     { data: 'durum', render: function (data, type, row) { return durumBadge(row); } },
                     { data: null, orderable: false, searchable: false, render: function (data, type, row) { return kayitIslemButonlari(row); } }
-                ]
+                ],
+                drawCallback: function () { tooltipleriTazele('#kacakTable'); }
             });
             kacakTable = $('#kacakTable').DataTable(
                 typeof applyLengthStateSave === 'function' ? applyLengthStateSave(options) : options
             );
         }
 
-        function kayitIslemButonlari(k) {
+        // Tooltip'li işlem butonu üretir.
+        function islemButonu(cls, id, ikon, ipucu, etiket) {
+            return `<button type="button" class="btn btn-sm ${cls}" data-id="${id}"
+                        data-bs-toggle="tooltip" data-bs-placement="top" title="${esc(ipucu)}">
+                        <i class="bx ${ikon}"></i>${etiket ? ' ' + esc(etiket) : ''}</button>`;
+        }
+
+        // İşlem listesinden hem buton şeridi hem sağ tık menüsü üretilir;
+        // ikisi tek kaynaktan geldiği için asla ayrışmaz.
+        function islemButonlariCiz(islemler) {
+            if (!islemler.length) return '<span class="text-muted">-</span>';
             let html = '<div class="d-flex gap-1 justify-content-center">';
-            if (YETKI.duzenle) {
-                html += `<button class="btn btn-sm btn-soft-primary btn-duzenle" data-id="${k.id}" title="Düzenle"><i class="bx bx-edit"></i></button>`;
-            }
-            if (YETKI.iptal && k.durum !== 'iptal') {
-                html += `<button class="btn btn-sm btn-soft-warning btn-iptal" data-id="${k.id}" title="İptal Et"><i class="bx bx-x-circle"></i></button>`;
-            }
-            if (YETKI.duzenle) {
-                html += `<button class="btn btn-sm btn-soft-danger btn-sil" data-id="${k.id}" title="Sil"><i class="bx bx-trash"></i></button>`;
-            }
-            html += sicilBildirButonu(k);
+            islemler.forEach(i => {
+                html += islemButonu(i.cls + ' ' + i.sinif, i.id, i.ikon, i.ipucu, i.butonEtiketi);
+            });
             return html + '</div>';
         }
 
         // Kurum kullanıcısı listeden doğrudan sicil eksik bildirimi açabilsin.
-        function sicilBildirButonu(k) {
-            if (!YETKI.sicilBildir || !k.tutanak_no) return '';
+        function sicilBildirIslemi(k) {
+            if (!YETKI.sicilBildir || !k.tutanak_no) return null;
+
             if (k.sicil_durumu === 'eksik' || k.sicil_durumu === 'yanitlandi') {
-                return `<button class="btn btn-sm btn-soft-secondary btn-sicil-git" data-id="${k.id}"
-                            title="Bu tutanak için açık sicil kaydı var, sekmeye git"><i class="bx bx-user-x"></i></button>`;
+                return {
+                    id: k.id, sinif: 'btn-sicil-git', etiket: 'Sicil Kaydına Git', ikon: 'bx-user-x',
+                    ipucu: 'Bu tutanak için açık sicil kaydı var — Sicil Oluşmayanlar sekmesine git',
+                    cls: 'btn-soft-secondary', renk: 'text-secondary'
+                };
             }
-            return `<button class="btn btn-sm btn-soft-danger btn-sicil-bildir" data-id="${k.id}"
-                        title="Sicil oluşmadı bildir"><i class="bx bx-user-x"></i></button>`;
+            return {
+                id: k.id, sinif: 'btn-sicil-bildir', etiket: 'Sicil Oluşmadı Bildir', ikon: 'bx-user-x',
+                ipucu: 'Sicil oluşmadı bildirimi aç — tutanağı tutan ekibe düşer',
+                cls: 'btn-soft-danger', renk: 'text-danger'
+            };
+        }
+
+        // Belge butonu ayrı kolonda duruyor, sağ tık menüsünde de erişilebilsin.
+        function fotoIslemi(k) {
+            const adet = parseInt(k.foto_sayisi || 0, 10);
+            if (adet === 0) return null;
+
+            const beklenen = parseInt(k.beklenen_foto_sayisi || 0, 10);
+            return {
+                id: k.id, sinif: 'btn-foto', etiket: 'Belgeleri Görüntüle', ikon: 'bx-image',
+                ipucu: adet + ' belge yüklü', renk: 'text-info', menuOnly: true,
+                veri: { mevcut: adet, beklenen: beklenen }
+            };
+        }
+
+        function kayitIslemleri(k) {
+            const islemler = [];
+
+            if (YETKI.duzenle) {
+                islemler.push({
+                    id: k.id, sinif: 'btn-duzenle', etiket: 'Düzenle', ikon: 'bx-edit',
+                    ipucu: 'Kaydı düzenle', cls: 'btn-soft-primary', renk: 'text-primary'
+                });
+            }
+            if (YETKI.iptal && k.durum !== 'iptal') {
+                islemler.push({
+                    id: k.id, sinif: 'btn-iptal', etiket: 'İptal Et', ikon: 'bx-x-circle',
+                    ipucu: 'Tutanağı iptal et — hakedişten düşme seçeneğiyle',
+                    cls: 'btn-soft-warning', renk: 'text-warning'
+                });
+            }
+            if (YETKI.duzenle) {
+                islemler.push({
+                    id: k.id, sinif: 'btn-sil', etiket: 'Sil', ikon: 'bx-trash',
+                    ipucu: 'Kaydı sil', cls: 'btn-soft-danger', renk: 'text-danger'
+                });
+            }
+
+            const sicil = sicilBildirIslemi(k);
+            if (sicil) islemler.push(sicil);
+
+            const foto = fotoIslemi(k);
+            if (foto) islemler.push(foto);
+
+            return islemler;
+        }
+
+        function kayitIslemButonlari(k) {
+            return islemButonlariCiz(kayitIslemleri(k).filter(i => !i.menuOnly));
         }
 
         // ---------- BEKLEYEN ONAYLAR ----------
         // Sahadan hatalı veri gelebildiği için yönetici onaylamadan önce kaydı düzeltebilir.
-        function onayIslemButonlari(k) {
-            if (!YETKI.onay && !YETKI.duzenle && !YETKI.sicilBildir) {
-                return '<span class="text-muted">-</span>';
-            }
+        function onayIslemleri(k) {
+            const islemler = [];
 
-            let html = '<div class="d-flex gap-1 justify-content-center">';
             if (YETKI.duzenle) {
-                html += `<button class="btn btn-sm btn-soft-primary btn-duzenle" data-id="${k.id}" title="Düzelt"><i class="bx bx-edit"></i></button>`;
+                islemler.push({
+                    id: k.id, sinif: 'btn-duzenle', etiket: 'Düzelt', ikon: 'bx-edit',
+                    ipucu: 'Onaydan önce kaydı düzelt', cls: 'btn-soft-primary', renk: 'text-primary'
+                });
             }
             if (YETKI.onay) {
-                html += `<button class="btn btn-sm btn-success btn-onayla" data-id="${k.id}"><i class="bx bx-check"></i> Onayla</button>
-                         <button class="btn btn-sm btn-danger btn-reddet" data-id="${k.id}"><i class="bx bx-x"></i> Reddet</button>`;
+                islemler.push({
+                    id: k.id, sinif: 'btn-onayla', etiket: 'Onayla', ikon: 'bx-check',
+                    ipucu: 'Bildirimi onayla — hakedişe dahil olur',
+                    cls: 'btn-success', renk: 'text-success', butonEtiketi: 'Onayla'
+                });
+                islemler.push({
+                    id: k.id, sinif: 'btn-reddet', etiket: 'Reddet', ikon: 'bx-x',
+                    ipucu: 'Bildirimi reddet — personele bildirim gider',
+                    cls: 'btn-danger', renk: 'text-danger', butonEtiketi: 'Reddet'
+                });
             }
-            html += sicilBildirButonu(k);
-            return html + '</div>';
+
+            const sicil = sicilBildirIslemi(k);
+            if (sicil) islemler.push(sicil);
+
+            const foto = fotoIslemi(k);
+            if (foto) islemler.push(foto);
+
+            return islemler;
+        }
+
+        function onayIslemButonlari(k) {
+            return islemButonlariCiz(onayIslemleri(k).filter(i => !i.menuOnly));
         }
 
         function onaylariYukle() {
             apiGet({ action: 'list', start_date: '2000-01-01', end_date: '2099-12-31', onay_durumu: 'beklemede' })
                 .done(function (res) {
                     if (res.status !== 'success') return hataGoster(res);
+
+                    // Sağ tık menüsü satır verisine ihtiyaç duyar; tablo satırları
+                    // dizi olduğu için kayıtları ayrıca saklıyoruz.
+                    onayKayitlari = res.data || [];
 
                     const rows = res.data.map(k => [
                         esc(k.tarih_formatted),
@@ -1363,7 +1466,8 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     } else {
                         onayTable = $('#onayTable').DataTable(dtSecenekleri({
                             data: rows, pageLength: 25, order: [[0, 'desc']],
-                            columnDefs: [{ targets: [8], orderable: false }]
+                            columnDefs: [{ targets: [8], orderable: false }],
+                            drawCallback: function () { tooltipleriTazele('#onayTable'); }
                         }));
                     }
                 });
@@ -2327,27 +2431,54 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             return `<span class="badge ${cls}">${gun} gün</span>`;
         }
 
-        function sicilIslemButonlari(s) {
-            let html = '<div class="d-flex gap-1 justify-content-center">';
-            html += `<button class="btn btn-sm btn-soft-secondary btn-sicil-detay" data-id="${s.id}" title="Detay ve geçmiş"><i class="bx bx-history"></i></button>`;
+        // Satır durumuna göre yapılabilecek işlemler — hem butonlar hem sağ tık
+        // menüsü bu tek listeden üretilir ki ikisi asla ayrışmasın.
+        function sicilIslemleri(s) {
+            const islemler = [{
+                id: s.id, sinif: 'btn-sicil-detay', etiket: 'Detay ve Geçmiş', ikon: 'bx-history',
+                ipucu: 'Tüm turların geçmişini, girilen düzeltmeleri ve kapanış notlarını gör',
+                cls: 'btn-soft-secondary', renk: 'text-secondary'
+            }];
 
             if (YETKI.sicilYanitla && s.durum === 'beklemede') {
-                html += `<button class="btn btn-sm btn-primary btn-sicil-yanitla" data-id="${s.id}" title="Düzeltilmiş bilgiyi gir"><i class="bx bx-edit"></i> Düzelt</button>`;
+                islemler.push({
+                    id: s.id, sinif: 'btn-sicil-yanitla', etiket: 'Düzelt', ikon: 'bx-edit',
+                    ipucu: 'Aboneden öğrenilen doğru bilgiyi gir ve kuruma gönder',
+                    cls: 'btn-primary', renk: 'text-primary', butonEtiketi: 'Düzelt'
+                });
             }
             if (YETKI.sicilBildir && s.durum === 'yanitlandi') {
-                html += `<button class="btn btn-sm btn-success btn-sicil-cozuldu" data-id="${s.id}" title="Sicil oluşturuldu"><i class="bx bx-check"></i> Çözüldü</button>`;
-                html += `<button class="btn btn-sm btn-soft-danger btn-sicil-tekrar" data-id="${s.id}" title="Bilgi yine hatalı, yeni tur aç"><i class="bx bx-revision"></i></button>`;
+                islemler.push({
+                    id: s.id, sinif: 'btn-sicil-cozuldu', etiket: 'Çözüldü', ikon: 'bx-check',
+                    ipucu: 'Sicil oluşturuldu — kaydı kapat, ekibe bilgi gitsin',
+                    cls: 'btn-success', renk: 'text-success', butonEtiketi: 'Çözüldü'
+                });
+                islemler.push({
+                    id: s.id, sinif: 'btn-sicil-tekrar', etiket: 'Yeni Tur Aç', ikon: 'bx-revision',
+                    ipucu: 'Girilen bilgi de hatalı — bu kaydı kapatıp yeni düzeltme turu başlat',
+                    cls: 'btn-soft-danger', renk: 'text-danger'
+                });
             }
             if (YETKI.sicilBildir && (s.durum === 'beklemede' || s.durum === 'yanitlandi')) {
-                html += `<button class="btn btn-sm btn-soft-dark btn-sicil-iptal" data-id="${s.id}" title="Bildirimi iptal et"><i class="bx bx-x"></i></button>`;
+                islemler.push({
+                    id: s.id, sinif: 'btn-sicil-iptal', etiket: 'Bildirimi İptal Et', ikon: 'bx-x',
+                    ipucu: 'Hatalı açılmış bildirimi iptal et — ekipten yanıt beklenmez',
+                    cls: 'btn-soft-dark', renk: 'text-dark'
+                });
             }
-            return html + '</div>';
+
+            return islemler;
+        }
+
+        function sicilIslemButonlari(s) {
+            return islemButonlariCiz(sicilIslemleri(s).filter(i => !i.menuOnly));
         }
 
         function sicilTutanakHucresi(s) {
             let html = `<span class="fw-semibold">${esc(s.tutanak_no)}</span>`;
             if (!s.kacak_id) {
-                html += ' <span class="badge bg-warning text-dark" title="Bu tutanak numarası sistemde bulunamadı">Eşleşmedi</span>';
+                html += ` <span class="badge bg-warning text-dark" data-bs-toggle="tooltip" data-bs-placement="top"
+                            title="Bu tutanak numarası sistemde bulunamadı, kayıtla eşleştirilemedi">Eşleşmedi</span>`;
             }
             return html;
         }
@@ -2366,6 +2497,10 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
 
             apiGet(params).done(function (res) {
                 if (res.status !== 'success') return hataGoster(res);
+
+                // Sağ tık menüsü satır verisine ihtiyaç duyar; tablo satırları dizi olduğu
+                // için kayıtları ayrıca saklıyoruz.
+                sicilKayitlari = res.data || [];
 
                 const rows = (res.data || []).map(s => [
                     sicilTutanakHucresi(s),
@@ -2386,7 +2521,8 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 } else {
                     sicilTable = $('#sicilTable').DataTable(dtSecenekleri({
                         data: rows, pageLength: 25, order: [[1, 'desc']],
-                        columnDefs: [{ targets: [7, 8, 9, 10], orderable: false }]
+                        columnDefs: [{ targets: [7, 8, 9, 10], orderable: false }],
+                        drawCallback: function () { tooltipleriTazele('#sicilTable'); }
                     }));
                 }
             });
@@ -2489,57 +2625,170 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         });
 
         // --- Sağ tık menüsü ---
-        let sicilSagTikMenu = null;
+        let sagTikMenu = null;
 
-        function sicilSagTikKapat() {
-            if (sicilSagTikMenu) {
-                sicilSagTikMenu.remove();
-                sicilSagTikMenu = null;
+        function sagTikKapat() {
+            if (sagTikMenu) {
+                sagTikMenu.remove();
+                sagTikMenu = null;
             }
         }
 
-        $(document).on('contextmenu', '#kacakTable tbody tr, #onayTable tbody tr', function (e) {
-            if (!YETKI.sicilBildir) return;
+        /**
+         * ogeler: [{ etiket, ikon, renk, aciklama, calistir }]
+         */
+        function sagTikMenuAc(e, baslik, ogeler) {
+            if (e && typeof e.preventDefault === 'function') {
+                e.preventDefault();
+            }
+            sagTikKapat();
+            if (!ogeler || !ogeler.length) return;
 
-            const $satir = $(this);
-            const id = $satir.find('[data-id]').first().data('id');
-            if (!id) return;
+            const menu = $('<div class="dropdown-menu show shadow border" style="z-index:1080; max-width:280px;"></div>');
+            menu.append(`<h6 class="dropdown-header">${esc(baslik)}</h6>`);
 
-            e.preventDefault();
-            sicilSagTikKapat();
-
-            const acikKayit = $satir.find('.btn-sicil-git').length > 0;
-
-            sicilSagTikMenu = $(`
-                <div class="dropdown-menu show shadow border" style="position:fixed; z-index:1080;">
-                    <h6 class="dropdown-header">Tutanak İşlemi</h6>
-                    <button class="dropdown-item" type="button">
-                        <i class="bx bx-user-x me-1 ${acikKayit ? 'text-secondary' : 'text-danger'}"></i>
-                        ${acikKayit ? 'Sicil Kaydına Git' : 'Sicil Oluşmadı Bildir'}
-                    </button>
-                </div>`).appendTo('body');
-
-            // Menü ekran dışına taşmasın.
-            const genislik = sicilSagTikMenu.outerWidth();
-            const yukseklik = sicilSagTikMenu.outerHeight();
-            sicilSagTikMenu.css({
-                left: Math.min(e.clientX, $(window).width() - genislik - 8) + 'px',
-                top: Math.min(e.clientY, $(window).height() - yukseklik - 8) + 'px'
+            ogeler.forEach(o => {
+                const $btn = $(`<button class="dropdown-item d-flex align-items-start gap-2" type="button">
+                        <i class="bx ${o.ikon} ${o.renk || ''}" style="margin-top:.15rem"></i>
+                        <span>
+                            <span class="d-block">${esc(o.etiket)}</span>
+                            ${o.aciklama ? `<small class="text-muted" style="white-space:normal">${esc(o.aciklama)}</small>` : ''}
+                        </span>
+                    </button>`);
+                $btn.on('click', function () {
+                    sagTikKapat();
+                    o.calistir();
+                });
+                menu.append($btn);
             });
 
-            sicilSagTikMenu.find('button').on('click', function () {
-                sicilSagTikKapat();
-                if (acikKayit) {
-                    $satir.find('.btn-sicil-git').trigger('click');
-                } else {
-                    sicilEksikBildirimBaslat(id);
+            menu.appendTo('body');
+
+            // Tema CSS'i ".dropdown-menu{top:100%!important}" tanımlıyor; position:fixed
+            // ile bu, menüyü ekranın tam altına (viewport yüksekliği kadar aşağı) itip
+            // görünmez yapıyor. Bu yüzden konum satır içi !important ile veriliyor.
+            const stil = menu[0].style;
+            const sol = Math.max(4, Math.min(e.clientX, $(window).width() - menu.outerWidth() - 8));
+            const ust = Math.max(4, Math.min(e.clientY, $(window).height() - menu.outerHeight() - 8));
+
+            stil.setProperty('position', 'fixed', 'important');
+            stil.setProperty('left', sol + 'px', 'important');
+            stil.setProperty('top', ust + 'px', 'important');
+            stil.setProperty('right', 'auto', 'important');
+            stil.setProperty('bottom', 'auto', 'important');
+
+            sagTikMenu = menu;
+        }
+
+        /**
+         * İşlemi çalıştırır. Menüden tetiklenirken satırdaki butona güvenilemez:
+         * DataTables responsive modda dar ekranda son kolonu (işlem kolonu) gizleyip
+         * alt satıra taşıyor, buton DOM'da olmuyor. Bu yüzden butonun aynısını geçici
+         * olarak body'ye ekleyip tetikliyoruz; delege click handler'ları yakalıyor.
+         */
+        function islemiCalistir(islem) {
+            const $gecici = $('<button type="button"></button>')
+                .addClass(islem.sinif)
+                .attr('data-id', islem.id)
+                .css({ position: 'fixed', left: '-9999px', top: '-9999px' });
+
+            $.each(islem.veri || {}, function (ad, deger) {
+                $gecici.attr('data-' + ad, deger);
+            });
+
+            $gecici.appendTo('body').trigger('click');
+            $gecici.remove();
+        }
+
+        function islemleriMenuyeCevir(islemler) {
+            return islemler.map(i => ({
+                etiket: i.etiket,
+                ikon: i.ikon,
+                renk: i.renk,
+                aciklama: i.ipucu,
+                calistir: () => islemiCalistir(i)
+            }));
+        }
+
+        /**
+         * Sağ tıklanan satırın kaydını verir. Satır sırası kaynak dizinin sırasıyla
+         * birebir aynı olduğu için DataTables satır indeksi üzerinden buluyoruz;
+         * bu yol gizlenmiş kolonlardan etkilenmez.
+         */
+        function satirKaydi(tablo, $satir, kayitlar) {
+            if (!tablo) return null;
+
+            let el = ($satir && $satir.jquery) ? $satir.get(0) : $satir;
+            if (!el) return null;
+
+            // Responsive alt satırına tıklandıysa asıl satıra çık.
+            if (el.classList && el.classList.contains('child')) {
+                const prev = el.previousElementSibling;
+                if (prev) el = prev;
+            }
+
+            try {
+                const satir = tablo.row(el);
+                if (satir && satir.any()) {
+                    const veri = satir.data();
+
+                    // Nesne tabanlı tablolarda (ör. kacakTable)
+                    if (veri && typeof veri === 'object' && !Array.isArray(veri)) {
+                        return veri;
+                    }
+
+                    // Dizi tabanlı tablolarda (ör. onayTable, sicilTable)
+                    const indeks = satir.index();
+                    if (kayitlar && indeks !== undefined && indeks !== null && kayitlar[indeks]) {
+                        return kayitlar[indeks];
+                    }
                 }
-            });
+            } catch (err) {
+                console.warn('satirKaydi hatası:', err);
+            }
+
+            // Fallback: Orijinal diziden rowIndex - 1 ile al
+            if (kayitlar && el.rowIndex !== undefined && el.rowIndex > 0) {
+                const idx = el.rowIndex - 1;
+                if (kayitlar[idx]) return kayitlar[idx];
+            }
+
+            return null;
+        }
+
+        // Kayıtlar
+        $(document).on('contextmenu', '#kacakTable tbody tr', function (e) {
+            e.preventDefault();
+            const k = satirKaydi(kacakTable, this, kacakKayitlari);
+            if (!k) return;
+
+            sagTikMenuAc(e, (k.tutanak_no || 'Tutanak') + ' — ' + (k.abone_adi || '-'),
+                islemleriMenuyeCevir(kayitIslemleri(k)));
         });
 
-        $(document).on('click', sicilSagTikKapat);
-        $(window).on('scroll resize', sicilSagTikKapat);
-        $(document).on('keydown', e => { if (e.key === 'Escape') sicilSagTikKapat(); });
+        // Bekleyen Onaylar
+        $(document).on('contextmenu', '#onayTable tbody tr', function (e) {
+            e.preventDefault();
+            const k = satirKaydi(onayTable, this, onayKayitlari);
+            if (!k) return;
+
+            sagTikMenuAc(e, (k.tutanak_no || 'Tutanak') + ' — ' + (k.bildiren_adi || '-'),
+                islemleriMenuyeCevir(onayIslemleri(k)));
+        });
+
+        // Sicil Oluşmayanlar
+        $(document).on('contextmenu', '#sicilTable tbody tr', function (e) {
+            e.preventDefault();
+            const s = satirKaydi(sicilTable, this, sicilKayitlari);
+            if (!s) return;
+
+            sagTikMenuAc(e, (s.tutanak_no || 'Tutanak') + ' — ' + (s.durum_metin || '-'),
+                islemleriMenuyeCevir(sicilIslemleri(s)));
+        });
+
+        $(document).on('click', sagTikKapat);
+        $(window).on('scroll resize', sagTikKapat);
+        $(document).on('keydown', e => { if (e.key === 'Escape') sagTikKapat(); });
 
         function sicilTutanakSecimiBaslat() {
             if (!$('#sicil_tutanak_no').length) return;
@@ -2835,6 +3084,9 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     $('#kacakTabs button[data-bs-target="#pane-sicil"]').tab('show');
                 }
             }
+
+            // Tablo dışındaki sabit butonların tooltip'leri.
+            tooltipleriTazele(document);
 
             if (typeof feather !== 'undefined') {
                 try { feather.replace(); } catch (e) { console.warn('feather.replace error:', e); }

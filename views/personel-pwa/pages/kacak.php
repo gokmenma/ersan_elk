@@ -1242,7 +1242,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                         fd.append('video_kapaklari[]', v.kapak || '');
                     });
                     btnText.textContent = 'GÜNCELLENİYOR...';
-                    const res = await (await fetch('api.php', {method:'POST', body:fd})).json();
+                    const res = await (await fetch('api.php?action=updateKacakBildirim', {method:'POST', body:fd})).json();
                     if (!res.success) return Alert.error('Güncellenemedi', res.message || 'İşlem başarısız.');
                     Modal.close('kacak-bildir-modal');
                     await loadKacakKayitlar();

@@ -24,11 +24,12 @@
                                 <th class="text-center">İşlem Yapan</th>
                                 <th class="text-center">Fotoğraf</th>
                                 <th class="text-center">Durum</th>
+                                <th class="text-center">İşlem</th>
                             </tr>
                         </thead>
                         <tbody id="zimmetGecmisiTableBody">
                             <tr>
-                                <td colspan="9" class="text-center p-4 text-muted">
+                                <td colspan="10" class="text-center p-4 text-muted">
                                     <div class="spinner-border spinner-border-sm text-primary" role="status"></div> Yükleniyor...
                                 </td>
                             </tr>

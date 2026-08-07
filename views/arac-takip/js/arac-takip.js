@@ -796,10 +796,15 @@ const AracTakip = {
                         </td>
                         <td class="text-center">${fotoHtml}</td>
                         <td class="text-center">${durumBadge}</td>
+                        <td class="text-center">
+                            <button type="button" class="btn btn-xs btn-soft-primary arac-zimmet-duzenle" data-id="${z.id}" title="Düzenle / Fotoğraf Ekle">
+                                <i class="bx bx-edit"></i> Düzenle
+                            </button>
+                        </td>
                     </tr>`;
                 });
             } else {
-                html = '<tr><td colspan="9" class="text-center text-muted p-4">Bu araca ait zimmet geçmişi bulunmamaktadır.</td></tr>';
+                html = '<tr><td colspan="10" class="text-center text-muted p-4">Bu araca ait zimmet geçmişi bulunmamaktadır.</td></tr>';
             }
             tbody.html(html);
         } else {
@@ -912,6 +917,11 @@ const AracTakip = {
                                         <i class="bx bx-dots-vertical-rounded"></i>
                                     </button>
                                     <ul class="dropdown-menu dropdown-menu-end">
+                                        <li>
+                                            <a class="dropdown-item text-primary arac-zimmet-duzenle" href="javascript:void(0);" data-id="${z.id}">
+                                                <i class="bx bx-edit me-2"></i> Düzenle
+                                            </a>
+                                        </li>
                                         ${z.durum === "aktif" ? `
                                             <li>
                                                 <a class="dropdown-item text-warning zimmet-iade" href="javascript:void(0);" data-id="${z.id}" data-plaka="${z.plaka}">
@@ -3622,6 +3632,155 @@ $(document).ready(function () {
     $("#yakit-filtre-personel").val("").trigger("change");
     
     AracTakip.yakitListesiYukle(null, formatDate(firstDay), formatDate(lastDay), null, null);
+  });
+
+  // Araç Zimmet Düzenle Modal Aç
+  $(document).on("click", ".arac-zimmet-duzenle", function(e) {
+    e.preventDefault();
+    const zimmetId = $(this).data("id");
+    if (!zimmetId) return;
+
+    $.post(AracTakip.apiUrl, { action: "arac-zimmet-detay-get", zimmet_id: zimmetId }, function(response) {
+      if (response.status === "success") {
+        const d = response.data || response;
+        $("#arac_duzenle_zimmet_id").val(d.zimmet.id);
+        $("#arac_duzenle_plaka").text(d.plaka || "-");
+        $("#arac_duzenle_personel").text(d.personel_adi || "-");
+        $("#arac_duzenle_durum").html(d.durum_badge);
+        $("#arac_duzenle_zimmet_tarihi").val(d.zimmet_tarihi_fmt || "");
+        $("#arac_duzenle_teslim_km").val(d.zimmet.teslim_km || "");
+        $("#arac_duzenle_notlar").val(d.zimmet.notlar || "");
+
+        if (d.is_iade == 1) {
+          $("#arac_duzenle_iade_section").removeClass("d-none");
+          $("#arac_duzenle_iade_tarihi").val(d.iade_tarihi_fmt || "");
+          $("#arac_duzenle_iade_km").val(d.zimmet.iade_km || "");
+        } else {
+          $("#arac_duzenle_iade_section").addClass("d-none");
+          $("#arac_duzenle_iade_tarihi").val("");
+          $("#arac_duzenle_iade_km").val("");
+        }
+
+        // Mevcut fotoğrafları render et
+        let mevcuttorHtml = "";
+        if (d.fotolar && d.fotolar.length > 0) {
+          d.fotolar.forEach((foto) => {
+            let viewUrl = "views/arac-takip/zimmet-foto-goruntule.php?id=" + encodeURIComponent(foto.id);
+            mevcuttorHtml += `
+              <div class="position-relative d-inline-block border rounded p-1 bg-white me-2 mb-2 text-center" style="width: 55px; height: 55px; vertical-align: top;">
+                ${foto.is_pdf ? `
+                  <a href="${viewUrl}" target="_blank" class="text-danger d-block lh-1" title="${foto.orijinal_ad || 'PDF Dosyası'}">
+                    <i class="bx bxs-file-pdf font-size-26" style="margin-top: 5px;"></i>
+                  </a>
+                ` : `
+                  <a href="${viewUrl}" target="_blank">
+                    <img src="${viewUrl}" class="rounded" style="width: 45px; height: 45px; object-fit: cover;">
+                  </a>
+                `}
+                <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 p-0 rounded-circle d-flex align-items-center justify-content-center sil-arac-foto" data-id="${foto.id}" style="width: 16px; height: 16px; margin-top: -4px; margin-right: -4px;" title="Fotoğrafı Sil">
+                  <i class="bx bx-x font-size-12"></i>
+                </button>
+              </div>
+            `;
+          });
+        } else {
+          mevcuttorHtml = '<span class="text-muted small">Bu araç zimmetine ait henüz yüklenmiş fotoğraf yok.</span>';
+        }
+        $("#arac_duzenle_mevcut_fotolar").html(mevcuttorHtml);
+
+        if (typeof flatpickr !== "undefined") {
+          flatpickr("#arac_duzenle_zimmet_tarihi, #arac_duzenle_iade_tarihi", {
+            dateFormat: "d.m.Y",
+            locale: "tr"
+          });
+        }
+
+        const modalEl = document.getElementById("aracZimmetDuzenleModal");
+        if (modalEl) {
+          const m = (typeof bootstrap !== "undefined" && bootstrap.Modal)
+            ? (bootstrap.Modal.getInstance(modalEl) || new bootstrap.Modal(modalEl))
+            : null;
+          if (m) m.show(); else $(modalEl).modal("show");
+        }
+      } else {
+        Swal.fire("Hata!", response.message, "error");
+      }
+    }, "json").fail(function(xhr) {
+      console.error(xhr);
+      Swal.fire("Hata!", "Sunucu hatası oluştu.", "error");
+    });
+  });
+
+  // Araç Zimmet Fotoğrafı Sil
+  $(document).on("click", ".sil-arac-foto", function(e) {
+    e.preventDefault();
+    const btn = $(this);
+    const fotoId = btn.data("id");
+    if (!fotoId) return;
+
+    Swal.fire({
+      title: "Emin misiniz?",
+      text: "Bu fotoğraf silinecektir!",
+      icon: "warning",
+      showCancelButton: true,
+      confirmButtonText: "Evet, Sil",
+      cancelButtonText: "İptal"
+    }).then((result) => {
+      if (result.isConfirmed) {
+        $.post(AracTakip.apiUrl, { action: "zimmet-foto-sil", id: fotoId }, function(res) {
+          if (res.status === "success") {
+            btn.closest(".position-relative").remove();
+            Swal.fire("Silindi!", res.message, "success");
+          } else {
+            Swal.fire("Hata!", res.message, "error");
+          }
+        }, "json");
+      }
+    });
+  });
+
+  // Araç Zimmet Düzenleme Formu Gönderimi
+  $(document).on("submit", "#aracZimmetDuzenleForm", function(e) {
+    e.preventDefault();
+    const form = this;
+    const formData = new FormData(form);
+    formData.append("action", "arac-zimmet-guncelle");
+
+    const btn = $("#btnAracZimmetDuzenleKaydet");
+    btn.prop("disabled", true).html('<i class="spinner-border spinner-border-sm me-1"></i> Kaydediliyor...');
+
+    $.ajax({
+      url: AracTakip.apiUrl,
+      type: "POST",
+      data: formData,
+      processData: false,
+      contentType: false,
+      dataType: "json",
+      success: function(response) {
+        btn.prop("disabled", false).html('<i class="bx bx-save me-1"></i>Değişiklikleri Kaydet');
+        if (response.status === "success") {
+          const modalEl = document.getElementById("aracZimmetDuzenleModal");
+          if (modalEl) {
+            const m = (typeof bootstrap !== "undefined" && bootstrap.Modal) ? bootstrap.Modal.getInstance(modalEl) : null;
+            if (m) m.hide(); else $(modalEl).modal("hide");
+          }
+          Swal.fire("Başarılı!", response.message, "success");
+          AracTakip.zimmetListesiYukle();
+          const aracId = $("#btnZimmetGecmisiExcel").attr("data-arac-id");
+          if (aracId) {
+            const plaka = $("#gecmisAracPlaka").text();
+            AracTakip.zimmetGecmisi(aracId, plaka);
+          }
+        } else {
+          Swal.fire("Hata!", response.message, "error");
+        }
+      },
+      error: function(xhr) {
+        btn.prop("disabled", false).html('<i class="bx bx-save me-1"></i>Değişiklikleri Kaydet');
+        console.error(xhr);
+        Swal.fire("Hata!", "Sunucu hatası oluştu.", "error");
+      }
+    });
   });
 
   // Başlangıçta personelleri yükle

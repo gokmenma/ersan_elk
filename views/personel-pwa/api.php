@@ -480,6 +480,22 @@ function pwaPersonelHasApprovalBypassPermission(int $personelId): bool
 }
 
 try {
+    $contentLength = (int) ($_SERVER['CONTENT_LENGTH'] ?? 0);
+    $postMaxBytes = pwaIniBytes((string) ini_get('post_max_size'));
+    $postLimitExceeded = $contentLength > 0 && $postMaxBytes > 0 && $contentLength > $postMaxBytes;
+
+    if ($postLimitExceeded || ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_POST) && $contentLength > 0)) {
+        pwaIhbarLog('post_max_exceeded', [
+            'content_length' => $contentLength,
+            'post_max_size' => ini_get('post_max_size'),
+        ]);
+        response(
+            false,
+            ['request_id' => $pwaRequestId],
+            'Yüklenen fotoğrafların veya medyanın toplam boyutu sunucu yükleme sınırını (' . ini_get('post_max_size') . ') aşıyor. Lütfen daha az veya daha küçük dosya seçiniz.'
+        );
+    }
+
     switch ($action) {
         case 'debugSession':
             response(true, $_SESSION);
@@ -4673,6 +4689,9 @@ try {
             }
             $KacakModel = new \App\Model\KacakKontrolModel();
             $kacakId = (int) Security::decrypt((string) ($_POST['edit_token'] ?? ''));
+            if ($kacakId <= 0) {
+                response(false, null, 'Düzenlenecek kayıt anahtarı geçersiz veya oturum bilgisi eksik.');
+            }
             $kayit = $KacakModel->getRecord($kacakId);
             if (!$kayit || (int) $kayit['bildiren_personel_id'] !== (int) $personel_id) {
                 response(false, null, 'Bu kaydı düzenleme yetkiniz bulunmuyor.');

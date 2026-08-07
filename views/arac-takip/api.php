@@ -677,6 +677,109 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST' || (isset($_GET['action']) && in_array(
                 echo json_encode(['status' => 'success', 'data' => $gecmis]);
                 break;
 
+            case 'arac-zimmet-detay-get':
+                $zimmet_id = intval($_POST['zimmet_id'] ?? 0);
+                if ($zimmet_id <= 0) {
+                    throw new Exception("Geçersiz zimmet ID.");
+                }
+
+                $zimmet = $Zimmet->find($zimmet_id);
+                if (!$zimmet || (int) $zimmet->firma_id !== (int) ($_SESSION['firma_id'] ?? 0)) {
+                    throw new Exception("Zimmet kaydı bulunamadı veya yetkiniz yok.");
+                }
+
+                $arac = $Arac->find($zimmet->arac_id);
+                $personelModel = new \App\Model\PersonelModel();
+                $personel = $personelModel->find($zimmet->personel_id);
+                $fotolar = $ZimmetFoto->getByZimmet($zimmet_id);
+
+                $fotoList = [];
+                foreach ($fotolar as $foto) {
+                    $fotoList[] = [
+                        'id' => Security::encrypt($foto->id),
+                        'raw_id' => $foto->id,
+                        'foto_turu' => $foto->foto_turu,
+                        'orijinal_ad' => $foto->orijinal_ad,
+                        'mime_tipi' => $foto->mime_tipi,
+                        'is_pdf' => ($foto->mime_tipi === 'application/pdf')
+                    ];
+                }
+
+                echo json_encode([
+                    'status' => 'success',
+                    'data' => [
+                        'zimmet' => $zimmet,
+                        'plaka' => $arac->plaka ?? '-',
+                        'personel_adi' => $personel->adi_soyadi ?? '-',
+                        'zimmet_tarihi_fmt' => Date::dmY($zimmet->zimmet_tarihi),
+                        'iade_tarihi_fmt' => $zimmet->iade_tarihi ? Date::dmY($zimmet->iade_tarihi) : '',
+                        'durum_badge' => ($zimmet->durum === 'aktif') ? '<span class="badge bg-success">Aktif</span>' : '<span class="badge bg-secondary">İade Edildi</span>',
+                        'is_iade' => ($zimmet->durum !== 'aktif') ? 1 : 0,
+                        'fotolar' => $fotoList
+                    ]
+                ]);
+                break;
+
+            case 'arac-zimmet-guncelle':
+                $zimmet_id = intval($_POST['zimmet_id'] ?? 0);
+                if ($zimmet_id <= 0) {
+                    throw new Exception("Geçersiz zimmet ID.");
+                }
+
+                $zimmet = $Zimmet->find($zimmet_id);
+                if (!$zimmet || (int) $zimmet->firma_id !== (int) ($_SESSION['firma_id'] ?? 0)) {
+                    throw new Exception("Zimmet kaydı bulunamadı veya yetkiniz yok.");
+                }
+
+                $zimmet_tarihi = $_POST['zimmet_tarihi'] ?? '';
+                $teslim_km = !empty($_POST['teslim_km']) ? intval($_POST['teslim_km']) : null;
+                $iade_tarihi = !empty($_POST['iade_tarihi']) ? Date::Ymd($_POST['iade_tarihi']) : null;
+                $iade_km = !empty($_POST['iade_km']) ? intval($_POST['iade_km']) : null;
+                $notlar = trim($_POST['notlar'] ?? '');
+
+                $dbModel = new \App\Model\Model('arac_zimmetleri');
+                $db = $dbModel->getDb();
+                $updateSql = $db->prepare("
+                    UPDATE arac_zimmetleri
+                    SET zimmet_tarihi = :zimmet_tarihi,
+                        teslim_km = :teslim_km,
+                        iade_tarihi = :iade_tarihi,
+                        iade_km = :iade_km,
+                        notlar = :notlar,
+                        guncelleme_tarihi = NOW()
+                    WHERE id = :id AND firma_id = :firma_id
+                ");
+                $updateSql->execute([
+                    'zimmet_tarihi' => Date::Ymd($zimmet_tarihi),
+                    'teslim_km' => $teslim_km,
+                    'iade_tarihi' => $iade_tarihi,
+                    'iade_km' => $iade_km,
+                    'notlar' => $notlar,
+                    'id' => $zimmet_id,
+                    'firma_id' => $_SESSION['firma_id']
+                ]);
+
+                $fotoMesaj = "";
+                if (isset($_FILES['teslim_fotograflari']) && !empty($_FILES['teslim_fotograflari']['name'][0])) {
+                    $tSayisi = $zimmetFotoIsle($zimmet_id, 'teslim_fotograflari', 'teslim');
+                    if ($tSayisi > 0) {
+                        $fotoMesaj .= " {$tSayisi} adet teslim fotoğrafı yüklendi.";
+                    }
+                }
+
+                if (isset($_FILES['iade_fotograflari']) && !empty($_FILES['iade_fotograflari']['name'][0])) {
+                    $iSayisi = $zimmetFotoIsle($zimmet_id, 'iade_fotograflari', 'iade');
+                    if ($iSayisi > 0) {
+                        $fotoMesaj .= " {$iSayisi} adet iade fotoğrafı yüklendi.";
+                    }
+                }
+
+                $SystemLog = new SystemLogModel();
+                $SystemLog->logAction($_SESSION['user_id'] ?? 0, 'Araç Zimmet Güncelleme', "Araç zimmet (#{$zimmet_id}) bilgileri güncellendi." . $fotoMesaj, SystemLogModel::LEVEL_IMPORTANT);
+
+                echo json_encode(['status' => 'success', 'message' => 'Araç zimmet kaydı başarıyla güncellendi.' . $fotoMesaj]);
+                break;
+
             case 'zimmet-gecmisi-excel':
                 $arac_id = intval($_GET['arac_id'] ?? 0);
                 if ($arac_id <= 0) throw new Exception("Geçersiz araç ID.");

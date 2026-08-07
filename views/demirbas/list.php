@@ -1277,6 +1277,7 @@ if (!empty($aparatKatIds)) {
 
 <!-- Zimmet Detay Modal -->
 <?php include_once "modal/zimmet-detay-modal.php" ?>
+<?php include_once "modal/zimmet-duzenle-modal.php" ?>
 
 <!-- Aparat Personel Özet Modal -->
 <?php include_once "modal/aparat-personel-ozet-modal.php" ?>
