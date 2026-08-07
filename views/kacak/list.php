@@ -2,6 +2,7 @@
 use App\Helper\Date;
 use App\Helper\Form;
 use App\Model\KacakKontrolModel;
+use App\Model\KacakSicilEksikModel;
 use App\Model\PersonelModel;
 use App\Service\Gate;
 
@@ -52,6 +53,13 @@ $yetkiDuzenle = Gate::allows('kacak_duzenle') || Gate::isSuperAdmin();
 $yetkiOnay = Gate::allows('kacak_onay') || Gate::isSuperAdmin();
 $yetkiIptal = Gate::allows('kacak_iptal') || Gate::isSuperAdmin();
 $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
+
+$yetkiSicilBildir = Gate::allows('kacak_sicil_bildir') || Gate::isSuperAdmin();
+$yetkiSicilYanitla = Gate::allows('kacak_sicil_yanitla') || Gate::isSuperAdmin();
+$yetkiSicil = $yetkiSicilBildir || $yetkiSicilYanitla;
+
+$sicilNedenOptions = KacakSicilEksikModel::NEDENLER;
+$sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDENLER;
 ?>
 
 <link rel="stylesheet" href="assets/libs/glightbox/css/glightbox.min.css">
@@ -267,6 +275,12 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
                         type="button"><i class="bx bx-bar-chart-alt-2 me-1"></i> Haftalık Rapor</button></li>
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-teslim"
                         type="button"><i class="bx bx-printer me-1"></i> Teslim Alma Listesi</button></li>
+                <?php if ($yetkiSicil): ?>
+                    <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-sicil"
+                            type="button" id="tabSicil"><i class="bx bx-user-x me-1"></i> Sicil Oluşmayanlar
+                            <span class="badge bg-danger ms-1" id="sicilBadge" style="display:none">0</span>
+                        </button></li>
+                <?php endif; ?>
                 <?php if ($yetkiArsiv): ?>
                     <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-arsiv"
                             type="button"><i class="bx bx-archive me-1"></i> Fotoğraf Arşivi</button></li>
@@ -566,6 +580,80 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
             </div>
         </div>
 
+        <?php if ($yetkiSicil): ?>
+            <!-- ============ SİCİL OLUŞMAYANLAR ============ -->
+            <div class="tab-pane fade" id="pane-sicil">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-body">
+                        <div class="alert alert-info d-flex align-items-start">
+                            <i class="bx bx-info-circle fs-4 me-2"></i>
+                            <div>Kurumun ceza işlemi için sicil oluşturamadığı tutanaklar burada takip edilir. Bildirim
+                                açıldığında tutanağı tutan ekibe mobil bildirim düşer; ekip aboneye ulaşıp doğru bilgiyi
+                                girdiğinde kayıt <strong>Yanıtlandı</strong> sekmesine geçer ve bildirimi açan kullanıcıya
+                                haber verilir. Bu akış tutanağın hakediş durumunu <strong>etkilemez</strong>.</div>
+                        </div>
+
+                        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+                            <ul class="nav nav-pills kacak-tabs" id="sicilAltTabs" role="tablist">
+                                <li class="nav-item"><button class="nav-link active" type="button"
+                                        data-sicil-durum="beklemede"><i class="bx bx-time-five me-1"></i> Bekleyen
+                                        <span class="badge bg-danger ms-1" id="sicilSayiBeklemede">0</span></button></li>
+                                <li class="nav-item"><button class="nav-link" type="button"
+                                        data-sicil-durum="yanitlandi"><i class="bx bx-check-double me-1"></i> Yanıtlandı
+                                        <span class="badge bg-success ms-1" id="sicilSayiYanitlandi">0</span></button></li>
+                                <li class="nav-item"><button class="nav-link" type="button" data-sicil-durum="arsiv"><i
+                                            class="bx bx-archive me-1"></i> Çözüldü / Arşiv</button></li>
+                            </ul>
+                            <?php if ($yetkiSicilBildir): ?>
+                                <button class="btn btn-success" id="btnYeniSicilEksik"><i class="bx bx-plus me-1"></i> Sicil
+                                    Oluşmadı Bildir</button>
+                            <?php endif; ?>
+                        </div>
+
+                        <div class="row g-2 align-items-end mb-3">
+                            <div class="col-md-2">
+                                <?= Form::FormDate('sicil_baslangic', '', 'Başlangıç Tarihi') ?>
+                            </div>
+                            <div class="col-md-2">
+                                <?= Form::FormDate('sicil_bitis', '', 'Bitiş Tarihi') ?>
+                            </div>
+                            <div class="col-md-3">
+                                <?= Form::FormSelect2('sicil_filtre_neden', $sicilNedenFiltreOptions, '', 'Neden', 'alert-circle') ?>
+                            </div>
+                            <div class="col-md-3">
+                                <?= Form::FormFloatInput('text', 'sicil_arama', '', 'Tutanak no, abone, ekip...', 'Ara', 'search') ?>
+                            </div>
+                            <div class="col-md-2">
+                                <button class="btn btn-primary w-100" id="btnSicilFiltrele"><i
+                                        class="bx bx-search me-1"></i>Filtrele</button>
+                            </div>
+                        </div>
+
+                        <div class="table-responsive">
+                            <table class="table table-hover align-middle nowrap w-100" id="sicilTable">
+                                <thead class="table-light">
+                                    <tr>
+                                        <th data-filter="string">Tutanak No</th>
+                                        <th data-filter="date">Tutanak Tarihi</th>
+                                        <th data-filter="string">Abone</th>
+                                        <th data-filter="string">Ekip</th>
+                                        <th data-filter="select">Neden</th>
+                                        <th>Açıklama</th>
+                                        <th>Bildiren</th>
+                                        <th class="text-center">Bekleme</th>
+                                        <th class="text-center">Tur</th>
+                                        <th class="text-center">Durum</th>
+                                        <th class="text-center">İşlem</th>
+                                    </tr>
+                                </thead>
+                                <tbody></tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        <?php endif; ?>
+
         <?php if ($yetkiArsiv): ?>
             <!-- ============ FOTOĞRAF ARŞİVİ ============ -->
             <div class="tab-pane fade" id="pane-arsiv">
@@ -831,6 +919,143 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
     </div>
 </div>
 
+<?php if ($yetkiSicilBildir): ?>
+    <!-- ============ SİCİL EKSİK BİLDİRİM MODALI ============ -->
+    <div class="modal fade" id="sicilEksikModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bx bx-user-x me-1 text-danger"></i> Sicil Oluşmadı Bildirimi</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="sicilEksikForm">
+                    <input type="hidden" name="action" value="sicil-create">
+                    <input type="hidden" name="kacak_id" id="sicil_kacak_id" value="">
+                    <div class="modal-body">
+                        <div class="mb-3">
+                            <?= Form::FormSelect2(
+                                name: 'tutanak_no',
+                                options: [],
+                                selectedValue: '',
+                                label: 'Tutanak No',
+                                icon: 'file-text',
+                                required: true,
+                                id: 'sicil_tutanak_no'
+                            ) ?>
+                            <div class="form-text">Tutanak numarasını yazmaya başlayın; sistemdeki kayıtlar listelenir.</div>
+                        </div>
+
+                        <div class="alert alert-light border d-none" id="sicilTutanakBilgi"></div>
+
+                        <div class="mb-3">
+                            <?= Form::FormSelect2(
+                                name: 'neden',
+                                options: $sicilNedenOptions,
+                                selectedValue: 'dogum_tarihi_hatali',
+                                label: 'Sicil Oluşmama Nedeni',
+                                icon: 'alert-circle',
+                                required: true,
+                                id: 'sicil_neden'
+                            ) ?>
+                        </div>
+
+                        <div class="mb-0">
+                            <?= Form::FormFloatTextarea(
+                                name: 'aciklama',
+                                value: '',
+                                placeholder: 'Örn: Nüfus kaydındaki doğum tarihiyle uyuşmuyor...',
+                                label: 'Açıklama',
+                                icon: 'edit-3',
+                                minHeight: '90px',
+                                rows: 3
+                            ) ?>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                        <button type="submit" class="btn btn-danger"><i class="bx bx-send me-1"></i>Ekibe Bildir</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>
+
+<?php if ($yetkiSicilYanitla): ?>
+    <!-- ============ SİCİL DÜZELTME MODALI ============ -->
+    <div class="modal fade" id="sicilYanitModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bx bx-edit me-1 text-primary"></i> Düzeltilmiş Bilgi Girişi</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <form id="sicilYanitForm">
+                    <input type="hidden" name="action" value="sicil-yanitla">
+                    <input type="hidden" name="id" id="sicil_yanit_id" value="0">
+                    <div class="modal-body">
+                        <div class="alert alert-warning" id="sicilYanitTalep"></div>
+
+                        <p class="text-muted small mb-3">Yalnızca düzelttiğiniz alanları doldurun. Boş bırakılan alanlar
+                            değiştirilmez.</p>
+
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <?= Form::FormFloatInput('text', 'abone_tc', '', '11 haneli TC kimlik no', 'TC Kimlik No', 'credit-card', maxlength: 11, autocomplete: 'off') ?>
+                            </div>
+                            <div class="col-md-6">
+                                <?= Form::FormDate('abone_dogum_tarihi', '', 'Doğum Tarihi') ?>
+                            </div>
+                            <div class="col-md-6">
+                                <?= Form::FormFloatInput('text', 'abone_adi', '', 'Abone adı soyadı', 'Ad Soyad', 'user', autocomplete: 'off') ?>
+                            </div>
+                            <div class="col-md-6">
+                                <?= Form::FormFloatInput('text', 'sayac_no', '', 'Sayaç seri no', 'Sayaç No', 'hash', autocomplete: 'off') ?>
+                            </div>
+                            <div class="col-12">
+                                <?= Form::FormFloatInput('text', 'abone_adres', '', 'Abone adresi', 'Adres', 'map-pin', autocomplete: 'off') ?>
+                            </div>
+                            <div class="col-12">
+                                <?= Form::FormFloatTextarea(
+                                    name: 'yanit_aciklama',
+                                    value: '',
+                                    placeholder: 'Aboneyle görüşme notu, ulaşılamadıysa nedeni...',
+                                    label: 'Açıklama',
+                                    icon: 'message-square',
+                                    minHeight: '80px',
+                                    rows: 3
+                                ) ?>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Vazgeç</button>
+                        <button type="submit" class="btn btn-primary"><i class="bx bx-send me-1"></i>Kuruma Gönder</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>
+
+<?php if ($yetkiSicil): ?>
+    <!-- ============ SİCİL DETAY MODALI ============ -->
+    <div class="modal fade" id="sicilDetayModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-lg modal-dialog-scrollable">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title"><i class="bx bx-history me-1"></i> Sicil Eksik Kaydı</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+                </div>
+                <div class="modal-body" id="sicilDetayGovde"></div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Kapat</button>
+                </div>
+            </div>
+        </div>
+    </div>
+<?php endif; ?>
+
 <!-- ============ FOTOĞRAF MODALI ============ -->
 <div class="modal fade" id="fotoModal" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
@@ -891,11 +1116,17 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
             duzenle: <?= $yetkiDuzenle ? 'true' : 'false' ?>,
             onay: <?= $yetkiOnay ? 'true' : 'false' ?>,
             iptal: <?= $yetkiIptal ? 'true' : 'false' ?>,
-            arsiv: <?= $yetkiArsiv ? 'true' : 'false' ?>
+            arsiv: <?= $yetkiArsiv ? 'true' : 'false' ?>,
+            sicilBildir: <?= $yetkiSicilBildir ? 'true' : 'false' ?>,
+            sicilYanitla: <?= $yetkiSicilYanitla ? 'true' : 'false' ?>
         };
+        const SICIL_NEDENLER = <?= json_encode(KacakSicilEksikModel::NEDENLER, JSON_UNESCAPED_UNICODE) ?>;
+        const SICIL_UYARI_GUN = <?= KacakSicilEksikModel::UYARI_GUN ?>;
+        const SICIL_KRITIK_GUN = <?= KacakSicilEksikModel::KRITIK_GUN ?>;
         let kacakFotoLightbox = null;
 
-        let kacakTable, onayTable, iptalTable, teslimTable;
+        let kacakTable, onayTable, iptalTable, teslimTable, sicilTable;
+        let sicilAktifDurum = 'beklemede';
 
         function esc(v) {
             if (v === null || v === undefined) return '';
@@ -941,6 +1172,18 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
                     : '<span class="badge bg-secondary">İptal</span>';
             }
             return '<span class="badge bg-success">Aktif</span>';
+        }
+
+        // Tutanağın kurum tarafındaki sicil akışı - hakediş durumundan bağımsızdır.
+        function sicilIsareti(k) {
+            const map = {
+                eksik: ['bx-user-x text-danger', 'Sicil oluşmadı, ekip yanıtı bekleniyor'],
+                yanitlandi: ['bx-user-check text-success', 'Düzeltme girildi, kurum kontrolünde'],
+                cozuldu: ['bx-check-shield text-muted', 'Sicil oluşturuldu']
+            };
+            const durum = map[k.sicil_durumu];
+            if (!durum) return '';
+            return ` <i class="bx ${durum[0]}" title="${durum[1]}"></i>`;
         }
 
         function kaynakBadge(kaynak) {
@@ -1031,7 +1274,7 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
                 },
                 columns: [
                     { data: 'tarih_formatted', render: $.fn.dataTable.render.text() },
-                    { data: 'tutanak_no', render: $.fn.dataTable.render.text() },
+                    { data: 'tutanak_no', render: function (data, type, row) { return esc(data) + sicilIsareti(row); } },
                     { data: 'abone_adi', render: $.fn.dataTable.render.text() },
                     { data: 'ilce', render: $.fn.dataTable.render.text() },
                     { data: 'tur', render: function (data) { return turBadge(data); } },
@@ -2044,6 +2287,363 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
             });
         });
 
+        // ---------- SİCİL OLUŞMAYANLAR ----------
+        function sicilDurumBadge(s) {
+            const map = {
+                beklemede: ['bg-danger', 'Ekip Yanıtı Bekleniyor'],
+                yanitlandi: ['bg-success', 'Yanıtlandı'],
+                cozuldu: ['bg-secondary', 'Çözüldü'],
+                iptal: ['bg-dark', 'İptal']
+            };
+            const [cls, label] = map[s.durum] || ['bg-light text-dark', s.durum || '-'];
+            return `<span class="badge ${cls}">${esc(label)}</span>`;
+        }
+
+        function sicilBeklemeHucresi(s) {
+            const gun = parseInt(s.bekleme_gun || 0, 10);
+            if (s.durum !== 'beklemede') {
+                return '<span class="text-muted">-</span>';
+            }
+            let cls = 'bg-light text-dark';
+            if (gun >= SICIL_KRITIK_GUN) cls = 'bg-danger';
+            else if (gun >= SICIL_UYARI_GUN) cls = 'bg-warning text-dark';
+            return `<span class="badge ${cls}">${gun} gün</span>`;
+        }
+
+        function sicilIslemButonlari(s) {
+            let html = '<div class="d-flex gap-1 justify-content-center">';
+            html += `<button class="btn btn-sm btn-soft-secondary btn-sicil-detay" data-id="${s.id}" title="Detay ve geçmiş"><i class="bx bx-history"></i></button>`;
+
+            if (YETKI.sicilYanitla && s.durum === 'beklemede') {
+                html += `<button class="btn btn-sm btn-primary btn-sicil-yanitla" data-id="${s.id}" title="Düzeltilmiş bilgiyi gir"><i class="bx bx-edit"></i> Düzelt</button>`;
+            }
+            if (YETKI.sicilBildir && s.durum === 'yanitlandi') {
+                html += `<button class="btn btn-sm btn-success btn-sicil-cozuldu" data-id="${s.id}" title="Sicil oluşturuldu"><i class="bx bx-check"></i> Çözüldü</button>`;
+                html += `<button class="btn btn-sm btn-soft-danger btn-sicil-tekrar" data-id="${s.id}" title="Bilgi yine hatalı, yeni tur aç"><i class="bx bx-revision"></i></button>`;
+            }
+            if (YETKI.sicilBildir && (s.durum === 'beklemede' || s.durum === 'yanitlandi')) {
+                html += `<button class="btn btn-sm btn-soft-dark btn-sicil-iptal" data-id="${s.id}" title="Bildirimi iptal et"><i class="bx bx-x"></i></button>`;
+            }
+            return html + '</div>';
+        }
+
+        function sicilTutanakHucresi(s) {
+            let html = `<span class="fw-semibold">${esc(s.tutanak_no)}</span>`;
+            if (!s.kacak_id) {
+                html += ' <span class="badge bg-warning text-dark" title="Bu tutanak numarası sistemde bulunamadı">Eşleşmedi</span>';
+            }
+            return html;
+        }
+
+        function siciliYukle() {
+            const params = {
+                action: 'sicil-list',
+                durum: sicilAktifDurum,
+                neden: $('#sicil_filtre_neden').val() || '',
+                arama: $('#sicil_arama').val() || ''
+            };
+            const bas = toIsoDate($('#sicil_baslangic').val());
+            const bit = toIsoDate($('#sicil_bitis').val());
+            if (bas) params.start_date = bas;
+            if (bit) params.end_date = bit;
+
+            apiGet(params).done(function (res) {
+                if (res.status !== 'success') return hataGoster(res);
+
+                const rows = (res.data || []).map(s => [
+                    sicilTutanakHucresi(s),
+                    esc(s.tutanak_tarihi_formatted || '-'),
+                    esc(s.abone_adi || '-'),
+                    esc(s.ekip_adi || '-'),
+                    esc(s.neden_metin || '-'),
+                    esc(s.aciklama || '-'),
+                    esc(s.bildiren_adi || '-'),
+                    sicilBeklemeHucresi(s),
+                    `<span class="badge bg-light text-dark">${parseInt(s.tur_sira || 1, 10)}. tur</span>`,
+                    sicilDurumBadge(s),
+                    sicilIslemButonlari(s)
+                ]);
+
+                if (sicilTable) {
+                    sicilTable.clear().rows.add(rows).draw();
+                } else {
+                    sicilTable = $('#sicilTable').DataTable(dtSecenekleri({
+                        data: rows, pageLength: 25, order: [[1, 'desc']],
+                        columnDefs: [{ targets: [7, 8, 9, 10], orderable: false }]
+                    }));
+                }
+            });
+        }
+
+        function sicilSayaclariYukle() {
+            apiGet({ action: 'sicil-counts' }).done(function (res) {
+                if (res.status !== 'success') return;
+                const c = res.counts || {};
+                $('#sicilSayiBeklemede').text(c.beklemede || 0);
+                $('#sicilSayiYanitlandi').text(c.yanitlandi || 0);
+
+                // Rozet role duyarlı: kurum kullanıcısı kendi aksiyonunu bekleyeni,
+                // ekip/ofis ise yanıtlaması gerekeni görür.
+                const bekleyen = YETKI.sicilBildir
+                    ? parseInt(c.yanitlandi || 0, 10)
+                    : parseInt(c.beklemede || 0, 10);
+
+                $('#sicilBadge').text(bekleyen).toggle(bekleyen > 0);
+            });
+        }
+
+        $('#sicilAltTabs button').on('click', function () {
+            $('#sicilAltTabs button').removeClass('active');
+            $(this).addClass('active');
+            sicilAktifDurum = $(this).data('sicil-durum');
+            siciliYukle();
+        });
+
+        $('#btnSicilFiltrele').on('click', siciliYukle);
+        $('#sicil_arama').on('keypress', e => { if (e.which === 13) siciliYukle(); });
+
+        // --- Yeni bildirim (kurum kullanıcısı) ---
+        $('#btnYeniSicilEksik').on('click', function () {
+            $('#sicilEksikForm')[0].reset();
+            $('#sicil_kacak_id').val('');
+            $('#sicil_tutanak_no').val(null).trigger('change');
+            $('#sicil_neden').val('dogum_tarihi_hatali').trigger('change');
+            $('#sicilTutanakBilgi').addClass('d-none').empty();
+            new bootstrap.Modal('#sicilEksikModal').show();
+        });
+
+        function sicilTutanakSecimiBaslat() {
+            if (!$('#sicil_tutanak_no').length) return;
+
+            $('#sicil_tutanak_no').select2({
+                dropdownParent: $('#sicilEksikModal'),
+                placeholder: 'Tutanak numarası yazın...',
+                width: '100%',
+                minimumInputLength: 2,
+                language: {
+                    inputTooShort: () => 'En az 2 karakter girin',
+                    searching: () => 'Aranıyor...',
+                    noResults: () => 'Tutanak bulunamadı'
+                },
+                ajax: {
+                    url: API,
+                    dataType: 'json',
+                    delay: 300,
+                    data: params => ({ action: 'sicil-tutanak-ara', q: params.term }),
+                    processResults: function (res) {
+                        return {
+                            results: (res.data || []).map(t => ({
+                                id: t.tutanak_no,
+                                text: t.tutanak_no + ' — ' + (t.abone_adi || 'Abone yok') + ' (' + t.tarih_formatted + ')',
+                                kayit: t
+                            }))
+                        };
+                    }
+                },
+                tags: true,
+                createTag: function (params) {
+                    const term = $.trim(params.term);
+                    if (!term) return null;
+                    return { id: term, text: term + ' (sistemde yok, yine de bildir)', yeni: true };
+                }
+            });
+
+            $('#sicil_tutanak_no').on('select2:select', function (e) {
+                const kayit = e.params.data.kayit;
+                if (!kayit) {
+                    $('#sicil_kacak_id').val('');
+                    $('#sicilTutanakBilgi')
+                        .removeClass('d-none alert-light')
+                        .addClass('alert-warning')
+                        .html('<i class="bx bx-error me-1"></i> Bu tutanak numarası sistemde bulunamadı. Bildirim yine de kaydedilir, ofis sonradan eşleştirebilir.');
+                    return;
+                }
+
+                $('#sicil_kacak_id').val(kayit.id);
+                $('#sicilTutanakBilgi')
+                    .removeClass('d-none alert-warning')
+                    .addClass('alert-light')
+                    .html(`<div class="row g-2 small">
+                        <div class="col-md-4"><span class="text-muted">Tarih:</span> <strong>${esc(kayit.tarih_formatted)}</strong></div>
+                        <div class="col-md-4"><span class="text-muted">Abone:</span> <strong>${esc(kayit.abone_adi || '-')}</strong></div>
+                        <div class="col-md-4"><span class="text-muted">İlçe:</span> <strong>${esc(kayit.ilce || '-')}</strong></div>
+                        <div class="col-md-4"><span class="text-muted">Ekip:</span> <strong>${esc(kayit.ekip_adi || '-')}</strong></div>
+                        <div class="col-md-4"><span class="text-muted">Sayaç:</span> <strong>${esc(kayit.sayac_no || '-')}</strong></div>
+                        <div class="col-md-4"><span class="text-muted">TC:</span> <strong>${esc(kayit.abone_tc || '-')}</strong></div>
+                    </div>`);
+            });
+        }
+
+        $('#sicilEksikForm').on('submit', function (e) {
+            e.preventDefault();
+            const $btn = $(this).find('button[type=submit]');
+            $btn.prop('disabled', true);
+
+            $.post(API, $(this).serialize(), null, 'json')
+                .done(function (res) {
+                    if (res.status !== 'success') return hataGoster(res);
+                    bootstrap.Modal.getInstance(document.getElementById('sicilEksikModal')).hide();
+                    Swal.fire('Bildirildi', res.message, 'success');
+                    siciliYukle();
+                    sicilSayaclariYukle();
+                })
+                .always(() => $btn.prop('disabled', false));
+        });
+
+        // --- Düzeltme girişi (ekip / ofis) ---
+        $(document).on('click', '.btn-sicil-yanitla', function () {
+            const id = $(this).data('id');
+            apiGet({ action: 'sicil-detay', id: id }).done(function (res) {
+                if (res.status !== 'success') return hataGoster(res);
+                const s = res.data;
+
+                $('#sicilYanitForm')[0].reset();
+                $('#sicil_yanit_id').val(s.id);
+                $('#sicilYanitTalep').html(`
+                    <div class="fw-semibold mb-1"><i class="bx bx-error-circle me-1"></i>${esc(s.tutanak_no)} nolu tutanak — ${esc(s.neden_metin)}</div>
+                    ${s.aciklama ? `<div class="small mb-2">${esc(s.aciklama)}</div>` : ''}
+                    <div class="small text-muted">
+                        Abone: <strong>${esc(s.abone_adi || '-')}</strong> ·
+                        TC: <strong>${esc(s.abone_tc || '-')}</strong> ·
+                        Doğum: <strong>${esc(s.abone_dogum_tarihi || '-')}</strong> ·
+                        Sayaç: <strong>${esc(s.sayac_no || '-')}</strong>
+                    </div>`);
+
+                new bootstrap.Modal('#sicilYanitModal').show();
+            });
+        });
+
+        $('#sicilYanitForm').on('submit', function (e) {
+            e.preventDefault();
+            const $btn = $(this).find('button[type=submit]');
+            $btn.prop('disabled', true);
+
+            $.post(API, $(this).serialize(), null, 'json')
+                .done(function (res) {
+                    if (res.status !== 'success') return hataGoster(res);
+                    bootstrap.Modal.getInstance(document.getElementById('sicilYanitModal')).hide();
+                    Swal.fire('Gönderildi', res.message, 'success');
+                    siciliYukle();
+                    sicilSayaclariYukle();
+                })
+                .always(() => $btn.prop('disabled', false));
+        });
+
+        // --- Kapatma işlemleri (kurum kullanıcısı) ---
+        function sicilKapat(id, sonuc, baslik, metin, renk, aciklamaZorunlu) {
+            Swal.fire({
+                title: baslik,
+                text: metin,
+                input: 'textarea',
+                inputPlaceholder: aciklamaZorunlu ? 'Açıklama (zorunlu)' : 'Açıklama (isteğe bağlı)',
+                icon: 'question',
+                showCancelButton: true,
+                confirmButtonText: 'Onayla',
+                cancelButtonText: 'Vazgeç',
+                confirmButtonColor: renk,
+                inputValidator: value => (aciklamaZorunlu && !String(value || '').trim()) ? 'Açıklama zorunludur.' : null
+            }).then(r => {
+                if (!r.isConfirmed) return;
+                $.post(API, { action: 'sicil-kapat', id: id, sonuc: sonuc, aciklama: r.value || '' }, null, 'json')
+                    .done(function (res) {
+                        if (res.status !== 'success') return hataGoster(res);
+                        Swal.fire('Tamam', res.message, 'success');
+                        siciliYukle();
+                        sicilSayaclariYukle();
+                    });
+            });
+        }
+
+        $(document).on('click', '.btn-sicil-cozuldu', function () {
+            sicilKapat($(this).data('id'), 'cozuldu', 'Sicil oluşturuldu mu?',
+                'Kayıt çözüldü olarak kapatılacak ve ekibe bilgi verilecek.', '#34c38f', false);
+        });
+
+        $(document).on('click', '.btn-sicil-iptal', function () {
+            sicilKapat($(this).data('id'), 'iptal', 'Bildirimi iptal et',
+                'Bu bildirim iptal edilecek. Nedenini yazın.', '#f46a6a', true);
+        });
+
+        // Düzeltme yine hatalıysa: mevcut kayıt çözüldü kapanır, yeni tur açılır.
+        $(document).on('click', '.btn-sicil-tekrar', function () {
+            const id = $(this).data('id');
+            apiGet({ action: 'sicil-detay', id: id }).done(function (res) {
+                if (res.status !== 'success') return hataGoster(res);
+                const s = res.data;
+
+                Swal.fire({
+                    title: 'Bilgi yine hatalı mı?',
+                    text: 'Mevcut kayıt kapatılıp ' + s.tutanak_no + ' için yeni bir düzeltme turu açılacak.',
+                    icon: 'warning',
+                    showCancelButton: true,
+                    confirmButtonText: 'Yeni tur aç',
+                    cancelButtonText: 'Vazgeç',
+                    confirmButtonColor: '#f1b44c'
+                }).then(r => {
+                    if (!r.isConfirmed) return;
+                    $.post(API, {
+                        action: 'sicil-kapat', id: id, sonuc: 'iptal',
+                        aciklama: 'Girilen düzeltme kabul edilmedi, yeni tur açıldı.'
+                    }, null, 'json').done(function (kapatRes) {
+                        if (kapatRes.status !== 'success') return hataGoster(kapatRes);
+
+                        $('#sicilEksikForm')[0].reset();
+                        $('#sicil_kacak_id').val(s.kacak_id || '');
+                        $('#sicil_tutanak_no').empty()
+                            .append(new Option(s.tutanak_no, s.tutanak_no, true, true))
+                            .trigger('change');
+                        $('#sicil_neden').val(s.neden).trigger('change');
+                        $('#sicilTutanakBilgi').removeClass('d-none').html(
+                            `<i class="bx bx-revision me-1"></i> ${esc(s.tutanak_no)} için yeni tur açılıyor.`);
+                        new bootstrap.Modal('#sicilEksikModal').show();
+                    });
+                });
+            });
+        });
+
+        // --- Detay ve geçmiş ---
+        $(document).on('click', '.btn-sicil-detay', function () {
+            apiGet({ action: 'sicil-detay', id: $(this).data('id') }).done(function (res) {
+                if (res.status !== 'success') return hataGoster(res);
+                const s = res.data;
+
+                function turKarti(t, aktif) {
+                    const d = t.duzeltilen_veri_dizi || {};
+                    const alanlar = Object.keys(d).map(k =>
+                        `<div><span class="text-muted">${esc(k)}:</span> <strong>${esc(d[k])}</strong></div>`).join('');
+
+                    return `<div class="border rounded p-3 mb-2 ${aktif ? 'border-primary' : ''}">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="fw-semibold">${parseInt(t.tur_sira || 1, 10)}. tur — ${esc(t.neden_metin)}</span>
+                            ${sicilDurumBadge(t)}
+                        </div>
+                        ${t.aciklama ? `<div class="small mb-2">${esc(t.aciklama)}</div>` : ''}
+                        <div class="small text-muted">Bildiren: ${esc(t.bildiren_adi || '-')}</div>
+                        ${t.yanit_veren_adi ? `<div class="small text-muted">Yanıtlayan: ${esc(t.yanit_veren_adi)}</div>` : ''}
+                        ${t.yanit_aciklama ? `<div class="small mt-1">Yanıt: ${esc(t.yanit_aciklama)}</div>` : ''}
+                        ${alanlar ? `<div class="small mt-2 p-2 bg-light rounded">${alanlar}</div>` : ''}
+                        ${t.kapatma_aciklama ? `<div class="small mt-1 text-muted">Kapanış: ${esc(t.kapatma_aciklama)}</div>` : ''}
+                    </div>`;
+                }
+
+                const gecmis = (s.gecmis || []).map(t => turKarti(t, false)).join('');
+
+                $('#sicilDetayGovde').html(`
+                    <div class="mb-3">
+                        <h6 class="fw-bold mb-1">${esc(s.tutanak_no)}</h6>
+                        <div class="small text-muted">
+                            ${esc(s.abone_adi || 'Abone bilgisi yok')} ·
+                            ${esc(s.ilce || '-')} · Ekip: ${esc(s.ekip_adi || '-')}
+                        </div>
+                    </div>
+                    ${turKarti(s, true)}
+                    ${gecmis ? `<h6 class="fw-bold mt-3 mb-2">Önceki Turlar</h6>${gecmis}` : ''}
+                `);
+
+                new bootstrap.Modal('#sicilDetayModal').show();
+            });
+        });
+
         // ---------- BAŞLANGIÇ ----------
         $('#btnOnaylaraGit').on('click', function () {
             $('#kacakTabs button[data-bs-target="#pane-onaylar"]').tab('show');
@@ -2065,6 +2665,7 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
             if (hedef === '#pane-onaylar' && !onayTable) onaylariYukle();
             if (hedef === '#pane-iptaller' && !iptalTable) iptalleriYukle();
             if (hedef === '#pane-ekip-ozet' && !ekipOzetYuklendi) ekipOzetiYukle();
+            if (hedef === '#pane-sicil' && !sicilTable) siciliYukle();
         });
 
         $(document).on('shown.bs.modal', '.modal', function () {
@@ -2084,6 +2685,21 @@ $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
             initOzetDonemPicker();
 
             kayitlariYukle();
+
+            if (YETKI.sicilBildir || YETKI.sicilYanitla) {
+                $('#sicil_filtre_neden').select2({ width: '100%' });
+                sicilTutanakSecimiBaslat();
+                sicilSayaclariYukle();
+
+                // Bildirim linkinden gelindiyse doğrudan sekmeyi aç.
+                const urlParams = new URLSearchParams(window.location.search);
+                if (urlParams.get('tab') === 'sicil') {
+                    if (urlParams.get('sicil_id')) sicilAktifDurum = 'yanitlandi';
+                    $('#sicilAltTabs button').removeClass('active');
+                    $('#sicilAltTabs button[data-sicil-durum="' + sicilAktifDurum + '"]').addClass('active');
+                    $('#kacakTabs button[data-bs-target="#pane-sicil"]').tab('show');
+                }
+            }
 
             if (typeof feather !== 'undefined') {
                 try { feather.replace(); } catch (e) { console.warn('feather.replace error:', e); }

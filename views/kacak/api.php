@@ -8,6 +8,7 @@ require_once dirname(__DIR__, 2) . '/bootstrap.php';
 use App\Helper\Date;
 use App\Helper\Security;
 use App\Model\KacakKontrolModel;
+use App\Model\KacakSicilEksikModel;
 use App\Model\PersonelModel;
 use App\Model\SystemLogModel;
 use App\Service\Gate;
@@ -51,17 +52,22 @@ $saltOkunurActionlar = [
     'gunluk-rapor',
     'haftalik-rapor',
     'teslim-alma-listesi',
+    'sicil-list',
+    'sicil-counts',
+    'sicil-detay',
+    'sicil-tutanak-ara',
 ];
 
 if (in_array($action, $saltOkunurActionlar, true)) {
     kacakSuperAdmin();
-    foreach (['kacak_onay', 'kacak_duzenle', 'kacak_iptal', 'kacak_arsiv'] as $izin) {
+    foreach (['kacak_onay', 'kacak_duzenle', 'kacak_iptal', 'kacak_arsiv', 'kacak_sicil_bildir', 'kacak_sicil_yanitla'] as $izin) {
         kacakIzin($izin);
     }
     session_write_close();
 }
 
 $Kacak = new KacakKontrolModel();
+$Sicil = new KacakSicilEksikModel();
 $Log = new SystemLogModel();
 
 function kacakYanit(bool $ok, string $mesaj = '', array $ek = []): void
@@ -92,6 +98,33 @@ function kacakYetkiKontrol(string $izin): void
 {
     if (!kacakIzin($izin) && !kacakSuperAdmin()) {
         kacakYanit(false, 'Bu işlem için yetkiniz bulunmuyor.');
+    }
+}
+
+/**
+ * Sicil oluşmayanlar sekmesini görüntüleme yetkisi: bildirme veya yanıtlama.
+ */
+function sicilGorusYetkiKontrol(): void
+{
+    if (!kacakIzin('kacak_sicil_bildir') && !kacakIzin('kacak_sicil_yanitla') && !kacakSuperAdmin()) {
+        kacakYanit(false, 'Bu işlem için yetkiniz bulunmuyor.');
+    }
+}
+
+/**
+ * Alt sekme adını geçerli durum listesine çevirir.
+ */
+function sicilDurumFiltresi(string $sekme): array
+{
+    switch ($sekme) {
+        case 'beklemede':
+            return ['beklemede'];
+        case 'yanitlandi':
+            return ['yanitlandi'];
+        case 'arsiv':
+            return ['cozuldu', 'iptal'];
+        default:
+            return [];
     }
 }
 
@@ -548,6 +581,202 @@ try {
             kacakYanit(true, '', ['baslangic' => $bas, 'bitis' => $bit, 'data' => $liste]);
             break;
 
+        // =====================================================
+        // SİCİL OLUŞMAYANLAR
+        // =====================================================
+        case 'sicil-list':
+            sicilGorusYetkiKontrol();
+            $columnNames = ['tutanak_no', 'tutanak_tarihi', 'abone_adi', 'ekip_adi', 'neden', '', '', '', 'tur_sira', 'durum', ''];
+            $filters = [
+                'durum' => sicilDurumFiltresi($_GET['durum'] ?? ''),
+                'neden' => $_GET['neden'] ?? '',
+                'arama' => $_GET['arama'] ?? '',
+            ];
+
+            if (!empty($_GET['start_date'])) {
+                $filters['tarih_baslangic'] = kacakTarih($_GET['start_date']);
+            }
+            if (!empty($_GET['end_date'])) {
+                $filters['tarih_bitis'] = kacakTarih($_GET['end_date']);
+            }
+
+            $dataTableRequest = isset($_GET['draw']);
+            if ($dataTableRequest) {
+                $globalSearch = trim((string) ($_GET['search']['value'] ?? ''));
+                if ($globalSearch !== '') {
+                    $filters['arama'] = trim($filters['arama'] . ' ' . $globalSearch);
+                }
+                foreach (($_GET['columns'] ?? []) as $index => $column) {
+                    $value = trim((string) ($column['search']['value'] ?? ''));
+                    if ($value !== '' && !empty($columnNames[$index])) {
+                        $filters['kolon_aramalari'][$columnNames[$index]] = $value;
+                    }
+                }
+            }
+
+            // Yalnızca yanıtlama yetkisi olan personel kendi ekibinin taleplerini görür.
+            if ($userPersonelId > 0 && !kacakSuperAdmin() && !kacakIzin('kacak_sicil_bildir') && !kacakIzin('kacak_onay')) {
+                $filters['personel_id'] = $userPersonelId;
+            }
+
+            $limit = $dataTableRequest ? max(1, min(100, (int) ($_GET['length'] ?? 25))) : 0;
+            $offset = $dataTableRequest ? max(0, (int) ($_GET['start'] ?? 0)) : 0;
+            $orderIndex = (int) ($_GET['order'][0]['column'] ?? 0);
+            $orderColumn = $columnNames[$orderIndex] ?? 'bildirim_tarihi';
+            $orderDirection = (string) ($_GET['order'][0]['dir'] ?? 'desc');
+
+            $kayitlar = $Sicil->getRecords($filters, $limit, $offset, $orderColumn ?: 'bildirim_tarihi', $orderDirection);
+            foreach ($kayitlar as &$s) {
+                $s['bildirim_tarihi_formatted'] = Date::dmYHis($s['bildirim_tarihi'], 'd.m.Y H:i');
+                $s['tutanak_tarihi_formatted'] = !empty($s['tutanak_tarihi']) ? Date::dmY($s['tutanak_tarihi']) : '';
+                $s['yanit_tarihi_formatted'] = !empty($s['yanit_tarihi']) ? Date::dmYHis($s['yanit_tarihi'], 'd.m.Y H:i') : '';
+                $s['kapatma_tarihi_formatted'] = !empty($s['kapatma_tarihi']) ? Date::dmYHis($s['kapatma_tarihi'], 'd.m.Y H:i') : '';
+            }
+            unset($s);
+
+            if ($dataTableRequest) {
+                $filteredCount = $Sicil->countRecords($filters);
+                kacakYanit(true, '', [
+                    'draw' => (int) $_GET['draw'],
+                    'recordsTotal' => $filteredCount,
+                    'recordsFiltered' => $filteredCount,
+                    'data' => $kayitlar,
+                ]);
+            }
+
+            kacakYanit(true, '', ['data' => $kayitlar]);
+            break;
+
+        case 'sicil-counts':
+            sicilGorusYetkiKontrol();
+            $sadeceEkip = $userPersonelId > 0 && !kacakSuperAdmin()
+                && !kacakIzin('kacak_sicil_bildir') && !kacakIzin('kacak_onay');
+            kacakYanit(true, '', ['counts' => $Sicil->getCounts($sadeceEkip ? $userPersonelId : 0)]);
+            break;
+
+        case 'sicil-detay':
+            sicilGorusYetkiKontrol();
+            $kayit = $Sicil->getRecord((int) ($_GET['id'] ?? 0));
+            if (!$kayit) {
+                kacakYanit(false, 'Kayıt bulunamadı.');
+            }
+            if ($userPersonelId > 0 && !kacakSuperAdmin() && !kacakIzin('kacak_sicil_bildir') && !kacakIzin('kacak_onay')) {
+                if (!$Sicil->personelYetkiliMi((int) $kayit['id'], $userPersonelId)) {
+                    kacakYanit(false, 'Bu kaydı görüntüleme yetkiniz bulunmuyor.');
+                }
+            }
+            kacakYanit(true, '', ['data' => $kayit]);
+            break;
+
+        case 'sicil-tutanak-ara':
+            kacakYetkiKontrol('kacak_sicil_bildir');
+            $sonuclar = $Sicil->tutanakAra((string) ($_GET['q'] ?? ''));
+            foreach ($sonuclar as &$t) {
+                $t['tarih_formatted'] = Date::dmY($t['tarih']);
+            }
+            unset($t);
+            kacakYanit(true, '', ['data' => $sonuclar]);
+            break;
+
+        case 'sicil-create':
+            kacakYetkiKontrol('kacak_sicil_bildir');
+            try {
+                $sicilId = $Sicil->create([
+                    'tutanak_no' => $_POST['tutanak_no'] ?? '',
+                    'kacak_id' => $_POST['kacak_id'] ?? null,
+                    'neden' => $_POST['neden'] ?? '',
+                    'aciklama' => $_POST['aciklama'] ?? '',
+                ], $userId);
+            } catch (\Exception $e) {
+                kacakYanit(false, $e->getMessage());
+            }
+
+            $yeniKayit = $Sicil->getRecord($sicilId);
+            $Log->logAction(
+                $userId,
+                'Sicil Eksik Bildirimi Açıldı',
+                'Tutanak: ' . ($yeniKayit['tutanak_no'] ?? '-') . ', Neden: ' . ($yeniKayit['neden_metin'] ?? '-'),
+                SystemLogModel::LEVEL_IMPORTANT
+            );
+
+            sicilEkibeBildir($yeniKayit ?? []);
+
+            kacakYanit(true, 'Sicil eksik bildirimi oluşturuldu, ekibe iletildi.', ['id' => $sicilId]);
+            break;
+
+        case 'sicil-yanitla':
+            kacakYetkiKontrol('kacak_sicil_yanitla');
+            $sicilId = (int) ($_POST['id'] ?? 0);
+            try {
+                $guncel = $Sicil->yanitla($sicilId, [
+                    'abone_adi' => $_POST['abone_adi'] ?? '',
+                    'abone_tc' => $_POST['abone_tc'] ?? '',
+                    'abone_dogum_tarihi' => $_POST['abone_dogum_tarihi'] ?? '',
+                    'abone_adres' => $_POST['abone_adres'] ?? '',
+                    'sayac_no' => $_POST['sayac_no'] ?? '',
+                    'yanit_aciklama' => $_POST['yanit_aciklama'] ?? '',
+                ], $userPersonelId, $userId);
+            } catch (\Exception $e) {
+                kacakYanit(false, $e->getMessage());
+            }
+
+            $Log->logAction(
+                $userId,
+                'Sicil Eksik Bildirimi Yanıtlandı',
+                'ID: ' . $sicilId . ', Tutanak: ' . ($guncel['tutanak_no'] ?? '-'),
+                SystemLogModel::LEVEL_IMPORTANT
+            );
+
+            sicilKurumaBildir($guncel ?? []);
+
+            kacakYanit(true, 'Düzeltilmiş bilgi kaydedildi ve kuruma iletildi.');
+            break;
+
+        case 'sicil-kapat':
+            kacakYetkiKontrol('kacak_sicil_bildir');
+            $sicilId = (int) ($_POST['id'] ?? 0);
+            $sonuc = (string) ($_POST['sonuc'] ?? '');
+            try {
+                $guncel = $Sicil->kapat($sicilId, $sonuc, (string) ($_POST['aciklama'] ?? ''), $userId);
+            } catch (\Exception $e) {
+                kacakYanit(false, $e->getMessage());
+            }
+
+            $Log->logAction(
+                $userId,
+                $sonuc === 'cozuldu' ? 'Sicil Eksik Bildirimi Çözüldü' : 'Sicil Eksik Bildirimi İptal Edildi',
+                'ID: ' . $sicilId . ', Tutanak: ' . ($guncel['tutanak_no'] ?? '-'),
+                SystemLogModel::LEVEL_IMPORTANT
+            );
+
+            if ($sonuc === 'cozuldu') {
+                sicilEkibeBildir($guncel ?? [], 'cozuldu');
+            }
+
+            kacakYanit(true, $sonuc === 'cozuldu' ? 'Kayıt çözüldü olarak kapatıldı.' : 'Kayıt iptal edildi.');
+            break;
+
+        case 'sicil-eslestir':
+            kacakYetkiKontrol('kacak_sicil_yanitla');
+            $sicilId = (int) ($_POST['id'] ?? 0);
+            try {
+                $guncel = $Sicil->eslestir($sicilId, (int) ($_POST['kacak_id'] ?? 0));
+            } catch (\Exception $e) {
+                kacakYanit(false, $e->getMessage());
+            }
+
+            $Log->logAction(
+                $userId,
+                'Sicil Eksik Bildirimi Eşleştirildi',
+                'ID: ' . $sicilId . ', Tutanak: ' . ($guncel['tutanak_no'] ?? '-'),
+                SystemLogModel::LEVEL_IMPORTANT
+            );
+
+            sicilEkibeBildir($guncel ?? []);
+
+            kacakYanit(true, 'Kayıt tutanakla eşleştirildi, ekibe bildirim gönderildi.');
+            break;
+
         default:
             kacakYanit(false, 'Geçersiz istek.');
     }
@@ -651,6 +880,91 @@ function kacakBildirimGonder(array $kayit, string $durum, string $neden = ''): v
         ]);
     } catch (\Throwable $e) {
         error_log('Kaçak bildirimi gönderilemedi: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Sicil eksik bildirimini tutanağı tutan ekibe iletir.
+ * $tip: 'acildi' -> düzeltme isteniyor, 'cozuldu' -> bilgilendirme
+ */
+function sicilEkibeBildir(array $kayit, string $tip = 'acildi'): void
+{
+    if (empty($kayit['atanan_personel_ids'])) {
+        return;
+    }
+
+    $personelIds = array_values(array_unique(array_filter(
+        array_map('intval', explode(',', (string) $kayit['atanan_personel_ids']))
+    )));
+
+    if (!$personelIds) {
+        return;
+    }
+
+    $tutanakNo = $kayit['tutanak_no'] ?? '-';
+
+    if ($tip === 'cozuldu') {
+        $baslik = 'Tutanak Sicili Oluşturuldu';
+        $mesaj = $tutanakNo . ' nolu tutanak için sicil oluşturuldu, düzeltme talebi kapandı.';
+    } else {
+        $baslik = 'Tutanak Bilgi Düzeltmesi Gerekiyor';
+        $mesaj = $tutanakNo . ' nolu tutanağın ' . mb_strtolower($kayit['neden_metin'] ?? 'bilgisi hatalı', 'UTF-8')
+            . ' olduğu bildirildi. Aboneye ulaşıp doğru bilgiyi uygulamadan giriniz.';
+        if (!empty($kayit['aciklama'])) {
+            $mesaj .= ' Not: ' . $kayit['aciklama'];
+        }
+    }
+
+    try {
+        $Push = new \App\Service\PushNotificationService();
+        foreach ($personelIds as $personelId) {
+            $Push->sendToPersonel($personelId, [
+                'title' => $baslik,
+                'body' => $mesaj,
+                'url' => '?page=kacak',
+            ]);
+        }
+    } catch (\Throwable $e) {
+        error_log('Sicil eksik bildirimi ekibe gönderilemedi: ' . $e->getMessage());
+    }
+}
+
+/**
+ * Ekip düzeltmeyi girdiğinde bildirimi açan kurum kullanıcısına haber verir.
+ */
+function sicilKurumaBildir(array $kayit): void
+{
+    if (empty($kayit['bildiren_user_id'])) {
+        return;
+    }
+
+    $tutanakNo = $kayit['tutanak_no'] ?? '-';
+    $mesaj = $tutanakNo . ' nolu tutanak için ekip düzeltilmiş bilgiyi girdi. Kontrol edip sicil oluşturabilirsiniz.';
+    $link = 'index.php?p=kacak/list&tab=sicil&sicil_id=' . (int) ($kayit['id'] ?? 0);
+
+    try {
+        $Bildirim = new \App\Model\BildirimModel();
+        $Bildirim->createNotification(
+            (int) $kayit['bildiren_user_id'],
+            'Sicil Düzeltmesi Yanıtlandı',
+            $mesaj,
+            $link,
+            'user-check',
+            'success'
+        );
+    } catch (\Throwable $e) {
+        error_log('Sicil düzeltme bildirimi kaydedilemedi: ' . $e->getMessage());
+    }
+
+    try {
+        $Push = new \App\Service\PushNotificationService();
+        $Push->sendToUser((int) $kayit['bildiren_user_id'], [
+            'title' => 'Sicil Düzeltmesi Yanıtlandı',
+            'body' => $mesaj,
+            'url' => $link,
+        ], true);
+    } catch (\Throwable $e) {
+        error_log('Sicil düzeltme push bildirimi gönderilemedi: ' . $e->getMessage());
     }
 }
 

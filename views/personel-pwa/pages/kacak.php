@@ -45,6 +45,17 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
         </div>
     </section>
 
+    <!-- Sicil düzeltme talepleri -->
+    <section id="sicil-talep-serit" class="px-4 pt-4" style="display:none">
+        <div class="bg-red-50 dark:bg-slate-800 border border-red-200 dark:border-slate-800 rounded-xl p-3">
+            <div class="flex items-center gap-2 mb-2">
+                <span class="material-symbols-outlined text-red-600">person_alert</span>
+                <p class="text-xs font-bold text-red-600 dark:text-amber-400" id="sicil-talep-baslik"></p>
+            </div>
+            <div id="sicil-talep-liste" class="space-y-2"></div>
+        </div>
+    </section>
+
     <!-- Dönem -->
     <section class="px-4 pt-4">
         <div class="flex items-center gap-2">
@@ -262,6 +273,76 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
         </div>
         <div class="p-6 pt-4 overflow-y-auto flex-1" id="kacak-detay-content"
             style="overscroll-behavior-y: contain; padding-bottom:2.5rem;"></div>
+    </div>
+</div>
+
+<!-- ============ SİCİL DÜZELTME MODALI ============ -->
+<div id="sicil-duzeltme-modal" class="modal-overlay" style="z-index: 200;">
+    <div class="modal-content"
+        style="display:flex !important; flex-direction:column !important; max-height:90vh !important; overflow:hidden !important; padding:0 !important;">
+
+        <div class="px-6 pt-3 pb-2 bg-white dark:bg-card-dark z-10 border-b border-slate-200 dark:border-slate-800">
+            <div class="modal-handle mb-4"></div>
+            <div class="flex items-center justify-between">
+                <h3 class="text-lg font-bold text-slate-800 dark:text-white">Bilgi Düzeltme</h3>
+                <button onclick="Modal.close('sicil-duzeltme-modal')"
+                    class="w-8 h-8 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-slate-500">close</span>
+                </button>
+            </div>
+        </div>
+
+        <form id="sicil-duzeltme-form" class="p-6 pt-4 overflow-y-auto flex-1 space-y-4"
+            style="overscroll-behavior-y: contain;">
+            <input type="hidden" name="id" id="sicil-duzeltme-id" value="0">
+
+            <div class="bg-red-50 dark:bg-slate-800 border border-red-200 dark:border-slate-800 rounded-xl p-4"
+                id="sicil-duzeltme-talep"></div>
+
+            <p class="text-xs text-slate-500 leading-relaxed">Aboneye ulaşıp doğru bilgiyi öğrendikten sonra yalnızca
+                düzelttiğiniz alanları doldurun. Boş bıraktığınız alanlar değişmez.</p>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">TC Kimlik No</label>
+                <input type="text" name="abone_tc" id="sicil-abone-tc" inputmode="numeric" maxlength="11"
+                    class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Doğum Tarihi</label>
+                <input type="date" name="abone_dogum_tarihi" id="sicil-abone-dogum"
+                    class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Abone Adı Soyadı</label>
+                <input type="text" name="abone_adi" id="sicil-abone-adi"
+                    class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Sayaç No</label>
+                    <input type="text" name="sayac_no" id="sicil-sayac-no"
+                        class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Adres</label>
+                    <input type="text" name="abone_adres" id="sicil-abone-adres"
+                        class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Açıklama</label>
+                <textarea name="yanit_aciklama" id="sicil-yanit-aciklama" rows="3"
+                    placeholder="Aboneyle görüşme notu, ulaşılamadıysa nedeni..."
+                    class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white"></textarea>
+            </div>
+
+            <button type="submit" id="sicil-duzeltme-btn"
+                class="w-full py-3 rounded-xl bg-primary text-white text-sm font-black">Kuruma Gönder</button>
+        </form>
     </div>
 </div>
 
@@ -1321,6 +1402,101 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             btn.textContent = cevrimici() ? 'Yapay Zeka ile Oku' : 'Çevrimdışı — Elle Doldurun';
         }
 
+        // ---------- SİCİL DÜZELTME TALEPLERİ ----------
+        let sicilTalepleri = [];
+
+        async function sicilTalepleriYukle() {
+            const serit = document.getElementById('sicil-talep-serit');
+            if (!serit) return;
+
+            try {
+                const res = await API.request('getSicilDuzeltmeTalepleri', {});
+                sicilTalepleri = (res && res.success && res.data) ? (res.data.items || []) : [];
+            } catch (err) {
+                console.error('Sicil talepleri alınamadı:', err);
+                sicilTalepleri = [];
+            }
+
+            if (sicilTalepleri.length === 0) {
+                serit.style.display = 'none';
+                return;
+            }
+
+            document.getElementById('sicil-talep-baslik').textContent =
+                sicilTalepleri.length + ' tutanak için bilgi düzeltmesi bekleniyor';
+
+            document.getElementById('sicil-talep-liste').innerHTML = sicilTalepleri.map(t => `
+                <div class="bg-white dark:bg-card-dark rounded-xl p-3">
+                    <div class="flex items-center justify-between gap-2 mb-1">
+                        <span class="text-xs font-black text-slate-800 dark:text-white">#${esc(t.tutanak_no)}</span>
+                        <span class="text-xs text-slate-400">${esc(t.tutanak_tarihi)}</span>
+                    </div>
+                    <p class="text-xs font-bold text-red-600 dark:text-amber-400 mb-1">${esc(t.neden_metin)}</p>
+                    ${t.abone_adi ? `<p class="text-xs text-slate-500 mb-1">Abone: ${esc(t.abone_adi)}</p>` : ''}
+                    ${t.aciklama ? `<p class="text-xs text-slate-500 leading-relaxed mb-2">${esc(t.aciklama)}</p>` : ''}
+                    <button type="button" onclick="sicilDuzeltmeAc(${parseInt(t.id, 10)})"
+                        class="w-full py-2 rounded-xl bg-primary text-white text-xs font-bold">Düzelt</button>
+                </div>`).join('');
+
+            serit.style.display = '';
+        }
+
+        window.sicilDuzeltmeAc = function (id) {
+            const t = sicilTalepleri.find(x => parseInt(x.id, 10) === parseInt(id, 10));
+            if (!t) return;
+
+            document.getElementById('sicil-duzeltme-form').reset();
+            document.getElementById('sicil-duzeltme-id').value = t.id;
+
+            document.getElementById('sicil-duzeltme-talep').innerHTML = `
+                <p class="text-xs font-black text-slate-800 dark:text-white mb-1">#${esc(t.tutanak_no)} — ${esc(t.neden_metin)}</p>
+                ${t.aciklama ? `<p class="text-xs text-slate-500 leading-relaxed mb-2">${esc(t.aciklama)}</p>` : ''}
+                <p class="text-xs text-slate-400">Kayıtlı abone: ${esc(t.abone_adi || '-')}</p>
+                <p class="text-xs text-slate-400">Kayıtlı TC: ${esc(t.abone_tc || '-')}</p>
+                <p class="text-xs text-slate-400">Kayıtlı doğum tarihi: ${esc(t.abone_dogum_tarihi || '-')}</p>`;
+
+            Modal.open('sicil-duzeltme-modal');
+        };
+
+        async function sicilDuzeltmeGonder(e) {
+            e.preventDefault();
+
+            if (!cevrimici()) {
+                return Alert.error('Çevrimdışı', 'Düzeltme göndermek için internet bağlantısı gerekiyor.');
+            }
+
+            const btn = document.getElementById('sicil-duzeltme-btn');
+            btn.disabled = true;
+
+            const form = document.getElementById('sicil-duzeltme-form');
+            const alanlar = {
+                id: document.getElementById('sicil-duzeltme-id').value,
+                abone_tc: document.getElementById('sicil-abone-tc').value.trim(),
+                abone_dogum_tarihi: document.getElementById('sicil-abone-dogum').value,
+                abone_adi: document.getElementById('sicil-abone-adi').value.trim(),
+                sayac_no: document.getElementById('sicil-sayac-no').value.trim(),
+                abone_adres: document.getElementById('sicil-abone-adres').value.trim(),
+                yanit_aciklama: document.getElementById('sicil-yanit-aciklama').value.trim()
+            };
+
+            try {
+                const res = await API.request('saveSicilDuzeltme', alanlar);
+                if (!res || !res.success) {
+                    return Alert.error('Gönderilemedi', (res && res.message) || 'İşlem tamamlanamadı.');
+                }
+
+                Modal.close('sicil-duzeltme-modal');
+                form.reset();
+                Alert.success('Gönderildi', res.message || 'Düzeltilmiş bilgi kuruma iletildi.');
+                await sicilTalepleriYukle();
+            } catch (err) {
+                console.error('Sicil düzeltme hatası:', err);
+                Alert.error('Hata', 'İşlem tamamlanamadı.');
+            } finally {
+                btn.disabled = false;
+            }
+        }
+
         // pwa-app.js sayfa içeriğinden sonra yüklendiği için API/Alert/Modal
         // ancak DOMContentLoaded anında hazır olur.
         document.addEventListener('DOMContentLoaded', async function () {
@@ -1336,7 +1512,11 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             aiButonGuncelle();
             await kuyrugaBak();
             await loadKacakKayitlar();
+            await sicilTalepleriYukle();
             referansTazele();
+
+            document.getElementById('sicil-duzeltme-form')
+                .addEventListener('submit', sicilDuzeltmeGonder);
 
             // Kuyruk hem bu sayfadan hem de arka plan senkronizasyonundan değişebilir.
             window.addEventListener('kuyruk-degisti', async (e) => {
@@ -1350,6 +1530,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 aiButonGuncelle();
                 await kuyrugaBak();
                 await loadKacakKayitlar();
+                await sicilTalepleriYukle();
                 referansTazele();
             });
 

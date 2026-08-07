@@ -2831,6 +2831,91 @@ try {
             ]);
             break;
 
+        case 'getSicilDuzeltmeTalepleri':
+            $SicilModel = new \App\Model\KacakSicilEksikModel();
+            $talepler = $SicilModel->getPersonelTalepleri($personel_id, [
+                'durum' => ['beklemede'],
+                'limit' => 50,
+            ]);
+
+            $liste = [];
+            foreach ($talepler as $t) {
+                $liste[] = [
+                    'id' => (int) $t['id'],
+                    'tutanak_no' => $t['tutanak_no'],
+                    'tutanak_tarihi' => !empty($t['tutanak_tarihi']) ? date('d.m.Y', strtotime($t['tutanak_tarihi'])) : '',
+                    'abone_adi' => $t['abone_adi'],
+                    'abone_tc' => $t['abone_tc'],
+                    'abone_dogum_tarihi' => $t['abone_dogum_tarihi'],
+                    'abone_adres' => $t['abone_adres'],
+                    'sayac_no' => $t['sayac_no'],
+                    'ilce' => $t['ilce'],
+                    'neden' => $t['neden'],
+                    'neden_metin' => $t['neden_metin'],
+                    'aciklama' => $t['aciklama'],
+                    'bekleme_gun' => (int) $t['bekleme_gun'],
+                    'tur_sira' => (int) $t['tur_sira'],
+                ];
+            }
+
+            response(true, ['items' => $liste, 'toplam' => count($liste)]);
+            break;
+
+        case 'saveSicilDuzeltme':
+            $SicilModel = new \App\Model\KacakSicilEksikModel();
+            $sicilId = (int) ($_POST['id'] ?? 0);
+
+            if (!$SicilModel->personelYetkiliMi($sicilId, $personel_id)) {
+                response(false, null, 'Bu düzeltme talebi size atanmamış.');
+            }
+
+            try {
+                $SicilModel->yanitla($sicilId, [
+                    'abone_adi' => $_POST['abone_adi'] ?? '',
+                    'abone_tc' => $_POST['abone_tc'] ?? '',
+                    'abone_dogum_tarihi' => $_POST['abone_dogum_tarihi'] ?? '',
+                    'abone_adres' => $_POST['abone_adres'] ?? '',
+                    'sayac_no' => $_POST['sayac_no'] ?? '',
+                    'yanit_aciklama' => $_POST['yanit_aciklama'] ?? '',
+                ], $personel_id, 0);
+            } catch (\Exception $e) {
+                response(false, null, $e->getMessage());
+            }
+
+            $guncel = $SicilModel->getRecord($sicilId);
+
+            if (!empty($guncel['bildiren_user_id'])) {
+                $mesaj = ($guncel['tutanak_no'] ?? '-')
+                    . ' nolu tutanak için ekip düzeltilmiş bilgiyi girdi. Kontrol edip sicil oluşturabilirsiniz.';
+                $link = 'index.php?p=kacak/list&tab=sicil&sicil_id=' . $sicilId;
+
+                try {
+                    (new BildirimModel())->createNotification(
+                        (int) $guncel['bildiren_user_id'],
+                        'Sicil Düzeltmesi Yanıtlandı',
+                        $mesaj,
+                        $link,
+                        'user-check',
+                        'success'
+                    );
+                } catch (\Throwable $e) {
+                    error_log('PWA sicil düzeltme bildirimi kaydedilemedi: ' . $e->getMessage());
+                }
+
+                try {
+                    (new PushNotificationService())->sendToUser((int) $guncel['bildiren_user_id'], [
+                        'title' => 'Sicil Düzeltmesi Yanıtlandı',
+                        'body' => $mesaj,
+                        'url' => $link,
+                    ], true);
+                } catch (\Throwable $e) {
+                    error_log('PWA sicil düzeltme push gönderilemedi: ' . $e->getMessage());
+                }
+            }
+
+            response(true, null, 'Düzeltilmiş bilgi kuruma iletildi. Teşekkürler.');
+            break;
+
         case 'getPuantajWorkTypes':
             $PuantajModel = new \App\Model\PuantajModel();
             $types = $PuantajModel->getWorkTypes($personel_id);
