@@ -767,8 +767,28 @@ function kacakRecordZipIndir(KacakKontrolModel $Kacak, SystemLogModel $Log, int 
     }
 
     $root = KacakKontrolModel::rootPath();
-    $tutanakNo = !empty($kayit['tutanak_no']) ? preg_replace('/[^\p{L}\p{N}_-]+/u', '_', $kayit['tutanak_no']) : ('kayit_' . $kacakId);
-    $zipAdi = 'kacak_fotolari_' . $tutanakNo . '_' . date('Ymd_His') . '.zip';
+
+    $tutanakNoClean = !empty($kayit['tutanak_no']) ? trim((string) $kayit['tutanak_no']) : '';
+    $aboneAdiClean = !empty($kayit['abone_adi']) ? mb_strtoupper(trim((string) $kayit['abone_adi']), 'UTF-8') : '';
+    $turClean = !empty($kayit['tur']) ? mb_strtoupper(trim((string) $kayit['tur']), 'UTF-8') : 'KAÇAK';
+
+    $folderParts = [];
+    if ($tutanakNoClean !== '') {
+        $folderParts[] = $tutanakNoClean;
+    }
+    if ($aboneAdiClean !== '') {
+        $folderParts[] = $aboneAdiClean;
+    }
+
+    if (!empty($folderParts)) {
+        $folderBase = implode(' - ', $folderParts);
+        $rawFolderName = sprintf('%s (%s)', $folderBase, $turClean);
+    } else {
+        $rawFolderName = sprintf('kayit_%d (%s)', $kacakId, $turClean);
+    }
+
+    $folderName = preg_replace('/[\/\\\\:\*\?"<>\|]/u', '_', trim($rawFolderName));
+    $zipAdi = $folderName . '.zip';
     $zipYolu = sys_get_temp_dir() . '/' . uniqid('kacak_rec_zip_', true) . '.zip';
 
     $zip = new \ZipArchive();
@@ -777,8 +797,11 @@ function kacakRecordZipIndir(KacakKontrolModel $Kacak, SystemLogModel $Log, int 
         exit('Arşiv dosyası oluşturulamadı.');
     }
 
-    $turEtiket = ['tutanak' => 'Tutanak', 'saha' => 'Saha', 'iptal' => 'Iptal_Belgesi'];
     $eklenenSayisi = 0;
+    $tutanakSeq = 1;
+    $sahaSeq = 1;
+    $iptalSeq = 1;
+    $videoSeq = 1;
 
     foreach ($fotolar as $foto) {
         $kaynak = $root . '/' . ltrim($foto['dosya_yolu'], '/');
@@ -786,11 +809,33 @@ function kacakRecordZipIndir(KacakKontrolModel $Kacak, SystemLogModel $Log, int 
             continue;
         }
 
-        $turKlasor = $turEtiket[$foto['tur']] ?? ucfirst($foto['tur']);
         $ext = pathinfo($foto['dosya_yolu'], PATHINFO_EXTENSION);
-        $dosyaAdi = sprintf('%s_%s_%d.%s', $tutanakNo, $turKlasor, $foto['id'], $ext);
+        if (empty($ext)) {
+            $ext = 'jpg';
+        }
 
-        $zip->addFile($kaynak, $turKlasor . '/' . $dosyaAdi);
+        $fotoTur = strtolower($foto['tur'] ?? 'saha');
+        $medyaTipi = strtolower($foto['medya_tipi'] ?? 'foto');
+
+        if ($fotoTur === 'tutanak') {
+            $prefix = 'tutanak';
+            $seq = $tutanakSeq++;
+        } elseif ($fotoTur === 'iptal') {
+            $prefix = 'iptal';
+            $seq = $iptalSeq++;
+        } else {
+            if ($medyaTipi === 'video') {
+                $prefix = 'video';
+                $seq = $videoSeq++;
+            } else {
+                $prefix = 'saha';
+                $seq = $sahaSeq++;
+            }
+        }
+
+        $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNoClean ?: ('kayit_' . $kacakId), $seq, $ext);
+
+        $zip->addFile($kaynak, $folderName . '/' . $dosyaAdi);
         $eklenenSayisi++;
     }
 
@@ -813,8 +858,9 @@ function kacakRecordZipIndir(KacakKontrolModel $Kacak, SystemLogModel $Log, int 
         ob_end_clean();
     }
 
+    $encodedZipAdi = rawurlencode($zipAdi);
     header('Content-Type: application/zip');
-    header('Content-Disposition: attachment; filename="' . $zipAdi . '"');
+    header('Content-Disposition: attachment; filename="' . str_replace('"', '', $zipAdi) . '"; filename*=UTF-8\'\'' . $encodedZipAdi);
     header('Content-Length: ' . filesize($zipYolu));
     header('Cache-Control: no-cache, must-revalidate');
     header('Pragma: no-cache');
