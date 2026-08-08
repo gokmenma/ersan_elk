@@ -348,6 +348,38 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
     </div>
 </div>
 
+<!-- Video Yükleme İlerleme Modalı -->
+<div id="video-progress-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm hidden">
+    <div class="bg-white dark:bg-slate-800 rounded-2xl p-6 w-11/12 max-w-md shadow-2xl border border-slate-200 dark:border-slate-700 animate-in fade-in zoom-in duration-200">
+        <div class="flex items-center space-x-3 mb-4">
+            <div class="w-11 h-11 rounded-full bg-indigo-100 dark:bg-indigo-900/40 text-indigo-600 dark:text-indigo-400 flex items-center justify-center font-bold flex-shrink-0">
+                <svg class="w-6 h-6 animate-pulse" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 10l4.553-2.276A1 1 0 0121 8.618v6.764a1 1 0 01-1.447.894L15 14M5 18h8a2 2 0 002-2V8a2 2 0 002-2H5a2 2 0 00-2 2v8a2 2 0 002 2z"></path>
+                </svg>
+            </div>
+            <div class="min-w-0 flex-1">
+                <h4 class="font-bold text-slate-800 dark:text-white text-base truncate">Video Yükleniyor...</h4>
+                <p id="video-progress-title" class="text-xs text-slate-500 dark:text-slate-400 truncate">Lütfen bekleyin, videolar sunucuya aktarılıyor.</p>
+            </div>
+        </div>
+
+        <div class="space-y-2 mb-3">
+            <div class="flex justify-between items-center text-xs font-semibold text-slate-600 dark:text-slate-300">
+                <span id="video-progress-file-info" class="truncate max-w-[200px]">video.mp4</span>
+                <span id="video-progress-percent" class="text-indigo-600 dark:text-indigo-400 font-extrabold text-sm ml-2">0%</span>
+            </div>
+            <div class="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-4 overflow-hidden p-0.5 shadow-inner">
+                <div id="video-progress-bar" class="bg-gradient-to-r from-indigo-500 via-indigo-600 to-purple-600 h-3 rounded-full transition-all duration-150 w-0 shadow-md"></div>
+            </div>
+        </div>
+
+        <div class="flex justify-between items-center text-[11px] text-slate-400 font-mono">
+            <span>Yükleme Durumu</span>
+            <span id="video-progress-detail">0.0 MB / 0.0 MB</span>
+        </div>
+    </div>
+</div>
+
 <script>
     (function () {
         const MAX_SAHA_FOTO = <?= (int) $maxSahaFoto ?>;
@@ -1173,8 +1205,28 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
         async function videolariGonder(targetIdOrUuid) {
             let eksik = 0;
             videoGonderimHatalari = [];
+            if (!videoDosyalari || videoDosyalari.length === 0) return 0;
+
+            const modal = document.getElementById('video-progress-modal');
+            const titleEl = document.getElementById('video-progress-title');
+            const fileInfoEl = document.getElementById('video-progress-file-info');
+            const percentEl = document.getElementById('video-progress-percent');
+            const barEl = document.getElementById('video-progress-bar');
+            const detailEl = document.getElementById('video-progress-detail');
+
+            if (modal) modal.classList.remove('hidden');
+
             for (let i = 0; i < videoDosyalari.length; i++) {
                 const v = videoDosyalari[i];
+                const fileName = v.dosya ? v.dosya.name : `Video ${i + 1}`;
+                const fileSizeMB = v.dosya ? (v.dosya.size / (1024 * 1024)).toFixed(1) : '0.0';
+
+                if (titleEl) titleEl.textContent = `Video ${i + 1} / ${videoDosyalari.length} yükleniyor...`;
+                if (fileInfoEl) fileInfoEl.textContent = `${fileName} (${fileSizeMB} MB)`;
+                if (percentEl) percentEl.textContent = '0%';
+                if (barEl) barEl.style.width = '0%';
+                if (detailEl) detailEl.textContent = `0.0 MB / ${fileSizeMB} MB`;
+
                 try {
                     const fd = new FormData();
                     fd.append('action', 'addKacakVideo');
@@ -1188,11 +1240,45 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                     if (v.kapak) fd.append('kapak', v.kapak);
 
                     const url = 'api.php?action=addKacakVideo' + (typeof targetIdOrUuid === 'string' && !targetIdOrUuid.includes('-') ? '&edit_token=' + encodeURIComponent(targetIdOrUuid) : '');
-                    const res = await (await fetch(url, { method: 'POST', body: fd })).json();
-                    if (!res.success) {
+
+                    const res = await new Promise((resolve, reject) => {
+                        const xhr = new XMLHttpRequest();
+                        xhr.open('POST', url, true);
+
+                        xhr.upload.onprogress = function (e) {
+                            if (e.lengthComputable) {
+                                const percent = Math.round((e.loaded / e.total) * 100);
+                                const loadedMB = (e.loaded / (1024 * 1024)).toFixed(1);
+                                const totalMB = (e.total / (1024 * 1024)).toFixed(1);
+                                if (percentEl) percentEl.textContent = percent + '%';
+                                if (barEl) barEl.style.width = percent + '%';
+                                if (detailEl) detailEl.textContent = `${loadedMB} MB / ${totalMB} MB`;
+                            }
+                        };
+
+                        xhr.onload = function () {
+                            if (xhr.status >= 200 && xhr.status < 300) {
+                                try {
+                                    resolve(JSON.parse(xhr.responseText));
+                                } catch (err) {
+                                    reject(err);
+                                }
+                            } else {
+                                reject(new Error('HTTP Hata: ' + xhr.status));
+                            }
+                        };
+
+                        xhr.onerror = function () {
+                            reject(new Error('Ağ Hatası'));
+                        };
+
+                        xhr.send(fd);
+                    });
+
+                    if (!res || !res.success) {
                         eksik++;
-                        videoGonderimHatalari.push(res.message || 'Bilinmeyen sunucu hatası');
-                        console.error('Video gönderilemedi:', res.message);
+                        videoGonderimHatalari.push((res && res.message) || 'Bilinmeyen sunucu hatası');
+                        console.error('Video gönderilemedi:', res && res.message);
                     }
                 } catch (hata) {
                     eksik++;
@@ -1200,6 +1286,8 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                     console.error('Video gönderim hatası:', hata);
                 }
             }
+
+            if (modal) modal.classList.add('hidden');
             return eksik;
         }
 

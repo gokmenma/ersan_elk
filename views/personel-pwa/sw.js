@@ -3,9 +3,12 @@
  * Offline desteği ve önbellekleme
  */
 
-// pwa-offline-queue.js importScripts ile sürümsüz yükleniyor; o dosya her
-// değiştiğinde service worker'ın yeni kodu alması için bu sürüm artırılmalı.
-const CACHE_NAME = "personel-pwa-v13";
+// pwa-offline-queue.js her değiştiğinde bu sürüm artırılmalı: hem eski önbellek
+// temizlenir hem de importScripts URL'i değişir. Kayıt updateViaCache belirtmediği
+// için varsayılan "imports" geçerlidir ve sürümsüz import HTTP önbelleğinden
+// gelip service worker'ı eski kodla çalıştırır.
+const KUYRUK_SURUM = "14";
+const CACHE_NAME = "personel-pwa-v" + KUYRUK_SURUM;
 const SAYFA_CACHE = "personel-pwa-sayfa-v1";
 const OFFLINE_URL = "offline.html";
 
@@ -23,7 +26,7 @@ const PRECACHE_ASSETS = [
 
 // Çevrimdışı kuyruk mantığı sayfa ile ortak; uygulama kapalıyken de
 // Background Sync ile buradan gönderilebilmesi için içe aktarılır.
-importScripts("./assets/js/pwa-offline-queue.js");
+importScripts("./assets/js/pwa-offline-queue.js?v=" + KUYRUK_SURUM);
 
 // Install event - önbellekleme
 self.addEventListener("install", (event) => {

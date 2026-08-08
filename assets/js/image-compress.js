@@ -256,6 +256,30 @@
                     }
                 }, (sure + 5) * 1000);
             };
+
+            // Metadata hiç gelmezse (bozuk dosya, desteklenmeyen codec) onerror da
+            // tetiklenmeyebilir; bu durumda söz hiç sonuçlanmaz ve seçilen video
+            // arayüzde görünmez. Emniyet için orijinal dosyayla devam edilir.
+            var basladi = false;
+            var metadataZamanAsimi = setTimeout(function () {
+                if (!basladi) {
+                    basladi = true;
+                    temizle();
+                    coz(dosya);
+                }
+            }, 20000);
+
+            ["onloadedmetadata", "onerror"].forEach(function (olay) {
+                var asilIsleyici = video[olay];
+                video[olay] = function () {
+                    if (basladi) return;
+                    basladi = true;
+                    clearTimeout(metadataZamanAsimi);
+                    asilIsleyici.call(video);
+                };
+            });
+
+            video.src = url;
         });
     }
 
