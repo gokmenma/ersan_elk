@@ -153,7 +153,7 @@ class KmBildirimAiKontrolService
     {
         $dataUrl = 'data:' . $image['mime'] . ';base64,' . base64_encode((string) file_get_contents($image['path']));
         $prompt = sprintf(
-            "Bu fotoğraf bir araç KM bildiriminin kanıtıdır. Önce gösterge panelindeki toplam odometre ekranını bul; hız, devir, yakıt ve trip sayaçlarını odometreyle karıştırma. Odometredeki tüm haneleri soldan sağa tek tek incele, özellikle düşük kontrastlı veya silik ilk haneyi atlama. ÖNEMLİ (Motorsiklet ve Araç Göstergeleri): Ekranlarda veya mekanik göstergelerde (özellikle motorsiklet kadranlarında) en sağdaki hane 1/10 km (yüz metre) ondalık hanesidir: 1) Dijital ekranlarda en sağdaki hane nokta/virgül ile ayrılır (örn: '8421.6' gösteriminde 8421 tam KM, '.6' ondalıktır). 2) Mekanik/Analog göstergelerde en sağdaki çark/tambur farklı renktedir (örn: siyah zeminli çarkların yanında beyaz zeminli son çark olan '079380' gösteriminde siyah zeminli '07938' tam KM, beyaz zeminli son '0' ise ondalıktır). 3) Sol baştaki sıfırları (örn: '07938' -> 7938) dikkate alarak temizle. Ekranda '8421.6' veya '079380' gibi ondalıklı/farklı renkli son hanesi olan bir gösterim varsa odometer_km alanına YALNIZCA TAM KİLOMETRE değerini (tam sayı olarak, örn: 8421 veya 7938) yaz, son ondalık hanesini tam sayıya katma. odometer_bbox alanında odometre rakamlarını çevreleyen kutuyu görüntünün genişlik ve yüksekliğine göre 0-1000 arası normalize edilmiş x, y, width, height değerleriyle döndür. Konum bulunamazsa null yap. Ayrıca fotoğrafa uygulama tarafından eklenen filigrandaki plaka ile Sabah/Akşam bildirim türünü oku. Beklenen kaydı yalnızca plaka ve tür doğrulaması için kullanacağım: plaka=%s, tür=%s. KM değerini tahmin etme ve bildirilen değerden türetme; yalnızca fotoğrafta gerçekten görülen hanelerin tam kilometre kısmını döndür. Rakam net değilse odometer_km=null yap. Güven değerlerini 0-100 arasında ver.",
+            "Bu fotoğraf bir araç KM bildiriminin kanıtıdır. Önce gösterge panelindeki toplam odometre ekranını bul; hız, devir, yakıt ve trip sayaçlarını odometreyle karıştırma. Odometredeki tüm haneleri soldan sağa tek tek incele, özellikle düşük kontrastlı veya silik ilk haneyi atlama. ÖNEMLİ (Araç Gösterge Kuralları): 1) ÇOĞU BİNEK VE TİCARİ ARAÇTA ODOMETRE DİREKT TAM KİLOMETREYİ GÖSTERİR (örneğin '120928' ekranında tüm haneler tam kilometredir: 120928). 2) Ondalık hane (1/10 km) YALNIZCA en sağdaki hane nokta/virgül ile ayrılmışsa (örn: '8421.6' gösteriminde 8421 tam KM, '.6' ondalıktır) veya mekanik göstergelerde en sağdaki çark farklı renktedir (örn: siyah çarkların yanında beyaz çark olan '079380' gösteriminde 7938 tam KM, beyaz '0' ondalıktır). 3) EĞER NOKTA/VİRGÜL VEYA FARKLI RENKTE ÇARK YOKSA, EKRANDAKİ TÜM HANELERİ TAM KİLOMETRE OLARAK OKU (örn: '120928'). 4) Mavi, yeşil veya siyah-beyaz 7-segment LCD panellerdeki 9, 8, 3, 0, 5, 6 hanelerini ışık yansımasına karşı dikkatle incele; tüm haneleri soldan sağa eksiksiz oku. 5) Sol baştaki sıfırları (örn: '07938' -> 7938) dikkate alarak temizle. odometer_bbox alanında odometre rakamlarını çevreleyen kutuyu görüntünün genişlik ve yüksekliğine göre 0-1000 arası normalize edilmiş x, y, width, height değerleriyle döndür. Konum bulunamazsa null yap. Ayrıca fotoğrafa uygulama tarafından eklenen filigrandaki plaka ile Sabah/Akşam bildirim türünü oku. Beklenen kaydı yalnızca plaka ve tür doğrulaması için kullanacağım: plaka=%s, tür=%s. KM değerini tahmin etme ve bildirilen değerden türetme; yalnızca fotoğrafta gerçekten görülen hanelerin tam kilometre kısmını döndür. Rakam net değilse odometer_km=null yap. Güven değerlerini 0-100 arasında ver.",
             (string) $bildirim->plaka,
             (string) $bildirim->tur
         );
@@ -226,11 +226,19 @@ class KmBildirimAiKontrolService
         }
 
         $bbox = $analiz['odometer_bbox'] ?? null;
-        if (!is_array($bbox) || (int) ($analiz['odometer_bbox_confidence'] ?? 0) < 70) {
-            return $analiz;
+        $cropDataUrl = null;
+
+        // Bbox varsa önce bbox ile kırpmayı dene
+        if (is_array($bbox) && isset($bbox['x'], $bbox['y'], $bbox['width'], $bbox['height'])) {
+            $cropDataUrl = $this->createOdometerCropDataUrl($image, $bbox);
         }
 
-        $cropDataUrl = $this->createOdometerCropDataUrl($image, $bbox);
+        // Bbox bulunamadıysa veya kırpma başarısız olduysa, gösterge panellerinin ortasındaki varsayılan alanı kırp
+        if ($cropDataUrl === null) {
+            $fallbackBbox = ['x' => 250, 'y' => 150, 'width' => 500, 'height' => 500];
+            $cropDataUrl = $this->createOdometerCropDataUrl($image, $fallbackBbox);
+        }
+
         if ($cropDataUrl === null) {
             return $analiz;
         }
@@ -246,8 +254,8 @@ class KmBildirimAiKontrolService
             : '';
         $prompt = 'Bu görüntü, araç gösterge panelindeki toplam odometre alanının otomatik büyütülmüş kırpımıdır. '
             . 'Hız, devir, yakıt, saat ve trip değerlerini dikkate alma. Toplam KM değerindeki haneleri soldan sağa tek tek oku; '
-            . 'özellikle sol taraftaki silik veya düşük kontrastlı ilk haneyi atlama. '
-            . 'ÖNEMLİ: Dijital ekranlarda nokta/virgül ile ayrılmış veya mekanik göstergelerde beyaz/farklı zeminli olan en sağdaki son hane 1/10 km ondalık hanesidir (örneğin "8421.6" veya "079380" gösteriminde tam kilometre 8421 veya 7938dir). Nokta, virgül veya farklı zeminli son çark varsa, `odometer_km` değerine YALNIZCA tam kilometre kısmını yaz. '
+            . 'özellikle 7-segment / LCD dijital ekranlarda (örneğin mavi/yeşil kadranlarda) 9, 8, 3, 0, 5, 6 rakamlarını dikkatle ayırt et. '
+            . 'ÖNEMLİ KURAL: Çoğu araçta tüm haneler tam kilometredir (örn: "120928" 6 haneli tam kilometredir). YALNIZCA nokta/virgül ile ayrılmış ondalık (örn: "8421.6") veya mekanik göstergelerde farklı renkli son çark (örn: "079380") varsa son haneyi katma. Nokta/virgül veya farklı zeminli çark yoksa EKRANDAKİ TÜM HANELERİ TAM KİLOMETRE OLARAK OKU. '
             . 'İlk görsel genel bağlam, ikinci görsel odometrenin büyütülmüş halidir. İki görseli birlikte incele ve görünen her rakam hücresini say. '
             . 'Görüntüde kesin seçilemeyen hane varsa odometer_km=null döndür.'
             . $tutarlilikUyarisi;
@@ -296,7 +304,7 @@ class KmBildirimAiKontrolService
             (int) ($ikinciAnaliz['km_confidence'] ?? 0),
             (int) ($analiz['odometer_bbox_confidence'] ?? 0)
         ));
-        if (($ikinciAnaliz['odometer_km'] ?? null) !== null && (int) ($ikinciAnaliz['km_confidence'] ?? 0) >= 90) {
+        if (($ikinciAnaliz['odometer_km'] ?? null) !== null && (int) ($ikinciAnaliz['km_confidence'] ?? 0) >= 80) {
             $analiz['odometer_km'] = (int) $ikinciAnaliz['odometer_km'];
             $analiz['km_confidence'] = (int) $ikinciAnaliz['km_confidence'];
         }
@@ -350,13 +358,8 @@ class KmBildirimAiKontrolService
             return null;
         }
 
-        if (function_exists('imagefilter')) {
-            @imagefilter($target, IMG_FILTER_CONTRAST, -20);
-            @imagefilter($target, IMG_FILTER_BRIGHTNESS, 5);
-        }
-
         ob_start();
-        imagejpeg($target, null, 92);
+        imagejpeg($target, null, 95);
         $jpeg = ob_get_clean();
         imagedestroy($source);
         imagedestroy($target);
