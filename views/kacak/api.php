@@ -195,6 +195,9 @@ try {
             $kayitlar = $Kacak->getRecords($filters, $limit, $offset, $orderColumn, $orderDirection);
             foreach ($kayitlar as &$k) {
                 $k['tarih_formatted'] = Date::dmY($k['tarih']);
+                $k['olusturma_tarihi_formatted'] = !empty($k['olusturma_tarihi']) && $k['olusturma_tarihi'] !== '0000-00-00 00:00:00'
+                    ? date('d.m.Y H:i', strtotime($k['olusturma_tarihi']))
+                    : '-';
                 $k['foto_sayisi'] = (int) $k['foto_sayisi'];
                 $k['beklenen_foto_sayisi'] = (int) ($k['beklenen_foto_sayisi'] ?? 0);
             }

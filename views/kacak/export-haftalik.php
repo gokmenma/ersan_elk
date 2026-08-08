@@ -213,9 +213,9 @@ if ($tip === 'teslim') {
     ];
 
     $sheet->setTitle('Kaçak Kontrol Kayıtları');
-    $basliklar = ['TARİH', 'TUTANAK NO', 'ABONE ADI', 'İLÇE', 'TÜR', 'SAYAÇ NO', 'SAYI', 'EKİP', 'KAYNAK', 'FOTO SAYISI', 'DURUM'];
+    $basliklar = ['TARİH', 'BİLDİRİM TARİHİ', 'TUTANAK NO', 'ABONE ADI', 'İLÇE', 'TÜR', 'SAYAÇ NO', 'SAYI', 'EKİP', 'KAYNAK', 'FOTO SAYISI', 'DURUM'];
     $sheet->fromArray($basliklar, null, 'A1');
-    $sheet->getStyle('A1:K1')->applyFromArray($basligStili);
+    $sheet->getStyle('A1:L1')->applyFromArray($basligStili);
 
     $records = $Kacak->getRecords($filters);
     $satir = 2;
@@ -232,8 +232,13 @@ if ($tip === 'teslim') {
             $durumLabel = ($kayit['hakedisten_dus'] == 1) ? 'İptal (Düşüldü)' : 'İptal';
         }
 
+        $bildirimTarihiFmt = !empty($kayit['olusturma_tarihi']) && $kayit['olusturma_tarihi'] !== '0000-00-00 00:00:00'
+            ? date('d.m.Y H:i', strtotime($kayit['olusturma_tarihi']))
+            : '-';
+
         $sheet->fromArray([
             Date::dmY($kayit['tarih']),
+            $bildirimTarihiFmt,
             $kayit['tutanak_no'],
             $kayit['abone_adi'],
             $kayit['ilce'],
@@ -249,8 +254,8 @@ if ($tip === 'teslim') {
     }
 
     $sonSatir = max(1, $satir - 1);
-    $sheet->getStyle('A1:K' . $sonSatir)->applyFromArray($kenarlik);
-    foreach (range('A', 'K') as $sutun) {
+    $sheet->getStyle('A1:L' . $sonSatir)->applyFromArray($kenarlik);
+    foreach (range('A', 'L') as $sutun) {
         $sheet->getColumnDimension($sutun)->setAutoSize(true);
     }
 

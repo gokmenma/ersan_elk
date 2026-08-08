@@ -1187,6 +1187,15 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             return `<span class="badge ${renkler[tur] || 'bg-secondary'}">${esc(tur)}</span>`;
         }
 
+        function tarihHucresi(k) {
+            const tutanakTarihi = esc(k.tarih_formatted || '-');
+            const bildirimTarihi = esc(k.olusturma_tarihi_formatted || '-');
+            return `<div>
+                <span class="fw-semibold">${tutanakTarihi}</span>
+                ${bildirimTarihi !== '-' ? `<small class="text-muted d-block mt-0.5" style="font-size:11px;" title="Bildirim Tarihi & Saati"><i class="bx bx-time-five me-1"></i>${bildirimTarihi}</small>` : ''}
+            </div>`;
+        }
+
         function durumBadge(k) {
             if (k.onay_durumu === 'beklemede') return '<span class="badge bg-info">Onay Bekliyor</span>';
             if (k.onay_durumu === 'reddedildi') return '<span class="badge bg-secondary">Reddedildi</span>';
@@ -1298,7 +1307,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     }
                 },
                 columns: [
-                    { data: 'tarih_formatted', render: $.fn.dataTable.render.text() },
+                    { data: 'tarih_formatted', render: function (data, type, row) { return tarihHucresi(row); } },
                     { data: 'tutanak_no', render: function (data, type, row) { return esc(data) + sicilIsareti(row); } },
                     { data: 'abone_adi', render: $.fn.dataTable.render.text() },
                     { data: 'ilce', render: $.fn.dataTable.render.text() },
@@ -1450,7 +1459,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     onayKayitlari = res.data || [];
 
                     const rows = res.data.map(k => [
-                        esc(k.tarih_formatted),
+                        tarihHucresi(k),
                         esc(k.bildiren_adi || '-'),
                         esc(k.ekip_adi),
                         esc(k.tutanak_no),
