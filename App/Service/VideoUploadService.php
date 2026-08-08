@@ -113,6 +113,51 @@ class VideoUploadService
     }
 
     /**
+     * FFmpeg ikilisinin yolunu bulur.
+     *
+     * Yol araması shell_exec'e bağlı değildir; paylaşımlı hostinglerde shell_exec
+     * kapalı olsa da exec açık olabilir ve sıkıştırma exec ile yapılır. Standart
+     * dizinlerde bulunamazsa .env içindeki FFMPEG_PATH kullanılabilir.
+     */
+    private static function ffmpegYoluBul(): ?string
+    {
+        static $onbellek = false;
+        if ($onbellek !== false) {
+            return $onbellek;
+        }
+
+        $ozelYol = trim((string) ($_ENV['FFMPEG_PATH'] ?? getenv('FFMPEG_PATH') ?: ''));
+        if ($ozelYol !== '' && @is_executable($ozelYol)) {
+            return $onbellek = $ozelYol;
+        }
+
+        $adaylar = [
+            '/usr/bin/ffmpeg',
+            '/usr/local/bin/ffmpeg',
+            '/opt/ffmpeg/bin/ffmpeg',
+            '/usr/local/ffmpeg/bin/ffmpeg',
+            '/home/ffmpeg/ffmpeg',
+        ];
+        foreach ($adaylar as $aday) {
+            if (@is_executable($aday)) {
+                return $onbellek = $aday;
+            }
+        }
+
+        $cikti = [];
+        $donusKodu = 1;
+        @exec('command -v ffmpeg 2>/dev/null', $cikti, $donusKodu);
+        if ($donusKodu === 0 && !empty($cikti[0]) && @is_executable(trim($cikti[0]))) {
+            return $onbellek = trim($cikti[0]);
+        }
+
+        error_log('FFmpeg bulunamadı; video sunucuda sıkıştırılmadan saklanıyor. '
+            . 'Farklı bir dizindeyse .env içine FFMPEG_PATH tanımlayın.');
+
+        return $onbellek = null;
+    }
+
+    /**
      * Sunucuda FFmpeg varsa videoyu H.264 / AAC 720p CRF 28 ile optimize ederek boyutunu düşürür.
      */
     private function optimizeVideoWithFfmpeg(string $filePath): void
@@ -121,18 +166,7 @@ class VideoUploadService
             return;
         }
 
-        $ffmpegBin = null;
-        if (@is_executable('/usr/bin/ffmpeg')) {
-            $ffmpegBin = '/usr/bin/ffmpeg';
-        } elseif (@is_executable('/usr/local/bin/ffmpeg')) {
-            $ffmpegBin = '/usr/local/bin/ffmpeg';
-        } elseif (self::fonksiyonKullanilabilir('shell_exec')) {
-            $which = @shell_exec('which ffmpeg 2>/dev/null');
-            if ($which && trim($which)) {
-                $ffmpegBin = trim($which);
-            }
-        }
-
+        $ffmpegBin = self::ffmpegYoluBul();
         if (!$ffmpegBin) {
             return;
         }
