@@ -81,20 +81,20 @@
     }
 
     // Videonun kalitesini ve boyutunu istemcide (HTML5 MediaRecorder + Canvas) düşürür.
-    // Desteklenmeyen cihazlarda veya dönüştürme başarısız olursa orijinal dosyayı döndürür.
+    // Dosya yine de belirlenen sınırı (maxByte) aşıyorsa videoyu otomatik olarak sonundan kırpar.
     function videoSikistir(dosya, ayarlar, ilerlemeCallback) {
         ayarlar = ayarlar || {};
         var maxEn = ayarlar.maxEn || 1280;
         var maxBoy = ayarlar.maxBoy || 720;
         var hedefBitrate = ayarlar.hedefBitrate || 1200000; // 1.2 Mbps
         var fps = ayarlar.fps || 25;
+        var maxByteLimit = ayarlar.maxByte || (15 * 1024 * 1024);
 
         if (!dosya || !dosya.type || dosya.type.indexOf("video/") !== 0) {
             return Promise.resolve(dosya);
         }
 
-        // 2 MB'tan küçük videolar zaten ufak olduğu için sıkıştırmaya gerek yok
-        if (dosya.size <= 2 * 1024 * 1024) {
+        if (dosya.size <= 2 * 1024 * 1024 && !ayarlar.maxSureKirp) {
             return Promise.resolve(dosya);
         }
 
@@ -198,11 +198,29 @@
                     temizle();
                 }
 
+                var hedefSureLimit = ayarlar.maxSureKirp || sure;
+
                 mediaRecorder.onstop = function () {
                     var blob = new Blob(parcalar, { type: mime || "video/webm" });
+                    var uzanti = (mime.indexOf("mp4") !== -1) ? ".mp4" : ".webm";
+                    var ad = (dosya.name || "video").replace(/\.[^.]+$/, "") + "_opt" + uzanti;
+
+                    // Eğer üretilen dosya hala sınırı aşıyorsa ve henüz kırpma denenmediyse sonundan kırp
+                    if (blob && blob.size > maxByteLimit && !ayarlar._kirpildi) {
+                        var oran = (maxByteLimit * 0.93) / blob.size;
+                        var yeniKirpSure = Math.max(2, sure * oran);
+                        var yeniAyarlar = Object.assign({}, ayarlar, {
+                            maxSureKirp: yeniKirpSure,
+                            _kirpildi: true
+                        });
+                        videoSikistir(dosya, yeniAyarlar, ilerlemeCallback).then(coz).catch(function () {
+                            var yeniDosya = new File([blob], ad, { type: blob.type, lastModified: Date.now() });
+                            coz(yeniDosya);
+                        });
+                        return;
+                    }
+
                     if (blob && blob.size > 0 && blob.size < dosya.size) {
-                        var uzanti = (mime.indexOf("mp4") !== -1) ? ".mp4" : ".webm";
-                        var ad = (dosya.name || "video").replace(/\.[^.]+$/, "") + "_opt" + uzanti;
                         var yeniDosya = new File([blob], ad, { type: blob.type, lastModified: Date.now() });
                         coz(yeniDosya);
                     } else {
@@ -215,7 +233,7 @@
                     mediaRecorder.start(100);
 
                     function ciz() {
-                        if (video.ended || video.paused || bitti) {
+                        if (video.currentTime >= hedefSureLimit || video.ended || video.paused || bitti) {
                             bitir();
                             return;
                         }
@@ -238,8 +256,6 @@
                     }
                 }, (sure + 5) * 1000);
             };
-
-            video.src = url;
         });
     }
 
@@ -250,9 +266,11 @@
             if (!dosya || !dosya.type || dosya.type.indexOf("video/") !== 0) {
                 return ret(new Error("Yalnızca video dosyası yükleyebilirsiniz."));
             }
-            if (dosya.size > maxByte) {
+            // Sıkıştırma yapılacağı için ham dosya seçimine 100 MB'a kadar izin verilir
+            var hamMaxByte = 100 * 1024 * 1024;
+            if (dosya.size > hamMaxByte) {
                 return ret(new Error(
-                    "Video boyutu en fazla " + Math.round(maxByte / 1048576) + " MB olabilir. " +
+                    "Seçtiğiniz video çok büyük (en fazla 100 MB olabilir). " +
                     "Seçtiğiniz dosya " + (dosya.size / 1048576).toFixed(1) + " MB."
                 ));
             }
@@ -320,22 +338,34 @@
 
                     temizle();
 
-                    if (otosikistir && dosya.size > 3 * 1024 * 1024) {
-                        videoSikistir(dosya).then(function (islenmisDosya) {
-                            coz({
-                                dosya: islenmisDosya,
-                                sure: sure,
-                                kapak: kapak,
-                                hamBoyut: dosya.size,
-                                yeniBoyut: islenmisDosya.size,
-                                sikistirildi: islenmisDosya.size < dosya.size
-                            });
-                        }).catch(function () {
-                            coz({ dosya: dosya, sure: sure, kapak: kapak, hamBoyut: dosya.size, yeniBoyut: dosya.size, sikistirildi: false });
+                    var videoIsleme = (otosikistir && dosya.size > 2 * 1024 * 1024)
+                        ? videoSikistir(dosya)
+                        : Promise.resolve(dosya);
+
+                    videoIsleme.then(function (islenmisDosya) {
+                        if (islenmisDosya.size > maxByte) {
+                            return ret(new Error(
+                                "Video yükleme boyutu en fazla " + Math.round(maxByte / 1048576) + " MB olabilir. " +
+                                "Dosya boyutu: " + (islenmisDosya.size / 1048576).toFixed(1) + " MB."
+                            ));
+                        }
+                        coz({
+                            dosya: islenmisDosya,
+                            sure: sure,
+                            kapak: kapak,
+                            hamBoyut: dosya.size,
+                            yeniBoyut: islenmisDosya.size,
+                            sikistirildi: islenmisDosya.size < dosya.size
                         });
-                    } else {
+                    }).catch(function (hata) {
+                        if (dosya.size > maxByte) {
+                            return ret(new Error(
+                                "Video boyutu en fazla " + Math.round(maxByte / 1048576) + " MB olabilir. " +
+                                "Seçtiğiniz dosya " + (dosya.size / 1048576).toFixed(1) + " MB."
+                            ));
+                        }
                         coz({ dosya: dosya, sure: sure, kapak: kapak, hamBoyut: dosya.size, yeniBoyut: dosya.size, sikistirildi: false });
-                    }
+                    });
                 };
 
                 try {
