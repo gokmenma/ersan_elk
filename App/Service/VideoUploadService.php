@@ -73,8 +73,13 @@ class VideoUploadService
 
         @chmod($destination, 0644);
 
-        // Sunucuda FFmpeg yüklü ise videoyu otomatik sıkıştırıp optimize et
-        $this->optimizeVideoWithFfmpeg($destination);
+        // Sunucuda FFmpeg yüklü ise videoyu otomatik sıkıştırıp optimize et.
+        // Optimizasyon isteğe bağlıdır; başarısız olsa da video kaydı sürmelidir.
+        try {
+            $this->optimizeVideoWithFfmpeg($destination);
+        } catch (\Throwable $e) {
+            error_log('Video optimizasyonu atlandı: ' . $e->getMessage());
+        }
 
         $kapakAdi = $this->kapakKaydet($kapakVerisi, $destinationDirectory, $baseName, $kapakKenar);
 
@@ -89,20 +94,39 @@ class VideoUploadService
     }
 
     /**
+     * Paylaşımlı hostinglerde exec/shell_exec disable_functions ile kapatılır.
+     * Kapalı fonksiyon PHP 8'de "undefined function" Error'u fırlatır ve @ bunu
+     * bastırmaz; bu yüzden çağırmadan önce kullanılabilirlik doğrulanır.
+     */
+    private static function fonksiyonKullanilabilir(string $ad): bool
+    {
+        if (!function_exists($ad)) {
+            return false;
+        }
+
+        $kapali = array_map(
+            static fn($f) => strtolower(trim($f)),
+            explode(',', (string) ini_get('disable_functions'))
+        );
+
+        return !in_array(strtolower($ad), $kapali, true);
+    }
+
+    /**
      * Sunucuda FFmpeg varsa videoyu H.264 / AAC 720p CRF 28 ile optimize ederek boyutunu düşürür.
      */
     private function optimizeVideoWithFfmpeg(string $filePath): void
     {
-        if (!function_exists('exec')) {
+        if (!self::fonksiyonKullanilabilir('exec')) {
             return;
         }
 
         $ffmpegBin = null;
-        if (is_executable('/usr/bin/ffmpeg')) {
+        if (@is_executable('/usr/bin/ffmpeg')) {
             $ffmpegBin = '/usr/bin/ffmpeg';
-        } elseif (is_executable('/usr/local/bin/ffmpeg')) {
+        } elseif (@is_executable('/usr/local/bin/ffmpeg')) {
             $ffmpegBin = '/usr/local/bin/ffmpeg';
-        } else {
+        } elseif (self::fonksiyonKullanilabilir('shell_exec')) {
             $which = @shell_exec('which ffmpeg 2>/dev/null');
             if ($which && trim($which)) {
                 $ffmpegBin = trim($which);

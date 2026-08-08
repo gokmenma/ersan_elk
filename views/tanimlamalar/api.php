@@ -1329,7 +1329,7 @@ if (isset($_POST["action"]) && $_POST["action"] == "defter-kodu-api-sorgula") {
         $curlError = curl_error($ch);
         curl_close($ch);
 
-        if ($curlError || empty($response)) {
+        if (($curlError || empty($response)) && function_exists('shell_exec')) {
             // Native PHP curl failed/timed out. Fallback to system curl via shell_exec
             $escapedApiKey = escapeshellarg(trim($apiKey));
             $escapedPostData = escapeshellarg(json_encode($postData));
