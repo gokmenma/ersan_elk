@@ -332,22 +332,40 @@
                                         : `<img src="${f.kucuk_url || f.url}" class="w-16 h-16 object-cover rounded-xl border border-slate-200 dark:border-slate-700">`).join('')}
                                 </div>
                             </div>` : ''}
-                            <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary transition-colors"
-                                onclick="document.getElementById('ihbar-foto-input').click()">
-                                <span class="material-symbols-outlined text-3xl text-slate-400">add_a_photo</span>
-                                <p class="text-xs text-slate-500 text-center">Yüklemek için tıklayın</p>
-                            </div>
                             <input type="file" id="ihbar-foto-input" accept="image/*" multiple class="hidden">
+                            <input type="file" id="ihbar-foto-camera-input" accept="image/*" capture="environment" class="hidden">
+
+                            <div class="grid grid-cols-2 gap-2">
+                                <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-primary transition-colors active:scale-95"
+                                    onclick="document.getElementById('ihbar-foto-camera-input').click()">
+                                    <span class="material-symbols-outlined text-2xl text-primary">photo_camera</span>
+                                    <p class="text-xs font-bold text-slate-600 dark:text-slate-300 text-center">Kameradan Çek</p>
+                                </div>
+                                <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-primary transition-colors active:scale-95"
+                                    onclick="document.getElementById('ihbar-foto-input').click()">
+                                    <span class="material-symbols-outlined text-2xl text-slate-400">photo_library</span>
+                                    <p class="text-xs font-bold text-slate-600 dark:text-slate-300 text-center">Galeriden Seç</p>
+                                </div>
+                            </div>
                             <div id="ihbar-foto-preview" class="flex flex-wrap gap-2 mt-2"></div>
                         </div>
                         <div>
                             <label class="form-label">Video Ekle (en fazla ${IHBAR_MAX_VIDEO} adet, ${IHBAR_VIDEO_MAX_SURE} sn)</label>
-                            <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-6 flex flex-col items-center justify-center gap-2 cursor-pointer hover:border-primary transition-colors"
-                                onclick="document.getElementById('ihbar-video-input').click()">
-                                <span class="material-symbols-outlined text-3xl text-slate-400">videocam</span>
-                                <p class="text-xs text-slate-500 text-center">Yüklemek için tıklayın</p>
-                            </div>
                             <input type="file" id="ihbar-video-input" accept="video/*" class="hidden">
+                            <input type="file" id="ihbar-video-camera-input" accept="video/*" capture="environment" class="hidden">
+
+                            <div class="grid grid-cols-2 gap-2">
+                                <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-primary transition-colors active:scale-95"
+                                    onclick="document.getElementById('ihbar-video-camera-input').click()">
+                                    <span class="material-symbols-outlined text-2xl text-primary">videocam</span>
+                                    <p class="text-xs font-bold text-slate-600 dark:text-slate-300 text-center">Kamera ile Çek</p>
+                                </div>
+                                <div class="border-2 border-dashed border-slate-200 dark:border-slate-700 rounded-xl p-4 flex flex-col items-center justify-center gap-1.5 cursor-pointer hover:border-primary transition-colors active:scale-95"
+                                    onclick="document.getElementById('ihbar-video-input').click()">
+                                    <span class="material-symbols-outlined text-2xl text-slate-400">video_library</span>
+                                    <p class="text-xs font-bold text-slate-600 dark:text-slate-300 text-center">Galeriden Seç</p>
+                                </div>
+                            </div>
 
                             <!-- Canlı Video Yükleme İlerleme Çubuğu (İhbar Modalı İçi) -->
                             <div id="ihbar-video-progress-container" class="mt-3 p-3.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl border border-indigo-200 dark:border-indigo-800 hidden">
@@ -389,79 +407,84 @@
             `,
             onOpen: () => {
                 const fotoInput = document.getElementById('ihbar-foto-input');
+                const fotoCamInput = document.getElementById('ihbar-foto-camera-input');
 
-                if (fotoInput) {
-                    fotoInput.addEventListener('change', function () {
-                        const yeniDosyalar = Array.from(this.files);
-                        const mevcutFoto = ihbarMevcutFotograflar.filter(f => f.medya_tipi !== 'video').length;
-                        const toplamMevcut = mevcutFoto + ihbarSeciliFotolar.length;
-                        if (toplamMevcut + yeniDosyalar.length > IHBAR_MAX_FOTO) {
-                            Alert.warning('Sınır Aşıldı', `Toplamda en fazla ${IHBAR_MAX_FOTO} fotoğraf olabilir.`);
-                            this.value = '';
+                const handleIhbarFotoChange = function () {
+                    const yeniDosyalar = Array.from(this.files);
+                    const mevcutFoto = ihbarMevcutFotograflar.filter(f => f.medya_tipi !== 'video').length;
+                    const toplamMevcut = mevcutFoto + ihbarSeciliFotolar.length;
+                    if (toplamMevcut + yeniDosyalar.length > IHBAR_MAX_FOTO) {
+                        Alert.warning('Sınır Aşıldı', `Toplamda en fazla ${IHBAR_MAX_FOTO} fotoğraf olabilir.`);
+                        this.value = '';
+                        return;
+                    }
+
+                    yeniDosyalar.forEach(file => {
+                        const name = file.name || '';
+                        const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
+                        const isImageMime = file.type ? file.type.startsWith('image/') : false;
+                        const isSupportedExt = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'jfif'].includes(ext);
+
+                        if (!isImageMime && !isSupportedExt && file.type && !file.type.includes('octet-stream')) {
+                            Alert.error('Hata', 'Sadece görsel dosyası (JPG, PNG, WEBP vb.) yükleyebilirsiniz.');
                             return;
                         }
-
-                        yeniDosyalar.forEach(file => {
-                            const name = file.name || '';
-                            const ext = name.includes('.') ? name.split('.').pop().toLowerCase() : '';
-                            const isImageMime = file.type ? file.type.startsWith('image/') : false;
-                            const isSupportedExt = ['jpg', 'jpeg', 'png', 'webp', 'heic', 'heif', 'jfif'].includes(ext);
-
-                            if (!isImageMime && !isSupportedExt && file.type && !file.type.includes('octet-stream')) {
-                                Alert.error('Hata', 'Sadece görsel dosyası (JPG, PNG, WEBP vb.) yükleyebilirsiniz.');
-                                return;
-                            }
-                            ihbarSeciliFotolar.push(file);
-                        });
-
-                        this.value = '';
-                        renderIhbarFotoPreview();
+                        ihbarSeciliFotolar.push(file);
                     });
-                }
+
+                    this.value = '';
+                    renderIhbarFotoPreview();
+                };
+
+                if (fotoInput) fotoInput.addEventListener('change', handleIhbarFotoChange);
+                if (fotoCamInput) fotoCamInput.addEventListener('change', handleIhbarFotoChange);
 
                 const videoInput = document.getElementById('ihbar-video-input');
-                if (videoInput) {
-                    videoInput.addEventListener('change', async function () {
-                        const dosya = this.files[0];
-                        this.value = '';
-                        if (!dosya) return;
+                const videoCamInput = document.getElementById('ihbar-video-camera-input');
 
-                        const mevcutVideo = ihbarMevcutFotograflar.filter(f => f.medya_tipi === 'video').length;
-                        if (mevcutVideo + ihbarSeciliVideolar.length >= IHBAR_MAX_VIDEO) {
-                            return Alert.warning('Sınır Aşıldı', `Toplamda en fazla ${IHBAR_MAX_VIDEO} video olabilir.`);
+                const handleIhbarVideoChange = async function () {
+                    const dosya = this.files[0];
+                    this.value = '';
+                    if (!dosya) return;
+
+                    const mevcutVideo = ihbarMevcutFotograflar.filter(f => f.medya_tipi === 'video').length;
+                    if (mevcutVideo + ihbarSeciliVideolar.length >= IHBAR_MAX_VIDEO) {
+                        return Alert.warning('Sınır Aşıldı', `Toplamda en fazla ${IHBAR_MAX_VIDEO} video olabilir.`);
+                    }
+
+                    const progressBox = document.getElementById('ihbar-video-progress-container');
+                    if (progressBox) progressBox.classList.remove('hidden');
+
+                    const textEl = document.getElementById('ihbar-video-progress-text');
+                    const percentEl = document.getElementById('ihbar-video-progress-percent');
+                    const barEl = document.getElementById('ihbar-video-progress-bar');
+                    const nameEl = document.getElementById('ihbar-video-progress-name');
+                    const detailEl = document.getElementById('ihbar-video-progress-detail');
+
+                    const mbSize = (dosya.size / (1024 * 1024)).toFixed(1);
+                    if (textEl) textEl.innerHTML = `<svg class="w-4 h-4 text-indigo-600 animate-spin flex-shrink-0 inline me-1" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Video İşleniyor...`;
+                    if (percentEl) percentEl.textContent = '50%';
+                    if (barEl) barEl.style.width = '50%';
+                    if (nameEl) nameEl.textContent = dosya.name;
+                    if (detailEl) detailEl.textContent = `${mbSize} MB Hazırlanıyor...`;
+
+                    try {
+                        const vSonuc = await OfflineQueue.videoIncele(dosya, IHBAR_VIDEO_MAX_SURE, IHBAR_VIDEO_MAX_BYTE);
+                        ihbarSeciliVideolar.push(vSonuc);
+                        renderIhbarVideoPreview();
+                        ihbarVideoProgressDurumGuncelle();
+                        if (vSonuc.sikistirildi) {
+                            const tasarruf = Math.round((1 - (vSonuc.yeniBoyut / vSonuc.hamBoyut)) * 100);
+                            Alert.success('Video Sıkıştırıldı', `Video boyutu ${(vSonuc.hamBoyut / 1048576).toFixed(1)} MB -> ${(vSonuc.yeniBoyut / 1048576).toFixed(1)} MB seviyesine düşürüldü (%${tasarruf} tasarruf).`);
                         }
+                    } catch (hata) {
+                        ihbarVideoProgressDurumGuncelle();
+                        Alert.warning('Video Eklenemedi', hata.message);
+                    }
+                };
 
-                        const progressBox = document.getElementById('ihbar-video-progress-container');
-                        if (progressBox) progressBox.classList.remove('hidden');
-
-                        const textEl = document.getElementById('ihbar-video-progress-text');
-                        const percentEl = document.getElementById('ihbar-video-progress-percent');
-                        const barEl = document.getElementById('ihbar-video-progress-bar');
-                        const nameEl = document.getElementById('ihbar-video-progress-name');
-                        const detailEl = document.getElementById('ihbar-video-progress-detail');
-
-                        const mbSize = (dosya.size / (1024 * 1024)).toFixed(1);
-                        if (textEl) textEl.innerHTML = `<svg class="w-4 h-4 text-indigo-600 animate-spin flex-shrink-0 inline me-1" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Video İşleniyor...`;
-                        if (percentEl) percentEl.textContent = '50%';
-                        if (barEl) barEl.style.width = '50%';
-                        if (nameEl) nameEl.textContent = dosya.name;
-                        if (detailEl) detailEl.textContent = `${mbSize} MB Hazırlanıyor...`;
-
-                        try {
-                            const vSonuc = await OfflineQueue.videoIncele(dosya, IHBAR_VIDEO_MAX_SURE, IHBAR_VIDEO_MAX_BYTE);
-                            ihbarSeciliVideolar.push(vSonuc);
-                            renderIhbarVideoPreview();
-                            ihbarVideoProgressDurumGuncelle();
-                            if (vSonuc.sikistirildi) {
-                                const tasarruf = Math.round((1 - (vSonuc.yeniBoyut / vSonuc.hamBoyut)) * 100);
-                                Alert.success('Video Sıkıştırıldı', `Video boyutu ${(vSonuc.hamBoyut / 1048576).toFixed(1)} MB -> ${(vSonuc.yeniBoyut / 1048576).toFixed(1)} MB seviyesine düşürüldü (%${tasarruf} tasarruf).`);
-                            }
-                        } catch (hata) {
-                            ihbarVideoProgressDurumGuncelle();
-                            Alert.warning('Video Eklenemedi', hata.message);
-                        }
-                    });
-                }
+                if (videoInput) videoInput.addEventListener('change', handleIhbarVideoChange);
+                if (videoCamInput) videoCamInput.addEventListener('change', handleIhbarVideoChange);
 
                 document.getElementById('ihbar-form').addEventListener('submit', async function (e) {
                     e.preventDefault();

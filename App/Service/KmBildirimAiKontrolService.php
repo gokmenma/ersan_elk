@@ -154,7 +154,7 @@ class KmBildirimAiKontrolService
     {
         $dataUrl = 'data:' . $image['mime'] . ';base64,' . base64_encode((string) file_get_contents($image['path']));
         $prompt = sprintf(
-            "Bu fotoğraf bir araç KM bildiriminin kanıtıdır. Önce gösterge panelindeki toplam odometre ekranını bul; hız, devir, yakıt ve trip sayaçlarını odometreyle karıştırma. Görüntü eğikse sayacı zihinsel olarak düz çevir. Odometredeki tüm haneleri soldan sağa tek tek incele, özellikle düşük kontrastlı veya silik ilk haneyi atlama. ÖNEMLİ (Araç Gösterge Kuralları): 1) ÇOĞU BİNEK VE TİCARİ ARAÇTA ODOMETRE DİREKT TAM KİLOMETREYİ GÖSTERİR (örneğin '120928' ekranında tüm haneler tam kilometredir: 120928). 2) Ondalık hane (1/10 km) YALNIZCA en sağdaki hane nokta/virgül ile ayrılmışsa (örn: '8421.6' gösteriminde 8421 tam KM, '.6' ondalıktır) veya özellikle motosikletlerde/mekanik göstergelerde en sağdaki çark farklı renk, zemin ya da ayrı tamburdaysa (örn: siyah çarkların yanında beyaz çark olan '079380' gösteriminde 7938 tam KM, beyaz '0' ondalıktır). Nokta görünmese bile farklı zeminli son tamburu tam KM'ye katma. 3) EĞER NOKTA/VİRGÜL VEYA FARKLI RENKTE ÇARK YOKSA, EKRANDAKİ TÜM HANELERİ TAM KİLOMETRE OLARAK OKU (örn: '120928'). 4) Mavi, yeşil veya siyah-beyaz 7-segment LCD panellerdeki 9, 8, 3, 0, 5, 6 hanelerini ışık yansımasına karşı dikkatle incele; mekanik tamburlarda özellikle 6/8 ayrımını kontrol et ve tüm haneleri soldan sağa eksiksiz oku. 5) Sol baştaki sıfırları (örn: '07938' -> 7938) dikkate alarak temizle. odometer_bbox alanında odometre rakamlarını çevreleyen kutuyu görüntünün genişlik ve yüksekliğine göre 0-1000 arası normalize edilmiş x, y, width, height değerleriyle döndür. Konum bulunamazsa null yap. Ayrıca fotoğrafa uygulama tarafından eklenen filigrandaki plaka ile Sabah/Akşam bildirim türünü oku. Beklenen kaydı yalnızca plaka ve tür doğrulaması için kullanacağım: plaka=%s, tür=%s. KM değerini tahmin etme ve bildirilen değerden türetme; yalnızca fotoğrafta gerçekten görülen hanelerin tam kilometre kısmını döndür. Rakam net değilse odometer_km=null yap. Güven değerlerini 0-100 arasında ver.",
+            "Bu fotoğraf bir araç KM bildiriminin kanıtıdır. Önce gösterge panelindeki toplam odometre ekranını bul; hız, devir, yakıt ve trip sayaçlarını odometreyle karıştırma. KRİTİK SEÇİM KURALI: Ekranda birden fazla sayı varsa 'km' yazısının hemen solunda ve AYNI SATIRDA bulunan sayı odometre için birinci adaydır. Saat, sıcaklık, tarih, trip ve alt/üst satırdaki başka sayıları seçme. Örneğin aynı ekranda orta satırda '97125 km', alt satırda '32°C 1801' varsa odometer_km=97125 olmalıdır; 1801 değildir. Görüntü eğikse sayacı zihinsel olarak düz çevir. Odometredeki tüm haneleri soldan sağa tek tek incele, özellikle düşük kontrastlı veya silik ilk haneyi atlama. ÖNEMLİ (Araç Gösterge Kuralları): 1) ÇOĞU BİNEK VE TİCARİ ARAÇTA ODOMETRE DİREKT TAM KİLOMETREYİ GÖSTERİR (örneğin '120928' ekranında tüm haneler tam kilometredir: 120928). 2) Ondalık hane (1/10 km) YALNIZCA en sağdaki hane nokta/virgül ile ayrılmışsa (örn: '8421.6' gösteriminde 8421 tam KM, '.6' ondalıktır) veya özellikle motosikletlerde/mekanik göstergelerde en sağdaki çark farklı renk, zemin ya da ayrı tamburdaysa (örn: siyah çarkların yanında beyaz çark olan '079380' gösteriminde 7938 tam KM, beyaz '0' ondalıktır). Nokta görünmese bile farklı zeminli son tamburu tam KM'ye katma. 3) EĞER NOKTA/VİRGÜL VEYA FARKLI RENKTE ÇARK YOKSA, EKRANDAKİ TÜM HANELERİ TAM KİLOMETRE OLARAK OKU (örn: '120928'). 4) Mavi, yeşil veya siyah-beyaz 7-segment LCD panellerdeki 9, 8, 3, 0, 5, 6 hanelerini ışık yansımasına karşı dikkatle incele; mekanik tamburlarda özellikle 6/8 ayrımını kontrol et ve tüm haneleri soldan sağa eksiksiz oku. 5) Sol baştaki sıfırları (örn: '07938' -> 7938) dikkate alarak temizle. odometer_bbox yalnızca seçtiğin odometre rakamlarını ve yanındaki km birimini çevrelesin; başka satırı çevreleme. Kutuyu görüntünün genişlik ve yüksekliğine göre 0-1000 arası normalize edilmiş x, y, width, height değerleriyle döndür. Konum bulunamazsa null yap. Ayrıca fotoğrafa uygulama tarafından eklenen filigrandaki plaka ile Sabah/Akşam bildirim türünü oku. Beklenen kaydı yalnızca plaka ve tür doğrulaması için kullanacağım: plaka=%s, tür=%s. KM değerini tahmin etme ve bildirilen değerden türetme; yalnızca fotoğrafta gerçekten görülen hanelerin tam kilometre kısmını döndür. Rakam net değilse odometer_km=null yap. Güven değerlerini 0-100 arasında ver.",
             (string) $bildirim->plaka,
             (string) $bildirim->tur
         );
@@ -258,7 +258,7 @@ class KmBildirimAiKontrolService
             ? ' İlk okuma araç geçmişindeki son KM değerinden düşüktü; odometre geri gitmeyeceği için solda atlanmış silik hane olup olmadığını özellikle kontrol et.'
             : '';
         $prompt = 'Bu görüntü, araç gösterge panelindeki toplam odometre alanının otomatik büyütülmüş kırpımıdır. '
-            . 'Hız, devir, yakıt, saat ve trip değerlerini dikkate alma. Toplam KM değerindeki haneleri soldan sağa tek tek oku; '
+            . 'Hız, devir, yakıt, saat ve trip değerlerini dikkate alma. Birden fazla sayı varsa "km" biriminin hemen solunda ve aynı satırda bulunan sayıyı seç; alt veya üst satırdaki sayıyı seçme. Toplam KM değerindeki haneleri soldan sağa tek tek oku; '
             . 'özellikle 7-segment / LCD dijital ekranlarda (örneğin mavi/yeşil kadranlarda) 9, 8, 3, 0, 5, 6 rakamlarını; mekanik tamburlarda 6/8 ayrımını dikkatle kontrol et. '
             . 'ÖNEMLİ KURAL: Çoğu araçta tüm haneler tam kilometredir (örn: "120928" 6 haneli tam kilometredir). YALNIZCA nokta/virgül ile ayrılmış ondalık (örn: "8421.6") veya özellikle motosiklet/mekanik göstergelerde farklı renkli, farklı zeminli ya da ayrı tamburdaki son çark (örn: "079380") varsa son haneyi katma. Nokta görünmese bile farklı zeminli son çark onda birdir. Böyle bir ayrım yoksa EKRANDAKİ TÜM HANELERİ TAM KİLOMETRE OLARAK OKU. Görüntü eğikse sayacı zihinsel olarak düz çevir. '
             . 'İlk görsel genel bağlam, ikinci görsel odometrenin büyütülmüş halidir. İki görseli birlikte incele ve görünen her rakam hücresini say. '
@@ -319,44 +319,25 @@ class KmBildirimAiKontrolService
     }
 
     /**
-     * Yedi-segment ekranlarda tek bir segmentin yansıma nedeniyle kaybolması veya
-     * görünmesi 1/7, 2/3 gibi rakamları karıştırabilir. İlk iki bağımsız okuma
-     * bildirime çok yakınsa, bildirilen değeri bir aday olarak verip her hanenin
-     * gerçekten görüntü tarafından desteklenip desteklenmediğini son kez sınar.
-     * Yalnızca çok yüksek güvenli olumlu sonuç OCR değerini düzeltir.
+     * İlk okumalar hatalı satırı seçebilir veya yedi-segment rakamları
+     * karıştırabilir. Bildirilen değeri bir aday olarak verip orijinal fotoğrafta
+     * gerçekten desteklenip desteklenmediğini son kez sınar. Yalnızca çok yüksek
+     * güvenli olumlu sonuç OCR değerini düzeltir.
      */
     private function adjudicateCloseOdometerReading(array $image, array $analiz, object $bildirim): array
     {
         $okunanKm = $analiz['odometer_km'] ?? null;
         $bildirilenKm = (int) $bildirim->bitis_km;
-        if ($okunanKm === null || $bildirilenKm <= 0 || $this->isKmMatching(
+        if ($bildirilenKm <= 0 || ($okunanKm !== null && $this->isKmMatching(
             (int) $okunanKm,
             $bildirilenKm,
             ($analiz['has_decimal_digit'] ?? null) === true
-        )) {
+        ))) {
             return $analiz;
         }
 
-        $okunanMetin = (string) (int) $okunanKm;
+        $okunanMetin = $okunanKm === null ? 'okunamadı' : (string) (int) $okunanKm;
         $bildirilenMetin = (string) $bildirilenKm;
-        // Mekanik/motosiklet sayaçlarında sağdaki farklı renkli tambur onda bir
-        // kilometredir. Model ayırıcıyı göremeyip bu haneyi tam KM'ye katmış
-        // olabilir; yakınlığı hem ham hem de son hanesi çıkarılmış değerle ölç.
-        $yakinlikAdaylari = [$okunanMetin];
-        if (strlen($okunanMetin) > 1) {
-            $yakinlikAdaylari[] = substr($okunanMetin, 0, -1);
-        }
-        $tekHaneFarkVar = false;
-        foreach ($yakinlikAdaylari as $yakinlikAdayi) {
-            if (abs(strlen($yakinlikAdayi) - strlen($bildirilenMetin)) <= 1
-                && levenshtein($yakinlikAdayi, $bildirilenMetin) === 1) {
-                $tekHaneFarkVar = true;
-                break;
-            }
-        }
-        if (!$tekHaneFarkVar || (int) ($analiz['km_confidence'] ?? 0) < 80) {
-            return $analiz;
-        }
 
         $cropDataUrl = null;
         $bbox = $analiz['odometer_bbox'] ?? null;
@@ -374,8 +355,8 @@ class KmBildirimAiKontrolService
         }
 
         $prompt = sprintf(
-            'Bu görüntü toplam odometre ekranının büyütülmüş halidir. İlk OCR "%s" okudu; sürücünün bildirdiği aday değer "%s". '
-            . 'Bildirilen değeri doğru varsayma. Ekrandaki rakam hücrelerini soldan sağa say ve her hücrenin yanan/sönük segmentlerini tek tek incele. '
+            'İlk görsel gösterge panelinin tamamı, ikinci görsel ilk OCR tarafından seçilen alanın kırpımıdır; kırpım yanlış satırı göstermiş olabilir. İlk OCR "%s" okudu; sürücünün bildirdiği aday değer "%s". '
+            . 'Bildirilen değeri doğru varsayma. Önce orijinal görselde "km" yazısını bul ve hemen solunda AYNI SATIRDA bulunan sayı dizisini seç. Saat, sıcaklık, tarih, trip ve başka satırdaki sayıları kullanma. Ekrandaki rakam hücrelerini soldan sağa say ve her hücrenin yanan/sönük segmentlerini tek tek incele. '
             . 'Özellikle 1/7, 2/3, 6/8 ve yansıma yüzünden iki kez görülmüş olabilecek bitişik haneleri kontrol et. '
             . 'Motosikletlerde ve mekanik tamburlu sayaçlarda en sağdaki farklı renkli/zeminli hane onda bir KM olabilir; '
             . 'nokta görünmese bile farklı renk veya ayrı tambur varsa bu son haneyi tam kilometreye katma. Görüntü eğikse sayacı zihinsel olarak düz çevir. '
@@ -391,6 +372,7 @@ class KmBildirimAiKontrolService
                 'role' => 'user',
                 'content' => [
                     ['type' => 'text', 'text' => $prompt],
+                    ['type' => 'image_url', 'image_url' => ['url' => 'data:' . $image['mime'] . ';base64,' . base64_encode((string) file_get_contents($image['path'])), 'detail' => 'high']],
                     ['type' => 'image_url', 'image_url' => ['url' => $cropDataUrl, 'detail' => 'high']],
                 ],
             ]],

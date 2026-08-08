@@ -120,12 +120,25 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 </div>
 
                 <input type="file" id="kacak-tutanak-input" accept="image/*,application/pdf" style="display:none">
+                <input type="file" id="kacak-tutanak-camera-input" accept="image/*" capture="environment" style="display:none">
+
+                <div class="grid grid-cols-2 gap-2 mb-2">
+                    <button type="button" onclick="document.getElementById('kacak-tutanak-camera-input').click()"
+                        class="py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+                        <span class="material-symbols-outlined text-base">photo_camera</span>
+                        Kameradan Çek
+                    </button>
+                    <button type="button" onclick="document.getElementById('kacak-tutanak-input').click()"
+                        class="py-2.5 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+                        <span class="material-symbols-outlined text-base">photo_library</span>
+                        Galeriden Seç
+                    </button>
+                </div>
 
                 <div class="flex gap-2">
-                    <button type="button" onclick="document.getElementById('kacak-tutanak-input').click()"
-                        class="flex-1 py-2 rounded-xl bg-white dark:bg-card-dark border border-slate-200 dark:border-slate-800 text-slate-600 dark:text-slate-300 text-xs font-bold">
-                        <span id="kacak-tutanak-label">Fotoğraf Seç</span>
-                    </button>
+                    <div class="flex-1 py-2 px-3 rounded-xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-800 text-slate-500 text-xs font-bold text-center truncate">
+                        <span id="kacak-tutanak-label">Belge Seçilmedi</span>
+                    </div>
                     <button type="button" id="kacak-analiz-btn" onclick="analizEtKacak()" disabled
                         class="flex-1 py-2 rounded-xl bg-amber-500 text-white text-xs font-black">
                         Yapay Zeka ile Oku
@@ -223,10 +236,19 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Saha Fotoğrafları (en fazla
                     <?= (int) $maxSahaFoto ?>)</label>
                 <input type="file" id="kacak-saha-input" accept="image/*" multiple style="display:none">
-                <button type="button" onclick="document.getElementById('kacak-saha-input').click()"
-                    class="w-full py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-bold">
-                    Fotoğraf Ekle
-                </button>
+                <input type="file" id="kacak-saha-camera-input" accept="image/*" capture="environment" style="display:none">
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" onclick="document.getElementById('kacak-saha-camera-input').click()"
+                        class="py-3 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+                        <span class="material-symbols-outlined text-base">photo_camera</span>
+                        Kameradan Çek
+                    </button>
+                    <button type="button" onclick="document.getElementById('kacak-saha-input').click()"
+                        class="py-3 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+                        <span class="material-symbols-outlined text-base">photo_library</span>
+                        Galeriden Seç
+                    </button>
+                </div>
                 <div id="kacak-saha-preview" class="grid grid-cols-3 gap-2 mt-3"></div>
                 <div id="mevcut-saha-container"></div>
             </div>
@@ -235,10 +257,19 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Video (en fazla
                     <?= (int) $maxVideo ?> adet, <?= (int) $videoMaxSure ?> sn)</label>
                 <input type="file" id="kacak-video-input" accept="video/*" style="display:none">
-                <button type="button" onclick="document.getElementById('kacak-video-input').click()"
-                    class="w-full py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-500 text-xs font-bold">
-                    Video Ekle
-                </button>
+                <input type="file" id="kacak-video-camera-input" accept="video/*" capture="environment" style="display:none">
+                <div class="grid grid-cols-2 gap-2">
+                    <button type="button" onclick="document.getElementById('kacak-video-camera-input').click()"
+                        class="py-3 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+                        <span class="material-symbols-outlined text-base">videocam</span>
+                        Kamera ile Çek
+                    </button>
+                    <button type="button" onclick="document.getElementById('kacak-video-input').click()"
+                        class="py-3 px-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 text-xs font-bold flex items-center justify-center gap-1.5 active:scale-95 transition-transform">
+                        <span class="material-symbols-outlined text-base">video_library</span>
+                        Galeriden Seç
+                    </button>
+                </div>
                 <p class="text-xs text-slate-400 mt-1">En fazla <?= (int) $videoMaxSure ?> saniye ve
                     <?= (int) round(KacakKontrolModel::videoYuklemeSiniri() / 1048576) ?> MB. Videolar çevrimiçiyken gönderilir.</p>
 
@@ -963,11 +994,11 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
         };
 
         // ----- Tutanak seçimi -----
-        document.getElementById('kacak-tutanak-input').addEventListener('change', function (e) {
+        function handleTutanakFileSelect(e) {
             const file = e.target.files[0];
             aiButonGuncelle();
             if (!file) {
-                document.getElementById('kacak-tutanak-label').textContent = 'Fotoğraf Seç';
+                document.getElementById('kacak-tutanak-label').textContent = 'Belge Seçilmedi';
                 document.getElementById('kacak-tutanak-preview').style.display = 'none';
                 return;
             }
@@ -983,10 +1014,13 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 }
                 box.style.display = '';
             }
-        });
+        }
+
+        document.getElementById('kacak-tutanak-input').addEventListener('change', handleTutanakFileSelect);
+        document.getElementById('kacak-tutanak-camera-input').addEventListener('change', handleTutanakFileSelect);
 
         // ----- Saha fotoğrafları -----
-        document.getElementById('kacak-saha-input').addEventListener('change', function (e) {
+        function handleSahaFilesSelect(e) {
             for (const file of e.target.files) {
                 if (sahaDosyalari.length >= MAX_SAHA_FOTO) {
                     Alert.warning('Limit', `En fazla ${MAX_SAHA_FOTO} fotoğraf ekleyebilirsiniz.`);
@@ -996,7 +1030,59 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             }
             e.target.value = '';
             sahaOnizlemeCiz();
-        });
+        }
+
+        document.getElementById('kacak-saha-input').addEventListener('change', handleSahaFilesSelect);
+        document.getElementById('kacak-saha-camera-input').addEventListener('change', handleSahaFilesSelect);
+
+        // ----- Videolar -----
+        function handleVideoFileSelect(e) {
+            const dosya = e.target.files[0];
+            e.target.value = '';
+            if (!dosya) return;
+
+            if (videoDosyalari.length >= MAX_VIDEO) {
+                return Alert.warning('Limit', `En fazla ${MAX_VIDEO} video ekleyebilirsiniz.`);
+            }
+
+            const progressBox = document.getElementById('kacak-video-progress-container');
+            if (progressBox) progressBox.classList.remove('hidden');
+
+            const textEl = document.getElementById('kacak-video-progress-text');
+            const percentEl = document.getElementById('kacak-video-progress-percent');
+            const barEl = document.getElementById('kacak-video-progress-bar');
+            const nameEl = document.getElementById('kacak-video-progress-name');
+            const detailEl = document.getElementById('kacak-video-progress-detail');
+
+            const mbSize = (dosya.size / (1024 * 1024)).toFixed(1);
+            if (textEl) textEl.innerHTML = `<svg class="w-4 h-4 text-indigo-600 animate-spin flex-shrink-0 inline me-1" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Video İşleniyor...`;
+            if (percentEl) percentEl.textContent = '50%';
+            if (barEl) barEl.style.width = '50%';
+            if (nameEl) nameEl.textContent = dosya.name;
+            if (detailEl) detailEl.textContent = `${mbSize} MB Hazırlanıyor...`;
+
+            try {
+                OfflineQueue.videoIncele(dosya, VIDEO_MAX_SURE, VIDEO_MAX_BYTE).then(vSonuc => {
+                    videoDosyalari.push(vSonuc);
+                    videoOnizlemeCiz();
+                    videoProgressDurumGuncelle();
+                    if (vSonuc.sikistirildi) {
+                        const tasarruf = Math.round((1 - (vSonuc.yeniBoyut / vSonuc.hamBoyut)) * 100);
+                        Alert.success('Video Sıkıştırıldı', `Video boyutu ${(vSonuc.hamBoyut / 1048576).toFixed(1)} MB -> ${(vSonuc.yeniBoyut / 1048576).toFixed(1)} MB seviyesine düşürüldü (%${tasarruf} tasarruf).`);
+                    }
+                }).catch(hata => {
+                    videoProgressDurumGuncelle();
+                    Alert.warning('Video Eklenemedi', hata.message);
+                });
+            } catch (hata) {
+                videoProgressDurumGuncelle();
+                Alert.warning('Video Eklenemedi', hata.message);
+            }
+        }
+
+        document.getElementById('kacak-video-input').addEventListener('change', handleVideoFileSelect);
+        document.getElementById('kacak-video-camera-input').addEventListener('change', handleVideoFileSelect);
+        document.getElementById('kacak-saha-camera-input').addEventListener('change', handleSahaFilesSelect);
 
         // ----- Videolar -----
         function videoProgressDurumGuncelle() {
@@ -1173,9 +1259,11 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
 
         // ----- Yapay zeka analizi -----
         window.analizEtKacak = async function () {
-            const input = document.getElementById('kacak-tutanak-input');
+            const input1 = document.getElementById('kacak-tutanak-input');
+            const input2 = document.getElementById('kacak-tutanak-camera-input');
+            const input = (input1 && input1.files.length) ? input1 : input2;
             if (!input || !input.files.length) {
-                return Alert.warning('Dosya Gerekli', 'Lütfen önce tutanak fotoğrafını seçin.');
+                return Alert.warning('Dosya Gerekli', 'Lütfen önce tutanak fotoğrafını çekin veya seçin.');
             }
 
             if (!cevrimici()) {
@@ -1447,8 +1535,11 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             e.preventDefault();
 
             const tutanakInput = document.getElementById('kacak-tutanak-input');
-            if (!kacakEditToken && !tutanakInput.files.length) {
-                return Alert.warning('Tutanak Zorunlu', 'Lütfen tutanağın fotoğrafını ekleyin.');
+            const tutanakCamInput = document.getElementById('kacak-tutanak-camera-input');
+            const tutanakSelectedFile = (tutanakInput.files && tutanakInput.files[0]) || (tutanakCamInput.files && tutanakCamInput.files[0]);
+
+            if (!kacakEditToken && !tutanakSelectedFile) {
+                return Alert.warning('Tutanak Zorunlu', 'Lütfen tutanağın fotoğrafını çekin veya ekleyin.');
             }
             if (!window.OfflineQueue) {
                 return Alert.error('Hata', 'Uygulama bileşenleri yüklenemedi, sayfayı yenileyin.');
@@ -1486,8 +1577,8 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                     fd.append('action', 'updateKacakBildirim');
                     fd.append('edit_token', kacakEditToken);
                     btnText.textContent = 'HAZIRLANIYOR...';
-                    if (tutanakInput.files[0]) {
-                        const tutanakKucuk = await OfflineQueue.fotografKucult(tutanakInput.files[0], 2200, 0.82);
+                    if (tutanakSelectedFile) {
+                        const tutanakKucuk = await OfflineQueue.fotografKucult(tutanakSelectedFile, 2200, 0.82);
                         fd.append('tutanak_foto', tutanakKucuk.blob, tutanakKucuk.ad);
                     }
                     for (const file of sahaDosyalari) {
@@ -1559,7 +1650,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
 
                 // Fotoğraflar zayıf bağlantıda gönderilebilsin ve cihazda az yer kaplasın
                 // diye küçültülür; tutanak okunabilirliği için daha yüksek çözünürlük kalır.
-                const tutanak = await OfflineQueue.fotografKucult(tutanakInput.files[0], 2200, 0.82);
+                const tutanak = await OfflineQueue.fotografKucult(tutanakSelectedFile, 2200, 0.82);
                 const dosyalar = [{ alan: 'tutanak_foto', ad: tutanak.ad, tip: tutanak.tip, blob: tutanak.blob }];
 
                 // Saha fotoğrafları ana istekle değil, her biri ayrı istekle gider.
@@ -1669,7 +1760,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
         // Yapay zeka okuması sunucuda çalışır, çevrimdışıyken kullanılamaz.
         function aiButonGuncelle() {
             const btn = document.getElementById('kacak-analiz-btn');
-            const dosyaVar = document.getElementById('kacak-tutanak-input').files.length > 0;
+            const dosyaVar = (document.getElementById('kacak-tutanak-input').files.length > 0) || (document.getElementById('kacak-tutanak-camera-input').files.length > 0);
 
             btn.disabled = !dosyaVar || !cevrimici();
             btn.style.opacity = btn.disabled ? '0.5' : '';
