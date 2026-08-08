@@ -948,8 +948,13 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             }
 
             try {
-                videoDosyalari.push(await OfflineQueue.videoIncele(dosya, VIDEO_MAX_SURE, VIDEO_MAX_BYTE));
+                const vSonuc = await OfflineQueue.videoIncele(dosya, VIDEO_MAX_SURE, VIDEO_MAX_BYTE);
+                videoDosyalari.push(vSonuc);
                 videoOnizlemeCiz();
+                if (vSonuc.sikistirildi) {
+                    const tasarruf = Math.round((1 - (vSonuc.yeniBoyut / vSonuc.hamBoyut)) * 100);
+                    Alert.success('Video Sıkıştırıldı', `Video boyutu ${(vSonuc.hamBoyut / 1048576).toFixed(1)} MB -> ${(vSonuc.yeniBoyut / 1048576).toFixed(1)} MB seviyesine düşürüldü (%${tasarruf} tasarruf).`);
+                }
             } catch (hata) {
                 Alert.warning('Video Eklenemedi', hata.message);
             }
@@ -963,9 +968,15 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                     ? `<img src="${v.kapak}" class="w-full rounded-xl border border-slate-200" style="height:4.5rem;object-fit:cover">`
                     : `<div class="w-full rounded-xl border border-slate-200 flex items-center justify-center bg-slate-100" style="height:4.5rem">
                            <span class="material-symbols-outlined text-slate-400">movie</span></div>`;
+                const sikistirmaRozeti = v.sikistirildi
+                    ? `<span class="text-white text-[10px] font-bold rounded flex items-center gap-0.5" style="position:absolute;top:4px;left:4px;background:#059669;padding:1px 4px" title="Sıkıştırıldı">
+                           <span class="material-symbols-outlined" style="font-size:10px">compress</span>OPT
+                       </span>`
+                    : '';
                 box.insertAdjacentHTML('beforeend', `
                 <div style="position:relative">
                     ${kapak}
+                    ${sikistirmaRozeti}
                     <span class="text-white text-xs rounded" style="position:absolute;bottom:4px;right:4px;background:rgba(0,0,0,.7);padding:1px 4px">${OfflineQueue.sureBicimle(v.sure)}</span>
                     <button type="button" onclick="window.videoSil(${i})"
                         class="text-white text-xs font-bold rounded-xl flex items-center justify-center"

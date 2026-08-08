@@ -73,6 +73,9 @@ class VideoUploadService
 
         @chmod($destination, 0644);
 
+        // Sunucuda FFmpeg yüklü ise videoyu otomatik sıkıştırıp optimize et
+        $this->optimizeVideoWithFfmpeg($destination);
+
         $kapakAdi = $this->kapakKaydet($kapakVerisi, $destinationDirectory, $baseName, $kapakKenar);
 
         return [
@@ -83,6 +86,60 @@ class VideoUploadService
             'sure_saniye' => $sureSaniye,
             'kapak_filename' => $kapakAdi,
         ];
+    }
+
+    /**
+     * Sunucuda FFmpeg varsa videoyu H.264 / AAC 720p CRF 28 ile optimize ederek boyutunu düşürür.
+     */
+    private function optimizeVideoWithFfmpeg(string $filePath): void
+    {
+        if (!function_exists('exec')) {
+            return;
+        }
+
+        $ffmpegBin = null;
+        if (is_executable('/usr/bin/ffmpeg')) {
+            $ffmpegBin = '/usr/bin/ffmpeg';
+        } elseif (is_executable('/usr/local/bin/ffmpeg')) {
+            $ffmpegBin = '/usr/local/bin/ffmpeg';
+        } else {
+            $which = @shell_exec('which ffmpeg 2>/dev/null');
+            if ($which && trim($which)) {
+                $ffmpegBin = trim($which);
+            }
+        }
+
+        if (!$ffmpegBin) {
+            return;
+        }
+
+        $tempPath = $filePath . '.opt.mp4';
+        $cmd = sprintf(
+            '%s -y -i %s -vcodec libx264 -crf 28 -preset faster -maxrate 1500k -bufsize 3000k -vf %s -acodec aac -b:a 128k %s 2>&1',
+            escapeshellcmd($ffmpegBin),
+            escapeshellarg($filePath),
+            escapeshellarg('scale=\'min(1280,iw)\':\'min(720,ih)\':force_original_aspect_ratio=decrease,pad=ceil(iw/2)*2:ceil(ih/2)*2'),
+            escapeshellarg($tempPath)
+        );
+
+        $output = [];
+        $returnCode = 0;
+        @exec($cmd, $output, $returnCode);
+
+        if ($returnCode === 0 && is_file($tempPath) && filesize($tempPath) > 0) {
+            $originalSize = filesize($filePath);
+            $optSize = filesize($tempPath);
+            if ($optSize < $originalSize) {
+                @rename($tempPath, $filePath);
+                @chmod($filePath, 0644);
+            } else {
+                @unlink($tempPath);
+            }
+        } else {
+            if (is_file($tempPath)) {
+                @unlink($tempPath);
+            }
+        }
     }
 
     /**

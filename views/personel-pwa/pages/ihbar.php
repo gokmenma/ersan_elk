@@ -410,10 +410,13 @@
                         }
 
                         try {
-                            ihbarSeciliVideolar.push(
-                                await OfflineQueue.videoIncele(dosya, IHBAR_VIDEO_MAX_SURE, IHBAR_VIDEO_MAX_BYTE)
-                            );
+                            const vSonuc = await OfflineQueue.videoIncele(dosya, IHBAR_VIDEO_MAX_SURE, IHBAR_VIDEO_MAX_BYTE);
+                            ihbarSeciliVideolar.push(vSonuc);
                             renderIhbarVideoPreview();
+                            if (vSonuc.sikistirildi) {
+                                const tasarruf = Math.round((1 - (vSonuc.yeniBoyut / vSonuc.hamBoyut)) * 100);
+                                Alert.success('Video Sıkıştırıldı', `Video boyutu ${(vSonuc.hamBoyut / 1048576).toFixed(1)} MB -> ${(vSonuc.yeniBoyut / 1048576).toFixed(1)} MB seviyesine düşürüldü (%${tasarruf} tasarruf).`);
+                            }
                         } catch (hata) {
                             Alert.warning('Video Eklenemedi', hata.message);
                         }
@@ -437,9 +440,15 @@
                 ? `<img src="${v.kapak}" class="w-20 h-20 object-cover rounded-xl">`
                 : `<div class="w-20 h-20 rounded-xl bg-slate-100 flex items-center justify-center">
                        <span class="material-symbols-outlined text-slate-400">movie</span></div>`;
+            const sikistirmaRozeti = v.sikistirildi
+                ? `<span class="absolute top-1 left-1 bg-emerald-600 text-white text-[10px] font-bold rounded px-1 flex items-center gap-0.5" title="Sıkıştırıldı">
+                       <span class="material-symbols-outlined text-[10px]">compress</span>OPT
+                   </span>`
+                : '';
             return `
             <div class="relative inline-block">
                 ${kapak}
+                ${sikistirmaRozeti}
                 <span class="absolute bottom-1 right-1 text-white text-xs rounded px-1" style="background:rgba(0,0,0,.7)">${OfflineQueue.sureBicimle(v.sure)}</span>
                 <button type="button" onclick="window.removeIhbarVideo(${idx})" class="absolute -top-2 -right-2 w-6 h-6 bg-red-500 text-white rounded-full flex items-center justify-center">
                     <span class="material-symbols-outlined text-sm">close</span>

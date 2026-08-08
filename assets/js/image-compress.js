@@ -80,9 +80,172 @@
         return sira.then(function () { return sonuc; });
     }
 
-    // Videonun süresini okur ve ilk karesinden kapak görseli üretir.
-    // Süre/boyut sınırı aşılırsa hata döner; sunucu tarafında tekrar doğrulanır.
-    function videoIncele(dosya, maxSure, maxByte) {
+    // Videonun kalitesini ve boyutunu istemcide (HTML5 MediaRecorder + Canvas) düşürür.
+    // Desteklenmeyen cihazlarda veya dönüştürme başarısız olursa orijinal dosyayı döndürür.
+    function videoSikistir(dosya, ayarlar, ilerlemeCallback) {
+        ayarlar = ayarlar || {};
+        var maxEn = ayarlar.maxEn || 1280;
+        var maxBoy = ayarlar.maxBoy || 720;
+        var hedefBitrate = ayarlar.hedefBitrate || 1200000; // 1.2 Mbps
+        var fps = ayarlar.fps || 25;
+
+        if (!dosya || !dosya.type || dosya.type.indexOf("video/") !== 0) {
+            return Promise.resolve(dosya);
+        }
+
+        // 2 MB'tan küçük videolar zaten ufak olduğu için sıkıştırmaya gerek yok
+        if (dosya.size <= 2 * 1024 * 1024) {
+            return Promise.resolve(dosya);
+        }
+
+        if (typeof window === "undefined" || !window.MediaRecorder || !HTMLCanvasElement.prototype.captureStream) {
+            return Promise.resolve(dosya);
+        }
+
+        var mime = "";
+        var mimes = [
+            "video/webm;codecs=vp8,opus",
+            "video/webm;codecs=vp9,opus",
+            "video/webm",
+            "video/mp4;codecs=avc1.42E01E,mp4a.40.2",
+            "video/mp4"
+        ];
+        for (var i = 0; i < mimes.length; i++) {
+            if (MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(mimes[i])) {
+                mime = mimes[i];
+                break;
+            }
+        }
+        if (!mime) {
+            return Promise.resolve(dosya);
+        }
+
+        return new Promise(function (coz) {
+            var url = URL.createObjectURL(dosya);
+            var video = document.createElement("video");
+            video.muted = true;
+            video.playsInline = true;
+            video.preload = "auto";
+
+            function temizle() {
+                URL.revokeObjectURL(url);
+                video.removeAttribute("src");
+                video.load();
+            }
+
+            video.onerror = function () {
+                temizle();
+                coz(dosya);
+            };
+
+            video.onloadedmetadata = function () {
+                var sure = video.duration;
+                if (!isFinite(sure) || sure <= 0) {
+                    temizle();
+                    return coz(dosya);
+                }
+
+                var g = video.videoWidth;
+                var y = video.videoHeight;
+                if (!g || !y) {
+                    temizle();
+                    return coz(dosya);
+                }
+
+                var oran = Math.min(1, maxEn / g, maxBoy / y);
+                var hedefG = Math.max(2, Math.round((g * oran) / 2) * 2);
+                var hedefY = Math.max(2, Math.round((y * oran) / 2) * 2);
+
+                var tuval = document.createElement("canvas");
+                tuval.width = hedefG;
+                tuval.height = hedefY;
+                var ctx = tuval.getContext("2d");
+
+                var stream;
+                try {
+                    stream = tuval.captureStream(fps);
+                } catch (e) {
+                    temizle();
+                    return coz(dosya);
+                }
+
+                var recorderOptions = { videoBitsPerSecond: hedefBitrate };
+                if (mime) recorderOptions.mimeType = mime;
+
+                var mediaRecorder;
+                try {
+                    mediaRecorder = new MediaRecorder(stream, recorderOptions);
+                } catch (e) {
+                    temizle();
+                    return coz(dosya);
+                }
+
+                var parcalar = [];
+                mediaRecorder.ondataavailable = function (e) {
+                    if (e.data && e.data.size > 0) {
+                        parcalar.push(e.data);
+                    }
+                };
+
+                var bitti = false;
+                function bitir() {
+                    if (bitti) return;
+                    bitti = true;
+                    if (mediaRecorder.state !== "inactive") {
+                        try { mediaRecorder.stop(); } catch (err) {}
+                    }
+                    video.pause();
+                    temizle();
+                }
+
+                mediaRecorder.onstop = function () {
+                    var blob = new Blob(parcalar, { type: mime || "video/webm" });
+                    if (blob && blob.size > 0 && blob.size < dosya.size) {
+                        var uzanti = (mime.indexOf("mp4") !== -1) ? ".mp4" : ".webm";
+                        var ad = (dosya.name || "video").replace(/\.[^.]+$/, "") + "_opt" + uzanti;
+                        var yeniDosya = new File([blob], ad, { type: blob.type, lastModified: Date.now() });
+                        coz(yeniDosya);
+                    } else {
+                        coz(dosya);
+                    }
+                };
+
+                video.currentTime = 0;
+                video.play().then(function () {
+                    mediaRecorder.start(100);
+
+                    function ciz() {
+                        if (video.ended || video.paused || bitti) {
+                            bitir();
+                            return;
+                        }
+                        ctx.drawImage(video, 0, 0, hedefG, hedefY);
+                        if (ilerlemeCallback && sure > 0) {
+                            var yuzde = Math.min(99, Math.round((video.currentTime / sure) * 100));
+                            ilerlemeCallback(yuzde);
+                        }
+                        requestAnimationFrame(ciz);
+                    }
+                    ciz();
+                }).catch(function () {
+                    bitir();
+                    coz(dosya);
+                });
+
+                setTimeout(function () {
+                    if (!bitti) {
+                        bitir();
+                    }
+                }, (sure + 5) * 1000);
+            };
+
+            video.src = url;
+        });
+    }
+
+    // Videonun süresini okur, boyutunu düşürür ve ilk karesinden kapak görseli üretir.
+    function videoIncele(dosya, maxSure, maxByte, otosikistir) {
+        otosikistir = otosikistir !== false;
         return new Promise(function (coz, ret) {
             if (!dosya || !dosya.type || dosya.type.indexOf("video/") !== 0) {
                 return ret(new Error("Yalnızca video dosyası yükleyebilirsiniz."));
@@ -156,7 +319,23 @@
                     }
 
                     temizle();
-                    coz({ dosya: dosya, sure: sure, kapak: kapak });
+
+                    if (otosikistir && dosya.size > 3 * 1024 * 1024) {
+                        videoSikistir(dosya).then(function (islenmisDosya) {
+                            coz({
+                                dosya: islenmisDosya,
+                                sure: sure,
+                                kapak: kapak,
+                                hamBoyut: dosya.size,
+                                yeniBoyut: islenmisDosya.size,
+                                sikistirildi: islenmisDosya.size < dosya.size
+                            });
+                        }).catch(function () {
+                            coz({ dosya: dosya, sure: sure, kapak: kapak, hamBoyut: dosya.size, yeniBoyut: dosya.size, sikistirildi: false });
+                        });
+                    } else {
+                        coz({ dosya: dosya, sure: sure, kapak: kapak, hamBoyut: dosya.size, yeniBoyut: dosya.size, sikistirildi: false });
+                    }
                 };
 
                 try {
@@ -179,5 +358,5 @@
     }
 
     global.ResimSikistir = { kucult: kucult, listeyiKucult: listeyiKucult };
-    global.VideoKontrol = { incele: videoIncele, sureBicimle: sureBicimle };
+    global.VideoKontrol = { incele: videoIncele, sikistir: videoSikistir, sureBicimle: sureBicimle };
 })(window);
