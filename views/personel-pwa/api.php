@@ -4717,7 +4717,9 @@ try {
             $liste = [];
             foreach ($kayitlar as $kayit) {
                 $kayit['tarih_formatted'] = date('d.m.Y', strtotime($kayit['tarih']));
-                $kayit['duzenlenebilir'] = (int) $kayit['bildiren_personel_id'] === (int) $personel_id
+                $isEkip = (int) $kayit['bildiren_personel_id'] === (int) $personel_id
+                    || (!empty($kayit['personel_ids']) && in_array((string) $personel_id, explode(',', $kayit['personel_ids']), true));
+                $kayit['duzenlenebilir'] = $isEkip
                     && $kayit['onay_durumu'] === 'beklemede'
                     && $kayit['durum'] !== 'iptal';
                 $kayit['edit_token'] = $kayit['duzenlenebilir'] ? Security::encrypt($kayit['id']) : '';
@@ -5037,7 +5039,15 @@ try {
                 response(false, null, 'Videonun ekleneceği tutanak bulunamadı.');
             }
 
-            if ((int) $videoKayit['bildiren_personel_id'] !== (int) $personel_id) {
+            $isEkip = (int) $videoKayit['bildiren_personel_id'] === (int) $personel_id;
+            if (!$isEkip && !empty($videoKayit['personel_ids'])) {
+                $pIds = array_map('intval', explode(',', $videoKayit['personel_ids']));
+                if (in_array((int) $personel_id, $pIds, true)) {
+                    $isEkip = true;
+                }
+            }
+
+            if (!$isEkip) {
                 error_log('PWA kaçak videosu yetkisiz eklenmeye çalışıldı: kacak_id=' . $videoKayit['id'] . ' personel=' . $personel_id);
                 response(false, null, 'Bu tutanağa video ekleme yetkiniz yok.');
             }

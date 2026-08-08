@@ -1649,12 +1649,17 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 if (fotolar.length > 0) {
                     $('#mevcutFotolarBolumu').removeClass('d-none');
                     $('#fotoSayisiBadge').text(fotolar.length);
-                    $('#mevcutFotolar').empty()
+                    $('#collapseFotolar').addClass('show');
+                    $('#headingFotolar .accordion-button').removeClass('collapsed').attr('aria-expanded', 'true');
+                    const $target = $('#mevcutFotolar');
+                    $target.empty()
                         .data('fotolar', fotolar)
                         .data('kacak-id', k.id)
-                        .data('loaded', false);
+                        .data('loaded', true);
+                    fotolariBas($target, fotolar, k.id);
                 } else {
                     $('#mevcutFotolarBolumu').addClass('d-none');
+                    $('#collapseFotolar').removeClass('show');
                 }
 
                 // Onay bekleyen (mobil) bildirimlerde düzelt-ve-onayla akışı
@@ -1714,13 +1719,15 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 }
             }
 
-            // Videolar seçim anında doğrulanmıştı; süre ve kapak karesi yanlarında gider.
-            fd.delete('videolar[]');
-            kacakSeciliVideolar.forEach(v => {
-                fd.append('videolar[]', v.dosya, v.dosya.name);
-                fd.append('video_sureleri[]', v.sure);
-                fd.append('video_kapaklari[]', v.kapak || '');
-            });
+            // Videolar seçim anında doğrulanmıştı; eğer istemcide işlendiyse süre ve kapak karesi ile gönderilir
+            if (kacakSeciliVideolar && kacakSeciliVideolar.length > 0) {
+                fd.delete('videolar[]');
+                kacakSeciliVideolar.forEach(v => {
+                    fd.append('videolar[]', v.dosya, v.dosya.name);
+                    fd.append('video_sureleri[]', v.sure);
+                    fd.append('video_kapaklari[]', v.kapak || '');
+                });
+            }
 
             $.ajax({
                 url: API, type: 'POST', data: fd, processData: false, contentType: false, dataType: 'json'

@@ -812,26 +812,47 @@ function kacakFotoYukle(KacakKontrolModel $Kacak, int $kacakId, int $userId): in
         }
     }
 
-    if (!empty($_FILES['videolar']) && is_array($_FILES['videolar']['name'])) {
+    if (!empty($_FILES['videolar']['name'])) {
         $sureler = $_POST['video_sureleri'] ?? [];
         $kapaklar = $_POST['video_kapaklari'] ?? [];
-        foreach ($_FILES['videolar']['name'] as $i => $ad) {
-            if (empty($ad) || ($_FILES['videolar']['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
-                continue;
+        $videoFiles = [];
+
+        if (is_array($_FILES['videolar']['name'])) {
+            foreach ($_FILES['videolar']['name'] as $i => $ad) {
+                if (!empty($ad) && ($_FILES['videolar']['error'][$i] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+                    $videoFiles[] = [
+                        'file' => [
+                            'name' => $ad,
+                            'tmp_name' => $_FILES['videolar']['tmp_name'][$i],
+                            'error' => $_FILES['videolar']['error'][$i],
+                            'size' => $_FILES['videolar']['size'][$i],
+                        ],
+                        'sure' => isset($sureler[$i]) && is_numeric($sureler[$i]) ? (int) ceil((float) $sureler[$i]) : null,
+                        'kapak' => isset($kapaklar[$i]) ? (string) $kapaklar[$i] : null,
+                        'name' => $ad
+                    ];
+                }
             }
+        } else if (($_FILES['videolar']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+            $sure = is_array($sureler) ? ($sureler[0] ?? null) : $sureler;
+            $kapak = is_array($kapaklar) ? ($kapaklar[0] ?? null) : $kapaklar;
+            $videoFiles[] = [
+                'file' => $_FILES['videolar'],
+                'sure' => is_numeric($sure) ? (int) ceil((float) $sure) : null,
+                'kapak' => !empty($kapak) ? (string) $kapak : null,
+                'name' => $_FILES['videolar']['name']
+            ];
+        }
+
+        foreach ($videoFiles as $vItem) {
             try {
                 $sonuc = $Kacak->storeUploadedVideo(
-                    [
-                        'name' => $ad,
-                        'tmp_name' => $_FILES['videolar']['tmp_name'][$i],
-                        'error' => $_FILES['videolar']['error'][$i],
-                        'size' => $_FILES['videolar']['size'][$i],
-                    ],
+                    $vItem['file'],
                     $kacakId,
-                    isset($sureler[$i]) && is_numeric($sureler[$i]) ? (int) ceil((float) $sureler[$i]) : null,
-                    isset($kapaklar[$i]) ? (string) $kapaklar[$i] : null
+                    $vItem['sure'],
+                    $vItem['kapak']
                 );
-                $Kacak->addVideo($kacakId, $sonuc['yol'], $sonuc['kapak'], $sonuc['sure_saniye'], $ad, null, $userId);
+                $Kacak->addVideo($kacakId, $sonuc['yol'], $sonuc['kapak'], $sonuc['sure_saniye'], $vItem['name'], null, $userId);
                 $eklenen++;
             } catch (\Throwable $e) {
                 error_log('Kaçak videosu yüklenemedi: ' . $e->getMessage());

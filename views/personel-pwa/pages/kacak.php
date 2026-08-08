@@ -827,7 +827,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                         </div>`;
                 }
 
-                const sahaFotolar = fotolar.filter(f => f.tur === 'saha' && f.medya_tipi !== 'video');
+                const sahaFotolar = fotolar.filter(f => f.tur === 'saha' && f.medya_tipi !== 'video' && !/\.(mp4|mov|webm|3gp)$/i.test(f.url || ''));
                 if (sahaFotolar.length > 0 && sahaBox) {
                     sahaBox.innerHTML = `
                         <div class="mt-3">
@@ -848,24 +848,26 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                         </div>`;
                 }
 
-                const videolar = fotolar.filter(f => f.medya_tipi === 'video');
+                const videolar = fotolar.filter(f => f.medya_tipi === 'video' || /\.(mp4|mov|webm|3gp)$/i.test(f.url || ''));
                 if (videolar.length > 0 && videoBox) {
                     videoBox.innerHTML = `
                         <div class="mt-3">
                             <p class="text-xs font-bold text-slate-500 uppercase mb-2">Önceden Yüklenen Videolar (${videolar.length})</p>
                             <div class="grid grid-cols-3 gap-2">
                                 ${videolar.map(f => `
-                                    <div class="mevcut-foto-item relative group rounded-xl overflow-hidden border border-slate-200 bg-slate-100 dark:bg-slate-800" style="height:6rem">
-                                        <a href="${esc(f.url)}" target="_blank" rel="noopener" class="block w-full h-full flex items-center justify-center">
+                                    <div class="mevcut-foto-item relative group rounded-xl overflow-hidden border border-slate-200 bg-slate-800" style="height:6rem">
+                                        <a href="${esc(f.url)}" target="_blank" rel="noopener" class="block w-full h-full relative flex items-center justify-center">
                                             ${f.kucuk_var
-                                                ? `<img src="${esc(f.kucuk_url || f.url)}" loading="lazy" class="w-full h-full object-cover">`
-                                                : `<span class="material-symbols-outlined text-slate-400 text-3xl">movie</span>`}
+                                                ? `<img src="${esc(f.kucuk_url)}" loading="lazy" class="w-full h-full object-cover">`
+                                                : `<div class="w-full h-full flex flex-col items-center justify-center bg-slate-800 text-slate-300">
+                                                    <span class="material-symbols-outlined text-3xl">play_circle</span>
+                                                   </div>`}
                                             <span class="absolute bottom-1 right-1 text-white text-[10px] rounded bg-black/70 px-1 font-bold">
                                                 ${f.sure_saniye ? OfflineQueue.sureBicimle(f.sure_saniye) : '▶'}
                                             </span>
                                         </a>
                                         <button type="button" onclick="kacakFotoSilPwa(${f.id}, this)"
-                                            class="absolute top-1 right-1 w-7 h-7 rounded-full bg-red-600 text-white flex items-center justify-center shadow-md" title="Sil">
+                                            class="absolute top-1 right-1 w-7 h-7 rounded-full bg-red-600 text-white flex items-center justify-center shadow-md z-10" title="Sil">
                                             <span class="material-symbols-outlined text-sm">close</span>
                                         </button>
                                     </div>
