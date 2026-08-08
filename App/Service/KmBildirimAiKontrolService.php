@@ -35,9 +35,9 @@ class KmBildirimAiKontrolService
         $this->apiKey = trim((string) ($settings['openai_api_key'] ?? ''));
         // KM ekranındaki silik yedi-segment haneler küçük modelde sıkça atlandığı
         // için bu iş yükü genel AI modelinden ayrı yapılandırılabilir.
-        $this->model = trim((string) ($settings['km_ai_model'] ?? 'gpt-4o'));
+        $this->model = trim((string) ($settings['km_ai_model'] ?? 'gpt-5.4'));
         if (!str_starts_with($this->model, 'gpt-')) {
-            $this->model = 'gpt-4o';
+            $this->model = 'gpt-5.4';
         }
         if ($this->apiKey === '') {
             throw new Exception('OpenAI API anahtarı tanımlı değil.');
@@ -489,6 +489,17 @@ class KmBildirimAiKontrolService
 
     private function sendAiRequest(array $payload): array
     {
+        // GPT-5 ailesinde Chat Completions çıktı sınırı max_completion_tokens
+        // alanıyla verilir ve varsayılan reasoning=none kullanımında temperature
+        // parametresine ihtiyaç yoktur.
+        if (str_starts_with((string) ($payload['model'] ?? ''), 'gpt-5')) {
+            if (isset($payload['max_tokens'])) {
+                $payload['max_completion_tokens'] = $payload['max_tokens'];
+                unset($payload['max_tokens']);
+            }
+            unset($payload['temperature']);
+        }
+
         $ch = curl_init('https://api.openai.com/v1/chat/completions');
         curl_setopt_array($ch, [
             CURLOPT_RETURNTRANSFER => true,

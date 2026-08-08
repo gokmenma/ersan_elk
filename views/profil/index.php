@@ -157,6 +157,23 @@ $notificationOptions = [
                                     <?php endforeach; ?>
                                 </div>
 
+                                <h5 class="font-size-15 mt-4 mb-1">Tarama Verileri ve Önbellek</h5>
+                                <p class="text-muted font-size-13 mb-3">Sistem güncellemeleri sonrasında eski tarayıcı dosyalarını silmek ve güncel sürüme geçmek için önbelleği temizleyebilirsiniz.</p>
+
+                                <div class="card border shadow-none mb-3">
+                                    <div class="card-body">
+                                        <div class="d-flex align-items-center justify-content-between">
+                                            <div>
+                                                <h5 class="font-size-14 mb-1"><i data-feather="refresh-cw" class="icon-sm text-info me-1"></i> Tarama Verilerini & Önbelleği Temizle</h5>
+                                                <p class="text-muted font-size-13 mb-0">Tarayıcıdaki eski statik dosyaları (JS/CSS) ve sayfa önbelleklerini temizler.</p>
+                                            </div>
+                                            <button type="button" class="btn btn-outline-danger waves-effect waves-light" onclick="clearDesktopAppCache()">
+                                                <i class="bx bx-trash font-size-16 align-middle me-1"></i> Önbelleği Temizle
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
                                 <div class="row mt-3">
                                     <div class="col-12 text-end">
                                         <button type="submit" class="btn btn-primary waves-effect waves-light"><i class="bx bx-save font-size-16 align-middle me-2"></i> Ayarları Kaydet</button>
@@ -320,4 +337,48 @@ $notificationOptions = [
             });
         });
     });
+
+    function clearDesktopAppCache() {
+        Swal.fire({
+            title: 'Tarama Verilerini Temizle',
+            text: 'Tarayıcı önbelleği ve geçici sistem verileri temizlenecektir. Güncellenmiş dosyaların yüklenebilmesi için uygulama yeniden başlatılacak. Onaylıyor musunuz?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, Temizle',
+            cancelButtonText: 'Vazgeç',
+            confirmButtonColor: '#135bec'
+        }).then(async (result) => {
+            if (result.isConfirmed) {
+                try {
+                    if ('caches' in window) {
+                        const keys = await caches.keys();
+                        await Promise.all(keys.map(k => caches.delete(k)));
+                    }
+                    if ('serviceWorker' in navigator) {
+                        const regs = await navigator.serviceWorker.getRegistrations();
+                        for (const reg of regs) {
+                            await reg.unregister();
+                        }
+                    }
+                    localStorage.removeItem('cevrimdisiSayfaZamani');
+                    sessionStorage.clear();
+                    
+                    Swal.fire({
+                        title: 'Başarılı!',
+                        text: 'Tarama verileri ve önbellek temizlendi. Sayfa yenileniyor...',
+                        icon: 'success',
+                        timer: 1500,
+                        showConfirmButton: false
+                    }).then(() => {
+                        const url = new URL(window.location.href);
+                        url.searchParams.set('cache_bust', Date.now().toString());
+                        window.location.href = url.toString();
+                    });
+                } catch(e) {
+                    console.error(e);
+                    Swal.fire('Hata!', 'Önbellek temizlenirken bir sorun oluştu.', 'error');
+                }
+            }
+        });
+    }
 </script>

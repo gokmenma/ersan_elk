@@ -219,13 +219,24 @@ use App\Helper\Date;
                 </div>
             </div>
 
-            <button onclick="Modal.open('password-modal')" class="flex items-center gap-4 p-4 w-full text-left">
+            <button onclick="Modal.open('password-modal')" class="flex items-center gap-4 p-4 w-full text-left border-b border-slate-100 dark:border-slate-800">
                 <div class="w-10 h-10 rounded-xl bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
                     <span class="material-symbols-outlined text-amber-600">lock</span>
                 </div>
                 <div class="flex-1">
                     <p class="text-sm font-semibold text-slate-900 dark:text-white">Şifre Değiştir</p>
                     <p class="text-xs text-slate-500">Hesap güvenliği</p>
+                </div>
+                <span class="material-symbols-outlined text-slate-400">chevron_right</span>
+            </button>
+
+            <button onclick="clearAppCache()" class="flex items-center gap-4 p-4 w-full text-left">
+                <div class="w-10 h-10 rounded-xl bg-cyan-100 dark:bg-cyan-900/30 flex items-center justify-center">
+                    <span class="material-symbols-outlined text-cyan-600">cleaning_services</span>
+                </div>
+                <div class="flex-1">
+                    <p class="text-sm font-semibold text-slate-900 dark:text-white">Tarama Verilerini Temizle</p>
+                    <p class="text-xs text-slate-500">Güncellemeleri almak için önbelleği sıfırla</p>
                 </div>
                 <span class="material-symbols-outlined text-slate-400">chevron_right</span>
             </button>
@@ -519,6 +530,67 @@ use App\Helper\Date;
                 Toast.show('Bir hata oluştu', 'error');
             } finally {
                 Loading.hide();
+            }
+        }
+    }
+
+    async function clearAppCache() {
+        const isConfirmed = await Alert.confirm(
+            'Tarama Verilerini Temizle',
+            'Uygulama önbelleği ve tarayıcı verileri temizlenecek. Güncellenmiş dosya ve sayfaların yüklenebilmesi için uygulama yeniden başlatılacaktır. Devam etmek istiyor musunuz?',
+            'Temizle',
+            'Vazgeç'
+        );
+
+        if (!isConfirmed) return;
+
+        try {
+            if (typeof Toast !== 'undefined') {
+                Toast.show('Önbellek ve tarama verileri temizleniyor...', 'info');
+            }
+
+            // 1. Service Worker Caches temizleme
+            if ('caches' in window) {
+                const cacheNames = await caches.keys();
+                await Promise.all(
+                    cacheNames.map(cacheName => caches.delete(cacheName))
+                );
+            }
+
+            // 2. Service Worker Registration unregister
+            if ('serviceWorker' in navigator) {
+                const registrations = await navigator.serviceWorker.getRegistrations();
+                for (const registration of registrations) {
+                    await registration.unregister();
+                }
+            }
+
+            // 3. Yerel depolama temizleme (Karanlık mod ve tema rengini koru)
+            const darkMode = localStorage.getItem('darkMode');
+            const themeColor = localStorage.getItem('themeColor');
+            const pushSub = localStorage.getItem('push_subscribed');
+            
+            localStorage.clear();
+            sessionStorage.clear();
+
+            if (darkMode !== null) localStorage.setItem('darkMode', darkMode);
+            if (themeColor !== null) localStorage.setItem('themeColor', themeColor);
+            if (pushSub !== null) localStorage.setItem('push_subscribed', pushSub);
+
+            if (typeof Toast !== 'undefined') {
+                Toast.show('Tarama verileri temizlendi. Uygulama yenileniyor...', 'success');
+            }
+
+            setTimeout(() => {
+                const url = new URL(window.location.href);
+                url.searchParams.set('cache_bust', Date.now().toString());
+                window.location.href = url.toString();
+            }, 1000);
+
+        } catch (error) {
+            console.error('Önbellek temizleme hatası:', error);
+            if (typeof Toast !== 'undefined') {
+                Toast.show('Önbellek temizlenirken bir hata oluştu.', 'error');
             }
         }
     }
