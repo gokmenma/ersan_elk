@@ -781,7 +781,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                             <?= Form::FormFileInput(
                                 name: 'videolar[]',
                                 label: 'Video (en fazla ' . KacakKontrolModel::MAX_VIDEO . ' adet, ' . KacakKontrolModel::VIDEO_MAX_SURE . ' saniye)',
-                                icon: 'video-plus',
+                                icon: 'video',
                                 class: 'form-control',
                                 attributes: 'multiple accept="video/*"',
                                 id: 'kacak_videolar'
@@ -1611,13 +1611,27 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             $('#mevcutFotolar').empty().removeData('fotolar').removeData('kacak-id').removeData('loaded');
             $('#fotoSayisiBadge').text('0');
             $('#kacak_personel_ids').val(null).trigger('change');
+
+            // Video ve dosya alanlarını tam temizle
+            kacakSeciliVideolar = [];
+            $('#kacakVideoPreview').empty();
+            $('#kacak_videolar').val('');
+            $('#saha_fotolari').val('');
+            $('#tutanak_file').val('');
         }
+
+        $('#kacakModal').on('hidden.bs.modal', function () {
+            modalSifirla();
+        });
 
         $('#btnYeniKacak').on('click', function () {
             modalSifirla();
             $('#kacakModalTitle').text('Yeni Kaçak Kontrol Kaydı');
             satirEkle();
             $('#kacakModal').modal('show');
+            if (typeof feather !== 'undefined') {
+                try { feather.replace(); } catch (e) {}
+            }
         });
 
         $(document).on('click', '.btn-duzenle', function () {
@@ -1655,6 +1669,9 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 $('#btnKaydetVeOnayla').toggleClass('d-none', !(onayBekliyor && YETKI.onay));
 
                 $('#kacakModal').modal('show');
+                if (typeof feather !== 'undefined') {
+                    try { feather.replace(); } catch (e) {}
+                }
             });
         });
 
