@@ -241,6 +241,28 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 </button>
                 <p class="text-xs text-slate-400 mt-1">En fazla <?= (int) $videoMaxSure ?> saniye ve
                     <?= (int) round(KacakKontrolModel::videoYuklemeSiniri() / 1048576) ?> MB. Videolar çevrimiçiyken gönderilir.</p>
+
+                <!-- Canlı Video Yükleme İlerleme Çubuğu (Modal İçi) -->
+                <div id="kacak-video-progress-container" class="mt-3 p-3.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl border border-indigo-200 dark:border-indigo-800 hidden">
+                    <div class="flex items-center justify-between text-xs font-bold text-indigo-900 dark:text-indigo-200 mb-1.5">
+                        <span id="kacak-video-progress-text" class="flex items-center gap-1.5 truncate">
+                            <svg class="w-4 h-4 text-indigo-600 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                            </svg>
+                            <span>Video Yükleniyor...</span>
+                        </span>
+                        <span id="kacak-video-progress-percent" class="text-indigo-600 dark:text-indigo-400 font-extrabold text-xs ml-2">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden p-0.5 shadow-inner">
+                        <div id="kacak-video-progress-bar" class="bg-gradient-to-r from-indigo-500 to-indigo-600 h-2 rounded-full transition-all duration-150 w-0"></div>
+                    </div>
+                    <div class="flex justify-between items-center text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 font-mono">
+                        <span id="kacak-video-progress-name" class="truncate max-w-[160px]">video.mp4</span>
+                        <span id="kacak-video-progress-detail">0.0 MB / 0.0 MB</span>
+                    </div>
+                </div>
+
                 <div id="kacak-video-preview" class="grid grid-cols-3 gap-2 mt-3"></div>
                 <div id="mevcut-video-container"></div>
             </div>
@@ -822,6 +844,9 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             document.getElementById('kacak-video-preview').innerHTML = '';
             videoDosyalari = [];
 
+            const progressBox = document.getElementById('kacak-video-progress-container');
+            if (progressBox) progressBox.classList.add('hidden');
+
             const tutanakBox = document.getElementById('mevcut-tutanak-container');
             const sahaBox = document.getElementById('mevcut-saha-container');
             const videoBox = document.getElementById('mevcut-video-container');
@@ -1207,25 +1232,58 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
             videoGonderimHatalari = [];
             if (!videoDosyalari || videoDosyalari.length === 0) return 0;
 
-            const modal = document.getElementById('video-progress-modal');
-            const titleEl = document.getElementById('video-progress-title');
-            const fileInfoEl = document.getElementById('video-progress-file-info');
-            const percentEl = document.getElementById('video-progress-percent');
-            const barEl = document.getElementById('video-progress-bar');
-            const detailEl = document.getElementById('video-progress-detail');
+            function guncelleProgress(percent, loadedMB, totalMB, fileName, fileIndex, totalFiles) {
+                const titleStr = `Video Yükleniyor... (${fileIndex}/${totalFiles})`;
+                const percentStr = `${percent}%`;
+                const widthStr = `${percent}%`;
+                const detailStr = `${loadedMB} MB / ${totalMB} MB`;
+                const fileStr = `${fileName} (${totalMB} MB)`;
 
-            if (modal) modal.classList.remove('hidden');
+                // Inline form container (Kullanıcının işaret ettiği alan)
+                const inlineBox = document.getElementById('kacak-video-progress-container');
+                if (inlineBox) inlineBox.classList.remove('hidden');
+
+                const inlineText = document.getElementById('kacak-video-progress-text');
+                if (inlineText) inlineText.innerHTML = `<svg class="w-4 h-4 text-indigo-600 animate-spin flex-shrink-0 inline me-1" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>${titleStr}`;
+
+                const inlinePercent = document.getElementById('kacak-video-progress-percent');
+                if (inlinePercent) inlinePercent.textContent = percentStr;
+
+                const inlineBar = document.getElementById('kacak-video-progress-bar');
+                if (inlineBar) inlineBar.style.width = widthStr;
+
+                const inlineName = document.getElementById('kacak-video-progress-name');
+                if (inlineName) inlineName.textContent = fileName;
+
+                const inlineDetail = document.getElementById('kacak-video-progress-detail');
+                if (inlineDetail) inlineDetail.textContent = detailStr;
+
+                // Overlay modal
+                const modal = document.getElementById('video-progress-modal');
+                if (modal) modal.classList.remove('hidden');
+
+                const titleEl = document.getElementById('video-progress-title');
+                if (titleEl) titleEl.textContent = titleStr;
+
+                const fileInfoEl = document.getElementById('video-progress-file-info');
+                if (fileInfoEl) fileInfoEl.textContent = fileStr;
+
+                const percentEl = document.getElementById('video-progress-percent');
+                if (percentEl) percentEl.textContent = percentStr;
+
+                const barEl = document.getElementById('video-progress-bar');
+                if (barEl) barEl.style.width = widthStr;
+
+                const detailEl = document.getElementById('video-progress-detail');
+                if (detailEl) detailEl.textContent = detailStr;
+            }
 
             for (let i = 0; i < videoDosyalari.length; i++) {
                 const v = videoDosyalari[i];
                 const fileName = v.dosya ? v.dosya.name : `Video ${i + 1}`;
                 const fileSizeMB = v.dosya ? (v.dosya.size / (1024 * 1024)).toFixed(1) : '0.0';
 
-                if (titleEl) titleEl.textContent = `Video ${i + 1} / ${videoDosyalari.length} yükleniyor...`;
-                if (fileInfoEl) fileInfoEl.textContent = `${fileName} (${fileSizeMB} MB)`;
-                if (percentEl) percentEl.textContent = '0%';
-                if (barEl) barEl.style.width = '0%';
-                if (detailEl) detailEl.textContent = `0.0 MB / ${fileSizeMB} MB`;
+                guncelleProgress(0, '0.0', fileSizeMB, fileName, i + 1, videoDosyalari.length);
 
                 try {
                     const fd = new FormData();
@@ -1250,9 +1308,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                                 const percent = Math.round((e.loaded / e.total) * 100);
                                 const loadedMB = (e.loaded / (1024 * 1024)).toFixed(1);
                                 const totalMB = (e.total / (1024 * 1024)).toFixed(1);
-                                if (percentEl) percentEl.textContent = percent + '%';
-                                if (barEl) barEl.style.width = percent + '%';
-                                if (detailEl) detailEl.textContent = `${loadedMB} MB / ${totalMB} MB`;
+                                guncelleProgress(percent, loadedMB, totalMB, fileName, i + 1, videoDosyalari.length);
                             }
                         };
 
@@ -1287,7 +1343,11 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 }
             }
 
+            const inlineBox = document.getElementById('kacak-video-progress-container');
+            if (inlineBox) inlineBox.classList.add('hidden');
+            const modal = document.getElementById('video-progress-modal');
             if (modal) modal.classList.add('hidden');
+
             return eksik;
         }
 
