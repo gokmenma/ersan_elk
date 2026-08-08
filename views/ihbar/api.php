@@ -397,6 +397,82 @@ try {
             ihbarResponse(true, count($assignments) . ' ihbar yeniden yönlendirildi.');
             break;
 
+        case 'bulkAssignSelected':
+            ihbarYetkiKontrol('ihbar_duzenle');
+
+            $rawIhbarIds = $_POST['ihbar_ids'] ?? [];
+            if (!is_array($rawIhbarIds)) {
+                $rawIhbarIds = [$rawIhbarIds];
+            }
+            $ihbarIds = [];
+            foreach ($rawIhbarIds as $val) {
+                if (is_numeric($val)) {
+                    $ihbarIds[] = (int) $val;
+                } else {
+                    $dec = Security::decrypt((string) $val);
+                    if ($dec && is_numeric($dec)) {
+                        $ihbarIds[] = (int) $dec;
+                    }
+                }
+            }
+
+            $rawPersonelIds = $_POST['personel_ids'] ?? [];
+            if (!is_array($rawPersonelIds)) {
+                $rawPersonelIds = [$rawPersonelIds];
+            }
+            $personelIds = [];
+            foreach ($rawPersonelIds as $val) {
+                if (is_numeric($val)) {
+                    $personelIds[] = (int) $val;
+                } else {
+                    $dec = Security::decrypt((string) $val);
+                    if ($dec && is_numeric($dec)) {
+                        $personelIds[] = (int) $dec;
+                    }
+                }
+            }
+
+            $ihbarIds = array_values(array_unique(array_filter($ihbarIds)));
+            $personelIds = array_values(array_unique(array_filter($personelIds)));
+
+            if (empty($ihbarIds)) {
+                throw new Exception('Lütfen en az bir ihbar seçiniz.');
+            }
+            if (empty($personelIds)) {
+                throw new Exception('Lütfen en az bir personel seçiniz.');
+            }
+
+            $atananSayi = $IhbarModel->bulkAssignToPersonel($ihbarIds, $personelIds, $currentUserId);
+
+            try {
+                $Log = new \App\Model\SystemLogModel();
+                $Log->logAction(
+                    $currentUserId,
+                    'İhbar Toplu Yönlendirildi',
+                    "{$atananSayi} adet ihbar kaydı seçilen " . count($personelIds) . " personele yönlendirildi. (İhbar ID'leri: " . implode(', ', $ihbarIds) . ")",
+                    \App\Model\SystemLogModel::LEVEL_IMPORTANT
+                );
+            } catch (Exception $e) {
+                error_log('İhbar toplu yönlendirme log hatası: ' . $e->getMessage());
+            }
+
+            try {
+                $pushService = new PushNotificationService();
+                foreach ($personelIds as $pId) {
+                    if ($pId <= 0) continue;
+                    $pushService->sendToPersonel((int) $pId, [
+                        'title' => '📣 Yeni İhbar Yönlendirildi',
+                        'body' => "Size {$atananSayi} adet yeni ihbar yönlendirildi. Detayları görmek için uygulamayı açın.",
+                        'url' => '?page=ihbar&tip=gelen'
+                    ]);
+                }
+            } catch (Exception $e) {
+                error_log('İhbar toplu yönlendirme push hatası: ' . $e->getMessage());
+            }
+
+            ihbarResponse(true, "Seçilen {$atananSayi} adet ihbar başarıyla yönlendirildi.");
+            break;
+
         case 'saveSettings':
             ihbarYetkiKontrol('ihbar_duzenle');
             if (!Gate::allows('is_takip_ayarlar') && !Gate::isSuperAdmin()) {

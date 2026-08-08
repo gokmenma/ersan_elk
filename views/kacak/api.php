@@ -13,8 +13,29 @@ use App\Model\PersonelModel;
 use App\Model\SystemLogModel;
 use App\Service\Gate;
 use App\Service\KacakTutanakAnalizService;
+use App\Service\VideoUploadService;
 
 header('Content-Type: application/json; charset=utf-8');
+
+// İstek gövdesi post_max_size sınırını aşarsa PHP $_POST ve $_FILES dizilerini
+// tamamen boşaltır; bu durumda istek "action yok" gibi görünüp sessizce düşer.
+if (($_SERVER['REQUEST_METHOD'] ?? '') === 'POST'
+    && empty($_POST)
+    && empty($_FILES)
+    && !empty($_SERVER['CONTENT_LENGTH'])) {
+    error_log(sprintf(
+        'Kaçak isteği post_max_size sınırında düştü: content_length=%s post_max_size=%s upload_max_filesize=%s',
+        $_SERVER['CONTENT_LENGTH'],
+        ini_get('post_max_size'),
+        ini_get('upload_max_filesize')
+    ));
+    echo json_encode([
+        'status' => 'error',
+        'message' => 'Gönderdiğiniz dosyalar sunucunun izin verdiği toplam boyutu (post_max_size: '
+            . ini_get('post_max_size') . ') aşıyor. Daha az veya daha küçük dosya ile tekrar deneyin.'
+    ], JSON_UNESCAPED_UNICODE);
+    exit;
+}
 
 $action = $_POST['action'] ?? $_GET['action'] ?? '';
 $userId = (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0);
@@ -74,6 +95,14 @@ function kacakYanit(bool $ok, string $mesaj = '', array $ek = []): void
 {
     echo json_encode(array_merge(['status' => $ok ? 'success' : 'error', 'message' => $mesaj], $ek), JSON_UNESCAPED_UNICODE);
     exit;
+}
+
+function kacakMedyaUyariMetni(?array $uyarilar): string
+{
+    if (empty($uyarilar)) {
+        return '';
+    }
+    return ' Ancak bazı dosyalar yüklenemedi: ' . implode(' | ', $uyarilar);
 }
 
 function kacakSuperAdmin(): bool
@@ -299,10 +328,14 @@ try {
                     kacakYanit(false, 'Kayıt güncellenemedi.');
                 }
 
-                kacakFotoYukle($Kacak, $id, $userId);
+                kacakFotoYukle($Kacak, $id, $userId, $medyaUyarilari);
 
                 $Log->logAction($userId, 'Kaçak Kaydı Güncellendi', "ID: $id, Tarih: $tarih", SystemLogModel::LEVEL_IMPORTANT);
-                kacakYanit(true, 'Kayıt güncellendi.', ['id' => $id]);
+                kacakYanit(
+                    true,
+                    'Kayıt güncellendi.' . kacakMedyaUyariMetni($medyaUyarilari),
+                    ['id' => $id, 'medya_uyarilari' => $medyaUyarilari]
+                );
             }
 
             if (empty($ilceArr)) {
@@ -362,10 +395,14 @@ try {
                 kacakYanit(false, 'Geçerli satır bulunamadı, kayıt eklenmedi.');
             }
 
-            kacakFotoYukle($Kacak, $eklenen[0], $userId);
+            kacakFotoYukle($Kacak, $eklenen[0], $userId, $medyaUyarilari);
 
             $Log->logAction($userId, 'Kaçak Kaydı Eklendi', count($eklenen) . ' adet kaçak kaydı eklendi. Tarih: ' . $tarih, SystemLogModel::LEVEL_IMPORTANT);
-            kacakYanit(true, count($eklenen) . ' kayıt eklendi.', ['ids' => $eklenen]);
+            kacakYanit(
+                true,
+                count($eklenen) . ' kayıt eklendi.' . kacakMedyaUyariMetni($medyaUyarilari),
+                ['ids' => $eklenen, 'medya_uyarilari' => $medyaUyarilari]
+            );
             break;
 
         case 'delete':
@@ -500,11 +537,17 @@ try {
             if (!$Kacak->getRecord($id)) {
                 kacakYanit(false, 'Kayıt bulunamadı.');
             }
-            $eklenen = kacakFotoYukle($Kacak, $id, $userId);
+            $eklenen = kacakFotoYukle($Kacak, $id, $userId, $medyaUyarilari);
             if ($eklenen === 0) {
-                kacakYanit(false, 'Yüklenecek dosya bulunamadı veya limit doldu.');
+                kacakYanit(false, !empty($medyaUyarilari)
+                    ? implode(' ', $medyaUyarilari)
+                    : 'Yüklenecek dosya bulunamadı veya limit doldu.');
             }
-            kacakYanit(true, "$eklenen dosya yüklendi.");
+            kacakYanit(
+                true,
+                "$eklenen dosya yüklendi." . kacakMedyaUyariMetni($medyaUyarilari),
+                ['medya_uyarilari' => $medyaUyarilari]
+            );
             break;
 
         case 'delete-photo':
@@ -798,9 +841,10 @@ try {
 /**
  * Modal üzerinden gelen tutanak ve saha fotoğraflarını kaydeder.
  */
-function kacakFotoYukle(KacakKontrolModel $Kacak, int $kacakId, int $userId): int
+function kacakFotoYukle(KacakKontrolModel $Kacak, int $kacakId, int $userId, ?array &$uyarilar = null): int
 {
     $eklenen = 0;
+    $uyarilar = [];
 
     if (!empty($_FILES['tutanak_foto']['name'])) {
         try {
@@ -819,29 +863,50 @@ function kacakFotoYukle(KacakKontrolModel $Kacak, int $kacakId, int $userId): in
 
         if (is_array($_FILES['videolar']['name'])) {
             foreach ($_FILES['videolar']['name'] as $i => $ad) {
-                if (!empty($ad) && ($_FILES['videolar']['error'][$i] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
-                    $videoFiles[] = [
-                        'file' => [
-                            'name' => $ad,
-                            'tmp_name' => $_FILES['videolar']['tmp_name'][$i],
-                            'error' => $_FILES['videolar']['error'][$i],
-                            'size' => $_FILES['videolar']['size'][$i],
-                        ],
-                        'sure' => isset($sureler[$i]) && is_numeric($sureler[$i]) ? (int) ceil((float) $sureler[$i]) : null,
-                        'kapak' => isset($kapaklar[$i]) ? (string) $kapaklar[$i] : null,
-                        'name' => $ad
-                    ];
+                if (empty($ad)) {
+                    continue;
                 }
+                $hataKodu = (int) ($_FILES['videolar']['error'][$i] ?? UPLOAD_ERR_NO_FILE);
+                if ($hataKodu !== UPLOAD_ERR_OK) {
+                    $mesaj = VideoUploadService::uploadErrorMessage($hataKodu, KacakKontrolModel::videoYuklemeSiniri());
+                    $uyarilar[] = $ad . ': ' . $mesaj;
+                    error_log('Kaçak videosu sunucuya ulaşmadı: kacak_id=' . $kacakId
+                        . ' dosya=' . $ad . ' hata_kodu=' . $hataKodu
+                        . ' upload_max_filesize=' . ini_get('upload_max_filesize')
+                        . ' post_max_size=' . ini_get('post_max_size'));
+                    continue;
+                }
+                $videoFiles[] = [
+                    'file' => [
+                        'name' => $ad,
+                        'tmp_name' => $_FILES['videolar']['tmp_name'][$i],
+                        'error' => $hataKodu,
+                        'size' => $_FILES['videolar']['size'][$i],
+                    ],
+                    'sure' => isset($sureler[$i]) && is_numeric($sureler[$i]) ? (int) ceil((float) $sureler[$i]) : null,
+                    'kapak' => isset($kapaklar[$i]) ? (string) $kapaklar[$i] : null,
+                    'name' => $ad
+                ];
             }
-        } else if (($_FILES['videolar']['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
-            $sure = is_array($sureler) ? ($sureler[0] ?? null) : $sureler;
-            $kapak = is_array($kapaklar) ? ($kapaklar[0] ?? null) : $kapaklar;
-            $videoFiles[] = [
-                'file' => $_FILES['videolar'],
-                'sure' => is_numeric($sure) ? (int) ceil((float) $sure) : null,
-                'kapak' => !empty($kapak) ? (string) $kapak : null,
-                'name' => $_FILES['videolar']['name']
-            ];
+        } else {
+            $hataKodu = (int) ($_FILES['videolar']['error'] ?? UPLOAD_ERR_NO_FILE);
+            if ($hataKodu === UPLOAD_ERR_OK) {
+                $sure = is_array($sureler) ? ($sureler[0] ?? null) : $sureler;
+                $kapak = is_array($kapaklar) ? ($kapaklar[0] ?? null) : $kapaklar;
+                $videoFiles[] = [
+                    'file' => $_FILES['videolar'],
+                    'sure' => is_numeric($sure) ? (int) ceil((float) $sure) : null,
+                    'kapak' => !empty($kapak) ? (string) $kapak : null,
+                    'name' => $_FILES['videolar']['name']
+                ];
+            } else {
+                $mesaj = VideoUploadService::uploadErrorMessage($hataKodu, KacakKontrolModel::videoYuklemeSiniri());
+                $uyarilar[] = $_FILES['videolar']['name'] . ': ' . $mesaj;
+                error_log('Kaçak videosu sunucuya ulaşmadı: kacak_id=' . $kacakId
+                    . ' dosya=' . $_FILES['videolar']['name'] . ' hata_kodu=' . $hataKodu
+                    . ' upload_max_filesize=' . ini_get('upload_max_filesize')
+                    . ' post_max_size=' . ini_get('post_max_size'));
+            }
         }
 
         foreach ($videoFiles as $vItem) {
@@ -855,7 +920,9 @@ function kacakFotoYukle(KacakKontrolModel $Kacak, int $kacakId, int $userId): in
                 $Kacak->addVideo($kacakId, $sonuc['yol'], $sonuc['kapak'], $sonuc['sure_saniye'], $vItem['name'], null, $userId);
                 $eklenen++;
             } catch (\Throwable $e) {
-                error_log('Kaçak videosu yüklenemedi: ' . $e->getMessage());
+                $uyarilar[] = $vItem['name'] . ': ' . $e->getMessage();
+                error_log('Kaçak videosu yüklenemedi: kacak_id=' . $kacakId
+                    . ' dosya=' . $vItem['name'] . ' hata=' . $e->getMessage());
             }
         }
     }

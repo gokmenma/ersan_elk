@@ -1240,6 +1240,50 @@ class KacakKontrolModel extends Model
     }
 
     /**
+     * Sunucunun izin verdiği gerçek video yükleme sınırı.
+     *
+     * Paylaşımlı hostingde upload_max_filesize / post_max_size uygulama sabitinden
+     * küçük olabilir; bu durumda dosya PHP tarafından sessizce reddedilir. İstemci
+     * bu sınırı bilirse videoyu göndermeden önce anlaşılır bir uyarı verebilir.
+     */
+    public static function videoYuklemeSiniri(): int
+    {
+        $sinirlar = [self::VIDEO_MAX_BYTE];
+
+        foreach (['upload_max_filesize', 'post_max_size'] as $ayar) {
+            $bayt = self::iniBaytaCevir((string) ini_get($ayar));
+            if ($bayt > 0) {
+                $sinirlar[] = $bayt;
+            }
+        }
+
+        return min($sinirlar);
+    }
+
+    private static function iniBaytaCevir(string $deger): int
+    {
+        $deger = trim($deger);
+        if ($deger === '') {
+            return 0;
+        }
+
+        $birim = strtolower(substr($deger, -1));
+        $sayi = (int) $deger;
+
+        if ($birim === 'g') {
+            return $sayi * 1073741824;
+        }
+        if ($birim === 'm') {
+            return $sayi * 1048576;
+        }
+        if ($birim === 'k') {
+            return $sayi * 1024;
+        }
+
+        return $sayi;
+    }
+
+    /**
      * Yüklenen videoyu doğrulayıp diske yazar ve kapak karesini kaydeder.
      */
     public function storeUploadedVideo(array $file, int $kacakId, ?int $sureSaniye, ?string $kapakVerisi): array
@@ -1256,7 +1300,7 @@ class KacakKontrolModel extends Model
             $hedefDizin,
             'video_' . $kacakId,
             self::VIDEO_MIMES,
-            self::VIDEO_MAX_BYTE,
+            self::videoYuklemeSiniri(),
             self::VIDEO_MAX_SURE,
             $sureSaniye,
             $kapakVerisi,

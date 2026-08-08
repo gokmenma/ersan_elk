@@ -240,7 +240,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                     Video Ekle
                 </button>
                 <p class="text-xs text-slate-400 mt-1">En fazla <?= (int) $videoMaxSure ?> saniye ve
-                    <?= (int) round(KacakKontrolModel::VIDEO_MAX_BYTE / 1048576) ?> MB. Videolar çevrimiçiyken gönderilir.</p>
+                    <?= (int) round(KacakKontrolModel::videoYuklemeSiniri() / 1048576) ?> MB. Videolar çevrimiçiyken gönderilir.</p>
                 <div id="kacak-video-preview" class="grid grid-cols-3 gap-2 mt-3"></div>
                 <div id="mevcut-video-container"></div>
             </div>
@@ -353,7 +353,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
         const MAX_SAHA_FOTO = <?= (int) $maxSahaFoto ?>;
         const MAX_VIDEO = <?= (int) $maxVideo ?>;
         const VIDEO_MAX_SURE = <?= (int) $videoMaxSure ?>;
-        const VIDEO_MAX_BYTE = <?= (int) KacakKontrolModel::VIDEO_MAX_BYTE ?>;
+        const VIDEO_MAX_BYTE = <?= (int) KacakKontrolModel::videoYuklemeSiniri() ?>;
         let videoDosyalari = [];
         const BEN = <?= (int) $personel_id ?>;
 
@@ -1162,8 +1162,17 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
 
         // Videolar boyutları nedeniyle cihaz kuyruğuna yazılmaz; kayıt sunucuya
         // ulaştıktan sonra ayrı isteklerle gönderilir. Gönderilemeyen video sayısı döner.
+        let videoGonderimHatalari = [];
+
+        function videoSebepMetni() {
+            return videoGonderimHatalari.length > 0
+                ? videoGonderimHatalari.join('\n')
+                : 'Bilinmeyen hata.';
+        }
+
         async function videolariGonder(targetIdOrUuid) {
             let eksik = 0;
+            videoGonderimHatalari = [];
             for (let i = 0; i < videoDosyalari.length; i++) {
                 const v = videoDosyalari[i];
                 try {
@@ -1182,10 +1191,12 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                     const res = await (await fetch(url, { method: 'POST', body: fd })).json();
                     if (!res.success) {
                         eksik++;
+                        videoGonderimHatalari.push(res.message || 'Bilinmeyen sunucu hatası');
                         console.error('Video gönderilemedi:', res.message);
                     }
                 } catch (hata) {
                     eksik++;
+                    videoGonderimHatalari.push('Sunucuya ulaşılamadı: ' + (hata && hata.message ? hata.message : hata));
                     console.error('Video gönderim hatası:', hata);
                 }
             }
@@ -1294,9 +1305,11 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
 
                     Modal.close('kacak-bildir-modal');
                     await loadKacakKayitlar();
-                    return Alert.success('Güncellendi', eksikVideo > 0
-                        ? `Tutanak güncellendi ancak ${eksikVideo} video gönderilemedi.`
-                        : (res.message || 'Kaçak bildirimi güncellendi.'));
+                    if (eksikVideo > 0) {
+                        return Alert.warning('Video Gönderilemedi',
+                            `Tutanak güncellendi ancak ${eksikVideo} video gönderilemedi.\n\nSebep: ` + videoSebepMetni());
+                    }
+                    return Alert.success('Güncellendi', res.message || 'Kaçak bildirimi güncellendi.');
                 }
 
                 if (kacakKuyrukEditUuid) {
@@ -1396,9 +1409,11 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                         Modal.close('kacak-bildir-modal');
                         tarihAraligiGenislet(alanlar.tarih);
                         await loadKacakKayitlar();
-                        return Alert.success('Gönderildi', eksikVideo > 0
-                            ? `Tutanak iletildi ancak ${eksikVideo} video gönderilemedi.`
-                            : (res.message || 'Bildiriminiz iletildi. Yönetici onayı bekleniyor.'));
+                        if (eksikVideo > 0) {
+                            return Alert.warning('Video Gönderilemedi',
+                                `Tutanak iletildi ancak ${eksikVideo} video gönderilemedi.\n\nSebep: ` + videoSebepMetni());
+                        }
+                        return Alert.success('Gönderildi', res.message || 'Bildiriminiz iletildi. Yönetici onayı bekleniyor.');
                     }
 
                     return Alert.error('Gönderilemedi', (res && res.message) || 'Sunucu kaydı kabul etmedi.');
@@ -1422,9 +1437,11 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 if (!kalan) {
                     const eksikVideo = await videolariGonder(kayit.uuid);
                     await loadKacakKayitlar();
-                    return Alert.success('Gönderildi', eksikVideo > 0
-                        ? `Tutanak iletildi ancak ${eksikVideo} video gönderilemedi.`
-                        : 'Bildiriminiz iletildi. Yönetici onayı bekleniyor.');
+                    if (eksikVideo > 0) {
+                        return Alert.warning('Video Gönderilemedi',
+                            `Tutanak iletildi ancak ${eksikVideo} video gönderilemedi.\n\nSebep: ` + videoSebepMetni());
+                    }
+                    return Alert.success('Gönderildi', 'Bildiriminiz iletildi. Yönetici onayı bekleniyor.');
                 }
                 if (kalan.durum === 'hata') {
                     return Alert.error('Gönderilemedi', kalan.hata || 'Sunucu kaydı kabul etmedi.');

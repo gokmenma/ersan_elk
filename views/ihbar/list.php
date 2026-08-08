@@ -129,6 +129,18 @@ $ihbarEkipSelectHtml = Form::FormMultipleSelect2(
     false,
     'ihbarEkipSelect'
 );
+$ihbarTopluSecilenPersonelSelectHtml = Form::FormMultipleSelect2(
+    'topluSecilenEkipSelect',
+    $yonlendirilecekPersoneller,
+    [],
+    'Görevlendirilecek personeller',
+    'bx bx-group',
+    'id',
+    'adi_soyadi',
+    'form-select select2',
+    false,
+    'topluSecilenEkipSelect'
+);
 $ihbarTopluPersoneller = array_map(static fn($p) => [
     'token' => Security::encrypt((int) $p->id),
     'adi_soyadi' => $p->adi_soyadi,
@@ -399,6 +411,9 @@ function ihbarDurumBadge($durum)
                     <i class="bx bx-file me-1"></i>Excel'e Aktar
                 </button>
                 <?php if ($yetkiDuzenle): ?>
+                <button type="button" class="btn btn-sm btn-primary px-3 rounded-pill d-none" id="btnTopluSecilenYonlendir" onclick="ihbarTopluSecilenYonlendirAc()">
+                    <i class="bx bx-user-check me-1"></i>Seçilenleri Yönlendir (<span id="secilenIhbarSayisi">0</span>)
+                </button>
                 <button type="button" class="btn btn-sm btn-danger px-3 rounded-pill" onclick="ihbarYeniAc()">
                     <i class="bx bx-plus me-1"></i>Yeni İhbar Ekle
                 </button>
@@ -419,6 +434,11 @@ function ihbarDurumBadge($durum)
                     id="ihbarTable" data-order="[]">
                     <thead class="table-light">
                         <tr>
+                            <?php if ($yetkiDuzenle): ?>
+                            <th style="width:38px" class="text-center no-export" data-orderable="false">
+                                <input type="checkbox" id="ihbarSelectAll" class="form-check-input" title="Tümünü Seç / Kaldır">
+                            </th>
+                            <?php endif; ?>
                             <th data-filter="date">Tarih</th>
                             <th data-filter="string">İlçe</th>
                             <th data-filter="string">Mahalle</th>
@@ -430,8 +450,26 @@ function ihbarDurumBadge($durum)
                         </tr>
                     </thead>
                     <tbody>
-                        <?php foreach ($ihbarlar as $ihbar): ?>
+                        <?php foreach ($ihbarlar as $ihbar): 
+                            $yonlendirilebilir = in_array($ihbar->durum, ['yeni', 'yonlendirildi'], true);
+                        ?>
                             <tr data-id="<?= (int) $ihbar->id ?>">
+                                <?php if ($yetkiDuzenle): ?>
+                                <td class="text-center">
+                                    <?php if ($yonlendirilebilir): ?>
+                                    <input type="checkbox" class="form-check-input ihbar-row-check"
+                                           value="<?= (int) $ihbar->id ?>"
+                                           data-id="<?= (int) $ihbar->id ?>"
+                                           data-token="<?= Security::encrypt((int) $ihbar->id) ?>"
+                                           data-ilce="<?= htmlspecialchars($ihbar->ilce ?? '-', ENT_QUOTES, 'UTF-8') ?>"
+                                           data-mahalle="<?= htmlspecialchars($ihbar->mahalle ?? '-', ENT_QUOTES, 'UTF-8') ?>"
+                                           data-durum="<?= htmlspecialchars($ihbar->durum ?? '-', ENT_QUOTES, 'UTF-8') ?>"
+                                           data-ekip="<?= htmlspecialchars($ihbar->atanan_ekip_adi ?? 'Atanmamış', ENT_QUOTES, 'UTF-8') ?>">
+                                    <?php else: ?>
+                                    <input type="checkbox" class="form-check-input" disabled title="Sonuçlanmış veya işlemdeki ihbarlar yönlendirilemez">
+                                    <?php endif; ?>
+                                </td>
+                                <?php endif; ?>
                                 <td><?= date('d.m.Y H:i', strtotime($ihbar->created_at)) ?></td>
                                 <td><?= htmlspecialchars($ihbar->ilce ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
                                 <td><?= htmlspecialchars($ihbar->mahalle ?? '-', ENT_QUOTES, 'UTF-8') ?></td>
@@ -611,6 +649,60 @@ function ihbarDurumBadge($durum)
         </div>
     </div>
 </div>
+
+<?php if ($yetkiDuzenle): ?>
+<div class="modal fade" id="modalTopluSecilenYonlendir" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-lg modal-dialog-centered">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title text-white"><i class="bx bx-group me-2"></i>Personele Toplu Yönlendirme</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info d-flex align-items-center mb-3">
+                    <i class="bx bx-info-circle fs-4 me-2"></i>
+                    <div>
+                        Seçtiğiniz <strong id="modalSeciliSayisiText">0</strong> adet ihbar kaydı aşağıda seçilen personellere yönlendirilecektir.
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <label class="form-label fw-bold mb-1"><i class="bx bx-user-check me-1 text-primary"></i>Yönlendirilecek Kaçak Kontrol Personelleri</label>
+                    <?= $ihbarTopluSecilenPersonelSelectHtml ?>
+                    <small class="text-muted mt-1 d-block">Bir veya birden fazla Kaçak Kontrol personeli seçebilirsiniz.</small>
+                </div>
+
+                <div class="card border-0 bg-light">
+                    <div class="card-header bg-transparent fw-bold small text-uppercase text-muted py-2">
+                        <i class="bx bx-list-check me-1"></i>Yönlendirilecek İhbar Listesi
+                    </div>
+                    <div class="card-body p-0" style="max-height:220px; overflow-y:auto;">
+                        <table class="table table-sm table-hover align-middle mb-0" id="topluSecilenIhbarlarOzetTable">
+                            <thead class="table-light sticky-top">
+                                <tr>
+                                    <th style="width:60px">ID</th>
+                                    <th>İlçe / Mahalle</th>
+                                    <th>Mevcut Ekip</th>
+                                    <th>Durum</th>
+                                </tr>
+                            </thead>
+                            <tbody id="topluSecilenIhbarlarOzetBody">
+                                <!-- JS ile doldurulacak -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary rounded-pill" data-bs-dismiss="modal">Vazgeç</button>
+                <button type="button" class="btn btn-primary rounded-pill px-4" id="btnTopluSecilenYonlendirKaydet" onclick="ihbarTopluSecilenYonlendirKaydet()">
+                    <i class="bx bx-send me-1"></i>Seçilenleri Yönlendir
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+<?php endif; ?>
 
 <div class="modal fade" id="modalIhbarAyarlar" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered"><div class="modal-content">
@@ -1180,13 +1272,44 @@ function ihbarDurumBadge($durum)
             }).catch(() => { button.disabled = false; Swal.fire('Hata', 'Sunucuya ulaşılamadı.', 'error'); });
         });
 
-        const ihbarTable = $('#ihbarTable').DataTable($.extend(true, {}, getDatatableOptions(), {
+        let ihbarTableOpts = $.extend(true, {}, getDatatableOptions(), {
             dom: 'rt' +
                  '<"row mt-3 align-items-center g-2"' +
                     '<"col-12 col-md-7 d-flex flex-wrap align-items-center gap-3"i l>' +
                     '<"col-12 col-md-5 d-flex justify-content-md-end"p>' +
                  '>'
-        }));
+        });
+        if (IHBAR_YETKI_DUZENLE) {
+            ihbarTableOpts.columnDefs = [
+                { targets: 0, orderable: false, searchable: false }
+            ];
+        }
+        if (typeof applyLengthStateSave === 'function') {
+            ihbarTableOpts = applyLengthStateSave(ihbarTableOpts);
+        }
+        const ihbarTable = $('#ihbarTable').DataTable(ihbarTableOpts);
+
+        if (IHBAR_YETKI_DUZENLE) {
+            $('#topluSecilenEkipSelect').select2({
+                dropdownParent: $('#modalTopluSecilenYonlendir'),
+                width: '100%',
+                placeholder: 'Personelleri seçin...'
+            });
+
+            $(document).on('change', '#ihbarSelectAll', function () {
+                const isChecked = this.checked;
+                $('#ihbarTable').find('.ihbar-row-check:not(:disabled)').prop('checked', isChecked);
+                updateSecilenIhbarlarBar();
+            });
+
+            $(document).on('change', '.ihbar-row-check', function () {
+                updateSecilenIhbarlarBar();
+            });
+
+            ihbarTable.on('draw', function () {
+                updateSecilenIhbarlarBar();
+            });
+        }
 
         renderIhbarDashboardCharts();
         ihbarDerinBaglantiyiAc();
@@ -1967,5 +2090,108 @@ function ihbarDurumBadge($durum)
         if (typeof ihbarTable !== 'undefined' && ihbarTable) {
             ihbarTable.search(personelAdi).draw();
         }
+    }
+
+    function updateSecilenIhbarlarBar() {
+        if (!IHBAR_YETKI_DUZENLE) return;
+        const checkedRows = $('#ihbarTable').find('.ihbar-row-check:checked');
+        const totalSelectableRows = $('#ihbarTable').find('.ihbar-row-check:not(:disabled)');
+        const count = checkedRows.length;
+
+        const countSpan = document.getElementById('secilenIhbarSayisi');
+        if (countSpan) countSpan.textContent = count;
+
+        const btn = document.getElementById('btnTopluSecilenYonlendir');
+        if (btn) {
+            btn.classList.toggle('d-none', count === 0);
+        }
+
+        const selectAll = document.getElementById('ihbarSelectAll');
+        if (selectAll) {
+            selectAll.checked = totalSelectableRows.length > 0 && checkedRows.length === totalSelectableRows.length;
+            selectAll.indeterminate = count > 0 && count < totalSelectableRows.length;
+        }
+    }
+
+    function ihbarTopluSecilenYonlendirAc() {
+        const checkedBoxes = $('#ihbarTable').find('.ihbar-row-check:checked');
+        if (!checkedBoxes.length) {
+            Swal.fire('Uyarı', 'Lütfen yönlendirilecek en az bir ihbar seçiniz.', 'warning');
+            return;
+        }
+
+        const modal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalTopluSecilenYonlendir'));
+        document.getElementById('modalSeciliSayisiText').textContent = checkedBoxes.length;
+
+        const tbody = document.getElementById('topluSecilenIhbarlarOzetBody');
+        tbody.innerHTML = '';
+
+        checkedBoxes.each(function () {
+            const row = $(this);
+            const id = row.data('id') || row.val();
+            const ilce = row.data('ilce') || '-';
+            const mahalle = row.data('mahalle') || '-';
+            const ekip = row.data('ekip') || 'Atanmamış';
+            const durum = row.data('durum') || '-';
+
+            const tr = document.createElement('tr');
+            tr.innerHTML = `
+                <td><strong>#${id}</strong></td>
+                <td>${ihbarEscapeHtml(ilce)} / ${ihbarEscapeHtml(mahalle)}</td>
+                <td><small class="text-muted">${ihbarEscapeHtml(ekip)}</small></td>
+                <td>${ihbarDurumBadgeJs(durum)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
+
+        $('#topluSecilenEkipSelect').val([]).trigger('change');
+        modal.show();
+    }
+
+    function ihbarTopluSecilenYonlendirKaydet() {
+        const checkedBoxes = $('#ihbarTable').find('.ihbar-row-check:checked');
+        const ihbarIds = [];
+        checkedBoxes.each(function () {
+            const val = $(this).data('token') || $(this).val();
+            if (val) ihbarIds.push(val);
+        });
+
+        const personelIds = $('#topluSecilenEkipSelect').val();
+
+        if (!ihbarIds.length) {
+            Swal.fire('Uyarı', 'Lütfen yönlendirilecek en az bir ihbar seçiniz.', 'warning');
+            return;
+        }
+        if (!personelIds || !personelIds.length) {
+            Swal.fire('Uyarı', 'Lütfen yönlendirilecek en az bir personel seçiniz.', 'warning');
+            return;
+        }
+
+        const data = new FormData();
+        data.append('action', 'bulkAssignSelected');
+        ihbarIds.forEach(id => data.append('ihbar_ids[]', id));
+        personelIds.forEach(pId => data.append('personel_ids[]', pId));
+
+        const btn = document.getElementById('btnTopluSecilenYonlendirKaydet');
+        btn.disabled = true;
+
+        fetch(IHBAR_API_URL, {
+            method: 'POST',
+            body: data
+        })
+        .then(r => r.json())
+        .then(res => {
+            btn.disabled = false;
+            if (res.success) {
+                bootstrap.Modal.getInstance(document.getElementById('modalTopluSecilenYonlendir'))?.hide();
+                Swal.fire('Başarılı', res.message, 'success').then(() => location.reload());
+            } else {
+                Swal.fire('Hata', res.message || 'Yönlendirme işlemi gerçekleştirilemedi.', 'error');
+            }
+        })
+        .catch(() => {
+            btn.disabled = false;
+            Swal.fire('Hata', 'Sunucuya ulaşılamadı.', 'error');
+        });
     }
 </script>

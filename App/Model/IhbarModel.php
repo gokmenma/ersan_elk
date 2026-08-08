@@ -338,6 +338,72 @@ class IhbarModel extends Model
         $this->addTarihce($ihbarId, 'yonlendirildi', "İhbar şu personele yönlendirildi: {$adlar}", 'user', $atayanUserId);
     }
 
+    public function bulkAssignToPersonel(array $ihbarIds, array $personelIds, int $atayanUserId): int
+    {
+        $ihbarIds = array_values(array_unique(array_filter(array_map('intval', $ihbarIds))));
+        $personelIds = array_values(array_unique(array_filter(array_map('intval', $personelIds))));
+
+        if (empty($ihbarIds)) {
+            throw new \Exception('En az bir ihbar seçmelisiniz.');
+        }
+        if (empty($personelIds)) {
+            throw new \Exception('En az bir personel seçmelisiniz.');
+        }
+
+        $placeholders = implode(',', array_fill(0, count($personelIds), '?'));
+        $kontrol = $this->db->prepare("SELECT COUNT(*) FROM personel
+            WHERE id IN ({$placeholders})
+              AND firma_id = ?
+              AND aktif_mi = 1
+              AND silinme_tarihi IS NULL
+              AND departman LIKE ?");
+        $kontrol->execute(array_merge($personelIds, [$this->firmaId(), '%Kaçak%']));
+        if ((int) $kontrol->fetchColumn() !== count($personelIds)) {
+            throw new \Exception('İhbarlar yalnızca aktif Kaçak Kontrol personeline yönlendirilebilir.');
+        }
+
+        $ihbarPlaceholders = implode(',', array_fill(0, count($ihbarIds), '?'));
+        $checkIhbarlar = $this->db->prepare("SELECT id FROM ihbarlar
+            WHERE id IN ({$ihbarPlaceholders})
+              AND firma_id = ?
+              AND silinme_tarihi IS NULL
+              AND durum IN ('yeni', 'yonlendirildi')");
+        $checkIhbarlar->execute(array_merge($ihbarIds, [$this->firmaId()]));
+        $gecerliIhbarIds = array_map('intval', $checkIhbarlar->fetchAll(PDO::FETCH_COLUMN));
+
+        if (count($gecerliIhbarIds) !== count($ihbarIds)) {
+            throw new \Exception('Yalnızca \'Yeni\' veya \'Yönlendirildi\' durumundaki ihbarlar yönlendirilebilir. Sonuçlandırılmış kayıtlar yönlendirilemez.');
+        }
+
+        $isimler = $this->db->prepare("SELECT adi_soyadi FROM personel WHERE id IN ({$placeholders})");
+        $isimler->execute($personelIds);
+        $adlar = implode(', ', array_column($isimler->fetchAll(PDO::FETCH_OBJ), 'adi_soyadi'));
+
+        $this->db->beginTransaction();
+        try {
+            $pasif = $this->db->prepare("UPDATE ihbar_atamalar SET silinme_tarihi = NOW() WHERE ihbar_id = ? AND silinme_tarihi IS NULL");
+            $insertAtama = $this->db->prepare("INSERT INTO ihbar_atamalar (ihbar_id, personel_id, atayan_user_id, created_at) VALUES (?, ?, ?, NOW())");
+            $updIhbar = $this->db->prepare("UPDATE ihbarlar SET durum = 'yonlendirildi' WHERE id = ? AND durum NOT IN ('olumlu', 'olumsuz')");
+
+            foreach ($gecerliIhbarIds as $ihbarId) {
+                $pasif->execute([$ihbarId]);
+                foreach ($personelIds as $personelId) {
+                    $insertAtama->execute([$ihbarId, $personelId, $atayanUserId]);
+                }
+                $updIhbar->execute([$ihbarId]);
+                $this->addTarihce($ihbarId, 'yonlendirildi', "İhbar toplu yönlendirme ile şu personele atandı: {$adlar}", 'user', $atayanUserId);
+            }
+
+            $this->db->commit();
+            return count($gecerliIhbarIds);
+        } catch (\Throwable $e) {
+            if ($this->db->inTransaction()) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
+    }
+
     /** Personel ihbarını, aktif saha personellerinin son GPS kaydına göre en yakına yönlendirir. */
     public function autoAssignNearest(int $ihbarId, float $lat, float $lng, int $bildirenPersonelId): ?int
     {

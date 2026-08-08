@@ -788,7 +788,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                             ) ?>
                             <small class="text-muted d-block mt-1">Her video en fazla
                                 <?= KacakKontrolModel::VIDEO_MAX_SURE ?> saniye ve
-                                <?= round(KacakKontrolModel::VIDEO_MAX_BYTE / 1048576) ?> MB olabilir.</small>
+                                <?= round(KacakKontrolModel::videoYuklemeSiniri() / 1048576) ?> MB olabilir.</small>
                             <div id="kacakVideoPreview" class="d-flex flex-wrap gap-2 mt-2"></div>
                         </div>
                     </div>
@@ -1115,7 +1115,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         const MAX_SAHA_FOTO = <?= KacakKontrolModel::MAX_SAHA_FOTO ?>;
         const MAX_VIDEO = <?= KacakKontrolModel::MAX_VIDEO ?>;
         const VIDEO_MAX_SURE = <?= KacakKontrolModel::VIDEO_MAX_SURE ?>;
-        const VIDEO_MAX_BYTE = <?= KacakKontrolModel::VIDEO_MAX_BYTE ?>;
+        const VIDEO_MAX_BYTE = <?= KacakKontrolModel::videoYuklemeSiniri() ?>;
         let kacakSeciliVideolar = [];
         const YETKI = {
             duzenle: <?= $yetkiDuzenle ? 'true' : 'false' ?>,
@@ -1734,12 +1734,23 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             }).done(function (res) {
                 if (res.status !== 'success') return hataGoster(res);
 
+                // Video/fotoğraf sunucuya ulaşmadıysa kayıt yine de kaydedilir;
+                // sessiz kalmamak için uyarı olarak gösterilir.
+                const medyaUyarilari = res.medya_uyarilari || [];
+                const uyariVar = medyaUyarilari.length > 0;
+
                 // Düzeltme sonrası doğrudan onaylama istendiyse aynı akışta onayı da geç
                 if (onaylaSonrasinda && kayitId > 0) {
                     $.post(API, { action: 'approve', id: kayitId }, null, 'json').done(function (onay) {
                         if (onay.status !== 'success') return hataGoster(onay);
                         $('#kacakModal').modal('hide');
-                        Swal.fire('Onaylandı', 'Kayıt düzeltildi ve onaylandı.', 'success');
+                        Swal.fire(
+                            uyariVar ? 'Onaylandı, ancak dikkat' : 'Onaylandı',
+                            uyariVar
+                                ? 'Kayıt düzeltildi ve onaylandı. Ancak bazı dosyalar yüklenemedi:<br>' + medyaUyarilari.map(esc).join('<br>')
+                                : 'Kayıt düzeltildi ve onaylandı.',
+                            uyariVar ? 'warning' : 'success'
+                        );
                         listeleriTazele();
                     }).fail(() => Swal.fire('Hata', 'Onaylama sırasında bir hata oluştu.', 'error'))
                         .always(() => $butonlar.prop('disabled', false));
@@ -1747,7 +1758,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 }
 
                 $('#kacakModal').modal('hide');
-                Swal.fire('Başarılı', res.message, 'success');
+                Swal.fire(uyariVar ? 'Kaydedildi, ancak dikkat' : 'Başarılı', res.message, uyariVar ? 'warning' : 'success');
                 listeleriTazele();
                 $butonlar.prop('disabled', false);
             }).fail(function () {

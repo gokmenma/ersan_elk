@@ -5022,6 +5022,20 @@ try {
 
             $KacakModel = new \App\Model\KacakKontrolModel();
 
+            // Video post_max_size sınırını aşarsa PHP gövdeyi tamamen atar;
+            // bu durumda hata "tutanak bulunamadı" gibi görünür.
+            if (empty($_POST) && empty($_FILES) && !empty($_SERVER['CONTENT_LENGTH'])) {
+                error_log(sprintf(
+                    'PWA kaçak videosu post_max_size sınırında düştü: content_length=%s post_max_size=%s upload_max_filesize=%s personel=%s',
+                    $_SERVER['CONTENT_LENGTH'],
+                    ini_get('post_max_size'),
+                    ini_get('upload_max_filesize'),
+                    $personel_id
+                ));
+                response(false, null, 'Video sunucunun izin verdiği boyutu (post_max_size: '
+                    . ini_get('post_max_size') . ') aşıyor.');
+            }
+
             $editToken = trim((string) ($_POST['edit_token'] ?? $_GET['edit_token'] ?? ''));
             $videoUuid = trim((string) ($_POST['client_uuid'] ?? ''));
 

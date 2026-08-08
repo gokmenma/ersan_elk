@@ -33,7 +33,7 @@ class VideoUploadService
     ): array {
         $error = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
         if ($error !== UPLOAD_ERR_OK || empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
-            throw new Exception($this->uploadErrorMessage($error, $maxUploadBytes));
+            throw new Exception(self::uploadErrorMessage($error, $maxUploadBytes));
         }
 
         $size = (int) ($file['size'] ?? 0);
@@ -202,7 +202,7 @@ class VideoUploadService
         return $kapakAdi;
     }
 
-    private function uploadErrorMessage(int $error, int $maxUploadBytes): string
+    public static function uploadErrorMessage(int $error, int $maxUploadBytes): string
     {
         if (in_array($error, [UPLOAD_ERR_INI_SIZE, UPLOAD_ERR_FORM_SIZE], true)) {
             return 'Video sunucunun yükleme boyutu sınırını aşıyor (en fazla '
