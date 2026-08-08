@@ -774,6 +774,7 @@ try {
             $PersonelModel = new \App\Model\PersonelModel();
             $personelDetails = $PersonelModel->find($personel_id);
             $isSayacSokmeTakma = (stripos($personelDetails->departman ?? '', 'Sayaç Sökme Takma') !== false);
+            $isKacakKontrol = (stripos($personelDetails->departman ?? '', 'Kaçak') !== false);
 
             $db = (new \App\Model\Model('tanimlamalar'))->getDb();
 
@@ -863,8 +864,34 @@ try {
                 $monthlyEndeks = (int) ($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
             }
 
-            $dailyTotal = $dailyIsler + $dailyEndeks;
-            $monthlyTotal = $monthlyIsler + $monthlyEndeks;
+            // Günlük Kaçak Kontrol (Onaylanmış + Bekleyen dahil)
+            $sqlKacakDaily = "SELECT SUM(COALESCE(sayi, 1)) as toplam 
+                             FROM kacak_kontrol 
+                             WHERE (bildiren_personel_id = ? OR FIND_IN_SET(?, personel_ids)) 
+                               AND firma_id = ? 
+                               AND silinme_tarihi IS NULL 
+                               AND onay_durumu IN ('onaylandi', 'beklemede') 
+                               AND NOT (durum = 'iptal' AND hakedisten_dus = 1) 
+                               AND tarih = ?";
+            $stmt = $db->prepare($sqlKacakDaily);
+            $stmt->execute([$personel_id, $personel_id, $firmaId, $today]);
+            $dailyKacak = (int) ($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
+
+            // Aylık Kaçak Kontrol (Onaylanmış + Bekleyen dahil)
+            $sqlKacakMonthly = "SELECT SUM(COALESCE(sayi, 1)) as toplam 
+                               FROM kacak_kontrol 
+                               WHERE (bildiren_personel_id = ? OR FIND_IN_SET(?, personel_ids)) 
+                                 AND firma_id = ? 
+                                 AND silinme_tarihi IS NULL 
+                                 AND onay_durumu IN ('onaylandi', 'beklemede') 
+                                 AND NOT (durum = 'iptal' AND hakedisten_dus = 1) 
+                                 AND tarih BETWEEN ? AND ?";
+            $stmt = $db->prepare($sqlKacakMonthly);
+            $stmt->execute([$personel_id, $personel_id, $firmaId, $startOfMonth, $endOfMonth]);
+            $monthlyKacak = (int) ($stmt->fetch(PDO::FETCH_OBJ)->toplam ?? 0);
+
+            $dailyTotal = $dailyIsler + $dailyEndeks + $dailyKacak;
+            $monthlyTotal = $monthlyIsler + $monthlyEndeks + $monthlyKacak;
 
             // ---- YENİ: SIRALAMA EKLENMESİ ----
             $departman = isset($personelDetails->departman) ? trim($personelDetails->departman) : '';
@@ -972,10 +999,20 @@ try {
                 SELECT t.personel_id, t.is_sayisi as toplam
                 FROM sayac_degisim t
                 WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih BETWEEN ? AND ?
+                UNION ALL
+                SELECT t.bildiren_personel_id as personel_id, COALESCE(t.sayi, 1) as toplam
+                FROM kacak_kontrol t
+                WHERE t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih BETWEEN ? AND ?
+                AND t.onay_durumu IN ('onaylandi', 'beklemede') AND NOT (t.durum = 'iptal' AND t.hakedisten_dus = 1)
             ) AS birlesik GROUP BY personel_id";
 
             $stmt = $db->prepare($skorSorgusu);
-            $stmt->execute([$firmaId, $startOfMonth, $endOfMonth, $firmaId, $startOfMonth, $endOfMonth, $firmaId, $startOfMonth, $endOfMonth]);
+            $stmt->execute([
+                $firmaId, $startOfMonth, $endOfMonth, 
+                $firmaId, $startOfMonth, $endOfMonth, 
+                $firmaId, $startOfMonth, $endOfMonth,
+                $firmaId, $startOfMonth, $endOfMonth
+            ]);
             $skorlarArray = $stmt->fetchAll(PDO::FETCH_OBJ);
 
             $skorMap = [];
@@ -1003,6 +1040,7 @@ try {
                 'today' => $dailyTotal,
                 'month' => $monthlyTotal,
                 'is_sayac_ekibi' => $isSayacSokmeTakma,
+                'is_kacak_ekibi' => $isKacakKontrol,
                 'departman' => $departman,
                 'ekip_bolge' => $aktifEkipBolge,
                 'siralama' => [
@@ -1014,8 +1052,10 @@ try {
                 'details' => [
                     'daily_isler' => $dailyIsler,
                     'daily_endeks' => $dailyEndeks,
+                    'daily_kacak' => $dailyKacak,
                     'monthly_isler' => $monthlyIsler,
                     'monthly_endeks' => $monthlyEndeks,
+                    'monthly_kacak' => $monthlyKacak,
                     'daily_sekme' => $dailySekme,
                     'monthly_sekme' => $monthlySekme
                 ]

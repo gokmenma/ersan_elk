@@ -474,6 +474,17 @@ use App\Helper\Helper;
             'text_color' => 'text-indigo-100/80',
             'condition' => $isKesmeAcma ?? false,
         ],
+        'kacak' => [
+            'key' => 'kacak',
+            'title' => 'Kaçak İşlemleri',
+            'desc' => 'Tutanak Bildirimi',
+            'url' => '?page=kacak',
+            'icon' => 'policy',
+            'gradient' => 'from-red-600 to-rose-700',
+            'neon' => 'neon-red',
+            'text_color' => 'text-red-100/80',
+            'condition' => $isKacakKontrol ?? false,
+        ],
     ];
 
     $availableQuickActions = [];
@@ -1110,6 +1121,7 @@ use App\Helper\Helper;
                             if (stat.details.daily_sekme.sokme_takma > 0) dailyParts.push(`${stat.details.daily_sekme.sokme_takma} Sayaç Değ.`);
                             if (stat.details.daily_sekme.kesme > 0) dailyParts.push(`${stat.details.daily_sekme.kesme} Kesme-Açma`);
                         }
+                        if (stat.details && stat.details.daily_kacak > 0) dailyParts.push(`${stat.details.daily_kacak} Kaçak`);
                         if (dailyParts.length > 0) {
                             todayBreakdown = `<p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium leading-tight">${dailyParts.join(' &bull; ')}</p>`;
                         }
@@ -1119,24 +1131,42 @@ use App\Helper\Helper;
                             if (stat.details.monthly_sekme.sokme_takma > 0) monthlyParts.push(`${stat.details.monthly_sekme.sokme_takma} Sayaç Değ.`);
                             if (stat.details.monthly_sekme.kesme > 0) monthlyParts.push(`${stat.details.monthly_sekme.kesme} Kesme-Açma`);
                         }
+                        if (stat.details && stat.details.monthly_kacak > 0) monthlyParts.push(`${stat.details.monthly_kacak} Kaçak`);
+                        if (monthlyParts.length > 0) {
+                            monthBreakdown = `<p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium leading-tight">${monthlyParts.join(' &bull; ')}</p>`;
+                        }
+                    } else if (stat.is_kacak_ekibi) {
+                        // Kaçak Kontrol Ekipleri (Bekleyen Kaçaklar Dahil)
+                        let dailyParts = [];
+                        if (stat.details && stat.details.daily_kacak > 0) dailyParts.push(`${stat.details.daily_kacak} Kaçak Tutanak`);
+                        if (stat.details && stat.details.daily_isler > 0) dailyParts.push(`${stat.details.daily_isler} İş`);
+                        if (dailyParts.length > 0) {
+                            todayBreakdown = `<p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium leading-tight">${dailyParts.join(' &bull; ')}</p>`;
+                        }
+
+                        let monthlyParts = [];
+                        if (stat.details && stat.details.monthly_kacak > 0) monthlyParts.push(`${stat.details.monthly_kacak} Kaçak Tutanak`);
+                        if (stat.details && stat.details.monthly_isler > 0) monthlyParts.push(`${stat.details.monthly_isler} İş`);
                         if (monthlyParts.length > 0) {
                             monthBreakdown = `<p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium leading-tight">${monthlyParts.join(' &bull; ')}</p>`;
                         }
                     } else {
-                        // Normal ekipler için (Endeks + Kesme)
-                        if (stat.details && (stat.details.daily_isler > 0 || stat.details.daily_endeks > 0)) {
+                        // Normal ekipler için (Endeks + Kesme + Kaçak)
+                        if (stat.details && (stat.details.daily_isler > 0 || stat.details.daily_endeks > 0 || stat.details.daily_kacak > 0)) {
                             let parts = [];
                             if (stat.details.daily_isler > 0) parts.push(`${stat.details.daily_isler} Kesme`);
                             if (stat.details.daily_endeks > 0) parts.push(`${stat.details.daily_endeks} Endeks`);
+                            if (stat.details.daily_kacak > 0) parts.push(`${stat.details.daily_kacak} Kaçak`);
                             if (parts.length > 0) {
                                 todayBreakdown = `<p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium leading-tight">${parts.join(' &bull; ')}</p>`;
                             }
                         }
 
-                        if (stat.details && (stat.details.monthly_isler > 0 || stat.details.monthly_endeks > 0)) {
+                        if (stat.details && (stat.details.monthly_isler > 0 || stat.details.monthly_endeks > 0 || stat.details.monthly_kacak > 0)) {
                             let parts = [];
                             if (stat.details.monthly_isler > 0) parts.push(`${stat.details.monthly_isler} Kesme`);
                             if (stat.details.monthly_endeks > 0) parts.push(`${stat.details.monthly_endeks} Endeks`);
+                            if (stat.details.monthly_kacak > 0) parts.push(`${stat.details.monthly_kacak} Kaçak`);
                             if (parts.length > 0) {
                                 monthBreakdown = `<p class="text-[10px] text-slate-400 dark:text-slate-500 mt-1 font-medium leading-tight">${parts.join(' &bull; ')}</p>`;
                             }

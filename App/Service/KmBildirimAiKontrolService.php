@@ -76,6 +76,7 @@ class KmBildirimAiKontrolService
                 $resim = $this->resolveImage((string) $bildirim->resim_yolu);
                 $analiz = $this->analyzeImage($resim, $bildirim);
                 $analiz = $this->refineOdometerReading($resim, $analiz, $bildirim);
+                $analiz = $this->adjudicateCloseOdometerReading($resim, $analiz, $bildirim);
                 $karar = $this->evaluate($analiz, $bildirim);
 
                 if (!$karar['uygun']) {
@@ -307,6 +308,101 @@ class KmBildirimAiKontrolService
         if (($ikinciAnaliz['odometer_km'] ?? null) !== null && (int) ($ikinciAnaliz['km_confidence'] ?? 0) >= 80) {
             $analiz['odometer_km'] = (int) $ikinciAnaliz['odometer_km'];
             $analiz['km_confidence'] = (int) $ikinciAnaliz['km_confidence'];
+        }
+
+        return $analiz;
+    }
+
+    /**
+     * Yedi-segment ekranlarda tek bir segmentin yansıma nedeniyle kaybolması veya
+     * görünmesi 1/7, 2/3 gibi rakamları karıştırabilir. İlk iki bağımsız okuma
+     * bildirime çok yakınsa, bildirilen değeri bir aday olarak verip her hanenin
+     * gerçekten görüntü tarafından desteklenip desteklenmediğini son kez sınar.
+     * Yalnızca çok yüksek güvenli olumlu sonuç OCR değerini düzeltir.
+     */
+    private function adjudicateCloseOdometerReading(array $image, array $analiz, object $bildirim): array
+    {
+        $okunanKm = $analiz['odometer_km'] ?? null;
+        $bildirilenKm = (int) $bildirim->bitis_km;
+        if ($okunanKm === null || $bildirilenKm <= 0 || $this->isKmMatching((int) $okunanKm, $bildirilenKm)) {
+            return $analiz;
+        }
+
+        $okunanMetin = (string) (int) $okunanKm;
+        $bildirilenMetin = (string) $bildirilenKm;
+        if (abs(strlen($okunanMetin) - strlen($bildirilenMetin)) > 1
+            || levenshtein($okunanMetin, $bildirilenMetin) !== 1
+            || (int) ($analiz['km_confidence'] ?? 0) < 80) {
+            return $analiz;
+        }
+
+        $cropDataUrl = null;
+        $bbox = $analiz['odometer_bbox'] ?? null;
+        if (is_array($bbox) && isset($bbox['x'], $bbox['y'], $bbox['width'], $bbox['height'])) {
+            $cropDataUrl = $this->createOdometerCropDataUrl($image, $bbox);
+        }
+        if ($cropDataUrl === null) {
+            $cropDataUrl = $this->createOdometerCropDataUrl(
+                $image,
+                ['x' => 250, 'y' => 150, 'width' => 500, 'height' => 500]
+            );
+        }
+        if ($cropDataUrl === null) {
+            return $analiz;
+        }
+
+        $prompt = sprintf(
+            'Bu görüntü toplam odometre ekranının büyütülmüş halidir. İlk OCR "%s" okudu; sürücünün bildirdiği aday değer "%s". '
+            . 'Bildirilen değeri doğru varsayma. Ekrandaki rakam hücrelerini soldan sağa say ve her hücrenin yanan/sönük segmentlerini tek tek incele. '
+            . 'Özellikle 1/7, 2/3 ve yansıma yüzünden iki kez görülmüş olabilecek bitişik haneleri kontrol et. '
+            . 'candidate_exact yalnızca görüntüdeki tüm hücreler eksiksiz olarak "%s" değerini destekliyorsa true olsun; '
+            . 'tek bir hane dahi belirsizse false döndür. confidence bu adayın görsel kanıtına ilişkin 0-100 güven olsun.',
+            $okunanMetin,
+            $bildirilenMetin,
+            $bildirilenMetin
+        );
+        $payload = [
+            'model' => $this->model,
+            'messages' => [[
+                'role' => 'user',
+                'content' => [
+                    ['type' => 'text', 'text' => $prompt],
+                    ['type' => 'image_url', 'image_url' => ['url' => $cropDataUrl, 'detail' => 'high']],
+                ],
+            ]],
+            'temperature' => 0,
+            'response_format' => [
+                'type' => 'json_schema',
+                'json_schema' => [
+                    'name' => 'odometre_yakin_aday_hakemligi',
+                    'strict' => true,
+                    'schema' => [
+                        'type' => 'object',
+                        'properties' => [
+                            'candidate_exact' => ['type' => 'boolean'],
+                            'confidence' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 100],
+                        ],
+                        'required' => ['candidate_exact', 'confidence'],
+                        'additionalProperties' => false,
+                    ],
+                ],
+            ],
+            'max_tokens' => 60,
+        ];
+
+        $hakem = $this->sendAiRequest($payload);
+        $adayKesin = !empty($hakem['candidate_exact']) && (int) ($hakem['confidence'] ?? 0) >= 95;
+        error_log(sprintf(
+            'KM AI yakın aday hakemliği: bildirim_id=%d ilk_okuma=%s aday=%s sonuc=%s guven=%d',
+            (int) $bildirim->id,
+            $okunanMetin,
+            $bildirilenMetin,
+            $adayKesin ? 'kabul' : 'ret',
+            (int) ($hakem['confidence'] ?? 0)
+        ));
+        if ($adayKesin) {
+            $analiz['odometer_km'] = $bildirilenKm;
+            $analiz['km_confidence'] = (int) $hakem['confidence'];
         }
 
         return $analiz;
