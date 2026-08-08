@@ -154,7 +154,7 @@ class KmBildirimAiKontrolService
     {
         $dataUrl = 'data:' . $image['mime'] . ';base64,' . base64_encode((string) file_get_contents($image['path']));
         $prompt = sprintf(
-            "Bu fotoğraf bir araç KM bildiriminin kanıtıdır. Önce gösterge panelindeki toplam odometre ekranını bul; hız, devir, yakıt ve trip sayaçlarını odometreyle karıştırma. Odometredeki tüm haneleri soldan sağa tek tek incele, özellikle düşük kontrastlı veya silik ilk haneyi atlama. ÖNEMLİ (Araç Gösterge Kuralları): 1) ÇOĞU BİNEK VE TİCARİ ARAÇTA ODOMETRE DİREKT TAM KİLOMETREYİ GÖSTERİR (örneğin '120928' ekranında tüm haneler tam kilometredir: 120928). 2) Ondalık hane (1/10 km) YALNIZCA en sağdaki hane nokta/virgül ile ayrılmışsa (örn: '8421.6' gösteriminde 8421 tam KM, '.6' ondalıktır) veya mekanik göstergelerde en sağdaki çark farklı renktedir (örn: siyah çarkların yanında beyaz çark olan '079380' gösteriminde 7938 tam KM, beyaz '0' ondalıktır). 3) EĞER NOKTA/VİRGÜL VEYA FARKLI RENKTE ÇARK YOKSA, EKRANDAKİ TÜM HANELERİ TAM KİLOMETRE OLARAK OKU (örn: '120928'). 4) Mavi, yeşil veya siyah-beyaz 7-segment LCD panellerdeki 9, 8, 3, 0, 5, 6 hanelerini ışık yansımasına karşı dikkatle incele; tüm haneleri soldan sağa eksiksiz oku. 5) Sol baştaki sıfırları (örn: '07938' -> 7938) dikkate alarak temizle. odometer_bbox alanında odometre rakamlarını çevreleyen kutuyu görüntünün genişlik ve yüksekliğine göre 0-1000 arası normalize edilmiş x, y, width, height değerleriyle döndür. Konum bulunamazsa null yap. Ayrıca fotoğrafa uygulama tarafından eklenen filigrandaki plaka ile Sabah/Akşam bildirim türünü oku. Beklenen kaydı yalnızca plaka ve tür doğrulaması için kullanacağım: plaka=%s, tür=%s. KM değerini tahmin etme ve bildirilen değerden türetme; yalnızca fotoğrafta gerçekten görülen hanelerin tam kilometre kısmını döndür. Rakam net değilse odometer_km=null yap. Güven değerlerini 0-100 arasında ver.",
+            "Bu fotoğraf bir araç KM bildiriminin kanıtıdır. Önce gösterge panelindeki toplam odometre ekranını bul; hız, devir, yakıt ve trip sayaçlarını odometreyle karıştırma. Görüntü eğikse sayacı zihinsel olarak düz çevir. Odometredeki tüm haneleri soldan sağa tek tek incele, özellikle düşük kontrastlı veya silik ilk haneyi atlama. ÖNEMLİ (Araç Gösterge Kuralları): 1) ÇOĞU BİNEK VE TİCARİ ARAÇTA ODOMETRE DİREKT TAM KİLOMETREYİ GÖSTERİR (örneğin '120928' ekranında tüm haneler tam kilometredir: 120928). 2) Ondalık hane (1/10 km) YALNIZCA en sağdaki hane nokta/virgül ile ayrılmışsa (örn: '8421.6' gösteriminde 8421 tam KM, '.6' ondalıktır) veya özellikle motosikletlerde/mekanik göstergelerde en sağdaki çark farklı renk, zemin ya da ayrı tamburdaysa (örn: siyah çarkların yanında beyaz çark olan '079380' gösteriminde 7938 tam KM, beyaz '0' ondalıktır). Nokta görünmese bile farklı zeminli son tamburu tam KM'ye katma. 3) EĞER NOKTA/VİRGÜL VEYA FARKLI RENKTE ÇARK YOKSA, EKRANDAKİ TÜM HANELERİ TAM KİLOMETRE OLARAK OKU (örn: '120928'). 4) Mavi, yeşil veya siyah-beyaz 7-segment LCD panellerdeki 9, 8, 3, 0, 5, 6 hanelerini ışık yansımasına karşı dikkatle incele; mekanik tamburlarda özellikle 6/8 ayrımını kontrol et ve tüm haneleri soldan sağa eksiksiz oku. 5) Sol baştaki sıfırları (örn: '07938' -> 7938) dikkate alarak temizle. odometer_bbox alanında odometre rakamlarını çevreleyen kutuyu görüntünün genişlik ve yüksekliğine göre 0-1000 arası normalize edilmiş x, y, width, height değerleriyle döndür. Konum bulunamazsa null yap. Ayrıca fotoğrafa uygulama tarafından eklenen filigrandaki plaka ile Sabah/Akşam bildirim türünü oku. Beklenen kaydı yalnızca plaka ve tür doğrulaması için kullanacağım: plaka=%s, tür=%s. KM değerini tahmin etme ve bildirilen değerden türetme; yalnızca fotoğrafta gerçekten görülen hanelerin tam kilometre kısmını döndür. Rakam net değilse odometer_km=null yap. Güven değerlerini 0-100 arasında ver.",
             (string) $bildirim->plaka,
             (string) $bildirim->tur
         );
@@ -222,7 +222,11 @@ class KmBildirimAiKontrolService
         $ilkGuven = (int) ($analiz['km_confidence'] ?? 0);
         $bildirilenKm = (int) $bildirim->bitis_km;
 
-        if ($ilkKm !== null && $ilkGuven >= 90 && $this->isKmMatching((int) $ilkKm, $bildirilenKm)) {
+        if ($ilkKm !== null && $ilkGuven >= 90 && $this->isKmMatching(
+            (int) $ilkKm,
+            $bildirilenKm,
+            ($analiz['has_decimal_digit'] ?? null) === true
+        )) {
             return $analiz;
         }
 
@@ -255,8 +259,8 @@ class KmBildirimAiKontrolService
             : '';
         $prompt = 'Bu görüntü, araç gösterge panelindeki toplam odometre alanının otomatik büyütülmüş kırpımıdır. '
             . 'Hız, devir, yakıt, saat ve trip değerlerini dikkate alma. Toplam KM değerindeki haneleri soldan sağa tek tek oku; '
-            . 'özellikle 7-segment / LCD dijital ekranlarda (örneğin mavi/yeşil kadranlarda) 9, 8, 3, 0, 5, 6 rakamlarını dikkatle ayırt et. '
-            . 'ÖNEMLİ KURAL: Çoğu araçta tüm haneler tam kilometredir (örn: "120928" 6 haneli tam kilometredir). YALNIZCA nokta/virgül ile ayrılmış ondalık (örn: "8421.6") veya mekanik göstergelerde farklı renkli son çark (örn: "079380") varsa son haneyi katma. Nokta/virgül veya farklı zeminli çark yoksa EKRANDAKİ TÜM HANELERİ TAM KİLOMETRE OLARAK OKU. '
+            . 'özellikle 7-segment / LCD dijital ekranlarda (örneğin mavi/yeşil kadranlarda) 9, 8, 3, 0, 5, 6 rakamlarını; mekanik tamburlarda 6/8 ayrımını dikkatle kontrol et. '
+            . 'ÖNEMLİ KURAL: Çoğu araçta tüm haneler tam kilometredir (örn: "120928" 6 haneli tam kilometredir). YALNIZCA nokta/virgül ile ayrılmış ondalık (örn: "8421.6") veya özellikle motosiklet/mekanik göstergelerde farklı renkli, farklı zeminli ya da ayrı tamburdaki son çark (örn: "079380") varsa son haneyi katma. Nokta görünmese bile farklı zeminli son çark onda birdir. Böyle bir ayrım yoksa EKRANDAKİ TÜM HANELERİ TAM KİLOMETRE OLARAK OKU. Görüntü eğikse sayacı zihinsel olarak düz çevir. '
             . 'İlk görsel genel bağlam, ikinci görsel odometrenin büyütülmüş halidir. İki görseli birlikte incele ve görünen her rakam hücresini say. '
             . 'Görüntüde kesin seçilemeyen hane varsa odometer_km=null döndür.'
             . $tutarlilikUyarisi;
@@ -307,6 +311,7 @@ class KmBildirimAiKontrolService
         ));
         if (($ikinciAnaliz['odometer_km'] ?? null) !== null && (int) ($ikinciAnaliz['km_confidence'] ?? 0) >= 80) {
             $analiz['odometer_km'] = (int) $ikinciAnaliz['odometer_km'];
+            $analiz['has_decimal_digit'] = $ikinciAnaliz['has_decimal_digit'] ?? null;
             $analiz['km_confidence'] = (int) $ikinciAnaliz['km_confidence'];
         }
 
@@ -324,15 +329,32 @@ class KmBildirimAiKontrolService
     {
         $okunanKm = $analiz['odometer_km'] ?? null;
         $bildirilenKm = (int) $bildirim->bitis_km;
-        if ($okunanKm === null || $bildirilenKm <= 0 || $this->isKmMatching((int) $okunanKm, $bildirilenKm)) {
+        if ($okunanKm === null || $bildirilenKm <= 0 || $this->isKmMatching(
+            (int) $okunanKm,
+            $bildirilenKm,
+            ($analiz['has_decimal_digit'] ?? null) === true
+        )) {
             return $analiz;
         }
 
         $okunanMetin = (string) (int) $okunanKm;
         $bildirilenMetin = (string) $bildirilenKm;
-        if (abs(strlen($okunanMetin) - strlen($bildirilenMetin)) > 1
-            || levenshtein($okunanMetin, $bildirilenMetin) !== 1
-            || (int) ($analiz['km_confidence'] ?? 0) < 80) {
+        // Mekanik/motosiklet sayaçlarında sağdaki farklı renkli tambur onda bir
+        // kilometredir. Model ayırıcıyı göremeyip bu haneyi tam KM'ye katmış
+        // olabilir; yakınlığı hem ham hem de son hanesi çıkarılmış değerle ölç.
+        $yakinlikAdaylari = [$okunanMetin];
+        if (strlen($okunanMetin) > 1) {
+            $yakinlikAdaylari[] = substr($okunanMetin, 0, -1);
+        }
+        $tekHaneFarkVar = false;
+        foreach ($yakinlikAdaylari as $yakinlikAdayi) {
+            if (abs(strlen($yakinlikAdayi) - strlen($bildirilenMetin)) <= 1
+                && levenshtein($yakinlikAdayi, $bildirilenMetin) === 1) {
+                $tekHaneFarkVar = true;
+                break;
+            }
+        }
+        if (!$tekHaneFarkVar || (int) ($analiz['km_confidence'] ?? 0) < 80) {
             return $analiz;
         }
 
@@ -354,7 +376,9 @@ class KmBildirimAiKontrolService
         $prompt = sprintf(
             'Bu görüntü toplam odometre ekranının büyütülmüş halidir. İlk OCR "%s" okudu; sürücünün bildirdiği aday değer "%s". '
             . 'Bildirilen değeri doğru varsayma. Ekrandaki rakam hücrelerini soldan sağa say ve her hücrenin yanan/sönük segmentlerini tek tek incele. '
-            . 'Özellikle 1/7, 2/3 ve yansıma yüzünden iki kez görülmüş olabilecek bitişik haneleri kontrol et. '
+            . 'Özellikle 1/7, 2/3, 6/8 ve yansıma yüzünden iki kez görülmüş olabilecek bitişik haneleri kontrol et. '
+            . 'Motosikletlerde ve mekanik tamburlu sayaçlarda en sağdaki farklı renkli/zeminli hane onda bir KM olabilir; '
+            . 'nokta görünmese bile farklı renk veya ayrı tambur varsa bu son haneyi tam kilometreye katma. Görüntü eğikse sayacı zihinsel olarak düz çevir. '
             . 'candidate_exact yalnızca görüntüdeki tüm hücreler eksiksiz olarak "%s" değerini destekliyorsa true olsun; '
             . 'tek bir hane dahi belirsizse false döndür. confidence bu adayın görsel kanıtına ilişkin 0-100 güven olsun.',
             $okunanMetin,
@@ -497,10 +521,10 @@ class KmBildirimAiKontrolService
     /**
      * AI tarafından okunan KM ile bildirilen KM değerinin eşleşip eşleşmediğini kontrol eder.
      * 1) Birebir eşleşme (örn: okunan 34507 === bildirilen 34507)
-     * 2) AI ondalık haneyi katıp 10 katı okumuşsa (örn: okunan 345071, bildirilen 34507)
-     * 3) Personel formda göstergedeki ondalık haneyi de yazıp 10 katı girmişse (örn: okunan 34507, bildirilen 345071)
+     * 2) Görsel kanıt varsa AI en sağdaki tek ondalık haneyi katmışsa
+     * 3) Görsel kanıt varsa personel en sağdaki tek ondalık haneyi forma yazmışsa
      */
-    private function isKmMatching(?int $okunanKm, int $bildirilenKm): bool
+    private function isKmMatching(?int $okunanKm, int $bildirilenKm, bool $ondalikHaneKaniti = false): bool
     {
         if ($okunanKm === null || $okunanKm <= 0 || $bildirilenKm <= 0) {
             return false;
@@ -511,17 +535,21 @@ class KmBildirimAiKontrolService
             return true;
         }
 
-        // AI ondalık haneyi katıp 10 katı okumuşsa (okunan: 345071, bildirilen: 34507)
+        // On kat ilişkisi yalnızca fotoğrafta en sağdaki TEK hanenin nokta/virgül
+        // veya farklı renk/zeminle ayrıldığı açıkça tespit edildiyse geçerlidir.
+        if (!$ondalikHaneKaniti) {
+            return false;
+        }
+
+        // AI en sağdaki tek ondalık haneyi katmışsa (okunan: 345071, bildirilen: 34507)
         $okunanTam = (int) floor($okunanKm / 10);
-        $okunanYuv = (int) round($okunanKm / 10);
-        if ($okunanTam === $bildirilenKm || $okunanYuv === $bildirilenKm) {
+        if ($okunanTam === $bildirilenKm) {
             return true;
         }
 
         // Personel formda göstergedeki ondalık haneyi de yazıp 10 katı girmişse (okunan: 34507, bildirilen: 345071)
         $bildirilenTam = (int) floor($bildirilenKm / 10);
-        $bildirilenYuv = (int) round($bildirilenKm / 10);
-        if ($bildirilenTam === $okunanKm || $bildirilenYuv === $okunanKm) {
+        if ($bildirilenTam === $okunanKm) {
             return true;
         }
 
@@ -539,10 +567,11 @@ class KmBildirimAiKontrolService
         $bildirilenKm = (int) $bildirim->bitis_km;
 
         // Personel 10 katı girmişse (örneğin göstergedeki 34507.1 değerini forma 345071 yazmışsa, AI ise doğru 34507 okumuşsa):
-        if ($okunanKm !== null && $bildirilenKm > 0) {
+        if ($okunanKm !== null
+            && $bildirilenKm > 0
+            && ($analiz['has_decimal_digit'] ?? null) === true) {
             $bildirilenTam = (int) floor($bildirilenKm / 10);
-            $bildirilenYuv = (int) round($bildirilenKm / 10);
-            if (($bildirilenTam === $okunanKm || $bildirilenYuv === $okunanKm) && $bildirilenKm > $okunanKm) {
+            if ($bildirilenTam === $okunanKm && $bildirilenKm > $okunanKm) {
                 // Bildirim objesindeki bitis_km değerini gerçek tam KM ile düzelt
                 $bildirim->bitis_km = $okunanKm;
                 $bildirilenKm = $okunanKm;
@@ -573,7 +602,11 @@ class KmBildirimAiKontrolService
 
         if ($okunanKm === null || (int) ($analiz['km_confidence'] ?? 0) < 90) {
             $nedenler[] = 'KM değeri yeterli güvenle okunamadı.';
-        } elseif (!$this->isKmMatching($okunanKm, $bildirilenKm)) {
+        } elseif (!$this->isKmMatching(
+            $okunanKm,
+            $bildirilenKm,
+            ($analiz['has_decimal_digit'] ?? null) === true
+        )) {
             $okunanKmFmt = number_format($okunanKm, 0, ',', '.');
             $bildirilenKmFmt = number_format($bildirilenKm, 0, ',', '.');
             $nedenler[] = "Okunan KM ({$okunanKmFmt} KM) bildirilen KM ({$bildirilenKmFmt} KM) ile eşleşmiyor.";
