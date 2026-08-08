@@ -397,8 +397,9 @@ class KmBildirimAiKontrolService
 
     /**
      * AI tarafından okunan KM ile bildirilen KM değerinin eşleşip eşleşmediğini kontrol eder.
-     * Motorsiklet ve bazı araçlarda 8421.6 şeklinde görünen ekranların AI tarafından 84216 
-     * olarak birleşik okunması durumunu (1/10 km ondalık hanesi) akıllı olarak tolere eder.
+     * 1) Birebir eşleşme (örn: okunan 34507 === bildirilen 34507)
+     * 2) AI ondalık haneyi katıp 10 katı okumuşsa (örn: okunan 345071, bildirilen 34507)
+     * 3) Personel formda göstergedeki ondalık haneyi de yazıp 10 katı girmişse (örn: okunan 34507, bildirilen 345071)
      */
     private function isKmMatching(?int $okunanKm, int $bildirilenKm): bool
     {
@@ -406,15 +407,22 @@ class KmBildirimAiKontrolService
             return false;
         }
 
-        // Birebir eşleşme (örn: 8421 === 8421)
+        // Birebir eşleşme (örn: 34507 === 34507)
         if ($okunanKm === $bildirilenKm) {
             return true;
         }
 
-        // Ondalık hanenin tam sayıya dahil edilerek okunması durumu (örn: 8421.6 -> okunan: 84216, bildirilen: 8421)
-        $tamKisim = (int) floor($okunanKm / 10);
-        $yuvarlanmis = (int) round($okunanKm / 10);
-        if ($tamKisim === $bildirilenKm || $yuvarlanmis === $bildirilenKm) {
+        // AI ondalık haneyi katıp 10 katı okumuşsa (okunan: 345071, bildirilen: 34507)
+        $okunanTam = (int) floor($okunanKm / 10);
+        $okunanYuv = (int) round($okunanKm / 10);
+        if ($okunanTam === $bildirilenKm || $okunanYuv === $bildirilenKm) {
+            return true;
+        }
+
+        // Personel formda göstergedeki ondalık haneyi de yazıp 10 katı girmişse (okunan: 34507, bildirilen: 345071)
+        $bildirilenTam = (int) floor($bildirilenKm / 10);
+        $bildirilenYuv = (int) round($bildirilenKm / 10);
+        if ($bildirilenTam === $okunanKm || $bildirilenYuv === $okunanKm) {
             return true;
         }
 
@@ -426,6 +434,28 @@ class KmBildirimAiKontrolService
         $nedenler = [];
         if ($bildirim->tarih === date('Y-m-d') && $bildirim->tur === 'aksam' && (int) date('G') < 13) {
             $nedenler[] = 'Bugünkü akşam bildirimi saat 13:00 öncesinde otomatik onaylanamaz.';
+        }
+
+        $okunanKm = $analiz['odometer_km'] !== null ? (int) $analiz['odometer_km'] : null;
+        $bildirilenKm = (int) $bildirim->bitis_km;
+
+        // Personel 10 katı girmişse (örneğin göstergedeki 34507.1 değerini forma 345071 yazmışsa, AI ise doğru 34507 okumuşsa):
+        if ($okunanKm !== null && $bildirilenKm > 0) {
+            $bildirilenTam = (int) floor($bildirilenKm / 10);
+            $bildirilenYuv = (int) round($bildirilenKm / 10);
+            if (($bildirilenTam === $okunanKm || $bildirilenYuv === $okunanKm) && $bildirilenKm > $okunanKm) {
+                // Bildirim objesindeki bitis_km değerini gerçek tam KM ile düzelt
+                $bildirim->bitis_km = $okunanKm;
+                $bildirilenKm = $okunanKm;
+                try {
+                    $this->bildirimModel->saveWithAttr([
+                        'id' => $bildirim->id,
+                        'bitis_km' => $okunanKm,
+                    ]);
+                } catch (\Throwable $ex) {
+                    // DB kaydı güncelleme hatası yutulur
+                }
+            }
         }
 
         $oncekiKm = $this->bildirimModel->getLastKm(
@@ -442,9 +472,6 @@ class KmBildirimAiKontrolService
             $nedenler[] = 'Gösterge paneli net görünmüyor.';
         }
 
-        $okunanKm = $analiz['odometer_km'] !== null ? (int) $analiz['odometer_km'] : null;
-        $bildirilenKm = (int) $bildirim->bitis_km;
-
         if ($okunanKm === null || (int) ($analiz['km_confidence'] ?? 0) < 90) {
             $nedenler[] = 'KM değeri yeterli güvenle okunamadı.';
         } elseif (!$this->isKmMatching($okunanKm, $bildirilenKm)) {
@@ -452,8 +479,8 @@ class KmBildirimAiKontrolService
             $bildirilenKmFmt = number_format($bildirilenKm, 0, ',', '.');
             $nedenler[] = "Okunan KM ({$okunanKmFmt} KM) bildirilen KM ({$bildirilenKmFmt} KM) ile eşleşmiyor.";
         } else {
-            // Eşleşme sağlandı. Eğer okunan KM ondalık haneden dolayı (örn: 84216) farklıysa
-            // okunan KM değerini bildirilen tam KM (8421) olarak güncelleyelim.
+            // Eşleşme sağlandı. Eğer AI okuması 10 katıysa (örn okunan 345071, bildirilen 34507),
+            // okunan KM değerini bildirilen tam KM (34507) olarak eşitle.
             $analiz['odometer_km'] = $bildirilenKm;
         }
 

@@ -2825,7 +2825,7 @@ try {
                     FROM kacak_kontrol
                     WHERE (FIND_IN_SET(?, personel_ids) OR FIND_IN_SET(?, personel_ids))
                     AND firma_id = ?
-                    AND " . \App\Model\KacakKontrolModel::hakedisKosulu();
+                    AND " . \App\Model\KacakKontrolModel::raporKosulu();
 
             if (!empty($startDate)) {
                 $sql .= " AND tarih >= " . $db->quote($startDate);
@@ -4718,7 +4718,13 @@ try {
                 response(false, null, 'Geçerli bir ilçe seçin.');
             }
             $tarih = !empty($_POST['tarih']) && strtotime($_POST['tarih']) ? date('Y-m-d', strtotime($_POST['tarih'])) : date('Y-m-d');
-            if ($tarih > date('Y-m-d')) response(false, null, 'İleri tarihli bildirim yapılamaz.');
+            $minTarih = date('Y-m-d', strtotime('-7 days'));
+            if ($tarih > date('Y-m-d')) {
+                response(false, null, 'İleri tarihli bildirim yapılamaz.');
+            }
+            if ($tarih < $minTarih) {
+                response(false, null, 'Geriye dönük en fazla 1 hafta (7 gün) önceki bir tarih için bildirim yapılabilir.');
+            }
 
             $duplicate = $KacakModel->findDuplicateRecord([
                 'tutanak_no' => trim((string) ($_POST['tutanak_no'] ?? '')),
@@ -5083,8 +5089,12 @@ try {
                 ? date('Y-m-d', strtotime($_POST['tarih']))
                 : date('Y-m-d');
 
+            $minTarih = date('Y-m-d', strtotime('-7 days'));
             if ($kacakTarih > date('Y-m-d')) {
                 response(false, null, 'İleri tarihli bildirim yapılamaz.');
+            }
+            if ($kacakTarih < $minTarih) {
+                response(false, null, 'Geriye dönük en fazla 1 hafta (7 gün) önceki bir tarih için bildirim yapılabilir.');
             }
 
             // Mükerrer kayıt kontrolü (Tutanak No veya Sayaç No + Tarih)

@@ -141,8 +141,10 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
 
             <div>
                 <label class="block text-xs font-bold text-slate-500 mb-2 uppercase">Tarih</label>
-                <input type="date" name="tarih" required value="<?= date('Y-m-d') ?>"
+                <input type="date" name="tarih" id="kacak-tarih-input" required value="<?= date('Y-m-d') ?>"
+                    min="<?= date('Y-m-d', strtotime('-7 days')) ?>" max="<?= date('Y-m-d') ?>"
                     class="w-full px-4 py-3 rounded-xl bg-slate-100 dark:bg-slate-800 text-sm font-semibold text-slate-800 dark:text-white">
+                <p class="text-xs text-slate-400 mt-1">Geriye dönük en fazla 1 hafta (7 gün) önceki bir tarih seçilebilir.</p>
             </div>
 
             <div>
@@ -1102,7 +1104,13 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 }
 
                 const form = document.getElementById('kacak-bildir-form');
-                if (satir.tarih) form.querySelector('[name=tarih]').value = satir.tarih;
+                if (satir.tarih) {
+                    const minDateStr = new Date(Date.now() - 7 * 86400000).toISOString().slice(0, 10);
+                    const todayStr = new Date().toISOString().slice(0, 10);
+                    if (satir.tarih >= minDateStr && satir.tarih <= todayStr) {
+                        form.querySelector('[name=tarih]').value = satir.tarih;
+                    }
+                }
                 if (satir.ilce) document.getElementById('kacak-ilce').value = satir.ilce;
                 if (satir.tur) document.getElementById('kacak-tur').value = satir.tur;
                 if (satir.tutanak_no) document.getElementById('kacak-tutanak-no').value = satir.tutanak_no;
@@ -1234,6 +1242,26 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
 
             const btn = document.getElementById('kacak-submit-btn');
             const btnText = document.getElementById('kacak-submit-text');
+
+            const secilenTarih = this.querySelector('[name=tarih]')?.value;
+            if (secilenTarih) {
+                const today = new Date();
+                today.setHours(0, 0, 0, 0);
+
+                const minDate = new Date();
+                minDate.setDate(minDate.getDate() - 7);
+                minDate.setHours(0, 0, 0, 0);
+
+                const selected = new Date(secilenTarih + 'T00:00:00');
+
+                if (selected > today) {
+                    return Alert.warning('Geçersiz Tarih', 'İleri tarihli bildirim yapılamaz.');
+                }
+                if (selected < minDate) {
+                    return Alert.warning('Geçersiz Tarih', 'Geriye dönük en fazla 1 hafta (7 gün) önceki bir tarih seçilebilir.');
+                }
+            }
+
             btn.disabled = true;
             btnText.textContent = 'HAZIRLANIYOR...';
 

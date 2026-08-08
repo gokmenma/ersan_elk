@@ -375,7 +375,16 @@ Alanlar:
             return $varsayilan;
         }
         $ts = strtotime($tarih);
-        return $ts !== false ? date('Y-m-d', $ts) : $varsayilan;
+        if ($ts === false) {
+            return $varsayilan;
+        }
+        $normalized = date('Y-m-d', $ts);
+        $today = date('Y-m-d');
+        $minTarih = date('Y-m-d', strtotime('-7 days'));
+        if ($normalized > $today || $normalized < $minTarih) {
+            return $varsayilan;
+        }
+        return $normalized;
     }
 
     private function filterPersonelIds($ids, array $adaylar): array

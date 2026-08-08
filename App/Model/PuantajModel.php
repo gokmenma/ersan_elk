@@ -333,7 +333,7 @@ class PuantajModel extends Model
                 LEFT JOIN tanimlamalar ek ON k.ekip_adi = ek.tur_adi AND ek.grup = 'ekip_kodu' AND ek.firma_id = k.firma_id
                 WHERE k.firma_id = ? AND k.tarih BETWEEN ? AND ? AND k.silinme_tarihi IS NULL
                 AND (k.aciklama != 'Manuel Düşüm' OR k.aciklama IS NULL)
-                AND " . \App\Model\KacakKontrolModel::hakedisKosulu('k');
+                AND " . \App\Model\KacakKontrolModel::raporKosulu('k');
         $params = [$firmaId, $startDate, $endDate];
 
         if ($region) {
@@ -1139,7 +1139,7 @@ class PuantajModel extends Model
                     LEFT JOIN tanimlamalar ek ON k.ekip_adi = ek.tur_adi AND ek.grup = 'ekip_kodu' AND ek.firma_id = k.firma_id
                     WHERE k.firma_id = ? AND k.tarih BETWEEN ? AND ? AND k.silinme_tarihi IS NULL
                     AND (k.aciklama != 'Manuel Düşüm' OR k.aciklama IS NULL)
-                AND " . \App\Model\KacakKontrolModel::hakedisKosulu('k');
+                AND " . \App\Model\KacakKontrolModel::raporKosulu('k');
             $params = [$firmaId, $period['start'], $period['end']];
 
             if ($region) {

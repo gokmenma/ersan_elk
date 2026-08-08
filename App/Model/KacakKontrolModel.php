@@ -64,6 +64,19 @@ class KacakKontrolModel extends Model
                 AND NOT ({$p}durum = 'iptal' AND {$p}hakedisten_dus = 1)";
     }
 
+    /**
+     * Rapor ve ekip özetlerine (Günlük Rapor, Haftalık Rapor, Ekip Özeti, Teslim Alma Listesi)
+     * dahil edilecek kayıtları belirleyen koşul.
+     * Onaylanmış ('onaylandi') ve onay bekleyen ('beklemede') kayıtları kapsar.
+     */
+    public static function raporKosulu(string $alias = ''): string
+    {
+        $p = $alias !== '' ? $alias . '.' : '';
+        return "{$p}silinme_tarihi IS NULL
+                AND {$p}onay_durumu IN ('onaylandi', 'beklemede')
+                AND NOT ({$p}durum = 'iptal' AND {$p}hakedisten_dus = 1)";
+    }
+
     private function firmaId(): int
     {
         return (int) ($_SESSION['firma_id'] ?? 0);
@@ -860,7 +873,7 @@ class KacakKontrolModel extends Model
         $stmt = $this->db->prepare("SELECT ilce, tur, SUM(sayi) AS toplam
                                     FROM kacak_kontrol
                                     WHERE firma_id = ? AND tarih = ?
-                                      AND " . self::hakedisKosulu() . "
+                                      AND " . self::raporKosulu() . "
                                     GROUP BY ilce, tur");
         $stmt->execute([$this->firmaId(), $tarih]);
 
@@ -921,7 +934,7 @@ class KacakKontrolModel extends Model
                                            SUM(sayi) AS toplam
                                     FROM kacak_kontrol
                                     WHERE firma_id = ? AND tarih BETWEEN ? AND ?
-                                      AND " . self::hakedisKosulu() . "
+                                      AND " . self::raporKosulu() . "
                                     GROUP BY ilce
                                     ORDER BY toplam DESC");
         $stmt->execute([$this->firmaId(), $baslangic, $bitis]);
@@ -941,7 +954,7 @@ class KacakKontrolModel extends Model
         $sql = "SELECT k.id, k.tarih, k.tutanak_no, k.abone_adi, k.ilce, k.tur, k.ekip_adi
                 FROM kacak_kontrol k
                 WHERE k.firma_id = ? AND k.tarih BETWEEN ? AND ?
-                  AND " . self::hakedisKosulu('k') . "
+                  AND " . self::raporKosulu('k') . "
                   AND (k.ilce IN ($merkezPlaceholders) OR k.tur = 'Kaçak')
                 ORDER BY k.ilce ASC, k.tarih ASC, k.tutanak_no ASC";
 

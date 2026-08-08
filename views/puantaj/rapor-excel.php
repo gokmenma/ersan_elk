@@ -81,7 +81,7 @@ if (in_array($activeTab, ['kesme', 'okuma', 'sokme_takma', 'kacakkontrol'])) {
                      WHERE firma_id = ? 
                      AND aciklama = 'Manuel Düşüm'
                      AND tarih BETWEEN ? AND ?
-                     AND " . \App\Model\KacakKontrolModel::hakedisKosulu() . "
+                     AND " . \App\Model\KacakKontrolModel::raporKosulu() . "
                      GROUP BY ekip_adi";
         $stmtDusum = $Puantaj->db->prepare($sqlDusum);
         $stmtDusum->execute([$_SESSION['firma_id'], $startDateStr, $endDateStr]);
