@@ -1141,19 +1141,24 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
 
         // Videolar boyutları nedeniyle cihaz kuyruğuna yazılmaz; kayıt sunucuya
         // ulaştıktan sonra ayrı isteklerle gönderilir. Gönderilemeyen video sayısı döner.
-        async function videolariGonder(clientUuid) {
+        async function videolariGonder(targetIdOrUuid) {
             let eksik = 0;
             for (let i = 0; i < videoDosyalari.length; i++) {
                 const v = videoDosyalari[i];
                 try {
                     const fd = new FormData();
                     fd.append('action', 'addKacakVideo');
-                    fd.append('client_uuid', clientUuid);
+                    if (typeof targetIdOrUuid === 'string' && targetIdOrUuid.includes('-')) {
+                        fd.append('client_uuid', targetIdOrUuid);
+                    } else {
+                        fd.append('edit_token', targetIdOrUuid);
+                    }
                     fd.append('video', v.dosya, v.dosya.name);
                     if (v.sure) fd.append('sure', v.sure);
                     if (v.kapak) fd.append('kapak', v.kapak);
 
-                    const res = await (await fetch('api.php', { method: 'POST', body: fd })).json();
+                    const url = 'api.php?action=addKacakVideo' + (typeof targetIdOrUuid === 'string' && !targetIdOrUuid.includes('-') ? '&edit_token=' + encodeURIComponent(targetIdOrUuid) : '');
+                    const res = await (await fetch(url, { method: 'POST', body: fd })).json();
                     if (!res.success) {
                         eksik++;
                         console.error('Video gönderilemedi:', res.message);
@@ -1236,17 +1241,21 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                         const sahaKucuk = await OfflineQueue.fotografKucult(file, 1600, 0.7);
                         fd.append('saha_fotolari[]', sahaKucuk.blob, sahaKucuk.ad);
                     }
-                    videoDosyalari.forEach(v => {
-                        fd.append('videolar[]', v.dosya, v.dosya.name);
-                        fd.append('video_sureleri[]', v.sure || '');
-                        fd.append('video_kapaklari[]', v.kapak || '');
-                    });
                     btnText.textContent = 'GÜNCELLENİYOR...';
-                    const res = await (await fetch('api.php?action=updateKacakBildirim', {method:'POST', body:fd})).json();
+                    const res = await (await fetch('api.php?action=updateKacakBildirim&edit_token=' + encodeURIComponent(kacakEditToken), {method:'POST', body:fd})).json();
                     if (!res.success) return Alert.error('Güncellenemedi', res.message || 'İşlem başarısız.');
+
+                    let eksikVideo = 0;
+                    if (videoDosyalari.length > 0) {
+                        btnText.textContent = 'VİDEOLAR YÜKLENİYOR...';
+                        eksikVideo = await videolariGonder(kacakEditToken);
+                    }
+
                     Modal.close('kacak-bildir-modal');
                     await loadKacakKayitlar();
-                    return Alert.success('Güncellendi', res.message || 'Kaçak bildirimi güncellendi.');
+                    return Alert.success('Güncellendi', eksikVideo > 0
+                        ? `Tutanak güncellendi ancak ${eksikVideo} video gönderilemedi.`
+                        : (res.message || 'Kaçak bildirimi güncellendi.'));
                 }
 
                 if (kacakKuyrukEditUuid) {

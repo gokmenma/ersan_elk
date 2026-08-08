@@ -38,6 +38,12 @@ $action = $_POST['action'] ?? $_GET['action'] ?? '';
 $pwaRequestId = bin2hex(random_bytes(6));
 header('X-Request-Id: ' . $pwaRequestId);
 
+// POST verisi post_max_size aşıldığı için temizlenmişse anlaşılır hata dön
+if ($_SERVER['REQUEST_METHOD'] === 'POST' && empty($_POST) && empty($_FILES) && ((int) ($_SERVER['CONTENT_LENGTH'] ?? 0) > 0)) {
+    echo json_encode(['success' => false, 'message' => 'Yüklenen dosya veya video boyutu sunucu limitini aşıyor.'], JSON_UNESCAPED_UNICODE);
+    exit;
+}
+
 $MailGonderService = new MailGonderService();
 
 if ($action !== 'login' && $action !== 'logout' && !isset($_SESSION['personel_id'])) {
@@ -4688,7 +4694,7 @@ try {
                 response(false, null, 'Bu işlem için yetkiniz bulunmuyor.');
             }
             $KacakModel = new \App\Model\KacakKontrolModel();
-            $kacakId = (int) Security::decrypt((string) ($_POST['edit_token'] ?? ''));
+            $kacakId = (int) Security::decrypt((string) ($_POST['edit_token'] ?? $_GET['edit_token'] ?? ''));
             if ($kacakId <= 0) {
                 response(false, null, 'Düzenlenecek kayıt anahtarı geçersiz veya oturum bilgisi eksik.');
             }
@@ -4952,12 +4958,19 @@ try {
 
             $KacakModel = new \App\Model\KacakKontrolModel();
 
+            $editToken = trim((string) ($_POST['edit_token'] ?? $_GET['edit_token'] ?? ''));
             $videoUuid = trim((string) ($_POST['client_uuid'] ?? ''));
-            if (!preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $videoUuid)) {
-                response(false, null, 'Geçersiz kayıt anahtarı.');
+
+            $videoKayit = null;
+            if (!empty($editToken)) {
+                $kacakId = (int) Security::decrypt($editToken);
+                if ($kacakId > 0) {
+                    $videoKayit = $KacakModel->getRecord($kacakId);
+                }
+            } elseif (preg_match('/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i', $videoUuid)) {
+                $videoKayit = $KacakModel->findByClientUuid($videoUuid);
             }
 
-            $videoKayit = $KacakModel->findByClientUuid($videoUuid);
             if (!$videoKayit) {
                 response(false, null, 'Videonun ekleneceği tutanak bulunamadı.');
             }
