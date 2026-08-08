@@ -999,6 +999,40 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
         });
 
         // ----- Videolar -----
+        function videoProgressDurumGuncelle() {
+            const progressBox = document.getElementById('kacak-video-progress-container');
+            if (!progressBox) return;
+
+            if (!videoDosyalari || videoDosyalari.length === 0) {
+                progressBox.classList.add('hidden');
+                return;
+            }
+
+            progressBox.classList.remove('hidden');
+
+            const textEl = document.getElementById('kacak-video-progress-text');
+            const percentEl = document.getElementById('kacak-video-progress-percent');
+            const barEl = document.getElementById('kacak-video-progress-bar');
+            const nameEl = document.getElementById('kacak-video-progress-name');
+            const detailEl = document.getElementById('kacak-video-progress-detail');
+
+            let toplamBoyutByte = 0;
+            videoDosyalari.forEach(v => {
+                const b = v.yeniBoyut || v.hamBoyut || (v.dosya ? v.dosya.size : 0);
+                toplamBoyutByte += b;
+            });
+
+            const mbSize = (toplamBoyutByte / (1024 * 1024)).toFixed(1);
+            const sonVideo = videoDosyalari[videoDosyalari.length - 1];
+            const sonAd = sonVideo && sonVideo.dosya ? sonVideo.dosya.name : 'video.mp4';
+
+            if (textEl) textEl.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse me-1"></span>${videoDosyalari.length} Video Hazır (Gönderim Bekleniyor)`;
+            if (percentEl) percentEl.textContent = '100%';
+            if (barEl) barEl.style.width = '100%';
+            if (nameEl) nameEl.textContent = videoDosyalari.length === 1 ? sonAd : `${videoDosyalari.length} adet video`;
+            if (detailEl) detailEl.textContent = `${mbSize} MB (Form Gönderilince Yüklenecek)`;
+        }
+
         document.getElementById('kacak-video-input').addEventListener('change', async function (e) {
             const dosya = e.target.files[0];
             e.target.value = '';
@@ -1008,15 +1042,33 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 return Alert.warning('Limit', `En fazla ${MAX_VIDEO} video ekleyebilirsiniz.`);
             }
 
+            const progressBox = document.getElementById('kacak-video-progress-container');
+            if (progressBox) progressBox.classList.remove('hidden');
+
+            const textEl = document.getElementById('kacak-video-progress-text');
+            const percentEl = document.getElementById('kacak-video-progress-percent');
+            const barEl = document.getElementById('kacak-video-progress-bar');
+            const nameEl = document.getElementById('kacak-video-progress-name');
+            const detailEl = document.getElementById('kacak-video-progress-detail');
+
+            const mbSize = (dosya.size / (1024 * 1024)).toFixed(1);
+            if (textEl) textEl.innerHTML = `<svg class="w-4 h-4 text-indigo-600 animate-spin flex-shrink-0 inline me-1" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Video İşleniyor...`;
+            if (percentEl) percentEl.textContent = '50%';
+            if (barEl) barEl.style.width = '50%';
+            if (nameEl) nameEl.textContent = dosya.name;
+            if (detailEl) detailEl.textContent = `${mbSize} MB Hazırlanıyor...`;
+
             try {
                 const vSonuc = await OfflineQueue.videoIncele(dosya, VIDEO_MAX_SURE, VIDEO_MAX_BYTE);
                 videoDosyalari.push(vSonuc);
                 videoOnizlemeCiz();
+                videoProgressDurumGuncelle();
                 if (vSonuc.sikistirildi) {
                     const tasarruf = Math.round((1 - (vSonuc.yeniBoyut / vSonuc.hamBoyut)) * 100);
                     Alert.success('Video Sıkıştırıldı', `Video boyutu ${(vSonuc.hamBoyut / 1048576).toFixed(1)} MB -> ${(vSonuc.yeniBoyut / 1048576).toFixed(1)} MB seviyesine düşürüldü (%${tasarruf} tasarruf).`);
                 }
             } catch (hata) {
+                videoProgressDurumGuncelle();
                 Alert.warning('Video Eklenemedi', hata.message);
             }
         });
@@ -1049,6 +1101,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
         window.videoSil = function (index) {
             videoDosyalari.splice(index, 1);
             videoOnizlemeCiz();
+            videoProgressDurumGuncelle();
         };
 
         function sahaOnizlemeCiz() {
@@ -1567,15 +1620,19 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                     return Alert.error('Gönderilemedi', (res && res.message) || 'Sunucu kaydı kabul etmedi.');
                 }
 
-                Modal.close('kacak-bildir-modal');
                 tarihAraligiGenislet(alanlar.tarih);
                 await kuyrugaBak();
 
                 if (!cevrimici()) {
+                    Modal.close('kacak-bildir-modal');
                     return Alert.success('Cihaza Kaydedildi', videoDosyalari.length > 0
                         ? 'Bağlantı olmadığı için tutanak telefonunuza kaydedildi ve internet geldiğinde otomatik gönderilecek. '
                           + 'Videolar cihazda saklanamadığı için kaydı çevrimiçiyken açıp videoları tekrar eklemeniz gerekir.'
                         : 'Bağlantı olmadığı için tutanak telefonunuza kaydedildi. İnternet geldiğinde otomatik gönderilecek.');
+                }
+
+                if (videoDosyalari.length > 0) {
+                    btnText.textContent = 'VİDEOLAR YÜKLENİYOR...';
                 }
 
                 await OfflineQueue.flush();
@@ -1584,6 +1641,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
 
                 if (!kalan) {
                     const eksikVideo = await videolariGonder(kayit.uuid);
+                    Modal.close('kacak-bildir-modal');
                     await loadKacakKayitlar();
                     if (eksikVideo > 0) {
                         return Alert.warning('Video Gönderilemedi',
@@ -1591,6 +1649,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                     }
                     return Alert.success('Gönderildi', 'Bildiriminiz iletildi. Yönetici onayı bekleniyor.');
                 }
+                Modal.close('kacak-bildir-modal');
                 if (kalan.durum === 'hata') {
                     return Alert.error('Gönderilemedi', kalan.hata || 'Sunucu kaydı kabul etmedi.');
                 }

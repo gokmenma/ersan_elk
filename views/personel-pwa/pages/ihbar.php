@@ -348,6 +348,28 @@
                                 <p class="text-xs text-slate-500 text-center">Yüklemek için tıklayın</p>
                             </div>
                             <input type="file" id="ihbar-video-input" accept="video/*" class="hidden">
+
+                            <!-- Canlı Video Yükleme İlerleme Çubuğu (İhbar Modalı İçi) -->
+                            <div id="ihbar-video-progress-container" class="mt-3 p-3.5 bg-indigo-50 dark:bg-indigo-950/40 rounded-xl border border-indigo-200 dark:border-indigo-800 hidden">
+                                <div class="flex items-center justify-between text-xs font-bold text-indigo-900 dark:text-indigo-200 mb-1.5">
+                                    <span id="ihbar-video-progress-text" class="flex items-center gap-1.5 truncate">
+                                        <svg class="w-4 h-4 text-indigo-600 animate-spin flex-shrink-0" fill="none" viewBox="0 0 24 24">
+                                            <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                            <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                        </svg>
+                                        <span>Video Yükleniyor...</span>
+                                    </span>
+                                    <span id="ihbar-video-progress-percent" class="text-indigo-600 dark:text-indigo-400 font-extrabold text-xs ml-2">0%</span>
+                                </div>
+                                <div class="w-full bg-slate-200 dark:bg-slate-700 rounded-full h-3 overflow-hidden p-0.5 shadow-inner">
+                                    <div id="ihbar-video-progress-bar" class="bg-gradient-to-r from-indigo-500 to-indigo-600 h-2 rounded-full transition-all duration-150 w-0"></div>
+                                </div>
+                                <div class="flex justify-between items-center text-[11px] text-slate-500 dark:text-slate-400 mt-1.5 font-mono">
+                                    <span id="ihbar-video-progress-name" class="truncate max-w-[160px]">video.mp4</span>
+                                    <span id="ihbar-video-progress-detail">0.0 MB / 0.0 MB</span>
+                                </div>
+                            </div>
+
                             <div id="ihbar-video-preview" class="flex flex-wrap gap-2 mt-2"></div>
                         </div>
                     </form>
@@ -409,15 +431,33 @@
                             return Alert.warning('Sınır Aşıldı', `Toplamda en fazla ${IHBAR_MAX_VIDEO} video olabilir.`);
                         }
 
+                        const progressBox = document.getElementById('ihbar-video-progress-container');
+                        if (progressBox) progressBox.classList.remove('hidden');
+
+                        const textEl = document.getElementById('ihbar-video-progress-text');
+                        const percentEl = document.getElementById('ihbar-video-progress-percent');
+                        const barEl = document.getElementById('ihbar-video-progress-bar');
+                        const nameEl = document.getElementById('ihbar-video-progress-name');
+                        const detailEl = document.getElementById('ihbar-video-progress-detail');
+
+                        const mbSize = (dosya.size / (1024 * 1024)).toFixed(1);
+                        if (textEl) textEl.innerHTML = `<svg class="w-4 h-4 text-indigo-600 animate-spin flex-shrink-0 inline me-1" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>Video İşleniyor...`;
+                        if (percentEl) percentEl.textContent = '50%';
+                        if (barEl) barEl.style.width = '50%';
+                        if (nameEl) nameEl.textContent = dosya.name;
+                        if (detailEl) detailEl.textContent = `${mbSize} MB Hazırlanıyor...`;
+
                         try {
                             const vSonuc = await OfflineQueue.videoIncele(dosya, IHBAR_VIDEO_MAX_SURE, IHBAR_VIDEO_MAX_BYTE);
                             ihbarSeciliVideolar.push(vSonuc);
                             renderIhbarVideoPreview();
+                            ihbarVideoProgressDurumGuncelle();
                             if (vSonuc.sikistirildi) {
                                 const tasarruf = Math.round((1 - (vSonuc.yeniBoyut / vSonuc.hamBoyut)) * 100);
                                 Alert.success('Video Sıkıştırıldı', `Video boyutu ${(vSonuc.hamBoyut / 1048576).toFixed(1)} MB -> ${(vSonuc.yeniBoyut / 1048576).toFixed(1)} MB seviyesine düşürüldü (%${tasarruf} tasarruf).`);
                             }
                         } catch (hata) {
+                            ihbarVideoProgressDurumGuncelle();
                             Alert.warning('Video Eklenemedi', hata.message);
                         }
                     });
@@ -457,9 +497,44 @@
         }).join('');
     }
 
+    function ihbarVideoProgressDurumGuncelle() {
+        const progressBox = document.getElementById('ihbar-video-progress-container');
+        if (!progressBox) return;
+
+        if (!ihbarSeciliVideolar || ihbarSeciliVideolar.length === 0) {
+            progressBox.classList.add('hidden');
+            return;
+        }
+
+        progressBox.classList.remove('hidden');
+
+        const textEl = document.getElementById('ihbar-video-progress-text');
+        const percentEl = document.getElementById('ihbar-video-progress-percent');
+        const barEl = document.getElementById('ihbar-video-progress-bar');
+        const nameEl = document.getElementById('ihbar-video-progress-name');
+        const detailEl = document.getElementById('ihbar-video-progress-detail');
+
+        let toplamBoyutByte = 0;
+        ihbarSeciliVideolar.forEach(v => {
+            const b = v.yeniBoyut || v.hamBoyut || (v.dosya ? v.dosya.size : 0);
+            toplamBoyutByte += b;
+        });
+
+        const mbSize = (toplamBoyutByte / (1024 * 1024)).toFixed(1);
+        const sonVideo = ihbarSeciliVideolar[ihbarSeciliVideolar.length - 1];
+        const sonAd = sonVideo && sonVideo.dosya ? sonVideo.dosya.name : 'video.mp4';
+
+        if (textEl) textEl.innerHTML = `<span class="inline-block w-2 h-2 rounded-full bg-emerald-500 animate-pulse me-1"></span>${ihbarSeciliVideolar.length} Video Hazır (Gönderim Bekleniyor)`;
+        if (percentEl) percentEl.textContent = '100%';
+        if (barEl) barEl.style.width = '100%';
+        if (nameEl) nameEl.textContent = ihbarSeciliVideolar.length === 1 ? sonAd : `${ihbarSeciliVideolar.length} adet video`;
+        if (detailEl) detailEl.textContent = `${mbSize} MB (Form Gönderilince Yüklenecek)`;
+    }
+
     window.removeIhbarVideo = function (idx) {
         ihbarSeciliVideolar.splice(idx, 1);
         renderIhbarVideoPreview();
+        ihbarVideoProgressDurumGuncelle();
     };
 
     function renderIhbarFotoPreview() {
@@ -569,9 +644,90 @@
             };
             console.info('[İhbar] Gönderim başlatıldı', requestSummary);
 
-            const response = await fetch('api.php', { method: 'POST', body: formData });
-            const requestId = response.headers.get('X-Request-Id');
-            const responseText = await response.text();
+            function setIhbarProgress(percent, loadedMB, totalMB, fileName) {
+                const titleStr = `İhbar & Video Yükleniyor...`;
+                const percentStr = `${percent}%`;
+                const widthStr = `${percent}%`;
+                const detailStr = `${loadedMB} MB / ${totalMB} MB`;
+
+                const inlineBox = document.getElementById('ihbar-video-progress-container');
+                if (inlineBox) inlineBox.classList.remove('hidden');
+
+                const inlineText = document.getElementById('ihbar-video-progress-text');
+                if (inlineText) inlineText.innerHTML = `<svg class="w-4 h-4 text-indigo-600 animate-spin flex-shrink-0 inline me-1" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>${titleStr}`;
+
+                const inlinePercent = document.getElementById('ihbar-video-progress-percent');
+                if (inlinePercent) inlinePercent.textContent = percentStr;
+
+                const inlineBar = document.getElementById('ihbar-video-progress-bar');
+                if (inlineBar) inlineBar.style.width = widthStr;
+
+                const inlineName = document.getElementById('ihbar-video-progress-name');
+                if (inlineName) inlineName.textContent = fileName;
+
+                const inlineDetail = document.getElementById('ihbar-video-progress-detail');
+                if (inlineDetail) inlineDetail.textContent = detailStr;
+
+                const modal = document.getElementById('video-progress-modal');
+                if (modal && ihbarSeciliVideolar.length > 0) modal.classList.remove('hidden');
+
+                const titleEl = document.getElementById('video-progress-title');
+                if (titleEl) titleEl.textContent = titleStr;
+
+                const fileInfoEl = document.getElementById('video-progress-file-info');
+                if (fileInfoEl) fileInfoEl.textContent = `${fileName} (${totalMB} MB)`;
+
+                const percentEl = document.getElementById('video-progress-percent');
+                if (percentEl) percentEl.textContent = percentStr;
+
+                const barEl = document.getElementById('video-progress-bar');
+                if (barEl) barEl.style.width = widthStr;
+
+                const detailEl = document.getElementById('video-progress-detail');
+                if (detailEl) detailEl.textContent = detailStr;
+            }
+
+            if (ihbarSeciliVideolar.length > 0) {
+                const sonAd = ihbarSeciliVideolar[0]?.dosya?.name || 'video.mp4';
+                setIhbarProgress(0, '0.0', '0.0', sonAd);
+            }
+
+            const { responseText, requestId } = await new Promise((resolve, reject) => {
+                const xhr = new XMLHttpRequest();
+                xhr.open('POST', 'api.php', true);
+
+                if (ihbarSeciliVideolar.length > 0) {
+                    xhr.upload.onprogress = function (e) {
+                        if (e.lengthComputable) {
+                            const percent = Math.round((e.loaded / e.total) * 100);
+                            const loadedMB = (e.loaded / (1024 * 1024)).toFixed(1);
+                            const totalMB = (e.total / (1024 * 1024)).toFixed(1);
+                            const sonAd = ihbarSeciliVideolar[0]?.dosya?.name || 'video.mp4';
+                            setIhbarProgress(percent, loadedMB, totalMB, sonAd);
+                        }
+                    };
+                }
+
+                xhr.onload = function () {
+                    const reqId = xhr.getResponseHeader('X-Request-Id');
+                    if (xhr.status >= 200 && xhr.status < 300) {
+                        resolve({ responseText: xhr.responseText, requestId: reqId });
+                    } else {
+                        reject(new Error('HTTP Hata: ' + xhr.status));
+                    }
+                };
+
+                xhr.onerror = function () {
+                    reject(new Error('Ağ Hatası'));
+                };
+
+                xhr.send(formData);
+            });
+
+            const inlineBox = document.getElementById('ihbar-video-progress-container');
+            if (inlineBox) inlineBox.classList.add('hidden');
+            const modal = document.getElementById('video-progress-modal');
+            if (modal) modal.classList.add('hidden');
             let result;
 
             try {
