@@ -982,13 +982,12 @@ class PuantajModel extends Model
                     COALESCE(SUM(CASE WHEN onay_durumu = 'beklemede' THEN sayi ELSE 0 END), 0) as bekleyen
                 FROM kacak_kontrol 
                 WHERE firma_id = ? 
-                AND (tarih = ? OR DATE(olusturma_tarihi) = ?)
-                AND silinme_tarihi IS NULL
-                AND durum != 'iptal'
+                AND tarih = ?
+                AND " . \App\Model\KacakKontrolModel::raporKosulu() . "
                 AND (aciklama != 'Manuel Düşüm' OR aciklama IS NULL)";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$firmaId, $bugun, $bugun]);
+        $stmt->execute([$firmaId, $bugun]);
         return $stmt->fetch(PDO::FETCH_OBJ);
     }
 
@@ -1004,13 +1003,12 @@ class PuantajModel extends Model
                     COALESCE(SUM(CASE WHEN onay_durumu = 'beklemede' THEN sayi ELSE 0 END), 0) as bekleyen
                 FROM kacak_kontrol 
                 WHERE firma_id = ? 
-                AND ((tarih >= ? AND tarih <= ?) OR (DATE(olusturma_tarihi) >= ? AND DATE(olusturma_tarihi) <= ?))
-                AND silinme_tarihi IS NULL
-                AND durum != 'iptal'
+                AND tarih BETWEEN ? AND ?
+                AND " . \App\Model\KacakKontrolModel::raporKosulu() . "
                 AND (aciklama != 'Manuel Düşüm' OR aciklama IS NULL)";
 
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([$firmaId, $buAy, $sonGun, $buAy, $sonGun]);
+        $stmt->execute([$firmaId, $buAy, $sonGun]);
         return $stmt->fetch(PDO::FETCH_OBJ);
     }
 
