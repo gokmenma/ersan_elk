@@ -1261,11 +1261,14 @@ try {
             $limit = $AvansModel->getAvansLimiti($personel_id);
             $bekleyenler = $AvansModel->getBekleyenAvanslar($personel_id);
             $ozet = $BordroModel->getPersonelFinansalOzet($personel_id);
+            $talepDurumu = $AvansModel->avansTalepDurumu($personel_id);
 
             response(true, [
                 'yearly_net' => $ozet->toplam_hakedis ?? 0,
                 'advance_limit' => $limit,
-                'pending_requests' => count($bekleyenler)
+                'pending_requests' => count($bekleyenler),
+                'avans_talep_edebilir' => $talepDurumu['izinli'],
+                'avans_talep_mesaji' => $talepDurumu['mesaj']
             ]);
             break;
 
@@ -1362,6 +1365,13 @@ try {
             $aciklama = $_POST['aciklama'] ?? '';
 
             $AvansModel = new AvansModel();
+
+            $talepDurumu = $AvansModel->avansTalepDurumu($personel_id);
+            if (!$talepDurumu['izinli']) {
+                response(false, null, $talepDurumu['mesaj']);
+                break;
+            }
+
             $limit = $AvansModel->getAvansLimiti($personel_id);
             if ($tutar > $limit) {
                 response(false, null, 'Talep edilen tutar avans limitinizi (' . number_format($limit, 2, ',', '.') . ' TL) aşamaz.');
@@ -1461,6 +1471,12 @@ try {
             $avans = $AvansModel->find($id);
 
             if ($avans && $avans->personel_id == $personel_id && $avans->durum == 'beklemede') {
+                $talepDurumu = $AvansModel->avansTalepDurumu($personel_id);
+                if (!$talepDurumu['izinli']) {
+                    response(false, null, $talepDurumu['mesaj']);
+                    break;
+                }
+
                 $limit = $AvansModel->getAvansLimiti($personel_id);
                 $available_limit = $limit + floatval($avans->tutar);
                 if ($tutar > $available_limit) {

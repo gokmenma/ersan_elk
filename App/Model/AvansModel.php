@@ -72,6 +72,51 @@ class AvansModel extends Model
     }
 
     /**
+     * Personelin avans talebi oluşturup oluşturamayacağını kontrol eder.
+     * Ayarlardaki "avans_talep_serbest" kapalıysa, sadece göreve başlama tarihinden
+     * itibaren hiç kapalı bordro döneminde yer almamış (hiç maaş almamış) personel talep edebilir.
+     */
+    public function avansTalepDurumu($personel_id)
+    {
+        $personelModel = new PersonelModel();
+        $personel = $personelModel->find($personel_id);
+
+        if (!$personel) {
+            return ['izinli' => false, 'mesaj' => 'Personel kaydı bulunamadı.'];
+        }
+
+        $settingsModel = new SettingsModel();
+        $ayarlar = $settingsModel->getAllSettingsAsKeyValue($personel->firma_id ?? ($_SESSION['firma_id'] ?? null));
+
+        if (($ayarlar['avans_talep_serbest'] ?? '0') === '1') {
+            return ['izinli' => true, 'mesaj' => ''];
+        }
+
+        $sql = $this->db->prepare("
+            SELECT COUNT(*) AS toplam
+            FROM bordro_personel bp
+            INNER JOIN bordro_donemi bd ON bd.id = bp.donem_id
+            WHERE bp.personel_id = ?
+              AND bp.silinme_tarihi IS NULL
+              AND bd.silinme_tarihi IS NULL
+              AND bd.kapali_mi = 1
+              AND (? IS NULL OR bd.bitis_tarihi >= ?)
+        ");
+        $iseGiris = !empty($personel->ise_giris_tarihi) ? $personel->ise_giris_tarihi : null;
+        $sql->execute([$personel_id, $iseGiris, $iseGiris]);
+        $maasAlmis = (int) ($sql->fetch(PDO::FETCH_OBJ)->toplam ?? 0) > 0;
+
+        if ($maasAlmis) {
+            return [
+                'izinli' => false,
+                'mesaj' => 'İlk işe başlama haricinde avans uygulaması yapılmamaktadır.'
+            ];
+        }
+
+        return ['izinli' => true, 'mesaj' => ''];
+    }
+
+    /**
      * Firma bazında bekleyen avans sayısını getirir
      */
     public function getBekleyenAvansSayisi()

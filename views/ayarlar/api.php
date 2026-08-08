@@ -440,6 +440,42 @@ switch ($action) {
         }
         break;
 
+    case 'save_avans_ayarlari':
+        try {
+            if (session_status() === PHP_SESSION_NONE) {
+                session_start();
+            }
+
+            if (!\App\Service\Gate::allows('avans_ayarlari_sekmesi')) {
+                $response['message'] = 'Bu işlem için yetkiniz bulunmuyor.';
+                break;
+            }
+
+            $firma_id = !empty($_POST['firma_id']) ? (int) $_POST['firma_id'] : null;
+            $serbest = isset($_POST['avans_talep_serbest']) ? '1' : '0';
+
+            if ($Settings->upsertMultipleSettings(['avans_talep_serbest' => $serbest], $firma_id, null)) {
+                $systemLog = new \App\Model\SystemLogModel();
+                $systemLog->logAction(
+                    $_SESSION['user_id'] ?? 0,
+                    'Avans Ayarları',
+                    'Avans talep serbestliği ayarı ' . ($serbest === '1' ? 'açıldı' : 'kapatıldı') . '.',
+                    \App\Model\SystemLogModel::LEVEL_IMPORTANT
+                );
+
+                $response = [
+                    'status' => 'success',
+                    'message' => 'Avans ayarları başarıyla kaydedildi.'
+                ];
+            } else {
+                $response['message'] = 'Ayarlar kaydedilemedi.';
+            }
+        } catch (\Throwable $e) {
+            error_log('Avans ayarları kaydetme hatası: ' . $e->getMessage());
+            $response['message'] = 'Ayarlar kaydedilirken bir hata oluştu.';
+        }
+        break;
+
     default:
         $response['message'] = 'Geçersiz işlem.';
         break;

@@ -22,7 +22,8 @@
                     <h1 class="text-xl font-bold text-slate-900 dark:text-white">Bordrolar</h1>
                     <p class="text-sm text-slate-500">Kazançlarınızı inceleyin</p>
                 </div>
-                <button onclick="openNewAvansModal()" class="btn-primary flex items-center gap-2 px-4 py-2.5 text-sm">
+                <button onclick="openNewAvansModal()" id="avans-yeni-btn"
+                    class="btn-primary flex items-center gap-2 px-4 py-2.5 text-sm">
                     <span class="material-symbols-outlined text-lg">add_card</span>
                     <span>Avans</span>
                 </button>
@@ -81,6 +82,11 @@
 
             <!-- Avans List -->
             <div id="avans-tab" class="tab-content">
+                <div id="avans-kisit-uyari"
+                    class="hidden card p-4 mb-3 bg-orange-50 dark:bg-orange-900/20 flex items-center gap-3">
+                    <span class="material-symbols-outlined text-orange-600 dark:text-orange-400">info</span>
+                    <p class="text-sm font-medium text-orange-600 dark:text-orange-400" id="avans-kisit-mesaj"></p>
+                </div>
                 <div class="flex flex-col gap-3" id="avans-list">
                     <!-- Avans items will be loaded here -->
                 </div>
@@ -220,6 +226,8 @@
 <script>
     let currentAdvanceLimit = 0;
     let currentEditingAvans = null;
+    let avansTalepEdebilir = true;
+    let avansKisitMesaji = '';
 
     document.addEventListener('DOMContentLoaded', function () {
         //Müşteri şimdiilik bordrolar görünmesin dedi
@@ -265,6 +273,10 @@
                 if (maxLimitEl) maxLimitEl.textContent = Format.currency(response.data.advance_limit || 0);
 
                 currentAdvanceLimit = parseFloat(response.data.advance_limit || 0);
+
+                avansTalepEdebilir = response.data.avans_talep_edebilir !== false;
+                avansKisitMesaji = response.data.avans_talep_mesaji || '';
+                updateAvansKisitDurumu();
             }
         } catch (error) {
             console.error('Stats load error:', error);
@@ -444,7 +456,28 @@
         Modal.open('avans-detay-modal');
     }
 
+    function updateAvansKisitDurumu() {
+        const btn = document.getElementById('avans-yeni-btn');
+        const uyari = document.getElementById('avans-kisit-uyari');
+        const mesaj = document.getElementById('avans-kisit-mesaj');
+
+        if (avansTalepEdebilir) {
+            if (btn) btn.classList.remove('hidden');
+            if (uyari) uyari.classList.add('hidden');
+            return;
+        }
+
+        if (btn) btn.classList.add('hidden');
+        if (mesaj) mesaj.textContent = avansKisitMesaji;
+        if (uyari) uyari.classList.remove('hidden');
+    }
+
     function openNewAvansModal() {
+        if (!avansTalepEdebilir) {
+            Toast.show(avansKisitMesaji || 'Avans talebi oluşturamazsınız.', 'error');
+            return;
+        }
+
         currentEditingAvans = null;
         document.getElementById('avans-form').reset();
         document.getElementById('avans-id').value = '';
@@ -457,6 +490,11 @@
     }
 
     function editAvans(avans) {
+        if (!avansTalepEdebilir) {
+            Toast.show(avansKisitMesaji || 'Avans talebi düzenleyemezsiniz.', 'error');
+            return;
+        }
+
         currentEditingAvans = avans;
         const form = document.getElementById('avans-form');
         form.reset();

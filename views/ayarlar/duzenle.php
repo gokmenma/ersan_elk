@@ -82,6 +82,15 @@ $settings = (object) $Settings->getAllSettingsAsKeyValue($_SESSION['firma_id'] ?
                             </a>
                         </li>
                         <?php endif ?>
+                        <?php if (Gate::allows('avans_ayarlari_sekmesi')): ?>
+                        <li class="nav-item" role="presentation">
+                            <a class="nav-link" data-bs-toggle="tab" href="#avans_ayarlari" role="tab"
+                                aria-selected="false">
+                                <span class="d-block d-sm-none"><i class="ti ti-cash"></i></span>
+                                <span class="d-none d-sm-block">Avans Ayarları</span>
+                            </a>
+                        </li>
+                        <?php endif ?>
                     </ul>
 
 
@@ -110,6 +119,11 @@ $settings = (object) $Settings->getAllSettingsAsKeyValue($_SESSION['firma_id'] ?
                         <div class="tab-pane" id="canli_destek_ayarlari" role="tabpanel">
                             <?php if (Gate::allows('canli_sohbet_ayarlari_sekmesi')): ?>
                             <?php include_once "icerik/canli-destek-ayarlari.php"; ?>
+                            <?php endif ?>
+                        </div>
+                        <div class="tab-pane" id="avans_ayarlari" role="tabpanel">
+                            <?php if (Gate::allows('avans_ayarlari_sekmesi')): ?>
+                            <?php include_once "icerik/avans-ayarlari.php"; ?>
                             <?php endif ?>
                         </div>
                     </div>
