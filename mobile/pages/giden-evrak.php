@@ -185,7 +185,7 @@ $savedKiminAdina = json_decode((string) ($record->imza_kimin_adina_json ?? '[]')
     padding: 6px 8px !important;
     display: flex !important;
     flex-wrap: wrap !important;
-    gap: 4px !important;
+    gap: 4px 6px !important;
 }
 
 .dark .note-editor.note-frame .note-toolbar {
@@ -196,17 +196,19 @@ $savedKiminAdina = json_decode((string) ($record->imza_kimin_adina_json ?? '[]')
 .note-editor.note-frame .note-btn-group {
     margin-right: 4px !important;
     margin-bottom: 4px !important;
+    display: inline-flex !important;
+    gap: 2px !important;
 }
 
 .note-editor.note-frame .note-btn {
-    border-radius: 0.75rem !important;
+    border-radius: 0.625rem !important;
     background: #ffffff !important;
-    border: 1px solid #e2e8f0 !important;
+    border: 1px solid #cbd5e1 !important;
     color: #334155 !important;
     font-size: 12px !important;
     font-weight: 700 !important;
-    padding: 5px 9px !important;
-    height: 34px !important;
+    padding: 5px 8px !important;
+    height: 33px !important;
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.04) !important;
     transition: all 0.15s ease !important;
 }
@@ -217,14 +219,17 @@ $savedKiminAdina = json_decode((string) ($record->imza_kimin_adina_json ?? '[]')
     color: #f8fafc !important;
 }
 
-.note-editor.note-frame .note-btn:hover,
+.note-editor.note-frame .note-btn:hover {
+    background: #f1f5f9 !important;
+    border-color: #94a3b8 !important;
+}
+
 .note-editor.note-frame .note-btn.active {
     background: #e0f2fe !important;
-    border-color: #38bdf8 !important;
+    border-color: #0284c7 !important;
     color: #0284c7 !important;
 }
 
-.dark .note-editor.note-frame .note-btn:hover,
 .dark .note-editor.note-frame .note-btn.active {
     background: #0369a1 !important;
     border-color: #38bdf8 !important;
@@ -241,6 +246,8 @@ $savedKiminAdina = json_decode((string) ($record->imza_kimin_adina_json ?? '[]')
     color: #0f172a !important;
     font-family: "Times New Roman", Times, serif !important;
     font-size: 12pt !important;
+    font-weight: 400 !important;
+    font-style: normal !important;
     min-height: 240px !important;
 }
 
@@ -509,29 +516,35 @@ $savedKiminAdina = json_decode((string) ($record->imza_kimin_adina_json ?? '[]')
     </form>
 </div>
 
-<!-- Floating Action Button (Önizle FAB) -->
-<div class="fixed bottom-20 right-4 z-50">
-    <button type="button" onclick="previewGidenPdf()" class="w-14 h-14 bg-gradient-to-br from-sky-500 to-blue-600 text-white rounded-full shadow-xl shadow-sky-500/35 flex items-center justify-center active:scale-95 transition-transform" title="Evrak Önizle">
-        <span class="material-symbols-outlined text-2xl">picture_as_pdf</span>
-    </button>
-</div>
-
-<!-- Mobile Bottom Sticky Action Bar -->
-<div class="fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 px-4 py-3 z-50 flex items-center justify-between gap-2 shadow-2xl">
-    <a href="?p=evrak-takip" class="px-3.5 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs">
+<!-- Mobile Sub-page Sticky Action Bar (Global Nav Bar Üstünde) -->
+<div class="fixed bottom-[4.5rem] left-0 right-0 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-b border-slate-200 dark:border-slate-800 px-3 py-2 z-40 flex items-center justify-between gap-1.5 shadow-xl">
+    <a href="?p=evrak-takip" class="px-2.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 font-bold text-xs flex items-center gap-1 active:scale-95 transition-all">
+        <span class="material-symbols-outlined text-base">close</span>
         Vazgeç
     </a>
 
-    <div class="flex items-center gap-2">
-        <?php if ($record && ($imzalayabilir || ($kilitli && $geriAlinabilir))): ?>
-            <button type="button" onclick="openIslemlerSheet()" class="px-3.5 py-2.5 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 font-bold text-xs flex items-center gap-1">
+    <div class="flex items-center gap-1.5">
+        <button type="button" onclick="previewGidenPdf()" class="px-2.5 py-2 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-200 font-bold text-xs flex items-center gap-1 active:scale-95 transition-all" title="Evrak Önizle">
+            <span class="material-symbols-outlined text-base text-sky-500">visibility</span>
+            Önizle
+        </button>
+
+        <?php if (!$kilitli): ?>
+            <button type="button" onclick="eImzaOnayaSun('<?= htmlspecialchars($encryptedId ?? '', ENT_QUOTES, 'UTF-8') ?>')" class="px-2.5 py-2 rounded-xl bg-sky-50 dark:bg-sky-900/30 text-sky-600 dark:text-sky-400 font-bold text-xs flex items-center gap-1 active:scale-95 transition-all" title="E-İmza ile Onaya Sun">
+                <span class="material-symbols-outlined text-base">send</span>
+                Onaya Sun
+            </button>
+        <?php endif; ?>
+
+        <?php if ($record && ($kilitli || $bekleyenImzam || $siraBende || $geriAlinabilir)): ?>
+            <button type="button" onclick="openIslemlerSheet()" class="px-2.5 py-2 rounded-xl bg-amber-50 dark:bg-amber-900/30 text-amber-600 dark:text-amber-400 font-bold text-xs flex items-center gap-1 active:scale-95 transition-all">
                 <span class="material-symbols-outlined text-base">settings</span>
                 İşlemler
             </button>
         <?php endif; ?>
 
         <?php if (!$kilitli): ?>
-            <button type="button" onclick="submitGidenForm()" class="px-5 py-2.5 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-extrabold text-xs shadow-md shadow-sky-500/20 active:scale-95 transition-all flex items-center gap-1">
+            <button type="button" onclick="submitGidenForm()" class="px-3.5 py-2 rounded-xl bg-sky-500 hover:bg-sky-600 text-white font-extrabold text-xs shadow-md shadow-sky-500/20 active:scale-95 transition-all flex items-center gap-1">
                 <span class="material-symbols-outlined text-base">save</span>
                 Kaydet
             </button>
@@ -776,7 +789,8 @@ function initRichTextEditor() {
             ],
             callbacks: {
                 onInit: function() {
-                    $('.note-editable').css({ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt' });
+                    $('.note-editable').css({ fontFamily: '"Times New Roman", Times, serif', fontSize: '12pt', fontWeight: '400', fontStyle: 'normal' });
+                    $('.note-btn-bold').removeClass('active');
                 }
             }
         });
@@ -1007,22 +1021,50 @@ function removeAttachment(index) {
     renderAttachmentList();
 }
 
-// --- Form Gönderimi (Kaydet) ---
-function submitGidenForm() {
+// --- Form Zorunlu Alan Doğrulama ---
+function validateGidenForm() {
     if (typeof $.fn.summernote !== 'undefined' && $('#giden_evrak_icerik').data('summernote')) {
         $('#giden_evrak_icerik').val($('#giden_evrak_icerik').summernote('code'));
     }
+
     const form = document.getElementById('gidenEvrakForm');
-    if (!form.konu.value.trim() || !form.kurum_adi.value.trim()) {
+    const konu = form.konu ? form.konu.value.trim() : '';
+    const kurumAdi = form.kurum_adi ? form.kurum_adi.value.trim() : '';
+    const icerikRaw = form.aciklama ? form.aciklama.value.trim() : '';
+    const icerikText = icerikRaw.replace(/<[^>]*>/g, '').trim();
+
+    if (!konu) {
         switchTab('evrak-bilgileri');
-        MobileSwal.fire('Uyarı', 'Lütfen Konu ve Muhatap Kurum alanlarını doldurunuz.', 'warning');
-        return;
+        MobileSwal.fire('Eksik Bilgi', 'Lütfen Evrak Konusu alanını doldurunuz.', 'warning');
+        if (form.konu) form.konu.focus();
+        return false;
     }
+
+    if (!kurumAdi) {
+        switchTab('evrak-bilgileri');
+        MobileSwal.fire('Eksik Bilgi', 'Lütfen Muhatap Kurum / Kişi alanını doldurunuz.', 'warning');
+        if (form.kurum_adi) form.kurum_adi.focus();
+        return false;
+    }
+
+    if (!icerikText) {
+        switchTab('icerik');
+        MobileSwal.fire('Eksik Bilgi', 'Lütfen Resmî Yazı Metni (İçerik) alanını doldurunuz.', 'warning');
+        return false;
+    }
+
     if (selectedSignersList.length === 0) {
         switchTab('ekler-imza');
-        MobileSwal.fire('Uyarı', 'En az bir imza atacak kullanıcı seçmelisiniz.', 'warning');
-        return;
+        MobileSwal.fire('Eksik Bilgi', 'Lütfen Ekler & İmza sekmesinden en az 1 imza sahibi seçiniz.', 'warning');
+        return false;
     }
+
+    return true;
+}
+
+// --- Form Gönderimi (Kaydet) ---
+function submitGidenForm() {
+    if (!validateGidenForm()) return;
 
     const formData = new FormData(form);
 
@@ -1264,15 +1306,57 @@ function eImzaIstek(action, id, extra, basarilarMesaji) {
 }
 
 function eImzaOnayaSun(id) {
+    if (!validateGidenForm()) return;
+
     MobileSwal.fire({
         title: 'E-İmza ile Onaya Sun',
-        html: 'Evrak imzacıların onayına sunulacak.<br><b>Süreç tamamlanana kadar içeriği değiştirilemez.</b>',
+        html: id ? 'Evrak imzacıların onayına sunulacak.<br><b>Süreç tamamlanana kadar içeriği değiştirilemez.</b>' : 'Evrak kaydedilecek ve imza sahiplerinin onayına sunulacaktır.<br><b>Devam edilsin mi?</b>',
         icon: 'question',
         showCancelButton: true,
-        confirmButtonText: 'Onaya Sun',
+        confirmButtonText: id ? 'Onaya Sun' : 'Kaydet ve Onaya Sun',
         cancelButtonText: 'Vazgeç'
     }).then(res => {
-        if (res.isConfirmed) eImzaIstek('evrak-e-imza-onaya-sun', id, null, 'Onaya Sunuldu');
+        if (!res.isConfirmed) return;
+
+        if (id) {
+            eImzaIstek('evrak-e-imza-onaya-sun', id, null, 'Onaya Sunuldu');
+        } else {
+            const form = document.getElementById('gidenEvrakForm');
+            const formData = new FormData(form);
+            const newAttachments = attachmentsList.filter(a => a.type === 'new');
+            newAttachments.forEach((att) => {
+                if (att.fileObj) {
+                    formData.append('ek_dosyalari[]', att.fileObj);
+                }
+            });
+
+            MobileSwal.fire({ title: 'Kaydediliyor ve Onaya Sunuluyor...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+
+            fetch('../views/evrak-takip/api.php', {
+                method: 'POST',
+                body: formData
+            })
+            .then(r => r.json())
+            .then(kayit => {
+                if (kayit.status !== 'success' || !kayit.id) {
+                    MobileSwal.fire('Hata', kayit.message || 'Evrak kaydedilemedi.', 'error');
+                    return;
+                }
+                $.post('../views/evrak-takip/api.php', { action: 'evrak-e-imza-onaya-sun', id: kayit.id }, function(response) {
+                    const resJson = (typeof response === 'object') ? response : JSON.parse(response);
+                    if (resJson.status === 'success') {
+                        MobileSwal.fire('Onaya Sunuldu', resJson.message || 'Evrak e-imza onayına sunuldu.', 'success')
+                            .then(() => location.href = '?p=evrak-takip');
+                    } else {
+                        MobileSwal.fire('Uyarı', 'Evrak kaydedildi ancak onaya sunulamadı: ' + (resJson.message || ''), 'warning')
+                            .then(() => location.href = '?p=giden-evrak&id=' + encodeURIComponent(kayit.id));
+                    }
+                }).fail(function() {
+                    MobileSwal.fire('Hata', 'Evrak kaydedildi ancak onaya sunulamadı.', 'error');
+                });
+            })
+            .catch(() => MobileSwal.fire('Hata', 'Sunucu hatası oluştu.', 'error'));
+        }
     });
 }
 

@@ -44,7 +44,7 @@ final class EvrakAiTaslakService
         return $html;
     }
 
-    public function create(array $file, string $instruction): array
+    public function create(array $file = [], string $instruction = ''): array
     {
         $instruction = trim($instruction);
         if ($instruction === '') {
@@ -54,26 +54,25 @@ final class EvrakAiTaslakService
             throw new Exception('Talimat en fazla 4000 karakter olabilir.');
         }
         $okuyucu = new AiBelgeOkuyucuService();
-        $mime = $okuyucu->dogrula($file);
         [$apiKey, $model] = $okuyucu->ayarlar();
 
         $prompt = "Kullanıcının vermek istediği cevap veya yapmak istediği işlem:\n{$instruction}\n\n"
-            . "Yüklenen gelen evrakı bağımsız olarak incele. Evrakın icra dairesinden geldiğini varsayma; gönderen kurumu, evrak türünü, tarih/sayı bilgilerini, konuyu ve bizden istenen talebi belgeden tespit et. Bu evraka verilecek resmî cevap yazısını hazırla. "
+            . "Yüklenen gelen evrakı incele. Gönderen kurumu, evrak türünü, tarih/sayı bilgilerini, konuyu ve bizden istenen talebi tespit et. Bu evraka verilecek resmî cevap yazısını hazırla. "
             . "Yazı giriş-gelişme-sonuç mantığında, birbiriyle bağlantılı en az üç ayrı paragraftan oluşmalıdır; ancak metinde 'Giriş', 'Gelişme' ve 'Sonuç' başlıkları bulunmamalıdır. "
-            . "GİRİŞ PARAGRAFI zorunlu olarak 'İlgi yazı ile' sözleriyle başlamalıdır. İlgi yazının tarih ve sayısı okunabiliyorsa bunlara değinmeli; gönderen kurumun bizden tam olarak ne talep ettiğini açık, tarafsız ve kısa biçimde açıklamalıdır. "
-            . "GELİŞME BÖLÜMÜNDE şirketimiz/kurumumuz kayıtlarındaki mevcut durum, yapılan inceleme, somut bulgular ve kullanıcının verdiği bilgiler açıklanmalıdır. İşlemin hukuki dayanağı varsa ilgili kanun, yönetmelik, sözleşme veya düzenleme ile gerekçeli bağlantı kurulmalıdır. "
-            . "Belgede ya da kullanıcı talimatında bulunmayan olay, tarih, tutar, kişi, kayıt veya hukuki dayanak uydurulmamalıdır. Kanun/yönetmelik adı veya madde numarasından emin olunmadığında sahte atıf yapılmamalı; bunun yerine 'ilgili mevzuat hükümleri çerçevesinde' gibi ihtiyatlı bir ifade kullanılmalıdır. "
-            . "SONUÇ PARAGRAFINDA kullanıcının vermek istediği cevap, karar veya mesaj tereddüde yer vermeyecek şekilde belirtilmeli; gerekiyorsa yapılacak işlem, sorumlu taraf ve süre açıklanmalıdır. Son cümle yazının niteliğine uygun olarak 'bilgilerinize arz ederiz', 'gereğini rica ederiz' veya hiyerarşik ilişkiye uygun başka bir resmî kapanışla bitmelidir. "
-            . "Dil resmî, akademik, hukuki, ölçülü ve gerekçeli olmalıdır. Günlük konuşma dili, aşırı kesinlik, duygusal ifade, tekrar ve gereksiz uzun cümle kullanılmamalıdır. Kullanıcının talimatı ile belge çelişirse bilgi uydurmak yerine çelişki ihtiyatlı biçimde belirtilmelidir. "
-            . "MUHATAP ALANLARINI ŞU KESİN KURALLARLA DOLDUR: kurum_adi, cevabın gönderileceği kurum veya kişinin belgede yazan tam resmî adıdır; şehir/ilçe, başkanlık, müdürlük, rektörlük, mahkeme veya daire bilgilerini atlama ve 'İcra Dairesi', 'Belediye' gibi genel bir ada indirgeme. Belge başlığında 'T.C. KOCAELİ İCRA DAİRESİ' yazıyorsa kurum_adi en az 'T.C. KOCAELİ İCRA DAİRESİ' olmalıdır. PDF'de doğrudan muhatap başlığı olarak kullanılacağından, belgede ve kurum adında dil bilgisel olarak uygunsa yönelme ekiyle yaz (örneğin 'T.C. KOCAELİ İCRA DAİRESİNE'). "
-            . "muhatap_alt_birim yalnızca belgede kurumdan ayrı ve açıkça yazılmış gerçek daire başkanlığı, müdürlük, fakülte, şube veya servis adıdır. Esas/dosya numarası, evrak türü, makam/unvan ya da tahmin edilen birim değildir. Belgede açık bir alt birim yoksa boş string döndür; 'İcra Müdür Yardımcılığı' gibi bir birim uydurma. "
-            . "muhatap_adres yalnızca belgede bulunan fiziksel posta adresidir; kurum adı, şehir adı tek başına, esas numarası, KEP/e-posta ya da alt birim bu alana yazılmaz. Sokak/cadde, bina numarası, ilçe/il gibi gerçek bir posta adresi bulunmuyorsa boş string döndür. Aynı bilgiyi kurum_adi, muhatap_alt_birim ve muhatap_adres alanlarında tekrarlama. "
-            . "ilgiler alanına gelen evrakın okunabilen tarih, sayı ve kısa tanımını tek satırda yaz. Birden fazla ilgi varsa her birini ayrı satıra yerleştir. aciklama_html içinde ayrıca 'İlgi:', hitap başlığı, muhatap, imza veya ek listesi oluşturma; bunlar PDF şablonunda ayrıca basılır. Her paragraf için ayrı p etiketi kullan. "
+            . "GİRİŞ PARAGRAFI zorunlu olarak 'İlgi yazı ile' sözleriyle başlamalıdır. "
+            . "GELİŞME BÖLÜMÜNDE şirketimiz/kurumumuz kayıtlarındaki mevcut durum, yapılan inceleme, somut bulgular ve kullanıcının verdiği bilgiler açıklanmalıdır. "
+            . "SONUÇ PARAGRAFI uygun kapanış cümlesiyle bitmelidir. "
+            . "MUHATAP ALANLARINI ŞU KESİN KURALLARLA DOLDUR: kurum_adi, cevabın gönderileceği kurum veya kişinin belgede yazan tam resmî adıdır. "
             . "aciklama_html yalnızca p, br, strong, b, em, i, u, ul, ol, li ve table/tr/td/th etiketlerini kullanabilir. "
-            . "Şu anahtarlarla JSON nesnesi döndür: konu, kurum_adi, muhatap_alt_birim, muhatap_adres, ilgiler, aciklama_html. "
-            . "İlgiler birden fazlaysa her biri ayrı satır olsun.";
+            . "Şu anahtarlarla JSON nesnesi döndür: konu, kurum_adi, muhatap_alt_birim, muhatap_adres, ilgiler, aciklama_html.";
 
-        $userContent = $okuyucu->kullaniciIcerigi($prompt, $file, $mime);
+        if (!empty($file['tmp_name']) && ($file['error'] ?? UPLOAD_ERR_NO_FILE) === UPLOAD_ERR_OK) {
+            $mime = $okuyucu->dogrula($file);
+            $userContent = $okuyucu->kullaniciIcerigi($prompt, $file, $mime);
+        } else {
+            $userContent = [['type' => 'text', 'text' => $prompt]];
+        }
+
         $result = $okuyucu->jsonIste(
             $apiKey,
             $model,

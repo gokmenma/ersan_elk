@@ -65,6 +65,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $data['kimin_adina_2'],
                     $data['kimin_adina_3']
                 );
+                if (empty(trim((string) ($data['konu'] ?? '')))) {
+                    throw new Exception('Evrak Konusu alanını doldurunuz.');
+                }
+                if (empty(trim((string) ($data['kurum_adi'] ?? '')))) {
+                    throw new Exception('Muhatap Kurum / Kişi alanını doldurunuz.');
+                }
+                if (empty(trim(strip_tags((string) ($data['aciklama'] ?? ''))))) {
+                    throw new Exception('Resmî Yazı Metni (İçerik) alanını doldurunuz.');
+                }
+
                 $data['id'] = $id;
                 $data['firma_id'] = $_SESSION['firma_id'];
                 $data['aciklama'] = RichTextSanitizer::sanitize($data['aciklama'] ?? '');
@@ -853,6 +863,40 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                         'message' => "Bu plaka için bu tarihte zimmetli personel bulunamadı."
                     ]);
                 }
+                break;
+
+            case 'evrak-ai-taslak-olustur':
+                $file = $_FILES['dosya'] ?? $_FILES['gelen_evrak'] ?? [];
+                $talimat = (string) ($_POST['talimat'] ?? '');
+                $draft = (new \App\Service\EvrakAiTaslakService())->create($file, $talimat);
+                echo json_encode(['status' => 'success', 'data' => $draft], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                break;
+
+            case 'evrak-ai-metin-duzenle':
+                $metin = (string) ($_POST['metin'] ?? $_POST['selected_text'] ?? '');
+                $talimat = (string) ($_POST['talimat'] ?? $_POST['instruction'] ?? '');
+                $context = (string) ($_POST['document_context'] ?? '');
+                $duzenlenmis = (new \App\Service\EvrakAiTaslakService())->reviseSelection($metin, $talimat, $context);
+                echo json_encode(['status' => 'success', 'duzenlenmis_metin' => $duzenlenmis, 'data' => ['html' => $duzenlenmis]], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                break;
+
+            case 'icra-listesi':
+            case 'icra-ust-yazi-listesi':
+                $personelId = (int) ($_POST['personel_id'] ?? 0);
+                $icraUstYaziService = new \App\Service\IcraUstYaziService();
+                echo json_encode(['status' => 'success', 'data' => $icraUstYaziService->personelIcralari($personelId)], JSON_UNESCAPED_UNICODE);
+                break;
+
+            case 'taslak':
+            case 'icra-ust-yazi-olustur':
+                $icraIdRaw = (string) ($_POST['icra_id'] ?? '');
+                $icraId = (int) \App\Helper\Security::decrypt($icraIdRaw);
+                if ($icraId < 1 && is_numeric($icraIdRaw)) {
+                    $icraId = (int) $icraIdRaw;
+                }
+                $icraUstYaziService = new \App\Service\IcraUstYaziService();
+                $draft = $icraUstYaziService->build($icraId);
+                echo json_encode(['status' => 'success', 'data' => $draft], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
                 break;
 
             default:
