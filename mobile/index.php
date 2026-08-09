@@ -164,7 +164,7 @@ foreach ($all_mobile_menus as $pKey => $mData) {
 $allowed_pages = array_keys($user_mobile_menus);
 
 // Menüde görünmeyen gizli mobil alt sayfalar
-$sub_pages = ['hesap-hareketleri', 'personel-duzenle', 'profil'];
+$sub_pages = ['hesap-hareketleri', 'personel-duzenle', 'profil', 'giden-evrak'];
 $allowed_pages = array_merge($allowed_pages, $sub_pages);
 
 if (!in_array($page, $allowed_pages)) {
@@ -183,6 +183,7 @@ $page_titles = [
     'hesap-hareketleri' => 'Hesap Hareketleri',
     'talepler'          => 'Talepler',
     'evrak-takip'       => 'Evrak Takip',
+    'giden-evrak'       => 'Giden Evrak',
     'nobet'             => 'Nöbet Onay',
     'km-onaylari'       => 'KM Onayları',
     'raporlar'          => 'Raporlar',
@@ -710,7 +711,7 @@ $pageStatusColor = $pageStatusColors[$page] ?? null;
 
     <?php 
     // Kendi özel (gradient vb.) başlık yapısı olan veya üst bar istenmeyen sayfalar
-    $no_header_pages = ['home', 'hesap-hareketleri', 'arac', 'gorevler', 'talepler', 'personel', 'personel-duzenle', 'yardim', 'evrak-takip', 'km-onaylari', 'nobet', 'ihbar', 'kacak'];
+    $no_header_pages = ['home', 'hesap-hareketleri', 'arac', 'gorevler', 'talepler', 'personel', 'personel-duzenle', 'yardim', 'evrak-takip', 'giden-evrak', 'km-onaylari', 'nobet', 'ihbar', 'kacak'];
     if (!in_array($page, $no_header_pages)): 
     ?>
     <!-- Sayfa Başlığı (Gradient) -->

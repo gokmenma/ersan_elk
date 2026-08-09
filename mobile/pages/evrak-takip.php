@@ -165,6 +165,12 @@ if (!function_exists('formatDateEvrak')) {
                             Dosya
                         </button>
                     <?php endif; ?>
+                    <?php if ($evrak->evrak_tipi === 'giden'): ?>
+                        <button onclick="event.stopPropagation(); previewGidenEvrakList('<?= htmlspecialchars($encId, ENT_QUOTES, 'UTF-8') ?>')" class="flex items-center gap-1 text-[11px] font-bold text-emerald-600 bg-emerald-50 dark:bg-emerald-900/20 px-2 py-1 rounded-lg">
+                            <span class="material-symbols-outlined text-[16px]">picture_as_pdf</span>
+                            Önizle
+                        </button>
+                    <?php endif; ?>
                 </div>
                 
                 <div class="flex gap-2">
@@ -187,10 +193,16 @@ if (!function_exists('formatDateEvrak')) {
                         </button>
                     <?php endif; ?>
                     <?php if (!$kilitli): ?>
-                        <button onclick="event.stopPropagation(); editEvrak('<?= htmlspecialchars($encId, ENT_QUOTES, 'UTF-8') ?>')" class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 flex items-center justify-center active:scale-90 transition-transform">
-                            <span class="material-symbols-outlined text-base">edit</span>
-                        </button>
-                        <button onclick="event.stopPropagation(); deleteEvrak('<?= htmlspecialchars($encId, ENT_QUOTES, 'UTF-8') ?>')" class="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 flex items-center justify-center active:scale-90 transition-transform">
+                        <?php if ($evrak->evrak_tipi === 'giden'): ?>
+                            <a href="?p=giden-evrak&id=<?= urlencode($encId) ?>" onclick="event.stopPropagation();" class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 flex items-center justify-center active:scale-90 transition-transform" title="Düzenle">
+                                <span class="material-symbols-outlined text-base">edit</span>
+                            </a>
+                        <?php else: ?>
+                            <button onclick="event.stopPropagation(); editEvrak('<?= htmlspecialchars($encId, ENT_QUOTES, 'UTF-8') ?>')" class="w-8 h-8 rounded-lg bg-slate-50 dark:bg-slate-800 text-slate-500 flex items-center justify-center active:scale-90 transition-transform" title="Düzenle">
+                                <span class="material-symbols-outlined text-base">edit</span>
+                            </button>
+                        <?php endif; ?>
+                        <button onclick="event.stopPropagation(); deleteEvrak('<?= htmlspecialchars($encId, ENT_QUOTES, 'UTF-8') ?>')" class="w-8 h-8 rounded-lg bg-red-50 dark:bg-red-900/20 text-red-500 flex items-center justify-center active:scale-90 transition-transform" title="Sil">
                             <span class="material-symbols-outlined text-base">delete</span>
                         </button>
                     <?php else: ?>
@@ -210,10 +222,17 @@ if (!function_exists('formatDateEvrak')) {
     </div>
 </div>
 
-<!-- FAB -->
-<button onclick="openNewEvrak()" class="fixed bottom-24 right-4 w-14 h-14 bg-sky-500 text-white rounded-full shadow-lg shadow-sky-500/30 flex items-center justify-center active:scale-95 transition-transform z-50">
-    <span class="material-symbols-outlined text-3xl">add</span>
-</button>
+<!-- FAB Group (Çift Floating Buton: Sadece İkon & Yuvarlak) -->
+<div class="fixed bottom-24 right-4 flex flex-col gap-3 items-end z-50">
+    <!-- Gelen Evrak Butonu (Üstte) -->
+    <button onclick="openNewEvrak()" class="w-14 h-14 bg-gradient-to-br from-emerald-500 to-teal-600 text-white rounded-full shadow-lg shadow-emerald-500/30 flex items-center justify-center active:scale-95 transition-transform" title="Gelen Evrak">
+        <span class="material-symbols-outlined text-2xl">download</span>
+    </button>
+    <!-- Giden Evrak Butonu (Altta) -->
+    <a href="?p=giden-evrak" class="w-14 h-14 bg-gradient-to-br from-sky-500 to-blue-600 text-white rounded-full shadow-lg shadow-sky-500/30 flex items-center justify-center active:scale-95 transition-transform" title="Giden Evrak">
+        <span class="material-symbols-outlined text-2xl">upload_file</span>
+    </a>
+</div>
 
 <!-- Bottom Sheet Container -->
 <div id="bs-container" class="fixed inset-0 z-[100] hidden flex-col justify-end">
@@ -583,6 +602,42 @@ function deleteEvrak(id) {
                     MobileSwal.fire('Hata', res.message || 'Silme işlemi başarısız.', 'error');
                 }
             });
+        }
+    });
+}
+function previewGidenEvrakList(id) {
+    MobileSwal.fire({ title: 'PDF Hazırlanıyor...', allowOutsideClick: false, didOpen: () => Swal.showLoading() });
+    $.post('../views/evrak-takip/api.php', { action: 'evrak-detay', id: id }, function(response) {
+        const res = (typeof response === 'object') ? response : JSON.parse(response);
+        if (res.status === 'success' && res.data) {
+            const data = res.data;
+            const formData = new FormData();
+            formData.append('id', id);
+            formData.append('evrak_tipi', 'giden');
+            formData.append('tarih', data.tarih || '');
+            formData.append('evrak_no', data.evrak_no || '');
+            formData.append('konu', data.konu || '');
+            formData.append('kurum_adi', data.kurum_adi || '');
+            formData.append('muhatap_alt_birim', data.muhatap_alt_birim || '');
+            formData.append('muhatap_adres', data.muhatap_adres || '');
+            formData.append('aciklama', data.aciklama || '');
+            formData.append('ilgiler', data.ilgiler || '');
+            formData.append('ekler', data.ekler || '');
+            
+            fetch('../views/evrak-takip/pdf.php', { method: 'POST', body: formData })
+            .then(r => r.blob())
+            .then(blob => {
+                MobileSwal.close();
+                const url = URL.createObjectURL(blob);
+                previewFile(url);
+            })
+            .catch(() => {
+                MobileSwal.close();
+                MobileSwal.fire('Hata', 'PDF oluşturulamadı.', 'error');
+            });
+        } else {
+            MobileSwal.close();
+            MobileSwal.fire('Hata', 'Evrak detayları alınamadı.', 'error');
         }
     });
 }
