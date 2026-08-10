@@ -501,7 +501,11 @@ $(document).ready(function () {
                     const pGirisStr = p.ise_giris_tarihi && p.ise_giris_tarihi !== "0000-00-00" ? p.ise_giris_tarihi : "";
                     const pCikisStr = p.isten_cikis_tarihi && p.isten_cikis_tarihi !== "0000-00-00" ? p.isten_cikis_tarihi : "";
 
-                    const isDisabled = (pGirisStr && dateStr < pGirisStr) || (pCikisStr && dateStr > pCikisStr);
+                    const calismaDonemleri = Array.isArray(p.calisma_donemleri) ? p.calisma_donemleri : [];
+                    const isAktifCalismaGunu = calismaDonemleri.length > 0
+                      ? calismaDonemleri.some((donem) => dateStr >= donem.baslangic && (!donem.bitis || dateStr <= donem.bitis))
+                      : !((pGirisStr && dateStr < pGirisStr) || (pCikisStr && dateStr > pCikisStr));
+                    const isDisabled = !isAktifCalismaGunu;
                     const disabledClass = isDisabled ? "disabled" : "";
                     if (isDisabled) disabledDaysCount++;
 
@@ -1955,4 +1959,3 @@ $(document).ready(function () {
     }
   }
 });
-

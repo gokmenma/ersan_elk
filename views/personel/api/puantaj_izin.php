@@ -238,6 +238,12 @@ try {
 
         $personeller->execute($params);
         $personel_list = array_map(fn($r) => $Personel->decryptFields($r), $personeller->fetchAll(PDO::FETCH_OBJ));
+        // Bir ayda birden fazla çalışma geçmişi satırı JOIN sonucunu çoğaltmasın.
+        $personelTekil = [];
+        foreach ($personel_list as $personelSatiri) {
+            $personelTekil[(int) $personelSatiri->id] = $personelSatiri;
+        }
+        $personel_list = array_values($personelTekil);
 
         // Varsayılan tanımlamaları al
         $varsayilan_X = $Tanimlamalar->db->prepare("SELECT id, tur_adi, kisa_kod, renk FROM tanimlamalar WHERE grup = 'izin_turu' AND (kisa_kod = 'X' OR kisa_kod = 'x' OR tur_adi LIKE '%Çalışılan Gün%') AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL LIMIT 1");
@@ -263,9 +269,27 @@ try {
         $izin_stmt->execute([$firma_id, $endDate, $startDate]);
         $all_izinler = $izin_stmt->fetchAll(PDO::FETCH_GROUP | PDO::FETCH_OBJ);
 
+        // Bir personelin ay içinde birden fazla çalışma dönemi olabilir. Günleri tek bir
+        // giriş/çıkış aralığına sıkıştırmak yeniden işe giriş sonrası hücreleri kapatıyordu.
+        $calisma_stmt = $Personel->db->prepare("SELECT pcg.personel_id, pcg.ise_giris_tarihi, pcg.isten_cikis_tarihi
+            FROM personel_calisma_gecmisi pcg
+            INNER JOIN personel p ON p.id = pcg.personel_id
+            WHERE p.firma_id = ? AND p.silinme_tarihi IS NULL
+              AND pcg.ise_giris_tarihi <= ?
+              AND (pcg.isten_cikis_tarihi IS NULL OR pcg.isten_cikis_tarihi = '0000-00-00' OR pcg.isten_cikis_tarihi >= ?)
+            ORDER BY pcg.personel_id, pcg.ise_giris_tarihi");
+        $calisma_stmt->execute([$firma_id, $endDate, $startDate]);
+        $calisma_donemleri = $calisma_stmt->fetchAll(PDO::FETCH_GROUP | PDO::FETCH_ASSOC);
+
         $data = [];
 
         foreach ($personel_list as $p) {
+            $personelCalismaDonemleri = array_map(static fn($donem) => [
+                'baslangic' => $donem['ise_giris_tarihi'],
+                'bitis' => (!empty($donem['isten_cikis_tarihi']) && $donem['isten_cikis_tarihi'] !== '0000-00-00')
+                    ? $donem['isten_cikis_tarihi']
+                    : null,
+            ], $calisma_donemleri[$p->id] ?? []);
             $resimPath = !empty($p->personel_resim_yolu) ? $p->personel_resim_yolu : ($p->resim_yolu ?? '');
             $p_info = [
                 'id' => $p->id,
@@ -278,6 +302,7 @@ try {
                 'ise_giris_tarihi' => $p->ise_giris_tarihi,
                 'gorev_gecmisi_var' => $p->gorev_gecmisi_var,
                 'gg_toplam_gun' => $p->gg_toplam_gun,
+                'calisma_donemleri' => $personelCalismaDonemleri,
                 'entries' => []
             ];
 
@@ -314,7 +339,13 @@ try {
                 $date_str = date('Y-m-d', $cur);
                 $isWeekend = date('w', $cur) == 0; // Sadece Pazar
                 if (!isset($mevcut_gunler[$date_str])) {
-                    if ($cur >= $p_giris && $cur <= $p_cikis) {
+                    $aktifCalismaGunu = empty($personelCalismaDonemleri)
+                        ? ($cur >= $p_giris && $cur <= $p_cikis)
+                        : (bool) array_filter($personelCalismaDonemleri, static function ($donem) use ($date_str) {
+                            return $date_str >= $donem['baslangic']
+                                && ($donem['bitis'] === null || $date_str <= $donem['bitis']);
+                        });
+                    if ($aktifCalismaGunu) {
                         if ($isWeekend && $ht_tanim) {
                             $p_info['entries'][$date_str][] = [
                                 'type' => 'default',
@@ -358,27 +389,27 @@ try {
         $startDate = "$yil-$ay-01";
         $endDate = date("Y-m-t", strtotime($startDate));
 
-        $personel_stmt = $Personel->db->prepare("
-            SELECT p.id, 
-                   COALESCE(pcg.ise_giris_tarihi, p.ise_giris_tarihi) as ise_giris_tarihi, 
-                   COALESCE(pcg.isten_cikis_tarihi, p.isten_cikis_tarihi) as isten_cikis_tarihi
-            FROM personel p
-            LEFT JOIN personel_calisma_gecmisi pcg ON p.id = pcg.personel_id
-                AND pcg.ise_giris_tarihi <= :end_date
-                AND (pcg.isten_cikis_tarihi IS NULL OR pcg.isten_cikis_tarihi >= :start_date)
-            WHERE p.id = :personel_id
-        ");
-        $personel_stmt->execute([
-            ':end_date' => $endDate,
-            ':start_date' => $startDate,
-            ':personel_id' => $personel_id
-        ]);
+        $personel_stmt = $Personel->db->prepare("SELECT id, ise_giris_tarihi, isten_cikis_tarihi FROM personel WHERE id = ?");
+        $personel_stmt->execute([$personel_id]);
         $p = $personel_stmt->fetch(PDO::FETCH_OBJ);
 
         if (!$p) {
             echo json_encode(['status' => 'error', 'message' => 'Personel bulunamadı.']);
             exit;
         }
+
+        $calisma_stmt = $Personel->db->prepare("SELECT ise_giris_tarihi, isten_cikis_tarihi
+            FROM personel_calisma_gecmisi
+            WHERE personel_id = ? AND ise_giris_tarihi <= ?
+              AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00' OR isten_cikis_tarihi >= ?)
+            ORDER BY ise_giris_tarihi ASC, id ASC");
+        $calisma_stmt->execute([$personel_id, $endDate, $startDate]);
+        $calismaDonemleri = array_map(static fn($donem) => [
+            'baslangic' => $donem['ise_giris_tarihi'],
+            'bitis' => (!empty($donem['isten_cikis_tarihi']) && $donem['isten_cikis_tarihi'] !== '0000-00-00')
+                ? $donem['isten_cikis_tarihi']
+                : null,
+        ], $calisma_stmt->fetchAll(PDO::FETCH_ASSOC));
 
         $varsayilan_X = $Tanimlamalar->db->prepare("SELECT id, tur_adi, kisa_kod, renk FROM tanimlamalar WHERE grup = 'izin_turu' AND (kisa_kod = 'X' OR kisa_kod = 'x' OR tur_adi LIKE '%Çalışılan Gün%') AND (firma_id = ? OR firma_id = 0) AND silinme_tarihi IS NULL LIMIT 1");
         $varsayilan_X->execute([$firma_id]);
@@ -432,7 +463,13 @@ try {
             $date_str = date('Y-m-d', $cur);
             $isWeekend = date('w', $cur) == 0;
             if (!isset($mevcut_gunler[$date_str])) {
-                if ($cur >= $p_giris && $cur <= $p_cikis) {
+                $aktifCalismaGunu = empty($calismaDonemleri)
+                    ? ($cur >= $p_giris && $cur <= $p_cikis)
+                    : (bool) array_filter($calismaDonemleri, static function ($donem) use ($date_str) {
+                        return $date_str >= $donem['baslangic']
+                            && ($donem['bitis'] === null || $date_str <= $donem['bitis']);
+                    });
+                if ($aktifCalismaGunu) {
                     if ($isWeekend && $ht_tanim) {
                         $entries[$date_str][] = [
                             'type' => 'default',
@@ -459,7 +496,8 @@ try {
 
         echo json_encode([
             'status' => 'success',
-            'data' => $entries
+            'data' => $entries,
+            'calisma_donemleri' => $calismaDonemleri
         ]);
     } elseif ($action === 'get-personel-yearly-data') {
         $personel_id = $_POST['personel_id'] ?? 0;

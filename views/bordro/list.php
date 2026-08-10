@@ -2330,7 +2330,7 @@ if (!empty($dbGelirler)) {
             yil: yil
         }, function (res) {
             if (res.status === 'success') {
-                renderYearlyModalCalendar(yil, parseInt(ay) - 1, res.data, iseGiris, istenCikis);
+                renderYearlyModalCalendar(yil, parseInt(ay) - 1, res.data, iseGiris, istenCikis, res.calisma_donemleri || []);
             } else {
                 $('#modalTakvimContainer').html('<div class="col-12 text-center p-5"><div class="alert alert-danger">' + (res.message || 'Veriler yüklenemedi.') + '</div></div>');
             }
@@ -2394,8 +2394,8 @@ if (!empty($dbGelirler)) {
         });
     });
 
-    function renderYearlyModalCalendar(year, month, events, iseGiris, istenCikis) {
-        const summary = collectTakvimSummary(events);
+    function renderYearlyModalCalendar(year, month, events, iseGiris, istenCikis, calismaDonemleri = []) {
+        const summary = collectTakvimSummary(events, calismaDonemleri);
 
         let html = '';
         html += `<div class="col-12">`;
@@ -2453,7 +2453,7 @@ if (!empty($dbGelirler)) {
                             <tr>${window.gunIsimleriModal.map(g => `<th>${g}</th>`).join('')}</tr>
                         </thead>
                         <tbody>
-                            ${getMonthRowsModal(year, month, events, iseGiris, istenCikis)}
+                            ${getMonthRowsModal(year, month, events, iseGiris, istenCikis, calismaDonemleri)}
                         </tbody>
                     </table>
                 </div>
@@ -2468,7 +2468,7 @@ if (!empty($dbGelirler)) {
         });
     }
 
-    function getMonthRowsModal(year, month, events, iseGiris, istenCikis) {
+    function getMonthRowsModal(year, month, events, iseGiris, istenCikis, calismaDonemleri = []) {
         const firstDay = new Date(year, month, 1);
         const lastDay = new Date(year, month + 1, 0);
 
@@ -2489,13 +2489,11 @@ if (!empty($dbGelirler)) {
                 } else {
                     const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                     
-                    let isPassive = false;
-                    if (iseGiris && iseGiris !== '0000-00-00' && dateStr < iseGiris) {
-                        isPassive = true;
-                    }
-                    if (istenCikis && istenCikis !== '0000-00-00' && dateStr > istenCikis) {
-                        isPassive = true;
-                    }
+                    const aktifCalismaGunu = calismaDonemleri.length > 0
+                        ? calismaDonemleri.some(donem => dateStr >= donem.baslangic && (!donem.bitis || dateStr <= donem.bitis))
+                        : !((iseGiris && iseGiris !== '0000-00-00' && dateStr < iseGiris)
+                            || (istenCikis && istenCikis !== '0000-00-00' && dateStr > istenCikis));
+                    const isPassive = !aktifCalismaGunu;
 
                     const dayEvents = (events && events[dateStr]) ? events[dateStr] : [];
                     let cellContent = `<div class="year-calendar-day">
@@ -2560,12 +2558,15 @@ if (!empty($dbGelirler)) {
         return { bg: "rgba(85, 110, 230, 0.15)", color: "#556ee6" };
     }
 
-    function collectTakvimSummary(events) {
+    function collectTakvimSummary(events, calismaDonemleri = []) {
         let ucretliList = [];
         let ucretsizList = [];
         const eventCounts = {};
 
-        Object.values(events || {}).forEach(function(dayEntries) {
+        Object.entries(events || {}).forEach(function([dateStr, dayEntries]) {
+            const aktifCalismaGunu = calismaDonemleri.length === 0
+                || calismaDonemleri.some(donem => dateStr >= donem.baslangic && (!donem.bitis || dateStr <= donem.bitis));
+            if (!aktifCalismaGunu) return;
             (dayEntries || []).forEach(function(entry) {
                 if (!entry || !entry.name || !entry.kisa_kod) {
                     return;
