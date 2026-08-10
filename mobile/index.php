@@ -338,6 +338,9 @@ $pageStatusColor = $pageStatusColors[$page] ?? null;
     <script src="../assets/libs/flatpickr/l10n/tr.js"></script>
     <script src="../assets/libs/flatpickr/plugins/monthSelect/index.js"></script>
 
+    <!-- PDF.js (Mobil PDF Canvas Render) -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+
     <!-- FullCalendar (Nöbet Onay sayfasında gerekli) -->
     <?php if ($page === 'nobet'): ?>
     <script src="../assets/libs/fullcalendar/index.global.min.js"></script>

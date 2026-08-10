@@ -690,17 +690,22 @@ $savedKiminAdina = json_decode((string) ($record->imza_kimin_adina_json ?? '[]')
 
 <!-- MODAL: PDF Önizleme Modal -->
 <div id="modal-pdf-preview" class="fixed inset-0 bg-slate-900/80 z-[100] hidden items-center justify-center p-2 sm:p-4">
-    <div class="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl h-[85vh] flex flex-col shadow-2xl overflow-hidden">
-        <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-900 text-white">
+    <div class="bg-white dark:bg-slate-900 rounded-3xl w-full max-w-2xl h-[85vh] flex flex-col shadow-2xl overflow-hidden border border-slate-200 dark:border-slate-800">
+        <div class="px-4 py-3 border-b border-slate-200 dark:border-slate-800 flex justify-between items-center bg-slate-900 text-white shrink-0">
             <h3 class="font-extrabold text-xs flex items-center gap-1.5">
                 <span class="material-symbols-outlined text-amber-400 text-base">picture_as_pdf</span>
                 Resmî Yazı Önizleme
             </h3>
-            <button onclick="closeModal('modal-pdf-preview')" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-800">
-                <span class="material-symbols-outlined text-sm">close</span>
-            </button>
+            <div class="flex items-center gap-2">
+                <a id="btnPdfOpenNewTab" href="#" target="_blank" class="px-2.5 py-1.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-[11px] font-bold flex items-center gap-1 active:scale-95 transition-all shadow-sm">
+                    <span class="material-symbols-outlined text-sm">open_in_new</span> Yeni Sekmede Aç
+                </a>
+                <button onclick="closeModal('modal-pdf-preview')" class="w-8 h-8 flex items-center justify-center rounded-full text-slate-400 hover:bg-slate-800 active:scale-95">
+                    <span class="material-symbols-outlined text-sm">close</span>
+                </button>
+            </div>
         </div>
-        <div class="flex-1 relative bg-slate-100 dark:bg-slate-950">
+        <div id="pdfCanvasContainer" class="flex-1 relative bg-slate-100 dark:bg-slate-950 p-3 overflow-y-auto">
             <iframe id="pdfPreviewFrame" class="w-full h-full border-0"></iframe>
         </div>
     </div>
@@ -1126,6 +1131,72 @@ function closeSheetIslemler() {
     if (el) { el.classList.add('hidden'); el.classList.remove('flex'); }
 }
 
+// Universal PDF Canvas Renderer (Mobile Phone & Tablet Compatible)
+function renderPdfOnCanvasContainer(containerId, pdfUrl) {
+    const container = document.getElementById(containerId);
+    if (!container) return;
+    container.innerHTML = `
+        <div class="p-8 text-center text-slate-400 text-xs flex flex-col items-center justify-center gap-2">
+            <span class="material-symbols-outlined animate-spin text-3xl text-sky-500">sync</span>
+            <span class="font-bold">PDF Sayfaları Yükleniyor...</span>
+        </div>
+    `;
+
+    if (typeof pdfjsLib === 'undefined') {
+        container.innerHTML = `
+            <div class="w-full h-full flex flex-col items-center justify-center p-4">
+                <iframe src="${pdfUrl}" class="w-full h-[65vh] rounded-xl shadow-sm border-0 mb-3"></iframe>
+                <a href="${pdfUrl}" target="_blank" class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-sky-500 text-white rounded-xl text-xs font-bold shadow-md">
+                    <span class="material-symbols-outlined text-base">open_in_new</span> Yeni Sekmede Aç / İndir
+                </a>
+            </div>
+        `;
+        return;
+    }
+
+    pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+    const loadingTask = pdfjsLib.getDocument(pdfUrl);
+    loadingTask.promise.then(function(pdf) {
+        container.innerHTML = '';
+        const numPages = pdf.numPages;
+
+        for (let pageNum = 1; pageNum <= numPages; pageNum++) {
+            pdf.getPage(pageNum).then(function(page) {
+                const screenWidth = container.clientWidth || window.innerWidth || 360;
+                const unscaledViewport = page.getViewport({ scale: 1.0 });
+                const desiredScale = (screenWidth - 32) / unscaledViewport.width;
+                const viewport = page.getViewport({ scale: Math.max(desiredScale, 0.85) });
+
+                const canvas = document.createElement('canvas');
+                const context = canvas.getContext('2d');
+                canvas.height = viewport.height;
+                canvas.width = viewport.width;
+                canvas.className = 'max-w-full h-auto mx-auto shadow-md rounded-xl mb-4 bg-white border border-slate-200 dark:border-slate-800';
+
+                container.appendChild(canvas);
+
+                const renderContext = {
+                    canvasContext: context,
+                    viewport: viewport
+                };
+                page.render(renderContext);
+            });
+        }
+    }).catch(function(err) {
+        console.warn('PDF.js render fallback:', err);
+        container.innerHTML = `
+            <div class="p-6 text-center space-y-3 bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 my-auto">
+                <span class="material-symbols-outlined text-4xl text-sky-500 mb-1">picture_as_pdf</span>
+                <p class="text-xs font-bold text-slate-700 dark:text-slate-200">PDF Belgesi Hazır</p>
+                <a href="${pdfUrl}" target="_blank" class="inline-flex items-center gap-1.5 px-4 py-2.5 bg-sky-500 hover:bg-sky-600 text-white rounded-xl text-xs font-bold shadow-md active:scale-95 transition-all">
+                    <span class="material-symbols-outlined text-base">open_in_new</span> Belgeyi Yeni Sekmede Aç / İndir
+                </a>
+            </div>
+        `;
+    });
+}
+
 // PDF Önizleme
 function previewGidenPdf() {
     if (typeof $.fn.summernote !== 'undefined' && $('#giden_evrak_icerik').data('summernote')) {
@@ -1148,8 +1219,9 @@ function previewGidenPdf() {
     .then(blob => {
         MobileSwal.close();
         const url = URL.createObjectURL(blob);
-        document.getElementById('pdfPreviewFrame').src = url;
+        document.getElementById('btnPdfOpenNewTab').href = url;
         openModal('modal-pdf-preview');
+        renderPdfOnCanvasContainer('pdfCanvasContainer', url);
     })
     .catch(() => {
         MobileSwal.close();

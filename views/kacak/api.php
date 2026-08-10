@@ -629,9 +629,26 @@ try {
             $liste = $Kacak->getTeslimAlmaListesi($bas, $bit);
             foreach ($liste as &$satir) {
                 $satir['tarih_formatted'] = Date::dmY($satir['tarih']);
+                $satir['token'] = Security::encrypt($satir['id']);
+                unset($satir['id']);
             }
             unset($satir);
             kacakYanit(true, '', ['baslangic' => $bas, 'bitis' => $bit, 'data' => $liste]);
+            break;
+
+        case 'teslim-alindi-isaretle':
+            kacakYetkiKontrol('kacak_duzenle');
+            $tokenlar = $_POST['tokens'] ?? [];
+            if (!is_array($tokenlar)) $tokenlar = [];
+            $ids = [];
+            foreach ($tokenlar as $token) {
+                $id = (int) Security::decrypt((string) $token);
+                if ($id > 0) $ids[] = $id;
+            }
+            if (empty($ids)) kacakYanit(false, 'En az bir kayıt seçmelisiniz.');
+            $etkilenen = $Kacak->teslimAlindiIsaretle($ids, $userId);
+            $Log->logAction($userId, 'Kaçak Evrak Teslim Alındı', 'Kayıt sayısı: ' . count(array_unique($ids)), SystemLogModel::LEVEL_IMPORTANT);
+            kacakYanit(true, count(array_unique($ids)) . ' kayıt teslim alındı olarak işaretlendi.', ['affected' => $etkilenen]);
             break;
 
         // =====================================================

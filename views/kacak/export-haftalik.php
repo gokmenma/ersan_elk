@@ -6,6 +6,7 @@ if (session_status() === PHP_SESSION_NONE) {
 require_once dirname(__DIR__, 2) . '/bootstrap.php';
 
 use App\Helper\Date;
+use App\Helper\Security;
 use App\Model\KacakKontrolModel;
 use App\Service\Gate;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -26,14 +27,29 @@ if (!Gate::allows('kacak_islemleri') && !Gate::isSuperAdmin()) {
     exit('Yetkisiz erişim.');
 }
 
-$tip = $_GET['tip'] ?? 'ozet';
-$baslangic = Date::convertExcelDate($_GET['start_date'] ?? '', 'Y-m-d') ?: date('Y-m-d', strtotime('monday this week'));
-$bitis = Date::convertExcelDate($_GET['end_date'] ?? '', 'Y-m-d') ?: date('Y-m-d');
+$istek = ($_SERVER['REQUEST_METHOD'] ?? 'GET') === 'POST' ? $_POST : $_GET;
+$tip = $istek['tip'] ?? 'ozet';
+$baslangic = Date::convertExcelDate($istek['start_date'] ?? '', 'Y-m-d') ?: date('Y-m-d', strtotime('monday this week'));
+$bitis = Date::convertExcelDate($istek['end_date'] ?? '', 'Y-m-d') ?: date('Y-m-d');
 
 $Kacak = new KacakKontrolModel();
 
+function seciliTeslimKayitlari(KacakKontrolModel $model, string $baslangic, string $bitis, array $tokenlar): array
+{
+    $ids = [];
+    foreach ($tokenlar as $token) {
+        $id = (int) Security::decrypt((string) $token);
+        if ($id > 0) $ids[$id] = true;
+    }
+    if (empty($ids)) return [];
+    return array_values(array_filter(
+        $model->getTeslimAlmaListesi($baslangic, $bitis),
+        static fn(array $kayit): bool => isset($ids[(int) $kayit['id']])
+    ));
+}
+
 if ($tip === 'teslim_zip') {
-    $liste = $Kacak->getTeslimAlmaListesi($baslangic, $bitis);
+    $liste = seciliTeslimKayitlari($Kacak, $baslangic, $bitis, (array) ($istek['tokens'] ?? []));
     if (empty($liste)) {
         http_response_code(404);
         exit('Seçilen tarih aralığında teslim alma listesinde kayıt bulunamadı.');
@@ -175,12 +191,17 @@ $kenarlik = [
 
 if ($tip === 'teslim') {
     $sheet->setTitle('Teslim Alma Listesi');
-    $basliklar = ['TARİH', 'TUTANAK NO', 'MÜKELLEF ADI', 'İLÇE', 'DURUM', 'EKİP', 'SEBEP', 'FOTO ÇIKTISI'];
+    $basliklar = ['TARİH', 'TUTANAK NO', 'MÜKELLEF ADI', 'İLÇE', 'TÜR', 'EKİP', 'SEBEP', 'FOTO ÇIKTISI', 'TESLİM DURUMU'];
     $sheet->fromArray($basliklar, null, 'A1');
-    $sheet->getStyle('A1:H1')->applyFromArray($basligStili);
+    $sheet->getStyle('A1:I1')->applyFromArray($basligStili);
 
     $satir = 2;
-    foreach ($Kacak->getTeslimAlmaListesi($baslangic, $bitis) as $kayit) {
+    $teslimListe = seciliTeslimKayitlari($Kacak, $baslangic, $bitis, (array) ($istek['tokens'] ?? []));
+    if (empty($teslimListe)) {
+        http_response_code(422);
+        exit('İndirmek için en az bir kayıt seçmelisiniz.');
+    }
+    foreach ($teslimListe as $kayit) {
         $sheet->fromArray([
             Date::dmY($kayit['tarih']),
             $kayit['tutanak_no'],
@@ -190,13 +211,14 @@ if ($tip === 'teslim') {
             $kayit['ekip_adi'],
             $kayit['sebep'],
             $kayit['foto_cikti_gerekli'] ? 'GEREKLİ' : '-',
+            $kayit['teslim_durumu'],
         ], null, 'A' . $satir);
         $satir++;
     }
 
     $sonSatir = max(1, $satir - 1);
-    $sheet->getStyle('A1:H' . $sonSatir)->applyFromArray($kenarlik);
-    foreach (range('A', 'H') as $sutun) {
+    $sheet->getStyle('A1:I' . $sonSatir)->applyFromArray($kenarlik);
+    foreach (range('A', 'I') as $sutun) {
         $sheet->getColumnDimension($sutun)->setAutoSize(true);
     }
 
