@@ -308,6 +308,81 @@ class DemirbasZimmetModel extends Model
         }
     }
 
+    /**
+     * Zimmet kaydını ve ilgili hareket detaylarını güncelle
+     */
+    public function updateZimmetDetails($id, $teslimTarihi, $teslimMiktar, $aciklama, $iadeTarihi = null, $iadeAciklama = null)
+    {
+        $id = is_numeric($id) ? (int) $id : Security::decrypt($id);
+        if (!$id || $id <= 0) {
+            throw new \Exception("Geçersiz zimmet ID.");
+        }
+
+        $zimmet = $this->find($id);
+        if (!$zimmet) {
+            throw new \Exception("Zimmet kaydı bulunamadı.");
+        }
+
+        $startedTransaction = false;
+        if (!$this->db->inTransaction()) {
+            $this->db->beginTransaction();
+            $startedTransaction = true;
+        }
+
+        try {
+            // Zimmet kaydını güncelle
+            $sqlUp = $this->db->prepare("UPDATE {$this->table} SET teslim_tarihi = :teslim_tarihi, teslim_miktar = :teslim_miktar, aciklama = :aciklama, guncelleme_tarihi = NOW() WHERE id = :id");
+            $sqlUp->execute([
+                'teslim_tarihi' => Date::Ymd($teslimTarihi),
+                'teslim_miktar' => (int) $teslimMiktar,
+                'aciklama' => $aciklama,
+                'id' => $id
+            ]);
+
+            // Zimmet ve İade hareketlerini güncelle
+            $hareketler = $this->Hareket->getZimmetHareketleri($id);
+            $zimmetHareketId = 0;
+            $iadeHareketId = 0;
+
+            foreach ($hareketler as $h) {
+                if (in_array(strtolower($h->hareket_tipi), ['zimmet'])) {
+                    $zimmetHareketId = $h->id;
+                    $sqlH = $this->db->prepare("UPDATE demirbas_hareketler SET tarih = :tarih, miktar = :miktar, aciklama = :aciklama WHERE id = :hid");
+                    $sqlH->execute([
+                        'tarih' => Date::Ymd($teslimTarihi),
+                        'miktar' => (int) $teslimMiktar,
+                        'aciklama' => $aciklama,
+                        'hid' => $h->id
+                    ]);
+                } elseif (in_array(strtolower($h->hareket_tipi), ['iade', 'sarf', 'kayip'])) {
+                    $iadeHareketId = $h->id;
+                    if (!empty($iadeTarihi)) {
+                        $sqlH = $this->db->prepare("UPDATE demirbas_hareketler SET tarih = :tarih, aciklama = :aciklama WHERE id = :hid");
+                        $sqlH->execute([
+                            'tarih' => Date::Ymd($iadeTarihi),
+                            'aciklama' => $iadeAciklama ?? '',
+                            'hid' => $h->id
+                        ]);
+                    }
+                }
+            }
+
+            if ($startedTransaction) {
+                $this->db->commit();
+            }
+
+            return [
+                'zimmet' => $zimmet,
+                'zimmetHareketId' => $zimmetHareketId,
+                'iadeHareketId' => $iadeHareketId
+            ];
+        } catch (\Exception $e) {
+            if ($startedTransaction) {
+                $this->db->rollBack();
+            }
+            throw $e;
+        }
+    }
 
     /**
      * Zimmet özet istatistikleri

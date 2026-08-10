@@ -2930,11 +2930,6 @@ if ($action == "zimmet-duzenle-get") {
 // Zimmet Düzenle - Kaydet
 if ($action == "zimmet-duzenle-save") {
     $id = $_POST['zimmet_id'] ?? '';
-    if (!is_numeric($id)) {
-        $id = Security::decrypt($id);
-    }
-    $id = (int) $id;
-
     $teslim_tarihi = $_POST['teslim_tarihi'] ?? '';
     $teslim_miktar = (int) ($_POST['teslim_miktar'] ?? 1);
     $aciklama = trim($_POST['aciklama'] ?? '');
@@ -2942,51 +2937,10 @@ if ($action == "zimmet-duzenle-save") {
     $iade_aciklama = trim($_POST['iade_aciklama'] ?? '');
 
     try {
-        if ($id <= 0) {
-            throw new Exception("Geçersiz zimmet ID.");
-        }
-
-        $zimmet = $Zimmet->find($id);
-        if (!$zimmet) {
-            throw new Exception("Zimmet kaydı bulunamadı.");
-        }
-
-        // Zimmet kaydını güncelle
-        $sqlUp = $db->prepare("UPDATE demirbas_zimmet SET teslim_tarihi = :teslim_tarihi, teslim_miktar = :teslim_miktar, aciklama = :aciklama, guncelleme_tarihi = NOW() WHERE id = :id");
-        $sqlUp->execute([
-            'teslim_tarihi' => Date::Ymd($teslim_tarihi),
-            'teslim_miktar' => $teslim_miktar,
-            'aciklama' => $aciklama,
-            'id' => $id
-        ]);
-
-        // Zimmet ve İade hareketlerini güncelle
-        $hareketler = $Hareket->getZimmetHareketleri($id);
-        $zimmetHareketId = 0;
-        $iadeHareketId = 0;
-
-        foreach ($hareketler as $h) {
-            if ($h->hareket_tipi === 'zimmet' || $h->hareket_tipi === 'Zimmet') {
-                $zimmetHareketId = $h->id;
-                $sqlH = $db->prepare("UPDATE demirbas_hareketler SET tarih = :tarih, miktar = :miktar, aciklama = :aciklama WHERE id = :hid");
-                $sqlH->execute([
-                    'tarih' => Date::Ymd($teslim_tarihi),
-                    'miktar' => $teslim_miktar,
-                    'aciklama' => $aciklama,
-                    'hid' => $h->id
-                ]);
-            } elseif (in_array($h->hareket_tipi, ['iade', 'sarf', 'kayip'])) {
-                $iadeHareketId = $h->id;
-                if (!empty($iade_tarihi)) {
-                    $sqlH = $db->prepare("UPDATE demirbas_hareketler SET tarih = :tarih, aciklama = :aciklama WHERE id = :hid");
-                    $sqlH->execute([
-                        'tarih' => Date::Ymd($iade_tarihi),
-                        'aciklama' => $iade_aciklama,
-                        'hid' => $h->id
-                    ]);
-                }
-            }
-        }
+        $updateResult = $Zimmet->updateZimmetDetails($id, $teslim_tarihi, $teslim_miktar, $aciklama, $iade_tarihi, $iade_aciklama);
+        $id = $updateResult['zimmet']->id;
+        $zimmetHareketId = $updateResult['zimmetHareketId'];
+        $iadeHareketId = $updateResult['iadeHareketId'];
 
         $fotoMesaj = "";
         // Yeni teslim fotoğraflarını işle

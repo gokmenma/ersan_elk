@@ -2555,14 +2555,9 @@ $(document).on("submit", "#zimmetDuzenleForm", function (e) {
       btn.prop("disabled", false).html('<i class="bx bx-save me-1"></i>Değişiklikleri Kaydet');
       if (data.status === "success") {
         $("#zimmetDuzenleModal").modal("hide");
-        Swal.fire("Başarılı!", data.message, "success");
-        if (typeof datatable !== "undefined" && datatable) {
-          datatable.ajax.reload(null, false);
-        } else if (typeof table !== "undefined" && table) {
-          table.ajax.reload(null, false);
-        } else {
+        Swal.fire("Başarılı!", data.message, "success").then(() => {
           location.reload();
-        }
+        });
       } else {
         Swal.fire("Hata!", data.message, "error");
       }

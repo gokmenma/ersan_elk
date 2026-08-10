@@ -958,13 +958,12 @@ class KacakKontrolModel extends Model
                 LEFT JOIN kacak_teslim_takip t
                   ON t.kacak_id = k.id AND t.firma_id = k.firma_id
                  AND t.is_active = 1 AND t.deleted_at IS NULL
-                WHERE k.firma_id = ? AND k.tarih <= ?
+                WHERE k.firma_id = ? AND k.tarih BETWEEN ? AND ?
                   AND " . self::raporKosulu('k') . "
-                  AND (k.tarih BETWEEN ? AND ? OR COALESCE(t.teslim_alindi, 0) = 0)
                   AND (k.ilce IN ($merkezPlaceholders) OR k.tur IN ('Kaçak', 'Usülsüz'))
                 ORDER BY k.ilce ASC, k.tarih ASC, k.tutanak_no ASC";
 
-        $params = array_merge([$this->firmaId(), $bitis, $baslangic, $bitis], self::MERKEZ_ILCELER);
+        $params = array_merge([$this->firmaId(), $baslangic, $bitis], self::MERKEZ_ILCELER);
         $stmt = $this->db->prepare($sql);
         $stmt->execute($params);
         $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
