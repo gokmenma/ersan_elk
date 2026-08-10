@@ -608,6 +608,18 @@ $(document).ready(function () {
     }
   });
 
+  function toggleUstYaziDurumu() {
+    const isChecked = $("#ust_yazi_gerekli_degil").is(":checked");
+    if (isChecked) {
+      $("#ustYaziMetinBilgisi").removeClass("d-none");
+    } else {
+      $("#ustYaziMetinBilgisi").addClass("d-none");
+    }
+  }
+
+  $(document).on("change", "#ust_yazi_gerekli_degil", toggleUstYaziDurumu);
+  toggleUstYaziDurumu();
+
   function validateForm() {
     if (!$("#evrak_no").val().trim() || !$("#konu").val().trim() || !$("#kurum_adi").val().trim()) {
       Swal.fire("Eksik Bilgi", "Sayı, konu ve muhatap alanları zorunludur.", "warning");
@@ -617,7 +629,8 @@ $(document).ready(function () {
       Swal.fire("Eksik Bilgi", "En az bir imza atacak kişi seçiniz.", "warning");
       return false;
     }
-    if ($("#giden_evrak_icerik").summernote("isEmpty")) {
+    const ustYaziGerekliDegil = $("#ust_yazi_gerekli_degil").is(":checked");
+    if (!ustYaziGerekliDegil && $("#giden_evrak_icerik").summernote("isEmpty")) {
       Swal.fire("Eksik Bilgi", "Yazı içeriği boş bırakılamaz.", "warning");
       return false;
     }

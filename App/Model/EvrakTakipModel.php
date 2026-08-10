@@ -37,6 +37,9 @@ class EvrakTakipModel extends Model
             if (!in_array('imza_kimin_adina_json', $cols)) {
                 $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN imza_kimin_adina_json text DEFAULT NULL AFTER imza_kullanici_ids");
             }
+            if (!in_array('ust_yazi_gerekli_degil', $cols)) {
+                $this->db->exec("ALTER TABLE {$this->table} ADD COLUMN ust_yazi_gerekli_degil tinyint(1) NOT NULL DEFAULT 0 AFTER aciklama");
+            }
         } catch (\Exception $e) {
             // Silent catch to prevent errors on strict environments
         }

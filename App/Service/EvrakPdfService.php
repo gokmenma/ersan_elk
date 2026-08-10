@@ -15,8 +15,13 @@ final class EvrakPdfService
         $data = (array) $evrak;
         $escape = static fn($value): string => htmlspecialchars((string) ($value ?? ''), ENT_QUOTES, 'UTF-8');
         $date = !empty($data['tarih']) ? date('d.m.Y', strtotime((string) $data['tarih'])) : date('d.m.Y');
+        $ustYaziGerekliDegil = !empty($data['ust_yazi_gerekli_degil']);
         $content = RichTextSanitizer::sanitize($data['aciklama'] ?? '');
-        if ($content === '') {
+        if ($ustYaziGerekliDegil) {
+            if ($content === '') {
+                $content = '<div style="text-align:center; padding: 25px 0; color: #64748b; font-style: italic; font-size: 11pt;">(Bu evrak üst yazısız olarak tanzim edilmiştir.)</div>';
+            }
+        } elseif ($content === '') {
             $content = '<p>İçerik girilmemiştir.</p>';
         }
 

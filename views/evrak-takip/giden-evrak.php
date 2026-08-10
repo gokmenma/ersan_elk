@@ -220,8 +220,26 @@ if ($record) {
                         </ul>
                         <div class="tab-content p-3">
                             <div class="tab-pane fade show active" id="gidenIcerikTab">
-                                <textarea id="giden_evrak_icerik" name="aciklama" class="form-control"><?php echo htmlspecialchars((string) $value('aciklama'), ENT_QUOTES, 'UTF-8'); ?></textarea>
-                                <div class="form-text mt-2">Varsayılan Times New Roman 12 puntodur. Summernote içindeki yazı tipi değişiklikleri PDF'e aktarılır.</div>
+                                <div class="d-flex flex-wrap align-items-center justify-content-between mb-3 p-2 bg-light-subtle border rounded-3 gap-2">
+                                    <div class="d-flex align-items-center gap-2">
+                                        <i data-feather="file-minus" class="icon-sm text-warning"></i>
+                                        <div>
+                                            <span class="fw-bold text-dark small d-block">Üst Yazı Durumu</span>
+                                            <span class="small text-muted" style="font-size:11px">Metin yazmadan sadece eklerle evrak göndermek için aktifleştirin.</span>
+                                        </div>
+                                    </div>
+                                    <div class="form-check form-switch m-0">
+                                        <input class="form-check-input" type="checkbox" name="ust_yazi_gerekli_degil" id="ust_yazi_gerekli_degil" value="1" <?php echo !empty($value('ust_yazi_gerekli_degil')) ? 'checked' : ''; ?> <?php echo $kilitli ? 'disabled' : ''; ?>>
+                                        <label class="form-check-label fw-bold text-dark small ms-1" for="ust_yazi_gerekli_degil">Üst Yazı Gerekli Değil</label>
+                                    </div>
+                                </div>
+                                <div id="ustYaziMetinBilgisi" class="alert alert-info py-2 px-3 mb-3 small d-none">
+                                    <i data-feather="info" class="icon-xs me-1"></i> Üst yazı gerekli değil seçeneği işaretlendi. Evrak üst yazısız tanzim edilecektir.
+                                </div>
+                                <div id="editorContainer">
+                                    <textarea id="giden_evrak_icerik" name="aciklama" class="form-control"><?php echo htmlspecialchars((string) $value('aciklama'), ENT_QUOTES, 'UTF-8'); ?></textarea>
+                                    <div class="form-text mt-2">Varsayılan Times New Roman 12 puntodur. Summernote içindeki yazı tipi değişiklikleri PDF'e aktarılır.</div>
+                                </div>
                             </div>
                             <div class="tab-pane fade" id="gidenEklerTab">
                                 <div class="border rounded-3 p-3">

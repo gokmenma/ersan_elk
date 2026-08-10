@@ -367,14 +367,45 @@ class DemirbasZimmetModel extends Model
                 }
             }
 
+            // Eski kayıtta zimmet hareketi eksikse otomatik oluştur
+            if ($zimmetHareketId == 0) {
+                $zimmetHareketId = $this->Hareket->hareketEkle([
+                    'demirbas_id' => $zimmet->demirbas_id,
+                    'personel_id' => $zimmet->personel_id,
+                    'zimmet_id' => $id,
+                    'hareket_tipi' => 'zimmet',
+                    'miktar' => (int) $teslimMiktar,
+                    'tarih' => $teslimTarihi,
+                    'aciklama' => $aciklama,
+                    'islem_yapan_id' => $_SESSION['id'] ?? null,
+                    'kaynak' => 'manuel'
+                ]);
+            }
+
+            // İade hareketi yoksa ama iade tarihi/fotoğrafı girilmişse veya zimmet iade edilmişse hareket oluştur
+            $hasIadeFoto = isset($_FILES['iade_fotograflari']) && !empty($_FILES['iade_fotograflari']['name'][0]);
+            if ($iadeHareketId == 0 && (!empty($iadeTarihi) || $hasIadeFoto || $zimmet->durum !== 'teslim')) {
+                $iadeHareketId = $this->Hareket->hareketEkle([
+                    'demirbas_id' => $zimmet->demirbas_id,
+                    'personel_id' => $zimmet->personel_id,
+                    'zimmet_id' => $id,
+                    'hareket_tipi' => 'iade',
+                    'miktar' => (int) $teslimMiktar,
+                    'tarih' => !empty($iadeTarihi) ? $iadeTarihi : ($zimmet->teslim_tarihi ?? date('Y-m-d')),
+                    'aciklama' => $iadeAciklama ?? '',
+                    'islem_yapan_id' => $_SESSION['id'] ?? null,
+                    'kaynak' => 'manuel'
+                ]);
+            }
+
             if ($startedTransaction) {
                 $this->db->commit();
             }
 
             return [
                 'zimmet' => $zimmet,
-                'zimmetHareketId' => $zimmetHareketId,
-                'iadeHareketId' => $iadeHareketId
+                'zimmetHareketId' => $zimmetHareketId > 0 ? $zimmetHareketId : null,
+                'iadeHareketId' => $iadeHareketId > 0 ? $iadeHareketId : null
             ];
         } catch (\Exception $e) {
             if ($startedTransaction) {

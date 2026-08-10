@@ -44,6 +44,7 @@ try {
             'personel_adi' => $model->getPersonelName($personelId),
             'ilgili_personel_adi' => $model->getPersonelName($ilgiliPersonelId),
             'aciklama' => RichTextSanitizer::sanitize($_POST['aciklama'] ?? ''),
+            'ust_yazi_gerekli_degil' => !empty($_POST['ust_yazi_gerekli_degil']) ? 1 : 0,
             'yazi_tipi' => ($_POST['yazi_tipi'] ?? 'times_new_roman') === 'arial' ? 'arial' : 'times_new_roman',
             'ilgiler' => trim((string) ($_POST['ilgiler'] ?? '')),
             'ekler' => trim((string) ($_POST['ekler'] ?? '')),

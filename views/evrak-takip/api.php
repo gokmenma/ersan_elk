@@ -71,7 +71,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (empty(trim((string) ($data['kurum_adi'] ?? '')))) {
                     throw new Exception('Muhatap Kurum / Kişi alanını doldurunuz.');
                 }
-                if (($data['evrak_tipi'] ?? 'gelen') === 'giden') {
+                $ustYaziGerekliDegil = !empty($data['ust_yazi_gerekli_degil']) ? 1 : 0;
+                $data['ust_yazi_gerekli_degil'] = $ustYaziGerekliDegil;
+
+                if (($data['evrak_tipi'] ?? 'gelen') === 'giden' && !$ustYaziGerekliDegil) {
                     if (empty(trim(strip_tags((string) ($data['aciklama'] ?? ''))))) {
                         throw new Exception('Resmî Yazı Metni (İçerik) alanını doldurunuz.');
                     }

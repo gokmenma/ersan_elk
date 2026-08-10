@@ -16,6 +16,8 @@ class DemirbasZimmetFotoModel extends Model
 
     public function addFoto($zimmetId, $hareketId, $foto_turu, $dosyaAdi, $orijinalAd, $mimeTipi, $boyut, $yukleyenId)
     {
+        $hareketId = (!empty($hareketId) && (int)$hareketId > 0) ? (int)$hareketId : null;
+
         $sql = $this->db->prepare("
             INSERT INTO {$this->table}
                 (firma_id, zimmet_id, hareket_id, foto_turu, dosya_adi, orijinal_ad, mime_tipi, boyutu, yukleyen_id)

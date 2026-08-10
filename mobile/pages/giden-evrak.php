@@ -432,6 +432,16 @@ $savedKiminAdina = json_decode((string) ($record->imza_kimin_adina_json ?? '[]')
                     </button>
                 </div>
 
+                <div class="flex items-center justify-between p-3 bg-slate-50 dark:bg-slate-800/50 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 mb-3">
+                    <div class="flex items-center gap-2">
+                        <span class="material-symbols-outlined text-amber-500 text-lg">description</span>
+                        <span class="text-xs font-bold text-slate-600 dark:text-slate-300">Üst Yazı Gerekli Değil</span>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" name="ust_yazi_gerekli_degil" id="ust_yazi_gerekli_degil" value="1" <?= !empty($value('ust_yazi_gerekli_degil')) ? 'checked' : '' ?> <?= $kilitli ? 'disabled' : '' ?> class="sr-only peer">
+                        <div class="w-11 h-6 bg-slate-200 peer-focus:outline-none rounded-full peer dark:bg-slate-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-amber-500"></div>
+                    </label>
+                </div>
                 <div>
                     <textarea id="giden_evrak_icerik" name="aciklama" class="w-full min-h-[260px] bg-slate-50 dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-xl p-3 text-xs font-serif leading-relaxed focus:ring-2 focus:ring-sky-500 outline-none dark:text-white" placeholder="Resmî yazı metnini giriniz..." <?= $kilitli ? 'disabled' : '' ?>><?= htmlspecialchars((string) $value('aciklama')) ?></textarea>
                     <div class="text-[10px] text-slate-400 mt-1">Varsayılan Times New Roman 12 puntodur. HTML biçimlendirmeleri PDF'e aktarılır.</div>
@@ -1052,7 +1062,8 @@ function validateGidenForm() {
         return false;
     }
 
-    if (!icerikText) {
+    const ustYaziGerekliDegil = document.getElementById('ust_yazi_gerekli_degil')?.checked;
+    if (!ustYaziGerekliDegil && !icerikText) {
         switchTab('icerik');
         MobileSwal.fire('Eksik Bilgi', 'Lütfen Resmî Yazı Metni (İçerik) alanını doldurunuz.', 'warning');
         return false;
