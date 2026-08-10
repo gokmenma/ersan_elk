@@ -106,6 +106,12 @@ class BordroPersonelModel extends Model
      */
     private function getCalismaGecmisiAktifGunSayisi(int $personelId, string $donemBaslangic, string $donemBitis): ?int
     {
+        $aktifGunler = $this->getCalismaGecmisiAktifTarihleri($personelId, $donemBaslangic, $donemBitis);
+        return $aktifGunler === null ? null : count($aktifGunler);
+    }
+
+    private function getCalismaGecmisiAktifTarihleri(int $personelId, string $donemBaslangic, string $donemBitis): ?array
+    {
         $stmt = $this->db->prepare("SELECT ise_giris_tarihi, isten_cikis_tarihi
             FROM personel_calisma_gecmisi
             WHERE personel_id = ?
@@ -119,10 +125,15 @@ class BordroPersonelModel extends Model
             return null;
         }
 
-        return $this->birlesikTarihAraligiGunSayisi($araliklar, $donemBaslangic, $donemBitis);
+        return $this->birlesikTarihAraligiGunleri($araliklar, $donemBaslangic, $donemBitis);
     }
 
     private function birlesikTarihAraligiGunSayisi(array $araliklar, string $donemBaslangic, string $donemBitis): int
+    {
+        return count($this->birlesikTarihAraligiGunleri($araliklar, $donemBaslangic, $donemBitis));
+    }
+
+    private function birlesikTarihAraligiGunleri(array $araliklar, string $donemBaslangic, string $donemBitis): array
     {
         $aktifGunler = [];
 
@@ -142,7 +153,74 @@ class BordroPersonelModel extends Model
             }
         }
 
-        return count($aktifGunler);
+        return $aktifGunler;
+    }
+
+    /** Prim usulü ile sabit maaşın aynı ayda bulunduğu geçişlerde sabit maaşı yalnız kendi günlerine uygular. */
+    private function getKarisikMaasGecmisiOzeti(int $personelId, string $donemBaslangic, string $donemBitis): ?array
+    {
+        $stmt = $this->db->prepare("SELECT maas_durumu, maas_tutari, baslangic_tarihi, bitis_tarihi
+            FROM personel_gorev_gecmisi
+            WHERE personel_id = ? AND baslangic_tarihi <= ?
+              AND (bitis_tarihi IS NULL OR bitis_tarihi >= ?)
+            ORDER BY baslangic_tarihi ASC, id ASC");
+        $stmt->execute([$personelId, $donemBitis, $donemBaslangic]);
+        $kayitlar = $stmt->fetchAll(PDO::FETCH_ASSOC);
+        if (count($kayitlar) < 2) return null;
+
+        $hasPrim = false;
+        $hasSabit = false;
+        foreach ($kayitlar as $kayit) {
+            $prim = stripos((string) ($kayit['maas_durumu'] ?? ''), 'prim') !== false;
+            $hasPrim = $hasPrim || $prim;
+            $hasSabit = $hasSabit || !$prim;
+        }
+        if (!$hasPrim || !$hasSabit) return null;
+
+        $aktifGunler = $this->getCalismaGecmisiAktifTarihleri($personelId, $donemBaslangic, $donemBitis);
+        $ucretsizGunler = $this->getUcretsizIzinTarihleri($personelId, $donemBaslangic, $donemBitis);
+        $sabitHakedis = 0.0;
+        $sabitGun = 0;
+        $atananGunler = [];
+
+        foreach ($kayitlar as $kayit) {
+            if (stripos((string) ($kayit['maas_durumu'] ?? ''), 'prim') !== false) continue;
+            $basTs = strtotime(max($donemBaslangic, (string) $kayit['baslangic_tarihi']));
+            $bitisRaw = $kayit['bitis_tarihi'] ?? null;
+            $bitTs = strtotime($this->isValidDateValue($bitisRaw) ? min($donemBitis, (string) $bitisRaw) : $donemBitis);
+            if ($basTs === false || $bitTs === false) continue;
+
+            for ($ts = $basTs; $ts <= $bitTs; $ts = strtotime('+1 day', $ts)) {
+                $tarih = date('Y-m-d', $ts);
+                if (isset($atananGunler[$tarih]) || ($aktifGunler !== null && !isset($aktifGunler[$tarih])) || isset($ucretsizGunler[$tarih])) continue;
+                $atananGunler[$tarih] = true;
+                $sabitGun++;
+                $sabitHakedis += floatval($kayit['maas_tutari'] ?? 0) / 30;
+            }
+        }
+
+        return ['sabit_hakedis' => round($sabitHakedis, 2), 'sabit_gun' => $sabitGun, 'has_prim' => true];
+    }
+
+    private function getUcretsizIzinTarihleri(int $personelId, string $donemBaslangic, string $donemBitis): array
+    {
+        $stmt = $this->db->prepare("SELECT pi.baslangic_tarihi, pi.bitis_tarihi
+            FROM personel_izinleri pi
+            INNER JOIN tanimlamalar t ON t.id = pi.izin_tipi_id
+            WHERE pi.personel_id = ? AND pi.onay_durumu = 'Onaylandı'
+              AND pi.silinme_tarihi IS NULL AND t.silinme_tarihi IS NULL
+              AND t.grup = 'izin_turu' AND t.ucretli_mi = 0 AND t.kisa_kod NOT IN ('RP')
+              AND pi.baslangic_tarihi <= ? AND pi.bitis_tarihi >= ?");
+        $stmt->execute([$personelId, $donemBitis, $donemBaslangic]);
+        $gunler = [];
+        foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $izin) {
+            $basTs = strtotime(max($donemBaslangic, (string) $izin['baslangic_tarihi']));
+            $bitTs = strtotime(min($donemBitis, (string) $izin['bitis_tarihi']));
+            for ($ts = $basTs; $ts !== false && $bitTs !== false && $ts <= $bitTs; $ts = strtotime('+1 day', $ts)) {
+                $gunler[date('Y-m-d', $ts)] = true;
+            }
+        }
+        return $gunler;
     }
 
     private function getMaasHesapGunu(int $aktifTakvimGun, int $donemTakvimGun, int $eksikGunToplami): int
@@ -618,6 +696,10 @@ class BordroPersonelModel extends Model
         }
 
         $hesaplamayaEsasMaas = $maasTutari;
+        $karisikMaasOzeti = $this->getKarisikMaasGecmisiOzeti((int) $p->personel_id, $donemBaslangic, $donemBitis);
+        if ($karisikMaasOzeti !== null) {
+            $maasDurumu = 'Prim Usülü / Sabit Maaş';
+        }
         $isInclusive = $this->hasMaasaDahilSosyalYardim($p);
 
         $toplamKesinti = floatval($p->guncel_toplam_kesinti ?? $p->kesinti_tutar ?? 0);
@@ -659,17 +741,13 @@ class BordroPersonelModel extends Model
 
         $kesintiHaricIcra = max(0, $toplamKesinti - $icraKesintisi);
 
-        $ucretsizIzinGunu = 0;
-        if (isset($p->hd_ucretsiz_izin_gunu) && $p->hd_ucretsiz_izin_gunu !== null) {
-            $ucretsizIzinGunu = intval($p->hd_ucretsiz_izin_gunu);
-        } elseif (
-            isset($p->hd_ucretsiz_izin_dusumu, $p->hd_nominal_maas)
-            && $p->hd_ucretsiz_izin_dusumu !== null
-            && $p->hd_nominal_maas !== null
-            && floatval($p->hd_nominal_maas) > 0
-        ) {
-            $ucretsizIzinGunu = (int) round(floatval($p->hd_ucretsiz_izin_dusumu) / (floatval($p->hd_nominal_maas) / 30));
-        }
+        // Gösterimde eski hesaplama_detay değerine güvenme; izin ve çalışma geçmişi
+        // sonradan değişmiş olabilir. Güncel kayıtlardan tarih bazında yeniden hesapla.
+        $ucretsizIzinGunu = $this->getUcretsizIzinGunuDirekt(
+            (int) $p->personel_id,
+            $donemBaslangic,
+            $donemBitis
+        );
 
         $raporGunu = 0;
         if (isset($p->hd_rapor_gunu) && $p->hd_rapor_gunu !== null) {
@@ -682,6 +760,14 @@ class BordroPersonelModel extends Model
             $p->ise_giris_tarihi ?? null,
             $p->isten_cikis_tarihi ?? null
         );
+        $calismaGecmisiAktifGun = $this->getCalismaGecmisiAktifGunSayisi(
+            (int) $p->personel_id,
+            $donemBaslangic,
+            $donemBitis
+        );
+        if ($calismaGecmisiAktifGun !== null) {
+            $aktifTakvimGun = $calismaGecmisiAktifGun;
+        }
 
         // Puantaj günlerini önceden alalım ki görev geçmişi eksik olsa bile çalışılan günleri sayabilelim
         $fiiliGunSayisi = $this->getPuantajXGunSayisi($p->personel_id, $donemBaslangic, $donemBitis);
@@ -898,7 +984,12 @@ class BordroPersonelModel extends Model
             }
         }
 
-        if ($isInclusive) {
+        if ($karisikMaasOzeti !== null) {
+            // Prim usulü günleri yalnızca puantaj/ek ödeme kazancı üretir.
+            // Sabit maaş sadece kendi tarih parçası kadar eklenir; aylık net taban uygulanmaz.
+            $sozlesmeHakedisi = floatval($karisikMaasOzeti['sabit_hakedis']);
+            $toplamAlacagi = $sozlesmeHakedisi + $rawEkOdeme;
+        } elseif ($isInclusive) {
             if ($fiiliGunSayisi <= 0) $fiiliGunSayisi = $puantajFiiliGun > 0 ? $puantajFiiliGun : $calismaGunu;
             $p->donem_baslangic_tarihi = $donemBaslangic;
             $p->donem_bitis_tarihi = $donemBitis;
@@ -954,9 +1045,13 @@ class BordroPersonelModel extends Model
                 $toplamAlacagi = $sozlesmeHakedisi + $hariciEkOdeme + $yuvarlamaFarki;
             }
         } else {
-            $sozlesmeHakedisi = round(($maasTutari / 30) * $calismaGunu, 2);
+            $sozlesmeHakedisi = $karisikMaasOzeti !== null
+                ? floatval($karisikMaasOzeti['sabit_hakedis'])
+                : round(($maasTutari / 30) * $calismaGunu, 2);
 
-            if ($isPrimUsulu) {
+            if ($karisikMaasOzeti !== null) {
+                $toplamAlacagi = $sozlesmeHakedisi + $rawEkOdeme;
+            } elseif ($isPrimUsulu) {
                 $toplamAlacagi = $sozlesmeHakedisi + $rawEkOdeme;
             } elseif ($isNet || $isBrut) {
                 $toplamAlacagi = (($hesaplamayaEsasMaas / 30) * $calismaGunu) + $rawEkOdeme;
@@ -1073,6 +1168,8 @@ class BordroPersonelModel extends Model
             'yontemliBankaEki' => $yontemliBankaEki,
             'nonKurRatio' => $nonKurRatio,
             'isInclusive' => $isInclusive,
+            'karisikMaasGecmisi' => $karisikMaasOzeti !== null,
+            'sabitMaasGun' => intval($karisikMaasOzeti['sabit_gun'] ?? 0),
             'manualDagitimVar' => $manualDagitimVar,
             'asgariYatacak' => $asgariYatacak,
             'bankaMatrahi' => $bankaMatrahi,
@@ -2272,6 +2369,10 @@ class BordroPersonelModel extends Model
         $ucretsizIzinGunu = $this->getUcretsizIzinGunuDirekt($personel_id, $baslangic_tarihi, $bitis_tarihi);
         $raporGunu = $this->getGunSayisiByKisaKod($personel_id, $baslangic_tarihi, $bitis_tarihi, 'RP');
         $aktifTakvimGun = $this->getAktifTakvimGunSayisi($baslangic_tarihi, $bitis_tarihi, $personel->ise_giris_tarihi ?? null, $personel->isten_cikis_tarihi ?? null);
+        $calismaGecmisiAktifGun = $this->getCalismaGecmisiAktifGunSayisi($personel_id, $baslangic_tarihi, $bitis_tarihi);
+        if ($calismaGecmisiAktifGun !== null) {
+            $aktifTakvimGun = $calismaGecmisiAktifGun;
+        }
         $aydakiGunSayisi = (int) round((strtotime($bitis_tarihi) - strtotime($baslangic_tarihi)) / 86400) + 1;
         $maasHesapGunu = $this->getMaasHesapGunu($aktifTakvimGun, $aydakiGunSayisi, $ucretsizIzinGunu + $raporGunu);
 
@@ -3095,12 +3196,12 @@ class BordroPersonelModel extends Model
         $aktifBitis = $donem_bitis;
 
         if ($p) {
-            if (!empty($p->ise_giris_tarihi) && $p->ise_giris_tarihi !== '0000-00-00') {
+            if ($p && !empty($p->ise_giris_tarihi) && $p->ise_giris_tarihi !== '0000-00-00') {
                 if ($p->ise_giris_tarihi > $aktifBaslangic) {
                     $aktifBaslangic = $p->ise_giris_tarihi;
                 }
             }
-            if (!empty($p->isten_cikis_tarihi) && $p->isten_cikis_tarihi !== '0000-00-00') {
+            if ($p && !empty($p->isten_cikis_tarihi) && $p->isten_cikis_tarihi !== '0000-00-00') {
                 if ($p->isten_cikis_tarihi < $aktifBitis) {
                     $aktifBitis = $p->isten_cikis_tarihi;
                 }
@@ -3381,27 +3482,18 @@ class BordroPersonelModel extends Model
      */
     public function getUcretsizIzinGunuDirekt($personel_id, $donem_baslangic, $donem_bitis)
     {
-        // 1. Determine actual employment period in the month
-        $personel = $this->db->prepare("SELECT id, ise_giris_tarihi, isten_cikis_tarihi FROM personel WHERE id = ?");
-        $personel->execute([$personel_id]);
-        $p = $personel->fetch(PDO::FETCH_OBJ);
-        if ($p) {
-            $p = $this->overrideWithHistoricalCalismaGecmisi($p, $donem_baslangic, $donem_bitis);
-        }
-
+        $aktifGunler = $this->getCalismaGecmisiAktifTarihleri((int) $personel_id, $donem_baslangic, $donem_bitis);
         $aktifBaslangic = $donem_baslangic;
         $aktifBitis = $donem_bitis;
-
-        if ($p) {
+        if ($aktifGunler === null) {
+            $personel = $this->db->prepare("SELECT ise_giris_tarihi, isten_cikis_tarihi FROM personel WHERE id = ?");
+            $personel->execute([$personel_id]);
+            $p = $personel->fetch(PDO::FETCH_OBJ);
             if (!empty($p->ise_giris_tarihi) && $p->ise_giris_tarihi !== '0000-00-00') {
-                if ($p->ise_giris_tarihi > $aktifBaslangic) {
-                    $aktifBaslangic = $p->ise_giris_tarihi;
-                }
+                $aktifBaslangic = max($aktifBaslangic, $p->ise_giris_tarihi);
             }
             if (!empty($p->isten_cikis_tarihi) && $p->isten_cikis_tarihi !== '0000-00-00') {
-                if ($p->isten_cikis_tarihi < $aktifBitis) {
-                    $aktifBitis = $p->isten_cikis_tarihi;
-                }
+                $aktifBitis = min($aktifBitis, $p->isten_cikis_tarihi);
             }
         }
 
@@ -3443,23 +3535,20 @@ class BordroPersonelModel extends Model
         $izinSql->execute($params);
         $izinler = $izinSql->fetchAll(PDO::FETCH_OBJ);
 
-        $toplamGun = 0;
-        $donemBaslangicDate = new \DateTime($aktifBaslangic);
-        $donemBitisDate = new \DateTime($aktifBitis);
+        $izinGunleri = [];
 
         foreach ($izinler as $izin) {
-            $izinBaslangic = new \DateTime($izin->baslangic_tarihi);
-            $izinBitis = new \DateTime($izin->bitis_tarihi);
-
-            $kesisimBaslangic = max($izinBaslangic, $donemBaslangicDate);
-            $kesisimBitis = min($izinBitis, $donemBitisDate);
-
-            if ($kesisimBaslangic <= $kesisimBitis) {
-                $toplamGun += $kesisimBaslangic->diff($kesisimBitis)->days + 1;
+            $basTs = strtotime(max($aktifBaslangic, $izin->baslangic_tarihi));
+            $bitTs = strtotime(min($aktifBitis, $izin->bitis_tarihi));
+            for ($ts = $basTs; $ts !== false && $bitTs !== false && $ts <= $bitTs; $ts = strtotime('+1 day', $ts)) {
+                $tarih = date('Y-m-d', $ts);
+                if ($aktifGunler === null || isset($aktifGunler[$tarih])) {
+                    $izinGunleri[$tarih] = true;
+                }
             }
         }
 
-        return $toplamGun;
+        return count($izinGunleri);
     }
 
     /**
@@ -3725,6 +3814,11 @@ class BordroPersonelModel extends Model
         ");
         $sqlGecmis->execute([$kayit->personel_id, $donemBitis, $donemTarihi]);
         $gecmisKayitlar = $sqlGecmis->fetchAll(\PDO::FETCH_OBJ);
+        $karisikMaasOzeti = $this->getKarisikMaasGecmisiOzeti(
+            (int) $kayit->personel_id,
+            $donemTarihi,
+            $donemBitis
+        );
 
         $agirlikliHedefNet = 0;
         $agirlikliAsgariNet = 0;
@@ -4005,7 +4099,13 @@ class BordroPersonelModel extends Model
              $bazAlinacakTutar = floatval($kayit->hesaplama_baz_maas);
         }
 
-        if ($isNetMaas || $maasDurumu === 'brüt') {
+        if ($karisikMaasOzeti !== null) {
+            // Prim usulü parçada aylık maaş oluşmaz; o parçanın kazancı puantaj ek ödemelerinden gelir.
+            // Sabit maaş parçası ise yalnızca kendi tarih aralığı ve ücretli günleri kadar hak edilir.
+            $brutMaas = floatval($karisikMaasOzeti['sabit_hakedis']);
+            $ucretsizIzinDusumu = 0;
+            $fiiliCalismaGunuTemp = $maasHesapGunu;
+        } elseif ($isNetMaas || $maasDurumu === 'brüt') {
             // Net veya Brüt maaş tipi: toplam alacağı = (maaş / 30) * gün
             $fiiliCalismaGunuTemp = $maasHesapGunu;
 
@@ -4669,7 +4769,7 @@ class BordroPersonelModel extends Model
 
                 // USER REQ: Yemek Yardımı Maaşa Dahil dengelemesi
         // Yemek yardımı tutarını ana maaş hakedişinden düşüyoruz ki toplam hakediş (net hedef) değişmesin.
-        if ($this->hasMaasaDahilSosyalYardim($kayit)) {
+        if ($this->hasMaasaDahilSosyalYardim($kayit) && $karisikMaasOzeti === null) {
             $asgariNetNominal = floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50);
             $brutMaas = round(($asgariNetNominal / 30) * $maasHesapGunu, 2);
         } elseif ($mealAllowanceDeduction > 0) {
@@ -4915,7 +5015,7 @@ class BordroPersonelModel extends Model
         $dagilim = $this->getSgkFirmaDagilimi($kayit->personel_id, $donemTarihi, $donemBitis, $kayit->sgk_yapilan_firma ?? 'Yok');
         $nonKurRatio = $dagilim['non_kur_ratio'];
 
-        if ($this->hasMaasaDahilSosyalYardim($kayit)) {
+        if ($this->hasMaasaDahilSosyalYardim($kayit) && $karisikMaasOzeti === null) {
             foreach ($ekOdemeDetaylari as $ek) {
                 $aciklama = (string)($ek['aciklama'] ?? '');
                 $kod = mb_strtolower((string)($ek['kod'] ?? ''), 'UTF-8');
@@ -4966,7 +5066,7 @@ class BordroPersonelModel extends Model
             }
         }
 
-        if ($this->hasMaasaDahilSosyalYardim($kayit)) {
+        if ($this->hasMaasaDahilSosyalYardim($kayit) && $karisikMaasOzeti === null) {
             $asgariYatacak = round(($asgariNetNominal / 30) * $maasHesapGunu, 2);
             $asgariYatacak = round($asgariYatacak * $nonKurRatio, 2);
             

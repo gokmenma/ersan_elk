@@ -2028,6 +2028,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $personelId = $bp->personel_id;
 
                 $ucretsizIzinGunu = $BordroPersonel->getUcretsizIzinGunuDirekt($personelId, $donemBaslangic, $donemBitis);
+                $isKarisikMaasGecmisi = !empty($hesap['karisikMaasGecmisi']);
                 $raporGun = $BordroPersonel->getGunSayisiByKisaKod($personelId, $donemBaslangic, $donemBitis, 'RP');
                 $ucretliIzin = $BordroPersonel->getUcretliIzinGunu($personelId, $donemBaslangic, $donemBitis);
                 $genelTatil = $BordroPersonel->getGunSayisiByKisaKod($personelId, $donemBaslangic, $donemBitis, 'GT');
@@ -2051,9 +2052,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
                 $haftaTatili = max(0, $totalSundays - $htcGunModal);
 
-                $sskGun = intval($matrahlar['ssk_gunu'] ?? ($bp->calisan_gun ?? $hesap['calismaGunu'] ?? 30));
-                $normalGun = max(0, $sskGun - $haftaTatili - $ucretliIzin - $genelTatil);
+                $sskGun = $isKarisikMaasGecmisi
+                    ? intval($hesap['calismaGunu'] ?? 0)
+                    : intval($matrahlar['ssk_gunu'] ?? ($bp->calisan_gun ?? $hesap['calismaGunu'] ?? 30));
+                $normalGun = $isKarisikMaasGecmisi
+                    ? intval($hesap['sabitMaasGun'] ?? 0)
+                    : max(0, $sskGun - $haftaTatili - $ucretliIzin - $genelTatil);
                 $calisanBrutMaas = floatval($matrahlar['calisan_brut_maas'] ?? ($bp->brut_maas ?? 0));
+                if ($isKarisikMaasGecmisi) {
+                    $calisanBrutMaas = floatval($hesap['sozlesmeHakedisi'] ?? 0);
+                    $haftaTatili = 0;
+                    $genelTatil = 0;
+                    $ucretliIzin = 0;
+                }
 
                 // Calculate overtime (RTC / HTÇ) parameters beforehand — BRÜT gösterim (gross-up sonrası)
                 // Asgari ücretin günlük net hedefi SGK+İşsizlik+Gelir Vergisi+Damga Vergisi kesintilerinden
@@ -2101,6 +2112,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $asgariMatrarhGoster = !empty($bp->yemek_yardimi_dahil)
                     || !empty($bp->es_yardimi_dahil)
                     || stripos($maasDurumuGosterim, 'Net') !== false;
+                $asgariMatrarhGoster = $asgariMatrarhGoster && !$isKarisikMaasGecmisi;
 
                 if ($asgariMatrarhGoster) {
                     $asgariHakedisYazdir = round(($asgariUcretNet / 30) * $sskGun, 2);
@@ -2237,6 +2249,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $haftaTatiliTutar = $haftaTatili * $gunlukUcret;
                 $genelTatilTutar = $genelTatil * $gunlukUcret;
                 $ucretliIzinTutar = $ucretliIzin * $gunlukUcret;
+                if ($isKarisikMaasGecmisi) {
+                    $normalCalismaTutar = floatval($hesap['sozlesmeHakedisi'] ?? 0);
+                }
 
                 // Adjust to ensure mathematical correctness
                 $calcNormalSum = $normalCalismaTutar + $haftaTatiliTutar + $genelTatilTutar + $ucretliIzinTutar;

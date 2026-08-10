@@ -259,15 +259,22 @@ foreach ($bordroListesi as $bordro) {
     $asgariUcretNet = floatval($BordroParametreModel->getGenelAyar('asgari_ucret_net', $baslangicTarihi) ?? 17002.12);
     $asgariUcretBrut = floatval($BordroParametreModel->getGenelAyar('asgari_ucret_brut', $baslangicTarihi) ?? 33030.00);
     $hesap = $BordroModel->hesaplaOrtakGosterimDegerleri($bordro, $currentDonem, $asgariUcretNet);
+    $isKarisikMaasGecmisi = !empty($hesap['karisikMaasGecmisi']);
 
-    $normalGun = intval($matrahlar['normal_gun'] ?? 0);
+    $normalGun = $isKarisikMaasGecmisi
+        ? intval($hesap['sabitMaasGun'] ?? 0)
+        : intval($matrahlar['normal_gun'] ?? 0);
     $haftaTatili = intval($matrahlar['hafta_tatili_gunu'] ?? 0);
     $genelTatil = intval($matrahlar['genel_tatil_gunu'] ?? 0);
     $ucretliIzin = intval($matrahlar['ucretli_izin_gunu'] ?? 0);
     $raporGun = intval($matrahlar['rapor_gunu'] ?? 0);
-    $ucretsizIzinGunu = intval($matrahlar['ucretsiz_izin_gunu'] ?? ($hesap['ucretsizIzinGunu'] ?? 0));
-    $sskGun = intval($matrahlar['ssk_gunu'] ?? ($bordro->calisan_gun ?? $hesap['calismaGunu'] ?? 30));
-    $calisanBrutMaas = floatval($matrahlar['calisan_brut_maas'] ?? ($bordro->brut_maas ?? 0));
+    $ucretsizIzinGunu = intval($hesap['ucretsizIzinGunu'] ?? ($matrahlar['ucretsiz_izin_gunu'] ?? 0));
+    $sskGun = $isKarisikMaasGecmisi
+        ? intval($hesap['calismaGunu'] ?? 0)
+        : intval($matrahlar['ssk_gunu'] ?? ($bordro->calisan_gun ?? $hesap['calismaGunu'] ?? 30));
+    $calisanBrutMaas = $isKarisikMaasGecmisi
+        ? floatval($hesap['sozlesmeHakedisi'] ?? 0)
+        : floatval($matrahlar['calisan_brut_maas'] ?? ($bordro->brut_maas ?? 0));
 
     $sgkMatrah = floatval($matrahlar['sgk_matrahi'] ?? (floatval($bordro->brut_maas ?? 0) + floatval($ozetDetay['sgk_matrah_ekleri'] ?? 0)));
     $gelirVergisiMatrah = floatval($matrahlar['gelir_vergisi_matrahi'] ?? 0);
@@ -290,6 +297,7 @@ foreach ($bordroListesi as $bordro) {
     $asgariMatrarhGoster = !empty($bordro->yemek_yardimi_dahil)
         || !empty($bordro->es_yardimi_dahil)
         || stripos($maasDurumuGosterim, 'Net') !== false;
+    $asgariMatrarhGoster = $asgariMatrarhGoster && !$isKarisikMaasGecmisi;
 
     if ($asgariMatrarhGoster) {
         $asgariHakedisYazdir = round(($asgariUcretNet / 30) * $sskGun, 2);
