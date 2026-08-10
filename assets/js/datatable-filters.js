@@ -155,9 +155,12 @@
 
   function extractTextWithSpaces(html) {
     if (html === null || html === undefined) return "";
-    if (typeof html !== "string") return html.toString();
-    // Fast and safe regex tag stripping (avoids DOM parser stripping <td> elements)
-    return html.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+    if (typeof html !== "string") return html.toString().trim();
+    return html
+      .replace(/&nbsp;/gi, " ")
+      .replace(/<[^>]*>/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
   }
 
   // --- Filter Engine ---
@@ -408,7 +411,7 @@
 
         const populateOptions = (vals) => {
           $list.find(".option-item:not(.select-all)").remove();
-          vals.sort().forEach((v) => {
+          vals.sort((a, b) => a.localeCompare(b, "tr")).forEach((v) => {
             const isChecked =
               !cellInfo.value ||
               (Array.isArray(cellInfo.value) && cellInfo.value.includes(v));
@@ -419,6 +422,30 @@
           updateSelectAllState();
         };
 
+        const refreshClientOptions = () => {
+          if (isServerSide) return;
+          const currentUnique = [];
+          const processVal = (v) => {
+            const t = extractTextWithSpaces(v);
+            if (t && !currentUnique.includes(t)) currentUnique.push(t);
+          };
+
+          column
+            .data()
+            .unique()
+            .each(processVal);
+
+          if (column.nodes) {
+            try {
+              $(column.nodes()).each(function () {
+                processVal($(this).html());
+              });
+            } catch (e) {}
+          }
+
+          populateOptions(currentUnique);
+        };
+
         column
           .data()
           .unique()
@@ -426,7 +453,7 @@
             const t = extractTextWithSpaces(v);
             if (t && !uniqueVals.includes(t)) uniqueVals.push(t);
           });
-        uniqueVals.sort();
+        uniqueVals.sort((a, b) => a.localeCompare(b, "tr"));
 
         const $excelDpy = $('<div class="dt-filter-excel-dropdown"></div>');
         $excelDpy.append(
@@ -562,16 +589,24 @@
             .toggleClass("show");
 
           if ($excelDpy.hasClass("show")) {
-            loadFullList();
+            if (isServerSide) {
+              loadFullList();
+            } else {
+              refreshClientOptions();
+            }
           }
         });
 
         const $displayInput = $(
-          '<input type="text" class="dt-filter-control text-control" readonly placeholder="Tümü">',
+          '<input type="text" class="dt-filter-control text-control cursor-pointer" readonly placeholder="Tümü">',
         );
         if (Array.isArray(cellInfo.value) && cellInfo.value.length > 0) {
           $displayInput.val(cellInfo.value.length + " seçildi");
         }
+        $displayInput.on("click", function (e) {
+          e.stopPropagation();
+          $modeTrigger.trigger("click");
+        });
         $cell.append($displayInput);
         cellInfo.$displayInput = $displayInput;
 

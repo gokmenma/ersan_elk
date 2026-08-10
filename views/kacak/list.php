@@ -532,38 +532,39 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         <div class="tab-pane fade" id="pane-teslim">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
-                    <h5 class="mb-1"><i class="bx bx-printer me-1"></i> Haftalık Teslim Alma Listesi</h5>
-                    <p class="small mb-1"><strong>Fiziki teslim alma:</strong> Onikişubat/Dulkadiroğlu'nda yazılan tüm
-                        tutanaklar + diğer ilçelerdeki Kaçak ve Usülsüz evraklar. Teslim alınmayan eski kayıtlar sonraki dönemlere devreder.</p>
-                    <p class="small text-muted">Foto çıktısı ise daha dar: sadece Onikişubat/Dulkadiroğlu'ndaki
-                        <strong>Kaçak</strong> kayıtlar için — Abonesiz kayıtlarda evrak alınır ama fotoğraf çıktısı
-                        gerekmez.
-                    </p>
-
-                    <div class="row g-2 align-items-end mb-3">
-                        <div class="col-md-2">
-                            <?= Form::FormDate('teslim_baslangic', Date::dmY($haftaBasi), 'Başlangıç Tarihi') ?></div>
-                        <div class="col-md-2"><?= Form::FormDate('teslim_bitis', Date::dmY($bugun), 'Bitiş Tarihi') ?>
-                        </div>
-                        <div class="col-md-2">
-                            <button class="btn btn-primary w-100" id="btnTeslimListesi"><i
-                                    class="bx bx-refresh me-1"></i>Listeyi Getir</button>
-                        </div>
-                        <div class="col-md-3">
-                            <button class="btn btn-success w-100" id="btnTeslimExcel" disabled><i
-                                    class="bx bx-download me-1"></i>Excel İndir</button>
-                        </div>
-                        <div class="col-md-3">
-                            <button class="btn btn-warning w-100 text-dark fw-semibold" id="btnTeslimZip" disabled><i
-                                    class="bx bxs-file-archive me-1"></i>Toplu Evrak İndir (ZIP)</button>
+                    <div class="d-flex align-items-center justify-content-between mb-2">
+                        <div>
+                            <h5 class="mb-1"><i class="bx bx-printer me-1 text-primary"></i> Haftalık Teslim Alma Listesi</h5>
+                            <p class="small text-muted mb-0"><strong>Fiziki teslim alma:</strong> Onikişubat/Dulkadiroğlu'nda tüm tutanaklar + diğer ilçelerdeki Kaçak ve Usülsüz evraklar. <strong>Foto çıktısı:</strong> Yalnızca Onikişubat/Dulkadiroğlu'ndaki Kaçak kayıtlar.</p>
                         </div>
                     </div>
 
-                    <div class="d-flex align-items-center gap-2 mb-3">
-                        <button class="btn btn-info text-white" id="btnTeslimAlindi" disabled>
-                            <i class="bx bx-check-double me-1"></i>Seçilenleri Teslim Alındı İşaretle
-                        </button>
-                        <span class="small text-muted" id="teslimSecimBilgi">0 kayıt seçildi</span>
+                    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 p-2 bg-light rounded-3 border mb-3">
+                        <div class="d-flex flex-wrap align-items-center gap-2">
+                            <div style="width: 140px;">
+                                <?= Form::FormDate('teslim_baslangic', Date::dmY($haftaBasi), 'Başlangıç') ?>
+                            </div>
+                            <div style="width: 140px;">
+                                <?= Form::FormDate('teslim_bitis', Date::dmY($bugun), 'Bitiş') ?>
+                            </div>
+                            <button class="btn btn-primary btn-sm px-3" id="btnTeslimListesi" style="height: 48px;" title="Listeyi Getir">
+                                <i class="bx bx-refresh me-1"></i>Listele
+                            </button>
+                            <div class="vr mx-1 d-none d-md-block" style="height: 32px; opacity: 0.2;"></div>
+                            <button class="btn btn-info btn-sm text-white px-3" id="btnTeslimAlindi" disabled style="height: 48px;">
+                                <i class="bx bx-check-double me-1"></i>Teslim Alındı İşaretle
+                            </button>
+                            <span class="badge bg-white text-secondary border py-2 px-2.5" id="teslimSecimBilgi">0 kayıt seçildi</span>
+                        </div>
+
+                        <div class="d-flex align-items-center gap-2">
+                            <button class="btn btn-outline-success btn-sm px-3" id="btnTeslimExcel" disabled style="height: 48px;" title="Excel İndir">
+                                <i class="bx bx-download me-1"></i>Excel
+                            </button>
+                            <button class="btn btn-outline-warning text-dark btn-sm px-3 fw-medium" id="btnTeslimZip" disabled style="height: 48px;" title="Toplu Evrak İndir (ZIP)">
+                                <i class="bx bxs-file-archive me-1"></i>ZIP İndir
+                            </button>
+                        </div>
                     </div>
 
                     <div class="table-responsive">
@@ -2186,6 +2187,16 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         });
 
         // ---------- TESLİM ALMA LİSTESİ ----------
+        let teslimTumTokens = [];
+
+        function syncTeslimSecimCheckboxes() {
+            $('#teslimTable .teslim-secim').each(function () {
+                $(this).prop('checked', teslimSecilenler.has(this.value));
+            });
+            const allSelected = teslimTumTokens.length > 0 && teslimTumTokens.every(t => teslimSecilenler.has(t));
+            $('#teslimTumunuSec').prop('checked', allSelected);
+        }
+
         function teslimSecimGuncelle() {
             $('#teslimSecimBilgi').text(teslimSecilenler.size + ' kayıt seçildi');
             $('#btnTeslimAlindi, #btnTeslimExcel, #btnTeslimZip').prop('disabled', teslimSecilenler.size === 0);
@@ -2200,6 +2211,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 if (res.status !== 'success') return hataGoster(res);
 
                 teslimSecilenler.clear();
+                teslimTumTokens = (res.data || []).map(r => r.token);
                 $('#teslimTumunuSec').prop('checked', false);
                 const rows = (res.data || []).map(r => [
                     '<input type="checkbox" class="form-check-input teslim-secim" value="' + esc(r.token) + '">',
@@ -2225,22 +2237,29 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                         data: rows, pageLength: 50, order: [[4, 'asc'], [1, 'asc']],
                         columnDefs: [{ targets: 0, orderable: false, searchable: false, className: 'text-center' }]
                     }));
+                    $('#teslimTable').on('draw.dt', function () {
+                        syncTeslimSecimCheckboxes();
+                    });
                 }
+                syncTeslimSecimCheckboxes();
                 teslimSecimGuncelle();
             });
         });
 
         $('#teslimTable').on('change', '.teslim-secim', function () {
             this.checked ? teslimSecilenler.add(this.value) : teslimSecilenler.delete(this.value);
+            syncTeslimSecimCheckboxes();
             teslimSecimGuncelle();
         });
 
         $('#teslimTumunuSec').on('change', function () {
             const sec = this.checked;
-            $('#teslimTable .teslim-secim').each(function () {
-                this.checked = sec;
-                sec ? teslimSecilenler.add(this.value) : teslimSecilenler.delete(this.value);
-            });
+            if (sec) {
+                teslimTumTokens.forEach(t => teslimSecilenler.add(t));
+            } else {
+                teslimSecilenler.clear();
+            }
+            syncTeslimSecimCheckboxes();
             teslimSecimGuncelle();
         });
 

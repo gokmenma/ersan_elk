@@ -36,14 +36,20 @@ $Kacak = new KacakKontrolModel();
 
 function seciliTeslimKayitlari(KacakKontrolModel $model, string $baslangic, string $bitis, array $tokenlar): array
 {
+    $tumListe = $model->getTeslimAlmaListesi($baslangic, $bitis);
+    if (empty($tokenlar)) {
+        return $tumListe;
+    }
     $ids = [];
     foreach ($tokenlar as $token) {
         $id = (int) Security::decrypt((string) $token);
         if ($id > 0) $ids[$id] = true;
     }
-    if (empty($ids)) return [];
+    if (empty($ids)) {
+        return $tumListe;
+    }
     return array_values(array_filter(
-        $model->getTeslimAlmaListesi($baslangic, $bitis),
+        $tumListe,
         static fn(array $kayit): bool => isset($ids[(int) $kayit['id']])
     ));
 }
