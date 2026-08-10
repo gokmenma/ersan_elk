@@ -71,8 +71,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 if (empty(trim((string) ($data['kurum_adi'] ?? '')))) {
                     throw new Exception('Muhatap Kurum / Kişi alanını doldurunuz.');
                 }
-                if (empty(trim(strip_tags((string) ($data['aciklama'] ?? ''))))) {
-                    throw new Exception('Resmî Yazı Metni (İçerik) alanını doldurunuz.');
+                if (($data['evrak_tipi'] ?? 'gelen') === 'giden') {
+                    if (empty(trim(strip_tags((string) ($data['aciklama'] ?? ''))))) {
+                        throw new Exception('Resmî Yazı Metni (İçerik) alanını doldurunuz.');
+                    }
                 }
 
                 $data['id'] = $id;
