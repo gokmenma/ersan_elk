@@ -44,18 +44,24 @@ $personelIdEnc = $_GET['personel_id'] ?? '';
 if (!empty($personelIdEnc)) {
     $personelId = Security::decrypt($personelIdEnc);
     if ($personelId) {
-        // Personel verisini al
-        $stmt = $Formlar->db->prepare("SELECT * FROM personel WHERE id = :id AND firma_id = :firma_id");
-        $stmt->execute(['id' => $personelId, 'firma_id' => $firma_id]);
-        $personel = $stmt->fetch(PDO::FETCH_ASSOC);
+        $PersonelModel = new \App\Model\PersonelModel();
+        $personel = $PersonelModel->find($personelId);
 
-        if ($personel) {
-            $personelAdiSoyadi = trim($personel['adi_soyadi'] ?? '');
-            $tcNo = $personel['tc_kimlik_no'] ?? '';
-            $telefon = $personel['cep_telefonu'] ?? '';
-            $unvan = $personel['gorev'] ?? '';
-            $iseGiris = !empty($personel['ise_giris_tarihi']) ? date('d.m.Y', strtotime($personel['ise_giris_tarihi'])) : '';
-            $adres = $personel['ev_adresi'] ?? ($personel['adres'] ?? '');
+        if ($personel && (int) ($personel->firma_id ?? 0) === (int) $firma_id) {
+            $personelAdiSoyadi = trim($personel->adi_soyadi ?? '');
+            
+            $rawTc = $personel->tc_kimlik_no ?? '';
+            if (!empty($rawTc)) {
+                $decryptedTc = Security::decrypt($rawTc);
+                $tcNo = ($decryptedTc !== 0 && $decryptedTc !== '0' && !empty($decryptedTc)) ? $decryptedTc : $rawTc;
+            } else {
+                $tcNo = '';
+            }
+
+            $telefon = $personel->cep_telefonu ?? '';
+            $unvan = $personel->gorev ?? '';
+            $iseGiris = !empty($personel->ise_giris_tarihi) ? date('d.m.Y', strtotime($personel->ise_giris_tarihi)) : '';
+            $adres = $personel->ev_adresi ?? ($personel->adres ?? '');
 
             $replacements += [
                 '{PERSONEL_ADI}' => $personelAdiSoyadi,
@@ -66,6 +72,8 @@ if (!empty($personelIdEnc)) {
                 '${TC_KIMLIK}' => $tcNo,
                 '{TC_NO}' => $tcNo,
                 '${TC_NO}' => $tcNo,
+                '{TC_KIMLIK_NO}' => $tcNo,
+                '${TC_KIMLIK_NO}' => $tcNo,
                 '{TELEFON}' => $telefon,
                 '${TELEFON}' => $telefon,
                 '{UNVAN}' => $unvan,
@@ -159,7 +167,8 @@ if (in_array($ext, ['doc', 'docx'])) {
         try {
             $templateProcessor = new TemplateProcessor($filePath);
             foreach ($replacements as $search => $replace) {
-                $templateProcessor->setValue(str_replace(['{', '}'], '', $search), $replace);
+                $macro = str_replace(['${', '$', '{', '}'], '', $search);
+                $templateProcessor->setValue($macro, $replace);
             }
             
             header("Content-Description: File Transfer");

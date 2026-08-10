@@ -99,6 +99,52 @@ class BordroPersonelModel extends Model
         return (int) round(($aktifBitTs - $aktifBasTs) / 86400) + 1;
     }
 
+    /**
+     * Dönemle kesişen tüm çalışma geçmişi aralıklarının birleşik gün sayısını döndürür.
+     * Birden fazla işe giriş/çıkış kaydı bulunan personelde yalnızca son kaydın
+     * bordro gününü belirlemesini engeller. Geçmiş kaydı yoksa null döner.
+     */
+    private function getCalismaGecmisiAktifGunSayisi(int $personelId, string $donemBaslangic, string $donemBitis): ?int
+    {
+        $stmt = $this->db->prepare("SELECT ise_giris_tarihi, isten_cikis_tarihi
+            FROM personel_calisma_gecmisi
+            WHERE personel_id = ?
+              AND ise_giris_tarihi <= ?
+              AND (isten_cikis_tarihi IS NULL OR isten_cikis_tarihi = '0000-00-00' OR isten_cikis_tarihi >= ?)
+            ORDER BY ise_giris_tarihi ASC, id ASC");
+        $stmt->execute([$personelId, $donemBitis, $donemBaslangic]);
+        $araliklar = $stmt->fetchAll(PDO::FETCH_ASSOC);
+
+        if (empty($araliklar)) {
+            return null;
+        }
+
+        return $this->birlesikTarihAraligiGunSayisi($araliklar, $donemBaslangic, $donemBitis);
+    }
+
+    private function birlesikTarihAraligiGunSayisi(array $araliklar, string $donemBaslangic, string $donemBitis): int
+    {
+        $aktifGunler = [];
+
+        foreach ($araliklar as $aralik) {
+            $baslangic = max($donemBaslangic, (string) ($aralik['ise_giris_tarihi'] ?? ''));
+            $cikis = $aralik['isten_cikis_tarihi'] ?? null;
+            $bitis = $this->isValidDateValue($cikis) ? min($donemBitis, (string) $cikis) : $donemBitis;
+
+            $baslangicTs = strtotime($baslangic);
+            $bitisTs = strtotime($bitis);
+            if ($baslangicTs === false || $bitisTs === false || $baslangicTs > $bitisTs) {
+                continue;
+            }
+
+            for ($gunTs = $baslangicTs; $gunTs <= $bitisTs; $gunTs = strtotime('+1 day', $gunTs)) {
+                $aktifGunler[date('Y-m-d', $gunTs)] = true;
+            }
+        }
+
+        return count($aktifGunler);
+    }
+
     private function getMaasHesapGunu(int $aktifTakvimGun, int $donemTakvimGun, int $eksikGunToplami): int
     {
         if ($aktifTakvimGun <= 0) {
@@ -3871,6 +3917,18 @@ class BordroPersonelModel extends Model
             $kayit->ise_giris_tarihi ?? null,
             $kayit->isten_cikis_tarihi ?? null
         );
+
+        // Çalışma geçmişinde birden fazla dönem varsa hepsinin birleşik kapsamını kullan.
+        // overrideWithHistoricalCalismaGecmisi() gösterim alanları için tek kayıt seçtiğinden,
+        // doğrudan o alanlarla hesap yapmak yeniden işe girişlerde yalnızca son parçayı sayıyordu.
+        $calismaGecmisiAktifGun = $this->getCalismaGecmisiAktifGunSayisi(
+            (int) $kayit->personel_id,
+            $kayit->baslangic_tarihi,
+            $kayit->bitis_tarihi
+        );
+        if ($calismaGecmisiAktifGun !== null) {
+            $aktifTakvimGun = $calismaGecmisiAktifGun;
+        }
 
         // USER REQ: Maaş hesaplaması görev geçmişi kapsamına göre olmalı (Örn: Geçmiş 1 günlük ise 1 gün ödenmeli)
         if (count($gecmisKayitlar) > 0) {
