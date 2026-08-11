@@ -5304,7 +5304,7 @@ try {
                     'Yeni Kaçak Bildirimi',
                     $personel->adi_soyadi . ', ' . date('d.m.Y', strtotime($kacakTarih)) . ' tarihli '
                     . ($_POST['tur'] ?? 'Kaçak') . ' tutanağı bildirdi (' . $kacakIlce . ').',
-                    'index?p=kacak/list',
+                    'index.php?p=kacak/list&tab=onay&kacak_token=' . Security::encrypt($kacakId),
                     'shield',
                     'info',
                     UserNotificationPreferenceModel::TYPE_KACAK_CREATED

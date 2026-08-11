@@ -1312,7 +1312,7 @@ function ihbarDurumBadge($durum)
         }
 
         renderIhbarDashboardCharts();
-        ihbarDerinBaglantiyiAc();
+        ihbarDerinBaglantiyiAc(ihbarTable);
 
         document.getElementById('ihbar-list-tab')?.addEventListener('shown.bs.tab', function () {
             ihbarTable.columns.adjust().responsive.recalc();
@@ -1725,7 +1725,7 @@ function ihbarDurumBadge($durum)
         return `<span class="badge bg-${cls}">${text}</span>`;
     }
 
-    function ihbarDerinBaglantiyiAc() {
+    function ihbarDerinBaglantiyiAc(ihbarTable) {
         const parametreler = new URLSearchParams(window.location.search);
         const ihbarId = parseInt(parametreler.get('ihbar_id') || '0', 10);
         if (!ihbarId) return;
@@ -1734,6 +1734,18 @@ function ihbarDurumBadge($durum)
         if (listeSekmesi) {
             bootstrap.Tab.getOrCreateInstance(listeSekmesi).show();
         }
+
+        // Bildirimden gelindiğinde tabloda yalnızca bağlantıdaki ihbarı göster.
+        // Kayıt ID'si görünür bir kolon olmadığı için satırın data-id niteliği
+        // üzerinden, sadece ihbar tablosuna etki eden özel filtre uygulanır.
+        $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+            if (settings.nTable !== ihbarTable.table().node()) return true;
+
+            const row = settings.aoData[dataIndex]?.nTr;
+            return Number(row?.dataset.id || 0) === ihbarId;
+        });
+        ihbarTable.draw();
+
         ihbarDetay(ihbarId);
 
         parametreler.delete('ihbar_id');

@@ -1,6 +1,7 @@
 <?php
 use App\Helper\Date;
 use App\Helper\Form;
+use App\Helper\Security;
 use App\Model\KacakKontrolModel;
 use App\Model\KacakSicilEksikModel;
 use App\Model\PersonelModel;
@@ -17,6 +18,10 @@ $personelOptions = $Personel->optionList('puantaj', $bugun);
 
 $ilceler = KacakKontrolModel::ILCELER;
 $bekleyenSayisi = $Kacak->getPendingCount();
+$bildirimKacakId = 0;
+if (($_GET['tab'] ?? '') === 'onay' && !empty($_GET['kacak_token'])) {
+    $bildirimKacakId = max(0, (int) Security::decrypt((string) $_GET['kacak_token']));
+}
 
 $ilceOptions = ['' => 'Tüm İlçeler'];
 foreach ($ilceler as $ilce) {
@@ -1126,6 +1131,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         const MAX_VIDEO = <?= KacakKontrolModel::MAX_VIDEO ?>;
         const VIDEO_MAX_SURE = <?= KacakKontrolModel::VIDEO_MAX_SURE ?>;
         const VIDEO_MAX_BYTE = <?= KacakKontrolModel::videoYuklemeSiniri() ?>;
+        const BILDIRIM_KACAK_ID = <?= json_encode($bildirimKacakId) ?>;
         let kacakSeciliVideolar = [];
         const YETKI = {
             duzenle: <?= $yetkiDuzenle ? 'true' : 'false' ?>,
@@ -1468,8 +1474,11 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     // Sağ tık menüsü satır verisine ihtiyaç duyar; tablo satırları
                     // dizi olduğu için kayıtları ayrıca saklıyoruz.
                     onayKayitlari = res.data || [];
+                    if (BILDIRIM_KACAK_ID > 0) {
+                        onayKayitlari = onayKayitlari.filter(k => Number(k.id) === BILDIRIM_KACAK_ID);
+                    }
 
-                    const rows = res.data.map(k => [
+                    const rows = onayKayitlari.map(k => [
                         tarihHucresi(k),
                         esc(k.bildiren_adi || '-'),
                         esc(k.ekip_adi),
@@ -3179,6 +3188,13 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             initOzetDonemPicker();
 
             kayitlariYukle();
+
+            // Yeni kaçak bildiriminden gelindiyse ilgili onay sekmesini aç.
+            // Sekmenin shown olayı onay tablosunu yükler; yükleme sırasında
+            // BILDIRIM_KACAK_ID ile yalnızca bağlantıdaki kayıt gösterilir.
+            if (BILDIRIM_KACAK_ID > 0) {
+                $('#kacakTabs button[data-bs-target="#pane-onaylar"]').tab('show');
+            }
 
             if (YETKI.sicilBildir || YETKI.sicilYanitla) {
                 $('#sicil_filtre_neden').select2({ width: '100%' });
