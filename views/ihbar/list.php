@@ -429,6 +429,14 @@ function ihbarDurumBadge($durum)
             </div>
         </div>
         <div class="card-body">
+            <div class="alert alert-info d-none align-items-center justify-content-between gap-3 mb-3"
+                id="ihbarBildirimFiltreUyarisi">
+                <span><i class="bx bx-filter-alt me-1"></i>Bildirimdeki ihbar kaydı gösteriliyor.</span>
+                <button type="button" class="btn btn-sm btn-outline-info flex-shrink-0"
+                    onclick="ihbarBildirimFiltresiniTemizle()">
+                    <i class="bx bx-list-ul me-1"></i>Tüm İhbarları Göster
+                </button>
+            </div>
             <div class="table-responsive">
                 <table class="table datatables table-hover table-bordered nowrap align-middle w-100"
                     id="ihbarTable" data-order="[]">
@@ -1250,6 +1258,7 @@ function ihbarDurumBadge($durum)
     let ihbarAktifId = null;
     let ihbarAktifDetay = null;
     let ihbarFotoLightbox = null;
+    let ihbarBildirimFiltreFonksiyonu = null;
     const ihbarEscapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({
         '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;'
     })[char]);
@@ -1738,19 +1747,33 @@ function ihbarDurumBadge($durum)
         // Bildirimden gelindiğinde tabloda yalnızca bağlantıdaki ihbarı göster.
         // Kayıt ID'si görünür bir kolon olmadığı için satırın data-id niteliği
         // üzerinden, sadece ihbar tablosuna etki eden özel filtre uygulanır.
-        $.fn.dataTable.ext.search.push(function (settings, data, dataIndex) {
+        ihbarBildirimFiltreFonksiyonu = function (settings, data, dataIndex) {
             if (settings.nTable !== ihbarTable.table().node()) return true;
 
             const row = settings.aoData[dataIndex]?.nTr;
             return Number(row?.dataset.id || 0) === ihbarId;
-        });
+        };
+        $.fn.dataTable.ext.search.push(ihbarBildirimFiltreFonksiyonu);
         ihbarTable.draw();
+        document.getElementById('ihbarBildirimFiltreUyarisi')?.classList.replace('d-none', 'd-flex');
 
         ihbarDetay(ihbarId);
 
         parametreler.delete('ihbar_id');
         const kalan = parametreler.toString();
         history.replaceState(null, '', window.location.pathname + (kalan ? '?' + kalan : ''));
+    }
+
+    function ihbarBildirimFiltresiniTemizle() {
+        if (!ihbarBildirimFiltreFonksiyonu) return;
+
+        const filtreler = $.fn.dataTable.ext.search;
+        const filtreIndex = filtreler.indexOf(ihbarBildirimFiltreFonksiyonu);
+        if (filtreIndex !== -1) filtreler.splice(filtreIndex, 1);
+        ihbarBildirimFiltreFonksiyonu = null;
+
+        $('#ihbarTable').DataTable().draw();
+        document.getElementById('ihbarBildirimFiltreUyarisi')?.classList.replace('d-flex', 'd-none');
     }
 
     function ihbarDetay(id) {

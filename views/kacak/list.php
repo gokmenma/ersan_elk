@@ -357,6 +357,15 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         <div class="tab-pane fade" id="pane-onaylar">
             <div class="card border-0 shadow-sm">
                 <div class="card-body">
+                    <?php if ($bildirimKacakId > 0): ?>
+                    <div class="alert alert-info d-flex align-items-center justify-content-between gap-3">
+                        <span><i class="bx bx-filter-alt me-1"></i>Bildirimdeki kaçak kaydı gösteriliyor.</span>
+                        <a href="index.php?p=kacak/list&amp;tab=onay"
+                            class="btn btn-sm btn-outline-info flex-shrink-0">
+                            <i class="bx bx-list-ul me-1"></i>Tüm Bekleyen Onayları Göster
+                        </a>
+                    </div>
+                    <?php endif; ?>
                     <div class="alert alert-info d-flex align-items-center">
                         <i class="bx bx-info-circle fs-4 me-2"></i>
                         <div>Personel mobil uygulamasından gelen kaçak bildirimleri burada listelenir. Onaylanmayan
@@ -3192,7 +3201,8 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             // Yeni kaçak bildiriminden gelindiyse ilgili onay sekmesini aç.
             // Sekmenin shown olayı onay tablosunu yükler; yükleme sırasında
             // BILDIRIM_KACAK_ID ile yalnızca bağlantıdaki kayıt gösterilir.
-            if (BILDIRIM_KACAK_ID > 0) {
+            const baslangicParametreleri = new URLSearchParams(window.location.search);
+            if (baslangicParametreleri.get('tab') === 'onay') {
                 $('#kacakTabs button[data-bs-target="#pane-onaylar"]').tab('show');
             }
 
