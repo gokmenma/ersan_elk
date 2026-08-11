@@ -1744,8 +1744,17 @@ function ihbarDurumBadge($durum)
     function ihbarDetay(id) {
         ihbarAktifId = id;
         const content = document.getElementById('ihbarDetayContent');
+        const modalElement = document.getElementById('modalIhbarDetay');
+
+        // Bildirim/deep-link akışında bu fonksiyon, global modal katman
+        // düzenleyicisi bağlanmadan önce çalışabilir. Modal alt bir stacking
+        // context içinde kalırsa body'ye eklenen backdrop modalın üstüne çıkar.
+        if (modalElement.parentElement !== document.body) {
+            document.body.appendChild(modalElement);
+        }
+
         content.innerHTML = '<div class="text-center py-4"><div class="spinner-border text-primary"></div></div>';
-        new bootstrap.Modal(document.getElementById('modalIhbarDetay')).show();
+        bootstrap.Modal.getOrCreateInstance(modalElement).show();
 
         fetch(IHBAR_API_URL, {
             method: 'POST',
