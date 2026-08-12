@@ -253,6 +253,11 @@ final class EvrakPdfService
 
         $ekDosyalari = (array) ($data['ek_dosya_yollari'] ?? []);
 
+        if ($ekDosyalari !== []) {
+            $mpdf->writeHTMLFooters();
+            $mpdf->SetHTMLFooter('');
+        }
+
         foreach ($ekDosyalari as $ekIndex => $ek) {
             $filePath = is_array($ek) ? ($ek['path'] ?? '') : (string) $ek;
             $fileName = is_array($ek) ? ($ek['name'] ?? 'Ek ' . ($ekIndex + 1)) : basename($filePath);
