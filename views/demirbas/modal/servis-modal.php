@@ -19,7 +19,7 @@ foreach ($personeller as $p) {
                 <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-                <form id="servisForm">
+                <form id="servisForm" enctype="multipart/form-data">
                     <input type="hidden" name="id" id="servis_id" value="">
 
                     <div class="row g-3">
@@ -72,6 +72,12 @@ foreach ($personeller as $p) {
                         </div>
                         <div class="col-md-6">
                             <?php echo Form::FormFloatInput('text', 'fatura_no', null, '', 'Fatura/Fiş No', 'bx bx-receipt'); ?>
+                        </div>
+                        <div class="col-md-12">
+                            <label for="servis_fatura_dosyasi" class="form-label fw-semibold">Servis Faturası</label>
+                            <input type="file" class="form-control" id="servis_fatura_dosyasi" name="fatura_dosyasi" accept="application/pdf,image/jpeg,image/png,image/webp">
+                            <div class="form-text">PDF, JPG, PNG veya WEBP; en fazla 8 MB.</div>
+                            <div id="servis_fatura_mevcut" class="mt-2 d-none"></div>
                         </div>
                     </div>
                 </form>

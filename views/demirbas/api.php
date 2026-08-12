@@ -4536,25 +4536,35 @@ if ($action == "aparat-hareketler-list") {
 // ============== SERVİS KAYDI İŞLEMLERİ ==============
 
 if ($action == "servis-listesi") {
-    $baslangic = Date::dttoeng($_POST['baslangic'] ?? date('01.m.Y'));
-    $bitis = Date::dttoeng($_POST['bitis'] ?? date('t.m.Y'));
-    $status_filter = $_POST['status_filter'] ?? 'all';
-
-    $kayitlar = $Servis->getByDateRange($baslangic, $bitis, null, $status_filter);
+    $result = $Servis->getDatatableList($_POST);
     $data = [];
 
-    $i = 0;
-    foreach ($kayitlar as $row) {
+    $start = intval($_POST['start'] ?? 0);
+    $i = $start;
+    foreach ($result['data'] as $row) {
         $i++;
+
+        $demirbasAdiHtml = '<b>' . htmlspecialchars($row->demirbas_adi ?? 'Silinmiş Demirbaş', ENT_QUOTES, 'UTF-8') . '</b>';
+        $subDetails = [];
+        if (!empty($row->demirbas_no)) {
+            $subDetails[] = htmlspecialchars($row->demirbas_no, ENT_QUOTES, 'UTF-8');
+        }
+        if (!empty($row->seri_no)) {
+            $subDetails[] = 'SN: ' . htmlspecialchars($row->seri_no, ENT_QUOTES, 'UTF-8');
+        }
+        if (!empty($subDetails)) {
+            $demirbasAdiHtml .= '<br><small class="text-muted">' . implode(' | ', $subDetails) . '</small>';
+        }
+
         $data[] = [
             "sira" => $i,
             "enc_id" => Security::encrypt($row->id),
-            "demirbas_adi" => '<b>' . ($row->demirbas_adi ?? 'Silinmiş Demirbaş') . '</b><br><small class="text-muted">' . ($row->demirbas_no ?? '-') . '</small>',
+            "demirbas_adi" => $demirbasAdiHtml,
             "servis_tarihi" => Date::engtodt($row->servis_tarihi),
             "iade_tarihi" => $row->iade_tarihi ? Date::engtodt($row->iade_tarihi) : '<span class="badge bg-soft-warning text-warning">Serviste</span>',
-            "servis_adi" => $row->servis_adi ?? '-',
-            "teslim_eden" => $row->teslim_eden_adi ?? '-',
-            "islem_detay" => '<b>' . ($row->servis_nedeni ?? '-') . '</b><br><small>' . ($row->yapilan_islemler ?? '-') . '</small>',
+            "servis_adi" => htmlspecialchars($row->servis_adi ?? '-', ENT_QUOTES, 'UTF-8'),
+            "teslim_eden" => htmlspecialchars($row->teslim_eden_adi ?? '-', ENT_QUOTES, 'UTF-8'),
+            "islem_detay" => '<b>' . htmlspecialchars($row->servis_nedeni ?? '-', ENT_QUOTES, 'UTF-8') . '</b><br><small>' . htmlspecialchars($row->yapilan_islemler ?? '-', ENT_QUOTES, 'UTF-8') . '</small>',
             "tutar" => Helper::formattedMoney($row->tutar) . ' ₺',
             "islemler" => '
                 <div class="btn-group">
@@ -4568,12 +4578,14 @@ if ($action == "servis-listesi") {
         ];
     }
 
+    $baslangic = !empty($_POST['baslangic']) ? Date::dttoeng($_POST['baslangic']) : null;
+    $bitis = !empty($_POST['bitis']) ? Date::dttoeng($_POST['bitis']) : null;
     $stats = $Servis->getStats($baslangic, $bitis);
 
     echo json_encode([
-        "draw" => intval($_POST['draw'] ?? 1),
-        "recordsTotal" => count($data),
-        "recordsFiltered" => count($data),
+        "draw" => $result['draw'],
+        "recordsTotal" => $result['recordsTotal'],
+        "recordsFiltered" => $result['recordsFiltered'],
         "data" => $data,
         "stats" => [
             "toplam_kayit" => $stats->toplam_kayit ?? 0,
@@ -4586,7 +4598,7 @@ if ($action == "servis-listesi") {
 
 if ($action == "servis-detay") {
     $id = Security::decrypt($_POST['id']);
-    $kayit = $Servis->find($id);
+    $kayit = $Servis->findForCompany($id);
 
     if ($kayit) {
         $demirbas = $Demirbas->find($kayit->demirbas_id);
@@ -4595,6 +4607,11 @@ if ($action == "servis-detay") {
         $kayit->servis_tarihi_formatted = Date::engtodt($kayit->servis_tarihi);
         $kayit->iade_tarihi_formatted = $kayit->iade_tarihi ? Date::engtodt($kayit->iade_tarihi) : '';
         $kayit->tutar = Helper::formattedMoney($kayit->tutar);
+        $kayit->fatura_dosyasi_var = !empty($kayit->fatura_dosya_adi);
+        $kayit->fatura_goruntule_url = $kayit->fatura_dosyasi_var
+            ? '/views/demirbas/servis-fatura-goruntule.php?id=' . rawurlencode(Security::encrypt($kayit->id))
+            : null;
+        unset($kayit->fatura_dosya_adi);
 
         jsonResponse("success", "Veri getirildi", ["data" => $kayit]);
     } else {
@@ -4604,6 +4621,41 @@ if ($action == "servis-detay") {
 
 if ($action == "servis-kaydet") {
     $id = Security::decrypt($_POST['id'] ?? '');
+
+    $mevcutKayit = $id ? $Servis->findForCompany($id) : null;
+    if ($id && !$mevcutKayit) {
+        jsonResponse("error", "Servis kaydı bulunamadı veya bu kayıt için yetkiniz yok.");
+    }
+
+    $faturaDosyasi = $_FILES['fatura_dosyasi'] ?? null;
+    $faturaHazir = null;
+    if ($faturaDosyasi && ($faturaDosyasi['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_NO_FILE) {
+        if (($faturaDosyasi['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK || !is_uploaded_file($faturaDosyasi['tmp_name'])) {
+            jsonResponse("error", "Servis faturası yüklenemedi.");
+        }
+
+        $allowedTypes = ['application/pdf', 'image/jpeg', 'image/png', 'image/webp'];
+        $maxSize = 8 * 1024 * 1024;
+        $mimeType = (string) (new finfo(FILEINFO_MIME_TYPE))->file($faturaDosyasi['tmp_name']);
+        if (!in_array($mimeType, $allowedTypes, true)) {
+            jsonResponse("error", "Servis faturası PDF, JPG, PNG veya WEBP formatında olmalıdır.");
+        }
+        if (($faturaDosyasi['size'] ?? 0) <= 0 || $faturaDosyasi['size'] > $maxSize) {
+            jsonResponse("error", "Servis faturası en fazla 8 MB olabilir.");
+        }
+
+        $binaryData = file_get_contents($faturaDosyasi['tmp_name']);
+        if ($binaryData === false) {
+            jsonResponse("error", "Servis faturası okunamadı.");
+        }
+        $faturaHazir = [
+            'binary' => Security::encryptFile($binaryData),
+            'dosya_adi' => bin2hex(random_bytes(16)) . '.enc',
+            'orijinal_adi' => basename((string) $faturaDosyasi['name']),
+            'mime_tipi' => $mimeType,
+            'boyut' => (int) $faturaDosyasi['size']
+        ];
+    }
 
     $data = [
         "id" => $id ?: 0,
@@ -4621,7 +4673,34 @@ if ($action == "servis-kaydet") {
     ];
 
     try {
-        $Servis->saveWithAttr($data);
+        $kayitEncId = $Servis->saveWithAttr($data);
+        $kayitId = $id ?: (int) Security::decrypt($kayitEncId);
+
+        if ($faturaHazir) {
+            $baseFaturaDir = dirname(__DIR__, 2) . '/files/demirbas_servis_fatura/';
+            if (!is_dir($baseFaturaDir)) {
+                @mkdir($baseFaturaDir, 0777, true);
+                @chmod($baseFaturaDir, 0777);
+            }
+            $dir = $baseFaturaDir . $kayitId . '/';
+            if (!is_dir($dir) && !@mkdir($dir, 0777, true) && !is_dir($dir)) {
+                throw new Exception('Fatura klasörü oluşturulamadı.');
+            }
+            $hedef = $dir . $faturaHazir['dosya_adi'];
+            if (file_put_contents($hedef, $faturaHazir['binary'], LOCK_EX) === false) {
+                throw new Exception('Fatura dosyası kaydedilemedi.');
+            }
+            if (!$Servis->updateFaturaDosyasi($kayitId, $faturaHazir['dosya_adi'], $faturaHazir['orijinal_adi'], $faturaHazir['mime_tipi'], $faturaHazir['boyut'])) {
+                @unlink($hedef);
+                throw new Exception('Fatura bilgileri kaydedilemedi.');
+            }
+            if ($mevcutKayit && !empty($mevcutKayit->fatura_dosya_adi)) {
+                $eskiDosya = $dir . basename($mevcutKayit->fatura_dosya_adi);
+                if (is_file($eskiDosya) && $eskiDosya !== $hedef) {
+                    @unlink($eskiDosya);
+                }
+            }
+        }
 
         // Demirbaş durumunu güncelle
         // Eğer iade tarihi boşsa 'serviste', doluysa 'aktif' yap

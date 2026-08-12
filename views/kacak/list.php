@@ -1853,6 +1853,24 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             });
         });
 
+        // EXIF okuyucu yüklenemezse en azından cihazdaki dosya tarihi gönderilir.
+        async function cekimOku(dosya) {
+            if (window.ExifCekim) {
+                try {
+                    const deger = await window.ExifCekim.oku(dosya);
+                    if (deger) return deger;
+                } catch (hata) {
+                    console.error('Çekim tarihi okunamadı:', hata);
+                }
+            }
+            if (!dosya || !dosya.lastModified) return '';
+            const t = new Date(dosya.lastModified);
+            if (isNaN(t.getTime())) return '';
+            const iki = s => String(s).padStart(2, '0');
+            return `dosya|${t.getFullYear()}-${iki(t.getMonth() + 1)}-${iki(t.getDate())} `
+                + `${iki(t.getHours())}:${iki(t.getMinutes())}:${iki(t.getSeconds())}`;
+        }
+
         async function kacakFormGonder(onaylaSonrasinda) {
             const secili = $('#kacak_personel_ids').val() || [];
             if (secili.length === 0) {
@@ -1885,9 +1903,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             if (window.ResimSikistir && sahaInput && sahaInput.files.length) {
                 try {
                     // Çekim anı küçültmede kaybolacağı için ham dosyalardan önceden okunur.
-                    const cekimler = window.ExifCekim
-                        ? await Promise.all(Array.from(sahaInput.files).map(d => window.ExifCekim.oku(d)))
-                        : [];
+                    const cekimler = await Promise.all(Array.from(sahaInput.files).map(cekimOku));
                     const kucukler = await window.ResimSikistir.listeyiKucult(sahaInput.files, 1600, 0.75);
                     fd.delete('saha_fotolari[]');
                     kucukler.forEach((dosya, i) => {

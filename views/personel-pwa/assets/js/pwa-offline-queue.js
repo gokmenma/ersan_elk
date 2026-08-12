@@ -581,22 +581,27 @@
         return c;
     }
 
-    /**
-     * Saha fotoğraflarını uzun kenarı maxKenar olacak şekilde JPEG'e indirger.
-     * Küçültme mümkün değilse dosya olduğu gibi döner.
-     *
-     * Sunucudaki GD yalnızca JPEG/PNG çözebildiği için WebP gibi diğer
-     * biçimler boyutu küçük olsa da her zaman JPEG'e çevrilir.
-     */
+    function dosyaTarihiMetni(dosya) {
+        if (!dosya || !dosya.lastModified) return "";
+        var t = new Date(dosya.lastModified);
+        if (isNaN(t.getTime())) return "";
+        var iki = function (s) { return (s < 10 ? "0" : "") + s; };
+        return "dosya|" + t.getFullYear() + "-" + iki(t.getMonth() + 1) + "-" + iki(t.getDate())
+            + " " + iki(t.getHours()) + ":" + iki(t.getMinutes()) + ":" + iki(t.getSeconds());
+    }
+
     /**
      * Çekim anı EXIF'te durur ve küçültmede yok olur; ham dosyadan önceden okunur.
-     * Servis worker bağlamında okuyucu yüklü değildir, kuyruktaki değer korunur.
+     * EXIF okuyucu yüklenmemişse (servis worker bağlamı, dosya sunucuya ulaşmamış)
+     * en azından cihazdaki dosya tarihi gönderilir; böylece alan hiç boş kalmaz.
      */
     function cekimBilgisi(dosya) {
         if (typeof ExifCekim === "undefined" || !ExifCekim || typeof ExifCekim.oku !== "function") {
-            return Promise.resolve("");
+            return Promise.resolve(dosyaTarihiMetni(dosya));
         }
-        return ExifCekim.oku(dosya).catch(function () { return ""; });
+        return ExifCekim.oku(dosya)
+            .then(function (deger) { return deger || dosyaTarihiMetni(dosya); })
+            .catch(function () { return dosyaTarihiMetni(dosya); });
     }
 
     function fotografKucult(dosya, maxKenar, kalite) {
@@ -608,6 +613,13 @@
         });
     }
 
+    /**
+     * Saha fotoğraflarını uzun kenarı maxKenar olacak şekilde JPEG'e indirger.
+     * Küçültme mümkün değilse dosya olduğu gibi döner.
+     *
+     * Sunucudaki GD yalnızca JPEG/PNG çözebildiği için WebP gibi diğer
+     * biçimler boyutu küçük olsa da her zaman JPEG'e çevrilir.
+     */
     function fotografiIndirge(dosya, maxKenar, kalite) {
         maxKenar = maxKenar || 1600;
         kalite = kalite || 0.7;

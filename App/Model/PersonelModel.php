@@ -73,7 +73,29 @@ class PersonelModel extends Model
         $stmt = $this->db->prepare("SELECT * FROM {$this->table} WHERE tc_hash = ? AND firma_id = ? AND silinme_tarihi IS NULL");
         $stmt->execute([$hash, $_SESSION['firma_id']]);
         $results = $stmt->fetchAll(PDO::FETCH_OBJ);
-        return array_map(fn($r) => $this->decryptFields($r), $results);
+        if ($results !== []) {
+            return array_map(fn($r) => $this->decryptFields($r), $results);
+        }
+
+        // tc_hash alanı eklenmeden önce oluşturulan eski kayıtlar için geriye dönük kontrol.
+        // Şifreli T.C. değeri deterministik olmadığı için yalnızca hash'i eksik kayıtlar çözülerek karşılaştırılır.
+        $legacyStmt = $this->db->prepare(
+            "SELECT * FROM {$this->table}
+             WHERE firma_id = :firma_id
+               AND silinme_tarihi IS NULL
+               AND (tc_hash IS NULL OR tc_hash = '')
+               AND tc_kimlik_no IS NOT NULL
+               AND tc_kimlik_no <> ''"
+        );
+        $legacyStmt->execute(['firma_id' => (int) ($_SESSION['firma_id'] ?? 0)]);
+        $matches = [];
+        foreach ($legacyStmt->fetchAll(PDO::FETCH_OBJ) as $record) {
+            $decrypted = $this->decryptFields($record);
+            if (hash_equals($tc, trim((string) ($decrypted->tc_kimlik_no ?? '')))) {
+                $matches[] = $decrypted;
+            }
+        }
+        return $matches;
     }
 
     public function findByAdiSoyadi(string $adiSoyadi)

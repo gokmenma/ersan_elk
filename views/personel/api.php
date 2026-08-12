@@ -13,6 +13,7 @@ use App\Helper\Date;
 use App\Helper\Validator;
 use App\Model\TanimlamalarModel;
 use App\Model\SystemLogModel;
+use App\Model\PersonelEvrakModel;
 use App\Service\ImageUploadService;
 use App\Service\Gate;
 
@@ -36,11 +37,81 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
     }
 
     if ($action == 'personel-kaydet') {
+        $personelTransactionStarted = false;
+        $aiTasinanDosyalar = [];
         try {
+
+            if (!Gate::allows('personel_duzenle')) {
+                throw new Exception('Bu işlem için personel düzenleme yetkiniz bulunmamaktadır.');
+            }
 
             // Form verilerini al
             $data = $_POST;
             $personel_id = $data['personel_id'];
+
+            // AI analizinden arşivlenmesi seçilen evrakları personel kaydından ayrı hazırla.
+            $aiEvraklar = [];
+            $aiDosyalar = $_FILES['ai_evrak_dosyalari'] ?? null;
+            $aiTurler = is_array($data['ai_evrak_turleri'] ?? null) ? $data['ai_evrak_turleri'] : [];
+            $aiAdlar = is_array($data['ai_evrak_adlari'] ?? null) ? $data['ai_evrak_adlari'] : [];
+            unset($data['ai_evrak_turleri'], $data['ai_evrak_adlari']);
+
+            if ($aiDosyalar && is_array($aiDosyalar['name'] ?? null)) {
+                if (count($aiDosyalar['name']) > 6) {
+                    throw new Exception('Tek seferde en fazla 6 işe giriş evrakı kaydedilebilir.');
+                }
+                $izinliTurler = array_keys(Helper::EVRAK_TURLERI);
+                $mimeUzantilari = [
+                    'application/pdf' => 'pdf',
+                    'image/jpeg' => 'jpg',
+                    'image/png' => 'png',
+                    'image/webp' => 'webp',
+                ];
+                $toplamBoyut = 0;
+                foreach ($aiDosyalar['name'] as $index => $orijinalAd) {
+                    if (($aiDosyalar['error'][$index] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+                        throw new Exception('İşe giriş evraklarından biri yüklenemedi.');
+                    }
+                    $boyut = (int) ($aiDosyalar['size'][$index] ?? 0);
+                    $toplamBoyut += $boyut;
+                    if ($boyut < 1 || $boyut > 12 * 1024 * 1024 || $toplamBoyut > 30 * 1024 * 1024) {
+                        throw new Exception('İşe giriş evrakları belge başına 12 MB, toplamda 30 MB sınırını geçemez.');
+                    }
+                    $geciciYol = (string) ($aiDosyalar['tmp_name'][$index] ?? '');
+                    if (!is_uploaded_file($geciciYol)) {
+                        throw new Exception('İşe giriş evrakı doğrulanamadı.');
+                    }
+                    $mime = (string) (new finfo(FILEINFO_MIME_TYPE))->file($geciciYol);
+                    if (!isset($mimeUzantilari[$mime])) {
+                        throw new Exception('İşe giriş evrakları yalnızca PDF, JPG, PNG veya WEBP olabilir.');
+                    }
+                    $evrakTuru = (string) ($aiTurler[$index] ?? 'diger');
+                    if (!in_array($evrakTuru, $izinliTurler, true)) {
+                        $evrakTuru = 'diger';
+                    }
+                    $evrakAdi = trim((string) ($aiAdlar[$index] ?? ''));
+                    $aiEvraklar[] = [
+                        'tmp_name' => $geciciYol,
+                        'orijinal_dosya_adi' => mb_substr(basename((string) $orijinalAd), 0, 255, 'UTF-8'),
+                        'dosya_boyutu' => $boyut,
+                        'dosya_tipi' => $mime,
+                        'uzanti' => $mimeUzantilari[$mime],
+                        'evrak_turu' => $evrakTuru,
+                        'evrak_adi' => mb_substr($evrakAdi !== '' ? $evrakAdi : (Helper::EVRAK_TURLERI[$evrakTuru] ?? 'Personel Evrakı'), 0, 255, 'UTF-8'),
+                    ];
+                }
+            }
+
+            // Evrak dizinini personel kaydından önce doğrula; dosya sistemi hatası yarım kayıt oluşturmamalı.
+            if ($aiEvraklar !== []) {
+                $evrakAnaDizini = dirname(__DIR__, 2) . '/uploads/personel_evraklar/';
+                if (!is_dir($evrakAnaDizini) && !mkdir($evrakAnaDizini, 0777, true) && !is_dir($evrakAnaDizini)) {
+                    throw new Exception('İşe giriş evrakları klasörü oluşturulamadı. Personel kaydı başlatılmadı.');
+                }
+                if (!is_writable($evrakAnaDizini)) {
+                    throw new Exception('İşe giriş evrakları klasörüne yazma yetkisi yok. Personel kaydı başlatılmadı.');
+                }
+            }
 
             /**Personelin yaşı 15'ten küçük olmamalı */
             if (!empty($data['dogum_tarihi'])) {
@@ -135,9 +206,32 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
             // TC Kimlik No doğrulaması
             $tcKimlik = $data['tc_kimlik_no'] ?? '';
+            // Yeni kayıtta önce mükerrer personeli kontrol et. Daha önce hatalı formatla
+            // kaydedilmiş bir T.C. numarası da mevcut personel olarak bildirilmelidir.
+            if ((int) $personel_id < 1 && $tcKimlik !== '') {
+                $ayniTcKayitlari = $Personel->findByTc($tcKimlik);
+                if ($ayniTcKayitlari !== []) {
+                    $kayitliPersonelAdi = trim((string) ($ayniTcKayitlari[0]->adi_soyadi ?? ''));
+                    $mesaj = $kayitliPersonelAdi !== ''
+                        ? "{$kayitliPersonelAdi} isimli personel bu T.C. kimlik numarasıyla zaten kayıtlıdır."
+                        : 'Bu personel, aynı T.C. kimlik numarasıyla zaten kayıtlıdır.';
+                    throw new Exception($mesaj . ' Lütfen Personel Listesi üzerinden mevcut kaydı açınız.');
+                }
+            }
+
             if (!empty($tcKimlik) && !Validator::tcKimlik($tcKimlik)) {
-                echo json_encode(['status' => 'error', 'message' => 'Geçersiz TC Kimlik No. Lütfen kontrol ediniz.']);
-                exit;
+                // Eski kayıtta T.C. numarası farklı/bozuk tutulmuşsa aynı personeli ad-soyad üzerinden bildir.
+                if ((int) $personel_id < 1) {
+                    $adiSoyadiKontrol = trim((string) ($data['adi_soyadi'] ?? ''));
+                    $ayniIsimliPersonel = $adiSoyadiKontrol !== '' ? $Personel->findByAdiSoyadi($adiSoyadiKontrol) : null;
+                    if ($ayniIsimliPersonel) {
+                        throw new Exception(
+                            trim((string) ($ayniIsimliPersonel->adi_soyadi ?? $adiSoyadiKontrol))
+                            . ' isimli personel zaten kayıtlıdır. Lütfen Personel Listesi üzerinden mevcut kaydı açınız.'
+                        );
+                    }
+                }
+                throw new Exception('Geçersiz TC Kimlik No. Lütfen kontrol ediniz.');
             }
 
             // IBAN doğrulaması
@@ -290,8 +384,47 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $oldData = $Personel->find($personel_id);
             }
 
+            $Personel->getDb()->beginTransaction();
+            $personelTransactionStarted = true;
+
             $res = $Personel->saveWithAttr($data);
             $currentPid = ($personel_id > 0) ? $personel_id : Security::decrypt($res);
+
+            $kaydedilenAiEvrakSayisi = 0;
+            if ($aiEvraklar !== []) {
+                $evrakDizini = dirname(__DIR__, 2) . '/uploads/personel_evraklar/' . $currentPid . '/';
+                if (!is_dir($evrakDizini) && !mkdir($evrakDizini, 0755, true) && !is_dir($evrakDizini)) {
+                    throw new Exception('Personel kaydedildi ancak evrak klasörü oluşturulamadı.');
+                }
+                $EvrakModel = new PersonelEvrakModel();
+                foreach ($aiEvraklar as $evrak) {
+                    $dosyaAdi = bin2hex(random_bytes(16)) . '.' . $evrak['uzanti'];
+                    $hedefYol = $evrakDizini . $dosyaAdi;
+                    if (!move_uploaded_file($evrak['tmp_name'], $hedefYol)) {
+                        throw new Exception('İşe giriş evraklarından biri arşivlenemedi. Personel kaydı geri alındı.');
+                    }
+                    $aiTasinanDosyalar[] = $hedefYol;
+                    try {
+                        $EvrakModel->saveWithAttr([
+                            'id' => 0,
+                            'personel_id' => $currentPid,
+                            'evrak_adi' => $evrak['evrak_adi'],
+                            'evrak_turu' => $evrak['evrak_turu'],
+                            'dosya_adi' => $dosyaAdi,
+                            'orijinal_dosya_adi' => $evrak['orijinal_dosya_adi'],
+                            'dosya_boyutu' => $evrak['dosya_boyutu'],
+                            'dosya_tipi' => $evrak['dosya_tipi'],
+                            'aciklama' => 'Yapay zekâ belge analizi sırasında işe giriş evraklarına eklendi.',
+                            'yukleyen_id' => $userId,
+                            'aktif' => 1,
+                        ]);
+                        $kaydedilenAiEvrakSayisi++;
+                    } catch (Throwable $e) {
+                        @unlink($hedefYol);
+                        throw $e;
+                    }
+                }
+            }
 
             $warningMessage = "";
 
@@ -419,9 +552,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $message .= $warningMessage;
             }
 
-            echo json_encode(['status' => 'success', 'message' => $message, 'id' => $currentPid, 'is_update' => ($personel_id > 0)]);
+            if ($kaydedilenAiEvrakSayisi > 0) {
+                $message .= " {$kaydedilenAiEvrakSayisi} işe giriş evrakı personelin Evraklar bölümüne kaydedildi.";
+            }
 
-        } catch (Exception $e) {
+            $Personel->getDb()->commit();
+            $personelTransactionStarted = false;
+
+            echo json_encode([
+                'status' => 'success',
+                'message' => $message,
+                'id' => Security::encrypt($currentPid),
+                'is_update' => ($personel_id > 0)
+            ]);
+
+        } catch (Throwable $e) {
+            if ($personelTransactionStarted && $Personel->getDb()->inTransaction()) {
+                $Personel->getDb()->rollBack();
+            }
+            foreach ($aiTasinanDosyalar as $tasinanDosya) {
+                if (is_file($tasinanDosya)) {
+                    @unlink($tasinanDosya);
+                }
+            }
             echo json_encode(['status' => 'error', 'message' => $e->getMessage()]);
         }
     } elseif ($action == 'personel-sil') {

@@ -791,11 +791,13 @@ class KacakKontrolModel extends Model
         }
 
         if (!is_string($istemci) || $istemci === '') {
+            error_log('Kaçak fotoğrafı çekim anı olmadan kaydedildi: sunucu EXIF yok, istemci değeri boş.');
             return null;
         }
 
         $parcalar = explode('|', $istemci, 2);
         if (count($parcalar) !== 2) {
+            error_log('Kaçak fotoğrafı çekim anı biçimsiz geldi: ' . substr($istemci, 0, 60));
             return null;
         }
 
@@ -807,6 +809,7 @@ class KacakKontrolModel extends Model
 
         // Cihaz saati bozuksa anlamsız değer yazılmasın.
         if ($zaman > time() + 3600 || $zaman < strtotime('-5 years')) {
+            error_log('Kaçak fotoğrafı çekim anı aralık dışı, yok sayıldı: ' . substr($istemci, 0, 60));
             return null;
         }
 

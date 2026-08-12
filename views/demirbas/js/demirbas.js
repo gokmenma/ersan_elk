@@ -327,61 +327,63 @@ $(document).ready(function () {
 
   // Servis Tablosu
   if ($("#servisTable").length) {
-    servisTable = $("#servisTable").DataTable({
-      ...getDatatableOptions(),
-      serverSide: true,
-      ajax: {
-        url: zimmetUrl,
-        type: "POST",
-        data: function (d) {
-          d.action = "servis-listesi";
-          let dateRange = $("#servis_filtre_range").val() || "";
-          let dates = dateRange.split(" to ");
-          d.baslangic = dates[0] || "";
-          d.bitis = dates[1] || "";
-          d.status_filter = $('input[name="servis-status-filter"]:checked').val() || "all";
+    servisTable = $("#servisTable").DataTable(
+      applyLengthStateSave({
+        ...getDatatableOptions(),
+        serverSide: true,
+        ajax: {
+          url: zimmetUrl,
+          type: "POST",
+          data: function (d) {
+            d.action = "servis-listesi";
+            let dateRange = $("#servis_filtre_range").val() || "";
+            let dates = dateRange.split(" to ");
+            d.baslangic = dates[0] || "";
+            d.bitis = dates[1] || "";
+            d.status_filter = $('input[name="servis-status-filter"]:checked').val() || "all";
+          },
         },
-      },
-      columns: [
-        { data: "sira", className: "text-center" },
-        { data: "demirbas_adi" },
-        { data: "servis_tarihi", className: "text-center" },
-        { data: "iade_tarihi", className: "text-center" },
-        { data: "servis_adi" },
-        { data: "teslim_eden" },
-        { data: "islem_detay" },
-        { data: "tutar", className: "text-end" },
-        { data: "islemler", className: "text-center", orderable: false },
-      ],
-      order: [[2, "desc"]],
-      language: {
-        ...getDatatableOptions().language,
-        emptyTable:
-          '<div class="text-center text-muted py-4"><i class="bx bx-wrench display-4 d-block mb-2"></i>Herhangi bir servis kaydı bulunamadı.</div>',
-      },
-      initComplete: function (settings, json) {
-        $("#personel-loader").fadeOut(300);
+        columns: [
+          { data: "sira", className: "text-center" },
+          { data: "demirbas_adi" },
+          { data: "servis_tarihi", className: "text-center" },
+          { data: "iade_tarihi", className: "text-center" },
+          { data: "servis_adi" },
+          { data: "teslim_eden" },
+          { data: "islem_detay" },
+          { data: "tutar", className: "text-end" },
+          { data: "islemler", className: "text-center", orderable: false },
+        ],
+        order: [[2, "desc"]],
+        language: {
+          ...getDatatableOptions().language,
+          emptyTable:
+            '<div class="text-center text-muted py-4"><i class="bx bx-wrench display-4 d-block mb-2"></i>Herhangi bir servis kaydı bulunamadı.</div>',
+        },
+        initComplete: function (settings, json) {
+          $("#personel-loader").fadeOut(300);
 
-        if (json && json.stats) {
-          $("#servis_toplam_kayit").text(json.stats.toplam_kayit);
-          $("#servis_aktif_sayisi").text(json.stats.aktif_sayisi);
-          $("#servis_toplam_maliyet").text(json.stats.toplam_maliyet);
-        }
+          if (json && json.stats) {
+            $("#servis_toplam_kayit").text(json.stats.toplam_kayit);
+            $("#servis_aktif_sayisi").text(json.stats.aktif_sayisi);
+            $("#servis_toplam_maliyet").text(json.stats.toplam_maliyet);
+          }
 
-        // Projenin standart gelişmiş filtrelerini başlat
-        if (typeof initAdvancedFilters === "function") {
-          initAdvancedFilters(this.api(), settings);
-        }
-      },
-      drawCallback: function (settings) {
-        let json = settings.json;
-        if (json && json.stats) {
-          $("#servis_toplam_kayit").text(json.stats.toplam_kayit);
-          $("#servis_aktif_sayisi").text(json.stats.aktif_sayisi);
-          $("#servis_toplam_maliyet").text(json.stats.toplam_maliyet);
-        }
-      },
-    });
+          // Projenin standart gelişmiş filtrelerini başlat
+          if (typeof initAdvancedFilters === "function") {
+            initAdvancedFilters(this.api(), settings);
+          }
+        },
+        drawCallback: function (settings) {
+          let json = settings.json;
+          if (json && json.stats) {
+            $("#servis_toplam_kayit").text(json.stats.toplam_kayit);
+            $("#servis_aktif_sayisi").text(json.stats.aktif_sayisi);
+            $("#servis_toplam_maliyet").text(json.stats.toplam_maliyet);
+          }
+        },
+      })
+    );
   }
 
   // Servis filtre butonları olay dinleyicisi
@@ -3517,6 +3519,7 @@ $(document).on("click", "#btnServisListele", function () {
 $(document).on("click", "#btnYeniServis", function () {
   $("#servisForm")[0].reset();
   $("#servis_id").val("");
+  $("#servis_fatura_mevcut").addClass("d-none").empty();
   $("#servis_demirbas_id").val("").trigger("change");
   $("#teslim_eden_personel_id").val("").trigger("change");
 
@@ -3536,6 +3539,7 @@ $(document).on("click", ".servis-ekle", function () {
 
   $("#servisForm")[0].reset();
   $("#servis_id").val("");
+  $("#servis_fatura_mevcut").addClass("d-none").empty();
   if ($("#servis_demirbas_id option[value='" + rawId + "']").length === 0) {
     const displayText = (no ? no + " - " : "") + (name || "Demirbaş");
     const opt = new Option(displayText, rawId, true, true);
@@ -3592,6 +3596,19 @@ $(document).on("click", ".servis-duzenle", function () {
         $("#yapilan_islemler").val(data.yapilan_islemler);
         $("#tutar").val(data.tutar);
         $("#fatura_no").val(data.fatura_no);
+        if (data.fatura_dosyasi_var) {
+          $("#servis_fatura_mevcut")
+            .removeClass("d-none")
+            .html(
+              '<a class="btn btn-sm btn-soft-primary" href="' +
+                data.fatura_goruntule_url +
+                '" target="_blank" rel="noopener"><i class="bx bx-show me-1"></i>' +
+                $("<div>").text(data.fatura_orijinal_adi || "Mevcut faturayı görüntüle").html() +
+                "</a>",
+            );
+        } else {
+          $("#servis_fatura_mevcut").addClass("d-none").empty();
+        }
 
         $("#servisModalLabel").html(
           '<i class="bx bx-wrench me-2"></i>Servis Kaydı Düzenle',
@@ -3607,21 +3624,21 @@ $(document).on("click", ".servis-duzenle", function () {
 
 $(document).on("click", "#btnServisKaydet", function () {
   const $btn = $(this);
-  const formData = $("#servisForm").serialize();
+  const formData = new FormData($("#servisForm")[0]);
+  formData.append("action", "servis-kaydet");
 
   $btn
     .prop("disabled", true)
     .html('<i class="bx bx-loader bx-spin me-1"></i> Kaydediliyor...');
 
-  $.post(
-    zimmetUrl,
-    {
-      action: "servis-kaydet",
-      ...$("#servisForm")
-        .serializeArray()
-        .reduce((obj, item) => ({ ...obj, [item.name]: item.value }), {}),
-    },
-    function (response) {
+  $.ajax({
+    url: zimmetUrl,
+    method: "POST",
+    data: formData,
+    processData: false,
+    contentType: false,
+    dataType: "json",
+    success: function (response) {
       $btn
         .prop("disabled", false)
         .html('<i class="bx bx-save me-1"></i> Kaydet');
@@ -3633,8 +3650,11 @@ $(document).on("click", "#btnServisKaydet", function () {
         Swal.fire("Hata", response.message || "Kaydedilemedi", "error");
       }
     },
-    "json",
-  );
+    error: function () {
+      $btn.prop("disabled", false).html('<i class="bx bx-save me-1"></i> Kaydet');
+      Swal.fire("Hata", "Sunucuya ulaşılamadı veya dosya yüklenemedi.", "error");
+    },
+  });
 });
 
 $(document).on("click", ".servis-sil", function () {

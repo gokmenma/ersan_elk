@@ -777,6 +777,128 @@ class EndeksOkumaModel extends Model
         return $stmt->fetchAll(PDO::FETCH_COLUMN);
     }
 
+    public function getDenetimEkipGun($startDate, $endDate, $bolge = '', $ekipKoduId = '', $arama = '')
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+
+        $where = "t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih BETWEEN ? AND ?";
+        $params = [$firmaId, $startDate, $endDate];
+
+        if ($bolge !== '') {
+            $where .= " AND t.bolge = ?";
+            $params[] = $bolge;
+        }
+        if ($ekipKoduId !== '') {
+            $where .= " AND t.ekip_kodu_id = ?";
+            $params[] = $ekipKoduId;
+        }
+        if ($arama !== '') {
+            $where .= " AND (t.kullanici_adi LIKE ? OR def.tur_adi LIKE ? OR p.adi_soyadi LIKE ?)";
+            $like = '%' . $arama . '%';
+            $params[] = $like;
+            $params[] = $like;
+            $params[] = $like;
+        }
+
+        $sql = "SELECT
+                    t.ekip_kodu_id,
+                    t.tarih,
+                    MAX(def.tur_adi) as ekip_adi,
+                    MAX(def.ekip_bolge) as tanimli_bolge,
+                    MAX(t.kullanici_adi) as kullanici_adi,
+                    GROUP_CONCAT(DISTINCT t.bolge ORDER BY t.bolge SEPARATOR ', ') as okunan_bolgeler,
+                    GROUP_CONCAT(DISTINCT p.adi_soyadi ORDER BY p.adi_soyadi SEPARATOR ', ') as personeller,
+                    COUNT(DISTINCT t.personel_id) as personel_sayisi,
+                    COUNT(DISTINCT t.defter) as defter_sayisi,
+                    COUNT(*) as kayit_sayisi,
+                    SUM(t.okunan_abone_sayisi) as toplam_abone,
+                    SUM(CASE WHEN t.sayac_durum IN ('SAYAÇ NORMAL','SARFIYAT YOK','GOTURU SARFIYAT','TERS DEVİR','NORMAL  DEVİR','NORMAL DEVİR','SAYAÇ TERS') THEN t.okunan_abone_sayisi ELSE 0 END) as okunan_abone,
+                    SUM(CASE WHEN t.sayac_durum = 'EVDE YOK' THEN t.okunan_abone_sayisi ELSE 0 END) as evde_yok_abone,
+                    SUM(CASE WHEN t.sayac_durum IN ('KULLANILMIYOR','OKUMA KAPALI(OK)','İPTAL(IP)','HESAP KESİM(HK)','ABONE BULUNAMIYOR') THEN t.okunan_abone_sayisi ELSE 0 END) as idari_abone,
+                    SUM(CASE WHEN t.sayac_durum IN ('SAYAÇ BOZUK','SAYAÇ PATLAK','SAYAÇ OKUNAMIYOR(KİRLİ)','SAYAÇ YOK','SAYACIN CAMI KIRIK','DEPREMDE YIKILMIŞ') THEN t.okunan_abone_sayisi ELSE 0 END) as arizali_abone
+                FROM {$this->table} t
+                LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
+                LEFT JOIN personel p ON t.personel_id = p.id
+                WHERE $where
+                GROUP BY t.ekip_kodu_id, t.tarih
+                ORDER BY t.tarih ASC, ekip_adi ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function getDenetimSayacDurumKirilim($startDate, $endDate, $bolge = '', $ekipKoduId = '')
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+
+        $where = "t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih BETWEEN ? AND ?";
+        $params = [$firmaId, $startDate, $endDate];
+
+        if ($bolge !== '') {
+            $where .= " AND t.bolge = ?";
+            $params[] = $bolge;
+        }
+        if ($ekipKoduId !== '') {
+            $where .= " AND t.ekip_kodu_id = ?";
+            $params[] = $ekipKoduId;
+        }
+
+        $sql = "SELECT t.ekip_kodu_id, t.tarih, TRIM(t.sayac_durum) as sayac_durum,
+                       SUM(t.okunan_abone_sayisi) as adet
+                FROM {$this->table} t
+                WHERE $where
+                GROUP BY t.ekip_kodu_id, t.tarih, TRIM(t.sayac_durum)
+                ORDER BY adet DESC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function getDenetimEkipDefterleri($startDate, $endDate, $bolge = '', $ekipKoduId = '')
+    {
+        $firmaId = $_SESSION['firma_id'] ?? 0;
+
+        $where = "t.firma_id = ? AND t.silinme_tarihi IS NULL AND t.tarih BETWEEN ? AND ?";
+        $params = [$firmaId, $startDate, $endDate];
+
+        if ($bolge !== '') {
+            $where .= " AND t.bolge = ?";
+            $params[] = $bolge;
+        }
+        if ($ekipKoduId !== '') {
+            $where .= " AND t.ekip_kodu_id = ?";
+            $params[] = $ekipKoduId;
+        }
+
+        $sql = "SELECT t.ekip_kodu_id, t.tarih, t.bolge, TRIM(t.defter) as defter,
+                       SUM(t.okunan_abone_sayisi) as adet
+                FROM {$this->table} t
+                WHERE $where AND t.defter IS NOT NULL AND t.defter != ''
+                GROUP BY t.ekip_kodu_id, t.tarih, t.bolge, TRIM(t.defter)
+                ORDER BY adet DESC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute($params);
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    public function getDenetimTanimliEkipler()
+    {
+        $sql = "SELECT def.id, def.tur_adi, def.ekip_bolge,
+                       GROUP_CONCAT(DISTINCT p.adi_soyadi ORDER BY p.adi_soyadi SEPARATOR ', ') as personeller
+                FROM tanimlamalar def
+                LEFT JOIN personel p ON p.ekip_no = def.id AND p.silinme_tarihi IS NULL
+                WHERE def.grup = 'ekip_kodu' AND def.silinme_tarihi IS NULL
+                GROUP BY def.id, def.tur_adi, def.ekip_bolge
+                ORDER BY def.tur_adi ASC";
+
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute();
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
     /**
      * Riski personelleri getirir
      * @param string $calcType 'total' (Toplam Abone) veya 'normal' (Sayaç Normal)

@@ -177,6 +177,11 @@ $(document).ready(function () {
 
     let formData = new FormData(form[0]);
 
+    // Yapay zekâ analizinde evrak arşivine eklenmesi seçilen dosyaları aynı kayıtla gönder.
+    if (typeof window.personelAiEvraklariniFormDataEkle === "function") {
+      window.personelAiEvraklariniFormDataEkle(formData);
+    }
+
     // Profil resmi inputu formun dışında olduğu için manuel ekliyoruz
     let fileInput = $("#avatarInput")[0];
     if (fileInput.files && fileInput.files[0]) {
@@ -215,15 +220,19 @@ $(document).ready(function () {
         let res = JSON.parse(response);
         console.log(res);
         if (res.status === "success") {
+          var $messageContent = $("<div>").html(res.message || "İşlem başarıyla tamamlandı.");
+          $messageContent.find("br").replaceWith(" ");
+          $messageContent.find("div, p").append(" ");
+          var plainMessage = $messageContent.text().replace(/\s+/g, " ").trim();
           Swal.fire({
             title: "İşlem Başarılı",
-            html: res.message,
+            text: plainMessage,
             icon: "success",
             confirmButtonText: "Tamam",
           }).then((result) => {
             let isUpdate = res.is_update !== undefined ? res.is_update : (personel_id && String(personel_id).trim() !== "" && String(personel_id).trim() !== "0");
-            if (!isUpdate) {
-              window.location.href = "index?p=personel/list";
+            if (!isUpdate && res.id) {
+              window.location.href = "index?p=personel/manage&id=" + encodeURIComponent(res.id);
             }
           });
         } else {

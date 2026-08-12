@@ -747,6 +747,7 @@ if ($id > 0) {
 <script src="views/personel/js/ek_odeme.js?v=<?= filemtime(__DIR__ . '/js/ek_odeme.js') ?>"></script>
 <script src="views/personel/js/icra.js?v=<?= filemtime(__DIR__ . '/js/icra.js') ?>"></script>
 <script src="views/personel/js/evrak.js?v=<?= filemtime(__DIR__ . '/js/evrak.js') ?>"></script>
+<script src="views/personel/js/belge-analiz.js?v=<?= filemtime(__DIR__ . '/js/belge-analiz.js') ?>"></script>
 <script>
     window.personelData = {
         maas_tutari: <?= floatval($personel->maas_tutari ?? 0) ?>,
