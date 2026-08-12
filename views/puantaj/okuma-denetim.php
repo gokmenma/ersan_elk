@@ -16,8 +16,6 @@ $DosyaModel = new OkumaDetayModel();
 $yuklenenDosyalar = $DosyaModel->getDosyalar($_SESSION['firma_id'] ?? 0);
 $excelAralik = $DosyaModel->getTarihAraligi($_SESSION['firma_id'] ?? 0);
 $excelVeriVar = $excelAralik && (int) $excelAralik->toplam > 0;
-
-$apiSorgulanabilir = (int) ($_SESSION['firma_kodu'] ?? 0) === 17;
 ?>
 
 <div class="container-fluid od-sayfa om-sayfa">
@@ -64,10 +62,10 @@ $apiSorgulanabilir = (int) ($_SESSION['firma_kodu'] ?? 0) === 17;
                                class="ok-kaynak-dugme <?php echo $kaynak === 'api' ? 'ok-secili' : ''; ?>">
                                 <i class="mdi mdi-cloud-download-outline fs-4 text-primary"></i>
                                 <div>
-                                    <div class="ok-baslik">API'den sorgula</div>
+                                    <div class="ok-baslik">API verisi</div>
                                     <div class="ok-aciklama">
                                         Gün bazlı okuma hacmi, sayaç durumu ve bölge denetimi.
-                                        Saat bilgisi içermez.
+                                        Otomatik sorgulamayla beslenir, saat bilgisi içermez.
                                     </div>
                                 </div>
                             </a>
@@ -92,17 +90,7 @@ $apiSorgulanabilir = (int) ($_SESSION['firma_kodu'] ?? 0) === 17;
                     </div>
 
                     <div class="d-flex gap-2 align-items-center flex-wrap">
-                        <?php if ($kaynak === 'api'): ?>
-                            <?php if ($apiSorgulanabilir): ?>
-                                <button type="button" class="btn btn-primary fw-bold shadow-sm" id="okApiSorgula">
-                                    <i class="mdi mdi-cloud-search-outline me-1"></i> API'den Veri Çek
-                                </button>
-                            <?php else: ?>
-                                <span class="badge bg-light text-dark border py-2 px-3">
-                                    API sorgulaması yalnızca firma kodu 17 için açıktır
-                                </span>
-                            <?php endif; ?>
-                        <?php else: ?>
+                        <?php if ($kaynak === 'excel'): ?>
                             <label for="omDosya" class="btn btn-success fw-bold shadow-sm mb-0">
                                 <i class="mdi mdi-upload me-1"></i> Excel Dosyası Seç
                             </label>
@@ -293,49 +281,6 @@ $(document).ready(function () {
         $.post('views/puantaj/okuma-mesai-api.php', { action: 'dosya-sil', dosya_id: id }, null, 'json')
             .done(function () { window.location.reload(); })
             .fail(function () { alert('Dosya silinemedi.'); });
-    });
-
-    $('#okApiSorgula').on('click', function () {
-        var dugme = $(this);
-        var deger = $('input[name="date_range"]').val() || '';
-        var parcalar = deger.split(' - ');
-
-        function cevir(tarih) {
-            var p = (tarih || '').trim().split('.');
-            if (p.length !== 3) return '';
-            return p[2] + '-' + p[1] + '-' + p[0];
-        }
-
-        var basla = cevir(parcalar[0]);
-        var bitir = cevir(parcalar[1] || parcalar[0]);
-
-        if (!basla || !bitir) {
-            alert('Önce geçerli bir tarih aralığı seçin.');
-            return;
-        }
-
-        if (!confirm(deger + ' aralığı için KASKİ okuma API\'si sorgulanacak ve bu aralıktaki kayıtlar yenilenecek. Onaylıyor musunuz?')) {
-            return;
-        }
-
-        dugme.prop('disabled', true).html('<i class="mdi mdi-loading mdi-spin me-1"></i> Sorgulanıyor...');
-
-        $.post('views/puantaj/api.php', {
-            action: 'online-icmal-sorgula',
-            baslangic_tarihi: basla,
-            bitis_tarihi: bitir
-        }, null, 'json').done(function (cevap) {
-            if (cevap && cevap.status === 'success') {
-                alert(cevap.message || 'Sorgulama tamamlandı.');
-                window.location.reload();
-            } else {
-                alert((cevap && cevap.message) ? cevap.message : 'Sorgulama tamamlanamadı.');
-                dugme.prop('disabled', false).html('<i class="mdi mdi-cloud-search-outline me-1"></i> API\'den Veri Çek');
-            }
-        }).fail(function () {
-            alert('API sorgulaması sırasında bir hata oluştu.');
-            dugme.prop('disabled', false).html('<i class="mdi mdi-cloud-search-outline me-1"></i> API\'den Veri Çek');
-        });
     });
 });
 </script>
