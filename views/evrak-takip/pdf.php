@@ -58,6 +58,13 @@ try {
         }
 
         $ekDosyaYollari = [];
+        if (!empty($_FILES['dosya']['tmp_name']) && is_uploaded_file($_FILES['dosya']['tmp_name'])) {
+            $ekDosyaYollari[] = [
+                'path' => $_FILES['dosya']['tmp_name'],
+                'name' => $_FILES['dosya']['name'] ?? 'Evrak Dosyası',
+                'type' => $_FILES['dosya']['type'] ?? '',
+            ];
+        }
         if (!empty($_FILES['ek_dosyalari']['tmp_name']) && is_array($_FILES['ek_dosyalari']['tmp_name'])) {
             foreach ($_FILES['ek_dosyalari']['tmp_name'] as $key => $tmpPath) {
                 if (!empty($tmpPath) && is_uploaded_file($tmpPath)) {
@@ -74,11 +81,22 @@ try {
         if (!empty($_POST['id'])) {
             $evrakRealId = (int) Security::decrypt((string) $_POST['id']);
             if ($evrakRealId > 0) {
+                $existingDoc = $model->getById($evrakRealId);
                 $dbAttachments = $model->getAttachments($evrakRealId);
                 $removedIds = json_decode((string) ($_POST['silinen_ek_ids_json'] ?? '[]'), true) ?: [];
                 $orderInfo = json_decode((string) ($_POST['ek_duzen_json'] ?? '[]'), true) ?: [];
 
                 $existingById = [];
+                if ($existingDoc && !empty($existingDoc->dosya_yolu)) {
+                    $mainFullPath = dirname(__DIR__, 2) . '/' . ltrim($existingDoc->dosya_yolu, '/');
+                    if (file_exists($mainFullPath)) {
+                        $existingById[0] = [
+                            'path' => $mainFullPath,
+                            'name' => basename($existingDoc->dosya_yolu),
+                            'type' => mime_content_type($mainFullPath) ?: '',
+                        ];
+                    }
+                }
                 foreach ($dbAttachments as $att) {
                     if (!in_array((int) $att->id, array_map('intval', $removedIds), true)) {
                         $fullPath = dirname(__DIR__, 2) . '/' . ltrim($att->dosya_yolu, '/');
@@ -117,9 +135,24 @@ try {
         $signerIds = json_decode((string) ($evrak->imza_kullanici_ids ?? '[]'), true) ?: [];
         $dbAttachments = $model->getAttachments($id);
         $ekDosyaYollari = [];
+
+        if (!empty($evrak->dosya_yolu)) {
+            $mainFullPath = dirname(__DIR__, 2) . '/' . ltrim($evrak->dosya_yolu, '/');
+            if (file_exists($mainFullPath)) {
+                $ekDosyaYollari[] = [
+                    'path' => $mainFullPath,
+                    'name' => basename($evrak->dosya_yolu),
+                    'type' => mime_content_type($mainFullPath) ?: '',
+                ];
+            }
+        }
+
         foreach ($dbAttachments as $att) {
             $fullPath = dirname(__DIR__, 2) . '/' . ltrim($att->dosya_yolu, '/');
             if (file_exists($fullPath)) {
+                if (!empty($evrak->dosya_yolu) && ltrim($att->dosya_yolu, '/') === ltrim($evrak->dosya_yolu, '/')) {
+                    continue;
+                }
                 $ekDosyaYollari[] = [
                     'path' => $fullPath,
                     'name' => $att->dosya_adi,

@@ -256,6 +256,11 @@ final class EvrakPdfService
         if ($ekDosyalari !== []) {
             $mpdf->writeHTMLFooters();
             $mpdf->SetHTMLFooter('');
+            $mpdf->SetHTMLFooter('', 'E');
+            $mpdf->SetHTMLFooter('', 'O');
+            $mpdf->SetHTMLHeader('');
+            $mpdf->SetHTMLHeader('', 'E');
+            $mpdf->SetHTMLHeader('', 'O');
         }
 
         foreach ($ekDosyalari as $ekIndex => $ek) {
@@ -274,6 +279,12 @@ final class EvrakPdfService
                     $pageCount = $mpdf->setSourceFile($filePath);
                     for ($pageNo = 1; $pageNo <= $pageCount; $pageNo++) {
                         $mpdf->AddPage('P', '', '', '', '', 10, 10, 10, 10, 0, 0);
+                        $mpdf->SetHTMLFooter('');
+                        $mpdf->SetHTMLFooter('', 'E');
+                        $mpdf->SetHTMLFooter('', 'O');
+                        $mpdf->SetHTMLHeader('');
+                        $mpdf->SetHTMLHeader('', 'E');
+                        $mpdf->SetHTMLHeader('', 'O');
                         $tplId = $mpdf->importPage($pageNo);
                         $mpdf->useTemplate($tplId);
                     }
@@ -282,6 +293,12 @@ final class EvrakPdfService
                 }
             } elseif (in_array($ext, ['jpg', 'jpeg', 'png', 'webp', 'gif'], true)) {
                 $mpdf->AddPage('P', '', '', '', '', 10, 10, 10, 10, 0, 0);
+                $mpdf->SetHTMLFooter('');
+                $mpdf->SetHTMLFooter('', 'E');
+                $mpdf->SetHTMLFooter('', 'O');
+                $mpdf->SetHTMLHeader('');
+                $mpdf->SetHTMLHeader('', 'E');
+                $mpdf->SetHTMLHeader('', 'O');
                 $mpdf->WriteHTML('
                     <div style="text-align:center; padding-top:5mm;">
                         <div style="font-size:10pt; font-weight:bold; margin-bottom:4mm; font-family:sans-serif;">EK ' . ($ekIndex + 1) . ': ' . htmlspecialchars($fileName, ENT_QUOTES, 'UTF-8') . '</div>
