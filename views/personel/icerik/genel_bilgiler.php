@@ -27,7 +27,7 @@ use App\Helper\Security;
             </button>
             <div class="collapse <?= $id > 0 ? '' : 'show' ?>" id="personelAiAccordionBody">
                 <div class="personel-ai-content d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-2">
-                    <p class="personel-ai-description mb-0"><strong>Yapay zekâ kullanılmaz.</strong> Belgeler yalnızca bu sunucuda OCR ile okunur; dosya ve kişisel veriler dışarı gönderilmez.</p>
+                    <p class="personel-ai-description mb-0"><strong>Yapay zekâ kullanılmaz.</strong> Belgeler cihazınızdaki tarayıcıda OCR ile okunur; okuma için sunucuya veya dış servise gönderilmez.</p>
                     <button type="button" class="btn personel-ai-button text-nowrap" id="btnPersonelBelgeAnalizAc">
                         <i class="bx bx-scan me-1"></i> Yerel OCR ile Doldur
                         <i class="bx bx-right-arrow-alt ms-1"></i>
@@ -379,7 +379,7 @@ use App\Helper\Security;
             <div class="modal-header">
                 <div>
                     <h5 class="modal-title"><i class="bx bx-scan text-primary me-2"></i>Yerel OCR ile Belge Oku</h5>
-                    <small class="text-muted">Belgeler sunucudan ayrılmadan okunur; sonuçlar kontrolünüzden sonra forma aktarılır.</small>
+                    <small class="text-muted">Belgeler cihazınızda okunur; sonuçlar kontrolünüzden sonra forma aktarılır.</small>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
@@ -392,7 +392,7 @@ use App\Helper\Security;
                     <div id="personelBelgeDosyaListesi" class="mt-3"></div>
                     <div class="alert alert-warning d-flex gap-2 mt-3 mb-0 py-2">
                         <i class="bx bx-shield-quarter fs-5"></i>
-                        <small><strong>Gizlilik:</strong> Bu işlem yapay zekâ kullanmaz. Belgeler ve çıkarılan kişisel veriler hiçbir dış servise gönderilmez; OCR işlemi tamamen kendi sunucunuzda yapılır.</small>
+                        <small><strong>Gizlilik:</strong> Bu işlem yapay zekâ kullanmaz. OCR tamamen cihazınızdaki tarayıcıda çalışır; belgeler okuma sırasında sunucuya veya dış servise gönderilmez. Yalnızca onayladığınız evraklar kaydetme aşamasında uygulama sunucunuza yüklenir.</small>
                     </div>
                 </div>
                 <div id="personelBelgeAnalizYukleniyor" class="text-center py-5 d-none">

@@ -6,6 +6,8 @@
   var analizDosyalari = [];
   var ocrProgressTimer = null;
   var ocrProgressValue = 0;
+  var aktifOcrWorker = null;
+  var ocrIslemNo = 0;
 
   function ocrIlerlemeGuncelle(deger, durum, aciklama) {
     ocrProgressValue = Math.max(0, Math.min(100, Math.round(deger)));
@@ -17,29 +19,122 @@
   }
 
   function ocrIlerlemeBaslat(belgeSayisi) {
-    clearInterval(ocrProgressTimer);
     $("#personelOcrBelgeSayisi").text(belgeSayisi + " belge");
-    ocrIlerlemeGuncelle(7, "Belgeler hazırlanıyor", "Dosyalar güvenli RAM çalışma alanına alınıyor.");
-    ocrProgressTimer = setInterval(function () {
-      var artis = ocrProgressValue < 35 ? 7 : (ocrProgressValue < 68 ? 4 : 2);
-      var sonraki = Math.min(92, ocrProgressValue + artis);
-      var durum = "Metin alanları okunuyor";
-      var aciklama = "Tesseract belgeleri bu sunucuda işliyor.";
-      if (sonraki >= 42) {
-        durum = "Bilgiler ayrıştırılıyor";
-        aciklama = "Kimlik, adres ve belge alanları kontrol ediliyor.";
-      }
-      if (sonraki >= 72) {
-        durum = "Sonuçlar doğrulanıyor";
-        aciklama = "Alan güvenleri ve belge eşleşmeleri hesaplanıyor.";
-      }
-      ocrIlerlemeGuncelle(sonraki, durum, aciklama);
-    }, 650);
+    ocrIlerlemeGuncelle(2, "OCR motoru hazırlanıyor", "Türkçe ve İngilizce dil modelleri cihazınıza yükleniyor.");
   }
 
   function ocrIlerlemeDurdur() {
     clearInterval(ocrProgressTimer);
     ocrProgressTimer = null;
+  }
+
+  function dosyaPdfMi(file) {
+    return file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
+  }
+
+  function canvasSinirla(canvas, maxBoyut) {
+    if (Math.max(canvas.width, canvas.height) <= maxBoyut) return canvas;
+    var oran = maxBoyut / Math.max(canvas.width, canvas.height);
+    var hedef = document.createElement("canvas");
+    hedef.width = Math.max(1, Math.round(canvas.width * oran));
+    hedef.height = Math.max(1, Math.round(canvas.height * oran));
+    var ctx = hedef.getContext("2d", {alpha: false});
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, hedef.width, hedef.height);
+    ctx.drawImage(canvas, 0, 0, hedef.width, hedef.height);
+    canvas.width = canvas.height = 1;
+    return hedef;
+  }
+
+  async function gorseliCanvasYap(file) {
+    var bitmap;
+    try {
+      bitmap = await createImageBitmap(file, {imageOrientation: "from-image"});
+    } catch (error) {
+      throw new Error(/heic|heif/i.test(file.type + " " + file.name)
+        ? "Bu tarayıcı HEIC belgesini açamıyor. Belgeyi JPG veya PDF olarak yükleyin."
+        : file.name + " görseli tarayıcı tarafından açılamadı.");
+    }
+    var canvas = document.createElement("canvas");
+    canvas.width = bitmap.width;
+    canvas.height = bitmap.height;
+    var ctx = canvas.getContext("2d", {alpha: false});
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(bitmap, 0, 0);
+    bitmap.close();
+    return canvasSinirla(canvas, 2200);
+  }
+
+  async function pdfCanvaslariniYap(file) {
+    if (!window.pdfjsLib) throw new Error("Tarayıcı PDF okuyucusu yüklenemedi.");
+    window.pdfjsLib.GlobalWorkerOptions.workerSrc = "assets/libs/pdfjs/pdf.worker.min.js";
+    var pdf = await window.pdfjsLib.getDocument({data: await file.arrayBuffer()}).promise;
+    var canvases = [];
+    var sayfaSayisi = Math.min(pdf.numPages, 4);
+    for (var sayfaNo = 1; sayfaNo <= sayfaSayisi; sayfaNo++) {
+      var sayfa = await pdf.getPage(sayfaNo);
+      var ilk = sayfa.getViewport({scale: 1});
+      var scale = Math.min(2.35, Math.max(1.5, 2000 / Math.max(ilk.width, ilk.height)));
+      var viewport = sayfa.getViewport({scale: scale});
+      var canvas = document.createElement("canvas");
+      canvas.width = Math.round(viewport.width);
+      canvas.height = Math.round(viewport.height);
+      var ctx = canvas.getContext("2d", {alpha: false});
+      ctx.fillStyle = "#fff";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      await sayfa.render({canvasContext: ctx, viewport: viewport, background: "white"}).promise;
+      canvases.push(canvasSinirla(canvas, 2200));
+      sayfa.cleanup();
+    }
+    await pdf.destroy();
+    return canvases;
+  }
+
+  async function tarayicidaOcrYap(files, islemNo) {
+    if (!window.Tesseract || !window.PersonelBelgeOcrAyristirici) {
+      throw new Error("Yerel tarayıcı OCR bileşenleri yüklenemedi. Sayfayı yenileyip tekrar deneyin.");
+    }
+    var mevcutBelge = 0;
+    var mevcutSayfa = 0;
+    var toplamSayfa = files.length;
+    var tamamlananSayfa = 0;
+    aktifOcrWorker = await window.Tesseract.createWorker(["tur", "eng"], window.Tesseract.OEM.LSTM_ONLY, {
+      workerPath: "assets/libs/tesseract.js/worker.min.js",
+      corePath: "assets/libs/tesseract.js/core",
+      langPath: "assets/libs/tesseract.js/lang",
+      logger: function (mesaj) {
+        if (islemNo !== ocrIslemNo || mesaj.status !== "recognizing text") return;
+        var ilerleme = 18 + ((tamamlananSayfa + (Number(mesaj.progress) || 0)) / Math.max(1, toplamSayfa)) * 74;
+        ocrIlerlemeGuncelle(Math.min(92, Math.max(ocrProgressValue, ilerleme)), "Belge " + (mevcutBelge + 1) + "/" + files.length + " okunuyor", "OCR işlemi yalnızca bu cihazın tarayıcısında yapılıyor.");
+      }
+    });
+    await aktifOcrWorker.setParameters({
+      tessedit_pageseg_mode: window.Tesseract.PSM.AUTO,
+      preserve_interword_spaces: "1",
+      user_defined_dpi: "200"
+    });
+    ocrIlerlemeGuncelle(18, "Belgeler hazırlanıyor", "Görseller OCR için tarayıcı belleğinde hazırlanıyor.");
+    var sonucBelgeleri = [];
+    for (mevcutBelge = 0; mevcutBelge < files.length; mevcutBelge++) {
+      if (islemNo !== ocrIslemNo) throw new Error("OCR işlemi iptal edildi.");
+      var canvases = dosyaPdfMi(files[mevcutBelge]) ? await pdfCanvaslariniYap(files[mevcutBelge]) : [await gorseliCanvasYap(files[mevcutBelge])];
+      toplamSayfa += canvases.length - 1;
+      var metinler = [], guvenler = [];
+      for (mevcutSayfa = 0; mevcutSayfa < canvases.length; mevcutSayfa++) {
+        var sonuc = await aktifOcrWorker.recognize(canvases[mevcutSayfa]);
+        metinler.push(sonuc.data.text || "");
+        guvenler.push(Number(sonuc.data.confidence) || 0);
+        tamamlananSayfa++;
+        canvases[mevcutSayfa].width = canvases[mevcutSayfa].height = 1;
+      }
+      sonucBelgeleri.push({
+        metin: metinler.join("\n"),
+        guven: guvenler.length ? guvenler.reduce(function (a, b) { return a + b; }, 0) / guvenler.length : 0
+      });
+    }
+    ocrIlerlemeGuncelle(96, "Bilgiler ayrıştırılıyor", "Kimlik, adres ve belge alanları cihazınızda kontrol ediliyor.");
+    return window.PersonelBelgeOcrAyristirici.analiz(sonucBelgeleri);
   }
 
   function modal() {
@@ -198,6 +293,11 @@
 
   $(document).on("hidden.bs.modal", "#modalPersonelBelgeAnaliz", function () {
     ocrIlerlemeDurdur();
+    ocrIslemNo++;
+    if (aktifOcrWorker) {
+      aktifOcrWorker.terminate().catch(function () {});
+      aktifOcrWorker = null;
+    }
   });
 
   $(document).on("change", "#personelBelgeTumunuArsivle", function () {
@@ -248,7 +348,7 @@
 
   $(document).on("click", "#btnPersonelBelgeYeniAnaliz", secimEkrani);
 
-  $(document).on("click", "#btnPersonelBelgeleriAnalizEt", function () {
+  $(document).on("click", "#btnPersonelBelgeleriAnalizEt", async function () {
     var input = document.getElementById("personelBelgeDosyalari");
     var files = input.files || [];
     if (!files.length) {
@@ -264,33 +364,28 @@
       Swal.fire("Dosya Boyutu", buyukDosya.name + " 10 MB sınırını geçiyor.", "warning");
       return;
     }
-    var data = new FormData();
     analizDosyalari = Array.from(files);
-    Array.from(files).forEach(function (file) { data.append("personel_belgeleri[]", file, file.name); });
-    data.append("personel_id", $("#personel_id").val() || "0");
-    data.append("csrf_token", $("#personelBelgeCsrf").val() || "");
     $("#personelBelgeSecimAlani, #btnPersonelBelgeleriAnalizEt").addClass("d-none");
     $("#personelBelgeAnalizYukleniyor").removeClass("d-none");
     ocrIlerlemeBaslat(files.length);
-
-    $.ajax({
-      url: "views/personel/ajax/personel-evrak-ai-analiz.php",
-      method: "POST",
-      data: data,
-      processData: false,
-      contentType: false,
-      dataType: "json"
-    }).done(function (response) {
-      if (response.status !== "success") throw new Error(response.message || "Analiz yapılamadı.");
+    var buIslem = ++ocrIslemNo;
+    try {
+      var sonuc = await tarayicidaOcrYap(analizDosyalari, buIslem);
+      if (buIslem !== ocrIslemNo) return;
       ocrIlerlemeDurdur();
       ocrIlerlemeGuncelle(100, "Okuma tamamlandı", "Sonuçlar gösterime hazırlanıyor.");
-      setTimeout(function () { sonuclariGoster(response.data || {}); }, 350);
-    }).fail(function (xhr) {
+      setTimeout(function () { if (buIslem === ocrIslemNo) sonuclariGoster(sonuc); }, 350);
+    } catch (error) {
+      if (buIslem !== ocrIslemNo) return;
       ocrIlerlemeDurdur();
       secimEkrani();
-      var response = xhr.responseJSON || {};
-      Swal.fire("Analiz Başarısız", response.message || "Belgeler analiz edilemedi.", "error");
-    });
+      Swal.fire("OCR Başarısız", error.message || "Belgeler tarayıcıda okunamadı.", "error");
+    } finally {
+      if (buIslem === ocrIslemNo && aktifOcrWorker) {
+        await aktifOcrWorker.terminate().catch(function () {});
+        aktifOcrWorker = null;
+      }
+    }
   });
 
   $(document).on("click", "#btnPersonelBelgeAlanlariniUygula", function () {

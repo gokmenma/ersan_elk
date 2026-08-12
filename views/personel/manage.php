@@ -747,6 +747,9 @@ if ($id > 0) {
 <script src="views/personel/js/ek_odeme.js?v=<?= filemtime(__DIR__ . '/js/ek_odeme.js') ?>"></script>
 <script src="views/personel/js/icra.js?v=<?= filemtime(__DIR__ . '/js/icra.js') ?>"></script>
 <script src="views/personel/js/evrak.js?v=<?= filemtime(__DIR__ . '/js/evrak.js') ?>"></script>
+<script src="assets/libs/pdfjs/pdf.min.js"></script>
+<script src="assets/libs/tesseract.js/tesseract.min.js"></script>
+<script src="views/personel/js/belge-ocr-ayristirici.js?v=<?= filemtime(__DIR__ . '/js/belge-ocr-ayristirici.js') ?>"></script>
 <script src="views/personel/js/belge-analiz.js?v=<?= filemtime(__DIR__ . '/js/belge-analiz.js') ?>"></script>
 <script>
     window.personelData = {
