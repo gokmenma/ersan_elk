@@ -20,12 +20,13 @@ $page = $_GET['p'] ?? 'home';
     <?php } ?>
 <?php } ?>
 
-<?php if ($page == 'ihbar/list') { ?>
+<?php if ($page == 'ihbar/list' || $page == 'kacak/list') { ?>
     <script src="assets/libs/apexcharts/apexcharts.min.js"></script>
 <?php } ?>
 
 <?php if ($page == 'ihbar/list' || $page == 'kacak/list') { ?>
     <script src="<?php echo Helper::assetVersion('assets/js/image-compress.js'); ?>"></script>
+    <script src="<?php echo Helper::assetVersion('assets/js/exif-cekim.js'); ?>"></script>
 <?php } ?>
 
 <?php if ($page == 'personel/list') { ?>

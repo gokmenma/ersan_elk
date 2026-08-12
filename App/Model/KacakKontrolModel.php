@@ -707,9 +707,9 @@ class KacakKontrolModel extends Model
         return $stmt->execute([$id, $this->firmaId()]);
     }
 
-    public function getCancellationCandidates(string $arama, int $limit = 20): array
+    public function getCancellationCandidates(string $arama, int $limit = 500): array
     {
-        $limit = max(1, min(50, $limit));
+        $limit = max(1, min(500, $limit));
         $like = '%' . trim($arama) . '%';
         $stmt = $this->db->prepare("SELECT id, tarih, tutanak_no, abone_adi, ilce, tur
                                     FROM kacak_kontrol
@@ -759,11 +759,11 @@ class KacakKontrolModel extends Model
         return (int) $stmt->fetchColumn();
     }
 
-    public function addPhoto(int $kacakId, string $tur, string $dosyaYolu, ?string $orijinalAd = null, ?int $personelId = null, ?int $userId = null, ?int $clientSira = null): int
+    public function addPhoto(int $kacakId, string $tur, string $dosyaYolu, ?string $orijinalAd = null, ?int $personelId = null, ?int $userId = null, ?int $clientSira = null, ?array $cekim = null): int
     {
         $stmt = $this->db->prepare("INSERT INTO kacak_kontrol_fotograflari
-            (firma_id, kacak_id, tur, client_sira, dosya_yolu, kucuk_yol, orijinal_ad, yukleyen_personel_id, yukleyen_user_id)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)");
+            (firma_id, kacak_id, tur, client_sira, dosya_yolu, kucuk_yol, orijinal_ad, cekim_tarihi, cekim_kaynak, yukleyen_personel_id, yukleyen_user_id)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $this->firmaId(),
             $kacakId,
@@ -772,10 +772,45 @@ class KacakKontrolModel extends Model
             $dosyaYolu,
             self::kucukYolBul($dosyaYolu),
             $orijinalAd,
+            $cekim['tarih'] ?? null,
+            $cekim['kaynak'] ?? null,
             $personelId,
             $userId,
         ]);
         return (int) $this->db->lastInsertId();
+    }
+
+    /**
+     * Çekim anı önce sunucudaki EXIF'ten, o yoksa istemcinin küçültme öncesi
+     * okuduğu "kaynak|Y-m-d H:i:s" değerinden belirlenir.
+     */
+    public static function cekimBilgisiCoz(?array $sunucu, $istemci): ?array
+    {
+        if (!empty($sunucu['tarih'])) {
+            return $sunucu;
+        }
+
+        if (!is_string($istemci) || $istemci === '') {
+            return null;
+        }
+
+        $parcalar = explode('|', $istemci, 2);
+        if (count($parcalar) !== 2) {
+            return null;
+        }
+
+        $kaynak = $parcalar[0] === 'exif' ? 'exif' : 'dosya';
+        $zaman = strtotime(trim($parcalar[1]));
+        if ($zaman === false) {
+            return null;
+        }
+
+        // Cihaz saati bozuksa anlamsız değer yazılmasın.
+        if ($zaman > time() + 3600 || $zaman < strtotime('-5 years')) {
+            return null;
+        }
+
+        return ['tarih' => date('Y-m-d H:i:s', $zaman), 'kaynak' => $kaynak];
     }
 
     public function addVideo(
@@ -1067,10 +1102,40 @@ class KacakKontrolModel extends Model
                 GROUP BY ilce ORDER BY toplam DESC LIMIT 8");
         $ilce->execute($params);
 
-        $ekip = $this->db->prepare("SELECT COALESCE(NULLIF(ekip_adi, ''), 'Belirtilmemiş') ekip, SUM(sayi) toplam
-                FROM kacak_kontrol WHERE {$base} AND onay_durumu = 'onaylandi' AND durum = 'aktif'
-                GROUP BY ekip_adi ORDER BY toplam DESC LIMIT 5");
+        $ekip = $this->db->prepare("SELECT COALESCE(NULLIF(ekip_adi, ''), 'Belirtilmemiş') ekip,
+                    SUM(CASE WHEN onay_durumu = 'onaylandi' AND durum = 'aktif' THEN sayi ELSE 0 END) aktif,
+                    SUM(CASE WHEN durum = 'iptal' THEN sayi ELSE 0 END) iptal,
+                    COUNT(DISTINCT tarih) calisilan_gun
+                FROM kacak_kontrol WHERE {$base}
+                GROUP BY ekip_adi ORDER BY aktif DESC LIMIT 8");
         $ekip->execute($params);
+
+        $kaynak = $this->db->prepare("SELECT kaynak, SUM(sayi) toplam FROM kacak_kontrol
+                WHERE {$base} GROUP BY kaynak ORDER BY toplam DESC");
+        $kaynak->execute($params);
+
+        $istatistik = $this->db->prepare("SELECT COUNT(*) kayit_sayisi, COALESCE(SUM(sayi), 0) toplam,
+                    SUM(CASE WHEN onay_durumu = 'onaylandi' THEN sayi ELSE 0 END) onaylanan,
+                    SUM(CASE WHEN onay_durumu = 'beklemede' THEN sayi ELSE 0 END) bekleyen_sayi,
+                    SUM(CASE WHEN onay_durumu = 'reddedildi' THEN sayi ELSE 0 END) reddedilen,
+                    SUM(CASE WHEN durum = 'iptal' THEN sayi ELSE 0 END) iptal,
+                    COUNT(DISTINCT NULLIF(ekip_adi, '')) ekip_sayisi,
+                    COUNT(DISTINCT tarih) aktif_gun
+                FROM kacak_kontrol WHERE {$base}");
+        $istatistik->execute($params);
+        $istatistikSatiri = $istatistik->fetch(PDO::FETCH_ASSOC) ?: [];
+
+        $gunSayisi = max(1, (int) ((strtotime($bitis) - strtotime($baslangic)) / 86400) + 1);
+        $oncekiBitis = date('Y-m-d', strtotime($baslangic . ' -1 day'));
+        $oncekiBaslangic = date('Y-m-d', strtotime($oncekiBitis . ' -' . ($gunSayisi - 1) . ' days'));
+        $oncekiOzet = $this->getOzet($oncekiBaslangic, $oncekiBitis, $personelId);
+
+        $toplam = (int) ($istatistikSatiri['toplam'] ?? 0);
+        $onaylanan = (int) ($istatistikSatiri['onaylanan'] ?? 0);
+        $iptalToplam = (int) ($istatistikSatiri['iptal'] ?? 0);
+        $istatistikSatiri['onay_orani'] = $toplam > 0 ? round($onaylanan * 100 / $toplam, 1) : 0;
+        $istatistikSatiri['iptal_orani'] = $toplam > 0 ? round($iptalToplam * 100 / $toplam, 1) : 0;
+        $istatistikSatiri['gunluk_ortalama'] = round($toplam / $gunSayisi, 1);
 
         return [
             'ozet' => $this->getOzet($baslangic, $bitis, $personelId),
@@ -1078,6 +1143,10 @@ class KacakKontrolModel extends Model
             'turler' => $tur->fetchAll(PDO::FETCH_ASSOC),
             'ilceler' => $ilce->fetchAll(PDO::FETCH_ASSOC),
             'ekipler' => $ekip->fetchAll(PDO::FETCH_ASSOC),
+            'kaynaklar' => $kaynak->fetchAll(PDO::FETCH_ASSOC),
+            'istatistik' => $istatistikSatiri,
+            'onceki_ozet' => $oncekiOzet,
+            'onceki_donem' => ['baslangic' => $oncekiBaslangic, 'bitis' => $oncekiBitis],
         ];
     }
 
@@ -1268,8 +1337,10 @@ class KacakKontrolModel extends Model
     /**
      * Yüklenen dosyayı kaçak fotoğraf dizinine taşır, göreli yolu döndürür.
      */
-    public function storeUploadedFile(array $file, int $kacakId, string $tur): string
+    public function storeUploadedFile(array $file, int $kacakId, string $tur, ?array &$cekim = null): string
     {
+        $cekim = null;
+
         if (!isset($file['tmp_name']) || $file['error'] !== UPLOAD_ERR_OK) {
             throw new Exception('Dosya yüklenemedi.');
         }
@@ -1305,6 +1376,10 @@ class KacakKontrolModel extends Model
                 10 * 1024 * 1024,
                 self::KUCUK_KENAR
             );
+
+            if (!empty($sonuc['captured_at'])) {
+                $cekim = ['tarih' => $sonuc['captured_at'], 'kaynak' => 'exif'];
+            }
 
             return $altDizin . '/' . $sonuc['filename'];
         }

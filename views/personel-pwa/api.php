@@ -4804,8 +4804,9 @@ try {
             if (!$ok) response(false, null, 'Kayıt güncellenemedi; durumu değişmiş olabilir.');
 
             if (!empty($_FILES['tutanak_foto']['name'])) {
-                $yol = $KacakModel->storeUploadedFile($_FILES['tutanak_foto'], $kacakId, 'tutanak');
-                $KacakModel->addPhoto($kacakId, 'tutanak', $yol, $_FILES['tutanak_foto']['name'], (int) $personel_id);
+                $yol = $KacakModel->storeUploadedFile($_FILES['tutanak_foto'], $kacakId, 'tutanak', $cekim);
+                $KacakModel->addPhoto($kacakId, 'tutanak', $yol, $_FILES['tutanak_foto']['name'], (int) $personel_id, null, null,
+                    \App\Model\KacakKontrolModel::cekimBilgisiCoz($cekim, $_POST['tutanak_foto_cekim'] ?? null));
             }
             if (!empty($_FILES['saha_fotolari']['name']) && is_array($_FILES['saha_fotolari']['name'])) {
                 $kalan = max(0, \App\Model\KacakKontrolModel::MAX_SAHA_FOTO - $KacakModel->countPhotos($kacakId, 'saha'));
@@ -4813,8 +4814,9 @@ try {
                     if ($kalan-- <= 0) break;
                     if (empty($ad) || ($_FILES['saha_fotolari']['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) continue;
                     $dosya = ['name'=>$ad,'tmp_name'=>$_FILES['saha_fotolari']['tmp_name'][$i],'error'=>$_FILES['saha_fotolari']['error'][$i],'size'=>$_FILES['saha_fotolari']['size'][$i]];
-                    $yol = $KacakModel->storeUploadedFile($dosya, $kacakId, 'saha');
-                    $KacakModel->addPhoto($kacakId, 'saha', $yol, $ad, (int) $personel_id);
+                    $yol = $KacakModel->storeUploadedFile($dosya, $kacakId, 'saha', $cekim);
+                    $KacakModel->addPhoto($kacakId, 'saha', $yol, $ad, (int) $personel_id, null, null,
+                        \App\Model\KacakKontrolModel::cekimBilgisiCoz($cekim, $_POST['saha_fotolari_cekim'][$i] ?? null));
                 }
             }
             if (!empty($_FILES['videolar']['name']) && is_array($_FILES['videolar']['name'])) {
@@ -4998,8 +5000,9 @@ try {
             }
 
             try {
-                $sahaYol = $KacakModel->storeUploadedFile($_FILES['foto'], $sahaKacakId, 'saha');
-                $KacakModel->addPhoto($sahaKacakId, 'saha', $sahaYol, $_FILES['foto']['name'], (int) $personel_id, null, $sahaSira);
+                $sahaYol = $KacakModel->storeUploadedFile($_FILES['foto'], $sahaKacakId, 'saha', $cekim);
+                $KacakModel->addPhoto($sahaKacakId, 'saha', $sahaYol, $_FILES['foto']['name'], (int) $personel_id, null, $sahaSira,
+                    \App\Model\KacakKontrolModel::cekimBilgisiCoz($cekim, $_POST['foto_cekim'] ?? null));
             } catch (\Throwable $e) {
                 if ($KacakModel->findPhotoBySira($sahaKacakId, 'saha', $sahaSira)) {
                     response(true, ['id' => $sahaKacakId, 'tekrar' => true], 'Bu fotoğraf zaten yüklenmişti.');
@@ -5249,7 +5252,7 @@ try {
             // Dosya doğrulama mesajları kullanıcıya yol gösterdiği için aynen
             // iletilir; kayıt/veritabanı hataları genel mesajla döner.
             try {
-                $yol = $KacakModel->storeUploadedFile($_FILES['tutanak_foto'], $kacakId, 'tutanak');
+                $yol = $KacakModel->storeUploadedFile($_FILES['tutanak_foto'], $kacakId, 'tutanak', $tutanakCekim);
             } catch (\Throwable $e) {
                 error_log('PWA kaçak tutanak fotoğrafı yüklenemedi: ' . $e->getMessage());
                 $KacakModel->softDeleteRecord($kacakId);
@@ -5257,7 +5260,8 @@ try {
             }
 
             try {
-                $KacakModel->addPhoto($kacakId, 'tutanak', $yol, $_FILES['tutanak_foto']['name'], (int) $personel_id);
+                $KacakModel->addPhoto($kacakId, 'tutanak', $yol, $_FILES['tutanak_foto']['name'], (int) $personel_id, null, null,
+                    \App\Model\KacakKontrolModel::cekimBilgisiCoz($tutanakCekim, $_POST['tutanak_foto_cekim'] ?? null));
             } catch (\Throwable $e) {
                 error_log('PWA kaçak tutanak fotoğrafı kaydedilemedi: ' . $e->getMessage());
                 $KacakModel->softDeleteRecord($kacakId);
@@ -5288,8 +5292,9 @@ try {
                             'tmp_name' => $_FILES['saha_fotolari']['tmp_name'][$i],
                             'error' => $_FILES['saha_fotolari']['error'][$i],
                             'size' => $_FILES['saha_fotolari']['size'][$i],
-                        ], $kacakId, 'saha');
-                        $KacakModel->addPhoto($kacakId, 'saha', $yol, $ad, (int) $personel_id);
+                        ], $kacakId, 'saha', $sahaCekim);
+                        $KacakModel->addPhoto($kacakId, 'saha', $yol, $ad, (int) $personel_id, null, null,
+                            \App\Model\KacakKontrolModel::cekimBilgisiCoz($sahaCekim, $_POST['saha_fotolari_cekim'][$i] ?? null));
                         $sahaAdet++;
                     } catch (\Throwable $e) {
                         error_log('PWA kaçak saha fotoğrafı yüklenemedi: ' . $e->getMessage());

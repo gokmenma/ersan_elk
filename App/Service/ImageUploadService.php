@@ -56,6 +56,9 @@ class ImageUploadService
             throw new Exception('Sunucuda resim işleme desteği etkin değil.');
         }
 
+        // GD yeniden kodlarken EXIF silindiği için çekim anı burada okunur.
+        $capturedAt = $this->readCaptureTime($file['tmp_name'], $mime);
+
         $binary = @file_get_contents($file['tmp_name']);
         $source = is_string($binary) ? @imagecreatefromstring($binary) : false;
         if (!$source) {
@@ -146,7 +149,33 @@ class ImageUploadService
             'size' => filesize($destination),
             'thumb_filename' => $thumbName,
             'thumb_size' => $thumbSize,
+            'captured_at' => $capturedAt,
         ];
+    }
+
+    private function readCaptureTime(string $path, string $mime): ?string
+    {
+        if ($mime !== 'image/jpeg' || !function_exists('exif_read_data')) {
+            return null;
+        }
+
+        $exif = @exif_read_data($path);
+        if (!is_array($exif)) {
+            return null;
+        }
+
+        foreach (['DateTimeOriginal', 'DateTimeDigitized', 'DateTime'] as $alan) {
+            $ham = trim((string) ($exif[$alan] ?? ''));
+            if ($ham === '' || strpos($ham, '0000') === 0) {
+                continue;
+            }
+            $tarih = \DateTime::createFromFormat('Y:m:d H:i:s', $ham);
+            if ($tarih instanceof \DateTime) {
+                return $tarih->format('Y-m-d H:i:s');
+            }
+        }
+
+        return null;
     }
 
     private function resample($source, int $maxDimension)

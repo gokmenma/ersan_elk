@@ -143,6 +143,14 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         box-shadow: 0 4px 10px -2px rgba(85, 110, 230, .5);
     }
 
+    .kacak-dashboard-metrik {
+        background: linear-gradient(145deg, var(--bs-body-bg), rgba(85, 110, 230, .035));
+        transition: transform .2s ease, box-shadow .2s ease;
+    }
+    .kacak-dashboard-metrik:hover { transform: translateY(-2px); box-shadow: 0 .35rem 1rem rgba(15, 23, 42, .08); }
+    .kacak-dashboard-degisim { font-size: .7rem; font-weight: 700; }
+    .kacak-dashboard-panel { min-height: 350px; }
+
     .kacak-rapor-metin {
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
         font-size: .85rem;
@@ -309,16 +317,23 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                         <div class="col-md-2"><button type="button" class="btn btn-primary w-100" id="btnDashboardFiltrele"><i class="bx bx-refresh me-1"></i>Güncelle</button></div>
                     </div>
                     <div class="row g-3 mb-3">
-                        <div class="col-6 col-xl-3"><div class="border rounded-3 p-3 h-100"><div class="text-muted small">Aktif Tutanak</div><div class="fs-3 fw-bold text-primary" id="dashboardAktif">0</div></div></div>
-                        <div class="col-6 col-xl-3"><div class="border rounded-3 p-3 h-100"><div class="text-muted small">Bekleyen Onay</div><div class="fs-3 fw-bold text-info" id="dashboardBekleyen">0</div></div></div>
-                        <div class="col-6 col-xl-3"><div class="border rounded-3 p-3 h-100"><div class="text-muted small">İptal</div><div class="fs-3 fw-bold text-secondary" id="dashboardIptal">0</div></div></div>
-                        <div class="col-6 col-xl-3"><div class="border rounded-3 p-3 h-100"><div class="text-muted small">Hakedişten Düşen</div><div class="fs-3 fw-bold text-danger" id="dashboardDusulen">0</div></div></div>
+                        <div class="col-6 col-xl-3"><div class="border rounded-3 p-3 h-100 kacak-dashboard-metrik"><div class="d-flex justify-content-between"><div class="text-muted small">Aktif Tutanak</div><i class="bx bx-check-circle text-primary fs-4"></i></div><div class="fs-3 fw-bold text-primary" id="dashboardAktif">0</div><div id="dashboardAktifDegisim"></div></div></div>
+                        <div class="col-6 col-xl-3"><div class="border rounded-3 p-3 h-100 kacak-dashboard-metrik"><div class="d-flex justify-content-between"><div class="text-muted small">Bekleyen Onay</div><i class="bx bx-time-five text-info fs-4"></i></div><div class="fs-3 fw-bold text-info" id="dashboardBekleyen">0</div><div class="text-muted small">İşlem bekleyen bildirim</div></div></div>
+                        <div class="col-6 col-xl-3"><div class="border rounded-3 p-3 h-100 kacak-dashboard-metrik"><div class="d-flex justify-content-between"><div class="text-muted small">İptal</div><i class="bx bx-x-circle text-secondary fs-4"></i></div><div class="fs-3 fw-bold text-secondary" id="dashboardIptal">0</div><div id="dashboardIptalDegisim"></div></div></div>
+                        <div class="col-6 col-xl-3"><div class="border rounded-3 p-3 h-100 kacak-dashboard-metrik"><div class="d-flex justify-content-between"><div class="text-muted small">Hakedişten Düşen</div><i class="bx bx-trending-down text-danger fs-4"></i></div><div class="fs-3 fw-bold text-danger" id="dashboardDusulen">0</div><div class="text-muted small">İptaller içindeki düşülen toplam</div></div></div>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-6 col-lg-3"><div class="border rounded-3 px-3 py-2"><div class="small text-muted">Onay Oranı</div><div class="h5 mb-0" id="dashboardOnayOrani">%0</div></div></div>
+                        <div class="col-6 col-lg-3"><div class="border rounded-3 px-3 py-2"><div class="small text-muted">İptal Oranı</div><div class="h5 mb-0" id="dashboardIptalOrani">%0</div></div></div>
+                        <div class="col-6 col-lg-3"><div class="border rounded-3 px-3 py-2"><div class="small text-muted">Günlük Ortalama</div><div class="h5 mb-0" id="dashboardGunlukOrtalama">0</div></div></div>
+                        <div class="col-6 col-lg-3"><div class="border rounded-3 px-3 py-2"><div class="small text-muted">Aktif Ekip / Çalışılan Gün</div><div class="h5 mb-0"><span id="dashboardEkipSayisi">0</span> / <span id="dashboardAktifGun">0</span></div></div></div>
                     </div>
                     <div class="row g-3">
-                        <div class="col-xl-8"><div class="border rounded-3 p-3"><h6 class="fw-semibold">Günlük Tutanak Eğilimi</h6><div id="kacakTrendChart"></div></div></div>
-                        <div class="col-xl-4"><div class="border rounded-3 p-3"><h6 class="fw-semibold">Tür Dağılımı</h6><div id="kacakTurChart"></div></div></div>
-                        <div class="col-xl-7"><div class="border rounded-3 p-3"><h6 class="fw-semibold">İlçe Dağılımı</h6><div id="kacakIlceChart"></div></div></div>
-                        <div class="col-xl-5"><div class="border rounded-3 p-3"><h6 class="fw-semibold">En Yoğun Ekipler</h6><div id="kacakEkipChart"></div></div></div>
+                        <div class="col-xl-8"><div class="border rounded-3 p-3 kacak-dashboard-panel"><h6 class="fw-semibold">Günlük Tutanak Eğilimi</h6><div id="kacakTrendChart"></div></div></div>
+                        <div class="col-xl-4"><div class="border rounded-3 p-3 kacak-dashboard-panel"><h6 class="fw-semibold">Tür Dağılımı</h6><div id="kacakTurChart"></div></div></div>
+                        <div class="col-xl-7"><div class="border rounded-3 p-3 kacak-dashboard-panel"><h6 class="fw-semibold">İlçe Dağılımı</h6><div id="kacakIlceChart"></div></div></div>
+                        <div class="col-xl-5"><div class="border rounded-3 p-3 kacak-dashboard-panel"><h6 class="fw-semibold">Kayıt Kaynağı</h6><div id="kacakKaynakChart"></div></div></div>
+                        <div class="col-12"><div class="border rounded-3 p-3"><div class="d-flex justify-content-between mb-2"><h6 class="fw-semibold mb-0">Ekip Performansı</h6><small class="text-muted">Aktif ve iptal tutanak karşılaştırması</small></div><div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0"><thead><tr><th>Ekip</th><th class="text-end">Aktif</th><th class="text-end">İptal</th><th class="text-end">Çalışılan Gün</th><th style="width:35%">Pay</th></tr></thead><tbody id="dashboardEkipTablo"></tbody></table></div></div></div>
                     </div>
                 </div>
             </div>
@@ -1368,28 +1383,65 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 $('#dashboardBekleyen').text(o.bekleyen || 0);
                 $('#dashboardIptal').text(o.iptal || 0);
                 $('#dashboardDusulen').text(o.iptal_dusulen || 0);
-                const ortak = { chart: { toolbar: { show: false }, height: 290 }, dataLabels: { enabled: false }, noData: { text: 'Veri yok' } };
+                const i = d.istatistik || {}, onceki = d.onceki_ozet || {};
+                $('#dashboardOnayOrani').text('%' + (i.onay_orani || 0));
+                $('#dashboardIptalOrani').text('%' + (i.iptal_orani || 0));
+                $('#dashboardGunlukOrtalama').text(i.gunluk_ortalama || 0);
+                $('#dashboardEkipSayisi').text(i.ekip_sayisi || 0);
+                $('#dashboardAktifGun').text(i.aktif_gun || 0);
+
+                function degisimHtml(mevcut, eski, ters) {
+                    mevcut = parseInt(mevcut || 0, 10); eski = parseInt(eski || 0, 10);
+                    if (eski === 0) return '<span class="text-muted small">Önceki dönem: ' + eski + '</span>';
+                    const oran = Math.round((mevcut - eski) * 1000 / eski) / 10;
+                    const iyi = ters ? oran <= 0 : oran >= 0;
+                    const ikon = oran >= 0 ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt';
+                    return '<span class="kacak-dashboard-degisim ' + (iyi ? 'text-success' : 'text-danger') + '"><i class="bx ' + ikon + '"></i>%' + Math.abs(oran) + '</span> <span class="text-muted small">önceki döneme göre</span>';
+                }
+                $('#dashboardAktifDegisim').html(degisimHtml(o.aktif, onceki.aktif, false));
+                $('#dashboardIptalDegisim').html(degisimHtml(o.iptal, onceki.iptal, true));
+
+                const dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
+                const ortak = {
+                    chart: { toolbar: { show: false }, height: 305, fontFamily: 'inherit' },
+                    dataLabels: { enabled: false }, noData: { text: 'Veri yok' },
+                    grid: { borderColor: dark ? 'rgba(148,163,184,.15)' : '#eef2f7', strokeDashArray: 4 },
+                    tooltip: { theme: dark ? 'dark' : 'light' }
+                };
                 dashboardGrafikCiz('trend', '#kacakTrendChart', $.extend(true, {}, ortak, {
-                    chart: { type: 'area' }, stroke: { curve: 'smooth', width: 3 }, colors: ['#556ee6', '#74788d'],
+                    chart: { type: 'area' }, stroke: { curve: 'smooth', width: 3 }, markers: { size: 3 }, colors: ['#556ee6', '#f46a6a'],
                     series: [
                         { name: 'Aktif', data: (d.trend || []).map(x => parseInt(x.aktif || 0, 10)) },
                         { name: 'İptal', data: (d.trend || []).map(x => parseInt(x.iptal || 0, 10)) }
-                    ], xaxis: { categories: (d.trend || []).map(x => x.tarih) }
+                    ], xaxis: { categories: (d.trend || []).map(x => x.tarih), tickAmount: 8 },
+                    yaxis: { min: 0, forceNiceScale: true }, legend: { position: 'top', horizontalAlign: 'right' }
                 }));
                 dashboardGrafikCiz('tur', '#kacakTurChart', $.extend(true, {}, ortak, {
                     chart: { type: 'donut' }, labels: (d.turler || []).map(x => x.tur),
                     series: (d.turler || []).map(x => parseInt(x.toplam || 0, 10)), colors: ['#f46a6a', '#f1b44c', '#50a5f1'], legend: { position: 'bottom' }
                 }));
                 dashboardGrafikCiz('ilce', '#kacakIlceChart', $.extend(true, {}, ortak, {
-                    chart: { type: 'bar' }, plotOptions: { bar: { horizontal: true, borderRadius: 4 } },
+                    chart: { type: 'bar' }, colors: ['#556ee6'], plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '60%' } },
                     series: [{ name: 'Tutanak', data: (d.ilceler || []).map(x => parseInt(x.toplam || 0, 10)) }],
                     xaxis: { categories: (d.ilceler || []).map(x => x.ilce) }
                 }));
-                dashboardGrafikCiz('ekip', '#kacakEkipChart', $.extend(true, {}, ortak, {
-                    chart: { type: 'bar' }, colors: ['#34c38f'],
-                    series: [{ name: 'Tutanak', data: (d.ekipler || []).map(x => parseInt(x.toplam || 0, 10)) }],
-                    xaxis: { categories: (d.ekipler || []).map(x => x.ekip), labels: { rotate: -35 } }
+                const kaynakEtiketleri = { pwa: 'Mobil', masaustu: 'Masaüstü', excel: 'Excel' };
+                dashboardGrafikCiz('kaynak', '#kacakKaynakChart', $.extend(true, {}, ortak, {
+                    chart: { type: 'radialBar' },
+                    labels: (d.kaynaklar || []).map(x => kaynakEtiketleri[x.kaynak] || x.kaynak || 'Belirsiz'),
+                    series: (function () {
+                        const vals = (d.kaynaklar || []).map(x => parseInt(x.toplam || 0, 10));
+                        const toplam = vals.reduce((a, b) => a + b, 0) || 1;
+                        return vals.map(x => Math.round(x * 1000 / toplam) / 10);
+                    })(), plotOptions: { radialBar: { dataLabels: { total: { show: true, label: 'Toplam', formatter: () => i.toplam || 0 } } } },
+                    legend: { show: true, position: 'bottom' }
                 }));
+                const ekipler = d.ekipler || [];
+                const enYuksek = Math.max(1, ...ekipler.map(x => parseInt(x.aktif || 0, 10)));
+                $('#dashboardEkipTablo').html(ekipler.length ? ekipler.map(e => {
+                    const aktif = parseInt(e.aktif || 0, 10), pay = Math.round(aktif * 1000 / enYuksek) / 10;
+                    return `<tr><td class="fw-semibold">${esc(e.ekip)}</td><td class="text-end text-success fw-bold">${aktif}</td><td class="text-end text-danger">${parseInt(e.iptal || 0, 10)}</td><td class="text-end">${parseInt(e.calisilan_gun || 0, 10)}</td><td><div class="progress" style="height:7px"><div class="progress-bar" style="width:${pay}%"></div></div></td></tr>`;
+                }).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">Bu dönem için ekip verisi yok.</td></tr>');
                 dashboardYuklendi = true;
             });
         }
@@ -1832,9 +1884,16 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             // dosyalar olduğu gibi gider ve sunucu tarafındaki optimizasyon devreye girer.
             if (window.ResimSikistir && sahaInput && sahaInput.files.length) {
                 try {
+                    // Çekim anı küçültmede kaybolacağı için ham dosyalardan önceden okunur.
+                    const cekimler = window.ExifCekim
+                        ? await Promise.all(Array.from(sahaInput.files).map(d => window.ExifCekim.oku(d)))
+                        : [];
                     const kucukler = await window.ResimSikistir.listeyiKucult(sahaInput.files, 1600, 0.75);
                     fd.delete('saha_fotolari[]');
-                    kucukler.forEach(dosya => fd.append('saha_fotolari[]', dosya, dosya.name));
+                    kucukler.forEach((dosya, i) => {
+                        fd.append('saha_fotolari[]', dosya, dosya.name);
+                        fd.append('saha_fotolari_cekim[]', cekimler[i] || '');
+                    });
                 } catch (hata) {
                     console.error('Fotoğraf küçültme başarısız, orijinal dosyalar gönderiliyor:', hata);
                 }
@@ -2052,18 +2111,32 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
 
         if (YETKI.iptalEkle) {
             $('#iptal_tutanak_sec').select2({
-                dropdownParent: $('#iptalModal'), width: '100%', minimumInputLength: 1,
-                placeholder: 'Tutanak no, abone veya sayaç no ile arayın',
-                ajax: {
-                    url: API, dataType: 'json', delay: 250,
-                    data: params => ({ action: 'cancel-candidates', q: params.term || '' }),
-                    processResults: res => ({ results: res.status === 'success' ? (res.results || []) : [] })
-                }
+                dropdownParent: $('#iptalModal'), width: '100%',
+                placeholder: 'Tutanak no, abone veya tarih ile arayın'
             }).on('select2:select', function (e) {
                 $('#iptal_token').val(e.params.data.id);
                 $('#iptal_id').val('0');
                 $('#iptalKayitBilgi').html('<strong>' + esc(e.params.data.text) + '</strong>');
             });
+
+            function iptalAdaylariniYukle() {
+                const $secim = $('#iptal_tutanak_sec');
+                $secim.prop('disabled', true).empty().append(new Option('Tutanaklar yükleniyor...', '', true, true)).trigger('change');
+                return apiGet({ action: 'cancel-candidates', q: '' }).done(function (res) {
+                    if (res.status !== 'success') return hataGoster(res);
+                    $secim.empty().append(new Option('Tutanak seçiniz', '', true, true));
+                    (res.results || []).forEach(k => $secim.append(new Option(k.text, k.id, false, false)));
+                    $secim.prop('disabled', false).val('').trigger('change');
+                    if (!(res.results || []).length) {
+                        $('#iptalKayitBilgi').html('<span class="text-warning">İptale uygun aktif ve onaylanmış tutanak bulunamadı.</span>');
+                    }
+                }).fail(function (xhr) {
+                    let mesaj = 'Tutanaklar yüklenemedi.';
+                    try { mesaj = JSON.parse(xhr.responseText).message || mesaj; } catch (e) {}
+                    $secim.empty().append(new Option('Tutanaklar yüklenemedi', '', true, true)).prop('disabled', true).trigger('change');
+                    Swal.fire('Hata', mesaj, 'error');
+                });
+            }
 
             $('#btnYeniIptal').on('click', function () {
                 $('#iptalForm')[0].reset();
@@ -2074,6 +2147,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 $('#iptalKayitBilgi').html('<span class="text-muted">İptal edilecek tutanağı aşağıdan seçin.</span>');
                 $('#iptalTutanakSecimAlani').removeClass('d-none');
                 $('#iptalModal').modal('show');
+                iptalAdaylariniYukle();
             });
         }
 
@@ -2146,6 +2220,47 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
 
             const turEtiket = { tutanak: 'Tutanak', saha: 'Saha', iptal: 'İptal Belgesi' };
 
+            function zamanMetni(deger) {
+                if (!deger) return '';
+                const t = new Date(String(deger).replace(' ', 'T'));
+                if (isNaN(t.getTime())) return '';
+                const iki = s => String(s).padStart(2, '0');
+                return `${iki(t.getDate())}.${iki(t.getMonth() + 1)}.${t.getFullYear()} ${iki(t.getHours())}:${iki(t.getMinutes())}`;
+            }
+
+            function farkMetni(cekim, yukleme) {
+                const bas = new Date(String(cekim).replace(' ', 'T'));
+                const son = new Date(String(yukleme).replace(' ', 'T'));
+                if (isNaN(bas.getTime()) || isNaN(son.getTime())) return null;
+
+                const dakika = Math.round((son - bas) / 60000);
+                if (dakika < 0) return { metin: 'çekimden önce yüklenmiş', renk: 'bg-danger' };
+                if (dakika < 60) return { metin: dakika + ' dk sonra', renk: 'bg-success' };
+
+                const saat = Math.floor(dakika / 60);
+                if (saat < 24) return { metin: saat + ' sa ' + (dakika % 60) + ' dk sonra', renk: saat < 8 ? 'bg-warning text-dark' : 'bg-danger' };
+                return { metin: Math.floor(saat / 24) + ' gün ' + (saat % 24) + ' sa sonra', renk: 'bg-danger' };
+            }
+
+            // Personelin fotoğrafı çektiği an ile sisteme yüklediği an arasındaki gecikme.
+            function cekimSatiri(f) {
+                const yukleme = zamanMetni(f.olusturma_tarihi);
+                if (!f.cekim_tarihi) {
+                    return `<div class="small text-muted" style="font-size:.7rem" title="Fotoğrafın çekim bilgisi bulunamadı">
+                        <i class="bx bx-time"></i> Yükleme ${esc(yukleme)}<br><span class="text-muted">Çekim bilgisi yok</span></div>`;
+                }
+
+                const fark = farkMetni(f.cekim_tarihi, f.olusturma_tarihi);
+                const kaynak = f.cekim_kaynak === 'exif' ? 'Fotoğraf meta verisi' : 'Cihazdaki dosya tarihi';
+                const rozet = fark
+                    ? `<span class="badge ${fark.renk}" style="font-size:.6rem">${esc(fark.metin)}</span>`
+                    : '';
+
+                return `<div class="small text-muted" style="font-size:.7rem" title="${esc(kaynak)}">
+                    <i class="bx bx-camera"></i> Çekim ${esc(zamanMetni(f.cekim_tarihi))}<br>
+                    <i class="bx bx-upload"></i> Yükleme ${esc(yukleme)}<br>${rozet}</div>`;
+            }
+
             fotolar.forEach(f => {
                 const url = 'views/kacak/foto-goruntule.php?id=' + f.id;
                 const kucukUrl = url + '&boyut=kucuk';
@@ -2172,6 +2287,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                             </a>
                             ${silVideoBtn}
                             <div class="small text-muted mt-1">Video</div>
+                            ${cekimSatiri(f)}
                         </div>`);
                     return;
                 }
@@ -2191,6 +2307,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                             : `class="kacak-foto-lightbox" data-gallery="kacak-${kacakId}" data-type="image" data-title="${esc(turEtiket[f.tur] || f.tur)}"`}>${onizleme}</a>
                         ${silBtn}
                         <div class="small text-muted mt-1">${esc(turEtiket[f.tur] || f.tur)}</div>
+                        ${cekimSatiri(f)}
                     </div>`);
             });
 

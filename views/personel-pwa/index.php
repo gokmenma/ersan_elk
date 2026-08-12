@@ -688,6 +688,7 @@ if ($page === 'ihbar') {
     <!-- Scripts -->
     <!-- SweetAlert2 -->
     <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script src="../../assets/js/exif-cekim.js?v=<?= filemtime(dirname(__DIR__, 2) . '/assets/js/exif-cekim.js') ?>"></script>
     <script src="assets/js/pwa-offline-queue.js?v=<?= filemtime(__DIR__ . '/assets/js/pwa-offline-queue.js') ?>"></script>
     <script src="assets/js/pwa-app.js?v=<?= filemtime(__DIR__ . '/assets/js/pwa-app.js') ?>"></script>
     <script src="assets/js/notification-helper.js"></script>

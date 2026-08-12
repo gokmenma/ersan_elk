@@ -508,8 +508,9 @@ try {
 
             if (!empty($_FILES['iptal_foto']['name'])) {
                 try {
-                    $yol = $Kacak->storeUploadedFile($_FILES['iptal_foto'], $id, 'iptal');
-                    $Kacak->addPhoto($id, 'iptal', $yol, $_FILES['iptal_foto']['name'], null, $userId);
+                    $yol = $Kacak->storeUploadedFile($_FILES['iptal_foto'], $id, 'iptal', $cekim);
+                    $Kacak->addPhoto($id, 'iptal', $yol, $_FILES['iptal_foto']['name'], null, $userId, null,
+                        KacakKontrolModel::cekimBilgisiCoz($cekim, $_POST['iptal_foto_cekim'] ?? null));
                 } catch (\Throwable $e) {
                     error_log('Kaçak iptal fotoğrafı yüklenemedi: ' . $e->getMessage());
                 }
@@ -892,8 +893,9 @@ function kacakFotoYukle(KacakKontrolModel $Kacak, int $kacakId, int $userId, ?ar
 
     if (!empty($_FILES['tutanak_foto']['name'])) {
         try {
-            $yol = $Kacak->storeUploadedFile($_FILES['tutanak_foto'], $kacakId, 'tutanak');
-            $Kacak->addPhoto($kacakId, 'tutanak', $yol, $_FILES['tutanak_foto']['name'], null, $userId);
+            $yol = $Kacak->storeUploadedFile($_FILES['tutanak_foto'], $kacakId, 'tutanak', $cekim);
+            $Kacak->addPhoto($kacakId, 'tutanak', $yol, $_FILES['tutanak_foto']['name'], null, $userId, null,
+                KacakKontrolModel::cekimBilgisiCoz($cekim, $_POST['tutanak_foto_cekim'] ?? null));
             $eklenen++;
         } catch (\Throwable $e) {
             error_log('Kaçak tutanak fotoğrafı yüklenemedi: ' . $e->getMessage());
@@ -987,8 +989,9 @@ function kacakFotoYukle(KacakKontrolModel $Kacak, int $kacakId, int $userId, ?ar
                     'error' => $_FILES['saha_fotolari']['error'][$i],
                     'size' => $_FILES['saha_fotolari']['size'][$i],
                 ];
-                $yol = $Kacak->storeUploadedFile($dosya, $kacakId, 'saha');
-                $Kacak->addPhoto($kacakId, 'saha', $yol, $ad, null, $userId);
+                $yol = $Kacak->storeUploadedFile($dosya, $kacakId, 'saha', $cekim);
+                $Kacak->addPhoto($kacakId, 'saha', $yol, $ad, null, $userId, null,
+                    KacakKontrolModel::cekimBilgisiCoz($cekim, $_POST['saha_fotolari_cekim'][$i] ?? null));
                 $mevcut++;
                 $eklenen++;
             } catch (\Throwable $e) {

@@ -216,8 +216,14 @@
         Object.keys(alanlar || {}).forEach(function (k) {
             fd.append(k, alanlar[k]);
         });
+        // Çekim anı, dosya adıyla değil alan sırasıyla eşleştirilir; bilinmeyen
+        // fotoğraflar için boş değer gönderilerek dizin hizası korunur.
         (dosyalar || []).forEach(function (d) {
             fd.append(d.alan, d.blob, d.ad);
+            fd.append(
+                d.alan.indexOf("[]") > -1 ? d.alan.replace("[]", "_cekim[]") : d.alan + "_cekim",
+                d.cekim || ""
+            );
         });
 
         // action hem gövdede hem adreste gönderilir: gövde ayrıştırılamazsa
@@ -278,6 +284,7 @@
                 ad: (d.ad || "foto").replace(/\.[^.]+$/, "") + ".jpg",
                 tip: "image/jpeg",
                 blob: yeni.blob,
+                cekim: d.cekim || yeni.cekim || "",
             };
         }).catch(function () { return d; });
     }
@@ -350,7 +357,7 @@
         return istekGonder(
             kayit.ekAction,
             { client_uuid: kayit.uuid, sira: sira, toplam: toplam },
-            [{ alan: kayit.ekAlan, ad: dosya.ad, tip: dosya.tip, blob: dosya.blob }],
+            [{ alan: kayit.ekAlan, ad: dosya.ad, tip: dosya.tip, blob: dosya.blob, cekim: dosya.cekim || "" }],
             "fotoğraf " + (sira + 1) + "/" + toplam + ", " + mbMetni(dosya.blob)
         ).then(function (cevap) {
             if (cevap.sonuc !== "tamam") return cevap;
@@ -581,7 +588,27 @@
      * Sunucudaki GD yalnızca JPEG/PNG çözebildiği için WebP gibi diğer
      * biçimler boyutu küçük olsa da her zaman JPEG'e çevrilir.
      */
+    /**
+     * Çekim anı EXIF'te durur ve küçültmede yok olur; ham dosyadan önceden okunur.
+     * Servis worker bağlamında okuyucu yüklü değildir, kuyruktaki değer korunur.
+     */
+    function cekimBilgisi(dosya) {
+        if (typeof ExifCekim === "undefined" || !ExifCekim || typeof ExifCekim.oku !== "function") {
+            return Promise.resolve("");
+        }
+        return ExifCekim.oku(dosya).catch(function () { return ""; });
+    }
+
     function fotografKucult(dosya, maxKenar, kalite) {
+        return cekimBilgisi(dosya).then(function (cekim) {
+            return fotografiIndirge(dosya, maxKenar, kalite).then(function (sonuc) {
+                sonuc.cekim = cekim;
+                return sonuc;
+            });
+        });
+    }
+
+    function fotografiIndirge(dosya, maxKenar, kalite) {
         maxKenar = maxKenar || 1600;
         kalite = kalite || 0.7;
 

@@ -1512,7 +1512,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 const cevap = await OfflineQueue.istekGonder(
                     'addKacakSahaFoto',
                     { client_uuid: alanlar.client_uuid, sira: i, toplam: sahaFotolari.length },
-                    [{ alan: 'foto', ad: f.ad, tip: f.tip, blob: f.blob }],
+                    [{ alan: 'foto', ad: f.ad, tip: f.tip, blob: f.blob, cekim: f.cekim || '' }],
                     `fotoğraf ${i + 1}/${sahaFotolari.length}`
                 );
                 if (cevap.sonuc !== 'tamam') eksik++;
@@ -1580,10 +1580,12 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                     if (tutanakSelectedFile) {
                         const tutanakKucuk = await OfflineQueue.fotografKucult(tutanakSelectedFile, 2200, 0.82);
                         fd.append('tutanak_foto', tutanakKucuk.blob, tutanakKucuk.ad);
+                        fd.append('tutanak_foto_cekim', tutanakKucuk.cekim || '');
                     }
                     for (const file of sahaDosyalari) {
                         const sahaKucuk = await OfflineQueue.fotografKucult(file, 1600, 0.7);
                         fd.append('saha_fotolari[]', sahaKucuk.blob, sahaKucuk.ad);
+                        fd.append('saha_fotolari_cekim[]', sahaKucuk.cekim || '');
                     }
                     btnText.textContent = 'GÜNCELLENİYOR...';
                     const res = await (await fetch('api.php?action=updateKacakBildirim&edit_token=' + encodeURIComponent(kacakEditToken), {method:'POST', body:fd})).json();
@@ -1612,7 +1614,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                     let yeniDosyalar = null;
                     if (tutanakInput.files && tutanakInput.files[0]) {
                         const tutanak = await OfflineQueue.fotografKucult(tutanakInput.files[0], 2200, 0.82);
-                        yeniDosyalar = [{ alan: 'tutanak_foto', ad: tutanak.ad, tip: tutanak.tip, blob: tutanak.blob }];
+                        yeniDosyalar = [{ alan: 'tutanak_foto', ad: tutanak.ad, tip: tutanak.tip, blob: tutanak.blob, cekim: tutanak.cekim || '' }];
                     }
 
                     const mevcuttan = bekleyenKayitlar.find(x => x.uuid === kacakKuyrukEditUuid);
@@ -1623,7 +1625,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                     const yeniEkDosyalar = [];
                     for (const dosya of sahaDosyalari) {
                         const kucuk = await OfflineQueue.fotografKucult(dosya, 1600, 0.7);
-                        yeniEkDosyalar.push({ ad: kucuk.ad, tip: kucuk.tip, blob: kucuk.blob });
+                        yeniEkDosyalar.push({ ad: kucuk.ad, tip: kucuk.tip, blob: kucuk.blob, cekim: kucuk.cekim || '' });
                     }
 
                     const anaAdet = yeniDosyalar ? yeniDosyalar.length : (mevcuttan ? (mevcuttan.dosyalar || []).length : 1);
@@ -1651,13 +1653,13 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                 // Fotoğraflar zayıf bağlantıda gönderilebilsin ve cihazda az yer kaplasın
                 // diye küçültülür; tutanak okunabilirliği için daha yüksek çözünürlük kalır.
                 const tutanak = await OfflineQueue.fotografKucult(tutanakSelectedFile, 2200, 0.82);
-                const dosyalar = [{ alan: 'tutanak_foto', ad: tutanak.ad, tip: tutanak.tip, blob: tutanak.blob }];
+                const dosyalar = [{ alan: 'tutanak_foto', ad: tutanak.ad, tip: tutanak.tip, blob: tutanak.blob, cekim: tutanak.cekim || '' }];
 
                 // Saha fotoğrafları ana istekle değil, her biri ayrı istekle gider.
                 const sahaFotolari = [];
                 for (const dosya of sahaDosyalari) {
                     const kucuk = await OfflineQueue.fotografKucult(dosya, 1600, 0.7);
-                    sahaFotolari.push({ ad: kucuk.ad, tip: kucuk.tip, blob: kucuk.blob });
+                    sahaFotolari.push({ ad: kucuk.ad, tip: kucuk.tip, blob: kucuk.blob, cekim: kucuk.cekim || '' });
                 }
 
                 const ozet = {

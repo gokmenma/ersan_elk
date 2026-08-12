@@ -7,7 +7,7 @@
 // temizlenir hem de importScripts URL'i değişir. Kayıt updateViaCache belirtmediği
 // için varsayılan "imports" geçerlidir ve sürümsüz import HTTP önbelleğinden
 // gelip service worker'ı eski kodla çalıştırır.
-const KUYRUK_SURUM = "14";
+const KUYRUK_SURUM = "15";
 const CACHE_NAME = "personel-pwa-v" + KUYRUK_SURUM;
 const SAYFA_CACHE = "personel-pwa-sayfa-v1";
 const OFFLINE_URL = "offline.html";
@@ -18,6 +18,7 @@ const PRECACHE_ASSETS = [
   "./assets/css/tailwind-build.css",
   "./assets/js/pwa-app.js",
   "./assets/js/pwa-offline-queue.js",
+  "../../assets/js/exif-cekim.js",
   "./manifest.json",
   "./offline.html",
   "./assets/icons/icon-144-new.png",
