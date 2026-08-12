@@ -1,6 +1,7 @@
 <?php
 use App\Helper\Form;
 use App\Helper\Date;
+use App\Helper\Security;
 ?>
 
 <div class="row">
@@ -13,12 +14,12 @@ use App\Helper\Date;
                 aria-controls="personelAiAccordionBody">
                 <div class="d-flex align-items-center gap-2">
                     <span class="personel-ai-icon flex-shrink-0">
-                        <i class="bx bx-bot" aria-hidden="true"></i>
+                        <i class="bx bx-scan" aria-hidden="true"></i>
                     </span>
                     <div>
                         <div class="d-flex align-items-center gap-2 mb-1">
-                            <h6 class="personel-ai-title mb-0">Personel belgelerinden otomatik doldur</h6>
-                            <span class="personel-ai-badge"><i class="bx bx-bot me-1"></i>AI Destekli</span>
+                            <h6 class="personel-ai-title mb-0">Personel belgelerinden yerel OCR ile doldur</h6>
+                            <span class="personel-ai-badge"><i class="bx bx-shield-quarter me-1"></i>Yerel & Güvenli</span>
                         </div>
                     </div>
                 </div>
@@ -26,9 +27,9 @@ use App\Helper\Date;
             </button>
             <div class="collapse <?= $id > 0 ? '' : 'show' ?>" id="personelAiAccordionBody">
                 <div class="personel-ai-content d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-2">
-                    <p class="personel-ai-description mb-0">Kimlik, adres belgesi ve ehliyeti birlikte analiz eder; bulunan bilgileri kontrolünüz için forma önerir.</p>
+                    <p class="personel-ai-description mb-0"><strong>Yapay zekâ kullanılmaz.</strong> Belgeler yalnızca bu sunucuda OCR ile okunur; dosya ve kişisel veriler dışarı gönderilmez.</p>
                     <button type="button" class="btn personel-ai-button text-nowrap" id="btnPersonelBelgeAnalizAc">
-                        <i class="bx bx-magic-wand me-1"></i> Belgelerden Doldur
+                        <i class="bx bx-scan me-1"></i> Yerel OCR ile Doldur
                         <i class="bx bx-right-arrow-alt ms-1"></i>
                     </button>
                 </div>
@@ -305,6 +306,58 @@ use App\Helper\Date;
         box-shadow: 0 10px 22px rgba(75, 92, 210, .34);
     }
 
+    #personelBelgeAlanlar .personel-belge-duzenlenebilir {
+        padding-top: .55rem;
+        padding-bottom: .55rem;
+        line-height: 1.35;
+    }
+
+    #personelBelgeAlanlar textarea.personel-belge-duzenlenebilir {
+        min-height: 96px;
+        resize: vertical;
+    }
+
+    #personelBelgeAlanlar .personel-belge-aday-satiri {
+        cursor: pointer;
+    }
+
+    #personelBelgeAlanlar .personel-belge-aday-satiri:has(.personel-belge-alan:checked) {
+        background-color: rgba(47, 128, 237, .055);
+    }
+
+    .ocr-loader { position: relative; width: 92px; height: 92px; }
+    .ocr-loader-document {
+        position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+        overflow: hidden; border: 1px solid rgba(89, 76, 219, .2); border-radius: 24px;
+        color: #6650d8; background: linear-gradient(145deg, #f5f2ff, #eaf9ff);
+        box-shadow: 0 12px 30px rgba(73, 71, 190, .14); font-size: 39px;
+    }
+    .ocr-loader-document::after {
+        content: ""; position: absolute; inset: 7px; border: 1px dashed rgba(71, 112, 218, .2); border-radius: 18px;
+    }
+    .ocr-loader-scanline {
+        position: absolute; z-index: 2; right: 11px; left: 11px; height: 2px; border-radius: 3px;
+        background: linear-gradient(90deg, transparent, #6d56e8 18%, #18b9b0 82%, transparent);
+        box-shadow: 0 0 11px rgba(38, 190, 184, .75); animation: personelOcrScan 1.8s ease-in-out infinite;
+    }
+    .ocr-loader-percent {
+        position: absolute; z-index: 3; right: -15px; bottom: -7px; min-width: 43px; padding: 5px 7px;
+        border: 3px solid #fff; border-radius: 20px; color: #fff;
+        background: linear-gradient(120deg, #6852e4, #1ab5ad); box-shadow: 0 5px 12px rgba(58, 87, 191, .25);
+        font-size: 11px; font-weight: 700;
+    }
+    .ocr-progress { width: min(420px, 90%); height: 7px; overflow: hidden; border-radius: 20px; background: #edf0f7; }
+    .ocr-progress .progress-bar {
+        border-radius: inherit; background: linear-gradient(90deg, #7255e7, #397ee9 55%, #1ab7ae);
+        box-shadow: 0 0 12px rgba(57, 126, 233, .35); transition: width .45s ease;
+    }
+    .ocr-info-chip {
+        display: inline-flex; align-items: center; gap: 5px; padding: 5px 9px; border: 1px solid #e5e9f2;
+        border-radius: 20px; color: #667085; background: #f8fafc; font-size: 10px; font-weight: 600;
+    }
+    .ocr-info-secure { color: #13897f; border-color: rgba(26, 183, 174, .2); background: rgba(26, 183, 174, .07); }
+    @keyframes personelOcrScan { 0%, 100% { top: 17px; opacity: .65; } 50% { top: 72px; opacity: 1; } }
+
     @media (max-width: 575.98px) {
         .personel-ai-panel {
             padding: 9px 10px;
@@ -325,26 +378,38 @@ use App\Helper\Date;
         <div class="modal-content">
             <div class="modal-header">
                 <div>
-                    <h5 class="modal-title"><i class="bx bx-scan text-primary me-2"></i>Belgelerden Personel Bilgisi Çıkar</h5>
-                    <small class="text-muted">Sonuçlar kontrolünüzden sonra forma aktarılır.</small>
+                    <h5 class="modal-title"><i class="bx bx-scan text-primary me-2"></i>Yerel OCR ile Belge Oku</h5>
+                    <small class="text-muted">Belgeler sunucudan ayrılmadan okunur; sonuçlar kontrolünüzden sonra forma aktarılır.</small>
                 </div>
                 <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
             </div>
             <div class="modal-body">
                 <div id="personelBelgeSecimAlani">
                     <label for="personelBelgeDosyalari" class="form-label fw-semibold">Personel belgeleri</label>
-                    <input type="file" class="form-control" id="personelBelgeDosyalari" multiple accept="application/pdf,image/jpeg,image/png,image/webp">
-                    <div class="form-text">PDF, JPG, PNG veya WEBP; en fazla 6 belge, belge başına 12 MB ve toplam 30 MB.</div>
+                    <input type="hidden" id="personelBelgeCsrf" value="<?= htmlspecialchars(Security::csrf(), ENT_QUOTES, 'UTF-8') ?>">
+                    <input type="file" class="form-control" id="personelBelgeDosyalari" multiple accept="application/pdf,image/jpeg,image/png,image/webp,image/heic,image/heif,.heic,.heif">
+                    <div class="form-text">PDF, JPG, PNG, WEBP veya HEIC; en fazla 6 belge, belge başına 10 MB ve toplam 30 MB.</div>
                     <div id="personelBelgeDosyaListesi" class="mt-3"></div>
                     <div class="alert alert-warning d-flex gap-2 mt-3 mb-0 py-2">
                         <i class="bx bx-shield-quarter fs-5"></i>
-                        <small>Belgeler analiz için OpenAI servisine gönderilir ve bu adımda evrak arşivine kaydedilmez. Yalnızca gerekli belgeleri yükleyin.</small>
+                        <small><strong>Gizlilik:</strong> Bu işlem yapay zekâ kullanmaz. Belgeler ve çıkarılan kişisel veriler hiçbir dış servise gönderilmez; OCR işlemi tamamen kendi sunucunuzda yapılır.</small>
                     </div>
                 </div>
                 <div id="personelBelgeAnalizYukleniyor" class="text-center py-5 d-none">
-                    <div class="spinner-border text-primary mb-3" role="status"></div>
-                    <h6>Belgeler analiz ediliyor</h6>
-                    <p class="text-muted mb-0">Belge sayısına göre bu işlem biraz sürebilir.</p>
+                    <div class="ocr-loader mx-auto">
+                        <div class="ocr-loader-document"><i class="bx bx-file"></i><span class="ocr-loader-scanline"></span></div>
+                        <div class="ocr-loader-percent" id="personelOcrYuzde">0%</div>
+                    </div>
+                    <h6 class="mt-3 mb-1" id="personelOcrDurum">Belgeler hazırlanıyor</h6>
+                    <p class="text-muted mb-3" id="personelOcrAciklama">Dosyalar güvenli çalışma alanına alınıyor.</p>
+                    <div class="progress ocr-progress mx-auto" role="progressbar" aria-label="OCR ilerlemesi" aria-valuemin="0" aria-valuemax="100">
+                        <div class="progress-bar" id="personelOcrProgressBar" style="width:0%"></div>
+                    </div>
+                    <div class="d-flex flex-wrap align-items-center justify-content-center gap-2 mt-3">
+                        <span class="ocr-info-chip"><i class="bx bx-file-blank"></i><span id="personelOcrBelgeSayisi">0 belge</span></span>
+                        <span class="ocr-info-chip ocr-info-secure"><i class="bx bx-shield-quarter"></i>Yerel ve güvenli</span>
+                        <span class="ocr-info-chip"><i class="bx bx-cloud-off"></i>Dışarı gönderilmez</span>
+                    </div>
                 </div>
                 <div id="personelBelgeAnalizSonuc" class="d-none">
                     <div class="d-flex justify-content-between align-items-center mb-2">
@@ -375,7 +440,7 @@ use App\Helper\Date;
             </div>
             <div class="modal-footer">
                 <button type="button" class="btn btn-light" data-bs-dismiss="modal">Kapat</button>
-                <button type="button" class="btn btn-primary" id="btnPersonelBelgeleriAnalizEt"><i class="bx bx-scan me-1"></i> Analiz Et</button>
+                <button type="button" class="btn btn-primary" id="btnPersonelBelgeleriAnalizEt"><i class="bx bx-scan me-1"></i> Yerel OCR ile Oku</button>
                 <button type="button" class="btn btn-success d-none" id="btnPersonelBelgeAlanlariniUygula"><i class="bx bx-check me-1"></i> Seçimleri Uygula</button>
             </div>
         </div>

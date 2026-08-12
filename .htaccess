@@ -1,5 +1,8 @@
 RewriteEngine on
 
+# Arşiv dosyalarına web üzerinden doğrudan erişimi engelle; yalnızca yetkili indirme endpointi kullanılır.
+RewriteRule ^uploads/personel_evraklar/ - [F,L]
+
 # Graphify çıktı dizinine web erişimini engelle
 RewriteRule ^graphify-out/ - [F,L]
 

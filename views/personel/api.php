@@ -57,6 +57,19 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             unset($data['ai_evrak_turleri'], $data['ai_evrak_adlari']);
 
             if ($aiDosyalar && is_array($aiDosyalar['name'] ?? null)) {
+                $aiCsrf = (string) ($data['ai_evrak_csrf'] ?? '');
+                unset($data['ai_evrak_csrf']);
+                if (empty($_SESSION['csrf_token']) || $aiCsrf === '' || !hash_equals((string) $_SESSION['csrf_token'], $aiCsrf)) {
+                    throw new Exception('Evrak güvenlik doğrulaması başarısız. Sayfayı yenileyip tekrar deneyiniz.');
+                }
+                $forwardedProto = strtolower(trim(explode(',', (string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? ''))[0]));
+                $httpsAktif = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off') || $forwardedProto === 'https';
+                $host = strtolower((string) ($_SERVER['HTTP_HOST'] ?? ''));
+                $yerelIstek = str_starts_with($host, 'localhost') || str_starts_with($host, '127.0.0.1') || str_starts_with($host, '[::1]');
+                $httpsZorunlu = filter_var($_ENV['OCR_REQUIRE_HTTPS'] ?? false, FILTER_VALIDATE_BOOL);
+                if ($httpsZorunlu && !$httpsAktif && !$yerelIstek) {
+                    throw new Exception('Evraklar yalnızca güvenli HTTPS bağlantısı üzerinden kaydedilebilir.');
+                }
                 if (count($aiDosyalar['name']) > 6) {
                     throw new Exception('Tek seferde en fazla 6 işe giriş evrakı kaydedilebilir.');
                 }
@@ -66,6 +79,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     'image/jpeg' => 'jpg',
                     'image/png' => 'png',
                     'image/webp' => 'webp',
+                    'image/heic' => 'heic',
+                    'image/heif' => 'heif',
                 ];
                 $toplamBoyut = 0;
                 foreach ($aiDosyalar['name'] as $index => $orijinalAd) {
@@ -74,8 +89,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                     $boyut = (int) ($aiDosyalar['size'][$index] ?? 0);
                     $toplamBoyut += $boyut;
-                    if ($boyut < 1 || $boyut > 12 * 1024 * 1024 || $toplamBoyut > 30 * 1024 * 1024) {
-                        throw new Exception('İşe giriş evrakları belge başına 12 MB, toplamda 30 MB sınırını geçemez.');
+                    if ($boyut < 1 || $boyut > 10 * 1024 * 1024 || $toplamBoyut > 30 * 1024 * 1024) {
+                        throw new Exception('İşe giriş evrakları belge başına 10 MB, toplamda 30 MB sınırını geçemez.');
                     }
                     $geciciYol = (string) ($aiDosyalar['tmp_name'][$index] ?? '');
                     if (!is_uploaded_file($geciciYol)) {
@@ -83,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
                     $mime = (string) (new finfo(FILEINFO_MIME_TYPE))->file($geciciYol);
                     if (!isset($mimeUzantilari[$mime])) {
-                        throw new Exception('İşe giriş evrakları yalnızca PDF, JPG, PNG veya WEBP olabilir.');
+                        throw new Exception('İşe giriş evrakları yalnızca PDF, JPG, PNG, WEBP veya HEIC olabilir.');
                     }
                     $evrakTuru = (string) ($aiTurler[$index] ?? 'diger');
                     if (!in_array($evrakTuru, $izinliTurler, true)) {
@@ -105,7 +120,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             // Evrak dizinini personel kaydından önce doğrula; dosya sistemi hatası yarım kayıt oluşturmamalı.
             if ($aiEvraklar !== []) {
                 $evrakAnaDizini = dirname(__DIR__, 2) . '/uploads/personel_evraklar/';
-                if (!is_dir($evrakAnaDizini) && !mkdir($evrakAnaDizini, 0777, true) && !is_dir($evrakAnaDizini)) {
+                if (!is_dir($evrakAnaDizini) && !mkdir($evrakAnaDizini, 0733, true) && !is_dir($evrakAnaDizini)) {
                     throw new Exception('İşe giriş evrakları klasörü oluşturulamadı. Personel kaydı başlatılmadı.');
                 }
                 if (!is_writable($evrakAnaDizini)) {
@@ -393,14 +408,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $kaydedilenAiEvrakSayisi = 0;
             if ($aiEvraklar !== []) {
                 $evrakDizini = dirname(__DIR__, 2) . '/uploads/personel_evraklar/' . $currentPid . '/';
-                if (!is_dir($evrakDizini) && !mkdir($evrakDizini, 0755, true) && !is_dir($evrakDizini)) {
+                if (!is_dir($evrakDizini) && !mkdir($evrakDizini, 0733, true) && !is_dir($evrakDizini)) {
                     throw new Exception('Personel kaydedildi ancak evrak klasörü oluşturulamadı.');
                 }
                 $EvrakModel = new PersonelEvrakModel();
                 foreach ($aiEvraklar as $evrak) {
-                    $dosyaAdi = bin2hex(random_bytes(16)) . '.' . $evrak['uzanti'];
+                    $dosyaAdi = bin2hex(random_bytes(16)) . '.enc';
                     $hedefYol = $evrakDizini . $dosyaAdi;
-                    if (!move_uploaded_file($evrak['tmp_name'], $hedefYol)) {
+                    $hamDosya = file_get_contents($evrak['tmp_name']);
+                    @unlink($evrak['tmp_name']);
+                    if ($hamDosya === false || file_put_contents($hedefYol, Security::encryptFile($hamDosya), LOCK_EX) === false) {
                         throw new Exception('İşe giriş evraklarından biri arşivlenemedi. Personel kaydı geri alındı.');
                     }
                     $aiTasinanDosyalar[] = $hedefYol;
@@ -414,7 +431,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             'orijinal_dosya_adi' => $evrak['orijinal_dosya_adi'],
                             'dosya_boyutu' => $evrak['dosya_boyutu'],
                             'dosya_tipi' => $evrak['dosya_tipi'],
-                            'aciklama' => 'Yapay zekâ belge analizi sırasında işe giriş evraklarına eklendi.',
+                            'aciklama' => 'Yerel OCR ile belge okuma sırasında işe giriş evraklarına eklendi.',
                             'yukleyen_id' => $userId,
                             'aktif' => 1,
                         ]);

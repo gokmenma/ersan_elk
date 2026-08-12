@@ -65,10 +65,10 @@ class PersonelEvrakModel extends Model
                 FROM {$this->table} pe
                 LEFT JOIN users u ON pe.yukleyen_id = u.id
                 LEFT JOIN personel p ON pe.personel_id = p.id
-                WHERE pe.id = :id";
+                WHERE pe.id = :id AND p.firma_id = :firma_id";
         
         $stmt = $this->db->prepare($sql);
-        $stmt->execute([':id' => $id]);
+        $stmt->execute([':id' => $id, ':firma_id' => (int) ($_SESSION['firma_id'] ?? 0)]);
         return $stmt->fetch(PDO::FETCH_OBJ);
     }
 

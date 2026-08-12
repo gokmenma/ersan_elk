@@ -13,7 +13,7 @@ define('UPLOAD_DIR', dirname(__DIR__, 3) . '/uploads/personel_evraklar/');
 
 // Uploads dizinini oluştur
 if (!is_dir(UPLOAD_DIR)) {
-    mkdir(UPLOAD_DIR, 0755, true);
+    mkdir(UPLOAD_DIR, 0733, true);
 }
 
 try {
@@ -63,6 +63,9 @@ try {
             'image/jpeg',
             'image/jpg',
             'image/png',
+            'image/webp',
+            'image/heic',
+            'image/heif',
             'image/gif',
             'application/msword',
             'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
@@ -75,7 +78,7 @@ try {
         finfo_close($finfo);
         
         if (!in_array($mimeType, $allowedTypes)) {
-            throw new Exception('Bu dosya türü desteklenmiyor. Desteklenen türler: PDF, JPG, PNG, DOC, DOCX, XLS, XLSX');
+            throw new Exception('Bu dosya türü desteklenmiyor. Desteklenen türler: PDF, JPG, PNG, WEBP, HEIC, DOC, DOCX, XLS, XLSX');
         }
         
         // Dosya boyutu kontrolü (max 10MB)
@@ -87,16 +90,17 @@ try {
         // Personel klasörünü oluştur
         $personelDir = UPLOAD_DIR . $personel_id . '/';
         if (!is_dir($personelDir)) {
-            mkdir($personelDir, 0755, true);
+            mkdir($personelDir, 0733, true);
         }
         
         // Benzersiz dosya adı oluştur
-        $extension = pathinfo($file['name'], PATHINFO_EXTENSION);
-        $newFileName = uniqid('evrak_') . '_' . time() . '.' . $extension;
+        $newFileName = bin2hex(random_bytes(16)) . '.enc';
         $targetPath = $personelDir . $newFileName;
-        
-        // Dosyayı taşı
-        if (!move_uploaded_file($file['tmp_name'], $targetPath)) {
+
+        // Dosyayı diskte açık biçimde tutmadan şifreleyerek arşivle.
+        $binaryData = file_get_contents($file['tmp_name']);
+        @unlink($file['tmp_name']);
+        if ($binaryData === false || file_put_contents($targetPath, Security::encryptFile($binaryData), LOCK_EX) === false) {
             throw new Exception('Dosya kaydedilemedi.');
         }
         
@@ -181,7 +185,7 @@ try {
             throw new Exception('Evrak bulunamadı.');
         }
         
-        $filePath = 'uploads/personel_evraklar/' . $evrak->personel_id . '/' . $evrak->dosya_adi;
+        $filePath = 'views/personel/evrak-indir.php?id=' . rawurlencode(Security::encrypt($evrak->id)) . '&inline=1';
         
         echo json_encode([
             'status' => 'success',

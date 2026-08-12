@@ -812,8 +812,8 @@ function formatMobileFileSize($bytes) {
                     <?php foreach($evraklar as $evrak): 
                         $icon = getMobileFileIcon($evrak->dosya_tipi);
                         $size = formatMobileFileSize($evrak->dosya_boyutu);
-                        $path = '../uploads/personel_evraklar/' . $personel_id . '/' . $evrak->dosya_adi;
                         $encId = Security::encrypt($evrak->id);
+                        $path = '../views/personel/evrak-indir.php?id=' . rawurlencode($encId) . '&inline=1';
                     ?>
                     <div class="bg-white dark:bg-card-dark border border-slate-100 dark:border-slate-800 rounded-2xl p-3 shadow-sm flex items-center gap-3 active:bg-slate-50 dark:active:bg-slate-800/50 transition-colors" onclick="viewEvrak('<?= $path ?>', '<?= htmlspecialchars($evrak->evrak_adi) ?>', '<?= $evrak->dosya_tipi ?>')">
                         <div class="w-12 h-12 rounded-xl bg-indigo-50 dark:bg-indigo-900/30 text-indigo-600 dark:text-indigo-400 flex items-center justify-center shrink-0">
