@@ -707,6 +707,21 @@ class KacakKontrolModel extends Model
         return $stmt->execute([$id, $this->firmaId()]);
     }
 
+    public function getCancellationCandidates(string $arama, int $limit = 20): array
+    {
+        $limit = max(1, min(50, $limit));
+        $like = '%' . trim($arama) . '%';
+        $stmt = $this->db->prepare("SELECT id, tarih, tutanak_no, abone_adi, ilce, tur
+                                    FROM kacak_kontrol
+                                    WHERE firma_id = ? AND silinme_tarihi IS NULL
+                                      AND durum = 'aktif' AND onay_durumu = 'onaylandi'
+                                      AND (tutanak_no LIKE ? OR abone_adi LIKE ? OR sayac_no LIKE ?)
+                                    ORDER BY tarih DESC, id DESC
+                                    LIMIT {$limit}");
+        $stmt->execute([$this->firmaId(), $like, $like, $like]);
+        return $stmt->fetchAll(PDO::FETCH_ASSOC);
+    }
+
     // =====================================================
     // FOTOĞRAF
     // =====================================================
@@ -1025,6 +1040,45 @@ class KacakKontrolModel extends Model
         $row = $stmt->fetch(PDO::FETCH_ASSOC) ?: [];
 
         return array_map(static fn($v) => (int) $v, $row);
+    }
+
+    public function getDashboard(string $baslangic, string $bitis, int $personelId = 0): array
+    {
+        $params = [$this->firmaId(), $baslangic, $bitis];
+        $base = "firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL";
+        if ($personelId > 0) {
+            $base .= ' AND (bildiren_personel_id = ? OR FIND_IN_SET(?, personel_ids))';
+            array_push($params, $personelId, $personelId);
+        }
+
+        $trend = $this->db->prepare("SELECT tarih,
+                    SUM(CASE WHEN onay_durumu = 'onaylandi' AND durum = 'aktif' THEN sayi ELSE 0 END) aktif,
+                    SUM(CASE WHEN durum = 'iptal' THEN sayi ELSE 0 END) iptal
+                FROM kacak_kontrol WHERE {$base} GROUP BY tarih ORDER BY tarih");
+        $trend->execute($params);
+
+        $tur = $this->db->prepare("SELECT tur, SUM(sayi) toplam FROM kacak_kontrol
+                WHERE {$base} AND onay_durumu = 'onaylandi' AND durum = 'aktif'
+                GROUP BY tur ORDER BY toplam DESC");
+        $tur->execute($params);
+
+        $ilce = $this->db->prepare("SELECT ilce, SUM(sayi) toplam FROM kacak_kontrol
+                WHERE {$base} AND onay_durumu = 'onaylandi' AND durum = 'aktif'
+                GROUP BY ilce ORDER BY toplam DESC LIMIT 8");
+        $ilce->execute($params);
+
+        $ekip = $this->db->prepare("SELECT COALESCE(NULLIF(ekip_adi, ''), 'Belirtilmemiş') ekip, SUM(sayi) toplam
+                FROM kacak_kontrol WHERE {$base} AND onay_durumu = 'onaylandi' AND durum = 'aktif'
+                GROUP BY ekip_adi ORDER BY toplam DESC LIMIT 5");
+        $ekip->execute($params);
+
+        return [
+            'ozet' => $this->getOzet($baslangic, $bitis, $personelId),
+            'trend' => $trend->fetchAll(PDO::FETCH_ASSOC),
+            'turler' => $tur->fetchAll(PDO::FETCH_ASSOC),
+            'ilceler' => $ilce->fetchAll(PDO::FETCH_ASSOC),
+            'ekipler' => $ekip->fetchAll(PDO::FETCH_ASSOC),
+        ];
     }
 
     // =====================================================

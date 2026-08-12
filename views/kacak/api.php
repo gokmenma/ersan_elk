@@ -68,6 +68,8 @@ $saltOkunurActionlar = [
     'list',
     'get-record',
     'pending-count',
+    'dashboard',
+    'cancel-candidates',
     'get-photos',
     'archive-preview',
     'gunluk-rapor',
@@ -81,7 +83,7 @@ $saltOkunurActionlar = [
 
 if (in_array($action, $saltOkunurActionlar, true)) {
     kacakSuperAdmin();
-    foreach (['kacak_onay', 'kacak_duzenle', 'kacak_iptal', 'kacak_arsiv', 'kacak_sicil_bildir', 'kacak_sicil_yanitla'] as $izin) {
+    foreach (['kacak_onay', 'kacak_duzenle', 'kacak_iptal', 'kacak_iptal_ekle', 'kacak_arsiv', 'kacak_sicil_bildir', 'kacak_sicil_yanitla'] as $izin) {
         kacakIzin($izin);
     }
     session_write_close();
@@ -229,6 +231,9 @@ try {
                     : '-';
                 $k['foto_sayisi'] = (int) $k['foto_sayisi'];
                 $k['beklenen_foto_sayisi'] = (int) ($k['beklenen_foto_sayisi'] ?? 0);
+                if (kacakIzin('kacak_iptal_ekle') || kacakSuperAdmin()) {
+                    $k['iptal_token'] = Security::encrypt((string) $k['id']);
+                }
             }
             unset($k);
 
@@ -257,7 +262,7 @@ try {
                 kacakYanit(false, 'Kayıt bulunamadı.');
             }
             // Sicil bildirimi açacak kurum kullanıcısının tutanak detayını görmesi gerekir.
-            if ($userPersonelId > 0 && !kacakSuperAdmin() && !kacakIzin('kacak_onay') && !kacakIzin('kacak_sicil_bildir')) {
+            if ($userPersonelId > 0 && !kacakSuperAdmin() && !kacakIzin('kacak_onay') && !kacakIzin('kacak_sicil_bildir') && !kacakIzin('kacak_iptal_ekle')) {
                 $isEkip = ($kayit['bildiren_personel_id'] == $userPersonelId) || in_array($userPersonelId, $kayit['personel_ids_array'] ?? [], true);
                 if (!$isEkip) {
                     kacakYanit(false, 'Bu kaydı görüntüleme yetkiniz bulunmuyor.');
@@ -269,6 +274,26 @@ try {
 
         case 'pending-count':
             kacakYanit(true, '', ['count' => $Kacak->getPendingCount()]);
+            break;
+
+        case 'dashboard':
+            $bas = kacakTarih($_GET['start_date'] ?? '', date('Y-m-01'));
+            $bit = kacakTarih($_GET['end_date'] ?? '', date('Y-m-d'));
+            $dashboardPersonelId = $userPersonelId > 0 && !kacakSuperAdmin() && !kacakIzin('kacak_onay')
+                ? $userPersonelId : 0;
+            kacakYanit(true, '', ['data' => $Kacak->getDashboard($bas, $bit, $dashboardPersonelId)]);
+            break;
+
+        case 'cancel-candidates':
+            kacakYetkiKontrol('kacak_iptal_ekle');
+            $sonuclar = [];
+            foreach ($Kacak->getCancellationCandidates((string) ($_GET['q'] ?? '')) as $kayit) {
+                $sonuclar[] = [
+                    'id' => Security::encrypt((string) $kayit['id']),
+                    'text' => ($kayit['tutanak_no'] ?: 'Tutanak no yok') . ' — ' . ($kayit['abone_adi'] ?: '-') . ' (' . Date::dmY($kayit['tarih']) . ')',
+                ];
+            }
+            kacakYanit(true, '', ['results' => $sonuclar]);
             break;
 
         // =====================================================
@@ -459,8 +484,10 @@ try {
         // İPTAL
         // =====================================================
         case 'cancel':
-            kacakYetkiKontrol('kacak_iptal');
-            $id = (int) ($_POST['id'] ?? 0);
+            kacakYetkiKontrol('kacak_iptal_ekle');
+            $id = !empty($_POST['cancel_token'])
+                ? (int) Security::decrypt((string) $_POST['cancel_token'])
+                : (int) ($_POST['id'] ?? 0);
             $aciklama = trim((string) ($_POST['iptal_aciklama'] ?? ''));
             $hakedistenDus = ($_POST['hakedisten_dus'] ?? '0') === '1';
 

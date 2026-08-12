@@ -57,6 +57,7 @@ $ayAdlari = [
 $yetkiDuzenle = Gate::allows('kacak_duzenle') || Gate::isSuperAdmin();
 $yetkiOnay = Gate::allows('kacak_onay') || Gate::isSuperAdmin();
 $yetkiIptal = Gate::allows('kacak_iptal') || Gate::isSuperAdmin();
+$yetkiIptalEkle = Gate::allows('kacak_iptal_ekle') || Gate::isSuperAdmin();
 $yetkiArsiv = Gate::allows('kacak_arsiv') || Gate::isSuperAdmin();
 
 $yetkiSicilBildir = Gate::allows('kacak_sicil_bildir') || Gate::isSuperAdmin();
@@ -265,6 +266,8 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             <ul class="nav nav-pills kacak-tabs" id="kacakTabs" role="tablist">
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-ekip-ozet"
                         type="button"><i class="bx bx-table me-1"></i> Ekip Özeti</button></li>
+                <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-dashboard"
+                        type="button"><i class="bx bx-grid-alt me-1"></i> Dashboard</button></li>
                 <li class="nav-item"><button class="nav-link active" data-bs-toggle="tab" data-bs-target="#pane-kayitlar"
                         type="button"><i class="bx bx-list-ul me-1"></i> Kayıtlar</button></li>
                 <li class="nav-item"><button class="nav-link" data-bs-toggle="tab" data-bs-target="#pane-onaylar"
@@ -295,6 +298,31 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
     </div>
 
     <div class="tab-content">
+
+        <!-- ============ DASHBOARD ============ -->
+        <div class="tab-pane fade" id="pane-dashboard">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body">
+                    <div class="row g-2 align-items-end mb-4">
+                        <div class="col-md-3"><?= Form::FormDate('dashboard_baslangic', Date::dmY($son30Gun), 'Başlangıç') ?></div>
+                        <div class="col-md-3"><?= Form::FormDate('dashboard_bitis', Date::dmY($bugun), 'Bitiş') ?></div>
+                        <div class="col-md-2"><button type="button" class="btn btn-primary w-100" id="btnDashboardFiltrele"><i class="bx bx-refresh me-1"></i>Güncelle</button></div>
+                    </div>
+                    <div class="row g-3 mb-3">
+                        <div class="col-6 col-xl-3"><div class="border rounded-3 p-3 h-100"><div class="text-muted small">Aktif Tutanak</div><div class="fs-3 fw-bold text-primary" id="dashboardAktif">0</div></div></div>
+                        <div class="col-6 col-xl-3"><div class="border rounded-3 p-3 h-100"><div class="text-muted small">Bekleyen Onay</div><div class="fs-3 fw-bold text-info" id="dashboardBekleyen">0</div></div></div>
+                        <div class="col-6 col-xl-3"><div class="border rounded-3 p-3 h-100"><div class="text-muted small">İptal</div><div class="fs-3 fw-bold text-secondary" id="dashboardIptal">0</div></div></div>
+                        <div class="col-6 col-xl-3"><div class="border rounded-3 p-3 h-100"><div class="text-muted small">Hakedişten Düşen</div><div class="fs-3 fw-bold text-danger" id="dashboardDusulen">0</div></div></div>
+                    </div>
+                    <div class="row g-3">
+                        <div class="col-xl-8"><div class="border rounded-3 p-3"><h6 class="fw-semibold">Günlük Tutanak Eğilimi</h6><div id="kacakTrendChart"></div></div></div>
+                        <div class="col-xl-4"><div class="border rounded-3 p-3"><h6 class="fw-semibold">Tür Dağılımı</h6><div id="kacakTurChart"></div></div></div>
+                        <div class="col-xl-7"><div class="border rounded-3 p-3"><h6 class="fw-semibold">İlçe Dağılımı</h6><div id="kacakIlceChart"></div></div></div>
+                        <div class="col-xl-5"><div class="border rounded-3 p-3"><h6 class="fw-semibold">En Yoğun Ekipler</h6><div id="kacakEkipChart"></div></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
 
         <!-- ============ KAYITLAR ============ -->
         <div class="tab-pane fade show active" id="pane-kayitlar">
@@ -405,6 +433,11 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                             <button class="btn btn-primary w-100" id="btnIptalFiltrele"><i
                                     class="bx bx-search me-1"></i>Filtrele</button>
                         </div>
+                        <?php if ($yetkiIptalEkle): ?>
+                            <div class="col-md-2 ms-auto">
+                                <button type="button" class="btn btn-danger w-100" id="btnYeniIptal"><i class="bx bx-plus me-1"></i>Yeni İptal</button>
+                            </div>
+                        <?php endif; ?>
                     </div>
                     <div class="table-responsive">
                         <table class="table table-hover align-middle nowrap w-100" id="iptalTable">
@@ -905,7 +938,18 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             <form id="iptalForm" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="cancel">
                 <input type="hidden" name="id" id="iptal_id" value="0">
+                <input type="hidden" name="cancel_token" id="iptal_token" value="">
                 <div class="modal-body">
+                    <div class="mb-3 d-none" id="iptalTutanakSecimAlani">
+                        <?= Form::FormSelect2(
+                            name: 'iptal_tutanak_sec',
+                            options: ['' => 'Tutanak seçiniz'],
+                            selectedValue: '',
+                            label: 'İptal Edilecek Tutanak',
+                            icon: 'file-text',
+                            required: true
+                        ) ?>
+                    </div>
                     <div class="alert alert-light border" id="iptalKayitBilgi"></div>
 
                     <div class="mb-3">
@@ -1146,6 +1190,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             duzenle: <?= $yetkiDuzenle ? 'true' : 'false' ?>,
             onay: <?= $yetkiOnay ? 'true' : 'false' ?>,
             iptal: <?= $yetkiIptal ? 'true' : 'false' ?>,
+            iptalEkle: <?= $yetkiIptalEkle ? 'true' : 'false' ?>,
             arsiv: <?= $yetkiArsiv ? 'true' : 'false' ?>,
             sicilBildir: <?= $yetkiSicilBildir ? 'true' : 'false' ?>,
             sicilYanitla: <?= $yetkiSicilYanitla ? 'true' : 'false' ?>
@@ -1156,6 +1201,8 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         let kacakFotoLightbox = null;
 
         let kacakTable, onayTable, iptalTable, teslimTable, sicilTable;
+        let dashboardYuklendi = false;
+        const dashboardCharts = {};
         const teslimSecilenler = new Set();
         let sicilAktifDurum = 'beklemede';
         let kacakKayitlari = [];
@@ -1302,6 +1349,51 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             if ((ozet.bekleyen || 0) > 0) badge.text(ozet.bekleyen).show(); else badge.hide();
         }
 
+        function dashboardGrafikCiz(anahtar, selector, options) {
+            if (typeof ApexCharts === 'undefined') return;
+            if (dashboardCharts[anahtar]) dashboardCharts[anahtar].destroy();
+            dashboardCharts[anahtar] = new ApexCharts(document.querySelector(selector), options);
+            dashboardCharts[anahtar].render();
+        }
+
+        function dashboardYukle() {
+            apiGet({
+                action: 'dashboard',
+                start_date: toIsoDate($('#dashboard_baslangic').val()),
+                end_date: toIsoDate($('#dashboard_bitis').val())
+            }).done(function (res) {
+                if (res.status !== 'success') return hataGoster(res);
+                const d = res.data || {}, o = d.ozet || {};
+                $('#dashboardAktif').text(o.aktif || 0);
+                $('#dashboardBekleyen').text(o.bekleyen || 0);
+                $('#dashboardIptal').text(o.iptal || 0);
+                $('#dashboardDusulen').text(o.iptal_dusulen || 0);
+                const ortak = { chart: { toolbar: { show: false }, height: 290 }, dataLabels: { enabled: false }, noData: { text: 'Veri yok' } };
+                dashboardGrafikCiz('trend', '#kacakTrendChart', $.extend(true, {}, ortak, {
+                    chart: { type: 'area' }, stroke: { curve: 'smooth', width: 3 }, colors: ['#556ee6', '#74788d'],
+                    series: [
+                        { name: 'Aktif', data: (d.trend || []).map(x => parseInt(x.aktif || 0, 10)) },
+                        { name: 'İptal', data: (d.trend || []).map(x => parseInt(x.iptal || 0, 10)) }
+                    ], xaxis: { categories: (d.trend || []).map(x => x.tarih) }
+                }));
+                dashboardGrafikCiz('tur', '#kacakTurChart', $.extend(true, {}, ortak, {
+                    chart: { type: 'donut' }, labels: (d.turler || []).map(x => x.tur),
+                    series: (d.turler || []).map(x => parseInt(x.toplam || 0, 10)), colors: ['#f46a6a', '#f1b44c', '#50a5f1'], legend: { position: 'bottom' }
+                }));
+                dashboardGrafikCiz('ilce', '#kacakIlceChart', $.extend(true, {}, ortak, {
+                    chart: { type: 'bar' }, plotOptions: { bar: { horizontal: true, borderRadius: 4 } },
+                    series: [{ name: 'Tutanak', data: (d.ilceler || []).map(x => parseInt(x.toplam || 0, 10)) }],
+                    xaxis: { categories: (d.ilceler || []).map(x => x.ilce) }
+                }));
+                dashboardGrafikCiz('ekip', '#kacakEkipChart', $.extend(true, {}, ortak, {
+                    chart: { type: 'bar' }, colors: ['#34c38f'],
+                    series: [{ name: 'Tutanak', data: (d.ekipler || []).map(x => parseInt(x.toplam || 0, 10)) }],
+                    xaxis: { categories: (d.ekipler || []).map(x => x.ekip), labels: { rotate: -35 } }
+                }));
+                dashboardYuklendi = true;
+            });
+        }
+
         function kayitlariYukle() {
             if (kacakTable) {
                 kacakTable.ajax.reload(null, true);
@@ -1411,7 +1503,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     ipucu: 'Kaydı düzenle', cls: 'btn-soft-primary', renk: 'text-primary'
                 });
             }
-            if (YETKI.iptal && k.durum !== 'iptal') {
+            if (YETKI.iptalEkle && k.durum !== 'iptal') {
                 islemler.push({
                     id: k.id, sinif: 'btn-iptal', etiket: 'İptal Et', ikon: 'bx-x-circle',
                     ipucu: 'Tutanağı iptal et — hakedişten düşme seçeneğiyle',
@@ -1940,12 +2032,16 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         // ---------- İPTAL ----------
         $(document).on('click', '.btn-iptal', function () {
             const id = $(this).data('id');
+            const listeKaydi = kacakKayitlari.find(k => String(k.id) === String(id));
             apiGet({ action: 'get-record', id: id }).done(function (res) {
                 if (res.status !== 'success') return hataGoster(res);
                 const k = res.data;
 
                 $('#iptalForm')[0].reset();
                 $('#iptal_id').val(k.id);
+                $('#iptal_token').val((listeKaydi && listeKaydi.iptal_token) || '');
+                $('#iptalTutanakSecimAlani').addClass('d-none');
+                $('#iptal_tutanak_sec').prop('disabled', true);
                 $('#iptalKayitBilgi').html(
                     `<strong>${esc(k.tarih_formatted)}</strong> &middot; Tutanak No: <strong>${esc(k.tutanak_no || '-')}</strong><br>
                      ${esc(k.abone_adi || '-')} &middot; ${esc(k.ilce || '-')} &middot; ${esc(k.tur)}`
@@ -1953,6 +2049,33 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 $('#iptalModal').modal('show');
             });
         });
+
+        if (YETKI.iptalEkle) {
+            $('#iptal_tutanak_sec').select2({
+                dropdownParent: $('#iptalModal'), width: '100%', minimumInputLength: 1,
+                placeholder: 'Tutanak no, abone veya sayaç no ile arayın',
+                ajax: {
+                    url: API, dataType: 'json', delay: 250,
+                    data: params => ({ action: 'cancel-candidates', q: params.term || '' }),
+                    processResults: res => ({ results: res.status === 'success' ? (res.results || []) : [] })
+                }
+            }).on('select2:select', function (e) {
+                $('#iptal_token').val(e.params.data.id);
+                $('#iptal_id').val('0');
+                $('#iptalKayitBilgi').html('<strong>' + esc(e.params.data.text) + '</strong>');
+            });
+
+            $('#btnYeniIptal').on('click', function () {
+                $('#iptalForm')[0].reset();
+                $('#iptal_id').val('0');
+                $('#iptal_token').val('');
+                $('#iptal_tutanak_sec').val(null).trigger('change');
+                $('#iptal_tutanak_sec').prop('disabled', false);
+                $('#iptalKayitBilgi').html('<span class="text-muted">İptal edilecek tutanağı aşağıdan seçin.</span>');
+                $('#iptalTutanakSecimAlani').removeClass('d-none');
+                $('#iptalModal').modal('show');
+            });
+        }
 
         $('#iptalForm').on('submit', function (e) {
             e.preventDefault();
@@ -3166,11 +3289,13 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
             window.location.href = 'views/kacak/export-haftalik.php?' + $.param(params);
         });
         $('#btnIptalFiltrele').on('click', iptalleriYukle);
+        $('#btnDashboardFiltrele').on('click', dashboardYukle);
         $('#filtre_arama').on('keypress', e => { if (e.which === 13) kayitlariYukle(); });
 
         $('#kacakTabs button').on('shown.bs.tab', function () {
             const hedef = $(this).data('bs-target');
             if (hedef === '#pane-kayitlar' && !kacakTable) kayitlariYukle();
+            if (hedef === '#pane-dashboard' && !dashboardYuklendi) dashboardYukle();
             if (hedef === '#pane-onaylar' && !onayTable) onaylariYukle();
             if (hedef === '#pane-iptaller' && !iptalTable) iptalleriYukle();
             if (hedef === '#pane-ekip-ozet' && !ekipOzetYuklendi) ekipOzetiYukle();
