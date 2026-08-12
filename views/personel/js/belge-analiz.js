@@ -69,7 +69,8 @@
   async function pdfCanvaslariniYap(file) {
     if (!window.pdfjsLib) throw new Error("Tarayıcı PDF okuyucusu yüklenemedi.");
     window.pdfjsLib.GlobalWorkerOptions.workerSrc = "assets/libs/pdfjs/pdf.worker.min.js";
-    var pdf = await window.pdfjsLib.getDocument({data: await file.arrayBuffer()}).promise;
+    var pdfYukleme = window.pdfjsLib.getDocument({data: await file.arrayBuffer()});
+    var pdf = await pdfYukleme.promise;
     var canvases = [];
     var sayfaSayisi = Math.min(pdf.numPages, 4);
     for (var sayfaNo = 1; sayfaNo <= sayfaSayisi; sayfaNo++) {
@@ -85,9 +86,11 @@
       ctx.fillRect(0, 0, canvas.width, canvas.height);
       await sayfa.render({canvasContext: ctx, viewport: viewport, background: "white"}).promise;
       canvases.push(canvasSinirla(canvas, 2200));
-      sayfa.cleanup();
+      if (typeof sayfa.cleanup === "function") sayfa.cleanup();
     }
-    await pdf.destroy();
+    if (typeof pdf.cleanup === "function") pdf.cleanup();
+    if (typeof pdfYukleme.destroy === "function") await pdfYukleme.destroy();
+    else if (typeof pdf.destroy === "function") await pdf.destroy();
     return canvases;
   }
 

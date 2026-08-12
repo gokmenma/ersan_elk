@@ -81,12 +81,24 @@
 
   function adresCikar(metin) {
     var adaylar = [];
+    var satirlar = metin.split(/\r?\n/u).map(temizle).filter(Boolean);
+    // Tablo OCR'ında ilçe/il satırı adres satırından önce veya sonra gelebilir.
+    var konumDevamlari = satirlar.filter(function (satir) {
+      return /^\d{1,4}\s+[A-ZÇĞİÖŞÜ][A-ZÇĞİÖŞÜ\s.\/-]{3,}$/u.test(satir) &&
+        (/\//u.test(satir) || /[A-ZÇĞİÖŞÜ]{5,}/u.test(satir));
+    });
+
+    function devaminiEkle(adres) {
+      if (!/(?:İÇ\s+)?KAPI\s+NO\s*:?\s*$/iu.test(adres)) return adres;
+      var devam = konumDevamlari.find(function (satir) { return adres.indexOf(satir) === -1; });
+      return devam ? temizle(adres + " " + devam) : adres;
+    }
+
     var bolum = metin.match(/(?:yerleşim yeri adresi|adres)\s*[:：]?\s*([\s\S]{10,350}?)(?:\n\s*\n|belge no|düzenleme tarihi|açıklama)/iu);
     if (bolum) {
-      var bolumAdresi = adresNormalizeEt(bolum[1]);
+      var bolumAdresi = devaminiEkle(adresNormalizeEt(bolum[1]));
       if (adresGecerliMi(bolumAdresi)) adaylar.push(bolumAdresi);
     }
-    var satirlar = metin.split(/\r?\n/u);
     satirlar.forEach(function (satir, index) {
       if (!/\b(MAH\.?|MAHALLESİ|CAD\.?|SOK\.?|SK\.?|NO\s*:)/iu.test(satir)) return;
       var birlesik = satir;
@@ -95,7 +107,7 @@
         if (!devam || /belge no|düzenleme tarihi|açıklama|imza/iu.test(devam)) break;
         if (/\d|\/|İLÇE|MAHALLE|KAPI|[A-ZÇĞİÖŞÜ]{4,}/u.test(devam)) birlesik += " " + devam;
       }
-      var adres = adresNormalizeEt(birlesik);
+      var adres = devaminiEkle(adresNormalizeEt(birlesik));
       if (adresGecerliMi(adres)) adaylar.push(adres);
     });
     adaylar.sort(function (a, b) { return adresPuani(b) - adresPuani(a); });
