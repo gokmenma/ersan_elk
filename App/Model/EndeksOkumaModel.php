@@ -634,6 +634,43 @@ class EndeksOkumaModel extends Model
             }
         }
 
+        $currentPeriod = $periods[count($periods) - 1];
+
+        $statusSql = "SELECT COALESCE(NULLIF(UPPER(TRIM(sayac_durum)), ''), 'BELİRTİLMEMİŞ') AS durum,
+                             COUNT(*) AS kayit_sayisi,
+                             COALESCE(SUM(okunan_abone_sayisi), 0) AS toplam
+                      FROM {$this->table}
+                      WHERE firma_id = ? AND tarih BETWEEN ? AND ? AND silinme_tarihi IS NULL
+                      GROUP BY COALESCE(NULLIF(UPPER(TRIM(sayac_durum)), ''), 'BELİRTİLMEMİŞ')
+                      ORDER BY toplam DESC";
+        $statusStmt = $this->db->prepare($statusSql);
+        $statusStmt->execute([$firmaId, $currentPeriod['start'], $currentPeriod['end']]);
+        $result['status_distribution'] = array_map(static function ($row) {
+            return [
+                'durum' => (string) $row->durum,
+                'kayit_sayisi' => (int) $row->kayit_sayisi,
+                'toplam' => (int) $row->toplam
+            ];
+        }, $statusStmt->fetchAll(PDO::FETCH_OBJ));
+
+        $regionSql = "SELECT COALESCE(NULLIF(TRIM(def.ekip_bolge), ''), 'TANIMSIZ') AS bolge,
+                             COUNT(*) AS kayit_sayisi,
+                             COALESCE(SUM(t.okunan_abone_sayisi), 0) AS toplam
+                      FROM {$this->table} t
+                      LEFT JOIN tanimlamalar def ON t.ekip_kodu_id = def.id
+                      WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL
+                      GROUP BY COALESCE(NULLIF(TRIM(def.ekip_bolge), ''), 'TANIMSIZ')
+                      ORDER BY toplam DESC";
+        $regionStmt = $this->db->prepare($regionSql);
+        $regionStmt->execute([$firmaId, $currentPeriod['start'], $currentPeriod['end']]);
+        $result['region_distribution'] = array_map(static function ($row) {
+            return [
+                'bolge' => (string) $row->bolge,
+                'kayit_sayisi' => (int) $row->kayit_sayisi,
+                'toplam' => (int) $row->toplam
+            ];
+        }, $regionStmt->fetchAll(PDO::FETCH_OBJ));
+
         return $result;
     }
 

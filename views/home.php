@@ -1209,6 +1209,10 @@ if (Gate::allows("ana_sayfa")) {
                 [data-bs-theme="dark"] .widget-item:hover .mac-title-bar {
                     background: linear-gradient(180deg, #32394e 0%, #272d3f 100%) !important;
                 }
+                [data-bs-theme="dark"] #dashboard-widgets .card,
+                [data-bs-theme="dark"] #dashboard-widgets .carousel {
+                    border-color: #46515d !important;
+                }
                 [data-bs-theme="dark"] .mac-title-text {
                     color: #a6b0cf !important;
                 }
@@ -1230,16 +1234,98 @@ if (Gate::allows("ana_sayfa")) {
                 [data-bs-theme="dark"] .card.summary-card,
                 [data-bs-theme="dark"] .widget-item .card.summary-card,
                 [data-bs-theme="dark"] #widget-endeks-karsilastirma .card {
-                    background: #2a3042 !important;
-                    border-color: #32394e !important;
+                    background: var(--bs-card-bg, #222830) !important;
+                    border-color: var(--bs-card-border-color, #2b333e) !important;
                     box-shadow: 0 4px 15px -3px rgba(0,0,0,0.3) !important;
                 }
+                #widget-endeks-karsilastirma .endeks-overview {
+                    display: grid;
+                    grid-template-columns: repeat(4, minmax(150px, 1fr));
+                    gap: 10px;
+                    padding: 14px;
+                    background: linear-gradient(135deg, #f8fafc 0%, #f5f7ff 100%);
+                    border-bottom: 1px solid #e9edf5;
+                }
+                #widget-endeks-karsilastirma .endeks-kpi {
+                    position: relative;
+                    overflow: hidden;
+                    min-height: 82px;
+                    padding: 13px 14px;
+                    background: rgba(255,255,255,.92);
+                    border: 1px solid #e7eaf2;
+                    border-radius: 12px;
+                    box-shadow: 0 7px 22px -18px rgba(15,23,42,.65);
+                }
+                #widget-endeks-karsilastirma .endeks-kpi.is-actionable { cursor:pointer; transition:transform .2s ease, box-shadow .2s ease, border-color .2s ease; }
+                #widget-endeks-karsilastirma .endeks-kpi.is-actionable:hover { transform:translateY(-3px); border-color:#a9adf5; box-shadow:0 15px 30px -20px rgba(79,70,229,.75); }
+                #widget-endeks-karsilastirma .endeks-kpi.is-actionable:focus-visible { outline:3px solid rgba(99,102,241,.24); outline-offset:2px; }
+                #widget-endeks-karsilastirma .endeks-kpi::after {
+                    content: '';
+                    position: absolute;
+                    right: -18px;
+                    bottom: -24px;
+                    width: 72px;
+                    height: 72px;
+                    border-radius: 50%;
+                    background: var(--kpi-accent, #6366f1);
+                    opacity: .07;
+                }
+                #widget-endeks-karsilastirma .endeks-kpi-label { color:#64748b; font-size:10px; font-weight:800; letter-spacing:.07em; text-transform:uppercase; }
+                #widget-endeks-karsilastirma .endeks-kpi-value { margin-top:4px; color:#172033; font-size:21px; line-height:1.1; font-weight:800; }
+                #widget-endeks-karsilastirma .endeks-kpi-note { margin-top:6px; color:#8b96a8; font-size:10px; }
+                #widget-endeks-karsilastirma .endeks-cell-meta { margin-top:4px; color:#94a3b8; font-size:9px; line-height:1; }
+                #widget-endeks-karsilastirma .endeks-absolute-diff { display:block; margin-top:4px; color:#8994a6; font-size:9px; font-weight:600; }
+                #widget-endeks-karsilastirma .endeks-summary-strip { border-bottom:1px solid #eef1f6; background:#fff; }
+                #widget-endeks-karsilastirma .endeks-table-wrap { scrollbar-color:#cbd5e1 transparent; scrollbar-width:thin; }
+                #widget-endeks-karsilastirma .endeks-table-head th {
+                    background:#253247 !important;
+                    background-image:none !important;
+                    color:#f8fafc !important;
+                    border-color:#344258 !important;
+                    text-shadow:0 1px 1px rgba(0,0,0,.18);
+                }
+                #widget-endeks-karsilastirma .endeks-table-head th.is-current-period {
+                    background:#4f55a7 !important;
+                    color:#ffffff !important;
+                    box-shadow:inset 3px 0 0 rgba(255,255,255,.08), inset -3px 0 0 rgba(255,255,255,.08);
+                }
+                @media (max-width: 991.98px) {
+                    #widget-endeks-karsilastirma .endeks-overview { grid-template-columns:repeat(2, minmax(140px, 1fr)); }
+                }
+                @media (max-width: 575.98px) {
+                    #widget-endeks-karsilastirma .endeks-overview { grid-template-columns:1fr; padding:10px; }
+                }
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma .endeks-overview,
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma .endeks-summary-strip { background:linear-gradient(135deg,#202634,#1b202c); border-color:#32394e; }
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma .endeks-kpi { background:#272e3d; border-color:#364052; }
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma .endeks-kpi-value { color:#f2f5fa; }
+                [data-bs-theme="dark"] #widget-endeks-karsilastirma .endeks-kpi-label { color:#aab4c7; }
+                #endeksDistributionModal .modal-dialog { transform:translateY(28px) scale(.96); transition:transform .32s cubic-bezier(.2,.8,.2,1); }
+                #endeksDistributionModal.show .modal-dialog { transform:translateY(0) scale(1); }
+                #endeksDistributionModal .modal-content { overflow:hidden; border:1px solid rgba(148,163,184,.22); border-radius:18px; box-shadow:0 28px 75px -28px rgba(15,23,42,.55); }
+                #endeksDistributionModal .endeks-modal-hero { padding:20px 22px; color:#fff; background:radial-gradient(circle at 90% 10%,rgba(255,255,255,.2),transparent 25%),linear-gradient(135deg,#3730a3,#4f46e5 54%,#2563eb); }
+                #endeksDistributionModal .endeks-modal-stat { padding:12px 14px; background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.18); border-radius:12px; backdrop-filter:blur(8px); }
+                #endeksDistributionModal .endeks-modal-section { padding:18px; background:#fff; border:1px solid #e9edf4; border-radius:14px; }
+                #endeksDistributionModal .endeks-status-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:9px; }
+                #endeksDistributionModal .endeks-status-item { padding:12px; border:1px solid #e8ecf3; border-radius:11px; background:#fbfcfe; transition:transform .18s ease,border-color .18s ease; animation:endeksItemIn .35s both; }
+                #endeksDistributionModal .endeks-status-item:hover { transform:translateY(-2px); border-color:#c7d2fe; }
+                #endeksDistributionModal .endeks-region-row + .endeks-region-row { margin-top:14px; }
+                #endeksDistributionModal .endeks-region-track { height:7px; overflow:hidden; background:#eef2f7; border-radius:20px; }
+                #endeksDistributionModal .endeks-region-fill { height:100%; border-radius:20px; background:linear-gradient(90deg,#6366f1,#38bdf8); animation:endeksBarGrow .7s cubic-bezier(.2,.8,.2,1) both; transform-origin:left; }
+                @keyframes endeksItemIn { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:none} }
+                @keyframes endeksBarGrow { from{transform:scaleX(0)} to{transform:scaleX(1)} }
+                @media(max-width:767.98px){ #endeksDistributionModal .endeks-status-grid{grid-template-columns:1fr} }
+                [data-bs-theme="dark"] #endeksDistributionModal .endeks-modal-section { background:#222936; border-color:#354052; }
+                [data-bs-theme="dark"] #endeksDistributionModal .endeks-status-item { background:#282f3d; border-color:#394456; }
+                [data-bs-theme="dark"] #endeksDistributionModal .modal-body { background:#1b202b !important; }
+                [data-bs-theme="dark"] #endeksDistributionModal .endeks-region-track,
+                [data-bs-theme="dark"] #endeksDistributionModal .progress { background:#343d4d !important; }
                 [data-bs-theme="dark"] #widget-endeks-karsilastirma .card-body,
                 [data-bs-theme="dark"] #widget-endeks-karsilastirma .table-responsive {
-                    background-color: #2a3042 !important;
+                    background-color: var(--bs-card-bg, #222830) !important;
                 }
                 [data-bs-theme="dark"] #widget-endeks-karsilastirma table {
-                    background-color: #2a3042 !important;
+                    background-color: var(--bs-card-bg, #222830) !important;
                     color: #a6b0cf !important;
                 }
                 [data-bs-theme="dark"] #widget-endeks-karsilastirma table td {
@@ -1522,14 +1608,14 @@ if (Gate::allows("ana_sayfa")) {
 
             <div id="dashboard-page-content" style="display: none;">
 
-                <div class="d-flex justify-content-between align-items-center mb-3">
+                <div class="d-flex justify-content-between align-items-center dashboard-settings-row">
                     <div>
                         <?php
                         $maintitle = 'Ana Sayfa';
                         $title = '';
                         ?>
                     </div>
-                    <div class="d-flex gap-2">
+                    <div class="d-flex gap-2 dashboard-settings-toolbar" id="dashboard-settings-toolbar">
                         <div class="dropdown">
                             <button class="btn btn-soft-secondary btn-sm dropdown-toggle d-flex align-items-center" type="button"
                                 data-bs-toggle="dropdown" aria-expanded="false" style="font-weight: 600; padding: 6px 16px; border-radius: 8px;">
@@ -1689,6 +1775,86 @@ if (Gate::allows("ana_sayfa")) {
                     </div>
                 </div>
 
+                <style>
+                    .dashboard-settings-row {
+                        height: 0;
+                        margin: 0 !important;
+                    }
+
+                    .dashboard-settings-toolbar {
+                        position: fixed;
+                        top: 76px;
+                        right: 18px;
+                        z-index: 1000;
+                    }
+
+                    .quick-fav-inner > .dashboard-settings-toolbar {
+                        position: relative;
+                        top: auto;
+                        right: auto;
+                        z-index: 2;
+                        flex-shrink: 0;
+                        margin-left: auto;
+                    }
+
+                    .quick-fav-inner:has(> .dashboard-settings-toolbar) {
+                        overflow: visible;
+                    }
+
+                    .dashboard-settings-toolbar > .dropdown > .btn {
+                        height: 30px;
+                        padding: 4px 12px !important;
+                        border-color: var(--bs-border-color);
+                        background: var(--bs-card-bg, #ffffff);
+                        color: var(--bs-body-color);
+                        backdrop-filter: blur(8px);
+                    }
+
+                    .dashboard-settings-toolbar > .dropdown > .btn:hover,
+                    .dashboard-settings-toolbar > .dropdown > .btn:focus,
+                    .dashboard-settings-toolbar > .dropdown > .btn.show {
+                        border-color: rgba(139, 164, 255, .65);
+                        background: rgba(51, 65, 85, .92);
+                        color: #ffffff;
+                    }
+
+                    [data-bs-theme="dark"] .dashboard-settings-toolbar > .dropdown > .btn {
+                        border-color: rgba(139, 164, 255, .34);
+                        background: rgba(30, 41, 59, .72);
+                        color: #cbd5e1;
+                    }
+
+                    @media (max-width: 767.98px) {
+                        .dashboard-settings-toolbar {
+                            right: 10px;
+                        }
+
+                        .dashboard-settings-toolbar > .dropdown > .btn {
+                            width: 34px;
+                            padding: 4px !important;
+                            overflow: hidden;
+                            white-space: nowrap;
+                            color: transparent;
+                        }
+
+                        .dashboard-settings-toolbar > .dropdown > .btn i {
+                            margin: 0 !important;
+                            color: #ffffff;
+                        }
+                    }
+                </style>
+
+                <script>
+                    (() => {
+                        const favoritesInner = document.querySelector('#quick-favorites-bar .quick-fav-inner');
+                        const dashboardToolbar = document.getElementById('dashboard-settings-toolbar');
+
+                        if (favoritesInner && dashboardToolbar) {
+                            favoritesInner.appendChild(dashboardToolbar);
+                        }
+                    })();
+                </script>
+
                 <div class="<?php echo $dashboard_is_free ? 'd-block free-layout-active' : 'row'; ?>" id="dashboard-widgets" style="position: relative; min-height: 800px;">
                     <?php
                     foreach ($render_order as $widget_id) {
@@ -1704,6 +1870,49 @@ if (Gate::allows("ana_sayfa")) {
                     ?>
                 </div>
 
+            </div>
+        </div>
+
+        <!-- Endeks dönem dağılımı -->
+        <div class="modal fade" id="endeksDistributionModal" tabindex="-1" aria-labelledby="endeksDistributionTitle" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+                <div class="modal-content">
+                    <div class="endeks-modal-hero">
+                        <div class="d-flex align-items-start gap-3">
+                            <span class="d-inline-flex align-items-center justify-content-center rounded-circle flex-shrink-0" style="width:46px;height:46px;background:rgba(255,255,255,.16);"><i class="bx bx-layer fs-3"></i></span>
+                            <div>
+                                <div class="text-uppercase fw-bold" style="font-size:10px;letter-spacing:.12em;opacity:.75;">Endeks okuma analizi</div>
+                                <h4 class="modal-title text-white mb-1" id="endeksDistributionTitle">Bu Dönemin Dağılımı</h4>
+                                <div id="endeksDistributionPeriod" style="font-size:12px;opacity:.78;"></div>
+                            </div>
+                            <button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal" aria-label="Kapat"></button>
+                        </div>
+                        <div class="row g-2 mt-3" id="endeksDistributionHeroStats"></div>
+                    </div>
+                    <div class="modal-body p-3 p-lg-4" style="background:#f5f7fb;">
+                        <div class="row g-3">
+                            <div class="col-lg-7">
+                                <section class="endeks-modal-section h-100">
+                                    <div class="d-flex align-items-center justify-content-between mb-3">
+                                        <div><h6 class="mb-1 fw-bold"><i class="bx bx-pie-chart-alt-2 text-primary me-1"></i>Sayaç Durumu Dağılımı</h6><div class="text-muted" style="font-size:11px;">Okunan abonelerin sonuç türlerine göre dağılımı</div></div>
+                                        <span class="badge bg-primary-subtle text-primary" id="endeksStatusCount"></span>
+                                    </div>
+                                    <div class="endeks-status-grid" id="endeksStatusDistribution"></div>
+                                </section>
+                            </div>
+                            <div class="col-lg-5">
+                                <section class="endeks-modal-section h-100">
+                                    <div class="mb-3"><h6 class="mb-1 fw-bold"><i class="bx bx-map-alt text-info me-1"></i>Bölge Katkısı</h6><div class="text-muted" style="font-size:11px;">Toplam okumaya en çok katkı sağlayan bölgeler</div></div>
+                                    <div id="endeksRegionDistribution"></div>
+                                </section>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="modal-footer border-0 py-2 px-4">
+                        <span class="text-muted me-auto" style="font-size:10px;"><i class="bx bx-info-circle me-1"></i>Veriler, kartta gösterilen dönem aralığını kapsar.</span>
+                        <a href="index.php?p=puantaj/raporlar&tab=karsilastirma" class="btn btn-primary btn-sm rounded-pill px-3"><i class="bx bx-line-chart me-1"></i>Detaylı Rapora Git</a>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -5247,6 +5456,7 @@ if (Gate::allows("ana_sayfa")) {
                     }
 
                     function getTrendInfo(current, previous) {
+                        if ((!previous || previous === 0) && current > 0) return { text: 'Yeni', class: 'text-primary', icon: 'bx-plus', pct: 100, isNew: true };
                         if (!previous || previous === 0) return { text: '-', class: 'text-muted', icon: '', pct: 0 };
                         const diff = current - previous;
                         const pct = ((diff / previous) * 100).toFixed(1);
@@ -5257,6 +5467,82 @@ if (Gate::allows("ana_sayfa")) {
 
                     function formatNumber(n) {
                         return new Intl.NumberFormat('tr-TR').format(n || 0);
+                    }
+
+                    function escapeEndeksHtml(value) {
+                        return String(value ?? '').replace(/[&<>'"]/g, function (char) {
+                            return { '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#039;', '"': '&quot;' }[char];
+                        });
+                    }
+
+                    function getAbsoluteDiff(current, previous) {
+                        const diff = (current || 0) - (previous || 0);
+                        if (diff === 0) return 'Fark yok';
+                        return (diff > 0 ? '+' : '') + formatNumber(diff) + ' okuma';
+                    }
+
+                    function buildOverview(items, periods, type) {
+                        if (!items.length || !periods.length) return '';
+                        const currentTotal = items.reduce((sum, item) => sum + (item.lastVal || 0), 0);
+                        const previousTotal = items.reduce((sum, item) => sum + (item.periodValues ? item.periodValues[item.periodValues.length - 2] : item.pPeriods[item.pPeriods.length - 2]) || 0, 0);
+                        const trend = getTrendInfo(currentTotal, previousTotal);
+                        const diff = currentTotal - previousTotal;
+                        const dayCount = Math.max(1, parseInt(endeksCompData.gun, 10) || 1);
+                        const dailyAverage = Math.round(currentTotal / dayCount);
+                        const increasing = items.filter(item => item.trendPct > 0).length;
+                        const decreasing = items.filter(item => item.trendPct < 0).length;
+                        const scopeLabel = type === 'bolge' ? 'Aktif bölge' : 'Aktif personel';
+                        const trendColor = diff >= 0 ? '#10b981' : '#ef4444';
+                        const trendIcon = diff >= 0 ? 'bx-trending-up' : 'bx-trending-down';
+
+                        return `<div class="endeks-overview">
+                            <div class="endeks-kpi is-actionable endeks-total-trigger" role="button" tabindex="0" aria-label="Bu dönemin detaylı dağılımını göster" title="Dağılımı incelemek için tıklayın" style="--kpi-accent:#6366f1"><div class="endeks-kpi-label">Bu dönem toplamı <i class="bx bx-expand-alt ms-1 text-primary"></i></div><div class="endeks-kpi-value">${formatNumber(currentTotal)}</div><div class="endeks-kpi-note">${escapeEndeksHtml(periods[periods.length - 1].label)} · ilk ${dayCount} gün</div></div>
+                            <div class="endeks-kpi" style="--kpi-accent:${trendColor}"><div class="endeks-kpi-label">Önceki aya göre</div><div class="endeks-kpi-value" style="color:${trendColor}"><i class="bx ${trendIcon}" style="font-size:18px"></i> ${trend.text}</div><div class="endeks-kpi-note">${diff >= 0 ? '+' : ''}${formatNumber(diff)} net okuma</div></div>
+                            <div class="endeks-kpi" style="--kpi-accent:#0ea5e9"><div class="endeks-kpi-label">Günlük ortalama</div><div class="endeks-kpi-value">${formatNumber(dailyAverage)}</div><div class="endeks-kpi-note">Takvim günü başına okuma</div></div>
+                            <div class="endeks-kpi" style="--kpi-accent:#8b5cf6"><div class="endeks-kpi-label">${scopeLabel}</div><div class="endeks-kpi-value">${formatNumber(items.length)}</div><div class="endeks-kpi-note"><span style="color:#059669">${increasing} yükselişte</span> · <span style="color:#dc2626">${decreasing} düşüşte</span></div></div>
+                        </div>`;
+                    }
+
+                    function renderEndeksDistributionModal() {
+                        if (!endeksCompData) return;
+                        const statuses = endeksCompData.status_distribution || [];
+                        const regions = endeksCompData.region_distribution || [];
+                        const periods = endeksCompData.periods || [];
+                        const currentPeriod = periods[periods.length - 1] || {};
+                        const total = statuses.reduce((sum, item) => sum + Number(item.toplam || 0), 0);
+                        const records = statuses.reduce((sum, item) => sum + Number(item.kayit_sayisi || 0), 0);
+                        const normal = statuses.filter(item => item.durum === 'SAYAÇ NORMAL').reduce((sum, item) => sum + Number(item.toplam || 0), 0);
+                        const exception = Math.max(0, total - normal);
+                        $('#endeksDistributionPeriod').text((currentPeriod.label || '') + ' · ' + (currentPeriod.start || '') + ' / ' + (currentPeriod.end || ''));
+                        $('#endeksDistributionHeroStats').html([
+                            ['Toplam abone', formatNumber(total), 'bx-group'],
+                            ['Sayaç normal', formatNumber(normal), 'bx-check-circle'],
+                            ['Diğer durumlar', formatNumber(exception), 'bx-error-circle'],
+                            ['Toplam kayıt', formatNumber(records), 'bx-receipt']
+                        ].map(item => `<div class="col-6 col-lg-3"><div class="endeks-modal-stat"><div style="font-size:10px;opacity:.72;">${item[0]}</div><div class="fs-5 fw-bold mt-1"><i class="bx ${item[2]} me-1" style="font-size:16px"></i>${item[1]}</div></div></div>`).join(''));
+
+                        $('#endeksStatusCount').text(statuses.length + ' durum');
+                        const palette = ['#34c38f','#f1b44c','#f46a6a','#50a5f1','#74788d','#556ee6','#22c3dd','#fb8c00'];
+                        const statusHtml = statuses.map((item, index) => {
+                            const value = Number(item.toplam || 0);
+                            const rate = total > 0 ? value / total * 100 : 0;
+                            const color = item.durum === 'SAYAÇ NORMAL' ? '#34c38f' : palette[index % palette.length];
+                            return `<article class="endeks-status-item" style="animation-delay:${Math.min(index * 35, 280)}ms">
+                                <div class="d-flex align-items-start gap-2"><span class="mt-1 rounded-circle flex-shrink-0" style="width:9px;height:9px;background:${color};box-shadow:0 0 0 4px ${color}1c"></span><div class="min-w-0 flex-grow-1"><div class="d-flex gap-2 justify-content-between"><span class="fw-bold text-truncate" title="${escapeEndeksHtml(item.durum)}" style="font-size:11px;">${escapeEndeksHtml(item.durum)}</span><span class="fw-bold" style="font-size:11px;color:${color}">%${rate.toFixed(1)}</span></div><div class="d-flex align-items-end justify-content-between mt-2"><span class="fw-bold fs-5">${formatNumber(value)}</span><span class="text-muted" style="font-size:10px;">${formatNumber(item.kayit_sayisi)} kayıt</span></div><div class="progress mt-2" style="height:4px;background:#e9edf4"><div class="progress-bar" style="width:${rate}%;background:${color}"></div></div></div></div>
+                            </article>`;
+                        }).join('');
+                        $('#endeksStatusDistribution').html(statusHtml || '<div class="text-muted py-4 text-center">Durum dağılımı bulunamadı.</div>');
+
+                        const maxRegion = Math.max(...regions.map(item => Number(item.toplam || 0)), 1);
+                        const regionHtml = regions.map((item, index) => {
+                            const value = Number(item.toplam || 0);
+                            const width = value / maxRegion * 100;
+                            const share = total > 0 ? value / total * 100 : 0;
+                            return `<div class="endeks-region-row"><div class="d-flex align-items-center justify-content-between mb-1"><span class="fw-semibold text-truncate pe-2" style="font-size:11px;">${index + 1}. ${escapeEndeksHtml(item.bolge)}</span><span class="fw-bold" style="font-size:12px;">${formatNumber(value)}</span></div><div class="endeks-region-track"><div class="endeks-region-fill" style="width:${width}%;animation-delay:${Math.min(index * 45, 300)}ms"></div></div><div class="d-flex justify-content-between text-muted mt-1" style="font-size:9px;"><span>${formatNumber(item.kayit_sayisi)} kayıt</span><span>Toplamın %${share.toFixed(1)}'i</span></div></div>`;
+                        }).join('');
+                        $('#endeksRegionDistribution').html(regionHtml || '<div class="text-muted py-4 text-center">Bölge dağılımı bulunamadı.</div>');
+
+                        bootstrap.Modal.getOrCreateInstance(document.getElementById('endeksDistributionModal')).show();
                     }
 
                     // Satır arka plan rengini trend yüzdesine göre belirle
@@ -5313,17 +5599,19 @@ if (Gate::allows("ana_sayfa")) {
                     function buildSummaryCards(items, type) {
                         if (items.length === 0) return '';
                         const sorted = [...items].sort((a, b) => a.trendPct - b.trendPct);
-                        const worst = sorted.slice(0, 3);
-                        const best = sorted.slice(-3).reverse();
+                        const worst = sorted.filter(item => item.trendPct < 0).slice(0, 3);
+                        const best = sorted.filter(item => item.trendPct > 0).slice(-3).reverse();
 
-                        let html = '<div class="d-flex flex-wrap gap-2 px-3 py-3" style="border-bottom: 1px solid #f1f5f9; background: linear-gradient(135deg, #fafbff 0%, #f8fafc 100%);">';
+                        if (worst.length === 0 && best.length === 0) return '';
+
+                        let html = '<div class="endeks-summary-strip d-flex flex-wrap gap-2 px-3 py-3">';
 
                         if (worst.length > 0) {
                             html += '<div class="d-flex align-items-center gap-2 flex-wrap flex-grow-1">';
                             html += '<div class="d-flex align-items-center gap-1 me-2" style="white-space: nowrap;"><i class="bx bx-down-arrow-circle" style="color: #ef4444; font-size: 16px;"></i><span style="font-size: 11px; font-weight: 700; color: #991b1b; text-transform: uppercase; letter-spacing: 0.05em;">Düşük Performans</span></div>';
                             worst.forEach(w => {
                                 html += `<div style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 8px; background: rgba(239,68,68,0.06); border: 1px solid rgba(239,68,68,0.15); font-size: 12px;">`;
-                                html += `<span style="font-weight: 600; color: #334155;">${w.name}</span>`;
+                                html += `<span style="font-weight: 600; color: #334155;">${escapeEndeksHtml(w.name)}</span>`;
                                 html += `<span style="font-weight: 800; color: #dc2626; font-size: 13px;">${w.trendText}</span>`;
                                 html += `</div>`;
                             });
@@ -5335,7 +5623,7 @@ if (Gate::allows("ana_sayfa")) {
                             html += '<div class="d-flex align-items-center gap-1 me-2" style="white-space: nowrap;"><i class="bx bx-up-arrow-circle" style="color: #10b981; font-size: 16px;"></i><span style="font-size: 11px; font-weight: 700; color: #065f46; text-transform: uppercase; letter-spacing: 0.05em;">Yüksek Performans</span></div>';
                             best.forEach(b => {
                                 html += `<div style="display: inline-flex; align-items: center; gap: 6px; padding: 5px 12px; border-radius: 8px; background: rgba(16,185,129,0.06); border: 1px solid rgba(16,185,129,0.15); font-size: 12px;">`;
-                                html += `<span style="font-weight: 600; color: #334155;">${b.name}</span>`;
+                                html += `<span style="font-weight: 600; color: #334155;">${escapeEndeksHtml(b.name)}</span>`;
                                 html += `<span style="font-weight: 800; color: #059669; font-size: 13px;">${b.trendText}</span>`;
                                 html += `</div>`;
                             });
@@ -5380,19 +5668,20 @@ if (Gate::allows("ana_sayfa")) {
                         let html = '';
                         html += '<style>@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.5;transform:scale(1.3);}}</style>';
 
+                        html += buildOverview(bolgeEntries, periods, 'bolge');
                         // Özet kartlar
                         html += buildSummaryCards(bolgeEntries, 'bolge');
 
-                        html += '<div class="table-responsive" style="max-height: 500px; overflow-y: auto;">';
+                        html += '<div class="table-responsive endeks-table-wrap" style="max-height: 520px; overflow-y: auto;">';
                         html += '<table class="table table-nowrap align-middle mb-0" style="font-size: 13px;">';
 
                         // Dark header
-                        html += '<thead style="position: sticky; top: 0; z-index: 5;">';
+                        html += '<thead class="endeks-table-head" style="position: sticky; top: 0; z-index: 5;">';
                         html += '<tr style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%);">';
                         html += '<th style="padding: 12px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #ffffff !important; font-weight: 800; min-width: 180px; border-bottom: none;">BÖLGE</th>';
                         periodLabels.forEach((label, idx) => {
                             const isCurrent = periods[idx].is_current;
-                            html += `<th class="text-center" style="padding: 12px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: ${isCurrent ? '#c7d2fe' : '#ffffff'} !important; font-weight: 800; min-width: 130px; border-bottom: none; ${isCurrent ? 'background: rgba(99,102,241,0.15);' : ''}">${label}</th>`;
+                            html += `<th class="text-center ${isCurrent ? 'is-current-period' : ''}" style="padding: 12px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; min-width: 130px; border-bottom: none;">${escapeEndeksHtml(label)}</th>`;
                         });
                         html += '<th class="text-center" style="padding: 12px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #ffffff !important; font-weight: 800; min-width: 120px; border-bottom: none;">DEĞİŞİM</th>';
                         html += '<th style="width: 40px; border-bottom: none;"></th>';
@@ -5415,7 +5704,7 @@ if (Gate::allows("ana_sayfa")) {
                                 html += `<span style="width: 16px;"></span>`;
                             }
                             html += getPerfDot(trend.pct);
-                            html += `<div><span class="fw-bold" style="color: #1e293b; font-size: 13px;">${bolge}</span>`;
+                            html += `<div><span class="fw-bold" style="color: #1e293b; font-size: 13px;">${escapeEndeksHtml(bolge)}</span>`;
                             if (pSayisi > 0) html += `<br><span class="text-muted" style="font-size: 10px;">${pSayisi} personel</span>`;
                             html += `</div></div></td>`;
 
@@ -5428,7 +5717,7 @@ if (Gate::allows("ana_sayfa")) {
                                 html += `<div class="d-flex justify-content-center">${getMiniBar(val, maxLastVal, barColor)}</div></td>`;
                             });
 
-                            html += `<td class="text-center" style="padding: 10px 12px;">${getTrendBadge(trend)}</td>`;
+                            html += `<td class="text-center" style="padding: 10px 12px;">${getTrendBadge(trend)}<span class="endeks-absolute-diff">${getAbsoluteDiff(periodValues[periodValues.length - 1], periodValues[periodValues.length - 2])}</span></td>`;
                             html += `<td style="padding: 10px 8px;">`;
                             if (hasPersonel) html += `<i class="bx bx-expand-vertical text-muted" style="font-size: 12px; opacity: 0.5;"></i>`;
                             html += `</td></tr>`;
@@ -5450,8 +5739,8 @@ if (Gate::allows("ana_sayfa")) {
                                     const detailBg = getRowBgByTrend(pTrend.pct);
                                     html += `<tr class="bolge-detail-${bIdx}" style="display: none; background: ${detailBg || '#fafbfc'}; border-bottom: 1px solid #f1f5f9; border-left: 3px solid #e2e8f0; animation: fadeInDown 0.2s;">`;
                                     html += `<td style="padding: 8px 16px 8px 56px;"><div class="d-flex align-items-center">${getPerfDot(pTrend.pct)}<div>`;
-                                    html += `<span style="color: #475569; font-size: 12px; font-weight: 600;">${p.personel_adi}</span>`;
-                                    html += `<br><span class="text-muted" style="font-size: 10px;">${p.ekip_adi}</span>`;
+                                    html += `<span style="color: #475569; font-size: 12px; font-weight: 600;">${escapeEndeksHtml(p.personel_adi)}</span>`;
+                                    html += `<br><span class="text-muted" style="font-size: 10px;">${escapeEndeksHtml(p.ekip_adi)}</span>`;
                                     html += `</div></div></td>`;
 
                                     pPeriods.forEach((val, ppIdx) => {
@@ -5518,19 +5807,20 @@ if (Gate::allows("ana_sayfa")) {
                         personelEntries.sort((a, b) => a.trendPct - b.trendPct);
 
                         let html = '';
+                        html += buildOverview(personelEntries, periods, 'personel');
                         html += buildSummaryCards(personelEntries, 'personel');
 
-                        html += '<div class="table-responsive" style="max-height: 500px; overflow-y: auto;">';
+                        html += '<div class="table-responsive endeks-table-wrap" style="max-height: 520px; overflow-y: auto;">';
                         html += '<table class="table table-nowrap align-middle mb-0" style="font-size: 13px;">';
 
                         // Dark header
-                        html += '<thead style="position: sticky; top: 0; z-index: 5;">';
+                        html += '<thead class="endeks-table-head" style="position: sticky; top: 0; z-index: 5;">';
                         html += '<tr style="background: linear-gradient(135deg, #1e293b 0%, #334155 100%);">';
                         html += '<th style="padding: 12px 16px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #ffffff !important; font-weight: 800; min-width: 180px; border-bottom: none;">PERSONEL</th>';
                         html += '<th style="padding: 12px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #ffffff !important; font-weight: 800; min-width: 100px; border-bottom: none;">BÖLGE</th>';
                         periodLabels.forEach((label, idx) => {
                             const isCurrent = periods[idx].is_current;
-                            html += `<th class="text-center" style="padding: 12px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: ${isCurrent ? '#c7d2fe' : '#ffffff'} !important; font-weight: 800; min-width: 130px; border-bottom: none; ${isCurrent ? 'background: rgba(99,102,241,0.15);' : ''}">${label}</th>`;
+                            html += `<th class="text-center ${isCurrent ? 'is-current-period' : ''}" style="padding: 12px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; font-weight: 800; min-width: 130px; border-bottom: none;">${escapeEndeksHtml(label)}</th>`;
                         });
                         html += '<th class="text-center" style="padding: 12px 12px; font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; color: #ffffff !important; font-weight: 800; min-width: 120px; border-bottom: none;">DEĞİŞİM</th>';
                         html += '</tr></thead>';
@@ -5544,10 +5834,10 @@ if (Gate::allows("ana_sayfa")) {
 
                             html += `<tr style="border-bottom: 1px solid #f1f5f9; transition: all 0.25s; background: ${rowBg}; border-left: ${leftBorder};" onmouseover="this.style.filter='brightness(0.97)'" onmouseout="this.style.filter='none'">`;
                             html += `<td style="padding: 12px 16px;"><div class="d-flex align-items-center">${getPerfDot(trend.pct)}<div>`;
-                            html += `<span class="fw-bold" style="color: #1e293b; font-size: 12px;">${p.personel_adi}</span>`;
-                            html += `<br><span class="text-muted" style="font-size: 10px;">${p.ekip_adi}</span>`;
+                            html += `<span class="fw-bold" style="color: #1e293b; font-size: 12px;">${escapeEndeksHtml(p.personel_adi)}</span>`;
+                            html += `<br><span class="text-muted" style="font-size: 10px;">${escapeEndeksHtml(p.ekip_adi)}</span>`;
                             html += `</div></div></td>`;
-                            html += `<td style="padding: 12px 12px;"><span class="badge" style="font-size: 10px; font-weight: 600; background: rgba(99,102,241,0.08); color: #4338ca; border: 1px solid rgba(99,102,241,0.15); padding: 4px 8px; border-radius: 6px;">${p.bolge}</span></td>`;
+                            html += `<td style="padding: 12px 12px;"><span class="badge" style="font-size: 10px; font-weight: 600; background: rgba(99,102,241,0.08); color: #4338ca; border: 1px solid rgba(99,102,241,0.15); padding: 4px 8px; border-radius: 6px;">${escapeEndeksHtml(p.bolge)}</span></td>`;
 
                             pPeriods.forEach((val, ppIdx) => {
                                 const isCurrent = periods[ppIdx].is_current;
@@ -5555,10 +5845,13 @@ if (Gate::allows("ana_sayfa")) {
                                 const barColor = isCurrent ? '#6366f1' : '#94a3b8';
                                 html += `<td class="text-center" style="padding: 10px 12px; background: ${bgColor};">`;
                                 html += `<span class="fw-bold" style="color: #1e293b; font-size: 14px;">${formatNumber(val)}</span>`;
-                                html += `<div class="d-flex justify-content-center">${getMiniBar(val, maxPersonelVal, barColor)}</div></td>`;
+                                const activeDays = p.periods[periodLabels[ppIdx]]?.gun_sayisi || 0;
+                                const perDay = activeDays > 0 ? Math.round(val / activeDays) : 0;
+                                html += `<div class="d-flex justify-content-center">${getMiniBar(val, maxPersonelVal, barColor)}</div>`;
+                                html += `<div class="endeks-cell-meta">${activeDays} gün · ${formatNumber(perDay)}/gün</div></td>`;
                             });
 
-                            html += `<td class="text-center" style="padding: 10px 12px;">${getTrendBadge(trend)}</td></tr>`;
+                            html += `<td class="text-center" style="padding: 10px 12px;">${getTrendBadge(trend)}<span class="endeks-absolute-diff">${getAbsoluteDiff(pPeriods[pPeriods.length - 1], pPeriods[pPeriods.length - 2])}</span></td></tr>`;
                         });
 
                         html += '</tbody></table></div>';
@@ -5598,6 +5891,14 @@ if (Gate::allows("ana_sayfa")) {
                         } else {
                             $('#endeksCompBolge').hide();
                             $('#endeksCompPersonel').fadeIn(200);
+                        }
+                    });
+
+                    $(document).on('click', '#widget-endeks-karsilastirma .endeks-total-trigger', renderEndeksDistributionModal);
+                    $(document).on('keydown', '#widget-endeks-karsilastirma .endeks-total-trigger', function (event) {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            renderEndeksDistributionModal();
                         }
                     });
 
