@@ -541,6 +541,20 @@ body #sidebar-menu #side-menu .sub-menu li.mm-active > a {
   color: #eff2f7 !important;
 }
 
+[data-bs-theme="dark"] .nav-pills .nav-link {
+  color: #cbd5e1 !important;
+}
+
+[data-bs-theme="dark"] .nav-pills .nav-link:hover,
+[data-bs-theme="dark"] .nav-pills .nav-link:focus,
+[data-bs-theme="dark"] .nav-pills .nav-link.active {
+  color: #ffffff !important;
+}
+
+[data-bs-theme="dark"] .nav-pills .nav-link.disabled {
+  color: #64748b !important;
+}
+
 /* Global Component Radius (Slate Style) */
 .card {
   border-radius: var(--bs-border-radius) !important;
@@ -2847,6 +2861,15 @@ table thead tr:first-child th {
   color: #ced4da !important;
 }
 
+[data-bs-theme="dark"] .text-primary {
+  color: #8ba4ff !important;
+}
+
+[data-bs-theme="dark"] a.text-primary:hover,
+[data-bs-theme="dark"] a.text-primary:focus {
+  color: #b3c1ff !important;
+}
+
 [data-bs-theme="dark"] .modal-content {
   background-color: #282f36 !important;
   color: #ced4da !important;
@@ -3000,6 +3023,13 @@ table thead tr:first-child th {
   background-color: #3b455a !important;
   border-color: #59657a !important;
   color: #f8fafc !important;
+}
+
+[data-bs-theme="dark"] .badge.bg-dark,
+[data-bs-theme="dark"] .badge.text-bg-dark {
+  background-color: #475569 !important;
+  border-color: #64748b !important;
+  color: #ffffff !important;
 }
 
 [data-bs-theme="dark"] .badge-soft-light {
