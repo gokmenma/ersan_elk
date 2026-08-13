@@ -1110,17 +1110,24 @@ class KacakKontrolModel extends Model
                 GROUP BY tur ORDER BY toplam DESC");
         $tur->execute($params);
 
-        $ilce = $this->db->prepare("SELECT ilce, SUM(sayi) toplam FROM kacak_kontrol
-                WHERE {$base} AND onay_durumu = 'onaylandi' AND durum = 'aktif'
-                GROUP BY ilce ORDER BY toplam DESC LIMIT 8");
+        $ilce = $this->db->prepare("SELECT COALESCE(NULLIF(ilce, ''), 'Belirtilmemiş') ilce,
+                    SUM(CASE WHEN onay_durumu = 'onaylandi' AND durum = 'aktif' AND tur = 'Kaçak' THEN sayi ELSE 0 END) kacak,
+                    SUM(CASE WHEN onay_durumu = 'onaylandi' AND durum = 'aktif' AND tur = 'Abonesiz' THEN sayi ELSE 0 END) abonesiz,
+                    SUM(CASE WHEN onay_durumu = 'onaylandi' AND durum = 'aktif' AND tur = 'Usülsüz' THEN sayi ELSE 0 END) usulsuz,
+                    SUM(CASE WHEN onay_durumu = 'onaylandi' AND durum = 'aktif' THEN sayi ELSE 0 END) toplam,
+                    SUM(CASE WHEN onay_durumu = 'beklemede' AND durum = 'aktif' THEN 1 ELSE 0 END) bekleyen
+                FROM kacak_kontrol WHERE {$base}
+                GROUP BY ilce HAVING toplam > 0 OR bekleyen > 0 ORDER BY toplam DESC");
         $ilce->execute($params);
 
         $ekip = $this->db->prepare("SELECT COALESCE(NULLIF(ekip_adi, ''), 'Belirtilmemiş') ekip,
                     SUM(CASE WHEN onay_durumu = 'onaylandi' AND durum = 'aktif' THEN sayi ELSE 0 END) aktif,
                     SUM(CASE WHEN durum = 'iptal' THEN sayi ELSE 0 END) iptal,
-                    COUNT(DISTINCT tarih) calisilan_gun
+                    SUM(CASE WHEN onay_durumu = 'beklemede' AND durum = 'aktif' THEN 1 ELSE 0 END) bekleyen,
+                    COUNT(DISTINCT tarih) calisilan_gun,
+                    MAX(CONCAT(tarih, ' ', COALESCE(guncelleme_tarihi, olusturma_tarihi))) son_islem
                 FROM kacak_kontrol WHERE {$base}
-                GROUP BY ekip_adi ORDER BY aktif DESC LIMIT 8");
+                GROUP BY ekip_adi ORDER BY aktif DESC");
         $ekip->execute($params);
 
         $kaynak = $this->db->prepare("SELECT kaynak, SUM(sayi) toplam FROM kacak_kontrol
@@ -1138,6 +1145,20 @@ class KacakKontrolModel extends Model
         $istatistik->execute($params);
         $istatistikSatiri = $istatistik->fetch(PDO::FETCH_ASSOC) ?: [];
 
+        $beklemeYasi = $this->db->prepare("SELECT
+                    SUM(CASE WHEN DATEDIFF(CURDATE(), DATE(olusturma_tarihi)) BETWEEN 0 AND 2 THEN 1 ELSE 0 END) gun_0_2,
+                    SUM(CASE WHEN DATEDIFF(CURDATE(), DATE(olusturma_tarihi)) BETWEEN 3 AND 7 THEN 1 ELSE 0 END) gun_3_7,
+                    SUM(CASE WHEN DATEDIFF(CURDATE(), DATE(olusturma_tarihi)) BETWEEN 8 AND 14 THEN 1 ELSE 0 END) gun_8_14,
+                    SUM(CASE WHEN DATEDIFF(CURDATE(), DATE(olusturma_tarihi)) >= 15 THEN 1 ELSE 0 END) gun_15_plus
+                FROM kacak_kontrol WHERE {$base} AND onay_durumu = 'beklemede' AND durum = 'aktif'");
+        $beklemeYasi->execute($params);
+
+        $fotoEksik = $this->db->prepare("SELECT COUNT(*) FROM kacak_kontrol k
+                WHERE {$base} AND k.durum = 'aktif' AND k.beklenen_foto_sayisi >
+                    (SELECT COUNT(*) FROM kacak_kontrol_fotograflari f
+                     WHERE f.kacak_id = k.id AND f.medya_tipi = 'foto' AND f.silinme_tarihi IS NULL)");
+        $fotoEksik->execute($params);
+
         $gunSayisi = max(1, (int) ((strtotime($bitis) - strtotime($baslangic)) / 86400) + 1);
         $oncekiBitis = date('Y-m-d', strtotime($baslangic . ' -1 day'));
         $oncekiBaslangic = date('Y-m-d', strtotime($oncekiBitis . ' -' . ($gunSayisi - 1) . ' days'));
@@ -1148,16 +1169,35 @@ class KacakKontrolModel extends Model
         $iptalToplam = (int) ($istatistikSatiri['iptal'] ?? 0);
         $istatistikSatiri['onay_orani'] = $toplam > 0 ? round($onaylanan * 100 / $toplam, 1) : 0;
         $istatistikSatiri['iptal_orani'] = $toplam > 0 ? round($iptalToplam * 100 / $toplam, 1) : 0;
-        $istatistikSatiri['gunluk_ortalama'] = round($toplam / $gunSayisi, 1);
+        $aktifGun = max(1, (int) ($istatistikSatiri['aktif_gun'] ?? 0));
+        $istatistikSatiri['gunluk_ortalama'] = round($onaylanan / $aktifGun, 1);
+
+        $ekipSatirlari = [];
+        foreach ($ekip->fetchAll(PDO::FETCH_ASSOC) as $satir) {
+            $anahtar = self::normalizeEkipAdi((string) $satir['ekip']) ?: 'Belirtilmemiş';
+            if (!isset($ekipSatirlari[$anahtar])) {
+                $ekipSatirlari[$anahtar] = ['ekip' => $anahtar, 'aktif' => 0, 'iptal' => 0, 'bekleyen' => 0, 'calisilan_gun' => 0, 'son_islem' => null];
+            }
+            foreach (['aktif', 'iptal', 'bekleyen'] as $alan) {
+                $ekipSatirlari[$anahtar][$alan] += (int) $satir[$alan];
+            }
+            $ekipSatirlari[$anahtar]['calisilan_gun'] = max($ekipSatirlari[$anahtar]['calisilan_gun'], (int) $satir['calisilan_gun']);
+            if (($satir['son_islem'] ?? '') > ($ekipSatirlari[$anahtar]['son_islem'] ?? '')) {
+                $ekipSatirlari[$anahtar]['son_islem'] = $satir['son_islem'];
+            }
+        }
+        usort($ekipSatirlari, static fn(array $a, array $b) => $b['aktif'] <=> $a['aktif']);
 
         return [
             'ozet' => $this->getOzet($baslangic, $bitis, $personelId),
             'trend' => $trend->fetchAll(PDO::FETCH_ASSOC),
             'turler' => $tur->fetchAll(PDO::FETCH_ASSOC),
             'ilceler' => $ilce->fetchAll(PDO::FETCH_ASSOC),
-            'ekipler' => $ekip->fetchAll(PDO::FETCH_ASSOC),
+            'ekipler' => array_slice($ekipSatirlari, 0, 12),
             'kaynaklar' => $kaynak->fetchAll(PDO::FETCH_ASSOC),
             'istatistik' => $istatistikSatiri,
+            'bekleme_yasi' => array_map(static fn($v) => (int) $v, $beklemeYasi->fetch(PDO::FETCH_ASSOC) ?: []),
+            'aksiyonlar' => ['foto_eksik' => (int) $fotoEksik->fetchColumn()],
             'onceki_ozet' => $oncekiOzet,
             'onceki_donem' => ['baslangic' => $oncekiBaslangic, 'bitis' => $oncekiBitis],
         ];

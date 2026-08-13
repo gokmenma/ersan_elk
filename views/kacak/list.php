@@ -143,13 +143,33 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         box-shadow: 0 4px 10px -2px rgba(85, 110, 230, .5);
     }
 
-    .kacak-dashboard-metrik {
-        background: linear-gradient(145deg, var(--bs-body-bg), rgba(85, 110, 230, .035));
-        transition: transform .2s ease, box-shadow .2s ease;
-    }
-    .kacak-dashboard-metrik:hover { transform: translateY(-2px); box-shadow: 0 .35rem 1rem rgba(15, 23, 42, .08); }
-    .kacak-dashboard-degisim { font-size: .7rem; font-weight: 700; }
-    .kacak-dashboard-panel { min-height: 350px; }
+    .kacak-dashboard { --kd-kacak:#f1b44c; --kd-abonesiz:#f46a6a; --kd-usulsuz:#50a5f1; }
+    .kacak-dashboard .kd-filter { background:var(--bs-tertiary-bg); border:1px solid var(--bs-border-color); border-radius:12px; padding:12px; }
+    .kd-periods { display:flex; gap:6px; flex-wrap:wrap; }
+    .kd-period { border:1px solid var(--bs-border-color); background:var(--bs-body-bg); color:var(--bs-secondary-color); border-radius:100px; padding:.38rem .8rem; font-size:.76rem; }
+    .kd-period.active { background:var(--bs-primary); border-color:var(--bs-primary); color:#fff; }
+    .kd-card { border:1px solid var(--bs-border-color); border-radius:12px; background:var(--bs-body-bg); height:100%; }
+    .kd-kpi { padding:1rem 1.1rem; }
+    .kd-label { color:var(--bs-secondary-color); font-size:.69rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; }
+    .kd-value { font-size:2rem; line-height:1.15; font-weight:700; font-variant-numeric:tabular-nums; }
+    .kd-segbar,.kd-waitbar { display:flex; overflow:hidden; background:var(--bs-tertiary-bg); border-radius:4px; }
+    .kd-segbar { height:5px; margin-top:.65rem; } .kd-waitbar { height:4px; margin-top:.55rem; }
+    .kd-segbar i,.kd-waitbar i { display:block; height:100%; }
+    .kd-legend { display:flex; gap:.9rem; flex-wrap:wrap; margin-top:.5rem; font-size:.72rem; color:var(--bs-secondary-color); }
+    .kd-dot { display:inline-block; width:7px; height:7px; border-radius:2px; margin-right:4px; }
+    .kd-quiet { border-top:1px solid var(--bs-border-color); margin-top:.85rem; padding-top:.75rem; }
+    .kd-actions { padding:.4rem .55rem .55rem; }
+    .kd-action { display:flex; align-items:center; gap:1rem; padding:.7rem .75rem; color:inherit; border-radius:8px; cursor:pointer; }
+    .kd-action + .kd-action { border-top:1px solid var(--bs-border-color); }
+    .kd-action:hover { background:var(--bs-tertiary-bg); }
+    .kd-action-num { width:46px; text-align:center; font-size:1.3rem; font-weight:700; font-variant-numeric:tabular-nums; }
+    .kd-action-text { flex:1; } .kd-action-text small { display:block; color:var(--bs-secondary-color); }
+    .kd-panel-head { display:flex; justify-content:space-between; gap:1rem; padding:1rem 1rem 0; }
+    .kd-panel-body { padding:.5rem 1rem 1rem; }
+    .kd-stack { display:flex; height:8px; overflow:hidden; border-radius:3px; min-width:90px; }
+    .kd-verim { min-width:110px; } .kd-verim .progress { height:6px; }
+    .kacak-dashboard-degisim { font-size:.7rem; font-weight:700; }
+    @media (max-width:767.98px) { .kd-action-go,.kd-stack-col { display:none; } }
 
     .kacak-rapor-metin {
         font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
@@ -338,33 +358,39 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
 
         <!-- ============ DASHBOARD ============ -->
         <div class="tab-pane fade" id="pane-dashboard">
-            <div class="card border-0 shadow-sm">
-                <div class="card-body">
-                    <div class="row g-2 align-items-end mb-4">
-                        <div class="col-md-3"><?= Form::FormDate('dashboard_baslangic', Date::dmY($son30Gun), 'Başlangıç') ?></div>
-                        <div class="col-md-3"><?= Form::FormDate('dashboard_bitis', Date::dmY($bugun), 'Bitiş') ?></div>
-                        <div class="col-md-2"><button type="button" class="btn btn-primary w-100" id="btnDashboardFiltrele"><i class="bx bx-refresh me-1"></i>Güncelle</button></div>
-                    </div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-6 col-xl-3"><div class="border rounded-3 p-3 h-100 kacak-dashboard-metrik"><div class="d-flex justify-content-between"><div class="text-muted small">Aktif Tutanak</div><i class="bx bx-check-circle text-primary fs-4"></i></div><div class="fs-3 fw-bold text-primary" id="dashboardAktif">0</div><div id="dashboardAktifDegisim"></div></div></div>
-                        <div class="col-6 col-xl-3"><div class="border rounded-3 p-3 h-100 kacak-dashboard-metrik"><div class="d-flex justify-content-between"><div class="text-muted small">Bekleyen Onay</div><i class="bx bx-time-five text-info fs-4"></i></div><div class="fs-3 fw-bold text-info" id="dashboardBekleyen">0</div><div class="text-muted small">İşlem bekleyen bildirim</div></div></div>
-                        <div class="col-6 col-xl-3"><div class="border rounded-3 p-3 h-100 kacak-dashboard-metrik"><div class="d-flex justify-content-between"><div class="text-muted small">İptal</div><i class="bx bx-x-circle text-secondary fs-4"></i></div><div class="fs-3 fw-bold text-secondary" id="dashboardIptal">0</div><div id="dashboardIptalDegisim"></div></div></div>
-                        <div class="col-6 col-xl-3"><div class="border rounded-3 p-3 h-100 kacak-dashboard-metrik"><div class="d-flex justify-content-between"><div class="text-muted small">Hakedişten Düşen</div><i class="bx bx-trending-down text-danger fs-4"></i></div><div class="fs-3 fw-bold text-danger" id="dashboardDusulen">0</div><div class="text-muted small">İptaller içindeki düşülen toplam</div></div></div>
-                    </div>
-                    <div class="row g-3 mb-3">
-                        <div class="col-6 col-lg-3"><div class="border rounded-3 px-3 py-2"><div class="small text-muted">Onay Oranı</div><div class="h5 mb-0" id="dashboardOnayOrani">%0</div></div></div>
-                        <div class="col-6 col-lg-3"><div class="border rounded-3 px-3 py-2"><div class="small text-muted">İptal Oranı</div><div class="h5 mb-0" id="dashboardIptalOrani">%0</div></div></div>
-                        <div class="col-6 col-lg-3"><div class="border rounded-3 px-3 py-2"><div class="small text-muted">Günlük Ortalama</div><div class="h5 mb-0" id="dashboardGunlukOrtalama">0</div></div></div>
-                        <div class="col-6 col-lg-3"><div class="border rounded-3 px-3 py-2"><div class="small text-muted">Aktif Ekip / Çalışılan Gün</div><div class="h5 mb-0"><span id="dashboardEkipSayisi">0</span> / <span id="dashboardAktifGun">0</span></div></div></div>
-                    </div>
-                    <div class="row g-3">
-                        <div class="col-xl-8"><div class="border rounded-3 p-3 kacak-dashboard-panel"><h6 class="fw-semibold">Günlük Tutanak Eğilimi</h6><div id="kacakTrendChart"></div></div></div>
-                        <div class="col-xl-4"><div class="border rounded-3 p-3 kacak-dashboard-panel"><h6 class="fw-semibold">Tür Dağılımı</h6><div id="kacakTurChart"></div></div></div>
-                        <div class="col-xl-7"><div class="border rounded-3 p-3 kacak-dashboard-panel"><h6 class="fw-semibold">İlçe Dağılımı</h6><div id="kacakIlceChart"></div></div></div>
-                        <div class="col-xl-5"><div class="border rounded-3 p-3 kacak-dashboard-panel"><h6 class="fw-semibold">Kayıt Kaynağı</h6><div id="kacakKaynakChart"></div></div></div>
-                        <div class="col-12"><div class="border rounded-3 p-3"><div class="d-flex justify-content-between mb-2"><h6 class="fw-semibold mb-0">Ekip Performansı</h6><small class="text-muted">Aktif ve iptal tutanak karşılaştırması</small></div><div class="table-responsive"><table class="table table-sm table-hover align-middle mb-0"><thead><tr><th>Ekip</th><th class="text-end">Aktif</th><th class="text-end">İptal</th><th class="text-end">Çalışılan Gün</th><th style="width:35%">Pay</th></tr></thead><tbody id="dashboardEkipTablo"></tbody></table></div></div></div>
+            <div class="kacak-dashboard">
+                <div class="kd-filter mb-3">
+                    <div class="row g-2 align-items-end">
+                        <div class="col-xl-auto"><div class="kd-periods">
+                            <button type="button" class="kd-period" data-days="0">Bugün</button><button type="button" class="kd-period" data-days="week">Bu hafta</button>
+                            <button type="button" class="kd-period" data-days="month">Bu ay</button><button type="button" class="kd-period active" data-days="29">Son 30 gün</button>
+                            <button type="button" class="kd-period" data-days="previous-month">Geçen ay</button>
+                        </div></div>
+                        <div class="col-md-3 col-xl-2"><?= Form::FormDate('dashboard_baslangic', Date::dmY($son30Gun), 'Başlangıç') ?></div>
+                        <div class="col-md-3 col-xl-2"><?= Form::FormDate('dashboard_bitis', Date::dmY($bugun), 'Bitiş') ?></div>
+                        <div class="col-md-auto ms-xl-auto"><button type="button" class="btn btn-primary px-4" id="btnDashboardFiltrele"><i class="bx bx-refresh me-1"></i>Güncelle</button></div>
                     </div>
                 </div>
+                <div class="row g-3 mb-3">
+                    <div class="col-xl-8"><div class="kd-card kd-kpi">
+                        <div class="kd-label">Aktif tutanak <span class="fw-normal text-lowercase">· onayı tamamlanmış</span></div><div class="kd-value" id="dashboardAktif">0</div>
+                        <div class="kd-segbar"><i id="dashboardSegAbonesiz" style="background:var(--kd-abonesiz)"></i><i id="dashboardSegKacak" style="background:var(--kd-kacak)"></i><i id="dashboardSegUsulsuz" style="background:var(--kd-usulsuz)"></i></div>
+                        <div class="kd-legend"><span><i class="kd-dot" style="background:var(--kd-abonesiz)"></i>Abonesiz <b id="dashboardAbonesiz">0</b></span><span><i class="kd-dot" style="background:var(--kd-kacak)"></i>Kaçak <b id="dashboardKacak">0</b></span><span><i class="kd-dot" style="background:var(--kd-usulsuz)"></i>Usülsüz <b id="dashboardUsulsuz">0</b></span></div>
+                        <div class="kd-quiet"><div class="d-flex justify-content-between gap-2 small text-muted"><span>Ayrıca <b id="dashboardBekleyen">0</b> tutanak onay bekliyor · onaylanınca <b id="dashboardPotansiyel">0</b></span><a href="#" id="dashboardOnayaGit">Listeye git →</a></div>
+                            <div class="kd-waitbar"><i id="wait02" class="bg-secondary"></i><i id="wait37" style="background:#6b7280"></i><i id="wait814" class="bg-warning"></i><i id="wait15" class="bg-danger"></i></div>
+                            <div class="kd-legend"><span>0–2 gün <b id="wait02n">0</b></span><span>3–7 gün <b id="wait37n">0</b></span><span>8–14 gün <b id="wait814n">0</b></span><span>15 gün + <b id="wait15n">0</b></span></div>
+                        </div>
+                    </div>
+                    </div>
+                    <div class="col-xl-4"><div class="kd-card kd-kpi"><div class="kd-label">Günlük üretim</div><div class="kd-value" id="dashboardGunlukOrtalama">0</div><div class="text-muted small"><span id="dashboardAktifGun">0</span> çalışılan günün ortalaması</div><div class="text-muted small mt-1"><span id="dashboardEkipSayisi">0</span> ekip · ekip başı <b id="dashboardEkipOrtalama">0</b> tutanak/gün</div></div></div>
+                </div>
+                <div class="kd-card mb-3"><div class="kd-panel-head"><h6 class="mb-0">Bekleyen işler</h6><small class="text-muted">Satıra tıklayınca ilgili sekme açılır</small></div><div class="kd-actions" id="dashboardAksiyonlar"></div></div>
+                <div class="row g-3 mb-3">
+                    <div class="col-xl-7"><div class="kd-card"><div class="kd-panel-head"><h6 class="mb-0">Günlük Tutanak</h6><small class="text-muted">Onaylanmış aktif tutanaklar</small></div><div class="kd-panel-body"><div id="kacakTrendChart"></div></div></div></div>
+                    <div class="col-xl-5"><div class="kd-card"><div class="kd-panel-head"><h6 class="mb-0">İlçe × tür dağılımı</h6><small class="text-muted">Aktif + onay bekleyen</small></div><div class="kd-panel-body table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>İlçe</th><th class="kd-stack-col">Dağılım</th><th class="text-end">Kaçak</th><th class="text-end">Abonesiz</th><th class="text-end">Usülsüz</th><th class="text-end">Aktif</th><th class="text-end">+ Bekleyen</th></tr></thead><tbody id="dashboardIlceTablo"></tbody></table></div></div></div>
+                </div>
+                <div class="kd-card"><div class="kd-panel-head"><h6 class="mb-0">Ekip performansı</h6><small class="text-muted">Günlük verime göre karşılaştırma</small></div><div class="kd-panel-body table-responsive"><table class="table table-sm table-hover align-middle mb-0"><thead><tr><th>Ekip</th><th class="text-end">Aktif</th><th class="text-end">Çalışılan gün</th><th>Günlük verim</th><th class="text-end">+ Bekleyen</th><th class="text-end">Son işlem</th></tr></thead><tbody id="dashboardEkipTablo"></tbody></table></div></div>
+                    </div>
             </div>
         </div>
 
@@ -1415,67 +1441,51 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 const d = res.data || {}, o = d.ozet || {};
                 $('#dashboardAktif').text(o.aktif || 0);
                 $('#dashboardBekleyen').text(o.bekleyen || 0);
-                $('#dashboardIptal').text(o.iptal || 0);
-                $('#dashboardDusulen').text(o.iptal_dusulen || 0);
-                const i = d.istatistik || {}, onceki = d.onceki_ozet || {};
-                $('#dashboardOnayOrani').text('%' + (i.onay_orani || 0));
-                $('#dashboardIptalOrani').text('%' + (i.iptal_orani || 0));
+                $('#dashboardPotansiyel').text(parseInt(o.aktif || 0, 10) + parseInt(o.bekleyen || 0, 10));
+                $('#dashboardKacak').text(o.kacak || 0); $('#dashboardAbonesiz').text(o.abonesiz || 0); $('#dashboardUsulsuz').text(o.usulsuz || 0);
+                const aktifToplam = Math.max(1, parseInt(o.aktif || 0, 10));
+                $('#dashboardSegKacak').css('width', (parseInt(o.kacak || 0, 10) * 100 / aktifToplam) + '%');
+                $('#dashboardSegAbonesiz').css('width', (parseInt(o.abonesiz || 0, 10) * 100 / aktifToplam) + '%');
+                $('#dashboardSegUsulsuz').css('width', (parseInt(o.usulsuz || 0, 10) * 100 / aktifToplam) + '%');
+                const i = d.istatistik || {};
                 $('#dashboardGunlukOrtalama').text(i.gunluk_ortalama || 0);
                 $('#dashboardEkipSayisi').text(i.ekip_sayisi || 0);
                 $('#dashboardAktifGun').text(i.aktif_gun || 0);
+                const ekipBoleni = Math.max(1, parseInt(i.ekip_sayisi || 0, 10) * parseInt(i.aktif_gun || 0, 10));
+                $('#dashboardEkipOrtalama').text((parseInt(o.aktif || 0, 10) / ekipBoleni).toFixed(1).replace('.', ','));
+                const by = d.bekleme_yasi || {}, bekToplam = Math.max(1, parseInt(o.bekleyen || 0, 10));
+                [['02','gun_0_2'],['37','gun_3_7'],['814','gun_8_14'],['15','gun_15_plus']].forEach(x => {
+                    const n = parseInt(by[x[1]] || 0, 10); $('#wait' + x[0] + 'n').text(n); $('#wait' + x[0]).css('width', (n * 100 / bekToplam) + '%');
+                });
 
-                function degisimHtml(mevcut, eski, ters) {
-                    mevcut = parseInt(mevcut || 0, 10); eski = parseInt(eski || 0, 10);
-                    if (eski === 0) return '<span class="text-muted small">Önceki dönem: ' + eski + '</span>';
-                    const oran = Math.round((mevcut - eski) * 1000 / eski) / 10;
-                    const iyi = ters ? oran <= 0 : oran >= 0;
-                    const ikon = oran >= 0 ? 'bx-up-arrow-alt' : 'bx-down-arrow-alt';
-                    return '<span class="kacak-dashboard-degisim ' + (iyi ? 'text-success' : 'text-danger') + '"><i class="bx ' + ikon + '"></i>%' + Math.abs(oran) + '</span> <span class="text-muted small">önceki döneme göre</span>';
-                }
-                $('#dashboardAktifDegisim').html(degisimHtml(o.aktif, onceki.aktif, false));
-                $('#dashboardIptalDegisim').html(degisimHtml(o.iptal, onceki.iptal, true));
+                const aks = d.aksiyonlar || {}, uzunBekleyen = parseInt(by.gun_8_14 || 0, 10) + parseInt(by.gun_15_plus || 0, 10);
+                const aksiyonlar = [
+                    {n:uzunBekleyen, cls:uzunBekleyen ? 'text-warning' : 'text-muted', text:'onay 7 günden uzun bekliyor', sub:uzunBekleyen ? 'Öncelikli kontrol edilmeli' : 'Bu dönemde geciken onay yok', tab:'#pane-onaylar', go:'Bekleyen Onaylar →'},
+                    {n:parseInt(aks.foto_eksik || 0,10), cls:aks.foto_eksik ? 'text-warning' : 'text-muted', text:'tutanakta fotoğraf eksik', sub:'Beklenen fotoğraf sayısı tamamlanmamış', tab:'#pane-kayitlar', go:'Kayıtlar →'},
+                    {n:parseInt(o.iptal || 0,10), cls:o.iptal ? 'text-danger' : 'text-muted', text:'iptal edilmiş tutanak', sub:(o.iptal_dusulen || 0) + ' adedi hakedişten düşülmüş', tab:'#pane-iptaller', go:'İptaller →'}
+                ];
+                $('#dashboardAksiyonlar').html(aksiyonlar.map(a => `<div class="kd-action" data-tab="${a.tab}"><div class="kd-action-num ${a.cls}">${a.n}</div><div class="kd-action-text">${a.text}<small>${a.sub}</small></div><div class="kd-action-go text-muted">${a.go}</div></div>`).join(''));
 
                 const dark = document.documentElement.getAttribute('data-bs-theme') === 'dark';
                 const ortak = {
-                    chart: { toolbar: { show: false }, height: 305, fontFamily: 'inherit' },
-                    dataLabels: { enabled: false }, noData: { text: 'Veri yok' },
+                    chart: { toolbar: { show: false }, height: 280, fontFamily: 'inherit' },
+                    dataLabels: { enabled: true, offsetY: -5, style: { fontSize: '10px' }, background: { enabled: false } }, noData: { text: 'Veri yok' },
                     grid: { borderColor: dark ? 'rgba(148,163,184,.15)' : '#eef2f7', strokeDashArray: 4 },
                     tooltip: { theme: dark ? 'dark' : 'light' }
                 };
                 dashboardGrafikCiz('trend', '#kacakTrendChart', $.extend(true, {}, ortak, {
-                    chart: { type: 'area' }, stroke: { curve: 'smooth', width: 3 }, markers: { size: 3 }, colors: ['#556ee6', '#f46a6a'],
-                    series: [
-                        { name: 'Aktif', data: (d.trend || []).map(x => parseInt(x.aktif || 0, 10)) },
-                        { name: 'İptal', data: (d.trend || []).map(x => parseInt(x.iptal || 0, 10)) }
-                    ], xaxis: { categories: (d.trend || []).map(x => x.tarih), tickAmount: 8 },
-                    yaxis: { min: 0, forceNiceScale: true }, legend: { position: 'top', horizontalAlign: 'right' }
+                    chart: { type: 'bar' }, colors: ['#6366f1'], plotOptions:{bar:{borderRadius:3,columnWidth:'65%',dataLabels:{position:'top'}}},
+                    series: [{ name: 'Tutanak', data: (d.trend || []).map(x => parseInt(x.aktif || 0, 10)) }],
+                    xaxis: { categories: (d.trend || []).map(x => x.tarih), tickAmount: 8 }, yaxis: { min: 0, forceNiceScale: true, labels:{show:false} }, legend:{show:false}
                 }));
-                dashboardGrafikCiz('tur', '#kacakTurChart', $.extend(true, {}, ortak, {
-                    chart: { type: 'donut' }, labels: (d.turler || []).map(x => x.tur),
-                    series: (d.turler || []).map(x => parseInt(x.toplam || 0, 10)), colors: ['#f46a6a', '#f1b44c', '#50a5f1'], legend: { position: 'bottom' }
-                }));
-                dashboardGrafikCiz('ilce', '#kacakIlceChart', $.extend(true, {}, ortak, {
-                    chart: { type: 'bar' }, colors: ['#556ee6'], plotOptions: { bar: { horizontal: true, borderRadius: 4, barHeight: '60%' } },
-                    series: [{ name: 'Tutanak', data: (d.ilceler || []).map(x => parseInt(x.toplam || 0, 10)) }],
-                    xaxis: { categories: (d.ilceler || []).map(x => x.ilce) }
-                }));
-                const kaynakEtiketleri = { pwa: 'Mobil', masaustu: 'Masaüstü', excel: 'Excel' };
-                dashboardGrafikCiz('kaynak', '#kacakKaynakChart', $.extend(true, {}, ortak, {
-                    chart: { type: 'radialBar' },
-                    labels: (d.kaynaklar || []).map(x => kaynakEtiketleri[x.kaynak] || x.kaynak || 'Belirsiz'),
-                    series: (function () {
-                        const vals = (d.kaynaklar || []).map(x => parseInt(x.toplam || 0, 10));
-                        const toplam = vals.reduce((a, b) => a + b, 0) || 1;
-                        return vals.map(x => Math.round(x * 1000 / toplam) / 10);
-                    })(), plotOptions: { radialBar: { dataLabels: { total: { show: true, label: 'Toplam', formatter: () => i.toplam || 0 } } } },
-                    legend: { show: true, position: 'bottom' }
-                }));
+                const ilceler = d.ilceler || [], ilceMax = Math.max(1, ...ilceler.map(x => parseInt(x.toplam || 0,10)));
+                $('#dashboardIlceTablo').html(ilceler.length ? ilceler.map(x => { const t=parseInt(x.toplam||0,10)||1; return `<tr><td>${esc(x.ilce||'-')}</td><td class="kd-stack-col"><div class="kd-stack" style="width:${t*100/ilceMax}%"><i style="width:${parseInt(x.abonesiz||0,10)*100/t}%;background:var(--kd-abonesiz)"></i><i style="width:${parseInt(x.kacak||0,10)*100/t}%;background:var(--kd-kacak)"></i><i style="width:${parseInt(x.usulsuz||0,10)*100/t}%;background:var(--kd-usulsuz)"></i></div></td><td class="text-end">${parseInt(x.kacak||0,10)}</td><td class="text-end">${parseInt(x.abonesiz||0,10)}</td><td class="text-end">${parseInt(x.usulsuz||0,10)}</td><td class="text-end fw-bold">${parseInt(x.toplam||0,10)}</td><td class="text-end text-muted">${parseInt(x.bekleyen||0,10)}</td></tr>`; }).join('') : '<tr><td colspan="7" class="text-center text-muted py-3">Bu dönem için ilçe verisi yok.</td></tr>');
                 const ekipler = d.ekipler || [];
-                const enYuksek = Math.max(1, ...ekipler.map(x => parseInt(x.aktif || 0, 10)));
+                const enYuksek = Math.max(1, ...ekipler.map(x => parseInt(x.aktif || 0, 10) / Math.max(1,parseInt(x.calisilan_gun||0,10))));
                 $('#dashboardEkipTablo').html(ekipler.length ? ekipler.map(e => {
-                    const aktif = parseInt(e.aktif || 0, 10), pay = Math.round(aktif * 1000 / enYuksek) / 10;
-                    return `<tr><td class="fw-semibold">${esc(e.ekip)}</td><td class="text-end text-success fw-bold">${aktif}</td><td class="text-end text-danger">${parseInt(e.iptal || 0, 10)}</td><td class="text-end">${parseInt(e.calisilan_gun || 0, 10)}</td><td><div class="progress" style="height:7px"><div class="progress-bar" style="width:${pay}%"></div></div></td></tr>`;
-                }).join('') : '<tr><td colspan="5" class="text-center text-muted py-3">Bu dönem için ekip verisi yok.</td></tr>');
+                    const aktif=parseInt(e.aktif||0,10), gun=Math.max(1,parseInt(e.calisilan_gun||0,10)), verim=aktif/gun;
+                    return `<tr><td class="fw-semibold">${esc(e.ekip)}</td><td class="text-end fw-bold">${aktif}</td><td class="text-end text-muted">${gun}</td><td class="kd-verim"><div class="d-flex align-items-center gap-2"><div class="progress flex-grow-1"><div class="progress-bar" style="width:${verim*100/enYuksek}%"></div></div><span>${verim.toFixed(1).replace('.',',')}</span></div></td><td class="text-end text-muted">${parseInt(e.bekleyen||0,10)}</td><td class="text-end text-muted small">${esc((e.son_islem||'-').slice(0,16))}</td></tr>`;
+                }).join('') : '<tr><td colspan="6" class="text-center text-muted py-3">Bu dönem için ekip verisi yok.</td></tr>');
                 dashboardYuklendi = true;
             });
         }
@@ -3461,6 +3471,18 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         });
         $('#btnIptalFiltrele').on('click', iptalleriYukle);
         $('#btnDashboardFiltrele').on('click', dashboardYukle);
+        $('.kd-period').on('click', function () {
+            const tur = String($(this).data('days')), bugun = new Date(), bas = new Date(bugun), bit = new Date(bugun);
+            if (tur === 'week') bas.setDate(bugun.getDate() - ((bugun.getDay() + 6) % 7));
+            else if (tur === 'month') bas.setDate(1);
+            else if (tur === 'previous-month') { bas.setMonth(bugun.getMonth() - 1, 1); bit.setDate(0); }
+            else bas.setDate(bugun.getDate() - parseInt(tur || '0', 10));
+            const yaz = d => String(d.getDate()).padStart(2, '0') + '.' + String(d.getMonth() + 1).padStart(2, '0') + '.' + d.getFullYear();
+            $('#dashboard_baslangic').val(yaz(bas)); $('#dashboard_bitis').val(yaz(bit));
+            $('.kd-period').removeClass('active'); $(this).addClass('active'); dashboardYukle();
+        });
+        $(document).on('click', '.kd-action', function () { $('#kacakTabs button[data-bs-target="' + $(this).data('tab') + '"]').tab('show'); });
+        $('#dashboardOnayaGit').on('click', function (e) { e.preventDefault(); $('#kacakTabs button[data-bs-target="#pane-onaylar"]').tab('show'); });
         $('#filtre_arama').on('keypress', e => { if (e.which === 13) kayitlariYukle(); });
 
         $('#kacakTabs button').on('shown.bs.tab', function () {
