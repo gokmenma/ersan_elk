@@ -306,6 +306,50 @@ use App\Helper\Security;
         box-shadow: 0 10px 22px rgba(75, 92, 210, .34);
     }
 
+    [data-bs-theme="dark"] .personel-ai-panel {
+        border-color: rgba(139, 124, 255, .42);
+        background: linear-gradient(112deg, #24233a 0%, #202d3d 52%, #17383a 100%);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, .24), inset 0 1px 0 rgba(255, 255, 255, .06);
+    }
+
+    [data-bs-theme="dark"] .personel-ai-content {
+        border-top-color: rgba(167, 153, 255, .2);
+    }
+
+    [data-bs-theme="dark"] .personel-ai-title {
+        color: #f8fafc;
+    }
+
+    [data-bs-theme="dark"] .personel-ai-description {
+        color: #cbd5e1;
+    }
+
+    [data-bs-theme="dark"] .personel-ai-badge,
+    [data-bs-theme="dark"] .personel-ai-chevron {
+        border-color: rgba(180, 169, 255, .28);
+        color: #d7d0ff;
+        background: rgba(15, 23, 42, .52);
+    }
+
+    [data-bs-theme="dark"] .personel-ai-toggle:hover .personel-ai-chevron {
+        background: rgba(124, 92, 255, .25);
+    }
+
+    [data-bs-theme="dark"] .personel-ai-button {
+        border: 1px solid rgba(255, 255, 255, .2);
+        color: #ffffff;
+        background: linear-gradient(110deg, #7657ef 0%, #437fea 52%, #16b8ae 100%);
+        box-shadow: 0 7px 18px rgba(54, 88, 220, .38);
+    }
+
+    [data-bs-theme="dark"] .personel-ai-button:hover,
+    [data-bs-theme="dark"] .personel-ai-button:focus {
+        border-color: rgba(255, 255, 255, .38);
+        color: #ffffff;
+        background: linear-gradient(110deg, #8569f5 0%, #528cf2 52%, #20c8bd 100%);
+        box-shadow: 0 10px 24px rgba(54, 88, 220, .5);
+    }
+
     #personelBelgeAlanlar .personel-belge-duzenlenebilir {
         padding-top: .55rem;
         padding-bottom: .55rem;

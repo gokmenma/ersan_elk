@@ -74,13 +74,31 @@ $excelVeriVar = $excelAralik && (int) $excelAralik->toplam > 0;
         }
 
         .od-sayfa .od-deger,
-        .od-sayfa .om-deger { color: var(--bs-body-color); }
+        .od-sayfa .om-deger,
+        .od-sayfa .od-deger.ok-notr,
+        .od-sayfa .om-deger.ok-notr {
+            color: var(--bs-emphasis-color, #0f172a);
+        }
         .od-sayfa .od-deger.ok-iyi,
         .od-sayfa .om-deger.ok-iyi { color: #16a34a; }
         .od-sayfa .od-deger.ok-uyari,
         .od-sayfa .om-deger.ok-uyari { color: #d97706; }
         .od-sayfa .od-deger.ok-kotu,
         .od-sayfa .om-deger.ok-kotu { color: #dc2626; }
+
+        .od-sayfa .od-baslik,
+        .od-sayfa .om-baslik { color: var(--bs-secondary-color, #64748b); }
+
+        [data-bs-theme="dark"] .od-sayfa .od-deger,
+        [data-bs-theme="dark"] .od-sayfa .om-deger,
+        [data-bs-theme="dark"] .od-sayfa .od-deger.ok-notr,
+        [data-bs-theme="dark"] .od-sayfa .om-deger.ok-notr { color: #f1f5f9; }
+        [data-bs-theme="dark"] .od-sayfa .od-deger.ok-iyi,
+        [data-bs-theme="dark"] .od-sayfa .om-deger.ok-iyi { color: #4ade80; }
+        [data-bs-theme="dark"] .od-sayfa .od-deger.ok-uyari,
+        [data-bs-theme="dark"] .od-sayfa .om-deger.ok-uyari { color: #fbbf24; }
+        [data-bs-theme="dark"] .od-sayfa .od-deger.ok-kotu,
+        [data-bs-theme="dark"] .od-sayfa .om-deger.ok-kotu { color: #f87171; }
 
         .od-sayfa .od-hucre,
         .od-sayfa .om-saat-kutu { color: #0f172a; }
