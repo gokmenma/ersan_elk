@@ -589,18 +589,7 @@
             const response = await API.request('getIzinTurleri');
             if (response.success) {
                 izinTurleri = response.data;
-                const select = document.querySelector('select[name="izin_tipi"]');
-
-                // Mevcut seçenekleri temizle
-                select.innerHTML = '<option value="">Seçiniz...</option>';
-
-                // İzin türlerini ekle
-                izinTurleri.forEach(tur => {
-                    const option = document.createElement('option');
-                    option.value = tur.id;
-                    option.textContent = tur.tur_adi;
-                    select.appendChild(option);
-                });
+                renderIzinTurleri();
             }
         } catch (error) {
             console.error('İzin türleri yüklenemedi:', error);
@@ -614,12 +603,49 @@
             const response = await API.request('getIzinStats', {}, showLoading);
             if (response.success) {
                 hakedisData = response.data;
+                renderIzinTurleri();
                 document.getElementById('kalan-izin').textContent = response.data.kalan_izin + ' Gün';
                 document.getElementById('hastalik-izni').textContent = response.data.hastalik_izni + ' Gün';
                 document.getElementById('bekleyen-izin').textContent = response.data.bekleyen;
             }
         } catch (error) {
             console.error('Stats load error:', error);
+        }
+    }
+
+    function normalizeIzinMetni(value) {
+        return String(value || '').toLocaleLowerCase('tr-TR');
+    }
+
+    function isMazeretIzinTuru(tur) {
+        return normalizeIzinMetni(tur.tur_adi).includes('mazeret') || normalizeIzinMetni(tur.kisa_kod) === 'mazeret';
+    }
+
+    function isHakEdisGerektirenIzinTuru(tur) {
+        const ad = normalizeIzinMetni(tur.tur_adi);
+        const kod = normalizeIzinMetni(tur.kisa_kod);
+        const yillikMi = ad.includes('yıllık') || ad.includes('yillik') || kod === 'yillik';
+        return !isMazeretIzinTuru(tur) && (yillikMi || Number(tur.ucretli_mi) === 1);
+    }
+
+    function renderIzinTurleri() {
+        const select = document.querySelector('select[name="izin_tipi"]');
+        if (!select || !Array.isArray(izinTurleri)) return;
+
+        const seciliDeger = select.value;
+        const hakYok = hakedisData && Number(hakedisData.kalan_izin) <= 0;
+        select.innerHTML = '<option value="">Seçiniz...</option>';
+
+        izinTurleri.forEach(tur => {
+            const option = document.createElement('option');
+            option.value = tur.id;
+            option.disabled = Boolean(hakYok && isHakEdisGerektirenIzinTuru(tur));
+            option.textContent = tur.tur_adi + (option.disabled ? ' (İzin hakedişi yok)' : '');
+            select.appendChild(option);
+        });
+
+        if ([...select.options].some(option => option.value === seciliDeger && !option.disabled)) {
+            select.value = seciliDeger;
         }
     }
 
@@ -1001,8 +1027,15 @@
             }
         }
 
-        // Kalan izin kontrolü(izin tipi yıllık izin ise)
-        if (formData.izin_tipi === 'yillik' && hakedisData && toplamGun > hakedisData.kalan_izin) {
+        const secilenIzinTuru = izinTurleri.find(tur => String(tur.id) === String(formData.izin_tipi));
+
+        if (secilenIzinTuru && isHakEdisGerektirenIzinTuru(secilenIzinTuru) && hakedisData && Number(hakedisData.kalan_izin) <= 0) {
+            Toast.show('İzin hakedişiniz bulunmadığı için ücretli veya yıllık izin talep edemezsiniz. Lütfen mazeret izni seçiniz.', 'error');
+            return;
+        }
+
+        // Yıllık izin talebi kalan bakiyeyi aşamaz.
+        if (secilenIzinTuru && (normalizeIzinMetni(secilenIzinTuru.tur_adi).includes('yıllık') || normalizeIzinMetni(secilenIzinTuru.tur_adi).includes('yillik')) && hakedisData && toplamGun > hakedisData.kalan_izin) {
             Toast.show(
                 `Yetersiz izin hakkı! Talebiniz: ${toplamGun} gün, Kalan izniniz: ${hakedisData.kalan_izin} gün`,
                 'error'
@@ -1010,7 +1043,7 @@
             return;
         }
         /**izin türü mazeret ise açıklama zorunlu olmalıdır */
-        if (formData.izin_tipi === 'mazeret' && !formData.aciklama) {
+        if (secilenIzinTuru && isMazeretIzinTuru(secilenIzinTuru) && !formData.aciklama.trim()) {
             Toast.show('Lütfen açıklama giriniz', 'error');
             return;
         }

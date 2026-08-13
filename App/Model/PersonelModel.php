@@ -41,6 +41,14 @@ class PersonelModel extends Model
         return $record;
     }
 
+    /**
+     * Excel şablonu gibi yetkili dışa aktarımlarda kayıtları açık değerlerle döndürür.
+     */
+    public function decryptRecords(array $records): array
+    {
+        return array_map(fn($record) => $this->decryptFields($record), $records);
+    }
+
     public function saveWithAttr($data)
     {
         return parent::saveWithAttr($this->encryptFields($data));
@@ -963,6 +971,32 @@ class PersonelModel extends Model
         ]);
     }
 
+    /** Excel içe aktarımında personelin güncel ekip atamasını oluşturur/günceller. */
+    public function upsertExcelEkipAtamasi(int $personelId, int $ekipId, string $baslangicTarihi, int $ekipSefiMi = 0): void
+    {
+        $aktif = $this->getEkipByDate($personelId, date('Y-m-d'));
+        if ($aktif) {
+            if ((int) $aktif->ekip_kodu_id === $ekipId && (int) $aktif->ekip_sefi_mi === $ekipSefiMi) {
+                return;
+            }
+            $this->updateEkipGecmisi([
+                'id' => $aktif->id,
+                'ekip_kodu_id' => $ekipId,
+                'baslangic_tarihi' => $aktif->baslangic_tarihi,
+                'bitis_tarihi' => $aktif->bitis_tarihi,
+                'ekip_sefi_mi' => $ekipSefiMi,
+            ]);
+            return;
+        }
+
+        $this->addEkipGecmisi([
+            'personel_id' => $personelId,
+            'ekip_kodu_id' => $ekipId,
+            'baslangic_tarihi' => $baslangicTarihi,
+            'ekip_sefi_mi' => $ekipSefiMi,
+        ]);
+    }
+
     /**
      * Tek bir ekip geçmişi kaydını getirir
      */
@@ -1271,6 +1305,34 @@ class PersonelModel extends Model
         ]);
     }
 
+    /** Excel içe aktarımında güncel görev ve maaş kaydını oluşturur/günceller. */
+    public function upsertExcelGorevGecmisi(int $personelId, array $data): void
+    {
+        $aktif = $this->getAktifGorevGecmisi($personelId);
+        if ($aktif) {
+            $data = array_merge((array) $aktif, $data);
+        }
+        $payload = [
+            'personel_id' => $personelId,
+            'departman' => $data['departman'] ?? null,
+            'gorev' => $data['gorev'] ?? null,
+            'maas_durumu' => $data['maas_durumu'] ?? 'Maaş Hesaplanmayan',
+            'maas_tutari' => $data['maas_tutari'] ?? 0,
+            'baslangic_tarihi' => $data['baslangic_tarihi'],
+            'bitis_tarihi' => null,
+            'aciklama' => 'Personel Excel yüklemesi',
+        ];
+        if ($aktif) {
+            $payload['id'] = $aktif->id;
+            $payload['baslangic_tarihi'] = $aktif->baslangic_tarihi;
+            $payload['bitis_tarihi'] = $aktif->bitis_tarihi;
+            $this->updateGorevGecmisi($payload);
+        } else {
+            $this->addGorevGecmisi($payload);
+        }
+        $this->syncPersonelFromGorevGecmisi($personelId);
+    }
+
     /**
      * Tek bir görev (Maaş) geçmişi kaydını getirir
      */
@@ -1413,6 +1475,24 @@ class PersonelModel extends Model
             $data['isten_ayrilis_nedeni'] ?? null,
             $data['isten_ayrilis_belge_yolu'] ?? null
         ]);
+    }
+
+    /** Excel içe aktarımında güncel çalışma dönemini oluşturur/günceller. */
+    public function upsertExcelCalismaGecmisi(int $personelId, array $data): void
+    {
+        $aktif = $this->getAktifCalismaGecmisi($personelId);
+        if ($aktif) {
+            $data = array_merge((array) $aktif, $data);
+        }
+        $payload = array_merge($data, ['personel_id' => $personelId]);
+        if ($aktif) {
+            $payload['id'] = $aktif->id;
+            $payload['ise_giris_tarihi'] = $aktif->ise_giris_tarihi;
+            $this->updateCalismaGecmisi($payload);
+        } else {
+            $this->addCalismaGecmisi($payload);
+        }
+        $this->syncPersonelFromCalismaGecmisi($personelId);
     }
 
     /**

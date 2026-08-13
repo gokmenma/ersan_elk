@@ -688,19 +688,21 @@ class IhbarModel extends Model
                WHERE ab.personel_id = p.id AND ab.silinme_tarihi IS NULL AND ib.silinme_tarihi IS NULL
                  AND ib.durum IN ('yeni','yonlendirildi','islemde') AND ib.ilce = :ilce AND ib.mahalle = :mahalle) AS ayni_bolge,
               (6371 * ACOS(LEAST(1, GREATEST(-1,
-                COS(RADIANS(:lat)) * COS(RADIANS(CASE WHEN ck.son_guncelleme >= DATE_SUB(NOW(), INTERVAL 10 MINUTE) THEN ck.enlem ELSE ph.konum_enlem END))
-                * COS(RADIANS(CASE WHEN ck.son_guncelleme >= DATE_SUB(NOW(), INTERVAL 10 MINUTE) THEN ck.boylam ELSE ph.konum_boylam END) - RADIANS(:lng))
-                + SIN(RADIANS(:lat2)) * SIN(RADIANS(CASE WHEN ck.son_guncelleme >= DATE_SUB(NOW(), INTERVAL 10 MINUTE) THEN ck.enlem ELSE ph.konum_enlem END)))))) AS mesafe
+                COS(RADIANS(:lat)) * COS(RADIANS(ck.enlem))
+                * COS(RADIANS(ck.boylam) - RADIANS(:lng))
+                + SIN(RADIANS(:lat2)) * SIN(RADIANS(ck.enlem)))))) AS mesafe
             FROM personel p
             INNER JOIN personel_hareketleri ph ON ph.id = (
                 SELECT ph2.id FROM personel_hareketleri ph2
                 WHERE ph2.personel_id = p.id AND ph2.silinme_tarihi IS NULL
                 ORDER BY ph2.zaman DESC, ph2.id DESC LIMIT 1
             )
-            LEFT JOIN personel_canli_konumlari ck ON ck.personel_id = p.id
+            INNER JOIN personel_canli_konumlari ck ON ck.personel_id = p.id
+                AND ck.firma_id = p.firma_id
+                AND ck.son_guncelleme >= DATE_SUB(NOW(), INTERVAL 10 MINUTE)
             WHERE p.firma_id = :firma_id AND p.aktif_mi = 1 AND p.saha_takibi = 1
               AND p.silinme_tarihi IS NULL AND p.departman LIKE :departman
-              AND ph.islem_tipi = 'BASLA' AND ph.zaman >= DATE_SUB(NOW(), INTERVAL 24 HOUR)
+              AND ph.islem_tipi = 'BASLA' AND DATE(ph.zaman) = CURDATE()
               AND (:excluded_id = 0 OR p.id <> :excluded_id2)
               AND (:exclude_current = 0 OR NOT EXISTS (SELECT 1 FROM ihbar_atamalar a WHERE a.ihbar_id = :ihbar_id
                               AND a.personel_id = p.id AND a.silinme_tarihi IS NULL))
@@ -823,4 +825,3 @@ class IhbarModel extends Model
         return $stmt->fetchAll(PDO::FETCH_OBJ);
     }
 }
-

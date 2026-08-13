@@ -271,19 +271,19 @@ $seviyeRenkleri = [
     <div class="row g-2 mb-3">
         <?php
         $ozetKutulari = [
-            ['deger' => number_format($genelOzet['toplam_abone'], 0, ',', '.'), 'baslik' => 'Toplam Okuma', 'renk' => '#0f172a'],
-            ['deger' => number_format($genelOzet['okunan_abone'], 0, ',', '.'), 'baslik' => 'Endeks Alınan', 'renk' => '#15803d'],
-            ['deger' => number_format($genelOzet['evde_yok_abone'], 0, ',', '.'), 'baslik' => 'Evde Yok', 'renk' => '#b45309'],
-            ['deger' => number_format($genelOzet['ekip_sayisi'], 0, ',', '.'), 'baslik' => 'Çalışan Ekip', 'renk' => '#0f172a'],
-            ['deger' => number_format($genelOzet['ekip_gun'], 0, ',', '.'), 'baslik' => 'Ekip-Gün Kaydı', 'renk' => '#0f172a'],
-            ['deger' => number_format($genelOzet['supheli_gun'], 0, ',', '.'), 'baslik' => 'Şüpheli Gün', 'renk' => '#a16207'],
-            ['deger' => number_format($genelOzet['kritik_gun'], 0, ',', '.'), 'baslik' => 'Kritik Gün', 'renk' => '#b91c1c'],
-            ['deger' => number_format($genelOzet['okumasiz_gun'], 0, ',', '.'), 'baslik' => 'Okumasız İş Günü', 'renk' => '#b91c1c'],
+            ['deger' => number_format($genelOzet['toplam_abone'], 0, ',', '.'), 'baslik' => 'Toplam Okuma', 'renk' => 'ok-notr'],
+            ['deger' => number_format($genelOzet['okunan_abone'], 0, ',', '.'), 'baslik' => 'Endeks Alınan', 'renk' => 'ok-iyi'],
+            ['deger' => number_format($genelOzet['evde_yok_abone'], 0, ',', '.'), 'baslik' => 'Evde Yok', 'renk' => 'ok-uyari'],
+            ['deger' => number_format($genelOzet['ekip_sayisi'], 0, ',', '.'), 'baslik' => 'Çalışan Ekip', 'renk' => 'ok-notr'],
+            ['deger' => number_format($genelOzet['ekip_gun'], 0, ',', '.'), 'baslik' => 'Ekip-Gün Kaydı', 'renk' => 'ok-notr'],
+            ['deger' => number_format($genelOzet['supheli_gun'], 0, ',', '.'), 'baslik' => 'Şüpheli Gün', 'renk' => 'ok-uyari'],
+            ['deger' => number_format($genelOzet['kritik_gun'], 0, ',', '.'), 'baslik' => 'Kritik Gün', 'renk' => 'ok-kotu'],
+            ['deger' => number_format($genelOzet['okumasiz_gun'], 0, ',', '.'), 'baslik' => 'Okumasız İş Günü', 'renk' => 'ok-kotu'],
         ];
         foreach ($ozetKutulari as $kutu): ?>
             <div class="col-lg col-md-3 col-6">
                 <div class="od-ozet-kutu">
-                    <div class="od-deger" style="color: <?php echo $kutu['renk']; ?>"><?php echo $kutu['deger']; ?></div>
+                    <div class="od-deger <?php echo $kutu["renk"]; ?>"><?php echo $kutu['deger']; ?></div>
                     <div class="od-baslik"><?php echo Security::escape($kutu['baslik']); ?></div>
                 </div>
             </div>
@@ -304,10 +304,10 @@ $seviyeRenkleri = [
                     </div>
                     <div class="d-flex flex-wrap gap-1">
                         <?php foreach ($okumasizEkipler as $ekip): ?>
-                            <span class="badge bg-white text-dark border">
+                            <span class="od-ekip-etiket">
                                 <?php echo Security::escape($ekip['ekip_adi']); ?>
                                 <?php if (!empty($ekip['personeller'])): ?>
-                                    <span class="text-muted fw-normal">— <?php echo Security::escape($ekip['personeller']); ?></span>
+                                    <span class="od-etiket-personel">— <?php echo Security::escape($ekip['personeller']); ?></span>
                                 <?php endif; ?>
                             </span>
                         <?php endforeach; ?>

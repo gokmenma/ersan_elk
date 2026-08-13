@@ -255,18 +255,18 @@ $serit = function (array $satir) {
     <div class="row g-2 mb-3">
         <?php
         $ozetKutulari = [
-            ['deger' => number_format($genelOzet['okuma_sayisi'], 0, ',', '.'), 'baslik' => 'Toplam Okuma', 'renk' => '#0f172a'],
-            ['deger' => number_format($genelOzet['ekip_sayisi'], 0, ',', '.'), 'baslik' => 'Ekip Sayısı', 'renk' => '#0f172a'],
-            ['deger' => number_format($genelOzet['ekip_gun'], 0, ',', '.'), 'baslik' => 'Ekip-Gün Kaydı', 'renk' => '#0f172a'],
-            ['deger' => number_format($genelOzet['bosluk_sayisi'], 0, ',', '.'), 'baslik' => 'Şüpheli Boşluk', 'renk' => '#a16207'],
-            ['deger' => number_format($genelOzet['kritik_bosluk'], 0, ',', '.'), 'baslik' => 'Kritik Boşluk', 'renk' => '#b91c1c'],
-            ['deger' => $sure($genelOzet['bosluk_suresi']), 'baslik' => 'Toplam Boşluk Süresi', 'renk' => '#b91c1c'],
-            ['deger' => $sure($genelOzet['net_calisma']), 'baslik' => 'Net Çalışma', 'renk' => '#15803d'],
+            ['deger' => number_format($genelOzet['okuma_sayisi'], 0, ',', '.'), 'baslik' => 'Toplam Okuma', 'renk' => 'ok-notr'],
+            ['deger' => number_format($genelOzet['ekip_sayisi'], 0, ',', '.'), 'baslik' => 'Ekip Sayısı', 'renk' => 'ok-notr'],
+            ['deger' => number_format($genelOzet['ekip_gun'], 0, ',', '.'), 'baslik' => 'Ekip-Gün Kaydı', 'renk' => 'ok-notr'],
+            ['deger' => number_format($genelOzet['bosluk_sayisi'], 0, ',', '.'), 'baslik' => 'Şüpheli Boşluk', 'renk' => 'ok-uyari'],
+            ['deger' => number_format($genelOzet['kritik_bosluk'], 0, ',', '.'), 'baslik' => 'Kritik Boşluk', 'renk' => 'ok-kotu'],
+            ['deger' => $sure($genelOzet['bosluk_suresi']), 'baslik' => 'Toplam Boşluk Süresi', 'renk' => 'ok-kotu'],
+            ['deger' => $sure($genelOzet['net_calisma']), 'baslik' => 'Net Çalışma', 'renk' => 'ok-iyi'],
         ];
         foreach ($ozetKutulari as $kutu): ?>
             <div class="col-lg col-md-3 col-6">
                 <div class="om-ozet-kutu">
-                    <div class="om-deger" style="color: <?php echo $kutu['renk']; ?>"><?php echo Security::escape($kutu['deger']); ?></div>
+                    <div class="om-deger <?php echo $kutu["renk"]; ?>"><?php echo Security::escape($kutu['deger']); ?></div>
                     <div class="om-baslik"><?php echo Security::escape($kutu['baslik']); ?></div>
                 </div>
             </div>

@@ -641,7 +641,16 @@ $(document).ready(function () {
               location.reload();
             });
           } else {
-            Swal.fire("Hata", res.message, "error");
+            const escapeHtml = (value) => $("<div>").text(value || "").html();
+            let errorHtml = `<div>${escapeHtml(res.message)}</div>`;
+            if (Array.isArray(res.errors) && res.errors.length > 0) {
+              errorHtml += '<div class="text-start mt-3" style="max-height:260px;overflow:auto"><ul>';
+              res.errors.forEach((error) => {
+                errorHtml += `<li>${escapeHtml(error)}</li>`;
+              });
+              errorHtml += "</ul></div>";
+            }
+            Swal.fire({ title: "Yükleme Hataları", html: errorHtml, icon: "error", width: "700px" });
           }
         } catch (e) {
           Swal.fire("Hata", "Sunucudan geçersiz yanıt alındı.", "error");

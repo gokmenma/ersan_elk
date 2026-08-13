@@ -2983,6 +2983,30 @@ table thead tr:first-child th {
   color: #3b82f6 !important;
 }
 
+/* Koyu temada acik renkli badge'ler icin sistem geneli kontrast duzeltmesi. */
+[data-bs-theme="dark"] .badge.bg-warning,
+[data-bs-theme="dark"] .badge.text-bg-warning {
+  background-color: #f6c344 !important;
+  color: #241c00 !important;
+}
+
+[data-bs-theme="dark"] .badge.bg-warning-subtle {
+  background-color: rgba(246, 195, 68, 0.2) !important;
+  color: #ffd76a !important;
+}
+
+[data-bs-theme="dark"] .badge.bg-light,
+[data-bs-theme="dark"] .badge.text-bg-light {
+  background-color: #3b455a !important;
+  border-color: #59657a !important;
+  color: #f8fafc !important;
+}
+
+[data-bs-theme="dark"] .badge-soft-light {
+  background-color: rgba(226, 232, 240, 0.16) !important;
+  color: #f8fafc !important;
+}
+
 [data-bs-theme="dark"] .card-header {
   border-bottom: 1px solid #32394e !important;
   background-color: transparent !important;
@@ -3543,7 +3567,7 @@ span.flatpickr-weekday {
 [data-bs-theme="dark"] .flatpickr-calendar .flatpickr-day.startRange,
 [data-bs-theme="dark"] .flatpickr-calendar .flatpickr-day.endRange,
 [data-bs-theme="dark"] .flatpickr-calendar .flatpickr-day.today.selected {
-  color: #020817 !important;
+  color: #ffffff !important;
 }
 
 .flatpickr-months .flatpickr-month,

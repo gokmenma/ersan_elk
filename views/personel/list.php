@@ -502,11 +502,16 @@ if (Gate::canWithMessage("personel_listesi")) {
                             <div class="flex-grow-1">
                                 <h6 class="mb-1"><strong>Şablon Dosyasını İndirin</strong></h6>
                                 <p class="mb-2 small text-muted">
-                                    Personelleri Excelden yüklemek için şablonunu indirin.
+                                    Mevcut kayıtlarla dolu şablonu veya yeni kayıtlar için boş şablonu indirin.
                                 </p>
-                                <a href="javascript:void()" id="btnDownloadTemplate" class="btn btn-sm btn-success">
-                                    <i class="bx bx-download me-1"></i>Personel Şablonunu İndir
-                                </a>
+                                <div class="d-flex flex-wrap gap-2">
+                                    <a href="javascript:void()" id="btnDownloadTemplate" class="btn btn-sm btn-success">
+                                        <i class="bx bx-download me-1"></i>Dolu Şablonu İndir
+                                    </a>
+                                    <a href="views/personel/download-template.php?bos=1" id="btnDownloadEmptyTemplate" class="btn btn-sm btn-outline-success">
+                                        <i class="bx bx-file-blank me-1"></i>Boş Şablonu İndir
+                                    </a>
+                                </div>
                             </div>
                         </div>
                     </div>

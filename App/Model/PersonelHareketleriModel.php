@@ -38,6 +38,7 @@ class PersonelHareketleriModel extends Model
                   AND ph2.silinme_tarihi IS NULL ORDER BY ph2.zaman DESC, ph2.id DESC LIMIT 1)
             WHERE p.firma_id = ? AND p.aktif_mi = 1 AND p.saha_takibi = 1 AND p.silinme_tarihi IS NULL
               AND p.departman LIKE ? AND ph.islem_tipi = 'BASLA'
+              AND DATE(ph.zaman) = CURDATE()
               AND NOT EXISTS (SELECT 1 FROM personel_konum_istekleri k WHERE k.personel_id = p.id
                   AND k.durum = 'BEKLIYOR' AND k.istek_zamani >= DATE_SUB(NOW(), INTERVAL 2 MINUTE))");
         $stmt->execute([$firmaId, '%Kaçak%']);

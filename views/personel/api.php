@@ -781,6 +781,9 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
         }
     } elseif ($action == 'excel-upload') {
         try {
+            if (!Gate::allows('personel_duzenle')) {
+                throw new Exception('Bu işlem için personel düzenleme yetkiniz bulunmamaktadır.');
+            }
             // Composer Autoloader'ı dahil et
             $vendorAutoload = dirname(__DIR__, 2) . '/vendor/autoload.php';
             if (file_exists($vendorAutoload)) {
@@ -853,11 +856,14 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 'isten_cikis_tarihi' => ['işten çıkış tarihi', 'isten cikis tarihi'],
                 'sgk_no' => ['sgk no'],
                 'sgk_yapilan_firma' => ['sgk yapılan firma', 'sgk yapilan firma'],
+                'disardan_sigortali' => ['dışarıdan sigortalı mı?', 'disardan sigortali mi?', 'dışarıdan sigortalı', 'disardan sigortali'],
                 'personel_sinifi' => ['personel sınıfı', 'personel sinifi'],
+                'saha_takibi' => ['saha takibi'],
                 'departman' => ['departman', 'birim', 'bölüm'],
                 'gorev' => ['görev', 'unvan', 'pozisyon'],
                 'ekip_bolge' => ['ekip bölge', 'ekip bolge', 'bölge', 'bolge', 'bölge adı', 'bolge adi'],
                 'ekip_no' => ['takım', 'takim', 'ekip no', 'ekip_no', 'ekip kodu', 'ekip kod'],
+                'ekip_sefi_mi' => ['ekip şefi mi?', 'ekip sefi mi?', 'ekip şefi', 'ekip sefi'],
                 'banka' => ['banka', 'banka adı', 'banka adi'],
                 'iban_numarasi' => ['iban numarası', 'iban no', 'iban', 'iban numarasi', 'ıban numarası', 'ıban no', 'ıban', 'ıban numarasi'],
                 'maas_durumu' => ['maaş durumu', 'maas durumu', 'maaş tipi', 'maas tipi'],
@@ -888,12 +894,17 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
             $FirmaModel = new \App\Model\FirmaModel();
             $firmalar = $FirmaModel->option(); // id, firma_adi
             $firmaMap = [];
+            $aktifFirmaSgkAdi = '';
             foreach ($firmalar as $f) {
+                if ((int) $f->id !== (int) $firma_id) {
+                    continue;
+                }
                 // Türkçe karakter uyumlu küçük harfe çevirme
                 $key = $f->firma_adi;
                 $key = str_replace(['İ', 'I', 'Ğ', 'Ü', 'Ş', 'Ö', 'Ç'], ['i', 'ı', 'ğ', 'ü', 'ş', 'ö', 'ç'], $key);
                 $key = mb_strtolower($key, 'UTF-8');
                 $firmaMap[trim($key)] = $f->id;
+                $aktifFirmaSgkAdi = (string) $f->firma_adi;
             }
 
             // Varsayılan Firma (Session'dan)
@@ -937,6 +948,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // Yeni kayıt verilerini hazırla
                 $newData = [];
                 $newData['tc_kimlik_no'] = $tcNo;
+                $invalidFirma = false;
 
                 if ($isUpdate) {
                     $newData['id'] = $existingId;
@@ -968,6 +980,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                             if (isset($firmaMap[$searchVal])) {
                                 $val = $firmaMap[$searchVal];
                             } else {
+                                $invalidFirma = true;
                                 $val = null;
                             }
                         }
@@ -986,7 +999,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     }
 
                     // Evet/Hayır -> 1/0 dönüşümü (tinyint alanlar için)
-                    if (in_array($dbCol, ['bes_kesintisi_varmi', 'aktif_mi', 'disardan_sigortali'])) {
+                    if (in_array($dbCol, ['bes_kesintisi_varmi', 'aktif_mi', 'disardan_sigortali', 'saha_takibi', 'ekip_sefi_mi'])) {
                         if (mb_strtolower($val, 'UTF-8') == 'evet' || $val === '1' || $val === 1) {
                             $val = 1;
                         } elseif (mb_strtolower($val, 'UTF-8') == 'hayır' || mb_strtolower($val, 'UTF-8') == 'hayir' || $val === '0' || $val === 0) {
@@ -1008,8 +1021,29 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 // İşten çıkış tarihi doluysa aktif_mi = 0 (Pasif), değilse 1 (Aktif)
                 if (!empty($newData['isten_cikis_tarihi']) && $newData['isten_cikis_tarihi'] != '0000-00-00') {
                     $newData['aktif_mi'] = 0;
-                } else {
+                } elseif (!$isUpdate && !isset($newData['aktif_mi'])) {
                     $newData['aktif_mi'] = 1;
+                }
+
+                if ($invalidFirma) {
+                    $errorDetails[] = "Satır $rowNum ($name): Firma değeri geçersiz. Şablondaki açılır listeden seçim yapın.";
+                    continue;
+                }
+
+                if (isset($newData['firma_id']) && (int) $newData['firma_id'] !== (int) $firma_id) {
+                    $errorDetails[] = "Satır $rowNum ($name): Oturum firmanız dışında bir firma seçilemez.";
+                    continue;
+                }
+                if (!empty($newData['sgk_yapilan_firma'])) {
+                    $sgkKey = mb_strtolower(trim((string) $newData['sgk_yapilan_firma']), 'UTF-8');
+                    $izinliSgk = array_map(
+                        fn($deger) => mb_strtolower(trim($deger), 'UTF-8'),
+                        array_filter([$aktifFirmaSgkAdi, 'İŞKUR', 'Dışarıdan Sigortalı'])
+                    );
+                    if (!in_array($sgkKey, $izinliSgk, true)) {
+                        $errorDetails[] = "Satır $rowNum ($name): SGK Yapılan Firma değeri geçersiz. Şablondaki açılır listeden seçim yapın.";
+                        continue;
+                    }
                 }
 
                 // İşe giriş tarihi kontrolü (Güncelleme ise ve mevcut ekip atamaları varsa)
@@ -1034,17 +1068,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     if ($ekipKodRecord) {
                         $ekipId = $ekipKodRecord->id;
                     } else {
-                        // Tanımlamalarda yoksa yeni ekle
-                        $tanimData = [
-                            'id' => 0,
-                            'grup' => 'ekip_kodu',
-                            'ekip_bolge' => $newData['ekip_bolge'] ?? null,
-                            'tur_adi' => $ekipKodString,
-                            'aciklama' => "Personel Yükleme sırasında otomatik tanımlandı",
-                            'firma_id' => $_SESSION['firma_id']
-                        ];
-                        $encId = $Tanimlamalar->saveWithAttr($tanimData);
-                        $ekipId = Security::decrypt($encId);
+                        $errorDetails[] = "Satır $rowNum ($name): Takım '$ekipKodString' tanımlı değil. Şablondaki açılır listeden seçim yapın.";
+                        continue;
                     }
 
                     // Personel verisine ID'yi ata
@@ -1077,12 +1102,33 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
 
                 try {
+                    $calismaData = array_intersect_key($newData, array_flip([
+                        'ise_giris_tarihi', 'isten_cikis_tarihi', 'personel_sinifi', 'saha_takibi',
+                        'arac_kullanim', 'sgk_yapilan_firma', 'disardan_sigortali'
+                    ]));
+                    $gorevData = array_intersect_key($newData, array_flip(['departman', 'gorev', 'maas_durumu', 'maas_tutari']));
+                    $ekipIdForHistory = isset($newData['ekip_no']) ? (int) $newData['ekip_no'] : null;
+                    $ekipSefiMi = (int) ($newData['ekip_sefi_mi'] ?? 0);
+                    unset($newData['ekip_sefi_mi']);
+
                     $PersonelNew = new PersonelModel();
                     $res = $PersonelNew->saveWithAttr($newData);
+                    $currentPid = $isUpdate ? $existingId : (int) Security::decrypt($res);
+                    $baslangicTarihi = $calismaData['ise_giris_tarihi'] ?? date('Y-m-d');
+
+                    if (!empty($calismaData['ise_giris_tarihi'])) {
+                        $PersonelNew->upsertExcelCalismaGecmisi($currentPid, $calismaData);
+                    }
+                    if ($gorevData !== []) {
+                        $gorevData['baslangic_tarihi'] = $baslangicTarihi;
+                        $PersonelNew->upsertExcelGorevGecmisi($currentPid, $gorevData);
+                    }
+                    if ($ekipIdForHistory) {
+                        $PersonelNew->upsertExcelEkipAtamasi($currentPid, $ekipIdForHistory, $baslangicTarihi, $ekipSefiMi);
+                    }
 
                     // İşten çıkış tarihi varsa aktif ekip atamalarını kapat
                     if (!empty($newData['isten_cikis_tarihi']) && $newData['isten_cikis_tarihi'] != '0000-00-00') {
-                        $currentPid = $isUpdate ? $existingId : Security::decrypt($res);
                         $PersonelNew->closeActiveEkipAssignments($currentPid, $newData['isten_cikis_tarihi']);
                     }
 

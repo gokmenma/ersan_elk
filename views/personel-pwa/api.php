@@ -1516,9 +1516,8 @@ try {
 
         // ===== İzin İşlemleri =====
         case 'getIzinTurleri':
-            $TanimlamalarModel = new App\Model\TanimlamalarModel();
-            // Personelin görebileceği izin türlerini getir
-            $izinTurleri = $TanimlamalarModel->getDb()->query("SELECT * FROM tanimlamalar WHERE grup = 'izin_turu' AND personel_gorebilir = 1 AND silinme_tarihi IS NULL ORDER BY tur_adi ASC")->fetchAll(PDO::FETCH_OBJ);
+            $IzinModel = new PersonelIzinleriModel();
+            $izinTurleri = $IzinModel->getPersonnelVisibleLeaveTypes((int) $_SESSION['firma_id']);
 
             $data = array_map(function ($item) {
                 return [
@@ -1526,7 +1525,9 @@ try {
                     'tur_adi' => $item->tur_adi,
                     'renk' => $item->renk ?? 'bg-primary/10 text-primary',
                     'ikon' => $item->ikon ?? 'event',
-                    'aciklama' => $item->aciklama
+                    'aciklama' => $item->aciklama,
+                    'kisa_kod' => $item->kisa_kod,
+                    'ucretli_mi' => (int) ($item->ucretli_mi ?? 0)
                 ];
             }, $izinTurleri);
 
@@ -1745,6 +1746,20 @@ try {
             }
 
             $IzinModel = new PersonelIzinleriModel();
+
+            $izinTuru = $IzinModel->getPersonnelVisibleLeaveType($izin_tipi, (int) $_SESSION['firma_id']);
+            if (!$izinTuru) {
+                response(false, null, 'Geçerli bir izin türü seçiniz.');
+            }
+
+            $entitlement = $IzinModel->calculateLeaveEntitlement($personel_id);
+            if ($IzinModel->isEntitlementRequiredLeaveType($izinTuru) && (float) $entitlement['kalan_izin'] <= 0) {
+                response(false, null, 'İzin hakedişiniz bulunmadığı için ücretli veya yıllık izin talep edemezsiniz. Lütfen mazeret izni seçerek talepte bulunun.');
+            }
+
+            if ($IzinModel->isExcuseLeaveType($izinTuru) && trim(htmlspecialchars_decode($aciklama, ENT_QUOTES)) === '') {
+                response(false, null, 'Mazeret izni için açıklama girmeniz zorunludur.');
+            }
 
             // Çakışma Kontrolü
             // Seçilen tarih aralığında (başlangıç ve bitiş dahil) başka bir izin var mı?

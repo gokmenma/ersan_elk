@@ -49,6 +49,97 @@ $excelVeriVar = $excelAralik && (int) $excelAralik->toplam > 0;
             border: 1px solid #e2e8f0; border-radius: 8px; padding: 7px 10px; background: #fff; font-size: 12px;
         }
         .om-dosya-kutu.om-hatali { border-color: #fca5a5; background: #fef2f2; }
+
+        .od-sayfa .od-ozet-kutu,
+        .od-sayfa .om-ozet-kutu,
+        .od-sayfa .od-ekip-kart,
+        .od-sayfa .om-kart,
+        .od-sayfa .om-dosya-kutu,
+        .od-sayfa .ok-kaynak-kart,
+        .od-sayfa .ok-kaynak-dugme,
+        .od-sayfa .od-alt-bar,
+        .od-sayfa .om-alt-bar {
+            background: var(--bs-body-bg);
+            border-color: var(--bs-border-color);
+            color: var(--bs-body-color);
+        }
+
+        .od-sayfa .od-bolge-baslik,
+        .od-sayfa .om-bolge-baslik,
+        .od-sayfa .om-birak,
+        .od-sayfa .om-serit-kutu {
+            background: var(--bs-tertiary-bg);
+            border-color: var(--bs-border-color);
+            color: var(--bs-body-color);
+        }
+
+        .od-sayfa .od-deger,
+        .od-sayfa .om-deger { color: var(--bs-body-color); }
+        .od-sayfa .od-deger.ok-iyi,
+        .od-sayfa .om-deger.ok-iyi { color: #16a34a; }
+        .od-sayfa .od-deger.ok-uyari,
+        .od-sayfa .om-deger.ok-uyari { color: #d97706; }
+        .od-sayfa .od-deger.ok-kotu,
+        .od-sayfa .om-deger.ok-kotu { color: #dc2626; }
+
+        .od-sayfa .od-hucre,
+        .od-sayfa .om-saat-kutu { color: #0f172a; }
+        .od-sayfa .od-disi { background: transparent; color: var(--bs-secondary-color); }
+        .od-sayfa .od-haftasonu { background: var(--bs-secondary-bg); color: var(--bs-secondary-color); }
+
+        .od-sayfa .od-rozet.bg-warning,
+        .od-sayfa .om-rozet.bg-warning {
+            color: #1f2937 !important;
+        }
+
+        .od-sayfa .od-rozet.bg-light,
+        .od-sayfa .om-rozet.bg-light,
+        .od-sayfa .badge.bg-light,
+        .od-sayfa .badge.bg-white,
+        .od-sayfa .od-ekip-etiket {
+            background-color: var(--bs-secondary-bg) !important;
+            color: var(--bs-body-color) !important;
+            border: 1px solid var(--bs-border-color) !important;
+        }
+
+        .od-sayfa .od-ekip-etiket {
+            display: inline-flex; align-items: baseline; gap: 5px;
+            padding: 4px 9px; border-radius: 6px; font-size: 11.5px; font-weight: 600;
+        }
+
+        .od-sayfa .alert-light {
+            background-color: var(--bs-secondary-bg);
+            border-color: var(--bs-border-color);
+            color: var(--bs-body-color);
+        }
+        .od-sayfa .od-ekip-etiket .od-etiket-personel {
+            font-weight: 400; color: var(--bs-secondary-color);
+        }
+
+        .od-sayfa .od-ekip-govde,
+        .od-sayfa .om-kart-govde { border-top-color: var(--bs-border-color); }
+
+        .od-sayfa .od-rozet.bg-danger,
+        .od-sayfa .om-rozet.bg-danger,
+        .od-sayfa .od-rozet.bg-secondary,
+        .od-sayfa .om-rozet.bg-secondary { color: #fff !important; }
+
+        [data-bs-theme="dark"] .od-sayfa .om-dosya-kutu.om-hatali {
+            background: rgba(239, 68, 68, .12);
+            border-color: rgba(239, 68, 68, .5);
+        }
+
+        [data-bs-theme="dark"] .od-sayfa .om-birak.om-aktif {
+            background: rgba(37, 99, 235, .15);
+            border-color: #3b82f6;
+        }
+
+        [data-bs-theme="dark"] .od-sayfa .table-warning,
+        [data-bs-theme="dark"] .od-sayfa .table-danger {
+            --bs-table-color: #0f172a;
+            --bs-table-striped-color: #0f172a;
+            --bs-table-hover-color: #0f172a;
+        }
     </style>
 
     <div class="row mb-3">

@@ -38,6 +38,12 @@ try {
         http_response_code(403);
         exit('Yetkisiz erişim.');
     }
+    if (!\App\Service\Gate::allows('personel_duzenle')) {
+        ob_end_clean();
+        http_response_code(403);
+        exit('Bu işlem için personel düzenleme yetkiniz bulunmamaktadır.');
+    }
+    $bosSablon = isset($_GET['bos']) && $_GET['bos'] === '1';
 
     $spreadsheet = new \PhpOffice\PhpSpreadsheet\Spreadsheet();
     $sheet = $spreadsheet->getActiveSheet();
@@ -77,11 +83,14 @@ try {
         'İşten Çıkış Tarihi' => 'isten_cikis_tarihi',
         'SGK No' => 'sgk_no',
         'SGK Yapılan Firma' => 'sgk_yapilan_firma',
+        'Dışarıdan Sigortalı mı?' => 'disardan_sigortali',
         'Personel Sınıfı' => 'personel_sinifi',
+        'Saha Takibi' => 'saha_takibi',
         'Departman' => 'departman',
         'Görev' => 'gorev',
         'Ekip Bölge' => 'ekip_bolge',
         'Takım' => 'ekip_no',
+        'Ekip Şefi mi?' => 'ekip_sefi_mi',
         'DSS Sınıfı Üst' => 'dss_sinifi_ust',
         'DSS Sınıfı Alt' => 'dss_sinifi_alt',
         'Banka' => 'banka',
@@ -139,6 +148,9 @@ try {
             if ($firmalar && count($firmalar) > 0) {
                 $firmaList = [];
                 foreach ($firmalar as $f) {
+                    if ((int) $f->id !== (int) $_SESSION['firma_id']) {
+                        continue;
+                    }
                     // Virgül içeren firma adlarını temizle veya yönet
                     $cleanName = str_replace(',', ' ', $f->firma_adi);
                     $firmaList[] = $cleanName;
@@ -157,9 +169,9 @@ try {
     // Mevcut personelleri çek (LEFT JOIN ile firma_adi ve ekip_adi dahil)
     $personeller = [];
     try {
-        if (class_exists('\App\Model\PersonelModel')) {
+        if (!$bosSablon && class_exists('\App\Model\PersonelModel')) {
             $PersonelModel = new \App\Model\PersonelModel();
-            $personeller = $PersonelModel->all(); // firma_adi ve ekip_adi JOIN ile geliyor
+            $personeller = $PersonelModel->decryptRecords($PersonelModel->all());
         }
     } catch (Exception $e) {
         error_log("Personel listesi çekilemedi: " . $e->getMessage());
@@ -169,7 +181,7 @@ try {
     $logModel->logAction(
         $_SESSION['id'] ?? $_SESSION['user_id'] ?? 0,
         'Excel Export',
-        'Personel import şablonu indirildi. ' . count($personeller) . ' kayıt.',
+        ($bosSablon ? 'Boş personel import şablonu indirildi.' : 'Dolu personel import şablonu indirildi. ' . count($personeller) . ' kayıt.'),
         \App\Model\SystemLogModel::LEVEL_IMPORTANT
     );
 
@@ -177,6 +189,9 @@ try {
     $currentRow = 2;
     if ($personeller && count($personeller) > 0) {
         foreach ($personeller as $personel) {
+            $aktifCalisma = $PersonelModel->getAktifCalismaGecmisi((int) $personel->id);
+            $aktifGorev = $PersonelModel->getAktifGorevGecmisi((int) $personel->id);
+            $aktifEkip = $PersonelModel->getEkipByDate((int) $personel->id, date('Y-m-d'));
             foreach ($columns as $header => $dbField) {
                 $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($fieldToCol[$dbField]);
                 $value = '';
@@ -185,13 +200,21 @@ try {
                     $value = $personel->$dbField;
                 }
 
+                if ($aktifCalisma && property_exists($aktifCalisma, $dbField)) {
+                    $value = $aktifCalisma->$dbField;
+                }
+                if ($aktifGorev && property_exists($aktifGorev, $dbField)) {
+                    $value = $aktifGorev->$dbField;
+                }
+
                 // Özel alan dönüşümleri
                 if ($dbField === 'firma_id') {
                     // Firma adı JOIN ile geldi
                     $value = $personel->firma_adi ?? $value;
                 } elseif ($dbField === 'ekip_no') {
-                    // Ekip adı JOIN ile geldi
-                    $value = $personel->ekip_adi ?? $value;
+                    $value = $aktifEkip->ekip_adi ?? $personel->ekip_adi ?? $value;
+                } elseif ($dbField === 'ekip_sefi_mi') {
+                    $value = isset($aktifEkip->ekip_sefi_mi) && (int) $aktifEkip->ekip_sefi_mi === 1 ? 'Evet' : 'Hayır';
                 } elseif ($dbField === 'dogum_tarihi' || $dbField === 'ise_giris_tarihi' || $dbField === 'isten_cikis_tarihi') {
                     // Tarih formatını düzelt (YYYY-MM-DD -> DD.MM.YYYY)
                     if (!empty($value) && $value !== '0000-00-00' && $value !== null) {
@@ -216,7 +239,7 @@ try {
                     } elseif ($value === 'B' || $value === 'b') {
                         $value = 'Bekar';
                     }
-                } elseif ($dbField === 'esi_calisiyor_mu' || $dbField === 'bes_kesintisi_varmi') {
+                } elseif (in_array($dbField, ['esi_calisiyor_mu', 'bes_kesintisi_varmi', 'disardan_sigortali', 'saha_takibi'], true)) {
                     // Evet/Hayır dönüşümü
                     if ($value === '1' || $value === 1) {
                         $value = 'Evet';
@@ -235,7 +258,11 @@ try {
                     $value = '';
                 }
 
-                $sheet->setCellValue($col . $currentRow, $value);
+                if (in_array($dbField, ['tc_kimlik_no', 'iban_numarasi', 'sgk_no', 'cep_telefonu', 'cep_telefonu_2'], true)) {
+                    $sheet->setCellValueExplicit($col . $currentRow, (string) $value, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+                } else {
+                    $sheet->setCellValue($col . $currentRow, $value);
+                }
             }
             $currentRow++;
         }
@@ -268,6 +295,28 @@ try {
     $aktifList = '"1,0"';
     $aracKullanimList = '"Yok,Kendi Aracı,Şirket aracı"';
 
+    // Uzun/dinamik açılır listeler Excel'in 255 karakter sınırına takılmasın diye gizli sayfada tutulur.
+    $listSheet = $spreadsheet->createSheet();
+    $listSheet->setTitle('Listeler');
+    $firmaNames = array_values($firmaIdToName);
+    $aktifFirmaAdi = $firmaIdToName[(int) $_SESSION['firma_id']] ?? '';
+    $sgkFirmalari = array_values(array_unique(array_filter([$aktifFirmaAdi, 'İŞKUR', 'Dışarıdan Sigortalı'])));
+    $ekipKodlari = [];
+    if (class_exists('\\App\\Model\\TanimlamalarModel')) {
+        foreach ((new \App\Model\TanimlamalarModel())->getEkipKodlari() as $ekip) {
+            $ekipKodlari[] = $ekip->tur_adi;
+        }
+    }
+    foreach (['A' => $firmaNames, 'B' => $sgkFirmalari, 'C' => $ekipKodlari] as $listCol => $items) {
+        foreach ($items as $index => $item) {
+            $listSheet->setCellValueExplicit($listCol . ($index + 1), (string) $item, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+        }
+    }
+    $spreadsheet->addNamedRange(new \PhpOffice\PhpSpreadsheet\NamedRange('FirmaListesi', $listSheet, '$A$1:$A$' . max(1, count($firmaNames))));
+    $spreadsheet->addNamedRange(new \PhpOffice\PhpSpreadsheet\NamedRange('SgkFirmaListesi', $listSheet, '$B$1:$B$' . max(1, count($sgkFirmalari))));
+    $spreadsheet->addNamedRange(new \PhpOffice\PhpSpreadsheet\NamedRange('EkipListesi', $listSheet, '$C$1:$C$' . max(1, count($ekipKodlari))));
+    $listSheet->setSheetState(\PhpOffice\PhpSpreadsheet\Worksheet\Worksheet::SHEETSTATE_HIDDEN);
+
     // Veri Doğrulama (Data Validation) - 100 satır için uygula
     for ($i = 2; $i <= $rowCount; $i++) {
         // Firma
@@ -280,7 +329,33 @@ try {
             $objValidation->setShowInputMessage(true);
             $objValidation->setShowErrorMessage(true);
             $objValidation->setShowDropDown(true);
-            $objValidation->setFormula1($firmaListStr);
+            $objValidation->setFormula1('FirmaListesi');
+        }
+
+        foreach ([
+            'sgk_yapilan_firma' => 'SgkFirmaListesi',
+            'ekip_no' => 'EkipListesi',
+        ] as $field => $formula) {
+            if (isset($fieldToCol[$field])) {
+                $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($fieldToCol[$field]);
+                $validation = $sheet->getCell($col . $i)->getDataValidation();
+                $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+                $validation->setAllowBlank(true);
+                $validation->setShowErrorMessage(true);
+                $validation->setShowDropDown(true);
+                $validation->setFormula1($formula);
+            }
+        }
+
+        foreach (['ekip_sefi_mi', 'disardan_sigortali', 'saha_takibi'] as $field) {
+            if (isset($fieldToCol[$field])) {
+                $col = \PhpOffice\PhpSpreadsheet\Cell\Coordinate::stringFromColumnIndex($fieldToCol[$field]);
+                $validation = $sheet->getCell($col . $i)->getDataValidation();
+                $validation->setType(\PhpOffice\PhpSpreadsheet\Cell\DataValidation::TYPE_LIST);
+                $validation->setAllowBlank(true);
+                $validation->setShowDropDown(true);
+                $validation->setFormula1($evetHayirList);
+            }
         }
 
         // Cinsiyet
@@ -388,7 +463,7 @@ try {
     ob_end_clean();
 
     // Dosya adını hazırla (tarih ile birlikte)
-    $fileName = 'personel_listesi_' . date('Y-m-d_His') . '.xlsx';
+    $fileName = ($bosSablon ? 'personel_bos_sablon_' : 'personel_listesi_') . date('Y-m-d_His') . '.xlsx';
 
     // Dosya İndirme Headerları
     header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');

@@ -455,6 +455,73 @@ class PersonelIzinleriModel extends Model
         ];
     }
 
+    /**
+     * Personel PWA'da seçilebilen bir izin türünü firma kapsamıyla birlikte getirir.
+     */
+    public function getPersonnelVisibleLeaveType($izinTipiId, $firmaId)
+    {
+        $sql = "SELECT id, tur_adi, kisa_kod, ucretli_mi, personel_gorebilir
+                FROM tanimlamalar
+                WHERE id = :id
+                  AND grup = 'izin_turu'
+                  AND personel_gorebilir = 1
+                  AND silinme_tarihi IS NULL
+                  AND (firma_id = :firma_id OR firma_id = 0)
+                LIMIT 1";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([
+            ':id' => $izinTipiId,
+            ':firma_id' => $firmaId
+        ]);
+
+        return $stmt->fetch(PDO::FETCH_OBJ) ?: null;
+    }
+
+    public function getPersonnelVisibleLeaveTypes($firmaId)
+    {
+        $sql = "SELECT id, tur_adi, kisa_kod, renk, ikon, aciklama, ucretli_mi
+                FROM tanimlamalar
+                WHERE grup = 'izin_turu'
+                  AND personel_gorebilir = 1
+                  AND silinme_tarihi IS NULL
+                  AND (firma_id = :firma_id OR firma_id = 0)
+                ORDER BY tur_adi ASC";
+        $stmt = $this->db->prepare($sql);
+        $stmt->execute([':firma_id' => $firmaId]);
+
+        return $stmt->fetchAll(PDO::FETCH_OBJ);
+    }
+
+    /**
+     * Hakedişi bulunmayan personelin seçemeyeceği ücretli/yıllık izinleri belirler.
+     * Mazeret izni, ücretli olarak tanımlanmış olsa dahi bu kısıttan muaftır.
+     */
+    public function isEntitlementRequiredLeaveType($izinTuru)
+    {
+        if (!$izinTuru) {
+            return false;
+        }
+
+        $ad = mb_strtolower((string) ($izinTuru->tur_adi ?? ''), 'UTF-8');
+        $kod = mb_strtolower((string) ($izinTuru->kisa_kod ?? ''), 'UTF-8');
+        $mazeretMi = mb_strpos($ad, 'mazeret') !== false || $kod === 'mazeret';
+        $yillikMi = mb_strpos($ad, 'yıllık') !== false || mb_strpos($ad, 'yillik') !== false || $kod === 'yillik';
+
+        return !$mazeretMi && ($yillikMi || (int) ($izinTuru->ucretli_mi ?? 0) === 1);
+    }
+
+    public function isExcuseLeaveType($izinTuru)
+    {
+        if (!$izinTuru) {
+            return false;
+        }
+
+        $ad = mb_strtolower((string) ($izinTuru->tur_adi ?? ''), 'UTF-8');
+        $kod = mb_strtolower((string) ($izinTuru->kisa_kod ?? ''), 'UTF-8');
+
+        return mb_strpos($ad, 'mazeret') !== false || $kod === 'mazeret';
+    }
+
     private function parseDate($value)
     {
         if (empty($value) || $value == '0000-00-00' || $value == '0000-00-00 00:00:00')

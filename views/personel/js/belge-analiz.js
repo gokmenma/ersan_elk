@@ -32,18 +32,136 @@
     return file.type === "application/pdf" || /\.pdf$/i.test(file.name || "");
   }
 
-  function canvasSinirla(canvas, maxBoyut) {
-    if (Math.max(canvas.width, canvas.height) <= maxBoyut) return canvas;
-    var oran = maxBoyut / Math.max(canvas.width, canvas.height);
+  function canvasOlcekle(canvas, oran) {
     var hedef = document.createElement("canvas");
     hedef.width = Math.max(1, Math.round(canvas.width * oran));
     hedef.height = Math.max(1, Math.round(canvas.height * oran));
     var ctx = hedef.getContext("2d", {alpha: false});
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = "high";
     ctx.fillStyle = "#fff";
     ctx.fillRect(0, 0, hedef.width, hedef.height);
     ctx.drawImage(canvas, 0, 0, hedef.width, hedef.height);
     canvas.width = canvas.height = 1;
     return hedef;
+  }
+
+  function canvasSinirla(canvas, maxBoyut) {
+    var uzunKenar = Math.max(canvas.width, canvas.height);
+    if (uzunKenar <= maxBoyut) return canvas;
+    return canvasOlcekle(canvas, maxBoyut / uzunKenar);
+  }
+
+  function canvasBuyut(canvas, hedefBoyut) {
+    var uzunKenar = Math.max(canvas.width, canvas.height);
+    if (uzunKenar >= hedefBoyut) return canvas;
+    return canvasOlcekle(canvas, Math.min(2.5, hedefBoyut / uzunKenar));
+  }
+
+  function icerikAlaniniBul(canvas) {
+    var ctx = canvas.getContext("2d", {alpha: false});
+    var goruntu;
+    try {
+      goruntu = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    } catch (error) {
+      return null;
+    }
+    var piksel = goruntu.data;
+    var en = canvas.width;
+    var boy = canvas.height;
+    var satirSayaci = new Uint32Array(boy);
+    var sutunSayaci = new Uint32Array(en);
+    for (var y = 0; y < boy; y++) {
+      var satirBasi = y * en * 4;
+      for (var x = 0; x < en; x++) {
+        var i = satirBasi + x * 4;
+        if (piksel[i] * 0.299 + piksel[i + 1] * 0.587 + piksel[i + 2] * 0.114 < 170) {
+          satirSayaci[y]++;
+          sutunSayaci[x]++;
+        }
+      }
+    }
+    var satirTabani = Math.max(3, Math.round(en * 0.006));
+    var sutunTabani = Math.max(3, Math.round(boy * 0.006));
+    for (var sr = 0; sr < boy; sr++) if (satirSayaci[sr] < satirTabani) satirSayaci[sr] = 0;
+    for (var st = 0; st < en; st++) if (sutunSayaci[st] < sutunTabani) sutunSayaci[st] = 0;
+    var toplamMurekkep = 0;
+    for (var s = 0; s < boy; s++) toplamMurekkep += satirSayaci[s];
+    if (toplamMurekkep < en * boy * 0.0004) return null;
+    var kirpmaPayi = toplamMurekkep * 0.004;
+    function sinir(sayac, geriden) {
+      var birikim = 0;
+      for (var adim = 0; adim < sayac.length; adim++) {
+        var index = geriden ? sayac.length - 1 - adim : adim;
+        birikim += sayac[index];
+        if (birikim > kirpmaPayi) return index;
+      }
+      return geriden ? sayac.length - 1 : 0;
+    }
+    var ust = sinir(satirSayaci, false);
+    var alt = sinir(satirSayaci, true);
+    var sol = sinir(sutunSayaci, false);
+    var sag = sinir(sutunSayaci, true);
+    if (alt - ust < boy * 0.02 || sag - sol < en * 0.02) return null;
+    var payX = Math.round(en * 0.025);
+    var payY = Math.round(boy * 0.025);
+    var alan = {
+      sol: Math.max(0, sol - payX), ust: Math.max(0, ust - payY),
+      sag: Math.min(en, sag + payX + 1), alt: Math.min(boy, alt + payY + 1)
+    };
+    if ((alan.sag - alan.sol) * (alan.alt - alan.ust) > en * boy * 0.7) return null;
+    return alan;
+  }
+
+  function canvasKirp(canvas, alan) {
+    var hedef = document.createElement("canvas");
+    hedef.width = alan.sag - alan.sol;
+    hedef.height = alan.alt - alan.ust;
+    var ctx = hedef.getContext("2d", {alpha: false});
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, hedef.width, hedef.height);
+    ctx.drawImage(canvas, alan.sol, alan.ust, hedef.width, hedef.height, 0, 0, hedef.width, hedef.height);
+    canvas.width = canvas.height = 1;
+    return hedef;
+  }
+
+  function kontrastiArtir(canvas) {
+    var ctx = canvas.getContext("2d", {alpha: false});
+    var goruntu;
+    try {
+      goruntu = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    } catch (error) {
+      return canvas;
+    }
+    var piksel = goruntu.data;
+    var histogram = new Uint32Array(256);
+    for (var i = 0; i < piksel.length; i += 4) {
+      var gri = (piksel[i] * 0.299 + piksel[i + 1] * 0.587 + piksel[i + 2] * 0.114) | 0;
+      piksel[i] = piksel[i + 1] = piksel[i + 2] = gri;
+      histogram[gri]++;
+    }
+    var toplam = canvas.width * canvas.height;
+    var altSinir = 0, ustSinir = 255, birikim = 0;
+    for (var alt = 0; alt < 256; alt++) {
+      birikim += histogram[alt];
+      if (birikim > toplam * 0.02) { altSinir = alt; break; }
+    }
+    birikim = 0;
+    for (var ust = 255; ust >= 0; ust--) {
+      birikim += histogram[ust];
+      if (birikim > toplam * 0.02) { ustSinir = ust; break; }
+    }
+    if (ustSinir - altSinir < 40) {
+      ctx.putImageData(goruntu, 0, 0);
+      return canvas;
+    }
+    var olcek = 255 / (ustSinir - altSinir);
+    for (var j = 0; j < piksel.length; j += 4) {
+      var deger = Math.max(0, Math.min(255, Math.round((piksel[j] - altSinir) * olcek)));
+      piksel[j] = piksel[j + 1] = piksel[j + 2] = deger;
+    }
+    ctx.putImageData(goruntu, 0, 0);
+    return canvas;
   }
 
   async function gorseliCanvasYap(file) {
@@ -63,78 +181,167 @@
     ctx.fillRect(0, 0, canvas.width, canvas.height);
     ctx.drawImage(bitmap, 0, 0);
     bitmap.close();
-    return canvasSinirla(canvas, 2200);
+    var kucultulmus = canvasSinirla(canvas, 3000);
+    var alan = icerikAlaniniBul(kucultulmus);
+    if (alan) kucultulmus = canvasKirp(kucultulmus, alan);
+    return kontrastiArtir(canvasBuyut(kucultulmus, 2400));
   }
 
-  async function pdfCanvaslariniYap(file) {
+  function pdfSayfaMetni(icerik) {
+    var satirlar = [];
+    icerik.items.forEach(function (parca) {
+      if (!parca.str || !parca.str.trim()) return;
+      var x = parca.transform[4];
+      var y = parca.transform[5];
+      var satir = satirlar.find(function (aday) { return Math.abs(aday.y - y) <= 3.5; });
+      if (!satir) {
+        satir = {y: y, parcalar: []};
+        satirlar.push(satir);
+      }
+      satir.parcalar.push({x: x, metin: parca.str, genislik: Number(parca.width) || 0});
+    });
+    satirlar.sort(function (a, b) { return b.y - a.y; });
+    return satirlar.map(function (satir) {
+      satir.parcalar.sort(function (a, b) { return a.x - b.x; });
+      var metin = "";
+      var oncekiSon = null;
+      satir.parcalar.forEach(function (parca) {
+        if (oncekiSon !== null) {
+          var bosluk = parca.x - oncekiSon;
+          metin += bosluk > 12 ? "   " : (bosluk > 1 ? " " : "");
+        }
+        metin += parca.metin;
+        oncekiSon = parca.x + parca.genislik;
+      });
+      return metin.replace(/\s+$/u, "");
+    }).join("\n");
+  }
+
+  async function pdfSayfaCanvasi(sayfa) {
+    var birim = sayfa.getViewport({scale: 1});
+    var onOlcek = Math.min(1.6, 1400 / Math.max(birim.width, birim.height));
+    var onizleme = await sayfayiCiz(sayfa, onOlcek, null);
+    var alan = icerikAlaniniBul(onizleme);
+    onizleme.width = onizleme.height = 1;
+    var bolge = alan ? {
+      x: alan.sol / onOlcek, y: alan.ust / onOlcek,
+      en: (alan.sag - alan.sol) / onOlcek, boy: (alan.alt - alan.ust) / onOlcek
+    } : {x: 0, y: 0, en: birim.width, boy: birim.height};
+    var uzunKenar = Math.max(bolge.en, bolge.boy);
+    var olcek = Math.min(7, Math.max(1.6, 3200 / uzunKenar));
+    if (bolge.en * olcek * bolge.boy * olcek > 12000000) {
+      olcek = Math.sqrt(12000000 / (bolge.en * bolge.boy));
+    }
+    return kontrastiArtir(await sayfayiCiz(sayfa, olcek, bolge));
+  }
+
+  async function sayfayiCiz(sayfa, olcek, bolge) {
+    var viewport = sayfa.getViewport({scale: olcek});
+    var canvas = document.createElement("canvas");
+    canvas.width = Math.max(1, Math.round(bolge ? bolge.en * olcek : viewport.width));
+    canvas.height = Math.max(1, Math.round(bolge ? bolge.boy * olcek : viewport.height));
+    var ctx = canvas.getContext("2d", {alpha: false});
+    ctx.fillStyle = "#fff";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    await sayfa.render({
+      canvasContext: ctx,
+      viewport: viewport,
+      background: "white",
+      transform: bolge ? [1, 0, 0, 1, -Math.round(bolge.x * olcek), -Math.round(bolge.y * olcek)] : null
+    }).promise;
+    return canvas;
+  }
+
+  async function pdfSayfalariniOku(file, sayfayiOku) {
     if (!window.pdfjsLib) throw new Error("Tarayıcı PDF okuyucusu yüklenemedi.");
     window.pdfjsLib.GlobalWorkerOptions.workerSrc = "assets/libs/pdfjs/pdf.worker.min.js";
     var pdfYukleme = window.pdfjsLib.getDocument({data: await file.arrayBuffer()});
     var pdf = await pdfYukleme.promise;
-    var canvases = [];
+    var sonuclar = [];
     var sayfaSayisi = Math.min(pdf.numPages, 4);
     for (var sayfaNo = 1; sayfaNo <= sayfaSayisi; sayfaNo++) {
       var sayfa = await pdf.getPage(sayfaNo);
-      var ilk = sayfa.getViewport({scale: 1});
-      var scale = Math.min(2.35, Math.max(1.5, 2000 / Math.max(ilk.width, ilk.height)));
-      var viewport = sayfa.getViewport({scale: scale});
-      var canvas = document.createElement("canvas");
-      canvas.width = Math.round(viewport.width);
-      canvas.height = Math.round(viewport.height);
-      var ctx = canvas.getContext("2d", {alpha: false});
-      ctx.fillStyle = "#fff";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      await sayfa.render({canvasContext: ctx, viewport: viewport, background: "white"}).promise;
-      canvases.push(canvasSinirla(canvas, 2200));
+      var katmanMetni = "";
+      try {
+        katmanMetni = pdfSayfaMetni(await sayfa.getTextContent());
+      } catch (error) {
+        katmanMetni = "";
+      }
+      if (katmanMetni.replace(/\s/gu, "").length >= 80) {
+        sonuclar.push({metin: katmanMetni, guven: 96});
+      } else {
+        sonuclar.push(await sayfayiOku(await pdfSayfaCanvasi(sayfa)));
+      }
       if (typeof sayfa.cleanup === "function") sayfa.cleanup();
     }
     if (typeof pdf.cleanup === "function") pdf.cleanup();
     if (typeof pdfYukleme.destroy === "function") await pdfYukleme.destroy();
     else if (typeof pdf.destroy === "function") await pdf.destroy();
-    return canvases;
+    return sonuclar;
   }
 
   async function tarayicidaOcrYap(files, islemNo) {
     if (!window.Tesseract || !window.PersonelBelgeOcrAyristirici) {
       throw new Error("Yerel tarayıcı OCR bileşenleri yüklenemedi. Sayfayı yenileyip tekrar deneyin.");
     }
-    var mevcutBelge = 0;
-    var mevcutSayfa = 0;
-    var toplamSayfa = files.length;
-    var tamamlananSayfa = 0;
-    aktifOcrWorker = await window.Tesseract.createWorker(["tur", "eng"], window.Tesseract.OEM.LSTM_ONLY, {
-      workerPath: "assets/libs/tesseract.js/worker.min.js",
-      corePath: "assets/libs/tesseract.js/core",
-      langPath: "assets/libs/tesseract.js/lang",
-      logger: function (mesaj) {
-        if (islemNo !== ocrIslemNo || mesaj.status !== "recognizing text") return;
-        var ilerleme = 18 + ((tamamlananSayfa + (Number(mesaj.progress) || 0)) / Math.max(1, toplamSayfa)) * 74;
-        ocrIlerlemeGuncelle(Math.min(92, Math.max(ocrProgressValue, ilerleme)), "Belge " + (mevcutBelge + 1) + "/" + files.length + " okunuyor", "OCR işlemi yalnızca bu cihazın tarayıcısında yapılıyor.");
+    var durum = {belge: 0, tamamlanan: 0, toplamAdim: files.length * 2};
+    var worker = null;
+
+    async function workerAl() {
+      if (worker) return worker;
+      ocrIlerlemeGuncelle(Math.max(ocrProgressValue, 12), "OCR motoru hazırlanıyor", "Türkçe ve İngilizce dil modelleri cihazınıza yükleniyor.");
+      worker = await window.Tesseract.createWorker(["tur", "eng"], window.Tesseract.OEM.LSTM_ONLY, {
+        workerPath: "assets/libs/tesseract.js/worker.min.js",
+        corePath: "assets/libs/tesseract.js/core",
+        langPath: "assets/libs/tesseract.js/lang",
+        logger: function (mesaj) {
+          if (islemNo !== ocrIslemNo || mesaj.status !== "recognizing text") return;
+          var ilerleme = 15 + ((durum.tamamlanan + (Number(mesaj.progress) || 0)) / Math.max(1, durum.toplamAdim)) * 77;
+          ocrIlerlemeGuncelle(Math.min(92, Math.max(ocrProgressValue, ilerleme)), "Belge " + (durum.belge + 1) + "/" + files.length + " okunuyor", "OCR işlemi yalnızca bu cihazın tarayıcısında yapılıyor.");
+        }
+      });
+      await worker.setParameters({
+        tessedit_pageseg_mode: window.Tesseract.PSM.AUTO,
+        preserve_interword_spaces: "1",
+        user_defined_dpi: "300"
+      });
+      aktifOcrWorker = worker;
+      return worker;
+    }
+
+    async function sayfayiOku(canvas) {
+      var motor = await workerAl();
+      var ilkSonuc = await motor.recognize(canvas);
+      var metin = String(ilkSonuc.data.text || "");
+      var guven = Number(ilkSonuc.data.confidence) || 0;
+      if (metin.replace(/\s/gu, "").length < 140) {
+        await motor.setParameters({tessedit_pageseg_mode: window.Tesseract.PSM.SPARSE_TEXT});
+        var ikinciSonuc = await motor.recognize(canvas);
+        await motor.setParameters({tessedit_pageseg_mode: window.Tesseract.PSM.AUTO});
+        var ikinciMetin = String(ikinciSonuc.data.text || "");
+        if (ikinciMetin.replace(/\s/gu, "").length > metin.replace(/\s/gu, "").length) {
+          metin = metin + "\n" + ikinciMetin;
+          guven = Math.max(guven, Number(ikinciSonuc.data.confidence) || 0);
+        }
       }
-    });
-    await aktifOcrWorker.setParameters({
-      tessedit_pageseg_mode: window.Tesseract.PSM.AUTO,
-      preserve_interword_spaces: "1",
-      user_defined_dpi: "200"
-    });
-    ocrIlerlemeGuncelle(18, "Belgeler hazırlanıyor", "Görseller OCR için tarayıcı belleğinde hazırlanıyor.");
+      durum.tamamlanan++;
+      canvas.width = canvas.height = 1;
+      return {metin: metin, guven: guven};
+    }
+
+    ocrIlerlemeGuncelle(8, "Belgeler hazırlanıyor", "Belgeler tarayıcı belleğinde okunmaya hazırlanıyor.");
     var sonucBelgeleri = [];
-    for (mevcutBelge = 0; mevcutBelge < files.length; mevcutBelge++) {
+    for (durum.belge = 0; durum.belge < files.length; durum.belge++) {
       if (islemNo !== ocrIslemNo) throw new Error("OCR işlemi iptal edildi.");
-      var canvases = dosyaPdfMi(files[mevcutBelge]) ? await pdfCanvaslariniYap(files[mevcutBelge]) : [await gorseliCanvasYap(files[mevcutBelge])];
-      toplamSayfa += canvases.length - 1;
-      var metinler = [], guvenler = [];
-      for (mevcutSayfa = 0; mevcutSayfa < canvases.length; mevcutSayfa++) {
-        var sonuc = await aktifOcrWorker.recognize(canvases[mevcutSayfa]);
-        metinler.push(sonuc.data.text || "");
-        guvenler.push(Number(sonuc.data.confidence) || 0);
-        tamamlananSayfa++;
-        canvases[mevcutSayfa].width = canvases[mevcutSayfa].height = 1;
-      }
+      var sayfalar = dosyaPdfMi(files[durum.belge])
+        ? await pdfSayfalariniOku(files[durum.belge], sayfayiOku)
+        : [await sayfayiOku(await gorseliCanvasYap(files[durum.belge]))];
+      var guvenler = sayfalar.map(function (sayfa) { return Number(sayfa.guven) || 0; }).filter(function (deger) { return deger > 0; });
       sonucBelgeleri.push({
-        metin: metinler.join("\n"),
+        metin: sayfalar.map(function (sayfa) { return sayfa.metin; }).join("\n"),
         guven: guvenler.length ? guvenler.reduce(function (a, b) { return a + b; }, 0) / guvenler.length : 0
       });
+      durum.tamamlanan = Math.max(durum.tamamlanan, (durum.belge + 1) * (durum.toplamAdim / files.length));
     }
     ocrIlerlemeGuncelle(96, "Bilgiler ayrıştırılıyor", "Kimlik, adres ve belge alanları cihazınızda kontrol ediliyor.");
     return window.PersonelBelgeOcrAyristirici.analiz(sonucBelgeleri);
