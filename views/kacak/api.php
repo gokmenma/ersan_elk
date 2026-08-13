@@ -906,6 +906,7 @@ function kacakFotoYukle(KacakKontrolModel $Kacak, int $kacakId, int $userId, ?ar
     if (!empty($_FILES['videolar']['name'])) {
         $sureler = $_POST['video_sureleri'] ?? [];
         $kapaklar = $_POST['video_kapaklari'] ?? [];
+        $cekimler = $_POST['video_cekimleri'] ?? [];
         $videoFiles = [];
 
         if (is_array($_FILES['videolar']['name'])) {
@@ -932,6 +933,7 @@ function kacakFotoYukle(KacakKontrolModel $Kacak, int $kacakId, int $userId, ?ar
                     ],
                     'sure' => isset($sureler[$i]) && is_numeric($sureler[$i]) ? (int) ceil((float) $sureler[$i]) : null,
                     'kapak' => isset($kapaklar[$i]) ? (string) $kapaklar[$i] : null,
+                    'cekim' => $cekimler[$i] ?? null,
                     'name' => $ad
                 ];
             }
@@ -940,10 +942,12 @@ function kacakFotoYukle(KacakKontrolModel $Kacak, int $kacakId, int $userId, ?ar
             if ($hataKodu === UPLOAD_ERR_OK) {
                 $sure = is_array($sureler) ? ($sureler[0] ?? null) : $sureler;
                 $kapak = is_array($kapaklar) ? ($kapaklar[0] ?? null) : $kapaklar;
+                $cekim = is_array($cekimler) ? ($cekimler[0] ?? null) : $cekimler;
                 $videoFiles[] = [
                     'file' => $_FILES['videolar'],
                     'sure' => is_numeric($sure) ? (int) ceil((float) $sure) : null,
                     'kapak' => !empty($kapak) ? (string) $kapak : null,
+                    'cekim' => $cekim,
                     'name' => $_FILES['videolar']['name']
                 ];
             } else {
@@ -964,7 +968,8 @@ function kacakFotoYukle(KacakKontrolModel $Kacak, int $kacakId, int $userId, ?ar
                     $vItem['sure'],
                     $vItem['kapak']
                 );
-                $Kacak->addVideo($kacakId, $sonuc['yol'], $sonuc['kapak'], $sonuc['sure_saniye'], $vItem['name'], null, $userId);
+                $Kacak->addVideo($kacakId, $sonuc['yol'], $sonuc['kapak'], $sonuc['sure_saniye'], $vItem['name'], null, $userId,
+                    KacakKontrolModel::cekimBilgisiCoz(null, $vItem['cekim'] ?? null));
                 $eklenen++;
             } catch (\Throwable $e) {
                 $uyarilar[] = $vItem['name'] . ': ' . $e->getMessage();

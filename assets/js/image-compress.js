@@ -284,7 +284,20 @@
     }
 
     // Videonun süresini okur, boyutunu düşürür ve ilk karesinden kapak görseli üretir.
+    // Sıkıştırma yeni bir File ürettiği için çekim anı ham dosyadan alınır;
+    // aksi halde videonun tarihi sıkıştırma anı olarak görünür.
     function videoIncele(dosya, maxSure, maxByte, otosikistir) {
+        var cekim = (typeof ExifCekim !== "undefined" && ExifCekim && ExifCekim.dosyaTarihi)
+            ? ExifCekim.dosyaTarihi(dosya)
+            : "";
+
+        return videoyuIncele(dosya, maxSure, maxByte, otosikistir).then(function (sonuc) {
+            sonuc.cekim = cekim;
+            return sonuc;
+        });
+    }
+
+    function videoyuIncele(dosya, maxSure, maxByte, otosikistir) {
         otosikistir = otosikistir !== false;
         return new Promise(function (coz, ret) {
             if (!dosya || !dosya.type || dosya.type.indexOf("video/") !== 0) {

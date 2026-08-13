@@ -184,14 +184,20 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
 
     /* Çekim ile yükleme arasında uzun boşluk olan fotoğrafları öne çıkarır. */
     @keyframes kacakGecikmeNabzi {
-        0%   { box-shadow: 0 0 0 0 rgba(255, 193, 7, .7); }
-        70%  { box-shadow: 0 0 0 8px rgba(255, 193, 7, 0); }
+        0%   { box-shadow: 0 0 0 0 rgba(255, 193, 7, .85); }
+        70%  { box-shadow: 0 0 0 10px rgba(255, 193, 7, 0); }
         100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
     }
 
     .kacak-gecikme-pulse {
-        animation: kacakGecikmeNabzi 1.8s infinite;
-        border: 1px solid var(--bs-warning) !important;
+        animation: kacakGecikmeNabzi 1.6s infinite;
+        border: 2px solid var(--bs-warning) !important;
+        position: relative;
+        z-index: 1;
+    }
+
+    .btn-foto.kacak-gecikme-pulse {
+        color: var(--bs-warning) !important;
     }
 
     .kacak-foto-thumb.kacak-gecikme-pulse {
@@ -1891,12 +1897,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     console.error('Çekim tarihi okunamadı:', hata);
                 }
             }
-            if (!dosya || !dosya.lastModified) return '';
-            const t = new Date(dosya.lastModified);
-            if (isNaN(t.getTime())) return '';
-            const iki = s => String(s).padStart(2, '0');
-            return `dosya|${t.getFullYear()}-${iki(t.getMonth() + 1)}-${iki(t.getDate())} `
-                + `${iki(t.getHours())}:${iki(t.getMinutes())}:${iki(t.getSeconds())}`;
+            return window.ExifCekim ? window.ExifCekim.dosyaTarihi(dosya) : '';
         }
 
         async function kacakFormGonder(onaylaSonrasinda) {
@@ -1948,6 +1949,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 fd.delete('videolar[]');
                 kacakSeciliVideolar.forEach(v => {
                     fd.append('videolar[]', v.dosya, v.dosya.name);
+                    fd.append('video_cekimleri[]', v.cekim || '');
                     fd.append('video_sureleri[]', v.sure);
                     fd.append('video_kapaklari[]', v.kapak || '');
                 });

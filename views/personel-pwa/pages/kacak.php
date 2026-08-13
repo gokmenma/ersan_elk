@@ -1437,6 +1437,7 @@ $videoMaxSure = KacakKontrolModel::VIDEO_MAX_SURE;
                     fd.append('video', v.dosya, v.dosya.name);
                     if (v.sure) fd.append('sure', v.sure);
                     if (v.kapak) fd.append('kapak', v.kapak);
+                    fd.append('video_cekim', v.cekim || '');
 
                     const url = 'api.php?action=addKacakVideo' + (typeof targetIdOrUuid === 'string' && !targetIdOrUuid.includes('-') ? '&edit_token=' + encodeURIComponent(targetIdOrUuid) : '');
 

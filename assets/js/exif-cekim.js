@@ -139,6 +139,16 @@
     }
 
     /**
+     * EXIF'i olmayan dosyalar (video, PNG, ekran görüntüsü) için tek yedek:
+     * cihazdaki dosya tarihi. Senkron çalışır, video seçiminde de kullanılır.
+     */
+    function dosyaTarihi(dosya) {
+        if (!dosya || !dosya.lastModified) return "";
+        var metin = tarihMetni(new Date(dosya.lastModified));
+        return metin ? "dosya|" + metin : "";
+    }
+
+    /**
      * Ham fotoğraftan çekim anını çıkarır.
      * Dönen değer sunucuya gönderilecek "kaynak|Y-m-d H:i:s" biçimidir;
      * hiçbir bilgi bulunamazsa boş metin döner.
@@ -146,11 +156,7 @@
     function oku(dosya) {
         if (!dosya) return Promise.resolve("");
 
-        var yedek = "";
-        if (dosya.lastModified) {
-            var dosyaTarihi = tarihMetni(new Date(dosya.lastModified));
-            if (dosyaTarihi) yedek = "dosya|" + dosyaTarihi;
-        }
+        var yedek = dosyaTarihi(dosya);
 
         var tip = dosya.type || "";
         if (tip !== "image/jpeg" && tip !== "image/jpg") {
@@ -167,5 +173,5 @@
         });
     }
 
-    global.ExifCekim = { oku: oku };
+    global.ExifCekim = { oku: oku, dosyaTarihi: dosyaTarihi };
 })(typeof self !== "undefined" ? self : this);

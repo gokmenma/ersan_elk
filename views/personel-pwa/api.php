@@ -4837,6 +4837,7 @@ try {
             if (!empty($_FILES['videolar']['name']) && is_array($_FILES['videolar']['name'])) {
                 $videoSureleri = $_POST['video_sureleri'] ?? [];
                 $videoKapaklari = $_POST['video_kapaklari'] ?? [];
+                $videoCekimleri = $_POST['video_cekimleri'] ?? [];
                 foreach ($_FILES['videolar']['name'] as $i => $ad) {
                     if (empty($ad) || ($_FILES['videolar']['error'][$i] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) continue;
                     try {
@@ -4851,7 +4852,8 @@ try {
                             isset($videoSureleri[$i]) && is_numeric($videoSureleri[$i]) ? (int) ceil((float) $videoSureleri[$i]) : null,
                             isset($videoKapaklari[$i]) ? (string) $videoKapaklari[$i] : null
                         );
-                        $KacakModel->addVideo($kacakId, $videoSonuc['yol'], $videoSonuc['kapak'], $videoSonuc['sure_saniye'], $ad, (int) $personel_id);
+                        $KacakModel->addVideo($kacakId, $videoSonuc['yol'], $videoSonuc['kapak'], $videoSonuc['sure_saniye'], $ad, (int) $personel_id, null,
+                            \App\Model\KacakKontrolModel::cekimBilgisiCoz(null, $videoCekimleri[$i] ?? null));
                     } catch (\Throwable $e) {
                         error_log('PWA kaçak videosu güncellemede yüklenemedi: ' . $e->getMessage());
                     }
@@ -5103,7 +5105,9 @@ try {
                     $videoSonuc['kapak'],
                     $videoSonuc['sure_saniye'],
                     $_FILES['video']['name'],
-                    (int) $personel_id
+                    (int) $personel_id,
+                    null,
+                    \App\Model\KacakKontrolModel::cekimBilgisiCoz(null, $_POST['video_cekim'] ?? null)
                 );
             } catch (\Throwable $e) {
                 error_log('PWA kaçak videosu yüklenemedi: kacak_id=' . $videoKacakId . ' hata=' . $e->getMessage());

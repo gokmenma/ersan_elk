@@ -830,11 +830,12 @@ class KacakKontrolModel extends Model
         ?int $sureSaniye,
         ?string $orijinalAd = null,
         ?int $personelId = null,
-        ?int $userId = null
+        ?int $userId = null,
+        ?array $cekim = null
     ): int {
         $stmt = $this->db->prepare("INSERT INTO kacak_kontrol_fotograflari
-            (firma_id, kacak_id, tur, medya_tipi, dosya_yolu, kucuk_yol, sure_saniye, orijinal_ad, yukleyen_personel_id, yukleyen_user_id)
-            VALUES (?, ?, 'saha', 'video', ?, ?, ?, ?, ?, ?)");
+            (firma_id, kacak_id, tur, medya_tipi, dosya_yolu, kucuk_yol, sure_saniye, orijinal_ad, cekim_tarihi, cekim_kaynak, yukleyen_personel_id, yukleyen_user_id)
+            VALUES (?, ?, 'saha', 'video', ?, ?, ?, ?, ?, ?, ?, ?)");
         $stmt->execute([
             $this->firmaId(),
             $kacakId,
@@ -842,6 +843,8 @@ class KacakKontrolModel extends Model
             $kapakYolu,
             $sureSaniye,
             $orijinalAd,
+            $cekim['tarih'] ?? null,
+            $cekim['kaynak'] ?? null,
             $personelId,
             $userId,
         ]);
