@@ -390,7 +390,6 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     <div class="col-xl-5"><div class="kd-card"><div class="kd-panel-head"><h6 class="mb-0">İlçe × tür dağılımı</h6><small class="text-muted">Aktif + onay bekleyen</small></div><div class="kd-panel-body table-responsive"><table class="table table-sm align-middle mb-0"><thead><tr><th>İlçe</th><th class="kd-stack-col">Dağılım</th><th class="text-end">Kaçak</th><th class="text-end">Abonesiz</th><th class="text-end">Usülsüz</th><th class="text-end">Aktif</th><th class="text-end">+ Bekleyen</th></tr></thead><tbody id="dashboardIlceTablo"></tbody></table></div></div></div>
                 </div>
                 <div class="kd-card"><div class="kd-panel-head"><h6 class="mb-0">Ekip performansı</h6><small class="text-muted">Günlük verime göre karşılaştırma</small></div><div class="kd-panel-body table-responsive"><table class="table table-sm table-hover align-middle mb-0"><thead><tr><th>Ekip</th><th class="text-end">Aktif</th><th class="text-end">Çalışılan gün</th><th>Günlük verim</th><th class="text-end">+ Bekleyen</th><th class="text-end">Son işlem</th></tr></thead><tbody id="dashboardEkipTablo"></tbody></table></div></div>
-                    </div>
             </div>
         </div>
 
