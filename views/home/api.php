@@ -327,6 +327,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 echo safeJsonEncode(['status' => 'success', 'data' => $endeksModel->getMonthlyComparisonByDay()]);
                 break;
 
+            case 'get-kesme-comparison':
+                echo safeJsonEncode(['status' => 'success', 'data' => $puantajModel->getKesmeMonthlyComparisonByDay()]);
+                break;
+
             case 'get-dashboard-operational-stats':
                 // Legacy support (optional, can be redirected to batch-load-all)
                 $endeksModel = new EndeksOkumaModel();

@@ -167,6 +167,7 @@ if ($page == "hakedisler/hakedis-detay") {
     $page == "raporlar/riskli-islemler" ||
     $page == "ihbar/list" ||
     $page == "kacak/list" ||
+    $page == "kesme-acma/list" ||
     $page == "menu-yonetimi/list"
 ) { ?>
 

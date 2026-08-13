@@ -18,7 +18,7 @@ if (Gate::allows("log_kayitlari")) {
 
         <div class="row">
             <div class="col-12">
-                <div class="card border-0 shadow-sm" style="border-radius: 12px; background: #fff;">
+                <div class="card border-0 shadow-sm logs-page-card" style="border-radius: 12px; background: #fff;">
                     <div class="card-header border-bottom-0 pb-0 d-flex justify-content-between align-items-center flex-wrap gap-3" style="border-bottom: 1px solid rgba(226,232,240,0.6) !important;">
                         <h5 class="card-title mb-0 d-flex align-items-center gap-2 mb-3 mt-1" style="font-family: 'Outfit', sans-serif;">
                             <i class="bx bx-list-ul text-primary fs-4"></i> Sistem Kayıtları
@@ -155,6 +155,72 @@ if (Gate::allows("log_kayitlari")) {
 
         <!-- Log Detay Modal -->
         <style>
+            [data-bs-theme="dark"] .logs-page-card {
+                background: var(--bs-card-bg, #222830) !important;
+                border: 1px solid var(--bs-card-border-color, #2b333e) !important;
+                color: #cbd5e1;
+            }
+            [data-bs-theme="dark"] .logs-page-card > .card-header {
+                background: transparent !important;
+                border-bottom-color: #36404a !important;
+            }
+            [data-bs-theme="dark"] .logs-page-card .card-title {
+                color: #f1f5f9 !important;
+            }
+            [data-bs-theme="dark"] .logs-page-card .nav-tabs {
+                border-bottom-color: transparent !important;
+            }
+            [data-bs-theme="dark"] .logs-page-card .nav-tabs .nav-link {
+                background: #171d23 !important;
+                border-color: #303944 !important;
+                color: #aeb8c5 !important;
+            }
+            [data-bs-theme="dark"] .logs-page-card .nav-tabs .nav-link:hover {
+                background: #2b343e !important;
+                color: #f8fafc !important;
+            }
+            [data-bs-theme="dark"] .logs-page-card .nav-tabs .nav-link.active {
+                background: #37424e !important;
+                border-color: #52606e !important;
+                color: #ffffff !important;
+            }
+            [data-bs-theme="dark"] .logs-page-card .table-responsive,
+            [data-bs-theme="dark"] .logs-page-card .table,
+            [data-bs-theme="dark"] .logs-page-card .table > :not(caption) > * > * {
+                background-color: transparent !important;
+                --bs-table-bg: transparent;
+                --bs-table-accent-bg: transparent;
+                color: #b8c2cf !important;
+            }
+            [data-bs-theme="dark"] .logs-page-card .table thead,
+            [data-bs-theme="dark"] .logs-page-card .table thead tr,
+            [data-bs-theme="dark"] .logs-page-card .table thead th {
+                background: #29313c !important;
+                color: #e2e8f0 !important;
+                border-color: #3b4652 !important;
+            }
+            [data-bs-theme="dark"] .logs-page-card .table tbody td {
+                border-color: #35404b !important;
+            }
+            [data-bs-theme="dark"] .logs-page-card .table-hover > tbody > tr:hover > * {
+                background-color: #2a333d !important;
+                color: #f8fafc !important;
+            }
+            [data-bs-theme="dark"] .logs-page-card .dataTables_length,
+            [data-bs-theme="dark"] .logs-page-card .dataTables_filter,
+            [data-bs-theme="dark"] .logs-page-card .dataTables_info,
+            [data-bs-theme="dark"] .logs-page-card .dataTables_paginate,
+            [data-bs-theme="dark"] .logs-page-card .dataTables_length label,
+            [data-bs-theme="dark"] .logs-page-card .dataTables_filter label {
+                color: #aeb8c5 !important;
+            }
+            [data-bs-theme="dark"] .logs-page-card .dataTables_length select,
+            [data-bs-theme="dark"] .logs-page-card .dataTables_filter input {
+                background-color: #171d23 !important;
+                border-color: #3b4652 !important;
+                color: #f8fafc !important;
+            }
+
             #modalLogDetay .modal-content {
                 border: none;
                 border-radius: 20px;
@@ -219,6 +285,36 @@ if (Gate::allows("log_kayitlari")) {
             }
             #modalLogDetay .btn-close-modal {
                 background: linear-gradient(135deg, #4361ee, #3a0ca3); color: #fff; border: none; padding: 0.55rem 1.75rem; border-radius: 10px; font-size: 0.875rem; font-weight: 600; box-shadow: 0 4px 14px rgba(67, 97, 238, 0.35);
+            }
+            [data-bs-theme="dark"] #modalLogDetay .modal-content,
+            [data-bs-theme="dark"] #modalLogDetay .modal-body,
+            [data-bs-theme="dark"] #modalLogDetay .modal-footer {
+                background-color: #222830 !important;
+                color: #cbd5e1 !important;
+            }
+            [data-bs-theme="dark"] #modalLogDetay .log-meta-card,
+            [data-bs-theme="dark"] #modalLogDetay .log-content-box {
+                background: #191f26 !important;
+                border-color: #3a4551 !important;
+            }
+            [data-bs-theme="dark"] #modalLogDetay .log-meta-value,
+            [data-bs-theme="dark"] #modalLogDetay .log-content-box {
+                color: #e2e8f0 !important;
+            }
+            [data-bs-theme="dark"] #modalLogDetay .log-content-box > div > span {
+                color: #e2e8f0 !important;
+            }
+            [data-bs-theme="dark"] #modalLogDetay .section-divider::before,
+            [data-bs-theme="dark"] #modalLogDetay .section-divider::after {
+                background: #3a4551;
+            }
+            [data-bs-theme="dark"] #modalLogDetay .change-table {
+                border-color: #3a4551;
+            }
+            [data-bs-theme="dark"] #modalLogDetay .change-table tbody td {
+                background: #222830 !important;
+                border-color: #3a4551 !important;
+                color: #cbd5e1 !important;
             }
         </style>
 

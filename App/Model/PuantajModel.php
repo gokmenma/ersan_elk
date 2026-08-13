@@ -1124,6 +1124,72 @@ class PuantajModel extends Model
     }
 
     /**
+     * Ana sayfa Kesme/Açma karşılaştırma kartı için ayın aynı gün aralığındaki veriler.
+     */
+    public function getKesmeMonthlyComparisonByDay(): array
+    {
+        $dayOfMonth = (int) date('j');
+        $monthNames = [1 => 'Ocak', 2 => 'Şubat', 3 => 'Mart', 4 => 'Nisan', 5 => 'Mayıs', 6 => 'Haziran', 7 => 'Temmuz', 8 => 'Ağustos', 9 => 'Eylül', 10 => 'Ekim', 11 => 'Kasım', 12 => 'Aralık'];
+        $periods = [];
+
+        for ($offset = 2; $offset >= 0; $offset--) {
+            $date = new \DateTime('first day of this month');
+            if ($offset > 0) {
+                $date->modify("-{$offset} months");
+            }
+            $maxDay = min($dayOfMonth, (int) $date->format('t'));
+            $periods[] = [
+                'start' => $date->format('Y-m-01'),
+                'end' => $date->format('Y-m-') . str_pad((string) $maxDay, 2, '0', STR_PAD_LEFT),
+                'label' => $monthNames[(int) $date->format('n')] . ' ' . $date->format('Y'),
+                'is_current' => $offset === 0
+            ];
+        }
+
+        $result = $this->getComparisonByPeriods($periods, 'kesme');
+        $result['periods'] = $periods;
+        $result['gun'] = $dayOfMonth;
+
+        $firmaId = (int) ($_SESSION['firma_id'] ?? 0);
+        $current = $periods[count($periods) - 1];
+        $workTypeSql = "SELECT TRIM(is_emri_sonucu) FROM tanimlamalar
+                        WHERE grup = 'is_turu' AND rapor_sekmesi = ? AND silinme_tarihi IS NULL";
+        $workTypeStmt = $this->db->prepare($workTypeSql);
+        $workTypeStmt->execute(['kesme']);
+        $workTypes = $workTypeStmt->fetchAll(PDO::FETCH_COLUMN);
+        if ($workTypes === []) {
+            $fallbackStmt = $this->db->prepare("SELECT TRIM(is_emri_sonucu) FROM tanimlamalar WHERE grup = ? AND is_turu_ucret > ? AND silinme_tarihi IS NULL");
+            $fallbackStmt->execute(['is_turu', 0]);
+            $workTypes = $fallbackStmt->fetchAll(PDO::FETCH_COLUMN);
+        }
+
+        $params = [$firmaId, $current['start'], $current['end']];
+        $workTypeClause = '';
+        if ($workTypes !== []) {
+            $placeholders = implode(',', array_fill(0, count($workTypes), '?'));
+            $workTypeClause = " AND TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)) IN ($placeholders)";
+            $params = array_merge($params, $workTypes);
+        }
+
+        $distributionSql = "SELECT COALESCE(NULLIF(TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)), ''), 'BELİRTİLMEMİŞ') AS sonuc,
+                                   COUNT(*) AS kayit_sayisi, COALESCE(SUM(t.sonuclanmis), 0) AS toplam
+                            FROM {$this->table} t
+                            LEFT JOIN tanimlamalar tn ON t.is_emri_sonucu_id = tn.id
+                            WHERE t.firma_id = ? AND t.tarih BETWEEN ? AND ? AND t.silinme_tarihi IS NULL {$workTypeClause}
+                            GROUP BY COALESCE(NULLIF(TRIM(COALESCE(tn.is_emri_sonucu, t.is_emri_sonucu)), ''), 'BELİRTİLMEMİŞ')
+                            ORDER BY toplam DESC";
+        $distributionStmt = $this->db->prepare($distributionSql);
+        $distributionStmt->execute($params);
+        $result['result_distribution'] = array_map(static fn($row) => [
+            'sonuc' => (string) $row->sonuc,
+            'kayit_sayisi' => (int) $row->kayit_sayisi,
+            'toplam' => (int) $row->toplam
+        ], $distributionStmt->fetchAll(PDO::FETCH_OBJ));
+
+        return $result;
+    }
+
+    /**
      * Kaçak kontrol karşılaştırma raporu (ekip bazlı)
      */
     public function getKacakComparisonByPeriods(array $periods, $region = ''): array

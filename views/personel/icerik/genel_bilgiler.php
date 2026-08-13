@@ -98,6 +98,13 @@ use App\Helper\Security;
                     <div class="col-md-6 mb-2">
                         <?php echo Form::FormSelect2("seyahat_engeli", ['Var' => 'Var', 'Yok' => 'Yok'], $personel->seyahat_engeli ?? 'Yok', "Seyahat Engeli", "truck"); ?>
                     </div>
+                    <?php if (\App\Model\KesmeNobetModel::sutunVar('personel', 'telefon_nobeti_tutar')): ?>
+                        <div class="col-md-6 mb-2">
+                            <?php echo Form::FormSelect2("telefon_nobeti_tutar", ['0' => 'Hayır', '1' => 'Evet'],
+                                (string) ($personel->telefon_nobeti_tutar ?? '0'), "Telefon Nöbeti Tutar", "phone"); ?>
+                            <small class="text-muted d-block mt-1 ms-1">Kesme/Açma modülündeki ofis telefon nöbeti bu personeller arasında dağıtılır.</small>
+                        </div>
+                    <?php endif; ?>
                 </div>
             </div>
         </div>

@@ -1,0 +1,123 @@
+-- =====================================================================
+-- Kesme / Açma Modülü — mahalle havuzu ilk verisi (99 mahalle)
+-- Kaynak: kesme-acma-modul-demo.html içindeki Onikişubat / Dulkadiroğlu listesi
+--
+-- ÖNEMLİ: Yalnızca mahalle havuzu (ad, ilçe, kod aralığı, girilmiyor işareti)
+-- yüklenir. Mesaj tarihleri ve atamalar demo verisidir, buraya alınmamıştır;
+-- onlar ekrandan girilecektir.
+--
+-- Çalıştırmadan önce firma id'si aşağıya yazılmalıdır:
+--   SELECT id, firma_adi FROM firmalar;
+-- =====================================================================
+
+SET @firma_id = 1;
+
+INSERT INTO `mahalle` (`firma_id`, `ad`, `ilce`, `kod_araligi`, `havuzda`)
+VALUES
+    (@firma_id, 'YUSUFLAR', 'onikisubat', '140-144', 1),
+    (@firma_id, 'DUMLUPINAR', 'onikisubat', '570-574', 1),
+    (@firma_id, 'HAYRULLAH', 'onikisubat', '680-684', 1),
+    (@firma_id, 'ŞAZİBEY', 'onikisubat', '690-694', 1),
+    (@firma_id, 'GAYBERLİ', 'onikisubat', '160-162', 1),
+    (@firma_id, 'BARBAROS', 'onikisubat', '290-292', 1),
+    (@firma_id, 'MALİK EJDER', 'onikisubat', '310-311', 1),
+    (@firma_id, 'ORUÇ REİS', 'onikisubat', '320-322', 1),
+    (@firma_id, 'PİRİ REİS', 'onikisubat', '420-423', 1),
+    (@firma_id, 'AĞCALI', 'onikisubat', '424-425', 1),
+    (@firma_id, 'MOLLAGÜRANİ', 'onikisubat', '410-412', 1),
+    (@firma_id, 'KARACAOĞLAN', 'onikisubat', '400-403', 1),
+    (@firma_id, 'MEVLANA', 'onikisubat', '510-511', 1),
+    (@firma_id, 'ERTUĞRULGAZİ', 'onikisubat', '120-123', 1),
+    (@firma_id, 'KARAMANLI', 'onikisubat', '610-614', 1),
+    (@firma_id, 'ORHANGAZİ (MERCİMEKTEPE)', 'onikisubat', '670-672', 1),
+    (@firma_id, 'ABDÜLHAMİTHAN', 'onikisubat', '500-503', 1),
+    (@firma_id, 'YUNUSEMRE', 'onikisubat', '720-723', 1),
+    (@firma_id, 'AKİFİNAN', 'onikisubat', '730-734', 1),
+    (@firma_id, 'Ş. ABDULLAH ÇAVUŞ', 'onikisubat', '740-744', 1),
+    (@firma_id, 'HAYDARBEY', 'onikisubat', '1750-1754', 1),
+    (@firma_id, 'VADİ', 'onikisubat', '751', 1),
+    (@firma_id, 'BOĞAZİÇİ', 'onikisubat', '3753-3754', 1),
+    (@firma_id, 'TEKEREK', 'onikisubat', '810-813', 1),
+    (@firma_id, 'MARİF', 'onikisubat', '755', 1),
+    (@firma_id, 'YİRMİİKİGÜN', 'onikisubat', '300-304', 1),
+    (@firma_id, 'YAMAÇTEPE', 'onikisubat', '646-647', 1),
+    (@firma_id, 'ÜNGÜT', 'onikisubat', '640-642', 1),
+    (@firma_id, 'GEDEMEN', 'onikisubat', '643', 1),
+    (@firma_id, 'KAVLAKLI', 'onikisubat', '910-912', 1),
+    (@firma_id, 'BULUTOĞLU', 'onikisubat', '920', 0),
+    (@firma_id, 'HASANCIKLI', 'onikisubat', '919', 1),
+    (@firma_id, 'KILAVUZLU', 'onikisubat', '645', 1),
+    (@firma_id, 'CUMHURİYET', 'onikisubat', '170-172', 1),
+    (@firma_id, 'İSTİKLAL', 'onikisubat', '90-93', 1),
+    (@firma_id, 'BİNEVLER', 'onikisubat', '800-804', 1),
+    (@firma_id, 'SÜLEYMANŞAH', 'onikisubat', '590-594', 1),
+    (@firma_id, 'BEŞNİSAN', 'onikisubat', '600-602', 1),
+    (@firma_id, 'HÜRRİYET', 'onikisubat', '760-764', 1),
+    (@firma_id, 'MİMAR SİNAN', 'onikisubat', '780-784', 1),
+    (@firma_id, 'SELÇUKLU', 'onikisubat', '770-773', 1),
+    (@firma_id, 'NECİP FAZIL', 'onikisubat', '790-794', 1),
+    (@firma_id, 'FATİH', 'onikisubat', '440-442', 1),
+    (@firma_id, 'TAVŞANTEPE', 'onikisubat', '470-473', 1),
+    (@firma_id, 'SAÇAKLIZADE', 'onikisubat', '700-704', 1),
+    (@firma_id, 'OSMANGAZİ', 'onikisubat', '450-454', 1),
+    (@firma_id, 'ÇAMLIK', 'onikisubat', '620-622', 1),
+    (@firma_id, 'SERİNTEPE', 'onikisubat', '150-154', 1),
+    (@firma_id, 'MAĞRALI', 'onikisubat', '380-384', 1),
+    (@firma_id, 'YÖRÜKSELİM', 'onikisubat', '340-343', 1),
+    (@firma_id, 'AKÇAKOYUNLU', 'onikisubat', '490-492', 1),
+    (@firma_id, 'ŞEHİT EVLİYA', 'onikisubat', '200-203', 1),
+    (@firma_id, 'FEVZİPAŞA', 'dulkadiroglu', '190-192', 1),
+    (@firma_id, 'GAZİPAŞA', 'dulkadiroglu', '460-463', 1),
+    (@firma_id, 'PINARBAŞI', 'dulkadiroglu', '480-481', 1),
+    (@firma_id, 'KAYABAŞI', 'dulkadiroglu', '20-22', 1),
+    (@firma_id, 'SÜTÇÜ İMAM', 'dulkadiroglu', '110-112', 1),
+    (@firma_id, 'BAYAZITLI', 'dulkadiroglu', '80-82', 1),
+    (@firma_id, 'BALLICA', 'dulkadiroglu', '70', 1),
+    (@firma_id, 'DURAKLI', 'dulkadiroglu', '580-584', 1),
+    (@firma_id, 'SENEM AYŞE', 'dulkadiroglu', '180-182', 1),
+    (@firma_id, 'DİVANLI', 'dulkadiroglu', '330-333', 1),
+    (@firma_id, 'TURAN', 'dulkadiroglu', '710-711', 1),
+    (@firma_id, 'EKMEKÇİ', 'dulkadiroglu', '390', 1),
+    (@firma_id, 'KURTULUŞ', 'dulkadiroglu', '430-433', 1),
+    (@firma_id, 'İSMETPAŞA', 'dulkadiroglu', '650-655', 1),
+    (@firma_id, 'YENİŞEHİR', 'dulkadiroglu', '10-15', 1),
+    (@firma_id, 'MENDERES', 'dulkadiroglu', '530-533', 1),
+    (@firma_id, 'BAHÇELİEVLER', 'dulkadiroglu', '520-522', 1),
+    (@firma_id, 'EGEMENLİK', 'dulkadiroglu', '30-31', 1),
+    (@firma_id, 'İSTASYON', 'dulkadiroglu', '40', 1),
+    (@firma_id, 'OSMANBEY', 'dulkadiroglu', '944', 1),
+    (@firma_id, 'SÜMER', 'dulkadiroglu', '360-363', 1),
+    (@firma_id, 'AKSU', 'dulkadiroglu', '550-551', 1),
+    (@firma_id, 'EYÜPSULTAN', 'dulkadiroglu', '370-371', 1),
+    (@firma_id, 'ERKENEZ', 'dulkadiroglu', '560-562', 1),
+    (@firma_id, 'KARACASU KARŞIYAKA', 'dulkadiroglu', '900-902', 1),
+    (@firma_id, 'KARACASU FERHUŞ', 'dulkadiroglu', '903', 1),
+    (@firma_id, 'KARACASU KIRIM', 'dulkadiroglu', '904', 1),
+    (@firma_id, 'KARACASU MAMARAŞ', 'dulkadiroglu', '905', 1),
+    (@firma_id, 'KARACASU KARAZİYARET', 'dulkadiroglu', '906-908', 1),
+    (@firma_id, 'GENÇOSMAN', 'dulkadiroglu', '100', 1),
+    (@firma_id, 'SANAYİ (YAVUZSELİM)', 'dulkadiroglu', '660-664', 1),
+    (@firma_id, 'MEHMET AKİF', 'dulkadiroglu', '350-352', 1),
+    (@firma_id, 'YAVUZSELİM', 'dulkadiroglu', '250-253', 1),
+    (@firma_id, 'NAMIK KEMAL', 'dulkadiroglu', '260-264', 1),
+    (@firma_id, 'KANUNİ', 'dulkadiroglu', '270-273', 1),
+    (@firma_id, 'BAĞLARBAŞI', 'dulkadiroglu', '230-233', 1),
+    (@firma_id, 'DULKADİROĞLU', 'dulkadiroglu', '240-242', 1),
+    (@firma_id, 'YAHYA KEMAL', 'dulkadiroglu', '220-224', 1),
+    (@firma_id, 'GÜNEŞEVLER', 'dulkadiroglu', '635', 0),
+    (@firma_id, 'DOĞUKENT', 'dulkadiroglu', '630-634', 0),
+    (@firma_id, 'ASLANBEY', 'dulkadiroglu', '60-63', 1),
+    (@firma_id, 'ŞEYH ŞAMİL', 'dulkadiroglu', '210-213', 1),
+    (@firma_id, 'SAKARYA', 'dulkadiroglu', '50-54', 1),
+    (@firma_id, 'İSADİVANLI', 'dulkadiroglu', '540-544', 1),
+    (@firma_id, 'YENİKENT', 'dulkadiroglu', NULL, 0),
+    (@firma_id, 'ŞEYH ADİL', 'dulkadiroglu', '130-133', 1),
+    (@firma_id, 'YEŞİLTEPE', 'dulkadiroglu', '75', 1)
+ON DUPLICATE KEY UPDATE
+    `ilce` = VALUES(`ilce`),
+    `kod_araligi` = VALUES(`kod_araligi`),
+    `havuzda` = VALUES(`havuzda`);
+
+-- Doğrulama:
+--   SELECT ilce, COUNT(*) toplam, SUM(havuzda = 0) girilmiyor
+--     FROM mahalle WHERE firma_id = @firma_id GROUP BY ilce;

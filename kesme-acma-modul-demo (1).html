@@ -1,0 +1,875 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Kesme / Açma — Demo</title>
+<style>
+  :root{
+    --bg:#0f1319; --surface:#171c24; --surface-2:#1e242e; --surface-3:#232a35;
+    --line:#262d38; --line-soft:#1f2530;
+    --text:#e7ebf1; --muted:#8b95a5; --dim:#5f6a7a;
+    --accent:#6366f1; --mor:#8b5cf6; --ok:#34d399; --warn:#f0b429; --crit:#ef4444;
+    --dul:#a78bfa; --oni:#60a5fa;
+    --radius:10px;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);
+    font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    font-size:14.5px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:1340px;margin:0 auto;padding:20px 22px 70px}
+  .topbar{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:14px}
+  .topbar h1{font-size:20px;font-weight:650;margin:0}
+  .topbar .sub{color:var(--muted);font-size:13px}
+
+  .tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);
+    border-radius:var(--radius);padding:5px;margin-bottom:16px;flex-wrap:wrap}
+  .tab{background:transparent;border:0;color:var(--muted);padding:10px 17px;border-radius:7px;
+    font-size:14px;cursor:pointer;font-family:inherit}
+  .tab:hover{color:var(--text);background:var(--surface-2)}
+  .tab.on{background:var(--accent);color:#fff;font-weight:600}
+  .pane{display:none}.pane.on{display:block}
+
+  .card{background:var(--surface);border:1px solid var(--line);border-radius:var(--radius)}
+  .card-h{padding:15px 18px 0;display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:10px}
+  .card-h h2{font-size:15px;font-weight:650;margin:0}
+  .card-h p{margin:4px 0 0;color:var(--muted);font-size:12.5px;flex-basis:100%}
+  .grid{display:grid;gap:13px;margin-bottom:13px}
+  .g3{grid-template-columns:repeat(3,1fr)}
+  .g4{grid-template-columns:repeat(4,1fr)}
+
+  .big{padding:16px 18px}
+  .big .lbl{color:var(--muted);font-size:11.5px;text-transform:uppercase;letter-spacing:.6px;font-weight:600}
+  .big .val{font-size:24px;font-weight:650;margin-top:5px;letter-spacing:-.3px}
+  .big .val.num{font-size:30px;font-variant-numeric:tabular-nums}
+  .big small{display:block;color:var(--dim);font-size:12px;margin-top:3px}
+
+  .todo{padding:6px 10px 10px}
+  .trow{display:flex;align-items:center;gap:14px;padding:12px}
+  .trow+.trow{border-top:1px solid var(--line-soft)}
+  .tn{min-width:54px;text-align:center;font-size:20px;font-weight:650;font-variant-numeric:tabular-nums}
+  .tt{flex:1;font-size:13.5px}
+  .tt small{display:block;color:var(--dim);font-size:12px}
+  .c-crit{color:var(--crit)}.c-warn{color:var(--warn)}
+
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  thead th{text-align:right;color:var(--dim);font-weight:600;font-size:11px;text-transform:uppercase;
+    letter-spacing:.5px;padding:10px;border-bottom:1px solid var(--line);white-space:nowrap}
+  thead th:first-child,thead th.l{text-align:left}
+  tbody td{padding:9px 10px;border-bottom:1px solid var(--line-soft);text-align:right;font-variant-numeric:tabular-nums}
+  tbody td:first-child,tbody td.l{text-align:left}
+  tbody tr:hover{background:#1b212a}
+  tbody tr:last-child td{border-bottom:0}
+  tfoot td{padding:9px 10px;font-weight:650;border-top:1px solid var(--line);text-align:right;font-variant-numeric:tabular-nums}
+  tfoot td:first-child{text-align:left}
+  .tblWrap{padding:4px 10px 10px}
+  .nm b{font-weight:600}.nm small{display:block;color:var(--dim);font-size:11px}
+  .soft{color:var(--muted)}.zero{color:var(--dim)}
+
+  .pill{display:inline-block;padding:2px 10px;border-radius:99px;font-size:11.5px;font-weight:600;white-space:nowrap}
+  .p-dul{background:#2a2340;color:#c4b5fd}.p-oni{background:#1c2740;color:#9db8ee}
+  .p-ok{background:#12301f;color:#7ee0a8}.p-warn{background:#3a2411;color:#f5c168}
+  .p-crit{background:#3a1717;color:#ff9b9b}.p-idle{background:#20262f;color:#8b95a5}
+
+  .inp{background:var(--surface-3);border:1px solid var(--line);color:var(--text);border-radius:6px;
+    padding:5px 8px;width:70px;text-align:right;font-family:inherit;font-size:13px}
+  .inp:focus{outline:0;border-color:var(--accent)}
+  .btn{background:var(--surface-2);border:1px solid var(--line);color:var(--muted);padding:6px 14px;
+    border-radius:7px;font-size:12.5px;cursor:pointer;font-family:inherit;white-space:nowrap}
+  .btn:hover{color:var(--text);border-color:#39424f}
+  .btn.pri{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:550}
+  .btn.sm{padding:4px 10px;font-size:11.5px}
+  .filters{display:flex;gap:8px;flex-wrap:wrap;padding:12px 18px 4px}
+  .chip{background:transparent;border:1px solid var(--line);color:var(--muted);padding:6px 13px;
+    border-radius:99px;font-size:12.5px;cursor:pointer;font-family:inherit}
+  .chip.on{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:550}
+  .rule{margin:10px 18px 0;padding:10px 13px;background:var(--surface-2);border:1px solid var(--line);
+    border-radius:8px;font-size:12.5px;color:var(--muted)}
+  .rule b{color:var(--text)}
+
+  /* dashboard grafik */
+  .chartWrap{padding:10px 18px 16px}
+
+  /* nöbet takvimi */
+  .cal{padding:12px 14px 14px}
+  .calHead{display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:6px}
+  .calHead div{text-align:center;font-size:11px;color:var(--dim);text-transform:uppercase;letter-spacing:.6px;font-weight:600;padding:4px 0}
+  .calHead div.hs{color:#ef6a6a}
+  .calGrid{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+  .day{background:var(--surface-2);border:1px solid var(--line);border-radius:9px;min-height:88px;padding:7px 8px;position:relative}
+  .day.bos{background:transparent;border-color:transparent}
+  .day.hs{background:#231a24}
+  .day.today{border-color:var(--accent);box-shadow:0 0 0 1px var(--accent)}
+  .day .no{font-size:11px;color:var(--dim);text-align:right}
+  .day.today .no{color:#c3c7ff;font-weight:700}
+  .bar{margin-top:5px;background:var(--mor);color:#fff;border-radius:6px;padding:4px 7px;font-size:11px;
+    font-weight:600;text-align:center;cursor:pointer;line-height:1.25;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+  .bar:hover{filter:brightness(1.12)}
+  .bar.elle{box-shadow:inset 0 0 0 2px var(--warn)}
+  .bar.empty{background:var(--surface-3);color:var(--dim);font-weight:500;border:1px dashed #39424f}
+  .tel{margin-top:5px;font-size:10.5px;color:var(--muted);text-align:center;cursor:pointer;border-radius:5px;padding:2px 4px;background:#1a212b}
+  .tel:hover{color:var(--text)}
+  .tel.elle{box-shadow:inset 0 0 0 1px var(--warn)}
+  .day select{width:100%;margin-top:5px;background:var(--surface-3);border:1px solid var(--accent);
+    color:var(--text);border-radius:6px;padding:3px;font-size:11px;font-family:inherit}
+  .calFoot{display:flex;gap:14px;flex-wrap:wrap;padding:4px 18px 14px;font-size:11.5px;color:var(--muted);align-items:center}
+  .calFoot i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px;vertical-align:-1px}
+  .sayim{display:flex;gap:7px;flex-wrap:wrap;padding:0 18px 14px}
+  .sy{background:var(--surface-2);border:1px solid var(--line);border-radius:99px;padding:3px 11px;font-size:11.5px;color:var(--muted)}
+  .sy b{color:var(--text)}
+
+  /* geçmiş — zaman çizelgesi */
+  .gantt{padding:10px 18px 4px}
+  .gRow{display:grid;grid-template-columns:190px 1fr;gap:11px;align-items:center;padding:6px 0}
+  .gRow+.gRow{border-top:1px solid var(--line-soft)}
+  .gLab b{display:block;font-weight:600;font-size:12.5px}
+  .gLab small{display:block;color:var(--dim);font-size:11px}
+  .gTrack{position:relative;height:30px;background:var(--surface-2);border:1px solid var(--line-soft);border-radius:7px;overflow:hidden}
+  .gTrack .ay{position:absolute;top:0;bottom:0;width:1px;background:var(--line)}
+  .gSeg{position:absolute;top:3px;bottom:3px;border-radius:5px;padding:0 6px;font-size:10.5px;font-weight:650;
+    color:#10141a;display:flex;align-items:center;overflow:hidden;white-space:nowrap;text-overflow:ellipsis;cursor:default}
+  .gSeg:hover{filter:brightness(1.1)}
+  .gSeg.d{background:var(--dul)}.gSeg.o{background:var(--oni)}.gSeg.x{background:#59637a;color:#e7ebf1}
+  .gSeg.aktif{box-shadow:inset 0 0 0 2px #ffffff59}
+  .gAx{display:grid;grid-template-columns:190px 1fr;gap:11px;padding:0 18px 12px}
+  .gAxIn{position:relative;height:15px}
+  .gAxIn span{position:absolute;font-size:10.5px;color:var(--dim);transform:translateX(-50%)}
+  .gp{display:inline-block;min-width:20px;text-align:center;padding:1px 6px;border-radius:5px;
+    font-size:10.5px;font-weight:700;margin-right:3px}
+  .link{cursor:pointer}.link:hover b{color:#a5b4fc}
+
+  /* matris */
+  .mx{overflow:auto;max-height:560px;border-top:1px solid var(--line);margin-top:10px}
+  .mx table{font-size:12.5px;border-collapse:separate;border-spacing:0}
+  .mx th,.mx td{border-bottom:1px solid var(--line-soft);padding:8px 9px;white-space:nowrap}
+  .mx thead th{position:sticky;top:0;z-index:3;background:#141920;border-bottom:1px solid var(--line)}
+  .mx .stick{position:sticky;left:0;z-index:2;background:var(--surface);text-align:left;min-width:200px;cursor:pointer}
+  .mx thead .stick{z-index:4;background:#141920;cursor:default}
+  .mx td.d,.mx th.d{text-align:center;min-width:46px}
+  .mx th.d{cursor:pointer}
+  .mx th.d small{display:block;font-size:9.5px;color:var(--dim)}
+  .mx .paz{background:#ef44440e}
+  .mx th.paz,.mx th.paz small{color:#ef6a6a}
+  .mx th.sel,.mx td.sel{background:#6366f11f}
+  .mx tr.sel td{background:#6366f11f}
+  .mx tfoot td{position:sticky;bottom:0;background:#141920;text-align:center;border-top:1px solid var(--line)}
+  .mx tfoot td.stick{text-align:left}
+  .dp{display:flex;gap:9px;flex-wrap:wrap;padding:12px 18px 4px}
+  .dpi{flex:1;min-width:106px;background:var(--surface-2);border:1px solid var(--line);border-radius:8px;padding:9px 11px}
+  .dpi .k{font-size:10px;font-weight:700;padding:1px 6px;border-radius:4px;color:#0f1319}
+  .dpi .v{font-size:19px;font-weight:650;margin-top:5px;font-variant-numeric:tabular-nums}
+  .dpi small{display:block;color:var(--dim);font-size:10.5px}
+
+  @media (max-width:1000px){.g3,.g4{grid-template-columns:repeat(2,1fr)}}
+  @media (max-width:620px){.wrap{padding:12px}.g3,.g4{grid-template-columns:1fr}.day{min-height:70px}}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div class="topbar">
+    <h1><span style="color:#5f6a7a;font-weight:400">İş Takip ›</span> Kesme / Açma</h1>
+    <span class="sub">13 Ağustos 2026 Perşembe · <b style="color:#8b95a5">demo</b></span>
+  </div>
+
+  <div class="tabs" id="tabs"></div>
+
+  <!-- ========== DASHBOARD ========== -->
+  <div class="pane on" id="pane-dash">
+    <div class="grid g3">
+      <div class="card big"><div class="lbl">Bugünün saha nöbetçisi</div><div class="val" id="bgNobet">—</div><small>akşam gelen açma işlerine bakar</small></div>
+      <div class="card big"><div class="lbl">Telefon bugün kimde</div><div class="val" id="bgTel">—</div><small>ofis telefonu mesai boyunca onda</small></div>
+      <div class="card big"><div class="lbl">Atanabilir mahalle</div><div class="val num" id="bgHazir">—</div><small>mesajı atıldı, 5 günü doldu</small></div>
+    </div>
+    <div class="grid g3">
+      <div class="card big"><div class="lbl">Bu ay yapılan işlem</div><div class="val num">5.825</div><small>iş günü ortalaması 528 · ay sonu ≈ <b id="aySonu2" style="color:#b9c2cf">14.300</b></small></div>
+      <div class="card big"><div class="lbl">Sahada kalan iş</div><div class="val num" id="bgKalan">—</div><small><b style="color:#ff9b9b">648'i sahipsiz</b> — personeli ayrıldı</small></div>
+      <div class="card big"><div class="lbl">Mahallesi bitmek üzere</div><div class="val num" id="bgBiten">—</div><small>ekip · 2 gün içinde yeni mahalle gerekiyor</small></div>
+    </div>
+
+    <div class="grid" style="grid-template-columns:1.5fr 1fr">
+      <div class="card">
+        <div class="card-h"><h2>Günlük işlem</h2><span class="soft" style="font-size:12px">1–12 Ağustos · <span style="color:#ef6a6a">kırmızı = pazar</span></span></div>
+        <div class="chartWrap" id="chart"></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2>Bugün yapılacaklar</h2></div>
+        <div class="todo" id="todo"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== MAHALLELER ========== -->
+  <div class="pane" id="pane-mahalle">
+    <div class="card">
+      <div class="card-h"><h2>Mahalleler</h2><p>Onikişubat ve Dulkadiroğlu'ndaki tüm mahalleler.</p></div>
+      <div class="rule"><b>Kural:</b> Mahalleye önce mesaj atılır; mesajdan <b>5 gün sonra</b> "atanabilir" olur ve ekip gönderilebilir.</div>
+      <div class="filters" id="mFiltre"></div>
+      <div class="tblWrap"><table id="mTbl"></table></div>
+    </div>
+  </div>
+
+  <!-- ========== EKİPLER ========== -->
+  <div class="pane" id="pane-ekip">
+    <div class="card">
+      <div class="card-h"><h2>Ekipler</h2><p>"Kalan iş" her sabah elle girilir; bitiş tarihi ve mahalle önerisi kendiliğinden güncellenir.</p></div>
+      <div class="rule"><b>Kural:</b> Sıra <b>2 Dulkadiroğlu, 1 Onikişubat</b> şeklinde döner; sistem sıradaki mahalleyi kendisi önerir.</div>
+      <div class="tblWrap"><table id="eTbl"></table></div>
+    </div>
+  </div>
+
+  <!-- ========== GEÇMİŞ ========== -->
+  <div class="pane" id="pane-gecmis">
+    <div class="grid g4">
+      <div class="card big"><div class="lbl">Tamamlanan atama</div><div class="val num" id="ggBiten">—</div><small>1 Haziran'dan bugüne</small></div>
+      <div class="card big"><div class="lbl">Mahalle başına süre</div><div class="val num" id="ggSure">—</div><small>ortalama · pazar hariç iş günü</small></div>
+      <div class="card big"><div class="lbl">Geçmişte yapılan işlem</div><div class="val num" id="ggIslem">—</div><small>kapanan atamaların toplamı</small></div>
+      <div class="card big"><div class="lbl">En uzun süredir gidilmeyen</div><div class="val" id="ggEski" style="font-size:17px">—</div><small id="ggEskiAlt">—</small></div>
+    </div>
+
+    <div class="card" style="margin-bottom:13px">
+      <div class="card-h"><h2>Ekip zaman çizelgesi</h2>
+        <span class="soft" style="font-size:12px">
+          <i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--dul);margin-right:4px;vertical-align:-1px"></i>Dulkadiroğlu
+          <i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:var(--oni);margin:0 4px 0 10px;vertical-align:-1px"></i>Onikişubat
+          <i style="display:inline-block;width:10px;height:10px;border-radius:3px;background:#59637a;margin:0 4px 0 10px;vertical-align:-1px"></i>İlçe görevi</span>
+        <p>Her ekibin hangi mahallede ne kadar kaldığı. Beyaz çerçeveli kutu şu an sahada olunan mahalledir; kutunun üzerine gelince tarih ve işlem sayısı görünür.</p>
+      </div>
+      <div class="gantt" id="gantt"></div>
+      <div class="gAx"><div></div><div class="gAxIn" id="ganttAx"></div></div>
+    </div>
+
+    <div class="grid" style="grid-template-columns:1.45fr 1fr">
+      <div class="card">
+        <div class="card-h"><h2>Atama kayıtları</h2><p>ekip_mahalle_atama tablosundan; en yeni atama üstte.</p></div>
+        <div class="filters" id="gFiltre"></div>
+        <div class="tblWrap"><table id="gTbl"></table></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2>Mahalleye en son ne zaman gidildi</h2><p id="gMahNot">—</p></div>
+        <div class="tblWrap"><table id="gMahTbl"></table></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== NÖBET ========== -->
+  <div class="pane" id="pane-nobet">
+    <div class="grid g4">
+      <div class="card big"><div class="lbl">Bugün nöbetçi ekip</div><div class="val" id="nbBugun" style="font-size:20px">—</div><small>13 Ağustos Perşembe · merkez</small></div>
+      <div class="card big"><div class="lbl">Telefon bugün</div><div class="val" id="nbTelB">—</div><small>ofis telefonu mesai boyunca onda</small></div>
+      <div class="card big"><div class="lbl">Türkoğlu — bu hafta</div><div class="val" id="nbTur" style="font-size:18px">—</div><small>haftalık ilçe görevi</small></div>
+      <div class="card big"><div class="lbl">Pazarcık — bu hafta</div><div class="val" id="nbPaz" style="font-size:18px">—</div><small>haftalık ilçe görevi</small></div>
+    </div>
+    <div class="grid" style="grid-template-columns:2.1fr 1fr">
+      <div class="card">
+        <div class="card-h">
+          <h2>Ağustos 2026 — merkez nöbeti</h2>
+          <button class="btn pri" id="nbDoldur">Planı otomatik oluştur</button>
+          <p>Her gün 1 ekip nöbetçidir. O hafta ilçeye giden 2 ekip merkez nöbetine yazılmaz. Değiştirmek için kutuya tıkla — elle değişenler sarı çerçeve alır ve otomatik üretim onları ezmez.</p>
+        </div>
+        <div class="cal">
+          <div class="calHead">
+            <div>Pzt</div><div>Sal</div><div>Çar</div><div>Per</div><div>Cum</div><div class="hs">Cmt</div><div class="hs">Paz</div>
+          </div>
+          <div class="calGrid" id="calGrid"></div>
+        </div>
+        <div class="calFoot">
+          <span><i style="background:var(--mor)"></i>Nöbetçi ekip</span>
+          <span><i style="background:#1a212b;border:1px solid var(--line)"></i>Telefon (ofis)</span>
+          <span><i style="background:transparent;border:2px solid var(--warn)"></i>Elle değiştirildi</span>
+          <span><i style="background:#231a24"></i>Hafta sonu</span>
+        </div>
+        <div class="sayim" id="sayim"></div>
+      </div>
+      <div class="card">
+        <div class="card-h"><h2>Haftalık ilçe görevi</h2>
+          <p>İlçeye en uzun süredir gitmemiş ekip önce seçilir. Şirket aracı kullanan personeli olan <b>EKİP-8</b> ve <b>EKİP-9</b> ilçeye gönderilmez.</p>
+        </div>
+        <div class="tblWrap"><table id="ilceTbl"></table></div>
+        <div class="rule" style="margin-bottom:14px">İlçe görevi haftalıktır; hafta ortasında ekip değişmez. Buradan ekip değiştirirsen o haftanın merkez nöbeti (elle değişenler hariç) yeniden üretilir.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ========== GÜNLÜK İŞLEM ========== -->
+  <div class="pane" id="pane-matris">
+    <div class="card">
+      <div class="card-h">
+        <h2>Günlük işlem sayıları</h2>
+        <p>Üstteki türe tıklayınca tablo yalnız o türü gösterir. <b>Ekip adına tıkla</b> → o ekibin tür dağılımı; <b>gün başlığına tıkla</b> → o günün dağılımı.</p>
+      </div>
+      <div class="filters" id="kodFiltre"></div>
+      <div class="dp" id="ozet"></div>
+      <div class="mx" id="matris"></div>
+      <div class="card-h"><h2 style="font-size:14px">Ekip toplamları · tür bazında (1–12 Ağustos)</h2></div>
+      <div class="tblWrap"><table id="ekTbl"></table></div>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ============ ORTAK ============ */
+const BUGUN=new Date(2026,7,13);
+const D='Dulkadiroğlu', O='Onikişubat';
+const gunKisa=['Pa','Pt','Sa','Ça','Pe','Cu','Ct'];
+const fmt=d=>String(d.getDate()).padStart(2,'0')+'.'+String(d.getMonth()+1).padStart(2,'0');
+const tarih=s=>{const[g,a]=s.split('.').map(Number);return new Date(2026,a-1,g)};
+const artiGun=(d,n)=>{const x=new Date(d);x.setDate(x.getDate()+n);return x};
+function isGunEkle(d,n){let x=new Date(d),k=0;while(k<n){x.setDate(x.getDate()+1);if(x.getDay()!==0)k++}return x}
+const gunFark=(a,b)=>Math.round((b-a)/86400000);
+
+/* ============ MAHALLELER (1.foto=Onikişubat, 2.foto=Dulkadiroğlu) ============ */
+const havuz=[
+ ['YUSUFLAR','140-144',O,'11.08'],['DUMLUPINAR','570-574',O,'11.08'],
+ ['HAYRULLAH','680-684',O,'10.08'],['ŞAZİBEY','690-694',O,null],
+ ['GAYBERLİ','160-162',O,null],['BARBAROS','290-292',O,'05.08','atandı'],
+ ['MALİK EJDER','310-311',O,null],['ORUÇ REİS','320-322',O,null],
+ ['PİRİ REİS','420-423',O,'03.08','atandı'],['AĞCALI','424-425',O,null],
+ ['MOLLAGÜRANİ','410-412',O,'15.08'],['KARACAOĞLAN','400-403',O,'12.08'],
+ ['MEVLANA','510-511',O,null],['ERTUĞRULGAZİ','120-123',O,'11.08'],
+ ['KARAMANLI','610-614',O,null],['ORHANGAZİ (MERCİMEKTEPE)','670-672',O,'10.08'],
+ ['ABDÜLHAMİTHAN','500-503',O,'12.08'],['YUNUSEMRE','720-723',O,'13.08'],
+ ['AKİFİNAN','730-734',O,'15.08'],['Ş. ABDULLAH ÇAVUŞ','740-744',O,null],
+ ['HAYDARBEY','1750-1754',O,null],['VADİ','751',O,null],
+ ['BOĞAZİÇİ','3753-3754',O,'05.08','atandı'],['TEKEREK','810-813',O,null],
+ ['MARİF','755',O,null],['YİRMİİKİGÜN','300-304',O,'09.08'],
+ ['YAMAÇTEPE','646-647',O,'03.08','atandı'],['ÜNGÜT','640-642',O,null],
+ ['GEDEMEN','643',O,null],['KAVLAKLI','910-912',O,null],
+ ['BULUTOĞLU','920',O,null,'girilmiyor'],['HASANCIKLI','919',O,null],
+ ['KILAVUZLU','645',O,null],['CUMHURİYET','170-172',O,'15.08'],
+ ['İSTİKLAL','90-93',O,null],['BİNEVLER','800-804',O,'02.08'],
+ ['SÜLEYMANŞAH','590-594',O,null],['BEŞNİSAN','600-602',O,'10.08'],
+ ['HÜRRİYET','760-764',O,'01.08'],['MİMAR SİNAN','780-784',O,'01.08'],
+ ['SELÇUKLU','770-773',O,'28.07'],['NECİP FAZIL','790-794',O,null],
+ ['FATİH','440-442',O,'11.08'],['TAVŞANTEPE','470-473',O,null],
+ ['SAÇAKLIZADE','700-704',O,null],['OSMANGAZİ','450-454',O,'04.08'],
+ ['ÇAMLIK','620-622',O,null],['SERİNTEPE','150-154',O,'15.08'],
+ ['MAĞRALI','380-384',O,'06.08'],['YÖRÜKSELİM','340-343',O,'10.08'],
+ ['AKÇAKOYUNLU','490-492',O,'10.08'],['ŞEHİT EVLİYA','200-203',O,null],
+ ['FEVZİPAŞA','190-192',D,'10.08'],['GAZİPAŞA','460-463',D,'27.07'],
+ ['PINARBAŞI','480-481',D,'27.07'],['KAYABAŞI','20-22',D,null],
+ ['SÜTÇÜ İMAM','110-112',D,'01.08'],['BAYAZITLI','80-82',D,'11.08'],
+ ['BALLICA','70',D,null],['DURAKLI','580-584',D,'26.07'],
+ ['SENEM AYŞE','180-182',D,'03.08'],['DİVANLI','330-333',D,'27.07'],
+ ['TURAN','710-711',D,'03.08'],['EKMEKÇİ','390',D,'03.08'],
+ ['KURTULUŞ','430-433',D,'03.08'],['İSMETPAŞA','650-655',D,'12.08'],
+ ['YENİŞEHİR','10-15',D,'10.08'],['MENDERES','530-533',D,'03.08'],
+ ['BAHÇELİEVLER','520-522',D,'03.08'],['EGEMENLİK','30-31',D,null],
+ ['İSTASYON','40',D,'03.08'],['OSMANBEY','944',D,null],
+ ['SÜMER','360-363',D,'03.08'],['AKSU','550-551',D,'02.08'],
+ ['EYÜPSULTAN','370-371',D,'05.08'],['ERKENEZ','560-562',D,'03.08'],
+ ['KARACASU KARŞIYAKA','900-902',D,'06.08'],['KARACASU FERHUŞ','903',D,'03.08','atandı'],
+ ['KARACASU KIRIM','904',D,'10.08'],['KARACASU MAMARAŞ','905',D,null],
+ ['KARACASU KARAZİYARET','906-908',D,'28.07'],['GENÇOSMAN','100',D,'03.08'],
+ ['SANAYİ (YAVUZSELİM)','660-664',D,'03.08','atandı'],['MEHMET AKİF','350-352',D,'05.08'],
+ ['YAVUZSELİM','250-253',D,null],['NAMIK KEMAL','260-264',D,'27.07'],
+ ['KANUNİ','270-273',D,'03.08','atandı'],['BAĞLARBAŞI','230-233',D,'01.08'],
+ ['DULKADİROĞLU','240-242',D,'10.08'],['YAHYA KEMAL','220-224',D,'20.07'],
+ ['GÜNEŞEVLER','635',D,null,'girilmiyor'],['DOĞUKENT','630-634',D,null,'girilmiyor'],
+ ['ASLANBEY','60-63',D,null],['ŞEYH ŞAMİL','210-213',D,'10.08'],
+ ['SAKARYA','50-54',D,'10.08'],['İSADİVANLI','540-544',D,'20.07'],
+ ['YENİKENT','—',D,null,'girilmiyor'],['ŞEYH ADİL','130-133',D,'07.08'],
+ ['YEŞİLTEPE','75',D,'14.08']
+].map(([ad,kod,ilce,msj,ozel])=>{
+  const m=msj?tarih(msj):null, hazir=m?artiGun(m,5):null;
+  let durum;
+  if(ozel==='girilmiyor') durum='girilmiyor';
+  else if(ozel==='atandı') durum='sahada';
+  else if(!m) durum='mesajsız';
+  else if(hazir<=BUGUN) durum='atanabilir';
+  else durum='bekliyor';
+  return {ad,kod,ilce,msj:m,hazir,durum};
+});
+
+/* ============ EKİPLER ============ */
+const ekipler=[
+ {ekip:'EKİP-8', ad:'FURKAN AKŞEKER',       mah:'YAMAÇTEPE',           ilce:O, kalan:61,  is:71, yeni:8,  gec:[D,O,O]},
+ {ekip:'EKİP-4', ad:'UMUT KARA',            mah:'KARACASU FERHUŞ',     ilce:D, kalan:32,  is:56, yeni:7,  gec:[O,O,D]},
+ {ekip:'EKİP-15',ad:'YASİN İNCE',           mah:'PİRİ REİS',           ilce:O, kalan:56,  is:54, yeni:6,  gec:[D,D,O]},
+ {ekip:'EKİP-7', ad:'GAFFAR CANPOLAT',      mah:'SANAYİ (YAVUZSELİM)', ilce:D, kalan:298, is:45, yeni:10, gec:[O,D,D]},
+ {ekip:'EKİP-9', ad:'İSMAİL FIRAT ÇİL',     mah:'KANUNİ',              ilce:D, kalan:23,  is:45, yeni:6,  gec:[D,O,D]},
+ {ekip:'EKİP-12',ad:'METİN KİŞİFLİ',        mah:'BOĞAZİÇİ',            ilce:O, kalan:50,  is:43, yeni:5,  gec:[D,D,O]},
+ {ekip:'EKİP-3', ad:'MEHMET DURDU',         mah:'BARBAROS',            ilce:O, kalan:97,  is:40, yeni:7,  gec:[D,O,O]},
+ {ekip:'EKİP-6', ad:'M. MAZHAR NALBANTBAŞI',mah:'15 TEMMUZ / PAZARCIK',ilce:'Pazarcık', kalan:58, is:48, yeni:5, gec:[]},
+ {ekip:'EKİP-10',ad:'SERKAN TAŞ',           mah:'İSTASYON / GAZİLER',  ilce:'Türkoğlu', kalan:61, is:42, yeni:5, gec:[]},
+];
+const net=e=>Math.max(e.is-e.yeni,1);
+const bitisGun=e=>Math.ceil(e.kalan/net(e));
+const siradakiIlce=e=>!e.gec.length?e.ilce:(e.gec.filter(x=>x===D).length<2?D:O);
+function oneriHesapla(){
+  const bos=[...havuz.filter(h=>h.durum==='atanabilir')].sort((a,b)=>a.msj-b.msj);
+  const alinan=new Set();
+  return ekipler.map(e=>{
+    const g=bitisGun(e), ist=siradakiIlce(e);
+    let pick=null, ilk=null;
+    if(g<=2){
+      pick=bos.find(h=>h.ilce===ist&&!alinan.has(h.ad));
+      if(pick) alinan.add(pick.ad);
+      else ilk=havuz.filter(h=>h.ilce===ist&&h.durum==='bekliyor').sort((a,b)=>a.hazir-b.hazir)[0];
+    }
+    return {e,g,ist,pick,ilk};
+  });
+}
+
+/* ============ ATAMA GEÇMİŞİ (ekip_mahalle_atama) ============ */
+/* [ekip, mahalle, ilçe, başlangıç, bitiş (boşsa aktif), o atamada yapılan işlem] */
+const gecmis=[
+ ['EKİP-8','MİMAR SİNAN',O,'01.06','12.06',690],   ['EKİP-8','İSADİVANLI',D,'15.06','26.06',720],
+ ['EKİP-8','SERİNTEPE',O,'29.06','10.07',680],     ['EKİP-8','ŞEYH ŞAMİL',D,'13.07','24.07',700],
+ ['EKİP-8','YÖRÜKSELİM',O,'27.07','06.08',640],    ['EKİP-8','YAMAÇTEPE',O,'08.08',null,232],
+
+ ['EKİP-4','AKSU',D,'01.06','13.06',590],          ['EKİP-4','SAÇAKLIZADE',O,'16.06','02.07',820],
+ ['EKİP-4','KARAMANLI',O,'04.07','06.08',1580],    ['EKİP-4','KARACASU FERHUŞ',D,'08.08',null,218],
+
+ ['EKİP-15','TAVŞANTEPE',O,'02.06','17.06',700],   ['EKİP-15','ERKENEZ',D,'19.06','07.07',830],
+ ['EKİP-15','NAMIK KEMAL',D,'09.07','06.08',1180], ['EKİP-15','PİRİ REİS',O,'08.08',null,206],
+
+ ['EKİP-7','SÜMER',D,'01.06','15.06',560],         ['EKİP-7','OSMANGAZİ',O,'17.06','08.07',780],
+ ['EKİP-7','MEHMET AKİF',D,'10.07','07.08',1080],  ['EKİP-7','SANAYİ (YAVUZSELİM)',D,'08.08',null,174],
+
+ ['EKİP-9','YAHYA KEMAL',D,'01.06','20.06',720],   ['EKİP-9','DURAKLI',D,'22.06','09.07',640],
+ ['EKİP-9','HAYRULLAH',O,'11.07','07.08',1040],    ['EKİP-9','KANUNİ',D,'08.08',null,163],
+
+ ['EKİP-12','HASANCIKLI',O,'01.06','12.06',430],   ['EKİP-12','BAHÇELİEVLER',D,'15.06','03.07',660],
+ ['EKİP-12','DİVANLI',D,'06.07','08.08',1210],     ['EKİP-12','BOĞAZİÇİ',O,'10.08',null,157],
+
+ ['EKİP-3','KURTULUŞ',D,'01.06','18.06',600],      ['EKİP-3','TURAN',D,'20.06','06.07',520],
+ ['EKİP-3','BİNEVLER',O,'08.07','10.08',1150],     ['EKİP-3','BARBAROS',O,'11.08',null,118],
+
+ ['EKİP-6','MOLLAGÜRANİ',O,'01.06','19.06',730],   ['EKİP-6','EYÜPSULTAN',D,'22.06','15.07',940],
+ ['EKİP-6','15 TEMMUZ / PAZARCIK','Pazarcık','20.07',null,900],
+
+ ['EKİP-10','YENİŞEHİR',D,'01.06','16.06',570],    ['EKİP-10','CUMHURİYET',O,'18.06','10.07',810],
+ ['EKİP-10','İSTASYON / GAZİLER','Türkoğlu','15.07',null,1020]
+].map(([ekip,mah,ilce,b,s,is])=>({ekip,mah,ilce,bas:tarih(b),bit:s?tarih(s):null,is}));
+
+const ekipAdi=Object.fromEntries(ekipler.map(e=>[e.ekip,e.ad]));
+const ilceCls=i=>i===D?'d':i===O?'o':'x';
+const ilcePill=i=>i===D?'p-dul':i===O?'p-oni':'p-idle';
+const ilceHarf=i=>i===D?'D':i===O?'O':'İ';
+function isGunSay(a,b){let n=0,x=new Date(a);while(x<=b){if(x.getDay()!==0)n++;x.setDate(x.getDate()+1)}return n}
+const gSure=g=>isGunSay(g.bas,g.bit||BUGUN);
+const gSon=(ekip,n)=>gecmis.filter(g=>g.ekip===ekip).slice(-n);
+const sonZiyaret={};
+gecmis.forEach(g=>{const d=g.bit||BUGUN;
+  if(!sonZiyaret[g.mah]||sonZiyaret[g.mah].d<d) sonZiyaret[g.mah]={d,ekip:g.ekip,aktif:!g.bit}});
+
+/* ============ SEKMELER ============ */
+const paneler=[['dash','Dashboard'],['mahalle','Mahalleler'],['ekip','Ekipler'],['gecmis','Geçmiş'],['nobet','Nöbet'],['matris','Günlük İşlem']];
+document.getElementById('tabs').innerHTML=paneler.map(([id,ad],i)=>
+  `<button class="tab ${i===0?'on':''}" data-p="${id}">${ad}</button>`).join('');
+function tabAc(p){
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x.dataset.p===p));
+  document.querySelectorAll('.pane').forEach(x=>x.classList.remove('on'));
+  document.getElementById('pane-'+p).classList.add('on');
+}
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>tabAc(b.dataset.p));
+
+/* ============ NÖBET (kurallar: Nöbet Sistemi Teknik Dökümanı v1.0) ============ */
+const nEkipler=[
+ {id:'EKİP-3', kisi:'MEHMET DURDU', arac:0},
+ {id:'EKİP-4', kisi:'UMUT KARA', arac:0},
+ {id:'EKİP-6', kisi:'M. MAZHAR NALBANTBAŞI', arac:0},
+ {id:'EKİP-7', kisi:'GAFFAR CANPOLAT', arac:0},
+ {id:'EKİP-8', kisi:'FURKAN AKŞEKER', arac:1},
+ {id:'EKİP-9', kisi:'İSMAİL FIRAT ÇİL', arac:1},
+ {id:'EKİP-10',kisi:'SERKAN TAŞ', arac:0},
+ {id:'EKİP-12',kisi:'METİN KİŞİFLİ', arac:0},
+ {id:'EKİP-15',kisi:'YASİN İNCE', arac:0}
+];
+const nMap=Object.fromEntries(nEkipler.map(e=>[e.id,e]));
+const haftalar=['27.07','03.08','10.08','17.08','24.08','31.08'];
+const ilcePlan={
+ '27.07':{t:'EKİP-3',p:'EKİP-4',elle:0},
+ '03.08':{t:'EKİP-6',p:'EKİP-7',elle:0},
+ '10.08':{t:'EKİP-10',p:'EKİP-12',elle:0}
+};
+const saha=Array(31).fill(null), sahaElle=Array(31).fill(0);
+/* telefon — TELEFON NÖBET LİSTESİ Excel'inden (ofis personeli) */
+const telHavuz=['MERYEM','BERFİN','EDA'];
+const tel=['MERYEM','MERYEM','MERYEM','BERFİN','EDA','BERFİN','EDA','EDA','EDA',
+ 'MERYEM','BERFİN','EDA','MERYEM','BERFİN','BERFİN','BERFİN',
+ 'MERYEM','BERFİN','EDA','EDA','MERYEM','MERYEM','MERYEM',
+ 'MERYEM','BERFİN','EDA','BERFİN','EDA','EDA','EDA','MERYEM'];
+const telElle=Array(31).fill(0);
+let rotIdx=0, acikEdit=null;
+
+function haftaBas(g){const dt=new Date(2026,7,g);const off=(dt.getDay()+6)%7;return fmt(artiGun(dt,-off))}
+function ilceGen(){ /* K3 + K5: araç kısıtı yok + en uzun süredir gitmeyen önce */
+  const uygun=nEkipler.filter(e=>!e.arac).map(e=>e.id);
+  const son={};
+  haftalar.forEach((h,i)=>{const p=ilcePlan[h];if(p){son[p.t]=i;son[p.p]=i}});
+  const sirali=[...uygun].sort((a,b)=>((a in son)?son[a]:-1)-((b in son)?son[b]:-1));
+  return {t:sirali[0],p:sirali[1],elle:0};
+}
+function haftaninDisi(g){
+  const hb=haftaBas(g);
+  if(!ilcePlan[hb]) ilcePlan[hb]=ilceGen();
+  return [ilcePlan[hb].t,ilcePlan[hb].p];
+}
+function planUret(bas,son){ /* K1: günde 1 ekip · K2: ilçedekiler hariç · K7: elle korunur */
+  for(let g=bas;g<=son;g++){
+    if(saha[g-1]) continue;
+    const dis=haftaninDisi(g);
+    let tur=0;
+    while(tur<nEkipler.length*2){
+      const aday=nEkipler[rotIdx%nEkipler.length].id; rotIdx++;
+      if(!dis.includes(aday)){saha[g-1]=aday;break}
+      tur++;
+    }
+  }
+}
+planUret(1,16); /* mevcut plan — 17-31 "Planı otomatik oluştur" ile dolar */
+
+function calCiz(){
+  const ilkGun=new Date(2026,7,1).getDay(), bosluk=(ilkGun+6)%7;
+  let html='';
+  for(let i=0;i<bosluk;i++) html+='<div class="day bos"></div>';
+  for(let g=1;g<=31;g++){
+    const dt=new Date(2026,7,g), dow=dt.getDay();
+    const hs=dow===0||dow===6, bugun=g===13;
+    const id=saha[g-1], dis=haftaninDisi(g);
+    let ic;
+    if(acikEdit&&acikEdit.tip==='saha'&&acikEdit.gun===g){
+      ic='<select data-t="saha" data-g="'+g+'"><option value="">— boş —</option>'+
+        nEkipler.map(e=>'<option value="'+e.id+'" '+(e.id===id?'selected':'')+(dis.includes(e.id)?' disabled':'')+'>'+
+          e.id+' — '+e.kisi+(dis.includes(e.id)?' (ilçede)':'')+'</option>').join('')+'</select>';
+    }else if(id){
+      ic='<div class="bar '+(sahaElle[g-1]?'elle':'')+'" data-t="saha" data-g="'+g+'" title="'+id+' — '+nMap[id].kisi+'">'+id+
+         '<div style="font-size:9.5px;font-weight:500;opacity:.85;overflow:hidden;text-overflow:ellipsis">'+nMap[id].kisi+'</div></div>';
+    }else{
+      ic='<div class="bar empty" data-t="saha" data-g="'+g+'">— ata —</div>';
+    }
+    let tc;
+    if(acikEdit&&acikEdit.tip==='tel'&&acikEdit.gun===g){
+      tc='<select data-t="tel" data-g="'+g+'">'+telHavuz.map(p=>'<option '+(p===tel[g-1]?'selected':'')+'>'+p+'</option>').join('')+'</select>';
+    }else{
+      tc='<div class="tel '+(telElle[g-1]?'elle':'')+'" data-t="tel" data-g="'+g+'">☎ '+tel[g-1]+'</div>';
+    }
+    html+='<div class="day '+(hs?'hs':'')+' '+(bugun?'today':'')+'"><div class="no">'+g+'</div>'+ic+tc+'</div>';
+  }
+  document.getElementById('calGrid').innerHTML=html;
+  document.querySelectorAll('#calGrid .bar,#calGrid .tel').forEach(el=>el.onclick=()=>{
+    acikEdit={tip:el.dataset.t,gun:+el.dataset.g}; calCiz();
+    const sEl=document.querySelector('#calGrid select');
+    if(sEl){sEl.focus();
+      sEl.onchange=()=>{
+        const g=+sEl.dataset.g;
+        if(sEl.dataset.t==='saha'){saha[g-1]=sEl.value||null;sahaElle[g-1]=1}
+        else{tel[g-1]=sEl.value;telElle[g-1]=1}
+        acikEdit=null; calCiz(); ilceCiz(); nbKpi(); bugunCiz();
+      };
+      sEl.onblur=()=>{acikEdit=null;calCiz()};
+    }
+  });
+  const say={};
+  saha.forEach((id,i)=>{if(!id)return;const d=new Date(2026,7,i+1).getDay();
+    say[id]=say[id]||{n:0,hs:0};say[id].n++;if(d===0||d===6)say[id].hs++});
+  document.getElementById('sayim').innerHTML=
+    Object.entries(say).sort((a,b)=>b[1].n-a[1].n)
+    .map(([id,v])=>'<span class="sy">'+id+' <b>'+v.n+'</b>'+(v.hs?' · '+v.hs+' hs':'')+'</span>').join('');
+}
+function ilceCiz(){
+  const uygun=nEkipler.filter(e=>!e.arac);
+  document.getElementById('ilceTbl').innerHTML=
+   '<thead><tr><th>Hafta</th><th class="l">Türkoğlu</th><th class="l">Pazarcık</th></tr></thead><tbody>'+
+   haftalar.map(h=>{
+     const p=ilcePlan[h];
+     const sel=(alan,deger)=>'<select data-h="'+h+'" data-a="'+alan+'" style="width:auto;min-width:120px" class="'+(p&&p.elle?'edited':'')+'">'+
+       uygun.map(e=>'<option value="'+e.id+'" '+(e.id===deger?'selected':'')+'>'+e.id+'</option>').join('')+'</select>';
+     return '<tr><td class="l soft">'+h+'</td>'+
+       (p?'<td class="l">'+sel('t',p.t)+'<small style="display:block;color:var(--dim)">'+nMap[p.t].kisi+'</small></td>'+
+          '<td class="l">'+sel('p',p.p)+'<small style="display:block;color:var(--dim)">'+nMap[p.p].kisi+'</small></td>'
+         :'<td class="l zero" colspan="2">plan üretilince atanacak</td>')+'</tr>';
+   }).join('')+'</tbody>';
+  document.querySelectorAll('#ilceTbl select').forEach(sl=>sl.onchange=()=>{
+    const h=sl.dataset.h; ilcePlan[h][sl.dataset.a]=sl.value; ilcePlan[h].elle=1;
+    /* K2+K4: o haftanın merkez nöbeti (elle olmayanlar) yeniden üretilir */
+    const bas=tarih(h);
+    for(let i=0;i<7;i++){
+      const dt=artiGun(bas,i);
+      if(dt.getMonth()===7){const g=dt.getDate(); if(!sahaElle[g-1]) saha[g-1]=null;}
+    }
+    const g0=Math.max(1,bas.getMonth()===7?bas.getDate():1);
+    planUret(g0,Math.min(31,g0+6));
+    ilceCiz(); calCiz(); ilceCiz(); nbKpi(); bugunCiz();
+  });
+}
+document.getElementById('nbDoldur').onclick=()=>{planUret(1,31);ilceCiz();calCiz();nbKpi();bugunCiz()};
+function nbLabel(g){const id=saha[g-1];return id?id+' · '+nMap[id].kisi:'—'}
+function nbKpi(){
+  document.getElementById('nbBugun').textContent=nbLabel(13);
+  document.getElementById('nbTelB').textContent=tel[12];
+  const p=ilcePlan[haftaBas(13)];
+  document.getElementById('nbTur').textContent=p?p.t+' · '+nMap[p.t].kisi:'—';
+  document.getElementById('nbPaz').textContent=p?p.p+' · '+nMap[p.p].kisi:'—';
+}
+
+/* ============ DASHBOARD ============ */
+const gunlukToplam=[{d:1,v:387},{d:2,v:219,paz:true},{d:3,v:435},{d:4,v:597},{d:5,v:522},{d:6,v:412},
+ {d:7,v:620},{d:8,v:588},{d:9,v:16,paz:true},{d:10,v:683},{d:11,v:672},{d:12,v:645}];
+function chartCiz(){
+  const W=640,padT=24,padB=30,ih=140,H=padT+ih+padB;
+  const max=Math.max(...gunlukToplam.map(d=>d.v));
+  const dolu=gunlukToplam.filter(d=>!d.paz).map(d=>d.v);
+  const ort=Math.round(dolu.reduce((a,b)=>a+b,0)/dolu.length);
+  const bw=W/gunlukToplam.length, y=v=>padT+ih-(v/(max*1.15))*ih;
+  let g='';
+  gunlukToplam.forEach((d,i)=>{if(d.paz)g+=`<rect x="${i*bw}" y="${padT-6}" width="${bw}" height="${ih+30}" fill="#ef444414"/>`});
+  g+=`<line x1="0" x2="${W}" y1="${padT+ih}" y2="${padT+ih}" stroke="#2e3745"/>`;
+  g+=`<line x1="0" x2="${W}" y1="${y(ort)}" y2="${y(ort)}" stroke="#f0b429" stroke-width="1.3" stroke-dasharray="5 4" opacity=".85"/>`;
+  g+=`<text x="${W}" y="${y(ort)-6}" fill="#f0b429" font-size="10.5" text-anchor="end">ortalama ${ort}</text>`;
+  gunlukToplam.forEach((d,i)=>{
+    const x=i*bw+bw*.18,w=bw*.64,cx=i*bw+bw/2,zir=d.v===max;
+    g+=`<rect x="${x}" y="${y(d.v)}" width="${w}" height="${padT+ih-y(d.v)}" fill="${d.paz?'#7f4a4a':(zir?'#8b8ff8':'#6366f1')}" rx="2"/>
+        <text x="${cx}" y="${y(d.v)-5}" fill="${zir?'#e7ebf1':'#98a2b3'}" font-size="10" text-anchor="middle">${d.v}</text>
+        <text x="${cx}" y="${padT+ih+15}" fill="${d.paz?'#ef6a6a':'#8b95a5'}" font-size="10" text-anchor="middle">${d.d}</text>`;
+  });
+  document.getElementById('chart').innerHTML=`<svg viewBox="0 0 ${W} ${H}" width="100%">${g}</svg>`;
+}
+function bugunku(dizi){return dizi[12]||'—'}
+function bugunCiz(){
+  document.getElementById('bgNobet').textContent=nbLabel(13);
+  document.getElementById('bgTel').textContent=tel[12];
+  document.getElementById('bgHazir').textContent=havuz.filter(h=>h.durum==='atanabilir').length;
+  document.getElementById('bgKalan').textContent=(ekipler.reduce((s,e)=>s+e.kalan,0)+648).toLocaleString('tr-TR');
+  const sug=oneriHesapla().filter(s=>s.g<=2);
+  document.getElementById('bgBiten').textContent=sug.length;
+  const rows=[];
+  sug.filter(s=>s.pick).forEach(s=>rows.push({n:s.g<=1?'bugün':s.g+' gün',c:'c-warn',
+    t:`${s.e.ad} bitiriyor → <b>${s.pick.ad}</b> ata`,s:`${s.ist} sırası · şu an ${s.e.mah}`}));
+  const eng=sug.filter(s=>!s.pick);
+  if(eng.length) rows.push({n:eng.length,c:'c-crit',
+    t:`ekip için hazır <b>${eng[0].ist}</b> mahallesi yok`,s:`bugün mesaj atılırsa 5 gün sonra hazır olur`});
+  rows.push({n:'648',c:'c-crit',t:`Elbistan'daki işler sahipsiz`,s:'personeli ayrıldı — devredilmeli'});
+  document.getElementById('todo').innerHTML=rows.map(r=>`
+    <div class="trow"><div class="tn ${r.c}">${r.n}</div>
+    <div class="tt">${r.t}<small>${r.s}</small></div><button class="btn sm">Aç</button></div>`).join('');
+}
+
+/* ============ MAHALLELER ============ */
+const durumPill={'atanabilir':['p-ok','Atanabilir'],'bekliyor':['p-warn','Bekliyor'],
+  'mesajsız':['p-idle','Mesaj atılmadı'],'sahada':['p-oni','Ekip sahada'],'girilmiyor':['p-crit','Girilmiyor']};
+let mF='hepsi';
+function mFiltreCiz(){
+  const say=f=>f==='hepsi'?havuz.length:havuz.filter(h=>h.durum===f||h.ilce===f).length;
+  document.getElementById('mFiltre').innerHTML=
+    ['hepsi','atanabilir','bekliyor','mesajsız','sahada','girilmiyor',D,O].map(f=>
+    `<button class="chip ${f===mF?'on':''}" data-f="${f}">${f==='hepsi'?'Hepsi':(durumPill[f]?durumPill[f][1]:f)}
+     <b style="margin-left:5px;opacity:.6">${say(f)}</b></button>`).join('');
+  document.querySelectorAll('#mFiltre .chip').forEach(c=>c.onclick=()=>{mF=c.dataset.f;mFiltreCiz();mCiz()});
+}
+function mCiz(){
+  const rows=havuz.filter(h=>mF==='hepsi'||h.durum===mF||h.ilce===mF)
+    .sort((a,b)=>{const s={'atanabilir':0,'bekliyor':1,'sahada':2,'mesajsız':3,'girilmiyor':4};
+      return s[a.durum]-s[b.durum]||(a.msj&&b.msj?a.msj-b.msj:0)||a.ad.localeCompare(b.ad,'tr')});
+  document.getElementById('mTbl').innerHTML=`
+    <thead><tr><th>Mahalle</th><th class="l">İlçe</th><th>Mesaj tarihi</th><th class="l">Durum</th><th class="l">Son ziyaret</th><th></th></tr></thead>
+    <tbody>${rows.map(h=>{
+      const [cls,ad]=durumPill[h.durum]; let ek='';
+      const sz=sonZiyaret[h.ad];
+      const szTd=sz?(sz.aktif?`<span class="pill p-ok">şu an sahada</span> <span class="soft">${sz.ekip}</span>`
+        :`<span class="soft">${fmt(sz.d)}</span> <small style="color:var(--dim)">${sz.ekip} · ${gunFark(sz.d,BUGUN)} gün önce</small>`)
+        :'<span class="zero">kayıt yok</span>';
+      if(h.durum==='atanabilir') ek=`<small style="color:#7ee0a8;margin-left:8px">${gunFark(h.hazir,BUGUN)} gündür bekliyor</small>`;
+      if(h.durum==='bekliyor') ek=`<small style="color:#f5c168;margin-left:8px">${gunFark(BUGUN,h.hazir)} gün sonra hazır</small>`;
+      return `<tr>
+        <td class="l"><div class="nm"><b style="${h.durum==='girilmiyor'?'color:#6b7280;text-decoration:line-through':''}">${h.ad}</b><small>kod ${h.kod}</small></div></td>
+        <td class="l"><span class="pill ${h.ilce===D?'p-dul':'p-oni'}">${h.ilce}</span></td>
+        <td class="${h.msj?'':'zero'}">${h.msj?fmt(h.msj):'—'}</td>
+        <td class="l"><span class="pill ${cls}">${ad}</span>${ek}</td>
+        <td class="l">${szTd}</td>
+        <td><button class="btn sm">${h.durum==='mesajsız'?'Mesaj at':h.durum==='atanabilir'?'Ekibe ata':'Aç'}</button></td>
+      </tr>`}).join('')}</tbody>`;
+}
+
+/* ============ EKİPLER ============ */
+function eCiz(){
+  const sug=oneriHesapla();
+  document.getElementById('eTbl').innerHTML=`
+   <thead><tr><th>Ekip</th><th class="l">Şu anki mahalle</th><th>Kalan iş</th>
+     <th>Günde bitiriyor</th><th>Tahmini bitiş</th><th class="l">Son 3 atama</th><th class="l">Sıradaki mahalle</th><th></th></tr></thead>
+   <tbody>${sug.map((s,i)=>{
+     const e=s.e,g=s.g,bt=isGunEkle(BUGUN,Math.max(g-1,0));
+     const renk=g<=2?'var(--warn)':'var(--ok)';
+     let oner,btn='';
+     if(g>2) oner=`<span class="zero">daha var — sırası gelince ${s.ist} önerilecek</span>`;
+     else if(s.pick){oner=`<b>${s.pick.ad}</b> <span class="pill ${s.ist===D?'p-dul':'p-oni'}" style="margin-left:6px">${s.ist}</span>`;btn='<button class="btn pri sm">Ata</button>'}
+     else oner=`<span style="color:#ff9b9b">hazır ${s.ist} mahallesi yok</span>${s.ilk?`<small style="display:block;color:var(--dim)">ilk hazır: ${s.ilk.ad} · ${fmt(s.ilk.hazir)}</small>`:''}`;
+     const s3=gSon(e.ekip,3).map(x=>`<span class="gp ${ilcePill(x.ilce)}" title="${x.mah} · ${fmt(x.bas)}">${ilceHarf(x.ilce)}</span>`).join('')
+       ||'<span class="zero">—</span>';
+     return `<tr>
+       <td class="link" data-e="${e.ekip}" title="geçmiş atamalarını aç"><div class="nm"><b>${e.ad}</b><small>${e.ekip} · geçmişi aç</small></div></td>
+       <td class="l"><span class="pill ${e.ilce===D?'p-dul':e.ilce===O?'p-oni':'p-idle'}">${e.ilce}</span> <span class="soft">${e.mah}</span></td>
+       <td><input class="inp" type="number" value="${e.kalan}" data-i="${i}"></td>
+       <td class="soft">${net(e)}</td>
+       <td style="color:${renk};font-weight:600">${g<=1?'bugün':g+' iş günü'}<div style="font-size:11px;color:var(--dim);font-weight:400">${g>1?fmt(bt):''}</div></td>
+       <td class="l">${s3}</td>
+       <td class="l">${oner}</td><td>${btn}</td>
+     </tr>`}).join('')}</tbody>`;
+  document.querySelectorAll('#eTbl .inp').forEach(inp=>inp.onchange=()=>{
+    ekipler[+inp.dataset.i].kalan=Math.max(0,+inp.value||0);
+    eCiz(); bugunCiz();
+  });
+  document.querySelectorAll('#eTbl .link').forEach(td=>td.onclick=()=>gecmisAc(td.dataset.e));
+}
+
+/* ============ GEÇMİŞ ============ */
+function gKpi(){
+  const bit=gecmis.filter(g=>g.bit);
+  document.getElementById('ggBiten').textContent=bit.length;
+  document.getElementById('ggSure').textContent=Math.round(bit.reduce((s,g)=>s+gSure(g),0)/bit.length)+' gün';
+  document.getElementById('ggIslem').textContent=bit.reduce((s,g)=>s+g.is,0).toLocaleString('tr-TR');
+  const eski=Object.entries(sonZiyaret).filter(([,v])=>!v.aktif).sort((a,b)=>a[1].d-b[1].d)[0];
+  document.getElementById('ggEski').textContent=eski[0];
+  document.getElementById('ggEskiAlt').textContent=gunFark(eski[1].d,BUGUN)+' gün önce · '+eski[1].ekip+' bitirmişti';
+}
+function ganttCiz(){
+  const min=new Date(2026,5,1), rng=gunFark(min,BUGUN), pos=d=>gunFark(min,d)/rng*100;
+  const ayCiz=[6,7].map(m=>`<div class="ay" style="left:${pos(new Date(2026,m,1)).toFixed(2)}%"></div>`).join('');
+  document.getElementById('gantt').innerHTML=ekipler.map(e=>{
+    const list=gecmis.filter(g=>g.ekip===e.ekip);
+    const segs=list.map(g=>{
+      const l=pos(g.bas), w=Math.max(pos(g.bit||BUGUN)-l,1.5);
+      return `<div class="gSeg ${ilceCls(g.ilce)} ${g.bit?'':'aktif'}" style="left:${l.toFixed(2)}%;width:${w.toFixed(2)}%"
+        title="${g.mah} — ${g.ilce}&#10;${fmt(g.bas)} – ${g.bit?fmt(g.bit):'devam ediyor'} · ${gSure(g)} iş günü · ${g.is} işlem">${g.mah}</div>`;
+    }).join('');
+    const d=list.filter(g=>g.ilce===D).length, o=list.filter(g=>g.ilce===O).length;
+    return `<div class="gRow"><div class="gLab"><b>${e.ad}</b><small>${e.ekip} · ${list.length} mahalle · ${d} D / ${o} O</small></div>
+      <div class="gTrack">${ayCiz}${segs}</div></div>`;
+  }).join('');
+  document.getElementById('ganttAx').innerHTML=[[5,'Haziran'],[6,'Temmuz'],[7,'Ağustos']].map(([m,ad])=>{
+    const b=new Date(2026,m,1)<min?min:new Date(2026,m,1);
+    const s=new Date(2026,m+1,0)>BUGUN?BUGUN:new Date(2026,m+1,0);
+    return `<span style="left:${((pos(b)+pos(s))/2).toFixed(2)}%">${ad}</span>`;
+  }).join('');
+}
+let gF='hepsi';
+function gFiltreCiz(){
+  const say=f=>f==='hepsi'?gecmis.length:gecmis.filter(g=>g.ekip===f||g.ilce===f).length;
+  document.getElementById('gFiltre').innerHTML=['hepsi',D,O,...ekipler.map(e=>e.ekip)].map(f=>
+    `<button class="chip ${f===gF?'on':''}" data-f="${f}">${f==='hepsi'?'Hepsi':f}
+     <b style="margin-left:5px;opacity:.6">${say(f)}</b></button>`).join('');
+  document.querySelectorAll('#gFiltre .chip').forEach(c=>c.onclick=()=>{gF=c.dataset.f;gFiltreCiz();gTblCiz()});
+}
+function gTblCiz(){
+  const rows=gecmis.filter(g=>gF==='hepsi'||g.ekip===gF||g.ilce===gF).slice().sort((a,b)=>b.bas-a.bas);
+  document.getElementById('gTbl').innerHTML=`
+   <thead><tr><th>Mahalle</th><th class="l">İlçe</th><th>Başlangıç</th><th>Bitiş</th><th>İş günü</th><th>Yapılan işlem</th></tr></thead>
+   <tbody>${rows.map(g=>{const ig=gSure(g);return `<tr>
+     <td class="l"><div class="nm"><b>${g.mah}</b><small>${g.ekip} · ${ekipAdi[g.ekip]}</small></div></td>
+     <td class="l"><span class="pill ${ilcePill(g.ilce)}">${g.ilce}</span></td>
+     <td>${fmt(g.bas)}</td>
+     <td>${g.bit?fmt(g.bit):'<span class="pill p-ok">sahada</span>'}</td>
+     <td class="soft">${ig}</td>
+     <td><b>${g.is.toLocaleString('tr-TR')}</b><small style="display:block;color:var(--dim);font-size:11px;font-weight:400">${Math.round(g.is/ig)}/gün</small></td>
+   </tr>`}).join('')}</tbody>
+   <tfoot><tr><td>${rows.length} atama</td><td colspan="4"></td><td>${rows.reduce((s,g)=>s+g.is,0).toLocaleString('tr-TR')}</td></tr></tfoot>`;
+}
+function gMahCiz(){
+  const list=Object.entries(sonZiyaret).map(([mah,v])=>({mah,...v})).sort((a,b)=>a.d-b.d);
+  const havuzAd=new Set(havuz.filter(h=>h.durum!=='girilmiyor').map(h=>h.ad));
+  const hic=[...havuzAd].filter(a=>!sonZiyaret[a]).length;
+  document.getElementById('gMahNot').innerHTML=
+    `Havuzdaki ${havuzAd.size} mahalleden <b>${havuzAd.size-hic}</b> tanesine son 3 ayda gidildi;
+     <b style="color:#f5c168">${hic} mahalleye hiç gidilmedi</b>. En eski ziyaret üstte.`;
+  document.getElementById('gMahTbl').innerHTML=`
+   <thead><tr><th>Mahalle</th><th class="l">Son giden</th><th>Tarih</th><th>Gün önce</th></tr></thead>
+   <tbody>${list.map(v=>`<tr>
+     <td class="l"><b style="font-weight:600">${v.mah}</b></td>
+     <td class="l soft">${v.ekip}</td>
+     <td>${v.aktif?'<span class="pill p-ok">sahada</span>':fmt(v.d)}</td>
+     <td class="${v.aktif?'zero':''}">${v.aktif?'—':gunFark(v.d,BUGUN)}</td>
+   </tr>`).join('')}</tbody>`;
+}
+function gecmisAc(ekip){gF=ekip;gFiltreCiz();gTblCiz();tabAc('gecmis');window.scrollTo(0,0)}
+
+/* ============ GÜNLÜK İŞLEM ============ */
+const KODLAR=[['ÖY','Ödeme yaptırıldı','#34d399'],['AKY','Aparatla kesim','#f0b429'],
+ ['SKA','Sayaç açıldı','#60a5fa'],['AKÜ','Aparat kırma ücreti','#f4726a'],['MVC','Mühür ve conta','#a78bfa']];
+const gunler=[1,2,3,4,5,6,7,8,9,10,11,12].map(d=>({d,paz:[2,9].includes(d)}));
+/* her ekip: günlük toplam + tür oranı [ÖY,AKY,SKA,AKÜ,MVC] */
+const mSatir=[
+ ['FURKAN AKŞEKER','EKİP-8',[114,0,116,76,41,35,61,71,0,112,36,47],[.44,.30,.20,.06,0]],
+ ['UMUT KARA','EKİP-4',[68,3,60,77,56,29,40,68,12,65,55,44],[.50,.25,.20,.05,0]],
+ ['YASİN İNCE','EKİP-15',[0,0,71,56,51,47,54,54,0,45,53,54],[.46,.27,.22,.05,0]],
+ ['GAFFAR CANPOLAT','EKİP-7',[40,0,4,71,63,39,55,50,0,35,43,51],[.42,.33,.19,.06,0]],
+ ['İSMAİL FIRAT ÇİL','EKİP-9',[40,0,52,52,52,46,45,42,0,42,35,39],[.48,.26,.21,.05,0]],
+ ['MEHMET DURDU','EKİP-3',[40,0,44,52,31,42,33,25,2,47,44,40],[.47,.28,.20,.05,0]],
+ ['SERKAN TAŞ','EKİP-10',[40,23,42,44,36,0,38,12,0,65,45,52],[.49,.26,.21,.04,0]],
+ ['METİN KİŞİFLİ','EKİP-12',[36,0,29,33,36,48,47,0,0,54,54,49],[.45,.28,.22,.05,0]],
+ ['M. MAZHAR NALBANTBAŞI','EKİP-6',[0,2,0,0,31,43,49,85,2,52,41,36],[.46,.29,.20,.05,0]],
+ ['Diğer ekipler','ÇOKLU',[9,191,17,136,125,66,198,181,0,166,43,179],[.62,.10,.24,.02,.02]]
+];
+let kodF='TÜMÜ', sec={tip:'gun',i:11}; /* seçim: gün 12 */
+const kodDeger=(r,gi,ki)=>Math.round(r[2][gi]*r[3][ki]);
+function ekipKodToplam(r){return KODLAR.map((_,ki)=>r[2].reduce((s,v)=>s+Math.round(v*r[3][ki]),0))}
+
+function kodFiltreCiz(){
+  document.getElementById('kodFiltre').innerHTML=
+    ['TÜMÜ',...KODLAR.map(k=>k[0])].map(k=>
+    `<button class="chip ${k===kodF?'on':''}" data-k="${k}">${k==='TÜMÜ'?'Tümü':k}</button>`).join('');
+  document.querySelectorAll('#kodFiltre .chip').forEach(c=>c.onclick=()=>{kodF=c.dataset.k;kodFiltreCiz();matrisCiz()});
+}
+function matrisCiz(){
+  const ki=KODLAR.findIndex(k=>k[0]===kodF);
+  const deger=(r,gi)=>kodF==='TÜMÜ'?r[2][gi]:kodDeger(r,gi,ki);
+  const maxV=Math.max(...mSatir.flatMap(r=>gunler.map((_,gi)=>deger(r,gi))));
+  const toplam=gunler.map((_,gi)=>mSatir.reduce((s,r)=>s+deger(r,gi),0));
+  document.getElementById('matris').innerHTML=`
+   <table><thead><tr><th class="stick">Ekip</th>
+     ${gunler.map((g,i)=>`<th class="d ${g.paz?'paz':''} ${sec.tip==='gun'&&sec.i===i?'sel':''}" data-g="${i}">${g.d}<small>${gunKisa[new Date(2026,7,g.d).getDay()]}</small></th>`).join('')}
+     <th class="d">Toplam</th></tr></thead>
+   <tbody>${mSatir.map((r,ri)=>`<tr class="${sec.tip==='ekip'&&sec.i===ri?'sel':''}">
+     <td class="stick" data-r="${ri}"><div class="nm"><b>${r[0]}</b><small>${r[1]} · tıkla: tür dağılımı</small></div></td>
+     ${gunler.map((g,gi)=>{const x=deger(r,gi),o=x? .10+ .55*(x/maxV):0;
+       return `<td class="d ${g.paz?'paz':''} ${sec.tip==='gun'&&sec.i===gi?'sel':''}"
+         style="${x?`background:rgba(99,102,241,${o.toFixed(2)})`:''}">${x||'<span style="color:#39424f">·</span>'}</td>`}).join('')}
+     <td class="d"><b>${gunler.reduce((s,_,gi)=>s+deger(r,gi),0)}</b></td></tr>`).join('')}</tbody>
+   <tfoot><tr><td class="stick">Toplam</td>
+     ${toplam.map((t,i)=>`<td class="${gunler[i].paz?'paz':''}"><b>${t}</b></td>`).join('')}
+     <td><b>${toplam.reduce((a,b)=>a+b,0).toLocaleString('tr-TR')}</b></td></tr></tfoot></table>`;
+  document.querySelectorAll('#matris th.d[data-g]').forEach(th=>th.onclick=()=>{sec={tip:'gun',i:+th.dataset.g};matrisCiz();ozetCiz()});
+  document.querySelectorAll('#matris td.stick[data-r]').forEach(td=>td.onclick=()=>{sec={tip:'ekip',i:+td.dataset.r};matrisCiz();ozetCiz()});
+}
+const gunKod=[[166,128,68,25,0],[200,0,19,0,0],[186,113,115,21,0],[302,138,134,22,1],
+ [240,134,111,26,11],[170,122,101,19,0],[304,157,122,37,0],[315,144,105,24,0],
+ [4,0,11,1,0],[326,171,142,44,0],[190,125,117,16,1],[263,187,122,19,0]]; /* ÖY,AKY,SKA,AKÜ,MVC */
+function ozetCiz(){
+  let baslik,vals;
+  if(sec.tip==='gun'){
+    const g=gunler[sec.i]; vals=gunKod[sec.i];
+    baslik=`<b style="color:#e7ebf1">${g.d} Ağustos</b> — o gün tüm ekipler${g.paz?' · <span style="color:#ef6a6a">pazar</span>':''}`;
+  }else{
+    const r=mSatir[sec.i]; vals=ekipKodToplam(r);
+    baslik=`<b style="color:#e7ebf1">${r[0]}</b> — 1–12 Ağustos toplamı`;
+  }
+  const t=vals.reduce((a,b)=>a+b,0);
+  document.getElementById('ozet').innerHTML=
+    `<div style="flex-basis:100%;font-size:12.5px;color:var(--muted)">${baslik} · ${t.toLocaleString('tr-TR')} işlem</div>`+
+    KODLAR.map(([k,ad,c],i)=>`<div class="dpi"><span class="k" style="background:${c}">${k}</span>
+      <div class="v">${vals[i].toLocaleString('tr-TR')}</div><small>${ad}</small></div>`).join('');
+}
+function ekTblCiz(){
+  document.getElementById('ekTbl').innerHTML=`
+   <thead><tr><th>Ekip</th>${KODLAR.map(k=>`<th>${k[0]}</th>`).join('')}<th>Toplam</th></tr></thead>
+   <tbody>${mSatir.map(r=>{
+     const v=ekipKodToplam(r), t=v.reduce((a,b)=>a+b,0);
+     return `<tr><td class="l"><div class="nm"><b>${r[0]}</b><small>${r[1]}</small></div></td>
+       ${v.map((x,i)=>`<td class="${x?'':'zero'}" style="${i===0?'color:#7ee0a8;font-weight:600':''}">${x||'—'}</td>`).join('')}
+       <td><b>${t}</b></td></tr>`}).join('')}</tbody>
+   <tfoot><tr><td>Toplam</td>${KODLAR.map((_,i)=>`<td>${mSatir.reduce((s,r)=>s+ekipKodToplam(r)[i],0).toLocaleString('tr-TR')}</td>`).join('')}
+     <td>${mSatir.reduce((s,r)=>s+ekipKodToplam(r).reduce((a,b)=>a+b,0),0).toLocaleString('tr-TR')}</td></tr></tfoot>`;
+}
+
+/* başlat */
+calCiz(); ilceCiz(); nbKpi();
+chartCiz(); bugunCiz();
+mFiltreCiz(); mCiz(); eCiz();
+gKpi(); ganttCiz(); gFiltreCiz(); gTblCiz(); gMahCiz();
+kodFiltreCiz(); matrisCiz(); ozetCiz(); ekTblCiz();
+</script>
+</body>
+</html>

@@ -852,6 +852,30 @@ if (Gate::allows("ana_sayfa")) {
     <?php
     $widgets['widget-endeks-karsilastirma'] = ob_get_clean();
 
+    ob_start(); ?>
+        <div class="<?php echo getWidgetWidthClass('widget-kesme-karsilastirma', 'col-12'); ?> widget-item"
+            id="widget-kesme-karsilastirma" style="<?php echo getWidgetStyle('widget-kesme-karsilastirma'); ?>">
+            <div class="card summary-card comparison-dashboard-card">
+                <div class="card-header align-items-center d-flex flex-wrap gap-2">
+                    <h5 class="card-title mb-0 d-flex align-items-center gap-2"><i class="bx bx-grid-vertical drag-handle"></i><i class="bx bx-power-off text-danger"></i>Kesme/Açma Karşılaştırması</h5>
+                    <div class="d-flex align-items-center gap-2 ms-auto">
+                        <span id="kesmeCompGunBadge" class="badge bg-danger-subtle text-danger d-none"><i class="bx bx-calendar-event me-1"></i>Ayın 1'i - <span id="kesmeCompGunNo"></span>'ı arası</span>
+                        <div class="btn-group btn-group-sm" id="kesmeCompViewToggle">
+                            <button type="button" class="btn btn-outline-danger active" data-view="bolge"><i class="bx bx-map-alt me-1"></i>Bölge</button>
+                            <button type="button" class="btn btn-outline-danger" data-view="personel"><i class="bx bx-user me-1"></i>Personel</button>
+                        </div>
+                        <?php echo getWidthControl(); ?>
+                    </div>
+                </div>
+                <div class="card-body p-0" style="min-height:<?php echo getWidgetHeight('widget-kesme-karsilastirma', 'auto'); ?>;">
+                    <div id="kesmeCompLoading" class="p-3"><div class="dashboard-skeleton-table"><div class="skeleton-line w-35 mb-3"></div><div class="skeleton-line w-100 mb-2"></div><div class="skeleton-line w-100 mb-2"></div><div class="skeleton-line w-90"></div></div></div>
+                    <div id="kesmeCompContent" style="display:none"><div id="kesmeCompBolge"></div><div id="kesmeCompPersonel" style="display:none"></div></div>
+                    <div id="kesmeCompEmpty" class="text-center py-5" style="display:none"><i class="bx bx-power-off text-muted" style="font-size:45px;opacity:.25"></i><p class="text-muted mt-2 mb-0">Karşılaştırma verisi bulunamadı.</p></div>
+                </div>
+            </div>
+        </div>
+    <?php $widgets['widget-kesme-karsilastirma'] = ob_get_clean();
+
     if (\App\Service\Gate::allows("gorevler")) {
         $widgets['widget-yaklasan-gorevler'] = renderSkeleton('widget-yaklasan-gorevler', getWidgetWidth('widget-yaklasan-gorevler', 'col-md-6'), '260px');
     }
@@ -1300,6 +1324,35 @@ if (Gate::allows("ana_sayfa")) {
                 [data-bs-theme="dark"] #widget-endeks-karsilastirma .endeks-kpi { background:#272e3d; border-color:#364052; }
                 [data-bs-theme="dark"] #widget-endeks-karsilastirma .endeks-kpi-value { color:#f2f5fa; }
                 [data-bs-theme="dark"] #widget-endeks-karsilastirma .endeks-kpi-label { color:#aab4c7; }
+                #widget-kesme-karsilastirma .comparison-dashboard-card { border:1px solid rgba(226,232,240,.85); border-radius:12px; overflow:hidden; box-shadow:0 4px 15px -5px rgba(15,23,42,.12); }
+                #widget-kesme-karsilastirma .kesme-overview { display:grid; grid-template-columns:repeat(4,minmax(150px,1fr)); gap:10px; padding:14px; background:linear-gradient(135deg,#fff8f8,#f8fafc); border-bottom:1px solid #edf0f5; }
+                #widget-kesme-karsilastirma .kesme-kpi { padding:13px 14px; min-height:82px; background:#fff; border:1px solid #e7eaf1; border-radius:12px; box-shadow:0 7px 22px -18px rgba(15,23,42,.65); }
+                #widget-kesme-karsilastirma .kesme-kpi.is-actionable { cursor:pointer; transition:.2s ease; }
+                #widget-kesme-karsilastirma .kesme-kpi.is-actionable:hover { transform:translateY(-3px); border-color:#fda4af; box-shadow:0 15px 30px -20px rgba(225,29,72,.65); }
+                #widget-kesme-karsilastirma .kesme-kpi-label { color:#64748b;font-size:10px;font-weight:800;letter-spacing:.07em;text-transform:uppercase; }
+                #widget-kesme-karsilastirma .kesme-kpi-value { margin-top:4px;color:#172033;font-size:21px;line-height:1.1;font-weight:800; }
+                #widget-kesme-karsilastirma .kesme-kpi-note { margin-top:6px;color:#8b96a8;font-size:10px; }
+                #widget-kesme-karsilastirma .kesme-table-head th { background:#3b2935 !important;background-image:none !important;color:#fff !important;border-color:#503747 !important; }
+                #widget-kesme-karsilastirma .kesme-table-head th.is-current-period { background:#be123c !important; }
+                #widget-kesme-karsilastirma .kesme-bar { height:4px;background:#e8edf3;border-radius:5px;overflow:hidden;margin:5px auto 0;width:62px; }
+                #widget-kesme-karsilastirma .kesme-bar span { display:block;height:100%;border-radius:5px;background:#fb7185; }
+                @media(max-width:991.98px){#widget-kesme-karsilastirma .kesme-overview{grid-template-columns:repeat(2,minmax(140px,1fr));}}
+                @media(max-width:575.98px){#widget-kesme-karsilastirma .kesme-overview{grid-template-columns:1fr;}}
+                [data-bs-theme="dark"] #widget-kesme-karsilastirma .comparison-dashboard-card,
+                [data-bs-theme="dark"] #widget-kesme-karsilastirma .kesme-kpi { background:#252c39;border-color:#374151; }
+                [data-bs-theme="dark"] #widget-kesme-karsilastirma .kesme-overview { background:#1d232f;border-color:#323b49; }
+                [data-bs-theme="dark"] #widget-kesme-karsilastirma .kesme-kpi-value { color:#f8fafc; }
+                .comparison-detail-toggle { display:flex;align-items:center;justify-content:center;gap:8px;width:100%;padding:10px 14px;border:0;border-top:1px solid #e9edf4;border-bottom:1px solid #e9edf4;background:linear-gradient(180deg,#fff,#f8fafc);color:#536174;font-size:11px;font-weight:700;letter-spacing:.02em;transition:background .2s ease,color .2s ease; }
+                .comparison-detail-toggle:hover { background:#f1f5f9;color:#3730a3; }
+                .comparison-detail-toggle i { font-size:16px;transition:transform .28s cubic-bezier(.2,.8,.2,1); }
+                .comparison-detail-toggle[aria-expanded="true"] i { transform:rotate(180deg); }
+                .comparison-collapsible-detail { display:none;overflow:hidden; }
+                [data-bs-theme="dark"] .comparison-detail-toggle { background:linear-gradient(180deg,#252c39,#202631);border-color:#374151;color:#b8c1cf; }
+                [data-bs-theme="dark"] .comparison-detail-toggle:hover { background:#2b3442;color:#fff; }
+                #kesmeDistributionModal .modal-dialog { transform:translateY(28px) scale(.96);transition:transform .32s cubic-bezier(.2,.8,.2,1); }
+                #kesmeDistributionModal.show .modal-dialog { transform:translateY(0) scale(1); }
+                [data-bs-theme="dark"] #kesmeDistributionModal .modal-body { background:#1b202b !important; }
+                [data-bs-theme="dark"] #kesmeDistributionModal .modal-body .bg-white { background:#252c39 !important;border-color:#374151 !important; }
                 #endeksDistributionModal .modal-dialog { transform:translateY(28px) scale(.96); transition:transform .32s cubic-bezier(.2,.8,.2,1); }
                 #endeksDistributionModal.show .modal-dialog { transform:translateY(0) scale(1); }
                 #endeksDistributionModal .modal-content { overflow:hidden; border:1px solid rgba(148,163,184,.22); border-radius:18px; box-shadow:0 28px 75px -28px rgba(15,23,42,.55); }
@@ -1519,6 +1572,11 @@ if (Gate::allows("ana_sayfa")) {
                     padding: 14px;
                     border: 1px solid rgba(203, 213, 225, 0.45);
                     background: rgba(248, 250, 252, 0.8);
+                }
+
+                [data-bs-theme="dark"] #dashboard-page-skeleton .skeleton-card {
+                    background: #222830;
+                    border-color: #2b333e;
                 }
 
                 #dashboard-page-skeleton .skeleton-card-lg {
@@ -1769,6 +1827,12 @@ if (Gate::allows("ana_sayfa")) {
                                             <strong style="font-size: 13px;">Endeks Karşılaştırma</strong>
                                         </label>
                                     </li>
+                                    <li>
+                                        <label class="dropdown-item rounded cursor-pointer py-2" style="cursor: pointer;">
+                                            <input type="checkbox" class="form-check-input widget-toggle me-2" data-widget="widget-kesme-karsilastirma" checked>
+                                            <strong style="font-size: 13px;">Kesme/Açma Karşılaştırma</strong>
+                                        </label>
+                                    </li>
                                 </div>
                             </ul>
                         </div>
@@ -1912,6 +1976,19 @@ if (Gate::allows("ana_sayfa")) {
                         <span class="text-muted me-auto" style="font-size:10px;"><i class="bx bx-info-circle me-1"></i>Veriler, kartta gösterilen dönem aralığını kapsar.</span>
                         <a href="index.php?p=puantaj/raporlar&tab=karsilastirma" class="btn btn-primary btn-sm rounded-pill px-3"><i class="bx bx-line-chart me-1"></i>Detaylı Rapora Git</a>
                     </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal fade" id="kesmeDistributionModal" tabindex="-1" aria-labelledby="kesmeDistributionTitle" aria-hidden="true">
+            <div class="modal-dialog modal-dialog-centered modal-xl modal-dialog-scrollable">
+                <div class="modal-content border-0" style="border-radius:18px;overflow:hidden;box-shadow:0 28px 75px -28px rgba(15,23,42,.6);">
+                    <div class="p-4 text-white" style="background:radial-gradient(circle at 90% 10%,rgba(255,255,255,.2),transparent 25%),linear-gradient(135deg,#881337,#e11d48 58%,#f97316);">
+                        <div class="d-flex align-items-start gap-3"><span class="d-inline-flex align-items-center justify-content-center rounded-circle" style="width:46px;height:46px;background:rgba(255,255,255,.16)"><i class="bx bx-power-off fs-3"></i></span><div><div class="text-uppercase fw-bold" style="font-size:10px;letter-spacing:.12em;opacity:.75">Kesme/Açma analizi</div><h4 class="text-white mb-1" id="kesmeDistributionTitle">Bu Dönemin İş Dağılımı</h4><div id="kesmeDistributionPeriod" style="font-size:12px;opacity:.8"></div></div><button type="button" class="btn-close btn-close-white ms-auto" data-bs-dismiss="modal" aria-label="Kapat"></button></div>
+                        <div class="row g-2 mt-3" id="kesmeDistributionStats"></div>
+                    </div>
+                    <div class="modal-body p-3 p-lg-4" style="background:#f6f7fb"><div class="row g-3"><div class="col-lg-7"><div class="bg-white border rounded-4 p-3 h-100"><h6 class="fw-bold mb-1"><i class="bx bx-category text-danger me-1"></i>İş Sonucu Dağılımı</h6><p class="text-muted mb-3" style="font-size:11px">Sonuçlanan işlerin işlem türlerine göre dağılımı</p><div id="kesmeResultDistribution" class="row g-2"></div></div></div><div class="col-lg-5"><div class="bg-white border rounded-4 p-3 h-100"><h6 class="fw-bold mb-1"><i class="bx bx-map-alt text-warning me-1"></i>Bölge Katkısı</h6><p class="text-muted mb-3" style="font-size:11px">Dönem toplamına en çok katkı sağlayan bölgeler</p><div id="kesmeRegionDistribution"></div></div></div></div></div>
+                    <div class="modal-footer border-0 py-2 px-4"><span class="text-muted me-auto" style="font-size:10px"><i class="bx bx-info-circle me-1"></i>Aynı gün aralığındaki sonuçlanan işler gösterilir.</span><a href="index.php?p=puantaj/raporlar&tab=kesme" class="btn btn-danger btn-sm rounded-pill px-3"><i class="bx bx-line-chart me-1"></i>Detaylı Rapora Git</a></div>
                 </div>
             </div>
         </div>
@@ -3181,8 +3258,8 @@ if (Gate::allows("ana_sayfa")) {
             }
 
             [data-bs-theme="dark"] .dashboard-page-skeleton .skeleton-card {
-                background: rgba(15, 23, 42, 0.8);
-                border-color: rgba(71, 85, 105, 0.45);
+                background: #222830;
+                border-color: #2b333e;
             }
 
             .widget-toggle:focus {
@@ -4596,6 +4673,7 @@ if (Gate::allows("ana_sayfa")) {
                             'widget-talepler'                : 'Talep Yönetimi',
                             'widget-yaklasan-gorevler'       : 'Yaklaşan Görevler',
                             'widget-endeks-karsilastirma'    : 'Endeks Karşılaştırma',
+                            'widget-kesme-karsilastirma'     : 'Kesme/Açma Karşılaştırma',
                             'widget-is-turu-istatistikleri'  : 'İş Türü İstatistikleri',
                             'widget-is-emri-sonucu-istatistikleri': 'İş Emri Sonuçları'
                         };
@@ -5503,6 +5581,10 @@ if (Gate::allows("ana_sayfa")) {
                         </div>`;
                     }
 
+                    function buildComparisonDetailToggle(target, viewLabel) {
+                        return `<button type="button" class="comparison-detail-toggle" data-detail-target="${target}" aria-expanded="false"><i class="bx bx-chevron-down"></i><span>${viewLabel} detaylarını göster</span></button>`;
+                    }
+
                     function renderEndeksDistributionModal() {
                         if (!endeksCompData) return;
                         const statuses = endeksCompData.status_distribution || [];
@@ -5669,6 +5751,8 @@ if (Gate::allows("ana_sayfa")) {
                         html += '<style>@keyframes pulse-dot{0%,100%{opacity:1;transform:scale(1);}50%{opacity:0.5;transform:scale(1.3);}}</style>';
 
                         html += buildOverview(bolgeEntries, periods, 'bolge');
+                        html += buildComparisonDetailToggle('endeks-bolge-detail', 'Bölge');
+                        html += '<div id="endeks-bolge-detail" class="comparison-collapsible-detail">';
                         // Özet kartlar
                         html += buildSummaryCards(bolgeEntries, 'bolge');
 
@@ -5779,6 +5863,8 @@ if (Gate::allows("ana_sayfa")) {
                         html += '<a href="index.php?p=puantaj/raporlar&tab=karsilastirma" class="btn btn-sm btn-primary" style="font-size: 11px; border-radius: 6px; padding: 4px 14px; font-weight: 600;"><i class="bx bx-right-arrow-alt me-1"></i>Detaylı Rapor</a>';
                         html += '</div></div>';
 
+                        html += '</div>';
+
                         $('#endeksCompBolge').html(html);
                     }
 
@@ -5808,6 +5894,8 @@ if (Gate::allows("ana_sayfa")) {
 
                         let html = '';
                         html += buildOverview(personelEntries, periods, 'personel');
+                        html += buildComparisonDetailToggle('endeks-personel-detail', 'Personel');
+                        html += '<div id="endeks-personel-detail" class="comparison-collapsible-detail">';
                         html += buildSummaryCards(personelEntries, 'personel');
 
                         html += '<div class="table-responsive endeks-table-wrap" style="max-height: 520px; overflow-y: auto;">';
@@ -5864,6 +5952,8 @@ if (Gate::allows("ana_sayfa")) {
                         html += '<div class="d-flex align-items-center gap-2" style="font-size: 10px; color: #64748b;"><span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:#10b981;"></span>>+10%</div>';
                         html += '</div></div>';
 
+                        html += '</div>';
+
                         $('#endeksCompPersonel').html(html);
                     }
 
@@ -5906,6 +5996,100 @@ if (Gate::allows("ana_sayfa")) {
                     loadEndeksComparison();
                 })();
                 // ========== /ENDEKS KARŞILAŞTIRMA KART LOGIC ==========
+
+                // ========== KESME/AÇMA KARŞILAŞTIRMA ==========
+                (function () {
+                    let comparisonData = null;
+                    let currentView = 'bolge';
+                    const numberFormat = new Intl.NumberFormat('tr-TR');
+                    const format = value => numberFormat.format(Number(value || 0));
+                    const escapeHtml = value => String(value ?? '').replace(/[&<>'"]/g, char => ({'&':'&amp;','<':'&lt;','>':'&gt;',"'":'&#039;','"':'&quot;'}[char]));
+                    const trend = (current, previous) => {
+                        if (!previous) return current > 0 ? { text:'Yeni', pct:100, color:'#059669', icon:'bx-plus' } : { text:'-', pct:0, color:'#64748b', icon:'bx-minus' };
+                        const pct = Number((((current - previous) / previous) * 100).toFixed(1));
+                        return { text:(pct > 0 ? '+' : '') + pct + '%', pct, color:pct > 0 ? '#059669' : (pct < 0 ? '#dc2626' : '#64748b'), icon:pct > 0 ? 'bx-trending-up' : (pct < 0 ? 'bx-trending-down' : 'bx-minus') };
+                    };
+
+                    function entriesFor(view) {
+                        const source = comparisonData?.[view] || {};
+                        const labels = (comparisonData?.periods || []).map(period => period.label);
+                        return Object.keys(source).map(key => {
+                            const item = source[key];
+                            const values = labels.map(label => Number(item.periods?.[label]?.toplam || 0));
+                            const last = values[values.length - 1] || 0;
+                            const previous = values[values.length - 2] || 0;
+                            return { key, item, values, last, previous, trend:trend(last, previous) };
+                        }).sort((a,b) => b.last - a.last);
+                    }
+
+                    function overview(entries) {
+                        const periods = comparisonData.periods || [];
+                        const current = entries.reduce((sum,item) => sum + item.last, 0);
+                        const previous = entries.reduce((sum,item) => sum + item.previous, 0);
+                        const change = trend(current, previous);
+                        const days = Math.max(1, Number(comparisonData.gun || 1));
+                        const rising = entries.filter(item => item.trend.pct > 0).length;
+                        return `<div class="kesme-overview"><div class="kesme-kpi is-actionable kesme-total-trigger" role="button" tabindex="0" title="İş dağılımını inceleyin"><div class="kesme-kpi-label">Bu dönem toplam iş <i class="bx bx-expand-alt text-danger ms-1"></i></div><div class="kesme-kpi-value">${format(current)}</div><div class="kesme-kpi-note">${escapeHtml(periods.at(-1)?.label || '')} · ilk ${days} gün</div></div><div class="kesme-kpi"><div class="kesme-kpi-label">Önceki aya göre</div><div class="kesme-kpi-value" style="color:${change.color}"><i class="bx ${change.icon}"></i> ${change.text}</div><div class="kesme-kpi-note">${current-previous >= 0 ? '+' : ''}${format(current-previous)} net iş</div></div><div class="kesme-kpi"><div class="kesme-kpi-label">Günlük ortalama</div><div class="kesme-kpi-value">${format(Math.round(current/days))}</div><div class="kesme-kpi-note">Takvim günü başına sonuçlanan</div></div><div class="kesme-kpi"><div class="kesme-kpi-label">Aktif ${currentView === 'bolge' ? 'bölge' : 'personel'}</div><div class="kesme-kpi-value">${format(entries.length)}</div><div class="kesme-kpi-note"><span class="text-success">${rising} yükselişte</span> · ${entries.length-rising} diğer</div></div></div>`;
+                    }
+
+                    function renderTable(view) {
+                        const entries = entriesFor(view);
+                        const periods = comparisonData.periods || [];
+                        const max = Math.max(...entries.map(item => item.last), 1);
+                        const detailId = 'kesme-' + view + '-detail';
+                        const detailLabel = view === 'bolge' ? 'Bölge' : 'Personel';
+                        let html = overview(entries) + `<button type="button" class="comparison-detail-toggle" data-detail-target="${detailId}" aria-expanded="false"><i class="bx bx-chevron-down"></i><span>${detailLabel} detaylarını göster</span></button><div id="${detailId}" class="comparison-collapsible-detail"><div class="table-responsive" style="max-height:520px;overflow:auto"><table class="table table-nowrap align-middle mb-0"><thead class="kesme-table-head"><tr><th style="padding:12px 16px">` + (view === 'bolge' ? 'BÖLGE' : 'PERSONEL / EKİP') + '</th>';
+                        periods.forEach(period => html += `<th class="text-center ${period.is_current ? 'is-current-period' : ''}" style="padding:12px;min-width:135px">${escapeHtml(period.label)}</th>`);
+                        html += '<th class="text-center" style="min-width:130px">DEĞİŞİM</th></tr></thead><tbody>';
+                        entries.forEach(entry => {
+                            const label = view === 'bolge' ? entry.key : entry.item.personel_adi;
+                            const sub = view === 'bolge' ? ((entry.item.periods?.[periods.at(-1)?.label]?.personel_sayisi || 0) + ' personel') : ((entry.item.ekip_adi || '-') + ' · ' + (entry.item.bolge || '-'));
+                            html += `<tr style="border-bottom:1px solid #eef1f5"><td style="padding:11px 16px"><div class="fw-bold" style="font-size:12px">${escapeHtml(label)}</div><div class="text-muted" style="font-size:9px">${escapeHtml(sub)}</div></td>`;
+                            entry.values.forEach((value,index) => html += `<td class="text-center" style="padding:10px;background:${periods[index].is_current?'rgba(225,29,72,.045)':'transparent'}"><span class="fw-bold">${format(value)}</span><div class="kesme-bar"><span style="width:${value/max*100}%"></span></div></td>`);
+                            html += `<td class="text-center"><span class="badge rounded-pill" style="padding:5px 10px;background:${entry.trend.color}16;color:${entry.trend.color};border:1px solid ${entry.trend.color}35"><i class="bx ${entry.trend.icon} me-1"></i>${entry.trend.text}</span><div class="text-muted mt-1" style="font-size:9px">${entry.last-entry.previous >= 0 ? '+' : ''}${format(entry.last-entry.previous)} iş</div></td></tr>`;
+                        });
+                        html += '</tbody></table></div><div class="d-flex align-items-center px-3 py-2 border-top bg-light-subtle"><span class="text-muted" style="font-size:10px"><i class="bx bx-info-circle me-1"></i>Ayların aynı gün aralıkları karşılaştırılır.</span><a href="index.php?p=puantaj/raporlar&tab=karsilastirma" class="btn btn-sm btn-danger ms-auto rounded-pill px-3">Detaylı Rapor</a></div></div>';
+                        $('#kesmeComp' + (view === 'bolge' ? 'Bolge' : 'Personel')).html(html);
+                    }
+
+                    function openDistribution() {
+                        const distribution = comparisonData.result_distribution || [];
+                        const regions = entriesFor('bolge');
+                        const total = distribution.reduce((sum,item) => sum + Number(item.toplam || 0), 0);
+                        const records = distribution.reduce((sum,item) => sum + Number(item.kayit_sayisi || 0), 0);
+                        const period = comparisonData.periods?.at(-1) || {};
+                        $('#kesmeDistributionPeriod').text(`${period.label || ''} · ${period.start || ''} / ${period.end || ''}`);
+                        $('#kesmeDistributionStats').html([['Toplam iş',total,'bx-check-double'],['İşlem türü',distribution.length,'bx-category'],['Toplam kayıt',records,'bx-receipt'],['Aktif bölge',regions.length,'bx-map']].map(item => `<div class="col-6 col-lg-3"><div class="p-3 rounded-3" style="background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.18)"><div style="font-size:10px;opacity:.75">${item[0]}</div><div class="fs-5 fw-bold mt-1"><i class="bx ${item[2]} me-1"></i>${format(item[1])}</div></div></div>`).join(''));
+                        $('#kesmeResultDistribution').html(distribution.map((item,index) => { const pct=total?Number(item.toplam)/total*100:0; return `<div class="col-md-6"><div class="p-3 border rounded-3 h-100"><div class="d-flex justify-content-between gap-2"><span class="fw-bold text-truncate" title="${escapeHtml(item.sonuc)}" style="font-size:11px">${escapeHtml(item.sonuc)}</span><span class="text-danger fw-bold">%${pct.toFixed(1)}</span></div><div class="d-flex justify-content-between align-items-end mt-2"><strong class="fs-5">${format(item.toplam)}</strong><small class="text-muted">${format(item.kayit_sayisi)} kayıt</small></div><div class="progress mt-2" style="height:5px"><div class="progress-bar bg-danger" style="width:${pct}%"></div></div></div></div>`; }).join('') || '<div class="text-muted">Dağılım bulunamadı.</div>');
+                        const maxRegion = Math.max(...regions.map(item => item.last),1);
+                        $('#kesmeRegionDistribution').html(regions.map((item,index) => `<div class="mb-3"><div class="d-flex justify-content-between mb-1"><span class="fw-semibold" style="font-size:11px">${index+1}. ${escapeHtml(item.key)}</span><strong>${format(item.last)}</strong></div><div class="progress" style="height:7px"><div class="progress-bar" style="width:${item.last/maxRegion*100}%;background:linear-gradient(90deg,#e11d48,#fb923c)"></div></div><div class="text-muted mt-1 text-end" style="font-size:9px">Toplamın %${total ? (item.last/total*100).toFixed(1) : '0.0'}'i</div></div>`).join(''));
+                        bootstrap.Modal.getOrCreateInstance(document.getElementById('kesmeDistributionModal')).show();
+                    }
+
+                    $.post('views/home/api.php', {action:'get-kesme-comparison'}).done(response => {
+                        const result = typeof response === 'object' ? response : JSON.parse(response);
+                        $('#kesmeCompLoading').hide();
+                        if (result.status !== 'success' || !result.data || !Object.keys(result.data.bolge || {}).length) { $('#kesmeCompEmpty').show(); return; }
+                        comparisonData = result.data;
+                        $('#kesmeCompGunNo').text(comparisonData.gun); $('#kesmeCompGunBadge').removeClass('d-none');
+                        renderTable('bolge'); renderTable('personel'); $('#kesmeCompContent').show();
+                    }).fail(() => { $('#kesmeCompLoading').hide(); $('#kesmeCompEmpty').show(); });
+
+                    $('#kesmeCompViewToggle button').on('click', function(){ $('#kesmeCompViewToggle button').removeClass('active'); $(this).addClass('active'); currentView=$(this).data('view'); $('#kesmeCompBolge').toggle(currentView==='bolge'); $('#kesmeCompPersonel').toggle(currentView==='personel'); renderTable(currentView); });
+                    $(document).on('click', '.kesme-total-trigger', openDistribution).on('keydown', '.kesme-total-trigger', event => { if(event.key==='Enter'||event.key===' '){event.preventDefault();openDistribution();} });
+                })();
+                // ========== /KESME/AÇMA KARŞILAŞTIRMA ==========
+
+                $(document).on('click', '.comparison-detail-toggle', function () {
+                    const button = $(this);
+                    const target = $('#' + button.data('detail-target'));
+                    const isOpen = button.attr('aria-expanded') === 'true';
+                    const label = button.find('span').text();
+                    const subject = label.replace(/ detaylarını (göster|gizle)$/i, '');
+                    button.attr('aria-expanded', isOpen ? 'false' : 'true');
+                    button.find('span').text(subject + ' detaylarını ' + (isOpen ? 'göster' : 'gizle'));
+                    target.stop(true, true)[isOpen ? 'slideUp' : 'slideDown'](320);
+                });
 
                 // DB'den gelen ayarları localStorage'a işle (Sayfa yüklendiğinde bir kez)
                 (function() {

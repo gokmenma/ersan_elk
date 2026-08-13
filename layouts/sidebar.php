@@ -219,6 +219,15 @@ $favoriteMenus = $Menus->getFavoriteMenus($currentUserId);
                  body[data-sidebar="dark"] .sidebar-sticky-top { background-color: #191e22 !important; }
                 body[data-sidebar="light"] .sidebar-sticky-top { background-color: #ffffff !important; }
 
+                /* Siyah (slate) temada navigasyonu koyu kart yuzeyiyle esitle. */
+                html[data-theme-mode="slate"][data-bs-theme="dark"] body .vertical-menu,
+                html[data-theme-mode="slate"][data-bs-theme="dark"] body .sidebar-sticky-top,
+                html[data-theme-mode="slate"][data-bs-theme="dark"] body #page-topbar {
+                    background-color: #222830 !important;
+                    background-image: none !important;
+                    border-color: #2b333e !important;
+                }
+
                 /* Themed Search Input Styling */
                 body[data-sidebar="red"] .sidebar-search,
                 body[data-sidebar="purple"] .sidebar-search,
