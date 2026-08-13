@@ -182,6 +182,29 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         line-height: 1;
     }
 
+    /* Çekim ile yükleme arasında uzun boşluk olan fotoğrafları öne çıkarır. */
+    @keyframes kacakGecikmeNabzi {
+        0%   { box-shadow: 0 0 0 0 rgba(255, 193, 7, .7); }
+        70%  { box-shadow: 0 0 0 8px rgba(255, 193, 7, 0); }
+        100% { box-shadow: 0 0 0 0 rgba(255, 193, 7, 0); }
+    }
+
+    .kacak-gecikme-pulse {
+        animation: kacakGecikmeNabzi 1.8s infinite;
+        border: 1px solid var(--bs-warning) !important;
+    }
+
+    .kacak-foto-thumb.kacak-gecikme-pulse {
+        border-width: 3px !important;
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+        .kacak-gecikme-pulse {
+            animation: none;
+            box-shadow: 0 0 0 3px rgba(255, 193, 7, .45);
+        }
+    }
+
     .ai-field-uncertain {
         background-color: #fff8e1 !important;
         border-color: #ffc107 !important;
@@ -1199,6 +1222,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         const MAX_VIDEO = <?= KacakKontrolModel::MAX_VIDEO ?>;
         const VIDEO_MAX_SURE = <?= KacakKontrolModel::VIDEO_MAX_SURE ?>;
         const VIDEO_MAX_BYTE = <?= KacakKontrolModel::videoYuklemeSiniri() ?>;
+        const CEKIM_GECIKME_DK = <?= KacakKontrolModel::CEKIM_GECIKME_DK ?>;
         const BILDIRIM_KACAK_ID = <?= json_encode($bildirimKacakId) ?>;
         let kacakSeciliVideolar = [];
         const YETKI = {
@@ -1324,14 +1348,18 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 </span>`;
             }
             const sayac = eksik > 0 ? `${adet}/${beklenen}` : adet;
-            const baslik = eksik > 0
-                ? `Beklenen ${beklenen} belgeden ${adet} tanesi geldi`
-                : `${adet} belge — Fotoğrafları Görüntüle`;
+            const gecikmeli = parseInt(k.gecikmeli_foto_sayisi || 0, 10);
+            const baslik = gecikmeli > 0
+                ? `${gecikmeli} fotoğraf çekildikten ${CEKIM_GECIKME_DK} dakikadan geç yüklenmiş`
+                : (eksik > 0
+                    ? `Beklenen ${beklenen} belgeden ${adet} tanesi geldi`
+                    : `${adet} belge — Fotoğrafları Görüntüle`);
             const bekleme = eksik > 0
                 ? `<span class="badge bg-warning-subtle text-warning" title="${eksik} fotoğrafın yüklenmesi bekleniyor"><i class="bx bx-time-five me-1"></i>${eksik} bekleniyor</span>`
                 : '';
+            const gecikmeSinifi = gecikmeli > 0 ? ' kacak-gecikme-pulse' : '';
             return `<div class="d-flex align-items-center justify-content-center gap-1">
-                <button class="btn btn-sm btn-soft-info btn-foto" data-id="${k.id}" data-mevcut="${adet}" data-beklenen="${beklenen}" title="${baslik}"><i class="bx bx-image me-1"></i>${sayac}</button>
+                <button class="btn btn-sm btn-soft-info btn-foto${gecikmeSinifi}" data-id="${k.id}" data-mevcut="${adet}" data-beklenen="${beklenen}" title="${baslik}"><i class="bx bx-image me-1"></i>${sayac}</button>
                 ${bekleme}
                 <a href="${API}?action=download-zip&id=${k.id}" class="btn btn-sm btn-soft-success btn-foto-zip" title="Fotoğrafları ZIP Olarak İndir"><i class="bx bx-download"></i></a>
             </div>`;
@@ -2244,14 +2272,19 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 return `${iki(t.getDate())}.${iki(t.getMonth() + 1)}.${t.getFullYear()} ${iki(t.getHours())}:${iki(t.getMinutes())}`;
             }
 
-            function farkMetni(cekim, yukleme) {
-                const bas = new Date(String(cekim).replace(' ', 'T'));
-                const son = new Date(String(yukleme).replace(' ', 'T'));
+            function gecikmeDakika(f) {
+                if (!f || !f.cekim_tarihi || !f.olusturma_tarihi) return null;
+                const bas = new Date(String(f.cekim_tarihi).replace(' ', 'T'));
+                const son = new Date(String(f.olusturma_tarihi).replace(' ', 'T'));
                 if (isNaN(bas.getTime()) || isNaN(son.getTime())) return null;
+                return Math.round((son - bas) / 60000);
+            }
 
-                const dakika = Math.round((son - bas) / 60000);
+            function farkMetni(dakika) {
+                if (dakika === null) return null;
                 if (dakika < 0) return { metin: 'çekimden önce yüklenmiş', renk: 'bg-danger' };
-                if (dakika < 60) return { metin: dakika + ' dk sonra', renk: 'bg-success' };
+                if (dakika <= CEKIM_GECIKME_DK) return { metin: dakika + ' dk sonra', renk: 'bg-success' };
+                if (dakika < 60) return { metin: dakika + ' dk sonra', renk: 'bg-warning text-dark' };
 
                 const saat = Math.floor(dakika / 60);
                 if (saat < 24) return { metin: saat + ' sa ' + (dakika % 60) + ' dk sonra', renk: saat < 8 ? 'bg-warning text-dark' : 'bg-danger' };
@@ -2266,7 +2299,7 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                         <i class="bx bx-time"></i> Yükleme ${esc(yukleme)}<br><span class="text-muted">Çekim bilgisi yok</span></div>`;
                 }
 
-                const fark = farkMetni(f.cekim_tarihi, f.olusturma_tarihi);
+                const fark = farkMetni(gecikmeDakika(f));
                 const kaynak = f.cekim_kaynak === 'exif' ? 'Fotoğraf meta verisi' : 'Cihazdaki dosya tarihi';
                 const rozet = fark
                     ? `<span class="badge ${fark.renk}" style="font-size:.6rem">${esc(fark.metin)}</span>`
@@ -2283,10 +2316,13 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 const pdfMi = /\.pdf$/i.test(f.dosya_yolu);
                 const videoMu = f.medya_tipi === 'video';
 
+                const gecikme = gecikmeDakika(f);
+                const gecikmeSinifi = (gecikme !== null && gecikme > CEKIM_GECIKME_DK) ? ' kacak-gecikme-pulse' : '';
+
                 if (videoMu) {
                     const kapak = f.kucuk_yol
-                        ? `<img src="${kucukUrl}" class="kacak-foto-thumb" loading="lazy" alt="Video">`
-                        : `<div class="kacak-foto-thumb d-flex align-items-center justify-content-center bg-light"><i class="bx bx-video fs-1 text-muted"></i></div>`;
+                        ? `<img src="${kucukUrl}" class="kacak-foto-thumb${gecikmeSinifi}" loading="lazy" alt="Video">`
+                        : `<div class="kacak-foto-thumb${gecikmeSinifi} d-flex align-items-center justify-content-center bg-light"><i class="bx bx-video fs-1 text-muted"></i></div>`;
                     const sureRozeti = f.sure_saniye
                         ? `<span class="badge bg-dark position-absolute bottom-0 end-0 m-1" style="font-size:.65rem">${VideoKontrol.sureBicimle(f.sure_saniye)}</span>`
                         : '';
@@ -2309,8 +2345,8 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                 }
 
                 const onizleme = pdfMi
-                    ? `<div class="kacak-foto-thumb d-flex align-items-center justify-content-center bg-light"><i class="bx bxs-file-pdf fs-1 text-danger"></i></div>`
-                    : `<img src="${kucukUrl}" class="kacak-foto-thumb" loading="lazy" alt="${esc(turEtiket[f.tur] || f.tur)}">`;
+                    ? `<div class="kacak-foto-thumb${gecikmeSinifi} d-flex align-items-center justify-content-center bg-light"><i class="bx bxs-file-pdf fs-1 text-danger"></i></div>`
+                    : `<img src="${kucukUrl}" class="kacak-foto-thumb${gecikmeSinifi}" loading="lazy" alt="${esc(turEtiket[f.tur] || f.tur)}">`;
 
                 const silBtn = YETKI.arsiv
                     ? `<button type="button" class="btn btn-danger btn-sm btn-foto-sil" data-foto-id="${f.id}" data-kacak-id="${kacakId}" title="Sil"><i class="bx bx-x"></i></button>`

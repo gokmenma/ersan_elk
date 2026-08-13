@@ -47,6 +47,9 @@ class KacakKontrolModel extends Model
 
     const KUCUK_KENAR = 320;
 
+    // Çekim ile yükleme arasındaki bu süreyi aşan fotoğraflar listede işaretlenir.
+    const CEKIM_GECIKME_DK = 30;
+
     public function __construct()
     {
         parent::__construct($this->table);
@@ -128,7 +131,11 @@ class KacakKontrolModel extends Model
                        (SELECT COUNT(*) FROM kacak_kontrol_fotograflari f
                          WHERE f.kacak_id = k.id AND f.medya_tipi = 'foto' AND f.silinme_tarihi IS NULL AND f.arsivlendi = 0) AS foto_sayisi,
                        (SELECT COUNT(*) FROM kacak_kontrol_fotograflari fv
-                         WHERE fv.kacak_id = k.id AND fv.medya_tipi = 'video' AND fv.silinme_tarihi IS NULL AND fv.arsivlendi = 0) AS video_sayisi
+                         WHERE fv.kacak_id = k.id AND fv.medya_tipi = 'video' AND fv.silinme_tarihi IS NULL AND fv.arsivlendi = 0) AS video_sayisi,
+                       (SELECT COUNT(*) FROM kacak_kontrol_fotograflari fg
+                         WHERE fg.kacak_id = k.id AND fg.silinme_tarihi IS NULL AND fg.arsivlendi = 0
+                           AND fg.cekim_tarihi IS NOT NULL
+                           AND TIMESTAMPDIFF(MINUTE, fg.cekim_tarihi, fg.olusturma_tarihi) > " . self::CEKIM_GECIKME_DK . ") AS gecikmeli_foto_sayisi
                 FROM kacak_kontrol k
                 LEFT JOIN personel bp ON bp.id = k.bildiren_personel_id
                 LEFT JOIN users u     ON u.id = k.onaylayan_id

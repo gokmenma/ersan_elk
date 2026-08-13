@@ -231,6 +231,7 @@ try {
                     : '-';
                 $k['foto_sayisi'] = (int) $k['foto_sayisi'];
                 $k['beklenen_foto_sayisi'] = (int) ($k['beklenen_foto_sayisi'] ?? 0);
+                $k['gecikmeli_foto_sayisi'] = (int) ($k['gecikmeli_foto_sayisi'] ?? 0);
                 if (kacakIzin('kacak_iptal_ekle') || kacakSuperAdmin()) {
                     $k['iptal_token'] = Security::encrypt((string) $k['id']);
                 }
