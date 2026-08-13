@@ -798,29 +798,55 @@ class KacakKontrolModel extends Model
         }
 
         if (!is_string($istemci) || $istemci === '') {
-            error_log('Kaçak fotoğrafı çekim anı olmadan kaydedildi: sunucu EXIF yok, istemci değeri boş.');
+            error_log('Kaçak çekim anı boş: ' . self::cekimTeshisi());
             return null;
         }
 
         $parcalar = explode('|', $istemci, 2);
         if (count($parcalar) !== 2) {
-            error_log('Kaçak fotoğrafı çekim anı biçimsiz geldi: ' . substr($istemci, 0, 60));
+            error_log('Kaçak çekim anı biçimsiz: ' . substr($istemci, 0, 60) . ' | ' . self::cekimTeshisi());
             return null;
         }
 
         $kaynak = $parcalar[0] === 'exif' ? 'exif' : 'dosya';
         $zaman = strtotime(trim($parcalar[1]));
         if ($zaman === false) {
+            error_log('Kaçak çekim anı çözümlenemedi: ' . substr($istemci, 0, 60) . ' | ' . self::cekimTeshisi());
             return null;
         }
 
         // Cihaz saati bozuksa anlamsız değer yazılmasın.
         if ($zaman > time() + 3600 || $zaman < strtotime('-5 years')) {
-            error_log('Kaçak fotoğrafı çekim anı aralık dışı, yok sayıldı: ' . substr($istemci, 0, 60));
+            error_log('Kaçak çekim anı aralık dışı: ' . substr($istemci, 0, 60)
+                . ' | sunucu_saati=' . date('Y-m-d H:i:s') . ' | ' . self::cekimTeshisi());
             return null;
         }
 
         return ['tarih' => date('Y-m-d H:i:s', $zaman), 'kaynak' => $kaynak];
+    }
+
+    /**
+     * Çekim anı yazılamadığında hangi istekte, hangi alanların geldiğini kaydeder.
+     * "cekim_alanlari" boşsa istemci alanı hiç göndermemiştir; doluysa boş göndermiştir.
+     */
+    private static function cekimTeshisi(): string
+    {
+        $alanlar = [];
+        foreach ($_POST as $anahtar => $deger) {
+            if (strpos($anahtar, '_cekim') === false) {
+                continue;
+            }
+            $alanlar[] = is_array($deger)
+                ? $anahtar . '[' . count($deger) . ']=' . implode(';', array_map(
+                    static fn($d) => $d === '' ? 'BOS' : substr((string) $d, 0, 30),
+                    $deger
+                ))
+                : $anahtar . '=' . ($deger === '' ? 'BOS' : substr((string) $deger, 0, 30));
+        }
+
+        return 'action=' . substr((string) ($_POST['action'] ?? $_GET['action'] ?? '-'), 0, 30)
+            . ' dosyalar=' . implode(',', array_keys($_FILES))
+            . ' cekim_alanlari=' . ($alanlar ? implode(' ', $alanlar) : 'YOK');
     }
 
     public function addVideo(

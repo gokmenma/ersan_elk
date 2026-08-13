@@ -7,7 +7,7 @@
 // temizlenir hem de importScripts URL'i değişir. Kayıt updateViaCache belirtmediği
 // için varsayılan "imports" geçerlidir ve sürümsüz import HTTP önbelleğinden
 // gelip service worker'ı eski kodla çalıştırır.
-const KUYRUK_SURUM = "16";
+const KUYRUK_SURUM = "17";
 const CACHE_NAME = "personel-pwa-v" + KUYRUK_SURUM;
 const SAYFA_CACHE = "personel-pwa-sayfa-v1";
 const OFFLINE_URL = "offline.html";
@@ -30,14 +30,22 @@ const PRECACHE_ASSETS = [
 importScripts("./assets/js/pwa-offline-queue.js?v=" + KUYRUK_SURUM);
 
 // Install event - önbellekleme
+// addAll atomiktir: tek bir dosya getirilemezse kurulum tümden düşer ve yeni
+// service worker hiç aktifleşmez; cihaz eski kodla çalışmaya devam eder.
+// Bu yüzden her dosya ayrı ayrı, hatası yutularak alınır.
 self.addEventListener("install", (event) => {
   event.waitUntil(
     caches
       .open(CACHE_NAME)
-      .then((cache) => {
-        console.log("Opened cache");
-        return cache.addAll(PRECACHE_ASSETS);
-      })
+      .then((cache) =>
+        Promise.all(
+          PRECACHE_ASSETS.map((yol) =>
+            cache
+              .add(yol)
+              .catch((e) => console.log("Önbelleğe alınamadı:", yol, e)),
+          ),
+        ),
+      )
       .then(() => {
         self.skipWaiting();
       }),

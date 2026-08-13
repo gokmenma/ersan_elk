@@ -719,6 +719,16 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 }
                 $storedSignerIds = json_decode((string) ($evrak->imza_kullanici_ids ?? '[]'), true) ?: [];
                 $evrak->imza_kullanici_ids = array_map(fn($signerId) => Security::encrypt((int) $signerId), $storedSignerIds);
+                $evrak->dosyalar = array_map(static function ($attachment) {
+                    return [
+                        'id' => Security::encrypt((int) $attachment->id),
+                        'name' => $attachment->dosya_adi,
+                        'path' => $attachment->dosya_yolu,
+                        'size' => (int) $attachment->dosya_boyutu,
+                        'date' => $attachment->olusturma_tarihi,
+                        'user' => $attachment->yukleyen_kullanici,
+                    ];
+                }, $Model->getAttachments($id));
                 echo json_encode(['status' => 'success', 'data' => $evrak]);
                 break;
 

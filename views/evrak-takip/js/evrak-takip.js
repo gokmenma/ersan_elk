@@ -12,6 +12,67 @@ $(document).ready(function () {
   $("#dosya").attr("accept", ".pdf,.jpg,.jpeg,.png");
 
   let evrakPdfObjectUrl = null;
+  let gelenDosyalar = [];
+  let silinenGelenDosyaIds = [];
+  let gelenDosyaSirasi = 1;
+
+  function formatGelenDosyaBoyutu(bytes) {
+    if (!bytes) return "Boyut bilgisi yok";
+    return bytes >= 1024 * 1024
+      ? (bytes / (1024 * 1024)).toFixed(2) + " MB"
+      : (bytes / 1024).toFixed(2) + " KB";
+  }
+
+  function gelenDosyaAlanlariniGuncelle() {
+    const order = gelenDosyalar.map(item => item.type === "existing"
+      ? { type: "existing", id: item.id }
+      : { type: "new", key: item.key });
+    $("#gelen_ek_duzen_json").val(JSON.stringify(order));
+    $("#gelen_silinen_ek_ids_json").val(JSON.stringify(silinenGelenDosyaIds));
+  }
+
+  function gelenDosyalariGoster() {
+    const list = $("#gelenEvrakDosyaListesi").empty();
+    gelenDosyalar.forEach((item, index) => {
+      const card = $("<div>").addClass("border rounded-3 p-2 bg-light d-flex align-items-center gap-2");
+      const icon = $("<span>").addClass("badge bg-info-subtle text-info p-2 rounded-circle")
+        .append($("<i>").attr("data-feather", "file-text").css({width: "15px", height: "15px"}));
+      const info = $("<div>").addClass("flex-grow-1 min-w-0");
+      $("<div>").addClass("fw-bold small text-truncate").text(item.name).appendTo(info);
+      const detail = item.type === "existing"
+        ? [item.date ? new Date(item.date.replace(" ", "T")).toLocaleString("tr-TR") : "", item.user || "Bilinmeyen Kullanıcı"]
+        : ["Henüz kaydedilmedi", "Ekleyen: siz"];
+      $("<div>").addClass("text-muted").css("font-size", "11px")
+        .text(detail.filter(Boolean).join(" • ") + " • " + formatGelenDosyaBoyutu(item.size)).appendTo(info);
+      const actions = $("<div>").addClass("d-flex gap-1 flex-shrink-0");
+      if (item.type === "existing" && item.path) {
+        $("<a>").addClass("btn btn-sm btn-soft-info").attr({href: item.path, target: "_blank", title: "Görüntüle"})
+          .append($("<i>").attr("data-feather", "eye").css({width: "14px", height: "14px"})).appendTo(actions);
+      }
+      $("<button type='button'>").addClass("btn btn-sm btn-soft-danger").attr("title", "Listeden kaldır")
+        .append($("<i>").attr("data-feather", "trash-2").css({width: "14px", height: "14px"}))
+        .on("click", function () {
+          if (item.type === "existing") silinenGelenDosyaIds.push(item.id);
+          gelenDosyalar.splice(index, 1);
+          gelenDosyalariGoster();
+        }).appendTo(actions);
+      card.append(icon, info, actions).appendTo(list);
+    });
+    gelenDosyaAlanlariniGuncelle();
+    if (typeof feather !== "undefined") feather.replace();
+  }
+
+  $("#gelenEkDosyalari").on("change", function () {
+    Array.from(this.files || []).forEach(file => {
+      if (file.size > 10 * 1024 * 1024) {
+        Swal.fire("Dosya Çok Büyük", file.name + " 10 MB sınırını aşıyor.", "warning");
+        return;
+      }
+      gelenDosyalar.push({type: "new", key: "g" + gelenDosyaSirasi++, name: file.name, size: file.size, file: file});
+    });
+    this.value = "";
+    gelenDosyalariGoster();
+  });
 
   function initEvrakSummernote() {
     const editor = $("#evrak_aciklama");
@@ -445,6 +506,9 @@ $(document).ready(function () {
     $("#evrak_id").val("");
     setEvrakContent("");
     $("#mevcutDosya").hide();
+    gelenDosyalar = [];
+    silinenGelenDosyaIds = [];
+    gelenDosyalariGoster();
     
     // Select2 Reset
     $(".evrak-select2, .evrak-select2-tags, .evrak-select2-multiple").val("").trigger("change");
@@ -480,7 +544,11 @@ $(document).ready(function () {
         return false;
       }
     }
+    gelenDosyaAlanlariniGuncelle();
     const formData = new FormData(this);
+    gelenDosyalar.forEach(item => {
+      if (item.type === "new") formData.append("ek_dosyalari[" + item.key + "]", item.file, item.name);
+    });
     const btn = $("#btnEvrakKaydet");
     btn.prop("disabled", true).html('<span class="spinner-border spinner-border-sm"></span>');
 
@@ -555,7 +623,10 @@ $(document).ready(function () {
         checkSectionVisibility();
         
         setEvrakContent(data.aciklama);
-        if (data.dosya_yolu) $("#mevcutDosya").show().find("a").attr("href", data.dosya_yolu);
+        gelenDosyalar = (data.dosyalar || []).map(item => ({...item, type: "existing"}));
+        silinenGelenDosyaIds = [];
+        gelenDosyalariGoster();
+        if (data.dosya_yolu && gelenDosyalar.length === 0) $("#mevcutDosya").show().find("a").attr("href", data.dosya_yolu);
         else $("#mevcutDosya").hide();
 
         ensureModalInBody();

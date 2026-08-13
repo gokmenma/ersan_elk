@@ -542,12 +542,15 @@ class EvrakTakipModel extends Model
     public function getAttachments(int $evrakId): array
     {
         $sql = $this->db->prepare("
-            SELECT id, dosya_adi, dosya_yolu, mime_tipi, dosya_boyutu, sira, olusturma_tarihi
-            FROM evrak_takip_ekleri
-            WHERE evrak_id = :evrak_id
-              AND firma_id = :firma_id
-              AND silinme_tarihi IS NULL
-            ORDER BY sira ASC, id ASC
+            SELECT ee.id, ee.dosya_adi, ee.dosya_yolu, ee.mime_tipi, ee.dosya_boyutu,
+                   ee.sira, ee.olusturma_tarihi, ee.yukleyen_kullanici_id,
+                   COALESCE(u.adi_soyadi, u.user_name, 'Bilinmeyen Kullanıcı') AS yukleyen_kullanici
+            FROM evrak_takip_ekleri ee
+            LEFT JOIN users u ON u.id = ee.yukleyen_kullanici_id
+            WHERE ee.evrak_id = :evrak_id
+              AND ee.firma_id = :firma_id
+              AND ee.silinme_tarihi IS NULL
+            ORDER BY ee.sira ASC, ee.id ASC
         ");
         $sql->execute(['evrak_id' => $evrakId, 'firma_id' => $_SESSION['firma_id']]);
         return $sql->fetchAll(PDO::FETCH_OBJ);
@@ -560,9 +563,9 @@ class EvrakTakipModel extends Model
         }
         $sql = $this->db->prepare("
             INSERT INTO evrak_takip_ekleri
-                (evrak_id, firma_id, dosya_adi, dosya_yolu, mime_tipi, dosya_boyutu, sira)
+                (evrak_id, firma_id, dosya_adi, dosya_yolu, mime_tipi, dosya_boyutu, sira, yukleyen_kullanici_id)
             VALUES
-                (:evrak_id, :firma_id, :dosya_adi, :dosya_yolu, :mime_tipi, :dosya_boyutu, :sira)
+                (:evrak_id, :firma_id, :dosya_adi, :dosya_yolu, :mime_tipi, :dosya_boyutu, :sira, :yukleyen_kullanici_id)
         ");
         $sql->execute([
             'evrak_id' => $evrakId,
@@ -572,6 +575,7 @@ class EvrakTakipModel extends Model
             'mime_tipi' => $attachment['mime_tipi'] ?? null,
             'dosya_boyutu' => (int) ($attachment['dosya_boyutu'] ?? 0),
             'sira' => (int) ($attachment['sira'] ?? 0),
+            'yukleyen_kullanici_id' => (int) ($_SESSION['user_id'] ?? $_SESSION['id'] ?? 0) ?: null,
         ]);
         return (int) $this->db->lastInsertId();
     }
