@@ -456,7 +456,24 @@ if (true) { // Always use unified logic for all standard tabs
 
     foreach ($regionMinTeams as $rName => $minNum) {
         $teams = $regionGrouped[$rName];
-        usort($teams, function ($a, $b) {
+        usort($teams, function ($a, $b) use ($summary, $activeTab) {
+            $hasData = static function (array $item) use ($summary, $activeTab): bool {
+                if ($activeTab === 'kacakkontrol') {
+                    $teamName = $item['team']->tur_adi ?? '';
+                    return !empty($summary[$teamName]);
+                }
+
+                $personelId = $item['pId'];
+                $compositeKey = $item['compositeKey'] ?? ($item['tId'] . '|' . ($item['team']->tur_adi ?? ''));
+                return !empty($summary[$personelId][$compositeKey]);
+            };
+
+            $aHasData = $hasData($a);
+            $bHasData = $hasData($b);
+            if ($aHasData !== $bHasData) {
+                return $aHasData ? -1 : 1;
+            }
+
             $teamA = $a['team']->tur_adi ?? '';
             $teamB = $b['team']->tur_adi ?? '';
             preg_match('/(?:EK[İI\?]?P-?\s?)(\d+)/ui', $teamA, $matchA);
