@@ -432,6 +432,7 @@ foreach ($TanimlamalarRapor->getDefterKodlari() as $raporDefter) {
     }
 
     .ka-nobet-kutu {
+        position: relative;
         margin-top: 4px;
         background: #8b5cf6;
         color: #fff;
@@ -442,6 +443,11 @@ foreach ($TanimlamalarRapor->getDefterKodlari() as $raporDefter) {
         cursor: pointer;
         line-height: 1.2;
         text-align: center;
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    .ka-nobet-kutu:hover {
+        box-shadow: 0 2px 6px rgba(139, 92, 246, 0.35);
     }
 
     .ka-nobet-kutu.bos-kutu {
@@ -449,10 +455,12 @@ foreach ($TanimlamalarRapor->getDefterKodlari() as $raporDefter) {
         color: var(--bs-secondary-color);
         border: 1px dashed var(--bs-border-color);
         font-weight: 500;
+        box-shadow: none;
     }
 
     .ka-nobet-kutu.elle {
-        box-shadow: inset 0 0 0 2px #f1b44c;
+        box-shadow: inset 0 0 0 2px #f1a520, 0 0 0 1px #f1a520 !important;
+        border: 1px solid #f1a520 !important;
     }
 
     .ka-nobet-kutu.canli-kayit {
@@ -470,7 +478,44 @@ foreach ($TanimlamalarRapor->getDefterKodlari() as $raporDefter) {
         letter-spacing: .3px;
     }
 
+    .ka-nobet-sil-btn {
+        position: absolute;
+        top: 2px;
+        right: 2px;
+        width: 16px;
+        height: 16px;
+        border-radius: 50%;
+        background: rgba(0, 0, 0, 0.4);
+        color: #ffffff !important;
+        border: none;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 12px;
+        line-height: 1;
+        opacity: 0;
+        visibility: hidden;
+        transform: scale(0.7);
+        transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        z-index: 5;
+    }
+
+    .ka-nobet-kutu:hover .ka-nobet-sil-btn {
+        opacity: 1;
+        visibility: visible;
+        transform: scale(1);
+    }
+
+    .ka-nobet-sil-btn:hover {
+        background: #dc3545 !important;
+        color: #ffffff !important;
+        transform: scale(1.15) !important;
+    }
+
     .ka-telefon-kutu {
+        position: relative;
         margin-top: 4px;
         font-size: .65rem;
         text-align: center;
@@ -480,10 +525,53 @@ foreach ($TanimlamalarRapor->getDefterKodlari() as $raporDefter) {
         border-radius: 5px;
         padding: 2px 4px;
         cursor: pointer;
+        transition: border-color 0.15s ease;
+    }
+
+    .ka-telefon-kutu:hover {
+        border-color: var(--bs-primary);
     }
 
     .ka-telefon-kutu.elle {
-        box-shadow: inset 0 0 0 1px #f1b44c;
+        border: 1.5px solid #f1a520 !important;
+        box-shadow: 0 0 0 1px #f1a520 !important;
+        background: rgba(241, 165, 32, 0.08) !important;
+    }
+
+    .ka-telefon-sil-btn {
+        position: absolute;
+        top: 50%;
+        right: 2px;
+        transform: translateY(-50%) scale(0.7);
+        width: 14px;
+        height: 14px;
+        border-radius: 50%;
+        background: rgba(108, 117, 125, 0.25);
+        color: var(--bs-secondary-color) !important;
+        border: none;
+        padding: 0;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 11px;
+        line-height: 1;
+        opacity: 0;
+        visibility: hidden;
+        transition: all 0.15s cubic-bezier(0.4, 0, 0.2, 1);
+        cursor: pointer;
+        z-index: 5;
+    }
+
+    .ka-telefon-kutu:hover .ka-telefon-sil-btn {
+        opacity: 1;
+        visibility: visible;
+        transform: translateY(-50%) scale(1);
+    }
+
+    .ka-telefon-sil-btn:hover {
+        background: #dc3545 !important;
+        color: #ffffff !important;
+        transform: translateY(-50%) scale(1.15) !important;
     }
 
     #kaTabloIlce .form-floating-custom {
@@ -505,6 +593,15 @@ foreach ($TanimlamalarRapor->getDefterKodlari() as $raporDefter) {
 
     #kaTabloIlce .select2-container .select2-selection--single {
         height: 34px !important;
+        transition: border-color 0.15s ease, box-shadow 0.15s ease;
+    }
+
+    #kaTabloIlce select.border-warning + .select2-container .select2-selection--single,
+    #kaTabloIlce select.is-elle + .select2-container .select2-selection--single,
+    #kaTabloIlce .select2-container.is-elle .select2-selection--single {
+        border: 1.5px solid #f1a520 !important;
+        box-shadow: 0 0 0 1px rgba(241, 165, 32, 0.25) !important;
+        background-color: rgba(241, 165, 32, 0.05) !important;
     }
 
     #kaTabloIlce .select2-container--default .select2-selection--single .select2-selection__rendered {
@@ -1069,19 +1166,25 @@ foreach ($TanimlamalarRapor->getDefterKodlari() as $raporDefter) {
             <div class="row g-3">
                 <div class="col-lg-8">
                     <div class="card border-0 shadow-sm h-100">
-                        <div class="card-header bg-transparent border-bottom py-3 d-flex flex-wrap align-items-center justify-content-between gap-2">
-                            <div>
-                                <h5 class="mb-0 fw-bold text-dark"><i class="bx bx-calendar me-1 text-primary"></i> <span id="kaNobetBaslik">Merkez Nöbeti</span></h5>
-                                <p class="text-muted small mb-0 mt-1">Her gün 1 personel nöbetçidir; o hafta ilçeye giden ekiplerin personeli merkez nöbetine yazılmaz. Plan hafta hafta üretilir, geçmiş günlere yazılmaz ve elle değiştirilen günler (sarı çerçeve) korunur.</p>
-                            </div>
-                            <div class="d-flex align-items-center gap-2 ms-auto">
-                                <button type="button" class="btn btn-outline-secondary btn-sm" id="kaAyGeri"><i class="bx bx-chevron-left"></i></button>
-                                <button type="button" class="btn btn-outline-secondary btn-sm" id="kaAyIleri"><i class="bx bx-chevron-right"></i></button>
-                                <?php if ($yetkiNobet): ?>
-                                    <button type="button" class="btn btn-primary btn-sm" id="kaBtnNobetUret">
-                                        <i class="bx bx-refresh me-1"></i> Haftalık Plan Oluştur
-                                    </button>
-                                <?php endif; ?>
+                        <div class="card-header bg-transparent border-bottom py-3">
+                            <div class="row align-items-center g-2">
+                                <div class="col-md-7 col-lg-8">
+                                    <h5 class="mb-0 fw-bold text-dark"><i class="bx bx-calendar me-1 text-primary"></i> <span id="kaNobetBaslik">Merkez Nöbeti</span></h5>
+                                    <p class="text-muted small mb-0 mt-1">Her gün 1 personel nöbetçidir; o hafta ilçeye giden ekiplerin personeli merkez nöbetine yazılmaz. Plan hafta hafta üretilir, geçmiş günlere yazılmaz ve elle değiştirilen günler (turuncu çerçeve) korunur.</p>
+                                </div>
+                                <div class="col-md-5 col-lg-4 text-md-end">
+                                    <div class="d-inline-flex align-items-center gap-2">
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <button type="button" class="btn btn-outline-secondary" id="kaAyGeri" title="Önceki Ay"><i class="bx bx-chevron-left"></i></button>
+                                            <button type="button" class="btn btn-outline-secondary" id="kaAyIleri" title="Sonraki Ay"><i class="bx bx-chevron-right"></i></button>
+                                        </div>
+                                        <?php if ($yetkiNobet): ?>
+                                            <button type="button" class="btn btn-primary btn-sm text-nowrap" id="kaBtnNobetUret">
+                                                <i class="bx bx-refresh me-1"></i> Haftalık Plan Oluştur
+                                            </button>
+                                        <?php endif; ?>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                         <div class="card-body">
@@ -1326,9 +1429,12 @@ foreach ($TanimlamalarRapor->getDefterKodlari() as $raporDefter) {
                         Elle seçilen günler sarı çerçeveyle işaretlenir ve "Planı Otomatik Oluştur" bu günleri değiştirmez.
                     </div>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Vazgeç</button>
-                    <button type="submit" class="btn btn-primary">Kaydet</button>
+                <div class="modal-footer d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-danger" id="kaBtnSahaNobetSil"><i class="bx bx-trash me-1"></i> Nöbeti Kaldır</button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Vazgeç</button>
+                        <button type="submit" class="btn btn-primary">Kaydet</button>
+                    </div>
                 </div>
             </form>
         </div>
@@ -1357,11 +1463,14 @@ foreach ($TanimlamalarRapor->getDefterKodlari() as $raporDefter) {
                         </div>
                     <?php endif; ?>
                 </div>
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-light" data-bs-dismiss="modal">Vazgeç</button>
-                    <?php if (count($personelOptions) > 1): ?>
-                        <button type="submit" class="btn btn-primary">Kaydet</button>
-                    <?php endif; ?>
+                <div class="modal-footer d-flex justify-content-between">
+                    <button type="button" class="btn btn-outline-danger" id="kaBtnTelefonNobetSil"><i class="bx bx-trash me-1"></i> Nöbeti Kaldır</button>
+                    <div class="d-flex gap-2">
+                        <button type="button" class="btn btn-light" data-bs-dismiss="modal">Vazgeç</button>
+                        <?php if (count($personelOptions) > 1): ?>
+                            <button type="submit" class="btn btn-primary">Kaydet</button>
+                        <?php endif; ?>
+                    </div>
                 </div>
             </form>
         </div>

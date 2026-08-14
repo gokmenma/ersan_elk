@@ -233,8 +233,12 @@ class KesmeNobetModel extends Model
         return $harita;
     }
 
-    public function telefonYaz(string $tarih, int $personelId, bool $elle, ?int $olusturanId): bool
+    public function telefonYaz(string $tarih, ?int $personelId, bool $elle, ?int $olusturanId = null): bool
     {
+        if (!$personelId) {
+            $stmt = $this->db->prepare("DELETE FROM telefon_nobet WHERE firma_id = ? AND tarih = ?");
+            return $stmt->execute([$this->firmaId(), $tarih]);
+        }
         $stmt = $this->db->prepare("INSERT INTO telefon_nobet
             (firma_id, tarih, personel_id, elle_degistirildi) VALUES (?, ?, ?, ?)
             ON DUPLICATE KEY UPDATE personel_id = VALUES(personel_id),

@@ -493,16 +493,27 @@
             const telefon = c.telefon[tarih];
             const gecmisGun = tarih < BUGUN;
             const taslak = saha && saha.kaynak === 'taslak';
+            const silinebilir = yetki.nobet && !gecmisGun;
+
+            const sahaSilBtn = (silinebilir && saha && (taslak || saha.personel_id))
+                ? `<button type="button" class="ka-nobet-sil-btn" data-tarih="${tarih}" title="Nöbeti Kaldır"><i class="bx bx-x"></i></button>`
+                : '';
 
             const ekipKutu = saha
                 ? `<div class="ka-nobet-kutu ${saha.elle ? 'elle' : ''} ${taslak ? 'ka-saha-hucre' : 'canli-kayit'}" data-tarih="${tarih}">
+                       ${sahaSilBtn}
                        ${kacir(saha.personel || '—')}
                        <div style="font-size:.62rem;font-weight:500;opacity:.9">${kacir(ekipKisa(saha.ekip_adi || ''))}</div>
                        <div class="ka-kaynak-etiket">${taslak ? 'Taslak' : 'Mevcut kayıt'}</div>
                    </div>`
                 : `<div class="ka-nobet-kutu bos-kutu ${gecmisGun ? '' : 'ka-saha-hucre'}" data-tarih="${tarih}">${gecmisGun ? '—' : '— ata —'}</div>`;
 
-            const telefonKutu = `<div class="ka-telefon-kutu ${telefon && telefon.elle ? 'elle' : ''} ka-telefon-hucre" data-tarih="${tarih}">
+            const telefonSilBtn = (silinebilir && telefon && telefon.personel_id)
+                ? `<button type="button" class="ka-telefon-sil-btn" data-tarih="${tarih}" title="Telefon Nöbetini Kaldır"><i class="bx bx-x"></i></button>`
+                : '';
+
+            const telefonKutu = `<div class="ka-telefon-kutu ${telefon && telefon.elle ? 'elle' : ''} ${gecmisGun ? '' : 'ka-telefon-hucre'}" data-tarih="${tarih}">
+                    ${telefonSilBtn}
                     <i class="bx bx-phone"></i> ${telefon ? kacir(telefon.adi_soyadi || '') : '—'}
                 </div>`;
 
@@ -551,7 +562,7 @@
                     if (this.value && uygun.indexOf(id) === -1) $(this).attr('disabled', 'disabled');
                     if (this.value === secili) $(this).attr('selected', 'selected');
                 });
-                if (kayit[ilce] && kayit[ilce].elle) alan.addClass('border-warning');
+                if (kayit[ilce] && kayit[ilce].elle) alan.addClass('border-warning is-elle');
                 kutu.find('label').remove();
                 return kutu.html();
             };
@@ -564,7 +575,11 @@
         }).join(''));
 
         $('#kaTabloIlce select.ka-ilce-sec').each(function () {
+            const $sel = $(this);
             select2Kur(this);
+            if ($sel.hasClass('is-elle') || $sel.hasClass('border-warning')) {
+                $sel.next('.select2-container').addClass('is-elle');
+            }
         });
         featherYenile();
     }
@@ -1219,6 +1234,7 @@
 
         $('#kaSahaNobetGun').val(tarih);
         $('#kaSahaNobetTarih').text(tarihTR(tarih));
+        $('#kaBtnSahaNobetSil').toggleClass('d-none', !nobetVerisi.saha[tarih] || nobetVerisi.saha[tarih].kaynak !== 'taslak');
         new bootstrap.Modal(document.getElementById('kaModalSahaNobet')).show();
     });
 
@@ -1236,12 +1252,65 @@
         });
     });
 
+    $('#kaBtnSahaNobetSil').on('click', function () {
+        const tarih = $('#kaSahaNobetGun').val();
+        if (!tarih) return;
+        istek({
+            action: 'nobet-saha-yaz',
+            tarih: tarih,
+            personel_id: 0
+        }, 'POST').done(function (c) {
+            if (c.status !== 'success') return hata(c.message);
+            bootstrap.Modal.getInstance(document.getElementById('kaModalSahaNobet')).hide();
+            basari(c.message || 'Nöbet kaldırıldı.');
+            nobetYukle();
+            ozetYukle();
+        });
+    });
+
+    $(document).on('click', '.ka-nobet-sil-btn', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        if (!yetki.nobet) return;
+
+        const tarih = $(this).data('tarih');
+        Swal.fire({
+            title: 'Nöbet Kaldırılsın mı?',
+            text: tarihTR(tarih) + ' tarihli merkez saha nöbetini kaldırmak istediğinize emin misiniz?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, Kaldır',
+            cancelButtonText: 'Vazgeç',
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            customClass: {
+                confirmButton: 'btn btn-danger me-2',
+                cancelButton: 'btn btn-secondary'
+            },
+            buttonsStyling: false
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                istek({
+                    action: 'nobet-saha-yaz',
+                    tarih: tarih,
+                    personel_id: 0
+                }, 'POST').done(function (c) {
+                    if (c.status !== 'success') return hata(c.message);
+                    basari(c.message || 'Nöbet kaldırıldı.');
+                    nobetYukle();
+                    ozetYukle();
+                });
+            }
+        });
+    });
+
     $(document).on('click', '.ka-telefon-hucre', function () {
         if (!yetki.nobet || !nobetVerisi) return;
 
         const tarih = $(this).data('tarih');
         $('#kaTelefonNobetGun').val(tarih);
         $('#kaTelefonNobetTarih').text(tarihTR(tarih));
+        $('#kaBtnTelefonNobetSil').toggleClass('d-none', !nobetVerisi.telefon[tarih]);
         select2Kur('#kaTelefonNobetPersonel', '#kaModalTelefonNobet');
         select2Deger('#kaTelefonNobetPersonel', nobetVerisi.telefon[tarih] ? String(nobetVerisi.telefon[tarih].personel_id) : '');
         new bootstrap.Modal(document.getElementById('kaModalTelefonNobet')).show();
@@ -1261,6 +1330,58 @@
             bootstrap.Modal.getInstance(document.getElementById('kaModalTelefonNobet')).hide();
             nobetYukle();
             ozetYukle();
+        });
+    });
+
+    $('#kaBtnTelefonNobetSil').on('click', function () {
+        const tarih = $('#kaTelefonNobetGun').val();
+        if (!tarih) return;
+        istek({
+            action: 'nobet-telefon-yaz',
+            tarih: tarih,
+            personel_id: 0
+        }, 'POST').done(function (c) {
+            if (c.status !== 'success') return hata(c.message);
+            bootstrap.Modal.getInstance(document.getElementById('kaModalTelefonNobet')).hide();
+            basari(c.message || 'Telefon nöbeti kaldırıldı.');
+            nobetYukle();
+            ozetYukle();
+        });
+    });
+
+    $(document).on('click', '.ka-telefon-sil-btn', function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        if (!yetki.nobet) return;
+
+        const tarih = $(this).data('tarih');
+        Swal.fire({
+            title: 'Telefon Nöbeti Kaldırılsın mı?',
+            text: tarihTR(tarih) + ' tarihli telefon nöbetini kaldırmak istediğinize emin misiniz?',
+            icon: 'warning',
+            showCancelButton: true,
+            confirmButtonText: 'Evet, Kaldır',
+            cancelButtonText: 'Vazgeç',
+            confirmButtonColor: '#dc3545',
+            cancelButtonColor: '#6c757d',
+            customClass: {
+                confirmButton: 'btn btn-danger me-2',
+                cancelButton: 'btn btn-secondary'
+            },
+            buttonsStyling: false
+        }).then(function (result) {
+            if (result.isConfirmed) {
+                istek({
+                    action: 'nobet-telefon-yaz',
+                    tarih: tarih,
+                    personel_id: 0
+                }, 'POST').done(function (c) {
+                    if (c.status !== 'success') return hata(c.message);
+                    basari(c.message || 'Telefon nöbeti kaldırıldı.');
+                    nobetYukle();
+                    ozetYukle();
+                });
+            }
         });
     });
 

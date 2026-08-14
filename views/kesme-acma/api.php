@@ -480,8 +480,8 @@ try {
             }
 
             $Nobet->sahaYaz($tarih, $personelId ?: null, true, $userId);
-            $Log->logAction($userId, 'Saha Nöbeti Değiştirildi', "tarih:$tarih personel:$personelId", SystemLogModel::LEVEL_IMPORTANT);
-            kaYanit(true, 'Nöbet güncellendi.');
+            $Log->logAction($userId, $personelId > 0 ? 'Saha Nöbeti Değiştirildi' : 'Saha Nöbeti Kaldırıldı', "tarih:$tarih personel:$personelId", SystemLogModel::LEVEL_IMPORTANT);
+            kaYanit(true, $personelId > 0 ? 'Nöbet güncellendi.' : 'Nöbet kaldırıldı.');
         }
 
         case 'nobet-ilce-yaz': {
@@ -505,13 +505,14 @@ try {
 
             $tarih = kaTarih($_POST['tarih'] ?? '', $bugun);
             $personelId = (int) ($_POST['personel_id'] ?? 0);
-            if ($personelId <= 0) {
-                kaYanit(false, 'Personel seçilmelidir.');
+
+            if ($tarih < $bugun) {
+                kaYanit(false, 'Geçmiş tarihli telefon nöbetleri değiştirilemez.');
             }
 
-            $Nobet->telefonYaz($tarih, $personelId, true, $userId);
-            $Log->logAction($userId, 'Telefon Nöbeti Değiştirildi', "tarih:$tarih personel:$personelId");
-            kaYanit(true, 'Telefon nöbeti güncellendi.');
+            $Nobet->telefonYaz($tarih, $personelId ?: null, true, $userId);
+            $Log->logAction($userId, $personelId > 0 ? 'Telefon Nöbeti Değiştirildi' : 'Telefon Nöbeti Kaldırıldı', "tarih:$tarih personel:$personelId");
+            kaYanit(true, $personelId > 0 ? 'Telefon nöbeti güncellendi.' : 'Telefon nöbeti kaldırıldı.');
         }
 
         case 'nobet-uret': {
