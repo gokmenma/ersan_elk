@@ -887,7 +887,10 @@ if (!empty($dbGelirler)) {
                                 $htcResmiTutar = 0.0;
                                 if ($rtcHedefNetModal > 0 || $htcHedefNetModal > 0) {
                                     $donemYilModal2 = (int) date('Y', strtotime($selectedDonem->baslangic_tarihi));
-                                    $kumulatifMatrahModal2 = floatval($matrahlar['onceki_kumulatif'] ?? 0);
+                                    // RTÇ/HTÇ ayın ana vergi matrahından sonra vergilendirilir. Böylece
+                                    // ay içinde geçilen gelir vergisi dilimi gross-up hesabına da yansır.
+                                    $kumulatifMatrahModal2 = floatval($matrahlar['onceki_kumulatif'] ?? 0)
+                                        + floatval($matrahlar['gelir_vergisi_matrahi'] ?? 0);
                                     $sgkOraniModal2 = floatval($genelAyarlarMap['sgk_isci_orani'] ?? 14) / 100;
                                     $issizlikOraniModal2 = floatval($genelAyarlarMap['issizlik_isci_orani'] ?? 1) / 100;
                                     $damgaOraniModal2 = floatval($genelAyarlarMap['damga_vergisi_orani'] ?? 0.759) / 100;

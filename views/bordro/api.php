@@ -2077,7 +2077,11 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $htcResmiTutar = 0.0;
                 if ($rtcHedefNetModal > 0 || $htcHedefNetModal > 0) {
                     $donemYilModal2 = (int) date('Y', strtotime($donemBaslangic));
-                    $kumulatifMatrahModal2 = floatval($matrahlar['onceki_kumulatif'] ?? 0);
+                    // RTÇ/HTÇ ayın ana vergi matrahından sonra vergilendirilir. Yalnızca önceki
+                    // ay kümülatifini kullanmak, personel bu ay yeni dilime geçtiğinde ek ödemeyi
+                    // eski dilimden gross-up eder ve detay tutarını ana bordro hesabından saptırır.
+                    $kumulatifMatrahModal2 = floatval($matrahlar['onceki_kumulatif'] ?? 0)
+                        + floatval($matrahlar['gelir_vergisi_matrahi'] ?? 0);
                     $sgkOraniModal2 = floatval($BordroParametre->getGenelAyar('sgk_isci_orani', $donemBaslangic) ?? 14) / 100;
                     $issizlikOraniModal2 = floatval($BordroParametre->getGenelAyar('issizlik_isci_orani', $donemBaslangic) ?? 1) / 100;
                     $damgaOraniModal2 = floatval($BordroParametre->getGenelAyar('damga_vergisi_orani', $donemBaslangic) ?? 0.759) / 100;
