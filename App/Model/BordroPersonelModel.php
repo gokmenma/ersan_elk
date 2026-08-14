@@ -813,8 +813,8 @@ class BordroPersonelModel extends Model
 
         foreach ($ekOdemelerList as $eo) {
             if (stripos($eo->aciklama ?? '', 'Maaşa Dahil Dengeleme') !== false) continue;
+            $eoTurLower = mb_strtolower((string) ($eo->tur ?? ''), 'UTF-8');
             if ($isInclusive) {
-                $eoTurLower = mb_strtolower((string) ($eo->tur ?? ''), 'UTF-8');
                 $isDahilYemek = intval($p->yemek_yardimi_dahil ?? 0) === 1 && (strpos($eoTurLower, 'yemek') !== false);
                 $isDahilEs = intval($p->es_yardimi_dahil ?? 0) === 1 && (strpos($eoTurLower, 'es_yardimi') !== false || strpos($eoTurLower, 'aile') !== false);
                 if ($isDahilYemek || $isDahilEs) continue;
@@ -854,6 +854,12 @@ class BordroPersonelModel extends Model
                     $rGv = ($param && !empty($param->gelir_vergisi_dahil)) ? ($rGvMatrah * 0.15) : 0.0;
                     $rDv = ($param && !empty($param->damga_vergisi_dahil)) ? ($rTutar * 0.00759) : 0.0;
                     $rNet = round($rTutar - $rSgk - $rGv - $rDv, 2);
+                    if ($eoTurLower === 'hafta_ici_nobet') {
+                        $nobetNetHedef = $this->hesaplaHaftaIciNobetNetHedef($aciklama, $donemBaslangic);
+                        if ($nobetNetHedef > 0) {
+                            $rNet = $nobetNetHedef;
+                        }
+                    }
                     $yontemliBankaEki += $rNet;
                     if ($rNet > 0) {
                         $label = $param->etiket ?? $eo->tur;
@@ -2504,6 +2510,22 @@ class BordroPersonelModel extends Model
                 $insertSql->execute([$personel_id, $donem_id, $paramKod, $paramId, $aciklama, $toplamTutar, $resmiTutar]);
             }
         }
+    }
+
+    /** Hafta içi nöbetin resmi net hedefi: asgari net / 225 × 1,5 × toplam saat. */
+    private function hesaplaHaftaIciNobetNetHedef(string $aciklama, string $donemTarihi): float
+    {
+        if (!preg_match('/(\d+)\s*Gün\s*x\s*(\d+)\s*Saat/iu', $aciklama, $eslesme)) {
+            return 0.0;
+        }
+
+        if ($this->cachedParametreModel === null) {
+            $this->cachedParametreModel = new BordroParametreModel();
+        }
+
+        $toplamSaat = intval($eslesme[1]) * intval($eslesme[2]);
+        $asgariNet = floatval($this->cachedParametreModel->getGenelAyar('asgari_ucret_net', $donemTarihi) ?? 0);
+        return round(($asgariNet / 225) * 1.5 * $toplamSaat, 2);
     }
 
     /**
@@ -4595,6 +4617,12 @@ class BordroPersonelModel extends Model
                 $rGv = ($rTutar - $rSgk) * 0.15;
                 $rDv = $rTutar * 0.00759;
                 $rNet = round($rTutar - $rSgk - $rGv - $rDv, 2);
+                if (mb_strtolower((string) ($odeme->tur ?? ''), 'UTF-8') === 'hafta_ici_nobet') {
+                    $nobetNetHedef = $this->hesaplaHaftaIciNobetNetHedef((string) ($odeme->aciklama ?? ''), $kayit->baslangic_tarihi);
+                    if ($nobetNetHedef > 0) {
+                        $rNet = $nobetNetHedef;
+                    }
+                }
             }
             if ($yontem === 'banka') {
                 $yontemliOdemeler['banka'] += $ekOdemeTutari;
@@ -4802,8 +4830,9 @@ class BordroPersonelModel extends Model
 
         $gelirVergisi = $parametreModel->hesaplaGelirVergisi($yeniKumulatifMatrah, $gelirVergisiMatrahi, $donemYil);
         if ($isNetMaas || $isPrimUsulu) {
-            $asgariGvMatrah = round((floatval($genelAyarlarMap['asgari_ucret_net'] ?? 28075.50) / 30) * $maasHesapGunu, 2);
-            $istisnaGV = $parametreModel->hesaplaGelirVergisi($kumulatifMatrah + $asgariGvMatrah, $asgariGvMatrah, $donemYil);
+            $asgariUcretIstisnaHesabi = $parametreModel->hesaplaAsgariUcretGelirVergisiIstisnasi($kayit->baslangic_tarihi, $maasHesapGunu);
+            $asgariGvMatrah = $asgariUcretIstisnaHesabi['aylik_matrah'];
+            $istisnaGV = $asgariUcretIstisnaHesabi['istisna'];
             $gelirVergisi = max(0.0, $gelirVergisi - $istisnaGV);
         }
 
@@ -5237,6 +5266,11 @@ class BordroPersonelModel extends Model
                 'maas_hesap_gunu' => $maasHesapGunu, 'fiili_calisma_gunu' => $fiiliCalismaGunu, 'calisan_brut_maas' => round($calisanBrutMaas, 2),
                 'sgk_matrahi' => round($sgkMatrahi, 2), 'gelir_vergisi_matrahi' => round($gelirVergisiMatrahi, 2), 'damga_vergisi_matrahi' => round($damgaVergisiMatrahi, 2),
                 'onceki_kumulatif' => round($kumulatifMatrah, 2), 'yeni_kumulatif' => round($yeniKumulatifMatrah, 2)
+            ],
+            'indirimler' => [
+                'asgari_ucret_istisna_gv' => round($istisnaGV ?? 0, 2),
+                'asgari_ucret_gv_matrahi' => round($asgariGvMatrah ?? 0, 2),
+                'asgari_ucret_toplam_gv_matrahi' => round($asgariUcretIstisnaHesabi['toplam_matrah'] ?? 0, 2),
             ],
             'odeme_dagilimi' => ['icra_kesintisi' => round($icraKesintisi, 2), 'banka_net' => round($bankaOdemesi, 2), 'sodexo' => round($sodexoOdemesi, 2), 'elden' => round($eldenOdeme, 2)],
             'ek_odemeler' => $ekOdemeDetaylari, 'kesintiler' => $kesintiDetaylari,

@@ -512,6 +512,34 @@ class BordroParametreModel extends Model
     }
 
     /**
+     * Asgari ücret gelir vergisi istisnasını, personelin kümülatif matrahından bağımsız olarak
+     * yılbaşından ilgili aya kadar biriken asgari ücret GV matrahı üzerinden hesaplar.
+     */
+    public function hesaplaAsgariUcretGelirVergisiIstisnasi(string $donemTarihi, int $sgkGun = 30): array
+    {
+        $yil = (int) date('Y', strtotime($donemTarihi));
+        $ay = (int) date('n', strtotime($donemTarihi));
+        $oncekiKumulatifMatrah = 0.0;
+
+        for ($ayNo = 1; $ayNo < $ay; $ayNo++) {
+            $ayTarihi = sprintf('%04d-%02d-01', $yil, $ayNo);
+            $asgariBrut = floatval($this->getGenelAyar('asgari_ucret_brut', $ayTarihi) ?? 0);
+            $oncekiKumulatifMatrah += round($asgariBrut * 0.85, 2);
+        }
+
+        $asgariBrut = floatval($this->getGenelAyar('asgari_ucret_brut', $donemTarihi) ?? 0);
+        $aylikMatrah = round(($asgariBrut * 0.85 / 30) * max(0, min(30, $sgkGun)), 2);
+        $toplamMatrah = round($oncekiKumulatifMatrah + $aylikMatrah, 2);
+
+        return [
+            'aylik_matrah' => $aylikMatrah,
+            'onceki_kumulatif_matrah' => round($oncekiKumulatifMatrah, 2),
+            'toplam_matrah' => $toplamMatrah,
+            'istisna' => $this->hesaplaGelirVergisi($toplamMatrah, $aylikMatrah, $yil),
+        ];
+    }
+
+    /**
      * Bir hedef NET tutara ulaşmak için gereken BRÜT tutarı hesaplar (gross-up).
      * SGK işçi payı + İşsizlik işçi payı + Gelir Vergisi (kümülatif dilime göre) + Damga Vergisi
      * kesintilerinden SONRA çalışanın eline geçen net tutar tam olarak $hedefNet olacak şekilde

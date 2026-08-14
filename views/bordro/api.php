@@ -2128,8 +2128,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
 
                 $istisnaGV = floatval($indirimler['asgari_ucret_istisna_gv'] ?? 0);
                 if ($istisnaGV <= 0) {
-                    $asgariUcretGvMatrahi = round(($asgariUcretNet / 0.85) * 0.85 / 30 * $sskGun, 2);
-                    $istisnaGV = $BordroParametre->hesaplaGelirVergisi($oncekiAyMatrah + $asgariUcretGvMatrahi, $asgariUcretGvMatrahi, date('Y', strtotime($donemBaslangic)));
+                    $asgariIstisnaHesabi = $BordroParametre->hesaplaAsgariUcretGelirVergisiIstisnasi($donemBaslangic, $sskGun);
+                    $istisnaGV = $asgariIstisnaHesabi['istisna'];
                 }
                 $istisnaDV = floatval($indirimler['asgari_ucret_istisna_dv'] ?? 0);
                 if ($istisnaDV <= 0) {
@@ -2343,7 +2343,8 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                     $nobetDamgaDahilModal = $nobetParam ? !empty($nobetParam->damga_vergisi_dahil) : true;
                     $nobetSaatlikNetHedef = (floatval($asgariUcretNet) / 225) * 1.5;
                     $nobetHedefNetModal = round($nobetSaatlikNetHedef * $nobetResmiSaatToplam, 2);
-                    $kumulatifMatrahNobetModal = floatval($matrahlar['onceki_kumulatif'] ?? 0);
+                    $kumulatifMatrahNobetModal = floatval($matrahlar['onceki_kumulatif'] ?? 0)
+                        + floatval($matrahlar['gelir_vergisi_matrahi'] ?? 0);
                     $sgkOraniNobetModal = floatval($BordroParametre->getGenelAyar('sgk_isci_orani', $donemBaslangic) ?? 14) / 100;
                     $issizlikOraniNobetModal = floatval($BordroParametre->getGenelAyar('issizlik_isci_orani', $donemBaslangic) ?? 1) / 100;
                     $damgaOraniNobetModal = floatval($BordroParametre->getGenelAyar('damga_vergisi_orani', $donemBaslangic) ?? 0.759) / 100;
@@ -2556,7 +2557,10 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '</div></div>';
 
                 // 2. Gelir Vergisi Card
-                $asgariUcretGvMatrahi = round(($asgariUcretNet / 0.85) * 0.85 / 30 * $sskGun, 2);
+                $asgariIstisnaHesabi = $asgariIstisnaHesabi
+                    ?? $BordroParametre->hesaplaAsgariUcretGelirVergisiIstisnasi($donemBaslangic, $sskGun);
+                $asgariUcretGvMatrahi = floatval($indirimler['asgari_ucret_gv_matrahi'] ?? $asgariIstisnaHesabi['aylik_matrah']);
+                $asgariUcretToplamGvMatrahi = floatval($indirimler['asgari_ucret_toplam_gv_matrahi'] ?? $asgariIstisnaHesabi['toplam_matrah']);
                 $html .= '<div class="col"><div class="ref-card">';
                 $html .= '<div class="ref-card-title">2. GELİR VERGİSİ</div>';
                 $html .= '<div class="ref-card-list">';
@@ -2564,6 +2568,7 @@ if ($_SERVER['REQUEST_METHOD'] == 'POST') {
                 $html .= '<div class="ref-card-item"><span class="label">Önceki Dönem Küm. GV</span><span class="value">' . $fmt($oncekiAyMatrah) . '</span></div>';
                 $html .= '<div class="ref-card-item"><span class="label">Yeni Dönem Küm. GV</span><span class="value">' . $fmt($yilIciToplam) . '</span></div>';
                 $html .= '<div class="ref-card-item"><span class="label">Asgari Ücret GV Matrahı</span><span class="value">' . $fmt($asgariUcretGvMatrahi) . '</span></div>';
+                $html .= '<div class="ref-card-item"><span class="label">Toplam Asgari Ücret GV Matrahı</span><span class="value">' . $fmt($asgariUcretToplamGvMatrahi) . '</span></div>';
                 $html .= '<div class="ref-card-item"><span class="label">G.V. Asgari Ücret İstisnası</span><span class="value">' . $fmt($istisnaGV, true, false, true) . '</span></div>';
                 $html .= '<div class="ref-card-item"><span class="label">Sendika Matrah İndirimi</span><span class="value">' . $fmt(0) . '</span></div>';
                 $html .= '<div class="ref-card-item"><span class="label">Gelir V. Yemek/Yol İst.</span><span class="value">₺0,00</span></div>';
