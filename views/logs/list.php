@@ -62,6 +62,7 @@ if (Gate::allows("log_kayitlari")) {
                                         <thead style="background: rgba(248,250,252,0.8);">
                                             <tr>
                                                 <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Seviye</th>
+                                                <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Kullanıcı</th>
                                                 <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">İşlem Tipi</th>
                                                 <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">İçerik</th>
                                                 <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Tarih</th>
@@ -402,12 +403,13 @@ if (Gate::allows("log_kayitlari")) {
                     },
                     columns: [
                         { data: 'level' },
+                        { data: 'user' },
                         { data: 'action_type' },
                         { data: 'description' },
                         { data: 'date' },
                         { data: 'actions', orderable: false }
                     ],
-                    order: [[3, 'desc']]
+                    order: [[4, 'desc']]
                 }));
 
                 $('#personelLogsTable').DataTable($.extend({}, dtOptions, {
@@ -545,7 +547,7 @@ if (Gate::allows("log_kayitlari")) {
                         '<i class="bx bx-info-circle text-primary me-2" style="font-size:1rem;vertical-align:middle;"></i>' +
                         content.replace(/\n/g, '<br>');
                 }
-                var myModal = new bootstrap.Modal(document.getElementById('modalLogDetay'));
+                var myModal = bootstrap.Modal.getOrCreateInstance(document.getElementById('modalLogDetay'));
                 myModal.show();
             });
         });

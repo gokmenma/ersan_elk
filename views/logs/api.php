@@ -61,22 +61,34 @@ try {
                     $levelIcon = 'bx bx-info-circle text-muted';
                 }
 
-                $user_name = $log->adi_soyadi ?? 'Sistem';
-                $full_desc = htmlspecialchars($log->description);
-                $short_desc = mb_strimwidth($full_desc, 0, 100, "...");
+                $user_name = (string) ($log->adi_soyadi ?? 'Sistem');
+                $escapedUserName = htmlspecialchars($user_name, ENT_QUOTES, 'UTF-8');
+                $userInitial = htmlspecialchars(mb_substr($user_name, 0, 1, 'UTF-8'), ENT_QUOTES, 'UTF-8');
+                $short_desc = htmlspecialchars(
+                    mb_strimwidth((string) $log->description, 0, 100, '...', 'UTF-8'),
+                    ENT_QUOTES,
+                    'UTF-8'
+                );
+                $escapedActionType = htmlspecialchars((string) $log->action_type, ENT_QUOTES, 'UTF-8');
+
+                $userHtml = '<div class="d-flex align-items-center gap-2">'
+                    .'<span class="avatar-title rounded-circle bg-soft-primary text-primary flex-shrink-0" '
+                    .'style="width:30px;height:30px;font-size:0.75rem;">'.$userInitial.'</span>'
+                    .'<span class="fw-semibold text-dark">'.$escapedUserName.'</span></div>';
                 
                 $data[] = [
                     'level' => $levelBadge,
-                    'action_type' => '<i class="'.$levelIcon.' me-1"></i> ' . htmlspecialchars($log->action_type),
-                    'description' => $short_desc . " <small class='text-muted'>($user_name tarafından)</small>",
+                    'user' => $userHtml,
+                    'action_type' => '<i class="'.$levelIcon.' me-1"></i> ' . $escapedActionType,
+                    'description' => $short_desc,
                     'date' => '<span data-sort="'.date('YmdHis', strtotime($log->created_at)).'">' . date('d.m.Y H:i', strtotime($log->created_at)) . '</span>',
                     'actions' => '<div class="text-center">
                                     <button type="button" class="btn btn-sm btn-light btn-log-detay"
                                         style="border-radius: 6px; font-weight:500; color:#475569; border: 1px solid #e2e8f0; background: #fff;"
-                                        data-title="'.htmlspecialchars($log->action_type).'"
-                                        data-user="'.htmlspecialchars($user_name).'"
+                                        data-title="'.$escapedActionType.'"
+                                        data-user="'.$escapedUserName.'"
                                         data-date="'.date('d.m.Y H:i', strtotime($log->created_at)).'"
-                                        data-content="'.htmlspecialchars($log->description).'">
+                                        data-content="'.htmlspecialchars((string) $log->description, ENT_QUOTES, 'UTF-8').'">
                                         <i class="bx bx-show me-1 text-primary"></i> Detay
                                     </button>
                                   </div>'
@@ -252,7 +264,6 @@ try {
                 $responseHtml = '<div class="d-flex align-items-center gap-2">'
                     .'<span class="text-break">'.$escapedResponsePreview.'</span>'
                     .'<button type="button" class="btn btn-sm btn-soft-primary btn-log-detay btn-ai-response flex-shrink-0" '
-                    .'data-bs-toggle="modal" data-bs-target="#modalLogDetay" '
                     .'data-title="Yapay Zeka Cevabı" data-user="'.$escapedUserName.'" '
                     .'data-date="'.htmlspecialchars($formattedDate, ENT_QUOTES, 'UTF-8').'" '
                     .'data-content="'.$escapedResponse.'" title="Cevabın tamamını göster">'
