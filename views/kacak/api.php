@@ -1151,15 +1151,46 @@ function kacakArsivle(KacakKontrolModel $Kacak, SystemLogModel $Log, int $userId
 
         $ilce = preg_replace('/[^\p{L}\p{N}_-]+/u', '_', $foto['ilce'] ?: 'Belirtilmemis');
         $turKlasor = ($foto['medya_tipi'] ?? 'foto') === 'video' ? 'Video' : ucfirst($foto['tur']);
-        $dosyaAdi = sprintf(
-            '%s_%s_%s.%s',
-            date('Y-m-d', strtotime($foto['tarih'])),
-            preg_replace('/[^\p{L}\p{N}_-]+/u', '_', (string) ($foto['tutanak_no'] ?: 'tutanaksiz')),
-            $foto['id'],
-            pathinfo($foto['dosya_yolu'], PATHINFO_EXTENSION)
-        );
+        $origExt = strtolower(pathinfo($foto['dosya_yolu'], PATHINFO_EXTENSION));
+        $isPdf = ($origExt === 'pdf');
+        $isVideo = (($foto['medya_tipi'] ?? 'foto') === 'video' || in_array($origExt, ['mp4', 'mov', 'webm', '3gp'], true));
 
-        $zip->addFile($kaynak, $ilce . '/' . $turKlasor . '/' . $dosyaAdi);
+        if ($isPdf) {
+            $ext = 'pdf';
+            $dosyaAdi = sprintf(
+                '%s_%s_%s.%s',
+                date('Y-m-d', strtotime($foto['tarih'])),
+                preg_replace('/[^\p{L}\p{N}_-]+/u', '_', (string) ($foto['tutanak_no'] ?: 'tutanaksiz')),
+                $foto['id'],
+                $ext
+            );
+            $zip->addFile($kaynak, $ilce . '/' . $turKlasor . '/' . $dosyaAdi);
+        } elseif ($isVideo) {
+            $ext = $origExt ?: 'mp4';
+            $dosyaAdi = sprintf(
+                '%s_%s_%s.%s',
+                date('Y-m-d', strtotime($foto['tarih'])),
+                preg_replace('/[^\p{L}\p{N}_-]+/u', '_', (string) ($foto['tutanak_no'] ?: 'tutanaksiz')),
+                $foto['id'],
+                $ext
+            );
+            $zip->addFile($kaynak, $ilce . '/' . $turKlasor . '/' . $dosyaAdi);
+        } else {
+            $ext = 'jpeg';
+            $dosyaAdi = sprintf(
+                '%s_%s_%s.%s',
+                date('Y-m-d', strtotime($foto['tarih'])),
+                preg_replace('/[^\p{L}\p{N}_-]+/u', '_', (string) ($foto['tutanak_no'] ?: 'tutanaksiz')),
+                $foto['id'],
+                $ext
+            );
+            $jpegData = KacakKontrolModel::getAsJpegBinary($kaynak);
+            if ($jpegData !== null) {
+                $zip->addFromString($ilce . '/' . $turKlasor . '/' . $dosyaAdi, $jpegData);
+            } else {
+                $zip->addFile($kaynak, $ilce . '/' . $turKlasor . '/' . $dosyaAdi);
+            }
+        }
         $eklenenIds[] = (int) $foto['id'];
     }
 
@@ -1274,11 +1305,7 @@ function kacakRecordZipIndir(KacakKontrolModel $Kacak, SystemLogModel $Log, int 
             continue;
         }
 
-        $ext = pathinfo($foto['dosya_yolu'], PATHINFO_EXTENSION);
-        if (empty($ext)) {
-            $ext = 'jpg';
-        }
-
+        $origExt = strtolower(pathinfo($foto['dosya_yolu'], PATHINFO_EXTENSION));
         $fotoTur = strtolower($foto['tur'] ?? 'saha');
         $medyaTipi = strtolower($foto['medya_tipi'] ?? 'foto');
 
@@ -1298,9 +1325,27 @@ function kacakRecordZipIndir(KacakKontrolModel $Kacak, SystemLogModel $Log, int 
             }
         }
 
-        $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNoClean ?: ('kayit_' . $kacakId), $seq, $ext);
+        $isPdf = ($origExt === 'pdf');
+        $isVideo = ($medyaTipi === 'video' || in_array($origExt, ['mp4', 'mov', 'webm', '3gp'], true));
 
-        $zip->addFile($kaynak, $folderName . '/' . $dosyaAdi);
+        if ($isPdf) {
+            $ext = 'pdf';
+            $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNoClean ?: ('kayit_' . $kacakId), $seq, $ext);
+            $zip->addFile($kaynak, $folderName . '/' . $dosyaAdi);
+        } elseif ($isVideo) {
+            $ext = $origExt ?: 'mp4';
+            $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNoClean ?: ('kayit_' . $kacakId), $seq, $ext);
+            $zip->addFile($kaynak, $folderName . '/' . $dosyaAdi);
+        } else {
+            $ext = 'jpeg';
+            $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNoClean ?: ('kayit_' . $kacakId), $seq, $ext);
+            $jpegData = KacakKontrolModel::getAsJpegBinary($kaynak);
+            if ($jpegData !== null) {
+                $zip->addFromString($folderName . '/' . $dosyaAdi, $jpegData);
+            } else {
+                $zip->addFile($kaynak, $folderName . '/' . $dosyaAdi);
+            }
+        }
         $eklenenSayisi++;
     }
 

@@ -21,7 +21,8 @@ class ImageUploadService
         int $quality = 85,
         int $maxUploadBytes = 15728640,
         int $thumbDimension = 0,
-        int $thumbQuality = 72
+        int $thumbQuality = 72,
+        ?string $forceFormat = null
     ): array {
         $error = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
         if ($error !== UPLOAD_ERR_OK || empty($file['tmp_name']) || !is_uploaded_file($file['tmp_name'])) {
@@ -92,8 +93,9 @@ class ImageUploadService
             throw new Exception('Resim yükleme dizinine yazılamıyor.');
         }
 
-        $useWebp = function_exists('imagewebp') && ($mime !== 'image/webp' || $source !== false);
-        $extension = $useWebp ? 'webp' : 'jpg';
+        $forceJpeg = ($forceFormat === 'jpeg' || $forceFormat === 'jpg');
+        $useWebp = !$forceJpeg && function_exists('imagewebp') && ($mime !== 'image/webp' || $source !== false);
+        $extension = $forceJpeg ? 'jpeg' : ($useWebp ? 'webp' : 'jpg');
         $safePrefix = preg_replace('/[^a-zA-Z0-9_-]/', '_', $filePrefix) ?: 'image';
         $baseName = $safePrefix . '_' . bin2hex(random_bytes(10));
         $fileName = $baseName . '.' . $extension;

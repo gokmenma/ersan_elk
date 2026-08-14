@@ -124,11 +124,7 @@ if ($tip === 'teslim_zip') {
                 continue;
             }
 
-            $ext = pathinfo($foto['dosya_yolu'], PATHINFO_EXTENSION);
-            if (empty($ext)) {
-                $ext = 'jpg';
-            }
-
+            $origExt = strtolower(pathinfo($foto['dosya_yolu'], PATHINFO_EXTENSION));
             $fotoTur = strtolower($foto['tur'] ?? 'saha');
             $medyaTipi = strtolower($foto['medya_tipi'] ?? 'foto');
 
@@ -146,8 +142,27 @@ if ($tip === 'teslim_zip') {
                 $seq = $sahaSeq++;
             }
 
-            $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNo ?: ('kayit_' . $kacakId), $seq, $ext);
-            $zip->addFile($kaynak, $recordPathInZip . '/' . $dosyaAdi);
+            $isPdf = ($origExt === 'pdf');
+            $isVideo = ($medyaTipi === 'video' || in_array($origExt, ['mp4', 'mov', 'webm', '3gp'], true));
+
+            if ($isPdf) {
+                $ext = 'pdf';
+                $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNo ?: ('kayit_' . $kacakId), $seq, $ext);
+                $zip->addFile($kaynak, $recordPathInZip . '/' . $dosyaAdi);
+            } elseif ($isVideo) {
+                $ext = $origExt ?: 'mp4';
+                $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNo ?: ('kayit_' . $kacakId), $seq, $ext);
+                $zip->addFile($kaynak, $recordPathInZip . '/' . $dosyaAdi);
+            } else {
+                $ext = 'jpeg';
+                $dosyaAdi = sprintf('%s_%s_%d.%s', $prefix, $tutanakNo ?: ('kayit_' . $kacakId), $seq, $ext);
+                $jpegData = KacakKontrolModel::getAsJpegBinary($kaynak);
+                if ($jpegData !== null) {
+                    $zip->addFromString($recordPathInZip . '/' . $dosyaAdi, $jpegData);
+                } else {
+                    $zip->addFile($kaynak, $recordPathInZip . '/' . $dosyaAdi);
+                }
+            }
             $toplamDosyaSayisi++;
         }
     }

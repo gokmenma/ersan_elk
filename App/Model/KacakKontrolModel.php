@@ -1453,7 +1453,9 @@ class KacakKontrolModel extends Model
                 $tur === 'tutanak' ? self::TUTANAK_MAX_KENAR : self::SAHA_MAX_KENAR,
                 $tur === 'tutanak' ? 82 : 75,
                 10 * 1024 * 1024,
-                self::KUCUK_KENAR
+                self::KUCUK_KENAR,
+                72,
+                'jpeg'
             );
 
             if (!empty($sonuc['captured_at'])) {
@@ -1471,6 +1473,69 @@ class KacakKontrolModel extends Model
         }
 
         return $altDizin . '/' . $dosyaAdi;
+    }
+
+    /**
+     * Verilen dosyanın JPEG binary içeriğini döndürür.
+     * Zaten JPEG ise dosya içeriğini döner. WebP, PNG gibi görselleri JPEG'e dönüştürür.
+     * PDF veya video ise null döner.
+     */
+    public static function getAsJpegBinary(string $filePath, int $quality = 90): ?string
+    {
+        if (!is_file($filePath)) {
+            return null;
+        }
+
+        $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
+        if (in_array($ext, ['pdf', 'mp4', 'mov', 'webm', '3gp', 'avi', 'mkv'], true)) {
+            return null;
+        }
+
+        $finfo = new \finfo(FILEINFO_MIME_TYPE);
+        $mime = (string) $finfo->file($filePath);
+
+        if (strpos($mime, 'video/') === 0 || $mime === 'application/pdf') {
+            return null;
+        }
+
+        if ($mime === 'image/jpeg' && ($ext === 'jpeg' || $ext === 'jpg')) {
+            $data = @file_get_contents($filePath);
+            return $data !== false ? $data : null;
+        }
+
+        $binary = @file_get_contents($filePath);
+        if ($binary === false) {
+            return null;
+        }
+
+        if (!function_exists('imagecreatefromstring')) {
+            return $binary;
+        }
+
+        $source = @imagecreatefromstring($binary);
+        if (!$source) {
+            return $binary;
+        }
+
+        $width = imagesx($source);
+        $height = imagesy($source);
+        $target = imagecreatetruecolor($width, $height);
+        if (!$target) {
+            imagedestroy($source);
+            return $binary;
+        }
+
+        $white = imagecolorallocate($target, 255, 255, 255);
+        imagefill($target, 0, 0, $white);
+        imagecopy($target, $source, 0, 0, 0, 0, $width, $height);
+        imagedestroy($source);
+
+        ob_start();
+        imagejpeg($target, null, $quality);
+        $jpegBinary = ob_get_clean();
+        imagedestroy($target);
+
+        return is_string($jpegBinary) && strlen($jpegBinary) > 0 ? $jpegBinary : $binary;
     }
 
     /**

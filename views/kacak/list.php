@@ -202,6 +202,21 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
         line-height: 1;
     }
 
+    .kacak-foto-item .btn-foto-indir {
+        position: absolute;
+        top: -6px;
+        left: -6px;
+        border-radius: 50%;
+        width: 24px;
+        height: 24px;
+        padding: 0;
+        line-height: 1;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 13px;
+    }
+
     /* Çekim ile yükleme arasında uzun boşluk olan fotoğrafları öne çıkarır. */
     @keyframes kacakGecikmeNabzi {
         0%   { box-shadow: 0 0 0 0 rgba(255, 193, 7, .85); }
@@ -2363,11 +2378,14 @@ $sicilNedenFiltreOptions = ['' => 'Tüm Nedenler'] + KacakSicilEksikModel::NEDEN
                     ? `<button type="button" class="btn btn-danger btn-sm btn-foto-sil" data-foto-id="${f.id}" data-kacak-id="${kacakId}" title="Sil"><i class="bx bx-x"></i></button>`
                     : '';
 
+                const indirBtn = `<a href="${url}&indir=1" class="btn btn-secondary btn-sm btn-foto-indir" title="${pdfMi ? 'Belgeyi İndir' : 'Fotoğrafı İndir (JPEG)'}" download><i class="bx bx-download"></i></a>`;
+
                 $hedef.append(`
                     <div class="kacak-foto-item text-center">
                         <a href="${url}" ${pdfMi
                             ? 'target="_blank" rel="noopener"'
                             : `class="kacak-foto-lightbox" data-gallery="kacak-${kacakId}" data-type="image" data-title="${esc(turEtiket[f.tur] || f.tur)}"`}>${onizleme}</a>
+                        ${indirBtn}
                         ${silBtn}
                         <div class="small text-muted mt-1">${esc(turEtiket[f.tur] || f.tur)}</div>
                         ${cekimSatiri(f)}
