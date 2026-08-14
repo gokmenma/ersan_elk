@@ -54,10 +54,30 @@ class AiAgentService
         $cacheKey = md5($module . '_' . strtolower($userPrompt));
         $cachedResponse = $this->model->getCachedResponse($firmaId, $module, $cacheKey);
         if ($cachedResponse) {
+            $executionTimeMs = (int) ((microtime(true) - $startTime) * 1000);
+
+            // Her kullanıcı sorgusu denetim kaydına girmelidir. Cevap önbellekten
+            // gelse bile prompt ve kullanıcıya dönen nihai cevap birlikte saklanır.
+            $this->model->logQuery(
+                $firmaId,
+                $userId,
+                $module,
+                $userPrompt,
+                $cachedResponse,
+                0,
+                0,
+                0,
+                0.0,
+                $executionTimeMs,
+                $this->modelName,
+                'success'
+            );
+
             return [
                 'success' => true,
                 'response' => $cachedResponse,
-                'cached' => true
+                'cached' => true,
+                'execution_time_ms' => $executionTimeMs
             ];
         }
 

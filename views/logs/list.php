@@ -131,14 +131,15 @@ if (Gate::allows("log_kayitlari")) {
                             <?php if (\App\Service\Gate::allows('ai_is_ajani_arac_takip')): ?>
                             <div class="tab-pane" id="ai-agent-logs-tab" role="tabpanel">
                                 <div class="table-responsive">
-                                    <table class="table table-centered table-nowrap table-hover mb-0 align-middle w-100" id="aiAgentLogsTable">
+                                    <table class="table table-centered table-hover mb-0 align-middle w-100 ai-agent-logs-table" id="aiAgentLogsTable">
                                         <thead style="background: rgba(248,250,252,0.8);">
                                             <tr>
-                                                <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Kullanıcı</th>
-                                                <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Sorgu (Prompt)</th>
-                                                <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Model</th>
-                                                <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Tarih</th>
-                                                <th style="font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Durum</th>
+                                                <th style="width: 15%; font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Kullanıcı</th>
+                                                <th style="width: 24%; font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Sorgu (Prompt)</th>
+                                                <th style="width: 31%; font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Yapay Zeka Cevabı</th>
+                                                <th style="width: 10%; font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Model</th>
+                                                <th style="width: 12%; font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Tarih</th>
+                                                <th style="width: 8%; font-size: 0.75rem; text-transform: uppercase; color: #64748b; font-weight: 600;">Durum</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -205,6 +206,19 @@ if (Gate::allows("log_kayitlari")) {
             [data-bs-theme="dark"] .logs-page-card .table-hover > tbody > tr:hover > * {
                 background-color: #2a333d !important;
                 color: #f8fafc !important;
+            }
+            .ai-agent-logs-table {
+                table-layout: fixed;
+            }
+            .ai-agent-logs-table th,
+            .ai-agent-logs-table td {
+                white-space: normal !important;
+                overflow-wrap: anywhere;
+                vertical-align: middle;
+            }
+            .ai-agent-logs-table td:nth-child(2),
+            .ai-agent-logs-table td:nth-child(3) {
+                line-height: 1.4;
             }
             [data-bs-theme="dark"] .logs-page-card .dataTables_length,
             [data-bs-theme="dark"] .logs-page-card .dataTables_filter,
@@ -365,14 +379,13 @@ if (Gate::allows("log_kayitlari")) {
     <!-- Load DataTables scripts directly in case they are not part of global layout -->
     <script src="assets/libs/datatables.net/js/jquery.dataTables.min.js"></script>
     <script src="assets/libs/datatables.net-bs4/js/dataTables.bootstrap4.min.js"></script>
+    <script src="assets/js/datatables.init.js"></script>
 
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             // Setup DataTables parameters
             const dtOptions = {
-                language: {
-                    url: '//cdn.datatables.net/plug-ins/1.13.4/i18n/tr.json'
-                },
+                language: $.extend(true, {}, DT_LANG_TR),
                 pageLength: 25,
                 ordering: true
             };
@@ -447,9 +460,12 @@ if (Gate::allows("log_kayitlari")) {
                     order: [[2, 'desc']]
                 }));
 
-                $('#aiAgentLogsTable').DataTable($.extend({}, dtOptions, {
+                $('#aiAgentLogsTable').DataTable(applyLengthStateSave({
+                    ...getDatatableOptions(),
+                    ...dtOptions,
                     processing: true,
                     serverSide: true,
+                    autoWidth: false,
                     ajax: {
                         url: 'views/logs/api.php',
                         type: 'POST',
@@ -460,9 +476,10 @@ if (Gate::allows("log_kayitlari")) {
                         { data: 1 },
                         { data: 2 },
                         { data: 3 },
-                        { data: 4 }
+                        { data: 4 },
+                        { data: 5 }
                     ],
-                    order: [[3, 'desc']]
+                    order: [[4, 'desc']]
                 }));
             }
 
@@ -482,7 +499,9 @@ if (Gate::allows("log_kayitlari")) {
                 document.getElementById('logDetayUser').textContent = user;
                 document.getElementById('logDetayDate').textContent = date;
 
-                if (content.indexOf('(Güncellenen veriler: {') !== -1) {
+                if (btn.hasClass('btn-ai-response')) {
+                    document.getElementById('logDetayContent').textContent = content;
+                } else if (content.indexOf('(Güncellenen veriler: {') !== -1) {
                     try {
                         let parts = content.split(' (Güncellenen veriler: { ');
                         let mainText = parts[0];

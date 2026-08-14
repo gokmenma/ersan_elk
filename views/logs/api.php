@@ -216,7 +216,17 @@ try {
 
             $data = [];
             foreach ($logs as $ll) {
-                $avatar = mb_substr($ll->adi_soyadi, 0, 1, 'UTF-8');
+                $userName = (string) ($ll->adi_soyadi ?? '');
+                $avatar = htmlspecialchars(mb_substr($userName, 0, 1, 'UTF-8'), ENT_QUOTES, 'UTF-8');
+                $escapedUserName = htmlspecialchars($userName, ENT_QUOTES, 'UTF-8');
+                $escapedPrompt = htmlspecialchars((string) $ll->prompt, ENT_QUOTES, 'UTF-8');
+                $response = (string) ($ll->response ?? '');
+                $responsePreview = mb_strlen($response, 'UTF-8') > 120
+                    ? mb_substr($response, 0, 120, 'UTF-8').'…'
+                    : $response;
+                $escapedResponsePreview = htmlspecialchars($responsePreview ?: 'Cevap kaydı bulunamadı.', ENT_QUOTES, 'UTF-8');
+                $escapedResponse = htmlspecialchars($response ?: 'Cevap kaydı bulunamadı.', ENT_QUOTES, 'UTF-8');
+                $formattedDate = date('d.m.Y H:i:s', strtotime($ll->created_at));
                 $userHtml = '
                     <div class="d-flex align-items-center">
                         <div class="avatar-sm me-3">
@@ -226,7 +236,7 @@ try {
                         </div>
                         <div>
                             <h5 class="font-size-14 mb-0" style="color: #334155; font-weight: 600;">
-                                '.htmlspecialchars($ll->adi_soyadi ?? '').'
+                                '.$escapedUserName.'
                             </h5>
                             <span class="badge bg-soft-warning text-warning font-size-11" style="border-radius: 4px;">AI Kullanıcısı</span>
                         </div>
@@ -238,13 +248,22 @@ try {
                         <span style="color: #64748b; font-size: 0.75rem;">'.date('H:i:s', strtotime($ll->created_at)).'</span>
                     </div>';
 
-                $promptHtml = '<span class="fw-semibold text-dark text-break">'.htmlspecialchars($ll->prompt).'</span>';
-                $modelHtml = '<span class="badge bg-soft-info text-info">'.htmlspecialchars($ll->model_used ?? 'gpt-4o-mini').'</span>';
+                $promptHtml = '<span class="fw-semibold text-dark text-break">'.$escapedPrompt.'</span>';
+                $responseHtml = '<div class="d-flex align-items-center gap-2">'
+                    .'<span class="text-break">'.$escapedResponsePreview.'</span>'
+                    .'<button type="button" class="btn btn-sm btn-soft-primary btn-log-detay btn-ai-response flex-shrink-0" '
+                    .'data-bs-toggle="modal" data-bs-target="#modalLogDetay" '
+                    .'data-title="Yapay Zeka Cevabı" data-user="'.$escapedUserName.'" '
+                    .'data-date="'.htmlspecialchars($formattedDate, ENT_QUOTES, 'UTF-8').'" '
+                    .'data-content="'.$escapedResponse.'" title="Cevabın tamamını göster">'
+                    .'<i class="bx bx-show"></i></button></div>';
+                $modelHtml = '<span class="badge bg-soft-info text-info">'.htmlspecialchars($ll->model_used ?? 'gpt-4o-mini', ENT_QUOTES, 'UTF-8').'</span>';
                 $statusHtml = ($ll->status === 'success') ? '<span class="badge bg-soft-success text-success">Başarılı</span>' : '<span class="badge bg-soft-danger text-danger">Hata</span>';
 
                 $data[] = [
                     $userHtml,
                     $promptHtml,
+                    $responseHtml,
                     $modelHtml,
                     $dateHtml,
                     $statusHtml
