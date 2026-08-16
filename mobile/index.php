@@ -94,6 +94,7 @@ $all_mobile_menus = [
     'tum-hareketler'    => ['label' => 'Tüm Hareketler',    'icon' => 'history', 'color_bg' => 'bg-violet-100 dark:bg-violet-900/30', 'color_icon' => 'text-violet-600', 'link_match' => 'cari/list', 'desc' => 'Tüm İşlem ve Finans Geçmişi', 'url' => '?p=tum-hareketler'],
     'aparat'            => ['label' => 'Aparat Takip',      'icon' => 'construction', 'color_bg' => 'bg-amber-100 dark:bg-amber-900/30', 'color_icon' => 'text-amber-600', 'link_match' => 'aparat-takip/list', 'desc' => 'Sayaç Aparat Takip Ekranı', 'url' => '../index.php?p=aparat-takip/list'],
     'puantaj'           => ['label' => 'Puantaj',           'icon' => 'calendar_month', 'color_bg' => 'bg-emerald-100 dark:bg-emerald-900/30', 'color_icon' => 'text-emerald-600', 'link_match' => 'puantaj/list', 'desc' => 'Personel Puantaj İşlemleri', 'url' => '?p=puantaj'],
+    'bordro'            => ['label' => 'Bordro',            'icon' => 'payments', 'color_bg' => 'bg-indigo-100 dark:bg-indigo-900/30', 'color_icon' => 'text-indigo-600', 'link_match' => 'bordro/list', 'desc' => 'Bordro Hesaplama ve Ödeme Yönetimi', 'url' => '?p=bordro'],
     'desktop'           => ['label' => 'Masaüstü Modu',     'icon' => 'desktop_windows', 'color_bg' => 'bg-blue-100 dark:bg-blue-900/30', 'color_icon' => 'text-blue-600', 'link_match' => 'home', 'desc' => 'Masaüstü Görünümüne Geçiş', 'url' => '?force_desktop=1&p=home'],
 ];
 
@@ -193,6 +194,7 @@ $page_titles = [
     'profil'            => 'Profil',
     'tum-hareketler'    => 'Tüm Hareketler',
     'puantaj'           => 'Puantaj',
+    'bordro'            => 'Bordro Yönetimi',
 ];
 
 

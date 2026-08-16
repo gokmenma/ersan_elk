@@ -957,21 +957,6 @@ class BordroPersonelModel extends Model
             $kumulatifMatrahGosterim = $this->getKumulatifMatrah($p->personel_id, $donemYilGosterim, $donemAyGosterim);
             $anaMaasMatrahGosterim = $isInclusive ? round(($asgariUcretNet / 30) * $calismaGunu, 2) : 0.0;
 
-            // Personelin kümülatifi asgari ücret kümülatifinden ilerideyse sabit asgari ücret
-            // istisnası ana ücret vergisinin tamamını karşılamaz. Bu dilim farkı netten düşülür;
-            // gross-up edilmiş RTÇ/HTÇ/nöbet vergileri ise kendi içinde kalır.
-            $asgariIstisnaGosterim = $this->cachedParametreModel
-                ->hesaplaAsgariUcretGelirVergisiIstisnasi($donemBaslangic, $calismaGunu);
-            $anaUcretVergisiGosterim = $this->cachedParametreModel->hesaplaGelirVergisi(
-                $kumulatifMatrahGosterim + $asgariIstisnaGosterim['aylik_matrah'],
-                $asgariIstisnaGosterim['aylik_matrah'],
-                $donemYilGosterim
-            );
-            $asgariUcretDilimFarkiGosterim = max(0.0, round(
-                $anaUcretVergisiGosterim - $asgariIstisnaGosterim['istisna'],
-                2
-            ));
-
             $rtcHtcSonucGosterim = $this->hesaplaRtcHtcKesinti(
                 $rtcBrutGosterim,
                 $htcVergiBazliGosterim,
@@ -1003,23 +988,6 @@ class BordroPersonelModel extends Model
                     'tutar' => $htcPayGosterim
                 ];
             }
-        }
-
-        if (($isNet || $isPrimUsulu) && !isset($asgariUcretDilimFarkiGosterim)) {
-            $donemYilGosterim = (int) date('Y', strtotime($donemBaslangic));
-            $donemAyGosterim = (int) date('n', strtotime($donemBaslangic));
-            $kumulatifMatrahGosterim = $this->getKumulatifMatrah($p->personel_id, $donemYilGosterim, $donemAyGosterim);
-            $asgariIstisnaGosterim = $this->cachedParametreModel
-                ->hesaplaAsgariUcretGelirVergisiIstisnasi($donemBaslangic, $calismaGunu);
-            $anaUcretVergisiGosterim = $this->cachedParametreModel->hesaplaGelirVergisi(
-                $kumulatifMatrahGosterim + $asgariIstisnaGosterim['aylik_matrah'],
-                $asgariIstisnaGosterim['aylik_matrah'],
-                $donemYilGosterim
-            );
-            $asgariUcretDilimFarkiGosterim = max(0.0, round(
-                $anaUcretVergisiGosterim - $asgariIstisnaGosterim['istisna'],
-                2
-            ));
         }
 
         if ($karisikMaasOzeti !== null) {
@@ -1103,11 +1071,6 @@ class BordroPersonelModel extends Model
             // için yontemliBankaEki yolu kullanılmıyor; kesinti doğrudan toplam kesintiye eklenir (TOPLAM HAKEDİŞ değişmez,
             // banka/elden dağıtımının kaynağı olan net alacak küçülür).
             $toplamKesinti += $rtcHtcKesintiToplamGosterim;
-        }
-
-        if (($isNet || $isPrimUsulu) && !empty($asgariUcretDilimFarkiGosterim)) {
-            $toplamKesinti += $asgariUcretDilimFarkiGosterim;
-            $toplamKesintiClean += $asgariUcretDilimFarkiGosterim;
         }
 
         $netAlacagi = $toplamAlacagi - $toplamKesintiClean;
@@ -4866,17 +4829,10 @@ class BordroPersonelModel extends Model
         $yeniKumulatifMatrah = $kumulatifMatrah + $gelirVergisiMatrahi;
 
         $gelirVergisi = $parametreModel->hesaplaGelirVergisi($yeniKumulatifMatrah, $gelirVergisiMatrahi, $donemYil);
-        $asgariUcretDilimFarkiVergisi = 0.0;
         if ($isNetMaas || $isPrimUsulu) {
             $asgariUcretIstisnaHesabi = $parametreModel->hesaplaAsgariUcretGelirVergisiIstisnasi($kayit->baslangic_tarihi, $maasHesapGunu);
             $asgariGvMatrah = $asgariUcretIstisnaHesabi['aylik_matrah'];
             $istisnaGV = $asgariUcretIstisnaHesabi['istisna'];
-            $anaUcretHesaplananGV = $parametreModel->hesaplaGelirVergisi(
-                $kumulatifMatrah + $asgariGvMatrah,
-                $asgariGvMatrah,
-                $donemYil
-            );
-            $asgariUcretDilimFarkiVergisi = max(0.0, round($anaUcretHesaplananGV - $istisnaGV, 2));
             $gelirVergisi = max(0.0, $gelirVergisi - $istisnaGV);
         }
 
@@ -4959,7 +4915,7 @@ class BordroPersonelModel extends Model
         $toplamEkOdeme = $brutEkOdemeler + $netEkOdemeler;
 
         if ($isNetMaas || $isPrimUsulu) {
-            $hakedisNetBeforeKesinti = $brutMaas + $toplamEkOdeme - $asgariUcretDilimFarkiVergisi;
+            $hakedisNetBeforeKesinti = $brutMaas + $toplamEkOdeme;
             $hakedisNet = $hakedisNetBeforeKesinti - $digerKesintiler;
         } else {
             $hakedisNetBeforeKesinti = $brutMaas - $sgkIsci - $issizlikIsci - $gelirVergisi - $damgaVergisi + $netEkOdemeler + $brutEkOdemeler;
@@ -5150,7 +5106,7 @@ class BordroPersonelModel extends Model
             $hedefHakedisDahilEk = ($isPrimUsuluDahilYardim ? $primUsuluPuantajHedefToplami : $targetNetHakedis) + $bankayaTasinabilirEkOdeme + $htcEkOdeme + $yuvarlamaFarki;
             $baseHakedis = max($hedefHakedisDahilEk, $asgariYatacak + $toplamDahilYardim);
             
-            $netMaas = max(0.0, $baseHakedis - $asgariUcretDilimFarkiVergisi);
+            $netMaas = $baseHakedis;
             
             // Diğer (Dahil olmayan) ek ödemeleri ekle
             foreach ([] as $ek) {
@@ -5315,7 +5271,6 @@ class BordroPersonelModel extends Model
                 'asgari_ucret_istisna_gv' => round($istisnaGV ?? 0, 2),
                 'asgari_ucret_gv_matrahi' => round($asgariGvMatrah ?? 0, 2),
                 'asgari_ucret_toplam_gv_matrahi' => round($asgariUcretIstisnaHesabi['toplam_matrah'] ?? 0, 2),
-                'asgari_ucret_dilim_farki_vergisi' => round($asgariUcretDilimFarkiVergisi, 2),
             ],
             'odeme_dagilimi' => ['icra_kesintisi' => round($icraKesintisi, 2), 'banka_net' => round($bankaOdemesi, 2), 'sodexo' => round($sodexoOdemesi, 2), 'elden' => round($eldenOdeme, 2)],
             'ek_odemeler' => $ekOdemeDetaylari, 'kesintiler' => $kesintiDetaylari,
